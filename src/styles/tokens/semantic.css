@@ -1,0 +1,60 @@
+/* Semantic aliases. Components reference these, never the base ramp directly. */
+:root{
+  /* Surfaces */
+  --surface-page:var(--obsidian-0);
+  --surface-shell:var(--obsidian-1);
+  --surface-panel:var(--obsidian-2);
+  --surface-card:var(--obsidian-3);
+  --surface-well:#0d0d13;
+  --surface-raised:var(--obsidian-4);
+  --surface-overlay:var(--veil-panel);
+
+  /* Text */
+  --text-heading:var(--ink-0);
+  --text-body:var(--ink-1);
+  --text-muted:var(--ink-2);
+  --text-disabled:var(--ink-3);
+  --text-accent:var(--gold);
+  --text-lore:var(--ink-1);
+  --text-on-accent:#0a0a0f;
+  --text-link:var(--violet-bright);
+  --text-link-hover:var(--gold);
+
+  /* Interaction — violet is the system energy for interactive state */
+  --action-primary-bg:var(--violet);
+  --action-primary-bg-hover:var(--violet-bright);
+  --action-primary-fg:#0a0a0f;
+  --action-secondary-bg:transparent;
+  --action-secondary-border:var(--edge-raised);
+  --action-secondary-fg:var(--ink-0);
+  --action-ghost-fg:var(--ink-1);
+  --action-destructive-fg:var(--status-danger);
+  --action-disabled-fg:var(--ink-3);
+  --action-disabled-bg:var(--obsidian-2);
+
+  /* Value and reward */
+  --value-gold:var(--gold);
+  --value-essence:var(--realm-celestial);
+  --value-shard:var(--violet-bright);
+  --reward-edge:var(--edge-gold);
+
+  /* Feedback */
+  --feedback-error:var(--status-danger);
+  --feedback-warn:var(--status-caution);
+  --feedback-success:var(--status-good);
+  --feedback-info:var(--status-info);
+
+  /* Slots and tiles */
+  --slot-empty-bg:var(--surface-well);
+  --slot-empty-edge:var(--edge-inset);
+  --slot-filled-edge:var(--edge-raised);
+  --slot-armed-edge:var(--edge-violet);
+}
+
+/* NOTE — the design system ships two bare element rules here:
+     a{color:var(--text-link);text-decoration:none}
+     a:hover{color:var(--text-link-hover)}
+   They are deliberately NOT included. A token file must define tokens only; a global
+   `a` rule would repaint every link across the 123 tool routes and the nav rail, most
+   of which currently inherit their colour from a themed parent. The tokens
+   --text-link / --text-link-hover are defined above and surfaces opt in explicitly. */

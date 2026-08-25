@@ -435,7 +435,7 @@ interface LootDrop {
       position: fixed;
       right: clamp(12px, 3vw, 26px);
       bottom: clamp(12px, 3vw, 26px);
-      z-index: 940;
+      z-index: var(--z-flame);
       display: grid;
       place-items: center;
       pointer-events: none;
@@ -568,12 +568,12 @@ interface LootDrop {
       .ff__btn:active, .ff__btn.is-tapping { transform: none; }
     }
 
-    /* The ember itself. Warm gradient per the forge palette: #E8752A → #C9A84C. */
+    /* The ember itself. Warm gradient per the forge palette: #E8752A → #c89868. */
     .ff__core {
       position: absolute; inset: 8px;
       border-radius: 50%;
       background:
-        radial-gradient(circle at 36% 30%, #fff3d6 0%, #C9A84C 22%, #E8752A 58%, #6d2a12 92%);
+        radial-gradient(circle at 36% 30%, #fff3d6 0%, #c89868 22%, #E8752A 58%, #6d2a12 92%);
       box-shadow:
         0 0 18px rgba(232, 117, 42, .55),
         0 0 44px -8px rgba(201, 168, 76, .55),
@@ -740,7 +740,7 @@ interface LootDrop {
       font-size: 12px; line-height: 1;
       transition: color .35s ease, opacity .35s ease;
     }
-    .ff__mode-icon--gold  { color: #ffd97a; opacity: 1;   }
+    .ff__mode-icon--gold  { color: #f8e8c8; opacity: 1;   }
     .ff__mode-icon--anvil { color: #7d918c; opacity: .55; }
     .ff[data-mode="anvil"] .ff__mode-icon--gold  { color: #7d918c; opacity: .55; }
     .ff[data-mode="anvil"] .ff__mode-icon--anvil { color: #ddd2ff; opacity: 1;   }
@@ -839,7 +839,7 @@ interface LootDrop {
     .ff[data-tier="4"] .ff__ring, .ff[data-tier="4"] .ff__ring--outer { opacity: .85; }
     .ff[data-tier="4"] .ff__glyph { width: 46px; height: 46px; }
     .ff[data-tier="4"] .ff__core {
-      background: radial-gradient(circle at 36% 30%, #fffaf0 0%, #ffd97a 20%, #E8752A 55%, #7b1f4a 94%);
+      background: radial-gradient(circle at 36% 30%, #fffaf0 0%, #f8e8c8 20%, #E8752A 55%, #7b1f4a 94%);
       box-shadow: 0 0 32px rgba(232,117,42,.8), 0 0 80px -10px rgba(255,109,215,.5), inset 0 -4px 12px rgba(0,0,0,.5);
     }
 
@@ -868,7 +868,7 @@ interface LootDrop {
       position: absolute; left: 50%; top: 50%;
       width: 4px; height: 4px; margin: -2px 0 0 -2px;
       border-radius: 50%;
-      background: #ffd97a;
+      background: #f8e8c8;
       box-shadow: 0 0 6px rgba(255, 217, 122, .9);
       animation: ffSpark .62s cubic-bezier(.2, .7, .3, 1) forwards;
     }
@@ -881,7 +881,7 @@ interface LootDrop {
     .ff__float {
       position: absolute; left: 50%; top: 6px;
       font: 700 14px/1 'Orbitron', system-ui, sans-serif;
-      color: #ffd97a;
+      color: #f8e8c8;
       text-shadow: 0 0 10px rgba(232, 117, 42, .8);
       white-space: nowrap;
       pointer-events: none;
@@ -908,7 +908,7 @@ interface LootDrop {
       box-shadow: 0 18px 44px -18px rgba(0, 0, 0, .9);
       animation: ffBanner .3s cubic-bezier(.22, 1, .36, 1);
     }
-    .ff__banner strong { font: 700 13px/1.2 'Orbitron', system-ui, sans-serif; color: #ffd97a; }
+    .ff__banner strong { font: 700 13px/1.2 'Orbitron', system-ui, sans-serif; color: #f8e8c8; }
     .ff__banner span   { font-size: 11px; color: #b9cdc7; }
     .ff__banner--grand { border-color: rgba(255, 45, 77, .7); }
     .ff__banner--grand strong { color: #ff8fa3; }
@@ -929,7 +929,7 @@ interface LootDrop {
       transition: opacity .2s ease, transform .2s ease, visibility .2s;
     }
     .ff__hud--open { opacity: 1; visibility: visible; transform: none; }
-    .ff__hud-gold { font: 700 15px/1 'Orbitron', system-ui, sans-serif; color: #ffd97a; }
+    .ff__hud-gold { font: 700 15px/1 'Orbitron', system-ui, sans-serif; color: #f8e8c8; }
     .ff__hud-coin { width: 13px; height: 13px; vertical-align: -2px; }
     .ff__hud-rate { font-size: 11px; color: #A78BFA; }
     .ff__hud-auto { font-size: 11px; color: #7fd5a3; }
@@ -947,7 +947,7 @@ interface LootDrop {
     .ff__hud-forge {
       margin-top: 4px; padding-top: 6px;
       border-top: 1px solid rgba(255, 255, 255, .08);
-      font-size: 11px; color: #C9A84C; text-decoration: none;
+      font-size: 11px; color: #c89868; text-decoration: none;
     }
     .ff__hud-market {
       margin-top: 2px;
@@ -979,7 +979,7 @@ interface LootDrop {
       animation: ffComboBeat .22s cubic-bezier(.22, 1, .36, 1);
     }
     .ff__combo[data-tone="gold"] {
-      color: #ffd97a;
+      color: #f8e8c8;
       text-shadow: 0 0 12px rgba(201, 168, 76, .9), 0 1px 3px rgba(0, 0, 0, .8);
     }
     .ff__combo[data-tone="crimson"] {
@@ -1013,7 +1013,7 @@ interface LootDrop {
       pointer-events: none;
       animation: ffShout 1.5s cubic-bezier(.22, 1, .36, 1) forwards;
     }
-    .ff__shout[data-tone="gold"]    { color: #ffd97a; text-shadow: 0 0 16px rgba(201, 168, 76, .95), 0 2px 4px rgba(0,0,0,.9); }
+    .ff__shout[data-tone="gold"]    { color: #f8e8c8; text-shadow: 0 0 16px rgba(201, 168, 76, .95), 0 2px 4px rgba(0,0,0,.9); }
     .ff__shout[data-tone="crimson"] { color: #ff2d4d; text-shadow: 0 0 18px rgba(255, 45, 77, .95), 0 2px 4px rgba(0,0,0,.9); }
     .ff__shout--grand { font-size: 19px; }
     @keyframes ffShout {
@@ -1060,7 +1060,7 @@ interface LootDrop {
        has earned. Held effects fade in on their tier and out with the run. */
     .fx {
       position: fixed; inset: 0;
-      z-index: 935;
+      z-index: var(--z-fx);
       pointer-events: none;
     }
     .fx > span { position: absolute; inset: 0; display: block; opacity: 0; }

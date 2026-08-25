@@ -15,7 +15,7 @@
 }
 
 .sponsor-slot {
-  --sponsor-accent: #8B5CF6; /* default fallback; overridden inline per-sponsor */
+  --sponsor-accent: var(--violet); /* default fallback; overridden inline per-sponsor */
   position: relative;
   display: block;
   margin: 0 auto 1.5rem;

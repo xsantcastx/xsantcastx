@@ -13,7 +13,7 @@
  */
 
 .cx-page {
-  --cx-bg: #0a0a0f;
+  --cx-bg: var(--obsidian-0);
   --cx-panel: rgba(10, 6, 26, 0.55);
   --cx-line: rgba(255, 255, 255, 0.06);
   --cx-text: #e6f1ee;
@@ -365,7 +365,7 @@
 .cx-card__name {
   margin: 0 0 0.35rem;
   font: 700 0.95rem/1.3 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF;
+  color: var(--ink-0);
   overflow-wrap: anywhere;
 }
 .cx-card--locked .cx-card__name { color: #5c6d78; letter-spacing: 0.18em; }
@@ -383,7 +383,7 @@
   gap: 0.6rem; flex-wrap: wrap; margin: 0 0 0.4rem;
   font-size: 0.7rem; color: var(--cx-faint);
 }
-.cx-card__xp { color: #ffc669; font-weight: 700; }
+.cx-card__xp { color: var(--gold); font-weight: 700; }
 
 .cx-card__link,
 .cx-card__gate a {
@@ -416,7 +416,7 @@
   width: clamp(92px, 20vw, 128px); aspect-ratio: 1;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 32% 28%, #F2ECFF 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 32% 28%, var(--ink-0) 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 42%),
     radial-gradient(circle at 50% 50%, #A78BFA 0%, rgba(8, 3, 24, 0.94) 86%);
   box-shadow: 0 0 24px rgba(139, 92, 246, 0.45), inset 0 0 14px rgba(0, 0, 0, 0.5);
 }
@@ -464,7 +464,7 @@
   transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1);
 }
 .cx-rank__next { margin: 0.6rem 0 0; font-size: 0.85rem; color: var(--cx-dim); }
-.cx-rank__togo { color: #ffc669; font-weight: 700; }
+.cx-rank__togo { color: var(--gold); font-weight: 700; }
 
 /* ── Blocks ────────────────────────────────────────────────────────────── */
 .cx-block {
@@ -476,7 +476,7 @@
 .cx-block__title {
   margin: 0 0 0.3rem;
   font: 700 1.05rem/1.2 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF;
+  color: var(--ink-0);
 }
 .cx-block__sub { margin: 0 0 1.2rem; font-size: 0.82rem; color: var(--cx-dim); }
 
@@ -509,7 +509,7 @@
   box-shadow: 0 0 10px rgba(139, 92, 246, 0.7);
 }
 .cx-path__node[data-state='current'] .cx-path__dot {
-  background: #ffc669; border-color: #ffc669;
+  background: var(--gold); border-color: var(--gold);
   box-shadow: 0 0 14px rgba(255, 180, 80, 0.9);
   animation: cxNodePulse 2.4s ease-in-out infinite;
 }
@@ -529,12 +529,12 @@
 .cx-path__here {
   grid-area: here;
   font: 700 0.72rem/1 'Orbitron', system-ui, sans-serif;
-  color: #ffc669;
+  color: var(--gold);
 }
 
 .cx-path__node[data-state='held'] .cx-path__title { color: #9fd8cc; }
 .cx-path__node[data-state='current'] .cx-path__title {
-  color: #ffc669; font-weight: 700;
+  color: var(--gold); font-weight: 700;
   font-family: 'Orbitron', system-ui, sans-serif;
 }
 .cx-path__node[data-state='locked'] .cx-path__title { color: #55636b; }
@@ -578,7 +578,7 @@
   display: inline-block; margin: 1rem 0 0.4rem;
   padding: 0.45rem 1rem; border-radius: 999px;
   font: 700 0.8rem/1 'Orbitron', system-ui, sans-serif;
-  color: #ffc669;
+  color: var(--gold);
   border: 1px solid rgba(255, 180, 80, 0.45);
   background: rgba(255, 180, 80, 0.08);
   box-shadow: 0 0 22px -8px rgba(255, 180, 80, 0.8);
@@ -597,12 +597,12 @@
   background: rgba(255, 255, 255, 0.025);
   border: 1px solid var(--cx-line);
 }
-.cx-streak__num { font: 800 1.35rem/1 'Orbitron', system-ui, sans-serif; color: #ffc669; }
+.cx-streak__num { font: 800 1.35rem/1 'Orbitron', system-ui, sans-serif; color: var(--gold); }
 .cx-streak__label {
   font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cx-faint);
 }
 .cx-streak__next { margin: 0 0 1.2rem; font-size: 0.85rem; color: var(--cx-dim); }
-.cx-streak__next strong { color: #ffc669; }
+.cx-streak__next strong { color: var(--gold); }
 
 /* Calendar: warm ladder, dark → amber → gold, matching the streak flame. */
 .cx-cal {
@@ -619,7 +619,7 @@
 .cx-cal__day[data-heat='2'] { background: rgba(255, 180, 80, 0.45); border-color: rgba(255, 180, 80, 0.4); }
 .cx-cal__day[data-heat='3'] { background: rgba(255, 190, 90, 0.72); border-color: rgba(255, 190, 90, 0.6); }
 .cx-cal__day[data-heat='4'] {
-  background: #ffc669; border-color: #ffd98f;
+  background: var(--gold); border-color: #ffd98f;
   box-shadow: 0 0 12px rgba(255, 180, 80, 0.7);
 }
 .cx-cal__day.is-today { outline: 1px solid rgba(139, 92, 246, 0.7); outline-offset: 1px; }
@@ -685,7 +685,7 @@
 .cx-beast__title {
   margin: 0 0 0.2rem;
   font: 700 0.85rem/1.3 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF; overflow-wrap: anywhere;
+  color: var(--ink-0); overflow-wrap: anywhere;
 }
 .cx-beast__realm {
   margin: 0; font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
@@ -780,7 +780,7 @@
 .cx-secret__name {
   margin: 0;
   font: 700 1rem/1.3 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF; overflow-wrap: anywhere;
+  color: var(--ink-0); overflow-wrap: anywhere;
 }
 .cx-secret--locked .cx-secret__name { color: #5c6d78; letter-spacing: 0.18em; }
 
@@ -816,7 +816,7 @@
 .cx-soon__title {
   margin: 0 0 0.9rem;
   font: 800 clamp(1.4rem, 4.5vw, 2.2rem)/1.2 'Orbitron', system-ui, sans-serif;
-  color: #F2ECFF;
+  color: var(--ink-0);
 }
 .cx-soon__sub { max-width: 56ch; margin: 0 auto 1rem; font-size: 0.92rem; line-height: 1.65; color: var(--cx-dim); }
 .cx-soon__cta-note { max-width: 56ch; margin: 0 auto; font-size: 0.82rem; line-height: 1.6; color: var(--cx-faint); }
@@ -851,7 +851,7 @@
    mistakes an illustration for a real ranking. */
 .cx-lb__row--ghost { color: #66757d; }
 .cx-lb__row--you {
-  color: #F2ECFF;
+  color: var(--ink-0);
   background: rgba(139, 92, 246, 0.06);
 }
 .cx-lb__row--you td:first-child { border-left: 2px solid #A78BFA; }
@@ -984,7 +984,7 @@
    THE LORE CODEX — the scroll wall
    ═══════════════════════════════════════════════════════════════════════════
 
-   Parchment rather than starlight, matching ToolLoreComponent: gold #C9A84C,
+   Parchment rather than starlight, matching ToolLoreComponent: gold var(--gold-core),
    a Georgia serif, and a torn top rule instead of a clean border. The rest of
    this page is Orbitron and neon on purpose, and the lore is the deliberate
    exception — it should read as something found rather than something built.
@@ -1046,7 +1046,7 @@
   border: 1px solid rgba(201, 168, 76, 0.3);
   border-radius: 50%;
   font: 600 0.78rem/1 Georgia, 'Times New Roman', serif;
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 
 .cx-scroll--locked .cx-scroll__num {
@@ -1080,7 +1080,7 @@
   width: 7px;
   height: 7px;
   border-radius: 50%;
-  background: #C9A84C;
+  background: var(--gold-core);
   box-shadow: 0 0 8px rgba(201, 168, 76, 0.9);
 }
 
@@ -1148,7 +1148,7 @@
 }
 
 .cx-scrolls__empty a {
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 
 @media (max-width: 640px) {

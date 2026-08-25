@@ -69,20 +69,6 @@
     });
   }
 
-  // ── FontAwesome media swap ───────────────────────────────────────────────
-  // Was onload="this.media='all'" on the <link>. Same inline-handler problem as
-  // the seal. The stylesheet is fetched non-render-blocking as media="print";
-  // flipping it to "all" here applies it. Icons are below the fold on every
-  // primary route, so applying at defer-time rather than at link-load time is
-  // not a visible difference.
-  var fa = document.getElementById('fa-css');
-  if (fa) {
-    if (fa.sheet) {
-      fa.media = 'all';
-    } else {
-      fa.addEventListener('load', function () { fa.media = 'all'; }, { once: true });
-    }
-  }
 
   // ── hidden helper ────────────────────────────────────────────────────────
   try {

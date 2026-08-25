@@ -2,7 +2,7 @@
  * keeper-panel.component.ts — the Character hub as a side drawer.
  *
  * Mounted in AppComponent as a sibling of the header. Opening it from the
- * navbar must not put the drawer inside the header's z-index:1000 context.
+ * navbar must not put the drawer inside the header's z-index: var(--z-header) context.
  * Docks on the right with no scrim so Mine stays clickable.
  */
 import {

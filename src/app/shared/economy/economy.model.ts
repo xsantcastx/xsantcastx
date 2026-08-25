@@ -922,17 +922,17 @@ export const COSMETICS: Cosmetic[] = [
     variants: [
       { id: 'relentless', label: 'The Relentless', color: '#E8752A' },
       { id: 'shadowborn', label: 'Shadowborn', color: '#8B2252' },
-      { id: 'unbroken', label: 'The Unbroken', color: '#C9A84C' },
+      { id: 'unbroken', label: 'The Unbroken', color: '#c89868' },
       { id: 'ashwalker', label: 'Ashwalker', color: '#9fb4ae' },
       // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
-      { id: 'pro', label: 'Pro', color: '#F5C451' },
+      { id: 'pro', label: 'Pro', color: '#f8e8c8' },
       // Collection Log exclusive — the four Collector titles, granted by
       // CollectionService as the log crosses 25/50/75/100%. Real variants on
       // the real cosmetic rather than a label that only exists on one page:
       // this is what puts the title in front of the rank in the XP bar.
       { id: 'apprentice-collector', label: 'Apprentice Collector', color: '#8f98a8' },
       { id: 'journeyman-collector', label: 'Journeyman Collector', color: '#5fb6ff' },
-      { id: 'master-collector', label: 'Master Collector', color: '#C9A84C' },
+      { id: 'master-collector', label: 'Master Collector', color: '#c89868' },
       { id: 'eclipse-archivist', label: 'Eclipse Archivist', color: '#e6dcff' },
       // NPC chain exclusives — granted by NpcQuestService when a chain step is
       // claimed, never purchasable. Same precedent as the Collector titles
@@ -947,8 +947,8 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'forgeborn',            label: 'Forgeborn',            color: '#ff9a5a' },
       { id: 'the-annotated',        label: 'The Annotated',        color: '#5fb6ff' },
       { id: 'keeper-of-fragments',  label: 'Keeper of Fragments',  color: '#9ad0ff' },
-      { id: 'the-solvent',          label: 'The Solvent',          color: '#C9A84C' },
-      { id: 'goldmouth',            label: 'Goldmouth',            color: '#F5C451' },
+      { id: 'the-solvent',          label: 'The Solvent',          color: '#c89868' },
+      { id: 'goldmouth',            label: 'Goldmouth',            color: '#f8e8c8' },
       { id: 'the-counted',          label: 'The Counted',          color: '#c9c4d6' },
       { id: 'nameless',             label: 'Nameless',             color: '#8f8a9c' },
     ],
@@ -977,11 +977,11 @@ export const COSMETICS: Cosmetic[] = [
     cost: 500_000,
     slot: 'xpbar',
     variants: [
-      { id: 'ornate', label: 'Ornate', color: '#C9A84C' },
+      { id: 'ornate', label: 'Ornate', color: '#c89868' },
       { id: 'molten', label: 'Molten', color: '#E8752A' },
       { id: 'void', label: 'Void', color: '#7b61ff' },
       // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
-      { id: 'golden', label: 'Golden', color: '#F5C451' },
+      { id: 'golden', label: 'Golden', color: '#f8e8c8' },
     ],
   },
   {
@@ -993,7 +993,7 @@ export const COSMETICS: Cosmetic[] = [
     cost: 1_000_000,
     slot: 'frame',
     variants: [
-      { id: 'golden', label: 'Golden', color: '#C9A84C' },
+      { id: 'golden', label: 'Golden', color: '#c89868' },
       { id: 'obsidian', label: 'Obsidian', color: '#2a2438' },
       { id: 'prismatic', label: 'Prismatic', color: '#ff6dd7' },
       // NPC chain exclusive — the Archivist's, granted at step four.

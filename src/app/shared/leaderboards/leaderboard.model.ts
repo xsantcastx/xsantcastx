@@ -115,7 +115,7 @@ export const LEADERBOARD_CATEGORIES: readonly LeaderboardCategory[] = [
     format: 'compact',
     summit: 42_000_000,
     curve: 3.4,
-    color: '#ffc669',
+    color: '#e8c898',
     glow: 'rgba(255, 180, 80, 0.6)',
   },
   {

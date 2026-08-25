@@ -49,7 +49,7 @@ export interface RealmDefinition {
  *
  *   umbral   #8B2252 crimson -> #A855F7 violet.  The vault is lit by violet
  *            crystals; the old crimson belonged to `--forge-crimson`, not here.
- *   archivum #C9A84C gold    -> #10B981 emerald. bg-verdant is a green
+ *   archivum #c89868 gold    -> #10B981 emerald. bg-verdant is a green
  *            conservatory. The gold read as a second Luminous.
  *   nexus    #10B981 emerald -> #EF4444 crimson. bg-infernal is a lava-lit mail
  *            forge, so a green accent fought the whole frame.

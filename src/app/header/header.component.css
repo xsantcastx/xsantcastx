@@ -3,7 +3,7 @@
    a phone.
 
    Colour rule: the accent is var(--primary-color), never a literal
-   #8B5CF6. Four purchasable cosmetic themes re-point that variable
+   var(--violet). Four purchasable cosmetic themes re-point that variable
    (html[data-cos-theme="…"] in styles.css); a hardcoded hex opts the
    whole bar out of all of them.
    ═══════════════════════════════════════════════════════════════════════ */
@@ -12,8 +12,8 @@
   --gfnav-h: 60px;
   --gfnav-h-compact: 50px;
   --gfnav-void: 10, 10, 15;
-  --gfnav-gold: #C9A84C;
-  --gfnav-gold-text: #E0A857;
+  --gfnav-gold: var(--gold-core);
+  --gfnav-gold-text: var(--gold-core);
   --gfnav-ink: #f0f0f0;
   --gfnav-dim: rgba(240, 240, 240, 0.6);
   --gfnav-seam: color-mix(in srgb, var(--primary-color) 55%, transparent);
@@ -25,7 +25,7 @@
 .gfnav {
   position: fixed;
   inset: 0 0 auto 0;
-  z-index: 1000;
+  z-index: var(--z-header);
   padding-top: env(safe-area-inset-top, 0px);
   border-bottom: 1px solid var(--gfnav-seam);
   box-shadow:
@@ -570,7 +570,7 @@ button.gftome__keeper {
      that carries its OWN header — sigil, wordmark and close button — and at
      z-index 999 the bar's hamburger painted directly over that close
      button and swallowed every tap on it. */
-  z-index: 1001;
+  z-index: calc(var(--z-header) + 1);
   background:
     radial-gradient(ellipse 80% 55% at 50% 0%, color-mix(in srgb, var(--primary-color) 16%, transparent), transparent 68%),
     rgba(4, 3, 10, 0.84);
@@ -585,7 +585,7 @@ button.gftome__keeper {
 .gftome {
   position: fixed;
   top: 0; right: 0; bottom: 0; left: 0;
-  z-index: 1002;
+  z-index: calc(var(--z-header) + 2);
   /* dvh, not vh: 100vh is the LARGE viewport on mobile, so the last links
      sat behind the URL bar with no way to reach them. */
   height: 100dvh;
@@ -837,7 +837,7 @@ button.gftome__keeper {
   display: none;
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  z-index: 997;
+  z-index: calc(var(--z-header) - 3);
   /* --gftabs-h is published onto <html> by HeaderComponent.updateHeaderOffset
      from MOBILE_TAB_BAR_H — 0px on desktop, 58px below the nav breakpoint — and
      the bar reads it rather than owning a private copy, because three other

@@ -13,13 +13,13 @@
  */
 
 :host {
-  --ag-bg: #0a0a0f;
+  --ag-bg: var(--obsidian-0);
   --ag-panel: rgba(12, 18, 34, 0.72);
   --ag-line: rgba(255, 255, 255, 0.08);
-  --ag-text: #e8ecf1;
+  --ag-text: var(--ink-0);
   --ag-dim: #8fa0b8;
   --ag-cyan: #A78BFA;
-  --ag-gold: #C9A84C;
+  --ag-gold: var(--gold-core);
   --ag-violet: #a48bff;
   --ag-rose: #ff6dd7;
   --ag-danger: #ff2d4d;
@@ -175,7 +175,7 @@
 .ag-btn--primary {
   border-color: rgba(139, 92, 246, 0.42);
   background: linear-gradient(120deg, rgba(139, 92, 246, 0.16), rgba(140, 110, 255, 0.16));
-  color: #F2ECFF;
+  color: var(--ink-0);
 }
 .ag-btn--primary:hover, .ag-btn--primary:focus-visible {
   border-color: var(--ag-cyan);

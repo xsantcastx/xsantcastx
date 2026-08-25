@@ -73,7 +73,7 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
     unit: 'Gold/sec',
     per: 0.5,
     flavour: 'The arm behind the hammer. Every point is another half-second of someone else’s work, done for you, forever.',
-    color: '#ffc669',
+    color: '#e8c898',
     glow: 'rgba(255, 180, 80, 0.6)',
     effectOf: p => p * 0.5,
     format: p => `+${trim(p * 0.5)} Gold/sec`,
