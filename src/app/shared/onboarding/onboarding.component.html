@@ -133,10 +133,17 @@
           <p class="ob__body">{{ translate('onboarding.doors.body') }}</p>
 
           <ul class="ob__doors">
-            @for (door of doorways; track door.accent) {
-              <li class="ob__door" [attr.data-realm]="door.accent">
-                <p class="ob__door-title">{{ translate(door.titleKey) }}</p>
-                <p class="ob__door-body">{{ translate(door.bodyKey) }}</p>
+            @for (door of doorways; track door.titleKey) {
+              <li class="ob__door"
+                  [class.ob__door--first]="door.first"
+                  [attr.data-realm]="door.accent">
+                <div class="ob__door-text">
+                  @if (door.first) {
+                    <p class="ob__door-tag">{{ translate('onboarding.doors.first') }}</p>
+                  }
+                  <p class="ob__door-title">{{ translate(door.titleKey) }}</p>
+                  <p class="ob__door-body">{{ translate(door.bodyKey) }}</p>
+                </div>
                 <button type="button" class="ob__door-go" (click)="enter(door)">
                   {{ translate('onboarding.doors.enter') }}
                 </button>

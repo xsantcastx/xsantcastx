@@ -294,28 +294,53 @@
   margin: 0;
   padding: 0;
   display: grid;
-  gap: 0.7rem;
+  gap: 0.5rem;
   width: 100%;
 }
 
-/* Side by side once there is room for two readable columns. Below that they
-   stack, which is the phone case and therefore the default. */
-@media (min-width: 560px) {
-  .ob__doors { grid-template-columns: 1fr 1fr; }
-}
-
+/* Rows, not a card grid, and it stays rows at every width.
+   Four activities as two-by-two cards pushed the fourth below the fold on a
+   phone, and this screen is the one that has to survive a Reddit link opened
+   one-handed. A row is legible at 320px and the "Go" button stays on the same
+   line as the thing it opens. */
 .ob__door {
   display: flex;
-  flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.95rem;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.7rem 0.8rem;
   text-align: left;
   border-radius: var(--radius-lg);
   border: 1px solid var(--edge-hairline);
   background: var(--veil-glass);
-  /* --realm is set by the [data-realm] rules in the realm token file; the forge
-     door has no realm, so it falls back to the ember. */
+  /* --realm comes from the [data-realm] rules in the realm token file; the
+     forge door has no realm, so it falls back to the ember. */
   border-left: 3px solid var(--realm, var(--ember));
+}
+
+/* The one door that is free and that pays for the other three. */
+.ob__door--first {
+  border-color: var(--edge-gold);
+  border-left-color: var(--realm, var(--ember));
+  background:
+    linear-gradient(90deg, var(--realm-tint, transparent), transparent 60%),
+    var(--veil-glass);
+}
+
+.ob__door-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ob__door-tag {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-accent);
 }
 
 .ob__door-title {
@@ -327,17 +352,17 @@
 
 .ob__door-body {
   margin: 0;
-  flex: 1;
   font-family: var(--font-ui);
   font-size: var(--text-2xs);
   line-height: var(--leading-normal);
   color: var(--text-muted);
+  text-wrap: pretty;
 }
 
 .ob__door-go {
-  margin-top: 0.35rem;
-  align-self: flex-start;
+  flex: none;
   min-height: var(--tap-min, 44px);
+  min-width: var(--tap-min, 44px);
   padding: 0.5rem 1rem;
   cursor: pointer;
   border-radius: var(--radius-pill);
@@ -466,15 +491,20 @@
 }
 
 /* ── The small door ──────────────────────────────────────────────────────── */
-/* Bottom-right and deliberately quiet, but still a real 44px target: this is
-   the escape hatch for somebody who already knows the site, and a skip that is
-   hard to hit is a dark pattern. */
+/* In the panel's flow, right-aligned — NOT position:absolute below it.
+   Absolute put it outside the panel's box and therefore inside the bottom
+   padding that reserves room for the cookie banner, so on the four-row
+   activities screen — the one tall enough to scroll — it landed underneath the
+   banner and failed a hit test while every other control passed. In flow it
+   cannot be pushed anywhere the rest of the content is not.
+
+   Still a real 44px target: this is the escape hatch for somebody who already
+   knows the game, and a skip that is hard to hit is a dark pattern. */
 .ob__skip {
-  position: absolute;
-  right: 0;
-  bottom: -2.75rem;
+  align-self: flex-end;
   min-height: var(--tap-min, 44px);
   padding: 0.5rem 0.9rem;
+  margin-top: -0.25rem;
   cursor: pointer;
   border: none;
   background: transparent;
@@ -486,9 +516,3 @@
 }
 .ob__skip:hover { color: var(--text-body); }
 .ob__skip:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset, 3px); }
-
-/* On a short screen the absolute skip would sit off the bottom of the panel and
-   under the fold, so below 640px tall it rejoins the flow. */
-@media (max-height: 640px) {
-  .ob__skip { position: static; margin-top: 0.5rem; }
-}
