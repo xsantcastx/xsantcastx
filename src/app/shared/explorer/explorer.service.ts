@@ -36,6 +36,7 @@ import { XpService } from '../gamification/xp.service';
 import { RealmId, realmById } from '../realms/realm.model';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { runeById } from '../rune-forge/rune.model';
+import { OfflineService } from '../offline/offline.service';
 import {
   BASE_EXPLORER_SLOTS,
   EXPEDITION_HISTORY_CAP,
@@ -131,6 +132,7 @@ export class ExplorerService implements OnDestroy {
   private readonly store = inject(GameStateGateway);
   private readonly inventory = inject(InventoryService);
   private readonly challenges = inject(ChallengeService);
+  private readonly offline = inject(OfflineService);
 
   private state: ExplorerState = emptyExplorerState();
   private initialised = false;
@@ -672,6 +674,20 @@ export class ExplorerService implements OnDestroy {
     // The scroll and item counts are only knowable after the grants, so they
     // land in a second write. Cheap — this runs once per settlement, not per
     // tick.
+    // Anything that came home *before* this page load started belongs to the
+    // absence, not to the session. `OfflineService` hands out a window only
+    // while a return is being settled and does the "before" test itself, so a
+    // mission landing while the visitor watches is silently ignored here.
+    for (const record of logged) {
+      this.offline.reportExpedition({
+        mission: missionById(record.mission)?.name ?? record.mission,
+        realm: realmById(record.realm)?.name ?? record.realm,
+        gold: Math.floor(record.gold),
+        spoils: expeditionSpoils(record),
+        returnedAt: record.returnedAt,
+      });
+    }
+
     this.state = {
       ...this.state,
       scrollsFound: this.state.scrollsFound + scrollsFound,
@@ -914,6 +930,30 @@ export class ExplorerService implements OnDestroy {
 
 function isString(v: unknown): v is string {
   return typeof v === 'string';
+}
+
+/**
+ * Everything one return carried home, spelled for a summary list row.
+ *
+ * Runes are named individually because the names are the point — "Ashfall" is
+ * what the player tells somebody about. Materials are collapsed to a count
+ * because a Deep Dive banks eleven stack keys nobody reads one at a time, and
+ * eleven rows would bury the rune that mattered.
+ */
+function expeditionSpoils(record: ExpeditionRecord): string[] {
+  const spoils: string[] = [];
+  for (const id of record.runes) {
+    const rune = runeById(id);
+    if (rune) spoils.push(rune.name);
+  }
+  const items = record.items?.length ?? 0;
+  if (items > 0) spoils.push(items === 1 ? '1 item' : `${items} items`);
+  if (record.scroll) spoils.push('1 lore scroll');
+  const materials = record.materials
+    ? Object.values(record.materials).reduce((sum, n) => sum + n, 0)
+    : 0;
+  if (materials > 0) spoils.push(materials === 1 ? '1 material' : `${materials} materials`);
+  return spoils;
 }
 
 /**

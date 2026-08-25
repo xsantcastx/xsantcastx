@@ -1,0 +1,165 @@
+<!-- ═══════════════════════════════════════════════════════════════════════
+     WHILE YOU WERE AWAY
+
+     A receipt, not a transaction. Every number on it was banked before this
+     markup existed — see the component header for why the button is an
+     acknowledgement rather than a payout.
+
+     Rows are rendered only when they carry something. A summary that lists
+     "Gold: 0, XP: 0, Finds: none" for a save with no upgrades is the version of
+     this feature that makes people close the tab, and OfflineService refuses to
+     raise the curtain at all when nothing is owed.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="away"
+     role="dialog"
+     aria-modal="true"
+     [attr.aria-label]="translate('away.eyebrow')"
+     (keydown)="onKeydown($event)">
+
+  <!-- The void behind the panel. Two washes, no image: this paints on the first
+       frame after a return and must not wait on a fetch. -->
+  <div class="away__void" aria-hidden="true"></div>
+
+  <!-- tabindex="-1" so the dialog itself can take focus and be announced. -->
+  <div class="away__panel" #panel tabindex="-1">
+
+    <header class="away__head">
+      <p class="away__eyebrow">{{ translate('away.eyebrow') }}</p>
+      <h2 class="away__title">{{ translate('away.title') }}</h2>
+      <p class="away__span">{{ away }}</p>
+      @if (report.clamped) {
+        <p class="away__note">{{ translate('away.capped') }}</p>
+      }
+    </header>
+
+    <ul class="away__rows">
+
+      <!-- ── Gold ──────────────────────────────────────────────────────── -->
+      @if (report.goldEarned > 0) {
+        <li class="away__row" [style.--row]="rowDelay(0)">
+          <img class="away__icon"
+               src="assets/icons/currencies/gold.png"
+               alt=""
+               width="20" height="20"
+               aria-hidden="true">
+          <span class="away__label">{{ translate('away.gold') }}</span>
+          <!-- The settled number is what the template renders, and the count-up
+               overwrites it with zero and climbs back. That way round on
+               purpose: this component is created with `createComponent`, so
+               `ngAfterViewInit` can run a pass before the view query inside this
+               `@if` has resolved — and a template that started at zero would
+               then be a Gold line stuck on "+0" for a night that earned
+               millions. Rendering the truth means the animation is the thing
+               that can fail, not the number.
+
+               The value is pinned in aria-label so a screen reader is given it
+               once, settled, rather than sixty times as it climbs. -->
+          <span class="away__value away__value--gold"
+                [attr.aria-label]="'+' + gold(report.goldEarned)">+<span #goldValue>{{ gold(report.goldEarned) }}</span></span>
+        </li>
+      }
+
+      <!-- ── Idle XP ───────────────────────────────────────────────────── -->
+      @if (report.xpEarned > 0) {
+        <li class="away__row" [style.--row]="rowDelay(1)">
+          <span class="away__mark away__mark--xp" aria-hidden="true"></span>
+          <span class="away__label">{{ translate('away.xp') }}</span>
+          <span class="away__value">+{{ report.xpEarned }}</span>
+        </li>
+      }
+
+      <!-- ── The shift ─────────────────────────────────────────────────── -->
+      @if (report.thrallFinds.length) {
+        <li class="away__row away__row--block" [style.--row]="rowDelay(2)">
+          <div class="away__line">
+            <span class="away__mark away__mark--thrall" aria-hidden="true"></span>
+            <span class="away__label">{{ translate('away.thralls') }}</span>
+            <span class="away__value">
+              @if (report.thrallCapped) {
+                {{ translate('away.pullsCapped', { count: report.thrallRolls }) }}
+              } @else {
+                {{ translate('away.pulls', { count: report.thrallRolls }) }}
+              }
+            </span>
+          </div>
+          <ul class="away__sub">
+            @for (find of report.thrallFinds; track find.name) {
+              <!-- The rarity drives the frame AND is spelled out in the label:
+                   rarity is never conveyed by colour alone. -->
+              <li class="away__find"
+                  [attr.data-rarity]="find.rarity"
+                  [class.away__find--celebrated]="celebrated(find.rarity)">
+                <span class="away__find-rarity">{{ find.rarityLabel }}</span>
+                <span class="away__find-name">{{ find.name }}</span>
+                @if (find.count > 1) {
+                  <span class="away__find-count">&#215;{{ find.count }}</span>
+                }
+              </li>
+            }
+          </ul>
+        </li>
+      }
+
+      <!-- ── Expeditions ───────────────────────────────────────────────── -->
+      @if (report.expeditions.length) {
+        <li class="away__row away__row--block" [style.--row]="rowDelay(3)">
+          <div class="away__line">
+            <span class="away__mark away__mark--expedition" aria-hidden="true"></span>
+            <span class="away__label">{{ translate('away.expeditions') }}</span>
+            <span class="away__value">{{ report.expeditions.length }}</span>
+          </div>
+          <ul class="away__sub">
+            @for (run of report.expeditions; track $index) {
+              <li class="away__run">
+                <button type="button"
+                        class="away__run-toggle"
+                        [attr.aria-expanded]="isOpen($index)"
+                        (click)="toggle($index)">
+                  <span class="away__run-name">{{ run.mission }}</span>
+                  <span class="away__run-realm">{{ run.realm }}</span>
+                  <span class="away__run-gold">+{{ gold(run.gold) }}</span>
+                  <span class="away__chev" [class.away__chev--open]="isOpen($index)" aria-hidden="true"></span>
+                </button>
+                @if (isOpen($index)) {
+                  <p class="away__run-spoils">
+                    @if (run.spoils.length) {
+                      {{ spoilsSummary(run) }}
+                    } @else {
+                      &#8212;
+                    }
+                  </p>
+                }
+              </li>
+            }
+          </ul>
+        </li>
+      }
+
+      <!-- ── The two boards ────────────────────────────────────────────── -->
+      @if (report.dailyQuestAvailable) {
+        <li class="away__row" [style.--row]="rowDelay(4)">
+          <span class="away__mark away__mark--board" aria-hidden="true"></span>
+          <span class="away__label">{{ translate('away.quests') }}</span>
+          <span class="away__value away__value--soft">{{ translate('away.questsReady') }}</span>
+        </li>
+      }
+      @if (report.challengesReset) {
+        <li class="away__row" [style.--row]="rowDelay(5)">
+          <span class="away__mark away__mark--board" aria-hidden="true"></span>
+          <span class="away__label">{{ translate('away.contracts') }}</span>
+          <span class="away__value away__value--soft">{{ translate('away.contractsReady') }}</span>
+        </li>
+      }
+    </ul>
+
+    <footer class="away__foot">
+      <button type="button"
+              class="away__claim"
+              [attr.aria-label]="translate('away.close')"
+              (click)="dismiss()">
+        {{ translate('away.claim') }}
+      </button>
+      <p class="away__banked">{{ translate('away.banked') }}</p>
+    </footer>
+  </div>
+</div>
