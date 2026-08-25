@@ -1,6 +1,10 @@
 /* Stacking scale. The app has 30+ distinct z-index values and not one custom property;
    three components doing the same job sit at 45, 80 and 1200. This is the whole ladder.
-   .scene is 0 and page roots are 1 — never a negative layer in the root stacking context. */
+   .scene is 0 and page roots are 1 — never a negative layer in the root stacking context.
+
+   --z-sticky is 100, not the design system's 20. Deliberate: 20 sat under real siblings
+   (the achievement toast, the Forge Flame, three donation modals all pin to the same
+   corner) and a sticky column slid underneath them. Do not lower it back. */
 :root{
   --z-scene:0; /* @kind other */
   --z-content:1; /* @kind other */

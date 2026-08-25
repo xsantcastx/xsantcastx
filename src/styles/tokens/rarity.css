@@ -1,16 +1,57 @@
-/* Rarity ladder — UX Bible §11.3, seven tiers.
-   The shipped app carries two contradictory ladders (EclipseRarity 6 tiers, RuneTier 7);
-   this file is the single reconciled ladder. `singular` resolves to #ff6dd7 (the achievement
-   toast value) rather than #e6dcff (the bag value) — flagged in readme.md.
+/* Rarity — TWO real ladders. This is not a conflict to fix.
+
+   `EclipseRarity` (src/app/shared/rarity/rarity.model.ts, 6 tiers) is the drop / Codex /
+   egg-registry / Market ladder. `RuneTier` (src/app/shared/rune-forge/rune.model.ts,
+   7 tiers) is the Rune Forge ladder. Both ship today, both are persisted in saves, and
+   neither can be renamed without a data migration — so both get names here.
+
+   The overlap is deliberate. rarity.model.ts maps its six onto the seven by ladder ROLE:
+   mortal=common, eclipsed=rare, sacred=epic, anomalous=legendary, mythic=mythic,
+   singular=singular. Every hex below is read back out of those two model files, so the
+   tokens and the shipped data cannot drift.
+
+   The design system's own rarity.css proposes a different set of hexes (a pale violet
+   rare, a gold epic, an ember legendary). Those are a stale reading of this repo — taken
+   before the ladder moved onto the system — and its epic rung is one of the six golds
+   retired in v2.82.0 "One Gold", which scripts/check-ds-adherence.js fails the build on.
+   (Do not paste that hex back in, even into a comment: the gold rule scans comments too,
+   on purpose, because a retired value quoted in prose is how one gets copied out again.)
+   The structure below is the design system's; the values are the repo's.
+
+   GLOW IS A BOX-SHADOW STRING, NOT A COLOUR. The design system flattened --glow-* to
+   bare rgba(). Do not follow it: offline-summary.component.css:368 uses
+   `box-shadow: var(--glow-legendary)` directly, and a bare colour there is an invalid
+   declaration that is silently dropped. Keep the full shadow list.
+
    Rarity is never conveyed by colour alone: pair with the label and the frame treatment. */
 :root{
-  --rarity-common:#8f8aa1;
-  --rarity-uncommon:#9db8a8;
-  --rarity-rare:#00d4ff;
-  --rarity-epic:#a855f7;
-  --rarity-legendary:#e8c898;
-  --rarity-mythic:#f8e8c8;
-  --rarity-singular:#ff6dd7;
+  /* ── The Rune ladder — the Rune Forge, seven tiers (RUNE_TIERS) ── */
+  --rune-common:#8f8aa1;
+  --rune-uncommon:#9db8a8;
+  --rune-rare:#00d4ff;
+  --rune-epic:#a855f7;
+  --rune-legendary:#e8c898;
+  --rune-mythic:#f8e8c8;
+  --rune-singular:#ff6dd7;
+
+  /* ── The Eclipse ladder — drops, Codex, achievements, Market rows (RARITIES) ── */
+  --eclipse-mortal:var(--rune-common);
+  --eclipse-eclipsed:var(--rune-rare);
+  --eclipse-sacred:var(--rune-epic);
+  --eclipse-anomalous:var(--rune-legendary);
+  --eclipse-mythic:var(--rune-mythic);
+  --eclipse-singular:var(--rune-singular);
+
+  /* `--rarity-*` is the seven-name vocabulary components take as their `rarity` prop,
+     and it aliases the Rune ladder. Unchanged values — this is the ladder that already
+     paints, and e2e/rune-celebration.spec.ts pins --rarity-rare at #00d4ff. */
+  --rarity-common:var(--rune-common);
+  --rarity-uncommon:var(--rune-uncommon);
+  --rarity-rare:var(--rune-rare);
+  --rarity-epic:var(--rune-epic);
+  --rarity-legendary:var(--rune-legendary);
+  --rarity-mythic:var(--rune-mythic);
+  --rarity-singular:var(--rune-singular);
 
   /* Glow. Common and Uncommon get none. Rare gets a still outer glow.
      Epic and above may add one slow aura — never stacked with particles or shimmer. */
@@ -21,11 +62,24 @@
   --glow-legendary:0 0 0 1px rgba(232,200,152,.42),0 0 24px -6px rgba(232,200,152,.55);
   --glow-mythic:0 0 0 1px rgba(248,232,200,.55),0 0 30px -6px rgba(248,232,200,.6);
   --glow-singular:0 0 0 1px rgba(255,109,215,.5),0 0 34px -6px rgba(255,109,215,.62);
+
+  /* Eclipse-tier glow names, aliasing the rung each tier maps onto. */
+  --glow-mortal:var(--glow-common); /* @kind shadow */
+  --glow-eclipsed:var(--glow-rare); /* @kind shadow */
+  --glow-sacred:var(--glow-epic); /* @kind shadow */
+  --glow-anomalous:var(--glow-legendary); /* @kind shadow */
 }
-[data-rarity="common"]{--rarity:var(--rarity-common);--rarity-glow:var(--glow-common)}
-[data-rarity="uncommon"]{--rarity:var(--rarity-uncommon);--rarity-glow:var(--glow-uncommon)}
-[data-rarity="rare"]{--rarity:var(--rarity-rare);--rarity-glow:var(--glow-rare)}
-[data-rarity="epic"]{--rarity:var(--rarity-epic);--rarity-glow:var(--glow-epic)}
-[data-rarity="legendary"]{--rarity:var(--rarity-legendary);--rarity-glow:var(--glow-legendary)}
-[data-rarity="mythic"]{--rarity:var(--rarity-mythic);--rarity-glow:var(--glow-mythic)}
-[data-rarity="singular"]{--rarity:var(--rarity-singular);--rarity-glow:var(--glow-singular)}
+/* Rune-ladder scopes */
+[data-rarity="common"]{--rarity:var(--rune-common);--rarity-glow:var(--glow-common)}
+[data-rarity="uncommon"]{--rarity:var(--rune-uncommon);--rarity-glow:var(--glow-uncommon)}
+[data-rarity="rare"]{--rarity:var(--rune-rare);--rarity-glow:var(--glow-rare)}
+[data-rarity="epic"]{--rarity:var(--rune-epic);--rarity-glow:var(--glow-epic)}
+[data-rarity="legendary"]{--rarity:var(--rune-legendary);--rarity-glow:var(--glow-legendary)}
+[data-rarity="mythic"]{--rarity:var(--rune-mythic);--rarity-glow:var(--glow-mythic)}
+[data-rarity="singular"]{--rarity:var(--rune-singular);--rarity-glow:var(--glow-singular)}
+/* Eclipse-ladder scopes. Only four: `mythic` and `singular` are spelled the same in both
+   ladders AND resolve to the same hex in both, so the rules above already serve them. */
+[data-rarity="mortal"]{--rarity:var(--eclipse-mortal);--rarity-glow:var(--glow-mortal)}
+[data-rarity="eclipsed"]{--rarity:var(--eclipse-eclipsed);--rarity-glow:var(--glow-eclipsed)}
+[data-rarity="sacred"]{--rarity:var(--eclipse-sacred);--rarity-glow:var(--glow-sacred)}
+[data-rarity="anomalous"]{--rarity:var(--eclipse-anomalous);--rarity-glow:var(--glow-anomalous)}
