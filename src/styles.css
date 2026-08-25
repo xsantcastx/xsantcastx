@@ -192,7 +192,7 @@
   --gf-panel: rgba(15, 10, 30, 0.8);
   --gf-panel-solid: rgba(10, 7, 22, 0.95);
   --gf-edge: rgba(255, 255, 255, 0.07);
-  --gf-edge-strong: rgba(201, 168, 76, 0.34);
+  --gf-edge-strong: rgba(200, 152, 104, 0.34);
   --gf-ink: #efe7d2;
   --gf-dim: #9c8f74;
   --gf-faint: #7b7259;
@@ -2189,7 +2189,7 @@ html[data-cos-prefix] .xpb__panel-title::before {
 html[data-cos-prefix="pro"] .xpb__title::before,
 html[data-cos-prefix="pro"] .xpb__panel-title::before {
   color: var(--gold-bright);
-  text-shadow: 0 0 10px rgba(245, 196, 81, 0.75);
+  text-shadow: 0 0 10px rgba(248, 232, 200, 0.75);
   font-weight: 700;
 }
 
@@ -2213,11 +2213,11 @@ html[data-cos-theme="nexus"]    { --primary-color: var(--status-good); --seconda
    specificity 0-2-0; an attribute on the root ahead of it makes these 0-2-1,
    which is the smallest margin that wins without an `!important`. */
 html[data-cos-xpbar="ornate"] .xpb__track {
-  border: 1px solid rgba(201, 168, 76, .55);
-  box-shadow: 0 0 10px -3px rgba(201, 168, 76, .7);
+  border: 1px solid rgba(200, 152, 104, .55);
+  box-shadow: 0 0 10px -3px rgba(200, 152, 104, .7);
 }
 html[data-cos-xpbar="ornate"] .xpb__fill { background: linear-gradient(90deg, var(--gold-core), var(--gold-bright)); }
-html[data-cos-xpbar="ornate"] .xpb__rank { box-shadow: 0 0 12px rgba(201, 168, 76, .8); }
+html[data-cos-xpbar="ornate"] .xpb__rank { box-shadow: 0 0 12px rgba(200, 152, 104, .8); }
 
 html[data-cos-xpbar="molten"] .xpb__fill { background: linear-gradient(90deg, #6d2a12, var(--ember) 55%, var(--gold-bright)); }
 html[data-cos-xpbar="molten"] .xpb__track { box-shadow: inset 0 0 8px rgba(232, 117, 42, .5); }
@@ -2233,8 +2233,8 @@ html[data-cos-xpbar="void"] .xpb__rank { box-shadow: 0 0 14px rgba(123, 97, 255,
    sheen sweep is what does that; it is the only xpbar variant that moves. */
 html[data-cos-xpbar="golden"] .xpb__track {
   background: rgba(28, 20, 6, .92);
-  border: 1px solid rgba(245, 196, 81, .7);
-  box-shadow: 0 0 14px -3px rgba(245, 196, 81, .85), inset 0 0 8px rgba(245, 196, 81, .25);
+  border: 1px solid rgba(248, 232, 200, .7);
+  box-shadow: 0 0 14px -3px rgba(248, 232, 200, .85), inset 0 0 8px rgba(248, 232, 200, .25);
 }
 html[data-cos-xpbar="golden"] .xpb__fill {
   background: linear-gradient(90deg, #8a6212, var(--gold-bright) 45%, #fff3c4 70%, var(--gold-bright));
@@ -2242,7 +2242,7 @@ html[data-cos-xpbar="golden"] .xpb__fill {
   animation: proGoldSheen 4.5s ease-in-out infinite;
 }
 html[data-cos-xpbar="golden"] .xpb__rank {
-  box-shadow: 0 0 16px rgba(245, 196, 81, .95);
+  box-shadow: 0 0 16px rgba(248, 232, 200, .95);
 }
 
 @keyframes proGoldSheen {
@@ -2267,7 +2267,7 @@ html[data-cos-xpbar="golden"] .xpb__rank {
    would turn a bought ornament into a wall of gold nobody reached. */
 html[data-cos-frame="golden"] .cx-card:not(.cx-card--locked) {
   border-color: var(--gold-core);
-  box-shadow: 0 0 0 1px rgba(201, 168, 76, .35), 0 0 24px -12px rgba(201, 168, 76, .9);
+  box-shadow: 0 0 0 1px rgba(200, 152, 104, .35), 0 0 24px -12px rgba(200, 152, 104, .9);
 }
 html[data-cos-frame="obsidian"] .cx-card:not(.cx-card--locked) {
   border-color: #4b4160;

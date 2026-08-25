@@ -57,7 +57,7 @@ const DIFFICULTIES: Difficulty[] = [
  */
 const FRAGMENTS: ReadonlyArray<{ color: string; glow: string; glyph: string; name: string }> = [
   { color: '#A78BFA', glow: 'rgba(139, 92, 246, 0.6)',   glyph: '✦', name: 'Verge' },
-  { color: '#c89868', glow: 'rgba(201, 168, 76, 0.6)',  glyph: '☀', name: 'Aether' },
+  { color: '#c89868', glow: 'rgba(200, 152, 104, 0.6)',  glyph: '☀', name: 'Aether' },
   { color: '#a48bff', glow: 'rgba(140, 110, 255, 0.6)', glyph: '☾', name: 'Nox' },
   { color: '#ff6dd7', glow: 'rgba(255, 90, 210, 0.6)',  glyph: '❋', name: 'Bloom' },
   { color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.6)',  glyph: '◈', name: 'Tide' },

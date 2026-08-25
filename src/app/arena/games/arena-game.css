@@ -257,8 +257,8 @@
   margin: 0.9rem 0 0.2rem;
   padding: 0.4rem 1rem;
   border-radius: 999px;
-  border: 1px solid rgba(201, 168, 76, 0.45);
-  background: rgba(201, 168, 76, 0.12);
+  border: 1px solid rgba(200, 152, 104, 0.45);
+  background: rgba(200, 152, 104, 0.12);
   color: var(--ag-gold);
   font-weight: 700;
   letter-spacing: 0.03em;

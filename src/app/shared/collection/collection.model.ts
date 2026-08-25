@@ -96,7 +96,7 @@ export const COLLECTION_CATEGORIES: readonly CollectionCategoryDefinition[] = [
     label: 'Artifacts',
     icon: '✦',
     color: '#c89868',
-    glow: 'rgba(201, 168, 76, 0.6)',
+    glow: 'rgba(200, 152, 104, 0.6)',
     blurb: 'The five things the Market will part with, and only for a great deal of Gold.',
   },
   {

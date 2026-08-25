@@ -48,7 +48,7 @@
   overflow: hidden;
   background:
     radial-gradient(ellipse 70% 60% at 50% 100%, rgba(255, 140, 60, 0.16), transparent 70%),
-    radial-gradient(ellipse 60% 45% at 20% 15%, rgba(201, 168, 76, 0.09), transparent 70%),
+    radial-gradient(ellipse 60% 45% at 20% 15%, rgba(200, 152, 104, 0.09), transparent 70%),
     linear-gradient(180deg, rgba(8, 12, 26, 0.85), rgba(14, 9, 6, 0.92));
 }
 

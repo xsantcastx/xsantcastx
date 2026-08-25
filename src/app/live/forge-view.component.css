@@ -287,7 +287,7 @@ a.fv__glance-cell:hover {
   margin: 0;
   font: 700 clamp(38px, 6vw, 60px)/1 'Orbitron', system-ui, sans-serif;
   color: var(--gold-bright);
-  text-shadow: 0 0 calc(8px + var(--glow) * 26px) rgba(245, 196, 81, .55);
+  text-shadow: 0 0 calc(8px + var(--glow) * 26px) rgba(248, 232, 200, .55);
   font-variant-numeric: tabular-nums;
 }
 
@@ -462,8 +462,8 @@ a.fv__glance-cell:hover {
   min-height: 44px;
   text-align: left;
   border-radius: 14px;
-  border: 1px solid rgba(245, 196, 81, .45);
-  background: linear-gradient(120deg, rgba(245, 196, 81, .14), rgba(139, 92, 246, .12));
+  border: 1px solid rgba(248, 232, 200, .45);
+  background: linear-gradient(120deg, rgba(248, 232, 200, .14), rgba(139, 92, 246, .12));
   color: var(--ink-0);
   cursor: pointer;
   animation: fvTraderIn .5s cubic-bezier(.22, 1, .36, 1) both;
@@ -722,7 +722,7 @@ a.fv__glance-cell:hover {
   border-color: rgba(255, 255, 255, calc(.1 + .12 * var(--heat)));
   background: linear-gradient(
     180deg,
-    rgba(201, 168, 76, calc(.02 * var(--drama, 1))),
+    rgba(200, 152, 104, calc(.02 * var(--drama, 1))),
     transparent 70%
   );
   transition: border-color .2s ease, box-shadow .25s ease, transform .2s ease;
@@ -751,14 +751,14 @@ a.fv__glance-cell:hover {
   margin-top: 2px;
   font-size: 9.5px;
   color: var(--gold);
-  text-shadow: 0 0 10px rgba(255, 198, 105, .5);
+  text-shadow: 0 0 10px rgba(232, 200, 152, .5);
 }
 
 .fv__length-cost {
   display: block;
   margin-top: 2px;
   font-size: 9.5px;
-  color: rgba(201, 168, 76, .8);
+  color: rgba(200, 152, 104, .8);
   font-variant-numeric: tabular-nums;
 }
 .fv__length-cost--free { color: rgba(127, 213, 163, .7); }
@@ -768,7 +768,7 @@ a.fv__glance-cell:hover {
    because a rung you cannot take should not be the brightest thing in the
    picker. */
 .fv__length--blocked { opacity: .55; }
-.fv__length--blocked .fv__length-promise { color: rgba(255, 198, 105, .35); text-shadow: none; }
+.fv__length--blocked .fv__length-promise { color: rgba(232, 200, 152, .35); text-shadow: none; }
 .fv__length-block {
   display: block;
   margin-top: 2px;
@@ -842,7 +842,7 @@ a.fv__glance-cell:hover {
 .fv__realm-mats {
   margin: 4px 0 0;
   font-size: 11px;
-  color: rgba(201, 168, 76, .75);
+  color: rgba(200, 152, 104, .75);
 }
 
 .fv__mats {
@@ -859,8 +859,8 @@ a.fv__glance-cell:hover {
   gap: 4px;
   padding: 2px 8px 2px 3px;
   border-radius: 999px;
-  border: 1px solid rgba(201, 168, 76, .28);
-  background: rgba(201, 168, 76, .07);
+  border: 1px solid rgba(200, 152, 104, .28);
+  background: rgba(200, 152, 104, .07);
   font-size: 10.5px;
   color: #e0d6b8;
 }
@@ -888,7 +888,7 @@ a.fv__glance-cell:hover {
   cursor: pointer;
   transition: border-color .2s ease, color .2s ease;
 }
-.fv__notify:hover { border-color: rgba(255, 198, 105, .6); color: var(--gold); }
+.fv__notify:hover { border-color: rgba(232, 200, 152, .6); color: var(--gold); }
 
 .fv__notify-on {
   margin: 6px 0 0;
@@ -1530,7 +1530,7 @@ a.fv__glance-cell:hover {
   margin-left: 0.25rem;
   padding: 0.02rem 0.3rem;
   border-radius: 999px;
-  border: 1px solid rgba(201, 168, 76, 0.4);
+  border: 1px solid rgba(200, 152, 104, 0.4);
   font-size: 0.58rem;
   color: var(--gold-core);
 }
@@ -1589,7 +1589,7 @@ a.fv__glance-cell:hover {
   margin-left: 0.25rem;
   padding: 0.02rem 0.28rem;
   border-radius: 999px;
-  border: 1px solid rgba(201, 168, 76, 0.35);
+  border: 1px solid rgba(200, 152, 104, 0.35);
   font-size: 0.56rem;
   color: var(--gold-core);
 }
@@ -1607,7 +1607,7 @@ a.fv__glance-cell:hover {
 
 .fv__landing-xp--up {
   color: var(--gold-core);
-  text-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
+  text-shadow: 0 0 12px rgba(200, 152, 104, 0.5);
 }
 
 .fv__landing-xp--up b {

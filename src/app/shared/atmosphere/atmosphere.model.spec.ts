@@ -43,7 +43,7 @@ describe('tint', () => {
   });
 
   it('accepts a hex without the leading hash', () => {
-    expect(tint('C9A84C', 0.04)).toBe('rgba(201, 168, 76, 0.04)');
+    expect(tint('C89868', 0.04)).toBe('rgba(200, 152, 104, 0.04)');
   });
 });
 
