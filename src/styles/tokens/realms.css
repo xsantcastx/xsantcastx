@@ -1,6 +1,10 @@
 /* The five realms. Hexes are the canonical values from five-realms.narrative.ts,
    quoted verbatim in the skill-authoring spec §7.3: "No new hex."
-   Realm colour signals location / type / status only — never decoration. */
+   Realm colour signals location / type / status only — never decoration.
+
+   --realm-umbral is #a855f7 and --violet (colors.css) is #8b5cf6. They are close and
+   they are deliberately NOT the same token: Umbral is a place, --violet is a state.
+   Do not collapse them back into one variable. */
 :root{
   --realm-celestial:#00d4ff;
   --realm-infernal:#ef4444;
