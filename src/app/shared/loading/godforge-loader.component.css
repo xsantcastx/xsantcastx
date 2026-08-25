@@ -53,7 +53,7 @@
 
 :host {
   --gf-seq: 2900ms;
-  --gf-purple: #8B5CF6;
+  --gf-purple: var(--violet);
   --gf-lit: #A78BFA;
   --gf-pale: #C4B5FD;
   --gf-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -82,11 +82,11 @@
 .gf-loader {
   position: fixed;
   inset: 0;
-  z-index: 2147483000;
+  z-index: var(--z-boot);
   display: grid;
   place-items: center;
   overflow: hidden;
-  background: #0a0a0f;
+  background: var(--obsidian-0);
   contain: strict;
   animation: gfCurtain var(--gf-seq) linear var(--gf-delay) forwards;
 }
@@ -200,7 +200,7 @@
 
 /* ─── Nebula ─────────────────────────────────────────────────────────────── */
 
-/* Held at zero until stage 4: the brief keeps the screen at pure #0a0a0f
+/* Held at zero until stage 4: the brief keeps the screen at pure var(--obsidian-0)
    until the purple activates, so the depth arrives with the power. */
 .gf-nebula {
   position: absolute;
@@ -277,7 +277,7 @@
 
 /*
  * Sparks coming off the forge from stage 5. Purple and white, not orange: the
- * brief holds the whole scene to #8B5CF6 plus white for the flash, so these
+ * brief holds the whole scene to var(--violet) plus white for the flash, so these
  * read as something cooling in a magical furnace rather than a literal one.
  */
 .gf-ember {

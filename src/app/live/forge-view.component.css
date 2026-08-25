@@ -114,7 +114,7 @@
 .fv__title {
   margin: 0 0 8px;
   font: 700 clamp(26px, 5vw, 44px)/1.1 'Orbitron', system-ui, sans-serif;
-  background: linear-gradient(100deg, #F2ECFF, var(--keeper) 55%, #8B5CF6);
+  background: linear-gradient(100deg, var(--ink-0), var(--keeper) 55%, var(--violet));
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -187,18 +187,18 @@ a.fv__glance-cell:hover {
 
 .fv__glance-value {
   font: 700 clamp(19px, 2.2vw, 25px)/1 'Orbitron', system-ui, sans-serif;
-  color: #F5C451;
+  color: var(--gold-bright);
   font-variant-numeric: tabular-nums;
 }
 
-.fv__glance-value span { font-size: 11px; color: #8f85ad; margin-left: 3px; }
+.fv__glance-value span { font-size: 11px; color: var(--ink-2); margin-left: 3px; }
 .fv__glance-value--realm { color: var(--realm); }
 .fv__glance-value--idle { color: #4d4463; }
 
 .fv__glance-note {
   font-size: 11px;
   line-height: 1.45;
-  color: #8f85ad;
+  color: var(--ink-2);
   /* Two lines then an ellipsis: a Keeper wearing eight items has a mod list
      that would otherwise make this cell twice the height of the other three. */
   display: -webkit-box;
@@ -240,7 +240,7 @@ a.fv__glance-cell:hover {
   font: 600 12px/1 'Orbitron', system-ui, sans-serif;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: #8f85ad;
+  color: var(--ink-2);
 }
 
 .fv__col-title:not(:first-child) { margin-top: 26px; }
@@ -273,7 +273,7 @@ a.fv__glance-cell:hover {
   margin: 0;
   font-size: 13px;
   line-height: 1.6;
-  color: #8f85ad;
+  color: var(--ink-2);
 }
 
 .fv__empty--centre { margin-top: 16px; }
@@ -286,7 +286,7 @@ a.fv__glance-cell:hover {
 .fv__rate-num {
   margin: 0;
   font: 700 clamp(38px, 6vw, 60px)/1 'Orbitron', system-ui, sans-serif;
-  color: #F5C451;
+  color: var(--gold-bright);
   text-shadow: 0 0 calc(8px + var(--glow) * 26px) rgba(245, 196, 81, .55);
   font-variant-numeric: tabular-nums;
 }
@@ -298,7 +298,7 @@ a.fv__glance-cell:hover {
   margin-left: 4px;
 }
 
-.fv__rate-foot { margin: 8px 0 0; font-size: 12px; color: #8f85ad; }
+.fv__rate-foot { margin: 8px 0 0; font-size: 12px; color: var(--ink-2); }
 
 .fv__flame {
   display: grid;
@@ -308,7 +308,7 @@ a.fv__glance-cell:hover {
   min-height: 96px;
 }
 
-.fv__flame-note { margin: 0; font-size: 12px; color: #8f85ad; }
+.fv__flame-note { margin: 0; font-size: 12px; color: var(--ink-2); }
 
 .fv__auto {
   margin: 12px 0 0;
@@ -337,7 +337,7 @@ a.fv__glance-cell:hover {
 .fv__ladder-lv { color: var(--keeper); font-weight: 700; }
 .fv__ladder-note {
   font-size: 11px;
-  color: #8f85ad;
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
@@ -417,7 +417,7 @@ a.fv__glance-cell:hover {
   font: 600 11px/1 'Orbitron', system-ui, sans-serif;
   letter-spacing: .16em;
   text-transform: uppercase;
-  color: #8f85ad;
+  color: var(--ink-2);
 }
 .fv__rank-title {
   font: 700 clamp(20px, 3.2vw, 30px)/1.1 'Orbitron', system-ui, sans-serif;
@@ -439,14 +439,14 @@ a.fv__glance-cell:hover {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--keeper), #8B5CF6);
+  background: linear-gradient(90deg, var(--keeper), var(--violet));
   transition: width .6s ease;
 }
 
-.fv__xp-note { font-size: 12px; color: #8f85ad; }
+.fv__xp-note { font-size: 12px; color: var(--ink-2); }
 
 .fv__energy { margin: 0; font-size: 12px; display: flex; gap: 8px; justify-content: center; }
-.fv__energy-a { color: #C9A84C; }
+.fv__energy-a { color: var(--gold-core); }
 .fv__energy-n { color: #A78BFA; }
 .fv__energy-sep { color: #4d4463; }
 
@@ -464,7 +464,7 @@ a.fv__glance-cell:hover {
   border-radius: 14px;
   border: 1px solid rgba(245, 196, 81, .45);
   background: linear-gradient(120deg, rgba(245, 196, 81, .14), rgba(139, 92, 246, .12));
-  color: #F2ECFF;
+  color: var(--ink-0);
   cursor: pointer;
   animation: fvTraderIn .5s cubic-bezier(.22, 1, .36, 1) both;
 }
@@ -474,10 +474,10 @@ a.fv__glance-cell:hover {
   to   { opacity: 1; transform: none; }
 }
 
-.fv__trader:hover { border-color: #F5C451; }
+.fv__trader:hover { border-color: var(--gold-bright); }
 .fv__trader-glyph { font-size: 26px; }
 .fv__trader-copy { display: grid; gap: 2px; font-size: 12px; }
-.fv__trader-copy b { font-size: 13px; color: #F5C451; }
+.fv__trader-copy b { font-size: 13px; color: var(--gold-bright); }
 .fv__trader-copy span { color: #b9b0d4; }
 
 /* ── Right: quests ────────────────────────────────────────────────────────── */
@@ -493,8 +493,8 @@ a.fv__glance-cell:hover {
 
 .fv__quest--done { border-color: rgba(127, 213, 163, .45); }
 
-.fv__quest-title { margin: 0 0 3px; font-size: 13px; font-weight: 600; color: #F2ECFF; }
-.fv__quest-desc { margin: 0 0 8px; font-size: 12px; line-height: 1.5; color: #8f85ad; }
+.fv__quest-title { margin: 0 0 3px; font-size: 13px; font-weight: 600; color: var(--ink-0); }
+.fv__quest-desc { margin: 0 0 8px; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
 
 .fv__quest-bar {
   display: block;
@@ -508,7 +508,7 @@ a.fv__glance-cell:hover {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, var(--keeper), #8B5CF6);
+  background: linear-gradient(90deg, var(--keeper), var(--violet));
   transition: width .5s ease;
 }
 
@@ -519,7 +519,7 @@ a.fv__glance-cell:hover {
   gap: 10px;
   margin: 8px 0 0;
   font-size: 11px;
-  color: #8f85ad;
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -563,7 +563,7 @@ a.fv__glance-cell:hover {
   transition: stroke-dashoffset 1s linear;
 }
 
-.fv__mission-copy { display: grid; gap: 3px; font-size: 12px; color: #8f85ad; }
+.fv__mission-copy { display: grid; gap: 3px; font-size: 12px; color: var(--ink-2); }
 .fv__mission-copy b { font-size: 13px; color: var(--realm); }
 
 .fv__mission-who { font-size: 11px; color: #7d7396; overflow-wrap: anywhere; }
@@ -605,7 +605,7 @@ a.fv__glance-cell:hover {
 
 .fv__mission-time {
   font-size: 11px;
-  color: #8f85ad;
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -627,7 +627,7 @@ a.fv__glance-cell:hover {
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, .14);
   background: transparent;
-  color: #8f85ad;
+  color: var(--ink-2);
   font-size: 11px;
   cursor: pointer;
 }
@@ -681,7 +681,7 @@ a.fv__glance-cell:hover {
   border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, .12);
   background: transparent;
-  color: #8f85ad;
+  color: var(--ink-2);
   font-size: 10px;
   cursor: pointer;
   text-align: center;
@@ -742,7 +742,7 @@ a.fv__glance-cell:hover {
   text-transform: uppercase;
   color: rgba(228, 222, 255, .42);
 }
-.fv__length-band { display: block; color: #8f85ad; }
+.fv__length-band { display: block; color: var(--ink-2); }
 
 /* The one line that sells the rung. Only the deep tiers have one, which is why
    it is styled as an accent rather than as body copy. */
@@ -750,7 +750,7 @@ a.fv__glance-cell:hover {
   display: block;
   margin-top: 2px;
   font-size: 9.5px;
-  color: #ffc669;
+  color: var(--gold);
   text-shadow: 0 0 10px rgba(255, 198, 105, .5);
 }
 
@@ -864,7 +864,7 @@ a.fv__glance-cell:hover {
   font-size: 10.5px;
   color: #e0d6b8;
 }
-.fv__mat b { color: #C9A84C; }
+.fv__mat b { color: var(--gold-core); }
 .fv__mat-art { width: 18px; height: 18px; border-radius: 50%; object-fit: contain; }
 
 /* ── Send + notify ─────────────────────────────────────────────────────────── */
@@ -888,7 +888,7 @@ a.fv__glance-cell:hover {
   cursor: pointer;
   transition: border-color .2s ease, color .2s ease;
 }
-.fv__notify:hover { border-color: rgba(255, 198, 105, .6); color: #ffc669; }
+.fv__notify:hover { border-color: rgba(255, 198, 105, .6); color: var(--gold); }
 
 .fv__notify-on {
   margin: 6px 0 0;
@@ -908,7 +908,7 @@ a.fv__glance-cell:hover {
   border-radius: 999px;
   border: 1px solid var(--keeper);
   background: color-mix(in srgb, var(--keeper) 16%, transparent);
-  color: #F2ECFF;
+  color: var(--ink-0);
   font: 600 13px/1 'Orbitron', system-ui, sans-serif;
   letter-spacing: .04em;
   cursor: pointer;
@@ -945,7 +945,7 @@ a.fv__glance-cell:hover {
   font-variant-numeric: tabular-nums;
 }
 
-.fv__dispatch-foot { margin: 9px 0 0; font-size: 11px; color: #8f85ad; }
+.fv__dispatch-foot { margin: 9px 0 0; font-size: 11px; color: var(--ink-2); }
 .fv__dispatch-foot a { color: var(--keeper); }
 
 .fv__collection {
@@ -956,7 +956,7 @@ a.fv__glance-cell:hover {
   padding-top: 14px;
   border-top: 1px solid rgba(255, 255, 255, .07);
   font-size: 11px;
-  color: #8f85ad;
+  color: var(--ink-2);
   font-variant-numeric: tabular-nums;
 }
 
@@ -1022,13 +1022,13 @@ a.fv__glance-cell:hover {
   width: 44px; height: 44px;
   border: 0;
   background: transparent;
-  color: #8f85ad;
+  color: var(--ink-2);
   font-size: 20px;
   line-height: 1;
   cursor: pointer;
 }
 
-.fv__landing-close:hover { color: #F2ECFF; }
+.fv__landing-close:hover { color: var(--ink-0); }
 
 .fv__landing-eyebrow {
   margin: 0 0 3px;
@@ -1038,17 +1038,17 @@ a.fv__glance-cell:hover {
   color: var(--realm);
 }
 
-.fv__landing-realm { margin: 0 0 8px; font-size: 12px; color: #8f85ad; }
+.fv__landing-realm { margin: 0 0 8px; font-size: 12px; color: var(--ink-2); }
 
 .fv__landing-gold {
   margin: 0 0 10px;
   font: 700 20px/1 'Orbitron', system-ui, sans-serif;
-  color: #F5C451;
+  color: var(--gold-bright);
 }
 
 .fv__landing-gold span { font-size: 12px; color: #A78BFA; margin-left: 8px; }
 
-.fv__landing-none { margin: 0; font-size: 12px; line-height: 1.6; color: #8f85ad; }
+.fv__landing-none { margin: 0; font-size: 12px; line-height: 1.6; color: var(--ink-2); }
 
 .fv__loot {
   display: grid;
@@ -1192,7 +1192,7 @@ a.fv__glance-cell:hover {
 
 .fv__log-body { display: grid; gap: 4px; min-width: 0; }
 .fv__log-line { color: #a99fc4; overflow-wrap: anywhere; }
-.fv__log-line b { color: #F5C451; font-variant-numeric: tabular-nums; }
+.fv__log-line b { color: var(--gold-bright); font-variant-numeric: tabular-nums; }
 
 .fv__log-finds { display: flex; flex-wrap: wrap; gap: 5px; }
 
@@ -1479,7 +1479,7 @@ a.fv__glance-cell:hover {
   flex-wrap: wrap;
   gap: 0.5rem;
   font-size: 0.66rem;
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 
 .fv__site-nums span:nth-child(2) { color: #8fb8d8; }
@@ -1532,7 +1532,7 @@ a.fv__glance-cell:hover {
   border-radius: 999px;
   border: 1px solid rgba(201, 168, 76, 0.4);
   font-size: 0.58rem;
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1591,7 +1591,7 @@ a.fv__glance-cell:hover {
   border-radius: 999px;
   border: 1px solid rgba(201, 168, 76, 0.35);
   font-size: 0.56rem;
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -1606,7 +1606,7 @@ a.fv__glance-cell:hover {
 }
 
 .fv__landing-xp--up {
-  color: #C9A84C;
+  color: var(--gold-core);
   text-shadow: 0 0 12px rgba(201, 168, 76, 0.5);
 }
 
@@ -1820,7 +1820,7 @@ a.fv__glance-cell:hover {
     radial-gradient(circle at 32% 28%, #fff 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 42%),
     radial-gradient(circle at 50% 50%, var(--star-color) 0%, rgba(8, 3, 24, 0.92) 88%);
   font: 700 0.56rem/1 'Orbitron', system-ui, sans-serif;
-  color: #0a0a0f;
+  color: var(--obsidian-0);
 }
 
 .fv__who-name { white-space: nowrap; }

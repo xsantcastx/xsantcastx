@@ -92,7 +92,7 @@ import { ConsentService } from '../../consent.service';
          Staying under it in z-order means that if a future layout change ever
          does bring them together anyway, the flame — which is a primary
          interaction — wins the click. */
-      z-index: 930;
+      z-index: var(--z-fx);
       display: flex;
       align-items: center;
       gap: 0.85rem;

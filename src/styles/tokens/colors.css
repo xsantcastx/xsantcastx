@@ -1,0 +1,51 @@
+/* Base palette.
+   #0a0a0f is the canonical scene base (skill-authoring spec §7.3).
+   Golds are sampled from Assets/Brand/eclipse-realms-primary-logo.png — the source library
+   ships six competing golds in code; these three are the design-system answer.
+   Violet is the shared Eclipse/Godforge system energy (lore canon, "Light logic"). */
+:root{
+  /* Obsidian foundation — 90% of every surface */
+  --obsidian-0:#0a0a0f;
+  --obsidian-1:#101017;
+  --obsidian-2:#16161f;
+  --obsidian-3:#1d1d28;
+  --obsidian-4:#262633;
+  --obsidian-5:#33333f;
+
+  /* Ink */
+  --ink-0:#f4f2f8;
+  --ink-1:#c9c4d6;
+  --ink-2:#8f8aa1;
+  --ink-3:#615c73;
+
+  /* Eclipse violet — shared system energy, 7% of the screen */
+  --violet-bright:#c9a0ff;
+  --violet:#a855f7;
+  --violet-deep:#6b2fb5;
+  --violet-ink:#2a1440;
+
+  /* Godforge gold — importance and reward, 2% of the screen */
+  --gold-bright:#f8e8c8;
+  --gold:#e8c898;
+  --gold-core:#c89868;
+  --gold-deep:#b88858;
+
+  /* Forge heat — the one orange, three names in the app (--forge-ember/--fk-heat-2/--mk-warm) */
+  --ember:#e8752a;
+
+  /* Status */
+  --status-danger:#ef4444;
+  --status-caution:#e8d44d;
+  --status-good:#10b981;
+  --status-info:#00d4ff;
+
+  /* Edges and veils */
+  --edge-hairline:rgba(244,242,248,.08);
+  --edge-inset:rgba(244,242,248,.14);
+  --edge-raised:rgba(244,242,248,.22);
+  --edge-gold:rgba(232,200,152,.34);
+  --edge-violet:rgba(168,85,247,.38);
+  --veil-scrim:rgba(10,10,15,.72);
+  --veil-panel:rgba(16,16,23,.82);
+  --veil-glass:rgba(22,22,31,.62);
+}

@@ -60,7 +60,7 @@
   background: var(--primary-color);
   color: #07111f;
   padding: 8px 16px;
-  z-index: 10000;
+  z-index: var(--z-skip);
   border-radius: 0 0 8px 0;
   font-weight: 600;
   text-decoration: none;
@@ -74,7 +74,7 @@
 
 /* ===== Theme Tokens ===== */
 :root {
-  --primary-color: #8B5CF6;
+  --primary-color: var(--violet);          /* DS: shared system energy */
   --secondary-color: #7b61ff;
   --highlight-color: #ff00ff;
   --surface-color: rgba(16, 22, 43, 0.72);
@@ -85,22 +85,22 @@
   --shadow-soft: 0 18px 45px -24px rgba(6, 9, 20, 0.8);
   --shadow-strong: 0 26px 80px -30px rgba(0, 0, 0, 0.85);
   --text-color: #f6fbff;
-  --text-muted: rgba(214, 221, 235, 0.76);
+  /* --text-muted now comes from tokens/semantic.css (var(--ink-2)). */
   --page-max-width: 1120px;
   --page-gutter: clamp(1.5rem, 5vw, 5rem);
   --section-gap: clamp(3.5rem, 8vw, 6.5rem);
-  --radius-md: 16px;
-  --radius-lg: 24px;
-  --success-color: #4ade80;
+  /* --radius-md / --radius-lg now come from tokens/radius-borders.css (8px / 12px).
+     Eclipse Realms surfaces are carved, not soft. */
+  --success-color: var(--status-good);
   /* Semantic status tokens — these were duplicated as hardcoded hex values in
      56+ tool CSS files for ~170 occurrences (see QoL batch 2, 2026-04-11).
      Centralising here so a future palette change is a one-file edit and not
      an archaeology project. Also gives future light-theme support a single
      place to override. --info-color aliases --secondary-color because the
      tool files already treat the brand purple as the "info" state. */
-  --error-color: #ff4d6a;
-  --warning-color: #ffaa32;
-  --info-color: #7b61ff;
+  --error-color: var(--status-danger);
+  --warning-color: var(--status-caution);
+  --info-color: var(--status-info);        /* DS: info is cyan, not brand purple */
   --font-heading: 'Orbitron', sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   /* Lore voice — the Godforge title and the realm quotes. Deliberately a
@@ -108,7 +108,8 @@
      the whole font budget (the Google Fonts CDN was removed to kill a
      render-blocking third-party request), and the largest text on the home
      page must not wait on a network fetch to paint. */
-  --font-lore: ui-serif, Georgia, 'Iowan Old Style', 'Times New Roman', serif;
+  /* --font-lore now comes from tokens/fonts.css — Cormorant Garamond, self-hosted,
+     with the ui-serif/Georgia stack retained as the fallback chain. */
   --header-offset: 96px;
   --shell-sidebar-w: 0px;
 
@@ -116,14 +117,14 @@
      The atmosphere layer over the cosmic palette. Warm, subterranean, and
      used only by the Godforge surfaces — the realm accents themselves come
      from REALMS in realm.model.ts, which paints --realm-color per station. */
-  --forge-ember: #E8752A;
-  --forge-gold: #C9A84C;
+  --forge-ember: var(--ember);             /* identical value, now tokenised */
+  --forge-gold: var(--gold);               /* the one gold — was 1 of 6 */
   --forge-crimson: #8B2252;
   /* Gold is 3.6:1 on the dark base — too low for body text, so text-weight
      gold uses this lightened stop instead and the raw token stays for
      borders, glows and rules where contrast rules do not apply. */
-  --forge-gold-text: #E0A857;
-  --forge-void: #0a0a0f;
+  --forge-gold-text: var(--gold-bright);   /* the lighter stop, for text weight */
+  --forge-void: var(--obsidian-0);         /* identical value, now tokenised */
 
   /* ===== Layer scale =====
      There was no scale. Thirty-plus distinct z-index values had accumulated
@@ -136,18 +137,55 @@
      opens behind the site chrome is broken, whereas a header behind a modal
      is correct. Toasts sit above modals so a failure is never hidden by the
      dialog that caused it. */
-  --z-base: 1;
-  --z-sticky: 20;
+  --z-base: var(--z-content);
+  /* --z-sticky now comes from tokens/layers.css (100). Still below --z-drawer. */
   --z-scene-veil: 30;
   --z-drawer: 900;
   --z-header: 1000;
   --z-modal: 1200;
   --z-toast: 1300;
 
+  /* ===== Extensions to the design-system z-scale =====
+     tokens/layers.css publishes a closed ladder that tops out at --z-toast (1300),
+     and its rule is explicit: "a component that needs a new value needs a design
+     decision, not a bigger number." Four app layers genuinely sit above a toast,
+     so here are the four decisions rather than four more magic numbers. Before
+     this, these layers were at 9990 / 9996 / 9997 / 9999 / 10000 / 10001 / 99989 /
+     99990 / 99996 / 99998 / 99999 / 100001 — an escalation race, not a scale.
+
+     --z-inspect-3d the 3D inspect takeover. Its own source comment states the
+                   intent: above --z-modal and --z-toast, below the consent
+                   banner. It sat at 1400 and cleared those two tokens, but not
+                   the toasts and modals that were still on raw 10001 / 10000.
+     --z-veil      the route-transition veil: covers the page mid-navigation but
+                   must not cover a toast reporting what just happened.
+     --z-consent   the cookie banner. A consent choice must stay reachable behind
+                   any overlay — that intent is written down in inspect-3d, but
+                   the banner's raw 9999 lost to the donation modal's 10000 and
+                   the footer toast's 10001. On the scale it now wins, as intended.
+     --z-boot      the boot curtain, which covers the application before the
+                   application exists. It was on 2147483000 — the 32-bit ceiling.
+     --z-cursor    cursor chrome (halo, trail, click sparks). Pointer-following
+                   paint has to sit above every surface the pointer can be over,
+                   or the cursor vanishes behind the header.
+     --z-spectacle viewport-takeover moments — the rare-drop cinematic, the
+                   milestone effect, the full-viewport combo layer. This is the
+                   design system's 1% spectacle budget; it outranks chrome by
+                   design, and only one may be on screen at a time.
+     --z-skip      the skip-to-main link. Outranks everything when focused,
+                   because a keyboard user must always be able to reach it. */
+  --z-inspect-3d: 1340;
+  --z-veil: 1360;
+  --z-consent: 1450;
+  --z-spectacle: 1500;
+  --z-cursor: 1550;
+  --z-skip: 1600;
+  --z-boot: 1700;
+
   /* ===== Game surface =====
      One panel language for every Eclipse Realms surface. The Market and the
      character sheet had each grown their own private set (--mk-* and --fk-*),
-     so #E8752A carried three different names and the character hub ended up a
+     so var(--ember) carried three different names and the character hub ended up a
      flat, square-cornered brown against the Market's rounded glass. These are
      the shared stops; the --mk- and --fk- prefixes stay as local aliases where
      a file needs a surface-specific tint. */
@@ -356,7 +394,7 @@ body::before {
   height: 28px;
   border-radius: 50%;
   pointer-events: none;
-  z-index: 9997;
+  z-index: var(--z-cursor);
   background: radial-gradient(circle, rgba(139, 92, 246, 0.55) 0%, rgba(139, 92, 246, 0.18) 35%, transparent 70%);
   mix-blend-mode: screen;
   opacity: 0;
@@ -410,12 +448,12 @@ body::before {
   width: 0;
   height: 0;
   pointer-events: none;
-  z-index: 9999;
+  z-index: var(--z-cursor);
   transform: translate(-50%, -50%);
 }
 
 .cosmic-spark {
-  --spark-color: #8B5CF6;
+  --spark-color: var(--violet);
   --dx: 0px;
   --dy: 0px;
   --dur: 0.8s;
@@ -451,7 +489,7 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 9990;
+  z-index: var(--z-veil);
   background:
     radial-gradient(circle at center, transparent 0%, rgba(8, 3, 22, 0.6) 60%, rgba(8, 3, 22, 0.92) 100%);
   opacity: 0;
@@ -479,12 +517,12 @@ body::before {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 9996;
+  z-index: var(--z-cursor);
   overflow: hidden;
 }
 
 .cosmic-trail-particle {
-  --trail-color: #8B5CF6;
+  --trail-color: var(--violet);
   --trail-dx: 0px;
   --trail-dy: -10px;
 
@@ -1503,7 +1541,7 @@ a:focus-visible,
 [tabindex]:focus-visible,
 [role='button']:focus-visible,
 summary:focus-visible {
-  outline: 2px solid var(--primary-color, #8B5CF6);
+  outline: 2px solid var(--primary-color, var(--violet));
   outline-offset: 2px;
   border-radius: 2px;
 }
@@ -2127,7 +2165,7 @@ html[data-realm] .tool-header__eyebrow::after {
    is already setting without touching the engine. */
 html[data-cos-trail="aether"]  .cosmic-trail-particle { --trail-color: #A78BFA !important; }
 html[data-cos-trail="nox"]     .cosmic-trail-particle { --trail-color: #7b61ff !important; }
-html[data-cos-trail="eclipse"] .cosmic-trail-particle { --trail-color: #E8752A !important; }
+html[data-cos-trail="eclipse"] .cosmic-trail-particle { --trail-color: var(--ember) !important; }
 /* Collection Log exclusive — granted at 100% completion. Not purchasable. */
 html[data-cos-trail="archivist"] .cosmic-trail-particle { --trail-color: #e6dcff !important; }
 
@@ -2139,7 +2177,7 @@ html[data-cos-trail="archivist"] .cosmic-trail-particle { --trail-color: #e6dcff
 html[data-cos-prefix] .xpb__title::before,
 html[data-cos-prefix] .xpb__panel-title::before {
   content: var(--cos-title-prefix, "");
-  color: #C9A84C;
+  color: var(--gold-core);
 }
 
 /* The "Pro Convergent" badge.
@@ -2150,7 +2188,7 @@ html[data-cos-prefix] .xpb__panel-title::before {
    glow none of them get. */
 html[data-cos-prefix="pro"] .xpb__title::before,
 html[data-cos-prefix="pro"] .xpb__panel-title::before {
-  color: #F5C451;
+  color: var(--gold-bright);
   text-shadow: 0 0 10px rgba(245, 196, 81, 0.75);
   font-weight: 700;
 }
@@ -2164,10 +2202,10 @@ html[data-cos-prefix="pro"] .xpb__panel-title::before {
    Umbral is lightened from its realm colour (#8B2252) because that value is a
    background on the realm rail, and as a foreground on a near-black page it
    does not clear 4.5:1. */
-html[data-cos-theme="luminous"] { --primary-color: #E8D44D; --secondary-color: #C9A84C; }
+html[data-cos-theme="luminous"] { --primary-color: var(--status-caution); --secondary-color: var(--gold-core); }
 html[data-cos-theme="umbral"]   { --primary-color: #d4547f; --secondary-color: #8B2252; }
-html[data-cos-theme="verge"]    { --primary-color: #00d4ff; --secondary-color: #5fb6ff; }
-html[data-cos-theme="nexus"]    { --primary-color: #10B981; --secondary-color: #34d399; }
+html[data-cos-theme="verge"]    { --primary-color: var(--status-info); --secondary-color: #5fb6ff; }
+html[data-cos-theme="nexus"]    { --primary-color: var(--status-good); --secondary-color: #34d399; }
 
 /* ─── XP Bar Skin ────────────────────────────────────────────────────────────
    Reaches into a component with emulated encapsulation on purpose. The
@@ -2178,10 +2216,10 @@ html[data-cos-xpbar="ornate"] .xpb__track {
   border: 1px solid rgba(201, 168, 76, .55);
   box-shadow: 0 0 10px -3px rgba(201, 168, 76, .7);
 }
-html[data-cos-xpbar="ornate"] .xpb__fill { background: linear-gradient(90deg, #C9A84C, #ffd97a); }
+html[data-cos-xpbar="ornate"] .xpb__fill { background: linear-gradient(90deg, var(--gold-core), var(--gold-bright)); }
 html[data-cos-xpbar="ornate"] .xpb__rank { box-shadow: 0 0 12px rgba(201, 168, 76, .8); }
 
-html[data-cos-xpbar="molten"] .xpb__fill { background: linear-gradient(90deg, #6d2a12, #E8752A 55%, #ffd97a); }
+html[data-cos-xpbar="molten"] .xpb__fill { background: linear-gradient(90deg, #6d2a12, var(--ember) 55%, var(--gold-bright)); }
 html[data-cos-xpbar="molten"] .xpb__track { box-shadow: inset 0 0 8px rgba(232, 117, 42, .5); }
 html[data-cos-xpbar="molten"] .xpb__rank { box-shadow: 0 0 14px rgba(232, 117, 42, .85); }
 
@@ -2199,7 +2237,7 @@ html[data-cos-xpbar="golden"] .xpb__track {
   box-shadow: 0 0 14px -3px rgba(245, 196, 81, .85), inset 0 0 8px rgba(245, 196, 81, .25);
 }
 html[data-cos-xpbar="golden"] .xpb__fill {
-  background: linear-gradient(90deg, #8a6212, #F5C451 45%, #fff3c4 70%, #F5C451);
+  background: linear-gradient(90deg, #8a6212, var(--gold-bright) 45%, #fff3c4 70%, var(--gold-bright));
   background-size: 200% 100%;
   animation: proGoldSheen 4.5s ease-in-out infinite;
 }
@@ -2228,7 +2266,7 @@ html[data-cos-xpbar="golden"] .xpb__rank {
    that says what it is worth, and framing the 130 a visitor has *not* earned
    would turn a bought ornament into a wall of gold nobody reached. */
 html[data-cos-frame="golden"] .cx-card:not(.cx-card--locked) {
-  border-color: #C9A84C;
+  border-color: var(--gold-core);
   box-shadow: 0 0 0 1px rgba(201, 168, 76, .35), 0 0 24px -12px rgba(201, 168, 76, .9);
 }
 html[data-cos-frame="obsidian"] .cx-card:not(.cx-card--locked) {
@@ -2241,7 +2279,7 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
      the card keeps its own surface and the gradient only paints the 1px ring. */
   background-image:
     linear-gradient(rgba(10, 6, 26, .92), rgba(10, 6, 26, .92)),
-    linear-gradient(135deg, #A78BFA, #7b61ff 40%, #ff6dd7 70%, #ffd97a);
+    linear-gradient(135deg, #A78BFA, #7b61ff 40%, #ff6dd7 70%, var(--gold-bright));
   background-origin: border-box;
   background-clip: padding-box, border-box;
 }
@@ -2263,8 +2301,8 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
 
 :root {
   --gf-void: 10, 10, 15;
-  --gf-gold: #C9A84C;
-  --gf-gold-text: #E0A857;
+  --gf-gold: var(--gold-core);
+  --gf-gold-text: var(--gold-core);
   --gf-ink: #f0f0f0;
   --gf-dim: rgba(240, 240, 240, 0.6);
   --gf-ease: cubic-bezier(0.22, 1, 0.36, 1);
@@ -2300,7 +2338,7 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
    styles/icon-animations.css already sizes and squares them, and the
    currency-icon rules there light them. Only the layout box belongs here. */
 .gfpill__icon { width: 14px; height: 14px; }
-.gfpill--gold .gfpill__val { color: #ffd97a; }
+.gfpill--gold .gfpill__val { color: var(--gold-bright); }
 .gfpill--gold:hover { border-color: rgba(232, 117, 42, 0.6); box-shadow: 0 0 20px -8px rgba(232, 117, 42, 0.9); }
 
 .gfpill--essence .gfpill__val { color: #c9b0ff; }
@@ -2477,8 +2515,8 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
 
    So: body stays transparent on art routes and the floor colour comes from
    <html>, which IS the canvas and paints below the scenes rather than over
-   them. The 5-hex difference from the old #0a0a0f is imperceptible, and the
-   scenes carry their own #0a0a0f behind the art regardless.
+   them. The 5-hex difference from the old var(--obsidian-0) is imperceptible, and the
+   scenes carry their own var(--obsidian-0) behind the art regardless.
 
    Do not put a background back on this rule. */
 body.gf-art-route {
@@ -2549,7 +2587,7 @@ body.gf-art-route .particle-layer {
 .gf-fx {
   position: fixed;
   inset: 0;
-  z-index: 100001;
+  z-index: var(--z-spectacle);
   pointer-events: none;
   overflow: hidden;
   /* Its own stacking and containing context, so the hundred absolutely
@@ -2699,7 +2737,7 @@ body.gf-art-route .particle-layer {
   20%  { color: #5fb6ff; }
   40%  { color: #a48bff; }
   60%  { color: #ff6dd7; }
-  80%  { color: #ffc669; }
+  80%  { color: var(--gold); }
   100% { color: #4dffe0; }
 }
 
@@ -2980,3 +3018,30 @@ html[data-gf-slowmo='2'] .rf-pick.rf-pick--landed[data-reveal] .rf-pick__char {
   animation-duration: 520ms;
   animation-delay: calc(var(--i, 0) * 104ms);
 }
+
+/* ============================================================================
+   DS icon primitive
+   ============================================================================
+   The design system's iconography rule is absolute: "No icon font, no CDN set,
+   no Lucide/Heroicons substitution." The FontAwesome 6.5.1 stylesheet this app
+   used to pull from cdnjs was an entire icon font fetched over a third-party
+   origin to render twelve glyphs. Those twelve are inline SVG now, and both
+   cdnjs and the Google Fonts origins are out of the CSP.
+
+   Contract, from the design system's own pack README: 24x24 viewBox,
+   currentColor, no embedded text, no baked-in violet/gold/realm colour — the
+   consuming surface supplies colour and state. */
+.ds-icon {
+  width: 1em;
+  height: 1em;
+  display: inline-block;
+  vertical-align: -0.125em;
+  flex: none;
+  fill: currentColor;
+}
+
+/* The one animated icon. Kept as a transform-only rotation so it costs a
+   compositor layer and nothing else, and it stops entirely under reduced
+   motion via the global reset in this file. */
+.ds-icon--spin { animation: dsIconSpin 900ms linear infinite; }
+@keyframes dsIconSpin { to { transform: rotate(360deg); } }

@@ -5,6 +5,13 @@
  * from across the room before you have read a word of it: colour first, then
  * sound, then screen effect. Each step up the ladder earns a louder channel.
  *
+ * Colours come from the Eclipse Realms Design System rarity ladder (tokens/rarity.css).
+ * That ladder has seven tiers and this type has six, so the six map onto it by ladder
+ * role: mortal=common, eclipsed=rare, sacred=epic, anomalous=legendary, mythic=mythic,
+ * singular=singular. The ids themselves are deliberately unchanged — they are persisted
+ * in saves, egg tables and market filters, so renaming them would be a data migration,
+ * not a restyle.
+ *
  * The tier list mirrors the drop rates in the Eclipse Realms economy doc —
  * Mortal 80%, Eclipsed 15%, Sacred 4%, Anomalous 0.9%, Mythic 0.09%, Singular
  * one-of-a-kind — which is why the egg distribution below is bottom-heavy.
@@ -46,8 +53,8 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
     icon: 'assets/icons/rarity/mortal.png',
     label: 'Mortal',
     weight: 0,
-    color: '#e8ecf1',
-    glow: 'rgba(232, 236, 241, 0.45)',
+    color: '#8f8aa1',
+    glow: 'rgba(143, 138, 161, 0.45)',
     flavour: 'A common find. The realms barely stirred.',
     sound: 'blip',
     duration: 4200,
@@ -58,8 +65,8 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
     icon: 'assets/icons/rarity/eclipsed.png',
     label: 'Eclipsed',
     weight: 1,
-    color: '#5fb6ff',
-    glow: 'rgba(80, 180, 255, 0.55)',
+    color: '#00d4ff',
+    glow: 'rgba(0, 212, 255, 0.55)',
     flavour: 'Touched by the shadow of the broken Sun.',
     sound: 'blip',
     duration: 4600,
@@ -70,8 +77,8 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
     icon: 'assets/icons/rarity/sacred.png',
     label: 'Sacred',
     weight: 2,
-    color: '#a48bff',
-    glow: 'rgba(140, 110, 255, 0.7)',
+    color: '#a855f7',
+    glow: 'rgba(168, 85, 247, 0.6)',
     flavour: 'Consecrated in the Luminous vaults.',
     sound: 'chime',
     duration: 5400,
@@ -82,8 +89,8 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
     icon: 'assets/icons/rarity/anomalous.png',
     label: 'Anomalous',
     weight: 3,
-    color: '#C9A84C',
-    glow: 'rgba(255, 190, 90, 0.75)',
+    color: '#e8c898',
+    glow: 'rgba(232, 200, 152, 0.7)',
     flavour: 'The Archivum has no record of this.',
     sound: 'horn',
     duration: 6200,
@@ -94,8 +101,8 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
     icon: 'assets/icons/rarity/mythic.png',
     label: 'Mythic',
     weight: 4,
-    color: '#ff2d4d',
-    glow: 'rgba(255, 45, 77, 0.85)',
+    color: '#f8e8c8',
+    glow: 'rgba(248, 232, 200, 0.85)',
     flavour: 'The Godforge opened. Briefly.',
     sound: 'impact',
     duration: 7600,
@@ -107,7 +114,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
     label: 'Singular',
     weight: 5,
     color: '#ff6dd7',
-    glow: 'rgba(255, 109, 215, 0.9)',
+    glow: 'rgba(255, 109, 215, 0.95)',
     flavour: 'First in the realm. No one has stood here before.',
     sound: 'prism',
     duration: 9000,

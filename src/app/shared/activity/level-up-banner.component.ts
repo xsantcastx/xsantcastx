@@ -72,7 +72,7 @@ const MILESTONE_DWELL_MS = 5200;
       gap: 12px;
       padding: 10px 18px 10px 12px;
       border-radius: 999px;
-      border: 1px solid var(--gf-accent, #C9A84C);
+      border: 1px solid var(--gf-accent, #c89868);
       background:
         radial-gradient(ellipse 80% 70% at 50% 0%, rgba(201, 168, 76, 0.16), transparent 70%),
         rgba(6, 4, 18, 0.96);
@@ -90,7 +90,7 @@ const MILESTONE_DWELL_MS = 5200;
       font: 700 10px/1 'Orbitron', system-ui, sans-serif;
       letter-spacing: 0.16em;
       text-transform: uppercase;
-      color: var(--gf-accent-text, #E0A857);
+      color: var(--gf-accent-text, #c89868);
     }
     .lu__title {
       font: 700 15px/1.2 'Orbitron', system-ui, sans-serif;

@@ -182,9 +182,12 @@ const RAY_FRAGMENT = `
       position: fixed;
       inset: 0;
       /* Above Quick Inspect (--z-modal) and the drop toast (--z-toast), and
-         deliberately below the cookie banner, which outranks everything on
-         purpose: a consent choice must stay reachable behind any overlay. */
-      z-index: 1400;
+         deliberately below the cookie banner (--z-consent), which outranks
+         everything on purpose: a consent choice must stay reachable behind any
+         overlay. That ordering used to hold only against the layers that named
+         a token — the footer toast and the donation modal were on raw 10001 and
+         10000 and quietly outranked all of it. Every layer names a step now. */
+      z-index: var(--z-inspect-3d);
       display: grid;
       place-items: center;
     }

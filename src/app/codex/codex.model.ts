@@ -70,7 +70,7 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
     label: 'The Archivum',
     icon: 'assets/icons/realms/verdant.png',
     art: true,
-    color: '#C9A84C',
+    color: '#c89868',
     glow: 'rgba(201, 168, 76, 0.6)',
     blurb: 'Everything the archive counted, timed, listed or filed away.',
   },

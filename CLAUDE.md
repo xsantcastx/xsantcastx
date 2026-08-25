@@ -100,6 +100,79 @@ The five realms group the twelve registry categories into a world. These are the
 
 ---
 
+## 2b. The Eclipse Realms Design System — the token layer
+
+**This is the source of truth for colour, type, space, radius, elevation, motion and
+stacking.** It lives in `src/styles/tokens/` (eleven files plus `_tokens.css`, which is
+the only entry point) and is registered in `angular.json` *ahead of* `src/styles.css`, so
+a token resolves before the app stylesheet can shadow it. Upstream source:
+`~/Desktop/Eclipse Realms/Eclipse Realms Design System/`.
+
+### Reach for a token first
+
+| Need | Token family | Examples |
+|---|---|---|
+| Any dark surface | `--obsidian-0..5` | `#0a0a0f` is the scene base |
+| Any text | `--ink-0..3`, `--text-*` | `--text-muted` is `--ink-2` |
+| Interaction / selection / focus | `--violet*` | violet is the system energy, ~7% of a screen |
+| Importance, value, reward | `--gold`, `--gold-bright`, `--gold-core` | ~2% of a screen |
+| Forge heat | `--ember` | the one orange |
+| Realm signal | `--realm-*`, `[data-realm]` | location/type/status only, never mood |
+| Rarity | `--rarity-*`, `[data-rarity]` | seven tiers, Singular is `#ff6dd7` |
+| Space | `--space-0..24` | 4pt ramp, px throughout |
+| Radius | `--radius-xs..xl`, `--radius-pill` | tight: surfaces are carved, not soft |
+| Stacking | `--z-*` | closed scale, see below |
+| Motion | `--dur-*`, `--ease-*`, `--lift-hover` | 120–220ms; reduced-motion zeroes them |
+
+### The hard rules
+
+1. **One gold.** `--gold` `#e8c898` with `--gold-bright` / `--gold-core` for the light and
+   dark stops. Six competing golds were removed; `scripts/check-ds-adherence.js` fails the
+   build if any comes back.
+2. **No emoji, no Unicode glyphs as icons.** `✦ ◈ 🜃` are the same bug class as `🔨 ⚙️ 🌑`.
+   Use `src/assets/icons/market/` (23 control glyphs) or `src/assets/ui/svg/character/`
+   (8 slot glyphs). Object art — runes, materials, equipment — is raster, not icons.
+3. **No icon font, no CDN icon set.** FontAwesome is gone and both cdnjs and the Google
+   Fonts origins are out of the CSP. If a glyph is missing, say so in text rather than
+   borrowing a foreign one.
+4. **All four fonts are self-hosted** from `src/assets/fonts/`. Never add an `@import` to
+   Google Fonts — the design system ships one and we deliberately do not use it.
+   `--font-display` Cinzel Decorative, `--font-lore` Cormorant Garamond, `--font-ui` Inter,
+   `--font-system` Orbitron (numeric readouts only). Never all four on one ordinary screen.
+5. **The z-scale is closed.** Name a step; never invent a number. The design system's
+   ladder ends at `--z-toast` (1300); this app documents six steps above and around it in
+   `styles.css` — `--z-inspect-3d` 1340, `--z-veil` 1360, `--z-consent` 1450,
+   `--z-spectacle` 1500, `--z-cursor` 1550, `--z-skip` 1600, `--z-boot` 1700. A component
+   that needs a new value needs a design decision, not a bigger number.
+6. **Disabled is explained, never silent.** An unavailable control keeps a written reason.
+7. **The bag grid stays visible when empty** (the RuneScape rule) — a slot well is
+   recessed so an empty loadout still reads as a loadout.
+
+### What is deliberately NOT on the design system
+
+The **`/tools` category star palette** in §2 above (`#4dffe0`, `#a48bff`, `#ff6dd7`, …) is
+a separate, documented palette. Those nine colours are distinct *category signals* —
+collapsing CSS Tools, CSS Generators, Security Tools and Text & Data into one violet would
+erase information rather than enforce a system. Leave it alone. The cosmic engine's canvas
+particle palette (`cosmic-engine.js`) is the same call, and `var()` cannot resolve in a
+canvas `fillStyle` anyway.
+
+### The adherence gate
+
+`npm run check:ds` (also in `prebuild` and in CI before the build) enforces six rules
+against `scripts/ds-adherence.baseline.json`. It is a **ratchet**: a rule fails only when
+its count rises above the baseline. Two rules sit at zero and must stay there —
+`no-retired-golds` and `no-raw-zindex`. When you fix something, the script prints the
+lowered baseline to paste; run `node scripts/check-ds-adherence.js --update` to record it.
+
+The open backlog is real and tracked by the same file: ~778 colour literals still in CSS
+(mostly the tools palette and one-off tints) and ~470 emoji still standing in as item,
+material and achievement icons. **The emoji backlog is not a find-and-replace** — those
+entries need painted art through `scripts/import-assets.py`, and deleting them without art
+leaves blank tiles across the market, forge and codex.
+
+---
+
 ## 3. Repeating patterns — copy these when building new sections
 
 ### 3.1 Section eyebrow + title + tagline pill

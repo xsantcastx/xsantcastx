@@ -20,7 +20,7 @@
   max-width: 1100px;
   margin: 0 auto;
   padding: clamp(5rem, 9vw, 7rem) clamp(1rem, 4vw, 2.5rem) clamp(4rem, 8vw, 6rem);
-  color: #e8e6f5;
+  color: var(--ink-0);
 }
 
 .lb-sr {
@@ -52,7 +52,7 @@
 
 .lb-eyebrow__pulse {
   width: 7px; height: 7px; border-radius: 50%;
-  background: #ffc669;
+  background: var(--gold);
   box-shadow: 0 0 10px rgba(255, 180, 80, 0.9);
   animation: lbEyebrowPulse 3s ease-in-out infinite;
 }
@@ -67,7 +67,7 @@
   font-family: 'Orbitron', sans-serif;
   font-size: clamp(1.8rem, 5vw, 2.9rem);
   line-height: 1.1;
-  background: linear-gradient(100deg, #ffc669 0%, #a48bff 55%, #4dffe0 100%);
+  background: linear-gradient(100deg, var(--gold) 0%, #a48bff 55%, #4dffe0 100%);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -109,7 +109,7 @@
   transition: color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.lb-tab:hover { color: #f2f0ff; border-color: var(--glow); }
+.lb-tab:hover { color: var(--ink-0); border-color: var(--glow); }
 
 .lb-tab--active {
   color: var(--tier);
@@ -164,7 +164,7 @@
   font-family: 'Orbitron', sans-serif;
   font-size: clamp(1.5rem, 4vw, 2rem);
   line-height: 1;
-  color: #ffc669;
+  color: var(--gold);
   text-shadow: 0 0 16px rgba(255, 180, 80, 0.4);
 }
 
@@ -182,9 +182,9 @@
   font-size: 0.85rem;
   color: rgba(232, 230, 245, 0.62);
 }
-.lb-standing__next b { font-family: 'Orbitron', sans-serif; color: #ffc669; }
-.lb-standing__next i { font-style: normal; color: #f2f0ff; }
-.lb-standing__next--crown { color: #ffc669; font-family: 'Orbitron', sans-serif; }
+.lb-standing__next b { font-family: 'Orbitron', sans-serif; color: var(--gold); }
+.lb-standing__next i { font-style: normal; color: var(--ink-0); }
+.lb-standing__next--crown { color: var(--gold); font-family: 'Orbitron', sans-serif; }
 
 /* ── Table ────────────────────────────────────────────────────────────────── */
 
@@ -228,12 +228,12 @@
 /* The one row allowed to shout. */
 .lb-row--you td {
   background: linear-gradient(90deg, rgba(255, 198, 105, 0.13), rgba(255, 198, 105, 0.02) 70%, transparent);
-  color: #ffc669;
+  color: var(--gold);
   font-weight: 600;
 }
-.lb-row--you .lb-col-rank { color: #ffc669; }
+.lb-row--you .lb-col-rank { color: var(--gold); }
 .lb-row--you .lb-col-name { box-shadow: none; }
-.lb-row--you td:first-child { border-left: 3px solid #ffc669; }
+.lb-row--you td:first-child { border-left: 3px solid var(--gold); }
 .lb-row--you .lb-name__title { color: rgba(255, 198, 105, 0.6); }
 
 .lb-gap td {

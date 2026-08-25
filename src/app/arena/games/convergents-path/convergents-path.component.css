@@ -9,7 +9,7 @@
   font-size: 0.78rem;
   font-weight: 600;
 }
-.cp-energies__item--aether { color: #C9A84C; }
+.cp-energies__item--aether { color: var(--gold-core); }
 .cp-energies__item--nox    { color: #a48bff; }
 .cp-energies__item--exit   { color: #A78BFA; }
 
@@ -43,14 +43,14 @@
   white-space: nowrap;
 }
 .cp-balance__end--nox    { color: #a48bff; }
-.cp-balance__end--aether { color: #C9A84C; }
+.cp-balance__end--aether { color: var(--gold-core); }
 
 .cp-balance__track {
   position: relative;
   flex: 1;
   height: 8px;
   border-radius: 999px;
-  background: linear-gradient(90deg, #a48bff, rgba(255, 255, 255, 0.18) 50%, #C9A84C);
+  background: linear-gradient(90deg, #a48bff, rgba(255, 255, 255, 0.18) 50%, var(--gold-core));
   opacity: 0.85;
 }
 
@@ -72,7 +72,7 @@
   height: 14px;
   margin: -7px 0 0 -7px;
   border-radius: 50%;
-  background: #F2ECFF;
+  background: var(--ink-0);
   box-shadow: 0 0 12px rgba(255, 255, 255, 0.9);
   transition: left 0.25s cubic-bezier(0.22, 1, 0.36, 1);
 }

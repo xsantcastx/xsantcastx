@@ -97,7 +97,7 @@ export const ARENA_TIERS: readonly ArenaTier[] = [
     name: 'Bronze Ring',
     flavour: 'Sand, rope, and someone who has done this twice. Everybody starts here.',
     unlockWins: 0,
-    color: '#ffc669',
+    color: '#e8c898',
     glow: 'rgba(255, 180, 80, 0.6)',
     gold: 2_500,
     xp: 40,

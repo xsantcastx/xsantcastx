@@ -57,14 +57,14 @@ const DIFFICULTIES: Difficulty[] = [
  */
 const FRAGMENTS: ReadonlyArray<{ color: string; glow: string; glyph: string; name: string }> = [
   { color: '#A78BFA', glow: 'rgba(139, 92, 246, 0.6)',   glyph: '✦', name: 'Verge' },
-  { color: '#C9A84C', glow: 'rgba(201, 168, 76, 0.6)',  glyph: '☀', name: 'Aether' },
+  { color: '#c89868', glow: 'rgba(201, 168, 76, 0.6)',  glyph: '☀', name: 'Aether' },
   { color: '#a48bff', glow: 'rgba(140, 110, 255, 0.6)', glyph: '☾', name: 'Nox' },
   { color: '#ff6dd7', glow: 'rgba(255, 90, 210, 0.6)',  glyph: '❋', name: 'Bloom' },
   { color: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.6)',  glyph: '◈', name: 'Tide' },
   { color: '#7fd5a3', glow: 'rgba(100, 220, 150, 0.6)', glyph: '❖', name: 'Grove' },
   { color: '#ff9a5a', glow: 'rgba(255, 140, 60, 0.6)',  glyph: '⌘', name: 'Forge' },
   { color: '#c48bff', glow: 'rgba(180, 120, 255, 0.6)', glyph: '✧', name: 'Echo' },
-  { color: '#ffc669', glow: 'rgba(255, 180, 80, 0.6)',  glyph: '⚚', name: 'Ember' },
+  { color: '#e8c898', glow: 'rgba(255, 180, 80, 0.6)',  glyph: '⚚', name: 'Ember' },
   { color: '#C4B5FD', glow: 'rgba(196, 181, 253, 0.6)',   glyph: '⟁', name: 'Prism' },
   { color: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.6)',   glyph: '☓', name: 'Rift' },
   { color: '#e8ecf1', glow: 'rgba(232, 236, 241, 0.5)', glyph: '◇', name: 'Mote' },
