@@ -183,8 +183,8 @@ const ROLL_MS = 420;
 
     /* Past a thousand a second the chip earns the brighter treatment. */
     .gt--rich .gt__rate {
-      border-color: rgba(255, 217, 122, .5);
-      background: rgba(255, 217, 122, .14);
+      border-color: rgba(248, 232, 200, .5);
+      background: rgba(248, 232, 200, .14);
       color: #ffe9a8;
     }
 

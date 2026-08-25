@@ -92,10 +92,10 @@ import { QuestBoard, QuestService } from './quest.service';
     .qt__blade:nth-child(2) { transform: rotate(-45deg); }
 
     /* A reward is waiting — the only state that earns a standing animation. */
-    .qt__trigger--ready { border-color: rgba(201, 168, 76, .6); animation: qtPulse 2.8s ease-in-out infinite; }
+    .qt__trigger--ready { border-color: rgba(200, 152, 104, .6); animation: qtPulse 2.8s ease-in-out infinite; }
     @keyframes qtPulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(201, 168, 76, .45); }
-      50%      { box-shadow: 0 0 20px 2px rgba(201, 168, 76, .45); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(200, 152, 104, .45); }
+      50%      { box-shadow: 0 0 20px 2px rgba(200, 152, 104, .45); }
     }
 
     .qt__badge {
@@ -108,7 +108,7 @@ import { QuestBoard, QuestService } from './quest.service';
     }
 
     @media (prefers-reduced-motion: reduce) {
-      .qt__trigger--ready { animation: none; box-shadow: 0 0 14px -4px rgba(201, 168, 76, .5); }
+      .qt__trigger--ready { animation: none; box-shadow: 0 0 14px -4px rgba(200, 152, 104, .5); }
     }
   `],
 })

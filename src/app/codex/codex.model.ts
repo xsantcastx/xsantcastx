@@ -71,7 +71,7 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
     icon: 'assets/icons/realms/verdant.png',
     art: true,
     color: '#c89868',
-    glow: 'rgba(201, 168, 76, 0.6)',
+    glow: 'rgba(200, 152, 104, 0.6)',
     blurb: 'Everything the archive counted, timed, listed or filed away.',
   },
   {

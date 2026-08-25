@@ -63,13 +63,13 @@ import { KeeperPanelService } from './keeper-panel.service';
       box-shadow: -16px 0 48px rgba(0,0,0,.55);
       pointer-events: auto;
       background:
-        radial-gradient(ellipse 80% 30% at 50% 0%, rgba(201,168,76,.08), transparent 60%),
+        radial-gradient(ellipse 80% 30% at 50% 0%, rgba(200, 152, 104,.08), transparent 60%),
         var(--gf-panel-solid);
       backdrop-filter: blur(12px);
     }
     .kp::before {
       content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(201,168,76,.5) 50%, transparent);
+      background: linear-gradient(90deg, transparent, rgba(200, 152, 104,.5) 50%, transparent);
     }
     .kp__head {
       display: flex; align-items: center; gap: 8px;

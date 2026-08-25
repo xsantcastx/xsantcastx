@@ -156,7 +156,7 @@ export class QuestToastComponent implements OnInit, OnDestroy {
         title: chapter.title,
         detail: 'Open the codex at the foot of this page to read it.',
         color: '#c89868',
-        glow: 'rgba(201, 168, 76, 0.6)',
+        glow: 'rgba(200, 152, 104, 0.6)',
       });
     }));
   }

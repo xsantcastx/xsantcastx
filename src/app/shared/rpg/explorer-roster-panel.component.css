@@ -132,8 +132,8 @@
 .rp__reward b { font-size: 0.8rem; color: #8d97a5; }
 
 .rp__reward--on {
-  border-color: rgba(201, 168, 76, 0.45);
-  background: rgba(201, 168, 76, 0.08);
+  border-color: rgba(200, 152, 104, 0.45);
+  background: rgba(200, 152, 104, 0.08);
   color: #d9c48a;
 }
 
@@ -405,8 +405,8 @@
   margin-top: 0.5rem;
   padding: 0.35rem;
   border-radius: 8px;
-  border: 1px solid rgba(201, 168, 76, 0.45);
-  background: rgba(201, 168, 76, 0.1);
+  border: 1px solid rgba(200, 152, 104, 0.45);
+  background: rgba(200, 152, 104, 0.1);
   color: var(--gold-core);
   font-size: 0.7rem;
   font-weight: 600;
@@ -415,7 +415,7 @@
 }
 
 .rp__recruit:hover:not(:disabled) {
-  background: rgba(201, 168, 76, 0.2);
+  background: rgba(200, 152, 104, 0.2);
   box-shadow: 0 0 22px -10px var(--gold-core);
 }
 

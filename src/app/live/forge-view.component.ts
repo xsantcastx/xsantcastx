@@ -1439,7 +1439,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
         return { id, name: display?.name ?? id, art: display?.art ?? '', quantity };
       }),
       tone: best?.color ?? realm?.color ?? AETHER_COLOR,
-      toneGlow: best?.glow ?? realm?.glow ?? 'rgba(201, 168, 76, .5)',
+      toneGlow: best?.glow ?? realm?.glow ?? 'rgba(200, 152, 104, .5)',
       rare: !!best && best.rank >= 2,
       bestTier: best?.tier ?? 'common',
     };

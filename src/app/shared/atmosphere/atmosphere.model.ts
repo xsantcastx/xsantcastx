@@ -83,7 +83,7 @@ export function tint(hex: string, alpha: number): string {
    colours it is replacing. Alphas live between 0.03 and 0.08: a wash that
    reads as a colour rather than as a panel. */
 const VIOLET = (a: number) => `rgba(139, 92, 246, ${a})`;   // the Godforge core
-const GOLD   = (a: number) => `rgba(201, 168, 76, ${a})`;   // Archivum, commerce, patronage
+const GOLD   = (a: number) => `rgba(200, 152, 104, ${a})`;   // Archivum, commerce, patronage
 const CRIMSON = (a: number) => `rgba(220, 38, 38, ${a})`;   // the pit
 const CYAN   = (a: number) => `rgba(0, 212, 255, ${a})`;    // Verge, instrumentation
 const SUN    = (a: number) => `rgba(232, 212, 77, ${a})`;   // Luminous
