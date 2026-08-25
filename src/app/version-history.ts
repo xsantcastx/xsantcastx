@@ -17,6 +17,21 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.84.0',
+    codename: 'Name the Game',
+    date: '2026-08-25',
+    highlights: [
+      'The site now says what it is in the first six words. /world led with "a persistent world of five Eclipse Realms — wander, collect, and forge your legend", which is the right sentence for somebody who already knows this place and tells a stranger from a link nothing: not that it is a game, not that it is free, not that it needs no account. The hero, the page title, the meta description and the share cards all now open with "a free idle RPG in your browser" and then name the four things you actually do. The lore is still there, as the eyebrow above it',
+      'The tutorial\'s fourth screen was pointing at the wrong door, and the copy on it was false. It offered the Rune Forge as "spend the Gold you just earned" — a strike there costs 10,000 Gold and the tutorial hands out one. The cheapest Market upgrade is 5,000. Nothing that screen offered was reachable on a fresh save',
+      'What is reachable is a Scout: free, two minutes, pays 5,000-10,000 Gold, and a new roster is seeded with two explorers, so it can be dispatched the moment the tutorial closes — and it is what makes every other door affordable. The screen is now the four things this game is, in the order a new player can do them, with the Scout marked and first. Every line on it carries the real number: 10,000 Gold a strike and a Void rune at one in two million, fifty-two recipes, upgrades from 5,000 Gold',
+      'Four rows rather than a two-by-two grid, and rows at every width. As cards the fourth activity fell below the fold on a phone, and this is the screen that has to survive a link opened one-handed',
+      'The skip button moved into the panel\'s flow. It was position:absolute below the panel, which put it outside the panel\'s box and therefore inside the padding that reserves room for the cookie banner — so on the taller activities screen it sat underneath the banner and failed a hit test while every other control passed. Verified after: fourteen controls across five screens at 375x812, all reachable, all at least 44px, no horizontal overflow',
+      'One more honest correction: the tutorial claimed "the flame in the corner keeps striking whether you watch it or not". It does not, not yet — there is no idle income until the first Market upgrade at 5,000 Gold. It now says the flame is on every page and can be struck any time, which is true',
+      'first_realm_visit is now first_activity. The fourth screen stopped being two realm doors, so the event name had stopped describing what the button does',
+      'The last player-facing line selling the retired product is gone: the PayPal note read "every drop of fuel keeps a new tool shipping". A sweep of the rendered page confirms zero occurrences of "tool" or "developer" in what a player reads, on the prerendered HTML and in the browser',
+    ],
+  },
+  {
     version: '2.83.0',
     codename: 'The Threshold',
     date: '2026-08-25',
