@@ -85,6 +85,16 @@ interface Doorway {
   bodyKey: string;
   /** Realm id for the accent, or 'forge' for the ember. */
   accent: string;
+  /**
+   * The one door a visitor should take now, marked as such.
+   *
+   * Exactly one of these is true, and which one is a fact about the economy
+   * rather than a preference: a Scout is free and pays 5,000-10,000 Gold, and
+   * every other door on this screen has a price the tutorial's single strike
+   * cannot meet. Without the marker the screen is four equal choices, three of
+   * which send a brand-new player somewhere they cannot act.
+   */
+  first?: boolean;
 }
 
 @Component({
@@ -141,27 +151,46 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   readonly previewQuest = signal<Quest | null>(null);
 
   /**
-   * Where step 4 points.
+   * Where step 4 points: the four things this game actually is.
    *
-   * Both are live routes on the current product. This is where the brief asked
-   * for two "hero tools" — that product was retired before this branch, its
-   * components are deleted, `/tools/:slug` 301s to /world, and `audit-nav.js`
-   * fails the build on any player-facing link into it. These are the two places
-   * that actually reward a first-time visitor: the one realm chapter that is
-   * playable, and the forge that turns the Gold they just earned into a rune.
+   * Ordered by what a visitor can do *now*, not by importance. That ordering is
+   * the whole point of this screen and it was wrong in the first cut, which
+   * offered the Rune Forge as "spend the Gold you just earned" — a strike there
+   * costs 10,000 Gold (`STRIKE_COST`) and the tutorial hands out one. The
+   * cheapest Market upgrade is 5,000. Nothing but the Scout is reachable on a
+   * fresh save.
+   *
+   * The Scout is: free (`MISSIONS[0]` has no `cost`), two minutes, pays
+   * 5,000-10,000 Gold, and a new roster is seeded with two explorers, so it is
+   * dispatchable the moment this screen closes. It is also what makes every
+   * other door on this list affordable, which is why it is marked and listed
+   * first rather than simply being one of four.
    */
   readonly doorways: readonly Doorway[] = [
     {
-      realm: 'infernal',
-      titleKey: 'onboarding.door.infernal.title',
-      bodyKey: 'onboarding.door.infernal.body',
-      accent: 'infernal',
+      path: '/sanctum',
+      titleKey: 'onboarding.door.scout.title',
+      bodyKey: 'onboarding.door.scout.body',
+      accent: 'celestial',
+      first: true,
     },
     {
       path: '/forge/runes',
-      titleKey: 'onboarding.door.forge.title',
-      bodyKey: 'onboarding.door.forge.body',
+      titleKey: 'onboarding.door.runes.title',
+      bodyKey: 'onboarding.door.runes.body',
       accent: 'forge',
+    },
+    {
+      path: '/forge/crafting',
+      titleKey: 'onboarding.door.bench.title',
+      bodyKey: 'onboarding.door.bench.body',
+      accent: 'verdant',
+    },
+    {
+      path: '/market',
+      titleKey: 'onboarding.door.market.title',
+      bodyKey: 'onboarding.door.market.body',
+      accent: 'luminous',
     },
   ];
 
@@ -319,10 +348,11 @@ export class OnboardingComponent implements OnInit, OnDestroy {
    * failure.
    */
   enter(door: Doorway): void {
+    const route = this.routeFor(door);
     this.analytics.trackOnboardingComplete(true, this.step());
-    this.analytics.trackFirstRealmVisit(door.accent);
+    this.analytics.trackFirstActivity(route);
     this.onboarding.finish(this.totalSteps);
-    void this.router.navigateByUrl(this.routeFor(door));
+    void this.router.navigateByUrl(route);
   }
 
   /**
