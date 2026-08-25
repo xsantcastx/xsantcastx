@@ -12,10 +12,10 @@ export const APP_ROUTES: Routes = [
   {
       path: 'world',
       loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
-      title: 'Eclipse Realms — A Persistent World',
+      title: 'Eclipse Realms — Free Idle RPG in Your Browser',
       data: {
-        description: 'Eclipse Realms is a persistent world of five places — Celestial, Infernal, Luminous, Umbral, and Verdant. Inspect their factions, landmarks, and unresolved conflicts.',
-        keywords: 'eclipse realms, persistent world, five realms, artifacts, rune forge, trials, character, xsantcastx',
+        description: 'Free idle RPG in your browser. Strike the forge for Gold, gamble it on runes across seven rarity tiers, craft gear with rolled stats, and send explorers into five realms. Diablo-style loot. No sign-up, no install.',
+        keywords: 'free idle rpg, browser rpg, incremental game, clicker rpg, idle game, rune crafting, loot game, arpg, eclipse realms, godforge, no download game',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -25,14 +25,14 @@ export const APP_ROUTES: Routes = [
               '@id': `${SITE_URL}/#website`,
               url: SITE_URL,
               name: 'Eclipse Realms',
-              description: 'A persistent world of five Eclipse Realms — artifacts, forges, trials and a character that remembers you.'
+              description: 'A free idle RPG in the browser — forge Gold, gamble runes, craft gear with rolled stats, and send explorers into five realms.'
             },
             {
               '@type': 'WebPage',
               '@id': `${SITE_URL}/world`,
               url: `${SITE_URL}/world`,
-              name: 'Eclipse Realms — A Persistent World',
-              description: 'Enter Eclipse Realms: five realms to explore, artifacts to collect, a forge to strike, and trials to walk.',
+              name: 'Eclipse Realms — Free Idle RPG in Your Browser',
+              description: 'A free idle RPG: strike the forge for Gold, gamble it on runes, craft gear with rolled stats, send explorers into five realms, and keep a daily streak.',
               isPartOf: { '@id': `${SITE_URL}/#website` }
             }
           ]
