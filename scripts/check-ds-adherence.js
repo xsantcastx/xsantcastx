@@ -34,7 +34,14 @@ function walk(dir, out = []) {
   }
   return out;
 }
-const files = walk(SRC).map(f => ({ rel: path.relative(ROOT, f), body: null, abs: f }));
+// e2e/ is walked too. A Playwright spec that pins a retired colour is exactly the
+// kind of thing this gate exists to catch, and scanning only src/ meant the rare
+// tier's old #a48bff sat in an assertion where nothing could see it until CI went
+// red. Rules that are about shipped product data rather than about any file —
+// no-emoji-in-code — filter back down to src/ themselves.
+const E2E = path.join(ROOT, 'e2e');
+const files = [...walk(SRC), ...(fs.existsSync(E2E) ? walk(E2E) : [])]
+  .map(f => ({ rel: path.relative(ROOT, f), body: null, abs: f }));
 const read = f => (f.body ??= fs.readFileSync(f.abs, 'utf8'));
 // Prose in a comment is documentation, not a violation — a rule that flags the
 // paragraph explaining the rule is a rule nobody keeps. Scans that look for
@@ -82,7 +89,7 @@ const RULES = {
   },
   'no-emoji-in-code': {
     why: 'Emoji used as icon data. Needs painted art via scripts/import-assets.py.',
-    scan: () => pick('.ts').filter(f => !f.rel.endsWith('.spec.ts'))
+    scan: () => pick('.ts').filter(f => f.rel.startsWith('src/') && !f.rel.endsWith('.spec.ts'))
       .flatMap(f => (read(f).match(EMOJI) || []).map(m => `${f.rel}: ${m}`)),
   },
   // "No icon font, no CDN set, no Lucide/Heroicons substitution."
