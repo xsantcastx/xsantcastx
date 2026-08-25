@@ -402,6 +402,100 @@ describe('ThrallService', () => {
     });
   });
 
+  // ── The absence ────────────────────────────────────────────────────────────
+
+  describe('settleAway', () => {
+    const T0 = 1_800_000_000_000;
+
+    const place = (id: string, fields: Record<string, unknown>) => {
+      const blob = (thralls as unknown as { blob: { thralls: Record<string, unknown>[] } }).blob;
+      Object.assign(blob.thralls.find(t => t['id'] === id)!, fields);
+    };
+
+    it('pays the pulls an absence was owed, in order', () => {
+      const t = bind('common');
+      // A pull costs THRALL_ROLL_COST — a hundred Keeper strikes, and a million
+      // Gold at the shipped price. Funding a flat number here buys one pull and
+      // measures the broke-guard instead of the replay.
+      fund(THRALL_ROLL_COST * 20);
+      const interval = thralls.byId(t.id)!.rollInterval;
+      place(t.id, { lastRollAt: T0, stamina: 100, status: 'working' });
+
+      // Ten intervals of absence. The shift pauses with the tab, so before this
+      // method existed every one of these was simply lost.
+      const found = thralls.settleAway(T0, T0 + interval * 10);
+      expect(found.length).toBe(10);
+      expect(thralls.byId(t.id)!.totalRolls).toBe(10);
+      // Every row can name what it found — the summary lists runes, not counts.
+      expect(found.every(f => !!f.name && !!f.rarityLabel)).toBe(true);
+    });
+
+    it('charges for every pull it settles', () => {
+      const t = bind('common');
+      fund(THRALL_ROLL_COST * 20);
+      const interval = thralls.byId(t.id)!.rollInterval;
+      place(t.id, { lastRollAt: T0, stamina: 100, status: 'working' });
+
+      const before = economy.snapshot.gold;
+      const found = thralls.settleAway(T0, T0 + interval * 5);
+      expect(economy.snapshot.gold).toBe(before - found.length * THRALL_ROLL_COST);
+    });
+
+    it('stops at the roll cap rather than replaying a whole night', () => {
+      // Eight hours of a five-second Thrall is nearly six thousand pulls, each
+      // one a Gold spend, a rune grant and a possible mint — on the first frame
+      // of a page load.
+      const t = bind('common');
+      fund(THRALL_ROLL_COST * 200);
+      place(t.id, { lastRollAt: T0, stamina: 1_000_000, maxStamina: 1_000_000, status: 'working' });
+
+      const found = thralls.settleAway(T0, T0 + 8 * 60 * 60 * 1_000, 25);
+      expect(found.length).toBe(25);
+    });
+
+    it('stops when the Gold runs out instead of spinning', () => {
+      // `pull` refuses a broke Thrall without stamping `lastRollAt` — correct
+      // while the page is open, because the pull is owed the instant the Gold
+      // arrives, and an unbreakable loop in a replay that steps to the next due
+      // moment. This is the case that would hang the tab.
+      const t = bind('common');
+      const interval = thralls.byId(t.id)!.rollInterval;
+      place(t.id, { lastRollAt: T0, stamina: 100, status: 'working' });
+
+      // Exactly three pulls' worth.
+      fund(THRALL_ROLL_COST * 3 - economy.snapshot.gold);
+      const found = thralls.settleAway(T0, T0 + interval * 50);
+      expect(found.length).toBe(3);
+    });
+
+    it('rests the roster for the whole span even when nothing pulled', () => {
+      const t = bind('common');
+      thralls.setWorking(t.id, false);
+      place(t.id, { stamina: 10, status: 'resting', lastRestAt: T0 });
+
+      thralls.settleAway(T0, T0 + 30 * MINUTE_MS);
+      // Resting is the one thing a shut tab can be trusted to have done, and it
+      // is credited whatever the roll cap did.
+      expect(thralls.byId(t.id)!.stamina).toBeGreaterThan(10);
+    });
+
+    it('does nothing for a window that runs backwards', () => {
+      const t = bind('common');
+      fund(THRALL_ROLL_COST * 20);
+      place(t.id, { lastRollAt: T0, stamina: 100, status: 'working' });
+      expect(thralls.settleAway(T0, T0 - 60_000)).toEqual([]);
+      expect(thralls.byId(t.id)!.totalRolls).toBe(0);
+    });
+
+    it('leaves an idle Thrall out of the replay', () => {
+      const t = bind('common');
+      fund(THRALL_ROLL_COST * 20);
+      thralls.setWorking(t.id, false);
+      place(t.id, { lastRollAt: T0, stamina: 100 });
+      expect(thralls.settleAway(T0, T0 + 60 * MINUTE_MS)).toEqual([]);
+    });
+  });
+
   // ── Persistence ────────────────────────────────────────────────────────────
 
   describe('persistence', () => {
