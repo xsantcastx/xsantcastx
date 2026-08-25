@@ -163,7 +163,7 @@ export const TYPE_CPS = 30;
       left: calc(var(--shell-sidebar-w, 0px) + clamp(12px, 3vw, 26px));
       bottom: calc(clamp(12px, 3vw, 26px) + env(safe-area-inset-bottom, 0px));
       /* Between the install prompt (930) and the forge flame (940). */
-      z-index: 935;
+      z-index: var(--z-fx);
       display: flex;
       align-items: flex-end;
       gap: 10px;

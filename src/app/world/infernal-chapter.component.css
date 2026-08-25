@@ -11,7 +11,7 @@
   font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #EF4444;
+  color: var(--status-danger);
 }
 
 .ic h2 {
@@ -44,7 +44,7 @@
 
 .ic__steps li.is-current {
   color: #fff;
-  border-color: #EF4444;
+  border-color: var(--status-danger);
   background: rgba(239, 68, 68, 0.16);
 }
 
@@ -65,7 +65,7 @@
   background: rgba(10, 10, 15, 0.4);
 }
 
-.ic__people span { display: block; color: #EF4444; font-size: 0.8rem; }
+.ic__people span { display: block; color: var(--status-danger); font-size: 0.8rem; }
 .ic__people p { margin: 0.4rem 0 0; }
 
 .ic__ev-hd, .ic__btn, .ic__choice {
@@ -87,7 +87,7 @@
   align-items: center;
   padding: 0 1rem;
   border-radius: 8px;
-  background: #EF4444;
+  background: var(--status-danger);
   color: #140808;
   font-weight: 700;
 }
@@ -108,7 +108,7 @@
 }
 
 .ic__choice:hover, .ic__choice:focus-visible {
-  border-color: #EF4444;
+  border-color: var(--status-danger);
 }
 
 .ic__choice span { color: rgba(232, 236, 241, 0.78); font-size: 0.9rem; }

@@ -155,7 +155,7 @@ export class QuestToastComponent implements OnInit, OnDestroy {
         eyebrow: 'New lore discovered',
         title: chapter.title,
         detail: 'Open the codex at the foot of this page to read it.',
-        color: '#C9A84C',
+        color: '#c89868',
         glow: 'rgba(201, 168, 76, 0.6)',
       });
     }));

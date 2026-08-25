@@ -1,0 +1,25 @@
+/* ============================================================================
+   Eclipse Realms Design System — token entry point
+   ============================================================================
+   Source of truth: ~/Desktop/Eclipse Realms/Eclipse Realms Design System/
+
+   Load order matters and mirrors the design system's own styles.css: fonts and
+   the type scale first, then the raw palette, then the ladders that reference
+   it (realms, rarity), then geometry, then the semantic aliases that alias
+   everything above. `semantic.css` must stay last — every alias in it resolves
+   against a token defined earlier in this list.
+
+   This file is registered in angular.json BEFORE src/styles.css, so the app
+   stylesheet can still override a token where a documented reason exists.
+   ========================================================================= */
+@import url("./fonts.css");
+@import url("./typography.css");
+@import url("./colors.css");
+@import url("./realms.css");
+@import url("./rarity.css");
+@import url("./spacing.css");
+@import url("./radius-borders.css");
+@import url("./elevation.css");
+@import url("./motion.css");
+@import url("./layers.css");
+@import url("./semantic.css");

@@ -1,0 +1,30 @@
+/* Type scale. Interface typography dominates; never place all four families on one ordinary screen. */
+:root{
+  --text-2xs:11px; --text-xs:12px; --text-sm:13px; --text-base:15px; --text-md:17px;
+  --text-lg:20px; --text-xl:24px; --text-2xl:32px; --text-3xl:42px; --text-4xl:56px;
+
+  --leading-tight:1.1; /* @kind font */
+  --leading-snug:1.25; /* @kind font */
+  --leading-normal:1.5; /* @kind font */
+  --leading-loose:1.7; /* @kind font */
+
+  /* Carved-metal display and eyebrow labels are tracked out; body text never is. */
+  --tracking-display:0.06em; /* @kind font */
+  --tracking-eyebrow:0.18em; /* @kind font */
+  --tracking-nav:0.14em; /* @kind font */
+  --tracking-body:0; /* @kind font */
+
+  --weight-regular:400; /* @kind font */
+  --weight-medium:500; /* @kind font */
+  --weight-semibold:600; /* @kind font */
+  --weight-bold:700; /* @kind font */
+  --weight-black:900; /* @kind font */
+
+  /* Role shorthands */
+  --type-realm-name:var(--weight-700,700) var(--text-3xl)/var(--leading-tight) var(--font-display);
+  --type-page-title:var(--weight-bold) var(--text-2xl)/var(--leading-snug) var(--font-display);
+  --type-lore:italic var(--weight-regular) var(--text-md)/var(--leading-loose) var(--font-lore);
+  --type-body:var(--weight-regular) var(--text-base)/var(--leading-normal) var(--font-ui);
+  --type-label:var(--weight-semibold) var(--text-xs)/1.2 var(--font-ui);
+  --type-readout:var(--weight-500,500) var(--text-sm)/1.2 var(--font-system);
+}

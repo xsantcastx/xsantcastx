@@ -152,7 +152,7 @@ export class QuestService {
    * Lives here rather than in a component because the trigger and the panel are
    * deliberately in different places in the DOM: the ⚔️ sits in the navbar, and
    * the panel must NOT — a positioned element inside `.navbar` joins its
-   * z-index:1000 stacking context and paints over the logo and the language
+   * z-index: var(--z-header) stacking context and paints over the logo and the language
    * toggle, which is the v2.1.0 mobile-nav regression this repo already paid
    * for once. The panel therefore renders as a sibling of the header, and the
    * two halves talk through this.

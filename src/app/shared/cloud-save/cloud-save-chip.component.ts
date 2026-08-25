@@ -135,7 +135,7 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
     /* The state glyph carries the whole status in one character, so the colour
        has to do the work the missing words would have done. */
     .cschip__state { font-size: 11px; line-height: 1; color: #A78BFA; }
-    .cschip--account[data-state="syncing"] .cschip__state { color: #ffc669; }
+    .cschip--account[data-state="syncing"] .cschip__state { color: #e8c898; }
     .cschip--account[data-state="error"]   .cschip__state { color: #ff6dd7; }
 
     .cschip--account[data-state="syncing"] .cschip__state {

@@ -277,7 +277,7 @@ import {
       background: rgba(255, 255, 255, 0.06);
     }
     .tp__state[data-status='working'] { color: #7fd5a3; }
-    .tp__state[data-status='resting'] { color: #ffc669; }
+    .tp__state[data-status='resting'] { color: #e8c898; }
 
     .tp__bar {
       margin: 0 0.7rem 0.55rem; height: 4px; border-radius: 999px;

@@ -270,7 +270,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * On <body> while a reveal is up, so the Forge Flame can stand down.
    *
-   * The flame is `position: fixed; z-index: 940` with `.ff > * {
+   * The flame is `position: fixed; z-index: var(--z-flame)` with `.ff > * {
    * pointer-events: auto }`, and .rf-focus cannot simply out-rank it: the
    * routed host carries a transform from the route fade, which traps every
    * fixed descendant in that stacking context however high its z-index. So on
@@ -1048,7 +1048,7 @@ const LIB_COLOR: Record<RuneTier, string> = {
   uncommon: '#4DB6AC',
   rare: '#4C8DFF',
   epic: '#A66CFF',
-  legendary: '#E4A83A',
+  legendary: '#c89868',
   mythic: '#E95757',
   singular: '#EDE7D8',
 };

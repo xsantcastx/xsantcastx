@@ -47,7 +47,7 @@
   --gf-lift: -2px;
   --gf-press: 0.97;
 
-  --gf-accent: #8b5cf6;
+  --gf-accent: var(--violet);
   --gf-accent-lit: #a78bfa;
   --gf-glow-soft: rgba(139, 92, 246, 0.34);
   --gf-glow-lit: rgba(139, 92, 246, 0.6);

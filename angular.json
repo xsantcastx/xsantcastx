@@ -32,6 +32,7 @@
               "src/google2e3a7dbeefb8f27f.html"
             ],
             "styles": [
+              "src/styles/tokens/_tokens.css",
               "src/styles.css",
               "src/styles/icon-animations.css",
               "src/styles/interactions.css"
@@ -131,6 +132,7 @@
               "src/assets"
             ],
             "styles": [
+              "src/styles/tokens/_tokens.css",
               "src/styles.css",
               "src/styles/icon-animations.css",
               "src/styles/interactions.css"

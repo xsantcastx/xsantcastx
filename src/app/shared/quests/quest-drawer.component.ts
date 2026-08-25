@@ -6,7 +6,7 @@
  * through `QuestService.drawerOpen$`.
  *
  * That separation is the whole point of this file's placement. `.navbar` is
- * `position: fixed` with `z-index: 1000`, which makes it a stacking context —
+ * `position: fixed` with `z-index: var(--z-header)`, which makes it a stacking context —
  * any positioned element inside it paints above the logo and the language
  * toggle regardless of how low its own z-index is, and swallows every click on
  * them. That is exactly the failure v2.1.0 spent a release fixing for the
@@ -158,7 +158,7 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
     .qd__all:hover { background: rgba(123, 97, 255, 0.16); }
 
     /* On desktop the XP bar and the ⚔️ are docked just under the navbar, and
-       they are inside the navbar's z-index:1000 context, so they paint over
+       they are inside the navbar's z-index: var(--z-header) context, so they paint over
        anything this panel puts in that band. Start below them instead of
        fighting a stacking context we deliberately stayed out of.
        Dock geometry: nav-h + 8px margin + 44px control = nav-h + 52px. */

@@ -11,7 +11,7 @@
  *    so a Mythic looks like a Mythic here for the same reason it does in the
  *    Codex — the same six values, passed in.
  *
- * The forge palette (#E8752A → #C9A84C → white-hot) is the Market's, restated
+ * The forge palette (var(--ember) → var(--gold-core) → white-hot) is the Market's, restated
  * here as the calendar heat ramp. No colour below is outside the brand palette
  * or the rarity ladder.
  *
@@ -46,7 +46,7 @@
 }
 
 .fk {
-  --fk-ink: #F2ECFF;
+  --fk-ink: var(--ink-0);
   --fk-dim: #9fb4ae;
   --fk-faint: #7d918c;
   --fk-panel: rgba(6, 4, 18, 0.62);
@@ -55,8 +55,8 @@
   /* Forge heat ramp — dark, ember, flame, gold, white-hot. */
   --fk-heat-0: rgba(255, 255, 255, 0.045);
   --fk-heat-1: #5d2a12;
-  --fk-heat-2: #E8752A;
-  --fk-heat-3: #C9A84C;
+  --fk-heat-2: var(--ember);
+  --fk-heat-3: var(--gold-core);
   --fk-heat-4: #fff4d6;
 
   /* Overridden from the component with the dominant realm's colour. */
@@ -96,8 +96,8 @@
 .fk__title {
   margin: 0 0 10px;
   font: 700 clamp(26px, 5vw, 44px)/1.15 'Orbitron', system-ui, sans-serif;
-  color: #ffd97a;
-  background: linear-gradient(92deg, #ffd97a, #E8752A 46%, #c48bff);
+  color: var(--gold-bright);
+  background: linear-gradient(92deg, var(--gold-bright), var(--ember) 46%, #c48bff);
   -webkit-background-clip: text;
   background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -241,7 +241,7 @@
 }
 .fk-id__xp-fill {
   display: block; height: 100%; border-radius: 999px;
-  background: linear-gradient(90deg, #E8752A, var(--fk-affinity));
+  background: linear-gradient(90deg, var(--ember), var(--fk-affinity));
   box-shadow: 0 0 14px -2px var(--fk-affinity-glow);
   transition: width .6s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -271,7 +271,7 @@
   color: var(--fk-faint);
 }
 .fk-id__coin--gold { border-color: rgba(201, 168, 76, .3); }
-.fk-id__coin--gold .fk-id__coin-val { color: #ffd97a; }
+.fk-id__coin--gold .fk-id__coin-val { color: var(--gold-bright); }
 .fk-id__coin--essence { border-color: rgba(164, 139, 255, .3); }
 .fk-id__coin--essence .fk-id__coin-val { color: #c48bff; }
 .fk-id__coin--shard { border-color: rgba(123, 97, 255, .34); }
@@ -289,7 +289,7 @@
 }
 .fk-id__rate-num {
   font: 800 26px/1 'Orbitron', system-ui, sans-serif;
-  color: #ffd97a;
+  color: var(--gold-bright);
   text-shadow: 0 0 18px rgba(232, 117, 42, .5);
   font-variant-numeric: tabular-nums;
 }
@@ -384,7 +384,7 @@
   /* Exact at any split, with no path maths — see the note in the template. */
   background: conic-gradient(
     from 0deg,
-    #E8D44D 0 var(--aether-stop),
+    var(--status-caution) 0 var(--aether-stop),
     #8B2252 var(--aether-stop) 100%
   );
   border: 1px solid rgba(255, 255, 255, 0.14);
@@ -439,7 +439,7 @@
 }
 .fk-affinity__split-fill { display: block; height: 100%; transition: width .6s cubic-bezier(0.22, 1, 0.36, 1); }
 .fk-affinity__split-fill--aether {
-  background: linear-gradient(90deg, #fff0a8, #E8D44D);
+  background: linear-gradient(90deg, #fff0a8, var(--status-caution));
   box-shadow: 0 0 16px -3px rgba(232, 212, 77, .8);
 }
 .fk-affinity__split-fill--nox {
@@ -457,7 +457,7 @@
   font: 700 22px/1 'Orbitron', system-ui, sans-serif;
   font-variant-numeric: tabular-nums;
 }
-.fk-affinity__num--aether dd { color: #E8D44D; }
+.fk-affinity__num--aether dd { color: var(--status-caution); }
 .fk-affinity__num--nox dd { color: #d4638f; }
 .fk-affinity__num-raw { font-size: 12px; color: var(--fk-faint); }
 
@@ -500,7 +500,7 @@
 
 .fk-inv__tiers { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
 .fk-inv__tier-chip {
-  --tier: #e8ecf1;
+  --tier: var(--ink-0);
   --tier-glow: rgba(232, 236, 241, 0.45);
   display: inline-flex; align-items: center; gap: 6px;
   min-height: 44px; padding: 7px 13px;
@@ -611,7 +611,7 @@
  * box that moves never answers anything.
  */
 .fk-inv__card {
-  --tier: #e8ecf1;
+  --tier: var(--ink-0);
   --tier-glow: rgba(232, 236, 241, 0.45);
   position: relative;
   display: grid;
@@ -788,7 +788,7 @@
   text-decoration: none;
   border-bottom: 1px dotted currentColor;
 }
-.fk-inv__price-link:hover { color: #ffd97a; }
+.fk-inv__price-link:hover { color: var(--gold-bright); }
 
 /* The badge and the tier label share the bottom-right corner, so the label
    steps aside when there is a badge to make room for. */
@@ -828,7 +828,7 @@
 }
 
 .fk-case__slot {
-  --tier: #e8ecf1;
+  --tier: var(--ink-0);
   --tier-glow: rgba(232, 236, 241, 0.45);
   position: relative;
   display: grid; gap: 6px; align-content: start;
@@ -894,7 +894,7 @@
   margin: 0; padding: 0; list-style: none;
 }
 .fk-case__pick {
-  --tier: #e8ecf1;
+  --tier: var(--ink-0);
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   grid-template-rows: auto auto;
@@ -1130,7 +1130,7 @@
   font: 600 11px/1 var(--font-lore);
   letter-spacing: .22em;
   text-transform: uppercase;
-  color: #c9a84c;
+  color: var(--gold-core);
 }
 .fk-stage__title {
   margin: 0;
@@ -1150,7 +1150,7 @@
   padding: 14px 14px 8px;
   border: 3px solid #6a5424;
   box-shadow:
-    inset 0 0 0 1px #c9a84c,
+    inset 0 0 0 1px var(--gold-core),
     0 0 0 4px #1a1208,
     0 24px 50px rgba(0, 0, 0, .55);
   background:
@@ -1185,7 +1185,7 @@
   min-height: 48px;
   padding: 0 18px;
   border-radius: 2px;
-  border: 2px solid #c9a84c;
+  border: 2px solid var(--gold-core);
   background: linear-gradient(180deg, #3d2a0e, #1a1208);
   color: #f4e7c3;
   font: 700 13px/1 var(--font-lore);
@@ -1203,7 +1203,7 @@
   padding: 2px 6px;
   border-radius: 2px;
   background: #1a1208;
-  color: #c9a84c;
+  color: var(--gold-core);
   font-variant-numeric: tabular-nums;
 }
 .fk-stage__save { width: min(360px, 100%); }
@@ -1235,7 +1235,7 @@
   overflow: auto;
   padding: 16px;
   border: 3px solid #6a5424;
-  box-shadow: inset 0 0 0 1px #c9a84c, 0 24px 70px rgba(0, 0, 0, .75);
+  box-shadow: inset 0 0 0 1px var(--gold-core), 0 24px 70px rgba(0, 0, 0, .75);
   background:
     radial-gradient(ellipse 70% 40% at 50% 0%, rgba(201, 168, 76, .08), transparent 60%),
     #120e08;
@@ -1294,7 +1294,7 @@
   right: 3px;
   bottom: 2px;
   font: 700 11px/1 system-ui, sans-serif;
-  color: #ffd97a;
+  color: var(--gold-bright);
 }
 
 @media (max-width: 620px) {

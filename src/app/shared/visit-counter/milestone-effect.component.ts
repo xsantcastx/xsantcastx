@@ -46,7 +46,7 @@ import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
     .ms-overlay {
       position: fixed;
       inset: 0;
-      z-index: 99999;
+      z-index: var(--z-spectacle);
       display: flex;
       align-items: center;
       justify-content: center;
