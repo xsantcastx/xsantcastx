@@ -20,9 +20,9 @@
   top: var(--nav-h, 64px);
   right: 0;
   bottom: 0;
-  width: min(420px, 100vw);
-  min-width: 360px;
-  max-width: 440px;
+  width: min(var(--inspect-panel), 100vw);
+  min-width: var(--inspect-panel-min);
+  max-width: var(--inspect-panel-max);
   overflow: auto;
   padding: 1.1rem 1.15rem 1.6rem;
   border-left: 1px solid color-mix(in srgb, var(--rarity, var(--violet)) 35%, rgba(255,255,255,0.08));
