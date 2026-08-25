@@ -20,7 +20,7 @@
 .ge {
   --ge-warm: var(--ember);
   --ge-gold: var(--gold-core);
-  --ge-gold-soft: rgba(201, 168, 76, 0.5);
+  --ge-gold-soft: rgba(200, 152, 104, 0.5);
   --ge-violet: #a48bff;
   --ge-up: #5fdc9a;
   --ge-down: #ff6b6b;
@@ -66,7 +66,7 @@
 /* Gradient cap lines, top and bottom — the site's section signature. */
 .ge__hero::before, .ge__hero::after {
   content: ''; position: absolute; left: 8%; right: 8%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(201, 168, 76, 0.55) 50%, transparent);
+  background: linear-gradient(90deg, transparent, rgba(200, 152, 104, 0.55) 50%, transparent);
 }
 .ge__hero::before { top: 0; }
 .ge__hero::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
@@ -74,7 +74,7 @@
 .ge__sigil {
   display: block; font-size: clamp(30px, 5vw, 46px); line-height: 1;
   color: var(--ge-gold);
-  text-shadow: 0 0 18px rgba(201, 168, 76, 0.55), 0 0 46px rgba(232, 117, 42, 0.3);
+  text-shadow: 0 0 18px rgba(200, 152, 104, 0.55), 0 0 46px rgba(232, 117, 42, 0.3);
   animation: geSigil 7s ease-in-out infinite;
 }
 
@@ -111,7 +111,7 @@
   padding: 6px 16px; border-radius: 999px; width: fit-content;
   /* Opaque enough to read over the scene art, not just over the page. */
   background: rgba(12, 7, 28, 0.62);
-  border: 1px solid rgba(201, 168, 76, 0.2);
+  border: 1px solid rgba(200, 152, 104, 0.2);
   font-size: 0.86rem; color: var(--ge-ink);
 }
 
@@ -174,7 +174,7 @@
   background: var(--ge-pane); border: 1px solid var(--ge-line);
 }
 
-.ge__coin--gold { border-color: rgba(201, 168, 76, 0.26); }
+.ge__coin--gold { border-color: rgba(200, 152, 104, 0.26); }
 .ge__coin--tax  { border-color: rgba(164, 139, 255, 0.22); }
 
 .ge__coin-icon  { width: 34px; height: 34px; flex: none; }
@@ -258,7 +258,7 @@
   color: var(--ge-dim); font: inherit; font-size: 0.78rem; cursor: pointer;
 }
 .ge__sort:hover  { color: var(--ge-ink); }
-.ge__sort.is-on  { color: var(--ge-gold); border-color: rgba(201, 168, 76, 0.3); }
+.ge__sort.is-on  { color: var(--ge-gold); border-color: rgba(200, 152, 104, 0.3); }
 .ge__count { margin-left: auto; font-size: 0.74rem; color: var(--ge-faint); font-variant-numeric: tabular-nums; }
 .ge__clear {
   min-height: 30px; padding: 4px 10px; border-radius: 8px;
@@ -335,11 +335,11 @@
   display: flex; flex-direction: column; align-items: center; gap: 2px;
   width: 100%; min-height: 52px; margin-top: 8px;
   padding: 10px 16px; border-radius: 12px;
-  background: var(--ge-pane-2); border: 1px dashed rgba(201, 168, 76, 0.3);
+  background: var(--ge-pane-2); border: 1px dashed rgba(200, 152, 104, 0.3);
   color: var(--ge-gold); font: inherit; font-size: 0.86rem; cursor: pointer;
   transition: border-color 140ms ease, background 140ms ease;
 }
-.ge__more:hover { border-color: var(--ge-gold); background: rgba(201, 168, 76, 0.06); }
+.ge__more:hover { border-color: var(--ge-gold); background: rgba(200, 152, 104, 0.06); }
 .ge__more-rest { font-size: 0.68rem; color: var(--ge-faint); letter-spacing: 0.08em; }
 
 /* ── Empty ────────────────────────────────────────────────────────────── */

@@ -68,7 +68,7 @@
 .hb__kind.is-on,
 .hb__sort.is-on {
   border-color: var(--gf-accent);
-  background: rgba(201, 168, 76, 0.1);
+  background: rgba(200, 152, 104, 0.1);
   color: var(--gf-accent-text);
 }
 .hb__kind:focus-visible,
@@ -125,7 +125,7 @@
 .hb__tile.is-checked { border-color: var(--gf-accent); }
 .hb__tile.is-fresh {
   border-color: var(--gf-accent);
-  box-shadow: 0 0 16px -6px rgba(201, 168, 76, 0.85);
+  box-shadow: 0 0 16px -6px rgba(200, 152, 104, 0.85);
 }
 .hb__tile.is-rare { border-color: var(--gold-core); }
 .hb__tile.is-new:not(.is-rare) { border-color: var(--gf-accent-text); }
@@ -257,7 +257,7 @@
   top: var(--header-offset, 96px);
 }
 .hb__confirm-actions { display: flex; gap: 8px; }
-.hb__drop { border-color: rgba(228, 168, 58, 0.4); color: var(--gold-core); }
+.hb__drop { border-color: rgba(200, 152, 104, 0.4); color: var(--gold-core); }
 
 .hb__empty, .hb__full {
   margin: 0 0 0.6rem;
