@@ -16,6 +16,7 @@ import { ConsentService } from '../../consent.service';
  *   bottom, full  <app-cookie-banner>     z-index 9999, spans the viewport
  *   top-right     <app-quest-drawer>
  *   bottom-LEFT   <app-npc-dialogue>      z-index 935 — shares this corner
+ *   bottom-LEFT   <app-forged-today>     z-index 935 — shares this corner
  *
  * The NPC portrait is the one thing that genuinely shares bottom-left, because
  * it belongs there (it is a character standing beside the page, not a notice)
@@ -77,12 +78,15 @@ import { ConsentService } from '../../consent.service';
          shell landed; it is corrected here rather than left as the one tenant
          of this corner that still gets it wrong. */
       left: calc(var(--shell-sidebar-w, 0px) + clamp(12px, 3vw, 26px));
-      /* --npc-lift is the NPC portrait's measured height, or absent. See the
-         positioning note in the header. */
+      /* --npc-lift is the NPC portrait's measured height and --forged-lift is
+         the "forged today" chip's, or absent when that widget is not on screen.
+         Both are one-way: they publish, this consumes. See the positioning note
+         in the header. */
       bottom: calc(
         clamp(12px, 3vw, 26px)
         + env(safe-area-inset-bottom, 0px)
         + var(--npc-lift, 0px)
+        + var(--forged-lift, 0px)
         + var(--ip-tabs-clear, 0px)
       );
       transition: bottom 220ms ease;

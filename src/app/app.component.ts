@@ -21,6 +21,9 @@ import { InlineFlameService } from './shared/economy/inline-flame.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 import { GameStateGateway } from './shared/save/game-state.gateway';
 import { applyRealmEra } from './shared/save/realm-era';
+import { OnboardingService } from './shared/onboarding/onboarding.service';
+import { XpService } from './shared/gamification/xp.service';
+import { AnalyticsService } from './analytics.service';
 
 @Component({
     selector: 'app-root',
@@ -48,6 +51,23 @@ export class AppComponent implements OnInit, OnDestroy {
   private codexSecrets = inject(CodexSecretsService);
   private inlineFlame = inject(InlineFlameService);
   private readonly saves = inject(GameStateGateway);
+  /*
+   * Injected as a field, and that placement is load-bearing.
+   *
+   * OnboardingService answers "has this browser ever been here" by reading two
+   * localStorage keys once, at construction. Field injection runs during
+   * AppComponent's own construction — before ngOnInit, and therefore before
+   * `xpWiring.init()` pays out for the landing route and `economyWiring.init()`
+   * settles idle Gold. Both of those write, so a service constructed any later
+   * would read a save this page load had just created and conclude the visitor
+   * was a returning one. The tutorial would then never show to anybody.
+   */
+  private readonly onboarding = inject(OnboardingService);
+  private readonly xp = inject(XpService);
+  private readonly analytics = inject(AnalyticsService);
+
+  /** Funnel subscriptions, torn down with the shell. */
+  private readonly funnelSubs = new Subscription();
 
   // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
   // and so subsequent hydrations don't stack parallel intervals. Previously
@@ -179,6 +199,15 @@ export class AppComponent implements OnInit, OnDestroy {
     // opened.
     this.codexSecrets.init();
 
+    // ── Acquisition funnel and the first-run tutorial ────────────────────
+    //
+    // Last in ngOnInit on purpose. `shouldOnboard()` is answered from the
+    // snapshot the service took at construction (see the field above), so the
+    // decision is unaffected by everything that has just hydrated — but the
+    // *overlay* wants a live economy, a live quest board and a hydrated rank
+    // behind it, and those are what the twelve init() calls above provide.
+    this.startFunnel();
+
     let glitchPending = false;
     const triggerRandomGlitch = () => {
       if (glitchPending) return;
@@ -208,6 +237,47 @@ export class AppComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Raise the tutorial for a new browser, and wire the three funnel events that
+   * are properties of the session rather than of any one component.
+   *
+   * Every `track*` call below is consent- and DNT-gated inside AnalyticsService
+   * and is a no-op on the server, so there is no second guard here.
+   */
+  private startFunnel(): void {
+    if (this.isEmbedMode) return;
+
+    if (this.onboarding.shouldOnboard()) {
+      this.analytics.trackOnboardingStart();
+      this.onboarding.start();
+    } else if (this.onboarding.hasRecord()) {
+      // A return visit is a session that began with a tutorial already behind
+      // it. Read from the streak the XP ledger has just settled, so "day 4" is
+      // the ledger's own count rather than a second one kept here that could
+      // disagree with the one the visitor sees.
+      this.funnelSubs.add(
+        this.xp.snapshot$.subscribe(snap => {
+          if (this.returnLogged) return;
+          this.returnLogged = true;
+          this.analytics.trackReturnVisit(snap.streak);
+        }),
+      );
+    }
+
+    // Rank-ups, from the ledger's own award stream rather than by watching the
+    // snapshot for a level change: `gain$` already carries the `levelUp` flag
+    // and the rank that was reached, and diffing snapshots would also fire on
+    // the hydration that merely *reveals* a rank earned in an earlier session.
+    this.funnelSubs.add(
+      this.xp.gain$.subscribe(gain => {
+        if (gain.levelUp) this.analytics.trackRankUp(gain.level.title, gain.level.level);
+      }),
+    );
+  }
+
+  /** `return_visit` is one event per session, not one per snapshot replay. */
+  private returnLogged = false;
+
   ngOnDestroy(): void {
     if (this.glitchPollId !== null) {
       clearInterval(this.glitchPollId);
@@ -215,5 +285,6 @@ export class AppComponent implements OnInit, OnDestroy {
     }
     this.inlineFlameSub?.unsubscribe();
     this.inlineFlameSub = null;
+    this.funnelSubs.unsubscribe();
   }
 }

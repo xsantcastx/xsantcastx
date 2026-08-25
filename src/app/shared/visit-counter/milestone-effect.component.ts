@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, PLATFORM_ID, inject } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { VisitCounterService, MilestoneEvent } from './visit-counter.service';
+import { OnboardingService } from '../onboarding/onboarding.service';
 
 @Component({
   selector: 'app-milestone-effect',
@@ -286,6 +287,7 @@ export class MilestoneEffectComponent implements OnInit, OnDestroy {
 
   private isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private visitService = inject(VisitCounterService);
+  private onboarding = inject(OnboardingService);
   private sub?: Subscription;
 
   get formattedCount(): string {
@@ -307,6 +309,28 @@ export class MilestoneEffectComponent implements OnInit, OnDestroy {
 
     this.sub = this.visitService.milestone$.subscribe(ev => {
       if (!ev) return;
+
+      /*
+       * Never on top of the first-run tutorial.
+       *
+       * These two fire for the same person, in the same second: the milestone
+       * is emitted by the visit counter on a *first* session, and the tutorial
+       * is shown to a browser with no save. A stranger's first sight of the
+       * site was a full-screen modal about being visitor number 2,567 —
+       * blurring out the welcome screen behind it — which is both the wrong
+       * first impression and a fact that means nothing to somebody who has
+       * been here four seconds.
+       *
+       * Dropped rather than queued, and rather than stacked with a z-index.
+       * The install banner's header makes the same call for the same reason:
+       * two overlays that must not overlap are best made unable to be on
+       * screen together, since z-index fights are how the achievement toast
+       * silently ate clicks on the forge flame for two releases. The milestone
+       * is a decoration about the site's traffic, not about this visitor's
+       * progress, and losing one is worth an uninterrupted first minute.
+       */
+      if (this.onboarding.active()) return;
+
       this.event = ev;
       this.particles = this.generateParticles(ev.tier);
 
