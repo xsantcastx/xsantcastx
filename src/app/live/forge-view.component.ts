@@ -137,6 +137,7 @@ import { archetypeById } from '../shared/rpg/explorer-archetypes';
 import { RosterExplorer, explorerTier } from '../shared/rpg/explorer-roster.model';
 import { RARITIES } from '../shared/rarity/rarity.model';
 
+import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 /**
  * The two energies, as colours.
  *
@@ -553,7 +554,7 @@ const HUM_KEY = 'godforge-forge-hum';
 @Component({
   selector: 'app-forge-view',
   standalone: true,
-  imports: [
+  imports: [RelatedPagesComponent, 
     CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent,
     ChallengePanelComponent, ThrallPanelComponent, ArtSceneComponent,
   ],

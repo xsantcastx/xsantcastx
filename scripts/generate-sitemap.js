@@ -15,6 +15,38 @@
  * Wired into package.json as a `postbuild` step so every production
  * build refreshes the sitemap automatically. Also rewrites the copy
  * inside dist/ so deploys ship the fresh dates.
+ *
+ * ── Getting it in front of Google (one-time, by hand) ─────────────
+ *
+ * Generating a sitemap does not submit it. Google finds it eventually
+ * from the `Sitemap:` line in robots.txt, but "eventually" is weeks;
+ * submitting it is minutes. Do this once, from the site owner's
+ * Google account:
+ *
+ *   1. Search Console → https://search.google.com/search-console
+ *      Add property → Domain → `xsantcastx.com`. The Domain type
+ *      covers http/https and every subdomain, which the URL-prefix
+ *      type does not; it is verified with a DNS TXT record, added
+ *      wherever the domain's nameservers live.
+ *
+ *   2. Sitemaps → enter `sitemap.xml` → Submit. One submission is
+ *      permanent: Google re-fetches it on its own from then on, so
+ *      this does NOT need repeating on every deploy even though the
+ *      file is rewritten on every build.
+ *
+ *   3. URL Inspection → paste `https://xsantcastx.com/world` →
+ *      Request Indexing. Seeds the crawl for the one page that has to
+ *      rank rather than waiting for the sitemap to be processed.
+ *
+ *   4. Come back in ~a week and read Pages → "Why pages aren't
+ *      indexed". The two reports this repo has already been bitten by
+ *      are "Alternate page with proper canonical tag" and "Duplicate,
+ *      Google chose different canonical than user" — verifyCanonicals()
+ *      below is the guard that keeps both from coming back.
+ *
+ * Bing is the same shape at https://www.bing.com/webmasters, and it
+ * will import the Search Console property wholesale rather than making
+ * you re-verify.
  * ─────────────────────────────────────────────────────────────────
  */
 
@@ -29,17 +61,45 @@ const OUT_SRC = path.join(ROOT, 'src', 'sitemap.xml');
 const OUT_DIST = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'sitemap.xml');
 
 // Per-route metadata. Anything not matched here uses the default fallback below.
+//
+// Priority is a relative ranking *within this site* — it does not raise the
+// site against anyone else's, and Google treats it as a weak hint at best. The
+// reason it is worth setting honestly is crawl ordering: the tiers below say
+// which pages to re-fetch first when the crawler has a limited budget.
+//
+// The tiers:
+//   1.0  /world              the front door and the page that has to rank
+//   0.8  the playable rooms  forge, bench, market, gambler, exchange, arena…
+//                            these are the pages that carry the game's search
+//                            terms — crafting, loot boxes, trading, PvP — and
+//                            they sat on the 0.5 fallback, below the lore.
+//   0.7  the realms          real content, but five variations on one theme
+//   0.6  supporting pages    trials, mini-games, lore, standings
+//   0.5  personal pages      /character is per-visitor and thin to a crawler
+//
+// changefreq follows what actually changes: the rooms whose numbers move every
+// session are weekly, static lore is monthly.
 function metaFor(route) {
-  if (route === '/world')        return { changefreq: 'weekly',  priority: '1.0' };
-  if (route.startsWith('/world/realms/')) return { changefreq: 'monthly', priority: '0.8' };
-  if (route === '/world/fivefold-lock') return { changefreq: 'monthly', priority: '0.6' };
-  if (route === '/sanctum')      return { changefreq: 'daily',   priority: '0.7' };
-  if (route === '/world/trials') return { changefreq: 'monthly', priority: '0.6' };
+  if (route === '/world')        return { changefreq: 'daily',   priority: '1.0' };
+
+  // The playable rooms — the game's real keyword surface.
+  const ROOMS = new Set([
+    '/forge/runes', '/forge/crafting', '/forge/enchanting',
+    '/market', '/gambler', '/exchange', '/sanctum', '/world/arena',
+  ]);
+  if (ROOMS.has(route))          return { changefreq: 'weekly',  priority: '0.8' };
+
+  if (route.startsWith('/world/realms/')) return { changefreq: 'monthly', priority: '0.7' };
   if (route === '/world/quests') return { changefreq: 'weekly',  priority: '0.7' };
   if (route === '/codex')        return { changefreq: 'weekly',  priority: '0.7' };
-  if (route === '/character')    return { changefreq: 'monthly', priority: '0.5' };
-  if (route === '/forge/runes')  return { changefreq: 'weekly',  priority: '0.7' };
+  if (route === '/leaderboards') return { changefreq: 'daily',   priority: '0.6' };
+  if (route === '/world/fivefold-lock') return { changefreq: 'monthly', priority: '0.6' };
+  if (route === '/world/trials') return { changefreq: 'monthly', priority: '0.6' };
   if (route.startsWith('/arena/')) return { changefreq: 'monthly', priority: '0.6' };
+
+  // Per-visitor and thin to a crawler: it renders one anonymous character.
+  if (route === '/character')    return { changefreq: 'monthly', priority: '0.5' };
+
   return { changefreq: 'monthly', priority: '0.5' }; // fallback for anything new
 }
 

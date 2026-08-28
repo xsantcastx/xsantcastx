@@ -53,6 +53,7 @@ import {
   formatScore,
 } from '../shared/leaderboards/leaderboard.model';
 
+import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 /** One rendered row, with the break flag the table draws before it. */
 export interface WindowRow {
   row: LeaderboardRow;
@@ -63,7 +64,7 @@ export interface WindowRow {
 @Component({
   selector: 'app-leaderboards',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [RelatedPagesComponent, CommonModule, RouterModule],
   templateUrl: './leaderboards.component.html',
   styleUrls: ['./leaderboards.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
