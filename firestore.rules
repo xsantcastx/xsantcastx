@@ -35,6 +35,36 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == uid;
     }
 
+    // ── Bans ─────────────────────────────────────────────────────────────────
+    // A ban is a document at `users/{uid}/meta/ban` with `banned: true`. It is
+    // written only by the owner (see the /meta rule below, which carves `ban`
+    // out of the player's own write grant — a player who could write it could
+    // lift it) and it is enforced here, on the two collections that hold the
+    // save.
+    //
+    // COST, STATED PLAINLY: `exists()` and `get()` inside a rule are billed as
+    // document reads. This adds one read per *write* to progress and economy,
+    // and the gateway batches a signed-in player's writes on a four-second
+    // debounce — so an actively-playing account costs on the order of several
+    // hundred extra reads an hour. That is a real number and it is the price of
+    // the feature: a ban that only the client honours is not a ban, because the
+    // thing a banned account does is stop honouring the client.
+    //
+    // It is deliberately NOT applied to `users/{uid}/meta/*`. Those two
+    // documents are the device lease and the wipe tombstone — they coordinate
+    // *which browser* writes, not *what* it writes, and letting a banned account
+    // release its lease is strictly better than making it expire. Charging a
+    // read to block them would buy nothing.
+    function isBanned(uid) {
+      return exists(/databases/$(database)/documents/users/$(uid)/meta/ban)
+             && get(/databases/$(database)/documents/users/$(uid)/meta/ban).data.banned == true;
+    }
+
+    /** The player themselves, and not under a ban. */
+    function isLivePlayer(uid) {
+      return request.auth != null && request.auth.uid == uid && !isBanned(uid);
+    }
+
     // ── Cloud save: progression ───────────────────────────────────────────────
     // The Godforge save, synced across a visitor's devices. Owner-only, and
     // nobody else's business — there is no leaderboard reading these.
@@ -51,10 +81,26 @@ service cloud.firestore {
     //
     // Deletes are allowed: a visitor wiping their own save is a real thing to
     // want, and `XpService.reset()` is how they do it.
+    //
+    // The owner is granted full access on top of the player's own, and that
+    // grant sits *before* the monotonic-XP condition rather than inside it. The
+    // GM console's "Reset Stats" writes xp: 0 over a live total, which is
+    // exactly the write the monotonic rule exists to refuse — and it should
+    // refuse it, from a second device. From the console it is the entire point.
+    // The two are told apart by identity, which is the only thing a rule can
+    // tell them apart by.
     match /users/{uid}/progress/{docId} {
-      allow read, delete: if request.auth != null && request.auth.uid == uid;
-      allow create: if request.auth != null && request.auth.uid == uid;
-      allow update: if request.auth != null && request.auth.uid == uid
+      allow read, write: if isOwner();
+      // Reading stays unconditional for the player: a banned client still has to
+      // load enough of itself to render the ban notice, and refusing the read
+      // would show them a broken game rather than the reason they are seeing it.
+      // Deleting does not — a wipe by a banned account would destroy the save
+      // the console is holding it to account for. Delete is rare, so the extra
+      // rule read it costs is not the recurring charge the write path's is.
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow delete: if isLivePlayer(uid);
+      allow create: if isLivePlayer(uid);
+      allow update: if isLivePlayer(uid)
                     && (
                       docId != 'state'
                       || !('xp' in resource.data)
@@ -69,7 +115,9 @@ service cloud.firestore {
     // entire rule, deliberately: a stricter one would have to model every sink
     // in economy.model.ts, and would break the next time a price changed.
     match /users/{uid}/economy/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isOwner();
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if isLivePlayer(uid);
     }
 
     // ── Cloud save: device coordination ──────────────────────────────────────
@@ -91,8 +139,112 @@ service cloud.firestore {
     // Deliberately not merged into the /progress rule above: that one carries
     // the monotonic-XP condition, and neither of these has an `xp` field, so
     // they would sit in it only to be exempted from its single reason to exist.
+    //
+    //   meta/ban — the GM console's tombstone. Carved out of the player's own
+    //     write grant below, and that carve-out is the whole security model of
+    //     the ban: `isBanned()` reads this document to decide whether a save
+    //     may be written, so a player who could write it could lift their own
+    //     ban in one console call. They may *read* it, because their client has
+    //     to render the reason.
     match /users/{uid}/meta/{docId} {
-      allow read, write: if request.auth != null && request.auth.uid == uid;
+      allow read, write: if isOwner();
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if request.auth != null && request.auth.uid == uid
+                   && docId != 'ban';
+    }
+
+    // ── The player directory ─────────────────────────────────────────────────
+    // One denormalised summary row per player, so the GM console has something
+    // to enumerate. See the header of shared/cloud-save/gm.model.ts for why this
+    // has to exist at all: a client cannot list subcollections, `users/{uid}` is
+    // a path prefix with no document at it, and there is therefore no query that
+    // answers "who plays this".
+    //
+    // A player writes only their own row, and the schema below is the reason
+    // this is safe to let them write. Every field is typed and bounded, so the
+    // worst a hostile client can do is lie about its own Gold — and it could
+    // already do that by writing its own ledger. Nothing here is trusted for
+    // anything but sorting a table; the console re-reads the real documents
+    // before it shows or changes a number.
+    //
+    // `uid` is pinned to the document id so a row cannot impersonate another
+    // player in the table, which is the one lie that would actually matter.
+    match /player-directory/{uid} {
+      allow read, delete: if isOwner();
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create, update: if request.auth != null
+                    && request.auth.uid == uid
+                    && request.resource.data.keys().hasOnly([
+                         'uid', 'email', 'displayName', 'rank',
+                         'level', 'gold', 'totalXp', 'lastActive', 'createdAt'
+                       ])
+                    && request.resource.data.uid == uid
+                    && request.resource.data.email is string
+                    && request.resource.data.email.size() <= 254
+                    && request.resource.data.displayName is string
+                    && request.resource.data.displayName.size() <= 120
+                    && request.resource.data.rank is string
+                    && request.resource.data.rank.size() <= 60
+                    && request.resource.data.level is number
+                    && request.resource.data.gold is number
+                    && request.resource.data.totalXp is number
+                    && request.resource.data.lastActive is number
+                    && request.resource.data.createdAt is number;
+    }
+
+    // ── Ban index ────────────────────────────────────────────────────────────
+    // The same BanRecord as `users/{uid}/meta/ban`, in a flat owner-only
+    // collection. Two copies of one fact is a thing to justify, so:
+    //
+    //   `users/{uid}/meta/ban` is the ENFORCEMENT copy, and it has to live
+    //   exactly there because `isBanned()` above reaches it by a path built from
+    //   the incoming request. A rule cannot look a ban up by any other key.
+    //
+    //   `admin-bans/{uid}` is the INDEX, and it has to be flat because the
+    //   console's user table needs a status column and there is no query that
+    //   asks "which of these hundred uids has a ban document". Reading them one
+    //   at a time would be one billed read per player per dashboard open; this
+    //   collection holds only the banned, which is normally none.
+    //
+    // The console writes the enforcement copy first and the index second, so the
+    // only state a half-failed ban can leave behind is "banned but not listed" —
+    // the direction where the sanction still holds and the console under-reports
+    // it, rather than the direction where the table claims a ban that is not
+    // being enforced.
+    match /admin-bans/{uid} {
+      allow read, write: if isOwner();
+    }
+
+    // ── Admin audit trail ────────────────────────────────────────────────────
+    // Every destructive action the console takes writes one of these first.
+    // Owner-only in both directions, and deliberately create-only: an audit log
+    // that its own author can edit is a diary, not a log. Deletes are refused
+    // for the same reason — the trail is worth keeping precisely on the days
+    // somebody would rather it were shorter.
+    match /admin-logs/{logId} {
+      allow read: if isOwner();
+      allow create: if isOwner()
+                    && request.resource.data.keys().hasOnly([
+                         'action', 'targetUid', 'targetName',
+                         'actorUid', 'actorEmail', 'detail', 'at'
+                       ])
+                    && request.resource.data.action is string
+                    && request.resource.data.detail is string
+                    && request.resource.data.detail.size() <= 500
+                    && request.resource.data.at is number;
+      allow update, delete: if false;
+    }
+
+    // ── Site-wide notice ─────────────────────────────────────────────────────
+    // The broadcast banner and the maintenance flag, in one document because a
+    // client that reads either has already paid for both. Publicly readable —
+    // that is the entire point of a broadcast — and owner-write only.
+    match /site-config/{docId} {
+      allow read: if true;
+      allow write: if isOwner()
+                   && request.resource.data.message is string
+                   && request.resource.data.message.size() <= 400
+                   && request.resource.data.maintenance is bool;
     }
 
     // ── Live Activity Feed ────────────────────────────────────────────────────
