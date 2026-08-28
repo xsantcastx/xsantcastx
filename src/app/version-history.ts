@@ -17,6 +17,20 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.88.0',
+    codename: 'The Control Room',
+    date: '2026-08-29',
+    highlights: [
+      'The owner console at /admin could read counters and nothing else. It can now manage the people who generate them: a searchable, sortable, paginated table of every known player, a profile that opens their real save — rank, XP, Gold, Essence, shards, prestiges, items held, what is equipped, quests completed — and the actions to grant Gold, reset stats, clear a bag, wipe an account, ban and unban',
+      'There was no way to list the players at all, and that is not an oversight anybody could have fixed with a query. A Firestore client cannot enumerate subcollections, and the Godforge save has no parent document — users/{uid} is a path prefix with nothing sitting at it. Each browser now writes a small summary row when it signs in, and the console reads that. It is an index, not a second source of truth: opening somebody\'s profile re-reads the real documents',
+      'Nothing the console does overwrites a save, because overwriting one does not work. Every device reconciles on sign-in under rules written so that signing in can never cost a player progress — and those same rules will undo an admin edit on the next merge. So each action is spelled in the vocabulary the merge already speaks: granting Gold appends a credit to the ledger\'s operation log, zeroing it appends a spend, clearing a bag writes a deletion marker per item that outranks the item, and a full reset bumps the wipe tombstone that every device obeys without argument',
+      'Lowering XP is the one thing that cannot be done this way. Progression merges by keeping the larger total, deliberately, because that rule is what stops a stale phone from deleting somebody\'s week — and it has no way to tell an admin reset apart from a stale phone. The console says exactly that where the button is, rather than reporting a success that a signed-in device quietly reverses, and points at Full Reset for the case that has to stick',
+      'A ban is enforced by firestore.rules, not by the client, so it holds against a devtools console as firmly as against the game. Banned players see a notice with the reason instead of a game whose saves silently stop landing, which is the same experience as the site being broken and produces the same support message',
+      'A site-wide announcement banner and a maintenance warning, both set from the console and read by every visitor once a session',
+      'Every action the console takes is written to an audit trail before it runs, and that collection is create-only — including for the person using it',
+    ]
+  },
+  {
     version: '2.87.0',
     codename: 'Plain Names',
     date: '2026-08-29',

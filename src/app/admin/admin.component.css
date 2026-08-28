@@ -813,3 +813,60 @@ a.adm-list__main:hover { color: var(--adm-accent); }
 @media (prefers-reduced-motion: reduce) {
   .adm-refresh__glyph--spin { animation: none; }
 }
+
+/* ── Section nav ──────────────────────────────────────────────────────────
+   The Control Room's five panes. A row of buttons rather than links, because
+   these are not routes — see AdminComponent.view for why the nav audit makes a
+   child route under /admin the more expensive option.
+
+   Sticky under the header rather than a true left rail: the dashboard's cards
+   already use the full width, and taking 12rem off them to hold five words
+   would have reflowed every panel on the page to gain nothing. It reads as a
+   sidebar at desktop widths because the content below it is left-aligned. */
+.adm-nav {
+  position: sticky;
+  top: var(--header-offset, 96px);
+  z-index: var(--z-sticky, 20);
+  margin-bottom: var(--space-6, 1.5rem);
+  padding: var(--space-2, 0.5rem) 0;
+  background: var(--surface-page);
+  border-bottom: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+}
+
+.adm-nav__list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2, 0.5rem);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.adm-nav__btn {
+  min-height: var(--tap-min, 44px);
+  display: inline-flex;
+  align-items: center;
+  padding: 0 var(--space-4, 1rem);
+  font: var(--type-label);
+  letter-spacing: var(--tracking-nav);
+  color: var(--text-muted);
+  background: none;
+  border: var(--border-hairline, 1px solid);
+  border-color: transparent;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+}
+
+.adm-nav__btn:hover { color: var(--text-body); }
+
+.adm-nav__btn--on {
+  color: var(--text-accent);
+  background: var(--surface-well);
+  border-color: var(--edge-hairline, currentColor);
+}
+
+.adm-nav__btn:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}

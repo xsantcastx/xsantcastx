@@ -1,0 +1,578 @@
+/*
+ * gm-panel.component.css — the GM console's own surface.
+ *
+ * Every colour is a token from src/styles/tokens/ and every stacking value is a
+ * --z-* var. Both are CI gates rather than preferences: `no-raw-hex-css` is a
+ * ratchet that fails the build if the count of hex literals rises, and
+ * `no-raw-zindex` sits at a hard zero. See scripts/check-ds-adherence.js.
+ *
+ * Desktop-first, deliberately. This is a nine-column table and a side drawer for
+ * an audience of one person doing deskwork. It stays usable narrow — the tables
+ * scroll inside their own container so the page body never does, and every
+ * control clears the 44px tap minimum — but nothing here is optimised for a
+ * phone, because nobody is going to ban somebody from a phone.
+ */
+
+:host {
+  display: block;
+}
+
+/* ── Shared ─────────────────────────────────────────────────────────────── */
+
+.gm-sec {
+  margin-bottom: var(--space-8, 2rem);
+}
+
+.gm-sec__head {
+  margin-bottom: var(--space-5, 1.25rem);
+}
+
+.gm-sec__title {
+  margin: 0 0 var(--space-2, 0.5rem);
+  font: var(--type-page-title);
+  color: var(--text-heading);
+}
+
+.gm-sec__sub,
+.gm-hint,
+.gm-note {
+  margin: 0 0 var(--space-3, 0.75rem);
+  font: var(--type-body);
+  color: var(--text-muted);
+  max-width: 62ch;
+}
+
+.gm-note {
+  padding: var(--space-3, 0.75rem);
+  background: var(--surface-well);
+  border-left: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.gm-sub {
+  margin: 0 0 var(--space-3, 0.75rem);
+  font: var(--type-label);
+  letter-spacing: var(--tracking-eyebrow);
+  text-transform: uppercase;
+  color: var(--text-accent);
+}
+
+.gm-loading,
+.gm-empty {
+  padding: var(--space-6, 1.5rem);
+  font: var(--type-body);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.gm-flash {
+  margin: 0 0 var(--space-4, 1rem);
+  padding: var(--space-3, 0.75rem);
+  font: var(--type-body);
+  color: var(--feedback-success);
+  background: var(--surface-well);
+  border-radius: var(--radius-sm, 6px);
+}
+
+/* Visually hidden but read aloud — table captions and icon-only labels. */
+.gm-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+.gm-gold { color: var(--value-gold-text, var(--text-body)); }
+
+/* ── Alerts ─────────────────────────────────────────────────────────────── */
+
+.gm-alert {
+  margin-bottom: var(--space-4, 1rem);
+  padding: var(--space-4, 1rem);
+  background: var(--surface-well);
+  border: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+  border-radius: var(--radius-md, 10px);
+}
+
+.gm-alert--err { border-color: var(--feedback-error, currentColor); }
+.gm-alert--warn { border-color: var(--feedback-warn, currentColor); }
+
+.gm-alert__title {
+  margin: 0 0 var(--space-2, 0.5rem);
+  font: var(--type-label);
+  color: var(--text-heading);
+}
+
+.gm-alert__body {
+  margin: 0 0 var(--space-3, 0.75rem);
+  font: var(--type-body);
+  color: var(--text-muted);
+}
+
+.gm-alert__body:last-child { margin-bottom: 0; }
+
+/* ── Controls ───────────────────────────────────────────────────────────── */
+
+.gm-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3, 0.75rem);
+  margin-bottom: var(--space-4, 1rem);
+}
+
+.gm-field {
+  display: block;
+  margin-bottom: var(--space-3, 0.75rem);
+}
+
+.gm-field--search { flex: 1 1 18rem; margin-bottom: 0; }
+
+.gm-field__label {
+  display: block;
+  margin-bottom: var(--space-1, 0.25rem);
+  font: var(--type-label);
+  color: var(--text-muted);
+}
+
+.gm-input {
+  width: 100%;
+  min-height: var(--tap-min, 44px);
+  padding: 0 var(--space-3, 0.75rem);
+  font: var(--type-body);
+  color: var(--text-body);
+  background: var(--surface-well);
+  border: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+  border-radius: var(--radius-sm, 6px);
+}
+
+.gm-input--area {
+  padding: var(--space-3, 0.75rem);
+  resize: vertical;
+  line-height: var(--leading-normal, 1.5);
+}
+
+.gm-input:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: var(--focus-offset);
+}
+
+.gm-check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2, 0.5rem);
+  min-height: var(--tap-min, 44px);
+  margin-bottom: var(--space-3, 0.75rem);
+  font: var(--type-body);
+  color: var(--text-body);
+  cursor: pointer;
+}
+
+.gm-btn {
+  min-height: var(--tap-min, 44px);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 var(--space-4, 1rem);
+  font: var(--type-label);
+  color: var(--action-primary-fg);
+  background: var(--action-primary-bg);
+  border: var(--border-hairline, 1px solid);
+  border-color: transparent;
+  border-radius: var(--radius-sm, 6px);
+  cursor: pointer;
+}
+
+.gm-btn:hover:not(:disabled) { background: var(--action-primary-hover); }
+
+.gm-btn:disabled {
+  opacity: var(--action-disabled-opacity, 0.5);
+  cursor: not-allowed;
+}
+
+.gm-btn--ghost {
+  color: var(--action-secondary-fg);
+  background: var(--action-secondary-bg);
+  border-color: var(--action-secondary-border, currentColor);
+}
+
+.gm-btn--danger {
+  color: var(--action-destructive-fg, var(--feedback-error));
+  background: var(--surface-well);
+  border-color: var(--feedback-error, currentColor);
+}
+
+/* The table's row action. Smaller than the 44px minimum would allow at row
+   height, so the hit area is restored with padding rather than by making every
+   row twice as tall as its own text. */
+.gm-btn--sm {
+  min-height: 2rem;
+  padding: 0 var(--space-3, 0.75rem);
+}
+
+.gm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3, 0.75rem);
+  margin-top: var(--space-3, 0.75rem);
+}
+
+/* ── Tables ─────────────────────────────────────────────────────────────── */
+
+/* The table scrolls, never the page. Nine columns will not fit a phone and are
+   not meant to — but the body must not gain a horizontal scrollbar over it. */
+.gm-scroll {
+  overflow-x: auto;
+  border: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+  border-radius: var(--radius-md, 10px);
+}
+
+.gm-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: var(--type-body);
+  white-space: nowrap;
+}
+
+.gm-table th,
+.gm-table td {
+  padding: var(--space-3, 0.75rem);
+  text-align: left;
+  border-bottom: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+}
+
+.gm-table thead th {
+  font: var(--type-label);
+  color: var(--text-faint);
+  background: var(--surface-raised);
+}
+
+.gm-table tbody tr:last-child td { border-bottom: 0; }
+.gm-table tbody tr:hover { background: var(--surface-well); }
+
+.gm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.gm-table th.gm-num .gm-sort { justify-content: flex-end; width: 100%; }
+
+.gm-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1, 0.25rem);
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.gm-sort:hover { color: var(--text-accent); }
+
+.gm-name { display: block; color: var(--text-body); }
+.gm-mail { display: block; font: var(--type-label); color: var(--text-faint); }
+
+.gm-uid {
+  font-family: var(--font-system, monospace);
+  font-size: var(--text-2xs, 0.75rem);
+  color: var(--text-faint);
+}
+
+.gm-uid--full {
+  display: inline-block;
+  margin-top: var(--space-1, 0.25rem);
+  overflow-wrap: anywhere;
+}
+
+.gm-detail {
+  max-width: 32ch;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.gm-action {
+  font-family: var(--font-system, monospace);
+  font-size: var(--text-2xs, 0.75rem);
+  color: var(--text-accent);
+}
+
+.gm-row--banned { opacity: 0.72; }
+
+.gm-pill {
+  display: inline-block;
+  padding: 0 var(--space-2, 0.5rem);
+  font: var(--type-label);
+  color: var(--feedback-success);
+  border: var(--border-hairline, 1px solid);
+  border-color: currentColor;
+  border-radius: var(--radius-pill, 999px);
+}
+
+.gm-pill--banned { color: var(--feedback-error); }
+
+.gm-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4, 1rem);
+  margin-top: var(--space-4, 1rem);
+}
+
+.gm-pager__count {
+  font: var(--type-label);
+  color: var(--text-muted);
+}
+
+/* ── Cards & lists ──────────────────────────────────────────────────────── */
+
+.gm-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--space-4, 1rem);
+  margin-bottom: var(--space-5, 1.25rem);
+}
+
+.gm-card,
+.gm-panel {
+  padding: var(--space-4, 1rem);
+  background: var(--surface-card);
+  border: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+  border-radius: var(--radius-md, 10px);
+}
+
+.gm-panel {
+  margin-bottom: var(--space-4, 1rem);
+  background: var(--surface-panel);
+}
+
+.gm-panel--warn { border-color: var(--feedback-warn, currentColor); }
+
+.gm-card__label {
+  margin: 0 0 var(--space-1, 0.25rem);
+  font: var(--type-label);
+  color: var(--text-faint);
+}
+
+.gm-card__num {
+  margin: 0 0 var(--space-1, 0.25rem);
+  font: var(--type-readout);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+}
+
+.gm-card__foot {
+  margin: 0;
+  font: var(--type-label);
+  color: var(--text-muted);
+}
+
+.gm-split {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+  gap: var(--space-5, 1.25rem);
+  margin-top: var(--space-5, 1.25rem);
+}
+
+.gm-rank {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.gm-rank__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  padding: var(--space-2, 0.5rem) 0;
+  border-bottom: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+}
+
+.gm-rank__name {
+  font: var(--type-body);
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}
+
+.gm-rank__val {
+  font: var(--type-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-muted);
+}
+
+/* ── Player drawer ──────────────────────────────────────────────────────── */
+
+.gm-drawer {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal, 1300);
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* A button rather than a div so the scrim is reachable and dismissible from the
+   keyboard without a manual tabindex. */
+.gm-drawer__scrim {
+  flex: 1;
+  padding: 0;
+  background: var(--scrim-backdrop, transparent);
+  border: 0;
+  cursor: pointer;
+}
+
+.gm-drawer__panel {
+  width: min(40rem, 100%);
+  padding: var(--space-5, 1.25rem);
+  overflow-y: auto;
+  background: var(--surface-panel);
+  border-left: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+  box-shadow: var(--shadow-overlay);
+}
+
+.gm-drawer__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3, 0.75rem);
+  margin-bottom: var(--space-5, 1.25rem);
+}
+
+.gm-drawer__title {
+  margin: 0;
+  font: var(--type-page-title);
+  color: var(--text-heading);
+  overflow-wrap: anywhere;
+}
+
+.gm-drawer__sub {
+  margin: var(--space-1, 0.25rem) 0 0;
+  font: var(--type-body);
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+
+.gm-drawer__sec {
+  padding-top: var(--space-4, 1rem);
+  margin-bottom: var(--space-4, 1rem);
+  border-top: var(--border-hairline, 1px solid);
+  border-color: var(--edge-hairline, currentColor);
+}
+
+.gm-drawer__sec--act { border-color: var(--feedback-warn, currentColor); }
+
+.gm-facts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: var(--space-3, 0.75rem);
+  margin: 0;
+}
+
+.gm-facts dt {
+  font: var(--type-label);
+  color: var(--text-faint);
+}
+
+.gm-facts dd {
+  margin: 0;
+  font: var(--type-body);
+  font-variant-numeric: tabular-nums;
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}
+
+.gm-slots {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font: var(--type-body);
+}
+
+.gm-slots li {
+  display: flex;
+  gap: var(--space-2, 0.5rem);
+  padding: var(--space-1, 0.25rem) 0;
+  color: var(--text-body);
+  overflow-wrap: anywhere;
+}
+
+.gm-slots__k { color: var(--text-faint); min-width: 7rem; }
+
+.gm-raw {
+  margin-top: var(--space-3, 0.75rem);
+  font: var(--type-body);
+  color: var(--text-muted);
+}
+
+.gm-raw summary { cursor: pointer; min-height: var(--tap-min, 44px); display: flex; align-items: center; }
+
+.gm-raw__list {
+  margin: 0;
+  padding-left: var(--space-5, 1.25rem);
+  font-size: var(--text-2xs, 0.75rem);
+}
+
+.gm-grant {
+  display: flex;
+  align-items: flex-end;
+  gap: var(--space-3, 0.75rem);
+}
+
+.gm-grant .gm-field { flex: 1; }
+
+/* ── Confirmation ───────────────────────────────────────────────────────── */
+
+/* Above the drawer it is confirming an action from, which is why it does not
+   reuse --z-modal: a confirm painted under its own trigger is unusable. */
+.gm-confirm {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-toast, 1400);
+  display: grid;
+  place-items: center;
+  padding: var(--space-5, 1.25rem);
+  background: var(--scrim-backdrop, transparent);
+}
+
+.gm-confirm__card {
+  width: min(30rem, 100%);
+  padding: var(--space-5, 1.25rem);
+  background: var(--surface-panel);
+  border: var(--border-hairline, 1px solid);
+  border-color: var(--feedback-warn, currentColor);
+  border-radius: var(--radius-lg, 14px);
+  box-shadow: var(--shadow-overlay);
+}
+
+.gm-confirm__title {
+  margin: 0 0 var(--space-3, 0.75rem);
+  font: var(--type-page-title);
+  color: var(--text-heading);
+}
+
+.gm-confirm__body {
+  margin: 0 0 var(--space-4, 1rem);
+  font: var(--type-body);
+  color: var(--text-body);
+}
+
+.gm-confirm__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: var(--space-3, 0.75rem);
+}
+
+@media (max-width: 768px) {
+  .gm-drawer__panel { width: 100%; }
+  .gm-grant { flex-direction: column; align-items: stretch; }
+}

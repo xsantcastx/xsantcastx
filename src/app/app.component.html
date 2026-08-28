@@ -135,6 +135,22 @@
   <app-device-lease-banner></app-device-lease-banner>
 }
 
+<!-- "You have been banned" and the site-wide announcement strip. A sibling of
+     <main> for the same reason as everything else out here: routeFadeIn leaves
+     a transform on every routed host, and the ban curtain is position:fixed and
+     full-viewport, so inside one it would be pinned to the page instead of the
+     viewport and would scroll away from the person it is addressed to.
+
+     An outlet rather than the component itself, for the same reason the
+     tutorial and the offline summary are: it renders nothing on the
+     overwhelming majority of page loads — nobody banned, nothing announced —
+     so its markup and stylesheet arrive through a dynamic import on the rare
+     load that needs them. Never in embed mode: an iframed tool is not the
+     place to surface either. -->
+@if (!isEmbedMode) {
+  <app-site-notice-outlet></app-site-notice-outlet>
+}
+
 @if (!isEmbedMode) {
   <app-keeper-panel></app-keeper-panel>
 }
