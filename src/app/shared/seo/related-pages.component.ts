@@ -25,8 +25,11 @@
  * that is not in PAGES is dropped at render rather than throwing — a typo here
  * should cost one link, not the page it sits on.
  */
-import { ChangeDetectionStrategy, Component, Input } from '@angular/core';
+import { ChangeDetectionStrategy, Component, Input, computed, inject, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { toSignal } from '@angular/core/rxjs-interop';
+
+import { TranslationService } from '../../translation.service';
 
 interface PageCard {
   readonly route: string;
@@ -35,22 +38,28 @@ interface PageCard {
   readonly blurb: string;
 }
 
-/** Every destination this component knows how to point at. */
-const PAGES: Record<string, Omit<PageCard, 'route'>> = {
-  '/world':             { anchor: 'Eclipse Realms',   blurb: 'The free browser RPG — start here, no download and no sign-up.' },
-  '/forge/runes':       { anchor: 'Rune Forge',       blurb: 'Gamble Gold for rare runes across seven rarity tiers.' },
-  '/forge/crafting':    { anchor: 'Crafting Bench',   blurb: 'Forge weapons and armour with Diablo-style rolled stats.' },
-  '/forge/enchanting':  { anchor: 'Enchanting Table', blurb: 'Socket runes into your gear and hunt the fifteen Socket Words.' },
-  '/market':            { anchor: 'The Market',       blurb: 'Buy upgrades, artifacts and cosmetics with Gold and Essence.' },
-  '/gambler':           { anchor: 'The Gambler',      blurb: 'Open mystery boxes with published odds and bad luck protection.' },
-  '/exchange':          { anchor: 'Grand Exchange',   blurb: 'Trade items and materials on a board priced by the clock.' },
-  '/sanctum':           { anchor: 'The Sanctum',      blurb: 'Manage explorers and send expeditions into the five realms.' },
-  '/character':         { anchor: 'Your Character',   blurb: 'Equipment, stats, rank and every item you own.' },
-  '/leaderboards':      { anchor: 'Leaderboards',     blurb: 'Seven global ladders, with your own place marked in gold.' },
-  '/world/arena':       { anchor: 'The Coliseum',     blurb: 'PvP arena combat settled on the gear you are standing in.' },
-  '/codex':             { anchor: 'The Codex',        blurb: 'Achievements, ten ranks, and the collection log.' },
-  '/world/quests':      { anchor: 'Daily Quests',     blurb: 'Three dailies, two weeklies and five epics that never expire.' },
-  '/world/trials':      { anchor: 'The Trials',       blurb: 'Five free browser mini games hidden inside the world.' },
+/**
+ * Route -> the `related.*` i18n stem that names it.
+ *
+ * The copy itself lives in TranslationService, not here, because this block is
+ * rendered UI and the site is bilingual. The stems are short because each one
+ * expands to `.anchor` and `.blurb`.
+ */
+const PAGES: Record<string, string> = {
+  '/world':            'world',
+  '/forge/runes':      'runes',
+  '/forge/crafting':   'crafting',
+  '/forge/enchanting': 'enchanting',
+  '/market':           'market',
+  '/gambler':          'gambler',
+  '/exchange':         'exchange',
+  '/sanctum':          'sanctum',
+  '/character':        'character',
+  '/leaderboards':     'leaderboards',
+  '/world/arena':      'arena',
+  '/codex':            'codex',
+  '/world/quests':     'quests',
+  '/world/trials':     'trials',
 };
 
 /**
@@ -84,11 +93,11 @@ const RELATED: Record<string, readonly string[]> = {
   imports: [RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (cards.length) {
-      <nav class="gfrel" [attr.aria-label]="heading">
-        <h2 class="gfrel__hd">{{ heading }}</h2>
+    @if (cards().length) {
+      <nav class="gfrel" [attr.aria-label]="heading()">
+        <h2 class="gfrel__hd">{{ heading() }}</h2>
         <ul class="gfrel__list">
-          @for (card of cards; track card.route) {
+          @for (card of cards(); track card.route) {
             <li class="gfrel__item">
               <a class="gfrel__link" [routerLink]="card.route">
                 <span class="gfrel__anchor">{{ card.anchor }}</span>
@@ -196,16 +205,42 @@ const RELATED: Record<string, readonly string[]> = {
   `]
 })
 export class RelatedPagesComponent {
+  private readonly i18n = inject(TranslationService);
+
+  /**
+   * Recomputes the copy when the language changes.
+   *
+   * The component is OnPush, so calling translate() straight from the template
+   * would resolve once and then sit on English for the rest of the session —
+   * setLanguage() pushes through a BehaviorSubject and does not reload the
+   * page. Reading the language through a signal is what makes the switch
+   * actually repaint this block.
+   */
+  private readonly lang = toSignal(this.i18n.currentLanguage$, {
+    initialValue: this.i18n.getCurrentLanguage()
+  });
+
+  private readonly route = signal('/world');
+
   /** The route this component is sitting on, e.g. `/market`. */
   @Input({ required: true })
   set here(value: string) {
-    const key = (value || '').split('?')[0].split('#')[0].replace(/\/+$/, '') || '/world';
-    this.cards = (RELATED[key] ?? [])
-      .filter(route => route in PAGES)
-      .map(route => ({ route, ...PAGES[route] }));
+    this.route.set((value || '').split('?')[0].split('#')[0].replace(/\/+$/, '') || '/world');
   }
 
-  @Input() heading = 'Continue in Eclipse Realms';
+  readonly heading = computed(() => {
+    this.lang();
+    return this.i18n.translate('related.heading');
+  });
 
-  cards: PageCard[] = [];
+  readonly cards = computed<PageCard[]>(() => {
+    this.lang();
+    return (RELATED[this.route()] ?? [])
+      .filter(route => route in PAGES)
+      .map(route => ({
+        route,
+        anchor: this.i18n.translate(`related.${PAGES[route]}.anchor`),
+        blurb:  this.i18n.translate(`related.${PAGES[route]}.blurb`)
+      }));
+  });
 }
