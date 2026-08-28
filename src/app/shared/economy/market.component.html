@@ -540,3 +540,9 @@
     </p>
   </footer>
 </section>
+
+<!-- Contextual links to the adjacent rooms. Static, so they are in the
+     prerendered HTML where a crawler can follow them. See
+     shared/seo/related-pages.component.ts for why these exist alongside
+     the global nav rather than instead of it. -->
+<app-related-pages here="/market"></app-related-pages>

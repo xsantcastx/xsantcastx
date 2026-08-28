@@ -82,6 +82,7 @@ import {
   unsocketCost,
 } from './socket.model';
 
+import { RelatedPagesComponent } from '../seo/related-pages.component';
 /** One socketable item in the bag or on the body, as the picker renders it. */
 export interface SocketableView {
   item: GameItem;
@@ -153,7 +154,7 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
 @Component({
   selector: 'app-enchanting-bench',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule],
   templateUrl: './enchanting-bench.component.html',
   styleUrls: ['./enchanting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
