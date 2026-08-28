@@ -63,6 +63,11 @@ import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { ECONOMY_STATE_KEY, GameStateGateway } from '../save/game-state.gateway';
 import { PROGRESS_KEY } from '../gamification/progress-storage.service';
 import { MergeConflict, SaveSummary, summarise } from './cloud-save.model';
+// Type-only, and deliberately so: a value import here would pull gm.model —
+// and everything the /admin console needs from it — into the initial bundle for
+// every visitor. The runtime half goes through the dynamic import in
+// `publishDirectoryRow` / `readBan` below. See gm-sync.ts.
+import type { BanRecord } from './gm.model';
 import { whenAppCheckReady } from '../../app-check.bootstrap';
 
 /** Remembers across reloads that this browser is bound, so sync resumes itself. */
@@ -166,9 +171,25 @@ export class CloudSaveService {
   private readonly merged$$ = new BehaviorSubject<MergeConflict | null>(null);
   readonly merged$: Observable<MergeConflict | null> = this.merged$$.asObservable();
 
+  /**
+   * The ban tombstone on the signed-in account, if there is one.
+   *
+   * A separate stream rather than a field on `SyncStatus` on purpose. Every
+   * consumer of that interface would have had to grow a case for it, and the
+   * two answer different questions: `SyncStatus` is "is this browser talking to
+   * the cloud", and this is "is the account it is talking about allowed to".
+   * A banned session is a perfectly healthy sync — the writes are what stop.
+   *
+   * Null means "not banned or not signed in", which are the same thing to every
+   * caller. `SiteNoticeComponent` is the only reader today.
+   */
+  private readonly ban$$ = new BehaviorSubject<BanRecord | null>(null);
+  readonly ban$: Observable<BanRecord | null> = this.ban$$.asObservable();
+
   get status(): SyncStatus { return this.status$$.value; }
   get signedIn(): boolean { return this.status$$.value.uid !== null; }
   get merged(): MergeConflict | null { return this.merged$$.value; }
+  get ban(): BanRecord | null { return this.ban$$.value; }
 
   private booted = false;
 
@@ -364,6 +385,10 @@ export class CloudSaveService {
     // own — but the notice is about an account that is going away, so it goes
     // with it.
     this.merged$$.next(null);
+    // The ban belongs to the account, not the browser. Signing out of a banned
+    // account has to clear the notice, or the next visitor on this machine
+    // reads somebody else's sanction.
+    this.ban$$.next(null);
 
     // `detach` sends whatever is still inside the debounce window before letting
     // go. This is the one moment the visitor is explicitly thinking about whether
@@ -448,6 +473,84 @@ export class CloudSaveService {
 
     this.markSynced();
     void this.eggs.trigger(CLOUD_SAVE_EGG);
+
+    // Both of these are deliberately un-awaited and individually caught. They
+    // are bookkeeping for a console one person opens; a Firestore hiccup in
+    // either must not turn a successful sign-in into a thrown bind, which is
+    // what awaiting them here would do. `bind()` has already reported success
+    // by this line, and that is the correct order: the save is synced whether
+    // or not the directory hears about it.
+    void this.publishDirectoryRow(user);
+    void this.readBan(user.uid);
+  }
+
+  /**
+   * Write this account's row in the player directory.
+   *
+   * Called at the end of `bind()` and nowhere else — once per sign-in, which is
+   * the cadence the row's `lastActive` field is defined in terms of. Putting it
+   * on the gateway's four-second flush instead would make the console's "active
+   * today" column exact and cost a document write every four seconds per
+   * signed-in player, which is a bill for a number nobody reads to the minute.
+   *
+   * It runs *after* `attach()`, and that ordering is the whole correctness
+   * argument: before the merge, `PROGRESS_KEY` and `ECONOMY_STATE_KEY` hold
+   * whatever this device happened to have, which on a phone that has not been
+   * opened in a week is not the account's Gold. After it, both are the
+   * reconciled truth.
+   */
+  private async publishDirectoryRow(user: AuthUser): Promise<void> {
+    try {
+      const fs = await this.firestore();
+      const { publishDirectoryRow } = await import('./gm-sync');
+      await publishDirectoryRow(
+        fs,
+        { uid: user.uid, email: user.email, displayName: user.displayName },
+        safeRead(PROGRESS_KEY),
+        // The ledger is enveloped in Firestore but plain in localStorage, which
+        // is what `safeRead` returns — so this is the ledger itself, not `{ v }`.
+        safeRead(ECONOMY_STATE_KEY),
+      );
+    } catch (err) {
+      // A denied write here means the rules have not been deployed yet, which
+      // is an expected state between a code deploy and a rules deploy. The
+      // player loses nothing by it; the console loses one row.
+      this.quietly('directory publish', err);
+    }
+  }
+
+  /**
+   * Read the ban tombstone for the signed-in account.
+   *
+   * The client cannot enforce anything — `firestore.rules` does that, and would
+   * do it whether or not this method existed. What this buys is the difference
+   * between a banned player seeing a reason and a banned player seeing a game
+   * that silently stops saving, which from the inside is indistinguishable from
+   * the site being broken.
+   */
+  private async readBan(uid: string): Promise<void> {
+    try {
+      const fs = await this.firestore();
+      const { readBanRecord } = await import('./gm-sync');
+      const record = await readBanRecord(fs, uid);
+      this.zone.run(() => this.ban$$.next(record));
+    } catch (err) {
+      // Failing to read the ban must never lock anybody out — the enforcement
+      // lives in the rules, so the safe direction here is "assume not banned"
+      // and let the server refuse the write if that guess was wrong.
+      this.quietly('ban read', err);
+    }
+  }
+
+  /**
+   * Log a non-fatal Firestore failure without the console noise a real error
+   * deserves. Same house rule as ChangelogService: a missing rule is a
+   * deployment state, not a bug, and it must not look like one.
+   */
+  private quietly(label: string, err: unknown): void {
+    const code = (err as { code?: string } | null)?.code ?? '';
+    if (code === 'permission-denied' || code === 'unavailable') return;
+    console.warn(`[CloudSave] ${label} skipped:`, err);
   }
 
   /** Dismiss the "we combined them" notice without changing anything. */

@@ -11,6 +11,22 @@ import {
   GitCommit, CiRun, BuildStats, loadingPanel, unavailablePanel
 } from './admin-data.service';
 import { isAdminEmail, ADMIN_EMAIL } from './admin.guard';
+import { GmPanelComponent, GmView } from './gm-panel.component';
+
+/**
+ * Which pane of the Control Room is on screen.
+ *
+ * 'dashboard' is everything this component already rendered — engagement,
+ * eggs, community, CI. The other four are the GM console, and they are handed
+ * to GmPanelComponent as an input rather than being four more sections here.
+ * See the header of gm-panel.component.ts for why that split is where it is.
+ */
+export type AdminView = 'dashboard' | GmView;
+
+interface NavItem {
+  id: AdminView;
+  label: string;
+}
 
 interface Bar {
   label: string;
@@ -23,7 +39,7 @@ interface Bar {
 @Component({
   selector: 'app-admin',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, GmPanelComponent],
   templateUrl: './admin.component.html',
   styleUrls: ['./admin.component.css'],
   providers: [AdminDataService]
@@ -38,6 +54,37 @@ export class AdminComponent implements OnInit, OnDestroy {
 
   /** 'checking' until Firebase restores the session — drives the gate. */
   gate: 'checking' | 'signed-out' | 'denied' | 'ok' = 'checking';
+
+  /**
+   * The open pane. Not a route.
+   *
+   * /admin's five tabs are deliberately not five routes. `scripts/audit-nav.js`
+   * discovers routes by regex from an exact-path allowlist that does not include
+   * admin.routes.ts, so a child route here would be invisible to it and every
+   * routerLink pointing at one would fail the dead-link check — which runs
+   * before the build and gates the deploy. Adding the file to that allowlist and
+   * then exempting each child from the orphan check would be three edits to a CI
+   * script to give one person a deep link they will never use.
+   */
+  view: AdminView = 'dashboard';
+
+  readonly nav: NavItem[] = [
+    { id: 'dashboard', label: 'Dashboard' },
+    { id: 'users', label: 'Users' },
+    { id: 'economy', label: 'Economy' },
+    { id: 'actions', label: 'Actions' },
+    { id: 'logs', label: 'Logs' },
+  ];
+
+  show(view: AdminView): void {
+    this.view = view;
+    this.cdr.markForCheck();
+  }
+
+  /** Identity handed to the GM panel so its audit entries name an author. */
+  get actor(): { uid: string; email: string } {
+    return { uid: this.user?.uid ?? '', email: this.user?.email ?? '' };
+  }
   user: User | null = null;
   signInError = '';
   readonly adminEmail = ADMIN_EMAIL;

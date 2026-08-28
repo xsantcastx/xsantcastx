@@ -1,0 +1,504 @@
+<!--
+  The GM console's four views. The parent owns the sidebar and hands the chosen
+  one down as `view`; everything below branches on it.
+
+  Every table is wrapped in `.gm-scroll` — a horizontal-overflow container — for
+  the reason the house style demands it: the page body must never scroll
+  sideways, and a nine-column table at 375px will otherwise make it.
+-->
+
+@if (loadError) {
+  <div class="gm-alert gm-alert--err" role="alert">
+    <p class="gm-alert__title">The console could not load.</p>
+    <p class="gm-alert__body">{{ loadError }}</p>
+    <button type="button" class="gm-btn" (click)="reload()">Try again</button>
+  </div>
+} @else if (loading) {
+  <p class="gm-loading" role="status">Reading the roster&hellip;</p>
+} @else {
+
+  @if (flash) {
+    <p class="gm-flash" role="status">{{ flash }}</p>
+  }
+
+  <!-- ── Users ─────────────────────────────────────────────────────────── -->
+  @if (view === 'users') {
+    <section class="gm-sec" aria-labelledby="gm-users-h">
+      <header class="gm-sec__head">
+        <h2 class="gm-sec__title" id="gm-users-h">Players</h2>
+        <p class="gm-sec__sub">
+          {{ num(players.length) }} known {{ players.length === 1 ? 'account' : 'accounts' }}
+          &middot; {{ num(stats?.activeToday) }} active today
+          &middot; {{ num(stats?.newThisWeek) }} new this week
+        </p>
+      </header>
+
+      <div class="gm-toolbar">
+        <label class="gm-field gm-field--search">
+          <span class="gm-field__label">Search</span>
+          <input
+            type="search"
+            class="gm-input"
+            [(ngModel)]="search"
+            (ngModelChange)="onSearch()"
+            placeholder="name, email, uid or rank"
+            autocomplete="off">
+        </label>
+        <button type="button" class="gm-btn gm-btn--ghost" (click)="reload()">Refresh</button>
+      </div>
+
+      @if (!filtered.length) {
+        <p class="gm-empty">
+          @if (players.length) {
+            Nothing matches &ldquo;{{ search }}&rdquo;.
+          } @else {
+            No players yet. A row appears here the first time somebody signs in
+            after this release ships &mdash; the directory is written at sign-in,
+            so accounts that existed before it will appear as their owners return.
+          }
+        </p>
+      } @else {
+        <div class="gm-scroll">
+          <table class="gm-table">
+            <caption class="gm-sr">Registered players, sortable by column</caption>
+            <thead>
+              <tr>
+                <th scope="col">
+                  <button type="button" class="gm-sort" (click)="sortBy('displayName')">
+                    Player
+                    @if (sortKey === 'displayName') { <span aria-hidden="true">{{ sortDesc ? '↓' : '↑' }}</span> }
+                  </button>
+                </th>
+                <th scope="col">UID</th>
+                <th scope="col">
+                  <button type="button" class="gm-sort" (click)="sortBy('rank')">
+                    Rank
+                    @if (sortKey === 'rank') { <span aria-hidden="true">{{ sortDesc ? '↓' : '↑' }}</span> }
+                  </button>
+                </th>
+                <th scope="col" class="gm-num">
+                  <button type="button" class="gm-sort" (click)="sortBy('level')">
+                    Level
+                    @if (sortKey === 'level') { <span aria-hidden="true">{{ sortDesc ? '↓' : '↑' }}</span> }
+                  </button>
+                </th>
+                <th scope="col" class="gm-num">
+                  <button type="button" class="gm-sort" (click)="sortBy('gold')">
+                    Gold
+                    @if (sortKey === 'gold') { <span aria-hidden="true">{{ sortDesc ? '↓' : '↑' }}</span> }
+                  </button>
+                </th>
+                <th scope="col" class="gm-num">
+                  <button type="button" class="gm-sort" (click)="sortBy('totalXp')">
+                    XP
+                    @if (sortKey === 'totalXp') { <span aria-hidden="true">{{ sortDesc ? '↓' : '↑' }}</span> }
+                  </button>
+                </th>
+                <th scope="col">
+                  <button type="button" class="gm-sort" (click)="sortBy('lastActive')">
+                    Last active
+                    @if (sortKey === 'lastActive') { <span aria-hidden="true">{{ sortDesc ? '↓' : '↑' }}</span> }
+                  </button>
+                </th>
+                <th scope="col">Status</th>
+                <th scope="col"><span class="gm-sr">Actions</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (p of pageRows; track p.uid) {
+                <tr [class.gm-row--banned]="isBanned(p.uid)">
+                  <td>
+                    <span class="gm-name">{{ p.displayName }}</span>
+                    @if (p.email) { <span class="gm-mail">{{ p.email }}</span> }
+                  </td>
+                  <td><code class="gm-uid" [title]="p.uid">{{ shortUid(p.uid) }}</code></td>
+                  <td>{{ p.rank }}</td>
+                  <td class="gm-num">{{ num(p.level) }}</td>
+                  <td class="gm-num gm-gold">{{ num(p.gold) }}</td>
+                  <td class="gm-num">{{ num(p.totalXp) }}</td>
+                  <td>{{ ago(p.lastActive) }}</td>
+                  <td>
+                    @if (isBanned(p.uid)) {
+                      <span class="gm-pill gm-pill--banned">Banned</span>
+                    } @else {
+                      <span class="gm-pill">Active</span>
+                    }
+                  </td>
+                  <td>
+                    <button type="button" class="gm-btn gm-btn--sm" (click)="open(p)">Manage</button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+
+        <div class="gm-pager">
+          <button type="button" class="gm-btn gm-btn--ghost" (click)="prevPage()" [disabled]="page === 0">
+            Previous
+          </button>
+          <span class="gm-pager__count">Page {{ page + 1 }} of {{ pageCount }}</span>
+          <button
+            type="button"
+            class="gm-btn gm-btn--ghost"
+            (click)="nextPage()"
+            [disabled]="page >= pageCount - 1">Next</button>
+        </div>
+      }
+    </section>
+  }
+
+  <!-- ── Economy ───────────────────────────────────────────────────────── -->
+  @if (view === 'economy') {
+    <section class="gm-sec" aria-labelledby="gm-econ-h">
+      <header class="gm-sec__head">
+        <h2 class="gm-sec__title" id="gm-econ-h">Economy</h2>
+        <p class="gm-sec__sub">
+          Totals across every directory row. These are denormalised at each
+          player&rsquo;s last sign-in, so a figure here is as fresh as that
+          account is active &mdash; not a live sum of the ledgers.
+        </p>
+      </header>
+
+      <div class="gm-cards">
+        <article class="gm-card">
+          <p class="gm-card__label">Gold in circulation</p>
+          <p class="gm-card__num gm-gold">{{ num(stats?.totalGold) }}</p>
+          <p class="gm-card__foot">held across {{ num(stats?.players) }} accounts</p>
+        </article>
+        <article class="gm-card">
+          <p class="gm-card__label">Lifetime XP</p>
+          <p class="gm-card__num">{{ num(stats?.totalXp) }}</p>
+          <p class="gm-card__foot">monotonic &mdash; only ever rises</p>
+        </article>
+        <article class="gm-card">
+          <p class="gm-card__label">Active today</p>
+          <p class="gm-card__num">{{ num(stats?.activeToday) }}</p>
+          <p class="gm-card__foot">signed in within 24 hours</p>
+        </article>
+        <article class="gm-card">
+          <p class="gm-card__label">New this week</p>
+          <p class="gm-card__num">{{ num(stats?.newThisWeek) }}</p>
+          <p class="gm-card__foot">first struck the Flame in 7 days</p>
+        </article>
+      </div>
+
+      <!--
+        No inflation figure, and that is a deliberate omission rather than an
+        unfinished one. Gold minted and burned per day would need a running
+        total sampled on a schedule; every number available here is a snapshot,
+        and a "supply is growing" arrow computed from two snapshots taken
+        whenever the owner happened to open the page would be noise wearing a
+        trend's clothes. The honest version needs a daily job writing a series,
+        which is a Cloud Function rather than a panel.
+      -->
+      <p class="gm-note">
+        Gold created and destroyed per day, and the inflation arrow that would
+        follow from them, need a daily sampled series to be meaningful. Nothing
+        on this page can produce one from a single read &mdash; that panel wants
+        a scheduled function writing a history, not a snapshot difference.
+      </p>
+
+      <div class="gm-split">
+        <section aria-labelledby="gm-rich-h">
+          <h3 class="gm-sub" id="gm-rich-h">Richest players</h3>
+          <ol class="gm-rank">
+            @for (p of stats?.richest ?? []; track p.uid) {
+              <li class="gm-rank__row">
+                <span class="gm-rank__name">{{ p.displayName }}</span>
+                <span class="gm-rank__val gm-gold">{{ num(p.gold) }}</span>
+              </li>
+            } @empty {
+              <li class="gm-empty">No players yet.</li>
+            }
+          </ol>
+        </section>
+
+        <section aria-labelledby="gm-active-h">
+          <h3 class="gm-sub" id="gm-active-h">Most recently active</h3>
+          <ol class="gm-rank">
+            @for (p of stats?.mostActive ?? []; track p.uid) {
+              <li class="gm-rank__row">
+                <span class="gm-rank__name">{{ p.displayName }}</span>
+                <span class="gm-rank__val">{{ ago(p.lastActive) }}</span>
+              </li>
+            } @empty {
+              <li class="gm-empty">No players yet.</li>
+            }
+          </ol>
+        </section>
+      </div>
+    </section>
+  }
+
+  <!-- ── Actions ───────────────────────────────────────────────────────── -->
+  @if (view === 'actions') {
+    <section class="gm-sec" aria-labelledby="gm-act-h">
+      <header class="gm-sec__head">
+        <h2 class="gm-sec__title" id="gm-act-h">Server actions</h2>
+        <p class="gm-sec__sub">Everything here affects every player at once.</p>
+      </header>
+
+      <article class="gm-panel">
+        <h3 class="gm-sub">Site-wide notice</h3>
+        <p class="gm-hint">
+          Shown as a strip under the header on every page. Visitors already
+          holding a cached copy pick up a change within five minutes &mdash;
+          nothing here can reach into a browser that has already read it.
+        </p>
+
+        <label class="gm-field">
+          <span class="gm-field__label">Announcement</span>
+          <textarea
+            class="gm-input gm-input--area"
+            [(ngModel)]="broadcastText"
+            maxlength="400"
+            rows="2"
+            placeholder="Left empty, no announcement is shown."></textarea>
+        </label>
+
+        <label class="gm-check">
+          <input type="checkbox" [(ngModel)]="maintenanceOn">
+          <span>Maintenance mode &mdash; warn players before downtime</span>
+        </label>
+
+        @if (maintenanceOn) {
+          <label class="gm-field">
+            <span class="gm-field__label">Maintenance note</span>
+            <input
+              type="text"
+              class="gm-input"
+              [(ngModel)]="maintenanceNote"
+              maxlength="400"
+              placeholder="Back in about twenty minutes.">
+          </label>
+          <p class="gm-hint">
+            The maintenance warning outranks the announcement, and clearing it
+            only lasts the session &mdash; it comes back on the next page load.
+            A visitor who dismissed last month&rsquo;s news has not thereby
+            agreed to be surprised by downtime.
+          </p>
+        }
+
+        <button type="button" class="gm-btn" (click)="askSaveNotice()">Publish notice</button>
+
+        @if (notice?.updatedAt) {
+          <p class="gm-hint">Last changed {{ ago(notice?.updatedAt) }}.</p>
+        }
+      </article>
+
+      <article class="gm-panel gm-panel--warn">
+        <h3 class="gm-sub">Emergency levers</h3>
+        <p class="gm-hint">
+          Both of these read and write one document per player. They exist for
+          the day something ships broken, not for tuning.
+        </p>
+        <div class="gm-actions">
+          <button type="button" class="gm-btn gm-btn--danger" (click)="askResetDailyQuests()">
+            Reset daily quests
+          </button>
+          <button type="button" class="gm-btn gm-btn--ghost" (click)="askPurgeLeases()">
+            Purge expired device leases
+          </button>
+        </div>
+      </article>
+    </section>
+  }
+
+  <!-- ── Logs ──────────────────────────────────────────────────────────── -->
+  @if (view === 'logs') {
+    <section class="gm-sec" aria-labelledby="gm-log-h">
+      <header class="gm-sec__head">
+        <h2 class="gm-sec__title" id="gm-log-h">Audit trail</h2>
+        <p class="gm-sec__sub">
+          Every action this console takes, written before it runs. Create-only:
+          nothing here can be edited or deleted, including by you.
+        </p>
+      </header>
+
+      @if (!audit.length) {
+        <p class="gm-empty">No actions recorded yet.</p>
+      } @else {
+        <div class="gm-scroll">
+          <table class="gm-table">
+            <caption class="gm-sr">Admin audit trail, newest first</caption>
+            <thead>
+              <tr>
+                <th scope="col">When</th>
+                <th scope="col">Action</th>
+                <th scope="col">Target</th>
+                <th scope="col">Detail</th>
+                <th scope="col">By</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (row of audit; track row.id) {
+                <tr>
+                  <td [title]="row.at ? (row.at | date: 'medium') : ''">{{ ago(row.at) }}</td>
+                  <td><code class="gm-action">{{ row.action }}</code></td>
+                  <td>{{ row.targetName }}</td>
+                  <td class="gm-detail">{{ row.detail }}</td>
+                  <td>{{ row.actorEmail || '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  }
+}
+
+<!-- ── Player drawer ───────────────────────────────────────────────────── -->
+@if (selected) {
+  <div class="gm-drawer" role="dialog" aria-modal="true" aria-labelledby="gm-drawer-h">
+    <button type="button" class="gm-drawer__scrim" (click)="close()" aria-label="Close player"></button>
+    <div class="gm-drawer__panel">
+      <header class="gm-drawer__head">
+        <div>
+          <h2 class="gm-drawer__title" id="gm-drawer-h">{{ selected.displayName }}</h2>
+          <p class="gm-drawer__sub">{{ selected.email || 'no address on the credential' }}</p>
+          <code class="gm-uid gm-uid--full">{{ selected.uid }}</code>
+        </div>
+        <button type="button" class="gm-btn gm-btn--ghost" (click)="close()">Close</button>
+      </header>
+
+      @if (isBanned(selected.uid)) {
+        <div class="gm-alert gm-alert--warn">
+          <p class="gm-alert__title">This account is banned.</p>
+          <p class="gm-alert__body">
+            {{ bans.get(selected.uid)?.reason || 'No reason was recorded.' }}
+            &middot; issued {{ ago(bans.get(selected.uid)?.bannedAt) }}
+          </p>
+        </div>
+      }
+
+      @if (profileLoading) {
+        <p class="gm-loading" role="status">Reading their save&hellip;</p>
+      } @else if (profileError) {
+        <div class="gm-alert gm-alert--err" role="alert">
+          <p class="gm-alert__body">{{ profileError }}</p>
+        </div>
+      } @else if (profile) {
+
+        <section class="gm-drawer__sec" aria-labelledby="gm-prof-h">
+          <h3 class="gm-sub" id="gm-prof-h">Progression</h3>
+          <dl class="gm-facts">
+            <div><dt>Rank</dt><dd>{{ text(profile.progress, 'levelTitle') }}</dd></div>
+            <div><dt>Level</dt><dd>{{ num(field(profile.progress, 'level')) }}</dd></div>
+            <div><dt>Lifetime XP</dt><dd>{{ num(field(profile.progress, 'xp')) }}</dd></div>
+            <div><dt>Streak</dt><dd>{{ num(field(profile.progress, 'streak')) }} days</dd></div>
+            <div><dt>Best streak</dt><dd>{{ num(field(profile.progress, 'bestStreak')) }} days</dd></div>
+            <div><dt>First seen</dt><dd>{{ date(profile.progress, 'createdAt') }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="gm-drawer__sec" aria-labelledby="gm-wealth-h">
+          <h3 class="gm-sub" id="gm-wealth-h">Wealth</h3>
+          <dl class="gm-facts">
+            <div><dt>Gold</dt><dd class="gm-gold">{{ num(field(profile.ledger, 'gold')) }}</dd></div>
+            <div><dt>Eclipse Essence</dt><dd>{{ num(field(profile.ledger, 'eclipseEssence')) }}</dd></div>
+            <div><dt>Lifetime Gold</dt><dd>{{ num(field(profile.ledger, 'totalGoldEarned')) }}</dd></div>
+            <div><dt>Eclipse Shards</dt><dd>{{ num(field(profile.ledger, 'eclipseShards')) }}</dd></div>
+            <div><dt>Prestiges</dt><dd>{{ num(field(profile.ledger, 'prestigeCount')) }}</dd></div>
+            <div><dt>Flame strikes</dt><dd>{{ num(field(profile.ledger, 'totalClicks')) }}</dd></div>
+          </dl>
+        </section>
+
+        <section class="gm-drawer__sec" aria-labelledby="gm-inv-h">
+          <h3 class="gm-sub" id="gm-inv-h">Inventory &amp; loadout</h3>
+          <p class="gm-hint">{{ num(itemCount(profile)) }} items held.</p>
+          @if (equipped(profile).length) {
+            <ul class="gm-slots">
+              @for (slot of equipped(profile); track slot.slot) {
+                <li><span class="gm-slots__k">{{ slot.slot }}</span><code>{{ slot.id }}</code></li>
+              }
+            </ul>
+          } @else {
+            <p class="gm-hint">Nothing equipped.</p>
+          }
+        </section>
+
+        <section class="gm-drawer__sec" aria-labelledby="gm-quest-h">
+          <h3 class="gm-sub" id="gm-quest-h">Quests &amp; activity</h3>
+          <dl class="gm-facts">
+            <div><dt>Quests completed</dt><dd>{{ num(field(profile.quests, 'totalCompleted')) }}</dd></div>
+            <div><dt>Last active</dt><dd>{{ ago(selected.lastActive) }}</dd></div>
+            <div><dt>Save documents</dt><dd>{{ num(profile.documents.length) }}</dd></div>
+          </dl>
+          <details class="gm-raw">
+            <summary>Every save document</summary>
+            <ul class="gm-raw__list">
+              @for (d of profile.documents; track d) { <li><code>{{ d }}</code></li> }
+            </ul>
+          </details>
+        </section>
+
+        <section class="gm-drawer__sec gm-drawer__sec--act" aria-labelledby="gm-do-h">
+          <h3 class="gm-sub" id="gm-do-h">Actions</h3>
+
+          <div class="gm-grant">
+            <label class="gm-field">
+              <span class="gm-field__label">Grant Gold</span>
+              <input type="number" class="gm-input" [(ngModel)]="grantAmount" min="1" step="1" placeholder="amount">
+            </label>
+            <button
+              type="button"
+              class="gm-btn"
+              (click)="askGrantGold()"
+              [disabled]="!grantAmount || grantAmount <= 0">Grant</button>
+          </div>
+
+          <label class="gm-field">
+            <span class="gm-field__label">Ban reason</span>
+            <input type="text" class="gm-input" [(ngModel)]="banReason" maxlength="500"
+                   placeholder="shown to them on every page">
+          </label>
+
+          <div class="gm-actions">
+            @if (isBanned(selected.uid)) {
+              <button type="button" class="gm-btn" (click)="askUnban()">Lift ban</button>
+            } @else {
+              <button type="button" class="gm-btn gm-btn--danger" (click)="askBan()">Ban account</button>
+            }
+            <button type="button" class="gm-btn gm-btn--ghost" (click)="askResetStats()">Reset stats</button>
+            <button type="button" class="gm-btn gm-btn--ghost" (click)="askResetInventory()">Reset inventory</button>
+            <button type="button" class="gm-btn gm-btn--danger" (click)="askFullReset()">Full reset</button>
+          </div>
+        </section>
+      }
+    </div>
+  </div>
+}
+
+<!-- ── Confirmation ────────────────────────────────────────────────────── -->
+@if (pending) {
+  <div class="gm-confirm" role="alertdialog" aria-modal="true" aria-labelledby="gm-confirm-h">
+    <div class="gm-confirm__card">
+      <h2 class="gm-confirm__title" id="gm-confirm-h">{{ pending.title }}</h2>
+      <p class="gm-confirm__body">{{ pending.body }}</p>
+
+      @if (pending.severity === 'extreme') {
+        <label class="gm-field">
+          <span class="gm-field__label">
+            Type <strong>{{ pending.guardWord }}</strong> to confirm
+          </span>
+          <input type="text" class="gm-input" [(ngModel)]="guardTyped" autocomplete="off">
+        </label>
+      }
+
+      <div class="gm-confirm__actions">
+        <button type="button" class="gm-btn gm-btn--ghost" (click)="cancel()" [disabled]="busy">
+          Cancel
+        </button>
+        <button
+          type="button"
+          class="gm-btn gm-btn--danger"
+          (click)="confirm()"
+          [disabled]="!armed || busy">
+          {{ busy ? 'Working…' : pending.confirmLabel }}
+        </button>
+      </div>
+    </div>
+  </div>
+}
