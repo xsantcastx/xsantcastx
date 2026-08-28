@@ -341,4 +341,19 @@ export const CACHE_TTL = {
   admin: 5,
   /** Cloud save blobs. Short: this one is progression, not decoration. */
   cloudSave: 5,
+  /**
+   * The site-wide notice — the broadcast banner and the maintenance flag.
+   *
+   * Five minutes, and the reasoning is the same shape as the admin panels'
+   * but for the opposite reason: this document is read by *every* visitor on
+   * *every* page load, so it is the one entry in this table where the TTL is
+   * protecting the bill rather than the owner's patience. Five minutes is
+   * also the honest latency to quote for a maintenance warning — the announce
+   * is written well before the downtime, not during it.
+   *
+   * `bustPrefix` is not enough to make one appear sooner on a visitor's
+   * machine; nothing can be, since the cache lives in their localStorage.
+   * That is a property of a read-through cache, not a defect in this number.
+   */
+  notice: 5,
 } as const;
