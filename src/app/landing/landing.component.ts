@@ -35,6 +35,7 @@ import { RUNES, RUNEWORDS } from '../shared/rune-forge/rune.model';
 import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LORE_SCROLLS } from '../shared/rune-forge/lore-scroll.model';
 
+import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 /** One realm station on the World door. Narrative places, not tool domains. */
 export interface ForgeStation {
   readonly realm: NarrativeRealm;
@@ -45,7 +46,7 @@ export interface ForgeStation {
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
   standalone: true,
-  imports: [RouterModule, AdsenseComponent, WorldAtlasComponent, InspectButtonComponent, CurrentWorkTileComponent]
+  imports: [RelatedPagesComponent, RouterModule, AdsenseComponent, WorldAtlasComponent, InspectButtonComponent, CurrentWorkTileComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

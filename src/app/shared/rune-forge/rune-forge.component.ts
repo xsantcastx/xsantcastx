@@ -75,6 +75,7 @@ import { ForgeCraftGateway } from '../rpg/forge-craft.gateway';
 import { InventoryService } from '../rpg/inventory.service';
 import type { GameItem } from '../rpg/item.model';
 
+import { RelatedPagesComponent } from '../seo/related-pages.component';
 /** A rune as the inventory grid needs it. */
 interface RuneCell {
   rune: Rune;
@@ -112,7 +113,7 @@ interface RecipeRow {
 @Component({
   selector: 'app-rune-forge',
   standalone: true,
-  imports: [CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent],
+  imports: [RelatedPagesComponent, CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],

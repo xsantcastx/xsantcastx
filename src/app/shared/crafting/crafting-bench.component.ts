@@ -78,6 +78,7 @@ import {
   type CraftingRecipe,
 } from './crafting.model';
 
+import { RelatedPagesComponent } from '../seo/related-pages.component';
 /** One ingredient, as the anvil renders it. */
 export interface SlotView {
   materialId: string;
@@ -119,7 +120,7 @@ const DIAL_R = 46;
 @Component({
   selector: 'app-crafting-bench',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule],
   templateUrl: './crafting-bench.component.html',
   styleUrls: ['./crafting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
