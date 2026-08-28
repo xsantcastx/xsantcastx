@@ -129,6 +129,7 @@ import {
   serializeMarketQuery,
 } from './market-query';
 
+import { RelatedPagesComponent } from '../seo/related-pages.component';
 /** Every shelf in the shop. `eclipse` renders a ritual, not a list. */
 export type CategoryId =
   | 'forge' | 'hammer' | 'automaton' | 'mastery' | 'expedition' | 'thrall'
@@ -327,7 +328,7 @@ const CATALOGUE_PICKS = [
 @Component({
   selector: 'app-market',
   standalone: true,
-  imports: [CommonModule, RouterLink, ArtSceneComponent, InspectButtonComponent],
+  imports: [RelatedPagesComponent, CommonModule, RouterLink, ArtSceneComponent, InspectButtonComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './market.component.html',
   styleUrls: ['./market.component.css'],

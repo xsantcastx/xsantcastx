@@ -1,22 +1,31 @@
 /**
  * title-strategy.service.ts — the browser-tab name for every route.
  *
- * The site is The Godforge. "xsantcastx" is the maker's mark, not the product
- * name, and it is deliberately absent from page titles — it lives in the header
- * logo, the footer copyright, /about, the npm package name, and the SEO
+ * The product is Eclipse Realms. "xsantcastx" is the maker's mark, not the
+ * product name, and it is deliberately absent from page titles — it lives in
+ * the header logo, the footer copyright, the npm package name, and the SEO
  * keywords where it earns discovery. Nowhere else.
  *
  * Naming rule, applied by hand in the router config rather than by a helper:
- *   - a page whose name is already ours stands alone — "The Arena",
- *     "The Codex", "The War Table", "Fuel the Forge"
- *   - a page with a generic name takes the product on the end for context —
- *     "Contact — The Godforge", "MCP Server — The Godforge"
  *
- * The 128 tool pages keep their keyword phrasing and simply end in
- * "— The Godforge" instead of the old wordmark: a title is the strongest
- * on-page ranking signal there is, and those phrases are what the pages rank
- * on. Rebranding the suffix costs nothing; rewriting them to bare tool names
- * would.
+ *     <what the page is, in words people search> — <detail> | Eclipse Realms
+ *
+ * e.g. "Crafting Bench — Forge Weapons & Armor | Eclipse Realms".
+ *
+ * This replaced a rule that let a page whose name was already ours stand alone
+ * — "The Codex", "The Standing Orders", "The Bench". Those titles read well and
+ * ranked for nothing. A title is the strongest on-page signal there is, and
+ * nobody searches for "The Standing Orders"; they search for "daily quests".
+ * The in-world name is kept at the front because it is also the brand and the
+ * page's actual heading, and the searchable phrase follows it in the same
+ * breath, before the pipe. Both halves fit inside the ~60 characters Google
+ * renders before it truncates.
+ *
+ * The suffix is "| Eclipse Realms" everywhere, including on pages that used to
+ * end in "— The Godforge". Two wordmarks across one site splits the brand
+ * signal between them; the Godforge survives as the name of the forge itself
+ * (and as `alternateName` on the VideoGame node in the router), not as a second
+ * name for the site.
  */
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';

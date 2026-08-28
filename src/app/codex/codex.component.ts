@@ -74,6 +74,7 @@ import { InventoryService } from '../shared/rpg/inventory.service';
 import { SOCKET_WORDS, matchSocketWord, wordTier } from '../shared/enchanting/socket-words';
 import { RUNE_TIERS, runeById } from '../shared/rune-forge/rune.model';
 
+import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 export type CodexTab = 'achievements' | 'collection' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
 
 interface TabDefinition {
@@ -185,7 +186,7 @@ const SCROLL_TIER_TO_RARITY: Record<RuneTier, EclipseRarity> = {
 @Component({
   selector: 'app-codex',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, CollectionLogComponent],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent],
   templateUrl: './codex.component.html',
   styleUrls: ['./codex.component.css'],
 })
