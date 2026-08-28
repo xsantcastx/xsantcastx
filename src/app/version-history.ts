@@ -17,6 +17,20 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.87.0',
+    codename: 'Plain Names',
+    date: '2026-08-29',
+    highlights: [
+      'Nine pages were named the way the game names them and ranked for nothing. "The Bench", "The Standing Orders", "The Inner Sanctum", "The Grand Exchange" — good names, and nobody types them into a search box. Every title now leads with its in-world name and follows it, before the pipe, with the words people actually search: "Crafting Bench — Forge Weapons & Armor | Eclipse Realms", "Daily Quests — Missions & Rewards", "Rune Forge — Gamble for Rare Runes". The in-world half stays because it is the brand and the page\'s own heading; the searchable half is what earns the click. Every one fits inside the ~60 characters Google renders before it truncates',
+      'Half the site called itself The Godforge and half called itself Eclipse Realms, which splits one brand across two names for anyone counting. The suffix is "| Eclipse Realms" everywhere now. The Godforge survives as the name of the forge itself, and as alternateName on the schema node below',
+      'The structured data described a document, not a game. WebSite and WebPage say what shape a page is; they say nothing about what is on it, so the whole site read to a crawler as a page that happens to mention runes. /world now carries a VideoGame node with the properties Google actually reads for one: genre, gamePlatform, applicationCategory, playMode, browserRequirements, and a zero-price Offer that turns "free" from a word in the prose into a machine-readable fact. Deliberately no aggregateRating — Google requires those to be backed by reviews shown on the page, and inventing one is the short road to a manual action',
+      'A Person node now exists. /codex had been referencing one by @id for months with nothing anywhere to resolve it to',
+      'Every room grew a block of three contextual links at its foot. The global nav already links everything to everything, which is exactly why it carries no signal about which pages are related — a link from the Gambler to the Exchange means something when it sits in the body and nothing when it sits in a bar with eight others. They are static, so they land in the prerendered HTML rather than appearing only after hydration, and the copy goes through the translation table like the rest of the UI',
+      'Sitemap priorities re-tiered. The eight playable rooms — the forge, the bench, the table, the market, the gambler, the exchange, the sanctum and the coliseum, which between them hold every search term the game has — were sitting on the 0.5 fallback, below the lore pages at 0.8',
+      'How to actually get the sitemap in front of Google is written down in scripts/generate-sitemap.js. Generating one does not submit it, and the file had been regenerating itself on every build for months with nobody having done the one-time Search Console step',
+    ]
+  },
+  {
     version: '2.86.0',
     codename: 'Two Violets',
     date: '2026-08-25',
