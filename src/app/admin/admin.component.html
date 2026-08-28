@@ -63,6 +63,31 @@
       </div>
     </header>
 
+    <!-- Five panes, one component. Not five routes — see AdminComponent.view for
+         why the nav audit makes a child route the more expensive option. -->
+    <nav class="adm-nav" aria-label="Control Room sections">
+      <ul class="adm-nav__list">
+        @for (item of nav; track item.id) {
+          <li>
+            <button
+              type="button"
+              class="adm-nav__btn"
+              [class.adm-nav__btn--on]="view === item.id"
+              [attr.aria-current]="view === item.id ? 'page' : null"
+              (click)="show(item.id)">{{ item.label }}</button>
+          </li>
+        }
+      </ul>
+    </nav>
+
+    <div class="adm-body">
+
+    @if (view !== 'dashboard') {
+      <app-gm-panel [view]="view" [actor]="actor"></app-gm-panel>
+    }
+
+    @if (view === 'dashboard') {
+
     <!-- ── 1. Overview ─────────────────────────────────────────────────── -->
 
     <section class="adm-sec" aria-labelledby="sec-overview">
@@ -532,6 +557,9 @@
 
       </div>
     </section>
+    }
+
+    </div>
 
     <footer class="adm-foot">
       <span>The Godforge control room · v{{ version.version }}</span>

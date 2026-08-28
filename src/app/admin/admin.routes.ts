@@ -5,6 +5,7 @@ import { getApp } from '@angular/fire/app';
 import { AdminComponent } from './admin.component';
 import { adminGuard } from './admin.guard';
 import { AdminDataService } from './admin-data.service';
+import { GmDataService } from './gm-data.service';
 
 /**
  * /admin is lazy because provideAuth() drags in
@@ -41,7 +42,10 @@ export const ADMIN_ROUTES: Routes = [
           return getFirestore(app);
         }
       }),
-      AdminDataService
+      AdminDataService,
+      // Listed for the same reason AdminDataService is: it injects Firestore,
+      // and the only Firestore that exists is the one provided above.
+      GmDataService
     ]
   }
 ];

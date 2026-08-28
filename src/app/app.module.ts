@@ -32,6 +32,7 @@ import { LevelUpBannerComponent } from './shared/activity/level-up-banner.compon
 import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
 import { CloudSaveMergeDialogComponent } from './shared/cloud-save/cloud-save-merge-dialog.component';
 import { DeviceLeaseBannerComponent } from './shared/save/device-lease-banner.component';
+import { SiteNoticeOutletComponent } from './shared/notice/site-notice-outlet.component';
 import { KeeperPanelComponent } from './shared/keeper/keeper-panel.component';
 import { CloudSaveChipComponent } from './shared/cloud-save/cloud-save-chip.component';
 import { CloudSaveButtonComponent } from './shared/cloud-save/cloud-save-button.component';
@@ -84,6 +85,7 @@ import { PwaService } from './shared/pwa.service';
     ForgeFlameComponent,
     CloudSaveMergeDialogComponent,
     DeviceLeaseBannerComponent,
+    SiteNoticeOutletComponent,
     KeeperPanelComponent,
     CloudSaveChipComponent,
     CloudSaveButtonComponent,
