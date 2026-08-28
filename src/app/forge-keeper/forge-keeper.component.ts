@@ -82,6 +82,7 @@ import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
 import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 
+import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 /** Which shelf of the inventory is showing. */
 export type InventoryFilter = 'all' | 'upgrades' | 'artifacts' | 'cosmetics' | 'enchantments';
 
@@ -303,7 +304,7 @@ function tierForEssence(cost: number): EclipseRarity {
 @Component({
   selector: 'app-forge-keeper',
   standalone: true,
-  imports: [
+  imports: [RelatedPagesComponent, 
     CommonModule,
     RouterLink,
     CloudSaveButtonComponent,

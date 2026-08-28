@@ -75,6 +75,7 @@ import {
   opponentsForTier,
 } from '../shared/arena/arena.model';
 
+import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 /** One challenger on a gate card, with the odds of beating *them*. */
 interface ChallengerRow {
   npc: ArenaOpponent;
@@ -149,7 +150,7 @@ const BEAT_ROUND = 700;
 @Component({
   selector: 'app-pvp-arena',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [RelatedPagesComponent, CommonModule, RouterModule],
   templateUrl: './pvp-arena.component.html',
   styleUrls: ['./pvp-arena.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
