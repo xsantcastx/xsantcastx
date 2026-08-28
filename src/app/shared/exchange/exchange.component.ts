@@ -70,6 +70,7 @@ import {
 import { RUNE_TIERS, type RuneTier } from '../rune-forge/rune.model';
 import type { ItemRarity } from '../rpg/item.model';
 
+import { RelatedPagesComponent } from '../seo/related-pages.component';
 type SortKey = 'name' | 'price' | 'change' | 'volume';
 type TrendFilter = 'all' | Trend;
 type Side = 'buy' | 'sell';
@@ -101,7 +102,7 @@ const PAGE_SIZE = 40;
 @Component({
   selector: 'app-exchange',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, ArtSceneComponent, PriceChartComponent],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, ArtSceneComponent, PriceChartComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './exchange.component.html',
   styleUrls: ['./exchange.component.css'],

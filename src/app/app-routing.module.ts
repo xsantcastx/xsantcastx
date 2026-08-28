@@ -12,10 +12,10 @@ export const APP_ROUTES: Routes = [
   {
       path: 'world',
       loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
-      title: 'Eclipse Realms — Free Idle RPG in Your Browser',
+      title: 'Eclipse Realms — Free Browser RPG & Idle Game, No Download',
       data: {
-        description: 'Free idle RPG in your browser. Strike the forge for Gold, gamble it on runes across seven rarity tiers, craft gear with rolled stats, and send explorers into five realms. Diablo-style loot. No sign-up, no install.',
-        keywords: 'free idle rpg, browser rpg, incremental game, clicker rpg, idle game, rune crafting, loot game, arpg, eclipse realms, godforge, no download game',
+        description: 'Eclipse Realms is a free browser RPG you play with no download and no sign-up. An idle game with Diablo-style rolled loot: strike the forge for Gold, gamble it on runes across seven rarity tiers, craft weapons and armour, and send explorers into five realms. Progress persists in your browser.',
+        keywords: 'free browser rpg, idle rpg game, browser game no download, free idle game, online rpg free, incremental rpg, persistent browser game, crafting rpg browser, d2 style loot game, clicker rpg, arpg, eclipse realms, godforge',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
           '@context': 'https://schema.org',
@@ -31,9 +31,68 @@ export const APP_ROUTES: Routes = [
               '@type': 'WebPage',
               '@id': `${SITE_URL}/world`,
               url: `${SITE_URL}/world`,
-              name: 'Eclipse Realms — Free Idle RPG in Your Browser',
+              name: 'Eclipse Realms — Free Browser RPG & Idle Game',
               description: 'A free idle RPG: strike the forge for Gold, gamble it on runes, craft gear with rolled stats, send explorers into five realms, and keep a daily streak.',
+              isPartOf: { '@id': `${SITE_URL}/#website` },
+              primaryImageOfPage: { '@id': `${SITE_URL}/#gameimage` }
+            },
+            /*
+             * The VideoGame node is the one that earns the game its place in a
+             * "free browser RPG" result rather than a generic web-page one.
+             *
+             * WebSite and WebPage above describe a document. They say nothing
+             * about what is on it, so the whole site read to a crawler as a
+             * page that happens to mention runes. VideoGame is the type Google
+             * actually understands for this, and the properties below are the
+             * ones it reads: `genre` and `applicationCategory` place it in the
+             * category, `playMode`/`gamePlatform`/`browserRequirements` say it
+             * runs in the tab with nothing installed, and a zero-price Offer is
+             * what makes "free" a machine-readable fact instead of a word in
+             * the description.
+             *
+             * No `aggregateRating`. Google requires ratings to come from real
+             * user reviews shown on the page, and inventing one is the fastest
+             * route to a structured-data manual action.
+             */
+            {
+              '@type': 'VideoGame',
+              '@id': `${SITE_URL}/#game`,
+              name: 'Eclipse Realms',
+              alternateName: 'The Godforge',
+              url: SITE_URL,
+              description: 'A free persistent browser RPG with idle mechanics, Diablo-style rolled loot, rune gambling across seven rarity tiers, crafting, and expeditions into five realms. No sign-up and no download.',
+              genre: ['Role-Playing Game', 'Idle Game', 'Incremental Game', 'Browser Game', 'Action RPG'],
+              gamePlatform: ['Web Browser', 'PC', 'Mobile Web'],
+              applicationCategory: 'GameApplication',
+              applicationSubCategory: 'Role-Playing Game',
+              operatingSystem: 'Any',
+              browserRequirements: 'Requires a modern web browser with JavaScript enabled. No download or plugin.',
+              playMode: 'SinglePlayer',
+              inLanguage: ['en', 'es'],
+              isAccessibleForFree: true,
+              image: {
+                '@type': 'ImageObject',
+                '@id': `${SITE_URL}/#gameimage`,
+                url: `${SITE_URL}/assets/og/og-godforge.jpg`,
+                width: 1200,
+                height: 630
+              },
+              offers: {
+                '@type': 'Offer',
+                price: '0',
+                priceCurrency: 'USD',
+                availability: 'https://schema.org/InStock',
+                category: 'free'
+              },
+              author: { '@id': `${SITE_URL}/#person` },
+              publisher: { '@id': `${SITE_URL}/#person` },
               isPartOf: { '@id': `${SITE_URL}/#website` }
+            },
+            {
+              '@type': 'Person',
+              '@id': `${SITE_URL}/#person`,
+              name: 'xsantcastx',
+              url: SITE_URL
             }
           ]
         }
@@ -97,7 +156,7 @@ export const APP_ROUTES: Routes = [
   {
       path: 'world/fivefold-lock',
       loadComponent: () => import('./world/fivefold-lock.component').then(m => m.FivefoldLockComponent),
-      title: 'The Fivefold Lock — Eclipse Realms',
+      title: 'The Fivefold Lock — Story & Lore | Eclipse Realms',
       data: {
         description: 'The Fivefold Lock is the cross-realm premise of Eclipse Realms. It stays locked until the five opening chapters resolve.',
         keywords: 'eclipse realms, fivefold lock, godforge',
@@ -117,9 +176,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'sanctum',
       loadComponent: () => import('./live/forge-view.component').then(m => m.ForgeViewComponent),
-      title: 'The Inner Sanctum — The Godforge',
+      title: 'The Sanctum — Manage Explorers & Expeditions | Eclipse Realms',
       data: {
-        description: 'The management hub for your Godforge: your explorers and their kit, the Keeper and everything equipped, Gold per second as it climbs, daily quests, and expeditions into the five Eclipse realms for runes, scrolls and Gold.',
+        description: 'Manage explorers and expeditions in Eclipse Realms, a free idle RPG in your browser. Send explorers into five realms for runes, scrolls and Gold, equip the Keeper, watch Gold per second climb, and claim daily quests. No download.',
         keywords: 'idle game dashboard, godforge, inner sanctum, forge view, gold per second, explorers, eclipse realms, runes, daily quests, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -136,9 +195,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'world/trials',
       loadComponent: () => import('./arena/arena.component').then(m => m.ArenaComponent),
-      title: 'The Trials — Eclipse Realms',
+      title: 'The Trials — Free Browser Mini Games | Eclipse Realms',
       data: {
-        description: 'Five playable gates in the proving ground. Stand in the Trials and the chains listen.',
+        description: 'Five free browser mini games inside Eclipse Realms — memory, reflex, cipher, rhythm and a path to walk. No download, no sign-up. Stand in the Trials and the chains listen.',
         keywords: 'easter eggs, hidden games, mini games, eclipse realms, trials, arena',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -178,9 +237,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'world/arena',
       loadComponent: () => import('./pvp/pvp-arena.component').then(m => m.PvpArenaComponent),
-      title: 'The Coliseum — Eclipse Realms',
+      title: 'The Coliseum — PvP Arena Combat | Eclipse Realms',
       data: {
-        description: 'Five rings, twenty-five challengers, and a fight settled on the kit you are standing in. Win Gold, XP and arena points; lose nothing but five minutes.',
+        description: 'PvP arena combat in Eclipse Realms, a free browser RPG. Five rings and twenty-five challengers, with every fight settled on the gear you are standing in. Win Gold, XP and arena points; lose nothing but five minutes.',
         keywords: 'arena, coliseum, pvp, combat, eclipse realms, arena points, godforge, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -201,9 +260,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'leaderboards',
       loadComponent: () => import('./leaderboards/leaderboards.component').then(m => m.LeaderboardsComponent),
-      title: 'The Standings — Eclipse Realms',
+      title: 'Leaderboards — Global Rankings | Eclipse Realms',
       data: {
-        description: 'Seven ladders — Ascent, Hoard, Archivum, Coliseum, Craftsmanship, Wayfaring and the Bench — with your own place on each one marked in gold.',
+        description: 'Global rankings for Eclipse Realms, a free idle RPG in the browser. Seven ladders — XP, Gold, collection, arena wins, crafting, expeditions and the bench — with your own place on each marked in gold.',
         keywords: 'leaderboards, standings, ranking, xp, gold, collection, arena wins, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -220,9 +279,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'codex',
       loadComponent: () => import('./codex/codex.component').then(m => m.CodexComponent),
-      title: 'The Codex',
+      title: 'The Codex — Achievements & Collection Log | Eclipse Realms',
       data: {
-        description: 'The ancient record of the Godforge: game achievements, ten ranks of progression, lore scrolls, and clues to every secret still hidden.',
+        description: 'The achievement and collection log for Eclipse Realms, a free browser RPG. Every achievement, ten ranks of progression, lore scrolls, and a cryptic clue for every secret still hidden.',
         keywords: 'achievements, progression, easter eggs list, xp levels, lore, eclipse realms, codex, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -234,7 +293,7 @@ export const APP_ROUTES: Routes = [
           description: 'Every achievement, rank, lore fragment and secret on xsantcastx.com, in one record. Locked entries show a cryptic clue, never the answer.',
           inLanguage: 'en',
           isPartOf: { '@type': 'WebSite', '@id': `${SITE_URL}/#website`, url: SITE_URL, name: 'The Godforge' },
-          author: { '@id': `${SITE_URL}/#person` },
+          author: { '@type': 'Person', '@id': `${SITE_URL}/#person`, name: 'xsantcastx', url: SITE_URL },
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [
@@ -248,9 +307,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'world/quests',
       loadComponent: () => import('./quests/quests.component').then(m => m.QuestsComponent),
-      title: 'The Standing Orders',
+      title: 'Daily Quests — Missions & Rewards | Eclipse Realms',
       data: {
-        description: 'Three daily quests, two weeklies, and five epics that never expire. Earn Aether and Nox across the five Eclipse realms by walking the world, the trials, and the forge.',
+        description: 'Daily quests and rewards in Eclipse Realms, a free idle RPG in your browser. Three dailies, two weeklies and five epics that never expire, earning Aether and Nox across five realms, the trials and the forge.',
         keywords: 'daily quests, missions, gamification, eclipse realms, xp, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -270,9 +329,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'market',
       loadComponent: () => import('./shared/economy/market.component').then(m => m.MarketComponent),
-      title: 'The Godforge Market — Spend Gold and Eclipse Essence | xsantcastx',
+      title: 'The Market — Buy Upgrades & Items | Eclipse Realms',
       data: {
-        description: 'Ten forge and hammer upgrades bought with Gold, four enchantments and five permanent artifacts bought with Eclipse Essence, and five cosmetics. The forge earns while the tab is open.',
+        description: 'Buy upgrades and items in Eclipse Realms, a free idle RPG in your browser. Ten forge and hammer upgrades for Gold, four enchantments, five permanent artifacts for Eclipse Essence, and five cosmetics. The forge earns while the tab is open.',
         keywords: 'godforge market, idle game, gold, eclipse essence, upgrades, artifacts, cosmetics, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -288,9 +347,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'gambler',
       loadComponent: () => import('./shared/gambler/gambler.component').then(m => m.GamblerComponent),
-      title: 'The Gambler — Mystery Boxes and the Till | Eclipse Realms',
+      title: 'The Gambler — Mystery Boxes & Rare Items | Eclipse Realms',
       data: {
-        description: 'Five sealed boxes, from the Iron Chest at five thousand Gold to the Void Cache at five million. Each pays out one item, rolled inside its rarity band, and the shelf shows the odds before you buy. Bad luck protection guarantees a step up after ten floor results. Sell what you do not want at the till, priced by how well it rolled.',
+        description: 'Mystery boxes and rare item drops in Eclipse Realms, a free browser RPG with Diablo-style loot. Five sealed boxes from five thousand to five million Gold, published odds, and bad luck protection after ten floor results. Sell what you do not want at the till.',
         keywords: 'mystery box, loot box, gambling, item rolls, stat quality, eclipse realms, godforge, idle game, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -306,9 +365,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'exchange',
       loadComponent: () => import('./shared/exchange/exchange.component').then(m => m.ExchangeComponent),
-      title: 'The Grand Exchange — Trade Materials and Equipment | Eclipse Realms',
+      title: 'Grand Exchange — Trade Items & Materials | Eclipse Realms',
       data: {
-        description: 'A trading board of ninety-odd lines, priced by the clock rather than by a shopkeeper. Ore, reagents, essence and equipment all move on their own; market events swing whole categories for an hour at a time; and your own buying and selling moves the line you traded. Five per cent to the house on every sale. Simulated merchant houses, not other players.',
+        description: 'Trade items and materials in Eclipse Realms, a free idle RPG in the browser. Ninety-odd lines of ore, reagents, essence and equipment priced by the clock, with charts, hour-long market events, and a five per cent sale tax. Simulated merchant houses, not other players.',
         keywords: 'grand exchange, trading, market, prices, price chart, supply and demand, gold, eclipse realms, godforge, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -329,9 +388,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'forge/runes',
       loadComponent: () => import('./shared/rune-forge/rune-forge.component').then(m => m.RuneForgeComponent),
-      title: 'The Forge — Strike the Anvil | Eclipse Realms',
+      title: 'Rune Forge — Gamble for Rare Runes | Eclipse Realms',
       data: {
-        description: 'Twenty-five runes across seven rarity tiers, from Ash as the floor of every strike to the Void at one in two million, and six Runewords that turn a handful of them into a permanent bonus. Ten thousand Gold a strike. Everything is stored in your own browser.',
+        description: 'Gamble Gold for rare runes in Eclipse Realms, a free browser RPG. Twenty-five runes across seven rarity tiers, from Ash on every strike to the Void at one in two million, and six Runewords that turn a handful into a permanent bonus. No download.',
         keywords: 'rune forge, runes, runewords, crafting, gacha, drop table, idle game, gold, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -354,9 +413,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'forge/crafting',
       loadComponent: () => import('./shared/crafting/crafting-bench.component').then(m => m.CraftingBenchComponent),
-      title: 'The Bench — Crafting | Eclipse Realms',
+      title: 'Crafting Bench — Forge Weapons & Armor | Eclipse Realms',
       data: {
-        description: 'Fifty-two recipes at the Godforge bench. Mine, forage and prospect the five realms for materials, then strike them into weapons, armor, charms and elixirs with rolled stats. Craft one recipe ten times to master it and every roll after is ten percent better.',
+        description: 'Forge weapons and armor in Eclipse Realms, a free crafting RPG in your browser. Fifty-two recipes: mine, forage and prospect five realms for materials, then strike them into gear with Diablo-style rolled stats. Master a recipe and every roll after is ten percent better.',
         keywords: 'crafting, recipes, bench, anvil, materials, forge, weapons, armor, charms, consumables, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -380,9 +439,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'forge/enchanting',
       loadComponent: () => import('./shared/enchanting/enchanting-bench.component').then(m => m.EnchantingBenchComponent),
-      title: 'The Table \u2014 Enchanting | Eclipse Realms',
+      title: 'Enchanting Table — Socket Runes into Gear | Eclipse Realms',
       data: {
-        description: 'Set runes into the sockets on your weapons and armour, find one of fifteen secret Socket Words by getting the sequence right, and burn gathered materials for timed Gold, XP and Magic Find infusions.',
+        description: 'Socket runes into gear in Eclipse Realms, a free idle RPG in the browser. Set runes into your weapons and armour, find one of fifteen secret Socket Words, and burn materials for timed Gold, XP and Magic Find infusions.',
         keywords: 'enchanting, sockets, socketing, runewords, socket words, runes, infusions, buffs, magic find, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {
@@ -406,9 +465,9 @@ export const APP_ROUTES: Routes = [
   {
       path: 'character',
       loadComponent: () => import('./forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent),
-      title: 'Your Character — Eclipse Realms',
+      title: 'Character — Equipment & Stats | Eclipse Realms',
       data: {
-        description: 'Your Eclipse Realms character sheet — rank and XP, Gold and Eclipse Essence, realm affinity, loadout, everything you own, your pinned achievements and a thirty-day streak calendar.',
+        description: 'Your equipment and stats in Eclipse Realms, a free browser RPG. Rank and XP, Gold and Eclipse Essence, realm affinity, full loadout, every item you own, pinned achievements and a thirty-day streak calendar.',
         keywords: 'player profile, character sheet, progression, rank, xp, inventory, achievements, streak, loadout, eclipse realms, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {

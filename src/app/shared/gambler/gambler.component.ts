@@ -69,6 +69,7 @@ import {
 import { CelebrationService } from '../celebration/celebration.service';
 import { RUNE_TIERS } from '../rune-forge/rune.model';
 
+import { RelatedPagesComponent } from '../seo/related-pages.component';
 type RevealPhase = 'idle' | 'shaking' | 'opening' | 'revealed';
 
 interface OddsRow {
@@ -91,7 +92,7 @@ const OPEN_MS = 620;
 @Component({
   selector: 'app-gambler',
   standalone: true,
-  imports: [CommonModule, RouterLink, RollQualityComponent],
+  imports: [RelatedPagesComponent, CommonModule, RouterLink, RollQualityComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './gambler.component.html',
   styleUrls: ['./gambler.component.css'],

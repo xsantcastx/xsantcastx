@@ -29,6 +29,40 @@ export class TranslationService {
     // realm.model.ts and are proper nouns in the lore, untranslated in both
     // languages exactly as the tools page already renders them.
     'gfnav.brand':        { en: 'Eclipse Realms', es: 'Eclipse Realms' },
+
+    /* related.* — the contextual link block at the foot of each room.
+       Longer than the gfnav.* labels beside them on purpose: these are body
+       links, and the words inside a link describe what is on the other end of
+       it. "Bench" is a fine tab label and a wasted anchor. */
+    'related.heading':              { en: 'Continue in Eclipse Realms',  es: 'Continua en Eclipse Realms' },
+    'related.world.anchor':         { en: 'Eclipse Realms',   es: 'Eclipse Realms' },
+    'related.world.blurb':          { en: 'The free browser RPG — start here, no download and no sign-up.', es: 'El RPG de navegador gratuito: empieza aqui, sin descargas ni registro.' },
+    'related.runes.anchor':         { en: 'Rune Forge',       es: 'Forja de runas' },
+    'related.runes.blurb':          { en: 'Gamble Gold for rare runes across seven rarity tiers.', es: 'Apuesta oro por runas raras en siete niveles de rareza.' },
+    'related.crafting.anchor':      { en: 'Crafting Bench',   es: 'Banco de fabricacion' },
+    'related.crafting.blurb':       { en: 'Forge weapons and armour with Diablo-style rolled stats.', es: 'Forja armas y armaduras con estadisticas variables al estilo Diablo.' },
+    'related.enchanting.anchor':    { en: 'Enchanting Table', es: 'Mesa de encantamiento' },
+    'related.enchanting.blurb':     { en: 'Socket runes into your gear and hunt the fifteen Socket Words.', es: 'Engarza runas en tu equipo y busca las quince Palabras de Engarce.' },
+    'related.market.anchor':        { en: 'The Market',       es: 'El mercado' },
+    'related.market.blurb':         { en: 'Buy upgrades, artifacts and cosmetics with Gold and Essence.', es: 'Compra mejoras, artefactos y cosmeticos con oro y esencia.' },
+    'related.gambler.anchor':       { en: 'The Gambler',      es: 'El apostador' },
+    'related.gambler.blurb':        { en: 'Open mystery boxes with published odds and bad luck protection.', es: 'Abre cajas misteriosas con probabilidades publicadas y proteccion contra la mala suerte.' },
+    'related.exchange.anchor':      { en: 'Grand Exchange',   es: 'Gran lonja' },
+    'related.exchange.blurb':       { en: 'Trade items and materials on a board priced by the clock.', es: 'Intercambia objetos y materiales en un tablero cuyos precios marca el reloj.' },
+    'related.sanctum.anchor':       { en: 'The Sanctum',      es: 'El santuario' },
+    'related.sanctum.blurb':        { en: 'Manage explorers and send expeditions into the five realms.', es: 'Gestiona exploradores y envia expediciones a los cinco reinos.' },
+    'related.character.anchor':     { en: 'Your Character',   es: 'Tu personaje' },
+    'related.character.blurb':      { en: 'Equipment, stats, rank and every item you own.', es: 'Equipo, estadisticas, rango y cada objeto que posees.' },
+    'related.leaderboards.anchor':  { en: 'Leaderboards',     es: 'Clasificaciones' },
+    'related.leaderboards.blurb':   { en: 'Seven global ladders, with your own place marked in gold.', es: 'Siete escalas globales, con tu propio puesto marcado en oro.' },
+    'related.arena.anchor':         { en: 'The Coliseum',     es: 'El coliseo' },
+    'related.arena.blurb':          { en: 'PvP arena combat settled on the gear you are standing in.', es: 'Combate PvP resuelto segun el equipo que llevas puesto.' },
+    'related.codex.anchor':         { en: 'The Codex',        es: 'El codice' },
+    'related.codex.blurb':          { en: 'Achievements, ten ranks, and the collection log.', es: 'Logros, diez rangos y el registro de coleccion.' },
+    'related.quests.anchor':        { en: 'Daily Quests',     es: 'Misiones diarias' },
+    'related.quests.blurb':         { en: 'Three dailies, two weeklies and five epics that never expire.', es: 'Tres diarias, dos semanales y cinco epicas que nunca caducan.' },
+    'related.trials.anchor':        { en: 'The Trials',       es: 'Las pruebas' },
+    'related.trials.blurb':         { en: 'Five free browser mini games hidden inside the world.', es: 'Cinco minijuegos gratuitos de navegador escondidos en el mundo.' },
     'gfnav.brandLabel':   { en: 'Eclipse Realms — World', es: 'Eclipse Realms — Mundo' },
     'gfnav.world':        { en: 'World',         es: 'Mundo' },
     'gfnav.character':    { en: 'Character',     es: 'Personaje' },
