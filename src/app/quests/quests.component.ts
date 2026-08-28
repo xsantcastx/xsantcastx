@@ -22,6 +22,7 @@ import { QuestCardComponent } from '../shared/quests/quest-card.component';
 import { ChallengePanelComponent } from '../shared/challenges/challenge-panel.component';
 import { countdownTo } from '../shared/quests/quest-drawer.component';
 
+import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 /** History rows are grouped under a day heading. */
 interface LogDay {
   label: string;
@@ -32,7 +33,7 @@ interface LogDay {
 @Component({
   selector: 'app-quests',
   standalone: true,
-  imports: [CommonModule, RouterLink, QuestCardComponent, ChallengePanelComponent],
+  imports: [RelatedPagesComponent, CommonModule, RouterLink, QuestCardComponent, ChallengePanelComponent],
   templateUrl: './quests.component.html',
   styleUrls: ['./quests.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
