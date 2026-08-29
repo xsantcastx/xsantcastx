@@ -1840,6 +1840,26 @@ body.gf-reveal-open .npc .npc__bubble {
   pointer-events: none;
 }
 
+/* ── 10a-sexies. …and the achievement drop, which is the fourth ──
+   `.ad` is carefully positioned to clear the Forge Flame — its comment does the
+   arithmetic in the flame's own geometry so the two stay in step. That is
+   correct everywhere except here: while a reveal is up the flame has *stood
+   down* (10a-bis), and the reveal's action row is what now occupies that band.
+   The card lands squarely on the roll buttons, and at 375px it takes all of
+   them.
+
+   Reported by CI rather than found by hand — the run for v2.89.0 failed
+   `forge-reveal.spec.ts` "every roll button is reachable on a 375px phone" with
+   "×10: covered by DIV.ad ad--on", five buttons deep. It passes locally because
+   an achievement has to actually unlock in that moment for the card to exist.
+
+   The card keeps its own dismiss and stays on screen; it only stops being a
+   target. Same trade the discovery toast makes two rules above. */
+body.gf-reveal-open .ad,
+body.gf-reveal-open .ad-veil {
+  pointer-events: none;
+}
+
 /* ── 10a-quinquies. Native selects, so Safari stops shrinking them to 25px ──
    Every `<select>` in the app is styled by its own component with a
    `min-height` at or near the 44px touch floor, and in Blink that is what they
