@@ -68,6 +68,7 @@ import {
   shardsFor,
   totalUpgradeLevels,
   upgradeById,
+  isFirstFree,
 } from './economy.model';
 import {
   DEVICE_ID_KEY,
@@ -699,7 +700,14 @@ export class EconomyService implements OnDestroy {
    */
   nextCost(id: string): number {
     const def = upgradeById(id);
-    return def ? this.discounted(costOf(def.baseCost, this.levelOf(id))) : Infinity;
+    if (!def) return Infinity;
+    // A `firstFree` rung is free on its first level only, and the zero has to
+    // be returned before `discounted()` sees it: that function floors every
+    // price at 1 on purpose, so that a Charisma discount can never make a
+    // ladder free. This is the one price that is meant to be, and it is
+    // authored in the catalogue rather than derived from a stat.
+    if (isFirstFree(def) && this.levelOf(id) === 0) return 0;
+    return this.discounted(costOf(def.baseCost, this.levelOf(id)));
   }
 
   /**

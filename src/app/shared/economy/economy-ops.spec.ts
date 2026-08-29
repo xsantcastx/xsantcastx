@@ -68,6 +68,39 @@ describe('economy ops primitives', () => {
     })).toBeNull();
   });
 
+  it('keeps a zero-cost buy-upgrade and still drops every other zero amount', () => {
+    // The free first Forge Bellows records `buy-upgrade` with `amount: 0`. Under
+    // the old blanket `amount > 0` rule parseOp returned null for it, so the
+    // rung survived locally and vanished the first time the ledger came back
+    // through a cloud merge — which reads every op through this function.
+    const free = parseOp({
+      id: 'd:1', deviceId: 'd', seq: 1, kind: 'buy-upgrade',
+      amount: 0, itemId: 'forge-bellows', hlc: 1, wall: 1,
+    });
+    expect(free).not.toBeNull();
+    expect(free!.amount).toBe(0);
+    expect(free!.itemId).toBe('forge-bellows');
+
+    // The widening is scoped to that one kind. A zero-Gold credit or spend is
+    // still a malformed op and is still dropped.
+    for (const kind of ['credit-gold', 'credit-essence', 'spend-gold', 'buy-artifact', 'prestige']) {
+      expect(parseOp({
+        id: 'd:1', deviceId: 'd', seq: 1, kind, amount: 0, hlc: 1, wall: 1,
+      })).toBeNull();
+    }
+  });
+
+  it('replays a zero-cost buy-upgrade as a level without a debit', () => {
+    const state = emptyLedger();
+    state.gold = 250;
+    expect(applyOp(state, {
+      id: 'd:1', deviceId: 'd', seq: 1, kind: 'buy-upgrade',
+      amount: 0, itemId: 'forge-bellows', hlc: 1, wall: 1,
+    })).toBe(true);
+    expect(state.upgrades['forge-bellows']).toBe(1);
+    expect(state.gold).toBe(250);
+  });
+
   it('omits optional fields rather than writing undefined', () => {
     const op = parseOp({
       id: 'd:1', deviceId: 'd', seq: 1, kind: 'credit-gold',

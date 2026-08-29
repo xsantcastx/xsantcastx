@@ -1784,7 +1784,13 @@ a.fv__glance-cell:hover {
   display: flex;
   align-items: center;
   gap: 0.35rem;
-  /* The floor the mobile pass set for every standalone control. */
+  /* 34px, and that is the *group* exception, not the site floor. The floor for
+     a standalone control is 44px; these are three explorer picks in one
+     wrapping flex row, which is the same case as `.rp__chip` in the roster
+     panel and is exempt for the same reason — the row itself clears 44px, and
+     sizing each pick at 44 would break the three-across fit at 320px. The
+     comment that used to sit here read as though 34 were the floor. It is not,
+     and a new standalone button copying this rule would be wrong. */
   min-height: 34px;
   padding: 0.25rem 0.6rem 0.25rem 0.3rem;
   border-radius: 999px;

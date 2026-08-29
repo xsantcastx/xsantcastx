@@ -307,6 +307,29 @@ export interface ForgeUpgrade {
   baseCost: number;
   /** Gold per second added per level owned. */
   ratePerSecond: number;
+  /**
+   * The first level of this rung costs nothing. Every level after it is priced
+   * off `baseCost` exactly as before - this is a doorway, not a discount.
+   *
+   * Exactly one rung in the catalogue carries it, and it exists because the
+   * Market's cheapest thing was 5,000 Gold against a ledger that starts at
+   * zero, mints 1 Gold a strike and 0.1 Gold a second. That is 4,500 strikes or
+   * fourteen hours of waiting before the shop sells its owner anything, and a
+   * shop whose entire stock is unaffordable on the first visit does not read as
+   * a ladder - it reads as a wall, which is what it was reported as.
+   *
+   * The free rung is deliberately the smallest one. It moves income from
+   * 0.1/sec to 0.6/sec, a sixfold jump the header counter shows immediately,
+   * and it leaves the 20,000-Gold rung above it exactly where it was. Nothing
+   * downstream is rebalanced: the player still has to earn the second rung, and
+   * the intended first hour is still the free two-minute Scout the tutorial
+   * points at, which pays 5,000-10,000.
+   *
+   * Note for anyone adding a second one: `EconomyService.nextCost` returns 0
+   * for a free rung, and a zero-amount `buy-upgrade` op is only legal because
+   * `economy-ops.ts` was widened to admit it. Both would have to hold.
+   */
+  firstFree?: true;
 }
 
 /**
@@ -326,6 +349,7 @@ export const FORGE_UPGRADES: ForgeUpgrade[] = [
     icon: '🜂',
     baseCost: 5_000,
     ratePerSecond: 0.5,
+    firstFree: true,
   },
   {
     id: 'ember-stoker',
@@ -733,6 +757,18 @@ export function levelCap(id: string): number {
 /** The definition behind any Gold-ladder id, or undefined. */
 export function upgradeById(id: string): AnyUpgrade | undefined {
   return ALL_UPGRADES.find(u => u.id === id);
+}
+
+/**
+ * Whether this rung hands over its first level for nothing.
+ *
+ * A type guard rather than a bare property read because `AnyUpgrade` is the
+ * union of four ladders and only `ForgeUpgrade` declares the flag; without
+ * this every call site would have to narrow the union itself, and the one that
+ * forgot would silently read `undefined` and charge for the free rung.
+ */
+export function isFirstFree(def: AnyUpgrade | undefined): boolean {
+  return !!def && 'firstFree' in def && def.firstFree === true;
 }
 
 const HAMMER_VISUAL_RANK: Record<HammerEffect, number> = {
