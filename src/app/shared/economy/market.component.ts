@@ -79,7 +79,6 @@ import {
   PRESTIGE_GOLD_THRESHOLD,
   PRESTIGE_LEVEL_THRESHOLD,
   SHARD_BONUS,
-  costOf,
   formatCompact,
   formatCurrency,
   formatMultiplier,
@@ -229,6 +228,18 @@ function shopArt(id: string): CardArt | null {
     ? { src: entry.src, srcset: entry.srcset, width: entry.width, height: entry.height }
     : null;
 }
+
+/**
+ * The cheapest thing on any Gold ladder that is not the free doorway rung.
+ *
+ * Read from the catalogue rather than typed as 20_000 so a rebalance of the
+ * Ember Stoker cannot leave this threshold behind pointing at a price that no
+ * longer exists.
+ */
+const CHEAPEST_PAID_RUNG = Math.min(
+  ...FORGE_UPGRADES.filter(u => !u.firstFree).map(u => u.baseCost),
+  ...HAMMER_UPGRADES.map(u => u.baseCost),
+);
 
 interface MarketItem {
   id: string;
@@ -642,7 +653,18 @@ export class MarketComponent implements OnInit, OnDestroy {
     verb: string, yieldText: string,
   ): MarketItem {
     const owned = this.economy.levelOf(u.id);
-    const cost = costOf(u.baseCost, owned);
+    // `EconomyService.nextCost`, not `costOf(u.baseCost, owned)`.
+    //
+    // The two used to be assumed identical and they are not: `nextCost` applies
+    // the Charisma price multiplier, and now also returns 0 for a `firstFree`
+    // rung's first level. The card's price is not only what the visitor reads —
+    // it is shipped back as `expectedCost` on the purchase intent, and
+    // `purchaseListing` compares it to its own quote with `!==` and refuses the
+    // whole purchase as 'stale' on any mismatch. Pricing the card off the raw
+    // catalogue therefore did not merely display the wrong number under a
+    // discount; it made the Gold ladders unbuyable for exactly the players who
+    // had earned the discount.
+    const cost = this.economy.nextCost(u.id);
     const maxed = this.economy.isMaxed(u.id);
     return this.paint({
       id: u.id,
@@ -768,6 +790,31 @@ export class MarketComponent implements OnInit, OnDestroy {
 
   private get discovery() {
     return discoverMarketListings(this.items as MarketListingView[], this.queryState);
+  }
+
+  /**
+   * Whether to point the visitor at the free Scout instead of at a shelf they
+   * cannot shop.
+   *
+   * True only for somebody holding nothing off any Gold ladder *and* unable to
+   * afford the cheapest rung above the free one. Both halves are needed: the
+   * purse alone would put this in front of a veteran who has just spent down to
+   * nothing, and "Send a Scout first — you already have the explorers" reads as
+   * an insult to somebody four hundred rungs in. The free doorway rung does not
+   * count as holding something, because taking it is the one thing a visitor in
+   * this state can already do here.
+   *
+   * The honest answer to "what do I do here" for that visitor is not "strike
+   * the flame 20,000 times" — it is the two-minute Scout, which is free, needs
+   * no upgrade, and returns 5,000-10,000 Gold. The first-run tutorial says so
+   * on its fourth screen; this is the same sentence for the visitor who skipped
+   * it, and it goes away as soon as either half stops being true.
+   */
+  get showScoutDoorway(): boolean {
+    if (this.snap.gold >= CHEAPEST_PAID_RUNG) return false;
+    const free = FORGE_UPGRADES.filter(u => u.firstFree)
+      .reduce((held, u) => held + Math.min(1, this.economy.levelOf(u.id)), 0);
+    return this.snap.upgradeLevels - free <= 0;
   }
 
   get filteredCount(): number { return this.discovery.count; }

@@ -1810,6 +1810,70 @@ body.gf-reveal-open .dt .dt__face {
   pointer-events: none;
 }
 
+/* ── 10a-quater. …and so does whichever of the six is talking ──
+   The third tenant of the same corner, and the same failure a third time.
+   `app-npc-dialogue` is `position: fixed`, anchored bottom-left, up to 380px
+   wide, `z-index: var(--z-fx)`, and `.npc > * { pointer-events: auto }`. At
+   375px that footprint is 347x63 sitting at y 581-644, and the reveal's action
+   row is at y 586-645 — the same band, near enough exactly. So the speech
+   bubble takes the clicks meant for the roll buttons, which is precisely what
+   the two rules above this one were written to stop the flame and the toast
+   doing.
+
+   The portrait stays visible and keeps talking; it simply stops being a target
+   until the reveal closes. Anyone adding a fourth fixed widget to this corner
+   should add it here at the same time — `e2e/forge-reveal.spec.ts` "every roll
+   button is reachable on a 375px phone" is the test that catches it, and it
+   caught this one. */
+/* Named children rather than `.npc > *`, and that is a specificity fix, not a
+   style preference. Angular's emulated encapsulation compiles the component's
+   own `.npc > * { pointer-events: auto }` to
+   `.npc[_ngcontent-x] > *[_ngcontent-x]` — three class-weight terms — and
+   injects it after this sheet. `body.gf-reveal-open .npc > *` is two classes
+   and an element, so it loses the tie and the bubble goes on eating the click
+   with the rule apparently in place. Measured, exactly as the toast above was.
+   Naming the real children puts each selector at three classes and an
+   element, which wins. */
+body.gf-reveal-open .npc .npc__portrait,
+body.gf-reveal-open .npc .npc__body,
+body.gf-reveal-open .npc .npc__bubble {
+  pointer-events: none;
+}
+
+/* ── 10a-quinquies. Native selects, so Safari stops shrinking them to 25px ──
+   Every `<select>` in the app is styled by its own component with a
+   `min-height` at or near the 44px touch floor, and in Blink that is what they
+   measure. WebKit measures them at **25px** — every one of them, on every page.
+
+   It is not a specificity problem: the author rule matches (`el.matches()` says
+   so under WebKit) and `getComputedStyle` still reports `min-height: 18px`,
+   because a `<select>` left at `appearance: auto` is a `menulist` and WebKit
+   substitutes its own metrics for the author's height and padding. `-webkit-`
+   prefixed or not, the only thing that hands the box back is turning the native
+   appearance off. `.fk-inv__sort-select` already did this — it is the one
+   select in the app that measured correctly — and this generalises it.
+
+   Measured at 375px in WebKit before the fix: Crafting Bench 3, Rune Forge 2,
+   Collection Log 2, Codex 1, Market 1 — nine controls at 25px, which is well
+   under half the minimum, on every iPhone and iPad. Only Chromium hid it, which
+   is why it survived a mobile pass and an accessibility pass. See
+   `e2e/crafting-bench.spec.ts` "375px and reduced motion stay usable", which
+   has been red on `main` in the webkit project for exactly this.
+
+   Turning the appearance off also removes the native caret, so each component
+   that paints its own `background` shorthand redraws one — see the two-gradient
+   chevron beside each of those rules. Kept out here rather than repeated per
+   component because the box rule is the same everywhere and the failure mode of
+   forgetting it is silent on the only engine most people test in. */
+select {
+  appearance: none;
+  -webkit-appearance: none;
+  min-height: 44px;
+  /* Room for the caret every component draws at `right 12px`. */
+  padding-right: 30px;
+  cursor: pointer;
+}
+
 /* ── 10b. The mobile tab bar is fixed, so the document needs a floor ──
    Without this the last section and the footer's final row sit underneath
    the five tabs and cannot be scrolled into view — the page simply ends

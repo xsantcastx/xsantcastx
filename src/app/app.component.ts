@@ -134,7 +134,26 @@ export class AppComponent implements OnInit, OnDestroy {
     applyRealmEra(this.saves);
 
     this.inlineFlameSub = this.inlineFlame.active$.subscribe(active => {
-      this.showCornerFlame = !this.isEmbedMode && !active;
+      // Deferred by a microtask, and not for style.
+      //
+      // `claim()` is called from the inline flame's own lifecycle hook, which
+      // Angular runs while it is refreshing a child of this component's view —
+      // i.e. after `@if (showCornerFlame)` in this template was already checked
+      // for this pass. Assigning synchronously therefore changed a binding that
+      // had been read a moment earlier, and dev mode reported it on every load
+      // of /sanctum as `NG0100 ... Previous value: '21'. Current value: '-1'`,
+      // which is the `@if`'s branch index going from "the flame" to "nothing".
+      // The site's own error reporter picked it up, so it was also the only
+      // console error on the route.
+      //
+      // A microtask runs after the synchronous change-detection pass has
+      // finished and before zone.js reports the queue empty, so the flag moves
+      // between passes and the next one renders it without complaint.
+      // Deliberately not `requestAnimationFrame`: frames do not run in a
+      // background tab, and the corner flame would stay wrong there.
+      queueMicrotask(() => {
+        this.showCornerFlame = !this.isEmbedMode && !active;
+      });
     });
 
     // Queue Firebase App Check for the first idle window. Initializing it at

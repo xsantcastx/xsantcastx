@@ -80,6 +80,19 @@
     <span class="mk__gambler-go" aria-hidden="true">→</span>
   </a>
 
+  @if (showScoutDoorway) {
+    <!-- Only for a visitor who cannot afford the cheapest paid rung. See
+         `showScoutDoorway` for why this sentence, and not "keep striking". -->
+    <a class="mk__gambler mk__gambler--scout" routerLink="/sanctum">
+      <span class="mk__gambler-sigil" aria-hidden="true">◈</span>
+      <span class="mk__gambler-body">
+        <strong>{{ t('market.scout.title') }}</strong>
+        <span>{{ t('market.scout.body') }}</span>
+      </span>
+      <span class="mk__gambler-go" aria-hidden="true">→</span>
+    </a>
+  }
+
   @if (snap.enchantment) {
     <p class="mk__running" role="status">
       <span class="mk__running-icon" aria-hidden="true">{{ snap.enchantment.def.icon }}</span>
@@ -424,6 +437,12 @@
                       <span class="mk__held" [class.mk__held--owned]="it.state === 'owned'">
                         {{ t('market.state.' + it.state) }}
                       </span>
+                    } @else if (it.cost === 0) {
+                      <!-- A price of zero is authored, not a rounding artefact:
+                           the first Forge Bellows is the doorway rung. Rendering
+                           it as the bare glyph-and-"0" the branch below would
+                           produce reads as a bug rather than a gift. -->
+                      <b class="mk__free">{{ t('market.free') }}</b>
                     } @else {
                       <img class="gf-icon currency-icon"
                            [class.currency-icon--essence]="it.currency === 'essence'"
@@ -441,7 +460,9 @@
                             [disabled]="it.state !== 'buy' || isBuying(it.id)"
                             [attr.aria-busy]="isBuying(it.id)"
                             (click)="buy(it)"
-                            [attr.aria-label]="t('market.buy', { name: it.name, price: format(it.cost), currency: it.currency === 'essence' ? t('market.essence') : t('market.gold') })">
+                            [attr.aria-label]="it.cost === 0
+                                ? t('market.buy.free', { name: it.name })
+                                : t('market.buy', { name: it.name, price: format(it.cost), currency: it.currency === 'essence' ? t('market.essence') : t('market.gold') })">
                       {{ isBuying(it.id) ? t('market.buy.in-flight') : (it.state === 'buy' ? it.verb : t('market.state.locked')) }}
                     </button>
                   }

@@ -1,662 +1,265 @@
-# xsantcastx — Cosmic Universe Design System
+# The Godforge — operating manual
 
-This file is the operating manual for the site. Read this first whenever you're polishing UI or adding new pages — it captures the cosmic theme, the patterns to reuse, the work already done, and the things still on the runway.
+**xsantcastx.com is a free idle RPG that runs in a browser tab.** No sign-up, no
+install, no server-side game loop. Read this before touching anything.
 
-The vibe target: **"feel like Anthropic's Earth demo"** — alive, interactive, mystical, and rewards curiosity. Never feel "dead."
-
----
-
-## 1. The cosmic theme — vocabulary
-
-| Concept | Meaning | Where it shows up |
-|---|---|---|
-| **Universe** | the whole site | `<body>`, global background |
-| **Galaxy** | a category | `/tools` galaxy map, category filters |
-| **Star** | a tool / skill / nav item | `/tools` stars, `.hp-tool-card`, `.skill-card`, footer socials |
-| **Nebula** | colored gradient washes | `body::before`, `.matrix-background::after`, page section backgrounds |
-| **Pulsar** | the central drifting orb | `.cosmic-pulsar` (fixed center, mouse-reactive) |
-| **Sigil** | the slowly-rotating alchemical seal | `.matrix-background::before` (SVG data URI) |
-| **Constellation** | particles + connecting lines | `.cosmic-canvas` (interactive starfield) |
-| **Rune** | mystical glyph easter eggs | `.rune-whisper--tl|tr|bl|br` (corner flickers) |
-| **Arcane seal** | hidden ✧ in bottom-right corner | `.arcane-seal` (toggles `body.ritual-open`) |
-| **Ritual mode** | activated occult mode (Konami code, seal click, console reveal) | `body.ritual-open` |
-| **Convergent** | what every NPC calls the player | NPC dialogue, quest chains |
-| **Chain** | one NPC's ordered run of 3–5 quests | `npc-quest.model.ts`, the `!` / `?` badges |
-| **Warp** | the 3D zoom-into-star animation when clicking a tool star | `.tool-card--warping`, `.cosmic-warp-overlay` |
-| **Godforge** | the home page entrance — the engine of creation | `.gf-hero`, `.gf-core` (the CSS furnace) |
-| **Realm** | one of the five Eclipse Realms a tool category belongs to | `REALMS` in `realm.model.ts`, `--realm-color` |
-| **Forge station** | one realm's accordion on the home page | `.gf-station`, `.gf-station--open`, `.gf-station--lit` |
-| **Artifact** | a tool, in forge vocabulary | `.gf-card`, the Forge's Pulse counter |
-| **Fragment** | an easter egg, in forge vocabulary | `EASTER_EGGS`, `/arena` gates |
-| **Rank** | the visitor's level, Wanderer → Eclipse Lord | `LEVELS` in `gamification.model.ts`, `.gf-rank` |
+This file replaced a 662-line manual for a developer-tools site. That product is
+gone — see §2 — and every instruction in the old file pointed at routes that now
+redirect. If something here disagrees with a comment in the code, the comment
+wins: this is a map, the code is the territory.
 
 ---
 
-## 2. Brand colors — the cosmic palette
+## 1. What the game is
 
-These are the only star/glow colors used. **Always re-use this palette** when introducing new categories or accents.
+A player is a **Keeper**. They strike a forge for Gold, spend it on idle income
+and on gambling for **runes**, send **explorers** into five realms on timed
+expeditions, mine and forage materials, craft and enchant gear with rolled
+stats, and climb ten ranks from Wanderer to Eclipse Lord.
 
-| Category / use | Color | Glow |
-|---|---|---|
-| CSS Tools / CSS / primary brand | `#A78BFA` violet | `rgba(139, 92, 246, 0.6)` |
-| CSS Generators | `#C4B5FD` light violet | `rgba(196, 181, 253, 0.6)` |
-| Email Tools | `#ff6dd7` magenta | `rgba(255, 90, 210, 0.6)` |
-| Security Tools | `#a48bff` violet | `rgba(140, 110, 255, 0.6)` |
-| Code Converters | `#5fb6ff` blue | `rgba(80, 180, 255, 0.6)` |
-| Productivity | `#ffc669` amber | `rgba(255, 180, 80, 0.6)` |
-| DevOps | `#ff9a5a` orange | `rgba(255, 140, 60, 0.6)` |
-| Text & Data | `#c48bff` lilac | `rgba(180, 120, 255, 0.6)` |
-| SEO Tools | `#7fd5a3` mint | `rgba(100, 220, 150, 0.6)` |
+Everything is client-side and everything is saved. Progression lives in
+localStorage while signed out and in Firestore while signed in, and the two
+reconcile — see §5.
 
-CSS vars on a card or orb:
+### The nouns
 
-```css
-.something[data-category="..."] {
-  --star-color: #A78BFA;
-  --star-glow: rgba(139, 92, 246, 0.6);
-  --star-inner: #eafff9;
-}
+| Word | Means |
+|---|---|
+| **Keeper** | the player |
+| **Realm** | one of five worlds — Luminous, Umbral, Infernal, Celestial, Verdant |
+| **Explorer** | a member of the roster you dispatch on expeditions |
+| **Thrall** | a hired hand that works while you are away |
+| **Rune** | the gambling drop, 25 of them across seven tiers |
+| **Socket Word** | a rune combination that grants a set bonus |
+| **Rung** | one level of one Market ladder |
+| **Eclipse** | the prestige reset |
+
+Note the vocabulary split: the **expedition** realms an explorer belongs to
+(Luminous, Umbral, Verge, Archivum, Nexus) are *not* the five **world** realms
+that have pages. Verge, Archivum and Nexus have no `/world/realms/*` route and
+never did. Do not "fix" this by adding routes — check whether the copy was meant
+to name a world realm instead.
+
+---
+
+## 2. There is no tools product
+
+The site used to be 126 browser tools with a cosmic starfield. All of it is
+retired. `LEGACY_TO_CANONICAL` in `src/app/shared/canonical-routes.ts` redirects
+every old URL to a player hall, and `npm run audit:nav` fails the build if a
+player-facing tool route ever comes back.
+
+Practical consequences:
+
+- **Do not add a tool page.** The nav audit will reject it.
+- The cosmic engine, the pulsar, the galaxy map, the tool registry, the
+  guestbook, the sponsors page and the donate page are all gone. If you find a
+  reference to one in prose, it is stale — `docs/ECLIPSE_REALMS_ROADMAP.md`
+  still describes Phase I in those terms and has not been rewritten.
+- Old SEO surfaces still resolve, because breaking them would cost the rankings
+  they earned. That is why the redirect table is long.
+
+---
+
+## 3. The routes
+
+Twenty-five declared routes, 29 prerendered, 28 in the sitemap. `npm run
+audit:nav` prints the authoritative list and fails on a dead link or an orphan.
+
+**Halls** — `/world` (home), `/character`, `/market`, `/sanctum`, `/codex`,
+`/leaderboards`, `/exchange`, `/gambler`.
+
+**Forge rooms** — `/forge/runes`, `/forge/crafting`, `/forge/enchanting`. The
+Bench and the Table are reached from inside the Forge, and are *also* listed in
+`NAV_MANIFEST` under `more`, because a room only reachable from inside another
+room reads as a dead page to anyone not already standing there.
+
+**World** — `/world/realms/:realmId` and three authored sub-locations
+(`.../infernal/basalt-seamworks`, `.../verdant/rootglass-canopy`,
+`.../celestial/meridian-orrery`), plus `/world/quests`, `/world/trials`,
+`/world/arena`, `/world/fivefold-lock`.
+
+**Arena games** — five under `/arena/*`.
+
+`NAV_MANIFEST` (`src/app/shared/nav/nav.manifest.ts`) is the single list the
+header, the tab bar and the footer all iterate. A destination that is not in it
+is unreachable from chrome, and the nav audit's exemption list is the only thing
+that will let that pass — do not add an exemption to silence it.
+
+---
+
+## 4. The early game — the shape it is deliberately in
+
+A brand-new ledger holds **0 Gold**. The floor rates are:
+
+| Source | Pays |
+|---|---|
+| Idle | 0.1 Gold/sec |
+| One strike of the Flame | 1 Gold (+10 on every hundredth) |
+| **Scout expedition — free, 2 minutes** | **5,000–10,000 Gold** |
+| The first Forge Bellows | **free** |
+
+Those last two rows are the whole first hour, and both are load-bearing:
+
+- **The free Scout** is what the tutorial's fourth screen points at, labelled
+  "Do this first". Two starter explorers are minted on a fresh save, dispatch
+  costs nothing, and one Scout pays for the second Market rung outright.
+- **The free first rung** exists because the Market's cheapest item was 5,000
+  Gold against a ledger that starts at zero. That is ~4,500 strikes or fourteen
+  hours of idling before the shop sells its owner anything, which is what got
+  reported as "5,000 clicks to the first upgrade". `firstFree` on
+  `forge-bellows` (`economy.model.ts`) hands over level 1 only; level 2 is
+  6,250 and every other ladder is untouched.
+
+Three things hang off that zero price and all three must hold together:
+
+1. `EconomyService.nextCost()` returns 0 *before* `discounted()`, which floors
+   every price at 1 so a Charisma discount can never make a ladder free.
+2. `economy-ops.ts` admits `buy-upgrade` with `amount: 0` (`ZERO_AMOUNT_OK`).
+   Every other amount-carrying op still requires `> 0`. Without this the free
+   rung survives locally and vanishes on the next cloud merge, because the merge
+   reads every op back through `parseOp`.
+3. The Market prices its cards from `EconomyService.nextCost()`, **never** from
+   `costOf(def.baseCost, owned)`. The card's price is shipped back as
+   `expectedCost` and `purchaseListing` compares it with `!==`.
+
+**Do not rebalance the ladders above the doorway rung** without re-deriving what
+one Scout buys. The intended first session is: land → tutorial → free Scout →
+5,000 Gold → second rung. Not: land → click 4,500 times.
+
+---
+
+## 5. Save state — the rules that have bitten before
+
+Progression is spread across roughly a dozen owner-per-blob localStorage keys
+and the list grows every few releases. **Never** ask "has this player played" of
+one key, and never write a save blob directly.
+
+- Everything goes through `GameStateGateway`, which refuses a key it does not
+  know (`isStateKey`) and syncs the ones it does. Firestore is the record while
+  signed in.
+- Writing a blob and then reloading loses the write. Go through
+  `LocalSaveRegistry` and rehydrate in the same tick — the `pagehide` flush will
+  otherwise clobber it.
+- The first-run tutorial's record (`eclipse-onboarding`) is deliberately **not**
+  a gateway key. It is a property of a browser, not of a player.
+- You cannot simulate a first visit by clearing storage and reloading: the
+  services rewrite their keys on the way out. Clear from `/robots.txt`, then
+  navigate to `/world`.
+- `INVENTORY_ERA` (currently 55) stamps the inventory ledger. A seed that does
+  not carry the current era is dropped whole at boot, silently.
+- The economy op log is `deviceId:seq`, unioned by id on merge and replayed onto
+  a snapshotted `origin`. A new op kind must survive `parseOp` or it does not
+  exist on any other device.
+
+---
+
+## 6. Tests, and how to run them without lying to yourself
+
+```bash
+npm run build          # prod + prerender + sitemap. The typecheck gate.
+npm run typecheck      # tsc --noEmit, faster
+npm run test:ci        # Karma, headless
+npm run audit:nav      # dead links / orphans / no tool product. Gates deploy.
+npm run check:i18n     # every key a template asks for exists
+npm run check:ds       # design-system adherence
+PW_PORT=4183 npx playwright test --project=chromium
 ```
 
-Brand globals: `--primary-color: #8B5CF6`, `--secondary-color: #7b61ff`, `--highlight-color: #ff00ff`.
+**Always set `PW_PORT` in a worktree.** The suite serves `dist/` on 4173 with
+`reuseExistingServer`, so a concurrent session's preview server will answer
+your run and grade *its* build. The config reads `PW_PORT` for exactly this.
 
-### Forge palette (Eclipse Realms, v2.19.0)
+**The e2e suite runs against a fresh browser, which is the browser the tutorial
+claims.** `playwright.config.ts` seeds `eclipse-onboarding` through
+`storageState` so the modal never intercepts a click. A spec that wants to test
+the tutorial has to remove that key itself. This is worth knowing because the
+failure mode is invisible: the click resolves its target, scrolls to it, and
+then burns the full 30-second timeout being told a `<div class="ob">` is in the
+way.
 
-An atmosphere layer over the cosmic palette, **not** a replacement — it belongs to the Godforge surfaces on `/home` and nothing else. Tokens live in `styles.css`.
+Other traps:
 
-| Use | Token | Value |
-|---|---|---|
-| Ember — the forge's own accent, CTAs, glows | `--forge-ember` | `#E8752A` |
-| Gold — rules, rims, borders | `--forge-gold` | `#C9A84C` |
-| Gold, text weight (the raw token is 3.6:1 and fails on the dark base) | `--forge-gold-text` | `#E0A857` |
-| Crimson — the rim of the well, the cold end of a gradient | `--forge-crimson` | `#8B2252` |
-| Void — the base the forge sits in | `--forge-void` | `#0a0f1e` |
-| Lore voice — serif titles and codex quotes | `--font-lore` | `ui-serif, Georgia, …` (system stack, never a webfont) |
-
-Realm accents are **not** listed here on purpose: they come from `REALMS` in `realm.model.ts` and are bound onto each station as `--realm-color` / `--realm-glow`, so adding a realm is a data edit and never a stylesheet edit.
-
-### Realm palette (Eclipse Realms layer)
-
-The five realms group the twelve registry categories into a world. These are the **only** realm colors — `RealmService` writes the active one to `<html>` as `--realm-color` / `--realm-glow` / `--realm-name` on every tool route.
-
-| Realm | Covers | Color | Glow | Energy |
-|---|---|---|---|---|
-| **Luminous** | CSS Tools, CSS, CSS Generators, SVG Tools | `#E8D44D` gold | `rgba(232, 212, 77, 0.6)` | Aether |
-| **Umbral** | Security Tools | `#8B2252` wine | `rgba(139, 34, 82, 0.7)` | Nox |
-| **Verge** | Code Converters, DevOps, Reference | `#00d4ff` cyan | `rgba(0, 212, 255, 0.6)` | Nox |
-| **Archivum** | Productivity, Text & Data, SEO Tools | `#C9A84C` brass | `rgba(201, 168, 76, 0.6)` | Aether |
-| **Nexus** | Email Tools | `#10B981` emerald | `rgba(16, 185, 129, 0.6)` | Aether |
-
-### Rarity palette (drop ladder)
-
-| Tier | Color | Screen effect |
-|---|---|---|
-| **Mortal** | `#e8ecf1` white | corner toast |
-| **Eclipsed** | `#5fb6ff` blue | corner toast |
-| **Sacred** | `#a48bff` violet | corner toast + bell |
-| **Anomalous** | `#C9A84C` brass | corner toast + horn |
-| **Mythic** | `#ff2d4d` red | white flash, veil, centered card, particle burst, bass impact |
-| **Singular** | `#ff6dd7` magenta | as Mythic, plus a prismatic arpeggio — first-in-realm only |
+- Karma leaks language across specs — `setLanguage('es')` persists. A red spec
+  with Spanish in its "Expected" is run order, not your change.
+- A worktree needs `node_modules` symlinked from the primary checkout or it
+  cannot build.
+- `preview_start` reads the *primary* repo's `.claude/launch.json`. A worktree's
+  own copy is invisible to it.
 
 ---
 
-## 2b. The Eclipse Realms Design System — the token layer
+## 7. Rules that are not negotiable
 
-**This is the source of truth for colour, type, space, radius, elevation, motion and
-stacking.** It lives in `src/styles/tokens/` (eleven files plus `_tokens.css`, which is
-the only entry point) and is registered in `angular.json` *ahead of* `src/styles.css`, so
-a token resolves before the app stylesheet can shadow it. Upstream source:
-`~/Desktop/Eclipse Realms/Eclipse Realms Design System/`.
-
-### Reach for a token first
-
-| Need | Token family | Examples |
-|---|---|---|
-| Any dark surface | `--obsidian-0..5` | `#0a0a0f` is the scene base |
-| Any text | `--ink-0..3`, `--text-*` | `--text-muted` is `--ink-2` |
-| Interaction / selection / focus | `--violet*` | violet is the system energy, ~7% of a screen |
-| Importance, value, reward | `--gold`, `--gold-bright`, `--gold-core` | ~2% of a screen |
-| Forge heat | `--ember` | the one orange |
-| Realm signal | `--realm-*`, `[data-realm]` | location/type/status only, never mood |
-| Rarity | `--rarity-*`, `[data-rarity]` | seven tiers, Singular is `#ff6dd7` |
-| Space | `--space-0..24` | 4pt ramp, px throughout |
-| Radius | `--radius-xs..xl`, `--radius-pill` | tight: surfaces are carved, not soft |
-| Stacking | `--z-*` | closed scale, see below |
-| Motion | `--dur-*`, `--ease-*`, `--lift-hover` | 120–220ms; reduced-motion zeroes them |
-
-### The hard rules
-
-1. **One gold.** `--gold` `#e8c898` with `--gold-bright` / `--gold-core` for the light and
-   dark stops. Six competing golds were removed; `scripts/check-ds-adherence.js` fails the
-   build if any comes back.
-2. **No emoji, no Unicode glyphs as icons.** `✦ ◈ 🜃` are the same bug class as `🔨 ⚙️ 🌑`.
-   Use `src/assets/icons/market/` (23 control glyphs) or `src/assets/ui/svg/character/`
-   (8 slot glyphs). Object art — runes, materials, equipment — is raster, not icons.
-3. **No icon font, no CDN icon set.** FontAwesome is gone and both cdnjs and the Google
-   Fonts origins are out of the CSP. If a glyph is missing, say so in text rather than
-   borrowing a foreign one.
-4. **All four fonts are self-hosted** from `src/assets/fonts/`. Never add an `@import` to
-   Google Fonts — the design system ships one and we deliberately do not use it.
-   `--font-display` Cinzel Decorative, `--font-lore` Cormorant Garamond, `--font-ui` Inter,
-   `--font-system` Orbitron (numeric readouts only). Never all four on one ordinary screen.
-5. **The z-scale is closed.** Name a step; never invent a number. The design system's
-   ladder ends at `--z-toast` (1300); this app documents six steps above and around it in
-   `styles.css` — `--z-inspect-3d` 1340, `--z-veil` 1360, `--z-consent` 1450,
-   `--z-spectacle` 1500, `--z-cursor` 1550, `--z-skip` 1600, `--z-boot` 1700. A component
-   that needs a new value needs a design decision, not a bigger number.
-6. **Disabled is explained, never silent.** An unavailable control keeps a written reason.
-7. **The bag grid stays visible when empty** (the RuneScape rule) — a slot well is
-   recessed so an empty loadout still reads as a loadout.
-
-### What is deliberately NOT on the design system
-
-The **`/tools` category star palette** in §2 above (`#4dffe0`, `#a48bff`, `#ff6dd7`, …) is
-a separate, documented palette. Those nine colours are distinct *category signals* —
-collapsing CSS Tools, CSS Generators, Security Tools and Text & Data into one violet would
-erase information rather than enforce a system. Leave it alone. The cosmic engine's canvas
-particle palette (`cosmic-engine.js`) is the same call, and `var()` cannot resolve in a
-canvas `fillStyle` anyway.
-
-### The adherence gate
-
-`npm run check:ds` (also in `prebuild` and in CI before the build) enforces six rules
-against `scripts/ds-adherence.baseline.json`. It is a **ratchet**: a rule fails only when
-its count rises above the baseline. Two rules sit at zero and must stay there —
-`no-retired-golds` and `no-raw-zindex`. When you fix something, the script prints the
-lowered baseline to paste; run `node scripts/check-ds-adherence.js --update` to record it.
-
-The open backlog is real and tracked by the same file: ~778 colour literals still in CSS
-(mostly the tools palette and one-off tints) and ~470 emoji still standing in as item,
-material and achievement icons. **The emoji backlog is not a find-and-replace** — those
-entries need painted art through `scripts/import-assets.py`, and deleting them without art
-leaves blank tiles across the market, forge and codex.
+1. **SSR-guard every browser API.** `isPlatformBrowser(inject(PLATFORM_ID))`, or
+   `typeof window === 'undefined'` in an inline script. A guard that redirects
+   during SSR makes the route prerender to a stub and unreachable in
+   production — and it works fine in `ng serve`.
+2. **Honour `prefers-reduced-motion`** on anything over a second. Static end
+   state, not "no animation".
+3. **A CSS animation outranks a plain declaration.** A class that sets `opacity`
+   or `filter` on an animated element does nothing. The boot curtain's fade was
+   inert for a whole release for this reason.
+4. **Angular's emulated encapsulation rewrites `@keyframes` names — except
+   inside media queries, sometimes.** A dangling `animation-name` is completely
+   silent: no console error, no build warning, `getComputedStyle` reports the
+   animation running while `element.getAnimations()` returns `[]`. Re-run a
+   CSSOM sweep after any CSS refactor.
+5. **`transform` on an ancestor traps `position: fixed`.** `routeFadeIn` leaves
+   one on every routed host, which is why every full-viewport overlay in
+   `app.component.html` is a sibling of `<main>` and not a child of a route.
+   `filter` is safe; `transform` is not.
+6. **44px is the floor for a *standalone* control.** Grouped filter chips and
+   tab rows are the documented exception and sit at 32–36px; the group clears
+   the floor. Do not bulk-bump them — read the comment on `.rp__chip` first.
+7. **Do not hand-write an `assets/` path.** `scripts/import-assets.py` →
+   `art-manifest.generated.ts` → `artFor()`. Source paintings live off-repo.
+8. **Adding a dependency means committing the lockfile.** A hand-edited
+   `package.json` passes every local build and fails `npm ci` in CI.
+9. **The CSP is hand-written in `firebase.json`** and has silently broken
+   Stripe, Google sign-in and the main stylesheet. `ng serve` never reproduces
+   it. `/__/*` bypasses `firebase.json` entirely — curl it before adding any
+   header to the `**` block.
+10. **A `firestore.rules` change in a push that failed the build never
+    deploys**, and every later push skips it. Check the Deploy job's conclusion,
+    not the red X — the Lighthouse job fails on most `main` runs and does not
+    gate deploy.
 
 ---
 
-## 3. Repeating patterns — copy these when building new sections
-
-### 3.1 Section eyebrow + title + tagline pill
-
-```html
-<p class="hp-section-eyebrow"> <!-- or .section-eyebrow / .skills__eyebrow / .footer-eyebrow -->
-  <span class="hp-eyebrow-pulse"></span>
-  Eyebrow Label
-</p>
-<h2 class="hp-section-title">Section Title</h2>
-<p class="hp-section-tagline">a one-line tagline that frames what's below in cosmic language</p>
-```
-
-The pulse dot uses `hpEyebrowPulse` (3s ease-in-out infinite). Tagline pill is a rounded `999px` pill with `rgba(139, 92, 246, 0.05)` bg and `rgba(139, 92, 246, 0.14)` border.
-
-**Tagline tone:** poetic + cosmic — `"new stars born this week in the xsantcastx universe"`, `"a constellation of crafts I orbit through every project"`, `"a signal flare into the universe — drop one and I'll catch it"`. Avoid corporate phrasing.
-
-### 3.2 Star-orb (the universal interactive element)
-
-Every clickable card / icon / nav item should be a star. The pattern:
-
-```css
-.star-thing {
-  position: relative;
-  display: grid;
-  place-items: center;
-  background:
-    radial-gradient(circle at 32% 28%, var(--star-inner) 0%, rgba(255,255,255,0.32) 18%, rgba(255,255,255,0) 42%),
-    radial-gradient(circle at 50% 50%, var(--star-color) 0%, rgba(8,3,24,0.92) 88%);
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow: 0 0 12px var(--star-glow), 0 0 36px -6px var(--star-glow), inset 0 0 8px rgba(0,0,0,0.4);
-  animation: starBreathe 6.5s ease-in-out infinite;
-}
-
-.star-thing::before { /* dashed orbital ring */
-  content: ''; position: absolute; inset: -8px;
-  border-radius: 50%; border: 1px dashed var(--star-glow);
-  opacity: 0.36; animation: orbitSpin 24s linear infinite;
-}
-
-.star-thing::after { /* outer halo */
-  content: ''; position: absolute; inset: -16px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--star-glow), transparent 70%);
-  opacity: 0.32; filter: blur(6px); z-index: -1;
-}
-```
-
-**Stagger animation delays** so they don't pulse in unison (use `:nth-child(Nn+M)` with negative delays).
-
-### 3.3 Glassy panel
-
-Background formula for any "panel" surface: `rgba(10, 6, 26, 0.55)` + `1px solid rgba(255, 255, 255, 0.06)` + `backdrop-filter: blur(14px)`. Hover: border switches to the active `--star-glow`, box-shadow gets a `0 0 28px -8px var(--star-glow)` halo.
-
-### 3.4 Cosmic backdrop on a section
-
-For "section" containers (not the global bg) — dual radial nebula washes + gradient cap lines:
-
-```css
-.section-foo {
-  position: relative;
-  background:
-    radial-gradient(ellipse 60% 50% at 20% 30%, rgba(139, 92, 246, 0.06), transparent 65%),
-    radial-gradient(ellipse 50% 45% at 80% 70%, rgba(123, 97, 255, 0.07), transparent 65%),
-    rgba(5, 8, 18, 0.55);
-  backdrop-filter: blur(8px);
-}
-
-.section-foo::before, .section-foo::after {
-  content: ''; position: absolute; left: 0; right: 0; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.5) 50%, transparent);
-}
-.section-foo::before { top: -1px; }
-.section-foo::after  { bottom: -1px; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
-```
-
----
-
-## 4. The cosmic engine (in `index.html`)
-
-A single inline script runs five interactive systems. **All SSR-safe** with `typeof window` guards and `prefers-reduced-motion` respect.
-
-1. **Constellation canvas** (`<canvas class="cosmic-canvas">`, `mix-blend-mode: screen`) — particles drift, twinkle, connect with lines under 130px, react to mouse with parallax + glow boost.
-2. **Cursor-reactive pulsar** — the central pulsar drifts toward the cursor (lerped 4%/frame, ±80px X, ±60px Y). Wired via `--cursor-shift-x` / `--cursor-shift-y` CSS vars consumed by `pulsarBeat` keyframes.
-3. **Custom cursor halo** (`<div class="cosmic-cursor">`) — soft glow that grows + shifts violet on hover over interactive elements. Hidden on touch (`@media (hover: none)`).
-4. **Scroll-reveal observer** — `IntersectionObserver` adds `.cosmic-in-view` to elements matching the reveal selector list. Re-attached via `MutationObserver` on Angular route changes.
-5. **Magnetic CTAs** — primary buttons (`.cta-button:not(.is-ghost), .donate-btn, .hp-sub-form__btn, .submit-btn`) lerp toward cursor at 18% strength, capped 12px.
-
-**When adding a new card or interactive element:** add its selector to the reveal selector list in the engine if you want fade-up. Add `cta-button` class for magnetic behavior.
-
----
-
-## 5. What's done (changelog of cosmic alignment)
-
-- **Global background**: matrix-background base, rotating SVG sigil (320s spin + 18s breathe), drifting nebula fog, body::before/after nebula + starfield, pulsar with hue rotation + position drift.
-- **Easter eggs**: arcane seal ✧ in corner, Konami code → ritual mode, console banner, `xsantcastx.reveal()` global, 4 corner runes flickering on staggered cycles.
-- **Home page**: hero card star, stats bar with category-colored mini orbs + gradient cap lines, Fresh-off-the-Forge full star cards (10 category palettes), spotlight glassy cosmic panel, live section cosmic backdrop, changelog day stars, footer CTA glassy backdrop.
-- **Tools page**: galaxy map (5 spiral galaxies with rotating arms / dust / cores / rings) → click → star system view (5 orbital rings, ~30 stars per galaxy, scene tilted rotateX 20deg, tools orbit), warp animation on star click, hover HUD with tool name/desc/tags, search falls back to flat star grid.
-- **Skills page**: full cosmic redesign — every skill is a star with category-cycled palette, eyebrow + tagline.
-- **Projects page**: cosmic eyebrow + tagline pill added.
-- **Contact page**: cosmic eyebrow + tagline pill added.
-- **Footer**: full cosmic redesign — eyebrow `● FUEL THE MISSION`, gradient title with `✦` sparkle, tagline pill, 5 star-orb social icons (cyan/magenta/violet/purple/mint), drifting stardust starfield in `::after`, gradient cap line, cosmic glassy modal upgrades.
-- **Cosmic engine**: constellation canvas + cursor pulsar + custom cursor + scroll-reveal + magnetic CTAs.
-- **3D tilt + click sparks + page-transition** (most recent batch): every star/card tilts to follow the cursor in 3D, primary CTAs spawn a starburst on click, route changes fade through a cosmic veil.
-- **Animated counter + type-on hero + scroll parallax + gradient sweep**: the `123 Free Tools` stat now counts up from 0 when entering view; every section title and hero `h1` types in character-by-character via IO trigger; hero title/subtitle/CTA float at 0.7× scroll speed and the visual carousel at 0.5× for depth; gradient-text headings sweep colors over 7s. `/guestbook` route registered (was 404).
-- **Click ripple wavefront + form-success confetti**: clicking anywhere in empty space spawns an expanding cyan/violet ring on the canvas that pushes nearby particles outward (impulse decays at 0.93/frame), gives them a flare boost, and dissolves over 850ms. When a form submits successfully (`.form-status .success`, `.hp-sub-success`, `.donation-success`), a 32-particle multi-color confetti starburst layers a secondary 22-particle pink burst 140ms later — celebrates contact + newsletter submissions automatically without per-component wiring. `WeakSet` prevents double-celebrations.
-- **Ambient cosmic drone**: Web Audio API generates a 5-oscillator pad (bass A1 sine + A2 triangle + A3 detuned pair for chorus + E4 fifth) routed through a lowpass filter that sweeps ±220Hz over 25s. A slow LFO (0.08Hz) breathes the bass volume. Master gain fades 0 → 0.05 when ritual mode activates and fades back when it ends. Lazy-instantiated — users who never engage the ritual easter egg get no AudioContext at all. Also exposes `xsantcastx.toggleAudio()` for direct console control.
-- **Boot splash + mobile touch ripple**: SSR-rendered `.cosmic-boot` curtain shows a teal star expanding from center with two staggered orbital rings + `✦ BOOTING UNIVERSE ✦` label, then flares away after 750ms revealing the universe — premium first-impression with no flash of unstyled content because the splash is in the SSR HTML. Touch devices now get cosmic feedback: every `touchstart` emits the same canvas ripple wavefront as a click plus a 6-particle micro spark — mobile users no longer feel left out of the cosmic interactivity.
-- **Constellation tooltip + 404 lost star**: hovering any card now anchors 4 bright canvas lines to its nearest particles in the card's category color, making it feel embedded in the cosmos. The 404 page got a teal star with a glowing trail that drifts diagonally across the viewport over 18s, with a "a star drifted off course" whisper fading in mid-cycle.
-- **Tag-related connections**: every tool card and orbit star now publishes its registry `tags` as `[data-tags]`. Hovering surfaces dashed cyan/violet/pink lines drawn between the card and on-screen siblings sharing at least one tag — turns the cosmos into a discoverability map. Lines are colored by the hovered card's category and skip off-screen siblings to keep the canvas clean. Extended the home `Tool` interface to carry tags through to the template.
-- **Cosmic copy pass round 1**: the guestbook page got its full vocabulary lifted — eyebrow "Visitor Constellation", tagline "every name here is a star that passed through", "Submit" → "Send into the void →", placeholders "Your call sign" + "Drop a message into the void...", loaders "Tuning the signal..." / "Pulling more echoes...", "Load More" → "✦ Reveal older messages". Donation form i18n strings now say "Fuel the mission with KASPA" / "Send the signal →" / "The cosmos heard you. Thank you." in EN + matching cosmic phrasing in ES. Footer donate modals say "Fuel the mission", "PayPal portal", "Card portal", "Encrypted by Stripe — your card never crosses my orbit." All language-keyed via the existing TranslationService so EN/ES stay in sync.
-- **Cosmic chrome — selection / scrollbar / cookie banner**: added global `::selection` with cyan gradient highlight + glow shadow; webkit-scrollbar styled as a cyan→violet gradient thumb on a dark-indigo track with a hover-brighten + glow; Firefox falls back via `scrollbar-color`. Cookie banner copy lifted (EN + ES) — "We use analytics cookies..." → "Tiny analytics breadcrumbs help us see which stars get visited most." / "No personal data is sold or shared — we just count footsteps in the cosmos."
-- **Full i18n second pass**: every cosmic eyebrow + tagline I added across 8 templates (footer, contact, projects, skills, guestbook, home ×2, tools) is now translated via `TranslationService` using a new `cosmic.*` namespace (15 keys × 2 languages). Wired `TranslationService` into `LandingComponent` + `GuestbookComponent` which didn't have it. Spanish users now see "Ultimas herramientas / Alimenta la mision / cada moneda mantiene viva otra estrella en el universo" instead of the English hardcoded strings. Guestbook also got 7 additional copy keys (loading text, placeholders, submit button, load-more).
-- **Cosmic anchor planet**: a CSS-only 3D planet between the Featured Spotlight and Watch Live Work sections. Full sun-variable lighting model: `--sun-x`/`--sun-y` CSS vars drive the directional light; terminator shadow layer separates day/night side; Fresnel rim glow on the limb; ring/sphere mutual shadows (ring casts on sphere, sphere occludes ring base); banding overlay adds latitudinal texture. Mobile: tiered lite mode (reduces layer count) + canvas governor (caps frame budget) — the old single kill-switch is gone. Caption i18n'd via `cosmic.anchor.whisper`. Zero JS, no Three.js dependency. Authoritative detail: `docs/rendering-implementation-report.md`, `docs/webapp-findings-spec.md`.
-- **Cosmic OG image**: replaced the flat `og-default.jpg` with a hand-built `og-cosmic.svg` (1200×630, ~7.7KB) that mirrors the on-site cosmic identity — deep violet backdrop, central white→cyan→violet→pink pulsar bloom, 28 brand-palette stars connected with constellation lines, a faint rotating sigil on the right, "● FREE BROWSER TOOLS" eyebrow, gradient "xsantcastx" wordmark, "Tools forged in the void." subtitle, three-stat row (123+ Free Tools cyan / Always Free violet / Built in Public pink), and the URL. Wired through both `index.html` static meta and `SeoService.DEFAULT_IMG` (with the old JPG as a fallback for crawlers that don't render SVG), plus added `og:image:type`, `og:image:alt`, and `twitter:image:alt`. Every social share now broadcasts the cosmos.
-- **Mobile rescue pass — v2.1.0** (latest): the owner reported mobile as "horrible — can't navigate and very laggy". Four defects made the drawer unusable: the hamburger was a 32×20 button (under the 44px minimum); `.mobile-backdrop` is a positioned z-index:998 sibling inside `.navbar`'s stacking context while `.logo`/`.mobile-controls` are static, so the backdrop painted *over* them and ate every tap on the X and the EN/ES toggle; the drawer's `top` was hardcoded to 80px/64px while `viewport-fit=cover` makes the navbar 64px + `env(safe-area-inset-top)` on notched devices, so it opened underneath the header; and `max-height: 100vh` is the *large* viewport on mobile, hiding the last links behind the URL bar. The drawer now positions off a `--nav-h` variable written from the navbar's measured `offsetHeight`, uses `100dvh`, closes on Escape / NavigationEnd / resize past 960px, and locks scroll with the out-of-flow technique iOS actually honours. **Perf**: the lag was the wallpaper, not the app — eight fixed full-viewport layers (a 1600px sigil, two blurred nebula washes at blur(80px)/blur(55px), a 980px blurred pulsar animating `top`/`left`, a blend-mode canvas, four `will-change`-pinned runes) is ~380 MB of GPU texture on a DPR-3 phone, so the compositor thrashed. Below 768px that stack collapses to five static layers, `backdrop-filter` is off globally (300+ declarations, four stacked in the header), the type-on heading split and scroll parallax are skipped, and the unthrottled `:root` custom-property writes on scroll are rAF-coalesced. Also fixed: `/live`'s grid track resolved to 462px in a 375px viewport (`min-width:auto` floor), the header row overflowed by ~4px, three donation modals and a duplicated route veil were permanently composited, and every standalone control is now ≥44px. **Verified live at 375×812 across 10 routes**: zero horizontal overflow, zero sub-44px standalone controls, all 9 drawer links pass an `elementFromPoint` hit test.
-- **Cosmic mobile menu**: the hamburger menu on mobile got the full cosmic treatment — backdrop swapped from `rgba(0,0,0,0.75)` to dual-radial cosmic wash (cyan top + violet bottom) with 6px blur; the menu panel itself now uses radial cosmic gradients + 88%-alpha deep-indigo base + cyan-violet-cyan border accents + a top gradient cap line (matches every cosmic section) + a baked-in starfield in `::after` with 5 brand-color speck radial-gradients. Hamburger bars glow cyan on hover and switch to bright cyan with cyan+violet box-shadow when the menu is open. Slide-in transition upgraded to cubic-bezier(0.22, 1, 0.36, 1) for cosmic ease. Mobile users now feel the cosmos the moment they touch nav.
-- **Hero carousel void on mobile — v2.2.1** (latest): the first thing every phone visitor saw under the header was a 210px black rectangle. All five `.hc-card`s were stuck at their base `opacity: 0`. Cause: Angular's emulated encapsulation rewrites `@keyframes` names to `_ngcontent-<id>_<name>` and rewrites the matching `animation` shorthands to suit — but it did **not** rewrite the one inside the `@media (max-width: 768px)` block. That rule kept the raw name `hcCardCycleFade`, which matches no keyframes rule in the document, so the animation was never instantiated (`getComputedStyle` reported `animation-play-state: running` while `element.getAnimations()` returned `[]` — the tell for a dangling animation reference) and the base `opacity: 0` stood forever. Desktop was unaffected because its rule sits outside any media query and *was* rewritten correctly. **Fix**: deleted the mobile-only `hcCardCycleFade` keyframes entirely and let mobile inherit `hcCardCycle` from the base rule; the existing `transform: none !important` already outranks the animation in the cascade, so the 3D tilt is dropped and only the opacity channel animates — identical compositor cost to the fade-only keyframe, with one fewer name for Angular to fumble. **Audit**: a CSSOM sweep comparing every `animation-name` reference against every defined `@keyframes` across all 11 stylesheets found this was the site's *only* dangling reference (82 defined, 120 references). Worth re-running after any CSS refactor: the failure is completely silent — no console error, no build warning.
-- **The Godforge — v2.19.0**: the home page became the entrance to the Eclipse Realms forge. **Hero**: the two-column "Best Free Tools for Developers" split is gone. In its place a single centred column — serif title `The Godforge` (system serif via a new `--font-lore` token, deliberately *not* a webfont: this is the LCP element and the Google Fonts CDN was removed for exactly that reason), an italic serif subtitle, a CSS-only forge core, the visitor's rank read from `XpService`, and `Enter the Forge`. The core is five composited layers — blurred haze, two counter-rotating rims, a well whose radial stops run white-hot → ember → crimson → void, and a molten heart on an offset cycle — plus five ember sparks positioned by `--ex` and staggered by `--ed`. **The hero carousel is deleted**: `HeroCarouselCard`, `HERO_CAROUSEL_MAX`, `hcCardCycle` and every `.hc-card` rule are gone from the component, the stylesheet and the engine's hover/paint-containment selectors. **Forges**: the flat "latest 8" grid is now five realm accordions driven by `REALMS`, one open at a time, each with its sigil, codex quote, artifact count and up to six of its newest tools. Collapsed stations keep their cards in the markup (`content-visibility: hidden` + `max-height: 0`) so all 26 tool links are still crawled — only the visitor's view is filtered, and the cards are `tabindex="-1"` while shut. **Pulse**: four stats that cannot drift, because each is derived from what it counts — `tools.length`, `EASTER_EGGS.length`, `REALMS.length`, and `PRERENDERED_PATHS` from a new generated `src/app/prerender-stats.ts` that `scripts/generate-sitemap.js` rewrites from `prerender-routes.txt` on every `prebuild`. **Chronicle**: the changelog gains a realm badge, but only when an entry names a registry tool that can actually be placed — platform work stays unbadged rather than filed under a guess. **Journey**: a closing section with rank, XP bar, a recommended first tool (the first featured tool the visitor has not opened, from local progress — the site has no per-tool analytics and does not pretend to), and doors to `/blueprint` and `/arena`. **Two traps hit and worth remembering**: (1) the section id stays `services` even though nothing calls it that any more — `HeaderComponent` keys both `scrollToSection()` and its active-link observer off a hardcoded `['hero','services','projects','about','contact']`, so renaming the anchor silently breaks the SERVICES nav link; (2) the typewriter (`typeOn`) rewrites a heading into per-character `<span>`s, which is fatal for a heading painted through `background-clip: text` — each span clips its own slice of a gradient sized to that span and the title renders as a smear, so `.gf-hero__title` is excluded from `typedSelector`. The same char-splitting also lets a line break fall between any two letters, which is why the Chronicle title is sized to fit its 640px column. **Verified in a real browser at 1440×900 and 375×812**: zero horizontal overflow, zero sub-44px standalone controls on mobile, zero console errors, accordion works by mouse and by keyboard with correct `aria-expanded`, `Enter the Forge` lands on the forges, every string translated in ES, and reduced motion parks the core hot rather than dark.
-
----
-
-- **Bundle diet — v2.27.0 "Lean"** (latest): the initial download was 480 kB gzip (1.94 MB raw). Now **297 kB gzip / 1.13 MB raw — -38%** — with no visible change to the site. Measured against `origin/main` at v2.26.0; the same work measured -44% against the smaller v2.9.0 tree it was originally written on.
-  - **Firestore (-116 kB gzip)**: `provideFirestore()` lived in the root injector, so the ~450 kB SDK shipped eagerly to serve a visit counter, a changelog, a newsletter form and some usage counters — all of which run after hydration, most of which most visitors never trigger. New `src/app/shared/lazy-firestore.service.ts` dynamically imports `firebase/firestore` on first use and hands callers `{db, api}`. Ten consumers migrated. **Three traps if you extend this**: (1) raw-SDK callbacks fire *outside* the Angular zone, so anything pushing to a subject or component field from an `onSnapshot` must go through `lazyFirestore.runInZone()` — plain `await` in a component method is fine, because zone.js captures the zone at `.then()` registration, not at resolution; (2) don't `await` a Firestore write before showing UI feedback — the easter-egg service announces the discovery first and persists fire-and-forget, so the toast doesn't wait on a 116 kB chunk; (3) `/admin` still uses AngularFire's Firestore bindings, so `provideFirestore()` lives in `admin.routes.ts` with `AdminDataService` listed beside it — a `providedIn:'root'` service cannot see route-level providers and throws NG0201. Its factory try/catches `initializeFirestore()` because `LazyFirestoreService` may have started Firestore already.
-  - **Auth + re2js (-27 kB gzip)**: `provideAuth()` had already been route-scoped, yet `@firebase/auth` was still eager. The cause is non-obvious and worth remembering: **`@angular/fire/analytics` and `@angular/fire/functions` both statically import `@angular/fire/auth`** (analytics for `UserTrackingService`). Any eager `provideAnalytics()`/`provideFunctions()` drags the whole auth SDK in, no matter how carefully you scope `provideAuth()`. Fix was to drop both providers and talk to the raw modular SDKs (`firebase/analytics`, `firebase/functions`) behind dynamic imports. `AnalyticsService` keeps its synchronous fire-and-forget API by queueing calls until the SDK lands, and still resolves nothing until consent — so a visitor who declines the banner downloads neither the chunk nor gtag.js. `ScreenTrackingService`'s `page_view` is now emitted from `AppTitleStrategy`, which runs at the same point in the navigation lifecycle.
-  - **9 eager routes (-35 kB gzip)**: `/home`, `/skills`, `/projects`, `/contact`, `/donate`, `/live`, `/mcp`, `/arena` and the 404 were declared in `AppModule` and routed with `component:`. All nine are now `standalone: true` + `loadComponent()`. `AdsenseComponent`, `DonationFormComponent` and `DonationFeedComponent` went standalone with them (a non-standalone child can't be imported by a standalone parent). `AppModule.declarations` is now just the app shell. **There are zero `component:` routes left — keep it that way.**
-  - **Dead code**: deleted 12 components/services left from the original crypto-portfolio scaffold (wallet-summary, transaction-list, crypto-card, news-feed, grid-sections, aboutme-card, resume-card, eg, hero, `app.routes.ts`, `firestore.service.ts`, `firebase-error-handler.service.ts`) plus `models/crypto.models.ts`. **`src/app/skills/` and `src/app/projects/` are NOT dead** — they are live routed pages, and `portfolio.service.ts` + `models/portfolio.models.ts` back `SkillsComponent`. `auth-service.service.ts` is live too (pdf-generator).
-  - **Assets**: `og-tools.jpg` and `og-pdf-generator.jpg` were byte-identical copies of `og-default.jpg` (-442 kB).
-  - **Budgets**: added to the production config. Note **Angular budgets measure the RAW bundle, not gzip** — a "300kb initial" budget fails instantly against 1.13 MB raw. Set as ratchets on today's actuals: initial warn 1200kb / fail 1400kb, anyComponentStyle warn 70kb / fail 100kb (`landing.component.css` is 60.1 kB built, the largest). They already earned their keep once: merging 83 commits of upstream work into this branch tripped both, which is exactly the signal they exist to give.
-  - **Not done — `/embed/*` prerendering stays.** The 128 embed routes look like free dist weight (10 MB of 47 MB), but hosting is static: `firebase.json` rewrites `**` to `/index.csr.html` and there is no SSR server. Un-prerendering them would serve Googlebot the CSR shell, which carries `<meta name="robots" content="index, follow">` — while `src/robots.txt` deliberately *allows* crawling these URLs precisely so the crawler can read the `noindex` that only the prerendered HTML contains (see the comment at the top of robots.txt). Dropping the prerender would silently undo that and blank the iframe until JS boots. Revisit only if a real SSR target is added.
-  - **Next lever, if more is wanted**: the app shell is now the bulk of what remains eager — quest drawer, XP bar, forge flame, currency rail and achievement drop all mount on every route. Deferring those behind an idle callback (the pattern `app-check.bootstrap.ts` already uses) is the obvious next cut.
-
-- **Eclipse purple + Godforge OG — v2.28.0 "Eclipse"** (latest): the brand accent moved from cyan to `#8B5CF6`, and the social preview was rebuilt from scratch.
-  - **The accent was never `#00d4ff`.** That is the *Verge realm* colour and it stayed. The site's actual brand accent was `#00ffcc`, and it was hardcoded, not tokenised: 526 `#00ffcc` + 1,737 `rgba(0, 255, 204, …)` + 3 `rgb(…)` across **203 files**. `--primary-color` existed but most of the tool CSS never used it. Shifted wholesale to `#8B5CF6` / `rgba(139, 92, 246, …)`, preserving each author's alpha and spacing style. The two colours are textually disjoint, so the Verge accent was never at risk from the replace.
-  - **Four spellings survive a naive find-and-replace** and each needed its own pass: URL-encoded hex inside SVG data URIs (`%2300ffcc`, in four `background-image` chevrons), 8-digit hex with baked alpha (`#00ffcc50`), the `rgb(0,255,204)` form inside a data-URI sigil, and `rgba(0, 210, 255, …)` where only the *hex* spelling of that colour had been replaced. Grep for the hex alone and you will believe you are done while four categories of reference still paint cyan.
-  - **A blanket hex replace makes things look worse before better.** `--star-glow` was written as `rgba(0,255,204,…)` and `--star-color` as `#4dffe0`, so pass one turned every tool card into cyan text inside a violet halo. The category ramp needed its own pass: `#4dffe0` → `#A78BFA`, `#6affe0` → `#C4B5FD`, plus the paired glows and the cyan-white specular stops. **Lesson: a colour and its glow are usually written in different notations — shift them together or not at all.**
-  - **Deliberately left cyan/teal**: the Verge realm (`#00d4ff`, boundary energy — explicitly kept), Code Converters (`#5fb6ff`, blue), and roughly 50 low-count teals that are tool *content* rather than chrome — gradient-generator presets, syntax-theme colours, the named-CSS-colour reference data. Recolouring those would corrupt tool output. The `.cosmic-planet` is also untouched: its blue is a documented sun-variable lighting model, not a brand token.
-  - **Known adjacency**: CSS Tools is now `#A78BFA` and Security Tools is still `#a48bff` — near-identical. The categories are labelled in text on every card and separated by realm section, so this is cosmetic, but the categorical ramp is worth rebalancing if the galaxy map ever relies on colour alone.
-  - **The link preview was broken in the places people actually share.** `index.html` advertised an SVG `og:image` with a JPEG listed underneath as a "fallback" — but **`og:image` is not a fallback list**. Facebook, LinkedIn, Discord and iMessage reject `image/svg+xml` outright, and crawlers that read both tags treat them as a gallery. Separately, `tools-routing.module.ts` still pointed at `og-tools.jpg` and `og-pdf-generator.jpg`, which v2.27.0 had deleted — those routes were serving 404s to every scraper. All **152** references now resolve to one 1200×630 JPEG.
-  - **New `src/assets/og/og-godforge.jpg`** (123 kB): an eclipsed sun with a violet corona and the forge ember burning along its lower limb, over a seeded constellation, with the wordmark running violet→gold. Authored as HTML in `scripts/og/og-godforge.html` and rendered through headless Chromium at exactly 1200×630 (the repo has Playwright but no ImageMagick or `sharp`); the starfield uses a fixed-seed LCG so re-renders are stable. `og-default.jpg` and `og-cosmic.svg` are deleted.
-  - **Live-chat names may still render cyan.** `.msg-name` colours come from `color` fields persisted in Firestore, not from code. `USER_COLORS` is now cyan-free so new messages are violet; historical rows keep what they were written with. Not fixable in the repo.
-
-- **Forge Flame dual-mode — v2.65.0 "Reverse"** (latest): the corner ember has two faces, and a switch above it turns the card over. **Gold** is the clicker it has always been — click, earn, hold a combo. **Anvil** is the Rune Forge's lever: a click spends `STRIKE_COST` (10K Gold) through `RuneForgeService.strike()` and pulls a rune out of the real drop table, from any page on the site. **The flip** is a `.ff__face` carrying `transform-style: preserve-3d` and a `.6s` rotateY; each `.ff__side` is flat and `backface-visibility: hidden`, and the sides hold their *own* core, ring pair and glyph rather than sharing one set — sharing would recolour the ember at the halfway point, in view, instead of the colour arriving with the face that owns it. The anvil is an inline SVG (a UI glyph, per the asset library's `UI/svg` rule) drawn as three separate masses — horn-and-face, column, flared base — because a single outline closes the waist and reads as an hourglass at 34px. **The haul**: every rune rises off the ember named, in its own `RUNE_TIERS` colour handed in as `--loot-color`, so the rarity ladder keeps one definition. Rare and above come in bigger, wearing their glow, and take a `flash` across the existing `.fx` screen layer. **x10** sits beside the switch — ten strikes run straight through (0.27–1.18 ms each; ~12 ms worst case, inside one frame) rather than chunked the way `/forge/runes` runs its thousand, and it banks whatever the purse could pay for instead of refusing a run that comes up short. **Persistence** is plain `localStorage` under `forge-flame-mode`, *not* the save gateway: it is which side of a switch is up, and putting it in the blob would mean a cloud write per flip, a merge rule for a boolean nobody has an opinion about, and a phone silently changing what its button does because a desktop tab toggled it.
-
-  Five traps worth keeping:
-  - **The anvil never touches `ComboService`.** That ladder counts *paid Gold strikes* at the economy's 500 ms cooldown — every tier threshold, every achievement and the persisted high-water mark assume two a second. The anvil has no cooldown and a x10 button, so one tap would have added ten to a lifetime record. The counter on screen is a local `forgeStreak` with the same 2 s fuse, labelled `FORGE x5`; the record behind it stays the Gold face's.
-  - **It does not call `IdleService.strike()` either.** The rune ledger awards its own craft XP; paying both would make the anvil the cheapest XP on the site, and it would also disagree with what `/forge/runes` pays for the identical action.
-  - **The refusal wash goes on `.ff__side`, not on `.ff__face` and not on `.ff__core`.** A `filter` forces its element into a flattened group, so on `.ff__face` the card would show both of its faces for the 420 ms of the flash; and `.ff__core` runs `ffBreathe`, which animates `filter`, and an animation outranks a plain declaration for the property it animates. The sides animate nothing, which is what makes them the free layer.
-  - **`.ff--broke` is written after `.ff--auto` / `--quake` / `--shake` / `--swell`.** All five animate `transform` on `.ff__btn` at equal specificity, so the last rule wins — and `.ff--auto` fires once a second for anybody who owns an automaton, i.e. exactly the visitor most likely to be striking an anvil they cannot afford. Above them, the refusal was swallowed by a decoration.
-  - **The anvil ember is re-tinted once per tier, not once overall.** The tier rules are `.ff[data-tier="N"] .ff__core`, which outranks a bare `.ff__side--anvil .ff__core`, so a tier-4 forge showed an orange anvil. Done with explicit per-tier rules rather than a `hue-rotate` on the side, for the same flattened-group reason as the wash above.
-
-  **Verified in a real browser**: flip resolves to `matrix3d(-1,0,0,0, 0,1,0,0, 0,0,-1,0, 0,0,0,1)` on anvil and `none` on gold (read with the transition disabled — the preview pane runs as a hidden tab, so transitions never advance and a mid-flight read looks like a broken rule); one strike spends exactly 10,000 and banks one rune; x10 spends 100,000 and lands ten staggered drops; a Singular renders at 15px in `#e6dcff` with its halo and a screen flash; an empty purse fires `ffBrokeShake` + `ffBrokeFlash` with `getAnimations()` non-empty on both, spends nothing and records no strike. At 375×812 every control clears 44px (switch 74×48, x10 55×44, ember 80×80), all three pass an `elementFromPoint` hit test, and `scrollWidth === clientWidth`. SSR renders both faces with the scoping attribute and `data-mode="gold"`. Reduced motion keeps the switch, the rune names and the red wash, and drops the rotation, the travel and the shake — `.ff--still .ff__loot` resolves `ffShoutStill` (checked with `getAnimations()`, the dangling-keyframes tell). Production `main.js` is flat at 290.17 kB vs 290.14 kB on `origin/main`; eager total +3.4 kB gzipped. 22 new specs; the full suite's 5 failures are byte-identical to baseline.
-
-- **Roll grades + The Gambler — v2.71.0** (latest): every item now freezes a per-stat roll grade beside its stats at mint. The grade is normalised inside each rarity's own band (`QUALITY_BAND` in `src/app/shared/rpg/item-quality.ts`), so **100% always means "this tier cannot do better"** whichever tier you are holding — the power gap between tiers stays in the ceiling (`RARITY_MULT`'s upper bound), which did not move. Band width climbs Common→Legendary and then narrows with a high floor for Mythic/Singular, because handing somebody a dud on a one-in-a-million drop is not tension. Two numbers kept deliberately distinct: `q` (the multiplier fraction, drives the stat value) and `pct` (the normalised grade, what the player sees). Perfect ≥95% average, Flawless ≥99.9% on every stat, both carrying a prismatic border. **Grades are never back-filled** — a tempered legacy item's base roll cannot be recovered from its current stats, so ungraded renders as "—" rather than an invented number. `/gambler` is the new hall: five boxes with published odds, per-box bad-luck protection (10 floor results arms a guaranteed step up), 24 named uniques with passives, and the till. **Three traps found while building it, each worth knowing before touching items again**: (1) every `eq()` definition is `type: 'artifact'` and `sellValueFor` prices those at zero, so no wearable in the game had ever been sellable and `canSell` had been refusing all of them silently — hence `EQUIPMENT_SCRAP`, deliberately an order of magnitude below the rune worths so no box pays for itself in scrap; (2) `boxPool` must exclude **all** uniques, not just the ones authored at the rolled rarity, or named objects leak into the ordinary pool at rarities they do not exist at, arriving with `unique: false` so their passive, discovery and counter all stay silent — eight of twelve Void Cache opens came out that way; (3) a lazily-hydrating service must publish its record from an `init()`, because a `BehaviorSubject` seeded with zeros renders a stale header right next to direct reads that are correct, which reads as a display bug rather than a missing publish.
-
-
-## 6. Roadmap — what's next (prioritized)
-
-### P0 — high impact, low effort
-
-- [x] **Type-on hero title** — system 8b in cosmic engine. IO-triggered char-split that walks text nodes, wraps each char in `.cosmic-char` with staggered `--delay`. Applies to `[data-typewriter]`, `.hp-hero__title`, `.hp-section-title`, `.skills h2`, `.section-title`, `.hp-live__title`, `.hp-spotlight__name`, `.tools-header__title`.
-- [x] **Scroll-linked hero parallax** — system 8c. JS sets `--scroll-y`, `--scroll-y-slow` (0.5×), `--scroll-y-slower` (0.3×) on `<html>`. CSS consumes them on `.hp-hero__title`, `.hp-hero__sub`, `.hp-hero__cta`, `.hp-hero__visual`.
-- [x] **Subtitle gradient sweep** — `cosmicGradientSweep` keyframe animates `background-position 0% → 100% → 0%` over 7s on `.hp-hero__title--accent`, `.hp-section-title`, `.section-title` (any element with the brand cyan→violet text gradient).
-- [x] **Animated counter** — system 8a. IntersectionObserver triggers an ease-out cubic count-up from 0 to `data-counter` value over 1.4s. Currently bound to `.hp-stat__num` for `Free Tools`. Add `[data-counter]` to any number to animate it.
-- [x] **Fix `/guestbook` 404** — added lazy-loaded route `loadComponent: () => import('./guestbook/...')` in `app-routing.module.ts` before the wildcard.
-
-### P1 — alive interactions
-
-- [ ] **Hover ripple on cards** — would stack on top of existing tilt + breathe + reveal + magnetic on the same surface. Per §7 rule "one alive interaction per scroll-screen", skipped to avoid overload.
-- [x] **Constellation cursor trail** — system 5b. Container `.cosmic-trail-layer` injected on first run; every 18+ px of cursor movement spawns a colored particle (1 of 5 brand colors); fade-out + drift over 1.2s; capped at 14 simultaneous; hidden on touch and reduced-motion.
-- [x] **Click ripple on the global canvas** — system inside the canvas IIFE. Click anywhere (skips form fields) emits an expanding cyan ring + inner violet ring on canvas; nearby particles within 280px get an outward radial impulse (`p.ivx`/`p.ivy` decay at 0.93/frame) and a flare boost (`p.flare` decays at 0.94/frame). Particles brighten and grow during the impulse.
-- [x] **Ambient sound** — system 8e. Web Audio API graph: bass A1 sine + A2 triangle + A3 detuned-pair (chorus) + E4 fifth → lowpass (Q=0.6, sweeping ±220Hz over 25s) → master gain. Slow LFO (0.08 Hz) breathes the bass. Master gain auto-fades to 0.05 when `body.ritual-open` is added (via the existing arcane seal / Konami / `xsantcastx.reveal()` triggers), fades to 0 when removed. Lazy-instantiates only when ritual mode is first activated — no AudioContext for users who never engage. Also exposes `window.xsantcastx.toggleAudio()` for direct console control.
-- [x] **Constellation tooltip** — hover any `.tool-card`, `.skill-card`, `.hp-tool-card`, `.project-card`, `.galaxy`, `.orbit-star`, or `.hp-spotlight__card` and the canvas draws bright connecting lines from the card's center to its 4 nearest visible particles within 280px. Line color is read from the card's `--star-color` CSS var (parsed via custom hex/rgb parser). Each linked particle also gets a flare boost so the connection feels reciprocal. Hooked into the canvas draw pipeline by wrapping the existing `draw()` function.
-
-### P2 — premium polish
-
-- [x] **Cosmic anchor planet** (pure CSS, no Three.js) — a new `.hp-anchor` section between the Featured Spotlight and Watch Live Work. Hosts `.cosmic-planet`: an `.cosmic-planet__atmosphere` outer halo (blurred radial gradient pulsing 7s), `.cosmic-planet__sphere` rotating at 80s linear (radial gradient body + inset shadow trio for depth + dual outer box-shadow glows), `.cosmic-planet__surface` simulating continents via 6 stacked radial-gradients with `mix-blend-mode: screen` drifting via `background-position`, `.cosmic-planet__clouds` higher layer drifting reverse at 55s for parallax, `.cosmic-planet__terminator` day/night linear-gradient shadow, `.cosmic-planet__highlight` blurred specular spot, and `.cosmic-planet__ring` tilted at 72° rotateX with conic-gradient banding + radial mask carving out the center. Section has gradient cap lines + cosmic backdrop. Caption translation key `cosmic.anchor.whisper` in EN + ES. Verified live: sphere animation `80s linear infinite planetSpin` running, ring rendered, whisper text "somewhere between the tools and the void — a world still spinning." visible. Reduced-motion safe.
-- [ ] **Smooth scroll** with momentum (Lenis-style without the dependency — write a 60-line hand-rolled smoothScroll).
-- [x] **Loading splash** — system 0 in cosmic engine. `<div class="cosmic-boot">` is part of SSR HTML so it paints instantly with the page (no flash of unstyled content). Center holds a teal star (radial gradient + box-shadow trio for depth) that scales 0 → 1.4 → 1, two staggered orbital rings (cyan + violet) that expand 0 → 8× and fade, and a `✦ BOOTING UNIVERSE ✦` label that fades in with letter-spacing easing. After 750ms the engine adds `.cosmic-boot--dismissed` which flares the star (scale 1 → 8 → 40, fade out + blur) and the curtain backdrop fades; the element is removed from DOM after 700ms. Skipped entirely on `prefers-reduced-motion`.
-- [x] **Tools page — connection lines between related tools** — extension of the constellation tooltip system. Every `.orbit-star`, `.tool-card`, `.hp-tool-card`, and hero carousel card now carries `[data-tags]` (comma-joined list from the tools registry). When you hover a card, the engine reads its tags, finds every other on-screen `[data-tags]` element with at least one shared tag, and draws **dashed lines** between their bounding-rect centers in the hovered card's category color. Verified live: hovering CSS Progress Bar Generator drew dashed connections to CSS Clip-Path Generator (above) and CSS Media Query Builder (below) — all three share the "CSS" tag. Off-screen siblings are skipped.
-- [x] **Confetti starbursts** — system 8d. MutationObserver watches `body` for additions of `.form-status .success`, `.hp-sub-success`, `.donation-success`, or `[data-success-burst]`. On match, fires a 32-particle multi-color burst followed 140ms later by a 22-particle pink burst. Uses `WeakSet` to prevent re-celebrating the same node.
-- [x] **Mobile Cursor companion** — `touchstart` listener inside the canvas IIFE (only bound when `'ontouchstart' in window`). Each touch point spawns the same canvas ripple wavefront as click + a 6-particle cosmic spark micro-burst. Skipped on form fields and `prefers-reduced-motion`. Now touch users get the same cosmic feedback as desktop pointer users.
-
-### P3 — content & SEO
-
-- [x] **Per-page cosmic copy passes (round 1)** — guestbook lifted ("Loading Guestbook..." → "Tuning the signal...", "Submit" → "Send into the void →", "Nickname" → "Your call sign", "Message" → "Drop a message into the void...", added "Visitor Constellation" eyebrow + "every name here is a star that passed through" tagline). Donation form i18n lifted (`donation.form.*` strings now read "Fuel the mission with KASPA", "Scan the seal, whisper a name, keep the stars burning.", "Send the signal →", "The cosmos heard you. Thank you.", etc., both EN + ES). Footer donate modals lifted ("Fuel the mission", "PayPal portal", "Card portal", "Send fuel through PayPal — a secure, instant signal.", "Encrypted by Stripe — your card never crosses my orbit."). Verified live in SSR HTML.
-- [x] **Open Graph cosmic image** — new `src/assets/og/og-cosmic.svg` (1200×630, ~7.7KB) is a fully cosmic-branded social-share preview: deep violet/indigo backdrop with central pulsar bloom (white→cyan→violet→pink radial gradient), 28 brand-palette stars connected with constellation lines, faint rotating alchemical sigil on the right, "● FREE BROWSER TOOLS" eyebrow, giant gradient "xsantcastx" wordmark, "Tools forged in the void." subtitle + "No sign-up. No installs. Just useful things.", three-stat row (123+ Free Tools / Always Free / Built in Public — each in its category color), and "xsantcastx.com" URL bottom-right. Both `index.html` and `SeoService.DEFAULT_IMG` now point to it as the primary OG image with `og-default.jpg` retained as a fallback for crawlers that don't accept SVG. Added `og:image:type`, `og:image:alt`, `twitter:image:alt` meta tags. Verified live: SVG serves at HTTP 200 / `image/svg+xml` / 7683 bytes, renders correctly inside the page.
-- [x] **404 page lost star** — pure-CSS animation in `not-found.component`. A teal star core (radial gradient + tri-glow box-shadow) trails behind a soft cyan tail (`linear-gradient` + `blur(1px)`), drifting diagonally across the viewport over 18s linear (`-12vw,18vh → 60vw,70vh → 115vw,30vh`). Core breathes at 3.4s; trail flexes its scaleX. A faint whisper "a star drifted off course" fades in at 40-60% of each cycle. Reduced-motion → static parked star.
-- [x] **i18n second pass** — added 15+ keys in a new `cosmic.*` namespace inside `TranslationService` covering every cosmic eyebrow (`cosmic.eyebrow.latestTools|whatsNew|openChannel|builtShipped|skillConstellation|visitorConstellation|fuelMission`) and tagline (`cosmic.tagline.latestTools|whatsNew|openChannel|builtShipped|skillConstellation|visitorConstellation|fuelMission|chooseGalaxy`) plus full guestbook copy (`cosmic.guestbook.title|loading|loadingMore|loadMore|nickname|message|submit`). Patched 8 templates (footer, contact, projects, skills inline, guestbook, landing ×2, tools) to use `translate('cosmic.*')`. Wired `TranslationService` into `LandingComponent` + `GuestbookComponent` which didn't have it. Verified live: switching `localStorage.preferred-language` to `es` reloads with "Ultimas herramientas", "Alimenta la mision", "nuevas estrellas nacidas esta semana en el universo xsantcastx", "cada moneda mantiene viva otra estrella en el universo".
-
----
-
-## 7. Patterns to NEVER break
-
-1. **Always SSR-guard browser APIs** — `if (typeof window === 'undefined') return;` at the top of any inline script. Prefer `inject(PLATFORM_ID)` + `isPlatformBrowser()` in services.
-2. **Always honor `prefers-reduced-motion`** — wrap any animation > 1s or any continuous loop. Fall back to a static end state, not "no animation."
-3. **Mobile-first sizing** — use `clamp()` for type and gaps. Avoid pixel-locked sizes.
-4. **Performance budgets**:
-   - Canvas: ≤ 140 particles total. ≤ 1 `getImageData` per frame max (we use 0).
-   - Animation count per element: ≤ 3 simultaneous keyframes (current pulsar uses 3).
-   - Avoid layout-triggering properties in keyframes (animate `transform` / `opacity` / `filter`, not `top/left/width/height`). Pulsar wander uses top/left at 38s — acceptable because it's slow and only one element.
-5. **Don't introduce new colors** without adding them to the palette table in §2.
-6. **One "alive" interaction per scroll-screen** — avoid stacking magnetic + tilt + ripple + parallax on the same element. Pick one primary feel per surface.
-7. **Always test the tools page after engine changes** — it's the most animation-dense page and reveals z-index bugs first.
-8. **The viewport corners are a shared, unmanaged resource** — before pinning anything with `position: fixed`, read the corner registry in the docblock of `shared/pwa/install-prompt.component.ts` and add your widget to it. Bottom-left in particular is **not** empty: above 961px the shell's 236px sidebar sits there, and below 961px the `.gftabs` tab bar and (below 768px) the bottom-centre forge flame do. Offset with `var(--shell-sidebar-w, 0px)` and `var(--gftabs-h, 58px)` rather than measuring by eye — both are published onto `<html>` by `HeaderComponent`.
-9. **Never put a backtick inside a component's `styles: [\`…\`]` block** — not even in a CSS comment. It closes the template literal, and the error Angular reports is `Failed to resolve styles at position 1 to a string`, which names neither the file nor the line. It cost two dev-server restarts in one release.
-10. **Never put a backdrop layer at a negative z-index** — it will not paint. `body` is positioned with `z-index: auto`, so it opens no stacking context; every negative-z-index descendant escapes into html's context and paints before body's own fully opaque gradient covers it. `.matrix-background`, `body::before` and `body::after` are all already dead paint for exactly this reason. A full-viewport backdrop goes at `z-index: 0` with `mix-blend-mode: screen`, which is what `.cosmic-canvas` and `.forge-scene` both do.
-11. **A transparent three.js layer draws after every opaque one** — `renderOrder` only sorts *within* the transparent pass, so a `depthTest: false` glow "behind" a mesh paints straight through it. If something is meant to be occluded, leave `depthTest` on and let the depth buffer do it.
-
----
-
-## 8. File map — where the cosmic theme lives
+## 8. File map
 
 ```
 src/
-├── index.html                           # cosmic engine (inline JS) + matrix-background, pulsar, runes, seal
-├── styles.css                           # global: matrix-bg, sigil, nebula, pulsar, runes, scroll-reveal, cursor
+├── index.html                       # shell, boot curtain, SSR-safe inline setup
 ├── app/
-│   ├── landing/                         # /home — Godforge hero, forge's pulse, five realm accordions,
-│   │                                    #   spotlight, anchor planet, live, chronicle, journey, footer-CTA
-│   ├── prerender-stats.ts               # GENERATED by scripts/generate-sitemap.js — PRERENDERED_PATHS
-│   ├── tools/                           # /tools — galaxy map → star system → flat search grid
-│   ├── skills/                          # /skills — star constellation grid
-│   ├── projects/                        # /projects — preview-window project cards
-│   ├── contact/                         # /contact — open-channel form
-│   ├── donate/                          # /donate — KASPA glassy panel
-│   ├── footer/                          # global footer — donate buttons + star-orb socials + modals
-│   ├── header/                          # global header (already on-brand)
-│   ├── live/                            # /live — terminal feed
-│   ├── games/                           # /games — easter egg gallery
-│   ├── mcp/                             # /mcp — npm package landing
-│   ├── shared/npc/                      # the six speaking characters — see below
-│   ├── shared/forge-scene/              # the WebGL forge background — see §11
-│   ├── shared/inspect-3d/               # the 3D item inspector — see §11
-│   └── shared/gamification/             # the progression ledger — see below
+│   ├── app.component.html           # every full-viewport overlay, as siblings of <main>
+│   ├── app-routing.module.ts        # all 25 routes + redirects + JSON-LD
+│   ├── translation.service.ts       # ~990 keys, EN + ES. check:i18n gates it
+│   ├── world/                       # /world, realms, quests, trials, fivefold lock
+│   ├── forge-keeper/                # /character — paper doll, bank, stats
+│   ├── live/                        # /sanctum — the dashboard (forge view)
+│   ├── codex/ leaderboards/ pvp/ quests/ arena/
+│   └── shared/                      # 50 subsystems; the game lives here
+│       ├── economy/                 # ledger, op log, Market, Flame, prices
+│       ├── rpg/                     # items, rolls, inventory, roster, crafting
+│       ├── explorer/ expedition/    # missions, sites, dispatch, events
+│       ├── enchanting/              # sockets, Socket Words, infusions
+│       ├── arena/ leaderboards/     # the Coliseum and seven standings
+│       ├── save/ cloud-save/        # GameStateGateway, merge, device lease
+│       ├── onboarding/ offline/     # first run, while-you-were-away
+│       └── nav/                     # NAV_MANIFEST — the only chrome list
+├── prerender-routes.txt             # 29 routes. generate-sitemap.js reads it
+└── e2e/                             # Playwright. See §6 before running.
 ```
-
-### NPC dialogue and chains (`src/app/shared/npc/`)
-
-Six named characters stand on the surfaces they belong to and say something contextual — Aureth in the Luminous hall, Verrin in the Umbral hall and the trials, Kael on World / Forge / Character / Sanctum, the Archivist on Codex and Quests, the Merchant on Market and Gambler, and the Nameless anywhere once the combo passes 666 or the Void rune has been found.
-
-Four files, and the split matters:
-
-- `npc.model.ts` — the cast, the flat trigger table, and the pure selection functions. No Angular, no browser APIs, so the whole "who speaks and what do they say" decision is testable without a DOM.
-- `npc-quest.model.ts` — the six chains. An objective is a **reading** of a ledger another service already owns, never a new event count, so a step's bar and the number on the page it came from cannot disagree.
-- `npc-quest.service.ts` — receipts and heard lines. Storage holds *only* claim receipts and line ids; progress is recomputed every time, so retuning a target in the model changes what everyone sees with no migration.
-- `npc-dialogue.component.ts` — the portrait, the bubble, the typewriter, the quest card.
-
-Three rules worth keeping:
-
-1. **Add a line by adding data.** New dialogue is a row in `DIALOGUE`; the spec fails if a character loses their unconditional idle pool, because a silent NPC looks exactly like "the feature is off".
-2. **An objective must name a live surface.** Four steps originally read the quest board's `tool-use` buckets, which nothing has filled since `/tools/*` started redirecting to `/world` — they rendered a bar that could never move. `npc-quest.model.spec.ts` now fails on any step that depends on a retired bucket or a non-canonical path.
-3. **New rewards must exist in a catalogue.** Titles are `title-prefix` cosmetic variants and items are `ITEM_DEFINITIONS` ids; `grantCosmetic` and `mintEquipment` both fail *silently* on an unknown id, so the spec checks every reward against its catalogue.
-
-Portraits are unpainted and registered in `ART_PENDING`; each renders as a monogrammed orb in the character's accent until the art lands.
-
-### Progression storage (`src/app/shared/gamification/`)
-
-`XpService` is the only thing that mutates progression, and it **never touches localStorage**. It goes through `ProgressStorageService`, which owns a swappable `ProgressAdapter`. That indirection is the whole reason Phase 2 (progress that follows a signed-in visitor) is cheap — do not route around it.
-
-```
-gamification.model.ts        # ProgressState + LEVELS + migrateProgress + mergeProgress + withLevel.
-                             # Pure data and pure functions — no browser APIs, safe to import on the server.
-gamification.model.spec.ts   # pins the migration and merge contract (12 specs).
-progress-storage.service.ts  # ProgressAdapter strategy: LocalStorageAdapter (live), NullAdapter (SSR),
-                             # FirestoreAdapter (inert stub carrying its security rule + TODOs), migrate().
-xp.service.ts                # the ledger: award(), streak settling, debounced writes, pagehide flush.
-xp-wiring.service.ts         # one subscriber that turns navigation/copy/egg events into awards.
-tool-mastery.service.ts      # the Bestiary's per-tool counts, backfilled from the ledger.
-xp-bar.component.ts          # the rank HUD in the header.
-```
-
-Three fields on `ProgressState` exist for Phase 2 rather than for anything shipping today, and should not be "simplified away":
-
-- **`userId`** — a locally minted UUID now, the Firebase Auth UID later. Sign-in swaps an id instead of inventing an identity model.
-- **`level` / `levelTitle`** — denormalised from `xp`. A leaderboard cannot `orderBy` a value that only exists after running a function over every document. `withLevel()` keeps them in step.
-- **`createdAt` / `updatedAt`** — what `mergeProgress` uses to decide which of two devices is authoritative.
-
-**`init()` is async.** Anything that reads the ledger *synchronously and once* (`toolsUsed`, `history`, `claimAchievement` on a first clear) must `await xp.init()` first, or it will read the empty blob and never look again. Anything that renders from `snapshot$` can fire-and-forget — the subject republishes when hydration lands.
-
-**Phase 2** is `ProgressStorageService.migrate(new FirestoreAdapter(uid))` on first sign-in. The security rule to start from is in the `FirestoreAdapter` docblock; the non-negotiable part is that `xp` must not be client-writable to an arbitrary value.
 
 ---
 
-## 9. Strategic Roadmap — beyond cosmic polish
+## 9. Where the shipped work is recorded
 
-The visual identity is complete: 22+ alive cosmic systems, SSR-safe, i18n'd EN + ES, OG cosmic broadcast image. What the site **still needs** to be a serious product, ordered by impact-to-effort.
+`src/app/version.ts` holds the deployed version and codename; `version-history.ts`
+holds the prose changelog and is ~140 kB, which is why it is a separate module —
+importing it from anything eagerly reachable from `AppComponent` puts all of it
+in the initial bundle. The initial bundle is already over its warn budget.
 
-### Phase 1 — Foundation health (week 1-2, blocker work)
-
-The console is full of red Firebase errors. The page LOOKS perfect but the substrate is leaking. Fix this before anything else.
-
-- [x] **F-1. Fix Firebase backend** — done. Four shipped fixes:
-  1. **`firestore.rules`** — added a `/site-stats/{statId}` rule allowing public read + schema-enforced create/update for the visit counter (count is a number, lastVisit is an ISO string ≤50 chars, increment is +1 only so a single client can't grief the counter into the stratosphere). `/changelog/{docId}` rule was already correct.
-  2. **`app.module.ts` Firestore provider** — wrapped `initializeFirestore(app, ...)` in `try { ... } catch { return getFirestore(app); }` so the SSR→client hydration path that double-initializes no longer creates two different SDK instances. That kills the "Type does not match the expected instance. Did you pass a reference from a different Firestore SDK?" red wall.
-  3. **`VisitCounterService`** — silent-degrade on `permission-denied` (expected when rules haven't been deployed), warn on anything else. No more `console.error` from this path.
-  4. **`ChangelogService`** — silent-degrade on `permission-denied` AND on the "Type does not match" SDK-instance message. Falls back to "No updates yet" UI.
-
-  **Verified live**: latest 25 console entries show **zero `[error]` lines** from these services. The remaining `@firebase/firestore` `[warn]` entries are internal SDK noise that will disappear once `firebase deploy --only firestore:rules` is run with the new rules.
-
-  **Next step (one shell command, user to run)**: `firebase deploy --only firestore:rules` deploys the new `site-stats` rule. The internal SDK warnings then go away too.
-- [x] **F-2. Production bundle audit** — **shipped June 2026.** All 126 tool components converted to `standalone: true`; routes use `loadComponent` lazy loading. Each tool is a separate chunk (~158 per-tool lazy chunks; largest tool chunk 124 kB raw). main.js now ~542 kB raw. Fonts self-hosted: Orbitron and Inter variable WOFF2 served from `src/assets/fonts/`; Google Fonts CDN removed entirely (eliminates render-blocking third-party request). F-2b is complete — no longer future work. Authoritative current-state: `docs/rendering-implementation-report.md`, `docs/webapp-findings-spec.md`.
-- [x] **F-3. Tool quality spot-check** — sampled 12 random tools from the registry (meta-tag-generator, ts-playground, css-variables, email-deliverability-auditor, responsive-preview, base64-encoder, lorem-generator, snippet-manager, checklist, git-reference, hex-editor, morse-code). All have real implementations (107-677 TS lines + matching HTML). **No stubs found.** Two had a small handful of TODO markers (meta-tag-generator: 1, ts-playground: 2, snippet-manager: 5) — those are polish items, not broken-tool flags. Conclusion: the tool layer is substantively real, not a Potemkin village. A full 125-tool audit could surface a few UX-rough tools — recommend a "fresh pair of eyes" pass when time permits, but this isn't blocking.
-- [x] **F-4. Accessibility quick-scan** — static-grep audit across all templates:
-  - **108 `aria-label` usages across 31 templates** — solid coverage on icon-only buttons and interactive controls
-  - **All `<img>` tags have alt attributes** (10 initial false positives were all using Angular's `[alt]="..."` property binding which my regex missed)
-  - **Skip-to-main link present** in `app.component.html` (`<a href="#main-content" class="skip-to-main">`)
-  - **No empty buttons found** (0 occurrences of `<button></button>`)
-  - **`prefers-reduced-motion` respected in 16 places** across CSS + engine — every cosmic animation has a static fallback path
-  - **Manual `tabindex` use is minimal (1 occurrence)** — relies on native focus order, which is what you want
-  - **What's NOT verified by static scan**: color contrast ratios (need a runtime axe-core pass), screen reader announcement quality, custom cursor not stealing focus (it has `pointer-events: none` so should be fine). Recommend running axe DevTools or WAVE in-browser as a follow-up — but no obvious red flags.
-
-### Phase 2 — Conversion fundamentals (week 3)
-
-The cosmic experience attracts attention but nothing currently captures it.
-
-- [partial] **C-1. Newsletter form** — **audited and partially fixed.** Current state: `onSubscribe()` writes the email to a Firestore collection `homepage_subscribers` with no email delivery wired. Users get a green "success" state but no email is actually sent.
-  - **Shipped this round**: added `homepage_subscribers` Firestore rule with strict schema (email regex enforced server-side, 5-254 char length, only allow `create` — no client reads/updates/deletes); tightened client-side email validation to match the rule's regex; lifted success copy to honest cosmic tone ("Signal received. The next time a star is born in this universe, we'll send a beam your way."); error copy now says the email looked invalid rather than a generic "something went wrong".
-  - **Still needs (real delivery)**: a Cloud Function trigger on `onDocumentCreated('homepage_subscribers/{id}')` that pushes the email into Brevo/Mailchimp/Resend, sends a confirmation email (double-opt-in for GDPR), and updates the document with `confirmed: true`. The Functions runtime already exists (`functions/src/`) — recommend adding `functions/src/subscribers.ts` with the trigger + your chosen ESP's API call.
-  - **Quick alternative**: if you don't want to wire an ESP, document on the form copy that submissions are saved and you'll batch-email when something ships — set expectations honestly.
-- [x] **C-2. Contact form delivery** — audited end-to-end and hardened. The pipeline is **architecturally correct**: `ContactComponent.onSubmit()` → `ContactService.sendContactForm()` → `EmailService.sendEmail()` POSTs to `/api/send-contact` → Firebase Hosting rewrite maps to `sendContactEmail` Cloud Function → function validates input, reads `process.env.BREVO_API_KEY`, calls Brevo Transactional Email API → email arrives at `xsantcastx@xsantcastx.com`. Function has CORS allowlist (`xsantcastx.com` + Firebase project domains) and email-format guard.
-  - **Shipped this round**: lifted success + error i18n copy to cosmic tone (`"Signal received. Your transmission reached us..."` / `"The transmission scattered before it reached us — try again or send a beam directly to xsantcastx@xsantcastx.com."` — both EN + ES); hardened the contact error handler to NEVER leak raw `error.message` to users (backend strings like "Brevo API key not configured" no longer reach the UI), instead always shows the cosmic copy with the fallback email baked in.
-  - **Operational requirement**: `BREVO_API_KEY` must be set in the Firebase Functions runtime config — `firebase functions:config:set brevo.api_key="..."` or via Functions environment variables. Without it the function returns 500 and users see the fallback cosmic error.
-  - **Outstanding (out of scope without backend access)**: server-side rate limiting (currently no per-IP throttle on `sendContactEmail` — recommend adding an in-memory or Firestore-backed counter to prevent spam abuse), Brevo sender domain SPF/DKIM verification (required for high deliverability).
-- [x] **C-3. Donation flows — Stripe CSP fix** — Stripe **was** configured (real `pk_live_...` key in `environment.ts`), but the **CSP was silently blocking** the Stripe SDK from loading. The dynamic `<script src="https://js.stripe.com/v3/">` injection in `PaymentService.loadStripeSDK()` was blocked by `script-src 'self' 'unsafe-inline' https://www.google.com https://www.gstatic.com https://cdn.carbonads.com` — no Stripe domain. `script.onerror` fired, `stripeLoaded.next(false)`, the modal showed the misleading "Stripe is not configured" message even though the key was real. Same issue would have hit PayPal once its SDK tries to load.
-  - **Shipped this round**: widened the production CSP in `firebase.json` to include the donation provider domains:
-    - `script-src`: + `https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com`
-    - `connect-src`: + `https://api.stripe.com https://*.paypal.com https://*.braintree-api.com`
-    - `frame-src`: + `https://js.stripe.com https://hooks.stripe.com https://*.paypal.com` (Stripe Elements + PayPal checkout both render in iframes)
-  - Lifted the misleading modal copy from `⚠️ Stripe is not configured. Please contact the site administrator.` (implied user fault) to the i18n-keyed cosmic message `✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.` (EN + ES) so even if the SDK has not finished loading the user still has a path forward.
-  - **Deploy step**: the CSP fix lives in `firebase.json` headers — needs `firebase deploy --only hosting` for the new CSP to take effect on production. Local dev (`ng serve`) does not enforce these headers so this only surfaces in prod / hosting preview channels.
-- **C-4. Success-state polish** — confetti already fires (cosmic engine 8d). Make sure each form's success message is cosmic-toned and tells the user what happens next.
-- [x] **C-5. Trust microcopy** — audited every CTA. Existing trust copy already strong on the donation modals (`Encrypted by Stripe — your card never crosses my orbit.`) and the hero / newsletter section. Two visible gaps filled this round:
-  - **Newsletter form sub-copy** lifted from `No spam. No account needed. Just useful things.` to `No spam. No account needed. Unsubscribe anytime.` (EN + ES via new `newsletter.trust` i18n key) — addresses the ongoing-commitment concern that "no spam" alone doesn't.
-  - **Contact form** had zero trust copy near submit. Added a `🛡 Sent only to xsantcastx — we reply within 24 hours.` line below the submit button via new `contact.form.trust` i18n key (EN + ES) + a `.form-trust` style (small, centered, low-emphasis so it doesn't compete with the CTA).
-  - SEO meta descriptions already include `no sign-up`, `no account required`, etc. across all 125 tool routes — but those are crawler-only; the visible trust copy now spans every primary conversion surface (newsletter → donation → contact).
-
-### Phase 3 — SEO & growth (week 4-5)
-
-The OG image is cosmic but the discovery surface is still thin.
-
-- [x] **G-1. Sitemap auto-generator** — new `scripts/generate-sitemap.js` reads `prerender-routes.txt`, filters out `/embed/*` and `/404`, and emits a fresh `src/sitemap.xml` + mirrored copy in `dist/xsantcastx/browser/sitemap.xml`. Today's UTC date is stamped on every `<lastmod>`, and route metadata (priority + changefreq) is keyed per surface type: `/home` priority 1.0 weekly, `/tools` 0.9 weekly, `/live` 0.7 daily, top-level pages 0.7 monthly, each tool page 0.6 monthly. Wired into `package.json` as a `postbuild` step so the sitemap refreshes on every production build. First run: 131 URLs written with today's date.
-- [x] **G-2. robots.txt** — already present at `src/robots.txt`: `User-agent: *` + `Allow: /` + `Disallow: /embed/` + `Disallow: /404` + `Sitemap: https://xsantcastx.com/sitemap.xml`. Correct.
-- [x] **G-3. Schema.org JSON-LD coverage** — audited and verified **100% coverage** across all 123 tool routes in `app-routing.module.ts` (initial brace-balanced count returned 84% but my parser was bailing early on multi-line routes; a corrected look-ahead-80-lines scan found every route has a `jsonLd:` block). Each tool ships `SoftwareApplication` structured data with `name`, `url`, `applicationCategory`, `operatingSystem: 'Web Browser'`, and `offers: {price: '0', priceCurrency: 'USD'}`. Some also include `breadcrumb` lists.
-- [x] **G-4. Per-tool meta descriptions** — same audit as G-3 since both share the route `data:` block. **100% coverage** across all 123 tool routes. Each tool has a unique `description` + `keywords` array.
-- [ ] **G-5. Cosmic blog / write-ups** — bigger lift; defer until after the platform layer is stable. One article per category ("Why I built the Email Deliverability Auditor", "What makes a CSS box shadow look cosmic") — anchors organic traffic + showcases voice.
-- [x] **G-6. Internal linking** — auto-injected `<app-related-tools [currentToolId]="'<slug>'"></app-related-tools>` into the 43 tool components that didn't have it. Final coverage: **123/126 tool directories (97%)** — the 3 remaining are dirs without a `.component.html` (placeholders like `char-map`, `svg-path-editor`). `RelatedToolsComponent` was already declared in `AppModule`, so the injection is safe (no module-import changes needed). Each tool now sends crawl signals to 4 related tools via the existing `getRelatedTools()` registry lookup.
-
-### Phase 4 — Engineering hardening (continuous)
-
-Right now the codebase has zero automated coverage. The cosmic engine grew from 0 → 41KB+ with no tests guarding regressions.
-
-- [x] **E-1. Bundle analysis scripts** — added `npm run analyze` (production source-mapped build + `source-map-explorer` on main bundle) and `npm run analyze:why` (stats-json + `webpack-bundle-analyzer` for an interactive tree-map). Both use `npx` so no global install required — first run will fetch the explorer transiently. Useful for the F-2b standalone migration to see byte-by-byte what's still eager after each batch.
-- **E-2. Smoke E2E tests** — Playwright covering: home loads → click a galaxy → orbit view renders → click a star → warp → tool page loads. Five-minute suite that catches the worst regressions.
-- **E-3. Visual regression for cosmic engine** — Percy or Chromatic screenshots of `/home`, `/tools`, `/skills`, `/projects`, `/contact`, `/donate` and the four cosmic eyebrow patterns. Catches accidental CSS breakage in any of the 22+ systems.
-- [x] **E-4. CI pipeline** — already existed at `.github/workflows/ci-cd.yml` running `npm ci && npm run build` on push to `main`/`develop` + PRs to `main`, auto-deploys to Firebase Hosting from `main`. **Hardened this round** by adding a "Verify sitemap was regenerated" step that fails the build if `<lastmod>` isn't today's UTC date — guards against silent failures in the `postbuild` sitemap generator. Production AOT compile is the typecheck gate (stricter than `tsc --noEmit`). Daily tool generation pipeline (`daily-pipeline.yml`) is separate and already cron'd. Outstanding follow-ups: add `npm run test:ci` step once unit tests stabilize, and a Playwright e2e step (see E-2).
-- [x] **E-5. Pre-commit hook scaffolding** — added `.husky/pre-commit` (chmod +x, executable) and `.lintstagedrc.json` config covering TypeScript (incremental type-check), HTML/SCSS/CSS (placeholder for a future formatter), and JSON (parse-validity check). Hook gracefully degrades if `lint-staged` isn't installed yet — prints install instructions instead of blocking the commit. Activation step (one-time for the user): `npm i -D husky lint-staged && npm run prepare`. After that, every `git commit` gates on the staged-files lint.
-- **E-6. Error tracking** — Sentry or LogRocket. The current Firebase errors are noise, but a real client-side crash would currently be invisible.
-
-### Phase 5 — Platform extensions (when ready)
-
-Once the foundation is solid, leverage the brand into surfaces that reach users who'd never visit the site.
-
-- **X-1. Browser extension** — quick-launch the top 10 tools from a popup. Same cosmic styling. Builds direct daily usage.
-- **X-2. VS Code extension** — `xsantcastx: Pick a tool…` command palette → opens the tool in a webview. Same MCP server already exists — repackage as VSCE.
-- **X-3. CLI** — `npx xsantcastx box-shadow` opens the tool in your default browser at a deep-linked URL. Tiny, viral.
-- **X-4. Mobile companion app** — PWA-first, native shell second. Most tools work offline; web app manifest + service worker turns the existing site into a PWA in ~half a day.
-- **X-5. Discord / Slack bots** — `/xsantcastx ssl-check example.com` runs the SSL inspector and returns results in-thread. Drives awareness inside dev communities.
-
-### Phase 6 — Sustained brand evolution (slow burn)
-
-- **B-1. Twitch / YouTube "Watch AI Build" streams** — the home page already advertises this (`/live`). Make it real. Live-stream the next feature being shipped, with the cosmic mission-control terminal as the OBS overlay.
-- **B-2. Tool launch threads** — every new tool gets a Twitter/X thread with cosmic-themed screenshots, the OG image, and a "1-line use case" hook.
-- **B-3. Open-source the cosmic engine** — extract the `index.html` cosmic engine into its own NPM package `@xsantcastx/cosmic-engine`. Becomes a recruitment tool for other devs and a portfolio piece.
-- **B-4. Annual cosmic redesign** — every January, ship a fresh "alive moment" (year 1: pulsar; year 2: planet; year 3: WebGL constellation maybe). Keeps the brand feeling current without burning the existing system.
-
-### How to use this plan
-
-- **Always ship Phase 1 first.** A leaky console destroys trust. Even if F-1 takes a week, do it before any new feature.
-- **Phase 2 unlocks revenue.** Donation flows that don't work cost real money.
-- **Phase 3 unlocks organic growth.** SEO compounds over months — start now.
-- **Phase 4 is maintenance.** Add tests before you regret not having them.
-- **Phase 5/6 are expansion.** Only after Phase 1-4 are solid.
-
-### Anti-goals (things to NOT do)
-
-- **Don't add more cosmic-engine systems** without removing one. We're at 22+; that's the upper bound for any one page without performance regression.
-- **Don't introduce a heavyweight 3D library** (Three.js, Babylon). The CSS planet proves we can fake 3D in 200 lines. Adding Three.js for marginal wow would balloon the bundle by 600KB+.
-- **Don't replace working tools** with shinier rewrites. Most users want functional tools; the cosmic theme is the wrapper, not the product.
-- **Don't ship without `prefers-reduced-motion` paths.** This is a hard rule — every animation that runs > 1s needs a static fallback. Vestibular disorders are real.
-
----
-
-## 10. Build & test
-
-```bash
-npm start    # ng serve, port 4200, with SSR
-npm run build  # production
-npm test     # ng test
-```
-
-When verifying cosmic changes: hit `/home`, `/tools` (and click a galaxy), `/skills`, `/footer` (scroll), `/contact`. Move the cursor — pulsar should drift, custom cursor should appear, magnetic buttons should pull. Scroll — sections should fade-up. Click a primary CTA — should spark.
-
----
-
-## 11. The WebGL forge (Three.js)
-
-Two separate three.js scenes, added in v2.74.0. They share the library and
-nothing else — two renderers, two contexts, two disposal paths, because the
-inspector has to be able to die without taking the background with it.
-
-**three is never in the initial bundle.** Both scenes reach it through
-`await import('three')`, which lands it in its own ~730 kB lazy chunk. A visitor
-with Reduce Effects on, or no WebGL, never downloads it at all.
-
-### 11.1 The background — `shared/forge-scene/`
-
-| File | What it is |
-|---|---|
-| `forge-scene.model.ts` | Pure data: realm palettes, the three quality tiers and their vertex budgets, the frame governor's thresholds, route → palette. No browser APIs, so the spec can hold it to account. |
-| `forge-effects.service.ts` | The four gates that decide whether WebGL runs at all: server, the visitor's Reduce Effects choice, embed mode, and a cached WebGL capability probe. |
-| `forge-scene.service.ts` | The renderer. Owns the canvas, the four layers, the rAF loop, resize, pointer, scroll, ripples, the palette cross-fade and disposal. |
-| `forge-scene.component.ts` | Mounts the canvas in AppComponent and drives the palette off the router. |
-| `forge-effects-toggle.component.ts` | "Reduce effects", in the footer. |
-
-**Nothing moves on the CPU.** Every particle's buffers are written once and hold
-constants; position, drift, twinkle, cursor repulsion, scroll parallax and the
-Forge Flame's ripple are all functions of `uTime` evaluated per-vertex. Per
-frame the CPU writes eight uniforms and issues four draw calls — that is the
-entire cost, and it is why the frame governor almost never fires. The same
-decision is what makes the wisp trails free: a trail vertex is the head with a
-time offset, so the tail is literally where the head was 0.4 s ago.
-
-**The budget is a total, not a per-layer allowance.** 500 vertices on desktop,
-200 on a phone, wisp trail segments included. The spec fails if a tier's layers
-add up past its own `budget`.
-
-**Adding a realm** means one entry in `PALETTES` and nothing else — the wash
-follows `/world/realms/<sigil>`, and `paletteForPath` refuses to invent a
-palette for a segment that is not a realm.
-
-**The Forge Flame drives the ripple.** `ForgeFlameComponent.strike()` calls
-`ForgeSceneService.ripple()` with the button's own rect, throttled to one per
-140 ms — the combo ladder rewards 9,999 uninterrupted strikes and a ripple per
-strike at that rate is a strobe. The call is a no-op when WebGL never happened,
-which is what lets the flame make it unconditionally.
-
-### 11.2 The item inspector — `shared/inspect-3d/`
-
-Opens from the "3D" chip in the Quick Inspect hero, so it reaches every surface
-that already has an inspect button: Market, bank, equipment, Rune Forge, quests
-and the World stations. It takes the resolved `EntityPresentation` rather than
-an `EntityRef` — the panel already resolved it to draw the 2D card.
-
-The card is a real box with 2 mm of thickness: artwork and name on `+z`, the
-stat block on `-z`, rarity light on the four edges. Faces are painted with
-Canvas 2D from the presentation (`card-face.ts`) rather than screenshotted from
-the DOM — there is no browser API that does the latter, and both workarounds
-(a 200 kB layout reimplementation, or an SVG `foreignObject` that taints the
-canvas on Safari) are worse than drawing 400 lines of card.
-
-**The ladder is the point.** `RARITY_EFFECTS` earns exactly one more channel per
-rung — orbiters, then rays, then tendrils and a warping surface at Singular —
-and the spec asserts it never gets quieter as it gets rarer. Tendrils, warp and
-prismatic orbits belong to Singular alone.
-
-**Two rarity ladders meet in `tierOfRarityId`.** Achievements, quests and
-artifacts carry the six-rung Eclipse scale; runes, runewords and every item
-carry the seven-rung forge scale (`ItemRarity` *is* `RuneTier`). Without the map
-every item in the game inspects as Mortal, including a Legendary.
-
-**Loading.** `Inspect3dOutletComponent` is eager and nearly free; it builds the
-scene component through `ViewContainerRef.createComponent` after an `import()`.
-`@defer` cannot do this job: a deferrable view resolves its dependencies from
-the host component's own `imports`, and the host is AppComponent, which is
-NgModule-declared — anything AppModule imports is eager by definition.
-
-### 11.3 Reduced motion, and the fallbacks
-
-`prefers-reduced-motion` does not switch either scene off. Per rule 2 in §7 the
-visitor gets a **static end state**: the scene still builds and renders exactly
-one frame with every clock at zero, and the card holds a three-quarter angle.
-That is a nicer thing to look at than the flat wash, and it is genuinely free.
-
-Reduce Effects, embed mode and absent WebGL are the paths that render nothing —
-and they all fall back to the CSS `.particle-layer`, which the scene hides via
-`html.forge-scene-on` only once a GL context actually exists.
+Do not keep a changelog in this file. That is what `version-history.ts` is for.

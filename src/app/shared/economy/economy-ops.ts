@@ -83,6 +83,20 @@ const AMOUNT_KINDS = new Set<EconomyOpKind>([
   'prestige',
 ]);
 
+/**
+ * Kinds whose `amount` may legitimately be zero.
+ *
+ * Every other amount-carrying op describes Gold actually moving, and a zero
+ * there is a malformed op worth dropping. `buy-upgrade` stopped being one of
+ * those the moment the catalogue gained a rung whose first level is free (see
+ * `firstFree` in economy.model.ts): that purchase records a real op with
+ * `amount: 0`, and under the plain `> 0` rule `parseOp` returned null for it —
+ * so the free rung survived on the device that bought it and vanished the
+ * first time the ledger round-tripped through the cloud merge, which reads
+ * every op back through this function.
+ */
+const ZERO_AMOUNT_OK = new Set<EconomyOpKind>(['buy-upgrade']);
+
 export interface EconomyOp {
   /** `${deviceId}:${seq}` — stable, so a retry cannot debit twice. */
   id: string;
@@ -276,7 +290,13 @@ function cloneCommerceApplied(applied: CommerceAppliedMap | undefined): Commerce
  */
 export function applyOp(state: EconomyLedger, op: EconomyOp): boolean {
   const amount = numberOf(op.amount);
-  if (AMOUNT_KINDS.has(op.kind) && amount <= 0) return false;
+  // The second of the two gates a zero-amount op has to pass. `parseOp` decides
+  // whether an op is well-formed enough to keep; this decides whether replaying
+  // it does anything. Both had the same blanket `> 0` rule, so widening only
+  // the first would have left the free Forge Bellows parsing fine and then
+  // being skipped by the replay that rebuilds the ledger after a merge — which
+  // is the same disappearance, one step later and harder to see.
+  if (AMOUNT_KINDS.has(op.kind) && amount <= 0 && !ZERO_AMOUNT_OK.has(op.kind)) return false;
   switch (op.kind) {
     case 'credit-gold':
       state.gold += amount;
@@ -781,8 +801,9 @@ export function parseOp(raw: unknown): EconomyOp | null {
   if (amount !== undefined) {
     if (typeof amount !== 'number' || !Number.isFinite(amount) || amount < 0) return null;
   }
-  if (AMOUNT_KINDS.has(kind as EconomyOpKind) && !(typeof amount === 'number' && amount > 0)) {
-    return null;
+  if (AMOUNT_KINDS.has(kind as EconomyOpKind)) {
+    const floor = ZERO_AMOUNT_OK.has(kind as EconomyOpKind) ? 0 : 1;
+    if (!(typeof amount === 'number' && amount >= floor)) return null;
   }
   const hlc = raw['hlc'];
   if (typeof hlc !== 'number' || !Number.isFinite(hlc) || hlc < 0) return null;

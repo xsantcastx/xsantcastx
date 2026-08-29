@@ -4,6 +4,8 @@ import { EconomyService, ECONOMY_KEY } from './economy.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { compactCommerceReceipts } from './commerce-ops';
+import { parseOp } from './economy-ops';
+import { ENCHANTMENTS } from './economy.model';
 
 class MemoryGateway {
   private readonly bag = new Map<string, string>();
@@ -95,11 +97,20 @@ describe('EconomyService.purchaseListing', () => {
   });
 
   it('buys an enchantment again after it expires when the action id is new', () => {
+    // Priced off the catalogue rather than a literal. This spec asserted a cost
+    // of 5 and Seeker's Lens has cost 500 since the hundredfold rebalance, so
+    // `purchaseListing` refused both purchases as 'stale' and the test had been
+    // red on a clean checkout ever since — asserting nothing about the replay
+    // behaviour it was written to guard. The `beforeEach` seed of 500 Essence
+    // also only ever covered one purchase, so the second is funded here.
+    const lens = ENCHANTMENTS.find(e => e.id === 'seekers-lens')!;
+    economy['state'].eclipseEssence = lens.cost * 2;
+
     const first = economy.purchaseListing({
       mutationKey: 'buy:lens-1',
       listingId: 'seekers-lens',
       kind: 'enchantment',
-      expectedCost: 5,
+      expectedCost: lens.cost,
     });
     expect(first.ok).toBe(true);
     expect(first.operation?.currency).toBe('essence');
@@ -109,10 +120,10 @@ describe('EconomyService.purchaseListing', () => {
       mutationKey: 'buy:lens-2',
       listingId: 'seekers-lens',
       kind: 'enchantment',
-      expectedCost: 5,
+      expectedCost: lens.cost,
     });
     expect(second.ok).toBe(true);
-    expect(economy.snapshot.essence).toBe(afterFirst - 5);
+    expect(economy.snapshot.essence).toBe(afterFirst - lens.cost);
     expect(economy.snapshot.enchantment?.def.id).toBe('seekers-lens');
   });
 
@@ -234,5 +245,53 @@ describe('EconomyService.purchaseListing', () => {
     expect(again.ok).toBe(true);
     expect(economy.snapshot.gold).toBeLessThan(gold);
     expect(economy.levelOf('forge-bellows')).toBe(level + 1);
+  });
+});
+
+describe('the free doorway rung', () => {
+  let economy: EconomyService;
+
+  beforeEach(() => {
+    economy = configure(new MemoryGateway());
+    // A brand-new ledger. The whole point of the rung is that this is the
+    // state a first-time visitor is in when they open the Market.
+    economy['state'].gold = 0;
+  });
+
+  it('gives the first Forge Bellows away and charges full price for the second', () => {
+    expect(economy.nextCost('forge-bellows')).toBe(0);
+    expect(economy.buyUpgrade('forge-bellows')).toBe(true);
+    expect(economy.levelOf('forge-bellows')).toBe(1);
+    expect(economy.snapshot.gold).toBe(0);
+    // 5,000 x 1.25 ^ 1. The ladder above the doorway is untouched.
+    expect(economy.nextCost('forge-bellows')).toBe(6_250);
+    expect(economy.buyUpgrade('forge-bellows')).toBe(false);
+  });
+
+  it('leaves every other rung priced as authored', () => {
+    expect(economy.nextCost('ember-stoker')).toBe(20_000);
+    expect(economy.nextCost('iron-hammer')).toBe(10_000);
+    expect(economy.buyUpgrade('ember-stoker')).toBe(false);
+  });
+
+  it('records the free purchase as an op the cloud merge can read back', () => {
+    economy.buyUpgrade('forge-bellows');
+    const ops = economy['state'].ops ?? [];
+    const buy = ops.find(op => op.kind === 'buy-upgrade');
+    expect(buy).toBeDefined();
+    expect(buy!.amount).toBe(0);
+    // parseOp used to reject this and the level vanished on the next sync.
+    expect(parseOp({ ...buy })).not.toBeNull();
+  });
+
+  it('sells the free rung through the catalogue path at its quoted price', () => {
+    const receipt = economy.purchaseListing({
+      mutationKey: 'buy:forge-bellows:free',
+      listingId: 'forge-bellows',
+      kind: 'upgrade',
+      expectedCost: economy.nextCost('forge-bellows'),
+    });
+    expect(receipt.ok).toBe(true);
+    expect(economy.levelOf('forge-bellows')).toBe(1);
   });
 });
