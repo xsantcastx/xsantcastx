@@ -106,6 +106,25 @@ test.describe('Rune Forge reveal', () => {
     await page.locator('.rf-acts__btn', { hasText: '×1K' }).first().click();
     // The run yields the frame between chunks, so Stop is reachable while it
     // is still striking — that is the whole point of chunking it.
+    //
+    // Wait for the run to be demonstrably in flight before reaching for Stop.
+    // Without this the test is a race it can lose: on a fast engine the
+    // thousand strikes can finish before Playwright has located the button, and
+    // then Stop is gone and the click spends its whole timeout waiting for an
+    // element that will never come back. It failed that way in the webkit
+    // project on `main` for several releases, reported as a thirty-second
+    // timeout on the click — which reads like a broken Stop button and is
+    // really a run that had already ended.
+    //
+    // Gating on the progress readout does not weaken what this proves. The
+    // assertion is still "Stop banks a partial run"; this only makes the
+    // precondition that sentence depends on explicit, and fails fast with a
+    // legible message when it does not hold.
+    // Anchored, because the readout is "Striking… {done} / {total}" and a bare
+    // /[1-9]/ matches the 1 of "1000" while `done` is still 0 — which would
+    // have made this wait pass instantly and prove nothing at all. This asserts
+    // the *first* number on the line is non-zero.
+    await expect(page.locator('.rf-pick__prompt')).toContainText(/^\D*[1-9]/, { timeout: 10_000 });
     const stop = page.locator('.rf-acts__btn--stop');
     await stop.click();
     await expect(page.locator('.rf-acts__btn--again')).toBeVisible({ timeout: 30000 });

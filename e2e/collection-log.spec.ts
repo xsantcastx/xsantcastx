@@ -43,6 +43,23 @@ async function openLog(page: Page, seeded = false): Promise<void> {
   );
   await page.goto('/codex?tab=collection', { waitUntil: 'load' });
   await page.locator('app-collection-log').waitFor();
+  // Deliberately no readiness wait here — see the retry in the filter test.
+  //
+  // `app-collection-log` is in the prerendered HTML, so waiting for it proves
+  // the server responded and nothing more. Every spec in this file that only
+  // *reads* the page is fine with that; the one that clicks a filter is not,
+  // because a click can land before Angular has attached the handler. It is
+  // reported as a completed click — the element really was there, visible and
+  // enabled — nothing happens, and the assertion then reads the unfiltered grid
+  // and blames the filter for showing 255 cards instead of 6.
+  //
+  // Waiting for the boot loader to dismiss was tried here and is NOT a fix.
+  // Measured in WebKit across runs of the same build: the loader hid at 2557ms
+  // while the first effective click was at 236ms, and in the next run the
+  // loader hid at 2675ms and the first effective click was at 2817ms. The two
+  // are not ordered, so no single wait on the loader can gate on
+  // interactivity — in one direction it wastes two and a half seconds, in the
+  // other it returns 140ms too early and the click is still lost.
 }
 
 test.describe('Collection Log', () => {
@@ -121,11 +138,23 @@ test.describe('Collection Log', () => {
     await openLog(page, true);
     const total = await page.locator('.cl-card').count();
 
-    await page.locator('.cl-bar', { hasText: 'Runewords' }).click();
-    await expect(page.locator('.cl-card')).toHaveCount(6);
+    const runewords = page.locator('.cl-bar', { hasText: 'Runewords' });
+
+    // Retry the *first* interaction until it takes, rather than waiting on a
+    // proxy for hydration that does not order reliably against it (see
+    // openLog). This is not a sleep and not a loosened assertion: it clicks
+    // only while the filter is off, so a click that was swallowed pre-hydration
+    // is re-sent and one that landed is never toggled back off, and the
+    // assertion it must satisfy is still exactly "six cards".
+    await expect(async () => {
+      const on = (await runewords.getAttribute('class'))?.includes('is-on');
+      if (!on) await runewords.click();
+      await expect(page.locator('.cl-card')).toHaveCount(6, { timeout: 750 });
+    }).toPass({ timeout: 20_000 });
     await expect(page.locator('.cl-section')).toHaveCount(1);
 
-    await page.locator('.cl-bar', { hasText: 'Runewords' }).click();
+    // By here the page is demonstrably live, so the way back needs no retry.
+    await runewords.click();
     await expect(page.locator('.cl-card')).toHaveCount(total);
   });
 });
