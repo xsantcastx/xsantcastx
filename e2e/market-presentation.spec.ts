@@ -19,6 +19,18 @@ async function openMarket(page: Page, url = '/market'): Promise<void> {
       || style.visibility === 'hidden'
       || style.opacity === '0';
   }, { timeout: 8000 });
+  // The achievement drop is the *second* full-viewport layer this page can put
+  // up, and unlike the loader it is not on every load — it appears when an
+  // achievement happens to unlock, and it owns the screen for the length of its
+  // cinematic. Every assertion below about what is "the topmost paint" at a
+  // tile's centre is answered by the veil while it is up, and reports "covered
+  // by DIV.ad-veil" — a true statement about a page that is not the page under
+  // test. It comes down on its own; waiting is enough, and waiting costs
+  // nothing on the loads where it never appeared.
+  await page.locator('.ad-veil--on').waitFor({ state: 'detached', timeout: 20_000 })
+    .catch(() => { /* never appeared, which is the common case */ });
+  await page.locator('.ad--cine').waitFor({ state: 'detached', timeout: 20_000 })
+    .catch(() => { /* as above */ });
 }
 
 async function assertTilePaints(page: Page, index = 0): Promise<void> {
@@ -86,10 +98,17 @@ test.describe('C1 Market presentation', () => {
   });
 
   test('clamps an out-of-range page onto the last real page', async ({ page }) => {
+    // The assertion is "999 lands on the last page", not "the catalogue has
+    // exactly five pages". This spec used to hardcode 5 and went red the next
+    // time a shelf gained a listing — asserting nothing about the clamp it was
+    // written to guard, which is the only behaviour here that could break.
     await openMarket(page, '/market?page=999');
     await expect(page).not.toHaveURL(/page=999/);
-    await expect(page.locator('.mk__pager-at')).toContainText(/Page 5 of 5|5 of 5/);
-    await expect(page).toHaveURL(/page=5/);
+    const label = await page.locator('.mk__pager-at').textContent();
+    const [, at, of] = /(\d+)\s*(?:of|de)\s*(\d+)/.exec(label ?? '') ?? [];
+    expect(Number(of)).toBeGreaterThan(1);
+    expect(at).toBe(of);
+    await expect(page).toHaveURL(new RegExp(`page=${of}`));
     await expect(page.locator('.mk__tile').first()).toBeVisible();
   });
 
@@ -118,8 +137,22 @@ test.describe('C1 Market presentation', () => {
     const tile = page.locator('.mk__tile').filter({ hasText: 'Forge Bellows' }).first();
     await expect(tile).toBeVisible();
     const inspect = tile.locator('app-inspect-button button');
-    await inspect.click();
-    await expect(page).toHaveURL(/inspect=market-listing:forge-bellows/);
+    // Retry the first interaction until it takes. The tile is prerendered, so
+    // it is visible and clickable before Angular has wired the button up, and a
+    // click that lands in that window is reported as done and does nothing —
+    // the URL simply never gains the inspect param and the failure reads as a
+    // broken Inspect button.
+    //
+    // There is no cheap signal to wait on instead: measured in WebKit, the boot
+    // loader and first-effective-click are not ordered against each other (see
+    // collection-log.spec.ts), and the router's history navigationId lands at
+    // 6ms against a first effective click at 102ms. Clicking only while the URL
+    // is still clean is idempotent — the panel is never opened twice — and the
+    // assertion below is unchanged.
+    await expect(async () => {
+      if (!/inspect=/.test(page.url())) await inspect.click();
+      await expect(page).toHaveURL(/inspect=market-listing:forge-bellows/, { timeout: 750 });
+    }).toPass({ timeout: 20_000 });
     await expect(page.locator('.qi')).toBeVisible();
     await page.keyboard.press('Escape');
     await expect(page.locator('.qi')).toHaveCount(0);
@@ -156,7 +189,12 @@ test.describe('C1 Market presentation', () => {
   test('Eclipse is a dedicated panel, not a category filter or tab', async ({ page }) => {
     await openMarket(page);
     const shelves = page.getByRole('tablist', { name: 'Market shelves' });
-    await expect(shelves.getByRole('tab')).toHaveCount(9);
+    // Counted rather than fixed at 9. What this test is about is that Eclipse
+    // is *not* one of the shelves — the exact number of the others is a
+    // catalogue detail that has already moved once and took the whole test with
+    // it when it did.
+    await expect(shelves.getByRole('tab')).not.toHaveCount(0);
+    await expect(shelves.getByRole('tab', { name: /Eclipse/ })).toHaveCount(0);
     await expect(shelves.getByRole('button', { name: 'The Eclipse' })).toHaveCount(0);
     await expect(page.locator('.mk__facet-list').getByRole('button', { name: 'The Eclipse' })).toHaveCount(0);
     await page.getByRole('button', { name: 'The Eclipse' }).first().click();
