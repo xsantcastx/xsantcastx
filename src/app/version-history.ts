@@ -17,6 +17,14 @@ export interface VersionRelease {
 /** Newest first. */
 export const VERSION_HISTORY: VersionRelease[] = [
   {
+    version: '2.89.1',
+    codename: 'The Doorway',
+    date: '2026-08-29',
+    highlights: [
+      'The achievement drop is the fourth fixed widget to eat the Rune Forge\'s roll buttons, after the Forge Flame, the discovery toast and the NPC. Its position is worked out from the flame\'s own geometry so the two stay in step, which is right everywhere except during a reveal — the flame has stood down by then, and the reveal\'s action row is what occupies that band. At 375px the card covered every roll button. CI caught it, not a local run: an achievement has to actually unlock in that moment for the card to exist, so it never appeared in a hundred and eighty local specs. It keeps its dismiss and stays on screen; it simply stops being a target while the reveal owns the row',
+    ],
+  },
+  {
     version: '2.89.0',
     codename: 'The Doorway',
     date: '2026-08-29',
