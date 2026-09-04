@@ -61,7 +61,7 @@
   },
   "devDependencies": {
     "@angular/build": "^21.2.19",
-    "@angular/cli": "^21.2.22",
+    "@angular/cli": "^21.2.23",
     "@angular/compiler-cli": "^21.2.19",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.60.0",
