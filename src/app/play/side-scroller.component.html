@@ -174,10 +174,10 @@
   </section>
 
   <div class="touch" aria-label="Touch controls">
-    <button type="button" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (pointercancel)="input($event,'left',false)">Left</button>
-    <button type="button" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (pointercancel)="input($event,'right',false)">Right</button>
-    <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)">Jump</button>
-    <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)">Attack</button>
-    <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)">Dodge</button>
+    <button type="button" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)">Left</button>
+    <button type="button" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)">Right</button>
+    <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)">Jump</button>
+    <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)">Attack</button>
+    <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)">Dodge</button>
   </div>
 </section>

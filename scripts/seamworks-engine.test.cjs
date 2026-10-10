@@ -10,12 +10,26 @@ const crypto = require('node:crypto');
 // do not depend on Angular, asset downloads, or requestAnimationFrame timing.
 function loadEngine() {
   const modules = new Map();
+  function eventTarget(properties) {
+    const listeners = new Map();
+    return {
+      ...properties,
+      addEventListener(type, listener) {
+        if (!listeners.has(type)) listeners.set(type, new Set());
+        listeners.get(type).add(listener);
+      },
+      removeEventListener(type, listener) { listeners.get(type)?.delete(listener); },
+      dispatch(type) { for (const listener of listeners.get(type) || []) listener(); },
+      listenerCount(type) { return listeners.get(type)?.size || 0; },
+    };
+  }
+  const browserWindow = eventTarget({ devicePixelRatio: 1 });
+  const browserDocument = eventTarget({ hidden: false });
   const context = vm.createContext({
     crypto, console,
     Image: class { set src(value) {} },
     ResizeObserver: class { observe() {} disconnect() {} },
-    window: { devicePixelRatio: 1, addEventListener() {}, removeEventListener() {} },
-    document: { hidden: false, addEventListener() {}, removeEventListener() {} },
+    window: browserWindow, document: browserDocument,
     requestAnimationFrame: () => 1, cancelAnimationFrame() {},
   });
   function load(file) {
@@ -28,9 +42,9 @@ function loadEngine() {
     wrapper((name) => load(path.resolve(path.dirname(file), `${name}.ts`)), module, module.exports);
     return module.exports;
   }
-  return load(path.resolve(__dirname, '../src/app/play/engine/engine.ts')).SeamworksEngine;
+  return { Engine: load(path.resolve(__dirname, '../src/app/play/engine/engine.ts')).SeamworksEngine, browserWindow, browserDocument };
 }
-const Engine = loadEngine();
+const { Engine, browserWindow, browserDocument } = loadEngine();
 function fixture(onLoot = () => true) {
   let state;
   const engine = new Engine({
@@ -143,4 +157,52 @@ test('drop identifiers are unique across engine sessions', () => {
   killFirst(first); killFirst(second);
   assert.notEqual(first.drops[0].id, second.drops[0].id);
   first.destroy(); second.destroy();
+});
+
+for (const cause of ['blur', 'hidden']) {
+  test(`${cause} releases held movement and actions without pausing the online world`, () => {
+    const { engine, state } = fixture();
+    try {
+      engine.setInput('right', true);
+      engine.setInput('attack', true);
+      engine.update(.1);
+      const before = engine.player.x;
+      if (cause === 'blur') browserWindow.dispatch('blur');
+      else { browserDocument.hidden = true; browserDocument.dispatch('visibilitychange'); }
+      assert.equal(engine.input.size, 0, 'lost releases must not leave controls latched');
+      engine.render = () => {};
+      engine.tick(1000);
+      const elapsed = engine.elapsed;
+      engine.tick(1100);
+      assert.equal(engine.player.x, before, 'held movement stops when focus is lost');
+      assert.equal(state().paused, false);
+      assert.ok(engine.elapsed > elapsed, 'simulation keeps running while unfocused');
+      engine.attackCooldown = 0;
+      engine.attackTime = 0;
+      browserDocument.hidden = false;
+      engine.setInput('attack', true);
+      assert.ok(engine.attackTime > 0, 'the next press can start a fresh action');
+      engine.setInput('right', true);
+      engine.update(.1);
+      assert.ok(engine.player.x > before, 'movement resumes only after a fresh press');
+    } finally {
+      browserDocument.hidden = false;
+      engine.destroy();
+    }
+  });
+}
+
+test('visible-document notifications preserve current input and destroy removes focus listeners', () => {
+  const beforeBlur = browserWindow.listenerCount('blur');
+  const beforeVisibility = browserDocument.listenerCount('visibilitychange');
+  const { engine } = fixture();
+  assert.equal(browserWindow.listenerCount('blur'), beforeBlur + 1);
+  assert.equal(browserDocument.listenerCount('visibilitychange'), beforeVisibility + 1);
+  engine.setInput('right', true);
+  browserDocument.hidden = false;
+  browserDocument.dispatch('visibilitychange');
+  assert.equal(engine.input.has('right'), true);
+  engine.destroy();
+  assert.equal(browserWindow.listenerCount('blur'), beforeBlur);
+  assert.equal(browserDocument.listenerCount('visibilitychange'), beforeVisibility);
 });

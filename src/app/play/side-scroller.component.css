@@ -4,14 +4,14 @@
   overflow: hidden;
   color: var(--adventure-parchment);
   font-family: var(--font-lore, "Cormorant Garamond", Georgia, serif);
-  background: #100c0e;
+  background: var(--adventure-hud-stage);
 }
 
 .stage {
   position: relative;
   height: 100%;
   overflow: hidden;
-  background: #100c0e;
+  background: var(--adventure-hud-stage);
   touch-action: none;
 }
 
@@ -34,7 +34,7 @@
   place-content: center;
   gap: 8px;
   text-align: center;
-  background: #100c0ecc;
+  background: color-mix(in srgb, var(--adventure-hud-stage) 80.00%, transparent);
 }
 
 .fall-card strong {
@@ -65,19 +65,19 @@
 .fall-card button,
 button,
 .touch button {
-  border: 1px solid #000;
+  border: 1px solid var(--adventure-hud-shadow);
   border-radius: 2px;
   background:
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px top 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px top 6px / 1px 12px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px top 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px top 6px / 1px 12px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px bottom 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px bottom 6px / 1px 12px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px bottom 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px bottom 6px / 1px 12px no-repeat,
-    linear-gradient(180deg, #2a221ccc, #14110fee);
-  box-shadow: inset 0 0 0 1px #e6c7a42e, 0 14px 32px #0008;
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px top 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px top 6px / 1px 12px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px top 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px top 6px / 1px 12px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px bottom 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px bottom 6px / 1px 12px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px bottom 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px bottom 6px / 1px 12px no-repeat,
+    linear-gradient(180deg, color-mix(in srgb, var(--adventure-hud-panel-warm) 80.00%, transparent), color-mix(in srgb, var(--adventure-hud-panel) 93.33%, transparent));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 18.04%, transparent), 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
 }
 
 .topbar {
@@ -91,8 +91,8 @@ button,
   gap: 18px;
   min-height: 58px;
   padding: 8px 16px 10px;
-  background: linear-gradient(180deg, #100c0ef2 30%, #100c0e00);
-  border-bottom: 1px solid #e6c7a438;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--adventure-hud-stage) 94.90%, transparent) 30%, color-mix(in srgb, var(--adventure-hud-stage) 0.00%, transparent));
+  border-bottom: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 21.96%, transparent);
 }
 
 .wordmark {
@@ -128,7 +128,7 @@ h2 { font-size: 26px; line-height: .95; }
   min-width: 0;
   margin: 0;
   padding-left: 14px;
-  border-left: 1px solid #e6c7a433;
+  border-left: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
   color: var(--adventure-dialogue);
   font-size: 18px;
   font-style: italic;
@@ -148,7 +148,7 @@ button, .touch button {
   cursor: pointer;
 }
 
-button:hover, .touch button:hover { color: #fff6ea; }
+button:hover, .touch button:hover { color: var(--adventure-hud-bright); }
 
 button:disabled { opacity: .4; cursor: default; }
 
@@ -158,14 +158,14 @@ button:disabled { opacity: .4; cursor: default; }
 .slip-actions .wear,
 .fall-card button {
   background:
-    linear-gradient(#f0d7b4, #f0d7b4) left 5px top 5px / 8px 1px no-repeat,
-    linear-gradient(#f0d7b4, #f0d7b4) left 5px top 5px / 1px 8px no-repeat,
-    linear-gradient(#f0d7b4, #f0d7b4) right 5px top 5px / 8px 1px no-repeat,
-    linear-gradient(#f0d7b4, #f0d7b4) right 5px top 5px / 1px 8px no-repeat,
-    linear-gradient(#f0d7b4, #f0d7b4) left 5px bottom 5px / 8px 1px no-repeat,
-    linear-gradient(#f0d7b4, #f0d7b4) left 5px bottom 5px / 1px 8px no-repeat,
-    linear-gradient(#f0d7b4, #f0d7b4) right 5px bottom 5px / 8px 1px no-repeat,
-    linear-gradient(#f0d7b4, #f0d7b4) right 5px bottom 5px / 1px 8px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) left 5px top 5px / 8px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) left 5px top 5px / 1px 8px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) right 5px top 5px / 8px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) right 5px top 5px / 1px 8px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) left 5px bottom 5px / 8px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) left 5px bottom 5px / 1px 8px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) right 5px bottom 5px / 8px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-text), var(--adventure-hud-text)) right 5px bottom 5px / 1px 8px no-repeat,
     var(--adventure-ember);
   color: var(--adventure-button-ink);
 }
@@ -208,17 +208,17 @@ button:disabled { opacity: .4; cursor: default; }
 .meter {
   height: 6px;
   overflow: hidden;
-  background: #0c0a0c;
-  box-shadow: inset 0 0 0 1px #e6c7a433;
+  background: var(--adventure-hud-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
 }
 
 .meter i {
   display: block;
   height: 100%;
-  background: linear-gradient(90deg, #8a3e28, #f0c48a 88%, #fff1d4);
+  background: linear-gradient(90deg, var(--adventure-hud-rust), var(--adventure-hud-gold) 88%, var(--adventure-hud-cream));
 }
 
-.meter.enemy i { background: linear-gradient(90deg, #5c2424, #e07a4a 90%, #ffd0b0); }
+.meter.enemy i { background: linear-gradient(90deg, var(--adventure-hud-danger), var(--adventure-hud-flame) 90%, var(--adventure-hud-peach)); }
 
 .satchel {
   top: 68px;
@@ -239,7 +239,7 @@ button:disabled { opacity: .4; cursor: default; }
   margin: 0 0 2px;
   padding: 0 0 6px;
   border: 0;
-  border-bottom: 1px solid #e6c7a41a;
+  border-bottom: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 10.20%, transparent);
   border-radius: 0;
   background: none;
   box-shadow: none;
@@ -259,17 +259,17 @@ button:disabled { opacity: .4; cursor: default; }
   gap: 10px;
   padding: 16px 14px 12px;
   overflow: hidden;
-  border-left: 2px solid #df9357;
+  border-left: 2px solid var(--adventure-ember);
   background:
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px top 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px top 6px / 1px 12px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px top 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px top 6px / 1px 12px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px bottom 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 6px bottom 6px / 1px 12px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px bottom 6px / 12px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 6px bottom 6px / 1px 12px no-repeat,
-    #161210;
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px top 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px top 6px / 1px 12px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px top 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px top 6px / 1px 12px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px bottom 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 6px bottom 6px / 1px 12px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px bottom 6px / 12px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px bottom 6px / 1px 12px no-repeat,
+    var(--adventure-hud-panel-solid);
   animation: book-open .28s ease;
 }
 
@@ -278,7 +278,7 @@ button:disabled { opacity: .4; cursor: default; }
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: radial-gradient(90% 28% at 50% 0%, #df935730, transparent 64%);
+  background: radial-gradient(90% 28% at 50% 0%, color-mix(in srgb, var(--adventure-ember) 18.82%, transparent), transparent 64%);
 }
 
 .book::after {
@@ -286,7 +286,7 @@ button:disabled { opacity: .4; cursor: default; }
   position: absolute;
   inset: 7px;
   pointer-events: none;
-  border: 1px dashed #e6c7a42b;
+  border: 1px dashed color-mix(in srgb, var(--adventure-hud-brass) 16.86%, transparent);
 }
 
 .book-head, .capacity, .belt, .slip { position: relative; flex: none; }
@@ -333,15 +333,15 @@ button:disabled { opacity: .4; cursor: default; }
   grid-column: 1 / -1;
   display: block;
   height: 4px;
-  background: #0c0a0c;
-  box-shadow: inset 0 0 0 1px #e6c7a433;
+  background: var(--adventure-hud-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
 }
 
 .capacity em {
   display: block;
   height: 100%;
   width: 0;
-  background: linear-gradient(90deg, #8a3e28, #f0c48a 88%, #fff1d4);
+  background: linear-gradient(90deg, var(--adventure-hud-rust), var(--adventure-hud-gold) 88%, var(--adventure-hud-cream));
 }
 
 .capacity.full b, .capacity.full span { color: var(--adventure-ember); }
@@ -360,18 +360,18 @@ button:disabled { opacity: .4; cursor: default; }
   place-items: center;
   min-width: 0;
   padding: 6px;
-  border: 1px solid #e6c7a433;
+  border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
   background:
-    linear-gradient(#e6c7a4, #e6c7a4) left 4px top 4px / 7px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 4px top 4px / 1px 7px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 4px top 4px / 7px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 4px top 4px / 1px 7px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 4px bottom 4px / 7px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) left 4px bottom 4px / 1px 7px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 4px bottom 4px / 7px 1px no-repeat,
-    linear-gradient(#e6c7a4, #e6c7a4) right 4px bottom 4px / 1px 7px no-repeat,
-    #120e0e;
-  box-shadow: inset 0 0 0 1px #000;
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 4px top 4px / 7px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 4px top 4px / 1px 7px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 4px top 4px / 7px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 4px top 4px / 1px 7px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 4px bottom 4px / 7px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) left 4px bottom 4px / 1px 7px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 4px bottom 4px / 7px 1px no-repeat,
+    linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 4px bottom 4px / 1px 7px no-repeat,
+    var(--adventure-hud-panel-deep);
+  box-shadow: inset 0 0 0 1px var(--adventure-hud-shadow);
   letter-spacing: 0;
   text-transform: none;
 }
@@ -392,10 +392,10 @@ button:disabled { opacity: .4; cursor: default; }
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 6px 6px #000c);
+  filter: drop-shadow(0 6px 6px color-mix(in srgb, var(--adventure-hud-shadow) 80.00%, transparent));
 }
 
-.book .well.prime { border-color: #df935766; }
+.book .well.prime { border-color: color-mix(in srgb, var(--adventure-ember) 40.00%, transparent); }
 .book .well.filled em, .book .pocket em, .slip-art em {
   font: 500 18px/1 var(--font-lore, Georgia, serif);
   letter-spacing: 0;
@@ -421,12 +421,12 @@ button:disabled { opacity: .4; cursor: default; }
   letter-spacing: 0;
   text-transform: none;
   color: var(--adventure-beacon-text);
-  text-shadow: 0 1px 2px #000, 0 0 8px #000;
+  text-shadow: 0 1px 2px var(--adventure-hud-shadow), 0 0 8px var(--adventure-hud-shadow);
 }
 
 .book .well.picked, .book .pocket.picked {
   border-color: var(--adventure-ember);
-  box-shadow: inset 0 0 0 1px #df935788, 0 0 16px #df935733;
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-ember) 53.33%, transparent), 0 0 16px color-mix(in srgb, var(--adventure-ember) 20.00%, transparent);
 }
 
 .lining {
@@ -436,11 +436,11 @@ button:disabled { opacity: .4; cursor: default; }
   overflow: auto;
   padding: 8px;
   background:
-    radial-gradient(90% 70% at 50% 0%, #3a241855, transparent 70%),
-    #100c0c;
-  box-shadow: inset 0 0 22px #000a, inset 0 0 0 1px #e6c7a422;
+    radial-gradient(90% 70% at 50% 0%, color-mix(in srgb, var(--adventure-hud-copper-shade) 33.33%, transparent), transparent 70%),
+    var(--adventure-hud-deep-warm);
+  box-shadow: inset 0 0 22px color-mix(in srgb, var(--adventure-hud-shadow) 66.67%, transparent), inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 13.33%, transparent);
   scrollbar-width: thin;
-  scrollbar-color: #df9357 #100c0c;
+  scrollbar-color: var(--adventure-ember) var(--adventure-hud-deep-warm);
 }
 
 .bare {
@@ -459,7 +459,7 @@ button:disabled { opacity: .4; cursor: default; }
   gap: 10px 12px;
   align-items: start;
   padding-top: 8px;
-  border-top: 1px solid #e6c7a433;
+  border-top: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
 }
 
 .slip-art {
@@ -467,8 +467,8 @@ button:disabled { opacity: .4; cursor: default; }
   height: 72px;
   display: grid;
   place-items: center;
-  background: #0c0a0c;
-  box-shadow: inset 0 0 0 1px #e6c7a433;
+  background: var(--adventure-hud-ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
 }
 
 .slip h3 {
@@ -504,7 +504,7 @@ button:disabled { opacity: .4; cursor: default; }
   margin: 0;
   padding: 2px 0;
   align-items: baseline;
-  border-bottom: 1px solid #e6c7a41a;
+  border-bottom: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 10.20%, transparent);
 }
 
 .satchel p:last-child { border-bottom: 0; }
@@ -545,8 +545,8 @@ button:disabled { opacity: .4; cursor: default; }
   max-width: min(440px, calc(100vw - 380px));
   margin: 0;
   padding: 8px 10px;
-  border: 1px solid #e6c7a438;
-  background: #14110ff2;
+  border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 21.96%, transparent);
+  background: color-mix(in srgb, var(--adventure-hud-panel) 94.90%, transparent);
   color: var(--adventure-dialogue);
   letter-spacing: .06em;
   text-align: right;
@@ -556,7 +556,7 @@ kbd {
   display: inline-block;
   margin: 0 3px;
   padding: 0 5px;
-  border: 1px solid #e6c7a455;
+  border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 33.33%, transparent);
   border-bottom-width: 2px;
   border-radius: 2px;
   color: var(--adventure-beacon-text);
@@ -573,7 +573,7 @@ kbd {
   gap: 8px;
   padding: 12px 12px 12px 14px;
   overflow: auto;
-  border-left: 2px solid #df9357;
+  border-left: 2px solid var(--adventure-ember);
 }
 
 .dock-head {
@@ -613,15 +613,15 @@ kbd {
 
 input {
   min-width: 0;
-  border: 1px solid #e6c7a433;
+  border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
   border-radius: 2px;
-  background: #0c0a0c;
+  background: var(--adventure-hud-ink);
   color: var(--adventure-parchment);
   padding: 8px 10px;
   font: 500 16px var(--font-lore, Georgia, serif);
 }
 
-input::placeholder { color: #8d8378; }
+input::placeholder { color: var(--adventure-hud-muted); }
 
 .keeper-list {
   display: flex;
@@ -640,8 +640,8 @@ input::placeholder { color: #8d8378; }
 
 .keeper-list li {
   padding: 2px 8px;
-  background: #2a211f;
-  border: 1px solid #e6c7a422;
+  background: var(--adventure-hud-panel-raised);
+  border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 13.33%, transparent);
   font-size: 15px;
 }
 
@@ -660,7 +660,7 @@ input::placeholder { color: #8d8378; }
   gap: 3px;
   padding: 6px 6px 4px;
   background:
-    repeating-linear-gradient(180deg, transparent, transparent 23px, #e6c7a414 24px);
+    repeating-linear-gradient(180deg, transparent, transparent 23px, color-mix(in srgb, var(--adventure-hud-brass) 7.84%, transparent) 24px);
 }
 
 .chat-log strong { color: var(--adventure-beacon-text); margin-right: 6px; font-weight: 600; }
@@ -690,7 +690,7 @@ input::placeholder { color: #8d8378; }
 @media (max-width: 900px) {
   /* The world ends above the hearth so the Keeper is not standing inside the panel. */
   .viewport { inset: 0 0 188px 0; }
-  .topbar { flex-wrap: wrap; gap: 8px; padding-bottom: 8px; background: linear-gradient(180deg, #100c0ef5 78%, #100c0e00); }
+  .topbar { flex-wrap: wrap; gap: 8px; padding-bottom: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--adventure-hud-stage) 96.08%, transparent) 78%, color-mix(in srgb, var(--adventure-hud-stage) 0.00%, transparent)); }
   .objective { order: 5; flex-basis: 100%; padding: 2px 0 4px; border-left: 0; }
   .vitals, .satchel { top: 148px; width: calc(50% - 16px); min-width: 0; }
   .vitals { left: 10px; }

@@ -20,6 +20,16 @@ export interface NavDestination {
  */
 export const NAV_MANIFEST: readonly NavDestination[] = [
   {
+    // Keep the playable village reachable from every hall, the mobile tome,
+    // and the footer without crowding the five primary mobile tabs.
+    id: 'play',
+    route: '/play',
+    labelKey: 'godforge.hero.playAdventure',
+    glyph: 'home',
+    exact: true,
+    group: 'more',
+  },
+  {
     id: 'world',
     route: CANONICAL.world,
     labelKey: 'gfnav.world',
