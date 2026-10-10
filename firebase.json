@@ -299,6 +299,13 @@
     ],
     "rewrites": [
       {
+        "source": "/social/**",
+        "run": {
+          "serviceId": "eclipse-hearth",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "/api/send-contact",
         "function": {
           "functionId": "sendContactEmail",

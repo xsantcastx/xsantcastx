@@ -1,0 +1,6 @@
+**
+!Dockerfile.social
+!Dockerfile.social.dockerignore
+!scripts
+!scripts/social-server.mjs
+!scripts/social-cloudbuild.yaml

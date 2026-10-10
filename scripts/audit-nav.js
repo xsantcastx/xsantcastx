@@ -104,7 +104,12 @@ for (const [route, where] of links) {
   if ([...where].some(w => CHROME.includes(w.replace(/^src\//, '')))) chromeLinks.add(route);
 }
 
-const EXEMPT = new Set(['/admin', '/embed', '/tools', '/world', '/**', '/']);
+const EXEMPT = new Set([
+  '/admin', '/embed', '/tools', '/world', '/**', '/',
+  // An internal art-direction preview, not a playable destination. The real
+  // /play route remains subject to the site-wide navigation requirement.
+  '/play/storyboard',
+]);
 const orphans = [];
 for (const r of declared) {
   if (EXEMPT.has(r) || redirects.has(r) || r.startsWith('/arena/')) continue;
