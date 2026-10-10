@@ -36,3 +36,27 @@
   --adventure-footer-muted: #858994;
   --adventure-footer-link: #b8a993;
 }
+
+/* Brass and warm basalt for the full-screen play HUD. */
+:root {
+  --adventure-hud-panel-solid: #161210;
+  --adventure-hud-shadow: #000;
+  --adventure-hud-ink: #0c0a0c;
+  --adventure-hud-deep-warm: #100c0c;
+  --adventure-hud-stage: #100c0e;
+  --adventure-hud-panel-deep: #120e0e;
+  --adventure-hud-panel: #14110f;
+  --adventure-hud-panel-raised: #2a211f;
+  --adventure-hud-panel-warm: #2a221c;
+  --adventure-hud-copper-shade: #3a2418;
+  --adventure-hud-danger: #5c2424;
+  --adventure-hud-rust: #8a3e28;
+  --adventure-hud-muted: #8d8378;
+  --adventure-hud-flame: #e07a4a;
+  --adventure-hud-brass: #e6c7a4;
+  --adventure-hud-gold: #f0c48a;
+  --adventure-hud-text: #f0d7b4;
+  --adventure-hud-peach: #ffd0b0;
+  --adventure-hud-cream: #fff1d4;
+  --adventure-hud-bright: #fff6ea;
+}

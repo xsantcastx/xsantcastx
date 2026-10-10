@@ -87,6 +87,8 @@ export class SeamworksEngine {
     this.observer.observe(canvas);
     window.addEventListener('keydown', this.keyDown);
     window.addEventListener('keyup', this.keyUp);
+    window.addEventListener('blur', this.clearInput);
+    document.addEventListener('visibilitychange', this.visibilityChanged);
     this.resize();
   }
   start(): void {
@@ -106,6 +108,8 @@ export class SeamworksEngine {
     if (this.frame !== null) cancelAnimationFrame(this.frame);
     this.frame = null; this.observer.disconnect(); this.input.clear();
     window.removeEventListener('keydown', this.keyDown); window.removeEventListener('keyup', this.keyUp);
+    window.removeEventListener('blur', this.clearInput);
+    document.removeEventListener('visibilitychange', this.visibilityChanged);
   }
   setProgress(progress: { equipped: boolean; restored: boolean }): void {
     this.equipped = progress.equipped; this.restored = progress.restored;
@@ -186,6 +190,12 @@ export class SeamworksEngine {
   private action(key: string): EngineInput | undefined {
     return ({ ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', KeyJ: 'attack', KeyK: 'dodge' } as Record<string, EngineInput>)[key];
   }
+  // Key/pointer releases can be lost when focus leaves the game. Release held
+  // controls without pausing the shared world or discarding an active action.
+  private readonly clearInput = (): void => { this.input.clear(); };
+  private readonly visibilityChanged = (): void => {
+    if (document.hidden) this.clearInput();
+  };
   private readonly keyDown = (event: KeyboardEvent): void => {
     if (event.target instanceof HTMLElement && (event.target.matches('input,textarea,select') || event.target.isContentEditable)) return;
     const action = this.action(event.code);

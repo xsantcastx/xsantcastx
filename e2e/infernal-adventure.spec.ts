@@ -76,8 +76,8 @@ test('fresh player gathers, forges, learns combat and restores the crossing pers
   for (const selector of ['app-header', 'app-onboarding-outlet', 'app-npc-dialogue', 'app-milestone-effect']) {
     await expect(page.locator(selector)).toHaveCount(1);
   }
-  await page.getByRole('link', { name: /Play the adventure/ }).click();
-  await expect(page).toHaveURL(/\/play\/storyboard$/);
+  await page.locator('#hero').getByRole('link', { name: /Play the adventure/ }).click();
+  await expect(page).toHaveURL(/\/play$/);
   await expect(page.locator('app-header, app-onboarding-outlet, app-npc-dialogue, app-milestone-effect')).toHaveCount(0);
 });
 
