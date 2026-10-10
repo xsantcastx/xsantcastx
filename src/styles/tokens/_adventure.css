@@ -1,0 +1,38 @@
+/* Basalt Seamworks opening palette. */
+:root {
+  --adventure-basalt: #181921;
+  --adventure-parchment: #f1e6d2;
+  --adventure-divider: #ffffff17;
+  --adventure-smoke: #a6acb8;
+  --adventure-ember: #df9357;
+  --adventure-control-border: #ffffff30;
+  --adventure-muted-separator: #777b85;
+  --adventure-ember-glow: #df935799;
+  --adventure-world-fallback: #252128;
+  --adventure-world-border: #f1e6d21c;
+  --adventure-scene-clear: #16172100;
+  --adventure-scene-shadow: #121219b0;
+  --adventure-hotspot-surface: #181921dd;
+  --adventure-hotspot-shadow: #0005;
+  --adventure-hotspot-hover: #30303c;
+  --adventure-hotspot-selected: #352b25;
+  --adventure-hotspot-ring: #df9357aa;
+  --adventure-pin-border: #df93577a;
+  --adventure-hotspot-caption: #c3b3a0;
+  --adventure-world-caption: #d4c6b5;
+  --adventure-progress-muted: #999dac;
+  --adventure-progress-border: #ffffff26;
+  --adventure-portrait-surface: #2c2730;
+  --adventure-dialogue: #c4bbb1;
+  --adventure-amethyst: #9281bb;
+  --adventure-material-surface: #ffffff04;
+  --adventure-button-ink: #211b18;
+  --adventure-event-border: #df93576b;
+  --adventure-event-text: #c5beb5;
+  --adventure-save-note: #8e929e;
+  --adventure-bag-divider: #ffffff20;
+  --adventure-beacon-glow: #ffca7266;
+  --adventure-beacon-text: #f7cf91;
+  --adventure-footer-muted: #858994;
+  --adventure-footer-link: #b8a993;
+}

@@ -1,0 +1,183 @@
+<section class="stage" aria-labelledby="game-title">
+  <div class="viewport">
+    <canvas #worldCanvas width="1200" height="720" [attr.data-player-x]="state.x" [attr.data-area]="state.area" aria-label="Playable Basalt Seamworks side-scrolling world"></canvas>
+    @if (state.defeated) {
+      <div class="fall-card">
+        <strong>The Keeper falls</strong>
+        <span>Your inventory is safe.</span>
+        <button type="button" (click)="retry()">Return to camp</button>
+      </div>
+    }
+  </div>
+
+  <header class="topbar">
+    <a routerLink="/world" class="wordmark">Eclipse</a>
+    <div class="title-block">
+      <span class="realm-tag">Infernal</span>
+      <h1 id="game-title">Basalt Seamworks</h1>
+    </div>
+    <p class="objective" aria-live="polite">{{ message || state.message || objective }}</p>
+    <div class="top-actions">
+      <button type="button" (click)="returnToCamp()">Return to camp</button>
+      <button type="button" (click)="restartHunt()">Restart hunt</button>
+    </div>
+  </header>
+
+  <div class="vitals" aria-label="Health">
+    <div class="vital">
+      <label>Keeper <b>{{ state.hp }}</b></label>
+      <div class="meter"><i [style.width.%]="state.hp"></i></div>
+    </div>
+    @if (state.enemyHp > 0) {
+      <div class="vital">
+        <label>Nearest Maw <b>{{ state.enemyHp }}</b></label>
+        <div class="meter enemy"><i [style.width.%]="state.enemyHp"></i></div>
+      </div>
+    }
+  </div>
+
+  <aside class="satchel" aria-label="Satchel" (click)="openBag()">
+    <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book">
+      <span>Satchel</span>
+      <kbd>I</kbd>
+    </button>
+    <p><span>Coins</span><b>{{ state.coins || 0 }}</b></p>
+    <p><span>Cinder ore</span><b>{{ ore }}</b></p>
+    <p><span>Ember</span><b>{{ ember }}</b></p>
+    <p><span>Edge</span><b>{{ edge ? (equipped ? 'Worn' : 'Bag') : '—' }}</b></p>
+    <p><span>Defeated</span><b>{{ state.kills || 0 }}</b></p>
+  </aside>
+
+  @if (bagOpen) {
+    <section id="satchel-book" class="book" aria-labelledby="satchel-title">
+      <header class="book-head">
+        <div>
+          <span class="realm-tag">Satchel</span>
+          <h2 id="satchel-title">What you carry</h2>
+        </div>
+        <button type="button" class="book-close" (click)="closeBag()">Close</button>
+      </header>
+      <p class="capacity" [class.full]="inventory.snapshot.full">
+        <b>{{ inventory.snapshot.usedRows }}</b>
+        <span>{{ inventory.snapshot.full ? 'Satchel full' : (inventory.snapshot.usedRows ? 'pockets filled' : 'pockets') }}</span>
+        <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
+      </p>
+      <div class="belt" aria-label="Worn">
+        <span class="belt-label">Worn</span>
+        <div class="wells">
+          @for (well of wells; track well.id) {
+            <button type="button" class="well" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label">
+              @if (well.filled && well.art) {
+                <img [src]="well.art" alt="">
+              } @else if (well.filled) {
+                <em>{{ well.mark }}</em>
+              } @else {
+                <em>{{ well.name }}</em>
+              }
+            </button>
+          }
+        </div>
+      </div>
+      <div class="lining" aria-label="Pockets">
+        @if (!pockets.length) {
+          <p class="bare">The pockets are empty. Ore and ember gather here, and stay on this device.</p>
+        } @else {
+          <div class="pockets">
+            @for (pocket of pockets; track pocket.key) {
+              <button type="button" class="pocket" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
+                @if (pocket.art) {
+                  <img [src]="pocket.art" alt="">
+                } @else {
+                  <em>{{ pocket.mark }}</em>
+                }
+                @if (pocket.qty > 1) { <b>{{ pocket.qty }}</b> }
+              </button>
+            }
+          </div>
+        }
+      </div>
+      <footer class="slip">
+        @if (slip; as row) {
+          <div class="slip-art" aria-hidden="true">
+            @if (row.art) { <img [src]="row.art" alt=""> }
+            @else { <em>{{ row.mark }}</em> }
+          </div>
+          <div class="slip-copy">
+            <span class="realm-tag">{{ row.kicker }}</span>
+            <h3>{{ row.name }}</h3>
+            <p>{{ row.note }}</p>
+            @if (row.stats.length) {
+              <ul>
+                @for (stat of row.stats; track stat) { <li>{{ stat }}</li> }
+              </ul>
+            }
+          </div>
+          @if (row.canWear || row.canStow) {
+            <div class="slip-actions">
+              @if (row.canWear) { <button type="button" class="wear" (click)="wear()">Wear</button> }
+              @if (row.canStow) { <button type="button" class="wear" (click)="stow()">Stow</button> }
+            </div>
+          }
+        } @else {
+          <p class="bare">Choose a pocket, or a place on the belt.</p>
+        }
+      </footer>
+    </section>
+  }
+
+  <div class="prompt" [class.armed]="!!state.nearby">
+    @if (state.nearby) {
+      <strong>{{ actionLabel }}</strong>
+      <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact</button>
+    }
+    <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
+  </div>
+  @if (showKeys) {
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>E</kbd> interact <kbd>I</kbd> satchel</p>
+  }
+
+  <section class="dock" aria-labelledby="hearth-title">
+    <div class="dock-head">
+      <div>
+        <span class="realm-tag">Hearth</span>
+        <h2 id="hearth-title">The fire is open</h2>
+      </div>
+      <p class="room-status" role="status">{{ social.status }}</p>
+    </div>
+    @if (!social.connected) {
+      <form class="join" (submit)="$event.preventDefault(); joinRoom(keeperName.value)">
+        <label class="sr" for="keeper-name">Name</label>
+        <input #keeperName id="keeper-name" maxlength="20" minlength="2" required placeholder="Your name" autocomplete="nickname">
+        <button type="submit" [disabled]="joining">{{ joining ? 'Joining…' : 'Join the hearth' }}</button>
+      </form>
+    } @else {
+      <div class="room-row">
+        <ul class="keeper-list" aria-label="Connected Keepers">
+          @for (player of social.players; track player.id) {
+            <li>{{ player.name }} <small>{{ player.id === social.id ? 'You' : (player.zone === 'Ember Quarry' ? 'Quarry' : 'Camp') }}</small></li>
+          }
+        </ul>
+        <button type="button" class="leave" (click)="leaveRoom()">Leave</button>
+      </div>
+    }
+    <div class="chat-log" role="log" aria-label="Room messages" aria-live="polite">
+      @for (entry of social.messages.slice().reverse(); track entry.id) {
+        <p><strong>{{ entry.name }}</strong> {{ entry.text }}</p>
+      }
+      @if (!social.messages.length) { <p class="chat-empty">The fire is quiet. Join, then say hello.</p> }
+    </div>
+    <form class="say" (submit)="$event.preventDefault(); sendChat(chatText)">
+      <label class="sr" for="hearth-message">Message</label>
+      <input #chatText id="hearth-message" maxlength="240" required placeholder="Say hello…" [disabled]="!social.connected" autocomplete="off">
+      <button type="submit" [disabled]="!social.connected || sending">Send</button>
+    </form>
+  </section>
+
+  <div class="touch" aria-label="Touch controls">
+    <button type="button" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (pointercancel)="input($event,'left',false)">Left</button>
+    <button type="button" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (pointercancel)="input($event,'right',false)">Right</button>
+    <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)">Jump</button>
+    <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)">Attack</button>
+    <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)">Dodge</button>
+  </div>
+</section>
