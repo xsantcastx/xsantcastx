@@ -1,0 +1,371 @@
+import { SocialRoom, RoomSnapshot } from './social/social-room';
+import { afterNextRender, Component, ElementRef, HostListener, NgZone, OnDestroy, PLATFORM_ID, ViewChild, inject } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
+import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID } from '../shared/activity/activity.model';
+import { InventoryService, MAX_INVENTORY } from '../shared/rpg/inventory.service';
+import { GameStateGateway } from '../shared/save/game-state.gateway';
+import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
+import { RESET_STAMP_KEY } from '../shared/save/save-reset';
+import { artFor } from '../shared/art/art';
+import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
+import { definitionFor, itemFitsSlot } from '../shared/rpg/item-definition';
+import {
+  CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, SLOT_BY_ID, SlotId,
+  formatItemMod, rarityColor, rarityLabel,
+} from '../shared/rpg/item.model';
+import { SeamworksEngine, EngineInput, EngineState, InteractionTarget } from './engine/engine';
+
+const SAVE_KEY = 'eclipse-seamworks-world-v1';
+const CRAFT_ID = 'seamworks-world:basalt-edge:v1';
+const TUTORIAL_EMBER_ID = 'seamworks-opening:keeper-ember:v1';
+const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 'feet', 'trinket'];
+
+interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
+interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; }
+interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; }
+interface BagSlip { name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean; }
+
+function monogram(name: string): string {
+  const parts = name.split(/\s+/).filter(Boolean);
+  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '·';
+}
+
+@Component({
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink],
+  templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
+})
+export class SideScrollerComponent implements OnDestroy {
+  @ViewChild('worldCanvas') canvas!: ElementRef<HTMLCanvasElement>;
+  private readonly host = inject(ElementRef<HTMLElement>);
+  readonly inventory = inject(InventoryService);
+  private readonly activity = inject(ActivityProgressionGateway);
+  private readonly store = inject(GameStateGateway);
+  private readonly zone = inject(NgZone);
+  readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private engine?: SeamworksEngine;
+  private boundCanvas: HTMLCanvasElement | null = null;
+  private room?: SocialRoom;
+  social: RoomSnapshot = { status: 'Solo — join the hearth to meet other Keepers.', connected: false, players: [], messages: [], id: '' };
+  joining = false;
+  sending = false;
+  private pendingMine: string | null = null;
+  private timer?: ReturnType<typeof setInterval>;
+  state: EngineState = {
+    hp: 100,
+    enemyHp: 100,
+    nearby: null,
+    x: 160,
+    y: 610,
+    paused: false,
+    defeated: false,
+    enemyDefeated: false,
+    complete: false,
+    message: 'Find the Cinder Ore deposit. Walk close and interact.',
+    area: 'Basalt Seamworks',
+  };
+  restored = false;
+  bagOpen = false;
+  pick: BagPick | null = null;
+  readonly bagCap = MAX_INVENTORY;
+  showKeys = false;
+  now = Date.now();
+  message = '';
+
+  constructor() {
+    // Hydration can swap the server canvas after the first callback. Wait until
+    // the canvas that is actually on screen has a size, then draw into that one.
+    afterNextRender(() => this.startWorld());
+  }
+  private liveCanvas(): HTMLCanvasElement | null {
+    const candidates = [this.canvas?.nativeElement, this.host.nativeElement.querySelector('canvas'), document.querySelector('main.play-mode canvas')];
+    for (const canvas of candidates) {
+      if (canvas instanceof HTMLCanvasElement && canvas.isConnected && canvas.clientWidth >= 2 && canvas.clientHeight >= 2) return canvas;
+    }
+    return null;
+  }
+  private startWorld(): void {
+    if (!this.browser) return;
+    this.inventory.init();
+    this.activity.init();
+    const saved = this.store.read(SAVE_KEY) as { era?: number; resetAt?: string | null; restored?: boolean } | null;
+    this.restored = saved?.restored === true && saved.era === INVENTORY_ERA && saved.resetAt === this.store.readRaw(RESET_STAMP_KEY);
+    this.zone.runOutsideAngular(() => {
+      this.room = new SocialRoom(snapshot => this.zone.run(() => {
+        this.social = snapshot;
+        this.engine?.setPeers(snapshot.players.filter(p => p.id !== snapshot.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
+        this.engine?.setChat(snapshot.messages, snapshot.id);
+      }));
+      this.mountEngine();
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); }), 200);
+    });
+  }
+  /** The play view can be replaced once during hydration. Follow the live canvas. */
+  private mountEngine(): void {
+    const canvas = this.liveCanvas();
+    if (!canvas || canvas === this.boundCanvas) return;
+    this.engine?.destroy();
+    this.boundCanvas = canvas;
+    this.engine = new SeamworksEngine(canvas, {
+      assets: { background: 'assets/images/bg-basalt-seamworks-1536.webp', keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
+      onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
+      onLoot: loot => loot.ore === 0 || this.zone.run(() => this.inventory.grantStack(`seamworks-loot:${loot.id}`, CINDER_ORE_ID, loot.ore)),
+      onState: (state: EngineState) => this.zone.run(() => {
+        if (state.message !== this.state.message) this.message = '';
+        this.state = state;
+        this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
+      }),
+    });
+    this.sync();
+    this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
+    this.engine.setChat(this.social.messages, this.social.id);
+    this.engine.start();
+  }
+  ngOnDestroy(): void { this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer); }
+  async joinRoom(name: string): Promise<void> {
+    if (this.joining || !name.trim()) return;
+    this.joining = true;
+    try { await this.room?.join(name.trim()); } finally { this.joining = false; }
+  }
+  leaveRoom(): void { this.room?.leave(); }
+  async sendChat(input: HTMLInputElement): Promise<void> {
+    if (this.sending || !input.value.trim()) return;
+    this.sending = true;
+    const text = input.value.trim();
+    try { if (await this.room?.chat(text)) { if (input.value.trim() === text) input.value = ''; } } finally { this.sending = false; }
+  }
+  art(id: string): string { return artFor(id)?.src ?? ''; }
+  get ore(): number { return this.inventory.stackOf(CINDER_ORE_ID); }
+  get ember(): number { return this.inventory.stackOf(EMBER_RESIDUE_ID); }
+  get edge() {
+    const edges = this.inventory.snapshot.items.filter(item => item.definitionId === 'basalt-edge' && !item.explorerId);
+    return edges.find(item => item.equipped) ?? edges[0];
+  }
+  get equipped(): boolean { return !!this.edge?.equipped; }
+  get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
+  get objective(): string {
+    if (this.state.area === 'Ember Quarry') return 'Hunt the Maws. Walk over drops to collect coins and ore. Return through the west portal.';
+    if (this.restored) return 'Walk right to the open passage.';
+    if (this.state?.enemyDefeated) return 'Reach the beacon and rekindle its light.';
+    if (this.equipped) return 'Cross the platforms. Defeat the Rivet Maw.';
+    if (this.edge) return 'Equip your Basalt Edge at the forge.';
+    if (this.ore >= 6 && this.ember >= 1) return 'Walk right to the forge. Craft your first blade.';
+    return 'Mine 6 Cinder Ore and find 1 Ember Residue.';
+  }
+  get actionLabel(): string {
+    switch (this.state?.nearby) {
+      case 'ore': return this.remaining ? `Seam recovering (${this.remaining}s)` : 'Mine Cinder Ore';
+      case 'forge': return this.equipped ? 'Blade equipped' : this.edge ? 'Equip Basalt Edge' : 'Forge Basalt Edge';
+      case 'beacon': return this.restored ? 'Beacon restored' : 'Restore beacon';
+      case 'passage': return this.state.area === 'Ember Quarry' ? 'Return to Seamworks' : 'Enter Ember Quarry';
+      default: return 'Walk closer to a landmark';
+    }
+  }
+  get actionDisabled(): boolean {
+    return !this.state?.nearby || !!this.state.paused || !!this.state.defeated || (this.state.nearby === 'ore' && this.remaining > 0);
+  }
+  interact(): void { this.engine?.interact(); }
+  returnToCamp(): void { this.message = ''; this.engine?.returnToCamp(); }
+  restartHunt(): void { this.message = ''; this.engine?.restartHunt(); }
+  retry(): void { this.returnToCamp(); }
+  input(event: PointerEvent, input: EngineInput, down: boolean): void {
+    event.preventDefault();
+    if (down) (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    this.engine?.setInput(input, down);
+  }
+  @HostListener('window:keydown', ['$event'])
+  onBagKey(event: KeyboardEvent): void {
+    if (!this.browser || event.repeat) return;
+    const target = event.target;
+    if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
+    if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
+    else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
+  }
+  openBag(): void { if (!this.bagOpen) this.toggleBag(); }
+  closeBag(): void { this.bagOpen = false; }
+  toggleBag(): void {
+    this.bagOpen = !this.bagOpen;
+    if (this.bagOpen && !this.pick) this.ensurePick();
+  }
+  choosePocket(pocket: BagPocket): void { this.pick = { kind: pocket.kind, ref: pocket.ref }; }
+  chooseWell(well: BagWell): void { this.pick = { kind: 'slot', ref: well.id }; }
+  pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
+  pickedWell(id: SlotId): boolean { return this.pick?.kind === 'slot' && this.pick.ref === id; }
+  get pocketFill(): number {
+    const used = this.inventory.snapshot.usedRows;
+    return used <= 0 ? 0 : Math.min(100, (used / this.bagCap) * 100);
+  }
+  get wells(): BagWell[] {
+    const snap = this.inventory.snapshot;
+    const charms = snap.items.some(item => item.type === 'charm' && !item.explorerId);
+    const slots = charms ? [...BELT, ...CHARM_SLOT_IDS] : BELT;
+    return slots.map(id => {
+      const worn = snap.equipped[id];
+      const item = worn && !worn.explorerId ? worn : undefined;
+      const name = SLOT_BY_ID.get(id)?.name ?? id;
+      return {
+        id, name,
+        art: item ? (itemArt(item)?.src ?? '') : '',
+        mark: monogram(item?.name ?? name),
+        label: item?.name ?? 'Empty',
+        filled: !!item,
+      };
+    });
+  }
+  get pockets(): BagPocket[] {
+    const snap = this.inventory.snapshot;
+    const pin = [CINDER_ORE_ID, EMBER_RESIDUE_ID];
+    const stacks = [...snap.stacks].sort((a, b) => {
+      const ai = pin.indexOf(a.stackKey);
+      const bi = pin.indexOf(b.stackKey);
+      if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      return (materialDisplay(a.stackKey)?.name ?? a.stackKey).localeCompare(materialDisplay(b.stackKey)?.name ?? b.stackKey);
+    });
+    const materials: BagPocket[] = stacks.map(stack => {
+      const display = materialDisplay(stack.stackKey);
+      const name = display?.name ?? stack.stackKey;
+      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name) };
+    });
+    const gear: BagPocket[] = snap.bag.map(item => ({
+      key: `item:${item.id}`, kind: 'item', ref: item.id, name: item.name,
+      art: itemArt(item)?.src ?? '', qty: 1, pip: rarityColor(item.rarity), mark: monogram(item.name),
+    }));
+    return [...materials, ...gear];
+  }
+  get slip(): BagSlip | null {
+    const pick = this.pick;
+    if (!pick) return null;
+    if (pick.kind === 'stack') return this.stackSlip(pick.ref);
+    if (pick.kind === 'slot') {
+      const item = this.inventory.snapshot.equipped[pick.ref as SlotId];
+      if (!item || item.explorerId) return this.emptyWell(pick.ref as SlotId);
+      return this.itemSlip(item, true);
+    }
+    const item = this.inventory.snapshot.items.find(row => row.id === pick.ref && !row.explorerId);
+    return item ? this.itemSlip(item, item.equipped) : null;
+  }
+  wear(): void {
+    const item = this.selectedGear();
+    if (!item || item.equipped) return;
+    const ok = isBasaltEdge(item) ? this.inventory.equip(item.id, 'weapon') : this.inventory.equip(item.id);
+    this.message = ok ? `${item.name} is worn.` : `${item.name} could not be worn. Try again.`;
+    if (!ok) return;
+    this.sync();
+    const slot = this.inventory.snapshot.items.find(row => row.id === item.id)?.slot;
+    if (slot) this.pick = { kind: 'slot', ref: slot };
+  }
+  stow(): void {
+    const item = this.selectedGear();
+    if (!item) return;
+    const ok = this.inventory.unequip(item.id);
+    this.message = ok ? `${item.name} is back in the satchel.` : `${item.name} could not be stowed. Try again.`;
+    if (!ok) return;
+    this.sync();
+    this.pick = { kind: 'item', ref: item.id };
+  }
+  private ensurePick(): void {
+    const first = this.pockets[0];
+    this.pick = first ? { kind: first.kind, ref: first.ref } : { kind: 'slot', ref: 'weapon' };
+  }
+  private selectedGear(): GameItem | null {
+    const pick = this.pick;
+    if (!pick || pick.kind === 'stack') return null;
+    if (pick.kind === 'slot') {
+      const worn = this.inventory.snapshot.equipped[pick.ref as SlotId];
+      return worn && !worn.explorerId ? worn : null;
+    }
+    return this.inventory.snapshot.items.find(row => row.id === pick.ref && !row.explorerId) ?? null;
+  }
+  private stackSlip(stackKey: string): BagSlip | null {
+    const stack = this.inventory.snapshot.stacks.find(row => row.stackKey === stackKey);
+    if (!stack) return null;
+    const display = materialDisplay(stackKey);
+    const name = display?.name ?? stackKey;
+    return {
+      name, art: display?.art ?? '', mark: monogram(name), kicker: 'Material',
+      note: this.stackNote(stackKey, stack.quantity), stats: [`${stack.quantity} held`],
+      canWear: false, canStow: false,
+    };
+  }
+  private stackNote(stackKey: string, qty: number): string {
+    if (stackKey === CINDER_ORE_ID) {
+      if (qty >= 6 && this.ember >= 1) return 'The forge has enough ore. One ember residue completes the Basalt Edge.';
+      if (qty >= 6) return 'Six ore are ready. The forge still wants one ember residue.';
+      const more = 6 - qty;
+      return `${more} more ${more === 1 ? 'piece' : 'pieces'}, and one ember residue, forge the Basalt Edge.`;
+    }
+    if (stackKey === EMBER_RESIDUE_ID) {
+      return this.ore >= 6 ? 'The forge can drink this with the ore you carry.' : 'The forge takes one of these with six cinder ore.';
+    }
+    return 'Kept in the satchel. It stays on this device.';
+  }
+  private emptyWell(slot: SlotId): BagSlip {
+    const name = SLOT_BY_ID.get(slot)?.name ?? 'Place';
+    return { name, art: '', mark: monogram(name), kicker: 'Worn', note: 'Nothing rests in this place.', stats: [], canWear: false, canStow: false };
+  }
+  private itemSlip(item: GameItem, worn: boolean): BagSlip {
+    const def = definitionFor(item);
+    const stats = ITEM_STAT_KEYS.filter(key => (item.stats[key] ?? 0) !== 0).map(key => formatItemMod(key, item.stats[key]!));
+    const level = item.upgradeLevel ?? 0;
+    return {
+      name: level > 0 ? `${item.name} +${level}` : item.name,
+      art: itemArt(item)?.src ?? '',
+      mark: monogram(item.name),
+      kicker: worn ? 'Worn' : rarityLabel(item.rarity),
+      note: item.lore || def?.lore || (worn ? 'Worn by the Keeper.' : 'In the satchel, ready to be worn.'),
+      stats,
+      canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
+      canStow: worn,
+    };
+  }
+  private sync(): void { this.engine?.setProgress({ equipped: this.equipped, restored: this.restored }); }
+  private act(target: InteractionTarget): void {
+    if (!this.browser || this.state?.paused || this.state?.defeated) return;
+    if (target === 'ore') this.mine();
+    if (target === 'forge') this.forge();
+    if (target === 'beacon') this.restore();
+    if (target === 'passage') this.message = '';
+    this.sync();
+  }
+  private mine(): void {
+    if (this.remaining > 0) return;
+    if (!this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID)) {
+      this.message = 'Mining could not be saved. Check browser storage and try again.'; return;
+    }
+    this.pendingMine ??= `world-mine:${Date.now()}:${Math.random().toString(36).slice(2)}`;
+    const result = this.activity.resolveMine({ mutationId: this.pendingMine, locationId: BASALT_SEAMWORKS_ID, oreId: CINDER_ORE_ID });
+    this.now = Date.now();
+    if (!result.ok) {
+      this.message = result.code === 'capacity' ? 'Your bag is full. Make room in your inventory before mining.' : result.code === 'persist' ? 'This strike could not be saved. Try again to finish it safely.' : 'The seam is recovering. Wait a moment before striking again.';
+      if (result.code !== 'persist') this.pendingMine = null;
+      return;
+    }
+    this.pendingMine = null;
+    this.message = 'Cinder Ore gathered. Keep mining for an ember, then walk right to the forge.';
+    // Scoped tutorial supply, separate from the global 800-action discovery guarantee.
+    // Reuse the storyboard's claim ID so switching prototypes cannot duplicate it.
+    if (this.activity.snapshot.miningAccepted >= 8 && !this.edge && this.ember < 1) {
+      const granted = this.inventory.grantStack(TUTORIAL_EMBER_ID, EMBER_RESIDUE_ID, 1);
+      this.message = !granted ? 'Ore saved. The first-craft tutorial ember could not be stored; make room and mine again.' : this.ember > 0 ? 'First-craft tutorial ember found. Bring 6 Cinder Ore and 1 Ember Residue to the forge.' : 'The tutorial ember was already claimed. Retrieve it from your bank, or keep mining for another discovery.';
+    } else if (this.ember >= 1 && this.ore >= 6) this.message = 'The forge has everything it needs. Walk right to craft your blade.';
+  }
+  private forge(): void {
+    if (this.edge) {
+      this.message = this.equipped ? 'Your Basalt Edge is equipped. The Rivet Maw waits beyond the platforms.' : this.inventory.equip(this.edge.id, 'weapon') ? 'Basalt Edge equipped. Press J to attack and K to dodge.' : 'Equipping could not be saved. Try again.';
+      return;
+    }
+    const result = this.inventory.craftBasaltEdge(CRAFT_ID);
+    this.message = result.ok ? 'Your Basalt Edge is ready. Interact once more to equip it.' : result.code === 'persist' ? 'The craft could not be saved. Try again to finish safely.' : result.code === 'capacity' ? 'Make room in your bag for the blade.' : 'You need 6 Cinder Ore and 1 Ember Residue. A first-craft tutorial ember is available after 8 accepted strikes.';
+    if (result.ok) this.activity.markCraftedBasaltEdge();
+  }
+  private restore(): void {
+    if (this.restored) { this.message = 'The beacon burns. Follow the light to the right-hand passage.'; return; }
+    if (!this.state?.enemyDefeated) { this.message = 'The Rivet Maw still guards this crossing. Defeat it before lighting the beacon.'; return; }
+    const saved = { restored: true, era: INVENTORY_ERA, resetAt: this.store.readRaw(RESET_STAMP_KEY) };
+    this.store.write(SAVE_KEY, saved);
+    if (this.store.readRaw(SAVE_KEY) !== JSON.stringify(saved)) { this.message = 'The beacon could not be saved. Try again.'; return; }
+    this.restored = true;
+    this.message = 'Warm light returns to the Seamworks. The passage is open.';
+  }
+}

@@ -10,6 +10,21 @@ import { SITE_URL } from './seo.service';
 
 export const APP_ROUTES: Routes = [
   {
+    path: 'play',
+    loadComponent: () => import('./play/side-scroller.component').then(m => m.SideScrollerComponent),
+    title: 'The Seamworks — Eclipse Realms 2D',
+    data: {
+      description: 'Enter the Basalt Seamworks. Gather ore, forge your first blade, and defend the forge in a playable Eclipse Realms adventure.',
+      noindex: true,
+    },
+  },
+  {
+    path: 'play/storyboard',
+    loadComponent: () => import('./play/infernal-adventure.component').then(m => m.InfernalAdventureComponent),
+    title: 'The Seamworks Storyboard — Eclipse Realms',
+    data: { noindex: true },
+  },
+  {
       path: 'world',
       loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
       title: 'Eclipse Realms — Free Browser RPG & Idle Game, No Download',

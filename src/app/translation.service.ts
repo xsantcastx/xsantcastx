@@ -574,6 +574,7 @@ export class TranslationService {
     'godforge.hero.sub':       { en: 'A free idle RPG in your browser. Strike the forge, gamble runes, craft gear with rolled stats, and send explorers into five realms. No sign-up, no install.', es: 'Un RPG idle gratis en tu navegador. Golpea la forja, apuesta runas, fabrica equipo con estadisticas variables y envia exploradores a cinco reinos. Sin registro, sin instalar.' },
     'godforge.hero.toNext':    { en: 'XP to',                                      es: 'XP para' },
     'godforge.hero.maxRank':   { en: 'the Eclipse is yours',                       es: 'el Eclipse es tuyo' },
+    'godforge.hero.playAdventure': { en: 'Play the adventure', es: 'Jugar la aventura' },
     'godforge.hero.cta':       { en: 'Walk the Realms',                            es: 'Camina los reinos' },
     'godforge.hero.ctaLive':   { en: 'Open your Character',                        es: 'Abre tu personaje' },
 
