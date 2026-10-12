@@ -216,8 +216,8 @@ filename the importer picks up automatically.
 ## Known issues / watch list
 
 - Gathering regrowth now persisted (`9ec52e4`, blob `godforge-gathering`)
-- Karma `ExchangeService … round trip` (exchange.service.spec.ts) reported failing; suspected fallout from the ×0.06 Exchange rescale — verify and fix
-- Player market list needs two always-on Firestore listeners per visitor (`watchOpenOrders`, `watchPrices`); a server-written summary doc is the follow-up before launch (read cost)
+- Fixed (`8bbe142`): a live **Exchange Gold exploit** after the ×0.06 rescale: bulk buys were priced before their own price move and could be sold back unit by unit at a profit; orders now price across their own movement (buys round up, sells down). Karma 1933/1933
+- Player market list now reads one summary doc `market/v1/summary/board` (`8bbe142`); it caps sustained market writes at ~1/s (shard it before heavy traffic)
 - The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Market strings left unused by the redesign could be pruned from the eager translation table
 - **Market residual cheat risks** (the client still writes saves): a player can edit their own save then sell what they minted; a restored escrowed item stays usable single-player until their next market call; an offline device's earlier spends can make the client skip a server Gold debit; server repair marks expire after 7 days. See `docs/handoff/player-market.md`
 - The CSP now allows `us-central1-xsantcastx-1694b.cloudfunctions.net`, which was missing and had also blocked Stripe's callable
