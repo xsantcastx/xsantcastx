@@ -18,7 +18,7 @@
        What you can spend, before you are shown anything to spend it on. -->
   <div class="mk__wallet" [class.mk__wallet--flash]="walletFlash" data-reveal>
     <div class="mk__coin mk__coin--gold">
-      <img class="mk__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.png"
+      <img class="mk__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.webp"
            alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
       <span class="mk__coin-body">
         <span class="mk__coin-val">{{ gold }}</span>
@@ -28,7 +28,7 @@
 
     <div class="mk__coin mk__coin--essence">
       <img class="mk__coin-icon gf-icon currency-icon currency-icon--essence"
-           src="assets/icons/currencies/essence.png"
+           src="assets/icons/currencies/essence.webp"
            alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
       <span class="mk__coin-body">
         <span class="mk__coin-val">{{ essence }}</span>
@@ -447,8 +447,8 @@
                       <img class="gf-icon currency-icon"
                            [class.currency-icon--essence]="it.currency === 'essence'"
                            [src]="it.currency === 'essence'
-                                    ? 'assets/icons/currencies/essence.png'
-                                    : 'assets/icons/currencies/gold.png'"
+                                    ? 'assets/icons/currencies/essence.webp'
+                                    : 'assets/icons/currencies/gold.webp'"
                            [alt]="it.currency === 'essence' ? t('market.essence') : t('market.gold')"
                            width="16" height="16" loading="lazy" decoding="async" draggable="false">
                       <b>{{ format(it.cost) }}</b>
