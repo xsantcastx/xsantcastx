@@ -5,284 +5,139 @@
 <app-art-scene art="bg-market" focus="center 50%" />
 }
 
-<section class="mk" [attr.data-currency]="activeCurrency" [class.mk--hydrated]="hydrated" [class.mk--in-world]="inWorld" [attr.aria-label]="inWorld ? t('market.title') : null">
+<!-- The Market on the station kit: shelves → list → the selected upgrade →
+     Buy / Buy max. Search, filters, the Eclipse and the income ledger are in
+     Details. -->
+<app-station-shell class="mk"
+                   [attr.data-currency]="activeCurrency"
+                   [class.mk--hydrated]="hydrated"
+                   [title]="t('market.eyebrow')"
+                   [showTitle]="!inWorld"
+                   [detailsHint]="t('marketJ.detailsHint')"
+                   [(detailsOpen)]="detailsOpen">
 
-  <!-- ── Hero ──────────────────────────────────────────────────────────────
-       The sigil, the name, the promise. Everything below it is inventory. -->
-  <!-- In-world the panel already names the place (see shared/in-world-panel.ts). -->
-  @if (!inWorld) {
-  <header class="mk__hero">
-    <span class="mk__sigil" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="square" stroke-linejoin="miter" focusable="false"><path d="M12 2.6 13.9 9 20.4 12 13.9 15 12 21.4 10.1 15 3.6 12 10.1 9Z"/><path d="M12 7.6 12.8 10.9 16.2 12 12.8 13.1 12 16.4 11.2 13.1 7.8 12 11.2 10.9Z" fill="currentColor" stroke="none" opacity=".24"/></svg></span>
-    <p class="mk__eyebrow"><span class="mk__eyebrow-pulse"></span>{{ t('market.eyebrow') }}</p>
-    <h1 class="mk__title">{{ t('market.title') }}</h1>
-    <p class="mk__tagline">{{ t('market.tagline') }}</p>
-  </header>
-  }
-
-  <!-- ── Currency bar ──────────────────────────────────────────────────────
-       What you can spend, before you are shown anything to spend it on. -->
-  <div class="mk__wallet" [class.mk__wallet--flash]="walletFlash" data-reveal>
-    <div class="mk__coin mk__coin--gold">
-      <img class="mk__coin-icon gf-icon currency-icon" src="assets/icons/currencies/gold.webp"
-           alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
-      <span class="mk__coin-body">
-        <span class="mk__coin-val">{{ gold }}</span>
-        <span class="mk__coin-label">{{ t('market.gold') }}</span>
-      </span>
-    </div>
-
-    <div class="mk__coin mk__coin--essence">
-      <img class="mk__coin-icon gf-icon currency-icon currency-icon--essence"
-           src="assets/icons/currencies/essence.webp"
-           alt="" aria-hidden="true" width="34" height="34" loading="lazy" decoding="async" draggable="false">
-      <span class="mk__coin-body">
-        <span class="mk__coin-val">{{ essence }}</span>
-        <span class="mk__coin-label">{{ t('market.essence') }}</span>
-      </span>
-    </div>
-
-    @if (snap.shards > 0) {
-      <div class="mk__coin mk__coin--shard">
-        <span class="mk__coin-glyph" aria-hidden="true">🌑</span>
-        <span class="mk__coin-body">
-          <span class="mk__coin-val">{{ shards }} <em class="mk__coin-sub">{{ shardMult }}</em></span>
-          <span class="mk__coin-label">{{ t('market.shards') }}</span>
-        </span>
-      </div>
+  <div stationWallet class="mkj-wallet" [class.mkj-wallet--flash]="walletFlash">
+    <app-cost-chip [cost]="walletGold" [quiet]="true" />
+    @if (snap.essence > 0 || activeCurrency === 'essence') {
+      <app-cost-chip [cost]="walletEssence" [quiet]="true" />
     }
-
-    <!-- The headline rate. Everything in the shop exists to move this number. -->
-    <div class="mk__coin mk__coin--rate">
-      <span class="mk__coin-glyph" aria-hidden="true">⚡</span>
-      <span class="mk__coin-body">
-        <span class="mk__coin-val">{{ perSecond }}</span>
-        <span class="mk__coin-label">{{ t('market.rate') }}</span>
-      </span>
-      @for (f of rateFloaters; track f.key) {
-        <span class="mk__rate-float" aria-hidden="true">{{ f.text }}</span>
-      }
-    </div>
-
-    <div class="mk__coin mk__coin--total">
-      <span class="mk__coin-glyph" aria-hidden="true">◈</span>
-      <span class="mk__coin-body">
-        <span class="mk__coin-val">{{ totalValue }}</span>
-        <span class="mk__coin-label" [attr.title]="t('market.totalHint')">{{ t('market.total') }}</span>
-      </span>
-    </div>
   </div>
 
-  <!-- The Gambler sits next door rather than on a shelf here: everything else
-       in the Market has a stated price for a stated thing, and a box does not.
-       Mixing the two on one strip would make the odds look like a product spec
-       instead of the warning they are. -->
-  <!-- In-world the Gambler is a place of its own in another town, not a link out of /play. -->
-  @if (!inWorld) {
-  <a class="mk__gambler" routerLink="/gambler">
-    <span class="mk__gambler-sigil" aria-hidden="true">✦</span>
-    <span class="mk__gambler-body">
-      <strong>The Gambler</strong>
-      <span>Five sealed boxes, odds published, and a till that pays for the roll.</span>
-    </span>
-    <span class="mk__gambler-go" aria-hidden="true">→</span>
-  </a>
-  }
+  <app-station-tabs stationTabs class="mk__tabs" [tabs]="shelfTabs" [active]="activeTab"
+                    (activeChange)="selectTab($event)" [label]="t('market.shelves')" />
 
-  @if (showScoutDoorway) {
-    <!-- Only for a visitor who cannot afford the cheapest paid rung. See
-         `showScoutDoorway` for why this sentence, and not "keep striking". -->
-    <a class="mk__gambler mk__gambler--scout" routerLink="/sanctum">
-      <span class="mk__gambler-sigil" aria-hidden="true">◈</span>
-      <span class="mk__gambler-body">
-        <strong>{{ t('market.scout.title') }}</strong>
-        <span>{{ t('market.scout.body') }}</span>
-      </span>
-      <span class="mk__gambler-go" aria-hidden="true">→</span>
-    </a>
-  }
+  <app-skill-strip stationSkill
+    [art]="incomeArt"
+    [title]="t('marketJ.income')"
+    [progress]="ownedShare"
+    [progressLabel]="t('marketJ.rateLine', { rate: perSecond, owned: ownedCount, total: listingCount })"
+    [hint]="t('marketJ.hint')" />
 
-  @if (snap.enchantment) {
-    <p class="mk__running" role="status">
-      <span class="mk__running-icon" aria-hidden="true">{{ snap.enchantment.def.icon }}</span>
-      <strong>{{ snap.enchantment.def.name }}</strong> {{ t('market.running') }}
-      {{ snap.enchantment.def.effect }} · <span class="mk__running-timer">{{ enchantRemaining }}</span>
-    </p>
-  }
-
-  <!-- ── The floor ─────────────────────────────────────────────────────────
-       Three columns: what to look at, what is for sale, catalogue picks. -->
-  <div class="mk__floor">
-
-    <!-- ── Left: search, shelves, rarity, ownership ─────────────────────── -->
-    <aside class="mk__aside mk__aside--filters" data-reveal [attr.aria-label]="t('market.filters')">
-
-      <div class="mk__search">
-        <span class="mk-ico mk-ico--search" aria-hidden="true"></span>
-        <label class="mk__sr" for="mk-search">{{ t('market.search') }}</label>
-        <input id="mk-search" class="mk__search-input" type="search" autocomplete="off"
-               [attr.placeholder]="t('market.searchPlaceholder')" [value]="searchDraft"
-               (input)="onSearch($any($event.target).value)">
-        @if (searchDraft) {
-          <button type="button" class="mk__search-clear" (click)="clearSearch()"
-                  [attr.aria-label]="t('market.searchClear')"><svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false"><path d="M4 5.5h16M7 11h10m-7 5.5h4"/><path d="m15.5 15.5 5 5m0-5-5 5"/></svg></button>
-        }
-      </div>
-
-      <nav class="mk__facet" [attr.aria-label]="t('market.categories')">
-        <h2 class="mk__facet-head">
-          <span class="mk-ico mk-ico--filter" aria-hidden="true"></span>
-          {{ t('market.categories') }}
-        </h2>
-        <ul class="mk__facet-list">
-          <li>
-            <button type="button" class="mk__facet-btn"
-                    [class.mk__facet-btn--on]="queryState.category === 'all'"
-                    [attr.aria-pressed]="queryState.category === 'all'"
-                    (click)="selectCategory('all')">
-              <span class="mk__facet-glyph" aria-hidden="true">✦</span>
-              <span class="mk__facet-name">{{ t('market.everything') }}</span>
-              <span class="mk__facet-count">{{ filteredCount }}</span>
-            </button>
-          </li>
-          @for (c of categories; track c.id) {
-            <li>
-              <button type="button" class="mk__facet-btn"
-                      [class.mk__facet-btn--on]="queryState.category === c.id"
-                      [attr.data-currency]="c.currency"
-                      [attr.aria-pressed]="queryState.category === c.id"
-                      (click)="selectCategory(c.id)">
-                @if (markOf(c); as mark) {
-                  <img class="mk__facet-icon gf-icon shop-icon"
-                       [src]="mark"
-                       alt="" aria-hidden="true" width="22" height="22"
-                       loading="lazy" decoding="async" draggable="false">
-                } @else {
-                  <span class="mk__facet-glyph" aria-hidden="true">{{ c.glyph }}</span>
-                }
-                <span class="mk__facet-name">{{ categoryLabel(c.id) }}</span>
-                <span class="mk__facet-count">{{ countOf(c.id) }}</span>
-              </button>
-            </li>
-          }
-        </ul>
-      </nav>
-
-      <nav class="mk__facet" [attr.aria-label]="t('market.rarity')">
-        <h2 class="mk__facet-head">{{ t('market.rarity') }}</h2>
-        <ul class="mk__facet-list">
-          @for (r of rarityOrder; track r) {
-            <li>
-              <button type="button" class="mk__facet-btn mk__facet-btn--rarity"
-                      [class.mk__facet-btn--on]="queryState.rarity === r"
-                      [style.--tier]="rarityColor(r)"
-                      [style.--tier-glow]="rarityGlow(r)"
-                      [attr.aria-pressed]="queryState.rarity === r"
-                      (click)="selectRarity(r)">
-                <span class="mk__facet-dot" aria-hidden="true"></span>
-                <span class="mk__facet-name">{{ rarityLabel(r) }}</span>
-                <span class="mk__facet-count">{{ countOfRarity(r) }}</span>
-              </button>
-            </li>
-          }
-        </ul>
-      </nav>
-
-      <nav class="mk__facet" [attr.aria-label]="t('market.ownership')">
-        <h2 class="mk__facet-head">{{ t('market.ownership') }}</h2>
-        <ul class="mk__facet-list">
-          @for (o of ownerships; track o) {
-            <li>
-              <button type="button" class="mk__facet-btn"
-                      [class.mk__facet-btn--on]="queryState.ownership === o"
-                      [attr.aria-pressed]="queryState.ownership === o"
-                      (click)="selectOwnership(o)">
-                <span class="mk__facet-name">{{ ownershipLabel(o) }}</span>
-              </button>
-            </li>
-          }
-        </ul>
-      </nav>
-
-      <div class="mk__eclipse-entry">
-        <button type="button" class="mk__eclipse-link"
-                [class.mk__eclipse-link--on]="eclipseOpen"
-                [attr.aria-pressed]="eclipseOpen"
-                (click)="eclipseOpen ? closeEclipse() : openEclipse()">
-          <span class="mk__facet-glyph" aria-hidden="true">🌑</span>
-          {{ t('market.eclipse') }}
-        </button>
-      </div>
-
-      @if (hasFilters) {
-        <button type="button" class="mk__clear" (click)="clearFilters()">
-          <span class="mk-ico mk-ico--clear" aria-hidden="true"></span>
-          {{ t('market.clearFilters') }}
-        </button>
+  <div stationHero class="mkj-hero">
+    <p class="mkj-rate" aria-hidden="true">
+      @for (f of rateFloaters; track f.key) {
+        <span class="mkj-rate__float">{{ f.text }}</span>
       }
-    </aside>
+    </p>
 
-    <!-- ── Centre: the inventory ──────────────────────────────────────── -->
-    <main class="mk__main">
+    @if (purchaseNotice && purchaseNotice.tone !== 'ok') {
+      <p class="mk__notice" role="status"
+         [class.mk__notice--queued]="purchaseNotice.tone === 'queued'"
+         [class.mk__notice--denied]="purchaseNotice.tone === 'denied'">
+        {{ purchaseNotice.text }}
+      </p>
+    }
 
-      <!-- The same shelves as the sidebar, reachable without leaving the list.
-           On narrow screens this strip is the only category control. -->
-      <div class="mk__shelf-bar">
-        <div class="mk__tabs" role="tablist" [attr.aria-label]="t('market.shelves')">
-          <button type="button" role="tab" class="mk__tab"
-                  [class.mk__tab--on]="queryState.category === 'all' && !eclipseOpen"
-                  [attr.aria-selected]="queryState.category === 'all' && !eclipseOpen"
-                  (click)="selectCategory('all')">{{ t('market.all') }}</button>
-          @for (c of categories; track c.id) {
-            <button type="button" role="tab" class="mk__tab"
-                    [class.mk__tab--on]="queryState.category === c.id && !eclipseOpen"
-                    [attr.data-currency]="c.currency"
-                    [attr.aria-selected]="queryState.category === c.id && !eclipseOpen"
-                    (click)="selectCategory(c.id)">{{ categoryShort(c.id) }}</button>
+    <app-reward-pop [reward]="reward" (dismissed)="reward = null" />
+
+    @if (catalogueError) {
+      <div class="mk__error" role="alert">
+        <p>{{ t('market.error') }}</p>
+        <div class="mk__error-actions">
+          <button type="button" class="mk__empty-clear" (click)="retryCatalogue()">{{ t('market.retry') }}</button>
+          @if (!inWorld) {
+          <a class="mk__empty-clear" routerLink="/world">{{ t('market.returnWorld') }}</a>
           }
         </div>
-        <button type="button" class="mk__tab mk__tab--eclipse"
-                [class.mk__tab--on]="eclipseOpen"
-                [attr.aria-pressed]="eclipseOpen"
-                (click)="eclipseOpen ? closeEclipse() : openEclipse()">{{ t('market.eclipse') }}</button>
       </div>
+    } @else {
+      <app-station-journal>
+        <app-journal-list journalList class="mk__list" [rows]="journalRows" [selected]="selectedItem?.id ?? null"
+                          [label]="t('market.shelves')" [empty]="t('market.empty')" (pick)="pick($event)" />
 
-      <div class="mk__toolbar">
-        <label class="mk__sort">
-          <span class="mk-ico mk-ico--sort" aria-hidden="true"></span>
-          <span class="mk__sr">{{ t('market.sort') }}</span>
-          <select class="mk__sort-select" [value]="queryState.sort"
-                  (change)="selectSort($any($event.target).value)">
-            @for (s of sorts; track s) {
-              <option [value]="s">{{ sortLabel(s) }}</option>
+        <div journalDetail class="mkj-detail">
+          @if (selectedItem; as it) {
+            <app-detail-head [art]="it.art" [name]="it.name" [rarity]="it.rarity" [line]="detailLine" />
+
+            <div class="mkj-what">
+              <p class="mkj-effect mk__row-effect">
+                {{ it.effect }}
+                @if (it.owned > 0 && it.category !== 'artifact' && it.category !== 'cosmetic') {
+                  <span class="mkj-meta">· {{ t('marketJ.youOwn', { n: it.owned }) }}</span>
+                }
+                @if (isRunning(it)) { <span class="mkj-meta mk__row-timer">· {{ enchantRemaining }}</span> }
+              </p>
+              <app-inspect-button type="market-listing" [id]="it.id"></app-inspect-button>
+            </div>
+
+            @if (it.state === 'owned' && it.cosmetic; as cos) {
+              <span class="mk__variants" role="group" [attr.aria-label]="it.name + ' variants'">
+                @for (v of cos.variants; track v.id) {
+                  <button type="button" class="mk__variant"
+                          [class.mk__variant--on]="isEquipped(cos, v)"
+                          [style.--swatch]="v.color"
+                          (click)="equip(cos, v)"
+                          [attr.aria-pressed]="isEquipped(cos, v)"
+                          [attr.aria-label]="(isEquipped(cos, v) ? 'Remove ' : 'Wear ') + v.label">
+                    <span class="mk__variant-dot" aria-hidden="true"></span>{{ v.label }}
+                  </button>
+                }
+              </span>
             }
-          </select>
-        </label>
-        <p class="mk__count" aria-live="polite">{{ t('market.filteredCount', { count: filteredCount }) }}</p>
-      </div>
 
-      @if (purchaseNotice) {
-        <p class="mk__notice" role="status"
-           [class.mk__notice--ok]="purchaseNotice.tone === 'ok'"
-           [class.mk__notice--queued]="purchaseNotice.tone === 'queued'"
-           [class.mk__notice--denied]="purchaseNotice.tone === 'denied'">
-          {{ purchaseNotice.text }}
-        </p>
-      }
-
-      @if (hasFilters) {
-        <ul class="mk__chips" [attr.aria-label]="t('market.chips')">
-          @for (chip of chips; track chip.key) {
-            <li>
-              <button type="button" class="mk__chip" (click)="clearChip(chip.key)"
-                      [attr.aria-label]="t('market.clearChip', { name: chip.label })">
-                {{ chip.label }} <svg class="ds-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="square" stroke-linejoin="miter" aria-hidden="true" focusable="false"><path d="m6 6 12 12M18 6 6 18"/></svg>
-              </button>
-            </li>
+            @if (it.state !== 'held' && it.state !== 'owned') {
+              <app-action-button
+                class="mk__buy"
+                [label]="buyLabel"
+                [costs]="buyCosts"
+                [pending]="!hydrated"
+                [allCount]="buyMaxCount"
+                [allLabel]="buyMaxCount ? t('marketJ.buyMax') : null"
+                (act)="buy(it)"
+                (actAll)="buyMany(it, $event)"
+                (refused)="announce = $event" />
+            } @else {
+              <p class="mk__held" [class.mk__held--owned]="it.state === 'owned'">
+                {{ it.state === 'owned' ? t('marketJ.held') : t('marketJ.maxed') }}
+              </p>
+            }
           }
-        </ul>
-      }
+        </div>
+      </app-station-journal>
 
-      @if (activeNote && !eclipseOpen) {
+      @if (!journalRows.length && hasFilters) {
+        <div class="mk__empty" role="status">
+          <button type="button" class="mk__empty-clear" (click)="clearFilters()">{{ t('market.showEverything') }}</button>
+        </div>
+      }
+    }
+  </div>
+
+  <p class="mkj-sr" aria-live="polite">{{ announce }}</p>
+
+  <!-- ── Details: everything else, closed by default ───────────────────── -->
+  <div stationDetails class="mkj-details">
+
+    @if (snap.enchantment) {
+      <p class="mk__running" role="status">
+        <strong>{{ snap.enchantment.def.name }}</strong> {{ t('market.running') }}
+        {{ snap.enchantment.def.effect }} · <span class="mk__running-timer">{{ enchantRemaining }}</span>
+      </p>
+    }
+
+    @if (activeNote) {
+      <section class="mkj-panel">
+        <h2 class="mkj-panel__title">{{ t('marketJ.shelf') }}</h2>
         <p class="mk__note">
           {{ activeNote }}
           @if (queryState.category === 'expedition') {
@@ -295,286 +150,236 @@
           }
           @if (activeTally) { <strong>{{ activeTally }}</strong> }
         </p>
-      }
+      </section>
+    }
 
-      @if (showEclipse) {
-        <!-- ── The Eclipse ────────────────────────────────────────────────
-             Not a purchase. A reset, behind two clicks and a full accounting
-             of what it takes, which is why it is not a row in the list. -->
-        <div class="mk__eclipse" role="region" [attr.aria-label]="t('market.eclipse')">
-          <div class="mk__eclipse-orb" aria-hidden="true"></div>
+    @if (showScoutDoorway) {
+      <!-- Only for a visitor who cannot afford the cheapest paid rung. See
+           `showScoutDoorway` for why this sentence, and not "keep striking". -->
+      <a class="mk__gambler mk__gambler--scout" routerLink="/sanctum">
+        <span class="mk__gambler-body">
+          <strong>{{ t('market.scout.title') }}</strong>
+          <span>{{ t('market.scout.body') }}</span>
+        </span>
+        <span class="mk__gambler-go" aria-hidden="true">→</span>
+      </a>
+    }
 
-          <p class="mk__eclipse-lede">
-            {{ t('market.eclipse.lede', { percent: shardBonusPercent }) }}
-          </p>
-
-          <dl class="mk__eclipse-stats">
-            <div><dt>{{ t('market.eclipse.held') }}</dt><dd>{{ shards }}</dd></div>
-            <div><dt>{{ t('market.eclipse.bonus') }}</dt><dd>{{ shardMult }}</dd></div>
-            <div><dt>{{ t('market.eclipse.taken') }}</dt><dd>{{ prestigeCount }}</dd></div>
-            <div><dt>{{ t('market.eclipse.waiting') }}</dt><dd>{{ pendingShards }}</dd></div>
-          </dl>
-
-          @if (canPrestige) {
-            <p class="mk__eclipse-ready">
-              <strong>{{ pendingShards }}</strong>
-              {{ pendingShards === 1 ? t('market.eclipse.shardIs') : t('market.eclipse.shardsAre') }}
-              {{ t('market.eclipse.raises') }}
-              <strong>×{{ ((snap.shards + pendingShards) * 0.05 + 1).toFixed(2) }}</strong>.
-            </p>
-
-            @if (!eclipseArmed) {
-              <button type="button" class="mk__eclipse-btn" (click)="arm()">{{ t('market.eclipse.reset') }}</button>
-            } @else {
-              <div class="mk__eclipse-confirm" role="group" [attr.aria-label]="t('market.eclipse.confirm')">
-                <p class="mk__eclipse-warn">
-                  {{ t('market.eclipse.warn', { gold: gold, cost: eclipseCost }) }}
-                  <span class="mk__eclipse-warn-final">{{ t('market.eclipse.noUndo') }}</span>
-                </p>
-                <div class="mk__eclipse-actions">
-                  <button type="button" class="mk__eclipse-btn mk__eclipse-btn--go" (click)="takeEclipse()">
-                    {{ t('market.eclipse.take', { count: pendingShards }) }}
-                  </button>
-                  <button type="button" class="mk__eclipse-cancel" (click)="disarm()">{{ t('market.eclipse.notYet') }}</button>
-                </div>
-              </div>
-            }
-          } @else {
-            <div class="mk__eclipse-locked">
-              <div class="mk__eclipse-track" role="progressbar"
-                   [attr.aria-valuenow]="(prestigeProgress * 100).toFixed(0)"
-                   aria-valuemin="0" aria-valuemax="100"
-                   [attr.aria-label]="t('market.eclipse.progress')">
-                <span class="mk__eclipse-fill" [style.width.%]="prestigeProgress * 100"></span>
-              </div>
-              <p class="mk__eclipse-gate">
-                {{ t('market.eclipse.gate', { gold: format(prestigeGold), rank: prestigeLevel }) }}
-                <span class="mk__eclipse-gate-now">{{ t('market.eclipse.earned', { gold: lifetime }) }}</span>
-              </p>
-            </div>
-          }
-
-          @if (eclipseResult) {
-            <p class="mk__eclipse-done" role="status">
-              🌑 {{ t('market.eclipse.done', { granted: eclipseResult.granted, total: eclipseResult.total, mult: shardMult }) }}
-            </p>
-          }
-        </div>
-      } @else if (catalogueError) {
-        <div class="mk__error" role="alert">
-          <span class="mk-ico mk-ico--error mk-ico--lg" aria-hidden="true"></span>
-          <p>{{ t('market.error') }}</p>
-          <div class="mk__error-actions">
-            <button type="button" class="mk__empty-clear" (click)="retryCatalogue()">{{ t('market.retry') }}</button>
-            @if (!inWorld) {
-            <a class="mk__empty-clear" routerLink="/world">{{ t('market.returnWorld') }}</a>
-            }
-          </div>
-        </div>
-      } @else if (pageItems.length === 0) {
-        <div class="mk__empty" role="status">
-          <span class="mk-ico mk-ico--empty mk-ico--lg" aria-hidden="true"></span>
-          <p>{{ t('market.empty') }}</p>
-          <button type="button" class="mk__empty-clear" (click)="clearFilters()">{{ t('market.showEverything') }}</button>
-        </div>
-      } @else {
-        <ul class="mk__tiles">
-          @for (it of pageItems; track it.id) {
-            <li class="mk__tile"
-                [class.mk__tile--owned]="it.owned > 0"
-                [class.mk__tile--held]="it.state === 'held' || it.state === 'owned'"
-                [class.mk__tile--flash]="isFlashing(it.id)"
-                [class.mk__tile--denied]="isDenied(it.id)"
-                [class.mk__tile--rare]="it.rarity === 'anomalous' || it.rarity === 'mythic' || it.rarity === 'singular'"
-                [attr.data-currency]="it.currency"
-                [attr.data-rarity]="it.rarity"
-                [style.--tier]="it.rarityColor"
-                [style.--tier-glow]="it.rarityGlow">
-
-              <!--
-                Flat card, no expand. Every listing shows its art, rarity,
-                price, what it does and its Buy button at once. The tile used to
-                be a disclosure button: you clicked it to find out what the
-                thing did and clicked again to buy, which made browsing a
-                catalogue of 37 items a lot of clicking to learn very little.
-              -->
-              <div class="mk__card">
-                <span class="mk__tile-icon" aria-hidden="true">
-                  @if (it.art; as card) {
-                    <img class="mk__tile-art" [src]="card.src" [attr.srcset]="card.srcset"
-                         sizes="72px"
-                         [attr.width]="card.width" [attr.height]="card.height"
-                         alt="" loading="lazy" decoding="async" draggable="false">
-                  } @else {
-                    <span class="mk__tile-glyph">{{ it.icon }}</span>
-                  }
-                </span>
-
-                <div class="mk__card-body">
-                  <h3 class="mk__tile-name">{{ it.name }}</h3>
-                  <p class="mk__card-meta">
-                    <span class="mk__badge">{{ rarityLabel(it.rarity) }}</span>
-                    <span class="mk__card-cat">{{ categoryLabel(it.category) }}</span>
-                    <span class="mk__card-yield">{{ it.yield }}</span>
-                    @if (it.owned > 0 && it.category !== 'artifact' && it.category !== 'cosmetic') {
-                      <span class="mk__card-owned">{{ t('market.owned.n', { n: it.owned }) }}</span>
-                    }
-                    @if (isRunning(it)) {
-                      <span class="mk__row-timer">{{ enchantRemaining }}</span>
-                    }
-                  </p>
-                  <p class="mk__row-effect">{{ it.effect }}</p>
-
-                  @if (it.state === 'owned' && it.cosmetic; as cos) {
-                    <span class="mk__variants" role="group" [attr.aria-label]="it.name + ' variants'">
-                      @for (v of cos.variants; track v.id) {
-                        <button type="button" class="mk__variant"
-                                [class.mk__variant--on]="isEquipped(cos, v)"
-                                [style.--swatch]="v.color"
-                                (click)="equip(cos, v)"
-                                [attr.aria-pressed]="isEquipped(cos, v)"
-                                [attr.aria-label]="(isEquipped(cos, v) ? 'Remove ' : 'Wear ') + v.label">
-                          <span class="mk__variant-dot" aria-hidden="true"></span>{{ v.label }}
-                        </button>
-                      }
-                    </span>
-                  }
-                </div>
-
-                <div class="mk__card-buy">
-                  <span class="mk__card-price">
-                    @if (it.state === 'held' || it.state === 'owned') {
-                      <span class="mk__held" [class.mk__held--owned]="it.state === 'owned'">
-                        {{ t('market.state.' + it.state) }}
-                      </span>
-                    } @else if (it.cost === 0) {
-                      <!-- A price of zero is authored, not a rounding artefact:
-                           the first Forge Bellows is the doorway rung. Rendering
-                           it as the bare glyph-and-"0" the branch below would
-                           produce reads as a bug rather than a gift. -->
-                      <b class="mk__free">{{ t('market.free') }}</b>
-                    } @else {
-                      <img class="gf-icon currency-icon"
-                           [class.currency-icon--essence]="it.currency === 'essence'"
-                           [src]="it.currency === 'essence'
-                                    ? 'assets/icons/currencies/essence.webp'
-                                    : 'assets/icons/currencies/gold.webp'"
-                           [alt]="it.currency === 'essence' ? t('market.essence') : t('market.gold')"
-                           width="16" height="16" loading="lazy" decoding="async" draggable="false">
-                      <b>{{ format(it.cost) }}</b>
-                    }
-                  </span>
-
-                  @if (it.state !== 'held' && it.state !== 'owned') {
-                    <button type="button" class="mk__buy"
-                            [disabled]="it.state !== 'buy' || isBuying(it.id)"
-                            [attr.aria-busy]="isBuying(it.id)"
-                            (click)="buy(it)"
-                            [attr.aria-label]="it.cost === 0
-                                ? t('market.buy.free', { name: it.name })
-                                : t('market.buy', { name: it.name, price: format(it.cost), currency: it.currency === 'essence' ? t('market.essence') : t('market.gold') })">
-                      {{ isBuying(it.id) ? t('market.buy.in-flight') : (it.state === 'buy' ? it.verb : t('market.state.locked')) }}
-                    </button>
-                  }
-                  <app-inspect-button type="market-listing" [id]="it.id"></app-inspect-button>
-                </div>
-              </div>
-            </li>
-          }
-        </ul>
-
-        @if (totalPages > 1) {
-          <nav class="mk__pager" [attr.aria-label]="t('market.pages')">
-            <button type="button" class="mk__pager-btn" [disabled]="!canPrev"
-                    (click)="prev()" [attr.aria-label]="t('market.prev')">‹</button>
-            <span class="mk__pager-at" aria-live="polite">{{ t('market.page', { n: pageLabel, m: totalPages }) }}</span>
-            <button type="button" class="mk__pager-btn" [disabled]="!canNext"
-                    (click)="next()" [attr.aria-label]="t('market.next')">›</button>
-          </nav>
+    <!-- ── Find: search, rarity, ownership, sort ──────────────────────── -->
+    <section class="mkj-panel" [attr.aria-label]="t('market.filters')">
+      <h2 class="mkj-panel__title">{{ t('marketJ.find') }}</h2>
+      <div class="mk__search">
+        <label class="mk__sr" for="mk-search">{{ t('market.search') }}</label>
+        <input id="mk-search" class="mk__search-input" type="search" autocomplete="off"
+               [attr.placeholder]="t('market.searchPlaceholder')" [value]="searchDraft"
+               (input)="onSearch($any($event.target).value)">
+        @if (searchDraft) {
+          <button type="button" class="mk__search-clear" (click)="clearSearch()"
+                  [attr.aria-label]="t('market.searchClear')">×</button>
         }
-      }
-    </main>
+      </div>
 
-    <!-- ── Right: catalogue picks and the patron pitch ─────────────────── -->
-    <aside class="mk__aside mk__aside--board" data-reveal [attr.aria-label]="t('market.picks')">
+      <div class="mkj-chips" role="group" [attr.aria-label]="t('market.rarity')">
+        @for (r of rarityOrder; track r) {
+          <button type="button" class="mk__facet-btn mk__facet-btn--rarity"
+                  [class.mk__facet-btn--on]="queryState.rarity === r"
+                  [style.--tier]="rarityColor(r)"
+                  [style.--tier-glow]="rarityGlow(r)"
+                  [attr.aria-pressed]="queryState.rarity === r"
+                  (click)="selectRarity(r)">
+            <span class="mk__facet-dot" aria-hidden="true"></span>
+            <span class="mk__facet-name">{{ rarityLabel(r) }}</span>
+            <span class="mk__facet-count">{{ countOfRarity(r) }}</span>
+          </button>
+        }
+      </div>
 
-      <section class="mk__board">
-        <h2 class="mk__facet-head">{{ t('market.picks') }}</h2>
-        <p class="mk__board-sub">{{ t('market.picksSub') }}</p>
-        <ol class="mk__board-list">
-          @for (s of sellers; track s.id) {
+      <div class="mkj-chips" role="group" [attr.aria-label]="t('market.ownership')">
+        @for (o of ownerships; track o) {
+          <button type="button" class="mk__facet-btn"
+                  [class.mk__facet-btn--on]="queryState.ownership === o"
+                  [attr.aria-pressed]="queryState.ownership === o"
+                  (click)="selectOwnership(o)">
+            <span class="mk__facet-name">{{ ownershipLabel(o) }}</span>
+          </button>
+        }
+      </div>
+
+      <label class="mk__sort">
+        <span class="mk__sr">{{ t('market.sort') }}</span>
+        <select class="mk__sort-select" [value]="queryState.sort"
+                (change)="selectSort($any($event.target).value)">
+          @for (s of sorts; track s) {
+            <option [value]="s">{{ sortLabel(s) }}</option>
+          }
+        </select>
+      </label>
+
+      @if (hasFilters) {
+        <ul class="mk__chips" [attr.aria-label]="t('market.chips')">
+          @for (chip of chips; track chip.key) {
             <li>
-              <button type="button" class="mk__seller" [style.--tier]="s.color" (click)="focusItem(s)"
-                      [attr.aria-label]="t('market.pickFind', { name: s.name })">
-                <span class="mk__seller-rank" aria-hidden="true">{{ s.rank }}</span>
-                <span class="mk__seller-icon" aria-hidden="true">{{ s.icon }}</span>
-                <span class="mk__seller-body">
-                  <span class="mk__seller-name">{{ s.name }}</span>
-                  <span class="mk__seller-detail">{{ s.detail }}</span>
-                </span>
+              <button type="button" class="mk__chip" (click)="clearChip(chip.key)"
+                      [attr.aria-label]="t('market.clearChip', { name: chip.label })">
+                {{ chip.label }} ×
               </button>
             </li>
           }
-        </ol>
-      </section>
-
-      <!-- The one thing on this page that costs real money, kept visually
-           apart from everything that costs Gold. -->
-      <section class="mk__patron">
-        <span class="mk__patron-sigil" aria-hidden="true">✦</span>
-        <h2 class="mk__patron-head">{{ t('market.patron.head') }}</h2>
-        <p class="mk__patron-sub">{{ t('market.patron.sub') }}</p>
-        <p class="mk__patron-lore">{{ t('market.patron.lore') }}</p>
-        @if (!inWorld) {
-        <a class="mk__patron-cta" routerLink="/world">{{ t('market.returnWorld') }}</a>
-        }
-      </section>
-
-      <!-- Where the Gold is actually coming from. Open by default: an idle
-           number nobody can decompose reads as arbitrary. -->
-      <details class="mk__ledger" open>
-        <summary class="mk__ledger-sum">{{ t('market.ledger') }}</summary>
-        <ul class="mk__ledger-list">
-          @for (row of breakdown; track row.label) {
-            <li class="mk__ledger-row"
-                [class.mk__ledger-row--mult]="row.isMultiplier"
-                [class.mk__ledger-row--inert]="row.inert">
-              <span class="mk__ledger-label">{{ row.label }}</span>
-              <span class="mk__ledger-note">{{ row.note }}</span>
-              <span class="mk__ledger-val">{{ row.value }}</span>
-            </li>
-          }
-          <li class="mk__ledger-row mk__ledger-row--total">
-            <span class="mk__ledger-label">{{ t('market.ledger.total') }}</span>
-            <span class="mk__ledger-note">{{ t('market.ledger.resolved') }}</span>
-            <span class="mk__ledger-val">{{ perSecond }}/sec</span>
-          </li>
         </ul>
-        <dl class="mk__mini-stats">
-          <div><dt>{{ t('market.stat.minute') }}</dt><dd>{{ perMinute }}</dd></div>
-          <div><dt>{{ t('market.stat.strike') }}</dt><dd>{{ perClick }}</dd></div>
-          @if (snap.autoPerSecond > 0) {
-            <div><dt>{{ t('market.stat.auto') }}</dt><dd>{{ autoRate }}/sec</dd></div>
-          }
-          <div><dt>{{ t('market.stat.lifetime') }}</dt><dd>{{ lifetime }}</dd></div>
-          <div><dt>{{ t('market.stat.strikes') }}</dt><dd>{{ strikes }}</dd></div>
-        </dl>
-      </details>
-    </aside>
-  </div>
+        <button type="button" class="mk__clear" (click)="clearFilters()">{{ t('market.clearFilters') }}</button>
+      }
+    </section>
 
-  <!-- ── Footer ────────────────────────────────────────────────────────── -->
-  <footer class="mk__foot">
-    <p class="mk__whisper">{{ t('market.whisper') }}</p>
+    <!-- ── The Eclipse ────────────────────────────────────────────────────
+         Not a purchase. A reset, behind two clicks and a full accounting of
+         what it takes, which is why it is not a row in the list. -->
+    <section class="mk__eclipse" role="region" [attr.aria-label]="t('market.eclipse')">
+      <h2 class="mkj-panel__title">{{ t('market.eclipse') }}</h2>
+      <p class="mk__eclipse-lede">
+        {{ t('market.eclipse.lede', { percent: shardBonusPercent }) }}
+      </p>
+
+      <dl class="mk__eclipse-stats">
+        <div><dt>{{ t('market.eclipse.held') }}</dt><dd>{{ shards }}</dd></div>
+        <div><dt>{{ t('market.eclipse.bonus') }}</dt><dd>{{ shardMult }}</dd></div>
+        <div><dt>{{ t('market.eclipse.taken') }}</dt><dd>{{ prestigeCount }}</dd></div>
+        <div><dt>{{ t('market.eclipse.waiting') }}</dt><dd>{{ pendingShards }}</dd></div>
+      </dl>
+
+      @if (canPrestige) {
+        <p class="mk__eclipse-ready">
+          <strong>{{ pendingShards }}</strong>
+          {{ pendingShards === 1 ? t('market.eclipse.shardIs') : t('market.eclipse.shardsAre') }}
+          {{ t('market.eclipse.raises') }}
+          <strong>×{{ ((snap.shards + pendingShards) * 0.05 + 1).toFixed(2) }}</strong>.
+        </p>
+
+        @if (!eclipseArmed) {
+          <button type="button" class="mk__eclipse-btn" (click)="arm()">{{ t('market.eclipse.reset') }}</button>
+        } @else {
+          <div class="mk__eclipse-confirm" role="group" [attr.aria-label]="t('market.eclipse.confirm')">
+            <p class="mk__eclipse-warn">
+              {{ t('market.eclipse.warn', { gold: gold, cost: eclipseCost }) }}
+              <span class="mk__eclipse-warn-final">{{ t('market.eclipse.noUndo') }}</span>
+            </p>
+            <div class="mk__eclipse-actions">
+              <button type="button" class="mk__eclipse-btn mk__eclipse-btn--go" (click)="takeEclipse()">
+                {{ t('market.eclipse.take', { count: pendingShards }) }}
+              </button>
+              <button type="button" class="mk__eclipse-cancel" (click)="disarm()">{{ t('market.eclipse.notYet') }}</button>
+            </div>
+          </div>
+        }
+      } @else {
+        <div class="mk__eclipse-locked">
+          <div class="mk__eclipse-track" role="progressbar"
+               [attr.aria-valuenow]="(prestigeProgress * 100).toFixed(0)"
+               aria-valuemin="0" aria-valuemax="100"
+               [attr.aria-label]="t('market.eclipse.progress')">
+            <span class="mk__eclipse-fill" [style.width.%]="prestigeProgress * 100"></span>
+          </div>
+          <p class="mk__eclipse-gate">
+            {{ t('market.eclipse.gate', { gold: format(prestigeGold), rank: prestigeLevel }) }}
+            <span class="mk__eclipse-gate-now">{{ t('market.eclipse.earned', { gold: lifetime }) }}</span>
+          </p>
+        </div>
+      }
+
+      @if (eclipseResult) {
+        <p class="mk__eclipse-done" role="status">
+          {{ t('market.eclipse.done', { granted: eclipseResult.granted, total: eclipseResult.total, mult: shardMult }) }}
+        </p>
+      }
+    </section>
+
+    <!-- Where the Gold is actually coming from. -->
+    <section class="mkj-panel mk__ledger">
+      <h2 class="mkj-panel__title">{{ t('market.ledger') }}</h2>
+      <ul class="mk__ledger-list">
+        @for (row of breakdown; track row.label) {
+          <li class="mk__ledger-row"
+              [class.mk__ledger-row--mult]="row.isMultiplier"
+              [class.mk__ledger-row--inert]="row.inert">
+            <span class="mk__ledger-label">{{ row.label }}</span>
+            <span class="mk__ledger-note">{{ row.note }}</span>
+            <span class="mk__ledger-val">{{ row.value }}</span>
+          </li>
+        }
+        <li class="mk__ledger-row mk__ledger-row--total">
+          <span class="mk__ledger-label">{{ t('market.ledger.total') }}</span>
+          <span class="mk__ledger-note">{{ t('market.ledger.resolved') }}</span>
+          <span class="mk__ledger-val">{{ perSecond }}/sec</span>
+        </li>
+      </ul>
+      <dl class="mk__mini-stats">
+        <div><dt>{{ t('market.stat.minute') }}</dt><dd>{{ perMinute }}</dd></div>
+        <div><dt>{{ t('market.stat.strike') }}</dt><dd>{{ perClick }}</dd></div>
+        @if (snap.autoPerSecond > 0) {
+          <div><dt>{{ t('market.stat.auto') }}</dt><dd>{{ autoRate }}/sec</dd></div>
+        }
+        <div><dt>{{ t('market.stat.lifetime') }}</dt><dd>{{ lifetime }}</dd></div>
+        <div><dt>{{ t('market.stat.strikes') }}</dt><dd>{{ strikes }}</dd></div>
+        @if (snap.shards > 0) {
+          <div><dt>{{ t('market.shards') }}</dt><dd>{{ shards }} ({{ shardMult }})</dd></div>
+        }
+        <div><dt [attr.title]="t('market.totalHint')">{{ t('market.total') }}</dt><dd>{{ totalValue }}</dd></div>
+      </dl>
+    </section>
+
+    <section class="mkj-panel mk__board">
+      <h2 class="mkj-panel__title">{{ t('market.picks') }}</h2>
+      <p class="mk__board-sub">{{ t('market.picksSub') }}</p>
+      <ol class="mk__board-list">
+        @for (s of sellers; track s.id) {
+          <li>
+            <button type="button" class="mk__seller" [style.--tier]="s.color" (click)="focusItem(s)"
+                    [attr.aria-label]="t('market.pickFind', { name: s.name })">
+              <span class="mk__seller-rank" aria-hidden="true">{{ s.rank }}</span>
+              <span class="mk__seller-body">
+                <span class="mk__seller-name">{{ s.name }}</span>
+                <span class="mk__seller-detail">{{ s.detail }}</span>
+              </span>
+            </button>
+          </li>
+        }
+      </ol>
+    </section>
+
+    <!-- The Gambler sits next door rather than on a shelf here: everything else
+         in the Market has a stated price for a stated thing, and a box does not. -->
     @if (!inWorld) {
-    <p class="mk__links">
-      <a routerLink="/world/quests">{{ t('market.link.orders') }}</a> ·
-      <a routerLink="/codex">{{ t('market.link.codex') }}</a> ·
-      <a routerLink="/forge/runes">{{ t('market.link.forge') }}</a>
-    </p>
+      <a class="mk__gambler" routerLink="/gambler">
+        <span class="mk__gambler-body">
+          <strong>The Gambler</strong>
+          <span>Five sealed boxes, odds published, and a till that pays for the roll.</span>
+        </span>
+        <span class="mk__gambler-go" aria-hidden="true">→</span>
+      </a>
     }
-  </footer>
-</section>
+
+    <!-- The one thing on this page that costs real money, kept visually
+         apart from everything that costs Gold. -->
+    <section class="mk__patron">
+      <h2 class="mk__patron-head">{{ t('market.patron.head') }}</h2>
+      <p class="mk__patron-sub">{{ t('market.patron.sub') }}</p>
+      <p class="mk__patron-lore">{{ t('market.patron.lore') }}</p>
+      @if (!inWorld) {
+      <a class="mk__patron-cta" routerLink="/world">{{ t('market.returnWorld') }}</a>
+      }
+    </section>
+
+    <footer class="mk__foot">
+      <p class="mk__whisper">{{ t('market.whisper') }}</p>
+      @if (!inWorld) {
+      <p class="mk__links">
+        <a routerLink="/world/quests">{{ t('market.link.orders') }}</a> ·
+        <a routerLink="/codex">{{ t('market.link.codex') }}</a> ·
+        <a routerLink="/forge/runes">{{ t('market.link.forge') }}</a>
+      </p>
+      }
+    </footer>
+  </div>
+</app-station-shell>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the
      prerendered HTML where a crawler can follow them. See
