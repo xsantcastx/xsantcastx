@@ -110,6 +110,17 @@ things with tools you crafted, and you see your economy working.
 - [ ] Implement the rebalance in one coordinated change **after** the Homestead, Skills and Station-kit branches merge (they all touch Gold prices); versioned, idempotent save migration; tests guard the curve
 - [ ] Golden-spark burst event
 
+## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[ ]`
+
+Turn the mine from "dig and collect" into a place you shape. Foundation first:
+- [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
+- [ ] **Place blocks back**: mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs)
+- [ ] **Torches**: crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
+- [ ] **Ladders and platforms**: traverse deep shafts back up
+- [ ] **Portable workbench / campfire**: craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
+- [ ] **Chests** to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
+- [ ] Tile, torch, ladder, platform and workbench art → `docs/art-commissions/`
+
 ## Phase 3: World only
 
 - [ ] Every navbar page reachable by walking, the Places list, and a Waystone
@@ -146,6 +157,7 @@ things with tools you crafted, and you see your economy working.
 All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, Ember Delve, Homestead, Economy spec (docs only). Handoff notes for each are in `docs/handoff/`. Initial bundle 1.70 MB. Nothing is in flight.
 
 **Next session starts here:**
+0. **Cache-bust the solid Keeper**: live serves the fixed image (83% opaque), but browsers that saw the ghost keep it up to 7 days (same filename, `max-age=604800`). Give `SOLIDIFY` outputs a new filename (or versioned name) in `scripts/import-assets.py` so every client refetches. Owner saw the ghost on 2026-10-12; a hard refresh fixes it locally.
 1. **Owner review of the economy spec** (`docs/economy/rebalance-spec.md`): price scaling ×1.25 → ×1.15, first paid purchase 2m01s → 4s, 3 → 44 purchases in the first 10 min, rune strike 10k → 600 (all sinks ×0.06), prestige at 10T with cube-root shards. Open TODOs: item Gold/s conversion, veteran shard cap, migration fixture specs. Then implement as one change with a versioned save migration.
 2. Convert the other 10 menus with the station kit (`src/app/shared/station-ui/README.md`).
 3. Delve: persist dug state; `resolveWorldAction` XP for roots/cache/walls (the gateway method now exists); reconcile lantern-radius units (skills = tiles, engine = its own); header and enemy bar should say "Ember Delve".
