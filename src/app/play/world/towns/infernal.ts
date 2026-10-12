@@ -111,11 +111,13 @@ export const EMBER_DELVE: HuntZoneDef = {
     { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1900, 2250, 2550],
       floorY: delveRow(19), range: [delveCol(48) + 40, delveCol(87) - 40] },
     // Magma Halls: Maws that grew up in the heat.
-    { creature: 'rivet-maw', name: 'Magma Maw', hp: 110, spawnXs: [delveCol(38), delveCol(50)],
+    // Own art key; until it is painted `artFor` shows the Rivet Maw (art.ts ART_ALIAS).
+    { creature: 'magma-maw', name: 'Magma Maw', hp: 110, spawnXs: [delveCol(38), delveCol(50)],
       floorY: delveRow(49), range: [delveCol(30) + 40, delveCol(61) - 40] },
-    // The fragment chamber's guardian. Stand-in art: the Mirror Substitute's painting and rig.
+    // The fragment chamber's guardian, under its own art key. Until it is painted
+    // it wears the Mirror Substitute's painting (art.ts ART_ALIAS) and rig.
     // Felled once per player: it never rises again, and its fall unseals the fragment.
-    { creature: 'mirror-substitute', name: 'Rune-Warden', hp: 260, spawnXs: [delveCol(100)],
+    { creature: 'rune-warden', name: 'Rune-Warden', hp: 260, spawnXs: [delveCol(100)],
       floorY: delveRow(51), range: [delveCol(92) + 30, delveCol(108) - 30], once: WARDEN_FLAG },
   ],
   drops: SEAMWORKS_DROPS,

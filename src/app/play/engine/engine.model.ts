@@ -95,6 +95,25 @@ export interface EngineOptions {
    * state lives for the engine session. Settable later with `setDelve()`.
    */
   delve?: DelvePersistence | null;
+  /**
+   * Where hunting-ground gathering nodes' harvest times come from and go.
+   * Absent (SSR, tests): regrowth is kept for the engine session only.
+   * Settable later with `setGathering()`.
+   */
+  gathering?: GatherPersistence | null;
+  /** Wall clock in epoch ms (regrowth is measured against it). Defaults to `Date.now`; tests pass a fake. */
+  now?: () => number;
+}
+/**
+ * The engine's whole view of saved gathering regrowth: only harvest times are
+ * stored, and readiness is derived from them and the node's `respawn` against
+ * the wall clock, so a reload shows each node exactly as far along as it is.
+ */
+export interface GatherPersistence {
+  /** Epoch ms of a node's last harvest, or null when there is none on record. */
+  harvestedAt(areaId: string, nodeId: string): number | null;
+  /** A node was harvested (the host accepted the grant). Idempotent: the later stamp wins. */
+  harvested(areaId: string, nodeId: string, at: number): void;
 }
 export interface KillEvent {
   id: string;
