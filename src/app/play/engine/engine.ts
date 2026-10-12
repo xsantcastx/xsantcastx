@@ -1,16 +1,20 @@
 import { Atmosphere } from './atmosphere';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, MAW_RIG, poseKeeper, poseMaw, trackKeeper } from './rig-poses';
 import { resetPose, RigSprite } from './rig';
-import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, PLATFORMS, WORLD_WIDTH } from './engine.model';
+import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
+import { AreaDef, areaOf, clientToWorld, DropEntry, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
+import { INFERNAL_TOWN } from '../world/towns/infernal';
 export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation } from './engine.model';
 
 // `flash`, `knock`, `dying`, `born` and `shownHp` are presentation only: they
 // shape how a Maw is drawn and never feed back into position, HP or loot.
 interface Monster {
+  def: MonsterDef; maxHp: number;
   x: number; spawn: number; hp: number; phase: 'idle' | 'windup' | 'strike' | 'recover'; timer: number; facing: number; respawn: number;
   flash: number; knock: number; dying: number; born: number; shownHp: number;
 }
-interface Drop { id: string; x: number; coins: number; ore: number; age: number; spin: number }
+/** `ore` is the material quantity (legacy name). `art`/`label`/`short` come from the drop entry. */
+interface Drop { id: string; x: number; coins: number; ore: number; material?: string; art?: string; label?: string; short?: string; age: number; spin: number }
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
@@ -22,11 +26,24 @@ interface Speech { text: string; at: number }
 export class SeamworksEngine {
   private readonly context: CanvasRenderingContext2D;
   private readonly images: Record<string, HTMLImageElement> = {};
+  /** Lazily loaded art for world-data keys (creatures, materials, station art, scenes). null = unresolvable. */
+  private readonly lazyImages = new Map<string, HTMLImageElement | null>();
   private readonly input = new Set<EngineInput>();
   private readonly peers = new Map<string, PeerView>();
   private speech = new Map<string, Speech>();
   private selfId = '';
+  private town: TownDef;
+  /** The area the Keeper stands in: the town, or one of its hunts. */
+  private areaDef!: AreaDef;
+  /** `scene:<background>`, the lazy-image key of the area's painting. Set on entry, never per frame. */
+  private sceneKey = '';
   private readonly player: Body = { x: 160, y: FLOOR, vy: 0, grounded: true };
+  /** Click-to-move: a target x walked toward in the fixed step until arrival or a key press. */
+  private walking = false;
+  private walkX = 0;
+  private onArrive: (() => void) | null = null;
+  /** Station under the pointer, highlighted in the render. */
+  private hovered: string | null = null;
   private frame: number | null = null;
   private observer: ResizeObserver;
   private previous = 0;
@@ -55,12 +72,11 @@ export class SeamworksEngine {
   private maxHp = 100;
   /** Melee damage from the worn loadout via `setStats`; null keeps the legacy 10/20. */
   private damage: number | null = null;
-  private monsters: Monster[] = this.createMonsters();
+  private monsters: Monster[] = [];
   private drops: Drop[] = [];
   private readonly lootSession = crypto.randomUUID();
   private coins = 0;
   private kills = 0;
-  private area: 'camp' | 'quarry' = 'camp';
   private guardianDefeated = false;
   private attackTime = 0;
   private attackCooldown = 0;
@@ -77,36 +93,40 @@ export class SeamworksEngine {
   private complete = false;
   private destroyed = false;
   private message = 'Find the Cinder Ore deposit. Walk close and interact.';
-  private readonly campStations: { target: InteractionTarget; x: number; label: string }[] = [
-    { target: 'ore', x: 480, label: 'CINDER ORE' }, { target: 'forge', x: 930, label: 'SEAMWORKS FORGE' },
-    { target: 'beacon', x: 2320, label: 'ECLIPSE BEACON' }, { target: 'passage', x: 2580, label: 'EAST PASSAGE' },
-  ];
-  private get stations(): { target: InteractionTarget; x: number; label: string }[] {
-    return this.area === 'camp' ? this.campStations : [
-      { target: 'passage', x: 110, label: 'RETURN TO SEAMWORKS' },
-      { target: 'ore', x: 520, label: 'CINDER ORE' },
-    ];
-  }
+  private get stations(): readonly StationDef[] { return this.areaDef.stations; }
+  private get isTown(): boolean { return this.areaDef === this.town; }
   private createMonsters(): Monster[] {
-    return [1350, 1670, 1990].map((x) => ({ x, spawn: x, hp: 60, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: 60 }));
+    const monsters: Monster[] = [];
+    for (const def of this.areaDef.monsters) {
+      for (const x of def.spawnXs) {
+        monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp });
+      }
+    }
+    return monsters;
+  }
+  private enter(area: AreaDef): void {
+    this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
   }
   private resetPosition(x: number): void {
+    this.cancelMove();
     this.player.x = x; this.player.y = FLOOR; this.player.vy = 0; this.player.grounded = true;
     this.hp = this.maxHp; this.hurtTime = 1.5; this.attackTime = 0; this.attackCooldown = 0;
     this.dodgeTime = 0; this.dodgeCooldown = 0; this.complete = false; this.setPaused(false);
   }
   returnToCamp(): void {
-    this.area = 'camp'; this.monsters = this.createMonsters(); this.drops = [];
-    this.resetPosition(160); this.message = 'Back at camp. Your equipment and collected loot are safe.'; this.report();
+    this.enter(this.town);
+    this.resetPosition(this.town.spawnX); this.message = 'Back at camp. Your equipment and collected loot are safe.'; this.report();
   }
   restartHunt(): void {
-    this.monsters = this.createMonsters(); this.drops = []; this.resetPosition(this.area === 'camp' ? 160 : 240);
+    this.monsters = this.createMonsters(); this.drops = []; this.resetPosition(this.areaDef.spawnX);
     this.message = 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.'; this.report();
   }
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Your browser does not support Canvas 2D.');
     this.context = context;
+    this.town = options.town ?? INFERNAL_TOWN;
+    this.enter(this.town);
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
     }
@@ -167,7 +187,7 @@ export class SeamworksEngine {
       const facing = peer.facing === -1 ? -1 : 1;
       const snapshot = {
         ...peer, facing, animation: KEEPER_ANIMATIONS.has(peer.animation as KeeperAnimation) ? peer.animation : 'idle',
-        name: peer.name.slice(0, 24), x: Math.max(30, Math.min(WORLD_WIDTH - 30, peer.x)), y: Math.max(-300, Math.min(FLOOR, peer.y)),
+        name: peer.name.slice(0, 24), x: Math.max(30, Math.min(this.areaDef.width - 30, peer.x)), y: Math.max(-300, Math.min(FLOOR, peer.y)),
       };
       if (previous && previous.peer.area === peer.area) previous.peer = snapshot;
       else this.peers.set(peer.id, { peer: snapshot, x: snapshot.x, y: snapshot.y, facing, motion: createKeeperMotion() });
@@ -186,12 +206,66 @@ export class SeamworksEngine {
     }
     this.speech = next;
   }
-  setPaused(paused: boolean): void { this.paused = paused; this.input.clear(); this.accumulator = 0; this.report(); }
+  setPaused(paused: boolean): void { this.paused = paused; this.input.clear(); this.accumulator = 0; if (paused) this.cancelMove(); this.report(); }
+  /**
+   * Walk the Keeper to world x, then call `onArrive` from the fixed-step update.
+   * Any left/right press, a pause, a reset or travel cancels it (no callback).
+   * Returns false when the Keeper cannot move right now.
+   */
+  moveTo(x: number, onArrive?: () => void): boolean {
+    if (this.paused || this.hp <= 0 || !Number.isFinite(x)) return false;
+    this.walking = true;
+    this.walkX = Math.max(30, Math.min(this.areaDef.width - 30, x));
+    this.onArrive = onArrive ?? null;
+    return true;
+  }
+  cancelMove(): void { this.walking = false; this.onArrive = null; }
+  /** True while a click-to-move walk is in progress. */
+  get moving(): boolean { return this.walking; }
+  /** The current area's stations, for the Places list. */
+  get places(): readonly StationDef[] { return this.areaDef.stations; }
+  get townId(): string { return this.town.id; }
+  /** True while the Keeper stands in the town rather than one of its hunts. */
+  get inTown(): boolean { return this.isTown; }
+  /**
+   * Walk to a station and interact on arrival; `instant` places the Keeper
+   * there first (reduced motion, deep links). Unknown ids return false.
+   */
+  goToStation(id: string, instant = false): boolean {
+    const station = this.stations.find(row => row.id === id);
+    if (!station || this.paused || this.hp <= 0) return false;
+    if (instant) { this.placeAt(station.x); this.interact(); return true; }
+    return this.moveTo(station.x, () => this.interact());
+  }
+  /** Waystone travel: stand in another town's spawn. Monsters, drops and any walk reset. */
+  setTown(town: TownDef): void {
+    this.town = town; this.enter(town); this.resetPosition(town.spawnX);
+    this.message = town.arrival ?? town.name; this.report();
+  }
+  /** Stand the Keeper on the floor at x in the current area. No interaction. */
+  placeAt(x: number): void {
+    this.cancelMove();
+    this.player.x = Math.max(30, Math.min(this.areaDef.width - 30, x));
+    this.player.y = FLOOR; this.player.vy = 0; this.player.grounded = true;
+    this.report();
+  }
+  /** Client (pointer) coordinates to a world point and the station under it. */
+  pick(clientX: number, clientY: number): { x: number; y: number; station: StationDef | null } {
+    const rect = this.canvas.getBoundingClientRect();
+    const point = clientToWorld(clientX, clientY, {
+      left: rect.left, top: rect.top, rectWidth: rect.width, rectHeight: rect.height,
+      cssWidth: this.width, cssHeight: this.height, camera: this.camera,
+    });
+    return { x: point.x, y: point.y, station: stationAt(this.stations, point.x, point.y, FLOOR) };
+  }
+  /** Highlight a station (pointer hover). Render-only. */
+  setHover(id: string | null): void { this.hovered = id; }
   retry(): void { this.restartHunt(); }
   setInput(action: EngineInput, pressed: boolean): void {
     if (!pressed) { this.input.delete(action); return; }
     if (this.paused || this.hp <= 0 || this.input.has(action)) return;
     this.input.add(action);
+    if (action === 'left' || action === 'right') this.cancelMove();
     if (action === 'jump' && this.player.grounded) { this.player.vy = -680; this.player.grounded = false; }
     if (action === 'attack' && this.attackCooldown <= 0) {
       {
@@ -207,9 +281,7 @@ export class SeamworksEngine {
           if (monster.hp === 0) {
             monster.dying = DEATH_FADE;
             monster.respawn = 8; this.kills++; this.guardianDefeated = true;
-            this.drops.push({ id: `${this.lootSession}:${this.kills}:coins`, x: monster.x - 25, coins: 8 + this.kills % 5, ore: 0, age: 0, spin: -1 });
-            this.drops.push({ id: `${this.lootSession}:${this.kills}:ore`, x: monster.x + 25, coins: 0, ore: 1, age: 0, spin: 1 });
-            this.message = 'Rivet Maw defeated! Walk over the coins and Cinder Ore to collect them.';
+            this.spill(monster);
           }
         }
       }
@@ -217,18 +289,45 @@ export class SeamworksEngine {
     if (action === 'dodge' && this.dodgeCooldown <= 0) { this.dodgeTime = .26; this.dodgeCooldown = 1.05; }
     this.report();
   }
+  /** Roll the monster's drop table (or its area's) and spill the results around the body. */
+  private spill(monster: Monster): void {
+    const entries = (monster.def.drops ?? this.areaDef.drops).entries;
+    const names: string[] = [];
+    for (let i = 0; i < entries.length; i++) {
+      const entry: DropEntry = entries[i];
+      if (entry.chance !== undefined && entry.chance < 1 && this.random() >= entry.chance) continue;
+      const offset = (i - (entries.length - 1) / 2) * 50;
+      const id = `${this.lootSession}:${this.kills}:${entry.id}`;
+      const spin = offset < 0 ? -1 : 1;
+      if (entry.kind === 'coins') {
+        this.drops.push({ id, x: monster.x + offset, coins: entry.base + (entry.spread ? this.kills % entry.spread : 0), ore: 0, age: 0, spin });
+        names.push('coins');
+      } else {
+        this.drops.push({ id, x: monster.x + offset, coins: 0, ore: entry.qty, material: entry.material, art: entry.art, label: entry.label, short: entry.short, age: 0, spin });
+        names.push(entry.label);
+      }
+    }
+    this.message = names.length
+      ? `${monster.def.name} defeated! Walk over the ${names.join(' and ')} to collect them.`
+      : `${monster.def.name} defeated!`;
+  }
+  /** RNG for drop chances. Replaceable in tests; a table of certain drops never calls it. */
+  random: () => number = Math.random;
   interact(): void {
     if (this.paused || this.hp <= 0) return;
-    const target = this.nearby();
-    if (!target) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
-    if (target === 'beacon' && !this.guardianDefeated) this.message = 'Defeat a Rivet Maw before repairing the beacon.';
-    else if (target === 'passage' && this.area === 'camp' && !this.restored) this.message = 'Restore the beacon to open the eastern passage.';
-    else if (target === 'passage') {
-      this.area = this.area === 'camp' ? 'quarry' : 'camp';
-      this.monsters = this.createMonsters(); this.drops = [];
-      this.resetPosition(this.area === 'quarry' ? 240 : 2460);
-      this.message = this.area === 'quarry' ? 'Ember Quarry. Hunt the Maws for coins and ore. The return portal is behind you.' : 'Returned to Seamworks. Explore freely or head out for another hunt.';
-    } else this.options.onInteract(target);
+    const station = this.nearbyStation();
+    if (!station) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
+    const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
+    if (locked) this.message = station.lockedMessage ?? 'This way is not open yet.';
+    else if (station.kind === 'passage') {
+      const area = station.to ? areaOf(this.town, station.to) : undefined;
+      if (area) {
+        this.enter(area);
+        this.resetPosition(station.arriveX ?? area.spawnX);
+        this.message = area.arrival ?? area.name;
+      }
+    } else if (station.kind === 'panel' || station.kind === 'waystone') this.options.onStation?.(station);
+    else this.options.onInteract(station.id as InteractionTarget);
     this.report();
   }
   /** Freeze a few frames and kick the camera. Reduced motion keeps neither. */
@@ -237,9 +336,10 @@ export class SeamworksEngine {
     this.hitstop = Math.max(this.hitstop, stop);
     this.shake = Math.max(this.shake, kick);
   }
-  private nearby(): InteractionTarget | null {
-    return this.stations.find(station => Math.abs(station.x - this.player.x) < 110 && this.player.y > 475)?.target ?? null;
+  private nearbyStation(): StationDef | null {
+    return this.player.y > 475 ? nearestStation(this.stations, this.player.x) : null;
   }
+  private nearby(): string | null { return this.nearbyStation()?.id ?? null; }
   private action(key: string): EngineInput | undefined {
     return ({ ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', KeyJ: 'attack', KeyK: 'dodge' } as Record<string, EngineInput>)[key];
   }
@@ -250,7 +350,10 @@ export class SeamworksEngine {
     if (document.hidden) this.clearInput();
   };
   private readonly keyDown = (event: KeyboardEvent): void => {
-    if (event.target instanceof HTMLElement && (event.target.matches('input,textarea,select') || event.target.isContentEditable)) return;
+    // A paused world (an in-world panel is open) leaves every key to the page;
+    // so does anything typed inside an element marked data-engine-ignore.
+    if (this.paused) return;
+    if (event.target instanceof HTMLElement && (event.target.matches('input,textarea,select') || event.target.isContentEditable || event.target.closest('[data-engine-ignore]'))) return;
     const action = this.action(event.code);
     if (action) { event.preventDefault(); if (!event.repeat) this.setInput(action, true); }
     if (!event.repeat && event.code === 'KeyE') { event.preventDefault(); this.interact(); }
@@ -299,10 +402,19 @@ export class SeamworksEngine {
     this.landing = Math.max(0, this.landing - dt);
     this.attackTime = Math.max(0, this.attackTime - dt); this.attackCooldown -= dt;
     this.dodgeTime = Math.max(0, this.dodgeTime - dt); this.dodgeCooldown -= dt; this.hurtTime -= dt;
-    const direction = Number(this.input.has('right')) - Number(this.input.has('left'));
+    let direction = Number(this.input.has('right')) - Number(this.input.has('left'));
+    if (direction) this.cancelMove();
+    else if (this.walking) {
+      direction = walkDirection(this.player.x, this.walkX);
+      if (direction === 0) {
+        const arrive = this.onArrive;
+        this.cancelMove();
+        arrive?.();
+      }
+    }
     if (direction) this.facing = direction;
     const wasGrounded = this.player.grounded;
-    advanceBody(this.player, this.dodgeTime > 0 ? this.facing * 620 : direction * 265, dt);
+    advanceBody(this.player, this.dodgeTime > 0 ? this.facing * 620 : direction * 265, dt, this.areaDef.platforms, this.areaDef.width);
     if (!wasGrounded && this.player.grounded) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
       this.stepAt = this.elapsed; if (!this.reducedMotion) this.atmosphere.burst(this.player.x - direction * 16, this.player.y - 3);
@@ -310,10 +422,10 @@ export class SeamworksEngine {
     for (const drop of this.drops) {
       drop.age += dt;
       if (drop.age > .3 && Math.abs(drop.x - this.player.x) < 65 && Math.abs(this.player.y - FLOOR) < 80) {
-        if (this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore }) === false) continue;
-        this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : '+1 ore');
+        if (this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore, material: drop.material }) === false) continue;
+        this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
         this.coins += drop.coins; drop.age = -1;
-        this.message = drop.coins ? `Collected ${drop.coins} coins.` : 'Collected Cinder Ore.';
+        this.message = drop.coins ? `Collected ${drop.coins} coins.` : `Collected ${drop.label ?? 'Cinder Ore'}.`;
       }
     }
     this.drops = this.drops.filter(drop => drop.age >= 0 && drop.age < 120);
@@ -325,18 +437,19 @@ export class SeamworksEngine {
       monster.shownHp += (monster.hp - monster.shownHp) * (1 - Math.exp(-6 * dt));
       if (monster.hp <= 0) {
         monster.respawn -= dt;
-        if (monster.respawn <= 0) { monster.hp = 60; monster.shownHp = 60; monster.x = monster.spawn; monster.phase = 'idle'; monster.timer = 1; monster.born = SPAWN_RISE; }
+        if (monster.respawn <= 0) { monster.hp = monster.maxHp; monster.shownHp = monster.maxHp; monster.x = monster.spawn; monster.phase = 'idle'; monster.timer = 1; monster.born = SPAWN_RISE; }
         continue;
       }
       monster.timer -= dt;
-      if (this.area === 'camp' && this.player.x < 1100) {
+      const safeX = this.areaDef.safeX ?? 0;
+      if (safeX && this.player.x < safeX) {
         monster.x += Math.sign(monster.spawn - monster.x) * Math.min(Math.abs(monster.spawn - monster.x), 65 * dt);
         monster.phase = 'idle'; monster.timer = .5;
         continue;
       }
       const distance = this.player.x - monster.x;
       if (monster.phase === 'idle') {
-        if (Math.abs(distance) < 380 && Math.abs(distance) > 95) monster.x = Math.max(this.area === 'camp' ? 1100 : 30, monster.x + Math.sign(distance) * 65 * dt);
+        if (Math.abs(distance) < 380 && Math.abs(distance) > 95) monster.x = Math.max(safeX || 30, monster.x + Math.sign(distance) * 65 * dt);
         if (Math.abs(distance) < 170 && monster.timer <= 0) {
           monster.phase = 'windup'; monster.timer = .85; monster.facing = Math.sign(distance) || -1;
         }
@@ -357,9 +470,11 @@ export class SeamworksEngine {
   private report(): void {
     const living = this.monsters.filter(monster => monster.hp > 0);
     const nearest = living.sort((a, b) => Math.abs(a.x - this.player.x) - Math.abs(b.x - this.player.x))[0];
-    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.round(nearest.hp / 60 * 100) : 0, nearby: this.nearby(), x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
+    const station = this.nearbyStation();
+    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.round(nearest.hp / nearest.maxHp * 100) : 0, nearby: station?.id ?? null, nearbyLabel: station?.label, nearbyKind: station?.kind,
+      x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
-      coins: this.coins, kills: this.kills, area: this.area === 'camp' ? 'Basalt Seamworks' : 'Ember Quarry',
+      coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
       facing: this.facing, animation: this.pose() });
   }
   private pose(): KeeperAnimation {
@@ -367,12 +482,12 @@ export class SeamworksEngine {
     if (this.dodgeTime > 0) return 'dodge';
     if (this.attackTime > 0) return 'attack';
     if (!this.player.grounded) return this.player.vy < 0 ? 'jump' : 'fall';
-    if (this.input.has('left') || this.input.has('right')) return 'run';
+    if (this.input.has('left') || this.input.has('right') || this.walking) return 'run';
     return 'idle';
   }
   /** Idle Keepers standing at the fire settle. The room still reports them as idle. */
   private present(animation: string | undefined, x: number, y: number): string | undefined {
-    return animation === 'idle' && this.area === 'camp' && x > 70 && x < 430 && y > 560 ? 'rest' : animation;
+    return animation === 'idle' && this.isTown && x > 70 && x < 430 && y > 560 ? 'rest' : animation;
   }
   private keeperMotion(animation: string | undefined, time: number): { bob: number; tilt: number; sx: number; sy: number; alpha: number; sway: number } {
     if (this.reducedMotion) return { bob: 0, tilt: 0, sx: 1, sy: 1, alpha: animation === 'dodge' ? .5 : 1, sway: 0 };
@@ -472,7 +587,7 @@ export class SeamworksEngine {
   /** A soft contact shadow on the ground below a figure, smaller and fainter the higher it is. */
   private groundShadow(c: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
     let ground = FLOOR;
-    for (const platform of PLATFORMS) {
+    for (const platform of this.areaDef.platforms) {
       if (platform.y >= y - 1 && platform.y < ground && x + 16 > platform.x && x - 16 < platform.x + platform.width) ground = platform.y;
     }
     const lift = 1 / (1 + Math.max(0, ground - y) / 140);
@@ -516,20 +631,125 @@ export class SeamworksEngine {
     c.restore();
   }
 
-  private art(key: string, x: number, y: number, width: number, height: number): boolean {
-    const image = this.images[key];
+  /**
+   * An image by key: a legacy pre-resolved asset (`keeper`, `blade`, `ore`,
+   * `creature`, `background`) or a world-data art key resolved once through
+   * `options.art` and cached. Allocates only on the first request for a key.
+   */
+  private image(key: string | undefined): HTMLImageElement | undefined {
+    if (!key) return undefined;
+    const legacy = this.images[key];
+    if (legacy) return legacy;
+    let lazy = this.lazyImages.get(key);
+    if (lazy === undefined) {
+      const url = key.startsWith('scene:') ? this.options.scene?.(key.slice(6)) : this.options.art?.(key);
+      lazy = null;
+      if (url) { lazy = new Image(); lazy.src = url; }
+      this.lazyImages.set(key, lazy);
+    }
+    return lazy ?? undefined;
+  }
+  private art(key: string | undefined, x: number, y: number, width: number, height: number): boolean {
+    const image = this.image(key);
     if (!image?.complete || !image.naturalWidth) return false;
     const scale = Math.min(width / image.naturalWidth, height / image.naturalHeight);
     this.context.drawImage(image, x + (width - image.naturalWidth * scale) / 2, y + height - image.naturalHeight * scale, image.naturalWidth * scale, image.naturalHeight * scale);
     return true;
   }
+  /** The area's painted scene, or the legacy background until it resolves. */
+  private sceneImage(): HTMLImageElement | undefined {
+    const scene = this.image(this.sceneKey);
+    return scene?.complete && scene.naturalWidth ? scene : this.images['background'];
+  }
+  /** One station: its building, its label, and the prompt or hover cue. Render-only. */
+  private drawStation(c: CanvasRenderingContext2D, station: StationDef, near: boolean, hovered: boolean, time: number): void {
+    const x = station.x;
+    const hot = near || hovered;
+    if (hot) {
+      // A warm pool of light on the boards marks the place the pointer or the Keeper is on.
+      c.save(); c.globalAlpha = near ? .4 : .26; c.fillStyle = '#ffb46a';
+      c.beginPath(); c.ellipse(x, FLOOR + 2, (station.width ?? 120) * .55, 11, 0, 0, Math.PI * 2); c.fill();
+      c.restore();
+    }
+    switch (station.kind) {
+      case 'resource':
+        if (!this.art(station.art, x - 58, FLOOR - 92, 116, 92)) this.art('ore', x - 58, FLOOR - 92, 116, 92);
+        break;
+      case 'quest':
+        if (station.id === 'beacon') {
+          c.fillStyle = '#423f51'; c.fillRect(x - 20, FLOOR - 160, 40, 160);
+          c.shadowColor = this.restored ? '#b8e6ec' : '#f29b68'; c.shadowBlur = 35;
+          c.fillStyle = this.restored ? '#d5fffa' : '#b96d55'; c.beginPath(); c.arc(x, FLOOR - 173, 20, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
+        } else {
+          c.fillStyle = '#493543'; c.fillRect(x - 46, FLOOR - 60, 92, 60);
+          c.fillStyle = '#ffaf62'; c.fillRect(x - 34, FLOOR - 52, 68, 8);
+          if (!this.art(station.art, x - 35, FLOOR - 160, 70, 95)) this.art('blade', x - 35, FLOOR - 160, 70, 95);
+        }
+        break;
+      case 'passage':
+        c.strokeStyle = this.restored ? '#99e3cb' : '#574658'; c.lineWidth = 12; c.beginPath(); c.arc(x, FLOOR - 70, 48, Math.PI, 0); c.lineTo(x + 48, FLOOR); c.moveTo(x - 48, FLOOR - 70); c.lineTo(x - 48, FLOOR); c.stroke();
+        break;
+      case 'waystone':
+        this.drawWaystone(c, station, hot, time);
+        break;
+      default:
+        this.drawStall(c, station, hot);
+    }
+    c.font = '600 12px system-ui'; c.textAlign = 'center'; c.fillStyle = hot ? '#fff1c9' : '#c9bdc8'; c.fillText(station.label, x, FLOOR + 35);
+    if (near) { c.fillStyle = '#fff0cb'; c.fillText('[ E ] INTERACT', x, FLOOR + 58); }
+    else if (hovered) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, FLOOR + 58); }
+  }
+  /** A timber market stall: posts, a striped awning, a counter, and the station's art on a lit plaque. */
+  private drawStall(c: CanvasRenderingContext2D, station: StationDef, hot: boolean): void {
+    const x = station.x;
+    const half = (station.width ?? 150) / 2;
+    c.save();
+    c.fillStyle = '#4b332c'; c.fillRect(x - half + 4, FLOOR - 176, 9, 176); c.fillRect(x + half - 13, FLOOR - 176, 9, 176);
+    // Back wall, dim, so the plaque reads against it.
+    c.fillStyle = '#2a1d22'; c.fillRect(x - half + 13, FLOOR - 150, half * 2 - 26, 90);
+    // Awning: alternating ember and brass stripes, scalloped edge.
+    const stripes = 6; const stripe = half * 2 / stripes;
+    for (let i = 0; i < stripes; i++) {
+      c.fillStyle = i % 2 ? '#c2a26a' : '#8d3f36';
+      c.fillRect(x - half + i * stripe, FLOOR - 186, stripe, 26);
+      c.beginPath(); c.arc(x - half + (i + .5) * stripe, FLOOR - 160, stripe / 2, 0, Math.PI); c.fill();
+    }
+    c.fillStyle = '#e1c29a'; c.fillRect(x - half - 4, FLOOR - 190, half * 2 + 8, 5);
+    // Counter.
+    c.fillStyle = '#4a3238'; c.fillRect(x - half, FLOOR - 58, half * 2, 58);
+    c.fillStyle = '#a67858'; c.fillRect(x - half - 6, FLOOR - 62, half * 2 + 12, 8);
+    c.fillStyle = '#f6a668'; c.fillRect(x - half, FLOOR - 62, half * 2, 1);
+    // Plaque with the station's art.
+    c.shadowColor = '#ffb46a'; c.shadowBlur = hot ? 28 : 12;
+    c.fillStyle = '#1d1418'; c.beginPath(); c.arc(x, FLOOR - 108, 34, 0, Math.PI * 2); c.fill();
+    c.shadowBlur = 0;
+    c.strokeStyle = hot ? '#ffe0a8' : '#a68456'; c.lineWidth = hot ? 3 : 2; c.stroke();
+    if (!this.art(station.art, x - 27, FLOOR - 135, 54, 54)) { c.fillStyle = '#c2a26a'; c.fillRect(x - 8, FLOOR - 116, 16, 16); }
+    if (hot) { c.strokeStyle = '#ffe0a8'; c.lineWidth = 2; c.strokeRect(x - half - 6, FLOOR - 192, half * 2 + 12, 192); }
+    c.restore();
+  }
+  /** A standing stone with a rift burning at its crown. The glow breathes unless motion is reduced. */
+  private drawWaystone(c: CanvasRenderingContext2D, station: StationDef, hot: boolean, time: number): void {
+    const x = station.x;
+    c.save();
+    c.fillStyle = '#3d3446';
+    c.beginPath(); c.moveTo(x - 26, FLOOR); c.lineTo(x - 14, FLOOR - 170); c.lineTo(x, FLOOR - 186); c.lineTo(x + 14, FLOOR - 170); c.lineTo(x + 26, FLOOR); c.closePath(); c.fill();
+    c.strokeStyle = hot ? '#ffe0a8' : '#7d6a86'; c.lineWidth = 2; c.stroke();
+    c.strokeStyle = '#c9a0ff'; c.globalAlpha = .55; c.lineWidth = 2;
+    c.beginPath(); c.moveTo(x - 6, FLOOR - 40); c.lineTo(x + 6, FLOOR - 70); c.lineTo(x - 6, FLOOR - 100); c.lineTo(x + 6, FLOOR - 130); c.stroke();
+    c.globalAlpha = 1;
+    const pulse = this.reducedMotion ? .5 : .5 + Math.sin(time * 2) * .5;
+    c.shadowColor = '#c9a0ff'; c.shadowBlur = 18 + pulse * 18 + (hot ? 12 : 0);
+    if (!this.art(station.art, x - 34, FLOOR - 252, 68, 68)) { c.fillStyle = '#c9a0ff'; c.beginPath(); c.arc(x, FLOOR - 214, 16, 0, Math.PI * 2); c.fill(); }
+    c.restore();
+  }
   private render(): void {
     const c = this.context; const scale = this.height / 720; const viewport = this.width / scale;
     this.pixelScale = scale * this.pixelRatio;
-    this.camera = Math.max(0, Math.min(WORLD_WIDTH - viewport, this.player.x - viewport * .38));
+    this.camera = Math.max(0, Math.min(this.areaDef.width - viewport, this.player.x - viewport * .38));
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
     c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
-    const bg = this.images['background'];
+    const bg = this.sceneImage();
     if (bg?.complete && bg.naturalWidth) {
       const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
       c.globalAlpha = .94; c.drawImage(bg, -this.camera * .16, 0, bgWidth, 720); c.globalAlpha = 1;
@@ -540,29 +760,17 @@ export class SeamworksEngine {
     c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0);
     const motionTime = this.reducedMotion ? 0 : this.elapsed;
     this.atmosphere.scenery(c, motionTime, this.camera, viewport);
-    for (const platform of PLATFORMS) {
+    for (const platform of this.areaDef.platforms) {
       c.fillStyle = '#3b3034'; c.fillRect(platform.x, platform.y, platform.width, platform.y === FLOOR ? 110 : 24);
       c.fillStyle = '#a67858'; c.fillRect(platform.x, platform.y, platform.width, 4);
       c.fillStyle = '#f6a668'; c.fillRect(platform.x + 8, platform.y, Math.max(0, platform.width - 16), 1);
       for (let x = platform.x + 18; x < platform.x + platform.width; x += 65) { c.fillStyle = '#3c3039'; c.fillRect(x, platform.y + 12, 32, 7); }
     }
-    if (this.area === 'camp') this.atmosphere.hub(c, motionTime);
+    if (this.isTown && this.areaDef.scenery === 'seamworks-hub') this.atmosphere.hub(c, motionTime, this.areaDef.safeX || 1120);
+    const nearId = this.nearby();
     for (const station of this.stations) {
-      const near = station.target === this.nearby();
-      if (station.target === 'ore') this.art('ore', station.x - 58, FLOOR - 92, 116, 92);
-      else if (station.target === 'forge') {
-        c.fillStyle = '#493543'; c.fillRect(station.x - 46, FLOOR - 60, 92, 60);
-        c.fillStyle = '#ffaf62'; c.fillRect(station.x - 34, FLOOR - 52, 68, 8);
-        this.art('blade', station.x - 35, FLOOR - 160, 70, 95);
-      } else if (station.target === 'beacon') {
-        c.fillStyle = '#423f51'; c.fillRect(station.x - 20, FLOOR - 160, 40, 160);
-        c.shadowColor = this.restored ? '#b8e6ec' : '#f29b68'; c.shadowBlur = 35;
-        c.fillStyle = this.restored ? '#d5fffa' : '#b96d55'; c.beginPath(); c.arc(station.x, FLOOR - 173, 20, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
-      } else {
-        c.strokeStyle = this.restored ? '#99e3cb' : '#574658'; c.lineWidth = 12; c.beginPath(); c.arc(station.x, FLOOR - 70, 48, Math.PI, 0); c.lineTo(station.x + 48, FLOOR); c.moveTo(station.x - 48, FLOOR - 70); c.lineTo(station.x - 48, FLOOR); c.stroke();
-      }
-      c.font = '600 12px system-ui'; c.textAlign = 'center'; c.fillStyle = near ? '#fff1c9' : '#c9bdc8'; c.fillText(station.label, station.x, FLOOR + 35);
-      if (near) { c.fillStyle = '#fff0cb'; c.fillText('[ E ] INTERACT', station.x, FLOOR + 58); }
+      if (station.x < this.camera - 200 || station.x > this.camera + viewport + 200) continue;
+      this.drawStation(c, station, station.id === nearId, station.id === this.hovered, motionTime);
     }
     for (const drop of this.drops) {
       // Spilled from the body: an arc out and a short bounce, then the idle bob.
@@ -575,7 +783,7 @@ export class SeamworksEngine {
       if (drop.coins) {
         c.fillStyle = '#ffd36d'; c.beginPath(); c.ellipse(drop.x, y, 3 + Math.abs(Math.cos(motionTime * 3)) * 7, 13, 0, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#9e602c'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('$', drop.x, y + 5);
-      } else if (!this.art('ore', drop.x - 15, y - 15, 30, 30)) { c.fillStyle = '#ed9069'; c.fillRect(drop.x - 8, y - 8, 16, 16); }
+      } else if (!this.art(drop.art, drop.x - 15, y - 15, 30, 30) && !this.art('ore', drop.x - 15, y - 15, 30, 30)) { c.fillStyle = '#ed9069'; c.fillRect(drop.x - 8, y - 8, 16, 16); }
       c.shadowBlur = 0; c.restore();
     }
     for (const monster of this.monsters) {
@@ -594,7 +802,7 @@ export class SeamworksEngine {
       const looking = monster.phase === 'idle' ? Math.sign(this.player.x - monster.x) || monster.facing : monster.facing;
       c.save(); c.translate(monster.x + monster.knock, FLOOR);
       c.globalAlpha = rise; c.scale((.6 + rise * .4) * (looking > 0 ? -1 : 1), .6 + rise * .4);
-      this.creature(c, monster.flash > 0, monster);
+      this.creature(c, monster.flash > 0, monster.def.creature, monster);
       c.restore();
       // The chip bar trails the real HP so a hit reads as a chunk taken.
       c.fillStyle = '#302530'; c.fillRect(monster.x - 45, FLOOR - 130, 90, 6);
@@ -602,7 +810,7 @@ export class SeamworksEngine {
       c.fillStyle = '#dd866f'; c.fillRect(monster.x - 45, FLOOR - 130, monster.hp / 60 * 90, 6);
     }
     for (const view of this.peers.values()) {
-      if (view.peer.area !== (this.area === 'camp' ? 'Basalt Seamworks' : 'Ember Quarry') || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
+      if (view.peer.area !== this.areaDef.name || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
       // Spawn puts every Keeper on the same tile. Spread guests so names and sprites stay readable.
       const spread = (([...view.peer.id].reduce((hash, char) => (hash * 33 + char.charCodeAt(0)) >>> 0, 0) % 5) - 2) * 46;
       this.groundShadow(c, view.x + spread, view.y, 40);
@@ -627,7 +835,7 @@ export class SeamworksEngine {
       c.restore();
     }
     // Keep the player readable against the dark realm art at narrow viewport sizes.
-    const byFire = this.area === 'camp' && Math.abs(this.player.x - 245) < 220;
+    const byFire = this.isTown && this.areaDef.scenery === 'seamworks-hub' && Math.abs(this.player.x - 245) < 220;
     this.groundShadow(c, this.player.x, this.player.y, 44);
     c.save(); c.translate(this.player.x, this.player.y);
     c.strokeStyle = byFire ? '#ffc27a' : '#b8e6ec'; c.fillStyle = byFire ? '#ffc27a30' : '#b8e6ec30'; c.lineWidth = 3;
@@ -684,11 +892,14 @@ export class SeamworksEngine {
     }
   }
   /** The creature sprite, or a white silhouette of it for the frames after a hit. */
-  private creature(c: CanvasRenderingContext2D, flash: boolean, monster?: Monster): void {
+  private creature(c: CanvasRenderingContext2D, flash: boolean, key: string, monster?: Monster): void {
     const rig = this.mawRig;
     if (monster) poseMaw(rig.pose, { phase: monster.phase, timer: monster.timer, time: this.reducedMotion ? 0 : this.elapsed, seed: monster.spawn * .013, reduced: this.reducedMotion });
     else resetPose(rig.pose);
-    if (rig.render(this.images['creature'], -70, -110, 140, 110, this.pixelScale)) {
+    // The data names the creature by art key; the legacy `creature` asset stands in until it loads.
+    const painted = this.image(key);
+    const sprite = painted?.complete && painted.naturalWidth ? key : 'creature';
+    if (rig.render(this.image(sprite), -70, -110, 140, 110, this.pixelScale)) {
       // brightness() whitens the painted sprite in place, so no tinted copy is needed.
       if (flash) c.filter = 'brightness(3.2) saturate(0)';
       rig.blit(c);
@@ -699,12 +910,12 @@ export class SeamworksEngine {
       return;
     }
     if (!flash) {
-      if (!this.art('creature', -70, -110, 140, 110)) { c.fillStyle = '#b26460'; c.fillRect(-35, -75, 70, 75); }
+      if (!this.art(sprite, -70, -110, 140, 110)) { c.fillStyle = '#b26460'; c.fillRect(-35, -75, 70, 75); }
       return;
     }
     // brightness() whitens the painted sprite in place, so no tinted copy is needed.
     c.filter = 'brightness(3.2) saturate(0)';
-    if (!this.art('creature', -70, -110, 140, 110)) { c.fillStyle = '#fff4ea'; c.fillRect(-35, -75, 70, 75); }
+    if (!this.art(sprite, -70, -110, 140, 110)) { c.fillStyle = '#fff4ea'; c.fillRect(-35, -75, 70, 75); }
     c.filter = 'none';
   }
   /** A felled Maw sinks, flattens and fades, shedding embers as it goes. */
@@ -713,7 +924,7 @@ export class SeamworksEngine {
     c.save(); c.translate(monster.x + monster.knock, FLOOR);
     c.globalAlpha = 1 - t;
     if (!this.reducedMotion) c.scale(1 + t * .35, 1 - t * .7);
-    this.creature(c, t < .25);
+    this.creature(c, t < .25, monster.def.creature);
     c.restore();
     if (this.reducedMotion) return;
     c.save(); c.fillStyle = '#ffb46a';

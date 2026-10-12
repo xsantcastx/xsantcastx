@@ -8,6 +8,7 @@
  * Nothing on the page is `@if`'d on browser-only state at the top level, so the
  * layout does not move when the ledger arrives.
  */
+import { injectInWorldPanel } from '../in-world-panel';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -121,6 +122,8 @@ interface RecipeRow {
   styleUrls: ['./rune-forge.component.css'],
 })
 export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
+  /** Rendered as a place inside /play: the panel carries the title, so the hero and room links stand down. */
+  protected readonly inWorld = injectInWorldPanel();
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly forge = inject(RuneForgeService);
   private readonly economy = inject(EconomyService);
@@ -321,12 +324,14 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
   ngOnInit(): void {
     this.forge.init();
-    this.addHeroPreloads();
+    // In the world the side-scroller is the backdrop: no hero art to preload,
+    // and the body's atmosphere is already the play stage's.
+    if (!this.inWorld) this.addHeroPreloads();
     // Switches off the site's CSS atmosphere — the body gradient, the nebula,
     // the starfield, the matrix layer, the pulsar, the corner runes and the
     // constellation canvas — for this route. All of it was the stand-in for
     // artwork this page now has, and running both is two forges at once.
-    this.markArtRoute(true);
+    if (!this.inWorld) this.markArtRoute(true);
     if (!this.isBrowser) return;
     this.crafts.init();
 
