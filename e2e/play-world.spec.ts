@@ -77,10 +77,8 @@ test.describe('Waystone travel and ?at= deep links', () => {
     });
   }
 
-  // BUG (playtest-findings.md P-2): the side-scroller never records which town the Keeper
-  // travelled to, so a reload of /play?at=exchange boots in the Infernal town, finds no
-  // `exchange` station there and silently ignores the link. Unfixme once the town persists
-  // (or ?at= carries the town).
+  // Was playtest-findings.md P-2: the town the Keeper travelled to is now saved
+  // (`eclipse-play-world-v1`) and restored on load; a `?at=` link still wins.
   test('a deep link copied in another town reopens that place after a reload', async ({ page }) => {
     await seed(page);
     await openPlay(page, '?at=waystone');

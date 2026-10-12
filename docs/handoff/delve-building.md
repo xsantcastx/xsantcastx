@@ -79,3 +79,92 @@
 - Karma: crafting, collection, art, cloud-save and world pass (237/237).
 - tsc (app and spec), ds-adherence, i18n and audit-nav pass.
 - `ng build` passes with an initial total of 1.72 MB.
+
+---
+
+# Delve extras: supports, blasting charges, twelve inscriptions, gear in chests
+
+## Loose rock and supports
+- **Loose rock** is in the Magma Halls only (`BiomeDef.loose`: `scorched-basalt`, share 0.2). It is picked by a fixed cell hash (`isLoose`) and is never generated. Nothing changes in the grid, so `terrain.version` stays at 2.
+- A loose cell must still be its biome's band rock, exactly as generated. It is drawn with a pale fracture and a gap along its underside.
+- Exposed loose rock near the Keeper sheds dust every 0.35 s. Under reduced motion it does not; the cracks still show. The first time loose rock is overhead, the Keeper is told what it means.
+- **Digging a loose cell** with no support near it plays a 0.45 s groan, with dust and a message. Then a chunk falls straight down from that cell.
+- On the Keeper, the chunk takes 8% of max HP (at least 4). It never takes HP below 1, so it is never lethal. A dodge or the post-hit grace avoids it. Digging sideways or down never hits the Keeper; digging upward does.
+- **Supports** are placed things you can take back (X), and the Keeper walks through them. Each needs ground under it. A support holds any loose cell within its reach in both directions (Chebyshev distance):
+
+  | Support | Reach | Hotbar key |
+  |---|---|---|
+  | `timber-support` | 3 cells | 8 |
+  | `basalt-support` | 5 cells | 9 |
+
+## Blasting charges
+- `blast-charge` is hotbar key 0. Keys 1-9 then 0 now cover ten slots.
+- Placing one needs a staff of any tier. Without one it is refused before the satchel is asked.
+- The fuse burns for 1.6 s. While it burns, a spark, its light, and a dashed ring show the area that will be cleared. X beside a lit charge pinches it out and returns the charge.
+- **The blast** clears cells within 2.3 cells, nearest first (up to 21). Its power is the staff tier + 1: Staff I breaks anything up to Pickaxe II, and Staff II reaches Heartstone. Skill `minLevel` still applies.
+- **Never cleared:**
+  - bedrock and unbreakable cells
+  - non-solid placed things (torches, chests and the rest)
+  - stamps marked `protect`: the fragment, both caches, and the sealed pocket's cracked walls
+  - a guarded node
+  - the spec's `sealed` rectangle round the fragment chamber, cols 90-109 and rows 44-51, until `warden-defeated` is set
+- **Each cleared cell** goes through the host's `onWorldAction` with kind `'blast'`:
+  - It uses the same mutation id as a dig, so a cell is paid once.
+  - It pays at least 1 XP: Mining for rock, Delving for anything else. It also pays its yield.
+  - A cell the player placed pays its block back and no XP.
+  - Cleared cells are saved in the diff, like digging.
+- Creatures in the blast take 60 damage. The Keeper is never hurt by their own charge.
+- A charge still in the save after a reload is unlit. Take it back with X.
+
+## Recipes (Delve kit, Smithing-gated; `skill: 'smithing'`, so the level is the Smithing skill)
+
+| Recipe | Makes | Inputs | Gold | Smithing |
+|---|---|---|---|---|
+| `craft-delve-timber-support` | 2 timber supports | 3 World-Root Bark + 1 Thornroot | 60 | 5 |
+| `craft-delve-basalt-support` | 2 basalt supports | 3 Slag Fragment + 2 Cinder Ore + 1 World-Root Bark | 150 | 12 |
+| `craft-delve-blast-charge` | 2 blasting charges | 3 Cinder Ore + 1 Ember Residue + 2 Slag Fragment | 200 | 10 |
+
+New stack ids: `timber-support`, `basalt-support`, `blast-charge`. They are named in `material-catalog.ts` and use stand-in art through `ART_ALIAS`. The new node bytes are appended: `timber-support`, `basalt-support`, `blast-charge`.
+
+## Inscriptions: 12 (three per biome)
+
+| Inscription | Cell (col, row) | Where |
+|---|---|---|
+| `roots-cutting-mark` | 28, 7 | the old tunnel |
+| `basalt-seam-ledger` | 78, 16 | the Maws' cavern |
+| `grotto-tally-marks` | 40, 32 | the glowcap cavern |
+| `magma-unsigned` | 102, 50 | the fragment chamber floor |
+
+- Every one sits in a cell that a stamp carves to air for every seed, and the engine test pins this.
+- The Archivist's "all" target now counts 12. Words III's brief reads "Copy all 12 inscriptions". The missions spec pins that the 12 placed ids equal the 12 canon texts.
+- The in-world one-liners no longer say "Placeholder:".
+
+## Gear in chests
+- No parallel inventory. An item put in a chest keeps its row in the inventory ledger. Its location becomes `{ kind: 'explorer', explorerId: 'delve-chest:<born>' }`, through `equipOnExplorer`, the mechanism thralls use. Taking it out calls `unequip`, which returns it to the bag.
+- While stored, the item cannot be worn, sold or dropped. A tool in a chest does not count toward `toolTiers`: the play view filters `isChestHolder` before calling it.
+- A chest holds 6 pieces of gear (`CHEST_GEAR_SLOTS`), on top of its 4 kinds of material.
+- "Take back only when empty" now means no material and no gear.
+- The orphan sweep on Delve entry returns gear from refunded or stale chests. It also returns "stray" gear whose chest record no longer exists (`strayChestGear`), for example a record merged away by a newer chest.
+- The chest panel has two new lists: "Gear in the chest" and "Gear in your satchel".
+- Side effect: putting gear in a chest fires `equipped$`, which counts toward the "item-equipped" challenge. Equipping a thrall does the same.
+
+## Importer
+`scripts/import-assets.py` now passes `"pixelArt": true` from a sprite sidecar into the manifest entry. A non-boolean value is rejected. `SpriteEntry.pixelArt?` is in the generated header. The fixture tests are in `scripts/import-assets.test.py` and need Pillow on Python 3.10 or later.
+
+## Also in this branch (playtest fixes P-2, P-3, P-4)
+- **Town persistence.** The town the Keeper stands in is saved in `eclipse-play-world-v1`, a local blob written through the gateway only when it changes, and restored on load. A `?at=` link still wins.
+- **Coins.** Monster coins are credited to the Gold purse once per drop. The satchel's Coins count is that blob's running total.
+- **Ore drops.** An ore drop pays 2 Mining XP through `SkillActionService`.
+
+## Check by playing
+1. **Supports.** In the Magma Maws' hall, dig a cracked, dusting ceiling cell straight above you. You hear a groan, then get a small bruise. Then place a basalt support (key 9) on the floor nearby and dig another: nothing falls.
+2. **Charges.** With a staff, press 0 then B. Watch the ring and the spark, step back, and the blast follows. Reload: the blasted cells stay open. Near the fragment chamber, a charge leaves its walls standing until the warden falls.
+3. **Inscriptions.** The four new carvings are at the cells listed above. Archivist III should read 12.
+4. **Gear.** Put a sword in a chest, reload, and take it out. X on that chest is refused while the sword is inside.
+
+## Tests
+- `seamworks-engine.test.cjs` passes 93/93. Five tests are new: loose model, rubble and supports, charges, sealed and power, chest gear helpers. The inscription and hotbar tests were updated.
+- `import-assets.test.py` passes 9/9.
+- Karma passes 238/238 for npc, crafting and cloud-save.
+- The e2e specs for play-world, play-hunting and play-delve pass on chromium. The ladder spec flaked once on Delve entry, then passed twice on repeat.
+- tsc, i18n, ds-adherence and audit-nav pass. `ng build` gives an initial total of 1.73 MB.
