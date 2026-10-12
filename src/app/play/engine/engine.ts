@@ -6,8 +6,8 @@ import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchel
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
 import {
-  applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, nodeIndex, stepTerrainBody, SWING_TOOLS, Terrain, TERRAIN_NODE_LIST,
-  TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
+  climbTerrainBody, findNode, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import type { DelvePersistence } from './engine.model';
@@ -16,8 +16,8 @@ import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, LootRarity, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
-export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, WorldActionEvent } from './engine.model';
-export type { ToolTiers } from './terrain';
+export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
+export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
 // `flash`, `knock`, `dying`, `born` and `shownHp` are presentation only: they
@@ -51,6 +51,8 @@ const BLAST_COOLDOWN = 1.1;
 const HIT_NONE = 0, HIT_CHIP = 1, HIT_BROKE = 2, HIT_BLOCKED = 3, HIT_REFUSED = 4;
 /** 'cinder-ore' → 'Cinder Ore'. */
 function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
+/** The prompt over a usable cell. */
+const USE_LABEL: Readonly<Record<string, string>> = { inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP' };
 const KEEPER_ANIMATIONS = new Set<KeeperAnimation>(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 export interface RemoteKeeper { id: string; name: string; x: number; y: number; area: string; facing?: number; animation?: string }
 interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number; motion: KeeperMotion }
@@ -167,8 +169,8 @@ export class SeamworksEngine {
   private readonly terrainRenderer = new TerrainRenderer();
   private readonly motes = new AmbientMotes();
   private readonly halos = new GlowHalos();
-  /** The carved wall within reach, as a cell index (-1 = none). Refreshed in the fixed step. */
-  private inscriptionAt = -1;
+  /** The carved wall, chest or camp within reach, as a cell index (-1 = none). Refreshed in the fixed step. */
+  private interactAt = -1;
   private readonly darkness = new DarknessLayer();
   private readonly lightPool = new LightPool(96);
   private readonly debris = new Debris();
@@ -181,6 +183,8 @@ export class SeamworksEngine {
   private tools: ToolTiers = {};
   private lanternRadius = DEFAULT_LANTERN;
   private skillLevels: Partial<Record<DisciplineId, number>> | null = null;
+  /** True while the Keeper is on a ladder (set in the fixed step): Up climbs instead of jumping. */
+  private climbing = false;
   /** Vertical camera, world px. 0 outside delves. */
   private cameraY = 0;
   private blastTime = 0;
@@ -194,9 +198,22 @@ export class SeamworksEngine {
   /** Draw scale of figures in this area (delves draw the Keeper at half size). */
   private get figure(): number { return this.areaDef.figureScale ?? 1; }
   private get isTown(): boolean { return this.areaDef === this.town; }
+  /** Once-per-player flags set this session (a felled guardian); the save holds them across sessions. */
+  private readonly flags = new Set<string>();
+  /** True when a once-per-player flag is set, this session or in the player's save. */
+  flagged(id: string): boolean {
+    if (this.flags.has(id)) return true;
+    try { return !!this.delve?.isClaimed?.(id); } catch { return false; }
+  }
+  private setFlag(id: string): void {
+    this.flags.add(id);
+    try { this.delve?.claim?.(id); } catch { /* still set for this session */ }
+  }
   private createMonsters(): Monster[] {
     const monsters: Monster[] = [];
     for (const def of this.areaDef.monsters) {
+      // A guardian this player has already felled stays down.
+      if (def.once && this.flagged(def.once)) continue;
       for (const x of def.spawnXs) {
         monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp, recoil: 0 });
       }
@@ -206,7 +223,7 @@ export class SeamworksEngine {
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
     this.terrain = this.terrainFor(area); this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
-    this.blastTime = 0; this.blastFlash = 0; this.inscriptionAt = -1;
+    this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.motes.reset();
   }
   /** The area's terrain: cached for the session, else generated from the player's seed with their diff applied. */
@@ -255,27 +272,182 @@ export class SeamworksEngine {
     if (!layout) return;
     try { this.delve.changed(this.areaDef.id, layout, index, t.kind[index] === t.base[index] ? null : t.kind[index]); } catch { /* the dig still stands this session */ }
   }
+  // ── Building ─────────────────────────────────────────────────────────────
+
+  /** The hotbar's choice: what B (or a long-press) places. */
+  private placing: PlaceableId | null = null;
+  /** Bumped per placement: makes each placement's mutation id, and a re-dig of a placed cell, unique. */
+  private placeSeq = 0;
+  /** Cell index → the placement that filled it this session, so its re-dig is a new grant. */
+  private readonly placedGen = new Map<number, number>();
+  /** Choose what to place (the hotbar). Unknown ids clear it. */
+  setPlaceable(id: PlaceableId | string | null): void { this.placing = placeableById(id)?.id ?? null; }
+  get placeable(): PlaceableId | null { return this.placing; }
   /**
-   * Building, stubbed: put a block of `nodeId` into an open cell of the
-   * current delve and save it. Refuses (false) outside a delve, off the grid,
-   * into rock, onto a carved wall, or into the Keeper or a living creature.
-   * Satchel cost, reach and art come with the building features.
+   * B: place the chosen thing in front of the Keeper (below, holding Down).
+   * See `placeTarget` for which cell. False, with a plain message, when it
+   * cannot go anywhere.
+   */
+  place(): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return false;
+    const def = placeableById(this.placing);
+    if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
+    const down = this.input.has('down');
+    const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX, def.aim);
+    if (index < 0) { this.message = `No open space ${down ? 'under your feet' : 'in front of you'} for the ${def.label.toLowerCase()}.`; this.report(); return false; }
+    return this.placeItem(def, index);
+  }
+  /**
+   * A long-press (or right-click) on a cell within reach: place the chosen
+   * thing there, or take back the placed thing already there.
+   */
+  placeAtClient(clientX: number, clientY: number): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return false;
+    const point = this.pick(clientX, clientY);
+    const col = t.colAt(point.x), row = t.rowAt(point.y);
+    if (!t.inside(col, row) || !this.inReach(col, row)) return false;
+    if (isTakeable(t, col, row)) return this.takeItem(t.index(col, row));
+    const def = placeableById(this.placing);
+    if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
+    return this.placeItem(def, t.index(col, row));
+  }
+  /** True when a cell's centre is within a swing of the Keeper's chest. */
+  private inReach(col: number, row: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
+    return Math.hypot(cx - this.player.x, cy - (this.player.y - DELVE_BOX.height * .5)) <= DELVE_REACH;
+  }
+  /** Why `node` cannot go into a cell right now, or null. */
+  private placeProblem(t: Terrain, col: number, row: number, node: TerrainNodeDef, def?: PlaceableDef): string | null {
+    if (!t.inside(col, row) || row < 0) return 'That is outside the Delve.';
+    if (!isAir(t, col, row)) return 'Something is already there.';
+    if (def?.grounded && !t.solid(col, row + 1) && !isOneWay(t, col, row + 1)) return `The ${def.label.toLowerCase()} needs solid ground under it.`;
+    if (def?.single && findNode(t, def.node) >= 0) return `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`;
+    if (!node.solid) return null;
+    const x0 = col * CELL, y0 = t.top + row * CELL;
+    const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
+      x + halfWidth > x0 && x - halfWidth < x0 + CELL && feet > y0 && feet - height < y0 + CELL;
+    if (overlaps(this.player.x, this.player.y, DELVE_BOX.halfWidth, DELVE_BOX.height)) return 'You are standing there.';
+    for (const monster of this.monsters) {
+      if (monster.hp > 0 && overlaps(monster.x, monster.def.floorY ?? FLOOR, 30 * this.figure, 110 * this.figure)) return 'A creature is in the way.';
+    }
+    return null;
+  }
+  /** Ask the host for one `def` from the satchel, then fill the cell and save it. */
+  private placeItem(def: PlaceableDef, index: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const node = TERRAIN_NODES[def.node];
+    const problem = node ? this.placeProblem(t, col, row, node, def) : 'That cannot be placed.';
+    if (problem) { this.message = problem; this.report(); return false; }
+    const gen = ++this.placeSeq;
+    const accepted = this.options.onPlace?.({
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index,
+      mutationId: `delve-place:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${gen}`,
+    });
+    // Refused: the host already said why (none left, the save failed).
+    if (accepted === false) { this.report(); return false; }
+    this.fill(t, col, row, node!, gen);
+    this.message = `${def.label} placed.`;
+    this.report();
+    return true;
+  }
+  /** X: take back the placed thing beside the Keeper (or where they stand). */
+  takeBack(): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return false;
+    const index = takeTarget(t, this.player.x, this.player.y, this.facing, DELVE_BOX);
+    if (index < 0) { this.message = 'Nothing placed here to take back. Blocks are dug, like rock.'; this.report(); return false; }
+    return this.takeItem(index);
+  }
+  /** Ask the host to return the placed thing to the satchel, then clear the cell. */
+  private takeItem(index: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const node = t.nodeAt(col, row);
+    const def = placeableById(node.placeable);
+    if (!def || node.solid) return false;
+    const accepted = this.options.onTakeBack?.({
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index,
+      mutationId: `delve-take:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
+    });
+    if (accepted === false) { this.report(); return false; }
+    t.set(col, row, 0);
+    this.placedGen.delete(index);
+    this.recordCell(t, index);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, node.fleck, this.reducedMotion ? 2 : 4);
+    this.message = `${def.label} back in the satchel.`;
+    this.report();
+    return true;
+  }
+  /** The town's way into its delve (a passage station to an area with terrain), or null. */
+  private delveEntrance(): { station: StationDef; area: AreaDef } | null {
+    for (const station of this.town.stations) {
+      const area = station.kind === 'passage' && station.to ? areaOf(this.town, station.to) : undefined;
+      if (area?.terrain) return { station, area };
+    }
+    return null;
+  }
+  /** True when this town's delve holds the player's camp (generates that delve once if it has not been yet). */
+  hasDelveCamp(): boolean {
+    const entrance = this.delveEntrance();
+    const t = entrance ? this.terrainFor(entrance.area) : null;
+    return !!t && findNode(t, 'camp') >= 0;
+  }
+  /**
+   * "Descend to your camp": from town, straight to the camp placed in this
+   * town's delve, standing beside it. False (nothing moves) when there is no
+   * camp, or the cells round it have been filled so the Keeper would not fit.
+   */
+  descendToCamp(): boolean {
+    if (this.paused || this.hp <= 0 || !this.isTown) return false;
+    const entrance = this.delveEntrance();
+    const t = entrance ? this.terrainFor(entrance.area) : null;
+    const index = t ? findNode(t, 'camp') : -1;
+    if (!entrance || !t || index < 0) return false;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const x = (col + .5) * CELL, feet = t.top + (row + 1) * CELL;
+    if (boxHits(t, x, feet, DELVE_BOX)) {
+      this.message = 'Something fills the space round your camp. Take the Delve shaft and dig your way down.';
+      this.report();
+      return false;
+    }
+    this.enter(entrance.area);
+    this.resetPosition(x);
+    this.player.y = feet;
+    this.message = 'You climb down the ropes to your camp. The fire is still warm.';
+    this.report();
+    return true;
+  }
+  /** The node id at a cell of an area the engine has loaded, or null (another area, not generated yet). */
+  nodeIdAt(areaId: string, index: number): string | null {
+    const t = this.terrains.get(areaId);
+    if (!t || index < 0 || index >= t.kind.length) return null;
+    return TERRAIN_NODE_LIST[t.kind[index]].id;
+  }
+  private fill(t: Terrain, col: number, row: number, node: TerrainNodeDef, gen: number): void {
+    const index = t.index(col, row);
+    t.set(col, row, nodeIndex(node.id));
+    this.placedGen.set(index, gen);
+    this.recordCell(t, index);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, node.fleck, this.reducedMotion ? 2 : 5);
+  }
+  /**
+   * Put a node into an open cell and save it, with no satchel cost (the
+   * persistence seam; tests and tools). Refuses (false) outside a delve, off
+   * the grid, into anything but open air, onto a carved wall, or a solid
+   * block into the Keeper or a living creature.
    */
   placeCell(col: number, row: number, nodeId: string): boolean {
     const t = this.terrain;
     const node = TERRAIN_NODES[nodeId];
-    if (!t || !node || !node.solid || !Number.isFinite(node.hp) || !t.inside(col, row)) return false;
-    const index = t.index(col, row);
-    if (t.solid(col, row) || t.inscriptions.has(index)) return false;
-    const x0 = col * CELL, y0 = t.top + row * CELL;
-    const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
-      x + halfWidth > x0 && x - halfWidth < x0 + CELL && feet > y0 && feet - height < y0 + CELL;
-    if (overlaps(this.player.x, this.player.y, DELVE_BOX.halfWidth, DELVE_BOX.height)) return false;
-    for (const monster of this.monsters) {
-      if (monster.hp > 0 && overlaps(monster.x, monster.def.floorY ?? FLOOR, 30 * this.figure, 110 * this.figure)) return false;
-    }
-    t.set(col, row, nodeIndex(nodeId));
-    this.recordCell(t, index);
+    if (!t || !node || !Number.isFinite(node.hp) || (!node.solid && !node.placeable) || this.placeProblem(t, col, row, node)) return false;
+    this.fill(t, col, row, node, ++this.placeSeq);
     return true;
   }
   private resetPosition(x: number): void {
@@ -419,8 +591,8 @@ export class SeamworksEngine {
     if (!t.inside(col, row)) return false;
     const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
     const inReach = Math.hypot(cx - this.player.x, cy - (this.player.y - DELVE_BOX.height * .5)) <= DELVE_REACH;
-    // A tap on a carved wall within reach reads it.
-    if (inReach && t.inscriptions.has(t.index(col, row))) { this.cancelMove(); this.readInscription(t.index(col, row)); this.report(); return true; }
+    // A tap on a carved wall, a chest or a camp within reach uses it.
+    if (inReach && this.usable(t.index(col, row))) { this.cancelMove(); this.useCell(t.index(col, row)); this.report(); return true; }
     if (!t.solid(col, row) || !inReach) return false;
     this.cancelMove();
     if (this.attackCooldown > 0) return true;
@@ -522,7 +694,7 @@ export class SeamworksEngine {
     if (this.paused || this.hp <= 0 || this.input.has(action)) return;
     this.input.add(action);
     if (action === 'left' || action === 'right') this.cancelMove();
-    if (action === 'jump' && this.player.grounded) { this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false; }
+    if (action === 'jump' && this.player.grounded && !this.climbing) { this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false; }
     if (action === 'attack' && this.attackCooldown <= 0) this.attack();
     if (action === 'blast') this.blast();
     if (action === 'dodge' && this.dodgeCooldown <= 0) { this.dodgeTime = .26; this.dodgeCooldown = 1.05; }
@@ -551,6 +723,12 @@ export class SeamworksEngine {
       monster.dying = DEATH_FADE;
       monster.respawn = 8; this.kills++; this.guardianDefeated = true;
       this.spill(monster);
+      if (monster.def.once) {
+        // Felled for good: saved per player, never respawns, and what it guarded opens.
+        monster.respawn = Infinity;
+        this.setFlag(monster.def.once);
+        this.message = `${monster.def.name} falls, and stays fallen. What it guarded is open now.`;
+      }
     }
   }
 
@@ -609,6 +787,11 @@ export class SeamworksEngine {
       if (!quiet) this.clang(cx, cy, check.need ? `Clang! Need ${toolName(check.need.tool, check.need.tier)}` : `${node.label} will not break`);
       return HIT_BLOCKED;
     }
+    if (node.guard && !this.flagged(node.guard.flag)) {
+      this.debris.chip(cx, cy, node.fleck, quiet ? 2 : 6);
+      if (!quiet) this.clang(cx, cy, node.guard.refusal); else this.message = `${node.guard.refusal}.`;
+      return HIT_BLOCKED;
+    }
     const level = node.minLevel && this.skillLevels ? this.skillLevels[node.discipline] ?? 1 : Infinity;
     if (node.minLevel && level < node.minLevel) {
       this.debris.chip(cx, cy, '#ffe2a8', quiet ? 2 : 6);
@@ -626,11 +809,14 @@ export class SeamworksEngine {
     let qty = 0;
     const pays = node.yield;
     if (pays && (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance)) { material = pays.materialId; qty = pays.qty; }
-    if (node.xp > 0 || pays) {
+    if (node.xp > 0 || pays || node.block) {
+      // A cell the Keeper placed this session is a new grant each time it is dug.
+      const gen = this.placedGen.get(index);
       const accepted = this.options.onWorldAction?.({
         kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: cellKey(col, row),
         materialId: material, qty: material ? qty : undefined, discipline: node.discipline, xp: node.xp,
-        mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}`,
+        mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}${gen ? `:p${gen}` : ''}`,
+        ...(node.block ? { block: node.block } : {}),
       });
       if (accepted === false) {
         // Refused: it stands, cracked to the last stage, and the next hit asks again.
@@ -648,17 +834,33 @@ export class SeamworksEngine {
     }
     return HIT_BROKE;
   }
-  /** The carved wall the Keeper's body stands against (cell index), or -1. No allocation. */
-  private findInscription(): number {
+  /** True for a cell E acts on: a carved wall, a placed chest or camp. */
+  private usable(index: number): boolean {
     const t = this.terrain;
-    if (!t || !t.inscriptions.size) return -1;
+    return !!t && (t.inscriptions.has(index) || !!TERRAIN_NODE_LIST[t.kind[index]].use);
+  }
+  /** Read a carved wall, or ask the host to open a chest or camp. */
+  private useCell(index: number): void {
+    const t = this.terrain;
+    if (!t) return;
+    if (t.inscriptions.has(index)) { this.readInscription(index); return; }
+    const use = TERRAIN_NODE_LIST[t.kind[index]].use;
+    if (!use) return;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    this.report();
+    this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index });
+  }
+  /** The carved wall, chest or camp the Keeper's body stands against (cell index), or -1. No allocation. */
+  private findInteractive(): number {
+    const t = this.terrain;
+    if (!t) return -1;
     const p = this.player;
     const c0 = t.colAt(p.x - DELVE_BOX.halfWidth - CELL * .5), c1 = t.colAt(p.x + DELVE_BOX.halfWidth + CELL * .5);
     const r0 = t.rowAt(p.y - DELVE_BOX.height), r1 = t.rowAt(p.y - .01);
     for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
       for (let col = Math.max(0, c0); col <= Math.min(t.cols - 1, c1); col++) {
         const index = t.index(col, row);
-        if (t.inscriptions.has(index)) return index;
+        if (this.usable(index)) return index;
       }
     }
     return -1;
@@ -742,7 +944,7 @@ export class SeamworksEngine {
   interact(): void {
     if (this.paused || this.hp <= 0) return;
     const station = this.nearbyStation();
-    if (!station && this.inscriptionAt >= 0) { this.readInscription(this.inscriptionAt); this.report(); return; }
+    if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
     if (!station) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
     const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
     if (locked) this.message = station.lockedMessage ?? 'This way is not open yet.';
@@ -785,6 +987,8 @@ export class SeamworksEngine {
     const action = this.action(event.code);
     if (action) { event.preventDefault(); if (!event.repeat) this.setInput(action, true); }
     if (!event.repeat && event.code === 'KeyE') { event.preventDefault(); this.interact(); }
+    if (!event.repeat && event.code === 'KeyB' && this.terrain) { event.preventDefault(); this.place(); }
+    if (!event.repeat && event.code === 'KeyX' && this.terrain) { event.preventDefault(); this.takeBack(); }
   };
   private readonly keyUp = (event: KeyboardEvent): void => { const action = this.action(event.code); if (action) this.setInput(action, false); };
   private resize(): void {
@@ -848,15 +1052,21 @@ export class SeamworksEngine {
     // Delves move a half-size Keeper a little slower, through the terrain.
     const pace = this.terrain ? .72 : 1;
     const velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace;
-    if (this.terrain) stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width);
-    else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
+    if (this.terrain) {
+      // On a ladder Up (jump) climbs and Down descends; anywhere else Down drops through platforms.
+      this.climbing = onLadder(this.terrain, this.player.x, this.player.y, DELVE_BOX);
+      if (this.climbing) {
+        const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
+        climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
+      } else stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down'));
+    } else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
     if (this.terrain) {
       // Holding a tool button keeps working the rock: digging is held, not tapped.
       if (this.input.has('attack') && this.attackCooldown <= 0) this.attack();
       if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
-      this.inscriptionAt = this.findInscription();
+      this.interactAt = this.findInteractive();
     }
-    if (!wasGrounded && this.player.grounded) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
+    if (!wasGrounded && this.player.grounded && !this.climbing) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
       this.stepAt = this.elapsed; if (!this.reducedMotion) this.atmosphere.burst(this.player.x - direction * 16, this.player.y - 3);
     }
@@ -919,10 +1129,12 @@ export class SeamworksEngine {
     const nearest = this.nearestFoe();
     const station = this.nearbyStation();
     const t = this.terrain;
-    const reading = !station && t && this.inscriptionAt >= 0;
+    const at = !station && t && this.interactAt >= 0 ? this.interactAt : -1;
+    // A carved wall reads as 'inscription'; a placed chest or camp by its use.
+    const use = at >= 0 ? (t!.inscriptions.has(at) ? 'inscription' : TERRAIN_NODE_LIST[t!.kind[at]].use ?? null) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
     this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name,
-      nearby: reading ? 'inscription' : station?.id ?? null, nearbyLabel: reading ? 'CARVED INSCRIPTION' : station?.label, nearbyKind: station?.kind,
+      nearby: use ?? station?.id ?? null, nearbyLabel: use ? USE_LABEL[use] : station?.label, nearbyKind: station?.kind,
       x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
@@ -1545,8 +1757,10 @@ export class SeamworksEngine {
         const node = TERRAIN_NODE_LIST[t.kind[t.index(col, row)]];
         if (!node.glow) continue;
         const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
-        if (t.exposed(col, row)) {
-          pool.add(x, y, node.glow.radius * 1.6, .55);
+        // Placed torches always burn; a vein glows once a tunnel exposes it.
+        const lift = glowIntensity(node, node.solid && t.exposed(col, row));
+        if (lift > 0) {
+          pool.add(x, y, node.glow.radius * 1.6, lift);
           if (haloCount < this.halosAt.length) this.halosAt[haloCount++] = t.index(col, row);
         }
         if (this.glintCount < this.glints.length && Math.hypot(x - this.player.x, y - this.player.y + 50) < reach) this.glints[this.glintCount++] = t.index(col, row);

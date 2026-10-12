@@ -17,7 +17,10 @@
  *         cells: 'k3.0,k4.0,1a2.0',         // base-36 "index.kind" pairs, sorted by index
  *       },
  *     },
- *     claimed: ['godforge-fragment'],       // once-per-player finds already paid
+ *     claimed: ['godforge-fragment', 'warden-defeated'],  // once-per-player finds and felled guardians
+ *     chests: {                                // placed chests' contents (optional; absent = none)
+ *       'ember-delve:1a2': { layout: '120x56:v2:2894011733', born: 1760000000123, n: 3, slots: { 'cinder-ore': 12 } },
+ *     },
  *   }
  *
  * The Delve is regenerated from `seed` every time (generation is
@@ -56,6 +59,68 @@ export interface DelveSave {
   createdAt: number;
   areas: Record<string, DelveAreaSave>;
   claimed: string[];
+  /** Placed chests' contents, by `chestKey(areaId, cellIndex)`. Absent on saves with none. */
+  chests?: Record<string, DelveChest>;
+}
+
+/** Distinct stacks one chest holds. Quantities are unbounded: a slot is a kind of thing. */
+export const CHEST_SLOTS = 4;
+
+/**
+ * One placed chest. Its contents are satchel stacks moved through the
+ * inventory ledger (a consume to put in, a grant to take out), so nothing is
+ * minted or lost here: this records only where they went.
+ *
+ * `born` names this chest for good (a chest taken back and placed again in
+ * the same cell is a new chest), and `n` counts its moves; together they make
+ * each move's mutation id, so a replayed move never runs twice. `n` only grows,
+ * which is what the merge keeps.
+ */
+export interface DelveChest {
+  /** The layout the chest's cell index belongs to (see terrainLayout). */
+  layout: string;
+  born: number;
+  n: number;
+  slots: Record<string, number>;
+}
+
+/** Where a chest's contents are filed: area and cell index. */
+export function chestKey(areaId: string, index: number): string {
+  return `${areaId}:${index.toString(36)}`;
+}
+
+/** Put `qty` of a stack in. False when it would need a fifth slot. Mutates `chest`. */
+export function chestPut(chest: DelveChest, stackKey: string, qty: number): boolean {
+  if (!stackKey || !Number.isInteger(qty) || qty < 1) return false;
+  if (!chest.slots[stackKey] && Object.keys(chest.slots).length >= CHEST_SLOTS) return false;
+  chest.slots = { ...chest.slots, [stackKey]: (chest.slots[stackKey] ?? 0) + qty };
+  chest.n++;
+  return true;
+}
+
+/** Take up to `qty` of a stack out; returns how many came out. Mutates `chest`. */
+export function chestTake(chest: DelveChest, stackKey: string, qty = Infinity): number {
+  const have = chest.slots[stackKey] ?? 0;
+  const out = Math.min(have, Math.max(0, Math.floor(qty)));
+  if (out <= 0) return 0;
+  const slots = { ...chest.slots };
+  if (have - out > 0) slots[stackKey] = have - out; else delete slots[stackKey];
+  chest.slots = slots;
+  chest.n++;
+  return out;
+}
+
+function coerceChest(value: unknown): DelveChest | null {
+  if (!isRecord(value) || typeof value['layout'] !== 'string') return null;
+  const born = value['born'], n = value['n'];
+  if (typeof born !== 'number' || !Number.isFinite(born) || typeof n !== 'number' || !Number.isInteger(n) || n < 0) return null;
+  const slots: Record<string, number> = {};
+  if (isRecord(value['slots'])) {
+    for (const [key, qty] of Object.entries(value['slots'])) {
+      if (key.length > 0 && key.length <= 80 && typeof qty === 'number' && Number.isInteger(qty) && qty > 0 && Object.keys(slots).length < CHEST_SLOTS) slots[key] = qty;
+    }
+  }
+  return { layout: value['layout'], born, n, slots };
 }
 
 /** A fresh save around a rolled seed. */
@@ -127,7 +192,16 @@ export function coerceDelveSave(value: unknown): DelveSave | null {
   const claimed = Array.isArray(value['claimed'])
     ? [...new Set((value['claimed'] as unknown[]).filter((id): id is string => typeof id === 'string' && id.length > 0 && id.length <= 80))].sort()
     : [];
-  return { version: DELVE_SAVE_VERSION, seed: seed >>> 0, createdAt, areas, claimed };
+  const out: DelveSave = { version: DELVE_SAVE_VERSION, seed: seed >>> 0, createdAt, areas, claimed };
+  if (isRecord(value['chests'])) {
+    const chests: Record<string, DelveChest> = {};
+    for (const [key, chest] of Object.entries(value['chests'])) {
+      const row = coerceChest(chest);
+      if (row && key.length <= 120) chests[key] = row;
+    }
+    if (Object.keys(chests).length) out.chests = chests;
+  }
+  return out;
 }
 
 /** The diff saved for an area under `layout`, or an empty map when it was dug under another. */
@@ -176,5 +250,17 @@ export function mergeDelveSaves(remote: unknown, local: unknown): unknown {
     }
   }
   const claimed = [...new Set([...l.claimed, ...r.claimed])].sort();
-  return { version: DELVE_SAVE_VERSION, seed: winner.seed, createdAt: winner.createdAt, areas, claimed } satisfies DelveSave;
+  const merged: DelveSave = { version: DELVE_SAVE_VERSION, seed: winner.seed, createdAt: winner.createdAt, areas, claimed };
+  // Chests: per chest, the copy that has seen more moves (same chest: higher n;
+  // a re-placed chest: the later `born`). Local wins a tie, as cells do.
+  const chests: Record<string, DelveChest> = {};
+  for (const key of new Set([...Object.keys(l.chests ?? {}), ...Object.keys(r.chests ?? {})])) {
+    const mine = l.chests?.[key], theirs = r.chests?.[key];
+    const pick = !mine ? theirs! : !theirs ? mine
+      : mine.born !== theirs.born ? (mine.born > theirs.born ? mine : theirs)
+      : theirs.n > mine.n ? theirs : mine;
+    chests[key] = { ...pick, slots: { ...pick.slots } };
+  }
+  if (Object.keys(chests).length) merged.chests = chests;
+  return merged;
 }

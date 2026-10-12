@@ -6,90 +6,6 @@
  * which is the whole point of standing in it.
  */
 
-.gb {
-  position: relative;
-  max-width: 1120px;
-  margin: 0 auto;
-  padding: clamp(1.5rem, 4vw, 3rem) clamp(1rem, 3vw, 2rem) 4rem;
-  color: var(--ink-0);
-}
-
-/* Dual nebula wash + the house's gradient cap lines. */
-.gb::before,
-.gb::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(0, 255, 204, 0.5) 50%, transparent);
-}
-.gb::before { top: 0; }
-.gb::after { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
-
-/* ── Hero ─────────────────────────────────────────────────────────────────── */
-
-.gb__hero { text-align: center; display: grid; gap: 0.4rem; margin-bottom: 1.5rem; }
-
-.gb__sigil {
-  font-size: 1.6rem;
-  color: #a48bff;
-  text-shadow: 0 0 18px rgba(140, 110, 255, 0.8);
-}
-
-.gb__eyebrow {
-  margin: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0.45rem;
-  font-size: 0.62rem;
-  letter-spacing: 0.24em;
-  text-transform: uppercase;
-  color: rgba(232, 236, 241, 0.55);
-}
-
-.gb__eyebrow-pulse {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #a48bff;
-  box-shadow: 0 0 10px rgba(140, 110, 255, 0.9);
-  animation: gbPulse 3s ease-in-out infinite;
-}
-
-.gb__title {
-  margin: 0;
-  font-size: clamp(1.9rem, 5vw, 3rem);
-  background: linear-gradient(90deg, #4dffe0, #a48bff, #ff6dd7);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-          background-clip: text;
-  color: transparent;
-  animation: gbSweep 7s ease-in-out infinite;
-}
-
-.gb__tagline {
-  margin: 0 auto;
-  padding: 0.28rem 0.9rem;
-  border-radius: 999px;
-  border: 1px solid rgba(0, 255, 204, 0.14);
-  background: rgba(0, 255, 204, 0.05);
-  font-size: 0.78rem;
-  color: rgba(232, 236, 241, 0.68);
-}
-
-.gb__wallet {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.5rem 1.2rem;
-  margin-bottom: 1.4rem;
-  font-size: 0.82rem;
-}
-.gb__coin b { color: var(--gold); font-variant-numeric: tabular-nums; }
-.gb__coin--muted { color: rgba(232, 236, 241, 0.5); }
-.gb__coin--muted b { color: rgba(232, 236, 241, 0.75); }
 
 .gb__error {
   margin: 0 auto 1rem;
@@ -103,48 +19,6 @@
   text-align: center;
 }
 
-/* ── The shelf ────────────────────────────────────────────────────────────── */
-
-.gb__shelf {
-  list-style: none;
-  margin: 0 0 2.5rem;
-  padding: 0;
-  display: grid;
-  gap: 1rem;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
-}
-
-.gb__box {
-  position: relative;
-  display: grid;
-  gap: 0.5rem;
-  align-content: start;
-  padding: 1rem 0.9rem 0.9rem;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  background:
-    radial-gradient(ellipse 80% 50% at 50% 0%, color-mix(in srgb, var(--box-accent) 14%, transparent), transparent 70%),
-    rgba(10, 6, 26, 0.62);
-  transition: border-color 200ms ease, box-shadow 200ms ease, transform 200ms ease;
-}
-
-.gb__box:hover {
-  border-color: var(--box-glow);
-  box-shadow: 0 0 28px -8px var(--box-glow);
-  transform: translateY(-2px);
-}
-
-/* The lid: a slab of the box's own colour, seam-lit from beneath. */
-.gb__lid {
-  height: 44px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--box-accent) 40%, #0a0618), #0a0618);
-  border: 1px solid var(--box-glow);
-  box-shadow: inset 0 -8px 18px -10px var(--box-glow), 0 0 16px -6px var(--box-glow);
-}
-
-.gb__box-name { margin: 0; font-size: 1rem; color: var(--box-accent); }
-.gb__box-blurb { margin: 0; font-size: 0.74rem; line-height: 1.45; color: rgba(232, 236, 241, 0.55); }
 
 .gb__odds { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.18rem; }
 .gb__odd { display: flex; align-items: center; gap: 0.4rem; font-size: 0.72rem; }
@@ -158,23 +32,6 @@
   color: rgba(232, 236, 241, 0.42);
 }
 .gb__pity--armed { color: var(--gold); font-weight: 600; }
-
-.gb__buy {
-  margin-top: 0.2rem;
-  padding: 0.55rem 0.8rem;
-  border-radius: 10px;
-  border: 1px solid var(--box-glow);
-  background: color-mix(in srgb, var(--box-accent) 16%, rgba(10, 6, 26, 0.9));
-  color: var(--ink-0);
-  font-weight: 600;
-  font-size: 0.82rem;
-  cursor: pointer;
-  /* House rule: every standalone control clears 44px. */
-  min-height: 44px;
-  transition: background 180ms ease, box-shadow 180ms ease;
-}
-.gb__buy:hover:not(:disabled) { box-shadow: 0 0 20px -6px var(--box-glow); }
-.gb__buy:disabled { opacity: 0.4; cursor: not-allowed; }
 
 .gb__opened { margin: 0; font-size: 0.64rem; color: rgba(232, 236, 241, 0.35); text-align: center; }
 
@@ -854,12 +711,9 @@
  * it is the surface that tells the player what they bought.
  */
 @media (prefers-reduced-motion: reduce) {
-  .gb__eyebrow-pulse,
-  .gb__title,
   .gb-reveal__tag,
   .gb-reveal__item[data-quality-tag]::after,
   .gb__sell-row[data-quality-tag]::after { animation: none; }
-  .gb__title { background-position: 0% 50%; }
   /* The component skips straight to the reveal; all that remains is a fade. */
   .gb-altar__sigil,
   .gb-altar__flame,
@@ -875,8 +729,6 @@
   /* The replacement fade is keyed on .gb-reveal--still, set from script, and
      lives at top level: Angular does not rewrite an animation name that is
      referenced inside a media block, so naming gbFade here would dangle. */
-  .gb__box { transition: none; }
-  .gb__box:hover { transform: none; }
 }
 
 /* Mobile: the wallpaper stack is already thinned below 768px sitewide, and the
@@ -910,9 +762,59 @@
  * and the pulls strip) scrolls inside the reveal, which is already
  * `overflow-y: auto`; its single grid row grows from the top, so nothing is
  * cut off above. */
-.gb--in-world { padding: 0.25rem 0.25rem 1.5rem; }
 .gb-reveal--in-world {
   container-type: size;
   padding: 1rem 0.75rem;
 }
 .gb-reveal--in-world .gb-altar { width: clamp(200px, min(78cqw, 46cqh), 300px); }
+
+/* ── The journal (station kit) ───────────────────────────────────────────────
+ * Frame, tabs, list, detail head and the action row are the kit's. This file
+ * adds only the odds box, the hero's feedback lines and the Details contents. */
+.gbj-hero { display: grid; gap: var(--space-3); }
+.gbj-detail { display: grid; gap: var(--space-3); min-width: 0; }
+.gbj-hero .gb__error { margin: 0; max-width: none; }
+
+.gbj-odds-box {
+  display: grid;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--edge-hairline);
+  background: var(--surface-well);
+}
+.gbj-odds-title { margin: 0; font: var(--type-label); text-transform: uppercase; color: var(--text-muted); }
+.gbj-odds .gb__odd { font-size: var(--text-sm); }
+
+.gbj-mods { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
+.gbj-hint { margin: 0; font-size: var(--text-xs); color: var(--text-muted); }
+
+.gbj-notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--feedback-success);
+  background: color-mix(in srgb, var(--feedback-success) 12%, transparent);
+  color: var(--text-heading);
+  font-size: var(--text-sm);
+}
+
+.gb-reveal__more { margin: 0; font-size: 0.74rem; color: var(--gold); }
+
+.gbj-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+.gbj-details { display: grid; gap: var(--space-6); }
+.gbj-panel { display: grid; gap: var(--space-2); }
+.gbj-panel__title { margin: 0; font: var(--weight-bold) var(--text-md)/1.2 var(--font-ui); color: var(--text-heading); }
+.gbj-panel__hint { margin: 0; font-size: var(--text-sm); color: var(--text-muted); line-height: var(--leading-normal); }
+.gbj-panel .gb__mini { justify-self: start; }
+.gbj-details .gb__opened { text-align: left; }

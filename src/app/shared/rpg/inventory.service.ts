@@ -534,6 +534,75 @@ export class InventoryService {
     return items;
   }
 
+  /**
+   * A craft whose output is a stack (a Delve torch, a ladder): consume the
+   * inputs and grant `quantity` of `stackKey` in ONE ledger write, the same
+   * invariant as `craftRecipe`. Idempotent on `mutationId` (every op id is
+   * derived from it); `stackCraftedFor` answers "already settled?" before a
+   * caller's own pre-flight, for the same reason `craftedFor` exists.
+   */
+  craftStack(
+    mutationId: string,
+    inputs: readonly { id: string; count: number }[],
+    stackKey: string,
+    quantity: number,
+  ):
+    | { ok: true; replayed: boolean }
+    | { ok: false; code: 'ssr' | 'clock' | 'missing' | 'capacity' | 'persist' } {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    if (!mutationId || !inputs.length || !stackKey || quantity < 1) return { ok: false, code: 'clock' };
+    if (this.stackCraftedFor(mutationId)) return { ok: true, replayed: true };
+    for (const input of inputs) {
+      if (input.count <= 0) return { ok: false, code: 'clock' };
+      if (this.stackOf(input.id) < input.count) return { ok: false, code: 'missing' };
+    }
+    if (!this.canAcceptStackGrant(stackKey)) return { ok: false, code: 'capacity' };
+
+    const previous = this.ledger;
+    let stackOps = this.ledger.stackOps;
+    for (const input of inputs) {
+      const stepped = this.advanceRevision();
+      stackOps = applyStackOp(stackOps, {
+        id: `${mutationId}:in:${input.id}`, stackKey: input.id, kind: 'consume', quantity: input.count,
+        hlc: stepped.revision.hlc, deviceId: stepped.revision.deviceId, sequence: stepped.revision.sequence,
+      });
+    }
+    const stepped = this.advanceRevision();
+    stackOps = applyStackOp(stackOps, {
+      id: `${mutationId}:out`, stackKey, kind: 'grant', quantity,
+      hlc: stepped.revision.hlc, deviceId: stepped.revision.deviceId, sequence: stepped.revision.sequence,
+    });
+    let records = this.ledger.records;
+    if (!records.some(row => row.kind === 'stack' && row.stackKey === stackKey && row.source === 'inventory')) {
+      const row: OwnedItemStack = {
+        id: `stack:${stackKey}`, definitionId: stackKey, kind: 'stack', category: 'materials', tags: ['material', stackKey],
+        soulbound: false, acquiredAt: new Date().toISOString(), revision: stepped.revision, source: 'inventory', stackKey,
+        location: { kind: 'bag' },
+      };
+      records = [...records, row];
+    }
+    this.ledger = { ...this.ledger, records, stackOps };
+    for (const input of inputs) {
+      if (this.stackOf(input.id) < 0) {
+        this.ledger = previous;
+        return { ok: false, code: 'missing' };
+      }
+    }
+    if (!this.save()) {
+      this.ledger = previous;
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    this.stackGranted$$.next({ stackKey, quantity });
+    return { ok: true, replayed: false };
+  }
+
+  /** True when a `craftStack` under this mutation id has already landed. */
+  stackCraftedFor(mutationId: string): boolean {
+    const id = `${mutationId}:out`;
+    return !!mutationId && this.ledger.stackOps.some(op => op.id === id);
+  }
+
   /** What a recipe is still short of, for the bench's ingredient slots. */
   missingInputs(
     inputs: readonly { id: string; count: number }[],

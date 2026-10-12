@@ -76,6 +76,8 @@ export interface CraftSuccess {
   progress: CraftingProgress | null;
   /** True when the same mutation id had already been settled. */
   replayed: boolean;
+  /** A stack recipe's grant (a Delve placeable); `items` is then empty. */
+  stack?: { stackKey: string; quantity: number };
   /** The mastery bonus applied to this craft's rolls. 0 before mastery. */
   masteryBonus: number;
 }
@@ -126,6 +128,7 @@ export class CraftingGateway {
 
     const recipe = craftingRecipeById(recipeId);
     if (!recipe) return { ok: false, code: 'unknown-recipe' };
+    if (recipe.output.stack) return this.craftStack(recipe, mutationId, now);
 
     // Replay is checked before the pre-flight, and the order is load-bearing.
     // A settled craft has already eaten its materials, so `blocker` would report
@@ -206,6 +209,34 @@ export class CraftingGateway {
   }
 
   /**
+   * A stack recipe (the Delve kit): the same order as a mint — replay first,
+   * then the pre-flight, then one ledger write that consumes the inputs and
+   * grants the stack, then Gold, then the ladder and the log.
+   */
+  private craftStack(recipe: CraftingRecipe, mutationId: string, now: number): CraftResult {
+    const stack = { stackKey: recipe.output.itemId, quantity: recipe.output.count };
+    const replay = (): CraftResult => ({
+      ok: true, recipe, items: [], quality: null, goldSpent: 0, progress: null, replayed: true,
+      masteryBonus: this.crafting.masteryBonus(recipe.id), stack,
+    });
+    if (this.inventory.stackCraftedFor(mutationId)) return replay();
+    const blocked = this.blocker(recipe);
+    if (blocked) return { ok: false, code: blocked };
+    const crafted = this.inventory.craftStack(
+      mutationId, recipe.ingredients.map(row => ({ id: row.materialId, count: row.count })), stack.stackKey, stack.quantity,
+    );
+    if (!crafted.ok) return { ok: false, code: crafted.code === 'clock' ? 'persist' : crafted.code };
+    if (crafted.replayed) return replay();
+    const paid = recipe.goldCost > 0 ? this.economy.spendGold(recipe.goldCost, 'crafting') : true;
+    const progress = this.crafting.recordCraft(recipe);
+    this.collection.discover(recipeCollectionId(recipe.id), 1, now);
+    return {
+      ok: true, recipe, items: [], quality: null, goldSpent: paid ? recipe.goldCost : 0, progress, replayed: false,
+      masteryBonus: this.crafting.masteryBonus(recipe.id), stack,
+    };
+  }
+
+  /**
    * A mission-taught pattern is open once its mission is claimed, and stays
    * open for anyone who had already crafted it before the gate existed.
    */
@@ -214,6 +245,8 @@ export class CraftingGateway {
   }
 
   private roomFor(recipe: CraftingRecipe): boolean {
+    // A stack needs one row at most, and none when the satchel already holds some.
+    if (recipe.output.stack) return this.inventory.canAcceptStackGrant(recipe.output.itemId);
     // `canAcceptInstance` answers for one row, and a recipe that yields two
     // needs two. `usedRows` counts exactly what `craftRecipe`'s own capacity
     // check counts — inventory-source records, stacks included — so the bench's

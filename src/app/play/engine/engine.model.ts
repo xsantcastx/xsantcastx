@@ -1,6 +1,6 @@
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
-import type { WorldActionKind } from './terrain';
+import type { PlaceableId, WorldActionKind } from './terrain';
 /** `down` aims a delve swing (or blast) below the Keeper; `blast` channels the staff. */
 export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge' | 'down' | 'blast';
 export type InteractionTarget = 'ore' | 'forge' | 'beacon' | 'passage';
@@ -63,6 +63,21 @@ export interface EngineOptions {
    */
   onDiscover?: (event: DiscoverEvent) => void;
   /**
+   * The Keeper is about to place one `item` from the satchel. Take it (one
+   * idempotent consume keyed by `mutationId`, unique per placement) and return
+   * true; return false to refuse (none left, a failed save) and say why. The
+   * cell is only filled after a yes. Absent: every placement is free (tests).
+   */
+  onPlace?: (event: PlaceEvent) => boolean | void;
+  /**
+   * The Keeper takes a placed thing back (X, or a long-press on it): grant one
+   * `item` back to the satchel (idempotent on `mutationId`) and return true,
+   * or false to refuse (a chest with things in it) and say why. Absent: free.
+   */
+  onTakeBack?: (event: PlaceEvent) => boolean | void;
+  /** A placed chest or camp was used (E beside it, or a tap on it). The host opens it. */
+  onUse?: (event: UseEvent) => void;
+  /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
    * state lives for the engine session. Settable later with `setDelve()`.
@@ -87,6 +102,25 @@ export interface DelvePersistence {
   cells(areaId: string, layout: string): ReadonlyMap<number, number> | null;
   /** A cell changed. `kind` null: it is back to what the seed generated. Debounce on the host side. */
   changed(areaId: string, layout: string, index: number, kind: number | null): void;
+  /** Whether a once-per-player flag (a felled guardian, a paid find) is set. Optional: absent = never. */
+  isClaimed?(id: string): boolean;
+  /** Set a once-per-player flag, saved at once. Optional: absent = this session only. */
+  claim?(id: string): boolean;
+}
+export interface PlaceEvent {
+  item: PlaceableId;
+  areaId: string;
+  /** `col,row` of the cell it goes into (or comes out of). */
+  cellKey: string;
+  /** The same cell as an index into the area's terrain (what chests are filed by). */
+  index: number;
+  mutationId: string;
+}
+export interface UseEvent {
+  kind: 'chest' | 'camp';
+  areaId: string;
+  cellKey: string;
+  index: number;
 }
 export interface WorldActionEvent {
   kind: WorldActionKind;
@@ -99,6 +133,12 @@ export interface WorldActionEvent {
   discipline: DisciplineId;
   xp: number;
   mutationId: string;
+  /**
+   * The placeable stack the break drops (dirt → 'dirt-block'), to grant after
+   * the break is accepted, keyed `${mutationId}:block`. A full satchel just
+   * loses the block; it never stops the dig.
+   */
+  block?: PlaceableId;
 }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }

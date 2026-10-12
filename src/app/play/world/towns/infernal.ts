@@ -7,6 +7,7 @@
  * to Ember Quarry. This file is the template Phase 2 towns copy.
  */
 import { FLOOR } from '../../engine/engine.model';
+import { WARDEN_FLAG } from '../../engine/terrain';
 import { HOMESTEAD, HOMESTEAD_GATE } from '../homestead';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
@@ -97,8 +98,9 @@ export const EMBER_DELVE: HuntZoneDef = {
     { creature: 'rivet-maw', name: 'Magma Maw', hp: 110, spawnXs: [delveCol(38), delveCol(50)],
       floorY: delveRow(49), range: [delveCol(30) + 40, delveCol(61) - 40] },
     // The fragment chamber's guardian. Stand-in art: the Mirror Substitute's painting and rig.
+    // Felled once per player: it never rises again, and its fall unseals the fragment.
     { creature: 'mirror-substitute', name: 'Rune-Warden', hp: 260, spawnXs: [delveCol(100)],
-      floorY: delveRow(51), range: [delveCol(92) + 30, delveCol(108) - 30] },
+      floorY: delveRow(51), range: [delveCol(92) + 30, delveCol(108) - 30], once: WARDEN_FLAG },
   ],
   drops: SEAMWORKS_DROPS,
   spawnX: 260,
@@ -185,6 +187,10 @@ export const EMBER_DELVE: HuntZoneDef = {
       { col: 48, row: 14, w: 39, h: 5, node: 'air' },
       { col: 47, row: 19, w: 41, h: 1, node: 'bedrock' },
       { col: 50, row: 18, node: 'ember-rock' }, { col: 62, row: 13, node: 'ember-rock' }, { col: 74, row: 18, node: 'ember-rock' }, { col: 84, row: 14, node: 'ember-rock' },
+      // Kael's old cache at the cavern's east end: his lost hammer (once per player).
+      // Placed in a cell every seed already carves to air, so no saved diff can
+      // name it: `version` stays put and nobody's dig is dropped.
+      { col: 85, row: 18, node: 'kaels-cache' },
       // The sealed pocket: cracked walls round a hollow, the cache on its floor.
       { col: 100, row: 21, w: 7, h: 5, node: 'cracked-wall' },
       { col: 101, row: 22, w: 5, h: 3, node: 'air' },

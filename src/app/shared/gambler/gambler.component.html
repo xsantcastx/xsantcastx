@@ -1,117 +1,175 @@
-<!-- The Gambler. Same three-layer pattern as the Market: art scene, gradient
-     overlay inside the component, everything else above it. -->
-<section class="gb" [class.gb--in-world]="inWorld" [attr.aria-label]="inWorld ? 'The Gambler' : null">
+<!-- The Gambler on the station kit: Boxes · Sell → list → the selected box.
+     The reveal below the shell is unchanged — it is the payoff. -->
+<app-station-shell class="gb"
+                   [title]="'The Gambler'"
+                   [showTitle]="!inWorld"
+                   [detailsHint]="'Box stories, bad luck protection, the till and reveal speed'"
+                   [(detailsOpen)]="detailsOpen">
 
-  <!-- In the world the panel already names the place. -->
-  @if (!inWorld) {
-  <header class="gb__hero">
-    <span class="gb__sigil" aria-hidden="true">✦</span>
-    <p class="gb__eyebrow"><span class="gb__eyebrow-pulse"></span>SEALED &amp; UNOPENED</p>
-    <h1 class="gb__title">The Gambler</h1>
-    <p class="gb__tagline">every box holds one thing, and the realms will not say which</p>
-  </header>
-  }
+  <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
 
-  <div class="gb__wallet">
-    <span class="gb__coin"><b>{{ compact(gold) }}</b> Gold</span>
-    <span class="gb__coin gb__coin--muted"><b>{{ compact(spent) }}</b> spent here</span>
-    <span class="gb__coin gb__coin--muted" *ngIf="uniquesFound"><b>{{ uniquesFound }}</b> named found</span>
-  </div>
+  <app-station-tabs stationTabs [tabs]="tabs" [active]="tab" (activeChange)="setTab($event)" [label]="'Gambler'" />
 
-  <p class="gb__error" *ngIf="error" role="alert">{{ error }}</p>
+  <app-skill-strip stationSkill
+    [art]="stage.sigil"
+    [title]="'Luck'"
+    [progress]="luckProgress"
+    [progressLabel]="luckLabel"
+    [hint]="tab === 'sell' ? 'Turn what you do not want back into Gold for the next box.' : 'Pay Gold, open a sealed box, keep what is inside.'" />
 
-  <div class="gb__table">
+  <div stationHero class="gbj-hero">
+    @if (error) { <p class="gb__error" role="alert">{{ error }}</p> }
+    @if (notice) { <p class="gbj-notice" role="status">{{ notice }}</p> }
+
+    @if (tab === 'boxes') {
+      <app-station-journal>
+        <app-journal-list journalList [rows]="boxRows" [selected]="selectedBox?.id ?? null"
+                          [label]="'Boxes'" (pick)="pickBox($event)" />
+
+        <div journalDetail class="gbj-detail">
+          @if (selectedBox; as box) {
+            <app-detail-head [art]="boxArt" [name]="box.name" [rarity]="box.maxRarity"
+                             [line]="'Open 1 ' + box.name" />
+
+            <!-- The rarity window, before you buy. Never after. -->
+            <div class="gbj-odds-box">
+              <p class="gbj-odds-title">What can come out</p>
+              <ul class="gb__odds gbj-odds">
+                @for (row of selectedOdds; track row.rarity) {
+                  <li class="gb__odd" [style.color]="row.color">
+                    <span class="gb__odd-dot" [style.background]="row.color"></span>
+                    {{ row.label }} <b>{{ row.text }}</b>
+                  </li>
+                }
+              </ul>
+            </div>
+
+            <app-action-button
+              class="gb__buy"
+              [label]="'Open'"
+              [costs]="boxCosts"
+              [blocked]="openBlocked"
+              [pending]="!hydrated"
+              [allCount]="openAllCount"
+              [allLabel]="openAllCount ? 'Open' : null"
+              (act)="open(box)"
+              (actAll)="openMany(box, $event)"
+              (refused)="announce = $event" />
+          }
+        </div>
+      </app-station-journal>
+    } @else {
+      <app-station-journal>
+        <app-journal-list journalList [rows]="sellJournal" [selected]="selectedSellId"
+                          [label]="'Sellable items'" [empty]="'Nothing in the bag the till will take.'"
+                          (pick)="pickSell($event)" />
+
+        <div journalDetail class="gbj-detail">
+          @if (selectedSell; as row) {
+            <app-detail-head [art]="sellArt" [name]="row.item.name" [rarity]="row.item.rarity"
+                             [line]="'Sell for ' + compact(row.item.sellValue) + ' Gold'" />
+            @if (mods(row.item).length) {
+              <p class="gbj-mods">{{ mods(row.item).join(' · ') }}</p>
+            }
+          }
+          <app-action-button
+            [label]="'Sell'"
+            [blocked]="selectedSell ? null : 'Pick something to sell.'"
+            [pending]="!hydrated"
+            [allCount]="junkIds.length"
+            [allLabel]="!junkIds.length ? null : junkArmed ? 'Tap again to sell junk' : 'Sell junk'"
+            (act)="sellSelected()"
+            (actAll)="sellJunk()"
+            (refused)="announce = $event" />
+          @if (junkIds.length) { <p class="gbj-hint">Junk = every graded roll under 50%.</p> }
+        </div>
+      </app-station-journal>
+    }
+
     <ng-container *ngTemplateOutlet="pulls"></ng-container>
-    <button type="button" class="gb__mini gb__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
-      Fast reveal {{ fast ? 'on' : 'off' }}
-    </button>
   </div>
 
-  <!-- ── The shelf ──────────────────────────────────────────────────────── -->
-  <ul class="gb__shelf">
-    <li class="gb__box" *ngFor="let box of boxes; trackBy: trackBox"
-        [style.--box-accent]="box.accent" [style.--box-glow]="box.glow">
-      <div class="gb__lid" aria-hidden="true"></div>
-      <h2 class="gb__box-name">{{ box.name }}</h2>
-      <p class="gb__box-blurb">{{ box.blurb }}</p>
+  <p class="gbj-sr" aria-live="polite">{{ announce }}</p>
 
-      <!-- The rarity window, before you buy. Never after. -->
-      <ul class="gb__odds">
-        <li class="gb__odd" *ngFor="let row of oddsFor(box); trackBy: trackOdds" [style.color]="row.color">
-          <span class="gb__odd-dot" [style.background]="row.color"></span>
-          {{ row.label }} <b>{{ row.text }}</b>
-        </li>
-      </ul>
+  <!-- ── Details: everything else, closed by default ───────────────────── -->
+  <div stationDetails class="gbj-details">
+    @if (selectedBox; as box) {
+      <section class="gbj-panel">
+        <h2 class="gbj-panel__title">{{ box.name }}</h2>
+        <p class="gbj-panel__hint">{{ box.blurb }}</p>
+        <!-- Bad luck protection, stated as a number rather than a promise. -->
+        <p class="gb__pity" [class.gb__pity--armed]="guaranteed(box)">
+          @if (guaranteed(box)) {
+            Next one is guaranteed above {{ rarityLabel(box.minRarity) }}.
+          } @else {
+            {{ pityLeft(box) }} more {{ rarityLabel(box.minRarity) }} in a row and the next is guaranteed better.
+          }
+        </p>
+        @if (openedCount(box)) { <p class="gbj-panel__hint gb__opened">{{ openedCount(box) }} opened</p> }
+      </section>
+    }
 
-      <!-- Bad luck protection, stated as a number rather than a promise. -->
-      <p class="gb__pity" [class.gb__pity--armed]="guaranteed(box)">
-        <ng-container *ngIf="guaranteed(box); else pityCounting">
-          ✦ Next one is guaranteed above {{ rarityLabel(box.minRarity) }}
-        </ng-container>
-        <ng-template #pityCounting>
-          {{ pityLeft(box) }} more {{ rarityLabel(box.minRarity) }} in a row and the next is guaranteed better
-        </ng-template>
+    <section class="gbj-panel">
+      <h2 class="gbj-panel__title">Your table</h2>
+      <p class="gbj-panel__hint">
+        <b>{{ compact(spent) }}</b> Gold spent here@if (uniquesFound) { · <b>{{ uniquesFound }}</b> named found }
       </p>
-
-      <button type="button" class="gb__buy"
-              [disabled]="!affordable(box) || phase !== 'idle'"
-              (click)="open(box)">
-        Open — {{ compact(box.cost) }} Gold
+      <button type="button" class="gb__mini gb__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
+        Fast reveal {{ fast ? 'on' : 'off' }}
       </button>
-      <p class="gb__opened" *ngIf="openedCount(box)">{{ openedCount(box) }} opened</p>
-    </li>
-  </ul>
+    </section>
 
-  <!-- ── The till ───────────────────────────────────────────────────────── -->
-  <section class="gb__till">
-    <button type="button" class="gb__till-toggle" (click)="toggleTill()"
-            [attr.aria-expanded]="sellOpen">
-      <span>The Till</span>
-      <span class="gb__till-count">{{ sellRows.length }} sellable</span>
-      <span class="gb__till-caret" aria-hidden="true">{{ sellOpen ? '▴' : '▾' }}</span>
-    </button>
+    <!-- ── The till: pick many ─────────────────────────────────────────── -->
+    <section class="gb__till">
+      <button type="button" class="gb__till-toggle" (click)="toggleTill()"
+              [attr.aria-expanded]="sellOpen">
+        <span>The Till · pick many</span>
+        <span class="gb__till-count">{{ sellRows.length }} sellable</span>
+        <span class="gb__till-caret" aria-hidden="true">{{ sellOpen ? '▴' : '▾' }}</span>
+      </button>
 
-    <div class="gb__till-body" *ngIf="sellOpen">
-      <p class="gb__till-note">
-        A sale pays the sticker price scaled by the roll — half for a dud, one and
-        a half for a maxed one, and three times over for a Perfect.
-      </p>
+      <div class="gb__till-body" *ngIf="sellOpen">
+        <p class="gb__till-note">
+          A sale pays the sticker price scaled by the roll — half for a dud, one and
+          a half for a maxed one, and three times over for a Perfect.
+        </p>
 
-      <div class="gb__till-actions">
-        <button type="button" class="gb__mini" (click)="selectPoor()">Select every roll under 50%</button>
-        <button type="button" class="gb__mini" (click)="clearSelection()" [disabled]="!selectedCount">Clear</button>
+        <div class="gb__till-actions">
+          <button type="button" class="gb__mini" (click)="selectPoor()">Select every roll under 50%</button>
+          <button type="button" class="gb__mini" (click)="clearSelection()" [disabled]="!selectedCount">Clear</button>
+        </div>
+
+        <ul class="gb__sell-list" *ngIf="sellRows.length; else nothingToSell">
+          <li class="gb__sell-row" *ngFor="let row of sellRows; trackBy: trackRow"
+              [attr.data-quality-tag]="tagOf(row.item)">
+            <label class="gb__sell-label">
+              <input type="checkbox" [checked]="row.selected" (change)="toggleRow(row)">
+              <span class="gb__sell-name" [style.color]="rarityColor(row.item.rarity)">
+                {{ row.item.name }}
+                <b class="gb__sell-lvl" *ngIf="row.item.upgradeLevel">+{{ row.item.upgradeLevel }}</b>
+              </span>
+              <span class="gb__sell-mods">{{ mods(row.item).join(' · ') }}</span>
+              <span class="gb__sell-q" [style.color]="qualityColor(row.item)">{{ qualityText(row.item) }}</span>
+              <span class="gb__sell-gold">{{ compact(row.item.sellValue) }}</span>
+            </label>
+          </li>
+        </ul>
+        <ng-template #nothingToSell>
+          <p class="gb__till-empty">Nothing in the bag the till will take.</p>
+        </ng-template>
+
+        <div class="gb__sell-bar" *ngIf="selectedCount">
+          <span>{{ selectedCount }} selected — <b>{{ compact(selectedGold) }} Gold</b></span>
+          <button type="button" class="gb__sell-go" (click)="confirmSell()">Sell them</button>
+        </div>
       </div>
+    </section>
 
-      <ul class="gb__sell-list" *ngIf="sellRows.length; else nothingToSell">
-        <li class="gb__sell-row" *ngFor="let row of sellRows; trackBy: trackRow"
-            [attr.data-quality-tag]="tagOf(row.item)">
-          <label class="gb__sell-label">
-            <input type="checkbox" [checked]="row.selected" (change)="toggleRow(row)">
-            <span class="gb__sell-name" [style.color]="rarityColor(row.item.rarity)">
-              {{ row.item.name }}
-              <b class="gb__sell-lvl" *ngIf="row.item.upgradeLevel">+{{ row.item.upgradeLevel }}</b>
-            </span>
-            <span class="gb__sell-mods">{{ mods(row.item).join(' · ') }}</span>
-            <span class="gb__sell-q" [style.color]="qualityColor(row.item)">{{ qualityText(row.item) }}</span>
-            <span class="gb__sell-gold">{{ compact(row.item.sellValue) }}</span>
-          </label>
-        </li>
-      </ul>
-      <ng-template #nothingToSell>
-        <p class="gb__till-empty">Nothing in the bag the till will take.</p>
-      </ng-template>
-
-      <div class="gb__sell-bar" *ngIf="selectedCount">
-        <span>{{ selectedCount }} selected — <b>{{ compact(selectedGold) }} Gold</b></span>
-        <button type="button" class="gb__sell-go" (click)="confirmSell()">Sell them</button>
-      </div>
-    </div>
-  </section>
-
-  @if (!inWorld) {
-  <p class="gb__back"><a routerLink="/market">← Back to the Market</a></p>
-  }
-</section>
+    @if (!inWorld) {
+      <p class="gb__back"><a routerLink="/market">← Back to the Market</a></p>
+    }
+  </div>
+</app-station-shell>
 
 <!-- ── The reveal ────────────────────────────────────────────────────────────
      Full-viewport, above everything, and dismissible from three places: the
@@ -192,6 +250,7 @@
       <div class="gb-reveal__card">
         <p class="gb-reveal__pity" *ngIf="shown.pityApplied">Bad luck protection paid out</p>
         <p class="gb-reveal__named" *ngIf="shown.unique">A named object</p>
+        <p class="gb-reveal__more" *ngIf="extraPulls">The best of {{ extraPulls + 1 }} boxes. The other {{ extraPulls }} are in your bag too.</p>
 
         <p class="gb-reveal__rarity" [style.color]="revealColor">{{ revealRarityLabel }}</p>
         <h2 class="gb-reveal__name">{{ shown.item.name }}</h2>
