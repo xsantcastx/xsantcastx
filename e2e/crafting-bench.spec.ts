@@ -7,9 +7,9 @@
  *   1. The catalogue reaches the screen. A recipe wall built from pure data at
  *      construction is only useful if it survives SSR, hydration and the route
  *      chunk actually loading.
- *   2. The anvil gate holds. `Strike` must be disabled until every slot is
- *      loaded, and loading is what the drag-and-drop and the Load buttons both
- *      end in.
+ *   2. The one button tells the truth. It names the recipe and its price, and
+ *      when you cannot pay it says exactly what you are short of — no separate
+ *      "load the anvil" step any more (the station redesign removed it).
  *   3. A craft settles across four ledgers. The materials leave the bag, the
  *      Gold leaves the ledger, the item arrives with a rolled grade and the
  *      crafting level moves — and the only place all four are observable at
@@ -74,14 +74,23 @@ async function open(page: Page): Promise<void> {
       || style.visibility === 'hidden'
       || style.opacity === '0';
   }, { timeout: 8000 });
-  await expect(page.locator('.cb-anvil')).toBeVisible();
+  await expect(page.locator('.cb-hero')).toBeVisible();
 }
+
+/** The station's collapsed Details drawer holds the recipe book and the ladder. */
+async function openDetails(page: Page) {
+  await page.getByText('Details', { exact: true }).click();
+}
+
+const craftButton = (page: Page) => page.locator('.cb-hero .ab__btn');
+const itemCounts = (page: Page) => page.locator('.cb-hero app-requirement-grid').nth(1).locator('.rg__count');
 
 test.describe('the crafting bench', () => {
   test('shows the whole catalogue, locked recipes included', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
 
+    await openDetails(page);
     // Every recipe is on the wall, including the ones the level gate refuses —
     // you cannot work toward something you cannot see.
     const cards = page.locator('.cb-card');
@@ -97,64 +106,61 @@ test.describe('the crafting bench', () => {
     expect(await cards.count()).toBeGreaterThanOrEqual(30);
   });
 
-  test('will not strike an anvil that has not been loaded', async ({ page }) => {
+  test('one button: craftable now, or says exactly what is missing', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
 
-    const strike = page.getByRole('button', { name: /Strike the anvil/ });
-    await expect(strike).toBeDisabled();
-    await expect(page.locator('.cb-blocker')).toContainText('Load every slot before you strike.');
+    // The default pick is something you can make right now.
+    await expect(page.locator('.cb-hero .dh__name')).toHaveText(RECIPE_NAME);
+    await expect(craftButton(page)).toBeEnabled();
+    await expect(page.locator('.ab__why')).toHaveCount(0);
 
-    await page.getByRole('button', { name: 'Load the anvil' }).click();
-    await expect(page.locator('.cb-slot.is-loaded')).toHaveCount(3);
-    await expect(strike).toBeEnabled();
-
-    // Clearing puts it back.
-    await page.getByRole('button', { name: 'Clear' }).click();
-    await expect(strike).toBeDisabled();
+    // Pick something the bag cannot pay for: the button names the shortfall.
+    await openDetails(page);
+    await page.getByPlaceholder('Search recipes and materials').fill('voidweave');
+    await page.locator('.cb-card').first().click();
+    await expect(page.locator('.cb-hero .ab__why')).toHaveText(/^(Need \d[\d,.KMB]* more .+|Reach crafting level \d+ first)$/);
+    await expect(page.locator('.cb-hero .ab__btn')).toHaveAttribute('aria-disabled', 'true');
   });
 
   test('crafts, consumes, pays and moves the ladder', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
 
-    await expect(page.locator('.cb-out__name')).toHaveText(RECIPE_NAME);
-    await expect(page.locator('.cb-ladder__stats')).toContainText('0 / 52');
+    await expect(page.locator('.cb-hero .dh__name')).toHaveText(RECIPE_NAME);
+    await craftButton(page).click();
 
-    await page.getByRole('button', { name: 'Load the anvil' }).click();
-    await page.getByRole('button', { name: /Strike the anvil/ }).click();
-
-    // Briarvein Kris carries a three-second anvil beat, so the result panel is
+    // Briarvein Kris carries a three-second anvil beat, so the reward card is
     // the thing to wait on rather than a fixed timeout.
-    const result = page.locator('.cb-result');
-    await expect(result).toBeVisible({ timeout: 15_000 });
-    await expect(result).toContainText(RECIPE_NAME);
-    await expect(result).toContainText('It is in your bag.');
+    const reward = page.locator('.rp');
+    await expect(reward).toBeVisible({ timeout: 15_000 });
+    await expect(reward).toContainText(RECIPE_NAME);
 
-    // 24 - 6, 12 - 3, 8 - 2.
-    await expect(page.locator('.cb-slot__count').nth(0)).toHaveText('18 / 6');
-    await expect(page.locator('.cb-slot__count').nth(1)).toHaveText('9 / 3');
-    await expect(page.locator('.cb-slot__count').nth(2)).toHaveText('6 / 2');
+    // 24 - 6, 12 - 3, 8 - 2 — the Required items grid (Gold is cell 0).
+    await expect(itemCounts(page).nth(1)).toHaveText('18/6');
+    await expect(itemCounts(page).nth(2)).toHaveText('9/3');
+    await expect(itemCounts(page).nth(3)).toHaveText('6/2');
 
     // One craft, one recipe known, XP on the board, mastery counting.
+    await openDetails(page);
     await expect(page.locator('.cb-ladder__stats')).toContainText('1 / 52');
     await expect(page.locator('.cb-ladder__stats')).toContainText('30');
     await expect(page.locator('.cb-mastery__line')).toContainText('1 / 10');
 
     const shotDir = resolve('test-results/crafting-bench');
     mkdirSync(shotDir, { recursive: true });
-    await page.locator('.cb-anvil').screenshot({ path: resolve(shotDir, 'desktop-crafted.png') });
+    await page.locator('.cb-hero').screenshot({ path: resolve(shotDir, 'desktop-crafted.png') });
   });
 
   test('the ladder survives a reload', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
-    await page.getByRole('button', { name: 'Load the anvil' }).click();
-    await page.getByRole('button', { name: /Strike the anvil/ }).click();
-    await expect(page.locator('.cb-result')).toBeVisible({ timeout: 15_000 });
+    await craftButton(page).click();
+    await expect(page.locator('.rp')).toBeVisible({ timeout: 15_000 });
 
     await page.reload({ waitUntil: 'load' });
-    await expect(page.locator('.cb-anvil')).toBeVisible();
+    await expect(page.locator('.cb-hero')).toBeVisible();
+    await openDetails(page);
     await expect(page.locator('.cb-ladder__stats')).toContainText('1 / 52');
   });
 
@@ -180,11 +186,10 @@ test.describe('the crafting bench', () => {
     );
     expect(small).toEqual([]);
 
-    await page.getByRole('button', { name: 'Load the anvil' }).click();
-    await expect(page.getByRole('button', { name: /Strike the anvil/ })).toBeEnabled();
+    await expect(craftButton(page)).toBeEnabled();
 
     const shotDir = resolve('test-results/crafting-bench');
     mkdirSync(shotDir, { recursive: true });
-    await page.locator('.cb-anvil').screenshot({ path: resolve(shotDir, 'mobile-anvil.png') });
+    await page.locator('.cb-hero').screenshot({ path: resolve(shotDir, 'mobile-hero.png') });
   });
 });

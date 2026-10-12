@@ -50,7 +50,7 @@ test.describe('the ALL button', () => {
   test('offers every strike the purse covers, not a capped thousand', async ({ page }) => {
     // 4,000 strikes' worth — four times the old cap, so a clamp would show.
     await openForge(page, 4_000);
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     const all = page.locator('.rf-acts__btn').filter({ hasText: /ALL/i }).first();
     // Four thousand strikes' worth, compacted the way the rest of the game
     // renders large numbers. The old cap would have shown ×1000 here whatever
@@ -61,7 +61,7 @@ test.describe('the ALL button', () => {
   test('drains the purse when it runs', async ({ page }) => {
     test.setTimeout(120_000);
     await openForge(page, 400);
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
 
     // A range, not an equality: Gold accrues on an idle timer while the page
     // is open, so the purse is never exactly the seeded figure by the time the
@@ -87,7 +87,7 @@ test.describe('the ALL button', () => {
     // The reveal must not try to paint four hundred thumbnails — and the run
     // must not have kept four hundred finds in order to offer them.
     await openForge(page, 400);
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     await page.locator('.rf-acts__btn').filter({ hasText: /ALL/i }).first().click();
     await expect(page.locator('.rf-acts__btn--again')).toBeVisible({ timeout: 110_000 });
 
@@ -100,7 +100,7 @@ test.describe('the ALL button', () => {
 
   test('Stop banks what landed and leaves the rest of the purse alone', async ({ page }) => {
     await openForge(page, 4_000);
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     await page.locator('.rf-acts__btn').filter({ hasText: /ALL/i }).first().click();
 
     await page.locator('.rf-acts__btn--stop').click({ timeout: 10_000 });

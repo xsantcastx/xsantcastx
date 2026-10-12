@@ -14,83 +14,77 @@
 
 <div class="rf" [class.rf--focus]="striking || landed">
 
-  <header class="rf-head">
-    @if (!inWorld) {
-    <div class="rf-head__copy">
-      <h1 class="rf-title">{{ t('forge.title') }}</h1>
-      <p class="rf-tag">{{ t('forge.tag') }}</p>
-      <!-- The in-world doorway to the bench. The tome lists it too, because a
-           room reachable only from inside its parent hall reads as a dead page
-           to anyone who arrives anywhere else. -->
-      <p class="rf-bench"><a routerLink="/forge/crafting">{{ t('forge.benchLink') }}</a></p>
-      <p class="rf-bench"><a routerLink="/forge/enchanting">{{ t('forge.tableLink') }}</a></p>
-    </div>
-    }
-    <dl class="rf-head__wallet">
-      <div>
-        <dt>{{ t('forge.stat.gold') }}</dt>
-        <dd>{{ money(gold) }}</dd>
-      </div>
-      <div>
-        <dt>{{ t('forge.stat.forges') }}</dt>
-        <dd>{{ strikes }}</dd>
-      </div>
-    </dl>
-  </header>
+<app-station-shell
+  [title]="t('forge.title')"
+  [showTitle]="!inWorld"
+  [detailsLabel]="t('forge.details.label')"
+  [detailsHint]="t('forge.details.hint')"
+  [(detailsOpen)]="detailsOpen">
 
-  <!-- The forge floor: watch the anvil work. Decorative; results are announced below. -->
+  <div stationWallet class="rf-wallet">
+    <app-cost-chip [cost]="walletGold" [quiet]="true" />
+    <!-- The fanfare's switch sits by the purse: a preference nobody can find is a preference nobody has. -->
+    <app-celebration-sound-toggle></app-celebration-sound-toggle>
+  </div>
+
+  @if (!inWorld) {
+    <app-station-tabs stationTabs [tabs]="forgeTabs" [active]="'runes'" [label]="t('stationUi.forgeTabs')" />
+  }
+
+  <app-skill-strip stationSkill
+    [art]="forgeArt"
+    [title]="t('forge.skill.title')"
+    [progress]="totalRunes ? unique / totalRunes : 0"
+    [progressLabel]="t('forge.found', { n: unique, total: totalRunes })"
+    [hint]="t('forge.purpose')" />
+
+  <!-- ── The one thing: strike the forge ──────────────────────────────── -->
+  <div stationHero class="rf-hero" #rollAnchor>
+    <app-station-journal [single]="true">
+      <div journalDetail class="rf-detail-pane">
+        <app-detail-head [art]="forgeArt" [name]="t('forge.randomRune')" [rarity]="'rare'"
+                         [line]="t(strikeQty === 1 ? 'forge.strikeOne' : 'forge.strikeN', { n: strikeQty })" [working]="rolling" />
+        <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="strikeCosts" [minCells]="2" [pending]="!hydrated" />
+        <app-action-button
+          [label]="t('forge.cta')"
+          [costs]="strikeCosts"
+          chips="none"
+          [pending]="!hydrated"
+          [loading]="rolling"
+          [loadingLabel]="t('forge.roll.progress', { done: bulkDone, total: bulkTotal })"
+          [progress]="bulkTotal ? bulkDone / bulkTotal : null"
+          [stepper]="true"
+          [(quantity)]="strikeQty"
+          [allCount]="allRolls"
+          [allLabel]="t('forge.strikeAll')"
+          (act)="strikeQtyPressed($event)"
+          (actAll)="strikeMany($event)" />
+      </div>
+    </app-station-journal>
+  </div>
+
+  <!-- The forge floor: watch the anvil work. Decorative; results are announced. -->
   <app-forge-floor class="rf-floor" [active]="'runes'" [working]="rolling" [event]="floorEvent"></app-forge-floor>
 
-  <div class="rf-roll" #rollAnchor>
-    <button
-      type="button"
-      class="rf-strike"
-      [disabled]="!canStrike"
-      (click)="strike()">
-      <span class="rf-strike__label">{{ t('forge.roll') }}</span>
-      <span class="rf-strike__cost">
-        @if (!canAfford && !striking) {
-          {{ t('forge.roll.need', { gold: money(goldShort) }) }}
-        } @else {
-          {{ money(strikeCost) }} {{ t('forge.stat.gold') }}
-        }
-      </span>
-    </button>
-    <button
-      type="button"
-      class="rf-strike rf-strike--auto"
-      [disabled]="!canAuto"
-      (click)="strikeMany()">
-      <span class="rf-strike__label">{{ t('forge.roll.auto') }}</span>
-      <span class="rf-strike__cost">
-        @if (!canAuto && !striking) {
-          {{ t('forge.roll.need', { gold: money(autoShort) }) }}
-        } @else {
-          {{ money(autoCost) }} {{ t('forge.stat.gold') }}
-        }
-      </span>
-    </button>
-  </div>
+  <!-- ── Details: library, Runewords, equipment, sound — closed by default ── -->
+  <div stationDetails class="rf-details">
 
-  <!--
-    The fanfare's switch. Sits under the anvil rather than in a settings panel
-    because it is the anvil that makes the noise, and a preference nobody can
-    find is a preference nobody has.
-  -->
-  <p class="rf-sound-row">
-    <app-celebration-sound-toggle></app-celebration-sound-toggle>
-  </p>
+  @if (!inWorld) {
+    <!-- The in-world doorway to the bench. The tome lists it too, because a
+         room reachable only from inside its parent hall reads as a dead page
+         to anyone who arrives anywhere else. -->
+    <p class="rf-bench"><a routerLink="/forge/crafting">{{ t('forge.benchLink') }}</a></p>
+    <p class="rf-bench"><a routerLink="/forge/enchanting">{{ t('forge.tableLink') }}</a></p>
+  }
+
 
   <p class="rf-pills" aria-label="{{ t('forge.library.stats') }}">
-    <span class="rf-pill">{{ unique }} / {{ totalRunes }} {{ t('forge.pill.found') }}</span>
+    <span class="rf-pill">{{ strikes }} {{ t('forge.stat.forges') }}</span>
     <span class="rf-pill">{{ completePct }}% {{ t('forge.pill.complete') }}</span>
     <button type="button" class="rf-pill rf-pill--new" (click)="setFilter('new')">
-      ✦ {{ unseenCount }} {{ t('forge.pill.new') }}
+      {{ unseenCount }} {{ t('forge.pill.new') }}
     </button>
   </p>
-  <div class="rf-progress" role="progressbar" [attr.aria-valuenow]="completePct" aria-valuemin="0" aria-valuemax="100">
-    <span [style.width.%]="completePct"></span>
-  </div>
   @if (unique === totalRunes) {
     <p class="rf-complete">{{ t('forge.library.done') }}</p>
   }
@@ -163,7 +157,7 @@
             <span class="rf-card__top">
               <span class="rf-card__rarity">{{ card.known ? card.rune.tier : '???' }}</span>
               @if (card.isNew) {
-                <span class="rf-card__new">✦ {{ t('forge.card.new') }}</span>
+                <span class="rf-card__new">{{ t('forge.card.new') }}</span>
               }
             </span>
             <span class="rf-card__mark" aria-hidden="true">
@@ -296,6 +290,9 @@
     </section>
   }
 
+  </div>
+</app-station-shell>
+
   @if ((striking || landed) && reveal) {
     <div class="rf-focus" (click)="dismissFocus()">
       <!--
@@ -371,7 +368,7 @@
                     <span class="rf-pick__name">{{ find.rune.name }}</span>
                   }
                   @if (find.isNew) {
-                    <span class="rf-pick__new">✦ {{ t('forge.card.new') }}</span>
+                    <span class="rf-pick__new">{{ t('forge.card.new') }}</span>
                   }
                 </div>
               }

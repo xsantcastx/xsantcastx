@@ -72,6 +72,9 @@ import { CelebrationService } from '../celebration/celebration.service';
 import { CelebrationSoundToggleComponent } from '../celebration/celebration-sound-toggle.component';
 import { TranslationService } from '../../translation.service';
 import { FORGE_EQUIPMENT_RECIPES, type ForgeEquipmentRecipe } from '../rpg/forge-recipes';
+import { STATION_UI, STATION_UI_I18N, forgeTabs, type StationArt, type StationCost, type StationTab } from '../station-ui';
+import { artFor } from '../art/art';
+import { RUNE_FORGE_I18N } from './rune-forge.i18n';
 import { ForgeCraftGateway } from '../rpg/forge-craft.gateway';
 import { InventoryService } from '../rpg/inventory.service';
 import type { GameItem } from '../rpg/item.model';
@@ -116,7 +119,7 @@ interface RecipeRow {
 @Component({
   selector: 'app-rune-forge',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],
@@ -137,6 +140,36 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly inventory = inject(InventoryService);
   private readonly celebration = inject(CelebrationService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(RUNE_FORGE_I18N);
+    this.forgeTabs = forgeTabs(key => this.i18n.translate(key));
+    this.buildCosts();
+  }
+
+  // ── The big buttons (station kit) ──────────────────────────────────────────
+  /** True once the economy ledger has answered; until then the buttons show the price only. */
+  hydrated = false;
+  detailsOpen = false;
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
+  strikeCosts: StationCost[] = [];
+  readonly forgeTabs: StationTab[];
+  readonly forgeArt: StationArt | null = artFor('forge');
+  /** The − n + stepper. 1 is a single strike with its full reveal; more is a batch. */
+  strikeQty = 1;
+
+  strikeQtyPressed(n: number): void {
+    if (n <= 1) this.strike();
+    else this.strikeMany(n);
+  }
+
+  /** Rebuilt when Gold moves. Same prices as ever: STRIKE_COST, and ×AUTO_ROLLS for the batch. */
+  private buildCosts(): void {
+    const label = this.i18n.translate('stationUi.gold');
+    this.walletGold = { kind: 'gold', label, need: this.gold, have: this.gold };
+    this.strikeCosts = [{ kind: 'gold', label, need: STRIKE_COST, have: this.gold }];
+  }
 
   /** The forge floor's latest event — set only after the ledger has answered. */
   floorEvent: ForgeFloorEvent | null = null;
@@ -369,6 +402,8 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
 
     this.subs.add(this.economy.snapshot$.subscribe(snap => {
       this.gold = snap.gold;
+      this.hydrated = true;
+      this.buildCosts();
       this.cdr.markForCheck();
     }));
 

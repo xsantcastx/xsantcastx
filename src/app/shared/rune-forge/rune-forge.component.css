@@ -18,77 +18,37 @@
 
 .rf {
   position: relative;
-  max-width: 1180px;
-  margin: 0 auto;
-  padding: 1rem clamp(0.8rem, 2vw, 1.5rem) 5.5rem;
-  color: #eee9dd;
+  padding-bottom: 5.5rem;
+  color: var(--ink-0);
   font-family: var(--font-lore);
+  /* The library grid wants more room than a plain station. */
+  --st-max-width: 980px;
 }
 
 /* The forge floor strip (shared component) sits between the header and the anvil. */
 .rf-floor {
   position: relative;
   display: block;
-  margin: 0 0 1.25rem;
 }
 
-.rf-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  gap: 1rem;
-  margin-bottom: 0.9rem;
-}
-.rf-title {
+/* ── The hero (station kit) ───────────────────────────────────────────────
+   The big buttons, chips and Details drawer are the kit's; this is only the
+   collection line under them. */
+.rf-hero { display: grid; gap: var(--space-3); }
+.rf-detail-pane { display: grid; gap: var(--space-3); min-width: 0; }
+.rf-wallet { display: flex; align-items: center; gap: var(--space-2); }
+.rf-found { display: grid; gap: var(--space-1); }
+.rf-found__line {
   margin: 0;
-  font-size: 1.15rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
+  font: var(--weight-semibold) var(--text-sm)/1.2 var(--font-ui);
+  color: var(--text-body);
+  text-align: center;
 }
-.rf-tag { margin: 0.2rem 0 0; color: var(--ink-2); font-size: 0.88rem; }
-.rf-head__wallet {
-  display: flex;
-  gap: 1.2rem;
-  margin: 0;
-}
-.rf-head__wallet dt {
-  margin: 0;
-  font-size: 0.62rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--ink-2);
-}
-.rf-head__wallet dd { margin: 0.15rem 0 0; font-weight: 700; color: var(--gold-core); }
+.rf-details { display: grid; gap: var(--space-4); }
+.rf-bench { margin: 0; font-size: var(--text-sm); }
+.rf-bench a { color: var(--text-link); }
+.rf-bench a:hover { color: var(--text-link-hover); }
 
-.rf-roll {
-  display: flex;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 0.6rem;
-  margin-bottom: 0.85rem;
-}
-.rf-strike--auto { border-color: var(--gold-core); }
-.rf-strike {
-  position: relative;
-  width: min(260px, 100%);
-  min-height: 52px;
-  padding: 0.45rem 1rem 0.55rem;
-  border: 1px solid #c96a32;
-  border-radius: 9px;
-  background: #171c23;
-  color: #eee9dd;
-  font: inherit;
-  cursor: pointer;
-}
-.rf-strike:hover:not(:disabled),
-.rf-strike:focus-visible:not(:disabled) {
-  border-color: var(--gold-core);
-  box-shadow: 0 0 18px -6px rgba(201, 106, 50, 0.8);
-}
-.rf-strike:active:not(:disabled) { transform: translateY(1px); }
-.rf-strike:disabled { opacity: 0.55; cursor: not-allowed; }
-.rf-strike__label { display: block; letter-spacing: 0.08em; text-transform: uppercase; font-size: 0.82rem; }
-.rf-strike__cost { display: block; font-size: 0.68rem; letter-spacing: 0.1em; color: var(--gold-core); }
 .rf-sparks { position: absolute; inset: 0; pointer-events: none; }
 .rf-spark {
   position: absolute; left: 50%; top: 0; width: 3px; height: 3px; border-radius: 50%;
@@ -110,12 +70,13 @@
 }
 .rf-pill--new { border-color: var(--gold-core); color: var(--gold-core); cursor: pointer; }
 .rf-progress {
-  height: 4px;
-  margin-bottom: 0.8rem;
-  background: rgba(255,255,255,0.08);
-  border-radius: 99px;
+  height: 8px;
+  background: var(--surface-well);
+  box-shadow: var(--shadow-well);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
 }
-.rf-progress span { display: block; height: 100%; background: var(--gold-core); border-radius: inherit; }
+.rf-progress span { display: block; height: 100%; background: linear-gradient(90deg, var(--gold-core), var(--gold-bright)); border-radius: inherit; }
 .rf-complete {
   margin: 0 0 0.8rem;
   text-align: center;
@@ -752,7 +713,6 @@
 }
 
 @media (max-width: 768px) {
-  .rf-head { flex-direction: column; align-items: flex-start; }
   .rf-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .rf-card { max-width: none; min-height: 0; aspect-ratio: 0.75; }
   .rf-filters { display: none; }

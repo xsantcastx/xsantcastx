@@ -1,0 +1,395 @@
+/**
+ * terrain.ts — diggable tile terrain for delve areas. Pure: no DOM, no Angular.
+ *
+ * An area that declares `terrain` (a TerrainSpec) gets a grid of CELL-px cells
+ * hanging below its surface (row 0's top edge sits at `spec.top`, the floor
+ * line). Every cell is one node type from TERRAIN_NODES: what it looks like,
+ * how many hits it takes, which tool (and tier) can work it, and what breaking
+ * it pays out. Generation is deterministic from the spec's seed, so the same
+ * area always opens with the same rock.
+ *
+ * Node data format (the Skills and Homestead agents read this):
+ *
+ *   {
+ *     id: 'cinder-vein', label: 'Cinder Ore vein', solid: true,
+ *     hp: 3,                      // hits at the minimum tier
+ *     tools: { pickaxe: 1 },      // tool → minimum tier. {} = unbreakable
+ *     discipline: 'mining', xp: 2,
+ *     yield: { materialId: 'cinder-ore', qty: 1, chance?: 1 },
+ *     minLevel: 1,                // skill level for `discipline`, checked when the host says it
+ *     glow: { color, radius },    // light source when exposed; glint through rock
+ *   }
+ *
+ * A hit with tool tier T on a node whose minimum is M deals 1 + (T - M) / 2.
+ * Breaking a node that pays xp or a yield asks the host first (the engine's
+ * `onWorldAction`); a refusal leaves the cell standing.
+ */
+import type { DisciplineId } from '../../shared/activity/activity.model';
+
+/** Cell edge in world px. The Keeper is drawn at half size in delves: three cells tall. */
+export const CELL = 32;
+/** Chunk edge in cells, the unit of render caching. */
+export const CHUNK = 8;
+
+export type ToolKind = 'pickaxe' | 'axe' | 'sickle' | 'blade' | 'staff';
+export const TOOL_KINDS: readonly ToolKind[] = ['pickaxe', 'axe', 'sickle', 'blade', 'staff'];
+export type WorldActionKind = 'mine' | 'chop' | 'forage' | 'cut' | 'blast';
+/** What working a node with each tool is called. */
+export const TOOL_ACTION: Readonly<Record<ToolKind, WorldActionKind>> = {
+  pickaxe: 'mine', axe: 'chop', sickle: 'forage', blade: 'cut', staff: 'blast',
+};
+export const TOOL_LABEL: Readonly<Record<ToolKind, string>> = {
+  pickaxe: 'Pickaxe', axe: 'Axe', sickle: 'Sickle', blade: 'Blade', staff: 'Staff',
+};
+/** Tier per tool; 0 or absent = the Keeper has none. */
+export type ToolTiers = Partial<Record<ToolKind, number>>;
+/** Tools a swing (attack) can use. The staff only works through its blast. */
+export const SWING_TOOLS: readonly ToolKind[] = ['pickaxe', 'axe', 'sickle', 'blade'];
+export const BLAST_TOOLS: readonly ToolKind[] = ['staff'];
+
+export interface NodeYield { materialId: string; qty: number; chance?: number }
+export interface TerrainNodeDef {
+  id: string;
+  label: string;
+  solid: boolean;
+  /** Hits to break at the minimum tier. Infinity = never. */
+  hp: number;
+  tools: ToolTiers;
+  discipline: DisciplineId;
+  xp: number;
+  yield?: NodeYield;
+  /** Skill level (in `discipline`) needed; mirrors MINING_TIERS for ore. */
+  minLevel?: number;
+  /** Palette: body, shadow edge, lit edge, fleck/nugget. */
+  base: string; dark: string; light: string; fleck: string;
+  glow?: { color: string; radius: number };
+}
+
+const ROCK = { base: '#3a2b2c', dark: '#241a1c', light: '#5a4440', fleck: '#6b5148' };
+
+/**
+ * Every node type. Index in this list is the byte stored per cell, so append
+ * only — index 0 is open air.
+ */
+export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
+  { id: 'air', label: 'Open air', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, base: '#120c10', dark: '#0b0709', light: '#1d1418', fleck: '#000' },
+  { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, base: '#5b3b2c', dark: '#3d271d', light: '#7f5640', fleck: '#8c6a4f' },
+  { id: 'rock', label: 'Basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, ...ROCK },
+  { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, base: '#2a2027', dark: '#171116', light: '#443540', fleck: '#57474f' },
+  { id: 'cinder-vein', label: 'Cinder Ore vein', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, minLevel: 1,
+    yield: { materialId: 'cinder-ore', qty: 1 }, ...ROCK, fleck: '#ff9b4f', glow: { color: '#ff9b4f', radius: 46 } },
+  { id: 'slag-vein', label: 'Slag vein', solid: true, hp: 4, tools: { pickaxe: 2 }, discipline: 'mining', xp: 5, minLevel: 8,
+    yield: { materialId: 'slag-fragment', qty: 1 }, base: '#2f2830', dark: '#1b161c', light: '#4a3f48', fleck: '#9fd0c8', glow: { color: '#8fd6cf', radius: 42 } },
+  { id: 'heartstone-vein', label: 'Heartstone vein', solid: true, hp: 6, tools: { pickaxe: 3 }, discipline: 'mining', xp: 12, minLevel: 20,
+    yield: { materialId: 'infernal-heartstone', qty: 1 }, base: '#2a1a22', dark: '#160c12', light: '#4a2a36', fleck: '#ff4f7a', glow: { color: '#ff4f7a', radius: 70 } },
+  { id: 'cracked-wall', label: 'Cracked wall', solid: true, hp: 2, tools: { staff: 1 }, discipline: 'exploration', xp: 3,
+    base: '#33263a', dark: '#1d1522', light: '#54405e', fleck: '#c9a0ff', glow: { color: '#b88cff', radius: 34 } },
+  { id: 'roots', label: 'Tangled roots', solid: true, hp: 1, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 1,
+    yield: { materialId: 'thornroot', qty: 1, chance: .5 }, base: '#1f1513', dark: '#130c0b', light: '#6d5a3a', fleck: '#9b8452' },
+  { id: 'bedrock', label: 'Bedrock', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0, base: '#141016', dark: '#09070a', light: '#231c25', fleck: '#2d2430' },
+  { id: 'ember-rock', label: 'Ember-veined basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0,
+    ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
+  { id: 'cache', label: 'Keeper\'s cache', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 8,
+    yield: { materialId: 'ember-residue', qty: 1 }, base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 52 } },
+];
+export const TERRAIN_NODES: Readonly<Record<string, TerrainNodeDef>> = Object.fromEntries(TERRAIN_NODE_LIST.map(node => [node.id, node]));
+const NODE_INDEX = new Map(TERRAIN_NODE_LIST.map((node, index) => [node.id, index]));
+export function nodeIndex(id: string): number {
+  const index = NODE_INDEX.get(id);
+  if (index === undefined) throw new Error(`Unknown terrain node ${id}`);
+  return index;
+}
+const AIR = 0;
+const BEDROCK = nodeIndex('bedrock');
+
+// ── Tools ──────────────────────────────────────────────────────────────────
+
+export type ToolCheck =
+  | { ok: true; tool: ToolKind; tier: number; damage: number }
+  /** `need` null = nothing can break it (bedrock). */
+  | { ok: false; need: { tool: ToolKind; tier: number } | null };
+
+/**
+ * The best of `allowed` tools the Keeper holds that can work `node`, and its
+ * damage per hit; or the requirement to show when none can. Pure.
+ */
+export function toolFor(node: TerrainNodeDef, tiers: ToolTiers, allowed: readonly ToolKind[] = TOOL_KINDS): ToolCheck {
+  let best: { tool: ToolKind; tier: number; damage: number } | null = null;
+  let need: { tool: ToolKind; tier: number } | null = null;
+  for (const tool of TOOL_KINDS) {
+    const min = node.tools[tool];
+    if (!min) continue;
+    const have = tiers[tool] ?? 0;
+    if (allowed.includes(tool) && have >= min) {
+      const damage = 1 + (have - min) / 2;
+      if (!best || damage > best.damage) best = { tool, tier: have, damage };
+    } else if (!need || (allowed.includes(tool) && !allowed.includes(need.tool))) {
+      // Prefer naming a tool this action could use (a swing names the pickaxe, not the staff).
+      need = { tool, tier: min };
+    }
+  }
+  return best ? { ok: true, ...best } : { ok: false, need };
+}
+
+const ROMAN = ['0', 'I', 'II', 'III', 'IV', 'V'];
+/** "Pickaxe II". */
+export function toolName(tool: ToolKind, tier: number): string {
+  return `${TOOL_LABEL[tool]} ${ROMAN[tier] ?? tier}`;
+}
+
+// ── Generation ─────────────────────────────────────────────────────────────
+
+export interface TerrainSpec {
+  seed: number;
+  cols: number;
+  rows: number;
+  /** World y of row 0's top edge (the surface the Keeper walks in on). */
+  top: number;
+  /** Depth bands: rows above `to` use `node`. The last band runs to the bottom. */
+  bands: readonly { to: number; node: string }[];
+  /** Band edges wander ± this many rows per column. */
+  jitter?: number;
+  /** `count` blobs of `node`, about `size` cells each, in rows [from, to) and optional cols [lo, hi). */
+  veins: readonly { node: string; from: number; to: number; count: number; size: number; cols?: readonly [number, number] }[];
+  /** Hand-placed rectangles, stamped last and in order. `node: 'air'` carves. */
+  stamps: readonly { col: number; row: number; w?: number; h?: number; node: string }[];
+  /** Bedrock rows at the bottom. */
+  bedrock: number;
+}
+
+/** mulberry32: small, fast, deterministic. */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = a;
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/** A grid of cells. Kinds and HP are typed arrays; nothing allocates per frame. */
+export class Terrain {
+  readonly kind: Uint8Array;
+  readonly hp: Float32Array;
+  readonly chunkCols: number;
+  readonly chunkRows: number;
+  /** Bumped whenever something a chunk draws changes. Renderers compare against what they drew. */
+  readonly chunkRev: Uint32Array;
+  readonly bottom: number;
+  readonly width: number;
+  constructor(readonly cols: number, readonly rows: number, readonly top: number) {
+    this.kind = new Uint8Array(cols * rows);
+    this.hp = new Float32Array(cols * rows);
+    this.chunkCols = Math.ceil(cols / CHUNK);
+    this.chunkRows = Math.ceil(rows / CHUNK);
+    this.chunkRev = new Uint32Array(this.chunkCols * this.chunkRows);
+    this.bottom = top + rows * CELL;
+    this.width = cols * CELL;
+  }
+  index(col: number, row: number): number { return row * this.cols + col; }
+  inside(col: number, row: number): boolean { return col >= 0 && row >= 0 && col < this.cols && row < this.rows; }
+  colAt(x: number): number { return Math.floor(x / CELL); }
+  rowAt(y: number): number { return Math.floor((y - this.top) / CELL); }
+  /** Node at a cell. Above the surface is air; the sides and below the grid are bedrock. */
+  nodeAt(col: number, row: number): TerrainNodeDef {
+    if (row < 0) return TERRAIN_NODE_LIST[AIR];
+    if (!this.inside(col, row)) return TERRAIN_NODE_LIST[BEDROCK];
+    return TERRAIN_NODE_LIST[this.kind[this.index(col, row)]];
+  }
+  solid(col: number, row: number): boolean {
+    if (row < 0) return false;
+    if (!this.inside(col, row)) return true;
+    return this.kind[this.index(col, row)] !== AIR;
+  }
+  solidAt(x: number, y: number): boolean { return this.solid(this.colAt(x), this.rowAt(y)); }
+  /** Any open neighbour (4-way): the cell is exposed to the tunnels. */
+  exposed(col: number, row: number): boolean {
+    return !this.solid(col - 1, row) || !this.solid(col + 1, row) || !this.solid(col, row - 1) || !this.solid(col, row + 1);
+  }
+  /** Remaining HP as a fraction of full, 0..1. */
+  health(col: number, row: number): number {
+    if (!this.inside(col, row)) return 1;
+    const i = this.index(col, row);
+    const full = TERRAIN_NODE_LIST[this.kind[i]].hp;
+    return Number.isFinite(full) && full > 0 ? this.hp[i] / full : 1;
+  }
+  /** Crack stage 0..3 drawn on the cell. */
+  stage(col: number, row: number): number { return crackStage(this.health(col, row)); }
+  set(col: number, row: number, node: number): void {
+    if (!this.inside(col, row)) return;
+    const i = this.index(col, row);
+    this.kind[i] = node;
+    this.hp[i] = TERRAIN_NODE_LIST[node].hp;
+    this.touch(col, row);
+  }
+  /** Set remaining HP; marks the chunk only when the visible crack stage changes. */
+  setHp(col: number, row: number, hp: number): void {
+    if (!this.inside(col, row)) return;
+    const before = this.stage(col, row);
+    this.hp[this.index(col, row)] = hp;
+    if (this.stage(col, row) !== before) this.touch(col, row);
+  }
+  /** Mark the chunk holding a cell (and any neighbour chunk whose edge shading reads it) for redraw. */
+  touch(col: number, row: number): void {
+    const cc = Math.floor(col / CHUNK), cr = Math.floor(row / CHUNK);
+    this.bump(cc, cr);
+    const lc = col % CHUNK, lr = row % CHUNK;
+    if (lc === 0) this.bump(cc - 1, cr);
+    if (lc === CHUNK - 1) this.bump(cc + 1, cr);
+    if (lr === 0) this.bump(cc, cr - 1);
+    if (lr === CHUNK - 1) this.bump(cc, cr + 1);
+  }
+  private bump(cc: number, cr: number): void {
+    if (cc < 0 || cr < 0 || cc >= this.chunkCols || cr >= this.chunkRows) return;
+    this.chunkRev[cr * this.chunkCols + cc]++;
+  }
+}
+
+export function crackStage(health: number): number {
+  if (health >= .999) return 0;
+  return health > .66 ? 1 : health > .33 ? 2 : 3;
+}
+
+/** Stable key of a cell, as reported in world actions. */
+export function cellKey(col: number, row: number): string { return `${col},${row}`; }
+
+/** Build an area's terrain from its spec. Same spec → same grid, cell for cell. */
+export function generateTerrain(spec: TerrainSpec): Terrain {
+  const t = new Terrain(spec.cols, spec.rows, spec.top);
+  const random = seededRandom(spec.seed);
+  const jitter = spec.jitter ?? 0;
+  // One smooth wander per band edge: a value every 6 columns, eased between.
+  const edges = spec.bands.map(() => {
+    const knots = Array.from({ length: Math.ceil(spec.cols / 6) + 2 }, () => (random() * 2 - 1) * jitter);
+    return (col: number) => {
+      const k = col / 6, i = Math.floor(k), f = k - i, s = f * f * (3 - 2 * f);
+      return knots[i] * (1 - s) + knots[i + 1] * s;
+    };
+  });
+  const bandNodes = spec.bands.map(band => nodeIndex(band.node));
+  for (let col = 0; col < spec.cols; col++) {
+    for (let row = 0; row < spec.rows; row++) {
+      let node = bandNodes[bandNodes.length - 1];
+      for (let b = 0; b < spec.bands.length - 1; b++) {
+        if (row < spec.bands[b].to + Math.round(edges[b](col))) { node = bandNodes[b]; break; }
+      }
+      t.kind[t.index(col, row)] = node;
+    }
+  }
+  for (const vein of spec.veins) {
+    const node = nodeIndex(vein.node);
+    const [lo, hi] = vein.cols ?? [0, spec.cols];
+    for (let n = 0; n < vein.count; n++) {
+      let col = lo + Math.floor(random() * (hi - lo));
+      let row = vein.from + Math.floor(random() * Math.max(1, vein.to - vein.from));
+      for (let s = 0; s < vein.size; s++) {
+        if (t.inside(col, row) && row >= vein.from && row < vein.to) t.kind[t.index(col, row)] = node;
+        const step = Math.floor(random() * 4);
+        col += step === 0 ? 1 : step === 1 ? -1 : 0;
+        row += step === 2 ? 1 : step === 3 ? -1 : 0;
+      }
+    }
+  }
+  for (const stamp of spec.stamps) {
+    const node = nodeIndex(stamp.node);
+    for (let r = stamp.row; r < stamp.row + (stamp.h ?? 1); r++) {
+      for (let c = stamp.col; c < stamp.col + (stamp.w ?? 1); c++) if (t.inside(c, r)) t.kind[t.index(c, r)] = node;
+    }
+  }
+  for (let row = Math.max(0, spec.rows - spec.bedrock); row < spec.rows; row++) {
+    for (let col = 0; col < spec.cols; col++) t.kind[t.index(col, row)] = BEDROCK;
+  }
+  for (let i = 0; i < t.kind.length; i++) t.hp[i] = TERRAIN_NODE_LIST[t.kind[i]].hp;
+  return t;
+}
+
+// ── Bodies ─────────────────────────────────────────────────────────────────
+
+export interface TerrainBody { x: number; y: number; vy: number; grounded: boolean }
+export interface BodyBox { halfWidth: number; height: number }
+/** Fastest fall in px/s: under one cell per fixed step, so a body never tunnels through a row. */
+export const TERMINAL_FALL = 1500;
+const GRAVITY = 1650;
+const EPS = .01;
+
+/** True when the box with feet at (x, y) overlaps a solid cell. */
+export function boxHits(t: Terrain, x: number, y: number, box: BodyBox): boolean {
+  const c0 = t.colAt(x - box.halfWidth), c1 = t.colAt(x + box.halfWidth - EPS);
+  const r0 = t.rowAt(y - box.height), r1 = t.rowAt(y - EPS);
+  for (let r = r0; r <= r1; r++) for (let c = c0; c <= c1; c++) if (t.solid(c, r)) return true;
+  return false;
+}
+function rowBlocked(t: Terrain, row: number, x: number, box: BodyBox): boolean {
+  const c0 = t.colAt(x - box.halfWidth), c1 = t.colAt(x + box.halfWidth - EPS);
+  for (let c = c0; c <= c1; c++) if (t.solid(c, row)) return true;
+  return false;
+}
+
+/**
+ * One fixed step of a body moving through terrain: walls stop it, a single
+ * cell ledge is stepped up while grounded, floors catch it, ceilings bump it.
+ * One-way platforms (the area's safety floor) still apply. Mirrors advanceBody.
+ */
+export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number, t: Terrain, box: BodyBox,
+  platforms: readonly { x: number; y: number; width: number }[], width: number): void {
+  // Horizontal, then vertical, so a wall never eats a landing.
+  if (velocityX) {
+    const nx = Math.max(30, Math.min(width - 30, body.x + velocityX * dt));
+    if (!boxHits(t, nx, body.y, box)) body.x = nx;
+    else if (body.grounded && !boxHits(t, nx, body.y - CELL, box) && !boxHits(t, body.x, body.y - CELL, box)) {
+      body.x = nx; body.y -= CELL;
+    }
+  }
+  const previousY = body.y;
+  body.vy = Math.min(TERMINAL_FALL, body.vy + GRAVITY * dt);
+  let ny = body.y + body.vy * dt;
+  body.grounded = false;
+  if (body.vy >= 0) {
+    // The first row boundary the feet cross with a solid cell under them.
+    const from = t.rowAt(previousY - EPS) + 1, to = t.rowAt(ny);
+    for (let row = from; row <= to; row++) {
+      const edge = t.top + row * CELL;
+      if (edge >= previousY - EPS && edge <= ny && rowBlocked(t, row, body.x, box)) {
+        ny = edge; body.vy = 0; body.grounded = true; break;
+      }
+    }
+    for (const platform of platforms) {
+      if (previousY <= platform.y && ny >= platform.y && body.x + 16 > platform.x && body.x - 16 < platform.x + platform.width) {
+        ny = platform.y; body.vy = 0; body.grounded = true;
+      }
+    }
+  } else {
+    const head = ny - box.height;
+    const row = t.rowAt(head);
+    if (rowBlocked(t, row, body.x, box) && t.rowAt(previousY - box.height) !== row) {
+      ny = t.top + (row + 1) * CELL + box.height; body.vy = 0;
+    }
+  }
+  body.y = ny;
+}
+
+// ── Aiming ─────────────────────────────────────────────────────────────────
+
+/**
+ * Cells whose centres fall inside a cone from (ox, oy) along unit (dx, dy),
+ * out to `range` px, `halfAngle` radians each side. Writes cell indices into
+ * `out` (reused, never grown past its length) and returns how many. Pure.
+ */
+export function coneCells(t: Terrain, ox: number, oy: number, dx: number, dy: number, range: number, halfAngle: number, out: Int32Array): number {
+  const cos = Math.cos(halfAngle);
+  const c0 = Math.max(0, t.colAt(ox - range)), c1 = Math.min(t.cols - 1, t.colAt(ox + range));
+  const r0 = Math.max(0, t.rowAt(oy - range)), r1 = Math.min(t.rows - 1, t.rowAt(oy + range));
+  let n = 0;
+  for (let r = r0; r <= r1; r++) {
+    for (let c = c0; c <= c1; c++) {
+      const vx = (c + .5) * CELL - ox, vy = t.top + (r + .5) * CELL - oy;
+      const d = Math.hypot(vx, vy);
+      if (d > range || d < 1e-6) continue;
+      if ((vx * dx + vy * dy) / d < cos) continue;
+      if (n < out.length) out[n++] = t.index(c, r);
+    }
+  }
+  return n;
+}

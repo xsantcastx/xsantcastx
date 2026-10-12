@@ -3156,3 +3156,42 @@ main.play-mode .stage.gf-reveal {
   opacity: 1;
   translate: none;
 }
+
+/* ░▒▓█ THE INSTALLED APP █▓▒░
+   Rules that only make sense once Eclipse Realms is its own window. The class
+   html.gf-standalone is written by PwaService (it is the only way to see iOS's
+   navigator.standalone); html.gf-play-route by the app chrome component. */
+
+/* Landscape notches. The header already pads the top inset; in the app window
+   there is no browser toolbar either side, so the sides need it too. */
+html.gf-standalone .gfnav {
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+html.gf-standalone main:not(.play-mode) {
+  padding-left: calc(var(--shell-sidebar-w, 0px) + env(safe-area-inset-left, 0px));
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+/* The game route owns every gesture: no pull-to-refresh reloading the run, no
+   rubber-band bounce, and no double-tap zoom on the canvas. Scoped to the
+   canvas and this route only — the rest of the site keeps pinch-zoom. */
+html.gf-play-route,
+html.gf-play-route body {
+  overscroll-behavior: none;
+}
+html.gf-play-route main.play-mode canvas {
+  touch-action: none;
+}
+
+/* Desktop window-controls-overlay: the title bar is folded away and the page
+   runs up under the minimise/close buttons. The chrome component draws a
+   draggable strip there; everything fixed to the top moves below it.
+   Doubled class selectors on purpose: the nav's own rules carry Angular's
+   attribute selector, and this must outrank them without !important. */
+@media (display-mode: window-controls-overlay) {
+  :root { --gf-titlebar-h: env(titlebar-area-height, 0px); }
+  :root .gfnav.gfnav { top: var(--gf-titlebar-h); }
+  :root main { margin-top: var(--gf-titlebar-h); }
+  :root main.play-mode.play-mode { height: calc(100dvh - var(--gf-titlebar-h)); }
+}

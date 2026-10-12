@@ -139,6 +139,12 @@
      satisfy the matcher would put a sentence in the log that no engine said. */
   function recover(message, certain) {
     if (handled || (!certain && !isStale(message))) return;
+    /* Offline is not a stale build. An uncached chunk fails to load with no
+       network using exactly the stale-deploy wording, and purging then would
+       delete the service worker's offline cache and reload a disconnected
+       visitor into the browser's error page. Nothing is spent, so a real stale
+       build is still recovered once the connection returns. */
+    if (navigator.onLine === false) return;
     handled = true;
 
     var alreadyTried;
@@ -168,8 +174,33 @@
       fired = true;
       location.reload();
     };
-    setTimeout(go, 5000);
-    purge().then(go, go);
+
+    /* navigator.onLine cannot be trusted in the positive — a page the service
+       worker served offline can report true — so ask the network itself before
+       doing anything irreversible. A HEAD is never answered by the worker and
+       no-store skips the HTTP cache. Unreachable: purge nothing, reload nothing,
+       and hand the one-shot marker back for when the connection returns. */
+    reachable().then(function (online) {
+      if (!online) {
+        try { sessionStorage.removeItem(RECOVERY_KEY); } catch (e) { /* ignore */ }
+        console.warn('[GODFORGE] offline — not treating a missing chunk as a stale build.');
+        return;
+      }
+      setTimeout(go, 5000);
+      purge().then(go, go);
+    });
+  }
+
+  function reachable() {
+    return new Promise(function (resolve) {
+      var done = false;
+      var finish = function (v) { if (!done) { done = true; resolve(v); } };
+      setTimeout(function () { finish(false); }, 3000);
+      try {
+        fetch('/robots.txt?reachable=' + Date.now(), { method: 'HEAD', cache: 'no-store' })
+          .then(function () { finish(true); }, function () { finish(false); });
+      } catch (e) { finish(false); }
+    });
   }
 
   /* Is this the page's own build failing, rather than some third party's?

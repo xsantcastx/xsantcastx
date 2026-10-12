@@ -94,9 +94,9 @@ Sequential: everything after it plugs into its data model and panel host.
 The fun moves out of panels and into the world: you dig, chop, cut and blast
 things with tools you crafted, and you see your economy working.
 
-- [~] **World interactions + Ember Delve** (engine): diggable tile terrain with crack stages and crumble debris; generic tool-vs-node system (`pickaxe | axe | sickle | blade | staff`, tiers); lantern lighting in caves + staff blast beam; the Ember Delve slice under the Seamworks (Cinder → Slag → Heartstone veins by pickaxe tier, a staff-only cracked wall, roots for the blade/sickle)
-- [~] **Skills + tool progression**: new disciplines (Woodcutting, Enchanting; Smithing = forge, Delving = exploration); one 1–99 curve with migration-safe XP; unlock table every ~10 levels; craftable tool tiers I–IV from existing materials, gated by Smithing; generic `resolveWorldAction`; in-world Skills panel; a level-up moment for every skill
-- [~] **Homestead** (Infernal): the idle economy as buildings you can see: forge automatons hammering, treasury, explorer camp (real expedition timestamps), thrall workshop; walk past to collect (visual only, no double credit); upgrade in-world with the existing Market upgrades
+- [x] **World interactions + Ember Delve** (`102bc57`; dug state session-only, non-mining XP pending): diggable tile terrain with crack stages and crumble debris; generic tool-vs-node system (`pickaxe | axe | sickle | blade | staff`, tiers); lantern lighting in caves + staff blast beam; the Ember Delve slice under the Seamworks (Cinder → Slag → Heartstone veins by pickaxe tier, a staff-only cracked wall, roots for the blade/sickle)
+- [x] **Skills + tool progression** (`102bc57`): new disciplines (Woodcutting, Enchanting; Smithing = forge, Delving = exploration); one 1–99 curve with migration-safe XP; unlock table every ~10 levels; craftable tool tiers I–IV from existing materials, gated by Smithing; generic `resolveWorldAction`; in-world Skills panel; a level-up moment for every skill
+- [x] **Homestead** (`102bc57`): the idle economy as buildings you can see: forge automatons hammering, treasury, explorer camp (real expedition timestamps), thrall workshop; walk past to collect (visual only, no double credit); upgrade in-world with the existing Market upgrades
 - [ ] Foraging/woodcutting nodes in each realm's hunt (herbs, rootglass, bark), using the same tool system
 - [ ] **Smithing anvil mini-game** (strike timing sets quality): after the station-kit forge redesign lands
 - [ ] **Enchanting ritual** in the world (place runes on a glowing circle, small skill check): after the station-kit redesign lands
@@ -104,8 +104,8 @@ things with tools you crafted, and you see your economy working.
 
 ## Economy rebalance (Cookie-Clicker start) `[~]`
 
-- [~] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
-- [~] Homestead built Cookie-style: big clickable Forge + always-visible buildings column (current numbers; new ones flow through later)
+- [x] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
+- [x] Homestead built Cookie-style: big clickable Forge + always-visible buildings column (current numbers; new ones flow through later)
 - [ ] **Owner:** review the spec's headline timings and number table
 - [ ] Implement the rebalance in one coordinated change **after** the Homestead, Skills and Station-kit branches merge (they all touch Gold prices); versioned, idempotent save migration; tests guard the curve
 - [ ] Golden-spark burst event
@@ -129,7 +129,7 @@ things with tools you crafted, and you see your economy working.
 
 ## Distribution
 
-- [~] **Installable app (PWA) polish:** proper install prompt, full-screen standalone window, app icons and splash for iOS / Android / desktop, offline shell that opens straight into the game, save-sync on reconnect. Builds on the existing `service-worker.js` + `manifest.webmanifest`
+- [x] **Installable app (PWA) polish** (`102bc57`): proper install prompt, full-screen standalone window, app icons and splash for iOS / Android / desktop, offline shell that opens straight into the game, save-sync on reconnect. Builds on the existing `service-worker.js` + `manifest.webmanifest`
 - [-] **Desktop / Steam wrapper (later, on traction):** Tauri (or Electron) around the same web build; Steam overlay, achievements mapped to Collection eggs, cloud save via the existing Firestore account
 - [-] **App-store wrapper (later, on traction):** Capacitor for iOS / Android from the same build; store review requirements (payments, sign-in) checked before starting
 
@@ -141,32 +141,23 @@ things with tools you crafted, and you see your economy working.
 
 ---
 
-## ⏸ Checkpoint — resume here (2026-10-12, owner's token budget low)
+## ✅ Checkpoint merged (2026-10-12, `102bc57`)
 
-All work below lives on local branches (agent worktrees under `.claude/worktrees/`), **not yet on main**. Each agent was told to commit and write `docs/handoff/<name>.md` on its branch. To resume, for each branch in order:
-`git merge --no-ff <branch>` onto a fresh branch from `origin/main` → `node --test scripts/seamworks-engine.test.cjs` → `node scripts/check-ds-adherence.js && node scripts/check-i18n-keys.js && node scripts/audit-nav.js` → `npx tsc --noEmit -p tsconfig.app.json` → `npx ng build` (Initial total must stay < 1.85 MB; it was 1.68 MB) → look at it in a production build (`node scripts/serve-preview.js dist/xsantcastx/browser 4301`) → push to `main` and `dev` → tick the items here. Expect append-only conflicts in `scripts/seamworks-engine.test.cjs`, `world.model.ts`, `panel-registry.ts`, `towns/infernal.ts`: keep both sides.
+All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, Ember Delve, Homestead, Economy spec (docs only). Handoff notes for each are in `docs/handoff/`. Initial bundle 1.70 MB. Nothing is in flight.
 
-| Order | Work | Branch | Notes |
-|---|---|---|---|
-| 1 | PWA polish | `worktree-agent-a6cbb15fe61234ee9` | Small; check `verify-csp-hashes.js` after build |
-| 2 | Station UI kit + forge redesign | `worktree-agent-a31ee37374f223268` | MapleStory anatomy; next: convert the other 10 menus with the kit |
-| 3 | Skills + tool progression | `worktree-agent-a18b6c7c04d1e7641` | Before Delve: provides `toolTiers()` + `resolveWorldAction` |
-| 4 | World interactions + Ember Delve | `worktree-agent-a76ac595122a7ea4d` | Replace its `provisionalToolTiers` with `toolTiers()` after merging 3 |
-| 5 | Homestead (Cookie-style) | `worktree-agent-a94e77009d31f5bb1` | Engine hook is small; conflicts with 4 in engine.ts are expected |
-| 6 | Economy rebalance spec + simulator | `worktree-agent-a088a03819c05ee38` | Docs/script only. **Owner reviews before any number changes** |
-
-If a branch has no commits, its worktree still holds the uncommitted work (`git -C .claude/worktrees/agent-<id> status`).
+**Next session starts here:**
+1. **Owner review of the economy spec** (`docs/economy/rebalance-spec.md`): price scaling ×1.25 → ×1.15, first paid purchase 2m01s → 4s, 3 → 44 purchases in the first 10 min, rune strike 10k → 600 (all sinks ×0.06), prestige at 10T with cube-root shards. Open TODOs: item Gold/s conversion, veteran shard cap, migration fixture specs. Then implement as one change with a versioned save migration.
+2. Convert the other 10 menus with the station kit (`src/app/shared/station-ui/README.md`).
+3. Delve: persist dug state; `resolveWorldAction` XP for roots/cache/walls (the gateway method now exists); reconcile lantern-radius units (skills = tiles, engine = its own); header and enemy bar should say "Ember Delve".
+4. Smithing anvil mini-game and Enchanting ritual (the kit and the skills hooks are both on main now).
+5. A Skills station in the world (panel id `skills` exists, no station yet); Hunting XP; Smithing XP banner on bench crafts.
+6. Tool art (`pickaxe/axe/sickle/staff-1..4`) and tile art → add to `docs/art-commissions/`.
+7. PWA: real install tests on Android Chrome, iOS Safari, desktop Chrome (`docs/handoff/pwa.md`).
 
 ## Running in parallel right now
 
 | Work | Branch | Status |
 |---|---|---|
-| Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
-| Station UI kit + forge bench redesign ("for dummies" simple) | agent worktree | `[~]` |
-| Living world · World interactions + Ember Delve | agent worktree | `[~]` |
-| Living world · Skills + tool progression | agent worktree | `[~]` |
-| Living world · Homestead (now Cookie-style: clickable Forge + buildings column) | agent worktree | `[~]` |
-| Economy rebalance spec + simulator | agent worktree | `[~]` |
 
 ## Art still missing (placeholders in game)
 
