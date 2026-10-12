@@ -1,3 +1,110 @@
+/** The five realms, each with its own ambient layer (structurally the same union as world.model's RealmTownId). */
+export type AmbientRealm = 'infernal' | 'luminous' | 'umbral' | 'celestial' | 'verdant';
+/** Particle cap per layer. Every particle is computed from its index and the clock: nothing is stored or allocated. */
+export const AMBIENT_CAP = 40;
+
+/** Wraps `value` into [0, span). */
+function wrapInto(value: number, span: number): number { return ((value % span) + span) % span; }
+/** A stable 0..1 per index. */
+function hash01(i: number, salt: number): number {
+  const v = Math.sin(i * 127.1 + salt * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+}
+
+/**
+ * One ambient layer per realm, in world space but anchored to the camera so
+ * the screen is always populated (each particle wraps across the view):
+ *
+ *  infernal   embers rising, ash drifting down
+ *  luminous   slanted light shafts with dust motes turning in them
+ *  umbral     ink motes drifting sideways, an amethyst core in each
+ *  celestial  star glints twinkling high in the sky
+ *  verdant    leaves falling with a sway, spores rising
+ *
+ * Off-view particles are never drawn: each x is folded into the view first.
+ * Draw calls only; no gradients, no arrays, no per-frame allocation.
+ */
+export function ambientLayer(c: CanvasRenderingContext2D, realm: AmbientRealm, time: number, camera: number, width: number): void {
+  const span = width + 120;
+  const left = camera - 60;
+  c.save();
+  switch (realm) {
+    case 'infernal':
+      for (let i = 0; i < 26; i++) {
+        const x = left + wrapInto(hash01(i, 1) * span + Math.sin(time * .9 + i) * 14 - camera * .1, span);
+        const y = 600 - wrapInto(hash01(i, 2) * 520 + time * (22 + (i % 5) * 7), 520);
+        c.globalAlpha = .35 + .4 * hash01(i, 3) * (.6 + .4 * Math.sin(time * 6 + i));
+        c.fillStyle = i % 3 ? '#ff9b4f' : '#ffd08a';
+        c.fillRect(x, y, 2 + (i % 2), 2 + (i % 2));
+      }
+      c.fillStyle = '#8a7468';
+      for (let i = 0; i < 14; i++) {
+        const x = left + wrapInto(hash01(i, 4) * span + time * 9 - camera * .05, span);
+        const y = 60 + wrapInto(hash01(i, 5) * 540 + time * (10 + i % 4 * 3), 540);
+        c.globalAlpha = .28;
+        c.beginPath(); c.ellipse(x, y, 2.6, 1.4, time * .7 + i, 0, Math.PI * 2); c.fill();
+      }
+      break;
+    case 'luminous':
+      c.fillStyle = '#fff1b0';
+      for (let i = 0; i < 4; i++) {
+        // Shafts slide a little with the camera so they read as far away.
+        const x = left + wrapInto(i * 430 + 120 - camera * .25, Math.max(span, 1720));
+        if (x > camera + width + 260) continue;
+        c.globalAlpha = .06 + .02 * Math.sin(time * .4 + i * 2);
+        c.beginPath(); c.moveTo(x, 0); c.lineTo(x + 90, 0); c.lineTo(x - 70, 610); c.lineTo(x - 210, 610); c.closePath(); c.fill();
+        c.globalAlpha *= .8;
+        c.beginPath(); c.moveTo(x + 20, 0); c.lineTo(x + 50, 0); c.lineTo(x - 120, 610); c.lineTo(x - 160, 610); c.closePath(); c.fill();
+      }
+      c.fillStyle = '#ffe7a0';
+      for (let i = 0; i < 30; i++) {
+        const x = left + wrapInto(hash01(i, 6) * span + Math.sin(time * .3 + i * 1.7) * 30, span);
+        const y = 80 + wrapInto(hash01(i, 7) * 500 + Math.cos(time * .25 + i) * 24 - time * 3, 500);
+        c.globalAlpha = .25 + .35 * (.5 + .5 * Math.sin(time * 1.2 + i * 2.3));
+        c.beginPath(); c.arc(x, y, 1.2 + (i % 3) * .5, 0, Math.PI * 2); c.fill();
+      }
+      break;
+    case 'umbral':
+      for (let i = 0; i < 22; i++) {
+        const x = left + wrapInto(hash01(i, 8) * span + time * (6 + i % 4 * 3) * (i % 2 ? 1 : -1), span);
+        const y = 120 + hash01(i, 9) * 440 + Math.sin(time * .5 + i) * 18;
+        const r = 3 + hash01(i, 10) * 5;
+        c.globalAlpha = .32; c.fillStyle = '#160f22';
+        c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+        c.globalAlpha = .18 + .14 * Math.sin(time * .9 + i); c.fillStyle = '#a855f7';
+        c.beginPath(); c.arc(x - r * .2, y - r * .2, r * .4, 0, Math.PI * 2); c.fill();
+      }
+      break;
+    case 'celestial':
+      c.strokeStyle = '#d8ecff'; c.lineWidth = 1;
+      for (let i = 0; i < 34; i++) {
+        const x = left + wrapInto(hash01(i, 11) * span - camera * .08, span);
+        const y = 30 + hash01(i, 12) * 330;
+        const tw = .5 + .5 * Math.sin(time * (1.4 + hash01(i, 13) * 2) + i * 3.1);
+        const r = 1.5 + tw * (i % 4 === 0 ? 5 : 2.5);
+        c.globalAlpha = .25 + .6 * tw;
+        c.beginPath(); c.moveTo(x - r, y); c.lineTo(x + r, y); c.moveTo(x, y - r); c.lineTo(x, y + r); c.stroke();
+      }
+      break;
+    case 'verdant':
+      for (let i = 0; i < 16; i++) {
+        const x = left + wrapInto(hash01(i, 14) * span + Math.sin(time * .8 + i * 1.3) * 26 + time * 6, span);
+        const y = wrapInto(hash01(i, 15) * 620 + time * (18 + i % 4 * 5), 620);
+        c.globalAlpha = .55; c.fillStyle = i % 3 === 0 ? '#c08a3e' : i % 3 === 1 ? '#7fb85a' : '#4a7a3a';
+        c.beginPath(); c.ellipse(x, y, 4.5, 2, Math.sin(time * 1.6 + i) * 1.2, 0, Math.PI * 2); c.fill();
+      }
+      c.fillStyle = '#d8f2a0';
+      for (let i = 0; i < 14; i++) {
+        const x = left + wrapInto(hash01(i, 16) * span + Math.sin(time * .4 + i) * 20, span);
+        const y = 600 - wrapInto(hash01(i, 17) * 480 + time * (6 + i % 3 * 2), 480);
+        c.globalAlpha = .2 + .25 * (.5 + .5 * Math.sin(time * 1.1 + i));
+        c.beginPath(); c.arc(x, y, 1.6, 0, Math.PI * 2); c.fill();
+      }
+      break;
+  }
+  c.restore();
+}
+
 /** Warm scenery and short-lived feedback. Visuals never affect combat state. */
 export class Atmosphere {
   private motes: { x: number; y: number; vx: number; vy: number; age: number; text?: string }[] = [];
@@ -117,7 +224,13 @@ export class Atmosphere {
     c.fillStyle = '#f0d0a0'; c.font = '600 11px system-ui'; c.fillText('HUNTING TRAIL →', 1060, 533);
     c.restore();
   }
-  scenery(c: CanvasRenderingContext2D, time: number, camera: number, width: number): void {
+  /**
+   * Hanging lanterns, then the area's ambient layer: the realm's own particles
+   * when `realm` is given (towns and their hunting grounds), else the warm
+   * motes. `time` is 0 under reduced motion, which freezes every particle in
+   * place: a still scene, not an empty one.
+   */
+  scenery(c: CanvasRenderingContext2D, time: number, camera: number, width: number, realm?: AmbientRealm): void {
     c.save();
     // Hanging lights repeat in world space; the warm pools remain when motion is reduced.
     for (let x = 180; x < 2700; x += 360) {
@@ -132,6 +245,7 @@ export class Atmosphere {
       c.fillStyle = '#ffdca0'; c.fillRect(x - 8, y, 16, 23);
       c.fillStyle = '#fff0c4'; c.fillRect(x - 3, y + 4, 6, 15);
     }
+    if (realm) { ambientLayer(c, realm, time, camera, width); c.restore(); return; }
     for (let i = 0; i < 42; i++) {
       const x = (i * 79 + time * (5 + i % 3)) % 2700;
       const y = 570 - (i * 43 + time * (12 + i % 5)) % 480;
