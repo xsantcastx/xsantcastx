@@ -16,6 +16,7 @@ import {
 import { masteryRng, MASTERY_BONUS, CRAFTING_RECIPES } from '../crafting/crafting.model';
 import { itemDefinitionById, mintEquipment, statCeiling } from '../rpg/item-definition';
 import { bandFor } from '../rpg/item-quality';
+import { HOME_TIER_MAX, anvilTierRules, homeAnvilQuality } from './home-forge.model';
 
 /** A deterministic U[0,1) stream (mulberry32). */
 function seeded(seed: number): () => number {
@@ -127,6 +128,55 @@ describe('anvil roll bias', () => {
         expect(value).toBeLessThanOrEqual(ceiling * max + 1);
         const grade = item.rollQuality?.[key];
         if (grade != null) expect(grade).toBeLessThanOrEqual(1);
+      }
+    }
+  });
+});
+
+describe('home anvil tiers (Your Anvil in the Homestead)', () => {
+  const tiers = Array.from({ length: HOME_TIER_MAX }, (_, i) => i + 1);
+
+  it('tier I is today\'s game exactly', () => {
+    const base = anvilTierRules(1);
+    expect(base.strikes).toBe(ANVIL_STRIKES);
+    expect(base.counted).toBe(ANVIL_STRIKES);
+    for (let pos = 0; pos <= 1; pos += 0.01) expect(gradeStrike(pos, base.zones)).toBe(gradeStrike(pos));
+    const grades = ['perfect', 'good', 'off', 'good'] as const;
+    expect(homeAnvilQuality([...grades], base.counted)).toBe(anvilQuality([...grades]));
+  });
+
+  it('only ever helps, and keeps quality in [0, 1] at every tier', () => {
+    for (const tier of tiers) {
+      const rules = anvilTierRules(tier);
+      const prev = anvilTierRules(Math.max(1, tier - 1));
+      expect(rules.zones.perfect).toBeGreaterThanOrEqual(prev.zones.perfect);
+      expect(rules.zones.perfect).toBeLessThanOrEqual(rules.zones.good);
+      expect(rules.zones.good).toBeLessThanOrEqual(1);
+      expect(rules.counted).toBeLessThanOrEqual(rules.strikes);
+      expect(homeAnvilQuality(Array(rules.strikes).fill('perfect'), rules.counted)).toBe(1);
+      expect(homeAnvilQuality(Array(rules.strikes).fill('off'), rules.counted)).toBeGreaterThanOrEqual(0);
+    }
+  });
+
+  it('mints no stat above today\'s ceiling at any home tier, even with a perfect game', () => {
+    const rolled = CRAFTING_RECIPES
+      .map(r => ({ r, def: itemDefinitionById(r.output.itemId) }))
+      .filter(x => x.def && x.def.rollKeys.length > 0);
+    for (const tier of tiers) {
+      const rules = anvilTierRules(tier);
+      const q = homeAnvilQuality(Array(rules.strikes).fill('perfect'), rules.counted);
+      expect(q).toBeLessThanOrEqual(1);
+      for (const { r, def } of rolled) {
+        const item = mintEquipment(def!.id, r.rarity, masteryRng(anvilRng(() => 1 - Number.EPSILON, q), MASTERY_BONUS, r.rarity));
+        if (!item) continue;
+        const { max } = bandFor(r.rarity, def!.style === 'void' || def!.style === 'void-touched');
+        for (const key of def!.rollKeys) {
+          const ceiling = statCeiling(def!, r.rarity, key);
+          if (!ceiling) continue;
+          expect(item.stats[key] ?? 0).toBeLessThanOrEqual(ceiling * max + 1);
+          const grade = item.rollQuality?.[key];
+          if (grade != null) expect(grade).toBeLessThanOrEqual(1);
+        }
       }
     }
   });

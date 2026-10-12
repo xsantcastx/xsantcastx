@@ -13,7 +13,7 @@ import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
-import { IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
+import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
 import { areaOf, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
@@ -28,6 +28,8 @@ import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.compon
 import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
 import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
+import { HomeForgeService } from './homestead/home-forge.service';
+import { homeStationOf } from './world/homestead';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { PLACEABLES } from './engine/terrain';
@@ -133,6 +135,11 @@ export class SideScrollerComponent implements OnDestroy {
   /** A camp's bench: the same Crafting Bench, opened on what can be made now. */
   private readonly campInjector = Injector.create({
     providers: [{ provide: IN_WORLD_PANEL, useValue: true }, { provide: IN_WORLD_FOCUS, useValue: 'ready' }], parent: this.injector,
+  });
+  /** Your Anvil / Your Enchanting Circle in the Homestead: the same benches, with the station's tier (HOME_FORGE). */
+  private readonly homeForge = inject(HomeForgeService);
+  private readonly homeInjector = Injector.create({
+    providers: [{ provide: IN_WORLD_PANEL, useValue: true }, { provide: HOME_FORGE, useValue: this.homeForge.context }], parent: this.injector,
   });
   /** True while the Keeper stands at the Delve shaft and has a camp below. */
   campReady = false;
@@ -473,6 +480,13 @@ export class SideScrollerComponent implements OnDestroy {
     }
     const entry = station.panel ? PANEL_REGISTRY[station.panel] : undefined;
     if (!entry) return;
+    const home = homeStationOf(station.id);
+    if (home) {
+      // No "Open full page": the routed bench would drop the home tier.
+      this.showPanel({ kind: 'page', stationId: station.id, title: this.homeForge.name(home), kicker: this.homeForge.kicker() });
+      this.loadPanel(entry, this.homeInjector);
+      return;
+    }
     this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker, route: entry.route });
     this.loadPanel(entry, this.panelInjector);
   }
