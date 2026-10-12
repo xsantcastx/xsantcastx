@@ -10,13 +10,16 @@ import {
 } from '../shared/rarity/rarity.model';
 import { ARENA_PLAYABLE, formatScore, isPlayableGateOpen, playableById } from './games/arena-game.model';
 import { ArenaScoresService } from './games/arena-scores.service';
-import { RouterModule } from '@angular/router';
+import { Router, RouterModule } from '@angular/router';
 import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 import { ARENA_GAME_EXIT } from './games/arena-game.base';
 import { ARENA_GAME_ROUTES } from './games/arena-game.routes';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
+import { TranslationService } from '../translation.service';
+import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationTab } from '../shared/station-ui';
+import { TRIALS_I18N } from './trials.i18n';
 export interface ArenaGame {
   id: string;
   title: string;
@@ -53,15 +56,90 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLa
   templateUrl: './arena.component.html',
   styleUrls: ['./arena.component.css'],
   standalone: true,
-  imports: [RelatedPagesComponent, RouterModule, ArtSceneComponent, NgComponentOutlet]
+  imports: [RelatedPagesComponent, RouterModule, ArtSceneComponent, NgComponentOutlet, ...STATION_UI]
 })
 export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly eggs = inject(EasterEggService);
   private readonly quests = inject(QuestService);
+  private readonly i18n = inject(TranslationService);
+  private readonly router = inject(Router);
 
   totalEggs = PUBLIC_CODEX_EGGS.length;
   foundCount = 0;
+
+  // ── Station frame (shared/station-ui) ──────────────────────────────────────
+  detailsOpen = false;
+  /** Null until the visitor picks: Open when anything is open, else All. */
+  private chosenTab: 'open' | 'all' | null = null;
+  tab: 'open' | 'all' = 'all';
+  stationTabs: StationTab[] = [];
+  rows: JournalRow[] = [];
+  pickedId: string | null = null;
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  setTab(id: string): void {
+    this.chosenTab = id === 'open' ? 'open' : 'all';
+    this.pickedId = null;
+    this.buildStation();
+  }
+
+  /** The gate the detail pane shows: the pick, else the first in the list. */
+  get gate(): ArenaGame | null {
+    const visible = this.rows.map(r => this.games.find(g => g.id === r.id)).filter((g): g is ArenaGame => !!g);
+    return visible.find(g => g.id === this.pickedId) ?? visible[0] ?? null;
+  }
+
+  /** The Play button's "why not", or null when the gate leads somewhere. */
+  get playBlocked(): string | null {
+    const g = this.gate;
+    if (!g) return null;
+    if (g.locked) return this.t('trials.blockedChain');
+    if (!g.route) return this.t('trials.blockedForge');
+    return null;
+  }
+
+  /** The pitch's first sentence for the detail line; the whole pitch is in Details. */
+  firstSentence(text: string): string {
+    const m = /^.*?[.!?](\s|$)/.exec(text);
+    return m ? m[0].trim() : text;
+  }
+
+  /** The ONE action: walk through the gate. In the world it opens over the panel. */
+  play(): void {
+    const g = this.gate;
+    if (!g || g.locked || !g.route) return;
+    if (this.inWorld) {
+      const focused = typeof document !== 'undefined' ? document.activeElement : null;
+      this.openGame(g, focused instanceof HTMLElement ? focused : undefined);
+    } else {
+      void this.router.navigateByUrl(g.route);
+    }
+  }
+
+  /** Rows and tabs, rebuilt when the ledger lands or a tab is picked — never in the template. */
+  private buildStation(): void {
+    const open = this.games.filter(g => !g.locked);
+    this.tab = this.chosenTab ?? (open.length ? 'open' : 'all');
+    this.stationTabs = [
+      { id: 'open', label: this.t('trials.tab.open'), badge: open.length || null },
+      { id: 'all', label: this.t('trials.tab.all') },
+    ];
+    const list = this.tab === 'open' ? open : this.games;
+    this.rows = list.map(g => ({
+      id: g.id,
+      name: g.locked ? '???' : g.title,
+      sub: g.locked ? this.t('trials.chained')
+        : g.bestLabel ? this.t('trials.best', { s: g.bestLabel })
+        : g.isNew ? this.t('trials.new')
+        : g.rarity.label,
+      locked: g.locked,
+      ready: !g.locked && g.isNew,
+    }));
+  }
 
   private readonly scores = inject(ArenaScoresService);
   private readonly injector = inject(Injector);
@@ -98,6 +176,14 @@ export class ArenaComponent implements OnInit {
    * real game; the ones after it are still flavour, and the card says so rather
    * than offering an "Enter" that goes nowhere.
    */
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(TRIALS_I18N);
+    // Field initialisers (the sealed `games` wall) have run by now, so the
+    // server renders the full, all-chained list.
+    this.buildStation();
+  }
+
   private readonly seeds: GameSeed[] = ARENA_PLAYABLE.map(g => ({
     id: g.id,
     title: g.title,
@@ -156,6 +242,7 @@ export class ArenaComponent implements OnInit {
       // longer has to settle for counting gates that were merely unlocked.
       if (this.scores.hasCleared(game.id)) this.quests.recordArenaGame(game.id);
     }
+    this.buildStation();
   }
 
   /** In-world "Enter": open the gate's game in the panel overlay. Loads the route's own lazy chunk. */
