@@ -169,8 +169,8 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 
 ## Phase 4: Life
 
-- [ ] NPC shopkeepers at each building (needs NPC art)
-- [ ] Ambient townsfolk, per-realm weather / atmosphere
+- [x] Shopkeepers at every station (`cea9d40`): canon NPCs where they fit (Kael at the Rune Forge, The Merchant at the Market, The Archivist at the Codex, Aureth in Luminous, Verrin in Umbral) speaking only canon `DIALOGUE` lines (test-enforced); role-titled keepers elsewhere; placeholder figures until `npc-*-figure` sprites exist; click a keeper → its station. **Not yet seen in a browser** (the pane was hidden overnight)
+- [x] Townsfolk (2–4 per town) + per-realm atmosphere (Infernal embers/ash, Luminous light shafts/motes, Umbral ink motes, Celestial star glints, Verdant leaves/spores; reduced motion freezes) (`cea9d40`)
 - [ ] True layered or frame animation once the art exists (`docs/animation/layered-art-spec.md`)
 
 ---
@@ -215,6 +215,8 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- **Owner: confirm 11 keeper role titles**: Buyback Clerk, Croupier, Exchange Broker, Expedition Steward (from the art pack) + Bench Smith, Enchanter, Chart Clerk, Board Herald, Arena Gatekeeper, Trials Warden, Lodge Warden (Phase 4). Titles only, no personal names until approved
+- **Owner: look at Phase 4 in a browser**: keeper placement beside (not on) stalls, greeting once on approach, townsfolk never on a stall, realm particles, ES name tags
 - Gathering regrowth now persisted (`9ec52e4`, blob `godforge-gathering`)
 - Fixed (`8bbe142`): a live **Exchange Gold exploit** after the ×0.06 rescale: bulk buys were priced before their own price move and could be sold back unit by unit at a profit; orders now price across their own movement (buys round up, sells down). Karma 1933/1933
 - Player market list now reads one summary doc `market/v1/summary/board` (`8bbe142`); it caps sustained market writes at ~1/s (shard it before heavy traffic)

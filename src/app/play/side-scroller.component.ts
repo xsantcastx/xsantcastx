@@ -39,6 +39,7 @@ import { SkillActionService } from '../shared/skills/skill-actions.service';
 import { skillForDiscipline, skillLevel } from '../shared/skills/skill.model';
 import { huntingXpFor } from '../shared/skills/hunting';
 import { TranslationService } from '../translation.service';
+import { LIFE_I18N } from './world/life.i18n';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -267,9 +268,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (!canvas || canvas === this.boundCanvas) return;
     this.engine?.destroy();
     this.boundCanvas = canvas;
+    this.i18n.register(LIFE_I18N);
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
+      // Keeper name tags and their one line of chatter (world/life.i18n.ts).
+      translate: key => this.i18n.translate(key),
       // Scene paintings follow the ArtScene convention: assets/images/<basename>-<width>.webp.
       scene: name => `assets/images/${name}-1536.webp`,
       town: this.town,
