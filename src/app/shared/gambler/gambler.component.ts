@@ -75,6 +75,7 @@ import { RUNE_TIERS } from '../rune-forge/rune.model';
 import { revealTiming, type RevealSpeed, type RevealTiming } from './reveal-timing';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
+import { injectInWorldPanel } from '../in-world-panel';
 type RevealPhase = 'idle' | 'wager' | 'charging' | 'cracking' | 'revealed';
 
 /** One tile in the pull history strip. Presentation only — never persisted. */
@@ -143,6 +144,14 @@ export class GamblerComponent implements OnInit, OnDestroy {
   /** Whether this component currently holds the spotlight (see `holdSpotlight`). */
   private onStage = false;
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+  /**
+   * Hosted as the Gambler in the Nocturne Archive (/play). The hero, the
+   * Market link and the related links drop out, and the reveal fills the
+   * PANEL instead of the screen: the panel is `contain: layout`, which makes
+   * it the containing block of the fixed `.gb-reveal`, so `inset: 0` lands on
+   * the panel's box and the altar is sized against it (see `.gb-reveal--in-world`).
+   */
+  protected readonly inWorld = injectInWorldPanel();
   private readonly subs = new Subscription();
   private timers: ReturnType<typeof setTimeout>[] = [];
 
@@ -301,8 +310,13 @@ export class GamblerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  @HostListener('document:keydown.escape')
-  onEscape(): void {
+  @HostListener('document:keydown.escape', ['$event'])
+  onEscape(event?: Event): void {
+    if (this.phase === 'idle') return;
+    // The reveal used the key. Claim it, so a host listening further up (the
+    // in-world panel closes on an unclaimed Escape at window) does not also
+    // shut the whole place mid-reveal.
+    event?.preventDefault();
     if (this.phase === 'revealed') this.dismiss();
     else this.skip();
   }
