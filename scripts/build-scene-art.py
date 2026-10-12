@@ -31,7 +31,10 @@ It also converts the 33 painted rune/runeword/artifact cards.
   behind a route that needs JavaScript and localStorage to show anything, so a
   browser too old for WebP (pre-Safari-14, 2020) never reaches them.
 
-Run from the repo root:  python3 scripts/build-scene-art.py
+Run from the repo root:  python3 scripts/build-scene-art.py [--only=<stem>]... [--check]
+`--only=bg-town-infernal` builds one scene and skips the cards — use it when a
+single painting lands, so a full run does not re-encode every committed scene.
+`--check` lists which scenes have a source painting and writes nothing.
 Idempotent — safe to re-run; it overwrites its own outputs and nothing else.
 """
 import os
@@ -39,22 +42,41 @@ import sys
 
 from PIL import Image
 
-SRC_DIR = os.path.expanduser('~/Desktop/Game images/Locations')
+# The library moved off the Desktop (`~/Desktop/Game images/` no longer exists);
+# same root and override as import-assets.py.
+LIBRARY = os.path.expanduser(
+    os.environ.get('ER_ASSET_LIBRARY', '~/Documents/1. Projects/Eclipse Realms/Assets')
+)
+SRC_DIR = os.path.join(LIBRARY, 'Locations')
 OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'src', 'assets', 'images')
 
 # source basename -> output basename. RuneForge is deliberately absent: it
 # already shipped as runeforge-hero-* in v2.52.0 and regenerating it here would
 # churn four committed binaries for a byte-level difference nobody can see.
+# Paths are relative to `Locations/`, without `.png`, and use the library's own
+# kebab-case names (the Desktop folder had `The Arena.png`).
 SCENES = {
-    'The Arena': 'bg-arena',
-    'Market': 'bg-market',
-    'War Table': 'bg-war-table',
-    'Profile': 'bg-profile',
-    'Umbral': 'bg-umbral',
-    'Luminous': 'bg-luminous',
-    'Celestial': 'bg-celestial',
-    'Verdant': 'bg-verdant',
-    'Infernal': 'bg-infernal',
+    'the-arena': 'bg-arena',
+    'market': 'bg-market',
+    'war-table': 'bg-war-table',
+    'profile': 'bg-profile',
+    'umbral': 'bg-umbral',
+    'luminous': 'bg-luminous',
+    'celestial': 'bg-celestial',
+    'verdant': 'bg-verdant',
+    'infernal': 'bg-infernal',
+    'basalt-seamworks': 'bg-basalt-seamworks',
+}
+
+# Realm towns for the in-world hubs, commissioned in docs/art-commissions/.
+# None is painted yet; a missing source is skipped, not an error, so the day one
+# lands `--only=bg-town-<realm>` is the whole job.
+TOWNS = {
+    'Towns/luminous-town': 'bg-town-luminous',
+    'Towns/celestial-town': 'bg-town-celestial',
+    'Towns/infernal-town': 'bg-town-infernal',
+    'Towns/umbral-town': 'bg-town-umbral',
+    'Towns/verdant-town': 'bg-town-verdant',
 }
 
 # Matched to the art already on the wall rather than picked: re-encoding
@@ -123,20 +145,44 @@ def main() -> int:
     if not os.path.isdir(SRC_DIR):
         print(f'error: source art not found at {SRC_DIR}', file=sys.stderr)
         return 1
-    os.makedirs(OUT_DIR, exist_ok=True)
+    only = {a.split('=', 1)[1] for a in sys.argv if a.startswith('--only=')}
+    check = '--check' in sys.argv
+
+    jobs: list[tuple[str, str, bool]] = [(src, stem, True) for src, stem in SCENES.items()]
+    jobs += [(src, stem, False) for src, stem in TOWNS.items()]
+    if only:
+        jobs = [j for j in jobs if j[1] in only]
+        unknown = only - {j[1] for j in jobs}
+        if unknown:
+            print(f'error: unknown scene stem(s): {", ".join(sorted(unknown))}', file=sys.stderr)
+            return 1
 
     total = 0
-    for src_name, stem in sorted(SCENES.items(), key=lambda kv: kv[1]):
+    built = 0
+    for src_name, stem, required in sorted(jobs, key=lambda j: j[1]):
         src_path = os.path.join(SRC_DIR, f'{src_name}.png')
         if not os.path.isfile(src_path):
-            print(f'error: missing {src_path}', file=sys.stderr)
-            return 1
+            if required:
+                print(f'error: missing {src_path}', file=sys.stderr)
+                return 1
+            print(f'  {stem:28s} pending — no Locations/{src_name}.png yet')
+            continue
+        if check:
+            print(f'  {stem:28s} ok')
+            continue
         for path, size in build(src_path, stem):
             total += size
             print(f'  {os.path.basename(path):28s} {size // 1024:5d} KB')
+        built += 1
 
-    print(f'\n{len(SCENES)} scenes, {total // 1024} KB')
+    if check:
+        return 0
+    print(f'\n{built} scenes, {total // 1024} KB')
 
+    if only or not os.path.isdir(CARD_SRC_DIR):
+        if not only:
+            print(f'cards skipped: {CARD_SRC_DIR} not found')
+        return 0
     cards = build_cards()
     print(f'33 cards, {cards // 1024} KB')
     print(f'total {(total + cards) // 1024} KB')

@@ -77,9 +77,9 @@ export interface NpcDefinition {
    *
    * Nothing is painted yet, so every one of these resolves to null through
    * `artFor()` and the component draws the placeholder orb. That is a supported
-   * state rather than a hole: the orb carries the monogram and the accent, and
-   * `art.spec.ts` fails the day a portrait lands and the pending entry is left
-   * behind.
+   * state rather than a hole: the orb carries the monogram and the accent. The
+   * portrait is briefed in `docs/art-commissions/`; once
+   * `Characters/npcs/NN-<artId>.png` is imported it resolves with no code change.
    */
   artId: string;
   /**
