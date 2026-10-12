@@ -264,7 +264,7 @@ export class RigSprite {
       this.deformedX = new Float32Array(this.mesh.nv);
       this.deformedY = new Float32Array(this.mesh.nv);
       this.cellMask = this.measureCells(image);
-      this.anchor.u = -1;
+      for (const anchor of this.anchors) anchor.u = -1;
     }
     const mesh = this.mesh!;
     const fit = Math.min(boxW / nw, boxH / nh);
@@ -343,7 +343,7 @@ export class RigSprite {
    */
   attach(bone: number, u: number, v: number, out: { x: number; y: number; angle: number }): boolean {
     if (!this.ready || !this.mesh) return false;
-    const m = this.matrices, p = this.placed, w = this.anchor;
+    const m = this.matrices, p = this.placed, w = this.anchorFor(u, v);
     const x = u, y = v * this.mesh.aspect;
     // Skin the point with the same blended weights the painting uses, so a held
     // item stays on the painted hand rather than on the bare bone.
@@ -361,7 +361,19 @@ export class RigSprite {
     out.angle = Math.atan2(m[bone * 6 + 1], m[bone * 6]);
     return true;
   }
-  private readonly anchor = { u: -1, v: -1, idx: new Uint8Array(MAX_INFLUENCES), val: new Float32Array(MAX_INFLUENCES) };
+  /**
+   * Cached skin weights for attach points (front hand, back hand, ...). Weighing
+   * allocates, so each distinct (u, v) is weighed once and reused every frame.
+   */
+  private readonly anchors = Array.from({ length: 4 }, () => ({ u: -1, v: -1, idx: new Uint8Array(MAX_INFLUENCES), val: new Float32Array(MAX_INFLUENCES) }));
+  private nextAnchor = 0;
+  private anchorFor(u: number, v: number): RigSprite['anchors'][number] {
+    for (const anchor of this.anchors) if (anchor.u === u && anchor.v === v) return anchor;
+    const anchor = this.anchors[this.nextAnchor];
+    this.nextAnchor = (this.nextAnchor + 1) % this.anchors.length;
+    anchor.u = -1;
+    return anchor;
+  }
 
   /** One-time scan: which grid cells contain paint at all. Fails open (draw every cell). */
   private measureCells(image: HTMLImageElement): Uint8Array | null {
