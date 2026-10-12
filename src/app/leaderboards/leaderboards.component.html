@@ -78,6 +78,11 @@
               [class.lb-row--podium]="entry.row.rank <= 3">
             <td class="lb-col-rank">#{{ entry.row.rank }}</td>
             <td class="lb-col-name">
+              @if (entry.avatar; as av) {
+                <img class="lb-avatar" [src]="av.src" [attr.srcset]="av.srcset" sizes="32px"
+                     alt="" aria-hidden="true" width="32" height="32"
+                     loading="lazy" decoding="async" draggable="false">
+              }
               <span class="lb-name">{{ entry.row.name }}</span>
               <span class="lb-name__title" *ngIf="entry.row.title">{{ entry.row.title }}</span>
             </td>

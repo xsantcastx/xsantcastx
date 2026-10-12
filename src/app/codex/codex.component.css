@@ -490,6 +490,33 @@
 }
 .cx-block__sub { margin: 0 0 1.2rem; font-size: 0.82rem; color: var(--cx-dim); }
 
+/* ── Bestiary ──────────────────────────────────────────────────────────── */
+.cx-bestiary { margin-top: 1.5rem; }
+.cx-bestiary__list {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 0.8rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr));
+}
+.cx-bestiary__card {
+  display: flex; gap: 0.8rem; align-items: flex-start;
+  padding: 0.8rem; border-radius: 12px;
+  border: 1px solid var(--cx-line);
+}
+.cx-bestiary__art { flex: none; width: 96px; height: 96px; object-fit: contain; }
+.cx-bestiary__body { min-width: 0; }
+.cx-bestiary__where {
+  display: flex; align-items: center; gap: 0.35rem;
+  margin: 0; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--cx-dim);
+}
+.cx-bestiary__crest { width: 20px; height: 20px; object-fit: contain; }
+.cx-bestiary__name {
+  margin: 0.25rem 0 0.3rem;
+  font: 700 0.92rem/1.2 'Orbitron', system-ui, sans-serif;
+  color: var(--ink-0);
+}
+.cx-bestiary__note { margin: 0; font-size: 0.82rem; line-height: 1.45; color: var(--cx-dim); }
+
 /* ── The path ──────────────────────────────────────────────────────────── */
 .cx-path { list-style: none; margin: 0; padding: 0 0 0 1.4rem; position: relative; }
 .cx-path::before {
