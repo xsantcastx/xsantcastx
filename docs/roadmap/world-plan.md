@@ -215,6 +215,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- **Playtests merged** (`13b3e7e`): `e2e/play-*.spec.ts` (run with `PW_PORT=4291`), 25 pass + 6 `fixme` = app bugs in `docs/handoff/playtest-findings.md`: P-1 Exchange buy→sell profit (likely already fixed by the exploit fix), P-2 `?at=` to another town lost on reload, P-3 no Hunting XP from kills / no Mining XP from ore pickup (Hunting partly fixed by the gathering merge), P-4 monster coins never reach the purse, P-5 vendor pays equal to (not below) the Exchange floor, P-6 The Fracture's 600 XP exceeds the 500 per-action cap and is lost. Fix round in progress
 - **Owner: confirm 11 keeper role titles**: Buyback Clerk, Croupier, Exchange Broker, Expedition Steward (from the art pack) + Bench Smith, Enchanter, Chart Clerk, Board Herald, Arena Gatekeeper, Trials Warden, Lodge Warden (Phase 4). Titles only, no personal names until approved
 - **Owner: look at Phase 4 in a browser**: keeper placement beside (not on) stalls, greeting once on approach, townsfolk never on a stall, realm particles, ES name tags
 - Gathering regrowth now persisted (`9ec52e4`, blob `godforge-gathering`)
