@@ -158,6 +158,9 @@ const PROPOSED = {
     'epic craft fee (min)': C.CRAFT_FEE_FLOOR.epic,
     'legendary craft fee (min)': C.CRAFT_FEE_FLOOR.legendary,
     'mythic craft (Eclipse Edge)': C.CRAFT_FEE_FLOOR.mythic,
+    'home forge tier II': C.HOME_FORGE_PRICES[0],
+    'home forge tier III': C.HOME_FORGE_PRICES[1],
+    'home forge tier IV': C.HOME_FORGE_PRICES[2],
   },
 };
 
@@ -316,7 +319,7 @@ function bestPurchase(E, S, cps) {
 function simulate(E, seed = 7) {
   const R = rng(seed);
   const S = makeState(E);
-  const log = { buys: [], milestones: {}, at: {}, sinks: {}, sparkGold: 0, expGold: 0, offlineGold: 0 };
+  const log = { buys: [], milestones: {}, at: {}, sinks: {}, sparkGold: 0, expGold: 0, offlineGold: 0, trace: [] };
   const sinkNames = Object.keys(E.sinks);
   let nextSpark = E.spark.minS + R() * (E.spark.maxS - E.spark.minS);
   let exp = null; // { endsAt, pay }
@@ -326,6 +329,9 @@ function simulate(E, seed = 7) {
 
   const earn = (g, src) => { S.bank += g; S.total += g; if (src) log[src] += g; };
   const record = () => {
+    // All-time Gold over time, for --place. A point when it has grown 1% or more.
+    const lastTrace = log.trace[log.trace.length - 1];
+    if (!lastTrace || S.total >= lastTrace[1] * 1.01 + 1) log.trace.push([S.t, S.total]);
     while (cp < checkpoints.length && S.t >= checkpoints[cp]) {
       log.at[checkpoints[cp]] = { gps: gps(E, S), bank: S.bank, total: S.total, buys: log.buys.length };
       cp++;
@@ -479,7 +485,43 @@ function check(E) {
   console.log('  ok');
 }
 
-if (argv.check) {
+/** When the all-time total first reached `n` (linear between trace points). */
+function timeToTotal(trace, n) {
+  for (let i = 0; i < trace.length; i++) {
+    const [t, total] = trace[i];
+    if (total >= n) {
+      if (i === 0) return t;
+      const [t0, g0] = trace[i - 1];
+      return t0 + (t - t0) * (n - g0) / Math.max(1e-9, total - g0);
+    }
+  }
+  return undefined;
+}
+/** The all-time total at time `t`. */
+function totalAt(trace, t) {
+  let last = 0;
+  for (const [tt, total] of trace) { if (tt > t) break; last = total; }
+  return last;
+}
+
+/**
+ * --place=100000,1000000,...: for each v2 all-time Gold target, when the v2
+ * player reached it and what the v3 player has banked all-time by then — the
+ * v3 target that keeps the same wall-clock pacing from a fresh start.
+ */
+function place(targets) {
+  const cur = simulate(CURRENT).log.trace;
+  const pro = simulate(PROPOSED).log.trace;
+  console.log('v2 target -> reached at -> v3 all-time Gold then');
+  for (const n of targets) {
+    const t = timeToTotal(cur, n);
+    console.log(`  ${fmtN(n).padStart(8)} -> ${fmtT(t).padStart(7)} -> ${t === undefined ? '-' : fmtN(totalAt(pro, t))}`);
+  }
+}
+
+if (argv.place) {
+  place(String(argv.place).split(',').map(Number));
+} else if (argv.check) {
   check(PROPOSED);
 } else {
   console.log(`Eclipse Realms economy sim · ${DAYS} day(s) · node scripts/economy-sim.mjs ${process.argv.slice(2).join(' ')}\n`);
