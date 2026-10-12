@@ -18,6 +18,8 @@ export interface Light {
   rank: number;
 }
 
+/** The darkness colour (`r,g,b`) when a biome names none: basalt's violet-black. */
+export const DEFAULT_DARK = '5,3,9';
 /** Default lantern radius in world px when the host has not set one. */
 export const DEFAULT_LANTERN = 230;
 /** Most lights drawn in one frame. */
@@ -85,7 +87,8 @@ export class DarknessLayer {
   private context: CanvasRenderingContext2D | null = null;
   private hole: CanvasGradient | null = null;
   private failed = false;
-  private readonly fills = new Map<number, string>();
+  /** Fill strings per darkness tint (`r,g,b`), indexed by ambient hundredth. */
+  private readonly fills = new Map<string, string[]>();
   /** Fraction of CSS px the overlay is drawn at. Light is soft; half is plenty. */
   private readonly resolution = .5;
 
@@ -110,14 +113,14 @@ export class DarknessLayer {
    * world transform popped). `scale` is world → CSS px; camera in world px.
    */
   draw(target: CanvasRenderingContext2D, width: number, height: number, scale: number, cameraX: number, cameraY: number,
-    lights: readonly Light[], count: number, ambient: number): void {
+    lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK): void {
     const c = this.ensure(width, height);
     if (!c || !this.canvas || !this.hole) return;
     const k = this.resolution * scale;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
     c.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    c.fillStyle = this.fill(ambient);
+    c.fillStyle = this.fill(ambient, tint);
     c.fillRect(0, 0, this.canvas.width, this.canvas.height);
     c.globalCompositeOperation = 'destination-out';
     c.fillStyle = this.hole;
@@ -133,11 +136,13 @@ export class DarknessLayer {
     target.drawImage(this.canvas, 0, 0, width, height);
   }
 
-  /** The ambient fill colour, cached per hundredth so no string is built per frame. */
-  private fill(ambient: number): string {
+  /** The ambient fill colour, cached per tint and hundredth so no string is built per frame. */
+  private fill(ambient: number, tint: string): string {
     const key = Math.round(Math.max(0, Math.min(1, ambient)) * 100);
-    let fill = this.fills.get(key);
-    if (!fill) { fill = `rgba(5,3,9,${(key / 100).toFixed(2)})`; this.fills.set(key, fill); }
+    let row = this.fills.get(tint);
+    if (!row) { row = new Array<string>(101); this.fills.set(tint, row); }
+    let fill = row[key];
+    if (!fill) { fill = `rgba(${tint},${(key / 100).toFixed(2)})`; row[key] = fill; }
     return fill;
   }
 }
