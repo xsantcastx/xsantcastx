@@ -77,6 +77,7 @@ import { Quest } from '../shared/quests/quest.model';
 import { ExpeditionBlock, ExplorerService } from '../shared/explorer/explorer.service';
 import { ExplorerRosterPanelComponent } from '../shared/rpg/explorer-roster-panel.component';
 import { ChallengePanelComponent } from '../shared/challenges/challenge-panel.component';
+import { WorksMapComponent } from '../shared/expedition/works-map.component';
 import { ThrallPanelComponent } from '../shared/thralls/thrall-panel.component';
 import {
   EXPLORER_REALMS,
@@ -556,7 +557,7 @@ const HUM_KEY = 'godforge-forge-hum';
   standalone: true,
   imports: [RelatedPagesComponent, 
     CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent,
-    ChallengePanelComponent, ThrallPanelComponent, ArtSceneComponent,
+    ChallengePanelComponent, ThrallPanelComponent, ArtSceneComponent, WorksMapComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './forge-view.component.html',
