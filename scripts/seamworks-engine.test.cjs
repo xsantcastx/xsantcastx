@@ -530,3 +530,59 @@ test('drop tables are data: chances roll on the engine RNG and materials carry t
   assert.ok(loot.some(drop => drop.material === 'ember-residue' && drop.ore === 2));
   engine.destroy();
 });
+
+// Drop tables name real stacks: a drop must render (catalogue) and must feed a recipe.
+const materialCatalog = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/material-catalog.ts'));
+const craftingModel = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+const forgeRecipes = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/forge-recipes.ts'));
+
+test('every drop-table material is catalogued and used by at least one recipe', () => {
+  const used = new Set([
+    ...craftingModel.CRAFTING_RECIPES.flatMap(recipe => recipe.ingredients.map(ingredient => ingredient.materialId)),
+    ...forgeRecipes.FORGE_EQUIPMENT_RECIPES.flatMap(recipe => recipe.inputs.map(input => input.id)),
+  ]);
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    for (const area of [town, ...town.hunts]) {
+      const tables = [area.drops, ...area.monsters.map(monster => monster.drops).filter(Boolean)];
+      for (const table of tables) {
+        for (const entry of table.entries) {
+          if (entry.kind !== 'material') continue;
+          const where = `${town.id}/${area.id}/${table.id}/${entry.id}`;
+          const display = materialCatalog.materialDisplay(entry.material);
+          assert.ok(display, `${where}: ${entry.material} is in the material catalogue`);
+          assert.equal(entry.label, display.name, `${where}: the label matches the catalogue name`);
+          assert.ok(used.has(entry.material), `${where}: ${entry.material} feeds a recipe`);
+          assert.ok(entry.qty >= 1 && (entry.chance ?? 1) > 0 && (entry.chance ?? 1) <= 1, `${where}: qty and chance are sane`);
+        }
+      }
+    }
+  }
+});
+
+test('the Heliograph Court: Market stall, waystone, and a Forager hunt that feeds the Aurumleaf Pendant', () => {
+  const town = world.TOWNS.luminous;
+  assert.ok(town, 'the Luminous town is registered');
+  assert.equal(town.background, 'bg-luminous');
+  const market = town.stations.find(station => station.id === 'market');
+  assert.equal(market.kind, 'panel'); assert.equal(market.panel, 'market');
+  assert.ok(town.stations.some(station => station.kind === 'waystone'), 'the Court has a waystone');
+  const passage = town.stations.find(station => station.kind === 'passage');
+  const hunt = world.areaOf(town, passage.to);
+  assert.ok(hunt && hunt !== town, 'the east stair leads to a hunting ground');
+  assert.ok(hunt.stations.some(station => station.kind === 'passage' && station.to === town.id), 'and back');
+  assert.deepEqual(hunt.monsters.map(monster => monster.creature), ['prism-forager']);
+  // The pendant's inputs come from the Forager table alone, in about ten kills or fewer.
+  const pendant = craftingModel.CRAFTING_RECIPES.find(recipe => recipe.id === 'craft-aurumleaf-pendant');
+  const kills = pendant.ingredients.map(({ materialId, count }) => {
+    const entry = hunt.drops.entries.find(drop => drop.kind === 'material' && drop.material === materialId);
+    assert.ok(entry, `the Forager drops ${materialId}`);
+    return count / (entry.qty * (entry.chance ?? 1));
+  });
+  assert.ok(Math.max(...kills) <= 10, `expected kills for one pendant: ${Math.max(...kills).toFixed(1)}`);
+  // A town with no monsters runs: the Keeper walks the Court without a hunt to fight.
+  const { engine, state } = fixture(() => true, { town });
+  assert.equal(engine.monsters.length, 0);
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.ok(state().hp > 0);
+  engine.destroy();
+});
