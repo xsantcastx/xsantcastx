@@ -25,6 +25,8 @@ export interface AreaLike {
   monsters: readonly { drops?: DropTableLike }[];
   /** Node ids that occur in the area's terrain (bands, veins, stamps). */
   terrainNodes?: readonly string[];
+  /** Materials its gathering nodes (herb patches, trees, outcrops) yield. */
+  gatherMaterials?: readonly string[];
 }
 
 export interface FoundInIndex {
@@ -71,10 +73,14 @@ export function foundIn(materialId: string, index: FoundInIndex): FoundInPlace[]
     const dropped = materialsOf(area.drops).includes(materialId)
       || area.monsters.some(m => materialsOf(m.drops).includes(materialId));
     const dug = (area.terrainNodes ?? []).some(node => index.nodeYields[node] === materialId);
+    const gathered = (area.gatherMaterials ?? []).includes(materialId);
     if (dug) {
       // The Delve's biome map is more specific than "somewhere in the delve".
       if (delve && delve.area === area.name && delve.biomes.length) continue;
       add(area.name, 'delve');
+    } else if (gathered) {
+      // A node standing in the hunt is a surer source than a drop chance.
+      add(area.name, 'gather');
     } else if (dropped) {
       add(area.name, area.terrainNodes?.length ? 'delve' : 'hunt');
     }

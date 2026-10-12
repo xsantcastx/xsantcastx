@@ -10,7 +10,7 @@ import { FLOOR } from '../../engine/engine.model';
 import { WARDEN_FLAG } from '../../engine/terrain';
 import { HOMESTEAD, HOMESTEAD_GATE } from '../homestead';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
-import type { HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
 /** Inventory stack id of Cinder Ore (mirrors CINDER_ORE_ID in activity.model). */
 export const CINDER_ORE = 'cinder-ore';
@@ -37,6 +37,21 @@ const GUARD_PLATFORMS: Platform[] = [
 
 const TOWN_WIDTH = 2700 + QUARTER;
 
+/**
+ * What grows and stands in the Quarry between the seam and the Maws. Same
+ * rule as the Delve (tool + tier, then the skill level): a fresh Keeper can
+ * cut the starlight tuft and fell the scorched trunk with the starter kit;
+ * the slag outcrop wants a Pickaxe II and Mining 8, like a Delve slag vein.
+ */
+export const EMBER_QUARRY_NODES: readonly GatherNodeDef[] = [
+  { id: 'starlight-tuft', x: 340, kind: 'herb', label: 'Starlight Herb tuft', tools: { sickle: 1 }, hp: 1, discipline: 'foraging', xp: 2, minLevel: 1,
+    yield: { materialId: 'starlight-herb', qty: 1 }, respawn: 25 },
+  { id: 'scorched-trunk', x: 720, kind: 'wood', label: 'Scorched World-Root trunk', tools: { axe: 1 }, hp: 3, discipline: 'woodcutting', xp: 4, minLevel: 1,
+    yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, respawn: 35 },
+  { id: 'slag-outcrop', x: 920, kind: 'ore', label: 'Slag outcrop', tools: { pickaxe: 2 }, hp: 4, discipline: 'mining', xp: 5, minLevel: 8,
+    yield: { materialId: 'slag-fragment', qty: 1 }, respawn: 45 },
+];
+
 export const EMBER_QUARRY: HuntZoneDef = {
   id: 'ember-quarry',
   name: 'Ember Quarry',
@@ -49,6 +64,7 @@ export const EMBER_QUARRY: HuntZoneDef = {
   ],
   monsters: [{ creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1350, 1670, 1990] }],
   drops: SEAMWORKS_DROPS,
+  nodes: EMBER_QUARRY_NODES,
   spawnX: 240,
   arrival: 'Ember Quarry. Hunt the Maws for coins and ore. The return portal is behind you.',
 };

@@ -46,7 +46,7 @@ describe('toolTiers', () => {
 
   it('takes the best owned tier per family; 0 when none', () => {
     const t = toolTiers(inv(['pickaxe-1', 'pickaxe-3', 'axe-2']));
-    expect(t).toEqual({ pickaxe: 3, axe: 2, sickle: 0, staff: 0, blade: 0, lanternRadius: 3 });
+    expect(t).toEqual({ pickaxe: 3, axe: 2, sickle: 0, staff: 0, blade: 0, lanternRadius: 7 });
   });
 
   it('caps by the wielding skill when progress is given', () => {
@@ -57,8 +57,8 @@ describe('toolTiers', () => {
     expect(t.lanternRadius).toBe(lanternRadiusFor(20));
   });
 
-  it('lantern grows 3 -> 12', () => {
-    expect(lanternRadiusFor(1)).toBe(3);
-    expect(lanternRadiusFor(99)).toBe(12);
+  it('lantern grows 7 -> 16 tiles (7 tiles = the engine default reach)', () => {
+    expect(lanternRadiusFor(1)).toBe(7);
+    expect(lanternRadiusFor(99)).toBe(16);
   });
 });

@@ -39,6 +39,14 @@ describe('foundIn (pure)', () => {
     expect(foundIn('glowcap', INDEX).map(p => p.label)).toEqual(['Ember Delve · Glowcap Grotto']);
   });
 
+  it('names a hunting ground whose gathering node yields it, as a gathering place', () => {
+    const index: FoundInIndex = {
+      ...INDEX,
+      areas: [...INDEX.areas, { name: 'Reflection Channels', drops: { entries: [] }, monsters: [], gatherMaterials: ['starlight-herb'] }],
+    };
+    expect(foundIn('starlight-herb', index)).toEqual([{ label: 'Reflection Channels', kind: 'gather' }]);
+  });
+
   it('falls back to the area when no biome is known', () => {
     expect(foundIn('kaels-hammer', INDEX).map(p => p.label)).toEqual(['Ember Delve']);
   });
@@ -70,6 +78,12 @@ describe('foundIn (the real world data)', () => {
 
   it('finds Slag in the Delve terrain and at the Seamworks seam', () => {
     expect(labels('slag-fragment')).toEqual(jasmine.arrayContaining(['Basalt Seamworks', 'Ember Delve']));
+  });
+
+  it('finds the hunting grounds that grow Starlight Herb and stand Slag outcrops', () => {
+    expect(labels('starlight-herb')).toEqual(jasmine.arrayContaining(['Rootglass Canopy', 'Ember Quarry', 'Reflection Channels', 'Orrery Rings', 'Rootglass Thicket']));
+    expect(labels('slag-fragment')).toContain('Ember Quarry');
+    expect(labels('celestial-alloy')).toContain('Orrery Rings');
   });
 
   it('lists the expedition, not the buy-only Vendor, for an expedition material', () => {

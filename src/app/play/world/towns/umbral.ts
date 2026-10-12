@@ -16,7 +16,7 @@
  */
 import { FLOOR } from '../../engine/engine.model';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
-import type { HuntZoneDef, TownDef, ZoneDropTable } from '../world.model';
+import type { GatherNodeDef, HuntZoneDef, TownDef, ZoneDropTable } from '../world.model';
 
 /**
  * What a Mirror Substitute leaves behind. Tuned against the Infernal hunt
@@ -50,6 +50,20 @@ export const NOCTURNE_DROPS: ZoneDropTable = {
 const TOWN_WIDTH = 2800;
 const HUNT_WIDTH = 2700;
 
+/**
+ * Gathering in the Corridors: a dusk sapling any axe fells, Nightbloom where
+ * the reflections disagree (Sickle III, Foraging 14), and Shadowbark whose
+ * silk wants an Axe IV and Woodcutting 45 — Umbral is a late realm.
+ */
+export const CORRIDOR_NODES: readonly GatherNodeDef[] = [
+  { id: 'dusk-sapling', x: 360, kind: 'wood', label: 'Dusk World-Root sapling', tools: { axe: 1 }, hp: 3, discipline: 'woodcutting', xp: 4, minLevel: 1,
+    yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, respawn: 35 },
+  { id: 'nightbloom', x: 540, kind: 'herb', label: 'Nightbloom', tools: { sickle: 3 }, hp: 3, discipline: 'foraging', xp: 8, minLevel: 14,
+    yield: { materialId: 'nightbloom', qty: 1 }, respawn: 40 },
+  { id: 'shadowbark', x: 880, kind: 'wood', label: 'Shadowbark tree', tools: { axe: 4 }, hp: 6, discipline: 'woodcutting', xp: 20, minLevel: 45,
+    yield: { materialId: 'shadowthread-silk', qty: 1, chance: .5 }, respawn: 75 },
+];
+
 export const UNRECORDED_CORRIDORS: HuntZoneDef = {
   id: 'unrecorded-corridors',
   name: 'Unrecorded Corridors',
@@ -65,6 +79,7 @@ export const UNRECORDED_CORRIDORS: HuntZoneDef = {
   ],
   monsters: [{ creature: 'mirror-substitute', name: 'Mirror Substitute', hp: 75, spawnXs: [1250, 1650, 2050] }],
   drops: NOCTURNE_DROPS,
+  nodes: CORRIDOR_NODES,
   spawnX: 240,
   arrival: 'Unrecorded Corridors. The Substitutes wear whoever walks in; break them for ink, bloom and silk. The way back is behind you.',
 };

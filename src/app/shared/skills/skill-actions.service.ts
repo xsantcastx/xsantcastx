@@ -67,6 +67,20 @@ export class SkillActionService {
     return this.act({ mutationId, skill: 'smithing', xp: craftSkillXp(quality), locationId });
   }
 
+  /**
+   * A Crafting Bench craft just settled (`CraftingService.recordCraft`). The
+   * bench's own ladder XP is part of Smithing (skillXp), but it never passes
+   * through `act`, so the bench reports here and the Smithing banner fires
+   * when that XP crossed a level. `xpGained` is the bench XP the craft added.
+   */
+  announceBenchCraft(progress: { xpGained: number } | null | undefined): void {
+    const gained = progress?.xpGained ?? 0;
+    if (!(gained > 0)) return;
+    this.activity.init();
+    const after = skillXp(this.activity.snapshot.progress, 'smithing', this.crafting.xp());
+    this.levelUp.checkSkill('smithing', after - gained, after);
+  }
+
   /** One finished ritual. `quality` 0..1 scales the XP. */
   grantEnchantingXp(quality: number, mutationId: string, locationId = 'forge/enchanting'): WorldActionResult {
     return this.act({ mutationId, skill: 'enchanting', xp: craftSkillXp(quality), locationId });
