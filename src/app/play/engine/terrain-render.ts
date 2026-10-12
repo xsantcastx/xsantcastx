@@ -215,6 +215,14 @@ function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark
       for (const ry of [4, 15, 26]) { c.fillStyle = dark; c.fillRect(x + 8, y + ry + 1, 16, 3); c.fillStyle = light; c.fillRect(x + 8, y + ry, 16, 2); }
       break;
     }
+    case 'chest': {
+      // A banded box on the floor: lid, body, brass lock.
+      c.fillStyle = dark; c.fillRect(x + 3, y + 12, 26, 20);
+      c.fillStyle = base; c.fillRect(x + 4, y + 13, 24, 18);
+      c.fillStyle = light; c.fillRect(x + 3, y + 12, 26, 3); c.fillRect(x + 3, y + 20, 26, 2);
+      c.fillStyle = fleck; c.fillRect(x + 14, y + 18, 4, 6);
+      break;
+    }
     case 'platform': {
       // A plank across the top, a lit edge, two thin struts to the wall.
       c.fillStyle = dark; c.fillRect(x, y + 6, 32, 3); c.fillRect(x + 5, y + 6, 2, 12); c.fillRect(x + 25, y + 6, 2, 12);

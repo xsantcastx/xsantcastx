@@ -76,6 +76,8 @@ export interface TerrainNodeDef {
   oneWay?: true;
   /** Climbable: Up/Down move the Keeper along it, and it holds them still (ladders). */
   climb?: true;
+  /** Used with E or a tap, like a station: the host opens it (a chest's contents, a camp's crafting). */
+  use?: 'chest' | 'camp';
 }
 
 /** The flag the Rune-Warden sets when it falls (delve save `claimed`). */
@@ -149,6 +151,8 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     base: '#7a5a36', dark: '#3a2a18', light: '#b08a55', fleck: '#5a4026' },
   { id: 'platform', label: 'Platform', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'platform', oneWay: true,
     base: '#8a6a40', dark: '#3a2a18', light: '#c9a06a', fleck: '#5a4026' },
+  { id: 'chest', label: 'Chest', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'chest', use: 'chest',
+    base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#e8c47a' },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -405,7 +409,7 @@ export function cellKey(col: number, row: number): string { return `${col},${row
 // ── Building ───────────────────────────────────────────────────────────────
 
 /** Satchel stack ids of the things a Keeper can place in a delve. */
-export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform';
+export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform' | 'chest';
 
 export interface PlaceableDef {
   /** The satchel stack it is placed from and taken back to. */
@@ -420,6 +424,8 @@ export interface PlaceableDef {
    * goes where the Keeper stands first (ladders: place, climb, place again).
    */
   aim: PlaceAim;
+  /** Needs solid ground (or a platform) under its cell. */
+  grounded?: true;
 }
 export type PlaceAim = 'block' | 'beside' | 'here';
 
@@ -430,6 +436,7 @@ export const PLACEABLES: readonly PlaceableDef[] = [
   { id: 'torch', label: 'Torch', node: 'torch', aim: 'beside' },
   { id: 'ladder', label: 'Ladder', node: 'ladder', aim: 'here' },
   { id: 'platform', label: 'Platform', node: 'platform', aim: 'block' },
+  { id: 'chest', label: 'Chest', node: 'chest', aim: 'beside', grounded: true },
 ];
 const PLACEABLE_BY_ID = new Map(PLACEABLES.map(def => [def.id, def]));
 export function placeableById(id: string | null | undefined): PlaceableDef | undefined {

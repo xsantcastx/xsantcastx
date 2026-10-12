@@ -28,7 +28,8 @@ import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.compon
 import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
 import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
-import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, PlaceableId, PlaceEvent, ToolTiers, WorldActionEvent } from './engine/engine';
+import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
+import { ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolTiers } from '../shared/skills/tools';
@@ -73,8 +74,10 @@ interface BagSlip {
   compareLabel: string;
 }
 
-/** What the in-world panel is showing: a hosted page, or the waystone's travel list. */
-interface OpenPlace { kind: 'page' | 'waystone'; stationId: string; title: string; kicker: string; route?: string }
+/** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
+interface OpenPlace { kind: 'page' | 'waystone' | 'chest'; stationId: string; title: string; kicker: string; route?: string; chest?: { areaId: string; index: number } }
+/** The open chest: what is in it and what the satchel could put in. Rebuilt after every move. */
+interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; note: string }
 interface PlaceRow { id: string; name: string; blurb: string }
 interface WaystoneRow { id: RealmTownId; realm: string; town: string; crest: string; available: boolean; current: boolean }
 
@@ -153,6 +156,9 @@ export class SideScrollerComponent implements OnDestroy {
   /** The player's own Delve (seed + dug cells) and the inscriptions they have read. */
   private readonly delve = inject(DelveSaveService);
   private readonly delveLore = inject(DelveLoreService);
+  private readonly chests = inject(DelveChestService);
+  /** The chest panel's contents while one is open. */
+  chestView: ChestView | null = null;
   private delveSub?: Subscription;
   private readonly zone = inject(NgZone);
   readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -247,11 +253,13 @@ export class SideScrollerComponent implements OnDestroy {
       onDiscover: event => this.zone.run(() => this.discover(event)),
       onPlace: event => this.zone.run(() => this.placeFromSatchel(event)),
       onTakeBack: event => this.zone.run(() => this.takeToSatchel(event)),
+      onUse: event => this.zone.run(() => this.useCell(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
         if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
+        if (state.delve && !this.state.delve) this.refundOrphanChests();
         this.state = state;
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
@@ -477,7 +485,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.panel = place;
     this.engine?.setHover(null);
     this.engine?.setPaused(true);
-    this.setAt(place.stationId);
+    // A chest has no deep link: it is a cell in this player's own Delve.
+    if (place.kind !== 'chest') this.setAt(place.stationId);
     // Focus moves into the dialog once it is shown; the close button is always there.
     setTimeout(() => this.placePanel.nativeElement.querySelector<HTMLElement>('.place-close')?.focus());
   }
@@ -499,6 +508,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panel = null; this.panelLoading = false; this.panelError = '';
+    this.chestView = null;
     this.engine?.setPaused(false);
     if (syncUrl) this.setAt(null);
     this.focusWorld();
@@ -630,6 +640,7 @@ export class SideScrollerComponent implements OnDestroy {
       case 'forge': return this.equipped ? 'Blade equipped' : this.edge ? 'Equip Basalt Edge' : 'Forge Basalt Edge';
       case 'beacon': return this.restored ? 'Beacon restored' : 'Restore beacon';
       case 'inscription': return 'Read the inscription';
+      case 'chest': return 'Open the chest';
       case 'passage': return this.state.area === 'Ember Quarry' ? 'Return to Seamworks' : 'Enter Ember Quarry';
       default: return 'Walk closer to a landmark';
     }
@@ -943,12 +954,58 @@ export class SideScrollerComponent implements OnDestroy {
   /** A placed thing comes back: one grant keyed by the take's mutation id. */
   private takeToSatchel(event: PlaceEvent): boolean {
     if (!this.browser) return false;
+    if (event.item === 'chest' && !this.chests.isEmpty(event.areaId, event.index)) {
+      this.message = 'Empty the chest first: open it (E) and take everything out.';
+      return false;
+    }
     if (!this.inventory.grantStack(event.mutationId, event.item, 1)) {
       this.message = 'Your satchel is full. Make room to take it back.';
       return false;
     }
+    if (event.item === 'chest') this.chests.forget(event.areaId, event.index);
     this.refreshHotbar();
     return true;
+  }
+  /** E beside (or a tap on) a placed chest or camp. */
+  private useCell(event: UseEvent): void {
+    if (!this.browser) return;
+    if (event.kind === 'chest') {
+      this.showPanel({ kind: 'chest', stationId: 'chest', title: 'Chest', kicker: 'Your Delve', chest: { areaId: event.areaId, index: event.index } });
+      this.refreshChest('Put things in to keep them here. Take them out any time.');
+    }
+  }
+  /** Rebuild the open chest's two lists. */
+  private refreshChest(note: string): void {
+    const at = this.panel?.chest;
+    if (!at) { this.chestView = null; return; }
+    const satchel = this.inventory.snapshot.stacks
+      .filter(stack => stack.quantity > 0)
+      .map(stack => {
+        const display = materialDisplay(stack.stackKey);
+        return { stackKey: stack.stackKey, name: display?.name ?? stack.stackKey, art: display?.art ?? '', qty: stack.quantity };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.chestView = { rows: this.chests.contents(at.areaId, at.index), satchel, slots: this.chests.slots, note };
+  }
+  chestPut(row: ChestRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.put(at.areaId, at.index, row.stackKey);
+    this.refreshChest(result.ok ? `${result.qty} ${row.name} put in the chest.` : result.message);
+    this.refreshHotbar();
+  }
+  chestTake(row: ChestRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.take(at.areaId, at.index, row.stackKey);
+    this.refreshChest(result.ok ? `${result.qty} ${row.name} back in the satchel.` : result.message);
+    this.refreshHotbar();
+  }
+  /** Chests whose Delve changed under them (a version bump, a merged seed) hand their contents back. */
+  private refundOrphanChests(): void {
+    if (!this.browser) return;
+    const refunded = this.chests.refundOrphans((areaId, index) => this.engine?.nodeIdAt(areaId, index) ?? null);
+    if (refunded) this.message = `The Delve shifted. ${refunded} things from a lost chest are back in your satchel.`;
   }
   /** The hotbar's Take back button: same as X. */
   takeBack(): void { this.engine?.takeBack(); }

@@ -1121,3 +1121,30 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .hotbar ul { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 46px; overflow-x: auto; }
   .stage:has(.book) .hotbar { visibility: hidden; }
 }
+
+/* A chest placed in the Delve: what is in it, what you carry. Two plain lists. */
+.chest { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.chest h3 {
+  margin: 0 0 8px;
+  font: 600 11px Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--adventure-beacon-text);
+}
+.chest h3 small { margin-left: 6px; color: var(--adventure-dialogue); letter-spacing: .06em; }
+.chest ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; max-height: 46vh; overflow: auto; }
+.chest li {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+  border: 1px solid var(--adventure-hud-shadow);
+  background: var(--adventure-hud-panel-solid);
+}
+.chest li img { width: 40px; height: 40px; object-fit: contain; grid-column: 1; }
+.chest li span { display: grid; gap: 2px; grid-column: 2; min-width: 0; }
+.chest li b { font: 500 18px var(--font-lore, Georgia, serif); color: var(--adventure-parchment); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chest li small { font: 600 11px Orbitron, sans-serif; color: var(--adventure-dialogue); }
+.chest li button { grid-column: 3; min-height: 44px; }
+.chest-empty { margin: 0 0 6px; color: var(--adventure-dialogue); font: italic 400 15px var(--font-lore, Georgia, serif); }

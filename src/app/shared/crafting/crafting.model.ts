@@ -498,6 +498,10 @@ export const DELVE_KIT_RECIPES: readonly CraftingRecipe[] = [
     [m('world-root-bark', 1), m('thornroot', 1)],
     20, 1, 'Four platforms lashed with root. Stand on them; hold Down to drop through.',
     { count: 4, stack: true }),
+  r('craft-delve-chest', 'Chest', 'delve', 'common', 'chest',
+    [m('world-root-bark', 4), m('cinder-ore', 2)],
+    150, 1, 'A chest for the Delve: four kinds of thing, as many of each as you like. Stash finds where you dig.',
+    { stack: true }),
 ];
 
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
