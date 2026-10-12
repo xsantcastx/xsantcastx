@@ -43,6 +43,16 @@
   color: var(--mk-ink);
 }
 
+/* In-world (the Luminous town's Market stall inside /play): the panel is the
+   frame and the scrollport, so the floor drops its page gutters and width cap,
+   and the wallet pins to the panel's top edge rather than below a site header
+   that is not in that scrollport. */
+.mk--in-world {
+  max-width: none;
+  padding: 0 0 24px;
+}
+.mk--in-world .mk__wallet { top: 0; }
+
 .mk[data-currency='essence'] { --mk-accent: var(--mk-ess); --mk-accent-soft: var(--mk-ess-soft); }
 .mk[data-currency='shard']   { --mk-accent: var(--mk-shard); --mk-accent-soft: rgba(255, 109, 215, 0.5); }
 
