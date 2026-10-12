@@ -68,6 +68,10 @@ export interface TerrainNodeDef {
    * clangs with `refusal` until then. The engine checks the flag, not the host.
    */
   guard?: { flag: string; refusal: string };
+  /** The placeable stack breaking it drops into the satchel ('dirt-block'), paid by the host. */
+  block?: PlaceableId;
+  /** A placed thing that is not dug but taken back whole (torch, ladder, chest): its stack id. */
+  placeable?: PlaceableId;
 }
 
 /** The flag the Rune-Warden sets when it falls (delve save `claimed`). */
@@ -81,9 +85,9 @@ const ROCK = { base: '#3a2b2c', dark: '#241a1c', light: '#5a4440', fleck: '#6b51
  */
 export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   { id: 'air', label: 'Open air', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, base: '#120c10', dark: '#0b0709', light: '#1d1418', fleck: '#000' },
-  { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, base: '#5b3b2c', dark: '#3d271d', light: '#7f5640', fleck: '#8c6a4f' },
-  { id: 'rock', label: 'Basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, ...ROCK },
-  { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, base: '#2a2027', dark: '#171116', light: '#443540', fleck: '#57474f' },
+  { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block', base: '#5b3b2c', dark: '#3d271d', light: '#7f5640', fleck: '#8c6a4f' },
+  { id: 'rock', label: 'Basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, block: 'basalt-block', ...ROCK },
+  { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, block: 'basalt-block', base: '#2a2027', dark: '#171116', light: '#443540', fleck: '#57474f' },
   { id: 'cinder-vein', label: 'Cinder Ore vein', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, minLevel: 1,
     yield: { materialId: 'cinder-ore', qty: 1 }, ...ROCK, fleck: '#ff9b4f', glow: { color: '#ff9b4f', radius: 46 } },
   { id: 'slag-vein', label: 'Slag vein', solid: true, hp: 4, tools: { pickaxe: 2 }, discipline: 'mining', xp: 5, minLevel: 8,
@@ -105,18 +109,18 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     yield: { materialId: 'ember-residue', qty: 1 }, base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 52 } },
   // ── Biomes (Phase 2.6). Appended: the index is the saved byte. ──
   // Root Hollows: soil the World-Root's shadow grew through.
-  { id: 'root-loam', label: 'Root-bound loam', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0,
+  { id: 'root-loam', label: 'Root-bound loam', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block',
     base: '#3f2c22', dark: '#2a1c15', light: '#6a4c36', fleck: '#8a6a3c' },
   // The inverse tree that grows downward: the cutting Verrin asks for.
   { id: 'shadow-root', label: 'Shadow-root', solid: true, hp: 2, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 3,
     yield: { materialId: 'shadow-root-cutting', qty: 1, chance: .75 }, base: '#1a1220', dark: '#0e0912', light: '#4a3260', fleck: '#9b7ad6', glow: { color: '#9b7ad6', radius: 30 } },
   // Glowcap Grotto: stone wet with the light seeping through the fracture.
-  { id: 'grotto-stone', label: 'Grotto stone', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1,
+  { id: 'grotto-stone', label: 'Grotto stone', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, block: 'basalt-block',
     base: '#22303a', dark: '#141d24', light: '#3c5664', fleck: '#6fa8c0' },
   { id: 'glowcap', label: 'Glowcap cluster', solid: true, hp: 1, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 2,
     yield: { materialId: 'glowcap', qty: 1 }, base: '#1b2a36', dark: '#101a22', light: '#5fb8e8', fleck: '#a8e4ff', glow: { color: '#7fc8ff', radius: 58 } },
   // Magma Halls: the fracture itself.
-  { id: 'scorched-basalt', label: 'Scorched basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2,
+  { id: 'scorched-basalt', label: 'Scorched basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, block: 'basalt-block',
     base: '#3a1e1c', dark: '#220f0e', light: '#6a3328', fleck: '#ff6a3a' },
   // A carved wall: a backdrop the Keeper stands in front of and reads (E).
   { id: 'inscription', label: 'Carved inscription', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
@@ -128,6 +132,12 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // Kael's old cache in the Maws' cavern: his lost hammer, once per player (the host's `claimed`).
   { id: 'kaels-cache', label: 'Kael\'s old cache', solid: true, hp: 2, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 10,
     yield: { materialId: 'kaels-hammer', qty: 1 }, base: '#5a3f2a', dark: '#2e1f14', light: '#d8b07a', fleck: '#ffd9a0', glow: { color: '#ffc97a', radius: 56 } },
+  // ── Building (Phase 2.6). What the Keeper places. Never generated, only placed. ──
+  // Blocks: no XP (placing and re-digging must not farm Mining), the block back on a break.
+  { id: 'packed-dirt', label: 'Packed dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block',
+    base: '#6a4532', dark: '#40291e', light: '#8f6448', fleck: '#a07a58' },
+  { id: 'basalt-block', label: 'Basalt block', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, block: 'basalt-block',
+    base: '#43333a', dark: '#2a1f25', light: '#6a5560', fleck: '#7a656e' },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -374,6 +384,57 @@ export function crackStage(health: number): number {
 
 /** Stable key of a cell, as reported in world actions. */
 export function cellKey(col: number, row: number): string { return `${col},${row}`; }
+
+// ── Building ───────────────────────────────────────────────────────────────
+
+/** Satchel stack ids of the things a Keeper can place in a delve. */
+export type PlaceableId = 'dirt-block' | 'basalt-block';
+
+export interface PlaceableDef {
+  /** The satchel stack it is placed from and taken back to. */
+  id: PlaceableId;
+  /** "Dirt block", for the hotbar and the plain feedback. */
+  label: string;
+  /** Terrain node it becomes. */
+  node: string;
+}
+
+/** Every placeable, in hotbar order (keys 1, 2, …). */
+export const PLACEABLES: readonly PlaceableDef[] = [
+  { id: 'dirt-block', label: 'Dirt block', node: 'packed-dirt' },
+  { id: 'basalt-block', label: 'Basalt block', node: 'basalt-block' },
+];
+const PLACEABLE_BY_ID = new Map(PLACEABLES.map(def => [def.id, def]));
+export function placeableById(id: string | null | undefined): PlaceableDef | undefined {
+  return id ? PLACEABLE_BY_ID.get(id as PlaceableId) : undefined;
+}
+
+/** Open air: the only cell anything is placed into. */
+export function isAir(t: Terrain, col: number, row: number): boolean {
+  return row >= 0 && t.inside(col, row) && t.kind[t.index(col, row)] === AIR && !t.inscriptions.has(t.index(col, row));
+}
+
+/**
+ * Where a place action without a pointer puts a thing, as a cell index, or -1.
+ *
+ *   below  (holding Down): the cell under the Keeper's feet, if it is open.
+ *   front: the column just past the body in the facing direction. Its floor
+ *          cell first (fills the hole ahead: walk-and-place bridges a gap),
+ *          then the lowest open cell beside the body (walls and stairs).
+ *
+ * Pure.
+ */
+export function placeTarget(t: Terrain, x: number, feetY: number, facing: number, below: boolean, box: BodyBox): number {
+  const feetRow = t.rowAt(feetY - EPS), floorRow = feetRow + 1, headRow = t.rowAt(feetY - box.height);
+  if (below) {
+    const col = t.colAt(x);
+    return isAir(t, col, floorRow) ? t.index(col, floorRow) : -1;
+  }
+  const col = facing < 0 ? t.colAt(x - box.halfWidth) - 1 : t.colAt(x + box.halfWidth - EPS) + 1;
+  if (isAir(t, col, floorRow)) return t.index(col, floorRow);
+  for (let row = feetRow; row >= headRow; row--) if (isAir(t, col, row)) return t.index(col, row);
+  return -1;
+}
 
 /** Build an area's terrain from its spec. Same spec → same grid, cell for cell. */
 export function generateTerrain(spec: TerrainSpec, seed = spec.seed): Terrain {

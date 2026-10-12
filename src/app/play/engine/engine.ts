@@ -6,8 +6,8 @@ import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchel
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
 import {
-  applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, nodeIndex, stepTerrainBody, SWING_TOOLS, Terrain, TERRAIN_NODE_LIST,
-  TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
+  placeTarget, stepTerrainBody, SWING_TOOLS, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import type { DelvePersistence } from './engine.model';
@@ -16,8 +16,8 @@ import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, LootRarity, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
-export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, WorldActionEvent } from './engine.model';
-export type { ToolTiers } from './terrain';
+export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, PlaceEvent, WorldActionEvent } from './engine.model';
+export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
 // `flash`, `knock`, `dying`, `born` and `shownHp` are presentation only: they
@@ -268,27 +268,102 @@ export class SeamworksEngine {
     if (!layout) return;
     try { this.delve.changed(this.areaDef.id, layout, index, t.kind[index] === t.base[index] ? null : t.kind[index]); } catch { /* the dig still stands this session */ }
   }
+  // ── Building ─────────────────────────────────────────────────────────────
+
+  /** The hotbar's choice: what B (or a long-press) places. */
+  private placing: PlaceableId | null = null;
+  /** Bumped per placement: makes each placement's mutation id, and a re-dig of a placed cell, unique. */
+  private placeSeq = 0;
+  /** Cell index → the placement that filled it this session, so its re-dig is a new grant. */
+  private readonly placedGen = new Map<number, number>();
+  /** Choose what to place (the hotbar). Unknown ids clear it. */
+  setPlaceable(id: PlaceableId | string | null): void { this.placing = placeableById(id)?.id ?? null; }
+  get placeable(): PlaceableId | null { return this.placing; }
   /**
-   * Building, stubbed: put a block of `nodeId` into an open cell of the
-   * current delve and save it. Refuses (false) outside a delve, off the grid,
-   * into rock, onto a carved wall, or into the Keeper or a living creature.
-   * Satchel cost, reach and art come with the building features.
+   * B: place the chosen thing in front of the Keeper (below, holding Down).
+   * See `placeTarget` for which cell. False, with a plain message, when it
+   * cannot go anywhere.
+   */
+  place(): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return false;
+    const def = placeableById(this.placing);
+    if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
+    const down = this.input.has('down');
+    const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX);
+    if (index < 0) { this.message = `No open space ${down ? 'under your feet' : 'in front of you'} for the ${def.label.toLowerCase()}.`; this.report(); return false; }
+    return this.placeItem(def, index);
+  }
+  /** A long-press (or right-click) on a cell within reach: place the chosen thing there. */
+  placeAtClient(clientX: number, clientY: number): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return false;
+    const point = this.pick(clientX, clientY);
+    const col = t.colAt(point.x), row = t.rowAt(point.y);
+    if (!t.inside(col, row) || !this.inReach(col, row)) return false;
+    const def = placeableById(this.placing);
+    if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
+    return this.placeItem(def, t.index(col, row));
+  }
+  /** True when a cell's centre is within a swing of the Keeper's chest. */
+  private inReach(col: number, row: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
+    return Math.hypot(cx - this.player.x, cy - (this.player.y - DELVE_BOX.height * .5)) <= DELVE_REACH;
+  }
+  /** Why `node` cannot go into a cell right now, or null. */
+  private placeProblem(t: Terrain, col: number, row: number, node: TerrainNodeDef): string | null {
+    if (!t.inside(col, row) || row < 0) return 'That is outside the Delve.';
+    if (!isAir(t, col, row)) return 'Something is already there.';
+    if (!node.solid) return null;
+    const x0 = col * CELL, y0 = t.top + row * CELL;
+    const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
+      x + halfWidth > x0 && x - halfWidth < x0 + CELL && feet > y0 && feet - height < y0 + CELL;
+    if (overlaps(this.player.x, this.player.y, DELVE_BOX.halfWidth, DELVE_BOX.height)) return 'You are standing there.';
+    for (const monster of this.monsters) {
+      if (monster.hp > 0 && overlaps(monster.x, monster.def.floorY ?? FLOOR, 30 * this.figure, 110 * this.figure)) return 'A creature is in the way.';
+    }
+    return null;
+  }
+  /** Ask the host for one `def` from the satchel, then fill the cell and save it. */
+  private placeItem(def: PlaceableDef, index: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const node = TERRAIN_NODES[def.node];
+    const problem = node ? this.placeProblem(t, col, row, node) : 'That cannot be placed.';
+    if (problem) { this.message = problem; this.report(); return false; }
+    const gen = ++this.placeSeq;
+    const accepted = this.options.onPlace?.({
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row),
+      mutationId: `delve-place:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${gen}`,
+    });
+    // Refused: the host already said why (none left, the save failed).
+    if (accepted === false) { this.report(); return false; }
+    this.fill(t, col, row, node!, gen);
+    this.message = `${def.label} placed.`;
+    this.report();
+    return true;
+  }
+  private fill(t: Terrain, col: number, row: number, node: TerrainNodeDef, gen: number): void {
+    const index = t.index(col, row);
+    t.set(col, row, nodeIndex(node.id));
+    this.placedGen.set(index, gen);
+    this.recordCell(t, index);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, node.fleck, this.reducedMotion ? 2 : 5);
+  }
+  /**
+   * Put a node into an open cell and save it, with no satchel cost (the
+   * persistence seam; tests and tools). Refuses (false) outside a delve, off
+   * the grid, into anything but open air, onto a carved wall, or a solid
+   * block into the Keeper or a living creature.
    */
   placeCell(col: number, row: number, nodeId: string): boolean {
     const t = this.terrain;
     const node = TERRAIN_NODES[nodeId];
-    if (!t || !node || !node.solid || !Number.isFinite(node.hp) || !t.inside(col, row)) return false;
-    const index = t.index(col, row);
-    if (t.solid(col, row) || t.inscriptions.has(index)) return false;
-    const x0 = col * CELL, y0 = t.top + row * CELL;
-    const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
-      x + halfWidth > x0 && x - halfWidth < x0 + CELL && feet > y0 && feet - height < y0 + CELL;
-    if (overlaps(this.player.x, this.player.y, DELVE_BOX.halfWidth, DELVE_BOX.height)) return false;
-    for (const monster of this.monsters) {
-      if (monster.hp > 0 && overlaps(monster.x, monster.def.floorY ?? FLOOR, 30 * this.figure, 110 * this.figure)) return false;
-    }
-    t.set(col, row, nodeIndex(nodeId));
-    this.recordCell(t, index);
+    if (!t || !node || !Number.isFinite(node.hp) || (!node.solid && !node.placeable) || this.placeProblem(t, col, row, node)) return false;
+    this.fill(t, col, row, node, ++this.placeSeq);
     return true;
   }
   private resetPosition(x: number): void {
@@ -650,11 +725,14 @@ export class SeamworksEngine {
     let qty = 0;
     const pays = node.yield;
     if (pays && (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance)) { material = pays.materialId; qty = pays.qty; }
-    if (node.xp > 0 || pays) {
+    if (node.xp > 0 || pays || node.block) {
+      // A cell the Keeper placed this session is a new grant each time it is dug.
+      const gen = this.placedGen.get(index);
       const accepted = this.options.onWorldAction?.({
         kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: cellKey(col, row),
         materialId: material, qty: material ? qty : undefined, discipline: node.discipline, xp: node.xp,
-        mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}`,
+        mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}${gen ? `:p${gen}` : ''}`,
+        ...(node.block ? { block: node.block } : {}),
       });
       if (accepted === false) {
         // Refused: it stands, cracked to the last stage, and the next hit asks again.
@@ -809,6 +887,7 @@ export class SeamworksEngine {
     const action = this.action(event.code);
     if (action) { event.preventDefault(); if (!event.repeat) this.setInput(action, true); }
     if (!event.repeat && event.code === 'KeyE') { event.preventDefault(); this.interact(); }
+    if (!event.repeat && event.code === 'KeyB' && this.terrain) { event.preventDefault(); this.place(); }
   };
   private readonly keyUp = (event: KeyboardEvent): void => { const action = this.action(event.code); if (action) this.setInput(action, false); };
   private resize(): void {

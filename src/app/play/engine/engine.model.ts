@@ -1,6 +1,6 @@
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
-import type { WorldActionKind } from './terrain';
+import type { PlaceableId, WorldActionKind } from './terrain';
 /** `down` aims a delve swing (or blast) below the Keeper; `blast` channels the staff. */
 export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge' | 'down' | 'blast';
 export type InteractionTarget = 'ore' | 'forge' | 'beacon' | 'passage';
@@ -63,6 +63,13 @@ export interface EngineOptions {
    */
   onDiscover?: (event: DiscoverEvent) => void;
   /**
+   * The Keeper is about to place one `item` from the satchel. Take it (one
+   * idempotent consume keyed by `mutationId`, unique per placement) and return
+   * true; return false to refuse (none left, a failed save) and say why. The
+   * cell is only filled after a yes. Absent: every placement is free (tests).
+   */
+  onPlace?: (event: PlaceEvent) => boolean | void;
+  /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
    * state lives for the engine session. Settable later with `setDelve()`.
@@ -92,6 +99,13 @@ export interface DelvePersistence {
   /** Set a once-per-player flag, saved at once. Optional: absent = this session only. */
   claim?(id: string): boolean;
 }
+export interface PlaceEvent {
+  item: PlaceableId;
+  areaId: string;
+  /** `col,row` of the cell it goes into. */
+  cellKey: string;
+  mutationId: string;
+}
 export interface WorldActionEvent {
   kind: WorldActionKind;
   areaId: string;
@@ -103,6 +117,12 @@ export interface WorldActionEvent {
   discipline: DisciplineId;
   xp: number;
   mutationId: string;
+  /**
+   * The placeable stack the break drops (dirt → 'dirt-block'), to grant after
+   * the break is accepted, keyed `${mutationId}:block`. A full satchel just
+   * loses the block; it never stops the dig.
+   */
+  block?: PlaceableId;
 }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }
