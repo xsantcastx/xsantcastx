@@ -206,16 +206,36 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .meter {
+  position: relative;
   height: 6px;
   overflow: hidden;
   background: var(--adventure-hud-ink);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
 }
 
+/* Both bars scale rather than resize, so a hit never triggers layout. The pale
+   chip under the fill holds for a beat and then drains, so damage reads as a
+   chunk taken rather than a number changing. Healing fills both together. */
+.meter i, .meter s {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(var(--fill, 1));
+  transform-origin: left center;
+}
+
 .meter i {
-  display: block;
-  height: 100%;
   background: linear-gradient(90deg, var(--adventure-hud-rust), var(--adventure-hud-gold) 88%, var(--adventure-hud-cream));
+  transition: transform .16s ease-out;
+}
+
+.meter s {
+  background: var(--adventure-hud-cream);
+  opacity: .55;
+  transition: transform .45s cubic-bezier(.22, 1, .36, 1) .35s;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .meter i, .meter s { transition: none; }
 }
 
 .meter.enemy i { background: linear-gradient(90deg, var(--adventure-hud-danger), var(--adventure-hud-flame) 90%, var(--adventure-hud-peach)); }

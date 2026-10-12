@@ -26,12 +26,12 @@
   <div class="vitals" aria-label="Health">
     <div class="vital">
       <label>Keeper <b>{{ state.hp }}</b></label>
-      <div class="meter"><i [style.width.%]="state.hp"></i></div>
+      <div class="meter"><s [style.--fill]="state.hp / 100"></s><i [style.--fill]="state.hp / 100"></i></div>
     </div>
     @if (state.enemyHp > 0) {
       <div class="vital">
         <label>Nearest Maw <b>{{ state.enemyHp }}</b></label>
-        <div class="meter enemy"><i [style.width.%]="state.enemyHp"></i></div>
+        <div class="meter enemy"><s [style.--fill]="state.enemyHp / 100"></s><i [style.--fill]="state.enemyHp / 100"></i></div>
       </div>
     }
   </div>
@@ -41,7 +41,7 @@
       <span>Satchel</span>
       <kbd>I</kbd>
     </button>
-    <p><span>Coins</span><b>{{ state.coins || 0 }}</b></p>
+    <p><span>Coins</span><b class="coin-count">{{ state.coins || 0 }}</b></p>
     <p><span>Cinder ore</span><b>{{ ore }}</b></p>
     <p><span>Ember</span><b>{{ ember }}</b></p>
     <p><span>Edge</span><b>{{ edge ? (equipped ? 'Worn' : 'Bag') : '—' }}</b></p>

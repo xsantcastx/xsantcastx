@@ -113,6 +113,7 @@ export class SideScrollerComponent implements OnDestroy {
       onLoot: loot => loot.ore === 0 || this.zone.run(() => this.inventory.grantStack(`seamworks-loot:${loot.id}`, CINDER_ORE_ID, loot.ore)),
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
+        if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bumpCoins();
         this.state = state;
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
@@ -121,6 +122,16 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
     this.engine.start();
+  }
+  /** Pop the satchel's coin count when a pickup lands. Web Animations, so a
+   *  burst of pickups restarts the pop instead of queueing class toggles. */
+  private bumpCoins(): void {
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    const count = this.host.nativeElement.querySelector('.coin-count') as HTMLElement | null;
+    count?.animate(
+      [{ transform: 'scale(1)' }, { transform: 'scale(1.45)', color: '#ffe08a', offset: .35 }, { transform: 'scale(1)' }],
+      { duration: 420, easing: 'cubic-bezier(.22, 1, .36, 1)' },
+    );
   }
   ngOnDestroy(): void { this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer); }
   async joinRoom(name: string): Promise<void> {
