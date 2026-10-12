@@ -73,6 +73,7 @@
       <p class="hot-line">
         @if (placingSlot; as slot) { <span>{{ slot.name }}</span> } @else { <span>Nothing chosen</span> }
         <button type="button" class="hot-place" (click)="placeHere()" [disabled]="!placingSlot?.count">Place <kbd class="key-hint">B</kbd></button>
+        <button type="button" class="hot-place" (click)="takeBack()" title="Take back a torch, ladder or chest beside you">Take <kbd class="key-hint">X</kbd></button>
       </p>
     </nav>
   }
@@ -192,7 +193,7 @@
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
   </div>
   @if (showKeys) {
-    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>1</kbd>-<kbd>9</kbd> choose <kbd>B</kbd> place (hold S: below) <kbd>Hold tap</kbd> place there <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>1</kbd>-<kbd>9</kbd> choose <kbd>B</kbd> place (hold S: below) <kbd>X</kbd> take back <kbd>Hold tap</kbd> place or take back there <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
   }
 
   <section class="dock" aria-labelledby="hearth-title" [attr.inert]="panel ? '' : null">

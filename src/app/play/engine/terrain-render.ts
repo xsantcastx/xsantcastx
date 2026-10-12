@@ -118,6 +118,7 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
     const wall = t.biomeAt(row).wall;
     c.fillStyle = (h & 3) === 0 ? wall[0] : wall[1]; c.fillRect(x, y, CELL, CELL);
     if (node.id === 'inscription') paintInscription(c, node.light, node.fleck, x, y, h);
+    else if (node.placeable) paintPlaced(c, node.id, node.base, node.dark, node.light, node.fleck, x, y);
     c.fillStyle = wall[2];
     if (t.solid(col, row - 1)) c.fillRect(x, y, CELL, 7);
     if (t.solid(col - 1, row)) c.fillRect(x, y, 4, CELL);
@@ -194,6 +195,20 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   if (!t.solid(col - 1, row)) { c.fillStyle = node.light; c.globalAlpha = .5; c.fillRect(x, y, 2, CELL); c.globalAlpha = 1; }
   if (!t.solid(col + 1, row)) { c.fillStyle = '#0a0608'; c.globalAlpha = .6; c.fillRect(x + CELL - 2, y, 2, CELL); c.globalAlpha = 1; }
   paintCracks(c, t, col, row, x, y, h);
+}
+
+/** A placed thing over the tunnel wall. Stand-in drawing until tile art lands. */
+function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark: string, light: string, fleck: string, x: number, y: number): void {
+  switch (id) {
+    case 'torch': {
+      // A bracket on the wall, a haft, and a flame (its light comes from the lighting pass).
+      c.fillStyle = dark; c.fillRect(x + 12, y + 20, 8, 3);
+      c.fillStyle = base; c.fillRect(x + 14, y + 12, 4, 16);
+      c.fillStyle = fleck; c.beginPath(); c.ellipse(x + 16, y + 9, 5, 7, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = light; c.beginPath(); c.ellipse(x + 16, y + 10, 2.5, 4, 0, 0, Math.PI * 2); c.fill();
+      break;
+    }
+  }
 }
 
 /** A dressed slab in the back wall with three rows of carved glyphs, picked by hash. */

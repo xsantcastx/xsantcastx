@@ -246,6 +246,7 @@ export class SideScrollerComponent implements OnDestroy {
       onWorldAction: event => this.zone.run(() => this.worldAction(event)),
       onDiscover: event => this.zone.run(() => this.discover(event)),
       onPlace: event => this.zone.run(() => this.placeFromSatchel(event)),
+      onTakeBack: event => this.zone.run(() => this.takeToSatchel(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       onState: (state: EngineState) => this.zone.run(() => {
@@ -939,6 +940,18 @@ export class SideScrollerComponent implements OnDestroy {
     this.refreshHotbar();
     return true;
   }
+  /** A placed thing comes back: one grant keyed by the take's mutation id. */
+  private takeToSatchel(event: PlaceEvent): boolean {
+    if (!this.browser) return false;
+    if (!this.inventory.grantStack(event.mutationId, event.item, 1)) {
+      this.message = 'Your satchel is full. Make room to take it back.';
+      return false;
+    }
+    this.refreshHotbar();
+    return true;
+  }
+  /** The hotbar's Take back button: same as X. */
+  takeBack(): void { this.engine?.takeBack(); }
   /** A break dropped a block: into the satchel, or crumbled when there is no room. Never refuses the dig. */
   private grantBlock(event: WorldActionEvent): void {
     if (!event.block) return;

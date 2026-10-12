@@ -138,9 +138,14 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     base: '#6a4532', dark: '#40291e', light: '#8f6448', fleck: '#a07a58' },
   { id: 'basalt-block', label: 'Basalt block', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, block: 'basalt-block',
     base: '#43333a', dark: '#2a1f25', light: '#6a5560', fleck: '#7a656e' },
+  // Placed things that are taken back whole (X, or a long-press), never dug.
+  { id: 'torch', label: 'Torch', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'torch',
+    base: '#5a3a22', dark: '#2e1d10', light: '#ffd08a', fleck: '#ff9b4f', glow: { color: '#ffb066', radius: 120 } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
+/** 1 where the node is a placed thing taken back whole (torch, ladder, chest…). */
+const TAKEABLE_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.placeable && !node.solid ? 1 : 0);
 export const TERRAIN_NODES: Readonly<Record<string, TerrainNodeDef>> = Object.fromEntries(TERRAIN_NODE_LIST.map(node => [node.id, node]));
 const NODE_INDEX = new Map(TERRAIN_NODE_LIST.map((node, index) => [node.id, index]));
 export function nodeIndex(id: string): number {
@@ -388,7 +393,7 @@ export function cellKey(col: number, row: number): string { return `${col},${row
 // ── Building ───────────────────────────────────────────────────────────────
 
 /** Satchel stack ids of the things a Keeper can place in a delve. */
-export type PlaceableId = 'dirt-block' | 'basalt-block';
+export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch';
 
 export interface PlaceableDef {
   /** The satchel stack it is placed from and taken back to. */
@@ -403,6 +408,7 @@ export interface PlaceableDef {
 export const PLACEABLES: readonly PlaceableDef[] = [
   { id: 'dirt-block', label: 'Dirt block', node: 'packed-dirt' },
   { id: 'basalt-block', label: 'Basalt block', node: 'basalt-block' },
+  { id: 'torch', label: 'Torch', node: 'torch' },
 ];
 const PLACEABLE_BY_ID = new Map(PLACEABLES.map(def => [def.id, def]));
 export function placeableById(id: string | null | undefined): PlaceableDef | undefined {
@@ -424,16 +430,51 @@ export function isAir(t: Terrain, col: number, row: number): boolean {
  *
  * Pure.
  */
-export function placeTarget(t: Terrain, x: number, feetY: number, facing: number, below: boolean, box: BodyBox): number {
+export function placeTarget(t: Terrain, x: number, feetY: number, facing: number, below: boolean, box: BodyBox, solid = true): number {
   const feetRow = t.rowAt(feetY - EPS), floorRow = feetRow + 1, headRow = t.rowAt(feetY - box.height);
-  if (below) {
-    const col = t.colAt(x);
-    return isAir(t, col, floorRow) ? t.index(col, floorRow) : -1;
-  }
-  const col = facing < 0 ? t.colAt(x - box.halfWidth) - 1 : t.colAt(x + box.halfWidth - EPS) + 1;
-  if (isAir(t, col, floorRow)) return t.index(col, floorRow);
+  const own = t.colAt(x);
+  if (below) return isAir(t, own, floorRow) ? t.index(own, floorRow) : -1;
+  const col = frontCol(t, x, facing, box);
+  // A block fills the hole ahead first; a thing you walk through (a torch) never goes in a floor.
+  if (solid && isAir(t, col, floorRow)) return t.index(col, floorRow);
   for (let row = feetRow; row >= headRow; row--) if (isAir(t, col, row)) return t.index(col, row);
+  // Walled in: a thing you walk through can go where you stand.
+  if (!solid) for (let row = feetRow; row >= headRow; row--) if (isAir(t, own, row)) return t.index(own, row);
   return -1;
+}
+
+/** The column just past the body in the facing direction. */
+function frontCol(t: Terrain, x: number, facing: number, box: BodyBox): number {
+  return facing < 0 ? t.colAt(x - box.halfWidth) - 1 : t.colAt(x + box.halfWidth - EPS) + 1;
+}
+
+/** True when the cell holds a placed thing that is taken back whole. */
+export function isTakeable(t: Terrain, col: number, row: number): boolean {
+  return row >= 0 && t.inside(col, row) && TAKEABLE_KIND[t.kind[t.index(col, row)]] === 1;
+}
+
+/**
+ * The placed thing X takes back, as a cell index, or -1: the nearest beside
+ * the body in the facing direction, else where the Keeper stands (feet up),
+ * else just under the feet. Pure.
+ */
+export function takeTarget(t: Terrain, x: number, feetY: number, facing: number, box: BodyBox): number {
+  const feetRow = t.rowAt(feetY - EPS), headRow = t.rowAt(feetY - box.height);
+  for (const col of [frontCol(t, x, facing, box), t.colAt(x)]) {
+    for (let row = feetRow; row >= headRow; row--) if (isTakeable(t, col, row)) return t.index(col, row);
+  }
+  return isTakeable(t, t.colAt(x), feetRow + 1) ? t.index(t.colAt(x), feetRow + 1) : -1;
+}
+
+/**
+ * How much darkness a glowing cell lifts at its centre, 0 for none. Placed
+ * lights (non-solid: torches) always burn; a glowing vein only once a tunnel
+ * exposes it. Pure.
+ */
+export function glowIntensity(node: TerrainNodeDef, exposed: boolean): number {
+  if (!node.glow) return 0;
+  if (!node.solid) return .9;
+  return exposed ? .55 : 0;
 }
 
 /** Build an area's terrain from its spec. Same spec → same grid, cell for cell. */

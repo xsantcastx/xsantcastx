@@ -70,6 +70,12 @@ export interface EngineOptions {
    */
   onPlace?: (event: PlaceEvent) => boolean | void;
   /**
+   * The Keeper takes a placed thing back (X, or a long-press on it): grant one
+   * `item` back to the satchel (idempotent on `mutationId`) and return true,
+   * or false to refuse (a chest with things in it) and say why. Absent: free.
+   */
+  onTakeBack?: (event: PlaceEvent) => boolean | void;
+  /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
    * state lives for the engine session. Settable later with `setDelve()`.

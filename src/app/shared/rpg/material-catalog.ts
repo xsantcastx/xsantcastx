@@ -62,6 +62,7 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   // as blocks; the rest are crafted. Stand-in art in art.ts until painted.
   'dirt-block': 'Dirt block',
   'basalt-block': 'Basalt block',
+  'torch': 'Torch',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

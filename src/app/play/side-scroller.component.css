@@ -1112,7 +1112,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
   letter-spacing: .08em;
   text-transform: uppercase;
 }
-.hot-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hot-line { flex-wrap: wrap; }
+.hot-line span { flex-basis: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hot-line .hot-place { min-height: 36px; }
 
 @media (max-width: 900px) {
