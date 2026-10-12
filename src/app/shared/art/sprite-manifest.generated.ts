@@ -35,6 +35,11 @@ export interface SpriteEntry {
   pivotX: number;
   pivotY: number;
   actions: Readonly<Record<string, SpriteAction>>;
+  /**
+   * Sidecar `"pixelArt": true`: the renderer turns image smoothing off and
+   * snaps draws to whole pixels. Absent for smooth (anti-aliased) sheets.
+   */
+  pixelArt?: boolean;
 }
 
 export const SPRITES: Readonly<Record<string, SpriteEntry>> = {

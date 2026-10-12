@@ -18,12 +18,12 @@
 import type { SpriteAction, SpriteEntry } from '../../shared/art/sprite-manifest.generated';
 
 /**
- * A manifest entry, plus the optional sidecar flag `pixelArt`. The importer
- * does not emit it today (the style guide asks for smooth, anti-aliased
- * sprites); when a sheet carries `pixelArt: true`, image smoothing is turned
- * off and the draw position is snapped to whole pixels.
+ * A manifest entry. The importer passes the sidecar flag `pixelArt` through
+ * (absent on the smooth, anti-aliased sheets the style guide asks for); when a
+ * sheet carries `pixelArt: true`, image smoothing is turned off and the draw
+ * position is snapped to whole pixels.
  */
-export type SpriteSheet = SpriteEntry & { pixelArt?: boolean };
+export type SpriteSheet = SpriteEntry;
 
 const NO_FALLBACKS: readonly string[] = [];
 
