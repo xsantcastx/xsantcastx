@@ -45,6 +45,7 @@ import { itemDefinitionById, mintEquipment } from '../rpg/item-definition';
 import { qualityOf } from '../rpg/item-quality';
 import type { GameItem } from '../rpg/item.model';
 import { NpcQuestService } from '../npc/npc-quest.service';
+import { SkillActionService } from '../skills/skill-actions.service';
 import { CraftingService, type CraftingProgress } from './crafting.service';
 import {
   type CraftingRecipe,
@@ -92,6 +93,8 @@ export class CraftingGateway {
   private readonly crafting = inject(CraftingService);
   private readonly collection = inject(CollectionService);
   private readonly npc = inject(NpcQuestService);
+  /** Bench XP is part of Smithing: each settled craft reports it, so the Smithing level-up banner fires. */
+  private readonly skills = inject(SkillActionService);
 
   init(): void {
     if (!this.isBrowser) return;
@@ -190,6 +193,7 @@ export class CraftingGateway {
 
     const paid = recipe.goldCost > 0 ? this.economy.spendGold(recipe.goldCost, 'crafting') : true;
     const progress = this.crafting.recordCraft(recipe);
+    this.skills.announceBenchCraft(progress);
 
     // The recipe's own Collection Log entry. The *item* is logged already —
     // `CollectionWiringService` watches `inventory.acquired$` — so recording it
@@ -229,6 +233,7 @@ export class CraftingGateway {
     if (crafted.replayed) return replay();
     const paid = recipe.goldCost > 0 ? this.economy.spendGold(recipe.goldCost, 'crafting') : true;
     const progress = this.crafting.recordCraft(recipe);
+    this.skills.announceBenchCraft(progress);
     this.collection.discover(recipeCollectionId(recipe.id), 1, now);
     return {
       ok: true, recipe, items: [], quality: null, goldSpent: paid ? recipe.goldCost : 0, progress, replayed: false,

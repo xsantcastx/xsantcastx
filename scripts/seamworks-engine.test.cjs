@@ -654,7 +654,7 @@ test('Verdant: Rootglass Canopy hosts the Sanctum, the boards and both gates, an
   assert.equal(town.name, 'Rootglass Canopy');
   assert.equal(town.background, 'bg-verdant');
   const panels = Object.fromEntries(town.stations.filter(s => s.kind === 'panel').map(s => [s.id, s.panel]));
-  assert.deepEqual(panels, { sanctum: 'sanctum', quests: 'quests', arena: 'arena', trials: 'trials' }, 'each panel station id is its own ?at= place');
+  assert.deepEqual(panels, { sanctum: 'sanctum', quests: 'quests', arena: 'arena', trials: 'trials', skills: 'skills' }, 'each panel station id is its own ?at= place');
   assert.ok(town.stations.some(s => s.kind === 'waystone'), 'a Waystone stands in the canopy');
   assert.equal(town.monsters.length, 0, 'the town itself is safe ground');
   const passage = town.stations.find(s => s.kind === 'passage');
@@ -1512,4 +1512,186 @@ test('camp: one per Delve, opens the bench on what can be made now, and town des
   assert.equal(none.engine.hasDelveCamp(), false);
   assert.equal(none.engine.descendToCamp(), false);
   none.engine.destroy();
+});
+
+// ── Gathering in the hunting grounds, Hunting XP, cross-town ?at=, the lantern ──
+const skillTools = loadTs(path.resolve(__dirname, '../src/app/shared/skills/tools.ts'));
+const skillUnlocks = loadTs(path.resolve(__dirname, '../src/app/shared/skills/skill-unlocks.ts'));
+const hunting = loadTs(path.resolve(__dirname, '../src/app/shared/skills/hunting.ts'));
+
+test('gathering nodes: every realm hunt has them, each one valid, catalogued, crafted with and out of a station\'s reach', () => {
+  const { CRAFTING_RECIPES } = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+  const used = new Set(CRAFTING_RECIPES.flatMap(recipe => recipe.ingredients.map(ingredient => ingredient.materialId)));
+  const skillOf = { mining: 'mining', foraging: 'foraging', woodcutting: 'woodcutting' };
+  for (const id of world.REALM_TOWN_IDS) {
+    const town = world.TOWNS[id];
+    const hunt = town.hunts.find(area => !area.terrain && area.monsters.length);
+    assert.ok(hunt?.nodes?.length >= 3, `${id}: its hunting ground has gathering nodes`);
+    assert.ok(hunt.nodes.some(node => node.kind === 'herb'), `${id}/${hunt.id}: a herb to cut`);
+    assert.ok(hunt.nodes.some(node => Object.values(node.tools).every(tier => tier === 1) && (node.minLevel ?? 1) === 1), `${id}/${hunt.id}: something the starter kit can gather`);
+    const ids = hunt.nodes.map(node => node.id);
+    assert.equal(new Set(ids).size, ids.length, `${hunt.id}: node ids unique`);
+    for (const node of hunt.nodes) {
+      const where = `${hunt.id}/${node.id}`;
+      assert.ok(node.x > 0 && node.x < hunt.width, `${where} inside`);
+      assert.ok(node.x < (hunt.monsters[0].spawnXs[0] - 100), `${where} stands west of the first spawn`);
+      for (const station of hunt.stations) assert.ok(Math.abs(station.x - node.x) > world.STATION_REACH, `${where} is not inside ${station.id}'s reach`);
+      const tools = Object.entries(node.tools);
+      assert.ok(tools.length && tools.every(([tool, tier]) => terrainMod.SWING_TOOLS.includes(tool) && tier >= 1 && tier <= 4), `${where}: swing tools, tier I-IV`);
+      assert.ok(node.hp > 0 && node.respawn > 0 && Number.isInteger(node.xp) && node.xp > 0 && node.xp <= 500, `${where}: hp, respawn, xp`);
+      assert.ok(materialCatalog.materialDisplay(node.yield.materialId), `${where}: ${node.yield.materialId} is catalogued`);
+      assert.ok(used.has(node.yield.materialId), `${where}: ${node.yield.materialId} feeds a recipe`);
+      assert.ok(skillOf[node.discipline], `${where}: trains a gathering skill`);
+      // The level gate mirrors the Skills panel's "Gather X" row when there is one.
+      const row = skillUnlocks.SKILL_UNLOCKS[skillOf[node.discipline]].find(u => u.kind === 'node' && u.materialId === node.yield.materialId);
+      if (row) assert.equal(node.minLevel ?? 1, row.level, `${where}: minLevel matches the unlock table`);
+    }
+  }
+});
+
+function enterThicket(extra = {}) {
+  const calls = [];
+  const { refuse, ...options } = extra;
+  const { engine, state } = fixture(() => true, {
+    town: world.TOWNS.verdant,
+    onWorldAction: event => { calls.push(event); return refuse ? false : true; },
+    ...options,
+  });
+  engine.enter(world.TOWNS.verdant.hunts[0]);
+  return { engine, state, calls };
+}
+function standAt(engine, x) { engine.resetPosition(x); }
+function nodeX(engine, id) { return engine.areaDef.nodes.find(node => node.id === id).x; }
+
+test('gathering: the starter sickle cuts starlight in one swing, books it once, and it grows back', () => {
+  const { engine, state, calls } = enterThicket();
+  engine.setTools({ sickle: 1, axe: 1, pickaxe: 1 });
+  standAt(engine, nodeX(engine, 'starlight-clump') + 30);
+  assert.equal(state().nearby, 'gather');
+  assert.equal(state().gather.ready, true);
+  assert.equal(state().gather.need, undefined);
+  strike(engine);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].site, 'starlight-clump');
+  assert.equal(calls[0].kind, 'forage');
+  assert.equal(calls[0].discipline, 'foraging');
+  assert.equal(calls[0].materialId, 'starlight-herb');
+  assert.equal(calls[0].qty, 1);
+  assert.match(calls[0].mutationId, /^gather:.+:rootglass-thicket:starlight-clump:0$/);
+  assert.equal(state().gather.ready, false, 'harvested: resting');
+  strike(engine);
+  assert.equal(calls.length, 1, 'a resting node books nothing');
+  assert.match(state().message, /growing back/);
+  engine.setInput('attack', false);
+  for (let n = 0; n < 26 * 60; n++) engine.update(1 / 60);
+  assert.equal(state().gather.ready, true, 'grown back after its respawn');
+  strike(engine);
+  assert.equal(calls.length, 2);
+  assert.match(calls[1].mutationId, /:starlight-clump:1$/, 'each regrowth is a new grant');
+  engine.destroy();
+});
+
+test('gathering: tiers matter — no tool clangs, a low tier names the tier, a low skill names the level', () => {
+  const { engine, state, calls } = enterThicket();
+  standAt(engine, nodeX(engine, 'sap-tree'));
+  strike(engine);
+  assert.equal(calls.length, 0);
+  assert.match(state().message, /Need Axe II/);
+  assert.equal(state().gather.need, 'Axe II');
+  engine.setTools({ axe: 2, levels: { woodcutting: 5 } });
+  strike(engine);
+  assert.equal(calls.length, 0);
+  assert.match(state().message, /Needs Woodcutting 10/);
+  engine.setTools({ axe: 2, levels: { woodcutting: 10 } });
+  for (let n = 0; n < 2; n++) strike(engine);
+  assert.equal(calls.length, 0, 'a tree takes its hits');
+  strike(engine);
+  assert.equal(calls.length, 1);
+  assert.deepEqual([calls[0].kind, calls[0].discipline, calls[0].materialId, calls[0].xp], ['chop', 'woodcutting', 'verdant-sap', 7]);
+  engine.destroy();
+});
+
+test('gathering: a refusal leaves the node standing on its last crack; E works a node like J; a click on it works it', () => {
+  const refused = enterThicket({ refuse: true });
+  refused.engine.setTools({ sickle: 1 });
+  standAt(refused.engine, nodeX(refused.engine, 'starlight-clump'));
+  strike(refused.engine);
+  assert.equal(refused.calls.length, 1);
+  assert.equal(refused.state().gather.ready, true, 'still standing');
+  refused.engine.destroy();
+  const { engine, state, calls } = enterThicket();
+  engine.setTools({ axe: 1 });
+  standAt(engine, nodeX(engine, 'world-root-sapling'));
+  for (let n = 0; n < 3; n++) { engine.attackCooldown = 0; engine.interact(); }
+  assert.equal(calls.length, 1, 'E chopped the sapling');
+  assert.equal(calls[0].materialId, 'world-root-bark');
+  engine.setTools({ sickle: 1 });
+  const x = nodeX(engine, 'starlight-clump');
+  standAt(engine, x + 200);
+  engine.attackCooldown = 0;
+  assert.equal(engine.strikeAt(x, 570), true, 'a click on the node is taken');
+  assert.equal(engine.moving, true, 'out of reach: the Keeper walks there');
+  for (let n = 0; n < 120 && calls.length < 2; n++) engine.update(1 / 60);
+  assert.equal(calls.length, 2, 'and swings on arrival');
+  assert.equal(state().gather.id, 'starlight-clump');
+  engine.destroy();
+});
+
+test('hunting: each kill reports once with the creature\'s HP; XP scales with HP', () => {
+  const kills = [];
+  const { engine } = fixture(() => true, { onKill: event => kills.push(event) });
+  const monster = killFirst(engine);
+  assert.equal(kills.length, 1);
+  assert.equal(kills[0].hp, monster.maxHp);
+  assert.equal(kills[0].name, 'Rivet Maw');
+  assert.equal(kills[0].areaId, 'infernal');
+  strike(engine);
+  assert.equal(kills.length, 1, 'a dead creature does not die twice');
+  engine.setInput('attack', false);
+  for (let n = 0; n < 9 * 60; n++) engine.update(1 / 60);
+  killFirst(engine);
+  assert.ok(kills.length >= 2, 'the risen Maw reports its own kill');
+  assert.equal(new Set(kills.map(kill => kill.id)).size, kills.length, 'kill ids are unique (they key the XP grant)');
+  assert.equal(hunting.huntingXpFor(60), 12);
+  assert.equal(hunting.huntingXpFor(50), 10);
+  assert.equal(hunting.huntingXpFor(260), 52);
+  assert.equal(hunting.huntingXpFor(0), 1);
+  assert.equal(hunting.huntingXpFor(1e6), 500, 'capped at the gateway ceiling');
+  engine.destroy();
+});
+
+test('findStation: ?at= resolves a station in any built town, the current town first', () => {
+  assert.equal(world.findStation('gambler')?.townId, 'umbral');
+  assert.equal(world.findStation('crafting')?.townId, 'infernal');
+  assert.equal(world.findStation('codex')?.townId, 'celestial');
+  assert.equal(world.findStation('skills')?.townId, 'verdant');
+  assert.equal(world.findStation('skills').station.panel, 'skills');
+  assert.equal(world.findStation('waystone', 'celestial').townId, 'celestial', 'a repeated id resolves in the preferred town');
+  assert.equal(world.findStation('waystone').townId, 'infernal', 'without a preference, realm order');
+  assert.equal(world.findStation('nowhere'), null);
+  assert.equal(world.findStation(''), null);
+  assert.equal(world.findStation(null), null);
+  assert.equal(world.findStation('rootglass-thicket'), null, 'hunts are not deep-link places');
+  for (const id of world.REALM_TOWN_IDS) {
+    for (const station of world.TOWNS[id].stations.filter(s => s.kind === 'panel')) {
+      const found = world.findStation(station.id);
+      assert.equal(found.townId, id, `${station.id} resolves to ${id}`);
+      assert.equal(found.station, station);
+    }
+  }
+});
+
+test('lantern: Skills tiles and engine px agree — Delving 1 lights the default reach, each ten levels one more tile', () => {
+  assert.equal(skillTools.lanternRadiusFor(1) * terrainMod.CELL, lightMod.DEFAULT_LANTERN);
+  const { engine } = fixture();
+  assert.equal(engine.lanternRadius, lightMod.DEFAULT_LANTERN);
+  engine.setTools({ lanternTiles: skillTools.lanternRadiusFor(30) });
+  assert.equal(engine.lanternRadius, 10 * terrainMod.CELL);
+  engine.setTools({ lanternTiles: 9, lanternRadius: 999 });
+  assert.equal(engine.lanternRadius, 9 * terrainMod.CELL, 'tiles win over px');
+  engine.setTools({ lanternRadius: 300 });
+  assert.equal(engine.lanternRadius, 300, 'px still accepted');
+  const tiers = skillTools.toolTiers({ items: [], equipped: {} }, { version: 1, xpByDiscipline: { exploration: 1e7 } });
+  assert.equal(tiers.lanternRadius, 16, 'Delving 99 lights 16 tiles');
+  engine.destroy();
 });

@@ -88,10 +88,15 @@ export function maxTierForLevel(level: number): ToolTier {
   return 1;
 }
 
-/** Lantern reach in tiles: 3 at Delving 1, +1 every 10 levels, 12 at 99. */
+/**
+ * Lantern reach in Delve tiles (one tile = one 32 px cell; the engine takes it
+ * as `setTools({ lanternTiles })`): 7 at Delving 1 — the reach the Delve was
+ * tuned with — then +1 every 10 levels, 16 at 99.
+ */
+export const LANTERN_BASE_TILES = 7;
 export function lanternRadiusFor(delvingLevel: number): number {
   const lvl = Number.isFinite(delvingLevel) ? Math.max(1, Math.floor(delvingLevel)) : 1;
-  return 3 + Math.floor(Math.min(lvl, 99) / 10);
+  return LANTERN_BASE_TILES + Math.floor(Math.min(lvl, 99) / 10);
 }
 
 const BLADE_TIER: Readonly<Record<ItemRarity, number>> = {

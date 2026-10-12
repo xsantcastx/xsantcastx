@@ -13,7 +13,7 @@
  */
 import { FLOOR } from '../../engine/engine.model';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
-import type { HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
 /**
  * What a Prism Forager spills. Every material is a real inventory stack in the
@@ -59,6 +59,20 @@ const CHANNEL_PLATFORMS: Platform[] = [
   { x: 820, y: 505, width: 230 }, { x: 1300, y: 430, width: 190 }, { x: 1800, y: 500, width: 220 }, { x: 2250, y: 440, width: 170 },
 ];
 
+/**
+ * Gathering in the Channels: starlight on the stair foot for anyone, Sunbloom
+ * in the cracked dawn glass (Sickle II, Foraging 6), and a Golden Oak past the
+ * safe line whose resin wants an Axe III and Woodcutting 25.
+ */
+export const REFLECTION_CHANNEL_NODES: readonly GatherNodeDef[] = [
+  { id: 'starlight-patch', x: 330, kind: 'herb', label: 'Starlight Herb patch', tools: { sickle: 1 }, hp: 1, discipline: 'foraging', xp: 2, minLevel: 1,
+    yield: { materialId: 'starlight-herb', qty: 1 }, respawn: 25 },
+  { id: 'sunbloom', x: 480, kind: 'herb', label: 'Sunbloom', tools: { sickle: 2 }, hp: 2, discipline: 'foraging', xp: 4, minLevel: 6,
+    yield: { materialId: 'sunbloom', qty: 1 }, respawn: 30 },
+  { id: 'golden-oak', x: 1000, kind: 'wood', label: 'Golden Oak', tools: { axe: 3 }, hp: 5, discipline: 'woodcutting', xp: 12, minLevel: 25,
+    yield: { materialId: 'solar-resin', qty: 1, chance: .5 }, respawn: 60 },
+];
+
 export const REFLECTION_CHANNELS: HuntZoneDef = {
   id: 'reflection-channels',
   name: 'Reflection Channels',
@@ -70,6 +84,7 @@ export const REFLECTION_CHANNELS: HuntZoneDef = {
   ],
   monsters: [{ creature: 'prism-forager', name: 'Prism Forager', hp: 70, spawnXs: [1150, 1650, 2150] }],
   drops: PRISM_CHANNEL_DROPS,
+  nodes: REFLECTION_CHANNEL_NODES,
   spawnX: 240,
   // The stair foot is quiet ground: Foragers stand down while the Keeper is west of it.
   safeX: 600,
