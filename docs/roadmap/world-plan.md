@@ -100,7 +100,7 @@ Sequential: everything after it plugs into its data model and panel host.
 
 ## Distribution
 
-- [ ] **Installable app (PWA) polish:** proper install prompt, full-screen standalone window, app icons and splash for iOS / Android / desktop, offline shell that opens straight into the game, save-sync on reconnect. Builds on the existing `service-worker.js` + `manifest.webmanifest`
+- [~] **Installable app (PWA) polish:** proper install prompt, full-screen standalone window, app icons and splash for iOS / Android / desktop, offline shell that opens straight into the game, save-sync on reconnect. Builds on the existing `service-worker.js` + `manifest.webmanifest`
 - [-] **Desktop / Steam wrapper (later, on traction):** Tauri (or Electron) around the same web build; Steam overlay, achievements mapped to Collection eggs, cloud save via the existing Firestore account
 - [-] **App-store wrapper (later, on traction):** Capacitor for iOS / Android from the same build; store review requirements (payments, sign-in) checked before starting
 
@@ -118,6 +118,7 @@ Sequential: everything after it plugs into its data model and panel host.
 |---|---|---|
 | Phase 1 world foundation | agent worktree (pending report) | `[~]` |
 | Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
+| Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
 
 ## Art still missing (placeholders in game)
 
