@@ -223,3 +223,162 @@ test('setStats drives melee damage and max HP, keeping the share of health', () 
   assert.equal(state().hp, 200, 'a fresh hunt starts at the new ceiling');
   engine.destroy();
 });
+
+// Mesh-deformation rig: pure math only (no canvas). Visual-only module.
+function loadTs(file) {
+  const cache = loadTs.cache || (loadTs.cache = new Map());
+  if (cache.has(file)) return cache.get(file).exports;
+  const module = { exports: {} }; cache.set(file, module);
+  const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  new Function('require', 'module', 'exports', code)((name) => loadTs(path.resolve(path.dirname(file), `${name}.ts`)), module, module.exports);
+  return module.exports;
+}
+const rig = loadTs(path.resolve(__dirname, '../src/app/play/engine/rig.ts'));
+const poses = loadTs(path.resolve(__dirname, '../src/app/play/engine/rig-poses.ts'));
+function deform(spec, pose) {
+  const mesh = rig.buildMesh(spec, 1);
+  const matrices = new Float32Array(spec.bones.length * 6);
+  const x = new Float32Array(mesh.nv), y = new Float32Array(mesh.nv);
+  rig.solveBones(spec, mesh, pose, matrices);
+  rig.skin(mesh, matrices, x, y);
+  return { mesh, x, y };
+}
+function nearestVertex(mesh, u, v) {
+  let best = 0;
+  for (let i = 0; i < mesh.nv; i++) if (Math.hypot(mesh.u[i] - u, mesh.v[i] - v) < Math.hypot(mesh.u[best] - u, mesh.v[best] - v)) best = i;
+  return best;
+}
+
+test('rig meshes stay within the triangle budget and every vertex is fully weighted', () => {
+  for (const spec of [poses.KEEPER_RIG, poses.MAW_RIG]) {
+    const mesh = rig.buildMesh(spec, 1);
+    assert.ok(mesh.nt <= 150, `${mesh.nt} triangles`);
+    spec.bones.forEach((bone, index) => assert.ok(bone.parent < index, `${bone.name} parent precedes it`));
+    for (let i = 0; i < mesh.nv; i++) {
+      let sum = 0;
+      for (let k = 0; k < rig.MAX_INFLUENCES; k++) sum += mesh.wVal[i * rig.MAX_INFLUENCES + k];
+      assert.ok(Math.abs(sum - 1) < 1e-5, `vertex ${i} weights sum to ${sum}`);
+    }
+  }
+});
+
+test('the rest pose reproduces the painting exactly', () => {
+  const pose = rig.createPose(poses.KEEPER_RIG.bones.length);
+  assert.equal(rig.isRestPose(pose), true);
+  const { mesh, x, y } = deform(poses.KEEPER_RIG, pose);
+  for (let i = 0; i < mesh.nv; i++) {
+    assert.ok(Math.abs(x[i] - mesh.x[i]) < 1e-6 && Math.abs(y[i] - mesh.y[i]) < 1e-6);
+  }
+});
+
+test('bones bend locally and children inherit their parent', () => {
+  const K = poses.KEEPER;
+  const pose = rig.createPose(poses.KEEPER_RIG.bones.length);
+  pose[K.HEAD * rig.POSE_STRIDE] = .3;
+  let { mesh, x, y } = deform(poses.KEEPER_RIG, pose);
+  const crown = nearestVertex(mesh, .5, 0), foot = nearestVertex(mesh, .6, 1);
+  assert.ok(Math.hypot(x[crown] - mesh.x[crown], y[crown] - mesh.y[crown]) > .02, 'the head moves');
+  assert.ok(Math.hypot(x[foot] - mesh.x[foot], y[foot] - mesh.y[foot]) < 1e-3, 'the feet do not');
+  rig.resetPose(pose);
+  pose[K.CHEST * rig.POSE_STRIDE] = .3;
+  ({ mesh, x, y } = deform(poses.KEEPER_RIG, pose));
+  assert.ok(x[crown] - mesh.x[crown] > .02, 'a forward chest carries the head forward');
+});
+
+test('triangle affine maps all three corners', () => {
+  const out = new Float32Array(6);
+  assert.equal(rig.triangleAffine(0, 0, 10, 0, 0, 10, 5, 5, 12, 9, 1, 20, out), true);
+  const map = (x, y) => [out[0] * x + out[2] * y + out[4], out[1] * x + out[3] * y + out[5]];
+  for (const [[sx, sy], [dx, dy]] of [[[0, 0], [5, 5]], [[10, 0], [12, 9]], [[0, 10], [1, 20]]]) {
+    const [mx, my] = map(sx, sy);
+    assert.ok(Math.abs(mx - dx) < 1e-4 && Math.abs(my - dy) < 1e-4);
+  }
+  assert.equal(rig.triangleAffine(0, 0, 1, 1, 2, 2, 0, 0, 1, 0, 0, 1, out), false);
+});
+
+test('springs settle on their target and survive long frames', () => {
+  const spring = { x: 0, v: 0 };
+  for (let n = 0; n < 120; n++) rig.stepSpring(spring, 1, 9, .45, 1 / 60);
+  assert.ok(Math.abs(spring.x - 1) < .02);
+  const harsh = { x: 0, v: 0 };
+  for (let n = 0; n < 50; n++) rig.stepSpring(harsh, 1, 14, .6, .25);
+  assert.ok(Number.isFinite(harsh.x) && Math.abs(harsh.x - 1) < .01);
+});
+
+test('Keeper poses breathe, swing and trail; reduced motion is the still painting', () => {
+  const K = poses.KEEPER, S = rig.POSE_STRIDE;
+  const pose = rig.createPose(poses.KEEPER_RIG.bones.length);
+  const motion = poses.createKeeperMotion();
+  const base = { animation: 'idle', time: 0, attackT: 0, swing: 0, landing: 0, recoil: 0, facing: 1, dt: 1 / 60, reduced: false };
+  poses.poseKeeper(pose, motion, { ...base, reduced: true, animation: 'run', time: 3 });
+  assert.equal(rig.isRestPose(pose), true);
+  poses.poseKeeper(pose, motion, { ...base, time: .7 });
+  const breathA = pose[K.CHEST * S + 2];
+  poses.poseKeeper(pose, motion, { ...base, time: 2.1 });
+  assert.notEqual(pose[K.CHEST * S + 2], breathA, 'the chest rises and falls');
+  poses.poseKeeper(pose, motion, { ...base, animation: 'attack', attackT: .1, swing: -.33 });
+  assert.ok(pose[K.ARM_F * S] > 0, 'anticipation cocks the arm back');
+  poses.poseKeeper(pose, motion, { ...base, animation: 'attack', attackT: .65, swing: 1 });
+  assert.ok(pose[K.ARM_F * S] < -1, 'the strike sweeps it forward');
+  // Running right: the cape trails behind (positive rotation) after a moment.
+  const runner = poses.createKeeperMotion();
+  for (let n = 0; n < 40; n++) {
+    poses.trackKeeper(runner, 100 + n * 265 / 60, 610, 1 / 60);
+    poses.poseKeeper(pose, runner, { ...base, animation: 'run', time: n / 60 });
+  }
+  assert.ok(runner.vx > 200 && runner.trail.x > .1, `cape trails at ${runner.trail.x}`);
+  poses.trackKeeper(runner, 2400, 610, 1 / 60);
+  assert.equal(runner.vx, 0, 'a teleport resets secondary motion');
+  assert.equal(runner.trail.x, 0);
+});
+
+test('the Rivet Maw coils, lunges and opens its jaw on the strike', () => {
+  const M = poses.MAW, S = rig.POSE_STRIDE;
+  const pose = rig.createPose(poses.MAW_RIG.bones.length);
+  poses.poseMaw(pose, { phase: 'windup', timer: .1, time: 1, seed: 0, reduced: false });
+  assert.ok(pose[M.BODY * S + 1] > .03, 'wind-up draws the body back');
+  poses.poseMaw(pose, { phase: 'strike', timer: .02, time: 1, seed: 0, reduced: false });
+  assert.ok(pose[M.BODY * S + 1] < -.08, 'the strike lunges forward');
+  assert.ok(pose[M.JAW * S] < -.35, 'the jaw opens');
+  poses.poseMaw(pose, { phase: 'strike', timer: .02, time: 1, seed: 0, reduced: true });
+  assert.equal(rig.isRestPose(pose), true);
+});
+
+test('an idle Keeper is blitted once per frame, fully opaque, with no smear or rim copies', () => {
+  const { engine } = fixture();
+  const noop = () => {};
+  const stack = [];
+  const target = {
+    globalAlpha: 1, globalCompositeOperation: 'source-over', filter: 'none', shadowBlur: 0,
+    save() { stack.push([this.globalAlpha, this.globalCompositeOperation, this.filter, this.shadowBlur]); },
+    restore() { [this.globalAlpha, this.globalCompositeOperation, this.filter, this.shadowBlur] = stack.pop(); },
+    measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+  };
+  engine.context = new Proxy(target, { get: (t, key) => key in t ? t[key] : noop });
+  const blits = [];
+  engine.keeperRig.render = () => true;
+  engine.keeperRig.attach = () => false;
+  engine.keeperRig.blit = (c, ox = 0, oy = 0) => blits.push({ alpha: c.globalAlpha, op: c.globalCompositeOperation, ox, oy });
+  engine.frameDt = 1 / 60;
+  for (let n = 0; n < 30; n++) { engine.update(1 / 60); engine.render(); }
+  assert.equal(engine.pose(), 'idle');
+  assert.equal(blits.length, 30);
+  for (const blit of blits) assert.deepEqual(blit, { alpha: 1, op: 'source-over', ox: 0, oy: 0 });
+  engine.destroy();
+});
+
+test('drawing never moves combat state', () => {
+  const { engine } = fixture();
+  engine.setPeers([{ id: 'nyx', name: 'Nyx', x: 400, y: 610, area: 'Basalt Seamworks', facing: 1, animation: 'run' }]);
+  const before = JSON.stringify({ p: engine.player, hp: engine.hp, m: engine.monsters.map(m => [m.x, m.hp, m.phase, m.timer]) });
+  // No painting has loaded in the harness, so this exercises the whole-sprite fallback.
+  const noop = () => {};
+  const ctx = new Proxy({ measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }) },
+    { get: (target, key) => key in target ? target[key] : noop, set: () => true });
+  engine.context = ctx;
+  for (let n = 0; n < 5; n++) engine.render();
+  assert.equal(JSON.stringify({ p: engine.player, hp: engine.hp, m: engine.monsters.map(m => [m.x, m.hp, m.phase, m.timer]) }), before);
+  engine.destroy();
+});
