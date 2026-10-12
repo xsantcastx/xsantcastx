@@ -224,7 +224,7 @@ interface Drop {
     }
     @keyframes adShard {
       0%   { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.4); }
-      100% { opacity: 0; transform: rotate(var(--a)) translateX(230px) scale(.3); }
+      100% { opacity: 0; transform: rotate(var(--a)) translateX(var(--shard-reach, 230px)) scale(.3); }
     }
 
     /* The flame moves at 768px — up to bottom: 76px and down to a 52px ember —
@@ -240,10 +240,9 @@ interface Drop {
     @media (max-width: 480px) {
       .ad { right: .75rem; }
       .ad--cine { right: auto; bottom: auto; padding: 1.5rem 1.1rem; }
-      @keyframes adShard {
-        0%   { opacity: 1; transform: rotate(var(--a)) translateX(0) scale(1.4); }
-        100% { opacity: 0; transform: rotate(var(--a)) translateX(140px) scale(.3); }
-      }
+      /* A @keyframes nested in @media is never scoped by Angular, so it cannot
+         override the one above; the reach is a variable the keyframe reads. */
+      .ad-shard { --shard-reach: 140px; }
     }
 
     /* A white flash and a particle burst are exactly what this preference is
