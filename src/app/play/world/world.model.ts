@@ -28,6 +28,7 @@ import { CELESTIAL_TOWN } from './towns/celestial';
 import { LUMINOUS_TOWN } from './towns/luminous';
 import { UMBRAL_TOWN } from './towns/umbral';
 import { VERDANT_TOWN } from './towns/verdant';
+import type { TerrainSpec } from '../engine/terrain';
 
 /** Every built town. A Phase 2 town is a new file in towns/ and one line here. */
 export const TOWNS: Readonly<Record<RealmTownId, TownDef | undefined>> = {
@@ -133,6 +134,10 @@ export interface MonsterDef {
   spawnXs: readonly number[];
   /** Overrides the area's table for this creature. */
   drops?: ZoneDropTable;
+  /** World y the creature stands on (a delve cavern floor). Default: the area floor. */
+  floorY?: number;
+  /** World x it never leaves, e.g. the walls of its cavern. Default: the whole area. */
+  range?: readonly [number, number];
 }
 
 /** Anything the Keeper can stand in: a town or one of its hunting grounds. */
@@ -155,6 +160,14 @@ export interface AreaDef {
   arrival?: string;
   /** Hand-painted foreground set drawn by the engine's Atmosphere (only 'seamworks-hub' exists). */
   scenery?: 'seamworks-hub';
+  /**
+   * Diggable tile terrain below the floor line (engine/terrain.ts). An area
+   * with terrain is a delve: dark, lantern-lit, and the camera follows the
+   * Keeper down.
+   */
+  terrain?: TerrainSpec;
+  /** Draw scale for Keepers and creatures (delves use 0.5: three cells tall). Default 1. */
+  figureScale?: number;
 }
 
 export type HuntZoneDef = AreaDef;
@@ -205,6 +218,8 @@ export interface ViewTransform {
   /** Size the engine laid out at, in CSS px (the backing store is this × DPR). */
   cssWidth: number; cssHeight: number;
   camera: number;
+  /** Vertical camera in world px (delves scroll down). Default 0. */
+  cameraY?: number;
 }
 
 /**
@@ -217,5 +232,5 @@ export function clientToWorld(clientX: number, clientY: number, view: ViewTransf
   const cssX = (clientX - view.left) * (view.rectWidth ? view.cssWidth / view.rectWidth : 1);
   const cssY = (clientY - view.top) * (view.rectHeight ? view.cssHeight / view.rectHeight : 1);
   const scale = view.cssHeight / VIEW_HEIGHT;
-  return { x: view.camera + cssX / scale, y: cssY / scale };
+  return { x: view.camera + cssX / scale, y: (view.cameraY ?? 0) + cssY / scale };
 }
