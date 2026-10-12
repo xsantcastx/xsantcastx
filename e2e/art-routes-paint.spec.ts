@@ -99,9 +99,12 @@ test('/character — the sheet paints above the scene', async ({ page }) => {
 
   const sheet = page.locator('.fk').first();
   await expect(sheet).toBeVisible();
-  await expect(page.locator('.fk-stage__hall')).toHaveText('The Forge Keeper');
-  await expect(page.locator('.fk-stage__title')).toBeVisible();
-  await expect(page.locator('.fk-catalogue-open')).toBeVisible();
+  // Station kit: the shell titles the page and the paper doll leads; the
+  // catalogue button lives in the (closed) Details drawer, so it is only
+  // asserted to be on the page.
+  await expect(page.locator('app-forge-keeper .ss__title')).toHaveText('Character');
+  await expect(page.locator('.ld__doll-art')).toBeVisible();
+  await expect(page.locator('.fk-catalogue-open')).toHaveCount(1);
 
   const stack = await page.evaluate(() => {
     const scene = document.querySelector('.scene');

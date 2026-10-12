@@ -158,6 +158,35 @@ test('the scene: paints only its own stations, the Forge interaction strikes, ot
   assert.equal(scene.pending('furnace').gold, 3);
 });
 
+test('Your Anvil and Your Enchanting Circle: plot stations that open the real benches, painted by the view', () => {
+  const area = world.areaOf(world.TOWNS.infernal, homestead.HOMESTEAD_ID);
+  const anvil = area.stations.find(s => s.id === homestead.HOME_ANVIL_STATION);
+  const circle = area.stations.find(s => s.id === homestead.HOME_CIRCLE_STATION);
+  assert.ok(anvil && anvil.kind === 'panel' && anvil.panel === 'crafting', 'the anvil opens the Crafting Bench');
+  assert.ok(circle && circle.kind === 'panel' && circle.panel === 'enchanting', 'the circle opens the Enchanting Table');
+  assert.equal(homestead.homeStationOf(anvil.id), 'anvil');
+  assert.equal(homestead.homeStationOf(circle.id), 'circle');
+  assert.equal(homestead.homeStationOf('crafting'), null, 'a town bench is never a home station');
+  assert.equal(homestead.buildingOfStation(anvil.id), null, 'not a receipt building');
+  for (const s of [anvil, circle]) assert.ok(s.x + (s.width ?? 120) / 2 <= area.width, `${s.id} inside the plot`);
+  assert.ok(render.FENCE_END >= circle.x && render.FENCE_END <= area.width, 'the fence reaches the corner');
+  const scene = new render.HomesteadScene();
+  assert.equal(scene.paints('homestead', anvil.id), true);
+  assert.equal(scene.paints('homestead', circle.id), true);
+  assert.equal(scene.paints('infernal', anvil.id), false);
+  assert.equal(scene.interact('homestead', anvil.id), false, 'the engine opens the panel');
+  assert.equal(scene.interact('homestead', circle.id), false);
+  // Visible upgrades: the anvil grows and glows, the circle's runes brighten, every tier.
+  for (let t = 2; t <= 4; t++) {
+    assert.ok(render.anvilLook(t).scale > render.anvilLook(t - 1).scale);
+    assert.ok(render.anvilLook(t).glow > render.anvilLook(t - 1).glow);
+    assert.ok(render.circleLook(t).bright > render.circleLook(t - 1).bright);
+    assert.ok(render.circleLook(t).runes > render.circleLook(t - 1).runes && render.circleLook(t).runes <= 10);
+  }
+  assert.equal(render.anvilLook(1).glow, 0, 'tier I is a plain anvil');
+  assert.equal(render.emptyModel().homeForge.anvil, 1);
+});
+
 // ── The engine seam ──────────────────────────────────────────────────────────
 function loadEngine() {
   const modules = new Map();

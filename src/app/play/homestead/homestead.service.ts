@@ -47,7 +47,10 @@ import { EXPLORER_REALMS } from '../../shared/explorer/explorer.model';
 import { ExplorerRosterService } from '../../shared/rpg/explorer-roster.service';
 import { ThrallService, ThrallSnapshot } from '../../shared/thralls/thrall.service';
 import { thrallTier } from '../../shared/thralls/thrall.model';
-import { HomesteadScene, HomesteadModel, emptyModel } from '../engine/homestead-render';
+import { HomesteadScene, HomesteadModel, compact, emptyModel } from '../engine/homestead-render';
+import { TranslationService } from '../../translation.service';
+import { HOME_STATION_IDS, HomeStationId, tierNumeral } from '../../shared/minigames/home-forge.model';
+import { HomeForgeService, HomeUpgradeResult } from './home-forge.service';
 import { HomesteadBuildingId } from '../world/homestead';
 import {
   BuildingAction, ColumnRow, ColumnRungDef, Pending, RungDef, RungQuote, bestRung, buildingAction, columnRows,
@@ -76,12 +79,32 @@ export function buildingOfUpgrade(id: string): HomesteadBuildingId | null {
   return null;
 }
 
+/** One home crafting station in the column: its tier and the ONE upgrade button. */
+export interface HomeForgeRow {
+  station: HomeStationId;
+  name: string;
+  /** "Tier II". */
+  tierLabel: string;
+  /** What the next tier gives, or what the top tier has. */
+  line: string;
+  /** "Upgrade Anvil III · 6M Gold", or "Fully upgraded". */
+  button: string;
+  /** The tier the button buys; null when fully upgraded. */
+  next: number | null;
+  affordable: boolean;
+  /** "Need 1,234 more", or ''. */
+  need: string;
+  art: string;
+}
+
 /** What the HUD column and the panel read. */
 export interface HomesteadHud {
   gold: number;
   perSecond: number;
   perClick: number;
   rows: ColumnRow[];
+  /** Your Anvil and Your Enchanting Circle. */
+  forge: HomeForgeRow[];
 }
 
 /** Plain words for a purchase receipt. */
@@ -108,10 +131,12 @@ export class HomesteadService implements OnDestroy {
   private readonly spark = inject(GoldenSparkService);
   private readonly audio = inject(ForgeAudioService);
   private readonly zone = inject(NgZone);
+  private readonly homeForge = inject(HomeForgeService);
+  private readonly i18n = inject(TranslationService);
 
   /** The canvas view handed to the engine with `setHomesteadView`. */
   readonly scene = new HomesteadScene();
-  private readonly hud$$ = new BehaviorSubject<HomesteadHud>({ gold: 0, perSecond: 0, perClick: 1, rows: [] });
+  private readonly hud$$ = new BehaviorSubject<HomesteadHud>({ gold: 0, perSecond: 0, perClick: 1, rows: [], forge: [] });
   readonly hud$: Observable<HomesteadHud> = this.hud$$.asObservable();
   private readonly spark$$ = new Subject<void>();
   /** Fires on every golden spark (the rebalance's bonus moment). Presentation only. */
@@ -165,6 +190,7 @@ export class HomesteadService implements OnDestroy {
     subs.add(this.thrallService.find$.subscribe(() => { this.scene.addPending('workshop', { runes: 1 }); this.scene.rune(); }));
     // The shared Golden Spark clock runs while the Homestead is open.
     subs.add(this.spark.attach());
+    subs.add(this.homeForge.state$.subscribe(() => this.refresh()));
     this.subs = subs;
   }
 
@@ -201,6 +227,21 @@ export class HomesteadService implements OnDestroy {
     const receipt = this.economy.purchaseListing({ mutationKey, listingId: upgradeId, kind: 'upgrade', expectedCost: this.economy.nextCost(upgradeId) });
     if (receipt.code !== 'in-flight') this.actionKeys.delete(upgradeId);
     return receipt.code;
+  }
+
+  /**
+   * Upgrade the player's own Anvil or Enchanting Circle to `tier` (the one the
+   * button showed). Gold goes through EconomyService.spendGold under the action
+   * id `home-forge:<station>:<tier>`; a repeat of the same press is a replay.
+   * On success the station flashes on the plot with its new tier.
+   */
+  upgradeHome(station: HomeStationId, tier: number): HomeUpgradeResult {
+    const result = this.homeForge.upgrade(station, tier);
+    if (result.code === 'ok') {
+      this.scene.homeGrew(station, this.i18n.translate('homeForge.tier', { tier: tierNumeral(result.tier) }));
+      this.audio.strike(pitchFor(1));
+    }
+    return result;
   }
 
   /**
@@ -294,12 +335,33 @@ export class HomesteadService implements OnDestroy {
         working: t.status === 'working', lastRollAt: t.lastRollAt, rollInterval: t.rollInterval, color: thrallTier(t.rarity).color,
       })),
       signs,
+      homeForge: { anvil: this.homeForge.tier('anvil'), circle: this.homeForge.tier('circle') },
     };
     this.scene.setModel(model);
     this.hud$$.next({
       gold: snapshot.gold, perSecond: snapshot.perSecond, perClick: snapshot.perClick,
       rows: columnRows(COLUMN_RUNGS, this.quote, snapshot.gold, snapshot.totalGoldEarned, id => this.gainOf(id)),
+      forge: HOME_STATION_IDS.map(id => this.forgeRow(id)),
     });
+  }
+
+  /** The column row for one home crafting station, from its live quote. */
+  private forgeRow(station: HomeStationId): HomeForgeRow {
+    const t = (key: string, vars?: Record<string, string | number>) => this.i18n.translate(key, vars);
+    const tier = this.homeForge.tier(station);
+    const q = this.homeForge.quote(station);
+    const next = q.tier;
+    return {
+      station,
+      name: this.homeForge.name(station),
+      tierLabel: t('homeForge.tier', { tier: tierNumeral(tier) }),
+      line: next === null ? t(`homeForge.${station}.top`) : t(`homeForge.${station}.next${next}`),
+      button: next === null ? t('homeForge.upgrade.maxed') : t(`homeForge.upgrade.${station}`, { tier: tierNumeral(next), cost: compact(q.cost) }),
+      next,
+      affordable: next !== null && q.affordable,
+      need: next !== null && !q.affordable ? t('homeForge.upgrade.need', { n: Math.ceil(q.shortfall).toLocaleString('en-US') }) : '',
+      art: station === 'anvil' ? 'iron-hammer' : 'enhancement-aura',
+    };
   }
 
   /** "Unlock: Apprentice Striker · 500,000 Gold" for an unbuilt plot's sign. */

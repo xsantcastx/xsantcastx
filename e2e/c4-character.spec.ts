@@ -81,7 +81,9 @@ test.describe('C4 Character presentation', () => {
   test('renders the paper doll and bag tiles without equipping on slot click', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openCharacter(page);
-    await expect(page.locator('.fk-stage__hall')).toHaveText('The Forge Keeper');
+    // The station shell (shared/station-ui) titles the page; the old hall
+    // eyebrow moved into Details.
+    await expect(page.locator('app-forge-keeper .ss__title')).toHaveText('Character');
     await expect(page.locator('.ld__slot')).toHaveCount(8);
     await expect(page.locator('.ld__doll-art')).toBeVisible();
     // Dropped: `.ld__charms-note` sits inside `.ld__bag-col`, which renders only

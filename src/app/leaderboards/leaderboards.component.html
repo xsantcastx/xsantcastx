@@ -1,100 +1,60 @@
-<section class="lb" [class.lb--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'lb-title'" [attr.aria-label]="inWorld ? t('leaderboards.title') : null">
+<!--
+  leaderboards.component.html — the Standings, on the station kit
+  (shared/station-ui; MapleStory journal anatomy).
 
-  <!-- ── Header ────────────────────────────────────────────────────────── -->
-  <header class="lb-head">
-    @if (!inWorld) {
-    <p class="lb-eyebrow"><span class="lb-eyebrow__pulse" aria-hidden="true"></span>{{ t('leaderboards.eyebrow') }}</p>
-    <h1 class="lb-title" id="lb-title">{{ t('leaderboards.title') }}</h1>
-    <p class="lb-tagline">{{ t('leaderboards.tagline') }}</p>
-    }
-    <p class="lb-honesty">{{ t('leaderboards.honesty') }}</p>
-  </header>
+  First screen: title, one tab per ladder, YOUR RANK strip with the one line
+  that says how far to the next name, then the journal: the names around you
+  (top ten and your neighbourhood), the picked name on the right with ONE
+  button — Climb this ladder. What each ladder counts and the honesty note
+  live in Details.
+-->
+<section class="lb" [class.lb--in-world]="inWorld">
+  <app-station-shell class="lb-station"
+                     [title]="t('leaderboards.title')"
+                     [showTitle]="!inWorld"
+                     [detailsHint]="t('lbSt.details.hint')"
+                     [(detailsOpen)]="detailsOpen">
 
-  <!-- ── Tabs ──────────────────────────────────────────────────────────── -->
-  <div class="lb-tabs" role="tablist" [attr.aria-label]="t('leaderboards.tabsLabel')">
-    <button *ngFor="let category of categories; trackBy: trackCategory"
-            type="button"
-            role="tab"
-            class="lb-tab"
-            [class.lb-tab--active]="active === category.id"
-            [style.--tier]="category.color"
-            [style.--glow]="category.glow"
-            [attr.aria-selected]="active === category.id"
-            [attr.aria-controls]="'lb-panel-' + category.id"
-            [id]="'lb-tab-' + category.id"
-            (click)="select(category.id)">
-      {{ category.name }}
-    </button>
-  </div>
+    <app-station-tabs stationTabs [tabs]="stationTabs" [active]="active" (activeChange)="pickTab($event)" [label]="t('leaderboards.tabsLabel')" />
 
-  <!-- ── Boards ────────────────────────────────────────────────────────── -->
-  <div class="lb-panel"
-       *ngFor="let board of boards; trackBy: trackBoard"
-       role="tabpanel"
-       [id]="'lb-panel-' + board.category.id"
-       [attr.aria-labelledby]="'lb-tab-' + board.category.id"
-       [hidden]="active !== board.category.id"
-       [style.--tier]="board.category.color"
-       [style.--glow]="board.category.glow">
+    <app-skill-strip stationSkill
+      [level]="null"
+      [title]="t('lbSt.you')"
+      [progress]="stripProgress"
+      [progressLabel]="stripLabel"
+      [hint]="stripHint" />
 
-    <header class="lb-panel__head">
-      <h2 class="lb-panel__name">{{ board.category.name }}</h2>
-      <p class="lb-panel__blurb">{{ board.category.blurb }}</p>
-    </header>
-
-    <div class="lb-standing">
-      <div class="lb-standing__rank">
-        <span class="lb-standing__num">#{{ board.player.rank }}</span>
-        <span class="lb-standing__cap">{{ t('leaderboards.yourRank') }}</span>
-      </div>
-      <div class="lb-standing__score">
-        <span class="lb-standing__num">{{ score(board.category, board.player.score) }}</span>
-        <span class="lb-standing__cap">{{ board.category.unit }}</span>
-      </div>
-      <p class="lb-standing__next" *ngIf="board.toNext !== null">
-        {{ t('leaderboards.toNext') }}
-        <b>{{ score(board.category, board.toNext) }}</b>
-        {{ t('leaderboards.behind') }} <i>{{ board.nextName }}</i>
-      </p>
-      <p class="lb-standing__next lb-standing__next--crown" *ngIf="board.toNext === null">
-        ✦ {{ t('leaderboards.first') }}
-      </p>
+    <div stationHero class="lb-hero">
+      @if (activeBoard; as board) {
+        <app-station-journal>
+          <app-journal-list journalList [rows]="journal[board.category.id] ?? []"
+                            [selected]="picked[board.category.id] ?? (board.player.rank + ':' + board.player.name)"
+                            [label]="t('lbSt.names')" (pick)="pickRow($event)" />
+          <div journalDetail class="lb-detail" [style.--tier]="board.category.color">
+            @if (pickedRow; as row) {
+              <app-detail-head [art]="pickedAvatar"
+                               [name]="row.isPlayer ? t('lbSt.you.name') : row.name"
+                               [line]="row.title || board.category.name" />
+              <dl class="lb-facts">
+                <div><dt>{{ t('lbSt.rank') }}</dt><dd>#{{ row.rank }}</dd></div>
+                <div><dt>{{ board.category.unit }}</dt><dd>{{ score(board.category, row.score) }}</dd></div>
+              </dl>
+              <app-action-button [label]="t('lbSt.climb')" chips="none" (act)="climb()" />
+            }
+          </div>
+        </app-station-journal>
+      }
     </div>
 
-    <table class="lb-table">
-      <caption class="lb-sr">{{ board.category.name }} — {{ board.category.blurb }}</caption>
-      <thead>
-        <tr>
-          <th scope="col" class="lb-col-rank">{{ t('leaderboards.col.rank') }}</th>
-          <th scope="col">{{ t('leaderboards.col.name') }}</th>
-          <th scope="col" class="lb-col-score">{{ board.category.unit }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <ng-container *ngFor="let entry of windows[board.category.id]; trackBy: trackRow">
-          <tr class="lb-gap" *ngIf="entry.gapBefore" aria-hidden="true">
-            <td colspan="3">⋯</td>
-          </tr>
-          <tr class="lb-row"
-              [class.lb-row--you]="entry.row.isPlayer"
-              [class.lb-row--podium]="entry.row.rank <= 3">
-            <td class="lb-col-rank">#{{ entry.row.rank }}</td>
-            <td class="lb-col-name">
-              @if (entry.avatar; as av) {
-                <img class="lb-avatar" [src]="av.src" [attr.srcset]="av.srcset" sizes="32px"
-                     alt="" aria-hidden="true" width="32" height="32"
-                     loading="lazy" decoding="async" draggable="false">
-              }
-              <span class="lb-name">{{ entry.row.name }}</span>
-              <span class="lb-name__title" *ngIf="entry.row.title">{{ entry.row.title }}</span>
-            </td>
-            <td class="lb-col-score">{{ score(board.category, entry.row.score) }}</td>
-          </tr>
-        </ng-container>
-      </tbody>
-    </table>
-  </div>
-
+    <!-- ── Details: what each ladder counts, the honesty note, doorways ── -->
+    <div stationDetails class="lb-details">
+      @if (activeBoard; as board) {
+        <section class="lb-dpanel">
+          <h2 class="lb-panel__name">{{ board.category.name }}</h2>
+          <p class="lb-panel__blurb">{{ board.category.blurb }}</p>
+        </section>
+      }
+      <p class="lb-honesty">{{ t('leaderboards.honesty') }}</p>
   <!-- ── Doorways ──────────────────────────────────────────────────────── -->
   @if (!inWorld) {
   <nav class="lb-doors" [attr.aria-label]="t('leaderboards.doorsLabel')">
@@ -103,6 +63,8 @@
     <a routerLink="/codex" class="lb-door">{{ t('leaderboards.door.codex') }}</a>
   </nav>
   }
+    </div>
+  </app-station-shell>
 </section>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the
