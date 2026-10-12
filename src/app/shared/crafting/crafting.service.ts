@@ -20,6 +20,8 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
+import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
+import { skillLevel } from '../skills/skill.model';
 import {
   CRAFTING_KEY,
   type CraftingLevelView,
@@ -62,6 +64,7 @@ export class CraftingService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly store = inject(GameStateGateway);
   private readonly saves = inject(LocalSaveRegistry);
+  private readonly activity = inject(ActivityProgressionGateway);
 
   private state: CraftingState = emptyCraftingState();
   private loaded = false;
@@ -98,7 +101,17 @@ export class CraftingService {
 
   /** Whether the ladder is high enough for this recipe. */
   meetsLevel(recipe: CraftingRecipe): boolean {
+    if (recipe.skill === 'smithing') return this.smithingLevel() >= (recipe.requiredLevel ?? 1);
     return this.level() >= (recipe.requiredLevel ?? 1);
+  }
+
+  /**
+   * The Smithing skill level: the activity ledger's `forge` XP plus this
+   * bench's own XP (the two never overlap — see the skills module's skillXp).
+   */
+  smithingLevel(): number {
+    this.activity.init();
+    return skillLevel(this.activity.snapshot.progress, 'smithing', this.load().xp);
   }
 
   // ── Writes ─────────────────────────────────────────────────────────────────

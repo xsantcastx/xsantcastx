@@ -14,8 +14,10 @@ import { ChallengeService } from '../challenges/challenge.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
+import { materialDisplay } from '../rpg/material-catalog';
 import {
   ACTIVITY_KEY,
+  ACTIVITY_OPS_MAX,
   MINING_TIERS,
   emptyActivityLedger,
   isMiningTierUnlocked,
@@ -41,7 +43,7 @@ import {
   miningEligibleCount,
   newestOperation,
   nextHlc,
-  progressFromOps,
+  progressAfter,
   rebuildCurrentWork,
   rollDiscovery,
 } from './activity-ops';
@@ -70,7 +72,33 @@ export type ActivityRejectCode =
   | 'clock'
   | 'capacity'
   | 'persist'
-  | 'tier-locked';
+  | 'tier-locked'
+  /** resolveWorldAction only: an XP, quantity, material or location it will not book. */
+  | 'invalid';
+
+/** The world engine's verbs (chop, forage, cut, blast, delve, forge, enchant). */
+export interface WorldActionInput {
+  /** Idempotency key. A replay returns the first result and grants nothing. */
+  mutationId: string;
+  discipline: DisciplineId;
+  /** A material definition id to bank. Omit for an XP-only action. */
+  materialId?: string;
+  /** How many of it. Default 1, clamped to WORLD_ACTION_MAX_QTY. */
+  qty?: number;
+  /** XP for the action. Whole number, 0..WORLD_ACTION_MAX_XP. */
+  xp: number;
+  /** Where it happened, e.g. 'delve/ember-1'. Never a gathering-site id. */
+  locationId: string;
+  now?: number;
+}
+
+/** Ceilings on one world action — a host bug cannot mint a level in one swing. */
+export const WORLD_ACTION_MAX_XP = 500;
+export const WORLD_ACTION_MAX_QTY = 20;
+
+export type WorldActionResult =
+  | { ok: true; operation: ActivityOperation; replayed: boolean; xpBefore: number; xpAfter: number }
+  | { ok: false; code: ActivityRejectCode };
 
 export type ActivityResolveResult =
   | { ok: true; operation: ActivityOperation; replayed: boolean }
@@ -344,7 +372,7 @@ export class ActivityProgressionGateway {
     this.ledger = {
       ...this.ledger,
       operations,
-      progress: progressFromOps(operations),
+      progress: progressAfter(this.ledger.progress, operations, operation),
       currentWork: rebuildCurrentWork(work, operations),
       emberGranted: this.ledger.emberGranted || operation.discovery.result !== 'none',
       miningAccepted: Math.max(
@@ -437,7 +465,7 @@ export class ActivityProgressionGateway {
     this.ledger = {
       ...this.ledger,
       operations,
-      progress: progressFromOps(operations),
+      progress: progressAfter(this.ledger.progress, operations, operation),
       currentWork: rebuildCurrentWork(work, operations),
       riftKeyGranted: this.ledger.riftKeyGranted || operation.discovery.result !== 'none',
       foragingAccepted: Math.max(
@@ -531,7 +559,7 @@ export class ActivityProgressionGateway {
     this.ledger = {
       ...this.ledger,
       operations,
-      progress: progressFromOps(operations),
+      progress: progressAfter(this.ledger.progress, operations, operation),
       currentWork: rebuildCurrentWork(work, operations),
       clarityElixirGranted: this.ledger.clarityElixirGranted || operation.discovery.result !== 'none',
       prospectingAccepted: Math.max(
@@ -550,6 +578,90 @@ export class ActivityProgressionGateway {
     // Prospecting banks materials like the other two, so it counts like them.
     this.challenges.record('material-mined', grantedQuantity(operation));
     return { ok: true, operation, replayed: false };
+  }
+
+  /**
+   * The generic sibling of resolveMine / resolveForage / resolveProspect, for
+   * actions the world engine resolves itself (chop a tree, cut a herb, blast a
+   * seal, clear a Delve room, finish a forge or a ritual).
+   *
+   * Same rules as the per-site verbs: one immutable operation per mutationId,
+   * grants keyed off that id so they apply once, and a full rollback if the bag
+   * or the save refuses. What it does NOT do is pace: the engine owns timing for
+   * world nodes, so there is no Current Work and no recovery check here. The
+   * site-specific counters and pity rolls stay with the site verbs — a world
+   * action can never be booked against a gathering site's location id.
+   *
+   * `xpBefore` / `xpAfter` are that discipline's ledger totals, for the
+   * level-up banner (the skills module's SkillActionService does this for you).
+   */
+  resolveWorldAction(input: WorldActionInput): WorldActionResult {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    const existing = this.ledger.operations.find(op => op.id === input.mutationId);
+    if (existing) {
+      const xp = this.ledger.progress.xpByDiscipline[existing.disciplineId] ?? 0;
+      return { ok: true, operation: existing, replayed: true, xpBefore: xp, xpAfter: xp };
+    }
+
+    if (!input.mutationId || typeof input.mutationId !== 'string') return { ok: false, code: 'invalid' };
+    const now = input.now ?? Date.now();
+    if (!Number.isFinite(now)) return { ok: false, code: 'clock' };
+
+    if (!input.locationId || locationDefinition(input.locationId)) return { ok: false, code: 'location' };
+    if (!isDisciplineId(input.discipline)) return { ok: false, code: 'invalid' };
+    if (!Number.isInteger(input.xp) || input.xp < 0 || input.xp > WORLD_ACTION_MAX_XP) {
+      return { ok: false, code: 'invalid' };
+    }
+    const qty = input.qty ?? 1;
+    if (!Number.isInteger(qty) || qty < 1 || qty > WORLD_ACTION_MAX_QTY) return { ok: false, code: 'invalid' };
+    if (input.materialId && !materialDisplay(input.materialId)) {
+      return { ok: false, code: 'invalid' };
+    }
+    if (!input.materialId && input.xp === 0) return { ok: false, code: 'invalid' };
+    if (input.materialId && !this.inventory.canAcceptStackGrant(input.materialId)) {
+      return { ok: false, code: 'capacity' };
+    }
+
+    const hlcRevision = nextHlc(this.lastHlc, this.deviceId, now);
+    const operation: ActivityOperation = {
+      id: input.mutationId,
+      hlcRevision,
+      kind: 'active',
+      disciplineId: input.discipline,
+      locationId: input.locationId,
+      resolvedAt: new Date(now).toISOString(),
+      xpGrant: { id: `${input.mutationId}:xp`, amount: input.xp },
+      inventoryGrants: input.materialId
+        ? [{ id: `${input.mutationId}:item`, definitionId: input.materialId, quantity: qty }]
+        : [],
+      discovery: { rolled: false, result: 'none' },
+    };
+
+    const previous = this.ledger;
+    const xpBefore = previous.progress.xpByDiscipline[input.discipline] ?? 0;
+    let operations = [...previous.operations, operation];
+    const progress = progressAfter(previous.progress, operations, operation);
+    // World actions are frequent (every tree, every herb), so this path keeps
+    // the window at the size a merge would trim it to. progressAfter has
+    // already booked the XP, so trimming cannot lose any.
+    if (operations.length > ACTIVITY_OPS_MAX) operations = operations.slice(-ACTIVITY_OPS_MAX);
+    this.ledger = { ...previous, operations, progress };
+    this.lastHlc = hlcRevision;
+
+    if (!this.applyGrants(operation) || !this.save()) {
+      this.ledger = previous;
+      this.lastHlc = this.highestHlc(previous);
+      return { ok: false, code: 'persist' };
+    }
+    this.publish();
+    if (operation.inventoryGrants.length) this.challenges.record('material-mined', grantedQuantity(operation));
+    return {
+      ok: true,
+      operation,
+      replayed: false,
+      xpBefore,
+      xpAfter: progress.xpByDiscipline[input.discipline] ?? xpBefore,
+    };
   }
 
   private applyGrants(operation: ActivityOperation): boolean {
@@ -615,6 +727,13 @@ const RECOVERY_BY_DISCIPLINE: Partial<Record<string, (gw: ActivityProgressionGat
   foraging: gw => gw.currentForagingRecoveryMs(),
   prospecting: gw => gw.currentProspectingRecoveryMs(),
 };
+
+const DISCIPLINE_IDS: ReadonlySet<string> = new Set<DisciplineId>([
+  'mining', 'foraging', 'prospecting', 'exploration', 'forge', 'hunting', 'woodcutting', 'enchanting',
+]);
+function isDisciplineId(value: unknown): value is DisciplineId {
+  return typeof value === 'string' && DISCIPLINE_IDS.has(value);
+}
 
 /** How many things one resolved action actually put in the bag. At least one. */
 function grantedQuantity(operation: ActivityOperation): number {

@@ -136,11 +136,29 @@ describe('LevelUpService', () => {
     ]);
   });
 
-  it('check stays silent for a discipline that is not a live skill', () => {
+  it('check announces every discipline under its player-facing skill name', () => {
     const at = xpForLevel(5);
     service.check('exploration', at - 1, at);
     service.check('forge', at - 1, at);
     service.check('hunting', at - 1, at);
-    expect(events.length).toBe(0);
+    service.check('woodcutting', at - 1, at);
+    service.check('enchanting', at - 1, at);
+    expect(events.map(e => e.skillLabelKey)).toEqual([
+      'skills.name.delving', 'skills.name.smithing', 'skills.name.hunting',
+      'skills.name.woodcutting', 'skills.name.enchanting',
+    ]);
+  });
+
+  it('names what the new level opened', () => {
+    const ten = xpForLevel(10);
+    service.checkSkill('mining', ten - 1, ten);
+    expect(events[0].unlocks.map(u => u.key)).toContain('skills.unlock.tool');
+    expect(events[0].unlocks[0].vars['name']).toBe('Pickaxe II');
+  });
+
+  it('carries an empty unlock list for a level that opened nothing', () => {
+    const at = xpForLevel(3);
+    service.checkSkill('mining', at - 1, at);
+    expect(events[0].unlocks).toEqual([]);
   });
 });

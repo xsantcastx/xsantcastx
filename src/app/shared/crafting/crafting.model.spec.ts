@@ -84,6 +84,7 @@ describe('crafting catalogue', () => {
       if ((recipe.category === 'weapon' || recipe.category === 'armor') && family !== 'equipment') wrong.push(recipe.id);
       if (recipe.category === 'weapon' && def.slot !== 'weapon') wrong.push(recipe.id);
       if (recipe.category === 'armor' && def.slot === 'weapon') wrong.push(recipe.id);
+      if (recipe.category === 'tool' && (recipe.skill !== 'smithing' || !def.soulbound)) wrong.push(recipe.id);
     }
     expect(wrong).toEqual([]);
   });
@@ -116,7 +117,9 @@ describe('crafting catalogue', () => {
       expect(recipe.goldCost).withContext(recipe.id).toBeGreaterThan(0);
       expect(recipe.ingredients.length).withContext(recipe.id).toBeGreaterThan(0);
       expect(recipe.output.count).withContext(recipe.id).toBeGreaterThanOrEqual(1);
-      expect(recipe.requiredLevel ?? 1).withContext(recipe.id).toBeLessThanOrEqual(MAX_CRAFTING_LEVEL);
+      // Smithing-gated recipes (tools) read the 1-99 skill curve, not the bench ladder.
+      expect(recipe.requiredLevel ?? 1).withContext(recipe.id)
+        .toBeLessThanOrEqual(recipe.skill === 'smithing' ? 99 : MAX_CRAFTING_LEVEL);
       for (const ing of recipe.ingredients) {
         expect(ing.count).withContext(`${recipe.id} ${ing.materialId}`).toBeGreaterThan(0);
       }
@@ -303,5 +306,30 @@ describe('the saved blob', () => {
     const a = { version: 1, xp: 900, crafted: { [CRAFTING_RECIPES[0].id]: 12 } };
     const b = { version: 1, xp: 400, crafted: { [CRAFTING_RECIPES[0].id]: 30 } };
     expect(mergeCrafting(a, b)).toEqual(mergeCrafting(b, a));
+  });
+});
+
+describe('tool recipes', () => {
+  const tools = CRAFTING_RECIPES.filter(r => r.category === 'tool');
+
+  it('forges every family at every tier, once', () => {
+    const ids = tools.map(r => r.output.itemId).sort();
+    const want = ['axe', 'pickaxe', 'sickle', 'staff'].flatMap(f => [1, 2, 3, 4].map(t => `${f}-${t}`)).sort();
+    expect(ids).toEqual(want);
+  });
+
+  it('gates each tier on Smithing 1 / 10 / 25 / 45 and says what it opens', () => {
+    for (const recipe of tools) {
+      const tier = Number(recipe.output.itemId.split('-')[1]);
+      expect(recipe.requiredLevel).withContext(recipe.id).toBe([0, 1, 10, 25, 45][tier]);
+      expect(recipe.blurb).withContext(recipe.id).toContain(`Smithing ${recipe.requiredLevel}`);
+    }
+  });
+
+  it('makes all of tier I from level-1 gathering alone', () => {
+    const seeds = new Set(COLLECTION_CATALOG.filter(row => row.category === 'material').map(row => row.id));
+    for (const recipe of tools.filter(r => r.output.itemId.endsWith('-1'))) {
+      expect(recipe.ingredients.every(i => seeds.has(i.materialId))).withContext(recipe.id).toBe(true);
+    }
   });
 });
