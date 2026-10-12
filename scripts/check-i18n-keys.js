@@ -38,12 +38,15 @@ function walk(dir, out = []) {
   return out;
 }
 
-const table = fs.readFileSync(TABLE, 'utf8');
+// The eager table, plus every lazily-registered `*.i18n.ts` table (a route
+// chunk's own copy, merged at runtime by TranslationService.register()).
+const LAZY_TABLES = walk(ROOT).filter(f => f.endsWith('.i18n.ts'));
 const declared = new Set(
-  [...table.matchAll(/^\s*'([a-zA-Z][a-zA-Z0-9_.-]*)':\s*\{/gm)].map(m => m[1]),
+  [TABLE, ...LAZY_TABLES].flatMap(file =>
+    [...fs.readFileSync(file, 'utf8').matchAll(/^\s*'([a-zA-Z][a-zA-Z0-9_.-]*)':\s*\{/gm)].map(m => m[1])),
 );
 
-const files = walk(ROOT).filter(f => f !== TABLE && !f.endsWith('.spec.ts'));
+const files = walk(ROOT).filter(f => f !== TABLE && !LAZY_TABLES.includes(f) && !f.endsWith('.spec.ts'));
 const referenced = new Set();
 const prefixes = new Set();
 
