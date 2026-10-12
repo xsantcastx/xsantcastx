@@ -283,3 +283,118 @@ player write their own documents freely, apart from monotonic XP.
 ## Coordinator note (merge to main, 2026-10-12)
 
 `firestore.rules` and `firestore.indexes.json` were **not** merged into the repo root: CI deploys rules whenever those files change, and that step has 403'd and blocked the hosting deploy before. The market's versions are kept here as `player-market/firestore.rules.proposed` and `player-market/firestore.indexes.json.proposed`. At deploy time (owner approval), copy them over the root files and deploy rules + indexes **by hand** first, per the deploy order above. Until then the market stays off (server flag `market/v1.enabled` absent, client `PLAYER_MARKET_CLIENT_ENABLED = false`); the simulated Exchange remains live.
+
+## UI binding (Exchange, 2026-10-13)
+
+The redesigned Exchange now binds to `PlayerMarketService`. Nothing changes
+while `PLAYER_MARKET_CLIENT_ENABLED = false`: the simulated board renders
+exactly as before, and the player-market UI sits in a `@defer` block whose
+chunk is never fetched.
+
+### How the switch works
+
+`PLAYER_MARKET_MODE` (`src/app/shared/market/player-market.mode.ts`) resolves
+once per page from the client flag, `isDevMode()` and the query string:
+
+| Mode | When | Exchange shows |
+|---|---|---|
+| `off` | flag false (default) | the simulated board (unchanged) |
+| `live` | flag true | `PlayerExchangeComponent` on `FirebaseMarketBackend` |
+| `fake` | **dev mode only** and `?market=fake…` | `PlayerExchangeComponent` on `FakeMarketBackend` |
+
+When the mode isn't `off`, `ExchangeComponent` skips its own init and renders
+`<app-player-exchange>` inside `@if (playerMarket) { @defer }`.
+`PLAYER_MARKET_BACKEND` picks the fake only in `fake` mode. A production build
+runs with dev mode off, so it ignores the query parameter.
+
+### What the player sees (`src/app/shared/exchange/player-exchange.*`)
+
+- **Tabs:** Buy · Sell · Your orders (the badge counts open orders). It uses
+  the same station-kit journal as the simulated board.
+- **Buy list:** every item with a live player order or a trade in the last 24h
+  (`board$`), busiest first, showing "From N Gold" (the best ask). **Sell
+  list:** what you carry, with items that have a buyer first ("You have N ·
+  buyers pay P").
+- **Detail:**
+  - Sellers and buyers depth: the top 5 price levels on each side. Tapping a
+    level uses that price.
+  - The last price and the 24h volume.
+  - A price box. It defaults to the best ask (buy) or the best bid (sell). With
+    nobody on the other side, it falls back to the 24h VWAP, then the last
+    trade, then the base worth.
+  - The quantity stepper with **Max**. For a buy, Max is the Gold you have
+    divided by the price, capped at 10,000 (50 for equipment). For a sell, Max
+    is what you carry (1 for equipment).
+  - A plain fee line: "You pay N Gold now." or "2% tax · you receive N Gold",
+    plus whether the order fills right away or waits.
+- **Collect bar:** shown above the journal whenever escrow holds Gold or items.
+- **Your orders:** each order reads "x of y done · price each · status", with
+  Cancel on open orders.
+- **Signed out:** one line, "Sign in to trade with other players", and a Sign
+  in button (`PlayerMarketService.signIn()` → `CloudSaveService.signIn()`). The
+  board stays browsable.
+- **Closed or halted:** a banner, and the action button says why it's off.
+- **Errors:** `marketErrorCopy(reason, message)` turns each server reason into
+  one translated sentence. A price-band refusal shows the accepted range, read
+  out of the server's message. A rate limit shows how long to wait, read the
+  same way. Every save problem (`not-owned`, `not-enough`, `save-*`) reads
+  "That is not in your cloud save yet…". An unknown reason shows the server's
+  own sentence, never a code.
+- **Equipment sells** list the oldest sellable instance
+  (`ExchangeService.sellableInstances`).
+- **Copy** lives in a lazy table, `player-exchange.i18n.ts` (`pmx.*`, EN and
+  ES). The station-kit rule keeps one page's strings out of the eager table.
+
+### Trying it locally (no backend, no deploy)
+
+```
+npm start
+http://localhost:4200/exchange?market=fake            signed in, market open
+http://localhost:4200/exchange?market=fake-guest      signed out (Sign in flips it on)
+http://localhost:4200/exchange?market=fake-closed     server switch off
+http://localhost:4200/exchange?market=fake&fail=price-band   every placement refused with that reason
+```
+
+`fail=` takes any server reason: `rate-limited`, `not-owned`,
+`not-enough-gold`, `market-halted`, `collect-first`, `too-many-orders`,
+`already-listed`, `in-use`, `soulbound`, `banned`, `save-syncing`, and so on.
+
+The fake (`player-market.fake-backend.ts`) behaves like the server in these
+ways:
+
+- It seeds a dozen markets with bot orders and a day of trades.
+- It matches in price-time order at the resting price and applies the 2% tax.
+- It escrows buys and refunds the difference.
+- It enforces the sanity band, 12 actions a minute and 40 open orders.
+- About 8 seconds after you leave an order resting, a bot takes half of it, so
+  Collect has something to show.
+
+It **never touches your save**: no Gold or items move, and Collect only clears
+the fake escrow. A ribbon on screen says so. Reload to reset.
+
+### Backend additions
+
+`MarketBackend` has two new reads for the list:
+
+- `watchOpenOrders(limit)`: `market/v1/orders where status == open`, limit
+  400. It's a single-field equality, so the automatic index serves it.
+- `watchPrices(limit)`: `market/v1/prices orderBy lastTradeAt desc`, limit
+  200. It's a single-field order, so it's also covered automatically.
+
+**Read cost:** every Exchange visitor holds these two listeners, and every
+order or trade write is re-read by every open Exchange. That's fine at launch
+volume; it's the same bill shape as `/live`. If the market gets busy, replace
+the listeners with a server-maintained `market/v1/summary` doc (best bid, best
+ask and volume per item, written in the same transaction as each trade) and
+point `board$` at it.
+
+### Tests
+
+- `src/app/shared/exchange/player-exchange.model.spec.ts` (18 specs) covers:
+  - fee math and rounding
+  - default prices and their fallbacks
+  - Max caps and book depth
+  - the error copy for every reason
+  - `buildBoard`
+  - `resolveMarketMode`, including "never fake outside dev mode"
+- The service spec's fake backend implements the two new reads.

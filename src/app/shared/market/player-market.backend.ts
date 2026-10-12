@@ -17,6 +17,8 @@ import type {
   MarketTrade,
   OrderSide,
 } from './player-market.model';
+import { PLAYER_MARKET_MODE } from './player-market.mode';
+import { FakeMarketBackend } from './player-market.fake-backend';
 
 export interface MarketConfig {
   enabled?: boolean;
@@ -35,11 +37,25 @@ export interface MarketBackend {
   watchTrades(itemKey: string, limit: number): Observable<MarketTrade[]>;
   watchMyOrders(uid: string, limit: number): Observable<MarketOrder[]>;
   watchEscrow(uid: string): Observable<MarketEscrow | null>;
+  /**
+   * Open orders across every item, up to `limit` — what the Exchange list is
+   * built from (which items have a live market, and their best prices).
+   */
+  watchOpenOrders(limit: number): Observable<MarketOrder[]>;
+  /** Price docs, most recently traded first, up to `limit`. */
+  watchPrices(limit: number): Observable<MarketPrice[]>;
 }
 
+/**
+ * Firebase in production. The in-memory fake only when the dev-only
+ * `?market=fake` mode resolved (see player-market.mode.ts) — a production
+ * build can never select it, because that mode needs `isDevMode()`.
+ */
 export const PLAYER_MARKET_BACKEND = new InjectionToken<MarketBackend>('PLAYER_MARKET_BACKEND', {
   providedIn: 'root',
-  factory: () => inject(FirebaseMarketBackend),
+  factory: () => inject(PLAYER_MARKET_MODE).mode === 'fake'
+    ? inject(FakeMarketBackend)
+    : inject(FirebaseMarketBackend),
 });
 
 const ROOT = ['market', 'v1'] as const;
@@ -125,6 +141,33 @@ export class FirebaseMarketBackend implements MarketBackend {
         s => next(s.exists() ? (s.data() as MarketEscrow) : null),
         fail,
       ));
+  }
+
+  /**
+   * Single-field equality, so Firestore's automatic index serves it — no
+   * composite index to deploy. Bounded by `limit`; see the handoff's
+   * "UI binding" section for the read-cost note and the summary-doc follow-up.
+   */
+  watchOpenOrders(limit: number): Observable<MarketOrder[]> {
+    return this.watch(async ({ api, db }, next, fail) => {
+      const q = api.query(
+        api.collection(db, ROOT[0], ROOT[1], 'orders'),
+        api.where('status', '==', 'open'),
+        api.limit(limit),
+      );
+      return api.onSnapshot(q, s => next(s.docs.map(d => d.data() as MarketOrder)), fail);
+    });
+  }
+
+  watchPrices(limit: number): Observable<MarketPrice[]> {
+    return this.watch(async ({ api, db }, next, fail) => {
+      const q = api.query(
+        api.collection(db, ROOT[0], ROOT[1], 'prices'),
+        api.orderBy('lastTradeAt', 'desc'),
+        api.limit(limit),
+      );
+      return api.onSnapshot(q, s => next(s.docs.map(d => d.data() as MarketPrice)), fail);
+    });
   }
 
   /**

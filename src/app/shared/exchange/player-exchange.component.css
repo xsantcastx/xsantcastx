@@ -1,0 +1,145 @@
+/**
+ * player-exchange.component.css — the player-run Exchange.
+ *
+ * Only the pieces the station kit does not own: the price box, the book depth,
+ * the fee lines, the Collect bar and the orders list. Tokens only (the DS gate
+ * fails on colour literals); no backdrop-filter, no animation.
+ */
+:host {
+  display: block;
+  position: relative;
+  z-index: 1;
+}
+
+.pmx-hero { display: grid; gap: var(--space-3); }
+.pmx-detail { display: grid; gap: var(--space-3); min-width: 0; }
+
+.pmx-ribbon,
+.pmx-banner {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--edge-gold);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+.pmx-banner { border-style: solid; color: var(--text-body); }
+
+.pmx-signin,
+.pmx-collect {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  border: 1px solid var(--edge-gold);
+}
+.pmx-signin__line,
+.pmx-collect__line { margin: 0; flex: 1 1 12rem; color: var(--text-heading); font-size: var(--text-sm); }
+
+.pmx-btn {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-4);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--edge-hairline);
+  background: var(--surface-well);
+  color: var(--text-body);
+  font: inherit; font-size: var(--text-sm);
+  cursor: pointer;
+}
+.pmx-btn:hover { border-color: var(--edge-gold); color: var(--text-heading); }
+.pmx-btn:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.pmx-btn--primary { background: var(--gold); border-color: var(--gold); color: var(--surface-well); font-weight: 600; }
+.pmx-btn--primary:hover { background: var(--gold-bright); color: var(--surface-well); }
+.pmx-btn[aria-busy='true'] { opacity: 0.6; pointer-events: none; }
+
+.pmx-stats,
+.pmx-fee,
+.pmx-fill { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
+.pmx-fee { color: var(--text-body); font-variant-numeric: tabular-nums; }
+
+/* ── Book depth: sellers | buyers, five levels each ─────────────────────── */
+.pmx-depth { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.pmx-depth__side { display: grid; gap: var(--space-1); align-content: start; min-width: 0; }
+.pmx-depth__head {
+  margin: 0; font-size: var(--text-sm); color: var(--text-muted);
+  letter-spacing: 0.08em; text-transform: uppercase;
+}
+.pmx-depth__none { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
+.pmx-level {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge-hairline);
+  background: var(--surface-well);
+  color: var(--text-body);
+  font: inherit; font-size: var(--text-sm); font-variant-numeric: tabular-nums;
+  text-align: left; cursor: pointer;
+}
+.pmx-level[data-side='sell'] { border-left: 3px solid var(--status-danger); }
+.pmx-level[data-side='buy']  { border-left: 3px solid var(--status-good); }
+.pmx-level:hover { border-color: var(--edge-gold); }
+.pmx-level:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+/* ── Price box ──────────────────────────────────────────────────────────── */
+.pmx-price { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.pmx-price__label { flex: 1 0 100%; font-size: var(--text-sm); color: var(--text-muted); }
+.pmx-price__input {
+  flex: 1 1 8rem; min-width: 0;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge-hairline);
+  background: var(--surface-well);
+  color: var(--gold-bright);
+  font: inherit; font-size: 1rem; font-variant-numeric: tabular-nums;
+}
+.pmx-price__input:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 1px; }
+
+.pmx-notice {
+  margin: 0; padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg); font-size: var(--text-sm);
+  border: 1px solid var(--edge-hairline);
+}
+.pmx-notice[data-tone='ok']  { color: var(--status-good);   border-color: var(--status-good); }
+.pmx-notice[data-tone='bad'] { color: var(--status-danger); border-color: var(--status-danger); }
+
+/* ── Your orders ────────────────────────────────────────────────────────── */
+.pmx-orders { display: grid; gap: var(--space-2); }
+.pmx-orders__none { margin: 0; color: var(--text-muted); font-size: var(--text-sm); }
+.pmx-order {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--veil-panel);
+  border: 1px solid var(--edge-hairline);
+}
+.pmx-order[data-status='filled'],
+.pmx-order[data-status='cancelled'] { opacity: 0.7; }
+.pmx-order__body { flex: 1; min-width: 0; }
+.pmx-order__name { margin: 0; color: var(--text-heading); font-size: var(--text-sm); }
+.pmx-order__side { color: var(--text-muted); margin-right: var(--space-1); }
+.pmx-order__side[data-side='buy']  { color: var(--status-good); }
+.pmx-order__side[data-side='sell'] { color: var(--status-danger); }
+.pmx-order__line { margin: 0; color: var(--text-muted); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+
+/* ── Details ────────────────────────────────────────────────────────────── */
+.pmx-details { display: grid; gap: var(--space-4); }
+.pmx-panel {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-lg);
+  background: var(--veil-panel);
+  border: 1px solid var(--edge-hairline);
+}
+.pmx-panel__title { margin: 0 0 var(--space-2); font-size: var(--text-sm); color: var(--text-heading); }
+.pmx-panel__body { margin: 0; font-size: var(--text-sm); color: var(--text-body); line-height: 1.55; }
+.pmx-trades { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.pmx-trades__row { font-size: var(--text-sm); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+
+.pmx-sr {
+  position: absolute; width: 1px; height: 1px; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap; margin: 0;
+}
+
+@media (max-width: 480px) {
+  .pmx-depth { grid-template-columns: 1fr; }
+}
