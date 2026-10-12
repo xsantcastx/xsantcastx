@@ -7,7 +7,7 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
-  glowIntensity, isTakeable, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  climbTerrainBody, glowIntensity, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import type { DelvePersistence } from './engine.model';
@@ -181,6 +181,8 @@ export class SeamworksEngine {
   private tools: ToolTiers = {};
   private lanternRadius = DEFAULT_LANTERN;
   private skillLevels: Partial<Record<DisciplineId, number>> | null = null;
+  /** True while the Keeper is on a ladder (set in the fixed step): Up climbs instead of jumping. */
+  private climbing = false;
   /** Vertical camera, world px. 0 outside delves. */
   private cameraY = 0;
   private blastTime = 0;
@@ -290,8 +292,7 @@ export class SeamworksEngine {
     const def = placeableById(this.placing);
     if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
     const down = this.input.has('down');
-    const node = TERRAIN_NODES[def.node];
-    const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX, !!node?.solid);
+    const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX, def.aim);
     if (index < 0) { this.message = `No open space ${down ? 'under your feet' : 'in front of you'} for the ${def.label.toLowerCase()}.`; this.report(); return false; }
     return this.placeItem(def, index);
   }
@@ -644,7 +645,7 @@ export class SeamworksEngine {
     if (this.paused || this.hp <= 0 || this.input.has(action)) return;
     this.input.add(action);
     if (action === 'left' || action === 'right') this.cancelMove();
-    if (action === 'jump' && this.player.grounded) { this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false; }
+    if (action === 'jump' && this.player.grounded && !this.climbing) { this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false; }
     if (action === 'attack' && this.attackCooldown <= 0) this.attack();
     if (action === 'blast') this.blast();
     if (action === 'dodge' && this.dodgeCooldown <= 0) { this.dodgeTime = .26; this.dodgeCooldown = 1.05; }
@@ -986,15 +987,21 @@ export class SeamworksEngine {
     // Delves move a half-size Keeper a little slower, through the terrain.
     const pace = this.terrain ? .72 : 1;
     const velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace;
-    if (this.terrain) stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width);
-    else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
+    if (this.terrain) {
+      // On a ladder Up (jump) climbs and Down descends; anywhere else Down drops through platforms.
+      this.climbing = onLadder(this.terrain, this.player.x, this.player.y, DELVE_BOX);
+      if (this.climbing) {
+        const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
+        climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
+      } else stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down'));
+    } else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
     if (this.terrain) {
       // Holding a tool button keeps working the rock: digging is held, not tapped.
       if (this.input.has('attack') && this.attackCooldown <= 0) this.attack();
       if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
       this.inscriptionAt = this.findInscription();
     }
-    if (!wasGrounded && this.player.grounded) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
+    if (!wasGrounded && this.player.grounded && !this.climbing) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
       this.stepAt = this.elapsed; if (!this.reducedMotion) this.atmosphere.burst(this.player.x - direction * 16, this.player.y - 3);
     }

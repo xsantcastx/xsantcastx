@@ -1335,3 +1335,69 @@ test('torches: crafted from Delve materials, placed beside you, always lit, walk
   assert.equal(saveMod.cellsFor(delve.save, 'ember-delve', terrainMod.terrainLayout(delveSpec, 41)).has(t2.index(31, 8)), false,
     'back to what was generated: the diff stays compact');
 });
+
+// ── Building: ladders and platforms ─────────────────────────────────────────
+test('ladders: place where you stand, climb, place again — out of a shaft and back down', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-ladder');
+  assert.equal(recipe.output.itemId, 'ladder'); assert.equal(recipe.output.stack, true);
+  const delve = memoryDelve(51);
+  const { engine } = enterOwnDelve(delve);
+  const t = engine.terrain, rock = terrainMod.nodeIndex('rock');
+  // A one-cell shaft: col 30, open rows 2..8, rock all round.
+  for (let row = 0; row < 12; row++) for (let col = 26; col < 35; col++) t.set(col, row, rock);
+  for (let row = 2; row <= 8; row++) t.set(30, row, 0);
+  engine.player.x = 30 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0; engine.facing = 1;
+  const step = (frames = 1) => { for (let n = 0; n < frames; n++) engine.update(1 / 60); };
+  step(5);
+  assert.equal(engine.player.y, 610 + 9 * 32, 'stands on the shaft floor');
+  engine.setPlaceable('ladder');
+  for (let rung = 0; rung < 3; rung++) {
+    assert.equal(engine.place(), true, `ladder ${rung + 1}`);
+    step(1);
+    engine.setInput('jump', true);
+    step(40);
+    engine.setInput('jump', false);
+    step(10);
+  }
+  assert.equal(t.nodeAt(30, 8).id, 'ladder'); assert.equal(t.nodeAt(30, 7).id, 'ladder'); assert.equal(t.nodeAt(30, 6).id, 'ladder');
+  assert.equal(engine.player.y, 610 + 6 * 32, 'standing on the top rung, three cells up');
+  assert.equal(engine.player.grounded, true);
+  // Down: drop onto the ladder and climb down to the floor.
+  engine.setInput('down', true);
+  step(60);
+  engine.setInput('down', false);
+  step(5);
+  assert.equal(engine.player.y, 610 + 9 * 32, 'back on the floor');
+  // On a ladder, Up never jumps.
+  engine.setInput('jump', true); step(1);
+  assert.ok(engine.player.vy >= 0, 'no jump off a ladder');
+  engine.setInput('jump', false);
+  // The pure model agrees.
+  assert.equal(terrainMod.onLadder(t, 30 * 32 + 16, 610 + 9 * 32, { halfWidth: 13, height: 90 }), true);
+  assert.equal(terrainMod.onLadder(t, 30 * 32 + 16, 610 + 6 * 32, { halfWidth: 13, height: 90 }), false, 'on top is standing, not climbing');
+  engine.destroy();
+});
+
+test('platforms: a one-way floor you place across a gap, stand on, and drop through holding Down', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-platform');
+  assert.equal(recipe.output.itemId, 'platform');
+  const { engine } = enterOwnDelve(memoryDelve(52));
+  const t = buildRoom(engine);
+  // A pit ahead: col 31, rows 9..11.
+  for (let row = 9; row <= 11; row++) t.set(31, row, 0);
+  engine.setPlaceable('platform');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 9).id, 'platform', 'bridges the pit ahead');
+  assert.equal(t.solid(31, 9), false);
+  // Walk onto it: it holds.
+  engine.player.x = 31 * 32 + 16;
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.equal(engine.player.y, 610 + 9 * 32);
+  assert.equal(engine.player.grounded, true);
+  // A jump up through it from below would pass (one-way); Down drops through.
+  engine.setInput('down', true);
+  for (let n = 0; n < 40; n++) engine.update(1 / 60);
+  engine.setInput('down', false);
+  assert.equal(engine.player.y, 610 + 12 * 32, 'fell to the bottom of the pit');
+  engine.destroy();
+});

@@ -490,6 +490,14 @@ export const DELVE_KIT_RECIPES: readonly CraftingRecipe[] = [
     [m('cinder-ore', 1), m('world-root-bark', 1)],
     30, 1, 'Three torches. Placed in the Delve they burn for good and push the dark back.',
     { count: 3, stack: true }),
+  r('craft-delve-ladder', 'Ladder', 'delve', 'common', 'ladder',
+    [m('world-root-bark', 2)],
+    20, 1, 'Four ladders. Place one where you stand, climb it, place the next: out of any shaft.',
+    { count: 4, stack: true }),
+  r('craft-delve-platform', 'Platform', 'delve', 'common', 'platform',
+    [m('world-root-bark', 1), m('thornroot', 1)],
+    20, 1, 'Four platforms lashed with root. Stand on them; hold Down to drop through.',
+    { count: 4, stack: true }),
 ];
 
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [

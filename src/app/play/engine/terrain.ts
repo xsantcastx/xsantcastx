@@ -72,6 +72,10 @@ export interface TerrainNodeDef {
   block?: PlaceableId;
   /** A placed thing that is not dug but taken back whole (torch, ladder, chest): its stack id. */
   placeable?: PlaceableId;
+  /** Not solid, but a floor from above: land on it, drop through holding Down (platforms, ladder tops). */
+  oneWay?: true;
+  /** Climbable: Up/Down move the Keeper along it, and it holds them still (ladders). */
+  climb?: true;
 }
 
 /** The flag the Rune-Warden sets when it falls (delve save `claimed`). */
@@ -141,11 +145,19 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // Placed things that are taken back whole (X, or a long-press), never dug.
   { id: 'torch', label: 'Torch', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'torch',
     base: '#5a3a22', dark: '#2e1d10', light: '#ffd08a', fleck: '#ff9b4f', glow: { color: '#ffb066', radius: 120 } },
+  { id: 'ladder', label: 'Ladder', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'ladder', oneWay: true, climb: true,
+    base: '#7a5a36', dark: '#3a2a18', light: '#b08a55', fleck: '#5a4026' },
+  { id: 'platform', label: 'Platform', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'platform', oneWay: true,
+    base: '#8a6a40', dark: '#3a2a18', light: '#c9a06a', fleck: '#5a4026' },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
 /** 1 where the node is a placed thing taken back whole (torch, ladder, chest…). */
 const TAKEABLE_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.placeable && !node.solid ? 1 : 0);
+/** 1 where the node is a one-way floor (platforms, ladders). */
+const ONEWAY_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.oneWay ? 1 : 0);
+/** 1 where the node is climbable (ladders). */
+const CLIMB_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.climb ? 1 : 0);
 export const TERRAIN_NODES: Readonly<Record<string, TerrainNodeDef>> = Object.fromEntries(TERRAIN_NODE_LIST.map(node => [node.id, node]));
 const NODE_INDEX = new Map(TERRAIN_NODE_LIST.map((node, index) => [node.id, index]));
 export function nodeIndex(id: string): number {
@@ -393,7 +405,7 @@ export function cellKey(col: number, row: number): string { return `${col},${row
 // ── Building ───────────────────────────────────────────────────────────────
 
 /** Satchel stack ids of the things a Keeper can place in a delve. */
-export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch';
+export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform';
 
 export interface PlaceableDef {
   /** The satchel stack it is placed from and taken back to. */
@@ -402,13 +414,22 @@ export interface PlaceableDef {
   label: string;
   /** Terrain node it becomes. */
   node: string;
+  /**
+   * Where B puts it: 'block' fills the hole ahead first (blocks, platforms:
+   * walk-and-place bridges); 'beside' goes beside the body (torches); 'here'
+   * goes where the Keeper stands first (ladders: place, climb, place again).
+   */
+  aim: PlaceAim;
 }
+export type PlaceAim = 'block' | 'beside' | 'here';
 
 /** Every placeable, in hotbar order (keys 1, 2, …). */
 export const PLACEABLES: readonly PlaceableDef[] = [
-  { id: 'dirt-block', label: 'Dirt block', node: 'packed-dirt' },
-  { id: 'basalt-block', label: 'Basalt block', node: 'basalt-block' },
-  { id: 'torch', label: 'Torch', node: 'torch' },
+  { id: 'dirt-block', label: 'Dirt block', node: 'packed-dirt', aim: 'block' },
+  { id: 'basalt-block', label: 'Basalt block', node: 'basalt-block', aim: 'block' },
+  { id: 'torch', label: 'Torch', node: 'torch', aim: 'beside' },
+  { id: 'ladder', label: 'Ladder', node: 'ladder', aim: 'here' },
+  { id: 'platform', label: 'Platform', node: 'platform', aim: 'block' },
 ];
 const PLACEABLE_BY_ID = new Map(PLACEABLES.map(def => [def.id, def]));
 export function placeableById(id: string | null | undefined): PlaceableDef | undefined {
@@ -430,17 +451,34 @@ export function isAir(t: Terrain, col: number, row: number): boolean {
  *
  * Pure.
  */
-export function placeTarget(t: Terrain, x: number, feetY: number, facing: number, below: boolean, box: BodyBox, solid = true): number {
+export function placeTarget(t: Terrain, x: number, feetY: number, facing: number, below: boolean, box: BodyBox, aim: PlaceAim = 'block'): number {
   const feetRow = t.rowAt(feetY - EPS), floorRow = feetRow + 1, headRow = t.rowAt(feetY - box.height);
   const own = t.colAt(x);
   if (below) return isAir(t, own, floorRow) ? t.index(own, floorRow) : -1;
+  const lowest = (col: number) => { for (let row = feetRow; row >= headRow; row--) if (isAir(t, col, row)) return t.index(col, row); return -1; };
+  // A ladder goes where you stand, so you can climb it at once.
+  if (aim === 'here') { const here = lowest(own); if (here >= 0) return here; }
   const col = frontCol(t, x, facing, box);
   // A block fills the hole ahead first; a thing you walk through (a torch) never goes in a floor.
-  if (solid && isAir(t, col, floorRow)) return t.index(col, floorRow);
-  for (let row = feetRow; row >= headRow; row--) if (isAir(t, col, row)) return t.index(col, row);
-  // Walled in: a thing you walk through can go where you stand.
-  if (!solid) for (let row = feetRow; row >= headRow; row--) if (isAir(t, own, row)) return t.index(own, row);
-  return -1;
+  if (aim === 'block' && isAir(t, col, floorRow)) return t.index(col, floorRow);
+  const ahead = lowest(col);
+  if (ahead >= 0) return ahead;
+  // Walled in: a torch can go where you stand.
+  return aim === 'beside' ? lowest(own) : -1;
+}
+
+/** True when the cell is a one-way floor (a platform or a ladder). */
+export function isOneWay(t: Terrain, col: number, row: number): boolean {
+  return row >= 0 && t.inside(col, row) && ONEWAY_KIND[t.kind[t.index(col, row)]] === 1;
+}
+/** True when the cell is climbable. */
+export function isClimbable(t: Terrain, col: number, row: number): boolean {
+  return row >= 0 && t.inside(col, row) && CLIMB_KIND[t.kind[t.index(col, row)]] === 1;
+}
+/** On a ladder: the cell at the feet or mid-body (centre column) is climbable. Standing on a ladder's top is not. Pure. */
+export function onLadder(t: Terrain, x: number, feetY: number, box: BodyBox): boolean {
+  const col = t.colAt(x);
+  return isClimbable(t, col, t.rowAt(feetY - EPS)) || isClimbable(t, col, t.rowAt(feetY - box.height * .5));
 }
 
 /** The column just past the body in the facing direction. */
@@ -587,6 +625,35 @@ function rowBlocked(t: Terrain, row: number, x: number, box: BodyBox): boolean {
   for (let c = c0; c <= c1; c++) if (t.solid(c, row)) return true;
   return false;
 }
+/** A one-way floor under the body's centre column in `row` (the feet must be wholly over it to land). */
+function rowOneWay(t: Terrain, row: number, x: number): boolean {
+  return isOneWay(t, t.colAt(x), row);
+}
+
+/** Ladder speed, px/s. */
+export const CLIMB_SPEED = 150;
+
+/**
+ * One fixed step on a ladder: no gravity, Up/Down (`climb` -1/1, 0 holds)
+ * move along it, walls still stop it, and a floor reached climbing down is
+ * stood on. Walking off the ladder's column hands the body back to
+ * stepTerrainBody. Pure apart from `body`.
+ */
+export function climbTerrainBody(body: TerrainBody, velocityX: number, climb: number, dt: number, t: Terrain, box: BodyBox, width: number): void {
+  if (velocityX) {
+    const nx = Math.max(30, Math.min(width - 30, body.x + velocityX * dt));
+    if (!boxHits(t, nx, body.y, box)) body.x = nx;
+  }
+  body.vy = 0; body.grounded = true;
+  if (!climb) return;
+  const ny = body.y + climb * CLIMB_SPEED * dt;
+  if (!boxHits(t, body.x, ny, box)) { body.y = ny; return; }
+  if (climb > 0) {
+    // Down onto a floor: stand on its top edge.
+    const edge = t.top + t.rowAt(ny - EPS) * CELL;
+    if (edge > body.y && !boxHits(t, body.x, edge, box)) body.y = edge;
+  }
+}
 
 /**
  * One fixed step of a body moving through terrain: walls stop it, a single
@@ -594,7 +661,7 @@ function rowBlocked(t: Terrain, row: number, x: number, box: BodyBox): boolean {
  * One-way platforms (the area's safety floor) still apply. Mirrors advanceBody.
  */
 export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number, t: Terrain, box: BodyBox,
-  platforms: readonly { x: number; y: number; width: number }[], width: number): void {
+  platforms: readonly { x: number; y: number; width: number }[], width: number, drop = false): void {
   // Horizontal, then vertical, so a wall never eats a landing.
   if (velocityX) {
     const nx = Math.max(30, Math.min(width - 30, body.x + velocityX * dt));
@@ -612,7 +679,8 @@ export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number
     const from = t.rowAt(previousY - EPS) + 1, to = t.rowAt(ny);
     for (let row = from; row <= to; row++) {
       const edge = t.top + row * CELL;
-      if (edge >= previousY - EPS && edge <= ny && rowBlocked(t, row, body.x, box)) {
+      // Solid rock always catches; a platform or ladder top only when not dropping through (Down).
+      if (edge >= previousY - EPS && edge <= ny && (rowBlocked(t, row, body.x, box) || (!drop && rowOneWay(t, row, body.x)))) {
         ny = edge; body.vy = 0; body.grounded = true; break;
       }
     }
