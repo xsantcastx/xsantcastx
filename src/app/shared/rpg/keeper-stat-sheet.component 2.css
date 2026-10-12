@@ -1,0 +1,109 @@
+:host { display: block; }
+
+.ks {
+  position: relative;
+  padding: 10px 12px;
+  border: 1px solid var(--action-secondary-border);
+  border-radius: 10px;
+  background: var(--action-secondary-bg);
+}
+
+.ks__head {
+  margin: 0 0 6px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ks__list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 4px 12px;
+  margin: 0;
+}
+
+.ks__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  transition: background-color var(--dur-overlay) var(--ease-standard), color var(--dur-overlay) var(--ease-standard);
+}
+
+.ks__label { margin: 0; font-size: 0.74rem; color: var(--text-muted); }
+.ks__value {
+  margin: 0;
+  font-size: 0.86rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-heading);
+}
+
+/* A stat at zero is still listed — "nothing worn buys Ward" is information —
+   but it should not compete with the ones that are paying. */
+.ks__row--zero { opacity: 0.45; }
+.ks__row--combat .ks__label { color: var(--text-body); }
+
+.ks__row--up { background: color-mix(in srgb, var(--feedback-up) 14%, transparent); }
+.ks__row--up .ks__value { color: var(--feedback-up); }
+.ks__row--down { background: color-mix(in srgb, var(--feedback-down) 14%, transparent); }
+.ks__row--down .ks__value { color: var(--feedback-down); }
+
+/* Chips sit over the sheet's top edge and rise out of it. Not positioned with a
+   z-index: they are the last thing in the sheet, so they already paint on top
+   of it, and nothing outside the sheet needs to be under them. */
+.ks__chips {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  pointer-events: none;
+}
+
+.ks__chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  background: var(--surface-overlay);
+  font-size: 0.72rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  animation: ksChipFloat 1.8s var(--ease-standard) forwards;
+}
+/* Reduced motion is decided in the component and lands as a class, not as a
+   media query: Angular's emulated encapsulation renames keyframes, and an
+   animation reference inside an @media block is the one it has been seen to
+   leave un-renamed — which silently animates nothing. */
+.ks__chip--still { animation: ksChipFade 1.8s var(--ease-standard) forwards; }
+.ks__chip--up { color: var(--feedback-up); }
+.ks__chip--down { color: var(--feedback-down); }
+
+@keyframes ksChipFade {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes ksChipFloat {
+  0% { opacity: 0; transform: translateY(8px) scale(0.9); }
+  12% { opacity: 1; transform: translateY(0) scale(1.06); }
+  24% { transform: translateY(-2px) scale(1); }
+  70% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-26px); }
+}
+
+/* Satchel density. */
+.ks--compact { padding: 6px 8px; }
+.ks--compact .ks__head { margin-bottom: 3px; font-size: 0.6rem; }
+.ks--compact .ks__list { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 2px 8px; }
+.ks--compact .ks__label { font-size: 0.66rem; }
+.ks--compact .ks__value { font-size: 0.76rem; }

@@ -13,6 +13,7 @@ import { COLLECTION_CATALOG } from '../collection/collection.model';
 import {
   CRAFTING_CATEGORIES,
   CRAFTING_RECIPES,
+  MISSION_PATTERN_RECIPES,
   MASTERY_BONUS,
   MAX_CRAFTING_LEVEL,
   coerceCraftingState,
@@ -311,9 +312,10 @@ describe('the saved blob', () => {
 
 describe('tool recipes', () => {
   const tools = CRAFTING_RECIPES.filter(r => r.category === 'tool');
+  const patterns = new Set(MISSION_PATTERN_RECIPES.map(r => r.id));
 
-  it('forges every family at every tier, once', () => {
-    const ids = tools.map(r => r.output.itemId).sort();
+  it('forges every family at every tier, once (mission patterns are extra roads)', () => {
+    const ids = tools.filter(r => !patterns.has(r.id)).map(r => r.output.itemId).sort();
     const want = ['axe', 'pickaxe', 'sickle', 'staff'].flatMap(f => [1, 2, 3, 4].map(t => `${f}-${t}`)).sort();
     expect(ids).toEqual(want);
   });

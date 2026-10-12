@@ -85,3 +85,18 @@ export function mergeDelveLore(remote: unknown, local: unknown): unknown {
   const r = coerceDelveLore(remote), l = coerceDelveLore(local);
   return { version: 1, inscriptions: [...new Set([...l.inscriptions, ...r.inscriptions])].sort() } satisfies DelveLoreState;
 }
+
+// ── Shared with the missions / Codex side (merged from the lore agent's contract) ──
+export interface DelveBiome { id: DelveBiomeId; name: string }
+/** Shallowest first. */
+export const DELVE_BIOMES: readonly DelveBiome[] = [
+  { id: 'root-hollows', name: 'Root Hollows' },
+  { id: 'basalt-caverns', name: 'Basalt Caverns' },
+  { id: 'glowcap-grotto', name: 'Glowcap Grotto' },
+  { id: 'magma-halls', name: 'Magma Halls' },
+];
+/** The inscriptions as the Codex and missions read them (canon text lives in delve-inscription-lore.ts). */
+export const DELVE_INSCRIPTIONS: readonly InscriptionDef[] = INSCRIPTIONS;
+export const SHADOW_ROOT_CUTTING = 'shadow-root-cutting';
+export const GLOWCAP = 'glowcap';
+export const GODFORGE_FRAGMENT = 'godforge-fragment';
