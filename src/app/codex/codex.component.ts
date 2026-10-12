@@ -78,6 +78,16 @@ import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { REALM_ART, artFor } from '../shared/art/art';
 import { BESTIARY, BESTIARY_UNPAINTED } from './bestiary';
 import { injectInWorldPanel } from '../shared/in-world-panel';
+import { DelveLoreService } from '../shared/delve/delve-lore.service';
+import { DELVE_BIOMES, DELVE_INSCRIPTIONS } from '../shared/delve/delve-lore.model';
+import { DELVE_INSCRIPTION_LORE } from '../shared/delve/delve-inscription-lore';
+
+/** One Delve biome's wall of inscriptions. Locked cards show no text. */
+interface InscriptionShelf {
+  name: string;
+  found: number;
+  cards: { id: string; found: boolean; title: string; text: string }[];
+}
 export type CodexTab = 'achievements' | 'collection' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
 
 interface TabDefinition {
@@ -200,6 +210,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   private readonly secretsService = inject(CodexSecretsService);
   private readonly inventory = inject(InventoryService);
   private readonly scrollsService = inject(LoreScrollService);
+  private readonly delveLore = inject(DelveLoreService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   /**
@@ -382,6 +393,9 @@ export class CodexComponent implements OnInit, OnDestroy {
     // scroll was granted before this page was ever opened — which is the normal
     // case, since scrolls are found at the anvil and read here.
     this.subs.push(this.scrollsService.changed$.subscribe(() => (this.scrollShelves = this.buildScrolls())));
+    // Delve inscriptions: copied in the world, read here. `inscription$` replays
+    // the current set, so this also fills the shelf on first open.
+    this.subs.push(this.delveLore.inscription$.subscribe(() => (this.inscriptionShelves = this.buildInscriptions())));
 
     // The page itself is an achievement. Triggering unconditionally is safe —
     // EasterEggService only pays out and only toasts on the first discovery.
@@ -638,6 +652,27 @@ export class CodexComponent implements OnInit, OnDestroy {
 
   get scrollsFound(): number {
     return this.hydrated ? this.scrollsService.foundCount : 0;
+  }
+
+  // ── Delve inscriptions ────────────────────────────────────────────────────
+  /** Sealed at construction for the same reason `scrollShelves` is. */
+  inscriptionShelves: InscriptionShelf[] = this.buildInscriptions();
+
+  get inscriptionsFound(): number {
+    return this.inscriptionShelves.reduce((sum, shelf) => sum + shelf.found, 0);
+  }
+
+  readonly inscriptionsTotal = DELVE_INSCRIPTIONS.length;
+
+  private buildInscriptions(): InscriptionShelf[] {
+    const copied = this.hydrated ? this.delveLore.inscriptions() : new Set<string>();
+    return DELVE_BIOMES.map(biome => {
+      const cards = DELVE_INSCRIPTIONS.filter(i => i.biome === biome.id).map(i => {
+        const lore = DELVE_INSCRIPTION_LORE[i.id];
+        return { id: i.id, found: copied.has(i.id), title: lore?.title ?? 'Inscription', text: lore?.text ?? i.text };
+      });
+      return { name: biome.name, cards, found: cards.filter(c => c.found).length };
+    }).filter(shelf => shelf.cards.length > 0);
   }
 
   get scrollsTotal(): number {

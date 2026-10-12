@@ -1,0 +1,27 @@
+@if (building && action) {
+  <section class="hp" [attr.data-building]="building">
+    <h3 class="hp-name">{{ name }}</h3>
+    <p class="hp-sentence">{{ sentence }}</p>
+    @if (waiting) { <p class="hp-waiting">{{ waiting }}</p> }
+
+    @for (beat of [celebrate]; track beat) {
+      <button type="button" class="hp-go" [class.hp-go--pop]="celebrate > 0" [disabled]="disabled" (click)="press()">{{ action.label }}</button>
+    }
+    @if (action.locked) { <p class="hp-locked">{{ action.locked }}</p> }
+    @if (notice) { <p class="hp-notice" [attr.data-tone]="noticeTone" role="status">{{ notice }}</p> }
+
+    @if (details.length) {
+      <details class="hp-details">
+        <summary>Details</summary>
+        <ul>
+          @for (row of details; track row.name) {
+            <li><span>{{ row.name }}</span><b>{{ row.owned ? 'Owned ' + row.owned : 'Not yet' }}</b></li>
+          }
+        </ul>
+        <p class="hp-fine">Prices are the Market's own. Buying here is the same purchase as buying there.</p>
+      </details>
+    }
+  </section>
+} @else {
+  <p class="hp-sentence">Walk up to a building on your Homestead to see what it can do.</p>
+}

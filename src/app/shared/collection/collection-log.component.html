@@ -290,6 +290,9 @@
             <p class="cl-card__absent">not yet in the world</p>
           }
         }
+        @if (whereFound(card.entry.id, card.entry.category); as where) {
+          <p class="cl-card__where">Found in: {{ where }}</p>
+        }
       </div>
     </article>
   }
