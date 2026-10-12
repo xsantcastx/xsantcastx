@@ -137,7 +137,7 @@ filename the importer picks up automatically.
 ## Known issues / watch list
 
 - Enemy bar names the creature by guessing from spawn positions; an `enemyName` on engine state would make mixed-creature hunts exact
-- **Initial bundle is AT the 2 MB hard limit** (2.00 MB; warn 1.85). The next eager addition fails the build and blocks deploys. Biggest eager modules: `lore.model.ts` 134 kB, `tools-registry.ts` 77 kB (retired tools product), `art-manifest.generated.ts` 64 kB, `equipment-panel` 44 kB. Towns are lazy and don't count
+- Initial bundle fixed: 2.00 MB → **1.68 MB** (`92a3b68`): tools registry, lore corpus and character hub moved out of the initial chunk. Keep new code lazy; biggest eager modules now `translation.service` 92 kB, `art-manifest.generated` 64 kB, header 50 kB
 - `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
 - New creatures still draw with the Rivet Maw rig until the engine-visuals branch lands
 - After closing an in-world panel, focus lands on the page body, not the game canvas (keyboard players must click once) — Phase 2 UI polish
@@ -146,7 +146,6 @@ filename the importer picks up automatically.
 - Paper-doll gear sockets are small on phones (~17% of the doll); the equip/unequip flight and swap haven't been watched in motion yet
 - Returning visitors may see the old ghostly Keeper for up to 7 days (image cache, same filename)
 - Rig unverified in motion on mobile, high-DPR seams, Safari rim light (the test browser pane runs hidden, so the loop doesn't advance)
-- Initial bundle is ~113 kB over its warning budget (pre-existing)
 - "Daily Tool Generation Pipeline" workflow failing on main (pre-existing, unrelated)
 
 ## How to work on this plan
