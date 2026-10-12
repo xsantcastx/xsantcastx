@@ -122,6 +122,10 @@ describe('Delve missions', () => {
     const counts = ['delve-archivist-words-1', 'delve-archivist-words-2', 'delve-archivist-words-3']
       .map(id => missionTarget(delveMissionById(id)!.objective));
     expect(counts).toEqual([3, 6, DELVE_INSCRIPTIONS.length]);
+    // Every inscription with canon text is carved in the Delve: three per biome, twelve in all.
+    expect(DELVE_INSCRIPTIONS.length).toBe(12);
+    expect(DELVE_INSCRIPTIONS.map(i => i.id).sort()).toEqual(Object.keys(DELVE_INSCRIPTION_LORE).sort());
+    expect(delveMissionById('delve-archivist-words-3')!.brief).toBe('Copy all 12 inscriptions in the Ember Delve.');
   });
 
   it('caps each delivery line at its own count', () => {

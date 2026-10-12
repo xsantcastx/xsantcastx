@@ -60,6 +60,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   // Delve building placeables. Stand-ins until the commission pack paints them.
   'dirt-block': 'relic-dust', 'basalt-block': 'godforge-slag', 'torch': 'ember-stoker',
   'ladder': 'world-root-bark', 'platform': 'rootwall-shield', 'chest': 'quest-items', 'camp': 'forge',
+  'timber-support': 'world-root-bark', 'basalt-support': 'godforge-slag', 'blast-charge': 'ember-stoker',
   // Delve creatures that spawn under their own keys (towns/infernal.ts). Until
   // their paintings land they wear the creature they were cast from; their rigs
   // in creature-rigs.ts are those same bodies, so nothing changes on screen.

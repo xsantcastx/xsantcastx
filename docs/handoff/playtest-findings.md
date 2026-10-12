@@ -27,6 +27,8 @@ Run: `PW_PORT=4291 npx playwright test e2e/play-*.spec.ts --project=chromium` (p
 
 ### P-2 · Medium · A `?at=` deep link from any town but Infernal is dropped on reload
 
+**Fixed** (`ecfe303`): the current town is saved in `eclipse-play-world-v1` (written only when it changes) and restored before the engine mounts; a `?at=` link still resolves afterwards and wins. The spec is un-fixme'd and passes.
+
 **Repro:** go to Umbral by the Waystone and open the Exchange. The URL is now `/play?at=exchange`. Reload, or open that URL in a new tab.
 
 **Expected:** the Exchange opens, in Umbral.
@@ -39,6 +41,8 @@ Run: `PW_PORT=4291 npx playwright test e2e/play-*.spec.ts --project=chromium` (p
 
 ### P-3 · Medium · Kills train nothing: no Hunting XP, no Mining XP for ore drops
 
+**Fixed** (`ecfe303`): Hunting XP per kill (`round(hp/5)`, keyed `hunt:<kill id>`) was already on main and the spec confirms it. Ore drops (any Mining-tier ore) now go through `SkillActionService.act` with skill `mining`, 2 XP, keyed by the drop id, so the ore and the XP land in one idempotent write. The spec now also asserts the Mining XP and passes.
+
 **Repro:** with the beacon lit, take the East Passage to Ember Quarry. Kill a Rivet Maw with J and walk over its coins and Cinder Ore.
 
 **Expected:** Hunting XP rises; Hunting has a skill and an unlock ladder in `skill-unlocks.ts`.
@@ -50,6 +54,8 @@ Run: `PW_PORT=4291 npx playwright test e2e/play-*.spec.ts --project=chromium` (p
 **Spec:** `play-hunting.spec.ts`, "a kill trains Hunting".
 
 ### P-4 · Medium · Coins from monsters are never kept
+
+**Fixed** (`ecfe303`): `onLoot` credits a coin drop through `EconomyService.earnGold` once per drop id, and the satchel's Coins count is the saved running total (`eclipse-play-world-v1.coins`), so it survives a reload. The spec is un-fixme'd and passes.
 
 **Repro:** kill a Maw and walk over its coin drop. The satchel shows "Coins 9". Wait, then reload.
 

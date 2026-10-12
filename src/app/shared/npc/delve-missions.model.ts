@@ -192,7 +192,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     id: 'delve-archivist-words-3',
     npcId: 'archivist',
     title: 'Words in the Stone III',
-    brief: 'Copy every inscription in the Ember Delve.',
+    brief: `Copy all ${DELVE_INSCRIPTIONS.length} inscriptions in the Ember Delve.`,
     loreText: 'All of them. I have kept a shelf empty for this since before you arrived.',
     objective: { kind: 'inscriptions', count: 'all' },
     reward: {

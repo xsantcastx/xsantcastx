@@ -8,7 +8,7 @@
  * delve never holds more than CHUNK_CAP of them. Debris and dust are a fixed
  * pool of particles.
  */
-import { BiomeDef, CELL, CHUNK, crackStage, Terrain } from './terrain';
+import { BiomeDef, CELL, CHUNK, crackStage, isLoose, Terrain } from './terrain';
 
 /** Most chunk canvases kept. A 1280×720 view touches about 24. */
 const CHUNK_CAP = 36;
@@ -195,6 +195,21 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   if (!t.solid(col - 1, row)) { c.fillStyle = node.light; c.globalAlpha = .5; c.fillRect(x, y, 2, CELL); c.globalAlpha = 1; }
   if (!t.solid(col + 1, row)) { c.fillStyle = '#0a0608'; c.globalAlpha = .6; c.fillRect(x + CELL - 2, y, 2, CELL); c.globalAlpha = 1; }
   paintCracks(c, t, col, row, x, y, h);
+  if (isLoose(t, col, row)) paintLoose(c, x, y, h);
+}
+
+/**
+ * Loose rock's warning: a pale fracture right across the cell and a gap
+ * along its underside, so it reads as "this lets go" before any dust falls.
+ */
+function paintLoose(c: CanvasRenderingContext2D, x: number, y: number, h: number): void {
+  c.strokeStyle = '#d8c2b0'; c.globalAlpha = .55; c.lineWidth = 1.3;
+  c.beginPath();
+  c.moveTo(x, y + 9 + (h & 7)); c.lineTo(x + 10, y + 14 + ((h >> 3) & 3)); c.lineTo(x + 17, y + 8 + ((h >> 5) & 7)); c.lineTo(x + CELL, y + 15 + ((h >> 8) & 7));
+  c.moveTo(x + 12 + ((h >> 11) & 7), y + CELL); c.lineTo(x + 15, y + 20); c.lineTo(x + 10, y + 14 + ((h >> 3) & 3));
+  c.stroke();
+  c.globalAlpha = .7; c.fillStyle = '#0a0608'; c.fillRect(x + 3, y + CELL - 3, CELL - 6, 2);
+  c.globalAlpha = 1;
 }
 
 /** A placed thing over the tunnel wall. Stand-in drawing until tile art lands. */
@@ -231,6 +246,23 @@ function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark
       c.fillStyle = dark; c.fillRect(x + 21, y + 29, 10, 3);
       c.fillStyle = fleck; c.beginPath(); c.ellipse(x + 26, y + 25, 4, 6, 0, 0, Math.PI * 2); c.fill();
       c.fillStyle = light; c.beginPath(); c.ellipse(x + 26, y + 27, 2, 3, 0, 0, Math.PI * 2); c.fill();
+      break;
+    }
+    case 'timber-support': case 'basalt-support': {
+      // A post from the floor to a cap beam that bears on the rock above.
+      c.fillStyle = dark; c.fillRect(x + 12, y + 4, 8, 28); c.fillRect(x + 2, y, 28, 5);
+      c.fillStyle = base; c.fillRect(x + 13, y + 5, 6, 27); c.fillRect(x + 2, y, 28, 3);
+      c.fillStyle = light; c.fillRect(x + 13, y + 5, 2, 27);
+      c.fillStyle = fleck; c.fillRect(x + 11, y + 6, 3, 3); c.fillRect(x + 18, y + 6, 3, 3);
+      break;
+    }
+    case 'blast-charge': {
+      // A bound bundle of sticks on the floor, its fuse curling up (the spark is drawn live).
+      c.fillStyle = dark; c.fillRect(x + 7, y + 18, 18, 14);
+      c.fillStyle = base; c.fillRect(x + 8, y + 19, 4, 13); c.fillRect(x + 14, y + 19, 4, 13); c.fillRect(x + 20, y + 19, 4, 13);
+      c.fillStyle = light; c.fillRect(x + 7, y + 23, 18, 2);
+      c.strokeStyle = fleck; c.lineWidth = 1.5;
+      c.beginPath(); c.moveTo(x + 16, y + 19); c.quadraticCurveTo(x + 22, y + 14, x + 20, y + 10); c.stroke();
       break;
     }
     case 'platform': {
