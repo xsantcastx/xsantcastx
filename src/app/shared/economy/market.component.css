@@ -35,23 +35,13 @@
   --mk-dim: rgba(232, 236, 241, 0.58);
   --mk-faint: rgba(232, 236, 241, 0.4);
 
+  /* Above the painted scene; the station shell owns width and padding. */
+  display: block;
   position: relative;
   z-index: 1;
-  max-width: 1520px;
-  margin: 0 auto;
-  padding: clamp(18px, 3.4vw, 40px) clamp(12px, 3vw, 28px) 80px;
   color: var(--mk-ink);
 }
 
-/* In-world (the Luminous town's Market stall inside /play): the panel is the
-   frame and the scrollport, so the floor drops its page gutters and width cap,
-   and the wallet pins to the panel's top edge rather than below a site header
-   that is not in that scrollport. */
-.mk--in-world {
-  max-width: none;
-  padding: 0 0 24px;
-}
-.mk--in-world .mk__wallet { top: 0; }
 
 .mk[data-currency='essence'] { --mk-accent: var(--mk-ess); --mk-accent-soft: var(--mk-ess-soft); }
 .mk[data-currency='shard']   { --mk-accent: var(--mk-shard); --mk-accent-soft: rgba(255, 109, 215, 0.5); }
@@ -62,245 +52,6 @@
   padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-
-/* ── Hero ─────────────────────────────────────────────────────────────────
-   Purple forge-light from the two upper corners, so the masthead sits in a
-   glow rather than on a flat field. Painted with gradients rather than an
-   image: it is two paint ops and it cannot fail to load. */
-
-.mk__hero {
-  position: relative;
-  text-align: center;
-  padding: clamp(26px, 5vw, 56px) 16px clamp(20px, 3vw, 34px);
-  margin-bottom: clamp(16px, 2.4vw, 26px);
-  background:
-    radial-gradient(ellipse 46% 78% at 6% 0%, rgba(123, 97, 255, 0.2), transparent 62%),
-    radial-gradient(ellipse 46% 78% at 94% 0%, rgba(232, 117, 42, 0.16), transparent 62%),
-    radial-gradient(ellipse 70% 100% at 50% 0%, rgba(10, 6, 26, 0.6), transparent 70%);
-}
-
-/* Gradient cap lines, top and bottom — the site's section signature. */
-.mk__hero::before, .mk__hero::after {
-  content: ''; position: absolute; left: 8%; right: 8%; height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(200, 152, 104, 0.55) 50%, transparent);
-}
-.mk__hero::before { top: 0; }
-.mk__hero::after  { bottom: 0; background: linear-gradient(90deg, transparent, rgba(123, 97, 255, 0.5) 50%, transparent); }
-
-.mk__sigil {
-  /* Was a bare Unicode ✕ painted with background-clip:text, which read as a close
-     button parked in the middle of the hero. It is the design system's four-point
-     anchor now — the mark the shape grammar assigns to revelation and value.
-     The gradient text trick had to go with it: background-clip:text needs
-     color:transparent, and a transparent colour makes an SVG drawn in
-     currentColor invisible. Solid violet plus the same drop-shadow instead. */
-  display: block;
-  width: clamp(30px, 5vw, 46px);
-  height: clamp(30px, 5vw, 46px);
-  margin: 0 auto 10px;
-  color: var(--violet-bright);
-  filter: drop-shadow(0 0 14px rgba(123, 97, 255, 0.55));
-  animation: mkSigil 12s ease-in-out infinite;
-}
-.mk__sigil svg { width: 100%; height: 100%; display: block; }
-@keyframes mkSigil {
-  0%, 100% { opacity: .78; transform: rotate(0deg) scale(1); }
-  50%      { opacity: 1;   transform: rotate(180deg) scale(1.08); }
-}
-
-.mk__eyebrow {
-  display: inline-flex; align-items: center; gap: 8px;
-  margin: 0 0 12px;
-  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--mk-gold);
-}
-.mk__eyebrow-pulse {
-  width: 7px; height: 7px; border-radius: 50%;
-  background: var(--mk-warm);
-  box-shadow: 0 0 10px var(--mk-warm);
-  animation: mkPulse 3s ease-in-out infinite;
-}
-@keyframes mkPulse { 0%, 100% { opacity: .45; transform: scale(.85); } 50% { opacity: 1; transform: scale(1.15); } }
-
-.mk__title {
-  margin: 0 auto 12px;
-  max-width: 20ch;
-  font: 700 clamp(28px, 5.6vw, 58px)/1.08 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
-  background: linear-gradient(92deg, var(--gold-bright), var(--mk-warm) 46%, #c48bff);
-  background-size: 200% auto;
-  -webkit-background-clip: text; background-clip: text;
-  -webkit-text-fill-color: transparent; color: transparent;
-  animation: mkSweep 7s ease-in-out infinite;
-}
-@keyframes mkSweep { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
-
-.mk__tagline {
-  display: inline-block;
-  max-width: 62ch;
-  margin: 0;
-  padding: 8px 18px;
-  border-radius: 999px;
-  border: 1px solid rgba(200, 152, 104, 0.16);
-  background: rgba(200, 152, 104, 0.05);
-  font-size: clamp(12px, 1.5vw, 14px);
-  line-height: 1.6;
-  color: var(--mk-dim);
-}
-
-/* ── Currency bar ─────────────────────────────────────────────────────── */
-
-/* The wallet rides along while the catalogue scrolls. It sticks to the page
-   scroll, so nothing between here and <body> may carry a transform, an
-   overflow or a contain — `.mk` is plain `position: relative`, and the routed
-   host's routeFadeIn ends at `transform: none` (styles.css). The one thing that
-   CAN kill it is <body> being a scroll container: `body { overflow-x: hidden }`
-   computes to `hidden auto`, and a body that is its own scrollport never lets a
-   descendant stick to the viewport. That is a one-token fix in styles.css
-   (`overflow-x: clip`), not something this file can do — if the bar does not
-   pin, look there first, not here.
-
-   `top` is the header offset the HeaderComponent writes onto <html>: 20px on
-   desktop (the nav is a left sidebar, there is no top bar) and nav-h + 12 on
-   mobile (fixed top bar). The CSS fallbacks in :root cover the pre-JS paint.
-   z-index is the in-page sticky rung — above `.mk__aside`/`.mk__main` (both
-   `position: relative`, later in DOM order), well under the header/drawer/modal. */
-.mk__wallet {
-  position: sticky;
-  top: var(--header-offset, 20px);
-  z-index: var(--z-sticky, 20);
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 10px;
-  margin: 0 auto clamp(16px, 2.4vw, 26px);
-}
-
-.mk__coin {
-  position: relative;
-  display: flex; align-items: center; gap: 11px;
-  min-width: 168px;
-  padding: 11px 18px;
-  border-radius: 14px;
-  border: 1px solid var(--mk-line);
-  background: var(--mk-pane);
-  backdrop-filter: blur(14px);
-  transition: border-color .25s ease, box-shadow .25s ease;
-}
-.mk__coin--gold    { border-color: rgba(200, 152, 104, 0.22); }
-.mk__coin--essence { border-color: rgba(164, 139, 255, 0.22); }
-.mk__coin--shard   { border-color: rgba(255, 109, 215, 0.22); }
-.mk__coin--rate    { border-color: rgba(232, 117, 42, 0.26); }
-
-.mk__coin-icon, .mk__coin-glyph { flex: none; width: 34px; height: 34px; }
-.mk__coin-glyph {
-  display: grid; place-items: center;
-  font-size: 21px; line-height: 1;
-}
-.mk__coin-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-.mk__coin-val {
-  font: 700 clamp(15px, 1.9vw, 19px)/1 'Orbitron', system-ui, sans-serif;
-  color: #fff;
-  font-variant-numeric: tabular-nums;
-  /* `anywhere` rather than `break-all`: a late-game Gold figure must be allowed
-     to wrap rather than push the pill off screen, but it should only ever do so
-     once it genuinely does not fit. */
-  overflow-wrap: anywhere;
-}
-.mk__coin-sub {
-  font-size: 11px; font-style: normal; font-weight: 600;
-  color: var(--mk-shard); margin-left: 4px;
-}
-.mk__coin-label {
-  font-size: 10px; letter-spacing: 0.13em; text-transform: uppercase;
-  color: var(--mk-faint); white-space: nowrap;
-}
-
-.mk__coin--gold    .mk__coin-val { color: var(--mk-gold); }
-.mk__coin--essence .mk__coin-val { color: var(--mk-ess); }
-.mk__coin--shard   .mk__coin-val { color: var(--mk-shard); }
-.mk__coin--rate    .mk__coin-val { color: var(--mk-warm); }
-
-/* One gold pulse across the whole bar, per purchase. */
-.mk__wallet--flash .mk__coin {
-  border-color: var(--mk-gold);
-  box-shadow: 0 0 26px -6px var(--mk-gold-soft);
-}
-
-.mk__rate-float {
-  position: absolute; left: 50%; top: 2px;
-  transform: translateX(-50%);
-  font: 700 13px/1 'Orbitron', system-ui, sans-serif;
-  color: #7fd5a3; text-shadow: 0 0 10px rgba(100, 220, 150, 0.7);
-  pointer-events: none;
-  animation: mkFloat 1.2s ease-out forwards;
-}
-@keyframes mkFloat {
-  0%   { opacity: 0; transform: translate(-50%, 6px); }
-  22%  { opacity: 1; }
-  100% { opacity: 0; transform: translate(-50%, -30px); }
-}
-
-.mk__running {
-  display: flex; align-items: center; justify-content: center;
-  flex-wrap: wrap; gap: 7px;
-  max-width: 760px;
-  margin: 0 auto clamp(14px, 2vw, 22px);
-  padding: 10px 18px;
-  border-radius: 12px;
-  border: 1px solid rgba(164, 139, 255, 0.28);
-  background: rgba(164, 139, 255, 0.07);
-  font-size: 13px; color: var(--mk-dim); text-align: center;
-}
-.mk__running strong { color: var(--mk-ess); }
-.mk__running-timer { color: var(--mk-ess); font-variant-numeric: tabular-nums; }
-
-/* ── The floor ────────────────────────────────────────────────────────── */
-
-.mk__floor {
-  display: grid;
-  grid-template-columns: 250px minmax(0, 1fr) 288px;
-  gap: clamp(14px, 1.6vw, 22px);
-  align-items: start;
-}
-
-/* Scroll-reveal.
-   The hidden state keys off `data-reveal="armed"`, which only the component
-   writes and only in a browser, and only onto blocks that are below the fold
-   (see armReveal). The served attribute is a bare `data-reveal`, so the SSR
-   page — and anything that never ran the script — is fully visible. */
-@media (prefers-reduced-motion: no-preference) {
-  [data-reveal='armed'] {
-    opacity: 0; transform: translateY(14px);
-    transition: opacity .6s ease, transform .6s cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  [data-reveal='armed'].mk-in { opacity: 1; transform: none; }
-}
-
-/* Panels — one glass recipe with an ornate top edge. */
-.mk__aside, .mk__main {
-  position: relative;
-  border-radius: 16px;
-  border: 1px solid var(--mk-line);
-  background:
-    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(123, 97, 255, 0.07), transparent 70%),
-    var(--mk-pane);
-  backdrop-filter: blur(14px);
-}
-.mk__aside::before, .mk__main::before {
-  content: ''; position: absolute; left: 14%; right: 14%; top: -1px; height: 1px;
-  background: linear-gradient(90deg, transparent, var(--mk-accent-soft) 50%, transparent);
-  transition: background .35s ease;
-}
-
-/* Not sticky. It used to declare `position: sticky; top: 90px`, which never
-   ran (see the wallet note above) — and it should not: the filter rail is
-   ~1040px tall at 1280×800, taller than the viewport, so pinning it would put
-   its bottom controls out of reach. The wallet is the one thing that follows. */
-.mk__aside { padding: 16px 14px; }
-.mk__main  { padding: 14px clamp(10px, 1.2vw, 16px) 18px; }
 
 /* ── Search ───────────────────────────────────────────────────────────── */
 
@@ -423,342 +174,6 @@
 }
 .mk__clear:hover { border-color: var(--mk-accent); color: var(--mk-ink); }
 
-/* ── Tab strip ────────────────────────────────────────────────────────── */
-
-.mk__shelf-bar {
-  display: flex;
-  align-items: flex-end;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--mk-line);
-}
-.mk__tabs {
-  display: flex;
-  flex: 1;
-  gap: 4px;
-  min-width: 0;
-  overflow-x: auto;
-  overscroll-behavior-x: contain;
-  scrollbar-width: thin;
-}
-.mk__tab {
-  flex: none;
-  min-height: 38px;
-  padding: 8px 14px;
-  border: 1px solid transparent;
-  border-radius: 9px;
-  background: transparent;
-  color: var(--mk-faint);
-  font: 600 11.5px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.07em;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: color .18s ease, background .18s ease, border-color .18s ease;
-}
-.mk__tab:hover { color: var(--mk-ink); background: rgba(255, 255, 255, 0.05); }
-.mk__tab--on {
-  color: #fff;
-  background: rgba(200, 152, 104, 0.12);
-  border-color: rgba(200, 152, 104, 0.36);
-  box-shadow: 0 0 18px -8px var(--mk-gold-soft);
-}
-.mk__tab--on[data-currency='essence'] { background: rgba(164, 139, 255, 0.13); border-color: rgba(164, 139, 255, 0.38); }
-.mk__tab--on[data-currency='shard']   { background: rgba(255, 109, 215, 0.13); border-color: rgba(255, 109, 215, 0.38); }
-.mk__tab--eclipse { flex: none; }
-.mk__tab--eclipse.mk__tab--on { background: rgba(255, 109, 215, 0.13); border-color: rgba(255, 109, 215, 0.38); }
-
-.mk__toolbar {
-  display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  margin: 0 0 12px; flex-wrap: wrap;
-}
-.mk__sort { display: inline-flex; align-items: center; gap: 8px; color: var(--mk-dim); }
-.mk__sort-select {
-  min-height: 44px;
-  padding: 0 12px;
-  border-radius: 9px;
-  border: 1px solid var(--mk-line);
-  background: rgba(8, 5, 18, 0.7);
-  color: var(--mk-ink);
-  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  /* Redrawn caret: `appearance: none` in styles.css takes the native one, and
-     this rule's `background` shorthand would drop a global replacement anyway. */
-  background-image:
-    linear-gradient(45deg, transparent 50%, currentColor 50%),
-    linear-gradient(135deg, currentColor 50%, transparent 50%);
-  background-position: calc(100% - 17px) calc(50% + 1px), calc(100% - 12px) calc(50% + 1px);
-  background-size: 5px 5px, 5px 5px;
-  background-repeat: no-repeat;
-}
-.mk__sort-select:focus-visible { outline: 2px solid var(--mk-ess); outline-offset: 2px; }
-.mk__count {
-  margin: 0;
-  font: 600 11px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.08em;
-  color: var(--mk-faint);
-}
-.mk__notice {
-  margin: 0 0 12px;
-  padding: 10px 12px;
-  border-radius: 9px;
-  border: 1px solid var(--mk-line);
-  background: rgba(255, 255, 255, 0.04);
-  font-size: 13px;
-  color: var(--mk-dim);
-}
-.mk__notice--ok { border-color: rgba(127, 213, 163, 0.35); color: #7fd5a3; }
-.mk__notice--queued { border-color: rgba(200, 152, 104, 0.4); color: var(--mk-gold); }
-.mk__notice--denied { border-color: rgba(255, 45, 77, 0.4); color: #ff8a9a; }
-.mk__chips {
-  list-style: none; margin: 0 0 12px; padding: 0;
-  display: flex; flex-wrap: wrap; gap: 6px;
-}
-.mk__chip {
-  min-height: 36px;
-  padding: 6px 10px;
-  border-radius: 999px;
-  border: 1px solid rgba(200, 152, 104, 0.35);
-  background: rgba(200, 152, 104, 0.08);
-  color: var(--mk-ink);
-  font: 600 11px/1 system-ui, sans-serif;
-  cursor: pointer;
-}
-.mk__chip:focus-visible { outline: 2px solid var(--mk-ess); outline-offset: 2px; }
-
-.mk__eclipse-entry { margin: 0 0 14px; }
-.mk__eclipse-link {
-  display: flex; align-items: center; gap: 8px;
-  width: 100%; min-height: 44px;
-  padding: 8px 10px;
-  border-radius: 9px;
-  border: 1px solid rgba(255, 109, 215, 0.28);
-  background: rgba(255, 109, 215, 0.06);
-  color: var(--mk-ink);
-  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.06em;
-  cursor: pointer;
-}
-.mk__eclipse-link--on, .mk__eclipse-link:hover {
-  border-color: rgba(255, 109, 215, 0.5);
-  background: rgba(255, 109, 215, 0.12);
-}
-.mk__clear { display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
-
-.mk__note {
-  margin: 0 0 14px;
-  padding: 10px 14px;
-  border-left: 2px solid var(--mk-accent);
-  border-radius: 0 8px 8px 0;
-  background: rgba(255, 255, 255, 0.025);
-  font-size: 12.5px; line-height: 1.65;
-  color: var(--mk-dim);
-}
-
-/* ── The list ─────────────────────────────────────────────────────────── */
-
-/* Row and legend share one track definition, so a column cannot drift. */
-.mk__legend, .mk__row {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr) 116px 108px 82px 104px;
-  align-items: center;
-  gap: 12px;
-}
-
-.mk__legend {
-  padding: 0 14px 8px;
-  font: 600 9.5px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.18em; text-transform: uppercase;
-  color: var(--mk-faint);
-}
-.mk__legend-item   { grid-column: 2; }
-.mk__legend-rarity { grid-column: 3; }
-.mk__legend-price  { grid-column: 4; text-align: right; }
-.mk__legend-yield  { grid-column: 5; text-align: right; }
-.mk__legend-action { grid-column: 6; text-align: center; }
-
-.mk__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 7px; }
-
-.mk__row {
-  --tier: var(--mk-gold);
-  --tier-glow: var(--mk-gold-soft);
-  position: relative;
-  padding: 13px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--mk-line);
-  background: var(--mk-pane-2);
-  transition: border-color .22s ease, background .22s ease, box-shadow .22s ease, transform .22s ease;
-}
-
-/* The rarity stripe down the left edge — the row's tier, readable before a
-   word of it has been read. */
-.mk__row::before {
-  content: ''; position: absolute; left: 0; top: 12%; bottom: 12%;
-  width: 2px; border-radius: 0 2px 2px 0;
-  background: var(--tier);
-  box-shadow: 0 0 10px var(--tier-glow);
-  opacity: .8;
-}
-
-.mk__row:hover {
-  border-color: color-mix(in srgb, var(--tier) 45%, transparent);
-  background: rgba(26, 18, 48, 0.82);
-  box-shadow: 0 0 30px -12px var(--tier-glow);
-}
-
-.mk__row--owned { background: rgba(24, 18, 44, 0.8); }
-.mk__row--held  { opacity: .82; }
-
-.mk__row-icon {
-  display: grid; place-items: center;
-  width: 44px; height: 44px;
-  border-radius: 11px;
-  border: 1px solid color-mix(in srgb, var(--tier) 30%, transparent);
-  background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.14), rgba(8, 3, 24, 0.9) 78%);
-  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5), 0 0 14px -6px var(--tier-glow);
-  font-size: 20px; line-height: 1;
-  overflow: hidden;
-}
-
-/* The painted artifact cards are tall portraits; the icon well is a square, so
-   the card is cropped to it rather than letterboxed inside it. */
-.mk__row-art {
-  width: 100%; height: 100%;
-  object-fit: cover;
-  border-radius: 10px;
-}
-
-.mk__row-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
-
-.mk__row-name {
-  display: flex; align-items: center; flex-wrap: wrap; gap: 7px;
-  font: 600 14px/1.25 'Orbitron', system-ui, sans-serif;
-  color: #fff;
-}
-.mk__row-owned {
-  padding: 1px 7px;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--tier) 16%, transparent);
-  border: 1px solid color-mix(in srgb, var(--tier) 40%, transparent);
-  font-size: 10.5px; color: var(--tier);
-  font-variant-numeric: tabular-nums;
-}
-.mk__row-timer { font-size: 10.5px; color: var(--mk-ess); font-family: system-ui, sans-serif; }
-
-.mk__row-effect { font-size: 12px; line-height: 1.45; color: var(--mk-dim); }
-.mk__row-lore {
-  font-size: 11.5px; line-height: 1.5; font-style: italic;
-  color: var(--mk-faint);
-  /* Two lines is a flavour note; five is a wall in a table. */
-  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2;
-  -webkit-box-orient: vertical; overflow: hidden;
-}
-
-.mk__row-rarity { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; min-width: 0; }
-.mk__badge {
-  display: inline-flex; align-items: center; gap: 6px;
-  padding: 3px 9px;
-  border-radius: 5px;
-  border: 1px solid color-mix(in srgb, var(--tier) 52%, transparent);
-  background: color-mix(in srgb, var(--tier) 13%, transparent);
-  color: var(--tier);
-  font: 700 9.5px/1.3 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.13em; text-transform: uppercase;
-  white-space: nowrap;
-}
-/* The tier dot before the word — the same swatch the rarity facet wears
-   (.mk__facet-dot), so the badge and the filter rail speak one language. */
-.mk__badge::before {
-  content: '';
-  flex: none;
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: var(--tier);
-  box-shadow: 0 0 7px var(--tier-glow);
-}
-.mk__row-cat { font-size: 10px; color: var(--mk-faint); }
-
-.mk__row-price {
-  display: flex; align-items: center; justify-content: flex-end; gap: 6px;
-  font-variant-numeric: tabular-nums;
-}
-.mk__row-price-num {
-  font: 600 13.5px/1 'Orbitron', system-ui, sans-serif;
-  color: var(--mk-gold);
-}
-.mk__row[data-currency='essence'] .mk__row-price-num { color: var(--mk-ess); }
-.mk__row-price-num--paid {
-  color: var(--mk-faint); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
-}
-
-.mk__row-yield {
-  text-align: right;
-  font: 600 11.5px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.06em; text-transform: uppercase;
-  color: var(--mk-dim);
-  font-variant-numeric: tabular-nums;
-}
-
-.mk__row-action { display: flex; justify-content: center; }
-
-/* ── The buy button ───────────────────────────────────────────────────── */
-
-.mk__buy {
-  width: 100%;
-  min-height: 44px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  border: 1px solid rgba(164, 139, 255, 0.45);
-  background: linear-gradient(180deg, rgba(140, 110, 255, 0.9), rgba(96, 62, 200, 0.9));
-  color: #fff;
-  font: 700 11.5px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.1em; text-transform: uppercase;
-  cursor: pointer;
-  box-shadow: 0 0 20px -8px rgba(140, 110, 255, 0.9), inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  transition: transform .16s ease, box-shadow .22s ease, filter .22s ease;
-}
-.mk__buy:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.12);
-  box-shadow: 0 0 30px -6px rgba(140, 110, 255, 0.95), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-}
-.mk__buy:active:not(:disabled) { transform: translateY(0); }
-.mk__buy:disabled {
-  cursor: not-allowed;
-  background: rgba(255, 255, 255, 0.045);
-  border-color: rgba(255, 255, 255, 0.09);
-  color: var(--mk-faint);
-  box-shadow: none;
-}
-.mk__buy:focus-visible { outline: 2px solid var(--mk-ess); outline-offset: 2px; }
-
-.mk__held {
-  display: grid; place-items: center;
-  width: 100%; min-height: 44px;
-  border-radius: 10px;
-  border: 1px dashed color-mix(in srgb, var(--tier) 44%, transparent);
-  color: var(--tier);
-  font: 700 10px/1 'Orbitron', system-ui, sans-serif;
-  letter-spacing: 0.16em;
-}
-
-/* Purchase feedback. Both are under a second, so they need no static state. */
-.mk__row--flash {
-  border-color: var(--tier);
-  box-shadow: 0 0 34px -8px var(--tier-glow);
-  animation: mkFlash .42s ease-out;
-}
-@keyframes mkFlash {
-  0%   { background: color-mix(in srgb, var(--tier) 22%, rgba(20, 14, 38, 0.72)); }
-  100% { background: var(--mk-pane-2); }
-}
-.mk__row--denied { animation: mkShake .36s ease-in-out; border-color: rgba(255, 45, 77, 0.5); }
-@keyframes mkShake {
-  0%, 100% { transform: translateX(0); }
-  20% { transform: translateX(-5px); }
-  45% { transform: translateX(4px); }
-  70% { transform: translateX(-2px); }
-}
-
 /* ── Cosmetic variants ────────────────────────────────────────────────── */
 
 .mk__variants { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
@@ -818,229 +233,6 @@
 }
 .mk__error-actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .mk__empty-clear { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
-
-/* ── Item tiles ───────────────────────────────────────────────────────── */
-
-.mk__tiles {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 10px;
-}
-
-/* Rarity, readable before a word of it has been read.
-   `--tier` / `--tier-glow` arrive inline on the <li> from the Eclipse ladder
-   (rarity.model.ts, via MarketItem.rarityColor/rarityGlow) — the one canonical
-   palette; no hex here. Because they are inline, a stylesheet cannot re-colour
-   a rung; what it can do is decide how much of the tier shows. These knobs are
-   what each `[data-rarity]` rung turns:
-     --mk-tier-edge    share of --tier in the resting border
-     --mk-tier-rail    width of the rail down the left edge
-     --mk-tier-rail-a  rail opacity
-     --mk-tier-halo    outer glow blur (0 = none)
-   The signal is carried three ways so no single one has to do the job: the
-   rail (position — always the left edge, and it thickens up the ladder), the
-   border/halo weight (the whole card gets heavier as it gets rarer), and the
-   badge with its tier dot (the same dot the rarity facet in the filter rail
-   uses, so "dot colour = tier" is taught once). Solid --tier is ≥ 5:1 on this
-   ground for every rung; the old 45% mix border alone was under 3:1 for five
-   of the six. The word in the badge stays — this is additive. */
-.mk__tile {
-  --tier: var(--mk-gold);
-  --tier-glow: var(--mk-gold-soft);
-  --mk-tier-edge: 30%;
-  --mk-tier-rail: 3px;
-  --mk-tier-rail-a: 85%;
-  --mk-tier-halo: 0px;
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  border-radius: 12px;
-  border: 1px solid color-mix(in srgb, var(--tier) var(--mk-tier-edge), transparent);
-  background: rgba(20, 14, 38, 0.94);
-  box-shadow: 0 0 var(--mk-tier-halo) -8px var(--tier-glow);
-  transition: border-color .18s ease, background .18s ease, box-shadow .18s ease, transform .18s ease;
-}
-/* The rail. A pseudo rather than an inset shadow because hover/flash/denied
-   all rewrite box-shadow and border-color, and the rail must survive them.
-   Same idiom the old .mk__row used. */
-.mk__tile::before {
-  content: '';
-  position: absolute;
-  left: -1px; top: 14%; bottom: 14%;
-  width: var(--mk-tier-rail);
-  border-radius: 0 3px 3px 0;
-  background: color-mix(in srgb, var(--tier) var(--mk-tier-rail-a), transparent);
-  box-shadow: 0 0 10px var(--tier-glow);
-  pointer-events: none;
-}
-/* The rungs. Weight and light climb the ladder. Mortal is near-white
-   (var(--ink-0), 15.8:1 on this ground) and would out-shout every coloured tier at
-   equal strength, so the bottom rung is deliberately held quiet. */
-.mk__tile[data-rarity='mortal']    { --mk-tier-edge: 10%; --mk-tier-rail: 2px; --mk-tier-rail-a: 45%; }
-.mk__tile[data-rarity='eclipsed']  { --mk-tier-edge: 30%; }
-.mk__tile[data-rarity='sacred']    { --mk-tier-edge: 42%; --mk-tier-halo: 18px; }
-.mk__tile[data-rarity='anomalous'] { --mk-tier-edge: 55%; --mk-tier-halo: 24px; }
-.mk__tile[data-rarity='mythic']    { --mk-tier-edge: 75%; --mk-tier-rail: 4px; --mk-tier-halo: 30px; }
-.mk__tile[data-rarity='singular']  { --mk-tier-edge: 100%; --mk-tier-rail: 4px; --mk-tier-halo: 36px; }
-/* The top two rungs get a second, inner frame — a shape cue, not a hue one. */
-.mk__tile[data-rarity='mythic'],
-.mk__tile[data-rarity='singular'] {
-  box-shadow:
-    0 0 var(--mk-tier-halo) -8px var(--tier-glow),
-    inset 0 0 0 1px color-mix(in srgb, var(--tier) 30%, transparent);
-}
-.mk__tile--open {
-  grid-column: 1 / -1;
-  border-color: color-mix(in srgb, var(--tier) 55%, transparent);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tier) 35%, transparent);
-}
-.mk__tile--owned { background: rgba(24, 18, 44, 0.8); }
-.mk__tile--held { opacity: .92; }
-/* Hover lifts and brightens but never below the resting rung: the border
-   takes the larger of its rung share and 45%, and the resting halo is kept
-   under the hover glow rather than swapped out for it. */
-.mk__tile:hover, .mk__tile:focus-within {
-  transform: translateY(-3px);
-  border-color: color-mix(in srgb, var(--tier) max(45%, var(--mk-tier-edge)), transparent);
-  box-shadow:
-    0 0 30px -12px var(--tier-glow),
-    0 0 var(--mk-tier-halo) -8px var(--tier-glow);
-}
-.mk__tile[data-rarity='mythic']:hover,    .mk__tile[data-rarity='mythic']:focus-within,
-.mk__tile[data-rarity='singular']:hover,  .mk__tile[data-rarity='singular']:focus-within {
-  box-shadow:
-    0 0 30px -12px var(--tier-glow),
-    0 0 var(--mk-tier-halo) -8px var(--tier-glow),
-    inset 0 0 0 1px color-mix(in srgb, var(--tier) 30%, transparent);
-}
-.mk__tile--rare.mk__tile--open {
-  box-shadow: 0 0 28px -10px var(--tier-glow), inset 0 0 0 1px color-mix(in srgb, var(--tier) 40%, transparent);
-}
-
-.mk__tile-trigger {
-  display: grid;
-  grid-template-columns: 48px minmax(0, 1fr);
-  grid-template-areas: 'icon name' 'icon state';
-  gap: 4px 10px;
-  width: 100%;
-  min-height: 76px;
-  padding: 10px 12px;
-  border: 0;
-  border-radius: 12px;
-  background: transparent;
-  color: inherit;
-  text-align: left;
-  cursor: pointer;
-}
-.mk__tile-trigger:focus-visible {
-  outline: 2px solid var(--mk-ess);
-  outline-offset: 3px;
-}
-
-.mk__tile-icon {
-  grid-area: icon;
-  display: grid; place-items: center;
-  width: 48px; height: 48px;
-  border-radius: 11px;
-  /* The art well borrows the tier too — a second, inner echo of the rail. */
-  border: 1px solid color-mix(in srgb, var(--tier) 45%, transparent);
-  background: radial-gradient(circle at 34% 28%, rgba(255, 255, 255, 0.14), rgba(8, 3, 24, 0.9) 78%);
-  overflow: hidden;
-}
-.mk__tile-art { width: 100%; height: 100%; object-fit: cover; }
-.mk__tile-glyph { font-size: 20px; line-height: 1; }
-.mk__tile-name {
-  grid-area: name;
-  font: 600 13.5px/1.25 'Orbitron', system-ui, sans-serif;
-  color: #fff;
-}
-.mk__tile-state {
-  grid-area: state;
-  display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
-}
-.mk__tile-key {
-  display: inline-flex; align-items: center; gap: 5px;
-  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  color: var(--mk-gold);
-  font-variant-numeric: tabular-nums;
-}
-.mk__tile[data-currency='essence'] .mk__tile-key { color: var(--mk-ess); }
-
-.mk__tile-exp {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0 12px 12px;
-  animation: mkExpand .2s ease;
-}
-.mk__tile-meta {
-  display: flex; flex-wrap: wrap; gap: 10px;
-  margin: 0;
-  font-size: 11.5px;
-  color: var(--mk-faint);
-}
-.mk__tile-actions {
-  display: flex; flex-wrap: wrap; gap: 8px;
-  align-items: stretch;
-}
-.mk__tile-actions .mk__buy, .mk__tile-actions .mk__held { flex: 1 1 140px; }
-
-.mk__tile--flash {
-  border-color: var(--tier);
-  animation: mkFlash .42s ease-out;
-}
-.mk__tile--denied { animation: mkShake .36s ease-in-out; border-color: rgba(255, 45, 77, 0.5); }
-
-@keyframes mkExpand {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: none; }
-}
-
-/* Approved 24×24 currentColor market glyphs, coloured in CSS. */
-.mk-ico {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  flex: none;
-  background-color: currentColor;
-  -webkit-mask: var(--ico) center / contain no-repeat;
-  mask: var(--ico) center / contain no-repeat;
-}
-.mk-ico--lg { width: 40px; height: 40px; }
-.mk-ico--search { --ico: url('/assets/icons/market/search.svg'); }
-.mk-ico--filter { --ico: url('/assets/icons/market/filter.svg'); }
-.mk-ico--sort { --ico: url('/assets/icons/market/sort.svg'); }
-.mk-ico--clear { --ico: url('/assets/icons/market/clear-filter.svg'); }
-.mk-ico--empty { --ico: url('/assets/icons/market/empty-state.svg'); }
-.mk-ico--error { --ico: url('/assets/icons/market/error.svg'); }
-
-.mk__pager {
-  display: flex; align-items: center; justify-content: center; gap: 14px;
-  margin-top: 16px;
-  padding-top: 14px;
-  border-top: 1px solid var(--mk-line);
-}
-.mk__pager-btn {
-  display: grid; place-items: center;
-  width: 44px; height: 44px;
-  border-radius: 10px;
-  border: 1px solid var(--mk-line);
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--mk-ink);
-  font-size: 19px; line-height: 1;
-  cursor: pointer;
-  transition: border-color .2s ease, background .2s ease;
-}
-.mk__pager-btn:hover:not(:disabled) { border-color: var(--mk-accent); background: rgba(255, 255, 255, 0.07); }
-.mk__pager-btn:disabled { opacity: .32; cursor: not-allowed; }
-.mk__pager-at {
-  font: 600 12px/1 'Orbitron', system-ui, sans-serif;
-  color: var(--mk-dim);
-  font-variant-numeric: tabular-nums;
-}
 
 /* ── The board ────────────────────────────────────────────────────────── */
 
@@ -1105,7 +297,6 @@
   display: block; font-size: 22px; line-height: 1; margin-bottom: 8px;
   color: var(--mk-gold);
   text-shadow: 0 0 14px var(--mk-gold-soft);
-  animation: mkPulse 4.5s ease-in-out infinite;
 }
 .mk__patron-head {
   margin: 0 0 5px;
@@ -1307,220 +498,6 @@
 .mk__links a { color: var(--mk-gold); text-decoration: none; }
 .mk__links a:hover { text-decoration: underline; }
 
-/* ── Responsive ───────────────────────────────────────────────────────── */
-
-/* With the sidebar present there is room to show all nine shelves at once,
-   so the strip wraps rather than hiding its last tabs behind a scroll nobody
-   can see the edge of. Below this it goes back to being a scroller. */
-@media (min-width: 1024px) {
-  .mk__tabs { flex-wrap: wrap; overflow-x: visible; }
-}
-
-/* Below 1280 the right rail goes under the list; the filter rail stays. */
-@media (max-width: 1279px) {
-  .mk__floor { grid-template-columns: 232px minmax(0, 1fr); }
-  .mk__aside--board { grid-column: 1 / -1; position: static; }
-  .mk__aside--board > * { max-width: 620px; margin-left: auto; margin-right: auto; }
-}
-
-/* Below 1024 the price/supply columns fold into the body and the row becomes
-   a card: three tracks instead of six. */
-@media (max-width: 1023px) {
-  .mk__legend { display: none; }
-  .mk__row {
-    grid-template-columns: 44px minmax(0, 1fr) auto;
-    grid-template-areas:
-      'icon body rarity'
-      'icon meta meta'
-      'action action action';
-    row-gap: 10px;
-  }
-  .mk__row-icon   { grid-area: icon; align-self: start; }
-  .mk__row-body   { grid-area: body; }
-  .mk__row-rarity { grid-area: rarity; align-items: flex-end; }
-  .mk__row-price  { grid-area: meta; justify-content: flex-start; }
-  .mk__row-yield  { grid-area: meta; justify-self: end; text-align: right; }
-  .mk__row-action { grid-area: action; }
-  .mk__buy, .mk__held { width: 100%; }
-}
-
-/* Single column. The filter rail collapses into the tab strip, which is
-   already horizontally scrollable and is the only category control here. */
-@media (max-width: 767px) {
-  .mk {
-    padding-left: 12px; padding-right: 12px;
-    /* Site-wide: no backdrop-filter under 768px — it is the wallpaper, not the
-       app, that costs the frame budget. Flat alpha reads the same at this size. */
-    --mk-pane: rgba(15, 10, 30, 0.94);
-    --mk-pane-2: rgba(20, 14, 38, 0.92);
-  }
-  .mk__aside, .mk__main, .mk__coin { backdrop-filter: none; }
-
-  .mk__floor { grid-template-columns: minmax(0, 1fr); }
-  .mk__aside--filters { position: static; }
-  .mk__aside--board { padding: 14px 12px; }
-  .mk__tiles { grid-template-columns: 1fr; }
-
-  .mk__main { padding: 12px 10px 16px; border-radius: 14px; }
-  .mk__hero { padding-top: 22px; }
-
-  /* The sticky wallet, compact: one row, no wrap. At full size it is three
-     rows and ~187px on a 375px phone — a quarter of what is left between the
-     fixed top bar and the fixed tab bar — which is too much to pin. Gold,
-     Essence, Shards and the rate stay; the labels and the total go (the icons
-     say which is which, and the header ticker carries gold anyway). The strip
-     gets its own solid ground (the game-surface panel token; the pills keep
-     `--mk-pane` so they read as segments on it) because backdrop-filter is off
-     at this width and the gaps between pills would otherwise show tiles
-     scrolling through. No overflow-x on it: `auto` would clip the +N/s rate
-     floaters. Nothing in the strip is a control, so it may sit under 44px. */
-  .mk__wallet {
-    flex-wrap: nowrap;
-    gap: 6px;
-    padding: 5px 6px;
-    border-radius: 12px;
-    border: 1px solid var(--gf-edge, var(--mk-line));
-    background: var(--gf-panel-solid, var(--mk-pane));
-  }
-  .mk__coin { flex: 1 1 auto; min-width: 0; padding: 6px 9px; gap: 7px; border-radius: 10px; }
-  .mk__coin--total, .mk__coin-label { display: none; }
-  .mk__coin-icon, .mk__coin-glyph { width: 20px; height: 20px; }
-  .mk__coin-glyph { font-size: 14px; }
-  /* A numeral must never split mid-digit in the pinned strip — the desktop
-     rule allows `overflow-wrap: anywhere` so a late-game Gold figure can wrap
-     inside a wide pill, but at this width a wrapped "1,2 / 34" reads as two
-     numbers. Keep every value on one line and make room the honest way: drop
-     the shard multiplier sub-label, and when Shards are held (four pills)
-     hide the rate pill rather than squeeze all four below legibility. */
-  .mk__coin-val { font-size: 13px; white-space: nowrap; overflow-wrap: normal; }
-  .mk__coin-sub { display: none; }
-  .mk__wallet:has(.mk__coin--shard) .mk__coin--rate { display: none; }
-
-  .mk__row { padding: 12px 11px; }
-  .mk__row-icon { width: 40px; height: 40px; font-size: 18px; }
-  .mk__row-name { font-size: 13px; }
-  .mk__tile-name { font-size: 13px; }
-  .mk__legend { display: none; }
-
-  /* The filter rail is gone at this width, which makes the tab strip the only
-     way to change shelf — so it has to clear the 44px target, not the 38px
-     that was fine while it was a secondary control beside a sidebar. */
-  .mk__tab { min-height: 44px; padding: 12px 15px; }
-  /* The filter rail is still rendered at this width (it sits above the
-     catalogue rather than beside it), so its facet buttons are touch targets
-     too — 38px was fine beside a sidebar, not under a thumb. */
-  .mk__facet-btn { min-height: 44px; padding: 10px 12px; }
-  .mk__variant { min-height: 44px; padding: 11px 14px; }
-  .mk__patron-alt { min-height: 44px; padding: 13px 8px; }
-}
-
-/* ── Reduced motion ───────────────────────────────────────────────────── */
-
-@media (prefers-reduced-motion: reduce) {
-  /* Every loop stops at a legible frame rather than simply not running. */
-  .mk__sigil        { animation: none; opacity: .9; }
-  .mk__title        { animation: none; background-position: 0% 50%; }
-  .mk__eyebrow-pulse,
-  .mk__patron-sigil { animation: none; opacity: 1; }
-  .mk__eclipse-orb  { animation: none; box-shadow: 0 0 0 1px rgba(255, 109, 215, 0.45), 0 0 60px -10px rgba(255, 109, 215, 0.7); }
-  .mk__rate-float   { animation: none; opacity: 1; transform: translate(-50%, -18px); }
-  .mk__row--flash, .mk__row--denied,
-  .mk__tile--flash, .mk__tile--denied { animation: none; }
-  .mk__tile, .mk__tile:hover, .mk__tile:focus-within { transform: none; }
-  .mk__tile-exp { animation: none; }
-  .mk__eclipse-fill { transition: none; }
-  .mk__buy:hover:not(:disabled), .mk__patron-cta:hover, .mk__eclipse-btn:hover { transform: none; }
-}
-
-/* ── Flat listing card ────────────────────────────────────────────────────
-   Replaces the disclosure tile. Everything a buying decision needs — art,
-   rarity, category, what it does, price, Buy — is visible without a click. The
-   old tile hid the effect text behind an expand, so browsing 37 listings meant
-   37 clicks to learn what any of them did.
-
-   Two columns, not three: the page grid is `250px minmax(0,1fr) 288px` inside a
-   988px shell, so this column is ~409px at any desktop width. A price rail
-   beside the body left the name about 170px and wrapped every title. The buy
-   row spans underneath instead, which also gives the button a real target. */
-.mk__card {
-  display: grid;
-  grid-template-columns: 64px minmax(0, 1fr);
-  align-items: start;
-  gap: 6px 12px;
-  padding: 12px 14px;
-  width: 100%;
-}
-.mk__card .mk__tile-icon {
-  grid-column: 1;
-  grid-row: 1;
-  width: 64px;
-  height: 64px;
-  display: grid;
-  place-items: center;
-}
-.mk__card .mk__tile-art { width: 100%; height: 100%; object-fit: contain; }
-
-.mk__card-body { min-width: 0; grid-column: 2; }
-.mk__card-body .mk__tile-name {
-  margin: 0 0 4px;
-  font-size: 15px;
-  font-weight: 700;
-  line-height: 1.25;
-  color: var(--mk-ink, var(--ink-0));
-}
-.mk__card-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 6px 8px;
-  margin: 0 0 6px;
-  font-size: 11px;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  color: var(--gf-dim);
-}
-.mk__card-cat, .mk__card-yield, .mk__card-owned { white-space: nowrap; }
-.mk__card-owned { color: var(--gf-accent-text); }
-.mk__card .mk__row-effect {
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-  color: var(--mk-dim, #9fb4ae);
-}
-
-/* Price and Buy sit on their own row, full width. */
-.mk__card-buy {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
-  margin-top: 2px;
-  padding-top: 10px;
-  border-top: 1px solid var(--gf-edge);
-}
-.mk__card-price {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--gf-accent-text);
-  font-variant-numeric: tabular-nums;
-}
-.mk__card-buy .mk__buy { margin-left: auto; }
-
-/* The doorway rung's price. Reads as an offer rather than as a number that
-   failed to load, which is what an unstyled "0" next to a Gold coin looks
-   like. Uses the shared good-status token so it tracks the palette. */
-.mk__free {
-  color: var(--status-good);
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  font-size: 14px;
-}
-
-
 /* ── The Gambler doorway ──────────────────────────────────────────────────── */
 
 .mk__gambler {
@@ -1570,3 +547,114 @@
 .mk__gambler-body strong { font-size: 0.9rem; color: #c9b6ff; }
 .mk__gambler-body span { font-size: 0.74rem; color: rgba(232, 236, 241, 0.55); }
 .mk__gambler-go { margin-left: auto; color: #a48bff; font-size: 1.1rem; }
+
+/* ── The journal (station kit) ────────────────────────────────────────────
+   Frame, tabs, skill strip, list, detail head and the action row are the
+   kit's. This is the wallet pair, the rate floater, the detail copy, and the
+   small controls the Details drawer still owns. Tokens only below here. */
+.mkj-wallet { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); border-radius: var(--radius-pill); }
+.mkj-wallet--flash { animation: mkjFlash 520ms var(--ease-standard); }
+@keyframes mkjFlash {
+  0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 0%, transparent); }
+  40% { box-shadow: 0 0 22px 2px color-mix(in srgb, var(--gold) 55%, transparent); }
+  100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--gold) 0%, transparent); }
+}
+
+.mkj-hero { position: relative; display: grid; gap: var(--space-3); }
+.mkj-detail { display: grid; gap: var(--space-3); min-width: 0; }
+.mkj-what { display: flex; align-items: center; gap: var(--space-2); }
+.mkj-effect { flex: 1; min-width: 0; margin: 0; font-size: var(--text-base); line-height: var(--leading-normal); color: var(--text-body); }
+.mkj-meta { font-size: var(--text-sm); color: var(--text-muted); }
+
+/* "+2.5/sec" rising off the hero after a purchase. Absolutely placed so it
+   never moves the journal. */
+.mkj-rate { position: absolute; top: 0; right: var(--space-4); margin: 0; height: 0; pointer-events: none; }
+.mkj-rate__float {
+  position: absolute;
+  right: 0;
+  top: 0;
+  font: var(--weight-bold) var(--text-sm)/1 var(--font-ui);
+  color: var(--feedback-up);
+  white-space: nowrap;
+  animation: mkjRise 1.2s var(--ease-standard) forwards;
+}
+@keyframes mkjRise {
+  from { opacity: 0; transform: translateY(8px); }
+  20% { opacity: 1; }
+  to { opacity: 0; transform: translateY(-26px); }
+}
+
+.mk__held {
+  margin: 0;
+  justify-self: start;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--feedback-success);
+  color: var(--feedback-up);
+  font: var(--weight-bold) var(--text-sm)/1.4 var(--font-ui);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-nav);
+}
+
+.mk__notice {
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--edge-hairline);
+  font-size: var(--text-sm);
+  color: var(--text-heading);
+}
+.mk__notice--queued { border-color: var(--gold-core); }
+.mk__notice--denied { border-color: var(--feedback-error); background: color-mix(in srgb, var(--feedback-error) 12%, transparent); }
+
+.mk__empty { padding: 0; }
+
+.mkj-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  margin: 0;
+}
+
+/* ── Details ──────────────────────────────────────────────────────────── */
+.mkj-details { display: grid; gap: var(--space-6); }
+.mkj-panel { display: grid; gap: var(--space-2); }
+.mkj-panel__title { margin: 0; font: var(--weight-bold) var(--text-md)/1.2 var(--font-ui); color: var(--text-heading); }
+.mkj-chips { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.mkj-chips .mk__facet-btn { width: auto; min-height: var(--tap-min); }
+.mk__note { margin: 0; font-size: var(--text-sm); line-height: var(--leading-normal); color: var(--text-muted); }
+.mk__running { margin: 0; font-size: var(--text-sm); color: var(--text-body); }
+.mk__sort-select {
+  width: 100%;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: var(--border-inset);
+  background: var(--surface-well);
+  color: var(--text-heading);
+  font: var(--type-body);
+}
+.mk__chips { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.mk__chip, .mk__clear {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  border: var(--border-inset);
+  background: transparent;
+  color: var(--text-body);
+  font-size: var(--text-sm);
+  cursor: pointer;
+}
+.mk__clear { justify-self: start; }
+.mk__eclipse { padding: var(--space-4); text-align: left; }
+.mk__eclipse-lede { margin: 0 0 var(--space-3); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mkj-wallet--flash, .mkj-rate__float { animation: none; }
+  .mk__eclipse-fill { transition: none; }
+  .mk__patron-cta:hover, .mk__eclipse-btn:hover { transform: none; }
+}
