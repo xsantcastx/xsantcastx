@@ -31,14 +31,14 @@
     </nav>
 
     <!--
-      The second row is the quieter half of the tome — same markup, dimmer type.
-      It used to be where the portfolio pages were parked once they left the
-      command bar; the full migration deleted those outright, so what is left
-      here is Godforge surfaces that simply are not top-six.
+      The second row is every place in the world, linked to its standalone
+      page. The navbar is World only (Play + Character); these links are what
+      keeps each prerendered page one crawlable hop from every other one. Each
+      page then offers "Enter the world" at its station.
     -->
-    <nav class="gffoot__links gffoot__links--minor" aria-label="More">
-      @for (dest of moreNav; track dest.id) {
-        <a [routerLink]="dest.route" [class.gffoot__link--pro]="dest.id === 'pro'">{{ translate(dest.labelKey) }}</a>
+    <nav class="gffoot__links gffoot__links--minor" [attr.aria-label]="translate('gfnav.section.places')">
+      @for (dest of places; track dest.id) {
+        <a [routerLink]="dest.route">{{ translate(dest.labelKey) }}</a>
       }
     </nav>
 

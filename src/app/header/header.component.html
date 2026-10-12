@@ -1,7 +1,7 @@
 <!-- ═══════════════════════════════════════════════════════════════════
      THE ECLIPSE SHELL
-     Desktop: left sidebar — lockup, five halls, MORE, standing.
-     Mobile: top bar + five tabs + tome.
+     Desktop: left sidebar — lockup, two halls (Play, Character), standing.
+     Mobile: top bar + two tabs + tome.
      Destinations come from NAV_MANIFEST.
 
      .gfnav__glass is a CHILD, not a backdrop-filter on .gfnav: a filter
@@ -42,16 +42,8 @@
       }
     </div>
 
-    <div class="gfnav__more">
-      <p class="gfnav__more-label">{{ translate('gfnav.section.more') }}</p>
-      @for (hall of moreNav; track hall.id) {
-        <a [routerLink]="hall.route" routerLinkActive="is-active"
-           class="gfnav__more-link">
-          <span class="gfrune" [class]="'gfrune gfrune--' + hall.glyph" aria-hidden="true"></span>
-          {{ translate(hall.labelKey) }}
-        </a>
-      }
-    </div>
+    <!-- World only: no MORE list. Every other hall is a station in a realm
+         town, reached by walking, the in-game Places list or the Waystone. -->
 
     <!-- ── Standing ─────────────────────────────────────────────────── -->
     <div class="gfnav__standing">
@@ -64,7 +56,7 @@
            no such class and keeps both. -->
       <app-current-work-tile class="cwt--bar"></app-current-work-tile>
       <app-gold-ticker class="gt--bar"></app-gold-ticker>
-      <a routerLink="/market" class="gfpill gfpill--essence" [attr.aria-label]="essence + ' Essence'">
+      <a routerLink="/play" [queryParams]="marketPlace" class="gfpill gfpill--essence" [attr.aria-label]="essence + ' Essence'">
         <img class="gfpill__icon gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.webp"
              alt="" aria-hidden="true" width="14" height="14" decoding="async" draggable="false">
         <span class="gfpill__val">{{ essence }}</span>

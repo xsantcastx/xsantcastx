@@ -31,6 +31,11 @@
 }
 
 <main id="main-content" [class.play-mode]="isPlayMode" [class.embed-mode]="isEmbedMode" [class.embed-theme-light]="isEmbedMode && embed.theme === 'light'">
+  <!-- World only: a standalone place page (/market, /codex, …) offers a way
+       into the world at its station. Not on /play or in an embed. -->
+  @if (!isEmbedMode && !isPlayMode) {
+    <app-place-banner-outlet></app-place-banner-outlet>
+  }
   <router-outlet></router-outlet>
 </main>
 
