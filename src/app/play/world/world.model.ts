@@ -24,13 +24,14 @@
  */
 // Town files take only TYPES from this module, so this value import is one-way.
 import { INFERNAL_TOWN } from './towns/infernal';
+import { CELESTIAL_TOWN } from './towns/celestial';
 
 /** Every built town. A Phase 2 town is a new file in towns/ and one line here. */
 export const TOWNS: Readonly<Record<RealmTownId, TownDef | undefined>> = {
   infernal: INFERNAL_TOWN,
   luminous: undefined,
   umbral: undefined,
-  celestial: undefined,
+  celestial: CELESTIAL_TOWN,
   verdant: undefined,
 };
 
