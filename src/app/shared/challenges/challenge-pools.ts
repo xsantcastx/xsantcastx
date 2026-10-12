@@ -189,22 +189,24 @@ export const DAILY_CHALLENGES: readonly ChallengeDefinition[] = [
   {
     id: 'd-gold-250k',
     title: 'Fill the Coffer',
-    description: 'Earn 250,000 Gold.',
+    description: 'Earn 25,000,000 Gold.',
     flavour: 'Gold is the only thing in the realms that everyone agrees on the value of, which is why nobody trusts it.',
     cadence: 'daily',
     metric: 'gold-earned',
-    target: 250_000,
+    // Economy v3: placed with `node scripts/economy-sim.mjs --place=…` at the
+    // all-time Gold a v3 player holds when a v2 player hit the old target.
+    target: 500_000_000_000, // v2: 25,000,000 (economy v3, --place) // v2: 250,000
     gold: 4_000,
     rarity: 'mortal',
   },
   {
     id: 'd-gold-2m',
     title: 'A Heavy Day',
-    description: 'Earn 2,000,000 Gold.',
-    flavour: 'Two million and the vault door starts to complain about the hinges.',
+    description: 'Earn 10,000,000,000 Gold.',
+    flavour: 'Ten billion and the vault door starts to complain about the hinges.',
     cadence: 'daily',
     metric: 'gold-earned',
-    target: 2_000_000,
+    target: 10_000_000_000, // v2: 2,000,000 (economy v3, --place)
     gold: 15_000,
     rarity: 'sacred',
   },
@@ -343,8 +345,8 @@ export const WEEKLY_CHALLENGES: readonly ChallengeDefinition[] = [
   {
     id: 'w-gold-25m',
     title: 'The Week\'s Take',
-    description: 'Earn 25,000,000 Gold.',
-    flavour: 'Twenty-five million. The vault has stopped being a room and become a policy.',
+    description: 'Earn 500,000,000,000 Gold.',
+    flavour: 'Five hundred billion. The vault has stopped being a room and become a policy.',
     cadence: 'weekly',
     metric: 'gold-earned',
     target: 25_000_000,

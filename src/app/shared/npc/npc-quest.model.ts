@@ -325,10 +325,11 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
       id: 'kael-5',
       npcId: 'kael',
       title: 'The Broken Flame',
-      description: 'Earn ten million Gold, all told.',
+      description: 'Earn two hundred and fifty billion Gold, all told.',
       loreText:
-        'Ten million. Not to have it — to have moved it. Then I will tell you what happened to the eye.',
-      objective: { kind: 'gold-earned', count: 10_000_000 },
+        'Two hundred and fifty billion. Not to have it — to have moved it. Then I will tell you what happened to the eye.',
+      // Economy v3 (v2: 10M), placed with economy-sim --place: same wall-clock pacing.
+      objective: { kind: 'gold-earned', count: 250_000_000_000 },
       reward: {
         gold: 500_000,
         xp: 5_000,
@@ -412,18 +413,18 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
       id: 'merchant-1',
       npcId: 'merchant',
       title: 'First Coin',
-      description: 'Earn one hundred thousand Gold, all told.',
-      loreText: 'A hundred thousand. Barely a greeting, friend, but I greet everyone.',
-      objective: { kind: 'gold-earned', count: 100_000 },
+      description: 'Earn seven hundred thousand Gold, all told.',
+      loreText: 'Seven hundred thousand. Barely a greeting, friend, but I greet everyone.',
+      objective: { kind: 'gold-earned', count: 700_000 }, // v2: 100k (economy v3, --place)
       reward: { gold: 5_000, xp: 120 },
     },
     {
       id: 'merchant-2',
       npcId: 'merchant',
       title: 'Regular Customer',
-      description: 'Earn one million Gold, all told.',
-      loreText: 'A million. Now we are speaking the same language and I am starting to like the accent.',
-      objective: { kind: 'gold-earned', count: 1_000_000 },
+      description: 'Earn six billion Gold, all told.',
+      loreText: 'Six billion. Now we are speaking the same language and I am starting to like the accent.',
+      objective: { kind: 'gold-earned', count: 6_000_000_000 }, // v2: 1M (economy v3, --place)
       reward: {
         gold: 15_000,
         xp: 300,
@@ -443,9 +444,9 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
       id: 'merchant-4',
       npcId: 'merchant',
       title: 'Frozen Effort',
-      description: 'Earn twenty-five million Gold, all told.',
+      description: 'Earn five hundred billion Gold, all told.',
       loreText: 'Coin is frozen effort. You have a glacier. Let me sell you something to melt it on.',
-      objective: { kind: 'gold-earned', count: 25_000_000 },
+      objective: { kind: 'gold-earned', count: 500_000_000_000 }, // v2: 25M (economy v3, --place)
       reward: {
         gold: 100_000,
         xp: 1_200,

@@ -224,7 +224,7 @@ describe('NpcQuestService', () => {
     // Walk the Merchant to their capstone, which is the step that carries a
     // title and an achievement, and check the payout from step two as well
     // because that is the one with an item on it.
-    w.goldEarned = 1_000_000;
+    w.goldEarned = 6_000_000_000;
     settle();
     expect(svc.claim('merchant-1')).toBe(true);
     expect(svc.claim('merchant-2')).toBe(true);
@@ -235,7 +235,7 @@ describe('NpcQuestService', () => {
     expect(svc.claim('merchant-3')).toBe(true);
     expect(paid.titles).toEqual(['the-solvent']);
 
-    w.goldEarned = 25_000_000;
+    w.goldEarned = 500_000_000_000;
     settle();
     expect(svc.claim('merchant-4')).toBe(true);
     expect(paid.cosmetics).toEqual(['cursor-trail/eclipse']);
@@ -257,7 +257,7 @@ describe('NpcQuestService', () => {
     w.rarities.add('singular');
     settle();
     // merchant-5 is the mythic ask; walk the chain to it.
-    w.goldEarned = 25_000_000;
+    w.goldEarned = 500_000_000_000;
     w.items = 25;
     settle();
     for (const id of ['merchant-1', 'merchant-2', 'merchant-3', 'merchant-4']) {

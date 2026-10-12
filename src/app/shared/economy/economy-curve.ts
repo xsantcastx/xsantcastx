@@ -304,6 +304,16 @@ export const CRAFT_FEE_FLOOR: Readonly<Record<string, number>> = {
   mythic: 60_000_000,
 };
 
+/**
+ * The Homestead's own Anvil and Enchanting Circle: Gold to reach tiers II, III
+ * and IV (home-forge.model.ts reads this). Placed with the simulator
+ * (`node scripts/economy-sim.mjs`, "first affordable" lines, default player):
+ *   II  5M  — affordable on the first return (~8 h in): early-mid game;
+ *   III 1B  — ~13 h in, by the end of day one;
+ *   IV  1T  — ~2.4 d in: late game, just before the first Eclipse (10T, ~3.4 d).
+ */
+export const HOME_FORGE_PRICES: readonly number[] = [5_000_000, 1_000_000_000, 1_000_000_000_000];
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Save migration (v2 → v3)
 // ─────────────────────────────────────────────────────────────────────────────
