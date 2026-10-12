@@ -157,7 +157,7 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] Importer: lossless `Sprites/*` path + sidecar JSON → `sprite-manifest.generated.ts` / `spriteFor()`; see-through figures rejected; `--commissions` lists what's still missing; `ART_PENDING` auto-clears when art lands (`ccb0de5`)
 - [ ] **Owner:** approve names for 4 invented NPC roles (material vendor, croupier, exchange broker, expedition steward)
 - [ ] **Owner:** produce the test set and drop it in the library
-- [ ] Engine sprite-sheet renderer (per-action frames, hand anchors for weapon attachment), with the rig as fallback
+- [x] Engine sprite-sheet renderer (`403b706`): `SpriteRenderer` (frames, pivot, mirroring, hand anchors for `setLoadout`, cached hit-flash), used by Keeper/peers/creatures/keepers/townsfolk whenever `spriteFor(key)` has a loaded sheet; otherwise today's rig/placeholder. Owner steps in `docs/handoff/sprite-renderer.md`. Follow-up: importer should pass the optional `pixelArt` flag through
 - [ ] A/B the test set in the Seamworks on a branch, then decide go / no-go for the full sprite pass
 - [-] Full sprite pass for every town, creature and NPC (after the A/B)
 
