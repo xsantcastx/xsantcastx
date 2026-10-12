@@ -212,7 +212,7 @@ function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark
       // Two rails and three rungs; rungs at the same heights in every cell, so a run reads as one ladder.
       c.fillStyle = dark; c.fillRect(x + 6, y, 4, 32); c.fillRect(x + 22, y, 4, 32);
       c.fillStyle = base; c.fillRect(x + 7, y, 2, 32); c.fillRect(x + 23, y, 2, 32);
-      for (const ry of [4, 15, 26]) { c.fillStyle = dark; c.fillRect(x + 8, y + ry + 1, 16, 3); c.fillStyle = light; c.fillRect(x + 8, y + ry, 16, 2); }
+      for (let ry = 4; ry < 32; ry += 11) { c.fillStyle = dark; c.fillRect(x + 8, y + ry + 1, 16, 3); c.fillStyle = light; c.fillRect(x + 8, y + ry, 16, 2); }
       break;
     }
     case 'chest': {
