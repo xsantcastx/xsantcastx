@@ -81,12 +81,14 @@
 .ff-node__label {
   max-width: 100%;
   font-size: clamp(0.62rem, 1.6vw, 0.74rem);
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--ink-2);
   text-align: center;
   line-height: 1.2;
-  overflow-wrap: anywhere;
+  /* One word per label: let it spill a few px past the node rather than
+     break mid-word ("STOCKPIL / E" at phone widths). */
+  white-space: nowrap;
 }
 
 /* Stockpile: a small heap of whatever last went in. */
