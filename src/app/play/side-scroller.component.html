@@ -1,6 +1,6 @@
 <section class="stage" aria-labelledby="game-title">
-  <div class="viewport">
-    <canvas #worldCanvas width="1200" height="720" [attr.data-player-x]="state.x" [attr.data-area]="state.area" aria-label="Playable Basalt Seamworks side-scrolling world"></canvas>
+  <div class="viewport" [attr.inert]="panel ? '' : null">
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" aria-label="Playable Basalt Seamworks side-scrolling world. Click or tap a place to walk there, or use the Places list."></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>The Keeper falls</strong>
@@ -10,20 +10,37 @@
     }
   </div>
 
-  <header class="topbar">
+  <header class="topbar" [attr.inert]="panel ? '' : null">
     <a routerLink="/world" class="wordmark">Eclipse</a>
     <div class="title-block">
-      <span class="realm-tag">Infernal</span>
-      <h1 id="game-title">Basalt Seamworks</h1>
+      <span class="realm-tag">{{ realmLabel }}</span>
+      <h1 id="game-title">{{ town.name }}</h1>
     </div>
     <p class="objective" aria-live="polite">{{ message || state.message || objective }}</p>
     <div class="top-actions">
+      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list">Places</button>
       <button type="button" (click)="returnToCamp()">Return to camp</button>
       <button type="button" (click)="restartHunt()">Restart hunt</button>
     </div>
   </header>
 
-  <div class="vitals" aria-label="Health">
+  @if (placesOpen) {
+    <nav id="places-list" class="places" [attr.aria-label]="'Places in ' + (state.area || town.name)" data-engine-ignore>
+      <p class="places-hint">Choose a place and the Keeper walks there.</p>
+      <ul>
+        @for (place of places; track place.id) {
+          <li>
+            <button type="button" (click)="choosePlace(place)" [attr.aria-describedby]="place.blurb ? 'place-blurb-' + place.id : null">
+              <strong>{{ place.name }}</strong>
+              @if (place.blurb) { <small [id]="'place-blurb-' + place.id">{{ place.blurb }}</small> }
+            </button>
+          </li>
+        }
+      </ul>
+    </nav>
+  }
+
+  <div class="vitals" aria-label="Health" [attr.inert]="panel ? '' : null">
     <div class="vital">
       <label>Keeper <b>{{ state.hp }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
@@ -36,7 +53,7 @@
     }
   </div>
 
-  <aside class="satchel" aria-label="Satchel" (click)="openBag()">
+  <aside class="satchel" aria-label="Satchel" (click)="openBag()" [attr.inert]="panel ? '' : null">
     <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book">
       <span>Satchel</span>
       <kbd>I</kbd>
@@ -137,7 +154,7 @@
     </section>
   }
 
-  <div class="prompt" [class.armed]="!!state.nearby">
+  <div class="prompt" [class.armed]="!!state.nearby" [attr.inert]="panel ? '' : null">
     @if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
       <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact</button>
@@ -145,10 +162,10 @@
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
   </div>
   @if (showKeys) {
-    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>E</kbd> interact <kbd>I</kbd> satchel</p>
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
   }
 
-  <section class="dock" aria-labelledby="hearth-title">
+  <section class="dock" aria-labelledby="hearth-title" [attr.inert]="panel ? '' : null">
     <div class="dock-head">
       <div>
         <span class="realm-tag">Hearth</span>
@@ -185,11 +202,45 @@
     </form>
   </section>
 
-  <div class="touch" aria-label="Touch controls">
+  <div class="touch" aria-label="Touch controls" [attr.inert]="panel ? '' : null">
     <button type="button" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)">Left</button>
     <button type="button" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)">Right</button>
     <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)">Jump</button>
     <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)">Attack</button>
     <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)">Dodge</button>
   </div>
+
+  <!-- The open place. Always in the DOM (hidden when closed) so #panelHost
+       resolves statically; see the component for why it is not in an @if.
+       data-engine-ignore keeps the world's key handlers off anything typed here. -->
+  <section #placePanel class="place" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)">
+    <header class="place-head">
+      <div>
+        <span class="realm-tag">{{ panel?.kicker }}</span>
+        <h2 id="place-title">{{ panel?.title }}</h2>
+      </div>
+      <div class="place-actions">
+        @if (panel?.route; as route) { <a class="place-full" [routerLink]="route">Open full page</a> }
+        <button type="button" class="book-close place-close" (click)="closePanel()">Close <kbd>Esc</kbd></button>
+      </div>
+    </header>
+    <div class="place-body">
+      @if (panel?.kind === 'waystone') {
+        <p class="place-note">The stone hums with five roads. Only the charted ones will carry you.</p>
+        <ul class="waystone">
+          @for (row of waystone; track row.id) {
+            <li>
+              <button type="button" class="waystone-road" [disabled]="!row.available" [class.here]="row.current" (click)="travel(row.id)">
+                @if (row.crest) { <img [src]="row.crest" alt="" width="48" height="48"> }
+                <span><b>{{ row.realm }}</b><small>{{ row.current ? 'You are here' : row.town }}</small></span>
+              </button>
+            </li>
+          }
+        </ul>
+      }
+      @if (panelLoading) { <p class="place-note" role="status">Opening {{ panel?.title }}...</p> }
+      @if (panelError) { <p class="place-note" role="alert">{{ panelError }}</p> }
+      <ng-container #panelHost></ng-container>
+    </div>
+  </section>
 </section>
