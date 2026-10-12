@@ -69,6 +69,15 @@ import {
 } from './exchange.model';
 import { RUNE_TIERS, type RuneTier } from '../rune-forge/rune.model';
 import type { ItemRarity } from '../rpg/item.model';
+import { artFor } from '../art/art';
+import {
+  STATION_UI,
+  type JournalRow,
+  type StationArt,
+  type StationCost,
+  type StationReward,
+  type StationTab,
+} from '../station-ui';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { injectInWorldPanel } from '../in-world-panel';
@@ -103,7 +112,7 @@ const PAGE_SIZE = 40;
 @Component({
   selector: 'app-exchange',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, ArtSceneComponent, PriceChartComponent],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, ArtSceneComponent, PriceChartComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './exchange.component.html',
   styleUrls: ['./exchange.component.css'],
@@ -164,8 +173,9 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   minPrice: number | null = null;
   maxPrice: number | null = null;
   ownedOnly = false;
-  sort: SortKey = 'change';
-  sortDesc = true;
+  /** Cheapest first: the first lines a new player sees are ones they can buy. */
+  sort: SortKey = 'price';
+  sortDesc = false;
 
   // ── The open line ──────────────────────────────────────────────────────────
   selected: MarketListing | null = null;
@@ -176,6 +186,35 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   /** Set for a few seconds after a trade, so the panel can say what happened. */
   notice: { tone: 'ok' | 'bad'; text: string } | null = null;
   private noticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  // ── The journal (station kit) ──────────────────────────────────────────────
+  // Every array below is rebuilt in `applyFilters` / `rebuildTrade`, never in
+  // the template: the kit's inputs are signals.
+  readonly sorts = [
+    { k: 'change', l: 'Change' }, { k: 'price', l: 'Price' },
+    { k: 'volume', l: 'Demand' }, { k: 'name', l: 'Name' },
+  ] as const;
+  readonly sideTabs: StationTab[] = [{ id: 'buy', label: 'Buy' }, { id: 'sell', label: 'Sell' }];
+  readonly categoryTabs: StationTab[] = [
+    { id: 'all', label: 'All' },
+    ...GOOD_CATEGORIES.map(c => ({ id: c, label: CATEGORY_LABELS[c] })),
+  ];
+  readonly stripArt: StationArt | null = artFor('unique-merchants-scale');
+  detailsOpen = false;
+  journalRows: JournalRow[] = [];
+  selectedArt: StationArt | null = null;
+  /** The price of ONE, for the action row (it scales by the stepper). */
+  unitCosts: StationCost[] = [];
+  /** A reason that is not a price: the bag, or the hall still waking. */
+  tradeBlocked: string | null = null;
+  /** The "Max" count: what you can afford (buy) or hold (sell). */
+  maxCount = 0;
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
+  reward: StationReward | null = null;
+  private rewardSeq = 0;
+  /** Until the player picks a line, the journal keeps choosing the best default. */
+  private userPicked = false;
+  announce = '';
 
   ngOnInit(): void {
     this.now = Date.now();
@@ -192,10 +231,14 @@ export class ExchangeComponent implements OnInit, OnDestroy {
 
     this.subs.add(this.economy.snapshot$.subscribe(s => {
       this.gold = s.gold;
+      this.buildRows();
+      this.rebuildTrade();
       this.cdr.markForCheck();
     }));
     this.subs.add(this.inventory.snapshot$.subscribe(s => {
       this.bagUsed = s.usedRows;
+      // Holdings changed: the Sell list and the have/need counts follow.
+      this.applyFilters();
       this.cdr.markForCheck();
     }));
     this.subs.add(this.exchange.snapshot$.subscribe(s => {
@@ -250,6 +293,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
         this.buildChart();
       }
     }
+    this.rebuildTrade();
   }
 
   private applyFilters(): void {
@@ -261,7 +305,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
       if (this.trendFilter !== 'all' && l.trend !== this.trendFilter) return false;
       if (this.minPrice != null && l.currentPrice < this.minPrice) return false;
       if (this.maxPrice != null && l.currentPrice > this.maxPrice) return false;
-      if (this.ownedOnly && this.holdings(l.good) <= 0) return false;
+      if ((this.ownedOnly || this.side === 'sell') && this.holdings(l.good) <= 0) return false;
       return true;
     });
 
@@ -277,6 +321,99 @@ export class ExchangeComponent implements OnInit, OnDestroy {
 
     this.matched = rows;
     this.visible = rows.slice(0, this.shown);
+
+    // The journal always has something pressable selected: keep the current
+    // line while it is still on the list, else the first one.
+    if (!this.userPicked || !this.selected || !rows.some(l => l.itemId === this.selected!.itemId)) {
+      // On the Buy side, the first line the purse covers: something pressable.
+      const first = (this.side === 'buy' && this.hydrated
+        ? rows.slice(0, this.shown).find(l => l.currentPrice <= this.gold)
+        : undefined) ?? rows[0] ?? null;
+      if (first) this.select(first);
+      else { this.selected = null; this.chart = []; }
+    }
+    this.buildRows();
+    this.rebuildTrade();
+  }
+
+  /** The journal list: one row per visible line. */
+  private buildRows(): void {
+    this.journalRows = this.visible.map(l => {
+      const held = this.holdings(l.good);
+      const affordable = l.currentPrice <= this.gold;
+      return {
+        id: l.itemId,
+        name: l.itemName,
+        art: l.good.art ? { src: l.good.art } : null,
+        rarity: l.rarity,
+        sub: this.side === 'sell'
+          ? `You hold ${fmt(held)}`
+          : `${fmt(l.currentPrice)} Gold`,
+        locked: this.side === 'buy' && this.hydrated && !affordable,
+        ready: this.hydrated && (this.side === 'sell' ? held > 0 : affordable),
+      };
+    });
+  }
+
+  /** The detail's price boxes and the action row, for the selected line and quantity. */
+  private rebuildTrade(): void {
+    this.walletGold = { kind: 'gold', label: 'Gold', need: this.gold, have: this.gold };
+    const sel = this.selected;
+    if (!sel) {
+      this.unitCosts = [];
+      this.tradeBlocked = null;
+      this.maxCount = 0;
+      this.selectedArt = null;
+      return;
+    }
+    this.selectedArt = sel.good.art ? { src: sel.good.art } : null;
+    const held = this.holdings(sel.good);
+    if (this.side === 'buy') {
+      const unit = this.exchange.previewBuy(sel.good, 1, this.now).unitPrice;
+      this.unitCosts = [{ kind: 'gold', label: 'Gold', need: unit, have: this.gold }];
+      let max = Math.min(999, Math.floor(this.gold / Math.max(1, unit)));
+      if (sel.good.kind === 'equipment') max = Math.min(max, Math.max(0, this.bagCap - this.bagUsed));
+      this.maxCount = max >= 2 ? max : 0;
+    } else {
+      const goods: StationCost = {
+        kind: sel.good.kind === 'material' ? 'material' : 'item',
+        id: sel.good.stackKey ?? sel.good.definitionId,
+        label: sel.itemName,
+        need: 1,
+        have: held,
+        art: this.selectedArt,
+      };
+      this.unitCosts = [goods];
+      const max = Math.min(999, held);
+      this.maxCount = max >= 2 ? max : 0;
+    }
+    this.tradeBlocked = !this.hydrated ? null : this.bagBlocker();
+  }
+
+  /** What the button will do, in words: "Buy 3 Cinder Ore". */
+  get tradeLine(): string {
+    if (!this.selected) return '';
+    return `${this.side === 'buy' ? 'Buy' : 'Sell'} ${this.quantity} ${this.selected.itemName}`;
+  }
+
+  pickCategory(id: string): void {
+    this.category = (GOOD_CATEGORIES as readonly string[]).includes(id) ? id as GoodCategory : 'all';
+    this.onFilterChange();
+  }
+
+  pick(itemId: string): void {
+    this.userPicked = true;
+    const listing = this.listings.find(l => l.itemId === itemId);
+    if (listing) this.select(listing);
+    this.rebuildTrade();
+    this.cdr.markForCheck();
+  }
+
+  /** The action row pressed with a quantity (or Max). Same trade, same service call. */
+  trade(quantity: number): void {
+    this.userPicked = true;
+    this.setQuantity(quantity);
+    this.confirm();
   }
 
   /** Reveal another page. Never shrinks — the button only ever adds. */
@@ -315,6 +452,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
+  /** The tabs only reset the category; the drawer's filters stay where they were. */
   get filtersActive(): boolean {
     return !!this.search || this.category !== 'all' || this.rarity !== 'all'
       || this.trendFilter !== 'all' || this.minPrice != null || this.maxPrice != null
@@ -326,11 +464,16 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   // ───────────────────────────────────────────────────────────────────────────
 
   select(listing: MarketListing): void {
+    const changed = this.selected?.itemId !== listing.itemId;
     this.selected = listing;
-    this.side = this.holdings(listing.good) > 0 ? this.side : 'buy';
-    this.quantity = 1;
-    this.notice = null;
+    if (this.side === 'sell' && this.holdings(listing.good) <= 0) {
+      // A mover picked from Details that you do not hold: show it on the Buy side.
+      this.side = 'buy';
+      this.applyFilters();
+    }
+    if (changed) this.quantity = 1;
     this.buildChart();
+    this.rebuildTrade();
   }
 
   close(): void {
@@ -344,9 +487,12 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   }
 
   setSide(side: Side): void {
-    this.side = side;
+    this.side = side === 'sell' ? 'sell' : 'buy';
     this.quantity = 1;
     this.notice = null;
+    this.shown = PAGE_SIZE;
+    this.applyFilters();
+    this.cdr.markForCheck();
   }
 
   private buildChart(): void {
@@ -379,6 +525,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   setQuantity(value: number | string): void {
     const n = Math.floor(Number(value));
     this.quantity = Number.isFinite(n) && n > 0 ? Math.min(999, n) : 1;
+    this.rebuildTrade();
+    this.cdr.markForCheck();
   }
 
   fillMax(): void {
@@ -401,12 +549,18 @@ export class ExchangeComponent implements OnInit, OnDestroy {
 
     if (this.side === 'buy') {
       if (quote.net > this.gold) return 'Not enough Gold.';
-      const need = this.selected.good.kind === 'equipment' ? quote.quantity : 1;
-      if (this.bagCap - this.bagUsed < need && !this.toppingUpAStack()) return 'No room in the bag.';
-      return null;
+      return this.bagBlocker();
     }
 
     if (this.holdings(this.selected.good) < quote.quantity) return 'You do not hold that many.';
+    return null;
+  }
+
+  /** The one refusal that is not a price: a buy with no room in the bag. */
+  private bagBlocker(): string | null {
+    if (!this.selected || this.side !== 'buy') return null;
+    const need = this.selected.good.kind === 'equipment' ? this.quantity : 1;
+    if (this.bagCap - this.bagUsed < need && !this.toppingUpAStack()) return 'No room in the bag.';
     return null;
   }
 
@@ -435,6 +589,19 @@ export class ExchangeComponent implements OnInit, OnDestroy {
       this.say('ok', t.side === 'buy'
         ? `Bought ${t.quantity} × ${t.name} for ${fmt(t.net)} Gold.`
         : `Sold ${t.quantity} × ${t.name}. ${fmt(t.net)} Gold in, ${fmt(t.tax)} to the house.`);
+      this.announce = this.notice?.text ?? '';
+      if (t.side === 'buy') {
+        // The game-like beat: the goods pop into view, the way a craft does.
+        this.reward = {
+          seq: ++this.rewardSeq,
+          name: t.quantity > 1 ? `${t.quantity} × ${t.name}` : t.name,
+          art: listing.good.art ? { src: listing.good.art } : null,
+          rarity: listing.rarity,
+          rarityLabel: this.rarityLabel(listing.rarity),
+          caption: `${fmt(t.net)} Gold`,
+          kicker: 'You bought',
+        };
+      }
       this.quantity = 1;
     } else {
       this.say('bad', FAILURE_COPY[result.code]);
