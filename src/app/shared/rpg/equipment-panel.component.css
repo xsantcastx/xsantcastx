@@ -688,3 +688,232 @@
     background-position: 0% 50%;
   }
 }
+
+/* ── Gear on the doll ─────────────────────────────────────────────────────
+   The stage fills the frame's content box and centres a square figure in it,
+   which is exactly where `object-fit: contain` used to put the render. Socket
+   anchors are percentages of that square, i.e. of the Keeper render itself, so
+   they hold their place on the body at every frame width. Nothing here is
+   fixed or viewport-sized: the doll can sit inside any container. */
+.ld__stage {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+.ld__figure {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 1;
+}
+.ld__sockets {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+.ld__socket {
+  position: absolute;
+  width: 17%;
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+}
+/* A rarity-lit medallion holding the item's own art. Rarity colour and glow
+   arrive as --rar / --rar-glow from item.model's rune-ladder helpers. */
+.ld__socket-frame {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1.5px solid var(--rar, var(--gold));
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.12), transparent 60%),
+    radial-gradient(circle, rgba(10, 6, 26, 0.55), rgba(6, 4, 18, 0.88));
+  box-shadow:
+    0 0 8px var(--rar-glow, rgba(232, 200, 152, 0.6)),
+    0 0 22px -6px var(--rar-glow, rgba(232, 200, 152, 0.6)),
+    inset 0 0 6px rgba(0, 0, 0, 0.6);
+}
+.ld__socket-art {
+  width: 84%;
+  height: 84%;
+  object-fit: contain;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.7));
+}
+.ld__socket-orb {
+  font-size: clamp(9px, 2.6vw, 12px);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  color: var(--rar, var(--gold));
+}
+/* The landing flare. Base opacity 0; only an animation ever shows it. */
+.ld__socket-burst {
+  position: absolute;
+  inset: -45%;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--rar-glow, rgba(232, 200, 152, 0.6)) 0%, transparent 66%);
+  opacity: 0;
+  pointer-events: none;
+}
+.ld__socket-frame[data-quality-tag='perfect'],
+.ld__socket-frame[data-quality-tag='flawless'] {
+  border-width: 2px;
+}
+
+/* Worn wells and charms take the rarity colour too, so the control beside the
+   figure and the socket on it read as one item. */
+.ld__slot--filled,
+.ld__charm--filled {
+  border-color: var(--rar, rgba(196, 181, 255, 0.7));
+  box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.5), 0 0 20px -8px var(--rar-glow, rgba(167, 139, 250, 0.9));
+}
+
+/* ── Equip / unequip motion ───────────────────────────────────────────────
+   Keyframes live at the top level (Angular does not scope keyframes declared
+   inside @media); the media blocks below only choose which ones run.
+   Transform, opacity and filter only. --from-x / --from-y are the start point
+   relative to the socket: the picker card, or "from below". */
+@keyframes ldFlyIn {
+  0%   { transform: translate(var(--from-x, 0px), var(--from-y, 140px)) scale(0.6) rotate(-8deg); opacity: 0; }
+  12%  { opacity: 1; }
+  70%  { transform: translate(0, 0) scale(1.14) rotate(0deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+}
+@keyframes ldBurst {
+  0%   { transform: scale(0.35); opacity: 0.95; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@keyframes ldLiftOut {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  30%  { transform: translate(0, -18%) scale(1.1); opacity: 1; }
+  100% { transform: translate(0, 220%) scale(0.55) rotate(10deg); opacity: 0; }
+}
+@keyframes ldDollPulse {
+  0%   { transform: scale(1); filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.34)) contrast(1.06) brightness(1.1); }
+  40%  { transform: scale(1.025); filter: drop-shadow(0 0 30px rgba(167, 139, 250, 0.7)) contrast(1.06) brightness(1.28); }
+  100% { transform: scale(1); filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.34)) contrast(1.06) brightness(1.1); }
+}
+@keyframes ldSocketHighlight {
+  0%, 60% { opacity: 0.85; transform: scale(1); }
+  100%    { opacity: 0; transform: scale(1); }
+}
+
+/* Leaving ghosts are motion-only: with reduced motion the slot simply empties. */
+.ld__socket-frame--leaving { opacity: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .ld__socket-frame--landing {
+    animation: ldFlyIn 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .ld__socket-frame--landing .ld__socket-burst {
+    animation: ldBurst 0.52s ease-out 0.4s both;
+  }
+  .ld__socket-frame--leaving {
+    animation: ldLiftOut 0.7s cubic-bezier(0.55, 0, 0.75, 0.3) both;
+  }
+  .ld__figure--pulse .ld__doll-art {
+    animation: ldDollPulse 0.7s ease-out 0.38s 1;
+  }
+  .ld__charm--landing .ld__charm-art {
+    animation: ldFlyIn 0.48s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+}
+
+/* Reduced motion: the swap is instant; the new socket glows once and fades. */
+@media (prefers-reduced-motion: reduce) {
+  .ld__socket-frame--landing .ld__socket-burst {
+    animation: ldSocketHighlight 0.6s ease-out 1;
+  }
+}
+
+/* ── Build card ───────────────────────────────────────────────────────────
+   Glassy panel. The bars are scaled, never resized, so a change is a
+   transform; each bar takes the rarity of the item carrying that stat. */
+.ld__build {
+  margin: 0 0 1rem;
+  padding: 0.85rem 1rem 0.95rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  background:
+    radial-gradient(ellipse 70% 60% at 0% 0%, rgba(232, 200, 152, 0.07), transparent 70%),
+    rgba(10, 6, 26, 0.55);
+  min-width: 0;
+}
+.ld__build-eyebrow {
+  margin: 0;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted, rgba(214, 221, 235, 0.58));
+}
+.ld__build-name {
+  margin: 0.15rem 0 0.2rem;
+  font-family: var(--font-display, inherit);
+  font-size: clamp(1.05rem, 3.6vw, 1.3rem);
+  color: var(--gold);
+  letter-spacing: 0.04em;
+}
+.ld__build-desc {
+  margin: 0 0 0.7rem;
+  font-size: 0.82rem;
+  line-height: 1.4;
+  color: rgba(214, 221, 235, 0.78);
+}
+.ld__build-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.55rem;
+}
+.ld__build-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    'stat pct'
+    'bar  bar'
+    'src  src';
+  gap: 0.2rem 0.6rem;
+  min-width: 0;
+}
+.ld__build-stat {
+  grid-area: stat;
+  font-size: 0.8rem;
+  color: rgba(214, 221, 235, 0.86);
+  min-width: 0;
+}
+.ld__build-stat b { color: var(--rar, var(--gold)); font-weight: 600; }
+.ld__build-pct {
+  grid-area: pct;
+  font-size: 0.72rem;
+  color: var(--text-muted, rgba(214, 221, 235, 0.58));
+}
+.ld__build-bar {
+  grid-area: bar;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.ld__build-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--rar-glow, rgba(232, 200, 152, 0.6)), var(--rar, var(--gold)));
+  box-shadow: 0 0 10px -2px var(--rar-glow, rgba(232, 200, 152, 0.6));
+  transform-origin: left center;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.ld__build-src {
+  grid-area: src;
+  font-size: 0.72rem;
+  color: var(--text-muted, rgba(214, 221, 235, 0.58));
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ld__build-fill { transition: none; }
+}
