@@ -16,6 +16,16 @@ import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 export type { ArtEntry };
 
 /**
+ * World-layer sprites (the side-scroller and the towns) live in their own
+ * generated manifest: sheets with frame sizes, actions and hand anchors, not
+ * a srcset. Re-exported here so there is still one art import for callers.
+ * Commissioned in `docs/art-commissions/world-sprites/`; `spriteFor(id)` is
+ * null until a sheet is imported, so a caller keeps its own fallback.
+ */
+export { SPRITES, spriteFor } from './sprite-manifest.generated';
+export type { SpriteAction, SpriteEntry } from './sprite-manifest.generated';
+
+/**
  * Model id -> manifest key, for ids whose file is named more verbosely than
  * the model. Keep this small: a new entry here is usually a sign the art
  * should have been named after the id instead.
@@ -42,11 +52,22 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
  * Striker's painting would make the coverage test pass while putting the
  * Automaton shelf's artwork on a different shelf's row — a silent lie that
  * nobody would ever be prompted to correct, because the gate would be green.
- * An entry here is a debt with a name on it, and the spec asserts that each one
- * is still genuinely unpainted, so it fails again the day the art lands and the
- * line is left behind.
+ * An entry here is a debt with a name on it. It stops exempting anything the
+ * moment its painting is imported (see "How a painting lands" below), so a
+ * stale line can never hide an unpainted row behind a painted one.
  *
  * Keep it short, and delete from it rather than adding.
+ *
+ * HOW A PAINTING LANDS. `artFor()` never reads this list — it only reads the
+ * manifest — so the moment `scripts/import-assets.py` writes a manifest entry
+ * for one of these ids, the placeholder is gone with no code change. The live
+ * set below also drops any declared id that now has art, so a landed painting
+ * cannot leave a row exempted from the coverage gate it no longer needs, and
+ * `art.spec.ts` stays green on the import commit. The importer then prints the
+ * literal lines that have become stale; deleting them is housekeeping, not a
+ * step the art waits on. The paintings themselves are briefed, one per id, in
+ * `docs/art-commissions/` — `import-assets.py --commissions` lists what is
+ * still missing from the library.
  *
  *   thrall-*      the five Forge Thrall tiers and the shift-length upgrade,
  *                 shipped in v2.68.0. Nothing in `Assets/Characters` depicts a
@@ -66,7 +87,8 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
  *                 quietly carried all forty-four back in — the debt list would
  *                 have grown by the exact number of paintings that had just
  *                 arrived, and `art.spec.ts` would have had nothing to fail on.
- *                 Deleting a line here is how a painting lands.
+ *                 Deleting a line here is how a paid debt is
+ *                 written off.
  *   npc-*         the six speaking characters, shipped in the NPC dialogue
  *                 release. `Assets/Characters` holds Keeper avatars and
  *                 portraits only — nothing there depicts Aureth, Verrin, Kael,
@@ -82,7 +104,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
  *                 lie this list exists to prevent. They render as the rarity
  *                 orb with a level badge until the eighteen are painted.
  */
-export const ART_PENDING: ReadonlySet<string> = new Set([
+export const ART_PENDING_DECLARED: readonly string[] = [
   'thrall-common',
   'thrall-uncommon',
   'thrall-rare',
@@ -114,7 +136,12 @@ export const ART_PENDING: ReadonlySet<string> = new Set([
   'unique-keepers-second-name',
   ...NPCS.map(n => n.artId),
   ...EXPLORER_ARCHETYPES.map(a => a.artId),
-]);
+];
+
+/** The declared debt minus whatever has been painted since. See above. */
+export const ART_PENDING: ReadonlySet<string> = new Set(
+  ART_PENDING_DECLARED.filter(id => !hasArt(id)),
+);
 
 /** Painted art for a catalogue id, or null when nothing has been painted. */
 export function artFor(id: string | undefined | null): ArtEntry | null {
