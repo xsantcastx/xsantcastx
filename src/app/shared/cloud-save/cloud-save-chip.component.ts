@@ -48,6 +48,7 @@ import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
 import { CloudSaveService, SyncStatus } from './cloud-save.service';
+import { keeperAvatarArt } from '../art/art';
 
 @Component({
   selector: 'app-cloud-save-chip',
@@ -86,6 +87,10 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
         @if (status.photoURL) {
           <img class="cschip__avatar" [src]="status.photoURL" alt=""
                width="26" height="26" referrerpolicy="no-referrer" decoding="async">
+        } @else if (keeperAvatar; as av) {
+          <!-- No Google photo: the masked Keeper, not a letter on an orb. -->
+          <img class="cschip__avatar" [src]="av.src" [attr.srcset]="av.srcset" sizes="26px"
+               alt="" aria-hidden="true" width="26" height="26" decoding="async" draggable="false">
         } @else {
           <span class="cschip__avatar cschip__avatar--initial" aria-hidden="true">{{ initial }}</span>
         }
@@ -173,6 +178,7 @@ export class CloudSaveChipComponent implements OnInit, OnDestroy {
   private readonly subs = new Subscription();
 
   status: SyncStatus = this.cloud.status;
+  readonly keeperAvatar = keeperAvatarArt(null);
 
   ngOnInit(): void {
     // Idempotent, browser-only, and defers its network work to an idle

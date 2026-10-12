@@ -126,3 +126,54 @@ export function artFor(id: string | undefined | null): ArtEntry | null {
 export function hasArt(id: string | undefined | null): boolean {
   return artFor(id) !== null;
 }
+
+// ── Keeper identity, realm emblems, Guild marks ─────────────────────────────
+//
+// The manifest names these after the library file (`celestial-keeper-avatar`,
+// `infernal-crest`), so without this every caller would rebuild the key with a
+// template literal — which is how a typo becomes a silent null, and how a key
+// drops out of any grep for "which art is actually requested". They are
+// written out once here, as literals.
+
+/** The five realms the Keeper variants, crests and tokens are painted for. */
+export type ArtRealm = 'celestial' | 'infernal' | 'luminous' | 'umbral' | 'verdant';
+
+export const ART_REALMS: readonly ArtRealm[] = ['celestial', 'infernal', 'luminous', 'umbral', 'verdant'];
+
+/**
+ * Per-realm art keys. The avatar is the same masked Keeper in that realm's trim
+ * (the Keeper identity roadmap: realm variants change light and mantle, never
+ * the silhouette); the crest is the realm's affiliation anchor; the token is
+ * the realm's own coin.
+ */
+export const REALM_ART: Readonly<Record<ArtRealm, { avatar: string; crest: string; token: string }>> = {
+  celestial: { avatar: 'celestial-keeper-avatar', crest: 'celestial-crest', token: 'celestial-token' },
+  infernal:  { avatar: 'infernal-keeper-avatar',  crest: 'infernal-crest',  token: 'infernal-token' },
+  luminous:  { avatar: 'luminous-keeper-avatar',  crest: 'luminous-crest',  token: 'luminous-token' },
+  umbral:    { avatar: 'umbral-keeper-avatar',    crest: 'umbral-crest',    token: 'umbral-token' },
+  verdant:   { avatar: 'verdant-keeper-avatar',   crest: 'verdant-crest',   token: 'verdant-token' },
+};
+
+/**
+ * The player's own avatar. Neutral, because nothing in the save records a
+ * realm alignment, and the composition spec reserves the realm variants for an
+ * *opted-in* affiliation. When an alignment choice exists, pass it to
+ * `keeperAvatarArt` instead of reaching for these.
+ */
+export const KEEPER_AVATAR = 'neutral-keeper-avatar';
+export const KEEPER_PORTRAIT = 'neutral-keeper-portrait';
+
+/** Avatar art for a realm, or the neutral Keeper when no realm is given. */
+export function keeperAvatarArt(realm?: ArtRealm | null): ArtEntry | null {
+  return artFor(realm ? REALM_ART[realm].avatar : KEEPER_AVATAR);
+}
+
+/**
+ * Guild rank marks, lowest first, and the three banners. There is no Guild
+ * surface in the game yet, so nothing renders these; they are named here so
+ * the first one does not have to rediscover the filenames. The composition
+ * spec governs use: one rank mark beside the name, never over the avatar; a
+ * banner only as a shallow header texture.
+ */
+export const GUILD_RANK_ART = ['initiate', 'warden', 'keeper', 'archon', 'master', 'founder'] as const;
+export const GUILD_BANNER_ART = ['obsidian-pennant', 'gold-standard', 'eclipse-banner'] as const;
