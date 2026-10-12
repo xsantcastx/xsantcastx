@@ -14,15 +14,22 @@
  * dies between the two, the same `n` is retried on the next move: the ledger
  * answers "already done" and the chest catches up.
  *
- * Materials only: worn or bagged gear (instances) stays in the satchel.
+ * Gear (item instances) goes in too, through the same ledger: the item is
+ * never copied, only its location changes to the chest's holder id
+ * (`equipOnExplorer` / `unequip`, the mechanism thralls use), so it cannot be
+ * worn, sold or dropped while it is stored. CHEST_GEAR_SLOTS pieces per chest.
+ * A chest is empty, and can be taken back, only with no material and no gear.
  */
 import { Injectable, inject } from '@angular/core';
 import { InventoryService } from '../rpg/inventory.service';
-import { materialDisplay } from '../rpg/material-catalog';
+import { itemArt, materialDisplay } from '../rpg/material-catalog';
+import type { GameItem } from '../rpg/item.model';
 import { DelveSaveService } from './delve-save.service';
-import { CHEST_SLOTS, DelveChest, chestKey, chestPut, chestTake } from './delve-save.model';
+import { CHEST_GEAR_SLOTS, CHEST_SLOTS, DelveChest, chestHolderId, chestKey, chestPut, chestTake, strayChestGear } from './delve-save.model';
 
 export interface ChestRow { stackKey: string; name: string; art: string; qty: number }
+/** One piece of gear, in the chest or in the bag beside it. */
+export interface ChestGearRow { id: string; name: string; art: string; rarity: string }
 export type ChestMove = { ok: true; qty: number } | { ok: false; message: string };
 
 @Injectable({ providedIn: 'root' })
@@ -31,6 +38,7 @@ export class DelveChestService {
   private readonly inventory = inject(InventoryService);
 
   readonly slots = CHEST_SLOTS;
+  readonly gearSlots = CHEST_GEAR_SLOTS;
 
   /** What a chest holds, as display rows. */
   contents(areaId: string, index: number): ChestRow[] {
@@ -40,7 +48,45 @@ export class DelveChestService {
 
   isEmpty(areaId: string, index: number): boolean {
     const chest = this.saves.chest(areaId, index, false);
-    return !chest || Object.keys(chest.slots).length === 0;
+    return !chest || (Object.keys(chest.slots).length === 0 && this.inventory.itemsOnExplorer(chestHolderId(chest)).length === 0);
+  }
+
+  /** The gear a chest holds. */
+  gear(areaId: string, index: number): ChestGearRow[] {
+    const chest = this.saves.chest(areaId, index, false);
+    return chest ? this.inventory.itemsOnExplorer(chestHolderId(chest)).map(gearRow) : [];
+  }
+
+  /** Gear in the bag that could go in: not worn, not held by anyone. */
+  bagGear(): ChestGearRow[] {
+    return this.inventory.snapshot.bag.map(gearRow);
+  }
+
+  /** Put one piece of gear from the bag into the chest. */
+  putGear(areaId: string, index: number, itemId: string): ChestMove {
+    const item = this.inventory.itemById(itemId);
+    if (!item || item.equipped || item.explorerId) return { ok: false, message: 'Only gear in your satchel (not worn) can go in.' };
+    const chest = this.saves.chest(areaId, index);
+    if (!chest) return { ok: false, message: 'The chest is not ready yet.' };
+    const holder = chestHolderId(chest);
+    if (this.inventory.itemsOnExplorer(holder).length >= CHEST_GEAR_SLOTS) {
+      return { ok: false, message: `The chest holds ${CHEST_GEAR_SLOTS} pieces of gear. Take one out first.` };
+    }
+    if (!this.inventory.equipOnExplorer(itemId, holder, CHEST_GEAR_SLOTS)) return { ok: false, message: 'That could not be saved. Try again.' };
+    chest.n++;
+    this.saves.saveChest();
+    return { ok: true, qty: 1 };
+  }
+
+  /** Take one piece of gear back into the bag. */
+  takeGear(areaId: string, index: number, itemId: string): ChestMove {
+    const chest = this.saves.chest(areaId, index, false);
+    const item = this.inventory.itemById(itemId);
+    if (!chest || !item || item.explorerId !== chestHolderId(chest)) return { ok: false, message: 'That is not in the chest.' };
+    if (!this.inventory.unequip(itemId)) return { ok: false, message: 'That could not be saved. Try again.' };
+    chest.n++;
+    this.saves.saveChest();
+    return { ok: true, qty: 1 };
   }
 
   /** Put every one of a satchel stack into the chest. */
@@ -90,6 +136,9 @@ export class DelveChestService {
       const stale = chest.layout !== layout;
       const cell = stale ? null : cellIs(areaId, index);
       if (!stale && (cell === null || cell === 'chest')) continue;
+      const holder = chestHolderId(chest);
+      refunded += this.inventory.itemsOnExplorer(holder).length;
+      this.inventory.clearExplorer(holder);
       let all = true;
       for (const [stackKey, qty] of Object.entries(chest.slots)) {
         if (this.inventory.grantStack(`delve-chest-refund:${chest.born}:${stackKey}`, stackKey, qty)) refunded += qty;
@@ -97,8 +146,15 @@ export class DelveChestService {
       }
       if (all) this.saves.dropChest(key);
     }
+    // Gear whose chest record is gone (refunded above, or merged away by a newer chest) comes home.
+    const records = Object.fromEntries(this.saves.chests().map(row => [row.key, row.chest]));
+    for (const id of strayChestGear(this.inventory.snapshot.items, records)) if (this.inventory.unequip(id)) refunded++;
     return refunded;
   }
+}
+
+function gearRow(item: GameItem): ChestGearRow {
+  return { id: item.id, name: item.name, art: itemArt(item)?.src ?? '', rarity: item.rarity };
 }
 
 function moveId(chest: DelveChest): string { return `delve-chest:${chest.born}:${chest.n}`; }

@@ -21,6 +21,8 @@
  *     chests: {                                // placed chests' contents (optional; absent = none)
  *       'ember-delve:1a2': { layout: '120x56:v2:2894011733', born: 1760000000123, n: 3, slots: { 'cinder-ore': 12 } },
  *     },
+ *     // Gear in a chest is not stored here: the item's own ledger row says it
+ *     // is held by `delve-chest:<born>` (see chestHolderId).
  *   }
  *
  * The Delve is regenerated from `seed` every time (generation is
@@ -82,6 +84,30 @@ export interface DelveChest {
   born: number;
   n: number;
   slots: Record<string, number>;
+}
+
+/** Pieces of gear (item instances) one chest holds, on top of its CHEST_SLOTS kinds of material. */
+export const CHEST_GEAR_SLOTS = 6;
+
+/**
+ * Gear in a chest is not copied anywhere: the item stays in the inventory
+ * ledger and its location is set to this holder (the same `explorer`
+ * location thralls and expedition explorers use), so it cannot be worn,
+ * sold or dropped until it comes back to the bag. The id is fixed by the
+ * chest's `born`, so a chest placed again in the same cell is a new holder.
+ */
+const CHEST_HOLDER = 'delve-chest:';
+export function chestHolderId(chest: Pick<DelveChest, 'born'>): string { return `${CHEST_HOLDER}${chest.born}`; }
+export function isChestHolder(id: string | null | undefined): boolean { return !!id && id.startsWith(CHEST_HOLDER); }
+
+/**
+ * Items a chest holds that no chest record names any more (the record was
+ * refunded, merged away by a later chest, or lost): their ids, to send back
+ * to the bag. Pure.
+ */
+export function strayChestGear(items: readonly { id: string; explorerId?: string }[], chests: Readonly<Record<string, DelveChest>> | undefined): string[] {
+  const live = new Set(Object.values(chests ?? {}).map(chestHolderId));
+  return items.filter(item => isChestHolder(item.explorerId) && !live.has(item.explorerId!)).map(item => item.id);
 }
 
 /** Where a chest's contents are filed: area and cell index. */

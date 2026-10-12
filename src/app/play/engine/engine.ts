@@ -13,6 +13,7 @@ import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, Inte
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
   climbTerrainBody, findNode, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import type { DelvePersistence, GatherPersistence } from './engine.model';
@@ -64,6 +65,12 @@ const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
 const DELVE_REACH = CELL * 2.7;
 const BLAST_TIME = .3;
 const BLAST_COOLDOWN = 1.1;
+/** Loose rock: the groan before it falls (s), its fastest fall, and its bruise as a share of max HP. */
+const RUBBLE_WAIT = .45;
+const TERMINAL_RUBBLE = 900;
+const RUBBLE_SHARE = .08;
+/** What a blasting charge does to a creature in its round. */
+const CHARGE_DAMAGE = 60;
 /** What hitCell did to one cell. */
 const HIT_NONE = 0, HIT_CHIP = 1, HIT_BROKE = 2, HIT_BLOCKED = 3, HIT_REFUSED = 4;
 /** Gathering nodes: the glow of a ready node and the colour of its chips, by kind. */
@@ -229,6 +236,8 @@ export class SeamworksEngine {
   /** Exposed glowing cells in view this frame (indices), for their coloured halos. */
   private readonly halosAt = new Int32Array(32);
   private readonly hitScratch = new Int32Array(160);
+  /** Cells one charge clears (CHARGE_RADIUS 2.3 reaches 21). */
+  private readonly blastScratch = new Int32Array(32);
   private tools: ToolTiers = {};
   /** The current area's gathering nodes, and every visited area's (regrowth timers keep running per session). */
   private sites: GatherSite[] = [];
@@ -249,6 +258,13 @@ export class SeamworksEngine {
   private readonly blastAt = { x: 0, y: 0, dx: 1, dy: 0, range: 0 };
   /** When the last "clang" was shown: one per beat, not one per cell. */
   private clangAt = -1;
+  /** Lit blasting charges: cell index and seconds left. Session only (a reloaded charge is an unlit one). */
+  private fuses: { index: number; left: number }[] = [];
+  /** Loose rock coming down: a short groan (`wait`, dust only), then a fall that hurts on the Keeper. Pooled. */
+  private readonly rubble = Array.from({ length: 6 }, () => ({ active: false, x: 0, y: 0, vy: 0, wait: 0, color: '' }));
+  /** Next loose-rock dust trickle, and whether this session has named the danger yet. */
+  private dustAt = 0;
+  private looseHinted = false;
   private get stations(): readonly StationDef[] { return this.areaDef.stations; }
   /** Draw scale of figures in this area (delves draw the Keeper at half size). */
   private get figure(): number { return this.areaDef.figureScale ?? 1; }
@@ -279,6 +295,8 @@ export class SeamworksEngine {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
     this.terrain = this.terrainFor(area); this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
+    this.fuses = [];
+    for (const r of this.rubble) r.active = false;
     this.sites = this.sitesFor(area);
     this.motes.reset();
     this.life.enter(area, this.town);
@@ -384,7 +402,7 @@ export class SeamworksEngine {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
     const def = placeableById(this.placing);
-    if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
+    if (!def) { this.message = 'Choose something to place first (keys 1-0, or tap the bar).'; this.report(); return false; }
     const down = this.input.has('down');
     const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX, def.aim);
     if (index < 0) { this.message = `No open space ${down ? 'under your feet' : 'in front of you'} for the ${def.label.toLowerCase()}.`; this.report(); return false; }
@@ -402,7 +420,7 @@ export class SeamworksEngine {
     if (!t.inside(col, row) || !this.inReach(col, row)) return false;
     if (isTakeable(t, col, row)) return this.takeItem(t.index(col, row));
     const def = placeableById(this.placing);
-    if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
+    if (!def) { this.message = 'Choose something to place first (keys 1-0, or tap the bar).'; this.report(); return false; }
     return this.placeItem(def, t.index(col, row));
   }
   /** True when a cell's centre is within a swing of the Keeper's chest. */
@@ -436,6 +454,10 @@ export class SeamworksEngine {
     const node = TERRAIN_NODES[def.node];
     const problem = node ? this.placeProblem(t, col, row, node, def) : 'That cannot be placed.';
     if (problem) { this.message = problem; this.report(); return false; }
+    // A charge is lit from a staff: none, and nothing leaves the satchel.
+    if (node!.charge && !(this.tools.staff ?? 0)) {
+      this.message = 'You need a staff to light the fuse (Staff I or better).'; this.report(); return false;
+    }
     const gen = ++this.placeSeq;
     const accepted = this.options.onPlace?.({
       item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index,
@@ -444,7 +466,13 @@ export class SeamworksEngine {
     // Refused: the host already said why (none left, the save failed).
     if (accepted === false) { this.report(); return false; }
     this.fill(t, col, row, node!, gen);
-    this.message = `${def.label} placed.`;
+    if (node!.charge) {
+      this.fuses.push({ index, left: CHARGE_FUSE });
+      this.message = 'Fuse lit! Stand back. (X beside it pinches the fuse out.)';
+      this.report();
+      return true;
+    }
+    this.message = node!.support ? `${def.label} placed. Loose rock within ${node!.support} cells of it holds.` : `${def.label} placed.`;
     this.report();
     return true;
   }
@@ -473,7 +501,9 @@ export class SeamworksEngine {
     this.placedGen.delete(index);
     this.recordCell(t, index);
     this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, node.fleck, this.reducedMotion ? 2 : 4);
-    this.message = `${def.label} back in the satchel.`;
+    const lit = this.fuses.some(fuse => fuse.index === index);
+    if (lit) this.fuses = this.fuses.filter(fuse => fuse.index !== index);
+    this.message = lit ? 'You pinch the fuse out. The charge is back in the satchel.' : `${def.label} back in the satchel.`;
     this.report();
     return true;
   }
@@ -993,6 +1023,8 @@ export class SeamworksEngine {
       this.debris.chip(cx, cy, node.fleck, this.reducedMotion ? 2 : 4);
       return HIT_CHIP;
     }
+    // Loose rock with no support near comes down when it is dug out (checked before it is gone).
+    const falls = isLoose(t, col, row) && !supportNear(t, col, row);
     let material: string | undefined;
     let qty = 0;
     const pays = node.yield;
@@ -1020,7 +1052,149 @@ export class SeamworksEngine {
       this.atmosphere.burst(cx, cy - 12, `+${qty} ${titleCase(material)}`);
       this.message = `${titleCase(material)} gathered from the ${node.label.toLowerCase()}.`;
     }
+    if (falls) this.dropRubble(cx, cy, node.base);
     return HIT_BROKE;
+  }
+
+  // -- Delve: loose rock, supports and blasting charges ---------------------
+
+  /** Loose rock lets go: dust for a beat (the warning), then a chunk falls straight down. */
+  private dropRubble(x: number, y: number, color: string): void {
+    const slot = this.rubble.find(r => !r.active);
+    if (!slot) return;
+    slot.active = true; slot.x = x; slot.y = y; slot.vy = 0; slot.wait = RUBBLE_WAIT; slot.color = color;
+    this.message = 'The rock groans. Loose rock! A timber or basalt support nearby would hold it.';
+    this.impact(.02, 2);
+  }
+  /** Advance falling rubble: a chunk on the Keeper hurts (never below 1 HP); on the floor it crumbles. */
+  private updateRubble(dt: number, t: Terrain): void {
+    const p = this.player;
+    for (const r of this.rubble) {
+      if (!r.active) continue;
+      if (r.wait > 0) {
+        r.wait -= dt;
+        if (!this.reducedMotion && Math.random() < .5) this.debris.chip(r.x + (Math.random() - .5) * CELL, r.y - CELL * .4, '#b8a69a', 1);
+        continue;
+      }
+      r.vy = Math.min(TERMINAL_RUBBLE, r.vy + 1500 * dt);
+      const ny = r.y + r.vy * dt;
+      const onKeeper = Math.abs(r.x - p.x) < DELVE_BOX.halfWidth + 10 && ny + 8 >= p.y - DELVE_BOX.height && r.y - 8 <= p.y;
+      if (onKeeper) {
+        r.active = false;
+        this.debris.crumble(r.x, ny, r.color, '#b8a69a', this.reducedMotion);
+        if (this.dodgeTime > 0 || this.hurtTime > 0 || this.hp <= 0) continue;
+        const hit = Math.max(4, Math.round(this.maxHp * RUBBLE_SHARE));
+        // Gentle on purpose: rubble bruises, it never fells a Keeper.
+        this.hp = Math.max(1, this.hp - hit); this.hurtTime = .6; this.wound = .7;
+        this.atmosphere.burst(p.x, p.y - DELVE_BOX.height - 8, `-${hit}`);
+        this.impact(.06, 7);
+        this.message = `Loose rock hits you (-${hit}). Place a support near loose rock (cracked, dusting) before you dig it.`;
+        continue;
+      }
+      if (t.solidAt(r.x, ny + 8) || ny > t.bottom) {
+        r.active = false;
+        this.debris.crumble(r.x, Math.min(ny, t.bottom), r.color, '#b8a69a', this.reducedMotion);
+        continue;
+      }
+      r.y = ny;
+    }
+  }
+  /**
+   * The telegraph: exposed loose rock near the Keeper with no support sheds a
+   * little dust now and then, and the first time one is close the Keeper is
+   * told what it means. Reduced motion keeps the cracks (drawn on the cell) only.
+   */
+  private updateLooseDust(t: Terrain): void {
+    if (this.elapsed < this.dustAt) return;
+    this.dustAt = this.elapsed + .35;
+    const pc = t.colAt(this.player.x), pr = t.rowAt(this.player.y - 1);
+    if (!t.biomeAt(pr).loose) return;
+    let picked = -1, seen = 0, close = false;
+    for (let row = Math.max(0, pr - 6); row <= Math.min(t.rows - 1, pr + 2); row++) {
+      for (let col = Math.max(0, pc - 8); col <= Math.min(t.cols - 1, pc + 8); col++) {
+        if (t.solid(col, row + 1) || !isLoose(t, col, row) || supportNear(t, col, row)) continue;
+        seen++;
+        if (Math.abs(col - pc) <= 2 && row < pr) close = true;
+        // Reservoir pick: every candidate equally likely, no allocation.
+        if (Math.random() * seen < 1) picked = t.index(col, row);
+      }
+    }
+    if (close && !this.looseHinted) {
+      this.looseHinted = true;
+      this.message = 'Loose rock overhead: cracked and shedding dust. Dig it out with a support nearby, or it comes down.';
+    }
+    if (picked < 0 || this.reducedMotion) return;
+    const col = picked % t.cols, row = (picked - col) / t.cols;
+    this.debris.chip((col + .2 + Math.random() * .6) * CELL, t.top + (row + 1) * CELL, '#b8a69a', 1);
+  }
+  /** A lit charge burns down; at zero it goes off, if it is still there. */
+  private updateFuses(dt: number): void {
+    if (!this.fuses.length) return;
+    for (const fuse of this.fuses) fuse.left -= dt;
+    const due = this.fuses.filter(fuse => fuse.left <= 0);
+    if (!due.length) return;
+    this.fuses = this.fuses.filter(fuse => fuse.left > 0);
+    for (const fuse of due) this.detonate(fuse.index);
+  }
+  /**
+   * A charge goes off: every cell `blastCells` allows in CHARGE_RADIUS is
+   * cleared through the host like a dig (kind 'blast', the same per-cell
+   * mutation id, so a cell is paid once), paying at least 1 XP (Mining for
+   * rock, Delving for the rest) and its yield. A cell the Keeper placed pays
+   * its block back and no XP. Creatures in the blast take a heavy hit. The
+   * Keeper is never hurt by their own charge. Power: staff tier + 1.
+   */
+  private detonate(index: number): number {
+    const t = this.terrain;
+    if (!t || index < 0 || index >= t.kind.length || !TERRAIN_NODE_LIST[t.kind[index]].charge) return 0;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
+    t.set(col, row, 0); this.placedGen.delete(index); this.recordCell(t, index);
+    const power = 1 + Math.max(1, this.tools.staff ?? 0);
+    const count = blastCells(t, col, row, power, flag => this.flagged(flag), this.blastScratch);
+    let cleared = 0;
+    for (let n = 0; n < count; n++) if (this.blastCell(this.blastScratch[n], n)) cleared++;
+    const reach = CHARGE_RADIUS * CELL * 1.3;
+    for (const monster of this.monsters) {
+      if (monster.hp <= 0) continue;
+      const d = Math.hypot(monster.x - cx, (monster.def.floorY ?? FLOOR) - 40 * this.figure - cy);
+      if (d <= reach) this.hurtMonster(monster, CHARGE_DAMAGE);
+    }
+    const at = this.blastAt;
+    at.x = cx; at.y = cy; at.dx = 0; at.dy = 0; at.range = CHARGE_RADIUS * CELL * 1.6;
+    this.blastFlash = 1;
+    this.debris.crumble(cx, cy, '#6a2a22', '#ffd36d', this.reducedMotion);
+    this.atmosphere.burst(cx, cy - 20, 'BOOM');
+    this.impact(.12, 16);
+    this.message = cleared ? `The charge goes off: ${cleared} cells of rock come down.` : 'The charge goes off, but nothing here would give.';
+    this.report();
+    return cleared;
+  }
+  /** One cell a blast reaches. False when it stood (a skill level short, or the host refused). */
+  private blastCell(index: number, n: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const node = TERRAIN_NODE_LIST[t.kind[index]];
+    const level = node.minLevel && this.skillLevels ? this.skillLevels[node.discipline] ?? 1 : Infinity;
+    if (node.minLevel && level < node.minLevel) return false;
+    const placed = t.kind[index] !== t.base[index];
+    let material: string | undefined, qty = 0;
+    const pays = node.yield;
+    if (pays && (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance)) { material = pays.materialId; qty = pays.qty; }
+    const gen = this.placedGen.get(index);
+    const accepted = this.options.onWorldAction?.({
+      kind: 'blast', areaId: this.areaDef.id, cellKey: cellKey(col, row),
+      materialId: material, qty: material ? qty : undefined,
+      discipline: node.discipline === 'mining' ? 'mining' : 'exploration', xp: placed ? 0 : Math.max(1, node.xp),
+      mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}${gen ? `:p${gen}` : ''}`,
+      ...(placed && node.block ? { block: node.block } : {}),
+    });
+    if (accepted === false) { t.setHp(col, row, Math.min(t.hp[index], 1e-3)); return false; }
+    t.set(col, row, 0); this.placedGen.delete(index); this.recordCell(t, index);
+    // Every cell crumbles; past the first few only every other one throws dust (the pool is shared).
+    if (n < 6 || n % 2 === 0) this.debris.crumble((col + .5) * CELL, t.top + (row + .5) * CELL, node.base, node.fleck, true);
+    return true;
   }
   /** True for a cell E acts on: a carved wall, a placed chest or camp. */
   private usable(index: number): boolean {
@@ -1256,6 +1430,9 @@ export class SeamworksEngine {
       if (this.input.has('attack') && this.attackCooldown <= 0) this.attack();
       if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
       this.interactAt = this.findInteractive();
+      this.updateFuses(dt);
+      this.updateRubble(dt, this.terrain);
+      this.updateLooseDust(this.terrain);
     } else if (this.sites.length && this.input.has('attack') && this.attackCooldown <= 0 && this.siteInReach()) this.attack();
     const now = this.clock();
     for (const sites of this.siteCache.values()) for (const s of sites) {
@@ -2111,6 +2288,11 @@ export class SeamworksEngine {
       const at = this.blastAt;
       pool.add(at.x + at.dx * at.range * .6, at.y + at.dy * at.range * .6, at.range * 1.5 * this.blastFlash, this.blastFlash);
     }
+    // A lit fuse throws a flickering light of its own.
+    for (const fuse of this.fuses) {
+      const col = fuse.index % t.cols, row = (fuse.index - col) / t.cols;
+      pool.add((col + .5) * CELL, t.top + row * CELL + 6, 70 + (this.reducedMotion ? 0 : Math.sin(time * 31) * 10), .75);
+    }
     const c0 = Math.max(0, t.colAt(this.camera)), c1 = Math.min(t.cols - 1, t.colAt(this.camera + viewport));
     const r0 = Math.max(0, t.rowAt(this.cameraY)), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720));
     const reach = this.lanternRadius * 1.6;
@@ -2170,6 +2352,7 @@ export class SeamworksEngine {
       c.fillStyle = node.glow?.color ?? '#fff';
       c.fillRect(x - 5, y - .75, 10, 1.5); c.fillRect(x - .75, y - 5, 1.5, 10); c.fillRect(x - 1.5, y - 1.5, 3, 3);
     }
+    this.drawFusesAndRubble(c, t, time);
     if (this.blastTime > 0) {
       const at = this.blastAt, u = 1 - this.blastTime / BLAST_TIME;
       const ex = at.x + at.dx * at.range, ey = at.y + at.dy * at.range;
@@ -2180,6 +2363,33 @@ export class SeamworksEngine {
       c.beginPath(); c.moveTo(at.x, at.y); c.lineTo(ex, ey); c.stroke();
     }
     c.restore();
+  }
+  /**
+   * Over the dark: each lit charge's spark and the ring it will clear (filling
+   * in as the fuse burns down), and falling rubble.
+   */
+  private drawFusesAndRubble(c: CanvasRenderingContext2D, t: Terrain, time: number): void {
+    for (const fuse of this.fuses) {
+      const col = fuse.index % t.cols, row = (fuse.index - col) / t.cols;
+      const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
+      const burnt = 1 - Math.max(0, fuse.left) / CHARGE_FUSE;
+      const blink = this.reducedMotion ? 1 : .6 + .4 * Math.sin(time * (10 + burnt * 30));
+      c.globalAlpha = .25 + .45 * burnt * blink;
+      c.strokeStyle = '#ff6a3a'; c.lineWidth = 2; c.setLineDash([6, 6]);
+      c.beginPath(); c.arc(x, y, CHARGE_RADIUS * CELL + 6, 0, Math.PI * 2); c.stroke();
+      c.setLineDash([]);
+      c.globalAlpha = blink;
+      c.fillStyle = '#fff4d0';
+      const sx = x + 4, sy = y - 14 + (this.reducedMotion ? 0 : Math.sin(time * 23) * 1.5);
+      c.beginPath(); c.arc(sx, sy, 2.5 + 1.5 * blink, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ffb066'; c.fillRect(sx - 6, sy - .75, 12, 1.5); c.fillRect(sx - .75, sy - 6, 1.5, 12);
+    }
+    c.globalAlpha = 1;
+    for (const r of this.rubble) {
+      if (!r.active || r.wait > 0) continue;
+      c.fillStyle = r.color; c.fillRect(r.x - 9, r.y - 8, 18, 15);
+      c.fillStyle = '#b8a69a'; c.fillRect(r.x - 9, r.y - 8, 18, 3);
+    }
   }
   /** The rig for a creature art key, built once per key. */
   private creatureRig(key: string): { def: CreatureRigDef; sprite: RigSprite } {

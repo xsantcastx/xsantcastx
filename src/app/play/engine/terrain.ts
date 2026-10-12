@@ -78,6 +78,10 @@ export interface TerrainNodeDef {
   climb?: true;
   /** Used with E or a tap, like a station: the host opens it (a chest's contents, a camp's crafting). */
   use?: 'chest' | 'camp';
+  /** A placed support: loose rock within this many cells (Chebyshev) holds when dug. */
+  support?: number;
+  /** A placed blasting charge: its fuse is lit when placed (engine `fuses`). */
+  charge?: true;
 }
 
 /** The flag the Rune-Warden sets when it falls (delve save `claimed`). */
@@ -156,6 +160,15 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // A portable workbench and its fire: crafting in the Delve, and a way back down from town.
   { id: 'camp', label: 'Camp', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'camp', use: 'camp',
     base: '#5a3f2a', dark: '#2e1f14', light: '#b08a55', fleck: '#ff9b4f', glow: { color: '#ff9b4f', radius: 140 } },
+  // Supports: a post and a cap beam. Walked through, taken back whole; loose
+  // rock within `support` cells holds when it is dug (see isLoose / supportNear).
+  { id: 'timber-support', label: 'Timber support', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'timber-support', support: 3,
+    base: '#7a5a36', dark: '#3a2a18', light: '#b08a55', fleck: '#5a4026' },
+  { id: 'basalt-support', label: 'Basalt support', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'basalt-support', support: 5,
+    base: '#4a3a40', dark: '#241a1e', light: '#7a656e', fleck: '#ff9b4f' },
+  // A blasting charge: lit when placed, it clears a small round of rock (engine `detonate`).
+  { id: 'blast-charge', label: 'Blasting charge', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'blast-charge', charge: true,
+    base: '#6a2a22', dark: '#2e110e', light: '#d8b07a', fleck: '#ffd36d', glow: { color: '#ff6a3a', radius: 44 } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -236,6 +249,13 @@ export interface BiomeDef {
   shimmer?: boolean;
   /** This biome's node mix: vein blobs stamped after the shared ones. */
   veins: readonly VeinSpec[];
+  /**
+   * Loose ceiling: this share (0..1) of the biome's own band rock (`node`) is
+   * loose, picked by a fixed hash of the cell. Digging a loose cell with no
+   * support near drops rubble. Derived, never generated: adding or retuning it
+   * changes no cell, so it needs no `version` bump.
+   */
+  loose?: { node: string; chance: number };
 }
 
 export interface VeinSpec { node: string; from: number; to: number; count: number; size: number; cols?: readonly [number, number] }
@@ -261,8 +281,17 @@ export interface TerrainSpec {
   jitter?: number;
   /** `count` blobs of `node`, about `size` cells each, in rows [from, to) and optional cols [lo, hi). */
   veins: readonly VeinSpec[];
-  /** Hand-placed rectangles, stamped last and in order. `node: 'air'` carves. */
-  stamps: readonly { col: number; row: number; w?: number; h?: number; node: string }[];
+  /**
+   * Hand-placed rectangles, stamped last and in order. `node: 'air'` carves.
+   * `protect`: a blasting charge never clears these cells (caches, sealed
+   * walls); tools still work them. Marking a stamp changes no cell.
+   */
+  stamps: readonly { col: number; row: number; w?: number; h?: number; node: string; protect?: true }[];
+  /**
+   * Rectangles a blasting charge leaves alone until a once-per-player flag is
+   * set (the fragment chamber, until its warden falls). Tools are unaffected.
+   */
+  sealed?: readonly { col: number; row: number; w: number; h: number; flag: string }[];
   /** Bedrock rows at the bottom. */
   bedrock: number;
   /** Depth biomes, top to bottom. Absent: one unnamed biome with the default look. */
@@ -327,8 +356,13 @@ export class Terrain {
   readonly biomeOfRow: Uint8Array;
   /** Inscription id per cell index, for the carved walls. */
   readonly inscriptions = new Map<number, string>();
+  /** 1 where a hand stamp is marked `protect`: a blast never clears it. */
+  readonly protect: Uint8Array;
+  /** Sealed rectangles (spec `sealed`): a blast leaves them until their flag is set. */
+  sealed: readonly { col: number; row: number; w: number; h: number; flag: string }[] = [];
   constructor(readonly cols: number, readonly rows: number, readonly top: number) {
     this.kind = new Uint8Array(cols * rows);
+    this.protect = new Uint8Array(cols * rows);
     this.base = this.kind;
     this.biomeOfRow = new Uint8Array(rows);
     this.hp = new Float32Array(cols * rows);
@@ -412,7 +446,8 @@ export function cellKey(col: number, row: number): string { return `${col},${row
 // ── Building ───────────────────────────────────────────────────────────────
 
 /** Satchel stack ids of the things a Keeper can place in a delve. */
-export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform' | 'chest' | 'camp';
+export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform' | 'chest' | 'camp'
+  | 'timber-support' | 'basalt-support' | 'blast-charge';
 
 export interface PlaceableDef {
   /** The satchel stack it is placed from and taken back to. */
@@ -443,6 +478,9 @@ export const PLACEABLES: readonly PlaceableDef[] = [
   { id: 'platform', label: 'Platform', node: 'platform', aim: 'block' },
   { id: 'chest', label: 'Chest', node: 'chest', aim: 'beside', grounded: true },
   { id: 'camp', label: 'Camp', node: 'camp', aim: 'beside', grounded: true, single: true },
+  { id: 'timber-support', label: 'Timber support', node: 'timber-support', aim: 'beside', grounded: true },
+  { id: 'basalt-support', label: 'Basalt support', node: 'basalt-support', aim: 'beside', grounded: true },
+  { id: 'blast-charge', label: 'Blasting charge', node: 'blast-charge', aim: 'beside' },
 ];
 const PLACEABLE_BY_ID = new Map(PLACEABLES.map(def => [def.id, def]));
 export function placeableById(id: string | null | undefined): PlaceableDef | undefined {
@@ -523,6 +561,91 @@ export function takeTarget(t: Terrain, x: number, feetY: number, facing: number,
   return isTakeable(t, t.colAt(x), feetRow + 1) ? t.index(t.colAt(x), feetRow + 1) : -1;
 }
 
+// ── Loose rock and supports ────────────────────────────────────────────────
+
+/** A fixed 0..1 hash of a cell: the same for every player and seed. */
+export function looseHash(col: number, row: number): number {
+  let h = (col * 2654435761 + row * 2246822519 + 0x5eed) >>> 0;
+  h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+  h = Math.imul(h ^ (h >>> 13), 3266489909) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * True when a cell is loose rock: its biome declares `loose`, the cell still
+ * holds that biome's band rock exactly as generated, and its fixed hash falls
+ * under the biome's share. Pure.
+ */
+export function isLoose(t: Terrain, col: number, row: number): boolean {
+  if (row < 0 || !t.inside(col, row)) return false;
+  const loose = t.biomeAt(row).loose;
+  if (!loose) return false;
+  const kind = NODE_INDEX.get(loose.node);
+  const i = t.index(col, row);
+  if (kind === undefined || t.base[i] !== kind || t.kind[i] !== kind) return false;
+  return looseHash(col, row) < loose.chance;
+}
+
+/** The longest reach any support has, in cells (the scan window). */
+const SUPPORT_REACH = Math.max(0, ...TERRAIN_NODE_LIST.map(node => node.support ?? 0));
+const SUPPORT_RANGE = Uint8Array.from(TERRAIN_NODE_LIST, node => node.support ?? 0);
+
+/** True when a placed support holds the cell: within its reach in both directions (Chebyshev). Pure. */
+export function supportNear(t: Terrain, col: number, row: number): boolean {
+  for (let r = Math.max(0, row - SUPPORT_REACH); r <= Math.min(t.rows - 1, row + SUPPORT_REACH); r++) {
+    for (let c = Math.max(0, col - SUPPORT_REACH); c <= Math.min(t.cols - 1, col + SUPPORT_REACH); c++) {
+      const reach = SUPPORT_RANGE[t.kind[t.index(c, r)]];
+      if (reach && Math.max(Math.abs(c - col), Math.abs(r - row)) <= reach) return true;
+    }
+  }
+  return false;
+}
+
+// ── Blasting charges ───────────────────────────────────────────────────────
+
+/** Radius of a charge's blast, in cells (from the charge's centre to a cell's centre). */
+export const CHARGE_RADIUS = 2.3;
+/** Seconds between placing a charge and the blast. */
+export const CHARGE_FUSE = 1.6;
+
+/**
+ * Whether a charge of `power` (the highest tool tier it stands in for) clears
+ * this cell: solid rock some tool could break at or under that tier, never
+ * bedrock, never a protected stamp, never a guarded node or a sealed
+ * rectangle whose flag (`open`) is not set yet. Placed things that are not
+ * solid (torches, chests…) are never touched. Pure.
+ */
+export function blastable(t: Terrain, col: number, row: number, power: number, open: (flag: string) => boolean): boolean {
+  if (row < 0 || !t.inside(col, row)) return false;
+  const i = t.index(col, row);
+  const node = TERRAIN_NODE_LIST[t.kind[i]];
+  if (!node.solid || !Number.isFinite(node.hp) || t.protect[i]) return false;
+  let min = Infinity;
+  for (const tool of TOOL_KINDS) { const tier = node.tools[tool]; if (tier && tier < min) min = tier; }
+  if (min > power) return false;
+  if (node.guard && !open(node.guard.flag)) return false;
+  for (const seal of t.sealed) {
+    if (col >= seal.col && col < seal.col + seal.w && row >= seal.row && row < seal.row + seal.h && !open(seal.flag)) return false;
+  }
+  return true;
+}
+
+/** The cells a charge at (col, row) clears, as indices into `out`, nearest first; returns how many. Pure. */
+export function blastCells(t: Terrain, col: number, row: number, power: number, open: (flag: string) => boolean, out: Int32Array, radius = CHARGE_RADIUS): number {
+  const span = Math.ceil(radius);
+  let n = 0;
+  for (let ring = 0; ring <= span; ring++) {
+    for (let r = row - ring; r <= row + ring; r++) {
+      for (let c = col - ring; c <= col + ring; c++) {
+        if (Math.max(Math.abs(c - col), Math.abs(r - row)) !== ring) continue;
+        if (Math.hypot(c - col, r - row) > radius) continue;
+        if (n < out.length && blastable(t, c, r, power, open)) out[n++] = t.index(c, r);
+      }
+    }
+  }
+  return n;
+}
+
 /**
  * How much darkness a glowing cell lifts at its centre, 0 for none. Placed
  * lights (non-solid: torches) always burn; a glowing vein only once a tunnel
@@ -579,9 +702,14 @@ export function generateTerrain(spec: TerrainSpec, seed = spec.seed): Terrain {
   for (const stamp of spec.stamps) {
     const node = nodeIndex(stamp.node);
     for (let r = stamp.row; r < stamp.row + (stamp.h ?? 1); r++) {
-      for (let c = stamp.col; c < stamp.col + (stamp.w ?? 1); c++) if (t.inside(c, r)) t.kind[t.index(c, r)] = node;
+      for (let c = stamp.col; c < stamp.col + (stamp.w ?? 1); c++) {
+        if (!t.inside(c, r)) continue;
+        t.kind[t.index(c, r)] = node;
+        if (stamp.protect) t.protect[t.index(c, r)] = 1;
+      }
     }
   }
+  if (spec.sealed) t.sealed = spec.sealed;
   for (let row = Math.max(0, spec.rows - spec.bedrock); row < spec.rows; row++) {
     for (let col = 0; col < spec.cols; col++) t.kind[t.index(col, row)] = BEDROCK;
   }

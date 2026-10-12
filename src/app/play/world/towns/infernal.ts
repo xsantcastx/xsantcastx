@@ -179,6 +179,9 @@ export const EMBER_DELVE: HuntZoneDef = {
         wash: { color: '#ff5a2a', alpha: .1 },
         particles: { kind: 'ember', color: '#ff9b4f', count: 26 },
         shimmer: true,
+        // The fracture's roof is cracked through: about one cell in five of
+        // scorched basalt is loose. Derived from a fixed hash, not generated.
+        loose: { node: 'scorched-basalt', chance: .2 },
         veins: [
           { node: 'ember-rock', from: 40, to: 54, count: 16, size: 4 },
           { node: 'hard-rock', from: 40, to: 54, count: 10, size: 5 },
@@ -208,11 +211,12 @@ export const EMBER_DELVE: HuntZoneDef = {
       // Kael's old cache at the cavern's east end: his lost hammer (once per player).
       // Placed in a cell every seed already carves to air, so no saved diff can
       // name it: `version` stays put and nobody's dig is dropped.
-      { col: 85, row: 18, node: 'kaels-cache' },
+      { col: 85, row: 18, node: 'kaels-cache', protect: true },
       // The sealed pocket: cracked walls round a hollow, the cache on its floor.
-      { col: 100, row: 21, w: 7, h: 5, node: 'cracked-wall' },
+      // Protected: a blasting charge never opens what only a staff should.
+      { col: 100, row: 21, w: 7, h: 5, node: 'cracked-wall', protect: true },
       { col: 101, row: 22, w: 5, h: 3, node: 'air' },
-      { col: 103, row: 24, node: 'cache' },
+      { col: 103, row: 24, node: 'cache', protect: true },
       { col: 99, row: 23, node: 'ember-rock' },
       // Glowcap Grotto: a cavern lit from below, glowcaps along its floor.
       { col: 20, row: 30, w: 25, h: 5, node: 'air' },
@@ -227,9 +231,13 @@ export const EMBER_DELVE: HuntZoneDef = {
       { col: 92, row: 46, w: 16, h: 5, node: 'air' },
       { col: 91, row: 51, w: 18, h: 1, node: 'bedrock' },
       // One cell: each cell pays its yield, and there is one fragment per player.
-      { col: 106, row: 50, node: 'godforge-fragment' },
+      { col: 106, row: 50, node: 'godforge-fragment', protect: true },
     ],
-    // Two per biome; ids and placeholder text live in shared/delve/delve-lore.model.ts.
+    // A charge cannot open the fragment chamber (walls, roof) until its warden falls.
+    sealed: [{ col: 90, row: 44, w: 20, h: 8, flag: WARDEN_FLAG }],
+    // Three per biome; ids and one-line readings live in shared/delve/delve-lore.model.ts.
+    // Each sits in a cell a stamp carves to air for every seed, so no saved dig
+    // can name it and `version` stays put.
     inscriptions: [
       { id: 'roots-inverse-tree', col: 19, row: 7 },
       { id: 'roots-keepers-tally', col: 69, row: 9 },
@@ -239,6 +247,14 @@ export const EMBER_DELVE: HuntZoneDef = {
       { id: 'grotto-drowned-lamp', col: 87, row: 36 },
       { id: 'magma-the-fracture', col: 44, row: 46 },
       { id: 'magma-warden-oath', col: 96, row: 49 },
+      // Beside the shadow-root knot in the old tunnel, where Verrin's cutting grows.
+      { id: 'roots-cutting-mark', col: 28, row: 7 },
+      // The Maws' cavern, east of Kael's mark: the old seam's ledger.
+      { id: 'basalt-seam-ledger', col: 78, row: 16 },
+      // The glowcap cavern, over the caps someone used to sell.
+      { id: 'grotto-tally-marks', col: 40, row: 32 },
+      // The deepest open cell in the Delve, at the fragment chamber's floor.
+      { id: 'magma-unsigned', col: 102, row: 50 },
     ],
     bedrock: 2,
   },
