@@ -83,7 +83,7 @@ test.describe('NPC counters, played', () => {
     await exchangeSide(page, 'Sell');
     await pickRow(page, 'Cinder Ore');
     const exchangeNet = await receipt(page);
-    console.log(`cinder-ore: vendor ${vendorPrice} vs exchange net ${exchangeNet} per unit`);
+    test.info().annotations.push({ type: 'prices', description: `cinder-ore: vendor ${vendorPrice} vs exchange net ${exchangeNet} per unit` });
     expect(vendorPrice).toBeLessThan(exchangeNet);
   });
 
@@ -122,7 +122,7 @@ test.describe('NPC counters, played', () => {
     await page.locator('section.place .ge__confirm .ab__all').click();
     await expect.poll(() => stackQty(page, 'cinder-ore')).toBe(0);
     const end = await savedGold(page);
-    console.log(`round trip 10: paid ${paid}, received ${received}; wallet ${start} -> ${afterSmall}; max lot ${bought}: -> ${end}`);
+    test.info().annotations.push({ type: 'round trip', description: `round trip 10: paid ${paid}, received ${received}; wallet ${start} -> ${afterSmall}; max lot ${bought}: -> ${end}` });
     expect(received, 'selling 10 back paid more than buying them').toBeLessThanOrEqual(paid);
     expect(end, 'a Max buy + Max sell round trip grew the purse').toBeLessThanOrEqual(start);
   });

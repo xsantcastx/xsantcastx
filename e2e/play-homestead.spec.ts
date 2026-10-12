@@ -55,7 +55,6 @@ test.describe('Homestead, played', () => {
     }
     const seconds = (Date.now() - start) / 1000;
     test.info().annotations.push({ type: 'pacing', description: `first Bellows affordable after ${seconds.toFixed(1)} s of striking` });
-    console.log(`pacing: first Bellows affordable after ${seconds.toFixed(1)} s`);
     expect(affordable, 'Bellows never became affordable').toBe(true);
     expect(seconds).toBeLessThanOrEqual(15);
     expect(await purseGold(page)).toBeGreaterThan(before);
