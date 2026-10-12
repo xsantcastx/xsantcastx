@@ -52,6 +52,7 @@ import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.servi
 import { ProgressStorageService } from '../shared/gamification/progress-storage.service';
 import { CloudSaveButtonComponent } from '../shared/cloud-save/cloud-save-button.component';
 import { StatPanelComponent } from '../shared/rpg/stat-panel.component';
+import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
 import { CharacterHubComponent } from '../shared/character/character-hub.component';
 import { InventoryService } from '../shared/rpg/inventory.service';
 import { SLOT_IDS } from '../shared/rpg/item.model';
@@ -310,6 +311,7 @@ function tierForEssence(cost: number): EclipseRarity {
     CloudSaveButtonComponent,
     ArtSceneComponent,
     StatPanelComponent,
+    KeeperStatSheetComponent,
     CharacterHubComponent,
   ],
   templateUrl: './forge-keeper.component.html',

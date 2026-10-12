@@ -218,6 +218,20 @@
 
 .lb-row--podium .lb-col-rank { color: var(--tier); }
 
+/* The masked Keeper beside each name. Floated rather than a flex row so the
+   title line under the name keeps its block layout. The ring is CSS, per the
+   composition spec — no fixed-colour frame is baked into the art. */
+.lb-avatar {
+  float: left;
+  width: 32px;
+  height: 32px;
+  margin: 0 0.6rem 0 0;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.12);
+}
+.lb-row--you .lb-avatar { box-shadow: 0 0 0 1px var(--gold); }
+
 .lb-name__title {
   display: block;
   font-size: 0.68rem;

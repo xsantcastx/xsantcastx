@@ -23,6 +23,7 @@ import {
 import { CommonModule } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { CloudSaveService, SyncStatus } from './cloud-save.service';
+import { keeperAvatarArt } from '../art/art';
 
 @Component({
   selector: 'app-cloud-save-button',
@@ -50,6 +51,10 @@ import { CloudSaveService, SyncStatus } from './cloud-save.service';
         <div class="cs__account">
           @if (status.photoURL) {
             <img class="cs__avatar" [src]="status.photoURL" alt="" width="24" height="24" referrerpolicy="no-referrer">
+          } @else if (keeperAvatar; as av) {
+            <!-- No Google photo: the masked Keeper, not a letter on an orb. -->
+            <img class="cs__avatar" [src]="av.src" [attr.srcset]="av.srcset" sizes="24px"
+                 alt="" aria-hidden="true" width="24" height="24" loading="lazy" decoding="async" draggable="false">
           } @else {
             <span class="cs__avatar cs__avatar--initial" aria-hidden="true">{{ initial }}</span>
           }
@@ -189,6 +194,7 @@ export class CloudSaveButtonComponent implements OnInit, OnDestroy {
   private ticker: ReturnType<typeof setInterval> | null = null;
 
   status: SyncStatus = this.cloud.status;
+  readonly keeperAvatar = keeperAvatarArt(null);
 
   ngOnInit(): void {
     // The button resumes its own session. It used to rely on whichever host

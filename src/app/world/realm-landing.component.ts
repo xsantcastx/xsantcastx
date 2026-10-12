@@ -22,6 +22,14 @@ import {
 import { ROOTGLASS_CANOPY_HREF } from '../shared/activity/foraging.model';
 import { MERIDIAN_ORRERY_HREF } from '../shared/activity/prospecting.model';
 import { InfernalChapterComponent } from './infernal-chapter.component';
+import { REALM_ART, artFor, type ArtEntry } from '../shared/art/art';
+
+/** The realm's painted identity: its Keeper variant, crest and token. */
+export interface RealmEmblems {
+  avatar: ArtEntry | null;
+  crest: ArtEntry | null;
+  token: ArtEntry | null;
+}
 
 @Component({
   selector: 'app-realm-landing',
@@ -45,6 +53,7 @@ export class RealmLandingComponent implements OnInit, OnDestroy {
   journey: ContinueJourney | null = null;
   openCharacterId: string | null = null;
   requestedId = '';
+  emblems: RealmEmblems | null = null;
 
   ngOnInit(): void {
     // The id arrives one of two ways, and both have to work.
@@ -61,6 +70,10 @@ export class RealmLandingComponent implements OnInit, OnDestroy {
       this.realm = narrativeRealmById(this.requestedId);
       this.journey = this.realm ? continueFromRealm(this.realm) : null;
       this.openCharacterId = this.realm?.characters[0].id ?? null;
+      const keys = this.realm ? REALM_ART[this.realm.id] : null;
+      this.emblems = keys
+        ? { avatar: artFor(keys.avatar), crest: artFor(keys.crest), token: artFor(keys.token) }
+        : null;
       this.applyTitle();
     });
     this.sub.add(this.i18n.currentLanguage$.subscribe(() => this.applyTitle()));

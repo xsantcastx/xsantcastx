@@ -111,7 +111,13 @@
          [class.is-active]="characterPanelOpen"
          [attr.aria-pressed]="characterPanelOpen"
          [attr.aria-label]="translate('gfnav.keeperLabel')">
-        <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
+        @if (keeperAvatar; as av) {
+          <img class="gfnav__keeper-avatar" [src]="av.src" [attr.srcset]="av.srcset" sizes="36px"
+               alt="" aria-hidden="true" width="36" height="36"
+               decoding="async" draggable="false">
+        } @else {
+          <span class="gfnav__keeper-glyph" aria-hidden="true"></span>
+        }
       </button>
 
       <button type="button" class="gfnav__burger" [class.is-open]="mobileMenuOpen"

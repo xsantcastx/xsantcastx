@@ -290,6 +290,40 @@
     aria-labelledby="cx-tab-collection"
     [hidden]="activeTab !== 'collection'">
     <app-collection-log></app-collection-log>
+
+    <!-- ── Bestiary ─────────────────────────────────────────────────────
+         Only creatures with an approved master are drawn. Concept sheets are
+         not runtime art, so the unpainted ones are a count, not a picture. -->
+    <div class="cx-block cx-bestiary">
+      <h3 class="cx-block__title">Bestiary</h3>
+      <p class="cx-block__sub">
+        What has been seen moving in the five realms.
+        {{ bestiaryUnpainted }} more have been sighted and not yet drawn.
+      </p>
+      <ul class="cx-bestiary__list">
+        @for (beast of bestiary; track beast.id) {
+          <li class="cx-bestiary__card" [attr.data-realm]="beast.realm">
+            @if (beast.art; as art) {
+              <img class="cx-bestiary__art" [src]="art.src" [attr.srcset]="art.srcset"
+                   sizes="96px" [alt]="beast.name" width="96" height="96"
+                   loading="lazy" decoding="async" draggable="false">
+            }
+            <div class="cx-bestiary__body">
+              <p class="cx-bestiary__where">
+                @if (beast.crest; as crest) {
+                  <img class="cx-bestiary__crest" [src]="crest.src" [attr.srcset]="crest.srcset"
+                       sizes="20px" alt="" aria-hidden="true" width="20" height="20"
+                       loading="lazy" decoding="async" draggable="false">
+                }
+                {{ beast.haunt }}
+              </p>
+              <h4 class="cx-bestiary__name">{{ beast.name }}</h4>
+              <p class="cx-bestiary__note">{{ beast.note }}</p>
+            </div>
+          </li>
+        }
+      </ul>
+    </div>
   </section>
 
 

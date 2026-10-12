@@ -582,6 +582,11 @@
 
 .ld__delta--up { color: #7FD5A3; background: rgba(127, 213, 163, 0.09); }
 .ld__delta--down { color: #ff8f8f; background: rgba(255, 143, 143, 0.09); }
+/* Carried by both items at the same value. Listed so the row is complete, but
+   it is not news. */
+.ld__delta--same { color: var(--text-muted); opacity: 0.6; }
+
+.ld__sheet { margin: 6px 0 10px; }
 
 .ld__pick--upgrade { border-color: rgba(127, 213, 163, 0.55); }
 

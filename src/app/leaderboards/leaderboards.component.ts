@@ -54,11 +54,31 @@ import {
 } from '../shared/leaderboards/leaderboard.model';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
+import { ART_REALMS, keeperAvatarArt, type ArtEntry } from '../shared/art/art';
+
 /** One rendered row, with the break flag the table draws before it. */
 export interface WindowRow {
   row: LeaderboardRow;
   /** True where the window skips a stretch of ranks. */
   gapBefore: boolean;
+  /** The masked Keeper beside the name. Null only if the art is missing. */
+  avatar: ArtEntry | null;
+}
+
+/**
+ * Which Keeper a row wears.
+ *
+ * The visitor is the neutral Keeper: nothing in the save records a realm
+ * alignment, and the composition spec keeps realm variants for an opted-in
+ * affiliation. Rivals are generated names on a ladder the page already says is
+ * generated, so each wears one of the five realm variants, picked from its
+ * name — deterministic, so the prerendered row and the booted row match.
+ */
+function avatarForRow(row: LeaderboardRow): ArtEntry | null {
+  if (row.isPlayer) return keeperAvatarArt(null);
+  let hash = 0;
+  for (let i = 0; i < row.name.length; i++) hash = (hash * 31 + row.name.charCodeAt(i)) >>> 0;
+  return keeperAvatarArt(ART_REALMS[hash % ART_REALMS.length]);
 }
 
 @Component({
@@ -160,6 +180,7 @@ export class LeaderboardsComponent implements OnInit, OnDestroy {
     return picked.map((row, i) => ({
       row,
       gapBefore: i > 0 && row.rank - picked[i - 1].rank > 1,
+      avatar: avatarForRow(row),
     }));
   }
 

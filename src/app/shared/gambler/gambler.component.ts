@@ -13,10 +13,11 @@
  * honest way to build one: an animation that *decides* anything would mean a
  * closed tab mid-spin either loses the purchase or duplicates it.
  *
- * It runs `shaking` → `opening` → `revealed`, with the payload attached from
- * the first frame, so a player who navigates away mid-animation has still been
- * paid and a player who clicks Skip sees the same result the animation was
- * walking toward.
+ * It runs `wager` → `charging` → `cracking` → `revealed` on an altar stage,
+ * with the payload attached from the first frame, so a player who navigates
+ * away mid-animation has still been paid and a player who clicks Skip sees the
+ * same result the animation was walking toward. The charge beat lengthens with
+ * the rarity actually rolled (see reveal-timing.ts) — never a fake near-miss.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY THE TILL IS HERE AND NOT IN THE BAG
@@ -35,6 +36,8 @@ import {
   Component,
   ElementRef,
   OnDestroy,
+  HostListener,
+  HostBinding,
   OnInit,
   PLATFORM_ID,
   inject,
@@ -47,7 +50,7 @@ import { EconomyService } from '../economy/economy.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { GamblerService, type OpenedBox, type OpenFailure } from './gambler.service';
 import { RollQualityComponent } from '../rpg/roll-quality.component';
-import { boxOdds, type MysteryBox } from './mystery-box';
+import { boxOdds, rarityRank, type MysteryBox } from './mystery-box';
 import { artFor } from '../art/art';
 import {
   QUALITY_TAG_LABELS,
@@ -68,9 +71,43 @@ import {
 } from '../rpg/item.model';
 import { CelebrationService } from '../celebration/celebration.service';
 import { RUNE_TIERS } from '../rune-forge/rune.model';
+import { revealTiming, type RevealSpeed, type RevealTiming } from './reveal-timing';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
-type RevealPhase = 'idle' | 'shaking' | 'opening' | 'revealed';
+type RevealPhase = 'idle' | 'wager' | 'charging' | 'cracking' | 'revealed';
+
+/** One tile in the pull history strip. Presentation only — never persisted. */
+export interface PullRecord {
+  key: number;
+  name: string;
+  rarity: ItemRarity;
+  color: string;
+  glow: string;
+  art: string | null;
+  initials: string;
+  named: boolean;
+}
+
+const HISTORY_LIMIT = 8;
+
+/**
+ * The strip outlives the component on purpose: leaving for the Market and
+ * coming back should not wipe the run you were on. It lives for the tab only —
+ * the save is the bag, and this is just the receipt pile on the counter.
+ */
+let sessionHistory: PullRecord[] = [];
+let sessionFast = false;
+let pullSeq = 0;
+
+/** Stage art, all through the manifest. Missing keys simply render nothing. */
+const STAGE_ART = {
+  sigil: 'eclipse-summoning-sigil',
+  flame: 'violet-forge-flame',
+  portal: 'rift-portal-core',
+  burst: 'crafting-burst',
+  aura: 'enhancement-aura',
+  coin: 'gold',
+} as const;
 
 interface OddsRow {
   rarity: ItemRarity;
@@ -85,9 +122,6 @@ interface SellRow {
   selected: boolean;
 }
 
-/** Milliseconds each stage of the reveal holds. Skippable at any point. */
-const SHAKE_MS = 700;
-const OPEN_MS = 620;
 
 @Component({
   selector: 'app-gambler',
@@ -116,9 +150,32 @@ export class GamblerComponent implements OnInit, OnDestroy {
 
   /** The box mid-animation, and how far through it is. */
   phase: RevealPhase = 'idle';
+
+  /** The global routeFadeIn leaves an identity transform on every routed host,
+   *  which makes it the containing block for the fixed reveal overlay: the
+   *  overlay then spans the whole page and the altar lands below the fold.
+   *  While a reveal is up, the host drops that animation (see :host CSS). */
+  @HostBinding('class.gb-host--revealing') get revealing(): boolean { return this.phase !== 'idle'; }
   active: MysteryBox | null = null;
   result: OpenedBox | null = null;
   error: string | null = null;
+  /** Timing for the reveal in flight; drives the CSS custom properties. */
+  timing: RevealTiming | null = null;
+  /** Reduced motion: no beats, just a fade onto the result. */
+  still = false;
+
+  /** Repeat-gamble mode: every rarity gets the same short reveal. */
+  fast = sessionFast;
+  history: PullRecord[] = sessionHistory;
+
+  readonly stage = {
+    sigil: artFor(STAGE_ART.sigil),
+    flame: artFor(STAGE_ART.flame),
+    portal: artFor(STAGE_ART.portal),
+    burst: artFor(STAGE_ART.burst),
+    aura: artFor(STAGE_ART.aura),
+    coin: artFor(STAGE_ART.coin),
+  };
 
   /** The till. Rebuilt whenever the bag changes. */
   sellRows: SellRow[] = [];
@@ -174,6 +231,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
   open(box: MysteryBox): void {
     if (!this.isBrowser || this.phase !== 'idle') return;
 
+    // The outcome is decided, charged and saved here — before any theatre.
     const outcome = this.gambler.open(box.id);
     if (!outcome.ok) {
       this.error = this.failureText(outcome.code, box);
@@ -185,25 +243,79 @@ export class GamblerComponent implements OnInit, OnDestroy {
     this.error = null;
     this.active = box;
     this.result = outcome.result;
-    this.phase = 'shaking';
+    this.record(outcome.result);
+
+    this.still = this.reducedMotion();
+    const timing = revealTiming(outcome.result.item.rarity, this.speed());
+    this.timing = timing;
+
+    if (timing.wagerMs + timing.chargeMs + timing.crackMs === 0) {
+      this.land();
+      return;
+    }
+
+    this.phase = timing.wagerMs > 0 ? 'wager' : 'charging';
     this.cdr.markForCheck();
 
-    this.timers.push(setTimeout(() => {
-      if (this.phase !== 'shaking') return;
-      this.phase = 'opening';
-      this.cdr.markForCheck();
+    const at = (ms: number, phase: RevealPhase, from: RevealPhase) => {
       this.timers.push(setTimeout(() => {
-        if (this.phase !== 'opening') return;
-        this.land();
-      }, OPEN_MS));
-    }, SHAKE_MS));
+        if (this.phase !== from) return;
+        if (phase === 'revealed') { this.land(); return; }
+        this.phase = phase;
+        this.cdr.markForCheck();
+      }, ms));
+    };
+    if (timing.wagerMs > 0) at(timing.wagerMs, 'charging', 'wager');
+    at(timing.wagerMs + timing.chargeMs, 'cracking', 'charging');
+    at(timing.wagerMs + timing.chargeMs + timing.crackMs, 'revealed', 'cracking');
   }
 
   /** Jump to the result. Same outcome, no waiting. */
   skip(): void {
-    if (this.phase === 'idle' || !this.result) return;
+    if (this.phase === 'idle' || this.phase === 'revealed' || !this.result) return;
     this.clearTimers();
     this.land();
+  }
+
+  toggleFast(): void {
+    this.fast = !this.fast;
+    sessionFast = this.fast;
+    this.cdr.markForCheck();
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.phase === 'revealed') this.dismiss();
+    else this.skip();
+  }
+
+  private speed(): RevealSpeed {
+    if (this.still) return 'instant';
+    return this.fast ? 'fast' : 'normal';
+  }
+
+  private reducedMotion(): boolean {
+    try {
+      return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return false;
+    }
+  }
+
+  private record(opened: OpenedBox): void {
+    const item = opened.item;
+    const entry: PullRecord = {
+      key: ++pullSeq,
+      name: item.name,
+      rarity: item.rarity,
+      color: rarityColor(item.rarity),
+      glow: rarityGlow(item.rarity),
+      art: this.artSrc(item),
+      initials: this.initials(item),
+      named: !!opened.unique,
+    };
+    sessionHistory = [entry, ...sessionHistory].slice(0, HISTORY_LIMIT);
+    this.history = sessionHistory;
   }
 
   /**
@@ -224,6 +336,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     // Next frame: the item card is written by the pass above, so measuring it
     // now would measure the box that is being replaced.
     requestAnimationFrame(() => {
+      if (this.phase !== 'revealed') return;
       this.celebration.celebrate(rarity, this.host.nativeElement.querySelector('.gb-reveal__item'));
     });
   }
@@ -233,6 +346,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     this.phase = 'idle';
     this.active = null;
     this.result = null;
+    this.timing = null;
     this.celebration.cancel();
     this.cdr.markForCheck();
   }
@@ -285,6 +399,20 @@ export class GamblerComponent implements OnInit, OnDestroy {
 
   get revealGlow(): string {
     return this.result ? rarityGlow(this.result.item.rarity) : 'rgba(0,255,204,0.6)';
+  }
+
+  /** Rank 0..6 on the ladder; higher ranks get the louder stage dressing. */
+  get revealRank(): number {
+    return this.result ? rarityRank(this.result.item.rarity) : 0;
+  }
+
+  get revealPhaseMs(): string {
+    const t = this.timing;
+    if (!t) return '0ms';
+    if (this.phase === 'wager') return `${t.wagerMs}ms`;
+    if (this.phase === 'charging') return `${t.chargeMs}ms`;
+    if (this.phase === 'cracking') return `${t.crackMs}ms`;
+    return '0ms';
   }
 
   get revealRarityLabel(): string {
@@ -402,6 +530,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
   trackBox = (_: number, box: MysteryBox) => box.id;
   trackRow = (_: number, row: SellRow) => row.item.id;
   trackOdds = (_: number, row: OddsRow) => row.rarity;
+  trackPull = (_: number, pull: PullRecord) => pull.key;
 
   private clearTimers(): void {
     for (const t of this.timers) clearTimeout(t);

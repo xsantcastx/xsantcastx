@@ -36,7 +36,7 @@ Two failures this codebase has actually shipped, now caught at import time:
 2. Filenames with spaces or capitals (`The Arena.png`) violate the library's
    own kebab-case rule and need URL-encoding the moment they are served.
 
-Run from the repo root:  python3 scripts/import-assets.py [--check]
+Run from the repo root:  python3 scripts/import-assets.py [--check] [--only=<Family/Dir>]...
 `--check` reports without writing, for CI.
 Idempotent — it overwrites its own outputs and nothing else.
 """
@@ -45,8 +45,11 @@ import sys
 
 from PIL import Image
 
+# The library moved off the Desktop into the projects folder. Its files are
+# iCloud-backed and often evicted ("dataless"), so the first run after a while
+# spends most of its time downloading masters, not encoding them.
 LIBRARY = os.path.expanduser(
-    os.environ.get('ER_ASSET_LIBRARY', '~/Desktop/Eclipse Realms/Assets')
+    os.environ.get('ER_ASSET_LIBRARY', '~/Documents/1. Projects/Eclipse Realms/Assets')
 )
 OUT_ROOT = os.path.join(os.path.dirname(__file__), '..', 'src', 'assets', 'game')
 
@@ -56,6 +59,11 @@ QUALITY = 88
 # on the site actually renders — add it back only when a zoom view exists.
 COLLECTIBLE_WIDTHS = (96, 256)
 CHARACTER_WIDTHS = (512, 1024)
+# An avatar is drawn at 28-48px in a header or a ladder row far more often than
+# it is drawn large, and a srcset whose smallest rung is 512 makes every one of
+# those rows download a 512px master. The two small rungs are added *below* the
+# existing ones so no shipped filename changes.
+AVATAR_WIDTHS = (96, 256) + CHARACTER_WIDTHS
 
 # source dir under LIBRARY -> (output family, width ladder, must be cut out)
 FAMILIES = [
@@ -76,8 +84,12 @@ FAMILIES = [
     ('Items/ArtBible/Materials',  'items/artbible/materials',  COLLECTIBLE_WIDTHS, True),
     ('Items/ArtBible/Singular',   'items/artbible/singular',   COLLECTIBLE_WIDTHS, True),
     ('Characters/equipment',   'items/equipment',    COLLECTIBLE_WIDTHS, True),
-    ('Characters/avatars',     'characters/avatars', CHARACTER_WIDTHS,   True),
-    ('Characters/portraits',   'characters/portraits', CHARACTER_WIDTHS, True),
+    ('Characters/avatars',     'characters/avatars', AVATAR_WIDTHS,      True),
+    ('Characters/portraits',   'characters/portraits', AVATAR_WIDTHS,    True),
+    # Slot close-ups, one per equipment slot plus the Basalt Edge. They fill
+    # the frame rather than registering over `01-keeper-base`, so they are
+    # collectibles, not paper-doll layers, and take the collectible ladder.
+    ('Characters/Overlays',    'characters/overlays', COLLECTIBLE_WIDTHS, True),
     ('Creatures/Masters',      'creatures',          COLLECTIBLE_WIDTHS, True),
     ('Currencies',             'currencies',         COLLECTIBLE_WIDTHS, True),
     ('Currencies/realm-tokens', 'currencies/realm-tokens', COLLECTIBLE_WIDTHS, True),
@@ -271,6 +283,11 @@ def main() -> int:
         write_manifest()
         return 0
     check = '--check' in sys.argv
+    # `--only Characters/avatars` limits the run to families whose source dir
+    # starts with that prefix. Re-encoding the whole library rewrites hundreds
+    # of byte-different WebPs when Pillow's encoder version moves, which is a
+    # diff nobody can review; import what changed and regenerate the manifest.
+    only = [a.split('=', 1)[1] for a in sys.argv if a.startswith('--only=')]
     if not os.path.isdir(LIBRARY):
         print(f'error: asset library not found at {LIBRARY}', file=sys.stderr)
         print('       set ER_ASSET_LIBRARY to override.', file=sys.stderr)
@@ -282,6 +299,8 @@ def main() -> int:
     total = 0
 
     for src_rel, out_rel, widths, cutout in FAMILIES:
+        if only and not any(src_rel == o or src_rel.startswith(o + '/') for o in only):
+            continue
         src_dir = os.path.join(LIBRARY, src_rel)
         if not os.path.isdir(src_dir):
             problems.append(f'missing source dir: {src_rel}')

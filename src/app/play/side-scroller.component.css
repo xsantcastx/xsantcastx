@@ -517,6 +517,22 @@ button:disabled { opacity: .4; cursor: default; }
 
 .slip-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
 
+/* Wear-preview: what changes against the place it would take. Gains and losses
+   carry their sign in the text, so colour is never the only channel. */
+.slip-copy .compare-label {
+  margin: 8px 0 0;
+  font: 600 9px Orbitron, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  opacity: .7;
+}
+.slip .compare { margin-top: 3px; }
+.slip .compare li.up { color: var(--feedback-up); }
+.slip .compare li.down { color: var(--feedback-down); }
+.slip .compare li.same { opacity: .45; }
+
+.book-stats { position: relative; flex: none; }
+
 .satchel p {
   display: flex;
   justify-content: space-between;
