@@ -73,17 +73,31 @@ describe('material vendor buyback board', () => {
     for (const listing of VENDOR_SHELF.filter(row => row.tier === 'gathered')) {
       const good = EXCHANGE_CATALOGUE.find(row => row.kind === 'material' && row.stackKey === listing.materialId);
       expect(good).withContext(listing.materialId).toBeTruthy();
-      // The Exchange may already be ρ-scaled (another change owns it): accept either anchor.
-      const v2 = Math.round(good!.basePrice * ITEM_ECONOMY_SCALE);
-      expect([v2, good!.basePrice]).withContext(listing.materialId).toContain(listing.worth);
+      // One scale: the Exchange quotes the same ρ-scaled worth the Vendor reads.
+      expect(listing.worth).withContext(listing.materialId).toBe(good!.basePrice);
     }
   });
 
-  it('can never be arbitraged: it pays less than the Exchange ever quotes, even ρ-scaled', () => {
+  it('can never be arbitraged: it pays less than the Exchange ever quotes', () => {
     for (const listing of VENDOR_SHELF) {
-      const cheapestQuote = listing.worth * PRICE_FLOOR_MULT;
-      expect(listing.price).withContext(listing.materialId).toBeLessThan(Math.max(1.0001, cheapestQuote));
+      const good = EXCHANGE_CATALOGUE.find(row => row.kind === 'material' && row.stackKey === listing.materialId);
+      // The Exchange's lowest possible ask (priceAt clamps to base × floor, min 1).
+      const base = good?.basePrice ?? listing.worth;
+      const lowestQuote = Math.max(1, Math.round(base * PRICE_FLOOR_MULT));
+      if (listing.price === 1) {
+        // The 1-Gold minimum: buying at 1 and selling back at 1 is break-even, never a profit.
+        expect(lowestQuote).withContext(listing.materialId).toBeGreaterThanOrEqual(1);
+      } else {
+        expect(listing.price).withContext(listing.materialId).toBeLessThan(lowestQuote);
+      }
     }
+  });
+
+  it('keeps every Exchange material on the ρ-scaled worth (one source with economy-curve.ts)', () => {
+    for (const good of EXCHANGE_CATALOGUE.filter(row => row.kind === 'material')) {
+      expect(good.basePrice).withContext(good.id).toBeLessThan(10_000); // v2 bases ran to 95,000
+    }
+    expect(ITEM_ECONOMY_SCALE).toBe(0.06);
   });
 });
 
