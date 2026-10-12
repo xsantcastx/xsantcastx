@@ -14,6 +14,7 @@ import type {
   MarketEscrow,
   MarketOrder,
   MarketPrice,
+  MarketSummary,
   MarketTrade,
   OrderSide,
 } from './player-market.model';
@@ -38,12 +39,11 @@ export interface MarketBackend {
   watchMyOrders(uid: string, limit: number): Observable<MarketOrder[]>;
   watchEscrow(uid: string): Observable<MarketEscrow | null>;
   /**
-   * Open orders across every item, up to `limit` — what the Exchange list is
-   * built from (which items have a live market, and their best prices).
+   * `market/v1/summary/board`: best bid/ask, depth and 24h figures for every
+   * item with a live market — the whole Exchange list in one document. The
+   * server rewrites it inside each placement/cancel transaction.
    */
-  watchOpenOrders(limit: number): Observable<MarketOrder[]>;
-  /** Price docs, most recently traded first, up to `limit`. */
-  watchPrices(limit: number): Observable<MarketPrice[]>;
+  watchSummary(): Observable<MarketSummary | null>;
 }
 
 /**
@@ -144,30 +144,16 @@ export class FirebaseMarketBackend implements MarketBackend {
   }
 
   /**
-   * Single-field equality, so Firestore's automatic index serves it — no
-   * composite index to deploy. Bounded by `limit`; see the handoff's
-   * "UI binding" section for the read-cost note and the summary-doc follow-up.
+   * One document listener for the whole list: one read on attach and one per
+   * market write, instead of re-reading every changed order and price doc.
    */
-  watchOpenOrders(limit: number): Observable<MarketOrder[]> {
-    return this.watch(async ({ api, db }, next, fail) => {
-      const q = api.query(
-        api.collection(db, ROOT[0], ROOT[1], 'orders'),
-        api.where('status', '==', 'open'),
-        api.limit(limit),
-      );
-      return api.onSnapshot(q, s => next(s.docs.map(d => d.data() as MarketOrder)), fail);
-    });
-  }
-
-  watchPrices(limit: number): Observable<MarketPrice[]> {
-    return this.watch(async ({ api, db }, next, fail) => {
-      const q = api.query(
-        api.collection(db, ROOT[0], ROOT[1], 'prices'),
-        api.orderBy('lastTradeAt', 'desc'),
-        api.limit(limit),
-      );
-      return api.onSnapshot(q, s => next(s.docs.map(d => d.data() as MarketPrice)), fail);
-    });
+  watchSummary(): Observable<MarketSummary | null> {
+    return this.watch(async ({ api, db }, next, fail) =>
+      api.onSnapshot(
+        api.doc(db, ROOT[0], ROOT[1], 'summary', 'board'),
+        s => next(s.exists() ? (s.data() as MarketSummary) : null),
+        fail,
+      ));
   }
 
   /**
