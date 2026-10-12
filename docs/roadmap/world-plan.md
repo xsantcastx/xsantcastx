@@ -31,6 +31,7 @@ world — and every system visible while it works.
 | New skills | **Smithing, Foraging/Woodcutting, Delving/Exploration, Enchanting ritual** (+ Mining, Hunting, Prospecting); one 1–99 curve with an unlock every ~10 levels | Extends the existing discipline ledger; no XP lost |
 | Economy | **Full rebalance to a Cookie-Clicker curve** (owner's original inspiration): first building in ~15 s, a new affordable goal every 30–90 s early, ×1.15 price scaling, click upgrades, golden-spark bursts; the Homestead is the "cookie" | Every Gold price is retuned together (runes, gambler, vendor, recipes, expeditions); existing saves migrated; designed + simulated before any number changes |
 | Menu UX | **"For dummies" simple, MapleStory-crafting-journal anatomy**: tabs per skill, skill strip with XP bar, list → detail, requirement icon grids with have/need counts, one CRAFT / CRAFT ALL row; extras behind Details. Reference: `docs/design-references/` | Every station and panel is held to it; a shared station UI kit enforces it |
+| Delve layout | **Your own persistent Delve**: one layout per player, carved out permanently; everything dug, placed or built stays (local save + cloud when signed in) | Persistence is the foundation for building in the Delve; layout seed is per player, stored with the save |
 | Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
 
 ### Where each page lives (proposal; change here, then build)
@@ -111,6 +112,10 @@ things with tools you crafted, and you see your economy working.
 - [ ] Golden-spark burst event
 
 ## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[ ]`
+
+- [ ] **Per-player persistent Delve**: a seed per player stored in the save; dug, placed and built cells saved as a compact diff through the save gateway (local + Firestore when signed in), idempotent with the existing mutation ids. Owner decision 2026-10-12. Today the layout is one fixed seed for everyone and dug state is session-only
+- [ ] **Biomes by depth**, each with its own palette, light, nodes and creatures: **Root Hollows** (roots, petrified trunks, mushrooms → Foraging/Woodcutting), **Basalt Caverns** (Cinder/Slag → Mining; today's Delve), **Glowcap Grotto** (glowing herbs, e.g. Moonpetal-type → Foraging), **Magma Halls** (Heartstone, Ember Residue, tough Maws → Mining/Delving)
+- [ ] **"Found in…"** for every material: a line in the Skills panel and the Codex ("Moonpetal — Ember Delve, Glowcap Grotto"), generated from the node and drop-table data so it can't drift. Today herbs only come from Foraging work and hunt drops, and nothing says where
 
 Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
