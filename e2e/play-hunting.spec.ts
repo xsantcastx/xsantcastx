@@ -84,7 +84,7 @@ test.describe('Hunting, played', () => {
 
   // BUG (playtest-findings.md P-3): no code path grants Hunting XP for a kill (or Mining
   // XP for a picked-up ore drop). `godforge-activity` is never even created by a hunt.
-  test.fixme('a kill trains Hunting (and the ore pickup trains Mining)', async ({ page }) => {
+  test('a kill trains Hunting (and the ore pickup trains Mining)', async ({ page }) => {
     await toQuarry(page);
     const hunting = await xp(page, 'hunting');
     await huntOne(page);
@@ -94,7 +94,7 @@ test.describe('Hunting, played', () => {
 
   // BUG (playtest-findings.md P-4): monster coins are an engine-only session counter.
   // onLoot ignores coin drops, so they never reach the Gold purse and are gone on reload.
-  test.fixme('coins picked up from a kill are kept (they reach the purse and survive a reload)', async ({ page }) => {
+  test('coins picked up from a kill are kept (they reach the purse and survive a reload)', async ({ page }) => {
     await toQuarry(page);
     await huntOne(page);
     await sweep(page);
