@@ -28,7 +28,8 @@ import { CELESTIAL_TOWN } from './towns/celestial';
 import { LUMINOUS_TOWN } from './towns/luminous';
 import { UMBRAL_TOWN } from './towns/umbral';
 import { VERDANT_TOWN } from './towns/verdant';
-import type { TerrainSpec } from '../engine/terrain';
+import type { TerrainSpec, ToolTiers } from '../engine/terrain';
+import type { DisciplineId } from '../../shared/activity/activity.model';
 
 /** Every built town. A Phase 2 town is a new file in towns/ and one line here. */
 export const TOWNS: Readonly<Record<RealmTownId, TownDef | undefined>> = {
@@ -174,9 +175,48 @@ export interface AreaDef {
   terrain?: TerrainSpec;
   /** Draw scale for Keepers and creatures (delves use 0.5: three cells tall). Default 1. */
   figureScale?: number;
+  /** Herb patches, trees and ore outcrops to gather here (hunting grounds). */
+  nodes?: readonly GatherNodeDef[];
 }
 
 export type HuntZoneDef = AreaDef;
+
+/**
+ * A gathering node standing in a hunting ground: a herb patch, a tree or an
+ * ore outcrop. It follows the Delve's tool-vs-node rule (engine/terrain.ts
+ * `toolFor`): `tools` names each tool that can work it and the minimum tier,
+ * a hit deals 1 + (tier - minimum) / 2, and `hp` hits at the minimum break
+ * it. Breaking it asks the host (`onWorldAction`, with `site` set to this id),
+ * which books the XP and the yield through SkillActionService in one
+ * idempotent write. Then it rests `respawn` seconds and grows back.
+ *
+ * Found-in reads `yield.materialId` from here, so a node can never pay a
+ * material that "Found in…" does not name.
+ */
+export interface GatherNodeDef {
+  /** Unique within its area; part of the grant's mutation id. */
+  id: string;
+  /** World x of its centre, on the area floor. */
+  x: number;
+  /** How it is drawn: a herb patch, a tree, or a rock outcrop. */
+  kind: 'herb' | 'wood' | 'ore';
+  /** "Sunbloom patch". Shown on the prompt and the clang. */
+  label: string;
+  /** Tool → minimum tier. Swing tools only (the staff's blast works delves). */
+  tools: ToolTiers;
+  /** Hits at the minimum tier. */
+  hp: number;
+  discipline: DisciplineId;
+  xp: number;
+  /** Skill level (in `discipline`) the host checks; mirrors the Skills unlock table. */
+  minLevel?: number;
+  yield: { materialId: string; qty: number; chance?: number };
+  /** Seconds it takes to grow back after a harvest. */
+  respawn: number;
+}
+
+/** Interaction reach around a gathering node's x, world px (tighter than a station's). */
+export const NODE_REACH = 90;
 
 export interface TownDef extends AreaDef {
   id: RealmTownId;
@@ -187,6 +227,23 @@ export interface TownDef extends AreaDef {
 /** An area of a town by id: the town itself or one of its hunts. */
 export function areaOf(town: TownDef, id: string): AreaDef | undefined {
   return town.id === id ? town : town.hunts.find(hunt => hunt.id === id);
+}
+
+/**
+ * A station by id in ANY built town, for `/play?at=<station id>` deep links
+ * from anywhere. Town stations only (not hunts or the Homestead). Station ids
+ * repeat across towns ('waystone', 'passage'), so `prefer` (the town the
+ * Keeper is in) is searched first, then the towns in realm order. Unknown ids
+ * are null. Pure.
+ */
+export function findStation(stationId: string | null | undefined, prefer?: RealmTownId): { townId: RealmTownId; station: StationDef } | null {
+  if (!stationId) return null;
+  const order = prefer ? [prefer, ...REALM_TOWN_IDS.filter(id => id !== prefer)] : REALM_TOWN_IDS;
+  for (const townId of order) {
+    const station = TOWNS[townId]?.stations.find(row => row.id === stationId);
+    if (station) return { townId, station };
+  }
+  return null;
 }
 
 /** Interaction radius in world px around a station's x. */
