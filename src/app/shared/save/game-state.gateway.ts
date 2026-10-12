@@ -94,7 +94,7 @@ import {
 import {
   DEVICE_ID_KEY,
   acknowledgeAndMaybeCompact,
-  coerceLedger,
+  coerceMigrated,
 } from '../economy/economy-ops';
 import { LocalSaveRegistry } from './local-save-registry.service';
 import { DeviceLeaseService } from './device-lease.service';
@@ -1244,7 +1244,10 @@ export class GameStateGateway {
       const identified = entry.identify ? entry.identify(reconciled, uid) : reconciled;
       // Compaction is the cloud's job: this transaction is the record, and
       // the ack frontier lives on the document. Local merge never folds.
-      const ledger = coerceLedger(identified);
+      // Migrated as well as coerced: a keep-cloud / keep-device strategy can
+      // hand back a v2 blob untouched, and v2 Gold must never be written over
+      // a v3 ledger (economy rebalance §4). A no-op on a v3 ledger.
+      const ledger = coerceMigrated(identified);
       const merged = ledger
         ? acknowledgeAndMaybeCompact(ledger, readDeviceId(), Date.now())
         : identified;

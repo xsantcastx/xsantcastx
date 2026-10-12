@@ -60,7 +60,7 @@ import {
 } from '@angular/fire/firestore';
 
 import {
-  EconomyLedger, EconomyOp, coerceLedger, maxSeqFor, nextHlc,
+  EconomyLedger, EconomyOp, coerceMigrated, maxSeqFor, nextHlc,
 } from '../shared/economy/economy-ops';
 import { emptyProgress } from '../shared/gamification/gamification.model';
 import { dayKey } from '../shared/quests/quest.model';
@@ -421,7 +421,9 @@ export class GmDataService {
     await this.log(action, { uid, name }, detail);
     const ref = doc(this.firestore, 'users', uid, 'economy', 'state');
     const snap = await getDoc(ref);
-    const ledger = coerceLedger(unwrap(snap.data() as Record<string, unknown> | undefined));
+    // Migrated before the admin op is appended: an op in v3 Gold appended to a
+    // v2 ledger would be folded and rescaled by the player's next load.
+    const ledger = coerceMigrated(unwrap(snap.data() as Record<string, unknown> | undefined));
     if (!ledger) {
       throw new Error('This account has no economy ledger yet — they have not signed in and played.');
     }
