@@ -84,9 +84,10 @@ describe('ArenaGateway', () => {
 
     expect(result.settlement.result.won).toBeTrue();
     expect(result.payout.points).toBe(bronze.points);
-    // Credited through `earnGold`, so the global multiplier applies and the
-    // credited figure is at least the base rate.
-    expect(result.goldCredited).toBeGreaterThanOrEqual(bronze.gold);
+    // Economy v3: max(authored × ρ, N s of income), credited through
+    // `earnGold`, so it is at least the scaled floor and the payout says so.
+    expect(result.goldCredited).toBeGreaterThanOrEqual(Math.round(bronze.gold * 0.06));
+    expect(result.payout.gold).toBeGreaterThanOrEqual(Math.round(bronze.gold * 0.06));
     expect(economy.snapshot.gold).toBe(goldBefore + result.goldCredited);
     expect(arena.snapshot.wins).toBe(1);
     expect(arena.snapshot.tierWins['bronze']).toBe(1);

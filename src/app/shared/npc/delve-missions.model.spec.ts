@@ -107,9 +107,10 @@ describe('Delve missions', () => {
 
   it('prices the glowcap order in seconds of income, with a floor', () => {
     const order = delveMissionById('delve-merchant-glowcaps')!.reward;
-    expect(missionGold(order, 0)).toBe(3_000);
-    expect(missionGold(order, Number.NaN)).toBe(3_000);
-    expect(missionGold(order, 10)).toBe(3_000);
+    // Economy v3: a floor buyer — 3,000 × ρ = 180, or 90 s of income.
+    expect(missionGold(order, 0)).toBe(180);
+    expect(missionGold(order, Number.NaN)).toBe(180);
+    expect(missionGold(order, 1)).toBe(180);
     expect(missionGold(order, 1_000)).toBe(90_000);
   });
 
