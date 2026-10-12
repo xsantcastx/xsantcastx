@@ -43,7 +43,7 @@ Idempotent — it overwrites its own outputs and nothing else.
 import os
 import sys
 
-from PIL import Image
+from PIL import Image, ImageChops, ImageDraw, ImageFilter
 
 # The library moved off the Desktop into the projects folder. Its files are
 # iCloud-backed and often evicted ("dataless"), so the first run after a while
@@ -143,6 +143,29 @@ def corners_opaque(img: Image.Image) -> bool:
     return all(img.getpixel(p)[3] > 240 for p in pts)
 
 
+# Cut-outs exported with a see-through body. `01-keeper-base.png` was ~97%
+# translucent (56% of its painted pixels under alpha 64, 3% opaque), so the
+# Keeper read as a ghost over every scene. The colour under that alpha is real
+# paint, so `solidify` makes the figure opaque inside its own outline and keeps
+# only the outer rim feathered. Add a stem here only for the same defect.
+SOLIDIFY = {'01-keeper-base'}
+
+
+def solidify(img: Image.Image, th: int = 6, close: int = 9, feather: int = 7) -> Image.Image:
+    """Opaque inside the figure's outline, enclosed holes filled, rim feathered.
+    Never lowers the painting's own alpha; gaps open to the outside (between
+    the legs, under the cape) stay open."""
+    r, g, b, a = img.split()
+    m = a.point(lambda v: 255 if v > th else 0)
+    m = m.filter(ImageFilter.MaxFilter(close)).filter(ImageFilter.MinFilter(close))
+    pad = Image.new('L', (m.size[0] + 2, m.size[1] + 2), 0)
+    pad.paste(m, (1, 1))
+    ImageDraw.floodfill(pad, (0, 0), 128)
+    filled = pad.crop((1, 1, m.size[0] + 1, m.size[1] + 1)).point(lambda v: 0 if v == 128 else 255)
+    core = filled.filter(ImageFilter.MinFilter(feather)).filter(ImageFilter.GaussianBlur(feather / 2))
+    return Image.merge('RGBA', (r, g, b, ImageChops.lighter(a, core)))
+
+
 def has_real_alpha(img: Image.Image) -> bool:
     if img.mode != 'RGBA':
         return False
@@ -155,11 +178,13 @@ def emit(src_path: str, out_dir: str, widths, check: bool) -> tuple[int, int]:
     img = Image.open(src_path)
     if img.mode != 'RGBA':
         img = img.convert('RGBA')
+    stem = os.path.splitext(os.path.basename(src_path))[0]
+    if stem in SOLIDIFY:
+        img = solidify(img)
     keep_alpha = has_real_alpha(img)
     if not keep_alpha:
         img = img.convert('RGB')
 
-    stem = os.path.splitext(os.path.basename(src_path))[0]
     written = 0
     total = 0
     for w in widths:
