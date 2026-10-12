@@ -110,7 +110,7 @@ things with tools you crafted, and you see your economy working.
 - [x] **Owner approved the spec** (2026-10-12)
 - [~] **Implementation** (one coordinated change): all number changes, versioned idempotent save migration with fixtures, simulator `--check` in CI, golden-spark reward, copy updated; NPC vendor → buyback counter at a low floor, Merchant orders rescaled
 - [x] **Player auction house backend** (`a435266`, **flagged off**; rules/indexes held in `docs/handoff/player-market/*.proposed` for a manual deploy, since a CI rules change has 403'd and blocked hosting before; 28 functions tests on an in-memory store; the Firestore emulator didn't run because this machine has no Java): Firestore order book + trades + escrow + price history; callable Cloud Functions `placeOrder` / `cancelOrder` / `collect` with transactional matching (price-time, partial fills), seller tax, rate limits, sanity bands, provenance check; client-read-only rules; lazy `PlayerMarketService`; feature flag
-- [ ] Bind the redesigned Exchange UI (Menus A) to `PlayerMarketService`; flip the flag after an emulator + staging check
+- [ ] Bind the redesigned Exchange UI (Menus A has landed) to `PlayerMarketService`; flip the flag after an emulator + staging check
 - [ ] **Owner-approved deploy**, by hand, in this order: rules + indexes (from `.proposed`) → `functions:market` → create `market/v1 {enabled: true}` → flip `PLAYER_MARKET_CLIENT_ENABLED` → bind the Exchange UI. Install Java so the Firestore emulator can test real queries and transactions first
 
 - [x] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
@@ -180,7 +180,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 **Next session starts here:**
 0. ~~Cache-bust the solid Keeper~~ done: SOLIDIFY outputs publish as `-solid` filenames, so every browser refetches
 1. **Owner review of the economy spec** (`docs/economy/rebalance-spec.md`): price scaling ×1.25 → ×1.15, first paid purchase 2m01s → 4s, 3 → 44 purchases in the first 10 min, rune strike 10k → 600 (all sinks ×0.06), prestige at 10T with cube-root shards. Open TODOs: item Gold/s conversion, veteran shard cap, migration fixture specs. Then implement as one change with a versioned save migration.
-2. Convert the other 10 menus with the station kit (`src/app/shared/station-ui/README.md`).
+2. Convert the other 10 menus with the station kit: **Market, Gambler, Exchange done** (`c96c2d8`; primary action now on the first phone screen, 47–56 words); Character, Quests, Sanctum, Codex, Arena, Trials, Leaderboards in progress (Menus B).
 3. Delve: persist dug state; ~~XP for roots/cache/walls~~ done: every node trains its own skill (rock Mining, roots Foraging, petrified trunks Woodcutting, walls/caches Delving); reconcile lantern-radius units (skills = tiles, engine = its own); header and enemy bar should say "Ember Delve".
 4. Smithing anvil mini-game and Enchanting ritual (the kit and the skills hooks are both on main now).
 5. A Skills station in the world (panel id `skills` exists, no station yet); Hunting XP; Smithing XP banner on bench crafts.
@@ -209,6 +209,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Market strings left unused by the redesign could be pruned from the eager translation table
 - **Market residual cheat risks** (the client still writes saves): a player can edit their own save then sell what they minted; a restored escrowed item stays usable single-player until their next market call; an offline device's earlier spends can make the client skip a server Gold debit; server repair marks expire after 7 days. See `docs/handoff/player-market.md`
 - The CSP now allows `us-central1-xsantcastx-1694b.cloudfunctions.net`, which was missing and had also blocked Stripe's callable
 - The NPC chat bubble covers the mini-game's Skip link at 390 px width
