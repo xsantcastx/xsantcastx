@@ -75,6 +75,8 @@ export interface EngineOptions {
    * or false to refuse (a chest with things in it) and say why. Absent: free.
    */
   onTakeBack?: (event: PlaceEvent) => boolean | void;
+  /** A placed chest or camp was used (E beside it, or a tap on it). The host opens it. */
+  onUse?: (event: UseEvent) => void;
   /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
@@ -108,9 +110,17 @@ export interface DelvePersistence {
 export interface PlaceEvent {
   item: PlaceableId;
   areaId: string;
-  /** `col,row` of the cell it goes into. */
+  /** `col,row` of the cell it goes into (or comes out of). */
   cellKey: string;
+  /** The same cell as an index into the area's terrain (what chests are filed by). */
+  index: number;
   mutationId: string;
+}
+export interface UseEvent {
+  kind: 'chest' | 'camp';
+  areaId: string;
+  cellKey: string;
+  index: number;
 }
 export interface WorldActionEvent {
   kind: WorldActionKind;

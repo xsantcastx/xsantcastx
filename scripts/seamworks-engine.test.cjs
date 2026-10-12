@@ -1401,3 +1401,65 @@ test('platforms: a one-way floor you place across a gap, stand on, and drop thro
   assert.equal(engine.player.y, 610 + 12 * 32, 'fell to the bottom of the pit');
   engine.destroy();
 });
+
+// ── Building: chests ────────────────────────────────────────────────────────
+test('chests: four kinds of thing, moves counted, saved and merged by moves', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-chest');
+  assert.equal(recipe.output.itemId, 'chest'); assert.equal(recipe.output.count, 1);
+  const chest = { layout: 'L', born: 7, n: 0, slots: {} };
+  for (const key of ['a', 'b', 'c', 'd']) assert.equal(saveMod.chestPut(chest, key, 2), true);
+  assert.equal(saveMod.chestPut(chest, 'e', 1), false, 'a fifth kind does not fit');
+  assert.equal(saveMod.chestPut(chest, 'a', 5), true, 'more of a kind it holds always fits');
+  assert.equal(chest.slots.a, 7); assert.equal(chest.n, 5);
+  assert.equal(saveMod.chestTake(chest, 'a'), 7);
+  assert.equal(chest.slots.a, undefined); assert.equal(chest.n, 6);
+  assert.equal(saveMod.chestTake(chest, 'zzz'), 0); assert.equal(chest.n, 6, 'a no-op is not a move');
+  // On disk: coerced, junk dropped, absent when there are none.
+  const save = saveMod.newDelveSave(3, 1);
+  assert.equal('chests' in saveMod.coerceDelveSave(save), false);
+  save.chests = { [saveMod.chestKey('ember-delve', 300)]: chest, bad: { layout: 1 } };
+  const back = saveMod.coerceDelveSave(JSON.parse(JSON.stringify(save)));
+  assert.deepEqual(Object.keys(back.chests), ['ember-delve:8c']);
+  assert.deepEqual(back.chests['ember-delve:8c'].slots, { b: 2, c: 2, d: 2 });
+  // Merge: the copy with more moves wins; a re-placed chest (later born) wins.
+  const older = saveMod.newDelveSave(3, 1), newer = saveMod.newDelveSave(3, 1);
+  older.chests = { k: { layout: 'L', born: 7, n: 2, slots: { a: 1 } } };
+  newer.chests = { k: { layout: 'L', born: 7, n: 5, slots: { a: 9 } }, j: { layout: 'L', born: 1, n: 0, slots: {} } };
+  for (const merged of [saveMod.mergeDelveSaves(older, newer), saveMod.mergeDelveSaves(newer, older)]) {
+    assert.deepEqual(merged.chests.k.slots, { a: 9 }); assert.ok(merged.chests.j);
+  }
+  older.chests.k = { layout: 'L', born: 9, n: 0, slots: {} };
+  assert.equal(saveMod.mergeDelveSaves(older, newer).chests.k.born, 9);
+});
+
+test('chests: placed on ground only, E (or a tap) opens one by its cell, taking back asks the host', () => {
+  const used = []; let empty = false;
+  const { engine, state } = enterOwnDelve(memoryDelve(61), {
+    onUse: e => used.push(e), onTakeBack: e => (e.item === 'chest' ? empty : true),
+  });
+  const t = buildRoom(engine);
+  engine.setPlaceable('chest');
+  t.set(31, 9, 0); // nothing under the cell ahead
+  assert.equal(engine.place(), false);
+  assert.match(state().message, /needs solid ground/);
+  t.set(31, 9, terrainMod.nodeIndex('rock'));
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'chest');
+  engine.update(1 / 60);
+  assert.equal(state().nearby, 'chest'); assert.equal(state().nearbyLabel, 'CHEST');
+  engine.interact();
+  assert.deepEqual({ ...used[0] }, { kind: 'chest', areaId: 'ember-delve', cellKey: '31,8', index: t.index(31, 8) });
+  // A tap on it in reach opens it too.
+  engine.attackCooldown = 0;
+  assert.equal(engine.strikeCell(31 * 32 + 16, 610 + 8 * 32 + 16), true);
+  assert.equal(used.length, 2);
+  // Not empty: the host refuses and it stays.
+  assert.equal(engine.takeBack(), false);
+  assert.equal(t.nodeAt(31, 8).id, 'chest');
+  empty = true;
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'air');
+  assert.equal(engine.nodeIdAt('ember-delve', t.index(31, 8)), 'air');
+  assert.equal(engine.nodeIdAt('nowhere', 0), null);
+  engine.destroy();
+});
