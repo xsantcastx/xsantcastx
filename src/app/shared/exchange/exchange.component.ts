@@ -81,6 +81,8 @@ import {
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { injectInWorldPanel } from '../in-world-panel';
+import { PLAYER_MARKET_MODE } from '../market/player-market.mode';
+import { PlayerExchangeComponent } from './player-exchange.component';
 type SortKey = 'name' | 'price' | 'change' | 'volume';
 type TrendFilter = 'all' | Trend;
 type Side = 'buy' | 'sell';
@@ -112,7 +114,7 @@ const PAGE_SIZE = 40;
 @Component({
   selector: 'app-exchange',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, ArtSceneComponent, PriceChartComponent, ...STATION_UI],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, ArtSceneComponent, PriceChartComponent, PlayerExchangeComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './exchange.component.html',
   styleUrls: ['./exchange.component.css'],
@@ -127,6 +129,13 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   private timer: ReturnType<typeof setInterval> | null = null;
   /** Hosted as the Exchange in the Nocturne Archive (/play): no backdrop, hero or cross-page links. */
   protected readonly inWorld = injectInWorldPanel();
+  /**
+   * The player-run market replaces this board when the client flag is on, or
+   * in dev with `?market=fake`. It is a `@defer` in the template, so with the
+   * flag off (the default) none of its code is fetched and nothing below runs
+   * any differently.
+   */
+  protected readonly playerMarket = inject(PLAYER_MARKET_MODE).mode !== 'off';
 
   readonly categories = GOOD_CATEGORIES;
   readonly categoryLabels = CATEGORY_LABELS;
@@ -218,6 +227,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.now = Date.now();
+    if (this.playerMarket) return;
     if (!this.isBrowser) {
       // SSR paints the catalogue at the server's clock so the shell is real
       // markup rather than a spinner. Hydration re-prices it a frame later.

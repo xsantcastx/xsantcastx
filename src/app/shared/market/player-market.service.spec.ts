@@ -34,6 +34,8 @@ class FakeBackend implements MarketBackend {
   watchTrades(): Observable<never[]> { return of([]); }
   watchMyOrders(): Observable<MarketOrder[]> { return of([]); }
   watchEscrow(): Observable<null> { return of(null); }
+  watchOpenOrders(): Observable<MarketOrder[]> { return of([...this.asks$.value, ...this.bids$.value]); }
+  watchPrices(): Observable<never[]> { return of([]); }
 }
 
 class FakeCloud {
