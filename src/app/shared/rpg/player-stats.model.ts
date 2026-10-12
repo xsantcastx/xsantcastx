@@ -29,7 +29,7 @@ export type StatId =
   | 'charisma';
 
 export interface PlayerStats {
-  /** +0.5 Gold/sec per point. */
+  /** +0.5% Gold/sec per point (economy v3: a share of the forge, not a flat rate). */
   forgePower: number;
   /** +2% Magic Find per point. */
   luck: number;
@@ -70,13 +70,13 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
   {
     id: 'forgePower',
     name: 'Forge Power',
-    unit: 'Gold/sec',
+    unit: '% Gold/sec',
     per: 0.5,
     flavour: 'The arm behind the hammer. Every point is another half-second of someone else’s work, done for you, forever.',
     color: '#e8c898',
     glow: 'rgba(255, 180, 80, 0.6)',
     effectOf: p => p * 0.5,
-    format: p => `+${trim(p * 0.5)} Gold/sec`,
+    format: p => `+${trim(p * 0.5)}% Gold/sec`,
   },
   {
     id: 'luck',
@@ -132,8 +132,20 @@ export const STAT_IDS: StatId[] = STAT_DEFINITIONS.map(s => s.id);
 /** Points granted per level. Three, so a level is always a real decision. */
 export const POINTS_PER_LEVEL = 3;
 
-/** What a respec costs. Flat — a build should be cheap to regret. */
-export const RESPEC_COST = 100_000;
+/**
+ * The floor of a respec's price. Economy v3: a respec costs max(this, ten
+ * minutes of income) — `respecCostFor` — so it stays a small decision at every
+ * stage, and a build is still cheap to regret.
+ */
+export const RESPEC_COST = 20_000;
+/** Seconds of income a respec costs once that exceeds the floor. */
+export const RESPEC_INCOME_SECONDS = 600;
+
+/** What a respec costs right now, given the live Gold/sec. */
+export function respecCostFor(goldPerSecond: number): number {
+  const gps = Number.isFinite(goldPerSecond) ? Math.max(0, goldPerSecond) : 0;
+  return Math.max(RESPEC_COST, Math.ceil(gps * RESPEC_INCOME_SECONDS));
+}
 
 /**
  * The floor on Market prices after Charisma.
@@ -170,7 +182,7 @@ export function totalPoints(stats: PlayerStats): number {
 // Derived effects
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Flat Gold/sec added by Forge Power. */
+/** Forge Power's income bonus, in percent of the furnace + automaton rate (economy v3). */
 export function forgePowerGold(stats: PlayerStats): number {
   return STAT_BY_ID.get('forgePower')!.effectOf(stats.forgePower);
 }

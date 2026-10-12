@@ -702,7 +702,10 @@ describe('the registry', () => {
  */
 
 describe('mergeEconomy', () => {
+  // Economy v3 ledgers: these specs are about the op-log merge, not the
+  // v2 → v3 conversion (that has its own spec, economy-migration.spec.ts).
   const origin = {
+    version: 3,
     gold: 1000,
     totalGoldEarned: 1000,
     eclipseEssence: 0,
@@ -805,11 +808,11 @@ describe('mergeEconomy', () => {
 
   it('keeps unstamped cloud Gold when the local device has never spent', () => {
     const cloud = {
-      gold: 5000, totalGoldEarned: 5000, upgrades: {}, artifacts: [],
+      version: 3, gold: 5000, totalGoldEarned: 5000, upgrades: {}, artifacts: [],
       cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0,
     };
     const local = {
-      gold: 0, totalGoldEarned: 0, upgrades: {}, artifacts: [],
+      version: 3, gold: 0, totalGoldEarned: 0, upgrades: {}, artifacts: [],
       cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0,
     };
     const merged = mergeEconomy(cloud, local) as Record<string, unknown>;
@@ -819,11 +822,11 @@ describe('mergeEconomy', () => {
 
   it('does not let a stamped modern 100 overwrite a legacy 9999', () => {
     const legacy = {
-      gold: 9999, totalGoldEarned: 9999, upgrades: {}, artifacts: [],
+      version: 3, gold: 9999, totalGoldEarned: 9999, upgrades: {}, artifacts: [],
       cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0,
     };
     const modern = {
-      gold: 100, totalGoldEarned: 9999, upgrades: { x: 1 }, artifacts: [],
+      version: 3, gold: 100, totalGoldEarned: 9999, upgrades: { x: 1 }, artifacts: [],
       cosmetics: [], runewords: [], equipped: {}, enchantments: [], eclipseEssence: 0,
       ledgerAt: 50,
     };
