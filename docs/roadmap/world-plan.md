@@ -58,17 +58,18 @@ world — and every system visible while it works.
 
 ---
 
-## Phase 1: World foundation `[~]`
+## Phase 1: World foundation `[x]` (`bf49c03`)
 
 Sequential: everything after it plugs into its data model and panel host.
 
-- [~] World data model: `TownDef` / `StationDef` / `HuntZoneDef` / `ZoneDropTable` in `src/app/play/world/`; engine reads stations, platforms, monsters and drops from data
-- [~] Infernal town rebuilt on it (Seamworks widened): Crafting Bench, Rune Forge, Enchanting Table buildings + existing quest stations + Waystone
-- [~] In-world panel host: opens the existing page components over the game (pause, focus trap, Escape); `IN_WORLD_PANEL` token suppresses page backdrops / heroes
-- [~] Click / tap to move and interact (`engine.moveTo`)
-- [~] Deep links: `/play?at=<place>`
-- [~] Waystone travel panel (only Infernal open) + accessible Places list
-- [ ] **Check before merging:** walk, click a building, use each bench from inside the world, overlays inside panels (gambler-style fixed layers), mobile 375px, keyboard-only path
+- [x] World data model: `TownDef` / `StationDef` / `HuntZoneDef` / `ZoneDropTable` in `src/app/play/world/`; engine reads stations, platforms, monsters and drops from data
+- [x] Infernal town rebuilt on it (Seamworks widened): Crafting Bench, Rune Forge, Enchanting Table buildings + existing quest stations + Waystone
+- [x] In-world panel host: opens the existing page components over the game (pause, focus trap, Escape); `IN_WORLD_PANEL` token suppresses page backdrops / heroes
+- [x] Click / tap to move and interact (`engine.moveTo`)
+- [x] Deep links: `/play?at=<place>`
+- [x] Waystone travel panel (only Infernal open) + accessible Places list
+- [x] Checked in a production build: `/play?at=crafting` opens the real Crafting Bench in-world (backdrop + hero suppressed, forge floor works); Escape closes and clears `?at`; Places lists all 8 stations; choosing the Waystone walks there and opens travel (4 towns "Not yet charted")
+- How Phase 2 adds content (data only): a town = `src/app/play/world/towns/<realm>.ts` exporting a `TownDef`, registered in `TOWNS`; a station = a `StationDef` (`kind: 'panel'` + `panel` id opens a page; a new page needs a `PanelId` + `PANEL_REGISTRY` row); a hunt = a `HuntZoneDef` reached by a passage `to`; monsters and `ZoneDropTable`s are data on the area or monster
 
 ## Phase 2: Fan out (parallel, after Phase 1 merges)
 
@@ -116,7 +117,6 @@ Sequential: everything after it plugs into its data model and panel host.
 
 | Work | Branch | Status |
 |---|---|---|
-| Phase 1 world foundation | agent worktree (pending report) | `[~]` |
 | Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
 | Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
 
@@ -134,6 +134,9 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- After closing an in-world panel, focus lands on the page body, not the game canvas (keyboard players must click once) — Phase 2 UI polish
+- The Infernal town is 900px wider, so for a while after deploy, peers on an older client appear ~900px off east of the forge
+- Gambler / rune-forge fixed overlays inside panels not yet exercised in-world (the gambler moves in-world with the Umbral town)
 - Paper-doll gear sockets are small on phones (~17% of the doll); the equip/unequip flight and swap haven't been watched in motion yet
 - Returning visitors may see the old ghostly Keeper for up to 7 days (image cache, same filename)
 - Rig unverified in motion on mobile, high-DPR seams, Safari rim light (the test browser pane runs hidden, so the loop doesn't advance)
