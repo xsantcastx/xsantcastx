@@ -8,7 +8,7 @@
  * delve never holds more than CHUNK_CAP of them. Debris and dust are a fixed
  * pool of particles.
  */
-import { CELL, CHUNK, crackStage, Terrain } from './terrain';
+import { BiomeDef, CELL, CHUNK, crackStage, Terrain } from './terrain';
 
 /** Most chunk canvases kept. A 1280×720 view touches about 24. */
 const CHUNK_CAP = 36;
@@ -114,11 +114,14 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   const node = t.nodeAt(col, row);
   const h = cellHash(col, row);
   if (!node.solid) {
-    // A dug tunnel: the dark back wall, shadowed under rock.
-    c.fillStyle = (h & 3) === 0 ? '#1a1115' : '#160e12'; c.fillRect(x, y, CELL, CELL);
-    if (t.solid(col, row - 1)) { c.fillStyle = '#0a0608'; c.fillRect(x, y, CELL, 7); }
-    if (t.solid(col - 1, row)) { c.fillStyle = '#0d080b'; c.fillRect(x, y, 4, CELL); }
-    if (t.solid(col + 1, row)) { c.fillStyle = '#0d080b'; c.fillRect(x + CELL - 4, y, 4, CELL); }
+    // A dug tunnel: the biome's dark back wall, shadowed under rock.
+    const wall = t.biomeAt(row).wall;
+    c.fillStyle = (h & 3) === 0 ? wall[0] : wall[1]; c.fillRect(x, y, CELL, CELL);
+    if (node.id === 'inscription') paintInscription(c, node.light, node.fleck, x, y, h);
+    c.fillStyle = wall[2];
+    if (t.solid(col, row - 1)) c.fillRect(x, y, CELL, 7);
+    if (t.solid(col - 1, row)) c.fillRect(x, y, 4, CELL);
+    if (t.solid(col + 1, row)) c.fillRect(x + CELL - 4, y, 4, CELL);
     return;
   }
   if (node.id === 'cache') {
@@ -136,7 +139,23 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   c.fillRect(x + (h & 15), y + ((h >> 4) & 15), 8 + ((h >> 8) & 7), 6);
   c.fillRect(x + ((h >> 12) & 15) + 6, y + ((h >> 16) & 15) + 8, 6, 5 + ((h >> 20) & 3));
   switch (node.id) {
-    case 'roots': {
+    case 'glowcap': {
+      // Three caps on pale stems, the biggest by hash.
+      for (let s = 0; s < 3; s++) {
+        const bits = h >> (s * 5);
+        const sx = x + 6 + s * 9 + (bits & 3), r = 3 + ((bits >> 2) & 3) + (s === 1 ? 2 : 0), top = y + 10 + ((bits >> 4) & 7);
+        c.fillStyle = node.light; c.fillRect(sx - 1, top, 2, y + CELL - 3 - top);
+        c.fillStyle = node.fleck; c.beginPath(); c.ellipse(sx, top, r, r * .6, 0, Math.PI, 0); c.fill();
+      }
+      break;
+    }
+    case 'godforge-fragment': {
+      // A wedge of the Godforge's shell, edge-lit.
+      c.fillStyle = node.light; c.beginPath(); c.moveTo(x + 8, y + CELL - 3); c.lineTo(x + 15, y + 4); c.lineTo(x + 25, y + CELL - 6); c.closePath(); c.fill();
+      c.fillStyle = node.fleck; c.fillRect(x + 14, y + 12, 3, 10);
+      break;
+    }
+    case 'roots': case 'shadow-root': {
       c.strokeStyle = node.light; c.lineWidth = 2;
       for (let s = 0; s < 3; s++) {
         const sx = x + 6 + s * 10 + ((h >> (s * 3)) & 3);
@@ -175,6 +194,23 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   if (!t.solid(col - 1, row)) { c.fillStyle = node.light; c.globalAlpha = .5; c.fillRect(x, y, 2, CELL); c.globalAlpha = 1; }
   if (!t.solid(col + 1, row)) { c.fillStyle = '#0a0608'; c.globalAlpha = .6; c.fillRect(x + CELL - 2, y, 2, CELL); c.globalAlpha = 1; }
   paintCracks(c, t, col, row, x, y, h);
+}
+
+/** A dressed slab in the back wall with three rows of carved glyphs, picked by hash. */
+function paintInscription(c: CanvasRenderingContext2D, slab: string, glyph: string, x: number, y: number, h: number): void {
+  c.fillStyle = slab; c.globalAlpha = .55; c.fillRect(x + 3, y + 3, CELL - 6, CELL - 6); c.globalAlpha = 1;
+  c.strokeStyle = glyph; c.lineWidth = 1.4;
+  c.beginPath();
+  for (let line = 0; line < 3; line++) {
+    const gy = y + 8 + line * 8;
+    for (let g = 0; g < 3; g++) {
+      const bits = (h >> (line * 9 + g * 3)) & 7, gx = x + 7 + g * 7;
+      c.moveTo(gx, gy - 2); c.lineTo(gx + (bits & 1 ? 4 : 0), gy + 3);
+      if (bits & 2) { c.moveTo(gx - 1, gy); c.lineTo(gx + 4, gy); }
+      if (bits & 4) { c.moveTo(gx + 4, gy - 2); c.lineTo(gx + 2, gy + 3); }
+    }
+  }
+  c.stroke();
 }
 
 /** Crack lines that deepen with each stage of damage. */
@@ -272,3 +308,129 @@ export class Debris {
   }
 }
 
+
+// ── Biome ambience ─────────────────────────────────────────────────────────
+
+const MOTE_CAP = 48;
+
+/**
+ * The biome's breath: spores drifting up in the Root Hollows, ash settling in
+ * the Basalt Caverns, blue motes wandering the Grotto, embers rising in the
+ * Magma Halls. A fixed pool in typed arrays; render-only, never touches the
+ * world. Reduced motion draws none (the scene stays still, not empty: the
+ * biome's wash and dark still carry it).
+ */
+export class AmbientMotes {
+  private readonly x = new Float32Array(MOTE_CAP);
+  private readonly y = new Float32Array(MOTE_CAP);
+  private readonly vx = new Float32Array(MOTE_CAP);
+  private readonly vy = new Float32Array(MOTE_CAP);
+  private readonly life = new Float32Array(MOTE_CAP);
+  private readonly span = new Float32Array(MOTE_CAP);
+  private readonly size = new Float32Array(MOTE_CAP);
+  private readonly phase = new Float32Array(MOTE_CAP);
+  private biome: BiomeDef | null = null;
+  private time = 0;
+  live = 0;
+  constructor(private readonly random: () => number = Math.random) {}
+
+  /** Drop every mote (a new area). */
+  reset(): void { this.life.fill(0); this.live = 0; this.biome = null; }
+
+  /** Advance and top the pool up to the biome's count, spawning inside the view (world px). */
+  update(dt: number, biome: BiomeDef, left: number, top: number, width: number, height: number, reduced: boolean): void {
+    if (reduced || biome.particles.count <= 0) { if (this.live) this.reset(); return; }
+    if (biome !== this.biome) { this.life.fill(0); this.live = 0; this.biome = biome; }
+    this.time += dt;
+    const kind = biome.particles.kind;
+    const target = Math.min(MOTE_CAP, biome.particles.count);
+    let live = 0, spawned = 0;
+    for (let i = 0; i < MOTE_CAP; i++) {
+      if (this.life[i] <= 0) {
+        // A couple per frame, so a biome fades in rather than popping.
+        // Counted against last frame's total: this frame's is still being tallied.
+        if (this.live + spawned >= target || spawned >= 2) continue;
+        this.spawn(i, kind, left, top, width, height);
+        spawned++;
+        continue;
+      }
+      this.life[i] -= dt;
+      const sway = Math.sin(this.time * 1.3 + this.phase[i]);
+      this.x[i] += (this.vx[i] + (kind === 'ember' ? 0 : sway * 6)) * dt;
+      this.y[i] += (this.vy[i] + (kind === 'mote' ? Math.cos(this.time + this.phase[i]) * 5 : 0)) * dt;
+      // Out of view: retire it, a fresh one is spawned in view.
+      if (this.x[i] < left - 40 || this.x[i] > left + width + 40 || this.y[i] < top - 40 || this.y[i] > top + height + 40) this.life[i] = 0;
+      if (this.life[i] > 0) live++;
+    }
+    this.live = live + spawned;
+  }
+  private spawn(i: number, kind: BiomeDef['particles']['kind'], left: number, top: number, width: number, height: number): void {
+    const r = this.random;
+    this.x[i] = left + r() * width;
+    this.y[i] = top + r() * height;
+    this.phase[i] = r() * Math.PI * 2;
+    switch (kind) {
+      case 'ember': this.vx[i] = (r() - .5) * 18; this.vy[i] = -40 - r() * 50; this.span[i] = 2 + r() * 2.5; this.size[i] = 1 + r() * 1.4; break;
+      case 'spore': this.vx[i] = (r() - .5) * 6; this.vy[i] = -6 - r() * 9; this.span[i] = 6 + r() * 5; this.size[i] = 1.2 + r() * 1.6; break;
+      case 'mote': this.vx[i] = (r() - .5) * 14; this.vy[i] = (r() - .5) * 10; this.span[i] = 5 + r() * 5; this.size[i] = 1.5 + r() * 2; break;
+      default: this.vx[i] = (r() - .5) * 8; this.vy[i] = 8 + r() * 12; this.span[i] = 6 + r() * 5; this.size[i] = 1 + r(); break;
+    }
+    this.life[i] = this.span[i];
+  }
+  /** Draw in world px (camera applied), after the darkness so the lit kinds glow through it. */
+  draw(c: CanvasRenderingContext2D): void {
+    const biome = this.biome;
+    if (!this.live || !biome) return;
+    const kind = biome.particles.kind;
+    const glows = kind !== 'ash';
+    c.save();
+    if (glows) c.globalCompositeOperation = 'lighter';
+    c.fillStyle = biome.particles.color;
+    for (let i = 0; i < MOTE_CAP; i++) {
+      const life = this.life[i];
+      if (life <= 0) continue;
+      const age = 1 - life / this.span[i];
+      // Fade in over the first fifth, out over the last third; embers flicker.
+      const fade = Math.min(1, age * 5, life / (this.span[i] * .33));
+      const flicker = kind === 'ember' ? .65 + .35 * Math.sin(this.time * 17 + this.phase[i]) : kind === 'mote' ? .6 + .4 * Math.sin(this.time * 2.2 + this.phase[i]) : 1;
+      c.globalAlpha = Math.max(0, fade * flicker) * (glows ? .8 : .35);
+      const s = this.size[i];
+      c.fillRect(this.x[i] - s / 2, this.y[i] - s / 2, s, s);
+    }
+    c.restore();
+  }
+}
+
+/**
+ * Coloured light, additive, for glowing cells (glowcaps tint the Grotto blue)
+ * and the Magma Halls' heat columns. One unit gradient per colour, built once
+ * and scaled by transform, so a frame allocates nothing after the first.
+ */
+export class GlowHalos {
+  private readonly radial = new Map<string, CanvasGradient>();
+  private readonly column = new Map<string, CanvasGradient>();
+  /** A soft disc of `color` at (x, y), radius r, in the current transform. */
+  halo(c: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha: number): void {
+    let gradient = this.radial.get(color);
+    if (!gradient) {
+      gradient = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+      gradient.addColorStop(0, color); gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      this.radial.set(color, gradient);
+    }
+    c.save(); c.globalAlpha = alpha; c.fillStyle = gradient;
+    c.translate(x, y); c.scale(r, r); c.fillRect(-1, -1, 2, 2);
+    c.restore();
+  }
+  /** A vertical band of `color`, clear at both ends, w × h at (x, y). */
+  band(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, alpha: number): void {
+    let gradient = this.column.get(color);
+    if (!gradient) {
+      gradient = c.createLinearGradient(0, 0, 1, 0);
+      gradient.addColorStop(0, 'rgba(0,0,0,0)'); gradient.addColorStop(.5, color); gradient.addColorStop(1, 'rgba(0,0,0,0)');
+      this.column.set(color, gradient);
+    }
+    c.save(); c.globalAlpha = alpha; c.fillStyle = gradient;
+    c.translate(x, y); c.scale(w, h); c.fillRect(0, 0, 1, 1);
+    c.restore();
+  }
+}

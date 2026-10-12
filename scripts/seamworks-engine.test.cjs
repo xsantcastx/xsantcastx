@@ -949,3 +949,176 @@ test('light math: the lantern lifts the dark at its centre and not past its radi
   assert.equal(pool.lights[0].x, 5000);
   assert.ok(lightMod.ambientDarkness(0) < lightMod.ambientDarkness(1000));
 });
+
+// ── Ember Delve: per-player persistence, biomes, inscriptions ───────────────
+const saveMod = loadTs(path.resolve(__dirname, '../src/app/shared/delve/delve-save.model.ts'));
+const loreMod = loadTs(path.resolve(__dirname, '../src/app/shared/delve/delve-lore.model.ts'));
+const delveArea = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve');
+
+/** A DelvePersistence backed by the real save model, the way DelveSaveService is. */
+function memoryDelve(seed) {
+  const save = saveMod.newDelveSave(seed, 1000);
+  const live = new Map();
+  return {
+    save,
+    seed: () => save.seed,
+    cells: (id, layout) => { const cells = saveMod.cellsFor(save, id, layout); return cells.size ? cells : null; },
+    changed(id, layout, index, kind) {
+      let area = live.get(id);
+      if (!area || area.layout !== layout) { area = { layout, cells: saveMod.cellsFor(save, id, layout) }; live.set(id, area); }
+      if (kind === null) area.cells.delete(index); else area.cells.set(index, kind);
+      save.areas[id] = { layout, cells: saveMod.encodeCells(area.cells) };
+    },
+  };
+}
+function enterOwnDelve(delve, extra = {}) {
+  const { engine, state } = fixture(() => true, { onWorldAction: () => true, delve, ...extra });
+  engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+  return { engine, state };
+}
+
+test('per-player seeds move the veins but never the hand-made stamps or carved walls', () => {
+  const a = terrainMod.generateTerrain(delveSpec, 111), b = terrainMod.generateTerrain(delveSpec, 222);
+  assert.notDeepEqual(Array.from(a.kind), Array.from(b.kind));
+  for (const t of [a, b]) {
+    assert.equal(t.nodeAt(103, 24).id, 'cache');
+    assert.equal(t.nodeAt(106, 50).id, 'godforge-fragment');
+    assert.equal(t.nodeAt(60, 16).id, 'air', 'the Maw cavern is carved for everyone');
+    for (const ins of delveSpec.inscriptions) assert.equal(t.nodeAt(ins.col, ins.row).id, 'inscription');
+  }
+  assert.notEqual(terrainMod.terrainLayout(delveSpec, 111), terrainMod.terrainLayout(delveSpec, 222));
+});
+
+test('persistence round-trip: seed + saved diff regenerate the dug Delve cell for cell', () => {
+  const delve = memoryDelve(0xabcdef);
+  const first = enterOwnDelve(delve);
+  first.engine.setTools({ pickaxe: 3, axe: 3, sickle: 3, blade: 3, staff: 3 });
+  const t = first.engine.terrain;
+  // Dig a few cells through the real swing path, and place one block back.
+  for (const [col, row] of [[7, 0], [8, 0], [9, 0]]) {
+    first.engine.player.x = col * 32 - 20; first.engine.player.y = 610; first.engine.facing = 1;
+    for (let n = 0; n < 12 && t.solid(col, row); n++) { first.engine.attackCooldown = 0; first.engine.strikeCell(col * 32 + 16, 610 + row * 32 + 16); }
+    assert.equal(t.solid(col, row), false, `dug ${col},${row}`);
+  }
+  first.engine.player.x = 400;
+  assert.equal(first.engine.placeCell(8, 0, 'rock'), true, 'a block goes into an open cell');
+  assert.equal(first.engine.placeCell(8, 0, 'rock'), false, 'not into rock');
+  assert.equal(first.engine.placeCell(14, 7, 'inscription'), false, 'only solid blocks');
+  const dug = Array.from(t.kind);
+  first.engine.destroy();
+  // The save is plain JSON: round-trip it through a string like localStorage does.
+  const reloaded = saveMod.coerceDelveSave(JSON.parse(JSON.stringify(delve.save)));
+  assert.equal(reloaded.seed, 0xabcdef);
+  const again = memoryDelve(0); Object.assign(again.save, reloaded);
+  const second = enterOwnDelve(again);
+  assert.deepEqual(Array.from(second.engine.terrain.kind), dug, 'identical after a reload');
+  // And straight from the model, without an engine.
+  const fresh = terrainMod.generateTerrain(delveSpec, reloaded.seed);
+  terrainMod.applyTerrainDiff(fresh, saveMod.cellsFor(reloaded, 'ember-delve', terrainMod.terrainLayout(delveSpec, reloaded.seed)));
+  assert.deepEqual(Array.from(fresh.kind), dug);
+  assert.deepEqual(terrainMod.terrainDiff(fresh), saveMod.cellsFor(reloaded, 'ember-delve', terrainMod.terrainLayout(delveSpec, reloaded.seed)));
+  second.engine.destroy();
+});
+
+test('a diff saved under another layout (version bump, other seed) is dropped, not misapplied', () => {
+  const save = saveMod.newDelveSave(5, 1);
+  save.areas['ember-delve'] = { layout: '120x40:v1:5', cells: saveMod.encodeCells(new Map([[300, 0]])) };
+  assert.equal(saveMod.cellsFor(save, 'ember-delve', terrainMod.terrainLayout(delveSpec, 5)).size, 0);
+  assert.deepEqual(saveMod.decodeCells('zz.0,bad,-1.2,4.zzz,a.3'), new Map([[35 * 36 + 35, 0], [10, 3]]));
+});
+
+test('merging two devices: the earlier seed wins, same-layout digs union, claims union', () => {
+  const older = saveMod.newDelveSave(7, 100), newer = saveMod.newDelveSave(9, 200);
+  const layout7 = terrainMod.terrainLayout(delveSpec, 7), layout9 = terrainMod.terrainLayout(delveSpec, 9);
+  older.areas['ember-delve'] = { layout: layout7, cells: saveMod.encodeCells(new Map([[1, 0]])) };
+  newer.areas['ember-delve'] = { layout: layout9, cells: saveMod.encodeCells(new Map([[2, 0]])) };
+  newer.claimed = ['godforge-fragment'];
+  for (const merged of [saveMod.mergeDelveSaves(older, newer), saveMod.mergeDelveSaves(newer, older)]) {
+    assert.equal(merged.seed, 7);
+    assert.equal(merged.areas['ember-delve'].layout, layout7);
+    assert.deepEqual(merged.claimed, ['godforge-fragment']);
+  }
+  const same = saveMod.newDelveSave(7, 100);
+  same.areas['ember-delve'] = { layout: layout7, cells: saveMod.encodeCells(new Map([[3, 0], [1, 2]])) };
+  const union = saveMod.mergeDelveSaves(same, older);
+  assert.deepEqual(saveMod.decodeCells(union.areas['ember-delve'].cells), new Map([[1, 0], [3, 0]]), 'local wins a disagreeing cell');
+  assert.equal(saveMod.coerceDelveSave({ seed: -1 }), null);
+});
+
+test('biome bands: every row maps to its biome, and the engine reports where the Keeper stands', () => {
+  const names = row => terrainMod.biomeAt(delveSpec, row).name;
+  assert.equal(names(-3), 'Root Hollows'); assert.equal(names(0), 'Root Hollows'); assert.equal(names(11), 'Root Hollows');
+  assert.equal(names(12), 'Basalt Caverns'); assert.equal(names(25), 'Basalt Caverns');
+  assert.equal(names(26), 'Glowcap Grotto'); assert.equal(names(39), 'Glowcap Grotto');
+  assert.equal(names(40), 'Magma Halls'); assert.equal(names(55), 'Magma Halls'); assert.equal(names(999), 'Magma Halls');
+  assert.equal(terrainMod.biomeAt({}, 3), terrainMod.DEFAULT_BIOME);
+  const t = terrainMod.generateTerrain(delveSpec);
+  assert.equal(t.biomeAt(30).id, 'glowcap-grotto');
+  // Each biome carries its own look and nodes.
+  const ids = new Set(delveSpec.biomes.map(b => b.id));
+  assert.deepEqual([...ids], ['root-hollows', 'basalt-caverns', 'glowcap-grotto', 'magma-halls']);
+  assert.ok(delveSpec.biomes.find(b => b.id === 'root-hollows').veins.some(v => v.node === 'shadow-root'));
+  assert.ok(delveSpec.biomes.find(b => b.id === 'glowcap-grotto').veins.some(v => v.node === 'glowcap'));
+  assert.ok(delveSpec.biomes.find(b => b.id === 'magma-halls').shimmer);
+  const { engine, state } = enterOwnDelve(null);
+  assert.equal(state().area, 'Ember Delve'); assert.equal(state().biome, 'Root Hollows');
+  // Standing in the Maws' cavern (row 19 floor): Basalt Caverns, and the bar names a Maw.
+  engine.player.x = 60 * 32; engine.player.y = 610 + 19 * 32;
+  assert.equal(state().biome, 'Basalt Caverns');
+  assert.equal(state().enemyName, 'Rivet Maw'); assert.ok(state().enemyHp > 0);
+  // At the surface ledge nothing is on the Keeper's level: the bar hides.
+  engine.player.x = 260; engine.player.y = 610;
+  assert.equal(state().enemyHp, 0); assert.equal(state().enemyName, undefined);
+  // In the fragment chamber, the guardian.
+  engine.player.x = 100 * 32; engine.player.y = 610 + 51 * 32;
+  assert.equal(state().enemyName, 'Rune-Warden'); assert.equal(state().biome, 'Magma Halls');
+  engine.destroy();
+});
+
+test('new nodes: shadow-root and glowcap are Foraging cuts, the fragment pays once and stays dug', () => {
+  const n = terrainMod.TERRAIN_NODES;
+  assert.equal(n['shadow-root'].yield.materialId, 'shadow-root-cutting'); assert.equal(n['shadow-root'].discipline, 'foraging');
+  assert.ok(n['shadow-root'].tools.sickle && n['shadow-root'].tools.blade);
+  assert.equal(n.glowcap.yield.materialId, 'glowcap'); assert.equal(n.glowcap.discipline, 'foraging');
+  assert.equal(n.inscription.solid, false);
+  const delve = memoryDelve(42); const events = [];
+  const { engine } = enterOwnDelve(delve, { onWorldAction: e => { events.push(e); return true; } });
+  engine.setTools({ pickaxe: 3, staff: 1 });
+  const t = engine.terrain;
+  engine.player.x = 105 * 32 + 8; engine.player.y = 610 + 51 * 32; engine.facing = 1;
+  for (let n = 0; n < 20 && t.solid(106, 50); n++) { engine.attackCooldown = 0; engine.strikeCell(106 * 32 + 16, 610 + 50 * 32 + 16); }
+  assert.equal(t.solid(106, 50), false);
+  assert.deepEqual(events.filter(e => e.materialId === 'godforge-fragment').length, 1);
+  engine.destroy();
+  // Re-entering from the save: the fragment is gone for this player.
+  const back = enterOwnDelve(delve);
+  assert.equal(back.engine.terrain.nodeAt(106, 50).id, 'air');
+  back.engine.destroy();
+  // And the claim ledger pays it once even if the rock came back.
+  const save = saveMod.newDelveSave(1, 1);
+  assert.equal(saveMod.claimOnce(save, 'godforge-fragment'), true);
+  assert.equal(saveMod.claimOnce(save, 'godforge-fragment'), false);
+});
+
+test('inscriptions: E beside a carved wall reports it; the lore ledger records it once', () => {
+  // The model's list and the spec's placements agree, id for id.
+  assert.deepEqual(loreMod.INSCRIPTIONS.map(i => [i.id, i.col, i.row]), delveSpec.inscriptions.map(i => [i.id, i.col, i.row]));
+  for (const ins of loreMod.INSCRIPTIONS) assert.equal(terrainMod.biomeAt(delveSpec, ins.row).id, ins.biome, ins.id);
+  assert.equal(loreMod.INSCRIPTIONS.length, 8);
+  const found = [];
+  const { engine, state } = enterOwnDelve(null, { onDiscover: e => found.push(e) });
+  // The old tunnel in the Root Hollows: floor at row 9, the carving at (19, 7).
+  engine.player.x = 19 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0;
+  engine.update(1 / 60);
+  assert.equal(state().nearby, 'inscription');
+  engine.interact(); engine.interact();
+  assert.deepEqual({ ...found[0] }, { kind: 'inscription', id: 'roots-inverse-tree', biome: 'root-hollows' });
+  assert.equal(found.length, 2, 'every reading is reported; the host decides what is new');
+  engine.destroy();
+  const lore = loreMod.emptyDelveLore();
+  assert.equal(loreMod.recordInscriptionIn(lore, 'roots-inverse-tree'), true);
+  assert.equal(loreMod.recordInscriptionIn(lore, 'roots-inverse-tree'), false);
+  assert.equal(loreMod.recordInscriptionIn(lore, 'no-such-carving'), false);
+  assert.deepEqual(loreMod.coerceDelveLore({ inscriptions: ['roots-inverse-tree', 'gone', 7] }).inscriptions, ['roots-inverse-tree']);
+  assert.deepEqual(loreMod.mergeDelveLore({ inscriptions: ['magma-the-fracture'] }, lore).inscriptions, ['magma-the-fracture', 'roots-inverse-tree']);
+});
