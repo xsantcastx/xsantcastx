@@ -1994,3 +1994,296 @@ test('atmosphere: one capped layer per realm, frozen in place under reduced moti
     assert.notDeepEqual(moving.calls, a.calls, `${realm}: alive when motion is allowed`);
   }
 });
+
+// ── Sprite-sheet renderer (engine/sprite.ts) ────────────────────────────────
+// A programmatic test sheet: the same shape the importer writes into
+// sprite-manifest.generated.ts (1x units). No PNG ships; images are faked by
+// their dimensions, which is all the renderer reads.
+const sprite = loadTs(path.resolve(__dirname, '../src/app/play/engine/sprite.ts'));
+const spriteManifest = loadTs(path.resolve(__dirname, '../src/app/shared/art/sprite-manifest.generated.ts'));
+function testSheet(extra = {}) {
+  return {
+    src: 'assets/game/sprites/characters/01-keeper@1x.webp', src2x: 'assets/game/sprites/characters/01-keeper@2x.webp',
+    frameW: 48, frameH: 48, pivotX: 24, pivotY: 46,
+    actions: {
+      idle: { row: 0, frames: 4, fps: 8, loop: true },
+      run: { row: 1, frames: 6, fps: 12, loop: true },
+      attack: {
+        row: 2, frames: 6, fps: 14, loop: false,
+        anchors: {
+          hand_front: [[30, 20, 150], [31, 21, 120], [32, 22, 90], [34, 22, 60], [33, 23, 70], [32, 24, 100]],
+          hand_back: [[18, 22], [18, 22], [18, 23], [18, 23], [18, 22], [18, 22]],
+        },
+      },
+    },
+    ...extra,
+  };
+}
+function sheetImage(scale) { return { complete: true, naturalWidth: 6 * 48 * scale, naturalHeight: 3 * 48 * scale }; }
+function recorder(log) {
+  const noop = () => {};
+  const target = {
+    imageSmoothingEnabled: true, globalAlpha: 1,
+    drawImage: (...args) => log.push(['drawImage', ...args]),
+    save: () => log.push(['save']), restore: () => log.push(['restore']),
+    scale: (x, y) => log.push(['scale', x, y]),
+    measureText: () => ({ width: 10 }),
+  };
+  return new Proxy(target, { get: (t, key) => key in t ? t[key] : noop, set: (t, key, value) => { t[key] = value; log.push(['set', key, value]); return true; } });
+}
+
+test('sprite: frame timing loops, holds one-shots, and stills stay on frame 0', () => {
+  const sheet = testSheet();
+  const { idle, attack } = sheet.actions;
+  assert.equal(sprite.frameAt(idle, 0), 0);
+  assert.equal(sprite.frameAt(idle, .124), 0);
+  assert.equal(sprite.frameAt(idle, .125), 1, '8 fps: frame 1 at 1/8 s');
+  assert.equal(sprite.frameAt(idle, .5), 0, 'four frames at 8 fps wrap after half a second');
+  assert.equal(sprite.frameAt(idle, .625), 1);
+  assert.equal(sprite.frameAt(attack, 10), 5, 'a one-shot holds its last frame');
+  assert.equal(sprite.frameAt({ row: 0, frames: 4, fps: 0, loop: true }, 3), 0, 'fps 0 is a still');
+  assert.equal(sprite.frameAt({ row: 0, frames: 1, fps: 8, loop: true }, 3), 0);
+  assert.equal(sprite.frameAt(idle, -1), 0);
+  // The attack is timed to the GAME's window, not the sheet's fps.
+  assert.deepEqual([0, .16, .17, .5, .99, 1, 2].map(p => sprite.frameAtProgress(attack, p)), [0, 0, 1, 3, 5, 5, 5]);
+  assert.ok(Math.abs(sprite.actionDuration(attack) - 6 / 14) < 1e-12);
+  assert.equal(sprite.actionDuration({ row: 0, frames: 1, fps: 0, loop: false }), 0);
+  // A figure's clock restarts only when its action changes.
+  const clock = sprite.createSpriteClock();
+  assert.equal(sprite.tickClock(clock, 'run', 5), 0);
+  assert.equal(sprite.tickClock(clock, 'run', 5.5), .5);
+  assert.equal(sprite.tickClock(clock, 'attack', 6), 0);
+});
+
+test('sprite: missing actions fall back to the nearest one the sheet has, then idle', () => {
+  const sheet = testSheet();
+  const K = sprite.KEEPER_SPRITE_FALLBACKS, C = sprite.CREATURE_SPRITE_FALLBACKS;
+  assert.equal(sprite.resolveAction(sheet, 'run', K.run), 'run');
+  assert.equal(sprite.resolveAction(sheet, 'jump', K.jump), 'idle', 'the first test sheet has no jump/fall');
+  assert.equal(sprite.resolveAction(sheet, 'dodge', K.dodge), 'run', 'a dodge without frames reads as a dash');
+  assert.equal(sprite.resolveAction(sheet, 'death', K.death), 'idle');
+  assert.equal(sprite.resolveAction(sheet, undefined), 'idle');
+  const maw = { ...sheet, actions: { windup: { row: 1, frames: 4, fps: 10, loop: false }, attack: { row: 0, frames: 4, fps: 14, loop: false } } };
+  assert.equal(sprite.resolveAction(maw, 'strike', C.strike), 'attack');
+  assert.equal(sprite.resolveAction(maw, 'recover', C.recover), 'attack', 'no idle: the top row');
+  assert.equal(sprite.resolveAction({ ...sheet, actions: {} }, 'idle'), null);
+});
+
+test('sprite: anchors are pivot-relative, mirror with the sprite, and carry the authored angle', () => {
+  const sheet = testSheet();
+  const out = sprite.createSpriteAnchor();
+  assert.equal(sprite.anchorAt(sheet, 'attack', 'hand_front', 3, false, out), true);
+  assert.deepEqual([out.x, out.y, out.angled], [10, -24, true]);
+  assert.ok(Math.abs(out.rotation - Math.PI / 3) < 1e-12, '60 deg clockwise from up');
+  sprite.anchorAt(sheet, 'attack', 'hand_front', 3, true, out);
+  assert.equal(out.x, -10, 'mirrored around the pivot');
+  assert.ok(Math.abs(out.rotation + Math.PI / 3) < 1e-12, 'a mirror reflects the angle');
+  sprite.anchorAt(sheet, 'attack', 'hand_back', 0, false, out);
+  assert.deepEqual([out.x, out.y, out.angled, out.rotation], [-6, -24, false, 0]);
+  assert.equal(sprite.anchorAt(sheet, 'idle', 'hand_front', 0, false, out), false, 'no anchors on idle');
+  assert.equal(sprite.anchorAt(sheet, 'attack', 'hand_front', 6, false, out), false, 'out of range');
+  const r = new sprite.SpriteRenderer(sheet);
+  r.anchor('attack', 'hand_front', 3, false, out, .5);
+  assert.deepEqual([out.x, out.y], [5, -12], 'scaled with the figure');
+  // An upright item rotated by the anchor angle (60 deg) points up-right.
+  const aim = loadout.aimFromBladeRotation(Math.PI / 3);
+  assert.ok(Math.cos(aim) > 0 && Math.sin(aim) < 0);
+});
+
+test('sprite: draws the right cell of a 1x or 2x sheet with the pivot on the origin, mirrored and crisp on request', () => {
+  const sheet = testSheet();
+  assert.equal(sprite.sheetRows(sheet), 3);
+  assert.equal(sprite.imageScaleOf(sheet, 144), 1);
+  assert.equal(sprite.imageScaleOf(sheet, 288), 2);
+  const rect = sprite.frameRect(sheet, sheet.actions.attack, 4, 2, { sx: 0, sy: 0, sw: 0, sh: 0 });
+  assert.deepEqual(rect, { sx: 384, sy: 192, sw: 96, sh: 96 });
+  assert.equal(sprite.frameRect(sheet, sheet.actions.idle, 99, 1, rect).sx, 3 * 48, 'clamped to the row');
+
+  const r = new sprite.SpriteRenderer(sheet);
+  const log = [];
+  const c = recorder(log);
+  const image = sheetImage(2);
+  assert.equal(r.draw(c, image, 'run', 2), true);
+  assert.deepEqual(log.at(-1), ['drawImage', image, 192, 96, 96, 96, -24, -46, 48, 48], 'source in 2x px, destination in 1x world px from the pivot');
+  log.length = 0;
+  r.draw(c, image, 'idle', 1, { mirror: true, scale: .5, offsetX: 4 });
+  assert.deepEqual(log[0], ['save']);
+  assert.deepEqual(log[1], ['scale', -1, 1]);
+  assert.deepEqual(log[2], ['drawImage', image, 96, 0, 96, 96, -12 - 4, -23, 24, 24], 'the offset stays in world space when mirrored');
+  assert.equal(log.some(e => e[0] === 'set' && e[1] === 'imageSmoothingEnabled'), false, 'smooth sheets leave smoothing alone');
+  assert.equal(r.draw(c, { complete: false, naturalWidth: 0 }, 'idle', 0), false, 'not loaded: the caller keeps its fallback');
+  assert.equal(r.draw(c, image, 'swim', 0), false);
+
+  const pixel = new sprite.SpriteRenderer(testSheet({ pixelArt: true }));
+  log.length = 0;
+  pixel.draw(c, sheetImage(1), 'idle', 0, { offsetX: .4 });
+  const sets = log.filter(e => e[0] === 'set' && e[1] === 'imageSmoothingEnabled').map(e => e[2]);
+  assert.deepEqual(sets, [false, true], 'pixel-art sheets draw unsmoothed and restore the flag');
+  assert.deepEqual(log.find(e => e[0] === 'drawImage').slice(6, 8), [-24, -46], 'snapped to whole pixels');
+});
+
+test('sprite: the hit flash is one cached white copy per frame, never rebuilt', () => {
+  const made = [];
+  const previous = globalThis.document;
+  globalThis.document = {
+    createElement: () => {
+      const ops = [];
+      const canvas = { width: 0, height: 0, ops, getContext: () => recorder(ops) };
+      made.push(canvas);
+      return canvas;
+    },
+  };
+  try {
+    const r = new sprite.SpriteRenderer(testSheet());
+    const image = sheetImage(2);
+    const log = [];
+    const c = recorder(log);
+    for (let n = 0; n < 5; n++) r.draw(c, image, 'attack', 2, { flash: true });
+    assert.equal(made.length, 1, 'built once');
+    assert.deepEqual([made[0].width, made[0].height], [96, 96]);
+    assert.ok(made[0].ops.some(e => e[0] === 'set' && e[1] === 'globalCompositeOperation' && e[2] === 'source-atop'), 'tinted inside the silhouette');
+    const draws = log.filter(e => e[0] === 'drawImage');
+    assert.equal(draws.length, 5);
+    for (const d of draws) assert.deepEqual(d.slice(1), [made[0], 0, 0, 96, 96, -24, -46, 48, 48]);
+    r.draw(c, image, 'attack', 3, { flash: true });
+    assert.equal(made.length, 2, 'a different frame gets its own copy');
+    r.draw(c, image, 'attack', 2, { flash: false });
+    assert.equal(log.at(-1)[1], image, 'no flash: the sheet itself');
+  } finally {
+    if (previous === undefined) delete globalThis.document; else globalThis.document = previous;
+  }
+  // No DOM (SSR, tests): the flash falls back to the plain frame instead of failing.
+  const r = new sprite.SpriteRenderer(testSheet());
+  const log = [];
+  assert.equal(r.draw(recorder(log), sheetImage(1), 'idle', 0, { flash: true }), true);
+  assert.equal(log.at(-1)[1].naturalHeight, 144);
+});
+
+test('sprite: figure keys map to their sheet ids; the manifest ships empty so nothing changes yet', () => {
+  assert.equal(sprite.figureSpriteId('npc-kael-figure'), 'npc-kael');
+  assert.equal(sprite.figureSpriteId('townsfolk-infernal-figure'), 'townsfolk-infernal');
+  assert.equal(sprite.figureSpriteId('rivet-maw'), 'rivet-maw');
+  assert.equal(spriteManifest.spriteFor('keeper'), null, 'no sheet imported: the rig stays');
+});
+
+function spriteEngine(sheets) {
+  const { engine } = fixture(() => true, { sprite: id => sheets[id] ?? null });
+  const noop = () => {};
+  const drawn = [];
+  const scaled = [];
+  engine.context = new Proxy({
+    globalAlpha: 1, measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+    drawImage: (...args) => drawn.push(args), scale: (x) => scaled.push(['s', x]), translate: (x) => scaled.push(['t', x]),
+  }, { get: (target, key) => key in target ? target[key] : noop, set: (target, key, value) => { target[key] = value; return true; } });
+  return { engine, drawn, scaled };
+}
+
+test('sprite: with a sheet the Keeper plays its attack across the attack window and the weapon rides hand_front', () => {
+  const sheet = testSheet();
+  const { engine, drawn } = spriteEngine({ keeper: sheet });
+  const image = sheetImage(1), sword = { complete: true, naturalWidth: 96, naturalHeight: 96 };
+  engine.urlImages.set(sheet.src, image);
+  engine.urlImages.set('assets/sword.webp', sword);
+  let rigUsed = false;
+  engine.keeperRig.render = () => { rigUsed = true; return true; };
+  engine.setLoadout({ weapon: { art: 'assets/sword.webp' } });
+  engine.hurtTime = 0; engine.attackTime = .1; // three quarters through the 0.4 s swing, past the strike glow
+  const before = JSON.stringify({ p: engine.player, hp: engine.hp });
+  engine.render();
+  assert.equal(rigUsed, false, 'the sheet replaces the rig');
+  const frames = drawn.filter(d => d[0] === image);
+  assert.equal(frames.length, 1, 'one draw, no smear or rim at rest');
+  assert.deepEqual(frames[0].slice(1), [4 * 48, 2 * 48, 48, 48, -24, -46, 48, 48], 'attack row, frame 4 of 6 at three quarters of the window');
+  assert.ok(drawn.findIndex(d => d[0] === image) < drawn.findIndex(d => d[0] === sword), 'the weapon is drawn over the body');
+  assert.deepEqual([engine.held.x, engine.held.y], [9, -23], 'the grip sits on hand_front of frame 4');
+  assert.ok(Math.abs(engine.held.rotation - (loadout.aimFromBladeRotation(70 * Math.PI / 180) - loadout.WEAPON_DEFAULTS.tilt)) < 1e-9, 'aimed by the authored angle');
+  // Mid-swing the strike glow adds one additive rim copy of the same frame.
+  engine.attackTime = .2;
+  drawn.length = 0; engine.render();
+  assert.deepEqual(drawn.filter(d => d[0] === image).map(d => d[1]), [3 * 48, 3 * 48], 'frame 3 at half the window, plus its rim copy');
+  engine.attackTime = .02;
+  drawn.length = 0; engine.render();
+  assert.deepEqual(drawn.find(d => d[0] === image).slice(1, 3), [5 * 48, 2 * 48], 'the last frame as the window closes');
+  assert.equal(JSON.stringify({ p: engine.player, hp: engine.hp }), before, 'drawing never moves combat state');
+  engine.destroy();
+});
+
+test('sprite: a creature sheet times windup and strike to the game, and mirrors to face', () => {
+  const maw = {
+    ...testSheet(), src: 'maw@1x.webp', src2x: 'maw@2x.webp', pivotX: 24, pivotY: 40,
+    actions: { idle: { row: 0, frames: 6, fps: 8, loop: true }, windup: { row: 1, frames: 4, fps: 10, loop: false }, strike: { row: 2, frames: 4, fps: 14, loop: false } },
+  };
+  const sheets = {};
+  const { engine, drawn, scaled } = spriteEngine(sheets);
+  if (!engine.monsters.length) engine.enter(engine.town.hunts.find(h => h.monsters.length));
+  const monster = engine.monsters[0];
+  assert.ok(monster, 'the area has a monster');
+  engine.monsters = [monster]; // one figure, so every scale() below is this one's
+  sheets[monster.def.creature] = maw;
+  const image = sheetImage(1);
+  engine.urlImages.set(maw.src, image);
+  engine.player.x = monster.x + 60;
+  monster.phase = 'windup'; monster.timer = .85 / 2; monster.facing = 1;
+  engine.render();
+  const frame = drawn.find(d => d[0] === image);
+  assert.ok(frame, 'the creature is drawn from its sheet');
+  assert.deepEqual(frame.slice(1, 3), [2 * 48, 48], 'windup row, frame 2 of 4 at half the windup');
+  monster.phase = 'strike'; monster.timer = .2 * .25;
+  drawn.length = 0; engine.render();
+  assert.deepEqual(drawn.find(d => d[0] === image).slice(1, 3), [3 * 48, 96], 'strike row, frame 3 of 4');
+  // Facing: a sheet faces right, so a creature looking left is mirrored (a negative x scale).
+  monster.phase = 'idle'; engine.player.x = monster.x - 60;
+  // The scale right after the translate to the creature's feet is its own.
+  const mirrored = () => { scaled.length = 0; engine.render(); const at = scaled.findIndex(e => e[0] === 't' && e[1] === monster.x); return scaled.slice(at).find(e => e[0] === 's')[1] < 0; };
+  assert.equal(mirrored(), true, 'looking left mirrors the sheet');
+  engine.player.x = monster.x + 60;
+  assert.equal(mirrored(), false, 'looking right does not');
+  engine.destroy();
+});
+
+test('sprite: no sheet means the rig and placeholders draw exactly as before', () => {
+  const { engine } = spriteEngine({});
+  let rigUsed = 0;
+  engine.keeperRig.render = () => { rigUsed++; return true; };
+  engine.keeperRig.blit = () => {};
+  engine.render();
+  assert.equal(rigUsed, 1, 'the Keeper still goes through the mesh rig');
+  assert.equal(engine.sprites.get('keeper'), null, 'looked up once, cached as absent');
+  // A sheet listed but not loaded yet also keeps the rig.
+  const late = spriteEngine({ keeper: testSheet() });
+  late.engine.keeperRig.render = () => { rigUsed++; return true; };
+  late.engine.keeperRig.blit = () => {};
+  late.engine.render();
+  assert.equal(rigUsed, 2, 'still loading: the rig draws');
+  engine.destroy(); late.engine.destroy();
+});
+
+test('sprite: town keepers and townsfolk use their sheets (idle/talk/walk) and fall back to the placeholder without one', () => {
+  const { TownLife } = loadTs(path.resolve(__dirname, '../src/app/play/engine/town-life.ts'));
+  const { INFERNAL_TOWN } = loadTs(path.resolve(__dirname, '../src/app/play/world/towns/infernal.ts'));
+  const life = new TownLife();
+  life.enter(INFERNAL_TOWN, INFERNAL_TOWN);
+  const npc = {
+    ...testSheet(), src: 'npc.webp', src2x: 'npc.webp',
+    actions: { idle: { row: 0, frames: 6, fps: 8, loop: true }, talk: { row: 1, frames: 4, fps: 8, loop: true }, walk: { row: 2, frames: 6, fps: 10, loop: true } },
+  };
+  const renderer = new sprite.SpriteRenderer(npc);
+  const image = sheetImage(1);
+  const asked = [];
+  const frame = {
+    camera: 0, viewport: 99999, time: 0, reduced: false, playerX: -9999, pixelScale: 1,
+    image: () => undefined, translate: key => key,
+    sprite: id => { asked.push(id); return id === 'npc-kael' ? renderer : null; }, spriteImage: () => image,
+  };
+  const log = [];
+  life.draw(recorder(log), frame);
+  assert.ok(asked.includes('npc-kael') && asked.includes('townsfolk-infernal'), 'figure keys are looked up as sheet ids');
+  const kael = life.keepers.findIndex(p => p.def.id === 'kael');
+  assert.ok(kael >= 0);
+  assert.equal(log.filter(e => e[0] === 'drawImage' && e[1] === image).length, 1, 'only Kael has a sheet; everyone else is the placeholder');
+  assert.equal(log.find(e => e[0] === 'drawImage')[3], 0, 'idle row');
+  // Talking: the chatter's speaker plays `talk`.
+  life.chatter.speaker = kael; log.length = 0;
+  life.draw(recorder(log), frame);
+  assert.equal(log.find(e => e[0] === 'drawImage' && e[1] === image)[3], 48, 'talk row');
+});
