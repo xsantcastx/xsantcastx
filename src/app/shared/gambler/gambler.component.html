@@ -1,13 +1,16 @@
 <!-- The Gambler. Same three-layer pattern as the Market: art scene, gradient
      overlay inside the component, everything else above it. -->
-<section class="gb">
+<section class="gb" [class.gb--in-world]="inWorld" [attr.aria-label]="inWorld ? 'The Gambler' : null">
 
+  <!-- In the world the panel already names the place. -->
+  @if (!inWorld) {
   <header class="gb__hero">
     <span class="gb__sigil" aria-hidden="true">✦</span>
     <p class="gb__eyebrow"><span class="gb__eyebrow-pulse"></span>SEALED &amp; UNOPENED</p>
     <h1 class="gb__title">The Gambler</h1>
     <p class="gb__tagline">every box holds one thing, and the realms will not say which</p>
   </header>
+  }
 
   <div class="gb__wallet">
     <span class="gb__coin"><b>{{ compact(gold) }}</b> Gold</span>
@@ -105,7 +108,9 @@
     </div>
   </section>
 
+  @if (!inWorld) {
   <p class="gb__back"><a routerLink="/market">← Back to the Market</a></p>
+  }
 </section>
 
 <!-- ── The reveal ────────────────────────────────────────────────────────────
@@ -119,6 +124,7 @@
      [attr.data-rank]="revealRank"
      [class.gb-reveal--fast]="fast"
      [class.gb-reveal--still]="still"
+     [class.gb-reveal--in-world]="inWorld"
      [style.--reveal-color]="revealColor"
      [style.--reveal-glow]="revealGlow"
      [style.--charge]="timing?.intensity ?? 0"
@@ -239,4 +245,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/gambler"></app-related-pages>
+}
