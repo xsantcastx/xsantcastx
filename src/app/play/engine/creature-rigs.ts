@@ -342,11 +342,20 @@ export const RIVET_MAW_CREATURE: CreatureRigDef = {
 export const GENERIC_CREATURE: CreatureRigDef = {
   key: 'generic', spec: GENERIC_RIG, facesLeft: true, box: { w: 140, h: 120 }, ground: .95, shadow: 50, pose: poseGeneric,
 };
+export const MIRROR_SUBSTITUTE_CREATURE: CreatureRigDef = {
+  key: 'mirror-substitute', spec: MIRROR_RIG, facesLeft: true, box: { w: 140, h: 175 }, ground: .91, shadow: 34, pose: poseMirror,
+};
 export const CREATURE_RIGS: Readonly<Record<string, CreatureRigDef>> = {
   'rivet-maw': RIVET_MAW_CREATURE,
   'prism-forager': { key: 'prism-forager', spec: FORAGER_RIG, facesLeft: false, box: { w: 130, h: 160 }, ground: .9, shadow: 36, pose: poseForager },
   'ephemeris-leech': { key: 'ephemeris-leech', spec: LEECH_RIG, facesLeft: true, box: { w: 150, h: 130 }, ground: .87, shadow: 58, pose: poseLeech },
-  'mirror-substitute': { key: 'mirror-substitute', spec: MIRROR_RIG, facesLeft: true, box: { w: 140, h: 175 }, ground: .91, shadow: 34, pose: poseMirror },
+  'mirror-substitute': MIRROR_SUBSTITUTE_CREATURE,
+  // The Delve's own creatures, spawned under their own art keys. Until each is
+  // painted and rigged it keeps the body it was cast from: `artFor` aliases the
+  // key to that creature's painting (art.ts ART_ALIAS), so the rig must match.
+  // Give each its own spec when its painting lands.
+  'magma-maw': { ...RIVET_MAW_CREATURE, key: 'magma-maw' },
+  'rune-warden': { ...MIRROR_SUBSTITUTE_CREATURE, key: 'rune-warden' },
   'rootglass-stag': { key: 'rootglass-stag', spec: STAG_RIG, facesLeft: false, box: { w: 165, h: 165 }, ground: .93, shadow: 62, pose: poseStag },
 };
 

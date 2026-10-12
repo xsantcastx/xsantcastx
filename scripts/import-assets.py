@@ -44,7 +44,9 @@ Two failures this codebase has actually shipped, now caught at import time:
 Run from the repo root:  python3 scripts/import-assets.py [--check] [--only=<Family/Dir>]...
 `--check` reports without writing, for CI.
 Sprites (`Assets/Sprites/**`, the world layer) take a separate lossless path;
-see "World-layer sprites" below.
+see "World-layer sprites" below. Delve tiles (`Assets/Sprites/Tiles/`) ride that
+path too but are OPAQUE by spec, so they skip the cut-out guard and have their
+own checks and manifest; see "Delve tiles" below.
 `--commissions` lists every commissioned painting or sprite (docs/art-commissions/
 commissions.csv) that is not in the library yet, and needs no Pillow.
 Idempotent — it overwrites its own outputs and nothing else.
@@ -564,7 +566,10 @@ def write_sprite_manifest() -> int:
     import json
     root = os.path.join(OUT_ROOT, SPRITE_OUT)
     entries: dict[str, str] = {}
+    tiles_dir = os.path.abspath(os.path.join(OUT_ROOT, TILE_OUT))
     for dirpath, _dirs, names in os.walk(root):
+        if os.path.commonpath([os.path.abspath(dirpath), tiles_dir]) == tiles_dir:
+            continue  # tiles have their own manifest (write_tile_manifest)
         for n in sorted(names):
             if not n.endswith('.json'):
                 continue
@@ -606,6 +611,178 @@ def write_sprite_manifest() -> int:
     print(f'sprites:  {len(entries)} entries')
     return len(entries)
 
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Delve tiles (spec W7, docs/art-commissions/world-sprites/05-delve-tiles.md)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# A tile fills one 32 px cell of a delve's grid. It is authored at 2x as a
+# strip of interchangeable variants in one row (action `tile`): 4 variants are
+# a 256x64 sheet with the sidecar
+#   { "scale": 2, "frame": {"w": 64, "h": 64},
+#     "actions": [{"name": "tile", "frames": 4, "fps": 0, "loop": false}] }
+#
+# Tiles are the one world-layer family that is OPAQUE on purpose (rock reaches
+# every edge so neighbours repeat cleanly), so the sprite path's cut-out
+# corner guard would reject every correct tile. They skip that guard, and only
+# that guard, and get the opposite check instead: a tile with a see-through
+# pixel is rejected, because the void behind the grid would show through it.
+# Output is the same lossless WebP pair as a sprite (authored scale + an
+# exact-integer 1x reduce), filed under sprites/tiles and folded into
+# `tile-manifest.generated.ts`, which `tileFor(nodeId)` reads (`tile-<node id>`,
+# terrain.ts ids). The terrain renderer keeps its code-drawn tiles on null.
+TILE_FAMILY = ('Sprites/Tiles', 'sprites/tiles')
+TILE_OUT = TILE_FAMILY[1]
+# The delve grid (terrain.ts CELL), in logical px.
+TILE_GRID = 32
+# Lowest alpha a tile pixel may have. Lossless export keeps 255; the slack only
+# forgives an editor that rounds a fully opaque edge down by a step or two.
+TILE_MIN_ALPHA = 250
+TILE_MANIFEST_OUT = os.path.join(
+    os.path.dirname(__file__), '..', 'src', 'app', 'shared', 'art', 'tile-manifest.generated.ts'
+)
+
+
+def tile_meta(png_path: str, img) -> tuple[dict | None, list[str]]:
+    """The sidecar for a tile strip, or the W7 layout inferred from the sheet
+    (square frames as tall as the sheet, scale = frame / 32), plus errors."""
+    side = os.path.splitext(png_path)[0] + '.json'
+    w, h = img.size
+    if os.path.isfile(side):
+        meta, errs = load_sidecar(png_path, img)
+        if meta is None:
+            return None, errs
+    else:
+        errs = []
+        scale = h // TILE_GRID if h >= TILE_GRID and h % TILE_GRID == 0 else 0
+        if not scale or w % h:
+            return None, [f'sheet is {w}x{h}: a W7 strip is N square {TILE_GRID * 2}x{TILE_GRID * 2} '
+                          f'cells in one row (or add a sidecar)']
+        meta = {'scale': scale, 'frame': {'w': h, 'h': h}, 'pivot': {'x': h // 2, 'y': h},
+                'actions': [{'name': 'tile', 'frames': w // h, 'fps': 0, 'loop': False}]}
+    fw, fh_, sc = meta['frame']['w'], meta['frame']['h'], meta['scale']
+    if fw != fh_:
+        errs.append(f'tile frame must be square, got {fw}x{fh_}')
+    if fw != TILE_GRID * sc:
+        errs.append(f'tile frame {fw}px at scale {sc} is {fw / sc:g}px, not the {TILE_GRID}px grid')
+    names = [a.get('name') for a in meta.get('actions') or []]
+    if names != ['tile']:
+        errs.append(f"a tile strip has exactly one action, 'tile' (got {names})")
+    return meta, errs
+
+
+def tile_opacity_problem(img) -> str | None:
+    """None when every pixel is opaque, else why not."""
+    if img.mode != 'RGBA':
+        return None
+    alpha = img.split()[3]
+    lo = alpha.getextrema()[0]
+    if lo >= TILE_MIN_ALPHA:
+        return None
+    clear = sum(alpha.histogram()[:TILE_MIN_ALPHA])
+    return (f'tile is not opaque: {clear} pixel(s) under alpha {TILE_MIN_ALPHA} '
+            f'(lowest {lo}); W7 tiles fill their cell to every edge')
+
+
+def import_tiles(check: bool, only: list[str], problems: list[str], pending: list[str]) -> int:
+    """Validate and emit `Assets/Sprites/Tiles/*.png`. Returns source files scanned."""
+    src_rel, out_rel = TILE_FAMILY
+    if only and not any(src_rel == o or src_rel.startswith(o + '/') for o in only):
+        return 0
+    src_dir = os.path.join(LIBRARY, src_rel)
+    if not os.path.isdir(src_dir):
+        pending.append(src_rel)
+        print('tiles:    0 ok (folder not created yet)')
+        return 0
+    files = 0
+    ok: list[str] = []
+    for name in sorted(os.listdir(src_dir)):
+        if not name.lower().endswith('.png'):
+            continue
+        files += 1
+        if not slug_ok(name):
+            problems.append(f'{src_rel}/{name}: not kebab-case')
+            continue
+        path = os.path.join(src_dir, name)
+        img = Image.open(path)
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+        # Deliberately no corners_opaque() here: opaque is the spec for tiles.
+        meta, errs = tile_meta(path, img)
+        if errs:
+            problems.extend(f'{src_rel}/{name}: {e}' for e in errs)
+            continue
+        why = tile_opacity_problem(img)
+        if why:
+            problems.append(f'{src_rel}/{name}: {why}')
+            continue
+        stem = os.path.splitext(name)[0]
+        emit_sprite(img, meta, os.path.join(OUT_ROOT, out_rel), stem, check)
+        ok.append(meta.get('id') or strip_index(stem))
+    print(f'tiles:    {len(ok)} ok' + (f" ({', '.join(ok)})" if ok else ''))
+    return files
+
+
+TILE_MANIFEST_HEADER = """/**
+ * tile-manifest.generated.ts — DO NOT EDIT BY HAND.
+ *
+ * Written by `scripts/import-assets.py` from `Assets/Sprites/Tiles/` (spec W7,
+ * docs/art-commissions/world-sprites/05-delve-tiles.md). Opaque delve tiles,
+ * one strip of interchangeable variants per terrain node, keyed
+ * `tile-<node id>` (ids from src/app/play/engine/terrain.ts).
+ *
+ * Every number here is in logical (1x) pixels. `src` is the 1x strip and
+ * `src2x` the authored one. Variant N is the cell at x = N * size.
+ *
+ * Pure data, no browser APIs, safe to import from an SSR path.
+ */
+
+export interface TileEntry {
+  src: string;
+  src2x: string;
+  /** Cell edge, 1x px (the delve grid: 32). */
+  size: number;
+  /** Interchangeable variants, left to right; pick one per cell by hash. */
+  variants: number;
+}
+"""
+
+
+def write_tile_manifest() -> int:
+    import json
+    root = os.path.join(OUT_ROOT, TILE_OUT)
+    entries: dict[str, str] = {}
+    if os.path.isdir(root):
+        for n in sorted(os.listdir(root)):
+            if not n.endswith('.json'):
+                continue
+            stem = n[:-5]
+            with open(os.path.join(root, n)) as fh:
+                meta = json.load(fh)
+            sc = meta['scale']
+            key = meta.get('id') or strip_index(stem)
+            entries[key] = (
+                f"  '{key}': {{ src: 'assets/game/{TILE_OUT}/{stem}@1x.webp', "
+                f"src2x: 'assets/game/{TILE_OUT}/{stem}@{sc}x.webp', "
+                f"size: {meta['frame']['w'] // sc}, variants: {meta['actions'][0]['frames']} }},"
+            )
+    lines = [TILE_MANIFEST_HEADER,
+             'export const TILES: Readonly<Record<string, TileEntry>> = {']
+    lines += [entries[k] for k in sorted(entries)]
+    lines += ['};', '',
+              '/**',
+              ' * The painted tile for a terrain node id (`rock` -> `tile-rock`), or null until',
+              ' * its strip has been imported. The renderer keeps its code-drawn tile on null.',
+              ' */',
+              'export function tileFor(nodeId: string | undefined | null): TileEntry | null {',
+              '  if (!nodeId) return null;',
+              '  const key = `tile-${nodeId}`;',
+              '  return Object.prototype.hasOwnProperty.call(TILES, key) ? TILES[key] : null;',
+              '}', '']
+    with open(TILE_MANIFEST_OUT, 'w') as fh:
+        fh.write('\n'.join(lines))
+    print(f'tiles:    {len(entries)} manifest entries')
+    return len(entries)
 
 ART_TS = os.path.join(os.path.dirname(__file__), '..', 'src', 'app', 'shared', 'art', 'art.ts')
 
@@ -671,6 +848,7 @@ def main() -> int:
     if '--manifest-only' in sys.argv:
         write_manifest()
         write_sprite_manifest()
+        write_tile_manifest()
         return 0
     check = '--check' in sys.argv
     # `--only Characters/avatars` limits the run to families whose source dir
@@ -738,6 +916,7 @@ def main() -> int:
             total += b
 
     files += import_sprites(check, only, problems, pending_dirs)
+    files += import_tiles(check, only, problems, pending_dirs)
 
     print(f'library:  {LIBRARY}')
     print(f'scanned:  {files} source files')
@@ -748,6 +927,7 @@ def main() -> int:
     if not check:
         write_manifest()
         write_sprite_manifest()
+        write_tile_manifest()
         report_retired_pending()
     if problems:
         print(f'\nrejected ({len(problems)}):')
