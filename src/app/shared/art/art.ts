@@ -26,6 +26,15 @@ export { SPRITES, spriteFor } from './sprite-manifest.generated';
 export type { SpriteAction, SpriteEntry } from './sprite-manifest.generated';
 
 /**
+ * Delve tiles (spec W7): one opaque strip of variants per terrain node, keyed
+ * `tile-<node id>`. `tileFor(nodeId)` is null until a strip is imported from
+ * `Assets/Sprites/Tiles/`, and the terrain renderer keeps its code-drawn tile
+ * on null, so landing tiles one at a time is safe.
+ */
+export { TILES, tileFor } from './tile-manifest.generated';
+export type { TileEntry } from './tile-manifest.generated';
+
+/**
  * Model id -> manifest key, for ids whose file is named more verbosely than
  * the model. Keep this small: a new entry here is usually a sign the art
  * should have been named after the id instead.
@@ -51,6 +60,10 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   // Delve building placeables. Stand-ins until the commission pack paints them.
   'dirt-block': 'relic-dust', 'basalt-block': 'godforge-slag', 'torch': 'ember-stoker',
   'ladder': 'world-root-bark', 'platform': 'rootwall-shield', 'chest': 'quest-items', 'camp': 'forge',
+  // Delve creatures that spawn under their own keys (towns/infernal.ts). Until
+  // their paintings land they wear the creature they were cast from; their rigs
+  // in creature-rigs.ts are those same bodies, so nothing changes on screen.
+  'rune-warden': 'mirror-substitute', 'magma-maw': 'rivet-maw',
 };
 
 /**
@@ -156,10 +169,17 @@ export const ART_PENDING: ReadonlySet<string> = new Set(
   ART_PENDING_DECLARED.filter(id => !hasArt(id)),
 );
 
-/** Painted art for a catalogue id, or null when nothing has been painted. */
+/**
+ * Painted art for a catalogue id, or null when nothing has been painted.
+ *
+ * The id's own painting wins over its alias: an alias is a stand-in, so the
+ * import that lands `rune-warden` (or `pickaxe-1`) takes over at once, with no
+ * code change, and the alias row becomes housekeeping. No aliased id had art
+ * of its own when this order was introduced, so it changed nothing on screen.
+ */
 export function artFor(id: string | undefined | null): ArtEntry | null {
   if (!id) return null;
-  return ART_ALL[ART_ALIAS[id] ?? id] ?? null;
+  return ART_ALL[id] ?? ART_ALL[ART_ALIAS[id] ?? ''] ?? null;
 }
 
 /** True when `id` has art. Cheaper to read than `!!artFor(id)` at a call site. */

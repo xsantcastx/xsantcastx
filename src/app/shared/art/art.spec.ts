@@ -8,7 +8,7 @@
  *
  * Pure data: no Firebase, no network, no DOM. Runs on a clean offline checkout.
  */
-import { ART_ALIAS, ART_PENDING, ART_PENDING_DECLARED, artFor, hasArt } from './art';
+import { ART_ALIAS, ART_PENDING, ART_PENDING_DECLARED, TILES, artFor, hasArt, tileFor } from './art';
 import { NPCS } from '../npc/npc.model';
 import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 import { ART_ALL } from './art-manifest.generated';
@@ -34,6 +34,28 @@ describe('art lookup', () => {
       .filter(([, key]) => !ART_ALL[key])
       .map(([id, key]) => `${id} -> ${key}`);
     expect(dangling).toEqual([]);
+  });
+
+  it('shows the Delve creatures their stand-ins until their own paintings land', () => {
+    // Own key first: an alias is a stand-in, so an imported `rune-warden` wins at once.
+    for (const [own, standIn] of [['rune-warden', 'mirror-substitute'], ['magma-maw', 'rivet-maw']]) {
+      expect(ART_ALIAS[own]).withContext(own).toBe(standIn);
+      expect(artFor(own)).withContext(own).toBe(ART_ALL[own] ?? ART_ALL[standIn]);
+    }
+    const aliasedWithOwnArt = Object.keys(ART_ALIAS).filter(id => ART_ALL[id]);
+    for (const id of aliasedWithOwnArt) expect(artFor(id)).withContext(id).toBe(ART_ALL[id]);
+  });
+
+  it('resolves a delve tile by terrain node id, null until its strip is imported', () => {
+    expect(tileFor('rock')).toBe(TILES['tile-rock'] ?? null);
+    for (const id of [undefined, null, '', 'no-such-node', 'constructor', '__proto__']) {
+      expect(tileFor(id)).withContext(String(id)).toBeNull();
+    }
+    for (const [key, tile] of Object.entries(TILES)) {
+      expect(key).toMatch(/^tile-[a-z0-9-]+$/);
+      expect(tile.size).withContext(key).toBe(32);
+      expect(tile.variants).withContext(key).toBeGreaterThan(0);
+    }
   });
 
   it('carries a width-descriptor srcset on every entry', () => {

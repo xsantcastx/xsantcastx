@@ -41,6 +41,7 @@ import { huntingXpFor } from '../shared/skills/hunting';
 import { TranslationService } from '../translation.service';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
+import { GatherSaveService } from '../shared/skills/gather-save.service';
 import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.model';
 import type { DiscoverEvent } from './engine/engine';
 
@@ -177,9 +178,12 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly delve = inject(DelveSaveService);
   private readonly delveLore = inject(DelveLoreService);
   private readonly chests = inject(DelveChestService);
+  /** When each hunting-ground gathering node was last harvested (regrowth survives a reload). */
+  private readonly gatherSave = inject(GatherSaveService);
   /** The chest panel's contents while one is open. */
   chestView: ChestView | null = null;
   private delveSub?: Subscription;
+  private gatherSub?: Subscription;
   private readonly zone = inject(NgZone);
   private readonly i18n = inject(TranslationService);
   /** A translated string (EN / ES). The hotbar, the gathering prompt and the Hunting toast use it. */
@@ -252,6 +256,8 @@ export class SideScrollerComponent implements OnDestroy {
       this.atSub = this.route.queryParamMap.subscribe(params => this.zone.run(() => this.applyAt(params.get('at'))));
       // Cloud save replaced the Delve (another device's dig): rebuild it from the merged save.
       this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
+      // Cloud save merged another device's harvests: nodes re-read their regrowth.
+      this.gatherSub = this.gatherSave.reloaded$.subscribe(() => this.engine?.setGathering(this.gatherSave));
       this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); }), 200);
     });
   }
@@ -280,6 +286,8 @@ export class SideScrollerComponent implements OnDestroy {
       onKill: event => this.zone.run(() => this.hunted(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
+      // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
+      gathering: this.gatherSave,
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
         if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
@@ -455,7 +463,7 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) this.homestead.stop();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);

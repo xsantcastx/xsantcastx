@@ -10,7 +10,8 @@ import {
   climbTerrainBody, findNode, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
-import type { DelvePersistence } from './engine.model';
+import type { DelvePersistence, GatherPersistence } from './engine.model';
+import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
@@ -36,11 +37,16 @@ interface Drop {
   rarity?: LootRarity; color: string; beam: number; caption: string; captionW: number;
 }
 /**
- * A gathering node's live state. `gen` counts harvests this session: it keys
- * the grant's mutation id, so each regrowth is a new grant and a retried
- * break is the same one. `shake` is presentation only.
+ * A gathering node's live state. `at` is the last harvest (epoch ms, null =
+ * none on record): the one fact saved, read from `GatherPersistence` on the
+ * first visit. `ready` and `timer` (seconds left) are derived from it against
+ * the wall clock every step (`refreshSite`), never counted down, so a reload
+ * or a closed panel shows each node exactly as far along as it is.
+ * `gen` counts harvests this session: it keys the grant's mutation id, so
+ * each regrowth is a new grant and a retried break is the same one. `shake`
+ * is presentation only.
  */
-interface GatherSite { def: GatherNodeDef; hp: number; ready: boolean; timer: number; gen: number; shake: number }
+interface GatherSite { def: GatherNodeDef; hp: number; at: number | null; ready: boolean; timer: number; gen: number; shake: number }
 /** A picked-up item flying to the satchel, in canvas CSS px. Pooled; render-only. */
 interface Flight { active: boolean; t: number; sx: number; sy: number; ex: number; ey: number; art?: string; coins: boolean; color: string }
 const FLIGHT_POOL = 16;
@@ -197,6 +203,9 @@ export class SeamworksEngine {
   /** The current area's gathering nodes, and every visited area's (regrowth timers keep running per session). */
   private sites: GatherSite[] = [];
   private readonly siteCache = new Map<string, GatherSite[]>();
+  /** Saved harvest times (null: session only), and the wall clock regrowth is measured against. */
+  private gathering: GatherPersistence | null = null;
+  private clock: () => number = () => Date.now();
   private lanternRadius = DEFAULT_LANTERN;
   private skillLevels: Partial<Record<DisciplineId, number>> | null = null;
   /** True while the Keeper is on a ladder (set in the fixed step): Up climbs instead of jumping. */
@@ -243,15 +252,40 @@ export class SeamworksEngine {
     this.sites = this.sitesFor(area);
     this.motes.reset();
   }
-  /** An area's gathering nodes, created on the first visit and kept for the session. */
+  /** An area's gathering nodes, created on the first visit (harvest times from the save) and kept for the session. */
   private sitesFor(area: AreaDef): GatherSite[] {
     if (!area.nodes?.length) return [];
     let sites = this.siteCache.get(area.id);
     if (!sites) {
-      sites = area.nodes.map(def => ({ def, hp: def.hp, ready: true, timer: 0, gen: 0, shake: 0 }));
+      const now = this.clock();
+      sites = area.nodes.map(def => this.refreshSite({ def, hp: def.hp, at: this.savedHarvest(area.id, def.id), ready: true, timer: 0, gen: 0, shake: 0 }, now));
       this.siteCache.set(area.id, sites);
     }
     return sites;
+  }
+  private savedHarvest(areaId: string, nodeId: string): number | null {
+    try { return this.gathering?.harvestedAt(areaId, nodeId) ?? null; } catch { return null; }
+  }
+  /** Derive `ready`/`timer` from the harvest time. A node that comes back is whole again. */
+  private refreshSite(site: GatherSite, now: number): GatherSite {
+    const left = regrowSecondsLeft(site.at, site.def.respawn, now);
+    if (left <= 0 && !site.ready) site.hp = site.def.hp;
+    site.ready = left <= 0; site.timer = left;
+    return site;
+  }
+  /**
+   * Plug in (or replace) where gathering harvest times are saved. Every node
+   * already seen this session re-reads its time (cloud save merged another
+   * device's harvests in); the later of the saved and the in-memory one wins.
+   */
+  setGathering(gathering: GatherPersistence | null): void {
+    this.gathering = gathering;
+    const now = this.clock();
+    for (const [areaId, sites] of this.siteCache) for (const site of sites) {
+      const saved = this.savedHarvest(areaId, site.def.id);
+      if (saved !== null && (site.at === null || saved > site.at)) site.at = saved;
+      this.refreshSite(site, now);
+    }
   }
   /** The area's terrain: cached for the session, else generated from the player's seed with their diff applied. */
   private terrainFor(area: AreaDef): Terrain | null {
@@ -498,6 +532,8 @@ export class SeamworksEngine {
     this.town = options.town ?? INFERNAL_TOWN;
     this.satchelTarget = options.satchelTarget ?? null;
     this.delve = options.delve ?? null;
+    this.gathering = options.gathering ?? null;
+    if (options.now) this.clock = options.now;
     this.enter(this.town);
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
@@ -692,7 +728,8 @@ export class SeamworksEngine {
       mutationId: `gather:${this.lootSession}:${this.areaDef.id}:${def.id}:${site.gen}`,
     });
     if (accepted === false) { site.hp = Math.min(site.hp, 1e-3); this.debris.chip(def.x, top, SITE_FLECK[def.kind], 3); return; }
-    site.ready = false; site.timer = def.respawn; site.gen++; site.hp = def.hp;
+    site.at = this.clock(); site.ready = false; site.timer = def.respawn; site.gen++; site.hp = def.hp;
+    try { this.gathering?.harvested(this.areaDef.id, def.id, site.at); } catch { /* still resting for this session */ }
     for (let n = 0; n < (this.reducedMotion ? 4 : 10); n++) this.debris.chip(def.x + (n - 5) * 4, top, SITE_FLECK[def.kind], 1);
     this.impact(.05, 3);
     if (material) {
@@ -1187,9 +1224,10 @@ export class SeamworksEngine {
       if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
       this.interactAt = this.findInteractive();
     } else if (this.sites.length && this.input.has('attack') && this.attackCooldown <= 0 && this.siteInReach()) this.attack();
+    const now = this.clock();
     for (const sites of this.siteCache.values()) for (const s of sites) {
       s.shake = Math.max(0, s.shake - dt * 5);
-      if (!s.ready && (s.timer -= dt) <= 0) { s.ready = true; s.timer = 0; s.hp = s.def.hp; }
+      if (!s.ready) this.refreshSite(s, now);
     }
     if (!wasGrounded && this.player.grounded && !this.climbing) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
