@@ -44,6 +44,7 @@ import { AnalyticsService } from '../analytics.service';
 import { EasterEggService, PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { XpService, XpSnapshot } from '../shared/gamification/xp.service';
 import { rankSigil } from '../shared/gamification/gamification.model';
+import { keeperAvatarArt } from '../shared/art/art';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
 import { MORE_NAV, NavDestination, PRIMARY_NAV } from '../shared/nav/nav.manifest';
@@ -139,6 +140,8 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
 
   /** Painted rank crest for the level held — exposed for the bar and the tome. */
   readonly rankSigil = rankSigil;
+  /** The masked Keeper on the Character button. Neutral: no realm is chosen. */
+  readonly keeperAvatar = keeperAvatarArt(null);
 
   /** The five player halls. Same list as the mobile tab bar. */
   readonly primaryNav = PRIMARY_NAV;
