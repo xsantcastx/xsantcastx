@@ -67,6 +67,8 @@ async function openVault(page: Page, seed = true): Promise<void> {
     },
   );
   await page.goto('/character');
+  // The catalogue button lives in the station's Details drawer.
+  await page.locator('app-forge-keeper .dd__sum').click();
   await page.locator('.fk-catalogue-open').click();
   await page.locator('.fk-bank').waitFor();
   await page.locator('.fk-inv__card').first().waitFor();
