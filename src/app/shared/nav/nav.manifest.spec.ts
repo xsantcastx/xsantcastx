@@ -1,71 +1,30 @@
 import { CANONICAL } from '../canonical-routes';
-import { MORE_NAV, NAV_MANIFEST, PRIMARY_NAV } from './nav.manifest';
+import { NAV_MANIFEST, PRIMARY_NAV } from './nav.manifest';
 
 describe('NAV_MANIFEST', () => {
-  it('has exactly five primary destinations', () => {
-    expect(PRIMARY_NAV.length).toBe(5);
+  it('is World only: Play and Character', () => {
+    expect(NAV_MANIFEST.map(d => d.route)).toEqual(['/play', CANONICAL.character]);
+    expect(PRIMARY_NAV).toEqual(NAV_MANIFEST.slice());
   });
 
-  it('primary routes are the PR0 player set', () => {
-    expect(PRIMARY_NAV.map(d => d.route)).toEqual([
-      CANONICAL.world,
-      CANONICAL.character,
-      '/market',
-      CANONICAL.forge,
-      '/codex',
-    ]);
-  });
-
-  it('does not list unimplemented chrome destinations', () => {
+  it('does not list unimplemented or retired destinations', () => {
     const routes = NAV_MANIFEST.map(d => d.route);
-    for (const banned of ['/social', '/guild', '/inventory', '/settings']) {
+    for (const banned of ['/social', '/guild', '/inventory', '/settings', '/tools', '/mcp', '/donate', '/pro']) {
       expect(routes).not.toContain(banned);
     }
   });
 
-  it('marks World as an exact active match', () => {
-    const world = PRIMARY_NAV.find(d => d.id === 'world');
-    expect(world?.exact).toBeTrue();
-    expect(world?.route).toBe(CANONICAL.world);
+  it('marks Play as an exact active match', () => {
+    const play = PRIMARY_NAV.find(d => d.id === 'play');
+    expect(play?.exact).toBeTrue();
+    expect(play?.route).toBe('/play');
   });
 
-  it('pins remounted halls to CANONICAL', () => {
+  it('pins Character to CANONICAL', () => {
     expect(PRIMARY_NAV.find(d => d.id === 'character')?.route).toBe(CANONICAL.character);
-    expect(PRIMARY_NAV.find(d => d.id === 'forge')?.route).toBe(CANONICAL.forge);
-    expect(MORE_NAV.find(d => d.id === 'quests')?.route).toBe(CANONICAL.quests);
-    expect(MORE_NAV.find(d => d.id === 'trials')?.route).toBe(CANONICAL.trials);
   });
 
-  it('MORE includes the playable village and secondary halls', () => {
-    expect(MORE_NAV.map(d => d.route)).toEqual([
-      '/play',
-      // The crafting bench is a room reached from inside the Forge hall. Listed
-      // here for the same reason the Gambler eventually had to be: a route only
-      // linked from its parent page reads as a dead page to everyone who did
-      // not happen to be standing on that page.
-      '/forge/crafting',
-      // The Enchanting Table, the Forge hall's other room, for the same reason.
-      '/forge/enchanting',
-      CANONICAL.quests,
-      CANONICAL.trials,
-      // The Coliseum shares a glyph and a word with the Trials and nothing
-      // else — the Trials are mini-game gates, this is the combat hall the
-      // equipment stats feed. Both are listed; neither replaces the other.
-      '/world/arena',
-      '/leaderboards',
-      '/sanctum',
-      // The Exchange is a hall in its own right, but the header row is already
-      // five wide and does not shrink — see the nav-overflow note. The tome is
-      // where it goes until that row can take a sixth.
-      '/exchange',
-      // Same reasoning, and the same kind of hall. Listed here rather than left
-      // to the Market doorway alone, which is what made it read as a missing
-      // page to anyone not already standing in the Market.
-      '/gambler',
-    ]);
-    const routes = NAV_MANIFEST.map(d => d.route);
-    for (const banned of ['/tools', '/mcp', '/blueprint', '/mission-control', '/sponsors', '/donate', '/pro']) {
-      expect(routes).not.toContain(banned);
-    }
+  it('gives both tabs painted icons', () => {
+    for (const d of NAV_MANIFEST) expect(d.tabIcons).withContext(d.id).toBeTruthy();
   });
 });
