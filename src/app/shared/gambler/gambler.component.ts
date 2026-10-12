@@ -37,6 +37,7 @@ import {
   ElementRef,
   OnDestroy,
   HostListener,
+  HostBinding,
   OnInit,
   PLATFORM_ID,
   inject,
@@ -149,6 +150,12 @@ export class GamblerComponent implements OnInit, OnDestroy {
 
   /** The box mid-animation, and how far through it is. */
   phase: RevealPhase = 'idle';
+
+  /** The global routeFadeIn leaves an identity transform on every routed host,
+   *  which makes it the containing block for the fixed reveal overlay: the
+   *  overlay then spans the whole page and the altar lands below the fold.
+   *  While a reveal is up, the host drops that animation (see :host CSS). */
+  @HostBinding('class.gb-host--revealing') get revealing(): boolean { return this.phase !== 'idle'; }
   active: MysteryBox | null = null;
   result: OpenedBox | null = null;
   error: string | null = null;
