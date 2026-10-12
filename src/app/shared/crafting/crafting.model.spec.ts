@@ -63,6 +63,8 @@ describe('crafting catalogue', () => {
   it('names only outputs the catalogue can mint', () => {
     const unminted: string[] = [];
     for (const recipe of CRAFTING_RECIPES) {
+      // The Delve kit grants satchel stacks, not minted items (see DELVE_KIT_RECIPES).
+      if (recipe.output.stack) continue;
       const def = itemDefinitionById(recipe.output.itemId);
       if (!def) { unminted.push(`${recipe.id} → missing ${recipe.output.itemId}`); continue; }
       // `mintEquipment` refuses these three families outright, so a recipe

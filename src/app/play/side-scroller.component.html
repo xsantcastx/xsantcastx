@@ -55,6 +55,29 @@
 
   @if (state.areaId === 'homestead' && !panel) { <app-homestead-column /> }
 
+  @if (state.delve) {
+    <!-- The Delve hotbar: what you can place, and how many. Pick one, then B (or hold a tap where it goes). -->
+    <nav class="hotbar" aria-label="Things to place" [attr.inert]="panel ? '' : null">
+      <ul>
+        @for (slot of hotbar; track slot.id) {
+          <li>
+            <button type="button" class="hot" [class.picked]="slot.id === placing" [class.empty]="!slot.count"
+              (click)="choosePlaceable(slot.id)" [attr.aria-pressed]="slot.id === placing" [attr.aria-label]="slot.name + ', ' + slot.count + ' held'" [title]="slot.name">
+              @if (slot.art) { <img [src]="slot.art" alt=""> } @else { <em>{{ slot.name.slice(0, 2) }}</em> }
+              <b>{{ slot.count }}</b>
+              <kbd class="key-hint">{{ slot.key }}</kbd>
+            </button>
+          </li>
+        }
+      </ul>
+      <p class="hot-line">
+        @if (placingSlot; as slot) { <span>{{ slot.name }}</span> } @else { <span>Nothing chosen</span> }
+        <button type="button" class="hot-place" (click)="placeHere()" [disabled]="!placingSlot?.count">Place <kbd class="key-hint">B</kbd></button>
+        <button type="button" class="hot-place" (click)="takeBack()" title="Take back a torch, ladder or chest beside you">Take <kbd class="key-hint">X</kbd></button>
+      </p>
+    </nav>
+  }
+
   <aside class="satchel" aria-label="Satchel" (click)="openBag()" [attr.inert]="panel ? '' : null">
     <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book">
       <span>Satchel</span>
@@ -166,11 +189,14 @@
     @if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
       <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact <kbd class="key-hint">E</kbd></button>
+      @if (state.nearby === 'delve' && campReady) {
+        <button type="button" class="camp-go" (click)="descendToCamp()">Descend to your camp <kbd class="key-hint">C</kbd></button>
+      }
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
   </div>
   @if (showKeys) {
-    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>1</kbd>-<kbd>9</kbd> choose <kbd>B</kbd> place (hold S: below) <kbd>X</kbd> take back <kbd>W</kbd>/<kbd>S</kbd> climb a ladder, S drops through a platform <kbd>Hold tap</kbd> place or take back there <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
   }
 
   <section class="dock" aria-labelledby="hearth-title" [attr.inert]="panel ? '' : null">
@@ -252,6 +278,37 @@
             </li>
           }
         </ul>
+      }
+      @if (panel?.kind === 'chest' && chestView; as view) {
+        <p class="place-note" role="status">{{ view.note }}</p>
+        <div class="chest">
+          <section aria-labelledby="chest-in">
+            <h3 id="chest-in">In the chest <small>{{ view.rows.length }} / {{ view.slots }} kinds</small></h3>
+            @if (!view.rows.length) { <p class="chest-empty">Empty. An empty chest can be taken back (X).</p> }
+            <ul>
+              @for (row of view.rows; track row.stackKey) {
+                <li>
+                  @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
+                  <span><b>{{ row.name }}</b><small>{{ row.qty }}</small></span>
+                  <button type="button" (click)="chestTake(row)">Take all</button>
+                </li>
+              }
+            </ul>
+          </section>
+          <section aria-labelledby="chest-bag">
+            <h3 id="chest-bag">In your satchel</h3>
+            @if (!view.satchel.length) { <p class="chest-empty">Nothing to put in.</p> }
+            <ul>
+              @for (row of view.satchel; track row.stackKey) {
+                <li>
+                  @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
+                  <span><b>{{ row.name }}</b><small>{{ row.qty }}</small></span>
+                  <button type="button" (click)="chestPut(row)">Put in</button>
+                </li>
+              }
+            </ul>
+          </section>
+        </div>
       }
       @if (panelLoading) { <p class="place-note" role="status">Opening {{ panel?.title }}...</p> }
       @if (panelError) { <p class="place-note" role="alert">{{ panelError }}</p> }

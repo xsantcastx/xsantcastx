@@ -13,7 +13,7 @@ import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
-import { IN_WORLD_PANEL } from '../shared/in-world-panel';
+import { IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
 import { areaOf, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
@@ -28,7 +28,9 @@ import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.compon
 import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
 import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
-import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, ToolTiers, WorldActionEvent } from './engine/engine';
+import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
+import { ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
+import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolTiers } from '../shared/skills/tools';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
@@ -39,7 +41,7 @@ import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.mode
 import type { DiscoverEvent } from './engine/engine';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
-const ONCE_PER_PLAYER = new Set(['godforge-fragment']);
+const ONCE_PER_PLAYER = new Set(['godforge-fragment', 'kaels-hammer']);
 
 /** Where Delve swings are recorded in the activity ledger. */
 const EMBER_DELVE_LOCATION = 'infernal/ember-delve';
@@ -72,8 +74,15 @@ interface BagSlip {
   compareLabel: string;
 }
 
-/** What the in-world panel is showing: a hosted page, or the waystone's travel list. */
-interface OpenPlace { kind: 'page' | 'waystone'; stationId: string; title: string; kicker: string; route?: string }
+/** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
+interface OpenPlace {
+  kind: 'page' | 'waystone' | 'chest'; stationId: string; title: string; kicker: string; route?: string;
+  chest?: { areaId: string; index: number };
+  /** A place in the player's own Delve (a chest, a camp): no ?at= deep link. */
+  own?: true;
+}
+/** The open chest: what is in it and what the satchel could put in. Rebuilt after every move. */
+interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; note: string }
 interface PlaceRow { id: string; name: string; blurb: string }
 interface WaystoneRow { id: RealmTownId; realm: string; town: string; crest: string; available: boolean; current: boolean }
 
@@ -83,6 +92,11 @@ const PANEL_CLOSE_MS = 160;
 const TOUCH_TIP_MS = 1400;
 
 interface LootToast { key: number; text: string }
+/** One slot of the Delve hotbar: a placeable and how many the satchel holds. */
+interface HotbarSlot { id: PlaceableId; name: string; art: string; count: number; key: string }
+
+/** How long a press on the world must be held to place there. */
+const LONG_PRESS_MS = 450;
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -116,6 +130,12 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly injector = inject(Injector);
   /** Pages built in the panel see IN_WORLD_PANEL and drop their full-page backdrop and hero. */
   private readonly panelInjector = Injector.create({ providers: [{ provide: IN_WORLD_PANEL, useValue: true }], parent: this.injector });
+  /** A camp's bench: the same Crafting Bench, opened on what can be made now. */
+  private readonly campInjector = Injector.create({
+    providers: [{ provide: IN_WORLD_PANEL, useValue: true }, { provide: IN_WORLD_FOCUS, useValue: 'ready' }], parent: this.injector,
+  });
+  /** True while the Keeper stands at the Delve shaft and has a camp below. */
+  campReady = false;
   private panelRef: ComponentRef<unknown> | null = null;
   /** Bumped on every open/close so a slow lazy import never lands in a newer (or closed) panel. */
   private panelSeq = 0;
@@ -147,6 +167,9 @@ export class SideScrollerComponent implements OnDestroy {
   /** The player's own Delve (seed + dug cells) and the inscriptions they have read. */
   private readonly delve = inject(DelveSaveService);
   private readonly delveLore = inject(DelveLoreService);
+  private readonly chests = inject(DelveChestService);
+  /** The chest panel's contents while one is open. */
+  chestView: ChestView | null = null;
   private delveSub?: Subscription;
   private readonly zone = inject(NgZone);
   readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -182,6 +205,11 @@ export class SideScrollerComponent implements OnDestroy {
   pushed: KeeperCombatStats = { damage: 10, maxHp: 100 };
   private statsKey = '';
   private toolKey = '';
+  /** The Delve hotbar, rebuilt on the HUD tick when a count changes. */
+  hotbar: HotbarSlot[] = [];
+  private hotbarKey = '';
+  /** The hotbar's choice: what B / a long-press places. */
+  placing: PlaceableId | null = null;
 
   constructor() {
     // Hydration can swap the server canvas after the first callback. Wait until
@@ -234,11 +262,18 @@ export class SideScrollerComponent implements OnDestroy {
       onLoot: loot => loot.ore === 0 || this.zone.run(() => this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)),
       onWorldAction: event => this.zone.run(() => this.worldAction(event)),
       onDiscover: event => this.zone.run(() => this.discover(event)),
+      onPlace: event => this.zone.run(() => this.placeFromSatchel(event)),
+      onTakeBack: event => this.zone.run(() => this.takeToSatchel(event)),
+      onUse: event => this.zone.run(() => this.useCell(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
         if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
+        if (state.delve && !this.state.delve) this.refundOrphanChests();
+        // At the shaft: is there a camp below to descend to? Asked once per arrival, not per frame.
+        if (state.nearby === 'delve' && this.state.nearby !== 'delve') this.campReady = !!this.engine?.hasDelveCamp();
+        else if (state.nearby !== 'delve') this.campReady = false;
         this.state = state;
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
@@ -247,6 +282,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.statsKey = '';
     this.loadoutKey = '';
     this.toolKey = '';
+    this.engine.setPlaceable(this.placing);
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
@@ -286,8 +322,35 @@ export class SideScrollerComponent implements OnDestroy {
         if (this.tipTimer) clearTimeout(this.tipTimer);
         this.tipTimer = setTimeout(() => { this.engine?.setHover(null); this.showTip(null, 0, 0); }, TOUCH_TIP_MS);
       };
+      // Delves: hold a press on a cell (or right-click it) to place the hotbar's choice there.
+      let pressTimer: ReturnType<typeof setTimeout> | undefined;
+      let pressAt = { x: 0, y: 0 };
+      let pressed = false;
+      const cancelPress = (): void => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = undefined; } };
+      const pressStart = (event: PointerEvent): void => {
+        cancelPress();
+        pressed = false;
+        if (!this.engine || this.panel || !this.state.delve || event.button > 0) return;
+        pressAt = { x: event.clientX, y: event.clientY };
+        pressTimer = setTimeout(() => {
+          pressTimer = undefined;
+          if (!this.engine || this.panel) return;
+          pressed = true;
+          this.zone.run(() => this.engine?.placeAtClient(pressAt.x, pressAt.y));
+        }, LONG_PRESS_MS);
+      };
+      const pressMove = (event: PointerEvent): void => {
+        if (pressTimer && Math.hypot(event.clientX - pressAt.x, event.clientY - pressAt.y) > 12) cancelPress();
+      };
+      const context = (event: MouseEvent): void => {
+        if (!this.engine || this.panel || !this.state.delve) return;
+        event.preventDefault();
+        this.zone.run(() => this.engine?.placeAtClient(event.clientX, event.clientY));
+      };
       const click = (event: MouseEvent): void => {
         if (!this.engine || this.panel || this.state.defeated) return;
+        // The click that ends a long-press placed something; it does not also swing.
+        if (pressed) { pressed = false; return; }
         if (this.engine.strikeAt(event.clientX, event.clientY)) return;
         const hit = this.engine.pick(event.clientX, event.clientY);
         // The Homestead Forge strikes where it is clicked, without walking there.
@@ -299,11 +362,24 @@ export class SideScrollerComponent implements OnDestroy {
       canvas.addEventListener('pointerleave', leave);
       canvas.addEventListener('pointerdown', down);
       canvas.addEventListener('click', click);
+      canvas.addEventListener('pointerdown', pressStart);
+      canvas.addEventListener('pointermove', pressMove);
+      canvas.addEventListener('pointerup', cancelPress);
+      canvas.addEventListener('pointercancel', cancelPress);
+      canvas.addEventListener('pointerleave', cancelPress);
+      canvas.addEventListener('contextmenu', context);
       this.unbindPointer = () => {
+        cancelPress();
         canvas.removeEventListener('pointermove', move);
         canvas.removeEventListener('pointerleave', leave);
         canvas.removeEventListener('pointerdown', down);
         canvas.removeEventListener('click', click);
+        canvas.removeEventListener('pointerdown', pressStart);
+        canvas.removeEventListener('pointermove', pressMove);
+        canvas.removeEventListener('pointerup', cancelPress);
+        canvas.removeEventListener('pointercancel', cancelPress);
+        canvas.removeEventListener('pointerleave', cancelPress);
+        canvas.removeEventListener('contextmenu', context);
       };
     });
   }
@@ -398,12 +474,16 @@ export class SideScrollerComponent implements OnDestroy {
     const entry = station.panel ? PANEL_REGISTRY[station.panel] : undefined;
     if (!entry) return;
     this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker, route: entry.route });
+    this.loadPanel(entry, this.panelInjector);
+  }
+  /** Build a hosted page into the open panel (a slow import never lands in a newer or closed one). */
+  private loadPanel(entry: (typeof PANEL_REGISTRY)[keyof typeof PANEL_REGISTRY], injector: Injector): void {
     const seq = this.panelSeq;
     this.panelLoading = true;
     entry.load().then(type => {
       if (seq !== this.panelSeq || !this.panel) return;
       this.panelHost.clear();
-      this.panelRef = this.panelHost.createComponent(type, { injector: this.panelInjector });
+      this.panelRef = this.panelHost.createComponent(type, { injector });
       this.panelLoading = false;
     }).catch(() => {
       if (seq !== this.panelSeq) return;
@@ -423,7 +503,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.panel = place;
     this.engine?.setHover(null);
     this.engine?.setPaused(true);
-    this.setAt(place.stationId);
+    // A chest or a camp has no deep link: it is a cell in this player's own Delve.
+    if (!place.own) this.setAt(place.stationId);
     // Focus moves into the dialog once it is shown; the close button is always there.
     setTimeout(() => this.placePanel.nativeElement.querySelector<HTMLElement>('.place-close')?.focus());
   }
@@ -445,6 +526,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panel = null; this.panelLoading = false; this.panelError = '';
+    this.chestView = null;
     this.engine?.setPaused(false);
     if (syncUrl) this.setAt(null);
     this.focusWorld();
@@ -559,7 +641,7 @@ export class SideScrollerComponent implements OnDestroy {
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
     if (this.state.areaId === 'homestead') return 'Click the Forge to strike it. Buy buildings in the column. Walk past one to collect.';
-    if (this.state.delve) return 'Dig down (hold S + J, or tap rock). Ore veins glint in the lantern light.';
+    if (this.state.delve) return 'Dig down (hold S + J, or tap rock). Dug dirt and stone become blocks: pick one below and press B to place it.';
     if (this.state.area === 'Ember Quarry') return 'Hunt the Maws. Walk over drops to collect coins and ore. Return through the west portal.';
     if (this.restored) return 'Walk right to the open passage.';
     if (this.state?.enemyDefeated) return 'Reach the beacon and rekindle its light.';
@@ -576,6 +658,9 @@ export class SideScrollerComponent implements OnDestroy {
       case 'forge': return this.equipped ? 'Blade equipped' : this.edge ? 'Equip Basalt Edge' : 'Forge Basalt Edge';
       case 'beacon': return this.restored ? 'Beacon restored' : 'Restore beacon';
       case 'inscription': return 'Read the inscription';
+      case 'chest': return 'Open the chest';
+      case 'camp': return 'Craft at your camp';
+      case 'delve': return this.campReady ? 'Enter the Delve at the top' : 'Enter the Ember Delve';
       case 'passage': return this.state.area === 'Ember Quarry' ? 'Return to Seamworks' : 'Enter Ember Quarry';
       default: return 'Walk closer to a landmark';
     }
@@ -605,6 +690,11 @@ export class SideScrollerComponent implements OnDestroy {
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
+    else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
+    else if (this.state.delve && /^Digit[1-9]$/.test(event.code)) {
+      const slot = this.hotbar[Number(event.code.slice(5)) - 1];
+      if (slot) { event.preventDefault(); this.choosePlaceable(slot.id); }
+    }
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
   }
   openBag(): void { if (!this.bagOpen) this.toggleBag(); }
@@ -773,6 +863,7 @@ export class SideScrollerComponent implements OnDestroy {
   private pushStats(): void {
     if (!this.engine) return;
     this.pushLoadout();
+    this.refreshHotbar();
     // Crafted tools (skills/tools.ts) raise the floor; the provisional tier-I kit
     // keeps a fresh save able to dig before it owns a pickaxe. Lantern radius
     // stays on the engine default: toolTiers() measures it in tiles, the engine
@@ -832,6 +923,133 @@ export class SideScrollerComponent implements OnDestroy {
     const box = target?.getBoundingClientRect();
     return box && (box.width || box.height) ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
   }
+  // ── Building in the Delve ────────────────────────────────────────────────
+
+  /** Rebuild the hotbar when a count changed. Cheap: one stack read per placeable. */
+  private refreshHotbar(): void {
+    const counts = PLACEABLES.map(def => this.inventory.stackOf(def.id));
+    const key = counts.join(',');
+    if (key === this.hotbarKey && this.hotbar.length) return;
+    this.hotbarKey = key;
+    this.hotbar = PLACEABLES.map((def, i) => ({
+      id: def.id, name: def.label, art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String(i + 1),
+    }));
+    // Nothing chosen yet: the first thing the satchel holds.
+    if (!this.placing) {
+      const first = this.hotbar.find(slot => slot.count > 0);
+      if (first) this.choosePlaceable(first.id, true);
+    }
+  }
+  /** The chosen slot, for the hint line. */
+  get placingSlot(): HotbarSlot | undefined { return this.hotbar.find(slot => slot.id === this.placing); }
+  choosePlaceable(id: PlaceableId, quiet = false): void {
+    this.placing = id;
+    this.engine?.setPlaceable(id);
+    if (!quiet) {
+      const slot = this.placingSlot;
+      this.message = slot ? `${slot.name} ready (${slot.count}). Press B, or hold a tap where it should go.` : '';
+    }
+  }
+  /** The hotbar's Place button: same as B. */
+  placeHere(): void { this.engine?.place(); }
+  /**
+   * The engine is about to place one thing: take it from the satchel first.
+   * One consume op keyed by the placement's mutation id, so a replay never
+   * takes two. Refused (none left, a failed save) → nothing is placed.
+   */
+  private placeFromSatchel(event: PlaceEvent): boolean {
+    if (!this.browser) return false;
+    const name = materialDisplay(event.item)?.name ?? event.item;
+    if (this.inventory.stackOf(event.item) < 1) {
+      this.message = `You have no ${name.toLowerCase()} left. Dig or craft more.`;
+      return false;
+    }
+    const result = this.inventory.consumeStacks(event.mutationId, [{ id: event.item, count: 1 }]);
+    if (!result.ok) {
+      this.message = 'That could not be saved. Try again.';
+      return false;
+    }
+    this.refreshHotbar();
+    return true;
+  }
+  /** A placed thing comes back: one grant keyed by the take's mutation id. */
+  private takeToSatchel(event: PlaceEvent): boolean {
+    if (!this.browser) return false;
+    if (event.item === 'chest' && !this.chests.isEmpty(event.areaId, event.index)) {
+      this.message = 'Empty the chest first: open it (E) and take everything out.';
+      return false;
+    }
+    if (!this.inventory.grantStack(event.mutationId, event.item, 1)) {
+      this.message = 'Your satchel is full. Make room to take it back.';
+      return false;
+    }
+    if (event.item === 'chest') this.chests.forget(event.areaId, event.index);
+    this.refreshHotbar();
+    return true;
+  }
+  /** E beside (or a tap on) a placed chest or camp. */
+  private useCell(event: UseEvent): void {
+    if (!this.browser) return;
+    if (event.kind === 'chest') {
+      this.showPanel({ kind: 'chest', stationId: 'chest', title: 'Chest', kicker: 'Your Delve', chest: { areaId: event.areaId, index: event.index }, own: true });
+      this.refreshChest('Put things in to keep them here. Take them out any time.');
+    } else if (event.kind === 'camp') {
+      // The Crafting Bench, opened on "Ready now": what you can make here with what you carry.
+      const entry = PANEL_REGISTRY.crafting;
+      this.showPanel({ kind: 'page', stationId: 'camp', title: 'Your camp', kicker: 'Craft what you can now', own: true });
+      this.loadPanel(entry, this.campInjector);
+    }
+  }
+  /** "Descend to your camp" at the Delve shaft. */
+  descendToCamp(): void {
+    if (!this.engine?.descendToCamp()) this.campReady = !!this.engine?.hasDelveCamp();
+    else this.campReady = false;
+  }
+  /** Rebuild the open chest's two lists. */
+  private refreshChest(note: string): void {
+    const at = this.panel?.chest;
+    if (!at) { this.chestView = null; return; }
+    const satchel = this.inventory.snapshot.stacks
+      .filter(stack => stack.quantity > 0)
+      .map(stack => {
+        const display = materialDisplay(stack.stackKey);
+        return { stackKey: stack.stackKey, name: display?.name ?? stack.stackKey, art: display?.art ?? '', qty: stack.quantity };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    this.chestView = { rows: this.chests.contents(at.areaId, at.index), satchel, slots: this.chests.slots, note };
+  }
+  chestPut(row: ChestRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.put(at.areaId, at.index, row.stackKey);
+    this.refreshChest(result.ok ? `${result.qty} ${row.name} put in the chest.` : result.message);
+    this.refreshHotbar();
+  }
+  chestTake(row: ChestRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.take(at.areaId, at.index, row.stackKey);
+    this.refreshChest(result.ok ? `${result.qty} ${row.name} back in the satchel.` : result.message);
+    this.refreshHotbar();
+  }
+  /** Chests whose Delve changed under them (a version bump, a merged seed) hand their contents back. */
+  private refundOrphanChests(): void {
+    if (!this.browser) return;
+    const refunded = this.chests.refundOrphans((areaId, index) => this.engine?.nodeIdAt(areaId, index) ?? null);
+    if (refunded) this.message = `The Delve shifted. ${refunded} things from a lost chest are back in your satchel.`;
+  }
+  /** The hotbar's Take back button: same as X. */
+  takeBack(): void { this.engine?.takeBack(); }
+  /** A break dropped a block: into the satchel, or crumbled when there is no room. Never refuses the dig. */
+  private grantBlock(event: WorldActionEvent): void {
+    if (!event.block) return;
+    const name = materialDisplay(event.block)?.name ?? event.block;
+    if (this.inventory.grantStack(`${event.mutationId}:block`, event.block, 1)) {
+      this.toastLoot(`+1 ${name}`);
+      this.refreshHotbar();
+    } else this.message = `Your satchel is full, so the ${name.toLowerCase()} crumbles.`;
+  }
+
   /**
    * A delve tool is about to break a paying cell. Ore goes through resolveMine
    * (same gate, cooldown and idempotency as the ore station); other yields are
@@ -840,6 +1058,8 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private worldAction(event: WorldActionEvent): boolean {
     if (!this.browser) return false;
+    // Plain dirt and placed blocks pay only the block.
+    if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
     if (event.kind === 'mine' && event.discipline === 'mining') {
       if (this.activity.snapshot.currentWork?.disciplineId === 'mining' && this.remaining > 0) {
         this.message = `The seam needs a breath (${this.remaining}s).`; return false;
@@ -852,6 +1072,7 @@ export class SideScrollerComponent implements OnDestroy {
         return false;
       }
       if (event.materialId) this.toastLoot(`+1 ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
+      this.grantBlock(event);
       return true;
     }
     // Everything else trains the skill the node belongs to (rock → Mining,
@@ -859,12 +1080,12 @@ export class SideScrollerComponent implements OnDestroy {
     // one idempotent gateway write grants the item and the XP together and
     // plays that skill's level-up moment.
     const skill = skillForDiscipline(event.discipline);
-    if (!skill || (!event.xp && !(event.materialId && event.qty))) return true;
+    if (!skill) { this.grantBlock(event); return true; }
     // A once-per-player find already paid (its diff was lost, or a second device
     // still showed it): the rock breaks, nothing is paid twice.
     const once = event.materialId && ONCE_PER_PLAYER.has(event.materialId) ? event.materialId : null;
     if (once && this.delve.isClaimed(once)) {
-      this.message = 'Only an echo of the fragment is left. You already carry what was here.';
+      this.message = `Only an echo is left here. You already found the ${materialDisplay(once)?.name ?? once}.`;
       return true;
     }
     const result = this.skillActions.act({
@@ -877,6 +1098,7 @@ export class SideScrollerComponent implements OnDestroy {
     }
     if (once) this.delve.claim(once);
     if (event.materialId && event.qty) this.toastLoot(`+${event.qty} ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
+    this.grantBlock(event);
     return true;
   }
   /**

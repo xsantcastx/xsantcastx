@@ -34,7 +34,7 @@
  * `aria-live` region, and `prefers-reduced-motion` replaces the anvil animation
  * with a static held state rather than removing the feedback.
  */
-import { injectInWorldPanel } from '../in-world-panel';
+import { injectInWorldFocus, injectInWorldPanel } from '../in-world-panel';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -94,6 +94,10 @@ import {
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
+import { AnvilGameComponent } from '../minigames/anvil-game.component';
+import { anvilRng } from '../minigames/anvil.model';
+import { MINIGAMES_I18N } from '../minigames/minigames.i18n';
+import { SkillActionService, craftSkillXp } from '../skills/skill-actions.service';
 import { floorThing, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 /** One ingredient, as the anvil renders it. */
 export interface SlotView {
@@ -136,7 +140,7 @@ const DIAL_R = 46;
 @Component({
   selector: 'app-crafting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, FormsModule, ...STATION_UI],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, AnvilGameComponent, CommonModule, FormsModule, ...STATION_UI],
   templateUrl: './crafting-bench.component.html',
   styleUrls: ['./crafting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -144,15 +148,28 @@ const DIAL_R = 46;
 export class CraftingBenchComponent implements OnInit, OnDestroy {
   /** Rendered as a place inside /play: the panel carries the title, so the hero and room links stand down. */
   protected readonly inWorld = injectInWorldPanel();
+  /** 'ready' at a camp in the Delve: the journal opens on what can be made now. */
+  private readonly focus = injectInWorldFocus();
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly gateway = inject(CraftingGateway);
   private readonly crafting = inject(CraftingService);
   private readonly inventory = inject(InventoryService);
   private readonly economy = inject(EconomyService);
   private readonly celebration = inject(CelebrationService);
+  private readonly skills = inject(SkillActionService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+
+  /**
+   * The anvil mini-game is open for this recipe. Nothing has been spent: the
+   * gateway is called only when the game reports back (see onAnvilDone).
+   */
+  anvilRecipe: CraftingRecipe | null = null;
+
+  /** "Skip the anvil game" — kept for the session (module state, never saved). */
+  get skipAnvil(): boolean { return skipAnvilGame; }
+  set skipAnvil(value: boolean) { skipAnvilGame = !!value; }
 
   private subs: Subscription[] = [];
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -240,6 +257,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(CRAFTING_I18N);
+    this.i18n.register(MINIGAMES_I18N);
     this.forgeTabs = forgeTabs(key => this.t(key));
     this.tools = [{ kind: 'item', id: 'iron-hammer', label: this.t('crafting.tool.anvil'), need: 0, have: 0, art: artFor('iron-hammer') }];
     this.cards = this.buildCards();
@@ -387,6 +405,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
 
   select(recipe: CraftingRecipe, fromBook = false): void {
     if (this.striking) return;
+    // Walking away from the anvil mid-game is free: nothing was spent yet.
+    this.anvilRecipe = null;
     this.userPicked = true;
     this.quantity = 1;
     this.selected = recipe;
@@ -465,7 +485,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       { id: 'all', label: this.t('crafting.all') },
       ...this.categories.map(cat => ({ id: cat.id, label: cat.label })),
     ];
-    if (browser && !this.userPicked) this.journalTab = ready.length ? 'ready' : 'all';
+    if (browser && !this.userPicked) this.journalTab = ready.length || this.focus === 'ready' ? 'ready' : 'all';
     const readyIds = new Set(ready.map(card => card.recipe.id));
     const cards = this.journalTab === 'ready' ? ready
       : this.journalTab === 'all' ? this.cards
@@ -488,6 +508,55 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   /** "Craft 1 Briarvein Kris" — the detail header's one line. */
   craftLine(): string {
     return this.selected ? this.t('crafting.craftN', { n: this.quantity, name: this.selected.name }) : '';
+  }
+
+  /** Whether this recipe's output has rolled stats — i.e. whether the anvil game can change anything. */
+  hasRolls(recipe: CraftingRecipe | null): boolean {
+    if (!recipe) return false;
+    return (itemDefinitionById(recipe.output.itemId)?.rollKeys.length ?? 0) > 0;
+  }
+
+  /**
+   * The primary button. One piece of equipment with the game on → the anvil
+   * game; anything else (a batch, a consumable, the game skipped) → today's craft.
+   */
+  craftOne(n: number): void {
+    const recipe = this.selected;
+    if (n === 1 && recipe && !this.skipAnvil && this.hasRolls(recipe) && this.canCraft) {
+      this.error = null;
+      this.reward = null;
+      this.lastCraft = null;
+      this.anvilRecipe = recipe;
+      this.announce = this.t('minigame.anvil.how');
+      this.cdr.markForCheck();
+      return;
+    }
+    this.craftMany(n);
+  }
+
+  /**
+   * The anvil game reported. `null` = skipped: craft exactly as before (no
+   * bonus). A number = the strike quality: bias the mint's RNG within the band
+   * (anvil.model) and pay Smithing XP through the skills hook.
+   */
+  onAnvilDone(quality: number | null): void {
+    const recipe = this.anvilRecipe;
+    this.anvilRecipe = null;
+    if (!recipe || this.selected?.id !== recipe.id || !this.canCraft) {
+      this.cdr.markForCheck();
+      return;
+    }
+    if (quality === null) {
+      this.craftMany(1);
+      return;
+    }
+    this.queue = 0;
+    this.queueTotal = 1;
+    this.error = null;
+    this.lastCraft = null;
+    // The game was the work: settle now, with the anvil's quality, and feed the
+    // floor the materials in the same event.
+    this.settle(recipe, quality, false);
   }
 
   /** The stepper / Craft all: run the same single craft `n` times, one after another. */
@@ -541,8 +610,17 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     this.timers.push(setTimeout(tick, 120));
   }
 
-  private settle(recipe: CraftingRecipe): void {
-    const result = this.gateway.craft(recipe.id, newCraftId());
+  /**
+   * `anvilQuality` is null for every craft that did not play the anvil game
+   * (Craft all, a batch, skipped, consumables): those hand the gateway its
+   * default RNG and are exactly today's craft. `fedFloor` says whether a timed
+   * craft already sent the materials to the floor when it started.
+   */
+  private settle(recipe: CraftingRecipe, anvilQuality: number | null = null, fedFloor = (recipe.craftTime ?? 0) > 0): void {
+    const craftId = newCraftId();
+    const result = anvilQuality === null
+      ? this.gateway.craft(recipe.id, craftId)
+      : this.gateway.craft(recipe.id, craftId, anvilRng(Math.random, anvilQuality));
     if (!result.ok) {
       this.queue = 0;
       this.error = REJECT_COPY[result.code];
@@ -560,21 +638,29 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       mastered: result.progress?.masteredNow === true,
     };
     const name = result.items[0]?.name ?? result.recipe.name;
+    const made = result.stack ? result.stack.quantity : result.items.length;
     this.announce = result.progress?.masteredNow
       ? `${name} forged. This recipe is now mastered.`
       : `${name} forged.`;
     // Safe to call unconditionally — a no-op on Common and on the server, and it
     // never throws into the caller. See CelebrationService.
     const q = result.items[0] ? this.qualityOf(result.items[0]) : '';
+    // The anvil's Smithing XP, through the skills hook (idempotent per craft id).
+    let smithXp = 0;
+    if (anvilQuality !== null && !result.replayed) {
+      const granted = this.skills.grantSmithingXp(anvilQuality, `anvil:${craftId}`);
+      if (granted.ok && !granted.replayed) smithXp = craftSkillXp(anvilQuality);
+    }
     this.reward = {
       seq: ++this.rewardSeq,
       kicker: result.progress?.masteredNow ? this.t('crafting.madeMastered') : this.t('crafting.made'),
-      name: result.items.length > 1 ? `${name} ×${result.items.length}` : name,
+      name: made > 1 ? `${name} ×${made}` : name,
       art: artFor(result.recipe.output.itemId),
       rarity: result.recipe.rarity,
       rarityLabel: this.rarityLabel(result.recipe.rarity),
       caption: [
         q ? this.t('crafting.quality', { q }) : '',
+        smithXp ? this.t('minigame.anvil.xp', { n: smithXp }) : '',
         this.queueTotal > 1 ? this.t('crafting.batch', { n: this.queueTotal - this.queue, total: this.queueTotal }) : '',
       ].filter(Boolean).join(' · ') || undefined,
     };
@@ -583,7 +669,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     // and finishes in a single event.
     const first = result.items[0];
     this.emitFloor(
-      recipe.craftTime && recipe.craftTime > 0 ? null : recipe,
+      fedFloor ? null : recipe,
       first ? floorThing(result.recipe.output.itemId, first.name) : floorThing(result.recipe.output.itemId),
       this.rarityColor(result.recipe.rarity),
     );
@@ -680,6 +766,9 @@ const STAT_LABELS: Readonly<Partial<Record<ItemStatKey, string>>> = {
 function materialName(id: string): string {
   return materialDisplay(id)?.name ?? itemDefinitionById(id)?.name ?? id;
 }
+
+/** The "Skip the anvil game" toggle. Session-only UI preference; never persisted. */
+let skipAnvilGame = false;
 
 let craftCounter = 0;
 /**

@@ -53,7 +53,7 @@ export const CRAFTING_KEY = 'godforge-crafting';
 export const CRAFTING_SCHEMA_VERSION = 1 as const;
 
 /** What the bench groups recipes under, and what the filter chips filter on. */
-export type CraftingCategory = 'weapon' | 'armor' | 'charm' | 'consumable' | 'tool';
+export type CraftingCategory = 'weapon' | 'armor' | 'charm' | 'consumable' | 'tool' | 'delve';
 
 export interface CraftingCategoryDefinition {
   id: CraftingCategory;
@@ -111,6 +111,14 @@ export const CRAFTING_CATEGORIES: readonly CraftingCategoryDefinition[] = [
     glow: 'rgba(255, 180, 80, 0.6)',
     blurb: 'Pickaxes, axes, sickles and staffs. Each tier opens new nodes in the world.',
   },
+  {
+    id: 'delve',
+    label: 'Delve kit',
+    icon: 'D',
+    color: '#ff9a5a',
+    glow: 'rgba(255, 140, 60, 0.6)',
+    blurb: 'Torches, ladders, platforms, chests and a camp. Things you place in the Delve.',
+  },
 ];
 
 const CATEGORY_BY_ID = new Map(CRAFTING_CATEGORIES.map(c => [c.id, c]));
@@ -129,7 +137,12 @@ export interface CraftingRecipe {
   id: string;
   name: string;
   ingredients: readonly CraftingIngredient[];
-  output: { itemId: string; count: number };
+  /**
+   * `itemId` is an `ITEM_DEFINITIONS` id the bench mints, `count` times — or,
+   * with `stack`, a satchel stack key granted `count` at once (a Delve
+   * placeable: no instance, no roll). See `CraftingGateway.craft`.
+   */
+  output: { itemId: string; count: number; stack?: true };
   /**
    * The tier the output mints at.
    *
@@ -204,7 +217,7 @@ function r(
   goldCost: number,
   requiredLevel: number,
   blurb: string,
-  extra: { realm?: NarrativeRealmId; craftTime?: number; count?: number; skill?: 'smithing' } = {},
+  extra: { realm?: NarrativeRealmId; craftTime?: number; count?: number; skill?: 'smithing'; stack?: true } = {},
 ): CraftingRecipe {
   return {
     ...(extra.skill ? { skill: extra.skill } : {}),
@@ -213,8 +226,9 @@ function r(
     category,
     rarity,
     ingredients,
-    output: { itemId, count: extra.count ?? 1 },
-    goldCost: craftFeeV3(rarity, goldCost),
+    output: extra.stack ? { itemId, count: extra.count ?? 1, stack: true } : { itemId, count: extra.count ?? 1 },
+    // The Delve kit was authored after the rebalance, in v3 Gold already.
+    goldCost: category === 'delve' ? goldCost : craftFeeV3(rarity, goldCost),
     requiredLevel,
     realm: extra.realm,
     craftTime: extra.craftTime ?? 0,
@@ -493,6 +507,36 @@ export const MISSION_PATTERN_RECIPES: readonly CraftingRecipe[] = [
     { skill: 'smithing', craftTime: 4 }),
 ];
 
+/**
+ * The Delve kit: things the Keeper places underground (play/engine/terrain.ts
+ * PLACEABLES), crafted as satchel stacks rather than minted items. Cheap and
+ * level 1 on purpose, from what the Root Hollows give: Cinder Ore and the
+ * World-Root Bark the petrified trunks drop. The same recipes run at the Forge
+ * bench and at a camp placed in the Delve.
+ */
+export const DELVE_KIT_RECIPES: readonly CraftingRecipe[] = [
+  r('craft-delve-torch', 'Torch', 'delve', 'common', 'torch',
+    [m('cinder-ore', 1), m('world-root-bark', 1)],
+    30, 1, 'Three torches. Placed in the Delve they burn for good and push the dark back.',
+    { count: 3, stack: true }),
+  r('craft-delve-ladder', 'Ladder', 'delve', 'common', 'ladder',
+    [m('world-root-bark', 2)],
+    20, 1, 'Four ladders. Place one where you stand, climb it, place the next: out of any shaft.',
+    { count: 4, stack: true }),
+  r('craft-delve-platform', 'Platform', 'delve', 'common', 'platform',
+    [m('world-root-bark', 1), m('thornroot', 1)],
+    20, 1, 'Four platforms lashed with root. Stand on them; hold Down to drop through.',
+    { count: 4, stack: true }),
+  r('craft-delve-chest', 'Chest', 'delve', 'common', 'chest',
+    [m('world-root-bark', 4), m('cinder-ore', 2)],
+    150, 1, 'A chest for the Delve: four kinds of thing, as many of each as you like. Stash finds where you dig.',
+    { stack: true }),
+  r('craft-delve-camp', 'Camp', 'delve', 'uncommon', 'camp',
+    [m('world-root-bark', 6), m('cinder-ore', 4), m('ember-residue', 1)],
+    500, 1, 'A workbench and a fire to set down in the Delve. Craft there, and descend straight to it from town.',
+    { stack: true }),
+];
+
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...WEAPON_RECIPES,
   ...ARMOR_RECIPES,
@@ -500,6 +544,7 @@ export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...CONSUMABLE_RECIPES,
   ...TOOL_RECIPES,
   ...MISSION_PATTERN_RECIPES,
+  ...DELVE_KIT_RECIPES,
 ];
 
 const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));
@@ -536,7 +581,8 @@ export const CRAFT_XP: Readonly<Record<ItemRarity, number>> = {
 };
 
 export function craftXpFor(recipe: CraftingRecipe): number {
-  return (CRAFT_XP[recipe.rarity] ?? CRAFT_XP.common) * Math.max(1, recipe.output.count);
+  // A stack recipe's count is a handful of one cheap thing, not N crafts.
+  return (CRAFT_XP[recipe.rarity] ?? CRAFT_XP.common) * (recipe.output.stack ? 1 : Math.max(1, recipe.output.count));
 }
 
 /**

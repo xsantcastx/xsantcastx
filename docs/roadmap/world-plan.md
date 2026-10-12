@@ -30,6 +30,7 @@ world — and every system visible while it works.
 | World interactions | **Tools are verbs; the world has things to use them on** (inspired by Subgloom's destructible underground). **Tile-grid terrain**, not per-pixel. Delve + Homestead built **in parallel** | Crafting gets a purpose: each tool tier opens new rock, veins, paths and rooms |
 | New skills | **Smithing, Foraging/Woodcutting, Delving/Exploration, Enchanting ritual** (+ Mining, Hunting, Prospecting); one 1–99 curve with an unlock every ~10 levels | Extends the existing discipline ledger; no XP lost |
 | Economy | **Full rebalance to a Cookie-Clicker curve** (owner's original inspiration): first building in ~15 s, a new affordable goal every 30–90 s early, ×1.15 price scaling, click upgrades, golden-spark bursts; the Homestead is the "cookie" | Every Gold price is retuned together (runes, gambler, vendor, recipes, expeditions); existing saves migrated; designed + simulated before any number changes |
+| Who runs the economy | **Players, not NPCs** (owner, 2026-10-12): a **player auction house** (shared Grand Exchange, supply-and-demand prices) with **server escrow + limits** (signed-in only, rate limits, price sanity bands, provenance against the cloud save); **NPCs become sinks only** (buy junk at a low floor, charge fees/taxes; never sell what players make) | Trades become server-authoritative (Firestore + Cloud Functions); the simulated Exchange stays behind a flag until the real one is live; the Material Vendor turns into a buyback counter |
 | Menu UX | **"For dummies" simple, MapleStory-crafting-journal anatomy**: tabs per skill, skill strip with XP bar, list → detail, requirement icon grids with have/need counts, one CRAFT / CRAFT ALL row; extras behind Details. Reference: `docs/design-references/` | Every station and panel is held to it; a shared station UI kit enforces it |
 | Delve layout | **Your own persistent Delve**: one layout per player, carved out permanently; everything dug, placed or built stays (local save + cloud when signed in) | Persistence is the foundation for building in the Delve; layout seed is per player, stored with the save |
 | Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
@@ -98,12 +99,19 @@ things with tools you crafted, and you see your economy working.
 - [x] **World interactions + Ember Delve** (`102bc57`; dug state session-only, non-mining XP pending): diggable tile terrain with crack stages and crumble debris; generic tool-vs-node system (`pickaxe | axe | sickle | blade | staff`, tiers); lantern lighting in caves + staff blast beam; the Ember Delve slice under the Seamworks (Cinder → Slag → Heartstone veins by pickaxe tier, a staff-only cracked wall, roots for the blade/sickle)
 - [x] **Skills + tool progression** (`102bc57`): new disciplines (Woodcutting, Enchanting; Smithing = forge, Delving = exploration); one 1–99 curve with migration-safe XP; unlock table every ~10 levels; craftable tool tiers I–IV from existing materials, gated by Smithing; generic `resolveWorldAction`; in-world Skills panel; a level-up moment for every skill
 - [x] **Homestead** (`102bc57`): the idle economy as buildings you can see: forge automatons hammering, treasury, explorer camp (real expedition timestamps), thrall workshop; walk past to collect (visual only, no double credit); upgrade in-world with the existing Market upgrades
+- [ ] **Personal anvil + enchanting circle in the Homestead** (owner, 2026-10-12): your own crafting corner on the plot. It opens the same Crafting / Enchanting panels with the Smithing and Enchanting mini-games. Upgrade tiers for Gold: a better anvil widens the "perfect" window or adds a strike; a better circle makes the ritual check more forgiving and can seat a rarer rune. Upgrades are visible on the plot. **Starts after** the Delve-building and mini-games branches merge (they own `src/app/play/**` and the mini-games right now)
 - [ ] Foraging/woodcutting nodes in each realm's hunt (herbs, rootglass, bark), using the same tool system
-- [ ] **Smithing anvil mini-game** (strike timing sets quality): after the station-kit forge redesign lands
-- [ ] **Enchanting ritual** in the world (place runes on a glowing circle, small skill check): after the station-kit redesign lands
+- [x] **Smithing anvil mini-game** (`26218be`): 4 strikes graded Perfect/Good/Off → quality q; Smithing XP 8–40; roll bias r → r^(1−0.2q) stays inside today's band and ceiling (spec-proven), mean grade 0.5 → ≤0.556; Craft all / qty>1 / Skip = today's behaviour
+- [x] **Enchanting ritual** (`26218be`): drag or tap the rune onto the circle, then tap when the shrinking ring meets the socket; a hit sockets and pays Enchanting XP 8–40; a miss costs nothing and widens the window
 - [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
 
 ## Economy rebalance (Cookie-Clicker start) `[~]`
+
+- [x] **Owner approved the spec** (2026-10-12)
+- [~] **Implementation** (one coordinated change): all number changes, versioned idempotent save migration with fixtures, simulator `--check` in CI, golden-spark reward, copy updated; NPC vendor → buyback counter at a low floor, Merchant orders rescaled
+- [x] **Player auction house backend** (`a435266`, **flagged off**; rules/indexes held in `docs/handoff/player-market/*.proposed` for a manual deploy, since a CI rules change has 403'd and blocked hosting before; 28 functions tests on an in-memory store; the Firestore emulator didn't run because this machine has no Java): Firestore order book + trades + escrow + price history; callable Cloud Functions `placeOrder` / `cancelOrder` / `collect` with transactional matching (price-time, partial fills), seller tax, rate limits, sanity bands, provenance check; client-read-only rules; lazy `PlayerMarketService`; feature flag
+- [ ] Bind the redesigned Exchange UI (Menus A has landed) to `PlayerMarketService`; flip the flag after an emulator + staging check
+- [ ] **Owner-approved deploy**, by hand, in this order: rules + indexes (from `.proposed`) → `functions:market` → create `market/v1 {enabled: true}` → flip `PLAYER_MARKET_CLIENT_ENABLED` → bind the Exchange UI. Install Java so the Firestore emulator can test real queries and transactions first
 
 - [x] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
 - [x] Homestead built Cookie-style: big clickable Forge + always-visible buildings column (current numbers; new ones flow through later)
@@ -127,11 +135,11 @@ things with tools you crafted, and you see your economy working.
 
 Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
-- [ ] **Place blocks back**: mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs)
-- [ ] **Torches**: crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
-- [ ] **Ladders and platforms**: traverse deep shafts back up
-- [ ] **Portable workbench / campfire**: craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
-- [ ] **Chests** to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
+- [x] **Place blocks back** (`0f57c99`; B in front, S+B below, long-press/right-click a cell): mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs)
+- [x] **Torches** (`0f57c99`; Torch ×3 = 1 Cinder Ore + 1 Bark + 30 Gold; X takes back): crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
+- [x] **Ladders and platforms** (`0f57c99`): traverse deep shafts back up
+- [x] **Portable workbench / campfire** (`0f57c99`; one per Delve; opens Crafting on "Ready now"; "Descend to your camp" from town): craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
+- [x] **Chests** (`0f57c99`; 4 material kinds each, through the satchel ledger; supports/bombs still to do) to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
 - [ ] Tile, torch, ladder, platform and workbench art → `docs/art-commissions/`
 
 ## Phase 3: World only
@@ -172,7 +180,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 **Next session starts here:**
 0. ~~Cache-bust the solid Keeper~~ done: SOLIDIFY outputs publish as `-solid` filenames, so every browser refetches
 1. **Owner review of the economy spec** (`docs/economy/rebalance-spec.md`): price scaling ×1.25 → ×1.15, first paid purchase 2m01s → 4s, 3 → 44 purchases in the first 10 min, rune strike 10k → 600 (all sinks ×0.06), prestige at 10T with cube-root shards. Open TODOs: item Gold/s conversion, veteran shard cap, migration fixture specs. Then implement as one change with a versioned save migration.
-2. Convert the other 10 menus with the station kit (`src/app/shared/station-ui/README.md`).
+2. Convert the other 10 menus with the station kit: **Market, Gambler, Exchange done** (`c96c2d8`; primary action now on the first phone screen, 47–56 words); Character, Quests, Sanctum, Codex, Arena, Trials, Leaderboards in progress (Menus B).
 3. Delve: persist dug state; ~~XP for roots/cache/walls~~ done: every node trains its own skill (rock Mining, roots Foraging, petrified trunks Woodcutting, walls/caches Delving); reconcile lantern-radius units (skills = tiles, engine = its own); header and enemy bar should say "Ember Delve".
 4. Smithing anvil mini-game and Enchanting ritual (the kit and the skills hooks are both on main now).
 5. A Skills station in the world (panel id `skills` exists, no station yet); Hunting XP; Smithing XP banner on bench crafts.
@@ -201,7 +209,12 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
-- **Delve finale gaps:** the Rune-Warden respawns after 8 s like any Maw, and the Godforge fragment can be mined before the warden falls. **Kael's Hammer (`kaels-hammer`) has no cache placed yet**, so "The Old Seam" can't be completed
+- The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Market strings left unused by the redesign could be pruned from the eager translation table
+- **Market residual cheat risks** (the client still writes saves): a player can edit their own save then sell what they minted; a restored escrowed item stays usable single-player until their next market call; an offline device's earlier spends can make the client skip a server Gold debit; server repair marks expire after 7 days. See `docs/handoff/player-market.md`
+- The CSP now allows `us-central1-xsantcastx-1694b.cloudfunctions.net`, which was missing and had also blocked Stripe's callable
+- The NPC chat bubble covers the mini-game's Skip link at 390 px width
+- Delve finale gaps fixed (`0f57c99`): the warden falls once per player, the fragment stays sealed until then, Kael's cache is at (85,18)
+- Delve hotbar text is English-only; chests hold materials only; 8 new item icons + 5 placeable tiles need art
 - Nullthorn Staff recipe is now locked behind Verrin's mission (players who crafted it keep it)
 - New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet
 - 4 extra inscription texts written but not placed (`roots-cutting-mark`, `basalt-seam-ledger`, `grotto-tally-marks`, `magma-unsigned`)

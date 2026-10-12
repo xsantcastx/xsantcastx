@@ -79,6 +79,8 @@ import {
   PRESTIGE_GOLD_THRESHOLD,
   PRESTIGE_LEVEL_THRESHOLD,
   SHARD_BONUS,
+  costOf,
+  upgradeById,
   formatCompact,
   formatCurrency,
   formatMultiplier,
@@ -126,10 +128,24 @@ import {
   parseMarketQuery,
   queriesEqual,
   serializeMarketQuery,
+  sortMarketListings,
 } from './market-query';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { injectInWorldPanel } from '../in-world-panel';
+import {
+  STATION_UI,
+  STATION_UI_I18N,
+  type JournalRow,
+  type StationArt,
+  type StationCost,
+  type StationReward,
+  type StationTab,
+} from '../station-ui';
+import { MARKET_J_I18N } from './market.i18n';
+
+/** "Buy max" never loops past this many purchases in one press. */
+const BUY_MAX_CAP = 99;
 /** Every shelf in the shop. `eclipse` renders a ritual, not a list. */
 export type CategoryId =
   | 'forge' | 'hammer' | 'automaton' | 'mastery' | 'expedition' | 'thrall'
@@ -340,7 +356,7 @@ const CATALOGUE_PICKS = [
 @Component({
   selector: 'app-market',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterLink, ArtSceneComponent, InspectButtonComponent],
+  imports: [RelatedPagesComponent, CommonModule, RouterLink, ArtSceneComponent, InspectButtonComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './market.component.html',
   styleUrls: ['./market.component.css'],
@@ -426,6 +442,165 @@ export class MarketComponent implements OnInit, OnDestroy {
   readonly prestigeLevel = PRESTIGE_LEVEL_THRESHOLD;
   readonly shardBonusPercent = Math.round(SHARD_BONUS * 100);
 
+  // ── The journal (station kit) ──────────────────────────────────────────────
+  // Every array the kit renders is rebuilt in `refresh()` — on a snapshot, a
+  // query change or a pick — never from the template: the kit's inputs are
+  // signals, and a getter would hand them a new array on every pass.
+
+  detailsOpen = false;
+  shelfTabs: StationTab[] = [];
+  journalRows: JournalRow[] = [];
+  selectedItem: MarketItem | null = null;
+  buyCosts: StationCost[] = [];
+  buyLabel = '';
+  buyMaxCount = 0;
+  detailLine = '';
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
+  walletEssence: StationCost = { kind: 'essence', label: 'Essence', need: 0, have: 0 };
+  readonly incomeArt: StationArt | null = artFor('gold');
+  ownedShare = 0;
+  ownedCount = 0;
+  listingCount = 0;
+  reward: StationReward | null = null;
+  announce = '';
+  private rewardSeq = 0;
+  private selectedId: string | null = null;
+  /** Until the visitor picks a row, the journal keeps the first buyable one selected. */
+  private userPicked = false;
+  /**
+   * The "Can buy" tab: every shelf at once, only what the purse covers. The
+   * first tab and the default, so the first screen always has a pressable
+   * Buy — unless nothing is affordable and the visitor did not ask for it.
+   */
+  private readyOnly = true;
+  private readyChosen = false;
+
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(MARKET_J_I18N);
+    // Pure catalogue data, so the prerendered page already shows the journal.
+    this.refresh();
+  }
+
+  /** The id of the tab that is lit. */
+  get activeTab(): string {
+    if (this.readyActive) return 'ready';
+    return this.queryState.category;
+  }
+
+  private get readyActive(): boolean {
+    return this.readyOnly && this.queryState.category === 'all'
+      && (this.readyChosen || this.items.some(i => i.state === 'buy'));
+  }
+
+  selectTab(id: string): void {
+    this.readyOnly = id === 'ready';
+    this.readyChosen = id === 'ready';
+    this.userPicked = false;
+    const category = id === 'ready' || id === 'all' ? 'all'
+      : this.listingCategories.includes(id as typeof this.listingCategories[number]) ? id as MarketCategory : 'all';
+    this.eclipseOpen = false;
+    this.patchQuery({ category, page: 1 }, 'push');
+  }
+
+  pick(id: string): void {
+    this.userPicked = true;
+    this.selectedId = id;
+    this.refresh();
+    this.cdr.markForCheck();
+  }
+
+  /** Rebuild the tabs, the list, the selected detail and its action row. */
+  private refresh(): void {
+    const items = this.items;
+    const s = this.snap;
+    const goldLabel = this.t('market.gold');
+    const essenceLabel = this.t('market.essence');
+    this.walletGold = { kind: 'gold', label: goldLabel, need: s.gold, have: s.gold };
+    this.walletEssence = { kind: 'essence', label: essenceLabel, need: s.essence, have: s.essence };
+    this.listingCount = items.length;
+    this.ownedCount = items.filter(i => i.owned > 0).length;
+    this.ownedShare = items.length ? this.ownedCount / items.length : 0;
+
+    const readyCount = items.filter(i => i.state === 'buy').length;
+    this.shelfTabs = [
+      { id: 'ready', label: this.t('marketJ.tab.ready'), badge: this.hydrated ? readyCount || null : null },
+      { id: 'all', label: this.t('market.all') },
+      ...this.categories.map(c => ({ id: c.id, label: this.categoryShort(c.id) })),
+    ];
+
+    let rows = sortMarketListings(
+      filterMarketListings(items as MarketListingView[], this.queryState),
+      this.queryState.sort,
+    ) as MarketItem[];
+    if (this.readyActive) rows = rows.filter(i => i.state === 'buy');
+
+    this.journalRows = rows.map(it => ({
+      id: it.id,
+      name: it.name,
+      art: it.art,
+      rarity: it.rarity,
+      sub: this.rowSub(it),
+      locked: this.hydrated && (it.state === 'locked' || it.state === 'running'),
+      ready: this.hydrated && it.state === 'buy',
+    }));
+
+    const keep = this.userPicked ? rows.find(i => i.id === this.selectedId) : undefined;
+    this.selectedItem = keep ?? rows.find(i => i.state === 'buy') ?? rows[0] ?? null;
+    this.selectedId = this.selectedItem?.id ?? null;
+    this.buildAction();
+  }
+
+  /** "12,000 Gold · ×3", "Free", "Owned". One short line under the name. */
+  private rowSub(it: MarketItem): string {
+    if (it.state === 'owned') return this.t('marketJ.held');
+    if (it.state === 'held') return this.t('marketJ.maxed');
+    const price = it.cost === 0
+      ? this.t('market.free')
+      : `${formatCompact(it.cost)} ${it.currency === 'essence' ? this.t('market.essence') : this.t('market.gold')}`;
+    const ladder = it.owned > 0 && it.category !== 'artifact' && it.category !== 'cosmetic';
+    return ladder ? `${price} · ×${it.owned}` : price;
+  }
+
+  private buildAction(): void {
+    const it = this.selectedItem;
+    if (!it) {
+      this.buyCosts = [];
+      this.buyLabel = '';
+      this.buyMaxCount = 0;
+      this.detailLine = '';
+      return;
+    }
+    const s = this.snap;
+    this.buyCosts = it.cost === 0 ? [] : [{
+      kind: it.currency,
+      label: it.currency === 'essence' ? this.t('market.essence') : this.t('market.gold'),
+      need: it.cost,
+      have: it.currency === 'essence' ? s.essence : s.gold,
+    }];
+    this.buyLabel = it.cost === 0 ? this.t('marketJ.takeFree')
+      : this.isRunning(it) ? this.t('marketJ.renew') : this.t('marketJ.buy');
+    this.detailLine = it.state === 'owned' ? this.t('marketJ.lineOwned')
+      : it.state === 'held' ? (it.category === 'thrall' && it.id !== 'thrall-slot'
+        ? this.t('marketJ.lineRoster') : this.t('marketJ.lineMaxed'))
+      : this.t('marketJ.line', { name: it.name });
+    this.buyMaxCount = this.hydrated ? this.ladderMax(it) : 0;
+  }
+
+  /**
+   * How many levels of a Gold ladder the purse covers in a row. Delegates to
+   * `EconomyService.affordableLevels`, which walks the same per-level price
+   * `nextCost` charges (economy-curve.ts escalator, Charisma discount, a free
+   * first rung, the level cap) — one price function, so Buy max cannot drift
+   * from the curve. Display only: "Buy max" itself re-reads the live price
+   * before every purchase. Below 2 there is no point in a second button.
+   */
+  private ladderMax(it: MarketItem): number {
+    if (!upgradeById(it.id) || it.state !== 'buy') return 0;
+    const n = this.economy.affordableLevels(it.id, this.snap.gold, BUY_MAX_CAP);
+    return n >= 2 ? n : 0;
+  }
+
   /**
    * The whole inventory, rebuilt once per snapshot rather than once per getter.
    *
@@ -441,11 +616,15 @@ export class MarketComponent implements OnInit, OnDestroy {
     this.economy.init();
     this.subs.add(this.economy.snapshot$.subscribe(s => {
       this.snap = s;
+      this.refresh();
       this.cdr.markForCheck();
     }));
     // In-world the ActivatedRoute is /play's: its params are not the Market's.
     if (!this.inWorld) this.subs.add(this.route.queryParamMap.subscribe(params => this.syncFromUrl(params)));
-    this.subs.add(this.i18n.currentLanguage$.subscribe(() => this.cdr.markForCheck()));
+    this.subs.add(this.i18n.currentLanguage$.subscribe(() => {
+      this.refresh();
+      this.cdr.markForCheck();
+    }));
     this.subs.add(this.search$.pipe(debounceTime(150)).subscribe(value => {
       this.patchQuery({ q: value, page: 1 }, 'replace');
     }));
@@ -456,8 +635,12 @@ export class MarketComponent implements OnInit, OnDestroy {
     // it. Idempotent, and it also starts the shift — which is right: a player
     // standing in the Market with Thralls bound is a player with the tab open.
     this.thralls.init();
-    this.subs.add(this.thralls.snapshot$.subscribe(() => this.cdr.markForCheck()));
+    this.subs.add(this.thralls.snapshot$.subscribe(() => {
+      this.refresh();
+      this.cdr.markForCheck();
+    }));
     this.hydrated = true;
+    this.refresh();
     const debug = window as unknown as { __MK_FORCE_ERROR?: boolean };
     if (debug.__MK_FORCE_ERROR) this.catalogueError = true;
     this.now = Date.now();
@@ -814,7 +997,7 @@ export class MarketComponent implements OnInit, OnDestroy {
    *
    * The honest answer to "what do I do here" for that visitor is not "strike
    * the flame 20,000 times" — it is the two-minute Scout, which is free, needs
-   * no upgrade, and returns 5,000-10,000 Gold. The first-run tutorial says so
+   * no upgrade, and returns a minute of income (at least 90 Gold, economy v3). The first-run tutorial says so
    * on its fourth screen; this is the same sentence for the visitor who skipped
    * it, and it goes away as soon as either half stops being true.
    */
@@ -1010,6 +1193,8 @@ export class MarketComponent implements OnInit, OnDestroy {
     }
     this.queryState = next;
     this.searchDraft = next.q;
+    if (next.category !== 'all') this.readyOnly = false;
+    this.refresh();
     this.cdr.markForCheck();
     if (marketQueryNeedsNormalize(raw) || next.page !== parsed.page) this.writeQuery(next, 'replace');
   }
@@ -1018,6 +1203,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     const next = { ...this.queryState, ...partial };
     this.queryState = next;
     this.writeQuery(next, mode);
+    this.refresh();
     this.cdr.markForCheck();
   }
 
@@ -1111,6 +1297,9 @@ export class MarketComponent implements OnInit, OnDestroy {
   focusItem(item: SellerRow): void {
     const found = this.items.find(i => i.id === item.id);
     if (!found) return;
+    this.readyOnly = false;
+    this.userPicked = true;
+    this.selectedId = found.id;
     this.searchDraft = found.name;
     this.eclipseOpen = false;
     this.collapseTile();
@@ -1199,8 +1388,55 @@ export class MarketComponent implements OnInit, OnDestroy {
    * cannot leave a button wired to the wrong ledger.
    */
   buy(item: MarketItem): void {
-    if (item.state === 'held' || item.state === 'owned') return;
-    if (this.economy.isBuying(item.id)) return;
+    // Stay on what was just bought (Buy again), rather than hop to the next row.
+    this.userPicked = true;
+    this.selectedId = item.id;
+    const before = this.snap.perSecond;
+    if (this.purchase(item)) this.celebrate(item, 1, before);
+  }
+
+  /**
+   * "Buy max": the same purchase, `count` times, re-reading the row (and so
+   * the live price the intent carries) before each one. Stops at the first
+   * refusal; whatever already landed stays bought.
+   */
+  buyMany(item: MarketItem, count: number): void {
+    this.userPicked = true;
+    this.selectedId = item.id;
+    const before = this.snap.perSecond;
+    let bought = 0;
+    for (let i = 0; i < count; i++) {
+      const fresh = this.items.find(x => x.id === item.id);
+      if (!fresh || fresh.state !== 'buy') break;
+      if (!this.purchase(fresh)) break;
+      bought++;
+    }
+    if (bought > 0) this.celebrate(item, bought, before);
+  }
+
+  /** The reward card for a purchase that landed. */
+  private celebrate(item: MarketItem, count: number, rateBefore: number): void {
+    const rate = formatCompact(this.snap.perSecond);
+    this.reward = {
+      seq: ++this.rewardSeq,
+      name: item.name,
+      art: item.art,
+      rarity: item.rarity,
+      rarityLabel: count > 1 ? `×${count}` : undefined,
+      caption: this.snap.perSecond > rateBefore + 0.001
+        ? (count > 1 ? this.t('marketJ.boughtN', { n: count, rate }) : this.t('marketJ.boughtRate', { rate }))
+        : item.effect,
+      kicker: this.t('marketJ.bought'),
+    };
+    this.announce = `${this.t('marketJ.bought')} ${item.name}${count > 1 ? ` ×${count}` : ''}`;
+    this.refresh();
+    this.cdr.markForCheck();
+  }
+
+  /** One purchase through the right ledger. True when it landed. */
+  private purchase(item: MarketItem): boolean {
+    if (item.state === 'held' || item.state === 'owned') return false;
+    if (this.economy.isBuying(item.id)) return false;
 
     // Recruiting is not a catalogue purchase: it mints a record with a rolled
     // name into a roster this component does not own, and it sets its own
@@ -1214,11 +1450,11 @@ export class MarketComponent implements OnInit, OnDestroy {
       const code = this.thralls.recruit(rarity);
       this.announcePurchase(code === 'ok' ? 'ok' : code === 'roster-full' ? 'maxed' : 'insufficient-funds');
       this.settle(item.id, code === 'ok');
-      return;
+      return code === 'ok';
     }
 
     const kind = this.commerceKind(item);
-    if (!kind) return;
+    if (!kind) return false;
     let mutationKey = this.actionKeys.get(item.id);
     if (!mutationKey) {
       mutationKey = newPurchaseActionId();
@@ -1233,14 +1469,7 @@ export class MarketComponent implements OnInit, OnDestroy {
     if (receipt.code !== 'in-flight') this.actionKeys.delete(item.id);
     this.announcePurchase(receipt.code);
     this.settle(item.id, receipt.ok);
-    if (this.isBrowser) {
-      queueMicrotask(() => {
-        const el = this.host.nativeElement.querySelector(
-          receipt.ok ? `#mk-exp-${item.id} .mk__buy, #mk-exp-${item.id} .mk__held` : `#mk-exp-${item.id} .mk__buy`,
-        ) as HTMLElement | null;
-        el?.focus();
-      });
-    }
+    return receipt.ok;
   }
 
   isBuying(id: string): boolean {
