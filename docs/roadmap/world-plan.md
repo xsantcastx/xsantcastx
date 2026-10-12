@@ -29,6 +29,7 @@ world — and every system visible while it works.
 | Platform | **Browser-first**; installable PWA now; wrap the same web build for Steam / app stores later only if it gets traction. No engine rewrite (Unity / Godot) | Keeps zero-friction play, SEO traffic, cloud saves and instant updates; revisit only for 3D or real-time multiplayer combat |
 | World interactions | **Tools are verbs; the world has things to use them on** (inspired by Subgloom's destructible underground). **Tile-grid terrain**, not per-pixel. Delve + Homestead built **in parallel** | Crafting gets a purpose: each tool tier opens new rock, veins, paths and rooms |
 | New skills | **Smithing, Foraging/Woodcutting, Delving/Exploration, Enchanting ritual** (+ Mining, Hunting, Prospecting); one 1–99 curve with an unlock every ~10 levels | Extends the existing discipline ledger; no XP lost |
+| Economy | **Full rebalance to a Cookie-Clicker curve** (owner's original inspiration): first building in ~15 s, a new affordable goal every 30–90 s early, ×1.15 price scaling, click upgrades, golden-spark bursts; the Homestead is the "cookie" | Every Gold price is retuned together (runes, gambler, vendor, recipes, expeditions); existing saves migrated; designed + simulated before any number changes |
 | Menu UX | **"For dummies" simple, MapleStory-crafting-journal anatomy**: tabs per skill, skill strip with XP bar, list → detail, requirement icon grids with have/need counts, one CRAFT / CRAFT ALL row; extras behind Details. Reference: `docs/design-references/` | Every station and panel is held to it; a shared station UI kit enforces it |
 | Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
 
@@ -101,6 +102,14 @@ things with tools you crafted, and you see your economy working.
 - [ ] **Enchanting ritual** in the world (place runes on a glowing circle, small skill check): after the station-kit redesign lands
 - [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
 
+## Economy rebalance (Cookie-Clicker start) `[~]`
+
+- [~] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
+- [~] Homestead built Cookie-style: big clickable Forge + always-visible buildings column (current numbers; new ones flow through later)
+- [ ] **Owner:** review the spec's headline timings and number table
+- [ ] Implement the rebalance in one coordinated change **after** the Homestead, Skills and Station-kit branches merge (they all touch Gold prices); versioned, idempotent save migration; tests guard the curve
+- [ ] Golden-spark burst event
+
 ## Phase 3: World only
 
 - [ ] Every navbar page reachable by walking, the Places list, and a Waystone
@@ -140,7 +149,8 @@ things with tools you crafted, and you see your economy working.
 | Station UI kit + forge bench redesign ("for dummies" simple) | agent worktree | `[~]` |
 | Living world · World interactions + Ember Delve | agent worktree | `[~]` |
 | Living world · Skills + tool progression | agent worktree | `[~]` |
-| Living world · Homestead | agent worktree | `[~]` |
+| Living world · Homestead (now Cookie-style: clickable Forge + buildings column) | agent worktree | `[~]` |
+| Economy rebalance spec + simulator | agent worktree | `[~]` |
 
 ## Art still missing (placeholders in game)
 
