@@ -75,7 +75,7 @@ async function openForge(page: Page, tier: Tier): Promise<void> {
  * asserted afterwards against the snapshot.
  */
 async function strike(page: Page, tier: Tier) {
-  await page.getByRole('button', { name: /Roll new rune/ }).click();
+  await page.getByRole('button', { name: /^Strike the forge/ }).click();
   await expect(page.locator('.rf-pick')).toHaveClass(/rf-pick--landed/);
   if (tier !== 'common') {
     // The celebration is raised one frame after the card, so that the element
@@ -214,7 +214,7 @@ test.describe('rune celebration', () => {
     // against the document — it grows to scrollHeight and jumps to the top of
     // the page, taking the card the player is reading with it.
     await openForge(page, 'singular');
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     const focus = page.locator('.rf-focus');
     await expect(focus).toBeVisible();
     const box = (await focus.boundingBox())!;

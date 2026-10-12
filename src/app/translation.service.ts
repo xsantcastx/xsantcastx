@@ -174,50 +174,21 @@ export class TranslationService {
     'gfnav.hint.enchanting': { en: 'Set runes, burn materials', es: 'Engarza runas, quema materiales' },
 
     // ── The Enchanting Table ──────────────────────────────────────────────
-    'enchant.eyebrow':    { en: '\u25cf THE ENCHANTING TABLE', es: '\u25cf LA MESA DE ENCANTAMIENTO' },
-    'enchant.title':      { en: 'The Table',      es: 'La Mesa' },
-    'enchant.tagline':    { en: 'runes into wells, materials into the burner \u2014 what your gear is spelling, and for how long', es: 'runas en los huecos, materiales al fuego \u2014 lo que tu equipo deletrea, y por cuanto tiempo' },
-    'enchant.stat.gold':  { en: 'Gold',           es: 'Oro' },
-    'enchant.stat.words': { en: 'Socket Words',   es: 'Palabras de engarce' },
-    'enchant.stat.running': { en: 'Infusions',    es: 'Infusiones' },
     'enchant.dismiss':    { en: 'Dismiss',        es: 'Descartar' },
 
-    'enchant.sockets.title':   { en: 'Sockets',   es: 'Engarces' },
-    'enchant.sockets.hint':    { en: 'Weapons hold up to three wells, armour up to two. A rune set into a well pays while the piece is worn, and comes back out for Gold.', es: 'Las armas tienen hasta tres huecos, las armaduras hasta dos. Una runa engarzada rinde mientras llevas la pieza, y sale de nuevo por Oro.' },
     'enchant.sockets.empty':   { en: 'Nothing you own will hold a rune yet. Craft or find a weapon or a piece of armour and it arrives with its wells already cut.', es: 'Nada de lo que tienes admite runas todavia. Forja o encuentra un arma o una armadura y llegara con sus huecos ya tallados.' },
-    'enchant.sockets.pick':    { en: 'Pieces that hold runes', es: 'Piezas que admiten runas' },
-    'enchant.sockets.wells':   { en: 'Wells',     es: 'Huecos' },
-    'enchant.sockets.well':    { en: 'Well',      es: 'Hueco' },
-    'enchant.sockets.emptyWell': { en: 'Empty well', es: 'Hueco vacio' },
-    'enchant.sockets.pull':    { en: 'Pull',      es: 'Extraer' },
-    'enchant.sockets.drawer':  { en: 'The rune drawer', es: 'El cajon de runas' },
-    'enchant.sockets.drawerEmpty': { en: 'The drawer is empty. Strike the anvil at the Forge until something falls out of it.', es: 'El cajon esta vacio. Golpea el yunque en la Forja hasta que caiga algo.' },
-    'enchant.sockets.close':   { en: 'Close',     es: 'Cerrar' },
     'enchant.sockets.base':    { en: 'Base roll', es: 'Tirada base' },
     'enchant.sockets.runes':   { en: 'From runes', es: 'De las runas' },
     'enchant.sockets.total':   { en: 'What it pays', es: 'Lo que rinde' },
     'enchant.sockets.none':    { en: '\u2014',   es: '\u2014' },
-    'enchant.sockets.seated':  { en: 'Seated word', es: 'Palabra asentada' },
-    'enchant.sockets.weapon':  { en: 'Weapon',    es: 'Arma' },
-    'enchant.sockets.armor':   { en: 'Armour',    es: 'Armadura' },
-    'enchant.sockets.worn':    { en: 'Worn',      es: 'Equipada' },
 
     'enchant.words.title':     { en: 'Socket Words', es: 'Palabras de engarce' },
     'enchant.words.tagline':   { en: 'Fifteen sequences nobody wrote down. Fill every well on a piece with the right runes in the right order and the piece starts paying something the runes alone do not.', es: 'Quince secuencias que nadie escribio. Llena cada hueco de una pieza con las runas correctas en el orden correcto y la pieza rendira algo que las runas solas no dan.' },
     'enchant.words.clue':      { en: 'Clue',      es: 'Pista' },
-    'enchant.words.discovered': { en: 'A word has seated', es: 'Una palabra se ha asentado' },
     'enchant.words.frame.weapon': { en: 'Weapon only', es: 'Solo armas' },
     'enchant.words.frame.armor':  { en: 'Armour only', es: 'Solo armaduras' },
     'enchant.words.frame.any':    { en: 'Any piece',   es: 'Cualquier pieza' },
 
-    'enchant.infusion.title':   { en: 'Infusions', es: 'Infusiones' },
-    'enchant.infusion.tagline': { en: 'Burn what the gathering skills bring home for an hour or two of something better. Three at once, no more, and they do not extend \u2014 let one lapse and brew it again.', es: 'Quema lo que traen las habilidades de recoleccion a cambio de una o dos horas de algo mejor. Tres a la vez, no mas, y no se prolongan: deja que una caduque y vuelve a prepararla.' },
-    'enchant.infusion.brew':    { en: 'Light the burner', es: 'Encender el fuego' },
-    'enchant.infusion.running': { en: 'Running',   es: 'En marcha' },
-    'enchant.infusion.short':   { en: 'Short of materials', es: 'Faltan materiales' },
-    'enchant.infusion.full':    { en: 'All three slots are full', es: 'Los tres huecos estan llenos' },
-    'enchant.infusion.slots':   { en: 'Slots in use', es: 'Huecos en uso' },
-    'enchant.infusion.left':    { en: 'Left:',     es: 'Queda:' },
 
     // ── The Forge floor (strip above all three benches) ───────────────────
     'forgeFloor.label':         { en: 'The forge floor', es: 'El taller de la forja' },
@@ -229,15 +200,11 @@ export class TranslationService {
     'forgeFloor.made':          { en: 'Off the floor:',  es: 'Sale del taller:' },
 
     // ── The Crafting Bench ────────────────────────────────────────────────
-    'crafting.eyebrow':   { en: '\u25cf THE CRAFTING BENCH', es: '\u25cf EL BANCO DE FORJA' },
-    'crafting.title':     { en: 'The Bench',      es: 'El Banco' },
-    'crafting.tagline':   { en: 'what the seams and the canopy gave up, struck into something you can wear', es: 'lo que las vetas y el dosel entregaron, forjado en algo que puedes vestir' },
     'crafting.level':     { en: 'Level',          es: 'Nivel' },
     'crafting.lvl':       { en: 'Lvl',            es: 'Nvl' },
     'crafting.stat.xp':   { en: 'Crafting XP',    es: 'XP de forja' },
     'crafting.stat.known':{ en: 'Recipes known',  es: 'Recetas conocidas' },
     'crafting.stat.mastered': { en: 'Mastered',   es: 'Dominadas' },
-    'crafting.stat.gold': { en: 'Gold',           es: 'Oro' },
     'crafting.filters':   { en: 'Recipe filters', es: 'Filtros de recetas' },
     'crafting.search':    { en: 'Search recipes and materials', es: 'Buscar recetas y materiales' },
     'crafting.all':       { en: 'All',            es: 'Todo' },
@@ -252,15 +219,6 @@ export class TranslationService {
     'crafting.filter.everything':  { en: 'Everything',  es: 'Todas' },
     'crafting.filter.ready':       { en: 'Ready to craft', es: 'Listas para forjar' },
     'crafting.filter.known':       { en: 'Already known',  es: 'Ya conocidas' },
-    'crafting.slots':     { en: 'On the anvil',   es: 'En el yunque' },
-    'crafting.load':      { en: 'Load',           es: 'Cargar' },
-    'crafting.take':      { en: 'Take off',       es: 'Retirar' },
-    'crafting.loadAll':   { en: 'Load the anvil', es: 'Cargar el yunque' },
-    'crafting.clear':     { en: 'Clear',          es: 'Vaciar' },
-    'crafting.dragHint':  { en: 'Drag a material onto its slot, or press Load.', es: 'Arrastra un material a su hueco, o pulsa Cargar.' },
-    'crafting.loadFirst': { en: 'Load every slot before you strike.', es: 'Carga todos los huecos antes de golpear.' },
-    'crafting.craft':     { en: 'Strike the anvil', es: 'Golpear el yunque' },
-    'crafting.working':   { en: 'Working \u2014',  es: 'Trabajando \u2014' },
     'crafting.time':      { en: 'Time',           es: 'Tiempo' },
     'crafting.instant':   { en: 'Instant',        es: 'Al instante' },
     'crafting.xp':        { en: 'XP',             es: 'XP' },
@@ -269,10 +227,7 @@ export class TranslationService {
     'crafting.mastered':  { en: 'Mastered',       es: 'Dominada' },
     'crafting.mastery.progress': { en: 'Toward mastery', es: 'Hacia el dominio' },
     'crafting.mastery.done':     { en: 'Mastered \u2014 every roll on this recipe is 10% better, forever.', es: 'Dominada: cada tirada de esta receta es un 10% mejor, para siempre.' },
-    'crafting.result.done':      { en: 'Off the anvil', es: 'Sale del yunque' },
-    'crafting.result.mastered':  { en: 'Mastered \u2014 off the anvil', es: 'Dominada: sale del yunque' },
     'crafting.result.note':      { en: 'It is in your bag. Equip it on Character, or list it on the Exchange.', es: 'Esta en tu bolsa. Equipalo en Personaje, o listalo en la Lonja.' },
-    'crafting.dismiss':   { en: 'Dismiss',        es: 'Cerrar' },
 
     'gfnav.section.main':      { en: 'Main',      es: 'Principal' },
     'gfnav.section.more':      { en: 'More',      es: 'Mas' },
@@ -1084,11 +1039,7 @@ export class TranslationService {
     'forge.recipe.title':       { en: 'Equipment recipes', es: 'Recetas de equipo' },
     'forge.recipe.sub':         { en: 'Six Cinder Ore and one Ember Residue become Basalt Edge. No Gold.', es: 'Seis Cinder Ore y un Ember Residue se vuelven Basalt Edge. Sin oro.' },
     'forge.title':              { en: 'Rune Forge', es: 'Forja de runas' },
-    'forge.tag':                { en: 'Collect. Discover. Forge.', es: 'Colecciona. Descubre. Forja.' },
-    'forge.stat.gold':          { en: 'Gold', es: 'Oro' },
     'forge.stat.forges':        { en: 'Forges', es: 'Forjas' },
-    'forge.roll':               { en: 'Roll new rune', es: 'Lanzar runa' },
-    'forge.roll.need':          { en: 'Need {{gold}} more gold', es: 'Faltan {{gold}} de oro' },
     'forge.roll.dock':          { en: 'Roll', es: 'Lanzar' },
     'forge.roll.auto':          { en: 'Auto ×10', es: 'Auto ×10' },
     'forge.roll.auto.done':     { en: '{{n}} strikes · ✦ {{new}} new', es: '{{n}} golpes · ✦ {{new}} nuevas' },
@@ -1105,7 +1056,6 @@ export class TranslationService {
     'forge.library.title':      { en: 'Your rune library', es: 'Tu biblioteca' },
     'forge.library.stats':      { en: 'Collection', es: 'Coleccion' },
     'forge.library.done':       { en: 'The Archivum knows your name', es: 'El Archivum conoce tu nombre' },
-    'forge.pill.found':         { en: 'found', es: 'halladas' },
     'forge.pill.complete':      { en: 'complete', es: 'completo' },
     'forge.pill.new':           { en: 'New', es: 'Nuevas' },
     'forge.tabs':               { en: 'Forge sections', es: 'Secciones de la forja' },
@@ -1369,6 +1319,17 @@ export class TranslationService {
     this.currentLanguageSubject.next(language);
     this.reflectLanguageOnDocument(language);
     if (this.isBrowser) localStorage.setItem('preferred-language', language);
+  }
+
+  /**
+   * Merge a lazily-loaded string table — a route chunk's own copy, e.g.
+   * station-ui.i18n.ts — into the live one. This table ships in the initial
+   * bundle, so copy only one lazy page uses belongs in that page's chunk.
+   * Keys already declared here win. Declared keys are checked by
+   * scripts/check-i18n-keys.js, which reads every `*.i18n.ts` too.
+   */
+  register(table: Readonly<Translations>): void {
+    for (const key of Object.keys(table)) this.translations[key] ??= table[key];
   }
 
   getCurrentLanguage(): string {
