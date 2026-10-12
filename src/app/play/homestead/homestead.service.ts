@@ -22,8 +22,12 @@
  * (nextCost / levelOf / goldPerSecond / goldPerClick), so new numbers flow
  * through untouched. The rung lists (`FURNACE_RUNGS`, `AUTOMATON_RUNGS`,
  * `COLUMN_RUNGS`) are built from FORGE_UPGRADES / AUTO_CLICKERS /
- * MULTIPLIER_UPGRADES, so new rungs appear by themselves. `goldenSpark()` is
- * the presentation hook for a future bonus — it grants nothing.
+ * MULTIPLIER_UPGRADES, so new rungs appear by themselves.
+ *
+ * GOLDEN SPARK (economy v3): the Homestead holds the shared GoldenSparkService
+ * clock while it is open. A spark offered while you are here is caught by
+ * striking the Forge within its 13 seconds; EconomyService credits it
+ * (Windfall or Forge Frenzy) and only then `goldenSpark()` plays the burst.
  */
 import { Injectable, NgZone, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -34,6 +38,7 @@ import {
 } from '../../shared/economy/economy.model';
 import { CommerceCode, newPurchaseActionId } from '../../shared/economy/commerce-ops';
 import { ComboService } from '../../shared/economy/combo.service';
+import { GoldenSparkService } from '../../shared/economy/golden-spark.service';
 import { pitchFor } from '../../shared/economy/combo.model';
 import { ForgeAudioService } from '../../shared/economy/forge-audio.service';
 import { IdleService } from '../../shared/idle/idle.service';
@@ -100,6 +105,7 @@ export class HomesteadService implements OnDestroy {
   private readonly thrallService = inject(ThrallService);
   private readonly idle = inject(IdleService);
   private readonly combo = inject(ComboService);
+  private readonly spark = inject(GoldenSparkService);
   private readonly audio = inject(ForgeAudioService);
   private readonly zone = inject(NgZone);
 
@@ -157,6 +163,8 @@ export class HomesteadService implements OnDestroy {
     }));
     subs.add(this.explorers.returned$.subscribe(r => this.scene.addPending('camp', { gold: Math.max(0, r.reward.gold || 0), returns: 1 })));
     subs.add(this.thrallService.find$.subscribe(() => { this.scene.addPending('workshop', { runes: 1 }); this.scene.rune(); }));
+    // The shared Golden Spark clock runs while the Homestead is open.
+    subs.add(this.spark.attach());
     this.subs = subs;
   }
 
@@ -178,6 +186,8 @@ export class HomesteadService implements OnDestroy {
     const run = this.combo.strike();
     this.audio.strike(pitchFor(run.count));
     this.scene.strikeFx(hit.gold, hit.century || hit.millennium);
+    // A spark on offer is caught by striking the Forge. Credited first, then shown.
+    if (this.spark.offer && this.spark.catch()) this.goldenSpark();
   }
 
   /**
@@ -194,8 +204,8 @@ export class HomesteadService implements OnDestroy {
   }
 
   /**
-   * HOOK for the rebalance: play a golden spark over the Forge. Grants nothing —
-   * credit any bonus through EconomyService first, then call this.
+   * Play a golden spark over the Forge. Grants nothing — the spark was already
+   * credited through GoldenSparkService → EconomyService (see `strike()`).
    */
   goldenSpark(): void {
     this.scene.goldenSpark();

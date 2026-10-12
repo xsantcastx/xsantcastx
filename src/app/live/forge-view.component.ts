@@ -55,6 +55,7 @@ import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
+import { GoldenSparkService, type GoldenSparkKind } from '../shared/economy/golden-spark.service';
 import {
   ARTIFACTS,
   AUTO_CLICKERS,
@@ -545,11 +546,6 @@ function relativeTime(at: number, now: number): string {
   return `${Math.floor(hours / 24)}d ago`;
 }
 
-/** A trader shows up somewhere in this window, and stays for a while. */
-const TRADER_MIN_MS = 90_000;
-const TRADER_MAX_MS = 240_000;
-const TRADER_STAY_MS = 25_000;
-
 /** Remembers whether the visitor wanted the hum, across visits. */
 const HUM_KEY = 'godforge-forge-hum';
 
@@ -566,6 +562,7 @@ const HUM_KEY = 'godforge-forge-hum';
 })
 export class ForgeViewComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
+  private readonly spark = inject(GoldenSparkService);
   private readonly xp = inject(XpService);
   private readonly quests = inject(QuestService);
   private readonly explorers = inject(ExplorerService);
@@ -613,15 +610,18 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
    */
   pickedSite: string = defaultSiteFor('luminous').id;
 
-  /** The wandering trader, when one is on screen. */
+  /**
+   * The Golden Spark on offer (economy v3; it replaced the wandering trader).
+   * `traderGold` is what a Windfall would pay now; 0 when nothing is offered.
+   */
   traderGold = 0;
+  sparkKind: GoldenSparkKind | null = null;
 
   /** Recomputed each tick so the countdowns are honest. */
   private now = 0;
 
   private seq = 0;
-  private traderTimer: ReturnType<typeof setTimeout> | null = null;
-  private traderExpiry: ReturnType<typeof setTimeout> | null = null;
+  private releaseSpark: (() => void) | null = null;
 
   // ── Static catalogue, safe to build at construction (pure data) ─────────────
 
@@ -687,7 +687,12 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     this.explorers.init();
 
     this.restoreHum();
-    this.scheduleTrader();
+    this.releaseSpark = this.spark.attach();
+    this.subs.add(this.spark.offer$.subscribe(offer => {
+      this.sparkKind = offer?.kind ?? null;
+      this.traderGold = offer ? (offer.kind === 'windfall' ? this.spark.previewWindfall() : 1) : 0;
+      this.cdr.markForCheck();
+    }));
   }
 
   ngOnDestroy(): void {
@@ -696,7 +701,8 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     // a furnace still running under /tools would be a sound with no visible
     // source and no button to stop it.
     this.audio.stopHum();
-    this.clearTraderTimers();
+    this.releaseSpark?.();
+    this.releaseSpark = null;
     // The effect layer is a child of <body>, not of this component, so Angular
     // destroying the page does not take it with it. Navigating away mid-Mythic
     // would otherwise leave four seconds of gold lightning over /tools.
@@ -914,7 +920,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     const mission = missionById(this.pickedMission);
     return sitesInRealm(this.pickedRealm).map(site => {
       const block = this.explorers.blockedSite(site.id, this.armedExplorerId);
-      const band = mission ? realmGoldBand(mission, this.pickedRealm) : { min: 0, max: 0 };
+      const band = mission ? realmGoldBand(mission, this.pickedRealm, this.snap.perSecond) : { min: 0, max: 0 };
       const cost = this.explorers.dispatchCost(this.pickedMission, site.id);
       return {
         site,
@@ -1038,7 +1044,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
    * the destination mattered, because it did not.
    */
   goldBand(mission: MissionDefinition): string {
-    const band = realmGoldBand(mission, this.pickedRealm);
+    const band = realmGoldBand(mission, this.pickedRealm, this.snap.perSecond);
     const mult = siteProfile(this.pickedSite).goldMultiplier;
     return `${formatCompact(Math.round(band.min * mult))}–${formatCompact(Math.round(band.max * mult))} Gold`;
   }
@@ -1558,58 +1564,17 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   }
 
   // ───────────────────────────────────────────────────────────────────────────
-  // The wandering trader
+  // The Golden Spark (was the wandering trader)
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * Every so often somebody turns up with an offer, and leaves if ignored.
-   *
-   * The payout is a minute of the visitor's own income rather than a flat
-   * number, with a floor for a forge that has none yet. A flat bonus is either
-   * meaningless at the top of the ladder or unbalancing at the bottom, and
-   * scaling it means the trader stays worth clicking for exactly as long as the
-   * forge stays worth watching.
+   * Catch the spark on offer. The timing and the reward are the shared
+   * GoldenSparkService's (one clock across the Forge View and the Homestead);
+   * the Gold is credited by EconomyService.
    */
-  private scheduleTrader(): void {
-    if (!this.isBrowser) return;
-    const delay = TRADER_MIN_MS + Math.random() * (TRADER_MAX_MS - TRADER_MIN_MS);
-
-    this.zone.runOutsideAngular(() => {
-      this.traderTimer = setTimeout(() => {
-        this.zone.run(() => {
-          this.traderGold = Math.max(50, Math.round(this.snap.perSecond * 60));
-          this.cdr.markForCheck();
-        });
-
-        this.traderExpiry = setTimeout(() => {
-          this.zone.run(() => {
-            // Only clear if the visitor did not take it — taking it already
-            // zeroed this and scheduled the next one.
-            if (this.traderGold > 0) {
-              this.traderGold = 0;
-              this.cdr.markForCheck();
-              this.scheduleTrader();
-            }
-          });
-        }, TRADER_STAY_MS);
-      }, delay);
-    });
-  }
-
   takeTrade(): void {
-    if (this.traderGold <= 0) return;
-    const amount = this.traderGold;
-    this.traderGold = 0;
-    this.clearTraderTimers();
-
-    this.economy.earnGold(amount, 'a wandering trader');
+    if (!this.spark.catch()) return;
     this.audio.coin();
-    this.scheduleTrader();
-  }
-
-  private clearTraderTimers(): void {
-    if (this.traderTimer !== null) { clearTimeout(this.traderTimer); this.traderTimer = null; }
-    if (this.traderExpiry !== null) { clearTimeout(this.traderExpiry); this.traderExpiry = null; }
   }
 
   // ───────────────────────────────────────────────────────────────────────────
