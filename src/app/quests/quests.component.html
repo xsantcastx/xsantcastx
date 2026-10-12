@@ -1,9 +1,11 @@
-<div class="quests-page">
+<div class="quests-page" [class.quests-page--in-world]="inWorld">
 
   <header class="quests-header">
+    @if (!inWorld) {
     <p class="quests-eyebrow"><span class="quests-eyebrow__pulse"></span>Mission Board</p>
     <h1 class="quests-title">The Standing Orders</h1>
     <p class="quests-tagline">what the realms are asking of you today, this week, and once</p>
+    }
 
     <dl class="quests-stats">
       <div>
@@ -105,9 +107,11 @@
     }
   </section>
 
+  @if (!inWorld) {
   <p class="quests-whisper">between light and shadow, the soul remembers both</p>
 
   <a routerLink="/world" class="quests-cta">Walk the realms &rarr;</a>
+  }
 
 </div>
 
@@ -115,4 +119,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/world/quests"></app-related-pages>
+}

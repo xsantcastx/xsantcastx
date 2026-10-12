@@ -894,3 +894,25 @@
 /* `animation: none`, not just `transform: none`: a filled animation outranks a
    plain declaration, so the transform would otherwise stay. */
 :host(.gb-host--revealing) { animation: none; transform: none; position: relative; z-index: var(--z-modal); }
+
+/* ── In the world (/play) ─────────────────────────────────────────────────────
+ * Hosted in the side-scroller's panel. The panel is `contain: layout`, so it —
+ * not the viewport — is the containing block of the fixed `.gb-reveal`: the
+ * reveal's `inset: 0` fills the panel (heading included; the reveal is modal),
+ * never scrolls with the panel's scrolling body, and is not clipped by it. The
+ * host is not a routed host there, so it never carries routeFadeIn and the
+ * `gb-host--revealing` override above is harmless.
+ *
+ * The panel is shorter than a viewport, so the altar is sized against the
+ * reveal box itself (a size container) rather than the screen: it shrinks with
+ * a short panel instead of pushing the item below the fold, but never below
+ * the 200px the 108x148 veiled card needs. Taller content (the revealed card
+ * and the pulls strip) scrolls inside the reveal, which is already
+ * `overflow-y: auto`; its single grid row grows from the top, so nothing is
+ * cut off above. */
+.gb--in-world { padding: 0.25rem 0.25rem 1.5rem; }
+.gb-reveal--in-world {
+  container-type: size;
+  padding: 1rem 0.75rem;
+}
+.gb-reveal--in-world .gb-altar { width: clamp(200px, min(78cqw, 46cqh), 300px); }

@@ -431,6 +431,32 @@ test('world data is valid: unique ids, stations inside the town, every panel reg
   }
 });
 
+test('every built town has a waystone, and every material a zone drops is catalogued and crafted with', () => {
+  const catalog = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/material-catalog.ts'));
+  const { CRAFTING_RECIPES } = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+  const used = new Set(CRAFTING_RECIPES.flatMap(recipe => recipe.ingredients.map(ingredient => ingredient.materialId)));
+  assert.ok(used.size > 10, 'the recipe table loaded');
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    assert.ok(town.stations.some(station => station.kind === 'waystone'), `${town.id} has a waystone`);
+    for (const area of [town, ...town.hunts]) {
+      const tables = [area.drops, ...area.monsters.map(monster => monster.drops).filter(Boolean)];
+      for (const entry of tables.flatMap(table => table.entries)) {
+        if (entry.chance !== undefined) assert.ok(entry.chance > 0 && entry.chance <= 1, `${area.id}/${entry.id}: chance in (0, 1]`);
+        if (entry.kind !== 'material') continue;
+        const display = catalog.materialDisplay(entry.material);
+        assert.ok(display, `${area.id}/${entry.id}: ${entry.material} is a catalogued material (the bag can name and paint it)`);
+        assert.equal(display.name, entry.label, `${area.id}/${entry.id}: the pickup label matches the bag's name`);
+        assert.ok(entry.qty > 0);
+        assert.ok(used.has(entry.material), `${area.id}/${entry.id}: ${entry.material} feeds a crafting recipe`);
+      }
+    }
+  }
+  const umbral = world.TOWNS.umbral;
+  assert.ok(umbral, 'the Umbral town is built');
+  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['exchange', 'gambler']);
+  assert.equal(umbral.hunts[0].monsters[0].creature, 'mirror-substitute', 'Umbral hunts its canon creature');
+});
+
 test('the station nearest the Keeper wins, and a click hits a station by its footprint', () => {
   const stations = world.TOWNS.infernal.stations;
   assert.equal(world.nearestStation(stations, 1230).id, 'crafting');
@@ -528,5 +554,321 @@ test('drop tables are data: chances roll on the engine RNG and materials carry t
   engine.player.x = gem.x;
   for (let n = 0; n < 30; n++) engine.update(1 / 60);
   assert.ok(loot.some(drop => drop.material === 'ember-residue' && drop.ore === 2));
+  engine.destroy();
+});
+
+test('the Celestial town: Codex and Leaderboards stand in Meridian Orrery, and the Rings drop real Celestial materials', () => {
+  const town = world.TOWNS.celestial;
+  assert.ok(town, 'Meridian Orrery is built');
+  assert.equal(town.name, 'Meridian Orrery');
+  assert.equal(town.background, 'bg-celestial');
+  const byId = Object.fromEntries(town.stations.map(station => [station.id, station]));
+  assert.equal(byId.codex.panel, 'codex');
+  assert.equal(byId.leaderboards.panel, 'leaderboards');
+  assert.equal(byId.waystone.kind, 'waystone');
+  assert.equal(town.monsters.length, 0, 'the terrace is quiet ground');
+  const rings = world.areaOf(town, byId.passage.to);
+  assert.equal(rings.monsters[0].creature, 'ephemeris-leech', 'the canon Celestial creature');
+
+  // Every material the Rings drop is something a crafting recipe actually consumes.
+  const recipes = fs.readFileSync(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const materials = rings.drops.entries.filter(entry => entry.kind === 'material');
+  assert.ok(materials.length >= 1 && materials.length <= 3);
+  for (const entry of materials) assert.ok(recipes.includes(`m('${entry.material}'`), `${entry.material} feeds a recipe`);
+
+  // Walk it in the engine: arrive, take the passage, kill a Leech, see alloy fall.
+  const { engine, state } = fixture();
+  engine.setTown(town);
+  assert.equal(state().area, 'Meridian Orrery');
+  engine.goToStation('passage', true);
+  assert.equal(state().areaId, 'orrery-rings');
+  engine.random = () => .99;
+  const leech = engine.monsters[0];
+  engine.player.x = leech.x - 50;
+  for (let n = 0; n < 20 && leech.hp > 0; n++) strike(engine);
+  assert.equal(leech.hp, 0);
+  assert.deepEqual([...engine.drops.map(drop => drop.material ?? 'coins')].sort(), ['celestial-alloy', 'coins'], 'missed chances drop nothing; alloy is certain');
+  engine.destroy();
+});
+
+// Drop tables name real stacks: a drop must render (catalogue) and must feed a recipe.
+const materialCatalog = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/material-catalog.ts'));
+const craftingModel = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+const forgeRecipes = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/forge-recipes.ts'));
+
+test('every drop-table material is catalogued and used by at least one recipe', () => {
+  const used = new Set([
+    ...craftingModel.CRAFTING_RECIPES.flatMap(recipe => recipe.ingredients.map(ingredient => ingredient.materialId)),
+    ...forgeRecipes.FORGE_EQUIPMENT_RECIPES.flatMap(recipe => recipe.inputs.map(input => input.id)),
+  ]);
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    for (const area of [town, ...town.hunts]) {
+      const tables = [area.drops, ...area.monsters.map(monster => monster.drops).filter(Boolean)];
+      for (const table of tables) {
+        for (const entry of table.entries) {
+          if (entry.kind !== 'material') continue;
+          const where = `${town.id}/${area.id}/${table.id}/${entry.id}`;
+          const display = materialCatalog.materialDisplay(entry.material);
+          assert.ok(display, `${where}: ${entry.material} is in the material catalogue`);
+          assert.equal(entry.label, display.name, `${where}: the label matches the catalogue name`);
+          assert.ok(used.has(entry.material), `${where}: ${entry.material} feeds a recipe`);
+          assert.ok(entry.qty >= 1 && (entry.chance ?? 1) > 0 && (entry.chance ?? 1) <= 1, `${where}: qty and chance are sane`);
+        }
+      }
+    }
+  }
+});
+
+test('the Heliograph Court: Market stall, waystone, and a Forager hunt that feeds the Aurumleaf Pendant', () => {
+  const town = world.TOWNS.luminous;
+  assert.ok(town, 'the Luminous town is registered');
+  assert.equal(town.background, 'bg-luminous');
+  const market = town.stations.find(station => station.id === 'market');
+  assert.equal(market.kind, 'panel'); assert.equal(market.panel, 'market');
+  assert.ok(town.stations.some(station => station.kind === 'waystone'), 'the Court has a waystone');
+  const passage = town.stations.find(station => station.kind === 'passage');
+  const hunt = world.areaOf(town, passage.to);
+  assert.ok(hunt && hunt !== town, 'the east stair leads to a hunting ground');
+  assert.ok(hunt.stations.some(station => station.kind === 'passage' && station.to === town.id), 'and back');
+  assert.deepEqual(hunt.monsters.map(monster => monster.creature), ['prism-forager']);
+  // The pendant's inputs come from the Forager table alone, in about ten kills or fewer.
+  const pendant = craftingModel.CRAFTING_RECIPES.find(recipe => recipe.id === 'craft-aurumleaf-pendant');
+  const kills = pendant.ingredients.map(({ materialId, count }) => {
+    const entry = hunt.drops.entries.find(drop => drop.kind === 'material' && drop.material === materialId);
+    assert.ok(entry, `the Forager drops ${materialId}`);
+    return count / (entry.qty * (entry.chance ?? 1));
+  });
+  assert.ok(Math.max(...kills) <= 10, `expected kills for one pendant: ${Math.max(...kills).toFixed(1)}`);
+  // A town with no monsters runs: the Keeper walks the Court without a hunt to fight.
+  const { engine, state } = fixture(() => true, { town });
+  assert.equal(engine.monsters.length, 0);
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.ok(state().hp > 0);
+  engine.destroy();
+});
+
+// ── The Verdant town (Rootglass Canopy) ──────────────────────────────────────
+test('Verdant: Rootglass Canopy hosts the Sanctum, the boards and both gates, and the root path reaches the Thicket', () => {
+  const town = world.TOWNS.verdant;
+  assert.ok(town, 'the Verdant town is built');
+  assert.equal(town.name, 'Rootglass Canopy');
+  assert.equal(town.background, 'bg-verdant');
+  const panels = Object.fromEntries(town.stations.filter(s => s.kind === 'panel').map(s => [s.id, s.panel]));
+  assert.deepEqual(panels, { sanctum: 'sanctum', quests: 'quests', arena: 'arena', trials: 'trials' }, 'each panel station id is its own ?at= place');
+  assert.ok(town.stations.some(s => s.kind === 'waystone'), 'a Waystone stands in the canopy');
+  assert.equal(town.monsters.length, 0, 'the town itself is safe ground');
+  const passage = town.stations.find(s => s.kind === 'passage');
+  assert.equal(passage.requires, undefined, 'the Thicket is open from the start: the beacon gate is Infernal-only');
+  const thicket = world.areaOf(town, passage.to);
+  assert.equal(thicket.id, 'rootglass-thicket');
+  assert.deepEqual([...thicket.monsters.map(m => m.creature)], ['rootglass-stag']);
+});
+
+test('Verdant: a Stag drops coins and real Verdant crafting materials, rolled on the engine RNG', () => {
+  const crafting = fs.readFileSync(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const town = world.TOWNS.verdant;
+  const table = town.hunts[0].drops;
+  for (const entry of table.entries.filter(e => e.kind === 'material')) {
+    assert.ok(crafting.includes(`m('${entry.material}'`), `${entry.material} is consumed by a crafting recipe`);
+    assert.equal(entry.art, entry.material, `${entry.material} draws its own art`);
+  }
+  const { engine } = fixture(() => true, { town });
+  engine.goToStation('passage', true);
+  assert.equal(engine.areaDef.id, 'rootglass-thicket');
+  engine.random = () => 0; // every chance hits
+  killFirst(engine);
+  assert.deepEqual([...engine.drops.map(d => d.material ?? 'coins')], ['coins', 'thornroot', 'verdant-sap', 'world-root-bark']);
+  engine.random = () => .99; // every chance misses: the certain lines still drop
+  const next = engine.monsters[1];
+  engine.player.x = next.x - 50;
+  for (let n = 0; n < 6; n++) strike(engine);
+  const second = engine.drops.filter(d => d.id.includes(':2:')).map(d => d.material ?? 'coins');
+  assert.deepEqual([...second], ['coins', 'thornroot']);
+  engine.destroy();
+});
+
+// ── Phase 2 renderer: per-creature rigs, loot beams and flights, gear on the Keeper ──
+const creatures = loadTs(path.resolve(__dirname, '../src/app/play/engine/creature-rigs.ts'));
+const lootFx = loadTs(path.resolve(__dirname, '../src/app/play/engine/loot-fx.ts'));
+const loadout = loadTs(path.resolve(__dirname, '../src/app/play/engine/loadout.ts'));
+const PAINTED = ['rivet-maw', 'prism-forager', 'ephemeris-leech', 'mirror-substitute', 'rootglass-stag'];
+const poseInput = (extra = {}) => ({ phase: 'idle', timer: 1, time: 1.3, seed: 0, reduced: false, hurt: 0, ...extra });
+
+test('each painted creature gets its own rig; unknown keys get the generic one', () => {
+  const specs = new Set();
+  for (const key of PAINTED) {
+    const def = creatures.creatureRigFor(key);
+    assert.equal(def.key, key);
+    specs.add(def.spec);
+  }
+  assert.equal(specs.size, PAINTED.length, 'no two creatures share a bone layout');
+  assert.equal(creatures.creatureRigFor('rivet-maw').spec, poses.MAW_RIG, 'the Rivet Maw keeps its rig');
+  for (const key of ['not-a-creature', '', undefined, 'constructor', 'toString']) {
+    assert.equal(creatures.creatureRigFor(key), creatures.GENERIC_CREATURE, `${String(key)} falls back`);
+  }
+  for (const def of [...PAINTED.map(creatures.creatureRigFor), creatures.GENERIC_CREATURE]) {
+    const mesh = rig.buildMesh(def.spec, 1);
+    assert.ok(mesh.nt <= 150, `${def.key}: ${mesh.nt} triangles`);
+    def.spec.bones.forEach((bone, index) => assert.ok(bone.parent < index, `${def.key}.${bone.name} parent precedes it`));
+    for (let i = 0; i < mesh.nv; i++) {
+      let sum = 0;
+      for (let k = 0; k < rig.MAX_INFLUENCES; k++) sum += mesh.wVal[i * rig.MAX_INFLUENCES + k];
+      assert.ok(Math.abs(sum - 1) < 1e-5, `${def.key} vertex ${i}`);
+    }
+    const pose = rig.createPose(def.spec.bones.length);
+    def.pose(pose, poseInput({ phase: 'windup', timer: .1, reduced: true, hurt: 1 }));
+    assert.equal(rig.isRestPose(pose), true, `${def.key}: reduced motion is the still painting`);
+    for (const phase of ['idle', 'windup', 'strike', 'recover']) {
+      def.pose(pose, poseInput({ phase, timer: .05 }));
+      for (const value of pose) assert.ok(Number.isFinite(value), `${def.key} ${phase} pose is finite`);
+    }
+    const calm = rig.createPose(def.spec.bones.length), struck = rig.createPose(def.spec.bones.length);
+    def.pose(calm, poseInput()); def.pose(struck, poseInput({ hurt: 1 }));
+    assert.notDeepEqual([...struck], [...calm], `${def.key}: a hit shows`);
+  }
+});
+
+test('creature motion: the stag lowers its head, the leech undulates, the mirror sways in reflection, the forager skitters', () => {
+  const S = rig.POSE_STRIDE;
+  const stag = creatures.creatureRigFor('rootglass-stag');
+  const pose = rig.createPose(stag.spec.bones.length);
+  stag.pose(pose, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(pose[creatures.STAG.NECK * S] > .3, 'wind-up drops the neck (the stag faces right)');
+  stag.pose(pose, poseInput({ phase: 'strike', timer: .01 }));
+  assert.ok(pose[creatures.STAG.ROOT * S + 1] > .12, 'the charge drives forward');
+
+  const leech = creatures.creatureRigFor('ephemeris-leech');
+  const L = creatures.LEECH;
+  const a = rig.createPose(leech.spec.bones.length);
+  // A travelling wave: the abdomen peaks after the head does.
+  let headPeak = 0, bellyPeak = 0, headBest = -Infinity, bellyBest = -Infinity;
+  for (let n = 0; n < 160; n++) {
+    const time = n / 60;
+    leech.pose(a, poseInput({ time, seed: 0 }));
+    if (a[L.HEAD * S] > headBest) { headBest = a[L.HEAD * S]; headPeak = time; }
+    if (a[L.ABDOMEN * S] > bellyBest) { bellyBest = a[L.ABDOMEN * S]; bellyPeak = time; }
+  }
+  assert.ok(bellyPeak > headPeak, `the wave runs head → abdomen (${headPeak} → ${bellyPeak})`);
+  leech.pose(a, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(a[L.ABDOMEN * S] < -.2, 'the wind-up arches the abdomen forward (faces left)');
+
+  const mirror = creatures.creatureRigFor('mirror-substitute');
+  const m = rig.createPose(mirror.spec.bones.length), M = creatures.MIRROR;
+  for (const time of [.4, 1.9, 2.6]) {
+    mirror.pose(m, poseInput({ time }));
+    assert.ok(Math.abs(m[M.ARM_L * S] + m[M.ARM_R * S]) < 1e-6, 'the arms are reflections');
+    assert.ok(m[M.HIPS * S] * m[M.CHEST * S] <= 0, 'hips and chest lean opposite ways');
+  }
+  mirror.pose(m, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(m[M.ARM_L * S] > .8 && m[M.ARM_R * S] < -.8, 'the wind-up opens both arms wide');
+
+  const forager = creatures.creatureRigFor('prism-forager');
+  const f = rig.createPose(forager.spec.bones.length), F = creatures.FORAGER;
+  forager.pose(f, poseInput({ time: Math.PI / 3.8 }));
+  assert.ok(f[F.LEG_F * S] * f[F.LEG_B * S] < 0, 'the legs skitter in alternation');
+  forager.pose(f, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(f[F.CLAW * S] > 1, 'the claw cocks back before the swipe');
+});
+
+test('the engine builds one rig per creature key and reuses it', () => {
+  const { engine } = fixture();
+  const stag = engine.creatureRig('rootglass-stag');
+  assert.equal(stag.def.key, 'rootglass-stag');
+  assert.equal(engine.creatureRig('rootglass-stag'), stag, 'built once');
+  assert.equal(engine.creatureRig('ephemeris-leech').def.key, 'ephemeris-leech');
+  assert.equal(engine.creatureRig('mystery-beast').def.key, 'generic');
+  assert.notEqual(engine.creatureRig('prism-forager').sprite, stag.sprite);
+  engine.destroy();
+});
+
+test('loot beams take the rarity colour; coins and plain materials have defaults', () => {
+  assert.equal(lootFx.beamColor('epic', false), lootFx.RARITY_COLORS.epic);
+  assert.equal(lootFx.beamColor(undefined, true), lootFx.COIN_BEAM_COLOR);
+  assert.equal(lootFx.beamColor(undefined, false), lootFx.RARITY_COLORS.common);
+  assert.ok(lootFx.beamHeight('legendary', false) > lootFx.beamHeight('rare', false));
+  assert.ok(lootFx.beamHeight('rare', false) > lootFx.beamHeight(undefined, false));
+  const { engine } = fixture(() => true, { town: { ...world.TOWNS.infernal, drops: { id: 't', entries: [
+    { id: 'coins', kind: 'coins', base: 4 },
+    { id: 'gem', kind: 'material', material: 'm', art: 'm', label: 'Star Shard', short: 'shard', qty: 3, rarity: 'rare' },
+  ] } } });
+  killFirst(engine);
+  const [coins, gem] = engine.drops;
+  assert.equal(coins.caption, '4 coins');
+  assert.equal(gem.caption, '3 x Star Shard');
+  assert.equal(gem.color, lootFx.RARITY_COLORS.rare);
+  engine.destroy();
+});
+
+test('pickup flights start at the drop and end exactly on the satchel', () => {
+  const out = { x: 0, y: 0, scale: 0 };
+  lootFx.flightPoint(100, 500, 900, 40, 0, out);
+  assert.deepEqual([out.x, out.y, out.scale], [100, 500, 1]);
+  lootFx.flightPoint(100, 500, 900, 40, 1, out);
+  assert.ok(Math.abs(out.x - 900) < 1e-9 && Math.abs(out.y - 40) < 1e-9);
+  lootFx.flightPoint(100, 500, 900, 40, .5, out);
+  assert.ok(out.y < 500 && out.x > 100 && out.x < 900, 'mid-flight it is in the air between the two');
+  lootFx.flightPoint(100, 500, 900, 40, 7, out);
+  assert.ok(Math.abs(out.x - 900) < 1e-9, 't is clamped');
+  const point = { x: 0, y: 0 };
+  lootFx.satchelPoint(null, { left: 0, top: 0, width: 1200, height: 720 }, 1200, 720, point);
+  assert.deepEqual(point, { x: 1200 - lootFx.SATCHEL_DEFAULT_INSET, y: lootFx.SATCHEL_DEFAULT_INSET }, 'default: top-right');
+  lootFx.satchelPoint({ x: 350, y: 120 }, { left: 50, top: 100, width: 600, height: 360 }, 1200, 720, point);
+  assert.deepEqual(point, { x: 600, y: 40 }, 'client px → canvas CSS px, undoing a CSS stretch');
+  lootFx.satchelPoint({ x: 2000, y: -30 }, { left: 0, top: 0, width: 1200, height: 720 }, 1200, 720, point);
+  assert.deepEqual(point, { x: 1200, y: 0 }, 'an off-canvas satchel clamps to the edge');
+
+  // In the engine: a pickup launches one flight toward the host's satchel.
+  const { engine } = fixture(() => true, { satchelTarget: () => ({ x: 600, y: 20 }) });
+  const monster = killFirst(engine);
+  engine.player.x = monster.x;
+  for (let n = 0; n < 40; n++) engine.update(1 / 60);
+  const flying = engine.flights.filter(row => row.active);
+  assert.equal(flying.length, 2, 'coins and ore both fly');
+  for (const row of flying) assert.deepEqual([row.ex, row.ey], [600, 20]);
+  engine.setSatchelTarget(null);
+  engine.destroy();
+});
+
+test('a worn weapon is held by its grip in the hand and points along the swing', () => {
+  const t = loadout.createHeldTransform();
+  const item = { art: 'x.webp' };
+  const aim = loadout.aimFromBladeRotation(-.95);
+  loadout.heldTransform(40, -110, aim, item, loadout.WEAPON_DEFAULTS, t);
+  const grip = { x: 0, y: 0 }, tip = { x: 0, y: 0 };
+  loadout.heldPoint(t, loadout.WEAPON_DEFAULTS.grip.u, loadout.WEAPON_DEFAULTS.grip.v, grip);
+  assert.ok(Math.abs(grip.x - 40) < 1e-9 && Math.abs(grip.y + 110) < 1e-9, 'the grip lands on the hand');
+  // The painted axis runs grip → tip at the default tilt (diagonal up-right).
+  const d = Math.SQRT1_2 * .5;
+  loadout.heldPoint(t, loadout.WEAPON_DEFAULTS.grip.u + d, loadout.WEAPON_DEFAULTS.grip.v - d, tip);
+  assert.ok(Math.abs(Math.atan2(tip.y - grip.y, tip.x - grip.x) - aim) < 1e-9, 'the blade points along the aim');
+  assert.equal(loadout.aimFromBladeRotation(0), -Math.PI / 2, 'an unrotated blade points straight up');
+  // A custom grip and tilt.
+  loadout.heldTransform(0, 0, 0, { art: 'y', grip: { u: .5, v: 1 }, tilt: -Math.PI / 2, size: 40 }, loadout.WEAPON_DEFAULTS, t);
+  loadout.heldPoint(t, .5, 0, tip);
+  assert.ok(Math.abs(tip.x - 40) < 1e-9 && Math.abs(tip.y) < 1e-9, 'an upright painting aimed at 0 points right');
+
+  // In the engine: setLoadout draws the weapon at the rig's hand, the off-hand at the back hand.
+  const { engine } = fixture();
+  const noop = () => {};
+  const drawn = [];
+  engine.context = new Proxy({ measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+    drawImage: (image) => drawn.push(image) }, { get: (target, key) => key in target ? target[key] : noop, set: () => true });
+  const sword = { complete: true, naturalWidth: 96, naturalHeight: 96 }, shield = { complete: true, naturalWidth: 96, naturalHeight: 96 };
+  engine.urlImages.set('assets/sword.webp', sword); engine.urlImages.set('assets/shield.webp', shield);
+  engine.keeperRig.render = () => true;
+  engine.keeperRig.blit = noop;
+  const placed = [];
+  engine.keeperRig.attach = (bone, u, v, out) => { out.x = bone * 10; out.y = -100; out.angle = 0; placed.push(bone); return true; };
+  engine.setLoadout({ weapon: { art: 'assets/sword.webp', rarity: 'epic' }, offhand: { art: 'assets/shield.webp' }, auraRarity: 'epic' });
+  const before = JSON.stringify({ p: engine.player, hp: engine.hp });
+  engine.render();
+  assert.ok(drawn.includes(sword) && drawn.includes(shield), 'both items are drawn');
+  assert.ok(drawn.indexOf(shield) < drawn.indexOf(sword), 'the off-hand goes down first, behind the body');
+  assert.deepEqual(placed, [poses.KEEPER.ARM_B, poses.KEEPER.ARM_F]);
+  assert.equal(engine.held.x, poses.KEEPER.ARM_F * 10, 'the weapon sits at the front hand');
+  assert.equal(JSON.stringify({ p: engine.player, hp: engine.hp }), before, 'gear never touches combat state');
+  engine.setLoadout(null);
+  drawn.length = 0; engine.render();
+  assert.ok(!drawn.includes(sword), 'cleared');
   engine.destroy();
 });

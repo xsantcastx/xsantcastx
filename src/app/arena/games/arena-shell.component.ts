@@ -18,10 +18,12 @@
 import {
   ChangeDetectionStrategy,
   Component,
+  HostBinding,
   Input,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { injectInWorldPanel } from '../../shared/in-world-panel';
 
 @Component({
   selector: 'app-arena-shell',
@@ -33,7 +35,9 @@ import { RouterLink } from '@angular/router';
       <div class="ag-aura" aria-hidden="true"></div>
 
       <header class="ag-head">
-        <a routerLink="/world/trials" class="ag-back">&larr; The Arena</a>
+        @if (!inWorld) {
+          <a routerLink="/world/trials" class="ag-back">&larr; The Arena</a>
+        }
 
         <div class="ag-title-row">
           <span class="ag-icon" aria-hidden="true">{{ icon }}</span>
@@ -59,8 +63,10 @@ import { RouterLink } from '@angular/router';
           </svg>
           <h2 class="ag-gate__title">This gate is chained</h2>
           <p class="ag-gate__hint">{{ unlockHint }}</p>
-          <a routerLink="/world" class="ag-btn ag-btn--primary">Go find the secret &rarr;</a>
-          <a routerLink="/world/trials" class="ag-gate__alt">or look over the other gates</a>
+          @if (!inWorld) {
+            <a routerLink="/world" class="ag-btn ag-btn--primary">Go find the secret &rarr;</a>
+            <a routerLink="/world/trials" class="ag-gate__alt">or look over the other gates</a>
+          }
         </section>
       }
 
@@ -70,6 +76,8 @@ import { RouterLink } from '@angular/router';
   styleUrls: ['./arena-game.css'],
 })
 export class ArenaShellComponent {
+  /** Inside the Trials gate on /play the overlay's own close button is the way back; no links leave the world. */
+  @HostBinding('class.ag-in-world') protected readonly inWorld = injectInWorldPanel();
   @Input({ required: true }) title = '';
   @Input() lore = '';
   @Input() icon = '';

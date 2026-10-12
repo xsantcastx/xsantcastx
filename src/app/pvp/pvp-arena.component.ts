@@ -76,6 +76,7 @@ import {
 } from '../shared/arena/arena.model';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
+import { injectInWorldPanel } from '../shared/in-world-panel';
 /** One challenger on a gate card, with the odds of beating *them*. */
 interface ChallengerRow {
   npc: ArenaOpponent;
@@ -161,6 +162,8 @@ export class PvpArenaComponent implements OnInit, OnDestroy {
   private readonly arena = inject(ArenaService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
+  /** Hosted as the Verdant Arena gate: no page heading, no links that leave /play. */
+  protected readonly inWorld = injectInWorldPanel();
 
   private readonly subs = new Subscription();
   private readonly timers: ReturnType<typeof setTimeout>[] = [];

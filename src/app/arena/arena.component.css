@@ -593,3 +593,62 @@
     font-size: 12px;
   }
 }
+
+/* ── In-world: the Verdant Trials gate on /play ─────────────────────────────
+   The panel carries the heading and has no navbar to clear, so the hero keeps
+   only its stats and the page drops its viewport-sized floor. */
+.arena-page--in-world { min-height: 0; }
+.arena-page--in-world .gp-hero { padding: 0.5rem 0.5rem 1.5rem; }
+.arena-page--in-world .gp-how { padding-block: 1rem; }
+button.gp-play-btn { font-family: inherit; }
+
+/* The game overlay. position:fixed + inset:0 resolves against the in-world
+   panel (`contain: layout` on .place), so the game fills the panel, never the
+   viewport. Opacity-only entrance: a transform here would make the overlay a
+   containing block for the game's own fixed layers. */
+.ar-play {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  overflow: auto;
+  overscroll-behavior: contain;
+  background: var(--obsidian-0);
+  animation: arPlayIn 0.18s ease-out both;
+}
+
+@keyframes arPlayIn { from { opacity: 0; } to { opacity: 1; } }
+
+.ar-play__bar {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.5rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--obsidian-0);
+}
+
+.ar-play__close {
+  min-height: 44px;
+  padding: 0 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--ink-0);
+  font: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.ar-play__close:hover, .ar-play__close:focus-visible { border-color: var(--violet); }
+.ar-play__close kbd { margin-left: 0.4rem; font: inherit; opacity: 0.6; }
+
+.ar-play__title { font-size: 0.95rem; color: var(--ink-0); }
+
+.ar-play__note { margin: 2rem 1rem; text-align: center; color: var(--color-text-muted, #94a3b8); font-style: italic; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ar-play { animation: none; }
+}
