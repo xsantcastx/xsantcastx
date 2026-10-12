@@ -1,4 +1,5 @@
 import { Atmosphere } from './atmosphere';
+import { LifeFrame, TownLife } from './town-life';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
 import { resetPose, RigSprite } from './rig';
 import { CreatureRigDef, creatureRigFor, RIVET_MAW_CREATURE } from './creature-rigs';
@@ -104,6 +105,13 @@ export class SeamworksEngine {
   private accumulator = 0;
   private elapsed = 0;
   private readonly atmosphere = new Atmosphere();
+  /** Keepers and townsfolk in the current town. Visual only. */
+  private readonly life = new TownLife();
+  private readonly lifeFrame: LifeFrame = {
+    camera: 0, viewport: 0, time: 0, reduced: false, playerX: 0, pixelScale: 1,
+    image: key => this.image(key),
+    translate: key => this.options.translate?.(key) ?? key,
+  };
   /** Mesh rigs bending the single Keeper and Maw paintings. Render-only. */
   private readonly keeperRig = new RigSprite(KEEPER_RIG);
   /** One rig per creature art key, built on first sight and shared by every monster using that painting. */
@@ -251,6 +259,7 @@ export class SeamworksEngine {
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.sites = this.sitesFor(area);
     this.motes.reset();
+    this.life.enter(area, this.town);
   }
   /** An area's gathering nodes, created on the first visit (harvest times from the save) and kept for the session. */
   private sitesFor(area: AreaDef): GatherSite[] {
@@ -838,7 +847,8 @@ export class SeamworksEngine {
       cssWidth: this.width, cssHeight: this.height, camera: this.camera, cameraY: this.cameraY,
     });
     this.pointerX = point.x; this.pointerY = point.y;
-    return { x: point.x, y: point.y, station: stationAt(this.stations, point.x, point.y, FLOOR) };
+    // A click on a keeper opens the station it keeps.
+    return { x: point.x, y: point.y, station: stationAt(this.stations, point.x, point.y, FLOOR) ?? this.life.stationAt(point.x, point.y) };
   }
   /** Highlight a station (pointer hover). Render-only. */
   setHover(id: string | null): void { this.hovered = id; }
@@ -1190,6 +1200,7 @@ export class SeamworksEngine {
   private update(dt: number): void {
     this.elapsed += dt;
     this.atmosphere.update(dt);
+    this.life.update(dt, this.player.x, this.elapsed);
     this.landing = Math.max(0, this.landing - dt);
     this.attackTime = Math.max(0, this.attackTime - dt); this.attackCooldown -= dt;
     this.dodgeTime = Math.max(0, this.dodgeTime - dt); this.dodgeCooldown -= dt; this.hurtTime -= dt;
@@ -1810,7 +1821,8 @@ export class SeamworksEngine {
     c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), -this.cameraY + (jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0));
     const motionTime = this.reducedMotion ? 0 : this.elapsed;
     const k = this.figure;
-    if (!t) this.atmosphere.scenery(c, motionTime, this.camera, viewport);
+    // Towns and their hunting grounds carry the realm's ambient layer; delves have their own motes.
+    if (!t) this.atmosphere.scenery(c, motionTime, this.camera, viewport, this.town.realm);
     // A delve's only platform is the net under its bedrock: nothing to draw.
     if (!t) for (const platform of this.areaDef.platforms) {
       c.fillStyle = '#3b3034'; c.fillRect(platform.x, platform.y, platform.width, platform.y === FLOOR ? 110 : 24);
@@ -1836,6 +1848,12 @@ export class SeamworksEngine {
         if (site.def.x < this.camera - 120 || site.def.x > this.camera + viewport + 120) continue;
         this.drawSite(c, site, site === near, motionTime);
       }
+    }
+    if (this.isTown) {
+      const f = this.lifeFrame;
+      f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.reduced = this.reducedMotion;
+      f.playerX = this.player.x; f.pixelScale = this.pixelScale;
+      this.life.draw(c, f);
     }
     if (!t) this.debris.draw(c);
     for (const drop of this.drops) this.drawDropBeam(c, drop, motionTime);

@@ -1814,3 +1814,183 @@ test('art keys: the Magma Maw and the Rune-Warden spawn as magma-maw / rune-ward
     assert.deepEqual([own.box, own.ground, own.shadow, own.facesLeft], [standIn.box, standIn.ground, standIn.shadow, standIn.facesLeft]);
   }
 });
+
+// ── Phase 4 Life: keepers at stations, wandering townsfolk, per-realm atmosphere ──
+const life = loadTs(path.resolve(__dirname, '../src/app/play/world/life.ts'));
+const lifeI18n = loadTs(path.resolve(__dirname, '../src/app/play/world/life.i18n.ts')).LIFE_I18N;
+const townLifeMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/town-life.ts'));
+const atmosphereMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/atmosphere.ts'));
+const npcModel = loadTs(path.resolve(__dirname, '../src/app/shared/npc/npc.model.ts'));
+const LIFE_FLOOR = loadTs(path.resolve(__dirname, '../src/app/play/engine/engine.model.ts')).FLOOR;
+const builtTowns = () => Object.values(world.TOWNS).filter(Boolean);
+const footprintOf = s => [s.x - (s.width ?? 120) / 2, s.x + (s.width ?? 120) / 2];
+/** A canvas context that records every call and draws nothing. */
+function recordingContext() {
+  const calls = [];
+  const target = { calls, measureText: text => ({ width: String(text).length * 7 }) };
+  return new Proxy(target, {
+    get(obj, key) {
+      if (key in obj) return obj[key];
+      return (...args) => { calls.push([key, ...args]); };
+    },
+    set(obj, key, value) { obj[key] = value; return true; },
+  });
+}
+
+test('life: every panel station has a keeper beside it, never on a footprint or another keeper', () => {
+  for (const town of builtTowns()) {
+    const placed = life.placeKeepers(town);
+    assert.equal(placed.length, life.TOWN_KEEPERS[town.realm].length, `${town.id}: every keeper found a spot`);
+    for (const station of town.stations.filter(s => s.kind === 'panel')) {
+      assert.ok(placed.some(p => p.station.id === station.id), `${town.id}/${station.id} has a keeper`);
+    }
+    for (const p of placed) {
+      const body = [p.x - life.KEEPER_HALF, p.x + life.KEEPER_HALF];
+      for (const station of town.stations) {
+        const [s0, s1] = footprintOf(station);
+        assert.ok(body[1] <= s0 || body[0] >= s1, `${town.id}: ${p.def.id} clears ${station.id}`);
+      }
+      for (const other of placed) if (other !== p) {
+        assert.ok(Math.abs(other.x - p.x) >= life.KEEPER_HALF * 2, `${town.id}: ${p.def.id} and ${other.def.id} do not overlap`);
+      }
+      const [s0, s1] = footprintOf(p.station);
+      const gap = p.x < s0 ? s0 - p.x : p.x - s1;
+      assert.ok(gap > 0 && gap <= life.KEEPER_HALF + life.KEEPER_GAP + 80, `${p.def.id} stands beside ${p.station.id} (${gap}px)`);
+      assert.ok(p.x > 0 && p.x < town.width);
+    }
+  }
+  const at = (realm, id) => life.placeKeepers(world.TOWNS[realm]).find(p => p.def.id === id);
+  assert.equal(at('infernal', 'kael').station.id, 'runes', 'Kael at the Rune Forge');
+  assert.equal(at('luminous', 'merchant').station.id, 'market', 'the Merchant at the Market');
+  assert.equal(at('celestial', 'archivist').station.id, 'codex', 'the Archivist at the Codex');
+  assert.ok(at('luminous', 'aureth'), 'Aureth stands in Luminous');
+  assert.ok(at('umbral', 'verrin'), 'Verrin stands in Umbral');
+});
+
+test('life: name tags and chatter are i18n keys in EN + ES; canon keepers only say their canon lines', () => {
+  const ids = new Set();
+  for (const town of builtTowns()) {
+    for (const def of life.TOWN_KEEPERS[town.realm]) {
+      assert.ok(!ids.has(def.id), `${def.id} is unique`); ids.add(def.id);
+      for (const key of [def.nameKey, ...def.lines]) {
+        const row = lifeI18n[key];
+        assert.ok(row && row.en && row.es, `${key} has EN and ES`);
+      }
+      assert.ok(def.lines.length >= 1 && def.lines.every(k => lifeI18n[k].en.length <= 90), `${def.id}: short lines, no walls of text`);
+      assert.match(def.art, /-figure$/, `${def.id} uses a full-figure art key, not the menu portrait`);
+      if (def.npc) {
+        const canon = npcModel.DIALOGUE.filter(t => t.npcId === def.npc).flatMap(t => t.lines);
+        for (const key of def.lines) assert.ok(canon.includes(lifeI18n[key].en), `${def.id}: "${lifeI18n[key].en}" is canon`);
+        assert.equal(lifeI18n[def.nameKey].en, npcModel.npcById(def.npc).name, `${def.id} is named as the cast names them`);
+      }
+    }
+  }
+});
+
+test('life: townsfolk wander only open floor, stay in bounds, yield to the Keeper and keep moving', () => {
+  for (const town of builtTowns()) {
+    const placed = life.placeKeepers(town);
+    const segments = life.wanderSegments(town, placed);
+    assert.ok(segments.length > 0, `${town.id} has open floor`);
+    for (const [lo, hi] of segments) {
+      assert.ok(hi - lo >= life.WANDER_MIN);
+      for (const station of town.stations) {
+        const [s0, s1] = footprintOf(station);
+        assert.ok(hi <= s0 || lo >= s1, `${town.id}: segment ${lo}-${hi} avoids ${station.id}`);
+      }
+      for (const p of placed) assert.ok(hi <= p.x - life.KEEPER_HALF || lo >= p.x + life.KEEPER_HALF, `${town.id}: segment avoids ${p.def.id}`);
+      if (town.safeX) assert.ok(hi <= town.safeX, `${town.id}: townsfolk stay on the safe side`);
+    }
+    const crowd = new life.TownsfolkCrowd(town, placed);
+    assert.ok(crowd.folk.length >= 2 && crowd.folk.length <= life.TOWNSFOLK_MAX, `${town.id}: 2-4 townsfolk`);
+    const start = crowd.folk.map(p => p.x);
+    let moved = 0;
+    for (let n = 0; n < 60 * 120; n++) {
+      crowd.update(1 / 60, 400 + (n % 2000));
+      for (const p of crowd.folk) {
+        assert.ok(p.x >= p.lo && p.x <= p.hi, `${town.id}: in bounds`);
+        assert.ok(segments.some(([lo, hi]) => p.lo === lo && p.hi === hi), 'wanders an open segment');
+      }
+    }
+    crowd.folk.forEach((p, i) => { if (Math.abs(p.x - start[i]) > 1) moved++; });
+    assert.ok(moved > 0, `${town.id}: the crowd is alive`);
+    // Deterministic per seed.
+    const again = new life.TownsfolkCrowd(town, placed);
+    assert.deepEqual(again.folk.map(p => p.x), start);
+  }
+  // Yield: a walker heading at the Keeper stops short instead of walking through.
+  const town = world.TOWNS.umbral;
+  const crowd = new life.TownsfolkCrowd(town, life.placeKeepers(town));
+  const p = crowd.folk[0];
+  p.pause = 0; p.target = p.hi; p.x = p.lo;
+  crowd.update(1 / 60, p.lo + 40);
+  assert.ok(p.pause > 0 && p.x === p.lo, 'stops when the Keeper is just ahead');
+});
+
+test('life: off-camera figures are culled; keepers face the Keeper; chatter is one line per approach', () => {
+  assert.equal(life.onScreen(500, 0, 1200), true);
+  assert.equal(life.onScreen(-200, 0, 1200), false);
+  assert.equal(life.onScreen(1400, 0, 1200), false);
+  const town = world.TOWNS.infernal;
+  const tl = new townLifeMod.TownLife();
+  tl.enter(town, town);
+  assert.ok(tl.keepers.length >= 4);
+  const frame = { camera: 0, viewport: 1200, time: 0, reduced: true, playerX: 0, pixelScale: 1, image: () => undefined, translate: k => lifeI18n[k]?.en ?? k };
+  const near = recordingContext();
+  frame.camera = tl.keepers[0].x - 600; tl.draw(near, frame);
+  const far = recordingContext();
+  frame.camera = town.width + 5000; tl.draw(far, frame);
+  assert.ok(near.calls.length > 40, 'figures in view are drawn');
+  assert.equal(far.calls.length, 0, 'nothing off camera is drawn');
+  // A hunt clears the stage.
+  tl.enter(town.hunts[0], town);
+  assert.equal(tl.keepers.length, 0);
+  assert.equal(tl.townsfolk, null);
+
+  // Chatter: approach once, one line; linger, silence; leave and return, the next line.
+  tl.enter(town, town);
+  const kael = tl.keepers.findIndex(p => p.def.id === 'kael');
+  const kx = tl.keepers[kael].x;
+  let t = 0;
+  const step = x => { t += 1 / 60; tl.update(1 / 60, x, t); };
+  for (let n = 0; n < 30; n++) step(kx + 1000);
+  assert.equal(tl.speaking, null);
+  step(kx + 60);
+  assert.deepEqual(tl.speaking, { keeper: 'kael', line: 'play.life.line.kael.1' });
+  for (let n = 0; n < 120; n++) step(kx + 60);
+  assert.ok(tl.facing[kael] > .9, 'Kael turns toward the Keeper');
+  for (let n = 0; n < 60 * 8; n++) step(kx + 60);
+  assert.equal(tl.speaking, null, 'one line, then quiet while the Keeper lingers');
+  for (let n = 0; n < 60 * 25; n++) step(kx + 2000);
+  step(kx - 60);
+  assert.deepEqual(tl.speaking, { keeper: 'kael', line: 'play.life.line.kael.2' }, 'the next approach gets the next line');
+  for (let n = 0; n < 60; n++) step(kx - 60);
+  assert.ok(tl.facing[kael] < -.5, 'and turns to face the Keeper on the other side');
+});
+
+test('life: the engine stands keepers in towns only, and a click on a keeper opens its station', () => {
+  const { engine } = fixture();
+  assert.ok(engine.life.keepers.length >= 4, 'the Seamworks is staffed');
+  const kael = engine.life.keepers.find(p => p.def.id === 'kael');
+  assert.equal(engine.life.stationAt(kael.x, LIFE_FLOOR - 80).id, 'runes');
+  assert.equal(engine.life.stationAt(kael.x, LIFE_FLOOR - 400), null, 'above the head is sky');
+  engine.player.x = stationX(engine, 'passage');
+  engine.setProgress({ equipped: true, restored: true });
+  engine.interact();
+  assert.equal(engine.inTown, false);
+  assert.equal(engine.life.keepers.length, 0, 'hunting grounds have no keepers');
+});
+
+test('atmosphere: one capped layer per realm, frozen in place under reduced motion', () => {
+  for (const realm of ['infernal', 'luminous', 'umbral', 'celestial', 'verdant']) {
+    const a = recordingContext(), b = recordingContext();
+    atmosphereMod.ambientLayer(a, realm, 0, 900, 1200);
+    atmosphereMod.ambientLayer(b, realm, 0, 900, 1200);
+    assert.deepEqual(a.calls, b.calls, `${realm}: static at time 0`);
+    const shapes = a.calls.filter(([k]) => k === 'fill' || k === 'stroke' || k === 'fillRect').length;
+    assert.ok(shapes > 0 && shapes <= atmosphereMod.AMBIENT_CAP * 2, `${realm}: ${shapes} draws, capped`);
+    const moving = recordingContext();
+    atmosphereMod.ambientLayer(moving, realm, 7.3, 900, 1200);
+    assert.notDeepEqual(moving.calls, a.calls, `${realm}: alive when motion is allowed`);
+  }
+});

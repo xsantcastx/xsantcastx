@@ -39,6 +39,11 @@ export interface EngineOptions {
   art?: (key: string) => string;
   /** Resolves an area's scene basename (AreaDef.background) to a URL. Falls back to `assets.background`. */
   scene?: (name: string) => string;
+  /**
+   * i18n lookup for in-canvas copy (keeper name tags and chatter, world/life.i18n.ts).
+   * Absent (tests): name tags fall back to their English, chatter stays silent.
+   */
+  translate?: (key: string) => string;
   /** The town to stand in. Defaults to the Infernal town. */
   town?: TownDef;
   /** `ore` is the material quantity (legacy name); `material` is its stack id. */
