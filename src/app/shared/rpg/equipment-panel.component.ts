@@ -6,7 +6,7 @@
  * has an approved mapping and is filled.
  */
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../../translation.service';
@@ -19,10 +19,17 @@ import {
   GameItem,
   ITEM_STAT_KEYS,
   ItemStats,
+  ITEM_STAT_LABELS,
   formatItemMod,
+  formatStatValue,
+  rarityColor,
+  rarityGlow,
   rarityLabel,
   sumStats,
+  type ItemRarity,
+  type SlotId,
 } from './item.model';
+import { deriveBuild, type BuildArchetype, type BuildIdentity } from './build-identity';
 import {
   CHARM_DOLL_SLOTS,
   PAPER_DOLL_SLOTS,
@@ -44,6 +51,48 @@ import { strikeValuePct } from '../rune-forge/strike-value';
 
 import { KeeperStatSheetComponent } from './keeper-stat-sheet.component';
 import { compareStats, netDelta, type StatDeltaRow } from './stat-delta';
+
+/**
+ * Archetype copy, as literal keys so the i18n gate can see every one of them.
+ * The derivation itself (build-identity.ts) is translation-free.
+ */
+const BUILD_COPY: Record<BuildArchetype, { name: string; desc: string }> = {
+  unforged: { name: 'loadout.build.unforged.name', desc: 'loadout.build.unforged.desc' },
+  vanguard: { name: 'loadout.build.vanguard.name', desc: 'loadout.build.vanguard.desc' },
+  'treasure-seeker': { name: 'loadout.build.treasureSeeker.name', desc: 'loadout.build.treasureSeeker.desc' },
+  forgewright: { name: 'loadout.build.forgewright.name', desc: 'loadout.build.forgewright.desc' },
+  bulwark: { name: 'loadout.build.bulwark.name', desc: 'loadout.build.bulwark.desc' },
+  lorekeeper: { name: 'loadout.build.lorekeeper.name', desc: 'loadout.build.lorekeeper.desc' },
+  wanderer: { name: 'loadout.build.wanderer.name', desc: 'loadout.build.wanderer.desc' },
+};
+
+/** An equip in flight: where its art starts, relative to the socket it lands in. */
+interface Landing {
+  slotId: string;
+  itemId: string;
+  /** px offset of the start point from the socket centre. */
+  x: number;
+  y: number;
+  nonce: number;
+}
+
+/** An item lifting out of a socket on its way back to the bag. */
+interface Leaving {
+  slotId: string;
+  item: GameItem;
+  nonce: number;
+}
+
+/** Fly-in 480ms + burst 520ms from 400ms; cleared a beat after both finish. */
+const LANDING_MS = 1000;
+const LEAVING_MS = 760;
+const PULSE_MS = 760;
+/**
+ * More slots than this changing in one snapshot is a hydrate or a cloud merge,
+ * not something the player did. Animating it would throw six items off the
+ * Keeper on page load.
+ */
+const MAX_ANIMATED_CHANGES = 2;
 
 /** One stat's difference between a candidate and the worn item. */
 export interface StatDelta {
@@ -69,6 +118,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   readonly magicFind = inject(MagicFindService);
   private readonly i18n = inject(TranslationService);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   /** `select` is doll-only. `bank` is bag-only. `full` is both, and may sync the URL. */
 
@@ -76,6 +126,19 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   readonly dollSrcset = PAPER_DOLL_SRCSET;
   readonly dollSlots = PAPER_DOLL_SLOTS;
   readonly charmSlots = CHARM_DOLL_SLOTS;
+  /** The wells that have somewhere to sit on the figure. */
+  readonly sockets = PAPER_DOLL_SLOTS.filter(slot => !!slot.anchor && !!slot.liveSlot);
+
+  /** What the worn loadout reads as. Re-derived on every snapshot. */
+  build: BuildIdentity = deriveBuild(this.inventory.snapshot.equipped);
+
+  landing: Landing | null = null;
+  leaving: Leaving[] = [];
+  pulsing = false;
+  private fxNonce = 0;
+  private pulseNonce = 0;
+  private seenFirstSnapshot = false;
+  private readonly fxTimers = new Set<ReturnType<typeof setTimeout>>();
 
   snap: InventorySnapshot = this.inventory.snapshot;
   ready = false;
@@ -87,7 +150,9 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.inventory.init();
     this.sub = this.inventory.snapshot$.subscribe(snap => {
+      this.trackUnequips(this.snap.equipped, snap.equipped);
       this.snap = snap;
+      this.build = deriveBuild(snap.equipped);
       if (this.selectedId && !snap.items.some(item => item.id === this.selectedId)) {
         this.selectedId = null;
       }
@@ -98,11 +163,18 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     this.sub.add(this.hub.armed$.subscribe(id => {
       if (id) this.selectedId = id;
     }));
+    // The equip event rather than a snapshot diff: a diff cannot tell an equip
+    // from a hydrate (see `InventoryService.equipped$`). Fires for equips from
+    // anywhere — this panel's picker, the Bank, a quick-equip toast — so the
+    // doll animates whatever put the item on.
+    this.sub.add(this.inventory.equipped$.subscribe(item => this.onEquipped(item)));
     this.ready = this.isBrowser;
   }
 
   ngOnDestroy(): void {
     if (this.flashTimer !== null) { clearTimeout(this.flashTimer); this.flashTimer = null; }
+    for (const timer of this.fxTimers) clearTimeout(timer);
+    this.fxTimers.clear();
     this.sub?.unsubscribe();
   }
 
@@ -421,6 +493,123 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   select(item: GameItem): void {
     this.selectedId = this.selectedId === item.id ? null : item.id;
     this.hub.arm(this.selectedId);
+  }
+
+  // ── Gear on the doll ───────────────────────────────────────────────────────
+
+  /**
+   * Rarity colour and glow as custom properties, for a socket frame, a charm
+   * or a Build bar. Straight off the rune ladder via item.model, so a socket
+   * can never disagree with the tile the item came from.
+   */
+  rarityVar(rarity: ItemRarity | null | undefined): string {
+    return rarity ? rarityColor(rarity) : 'var(--gold)';
+  }
+
+  rarityGlowVar(rarity: ItemRarity | null | undefined): string {
+    return rarity ? rarityGlow(rarity) : 'rgba(232, 200, 152, 0.6)';
+  }
+
+  isLanding(slot: PaperDollSlotManifest): boolean {
+    return !!this.landing && this.landing.slotId === slot.slotId;
+  }
+
+  /**
+   * Identity for the worn frame. Changes on every landing so Angular rebuilds
+   * the element and the fly-in restarts — re-equipping the same slot twice in
+   * a row would otherwise keep the class and play nothing.
+   */
+  socketKey(slot: PaperDollSlotManifest, worn: GameItem): string {
+    const nonce = this.isLanding(slot) ? this.landing!.nonce : 0;
+    return `${worn.id}:${nonce}`;
+  }
+
+  /** The landing's start offset as a CSS length, or null when nothing is landing here. */
+  flyFrom(slot: PaperDollSlotManifest, axis: 'x' | 'y'): string | null {
+    return this.isLanding(slot) ? `${this.landing![axis]}px` : null;
+  }
+
+  leavingFor(slot: PaperDollSlotManifest): Leaving[] {
+    return this.leaving.filter(row => row.slotId === slot.slotId);
+  }
+
+  // ── Build card ─────────────────────────────────────────────────────────────
+
+  buildName(): string { return this.t(BUILD_COPY[this.build.archetype].name); }
+  buildDesc(): string { return this.t(BUILD_COPY[this.build.archetype].desc); }
+  statLabel(key: keyof ItemStats): string { return ITEM_STAT_LABELS[key]; }
+  statValue(key: keyof ItemStats, value: number): string { return formatStatValue(key, value); }
+  /** Bars are drawn against the heaviest row, so the leader always fills. */
+  barScale(share: number): number {
+    const lead = this.build.contributions[0]?.share ?? 0;
+    return lead > 0 ? Math.max(0.04, Math.min(1, share / lead)) : 0;
+  }
+  sharePct(share: number): number { return Math.round(share * 100); }
+
+  // ── Equip / unequip motion ─────────────────────────────────────────────────
+
+  private onEquipped(item: GameItem): void {
+    if (!this.isBrowser || !item.slot || item.explorerId) return;
+    const slotId: string = item.slot;
+    const root = this.host.nativeElement;
+    const target = root.querySelector<HTMLElement>(`[data-socket="${slotId}"]`)
+      ?? root.querySelector<HTMLElement>(`[data-charm="${slotId}"]`);
+    if (!target) return;
+
+    const to = target.getBoundingClientRect();
+    // The picker card the item was chosen from, if it is still on screen —
+    // change detection has not run yet, so it has not been removed.
+    const card = Array.from(root.querySelectorAll<HTMLElement>('[data-pick-id]'))
+      .find(el => el.getAttribute('data-pick-id') === item.id);
+    const from = card?.getBoundingClientRect();
+    const visible = !!from && from.width > 0 && from.bottom > 0
+      && from.top < (window.innerHeight || document.documentElement.clientHeight);
+
+    const x = visible ? (from!.left + from!.width / 2) - (to.left + to.width / 2) : 0;
+    // From below: the bag is always "down there" relative to the doll.
+    const y = visible
+      ? (from!.top + from!.height / 2) - (to.top + to.height / 2)
+      : Math.max(140, to.height * 3);
+
+    const nonce = ++this.fxNonce;
+    this.landing = { slotId, itemId: item.id, x: Math.round(x), y: Math.round(y), nonce };
+    this.pulsing = true;
+    this.flash(slotId);
+    this.later(LANDING_MS, () => { if (this.landing?.nonce === nonce) this.landing = null; });
+    this.pulseNonce = nonce;
+    this.later(PULSE_MS, () => { if (this.pulseNonce === nonce) this.pulsing = false; });
+  }
+
+  /**
+   * Every slot whose occupant left — taken off, or displaced by a swap — lifts
+   * its old art out and drops it. Derived from the snapshot because there is no
+   * unequip event, and guarded against hydrates by `MAX_ANIMATED_CHANGES`.
+   */
+  private trackUnequips(
+    before: Partial<Record<SlotId, GameItem>>,
+    after: Partial<Record<SlotId, GameItem>>,
+  ): void {
+    if (!this.seenFirstSnapshot) { this.seenFirstSnapshot = true; return; }
+    if (!this.isBrowser) return;
+    const changed = this.sockets.filter(slot => {
+      const live = slot.liveSlot!;
+      return (before[live]?.id ?? null) !== (after[live]?.id ?? null);
+    });
+    if (!changed.length || changed.length > MAX_ANIMATED_CHANGES) return;
+    for (const slot of changed) {
+      const gone = before[slot.liveSlot!];
+      if (!gone) continue;
+      const nonce = ++this.fxNonce;
+      this.leaving = [...this.leaving, { slotId: slot.slotId, item: gone, nonce }];
+      this.later(LEAVING_MS, () => {
+        this.leaving = this.leaving.filter(row => row.nonce !== nonce);
+      });
+    }
+  }
+
+  private later(ms: number, fn: () => void): void {
+    const timer = setTimeout(() => { this.fxTimers.delete(timer); fn(); }, ms);
+    this.fxTimers.add(timer);
   }
 
 }
