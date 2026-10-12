@@ -312,60 +312,311 @@
   width: 100%;
 }
 
-/* Anticipation. The box shakes harder as it goes, then the seam blows open. */
-.gb-reveal__box {
+/* ── The altar ───────────────────────────────────────────────────────────────
+ * Every beat is driven by two custom properties set from the component:
+ *   --charge    0..1, the rarity that was actually rolled, read off the ladder
+ *   --phase-ms  how long the current beat holds
+ * Only transform, opacity and filter animate. */
+
+.gb-altar {
   position: relative;
-  width: 120px;
-  height: 120px;
-  border-radius: 12px;
-  background: linear-gradient(180deg, #1b1230, #0a0618);
-  border: 1px solid var(--reveal-glow);
-  box-shadow: 0 0 30px -10px var(--reveal-glow);
+  width: min(300px, 78vw);
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
 }
 
-[data-phase='shaking'] .gb-reveal__box { animation: gbShake 700ms ease-in-out; }
-[data-phase='opening'] .gb-reveal__box { animation: gbBurst 620ms cubic-bezier(0.22, 1, 0.36, 1) forwards; }
-
-.gb-reveal__seam {
+.gb-altar__sigil {
   position: absolute;
-  left: 8%;
-  right: 8%;
-  top: 50%;
-  height: 2px;
-  background: var(--reveal-color);
-  box-shadow: 0 0 16px 4px var(--reveal-glow);
-  transform: translateY(-50%);
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 0.32;
+  z-index: 0;
+  animation: gbSpin 48s linear infinite;
+}
+[data-phase='charging'] .gb-altar__sigil,
+[data-phase='cracking'] .gb-altar__sigil {
+  opacity: calc(0.4 + 0.45 * var(--charge, 0));
+  filter: drop-shadow(0 0 14px var(--reveal-glow));
+  transition: opacity var(--phase-ms, 0ms) ease-in, filter var(--phase-ms, 0ms) ease-in;
 }
 
-/* Three beams, staggered, escaping the seam once it splits. */
-.gb-reveal__beam {
+.gb-altar__flame {
+  position: absolute;
+  bottom: 6%;
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  opacity: 0.75;
+  z-index: 1;
+  transform-origin: 50% 100%;
+  animation: gbFlicker 1.4s ease-in-out infinite alternate;
+}
+.gb-altar__flame--l { left: 0; }
+.gb-altar__flame--r { right: 0; animation-delay: -0.7s; }
+
+.gb-altar__portal {
+  position: absolute;
+  inset: 14%;
+  width: 72%;
+  height: 72%;
+  object-fit: contain;
+  z-index: 1;
+  opacity: 0;
+  mix-blend-mode: screen;
+  animation: gbPortal var(--phase-ms, 900ms) ease-in forwards;
+}
+[data-phase='cracking'] .gb-altar__portal {
+  animation: gbPortalOut 520ms ease-out forwards;
+}
+
+.gb-altar__slab {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  bottom: 10%;
+  height: 13%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background:
+    radial-gradient(ellipse 60% 70% at 50% 40%, color-mix(in srgb, var(--reveal-color) 22%, transparent), transparent 70%),
+    radial-gradient(ellipse at 50% 50%, var(--violet-ink), var(--obsidian-0) 80%);
+  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.8);
+  z-index: 1;
+}
+
+.gb-altar__coin {
+  position: absolute;
+  bottom: 18%;
+  width: 48px;
+  height: 48px;
+  object-fit: contain;
+  z-index: 3;
+  animation: gbCoinDrop 420ms cubic-bezier(0.34, 1.4, 0.64, 1) forwards;
+}
+
+/* The veiled card. Neutral at rest; the charge glow under it brightens toward
+   the rolled rarity's colour — a true signal, because the roll is already in. */
+.gb-card {
+  --amp: calc(1.5 + 6 * var(--charge, 0));
+  position: relative;
+  z-index: 2;
+  width: 108px;
+  height: 148px;
+  border-radius: 12px;
+  border: 1px solid rgba(164, 139, 255, 0.45);
+  background:
+    repeating-linear-gradient(45deg, rgba(164, 139, 255, 0.07) 0 6px, transparent 6px 12px),
+    linear-gradient(180deg, var(--violet-ink), var(--obsidian-0));
+  box-shadow: 0 0 22px -8px rgba(140, 110, 255, 0.7), inset 0 0 18px rgba(0, 0, 0, 0.6);
+}
+
+.gb-card::after {
+  content: '';
+  position: absolute;
+  inset: -18px;
+  border-radius: 24px;
+  background: radial-gradient(circle, var(--reveal-glow), transparent 70%);
+  filter: blur(10px);
+  opacity: 0;
+  z-index: -1;
+}
+
+.gb-card__veil {
+  position: absolute;
+  inset: 8px;
+  border-radius: 8px;
+  border: 1px dashed rgba(164, 139, 255, 0.35);
+}
+
+.gb-card__glyph {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 3px;
-  height: 220px;
-  margin-left: -1.5px;
-  margin-top: -110px;
-  background: linear-gradient(180deg, transparent, var(--reveal-color), transparent);
-  opacity: 0;
-  filter: blur(1px);
+  width: 40px;
+  height: 40px;
+  margin: -20px 0 0 -20px;
+  border-radius: 50%;
+  border: 1px solid rgba(164, 139, 255, 0.6);
+  background: radial-gradient(circle, rgba(234, 255, 249, 0.6), rgba(164, 139, 255, 0.2) 45%, transparent 70%);
 }
-[data-phase='opening'] .gb-reveal__beam { animation: gbBeam 620ms ease-out forwards; }
-.gb-reveal__beam--a { transform: rotate(0deg); }
-.gb-reveal__beam--b { transform: rotate(60deg); animation-delay: 70ms !important; }
-.gb-reveal__beam--c { transform: rotate(-60deg); animation-delay: 140ms !important; }
 
-.gb-reveal__waiting { margin: 0; font-size: 0.85rem; color: rgba(232, 236, 241, 0.6); }
-.gb-reveal__skip {
-  margin-top: 0.5rem;
-  min-height: 36px;
-  padding: 0.25rem 0.8rem;
+.gb-card__crack {
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  width: 2px;
+  height: 84%;
+  background: linear-gradient(180deg, transparent, var(--reveal-color), transparent);
+  box-shadow: 0 0 10px 2px var(--reveal-glow);
+  opacity: 0;
+  transform-origin: 50% 50%;
+}
+.gb-card__crack--a { transform: rotate(18deg) scaleY(0); }
+.gb-card__crack--b { transform: rotate(-24deg) scaleY(0); }
+
+[data-phase='wager'] .gb-card { animation: gbCardSettle 420ms ease-out; }
+
+[data-phase='charging'] .gb-card { animation: gbShake 240ms ease-in-out infinite; }
+[data-phase='charging'] .gb-card::after {
+  animation: gbChargeGlow var(--phase-ms, 900ms) ease-in forwards;
+}
+[data-phase='charging'] .gb-card__glyph {
+  animation: gbGlyph 700ms ease-in-out infinite alternate;
+}
+
+[data-phase='cracking'] .gb-card {
+  animation: gbCrackFlip var(--phase-ms, 640ms) cubic-bezier(0.55, 0, 0.75, 0.2) forwards;
+}
+[data-phase='cracking'] .gb-card::after { opacity: 1; }
+[data-phase='cracking'] .gb-card__crack--a { animation: gbCrackA calc(var(--phase-ms, 640ms) * 0.5) ease-out forwards; }
+[data-phase='cracking'] .gb-card__crack--b { animation: gbCrackB calc(var(--phase-ms, 640ms) * 0.5) ease-out 60ms forwards; }
+
+.gb-altar__burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260px;
+  height: 260px;
+  margin: -130px 0 0 -130px;
+  object-fit: contain;
+  z-index: 3;
+  pointer-events: none;
+  opacity: 0;
+  filter: drop-shadow(0 0 24px var(--reveal-glow));
+  animation: gbBurst 760ms ease-out forwards;
+}
+.gb-reveal--fast .gb-altar__burst { animation-duration: 420ms; }
+
+.gb-altar__wave {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 140px;
+  height: 140px;
+  margin: -70px 0 0 -70px;
+  border-radius: 50%;
+  border: 2px solid var(--reveal-color);
+  box-shadow: 0 0 24px var(--reveal-glow), inset 0 0 24px var(--reveal-glow);
+  opacity: 0;
+  z-index: 2;
+  pointer-events: none;
+  animation: gbWave 900ms ease-out forwards;
+}
+/* The top of the ladder rings twice. */
+[data-rank='5'] .gb-altar__wave,
+[data-rank='6'] .gb-altar__wave { animation-iteration-count: 2; }
+
+.gb-reveal__waiting {
+  margin: 0;
+  display: grid;
+  gap: 0.2rem;
+  font-size: 0.85rem;
+  color: rgba(232, 236, 241, 0.6);
+}
+.gb-reveal__box-name {
+  font-size: 0.66rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(232, 236, 241, 0.42);
+}
+
+.gb-reveal__controls { display: flex; flex-wrap: wrap; gap: 0.5rem; justify-content: center; }
+
+.gb-reveal__skip,
+.gb-reveal__fast {
+  min-height: 44px;
+  padding: 0.25rem 0.9rem;
   border-radius: 999px;
   border: 1px solid rgba(255, 255, 255, 0.14);
   background: none;
-  color: rgba(232, 236, 241, 0.6);
-  font-size: 0.7rem;
+  color: rgba(232, 236, 241, 0.65);
+  font-size: 0.72rem;
   cursor: pointer;
+}
+.gb-reveal__fast[aria-pressed='true'],
+.gb__fast[aria-pressed='true'] {
+  border-color: var(--edge-violet);
+  color: var(--violet-bright);
+}
+.gb__fast { min-height: 44px; }
+
+.gb-reveal__card {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: center;
+  width: 100%;
+  animation: gbFadeUp 420ms cubic-bezier(0.22, 1, 0.36, 1) 120ms both;
+}
+
+/* Reduced motion: the script skips straight to `revealed`; this is the fade. */
+.gb-reveal--still .gb-reveal__item,
+.gb-reveal--still .gb-reveal__card { animation: gbFade 200ms ease-out both; }
+
+.gb-reveal__mods {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.15rem;
+  font-size: 0.78rem;
+  color: rgba(232, 236, 241, 0.8);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Pull history ─────────────────────────────────────────────────────────── */
+
+.gb__table {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem 1rem;
+  margin-bottom: 1.4rem;
+}
+
+.gb-pulls { display: grid; gap: 0.35rem; justify-items: center; }
+.gb-pulls__label {
+  margin: 0;
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(232, 236, 241, 0.42);
+}
+.gb-pulls__strip {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+}
+.gb-pulls__tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--pull-color);
+  background: radial-gradient(circle, color-mix(in srgb, var(--pull-color) 28%, transparent), rgba(8, 3, 24, 0.92) 75%);
+  box-shadow: 0 0 10px -2px var(--pull-glow);
+  overflow: hidden;
+}
+.gb-pulls__tile img { width: 36px; height: 36px; object-fit: contain; }
+.gb-pulls__tile--new { animation: gbPop 380ms cubic-bezier(0.34, 1.4, 0.64, 1); }
+.gb-pulls__initials { font-size: 0.66rem; font-weight: 700; color: var(--ink-0); }
+.gb-pulls__sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
 }
 
 .gb-reveal__pity { margin: 0; font-size: 0.7rem; color: var(--gold); letter-spacing: 0.08em; }
@@ -378,7 +629,10 @@
 }
 
 .gb-reveal__item {
-  position: relative;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  margin: -64px 0 0 -64px;
   display: grid;
   place-items: center;
   width: 128px;
@@ -386,10 +640,23 @@
   border-radius: 50%;
   background: radial-gradient(circle at 50% 50%, var(--reveal-color) 0%, rgba(8, 3, 24, 0.92) 78%);
   box-shadow: 0 0 24px var(--reveal-glow), 0 0 70px -10px var(--reveal-glow);
+  z-index: 4;
   animation: gbRise 520ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.gb-reveal__art { width: 96px; height: 96px; object-fit: contain; }
+.gb-reveal__aura {
+  position: absolute;
+  inset: -40px;
+  width: calc(100% + 80px);
+  height: calc(100% + 80px);
+  object-fit: contain;
+  opacity: 0.7;
+  z-index: -1;
+  filter: drop-shadow(0 0 12px var(--reveal-glow));
+  animation: gbSpin 14s linear infinite;
+}
+
+.gb-reveal__art { position: relative; width: 96px; height: 96px; object-fit: contain; }
 .gb-reveal__orb { font-size: 1.6rem; font-weight: 700; color: #eafff9; }
 
 .gb-reveal__rarity {
@@ -482,22 +749,93 @@
 
 @keyframes gbShake {
   0%, 100% { transform: translate3d(0, 0, 0) rotate(0deg); }
-  20% { transform: translate3d(-3px, 1px, 0) rotate(-1.5deg); }
-  40% { transform: translate3d(4px, -2px, 0) rotate(2deg); }
-  60% { transform: translate3d(-5px, 2px, 0) rotate(-2.5deg); }
-  80% { transform: translate3d(6px, -1px, 0) rotate(3deg); }
+  25% { transform: translate3d(calc(var(--amp) * -1px), calc(var(--amp) * 0.3px), 0) rotate(calc(var(--amp) * -0.35deg)); }
+  50% { transform: translate3d(calc(var(--amp) * 0.8px), calc(var(--amp) * -0.4px), 0) rotate(calc(var(--amp) * 0.3deg)); }
+  75% { transform: translate3d(calc(var(--amp) * -0.6px), calc(var(--amp) * 0.2px), 0) rotate(calc(var(--amp) * -0.2deg)); }
+}
+
+@keyframes gbChargeGlow {
+  from { opacity: 0.1; transform: scale(0.85); }
+  to { opacity: calc(0.45 + 0.55 * var(--charge, 0)); transform: scale(calc(1 + 0.25 * var(--charge, 0))); }
+}
+
+@keyframes gbGlyph {
+  from { opacity: 0.55; transform: scale(0.92); filter: brightness(1); }
+  to { opacity: 1; transform: scale(1.08); filter: brightness(1.6); }
+}
+
+@keyframes gbCardSettle {
+  0% { transform: translateY(6px) scale(0.98); }
+  60% { transform: translateY(-3px) scale(1.01); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes gbCrackA {
+  from { opacity: 0; transform: rotate(18deg) scaleY(0); }
+  to { opacity: 1; transform: rotate(18deg) scaleY(1); }
+}
+
+@keyframes gbCrackB {
+  from { opacity: 0; transform: rotate(-24deg) scaleY(0); }
+  to { opacity: 1; transform: rotate(-24deg) scaleY(1); }
+}
+
+@keyframes gbCrackFlip {
+  0% { transform: perspective(600px) rotateY(0deg) scale(1); opacity: 1; filter: brightness(1); }
+  55% { transform: perspective(600px) rotateY(0deg) scale(1.08); opacity: 1; filter: brightness(1.8); }
+  100% { transform: perspective(600px) rotateY(90deg) scale(1.2); opacity: 0; filter: brightness(3) blur(4px); }
 }
 
 @keyframes gbBurst {
-  0% { transform: scale(1); opacity: 1; }
-  40% { transform: scale(1.12); opacity: 1; }
-  100% { transform: scale(2.4); opacity: 0; filter: blur(8px); }
+  0% { opacity: 0; transform: scale(0.3) rotate(0deg); }
+  30% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.5) rotate(40deg); }
 }
 
-@keyframes gbBeam {
-  0% { opacity: 0; transform-origin: 50% 50%; }
-  35% { opacity: 0.9; }
-  100% { opacity: 0; }
+@keyframes gbWave {
+  0% { opacity: 0.95; transform: scale(0.3); }
+  100% { opacity: 0; transform: scale(2.3); }
+}
+
+@keyframes gbPortal {
+  from { opacity: 0; transform: scale(0.4) rotate(0deg); }
+  to { opacity: calc(0.3 + 0.5 * var(--charge, 0)); transform: scale(1) rotate(-90deg); }
+}
+
+@keyframes gbPortalOut {
+  from { opacity: 0.7; transform: scale(1); }
+  to { opacity: 0; transform: scale(1.6); }
+}
+
+@keyframes gbCoinDrop {
+  0% { opacity: 0; transform: translateY(-110px) rotate(-30deg) scale(0.8); }
+  60% { opacity: 1; transform: translateY(0) rotate(0deg) scale(1); }
+  100% { opacity: 0; transform: translateY(4px) scale(0.6); }
+}
+
+@keyframes gbFlicker {
+  from { transform: scaleY(0.94) scaleX(1.02); opacity: 0.65; }
+  to { transform: scaleY(1.06) scaleX(0.97); opacity: 0.9; }
+}
+
+@keyframes gbSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes gbFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes gbFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes gbPop {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes gbRise {
@@ -522,10 +860,21 @@
   .gb-reveal__item[data-quality-tag]::after,
   .gb__sell-row[data-quality-tag]::after { animation: none; }
   .gb__title { background-position: 0% 50%; }
-  .gb-reveal__box,
-  .gb-reveal__beam,
-  .gb-reveal__item { animation: none !important; }
-  .gb-reveal__beam { opacity: 0; }
+  /* The component skips straight to the reveal; all that remains is a fade. */
+  .gb-altar__sigil,
+  .gb-altar__flame,
+  .gb-reveal__aura,
+  .gb-pulls__tile--new,
+  .gb-card,
+  .gb-card::after,
+  .gb-card__glyph { animation: none !important; }
+  .gb-altar__portal,
+  .gb-altar__burst,
+  .gb-altar__wave,
+  .gb-altar__coin { display: none; }
+  /* The replacement fade is keyed on .gb-reveal--still, set from script, and
+     lives at top level: Angular does not rewrite an animation name that is
+     referenced inside a media block, so naming gbFade here would dangle. */
   .gb__box { transition: none; }
   .gb__box:hover { transform: none; }
 }
