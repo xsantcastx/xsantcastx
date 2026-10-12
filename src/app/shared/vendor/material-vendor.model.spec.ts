@@ -6,7 +6,7 @@
  */
 import { CRAFTING_RECIPES } from '../crafting/crafting.model';
 import { ITEM_ECONOMY_SCALE, VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
-import { EXCHANGE_CATALOGUE, PRICE_FLOOR_MULT } from '../exchange/exchange.model';
+import { EXCHANGE_CATALOGUE, PRICE_FLOOR_MULT, quoteBuy, quoteSell } from '../exchange/exchange.model';
 import { REALM_ARTBIBLE_MATERIALS } from '../explorer/explorer.model';
 import { materialDisplay } from '../rpg/material-catalog';
 import {
@@ -78,18 +78,45 @@ describe('material vendor buyback board', () => {
     }
   });
 
-  it('can never be arbitraged: it pays less than the Exchange ever quotes', () => {
+  // P-5 (docs/handoff/playtest-findings.md): the Exchange's floor quote, in whole
+  // Gold, after its 5% sale tax (rounded up), is what a player is handed for one
+  // unit at the bottom of the market. The counter must pay strictly less, for
+  // every material it takes — gathered and expedition-only alike.
+  const exchangeBaseFor = (materialId: string, worth: number) =>
+    EXCHANGE_CATALOGUE.find(row => row.kind === 'material' && row.stackKey === materialId)?.basePrice ?? worth;
+  const floorUnitFor = (base: number) => Math.max(1, Math.round(base * PRICE_FLOOR_MULT));
+
+  it('pays strictly less than the Exchange floor quote after tax, for every material', () => {
+    const offenders: string[] = [];
     for (const listing of VENDOR_SHELF) {
-      const good = EXCHANGE_CATALOGUE.find(row => row.kind === 'material' && row.stackKey === listing.materialId);
-      // The Exchange's lowest possible ask (priceAt clamps to base × floor, min 1).
-      const base = good?.basePrice ?? listing.worth;
-      const lowestQuote = Math.max(1, Math.round(base * PRICE_FLOOR_MULT));
-      if (listing.price === 1) {
-        // The 1-Gold minimum: buying at 1 and selling back at 1 is break-even, never a profit.
-        expect(lowestQuote).withContext(listing.materialId).toBeGreaterThanOrEqual(1);
-      } else {
-        expect(listing.price).withContext(listing.materialId).toBeLessThan(lowestQuote);
+      const floorNet = quoteSell(floorUnitFor(exchangeBaseFor(listing.materialId, listing.worth)), 1).net;
+      // The single exception is the 1-Gold minimum where the Exchange floor also
+      // nets 1 (Slag Fragment): nothing lower than 1 can be paid.
+      const minimumTie = listing.price === 1 && floorNet <= 1;
+      if (listing.price >= floorNet && !minimumTie) offenders.push(`${listing.materialId}: vendor ${listing.price} >= exchange ${floorNet}`);
+    }
+    expect(offenders).toEqual([]);
+    // The minimum tie is only ever the one cheapest material, never a priced one.
+    const ties = VENDOR_SHELF.filter(listing =>
+      listing.price >= quoteSell(floorUnitFor(exchangeBaseFor(listing.materialId, listing.worth)), 1).net);
+    expect(ties.map(listing => listing.materialId)).toEqual(['slag-fragment']);
+  });
+
+  it('pays strictly less per unit than the Exchange floor rate net of tax, on a lot of any size', () => {
+    for (const listing of VENDOR_SHELF) {
+      const floorRate = exchangeBaseFor(listing.materialId, listing.worth) * PRICE_FLOOR_MULT;
+      for (const qty of [10, 50, 99]) {
+        const exchangeNet = quoteSell(floorRate, qty).net; // unrounded floor, the rate a lot settles at
+        expect(listing.price * qty).withContext(`${listing.materialId} x${qty}`).toBeLessThan(exchangeNet);
       }
+    }
+  });
+
+  it('can never be arbitraged: it pays less than the Exchange ever charges', () => {
+    for (const listing of VENDOR_SHELF) {
+      // The Exchange's lowest possible ask (priceAt clamps to base × floor, min 1).
+      const lowestAsk = quoteBuy(floorUnitFor(exchangeBaseFor(listing.materialId, listing.worth)), 1).net;
+      expect(listing.price).withContext(listing.materialId).toBeLessThan(lowestAsk);
     }
   });
 

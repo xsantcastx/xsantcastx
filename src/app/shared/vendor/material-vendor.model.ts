@@ -14,16 +14,24 @@
  * to sell the nine expedition materials for Gold, and now it only BUYS. It is
  * the floor under the market, not the market:
  *
- *   buyback price = max(1, floor(base worth × VENDOR_BUYBACK_FRACTION))
+ *   buyback price = max(1, floor(base worth × VENDOR_BUYBACK_FRACTION) − 1)
  *   base worth    = the material's v2 anchor × ρ (ITEM_ECONOMY_SCALE, 0.06)
  *
  * with VENDOR_BUYBACK_FRACTION = 0.08. The anchors are the Grand Exchange's
  * material base prices (the spec asserts the table below matches
  * `EXCHANGE_CATALOGUE` × ρ) and, for the expedition-only materials the
  * Exchange does not list, the v2 shelf prices (6k regional, 9k deep, 12k
- * universal). 8% of base worth is under even the Exchange's floor quote (10%
- * of base), so it is well under anything a player market will clear at, so the counter is where surplus and junk go to become a
- * little Gold — never a way to print it, because the Vendor sells nothing back.
+ * universal). 8% of base worth is under the Exchange's floor quote (10% of
+ * base), but both sides pay whole Gold and the Exchange also takes its 5% sale
+ * tax (rounded up), which can eat the whole 2-point margin on a cheap
+ * material: before the −1, Cinder Ore paid 2 here and 2 net at the Exchange
+ * floor (playtest P-5). The −1 keeps the counter strictly below the
+ * Exchange's floor quote net of tax for every material; the spec asserts it
+ * against the real Exchange arithmetic. The one exception is the 1-Gold
+ * minimum (Slag Fragment), where the Exchange's floor nets 1 too and nothing
+ * lower than 1 can be paid. So the counter is where surplus and junk go to
+ * become a little Gold — never a better outlet than the market, and never a
+ * way to print it, because the Vendor sells nothing back.
  */
 import { ITEM_ECONOMY_SCALE, VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
 
@@ -44,10 +52,14 @@ export interface VendorListing {
   source: string;
 }
 
-/** The buyback price for a base worth. */
+/**
+ * The buyback price for a base worth: the 8% fraction floored, then one Gold
+ * less, so whole-Gold rounding can never lift it to the Exchange's floor quote
+ * net of tax (P-5). Never below 1.
+ */
 export function buybackPrice(worth: number): number {
   if (!(worth > 0)) return 0;
-  return Math.max(1, Math.floor(worth * VENDOR_BUYBACK_FRACTION));
+  return Math.max(1, Math.floor(worth * VENDOR_BUYBACK_FRACTION) - 1);
 }
 
 /** v2 anchors (Gold). Times ρ is the v3 base worth. */

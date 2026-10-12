@@ -32,7 +32,9 @@ import {
   priceHistory,
   pressureMultiplier,
   quoteBuy,
+  quoteBuyAt,
   quoteSell,
+  quoteSellAt,
   seedFor,
   trendOf,
   volumeAt,
@@ -367,5 +369,45 @@ describe('exchange price engine', () => {
     expect(quoteBuy(100, 2.7).quantity).toBe(2);
     expect(quoteBuy(100, -5).quantity).toBe(0);
     expect(quoteSell(100, -5).net).toBe(0);
+  });
+});
+
+// Playtest P-1 (docs/handoff/playtest-findings.md): Max-buy then Max-sell on the
+// Exchange used to print Gold. Asserted on the pure quotes for every material,
+// every order size the UI allows (Max is 999), at several instants and from a
+// market the player has already pushed either way.
+describe('exchange round trip (P-1)', () => {
+  const materials = EXCHANGE_CATALOGUE.filter(good => good.kind === 'material');
+  const sizes = [1, 2, 3, 4, 5, 7, 9, 10, 11, 13, 20, 37, 64, 65, 99, 100, 250, 500, 998, 999];
+  const instants = [T0, T0 + 5 * HOUR_MS, T0 + 3 * DAY_MS];
+
+  it('never pays out more than it charged, for any material at any size', () => {
+    const profits: string[] = [];
+    for (const good of materials) {
+      for (const at of instants) {
+        for (const start of [undefined, { net: good.liquidity, at }, { net: -good.liquidity, at }]) {
+          for (const qty of sizes) {
+            const paid = quoteBuyAt(good, at, start, qty).net;
+            const after = applyPressure(start, qty, at);
+            const received = quoteSellAt(good, at, after, qty).net;
+            if (received >= paid) profits.push(`${good.id} x${qty} @${at} from ${start?.net ?? 0}: paid ${paid}, got ${received}`);
+          }
+        }
+      }
+    }
+    expect(profits).toEqual([]);
+  });
+
+  it('loses on a Max buy sold back in pieces too', () => {
+    for (const good of materials) {
+      let pressure = applyPressure(undefined, 999, T0);
+      const paid = quoteBuyAt(good, T0, undefined, 999).net;
+      let received = 0;
+      for (const piece of [1, 1, 1, 7, 90, 400, 499]) {
+        received += quoteSellAt(good, T0, pressure, piece).net;
+        pressure = applyPressure(pressure, -piece, T0);
+      }
+      expect(received).withContext(good.id).toBeLessThan(paid);
+    }
   });
 });
