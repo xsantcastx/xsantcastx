@@ -26,6 +26,7 @@ world — and every system visible while it works.
 | Navbar | **World only**: shrinks to Play + Character at the end | Must keep URLs, SEO prerenders, nav audit and an accessible "Places" list working first |
 | Monster loot | **Zone-specific drop tables**, hand-authored per hunting ground | More flavour; each table needs balancing |
 | Translucent art | **Solidify at import** (`SOLIDIFY` in `scripts/import-assets.py`) | Keeper is solid; same treatment available for any future see-through export |
+| Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
 
 ### Where each page lives (proposal; change here, then build)
 
@@ -87,6 +88,15 @@ Sequential: everything after it plugs into its data model and panel host.
 - [ ] Standalone URLs (`/market`, `/gambler`, …) keep their SEO prerender and open into the world
 - [ ] Navbar shrinks to Play + Character
 
+## Art direction: hybrid sprites
+
+- [~] Commission pack split into `world-sprites/` and `menu-paintings/`, with a **"make these first" A/B test set**: Keeper sheet (idle/run/attack), Rivet Maw sheet (idle/windup/strike), Infernal camp props
+- [~] Importer: `Assets/Sprites/...` family, pixel-exact sheets + sidecar JSON (frame size, count, actions)
+- [ ] **Owner:** produce the test set and drop it in the library
+- [ ] Engine sprite-sheet renderer (per-action frames, hand anchors for weapon attachment), with the rig as fallback
+- [ ] A/B the test set in the Seamworks on a branch, then decide go / no-go for the full sprite pass
+- [-] Full sprite pass for every town, creature and NPC (after the A/B)
+
 ## Phase 4: Life
 
 - [ ] NPC shopkeepers at each building (needs NPC art)
@@ -100,7 +110,7 @@ Sequential: everything after it plugs into its data model and panel host.
 | Work | Branch | Status |
 |---|---|---|
 | Phase 1 world foundation | agent worktree (pending report) | `[~]` |
-| Missing-art commission pack: prompts + exact library filenames for every placeholder; importer auto-wires them | agent worktree (pending report) | `[~]` |
+| Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
 
 ## Art still missing (placeholders in game)
 
