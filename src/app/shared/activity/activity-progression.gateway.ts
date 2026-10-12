@@ -19,6 +19,7 @@ import {
   ACTIVITY_KEY,
   ACTIVITY_OPS_MAX,
   MINING_TIERS,
+  WORLD_ACTION_MAX_XP,
   emptyActivityLedger,
   isMiningTierUnlocked,
   locationDefinition,
@@ -93,7 +94,7 @@ export interface WorldActionInput {
 }
 
 /** Ceilings on one world action — a host bug cannot mint a level in one swing. */
-export const WORLD_ACTION_MAX_XP = 500;
+export { WORLD_ACTION_MAX_XP };
 export const WORLD_ACTION_MAX_QTY = 20;
 
 export type WorldActionResult =

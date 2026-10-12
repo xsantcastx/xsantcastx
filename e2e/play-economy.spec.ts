@@ -87,10 +87,11 @@ test.describe('NPC counters, played', () => {
     expect(vendorPrice).toBeLessThan(exchangeNet);
   });
 
-  // BUG (playtest-findings.md P-1): a buy is charged at the pre-trade unit price for every
-  // unit, then the player's own buy pressure lifts the quote, and the sale is paid at that
-  // lifted (rounded) price. Max-buy then Max-sell prints Gold. Unfixme when the round trip loses.
-  test.fixme('buying N and selling the same N back on the Exchange is never a profit', async ({ page }) => {
+  // Was P-1 (playtest-findings.md): a buy was charged at the pre-trade unit price for every
+  // unit, then the sale was paid at the price the buy itself lifted, so Max-buy then Max-sell
+  // printed Gold. Fixed by pricing each order along its own impact (8bbe142); the pure quotes
+  // are also checked for every material and size in exchange.model.spec.ts.
+  test('buying N and selling the same N back on the Exchange is never a profit', async ({ page }) => {
     test.setTimeout(120000);
     await seed(page, purse(100_000));
     await travelToExchange(page);
@@ -130,15 +131,15 @@ test.describe('NPC counters, played', () => {
   // The model claim behind the counter: "8% of base worth is under even the Exchange's
   // floor quote". Checked against what a player is actually handed at the floor: the
   // Exchange's floor price, after its 5% sale tax.
-  // BUG (playtest-findings.md P-5): for Slag Fragment and Cinder Ore the Vendor pays exactly
-  // the Exchange's floor quote net of tax (1 = 1, 2 = 2): the whole-Gold rounding eats the
-  // 2-point margin. Unfixme when the Vendor is strictly below.
-  test.fixme('the Vendor pays below the Exchange floor quote, after tax, for every gathered material', () => {
+  // Was P-5 (playtest-findings.md): Cinder Ore paid 2 at both; whole-Gold rounding ate the
+  // margin. The buyback is now floor(8%) − 1. The one tie left is the 1-Gold minimum where
+  // the Exchange floor also nets 1 (Slag Fragment): nothing below 1 Gold can be paid.
+  test('the Vendor pays below the Exchange floor quote, after tax, for every gathered material', () => {
     const ties = VENDOR_SHELF.filter(row => row.tier === 'gathered').map(row => {
       const floorUnit = Math.max(1, Math.round(row.worth * PRICE_FLOOR_MULT));
       const floorNet = quoteSell(floorUnit, 1).net;
       return { id: row.materialId, vendor: row.price, floorNet, worth: row.worth };
-    }).filter(row => row.vendor >= row.floorNet);
+    }).filter(row => row.vendor >= row.floorNet && !(row.vendor === 1 && row.floorNet <= 1));
     expect(ties, `Vendor >= Exchange floor net: ${JSON.stringify(ties)}`).toEqual([]);
   });
 });

@@ -82,10 +82,10 @@ test.describe('Delve missions, played', () => {
     await expect(page.locator('section.place .qb-detail')).toContainText('2/3');
   });
 
-  // BUG (playtest-findings.md P-6): The Fracture pays 600 Delving XP, but
-  // ActivityProgressionGateway.resolveWorldAction refuses any xp > WORLD_ACTION_MAX_XP (500)
-  // with 'invalid', and NpcQuestService.payMission ignores the result: the XP is silently lost.
-  test.fixme('the whole Delve chain: Verrin, Kael, a Glowcap order, then The Fracture pays its 600 Delving XP', async ({ page }) => {
+  // Was P-6 (playtest-findings.md): The Fracture's 600 Delving XP went as one action over the
+  // gateway's 500 ceiling and was refused silently. Mission XP is now split into grants under
+  // the ceiling (missionXpGrants), and a refused grant is logged.
+  test('the whole Delve chain: Verrin, Kael, a Glowcap order, then The Fracture pays its 600 Delving XP', async ({ page }) => {
     await seed(page, bag({
       'shadow-root-cutting': 3, 'slag-fragment': 10, 'kaels-hammer': 1, glowcap: 5, 'godforge-fragment': 1,
     }));

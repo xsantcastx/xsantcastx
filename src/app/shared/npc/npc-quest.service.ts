@@ -62,6 +62,7 @@ import {
   missionNextStep,
   missionObserved,
   missionTarget,
+  missionXpGrants,
 } from './delve-missions.model';
 import {
   ALL_NPC_STEPS,
@@ -369,17 +370,24 @@ export class NpcQuestService {
       const minted = mintEquipment(r.item.defId, r.item.rarity);
       if (minted) this.inventory.add(minted);
     }
-    if (r.delvingXp && r.delvingXp > 0) {
-      const xp = r.delvingXp;
+    const grants = missionXpGrants(mission, times);
+    if (grants.length > 0) {
       // Lazy, so the skill pipeline (and the crafting catalogue behind it)
-      // stays out of the shell's initial bundle. Idempotent on the mutation id.
-      void import('../skills/skill-actions.service').then(m =>
-        this.injector.get(m.SkillActionService).act({
-          mutationId: `npc-mission:${mission.id}:${times}:xp`,
-          skill: 'delving',
-          xp,
-          locationId: 'ember-delve/mission',
-        })).catch(() => undefined); // a failed chunk load loses XP, never the claim
+      // stays out of the shell's initial bundle. Each grant is within the
+      // per-action ceiling (P-6) and idempotent on its own mutation id.
+      void import('../skills/skill-actions.service').then(m => {
+        const skills = this.injector.get(m.SkillActionService);
+        for (const grant of grants) {
+          const result = skills.act({
+            mutationId: grant.mutationId,
+            skill: 'delving',
+            xp: grant.xp,
+            locationId: 'ember-delve/mission',
+          });
+          // Never drop XP without a trace: a refused grant is a bug to see.
+          if (!result.ok) console.warn(`[missions] ${mission.id}: ${grant.xp} Delving XP refused (${result.code})`);
+        }
+      }).catch(err => console.warn(`[missions] ${mission.id}: Delving XP not granted`, err)); // never the claim
     }
     return gold;
   }

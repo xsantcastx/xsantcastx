@@ -16,8 +16,52 @@ import {
   missionObserved,
   missionTarget,
   missionsFrom,
+  missionXpGrants,
   type MissionReadings,
 } from './delve-missions.model';
+import { WORLD_ACTION_MAX_XP, xpGrantChunks } from '../activity/activity.model';
+
+// P-6 (docs/handoff/playtest-findings.md): The Fracture's 600 Delving XP went
+// to the gateway as one action over its 500 ceiling and was refused whole.
+describe('mission XP rewards are grantable (P-6)', () => {
+  it('splits every mission reward into grants the gateway accepts, summing exactly', () => {
+    for (const mission of DELVE_MISSIONS) {
+      const xp = mission.reward.delvingXp ?? 0;
+      for (const times of [0, 3]) {
+        const grants = missionXpGrants(mission, times);
+        expect(grants.reduce((sum, g) => sum + g.xp, 0)).withContext(mission.id).toBe(xp);
+        for (const grant of grants) {
+          // The same checks resolveWorldAction applies to an XP-only action.
+          expect(Number.isInteger(grant.xp)).withContext(grant.mutationId).toBeTrue();
+          expect(grant.xp).withContext(grant.mutationId).toBeGreaterThan(0);
+          expect(grant.xp).withContext(grant.mutationId).toBeLessThanOrEqual(WORLD_ACTION_MAX_XP);
+        }
+        expect(new Set(grants.map(g => g.mutationId)).size).withContext(mission.id).toBe(grants.length);
+      }
+    }
+  });
+
+  it('pays The Fracture its full 600 in two grants, the first under the original key', () => {
+    const grants = missionXpGrants(delveMissionById('delve-fracture')!, 0);
+    expect(grants).toEqual([
+      { mutationId: 'npc-mission:delve-fracture:0:xp', xp: 500 },
+      { mutationId: 'npc-mission:delve-fracture:0:xp:2', xp: 100 },
+    ]);
+  });
+
+  it('keeps a reward under the ceiling as one grant under its original key', () => {
+    expect(missionXpGrants(delveMissionById('delve-verrin-shadow')!, 0))
+      .toEqual([{ mutationId: 'npc-mission:delve-verrin-shadow:0:xp', xp: 150 }]);
+  });
+
+  it('chunks any amount exactly', () => {
+    expect(xpGrantChunks(0)).toEqual([]);
+    expect(xpGrantChunks(-5)).toEqual([]);
+    expect(xpGrantChunks(500)).toEqual([500]);
+    expect(xpGrantChunks(1001)).toEqual([500, 500, 1]);
+    expect(xpGrantChunks(7, 3)).toEqual([3, 3, 1]);
+  });
+});
 
 const readings = (stacks: Record<string, number>, inscriptions = 0): MissionReadings => ({
   stackOf: id => stacks[id] ?? 0,
