@@ -41,7 +41,6 @@ import {
   ItemStats,
   SlotId,
   SLOT_IDS,
-  firstSlotFor,
   slotAccepts,
   sumStats,
 } from './item.model';
@@ -1136,10 +1135,13 @@ export class InventoryService {
         .map(i => i.slot!),
     );
 
-    let target = slot ?? firstSlotFor(item, occupied);
-    if (!target) {
-      target = SLOT_IDS.find(s => itemFitsSlot(s, item)) ?? null;
-    }
+    // Pick by `itemFitsSlot`, not the item type alone: every authored piece is
+    // `type: 'artifact'`, which head accepts, so a type-only pick sent an
+    // unaimed weapon to head and the definition check then refused it.
+    const target = slot
+      ?? SLOT_IDS.find(s => !occupied.has(s) && itemFitsSlot(s, item))
+      ?? SLOT_IDS.find(s => itemFitsSlot(s, item))
+      ?? null;
     if (!target || !itemFitsSlot(target, item)) return false;
 
     const occupant = this.items.find(row =>
