@@ -95,7 +95,30 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
   { id: 'cache', label: 'Keeper\'s cache', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 8,
     yield: { materialId: 'ember-residue', qty: 1 }, base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 52 } },
+  // ── Biomes (Phase 2.6). Appended: the index is the saved byte. ──
+  // Root Hollows: soil the World-Root's shadow grew through.
+  { id: 'root-loam', label: 'Root-bound loam', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0,
+    base: '#3f2c22', dark: '#2a1c15', light: '#6a4c36', fleck: '#8a6a3c' },
+  // The inverse tree that grows downward: the cutting Verrin asks for.
+  { id: 'shadow-root', label: 'Shadow-root', solid: true, hp: 2, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 3,
+    yield: { materialId: 'shadow-root-cutting', qty: 1, chance: .75 }, base: '#1a1220', dark: '#0e0912', light: '#4a3260', fleck: '#9b7ad6', glow: { color: '#9b7ad6', radius: 30 } },
+  // Glowcap Grotto: stone wet with the light seeping through the fracture.
+  { id: 'grotto-stone', label: 'Grotto stone', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1,
+    base: '#22303a', dark: '#141d24', light: '#3c5664', fleck: '#6fa8c0' },
+  { id: 'glowcap', label: 'Glowcap cluster', solid: true, hp: 1, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 2,
+    yield: { materialId: 'glowcap', qty: 1 }, base: '#1b2a36', dark: '#101a22', light: '#5fb8e8', fleck: '#a8e4ff', glow: { color: '#7fc8ff', radius: 58 } },
+  // Magma Halls: the fracture itself.
+  { id: 'scorched-basalt', label: 'Scorched basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2,
+    base: '#3a1e1c', dark: '#220f0e', light: '#6a3328', fleck: '#ff6a3a' },
+  // A carved wall: a backdrop the Keeper stands in front of and reads (E).
+  { id: 'inscription', label: 'Carved inscription', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#2a2024', dark: '#171114', light: '#5a4636', fleck: '#e8c47a', glow: { color: '#e8c47a', radius: 40 } },
+  // One per player: the diff keeps it dug, the host keeps it paid once.
+  { id: 'godforge-fragment', label: 'Godforge fragment', solid: true, hp: 8, tools: { pickaxe: 1, staff: 1 }, discipline: 'exploration', xp: 40,
+    yield: { materialId: 'godforge-fragment', qty: 1 }, base: '#4a3a24', dark: '#2a1f12', light: '#ffe9a8', fleck: '#fff4d0', glow: { color: '#ffe9a8', radius: 96 } },
 ];
+/** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
+const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
 export const TERRAIN_NODES: Readonly<Record<string, TerrainNodeDef>> = Object.fromEntries(TERRAIN_NODE_LIST.map(node => [node.id, node]));
 const NODE_INDEX = new Map(TERRAIN_NODE_LIST.map((node, index) => [node.id, index]));
 export function nodeIndex(id: string): number {
@@ -143,8 +166,45 @@ export function toolName(tool: ToolKind, tier: number): string {
 
 // ── Generation ─────────────────────────────────────────────────────────────
 
+/** Ambient particles a biome breathes: spores drift, embers rise, motes wander, ash falls. */
+export type BiomeParticle = 'spore' | 'ember' | 'mote' | 'ash';
+
+/**
+ * A depth band of a delve with its own look and node mix. Pure data; the
+ * renderer and lighting read it, generation stamps its veins.
+ */
+export interface BiomeDef {
+  id: string;
+  name: string;
+  /** Rows above `to` belong to this biome (the last biome runs to the bottom). */
+  to: number;
+  /** Tunnel back wall: two tones (hash-picked) and the shadow under rock. */
+  wall: readonly [string, string, string];
+  /** Darkness colour as `r,g,b`: the dark is never pure black, it is this biome's dark. */
+  dark: string;
+  /** A soft wash over the lit world (overlay), and its strength 0..1. */
+  wash: { color: string; alpha: number };
+  /** Ambient particles: kind, colour, how many at once (the pool caps the total). */
+  particles: { kind: BiomeParticle; color: string; count: number };
+  /** Heat shimmer over the view (Magma Halls). Reduced motion keeps it still. */
+  shimmer?: boolean;
+  /** This biome's node mix: vein blobs stamped after the shared ones. */
+  veins: readonly VeinSpec[];
+}
+
+export interface VeinSpec { node: string; from: number; to: number; count: number; size: number; cols?: readonly [number, number] }
+
+/** A hand-placed carved wall: interacting reports its id. Fixed for every player. */
+export interface InscriptionSpec { id: string; col: number; row: number }
+
 export interface TerrainSpec {
   seed: number;
+  /**
+   * Bump when the generator's output for a seed changes (rows, bands, veins,
+   * stamps). Saved dig diffs are keyed by it, so an old diff is dropped rather
+   * than applied to cells that now mean something else.
+   */
+  version?: number;
   cols: number;
   rows: number;
   /** World y of row 0's top edge (the surface the Keeper walks in on). */
@@ -154,11 +214,42 @@ export interface TerrainSpec {
   /** Band edges wander ± this many rows per column. */
   jitter?: number;
   /** `count` blobs of `node`, about `size` cells each, in rows [from, to) and optional cols [lo, hi). */
-  veins: readonly { node: string; from: number; to: number; count: number; size: number; cols?: readonly [number, number] }[];
+  veins: readonly VeinSpec[];
   /** Hand-placed rectangles, stamped last and in order. `node: 'air'` carves. */
   stamps: readonly { col: number; row: number; w?: number; h?: number; node: string }[];
   /** Bedrock rows at the bottom. */
   bedrock: number;
+  /** Depth biomes, top to bottom. Absent: one unnamed biome with the default look. */
+  biomes?: readonly BiomeDef[];
+  /** Carved walls, stamped after everything else (they never move). */
+  inscriptions?: readonly InscriptionSpec[];
+}
+
+/** The look a terrain without biomes gets: today's basalt dark. */
+export const DEFAULT_BIOME: BiomeDef = {
+  id: 'delve', name: '', to: Infinity, wall: ['#1a1115', '#160e12', '#0a0608'], dark: '5,3,9',
+  wash: { color: '#000000', alpha: 0 }, particles: { kind: 'ash', color: '#8a7468', count: 0 }, veins: [],
+};
+
+/** Index of the biome holding `row` (rows above 0 count as the first). Pure. */
+export function biomeIndexAt(biomes: readonly BiomeDef[] | undefined, row: number): number {
+  if (!biomes?.length) return -1;
+  for (let i = 0; i < biomes.length - 1; i++) if (row < biomes[i].to) return i;
+  return biomes.length - 1;
+}
+/** The biome holding `row`, or DEFAULT_BIOME. Pure. */
+export function biomeAt(spec: Pick<TerrainSpec, 'biomes'>, row: number): BiomeDef {
+  const i = biomeIndexAt(spec.biomes, row);
+  return i < 0 ? DEFAULT_BIOME : spec.biomes![i];
+}
+
+/**
+ * The key a saved dig diff is filed under: the grid's shape, the generator
+ * version and the seed. Any of them changing means the diff's cell indices no
+ * longer name the same rock, so the diff is dropped (see delve-save.model).
+ */
+export function terrainLayout(spec: Pick<TerrainSpec, 'cols' | 'rows' | 'version'>, seed: number): string {
+  return `${spec.cols}x${spec.rows}:v${spec.version ?? 1}:${seed >>> 0}`;
 }
 
 /** mulberry32: small, fast, deterministic. */
@@ -183,8 +274,17 @@ export class Terrain {
   readonly chunkRev: Uint32Array;
   readonly bottom: number;
   readonly width: number;
+  /** The kinds as generated, before any dig or placement: what a diff is measured against. */
+  base: Uint8Array;
+  /** Biomes top to bottom, and the biome index of each row (0 when there are none). */
+  biomes: readonly BiomeDef[] = [DEFAULT_BIOME];
+  readonly biomeOfRow: Uint8Array;
+  /** Inscription id per cell index, for the carved walls. */
+  readonly inscriptions = new Map<number, string>();
   constructor(readonly cols: number, readonly rows: number, readonly top: number) {
     this.kind = new Uint8Array(cols * rows);
+    this.base = this.kind;
+    this.biomeOfRow = new Uint8Array(rows);
     this.hp = new Float32Array(cols * rows);
     this.chunkCols = Math.ceil(cols / CHUNK);
     this.chunkRows = Math.ceil(rows / CHUNK);
@@ -196,6 +296,10 @@ export class Terrain {
   inside(col: number, row: number): boolean { return col >= 0 && row >= 0 && col < this.cols && row < this.rows; }
   colAt(x: number): number { return Math.floor(x / CELL); }
   rowAt(y: number): number { return Math.floor((y - this.top) / CELL); }
+  /** The biome a row lies in (rows above the grid read as the first). */
+  biomeAt(row: number): BiomeDef {
+    return this.biomes[this.biomeOfRow[Math.max(0, Math.min(this.rows - 1, row))]] ?? DEFAULT_BIOME;
+  }
   /** Node at a cell. Above the surface is air; the sides and below the grid are bedrock. */
   nodeAt(col: number, row: number): TerrainNodeDef {
     if (row < 0) return TERRAIN_NODE_LIST[AIR];
@@ -205,7 +309,7 @@ export class Terrain {
   solid(col: number, row: number): boolean {
     if (row < 0) return false;
     if (!this.inside(col, row)) return true;
-    return this.kind[this.index(col, row)] !== AIR;
+    return SOLID_KIND[this.kind[this.index(col, row)]] === 1;
   }
   solidAt(x: number, y: number): boolean { return this.solid(this.colAt(x), this.rowAt(y)); }
   /** Any open neighbour (4-way): the cell is exposed to the tunnels. */
@@ -260,9 +364,13 @@ export function crackStage(health: number): number {
 export function cellKey(col: number, row: number): string { return `${col},${row}`; }
 
 /** Build an area's terrain from its spec. Same spec → same grid, cell for cell. */
-export function generateTerrain(spec: TerrainSpec): Terrain {
+export function generateTerrain(spec: TerrainSpec, seed = spec.seed): Terrain {
   const t = new Terrain(spec.cols, spec.rows, spec.top);
-  const random = seededRandom(spec.seed);
+  const random = seededRandom(seed);
+  if (spec.biomes?.length) {
+    t.biomes = spec.biomes;
+    for (let row = 0; row < spec.rows; row++) t.biomeOfRow[row] = biomeIndexAt(spec.biomes, row);
+  }
   const jitter = spec.jitter ?? 0;
   // One smooth wander per band edge: a value every 6 columns, eased between.
   const edges = spec.bands.map(() => {
@@ -282,7 +390,8 @@ export function generateTerrain(spec: TerrainSpec): Terrain {
       t.kind[t.index(col, row)] = node;
     }
   }
-  for (const vein of spec.veins) {
+  const veins = spec.biomes?.length ? [...spec.veins, ...spec.biomes.flatMap(biome => biome.veins)] : spec.veins;
+  for (const vein of veins) {
     const node = nodeIndex(vein.node);
     const [lo, hi] = vein.cols ?? [0, spec.cols];
     for (let n = 0; n < vein.count; n++) {
@@ -305,8 +414,42 @@ export function generateTerrain(spec: TerrainSpec): Terrain {
   for (let row = Math.max(0, spec.rows - spec.bedrock); row < spec.rows; row++) {
     for (let col = 0; col < spec.cols; col++) t.kind[t.index(col, row)] = BEDROCK;
   }
+  const carved = nodeIndex('inscription');
+  for (const inscription of spec.inscriptions ?? []) {
+    if (!t.inside(inscription.col, inscription.row)) continue;
+    const index = t.index(inscription.col, inscription.row);
+    t.kind[index] = carved;
+    t.inscriptions.set(index, inscription.id);
+  }
   for (let i = 0; i < t.kind.length; i++) t.hp[i] = TERRAIN_NODE_LIST[t.kind[i]].hp;
+  t.base = t.kind.slice();
   return t;
+}
+
+/**
+ * Lay a saved diff (cell index → node index) over a freshly generated grid.
+ * Out-of-range cells, unknown kinds and the carved walls (fixed for everyone)
+ * are skipped. Returns how many cells changed. Pure apart from `t`.
+ */
+export function applyTerrainDiff(t: Terrain, cells: ReadonlyMap<number, number>): number {
+  let applied = 0;
+  for (const [index, kind] of cells) {
+    if (!Number.isInteger(index) || index < 0 || index >= t.kind.length) continue;
+    if (!Number.isInteger(kind) || kind < 0 || kind >= TERRAIN_NODE_LIST.length) continue;
+    if (t.inscriptions.has(index) || TERRAIN_NODE_LIST[kind].id === 'inscription') continue;
+    if (t.kind[index] === kind) continue;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    t.set(col, row, kind);
+    applied++;
+  }
+  return applied;
+}
+
+/** The cells that differ from the generated grid, as index → kind. Pure. */
+export function terrainDiff(t: Terrain): Map<number, number> {
+  const out = new Map<number, number>();
+  for (let i = 0; i < t.kind.length; i++) if (t.kind[i] !== t.base[i]) out.set(i, t.kind[i]);
+  return out;
 }
 
 // ── Bodies ─────────────────────────────────────────────────────────────────

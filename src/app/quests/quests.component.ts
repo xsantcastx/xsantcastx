@@ -21,6 +21,7 @@ import { QuestBoard, QuestLogEntry, QuestService } from '../shared/quests/quest.
 import { QuestCardComponent } from '../shared/quests/quest-card.component';
 import { ChallengePanelComponent } from '../shared/challenges/challenge-panel.component';
 import { countdownTo } from '../shared/quests/quest-drawer.component';
+import { DelveMissionsBoardComponent } from '../shared/npc/delve-missions-board.component';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
@@ -34,7 +35,7 @@ interface LogDay {
 @Component({
   selector: 'app-quests',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterLink, QuestCardComponent, ChallengePanelComponent],
+  imports: [RelatedPagesComponent, CommonModule, RouterLink, QuestCardComponent, ChallengePanelComponent, DelveMissionsBoardComponent],
   templateUrl: './quests.component.html',
   styleUrls: ['./quests.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

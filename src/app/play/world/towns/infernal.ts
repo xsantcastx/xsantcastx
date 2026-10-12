@@ -53,18 +53,32 @@ export const EMBER_QUARRY: HuntZoneDef = {
 };
 
 /**
- * Ember Delve — a mine shaft beside the ore station. Diggable terrain (see
- * engine/terrain.ts): soft dirt near the top, basalt below, hard basalt deep.
- * Cinder veins near the surface, Slag deeper (Pickaxe II, Mining 8), a
- * Heartstone seam near the bottom (Pickaxe III, Mining 20), a root curtain
- * across the first tunnel (sickle or blade), a cavern of Rivet Maws, and a
- * cracked-wall pocket only a staff's blast opens, with a Keeper's cache inside.
+ * Ember Delve — the way down the Godforge's fracture beneath the Seamworks.
+ * Diggable terrain (see engine/terrain.ts) in four biomes by depth, each a
+ * lore layer:
+ *
+ *   Root Hollows    rows  0–11  the World-Root's shadow: roots, petrified trunks, shadow-root
+ *   Basalt Caverns  rows 12–25  Kael's abandoned forge-mines: Cinder, Slag, the Maws' cavern
+ *   Glowcap Grotto  rows 26–39  light seeping through the fracture: glowcaps, soft blue light
+ *   Magma Halls     rows 40–55  the fracture itself: Heartstone, ember-rock, heat, tougher Maws,
+ *                               and the Godforge fragment chamber guarded by a Rune-Warden
+ *
+ * Every player digs their own Delve: the host hands the engine a per-player
+ * seed (shared/delve/delve-save.service.ts), which moves the veins and band
+ * edges. Everything in `stamps` and `inscriptions` is hand-placed and fixed for
+ * everyone. `seed` below is the fallback (SSR, tests, no save).
+ *
+ * Changing rows, bands, veins or stamps changes what a seed generates: bump
+ * `version`, or every saved dig diff lands on the wrong cells. (A bumped
+ * version drops old diffs rather than misapplying them.)
  */
 const DELVE_COLS = 120;
-const DELVE_ROWS = 40;
+const DELVE_ROWS = 56;
 const DELVE_CELL = 32;
 /** Top of terrain row `row`, in world y. */
 const delveRow = (row: number) => FLOOR + row * DELVE_CELL;
+/** Left edge of terrain column `col`, in world x. */
+const delveCol = (col: number) => col * DELVE_CELL;
 export const EMBER_DELVE: HuntZoneDef = {
   id: 'ember-delve',
   name: 'Ember Delve',
@@ -75,38 +89,97 @@ export const EMBER_DELVE: HuntZoneDef = {
   stations: [
     { id: 'delve-exit', x: 110, label: 'RETURN TO SEAMWORKS', kind: 'passage', to: 'infernal', arriveX: 590, width: 120, blurb: 'Climb the shaft back to the Seamworks.' },
   ],
-  monsters: [{
-    creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1900, 2250, 2550],
-    floorY: delveRow(19), range: [48 * DELVE_CELL + 40, 87 * DELVE_CELL - 40],
-  }],
+  monsters: [
+    // Basalt Caverns: the Maws' cavern.
+    { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1900, 2250, 2550],
+      floorY: delveRow(19), range: [delveCol(48) + 40, delveCol(87) - 40] },
+    // Magma Halls: Maws that grew up in the heat.
+    { creature: 'rivet-maw', name: 'Magma Maw', hp: 110, spawnXs: [delveCol(38), delveCol(50)],
+      floorY: delveRow(49), range: [delveCol(30) + 40, delveCol(61) - 40] },
+    // The fragment chamber's guardian. Stand-in art: the Mirror Substitute's painting and rig.
+    { creature: 'mirror-substitute', name: 'Rune-Warden', hp: 260, spawnXs: [delveCol(100)],
+      floorY: delveRow(51), range: [delveCol(92) + 30, delveCol(108) - 30] },
+  ],
   drops: SEAMWORKS_DROPS,
   spawnX: 260,
   figureScale: .5,
   arrival: 'Ember Delve. Swing (J) to dig, hold Down (S) to dig below you. The lantern only reaches so far.',
   terrain: {
     seed: 0x5eed_de1e,
+    version: 2,
     cols: DELVE_COLS,
     rows: DELVE_ROWS,
     top: FLOOR,
-    bands: [{ to: 5, node: 'dirt' }, { to: 17, node: 'rock' }, { to: DELVE_ROWS, node: 'hard-rock' }],
+    bands: [
+      { to: 5, node: 'dirt' }, { to: 12, node: 'root-loam' }, { to: 26, node: 'rock' },
+      { to: 40, node: 'grotto-stone' }, { to: DELVE_ROWS, node: 'scorched-basalt' },
+    ],
     jitter: 1.6,
+    // Shared across the depths.
     veins: [
-      { node: 'cinder-vein', from: 2, to: 17, count: 22, size: 5 },
-      { node: 'ember-rock', from: 6, to: 36, count: 18, size: 3 },
-      { node: 'slag-vein', from: 12, to: 31, count: 14, size: 4 },
-      { node: 'heartstone-vein', from: 31, to: 38, count: 3, size: 4, cols: [50, 76] },
-      { node: 'petrified-trunk', from: 4, to: 24, count: 9, size: 3 },
+      { node: 'ember-rock', from: 6, to: 52, count: 22, size: 3 },
+    ],
+    biomes: [
+      {
+        id: 'root-hollows', name: 'Root Hollows', to: 12,
+        wall: ['#1a130f', '#16100c', '#0a0706'], dark: '6,4,3',
+        wash: { color: '#7a5a36', alpha: .08 },
+        particles: { kind: 'spore', color: '#c9b27a', count: 14 },
+        veins: [
+          { node: 'cinder-vein', from: 2, to: 12, count: 10, size: 5 },
+          { node: 'petrified-trunk', from: 3, to: 12, count: 9, size: 3 },
+          { node: 'roots', from: 2, to: 12, count: 12, size: 3 },
+          { node: 'shadow-root', from: 5, to: 12, count: 9, size: 2 },
+        ],
+      },
+      {
+        id: 'basalt-caverns', name: 'Basalt Caverns', to: 26,
+        wall: ['#1a1115', '#160e12', '#0a0608'], dark: '5,3,9',
+        wash: { color: '#b97a45', alpha: .05 },
+        particles: { kind: 'ash', color: '#8a7468', count: 10 },
+        veins: [
+          { node: 'cinder-vein', from: 12, to: 20, count: 12, size: 5 },
+          { node: 'slag-vein', from: 14, to: 26, count: 14, size: 4 },
+          { node: 'hard-rock', from: 18, to: 26, count: 12, size: 6 },
+        ],
+      },
+      {
+        id: 'glowcap-grotto', name: 'Glowcap Grotto', to: 40,
+        wall: ['#0f1820', '#0c141b', '#05090c'], dark: '3,7,12',
+        wash: { color: '#4fa8e0', alpha: .12 },
+        particles: { kind: 'mote', color: '#9fdcff', count: 22 },
+        veins: [
+          { node: 'glowcap', from: 27, to: 40, count: 16, size: 2 },
+          { node: 'slag-vein', from: 26, to: 34, count: 6, size: 3 },
+        ],
+      },
+      {
+        id: 'magma-halls', name: 'Magma Halls', to: DELVE_ROWS,
+        wall: ['#1e0d0a', '#190a08', '#0b0403'], dark: '12,3,2',
+        wash: { color: '#ff5a2a', alpha: .1 },
+        particles: { kind: 'ember', color: '#ff9b4f', count: 26 },
+        shimmer: true,
+        veins: [
+          { node: 'ember-rock', from: 40, to: 54, count: 16, size: 4 },
+          { node: 'hard-rock', from: 40, to: 54, count: 10, size: 5 },
+          { node: 'heartstone-vein', from: 44, to: 54, count: 5, size: 4, cols: [20, 90] },
+        ],
+      },
     ],
     stamps: [
       // The entry ledge the return shaft stands on.
       { col: 0, row: 0, w: 6, h: 3, node: 'bedrock' },
       // First swing finds ore.
       { col: 10, row: 2, w: 3, h: 2, node: 'cinder-vein' },
-      // An old tunnel, a root curtain across it, ore at its end.
+      // Root Hollows: an old tunnel, a root curtain across it, ore at its end.
       { col: 14, row: 6, w: 21, h: 3, node: 'air' },
       { col: 24, row: 6, w: 2, h: 3, node: 'roots' },
       { col: 35, row: 6, w: 2, h: 3, node: 'cinder-vein' },
-      // Slag on the way down.
+      // A shadow-root knot hanging from the tunnel roof: Verrin's cutting, always within reach.
+      { col: 29, row: 5, w: 2, h: 1, node: 'shadow-root' },
+      // An alcove further east, its own inscription inside.
+      { col: 69, row: 8, w: 2, h: 3, node: 'air' },
+      // Basalt Caverns: slag on the way down.
       { col: 40, row: 20, w: 3, h: 2, node: 'slag-vein' },
       // The Maws' cavern: a bedrock floor so it stays a cavern.
       { col: 48, row: 14, w: 39, h: 5, node: 'air' },
@@ -117,8 +190,31 @@ export const EMBER_DELVE: HuntZoneDef = {
       { col: 101, row: 22, w: 5, h: 3, node: 'air' },
       { col: 103, row: 24, node: 'cache' },
       { col: 99, row: 23, node: 'ember-rock' },
-      // The heartstone seam, deep.
-      { col: 60, row: 33, w: 3, h: 2, node: 'heartstone-vein' },
+      // Glowcap Grotto: a cavern lit from below, glowcaps along its floor.
+      { col: 20, row: 30, w: 25, h: 5, node: 'air' },
+      { col: 20, row: 35, w: 25, h: 1, node: 'grotto-stone' },
+      { col: 23, row: 34, node: 'glowcap' }, { col: 29, row: 34, node: 'glowcap' }, { col: 36, row: 34, node: 'glowcap' }, { col: 42, row: 34, node: 'glowcap' },
+      { col: 87, row: 35, w: 2, h: 3, node: 'air' },
+      // Magma Halls: the Magma Maws' hall on a bedrock floor.
+      { col: 30, row: 44, w: 31, h: 5, node: 'air' },
+      { col: 29, row: 49, w: 33, h: 1, node: 'bedrock' },
+      { col: 64, row: 47, w: 3, h: 2, node: 'heartstone-vein' },
+      // The fragment chamber: a bedrock floor, the Rune-Warden, the fragment at the back wall.
+      { col: 92, row: 46, w: 16, h: 5, node: 'air' },
+      { col: 91, row: 51, w: 18, h: 1, node: 'bedrock' },
+      // One cell: each cell pays its yield, and there is one fragment per player.
+      { col: 106, row: 50, node: 'godforge-fragment' },
+    ],
+    // Two per biome; ids and placeholder text live in shared/delve/delve-lore.model.ts.
+    inscriptions: [
+      { id: 'roots-inverse-tree', col: 19, row: 7 },
+      { id: 'roots-keepers-tally', col: 69, row: 9 },
+      { id: 'basalt-kaels-mark', col: 66, row: 16 },
+      { id: 'basalt-sealed-pocket', col: 102, row: 23 },
+      { id: 'grotto-light-through-the-crack', col: 32, row: 32 },
+      { id: 'grotto-drowned-lamp', col: 87, row: 36 },
+      { id: 'magma-the-fracture', col: 44, row: 46 },
+      { id: 'magma-warden-oath', col: 96, row: 49 },
     ],
     bedrock: 2,
   },

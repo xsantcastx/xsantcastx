@@ -122,6 +122,7 @@ const REJECT_COPY: Readonly<Record<CraftReject, string>> = {
   ssr: 'The bench is not lit yet. Give it a moment.',
   'unknown-recipe': 'The Archivum has no such pattern on file.',
   level: 'Your hands are not steady enough for this one yet.',
+  locked: 'A Delve mission teaches this pattern. Find it on the Quest Board.',
   missing: 'The anvil is short of materials.',
   funds: 'Not enough Gold to pay the bench.',
   capacity: 'Your bag has no room for what this makes.',

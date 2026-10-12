@@ -50,7 +50,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { artFor } from '../art/art';
 import { formatCurrency, formatCurrencyExact } from '../economy/economy.model';
 import { NpcPresence, NpcDialogueService } from './npc-dialogue.service';
-import { NpcQuestService } from './npc-quest.service';
+import { DelveMissionState, NpcQuestService } from './npc-quest.service';
 
 /** Characters a second. The spec's 30, spelled out so the spec can assert it. */
 export const TYPE_CPS = 30;
@@ -139,6 +139,26 @@ export const TYPE_CPS = 30;
                 </div>
               } @else {
                 <p class="npc__quest-done">Nothing more is asked of you here. For now.</p>
+              }
+
+              <!-- Delve missions this character is offering. One line each:
+                   the ask, the next step, and Claim when it is ready. -->
+              @for (m of missions(); track m.mission.id) {
+                <div class="npc__quest npc__mission">
+                  <p class="npc__quest-title">{{ m.mission.title }}<span class="npc__quest-step">Delve</span></p>
+                  <p class="npc__quest-desc">{{ m.mission.brief }}</p>
+                  <p class="npc__count">{{ m.nextStep }}</p>
+                  @if (m.turnInReady) {
+                    <button
+                      type="button"
+                      class="npc__claim"
+                      [attr.aria-label]="'Claim ' + m.mission.title + ' — ' + exact(m.gold) + ' Gold'"
+                      (click)="claimMission(m.mission.id)"
+                    >
+                      <span aria-hidden="true">Claim — {{ compact(m.gold) }} Gold</span>
+                    </button>
+                  }
+                </div>
               }
             }
           </div>
@@ -386,8 +406,18 @@ export class NpcDialogueComponent implements OnInit {
   readonly indicator = computed<'!' | '?' | null>(() => {
     const c = this.presence()?.chain;
     if (!c) return null;
-    if (c.turnInReady) return '?';
+    if (c.turnInReady || this.missions().some(m => m.turnInReady)) return '?';
     return c.offerReady ? '!' : null;
+  });
+
+  /** Every Delve mission, with standing. Filtered to the NPC on screen below. */
+  private readonly allMissions = signal<DelveMissionState[]>([]);
+  /** The Delve missions the NPC on screen is offering right now. */
+  readonly missions = computed(() => {
+    const id = this.presence()?.npc.id;
+    if (!id) return [];
+    return this.allMissions().filter(m =>
+      (m.mission.npcId === id || m.mission.alsoFrom === id) && !m.locked && !m.claimed);
   });
 
   private timer: ReturnType<typeof setInterval> | null = null;
@@ -422,6 +452,10 @@ export class NpcDialogueComponent implements OnInit {
   ngOnInit(): void {
     if (!this.isBrowser) return;
     this.dialogue.init();
+
+    this.chains.missions$
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe(all => this.allMissions.set(all));
 
     this.dialogue.presence$
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -463,6 +497,10 @@ export class NpcDialogueComponent implements OnInit {
 
   claim(stepId: string): void {
     this.chains.claim(stepId);
+  }
+
+  claimMission(missionId: string): void {
+    this.chains.claimMission(missionId);
   }
 
   /** The shell's shared compact formatter. Display only. */

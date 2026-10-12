@@ -1,0 +1,44 @@
+:host { display: block; }
+
+.sk {
+  display: grid;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-radius: var(--st-radius);
+  border: 1px solid var(--st-edge);
+  background: var(--st-surface);
+}
+.sk__row { display: flex; align-items: center; gap: var(--space-3); }
+.sk__art { width: 36px; height: 36px; object-fit: contain; flex: none; }
+.sk__level {
+  flex: none;
+  font: var(--weight-bold) var(--text-sm)/1 var(--font-ui);
+  letter-spacing: var(--tracking-nav);
+  text-transform: uppercase;
+  color: var(--st-accent-bright);
+}
+.sk__bar {
+  position: relative;
+  flex: 1;
+  height: 20px;
+  border-radius: var(--radius-pill);
+  background: var(--st-well);
+  box-shadow: var(--shadow-well);
+  overflow: hidden;
+}
+.sk__fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--gold-core), var(--gold-bright));
+  transition: width var(--dur-expand) var(--ease-standard);
+}
+.sk__pct {
+  position: relative;
+  display: block;
+  text-align: center;
+  font: var(--weight-semibold) var(--text-xs)/20px var(--font-ui);
+  color: var(--st-text);
+  text-shadow: 0 1px 2px var(--obsidian-0);
+}
+.sk__hint { margin: 0; font-size: var(--text-sm); color: var(--st-text-soft); }

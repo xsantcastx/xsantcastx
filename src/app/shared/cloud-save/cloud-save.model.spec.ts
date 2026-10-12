@@ -636,6 +636,8 @@ describe('the registry', () => {
       'godforge-chapter',
       'godforge-collection',
       'godforge-crafting',
+      'godforge-delve',
+      'godforge-delve-lore',
       'godforge-economy',
       'godforge-exchange',
       'godforge-explorers',
