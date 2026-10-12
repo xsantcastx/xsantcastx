@@ -43,6 +43,8 @@
 import type { ItemRarity } from '../rpg/item.model';
 import type { NarrativeRealmId } from '../narrative/five-realms.narrative';
 import { bandFor } from '../rpg/item-quality';
+import { TOOL_OPENS, TOOL_TIER_LEVEL } from '../skills/tools';
+import { toolItemId, toolName, type ToolFamily, type ToolTier } from '../skills/tool-items';
 
 /** The localStorage key. Registered in `SYNCED_BLOBS` so it reaches the cloud. */
 export const CRAFTING_KEY = 'godforge-crafting';
@@ -50,7 +52,7 @@ export const CRAFTING_KEY = 'godforge-crafting';
 export const CRAFTING_SCHEMA_VERSION = 1 as const;
 
 /** What the bench groups recipes under, and what the filter chips filter on. */
-export type CraftingCategory = 'weapon' | 'armor' | 'charm' | 'consumable';
+export type CraftingCategory = 'weapon' | 'armor' | 'charm' | 'consumable' | 'tool';
 
 export interface CraftingCategoryDefinition {
   id: CraftingCategory;
@@ -100,6 +102,14 @@ export const CRAFTING_CATEGORIES: readonly CraftingCategoryDefinition[] = [
     glow: 'rgba(16, 185, 129, 0.6)',
     blurb: 'Brewed at the bench and spent once. The log remembers them anyway.',
   },
+  {
+    id: 'tool',
+    label: 'Tools',
+    icon: 'T',
+    color: 'var(--gf-accent)',
+    glow: 'rgba(255, 180, 80, 0.6)',
+    blurb: 'Pickaxes, axes, sickles and staffs. Each tier opens new nodes in the world.',
+  },
 ];
 
 const CATEGORY_BY_ID = new Map(CRAFTING_CATEGORIES.map(c => [c.id, c]));
@@ -130,6 +140,12 @@ export interface CraftingRecipe {
   rarity: ItemRarity;
   category: CraftingCategory;
   requiredLevel?: number;
+  /**
+   * Which ladder `requiredLevel` is read against. Absent: the bench's own
+   * crafting ladder (1-30). 'smithing': the Smithing skill (1-99), which also
+   * counts every bench craft's XP — see the skills module.
+   */
+  skill?: 'smithing';
   realm?: NarrativeRealmId;
   /** Seconds of anvil before the strike lands. 0 for instant. See the header. */
   craftTime?: number;
@@ -160,9 +176,10 @@ function r(
   goldCost: number,
   requiredLevel: number,
   blurb: string,
-  extra: { realm?: NarrativeRealmId; craftTime?: number; count?: number } = {},
+  extra: { realm?: NarrativeRealmId; craftTime?: number; count?: number; skill?: 'smithing' } = {},
 ): CraftingRecipe {
   return {
+    ...(extra.skill ? { skill: extra.skill } : {}),
     id,
     name,
     category,
@@ -399,11 +416,46 @@ const CONSUMABLE_RECIPES: readonly CraftingRecipe[] = [
     { craftTime: 14 }),
 ];
 
+// Tools. Gated by Smithing, not the bench ladder, and every blurb says the one
+// thing the tier is for. Tier I is all hand-gathered (Mining + Foraging +
+// Prospecting at level 1) so a brand-new Keeper can forge a full set; each tier
+// after asks for the node the tier before it opened, so the tools pull the
+// gathering skills along and the gathering skills pay for the tools.
+const TOOL_GOLD = [0, 400, 4_000, 20_000, 80_000] as const;
+const TOOL_RARITY: readonly ItemRarity[] = ['common', 'common', 'uncommon', 'rare', 'epic'];
+function tool(family: ToolFamily, tier: ToolTier, ingredients: readonly CraftingIngredient[]): CraftingRecipe {
+  const gate = TOOL_TIER_LEVEL[tier];
+  return r(`craft-${toolItemId(family, tier)}`, toolName(family, tier), 'tool', TOOL_RARITY[tier],
+    toolItemId(family, tier), ingredients, TOOL_GOLD[tier], gate,
+    `${TOOL_OPENS[family][tier].label}. Needs Smithing ${gate}.`,
+    { skill: 'smithing', craftTime: tier + 1 });
+}
+
+const TOOL_RECIPES: readonly CraftingRecipe[] = [
+  tool('pickaxe', 1, [m('cinder-ore', 8), m('starlight-herb', 2)]),
+  tool('pickaxe', 2, [m('slag-fragment', 10), m('world-root-bark', 4)]),
+  tool('pickaxe', 3, [m('infernal-heartstone', 8), m('solar-resin', 4), m('pyrite-dust', 6)]),
+  tool('pickaxe', 4, [m('emberheart-ore', 6), m('orichalcum-ore', 2), m('ember-residue', 2)]),
+  tool('axe', 1, [m('cinder-ore', 6), m('starlight-herb', 4)]),
+  tool('axe', 2, [m('slag-fragment', 8), m('world-root-bark', 6), m('sunbloom', 2)]),
+  tool('axe', 3, [m('infernal-heartstone', 6), m('verdant-sap', 6), m('nightbloom', 4)]),
+  tool('axe', 4, [m('emberheart-ore', 4), m('solar-resin', 8), m('void-crystal', 1)]),
+  tool('sickle', 1, [m('cinder-ore', 5), m('starlight-herb', 3)]),
+  tool('sickle', 2, [m('slag-fragment', 6), m('sunbloom', 6)]),
+  tool('sickle', 3, [m('infernal-heartstone', 5), m('nightbloom', 8), m('verdant-sap', 4)]),
+  tool('sickle', 4, [m('emberheart-ore', 4), m('thornroot', 10), m('moonpetal-herb', 6)]),
+  tool('staff', 1, [m('celestial-alloy', 4), m('starlight-herb', 4)]),
+  tool('staff', 2, [m('luminous-prism', 6), m('world-root-bark', 4)]),
+  tool('staff', 3, [m('umbral-ink', 6), m('solar-resin', 4), m('shadowthread-silk', 3)]),
+  tool('staff', 4, [m('void-shard', 6), m('celestial-quartz', 6), m('void-crystal', 2)]),
+];
+
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...WEAPON_RECIPES,
   ...ARMOR_RECIPES,
   ...CHARM_RECIPES,
   ...CONSUMABLE_RECIPES,
+  ...TOOL_RECIPES,
 ];
 
 const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));

@@ -25,17 +25,8 @@ import { Subject } from 'rxjs';
 import { miningLevelView } from './mining-level';
 import { artFor, type ArtEntry } from '../art/art';
 import type { DisciplineId } from './activity.model';
-
-/**
- * What a level-up banner shows for each live discipline: the i18n key for the
- * skill's name, and the manifest id of the thing the skill produces every
- * action — Mining wears its ore, Foraging its herb, Prospecting its alloy.
- */
-const SKILL_BANNER: Partial<Record<DisciplineId, { labelKey: string; artId: string }>> = {
-  mining: { labelKey: 'work.discipline.mining', artId: 'cinder-ore' },
-  foraging: { labelKey: 'work.discipline.foraging', artId: 'starlight-herb' },
-  prospecting: { labelKey: 'work.discipline.prospecting', artId: 'celestial-alloy' },
-};
+import { skillDef, skillForDiscipline, type SkillId } from '../skills/skill.model';
+import { describeUnlock, unlocksBetween } from '../skills/skill-unlocks';
 
 export interface LevelUpEvent {
   /** i18n key for the skill's display name, e.g. 'work.discipline.mining'. */
@@ -44,6 +35,11 @@ export interface LevelUpEvent {
   /** Every tenth level gets the bigger treatment — see level-up-banner. */
   milestone: boolean;
   art: ArtEntry | null;
+  /**
+   * What the crossing opened (skill-unlocks), as i18n key + vars for the
+   * banner to translate. Empty for a level that opened nothing new.
+   */
+  unlocks: ReadonlyArray<{ key: string; vars: Record<string, string | number> }>;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -64,51 +60,45 @@ export class LevelUpService {
     this.check('mining', beforeXp, afterXp);
   }
 
-  /**
-   * A2 Foraging's twin. Same contract: the foraging XP total immediately
-   * before and after one resolved gather (`RootglassCanopyComponent.gather()`),
-   * never a save's history. Wears the herb every gather produces.
-   */
+  /** A2 Foraging's twin. Same contract: one resolved gather's before/after. */
   checkForaging(beforeXp: number, afterXp: number): void {
     this.check('foraging', beforeXp, afterXp);
   }
 
-  /**
-   * B1 Prospecting's. Same contract again — the prospecting XP total from
-   * immediately before and after one resolved survey
-   * (`MeridianOrreryComponent.prospect()`).
-   */
+  /** B1 Prospecting's. Same contract again — one resolved survey. */
   checkProspecting(beforeXp: number, afterXp: number): void {
     this.check('prospecting', beforeXp, afterXp);
   }
 
   /**
-   * The generic entry point the file's own header deferred to the third skill.
-   * A discipline with no banner row (exploration, forge, hunting — not live)
-   * is silently ignored rather than announcing a nameless level.
+   * By ledger discipline. Every discipline now maps to a player-facing skill
+   * (forge → Smithing, exploration → Delving), so all eight announce.
    */
   check(discipline: DisciplineId, beforeXp: number, afterXp: number): void {
-    const row = SKILL_BANNER[discipline];
-    if (!row) return;
-    this.announce(row.labelKey, row.artId, beforeXp, afterXp);
+    const skill = skillForDiscipline(discipline);
+    if (skill) this.checkSkill(skill.id, beforeXp, afterXp);
   }
 
-  private announce(skillLabelKey: string, artId: string, beforeXp: number, afterXp: number): void {
+  /**
+   * By skill. The totals must be the *skill's* totals — for Smithing that
+   * includes the bench's XP (see the skills module's skillXp), which is why
+   * SkillActionService, not the raw gateway result, is the usual caller.
+   */
+  checkSkill(skill: SkillId, beforeXp: number, afterXp: number): void {
     if (!(afterXp > beforeXp)) return;
     const before = miningLevelView(beforeXp).level;
     const after = miningLevelView(afterXp).level;
     if (after <= before) return;
 
-    // A single action grants single-digit XP against curve deltas in the
-    // hundreds or thousands (see mining-level.ts), so crossing more than one
-    // level in one action cannot happen today. If a future bulk-grant path
-    // ever changes that, this still announces the level actually reached
-    // rather than queuing one banner per level skipped.
+    // A multi-level jump announces once, at the level actually reached, but
+    // still names everything every skipped level opened.
+    const def = skillDef(skill);
     this.events$$.next({
-      skillLabelKey,
+      skillLabelKey: def.labelKey,
       level: after,
       milestone: after % 10 === 0,
-      art: artFor(artId),
+      art: artFor(def.artId),
+      unlocks: unlocksBetween(skill, before, after).map(describeUnlock),
     });
   }
 }
