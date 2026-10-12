@@ -535,6 +535,20 @@ export const DELVE_KIT_RECIPES: readonly CraftingRecipe[] = [
     [m('world-root-bark', 6), m('cinder-ore', 4), m('ember-residue', 1)],
     500, 1, 'A workbench and a fire to set down in the Delve. Craft there, and descend straight to it from town.',
     { stack: true }),
+  // Smithing-gated: shoring and blasting are a smith's work. The level is the
+  // Smithing skill, as on the tool patterns, not the bench ladder.
+  r('craft-delve-timber-support', 'Timber support', 'delve', 'common', 'timber-support',
+    [m('world-root-bark', 3), m('thornroot', 1)],
+    60, 5, 'Two timber posts. Stand one in the Magma Halls and loose rock within 3 cells holds when you dig it. Needs Smithing 5.',
+    { count: 2, stack: true, skill: 'smithing' }),
+  r('craft-delve-basalt-support', 'Basalt support', 'delve', 'uncommon', 'basalt-support',
+    [m('slag-fragment', 3), m('cinder-ore', 2), m('world-root-bark', 1)],
+    150, 12, 'Two dressed basalt pillars. Loose rock within 5 cells holds. Needs Smithing 12.',
+    { count: 2, stack: true, skill: 'smithing' }),
+  r('craft-delve-blast-charge', 'Blasting charge', 'delve', 'uncommon', 'blast-charge',
+    [m('cinder-ore', 3), m('ember-residue', 1), m('slag-fragment', 2)],
+    200, 10, 'Two charges. Lit from a staff, one clears a small round of rock; a better staff breaks harder rock. Needs Smithing 10.',
+    { count: 2, stack: true, skill: 'smithing' }),
 ];
 
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [

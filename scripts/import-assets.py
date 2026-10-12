@@ -456,6 +456,8 @@ def load_sidecar(png_path: str, img) -> tuple[dict | None, list[str]]:
                 errs.append(f'action {n!r}: anchor {anchor!r} points must be [x, y] or [x, y, deg]')
             elif len(pts) != f:
                 errs.append(f'action {n!r}: anchor {anchor!r} has {len(pts)} points for {f} frames')
+    if 'pixelArt' in meta and not isinstance(meta['pixelArt'], bool):
+        errs.append(f"pixelArt must be true or false, got {meta['pixelArt']!r}")
     piv = meta.get('pivot') or {'x': fw // 2, 'y': fh_}
     meta['pivot'] = piv
     meta['scale'] = scale
@@ -558,6 +560,11 @@ export interface SpriteEntry {
   pivotX: number;
   pivotY: number;
   actions: Readonly<Record<string, SpriteAction>>;
+  /**
+   * Sidecar `"pixelArt": true`: the renderer turns image smoothing off and
+   * snaps draws to whole pixels. Absent for smooth (anti-aliased) sheets.
+   */
+  pixelArt?: boolean;
 }
 """
 
@@ -596,7 +603,10 @@ def write_sprite_manifest() -> int:
                 f"src2x: 'assets/game/{rel}/{stem}@{sc}x.webp', "
                 f"frameW: {meta['frame']['w'] // sc}, frameH: {meta['frame']['h'] // sc}, "
                 f"pivotX: {meta['pivot']['x'] / sc:g}, pivotY: {meta['pivot']['y'] / sc:g}, "
-                f"actions: {{ {', '.join(acts)} }} }},"
+                f"actions: {{ {', '.join(acts)} }}"
+                # Opt-in crispness: only an explicit sidecar `true` is passed through.
+                + (', pixelArt: true' if meta.get('pixelArt') is True else '')
+                + ' },'
             )
     lines = [SPRITE_MANIFEST_HEADER,
              'export const SPRITES: Readonly<Record<string, SpriteEntry>> = {']
