@@ -250,7 +250,7 @@ def emit(src_path: str, out_dir: str, widths, check: bool) -> tuple[int, int]:
         if w > img.size[0]:
             continue
         h = round(img.size[1] * w / img.size[0])
-        out = os.path.join(out_dir, f'{stem}-{w}.webp')
+        out = os.path.join(out_dir, f'{stem}{SOLID_SUFFIX if stem in SOLIDIFY else ""}-{w}.webp')
         if not check:
             os.makedirs(out_dir, exist_ok=True)
             img.resize((w, h), Image.LANCZOS).save(
@@ -293,7 +293,11 @@ export interface ArtEntry {
 # The library names a collectible after the state it is painted in, and the
 # inventory only ever renders the idle one. Carrying `-idle` into the key would
 # mean every Art Bible id in `ITEM_DEFINITIONS` had to end in it too.
-STATE_SUFFIXES = ('-idle',)
+# `-solid` marks a SOLIDIFY output. It changes the published filename so a
+# browser that cached the old see-through painting (images are cached for 7
+# days under the same name) fetches the fixed one at once; the key is unchanged.
+SOLID_SUFFIX = '-solid'
+STATE_SUFFIXES = ('-idle', SOLID_SUFFIX)
 
 
 def strip_index(stem: str) -> str:

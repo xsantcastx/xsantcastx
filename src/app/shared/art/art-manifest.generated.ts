@@ -23,7 +23,7 @@ export interface ArtEntry {
 
 
 export const ART_CHARACTERS: Readonly<Record<string, ArtEntry>> = {
-  'keeper-base': { src: 'assets/game/characters/01-keeper-base-512.webp', srcset: 'assets/game/characters/01-keeper-base-512.webp 512w, assets/game/characters/01-keeper-base-1024.webp 1024w', width: 512, height: 512 },
+  'keeper-base': { src: 'assets/game/characters/01-keeper-base-solid-512.webp', srcset: 'assets/game/characters/01-keeper-base-solid-512.webp 512w, assets/game/characters/01-keeper-base-solid-1024.webp 1024w', width: 512, height: 512 },
 };
 
 export const ART_CHARACTERS_AVATARS: Readonly<Record<string, ArtEntry>> = {
