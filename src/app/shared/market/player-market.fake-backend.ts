@@ -31,12 +31,14 @@ import {
   type MarketEscrow,
   type MarketOrder,
   type MarketPrice,
+  type MarketSummary,
   type MarketTrade,
   type OrderSide,
   type PlaceOrderInput,
   type PlaceOrderResult,
   remainingQty,
   sellerTax,
+  summarizeMarket,
 } from './player-market.model';
 
 /** The uid the fake treats as "you". */
@@ -126,14 +128,9 @@ export class FakeMarketBackend implements MarketBackend {
     }));
   }
 
-  watchOpenOrders(limit: number): Observable<MarketOrder[]> {
-    return this.read(() => this.open().slice(0, limit));
-  }
-
-  watchPrices(limit: number): Observable<MarketPrice[]> {
-    return this.read(() => [...this.prices.values()]
-      .sort((a, b) => b.lastTradeAt - a.lastTradeAt)
-      .slice(0, limit));
+  /** What the server's summary doc would hold, rebuilt on every change. */
+  watchSummary(): Observable<MarketSummary | null> {
+    return this.read(() => summarizeMarket(this.open(), [...this.prices.values()], Date.now()));
   }
 
   // ── Calls ──────────────────────────────────────────────────────────────────

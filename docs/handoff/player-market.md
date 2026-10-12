@@ -18,6 +18,7 @@ Status: **built, tested, not deployed, switched off.** The simulated Exchange
 | Transactional engine (escrow, matching, settlement) | `functions/src/market/engine.ts` |
 | Matching: price-time priority, partial fills, tax | `functions/src/market/matching.ts` |
 | Reference price, sanity band, price history | `functions/src/market/pricing.ts` |
+| The Exchange list's summary doc (folded in each transaction) | `functions/src/market/summary.ts` |
 | Rate limiter | `functions/src/market/rate-limit.ts` |
 | Edits to the player's cloud save | `functions/src/market/save-ops.ts` |
 | Every limit and constant | `functions/src/market/config.ts` |
@@ -43,6 +44,7 @@ clean schema change later.
 | `market/v1/prices/{itemKey}` | lastPrice, lastTradeAt, volume24h, vwap24h, trades24h, 30 days of hourly OHLC/volume buckets | read: everyone |
 | `market/v1/escrow/{uid}` | heldGold, claimableGold, claims[], marks[], seq counters, rate stamps, request ids, taxPaid | read: that player only |
 | `market/v1/listed/{itemId}` | burned instance ids (`{uid, orderId, at}`) | none |
+| `market/v1/summary/board` | `rows[itemKey]`: bestBid, bestAsk, bidQty, askQty, lastPrice, lastTradeAt, volume24h, vwap24h (see "Read cost" below) | get: everyone |
 
 `itemKey` is the Exchange catalogue id: `mat:<stackKey>` for materials, or
 `eq:<definitionId>:<rarity>` for equipment. Soulbound items, uniques, runes and
@@ -65,7 +67,7 @@ everything first, writes last, and retries as a whole on contention.
 4. **Provenance:** it reads the seller's cloud save `users/{uid}/progress/inventory`. The item must exist there, be an inventory instance in the bag (not equipped, not on an expedition), not soulbound, and not tombstoned. Its `definitionId:rarity` must match `itemKey`. Its id must never have been listed before (`listed/{id}`). For stacks, the derived quantity must cover `qty`. A buy must be covered by the cloud Gold, and that check uses the smaller of the stored balance and the op-log replay.
 5. **Escrow** happens in the same transaction. The item leaves the save, or `qty × unitPrice` Gold is debited (see §3).
 6. **Matching** walks the opposite side in price-time priority: best price first, then oldest. Fills are partial on both sides. Each trade prints at the resting order's price. Self-trades are skipped. One placement fills against at most 25 resting orders, and any remainder rests on the book.
-7. **Settlement:** the seller's escrow gets `gross − ceil(2% × gross)`. The buyer gets the item as a claim, plus a refund of `(limit − price) × qty`. Trades and price buckets are written.
+7. **Settlement:** the seller's escrow gets `gross − ceil(2% × gross)`. The buyer gets the item as a claim, plus a refund of `(limit − price) × qty`. Trades and price buckets are written, and the item's row in `summary/board` is updated in the same commit (cancels update it too).
 8. **Idempotent:** if a `clientRequestId` repeats (the last 50 per account are remembered), the call returns the original order with `replayed: true` and moves nothing.
 
 **cancelOrder** `{orderId}`: owner-only and open orders only. The unfilled
@@ -264,7 +266,7 @@ player write their own documents freely, apart from monotonic XP.
 
 ## 8. Tests
 
-- `npm --prefix functions test`: 28 node:test cases that run the real engine
+- `npm --prefix functions test`: 33 node:test cases that run the real engine
   against an in-memory transactional store. They cover matching (priority,
   partial fills, self-trade), tax and conservation, sanity bands, rate limits
   and caps, provenance refusals, burned ids, the flag and bans, placement
@@ -372,21 +374,45 @@ ways:
 It **never touches your save**: no Gold or items move, and Collect only clears
 the fake escrow. A ribbon on screen says so. Reload to reset.
 
-### Backend additions
+### Read cost: the list is one document
 
-`MarketBackend` has two new reads for the list:
+`board$` reads **one** document, `market/v1/summary/board`, through
+`MarketBackend.watchSummary()`. It used to hold two collection listeners
+(every open order, limit 400, and every price doc, limit 200), so each order
+or trade write was re-read by every open Exchange, and a fresh visitor paid up
+to 600 reads on arrival. Now a visitor pays 1 read on arrival and 1 per market
+write. Depth (`book$`: two listeners, 50 per side), `price$` and `trades$` are
+opened only for the item the player selects.
 
-- `watchOpenOrders(limit)`: `market/v1/orders where status == open`, limit
-  400. It's a single-field equality, so the automatic index serves it.
-- `watchPrices(limit)`: `market/v1/prices orderBy lastTradeAt desc`, limit
-  200. It's a single-field order, so it's also covered automatically.
+How the server keeps it right (`functions/src/market/summary.ts`, called from
+`placeOrder` and `cancelOrder` inside their transactions):
 
-**Read cost:** every Exchange visitor holds these two listeners, and every
-order or trade write is re-read by every open Exchange. That's fine at launch
-volume; it's the same bill shape as `/live`. If the market gets busy, replace
-the listeners with a server-maintained `market/v1/summary` doc (best bid, best
-ask and volume per item, written in the same transaction as each trade) and
-point `board$` at it.
+- **Best bid / ask** are recomputed from orders the transaction already reads.
+  A placement reads the resting side 50 deep and consumes at most 25, so the
+  next best is always in hand; it also reads the top order of its own side
+  (one extra read). A cancel reads the top two of its side.
+- **Depth** (`bidQty` / `askQty`) moves by the exact delta of the change.
+  Whenever a read covers a whole side (fewer orders than the limit came back),
+  that side is recomputed from the read instead, so any drift heals.
+- **Last price, 24h volume and VWAP** are copied from the item's price doc when
+  it trades. They are "as of the last trade": nothing rewrites a row when its
+  trades age out, so `boardFromSummary` treats them as 0 once `lastTradeAt` is
+  a day old.
+- **Pruning:** every write drops rows with nothing resting and no trade in the
+  last day. The catalogue has ~280 goods, so the doc stays far under 1 MB.
+
+**Write cost:** one extra doc read and write per placement or cancel. The doc
+is a deliberate hotspot: every market transaction touches it, so sustained
+throughput is bounded by Firestore's per-document write rate (about one write
+a second sustained; bursts are fine). If the market outgrows that, shard it by
+itemKey hash into `summary/board-<n>` and have the client merge the shards.
+
+**Rules:** `match /summary/{summaryId}` allows `get` on `board` only (proposed
+rules, not deployed). **Indexes:** none; the two collection queries it replaced
+were the only users of their automatic indexes.
+
+The dev fake builds the same document from its in-memory book with
+`summarizeMarket`, so `?market=fake` exercises the same code path.
 
 ### Tests
 
@@ -395,6 +421,13 @@ point `board$` at it.
   - default prices and their fallbacks
   - Max caps and book depth
   - the error copy for every reason
-  - `buildBoard`
+  - `boardFromSummary` / `summarizeMarket`, including stale 24h figures
   - `resolveMarketMode`, including "never fake outside dev mode"
-- The service spec's fake backend implements the two new reads.
+- The service spec checks that the list opens only the summary listener and
+  that depth listeners open only for the item opened.
+- `npm --prefix functions test` (33 cases) adds the summary: best prices and
+  depth held against a from-scratch recount through placements, sweeps,
+  partial rests and cancels; no write on a refused placement; pruning; drift
+  healing. The suite pins `mat:cinder-ore` and `eq:anchor-ring:rare` at their
+  v2 base worths (420 / 12,000): the v3 economy regenerated the reference table
+  (25 / 720) and every fixture price had fallen out of band.

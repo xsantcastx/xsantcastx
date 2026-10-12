@@ -5,7 +5,7 @@
  * and a write issued before a read is an error, as it is in Firestore.
  */
 import type {MarketStore, MarketTx, SaveWhich} from "../src/market/engine";
-import type {EscrowDoc, ListedItemDoc, MarketConfigDoc, MarketOrder, MarketTrade, OrderSide, PriceDoc} from "../src/market/types";
+import type {BoardSummaryDoc, EscrowDoc, ListedItemDoc, MarketConfigDoc, MarketOrder, MarketTrade, OrderSide, PriceDoc} from "../src/market/types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -18,6 +18,7 @@ export class FakeStore implements MarketStore {
   escrows = new Map<string, EscrowDoc>();
   saves = new Map<string, Record<string, any>>();
   listed = new Map<string, ListedItemDoc>();
+  summary: BoardSummaryDoc | null = null;
   private seq = 0;
   commits = 0;
 
@@ -50,12 +51,16 @@ export class FakeStore implements MarketStore {
       price: async (k) => read(this.prices.get(k)),
       saveDoc: async (uid, which: SaveWhich) => read(this.saves.get(`${uid}/${which}`)),
       listed: async (id) => read(this.listed.has(id)) === true,
+      summary: async () => read(this.summary ?? undefined),
       setOrder: (o) => void writes.push(() => this.orders.set(o.id, clone(o))),
       setTrade: (t) => void writes.push(() => this.trades.set(t.id, clone(t))),
       setPrice: (p) => void writes.push(() => this.prices.set(p.itemKey, clone(p))),
       setEscrow: (e) => void writes.push(() => this.escrows.set(e.uid, clone(e))),
       setSaveDoc: (uid, which, d) => void writes.push(() => this.saves.set(`${uid}/${which}`, clone(d))),
       setListed: (id, d) => void writes.push(() => this.listed.set(id, clone(d))),
+      setSummary: (d) => void writes.push(() => {
+        this.summary = clone(d);
+      }),
     };
     const out = await fn(tx);
     for (const w of writes) w();

@@ -10,7 +10,7 @@ import { BehaviorSubject, Observable, Subject, firstValueFrom, of } from 'rxjs';
 import { filter, take } from 'rxjs/operators';
 import { CloudSaveService } from '../cloud-save/cloud-save.service';
 import { MarketBackend, MarketCallable, MarketConfig, PLAYER_MARKET_BACKEND } from './player-market.backend';
-import { MarketOrder, PendingAction } from './player-market.model';
+import { MarketOrder, MarketSummary, PendingAction } from './player-market.model';
 import { PlayerMarketSaveSync, PlayerMarketService } from './player-market.service';
 
 @Injectable()
@@ -28,14 +28,22 @@ class FakeBackend implements MarketBackend {
     this.calls.push({ name, data });
     return this.respond(name, data) as Promise<T>;
   }
+  readonly summary$ = new BehaviorSubject<MarketSummary | null>(null);
+  /** Every listener the service opened, in order. */
+  readonly opened: string[] = [];
   watchConfig(): Observable<MarketConfig | null> { return this.config$; }
-  watchBook(_k: string, side: 'buy' | 'sell'): Observable<MarketOrder[]> { return side === 'sell' ? this.asks$ : this.bids$; }
+  watchBook(k: string, side: 'buy' | 'sell'): Observable<MarketOrder[]> {
+    this.opened.push(`book:${k}:${side}`);
+    return side === 'sell' ? this.asks$ : this.bids$;
+  }
   watchPrice(): Observable<null> { return of(null); }
   watchTrades(): Observable<never[]> { return of([]); }
   watchMyOrders(): Observable<MarketOrder[]> { return of([]); }
   watchEscrow(): Observable<null> { return of(null); }
-  watchOpenOrders(): Observable<MarketOrder[]> { return of([...this.asks$.value, ...this.bids$.value]); }
-  watchPrices(): Observable<never[]> { return of([]); }
+  watchSummary(): Observable<MarketSummary | null> {
+    this.opened.push('summary');
+    return this.summary$;
+  }
 }
 
 class FakeCloud {
@@ -110,6 +118,30 @@ describe('PlayerMarketService', () => {
     const book = await firstValueFrom(market.book$('mat:cinder-ore').pipe(filter(b => !b.loading), take(1)));
     expect(book.bestAsk).toBe(400);
     expect(book.bestBid).toBe(380);
+  });
+
+  it('builds the list from the one summary document, and opens depth only for the item opened', async () => {
+    setup();
+    const now = Date.now();
+    backend.summary$.next({
+      updatedAt: now,
+      rows: {
+        'mat:cinder-ore': { bestBid: 380, bestAsk: 400, bidQty: 5, askQty: 12, lastPrice: 390, lastTradeAt: now - 60_000, volume24h: 40, vwap24h: 392 },
+        'mat:frost': { bestBid: null, bestAsk: 9, bidQty: 0, askQty: 3, lastPrice: 0, lastTradeAt: 0, volume24h: 0, vwap24h: 0 },
+      },
+    });
+    const board = await firstValueFrom(market.board$);
+    expect(board.map(r => r.itemKey)).toEqual(['mat:cinder-ore', 'mat:frost']);
+    expect(board[0]).toEqual(jasmine.objectContaining({ bestBid: 380, bestAsk: 400, volume24h: 40 }));
+    expect(backend.opened).toEqual(['summary']);
+
+    await firstValueFrom(market.book$('mat:frost').pipe(filter(b => !b.loading), take(1)));
+    expect(backend.opened).toEqual(['summary', 'book:mat:frost:buy', 'book:mat:frost:sell']);
+  });
+
+  it('shows an empty list when the summary is missing or unreadable', async () => {
+    setup();
+    expect(await firstValueFrom(market.board$)).toEqual([]);
   });
 
   it('a sell flushes the save first, then calls, then pulls the edited save back', async () => {
