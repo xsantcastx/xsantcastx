@@ -284,13 +284,26 @@
         <div class="chest">
           <section aria-labelledby="chest-in">
             <h3 id="chest-in">In the chest <small>{{ view.rows.length }} / {{ view.slots }} kinds</small></h3>
-            @if (!view.rows.length) { <p class="chest-empty">Empty. An empty chest can be taken back (X).</p> }
+            @if (!view.rows.length && !view.gear.length) { <p class="chest-empty">Empty. An empty chest can be taken back (X).</p> }
             <ul>
               @for (row of view.rows; track row.stackKey) {
                 <li>
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
                   <span><b>{{ row.name }}</b><small>{{ row.qty }}</small></span>
                   <button type="button" (click)="chestTake(row)">Take all</button>
+                </li>
+              }
+            </ul>
+          </section>
+          <section aria-labelledby="chest-gear">
+            <h3 id="chest-gear">Gear in the chest <small>{{ view.gear.length }} / {{ view.gearSlots }}</small></h3>
+            @if (!view.gear.length) { <p class="chest-empty">No gear stored.</p> }
+            <ul>
+              @for (row of view.gear; track row.id) {
+                <li>
+                  @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
+                  <span><b>{{ row.name }}</b><small>{{ row.rarity }}</small></span>
+                  <button type="button" (click)="chestTakeGear(row)">Take</button>
                 </li>
               }
             </ul>
@@ -304,6 +317,19 @@
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
                   <span><b>{{ row.name }}</b><small>{{ row.qty }}</small></span>
                   <button type="button" (click)="chestPut(row)">Put in</button>
+                </li>
+              }
+            </ul>
+          </section>
+          <section aria-labelledby="chest-bag-gear">
+            <h3 id="chest-bag-gear">Gear in your satchel</h3>
+            @if (!view.bagGear.length) { <p class="chest-empty">No unworn gear to put in.</p> }
+            <ul>
+              @for (row of view.bagGear; track row.id) {
+                <li>
+                  @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
+                  <span><b>{{ row.name }}</b><small>{{ row.rarity }}</small></span>
+                  <button type="button" (click)="chestPutGear(row)">Put in</button>
                 </li>
               }
             </ul>

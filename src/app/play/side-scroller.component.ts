@@ -32,7 +32,8 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
-import { ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
+import { ChestGearRow, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
+import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolTiers } from '../shared/skills/tools';
@@ -98,7 +99,7 @@ interface OpenPlace {
   own?: true;
 }
 /** The open chest: what is in it and what the satchel could put in. Rebuilt after every move. */
-interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; note: string }
+interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; gear: ChestGearRow[]; bagGear: ChestGearRow[]; gearSlots: number; note: string }
 interface PlaceRow { id: string; name: string; blurb: string }
 interface WaystoneRow { id: RealmTownId; realm: string; town: string; crest: string; available: boolean; current: boolean }
 
@@ -795,8 +796,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
-    else if (this.state.delve && /^Digit[1-9]$/.test(event.code)) {
-      const slot = this.hotbar[Number(event.code.slice(5)) - 1];
+    else if (this.state.delve && /^Digit[0-9]$/.test(event.code)) {
+      // Keys 1-9, then 0 for the tenth slot.
+      const slot = this.hotbar[(Number(event.code.slice(5)) + 9) % 10];
       if (slot) { event.preventDefault(); this.choosePlaceable(slot.id); }
     }
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
@@ -974,7 +976,9 @@ export class SideScrollerComponent implements OnDestroy {
     // each ten Delving levels light one more tile.
     const floor = provisionalToolTiers(this.inventory.snapshot);
     const progress = this.activity.snapshot.progress;
-    const crafted = toolTiers(this.inventory.snapshot, progress);
+    // A tool stored in a Delve chest is not in hand.
+    const snapshot = this.inventory.snapshot;
+    const crafted = toolTiers({ ...snapshot, items: snapshot.items.filter(item => !isChestHolder(item.explorerId)) }, progress);
     const tools = {
       pickaxe: Math.max(floor.pickaxe ?? 0, crafted.pickaxe),
       axe: Math.max(floor.axe ?? 0, crafted.axe),
@@ -1043,7 +1047,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (key === this.hotbarKey && this.hotbar.length) return;
     this.hotbarKey = key;
     this.hotbar = PLACEABLES.map((def, i) => ({
-      id: def.id, name: this.t(`play.place.${def.id}`), art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String(i + 1),
+      id: def.id, name: this.t(`play.place.${def.id}`), art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String((i + 1) % 10),
     }));
     // Nothing chosen yet: the first thing the satchel holds.
     if (!this.placing) {
@@ -1127,7 +1131,10 @@ export class SideScrollerComponent implements OnDestroy {
         return { stackKey: stack.stackKey, name: display?.name ?? stack.stackKey, art: display?.art ?? '', qty: stack.quantity };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-    this.chestView = { rows: this.chests.contents(at.areaId, at.index), satchel, slots: this.chests.slots, note };
+    this.chestView = {
+      rows: this.chests.contents(at.areaId, at.index), satchel, slots: this.chests.slots,
+      gear: this.chests.gear(at.areaId, at.index), bagGear: this.chests.bagGear(), gearSlots: this.chests.gearSlots, note,
+    };
   }
   chestPut(row: ChestRow): void {
     const at = this.panel?.chest;
@@ -1142,6 +1149,18 @@ export class SideScrollerComponent implements OnDestroy {
     const result = this.chests.take(at.areaId, at.index, row.stackKey);
     this.refreshChest(result.ok ? `${result.qty} ${row.name} back in the satchel.` : result.message);
     this.refreshHotbar();
+  }
+  chestPutGear(row: ChestGearRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.putGear(at.areaId, at.index, row.id);
+    this.refreshChest(result.ok ? `${row.name} put in the chest.` : result.message);
+  }
+  chestTakeGear(row: ChestGearRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.takeGear(at.areaId, at.index, row.id);
+    this.refreshChest(result.ok ? `${row.name} back in the satchel.` : result.message);
   }
   /** Chests whose Delve changed under them (a version bump, a merged seed) hand their contents back. */
   private refundOrphanChests(): void {
