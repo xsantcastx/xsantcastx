@@ -160,7 +160,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 0. **Cache-bust the solid Keeper**: live serves the fixed image (83% opaque), but browsers that saw the ghost keep it up to 7 days (same filename, `max-age=604800`). Give `SOLIDIFY` outputs a new filename (or versioned name) in `scripts/import-assets.py` so every client refetches. Owner saw the ghost on 2026-10-12; a hard refresh fixes it locally.
 1. **Owner review of the economy spec** (`docs/economy/rebalance-spec.md`): price scaling ×1.25 → ×1.15, first paid purchase 2m01s → 4s, 3 → 44 purchases in the first 10 min, rune strike 10k → 600 (all sinks ×0.06), prestige at 10T with cube-root shards. Open TODOs: item Gold/s conversion, veteran shard cap, migration fixture specs. Then implement as one change with a versioned save migration.
 2. Convert the other 10 menus with the station kit (`src/app/shared/station-ui/README.md`).
-3. Delve: persist dug state; `resolveWorldAction` XP for roots/cache/walls (the gateway method now exists); reconcile lantern-radius units (skills = tiles, engine = its own); header and enemy bar should say "Ember Delve".
+3. Delve: persist dug state; ~~XP for roots/cache/walls~~ done: every node trains its own skill (rock Mining, roots Foraging, petrified trunks Woodcutting, walls/caches Delving); reconcile lantern-radius units (skills = tiles, engine = its own); header and enemy bar should say "Ember Delve".
 4. Smithing anvil mini-game and Enchanting ritual (the kit and the skills hooks are both on main now).
 5. A Skills station in the world (panel id `skills` exists, no station yet); Hunting XP; Smithing XP banner on bench crafts.
 6. Tool art (`pickaxe/axe/sickle/staff-1..4`) and tile art → add to `docs/art-commissions/`.
