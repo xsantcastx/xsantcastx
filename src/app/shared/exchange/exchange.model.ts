@@ -434,7 +434,10 @@ export function pressureMultiplier(
   pressure: Pressure | undefined,
   now: number,
 ): number {
-  const net = decayedPressure(pressure, now);
+  return multiplierForNet(good, decayedPressure(pressure, now));
+}
+
+function multiplierForNet(good: ExchangeGood, net: number): number {
   if (net === 0) return 1;
   const ratio = net / Math.max(1, good.liquidity);
   return Math.exp(Math.max(-1, Math.min(1, ratio)) * PRESSURE_CAP);
@@ -453,15 +456,76 @@ export function pressureMultiplier(
  * here.
  */
 export function priceAt(good: ExchangeGood, at: number, pressure?: Pressure): number {
-  const raw =
-    good.basePrice *
-    Math.exp(drift(good.seed, at) * VOLATILITY) *
-    eventMultiplier(good, at) *
-    pressureMultiplier(good, pressure, at);
+  return Math.max(1, Math.round(clampedPrice(good, clockPrice(good, at), decayedPressure(pressure, at))));
+}
 
+/** Base × drift × events at `at`: everything but the player's footprint. */
+function clockPrice(good: ExchangeGood, at: number): number {
+  return good.basePrice * Math.exp(drift(good.seed, at) * VOLATILITY) * eventMultiplier(good, at);
+}
+
+/** The unrounded unit price with a given (already decayed) net footprint. */
+function clampedPrice(good: ExchangeGood, clock: number, net: number): number {
+  const raw = clock * multiplierForNet(good, net);
   const floor = good.basePrice * PRICE_FLOOR_MULT;
   const ceiling = good.basePrice * PRICE_CEILING_MULT;
-  return Math.max(1, Math.round(Math.min(ceiling, Math.max(floor, raw))));
+  return Math.max(1, Math.min(ceiling, Math.max(floor, raw)));
+}
+
+/** Most slices an order's own price walk is integrated over (a 999-unit order costs 64 evaluations). */
+const IMPACT_SLICES = 64;
+
+/**
+ * Unrounded Gold for moving the footprint from `from` by `units` (signed) at
+ * `at`: the price integrated along the walk the order itself causes, by the
+ * midpoint rule over `min(|units|, 64)` equal slices.
+ *
+ * The same walk in either direction visits the same midpoints, so buying N and
+ * selling the same N back at the same instant are worth exactly the same
+ * before rounding and tax. That is what makes a round trip a loss.
+ */
+function impactGross(good: ExchangeGood, at: number, from: number, units: number): number {
+  const n = Math.abs(units);
+  if (n === 0) return 0;
+  const clock = clockPrice(good, at);
+  const slices = Math.min(n, IMPACT_SLICES);
+  const step = units / slices;
+  // Walk from the low end of the range so a buy and the matching sell sum the
+  // slices in the same order (bit-identical floating point).
+  const low = Math.min(from, from + units);
+  const width = Math.abs(step);
+  let sum = 0;
+  for (let k = 0; k < slices; k++) sum += clampedPrice(good, clock, low + (k + 0.5) * width) * width;
+  return sum;
+}
+
+/**
+ * What buying `quantity` units costs right now, with the order's own price
+ * impact priced in.
+ *
+ * Every unit of a buy pushes the price up (`settle` applies the pressure), so
+ * charging the whole order at the pre-trade spot price let a player buy in
+ * bulk and sell back one unit at a time above what they paid — and, once the
+ * v3 economy (ρ = 0.06) put common materials at a couple of dozen Gold, even a
+ * same-size round trip paid: the lift crossed a rounding boundary worth more
+ * than the 5% tax. Integrating the price along the order's own walk, rounding
+ * a buy up and a sale down, makes every closed round trip at one instant cost
+ * at least the tax.
+ */
+export function quoteBuyAt(good: ExchangeGood, at: number, pressure: Pressure | undefined, quantity: number): Quote {
+  const qty = Math.max(0, Math.floor(quantity));
+  if (qty === 0) return quoteBuy(priceAt(good, at, pressure), 0);
+  const gross = Math.max(qty, Math.ceil(impactGross(good, at, decayedPressure(pressure, at), qty) - 1e-9));
+  return { unitPrice: Math.round(gross / qty), quantity: qty, gross, tax: 0, net: gross };
+}
+
+/** What selling `quantity` units pays right now, impact priced in, less the house's cut. */
+export function quoteSellAt(good: ExchangeGood, at: number, pressure: Pressure | undefined, quantity: number): Quote {
+  const qty = Math.max(0, Math.floor(quantity));
+  if (qty === 0) return quoteSell(priceAt(good, at, pressure), 0);
+  const gross = Math.max(0, Math.floor(impactGross(good, at, decayedPressure(pressure, at), -qty) + 1e-9));
+  const tax = Math.ceil(gross * SALE_TAX_RATE);
+  return { unitPrice: Math.round(gross / qty), quantity: qty, gross, tax, net: Math.max(0, gross - tax) };
 }
 
 /**
