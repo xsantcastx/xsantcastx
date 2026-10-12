@@ -108,8 +108,15 @@ export interface StationDef {
  *  certain drops never touches the RNG, so the fixed-step tests stay exact.
  */
 export type DropEntry =
-  | { id: string; kind: 'coins'; base: number; spread?: number; chance?: number }
-  | { id: string; kind: 'material'; material: string; art: string; label: string; short: string; qty: number; chance?: number };
+  | { id: string; kind: 'coins'; base: number; spread?: number; chance?: number; rarity?: LootRarity }
+  | { id: string; kind: 'material'; material: string; art: string; label: string; short: string; qty: number; chance?: number; rarity?: LootRarity };
+
+/**
+ * Optional, presentation only: the colour of a drop's light beam on the ground
+ * (the item / rune tier ladder). Omitted → coins burn gold, materials 'common'.
+ * Never affects what is granted.
+ */
+export type LootRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'singular';
 
 export interface ZoneDropTable {
   id: string;
@@ -117,7 +124,7 @@ export interface ZoneDropTable {
 }
 
 export interface MonsterDef {
-  /** `artFor()` key of the creature painting (drawn through the Maw rig for now). */
+  /** `artFor()` key of the creature painting. Picks its rig in engine/creature-rigs.ts (unknown keys get a generic one). */
   creature: string;
   name: string;
   hp: number;
