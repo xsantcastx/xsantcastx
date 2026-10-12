@@ -16,3 +16,14 @@ export const IN_WORLD_PANEL = new InjectionToken<boolean>('IN_WORLD_PANEL');
 export function injectInWorldPanel(): boolean {
   return inject(IN_WORLD_PANEL, { optional: true }) ?? false;
 }
+
+/**
+ * What an in-world bench opens on. 'ready': only what can be made right now,
+ * even when that is nothing (a camp in the Delve: "what can I craft here?").
+ * Absent: the page's own default.
+ */
+export const IN_WORLD_FOCUS = new InjectionToken<'ready'>('IN_WORLD_FOCUS');
+
+export function injectInWorldFocus(): 'ready' | null {
+  return inject(IN_WORLD_FOCUS, { optional: true }) ?? null;
+}

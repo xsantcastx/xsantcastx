@@ -135,11 +135,11 @@ things with tools you crafted, and you see your economy working.
 
 Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
-- [ ] **Place blocks back**: mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs)
-- [ ] **Torches**: crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
-- [ ] **Ladders and platforms**: traverse deep shafts back up
-- [ ] **Portable workbench / campfire**: craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
-- [ ] **Chests** to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
+- [x] **Place blocks back** (`0f57c99`; B in front, S+B below, long-press/right-click a cell): mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs)
+- [x] **Torches** (`0f57c99`; Torch ×3 = 1 Cinder Ore + 1 Bark + 30 Gold; X takes back): crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
+- [x] **Ladders and platforms** (`0f57c99`): traverse deep shafts back up
+- [x] **Portable workbench / campfire** (`0f57c99`; one per Delve; opens Crafting on "Ready now"; "Descend to your camp" from town): craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
+- [x] **Chests** (`0f57c99`; 4 material kinds each, through the satchel ledger; supports/bombs still to do) to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
 - [ ] Tile, torch, ladder, platform and workbench art → `docs/art-commissions/`
 
 ## Phase 3: World only
@@ -210,7 +210,8 @@ filename the importer picks up automatically.
 ## Known issues / watch list
 
 - The NPC chat bubble covers the mini-game's Skip link at 390 px width
-- **Delve finale gaps:** the Rune-Warden respawns after 8 s like any Maw, and the Godforge fragment can be mined before the warden falls. **Kael's Hammer (`kaels-hammer`) has no cache placed yet**, so "The Old Seam" can't be completed
+- Delve finale gaps fixed (`0f57c99`): the warden falls once per player, the fragment stays sealed until then, Kael's cache is at (85,18)
+- Delve hotbar text is English-only; chests hold materials only; 8 new item icons + 5 placeable tiles need art
 - Nullthorn Staff recipe is now locked behind Verrin's mission (players who crafted it keep it)
 - New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet
 - 4 extra inscription texts written but not placed (`roots-cutting-mark`, `basalt-seam-ledger`, `grotto-tally-marks`, `magma-unsigned`)

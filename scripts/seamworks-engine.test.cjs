@@ -969,6 +969,8 @@ function memoryDelve(seed) {
       if (kind === null) area.cells.delete(index); else area.cells.set(index, kind);
       save.areas[id] = { layout, cells: saveMod.encodeCells(area.cells) };
     },
+    isClaimed: id => save.claimed.includes(id),
+    claim: id => saveMod.claimOnce(save, id),
   };
 }
 function enterOwnDelve(delve, extra = {}) {
@@ -1082,6 +1084,7 @@ test('new nodes: shadow-root and glowcap are Foraging cuts, the fragment pays on
   assert.equal(n.glowcap.yield.materialId, 'glowcap'); assert.equal(n.glowcap.discipline, 'foraging');
   assert.equal(n.inscription.solid, false);
   const delve = memoryDelve(42); const events = [];
+  delve.claim(terrainMod.WARDEN_FLAG); // the warden has fallen (see the finale test)
   const { engine } = enterOwnDelve(delve, { onWorldAction: e => { events.push(e); return true; } });
   engine.setTools({ pickaxe: 3, staff: 1 });
   const t = engine.terrain;
@@ -1121,4 +1124,392 @@ test('inscriptions: E beside a carved wall reports it; the lore ledger records i
   assert.equal(loreMod.recordInscriptionIn(lore, 'no-such-carving'), false);
   assert.deepEqual(loreMod.coerceDelveLore({ inscriptions: ['roots-inverse-tree', 'gone', 7] }).inscriptions, ['roots-inverse-tree']);
   assert.deepEqual(loreMod.mergeDelveLore({ inscriptions: ['magma-the-fracture'] }, lore).inscriptions, ['magma-the-fracture', 'roots-inverse-tree']);
+});
+
+// ── Delve finale: the warden stays down, the fragment waits for it, Kael's cache ──
+test('finale: the Rune-Warden falls once per player and unseals the fragment', () => {
+  const delve = memoryDelve(77); const events = [];
+  const { engine, state } = enterOwnDelve(delve, { onWorldAction: e => { events.push(e); return true; } });
+  engine.setTools({ pickaxe: 3, staff: 1 });
+  const t = engine.terrain;
+  const warden = () => engine.monsters.find(m => m.def.name === 'Rune-Warden');
+  assert.ok(warden(), 'the warden guards the chamber');
+  // Swinging at the fragment while the warden stands: it clangs and holds.
+  engine.player.x = 105 * 32 + 8; engine.player.y = 610 + 51 * 32; engine.facing = 1;
+  const swing = () => { engine.attackCooldown = 0; engine.strikeCell(106 * 32 + 16, 610 + 50 * 32 + 16); };
+  for (let n = 0; n < 20; n++) swing();
+  assert.equal(t.nodeAt(106, 50).id, 'godforge-fragment', 'sealed while the warden stands');
+  assert.match(state().message, /Rune-Warden still stands/);
+  assert.equal(events.filter(e => e.materialId === 'godforge-fragment').length, 0);
+  // Fell it.
+  const w = warden(); w.hp = 1; engine.hurtMonster(w, 50);
+  assert.equal(delve.isClaimed(terrainMod.WARDEN_FLAG), true, 'saved per player');
+  for (let n = 0; n < 60 * 20; n++) engine.update(1 / 60);
+  assert.equal(w.hp, 0, 'never respawns');
+  for (let n = 0; n < 20 && t.solid(106, 50); n++) swing();
+  assert.equal(t.solid(106, 50), false, 'the fragment comes free');
+  assert.equal(events.filter(e => e.materialId === 'godforge-fragment').length, 1);
+  engine.restartHunt();
+  assert.equal(warden(), undefined, 'a restarted hunt does not raise it');
+  engine.destroy();
+  // A new session from the same save: no warden at all.
+  const back = enterOwnDelve(delve);
+  assert.equal(back.engine.monsters.some(m => m.def.name === 'Rune-Warden'), false);
+  assert.equal(back.engine.monsters.some(m => m.def.name === 'Magma Maw'), true, 'ordinary Maws still live');
+  back.engine.destroy();
+  // A fresh player still meets it.
+  const fresh = enterOwnDelve(memoryDelve(78));
+  assert.equal(fresh.engine.monsters.some(m => m.def.name === 'Rune-Warden'), true);
+  fresh.engine.destroy();
+});
+
+test("finale: Kael's old cache sits in the Maws' cavern for every seed and pays Kael's Hammer", () => {
+  for (const seed of [1, 999, 0xabcdef]) assert.equal(terrainMod.generateTerrain(delveSpec, seed).nodeAt(85, 18).id, 'kaels-cache');
+  const node = terrainMod.TERRAIN_NODES['kaels-cache'];
+  assert.equal(node.yield.materialId, 'kaels-hammer'); assert.equal(node.discipline, 'exploration');
+  assert.equal(terrainMod.biomeAt(delveSpec, 18).id, 'basalt-caverns');
+  const events = [];
+  const { engine } = enterOwnDelve(memoryDelve(5), { onWorldAction: e => { events.push(e); return true; } });
+  engine.setTools({ pickaxe: 1 });
+  const t = engine.terrain;
+  engine.player.x = 84 * 32 + 8; engine.player.y = 610 + 19 * 32; engine.facing = 1;
+  for (let n = 0; n < 8 && t.solid(85, 18); n++) { engine.attackCooldown = 0; engine.strikeCell(85 * 32 + 16, 610 + 18 * 32 + 16); }
+  assert.equal(t.solid(85, 18), false);
+  assert.deepEqual(events.filter(e => e.materialId === 'kaels-hammer').map(e => e.qty), [1]);
+  engine.destroy();
+});
+
+// ── Building: place blocks ──────────────────────────────────────────────────
+/** A fresh, flat test pit: an open room (cols 20-40, rows 3-8) over a stone floor. */
+function buildRoom(engine) {
+  const t = engine.terrain, rock = terrainMod.nodeIndex('rock');
+  for (let row = 0; row < 12; row++) for (let col = 16; col < 46; col++) t.set(col, row, rock);
+  for (let row = 3; row <= 8; row++) for (let col = 20; col <= 40; col++) t.set(col, row, 0);
+  engine.player.x = 30 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0; engine.player.grounded = true; engine.facing = 1;
+  return t;
+}
+
+test('placeTarget: the floor ahead first (bridging), then the lowest open cell beside the body; Down = under the feet', () => {
+  const t = terrainMod.generateTerrain(delveSpec);
+  const rock = terrainMod.nodeIndex('rock'), box = { halfWidth: 13, height: 90 };
+  for (let row = 0; row < 12; row++) for (let col = 16; col < 46; col++) t.set(col, row, rock);
+  for (let row = 3; row <= 8; row++) for (let col = 20; col <= 40; col++) t.set(col, row, 0);
+  const x = 30 * 32 + 16, feet = 610 + 9 * 32;
+  // Flat floor: the floor ahead is rock, so the lowest open cell beside the body (feet row 8).
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, false, box), t.index(31, 8));
+  assert.equal(terrainMod.placeTarget(t, x, feet, -1, false, box), t.index(29, 8));
+  // A hole ahead: the floor cell first.
+  t.set(31, 9, 0);
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, false, box), t.index(31, 9));
+  // Under the feet: only when it is open.
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, true, box), -1);
+  t.set(30, 9, 0);
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, true, box), t.index(30, 9));
+  // A wall ahead: nowhere to go.
+  for (let row = 5; row <= 9; row++) t.set(31, row, rock);
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, false, box), -1);
+  // Never onto a carved wall.
+  const ins = delveSpec.inscriptions[0];
+  assert.equal(terrainMod.isAir(t, ins.col, ins.row), false);
+});
+
+test('placing a block: B asks the satchel first, fills the cell, saves it, and the block digs back out', () => {
+  const delve = memoryDelve(31); const placed = []; const actions = [];
+  let have = 2;
+  const { engine, state } = enterOwnDelve(delve, {
+    onPlace: e => { placed.push(e); if (have < 1) return false; have--; return true; },
+    onWorldAction: e => { actions.push(e); return true; },
+  });
+  engine.setTools({ pickaxe: 1 });
+  const t = buildRoom(engine);
+  assert.equal(engine.place(), false, 'nothing chosen yet');
+  assert.match(state().message, /Choose something to place/);
+  engine.setPlaceable('dirt-block');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'packed-dirt');
+  assert.equal(placed[0].item, 'dirt-block'); assert.equal(placed[0].cellKey, '31,8');
+  assert.match(state().message, /Dirt block placed/);
+  // Stairs: the next goes on top of it.
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 7).id, 'packed-dirt');
+  assert.notEqual(placed[0].mutationId, placed[1].mutationId, 'each placement its own consume');
+  // The satchel is empty: refused, nothing placed.
+  assert.equal(engine.place(), false);
+  assert.equal(t.nodeAt(31, 6).id, 'air');
+  // Never inside the Keeper.
+  engine.setPlaceable('basalt-block');
+  assert.equal(engine.placeCell(30, 8, 'basalt-block'), false);
+  // Saved: the diff carries the placed blocks.
+  const layout = terrainMod.terrainLayout(delveSpec, 31);
+  const diff = saveMod.cellsFor(delve.save, 'ember-delve', layout);
+  assert.equal(diff.get(t.index(31, 8)), terrainMod.nodeIndex('packed-dirt'));
+  // Digging a placed block pays the block back (no XP), under a fresh mutation id.
+  engine.facing = 1;
+  for (let n = 0; n < 4 && t.solid(31, 8); n++) { engine.attackCooldown = 0; engine.strikeCell(31 * 32 + 16, 610 + 8 * 32 + 16); }
+  assert.equal(t.solid(31, 8), false);
+  const back = actions.find(e => e.cellKey === '31,8');
+  assert.equal(back.block, 'dirt-block'); assert.equal(back.xp, 0); assert.match(back.mutationId, /:p\d+$/);
+  // Natural dirt and stone drop their blocks too.
+  assert.equal(terrainMod.TERRAIN_NODES.dirt.block, 'dirt-block');
+  assert.equal(terrainMod.TERRAIN_NODES.rock.block, 'basalt-block');
+  assert.equal(terrainMod.TERRAIN_NODES['cinder-vein'].block, undefined, 'ore pays ore, not a block');
+  engine.destroy();
+  // Reloaded from the save: the second block still stands.
+  const again = enterOwnDelve(delve);
+  assert.equal(again.engine.terrain.nodeAt(31, 7).id, 'packed-dirt');
+  again.engine.destroy();
+});
+
+test('a long-press places where it lands, in reach only', () => {
+  const { engine } = enterOwnDelve(memoryDelve(32));
+  const t = buildRoom(engine);
+  engine.setPlaceable('basalt-block');
+  // Client px = world px here (1200×720 canvas, scale 1); the camera follows the Keeper.
+  engine.render = () => {};
+  const at = (col, row) => [col * 32 + 16 - engine.camera, 610 + row * 32 + 16 - engine.cameraY];
+  assert.equal(engine.placeAtClient(...at(32, 8)), true);
+  assert.equal(t.nodeAt(32, 8).id, 'basalt-block');
+  assert.equal(engine.placeAtClient(...at(39, 4)), false, 'out of reach');
+  assert.equal(t.nodeAt(39, 4).id, 'air');
+  engine.destroy();
+});
+
+// ── Building: torches ───────────────────────────────────────────────────────
+const craftMod = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+
+test('torches: crafted from Delve materials, placed beside you, always lit, walked through, taken back', () => {
+  // The recipe: a stack of three from Root Hollows finds, in the Delve kit.
+  const recipe = craftMod.craftingRecipeById('craft-delve-torch');
+  assert.equal(recipe.category, 'delve'); assert.equal(recipe.output.stack, true);
+  assert.equal(recipe.output.itemId, 'torch'); assert.equal(recipe.output.count, 3);
+  assert.deepEqual(recipe.ingredients.map(i => i.materialId).sort(), ['cinder-ore', 'world-root-bark']);
+  assert.ok(craftMod.CRAFTING_CATEGORIES.some(c => c.id === 'delve'));
+  assert.equal(craftMod.craftXpFor(recipe), craftMod.CRAFT_XP.common, 'a handful is one craft of XP');
+  // Light: a torch burns wherever it stands; a vein only once exposed.
+  const n = terrainMod.TERRAIN_NODES;
+  assert.equal(n.torch.solid, false); assert.equal(n.torch.placeable, 'torch');
+  assert.ok(terrainMod.glowIntensity(n.torch, false) > terrainMod.glowIntensity(n['cinder-vein'], true));
+  assert.equal(terrainMod.glowIntensity(n['cinder-vein'], false), 0);
+  assert.equal(terrainMod.glowIntensity(n.rock, true), 0);
+
+  const delve = memoryDelve(41); const taken = [];
+  const { engine, state } = enterOwnDelve(delve, { onTakeBack: e => { taken.push(e); return true; } });
+  const t = buildRoom(engine);
+  t.set(31, 9, 0); // a hole ahead: a torch never goes in the floor
+  engine.setPlaceable('torch');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'torch', 'beside the body, at the feet');
+  // Walled in, it goes where you stand.
+  const rock = terrainMod.nodeIndex('rock');
+  for (let row = 3; row <= 9; row++) t.set(29, row, rock);
+  engine.facing = -1;
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(30, 8).id, 'torch');
+  // Torches never block: the Keeper walks through.
+  engine.facing = 1; t.set(31, 9, rock);
+  engine.player.x = 30 * 32 + 16;
+  engine.input.add('right');
+  for (let n = 0; n < 40; n++) engine.update(1 / 60);
+  engine.input.delete('right');
+  assert.ok(engine.player.x > 31 * 32 + 16, 'walked past the torch');
+  // Saved, and back after a reload.
+  engine.destroy();
+  const again = enterOwnDelve(delve, { onTakeBack: e => { taken.push(e); return true; } });
+  const t2 = again.engine.terrain;
+  assert.equal(t2.nodeAt(31, 8).id, 'torch');
+  // X beside it takes it back into the satchel; the cell is open air again and saved so.
+  again.engine.player.x = 30 * 32 + 16; again.engine.player.y = 610 + 9 * 32; again.engine.facing = 1;
+  assert.equal(again.engine.takeBack(), true);
+  assert.equal(taken.at(-1).item, 'torch'); assert.equal(taken.at(-1).cellKey, '31,8');
+  assert.equal(t2.nodeAt(31, 8).id, 'air');
+  assert.match(again.state().message, /Torch back in the satchel/);
+  // Refused (a full satchel): it stays.
+  again.engine.destroy();
+  const third = enterOwnDelve(delve, { onTakeBack: () => false });
+  third.engine.player.x = 30 * 32 + 16; third.engine.player.y = 610 + 9 * 32; third.engine.facing = -1;
+  assert.equal(third.engine.takeBack(), false);
+  assert.equal(third.engine.terrain.nodeAt(30, 8).id, 'torch');
+  third.engine.destroy();
+  // (31, 8) lies in the Root Hollows' old tunnel, generated open: taken back, it needs no diff entry at all.
+  assert.equal(t2.base[t2.index(31, 8)], 0);
+  assert.equal(saveMod.cellsFor(delve.save, 'ember-delve', terrainMod.terrainLayout(delveSpec, 41)).has(t2.index(31, 8)), false,
+    'back to what was generated: the diff stays compact');
+});
+
+// ── Building: ladders and platforms ─────────────────────────────────────────
+test('ladders: place where you stand, climb, place again — out of a shaft and back down', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-ladder');
+  assert.equal(recipe.output.itemId, 'ladder'); assert.equal(recipe.output.stack, true);
+  const delve = memoryDelve(51);
+  const { engine } = enterOwnDelve(delve);
+  const t = engine.terrain, rock = terrainMod.nodeIndex('rock');
+  // A one-cell shaft: col 30, open rows 2..8, rock all round.
+  for (let row = 0; row < 12; row++) for (let col = 26; col < 35; col++) t.set(col, row, rock);
+  for (let row = 2; row <= 8; row++) t.set(30, row, 0);
+  engine.player.x = 30 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0; engine.facing = 1;
+  const step = (frames = 1) => { for (let n = 0; n < frames; n++) engine.update(1 / 60); };
+  step(5);
+  assert.equal(engine.player.y, 610 + 9 * 32, 'stands on the shaft floor');
+  engine.setPlaceable('ladder');
+  for (let rung = 0; rung < 3; rung++) {
+    assert.equal(engine.place(), true, `ladder ${rung + 1}`);
+    step(1);
+    engine.setInput('jump', true);
+    step(40);
+    engine.setInput('jump', false);
+    step(10);
+  }
+  assert.equal(t.nodeAt(30, 8).id, 'ladder'); assert.equal(t.nodeAt(30, 7).id, 'ladder'); assert.equal(t.nodeAt(30, 6).id, 'ladder');
+  assert.equal(engine.player.y, 610 + 6 * 32, 'standing on the top rung, three cells up');
+  assert.equal(engine.player.grounded, true);
+  // Down: drop onto the ladder and climb down to the floor.
+  engine.setInput('down', true);
+  step(60);
+  engine.setInput('down', false);
+  step(5);
+  assert.equal(engine.player.y, 610 + 9 * 32, 'back on the floor');
+  // On a ladder, Up never jumps.
+  engine.setInput('jump', true); step(1);
+  assert.ok(engine.player.vy >= 0, 'no jump off a ladder');
+  engine.setInput('jump', false);
+  // The pure model agrees.
+  assert.equal(terrainMod.onLadder(t, 30 * 32 + 16, 610 + 9 * 32, { halfWidth: 13, height: 90 }), true);
+  assert.equal(terrainMod.onLadder(t, 30 * 32 + 16, 610 + 6 * 32, { halfWidth: 13, height: 90 }), false, 'on top is standing, not climbing');
+  engine.destroy();
+});
+
+test('platforms: a one-way floor you place across a gap, stand on, and drop through holding Down', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-platform');
+  assert.equal(recipe.output.itemId, 'platform');
+  const { engine } = enterOwnDelve(memoryDelve(52));
+  const t = buildRoom(engine);
+  // A pit ahead: col 31, rows 9..11.
+  for (let row = 9; row <= 11; row++) t.set(31, row, 0);
+  engine.setPlaceable('platform');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 9).id, 'platform', 'bridges the pit ahead');
+  assert.equal(t.solid(31, 9), false);
+  // Walk onto it: it holds.
+  engine.player.x = 31 * 32 + 16;
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.equal(engine.player.y, 610 + 9 * 32);
+  assert.equal(engine.player.grounded, true);
+  // A jump up through it from below would pass (one-way); Down drops through.
+  engine.setInput('down', true);
+  for (let n = 0; n < 40; n++) engine.update(1 / 60);
+  engine.setInput('down', false);
+  assert.equal(engine.player.y, 610 + 12 * 32, 'fell to the bottom of the pit');
+  engine.destroy();
+});
+
+// ── Building: chests ────────────────────────────────────────────────────────
+test('chests: four kinds of thing, moves counted, saved and merged by moves', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-chest');
+  assert.equal(recipe.output.itemId, 'chest'); assert.equal(recipe.output.count, 1);
+  const chest = { layout: 'L', born: 7, n: 0, slots: {} };
+  for (const key of ['a', 'b', 'c', 'd']) assert.equal(saveMod.chestPut(chest, key, 2), true);
+  assert.equal(saveMod.chestPut(chest, 'e', 1), false, 'a fifth kind does not fit');
+  assert.equal(saveMod.chestPut(chest, 'a', 5), true, 'more of a kind it holds always fits');
+  assert.equal(chest.slots.a, 7); assert.equal(chest.n, 5);
+  assert.equal(saveMod.chestTake(chest, 'a'), 7);
+  assert.equal(chest.slots.a, undefined); assert.equal(chest.n, 6);
+  assert.equal(saveMod.chestTake(chest, 'zzz'), 0); assert.equal(chest.n, 6, 'a no-op is not a move');
+  // On disk: coerced, junk dropped, absent when there are none.
+  const save = saveMod.newDelveSave(3, 1);
+  assert.equal('chests' in saveMod.coerceDelveSave(save), false);
+  save.chests = { [saveMod.chestKey('ember-delve', 300)]: chest, bad: { layout: 1 } };
+  const back = saveMod.coerceDelveSave(JSON.parse(JSON.stringify(save)));
+  assert.deepEqual(Object.keys(back.chests), ['ember-delve:8c']);
+  assert.deepEqual(back.chests['ember-delve:8c'].slots, { b: 2, c: 2, d: 2 });
+  // Merge: the copy with more moves wins; a re-placed chest (later born) wins.
+  const older = saveMod.newDelveSave(3, 1), newer = saveMod.newDelveSave(3, 1);
+  older.chests = { k: { layout: 'L', born: 7, n: 2, slots: { a: 1 } } };
+  newer.chests = { k: { layout: 'L', born: 7, n: 5, slots: { a: 9 } }, j: { layout: 'L', born: 1, n: 0, slots: {} } };
+  for (const merged of [saveMod.mergeDelveSaves(older, newer), saveMod.mergeDelveSaves(newer, older)]) {
+    assert.deepEqual(merged.chests.k.slots, { a: 9 }); assert.ok(merged.chests.j);
+  }
+  older.chests.k = { layout: 'L', born: 9, n: 0, slots: {} };
+  assert.equal(saveMod.mergeDelveSaves(older, newer).chests.k.born, 9);
+});
+
+test('chests: placed on ground only, E (or a tap) opens one by its cell, taking back asks the host', () => {
+  const used = []; let empty = false;
+  const { engine, state } = enterOwnDelve(memoryDelve(61), {
+    onUse: e => used.push(e), onTakeBack: e => (e.item === 'chest' ? empty : true),
+  });
+  const t = buildRoom(engine);
+  engine.setPlaceable('chest');
+  t.set(31, 9, 0); // nothing under the cell ahead
+  assert.equal(engine.place(), false);
+  assert.match(state().message, /needs solid ground/);
+  t.set(31, 9, terrainMod.nodeIndex('rock'));
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'chest');
+  engine.update(1 / 60);
+  assert.equal(state().nearby, 'chest'); assert.equal(state().nearbyLabel, 'CHEST');
+  engine.interact();
+  assert.deepEqual({ ...used[0] }, { kind: 'chest', areaId: 'ember-delve', cellKey: '31,8', index: t.index(31, 8) });
+  // A tap on it in reach opens it too.
+  engine.attackCooldown = 0;
+  assert.equal(engine.strikeCell(31 * 32 + 16, 610 + 8 * 32 + 16), true);
+  assert.equal(used.length, 2);
+  // Not empty: the host refuses and it stays.
+  assert.equal(engine.takeBack(), false);
+  assert.equal(t.nodeAt(31, 8).id, 'chest');
+  empty = true;
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'air');
+  assert.equal(engine.nodeIdAt('ember-delve', t.index(31, 8)), 'air');
+  assert.equal(engine.nodeIdAt('nowhere', 0), null);
+  engine.destroy();
+});
+
+// ── Building: the camp ──────────────────────────────────────────────────────
+test('camp: one per Delve, opens the bench on what can be made now, and town descends straight to it', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-camp');
+  assert.equal(recipe.output.itemId, 'camp'); assert.equal(recipe.output.stack, true);
+  // Every Delve-kit recipe makes a placeable from materials the Delve itself gives.
+  const placeables = new Set(terrainMod.PLACEABLES.map(p => p.id));
+  for (const kit of craftMod.DELVE_KIT_RECIPES) {
+    assert.ok(placeables.has(kit.output.itemId), kit.id);
+    assert.equal(kit.requiredLevel, 1, kit.id);
+  }
+  assert.deepEqual(terrainMod.PLACEABLES.map(p => p.id), ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp'], 'hotbar order, keys 1-7');
+  for (const p of terrainMod.PLACEABLES) assert.equal(terrainMod.TERRAIN_NODES[p.node].placeable ?? terrainMod.TERRAIN_NODES[p.node].block, p.id, p.id);
+
+  const delve = memoryDelve(71); const used = [];
+  const { engine, state } = enterOwnDelve(delve, { onUse: e => used.push(e) });
+  const t = buildRoom(engine);
+  engine.setPlaceable('camp');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'camp');
+  assert.ok(terrainMod.glowIntensity(t.nodeAt(31, 8), false) > 0, 'its fire lights the dark');
+  engine.facing = -1;
+  assert.equal(engine.place(), false, 'a second camp is refused');
+  assert.match(state().message, /already have a camp/);
+  engine.facing = 1; engine.update(1 / 60);
+  assert.equal(state().nearby, 'camp'); assert.equal(state().nearbyLabel, 'YOUR CAMP');
+  engine.interact();
+  assert.equal(used[0].kind, 'camp');
+  // Back to town: the shaft offers the camp, and descending stands the Keeper beside it.
+  engine.returnToCamp();
+  assert.equal(state().areaId, 'infernal');
+  assert.equal(engine.hasDelveCamp(), true);
+  assert.equal(engine.descendToCamp(), true);
+  assert.equal(state().areaId, 'ember-delve');
+  assert.equal(engine.player.x, 31 * 32 + 16); assert.equal(engine.player.y, 610 + 9 * 32);
+  assert.equal(engine.descendToCamp(), false, 'only from town');
+  engine.destroy();
+  // A new session from the save: still there. (buildRoom's rock was never saved, so the
+  // camp now stands in the generated tunnel; it still has its floor and room to stand.)
+  const next = fixture(() => true, { delve });
+  assert.equal(next.engine.hasDelveCamp(), true);
+  assert.equal(next.engine.descendToCamp(), true);
+  assert.equal(next.state().areaId, 'ember-delve');
+  next.engine.destroy();
+  // No camp: nothing to descend to.
+  const none = fixture(() => true, { delve: memoryDelve(72) });
+  assert.equal(none.engine.hasDelveCamp(), false);
+  assert.equal(none.engine.descendToCamp(), false);
+  none.engine.destroy();
 });
