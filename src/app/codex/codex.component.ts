@@ -75,6 +75,8 @@ import { SOCKET_WORDS, matchSocketWord, wordTier } from '../shared/enchanting/so
 import { RUNE_TIERS, runeById } from '../shared/rune-forge/rune.model';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
+import { REALM_ART, artFor } from '../shared/art/art';
+import { BESTIARY, BESTIARY_UNPAINTED } from './bestiary';
 export type CodexTab = 'achievements' | 'collection' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
 
 interface TabDefinition {
@@ -241,6 +243,18 @@ export class CodexComponent implements OnInit, OnDestroy {
   /** Exposed for the rank orb and the ten path nodes. */
   readonly rankSigil = rankSigil;
   calendar: CalendarDay[] = [];
+
+  // ── Bestiary ──────────────────────────────────────────────────────────────
+  /**
+   * The painted creatures, each beside its realm's crest. Resolved once at
+   * construction: pure data, identical on the server and in the browser.
+   */
+  readonly bestiary = BESTIARY.map(entry => ({
+    ...entry,
+    art: artFor(entry.id),
+    crest: artFor(REALM_ART[entry.realm].crest),
+  }));
+  readonly bestiaryUnpainted = BESTIARY_UNPAINTED;
 
   // ── Secrets ───────────────────────────────────────────────────────────────
   readonly secretGroups = SECRET_GROUPS;

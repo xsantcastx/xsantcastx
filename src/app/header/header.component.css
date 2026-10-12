@@ -324,6 +324,15 @@ button.gftome__keeper {
   border-color: color-mix(in srgb, var(--primary-color) 60%, transparent);
   box-shadow: 0 0 20px -8px var(--primary-color);
 }
+/* The neutral Keeper avatar. Cropped to the button's circle by the UI, per the
+   composition spec; above the fold on every page, so it is not lazy. */
+.gfnav__keeper { overflow: hidden; padding: 0; }
+.gfnav__keeper-avatar {
+  width: 36px; height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  pointer-events: none;
+}
 .gfnav__keeper-glyph { position: relative; width: 16px; height: 16px; }
 .gfnav__keeper-glyph::before {
   content: ''; position: absolute; top: 0; left: 50%;
