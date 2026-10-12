@@ -30,11 +30,9 @@ Branch `worktree-agent-a0063fbcfa6039481`. Not pushed or merged. The design is `
 
 ## Follow-ups and risks
 
-- **One red spec, by design of the boundary:** `market-reference.spec.ts`. The auction house's generated reference (`functions/src/market/reference.generated.ts`, off-limits to this change) still has the v2 equipment base prices, while equipment scrap moved by ρ. The fix is to regenerate it after merge with `node scripts/generate-market-reference.mjs`. The server-side reference prices then follow the v3 item economy.
-
-- **Exchange:** `src/app/shared/exchange/**` was out of scope. Its material and equipment base prices are still in v2 Gold. The Vendor reads them as v2 anchors × ρ, and its spec accepts either scale. The auction-house owner should rescale them by ρ, or retire them.
-- **Veteran shard cap:** set to 40 (held + claimable). The owner should confirm it.
-- **Objective thresholds:** the "Earn N Gold" objectives (challenge pools, NPC chains) are unchanged. On the new curve they fall in the first hour.
+- **Exchange:** base worths are now ρ-scaled (`itemScaled` from economy-curve.ts), and `functions/src/market/reference.generated.ts` was regenerated (`node scripts/generate-market-reference.mjs`). Re-run that script after any catalogue change.
+- **Objectives and Home forge:** "Earn N Gold" targets and the Home Anvil/Circle prices were placed with the simulator (spec §6; `--place`).
+- **Veteran shard cap (owner to confirm):** `VETERAN_SHARD_CAP = 40` in economy-curve.ts (held + claimable). It is the one constant the migration reads.
 - **Unchanged prices:** cosmetic Gold prices and the arena purse (50k) are unchanged. Neither was in the approved table.
-- **Homestead spark visual:** there is no "spark is lit" cue. `homestead-render.ts` is owned by the /play work. The spark only shows a burst once it is caught.
+- **Homestead spark visual:** while a spark waits, the Forge flares with the `goldenSpark()` burst every 2.5 s; striking catches it.
 - **Forge Frenzy:** it lives in memory only and is lost on reload.
