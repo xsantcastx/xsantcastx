@@ -23,6 +23,7 @@ import { ChallengePanelComponent } from '../shared/challenges/challenge-panel.co
 import { countdownTo } from '../shared/quests/quest-drawer.component';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
+import { injectInWorldPanel } from '../shared/in-world-panel';
 /** History rows are grouped under a day heading. */
 interface LogDay {
   label: string;
@@ -42,6 +43,8 @@ export class QuestsComponent implements OnInit, OnDestroy {
   private readonly quests = inject(QuestService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
+  /** Hosted as the Verdant Quest Board: no page heading, no links that leave /play. */
+  protected readonly inWorld = injectInWorldPanel();
 
   private readonly subs = new Subscription();
   private ticker: ReturnType<typeof setInterval> | null = null;

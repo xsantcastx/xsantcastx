@@ -139,6 +139,7 @@ import { RosterExplorer, explorerTier } from '../shared/rpg/explorer-roster.mode
 import { RARITIES } from '../shared/rarity/rarity.model';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
+import { injectInWorldPanel } from '../shared/in-world-panel';
 /**
  * The two energies, as colours.
  *
@@ -577,6 +578,12 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   private readonly zone = inject(NgZone);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly subs = new Subscription();
+  /**
+   * Hosted as the Verdant Sanctum: the panel names the place, so the page's
+   * own headline, its quick-action link row and the related links drop away
+   * (the backdrop already does, inside ArtSceneComponent).
+   */
+  protected readonly inWorld = injectInWorldPanel();
 
   // ── Live state, all mirrored in from services ──────────────────────────────
 

@@ -32,6 +32,12 @@
   overflow: clip;
 }
 
+/* In-world panel (the Verdant Sanctum): the panel is the room's frame, so the
+   page drops its page gutters and the centred headline block shrinks to the
+   hum toggle. The Works board sizes itself off its own container. */
+.fv--in-world { max-width: none; padding: 4px 4px 24px; }
+.fv--in-world .fv__head { margin-bottom: 14px; text-align: right; }
+
 /* The forge glow itself: a warm wash behind the middle of the page whose
    opacity is the earning rate. At zero it is invisible, which is correct —
    a bare forge should look cold. */
