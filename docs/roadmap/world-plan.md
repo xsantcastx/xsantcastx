@@ -71,17 +71,17 @@ Sequential: everything after it plugs into its data model and panel host.
 - [x] Checked in a production build: `/play?at=crafting` opens the real Crafting Bench in-world (backdrop + hero suppressed, forge floor works); Escape closes and clears `?at`; Places lists all 8 stations; choosing the Waystone walks there and opens travel (4 towns "Not yet charted")
 - How Phase 2 adds content (data only): a town = `src/app/play/world/towns/<realm>.ts` exporting a `TownDef`, registered in `TOWNS`; a station = a `StationDef` (`kind: 'panel'` + `panel` id opens a page; a new page needs a `PanelId` + `PANEL_REGISTRY` row); a hunt = a `HuntZoneDef` reached by a passage `to`; monsters and `ZoneDropTable`s are data on the area or monster
 
-## Phase 2: Fan out (parallel, after Phase 1 merges)
+## Phase 2: Fan out `[~]` (started 2026-10-12, 6 agents)
 
-- [ ] Luminous town: Market
-- [ ] Umbral town: Gambler, Exchange
-- [ ] Celestial town (Meridian Orrery): Codex, Leaderboards
-- [ ] Verdant town (Rootglass Canopy): Sanctum, Quests, Arena + Trials gates
-- [ ] Zone drop tables per hunting ground: real items and materials, rarity beams, items fly into the satchel
-- [ ] Material Vendor in Infernal: purchases fly to the forge stockpile (reuse the forge-floor flight)
-- [ ] One hunting-ground monster per realm from the 5 painted creatures (Rivet Maw done; Prism Forager, Ephemeris Leech, Mirror Substitute, Rootglass Stag)
-- [ ] Your gear on the Keeper in the world: weapon in hand, off-hand on the back arm, trinket and rarity auras (needs Phase 1's engine)
-- [ ] In-game UI polish: HUD, satchel, panel open/close transitions (needs Phase 1's side-scroller)
+- [~] Luminous town: Market + hunting ground (creature + zone drops)
+- [~] Umbral town: Gambler, Exchange + hunting ground
+- [~] Celestial town (Meridian Orrery): Codex, Leaderboards + hunting ground
+- [~] Verdant town (Rootglass Canopy): Sanctum, Quests, Arena + Trials gates + hunting ground
+- [~] Zone drop tables (one per town agent) + rarity beams and pickup flights (engine agent)
+- [~] Material Vendor in Infernal: purchases fly to the forge stockpile (reuse the forge-floor flight)
+- [~] Per-creature rigs for Prism Forager, Ephemeris Leech, Mirror Substitute, Rootglass Stag (engine agent)
+- [~] Your gear on the Keeper in the world: weapon in hand, off-hand on the back arm, rarity aura (engine `setLoadout` + side-scroller wiring)
+- [~] In-game UI polish: HUD, satchel, panel transitions, focus returns to canvas (Infernal agent)
 
 ## Phase 3: World only
 
@@ -118,6 +118,12 @@ Sequential: everything after it plugs into its data model and panel host.
 | Work | Branch | Status |
 |---|---|---|
 | Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
+| Phase 2 · Luminous town | agent worktree | `[~]` |
+| Phase 2 · Umbral town | agent worktree | `[~]` |
+| Phase 2 · Celestial town | agent worktree | `[~]` |
+| Phase 2 · Verdant town | agent worktree | `[~]` |
+| Phase 2 · Engine visuals (creature rigs, loot beams, gear on Keeper) | agent worktree | `[~]` |
+| Phase 2 · Infernal vendor + side-scroller UI | agent worktree | `[~]` |
 | Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
 
 ## Art still missing (placeholders in game)
