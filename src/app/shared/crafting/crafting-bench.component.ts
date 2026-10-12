@@ -34,6 +34,7 @@
  * `aria-live` region, and `prefers-reduced-motion` replaces the anvil animation
  * with a static held state rather than removing the feedback.
  */
+import { injectInWorldPanel } from '../in-world-panel';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -128,6 +129,8 @@ const DIAL_R = 46;
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class CraftingBenchComponent implements OnInit, OnDestroy {
+  /** Rendered as a place inside /play: the panel carries the title, so the hero and room links stand down. */
+  protected readonly inWorld = injectInWorldPanel();
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly gateway = inject(CraftingGateway);
   private readonly crafting = inject(CraftingService);

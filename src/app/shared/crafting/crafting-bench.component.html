@@ -1,12 +1,14 @@
-<section class="cb" aria-labelledby="cb-title">
+<section class="cb" [class.cb--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'cb-title'" [attr.aria-label]="inWorld ? t('crafting.title') : null">
 
   <!-- ── Header ────────────────────────────────────────────────────────── -->
   <header class="cb-head">
+    @if (!inWorld) {
     <div class="cb-head__copy">
       <p class="cb-eyebrow"><span class="cb-eyebrow__pulse" aria-hidden="true"></span>{{ t('crafting.eyebrow') }}</p>
       <h1 class="cb-title" id="cb-title">{{ t('crafting.title') }}</h1>
       <p class="cb-tagline">{{ t('crafting.tagline') }}</p>
     </div>
+    }
 
     <div class="cb-ladder">
       <div class="cb-dial" [style.--tier]="'#e8c898'">
@@ -297,4 +299,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/forge/crafting"></app-related-pages>
+}

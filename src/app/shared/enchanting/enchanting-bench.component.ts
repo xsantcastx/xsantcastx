@@ -29,6 +29,7 @@
  * `aria-live` region, and the countdown updates its text rather than only its
  * bar so a screen reader can read the time left.
  */
+import { injectInWorldPanel } from '../in-world-panel';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -162,6 +163,8 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class EnchantingBenchComponent implements OnInit, OnDestroy {
+  /** Rendered as a place inside /play: the panel carries the title, so the hero and room links stand down. */
+  protected readonly inWorld = injectInWorldPanel();
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly gateway = inject(EnchantingGateway);
   private readonly inventory = inject(InventoryService);

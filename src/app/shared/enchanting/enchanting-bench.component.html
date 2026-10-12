@@ -1,12 +1,14 @@
-<section class="eb" aria-labelledby="eb-title">
+<section class="eb" [class.eb--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'eb-title'" [attr.aria-label]="inWorld ? t('enchant.title') : null">
 
   <!-- ── Header ────────────────────────────────────────────────────────── -->
   <header class="eb-head">
+    @if (!inWorld) {
     <div class="eb-head__copy">
       <p class="eb-eyebrow"><span class="eb-eyebrow__pulse" aria-hidden="true"></span>{{ t('enchant.eyebrow') }}</p>
       <h1 class="eb-title" id="eb-title">{{ t('enchant.title') }}</h1>
       <p class="eb-tagline">{{ t('enchant.tagline') }}</p>
     </div>
+    }
 
     <dl class="eb-stats">
       <div>
@@ -234,4 +236,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/forge/enchanting"></app-related-pages>
+}
