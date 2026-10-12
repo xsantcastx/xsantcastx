@@ -30,6 +30,7 @@ import { RealmId, REALMS } from '../realms/realm.model';
 import { RUNES, RUNE_TIER_ORDER, Rune, rollRuneWithMagicFind } from '../rune-forge/rune.model';
 import { siteProfile } from '../expedition/expedition-site.model';
 import { ExplorerBonus, neutralBonus } from '../rpg/explorer-progression';
+import { EXPEDITION_CURVE, expeditionIncomeGold, type ExpeditionCurve } from '../economy/economy-curve';
 
 /** localStorage key. One blob, owned solely by ExplorerService. */
 export const EXPLORER_KEY = 'godforge-explorers';
@@ -61,8 +62,15 @@ export interface MissionDefinition {
   flavour: string;
   /** Milliseconds until the explorer is home. */
   duration: number;
+  /** Floor band (economy v3): the roll lands here when income is low. */
   goldMin: number;
   goldMax: number;
+  /**
+   * Economy v3: share of the launch-time Gold/s paid per second away. The
+   * payout is max(floor roll, incomeShare × seconds × Gold/s at launch), so a
+   * mission tops up the forge at every stage and never replaces it.
+   */
+  incomeShare?: number;
   xp: number;
   /** 0–1 chance of a rune. */
   runeChance: number;
@@ -177,10 +185,24 @@ export interface MissionDefinition {
  * that Gold cannot buy at any price, because reaching the anvil's own rare band
  * is a twenty-billion-Gold walk.
  *
- * Which is also why the fees are steep. 200,000 Gold on an Abyss is a real
+ * Which is also why the fees are steep. Five million Gold on an Abyss is a real
  * decision at the rank that unlocks it, and the fee is what stops the last rung
  * being a free lottery ticket you fire every three days without thinking.
  */
+/** Economy v3 numbers for a mission, from economy-curve.ts. */
+function curveRow(id: string): ExpeditionCurve {
+  const row = EXPEDITION_CURVE.find(r => r.id === id);
+  if (!row) throw new Error(`economy-curve.ts has no expedition row for ${id}`);
+  return row;
+}
+function curveGold(id: string): Pick<MissionDefinition, 'goldMin' | 'goldMax' | 'incomeShare'> {
+  const row = curveRow(id);
+  return { goldMin: row.floor, goldMax: row.floorMax, incomeShare: row.incomeShare };
+}
+function curveFee(id: string): number {
+  return curveRow(id).fee;
+}
+
 export const MISSIONS: MissionDefinition[] = [
   {
     id: 'scout',
@@ -188,8 +210,7 @@ export const MISSIONS: MissionDefinition[] = [
     label: '2 min',
     flavour: 'To the edge of the light and back before the coals cool.',
     duration: 2 * 60_000,
-    goldMin: 5_000,
-    goldMax: 10_000,
+    ...curveGold('scout'),
     xp: 5,
     runeChance: 0.00005,
     drama: 1,
@@ -200,11 +221,10 @@ export const MISSIONS: MissionDefinition[] = [
     label: '10 min',
     flavour: 'Far enough in that the way back has to be remembered.',
     duration: 10 * 60_000,
-    goldMin: 20_000,
-    goldMax: 50_000,
+    ...curveGold('delve'),
     xp: 25,
     runeChance: 0.00015,
-    cost: 500,
+    cost: curveFee('delve'),
     drama: 2,
   },
   {
@@ -213,11 +233,10 @@ export const MISSIONS: MissionDefinition[] = [
     label: '1 hour',
     flavour: 'They pack for a week and are gone for an afternoon. Nobody has explained it.',
     duration: 60 * 60_000,
-    goldMin: 100_000,
-    goldMax: 300_000,
+    ...curveGold('expedition'),
     xp: 120,
     runeChance: 0.0003,
-    cost: 2_000,
+    cost: curveFee('expedition'),
     materialsMin: 1,
     materialsMax: 2,
     drama: 3,
@@ -228,8 +247,7 @@ export const MISSIONS: MissionDefinition[] = [
     label: '4 hours',
     flavour: 'Far enough down that the realm stops being scenery and starts being weather.',
     duration: 4 * 60 * 60_000,
-    goldMin: 500_000,
-    goldMax: 1_400_000,
+    ...curveGold('deep-dive'),
     xp: 600,
     // Three orders of magnitude above the hour's rate, because the floor below
     // has already taken Commons and Uncommons off the table: this is the chance
@@ -238,7 +256,7 @@ export const MISSIONS: MissionDefinition[] = [
     // different questions.
     runeChance: 0.6,
     runeFloor: 2,
-    cost: 10_000,
+    cost: curveFee('deep-dive'),
     deep: true,
     materialsMin: 3,
     materialsMax: 6,
@@ -250,8 +268,7 @@ export const MISSIONS: MissionDefinition[] = [
     label: '24 hours',
     flavour: 'A day and a night. They come back carrying things the maps do not have names for.',
     duration: 24 * 60 * 60_000,
-    goldMin: 3_000_000,
-    goldMax: 9_000_000,
+    ...curveGold('grand'),
     xp: 3_600,
     runeChance: 0.75,
     runeFloor: 2,
@@ -259,7 +276,7 @@ export const MISSIONS: MissionDefinition[] = [
     // this row is a better version of a number the ladder already had; this is
     // the only line that changes what a return *is*.
     guaranteedRunes: 1,
-    cost: 50_000,
+    cost: curveFee('grand'),
     deep: true,
     materialsMin: 8,
     materialsMax: 14,
@@ -271,8 +288,7 @@ export const MISSIONS: MissionDefinition[] = [
     label: '72 hours',
     flavour: 'Nobody sends an explorer into the Abyss twice by accident. The first time is enough to learn the difference.',
     duration: 72 * 60 * 60_000,
-    goldMin: 20_000_000,
-    goldMax: 60_000_000,
+    ...curveGold('abyss'),
     xp: 15_000,
     runeChance: 0.9,
     // Epic. The Abyss is the only place in the game a Legendary or a Mythic is
@@ -280,7 +296,7 @@ export const MISSIONS: MissionDefinition[] = [
     // that is deliberately the last rung's whole identity.
     runeFloor: 3,
     guaranteedRunes: 2,
-    cost: 200_000,
+    cost: curveFee('abyss'),
     minLevel: 5,
     exclusive: true,
     deep: true,
@@ -465,16 +481,29 @@ export function realmProfile(id: RealmId | string): RealmExpeditionProfile {
   return REALM_EXPEDITION_PROFILES[id as RealmId] ?? REALM_EXPEDITION_PROFILES.luminous;
 }
 
-/** The Gold band a mission pays in a given realm, after the realm's cut. */
+/**
+ * The Gold band a mission pays in a given realm, after the realm's cut.
+ *
+ * Economy v3: pass the live Gold/s and the band is what a dispatch *now* would
+ * pay — each end raised to the income term when that is higher. Without it,
+ * the band is the floor.
+ */
 export function realmGoldBand(
   mission: MissionDefinition,
   realm: RealmId | string,
+  goldPerSecond = 0,
 ): { min: number; max: number } {
   const mult = realmProfile(realm).goldMultiplier;
+  const income = missionIncomeGold(mission, mission.duration, goldPerSecond);
   return {
-    min: Math.round(mission.goldMin * mult),
-    max: Math.round(mission.goldMax * mult),
+    min: Math.round(Math.max(mission.goldMin, income) * mult),
+    max: Math.round(Math.max(mission.goldMax, income) * mult),
   };
+}
+
+/** The income term of a mission's payout: incomeShare × seconds × Gold/s at launch. */
+export function missionIncomeGold(mission: Pick<MissionDefinition, 'incomeShare'>, durationMs: number, goldPerSecond: number): number {
+  return expeditionIncomeGold({ incomeShare: mission.incomeShare ?? 0 }, durationMs, goldPerSecond);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -551,6 +580,13 @@ export interface Expedition {
   duration: number;
   /** Epoch ms the explorer left. */
   startedAt: number;
+  /**
+   * Gold/s when the explorer left (economy v3). Frozen for the reason
+   * `duration` is: the payout is "N seconds of income", and the income is the
+   * one the player had when they chose to send them. Absent on a record from
+   * before v3; settlement then uses the Gold/s at return.
+   */
+  incomeAtLaunch?: number;
   /**
    * The loot bonus this explorer carried at dispatch, as a percentage.
    *
@@ -914,7 +950,11 @@ export function rollReward(
     // duration the player picked is the duration they get, and the extra
     // distance covered is paid as extra loot.
     gold: Math.round(
-      (mission.goldMin + rng() * span)
+      // Economy v3: the floor roll, or the income term when that is higher.
+      Math.max(
+        mission.goldMin + rng() * span,
+        missionIncomeGold(mission, opts.durationMs ?? mission.duration, opts.incomeAtLaunch ?? 0),
+      )
       * yieldMult * profile.goldMultiplier
       * site.goldMultiplier * who.gold * collection,
     ),
@@ -1016,6 +1056,10 @@ export interface RewardOptions {
   bonus?: ExplorerBonus;
   /** The compounded roster-collection multiplier. Absent is 1. */
   rosterMultiplier?: number;
+  /** Economy v3: Gold/s when the explorer left (frozen on the record). Absent is 0 — floor only. */
+  incomeAtLaunch?: number;
+  /** The mission's real length in ms (after speed). Absent: the definition's duration. */
+  durationMs?: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

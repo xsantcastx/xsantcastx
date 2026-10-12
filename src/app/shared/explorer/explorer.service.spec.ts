@@ -271,7 +271,7 @@ describe('ExplorerService', () => {
     const before = economy.snapshot.gold;
 
     expect(explorers.dispatch('umbral', 'delve')).toBe(true);
-    expect(before - economy.snapshot.gold).toBe(500);
+    expect(before - economy.snapshot.gold).toBe(300); // economy v3 Delve fee
   });
 
   it('does not charge for a dispatch the roster refuses', () => {

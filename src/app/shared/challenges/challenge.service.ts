@@ -42,6 +42,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
+import { incomeRewardBase } from '../economy/economy.model';
+import { REWARD_SECONDS, itemScaled, rewardSecondsFor } from '../economy/economy-curve';
 import { XpService } from '../gamification/xp.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { RUNES, Rune } from '../rune-forge/rune.model';
@@ -394,7 +396,15 @@ export class ChallengeService {
     // Paid only after the receipt is written and flushed. If the mint threw,
     // the challenge stays claimed rather than becoming an infinite faucet —
     // the same ordering `QuestService.claim` and `ExplorerService.settle` use.
-    const gold = this.economy.earnGold(challenge.gold, 'challenge');
+    // Economy v3: the authored Gold is the v2 figure. It pays max(that × ρ,
+    // 5-20 min of income for a daily / 1-4 h for a weekly), keeping each
+    // challenge's place on its band.
+    const band = challenge.cadence === 'weekly' ? REWARD_SECONDS.weekly : REWARD_SECONDS.daily;
+    const seconds = rewardSecondsFor(challenge.gold, band.oldMin, band.oldMax, band.minS, band.maxS);
+    const gold = this.economy.earnGold(
+      incomeRewardBase(itemScaled(challenge.gold), seconds, this.economy.snapshot),
+      'challenge',
+    );
 
     this.state.goldPaid += gold;
     this.state.log.unshift({

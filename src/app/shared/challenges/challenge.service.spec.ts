@@ -153,7 +153,8 @@ describe('ChallengeService', () => {
     const first = challenges.board.daily[0];
     complete(first.id);
     expect(challenges.claim(first.id)).toBe(true);
-    expect(minted).toEqual([{ amount: first.gold, source: 'challenge' }]);
+    // Economy v3: max(authored × ρ, N s of income); the fake has no income.
+    expect(minted).toEqual([{ amount: Math.max(1, Math.round(first.gold * 0.06)), source: 'challenge' }]);
     expect(challenges.board.daily.find(c => c.id === first.id)!.status).toBe('claimed');
   });
 

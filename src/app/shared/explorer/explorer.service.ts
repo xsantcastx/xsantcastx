@@ -417,6 +417,9 @@ export class ExplorerService implements OnDestroy {
         * bonus.speed,
       )),
       startedAt: Date.now(),
+      // Economy v3: the payout is "N seconds of income", priced off the
+      // income the player had when they sent them.
+      incomeAtLaunch: this.economy.snapshot.perSecond,
       lootBonus: this.roster.lootBonusOf(chosen.id),
       yieldMultiplier: this.stats.missionMultiplier,
       bonus,
@@ -537,6 +540,11 @@ export class ExplorerService implements OnDestroy {
         // on all three. There is no exploit in the other direction — the
         // multiplier cannot go down.
         rosterMultiplier: this.roster.snapshot.payoutMultiplier,
+        // Economy v3. A record from before v3 has no frozen income and is paid
+        // off the income at return, so a mission out across the update still
+        // pays a v3-sized reward rather than only the floor.
+        incomeAtLaunch: explorer.incomeAtLaunch ?? this.economy.snapshot.perSecond,
+        durationMs: explorer.duration,
       });
 
       next = {

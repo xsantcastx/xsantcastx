@@ -91,9 +91,11 @@ export class RpgWiringService {
    * item on both sides.
    */
   private mirror(): void {
-    const fromStats = this.stats.goldPerSec;
+    // Economy v3: gear stays a flat Gold/s addend; Forge Power is a percentage
+    // of the forge (economy-curve.ts, FORGE_POWER_PERCENT_PER_POINT).
     const fromGear = this.inventory.equippedTotals.goldPerSec;
-    this.economy.setRpgFlatGold(fromStats + fromGear);
+    this.economy.setRpgFlatGold(fromGear);
+    this.economy.setRpgForgePercent(this.stats.goldPerSec);
     this.economy.setPriceMultiplier(this.stats.priceMultiplier);
     // A multiplier on the whole rate rather than on the RPG line: the card says
     // "+10% Gold/sec", and a visitor whose Gold comes almost entirely from the

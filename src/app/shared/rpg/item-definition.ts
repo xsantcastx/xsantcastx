@@ -131,7 +131,7 @@ function roundStat(key: ItemStatKey, value: number): number {
  *
  * The Gambler needs a till, so equipment gets a ladder of its own here rather
  * than inheriting the rune worths. It has to be its own table because the rune
- * numbers are an order of magnitude larger — a Common rune is worth 5,000 Gold,
+ * numbers are an order of magnitude larger — a Common rune sells for 300 Gold,
  * which is the entire price of an Iron Chest. Reusing them would make the
  * cheapest mystery box strictly profitable to open and scrap on the spot, and a
  * gambling hub that prints money is not a sink, it is a bug with an animation.
@@ -141,13 +141,15 @@ function roundStat(key: ItemStatKey, value: number): number {
  * the item — never the Gold it melts down into.
  */
 export const EQUIPMENT_SCRAP: Readonly<Record<ItemRarity, number>> = {
-  common: 600,
-  uncommon: 2_500,
-  rare: 12_000,
-  epic: 60_000,
-  legendary: 300_000,
-  mythic: 1_500_000,
-  singular: 8_000_000,
+  // Economy v3: the v2 ladder × ρ (0.06), the factor every box, rune and craft
+  // fee moved by, so every box stays negative EV in scrap.
+  common: 36,
+  uncommon: 150,
+  rare: 720,
+  epic: 3_600,
+  legendary: 18_000,
+  mythic: 90_000,
+  singular: 480_000,
 };
 
 /** Sticker price for one minted instance, before the roll grade scales it. */

@@ -10,7 +10,7 @@
  * being strictly better than doing it yourself:
  *
  *   • **Price.** A Thrall's roll costs {@link THRALL_ROLL_MULTIPLIER}× what the
- *     Keeper's does. At the shipped `STRIKE_COST` that is a million Gold a pull.
+ *     Keeper's does. At the shipped `STRIKE_COST` (600, economy v3) that is 60,000 Gold a pull.
  *     Automation is a *Gold sink*, not a Gold engine.
  *   • **Luck.** A Thrall rolls at a fraction of the Keeper's Magic Find — half
  *     of it at the bottom of the ladder. They will not find your Void for you.
@@ -105,31 +105,31 @@ export interface ThrallTierDefinition {
 export const THRALL_TIERS: Record<ThrallRarity, ThrallTierDefinition> = {
   common: {
     id: 'common', label: 'Common',
-    price: 50_000, baseStamina: 100, magicFindShare: 0.5, rollInterval: 30_000,
+    price: 25_000, baseStamina: 100, magicFindShare: 0.5, rollInterval: 30_000,
     color: RUNE_TIERS.common.color, glow: RUNE_TIERS.common.glow,
     flavour: 'Bound for a debt nobody wrote down. Pulls the lever, says nothing.',
   },
   uncommon: {
     id: 'uncommon', label: 'Uncommon',
-    price: 200_000, baseStamina: 150, magicFindShare: 0.6, rollInterval: 20_000,
+    price: 400_000, baseStamina: 150, magicFindShare: 0.6, rollInterval: 20_000,
     color: RUNE_TIERS.uncommon.color, glow: RUNE_TIERS.uncommon.glow,
     flavour: 'Has been at an anvil before. Does not flinch when it rings.',
   },
   rare: {
     id: 'rare', label: 'Rare',
-    price: 1_000_000, baseStamina: 200, magicFindShare: 0.7, rollInterval: 15_000,
+    price: 8_000_000, baseStamina: 200, magicFindShare: 0.7, rollInterval: 15_000,
     color: RUNE_TIERS.rare.color, glow: RUNE_TIERS.rare.glow,
     flavour: 'Counts the strikes under their breath and has never lost the count.',
   },
   epic: {
     id: 'epic', label: 'Epic',
-    price: 5_000_000, baseStamina: 300, magicFindShare: 0.8, rollInterval: 10_000,
+    price: 150_000_000, baseStamina: 300, magicFindShare: 0.8, rollInterval: 10_000,
     color: RUNE_TIERS.epic.color, glow: RUNE_TIERS.epic.glow,
     flavour: 'Was owed something by the Forge and has come to collect it slowly.',
   },
   legendary: {
     id: 'legendary', label: 'Legendary',
-    price: 25_000_000, baseStamina: 500, magicFindShare: 0.9, rollInterval: 5_000,
+    price: 3_000_000_000, baseStamina: 500, magicFindShare: 0.9, rollInterval: 5_000,
     color: RUNE_TIERS.legendary.color, glow: RUNE_TIERS.legendary.glow,
     flavour: 'Struck the Forge before you owned it. Has not been asked to stop.',
   },
@@ -211,7 +211,7 @@ export const MF_SHARE_PER_LEVEL = 0.005;
  *
  * Superlinear so the tail is a commitment rather than an afternoon: level 2 is
  * 40 XP, level 20 is a little over 3,600, and the whole climb is ~26,000 — a
- * few thousand pulls, which at a million Gold each is the point.
+ * few thousand pulls, which at 60,000 Gold each (economy v3) is the point.
  */
 export function xpToNext(level: number): number {
   const n = Math.max(1, Math.floor(level));

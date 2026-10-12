@@ -487,14 +487,19 @@
               </p>
             }
 
-            <!-- The wandering trader. Rendered inside the Keeper column because that
-                 is where the eye already is, and it has to be caught before it goes. -->
+            <!-- The Golden Spark (economy v3; it replaced the wandering trader).
+                 Rendered inside the Keeper column because that is where the eye
+                 already is, and it has to be caught before it goes (13 seconds). -->
             @if (traderGold > 0) {
               <button type="button" class="fv__trader" (click)="takeTrade()">
-                <span class="fv__trader-glyph" aria-hidden="true">🧙</span>
+                <span class="fv__trader-glyph" aria-hidden="true">✨</span>
                 <span class="fv__trader-copy">
-                  <b>A mysterious trader appears</b>
-                  <span>Takes nothing, leaves {{ traderGold }} Gold. Going soon.</span>
+                  <b>A golden spark lands on the forge</b>
+                  @if (sparkKind === 'frenzy') {
+                    <span>Catch it: Forge Frenzy, five times the Gold for a minute. Going soon.</span>
+                  } @else {
+                    <span>Catch it for about {{ traderGold | number }} Gold. Going soon.</span>
+                  }
                 </span>
               </button>
             }

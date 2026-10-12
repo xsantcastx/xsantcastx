@@ -20,7 +20,7 @@
  * ─────────────────────────────────────────────────────────────────────────────
  * WHY PITY IS COUNTED PER BOX AND NOT GLOBALLY
  * ─────────────────────────────────────────────────────────────────────────────
- * A global counter would let a player build pity on Iron Chests at 5,000 Gold
+ * A global counter would let a player build pity on Iron Chests at 300 Gold
  * apiece and then spend it on a Void Cache — buying a guaranteed Singular for
  * about a fiftieth of what the guarantee is worth. Counting per box means the
  * protection is always paid for at the price of the thing it protects.
@@ -77,31 +77,31 @@ export interface MysteryBox {
  */
 export const MYSTERY_BOXES: readonly MysteryBox[] = [
   {
-    id: 'iron-chest', name: 'Iron Chest', cost: 5_000,
+    id: 'iron-chest', name: 'Iron Chest', cost: 300,
     minRarity: 'common', maxRarity: 'uncommon',
     blurb: 'Banded iron, unlovely, honest about what it is.',
     accent: '#8f98a8', glow: 'rgba(143, 152, 168, 0.5)',
   },
   {
-    id: 'silver-coffer', name: 'Silver Coffer', cost: 25_000,
+    id: 'silver-coffer', name: 'Silver Coffer', cost: 1_500,
     minRarity: 'uncommon', maxRarity: 'rare',
     blurb: 'Tarnished at the hinges. Whatever is inside has been inside a while.',
     accent: '#5fb6ff', glow: 'rgba(80, 180, 255, 0.55)',
   },
   {
-    id: 'golden-reliquary', name: 'Golden Reliquary', cost: 100_000,
+    id: 'golden-reliquary', name: 'Golden Reliquary', cost: 6_000,
     minRarity: 'rare', maxRarity: 'epic',
     blurb: 'Built to hold one thing reverently. It is not fussy about which.',
     accent: '#a48bff', glow: 'rgba(140, 110, 255, 0.7)',
   },
   {
-    id: 'eclipse-vault', name: 'Eclipse Vault', cost: 500_000,
+    id: 'eclipse-vault', name: 'Eclipse Vault', cost: 30_000,
     minRarity: 'epic', maxRarity: 'legendary',
     blurb: 'Sealed during the Shattering. Nobody recorded by whom, or against what.',
     accent: '#ff9a5a', glow: 'rgba(255, 154, 90, 0.8)',
   },
   {
-    id: 'void-cache', name: 'Void Cache', cost: 5_000_000,
+    id: 'void-cache', name: 'Void Cache', cost: 300_000,
     minRarity: 'legendary', maxRarity: 'singular',
     blurb: 'It is not a container. It is a place the realms forgot to finish, and things collect there.',
     accent: '#ff2d4d', glow: 'rgba(255, 45, 77, 0.85)',

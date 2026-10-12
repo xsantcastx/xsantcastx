@@ -364,7 +364,7 @@ export const APP_ROUTES: Routes = [
       loadComponent: () => import('./shared/gambler/gambler.component').then(m => m.GamblerComponent),
       title: 'The Gambler — Mystery Boxes & Rare Items | Eclipse Realms',
       data: {
-        description: 'Mystery boxes and rare item drops in Eclipse Realms, a free browser RPG with Diablo-style loot. Five sealed boxes from five thousand to five million Gold, published odds, and bad luck protection after ten floor results. Sell what you do not want at the till.',
+        description: 'Mystery boxes and rare item drops in Eclipse Realms, a free browser RPG with Diablo-style loot. Five sealed boxes from three hundred to three hundred thousand Gold, published odds, and bad luck protection after ten floor results. Sell what you do not want at the till.',
         keywords: 'mystery box, loot box, gambling, item rolls, stat quality, eclipse realms, godforge, idle game, xsantcastx',
         ogImage: `${SITE_URL}/assets/og/og-godforge.jpg`,
         jsonLd: {

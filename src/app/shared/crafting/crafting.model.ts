@@ -45,6 +45,7 @@ import type { NarrativeRealmId } from '../narrative/five-realms.narrative';
 import { bandFor } from '../rpg/item-quality';
 import { TOOL_OPENS, TOOL_TIER_LEVEL } from '../skills/tools';
 import { toolItemId, toolName, type ToolFamily, type ToolTier } from '../skills/tool-items';
+import { CRAFT_FEE_FLOOR, itemScaled } from '../economy/economy-curve';
 
 /** The localStorage key. Registered in `SYNCED_BLOBS` so it reaches the cloud. */
 export const CRAFTING_KEY = 'godforge-crafting';
@@ -179,6 +180,33 @@ export interface CraftingRecipe {
 // player who has never sent an explorer out, so the first rung of each column
 // is gatherable by hand.
 
+/**
+ * Economy v3 (rebalance spec §3): craft fees are the authored v2 fee scaled per
+ * rarity so the tier's cheapest recipe lands on its v3 floor
+ * (`CRAFT_FEE_FLOOR`: uncommon 1k, rare 10k, epic 150k, legendary 2.5M, mythic
+ * 60M) and the tier's spread is kept. Every factor is ≥ ρ, so a craft never
+ * costs less than the item it makes sells for. The literals in the catalogue
+ * below are the v2 fees, kept so the authored spread stays readable.
+ */
+const V2_CRAFT_FEE_MIN: Readonly<Record<string, number>> = {
+  uncommon: 4_000,
+  rare: 22_000,
+  epic: 120_000,
+  legendary: 560_000,
+  mythic: 2_400_000,
+};
+
+/** The v3 Gold fee for a recipe authored at `v2Fee`. 0 stays 0 (Basalt Edge). */
+export function craftFeeV3(rarity: string, v2Fee: number): number {
+  if (!(v2Fee > 0)) return 0;
+  const floor = CRAFT_FEE_FLOOR[rarity];
+  const min = V2_CRAFT_FEE_MIN[rarity];
+  const raw = floor && min ? v2Fee * (floor / min) : itemScaled(v2Fee);
+  // Two significant figures: 3,409 → 3,400, 306,250 → 310,000.
+  const magnitude = Math.pow(10, Math.max(0, Math.floor(Math.log10(raw)) - 1));
+  return Math.max(1, Math.round(raw / magnitude) * magnitude);
+}
+
 function r(
   id: string,
   name: string,
@@ -199,7 +227,8 @@ function r(
     rarity,
     ingredients,
     output: extra.stack ? { itemId, count: extra.count ?? 1, stack: true } : { itemId, count: extra.count ?? 1 },
-    goldCost,
+    // The Delve kit was authored after the rebalance, in v3 Gold already.
+    goldCost: category === 'delve' ? goldCost : craftFeeV3(rarity, goldCost),
     requiredLevel,
     realm: extra.realm,
     craftTime: extra.craftTime ?? 0,

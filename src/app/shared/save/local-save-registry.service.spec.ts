@@ -72,7 +72,7 @@ describe('EconomyService cloud-save adoption', () => {
   function seedLedger(gold: number): void {
     localStorage.setItem(ECONOMY_KEY, JSON.stringify({
       ...emptyEconomy(),
-      version: 2,
+      version: 3,
       gold,
       totalGoldEarned: gold,
       // Anchored to now, so hydration does not settle an offline span and pay

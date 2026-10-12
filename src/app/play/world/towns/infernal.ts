@@ -240,7 +240,7 @@ export const INFERNAL_TOWN: TownDef = {
   stations: [
     { id: 'ore', x: 480, label: 'CINDER ORE', kind: 'resource', art: CINDER_ORE, width: 130, blurb: 'Mine Cinder Ore from the seam.' },
     { id: 'delve', x: 590, label: 'EMBER DELVE', kind: 'passage', to: 'ember-delve', arriveX: 260, width: 90, blurb: 'A mine shaft into the rock under the Seamworks. Dig for ore.' },
-    { id: 'vendor', x: 705, label: 'MATERIAL VENDOR', kind: 'panel', panel: 'vendor', art: 'trade-complete', width: 130, blurb: 'Buy expedition materials for Gold; crates go to the forge stockpile.' },
+    { id: 'vendor', x: 705, label: 'MATERIAL VENDOR', kind: 'panel', panel: 'vendor', art: 'trade-complete', width: 130, blurb: 'Sell surplus materials for a little Gold. The Vendor buys; it does not sell.' },
     { id: 'forge', x: 930, label: 'SEAMWORKS FORGE', kind: 'quest', width: 120, blurb: 'Forge and equip the Basalt Edge.' },
     { id: 'crafting', x: 1220, label: 'CRAFTING BENCH', kind: 'panel', panel: 'crafting', art: 'iron-hammer', width: 170, blurb: 'Strike gathered materials into gear.' },
     { id: 'runes', x: 1500, label: 'RUNE FORGE', kind: 'panel', panel: 'runes', art: 'rune-of-cinder', width: 170, blurb: 'Gamble Gold on the anvil for runes.' },
