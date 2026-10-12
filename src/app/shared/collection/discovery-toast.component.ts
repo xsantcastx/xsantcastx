@@ -47,6 +47,7 @@ import { Subscription } from 'rxjs';
 import { RUNE_TIERS } from '../rune-forge/rune.model';
 import { artFor, type ArtEntry } from '../art/art';
 import { CollectionService, type CollectionDiscovery } from './collection.service';
+import { SpotlightService } from './spotlight.service';
 import {
   collectionCategory,
   type CollectionReward,
@@ -283,6 +284,7 @@ const QUEUE_CAP = 4;
 export class DiscoveryToastComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly collection = inject(CollectionService);
+  private readonly spotlight = inject(SpotlightService);
   private readonly cdr = inject(ChangeDetectorRef);
 
   reveal: Reveal | null = null;
@@ -300,6 +302,9 @@ export class DiscoveryToastComponent implements OnInit, OnDestroy {
     if (!this.isBrowser) return;
     this.subs.push(this.collection.discovery$.subscribe(d => this.enqueue(this.fromDiscovery(d))));
     this.subs.push(this.collection.reward$.subscribe(r => this.enqueue(this.fromReward(r))));
+    // A reveal that owns the stage (the Gambler's altar) holds the queue; the
+    // cards it collected play once it lets go.
+    this.subs.push(this.spotlight.held$.subscribe(held => { if (!held && !this.running) this.next(); }));
   }
 
   ngOnDestroy(): void {
@@ -318,7 +323,7 @@ export class DiscoveryToastComponent implements OnInit, OnDestroy {
   private enqueue(reveal: Reveal): void {
     if (this.queue.length >= QUEUE_CAP) return;
     this.queue.push(reveal);
-    if (!this.running) this.next();
+    if (!this.running && !this.spotlight.held) this.next();
   }
 
   private next(): void {
@@ -348,6 +353,7 @@ export class DiscoveryToastComponent implements OnInit, OnDestroy {
       this.reveal = null;
       this.sparkling = false;
       this.cdr.markForCheck();
+      if (this.spotlight.held) { this.running = false; return; }
       this.next();
     }, 300));
   }

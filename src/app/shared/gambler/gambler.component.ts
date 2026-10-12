@@ -70,6 +70,7 @@ import {
   type ItemRarity,
 } from '../rpg/item.model';
 import { CelebrationService } from '../celebration/celebration.service';
+import { SpotlightService } from '../collection/spotlight.service';
 import { RUNE_TIERS } from '../rune-forge/rune.model';
 import { revealTiming, type RevealSpeed, type RevealTiming } from './reveal-timing';
 
@@ -138,6 +139,9 @@ export class GamblerComponent implements OnInit, OnDestroy {
   private readonly inventory = inject(InventoryService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly celebration = inject(CelebrationService);
+  private readonly spotlight = inject(SpotlightService);
+  /** Whether this component currently holds the spotlight (see `holdSpotlight`). */
+  private onStage = false;
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
   private readonly subs = new Subscription();
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -206,6 +210,15 @@ export class GamblerComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subs.unsubscribe();
     this.clearTimers();
+    this.holdSpotlight(false);
+  }
+
+  /** Hold the spotlight for exactly as long as a reveal is up, so the
+   *  Collection's "New discovery" card waits instead of covering the charge. */
+  private holdSpotlight(on: boolean): void {
+    if (on === this.onStage) return;
+    this.onStage = on;
+    if (on) this.spotlight.hold(); else this.spotlight.release();
   }
 
   // ── The shelf ──────────────────────────────────────────────────────────────
@@ -231,9 +244,14 @@ export class GamblerComponent implements OnInit, OnDestroy {
   open(box: MysteryBox): void {
     if (!this.isBrowser || this.phase !== 'idle') return;
 
+    // Held before the open: the item is banked inside it, and the discovery it
+    // triggers is emitted synchronously from there.
+    this.holdSpotlight(true);
+
     // The outcome is decided, charged and saved here — before any theatre.
     const outcome = this.gambler.open(box.id);
     if (!outcome.ok) {
+      this.holdSpotlight(false);
       this.error = this.failureText(outcome.code, box);
       this.cdr.markForCheck();
       return;
@@ -348,14 +366,19 @@ export class GamblerComponent implements OnInit, OnDestroy {
     this.result = null;
     this.timing = null;
     this.celebration.cancel();
+    this.holdSpotlight(false);
     this.cdr.markForCheck();
   }
 
   /** Buy the same box again straight from the reveal. */
   again(): void {
     const box = this.active;
+    // Bridge the gap between this reveal's dismiss and the next one's open, or
+    // a queued discovery would start in it and land on the new charge.
+    this.spotlight.hold();
     this.dismiss();
     if (box) this.open(box);
+    this.spotlight.release();
   }
 
   private failureText(code: OpenFailure, box: MysteryBox): string {
