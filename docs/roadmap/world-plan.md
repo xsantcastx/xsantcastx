@@ -119,7 +119,7 @@ things with tools you crafted, and you see your economy working.
 - [ ] Implement the rebalance in one coordinated change **after** the Homestead, Skills and Station-kit branches merge (they all touch Gold prices); versioned, idempotent save migration; tests guard the curve
 - [x] Golden-spark burst event
 
-## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[~]`
+## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[x]`
 
 - [x] **Per-player persistent Delve** (`88cb159`): a seed per player stored in the save; dug, placed and built cells saved as a compact diff through the save gateway (local + Firestore when signed in), idempotent with the existing mutation ids. Owner decision 2026-10-12. Today the layout is one fixed seed for everyone and dug state is session-only
 - [x] **Biomes by depth** (`88cb159`), each with its own palette, light, nodes and creatures: **Root Hollows** (roots, petrified trunks, mushrooms → Foraging/Woodcutting), **Basalt Caverns** (Cinder/Slag → Mining; today's Delve), **Glowcap Grotto** (glowing herbs, e.g. Moonpetal-type → Foraging), **Magma Halls** (Heartstone, Ember Residue, tough Maws → Mining/Delving)
@@ -134,12 +134,15 @@ things with tools you crafted, and you see your economy working.
 - [x] **"Found in…"** (`88cb159`) for every material: a line in the Skills panel and the Codex ("Moonpetal — Ember Delve, Glowcap Grotto"), generated from the node and drop-table data so it can't drift. Today herbs only come from Foraging work and hunt drops, and nothing says where
 
 Turn the mine from "dig and collect" into a place you shape. Foundation first:
-- [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
+- [x] **Persistent dug state** per delve (`88cb159`, see per-player persistent Delve above)
 - [x] **Place blocks back** (`0f57c99`; B in front, S+B below, long-press/right-click a cell): mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs)
 - [x] **Torches** (`0f57c99`; Torch ×3 = 1 Cinder Ore + 1 Bark + 30 Gold; X takes back): crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
 - [x] **Ladders and platforms** (`0f57c99`): traverse deep shafts back up
 - [x] **Portable workbench / campfire** (`0f57c99`; one per Delve; opens Crafting on "Ready now"; "Descend to your camp" from town): craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
-- [x] **Chests** (`0f57c99`; 4 material kinds each, through the satchel ledger; supports/bombs still to do) to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
+- [x] **Chests** (`0f57c99`; 4 material kinds each, through the satchel ledger) to stash finds underground; **gear in chests** (`5471a66`; up to 6 pieces, held through the inventory ledger like thrall gear)
+- [x] **Supports** (`5471a66`): ~1 in 5 Magma Halls rock cells is loose (fixed hash, terrain v2 unchanged), cracks/dust/groan 0.45 s then falls, rubble 8% max HP (never below 1). Timber support reach 3 (Smithing 5), basalt reach 5 (Smithing 12)
+- [x] **Blasting charges** (`5471a66`): Smithing 10, lit with a staff, 1.6 s fuse, ~2-cell radius, breaks rock up to one tier above the staff, never bedrock / protected stamps / the fragment chamber before the warden falls
+- [x] **The four extra inscriptions placed** (`5471a66`; always-air cells); the Archivist's "all" is now 12
 - [x] Tile, torch, ladder, platform and workbench art briefs → `docs/art-commissions/` second wave (`d9702b6`; 223 entries total; make-first list in `01-second-wave.md`)
 - [x] (`9ec52e4`) Importer: add a `Sprites/Tiles` family that accepts **opaque** 32px tiles (today the cut-out corner guard would reject them)
 - [x] (`9ec52e4`) Engine: spawn the Rune-Warden and Magma Maw under their own art keys (`rune-warden`, `magma-maw`); they currently borrow `mirror-substitute` / `rivet-maw`
@@ -157,7 +160,7 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] Importer: lossless `Sprites/*` path + sidecar JSON → `sprite-manifest.generated.ts` / `spriteFor()`; see-through figures rejected; `--commissions` lists what's still missing; `ART_PENDING` auto-clears when art lands (`ccb0de5`)
 - [ ] **Owner:** approve names for 4 invented NPC roles (material vendor, croupier, exchange broker, expedition steward)
 - [ ] **Owner:** produce the test set and drop it in the library
-- [x] Engine sprite-sheet renderer (`403b706`): `SpriteRenderer` (frames, pivot, mirroring, hand anchors for `setLoadout`, cached hit-flash), used by Keeper/peers/creatures/keepers/townsfolk whenever `spriteFor(key)` has a loaded sheet; otherwise today's rig/placeholder. Owner steps in `docs/handoff/sprite-renderer.md`. Follow-up: importer should pass the optional `pixelArt` flag through
+- [x] Engine sprite-sheet renderer (`403b706`): `SpriteRenderer` (frames, pivot, mirroring, hand anchors for `setLoadout`, cached hit-flash), used by Keeper/peers/creatures/keepers/townsfolk whenever `spriteFor(key)` has a loaded sheet; otherwise today's rig/placeholder. Owner steps in `docs/handoff/sprite-renderer.md`. Importer passes the `pixelArt` flag through (`5471a66`)
 - [ ] A/B the test set in the Seamworks on a branch, then decide go / no-go for the full sprite pass
 - [-] Full sprite pass for every town, creature and NPC (after the A/B)
 
@@ -215,7 +218,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
-- **Playtests merged** (`13b3e7e`): `e2e/play-*.spec.ts` (run with `PW_PORT=4291`), 25 pass + 6 `fixme` = app bugs in `docs/handoff/playtest-findings.md`: P-1 Exchange buy→sell profit (likely already fixed by the exploit fix), P-2 `?at=` to another town lost on reload, P-3 no Hunting XP from kills / no Mining XP from ore pickup (Hunting partly fixed by the gathering merge), P-4 monster coins never reach the purse, P-5 vendor pays equal to (not below) the Exchange floor, P-6 The Fracture's 600 XP exceeds the 500 per-action cap and is lost. Fix round: **P-1 confirmed fixed, P-5 fixed (Slag Fragment ties at 1 Gold, not a loop), P-6 fixed (mission XP split ≤500 per grant)** (`0c1c50f`); P-2/P-3/P-4 in progress in the Delve agent
+- **Playtests merged** (`13b3e7e`): `e2e/play-*.spec.ts` (run with `PW_PORT=4291`), 25 pass + 6 `fixme` = app bugs in `docs/handoff/playtest-findings.md`: P-1 Exchange buy→sell profit (likely already fixed by the exploit fix), P-2 `?at=` to another town lost on reload, P-3 no Hunting XP from kills / no Mining XP from ore pickup (Hunting partly fixed by the gathering merge), P-4 monster coins never reach the purse, P-5 vendor pays equal to (not below) the Exchange floor, P-6 The Fracture's 600 XP exceeds the 500 per-action cap and is lost. Fix round: **P-1 confirmed fixed, P-5 fixed (Slag Fragment ties at 1 Gold, not a loop), P-6 fixed (mission XP split ≤500 per grant)** (`0c1c50f`); **P-2 fixed** (current town saved in `eclipse-play-world-v1`, `?at=` still wins), **P-3 fixed** (ore pickup pays 2 Mining XP), **P-4 fixed** (coins reach the purse once per drop) (`5471a66`); all six playtest findings closed, fixme specs un-fixme'd
 - **Owner: confirm 11 keeper role titles**: Buyback Clerk, Croupier, Exchange Broker, Expedition Steward (from the art pack) + Bench Smith, Enchanter, Chart Clerk, Board Herald, Arena Gatekeeper, Trials Warden, Lodge Warden (Phase 4). Titles only, no personal names until approved
 - **Owner: look at Phase 4 in a browser**: keeper placement beside (not on) stalls, greeting once on approach, townsfolk never on a stall, realm particles, ES name tags
 - Gathering regrowth now persisted (`9ec52e4`, blob `godforge-gathering`)
@@ -226,10 +229,10 @@ filename the importer picks up automatically.
 - The CSP now allows `us-central1-xsantcastx-1694b.cloudfunctions.net`, which was missing and had also blocked Stripe's callable
 - The NPC chat bubble covers the mini-game's Skip link at 390 px width
 - Delve finale gaps fixed (`0f57c99`): the warden falls once per player, the fragment stays sealed until then, Kael's cache is at (85,18)
-- Delve hotbar text is English-only; chests hold materials only; 8 new item icons + 5 placeable tiles need art
+- Delve hotbar text is English-only; 8 new item icons + 5 placeable tiles need art; supports and charges borrow existing item art
+- Storing gear in a chest counts toward the "item equipped" challenge (same as equipping a thrall)
 - Nullthorn Staff recipe is now locked behind Verrin's mission (players who crafted it keep it)
 - New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet
-- 4 extra inscription texts written but not placed (`roots-cutting-mark`, `basalt-seam-ledger`, `grotto-tally-marks`, `magma-unsigned`)
 - Enemy bar names the creature by guessing from spawn positions; an `enemyName` on engine state would make mixed-creature hunts exact
 - Initial bundle fixed: 2.00 MB → **1.68 MB** (`92a3b68`): tools registry, lore corpus and character hub moved out of the initial chunk. Keep new code lazy; biggest eager modules now `translation.service` 92 kB, `art-manifest.generated` 64 kB, header 50 kB
 - `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
