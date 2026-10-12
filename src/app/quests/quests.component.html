@@ -1,128 +1,133 @@
+<!--
+  quests.component.html — the Quest Board on the station kit (shared/station-ui).
+  First screen: title, tabs, the TODAY strip, the list and the selected quest
+  with ONE button (Claim). Totals, timers, story text and history: Details.
+-->
 <div class="quests-page" [class.quests-page--in-world]="inWorld">
+  <app-station-shell class="qb"
+                     [title]="t('quests.title')"
+                     [showTitle]="!inWorld"
+                     [detailsHint]="t('quests.details.hint')"
+                     [(detailsOpen)]="detailsOpen">
 
-  <header class="quests-header">
-    @if (!inWorld) {
-    <p class="quests-eyebrow"><span class="quests-eyebrow__pulse"></span>Mission Board</p>
-    <h1 class="quests-title">The Standing Orders</h1>
-    <p class="quests-tagline">what the realms are asking of you today, this week, and once</p>
-    }
+    <app-station-tabs stationTabs [tabs]="tabs" [active]="tab" (activeChange)="setTab($event)" [label]="t('quests.tabs')" />
 
-    <dl class="quests-stats">
-      <div>
-        <dt>This week</dt>
-        <dd>{{ board.completedThisWeek }}</dd>
-      </div>
-      <div>
-        <dt>All time</dt>
-        <dd>{{ board.totalCompleted }}</dd>
-      </div>
-      <div>
-        <dt>Epics cleared</dt>
-        <dd>{{ epicCleared }}/{{ board.epic.length }}</dd>
-      </div>
-    </dl>
-  </header>
+    <app-skill-strip stationSkill
+      [level]="null"
+      [title]="t('quests.today')"
+      [progress]="board.daily.length ? todayDone / board.daily.length : 0"
+      [progressLabel]="todayLabel"
+      [hint]="t('quests.hint')" />
 
-  <!-- Daily -->
-  <section class="quests-section">
-    <div class="quests-section__head">
-      <h2 class="quests-section__title">Daily</h2>
-      <span class="quests-section__timer">Resets in {{ dailyCountdown }}</span>
-    </div>
-    <p class="quests-section__note">Three drawn from thirty. Everyone in the realms is given the same three today.</p>
-    <div class="quests-grid">
-      @for (q of board.daily; track q.id) {
-        <app-quest-card [quest]="q" (claim)="onClaim($event)"></app-quest-card>
-      }
-    </div>
-  </section>
+    <div stationHero class="qb-hero">
+      <app-reward-pop [reward]="reward" (dismissed)="dismissReward()" />
 
-  <!-- Weekly -->
-  <section class="quests-section">
-    <div class="quests-section__head">
-      <h2 class="quests-section__title">Weekly</h2>
-      <span class="quests-section__timer">Resets in {{ weeklyCountdown }}</span>
-    </div>
-    <p class="quests-section__note">Two that will not fit in one sitting. The board redraws on Monday.</p>
-    <div class="quests-grid">
-      @for (q of board.weekly; track q.id) {
-        <app-quest-card [quest]="q" (claim)="onClaim($event)"></app-quest-card>
-      }
-    </div>
-  </section>
+      @if (tab === 'contracts') {
+        <!-- The Contract Board: its own component, hosted unchanged. -->
+        <app-challenge-panel [heading]="t('quests.tab.contracts')"></app-challenge-panel>
+      } @else {
+        <app-station-journal>
+          <app-journal-list journalList [rows]="rows" [selected]="selected?.id ?? null"
+                            [label]="t('quests.list')"
+                            [empty]="tab === 'ready' ? t('quests.emptyReady') : t('quests.empty')"
+                            (pick)="pick($event)" />
 
-  <!-- The Contract Board.
-       Below the two XP ladders and above the epics on purpose: it is the same
-       cadence as the dailies and weeklies directly above it, and putting the
-       Gold board first would bury the quest board this page is named after. -->
-  <section class="quests-section quests-section--contracts">
-    <app-challenge-panel heading="The Contract Board"></app-challenge-panel>
-  </section>
+          <div journalDetail class="qb-detail">
+            @if (selected; as q) {
+              <app-detail-head [name]="q.name" [line]="q.line" />
+              @if (q.who) { <p class="qb-who">{{ q.who }}</p> }
 
-  <!-- Delve missions: the characters' asks that send you down the Ember Delve. -->
-  <section class="quests-section quests-section--delve">
-    <div class="quests-section__head">
-      <h2 class="quests-section__title">Delve Missions</h2>
-      <span class="quests-section__timer">No clock</span>
-    </div>
-    <p class="quests-section__note">Asked by the people of the realms. Bring what they need up from the Ember Delve.</p>
-    <app-delve-missions-board></app-delve-missions-board>
-  </section>
+              <dl class="qb-facts">
+                <div>
+                  <dt>{{ t('quests.progress') }}</dt>
+                  <dd>{{ q.observed }}/{{ q.target }}</dd>
+                </div>
+                <div>
+                  <dt>{{ t('quests.reward') }}</dt>
+                  <dd class="qb-reward">{{ q.reward }}</dd>
+                </div>
+              </dl>
 
-  <!-- Epic -->
-  <section class="quests-section quests-section--epic">
-    <div class="quests-section__head">
-      <h2 class="quests-section__title">Epic</h2>
-      <span class="quests-section__timer">No clock</span>
-    </div>
-    <p class="quests-section__note">The storyline. Cleared once, and it stays cleared.</p>
-    <div class="quests-grid">
-      @for (q of board.epic; track q.id) {
-        <app-quest-card [quest]="q" (claim)="onClaim($event)"></app-quest-card>
-      }
-    </div>
-  </section>
+              <app-action-button
+                [label]="t('quests.claim') + ' ' + q.reward"
+                chips="none"
+                [blocked]="blockedReason(q)"
+                [progress]="q.progress"
+                (act)="claim()"
+                (refused)="announce = $event" />
 
-  <!-- History -->
-  <section class="quests-section">
-    <button
-      type="button"
-      class="quests-history__toggle"
-      (click)="toggleHistory()"
-      [attr.aria-expanded]="historyOpen">
-      <span class="quests-history__chevron" [class.quests-history__chevron--open]="historyOpen" aria-hidden="true">&#9656;</span>
-      Completed quests
-      <span class="quests-history__count">{{ board.log.length }}</span>
-    </button>
-
-    @if (historyOpen) {
-      <div class="quests-history">
-        @for (day of history; track day.label) {
-          <div class="quests-history__day">
-            <h3 class="quests-history__label">{{ day.label }}<span>+{{ day.xp }} XP</span></h3>
-            <ul class="quests-history__list">
-              @for (entry of day.entries; track entry.at) {
-                <li>
-                  <span class="quests-history__name">{{ entry.title }}</span>
-                  <span class="quests-history__type">{{ entry.type }}</span>
-                  <span class="quests-history__xp">+{{ entry.xp }}</span>
-                </li>
+              @if (q.quest) {
+                <div class="qb-inspect"><app-inspect-button type="quest" [id]="q.quest.id"></app-inspect-button></div>
               }
-            </ul>
+            }
           </div>
-        } @empty {
-          <p class="quests-history__empty">Nothing yet. The board is waiting.</p>
+        </app-station-journal>
+      }
+    </div>
+
+    <p class="qb-sr" aria-live="polite">{{ announce }}</p>
+
+    <!-- ── Details: totals, timers, the story, history ─────────────────── -->
+    <div stationDetails class="qb-details">
+      <section class="qb-panel" aria-labelledby="qb-totals">
+        <h2 class="qb-panel__title" id="qb-totals">{{ t('quests.details.totals') }}</h2>
+        <dl class="quests-stats">
+          <div>
+            <dt>{{ t('quests.details.week') }}</dt>
+            <dd>{{ board.completedThisWeek }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('quests.details.all') }}</dt>
+            <dd>{{ board.totalCompleted }}</dd>
+          </div>
+          <div>
+            <dt>{{ t('quests.details.epics') }}</dt>
+            <dd>{{ epicCleared }}/{{ board.epic.length }}</dd>
+          </div>
+        </dl>
+        <p class="qb-panel__hint">{{ t('quests.details.daily', { t: dailyCountdown }) }}</p>
+        <p class="qb-panel__hint">{{ t('quests.details.weekly', { t: weeklyCountdown }) }}</p>
+      </section>
+
+      @if (selected; as q) {
+        @if (q.lore || q.unlocks) {
+          <section class="qb-panel" aria-labelledby="qb-story">
+            <h2 class="qb-panel__title" id="qb-story">{{ t('quests.details.story') }} · {{ q.name }}</h2>
+            @if (q.lore) { <p class="qb-lore">{{ q.lore }}</p> }
+            @if (q.unlocks) { <p class="qb-panel__hint">{{ t('quests.details.unlocks') }}: {{ q.unlocks }}</p> }
+          </section>
         }
-      </div>
-    }
-  </section>
+      }
 
-  @if (!inWorld) {
-  <p class="quests-whisper">between light and shadow, the soul remembers both</p>
+      <section class="qb-panel" aria-labelledby="qb-history">
+        <h2 class="qb-panel__title" id="qb-history">
+          {{ t('quests.details.history') }} <span class="quests-history__count">{{ board.log.length }}</span>
+        </h2>
+        <div class="quests-history">
+          @for (day of history; track day.label) {
+            <div class="quests-history__day">
+              <h3 class="quests-history__label">{{ day.label }}<span>+{{ day.xp }} XP</span></h3>
+              <ul class="quests-history__list">
+                @for (entry of day.entries; track entry.at) {
+                  <li>
+                    <span class="quests-history__name">{{ entry.title }}</span>
+                    <span class="quests-history__type">{{ entry.type }}</span>
+                    <span class="quests-history__xp">+{{ entry.xp }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+          } @empty {
+            <p class="quests-history__empty">{{ t('quests.details.historyEmpty') }}</p>
+          }
+        </div>
+      </section>
 
-  <a routerLink="/world" class="quests-cta">Walk the realms &rarr;</a>
-  }
-
+      @if (!inWorld) {
+        <a routerLink="/world" class="quests-cta">{{ t('quests.details.walk') }}</a>
+      }
+    </div>
+  </app-station-shell>
 </div>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the

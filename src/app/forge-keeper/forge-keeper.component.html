@@ -1,55 +1,44 @@
 <!-- The Forge Keeper’s chamber, painted. Layer 1 of the three-layer pattern; the gradient
      overlay is layer 2, inside the component, and everything below is
      layer 3. See art-scene.component.ts for why this is a <picture>. -->
-<app-art-scene art="bg-profile" focus="center 42%" />
+<!-- The Forge Keeper's chamber, painted. Layer 1 of the three-layer pattern.
+     Dropped inside the /play in-world panel, which has its own backdrop. -->
+@if (!inWorld) {
+  <app-art-scene art="bg-profile" focus="center 42%" />
+}
 
 <!--
-  forge-keeper.component.html — the character sheet.
+  forge-keeper.component.html — the character sheet, as a station
+  (shared/station-ui; MapleStory journal anatomy).
 
-  Everything below renders in a complete, correct, *empty* state on the server:
-  the full inventory in silhouette, the whole rank ladder, thirty cold calendar
-  cells. Nothing here is behind an `@if (hydrated)`, because a panel that only
-  exists after hydration is a panel that pops in.
+  First screen: title, Gold, the rank bar with ONE line of how, the hub tabs
+  and the paper doll. Purse rate, the catalogue, cloud save and the way out
+  live in Details; the long records live behind the Records tab.
+
+  Everything renders in a complete, correct, *empty* state on the server.
+  Nothing here is behind an `@if (hydrated)`.
 -->
 <section class="fk"
          [class.fk--bank-open]="bankOpen"
+         [class.fk--in-world]="inWorld"
          [style.--fk-affinity]="affinityColor"
          [style.--fk-affinity-glow]="affinityGlow">
 
-  <div class="fk-stage">
-    <header class="fk-stage__name">
-      <p class="fk-stage__hall">The Forge Keeper</p>
-      <h1 class="fk-stage__title" id="fk-id-title">{{ rankTitle }}</h1>
-      <p class="fk-stage__level">Level {{ snap.level.level }}
-        @if (snap.next) {
-          <span class="fk-stage__next">{{ money(snap.toNext) }} XP to {{ snap.next.title }}</span>
-        }
-      </p>
-    </header>
+  <app-station-shell class="fk-station"
+                     [title]="t('character.title')"
+                     [showTitle]="!inWorld"
+                     [detailsHint]="t('character.details.hint')"
+                     [(detailsOpen)]="detailsOpen">
 
-    <div class="fk-stage__bar" aria-label="Purse">
-      <span class="fk-stage__coin">
-        <img src="assets/icons/currencies/gold.webp" alt="" width="20" height="20">
-        {{ money(wallet.gold) }}
-      </span>
-      <span class="fk-stage__coin">
-        <img src="assets/icons/currencies/essence.webp" alt="" width="20" height="20">
-        {{ money(wallet.essence) }}
-      </span>
-      <span class="fk-stage__rate">{{ perSecond }} / sec</span>
-    </div>
+    <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
 
-    <div class="fk-stage__acts">
-      <a routerLink="/world" class="fk-stage__play">Enter the World</a>
-      <button type="button" class="fk-catalogue-open" (click)="openCatalogue()">
-        Catalogue
-      </button>
-    </div>
+    <app-skill-strip stationSkill
+      [level]="snap.level.level"
+      [progress]="snap.next ? snap.progress : 1"
+      [progressLabel]="rankLabel"
+      [hint]="t('character.hint')" />
 
-    <div class="fk-stage__save">
-      <app-cloud-save-button></app-cloud-save-button>
-    </div>
-
+    <div stationHero class="fk-hero">
     <app-character-hub variant="page">
       <div hubRecords>
   <!-- ══ 2. Stats grid ══════════════════════════════════════════════════ -->
@@ -364,6 +353,35 @@
   </nav>
       </div>
     </app-character-hub>
+    </div>
+
+    <!-- ── Details: purse, catalogue, cloud save, the way out ─────────── -->
+    <div stationDetails class="fk-details">
+      <p class="fk-stage__hall">{{ t('character.details.rank') }} · {{ rankTitle }}</p>
+      <div class="fk-stage__bar" aria-label="Purse">
+        <span class="fk-stage__coin">
+          <img src="assets/icons/currencies/gold.webp" alt="" width="20" height="20">
+          {{ money(wallet.gold) }}
+        </span>
+        <span class="fk-stage__coin">
+          <img src="assets/icons/currencies/essence.webp" alt="" width="20" height="20">
+          {{ money(wallet.essence) }}
+        </span>
+        <span class="fk-stage__rate">{{ t('character.details.rate', { n: perSecond }) }}</span>
+      </div>
+      <div class="fk-stage__acts">
+        @if (!inWorld) {
+          <a routerLink="/world" class="fk-stage__play">{{ t('character.play') }}</a>
+        }
+        <button type="button" class="fk-catalogue-open" (click)="openCatalogue()">
+          {{ t('character.catalogue') }}
+        </button>
+      </div>
+      <div class="fk-stage__save">
+        <app-cloud-save-button></app-cloud-save-button>
+      </div>
+    </div>
+  </app-station-shell>
 
   @if (bankOpen) {
   <div class="fk-bank" role="dialog" aria-modal="true" aria-labelledby="fk-inv-title">
@@ -577,11 +595,12 @@
     </div>
   </div>
   }
-  </div>
 </section>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/character"></app-related-pages>
+}
