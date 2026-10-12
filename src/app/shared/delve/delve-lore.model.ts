@@ -6,8 +6,9 @@
  * terrain spec (`EMBER_DELVE.terrain.inscriptions` in
  * play/world/towns/infernal.ts) at the cell given here. The engine reports a
  * reading as `onDiscover({ kind: 'inscription', id, biome })`, and
- * DelveLoreService records it. `text` is a one-line placeholder: replace it
- * with the canon (Archivist copies → Codex entries). Ids are saved in players'
+ * DelveLoreService records it. `text` is the one line shown in the world when
+ * it is read; the full canon (Archivist copies → Codex entries) is in
+ * delve-inscription-lore.ts. Ids are saved in players'
  * blobs, so never rename one; add new ids instead, and place them in the spec.
  *
  * Biome ids, top to bottom: 'root-hollows' (the World-Root's shadow),
@@ -25,27 +26,36 @@ export interface InscriptionDef {
   /** Where it is carved (terrain column, row). Mirrors the spec; the engine test pins the two together. */
   col: number;
   row: number;
-  /** PLACEHOLDER — the lore agent replaces this with the canon line. */
+  /** The one line shown in the world when it is read (the Codex has the full text). */
   text: string;
 }
 
 export const INSCRIPTIONS: readonly InscriptionDef[] = [
   { id: 'roots-inverse-tree', biome: 'root-hollows', col: 19, row: 7,
-    text: 'Placeholder: a tree drawn upside down, its crown pointing into the dark below.' },
+    text: 'A tree is carved upside down, its crown pointing into the dark below.' },
   { id: 'roots-keepers-tally', biome: 'root-hollows', col: 69, row: 9,
-    text: 'Placeholder: a Keeper\'s tally of days, scratched until the marks stop.' },
+    text: 'Five marks at Keeper height. Four are crossed through; the fifth is worn smooth.' },
   { id: 'basalt-kaels-mark', biome: 'basalt-caverns', col: 66, row: 16,
-    text: 'Placeholder: Kael\'s maker\'s mark, struck into the cavern wall like a hallmark.' },
+    text: 'A maker\'s mark is struck into the cavern wall like a hallmark: a hammer, not a name.' },
   { id: 'basalt-sealed-pocket', biome: 'basalt-caverns', col: 102, row: 23,
-    text: 'Placeholder: a warning carved inside the sealed pocket, facing in.' },
+    text: 'Four names are cut into the basalt and struck out. Beneath them, shallow: "I stayed."' },
   { id: 'grotto-light-through-the-crack', biome: 'glowcap-grotto', col: 32, row: 32,
-    text: 'Placeholder: a hymn to the light that comes up from below instead of down.' },
+    text: 'A hymn to the light that comes up from below instead of down.' },
   { id: 'grotto-drowned-lamp', biome: 'glowcap-grotto', col: 87, row: 36,
-    text: 'Placeholder: a lamp carved with no flame, and a line about not needing one.' },
+    text: 'A lamp is carved with no flame, and a line about not needing one.' },
   { id: 'magma-the-fracture', biome: 'magma-halls', col: 44, row: 46,
-    text: 'Placeholder: a map of a crack, and the Godforge drawn on both sides of it.' },
+    text: 'A map of a crack, with the Godforge drawn on both sides of it.' },
   { id: 'magma-warden-oath', biome: 'magma-halls', col: 96, row: 49,
-    text: 'Placeholder: the Rune-Warden\'s oath, cut in Godstone runes around the chamber.' },
+    text: 'The Rune-Warden\'s orders, cut in Godstone runes around the chamber.' },
+  // Placed with the Delve extras: three per biome now.
+  { id: 'roots-cutting-mark', biome: 'root-hollows', col: 28, row: 7,
+    text: 'A cut in the shadow-root, sealed with ink. A thorn has grown where the blade went in.' },
+  { id: 'basalt-seam-ledger', biome: 'basalt-caverns', col: 78, row: 16,
+    text: 'A ledger of the old seam, cartload by cartload, and one line in another hand: "Seam closed."' },
+  { id: 'grotto-tally-marks', biome: 'glowcap-grotto', col: 40, row: 32,
+    text: 'A column of chalked prices for baskets of glowcaps, each a little higher than the last.' },
+  { id: 'magma-unsigned', biome: 'magma-halls', col: 102, row: 50,
+    text: 'A single tally mark, and a fresh one beside it.' },
 ];
 
 const BY_ID = new Map(INSCRIPTIONS.map(row => [row.id, row]));
