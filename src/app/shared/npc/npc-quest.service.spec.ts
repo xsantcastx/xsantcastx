@@ -210,7 +210,8 @@ describe('NpcQuestService', () => {
     settle();
 
     expect(svc.claim('kael-1')).toBe(true);
-    expect(paid.gold).toEqual([NPC_CHAINS['kael'][0].reward.gold]);
+    // Economy v3: max(authored × ρ, N s of income); the fake has no income.
+    expect(paid.gold).toEqual([Math.round(NPC_CHAINS['kael'][0].reward.gold * 0.06)]);
     expect(svc.chains['kael'].done).toBe(1);
     expect(svc.chains['kael'].active!.id).toBe('kael-2');
 
@@ -328,7 +329,7 @@ describe('NpcQuestService', () => {
       expect(mission('delve-verrin-shadow').turnInReady).toBe(true);
       expect(svc.claimMission('delve-verrin-shadow')).toBe(true);
       expect(stacks$.value['shadow-root-cutting']).toBe(1);
-      expect(paid.gold).toEqual([20_000]);
+      expect(paid.gold).toEqual([1_200]); // economy v3: 20,000 × ρ floor
       expect(svc.isRecipeUnlocked('craft-nullthorn-staff')).toBe(true);
       // Claimed is claimed: no second payout even with cuttings in the bag.
       stacks$.next({ 'shadow-root-cutting': 9 });

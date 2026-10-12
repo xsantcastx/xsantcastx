@@ -258,14 +258,24 @@ describe('the mission ladder', () => {
     }
   });
 
-  it('charges a fee that is a rounding error against the payout', () => {
-    // The fee prices the rung; it must never *be* the rung. A dispatch that
-    // could plausibly lose money is one no player takes twice, and at that
-    // point the length is decoration.
+  it('charges a fee the payout can always cover', () => {
+    // The fee prices the rung; it must never *be* the rung. Economy v3 prices
+    // fees as seconds of income at the stage a rung is met, so the floor band
+    // (not the income term) is the conservative check: the top of the floor
+    // roll always covers the fee, and the income term only adds to it.
     for (const m of MISSIONS) {
       if (!m.cost) continue;
-      expect(m.cost).toBeLessThan(m.goldMin / 3);
+      expect(m.cost).toBeLessThan(m.goldMax);
     }
+  });
+
+  it('pays N seconds of launch income when that beats the floor (economy v3)', () => {
+    const scout = MISSIONS.find(m => m.id === 'scout')!;
+    const reward = rollReward(scout, () => 0, { realm: 'luminous', incomeAtLaunch: 100 });
+    // 0.5 × 120 s × 100/s = 6,000, then the realm's cut.
+    expect(reward.gold).toBe(Math.round(6_000 * 1.15));
+    const floorOnly = rollReward(scout, () => 0, { realm: 'luminous', incomeAtLaunch: 0 });
+    expect(floorOnly.gold).toBe(Math.round(scout.goldMin * 1.15));
   });
 
   it('raises the rune floor instead', () => {

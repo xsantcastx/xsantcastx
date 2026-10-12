@@ -36,6 +36,8 @@ import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { XpService } from '../gamification/xp.service';
 import { QuestService } from '../quests/quest.service';
 import { EconomyService } from '../economy/economy.service';
+import { incomeRewardBase } from '../economy/economy.model';
+import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { ComboService } from '../economy/combo.service';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { InventoryService } from '../rpg/inventory.service';
@@ -442,7 +444,14 @@ export class NpcQuestService {
     const r = step.reward;
     const npc = NPCS.find(n => n.id === step.npcId);
 
-    if (r.gold > 0) this.economy.earnGold(r.gold, `npc:${step.npcId}`);
+    // Economy v3: the authored step Gold is the v2 figure; it pays max(that ×
+    // ρ, 2/5/10/20/60 min of income).
+    if (r.gold > 0) {
+      this.economy.earnGold(
+        incomeRewardBase(itemScaled(r.gold), steppedRewardSeconds(r.gold, REWARD_SECONDS.npc), this.economy.snapshot),
+        `npc:${step.npcId}`,
+      );
+    }
     if (r.xp && r.xp > 0) {
       this.xp.award('quest', {
         amount: r.xp,

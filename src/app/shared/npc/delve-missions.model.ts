@@ -20,6 +20,7 @@
 import type { ItemRarity } from '../rpg/item.model';
 import { DELVE_INSCRIPTIONS, GLOWCAP, GODFORGE_FRAGMENT, SHADOW_ROOT_CUTTING } from '../delve/delve-lore.model';
 import type { NpcId } from './npc.model';
+import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 
 /**
  * Kael's lost hammer. A quest material (a stack key), dropped once from a
@@ -53,6 +54,14 @@ export type MissionObjective =
   | { kind: 'deliver'; items: readonly DeliverItem[] }
   /** `count: 'all'` resolves to every inscription the Delve has. */
   | { kind: 'inscriptions'; count: number | 'all' };
+
+/**
+ * Economy v3 reward for a mission authored at `v2Gold`: a floor of v2 × ρ and
+ * the NPC band's seconds of income (rebalance spec §3, rule I).
+ */
+function incomeGold(v2Gold: number): Pick<MissionReward, 'gold' | 'goldSeconds'> {
+  return { gold: itemScaled(v2Gold), goldSeconds: steppedRewardSeconds(v2Gold, REWARD_SECONDS.npc) };
+}
 
 export interface MissionReward {
   /** Floor of the Gold paid. */
@@ -110,7 +119,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
       items: [{ materialId: SHADOW_ROOT_CUTTING, count: 3, where: 'the Root Hollows of the Ember Delve' }],
     },
     reward: {
-      gold: 20_000,
+      ...incomeGold(20_000),
       delvingXp: 150,
       recipe: NULLTHORN_RECIPE,
       loreFragment:
@@ -133,7 +142,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
       ],
     },
     reward: {
-      gold: 40_000,
+      ...incomeGold(40_000),
       delvingXp: 200,
       recipe: KAEL_SEAM_PICK_RECIPE,
       loreFragment:
@@ -152,7 +161,9 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
       kind: 'deliver',
       items: [{ materialId: GLOWCAP, count: GLOWCAP_ORDER_SIZE, where: 'the Glowcap Grotto, below the Basalt Caverns (bring a sickle)' }],
     },
-    reward: { gold: 3_000, goldSeconds: 90 },
+    // The Merchant is a floor buyer (economy v3: NPCs are sinks; players set
+    // the market): 180 Gold, or 90 s of income when that is more.
+    reward: { gold: itemScaled(3_000), goldSeconds: 90 },
     unlocks: 'A standing order. Fill it as often as you like.',
     repeatable: true,
   },
@@ -163,7 +174,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     brief: 'Copy 3 inscriptions from the walls of the Ember Delve.',
     loreText: 'Somebody wrote on those walls before the stone had finished cooling. Copy what they said. Exactly.',
     objective: { kind: 'inscriptions', count: 3 },
-    reward: { gold: 10_000, delvingXp: 80 },
+    reward: { ...incomeGold(10_000), delvingXp: 80 },
     unlocks: 'Each inscription you copy is kept in the Codex, under Lore.',
   },
   {
@@ -173,7 +184,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     brief: 'Copy 6 inscriptions from the walls of the Ember Delve.',
     loreText: 'Six. The handwriting changes between the layers. Two of the hands are the same person, years apart.',
     objective: { kind: 'inscriptions', count: 6 },
-    reward: { gold: 30_000, delvingXp: 160 },
+    reward: { ...incomeGold(30_000), delvingXp: 160 },
     requires: ['delve-archivist-words-1'],
   },
   {
@@ -184,7 +195,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     loreText: 'All of them. I have kept a shelf empty for this since before you arrived.',
     objective: { kind: 'inscriptions', count: 'all' },
     reward: {
-      gold: 80_000,
+      ...incomeGold(80_000),
       delvingXp: 300,
       item: { defId: 'codex-solarii', rarity: 'epic' },
       loreFragment:
@@ -205,7 +216,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
       items: [{ materialId: GODFORGE_FRAGMENT, count: 1, where: 'the Magma Halls, past the rune-warden' }],
     },
     reward: {
-      gold: 150_000,
+      ...incomeGold(150_000),
       delvingXp: 600,
       rune: 'fracture',
       loreFragment:
