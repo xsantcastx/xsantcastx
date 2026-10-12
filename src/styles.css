@@ -1,3 +1,5 @@
+@import './styles/tokens/_adventure.css';
+
 /* ===== Self-Hosted Fonts (§3.2) ===== *//* Orbitron — variable font, weight 400–900, latin only */
 @font-face {
   font-family: 'Orbitron';
@@ -3138,3 +3140,19 @@ html[data-gf-slowmo='2'] .rf-pick.rf-pick--landed[data-reveal] .rf-pick__char {
    motion via the global reset in this file. */
 .ds-icon--spin { animation: dsIconSpin 900ms linear infinite; }
 @keyframes dsIconSpin { to { transform: rotate(360deg); } }
+
+/* Keep the standalone adventure free of the static site easter-egg control.
+   /play is one viewport: the hearth, satchel, and objectives are overlays. */
+body:has(main.play-mode) .arcane-seal {
+  display: none;
+}
+html:has(main.play-mode),
+body:has(main.play-mode) {
+  height: 100dvh;
+  overflow: hidden;
+}
+/* The site reveal fades every main section in. The play stage is the screen. */
+main.play-mode .stage.gf-reveal {
+  opacity: 1;
+  translate: none;
+}

@@ -1,0 +1,321 @@
+<div class="adventure" [class.restored]="restored">
+  <header class="topbar">
+    <a routerLink="/" class="wordmark">ECLIPSE <span>REALMS</span></a>
+    <span class="chapter">THE FIRST EMBER <span> / CHAPTER I</span></span>
+    <button
+      class="bag-toggle"
+      (click)="bagOpen = !bagOpen"
+      [attr.aria-expanded]="bagOpen"
+      aria-controls="field-bag"
+    >
+      Satchel <span>{{ inventory.snapshot.usedRows }}</span>
+    </button>
+  </header>
+  <div class="journey">
+    <section class="location" aria-labelledby="location-title">
+      <div class="location-heading">
+        <p class="eyebrow">
+          <span class="live-dot"></span> INFERNAL REALM <span>·</span>
+          {{ restored ? "BEACON RESTORED" : "THE ABANDONED CROSSING" }}
+        </p>
+        <h1 id="location-title">Basalt Seamworks</h1>
+        <p class="subtitle">
+          {{
+            restored
+              ? "Even here, something can begin again."
+              : "Beneath the ash, a small fire waits."
+          }}
+        </p>
+      </div>
+      <div class="world" [class.world-restored]="restored">
+        <picture
+          ><source
+            media="(max-width: 600px)"
+            srcset="assets/images/bg-basalt-seamworks-768.webp" />
+          <source
+            media="(max-width: 1100px)"
+            srcset="assets/images/bg-basalt-seamworks-1280.webp" />
+          <img
+            src="assets/images/bg-basalt-seamworks-1536.webp"
+            alt="Lava illuminates the immense stone arches and broken platforms of the Basalt Seamworks."
+            fetchpriority="high"
+            width="1536"
+            height="1024"
+        /></picture>
+        <div class="world-shade"></div>
+        @if (restored) {
+          <div class="beacon-light" aria-hidden="true"></div>
+          <span class="beacon-caption">THE CROSSING IS OPEN</span>
+        }
+        <button
+          class="hotspot seam"
+          [class.selected]="place === 'seam'"
+          (click)="visit('seam')"
+          [attr.aria-pressed]="place === 'seam'"
+        >
+          <span class="pin">01</span
+          ><span>Cinder seam<small>GATHER</small></span>
+        </button>
+        <button
+          class="hotspot forge"
+          [class.selected]="place === 'forge'"
+          (click)="visit('forge')"
+          [attr.aria-pressed]="place === 'forge'"
+        >
+          <span class="pin">02</span
+          ><span>The old forge<small>CRAFT & EQUIP</small></span>
+        </button>
+        <button
+          class="hotspot bridge"
+          [class.selected]="place === 'bridge'"
+          (click)="visit('bridge')"
+          [attr.aria-pressed]="place === 'bridge'"
+        >
+          <span class="pin">03</span
+          ><span
+            >The crossing<small>{{
+              restored ? "RESTORED" : "ENCOUNTER"
+            }}</small></span
+          >
+        </button>
+        <span class="world-note">Choose a place to explore</span>
+      </div>
+      <nav class="chapter-progress" aria-label="Adventure progress">
+        @for (
+          label of ["Gather", "Forge", "Equip", "Reclaim"];
+          track label;
+          let i = $index
+        ) {
+          <span [class.done]="step > i" [class.current]="step === i"
+            ><b>{{ step > i ? "•" : "0" + (i + 1) }}</b
+            >{{ label }}</span
+          >
+        }
+      </nav>
+    </section>
+    <aside class="field-notes" aria-label="Your adventure">
+      <p class="eyebrow">YOUR NEXT STEP</p>
+      <h2>{{ objective }}</h2>
+      <div class="keeper">
+        <img
+          [src]="art('keeper-base')"
+          alt="The Keeper"
+          width="60"
+          height="60"
+        />
+        <div>
+          <span>THE KEEPER</span>
+          <p>
+            {{
+              restored
+                ? "“They will remember the one who brought the light.”"
+                : "“The bridge has gone dark. Give the forge a little fire, and we can change that.”"
+            }}
+          </p>
+        </div>
+      </div>
+      <section class="interaction" aria-label="Location actions">
+        @if (place === "seam") {
+          <span class="section-number">01 / THE CINDER SEAM</span>
+          <h3>Strike a spark.</h3>
+          <p>
+            Gather ore from the living rock. Six pieces will become a blade.
+          </p>
+          <div class="material">
+            <img [src]="art('cinder-ore')" alt="" width="52" height="52" /><span
+              >Cinder Ore<small>{{ ore }} / 6 collected</small></span
+            ><b>{{ ore }}</b>
+          </div>
+          <button
+            class="primary"
+            (click)="mine()"
+            [disabled]="!browser || remaining > 0"
+          >
+            {{ remaining > 0 ? "Seam recovering…" : "Mine Cinder Ore" }}
+            <span>↗</span>
+          </button>
+          @if (ore >= 6 || edge) {
+            <button class="text-button" (click)="visit('forge')">
+              Take your ore to the forge →
+            </button>
+          }
+        }
+        @if (place === "forge") {
+          <span class="section-number">02 / THE OLD FORGE</span>
+          <h3>A blade of your own.</h3>
+          @if (!edge) {
+            <p>
+              The Keeper has saved one ember for this moment. Bring six ore to
+              earn it.
+            </p>
+            <div class="recipe">
+              <span [class.enough]="ore >= 6">{{ ore }} / 6 Cinder Ore</span
+              ><span [class.enough]="ember >= 1"
+                >{{ ember }} / 1 Ember Residue</span
+              >
+            </div>
+            @if (ember < 1) {
+              <button
+                class="secondary"
+                (click)="takeEmber()"
+                [disabled]="!browser || ore < 6"
+              >
+                Accept the Keeper's ember
+              </button>
+            }
+            <button
+              class="primary"
+              (click)="forge()"
+              [disabled]="!browser || !ready"
+            >
+              Forge Basalt Edge <span>↗</span>
+            </button>
+          } @else {
+            <div class="blade">
+              <img
+                [src]="art('basalt-edge')"
+                alt="Basalt Edge"
+                width="108"
+                height="108"
+              />
+              <div>
+                <span>YOUR FIRST BLADE</span>
+                <h4>Basalt Edge</h4>
+                <p>
+                  {{
+                    equipped
+                      ? "Equipped · ready for the crossing"
+                      : "Forged and ready to wield"
+                  }}
+                </p>
+              </div>
+            </div>
+            @if (!equipped) {
+              <button class="primary" (click)="equip()" [disabled]="!browser">
+                Equip Basalt Edge <span>↗</span>
+              </button>
+            } @else {
+              <button class="primary" (click)="visit('bridge')">
+                Walk to the crossing <span>↗</span>
+              </button>
+            }
+          }
+        }
+        @if (place === "bridge") {
+          <span class="section-number">03 / THE CROSSING</span>
+          <h3>
+            {{
+              restored
+                ? "A light in the ash."
+                : creatureHealth <= 0
+                  ? "The way is clear."
+                  : "Something stirs."
+            }}
+          </h3>
+          @if (restored) {
+            <p>
+              The beacon burns over the crossing. The workers can return, and
+              your first chapter is complete.
+            </p>
+            <div class="restoration-seal">
+              ◇
+              <span
+                >SEAMWORKS RECLAIMED<small>Saved on this browser</small></span
+              >
+            </div>
+            <a routerLink="/world" class="primary"
+              >Explore the other realms <span>↗</span></a
+            >
+          } @else if (creatureHealth <= 0) {
+            <p>
+              The Rivet Maw retreats into the ash. Light the beacon to bring the
+              workers home.
+            </p>
+            <button class="primary" (click)="restore()">
+              Light the beacon <span>◇</span>
+            </button>
+          } @else {
+            <div class="creature">
+              <img
+                [src]="art('rivet-maw')"
+                alt="Rivet Maw"
+                width="112"
+                height="112"
+              />
+              <div>
+                <h4>Rivet Maw</h4>
+                <p>Armoured scavenger</p>
+              </div>
+            </div>
+            @if (fighting) {
+              <div class="vitals">
+                <span
+                  >You <b>{{ health }} / 3</b></span
+                ><span
+                  >Rivet Maw <b>{{ creatureHealth }} / 3</b></span
+                >
+              </div>
+              <p class="intent">{{ intent }}</p>
+              <div class="combat-actions">
+                <button
+                  class="secondary"
+                  (click)="act('guard')"
+                  [disabled]="!equipped"
+                >
+                  Guard</button
+                ><button
+                  class="primary"
+                  (click)="act('strike')"
+                  [disabled]="!equipped"
+                >
+                  Strike
+                </button>
+              </div>
+            } @else {
+              <p>
+                {{
+                  equipped
+                    ? "Watch its movement. Guard against a bite; strike when its jaws are trapped."
+                    : "You need an equipped Basalt Edge before facing the creature."
+                }}
+              </p>
+              <button
+                class="primary"
+                (click)="startFight()"
+                [disabled]="!browser || !equipped"
+              >
+                {{
+                  health <= 0 ? "Try the encounter again" : "Face the Rivet Maw"
+                }}
+                <span>↗</span>
+              </button>
+            }
+          }
+        }
+      </section>
+      <p class="event" role="status" aria-live="polite">{{ message }}</p>
+      <div id="field-bag" class="satchel" [hidden]="!bagOpen">
+        <p class="eyebrow">YOUR SATCHEL</p>
+        <p>
+          Cinder Ore <b>{{ ore }}</b>
+        </p>
+        <p>
+          Ember Residue <b>{{ ember }}</b>
+        </p>
+        @if (edge) {
+          <p>
+            Basalt Edge <b>{{ equipped ? "Equipped" : "In bag" }}</b>
+          </p>
+        }
+        <a routerLink="/character">Open full inventory →</a>
+      </div>
+      <p class="save-note">
+        Your materials and equipment stay with you.<br />Play at your own pace.
+      </p>
+    </aside>
+  </div>
+  <footer>
+    <span>ECLIPSE REALMS</span><span>One ember can change a world.</span
+    ><a routerLink="/">Return to the realm hub ↗</a>
+  </footer>
+</div>

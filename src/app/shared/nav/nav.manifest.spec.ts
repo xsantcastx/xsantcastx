@@ -36,8 +36,9 @@ describe('NAV_MANIFEST', () => {
     expect(MORE_NAV.find(d => d.id === 'trials')?.route).toBe(CANONICAL.trials);
   });
 
-  it('MORE is the bench, the table, quests, trials, the Coliseum, the Standings, sanctum, the exchange and the gambler only', () => {
+  it('MORE includes the playable village and secondary halls', () => {
     expect(MORE_NAV.map(d => d.route)).toEqual([
+      '/play',
       // The crafting bench is a room reached from inside the Forge hall. Listed
       // here for the same reason the Gambler eventually had to be: a route only
       // linked from its parent page reads as a dead page to everyone who did
