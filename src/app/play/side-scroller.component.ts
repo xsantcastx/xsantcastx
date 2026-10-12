@@ -26,9 +26,23 @@ import {
 import { KeeperCombatStats, keeperCombatStats } from '../shared/rpg/keeper-combat';
 import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
 import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
-import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout } from './engine/engine';
 import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
+import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, ToolTiers, WorldActionEvent } from './engine/engine';
+import { miningLevelView } from '../shared/activity/mining-level';
+import { toolTiers } from '../shared/skills/tools';
+import type { InventorySnapshot } from '../shared/rpg/inventory.service';
+
+/**
+ * Tool tiers for the delve until real tool items exist.
+ * The floor under toolTiers(): crafted tools raise it (see pushStats).
+ */
+export function provisionalToolTiers(snapshot: Pick<InventorySnapshot, 'equipped'>): ToolTiers {
+  const held = [snapshot.equipped['weapon'], snapshot.equipped['off-hand']].filter(item => item && !item.explorerId);
+  const staff = held.some(item => /staff|wand|rod|scepter|sceptre/i.test(`${item!.definitionId} ${item!.name}`));
+  const weapon = snapshot.equipped['weapon'];
+  return { pickaxe: 1, axe: 1, sickle: 1, blade: weapon && !weapon.explorerId ? 1 : 0, staff: staff ? 1 : 0 };
+}
 
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
 const CRAFT_ID = 'seamworks-world:basalt-edge:v1';
@@ -150,6 +164,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Last combat numbers handed to the engine. Drives the HP meter's ceiling. */
   pushed: KeeperCombatStats = { damage: 10, maxHp: 100 };
   private statsKey = '';
+  private toolKey = '';
 
   constructor() {
     // Hydration can swap the server canvas after the first callback. Wait until
@@ -198,6 +213,7 @@ export class SideScrollerComponent implements OnDestroy {
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
       onStation: station => this.zone.run(() => this.openStation(station)),
       onLoot: loot => loot.ore === 0 || this.zone.run(() => this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)),
+      onWorldAction: event => this.zone.run(() => this.worldAction(event)),
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
         if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
@@ -208,6 +224,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setHomesteadView(this.homestead.scene);
     this.statsKey = '';
     this.loadoutKey = '';
+    this.toolKey = '';
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
@@ -249,6 +266,7 @@ export class SideScrollerComponent implements OnDestroy {
       };
       const click = (event: MouseEvent): void => {
         if (!this.engine || this.panel || this.state.defeated) return;
+        if (this.engine.strikeAt(event.clientX, event.clientY)) return;
         const hit = this.engine.pick(event.clientX, event.clientY);
         // The Homestead Forge strikes where it is clicked, without walking there.
         if (hit.station && this.homestead.scene.interact(this.state.areaId ?? '', hit.station.id)) return;
@@ -514,6 +532,7 @@ export class SideScrollerComponent implements OnDestroy {
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
     if (this.state.areaId === 'homestead') return 'Click the Forge to strike it. Buy buildings in the column. Walk past one to collect.';
+    if (this.state.delve) return 'Dig down (hold S + J, or tap rock). Ore veins glint in the lantern light.';
     if (this.state.area === 'Ember Quarry') return 'Hunt the Maws. Walk over drops to collect coins and ore. Return through the west portal.';
     if (this.restored) return 'Walk right to the open passage.';
     if (this.state?.enemyDefeated) return 'Reach the beacon and rekindle its light.';
@@ -726,6 +745,22 @@ export class SideScrollerComponent implements OnDestroy {
   private pushStats(): void {
     if (!this.engine) return;
     this.pushLoadout();
+    // Crafted tools (skills/tools.ts) raise the floor; the provisional tier-I kit
+    // keeps a fresh save able to dig before it owns a pickaxe. Lantern radius
+    // stays on the engine default: toolTiers() measures it in tiles, the engine
+    // in its own units — reconcile before passing it (see world-plan watch list).
+    const floor = provisionalToolTiers(this.inventory.snapshot);
+    const crafted = toolTiers(this.inventory.snapshot, this.activity.snapshot.progress);
+    const tools = {
+      pickaxe: Math.max(floor.pickaxe ?? 0, crafted.pickaxe),
+      axe: Math.max(floor.axe ?? 0, crafted.axe),
+      sickle: Math.max(floor.sickle ?? 0, crafted.sickle),
+      blade: Math.max(floor.blade ?? 0, crafted.blade),
+      staff: Math.max(floor.staff ?? 0, crafted.staff),
+    };
+    const mining = miningLevelView(this.activity.snapshot.progress.xpByDiscipline.mining ?? 0).level;
+    const toolKey = `${JSON.stringify(tools)}:${mining}`;
+    if (toolKey !== this.toolKey) { this.toolKey = toolKey; this.engine.setTools({ ...tools, levels: { mining } }); }
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
@@ -768,6 +803,35 @@ export class SideScrollerComponent implements OnDestroy {
     const target = this.host.nativeElement.querySelector('.satchel .coin-count') as HTMLElement | null;
     const box = target?.getBoundingClientRect();
     return box && (box.width || box.height) ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
+  }
+  /**
+   * A delve tool is about to break a paying cell. Ore goes through resolveMine
+   * (same gate, cooldown and idempotency as the ore station); other yields are
+   * granted idempotently by the engine's per-cell mutation id.
+   * TODO: XP for non-mining actions needs a gateway sibling (resolveWorldAction).
+   */
+  private worldAction(event: WorldActionEvent): boolean {
+    if (!this.browser) return false;
+    if (event.kind === 'mine' && event.discipline === 'mining') {
+      if (this.activity.snapshot.currentWork?.disciplineId === 'mining' && this.remaining > 0) {
+        this.message = `The seam needs a breath (${this.remaining}s).`; return false;
+      }
+      if (!this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID)) { this.message = 'Mining could not be saved.'; return false; }
+      const result = this.activity.resolveMine({ mutationId: event.mutationId, locationId: BASALT_SEAMWORKS_ID, oreId: event.materialId });
+      this.now = Date.now();
+      if (!result.ok) {
+        this.message = result.code === 'capacity' ? 'Your bag is full.' : result.code === 'tier-locked' ? 'Your Mining level is too low for this vein.' : result.code === 'recovering' ? 'The seam needs a breath.' : 'That strike could not be saved. Swing again.';
+        return false;
+      }
+      if (event.materialId) this.toastLoot(`+1 ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
+      return true;
+    }
+    if (!event.materialId || !event.qty) return true;
+    if (!this.inventory.grantStack(`${event.mutationId}:${event.materialId}`, event.materialId, event.qty)) {
+      this.message = 'Your satchel is full. Make room, then swing again.'; return false;
+    }
+    this.toastLoot(`+${event.qty} ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
+    return true;
   }
   private act(target: InteractionTarget): void {
     if (!this.browser || this.state?.paused || this.state?.defeated) return;
