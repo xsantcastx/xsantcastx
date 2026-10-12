@@ -7,6 +7,7 @@ import { TranslationService } from '../../translation.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
 import { emptyActivityLedger } from '../activity/activity.model';
 import { xpForLevel } from '../activity/mining-level';
+import { CraftingService } from '../crafting/crafting.service';
 import { HubSkillsComponent } from './hub-skills.component';
 
 describe('HubSkillsComponent', () => {
@@ -15,21 +16,29 @@ describe('HubSkillsComponent', () => {
   // Untyped: the embedded current-work tile also reads this. Every method
   // either component calls has to be here or the miss is a runtime TypeError.
   const activity = {
-    snapshot: emptyActivityLedger(),
+    get snapshot() { return activity$.value; },
     snapshot$: activity$.asObservable(),
     init: () => { /* noop */ },
     recoveryRemainingMs: () => 0,
     currentRecoveryMs: () => 2500,
   };
+  const bench$ = new BehaviorSubject({ xp: 0 });
+  const crafting = {
+    get snapshot() { return bench$.value; },
+    snapshot$: bench$.asObservable(),
+    init: () => { /* noop */ },
+  };
 
   beforeEach(async () => {
     activity$.next(emptyActivityLedger());
+    bench$.next({ xp: 0 });
     await TestBed.configureTestingModule({
       imports: [HubSkillsComponent, RouterTestingModule],
       providers: [
         TranslationService,
         { provide: PLATFORM_ID, useValue: 'browser' },
         { provide: ActivityProgressionGateway, useValue: activity },
+        { provide: CraftingService, useValue: crafting },
       ],
     }).compileComponents();
     TestBed.inject(TranslationService).setLanguage('en');
@@ -37,65 +46,43 @@ describe('HubSkillsComponent', () => {
     fixture.detectChanges();
   });
 
-  it('shows three live skill tiles — Mining, Foraging and Prospecting — and three locked ones', () => {
-    const el = fixture.nativeElement as HTMLElement;
-    const live = Array.from(el.querySelectorAll<HTMLElement>('.hs__skill--live'));
-    const locked = Array.from(el.querySelectorAll<HTMLElement>('.hs__skill--locked'));
-    expect(live.length).toBe(3);
-    expect(locked.length).toBe(3);
-    expect(live.map(li => li.querySelector('.hs__name')?.textContent?.trim()))
-      .toEqual(['Mining', 'Foraging', 'Prospecting']);
-    expect(locked.map(li => li.querySelector('.hs__name')?.textContent?.trim()))
-      .toEqual(['Exploration', 'Forge', 'Hunting']);
-    expect(el.querySelector('.hs__tag')?.textContent).toContain('Mining, Foraging and Prospecting are live');
+  const cards = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.sk__card'));
+  const level = (card: HTMLElement) => card.querySelector('.sk__lvl')?.textContent?.trim();
+
+  it('shows all eight skills as real cards', () => {
+    expect(cards().map(c => c.querySelector('.sk__name')?.textContent?.trim())).toEqual([
+      'Mining', 'Foraging', 'Woodcutting', 'Smithing', 'Delving', 'Enchanting', 'Hunting', 'Prospecting',
+    ]);
   });
 
-  it('sends each live tile to its own site', () => {
-    const el = fixture.nativeElement as HTMLElement;
-    const goes = Array.from(el.querySelectorAll<HTMLAnchorElement>('.hs__skill--live .hs__go'));
-    expect(goes.length).toBe(3);
-    expect(goes[0].getAttribute('href')).toContain('/world/realms/infernal/basalt-seamworks');
-    expect(goes[1].getAttribute('href')).toContain('/world/realms/verdant/rootglass-canopy');
-    expect(goes[2].getAttribute('href')).toContain('/world/realms/celestial/meridian-orrery');
-    expect(goes[1].textContent?.trim()).toBe('Go to Canopy');
-    expect(goes[2].textContent?.trim()).toBe('Go to Orrery');
+  it('sends the three site skills to their own site', () => {
+    const goes = Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLAnchorElement>('.sk__go'));
+    expect(goes.map(a => a.getAttribute('href'))).toEqual([
+      '/world/realms/infernal/basalt-seamworks',
+      '/world/realms/verdant/rootglass-canopy',
+      '/world/realms/celestial/meridian-orrery',
+    ]);
   });
 
-  it('draws each bar off its own discipline XP alone — no other skill moves it', () => {
+  it('reads each level off its own discipline XP alone', () => {
     activity$.next({
       ...emptyActivityLedger(),
-      progress: {
-        version: 1,
-        xpByDiscipline: { mining: xpForLevel(12), foraging: xpForLevel(3), prospecting: xpForLevel(7) },
-      },
+      progress: { version: 1, xpByDiscipline: { mining: xpForLevel(12), exploration: xpForLevel(7) } },
     });
     fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-    const [mining, foraging, prospecting] = Array.from(el.querySelectorAll<HTMLElement>('.hs__skill--live'));
-    expect(mining.querySelector('.hs__lvl-n')?.textContent?.trim()).toBe('12');
-    expect(foraging.querySelector('.hs__lvl-n')?.textContent?.trim()).toBe('3');
-    expect(prospecting.querySelector('.hs__lvl-n')?.textContent?.trim()).toBe('7');
-    const bars = Array.from(el.querySelectorAll<HTMLElement>('.hs__skill--live .hs__bar'));
-    expect(bars.length).toBe(3);
-    expect(bars[1].getAttribute('aria-label')).toContain('Foraging');
-    expect(bars[2].getAttribute('aria-label')).toContain('Prospecting');
-    // Each level exactly: 0 XP into the level, so every fill starts at 0%.
-    expect(foraging.querySelector<HTMLElement>('.hs__bar-fill')?.style.width).toBe('0%');
-    expect(prospecting.querySelector<HTMLElement>('.hs__bar-fill')?.style.width).toBe('0%');
-    expect(foraging.textContent).toContain('to level 4');
-    expect(prospecting.textContent).toContain('to level 8');
+    const [mining, foraging, , , delving] = cards();
+    expect(level(mining)).toBe('12');
+    expect(level(foraging)).toBe('1');
+    expect(level(delving)).toBe('7');
   });
 
-  it('leaves a skill with no XP at level 1 while another is high', () => {
-    activity$.next({
-      ...emptyActivityLedger(),
-      progress: { version: 1, xpByDiscipline: { mining: xpForLevel(30) } },
-    });
+  it('counts the bench ladder toward Smithing', () => {
+    bench$.next({ xp: xpForLevel(10) });
     fixture.detectChanges();
-    const el = fixture.nativeElement as HTMLElement;
-    const live = Array.from(el.querySelectorAll<HTMLElement>('.hs__skill--live'));
-    expect(live[0].querySelector('.hs__lvl-n')?.textContent?.trim()).toBe('30');
-    expect(live[1].querySelector('.hs__lvl-n')?.textContent?.trim()).toBe('1');
-    expect(live[2].querySelector('.hs__lvl-n')?.textContent?.trim()).toBe('1');
+    expect(level(cards()[3])).toBe('10');
+  });
+
+  it('says what the next level opens, in one line', () => {
+    expect(cards()[0].querySelector('.sk__next')?.textContent).toContain('level 8');
   });
 });

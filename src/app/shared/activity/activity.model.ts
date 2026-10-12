@@ -10,8 +10,12 @@ export type DisciplineId =
   /** B1 Prospecting: the Meridian Orrery's rings. */
   | 'prospecting'
   | 'exploration'
+  /** Player-facing "Smithing". The id predates the name and is stored in saves. */
   | 'forge'
-  | 'hunting';
+  | 'hunting'
+  /** World skills (chop / enchant), granted through resolveWorldAction. */
+  | 'woodcutting'
+  | 'enchanting';
 
 export type ActivityLocationId = string;
 
