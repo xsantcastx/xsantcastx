@@ -8,6 +8,13 @@
 <!-- The Exchange on the station kit: Buy · Sell → category → list → the
      selected line → [− n +] Buy / Max. Charts, events, filters, movers and the
      ledger are in Details. -->
+<!-- The player-run market (client flag on, or dev `?market=fake`). Deferred,
+     so with the flag off its chunk is never fetched. -->
+@if (playerMarket) {
+  @defer {
+    <app-player-exchange />
+  }
+} @else {
 <app-station-shell class="ge"
                    [class.ge--hydrated]="hydrated"
                    [title]="'The Grand Exchange'"
@@ -289,6 +296,7 @@
     </section>
   </div>
 </app-station-shell>
+}
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the
      prerendered HTML where a crawler can follow them. See

@@ -41,9 +41,12 @@ import { CloudSaveService } from '../cloud-save/cloud-save.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LazyFirestoreService } from '../lazy-firestore.service';
 import { MarketConfig, PLAYER_MARKET_BACKEND } from './player-market.backend';
+import { FAKE_MARKET_UID } from './player-market.fake-backend';
+import { PLAYER_MARKET_MODE } from './player-market.mode';
 import {
   CollectResult,
   MarketAccess,
+  MarketBoardRow,
   MarketEscrow,
   MarketOrder,
   MarketPrice,
@@ -54,6 +57,7 @@ import {
   PendingAction,
   PlaceOrderInput,
   PlaceOrderResult,
+  buildBoard,
   buildBook,
   describeMarketError,
   emptyBook,
@@ -63,6 +67,9 @@ import {
 
 /** Depth fetched per side of the book. The UI shows the top of it. */
 const BOOK_DEPTH = 50;
+/** Bounds on the board's two collection listeners (each change re-reads only the changed docs). */
+const BOARD_ORDERS = 400;
+const BOARD_PRICES = 200;
 
 /**
  * The two save-sync moves the market needs, behind a seam for the specs.
@@ -78,12 +85,16 @@ export class PlayerMarketSaveSync {
   private readonly gateway = inject(GameStateGateway);
   private readonly cloud = inject(CloudSaveService);
   private readonly lazy = inject(LazyFirestoreService);
+  /** The dev fake never edits the save, so there is nothing to push or pull. */
+  private readonly fake = inject(PLAYER_MARKET_MODE).mode === 'fake';
 
   async flush(): Promise<void> {
+    if (this.fake) return;
     await this.gateway.flushNow();
   }
 
   async pull(): Promise<void> {
+    if (this.fake) return;
     const uid = this.cloud.status.uid;
     const fs = await this.lazy.get();
     if (!uid || !fs) return;
@@ -96,20 +107,46 @@ export class PlayerMarketService {
   private readonly backend = inject(PLAYER_MARKET_BACKEND);
   private readonly cloud = inject(CloudSaveService);
   private readonly sync = inject(PlayerMarketSaveSync);
+  private readonly mode = inject(PLAYER_MARKET_MODE);
 
-  /** Overridable in specs; production reads the compile-time flag. */
+  /**
+   * Overridable in specs. Production: the compile-time flag (`live`), or the
+   * dev-only fake (`?market=fake`, see player-market.mode.ts).
+   */
   protected clientEnabled(): boolean {
-    return PLAYER_MARKET_CLIENT_ENABLED;
+    return PLAYER_MARKET_CLIENT_ENABLED || this.mode.mode === 'fake';
   }
 
   private readonly pending$$ = new BehaviorSubject<PendingAction[]>([]);
   /** Actions in flight. Render optimistic rows from `input` / grey out `orderId`. */
   readonly pending$: Observable<PendingAction[]> = this.pending$$.asObservable();
 
-  private readonly uid$: Observable<string | null> = this.cloud.status$.pipe(
-    map(s => s.uid),
-    distinctUntilChanged(),
-  );
+  /** The fake's own "account": signed in unless `?market=fake-guest`. */
+  private readonly fakeUid$$ = new BehaviorSubject<string | null>(
+    this.mode.scenario === 'guest' ? null : FAKE_MARKET_UID);
+
+  private readonly uid$: Observable<string | null> = (this.mode.mode === 'fake'
+    ? this.fakeUid$$.asObservable()
+    : this.cloud.status$.pipe(map(s => s.uid))
+  ).pipe(distinctUntilChanged());
+
+  private signedIn(): boolean {
+    return this.mode.mode === 'fake' ? this.fakeUid$$.value !== null : this.cloud.signedIn;
+  }
+
+  /** The sign-in button. In the fake it just flips the fake account on. */
+  async signIn(): Promise<void> {
+    if (this.mode.mode === 'fake') {
+      this.fakeUid$$.next(FAKE_MARKET_UID);
+      return;
+    }
+    await this.cloud.signIn();
+  }
+
+  /** Whether this is the dev-only in-memory market (the UI shows a ribbon). */
+  get isFake(): boolean {
+    return this.mode.mode === 'fake';
+  }
 
   private config$?: Observable<MarketConfig | null>;
   private access$$?: Observable<MarketAccess>;
@@ -194,6 +231,27 @@ export class PlayerMarketService {
     return this.backend.watchTrades(itemKey, limit).pipe(catchError(() => of([])));
   }
 
+  private board$$?: Observable<MarketBoardRow[]>;
+
+  /**
+   * Every item with a live player market (a resting order or a trade in the
+   * last day), busiest first, with best bid/ask and 24h price and volume.
+   * Public: works signed out.
+   */
+  get board$(): Observable<MarketBoardRow[]> {
+    if (!this.clientEnabled()) return of([]);
+    if (!this.board$$) {
+      this.board$$ = combineLatest([
+        this.backend.watchOpenOrders(BOARD_ORDERS).pipe(catchError(() => of([] as MarketOrder[]))),
+        this.backend.watchPrices(BOARD_PRICES).pipe(catchError(() => of([] as MarketPrice[]))),
+      ]).pipe(
+        map(([orders, prices]) => buildBoard(orders, prices)),
+        shareReplay({ bufferSize: 1, refCount: true }),
+      );
+    }
+    return this.board$$;
+  }
+
   /** This player's orders (open and recent), newest first. Empty signed out. */
   readonly myOrders$: Observable<MarketOrder[]> = this.signedInStream(uid =>
     this.backend.watchMyOrders(uid, 50), [] as MarketOrder[]);
@@ -266,7 +324,7 @@ export class PlayerMarketService {
 
   private refuseUnlessReady(): string | null {
     if (!this.clientEnabled()) return "The player market isn't open yet.";
-    if (!this.cloud.signedIn) return 'Sign in to trade.';
+    if (!this.signedIn()) return 'Sign in to trade.';
     return null;
   }
 
