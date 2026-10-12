@@ -52,10 +52,12 @@ export type PanelId =
   | 'market' | 'gambler' | 'exchange'
   | 'crafting' | 'enchanting' | 'runes'
   | 'sanctum' | 'codex' | 'leaderboards'
-  | 'quests' | 'arena' | 'trials' | 'character';
+  | 'quests' | 'arena' | 'trials' | 'character'
+  | 'vendor';
 export const PANEL_IDS: readonly PanelId[] = [
   'market', 'gambler', 'exchange', 'crafting', 'enchanting', 'runes',
   'sanctum', 'codex', 'leaderboards', 'quests', 'arena', 'trials', 'character',
+  'vendor',
 ];
 
 export interface Platform { x: number; y: number; width: number }

@@ -394,7 +394,7 @@ test('world data is valid: unique ids, stations inside the town, every panel reg
   assert.deepEqual([...world.REALM_TOWN_IDS].sort(), Object.keys(world.TOWNS).sort(), 'every realm has a TOWNS entry');
   assert.deepEqual([...world.PANEL_IDS].sort(), Object.keys(registry.PANEL_REGISTRY).sort(), 'the registry covers every PanelId and nothing else');
   for (const entry of Object.values(registry.PANEL_REGISTRY)) {
-    assert.equal(typeof entry.load, 'function'); assert.ok(entry.title && entry.route.startsWith('/'));
+    assert.equal(typeof entry.load, 'function'); assert.ok(entry.title && (entry.route === undefined || entry.route.startsWith('/')), 'a route, when given, is absolute');
   }
   const built = Object.values(world.TOWNS).filter(Boolean);
   assert.ok(built.length >= 1 && world.TOWNS.infernal, 'the Infernal town exists');
