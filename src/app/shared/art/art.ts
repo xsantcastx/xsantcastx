@@ -44,6 +44,9 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   'axe-1': 'rootbreaker-mace', 'axe-2': 'radiant-halberd', 'axe-3': 'astral-glaive', 'axe-4': 'starfall-maul',
   'sickle-1': 'briarvein-kris', 'sickle-2': 'ashveil-throwing-knives', 'sickle-3': 'hollow-fang', 'sickle-4': 'cindergnaw',
   'staff-1': 'keeper-staff', 'staff-2': 'keeper-staff', 'staff-3': 'nullthorn-staff', 'staff-4': 'pyreclast-wand',
+  // Ember Delve biome materials (shared/delve). Stand-ins until the commission
+  // pack paints them; delete each row when its file lands.
+  'shadow-root-cutting': 'thornroot', 'glowcap': 'nightbloom', 'godforge-fragment': 'godstone',
 };
 
 /**
