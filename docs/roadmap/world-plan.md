@@ -27,6 +27,8 @@ world — and every system visible while it works.
 | Monster loot | **Zone-specific drop tables**, hand-authored per hunting ground | More flavour; each table needs balancing |
 | Translucent art | **Solidify at import** (`SOLIDIFY` in `scripts/import-assets.py`) | Keeper is solid; same treatment available for any future see-through export |
 | Platform | **Browser-first**; installable PWA now; wrap the same web build for Steam / app stores later only if it gets traction. No engine rewrite (Unity / Godot) | Keeps zero-friction play, SEO traffic, cloud saves and instant updates; revisit only for 3D or real-time multiplayer combat |
+| World interactions | **Tools are verbs; the world has things to use them on** (inspired by Subgloom's destructible underground). **Tile-grid terrain**, not per-pixel. Delve + Homestead built **in parallel** | Crafting gets a purpose: each tool tier opens new rock, veins, paths and rooms |
+| New skills | **Smithing, Foraging/Woodcutting, Delving/Exploration, Enchanting ritual** (+ Mining, Hunting, Prospecting); one 1–99 curve with an unlock every ~10 levels | Extends the existing discipline ledger; no XP lost |
 | Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
 
 ### Where each page lives (proposal; change here, then build)
@@ -85,6 +87,19 @@ Sequential: everything after it plugs into its data model and panel host.
 - [x] Side-scroller wiring of `setLoadout` / satchel target / `clearPointer` (`3c35881`)
 - [x] In-game UI polish: compact HUD + satchel tally, station name cards, content-only panel transitions, "+N material" loot toasts, focus returns to the canvas, enemy bar names the creature (`3c35881`)
 
+## Phase 2.5: Living world — world, not menus `[~]` (started 2026-10-12)
+
+The fun moves out of panels and into the world: you dig, chop, cut and blast
+things with tools you crafted, and you see your economy working.
+
+- [~] **World interactions + Ember Delve** (engine): diggable tile terrain with crack stages and crumble debris; generic tool-vs-node system (`pickaxe | axe | sickle | blade | staff`, tiers); lantern lighting in caves + staff blast beam; the Ember Delve slice under the Seamworks (Cinder → Slag → Heartstone veins by pickaxe tier, a staff-only cracked wall, roots for the blade/sickle)
+- [~] **Skills + tool progression**: new disciplines (Woodcutting, Enchanting; Smithing = forge, Delving = exploration); one 1–99 curve with migration-safe XP; unlock table every ~10 levels; craftable tool tiers I–IV from existing materials, gated by Smithing; generic `resolveWorldAction`; in-world Skills panel; a level-up moment for every skill
+- [~] **Homestead** (Infernal): the idle economy as buildings you can see: forge automatons hammering, treasury, explorer camp (real expedition timestamps), thrall workshop; walk past to collect (visual only, no double credit); upgrade in-world with the existing Market upgrades
+- [ ] Foraging/woodcutting nodes in each realm's hunt (herbs, rootglass, bark), using the same tool system
+- [ ] **Smithing anvil mini-game** (strike timing sets quality): after the station-kit forge redesign lands
+- [ ] **Enchanting ritual** in the world (place runes on a glowing circle, small skill check): after the station-kit redesign lands
+- [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
+
 ## Phase 3: World only
 
 - [ ] Every navbar page reachable by walking, the Places list, and a Waystone
@@ -121,6 +136,10 @@ Sequential: everything after it plugs into its data model and panel host.
 | Work | Branch | Status |
 |---|---|---|
 | Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
+| Station UI kit + forge bench redesign ("for dummies" simple) | agent worktree | `[~]` |
+| Living world · World interactions + Ember Delve | agent worktree | `[~]` |
+| Living world · Skills + tool progression | agent worktree | `[~]` |
+| Living world · Homestead | agent worktree | `[~]` |
 
 ## Art still missing (placeholders in game)
 
