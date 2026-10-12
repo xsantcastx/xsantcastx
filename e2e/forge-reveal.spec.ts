@@ -37,7 +37,7 @@ test.describe('Rune Forge reveal', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openForge(page);
 
-    const strike = page.getByRole('button', { name: /Roll new rune/ });
+    const strike = page.getByRole('button', { name: /^Strike the forge/ });
     await expect(strike).toBeEnabled();
     await strike.click();
 
@@ -66,7 +66,7 @@ test.describe('Rune Forge reveal', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openForge(page);
 
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     const focus = page.locator('.rf-focus');
     await expect(focus).toBeVisible();
 
@@ -100,7 +100,7 @@ test.describe('Rune Forge reveal', () => {
   test('a bulk run reports progress and can be stopped part-way', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openForge(page);
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     await expect(page.locator('.rf-acts__btn--again')).toBeVisible();
 
     await page.locator('.rf-acts__btn', { hasText: '×1K' }).first().click();
@@ -139,7 +139,7 @@ test.describe('Rune Forge reveal', () => {
   test('every roll button is reachable on a 375px phone', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openForge(page);
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     // A ten-card grid is the tallest the reveal gets before the summary takes
     // over, so it is the worst case for the row underneath it.
     await page.locator('.rf-acts__btn', { hasText: '×10' }).first().click();
@@ -175,7 +175,7 @@ test.describe('Rune Forge reveal', () => {
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await openForge(page);
 
-    await page.getByRole('button', { name: /Roll new rune/ }).click();
+    await page.getByRole('button', { name: /^Strike the forge/ }).click();
     await expect(page.locator('.rf-pick__card.is-chosen')).toHaveCount(1);
     await expect(page.locator('.rf-pick__tier')).toBeVisible();
     await expect

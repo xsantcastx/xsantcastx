@@ -39,6 +39,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
@@ -63,6 +64,18 @@ import { formatQuality, qualityOf } from '../rpg/item-quality';
 import type { GameItem, ItemRarity } from '../rpg/item.model';
 import { materialDisplay } from '../rpg/material-catalog';
 import { RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
+import {
+  STATION_UI,
+  STATION_UI_I18N,
+  forgeTabs,
+  isAffordable,
+  maxAffordable,
+  type JournalRow,
+  type StationCost,
+  type StationReward,
+  type StationTab,
+} from '../station-ui';
+import { CRAFTING_I18N } from './crafting.i18n';
 import { TranslationService } from '../../translation.service';
 import { CraftingGateway, type CraftReject } from './crafting.gateway';
 import { CraftingService } from './crafting.service';
@@ -89,7 +102,6 @@ export interface SlotView {
   need: number;
   have: number;
   art: ArtEntry | null;
-  loaded: boolean;
   enough: boolean;
 }
 
@@ -123,7 +135,7 @@ const DIAL_R = 46;
 @Component({
   selector: 'app-crafting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, FormsModule],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, FormsModule, ...STATION_UI],
   templateUrl: './crafting-bench.component.html',
   styleUrls: ['./crafting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -139,6 +151,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   private readonly celebration = inject(CelebrationService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
   private subs: Subscription[] = [];
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -172,8 +185,31 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   selected: CraftingRecipe | null = CRAFTING_RECIPES[0] ?? null;
   slots: SlotView[] = [];
 
-  /** Material ids currently sitting on the anvil for the selected recipe. */
-  private loadedIds = new Set<string>();
+  /** True once the player picked a recipe themselves; until then we pick the best one for them. */
+  private userPicked = false;
+
+  // ── The big button, rebuilt on every refresh / pick ────────────────────────
+  // ── The journal (tabs → list → detail) ─────────────────────────────────────
+  readonly forgeTabs: StationTab[];
+  /** 'ready' (what you can make now) · 'all' · a category id. */
+  journalTab = 'ready';
+  journalTabs: StationTab[] = [];
+  journalRows: JournalRow[] = [];
+  readyCount = 0;
+  /** Required tools: the bench itself. Always met — shown so the page reads like every other station. */
+  readonly tools: StationCost[];
+  quantity = 1;
+  allCount = 0;
+  /** Crafts still to run from a "Craft 3" / "Craft all" press. */
+  private queue = 0;
+  private queueTotal = 0;
+  ctaCosts: StationCost[] = [];
+  ctaBlocked: string | null = null;
+  ctaProgress: number | null = null;
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
+  reward: StationReward | null = null;
+  private rewardSeq = 0;
+  detailsOpen = false;
 
   /** Set while a craft with a `craftTime` is running down. */
   striking = false;
@@ -200,13 +236,17 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     return this.floorStockCache;
   }
 
-  /** Which material tile the pointer is dragging, and which slot is under it. */
-  dragging: string | null = null;
-  dragOver: string | null = null;
-
   constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(CRAFTING_I18N);
+    this.forgeTabs = forgeTabs(key => this.t(key));
+    this.tools = [{ kind: 'item', id: 'iron-hammer', label: this.t('crafting.tool.anvil'), need: 0, have: 0, art: artFor('iron-hammer') }];
     this.cards = this.buildCards();
     this.slots = this.buildSlots();
+    // The price and the catalogue are pure data, so they are in the prerendered HTML too.
+    this.journalTab = 'all';
+    this.buildJournal();
+    this.buildCta();
   }
 
   ngOnInit(): void {
@@ -219,6 +259,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     }));
     this.subs.push(this.economy.snapshot$.subscribe(snap => {
       this.gold = snap.gold;
+      this.buildCta();
       this.cdr.markForCheck();
     }));
     this.subs.push(this.crafting.snapshot$.subscribe(snap => {
@@ -238,7 +279,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
 
   // ── Copy ───────────────────────────────────────────────────────────────────
 
-  t(key: string): string { return this.i18n.translate(key); }
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
 
   // ── Derived ────────────────────────────────────────────────────────────────
 
@@ -265,15 +306,6 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     return this.cards.find(card => card.recipe.id === this.selected!.id) ?? null;
   }
 
-  /** Every slot loaded, so the anvil can be struck. */
-  get loaded(): boolean {
-    return this.slots.length > 0 && this.slots.every(slot => slot.loaded);
-  }
-
-  get canLoad(): boolean {
-    return this.slots.some(slot => !slot.loaded && slot.enough);
-  }
-
   get blocker(): CraftReject | null {
     if (!this.selected || !this.isBrowser || !this.hydrated) return null;
     return this.gateway.blocker(this.selected);
@@ -285,7 +317,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   }
 
   get canCraft(): boolean {
-    return this.isBrowser && this.hydrated && !this.striking && this.loaded && !this.blocker;
+    return this.isBrowser && this.hydrated && !this.striking && !this.blocker;
   }
 
   /** The stat line the output can reach at this tier, for the preview. */
@@ -331,95 +363,142 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   trackSlot = (_: number, slot: SlotView) => slot.materialId;
   trackItem = (_: number, item: GameItem) => item.id;
 
-  // ── Selection and loading ──────────────────────────────────────────────────
+  // ── Selection ──────────────────────────────────────────────────────────────
 
-  select(recipe: CraftingRecipe): void {
+  /**
+   * Pick a recipe. From the recipe book in Details, bring the big button back
+   * into view so the pick visibly lands somewhere.
+   */
+  /** A row in the journal list. */
+  pickRow(id: string): void {
+    const card = this.cards.find(c => c.recipe.id === id);
+    if (card) this.select(card.recipe);
+  }
+
+  setJournalTab(id: string): void {
+    this.userPicked = true;
+    this.journalTab = id;
+    this.buildJournal();
+    const first = this.journalRows[0];
+    if (first && !this.journalRows.some(row => row.id === this.selected?.id)) this.pickRow(first.id);
+    this.cdr.markForCheck();
+  }
+
+  select(recipe: CraftingRecipe, fromBook = false): void {
     if (this.striking) return;
+    this.userPicked = true;
+    this.quantity = 1;
     this.selected = recipe;
-    this.loadedIds.clear();
     this.error = null;
+    this.reward = null;
     this.lastCraft = null;
     this.slots = this.buildSlots();
+    this.buildCta();
     this.cdr.markForCheck();
-  }
-
-  loadSlot(slot: SlotView): void {
-    if (this.striking || !slot.enough) return;
-    this.loadedIds.add(slot.materialId);
-    this.slots = this.buildSlots();
-    this.announce = `${slot.name} on the anvil.`;
-    this.cdr.markForCheck();
-  }
-
-  unloadSlot(slot: SlotView): void {
-    if (this.striking) return;
-    this.loadedIds.delete(slot.materialId);
-    this.slots = this.buildSlots();
-    this.cdr.markForCheck();
-  }
-
-  loadAll(): void {
-    if (this.striking) return;
-    for (const slot of this.slots) if (slot.enough) this.loadedIds.add(slot.materialId);
-    this.slots = this.buildSlots();
-    this.announce = 'The anvil is loaded.';
-    this.cdr.markForCheck();
-  }
-
-  clearAnvil(): void {
-    if (this.striking) return;
-    this.loadedIds.clear();
-    this.slots = this.buildSlots();
-    this.cdr.markForCheck();
-  }
-
-  // ── Drag and drop ──────────────────────────────────────────────────────────
-  //
-  // The tray tile is the drag source and the slot is the target. Both paths end
-  // in `loadSlot`, so there is exactly one place a material gets onto the anvil.
-
-  onDragStart(materialId: string, event: DragEvent): void {
-    this.dragging = materialId;
-    event.dataTransfer?.setData('text/plain', materialId);
-    if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
-  }
-
-  onDragEnd(): void {
-    this.dragging = null;
-    this.dragOver = null;
-    this.cdr.markForCheck();
-  }
-
-  onDragOver(slot: SlotView, event: DragEvent): void {
-    // Only a matching, affordable material may be dropped; anything else keeps
-    // the browser's default "no drop" cursor, which is the honest signal.
-    if (this.dragging !== slot.materialId || !slot.enough) return;
-    event.preventDefault();
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
-    if (this.dragOver !== slot.materialId) {
-      this.dragOver = slot.materialId;
-      this.cdr.markForCheck();
+    if (fromBook && this.isBrowser) {
+      const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.host.nativeElement.querySelector('.cb-hero')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });
     }
   }
 
-  onDragLeave(slot: SlotView): void {
-    if (this.dragOver === slot.materialId) {
-      this.dragOver = null;
-      this.cdr.markForCheck();
+  /**
+   * The big button's price and "why not". Gold first — it is what players are
+   * most often short of — then each material. `level` and `capacity` are not
+   * money, so they become a plain sentence instead; `funds`/`missing` are the
+   * chips' job. The gateway still decides on press, exactly as before.
+   */
+  private buildCta(): void {
+    this.walletGold = { kind: 'gold', label: this.t('stationUi.gold'), need: this.gold, have: this.gold };
+    const recipe = this.selected;
+    if (!recipe) { this.ctaCosts = []; this.ctaBlocked = null; this.ctaProgress = null; return; }
+    this.ctaCosts = this.costsOf(recipe);
+    const code = this.blocker;
+    this.allCount = code === 'level' || code === 'capacity' ? 0 : maxAffordable(this.ctaCosts);
+    if (code === 'level') {
+      const need = recipe.requiredLevel ?? 1;
+      this.ctaBlocked = this.t('crafting.why.level', { n: need });
+      this.ctaProgress = Math.min(1, this.level.level / need);
+    } else if (code === 'capacity') {
+      this.ctaBlocked = this.t('crafting.why.bag');
+      this.ctaProgress = null;
+    } else if (code && code !== 'funds' && code !== 'missing' && code !== 'ssr') {
+      this.ctaBlocked = REJECT_COPY[code];
+      this.ctaProgress = null;
+    } else {
+      this.ctaBlocked = null;
+      this.ctaProgress = null;
     }
   }
 
-  onDrop(slot: SlotView, event: DragEvent): void {
-    event.preventDefault();
-    const id = event.dataTransfer?.getData('text/plain') || this.dragging;
-    this.dragOver = null;
-    this.dragging = null;
-    if (id !== slot.materialId) {
-      this.error = `${materialName(id ?? '')} does not belong in that slot.`;
-      this.cdr.markForCheck();
-      return;
+  private costsOf(recipe: CraftingRecipe): StationCost[] {
+    const browser = this.isBrowser && this.hydrated;
+    return [
+      { kind: 'gold', label: this.t('stationUi.gold'), need: recipe.goldCost, have: this.gold },
+      ...recipe.ingredients.map(row => ({
+        kind: 'material' as const,
+        id: row.materialId,
+        label: materialName(row.materialId),
+        need: row.count,
+        have: browser ? this.inventory.stackOf(row.materialId) : 0,
+        art: artFor(row.materialId),
+      })),
+    ];
+  }
+
+  /**
+   * The journal: tabs (Ready now · All · categories), then the rows of the
+   * active tab. "Ready now" is "what can I make right now?" — recipes your
+   * level, bag and purse all cover, best rarity first. It is the default tab
+   * whenever it has anything in it, and its first row is the default pick.
+   */
+  private buildJournal(): void {
+    const browser = this.isBrowser && this.hydrated;
+    const order = (r: ItemRarity) => RUNE_TIER_ORDER.indexOf(r);
+    const ready = browser
+      ? this.cards.filter(card => card.levelOk && isAffordable(this.costsOf(card.recipe)))
+        .sort((a, b) => order(b.recipe.rarity) - order(a.recipe.rarity))
+      : [];
+    this.readyCount = ready.length;
+    this.journalTabs = [
+      { id: 'ready', label: this.t('crafting.tab.ready'), badge: ready.length || null },
+      { id: 'all', label: this.t('crafting.all') },
+      ...this.categories.map(cat => ({ id: cat.id, label: cat.label })),
+    ];
+    if (browser && !this.userPicked) this.journalTab = ready.length ? 'ready' : 'all';
+    const readyIds = new Set(ready.map(card => card.recipe.id));
+    const cards = this.journalTab === 'ready' ? ready
+      : this.journalTab === 'all' ? this.cards
+      : this.cards.filter(card => card.recipe.category === this.journalTab);
+    this.journalRows = cards.map(card => ({
+      id: card.recipe.id,
+      name: card.recipe.name,
+      art: card.art,
+      rarity: card.recipe.rarity,
+      sub: `${this.t('stationUi.level')} ${card.recipe.requiredLevel ?? 1}`,
+      locked: browser && !card.levelOk,
+      ready: readyIds.has(card.recipe.id),
+    }));
+    if (browser && !this.userPicked && cards[0]) {
+      this.selected = cards[0].recipe;
+      this.slots = this.buildSlots();
     }
-    this.loadSlot(slot);
+  }
+
+  /** "Craft 1 Briarvein Kris" — the detail header's one line. */
+  craftLine(): string {
+    return this.selected ? this.t('crafting.craftN', { n: this.quantity, name: this.selected.name }) : '';
+  }
+
+  /** The stepper / Craft all: run the same single craft `n` times, one after another. */
+  craftMany(n: number): void {
+    if (!this.canCraft || n < 1) return;
+    this.queueTotal = n;
+    this.queue = n - 1;
+    this.craft();
+  }
+
+  isReady(card: RecipeCard): boolean {
+    return card.levelOk && card.ready && this.gold >= card.recipe.goldCost;
   }
 
   // ── The strike ─────────────────────────────────────────────────────────────
@@ -437,6 +516,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     }
 
     this.striking = true;
+    this.reward = null;
     // The materials ride onto the anvil now; the output follows from `settle`.
     this.emitFloor(recipe, null);
     this.strikeRemaining = seconds;
@@ -463,6 +543,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   private settle(recipe: CraftingRecipe): void {
     const result = this.gateway.craft(recipe.id, newCraftId());
     if (!result.ok) {
+      this.queue = 0;
       this.error = REJECT_COPY[result.code];
       this.announce = this.error;
       this.striking = false;
@@ -470,7 +551,6 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       return;
     }
 
-    this.loadedIds.clear();
     this.slots = this.buildSlots();
     this.lastCraft = {
       items: result.items,
@@ -484,6 +564,19 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       : `${name} forged.`;
     // Safe to call unconditionally — a no-op on Common and on the server, and it
     // never throws into the caller. See CelebrationService.
+    const q = result.items[0] ? this.qualityOf(result.items[0]) : '';
+    this.reward = {
+      seq: ++this.rewardSeq,
+      kicker: result.progress?.masteredNow ? this.t('crafting.madeMastered') : this.t('crafting.made'),
+      name: result.items.length > 1 ? `${name} ×${result.items.length}` : name,
+      art: artFor(result.recipe.output.itemId),
+      rarity: result.recipe.rarity,
+      rarityLabel: this.rarityLabel(result.recipe.rarity),
+      caption: [
+        q ? this.t('crafting.quality', { q }) : '',
+        this.queueTotal > 1 ? this.t('crafting.batch', { n: this.queueTotal - this.queue, total: this.queueTotal }) : '',
+      ].filter(Boolean).join(' · ') || undefined,
+    };
     this.celebration.celebrate(result.recipe.rarity);
     // A timed craft already fed the floor when it started; an instant one feeds
     // and finishes in a single event.
@@ -494,6 +587,17 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       this.rarityColor(result.recipe.rarity),
     );
     this.cdr.markForCheck();
+    // A multi-craft: the next one, a beat later so each pop is seen. Stops by
+    // itself the moment the bench says no (craft() re-checks canCraft).
+    if (this.queue > 0) {
+      this.queue -= 1;
+      this.timers.push(setTimeout(() => {
+        if (this.canCraft) this.craft();
+        else this.queue = 0;
+      }, 280));
+    } else {
+      this.queueTotal = 0;
+    }
   }
 
   /** Hand the floor a settled (or, for a timed craft, a started) strike. */
@@ -509,6 +613,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
 
   dismissResult(): void {
     this.lastCraft = null;
+    this.reward = null;
     this.error = null;
     this.cdr.markForCheck();
   }
@@ -517,7 +622,9 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
 
   private refresh(): void {
     this.cards = this.buildCards();
+    this.buildJournal();
     this.slots = this.buildSlots();
+    this.buildCta();
     this.cdr.markForCheck();
   }
 
@@ -554,7 +661,6 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
         need: row.count,
         have,
         art: artFor(row.materialId),
-        loaded: this.loadedIds.has(row.materialId),
         enough: have >= row.count,
       };
     });

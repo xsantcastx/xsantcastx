@@ -40,7 +40,7 @@ import {
   inject,
 } from '@angular/core';
 import { CommonModule, isPlatformBrowser } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { artFor, type ArtEntry } from '../art/art';
@@ -56,6 +56,12 @@ import {
 } from '../rpg/item.model';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { RUNES, RUNE_TIERS, runeById, type Rune } from '../rune-forge/rune.model';
+import { runeCard, type CardArt } from '../rune-forge/rune-cards';
+import {
+  STATION_UI, STATION_UI_I18N, forgeTabs,
+  type JournalRow, type StationArt, type StationCost, type StationReward, type StationTab,
+} from '../station-ui';
+import { ENCHANTING_I18N } from './enchanting.i18n';
 import { TranslationService } from '../../translation.service';
 import { EnchantingGateway, type BrewReject, type SocketReject } from './enchanting.gateway';
 import { InfusionService } from './infusion.service';
@@ -103,6 +109,8 @@ export interface WellView {
   rune: Rune | null;
   /** Gold to pull it. Zero when empty. */
   cost: number;
+  /** `cost` as a price row for the Remove button. Built once per refresh. */
+  costs: StationCost[];
   effect: string[];
 }
 
@@ -111,6 +119,7 @@ export interface DrawerRune {
   rune: Rune;
   held: number;
   effect: string;
+  card: CardArt | null;
 }
 
 /** One card on the word wall. */
@@ -130,6 +139,8 @@ export interface InfusionCard {
   remaining: string;
   /** 0..1 of the timer already burned. Drives the ring. */
   burned: number;
+  /** `inputs` as price rows for the Brew button. */
+  costs: StationCost[];
 }
 
 const SOCKET_COPY: Readonly<Record<SocketReject, string>> = {
@@ -157,7 +168,7 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
 @Component({
   selector: 'app-enchanting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, FormsModule],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, RouterLink, ...STATION_UI],
   templateUrl: './enchanting-bench.component.html',
   styleUrls: ['./enchanting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -192,8 +203,32 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   wells: WellView[] = [];
   drawer: DrawerRune[] = [];
 
-  /** Which well the player is filling, or null when the drawer is closed. */
-  activeWell: number | null = null;
+  /** The rune the player picked for the big button. Defaults to the first held. */
+  chosenRuneId: string | null = null;
+
+  // ── The big button, rebuilt on every refresh / pick ────────────────────────
+  ctaLabel = '';
+  ctaCosts: StationCost[] = [];
+  ctaBlocked: string | null = null;
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
+  /** The "you did it" card. */
+  reward: StationReward | null = null;
+  private rewardSeq = 0;
+  detailsOpen = false;
+  foundWords = 0;
+
+  // ── The journal (tabs → list → detail) ─────────────────────────────────────
+  readonly forgeTabs: StationTab[];
+  readonly enchantTabs: StationTab[];
+  enchantTab = 'runes';
+  readonly skillArt: StationArt | null = artFor('enhancement-aura');
+  readonly potionArt: StationArt | null = artFor('enhancement-aura');
+  gearRows: JournalRow[] = [];
+  potionRows: JournalRow[] = [];
+  potionId: string | null = INFUSIONS[0]?.id ?? null;
+  /** The Additive box: every rune you hold, as pickable cells. */
+  runeChoices: StationCost[] = [];
+  selectedArt: StationArt | null = null;
 
   words: WordCard[] = [];
   infusionCards: InfusionCard[] = [];
@@ -208,14 +243,19 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   floorEvent: ForgeFloorEvent | null = null;
   private floorSeq = 0;
 
-  /** The word a socket just seated, for the celebration banner. */
-  revealed: SocketWord | null = null;
-
   constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(ENCHANTING_I18N);
+    this.forgeTabs = forgeTabs(key => this.t(key));
+    this.enchantTabs = [
+      { id: 'runes', label: this.t('enchant.tab.runes') },
+      { id: 'potions', label: this.t('enchant.tab.potions') },
+    ];
     // Authored, pure, and therefore in the prerendered HTML. Ownership is
     // layered on in `ngOnInit`.
     this.words = this.buildWords(new Set());
     this.infusionCards = this.buildInfusions(Date.now());
+    this.buildCta();
   }
 
   ngOnInit(): void {
@@ -229,6 +269,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.subs.push(this.runeForge.snapshot$.subscribe(() => this.refresh()));
     this.subs.push(this.economy.snapshot$.subscribe(snap => {
       this.gold = snap.gold;
+      this.buildCta();
       this.cdr.markForCheck();
     }));
     this.subs.push(this.infusions.snapshot$.subscribe(() => this.refresh()));
@@ -243,6 +284,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.ticker = setInterval(() => {
       if (!this.infusionCards.some(card => card.running)) return;
       this.infusionCards = this.buildInfusions(Date.now());
+      this.potionRows = this.buildPotionRows();
       this.cdr.markForCheck();
     }, 1000);
 
@@ -255,7 +297,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     if (this.ticker) clearInterval(this.ticker);
   }
 
-  t(key: string): string { return this.i18n.translate(key); }
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
 
   // ── Building ───────────────────────────────────────────────────────────────
 
@@ -299,16 +341,62 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
         rune,
         held: held[rune.id] ?? 0,
         effect: describeStats(socketEffectOf(rune.id)).join(', ') || '—',
+        card: runeCard(rune.id),
       }));
+    if (!this.drawer.some(row => row.rune.id === this.chosenRuneId)) {
+      this.chosenRuneId = this.drawer[0]?.rune.id ?? null;
+    }
 
     this.words = this.buildWords(this.discoveredWordIds());
+    this.foundWords = this.words.filter(card => card.found).length;
     this.infusionCards = this.buildInfusions(now);
+    this.potionRows = this.buildPotionRows();
 
     const infusion = this.infusions.snapshot;
     this.live = { gold: infusion.gold, xp: infusion.xp, magicFind: infusion.magicFind };
     this.freeSlots = infusion.free;
     this.gold = this.economy.snapshot.gold;
+    this.buildCta();
     this.cdr.markForCheck();
+  }
+
+  /**
+   * The big button: "Add Ember to Briarvein Kris", priced in one rune.
+   * Socketing costs the rune itself and no Gold — that is the game rule; the
+   * button only says it out loud. It fills the first empty slot, the same
+   * gateway call the old per-well drawer made.
+   */
+  private buildCta(): void {
+    this.walletGold = { kind: 'gold', label: this.t('stationUi.gold'), need: this.gold, have: this.gold };
+    this.wells = this.wells.map(well => well.runeId ? { ...well, costs: [this.goldCost(well.cost)] } : well);
+    const rune = this.chosenRuneId ? runeById(this.chosenRuneId) : undefined;
+    const held = rune ? this.drawer.find(row => row.rune.id === rune.id)?.held ?? 0 : 0;
+    this.ctaLabel = rune && this.selected
+      ? this.t('enchant.cta', { rune: rune.name, item: this.selected.name })
+      : this.t('enchant.ctaShort');
+    this.ctaCosts = rune
+      ? [{ kind: 'rune', id: rune.id, label: this.t('enchant.runeCost', { name: rune.name }), need: 1, have: held, art: runeCard(rune.id) }]
+      : [];
+    this.gearRows = this.socketables.map(row => ({
+      id: row.item.id,
+      name: row.item.name,
+      art: row.art,
+      rarity: row.item.rarity,
+      sub: this.t('enchant.slotsUsed', { n: row.filled, max: row.count }),
+      ready: row.filled < row.count,
+    }));
+    this.runeChoices = this.drawer.map(row => ({
+      kind: 'rune' as const, id: row.rune.id, label: row.rune.name, need: 1, have: row.held, art: row.card,
+    }));
+    this.selectedArt = this.selected ? itemArt(this.selected) : null;
+    this.ctaBlocked = !this.socketables.length ? this.t('enchant.why.noGear')
+      : !this.drawer.length ? this.t('enchant.why.noRunes')
+      : this.firstEmptyWell() === null ? this.t('enchant.why.full')
+      : null;
+  }
+
+  private firstEmptyWell(): number | null {
+    return this.wells.find(well => !well.runeId)?.index ?? null;
   }
 
   /**
@@ -335,6 +423,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       runeId,
       rune: runeId ? runeById(runeId) ?? null : null,
       cost: runeId ? unsocketCost(runeId) : 0,
+      costs: runeId ? [this.goldCost(unsocketCost(runeId))] : [],
       effect: runeId ? describeStats(socketEffectOf(runeId)) : [],
     }));
   }
@@ -374,6 +463,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
         running: left > 0,
         remaining: formatRemaining(left),
         burned: left > 0 ? Math.min(1, Math.max(0, 1 - left / span)) : 0,
+        costs: inputs.map(row => ({ kind: 'material' as const, id: row.id, label: row.name, need: row.need, have: row.have, art: row.art })),
       };
     });
   }
@@ -382,16 +472,54 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
 
   select(item: GameItem): void {
     this.selected = item;
-    this.activeWell = null;
     this.error = null;
     this.wells = this.buildWells(item);
+    this.buildCta();
     this.cdr.markForCheck();
   }
 
-  openDrawer(well: number): void {
-    this.activeWell = this.activeWell === well ? null : well;
-    this.error = null;
+  pickGear(id: string): void {
+    const row = this.socketables.find(r => r.item.id === id);
+    if (row) this.select(row.item);
+  }
+
+  pickPotion(id: string): void {
+    this.potionId = id;
     this.cdr.markForCheck();
+  }
+
+  get potionCard(): InfusionCard | null {
+    return this.infusionCards.find(card => card.infusion.id === this.potionId) ?? null;
+  }
+
+  private buildPotionRows(): JournalRow[] {
+    return this.infusionCards.map(card => ({
+      id: card.infusion.id,
+      name: card.infusion.name,
+      art: this.potionArt,
+      rarity: 'uncommon',
+      sub: card.running ? this.t('enchant.potions.left', { time: card.remaining }) : card.infusion.effect,
+      ready: card.ready && !card.running,
+    }));
+  }
+
+  chooseRune(runeId: string): void {
+    this.chosenRuneId = runeId;
+    this.error = null;
+    this.buildCta();
+    this.cdr.markForCheck();
+  }
+
+  /** A Gold price row. */
+  goldCost(amount: number): StationCost {
+    return { kind: 'gold', label: this.t('stationUi.gold'), need: amount, have: this.gold };
+  }
+
+  /** Why a potion can't brew right now, in plain words — or null. Material shortages are the chips' job. */
+  brewBlocked(card: InfusionCard): string | null {
+    if (card.running) return this.t('enchant.potions.running');
+    if (card.ready && this.freeSlots <= 0) return this.t('enchant.potions.full');
+    return null;
   }
 
   /** The word seated in the selected item right now, or null. */
@@ -429,16 +557,18 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  setRune(runeId: string): void {
-    if (!this.selected || this.activeWell === null) return;
-    const result = this.gateway.socket(this.selected.id, this.activeWell, runeId);
+  /** The big button. Same gateway call the per-well drawer made, aimed at the first empty slot. */
+  addRune(): void {
+    const runeId = this.chosenRuneId;
+    const well = this.firstEmptyWell();
+    if (!this.selected || !runeId || well === null) return;
+    const result = this.gateway.socket(this.selected.id, well, runeId);
     if (!result.ok) {
       this.error = SOCKET_COPY[result.code];
       this.cdr.markForCheck();
       return;
     }
     this.error = null;
-    this.activeWell = null;
     const rune = runeById(runeId);
     const item = this.selected;
     this.emitFloor(
@@ -449,8 +579,18 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.announce = result.discovered && result.word
       ? `${result.word.name} — the runes have spelled something.`
       : `${rune?.name ?? 'The rune'} is set.`;
+    const word = result.discovered && result.word ? result.word : null;
+    const tier = word ? wordTier(word) : rune?.tier;
+    this.reward = {
+      seq: ++this.rewardSeq,
+      kicker: word ? this.t('enchant.wordFound') : this.t('enchant.added'),
+      name: word ? word.name : `${rune?.name ?? runeId} → ${item.name}`,
+      art: word ? itemArt(item) : (runeCard(runeId) ?? itemArt(item)),
+      rarity: tier,
+      rarityLabel: tier ? RUNE_TIERS[tier]?.label : undefined,
+      caption: word ? word.effect : describeStats(socketEffectOf(runeId)).join(', '),
+    };
     if (result.discovered && result.word) {
-      this.revealed = result.word;
       // Scaled to the rarest rune the word demands, which is the same scale the
       // Forge celebrates a find on. A word seating for the first time is the
       // loudest thing that happens at this table, and the Godforge Seal should
@@ -469,7 +609,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       return;
     }
     this.error = null;
-    this.revealed = null;
+    this.reward = null;
     const rune = runeById(well.runeId);
     // Pulled back out: nothing goes in, the rune comes home to the drawer.
     this.emitFloor([], floorThing(well.runeId, rune?.name));
@@ -500,6 +640,13 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       { id: result.infusion.id, name: result.infusion.name, art: artFor(result.infusion.id) ?? artFor('enhancement-aura') },
     );
     this.announce = `${result.infusion.name} is running — ${result.infusion.effect}.`;
+    this.reward = {
+      seq: ++this.rewardSeq,
+      name: result.infusion.name,
+      art: artFor(result.infusion.id) ?? artFor('enhancement-aura'),
+      rarity: 'uncommon',
+      caption: result.infusion.effect,
+    };
     this.celebration.celebrate('uncommon');
     this.refresh();
   }
@@ -513,21 +660,9 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
   }
 
-  dismissReveal(): void {
-    this.revealed = null;
+  dismissReward(): void {
+    this.reward = null;
     this.cdr.markForCheck();
-  }
-
-  /** What an infusion is short of, for the card's disabled reason. */
-  brewLabel(card: InfusionCard): string {
-    if (card.running) return this.t('enchant.infusion.running');
-    if (!card.ready) return this.t('enchant.infusion.short');
-    if (this.freeSlots <= 0) return this.t('enchant.infusion.full');
-    return this.t('enchant.infusion.brew');
-  }
-
-  canBrew(card: InfusionCard): boolean {
-    return this.hydrated && card.ready && !card.running && this.freeSlots > 0;
   }
 
   nameOf(id: string): string {

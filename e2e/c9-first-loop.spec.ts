@@ -62,7 +62,9 @@ test.describe('C9 first loop craft and equip', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page, '/forge/runes');
     // PR #57 turned /forge/runes into a tabbed library; recipes live behind
-    // the Equipment tab and 'runes' is the default.
+    // the Equipment tab and 'runes' is the default. The station redesign put
+    // the whole library inside the collapsed Details drawer.
+    await page.getByText('Your runes & more').click();
     await page.getByRole('button', { name: 'Equipment' }).click();
     const craft = page.getByRole('button', { name: 'Craft' });
     await expect(craft).toBeEnabled();
@@ -92,6 +94,7 @@ test.describe('C9 first loop craft and equip', () => {
       window.localStorage.setItem('easter-eggs-found', JSON.stringify(['forge-self-aware']));
     });
     await page.goto('/forge/runes', { waitUntil: 'load' });
+    await page.getByText('Your runes & more').click();
     await page.getByRole('button', { name: 'Equipment' }).click();
     await expect(page.getByRole('button', { name: 'Craft' })).toBeDisabled();
     await expect(page.locator('.rf-word__note')).toContainText(/Need/);
