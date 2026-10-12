@@ -1,12 +1,20 @@
 #!/usr/bin/env node
 /**
- * Eclipse Realms economy simulator — CURRENT vs PROPOSED Gold curve.
+ * Eclipse Realms economy simulator — CURRENT (v2) vs PROPOSED (v3, shipped)
+ * Gold curve.
  *
- * Pure Node, no Angular imports. Every number is re-declared here and each
- * CURRENT value cites the file:line it was read from (origin/main a0c9efe), so
- * a drift between this file and the game is a grep away. See
- * docs/economy/rebalance-spec.md for the design this script justifies.
+ * Pure Node, no Angular imports. The numbers are READ FROM SOURCE, not copied:
+ *   - PROPOSED is built from src/app/shared/economy/economy-curve.ts, the file
+ *     the game's catalogues are built from (single source of truth);
+ *   - CURRENT's ladders come from economy-legacy-v2.ts (the frozen v2 table
+ *     the save migration also reads); its other values cite the file:line they
+ *     were read from (origin/main a0c9efe).
+ * Both .ts files are import-free and are transpiled here with the repo's own
+ * TypeScript. See docs/economy/rebalance-spec.md for the design.
  *
+ *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
+ *                                                # first purchase is > 15 s or
+ *                                                # < 20 purchases in 10 min
  *   node scripts/economy-sim.mjs                 # both economies, default player
  *   node scripts/economy-sim.mjs --cps=6         # active click attempts per second
  *   node scripts/economy-sim.mjs --idleCpm=0     # clicks/min while the tab idles
@@ -22,52 +30,46 @@
  * golden-spark and expedition rolls use a seeded RNG.
  */
 
+import { createRequire } from 'node:module';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, resolve } from 'node:path';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const require = createRequire(import.meta.url);
+const ts = require('typescript');
+
+/** Transpile an import-free .ts file and evaluate it as CommonJS. */
+function loadTs(rel) {
+  const file = resolve(here, '..', rel);
+  const code = ts.transpileModule(readFileSync(file, 'utf8'), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  const module = { exports: {} };
+  new Function('require', 'module', 'exports', code)(require, module, module.exports);
+  return module.exports;
+}
+
+const C = loadTs('src/app/shared/economy/economy-curve.ts');
+const V2 = loadTs('src/app/shared/economy/economy-legacy-v2.ts');
+
 // ───────────────────────────────────────────────────────────────────────────
 // Economies
 // ───────────────────────────────────────────────────────────────────────────
 
 const CURRENT = {
   name: 'CURRENT',
-  clickBase: 1,              // economy.model.ts:255 BASE_GOLD_PER_CLICK
-  clickCooldownMs: 500,      // economy.service.ts:135 CLICK_COOLDOWN_MS
-  centuryBonus: 10,          // economy.service.ts strike(): +10 every 100th strike
-  idleFloor: 0.1,            // economy.model.ts:253 BASE_IDLE_PER_SECOND
-  priceScale: 1.25,          // economy.model.ts:285 PRICE_SCALE
+  clickBase: V2.V2_BASE_GOLD_PER_CLICK,
+  clickCooldownMs: V2.V2_CLICK_COOLDOWN_MS,
+  centuryBonus: V2.V2_CENTURY_BONUS_GOLD, // +10 every 100th strike
+  idleFloor: V2.V2_BASE_IDLE_PER_SECOND,
+  priceScale: V2.V2_PRICE_SCALE,
   offlineCapS: 8 * 3600,     // economy.service.ts:115 MAX_OFFLINE_SECONDS
-  // economy.model.ts:343-436 FORGE_UPGRADES
-  buildings: [
-    ['forge-bellows', 5_000, 0.5, true],
-    ['ember-stoker', 20_000, 1],
-    ['nether-furnace', 50_000, 2],
-    ['eclipse-core', 200_000, 5],
-    ['godforge-heart', 1_000_000, 10],
-    ['realm-conduit', 5_000_000, 25],
-    ['aether-siphon', 20_000_000, 50],
-    ['nox-harvester', 50_000_000, 100],
-    ['eclipse-reactor', 200_000_000, 250],
-    ['the-first-sun', 1_000_000_000, 1_000],
-  ],
-  // economy.model.ts:457-511 HAMMER_UPGRADES  [id, cost, +perStrike, shareOfRate]
-  hammers: [
-    ['iron-hammer', 10_000, 2, 0],
-    ['obsidian-mallet', 50_000, 5, 0],
-    ['aether-striker', 200_000, 10, 0],
-    ['nox-crusher', 500_000, 20, 0],
-    ['eclipse-hammer', 2_000_000, 50, 0],
-  ],
-  // economy.model.ts:532-569 MULTIPLIER_UPGRADES (single purchase)
-  multipliers: [
-    ['forge-efficiency-i', 100_000, 0.10],
-    ['forge-efficiency-ii', 1_000_000, 0.25],
-    ['forge-efficiency-iii', 10_000_000, 0.50],
-    ['forge-mastery', 100_000_000, 1.00],
-  ],
-  // economy.model.ts:599-627 AUTO_CLICKERS
-  autos: [
-    ['apprentice-striker', 500_000, 1],
-    ['forge-golem', 5_000_000, 5],
-    ['eclipse-automaton', 50_000_000, 20],
-  ],
+  // economy-legacy-v2.ts (was economy.model.ts:343-627)
+  buildings: V2.V2_FURNACES.map(([id, cost, rate, free]) => free ? [id, cost, rate, true] : [id, cost, rate]),
+  hammers: V2.V2_HAMMERS.map(([id, cost, flat]) => [id, cost, flat, 0]),
+  multipliers: V2.V2_MULTIPLIERS.map(row => [...row]),
+  autos: V2.V2_AUTOMATONS.map(row => [...row]),
   // explorer/explorer.model.ts:186-290 MISSIONS — one explorer (base slot).
   // Flat payout, no link to income.
   expeditions: [
@@ -81,13 +83,13 @@ const CURRENT = {
   // Every 90–240 s on the Forge View only, 25 s to take it, pays max(50, 60 s).
   spark: { minS: 90, maxS: 240, catch: 0.5, pay: (gps) => Math.max(50, gps * 60), frenzy: null },
   // prestige — economy.model.ts:1060-1080
-  prestige: { threshold: 1e9, shards: (t) => Math.floor(Math.sqrt(t / 100_000)) },
+  prestige: { threshold: V2.V2_PRESTIGE_GOLD_THRESHOLD, shards: (t) => V2.v2ShardsFor(t) },
   // one-off sinks, for "time until you could first afford it"
   sinks: {
     'rune strike (Common)': 10_000,      // rune-forge/rune.model.ts:157 STRIKE_COST
     'gambler Iron Chest': 5_000,         // gambler/mystery-box.ts:78
     'cheapest craft fee': 4_000,         // crafting/crafting.model.ts:183-396 (uncommon min)
-    'vendor regional unit': 6_000,       // vendor/material-vendor.model.ts:67
+    'vendor regional unit': 6_000,       // vendor/material-vendor.model.ts:67 (v3: the Vendor only buys)
     'Delve fee': 500,                    // explorer.model.ts (delve.cost)
     'reforge Common': 500,               // rpg/item-reforge.ts:76
     'temper +1 (base)': 50_000,          // rpg/item-upgrade.ts:50
@@ -104,97 +106,61 @@ const CURRENT = {
 };
 
 /**
- * PROPOSED — Cookie-shaped. Rungs ~×7–15 apart in price and ×6–8 in rate, so
- * the payback (cost / rate) grows ~×1.5–2 per rung: 150 s, 100 s, 138 s, 255 s,
- * 500 s, 1,000 s… exactly the "each tier is a bit worse per Gold but much more
- * per click of attention" shape Cookie Clicker uses. PRICE_SCALE 1.15.
+ * PROPOSED — the v3 curve as shipped, built from economy-curve.ts. Cookie-shaped:
+ * rungs ~×7-15 apart in price and ×6-8 in rate, so the payback (cost / rate)
+ * grows ~×1.5-2 per rung. PRICE_SCALE 1.15.
  */
+const SPARK = C.GOLDEN_SPARK;
+const MISSION_SECONDS = { scout: 120, delve: 600, expedition: 3600, 'deep-dive': 4 * 3600, grand: 24 * 3600 };
 const PROPOSED = {
   name: 'PROPOSED',
-  clickBase: 1,
-  clickCooldownMs: 125,      // 8 strikes/s ceiling: a human at 4–6/s is never throttled
-  centuryBonus: 0,           // replaced by "100th strike = 10 strikes' worth" (scales); modelled below
-  centuryStrikes: 10,
-  idleFloor: 0,              // Cookie has none; the first Bellows is the floor
-  priceScale: 1.15,
-  offlineCapS: 8 * 3600,     // unchanged; offline pays at OFFLINE_RATE
+  clickBase: C.BASE_GOLD_PER_CLICK,
+  clickCooldownMs: C.CLICK_COOLDOWN_MS,
+  centuryBonus: 0,           // replaced by "100th strike = N strikes' worth" (scales)
+  centuryStrikes: C.CENTURY_STRIKE_MULTIPLIER,
+  idleFloor: C.BASE_IDLE_PER_SECOND,
+  priceScale: C.PRICE_SCALE,
+  offlineCapS: C.MAX_OFFLINE_SECONDS,
   offlineRate: 1,            // unchanged: offline pays full rate (try 0.5 via --offlineRate)
-  buildings: [
-    ['forge-bellows', 15, 0.1],
-    ['ember-stoker', 100, 1],
-    ['nether-furnace', 1_100, 8],
-    ['eclipse-core', 12_000, 47],
-    ['godforge-heart', 130_000, 260],
-    ['realm-conduit', 1_400_000, 1_400],
-    ['aether-siphon', 20_000_000, 7_800],
-    ['nox-harvester', 330_000_000, 44_000],
-    ['eclipse-reactor', 5_100_000_000, 260_000],
-    ['the-first-sun', 75_000_000_000, 1_600_000],
-  ],
-  // Hammers become SINGLE-PURCHASE (Cookie's click upgrades): flat +strike
-  // early, then "+N% of Gold/s per strike" (Cookie's mouse upgrades) so the
-  // Flame never stops mattering. Repeatable hammers × automatons is a product
-  // of two bought counts — the quadratic engine that blows CURRENT up on day 3.
+  buildings: C.FURNACE_CURVE.map(r => [r.id, r.baseCost, r.ratePerSecond]),
+  // Hammers are SINGLE-PURCHASE (Cookie's click upgrades): flat +strike early,
+  // then "+N% of Gold/s per strike" so the Flame never stops mattering.
   singleHammers: true,
-  hammers: [
-    ['iron-hammer', 100, 1, 0],
-    ['obsidian-mallet', 500, 2, 0],
-    ['aether-striker', 10_000, 0, 0.01],
-    ['nox-crusher', 1_000_000, 0, 0.02],
-    ['eclipse-hammer', 100_000_000, 0, 0.03],
-  ],
-  multipliers: [
-    ['forge-efficiency-i', 5_000, 0.10],
-    ['forge-efficiency-ii', 250_000, 0.25],
-    ['forge-efficiency-iii', 25_000_000, 0.50],
-    ['forge-mastery', 2_500_000_000, 1.00],
-  ],
-  // Automatons strike at the FLAT click value only (no %-of-rate share — that
-  // share × an exponential-cost-but-linear-gain count still runs away). They
-  // are the early "hands-free" rung and fade later, as Cookie's cursors do.
-  autos: [
-    ['apprentice-striker', 200, 1],
-    ['forge-golem', 5_000, 5],
-    ['eclipse-automaton', 250_000, 20],
-  ],
-  // Payout = max(floor, k × duration × Gold/s at launch) — "N seconds of
-  // income". k < 1 everywhere: a mission is a *top-up* on the forge, never a
-  // replacement for it (CURRENT's flat 7.5k Scout is 12× the starting forge).
-  // Each extra explorer slot is then worth ≈ k × 100% more active income.
-  expeditions: [
-    { id: 'scout', durS: 120, fee: 0, floor: 90, k: 0.5 },
-    { id: 'delve', durS: 600, fee: 300, floor: 600, k: 0.4 },
-    { id: 'expedition', durS: 3600, fee: 2_500, floor: 4_000, k: 0.33 },
-    { id: 'deep-dive', durS: 4 * 3600, fee: 25_000, floor: 30_000, k: 0.25 },
-    { id: 'grand', durS: 24 * 3600, fee: 400_000, floor: 300_000, k: 0.15 },
-  ].map(m => ({ ...m, pay: (gps) => Math.max(m.floor, m.k * m.durS * gps) })),
-  // Golden Spark: sitewide, 5–10 min apart while visible, 13 s to catch.
-  //  85% Windfall: 60 s of income, rising to min(15% of bank, 900 s of income)
-  //  15% Forge Frenzy: ×5 income for 60 s  (≈ 240 s of extra income)
+  hammers: C.HAMMER_CURVE.map(r => [r.id, r.baseCost, r.goldPerClick, r.incomeShare]),
+  multipliers: C.MULTIPLIER_CURVE.map(r => [r.id, r.baseCost, r.bonus]),
+  // Automatons strike at the FLAT click value only; they fade later.
+  autos: C.AUTOMATON_CURVE.map(r => [r.id, r.baseCost, r.clicksPerSecond]),
+  // Payout = max(floor, k × duration × Gold/s at launch).
+  expeditions: C.EXPEDITION_CURVE.filter(m => MISSION_SECONDS[m.id]).map(m => {
+    const durS = MISSION_SECONDS[m.id];
+    return { id: m.id, durS, fee: m.fee, floor: m.floor, k: m.incomeShare, pay: (gps) => Math.max(m.floor, m.incomeShare * durS * gps) };
+  }),
+  // Golden Spark: sitewide, every minGap-maxGap s while visible, catchS to catch.
   spark: {
-    minS: 300, maxS: 600, catch: 0.7,
-    pay: (gps, bank) => Math.max(gps * 60, Math.min(bank * 0.15, gps * 900)) + 25,
-    frenzy: { p: 0.15, mult: 5, durS: 60 },
+    minS: SPARK.minGapS, maxS: SPARK.maxGapS, catch: 0.7,
+    pay: (gps, bank) => C.goldenSparkWindfall(gps, bank),
+    frenzy: { p: SPARK.frenzyChance, mult: SPARK.frenzyMultiplier, durS: SPARK.frenzyS },
   },
-  // First Eclipse at 1e13 all-time (~3 days); cube root like Cookie's heavenly chips.
-  prestige: { threshold: 1e13, shards: (t) => Math.floor(Math.cbrt(t / 1e10)) },
+  prestige: { threshold: C.PRESTIGE_GOLD_THRESHOLD, shards: (t) => C.shardsForTotal(t) },
   sinks: {
-    'rune strike (Common)': 600,
-    'gambler Iron Chest': 300,
-    'cheapest craft fee': 1_000,
-    'vendor regional unit': 360,
-    'Delve fee': 300,
-    'reforge Common': 150,
-    'temper +1 (base)': 6_000,
-    'Thrall (cheapest tier)': 25_000,
-    'respec': 20_000,
-    'explorer slot #2': 50_000,
-    'market explorer hire': 60_000,
-    'Thrall pull': 60_000,
-    'thrall slot #6': 2_000_000,
-    'epic craft fee (min)': 150_000,
-    'legendary craft fee (min)': 2_500_000,
-    'mythic craft (Eclipse Edge)': 60_000_000,
+    'rune strike (Common)': 600,                     // rune.model.ts RUNE_TIERS.common.worth
+    'gambler Iron Chest': 300,                       // gambler/mystery-box.ts
+    'cheapest craft fee': C.CRAFT_FEE_FLOOR.uncommon,
+    'Delve fee': C.EXPEDITION_CURVE.find(m => m.id === 'delve').fee,
+    'reforge Common': 150,                           // rpg/item-reforge.ts REFORGE_GOLD
+    'temper +1 (base)': 6_000,                       // rpg/item-upgrade.ts DEFAULT_TEMPER_GOLD_BASE
+    'Thrall (cheapest tier)': 25_000,                // thralls/thrall.model.ts
+    'respec': 20_000,                                // rpg/player-stats.model.ts RESPEC_COST (floor)
+    'explorer slot #2': C.EXPLORER_SLOT_COST,
+    'market explorer hire': 60_000,                  // rpg/explorer-archetypes.ts MARKET_HIRE_COST
+    'Thrall pull': 600 * 100,                        // STRIKE_COST × 100
+    'thrall slot #6': C.THRALL_SLOT_COST,
+    'epic craft fee (min)': C.CRAFT_FEE_FLOOR.epic,
+    'legendary craft fee (min)': C.CRAFT_FEE_FLOOR.legendary,
+    'mythic craft (Eclipse Edge)': C.CRAFT_FEE_FLOOR.mythic,
+    'home forge tier II': C.HOME_FORGE_PRICES[0],
+    'home forge tier III': C.HOME_FORGE_PRICES[1],
+    'home forge tier IV': C.HOME_FORGE_PRICES[2],
   },
 };
 
@@ -353,7 +319,7 @@ function bestPurchase(E, S, cps) {
 function simulate(E, seed = 7) {
   const R = rng(seed);
   const S = makeState(E);
-  const log = { buys: [], milestones: {}, at: {}, sinks: {}, sparkGold: 0, expGold: 0, offlineGold: 0 };
+  const log = { buys: [], milestones: {}, at: {}, sinks: {}, sparkGold: 0, expGold: 0, offlineGold: 0, trace: [] };
   const sinkNames = Object.keys(E.sinks);
   let nextSpark = E.spark.minS + R() * (E.spark.maxS - E.spark.minS);
   let exp = null; // { endsAt, pay }
@@ -363,6 +329,9 @@ function simulate(E, seed = 7) {
 
   const earn = (g, src) => { S.bank += g; S.total += g; if (src) log[src] += g; };
   const record = () => {
+    // All-time Gold over time, for --place. A point when it has grown 1% or more.
+    const lastTrace = log.trace[log.trace.length - 1];
+    if (!lastTrace || S.total >= lastTrace[1] * 1.01 + 1) log.trace.push([S.t, S.total]);
     while (cp < checkpoints.length && S.t >= checkpoints[cp]) {
       log.at[checkpoints[cp]] = { gps: gps(E, S), bank: S.bank, total: S.total, buys: log.buys.length };
       cp++;
@@ -499,13 +468,70 @@ function stageTable(E) {
   return rows.map(r => '  ' + r.map((c, i) => String(c).padEnd(i ? 14 : 6)).join(' ')).join('\n');
 }
 
-console.log(`Eclipse Realms economy sim · ${DAYS} day(s) · node scripts/economy-sim.mjs ${process.argv.slice(2).join(' ')}\n`);
-console.log(report(CURRENT));
-console.log();
-console.log(report(PROPOSED));
-if (argv.stages) {
-  console.log('\nPROPOSED stage table (what N seconds of income means at each stage):');
-  console.log(stageTable(PROPOSED));
-  console.log('\nCURRENT stage table:');
-  console.log(stageTable(CURRENT));
+/** CI smoke: the v3 opening must feel like Cookie Clicker. */
+function check(E) {
+  const { log } = simulate(E);
+  const paid = log.buys.filter(b => b.paid);
+  const first = paid[0]?.t;
+  const inTen = paid.filter(b => b.t <= 600).length;
+  const fails = [];
+  if (!(first <= 15)) fails.push(`first purchase at ${fmtT(first)} (must be <= 15 s)`);
+  if (inTen < 20) fails.push(`${inTen} purchases in the first 10 min (must be >= 20)`);
+  console.log(`economy-sim --check (${E.name}): first purchase ${fmtT(first)}, ${inTen} purchases in 10 min`);
+  if (fails.length) {
+    for (const f of fails) console.error(`  FAIL ${f}`);
+    process.exit(1);
+  }
+  console.log('  ok');
+}
+
+/** When the all-time total first reached `n` (linear between trace points). */
+function timeToTotal(trace, n) {
+  for (let i = 0; i < trace.length; i++) {
+    const [t, total] = trace[i];
+    if (total >= n) {
+      if (i === 0) return t;
+      const [t0, g0] = trace[i - 1];
+      return t0 + (t - t0) * (n - g0) / Math.max(1e-9, total - g0);
+    }
+  }
+  return undefined;
+}
+/** The all-time total at time `t`. */
+function totalAt(trace, t) {
+  let last = 0;
+  for (const [tt, total] of trace) { if (tt > t) break; last = total; }
+  return last;
+}
+
+/**
+ * --place=100000,1000000,...: for each v2 all-time Gold target, when the v2
+ * player reached it and what the v3 player has banked all-time by then — the
+ * v3 target that keeps the same wall-clock pacing from a fresh start.
+ */
+function place(targets) {
+  const cur = simulate(CURRENT).log.trace;
+  const pro = simulate(PROPOSED).log.trace;
+  console.log('v2 target -> reached at -> v3 all-time Gold then');
+  for (const n of targets) {
+    const t = timeToTotal(cur, n);
+    console.log(`  ${fmtN(n).padStart(8)} -> ${fmtT(t).padStart(7)} -> ${t === undefined ? '-' : fmtN(totalAt(pro, t))}`);
+  }
+}
+
+if (argv.place) {
+  place(String(argv.place).split(',').map(Number));
+} else if (argv.check) {
+  check(PROPOSED);
+} else {
+  console.log(`Eclipse Realms economy sim · ${DAYS} day(s) · node scripts/economy-sim.mjs ${process.argv.slice(2).join(' ')}\n`);
+  console.log(report(CURRENT));
+  console.log();
+  console.log(report(PROPOSED));
+  if (argv.stages) {
+    console.log('\nPROPOSED stage table (what N seconds of income means at each stage):');
+    console.log(stageTable(PROPOSED));
+    console.log('\nCURRENT stage table:');
+    console.log(stageTable(CURRENT));
+  }
 }

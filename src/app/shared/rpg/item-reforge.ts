@@ -74,13 +74,15 @@ import {
  * the same ×5 step, and it is the only tier above Mythic.
  */
 export const REFORGE_GOLD: Readonly<Record<ItemRarity, number>> = {
-  common: 500,
-  uncommon: 2_000,
-  rare: 10_000,
-  epic: 50_000,
-  legendary: 200_000,
-  mythic: 1_000_000,
-  singular: 5_000_000,
+  // Economy v3 (rebalance spec §3): priced as seconds of income where each
+  // rarity is met, the old ×5-a-rung shape kept.
+  common: 150,
+  uncommon: 600,
+  rare: 3_000,
+  epic: 15_000,
+  legendary: 60_000,
+  mythic: 300_000,
+  singular: 1_500_000,
 };
 
 /** Locking one stat doubles the bill. See the header for why it is a flat 2×. */

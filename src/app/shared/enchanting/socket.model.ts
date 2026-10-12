@@ -261,7 +261,7 @@ export const UNSOCKET_COST_RATIO = 0.25;
 
 /**
  * Gold to pull one rune back out, which scales with the rune rather than with
- * the item. Pulling a Common costs 2,500; pulling the Void costs 25 million,
+ * the item. Pulling a Common costs 150; pulling the Void costs 1.5 million (economy v3),
  * which is the point: the last rune in the game should be a decision.
  */
 export function unsocketCost(runeId: string): number {

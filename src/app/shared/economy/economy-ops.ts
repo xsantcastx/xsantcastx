@@ -44,6 +44,8 @@ import {
   type CommerceAppliedMap,
   type CommerceOperation,
 } from './commerce-ops';
+import { ECONOMY_VERSION } from './economy-curve';
+import { migrateEconomyV3 } from './economy-migration';
 
 export type EconomyOpKind =
   | 'credit-gold'
@@ -119,7 +121,8 @@ export interface EconomyOp {
 }
 
 export interface EconomyLedger {
-  version: 2;
+  /** Economy save version. Below 3 is converted by `migrateEconomyV3` before any merge. */
+  version: number;
   gold: number;
   eclipseEssence: number;
   aetherFragments: number;
@@ -134,6 +137,8 @@ export interface EconomyLedger {
   prestigeCount: number;
   streakDays: number;
   rpgFlatGold: number;
+  /** Forge Power as a % of the forge (economy v3). */
+  rpgForgePercent: number;
   infusionGold: number;
   upgrades: Record<string, number>;
   artifacts: string[];
@@ -179,7 +184,7 @@ export const ACK_STALE_MS = 30 * 24 * 60 * 60 * 1000;
 
 export function emptyLedger(): EconomyLedger {
   return {
-    version: 2,
+    version: ECONOMY_VERSION,
     gold: 0,
     eclipseEssence: 0,
     aetherFragments: 0,
@@ -194,6 +199,7 @@ export function emptyLedger(): EconomyLedger {
     prestigeCount: 0,
     streakDays: 0,
     rpgFlatGold: 0,
+    rpgForgePercent: 0,
     infusionGold: 1,
     upgrades: {},
     artifacts: [],
@@ -449,11 +455,15 @@ export function compactOps(
  * every field that the conflict policy can decide.
  */
 export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLedger {
-  if (!isPlainObject(local)) return coerceLedger(remote) ?? emptyLedger();
-  if (!isPlainObject(remote)) return coerceLedger(local) ?? emptyLedger();
+  if (!isPlainObject(local)) return coerceMigrated(remote) ?? emptyLedger();
+  if (!isPlainObject(remote)) return coerceMigrated(local) ?? emptyLedger();
 
-  const a = coerceLedger(remote) ?? emptyLedger();
-  const b = coerceLedger(local) ?? emptyLedger();
+  // Both sides are brought to the current economy BEFORE they meet: a v2
+  // remote is never merged against a v3 local (rebalance spec §4).
+  const rawA = coerceLedger(remote) ?? emptyLedger();
+  const rawB = coerceLedger(local) ?? emptyLedger();
+  const a = migrateEconomyV3(rawA);
+  const b = migrateEconomyV3(rawB);
 
   const importA = asImport(a);
   const importB = asImport(b);
@@ -480,6 +490,7 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.autoClicks = maxOf(a.autoClicks, b.autoClicks);
   replayed.streakDays = maxOf(a.streakDays, b.streakDays);
   replayed.rpgFlatGold = maxOf(a.rpgFlatGold, b.rpgFlatGold);
+  replayed.rpgForgePercent = maxOf(a.rpgForgePercent, b.rpgForgePercent);
   // A mirror, corrected on the next push — see the field's note in the model.
   replayed.infusionGold = Math.max(1, maxOf(a.infusionGold, b.infusionGold));
   replayed.levelsPaid = maxOf(a.levelsPaid, b.levelsPaid);
@@ -490,6 +501,20 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.prestigeCount = Math.max(replayed.prestigeCount, maxOf(a.prestigeCount, b.prestigeCount));
   replayed.runGoldEarned = Math.max(replayed.runGoldEarned, 0);
 
+  // A side converted just now had its op log folded into its own state, so the
+  // replay above cannot see what it did since its last sync. At this one-shot
+  // boundary it merges under the conservative max/union rule instead — the
+  // rule legacy (pre-log) blobs always used: it can keep value, never lose it.
+  for (const [raw, migrated] of [[rawA, a], [rawB, b]] as const) {
+    if (raw === migrated) continue;
+    replayed.gold = Math.max(replayed.gold, migrated.gold);
+    replayed.upgrades = mergeUpgradeLevels(replayed.upgrades, migrated.upgrades);
+    replayed.artifacts = unionStrings(replayed.artifacts, migrated.artifacts);
+    replayed.cosmetics = unionStrings(replayed.cosmetics, migrated.cosmetics);
+    replayed.runewords = unionStrings(replayed.runewords, migrated.runewords);
+    replayed.runGoldEarned = Math.max(replayed.runGoldEarned, migrated.runGoldEarned);
+  }
+
   // Never fold here. The merged log stays the full union; the cloud commit
   // is what checkpoints, once every recent device has acked.
   replayed.ops = sortOps(ops);
@@ -498,7 +523,7 @@ export function mergeEconomyLedgers(remote: unknown, local: unknown): EconomyLed
   replayed.checkpointId = Math.max(a.checkpointId, b.checkpointId);
   replayed.acks = maxRecord(a.acks, b.acks);
   replayed.seenAt = clampSeenAt(maxRecord(a.seenAt, b.seenAt), Date.now());
-  replayed.version = 2;
+  replayed.version = ECONOMY_VERSION;
   const knownIds = new Set(ops.map(op => op.id));
   const appliedIds = new Set(replay.appliedIds);
   const mergedReceipts = mergeCommerceOps(a.commerceOps ?? [], b.commerceOps ?? []);
@@ -660,7 +685,7 @@ export function payloadKey(op: EconomyOp): string {
 /** Field-by-field max/union. Used for origins and for pre-log (legacy) blobs. */
 export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): EconomyLedger {
   return {
-    version: 2,
+    version: Math.max(remote.version, local.version),
     gold: maxOf(remote.gold, local.gold),
     eclipseEssence: maxOf(remote.eclipseEssence, local.eclipseEssence),
     aetherFragments: maxOf(remote.aetherFragments, local.aetherFragments),
@@ -675,6 +700,7 @@ export function conservativeMerge(remote: EconomyLedger, local: EconomyLedger): 
     prestigeCount: maxOf(remote.prestigeCount, local.prestigeCount),
     streakDays: maxOf(remote.streakDays, local.streakDays),
     rpgFlatGold: maxOf(remote.rpgFlatGold, local.rpgFlatGold),
+    rpgForgePercent: maxOf(remote.rpgForgePercent, local.rpgForgePercent),
     infusionGold: Math.max(1, maxOf(remote.infusionGold, local.infusionGold)),
     upgrades: mergeUpgradeLevels(remote.upgrades, local.upgrades),
     artifacts: unionStrings(remote.artifacts, local.artifacts),
@@ -739,11 +765,21 @@ function unionStrings(a: string[], b: string[]): string[] {
   return [...new Set([...a, ...b])].sort();
 }
 
+/** `coerceLedger`, then the v3 economy migration (a no-op on a v3 ledger). */
+export function coerceMigrated(value: unknown): EconomyLedger | null {
+  const ledger = coerceLedger(value);
+  return ledger ? migrateEconomyV3(ledger) : null;
+}
+
 export function coerceLedger(value: unknown): EconomyLedger | null {
   if (!isPlainObject(value)) return null;
   const base = emptyLedger();
   return {
     ...base,
+    // Kept: the migration reads it. Every v1/v2 build stamped its version, so
+    // only an explicit number below 3 is converted; a blob with no version at
+    // all (hand-built, never written by a build) is read as current.
+    version: numberOf(value['version']) || ECONOMY_VERSION,
     gold: numberOf(value['gold']),
     eclipseEssence: numberOf(value['eclipseEssence']),
     aetherFragments: numberOf(value['aetherFragments']),
@@ -758,6 +794,7 @@ export function coerceLedger(value: unknown): EconomyLedger | null {
     prestigeCount: numberOf(value['prestigeCount']),
     streakDays: numberOf(value['streakDays']),
     rpgFlatGold: numberOf(value['rpgFlatGold']),
+    rpgForgePercent: numberOf(value['rpgForgePercent']),
     infusionGold: Math.max(1, numberOf(value['infusionGold']) || 1),
     upgrades: isPlainObject(value['upgrades'])
       ? Object.fromEntries(Object.entries(value['upgrades']).map(([k, v]) => [k, numberOf(v)]))

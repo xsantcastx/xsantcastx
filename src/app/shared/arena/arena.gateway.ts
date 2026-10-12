@@ -42,6 +42,8 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
 import { EconomyService } from '../economy/economy.service';
+import { incomeRewardBase } from '../economy/economy.model';
+import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { XpService } from '../gamification/xp.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { mintEquipment } from '../rpg/item-definition';
@@ -210,11 +212,17 @@ export class ArenaGateway {
       };
     }
 
+    // Economy v3: the authored win Gold (streak included) is the v2 figure; it
+    // pays max(that × ρ, 1/3/8/20/60 min of income). The payout handed back
+    // carries the Gold actually based, so nothing downstream shows the v2 number.
     let goldCredited = 0;
-    if (payout.gold > 0) goldCredited = this.economy.earnGold(payout.gold, `arena:${tier}`);
+    const goldBase = payout.gold > 0
+      ? incomeRewardBase(itemScaled(payout.gold), steppedRewardSeconds(payout.gold, REWARD_SECONDS.arena), this.economy.snapshot)
+      : 0;
+    if (goldBase > 0) goldCredited = this.economy.earnGold(goldBase, `arena:${tier}`);
     if (payout.xp > 0) this.xp.award('game-win', { amount: payout.xp, energy: 'nox' });
 
-    return { ok: true, settlement, payout, goldCredited };
+    return { ok: true, settlement, payout: { ...payout, gold: goldBase }, goldCredited };
   }
 
   /** Everything that would stop this purchase, or null when it can be paid. */

@@ -5,7 +5,9 @@
  *  - gathering sites: MINING_TIERS / FORAGING_TIERS / PROSPECTING_TIERS
  *  - every town and hunt: area drop tables, per-monster overrides, and the
  *    Delve's terrain nodes (bands, veins and stamps → TERRAIN_NODES yields)
- *  - the Material Vendor's shelf and the expedition each listing names
+ *  - the expedition each expedition-only material comes from (read off the
+ *    Material Vendor's buyback board, which names it; the Vendor itself only
+ *    buys since economy v3, so it is not a source)
  *  - the Delve biomes' materials (contract ids; replaced by the terrain's own
  *    biome data once the Delve engine names its biomes)
  *
@@ -63,7 +65,9 @@ export function buildFoundInIndex(): FoundInIndex {
     areas,
     nodeYields: Object.fromEntries(TERRAIN_NODE_LIST.map(n => [n.id, n.yield?.materialId])),
     delve: DELVE_MATERIALS,
-    vendor: VENDOR_SHELF.map(row => ({ materialId: row.materialId, place: 'Material Vendor', source: row.source })),
+    // The Vendor buys, it does not sell (economy v3): no 'Material Vendor'
+    // place, only the expedition each listing names.
+    vendor: VENDOR_SHELF.filter(row => row.source).map(row => ({ materialId: row.materialId, place: '', source: row.source })),
   };
 }
 

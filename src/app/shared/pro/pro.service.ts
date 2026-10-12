@@ -42,6 +42,8 @@ import { Injectable, Inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { EconomyService } from '../economy/economy.service';
+import { incomeRewardBase } from '../economy/economy.model';
+import { REWARD_SECONDS } from '../economy/economy-curve';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 
@@ -199,7 +201,8 @@ export class ProService {
    * the grants had not been settled.
    */
   private settleGrants(): void {
-    this.economy.earnGold(PRO_GOLD_BONUS, 'pro-pack');
+    // Economy v3: max(the floor, five minutes of income).
+    this.economy.earnGold(incomeRewardBase(PRO_GOLD_BONUS, REWARD_SECONDS.proPackS, this.economy.snapshot), 'pro-pack');
     this.economy.earnEssence(PRO_ESSENCE_BONUS, 'pro-pack');
 
     for (const { cosmeticId, variantId } of PRO_COSMETICS) {

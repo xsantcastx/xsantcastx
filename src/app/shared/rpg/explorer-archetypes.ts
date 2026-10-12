@@ -361,7 +361,7 @@ export const EXPLORER_ARCHETYPES: readonly ExplorerArchetype[] = [
     rarity: 'epic', affinity: 'archivum', trait: 'scholar',
     passive: { kind: 'extra-slot', magnitude: 1, text: 'Files an extra find on every return. One more roll at the table.' },
     source: 'market',
-    sourceNote: 'Recruit them from the roster for 500,000 Gold. They have a price and they know it.',
+    sourceNote: 'Recruit them from the roster for 60,000 Gold. They have a price and they know it.',
     artId: 'explorer-archivist-hollow',
   },
   {
@@ -501,7 +501,7 @@ export function archetypesOfRarity(rarity: ExplorerRarity): readonly ExplorerArc
 export const MASTERY_RUNS = 50;
 
 /** What one of the cast costs when they are for sale. */
-export const MARKET_HIRE_COST = 500_000;
+export const MARKET_HIRE_COST = 60_000; // economy v3 (was 500,000)
 
 /** The archetype a realm's mastery hands over, when it has one. */
 export function masteryArchetypeFor(realm: RealmId): ExplorerArchetype | undefined {

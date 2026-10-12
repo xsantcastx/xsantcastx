@@ -39,7 +39,7 @@ import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
 import {
   PlayerStats,
   POINTS_PER_LEVEL,
-  RESPEC_COST,
+  respecCostFor,
   StatId,
   STAT_IDS,
   charismaPriceMultiplier,
@@ -223,10 +223,11 @@ export class PlayerStatsService {
   get canRespec(): boolean {
     return this.isBrowser
       && spentPoints(this.blob.stats) > 0
-      && this.economy.snapshot.gold >= RESPEC_COST;
+      && this.economy.snapshot.gold >= this.respecCost;
   }
 
-  get respecCost(): number { return RESPEC_COST; }
+  /** max(20,000, ten minutes of income) — economy v3. */
+  get respecCost(): number { return respecCostFor(this.economy.snapshot.perSecond); }
 
   /**
    * Refund every spent point for a flat fee.
@@ -240,7 +241,7 @@ export class PlayerStatsService {
     if (!this.isBrowser) return false;
     const spent = spentPoints(this.blob.stats);
     if (spent <= 0) return false;
-    if (!this.economy.spendGold(RESPEC_COST, 'respec')) return false;
+    if (!this.economy.spendGold(this.respecCost, 'respec')) return false;
 
     this.blob = {
       ...this.blob,

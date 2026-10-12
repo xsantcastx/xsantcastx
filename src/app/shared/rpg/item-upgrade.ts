@@ -47,7 +47,8 @@ import {
 } from './item.model';
 
 export const MAX_UPGRADE_LEVEL = 10;
-export const DEFAULT_TEMPER_GOLD_BASE = 50_000;
+/** First temper's Gold. Economy v3: 6,000 (was 50,000), ×1.65 a level. */
+export const DEFAULT_TEMPER_GOLD_BASE = 6_000;
 
 export const UPGRADE_SUCCESS_CHANCE: readonly number[] = [
   0.90, 0.85, 0.80, 0.70, 0.60, 0.50, 0.40, 0.35, 0.30, 0.25,

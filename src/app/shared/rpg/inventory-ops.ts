@@ -41,6 +41,7 @@ import {
   type OwnedItemRecord,
   type RuneProjectionInput,
 } from './inventory.model';
+import { ECONOMY_VERSION, itemScaled } from '../economy/economy-curve';
 
 export function emptyInventoryLedger(): InventoryLedger {
   return {
@@ -120,6 +121,9 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     stats: { ...item.stats },
     rollQuality: item.rollQuality ? { ...item.rollQuality } : undefined,
     sellValue: typeof item.sellValue === 'number' && Number.isFinite(item.sellValue) ? item.sellValue : 0,
+    // Every GameItem in memory is priced in v3 Gold: minted under v3, or
+    // scaled by `parseGameItem` on the way in.
+    econ: ECONOMY_VERSION,
     location: locationOf(item),
     upgradeLevel: item.upgradeLevel,
     lastUpgradeAt: item.lastUpgradeAt,
@@ -142,6 +146,7 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     stats: { ...record.stats },
     rollQuality: record.rollQuality ? { ...record.rollQuality } : undefined,
     sellValue: record.sellValue,
+    econ: ECONOMY_VERSION,
     equipped: record.location.kind === 'equipped',
     slot: record.location.kind === 'equipped' ? record.location.slotId : undefined,
     explorerId: record.location.kind === 'explorer' ? record.location.explorerId : undefined,
@@ -274,7 +279,8 @@ export function parseGameItem(raw: unknown): GameItem | null {
     rarity: raw['rarity'] as GameItem['rarity'],
     stats,
     rollQuality,
-    sellValue: finiteNumber(raw['sellValue']),
+    sellValue: v3SellValue(raw),
+    econ: ECONOMY_VERSION,
     equipped,
     slot: equipped && typeof slot === 'string' && PARSE_SLOT_IDS.includes(slot)
       ? (canonicalizeSlot(slot) ?? undefined)
@@ -727,7 +733,8 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     lore: typeof raw['lore'] === 'string' ? raw['lore'] : undefined,
     stats,
     rollQuality: parseRollQuality(raw['rollQuality']),
-    sellValue: finiteNumber(raw['sellValue']),
+    sellValue: v3SellValue(raw),
+    econ: ECONOMY_VERSION,
     location,
     sockets: parseSockets(raw['sockets']),
     ...parseUpgradeFields(raw),
@@ -880,6 +887,17 @@ function canonicalRecord(record: OwnedItemRecord): string {
     record.kind === 'instance' ? record.location : record.stackKey,
     record.definitionId,
   ]);
+}
+
+/**
+ * A stored sell value in v3 Gold. Records written before economy v3 carry no
+ * `econ` marker and are scaled by ρ here, once; the parsed record is stamped
+ * so the next parse leaves it alone (rebalance spec §4).
+ */
+function v3SellValue(raw: Record<string, unknown>): number {
+  const value = finiteNumber(raw['sellValue']);
+  const econ = finiteNumber(raw['econ']);
+  return econ >= ECONOMY_VERSION ? value : itemScaled(value);
 }
 
 function isItemType(value: unknown): value is ItemType {

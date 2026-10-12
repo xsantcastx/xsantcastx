@@ -21,6 +21,7 @@
  */
 import { EclipseRarity } from '../rarity/rarity.model';
 import { totalBonus } from '../rune-forge/rune.model';
+import * as CURVE from './economy-curve';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The persisted shape
@@ -35,7 +36,12 @@ export interface ActiveEnchantment {
 }
 
 export interface PlayerEconomy {
-  version: 2;
+  /**
+   * Economy save version. 3 is the Cookie-curve rebalance; anything lower is
+   * converted once by `migrateEconomyV3` (economy-migration.ts) on load and
+   * before every cloud merge.
+   */
+  version: number;
   gold: number;
   eclipseEssence: number;
   /** Reserved. No source and no sink yet — see the header note. */
@@ -97,6 +103,12 @@ export interface PlayerEconomy {
    * streak, shards, artifacts and Runewords like every other source of Gold.
    */
   rpgFlatGold: number;
+  /**
+   * Forge Power as a percentage of the furnace + automaton rate (economy v3:
+   * +0.5% a point). Mirrored by the wiring layer for the reason `rpgFlatGold`
+   * is. Absent on pre-v3 blobs, where it reads as 0 until the wiring re-pushes.
+   */
+  rpgForgePercent?: number;
   /**
    * The Enchanting Table's Gold multiplier, mirrored in from `InfusionService`.
    *
@@ -189,7 +201,7 @@ export interface PlayerEconomy {
 
 export function emptyEconomy(): PlayerEconomy {
   return {
-    version: 2,
+    version: CURVE.ECONOMY_VERSION,
     gold: 0,
     eclipseEssence: 0,
     aetherFragments: 0,
@@ -204,6 +216,7 @@ export function emptyEconomy(): PlayerEconomy {
     prestigeCount: 0,
     streakDays: 0,
     rpgFlatGold: 0,
+    rpgForgePercent: 0,
     infusionGold: 1,
     upgrades: {},
     artifacts: [],
@@ -231,32 +244,20 @@ export function emptyEconomy(): PlayerEconomy {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Gold per *second* with nothing bought. The floor the whole curve sits on.
+ * Gold per *second* with nothing bought.
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * WHY THE UNIT IS THE SECOND
- * ─────────────────────────────────────────────────────────────────────────────
- * The forge used to be priced per minute and settled per minute, and the number
- * it produced was therefore invisible: a rate you can only observe by waiting
- * sixty seconds for it to move once is a rate nobody believes in. Pricing the
- * whole ladder per second makes the headline figure something that changes
- * while you are looking at it, which is the entire point of an idle economy —
- * and it is the reason the Gold/sec readout sits in the header rather than
- * being buried on the Market.
- *
- * The prices did not change with the unit, so every existing ledger is worth
- * sixty times more per unit of time than it was. That is deliberate. The old
- * curve topped out at 40 Gold a minute, which took an hour to buy anything on
- * the second half of the shop; the new one has to reach ten million to unlock
- * the last tier, and it could not get there on the old rates inside a year.
+ * Zero since economy v3: Cookie Clicker has no idle floor either. The first
+ * Forge Bellows costs 15 Gold (a few seconds of striking) and is the floor.
+ * Every number of the curve lives in `economy-curve.ts`, which the simulator
+ * reads too — change it there, not here.
  */
-export const BASE_IDLE_PER_SECOND = 0.1;
+export const BASE_IDLE_PER_SECOND = CURVE.BASE_IDLE_PER_SECOND;
 /** Gold per strike of the Forge Flame, before hammers. */
-export const BASE_GOLD_PER_CLICK = 1;
-/** Gold for one interaction beat on a tool page. */
+export const BASE_GOLD_PER_CLICK = CURVE.BASE_GOLD_PER_CLICK;
+/** Floor Gold for one interaction beat on a tool page (it pays max(this, 5 s of income)). */
 export const GOLD_PER_TOOL_ACTION = 5;
-/** Bonus Gold on every hundredth strike. */
-export const CENTURY_BONUS_GOLD = 10;
+/** The 100th strike pays this many strikes' worth. */
+export const CENTURY_STRIKE_MULTIPLIER = CURVE.CENTURY_STRIKE_MULTIPLIER;
 
 /** Essence for reaching a new rank. */
 export const ESSENCE_PER_LEVEL = 5;
@@ -268,21 +269,46 @@ export const ESSENCE_PER_MYTHIC = 50;
 export const ESSENCE_PER_STREAK_WEEK = 25;
 
 /**
- * Gold for a claimed quest, derived from the XP it already pays rather than
- * authored a second time — 30 quests, 8 weeklies and 5 epics would otherwise
- * each need a Gold value maintained alongside their XP value, and the two would
- * drift the first time a quest was rebalanced.
+ * The floor Gold for a claimed quest, derived from the XP it already pays
+ * rather than authored a second time — 30 quests, 8 weeklies and 5 epics would
+ * otherwise each need a Gold value maintained alongside their XP value.
  *
- * A daily at 15-25 XP lands at the 1,000 floor; a weekly at 100-150 XP lands
- * between 3,300 and 5,000; an epic at 300+ is capped at 5,000. Same band as
- * before, times 100, so quest Gold still moves the shop after the price hike.
+ * Economy v3: the v2 band (1,000-5,000) times ρ, so 60-300. The quest actually
+ * pays max(this, `questRewardSeconds(xp)` seconds of income) — see
+ * EconomyWiringService — so it stays meaningful at every stage.
  */
 export function goldForQuestXp(xp: number): number {
-  return Math.max(1_000, Math.min(5_000, Math.round(xp / 3) * 100));
+  return CURVE.itemScaled(Math.max(1_000, Math.min(5_000, Math.round(xp / 3) * 100)));
+}
+
+/** Seconds of income a claimed quest pays: 120 s for a daily up to 600 s for an epic. */
+export function questRewardSeconds(xp: number): number {
+  const old = Math.max(1_000, Math.min(5_000, Math.round(xp / 3) * 100));
+  const band = CURVE.REWARD_SECONDS.quest;
+  return Math.round(band.minS + (old - 1_000) / 4_000 * (band.maxS - band.minS));
+}
+
+/**
+ * The base Gold to hand `EconomyService.earnGold` for a reward priced as
+ * max(floor, N seconds of income) — economy v3, rule I.
+ *
+ * Reads the published snapshot (any object with `perSecond`, so specs' fake
+ * economies fit). The Fragment of the First Sun's ×2 is already inside
+ * `perSecond` and `earnGold` applies it again, so it is divided back out of the
+ * income term; the flat floor is doubled once, as every flat payout is.
+ */
+export function incomeRewardBase(
+  floor: number,
+  seconds: number,
+  snap: { perSecond?: number; doubled?: boolean } | null | undefined,
+): number {
+  const perSecond = snap && Number.isFinite(snap.perSecond) ? Math.max(0, snap.perSecond as number) : 0;
+  const income = Math.max(0, seconds) * perSecond / (snap?.doubled ? 2 : 1);
+  return Math.max(Math.max(0, floor), Math.round(income));
 }
 
 /** Every purchase multiplies the next one by this. The Cookie Clicker curve. */
-export const PRICE_SCALE = 1.25;
+export const PRICE_SCALE = CURVE.PRICE_SCALE;
 
 /**
  * What the next level of a repeatable item costs, given how many are owned.
@@ -308,130 +334,49 @@ export interface ForgeUpgrade {
   /** Gold per second added per level owned. */
   ratePerSecond: number;
   /**
-   * The first level of this rung costs nothing. Every level after it is priced
-   * off `baseCost` exactly as before - this is a doorway, not a discount.
-   *
-   * Exactly one rung in the catalogue carries it, and it exists because the
-   * Market's cheapest thing was 5,000 Gold against a ledger that starts at
-   * zero, mints 1 Gold a strike and 0.1 Gold a second. That is 4,500 strikes or
-   * fourteen hours of waiting before the shop sells its owner anything, and a
-   * shop whose entire stock is unaffordable on the first visit does not read as
-   * a ladder - it reads as a wall, which is what it was reported as.
-   *
-   * The free rung is deliberately the smallest one. It moves income from
-   * 0.1/sec to 0.6/sec, a sixfold jump the header counter shows immediately,
-   * and it leaves the 20,000-Gold rung above it exactly where it was. Nothing
-   * downstream is rebalanced: the player still has to earn the second rung, and
-   * the intended first hour is still the free two-minute Scout the tutorial
-   * points at, which pays 5,000-10,000.
-   *
-   * Note for anyone adding a second one: `EconomyService.nextCost` returns 0
-   * for a free rung, and a zero-amount `buy-upgrade` op is only legal because
-   * `economy-ops.ts` was widened to admit it. Both would have to hold.
+   * The first level of this rung costs nothing. Retired in economy v3 — no
+   * rung carries it any more (the first Bellows is a 15-Gold purchase, a few
+   * seconds of striking). Kept on the type because the Market still filters on
+   * it, and `EconomyService.nextCost` / the zero-amount `buy-upgrade` op still
+   * honour it should a free rung ever return.
    */
   firstFree?: true;
 }
 
+/** The v3 curve row behind a ladder id. Throws at module load if the two files disagree. */
+function curveRow<T extends { id: string }>(rows: readonly T[], id: string): T {
+  const row = rows.find(r => r.id === id);
+  if (!row) throw new Error(`economy-curve.ts has no row for ${id}`);
+  return row;
+}
+
+/** "+1,600,000 Gold/sec" — the effect line, written from the curve so it cannot lie. */
+function rateEffect(rate: number): string {
+  return `+${rate.toLocaleString('en-US', { maximumFractionDigits: 2 })} Gold/sec`;
+}
+
+function furnace(id: string, name: string, flavour: string, icon: string): ForgeUpgrade {
+  const row = curveRow(CURVE.FURNACE_CURVE, id);
+  return { id, name, effect: rateEffect(row.ratePerSecond), flavour, icon, baseCost: row.baseCost, ratePerSecond: row.ratePerSecond };
+}
+
 /**
- * Ten rungs, each roughly 4× the price and 2.5× the rate of the one under it.
- *
- * The top four are new and they are where the shop stops being a shop and
- * starts being a ladder: the Realm Conduit is the first thing you cannot buy in
- * one sitting, and The First Sun is a ten-million-Gold purchase that only
- * exists to be the thing an Eclipse reset is aimed at.
+ * Ten rungs, Cookie-shaped (economy v3): each roughly ×10 the price and ×6-8
+ * the rate of the one under it, so the payback (cost / rate) grows ~×1.5-2 a
+ * rung — each tier is a bit worse per Gold but far more per click of
+ * attention. The numbers live in `economy-curve.ts`.
  */
 export const FORGE_UPGRADES: ForgeUpgrade[] = [
-  {
-    id: 'forge-bellows',
-    name: 'Forge Bellows',
-    effect: '+0.5 Gold/sec',
-    flavour: 'Air is the cheapest thing a forge is hungry for.',
-    icon: '🜂',
-    baseCost: 5_000,
-    ratePerSecond: 0.5,
-    firstFree: true,
-  },
-  {
-    id: 'ember-stoker',
-    name: 'Ember Stoker',
-    effect: '+1 Gold/sec',
-    flavour: 'Someone has to turn the coals while you are away.',
-    icon: '🔥',
-    baseCost: 20_000,
-    ratePerSecond: 1,
-  },
-  {
-    id: 'nether-furnace',
-    name: 'Nether Furnace',
-    effect: '+2 Gold/sec',
-    flavour: 'Umbral heat. It burns colder and it burns longer.',
-    icon: '🌑',
-    baseCost: 50_000,
-    ratePerSecond: 2,
-  },
-  {
-    id: 'eclipse-core',
-    name: 'Eclipse Core',
-    effect: '+5 Gold/sec',
-    flavour: 'A shard of the moment the Sun broke, still cooling.',
-    icon: '🌘',
-    baseCost: 200_000,
-    ratePerSecond: 5,
-  },
-  {
-    id: 'godforge-heart',
-    name: 'Godforge Heart',
-    effect: '+10 Gold/sec',
-    flavour: 'The forge no longer needs you to want anything.',
-    icon: '💠',
-    baseCost: 1_000_000,
-    ratePerSecond: 10,
-  },
-  {
-    id: 'realm-conduit',
-    name: 'Realm Conduit',
-    effect: '+25 Gold/sec',
-    flavour: 'Both realms are pouring into the same crucible now. Neither was asked.',
-    icon: '🌀',
-    baseCost: 5_000_000,
-    ratePerSecond: 25,
-  },
-  {
-    id: 'aether-siphon',
-    name: 'Aether Siphon',
-    effect: '+50 Gold/sec',
-    flavour: 'The light does not notice it is being taken. That is the design.',
-    icon: '🌬️',
-    baseCost: 20_000_000,
-    ratePerSecond: 50,
-  },
-  {
-    id: 'nox-harvester',
-    name: 'Nox Harvester',
-    effect: '+100 Gold/sec',
-    flavour: 'It reaps a field nobody planted, and the field keeps coming back.',
-    icon: '🌾',
-    baseCost: 50_000_000,
-    ratePerSecond: 100,
-  },
-  {
-    id: 'eclipse-reactor',
-    name: 'Eclipse Reactor',
-    effect: '+250 Gold/sec',
-    flavour: 'The Archivum filed the schematics under things that should not hold.',
-    icon: '☢️',
-    baseCost: 200_000_000,
-    ratePerSecond: 250,
-  },
-  {
-    id: 'the-first-sun',
-    name: 'The First Sun',
-    effect: '+1,000 Gold/sec',
-    flavour: 'You did not rebuild it. You only got close enough to warm your hands.',
-    icon: '☀️',
-    baseCost: 1_000_000_000,
-    ratePerSecond: 1_000,
-  },
+  furnace('forge-bellows', 'Forge Bellows', 'Air is the cheapest thing a forge is hungry for.', '🜂'),
+  furnace('ember-stoker', 'Ember Stoker', 'Someone has to turn the coals while you are away.', '🔥'),
+  furnace('nether-furnace', 'Nether Furnace', 'Umbral heat. It burns colder and it burns longer.', '🌑'),
+  furnace('eclipse-core', 'Eclipse Core', 'A shard of the moment the Sun broke, still cooling.', '🌘'),
+  furnace('godforge-heart', 'Godforge Heart', 'The forge no longer needs you to want anything.', '💠'),
+  furnace('realm-conduit', 'Realm Conduit', 'Both realms are pouring into the same crucible now. Neither was asked.', '🌀'),
+  furnace('aether-siphon', 'Aether Siphon', 'The light does not notice it is being taken. That is the design.', '🌬️'),
+  furnace('nox-harvester', 'Nox Harvester', 'It reaps a field nobody planted, and the field keeps coming back.', '🌾'),
+  furnace('eclipse-reactor', 'Eclipse Reactor', 'The Archivum filed the schematics under things that should not hold.', '☢️'),
+  furnace('the-first-sun', 'The First Sun', 'You did not rebuild it. You only got close enough to warm your hands.', '☀️'),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -448,63 +393,39 @@ export interface HammerUpgrade {
   flavour: string;
   icon: string;
   baseCost: number;
-  /** Gold added per strike, per level owned. */
+  /** Flat Gold added to every strike. Bought once (economy v3). */
   goldPerClick: number;
+  /**
+   * Share of the furnace rate added to every *hand* strike — Cookie's mouse
+   * upgrades. 0.01 is "+1% of Gold/sec per strike". Automatons do not get it.
+   */
+  incomeShare: number;
   /** What it does to the Flame. Cosmetic, and cumulative by tier. */
   visual: HammerEffect;
 }
 
+function hammer(id: string, name: string, effectTail: string, flavour: string, icon: string, visual: HammerEffect): HammerUpgrade {
+  const row = curveRow(CURVE.HAMMER_CURVE, id);
+  const head = row.incomeShare > 0
+    ? `+${Math.round(row.incomeShare * 100)}% of Gold/sec per strike`
+    : `+${row.goldPerClick} per strike`;
+  return {
+    id, name, effect: head + effectTail, flavour, icon, visual,
+    baseCost: row.baseCost, goldPerClick: row.goldPerClick, incomeShare: row.incomeShare,
+  };
+}
+
+/**
+ * Bought once each (economy v3). Two flat rungs for the first minutes, then
+ * three rungs that add a share of the furnace rate to every strike, so the
+ * Flame keeps pace with the forge instead of fading.
+ */
 export const HAMMER_UPGRADES: HammerUpgrade[] = [
-  {
-    id: 'iron-hammer',
-    name: 'Iron Hammer',
-    effect: '+2 per strike',
-    flavour: 'Honest metal. It will outlast three of its owners.',
-    icon: '🔨',
-    baseCost: 10_000,
-    goldPerClick: 2,
-    visual: 'none',
-  },
-  {
-    id: 'obsidian-mallet',
-    name: 'Obsidian Mallet',
-    effect: '+5 per strike',
-    flavour: 'Cut from the glass the first eclipse left behind.',
-    icon: '⚒️',
-    baseCost: 50_000,
-    goldPerClick: 5,
-    visual: 'none',
-  },
-  {
-    id: 'aether-striker',
-    name: 'Aether Striker',
-    effect: '+10 per strike, and sparks',
-    flavour: 'Light does not need to be swung hard to land.',
-    icon: '⚡',
-    baseCost: 200_000,
-    goldPerClick: 10,
-    visual: 'spark',
-  },
-  {
-    id: 'nox-crusher',
-    name: 'Nox Crusher',
-    effect: '+20 per strike, and a shadow trail',
-    flavour: 'It arrives slightly before you decide to swing it.',
-    icon: '🕳️',
-    baseCost: 500_000,
-    goldPerClick: 20,
-    visual: 'shadow',
-  },
-  {
-    id: 'eclipse-hammer',
-    name: 'Eclipse Hammer',
-    effect: '+50 per strike, and the realm flinches',
-    flavour: 'Held by four Convergents. Three of them are still standing.',
-    icon: '🌗',
-    baseCost: 2_000_000,
-    goldPerClick: 50,
-    visual: 'quake',
-  },
+  hammer('iron-hammer', 'Iron Hammer', '', 'Honest metal. It will outlast three of its owners.', '🔨', 'none'),
+  hammer('obsidian-mallet', 'Obsidian Mallet', '', 'Cut from the glass the first eclipse left behind.', '⚒️', 'none'),
+  hammer('aether-striker', 'Aether Striker', ', and sparks', 'Light does not need to be swung hard to land.', '⚡', 'spark'),
+  hammer('nox-crusher', 'Nox Crusher', ', and a shadow trail', 'It arrives slightly before you decide to swing it.', '🕳️', 'shadow'),
+  hammer('eclipse-hammer', 'Eclipse Hammer', ', and the realm flinches', 'Held by four Convergents. Three of them are still standing.', '🌗', 'quake'),
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -536,7 +457,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +10%',
     flavour: 'You stopped losing heat out of the back of it.',
     icon: '📐',
-    baseCost: 100_000,
+    baseCost: curveRow(CURVE.MULTIPLIER_CURVE, 'forge-efficiency-i').baseCost,
     bonus: 0.1,
   },
   {
@@ -545,7 +466,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +25%',
     flavour: 'The bellows and the coals finally agree on a rhythm.',
     icon: '⚙️',
-    baseCost: 1_000_000,
+    baseCost: curveRow(CURVE.MULTIPLIER_CURVE, 'forge-efficiency-ii').baseCost,
     bonus: 0.25,
   },
   {
@@ -554,7 +475,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +50%',
     flavour: 'Nothing here is wasted any more, including you.',
     icon: '🔱',
-    baseCost: 10_000_000,
+    baseCost: curveRow(CURVE.MULTIPLIER_CURVE, 'forge-efficiency-iii').baseCost,
     bonus: 0.5,
   },
   {
@@ -563,7 +484,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
     effect: 'All Gold income +100% — everything doubles',
     flavour: 'The forge stopped being a thing you operate some time ago.',
     icon: '👑',
-    baseCost: 100_000_000,
+    baseCost: curveRow(CURVE.MULTIPLIER_CURVE, 'forge-mastery').baseCost,
     bonus: 1,
   },
 ];
@@ -578,7 +499,7 @@ export const MULTIPLIER_UPGRADES: MultiplierUpgrade[] = [
  * better, which is the cross-ladder pull the shop did not have before.
  *
  * They are *income*, not input. Nothing here reaches `EconomyService.strike()`:
- * that method carries a 500ms cooldown, drives the combo ladder, and counts
+ * that method carries a strike cooldown, drives the combo ladder, and counts
  * toward three achievements on the Codex wall for striking the Flame yourself.
  * An Eclipse Automaton at twenty a second would hold a x1,000 combo forever and
  * collect all three overnight while the tab sat behind a text editor. So the
@@ -603,7 +524,7 @@ export const AUTO_CLICKERS: AutoClicker[] = [
     effect: '+1 strike/sec',
     flavour: 'Paid in room, board and the chance to hold the hammer.',
     icon: '🧑‍🏭',
-    baseCost: 500_000,
+    baseCost: curveRow(CURVE.AUTOMATON_CURVE, 'apprentice-striker').baseCost,
     clicksPerSecond: 1,
   },
   {
@@ -612,7 +533,7 @@ export const AUTO_CLICKERS: AutoClicker[] = [
     effect: '+5 strikes/sec',
     flavour: 'It has one instruction and has never once misread it.',
     icon: '🗿',
-    baseCost: 5_000_000,
+    baseCost: curveRow(CURVE.AUTOMATON_CURVE, 'forge-golem').baseCost,
     clicksPerSecond: 5,
   },
   {
@@ -621,7 +542,7 @@ export const AUTO_CLICKERS: AutoClicker[] = [
     effect: '+20 strikes/sec',
     flavour: 'Twenty arms, no shoulders, and a sound the Archivum will not transcribe.',
     icon: '🤖',
-    baseCost: 50_000_000,
+    baseCost: curveRow(CURVE.AUTOMATON_CURVE, 'eclipse-automaton').baseCost,
     clicksPerSecond: 20,
   },
 ];
@@ -662,7 +583,7 @@ export const EXPEDITION_UPGRADES: ExpeditionUpgrade[] = [
     effect: '+1 explorer out at once',
     flavour: 'They ask for a lamp, a week of rations, and no supervision whatsoever.',
     icon: '🧭',
-    baseCost: 250_000,
+    baseCost: CURVE.EXPLORER_SLOT_COST,
     explorers: 1,
   },
 ];
@@ -700,7 +621,7 @@ export const THRALL_UPGRADES: ThrallSlotUpgrade[] = [
     effect: '+1 Thrall working at once',
     flavour: 'There is always room at the anvil. There has never been room in the ledger.',
     icon: '⛓️',
-    baseCost: 2_000_000,
+    baseCost: CURVE.THRALL_SLOT_COST,
     thralls: 1,
   },
 ];
@@ -720,10 +641,10 @@ export const ALL_UPGRADES: AnyUpgrade[] = [
 ];
 
 /**
- * Ids that may only ever be bought once. Everything else repeats, getting 15%
- * dearer each time.
+ * Ids that may only ever be bought once: the multipliers and, since economy v3,
+ * the hammers. Everything else repeats, getting 15% dearer each time.
  */
-const SINGLE_PURCHASE = new Set(MULTIPLIER_UPGRADES.map(m => m.id));
+const SINGLE_PURCHASE = new Set([...MULTIPLIER_UPGRADES, ...HAMMER_UPGRADES].map(m => m.id));
 
 export function isSinglePurchase(id: string): boolean {
   return SINGLE_PURCHASE.has(id);
@@ -1057,25 +978,23 @@ export function totalUpgradeLevels(e: PlayerEconomy): number {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** What one Eclipse Shard adds to everything, forever. */
-export const SHARD_BONUS = 0.05;
+export const SHARD_BONUS = CURVE.SHARD_BONUS;
 
-/** All-time Gold that opens the reset on its own. */
-export const PRESTIGE_GOLD_THRESHOLD = 1_000_000_000;
+/** All-time Gold that opens the reset on its own: 10 trillion, about three days of play. */
+export const PRESTIGE_GOLD_THRESHOLD = CURVE.PRESTIGE_GOLD_THRESHOLD;
 /** The rank that opens it instead, for a visitor who got there another way. */
 export const PRESTIGE_LEVEL_THRESHOLD = 10;
 
 /**
  * What an all-time Gold total is worth in shards.
  *
- * A square root, so the tenth reset is not ten times the first: ten million
- * pays 10 shards, forty million pays 20, a billion pays 100. Combined with
- * `shardsGranted` — which is never reset — this makes one long run and several
- * short ones worth exactly the same, and leaves the curve flat enough that
- * there is always another shard visible without it ever being close.
+ * A cube root (economy v3, Cookie's heavenly-chip shape), so the tenth reset is
+ * not ten times the first: 10 trillion pays 10 shards, 80 trillion pays 20.
+ * Combined with `shardsGranted` — which is never reset — this makes one long
+ * run and several short ones worth exactly the same.
  */
 export function shardsFor(totalGoldEarned: number): number {
-  if (totalGoldEarned <= 0) return 0;
-  return Math.floor(Math.sqrt(totalGoldEarned / 100_000));
+  return CURVE.shardsForTotal(totalGoldEarned);
 }
 
 /** Shards the next Eclipse would hand over. Zero means it is not worth taking. */
@@ -1176,7 +1095,12 @@ export interface GoldBreakdown {
   artifact: number;
   /** Every Runeword crafted at the Rune Forge, summed. ×1 when none are. */
   runeword: number;
-  /** Forge Power points and equipped items, flat. Zero with nothing invested. */
+  /**
+   * Forge Power points and equipped items, as Gold/s before the multipliers:
+   * gear's flat `goldPerSec`, plus Forge Power's percentage (economy v3) of the
+   * furnace + automaton rate written out as the Gold/s it adds, so the
+   * breakdown still sums. Zero with nothing invested.
+   */
   rpg: number;
   /** Material infusions running at the Enchanting Table. ×1 when none are. */
   infusion: number;
@@ -1185,21 +1109,21 @@ export interface GoldBreakdown {
 }
 
 export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
-  let idle = BASE_IDLE_PER_SECOND;
-  for (const [id, level] of Object.entries(e.upgrades)) {
-    const up = FORGE_BY_ID.get(id);
-    if (up) idle += up.ratePerSecond * level;
-  }
+  const idle = furnaceRate(e);
 
   // A hand-edited blob can put anything in here, and a NaN would propagate
   // through `total` into the ticker and the offline payout. Clamped at the one
   // place the value enters the arithmetic.
-  const rpg = Number.isFinite(e.rpgFlatGold) ? Math.max(0, e.rpgFlatGold) : 0;
+  const rpgFlat = Number.isFinite(e.rpgFlatGold) ? Math.max(0, e.rpgFlatGold) : 0;
+  const forgePercent = Number.isFinite(e.rpgForgePercent) ? Math.max(0, e.rpgForgePercent as number) : 0;
 
   // Automatons pay whatever a strike is worth right now — at the *bare* rate,
   // because the shared multipliers are applied once below to the sum of both
   // sources. Using `goldPerClick` here would apply all four of them twice.
   const auto = autoClicksPerSecond(e) * baseGoldPerClick(e);
+
+  // Gear flat, plus Forge Power as a share of the forge (see the field note above).
+  const rpg = rpgFlat + (forgePercent / 100) * (idle + auto);
 
   const upgrades = upgradeMultiplier(e);
   const streak = streakMultiplier(e.streakDays);
@@ -1247,9 +1171,30 @@ export function baseGoldPerClick(e: PlayerEconomy): number {
   let gold = BASE_GOLD_PER_CLICK;
   for (const [id, level] of Object.entries(e.upgrades)) {
     const up = HAMMER_BY_ID.get(id);
-    if (up) gold += up.goldPerClick * level;
+    // Hammers are bought once (v3); a stray level above 1 is never paid twice.
+    if (up && level > 0) gold += up.goldPerClick;
   }
   return gold;
+}
+
+/** The hammers' "+N% of Gold/sec per strike", summed. Owning the rung grants it once. */
+export function strikeIncomeShare(e: PlayerEconomy): number {
+  let share = 0;
+  for (const [id, level] of Object.entries(e.upgrades)) {
+    const up = HAMMER_BY_ID.get(id);
+    if (up && level > 0) share += up.incomeShare;
+  }
+  return share;
+}
+
+/** The furnace ladder's bare rate (floor + rungs), before every multiplier. */
+export function furnaceRate(e: PlayerEconomy): number {
+  let idle = BASE_IDLE_PER_SECOND;
+  for (const [id, level] of Object.entries(e.upgrades)) {
+    const up = FORGE_BY_ID.get(id);
+    if (up) idle += up.ratePerSecond * level;
+  }
+  return idle;
 }
 
 /**
@@ -1262,7 +1207,8 @@ export function baseGoldPerClick(e: PlayerEconomy): number {
  * double along with their furnaces.
  */
 export function goldPerClick(e: PlayerEconomy): number {
-  const scaled = baseGoldPerClick(e)
+  const hand = baseGoldPerClick(e) + strikeIncomeShare(e) * furnaceRate(e);
+  const scaled = hand
     * upgradeMultiplier(e)
     * streakMultiplier(e.streakDays)
     * shardMultiplier(e)

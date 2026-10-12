@@ -197,6 +197,12 @@ export interface GameItem {
   rollQuality?: Partial<Record<keyof ItemStats, number>>;
   /** Gold this pays if sold. Zero for anything soulbound. */
   sellValue: number;
+  /**
+   * Economy version `sellValue` is written in. Absent (or < 3) means v2 Gold,
+   * which the parser scales by ρ exactly once and then stamps 3 — a per-record
+   * marker, so a merge that picks either copy of a record stays consistent.
+   */
+  econ?: number;
   equipped: boolean;
   /** Which slot it is in, when equipped on the player. */
   slot?: SlotId;

@@ -80,8 +80,6 @@ import {
   PRESTIGE_LEVEL_THRESHOLD,
   SHARD_BONUS,
   costOf,
-  isFirstFree,
-  levelCap,
   upgradeById,
   formatCompact,
   formatCurrency,
@@ -590,28 +588,16 @@ export class MarketComponent implements OnInit, OnDestroy {
   }
 
   /**
-   * How many levels of a Gold ladder the purse covers in a row, walking the
-   * same price `EconomyService.nextCost` charges (the 15% escalator, the
-   * Charisma discount, the free first rung). Display only: "Buy max" itself
-   * re-reads the live price before every purchase. Below 2 there is no point
-   * in a second button, so it returns 0.
+   * How many levels of a Gold ladder the purse covers in a row. Delegates to
+   * `EconomyService.affordableLevels`, which walks the same per-level price
+   * `nextCost` charges (economy-curve.ts escalator, Charisma discount, a free
+   * first rung, the level cap) — one price function, so Buy max cannot drift
+   * from the curve. Display only: "Buy max" itself re-reads the live price
+   * before every purchase. Below 2 there is no point in a second button.
    */
   private ladderMax(it: MarketItem): number {
-    const def = upgradeById(it.id);
-    if (!def || it.state !== 'buy') return 0;
-    const level = this.economy.levelOf(it.id);
-    const room = Math.min(BUY_MAX_CAP, levelCap(it.id) - level);
-    const mult = this.economy.marketPriceMultiplier;
-    let purse = this.snap.gold;
-    let n = 0;
-    while (n < room) {
-      const at = level + n;
-      const raw = isFirstFree(def) && at === 0 ? 0 : costOf(def.baseCost, at);
-      const price = raw === 0 || mult >= 1 ? raw : Math.max(1, Math.ceil(raw * mult));
-      if (price > purse) break;
-      purse -= price;
-      n++;
-    }
+    if (!upgradeById(it.id) || it.state !== 'buy') return 0;
+    const n = this.economy.affordableLevels(it.id, this.snap.gold, BUY_MAX_CAP);
     return n >= 2 ? n : 0;
   }
 
@@ -1011,7 +997,7 @@ export class MarketComponent implements OnInit, OnDestroy {
    *
    * The honest answer to "what do I do here" for that visitor is not "strike
    * the flame 20,000 times" — it is the two-minute Scout, which is free, needs
-   * no upgrade, and returns 5,000-10,000 Gold. The first-run tutorial says so
+   * no upgrade, and returns a minute of income (at least 90 Gold, economy v3). The first-run tutorial says so
    * on its fourth screen; this is the same sentence for the visitor who skipped
    * it, and it goes away as soon as either half stops being true.
    */
