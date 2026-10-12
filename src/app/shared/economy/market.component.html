@@ -1,18 +1,23 @@
 <!-- The Market, painted. Layer 1 of the three-layer pattern; the gradient
      overlay is layer 2, inside the component, and everything below is
      layer 3. See art-scene.component.ts for why this is a <picture>. -->
+@if (!inWorld) {
 <app-art-scene art="bg-market" focus="center 50%" />
+}
 
-<section class="mk" [attr.data-currency]="activeCurrency" [class.mk--hydrated]="hydrated">
+<section class="mk" [attr.data-currency]="activeCurrency" [class.mk--hydrated]="hydrated" [class.mk--in-world]="inWorld" [attr.aria-label]="inWorld ? t('market.title') : null">
 
   <!-- ── Hero ──────────────────────────────────────────────────────────────
        The sigil, the name, the promise. Everything below it is inventory. -->
+  <!-- In-world the panel already names the place (see shared/in-world-panel.ts). -->
+  @if (!inWorld) {
   <header class="mk__hero">
     <span class="mk__sigil" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="square" stroke-linejoin="miter" focusable="false"><path d="M12 2.6 13.9 9 20.4 12 13.9 15 12 21.4 10.1 15 3.6 12 10.1 9Z"/><path d="M12 7.6 12.8 10.9 16.2 12 12.8 13.1 12 16.4 11.2 13.1 7.8 12 11.2 10.9Z" fill="currentColor" stroke="none" opacity=".24"/></svg></span>
     <p class="mk__eyebrow"><span class="mk__eyebrow-pulse"></span>{{ t('market.eyebrow') }}</p>
     <h1 class="mk__title">{{ t('market.title') }}</h1>
     <p class="mk__tagline">{{ t('market.tagline') }}</p>
   </header>
+  }
 
   <!-- ── Currency bar ──────────────────────────────────────────────────────
        What you can spend, before you are shown anything to spend it on. -->
@@ -71,6 +76,8 @@
        in the Market has a stated price for a stated thing, and a box does not.
        Mixing the two on one strip would make the odds look like a product spec
        instead of the warning they are. -->
+  <!-- In-world the Gambler is a place of its own in another town, not a link out of /play. -->
+  @if (!inWorld) {
   <a class="mk__gambler" routerLink="/gambler">
     <span class="mk__gambler-sigil" aria-hidden="true">✦</span>
     <span class="mk__gambler-body">
@@ -79,6 +86,7 @@
     </span>
     <span class="mk__gambler-go" aria-hidden="true">→</span>
   </a>
+  }
 
   @if (showScoutDoorway) {
     <!-- Only for a visitor who cannot afford the cheapest paid rung. See
@@ -358,7 +366,9 @@
           <p>{{ t('market.error') }}</p>
           <div class="mk__error-actions">
             <button type="button" class="mk__empty-clear" (click)="retryCatalogue()">{{ t('market.retry') }}</button>
+            @if (!inWorld) {
             <a class="mk__empty-clear" routerLink="/world">{{ t('market.returnWorld') }}</a>
+            }
           </div>
         </div>
       } @else if (pageItems.length === 0) {
@@ -515,7 +525,9 @@
         <h2 class="mk__patron-head">{{ t('market.patron.head') }}</h2>
         <p class="mk__patron-sub">{{ t('market.patron.sub') }}</p>
         <p class="mk__patron-lore">{{ t('market.patron.lore') }}</p>
+        @if (!inWorld) {
         <a class="mk__patron-cta" routerLink="/world">{{ t('market.returnWorld') }}</a>
+        }
       </section>
 
       <!-- Where the Gold is actually coming from. Open by default: an idle
@@ -554,11 +566,13 @@
   <!-- ── Footer ────────────────────────────────────────────────────────── -->
   <footer class="mk__foot">
     <p class="mk__whisper">{{ t('market.whisper') }}</p>
+    @if (!inWorld) {
     <p class="mk__links">
       <a routerLink="/world/quests">{{ t('market.link.orders') }}</a> ·
       <a routerLink="/codex">{{ t('market.link.codex') }}</a> ·
       <a routerLink="/forge/runes">{{ t('market.link.forge') }}</a>
     </p>
+    }
   </footer>
 </section>
 
@@ -566,4 +580,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/market"></app-related-pages>
+}
