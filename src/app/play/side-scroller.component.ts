@@ -172,6 +172,12 @@ export class SideScrollerComponent implements OnDestroy {
   /** True for the moment the place's content folds away before the panel hides. */
   closing = false;
   private closeTimer?: ReturnType<typeof setTimeout>;
+  /**
+   * The control that opened the place, when it was opened from the keyboard
+   * (a focus-visible button outside the canvas). Focus returns there on close
+   * if it is still on screen; otherwise, and for clicks/E, to the canvas.
+   */
+  private panelOpener: HTMLElement | null = null;
   placesOpen = false;
   /** "+2 Pyrite Dust" chips over the satchel. Decorative; the objective line announces pickups. */
   lootToasts: LootToast[] = [];
@@ -593,6 +599,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = undefined; }
     this.closing = false;
     this.showTip(null, 0, 0);
+    // Remember a keyboard opener (not one place replacing another: keep the first).
+    if (!this.panel) this.panelOpener = this.keyboardOpener();
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panelError = ''; this.panelLoading = false;
@@ -626,7 +634,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.chestView = null;
     this.engine?.setPaused(false);
     if (syncUrl) this.setAt(null);
-    this.focusWorld();
+    const opener = this.panelOpener;
+    this.panelOpener = null;
+    this.focusWorld(opener);
   }
   /**
    * Put keyboard focus back on the game canvas.
@@ -636,15 +646,27 @@ export class SideScrollerComponent implements OnDestroy {
    * refuses — focus fell to <body> and keyboard players had to click once
    * before A/D/E worked again. So focus after the next render, and check.
    */
-  private focusWorld(): void {
+  private focusWorld(opener: HTMLElement | null = null): void {
     if (!this.browser) return;
     const attempt = (retry: boolean): void => {
+      if (this.panel) return;
       const canvas = this.boundCanvas?.isConnected ? this.boundCanvas : this.liveCanvas();
-      if (!canvas || this.panel) return;
-      if (canvas.closest('[inert]')) { if (retry) setTimeout(() => attempt(false), 50); return; }
-      canvas.focus({ preventScroll: true });
+      // A keyboard player goes back to the control they pressed, if it is still there.
+      const target = opener && opener.isConnected && opener.getClientRects().length > 0 ? opener : canvas;
+      if (!target) return;
+      if (target.closest('[inert]')) { if (retry) setTimeout(() => attempt(false), 50); return; }
+      target.focus({ preventScroll: true });
+      // The opener refused focus (disabled since): the canvas, never <body>.
+      if (target !== canvas && document.activeElement !== target) canvas?.focus({ preventScroll: true });
     };
     afterNextRender(() => attempt(true), { injector: this.injector });
+  }
+  /** The focused control, when it is a keyboard-focused one outside the canvas (else null). */
+  private keyboardOpener(): HTMLElement | null {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement) || active === document.body || active instanceof HTMLCanvasElement) return null;
+    if (!(this.host.nativeElement as HTMLElement).contains(active)) return null;
+    try { return active.matches(':focus-visible') ? active : null; } catch { return null; }
   }
   private setAt(at: string | null): void {
     if ((this.route.snapshot.queryParamMap.get('at') ?? null) === at) return;
@@ -713,6 +735,13 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.engine?.goToStation(place.id, this.reducedMotion)) {
       this.message = this.state.paused ? 'Close the open place first.' : 'The Keeper cannot travel right now.';
     }
+    // The list (and the focused row) is gone: keep the keyboard in the world, not on <body>.
+    this.focusWorld();
+  }
+  /** Close the Places list from the keyboard and hand focus back to its toggle. */
+  private closePlaces(): void {
+    this.placesOpen = false;
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.places-toggle')?.focus({ preventScroll: true }));
   }
   async joinRoom(name: string): Promise<void> {
     if (this.joining || !name.trim()) return;
@@ -791,7 +820,7 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); this.closePanel(); }
       return;
     }
-    if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.placesOpen = false; return; }
+    if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
@@ -804,7 +833,14 @@ export class SideScrollerComponent implements OnDestroy {
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
   }
   openBag(): void { if (!this.bagOpen) this.toggleBag(); }
-  closeBag(): void { this.bagOpen = false; }
+  closeBag(): void {
+    if (!this.bagOpen) return;
+    // Focus inside the book would fall to <body> when it unmounts: hand it to the clasp.
+    const book = this.browser ? document.getElementById('satchel-book') : null;
+    const inside = !!book && book.contains(document.activeElement);
+    this.bagOpen = false;
+    if (inside) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.clasp')?.focus({ preventScroll: true }));
+  }
   toggleBag(): void {
     this.bagOpen = !this.bagOpen;
     if (this.bagOpen && !this.pick) this.ensurePick();
