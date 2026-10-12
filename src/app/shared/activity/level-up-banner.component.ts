@@ -57,6 +57,9 @@ const MILESTONE_DWELL_MS = 5200;
         <span class="lu__body">
           <span class="lu__eyebrow">{{ t(event.milestone ? 'levelUp.milestone' : 'levelUp.eyebrow') }}</span>
           <span class="lu__title">{{ t('levelUp.title', { skill: t(event.skillLabelKey), level: event.level }) }}</span>
+          @if (event.unlocks.length) {
+            <span class="lu__unlock">{{ t('levelUp.unlocked') }} {{ unlockLine(event) }}</span>
+          }
         </span>
       </div>
     }
@@ -95,6 +98,12 @@ const MILESTONE_DWELL_MS = 5200;
     .lu__title {
       font: 700 15px/1.2 'Orbitron', system-ui, sans-serif;
       color: #F2ECFF;
+    }
+    .lu__unlock {
+      margin-top: 2px;
+      font-size: 12px;
+      line-height: 1.3;
+      color: var(--gf-accent-text, #c89868);
     }
 
     /* Every tenth level: bigger card, warmer glow, a slow ring pulse. Still no
@@ -153,6 +162,11 @@ export class LevelUpBannerComponent implements OnInit, OnDestroy {
 
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
+  }
+
+  /** Every row the crossing opened, translated, one line. */
+  unlockLine(event: LevelUpEvent): string {
+    return event.unlocks.map(u => this.t(u.key, u.vars)).join(' · ');
   }
 
   dismiss(): void {

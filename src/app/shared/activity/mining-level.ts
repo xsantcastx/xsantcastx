@@ -22,14 +22,23 @@
  * levels rather than losing them.
  */
 
-/** The ceiling. A skill at MAX_SKILL_LEVEL has no `next`. */
-export const MAX_SKILL_LEVEL = 50;
+/**
+ * The ceiling. A skill at MAX_SKILL_LEVEL has no `next`.
+ *
+ * Was 50; raised to 99 when the skill roster grew to eight. The formula below
+ * is unchanged, so every threshold from level 2 to 50 is the same number it
+ * always was — a stored XP total reads as exactly the level it read before
+ * (the spec pins this). Only a Keeper already parked at 50 can move, and only
+ * upward.
+ */
+export const MAX_SKILL_LEVEL = 99;
 
 /**
  * Cumulative XP required to *reach* `level`.
  *
  * `floor(100 * (level - 1) ^ 2.2)` — level 1 is free, level 2 lands at 100 XP
- * (50 actions, ~2 minutes), level 10 near 15k, level 50 near 700k.
+ * (50 actions, ~2 minutes), level 10 near 12.5k, level 50 near 530k, level 99
+ * near 2.4M.
  */
 export function xpForLevel(level: number): number {
   if (!Number.isFinite(level) || level <= 1) return 0;
@@ -75,3 +84,7 @@ export function levelProgressPct(view: MiningLevelView): number {
   if (view.span <= 0) return 100;
   return Math.max(0, Math.min(100, Math.round((view.into / view.span) * 100)));
 }
+
+/** The skill-agnostic names. The `mining*` ones stay for existing callers. */
+export type SkillLevelView = MiningLevelView;
+export const skillLevelView = miningLevelView;
