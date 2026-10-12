@@ -129,6 +129,7 @@ import {
 } from './market-query';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
+import { injectInWorldPanel } from '../in-world-panel';
 /** Every shelf in the shop. `eclipse` renders a ritual, not a list. */
 export type CategoryId =
   | 'forge' | 'hammer' | 'automaton' | 'mastery' | 'expedition' | 'thrall'
@@ -345,6 +346,12 @@ const CATALOGUE_PICKS = [
   styleUrls: ['./market.component.css'],
 })
 export class MarketComponent implements OnInit, OnDestroy {
+  /**
+   * Rendered as the Luminous town's Market stall inside /play: the panel carries
+   * the title, so the hero, backdrop and room links stand down — and the shelf
+   * filters stay local instead of being merged into /play's `?at=` URL.
+   */
+  protected readonly inWorld = injectInWorldPanel();
   private readonly economy = inject(EconomyService);
   private readonly thralls = inject(ThrallService);
   private readonly audio = inject(ForgeAudioService);
@@ -436,7 +443,8 @@ export class MarketComponent implements OnInit, OnDestroy {
       this.snap = s;
       this.cdr.markForCheck();
     }));
-    this.subs.add(this.route.queryParamMap.subscribe(params => this.syncFromUrl(params)));
+    // In-world the ActivatedRoute is /play's: its params are not the Market's.
+    if (!this.inWorld) this.subs.add(this.route.queryParamMap.subscribe(params => this.syncFromUrl(params)));
     this.subs.add(this.i18n.currentLanguage$.subscribe(() => this.cdr.markForCheck()));
     this.subs.add(this.search$.pipe(debounceTime(150)).subscribe(value => {
       this.patchQuery({ q: value, page: 1 }, 'replace');
@@ -1014,6 +1022,9 @@ export class MarketComponent implements OnInit, OnDestroy {
   }
 
   private writeQuery(query: MarketQuery, mode: 'push' | 'replace'): void {
+    // In-world, `patchQuery` already holds the state; writing it would leave
+    // `category=`/`page=` on the /play URL after the panel closes.
+    if (this.inWorld) return;
     void this.router.navigate([], {
       relativeTo: this.route,
       queryParams: serializeMarketQuery(query),

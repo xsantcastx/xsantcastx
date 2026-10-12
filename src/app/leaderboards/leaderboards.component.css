@@ -23,6 +23,10 @@
   color: var(--ink-0);
 }
 
+/* In the /play panel: the panel already clears the header and carries the title,
+   so the full-page top gutter (sized for the fixed site nav) would be dead space. */
+.lb--in-world { padding: 0 0 1rem; }
+
 .lb-sr {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;

@@ -77,6 +77,7 @@ import { RUNE_TIERS, runeById } from '../shared/rune-forge/rune.model';
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { REALM_ART, artFor } from '../shared/art/art';
 import { BESTIARY, BESTIARY_UNPAINTED } from './bestiary';
+import { injectInWorldPanel } from '../shared/in-world-panel';
 export type CodexTab = 'achievements' | 'collection' | 'progression' | 'scrolls' | 'secrets' | 'leaderboard';
 
 interface TabDefinition {
@@ -201,6 +202,13 @@ export class CodexComponent implements OnInit, OnDestroy {
   private readonly scrollsService = inject(LoreScrollService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  /**
+   * Inside the /play panel (the Celestial town's Codex observatory) the
+   * ActivatedRoute is /play's, so the tab is local state only: `?tab=` is not
+   * read from /play's query string and selecting a tab never rewrites /play's
+   * URL. The hero copy and related links give way to the panel's own heading.
+   */
+  protected readonly inWorld = injectInWorldPanel();
 
   private subs: Subscription[] = [];
 
@@ -390,7 +398,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   selectTab(tab: CodexTab): void {
     if (this.activeTab === tab) return;
     this.activeTab = tab;
-    if (!this.isBrowser) return;
+    if (!this.isBrowser || this.inWorld) return;
     // replaceState, not navigate: a tab is a view of one page, and it should not
     // cost a back-button press to undo.
     const tree = this.router.createUrlTree([], {
@@ -402,6 +410,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   }
 
   private readTabFromUrl(): void {
+    if (this.inWorld) return;
     const requested = this.route.snapshot.queryParamMap.get('tab');
     if (!requested) return;
     // `?tab=bestiary` was a real link before the tab it named was withdrawn.

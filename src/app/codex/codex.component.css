@@ -26,6 +26,11 @@
   color: var(--cx-text);
 }
 
+/* In the /play panel (the Celestial town's observatory): no full-page gutter,
+   and the hero shrinks to its completion meter. */
+.cx-page--in-world { padding: 0 0 1rem; }
+.cx-page--in-world .cx-hero { margin-bottom: 1.25rem; }
+
 /* ═══ Hero ══════════════════════════════════════════════════════════════ */
 
 .cx-hero { text-align: center; margin-bottom: clamp(2rem, 5vw, 3rem); }

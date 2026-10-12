@@ -73,11 +73,12 @@ Sequential: everything after it plugs into its data model and panel host.
 
 ## Phase 2: Fan out `[~]` (started 2026-10-12, 6 agents)
 
-- [~] Luminous town: Market + hunting ground (creature + zone drops)
-- [~] Umbral town: Gambler, Exchange + hunting ground
-- [~] Celestial town (Meridian Orrery): Codex, Leaderboards + hunting ground
-- [~] Verdant town (Rootglass Canopy): Sanctum, Quests, Arena + Trials gates + hunting ground
-- [~] Zone drop tables (one per town agent) + rarity beams and pickup flights (engine agent)
+- [x] Luminous town **Heliograph Court**: Market; hunt Reflection Channels (Prism Forager → Luminous Prism, Sunbloom, Solar Resin = Aurumleaf Pendant) (`1948b55`)
+- [x] Umbral town **Nocturne Archive**: Gambler (reveal fills the panel), Exchange; hunt Unrecorded Corridors (Mirror Substitute → Umbral Ink, Nightbloom, Shadowthread Silk = Inkwell Talisman) (`1948b55`)
+- [x] Celestial town **Meridian Orrery**: Codex, Leaderboards (tabs local in-world); hunt Orrery Rings (Ephemeris Leech → Celestial Alloy, Moonpetal Herb, Celestial Quartz) (`1948b55`)
+- [x] Verdant town **Rootglass Canopy**: Sanctum, Quest Board, Arena gate, Trials gate (games fill the panel); hunt Rootglass Thicket (Rootglass Stag → Thornroot, Verdant Sap, World-Root Bark) (`1948b55`)
+- [x] Zone drop tables: every drop is a catalogued material a recipe uses (enforced by a test)
+- [~] Rarity beams and pickup flights (engine agent)
 - [~] Material Vendor in Infernal: purchases fly to the forge stockpile (reuse the forge-floor flight)
 - [~] Per-creature rigs for Prism Forager, Ephemeris Leech, Mirror Substitute, Rootglass Stag (engine agent)
 - [~] Your gear on the Keeper in the world: weapon in hand, off-hand on the back arm, rarity aura (engine `setLoadout` + side-scroller wiring)
@@ -118,10 +119,6 @@ Sequential: everything after it plugs into its data model and panel host.
 | Work | Branch | Status |
 |---|---|---|
 | Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
-| Phase 2 · Luminous town | agent worktree | `[~]` |
-| Phase 2 · Umbral town | agent worktree | `[~]` |
-| Phase 2 · Celestial town | agent worktree | `[~]` |
-| Phase 2 · Verdant town | agent worktree | `[~]` |
 | Phase 2 · Engine visuals (creature rigs, loot beams, gear on Keeper) | agent worktree | `[~]` |
 | Phase 2 · Infernal vendor + side-scroller UI | agent worktree | `[~]` |
 | Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
@@ -140,6 +137,9 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- **Initial bundle is AT the 2 MB hard limit** (2.00 MB; warn 1.85). The next eager addition fails the build and blocks deploys. Biggest eager modules: `lore.model.ts` 134 kB, `tools-registry.ts` 77 kB (retired tools product), `art-manifest.generated.ts` 64 kB, `equipment-panel` 44 kB. Towns are lazy and don't count
+- `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
+- New creatures still draw with the Rivet Maw rig until the engine-visuals branch lands
 - After closing an in-world panel, focus lands on the page body, not the game canvas (keyboard players must click once) — Phase 2 UI polish
 - The Infernal town is 900px wider, so for a while after deploy, peers on an older client appear ~900px off east of the forge
 - Gambler / rune-forge fixed overlays inside panels not yet exercised in-world (the gambler moves in-world with the Umbral town)

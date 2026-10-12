@@ -569,3 +569,10 @@
   .ge__event::after { animation: none; display: none; }
   .ge__chip, .ge__row, .ge__confirm { transition: none; }
 }
+
+/* ── In the world (/play) ─────────────────────────────────────────────────
+   Hosted in the side-scroller's panel, which scrolls its own body: the page
+   padding and the site header's sticky offset both belong to the full page.
+   The rail sticks to the top of the panel's scroller instead. */
+.ge--in-world { padding: 4px 2px 24px; }
+.ge--in-world .ge__rail { top: 0; }
