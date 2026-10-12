@@ -141,8 +141,8 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] **Portable workbench / campfire** (`0f57c99`; one per Delve; opens Crafting on "Ready now"; "Descend to your camp" from town): craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
 - [x] **Chests** (`0f57c99`; 4 material kinds each, through the satchel ledger; supports/bombs still to do) to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
 - [x] Tile, torch, ladder, platform and workbench art briefs → `docs/art-commissions/` second wave (`d9702b6`; 223 entries total; make-first list in `01-second-wave.md`)
-- [ ] Importer: add a `Sprites/Tiles` family that accepts **opaque** 32px tiles (today the cut-out corner guard would reject them)
-- [ ] Engine: spawn the Rune-Warden and Magma Maw under their own art keys (`rune-warden`, `magma-maw`); they currently borrow `mirror-substitute` / `rivet-maw`
+- [x] (`9ec52e4`) Importer: add a `Sprites/Tiles` family that accepts **opaque** 32px tiles (today the cut-out corner guard would reject them)
+- [x] (`9ec52e4`) Engine: spawn the Rune-Warden and Magma Maw under their own art keys (`rune-warden`, `magma-maw`); they currently borrow `mirror-substitute` / `rivet-maw`
 
 ## Phase 3: World only `[x]` (`6c94349`)
 
@@ -215,7 +215,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
-- Gathering-node regrowth is session-only (reload resets every node)
+- Gathering regrowth now persisted (`9ec52e4`, blob `godforge-gathering`)
 - Karma `ExchangeService … round trip` (exchange.service.spec.ts) reported failing; suspected fallout from the ×0.06 Exchange rescale — verify and fix
 - Player market list needs two always-on Firestore listeners per visitor (`watchOpenOrders`, `watchPrices`); a server-written summary doc is the follow-up before launch (read cost)
 - The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Market strings left unused by the redesign could be pruned from the eager translation table
