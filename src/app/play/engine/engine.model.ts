@@ -28,6 +28,13 @@ export interface EngineOptions {
   /** A panel or waystone station was interacted with. The host opens its panel. */
   onStation?: (station: StationDef) => void;
   onState: (state: EngineState) => void;
+  /**
+   * Where picked-up loot flies: the satchel HUD's centre in CLIENT (viewport) px,
+   * e.g. from its getBoundingClientRect(). Called once per pickup. Omitted, or
+   * returning null → the canvas's top-right corner. Also settable later with
+   * `engine.setSatchelTarget()`.
+   */
+  satchelTarget?: () => { x: number; y: number } | null | undefined;
 }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }
