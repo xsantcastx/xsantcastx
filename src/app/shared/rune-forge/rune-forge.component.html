@@ -1,3 +1,4 @@
+@if (!inWorld) {
 <div class="rf-scene" aria-hidden="true">
   <picture class="rf-scene__art">
     <source media="(max-width: 768px)"  type="image/webp" srcset="assets/images/runeforge-hero-768.webp">
@@ -9,10 +10,12 @@
   </picture>
   <span class="rf-scene__overlay"></span>
 </div>
+}
 
 <div class="rf" [class.rf--focus]="striking || landed">
 
   <header class="rf-head">
+    @if (!inWorld) {
     <div class="rf-head__copy">
       <h1 class="rf-title">{{ t('forge.title') }}</h1>
       <p class="rf-tag">{{ t('forge.tag') }}</p>
@@ -22,6 +25,7 @@
       <p class="rf-bench"><a routerLink="/forge/crafting">{{ t('forge.benchLink') }}</a></p>
       <p class="rf-bench"><a routerLink="/forge/enchanting">{{ t('forge.tableLink') }}</a></p>
     </div>
+    }
     <dl class="rf-head__wallet">
       <div>
         <dt>{{ t('forge.stat.gold') }}</dt>
@@ -577,4 +581,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/forge/runes"></app-related-pages>
+}
