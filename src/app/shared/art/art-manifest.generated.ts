@@ -27,16 +27,28 @@ export const ART_CHARACTERS: Readonly<Record<string, ArtEntry>> = {
 };
 
 export const ART_CHARACTERS_AVATARS: Readonly<Record<string, ArtEntry>> = {
-  'celestial-keeper-avatar': { src: 'assets/game/characters/avatars/02-celestial-keeper-avatar-512.webp', srcset: 'assets/game/characters/avatars/02-celestial-keeper-avatar-512.webp 512w, assets/game/characters/avatars/02-celestial-keeper-avatar-1024.webp 1024w', width: 512, height: 512 },
-  'infernal-keeper-avatar': { src: 'assets/game/characters/avatars/03-infernal-keeper-avatar-512.webp', srcset: 'assets/game/characters/avatars/03-infernal-keeper-avatar-512.webp 512w, assets/game/characters/avatars/03-infernal-keeper-avatar-1024.webp 1024w', width: 512, height: 512 },
-  'luminous-keeper-avatar': { src: 'assets/game/characters/avatars/04-luminous-keeper-avatar-512.webp', srcset: 'assets/game/characters/avatars/04-luminous-keeper-avatar-512.webp 512w, assets/game/characters/avatars/04-luminous-keeper-avatar-1024.webp 1024w', width: 512, height: 512 },
-  'neutral-keeper-avatar': { src: 'assets/game/characters/avatars/01-neutral-keeper-avatar-512.webp', srcset: 'assets/game/characters/avatars/01-neutral-keeper-avatar-512.webp 512w, assets/game/characters/avatars/01-neutral-keeper-avatar-1024.webp 1024w', width: 512, height: 512 },
-  'umbral-keeper-avatar': { src: 'assets/game/characters/avatars/05-umbral-keeper-avatar-512.webp', srcset: 'assets/game/characters/avatars/05-umbral-keeper-avatar-512.webp 512w, assets/game/characters/avatars/05-umbral-keeper-avatar-1024.webp 1024w', width: 512, height: 512 },
-  'verdant-keeper-avatar': { src: 'assets/game/characters/avatars/06-verdant-keeper-avatar-512.webp', srcset: 'assets/game/characters/avatars/06-verdant-keeper-avatar-512.webp 512w, assets/game/characters/avatars/06-verdant-keeper-avatar-1024.webp 1024w', width: 512, height: 512 },
+  'celestial-keeper-avatar': { src: 'assets/game/characters/avatars/02-celestial-keeper-avatar-96.webp', srcset: 'assets/game/characters/avatars/02-celestial-keeper-avatar-96.webp 96w, assets/game/characters/avatars/02-celestial-keeper-avatar-256.webp 256w, assets/game/characters/avatars/02-celestial-keeper-avatar-512.webp 512w, assets/game/characters/avatars/02-celestial-keeper-avatar-1024.webp 1024w', width: 96, height: 96 },
+  'infernal-keeper-avatar': { src: 'assets/game/characters/avatars/03-infernal-keeper-avatar-96.webp', srcset: 'assets/game/characters/avatars/03-infernal-keeper-avatar-96.webp 96w, assets/game/characters/avatars/03-infernal-keeper-avatar-256.webp 256w, assets/game/characters/avatars/03-infernal-keeper-avatar-512.webp 512w, assets/game/characters/avatars/03-infernal-keeper-avatar-1024.webp 1024w', width: 96, height: 96 },
+  'luminous-keeper-avatar': { src: 'assets/game/characters/avatars/04-luminous-keeper-avatar-96.webp', srcset: 'assets/game/characters/avatars/04-luminous-keeper-avatar-96.webp 96w, assets/game/characters/avatars/04-luminous-keeper-avatar-256.webp 256w, assets/game/characters/avatars/04-luminous-keeper-avatar-512.webp 512w, assets/game/characters/avatars/04-luminous-keeper-avatar-1024.webp 1024w', width: 96, height: 96 },
+  'neutral-keeper-avatar': { src: 'assets/game/characters/avatars/01-neutral-keeper-avatar-96.webp', srcset: 'assets/game/characters/avatars/01-neutral-keeper-avatar-96.webp 96w, assets/game/characters/avatars/01-neutral-keeper-avatar-256.webp 256w, assets/game/characters/avatars/01-neutral-keeper-avatar-512.webp 512w, assets/game/characters/avatars/01-neutral-keeper-avatar-1024.webp 1024w', width: 96, height: 96 },
+  'umbral-keeper-avatar': { src: 'assets/game/characters/avatars/05-umbral-keeper-avatar-96.webp', srcset: 'assets/game/characters/avatars/05-umbral-keeper-avatar-96.webp 96w, assets/game/characters/avatars/05-umbral-keeper-avatar-256.webp 256w, assets/game/characters/avatars/05-umbral-keeper-avatar-512.webp 512w, assets/game/characters/avatars/05-umbral-keeper-avatar-1024.webp 1024w', width: 96, height: 96 },
+  'verdant-keeper-avatar': { src: 'assets/game/characters/avatars/06-verdant-keeper-avatar-96.webp', srcset: 'assets/game/characters/avatars/06-verdant-keeper-avatar-96.webp 96w, assets/game/characters/avatars/06-verdant-keeper-avatar-256.webp 256w, assets/game/characters/avatars/06-verdant-keeper-avatar-512.webp 512w, assets/game/characters/avatars/06-verdant-keeper-avatar-1024.webp 1024w', width: 96, height: 96 },
+};
+
+export const ART_CHARACTERS_OVERLAYS: Readonly<Record<string, ArtEntry>> = {
+  'basalt-edge-overlay': { src: 'assets/game/characters/overlays/09-basalt-edge-overlay-96.webp', srcset: 'assets/game/characters/overlays/09-basalt-edge-overlay-96.webp 96w, assets/game/characters/overlays/09-basalt-edge-overlay-256.webp 256w', width: 96, height: 96 },
+  'chest-overlay': { src: 'assets/game/characters/overlays/02-chest-overlay-96.webp', srcset: 'assets/game/characters/overlays/02-chest-overlay-96.webp 96w, assets/game/characters/overlays/02-chest-overlay-256.webp 256w', width: 96, height: 96 },
+  'feet-overlay': { src: 'assets/game/characters/overlays/05-feet-overlay-96.webp', srcset: 'assets/game/characters/overlays/05-feet-overlay-96.webp 96w, assets/game/characters/overlays/05-feet-overlay-256.webp 256w', width: 96, height: 96 },
+  'hands-overlay': { src: 'assets/game/characters/overlays/03-hands-overlay-96.webp', srcset: 'assets/game/characters/overlays/03-hands-overlay-96.webp 96w, assets/game/characters/overlays/03-hands-overlay-256.webp 256w', width: 96, height: 96 },
+  'head-overlay': { src: 'assets/game/characters/overlays/01-head-overlay-96.webp', srcset: 'assets/game/characters/overlays/01-head-overlay-96.webp 96w, assets/game/characters/overlays/01-head-overlay-256.webp 256w', width: 96, height: 96 },
+  'legs-overlay': { src: 'assets/game/characters/overlays/04-legs-overlay-96.webp', srcset: 'assets/game/characters/overlays/04-legs-overlay-96.webp 96w, assets/game/characters/overlays/04-legs-overlay-256.webp 256w', width: 96, height: 96 },
+  'off-hand-overlay': { src: 'assets/game/characters/overlays/07-off-hand-overlay-96.webp', srcset: 'assets/game/characters/overlays/07-off-hand-overlay-96.webp 96w, assets/game/characters/overlays/07-off-hand-overlay-256.webp 256w', width: 96, height: 96 },
+  'trinket-overlay': { src: 'assets/game/characters/overlays/08-trinket-overlay-96.webp', srcset: 'assets/game/characters/overlays/08-trinket-overlay-96.webp 96w, assets/game/characters/overlays/08-trinket-overlay-256.webp 256w', width: 96, height: 96 },
+  'weapon-overlay': { src: 'assets/game/characters/overlays/06-weapon-overlay-96.webp', srcset: 'assets/game/characters/overlays/06-weapon-overlay-96.webp 96w, assets/game/characters/overlays/06-weapon-overlay-256.webp 256w', width: 96, height: 96 },
 };
 
 export const ART_CHARACTERS_PORTRAITS: Readonly<Record<string, ArtEntry>> = {
-  'neutral-keeper-portrait': { src: 'assets/game/characters/portraits/01-neutral-keeper-portrait-512.webp', srcset: 'assets/game/characters/portraits/01-neutral-keeper-portrait-512.webp 512w, assets/game/characters/portraits/01-neutral-keeper-portrait-1024.webp 1024w', width: 512, height: 512 },
+  'neutral-keeper-portrait': { src: 'assets/game/characters/portraits/01-neutral-keeper-portrait-96.webp', srcset: 'assets/game/characters/portraits/01-neutral-keeper-portrait-96.webp 96w, assets/game/characters/portraits/01-neutral-keeper-portrait-256.webp 256w, assets/game/characters/portraits/01-neutral-keeper-portrait-512.webp 512w, assets/game/characters/portraits/01-neutral-keeper-portrait-1024.webp 1024w', width: 96, height: 96 },
 };
 
 export const ART_CREATURES: Readonly<Record<string, ArtEntry>> = {
@@ -400,6 +412,7 @@ export const ART_MARKET_STATUS: Readonly<Record<string, ArtEntry>> = {
 export const ART_ALL: Readonly<Record<string, ArtEntry>> = {
   ...ART_CHARACTERS,
   ...ART_CHARACTERS_AVATARS,
+  ...ART_CHARACTERS_OVERLAYS,
   ...ART_CHARACTERS_PORTRAITS,
   ...ART_CREATURES,
   ...ART_CURRENCIES,

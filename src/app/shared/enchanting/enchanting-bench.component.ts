@@ -46,7 +46,7 @@ import { artFor, type ArtEntry } from '../art/art';
 import { CelebrationService } from '../celebration/celebration.service';
 import { EconomyService } from '../economy/economy.service';
 import { InventoryService } from '../rpg/inventory.service';
-import { materialDisplay } from '../rpg/material-catalog';
+import { itemArt, materialDisplay } from '../rpg/material-catalog';
 import {
   ITEM_STAT_KEYS,
   formatItemMod,
@@ -83,6 +83,8 @@ import {
 } from './socket.model';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
+import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
+import { floorThing, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 /** One socketable item in the bag or on the body, as the picker renders it. */
 export interface SocketableView {
   item: GameItem;
@@ -154,7 +156,7 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
 @Component({
   selector: 'app-enchanting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, FormsModule],
   templateUrl: './enchanting-bench.component.html',
   styleUrls: ['./enchanting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -199,6 +201,10 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
 
   error: string | null = null;
   announce = '';
+  /** The forge floor's latest event — set only after the gateway has answered. */
+  floorEvent: ForgeFloorEvent | null = null;
+  private floorSeq = 0;
+
   /** The word a socket just seated, for the celebration banner. */
   revealed: SocketWord | null = null;
 
@@ -431,6 +437,12 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.error = null;
     this.activeWell = null;
     const rune = runeById(runeId);
+    const item = this.selected;
+    this.emitFloor(
+      [floorThing(runeId, rune?.name)],
+      { id: item.id, name: item.name, art: itemArt(item) },
+      rune ? RUNE_TIERS[rune.tier]?.color : undefined,
+    );
     this.announce = result.discovered && result.word
       ? `${result.word.name} — the runes have spelled something.`
       : `${rune?.name ?? 'The rune'} is set.`;
@@ -456,6 +468,8 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.error = null;
     this.revealed = null;
     const rune = runeById(well.runeId);
+    // Pulled back out: nothing goes in, the rune comes home to the drawer.
+    this.emitFloor([], floorThing(well.runeId, rune?.name));
     this.announce = `${rune?.name ?? 'The rune'} is back in the drawer.`;
     this.refresh();
   }
@@ -478,9 +492,17 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       return;
     }
     this.error = null;
+    this.emitFloor(
+      result.infusion.inputs.map(row => floorThing(row.materialId)),
+      { id: result.infusion.id, name: result.infusion.name, art: artFor(result.infusion.id) ?? artFor('enhancement-aura') },
+    );
     this.announce = `${result.infusion.name} is running — ${result.infusion.effect}.`;
     this.celebration.celebrate('uncommon');
     this.refresh();
+  }
+
+  private emitFloor(inputs: ForgeFloorThing[], output: ForgeFloorThing | null, glow?: string): void {
+    this.floorEvent = { seq: ++this.floorSeq, station: 'table', inputs, output, glow };
   }
 
   dismissError(): void {

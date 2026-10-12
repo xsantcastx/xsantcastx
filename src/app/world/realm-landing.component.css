@@ -63,6 +63,32 @@
   color: rgba(232, 236, 241, 0.58);
 }
 
+/* Contains the floated Keeper so the next section never wraps around it. */
+.rl__hero { display: flow-root; }
+
+.rl__keeper {
+  float: right;
+  width: 112px;
+  height: 112px;
+  margin: 0 0 0.5rem 1rem;
+  border-radius: 50%;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px var(--realm), 0 0 28px -8px var(--realm-glow);
+}
+
+.rl__emblems {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 0.6rem;
+}
+.rl__crest { width: 72px; height: 72px; object-fit: contain; }
+.rl__token { width: 48px; height: 48px; object-fit: contain; }
+
+@media (max-width: 560px) {
+  .rl__keeper { width: 72px; height: 72px; }
+}
+
 .rl__faction,
 .rl__facts,
 .rl__conflict,

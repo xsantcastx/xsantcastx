@@ -34,6 +34,9 @@
     </dl>
   </header>
 
+  <!-- The forge floor: watch the anvil work. Decorative; results are announced below. -->
+  <app-forge-floor class="rf-floor" [active]="'runes'" [working]="rolling" [event]="floorEvent"></app-forge-floor>
+
   <div class="rf-roll" #rollAnchor>
     <button
       type="button"

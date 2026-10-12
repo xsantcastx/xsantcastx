@@ -76,6 +76,8 @@ import { InventoryService } from '../rpg/inventory.service';
 import type { GameItem } from '../rpg/item.model';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
+import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
+import { floorGold, floorThing, type ForgeFloorEvent, type ForgeStation, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 /** A rune as the inventory grid needs it. */
 interface RuneCell {
   rune: Rune;
@@ -113,7 +115,7 @@ interface RecipeRow {
 @Component({
   selector: 'app-rune-forge',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],
@@ -132,6 +134,18 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   private readonly inventory = inject(InventoryService);
   private readonly celebration = inject(CelebrationService);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
+
+  /** The forge floor's latest event — set only after the ledger has answered. */
+  floorEvent: ForgeFloorEvent | null = null;
+  private floorSeq = 0;
+
+  private emitFloor(station: ForgeStation, inputs: ForgeFloorThing[], output: ForgeFloorThing | null, glow?: string): void {
+    this.floorEvent = { seq: ++this.floorSeq, station, inputs, output, glow };
+  }
+
+  private runeThing(find: RuneFind): ForgeFloorThing {
+    return { id: find.rune.id, name: find.rune.name, art: runeCard(find.rune.id) };
+  }
   private readonly subs = new Subscription();
   readonly equipmentRecipes = FORGE_EQUIPMENT_RECIPES;
   pendingCraftId: string | null = null;
@@ -391,6 +405,11 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.craftError = null;
     this.pendingCraftId = null;
     this.lastCraft = result.item;
+    this.emitFloor(
+      'anvil',
+      recipe.inputs.map(input => floorThing(input.id, input.name)),
+      floorThing(recipe.id, result.item.name),
+    );
     this.cdr.markForCheck();
   }
 
@@ -582,6 +601,7 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
       ? find.scroll.content.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
       : [];
     this.haul = haulOf(find);
+    this.emitFloor('runes', [floorGold()], this.runeThing(find), tier.color);
     this.batchSummary = { items: 0, scrolls: 0, explorers: 0, essence: 0 };
     this.cdr.markForCheck();
     // The ledger has already written the rune. There is nothing left to decide,
@@ -677,6 +697,8 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
     this.revealCard = runeCard(last.rune.id);
     this.batchSummary = this.tally.haul();
     this.batchTiers = this.tally.tiers();
+    // One sequence for the whole run, carrying its best find.
+    this.emitFloor('runes', [floorGold()], this.runeThing(best), tierOf(best.rune.tier).color);
     if (best.rune.tier === 'singular') this.audio.voidRumble();
     else this.audio.runeReveal(tierOf(best.rune.tier).semitones, isHeavyTier(best.rune.tier));
     // The best thing in the run, not the last thing pulled: ten strikes that
@@ -966,6 +988,12 @@ export class RuneForgeComponent implements OnInit, AfterViewInit, OnDestroy {
   craft(row: RecipeRow): void {
     if (!row.ready) return;
     if (!this.forge.craft(row.word.id)) return;
+    this.emitFloor(
+      'runes',
+      row.slots.map(slot => ({ id: slot.rune.id, name: slot.rune.name, art: runeCard(slot.rune.id) })),
+      { id: row.word.id, name: row.word.name, art: runewordCard(row.word.id) },
+      row.tier.color,
+    );
     // The word is heavier than any single rune, so it gets the heavy cue
     // regardless of which tier the recipe is filed under.
     this.audio.runeReveal(tierOf(row.word.tier).semitones, true);

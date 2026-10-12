@@ -19,6 +19,14 @@
              decoding="async" draggable="false">
         {{ place.chapterTitle }}
       </p>
+      @if (emblems?.avatar; as av) {
+        <!-- The masked Keeper in this realm's trim: same silhouette, the
+             realm's light. Decorative; the title says where you are. -->
+        <img class="rl__keeper" [src]="av.src" [attr.srcset]="av.srcset"
+             sizes="(max-width: 560px) 72px, 112px"
+             alt="" aria-hidden="true" width="112" height="112"
+             decoding="async" draggable="false">
+      }
       <h1 class="rl__title">{{ place.name }}</h1>
       <p class="rl__function">{{ place.function }}</p>
       <p class="rl__status">{{ place.id === 'infernal' ? t('world.realm.statusPlayable') : place.id === 'verdant' ? t('world.realm.statusVerdant') : place.id === 'celestial' ? t('world.realm.statusCelestial') : t('world.realm.status') }}</p>
@@ -43,6 +51,20 @@
     }
 
     <section class="rl__faction" aria-labelledby="rl-faction">
+      @if (emblems; as em) {
+        <!-- Crest and coin of the realm. Decorative: the heading names the
+             faction, and neither mark carries information the text lacks. -->
+        <div class="rl__emblems" aria-hidden="true">
+          @if (em.crest; as crest) {
+            <img class="rl__crest" [src]="crest.src" [attr.srcset]="crest.srcset" sizes="72px"
+                 alt="" width="72" height="72" loading="lazy" decoding="async" draggable="false">
+          }
+          @if (em.token; as token) {
+            <img class="rl__token" [src]="token.src" [attr.srcset]="token.srcset" sizes="48px"
+                 alt="" width="48" height="48" loading="lazy" decoding="async" draggable="false">
+          }
+        </div>
+      }
       <h2 id="rl-faction">{{ place.faction }}</h2>
       <p>{{ place.factionPurpose }}</p>
     </section>
