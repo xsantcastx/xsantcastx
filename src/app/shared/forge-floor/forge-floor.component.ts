@@ -73,7 +73,8 @@ interface StationView {
 /** One icon in flight. Coordinates are px, relative to the stage. */
 interface Sprite {
   key: number;
-  kind: 'feed' | 'out';
+  /** feed: stockpile → station. out: station → bag. in: a delivery → stockpile. */
+  kind: 'feed' | 'out' | 'in';
   thing: ForgeFloorThing;
   x0: number; y0: number;
   x1: number; y1: number;
@@ -118,8 +119,8 @@ export class ForgeFloorComponent implements OnChanges, AfterViewInit, OnDestroy 
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly i18n = inject(TranslationService);
 
-  /** The bench this floor sits on top of. */
-  @Input() active: ForgeStation = 'anvil';
+  /** The bench this floor sits on top of. Null when it sits elsewhere (the Material Vendor). */
+  @Input() active: ForgeStation | null = 'anvil';
   /** True while the bench is running a timed craft. */
   @Input() working = false;
   /** The latest settled event. A new `seq` plays it. */
@@ -142,6 +143,8 @@ export class ForgeFloorComponent implements OnChanges, AfterViewInit, OnDestroy 
   readonly lastOutput = signal<ForgeFloorThing | null>(null);
   /** Bumped when something lands in the bag, to replay its receive pulse. */
   readonly bagPulse = signal(0);
+  /** Bumped when a delivery lands on the stockpile. */
+  readonly stockPulse = signal(0);
   readonly inView = signal(true);
 
   private lastSeq = -1;
@@ -175,7 +178,11 @@ export class ForgeFloorComponent implements OnChanges, AfterViewInit, OnDestroy 
       // Collapse a burst of events to the newest. Its inputs are merged in so a
       // feed-then-output pair (a timed craft) is not lost if they overlap.
       const prior = this.pending;
-      this.pending = prior && !event.inputs.length ? { ...event, inputs: prior.inputs } : event;
+      const merged = prior && !event.inputs.length ? { ...event, inputs: prior.inputs } : event;
+      // Deliveries are goods the ledger already holds: collapsing two purchases
+      // keeps both crates in the one flight rather than dropping the first.
+      const delivered = [...(prior?.delivered ?? []), ...(event.delivered ?? [])];
+      this.pending = delivered.length ? { ...merged, delivered: delivered.slice(-FLOOR_MAX_INPUTS) } : merged;
       return;
     }
     this.play(event);
@@ -198,6 +205,50 @@ export class ForgeFloorComponent implements OnChanges, AfterViewInit, OnDestroy 
   // ── Sequencing ─────────────────────────────────────────────────────────────
 
   private play(event: ForgeFloorEvent): void {
+    const delivered = (event.delivered ?? []).slice(0, FLOOR_MAX_INPUTS);
+    if (!delivered.length) { this.work(event); return; }
+    const deliveryOnly = !event.inputs.length && !event.output;
+    this.deliver(delivered, event.deliveredFrom, () => deliveryOnly ? this.finish() : this.work(event));
+  }
+
+  /**
+   * Goods arriving from outside: they arc in from `from` (clamped into the
+   * stage; default the top edge above the stockpile) and land on the pile,
+   * which then shows them and pulses. No station lights up.
+   */
+  private deliver(things: readonly ForgeFloorThing[], from: { x: number; y: number } | undefined, then: () => void): void {
+    const stage = this.stageRef.nativeElement;
+    const to = this.reduced || !this.inView() ? null : this.centerOf(stage, '[data-node="stock"]');
+    if (!to) {
+      this.stockIn(things);
+      then();
+      return;
+    }
+    const box = stage.getBoundingClientRect();
+    const origin = from
+      ? { x: Math.min(Math.max(from.x - box.left, 16), box.width - 16), y: Math.min(Math.max(from.y - box.top, 12), box.height - 12) }
+      : { x: Math.min(to.x + 120, box.width - 16), y: 12 };
+    this.phase.set('feed');
+    this.sprites.set(things.map((thing, i) => ({
+      key: ++this.keyCounter,
+      kind: 'in' as const,
+      thing,
+      x0: origin.x, y0: origin.y, x1: to.x, y1: to.y,
+      delay: i * FEED_STAGGER_MS,
+    })));
+    this.after(FEED_MS + (things.length - 1) * FEED_STAGGER_MS, () => {
+      this.sprites.set([]);
+      this.stockIn(things);
+      then();
+    });
+  }
+
+  private stockIn(things: readonly ForgeFloorThing[]): void {
+    this.lastInputs.set(things);
+    this.stockPulse.update(n => n + 1);
+  }
+
+  private work(event: ForgeFloorEvent): void {
     const inputs = event.inputs.slice(0, FLOOR_MAX_INPUTS);
     if (inputs.length) this.lastInputs.set(inputs);
     this.busy.set(event.station);
