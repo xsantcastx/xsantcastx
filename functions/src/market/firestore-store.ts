@@ -9,7 +9,8 @@ import {getApps, initializeApp} from "firebase-admin/app";
 import {Firestore, Transaction, getFirestore} from "firebase-admin/firestore";
 import {MARKET_ROOT, MARKET_VERSION_DOC} from "./config";
 import type {MarketStore, MarketTx, SaveWhich} from "./engine";
-import type {EscrowDoc, ListedItemDoc, MarketConfigDoc, MarketOrder, MarketTrade, OrderSide, PriceDoc} from "./types";
+import {BOARD_SUMMARY_ID} from "./summary";
+import type {BoardSummaryDoc, EscrowDoc, ListedItemDoc, MarketConfigDoc, MarketOrder, MarketTrade, OrderSide, PriceDoc} from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -70,6 +71,7 @@ export class FirestoreMarketStore implements MarketStore {
         return data<Record<string, any>>(db.collection("users").doc(uid).collection(col).doc(doc));
       },
       listed: async (itemId) => (await data<ListedItemDoc>(root.collection("listed").doc(itemId))) !== null,
+      summary: () => data<BoardSummaryDoc>(root.collection("summary").doc(BOARD_SUMMARY_ID)),
 
       setOrder: (o: MarketOrder) => void t.set(root.collection("orders").doc(o.id), o),
       setTrade: (tr: MarketTrade) => void t.set(root.collection("trades").doc(tr.id), tr),
@@ -80,6 +82,7 @@ export class FirestoreMarketStore implements MarketStore {
         t.set(db.collection("users").doc(uid).collection(col).doc(doc), d);
       },
       setListed: (itemId: string, doc: ListedItemDoc) => void t.set(root.collection("listed").doc(itemId), doc),
+      setSummary: (doc: BoardSummaryDoc) => void t.set(root.collection("summary").doc(BOARD_SUMMARY_ID), doc),
     };
   }
 }

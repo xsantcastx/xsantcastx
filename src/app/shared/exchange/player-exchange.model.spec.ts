@@ -12,8 +12,9 @@ import {
   sellReceipt,
 } from './player-exchange.model';
 import {
-  buildBoard,
+  boardFromSummary,
   resolveMarketMode,
+  summarizeMarket,
   type MarketOrder,
   type MarketPrice,
 } from '../market/player-market.model';
@@ -122,8 +123,9 @@ describe('player exchange view model', () => {
   });
 
   describe('board', () => {
+    const NOW = 1_800_000_000_000;
     it('keeps items with a live order or a trade today, best prices per side, busiest first', () => {
-      const rows = buildBoard(
+      const rows = boardFromSummary(summarizeMarket(
         [
           order({ id: 'a', side: 'sell', unitPrice: 110, qty: 5 }),
           order({ id: 'b', side: 'sell', unitPrice: 105, qty: 5, filledQty: 2 }),
@@ -132,17 +134,35 @@ describe('player exchange view model', () => {
           order({ id: 'e', itemKey: 'mat:frost', side: 'buy', unitPrice: 7, qty: 1 }),
         ],
         [
-          priceDoc({ lastPrice: 100, vwap24h: 101, volume24h: 30 }),
-          priceDoc({ itemKey: 'mat:stale', lastPrice: 5, volume24h: 0 }),
-          priceDoc({ itemKey: 'mat:busy', lastPrice: 5, vwap24h: 5, volume24h: 99 }),
+          priceDoc({ lastPrice: 100, vwap24h: 101, volume24h: 30, lastTradeAt: NOW - 60_000 }),
+          priceDoc({ itemKey: 'mat:stale', lastPrice: 5, volume24h: 2, lastTradeAt: NOW - 30 * 3_600_000 }),
+          priceDoc({ itemKey: 'mat:busy', lastPrice: 5, vwap24h: 5, volume24h: 99, lastTradeAt: NOW - 1_000 }),
         ],
-      );
+        NOW,
+      ), NOW);
       expect(rows.map(r => r.itemKey)).toEqual(['mat:busy', 'mat:cinder-ore', 'mat:frost']);
       const ore = rows[1];
       expect(ore).toEqual(jasmine.objectContaining({
         bestAsk: 105, bestBid: 90, askQty: 8, bidQty: 4, lastPrice: 100, vwap24h: 101, volume24h: 30,
       }));
       expect(rows[2].bestAsk).toBeNull();
+    });
+
+    it('reads a row\'s 24h figures as zero once its last trade is a day old', () => {
+      const row = (lastTradeAt: number, askQty: number) => ({
+        bestBid: null, bestAsk: askQty ? 50 : null, bidQty: 0, askQty, lastPrice: 40, lastTradeAt, volume24h: 12, vwap24h: 41,
+      });
+      const rows = boardFromSummary({
+        updatedAt: NOW,
+        rows: {
+          'mat:fresh': row(NOW - 3_600_000, 0),
+          'mat:aged-with-asks': row(NOW - 25 * 3_600_000, 4),
+          'mat:aged-empty': row(NOW - 25 * 3_600_000, 0),
+        },
+      }, NOW);
+      expect(rows.map(r => r.itemKey)).toEqual(['mat:fresh', 'mat:aged-with-asks']);
+      expect(rows[1]).toEqual(jasmine.objectContaining({ volume24h: 0, vwap24h: 0, lastPrice: 40, bestAsk: 50 }));
+      expect(boardFromSummary(null, NOW)).toEqual([]);
     });
   });
 
