@@ -1,0 +1,298 @@
+/**
+ * forge-floor.component.css — stockpile, belt, three stations, bag.
+ *
+ * Every keyframe is declared at the top level. Angular's emulated encapsulation
+ * renames keyframes and the `animation` shorthands that use them, but it has
+ * been seen to miss a shorthand inside an `@media` block, leaving a dangling
+ * name that animates nothing and reports no error. So the reduced-motion block
+ * below only ever *removes* animation; it never names one.
+ *
+ * Only transform, opacity and filter move. At rest nothing animates at all —
+ * `.ff--live` (an event playing, or a timed craft running) is the only state in
+ * which a loop exists, and `.ff--paused` (off screen) freezes it.
+ */
+
+:host { display: block; }
+
+.ff {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  color: var(--ink-0);
+}
+
+.ff-stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: center;
+  gap: clamp(0.25rem, 1.5vw, 1rem);
+  padding: clamp(0.75rem, 2vw, 1.1rem) clamp(0.5rem, 2vw, 1.25rem);
+  border-radius: 16px;
+  border: 1px solid var(--edge-hairline);
+  background:
+    radial-gradient(ellipse 50% 90% at 50% 100%, rgba(232, 117, 42, 0.08), transparent 70%),
+    radial-gradient(ellipse 40% 80% at 85% 0%, rgba(139, 92, 246, 0.08), transparent 70%),
+    rgba(10, 6, 26, 0.72);
+  overflow: hidden;
+  isolation: isolate;
+}
+
+/* ── Belt ─────────────────────────────────────────────────────────────────── */
+
+.ff-belt {
+  position: absolute;
+  left: 8%;
+  right: 8%;
+  top: calc(clamp(0.75rem, 2vw, 1.1rem) + clamp(24px, 6vw, 36px));
+  height: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(244, 242, 248, 0.05);
+  z-index: 0;
+}
+.ff-belt__track {
+  position: absolute;
+  inset: 0 -40px 0 -40px;
+  background: repeating-linear-gradient(90deg,
+    rgba(232, 200, 152, 0.35) 0 10px,
+    transparent 10px 20px);
+  opacity: 0.35;
+}
+.ff--live .ff-belt__track {
+  opacity: 0.8;
+  animation: ffBelt 0.9s linear infinite;
+}
+
+/* ── Nodes ────────────────────────────────────────────────────────────────── */
+
+.ff-node {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  min-width: 0;
+  min-height: 44px;
+  text-decoration: none;
+  color: inherit;
+}
+.ff-node__label {
+  max-width: 100%;
+  font-size: clamp(0.62rem, 1.6vw, 0.74rem);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  text-align: center;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+/* Stockpile: a small heap of whatever last went in. */
+.ff-pile {
+  position: relative;
+  width: clamp(48px, 12vw, 72px);
+  height: clamp(48px, 12vw, 72px);
+  border-radius: 12px;
+  border: 1px dashed rgba(232, 200, 152, 0.25);
+  background: rgba(244, 242, 248, 0.03);
+}
+.ff-pile__icon {
+  position: absolute;
+  width: 46%;
+  height: 46%;
+  object-fit: contain;
+  left: calc(8% + var(--i, 0) * 13%);
+  top: calc(44% - var(--i, 0) * 10%);
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.6));
+}
+
+/* Stations */
+.ff-station { border-radius: 14px; }
+.ff-station:focus-visible { outline: var(--focus-ring, 2px solid var(--gold)); outline-offset: 3px; }
+
+.ff-station__orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: clamp(48px, 12vw, 72px);
+  height: clamp(48px, 12vw, 72px);
+  border-radius: 50%;
+  border: 1px solid rgba(244, 242, 248, 0.12);
+  background: radial-gradient(circle at 50% 40%, rgba(139, 92, 246, 0.18), rgba(10, 6, 26, 0.9) 75%);
+  transition: transform var(--dur-base, 200ms) var(--ease-standard, ease), border-color var(--dur-base, 200ms);
+}
+.ff-station:hover .ff-station__orb { transform: translateY(-2px); border-color: rgba(232, 200, 152, 0.45); }
+
+.ff-station.is-active .ff-station__orb {
+  border-color: rgba(232, 200, 152, 0.6);
+  box-shadow: 0 0 18px -4px rgba(232, 200, 152, 0.55), inset 0 0 12px rgba(232, 117, 42, 0.18);
+}
+.ff-station.is-active .ff-node__label { color: var(--gold); }
+
+.ff-station__floor {
+  position: absolute;
+  inset: -18%;
+  width: 136%;
+  height: 136%;
+  object-fit: contain;
+  opacity: 0.28;
+  mix-blend-mode: screen;
+  pointer-events: none;
+}
+.ff-station__art {
+  position: relative;
+  width: 70%;
+  height: 70%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.7));
+}
+.ff-station__fx {
+  position: absolute;
+  inset: -12%;
+  width: 124%;
+  height: 124%;
+  object-fit: contain;
+  mix-blend-mode: screen;
+  pointer-events: none;
+  opacity: 0.85;
+  animation: ffFlicker 1.1s ease-in-out infinite alternate;
+}
+
+.ff-station.is-working .ff-station__orb {
+  border-color: rgba(232, 200, 152, 0.85);
+  animation: ffWork 0.8s ease-in-out infinite alternate;
+}
+
+/* Bag */
+.ff-bag {
+  display: grid;
+  place-items: center;
+  width: clamp(48px, 12vw, 72px);
+  height: clamp(48px, 12vw, 72px);
+  border-radius: 14px 14px 20px 20px;
+  border: 1px solid rgba(232, 200, 152, 0.3);
+  background:
+    linear-gradient(180deg, rgba(232, 200, 152, 0.1), transparent 40%),
+    rgba(20, 12, 34, 0.85);
+}
+.ff-bag.is-received { animation: ffReceive 520ms var(--ease-spring, ease-out) both; }
+.ff-bag__icon {
+  width: 62%;
+  height: 62%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(232, 200, 152, 0.5));
+}
+
+/* ── Flight layer ─────────────────────────────────────────────────────────── */
+
+.ff-fx {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.ff-sprite {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 32px;
+  height: 32px;
+  margin: -16px 0 0 -16px;
+  opacity: 0;
+  will-change: transform, opacity;
+}
+.ff-sprite img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 0 6px rgba(232, 200, 152, 0.7));
+}
+.ff-sprite--feed { animation: ffFeed 900ms var(--ease-standard, ease-in-out) var(--delay, 0ms) both; }
+.ff-sprite--out  { width: 40px; height: 40px; margin: -20px 0 0 -20px; animation: ffOut 1150ms var(--ease-standard, ease-in-out) both; }
+
+.ff-burst {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 96px;
+  height: 96px;
+  margin: -48px 0 0 -48px;
+  mix-blend-mode: screen;
+  opacity: 0;
+  filter: drop-shadow(0 0 14px var(--burst-glow, rgba(232, 200, 152, 0.9)));
+  animation: ffBurst 720ms ease-out both;
+}
+
+.ff-caption {
+  margin: 0;
+  font-size: 0.78rem;
+  color: var(--ink-2);
+  text-align: center;
+}
+.ff-caption strong { color: var(--ink-0); font-weight: 600; }
+
+/* Off screen: freeze whatever loop is running. */
+.ff--paused .ff-belt__track,
+.ff--paused .ff-station__orb,
+.ff--paused .ff-station__fx { animation-play-state: paused; }
+
+/* ── Keyframes (top level, always) ────────────────────────────────────────── */
+
+@keyframes ffBelt {
+  from { transform: translateX(-20px); }
+  to   { transform: translateX(0); }
+}
+
+@keyframes ffFlicker {
+  from { opacity: 0.55; transform: scale(0.96); }
+  to   { opacity: 0.95; transform: scale(1.04); }
+}
+
+@keyframes ffWork {
+  from { filter: brightness(1) drop-shadow(0 0 4px rgba(232, 117, 42, 0.4)); }
+  to   { filter: brightness(1.3) drop-shadow(0 0 14px rgba(232, 117, 42, 0.85)); }
+}
+
+@keyframes ffReceive {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.14); filter: brightness(1.4); }
+  100% { transform: scale(1); filter: brightness(1); }
+}
+
+@keyframes ffFeed {
+  0%   { opacity: 0; transform: translate(var(--x0), var(--y0)) scale(0.5); }
+  15%  { opacity: 1; transform: translate(var(--x0), calc(var(--y0) - 10px)) scale(1); }
+  55%  { opacity: 1; transform: translate(calc((var(--x0) + var(--x1)) / 2), calc(var(--y0) - 34px)) scale(0.95); }
+  100% { opacity: 0; transform: translate(var(--x1), var(--y1)) scale(0.35); }
+}
+
+@keyframes ffOut {
+  0%   { opacity: 0; transform: translate(var(--x0), var(--y0)) scale(0.2); }
+  22%  { opacity: 1; transform: translate(var(--x0), calc(var(--y0) - 36px)) scale(1.25); }
+  45%  { opacity: 1; transform: translate(var(--x0), calc(var(--y0) - 30px)) scale(1); }
+  100% { opacity: 0.2; transform: translate(var(--x1), var(--y1)) scale(0.55); }
+}
+
+@keyframes ffBurst {
+  0%   { opacity: 0; transform: translate(var(--x), var(--y)) scale(0.3); }
+  30%  { opacity: 1; transform: translate(var(--x), var(--y)) scale(1); }
+  100% { opacity: 0; transform: translate(var(--x), var(--y)) scale(1.7); }
+}
+
+/* ── Reduced motion: static stations, a plain highlight ───────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ff *,
+  .ff *::before,
+  .ff *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+  .ff-station.is-working .ff-station__orb {
+    box-shadow: 0 0 0 2px rgba(232, 200, 152, 0.85), 0 0 18px rgba(232, 117, 42, 0.6);
+  }
+  .ff-station__fx { opacity: 0.6; }
+}
