@@ -118,13 +118,14 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
     const wall = t.biomeAt(row).wall;
     c.fillStyle = (h & 3) === 0 ? wall[0] : wall[1]; c.fillRect(x, y, CELL, CELL);
     if (node.id === 'inscription') paintInscription(c, node.light, node.fleck, x, y, h);
+    else if (node.placeable) paintPlaced(c, node.id, node.base, node.dark, node.light, node.fleck, x, y);
     c.fillStyle = wall[2];
     if (t.solid(col, row - 1)) c.fillRect(x, y, CELL, 7);
     if (t.solid(col - 1, row)) c.fillRect(x, y, 4, CELL);
     if (t.solid(col + 1, row)) c.fillRect(x + CELL - 4, y, 4, CELL);
     return;
   }
-  if (node.id === 'cache') {
+  if (node.id === 'cache' || node.id === 'kaels-cache') {
     c.fillStyle = '#160e12'; c.fillRect(x, y, CELL, CELL);
     c.fillStyle = node.dark; c.fillRect(x + 3, y + 10, CELL - 6, CELL - 10);
     c.fillStyle = node.base; c.fillRect(x + 4, y + 11, CELL - 8, CELL - 13);
@@ -194,6 +195,53 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   if (!t.solid(col - 1, row)) { c.fillStyle = node.light; c.globalAlpha = .5; c.fillRect(x, y, 2, CELL); c.globalAlpha = 1; }
   if (!t.solid(col + 1, row)) { c.fillStyle = '#0a0608'; c.globalAlpha = .6; c.fillRect(x + CELL - 2, y, 2, CELL); c.globalAlpha = 1; }
   paintCracks(c, t, col, row, x, y, h);
+}
+
+/** A placed thing over the tunnel wall. Stand-in drawing until tile art lands. */
+function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark: string, light: string, fleck: string, x: number, y: number): void {
+  switch (id) {
+    case 'torch': {
+      // A bracket on the wall, a haft, and a flame (its light comes from the lighting pass).
+      c.fillStyle = dark; c.fillRect(x + 12, y + 20, 8, 3);
+      c.fillStyle = base; c.fillRect(x + 14, y + 12, 4, 16);
+      c.fillStyle = fleck; c.beginPath(); c.ellipse(x + 16, y + 9, 5, 7, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = light; c.beginPath(); c.ellipse(x + 16, y + 10, 2.5, 4, 0, 0, Math.PI * 2); c.fill();
+      break;
+    }
+    case 'ladder': {
+      // Two rails and three rungs; rungs at the same heights in every cell, so a run reads as one ladder.
+      c.fillStyle = dark; c.fillRect(x + 6, y, 4, 32); c.fillRect(x + 22, y, 4, 32);
+      c.fillStyle = base; c.fillRect(x + 7, y, 2, 32); c.fillRect(x + 23, y, 2, 32);
+      for (let ry = 4; ry < 32; ry += 11) { c.fillStyle = dark; c.fillRect(x + 8, y + ry + 1, 16, 3); c.fillStyle = light; c.fillRect(x + 8, y + ry, 16, 2); }
+      break;
+    }
+    case 'chest': {
+      // A banded box on the floor: lid, body, brass lock.
+      c.fillStyle = dark; c.fillRect(x + 3, y + 12, 26, 20);
+      c.fillStyle = base; c.fillRect(x + 4, y + 13, 24, 18);
+      c.fillStyle = light; c.fillRect(x + 3, y + 12, 26, 3); c.fillRect(x + 3, y + 20, 26, 2);
+      c.fillStyle = fleck; c.fillRect(x + 14, y + 18, 4, 6);
+      break;
+    }
+    case 'camp': {
+      // A low workbench with a hammer on it, and a small fire beside it.
+      c.fillStyle = dark; c.fillRect(x + 1, y + 18, 18, 3); c.fillRect(x + 3, y + 21, 2, 11); c.fillRect(x + 15, y + 21, 2, 11);
+      c.fillStyle = base; c.fillRect(x + 1, y + 16, 18, 3);
+      c.fillStyle = light; c.fillRect(x + 6, y + 12, 8, 3); c.fillRect(x + 9, y + 12, 2, 4);
+      c.fillStyle = dark; c.fillRect(x + 21, y + 29, 10, 3);
+      c.fillStyle = fleck; c.beginPath(); c.ellipse(x + 26, y + 25, 4, 6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = light; c.beginPath(); c.ellipse(x + 26, y + 27, 2, 3, 0, 0, Math.PI * 2); c.fill();
+      break;
+    }
+    case 'platform': {
+      // A plank across the top, a lit edge, two thin struts to the wall.
+      c.fillStyle = dark; c.fillRect(x, y + 6, 32, 3); c.fillRect(x + 5, y + 6, 2, 12); c.fillRect(x + 25, y + 6, 2, 12);
+      c.fillStyle = base; c.fillRect(x, y, 32, 6);
+      c.fillStyle = light; c.fillRect(x, y, 32, 2);
+      c.fillStyle = fleck; c.fillRect(x + 10, y + 2, 1, 4); c.fillRect(x + 21, y + 2, 1, 4);
+      break;
+    }
+  }
 }
 
 /** A dressed slab in the back wall with three rows of carved glyphs, picked by hash. */

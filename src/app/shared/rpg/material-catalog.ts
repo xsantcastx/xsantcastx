@@ -55,6 +55,18 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'shadow-root-cutting': 'Shadow-Root Cutting',
   'glowcap': 'Glowcap',
   'godforge-fragment': 'Godforge Fragment',
+  // Kael's lost hammer, from his old cache in the Basalt Caverns (once per
+  // player). A quest stack for "The Old Seam": no ItemDefinition on purpose.
+  'kaels-hammer': "Kael's Hammer",
+  // Delve building (Phase 2.6): placeable stacks. Dug dirt and stone come back
+  // as blocks; the rest are crafted. Stand-in art in art.ts until painted.
+  'dirt-block': 'Dirt block',
+  'basalt-block': 'Basalt block',
+  'torch': 'Torch',
+  'ladder': 'Ladder',
+  'platform': 'Platform',
+  'chest': 'Chest',
+  'camp': 'Camp',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

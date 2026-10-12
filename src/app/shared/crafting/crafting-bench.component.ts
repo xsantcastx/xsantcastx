@@ -34,7 +34,7 @@
  * `aria-live` region, and `prefers-reduced-motion` replaces the anvil animation
  * with a static held state rather than removing the feedback.
  */
-import { injectInWorldPanel } from '../in-world-panel';
+import { injectInWorldFocus, injectInWorldPanel } from '../in-world-panel';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -148,6 +148,8 @@ const DIAL_R = 46;
 export class CraftingBenchComponent implements OnInit, OnDestroy {
   /** Rendered as a place inside /play: the panel carries the title, so the hero and room links stand down. */
   protected readonly inWorld = injectInWorldPanel();
+  /** 'ready' at a camp in the Delve: the journal opens on what can be made now. */
+  private readonly focus = injectInWorldFocus();
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly gateway = inject(CraftingGateway);
   private readonly crafting = inject(CraftingService);
@@ -483,7 +485,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       { id: 'all', label: this.t('crafting.all') },
       ...this.categories.map(cat => ({ id: cat.id, label: cat.label })),
     ];
-    if (browser && !this.userPicked) this.journalTab = ready.length ? 'ready' : 'all';
+    if (browser && !this.userPicked) this.journalTab = ready.length || this.focus === 'ready' ? 'ready' : 'all';
     const readyIds = new Set(ready.map(card => card.recipe.id));
     const cards = this.journalTab === 'ready' ? ready
       : this.journalTab === 'all' ? this.cards
@@ -636,6 +638,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       mastered: result.progress?.masteredNow === true,
     };
     const name = result.items[0]?.name ?? result.recipe.name;
+    const made = result.stack ? result.stack.quantity : result.items.length;
     this.announce = result.progress?.masteredNow
       ? `${name} forged. This recipe is now mastered.`
       : `${name} forged.`;
@@ -651,7 +654,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     this.reward = {
       seq: ++this.rewardSeq,
       kicker: result.progress?.masteredNow ? this.t('crafting.madeMastered') : this.t('crafting.made'),
-      name: result.items.length > 1 ? `${name} ×${result.items.length}` : name,
+      name: made > 1 ? `${name} ×${made}` : name,
       art: artFor(result.recipe.output.itemId),
       rarity: result.recipe.rarity,
       rarityLabel: this.rarityLabel(result.recipe.rarity),
