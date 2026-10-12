@@ -25,6 +25,13 @@
   font-family: var(--font-lore);
 }
 
+/* The forge floor strip (shared component) sits between the header and the anvil. */
+.rf-floor {
+  position: relative;
+  display: block;
+  margin: 0 0 1.25rem;
+}
+
 .rf-head {
   display: flex;
   justify-content: space-between;
