@@ -8,7 +8,7 @@
  *
  * Pure data: no Firebase, no network, no DOM. Runs on a clean offline checkout.
  */
-import { ART_ALIAS, ART_PENDING, artFor, hasArt } from './art';
+import { ART_ALIAS, ART_PENDING, ART_PENDING_DECLARED, artFor, hasArt } from './art';
 import { NPCS } from '../npc/npc.model';
 import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 import { ART_ALL } from './art-manifest.generated';
@@ -74,12 +74,18 @@ describe('art lookup', () => {
     /*
      * The other half of the gate. Without this, `ART_PENDING` is a place where
      * ids go to be forgotten: an entry left behind after its art is painted
-     * would silently exempt a row that no longer needs exempting, and the next
-     * unpainted row added beside it would look like it belonged there.
+     * would silently exempt a row that no longer needs exempting. The live set
+     * retires a painted id by itself, so dropping a commissioned file into the
+     * library and running the importer is the whole job — this pins that.
      */
     it('holds nothing in ART_PENDING that has since been painted', () => {
       const painted = [...ART_PENDING].filter(id => hasArt(id));
       expect(painted).toEqual([]);
+    });
+
+    it('keeps every declared id that is still unpainted pending', () => {
+      const dropped = ART_PENDING_DECLARED.filter(id => !hasArt(id) && !ART_PENDING.has(id));
+      expect(dropped).toEqual([]);
     });
 
     it('names a real catalogue row for every pending id', () => {
@@ -97,7 +103,7 @@ describe('art lookup', () => {
         ...NPCS.map(n => n.artId),
         ...EXPLORER_ARCHETYPES.map(a => a.artId),
       ]);
-      const orphans = [...ART_PENDING].filter(id => !known.has(id));
+      const orphans = ART_PENDING_DECLARED.filter(id => !known.has(id));
       expect(orphans).toEqual([]);
     });
   });

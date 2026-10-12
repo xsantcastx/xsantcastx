@@ -152,6 +152,44 @@ button:hover, .touch button:hover { color: var(--adventure-hud-bright); }
 
 button:disabled { opacity: .4; cursor: default; }
 
+/* Secondary top-bar actions: same plate, no fill, so Places reads as the primary. */
+.top-actions .quiet {
+  background: none;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--adventure-hud-brass) 26.00%, transparent);
+  color: var(--adventure-dialogue);
+}
+.top-actions .quiet:hover { color: var(--adventure-hud-bright); border-color: var(--adventure-hud-brass); }
+
+.key-hint { margin: 0 0 0 6px; font: inherit; opacity: .7; border-color: currentColor; color: inherit; }
+
+@media (pointer: coarse) {
+  .key-hint { display: none; }
+}
+
+/* The station under the pointer: its name and what it is for. Positioned by
+   transform from code; it never takes pointer events. */
+.station-tip {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+  left: 0;
+  display: grid;
+  gap: 2px;
+  max-width: 240px;
+  padding: 6px 10px 7px;
+  pointer-events: none;
+  border: 1px solid var(--adventure-hud-shadow);
+  border-left: 2px solid var(--adventure-ember);
+  background: var(--adventure-hud-panel-solid);
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
+  animation: tip-in .14s ease-out;
+}
+.station-tip[hidden] { display: none; }
+.station-tip b { font: 600 10px Orbitron, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-beacon-text); }
+.station-tip small { font: italic 400 14px/1.25 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
+.station-tip small:empty { display: none; }
+
 .top-actions button:first-child,
 .dock button[type="submit"],
 .prompt.armed > button:first-of-type,
@@ -176,12 +214,12 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .vitals {
-  top: 68px;
+  top: 66px;
   left: 16px;
-  width: 196px;
+  width: 200px;
   display: grid;
-  gap: 8px;
-  padding: 10px 12px 11px;
+  gap: 6px;
+  padding: 8px 12px 9px;
 }
 
 .vital { display: grid; gap: 4px; }
@@ -241,14 +279,22 @@ button:disabled { opacity: .4; cursor: default; }
 .meter.enemy i { background: linear-gradient(90deg, var(--adventure-hud-danger), var(--adventure-hud-flame) 90%, var(--adventure-hud-peach)); }
 
 .satchel {
-  top: 68px;
+  top: 66px;
   right: 16px;
   z-index: 4;
   display: grid;
   gap: 2px;
-  min-width: 168px;
-  padding: 8px 12px 10px;
+  width: 216px;
+  padding: 8px 12px 9px;
   cursor: pointer;
+}
+
+/* Six readings in a 3 × 2 tally rather than six stacked rows: half the height,
+   and the HUD's two plates now line up. */
+.tally {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px 10px;
 }
 
 .satchel .clasp {
@@ -533,21 +579,47 @@ button:disabled { opacity: .4; cursor: default; }
 
 .book-stats { position: relative; flex: none; }
 
-.satchel p {
-  display: flex;
-  justify-content: space-between;
-  gap: 18px;
+.tally p {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
   margin: 0;
-  padding: 2px 0;
-  align-items: baseline;
-  border-bottom: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 10.20%, transparent);
 }
 
-.satchel p:last-child { border-bottom: 0; }
+.tally span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .satchel b {
-  font: 500 20px/1 var(--font-lore, Georgia, serif);
+  display: block;
+  width: max-content;
+  font: 500 19px/1 var(--font-lore, Georgia, serif);
   color: var(--adventure-beacon-text);
+  transform-origin: left center;
+}
+
+/* "+2 Pyrite Dust" — rises out of the satchel and fades. Pure decoration. */
+.loot-toasts {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  margin-top: 6px;
+  pointer-events: none;
+}
+
+.satchel .loot-toast {
+  padding: 3px 9px;
+  border: 1px solid color-mix(in srgb, var(--adventure-ember) 45.00%, transparent);
+  border-radius: 2px;
+  background: var(--adventure-hud-panel-solid);
+  color: var(--adventure-beacon-text);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
+  animation: loot-toast 1.8s cubic-bezier(.22, 1, .36, 1) both;
 }
 
 .prompt {
@@ -729,6 +801,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .topbar { flex-wrap: wrap; gap: 8px; padding-bottom: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--adventure-hud-stage) 96.08%, transparent) 78%, color-mix(in srgb, var(--adventure-hud-stage) 0.00%, transparent)); }
   .objective { order: 5; flex-basis: 100%; padding: 2px 0 4px; border-left: 0; }
   .vitals, .satchel { top: 148px; width: calc(50% - 16px); min-width: 0; }
+  .tally { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .station-tip { max-width: 200px; }
   .vitals { left: 10px; }
   .satchel { right: 10px; }
   .satchel b { font-size: 18px; }
@@ -867,10 +941,27 @@ input::placeholder { color: var(--adventure-hud-muted); }
     linear-gradient(var(--adventure-hud-brass), var(--adventure-hud-brass)) right 6px top 6px / 1px 12px no-repeat,
     var(--adventure-hud-panel-solid);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 18.04%, transparent), 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
-  animation: place-open .22s ease;
+  animation: place-open .18s ease;
 }
 
 .place[hidden] { display: none; }
+
+/* Open: the CONTENT rises into place (opacity + scale). The shell above only
+   ever fades: a transform or filter on .place would make it the containing
+   block for nothing new but would re-anchor every position:fixed child of a
+   hosted page mid-animation. The content's transform is gone the moment the
+   animation ends (fill: backwards), so fixed children anchor to .place again. */
+.place-head, .place-body {
+  animation: place-content-in .26s cubic-bezier(.22, 1, .36, 1) backwards;
+  transform-origin: 50% 0;
+}
+.place-body { animation-delay: .04s; }
+
+/* Close: content folds away, then the shell fades; PANEL_CLOSE_MS in the
+   component waits for this before the panel is hidden. */
+.place--closing { animation: place-close .16s ease forwards; pointer-events: none; }
+.place--closing .place-head,
+.place--closing .place-body { animation: place-content-out .16s ease forwards; }
 
 .place-head {
   flex: none;
@@ -930,10 +1021,37 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .place { animation: none; }
+  .place, .place-head, .place-body, .satchel .loot-toast, .station-tip { animation: none; }
 }
 
 @keyframes place-open {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes place-close {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes place-content-in {
+  from { opacity: 0; transform: scale(.985) translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes place-content-out {
+  from { opacity: 1; transform: none; }
+  to { opacity: 0; transform: scale(.985); }
+}
+
+@keyframes loot-toast {
+  0% { opacity: 0; transform: translateY(6px); }
+  14% { opacity: 1; transform: none; }
+  78% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+@keyframes tip-in {
   from { opacity: 0; }
   to { opacity: 1; }
 }

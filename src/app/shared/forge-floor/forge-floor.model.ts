@@ -34,6 +34,14 @@ export interface ForgeFloorEvent {
   output: ForgeFloorThing | null;
   /** Optional rarity colour for the burst halo. Any CSS colour. */
   glow?: string;
+  /**
+   * Goods arriving from outside the floor — the Material Vendor's purchases.
+   * They fly in and land on the stockpile before anything else plays. An event
+   * with only deliveries (no inputs, no output) never lights a station.
+   */
+  delivered?: readonly ForgeFloorThing[];
+  /** Where the deliveries come from, in client px (e.g. the Buy button). Clamped into the floor. Default: the top edge. */
+  deliveredFrom?: { x: number; y: number };
 }
 
 /** Most icons the belt carries for one event; a nine-ingredient recipe still reads as "a lot". */
