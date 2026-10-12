@@ -138,6 +138,12 @@ export interface MonsterDef {
   floorY?: number;
   /** World x it never leaves, e.g. the walls of its cavern. Default: the whole area. */
   range?: readonly [number, number];
+  /**
+   * A guardian felled once per player: the flag recorded when it falls
+   * (delve save `claimed`). It never respawns, and nodes guarded by the same
+   * flag (TerrainNodeDef.guard) open once it is set.
+   */
+  once?: string;
 }
 
 /** Anything the Keeper can stand in: a town or one of its hunting grounds. */

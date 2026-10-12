@@ -47,6 +47,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   // Ember Delve biome materials (shared/delve). Stand-ins until the commission
   // pack paints them; delete each row when its file lands.
   'shadow-root-cutting': 'thornroot', 'glowcap': 'nightbloom', 'godforge-fragment': 'godstone',
+  'kaels-hammer': 'iron-hammer',
 };
 
 /**

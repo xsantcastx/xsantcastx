@@ -124,7 +124,7 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
     if (t.solid(col + 1, row)) c.fillRect(x + CELL - 4, y, 4, CELL);
     return;
   }
-  if (node.id === 'cache') {
+  if (node.id === 'cache' || node.id === 'kaels-cache') {
     c.fillStyle = '#160e12'; c.fillRect(x, y, CELL, CELL);
     c.fillStyle = node.dark; c.fillRect(x + 3, y + 10, CELL - 6, CELL - 10);
     c.fillStyle = node.base; c.fillRect(x + 4, y + 11, CELL - 8, CELL - 13);

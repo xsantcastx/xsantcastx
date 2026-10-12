@@ -969,6 +969,8 @@ function memoryDelve(seed) {
       if (kind === null) area.cells.delete(index); else area.cells.set(index, kind);
       save.areas[id] = { layout, cells: saveMod.encodeCells(area.cells) };
     },
+    isClaimed: id => save.claimed.includes(id),
+    claim: id => saveMod.claimOnce(save, id),
   };
 }
 function enterOwnDelve(delve, extra = {}) {
@@ -1082,6 +1084,7 @@ test('new nodes: shadow-root and glowcap are Foraging cuts, the fragment pays on
   assert.equal(n.glowcap.yield.materialId, 'glowcap'); assert.equal(n.glowcap.discipline, 'foraging');
   assert.equal(n.inscription.solid, false);
   const delve = memoryDelve(42); const events = [];
+  delve.claim(terrainMod.WARDEN_FLAG); // the warden has fallen (see the finale test)
   const { engine } = enterOwnDelve(delve, { onWorldAction: e => { events.push(e); return true; } });
   engine.setTools({ pickaxe: 3, staff: 1 });
   const t = engine.terrain;
@@ -1121,4 +1124,57 @@ test('inscriptions: E beside a carved wall reports it; the lore ledger records i
   assert.equal(loreMod.recordInscriptionIn(lore, 'no-such-carving'), false);
   assert.deepEqual(loreMod.coerceDelveLore({ inscriptions: ['roots-inverse-tree', 'gone', 7] }).inscriptions, ['roots-inverse-tree']);
   assert.deepEqual(loreMod.mergeDelveLore({ inscriptions: ['magma-the-fracture'] }, lore).inscriptions, ['magma-the-fracture', 'roots-inverse-tree']);
+});
+
+// ── Delve finale: the warden stays down, the fragment waits for it, Kael's cache ──
+test('finale: the Rune-Warden falls once per player and unseals the fragment', () => {
+  const delve = memoryDelve(77); const events = [];
+  const { engine, state } = enterOwnDelve(delve, { onWorldAction: e => { events.push(e); return true; } });
+  engine.setTools({ pickaxe: 3, staff: 1 });
+  const t = engine.terrain;
+  const warden = () => engine.monsters.find(m => m.def.name === 'Rune-Warden');
+  assert.ok(warden(), 'the warden guards the chamber');
+  // Swinging at the fragment while the warden stands: it clangs and holds.
+  engine.player.x = 105 * 32 + 8; engine.player.y = 610 + 51 * 32; engine.facing = 1;
+  const swing = () => { engine.attackCooldown = 0; engine.strikeCell(106 * 32 + 16, 610 + 50 * 32 + 16); };
+  for (let n = 0; n < 20; n++) swing();
+  assert.equal(t.nodeAt(106, 50).id, 'godforge-fragment', 'sealed while the warden stands');
+  assert.match(state().message, /Rune-Warden still stands/);
+  assert.equal(events.filter(e => e.materialId === 'godforge-fragment').length, 0);
+  // Fell it.
+  const w = warden(); w.hp = 1; engine.hurtMonster(w, 50);
+  assert.equal(delve.isClaimed(terrainMod.WARDEN_FLAG), true, 'saved per player');
+  for (let n = 0; n < 60 * 20; n++) engine.update(1 / 60);
+  assert.equal(w.hp, 0, 'never respawns');
+  for (let n = 0; n < 20 && t.solid(106, 50); n++) swing();
+  assert.equal(t.solid(106, 50), false, 'the fragment comes free');
+  assert.equal(events.filter(e => e.materialId === 'godforge-fragment').length, 1);
+  engine.restartHunt();
+  assert.equal(warden(), undefined, 'a restarted hunt does not raise it');
+  engine.destroy();
+  // A new session from the same save: no warden at all.
+  const back = enterOwnDelve(delve);
+  assert.equal(back.engine.monsters.some(m => m.def.name === 'Rune-Warden'), false);
+  assert.equal(back.engine.monsters.some(m => m.def.name === 'Magma Maw'), true, 'ordinary Maws still live');
+  back.engine.destroy();
+  // A fresh player still meets it.
+  const fresh = enterOwnDelve(memoryDelve(78));
+  assert.equal(fresh.engine.monsters.some(m => m.def.name === 'Rune-Warden'), true);
+  fresh.engine.destroy();
+});
+
+test("finale: Kael's old cache sits in the Maws' cavern for every seed and pays Kael's Hammer", () => {
+  for (const seed of [1, 999, 0xabcdef]) assert.equal(terrainMod.generateTerrain(delveSpec, seed).nodeAt(85, 18).id, 'kaels-cache');
+  const node = terrainMod.TERRAIN_NODES['kaels-cache'];
+  assert.equal(node.yield.materialId, 'kaels-hammer'); assert.equal(node.discipline, 'exploration');
+  assert.equal(terrainMod.biomeAt(delveSpec, 18).id, 'basalt-caverns');
+  const events = [];
+  const { engine } = enterOwnDelve(memoryDelve(5), { onWorldAction: e => { events.push(e); return true; } });
+  engine.setTools({ pickaxe: 1 });
+  const t = engine.terrain;
+  engine.player.x = 84 * 32 + 8; engine.player.y = 610 + 19 * 32; engine.facing = 1;
+  for (let n = 0; n < 8 && t.solid(85, 18); n++) { engine.attackCooldown = 0; engine.strikeCell(85 * 32 + 16, 610 + 18 * 32 + 16); }
+  assert.equal(t.solid(85, 18), false);
+  assert.deepEqual(events.filter(e => e.materialId === 'kaels-hammer').map(e => e.qty), [1]);
+  engine.destroy();
 });

@@ -194,9 +194,22 @@ export class SeamworksEngine {
   /** Draw scale of figures in this area (delves draw the Keeper at half size). */
   private get figure(): number { return this.areaDef.figureScale ?? 1; }
   private get isTown(): boolean { return this.areaDef === this.town; }
+  /** Once-per-player flags set this session (a felled guardian); the save holds them across sessions. */
+  private readonly flags = new Set<string>();
+  /** True when a once-per-player flag is set, this session or in the player's save. */
+  flagged(id: string): boolean {
+    if (this.flags.has(id)) return true;
+    try { return !!this.delve?.isClaimed?.(id); } catch { return false; }
+  }
+  private setFlag(id: string): void {
+    this.flags.add(id);
+    try { this.delve?.claim?.(id); } catch { /* still set for this session */ }
+  }
   private createMonsters(): Monster[] {
     const monsters: Monster[] = [];
     for (const def of this.areaDef.monsters) {
+      // A guardian this player has already felled stays down.
+      if (def.once && this.flagged(def.once)) continue;
       for (const x of def.spawnXs) {
         monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp, recoil: 0 });
       }
@@ -551,6 +564,12 @@ export class SeamworksEngine {
       monster.dying = DEATH_FADE;
       monster.respawn = 8; this.kills++; this.guardianDefeated = true;
       this.spill(monster);
+      if (monster.def.once) {
+        // Felled for good: saved per player, never respawns, and what it guarded opens.
+        monster.respawn = Infinity;
+        this.setFlag(monster.def.once);
+        this.message = `${monster.def.name} falls, and stays fallen. What it guarded is open now.`;
+      }
     }
   }
 
@@ -607,6 +626,11 @@ export class SeamworksEngine {
     if (!check.ok) {
       this.debris.chip(cx, cy, '#ffe2a8', quiet ? 2 : 6);
       if (!quiet) this.clang(cx, cy, check.need ? `Clang! Need ${toolName(check.need.tool, check.need.tier)}` : `${node.label} will not break`);
+      return HIT_BLOCKED;
+    }
+    if (node.guard && !this.flagged(node.guard.flag)) {
+      this.debris.chip(cx, cy, node.fleck, quiet ? 2 : 6);
+      if (!quiet) this.clang(cx, cy, node.guard.refusal); else this.message = `${node.guard.refusal}.`;
       return HIT_BLOCKED;
     }
     const level = node.minLevel && this.skillLevels ? this.skillLevels[node.discipline] ?? 1 : Infinity;
