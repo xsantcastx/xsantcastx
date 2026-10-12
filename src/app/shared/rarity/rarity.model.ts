@@ -50,7 +50,7 @@ export interface RarityDefinition {
 export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   mortal: {
     id: 'mortal',
-    icon: 'assets/icons/rarity/mortal.png',
+    icon: 'assets/icons/rarity/mortal.webp',
     label: 'Mortal',
     weight: 0,
     color: '#8f8aa1',
@@ -62,7 +62,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   eclipsed: {
     id: 'eclipsed',
-    icon: 'assets/icons/rarity/eclipsed.png',
+    icon: 'assets/icons/rarity/eclipsed.webp',
     label: 'Eclipsed',
     weight: 1,
     color: '#00d4ff',
@@ -74,7 +74,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   sacred: {
     id: 'sacred',
-    icon: 'assets/icons/rarity/sacred.png',
+    icon: 'assets/icons/rarity/sacred.webp',
     label: 'Sacred',
     weight: 2,
     color: '#a855f7',
@@ -86,7 +86,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   anomalous: {
     id: 'anomalous',
-    icon: 'assets/icons/rarity/anomalous.png',
+    icon: 'assets/icons/rarity/anomalous.webp',
     label: 'Anomalous',
     weight: 3,
     color: '#e8c898',
@@ -98,7 +98,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   mythic: {
     id: 'mythic',
-    icon: 'assets/icons/rarity/mythic.png',
+    icon: 'assets/icons/rarity/mythic.webp',
     label: 'Mythic',
     weight: 4,
     color: '#f8e8c8',
@@ -110,7 +110,7 @@ export const RARITIES: Record<EclipseRarity, RarityDefinition> = {
   },
   singular: {
     id: 'singular',
-    icon: 'assets/icons/rarity/singular.png',
+    icon: 'assets/icons/rarity/singular.webp',
     label: 'Singular',
     weight: 5,
     color: '#ff6dd7',

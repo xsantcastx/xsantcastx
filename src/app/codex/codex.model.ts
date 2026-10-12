@@ -41,7 +41,7 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'luminous',
     label: 'Luminous Realm',
-    icon: 'assets/icons/realms/luminous.png',
+    icon: 'assets/icons/realms/luminous.webp',
     art: true,
     color: '#E8D44D',
     glow: 'rgba(232, 212, 77, 0.6)',
@@ -50,7 +50,7 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'umbral',
     label: 'Umbral Realm',
-    icon: 'assets/icons/realms/umbral.png',
+    icon: 'assets/icons/realms/umbral.webp',
     art: true,
     color: '#8B2252',
     glow: 'rgba(139, 34, 82, 0.7)',
@@ -59,7 +59,7 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'verge',
     label: 'The Verge',
-    icon: 'assets/icons/realms/celestial.png',
+    icon: 'assets/icons/realms/celestial.webp',
     art: true,
     color: '#00d4ff',
     glow: 'rgba(0, 212, 255, 0.6)',
@@ -68,7 +68,7 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'archivum',
     label: 'The Archivum',
-    icon: 'assets/icons/realms/verdant.png',
+    icon: 'assets/icons/realms/verdant.webp',
     art: true,
     color: '#c89868',
     glow: 'rgba(200, 152, 104, 0.6)',
@@ -77,7 +77,7 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
   {
     id: 'nexus',
     label: 'The Nexus',
-    icon: 'assets/icons/realms/infernal.png',
+    icon: 'assets/icons/realms/infernal.webp',
     art: true,
     color: '#10B981',
     glow: 'rgba(16, 185, 129, 0.6)',
