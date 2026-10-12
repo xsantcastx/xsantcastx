@@ -45,15 +45,18 @@ function loadEngine() {
   return { Engine: load(path.resolve(__dirname, '../src/app/play/engine/engine.ts')).SeamworksEngine, browserWindow, browserDocument };
 }
 const { Engine, browserWindow, browserDocument } = loadEngine();
-function fixture(onLoot = () => true) {
+function fixture(onLoot = () => true, extra = {}) {
   let state;
   const engine = new Engine({
     getContext: () => ({ setTransform() {} }),
-    getBoundingClientRect: () => ({ width: 1200, height: 720 }),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1200, height: 720 }),
     parentElement: { clientWidth: 1200, clientHeight: 720, getBoundingClientRect: () => ({ width: 1200, height: 720 }) },
-  }, { assets: {}, onInteract() {}, onLoot, onState: value => { state = value; } });
+  }, { assets: {}, onInteract() {}, onLoot, onState: value => { state = value; }, ...extra });
   return { engine, state: () => { engine.report(); return state; } };
 }
+// Station positions come from world data (the town quarter widened the camp),
+// so read them instead of pinning the old 2580/110 literals.
+function stationX(engine, id) { return engine.places.find(station => station.id === id).x; }
 function strike(engine) {
   engine.attackCooldown = 0;
   engine.setInput('attack', false);
@@ -107,12 +110,12 @@ test('portals allow repeat travel and movement continues after each transition',
   const { engine, state } = fixture();
   engine.setProgress({ equipped: true, restored: true });
   for (let lap = 0; lap < 3; lap++) {
-    engine.player.x = 2580; engine.player.y = 610; engine.interact();
+    engine.player.x = stationX(engine, 'passage'); engine.player.y = 610; engine.interact();
     assert.equal(state().area, 'Ember Quarry'); assert.equal(state().complete, false);
     const before = state().x;
     engine.setInput('right', true); engine.update(.1); engine.setInput('right', false);
     assert.ok(state().x > before);
-    engine.player.x = 110; engine.interact();
+    engine.player.x = stationX(engine, 'passage'); engine.interact();
     assert.equal(state().area, 'Basalt Seamworks');
     const returnX = state().x;
     engine.setInput('left', true); engine.update(.1); engine.setInput('left', false);
@@ -130,7 +133,7 @@ test('retry and camp return clear defeat, pause, completion and cooldowns while 
   assert.equal(state().hp, 100); assert.equal(state().paused, false); assert.equal(state().complete, false);
   assert.equal(engine.attackCooldown, 0); assert.equal(engine.dodgeCooldown, 0);
   assert.equal(state().coins, 9); assert.equal(state().kills, 1); assert.equal(state().x, 160);
-  engine.setProgress({ equipped: true, restored: true }); engine.player.x = 2580; engine.interact();
+  engine.setProgress({ equipped: true, restored: true }); engine.player.x = stationX(engine, 'passage'); engine.interact();
   engine.returnToCamp();
   assert.equal(state().area, 'Basalt Seamworks'); assert.equal(state().x, 160); assert.equal(state().coins, 9);
   engine.destroy();
@@ -380,5 +383,150 @@ test('drawing never moves combat state', () => {
   engine.context = ctx;
   for (let n = 0; n < 5; n++) engine.render();
   assert.equal(JSON.stringify({ p: engine.player, hp: engine.hp, m: engine.monsters.map(m => [m.x, m.hp, m.phase, m.timer]) }), before);
+  engine.destroy();
+});
+
+// ── World data: towns, stations, panels, drops ───────────────────────────────
+const world = loadTs(path.resolve(__dirname, '../src/app/play/world/world.model.ts'));
+const registry = loadTs(path.resolve(__dirname, '../src/app/play/world/panel-registry.ts'));
+
+test('world data is valid: unique ids, stations inside the town, every panel registered, passages resolve', () => {
+  assert.deepEqual([...world.REALM_TOWN_IDS].sort(), Object.keys(world.TOWNS).sort(), 'every realm has a TOWNS entry');
+  assert.deepEqual([...world.PANEL_IDS].sort(), Object.keys(registry.PANEL_REGISTRY).sort(), 'the registry covers every PanelId and nothing else');
+  for (const entry of Object.values(registry.PANEL_REGISTRY)) {
+    assert.equal(typeof entry.load, 'function'); assert.ok(entry.title && entry.route.startsWith('/'));
+  }
+  const built = Object.values(world.TOWNS).filter(Boolean);
+  assert.ok(built.length >= 1 && world.TOWNS.infernal, 'the Infernal town exists');
+  for (const town of built) {
+    assert.equal(town.realm, town.id);
+    for (const area of [town, ...town.hunts]) {
+      const where = `${town.id}/${area.id}`;
+      const ids = area.stations.map(station => station.id);
+      assert.equal(new Set(ids).size, ids.length, `${where}: station ids are unique`);
+      assert.ok(area.spawnX > 0 && area.spawnX < area.width, `${where}: spawn inside`);
+      assert.ok(area.platforms.some(p => p.x <= 0 && p.x + p.width >= area.width), `${where}: a floor spans the area`);
+      for (const station of area.stations) {
+        const half = (station.width ?? 120) / 2;
+        assert.ok(station.x - half >= 0 && station.x + half <= area.width, `${where}/${station.id} sits inside the area`);
+        if (station.kind === 'panel') assert.ok(world.PANEL_IDS.includes(station.panel) && registry.PANEL_REGISTRY[station.panel], `${where}/${station.id} opens a registered panel`);
+        else assert.equal(station.panel, undefined, `${where}/${station.id}: only panel stations name a panel`);
+        if (station.kind === 'passage') {
+          const target = world.areaOf(town, station.to);
+          assert.ok(target, `${where}/${station.id} leads to a known area`);
+          const arrive = station.arriveX ?? target.spawnX;
+          assert.ok(arrive > 0 && arrive < target.width, `${where}/${station.id} arrives inside ${target.id}`);
+        }
+      }
+      // Stations far enough apart that walking to one never interacts with its neighbour.
+      const xs = area.stations.map(station => station.x).sort((a, b) => a - b);
+      for (let i = 1; i < xs.length; i++) assert.ok(xs[i] - xs[i - 1] >= world.STATION_REACH, `${where}: stations ${xs[i - 1]} and ${xs[i]} overlap`);
+      for (const monster of area.monsters) {
+        assert.ok(monster.hp > 0 && monster.creature && monster.name);
+        for (const x of monster.spawnXs) assert.ok(x > (area.safeX ?? 0) && x < area.width, `${where}: ${monster.name} spawns in the hunting ground`);
+      }
+      const dropIds = area.drops.entries.map(entry => entry.id);
+      assert.equal(new Set(dropIds).size, dropIds.length, `${where}: drop entry ids are unique (they key loot ids)`);
+    }
+  }
+});
+
+test('the station nearest the Keeper wins, and a click hits a station by its footprint', () => {
+  const stations = world.TOWNS.infernal.stations;
+  assert.equal(world.nearestStation(stations, 1230).id, 'crafting');
+  assert.equal(world.nearestStation(stations, 1360), null, 'between stations nothing is in reach');
+  assert.equal(world.stationAt(stations, 1500, 560, 610).id, 'runes');
+  assert.equal(world.stationAt(stations, 1500, 200, 610), null, 'the sky above a stall is not the stall');
+});
+
+test('clientToWorld undoes the canvas offset, CSS stretch, scale and camera', () => {
+  const base = { left: 100, top: 50, rectWidth: 1200, rectHeight: 720, cssWidth: 1200, cssHeight: 720, camera: 0 };
+  assert.deepEqual(world.clientToWorld(400, 410, base), { x: 300, y: 360 });
+  // Half-height canvas: world units are twice the CSS pixels; the camera adds on.
+  assert.deepEqual(world.clientToWorld(400, 230, { ...base, rectWidth: 600, rectHeight: 360, cssWidth: 600, cssHeight: 360, camera: 500 }), { x: 1100, y: 360 });
+  // The element is drawn at 1200x720 but shown at 600x360 (CSS stretch): DPR never enters.
+  assert.deepEqual(world.clientToWorld(400, 230, { ...base, rectWidth: 600, rectHeight: 360 }), { x: 600, y: 360 });
+});
+
+test('engine.pick maps a click on a stall to that station', () => {
+  const { engine } = fixture();
+  engine.camera = 1000;
+  const hit = engine.pick(220, 560);
+  assert.equal(Math.round(hit.x), 1220);
+  assert.equal(hit.station.id, 'crafting');
+  assert.equal(engine.pick(700, 100).station, null);
+  engine.destroy();
+});
+
+test('moveTo walks in the fixed step, arrives once, and any key press or pause cancels it', () => {
+  const { engine, state } = fixture();
+  let arrived = 0;
+  assert.equal(engine.moveTo(400, () => arrived++), true);
+  engine.update(1 / 60);
+  assert.equal(state().animation, 'run', 'a walk reads as running');
+  assert.equal(state().facing, 1);
+  for (let n = 0; n < 240 && engine.moving; n++) engine.update(1 / 60);
+  assert.equal(engine.moving, false);
+  assert.equal(arrived, 1);
+  assert.ok(Math.abs(state().x - 400) <= 6, `stopped at ${state().x}`);
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.equal(arrived, 1, 'arrival fires once');
+  assert.equal(state().animation, 'idle');
+
+  engine.moveTo(1000, () => arrived++);
+  for (let n = 0; n < 20; n++) engine.update(1 / 60);
+  engine.setInput('left', true);
+  assert.equal(engine.moving, false, 'a movement key cancels the walk');
+  engine.setInput('left', false);
+  for (let n = 0; n < 240; n++) engine.update(1 / 60);
+  assert.equal(arrived, 1, 'a cancelled walk never arrives');
+
+  engine.moveTo(1000, () => arrived++);
+  engine.setPaused(true);
+  assert.equal(engine.moving, false, 'opening a panel cancels the walk');
+  assert.equal(engine.moveTo(1000), false, 'no walking while paused');
+  engine.setPaused(false);
+  engine.destroy();
+});
+
+test('walking to a panel station opens it on arrival; locked places explain themselves', () => {
+  const opened = [];
+  const { engine, state } = fixture(undefined, { onStation: station => opened.push(station.id) });
+  assert.equal(engine.goToStation('nowhere'), false, 'unknown ids are ignored');
+  engine.goToStation('crafting');
+  for (let n = 0; n < 600 && engine.moving; n++) engine.update(1 / 60);
+  assert.deepEqual(opened, ['crafting']);
+  assert.equal(state().nearby, 'crafting');
+  assert.equal(state().nearbyKind, 'panel');
+  engine.goToStation('waystone', true);
+  assert.deepEqual(opened, ['crafting', 'waystone'], 'instant (reduced-motion) travel opens at once');
+  engine.goToStation('passage', true);
+  assert.equal(state().area, 'Basalt Seamworks');
+  assert.match(state().message, /beacon/i, 'the passage stays shut until the beacon burns');
+  engine.destroy();
+});
+
+test('drop tables are data: chances roll on the engine RNG and materials carry their stack id', () => {
+  const town = world.TOWNS.infernal;
+  const table = { id: 'test', entries: [
+    { id: 'coins', kind: 'coins', base: 3 },
+    { id: 'gem', kind: 'material', material: 'ember-residue', art: 'ember-residue', label: 'Ember Residue', short: 'ember', qty: 2, chance: .5 },
+  ] };
+  const custom = { ...town, drops: table, monsters: [{ ...town.monsters[0], hp: 10 }], hunts: [] };
+  const loot = [];
+  const { engine } = fixture(drop => { loot.push(drop); return true; }, { town: custom });
+  engine.random = () => .9;
+  killFirst(engine);
+  assert.deepEqual([...engine.drops.map(drop => drop.coins)], [3], 'a missed chance drops nothing');
+  engine.random = () => .1;
+  const monster = engine.monsters[1];
+  engine.player.x = monster.x - 50; strike(engine);
+  const gem = engine.drops.find(drop => drop.material === 'ember-residue');
+  assert.ok(gem, 'a hit chance drops the material');
+  assert.equal(gem.ore, 2);
+  assert.match(engine.message, /coins and Ember Residue/);
+  engine.player.x = gem.x;
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.ok(loot.some(drop => drop.material === 'ember-residue' && drop.ore === 2));
   engine.destroy();
 });
