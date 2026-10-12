@@ -491,6 +491,8 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     this.quests.init();
     this.lore.init();
     this.arena.init();
+    // The lore corpus is a lazy chunk now; `progressFor()` below reads it.
+    await this.lore.ready();
 
     this.hydrated = true;
     this.now = Date.now();
