@@ -8,9 +8,14 @@
   padding: 116px 20px 80px; /* clears the 64px navbar — see the v2.7.0 note */
 }
 
+/* In-world panel (the Verdant Quest Board): the panel has no navbar to clear
+   and already carries the heading, so the page sits flush and the stats lead. */
+.quests-page--in-world { max-width: none; padding: 4px 4px 24px; }
+
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
 .quests-header { text-align: center; margin-bottom: 44px; }
+.quests-page--in-world .quests-header { margin-bottom: 24px; }
 
 .quests-eyebrow {
   display: inline-flex; align-items: center; gap: 8px;

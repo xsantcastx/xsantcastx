@@ -3,7 +3,7 @@
      layer 3. See art-scene.component.ts for why this is a <picture>. -->
 <app-art-scene art="bg-arena" focus="center 40%" />
 
-<div class="games-page arena-page">
+<div class="games-page arena-page" [class.arena-page--in-world]="inWorld">
 
   <!-- ── HEADER ──────────────────────────────────────────── -->
   <section class="gp-hero">
@@ -12,6 +12,7 @@
       <div class="gp-hero__glow gp-hero__glow--purple"></div>
     </div>
     <div class="gp-hero__inner">
+      @if (!inWorld) {
       <p class="gp-eyebrow">
         <span class="gp-dot"></span>
         The proving ground
@@ -21,6 +22,7 @@
         Where Convergents prove their worth. Stand in the hall and the gates
         listen. {{ playableCount }} of them lead to a real game.
       </p>
+      }
 
       <!-- Arena stats -->
       <div class="ar-stats">
@@ -62,7 +64,7 @@
       <div class="gp-how-step">
         <span class="gp-how-step__num">01</span>
         <h2>Walk a realm</h2>
-        <p>Head to <a routerLink="/world">the world</a> and explore. Secrets are buried across the five realms.</p>
+        <p>Head to @if (inWorld) {the world} @else {<a routerLink="/world">the world</a>} and explore. Secrets are buried across the five realms.</p>
       </div>
       <div class="gp-how-step__arrow">→</div>
       <div class="gp-how-step">
@@ -127,6 +129,8 @@
             <div class="gp-card__footer">
               @if (game.locked) {
                 <span class="gp-locked-label ar-locked">Chained — find the secret to break it</span>
+              } @else if (game.route && inWorld) {
+                <button type="button" class="gp-play-btn" #enter (click)="openGame(game, enter)">Enter &rarr;</button>
               } @else if (game.route) {
                 <a [routerLink]="game.route" class="gp-play-btn">Enter &rarr;</a>
               } @else {
@@ -142,6 +146,7 @@
   </section>
 
   <!-- ── CTA ────────────────────────────────────────────── -->
+  @if (!inWorld) {
   <section class="gp-cta">
     <div class="gp-cta__inner">
       <h2>Go find a secret</h2>
@@ -149,6 +154,7 @@
       <a routerLink="/world" class="cta-button">Walk the realms &rarr;</a>
     </div>
   </section>
+  }
 
 </div>
 
@@ -156,4 +162,25 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/world/trials"></app-related-pages>
+}
+
+<!-- The in-world game overlay. Only ever rendered inside the Trials gate on
+     /play: position:fixed against the panel's `contain: layout`, so it fills
+     the panel. The game is the same lazy component its /arena route loads. -->
+@if (inWorld && playing) {
+  <div class="ar-play" role="dialog" aria-modal="true" [attr.aria-label]="playing.title">
+    <div class="ar-play__bar">
+      <button type="button" class="ar-play__close" #playClose (click)="closeGame()">&larr; The Gates <kbd>Esc</kbd></button>
+      <span class="ar-play__title">{{ playing.icon }} {{ playing.title }}</span>
+    </div>
+    @if (playingType) {
+      <ng-container *ngComponentOutlet="playingType; injector: gameInjector" />
+    } @else if (playingError) {
+      <p class="ar-play__note" role="alert">This gate could not be opened. Check your connection and try again.</p>
+    } @else {
+      <p class="ar-play__note" role="status">The gate is opening&hellip;</p>
+    }
+  </div>
+}

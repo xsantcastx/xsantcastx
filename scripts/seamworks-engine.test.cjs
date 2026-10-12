@@ -530,3 +530,43 @@ test('drop tables are data: chances roll on the engine RNG and materials carry t
   assert.ok(loot.some(drop => drop.material === 'ember-residue' && drop.ore === 2));
   engine.destroy();
 });
+
+// ── The Verdant town (Rootglass Canopy) ──────────────────────────────────────
+test('Verdant: Rootglass Canopy hosts the Sanctum, the boards and both gates, and the root path reaches the Thicket', () => {
+  const town = world.TOWNS.verdant;
+  assert.ok(town, 'the Verdant town is built');
+  assert.equal(town.name, 'Rootglass Canopy');
+  assert.equal(town.background, 'bg-verdant');
+  const panels = Object.fromEntries(town.stations.filter(s => s.kind === 'panel').map(s => [s.id, s.panel]));
+  assert.deepEqual(panels, { sanctum: 'sanctum', quests: 'quests', arena: 'arena', trials: 'trials' }, 'each panel station id is its own ?at= place');
+  assert.ok(town.stations.some(s => s.kind === 'waystone'), 'a Waystone stands in the canopy');
+  assert.equal(town.monsters.length, 0, 'the town itself is safe ground');
+  const passage = town.stations.find(s => s.kind === 'passage');
+  assert.equal(passage.requires, undefined, 'the Thicket is open from the start: the beacon gate is Infernal-only');
+  const thicket = world.areaOf(town, passage.to);
+  assert.equal(thicket.id, 'rootglass-thicket');
+  assert.deepEqual([...thicket.monsters.map(m => m.creature)], ['rootglass-stag']);
+});
+
+test('Verdant: a Stag drops coins and real Verdant crafting materials, rolled on the engine RNG', () => {
+  const crafting = fs.readFileSync(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const town = world.TOWNS.verdant;
+  const table = town.hunts[0].drops;
+  for (const entry of table.entries.filter(e => e.kind === 'material')) {
+    assert.ok(crafting.includes(`m('${entry.material}'`), `${entry.material} is consumed by a crafting recipe`);
+    assert.equal(entry.art, entry.material, `${entry.material} draws its own art`);
+  }
+  const { engine } = fixture(() => true, { town });
+  engine.goToStation('passage', true);
+  assert.equal(engine.areaDef.id, 'rootglass-thicket');
+  engine.random = () => 0; // every chance hits
+  killFirst(engine);
+  assert.deepEqual([...engine.drops.map(d => d.material ?? 'coins')], ['coins', 'thornroot', 'verdant-sap', 'world-root-bark']);
+  engine.random = () => .99; // every chance misses: the certain lines still drop
+  const next = engine.monsters[1];
+  engine.player.x = next.x - 50;
+  for (let n = 0; n < 6; n++) strike(engine);
+  const second = engine.drops.filter(d => d.id.includes(':2:')).map(d => d.material ?? 'coins');
+  assert.deepEqual([...second], ['coins', 'thornroot']);
+  engine.destroy();
+});

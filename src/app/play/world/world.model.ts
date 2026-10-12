@@ -24,6 +24,7 @@
  */
 // Town files take only TYPES from this module, so this value import is one-way.
 import { INFERNAL_TOWN } from './towns/infernal';
+import { VERDANT_TOWN } from './towns/verdant';
 
 /** Every built town. A Phase 2 town is a new file in towns/ and one line here. */
 export const TOWNS: Readonly<Record<RealmTownId, TownDef | undefined>> = {
@@ -31,7 +32,7 @@ export const TOWNS: Readonly<Record<RealmTownId, TownDef | undefined>> = {
   luminous: undefined,
   umbral: undefined,
   celestial: undefined,
-  verdant: undefined,
+  verdant: VERDANT_TOWN,
 };
 
 /** What the waystone shows for each realm, built or not. */

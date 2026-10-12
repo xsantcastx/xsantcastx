@@ -1,5 +1,5 @@
-import { Component, OnInit, inject, PLATFORM_ID } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { Component, ElementRef, HostListener, Injector, OnInit, Type, ViewChild, inject, PLATFORM_ID } from '@angular/core';
+import { NgComponentOutlet, isPlatformBrowser } from '@angular/common';
 import { EasterEggService, PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { QuestService } from '../shared/quests/quest.service';
 import {
@@ -12,6 +12,9 @@ import { ARENA_PLAYABLE, formatScore, isPlayableGateOpen, playableById } from '.
 import { ArenaScoresService } from './games/arena-scores.service';
 import { RouterModule } from '@angular/router';
 import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
+import { injectInWorldPanel } from '../shared/in-world-panel';
+import { ARENA_GAME_EXIT } from './games/arena-game.base';
+import { ARENA_GAME_ROUTES } from './games/arena-game.routes';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 export interface ArenaGame {
@@ -50,7 +53,7 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLa
   templateUrl: './arena.component.html',
   styleUrls: ['./arena.component.css'],
   standalone: true,
-  imports: [RelatedPagesComponent, RouterModule, ArtSceneComponent]
+  imports: [RelatedPagesComponent, RouterModule, ArtSceneComponent, NgComponentOutlet]
 })
 export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -61,6 +64,34 @@ export class ArenaComponent implements OnInit {
   foundCount = 0;
 
   private readonly scores = inject(ArenaScoresService);
+  private readonly injector = inject(Injector);
+
+  /**
+   * Hosted as the Verdant Trials gate on /play. The page drops its hero copy,
+   * its backdrop and every link that leaves the world, and "Enter" opens the
+   * game in an overlay instead of routing to /arena/<game>.
+   *
+   * The overlay is `position: fixed; inset: 0`. Inside the in-world panel,
+   * whose `contain: layout` makes it the containing block for fixed
+   * descendants, that fills the PANEL — the game sits in the place, over the
+   * gate list, with the panel's own heading and close still the frame. It is
+   * never rendered on the standalone route, so routeFadeIn's transform (which
+   * would pin a fixed layer to the page) never meets it.
+   */
+  protected readonly inWorld = injectInWorldPanel();
+  /** The gate whose game is open in the in-panel overlay, if any. */
+  playing: ArenaGame | null = null;
+  /** The game's component once its lazy chunk (the same one its route uses) has loaded. */
+  playingType: Type<unknown> | null = null;
+  playingError = false;
+  /** Games inside the overlay go back through this instead of routing to /world/trials. */
+  readonly gameInjector = Injector.create({
+    providers: [{ provide: ARENA_GAME_EXIT, useValue: () => this.closeGame() }],
+    parent: this.injector,
+  });
+  private playSeq = 0;
+  private returnFocus: HTMLElement | null = null;
+  @ViewChild('playClose') private playClose?: ElementRef<HTMLButtonElement>;
 
   /**
    * The playable gates come first. Every entry in `ARENA_PLAYABLE` leads to a
@@ -124,6 +155,47 @@ export class ArenaComponent implements OnInit {
       // gates lead somewhere, a cleared run is a real signal and the quest no
       // longer has to settle for counting gates that were merely unlocked.
       if (this.scores.hasCleared(game.id)) this.quests.recordArenaGame(game.id);
+    }
+  }
+
+  /** In-world "Enter": open the gate's game in the panel overlay. Loads the route's own lazy chunk. */
+  openGame(game: ArenaGame, trigger?: HTMLElement): void {
+    if (!game.route || game.locked) return;
+    const route = ARENA_GAME_ROUTES.find(r => `/${r.path}` === game.route);
+    if (!route?.loadComponent) return;
+    const seq = ++this.playSeq;
+    this.returnFocus = trigger ?? null;
+    this.playing = game;
+    this.playingType = null;
+    this.playingError = false;
+    setTimeout(() => this.playClose?.nativeElement.focus());
+    Promise.resolve(route.loadComponent() as Promise<Type<unknown>>).then(type => {
+      if (seq === this.playSeq) this.playingType = type;
+    }).catch(() => {
+      if (seq === this.playSeq) this.playingError = true;
+    });
+  }
+
+  closeGame(): void {
+    if (!this.playing) return;
+    this.playSeq++;
+    this.playing = null;
+    this.playingType = null;
+    this.playingError = false;
+    const back = this.returnFocus;
+    this.returnFocus = null;
+    setTimeout(() => back?.focus());
+  }
+
+  /**
+   * Escape closes the game, not the whole place. Document runs before the
+   * side-scroller's window listener, which leaves a defaultPrevented Escape alone.
+   */
+  @HostListener('document:keydown', ['$event'])
+  onKeydown(event: KeyboardEvent): void {
+    if (this.playing && event.key === 'Escape' && !event.defaultPrevented) {
+      event.preventDefault();
+      this.closeGame();
     }
   }
 

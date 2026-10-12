@@ -1,12 +1,14 @@
-<section class="ar" aria-labelledby="ar-title">
+<section class="ar" [class.ar--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'ar-title'" [attr.aria-label]="inWorld ? t('arena.title') : null">
 
   <!-- ── Header ────────────────────────────────────────────────────────── -->
   <header class="ar-head">
+    @if (!inWorld) {
     <div class="ar-head__copy">
       <p class="ar-eyebrow"><span class="ar-eyebrow__pulse" aria-hidden="true"></span>{{ t('arena.eyebrow') }}</p>
       <h1 class="ar-title" id="ar-title">{{ t('arena.title') }}</h1>
       <p class="ar-tagline">{{ t('arena.tagline') }}</p>
     </div>
+    }
 
     <dl class="ar-record">
       <div>
@@ -51,7 +53,9 @@
     </div>
     <p class="ar-loadout__hint">
       {{ t('arena.loadout.hint') }}
+      @if (!inWorld) {
       <a routerLink="/character">{{ t('arena.loadout.link') }}</a>
+      }
     </p>
   </section>
 
@@ -232,4 +236,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/world/arena"></app-related-pages>
+}
