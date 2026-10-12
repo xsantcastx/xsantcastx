@@ -104,7 +104,15 @@
      waits for the cookie decision before rendering so it and the cookie banner
      are never on screen together — see the component for the full reasoning. -->
 @if (!isEmbedMode && !isPlayMode) {
-  <app-install-prompt></app-install-prompt>
+  <app-pwa-outlet kind="offer"></app-pwa-outlet>
+}
+
+<!-- Installed-app chrome: the offline/back-online pill, the desktop title-bar
+     strip, and the game route's gesture class. Rendered on /play too — the
+     game is the app's start page, and "offline, progress will sync" matters
+     most there. The pill is pointer-events: none, so it cannot take a tap. -->
+@if (!isEmbedMode) {
+  <app-pwa-outlet kind="chrome"></app-pwa-outlet>
 }
 
 <!-- The Forge Flame. A sibling of <main>, not a child of any routed component:

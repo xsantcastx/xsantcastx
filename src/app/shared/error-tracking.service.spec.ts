@@ -14,6 +14,9 @@ describe('ErrorTrackingService — stale-deploy recovery', () => {
   let service: ErrorTrackingService;
   let reload: jasmine.Spy;
   let purge: jasmine.Spy;
+  let reachable: jasmine.Spy;
+  /** Lets the probe, purge and reload promise chain run to the end. */
+  const settle = () => new Promise((resolve) => setTimeout(resolve, 0));
 
   const RECOVERY_KEY = 'godforge-stale-deploy-recovery';
 
@@ -26,6 +29,9 @@ describe('ErrorTrackingService — stale-deploy recovery', () => {
     // Both are real side effects — one navigates the karma runner away.
     reload = spyOn<any>(service, 'reloadPage').and.stub();
     purge = spyOn<any>(service, 'purgeClientCaches').and.returnValue(Promise.resolve());
+    // The real probe is a network round trip; every test here is online unless
+    // it says otherwise.
+    reachable = spyOn<any>(service, 'networkReachable').and.returnValue(Promise.resolve(true));
   });
 
   afterEach(() => sessionStorage.removeItem(RECOVERY_KEY));
@@ -45,8 +51,7 @@ describe('ErrorTrackingService — stale-deploy recovery', () => {
   STALE_MESSAGES.forEach((message) => {
     it(`purges and reloads once for: ${message.slice(0, 48)}…`, async () => {
       raise(message);
-      await Promise.resolve();
-      await Promise.resolve();
+      await settle();
 
       expect(purge).toHaveBeenCalledTimes(1);
       expect(reload).toHaveBeenCalledTimes(1);
@@ -55,22 +60,31 @@ describe('ErrorTrackingService — stale-deploy recovery', () => {
 
   it('reloads only once per tab, then reports instead of looping', async () => {
     raise("Importing binding name 'a' is not found.");
-    await Promise.resolve();
-    await Promise.resolve();
+    await settle();
     expect(reload).toHaveBeenCalledTimes(1);
 
     // Second occurrence: the purge already happened, so this is a real build
     // fault. Reloading again would trap the visitor in a refresh loop.
     const reported = spyOn(console, 'error');
     raise("Importing binding name 'a' is not found.");
-    await Promise.resolve();
-    await Promise.resolve();
+    await settle();
 
     expect(reload).toHaveBeenCalledTimes(1);
     expect(purge).toHaveBeenCalledTimes(1);
     expect(reported).toHaveBeenCalled();
     const payload = reported.calls.mostRecent().args[1] as { message: string };
     expect(payload.message).toContain('[unrecovered after cache purge]');
+  });
+
+  it('does not purge or reload when the origin is unreachable — offline is not a stale build', async () => {
+    reachable.and.returnValue(Promise.resolve(false));
+    raise('Failed to fetch dynamically imported module: https://xsantcastx.com/chunk-ABCD1234.js');
+    await settle();
+
+    expect(purge).not.toHaveBeenCalled();
+    expect(reload).not.toHaveBeenCalled();
+    // The one-shot marker is handed back, so recovery still works once online.
+    expect(sessionStorage.getItem(RECOVERY_KEY)).toBeNull();
   });
 
   it('leaves an ordinary application error to the normal report path', async () => {

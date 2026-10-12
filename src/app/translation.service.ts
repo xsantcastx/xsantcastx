@@ -30,6 +30,22 @@ export class TranslationService {
     // languages exactly as the tools page already renders them.
     'gfnav.brand':        { en: 'Eclipse Realms', es: 'Eclipse Realms' },
 
+    /* appinstall.* / netstatus.* — the installable app. Namespaced away from
+       `pwa` on purpose: the key check reads any dotted backticked word as a key,
+       and `pwa.service.ts` in a comment would then fail the build. */
+    'appinstall.title':      { en: 'Install Eclipse Realms', es: 'Instala Eclipse Realms' },
+    'appinstall.body':       { en: 'Its own window, one tap from your home screen — and it opens even when you are offline.', es: 'Su propia ventana, a un toque desde tu pantalla de inicio, y se abre incluso sin conexion.' },
+    'appinstall.install':    { en: 'Install', es: 'Instalar' },
+    'appinstall.notNow':     { en: 'Not now', es: 'Ahora no' },
+    'appinstall.dismiss':    { en: 'Dismiss the install offer', es: 'Descartar la oferta de instalacion' },
+    'appinstall.iosBody':    { en: 'Tap Share, then Add to Home Screen. It opens full-screen, like an app.', es: 'Toca Compartir y luego Agregar a inicio. Se abre a pantalla completa, como una app.' },
+    'appinstall.iosShare':   { en: 'Share', es: 'Compartir' },
+    'appinstall.gotIt':      { en: 'Got it', es: 'Entendido' },
+    'netstatus.offlineSync': { en: 'Offline — progress will sync when you reconnect', es: 'Sin conexion: tu progreso se sincronizara al reconectar' },
+    'netstatus.offlineLocal':{ en: 'Offline — progress is saved on this device', es: 'Sin conexion: tu progreso se guarda en este dispositivo' },
+    'netstatus.backSyncing': { en: 'Back online — syncing your progress', es: 'De nuevo en linea: sincronizando tu progreso' },
+    'netstatus.back':        { en: 'Back online', es: 'De nuevo en linea' },
+
     /* related.* — the contextual link block at the foot of each room.
        Longer than the gfnav.* labels beside them on purpose: these are body
        links, and the words inside a link describe what is on the other end of
