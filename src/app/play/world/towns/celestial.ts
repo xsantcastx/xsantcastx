@@ -14,7 +14,7 @@
  */
 import { FLOOR } from '../../engine/engine.model';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
-import type { HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
 /**
  * What an Ephemeris Leech drops in the Orrery Rings.
@@ -59,6 +59,20 @@ const RING_PLATFORMS: Platform[] = [
   { x: 520, y: 500, width: 200 }, { x: 980, y: 440, width: 220 }, { x: 1520, y: 500, width: 200 }, { x: 2060, y: 430, width: 200 },
 ];
 
+/**
+ * Gathering on the Rings: starlight sprigs on the first ring, star-iron
+ * (Celestial Alloy) in a fallen brass arm for a Pickaxe II, and Moonpetal
+ * past the safe line for a Sickle III and Foraging 40.
+ */
+export const ORRERY_RING_NODES: readonly GatherNodeDef[] = [
+  { id: 'starlight-sprig', x: 330, kind: 'herb', label: 'Starlight Herb sprig', tools: { sickle: 1 }, hp: 1, discipline: 'foraging', xp: 2, minLevel: 1,
+    yield: { materialId: 'starlight-herb', qty: 1 }, respawn: 25 },
+  { id: 'star-iron', x: 560, kind: 'ore', label: 'Star-iron outcrop', tools: { pickaxe: 2 }, hp: 4, discipline: 'mining', xp: 6,
+    yield: { materialId: 'celestial-alloy', qty: 1 }, respawn: 45 },
+  { id: 'moonpetal', x: 900, kind: 'herb', label: 'Moonpetal', tools: { sickle: 3 }, hp: 3, discipline: 'foraging', xp: 14, minLevel: 40,
+    yield: { materialId: 'moonpetal-herb', qty: 1 }, respawn: 50 },
+];
+
 export const ORRERY_RINGS: HuntZoneDef = {
   id: 'orrery-rings',
   name: 'Orrery Rings',
@@ -70,6 +84,7 @@ export const ORRERY_RINGS: HuntZoneDef = {
   ],
   monsters: [{ creature: 'ephemeris-leech', name: 'Ephemeris Leech', hp: 70, spawnXs: [1250, 1650, 2050, 2450] }],
   drops: ORRERY_DROPS,
+  nodes: ORRERY_RING_NODES,
   spawnX: 240,
   safeX: 700,
   arrival: 'The Orrery Rings. Ephemeris Leeches cling to the brass; hunt them for alloy, moonpetal and quartz.',
