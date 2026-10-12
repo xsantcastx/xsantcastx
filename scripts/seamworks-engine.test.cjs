@@ -329,6 +329,29 @@ test('the Rivet Maw coils, lunges and opens its jaw on the strike', () => {
   assert.equal(rig.isRestPose(pose), true);
 });
 
+test('an idle Keeper is blitted once per frame, fully opaque, with no smear or rim copies', () => {
+  const { engine } = fixture();
+  const noop = () => {};
+  const stack = [];
+  const target = {
+    globalAlpha: 1, globalCompositeOperation: 'source-over', filter: 'none', shadowBlur: 0,
+    save() { stack.push([this.globalAlpha, this.globalCompositeOperation, this.filter, this.shadowBlur]); },
+    restore() { [this.globalAlpha, this.globalCompositeOperation, this.filter, this.shadowBlur] = stack.pop(); },
+    measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+  };
+  engine.context = new Proxy(target, { get: (t, key) => key in t ? t[key] : noop });
+  const blits = [];
+  engine.keeperRig.render = () => true;
+  engine.keeperRig.attach = () => false;
+  engine.keeperRig.blit = (c, ox = 0, oy = 0) => blits.push({ alpha: c.globalAlpha, op: c.globalCompositeOperation, ox, oy });
+  engine.frameDt = 1 / 60;
+  for (let n = 0; n < 30; n++) { engine.update(1 / 60); engine.render(); }
+  assert.equal(engine.pose(), 'idle');
+  assert.equal(blits.length, 30);
+  for (const blit of blits) assert.deepEqual(blit, { alpha: 1, op: 'source-over', ox: 0, oy: 0 });
+  engine.destroy();
+});
+
 test('drawing never moves combat state', () => {
   const { engine } = fixture();
   engine.setPeers([{ id: 'nyx', name: 'Nyx', x: 400, y: 610, area: 'Basalt Seamworks', facing: 1, animation: 'run' }]);
