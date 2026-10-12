@@ -219,6 +219,15 @@ export class TranslationService {
     'enchant.infusion.slots':   { en: 'Slots in use', es: 'Huecos en uso' },
     'enchant.infusion.left':    { en: 'Left:',     es: 'Queda:' },
 
+    // ── The Forge floor (strip above all three benches) ───────────────────
+    'forgeFloor.label':         { en: 'The forge floor', es: 'El taller de la forja' },
+    'forgeFloor.stockpile':     { en: 'Stockpile',       es: 'Acopio' },
+    'forgeFloor.bag':           { en: 'Bag',             es: 'Bolsa' },
+    'forgeFloor.station.anvil': { en: 'The Bench',       es: 'El Banco' },
+    'forgeFloor.station.table': { en: 'The Table',       es: 'La Mesa' },
+    'forgeFloor.station.runes': { en: 'The Forge',       es: 'La Forja' },
+    'forgeFloor.made':          { en: 'Off the floor:',  es: 'Sale del taller:' },
+
     // ── The Crafting Bench ────────────────────────────────────────────────
     'crafting.eyebrow':   { en: '\u25cf THE CRAFTING BENCH', es: '\u25cf EL BANCO DE FORJA' },
     'crafting.title':     { en: 'The Bench',      es: 'El Banco' },

@@ -24,6 +24,9 @@
     </dl>
   </header>
 
+  <!-- The forge floor: watch the table work. Decorative; results are announced below. -->
+  <app-forge-floor class="eb-floor" [active]="'table'" [event]="floorEvent"></app-forge-floor>
+
   <p class="eb-live" role="status" aria-live="polite">{{ announce }}</p>
 
   <div class="eb-alert" *ngIf="error">

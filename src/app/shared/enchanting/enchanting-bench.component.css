@@ -25,6 +25,13 @@
   color: var(--ink-0);
 }
 
+/* The forge floor strip (shared component) sits under the header. */
+.eb-floor {
+  position: relative;
+  display: block;
+  margin: 1.25rem 0;
+}
+
 /* ── Header ─────────────────────────────────────────────────────────────── */
 
 .eb-head {

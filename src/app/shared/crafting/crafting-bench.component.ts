@@ -79,6 +79,8 @@ import {
 } from './crafting.model';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
+import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
+import { floorThing, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 /** One ingredient, as the anvil renders it. */
 export interface SlotView {
   materialId: string;
@@ -120,7 +122,7 @@ const DIAL_R = 46;
 @Component({
   selector: 'app-crafting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, FormsModule],
   templateUrl: './crafting-bench.component.html',
   styleUrls: ['./crafting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -179,6 +181,21 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   lastCraft: { items: GameItem[]; recipe: CraftingRecipe; quality: number | null; mastered: boolean } | null = null;
   error: string | null = null;
   announce = '';
+
+  /** The forge floor's latest event — set only after the ledger has answered. */
+  floorEvent: ForgeFloorEvent | null = null;
+  private floorSeq = 0;
+  private floorStockFor: SlotView[] | null = null;
+  private floorStockCache: ForgeFloorThing[] = [];
+
+  /** The selected recipe's materials, for the floor's stockpile. Cached per slot build. */
+  get floorStock(): ForgeFloorThing[] {
+    if (this.floorStockFor !== this.slots) {
+      this.floorStockFor = this.slots;
+      this.floorStockCache = this.slots.map(slot => ({ id: slot.materialId, name: slot.name, art: slot.art }));
+    }
+    return this.floorStockCache;
+  }
 
   /** Which material tile the pointer is dragging, and which slot is under it. */
   dragging: string | null = null;
@@ -417,6 +434,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     }
 
     this.striking = true;
+    // The materials ride onto the anvil now; the output follows from `settle`.
+    this.emitFloor(recipe, null);
     this.strikeRemaining = seconds;
     this.strikePercent = 0;
     this.announce = `Working the anvil — ${seconds} seconds.`;
@@ -463,7 +482,26 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     // Safe to call unconditionally — a no-op on Common and on the server, and it
     // never throws into the caller. See CelebrationService.
     this.celebration.celebrate(result.recipe.rarity);
+    // A timed craft already fed the floor when it started; an instant one feeds
+    // and finishes in a single event.
+    const first = result.items[0];
+    this.emitFloor(
+      recipe.craftTime && recipe.craftTime > 0 ? null : recipe,
+      first ? floorThing(result.recipe.output.itemId, first.name) : floorThing(result.recipe.output.itemId),
+      this.rarityColor(result.recipe.rarity),
+    );
     this.cdr.markForCheck();
+  }
+
+  /** Hand the floor a settled (or, for a timed craft, a started) strike. */
+  private emitFloor(inputsOf: CraftingRecipe | null, output: ForgeFloorThing | null, glow?: string): void {
+    this.floorEvent = {
+      seq: ++this.floorSeq,
+      station: 'anvil',
+      inputs: inputsOf ? inputsOf.ingredients.map(row => floorThing(row.materialId)) : [],
+      output,
+      glow,
+    };
   }
 
   dismissResult(): void {
