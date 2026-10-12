@@ -1564,7 +1564,8 @@ function standAt(engine, x) { engine.resetPosition(x); }
 function nodeX(engine, id) { return engine.areaDef.nodes.find(node => node.id === id).x; }
 
 test('gathering: the starter sickle cuts starlight in one swing, books it once, and it grows back', () => {
-  const { engine, state, calls } = enterThicket();
+  let clock = 1_700_000_000_000;
+  const { engine, state, calls } = enterThicket({ now: () => clock });
   engine.setTools({ sickle: 1, axe: 1, pickaxe: 1 });
   standAt(engine, nodeX(engine, 'starlight-clump') + 30);
   assert.equal(state().nearby, 'gather');
@@ -1584,6 +1585,8 @@ test('gathering: the starter sickle cuts starlight in one swing, books it once, 
   assert.match(state().message, /growing back/);
   engine.setInput('attack', false);
   for (let n = 0; n < 26 * 60; n++) engine.update(1 / 60);
+  assert.equal(state().gather.ready, false, 'regrowth runs on the wall clock, not on frames');
+  clock += 26_000; engine.update(1 / 60);
   assert.equal(state().gather.ready, true, 'grown back after its respawn');
   strike(engine);
   assert.equal(calls.length, 2);
@@ -1694,4 +1697,120 @@ test('lantern: Skills tiles and engine px agree — Delving 1 lights the default
   const tiers = skillTools.toolTiers({ items: [], equipped: {} }, { version: 1, xpByDiscipline: { exploration: 1e7 } });
   assert.equal(tiers.lanternRadius, 16, 'Delving 99 lights 16 tiles');
   engine.destroy();
+});
+
+// ── Gathering regrowth persists: harvest times saved, readiness derived from the wall clock ──
+const gatherSave = loadTs(path.resolve(__dirname, '../src/app/shared/skills/gather-save.model.ts'));
+/** A GatherPersistence over a real save object, the way GatherSaveService is. */
+function gatherStore(save = gatherSave.emptyGatherSave()) {
+  return {
+    save,
+    writes: 0,
+    harvestedAt(areaId, nodeId) { return gatherSave.harvestedAtIn(this.save, areaId, nodeId); },
+    harvested(areaId, nodeId, at) { if (gatherSave.recordHarvestIn(this.save, areaId, nodeId, at)) this.writes++; },
+  };
+}
+
+test('gathering regrowth: a harvest is saved as a timestamp and a reload shows the node still regrowing', () => {
+  let clock = 1_760_000_000_000;
+  const store = gatherStore();
+  const first = enterThicket({ now: () => clock, gathering: store });
+  first.engine.setTools({ sickle: 1 });
+  standAt(first.engine, nodeX(first.engine, 'starlight-clump'));
+  strike(first.engine);
+  assert.equal(first.calls.length, 1);
+  assert.equal(store.writes, 1, 'the harvest was written once');
+  assert.equal(store.harvestedAt('rootglass-thicket', 'starlight-clump'), clock, 'stamped with the wall clock');
+  const respawn = first.engine.areaDef.nodes.find(node => node.id === 'starlight-clump').respawn;
+  first.engine.destroy();
+
+  // "Reload" 10 s later: a fresh engine (new session) over the same save.
+  clock += 10_000;
+  const second = enterThicket({ now: () => clock, gathering: store });
+  standAt(second.engine, nodeX(second.engine, 'starlight-clump'));
+  assert.equal(second.state().gather.ready, false, 'still regrowing after the reload');
+  assert.equal(second.state().gather.seconds, respawn - 10, 'exactly as far along as the clock says');
+  second.engine.setTools({ sickle: 1 });
+  strike(second.engine);
+  assert.equal(second.calls.length, 0, 'a regrowing node books nothing');
+  // A panel open (no frames at all) does not stop the clock.
+  clock += (respawn - 10) * 1000;
+  second.engine.update(1 / 60);
+  assert.equal(second.state().gather.ready, true, 'ready once its respawn has passed in real time');
+  second.engine.attackCooldown = 0;
+  strike(second.engine);
+  assert.equal(second.calls.length, 1);
+  assert.equal(store.harvestedAt('rootglass-thicket', 'starlight-clump'), clock, 'the new harvest replaces the old stamp');
+  assert.notEqual(second.calls[0].mutationId, first.calls[0].mutationId, 'a new session books a new grant');
+  // Long after: the stamp is ancient and the node is simply ready.
+  clock += 3_600_000;
+  const third = enterThicket({ now: () => clock, gathering: store });
+  standAt(third.engine, nodeX(third.engine, 'starlight-clump'));
+  assert.equal(third.state().gather.ready, true);
+  second.engine.destroy(); third.engine.destroy();
+});
+
+test('gathering regrowth: a refused harvest saves nothing; a cloud merge is re-read by setGathering', () => {
+  let clock = 1_760_000_000_000;
+  const store = gatherStore();
+  const refused = enterThicket({ refuse: true, now: () => clock, gathering: store });
+  refused.engine.setTools({ sickle: 1 });
+  standAt(refused.engine, nodeX(refused.engine, 'starlight-clump'));
+  strike(refused.engine);
+  assert.equal(store.writes, 0, 'nothing booked, nothing saved');
+  refused.engine.destroy();
+
+  const { engine, state } = enterThicket({ now: () => clock, gathering: store });
+  standAt(engine, nodeX(engine, 'starlight-clump'));
+  assert.equal(state().gather.ready, true);
+  // Another device harvested it 5 s ago; cloud save merges that in and tells the engine.
+  const merged = gatherSave.mergeGatherSaves({ version: 1, areas: { 'rootglass-thicket': { 'starlight-clump': clock - 5000 } } }, store.save);
+  engine.setGathering(gatherStore(merged));
+  assert.equal(state().gather.ready, false, 'the merged harvest shows at once');
+  // A clock running fast on the other device cannot lock the node away for longer than one respawn.
+  const respawn = engine.areaDef.nodes.find(node => node.id === 'starlight-clump').respawn;
+  engine.setGathering(gatherStore({ version: 1, areas: { 'rootglass-thicket': { 'starlight-clump': clock + 86_400_000 } } }));
+  assert.equal(state().gather.seconds, respawn, 'a future stamp counts as "just harvested"');
+  engine.destroy();
+});
+
+test('gathering save model: coerced, merged by the later harvest, pruned, and idempotent', () => {
+  const M = gatherSave;
+  assert.deepEqual(M.coerceGatherSave(null), { version: 1, areas: {} });
+  assert.deepEqual(M.coerceGatherSave({ areas: { 'Bad Id': { x: 1 }, ok: { 'n-1': 5, 'n-2': 'x', 'n-3': -1, 'n-4': NaN }, empty: {} } }),
+    { version: 1, areas: { ok: { 'n-1': 5 } } }, 'junk ids and stamps are dropped');
+  const a = { version: 1, areas: { hunt: { herb: 100, tree: 300 } } };
+  const b = { version: 1, areas: { hunt: { herb: 200 }, other: { ore: 50 } } };
+  const ab = M.mergeGatherSaves(a, b), ba = M.mergeGatherSaves(b, a);
+  assert.deepEqual(ab, { version: 1, areas: { hunt: { herb: 200, tree: 300 }, other: { ore: 50 } } }, 'per node, the later harvest');
+  assert.deepEqual(ab, ba, 'commutative');
+  assert.deepEqual(M.mergeGatherSaves(ab, ab), ab, 'idempotent');
+  assert.deepEqual(a, { version: 1, areas: { hunt: { herb: 100, tree: 300 } } }, 'inputs untouched');
+  const save = M.emptyGatherSave();
+  assert.equal(M.recordHarvestIn(save, 'hunt', 'herb', 1000), true);
+  assert.equal(M.recordHarvestIn(save, 'hunt', 'herb', 1000), false, 'a replay changes nothing');
+  assert.equal(M.recordHarvestIn(save, 'hunt', 'herb', 900), false, 'an older stamp never rewinds a node');
+  assert.equal(M.recordHarvestIn(save, 'hunt', '__proto__', 1000), false, 'only kebab ids');
+  M.recordHarvestIn(save, 'old', 'herb', 1);
+  M.pruneGatherSave(save, 1000 + M.PRUNE_MS);
+  assert.deepEqual(save.areas, { hunt: { herb: 1000 } }, 'harvests older than a day are forgotten');
+  assert.equal(M.regrowSecondsLeft(null, 30, 0), 0);
+  assert.equal(M.regrowSecondsLeft(0, 30, 10_000), 20);
+  assert.equal(M.regrowSecondsLeft(0, 30, 31_000), 0);
+});
+
+// ── The Delve's own creatures spawn under their own art keys, on their stand-ins' bodies ──
+test('art keys: the Magma Maw and the Rune-Warden spawn as magma-maw / rune-warden and keep their stand-in rigs', () => {
+  const delve = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve');
+  const byName = Object.fromEntries(delve.monsters.map(m => [m.name, m.creature]));
+  assert.equal(byName['Magma Maw'], 'magma-maw');
+  assert.equal(byName['Rune-Warden'], 'rune-warden');
+  assert.equal(byName['Rivet Maw'], 'rivet-maw', 'the Basalt Maws are still Rivet Maws');
+  const maw = creatures.creatureRigFor('magma-maw'), warden = creatures.creatureRigFor('rune-warden');
+  assert.equal(maw.key, 'magma-maw'); assert.equal(warden.key, 'rune-warden');
+  for (const [own, standIn] of [[maw, creatures.creatureRigFor('rivet-maw')], [warden, creatures.creatureRigFor('mirror-substitute')]]) {
+    assert.equal(own.spec, standIn.spec, `${own.key} keeps ${standIn.key}'s bones`);
+    assert.equal(own.pose, standIn.pose);
+    assert.deepEqual([own.box, own.ground, own.shadow, own.facesLeft], [standIn.box, standIn.ground, standIn.shadow, standIn.facesLeft]);
+  }
 });
