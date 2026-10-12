@@ -3,10 +3,12 @@
  *
  * Source: docs/03-lore-and-design/eclipse-realms-creature-atlas-proposal.md
  * for name, realm and haunt; `Assets/Creatures/Masters/` for the art. Only
- * creatures with an approved transparent master are listed. The library also
- * holds five concept sheets with no master, and the asset-library placement
- * rules say a concept sheet is "not runtime art" — so those creatures are
- * counted, not shown, until their masters are painted.
+ * creatures with an approved transparent master are shown. The other five have
+ * a concept sheet and no master, and the asset-library placement rules say a
+ * concept sheet is "not runtime art" — so they are written out here, counted,
+ * and filtered out until `artFor()` resolves their id. Their masters are
+ * briefed in docs/art-commissions/; the day one is imported it appears on the
+ * page with no code change.
  *
  * The notes are a one-line field observation each, written for this page
  * rather than lifted from the atlas, whose briefs are addressed to a concept
@@ -14,7 +16,7 @@
  *
  * Pure data, no browser APIs, safe on an SSR path.
  */
-import type { ArtRealm } from '../shared/art/art';
+import { hasArt, type ArtRealm } from '../shared/art/art';
 
 export interface BestiaryEntry {
   /** Manifest key — the master's filename minus its index. */
@@ -26,7 +28,7 @@ export interface BestiaryEntry {
   note: string;
 }
 
-export const BESTIARY: readonly BestiaryEntry[] = [
+const BESTIARY_ALL: readonly BestiaryEntry[] = [
   {
     id: 'prism-forager',
     name: 'Prism Forager',
@@ -62,7 +64,46 @@ export const BESTIARY: readonly BestiaryEntry[] = [
     haunt: 'Rootglass Canopy',
     note: 'Refuses any path the canopy is bending toward a single answer.',
   },
+  // ── Concept sheet only; shown once the master is imported ───────────────
+  {
+    id: 'afterimage-moth',
+    name: 'Afterimage Moth',
+    realm: 'luminous',
+    haunt: 'Heliograph Court',
+    note: 'Circles anyone who admits they are unsure, and goes still for anyone performing certainty.',
+  },
+  {
+    id: 'anchor-warden',
+    name: 'Anchor Warden',
+    realm: 'celestial',
+    haunt: 'Meridian Orrery',
+    note: 'Repeats the last trajectory it was given, long after the order behind it has lapsed.',
+  },
+  {
+    id: 'cinder-bailiff',
+    name: 'Cinder Bailiff',
+    realm: 'infernal',
+    haunt: 'Basalt Seamworks',
+    note: 'Stamps a heat debt on every shortcut and will not stop until someone names who pays it.',
+  },
+  {
+    id: 'ink-lantern',
+    name: 'Ink Lantern',
+    realm: 'umbral',
+    haunt: 'Nocturne Archive',
+    note: 'Drifts the unrecorded corridors and dims beside anyone who admits a gap in the map.',
+  },
+  {
+    id: 'graftling',
+    name: 'Graftling',
+    realm: 'verdant',
+    haunt: 'Rootglass Canopy',
+    note: 'Mends by joining whatever is nearest, and has no idea what belonging to someone means.',
+  },
 ];
 
-/** Creatures with a concept sheet in the library but no runtime master yet. */
-export const BESTIARY_UNPAINTED = 5;
+/** The creatures with a painted master — the only ones the Codex shows. */
+export const BESTIARY: readonly BestiaryEntry[] = BESTIARY_ALL.filter(entry => hasArt(entry.id));
+
+/** Creatures sighted (concept sheet in the library) but not yet painted. */
+export const BESTIARY_UNPAINTED = BESTIARY_ALL.length - BESTIARY.length;
