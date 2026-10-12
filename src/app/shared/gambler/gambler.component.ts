@@ -50,7 +50,14 @@ import { EconomyService } from '../economy/economy.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { GamblerService, type OpenedBox, type OpenFailure } from './gambler.service';
 import { RollQualityComponent } from '../rpg/roll-quality.component';
-import { boxOdds, rarityRank, type MysteryBox } from './mystery-box';
+import { PITY_THRESHOLD, boxOdds, rarityRank, type MysteryBox } from './mystery-box';
+import {
+  STATION_UI,
+  type JournalRow,
+  type StationArt,
+  type StationCost,
+  type StationTab,
+} from '../station-ui';
 import { artFor } from '../art/art';
 import {
   QUALITY_TAG_LABELS,
@@ -92,6 +99,12 @@ export interface PullRecord {
 
 const HISTORY_LIMIT = 8;
 
+/** How many boxes one "Open ×N" press may open. The reveal shows the best one. */
+const OPEN_MANY_MAX = 5;
+
+/** One picture for every box on the shelf: the boxes have no art of their own yet. */
+const BOX_ART_ID = 'chest-overlay';
+
 /**
  * The strip outlives the component on purpose: leaving for the Market and
  * coming back should not wipe the run you were on. It lives for the tab only —
@@ -128,7 +141,7 @@ interface SellRow {
 @Component({
   selector: 'app-gambler',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterLink, RollQualityComponent],
+  imports: [RelatedPagesComponent, CommonModule, RouterLink, RollQualityComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './gambler.component.html',
   styleUrls: ['./gambler.component.css'],
@@ -194,31 +207,206 @@ export class GamblerComponent implements OnInit, OnDestroy {
   sellRows: SellRow[] = [];
   sellOpen = false;
 
+  // ── The journal (station kit) ─────────────────────────────────────────────
+  hydrated = false;
+  detailsOpen = false;
+  tab: 'boxes' | 'sell' = 'boxes';
+  tabs: StationTab[] = [];
+  boxRows: JournalRow[] = [];
+  selectedBox: MysteryBox | null = this.gambler.boxes[0] ?? null;
+  private userPickedBox = false;
+  selectedOdds: OddsRow[] = [];
+  boxCosts: StationCost[] = [];
+  openBlocked: string | null = null;
+  openAllCount = 0;
+  luckProgress = 0;
+  luckLabel = '';
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
+  readonly boxArt: StationArt | null = artFor(BOX_ART_ID);
+  /** How many other boxes an "Open ×N" press opened alongside the one revealed. */
+  extraPulls = 0;
+
+  sellJournal: JournalRow[] = [];
+  selectedSell: SellRow | null = null;
+  selectedSellId: string | null = null;
+  sellArt: StationArt | null = null;
+  /** Ids the "Sell junk" button would sell: graded rolls under 50%. */
+  junkIds: string[] = [];
+  /** "Sell junk" is two presses: the first arms it, the second sells. */
+  junkArmed = false;
+  notice: string | null = null;
+  announce = '';
+  private noticeTimer: ReturnType<typeof setTimeout> | null = null;
+
+  constructor() {
+    this.buildJournal();
+  }
+
   ngOnInit(): void {
     if (!this.isBrowser) return;
     this.economy.init();
     this.inventory.init();
     this.gambler.init();
 
+    this.hydrated = true;
     this.subs.add(this.economy.snapshot$.subscribe(snap => {
       this.gold = snap.gold;
+      this.buildJournal();
       this.cdr.markForCheck();
     }));
     this.subs.add(this.gambler.snapshot$.subscribe(snap => {
       this.spent = snap.spent;
       this.uniquesFound = snap.uniques;
+      this.buildJournal();
       this.cdr.markForCheck();
     }));
     this.subs.add(this.inventory.snapshot$.subscribe(() => {
       this.rebuildTill();
+      this.buildJournal();
       this.cdr.markForCheck();
     }));
     this.rebuildTill();
+    this.buildJournal();
+  }
+
+  // ── The journal ────────────────────────────────────────────────────────────
+
+  /**
+   * Rebuild every array the kit renders. Called on Gold, bag and pity changes
+   * and on every pick, never from the template — the kit's inputs are signals,
+   * and a getter handing it a new array each pass would recompute it each pass.
+   */
+  private buildJournal(): void {
+    const boxes = this.gambler.boxes;
+    if (!this.userPickedBox && this.hydrated) {
+      // Default to the dearest box the player can pay for: the one they came for.
+      const affordable = boxes.filter(b => this.affordable(b));
+      this.selectedBox = affordable[affordable.length - 1] ?? boxes[0] ?? null;
+    }
+    this.boxRows = boxes.map(box => ({
+      id: box.id,
+      name: box.name,
+      art: this.boxArt,
+      rarity: box.maxRarity,
+      sub: `${this.compact(box.cost)} Gold`,
+      locked: this.hydrated && !this.affordable(box),
+      ready: this.hydrated && this.affordable(box),
+    }));
+
+    const box = this.selectedBox;
+    this.selectedOdds = box ? this.oddsFor(box) : [];
+    this.boxCosts = box ? [{ kind: 'gold', label: 'Gold', need: box.cost, have: this.gold }] : [];
+    this.walletGold = { kind: 'gold', label: 'Gold', need: this.gold, have: this.gold };
+    const bagFull = this.hydrated && !this.inventory.canAcceptInstance();
+    this.openBlocked = bagFull ? 'Your bag is full. Sell something first.' : null;
+    const many = box && !bagFull ? Math.min(OPEN_MANY_MAX, Math.floor(this.gold / box.cost)) : 0;
+    this.openAllCount = many >= 2 ? many : 0;
+
+    if (box && this.hydrated) {
+      const left = this.pityLeft(box);
+      const armed = this.guaranteed(box);
+      this.luckProgress = armed ? 1 : Math.max(0, Math.min(1, (PITY_THRESHOLD - left) / PITY_THRESHOLD));
+      // Bad luck protection as a bar: the full sentence is in Details.
+      this.luckLabel = armed ? 'Next one is better' : `Better luck in ${left}`;
+    } else {
+      this.luckProgress = 0;
+      this.luckLabel = '';
+    }
+
+    this.tabs = [
+      { id: 'boxes', label: 'Boxes' },
+      { id: 'sell', label: 'Sell', badge: this.sellRows.length || null },
+    ];
+
+    this.sellJournal = this.sellRows.map(row => ({
+      id: row.item.id,
+      name: row.item.upgradeLevel ? `${row.item.name} +${row.item.upgradeLevel}` : row.item.name,
+      art: artFor(row.item.definitionId),
+      rarity: row.item.rarity,
+      sub: `${this.qualityText(row.item)} · ${this.compact(row.item.sellValue)} Gold`,
+    }));
+    const current = this.selectedSell;
+    this.selectedSell = (current && this.sellRows.find(r => r.item.id === current.item.id)) || this.sellRows[0] || null;
+    this.sellArt = this.selectedSell ? artFor(this.selectedSell.item.definitionId) : null;
+    this.selectedSellId = this.selectedSell ? this.selectedSell.item.id : null;
+    this.junkIds = this.sellRows
+      .filter(row => {
+        const q = qualityOf(row.item);
+        return q != null && q < 0.5 && !qualityTagOf(row.item);
+      })
+      .map(row => row.item.id);
+    if (!this.junkIds.length) this.junkArmed = false;
+  }
+
+  setTab(id: string): void {
+    this.tab = id === 'sell' ? 'sell' : 'boxes';
+    this.junkArmed = false;
+    this.buildJournal();
+    this.cdr.markForCheck();
+  }
+
+  pickBox(id: string): void {
+    const box = this.gambler.boxes.find(b => b.id === id);
+    if (!box) return;
+    this.userPickedBox = true;
+    this.selectedBox = box;
+    this.error = null;
+    this.buildJournal();
+    this.cdr.markForCheck();
+  }
+
+  pickSell(id: string): void {
+    this.selectedSell = this.sellRows.find(r => r.item.id === id) ?? null;
+    this.buildJournal();
+    this.cdr.markForCheck();
+  }
+
+  /** Sell the one item in the detail. Same call the till makes, with one id. */
+  sellSelected(): void {
+    const row = this.selectedSell;
+    if (!row) return;
+    const gold = row.item.sellValue;
+    const sold = this.inventory.sellMany([row.item.id]);
+    if (sold > 0) this.say(`Sold ${row.item.name} for ${this.compact(gold)} Gold.`);
+    this.selectedSell = null;
+    this.rebuildTill();
+    this.buildJournal();
+    this.cdr.markForCheck();
+  }
+
+  /** "Sell junk": the first press arms it, the second sells every roll under 50%. */
+  sellJunk(): void {
+    if (!this.junkIds.length) return;
+    if (!this.junkArmed) {
+      this.junkArmed = true;
+      this.announce = `Press again to sell ${this.junkIds.length} items.`;
+      this.cdr.markForCheck();
+      return;
+    }
+    const ids = [...this.junkIds];
+    const gold = this.sellRows.filter(r => ids.includes(r.item.id)).reduce((sum, r) => sum + r.item.sellValue, 0);
+    const sold = this.inventory.sellMany(ids);
+    this.junkArmed = false;
+    if (sold > 0) this.say(`Sold ${sold} items for ${this.compact(gold)} Gold.`);
+    this.rebuildTill();
+    this.buildJournal();
+    this.cdr.markForCheck();
+  }
+
+  private say(text: string): void {
+    this.notice = text;
+    this.announce = text;
+    if (this.noticeTimer) clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => {
+      this.notice = null;
+      this.cdr.markForCheck();
+    }, 5_000);
   }
 
   ngOnDestroy(): void {
     this.subs.unsubscribe();
     this.clearTimers();
+    if (this.noticeTimer) clearTimeout(this.noticeTimer);
     this.holdSpotlight(false);
   }
 
@@ -251,6 +439,16 @@ export class GamblerComponent implements OnInit, OnDestroy {
   // ── The open ───────────────────────────────────────────────────────────────
 
   open(box: MysteryBox): void {
+    this.openMany(box, 1);
+  }
+
+  /**
+   * Open `count` of the same box: `GamblerService.open` called that many times,
+   * exactly as one press calls it once. Stops at the first refusal (Gold, bag),
+   * keeping whatever already landed. Every pull goes on the strip; the altar
+   * reveals the rarest of them and says how many others came with it.
+   */
+  openMany(box: MysteryBox, count: number): void {
     if (!this.isBrowser || this.phase !== 'idle') return;
 
     // Held before the open: the item is banked inside it, and the discovery it
@@ -258,22 +456,31 @@ export class GamblerComponent implements OnInit, OnDestroy {
     this.holdSpotlight(true);
 
     // The outcome is decided, charged and saved here — before any theatre.
-    const outcome = this.gambler.open(box.id);
-    if (!outcome.ok) {
+    const pulls: OpenedBox[] = [];
+    let failure: OpenFailure | null = null;
+    for (let i = 0; i < Math.max(1, count); i++) {
+      const outcome = this.gambler.open(box.id);
+      if (!outcome.ok) { failure = outcome.code; break; }
+      pulls.push(outcome.result);
+      this.record(outcome.result);
+    }
+    if (!pulls.length) {
       this.holdSpotlight(false);
-      this.error = this.failureText(outcome.code, box);
+      this.error = this.failureText(failure ?? 'funds', box);
       this.cdr.markForCheck();
       return;
     }
+    const rank = (p: OpenedBox) => rarityRank(p.item.rarity) * 2 + (p.unique ? 1 : 0);
+    const best = pulls.reduce((top, p) => (rank(p) > rank(top) ? p : top));
 
     // The payload is attached before the first frame — see the header.
     this.error = null;
     this.active = box;
-    this.result = outcome.result;
-    this.record(outcome.result);
+    this.result = best;
+    this.extraPulls = pulls.length - 1;
 
     this.still = this.reducedMotion();
-    const timing = revealTiming(outcome.result.item.rarity, this.speed());
+    const timing = revealTiming(best.item.rarity, this.speed());
     this.timing = timing;
 
     if (timing.wagerMs + timing.chargeMs + timing.crackMs === 0) {
@@ -378,6 +585,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     this.phase = 'idle';
     this.active = null;
     this.result = null;
+    this.extraPulls = 0;
     this.timing = null;
     this.celebration.cancel();
     this.holdSpotlight(false);
