@@ -18,8 +18,8 @@ export interface PanelEntry {
   title: string;
   /** Small kicker above the heading. */
   kicker: string;
-  /** The standalone route, offered as "Open full page". */
-  route: string;
+  /** The standalone route, offered as "Open full page". Omitted for a place that exists only in the world (the vendor). */
+  route?: string;
   load: () => Promise<Type<unknown>>;
 }
 
@@ -37,4 +37,5 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelEntry>> = {
   arena: { title: 'The Arena', kicker: 'World', route: '/world/arena', load: () => import('../../pvp/pvp-arena.component').then(m => m.PvpArenaComponent) },
   trials: { title: 'The Trials', kicker: 'World', route: '/world/trials', load: () => import('../../arena/arena.component').then(m => m.ArenaComponent) },
   character: { title: 'Character', kicker: 'Keeper', route: '/character', load: () => import('../../forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent) },
+  vendor: { title: 'Material Vendor', kicker: 'Trade', load: () => import('../../shared/vendor/material-vendor.component').then(m => m.MaterialVendorComponent) },
 };

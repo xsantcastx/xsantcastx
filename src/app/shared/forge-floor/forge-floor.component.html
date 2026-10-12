@@ -7,14 +7,16 @@
 
     <!-- Stockpile -->
     <div class="ff-node ff-node--stock" data-node="stock">
-      <div class="ff-pile" aria-hidden="true">
-        @for (thing of stockView; track $index; let i = $index) {
-          @if (thing.art) {
-            <img class="ff-pile__icon" [style.--i]="i" [src]="thing.art.src" [attr.srcset]="thing.art.srcset"
-                 sizes="28px" alt="" width="28" height="28" loading="lazy" decoding="async" draggable="false">
+      @for (pulse of [stockPulse()]; track pulse) {
+        <div class="ff-pile" [class.is-received]="pulse > 0" aria-hidden="true">
+          @for (thing of stockView; track $index; let i = $index) {
+            @if (thing.art) {
+              <img class="ff-pile__icon" [style.--i]="i" [src]="thing.art.src" [attr.srcset]="thing.art.srcset"
+                   sizes="28px" alt="" width="28" height="28" loading="lazy" decoding="async" draggable="false">
+            }
           }
-        }
-      </div>
+        </div>
+      }
       <span class="ff-node__label">{{ t('forgeFloor.stockpile') }}</span>
     </div>
 
@@ -66,7 +68,7 @@
         }
       }
       @for (sprite of sprites(); track sprite.key) {
-        <span class="ff-sprite" [class.ff-sprite--feed]="sprite.kind === 'feed'" [class.ff-sprite--out]="sprite.kind === 'out'"
+        <span class="ff-sprite" [class.ff-sprite--feed]="sprite.kind === 'feed'" [class.ff-sprite--out]="sprite.kind === 'out'" [class.ff-sprite--in]="sprite.kind === 'in'"
               [style.--x0]="sprite.x0 + 'px'" [style.--y0]="sprite.y0 + 'px'"
               [style.--x1]="sprite.x1 + 'px'" [style.--y1]="sprite.y1 + 'px'"
               [style.--delay]="sprite.delay + 'ms'">

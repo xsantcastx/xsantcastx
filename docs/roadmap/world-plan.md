@@ -71,7 +71,7 @@ Sequential: everything after it plugs into its data model and panel host.
 - [x] Checked in a production build: `/play?at=crafting` opens the real Crafting Bench in-world (backdrop + hero suppressed, forge floor works); Escape closes and clears `?at`; Places lists all 8 stations; choosing the Waystone walks there and opens travel (4 towns "Not yet charted")
 - How Phase 2 adds content (data only): a town = `src/app/play/world/towns/<realm>.ts` exporting a `TownDef`, registered in `TOWNS`; a station = a `StationDef` (`kind: 'panel'` + `panel` id opens a page; a new page needs a `PanelId` + `PANEL_REGISTRY` row); a hunt = a `HuntZoneDef` reached by a passage `to`; monsters and `ZoneDropTable`s are data on the area or monster
 
-## Phase 2: Fan out `[~]` (started 2026-10-12, 6 agents)
+## Phase 2: Fan out `[x]` (2026-10-12)
 
 - [x] Luminous town **Heliograph Court**: Market; hunt Reflection Channels (Prism Forager → Luminous Prism, Sunbloom, Solar Resin = Aurumleaf Pendant) (`1948b55`)
 - [x] Umbral town **Nocturne Archive**: Gambler (reveal fills the panel), Exchange; hunt Unrecorded Corridors (Mirror Substitute → Umbral Ink, Nightbloom, Shadowthread Silk = Inkwell Talisman) (`1948b55`)
@@ -79,11 +79,11 @@ Sequential: everything after it plugs into its data model and panel host.
 - [x] Verdant town **Rootglass Canopy**: Sanctum, Quest Board, Arena gate, Trials gate (games fill the panel); hunt Rootglass Thicket (Rootglass Stag → Thornroot, Verdant Sap, World-Root Bark) (`1948b55`)
 - [x] Zone drop tables: every drop is a catalogued material a recipe uses (enforced by a test)
 - [x] Rarity beams, drop captions, pickup flights to the satchel (`378269a`)
-- [~] Material Vendor in Infernal: purchases fly to the forge stockpile (reuse the forge-floor flight)
+- [x] Material Vendor in Infernal: 9 expedition-only materials (6–12k Gold, priced so Exchange arbitrage is impossible — spec-checked); one button "Buy 4 Pyrite Dust · 24,000 Gold"; crate flies to the forge stockpile; checked: purchase debits Gold and the hint advances (`3c35881`)
 - [x] Per-creature rigs: Forager skitters, Leech undulates, Mirror Substitute sways in reflection, Stag lowers its head to charge (`378269a`); checked: Stags drawn with their own rig in Rootglass Thicket
 - [x] Engine side of gear on the Keeper: `setLoadout`, `setSatchelTarget` (`378269a`)
-- [~] Side-scroller wiring of `setLoadout` / satchel target (Infernal agent)
-- [~] In-game UI polish: HUD, satchel, panel transitions, focus returns to canvas (Infernal agent)
+- [x] Side-scroller wiring of `setLoadout` / satchel target / `clearPointer` (`3c35881`)
+- [x] In-game UI polish: compact HUD + satchel tally, station name cards, content-only panel transitions, "+N material" loot toasts, focus returns to the canvas, enemy bar names the creature (`3c35881`)
 
 ## Phase 3: World only
 
@@ -94,8 +94,9 @@ Sequential: everything after it plugs into its data model and panel host.
 
 ## Art direction: hybrid sprites
 
-- [~] Commission pack split into `world-sprites/` and `menu-paintings/`, with a **"make these first" A/B test set**: Keeper sheet (idle/run/attack), Rivet Maw sheet (idle/windup/strike), Infernal camp props
-- [~] Importer: `Assets/Sprites/...` family, pixel-exact sheets + sidecar JSON (frame size, count, actions)
+- [x] Commission pack `docs/art-commissions/`: 129 assets (61 world sprites, 68 menu paintings), prompt + negative + export spec + exact library path each; `00-first-test-set.md` = make these first (`ccb0de5`)
+- [x] Importer: lossless `Sprites/*` path + sidecar JSON → `sprite-manifest.generated.ts` / `spriteFor()`; see-through figures rejected; `--commissions` lists what's still missing; `ART_PENDING` auto-clears when art lands (`ccb0de5`)
+- [ ] **Owner:** approve names for 4 invented NPC roles (material vendor, croupier, exchange broker, expedition steward)
 - [ ] **Owner:** produce the test set and drop it in the library
 - [ ] Engine sprite-sheet renderer (per-action frames, hand anchors for weapon attachment), with the rig as fallback
 - [ ] A/B the test set in the Seamworks on a branch, then decide go / no-go for the full sprite pass
@@ -119,8 +120,6 @@ Sequential: everything after it plugs into its data model and panel host.
 
 | Work | Branch | Status |
 |---|---|---|
-| Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
-| Phase 2 · Infernal vendor + side-scroller UI | agent worktree | `[~]` |
 | Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
 
 ## Art still missing (placeholders in game)
@@ -137,7 +136,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
-- HUD enemy bar is labelled "Nearest Maw" in every hunt; should name the creature
+- Enemy bar names the creature by guessing from spawn positions; an `enemyName` on engine state would make mixed-creature hunts exact
 - **Initial bundle is AT the 2 MB hard limit** (2.00 MB; warn 1.85). The next eager addition fails the build and blocks deploys. Biggest eager modules: `lore.model.ts` 134 kB, `tools-registry.ts` 77 kB (retired tools product), `art-manifest.generated.ts` 64 kB, `equipment-panel` 44 kB. Towns are lazy and don't count
 - `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
 - New creatures still draw with the Rivet Maw rig until the engine-visuals branch lands
