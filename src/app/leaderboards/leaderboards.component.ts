@@ -55,6 +55,7 @@ import {
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { ART_REALMS, keeperAvatarArt, type ArtEntry } from '../shared/art/art';
+import { injectInWorldPanel } from '../shared/in-world-panel';
 
 /** One rendered row, with the break flag the table draws before it. */
 export interface WindowRow {
@@ -96,6 +97,13 @@ export class LeaderboardsComponent implements OnInit, OnDestroy {
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
   private readonly cdr = inject(ChangeDetectorRef);
+  /**
+   * Inside the /play panel (the Celestial town's Leaderboards board) the
+   * ActivatedRoute is /play's, so the tab stays local: no `?board=` read from
+   * /play's query string and no URL rewrite on select. The full-page header
+   * copy, doorways and related links are dropped too — the panel names the place.
+   */
+  protected readonly inWorld = injectInWorldPanel();
 
   private readonly subs = new Subscription();
 
@@ -131,7 +139,7 @@ export class LeaderboardsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // The tab is read from the query string on the server too, so a shared
     // `?board=gold` link prerenders with that tab already selected.
-    this.subs.add(this.route.queryParamMap.subscribe(params => {
+    if (!this.inWorld) this.subs.add(this.route.queryParamMap.subscribe(params => {
       const requested = params.get('board') as LeaderboardId | null;
       if (requested && LEADERBOARD_CATEGORIES.some(c => c.id === requested)) {
         this.active = requested;
@@ -193,7 +201,7 @@ export class LeaderboardsComponent implements OnInit, OnDestroy {
   select(id: LeaderboardId): void {
     this.active = id;
     this.cdr.markForCheck();
-    if (!this.isBrowser) return;
+    if (!this.isBrowser || this.inWorld) return;
     // Replaced rather than pushed: seven tabs on one page should not fill the
     // back button with the visitor's own browsing of them.
     void this.router.navigate([], {

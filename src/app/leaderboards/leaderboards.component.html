@@ -1,10 +1,12 @@
-<section class="lb" aria-labelledby="lb-title">
+<section class="lb" [class.lb--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'lb-title'" [attr.aria-label]="inWorld ? t('leaderboards.title') : null">
 
   <!-- ── Header ────────────────────────────────────────────────────────── -->
   <header class="lb-head">
+    @if (!inWorld) {
     <p class="lb-eyebrow"><span class="lb-eyebrow__pulse" aria-hidden="true"></span>{{ t('leaderboards.eyebrow') }}</p>
     <h1 class="lb-title" id="lb-title">{{ t('leaderboards.title') }}</h1>
     <p class="lb-tagline">{{ t('leaderboards.tagline') }}</p>
+    }
     <p class="lb-honesty">{{ t('leaderboards.honesty') }}</p>
   </header>
 
@@ -94,15 +96,19 @@
   </div>
 
   <!-- ── Doorways ──────────────────────────────────────────────────────── -->
+  @if (!inWorld) {
   <nav class="lb-doors" [attr.aria-label]="t('leaderboards.doorsLabel')">
     <a routerLink="/world/arena" class="lb-door">{{ t('leaderboards.door.arena') }}</a>
     <a routerLink="/character" class="lb-door">{{ t('leaderboards.door.character') }}</a>
     <a routerLink="/codex" class="lb-door">{{ t('leaderboards.door.codex') }}</a>
   </nav>
+  }
 </section>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/leaderboards"></app-related-pages>
+}
