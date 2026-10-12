@@ -170,7 +170,7 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, Ember Delve, Homestead, Economy spec (docs only). Handoff notes for each are in `docs/handoff/`. Initial bundle 1.70 MB. Nothing is in flight.
 
 **Next session starts here:**
-0. **Cache-bust the solid Keeper**: live serves the fixed image (83% opaque), but browsers that saw the ghost keep it up to 7 days (same filename, `max-age=604800`). Give `SOLIDIFY` outputs a new filename (or versioned name) in `scripts/import-assets.py` so every client refetches. Owner saw the ghost on 2026-10-12; a hard refresh fixes it locally.
+0. ~~Cache-bust the solid Keeper~~ done: SOLIDIFY outputs publish as `-solid` filenames, so every browser refetches
 1. **Owner review of the economy spec** (`docs/economy/rebalance-spec.md`): price scaling ×1.25 → ×1.15, first paid purchase 2m01s → 4s, 3 → 44 purchases in the first 10 min, rune strike 10k → 600 (all sinks ×0.06), prestige at 10T with cube-root shards. Open TODOs: item Gold/s conversion, veteran shard cap, migration fixture specs. Then implement as one change with a versioned save migration.
 2. Convert the other 10 menus with the station kit (`src/app/shared/station-ui/README.md`).
 3. Delve: persist dug state; ~~XP for roots/cache/walls~~ done: every node trains its own skill (rock Mining, roots Foraging, petrified trunks Woodcutting, walls/caches Delving); reconcile lantern-radius units (skills = tiles, engine = its own); header and enemy bar should say "Ember Delve".
@@ -206,7 +206,6 @@ filename the importer picks up automatically.
 - The Infernal town is 900px wider, so for a while after deploy, peers on an older client appear ~900px off east of the forge
 - Gambler / rune-forge fixed overlays inside panels not yet exercised in-world (the gambler moves in-world with the Umbral town)
 - Paper-doll gear sockets are small on phones (~17% of the doll); the equip/unequip flight and swap haven't been watched in motion yet
-- Returning visitors may see the old ghostly Keeper for up to 7 days (image cache, same filename)
 - Rig unverified in motion on mobile, high-DPR seams, Safari rim light (the test browser pane runs hidden, so the loop doesn't advance)
 - "Daily Tool Generation Pipeline" workflow failing on main (pre-existing, unrelated)
 
