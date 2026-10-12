@@ -56,4 +56,19 @@ describe('paper doll manifest', () => {
       .map(slot => slot.slotId);
     expect(overCentre.sort()).toEqual(['feet', 'head']);
   });
+
+  /* Worn art sits on the figure, inside it, and the held items at the hands. */
+  it('anchors every live slot on the figure', () => {
+    for (const slot of PAPER_DOLL_SLOTS.filter(row => row.liveSlot)) {
+      expect(slot.anchor).withContext(slot.slotId).toBeDefined();
+      expect(slot.anchor!.x).toBeGreaterThanOrEqual(15);
+      expect(slot.anchor!.x).toBeLessThanOrEqual(85);
+      expect(slot.anchor!.y).toBeGreaterThanOrEqual(0);
+      expect(slot.anchor!.y).toBeLessThanOrEqual(100);
+    }
+    const weapon = PAPER_DOLL_SLOTS.find(row => row.slotId === 'weapon')!.anchor!;
+    const offHand = PAPER_DOLL_SLOTS.find(row => row.slotId === 'off-hand')!.anchor!;
+    expect(weapon.x).toBeLessThan(50);
+    expect(offHand.x).toBeGreaterThan(50);
+  });
 });

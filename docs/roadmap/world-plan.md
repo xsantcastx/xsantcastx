@@ -52,6 +52,7 @@ world — and every system visible while it works.
 - [x] Library art: 32 images, keeper avatars in header + leaderboards, Codex Bestiary (`9803216`)
 - [x] Mesh-deformation rig for the Keeper and Rivet Maw (`729dd9e`)
 - [x] Keeper painting solid instead of ghostly (`05e3910`)
+- [x] Character build: worn gear in sockets on the doll (hood, hands), equip fly-in / unequip drop animation, Build archetype card (Vanguard, Treasure Seeker, Forgewright, Bulwark, Lorekeeper, Wanderer) (`b8ced0b`)
 
 ---
 
@@ -99,7 +100,6 @@ Sequential: everything after it plugs into its data model and panel host.
 | Work | Branch | Status |
 |---|---|---|
 | Phase 1 world foundation | agent worktree (pending report) | `[~]` |
-| Character build: gear on the doll, equip fly-in animation, build archetype card | agent worktree (pending report) | `[~]` |
 | Missing-art commission pack: prompts + exact library filenames for every placeholder; importer auto-wires them | agent worktree (pending report) | `[~]` |
 
 ## Art still missing (placeholders in game)
@@ -116,6 +116,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- Paper-doll gear sockets are small on phones (~17% of the doll); the equip/unequip flight and swap haven't been watched in motion yet
 - Returning visitors may see the old ghostly Keeper for up to 7 days (image cache, same filename)
 - Rig unverified in motion on mobile, high-DPR seams, Safari rim light (the test browser pane runs hidden, so the loop doesn't advance)
 - Initial bundle is ~113 kB over its warning budget (pre-existing)
