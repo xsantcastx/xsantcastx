@@ -81,7 +81,7 @@ const ROLL_MS = 420;
        [attr.aria-label]="label">
 
       <img class="gfpill__icon gf-icon currency-icon"
-           src="assets/icons/currencies/gold.png" alt="" aria-hidden="true"
+           src="assets/icons/currencies/gold.webp" alt="" aria-hidden="true"
            width="14" height="14" decoding="async" draggable="false">
 
       <!-- The count. Hidden from assistive tech: it is a decorative

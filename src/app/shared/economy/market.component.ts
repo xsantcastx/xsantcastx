@@ -209,7 +209,7 @@ type ItemState = 'buy' | 'locked' | 'held' | 'owned' | 'running';
 /** The shelf mark: a library import first, then the older shops sprite. */
 function categoryMark(c: { icon?: string; mark?: string }): string | null {
   if (c.mark) return artFor(c.mark)?.src ?? null;
-  return c.icon ? `assets/icons/shops/${c.icon}.png` : null;
+  return c.icon ? `assets/icons/shops/${c.icon}.webp` : null;
 }
 
 /**
