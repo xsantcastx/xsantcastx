@@ -891,3 +891,6 @@
    containing block for the section's max-width. Every other routed hall gets
    this from its own wrapper; this one states it. */
 :host { display: block; }
+/* `animation: none`, not just `transform: none`: a filled animation outranks a
+   plain declaration, so the transform would otherwise stay. */
+:host(.gb-host--revealing) { animation: none; transform: none; position: relative; z-index: var(--z-modal); }
