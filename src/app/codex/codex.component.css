@@ -1193,6 +1193,23 @@
   color: var(--gold-core);
 }
 
+/* ── Delve Inscriptions (Lore tab) — same parchment voice as the scrolls. */
+.cx-inscriptions__hd { margin-top: 2.5rem; }
+.cx-inscriptions {
+  list-style: none; margin: 0; padding: 0;
+  display: grid; gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+}
+.cx-inscription {
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(200, 152, 104, 0.25);
+  border-radius: 10px;
+  background: rgba(10, 6, 26, 0.55);
+}
+.cx-inscription--locked { opacity: 0.55; }
+.cx-inscription__title { margin: 0 0 0.35rem; font: 700 0.82rem/1.3 'Orbitron', system-ui, sans-serif; color: rgb(200, 152, 104); }
+.cx-inscription__text { margin: 0; font: 400 0.88rem/1.6 Georgia, 'Times New Roman', serif; color: rgb(205, 198, 184); }
+
 @media (max-width: 640px) {
   /* The badge is the first thing to go — the tier is also readable from the
      number's colour, and the title needs the width more. */

@@ -22,6 +22,7 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { NPC_KEY, NpcQuestService } from './npc-quest.service';
 import { NPC_CHAINS } from './npc-quest.model';
+import { DelveLoreService } from '../delve/delve-lore.service';
 
 /** The world, as a plain object every stub reads from. */
 interface World {
@@ -55,6 +56,9 @@ describe('NpcQuestService', () => {
   let xpSnapshot$: BehaviorSubject<unknown>;
   let board$: BehaviorSubject<unknown>;
   let svc: NpcQuestService;
+  let stacks$: BehaviorSubject<Record<string, number>>;
+  let inscribed$: BehaviorSubject<ReadonlySet<string>>;
+  let consumed: Set<string>;
   /** The rehydrate hook cloud save calls after a merge. Captured on register. */
   let rehydrate: () => void;
 
@@ -64,6 +68,9 @@ describe('NpcQuestService', () => {
     paid = { gold: [], xp: [], titles: [], cosmetics: [], achievements: [], items: [] };
     xpSnapshot$ = new BehaviorSubject<unknown>({ level: { level: 1 } });
     board$ = new BehaviorSubject<unknown>({ totalCompleted: 0 });
+    stacks$ = new BehaviorSubject<Record<string, number>>({});
+    inscribed$ = new BehaviorSubject<ReadonlySet<string>>(new Set());
+    consumed = new Set();
 
     TestBed.configureTestingModule({
       providers: [
@@ -127,7 +134,23 @@ describe('NpcQuestService', () => {
             get count() { return w.items; },
             hasRarity: (r: string) => w.rarities.has(r),
             add: (i: { definitionId?: string }) => { paid.items.push(i.definitionId ?? '?'); return i; },
+            init: () => undefined,
+            snapshot$: stacks$,
+            stackOf: (id: string) => stacks$.value[id] ?? 0,
+            consumeStacks: (mutationId: string, inputs: { id: string; count: number }[]) => {
+              if (consumed.has(mutationId)) return { ok: true, replayed: true };
+              if (inputs.some(i => (stacks$.value[i.id] ?? 0) < i.count)) return { ok: false, code: 'missing' };
+              consumed.add(mutationId);
+              const next = { ...stacks$.value };
+              for (const i of inputs) next[i.id] -= i.count;
+              stacks$.next(next);
+              return { ok: true, replayed: false };
+            },
           },
+        },
+        {
+          provide: DelveLoreService,
+          useValue: { inscription$: inscribed$, inscriptions: () => inscribed$.value },
         },
         { provide: CollectionService, useValue: { get completion() { return { found: w.collection, total: 100, percent: 0 }; } } },
         { provide: EasterEggService, useValue: { get foundCount() { return w.eggs; } } },
@@ -294,5 +317,54 @@ describe('NpcQuestService', () => {
     svc.reset();
     expect(svc.chains['kael'].done).toBe(0);
     expect(store.has(NPC_KEY)).toBe(false);
+  });
+
+  describe('Delve missions', () => {
+    const mission = (id: string) => svc.missions.find(m => m.mission.id === id)!;
+
+    it('consumes the delivery, pays once, and unlocks the recipe', () => {
+      expect(svc.isRecipeUnlocked('craft-nullthorn-staff')).toBe(false);
+      stacks$.next({ 'shadow-root-cutting': 4 });
+      expect(mission('delve-verrin-shadow').turnInReady).toBe(true);
+      expect(svc.claimMission('delve-verrin-shadow')).toBe(true);
+      expect(stacks$.value['shadow-root-cutting']).toBe(1);
+      expect(paid.gold).toEqual([20_000]);
+      expect(svc.isRecipeUnlocked('craft-nullthorn-staff')).toBe(true);
+      // Claimed is claimed: no second payout even with cuttings in the bag.
+      stacks$.next({ 'shadow-root-cutting': 9 });
+      expect(svc.claimMission('delve-verrin-shadow')).toBe(false);
+      expect(paid.gold.length).toBe(1);
+      expect(JSON.parse(store.get(NPC_KEY)!).claimed).toContain('delve-verrin-shadow');
+    });
+
+    it('refuses a short delivery', () => {
+      stacks$.next({ 'slag-fragment': 40 });
+      expect(svc.claimMission('delve-kael-seam')).toBe(false);
+      expect(mission('delve-kael-seam').nextStep).toContain('1 more');
+    });
+
+    it('lets the glowcap order repeat, counting each fill', () => {
+      stacks$.next({ glowcap: 10 });
+      expect(svc.claimMission('delve-merchant-glowcaps')).toBe(true);
+      expect(svc.claimMission('delve-merchant-glowcaps')).toBe(true);
+      expect(svc.claimMission('delve-merchant-glowcaps')).toBe(false);
+      expect(mission('delve-merchant-glowcaps').timesDone).toBe(2);
+      expect(JSON.parse(store.get(NPC_KEY)!).repeats).toEqual({ 'delve-merchant-glowcaps': 2 });
+    });
+
+    it('keeps the Fracture locked until the other three are done', () => {
+      stacks$.next({ 'godforge-fragment': 1 });
+      expect(mission('delve-fracture').locked).toBe(true);
+      expect(svc.claimMission('delve-fracture')).toBe(false);
+    });
+
+    it('reads the Archivist milestones off copied inscriptions', () => {
+      inscribed$.next(new Set(['roots-tally', 'basalt-oath', 'magma-warden']));
+      expect(mission('delve-archivist-words-1').turnInReady).toBe(true);
+      expect(mission('delve-archivist-words-2').locked).toBe(true);
+      expect(svc.claimMission('delve-archivist-words-1')).toBe(true);
+      expect(mission('delve-archivist-words-2').locked).toBe(false);
+      expect(mission('delve-archivist-words-2').observed).toBe(3);
+    });
   });
 });
