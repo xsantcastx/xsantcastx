@@ -1,279 +1,59 @@
+<!--
+  codex.component.html — the Codex, on the station kit (shared/station-ui;
+  MapleStory journal anatomy).
+
+  First screen: title, tabs, the FOUND strip and a journal — every fragment
+  (or scroll, inscription, secret, socket word) as a row, the picked one on the
+  right with its clue or its text. Collection, Rank and Ladder keep their own
+  panels. Hero copy, the stat bar, filters and section blurbs: Details.
+
+  Every panel stays in the DOM behind `[hidden]` rather than `@if`: /codex is
+  prerendered and `?tab=` never reaches the static file.
+-->
 <div class="cx-page" [class.cx-page--in-world]="inWorld">
+<app-station-shell class="cx-station"
+                   [title]="t('codex.title')"
+                   [showTitle]="!inWorld"
+                   [detailsHint]="t('codex.details.hint')"
+                   [(detailsOpen)]="detailsOpen">
 
-  <!-- ═══ Hero ═══════════════════════════════════════════════════════════ -->
-  <header class="cx-hero">
-    @if (!inWorld) {
-    <p class="cx-eyebrow">
-      <span class="cx-eyebrow__pulse" aria-hidden="true"></span>
-      The Ancient Record
-    </p>
-    <!-- No `.section-title` / `.hp-hero__title` here: those classes opt an
-         element into the cosmic engine's type-on system, which splits the
-         heading into per-char spans and breaks the background-clip gradient. -->
-    <h1 class="cx-hero__title">The Codex</h1>
-    <p class="cx-hero__sub">
-      Everything the Godforge is keeping from you, and everything it has already
-      given up. Fragments, ranks, lore and secrets — the whole record, in one
-      place, kept honestly.
-    </p>
-    <p class="cx-tagline">the Godforge remembers every secret you have found — and every one you have not</p>
-    <p class="cx-hero__sub">The record of what you have found. The bag lives on Character. Crafting lives at the Forge.</p>
-    <p class="cx-hero__sub"><a routerLink="/forge/runes">Open the Forge →</a></p>
-    }
+  <app-station-tabs stationTabs [tabs]="stationTabs" [active]="activeTab" (activeChange)="pickTab($event)" [label]="t('codex.tabs')" />
 
-    <!-- Headline completion bar -->
-    <div class="cx-hero__meter" [style.--tier]="progressRarity.color" [style.--tier-glow]="progressRarity.glow">
-      <p class="cx-hero__meter-head">
-        <span class="cx-hero__meter-count">{{ foundAchievements }} / {{ totalAchievements }}</span>
-        <span class="cx-hero__meter-label">Fragments Discovered</span>
-      </p>
-      <span class="cx-hero__meter-track" aria-hidden="true">
-        <span class="cx-hero__meter-fill" [style.width.%]="achievementPercent"></span>
-      </span>
-      <p class="cx-hero__meter-foot">
-        <span class="cx-hero__meter-badge">{{ progressRarity.label }}</span>
-        <span>{{ progressRarity.flavour }}</span>
-      </p>
-    </div>
-  </header>
+  <app-skill-strip stationSkill
+    [level]="null"
+    [title]="t('codex.found')"
+    [progress]="achievementPercent / 100"
+    [progressLabel]="stripLabel"
+    [hint]="t('codex.hint')" />
 
-  <!-- ═══ Tab navigation ═════════════════════════════════════════════════ -->
-  <nav class="cx-tabs" role="tablist" aria-label="Codex sections">
-    @for (tab of tabs; track tab.key) {
-      <button
-        type="button"
-        role="tab"
-        class="cx-tab"
-        [class.is-active]="activeTab === tab.key"
-        [id]="'cx-tab-' + tab.key"
-        [attr.aria-selected]="activeTab === tab.key"
-        [attr.aria-controls]="'cx-panel-' + tab.key"
-        [attr.title]="tab.hint"
-        (click)="selectTab(tab.key)">
-        <span class="cx-tab__icon" aria-hidden="true">{{ tab.icon }}</span>
-        <span class="cx-tab__label">{{ tab.label }}</span>
-      </button>
-    }
-  </nav>
-
-
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       Panel 1 — Achievements
-  ═══════════════════════════════════════════════════════════════════════ -->
+  <div stationHero class="cx-hero2">
   <section
     class="cx-panel"
     role="tabpanel"
     id="cx-panel-achievements"
-    aria-labelledby="cx-tab-achievements"
+    [attr.aria-label]="t('codex.tab.achievements')"
     [hidden]="activeTab !== 'achievements'">
-
-    <!-- ── Wall stats ─────────────────────────────────────────────────── -->
-    <div class="cx-statbar">
-      <div class="cx-stat">
-        <span class="cx-stat__num">{{ foundAchievements }}</span>
-        <span class="cx-stat__label">Fragments held</span>
-      </div>
-      <div class="cx-stat">
-        <span class="cx-stat__num">{{ totalAchievements - foundAchievements }}</span>
-        <span class="cx-stat__label">Still hidden</span>
-      </div>
-      <div class="cx-stat">
-        <span class="cx-stat__num">{{ earnedXp | number }}</span>
-        <span class="cx-stat__label">XP from discovery</span>
-      </div>
-      <div class="cx-stat">
-        @if (rarestFound) {
-          <span class="cx-stat__num cx-stat__num--sm" [style.color]="rarestFound.rarity.color">
-            {{ rarestFound.name }}
-          </span>
-          <span class="cx-stat__label">Rarest find — {{ rarestFound.rarity.label }}</span>
-        } @else {
-          <span class="cx-stat__num cx-stat__num--sm cx-stat__num--muted">nothing yet</span>
-          <span class="cx-stat__label">Rarest find</span>
+    <app-station-journal>
+      <app-journal-list journalList [rows]="journal('achievements').rows" [selected]="entry('achievements')?.id ?? null"
+                        [label]="t('codex.list')" [empty]="t('codex.empty')" (pick)="pickEntry('achievements', $event)" />
+      <div journalDetail class="cx-detail">
+        @if (entry('achievements'); as e) {
+          <app-detail-head [name]="e.name" [line]="e.line" />
+          @if (e.facts.length) {
+            <dl class="cx-facts">
+              @for (f of e.facts; track f.label) {
+                <div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div>
+              }
+            </dl>
+          }
+          @for (para of e.body; track $index) {
+            <p class="cx-body" [class.cx-body--sealed]="!e.found">{{ para }}</p>
+          }
+          @if (e.note) { <p class="cx-note">{{ e.note }}</p> }
         }
       </div>
-    </div>
-
-    <!-- ── Filters ────────────────────────────────────────────────────── -->
-    <div class="cx-filters">
-
-      <div class="cx-filter-row">
-        <span class="cx-filter-row__label">Realm</span>
-        <div class="cx-chips">
-          <button type="button" class="cx-chip" [class.is-on]="categoryFilter === 'all'"
-                  (click)="categoryFilter = 'all'">
-            All <span class="cx-chip__count">{{ totalAchievements }}</span>
-          </button>
-          @for (cat of categories; track cat.id) {
-            <button
-              type="button"
-              class="cx-chip"
-              [class.is-on]="categoryFilter === cat.id"
-              [style.--chip]="cat.color"
-              [style.--chip-glow]="cat.glow"
-              [attr.title]="cat.blurb"
-              (click)="categoryFilter = cat.id">
-              @if (cat.art) {
-                <img class="cx-cat-icon gf-icon realm-sigil" [src]="cat.icon" alt="" aria-hidden="true"
-                     width="18" height="18" loading="lazy" decoding="async" draggable="false">
-              } @else {
-                <span aria-hidden="true">{{ cat.icon }}</span>
-              } {{ cat.label }}
-              <span class="cx-chip__count">{{ categoryCount(cat.id).found }}/{{ categoryCount(cat.id).total }}</span>
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="cx-filter-row">
-        <span class="cx-filter-row__label">Rarity</span>
-        <div class="cx-chips">
-          <button type="button" class="cx-chip" [class.is-on]="rarityFilter === 'all'"
-                  (click)="rarityFilter = 'all'">All</button>
-          @for (tier of rarityOrder; track tier) {
-            @if (tierCount(tier).total > 0) {
-              <button
-                type="button"
-                class="cx-chip"
-                [class.is-on]="rarityFilter === tier"
-                [style.--chip]="rarities[tier].color"
-                [style.--chip-glow]="rarities[tier].glow"
-                [attr.title]="rarities[tier].flavour"
-                (click)="rarityFilter = tier">
-                {{ rarities[tier].label }}
-                <span class="cx-chip__count">{{ tierCount(tier).found }}/{{ tierCount(tier).total }}</span>
-              </button>
-            }
-          }
-        </div>
-      </div>
-
-      <div class="cx-filter-row cx-filter-row--split">
-        <div class="cx-filter-group">
-          <span class="cx-filter-row__label">Status</span>
-          <div class="cx-chips">
-            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'all'"
-                    (click)="statusFilter = 'all'">All</button>
-            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'unlocked'"
-                    (click)="statusFilter = 'unlocked'">Discovered</button>
-            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'locked'"
-                    (click)="statusFilter = 'locked'">Undiscovered</button>
-          </div>
-        </div>
-
-        <div class="cx-filter-group">
-          <label class="cx-filter-row__label" for="cx-sort">Sort</label>
-          <select id="cx-sort" class="cx-select" [(ngModel)]="sort">
-            <option value="rarity">{{ sortLabels['rarity'] }}</option>
-            <option value="recent">{{ sortLabels['recent'] }}</option>
-            <option value="alpha">{{ sortLabels['alpha'] }}</option>
-            <option value="category">{{ sortLabels['category'] }}</option>
-          </select>
-        </div>
-
-        <div class="cx-filter-group cx-filter-group--grow">
-          <label class="cx-visually-hidden" for="cx-search">Search the wall</label>
-          <input
-            id="cx-search"
-            type="search"
-            class="cx-search"
-            placeholder="Search names and hints…"
-            [(ngModel)]="search" />
-        </div>
-
-        @if (hasActiveFilters) {
-          <button type="button" class="cx-clear" (click)="clearFilters()">Clear</button>
-        }
-      </div>
-    </div>
-
-    <!-- ── The wall ───────────────────────────────────────────────────── -->
-    @for (section of sections; track section.category.id + section.items.length) {
-      <div class="cx-section" [style.--realm]="section.category.color" [style.--realm-glow]="section.category.glow">
-        <div class="cx-section__hd">
-          <h2 class="cx-section__title">
-            @if (section.category.art) {
-              <img class="cx-cat-icon cx-cat-icon--lg gf-icon realm-sigil" [src]="section.category.icon"
-                   alt="" aria-hidden="true" width="26" height="26"
-                   loading="lazy" decoding="async" draggable="false">
-            } @else {
-              <span aria-hidden="true">{{ section.category.icon }}</span>
-            }
-            {{ section.category.label }}
-          </h2>
-          <span class="cx-section__count">{{ section.found }} / {{ section.items.length }}</span>
-        </div>
-        @if (section.category.blurb) {
-          <p class="cx-section__blurb">{{ section.category.blurb }}</p>
-        }
-
-        <div class="cx-grid">
-          @for (a of section.items; track a.id) {
-            <article
-              class="cx-card"
-              [class.cx-card--locked]="!a.unlocked"
-              [attr.data-tier]="a.tier"
-              [style.--tier]="a.rarity.color"
-              [style.--tier-glow]="a.rarity.glow">
-
-              <div class="cx-card__icon" aria-hidden="true">
-                @if (a.unlocked) {
-                  <span class="cx-card__glyph">{{ a.icon }}</span>
-                } @else {
-                  <span class="cx-card__glyph cx-card__glyph--shadow">{{ a.icon }}</span>
-                }
-              </div>
-
-              <div class="cx-card__body">
-                <p class="cx-card__meta">
-                  <img class="cx-card__tier-icon gf-icon" [ngClass]="'rarity-' + a.rarity.id"
-                       [src]="a.rarity.icon" alt="" aria-hidden="true"
-                       width="18" height="18" loading="lazy" decoding="async" draggable="false">
-                  <span class="cx-card__badge">{{ a.rarity.label }}</span>
-                  <span class="cx-card__realm">
-                    @if (a.category.art) {
-                      <img class="cx-cat-icon gf-icon realm-sigil" [src]="a.category.icon" alt="" aria-hidden="true"
-                           width="15" height="15" loading="lazy" decoding="async" draggable="false">
-                    } @else {
-                      <span aria-hidden="true">{{ a.category.icon }}</span>
-                    } {{ a.category.label }}
-                  </span>
-                </p>
-
-                <h3 class="cx-card__name">{{ a.unlocked ? a.name : '???' }}</h3>
-
-                @if (a.unlocked) {
-                  <p class="cx-card__desc">{{ a.description }}</p>
-                  <p class="cx-card__flavour">{{ a.rarity.flavour }}</p>
-                  <p class="cx-card__foot">
-                    <span class="cx-card__date">{{ formatDate(a.unlockedAt) }}</span>
-                    <span class="cx-card__xp">+{{ a.xp }} XP</span>
-                  </p>
-                  @if (a.gate) {
-                    <p class="cx-card__gate">🔗 unchains <a routerLink="/world/trials">{{ a.gate }}</a></p>
-                  }
-                } @else {
-                  <!-- The hint, not the description. The description is the
-                       answer written out; showing it would turn the wall into
-                       a checklist. -->
-                  <p class="cx-card__hint">{{ a.hint }}</p>
-                  @if (a.gate) {
-                    <p class="cx-card__gate cx-card__gate--locked">🔒 holds a gate in the Arena</p>
-                  }
-                }
-              </div>
-            </article>
-          }
-        </div>
-      </div>
-    } @empty {
-      <p class="cx-empty">
-        Nothing matches that. The realm is large but it is not infinite —
-        <button type="button" class="cx-linkbtn" (click)="clearFilters()">clear the filters</button>.
-      </p>
-    }
+    </app-station-journal>
   </section>
-
 
   <!-- ═══════════════════════════════════════════════════════════════════════
        Panel 2 — Collection Log
@@ -289,7 +69,7 @@
     class="cx-panel"
     role="tabpanel"
     id="cx-panel-collection"
-    aria-labelledby="cx-tab-collection"
+    [attr.aria-label]="t('codex.tab.collection')"
     [hidden]="activeTab !== 'collection'">
     <app-collection-log></app-collection-log>
 
@@ -336,7 +116,7 @@
     class="cx-panel"
     role="tabpanel"
     id="cx-panel-progression"
-    aria-labelledby="cx-tab-progression"
+    [attr.aria-label]="t('codex.tab.progression')"
     [hidden]="activeTab !== 'progression'">
 
     <!-- ── Rank ───────────────────────────────────────────────────────── -->
@@ -484,244 +264,61 @@
   </section>
 
 
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       Panel 4 — Lore Scrolls
-
-       Every fragment the Rune Forge turns up. Rendered sealed on the server —
-       `buildScrolls()` gates on `hydrated` like every other builder here — so
-       the five shelves and twenty-five slots are in the prerendered HTML and
-       hydration only fills in what has been found.
-  ═══════════════════════════════════════════════════════════════════════ -->
   <section
     class="cx-panel"
     role="tabpanel"
     id="cx-panel-scrolls"
-    aria-labelledby="cx-tab-scrolls"
+    [attr.aria-label]="t('codex.tab.scrolls')"
     [hidden]="activeTab !== 'scrolls'">
-
-    <div class="cx-secrets__hd">
-      <h2 class="cx-secrets__count">{{ scrollsFound }} of {{ scrollsTotal }} fragments recovered</h2>
-      <p class="cx-secrets__blurb">
-        The codex is not written; it is dug up. Every fragment here came off the
-        anvil alongside a rune, and the better the rune the likelier the page.
-        One of them has never come up for anything but the Void.
-      </p>
-    </div>
-
-    @for (shelf of scrollShelves; track shelf.chapter.id) {
-      <!-- `--realm` drives the shared section heading and rule. Gold rather
-           than the default violet, so the chapter headers belong to the
-           parchment below them instead of to the neon above. -->
-      <div class="cx-section cx-section--scrolls" style="--realm: #c89868; --realm-glow: rgba(200, 152, 104, 0.6)">
-        <div class="cx-section__hd">
-          <h3 class="cx-section__title">
-            <span aria-hidden="true">📜</span>
-            {{ shelf.chapter.name }}
-          </h3>
-          <span class="cx-section__count">{{ shelf.found }} / {{ shelf.cards.length }}</span>
-        </div>
-        <p class="cx-section__blurb">
-          {{ shelf.found > 0 ? shelf.chapter.epigraph : shelf.chapter.hint }}
-        </p>
-
-        <div class="cx-scrolls">
-          @for (card of shelf.cards; track card.scroll.id) {
-            <article
-              class="cx-scroll"
-              [class.cx-scroll--locked]="!card.found"
-              [class.cx-scroll--open]="openScroll === card.scroll.id"
-              [style.--tier]="card.rarity.color"
-              [style.--tier-glow]="card.rarity.glow">
-
-              <button
-                type="button"
-                class="cx-scroll__hd"
-                [disabled]="!card.found"
-                [attr.aria-expanded]="card.found ? openScroll === card.scroll.id : null"
-                (click)="toggleScroll(card)">
-
-                <span class="cx-scroll__num">{{ card.scroll.partNumber }}</span>
-
-                <span class="cx-scroll__names">
-                  <span class="cx-scroll__title">
-                    {{ card.found ? card.scroll.subtitle : '???' }}
-                    @if (card.unread) {
-                      <span class="cx-scroll__dot" aria-label="unread"></span>
-                    }
-                  </span>
-                  <span class="cx-scroll__sub">{{ card.scroll.title }}</span>
-                </span>
-
-                <span class="cx-scroll__badge">{{ card.rarity.label }}</span>
-              </button>
-
-              @if (card.found && openScroll === card.scroll.id) {
-                <div class="cx-scroll__body">
-                  @for (para of card.paragraphs; track $index) {
-                    <p class="cx-scroll__para">{{ para }}</p>
-                  }
-                  <p class="cx-scroll__found">Recovered {{ formatDate(card.at) }}</p>
-                </div>
+    <app-station-journal>
+      <app-journal-list journalList [rows]="journal('scrolls').rows" [selected]="entry('scrolls')?.id ?? null"
+                        [label]="t('codex.list')" [empty]="t('codex.empty')" (pick)="pickEntry('scrolls', $event)" />
+      <div journalDetail class="cx-detail">
+        @if (entry('scrolls'); as e) {
+          <app-detail-head [name]="e.name" [line]="e.line" />
+          @if (e.facts.length) {
+            <dl class="cx-facts">
+              @for (f of e.facts; track f.label) {
+                <div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div>
               }
-            </article>
+            </dl>
           }
-        </div>
-      </div>
-    }
-
-    @if (scrollsFound === 0) {
-      <p class="cx-scrolls__empty">
-        Nothing recovered yet. The scrolls come off the anvil —
-        <a routerLink="/forge/runes">strike it</a> and the codex fills in.
-      </p>
-    }
-
-    <!-- Delve Inscriptions: carved in the walls of the Ember Delve, copied by
-         walking up to them. Sealed until copied; the text is never shown early. -->
-    <div class="cx-secrets__hd cx-inscriptions__hd">
-      <h2 class="cx-secrets__count">Delve Inscriptions: {{ inscriptionsFound }} of {{ inscriptionsTotal }} copied</h2>
-      <p class="cx-secrets__blurb">Words cut into the rock on the way down the fracture. Find them in the Ember Delve to copy them here.</p>
-    </div>
-    @for (shelf of inscriptionShelves; track shelf.name) {
-      <div class="cx-section cx-section--scrolls" style="--realm: #c89868; --realm-glow: rgba(200, 152, 104, 0.6)">
-        <div class="cx-section__hd">
-          <h3 class="cx-section__title">{{ shelf.name }}</h3>
-          <span class="cx-section__count">{{ shelf.found }} / {{ shelf.cards.length }}</span>
-        </div>
-        <ul class="cx-inscriptions">
-          @for (card of shelf.cards; track card.id) {
-            <li class="cx-inscription" [class.cx-inscription--locked]="!card.found">
-              @if (card.found) {
-                <p class="cx-inscription__title">{{ card.title }}</p>
-                <p class="cx-inscription__text">{{ card.text }}</p>
-              } @else {
-                <p class="cx-inscription__title">Not yet copied</p>
-                <p class="cx-inscription__text">Somewhere in the {{ shelf.name }}.</p>
-              }
-            </li>
+          @for (para of e.body; track $index) {
+            <p class="cx-body" [class.cx-body--sealed]="!e.found">{{ para }}</p>
           }
-        </ul>
+          @if (e.note) { <p class="cx-note">{{ e.note }}</p> }
+        }
       </div>
-    }
+    </app-station-journal>
   </section>
 
-
-  <!-- ═══════════════════════════════════════════════════════════════════════
-       Panel 5 — Secrets
-  ═══════════════════════════════════════════════════════════════════════ -->
   <section
     class="cx-panel"
     role="tabpanel"
     id="cx-panel-secrets"
-    aria-labelledby="cx-tab-secrets"
+    [attr.aria-label]="t('codex.tab.secrets')"
     [hidden]="activeTab !== 'secrets'">
-
-    <div class="cx-secrets__hd">
-      <h2 class="cx-secrets__count">{{ foundSecrets }} of {{ totalSecrets }} secrets discovered</h2>
-      <p class="cx-secrets__blurb">
-        Not achievements — the machinery underneath. What is written below is a
-        clue, never the answer. The Godforge remembers every secret you have
-        found, and every one you have not.
-      </p>
-    </div>
-
-    @for (group of secretGroups; track group.id) {
-      <div class="cx-section" [style.--realm]="group.color" [style.--realm-glow]="group.color">
-        <div class="cx-section__hd">
-          <h3 class="cx-section__title">
-            <span aria-hidden="true">{{ group.icon }}</span>
-            {{ group.label }}
-          </h3>
-          <span class="cx-section__count">{{ groupFound(group.id) }} / {{ secretsInGroup(group.id).length }}</span>
-        </div>
-        <p class="cx-section__blurb">{{ group.blurb }}</p>
-
-        <div class="cx-grid cx-grid--secrets">
-          @for (card of secretsInGroup(group.id); track card.def.id) {
-            <article
-              class="cx-secret"
-              [class.cx-secret--locked]="!card.found"
-              [class.cx-secret--deep]="isDeepSecret(card)"
-              [style.--tier]="card.rarity.color"
-              [style.--tier-glow]="card.rarity.glow">
-
-              <p class="cx-secret__meta">
-                <img class="cx-card__tier-icon gf-icon" [ngClass]="'rarity-' + card.rarity.id"
-                     [src]="card.rarity.icon" alt="" aria-hidden="true"
-                     width="18" height="18" loading="lazy" decoding="async" draggable="false">
-                <span class="cx-card__badge">{{ card.rarity.label }}</span>
-                @if (card.found) {
-                  <span class="cx-secret__state">discovered</span>
-                } @else {
-                  <span class="cx-secret__state cx-secret__state--locked">sealed</span>
-                }
-              </p>
-
-              <h4 class="cx-secret__name">{{ card.found ? card.def.name : '???' }}</h4>
-
-              @if (card.found) {
-                <p class="cx-secret__reveal">{{ card.def.reveal }}</p>
-                <p class="cx-secret__found">
-                  <span>{{ formatDate(card.at) }}</span>
-                  @if (card.how) {
-                    <span class="cx-secret__how">— {{ card.how }}</span>
-                  }
-                </p>
-              } @else {
-                <p class="cx-secret__clue">{{ card.def.clue }}</p>
-                @if (card.def.lore) {
-                  <p class="cx-secret__lore">{{ card.def.lore }}</p>
-                }
+    <app-station-journal>
+      <app-journal-list journalList [rows]="journal('secrets').rows" [selected]="entry('secrets')?.id ?? null"
+                        [label]="t('codex.list')" [empty]="t('codex.empty')" (pick)="pickEntry('secrets', $event)" />
+      <div journalDetail class="cx-detail">
+        @if (entry('secrets'); as e) {
+          <app-detail-head [name]="e.name" [line]="e.line" />
+          @if (e.facts.length) {
+            <dl class="cx-facts">
+              @for (f of e.facts; track f.label) {
+                <div><dt>{{ f.label }}</dt><dd>{{ f.value }}</dd></div>
               }
-            </article>
+            </dl>
           }
-        </div>
-      </div>
-    }
-
-    <!-- Socket Words. Same contract as the secrets above: a clue, never the
-         answer, until your own gear is spelling it. -->
-    <div class="cx-section" [style.--realm]="'#4dffe0'" [style.--realm-glow]="'#4dffe0'">
-      <div class="cx-section__hd">
-        <h3 class="cx-section__title">
-          <span aria-hidden="true">◈</span>
-          Socket Words — {{ foundWords }} of {{ totalWords }} seated
-        </h3>
-      </div>
-      <p class="cx-section__blurb">
-        Fifteen sequences nobody wrote down. Fill every well on a weapon or a
-        piece of armour with the right runes in the right order and the piece
-        starts paying something the runes alone do not. Set them at
-        <a routerLink="/forge/enchanting">the Enchanting Table</a>.
-      </p>
-      <div class="cx-grid cx-grid--secrets">
-        @for (word of socketWords; track word.id) {
-          <article
-            class="cx-secret"
-            [class.cx-secret--locked]="!word.found"
-            [style.--tier]="word.color"
-            [style.--tier-glow]="word.color">
-            <p class="cx-secret__meta">
-              <span class="cx-card__badge">{{ word.tier }}</span>
-              <span class="cx-secret__state" [class.cx-secret__state--locked]="!word.found">
-                {{ word.found ? 'seated' : 'sealed' }}
-              </span>
-            </p>
-            <h4 class="cx-secret__name">{{ word.name }}</h4>
-            <p class="cx-secret__meta">{{ word.frame }} · {{ word.wells }}</p>
-            @if (word.found) {
-              <p class="cx-secret__reveal">{{ word.runes }}</p>
-              <p class="cx-secret__reveal">{{ word.effect }}</p>
-              <p class="cx-secret__lore">{{ word.lore }}</p>
-            } @else {
-              <p class="cx-secret__clue">{{ word.clue }}</p>
-            }
-          </article>
+          @for (para of e.body; track $index) {
+            <p class="cx-body" [class.cx-body--sealed]="!e.found">{{ para }}</p>
+          }
+          @if (e.note) { <p class="cx-note">{{ e.note }}</p> }
         }
       </div>
-    </div>
+    </app-station-journal>
   </section>
-
 
   <!-- ═══════════════════════════════════════════════════════════════════════
        Panel 6 — Leaderboard
@@ -730,7 +327,7 @@
     class="cx-panel"
     role="tabpanel"
     id="cx-panel-leaderboard"
-    aria-labelledby="cx-tab-leaderboard"
+    [attr.aria-label]="t('codex.tab.leaderboard')"
     [hidden]="activeTab !== 'leaderboard'">
 
     <div class="cx-soon">
@@ -794,6 +391,194 @@
     </div>
   </section>
 
+  </div>
+
+  <!-- ── Details: the record's front matter, filters, section notes ───────── -->
+  <div stationDetails class="cx-details">
+  <div class="cx-hero">
+    @if (!inWorld) {
+    <p class="cx-hero__sub">
+      Everything the Godforge is keeping from you, and everything it has already
+      given up. Fragments, ranks, lore and secrets — the whole record, in one
+      place, kept honestly.
+    </p>
+    <p class="cx-tagline">the Godforge remembers every secret you have found — and every one you have not</p>
+    <p class="cx-hero__sub">The record of what you have found. The bag lives on Character. Crafting lives at the Forge.</p>
+    <p class="cx-hero__sub"><a routerLink="/forge/runes">Open the Forge →</a></p>
+    }
+
+    <!-- Headline completion bar -->
+    <div class="cx-hero__meter" [style.--tier]="progressRarity.color" [style.--tier-glow]="progressRarity.glow">
+      <p class="cx-hero__meter-head">
+        <span class="cx-hero__meter-count">{{ foundAchievements }} / {{ totalAchievements }}</span>
+        <span class="cx-hero__meter-label">Fragments Discovered</span>
+      </p>
+      <span class="cx-hero__meter-track" aria-hidden="true">
+        <span class="cx-hero__meter-fill" [style.width.%]="achievementPercent"></span>
+      </span>
+      <p class="cx-hero__meter-foot">
+        <span class="cx-hero__meter-badge">{{ progressRarity.label }}</span>
+        <span>{{ progressRarity.flavour }}</span>
+      </p>
+    </div>
+  </div>
+
+    <section class="cx-dpanel" [hidden]="activeTab !== 'achievements'">
+    <!-- ── Wall stats ─────────────────────────────────────────────────── -->
+    <div class="cx-statbar">
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ foundAchievements }}</span>
+        <span class="cx-stat__label">Fragments held</span>
+      </div>
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ totalAchievements - foundAchievements }}</span>
+        <span class="cx-stat__label">Still hidden</span>
+      </div>
+      <div class="cx-stat">
+        <span class="cx-stat__num">{{ earnedXp | number }}</span>
+        <span class="cx-stat__label">XP from discovery</span>
+      </div>
+      <div class="cx-stat">
+        @if (rarestFound) {
+          <span class="cx-stat__num cx-stat__num--sm" [style.color]="rarestFound.rarity.color">
+            {{ rarestFound.name }}
+          </span>
+          <span class="cx-stat__label">Rarest find — {{ rarestFound.rarity.label }}</span>
+        } @else {
+          <span class="cx-stat__num cx-stat__num--sm cx-stat__num--muted">nothing yet</span>
+          <span class="cx-stat__label">Rarest find</span>
+        }
+      </div>
+    </div>
+
+    <!-- ── Filters ────────────────────────────────────────────────────── -->
+    <div class="cx-filters">
+
+      <div class="cx-filter-row">
+        <span class="cx-filter-row__label">Realm</span>
+        <div class="cx-chips">
+          <button type="button" class="cx-chip" [class.is-on]="categoryFilter === 'all'"
+                  (click)="categoryFilter = 'all'">
+            All <span class="cx-chip__count">{{ totalAchievements }}</span>
+          </button>
+          @for (cat of categories; track cat.id) {
+            <button
+              type="button"
+              class="cx-chip"
+              [class.is-on]="categoryFilter === cat.id"
+              [style.--chip]="cat.color"
+              [style.--chip-glow]="cat.glow"
+              [attr.title]="cat.blurb"
+              (click)="categoryFilter = cat.id">
+              @if (cat.art) {
+                <img class="cx-cat-icon gf-icon realm-sigil" [src]="cat.icon" alt="" aria-hidden="true"
+                     width="18" height="18" loading="lazy" decoding="async" draggable="false">
+              } @else {
+                <span aria-hidden="true">{{ cat.icon }}</span>
+              } {{ cat.label }}
+              <span class="cx-chip__count">{{ categoryCount(cat.id).found }}/{{ categoryCount(cat.id).total }}</span>
+            </button>
+          }
+        </div>
+      </div>
+
+      <div class="cx-filter-row">
+        <span class="cx-filter-row__label">Rarity</span>
+        <div class="cx-chips">
+          <button type="button" class="cx-chip" [class.is-on]="rarityFilter === 'all'"
+                  (click)="rarityFilter = 'all'">All</button>
+          @for (tier of rarityOrder; track tier) {
+            @if (tierCount(tier).total > 0) {
+              <button
+                type="button"
+                class="cx-chip"
+                [class.is-on]="rarityFilter === tier"
+                [style.--chip]="rarities[tier].color"
+                [style.--chip-glow]="rarities[tier].glow"
+                [attr.title]="rarities[tier].flavour"
+                (click)="rarityFilter = tier">
+                {{ rarities[tier].label }}
+                <span class="cx-chip__count">{{ tierCount(tier).found }}/{{ tierCount(tier).total }}</span>
+              </button>
+            }
+          }
+        </div>
+      </div>
+
+      <div class="cx-filter-row cx-filter-row--split">
+        <div class="cx-filter-group">
+          <span class="cx-filter-row__label">Status</span>
+          <div class="cx-chips">
+            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'all'"
+                    (click)="statusFilter = 'all'">All</button>
+            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'unlocked'"
+                    (click)="statusFilter = 'unlocked'">Discovered</button>
+            <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'locked'"
+                    (click)="statusFilter = 'locked'">Undiscovered</button>
+          </div>
+        </div>
+
+        <div class="cx-filter-group">
+          <label class="cx-filter-row__label" for="cx-sort">Sort</label>
+          <select id="cx-sort" class="cx-select" [(ngModel)]="sort">
+            <option value="rarity">{{ sortLabels['rarity'] }}</option>
+            <option value="recent">{{ sortLabels['recent'] }}</option>
+            <option value="alpha">{{ sortLabels['alpha'] }}</option>
+            <option value="category">{{ sortLabels['category'] }}</option>
+          </select>
+        </div>
+
+        <div class="cx-filter-group cx-filter-group--grow">
+          <label class="cx-visually-hidden" for="cx-search">Search the wall</label>
+          <input
+            id="cx-search"
+            type="search"
+            class="cx-search"
+            placeholder="Search names and hints…"
+            [(ngModel)]="search" />
+        </div>
+
+        @if (hasActiveFilters) {
+          <button type="button" class="cx-clear" (click)="clearFilters()">Clear</button>
+        }
+      </div>
+    </div>
+
+    </section>
+
+    <section class="cx-dpanel" [hidden]="activeTab !== 'scrolls'">
+    <div class="cx-secrets__hd">
+      <h2 class="cx-secrets__count">{{ scrollsFound }} of {{ scrollsTotal }} fragments recovered</h2>
+      <p class="cx-secrets__blurb">
+        The codex is not written; it is dug up. Every fragment here came off the
+        anvil alongside a rune, and the better the rune the likelier the page.
+        One of them has never come up for anything but the Void.
+      </p>
+    </div>
+    <div class="cx-secrets__hd cx-inscriptions__hd">
+      <h2 class="cx-secrets__count">Delve Inscriptions: {{ inscriptionsFound }} of {{ inscriptionsTotal }} copied</h2>
+      <p class="cx-secrets__blurb">Words cut into the rock on the way down the fracture. Find them in the Ember Delve to copy them here.</p>
+    </div>
+    </section>
+
+    <section class="cx-dpanel" [hidden]="activeTab !== 'secrets'">
+    <div class="cx-secrets__hd">
+      <h2 class="cx-secrets__count">{{ foundSecrets }} of {{ totalSecrets }} secrets discovered</h2>
+      <p class="cx-secrets__blurb">
+        Not achievements — the machinery underneath. What is written below is a
+        clue, never the answer. The Godforge remembers every secret you have
+        found, and every one you have not.
+      </p>
+    </div>
+      <p class="cx-section__blurb">
+        Fifteen sequences nobody wrote down. Fill every well on a weapon or a
+        piece of armour with the right runes in the right order and the piece
+        starts paying something the runes alone do not. Set them at
+        <a routerLink="/forge/enchanting">the Enchanting Table</a>.
+      </p>
+    </section>
+  </div>
+</app-station-shell>
 </div>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the

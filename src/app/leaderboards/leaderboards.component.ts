@@ -56,6 +56,22 @@ import {
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { ART_REALMS, keeperAvatarArt, type ArtEntry } from '../shared/art/art';
 import { injectInWorldPanel } from '../shared/in-world-panel';
+import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationTab } from '../shared/station-ui';
+import { LEADERBOARDS_STATION_I18N } from './leaderboards-station.i18n';
+
+/**
+ * Where each ladder is climbed — the one button under the picked name. Plain
+ * links to existing pages; nothing about scoring changes.
+ */
+const CLIMB_ROUTE: Readonly<Record<LeaderboardId, string>> = {
+  xp: '/world',
+  gold: '/sanctum',
+  collection: '/codex',
+  arena: '/world/arena',
+  quality: '/forge/crafting',
+  expeditions: '/sanctum',
+  crafting: '/forge/crafting',
+};
 
 /** One rendered row, with the break flag the table draws before it. */
 export interface WindowRow {
@@ -85,7 +101,7 @@ function avatarForRow(row: LeaderboardRow): ArtEntry | null {
 @Component({
   selector: 'app-leaderboards',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterModule],
+  imports: [RelatedPagesComponent, CommonModule, RouterModule, ...STATION_UI],
   templateUrl: './leaderboards.component.html',
   styleUrls: ['./leaderboards.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -130,11 +146,72 @@ export class LeaderboardsComponent implements OnInit, OnDestroy {
 
   active: LeaderboardId = 'xp';
 
+  // ── Station frame (shared/station-ui) ──────────────────────────────────────
+  detailsOpen = false;
+  stationTabs: StationTab[] = [];
+  journal: Partial<Record<string, JournalRow[]>> = {};
+  /** Picked row per board, by `rank:name`. Null → the player's own row. */
+  picked: Record<string, string | null> = {};
+
   constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(LEADERBOARDS_STATION_I18N);
+    this.stationTabs = LEADERBOARD_CATEGORIES.map(c => ({ id: c.id, label: c.name }));
     this.rebuildWindows();
   }
 
-  t(key: string): string { return this.i18n.translate(key); }
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
+
+  pickTab(id: string): void {
+    this.select(id as LeaderboardId);
+  }
+
+  pickRow(id: string): void {
+    this.picked = { ...this.picked, [this.active]: id };
+    this.cdr.markForCheck();
+  }
+
+  /** The row the detail pane shows on the active board. */
+  get pickedRow(): LeaderboardRow | null {
+    const board = this.activeBoard;
+    if (!board) return null;
+    const id = this.picked[this.active];
+    const hit = id ? (this.windows[this.active] ?? []).find(w => this.rowId(w.row) === id) : undefined;
+    return hit?.row ?? board.player;
+  }
+
+  get pickedAvatar(): ArtEntry | null {
+    const row = this.pickedRow;
+    return row ? avatarForRow(row) : null;
+  }
+
+  get stripLabel(): string {
+    const board = this.activeBoard;
+    if (!board) return '';
+    return this.t('lbSt.rankLabel', {
+      rank: board.player.rank, total: board.rows.length,
+      score: `${this.score(board.category, board.player.score)} ${board.category.unit}`,
+    });
+  }
+
+  get stripHint(): string {
+    const board = this.activeBoard;
+    if (!board || board.toNext === null) return this.t('lbSt.first');
+    return this.t('lbSt.toNext', { gap: this.score(board.category, board.toNext), name: board.nextName ?? '' });
+  }
+
+  /** 0..1 — how far up the ladder the player stands. */
+  get stripProgress(): number {
+    const board = this.activeBoard;
+    if (!board || board.rows.length <= 1) return 1;
+    return 1 - (board.player.rank - 1) / (board.rows.length - 1);
+  }
+
+  climb(): void {
+    void this.router.navigateByUrl(CLIMB_ROUTE[this.active]);
+  }
+
+  private rowId(row: LeaderboardRow): string { return `${row.rank}:${row.name}`; }
 
   ngOnInit(): void {
     // The tab is read from the query string on the server too, so a shared
@@ -196,6 +273,17 @@ export class LeaderboardsComponent implements OnInit, OnDestroy {
     const next: Record<string, WindowRow[]> = {};
     for (const board of this.boards) next[board.category.id] = this.windowFor(board);
     this.windows = next;
+    const journal: Record<string, JournalRow[]> = {};
+    for (const board of this.boards) {
+      journal[board.category.id] = next[board.category.id].map(w => ({
+        id: this.rowId(w.row),
+        name: `#${w.row.rank} ${w.row.isPlayer ? this.t('lbSt.you.name') : w.row.name}`,
+        art: w.avatar,
+        sub: `${this.score(board.category, w.row.score)} ${board.category.unit}`,
+        ready: w.row.isPlayer,
+      }));
+    }
+    this.journal = journal;
   }
 
   select(id: LeaderboardId): void {
