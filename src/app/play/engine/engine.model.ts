@@ -1,3 +1,4 @@
+import type { SpriteEntry } from '../../shared/art/sprite-manifest.generated';
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { PlaceableId, WorldActionKind } from './terrain';
@@ -39,6 +40,12 @@ export interface EngineOptions {
   art?: (key: string) => string;
   /** Resolves an area's scene basename (AreaDef.background) to a URL. Falls back to `assets.background`. */
   scene?: (name: string) => string;
+  /**
+   * World-layer sprite sheets by id (`spriteFor`, sprite-manifest.generated.ts).
+   * Defaults to the generated manifest; tests inject fixtures. An id with no
+   * entry (today: every id) keeps the mesh rig / placeholder exactly as before.
+   */
+  sprite?: (id: string) => SpriteEntry | null;
   /**
    * i18n lookup for in-canvas copy (keeper name tags and chatter, world/life.i18n.ts).
    * Absent (tests): name tags fall back to their English, chatter stays silent.
