@@ -101,8 +101,8 @@ things with tools you crafted, and you see your economy working.
 - [x] **Homestead** (`102bc57`): the idle economy as buildings you can see: forge automatons hammering, treasury, explorer camp (real expedition timestamps), thrall workshop; walk past to collect (visual only, no double credit); upgrade in-world with the existing Market upgrades
 - [ ] **Personal anvil + enchanting circle in the Homestead** (owner, 2026-10-12): your own crafting corner on the plot. It opens the same Crafting / Enchanting panels with the Smithing and Enchanting mini-games. Upgrade tiers for Gold: a better anvil widens the "perfect" window or adds a strike; a better circle makes the ritual check more forgiving and can seat a rarer rune. Upgrades are visible on the plot. **Starts after** the Delve-building and mini-games branches merge (they own `src/app/play/**` and the mini-games right now)
 - [ ] Foraging/woodcutting nodes in each realm's hunt (herbs, rootglass, bark), using the same tool system
-- [ ] **Smithing anvil mini-game** (strike timing sets quality): after the station-kit forge redesign lands
-- [ ] **Enchanting ritual** in the world (place runes on a glowing circle, small skill check): after the station-kit redesign lands
+- [x] **Smithing anvil mini-game** (`26218be`): 4 strikes graded Perfect/Good/Off → quality q; Smithing XP 8–40; roll bias r → r^(1−0.2q) stays inside today's band and ceiling (spec-proven), mean grade 0.5 → ≤0.556; Craft all / qty>1 / Skip = today's behaviour
+- [x] **Enchanting ritual** (`26218be`): drag or tap the rune onto the circle, then tap when the shrinking ring meets the socket; a hit sockets and pays Enchanting XP 8–40; a miss costs nothing and widens the window
 - [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
 
 ## Economy rebalance (Cookie-Clicker start) `[~]`
@@ -209,6 +209,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- The NPC chat bubble covers the mini-game's Skip link at 390 px width
 - **Delve finale gaps:** the Rune-Warden respawns after 8 s like any Maw, and the Godforge fragment can be mined before the warden falls. **Kael's Hammer (`kaels-hammer`) has no cache placed yet**, so "The Old Seam" can't be completed
 - Nullthorn Staff recipe is now locked behind Verrin's mission (players who crafted it keep it)
 - New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet

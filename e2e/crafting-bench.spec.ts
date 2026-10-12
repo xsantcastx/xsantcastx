@@ -130,11 +130,15 @@ test.describe('the crafting bench', () => {
     await expect(page.locator('.cb-hero .dh__name')).toHaveText(RECIPE_NAME);
     await craftButton(page).click();
 
-    // Briarvein Kris carries a three-second anvil beat, so the reward card is
-    // the thing to wait on rather than a fixed timeout.
+    // Equipment opens the anvil game: four strikes, then the craft settles.
+    const strike = page.locator('app-anvil-game .mg__go');
+    await expect(strike).toBeVisible();
+    for (let i = 0; i < 4; i++) await strike.press('Enter');
+
     const reward = page.locator('.rp');
     await expect(reward).toBeVisible({ timeout: 15_000 });
     await expect(reward).toContainText(RECIPE_NAME);
+    await expect(reward).toContainText('Smithing XP');
 
     // 24 - 6, 12 - 3, 8 - 2 — the Required items grid (Gold is cell 0).
     await expect(itemCounts(page).nth(1)).toHaveText('18/6');
@@ -143,7 +147,7 @@ test.describe('the crafting bench', () => {
 
     // One craft, one recipe known, XP on the board, mastery counting.
     await openDetails(page);
-    await expect(page.locator('.cb-ladder__stats')).toContainText('1 / 52');
+    await expect(page.locator('.cb-ladder__stats')).toContainText(/known\s*1 \/ \d+/);
     await expect(page.locator('.cb-ladder__stats')).toContainText('30');
     await expect(page.locator('.cb-mastery__line')).toContainText('1 / 10');
 
@@ -156,12 +160,14 @@ test.describe('the crafting bench', () => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);
     await craftButton(page).click();
+    // Skipping the anvil game is today's craft (Briarvein Kris's timed beat included).
+    await page.locator('app-anvil-game .mg__skip').click();
     await expect(page.locator('.rp')).toBeVisible({ timeout: 15_000 });
 
     await page.reload({ waitUntil: 'load' });
     await expect(page.locator('.cb-hero')).toBeVisible();
     await openDetails(page);
-    await expect(page.locator('.cb-ladder__stats')).toContainText('1 / 52');
+    await expect(page.locator('.cb-ladder__stats')).toContainText(/known\s*1 \/ \d+/);
   });
 
   test('375px and reduced motion stay usable', async ({ page }) => {
