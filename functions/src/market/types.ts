@@ -7,6 +7,7 @@
  *   market/v1/prices/{itemKey}        PriceDoc         (public read)
  *   market/v1/escrow/{uid}            EscrowDoc        (owner read only)
  *   market/v1/listed/{itemId}         ListedItemDoc    (no client access)
+ *   market/v1/summary/board           BoardSummaryDoc  (public read) — the Exchange list
  *
  * Every write goes through the Cloud Functions in this folder. The rules
  * refuse all client writes under `market/**`.
@@ -192,4 +193,36 @@ export interface MarketConfigDoc {
   enabled?: boolean;
   /** Optional read-only mode: cancels and collects allowed, new orders refused. */
   haltNewOrders?: boolean;
+}
+
+/**
+ * One item's line on the Exchange list. Written by the same transaction that
+ * changes the item's book or prints a trade, so it is never behind the orders.
+ */
+export interface BoardSummaryRow {
+  /** Dearest open buy / cheapest open sell, or null when that side is empty. */
+  bestBid: number | null;
+  bestAsk: number | null;
+  /** Units resting on each side. */
+  bidQty: number;
+  askQty: number;
+  /** From the item's PriceDoc at its last trade (0 when it never traded). */
+  lastPrice: number;
+  lastTradeAt: number;
+  /**
+   * 24h volume and VWAP *as of lastTradeAt*. Nothing rewrites a row when its
+   * trades age out, so a reader treats them as 0 once lastTradeAt is a day old.
+   */
+  volume24h: number;
+  vwap24h: number;
+}
+
+/**
+ * `market/v1/summary/board`: every item with a resting order or a trade in
+ * the last day, keyed by itemKey. One document, so an Exchange visitor holds
+ * one listener for the whole list instead of two collection queries.
+ */
+export interface BoardSummaryDoc {
+  rows: Record<string, BoardSummaryRow>;
+  updatedAt: number;
 }

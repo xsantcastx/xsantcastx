@@ -422,6 +422,8 @@ service cloud.firestore {
     //   market/v1/prices/*        last price, 24h VWAP, hourly buckets — public.
     //   market/v1/escrow/{uid}    held Gold, claims, rate stamps — owner only.
     //   market/v1/listed/*        burned item ids — server only.
+    //   market/v1/summary/board   the Exchange list (best bid/ask, depth, 24h
+    //                             per item) — public get.
     //
     // See docs/handoff/player-market.md.
     match /market/{version} {
@@ -446,6 +448,13 @@ service cloud.firestore {
       }
       match /listed/{itemId} {
         allow read, write: if false;
+      }
+      // The Exchange list: one doc the server rewrites in every placement and
+      // cancel transaction. Only `board` exists; get, not list.
+      match /summary/{summaryId} {
+        allow get: if summaryId == 'board';
+        allow list: if false;
+        allow write: if false;
       }
     }
 

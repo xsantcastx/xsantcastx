@@ -63,8 +63,8 @@ import {
   goodById,
   listingFor,
   priceAt,
-  quoteBuy,
-  quoteSell,
+  quoteBuyAt,
+  quoteSellAt,
   type ExchangeGood,
   type MarketListing,
   type Pressure,
@@ -219,12 +219,13 @@ export class ExchangeService {
       .sort((a, b) => a.foundAt.localeCompare(b.foundAt));
   }
 
+  /** What the trade would settle for now, the order's own price impact included. */
   previewBuy(good: ExchangeGood, quantity: number, now: number): Quote {
-    return quoteBuy(this.price(good, now), quantity);
+    return quoteBuyAt(good, now, this.pressureFor(good.id), quantity);
   }
 
   previewSell(good: ExchangeGood, quantity: number, now: number): Quote {
-    return quoteSell(this.price(good, now), quantity);
+    return quoteSellAt(good, now, this.pressureFor(good.id), quantity);
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -259,7 +260,9 @@ export class ExchangeService {
 
     if (!this.hasRoomFor(good, qty)) return { ok: false, code: 'bag-full' };
 
-    const quote = quoteBuy(unitPrice, qty);
+    // Charged along the order's own price walk (see quoteBuyAt): the spot
+    // price above is only the stale-quote guard.
+    const quote = quoteBuyAt(good, now, this.pressureFor(good.id), qty);
     if (!this.economy.spendGold(quote.net, 'grand-exchange')) return { ok: false, code: 'funds' };
 
     if (!this.deliver(good, qty, now, rng)) {
@@ -302,7 +305,7 @@ export class ExchangeService {
     // A partial take is settled for what actually moved rather than rolled
     // back: the units are already gone, and paying for fewer of them is the
     // only outcome that is not either theft or duplication.
-    const quote = quoteSell(unitPrice, taken);
+    const quote = quoteSellAt(good, now, this.pressureFor(good.id), taken);
     this.economy.earnGold(quote.net, 'grand-exchange');
 
     return { ok: true, trade: this.settle(good, 'sell', quote, now) };
