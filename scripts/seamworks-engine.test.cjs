@@ -1067,13 +1067,13 @@ test('biome bands: every row maps to its biome, and the engine reports where the
   // Standing in the Maws' cavern (row 19 floor): Basalt Caverns, and the bar names a Maw.
   engine.player.x = 60 * 32; engine.player.y = 610 + 19 * 32;
   assert.equal(state().biome, 'Basalt Caverns');
-  assert.equal(state().enemyName, 'Rivet Maw'); assert.ok(state().enemyHp > 0);
+  assert.equal(state().enemyName, 'Rivet Maw'); assert.equal(state().enemyId, 'rivet-maw'); assert.ok(state().enemyHp > 0);
   // At the surface ledge nothing is on the Keeper's level: the bar hides.
   engine.player.x = 260; engine.player.y = 610;
-  assert.equal(state().enemyHp, 0); assert.equal(state().enemyName, undefined);
+  assert.equal(state().enemyHp, 0); assert.equal(state().enemyName, undefined); assert.equal(state().enemyId, undefined);
   // In the fragment chamber, the guardian.
   engine.player.x = 100 * 32; engine.player.y = 610 + 51 * 32;
-  assert.equal(state().enemyName, 'Rune-Warden'); assert.equal(state().biome, 'Magma Halls');
+  assert.equal(state().enemyName, 'Rune-Warden'); assert.equal(state().enemyId, 'rune-warden'); assert.equal(state().biome, 'Magma Halls');
   engine.destroy();
 });
 
@@ -2472,4 +2472,19 @@ test('sprite: town keepers and townsfolk use their sheets (idle/talk/walk) and f
   life.chatter.speaker = kael; log.length = 0;
   life.draw(recorder(log), frame);
   assert.equal(log.find(e => e[0] === 'drawImage' && e[1] === image)[3], 48, 'talk row');
+});
+
+test('enemy bar: every creature has a play.creature.<id> name tag in EN + ES, and its English matches the data', () => {
+  const { LIFE_I18N } = loadTs(path.resolve(__dirname, '../src/app/play/world/life.i18n.ts'));
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    for (const area of [town, ...town.hunts]) {
+      for (const monster of area.monsters) {
+        const tag = LIFE_I18N[`play.creature.${monster.creature}`];
+        assert.ok(tag, `${town.id}/${area.id}: ${monster.creature} has a name tag`);
+        assert.equal(tag.en, monster.name, `${monster.creature}: EN matches the MonsterDef name`);
+        assert.ok(tag.es && tag.es.trim(), `${monster.creature}: has Spanish`);
+      }
+    }
+  }
+  assert.ok(LIFE_I18N['play.creature.unknown'].es);
 });

@@ -671,19 +671,19 @@ export class SideScrollerComponent implements OnDestroy {
   /** The header title: the area the Keeper stands in ("Ember Delve"), not only its town. */
   get areaTitle(): string { return this.state.area || this.town.name; }
   /**
-   * The creature the enemy bar is measuring. The engine reports only its HP, so
-   * name it from the area's data: the one kind that lives here, or — in a mixed
-   * hunt — the kind whose spawn points sit nearest the Keeper.
+   * The creature the enemy bar is measuring, exactly: the engine reports the id
+   * and name of the one it measured (no guessing from spawn points, so a mixed
+   * hunt is always right). The id is translated (`play.creature.<id>`); the
+   * engine's English name covers a creature without a key yet.
    */
   get enemyName(): string {
-    // The engine names the creature it measured; the area data is the fallback for an older state.
-    if (this.state.enemyName) return this.state.enemyName;
-    const area = areaOf(this.town, this.state.areaId ?? this.town.id) ?? this.town;
-    const monsters = area.monsters;
-    if (!monsters.length) return 'Enemy';
-    if (monsters.every(monster => monster.name === monsters[0].name)) return monsters[0].name;
-    const reach = (spawns: readonly number[]) => Math.min(...spawns.map(x => Math.abs(x - this.state.x)));
-    return monsters.reduce((best, monster) => reach(monster.spawnXs) < reach(best.spawnXs) ? monster : best).name;
+    const id = this.state.enemyId;
+    if (id) {
+      const key = `play.creature.${id}`;
+      const named = this.t(key);
+      if (named !== key) return named;
+    }
+    return this.state.enemyName || this.t('play.creature.unknown');
   }
   travel(id: RealmTownId): void {
     const town = TOWNS[id];
