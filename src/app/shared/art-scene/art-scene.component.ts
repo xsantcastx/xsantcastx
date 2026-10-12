@@ -50,6 +50,7 @@ import {
   inject,
 } from '@angular/core';
 import { DOCUMENT } from '@angular/common';
+import { injectInWorldPanel } from '../in-world-panel';
 
 /** Widths every scene ships, matched to `scripts/build-scene-art.py`. */
 const SMALL = 768;
@@ -62,7 +63,10 @@ let sceneSeq = 0;
   selector: 'app-art-scene',
   standalone: true,
   changeDetection: ChangeDetectionStrategy.OnPush,
+  // Inside an in-world panel (/play) the world IS the backdrop: a fixed,
+  // full-viewport painting here would cover the canvas, so nothing renders.
   template: `
+    @if (!inWorld) {
     <div class="scene" aria-hidden="true">
       <picture class="scene__art">
         <source [attr.media]="'(max-width: ' + SMALL + 'px)'" type="image/webp"
@@ -77,6 +81,7 @@ let sceneSeq = 0;
       </picture>
       <span class="scene__overlay"></span>
     </div>
+    }
   `,
   styles: [`
     /* The host holds nothing in flow — its only child is fixed — so it collapses
@@ -123,6 +128,7 @@ let sceneSeq = 0;
 })
 export class ArtSceneComponent implements OnInit, OnDestroy {
   private readonly doc = inject(DOCUMENT);
+  protected readonly inWorld = injectInWorldPanel();
 
   /**
    * Basename of the art under assets/images, without the width suffix —
@@ -148,6 +154,7 @@ export class ArtSceneComponent implements OnInit, OnDestroy {
   protected get dir(): string { return `assets/images/${this.art}`; }
 
   ngOnInit(): void {
+    if (this.inWorld) return;
     this.addPreloads();
     // Switches off the site's CSS atmosphere — body gradient, nebula,
     // starfield, matrix layer, pulsar, corner runes, constellation canvas — for
@@ -157,6 +164,7 @@ export class ArtSceneComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.inWorld) return;
     this.doc.head?.querySelectorAll(`link[data-scene="${this.token}"]`)
       .forEach(el => el.remove());
     this.doc.body?.classList.remove('gf-art-route');
