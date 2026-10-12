@@ -957,7 +957,7 @@ export class CodexComponent implements OnInit, OnDestroy {
         name: a.unlocked ? a.name : '???',
         line: a.unlocked ? a.description : a.hint,
         facts,
-        body: a.unlocked ? [a.rarity.flavour] : [],
+        body: [],
         note: a.gate
           ? (a.unlocked ? this.t('codex.gateOpen', { gate: a.gate }) : this.t('codex.gateLocked'))
           : null,

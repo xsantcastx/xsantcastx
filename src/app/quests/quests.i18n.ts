@@ -27,7 +27,6 @@ export const QUESTS_I18N: Readonly<Record<string, { en: string; es: string }>> =
   'quests.claimedAlready': { en: 'Already claimed', es: 'Ya reclamada' },
   'quests.claimedKicker':  { en: 'Quest complete', es: 'Mision completada' },
   'quests.askedBy':        { en: 'Asked by {{who}}', es: 'Te lo pide {{who}}' },
-  'quests.next':           { en: 'Next: {{step}}', es: 'Siguiente: {{step}}' },
   'quests.filled':         { en: 'Filled {{n}}×', es: 'Entregada {{n}}×' },
   'quests.details.hint':   { en: 'Totals, timers, the story behind each quest and your history', es: 'Totales, relojes, la historia de cada mision y tu historial' },
   'quests.details.totals': { en: 'Totals', es: 'Totales' },
