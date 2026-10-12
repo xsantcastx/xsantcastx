@@ -25,6 +25,12 @@
  *
  * Reduced motion: no shake, no flying sparks, and a slower sweep. The marker
  * still moves — it is the game — and Skip is always one press away.
+ *
+ * `tier` (1..4) is the player's home anvil tier, passed ONLY by a bench opened
+ * from the Homestead (HOME_FORGE). Tier 1, the default, is today's game
+ * exactly: ANVIL_ZONES, ANVIL_STRIKES, every strike counted. Higher tiers widen
+ * the Perfect zone and add a spare strike (home-forge.model); quality stays in
+ * [0, 1], so the roll bias and its ceiling proof are unchanged.
  */
 import {
   ChangeDetectionStrategy,
@@ -34,6 +40,7 @@ import {
   OnDestroy,
   PLATFORM_ID,
   afterNextRender,
+  computed,
   inject,
   input,
   output,
@@ -44,16 +51,15 @@ import { isPlatformBrowser } from '@angular/common';
 
 import { TranslationService } from '../../translation.service';
 import {
-  ANVIL_STRIKES,
-  ANVIL_ZONES,
   anvilPeriod,
-  anvilQuality,
   anvilVerdict,
   gradeStrike,
   markerAt,
   type StrikeGrade,
 } from './anvil.model';
 import { MINIGAMES_I18N } from './minigames.i18n';
+import { HOME_FORGE_I18N } from './home-forge.i18n';
+import { anvilTierRules, homeAnvilQuality, tierNumeral } from './home-forge.model';
 
 /** How long the result line shows before `done` fires. */
 const RESULT_HOLD_MS = 1100;
@@ -70,10 +76,13 @@ const SPARKS: Readonly<Record<StrikeGrade, number>> = { perfect: 10, good: 6, of
              [class.is-nudge-a]="nudge() % 2 === 1" [class.is-nudge-b]="nudge() > 0 && nudge() % 2 === 0"
              [attr.aria-label]="t('minigame.anvil.title')">
       <p class="mg__how">{{ t('minigame.anvil.how') }}</p>
+      @if (tier() > 1) {
+        <p class="mg__home">{{ t('homeForge.anvil.inGame', { tier: numeral() }) }}{{ spare() ? ' ' + t('homeForge.anvil.spareNote') : '' }}</p>
+      }
 
       <div class="mg-bar" role="img" [attr.aria-label]="t('minigame.anvil.bar')" (pointerdown)="press($event)">
-        <span class="mg-bar__good" [style.--w]="zones.good"></span>
-        <span class="mg-bar__perfect" [style.--w]="zones.perfect"></span>
+        <span class="mg-bar__good" [style.--w]="zones().good"></span>
+        <span class="mg-bar__perfect" [style.--w]="zones().perfect"></span>
         <span #marker class="mg-bar__marker"></span>
         @for (f of flash(); track f.seq) {
           <span class="mg-bar__ring" [attr.data-grade]="f.grade" [style.--at]="f.pos">
@@ -84,8 +93,8 @@ const SPARKS: Readonly<Record<StrikeGrade, number>> = { perfect: 10, good: 6, of
         }
       </div>
 
-      <ol class="mg-pips" [attr.aria-label]="t('minigame.anvil.count', { n: grades().length, total: total })">
-        @for (i of slots; track i) {
+      <ol class="mg-pips" [attr.aria-label]="t('minigame.anvil.count', { n: grades().length, total: total() })">
+        @for (i of slots(); track i) {
           <li class="mg-pip" [attr.data-grade]="grades()[i]"></li>
         }
       </ol>
@@ -96,7 +105,7 @@ const SPARKS: Readonly<Record<StrikeGrade, number>> = { perfect: 10, good: 6, of
         } @else if (lastGrade(); as g) {
           {{ t('minigame.grade.' + g) }}
         } @else {
-          {{ t('minigame.anvil.count', { n: 1, total: total }) }}
+          {{ t('minigame.anvil.count', { n: 1, total: total() }) }}
         }
       </p>
 
@@ -112,6 +121,8 @@ const SPARKS: Readonly<Record<StrikeGrade, number>> = { perfect: 10, good: 6, of
 export class AnvilGameComponent implements OnDestroy {
   readonly itemName = input<string>('');
   readonly rarity = input<string | null>(null);
+  /** Home anvil tier (1..4). Only the Homestead's bench passes it; 1 is today's game. */
+  readonly tier = input<number>(1);
   /** Quality 0..1, or null when the player skipped the game. */
   readonly done = output<number | null>();
 
@@ -121,9 +132,13 @@ export class AnvilGameComponent implements OnDestroy {
   private readonly marker = viewChild<ElementRef<HTMLElement>>('marker');
   private readonly strikeBtn = viewChild<ElementRef<HTMLButtonElement>>('strikeBtn');
 
-  readonly total = ANVIL_STRIKES;
-  readonly slots = Array.from({ length: ANVIL_STRIKES }, (_, i) => i);
-  readonly zones = ANVIL_ZONES;
+  private readonly rules = computed(() => anvilTierRules(this.tier()));
+  readonly total = computed(() => this.rules().strikes);
+  readonly slots = computed(() => Array.from({ length: this.rules().strikes }, (_, i) => i));
+  readonly zones = computed(() => this.rules().zones);
+  readonly numeral = computed(() => tierNumeral(this.tier()));
+  /** A spare strike: more strikes than count, so the worst one is dropped. */
+  readonly spare = computed(() => this.rules().counted < this.rules().strikes);
 
   readonly grades = signal<StrikeGrade[]>([]);
   readonly lastGrade = signal<StrikeGrade | null>(null);
@@ -142,6 +157,7 @@ export class AnvilGameComponent implements OnDestroy {
 
   constructor() {
     this.i18n.register(MINIGAMES_I18N);
+    this.i18n.register(HOME_FORGE_I18N);
     this.reduced = this.isBrowser && typeof matchMedia === 'function'
       && matchMedia('(prefers-reduced-motion: reduce)').matches;
     afterNextRender(() => {
@@ -214,7 +230,8 @@ export class AnvilGameComponent implements OnDestroy {
   strike(): void {
     if (this.finished || this.result() !== null) return;
     const pos = this.position();
-    const grade = gradeStrike(pos);
+    const rules = this.rules();
+    const grade = gradeStrike(pos, rules.zones);
     const grades = [...this.grades(), grade];
     this.grades.set(grades);
     this.lastGrade.set(grade);
@@ -226,9 +243,10 @@ export class AnvilGameComponent implements OnDestroy {
       pos,
       sparks: Array.from({ length: count }, (_, i) => Math.round((360 / Math.max(1, count)) * i + this.seq * 17) % 360),
     }]);
-    if (grades.length >= ANVIL_STRIKES) {
+    if (grades.length >= rules.strikes) {
       this.finished = true;
-      const q = anvilQuality(grades);
+      // Tier 1: every strike counts, which is exactly anvilQuality.
+      const q = homeAnvilQuality(grades, rules.counted);
       this.result.set(q);
       this.timers.push(setTimeout(() => this.done.emit(q), RESULT_HOLD_MS));
       return;

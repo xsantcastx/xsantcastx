@@ -10,6 +10,7 @@ import {
   pulseWindow,
 } from './ritual.model';
 import { craftSkillXp } from '../skills/skill-actions.service';
+import { HOME_TIER_MAX, circleTierRules } from './home-forge.model';
 
 describe('rune ritual pulse', () => {
   it('shrinks from the rim to the centre and loops', () => {
@@ -58,6 +59,25 @@ describe('rune ritual pulse', () => {
         expect(xp).toBeGreaterThanOrEqual(8);
         expect(xp).toBeLessThanOrEqual(40);
       }
+    }
+  });
+});
+
+describe('home circle tiers (Your Enchanting Circle in the Homestead)', () => {
+  it('tier I is today\'s window; higher tiers only widen it, never past the cap', () => {
+    expect(circleTierRules(1).window).toBe(pulseWindow(0));
+    for (let scale = 0.5; scale <= 1.5; scale += 0.01) {
+      expect(gradePulse(scale, 0, circleTierRules(1).window)).toEqual(gradePulse(scale, 0));
+    }
+    let prev = 0;
+    for (let tier = 1; tier <= HOME_TIER_MAX; tier++) {
+      const w = circleTierRules(tier).window;
+      expect(w).toBeGreaterThanOrEqual(prev);
+      expect(pulseWindow(9, w)).toBeLessThanOrEqual(0.3);
+      prev = w;
+      const hit = gradePulse(1 + w * 0.99, 0, w);
+      expect(hit.hit).toBe(true);
+      if (hit.hit) { expect(hit.quality).toBeGreaterThanOrEqual(RITUAL_MIN_HIT_QUALITY); expect(hit.quality).toBeLessThanOrEqual(1); }
     }
   });
 });

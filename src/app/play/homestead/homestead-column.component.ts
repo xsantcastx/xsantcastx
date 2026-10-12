@@ -13,7 +13,10 @@ import { ChangeDetectionStrategy, ChangeDetectorRef, Component, OnDestroy, OnIni
 import { isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { artFor } from '../../shared/art/art';
-import { HomesteadHud, HomesteadService, purchaseMessage } from './homestead.service';
+import { HomeForgeRow, HomesteadHud, HomesteadService, purchaseMessage } from './homestead.service';
+import { TranslationService } from '../../translation.service';
+import { HOME_FORGE_I18N } from '../../shared/minigames/home-forge.i18n';
+import { tierNumeral } from '../../shared/minigames/home-forge.model';
 import { ColumnRow, formatGoldWhole, formatPerSecond } from './homestead.model';
 
 @Component({
@@ -27,9 +30,10 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
   private readonly homestead = inject(HomesteadService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  private readonly i18n = inject(TranslationService);
   private sub?: Subscription;
 
-  hud: HomesteadHud = { gold: 0, perSecond: 0, perClick: 1, rows: [] };
+  hud: HomesteadHud = { gold: 0, perSecond: 0, perClick: 1, rows: [], forge: [] };
   /** Narrow screens start folded so the plot stays visible. */
   open = !this.browser || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 720px)').matches;
   notice = '';
@@ -40,6 +44,12 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
   readonly gold = formatGoldWhole;
   readonly perSecond = formatPerSecond;
 
+  constructor() {
+    this.i18n.register(HOME_FORGE_I18N);
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
+
   ngOnInit(): void {
     this.sub = this.homestead.hud$.subscribe(hud => { this.hud = hud; this.cdr.markForCheck(); });
   }
@@ -49,7 +59,7 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
     if (this.noticeTimer) clearTimeout(this.noticeTimer);
   }
 
-  art(row: ColumnRow): string { return artFor(row.art)?.src ?? ''; }
+  art(row: ColumnRow | HomeForgeRow): string { return artFor(row.art)?.src ?? ''; }
 
   toggle(): void { this.open = !this.open; }
 
@@ -61,6 +71,19 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
     const ok = code === 'ok' || code === 'queued';
     this.notice = ok ? `${row.name} built!` : purchaseMessage(code);
     this.bought = ok ? row.id : null;
+    if (this.noticeTimer) clearTimeout(this.noticeTimer);
+    this.noticeTimer = setTimeout(() => { this.notice = ''; this.bought = null; this.cdr.markForCheck(); }, 2200);
+    this.cdr.markForCheck();
+  }
+
+  /** "Upgrade Anvil II · 750K Gold": the station's one button. */
+  upgradeHome(row: HomeForgeRow): void {
+    if (row.next === null || !row.affordable) return;
+    const result = this.homestead.upgradeHome(row.station, row.next);
+    const ok = result.code === 'ok' || result.code === 'replayed';
+    this.notice = ok ? this.t('homeForge.upgrade.done', { name: row.name, tier: tierNumeral(result.tier) })
+      : result.code === 'insufficient-funds' ? this.t('homeForge.upgrade.funds') : this.t('homeForge.upgrade.failed');
+    this.bought = ok ? `home:${row.station}` : null;
     if (this.noticeTimer) clearTimeout(this.noticeTimer);
     this.noticeTimer = setTimeout(() => { this.notice = ''; this.bought = null; this.cdr.markForCheck(); }, 2200);
     this.cdr.markForCheck();

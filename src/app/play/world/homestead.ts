@@ -11,6 +11,7 @@
  */
 import { FLOOR } from '../engine/engine.model';
 import type { HuntZoneDef, StationDef } from './world.model';
+import type { HomeStationId } from '../../shared/minigames/home-forge.model';
 
 /** Area id of the Homestead. Also the passage target from the Infernal town. */
 export const HOMESTEAD_ID = 'homestead';
@@ -37,7 +38,7 @@ export function buildingOfStation(stationId: string | null | undefined): Homeste
   return HOMESTEAD_BUILDING_IDS.includes(id) ? id : null;
 }
 
-const WIDTH = 2300;
+const WIDTH = 2900;
 
 const building = (id: HomesteadBuildingId, x: number, label: string, width: number, blurb: string): StationDef =>
   ({ id: HOMESTEAD_STATION_PREFIX + id, x, label, kind: 'panel', panel: 'homestead', width, blurb });
@@ -51,6 +52,26 @@ export const HOMESTEAD_BUILDINGS: readonly StationDef[] = [
   building('workshop', 2040, 'THRALL WORKSHOP', 230, 'Thralls pull runes at the anvil on their own.'),
 ];
 
+/**
+ * The crafting corner at the east end of the plot: the player's own Anvil and
+ * Enchanting Circle. They open the SAME Crafting Bench / Enchanting Table panels
+ * as town (so the same mini-games), but the side-scroller hosts them with the
+ * HOME_FORGE context, so the station's bought tier (home-forge model) applies.
+ * Not Homestead "buildings": they have no receipt and no `homestead` panel.
+ */
+export const HOME_ANVIL_STATION = 'hs-anvil';
+export const HOME_CIRCLE_STATION = 'hs-circle';
+export const HOME_FORGE_STATIONS: readonly StationDef[] = [
+  { id: HOME_ANVIL_STATION, x: 2400, label: 'YOUR ANVIL', kind: 'panel', panel: 'crafting', width: 190,
+    blurb: 'Your own anvil. Craft here; upgrade it for easier strikes.' },
+  { id: HOME_CIRCLE_STATION, x: 2700, label: 'YOUR ENCHANTING CIRCLE', kind: 'panel', panel: 'enchanting', width: 210,
+    blurb: 'Your own circle. Add runes here; upgrade it for an easier ritual.' },
+];
+/** Which home crafting station a station id is, or null. */
+export function homeStationOf(stationId: string | null | undefined): HomeStationId | null {
+  return stationId === HOME_ANVIL_STATION ? 'anvil' : stationId === HOME_CIRCLE_STATION ? 'circle' : null;
+}
+
 export const HOMESTEAD: HuntZoneDef = {
   id: HOMESTEAD_ID,
   name: 'Your Homestead',
@@ -60,6 +81,7 @@ export const HOMESTEAD: HuntZoneDef = {
   stations: [
     { id: 'passage', x: 130, label: 'BACK TO SEAMWORKS', kind: 'passage', to: 'infernal', arriveX: HOMESTEAD_GATE_X, width: 120, blurb: 'The road back to the Basalt Seamworks.' },
     ...HOMESTEAD_BUILDINGS,
+    ...HOME_FORGE_STATIONS,
   ],
   monsters: [],
   drops: { id: 'homestead', entries: [] },

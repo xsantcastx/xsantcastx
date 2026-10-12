@@ -18,6 +18,11 @@
  *
  * Perf: the pulse runs in requestAnimationFrame outside the Angular zone and
  * writes one CSS custom property; a press reads the clock, not the frame.
+ *
+ * `tier` (1..4) is the player's home Enchanting Circle tier, passed ONLY by a
+ * table opened from the Homestead (HOME_FORGE). Tier 1, the default, is
+ * today's ritual. Higher tiers start with a wider hit window (home-forge.model)
+ * and draw a thicker, brighter socket ring to show it.
  */
 import {
   ChangeDetectionStrategy,
@@ -27,6 +32,7 @@ import {
   OnDestroy,
   PLATFORM_ID,
   afterNextRender,
+  computed,
   inject,
   input,
   output,
@@ -38,7 +44,9 @@ import { isPlatformBrowser } from '@angular/common';
 import { TranslationService } from '../../translation.service';
 import type { StationArt } from '../station-ui';
 import { MINIGAMES_I18N } from './minigames.i18n';
-import { RITUAL_CONFIRM_QUALITY, gradePulse, pulseAt } from './ritual.model';
+import { PULSE_WINDOW, RITUAL_CONFIRM_QUALITY, gradePulse, pulseAt } from './ritual.model';
+import { HOME_FORGE_I18N } from './home-forge.i18n';
+import { circleTierRules, tierNumeral } from './home-forge.model';
 
 type Phase = 'place' | 'pulse' | 'hit' | 'confirm';
 
@@ -52,7 +60,11 @@ const TAP_SLOP_PX = 8;
   changeDetection: ChangeDetectionStrategy.OnPush,
   styleUrls: ['./minigames.css'],
   template: `
-    <section class="mg mg--ritual" [attr.data-phase]="phase()" [attr.aria-label]="t('minigame.ritual.title')">
+    <section class="mg mg--ritual" [attr.data-phase]="phase()" [attr.aria-label]="t('minigame.ritual.title')"
+             [style.--home-win]="homeWiden()">
+      @if (tier() > 1) {
+        <p class="mg__home">{{ t('homeForge.circle.inGame', { tier: numeral() }) }}</p>
+      }
       <p class="mg__how" aria-live="polite">
         @switch (phase()) {
           @case ('place') { {{ t('minigame.ritual.place') }} }
@@ -109,6 +121,12 @@ export class RuneRitualComponent implements OnDestroy {
   readonly runeArt = input<StationArt | null>(null);
   readonly itemName = input<string>('');
   readonly itemArt = input<StationArt | null>(null);
+  /** Home Enchanting Circle tier (1..4). Only the Homestead's table passes it; 1 is today's ritual. */
+  readonly tier = input<number>(1);
+  private readonly window = computed(() => circleTierRules(this.tier()).window);
+  /** How much wider than today's the first-try window is (0 at tier 1). Thickens the socket ring. */
+  readonly homeWiden = computed(() => this.tier() > 1 ? (this.window() - PULSE_WINDOW).toFixed(3) : null);
+  readonly numeral = computed(() => tierNumeral(this.tier()));
   /** Quality 0..1 of a successful ritual. Never emitted on a miss. */
   readonly done = output<number>();
   readonly cancel = output<void>();
@@ -131,6 +149,7 @@ export class RuneRitualComponent implements OnDestroy {
 
   constructor() {
     this.i18n.register(MINIGAMES_I18N);
+    this.i18n.register(HOME_FORGE_I18N);
     const reduced = this.isBrowser && typeof matchMedia === 'function'
       && matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (reduced) this.phase.set('confirm');
@@ -250,7 +269,7 @@ export class RuneRitualComponent implements OnDestroy {
 
   private attempt(): void {
     const scale = pulseAt(this.now() - this.started);
-    const graded = gradePulse(scale, this.misses);
+    const graded = gradePulse(scale, this.misses, this.window());
     if (!graded.hit) {
       this.misses += 1;
       this.missed.set(true);
