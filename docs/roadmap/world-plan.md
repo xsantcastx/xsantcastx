@@ -100,7 +100,7 @@ things with tools you crafted, and you see your economy working.
 - [x] **Skills + tool progression** (`102bc57`): new disciplines (Woodcutting, Enchanting; Smithing = forge, Delving = exploration); one 1–99 curve with migration-safe XP; unlock table every ~10 levels; craftable tool tiers I–IV from existing materials, gated by Smithing; generic `resolveWorldAction`; in-world Skills panel; a level-up moment for every skill
 - [x] **Homestead** (`102bc57`): the idle economy as buildings you can see: forge automatons hammering, treasury, explorer camp (real expedition timestamps), thrall workshop; walk past to collect (visual only, no double credit); upgrade in-world with the existing Market upgrades
 - [x] **Personal anvil + enchanting circle in the Homestead** (`47c3b5c`; tiers I–IV in `HOME_FORGE_CONFIG`: Perfect window 0.12→0.20, 5th strike at III, ritual window 0.14→0.26, rarest rune pre-selected at III+; home-only via a `HOME_FORGE` token; prices to retune on the new curve) (owner, 2026-10-12): your own crafting corner on the plot. It opens the same Crafting / Enchanting panels with the Smithing and Enchanting mini-games. Upgrade tiers for Gold: a better anvil widens the "perfect" window or adds a strike; a better circle makes the ritual check more forgiving and can seat a rarer rune. Upgrades are visible on the plot. **Starts after** the Delve-building and mini-games branches merge (they own `src/app/play/**` and the mini-games right now)
-- [ ] Foraging/woodcutting nodes in each realm's hunt (herbs, rootglass, bark), using the same tool system
+- [~] Foraging/woodcutting nodes in each realm's hunt (herbs, rootglass, bark), using the same tool system
 - [x] **Smithing anvil mini-game** (`26218be`): 4 strikes graded Perfect/Good/Off → quality q; Smithing XP 8–40; roll bias r → r^(1−0.2q) stays inside today's band and ceiling (spec-proven), mean grade 0.5 → ≤0.556; Craft all / qty>1 / Skip = today's behaviour
 - [x] **Enchanting ritual** (`26218be`): drag or tap the rune onto the circle, then tap when the shrinking ring meets the socket; a hit sockets and pays Enchanting XP 8–40; a miss costs nothing and widens the window
 - [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
@@ -142,12 +142,12 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] **Chests** (`0f57c99`; 4 material kinds each, through the satchel ledger; supports/bombs still to do) to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
 - [ ] Tile, torch, ladder, platform and workbench art → `docs/art-commissions/`
 
-## Phase 3: World only
+## Phase 3: World only `[~]` (started 2026-10-12)
 
-- [ ] Every navbar page reachable by walking, the Places list, and a Waystone
-- [ ] Nav audit (`scripts/audit-nav.js`, which gates deploy) understands in-world places
-- [ ] Standalone URLs (`/market`, `/gambler`, …) keep their SEO prerender and open into the world
-- [ ] Navbar shrinks to Play + Character
+- [~] Every navbar page reachable by walking, the Places list, and a Waystone
+- [~] Nav audit (`scripts/audit-nav.js`, which gates deploy) understands in-world places
+- [~] Standalone URLs (`/market`, `/gambler`, …) keep their SEO prerender and open into the world
+- [~] Navbar shrinks to Play + Character
 
 ## Art direction: hybrid sprites
 
@@ -188,6 +188,14 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 7. PWA: real install tests on Android Chrome, iOS Safari, desktop Chrome (`docs/handoff/pwa.md`).
 
 ## Running in parallel right now
+
+| Work | Branch | Status |
+|---|---|---|
+| Phase 3: world-only navigation (navbar → Play + Character, "Enter the world" banners, nav audit counts in-world places) | agent worktree | `[~]` |
+| Gathering nodes in every realm, Skills station, Hunting XP, Smithing XP banner, cross-town `?at=`, lantern units, Delve hotbar i18n | agent worktree | `[~]` |
+| Automated playtests (Playwright plays today's mechanics; app bugs → `docs/handoff/playtest-findings.md`) | agent worktree | `[~]` |
+| Player market UI binding (flag off; dev-only fake backend) | agent worktree | `[~]` |
+| Art pack second wave (tiles, placeables, tools, Delve items, Rune-Warden, shopkeepers) | agent worktree | `[~]` |
 
 | Work | Branch | Status |
 |---|---|---|
