@@ -66,6 +66,7 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'ladder': 'Ladder',
   'platform': 'Platform',
   'chest': 'Chest',
+  'camp': 'Camp',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

@@ -13,7 +13,7 @@ import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
-import { IN_WORLD_PANEL } from '../shared/in-world-panel';
+import { IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
 import { areaOf, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
@@ -75,7 +75,12 @@ interface BagSlip {
 }
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
-interface OpenPlace { kind: 'page' | 'waystone' | 'chest'; stationId: string; title: string; kicker: string; route?: string; chest?: { areaId: string; index: number } }
+interface OpenPlace {
+  kind: 'page' | 'waystone' | 'chest'; stationId: string; title: string; kicker: string; route?: string;
+  chest?: { areaId: string; index: number };
+  /** A place in the player's own Delve (a chest, a camp): no ?at= deep link. */
+  own?: true;
+}
 /** The open chest: what is in it and what the satchel could put in. Rebuilt after every move. */
 interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; note: string }
 interface PlaceRow { id: string; name: string; blurb: string }
@@ -125,6 +130,12 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly injector = inject(Injector);
   /** Pages built in the panel see IN_WORLD_PANEL and drop their full-page backdrop and hero. */
   private readonly panelInjector = Injector.create({ providers: [{ provide: IN_WORLD_PANEL, useValue: true }], parent: this.injector });
+  /** A camp's bench: the same Crafting Bench, opened on what can be made now. */
+  private readonly campInjector = Injector.create({
+    providers: [{ provide: IN_WORLD_PANEL, useValue: true }, { provide: IN_WORLD_FOCUS, useValue: 'ready' }], parent: this.injector,
+  });
+  /** True while the Keeper stands at the Delve shaft and has a camp below. */
+  campReady = false;
   private panelRef: ComponentRef<unknown> | null = null;
   /** Bumped on every open/close so a slow lazy import never lands in a newer (or closed) panel. */
   private panelSeq = 0;
@@ -260,6 +271,9 @@ export class SideScrollerComponent implements OnDestroy {
         if (state.message !== this.state.message) this.message = '';
         if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
         if (state.delve && !this.state.delve) this.refundOrphanChests();
+        // At the shaft: is there a camp below to descend to? Asked once per arrival, not per frame.
+        if (state.nearby === 'delve' && this.state.nearby !== 'delve') this.campReady = !!this.engine?.hasDelveCamp();
+        else if (state.nearby !== 'delve') this.campReady = false;
         this.state = state;
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
@@ -460,12 +474,16 @@ export class SideScrollerComponent implements OnDestroy {
     const entry = station.panel ? PANEL_REGISTRY[station.panel] : undefined;
     if (!entry) return;
     this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker, route: entry.route });
+    this.loadPanel(entry, this.panelInjector);
+  }
+  /** Build a hosted page into the open panel (a slow import never lands in a newer or closed one). */
+  private loadPanel(entry: (typeof PANEL_REGISTRY)[keyof typeof PANEL_REGISTRY], injector: Injector): void {
     const seq = this.panelSeq;
     this.panelLoading = true;
     entry.load().then(type => {
       if (seq !== this.panelSeq || !this.panel) return;
       this.panelHost.clear();
-      this.panelRef = this.panelHost.createComponent(type, { injector: this.panelInjector });
+      this.panelRef = this.panelHost.createComponent(type, { injector });
       this.panelLoading = false;
     }).catch(() => {
       if (seq !== this.panelSeq) return;
@@ -485,8 +503,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.panel = place;
     this.engine?.setHover(null);
     this.engine?.setPaused(true);
-    // A chest has no deep link: it is a cell in this player's own Delve.
-    if (place.kind !== 'chest') this.setAt(place.stationId);
+    // A chest or a camp has no deep link: it is a cell in this player's own Delve.
+    if (!place.own) this.setAt(place.stationId);
     // Focus moves into the dialog once it is shown; the close button is always there.
     setTimeout(() => this.placePanel.nativeElement.querySelector<HTMLElement>('.place-close')?.focus());
   }
@@ -641,6 +659,8 @@ export class SideScrollerComponent implements OnDestroy {
       case 'beacon': return this.restored ? 'Beacon restored' : 'Restore beacon';
       case 'inscription': return 'Read the inscription';
       case 'chest': return 'Open the chest';
+      case 'camp': return 'Craft at your camp';
+      case 'delve': return this.campReady ? 'Enter the Delve at the top' : 'Enter the Ember Delve';
       case 'passage': return this.state.area === 'Ember Quarry' ? 'Return to Seamworks' : 'Enter Ember Quarry';
       default: return 'Walk closer to a landmark';
     }
@@ -670,6 +690,7 @@ export class SideScrollerComponent implements OnDestroy {
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
+    else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
     else if (this.state.delve && /^Digit[1-9]$/.test(event.code)) {
       const slot = this.hotbar[Number(event.code.slice(5)) - 1];
       if (slot) { event.preventDefault(); this.choosePlaceable(slot.id); }
@@ -970,9 +991,19 @@ export class SideScrollerComponent implements OnDestroy {
   private useCell(event: UseEvent): void {
     if (!this.browser) return;
     if (event.kind === 'chest') {
-      this.showPanel({ kind: 'chest', stationId: 'chest', title: 'Chest', kicker: 'Your Delve', chest: { areaId: event.areaId, index: event.index } });
+      this.showPanel({ kind: 'chest', stationId: 'chest', title: 'Chest', kicker: 'Your Delve', chest: { areaId: event.areaId, index: event.index }, own: true });
       this.refreshChest('Put things in to keep them here. Take them out any time.');
+    } else if (event.kind === 'camp') {
+      // The Crafting Bench, opened on "Ready now": what you can make here with what you carry.
+      const entry = PANEL_REGISTRY.crafting;
+      this.showPanel({ kind: 'page', stationId: 'camp', title: 'Your camp', kicker: 'Craft what you can now', own: true });
+      this.loadPanel(entry, this.campInjector);
     }
+  }
+  /** "Descend to your camp" at the Delve shaft. */
+  descendToCamp(): void {
+    if (!this.engine?.descendToCamp()) this.campReady = !!this.engine?.hasDelveCamp();
+    else this.campReady = false;
   }
   /** Rebuild the open chest's two lists. */
   private refreshChest(note: string): void {

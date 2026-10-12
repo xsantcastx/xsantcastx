@@ -7,7 +7,7 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
-  climbTerrainBody, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  climbTerrainBody, findNode, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import type { DelvePersistence } from './engine.model';
@@ -325,6 +325,7 @@ export class SeamworksEngine {
     if (!t.inside(col, row) || row < 0) return 'That is outside the Delve.';
     if (!isAir(t, col, row)) return 'Something is already there.';
     if (def?.grounded && !t.solid(col, row + 1) && !isOneWay(t, col, row + 1)) return `The ${def.label.toLowerCase()} needs solid ground under it.`;
+    if (def?.single && findNode(t, def.node) >= 0) return `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`;
     if (!node.solid) return null;
     const x0 = col * CELL, y0 = t.top + row * CELL;
     const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
@@ -381,6 +382,45 @@ export class SeamworksEngine {
     this.recordCell(t, index);
     this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, node.fleck, this.reducedMotion ? 2 : 4);
     this.message = `${def.label} back in the satchel.`;
+    this.report();
+    return true;
+  }
+  /** The town's way into its delve (a passage station to an area with terrain), or null. */
+  private delveEntrance(): { station: StationDef; area: AreaDef } | null {
+    for (const station of this.town.stations) {
+      const area = station.kind === 'passage' && station.to ? areaOf(this.town, station.to) : undefined;
+      if (area?.terrain) return { station, area };
+    }
+    return null;
+  }
+  /** True when this town's delve holds the player's camp (generates that delve once if it has not been yet). */
+  hasDelveCamp(): boolean {
+    const entrance = this.delveEntrance();
+    const t = entrance ? this.terrainFor(entrance.area) : null;
+    return !!t && findNode(t, 'camp') >= 0;
+  }
+  /**
+   * "Descend to your camp": from town, straight to the camp placed in this
+   * town's delve, standing beside it. False (nothing moves) when there is no
+   * camp, or the cells round it have been filled so the Keeper would not fit.
+   */
+  descendToCamp(): boolean {
+    if (this.paused || this.hp <= 0 || !this.isTown) return false;
+    const entrance = this.delveEntrance();
+    const t = entrance ? this.terrainFor(entrance.area) : null;
+    const index = t ? findNode(t, 'camp') : -1;
+    if (!entrance || !t || index < 0) return false;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const x = (col + .5) * CELL, feet = t.top + (row + 1) * CELL;
+    if (boxHits(t, x, feet, DELVE_BOX)) {
+      this.message = 'Something fills the space round your camp. Take the Delve shaft and dig your way down.';
+      this.report();
+      return false;
+    }
+    this.enter(entrance.area);
+    this.resetPosition(x);
+    this.player.y = feet;
+    this.message = 'You climb down the ropes to your camp. The fire is still warm.';
     this.report();
     return true;
   }

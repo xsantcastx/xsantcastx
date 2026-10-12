@@ -189,6 +189,9 @@
     @if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
       <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact <kbd class="key-hint">E</kbd></button>
+      @if (state.nearby === 'delve' && campReady) {
+        <button type="button" class="camp-go" (click)="descendToCamp()">Descend to your camp <kbd class="key-hint">C</kbd></button>
+      }
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
   </div>

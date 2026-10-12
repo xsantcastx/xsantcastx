@@ -502,6 +502,10 @@ export const DELVE_KIT_RECIPES: readonly CraftingRecipe[] = [
     [m('world-root-bark', 4), m('cinder-ore', 2)],
     150, 1, 'A chest for the Delve: four kinds of thing, as many of each as you like. Stash finds where you dig.',
     { stack: true }),
+  r('craft-delve-camp', 'Camp', 'delve', 'uncommon', 'camp',
+    [m('world-root-bark', 6), m('cinder-ore', 4), m('ember-residue', 1)],
+    500, 1, 'A workbench and a fire to set down in the Delve. Craft there, and descend straight to it from town.',
+    { stack: true }),
 ];
 
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
