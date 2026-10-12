@@ -1,18 +1,58 @@
 {
-  "name": "The Godforge — Free Developer Tools",
-  "short_name": "Godforge",
-  "description": "Free browser tools for developers and designers, forged in the Eclipse. No sign-up, no installs.",
-  "start_url": "/home",
+  "id": "/eclipse-realms",
+  "name": "Eclipse Realms",
+  "short_name": "Eclipse Realms",
+  "description": "A free RPG you play in your browser or as an installed app. Strike the forge, craft gear with rolled stats, send explorers into five realms, and walk the Seamworks. Your progress stays on your device and syncs when you sign in.",
+  "lang": "en",
+  "dir": "ltr",
+  "start_url": "/play",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
   "orientation": "any",
-  "background_color": "#07040f",
+  "background_color": "#0a0a0f",
   "theme_color": "#0a0a0f",
+  "categories": ["games", "entertainment"],
+  "prefer_related_applications": false,
   "icons": [
-    { "src": "assets/brand/icon-48.png",  "sizes": "48x48",   "type": "image/png" },
-    { "src": "assets/brand/icon-180.png", "sizes": "180x180", "type": "image/png" },
-    { "src": "assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "assets/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    { "src": "/assets/brand/icon-48.png",  "sizes": "48x48",   "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-96.png",  "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-144.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-384.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/brand/icon-maskable-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/assets/brand/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Play the Seamworks",
+      "short_name": "Play",
+      "description": "Jump straight into the game.",
+      "url": "/play",
+      "icons": [{ "src": "/assets/brand/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Character",
+      "short_name": "Character",
+      "description": "Your equipment, stats and inventory.",
+      "url": "/character",
+      "icons": [{ "src": "/assets/brand/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "The Forge",
+      "short_name": "Forge",
+      "description": "Forge runes, craft gear, enchant.",
+      "url": "/forge/runes",
+      "icons": [{ "src": "/assets/brand/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "The Sanctum",
+      "short_name": "Sanctum",
+      "description": "Explorers, expeditions and daily quests.",
+      "url": "/sanctum",
+      "icons": [{ "src": "/assets/brand/icon-96.png", "sizes": "96x96", "type": "image/png" }]
+    }
   ]
 }
