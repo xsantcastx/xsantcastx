@@ -27,6 +27,8 @@ import { KeeperCombatStats, keeperCombatStats } from '../shared/rpg/keeper-comba
 import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
 import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout } from './engine/engine';
+import { HomesteadService } from './homestead/homestead.service';
+import { HomesteadColumnComponent } from './homestead/homestead-column.component';
 
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
 const CRAFT_ID = 'seamworks-world:basalt-edge:v1';
@@ -68,7 +70,7 @@ function monogram(name: string): string {
 }
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -111,6 +113,8 @@ export class SideScrollerComponent implements OnDestroy {
   private tipTimer?: ReturnType<typeof setTimeout>;
   private readonly host = inject(ElementRef<HTMLElement>);
   readonly inventory = inject(InventoryService);
+  /** The Homestead's canvas view and its data (homestead/homestead.service.ts). */
+  private readonly homestead = inject(HomesteadService);
   private readonly activity = inject(ActivityProgressionGateway);
   private readonly store = inject(GameStateGateway);
   private readonly zone = inject(NgZone);
@@ -163,6 +167,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser) return;
     this.inventory.init();
     this.activity.init();
+    this.homestead.start();
     const saved = this.store.read(SAVE_KEY) as { era?: number; resetAt?: string | null; restored?: boolean } | null;
     this.restored = saved?.restored === true && saved.era === INVENTORY_ERA && saved.resetAt === this.store.readRaw(RESET_STAMP_KEY);
     this.zone.runOutsideAngular(() => {
@@ -200,6 +205,7 @@ export class SideScrollerComponent implements OnDestroy {
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
+    this.engine.setHomesteadView(this.homestead.scene);
     this.statsKey = '';
     this.loadoutKey = '';
     this.sync();
@@ -244,6 +250,8 @@ export class SideScrollerComponent implements OnDestroy {
       const click = (event: MouseEvent): void => {
         if (!this.engine || this.panel || this.state.defeated) return;
         const hit = this.engine.pick(event.clientX, event.clientY);
+        // The Homestead Forge strikes where it is clicked, without walking there.
+        if (hit.station && this.homestead.scene.interact(this.state.areaId ?? '', hit.station.id)) return;
         if (hit.station) this.engine.goToStation(hit.station.id);
         else this.engine.moveTo(hit.x);
       };
@@ -317,6 +325,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
+    if (this.browser) this.homestead.stop();
     this.atSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -504,6 +513,7 @@ export class SideScrollerComponent implements OnDestroy {
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals); }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
+    if (this.state.areaId === 'homestead') return 'Click the Forge to strike it. Buy buildings in the column. Walk past one to collect.';
     if (this.state.area === 'Ember Quarry') return 'Hunt the Maws. Walk over drops to collect coins and ore. Return through the west portal.';
     if (this.restored) return 'Walk right to the open passage.';
     if (this.state?.enemyDefeated) return 'Reach the beacon and rekindle its light.';
@@ -513,6 +523,7 @@ export class SideScrollerComponent implements OnDestroy {
     return 'Mine 6 Cinder Ore and find 1 Ember Residue.';
   }
   get actionLabel(): string {
+    if (this.state?.nearby === 'hs-forge') return 'Strike the Forge';
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return `Enter ${titleCase(this.state.nearbyLabel ?? 'place')}`;
     switch (this.state?.nearby) {
       case 'ore': return this.remaining ? `Seam recovering (${this.remaining}s)` : 'Mine Cinder Ore';

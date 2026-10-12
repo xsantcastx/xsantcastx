@@ -7,6 +7,7 @@
  * to Ember Quarry. This file is the template Phase 2 towns copy.
  */
 import { FLOOR } from '../../engine/engine.model';
+import { HOMESTEAD, HOMESTEAD_GATE } from '../homestead';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
@@ -72,6 +73,8 @@ export const INFERNAL_TOWN: TownDef = {
     { id: 'waystone', x: 2010, label: 'WAYSTONE', kind: 'waystone', art: 'rift-portal-core', width: 130, blurb: 'Travel between the realm towns.' },
     { id: 'beacon', x: 2320 + QUARTER, label: 'ECLIPSE BEACON', kind: 'quest', width: 100, requires: 'guardian', lockedMessage: 'Defeat a Rivet Maw before repairing the beacon.', blurb: 'Rekindle the beacon once a Maw falls.' },
     { id: 'passage', x: 2580 + QUARTER, label: 'EAST PASSAGE', kind: 'passage', to: 'ember-quarry', arriveX: 240, width: 120, requires: 'beacon', lockedMessage: 'Restore the beacon to open the eastern passage.', blurb: 'The road east to Ember Quarry.' },
+    // The Homestead gate: the Keeper's own plot, where the idle economy stands as buildings.
+    HOMESTEAD_GATE,
   ],
   monsters: [{ creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1350 + QUARTER, 1670 + QUARTER, 1990 + QUARTER] }],
   drops: SEAMWORKS_DROPS,
@@ -79,5 +82,5 @@ export const INFERNAL_TOWN: TownDef = {
   safeX: 1100 + QUARTER,
   scenery: 'seamworks-hub',
   arrival: 'Returned to Seamworks. Explore freely or head out for another hunt.',
-  hunts: [EMBER_QUARRY],
+  hunts: [EMBER_QUARRY, HOMESTEAD],
 };

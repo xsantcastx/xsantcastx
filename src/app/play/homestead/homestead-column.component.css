@@ -1,0 +1,129 @@
+/*
+ * The Homestead buildings column. Sits on the left edge of the stage, under
+ * the Keeper's health plate (the right edge belongs to the satchel and the
+ * hearth dock), while the Keeper is in the Homestead. Tokens only; absolute
+ * inside the stage, never fixed, so it cannot paint over the site header.
+ */
+:host {
+  position: absolute;
+  top: 132px;
+  left: 16px;
+  z-index: 3;
+  width: min(290px, calc(100% - 32px));
+  max-height: calc(100% - 260px);
+  display: flex;
+  pointer-events: none;
+}
+
+.hc {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  width: 100%;
+  max-height: 100%;
+  padding: 0.5rem;
+  border-radius: var(--radius-lg, 12px);
+  border: 1px solid var(--edge-gold, var(--edge-hairline));
+  background: var(--adventure-hud-panel, var(--obsidian-1));
+  color: var(--ink-0);
+  font-family: var(--font-ui, system-ui, sans-serif);
+  overflow: hidden;
+}
+
+.hc-toggle {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+  min-height: 44px;
+  padding: 0.25rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--gold-bright, var(--gold));
+  cursor: pointer;
+  font: inherit;
+}
+.hc-purse { font: 700 1.15rem/1.1 var(--font-ui, system-ui, sans-serif); }
+.hc-toggle small { color: var(--ink-1, var(--ink-0)); }
+.hc-toggle:focus-visible, .hc-strike:focus-visible, .hc-buy:focus-visible { outline: 2px solid var(--focus-ring, var(--gold)); outline-offset: 2px; }
+
+.hc-strike {
+  min-height: 44px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--edge-gold, var(--edge-hairline));
+  background: var(--action-primary-bg, var(--gold));
+  color: var(--action-primary-fg, var(--obsidian-0));
+  font-weight: 700;
+  cursor: pointer;
+}
+.hc-strike:active { transform: scale(var(--press-scale, 0.97)); }
+
+.hc-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.hc-row {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--edge-hairline);
+  opacity: 0.62;
+  transition: opacity var(--dur-base, 200ms) var(--ease-standard, ease), border-color var(--dur-base, 200ms) var(--ease-standard, ease);
+}
+.hc-row--ready { opacity: 1; border-color: var(--edge-gold, var(--gold)); box-shadow: 0 0 14px -6px var(--gold); }
+.hc-row--bought { animation: hc-flash 700ms var(--ease-spring, ease-out); }
+.hc-row--mystery { opacity: 0.5; grid-template-columns: 40px 1fr; }
+
+@keyframes hc-flash {
+  0% { background: transparent; }
+  30% { background: var(--gold-deep, var(--gold)); }
+  100% { background: transparent; }
+}
+
+.hc-icon { width: 40px; height: 40px; border-radius: var(--radius-sm, 6px); background: var(--obsidian-3); object-fit: cover; }
+.hc-text { display: flex; flex-direction: column; min-width: 0; }
+.hc-text b { font-size: 0.92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hc-text em { font-style: normal; color: var(--gold); }
+.hc-text small { font-size: 0.78rem; color: var(--feedback-success); }
+.hc-row--mystery small { color: var(--ink-2, var(--ink-1)); }
+
+.hc-buy {
+  min-width: 76px;
+  min-height: 44px;
+  padding: 0.2rem 0.5rem;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--edge-gold, var(--edge-hairline));
+  background: var(--action-primary-bg, var(--gold));
+  color: var(--action-primary-fg, var(--obsidian-0));
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.hc-buy:disabled {
+  cursor: not-allowed;
+  background: var(--action-disabled-bg, var(--obsidian-3));
+  color: var(--action-disabled-fg, var(--ink-2));
+}
+.hc-buy small { font-weight: 500; font-size: 0.7rem; }
+
+.hc-notice { margin: 0; text-align: center; font-weight: 600; color: var(--feedback-success); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hc-row { transition: none; }
+  .hc-row--bought { animation: none; }
+}
