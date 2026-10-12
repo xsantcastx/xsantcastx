@@ -29,6 +29,10 @@
   min-height: 100vh;
 }
 
+/* Inside the Trials gate on /play the game fills the panel's overlay, not a
+   viewport: it needs only its content's height (see ArenaGameBase.inWorld). */
+:host(.ag-in-world) { min-height: 0; }
+
 .ag-page {
   position: relative;
   max-width: 1080px;
