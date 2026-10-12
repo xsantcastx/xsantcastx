@@ -96,6 +96,11 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.embed.isEmbed;
   }
 
+  get isPlayMode(): boolean {
+    const url = this.router.getCurrentNavigation()?.extractedUrl.toString() ?? this.router.url;
+    return url.split(/[?#]/)[0].startsWith('/play');
+  }
+
   get showEmbedBranding(): boolean {
     return this.embed.showBranding;
   }
@@ -288,7 +293,7 @@ export class AppComponent implements OnInit, OnDestroy {
    * and is a no-op on the server, so there is no second guard here.
    */
   private startFunnel(): void {
-    if (this.isEmbedMode) return;
+    if (this.isEmbedMode || this.isPlayMode) return;
 
     if (this.onboarding.shouldOnboard()) {
       this.analytics.trackOnboardingStart();

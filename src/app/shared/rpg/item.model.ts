@@ -312,17 +312,6 @@ export function slotAccepts(slot: SlotId, item: GameItem): boolean {
   return SLOT_BY_ID.get(slot)?.accepts.includes(item.type) ?? false;
 }
 
-/** The first empty slot this item could go in, or null if none will take it. */
-export function firstSlotFor(
-  item: GameItem,
-  occupied: ReadonlySet<SlotId>,
-): SlotId | null {
-  for (const slot of EQUIPMENT_SLOTS) {
-    if (slot.accepts.includes(item.type) && !occupied.has(slot.id)) return slot.id;
-  }
-  return null;
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Roll bands
 // ─────────────────────────────────────────────────────────────────────────────

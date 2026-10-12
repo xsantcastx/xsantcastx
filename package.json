@@ -20,7 +20,9 @@
     "postinstall": "node scripts/patch-domino-ssr.js",
     "test:visual": "playwright test",
     "lhci": "lhci autorun",
-    "check:ds": "node scripts/check-ds-adherence.js"
+    "check:ds": "node scripts/check-ds-adherence.js",
+    "start:social": "node scripts/social-server.mjs",
+    "test:social": "node --test scripts/social-server.test.mjs"
   },
   "private": true,
   "engines": {
@@ -61,7 +63,7 @@
   },
   "devDependencies": {
     "@angular/build": "^21.2.19",
-    "@angular/cli": "^21.2.22",
+    "@angular/cli": "^21.2.23",
     "@angular/compiler-cli": "^21.2.19",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.60.0",

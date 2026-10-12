@@ -6,7 +6,7 @@
      full-viewport curtain inside one would be pinned to the page instead of the
      viewport. Not rendered in embed mode — a cinematic is wrong inside an
      iframed tool. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-godforge-loader></app-godforge-loader>
 }
 
@@ -19,25 +19,25 @@
      scene hides it via `html.forge-scene-on` once a GL context exists, so a
      visitor with no WebGL, with Reduce Effects on, or reading the prerendered
      HTML still gets the starfield that was always there. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-forge-scene></app-forge-scene>
 }
 
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <div class="particle-layer"></div>
 }
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-header></app-header>
 }
 
-<main id="main-content" [class.embed-mode]="isEmbedMode" [class.embed-theme-light]="isEmbedMode && embed.theme === 'light'">
+<main id="main-content" [class.play-mode]="isPlayMode" [class.embed-mode]="isEmbedMode" [class.embed-theme-light]="isEmbedMode && embed.theme === 'light'">
   <router-outlet></router-outlet>
 </main>
 
 @if (isEmbedMode && showEmbedBranding) {
   <app-embed-bar></app-embed-bar>
 }
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-footer></app-footer>
 }
 
@@ -47,12 +47,12 @@
 }
 
 <!-- Mystery milestone celebration -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-milestone-effect></app-milestone-effect>
 }
 
 <!-- Achievement drop — rarity-tiered replacement for the flat egg toast -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-achievement-drop></app-achievement-drop>
 }
 
@@ -60,33 +60,33 @@
      drop's z-index band: a Singular egg cinematic must never be covered by a
      Cinder Ore. It stages over the page rather than veiling it, so nothing
      behind it stops being clickable. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-discovery-toast></app-discovery-toast>
 }
 
 <!-- Quest board. Deliberately a sibling of <app-header>, not a child of it:
      inside .navbar it would join a z-index:1000 stacking context and paint over
      the logo and the language toggle. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-quest-drawer></app-quest-drawer>
 }
 
 <!-- Quest claims and lore unlocks -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-quest-toast></app-quest-toast>
 }
 
 <!-- Skill level-ups -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-level-up-banner></app-level-up-banner>
 }
 
 <!-- Site-wide Cmd+K / Ctrl+K command palette -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-command-palette></app-command-palette>
 }
 
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-inspect></app-inspect>
 }
 
@@ -94,7 +94,7 @@
      over Quick Inspect and pulls three (730 kB) through a dynamic import the
      first time an item is turned over, so a visitor who never opens it never
      downloads it. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-inspect-3d-outlet></app-inspect-3d-outlet>
 }
 
@@ -103,7 +103,7 @@
      cookie banner full-width along the bottom, quest drawer top-right). It also
      waits for the cookie decision before rendering so it and the cookie banner
      are never on screen together — see the component for the full reasoning. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-install-prompt></app-install-prompt>
 }
 
@@ -114,7 +114,7 @@
 
      Hidden while the Forge View has the flame mounted inside its own layout —
      see InlineFlameService. -->
-@if (showCornerFlame) {
+@if (showCornerFlame && !isPlayMode) {
   <app-forge-flame></app-forge-flame>
 }
 
@@ -151,7 +151,7 @@
   <app-site-notice-outlet></app-site-notice-outlet>
 }
 
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-keeper-panel></app-keeper-panel>
 }
 
@@ -161,7 +161,7 @@
      --npc-lift. The corner registry lives in install-prompt.component.ts. Out
      here rather than inside a routed host because routeFadeIn's transform would
      pin a position:fixed widget to the page instead of the viewport. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-forged-today></app-forged-today>
 }
 
@@ -176,7 +176,7 @@
      the server. Last in the shell so it covers everything above it, and a
      sibling of <main> for the same reason every other full-viewport overlay
      here is. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-onboarding-outlet></app-onboarding-outlet>
 }
 
@@ -193,7 +193,7 @@
      A sibling of <main> for the same reason every other full-viewport overlay
      here is: routeFadeIn leaves a transform on every routed host, and a
      position:fixed curtain inside one is pinned to the page, not the viewport. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-offline-outlet></app-offline-outlet>
 }
 
@@ -201,6 +201,6 @@
      routeFadeIn leaves a transform on every routed host, and a position:fixed
      portrait inside one would be pinned to the page rather than the viewport.
      Never in embed mode — a goddess is wrong inside an iframed tool. -->
-@if (!isEmbedMode) {
+@if (!isEmbedMode && !isPlayMode) {
   <app-npc-dialogue></app-npc-dialogue>
 }

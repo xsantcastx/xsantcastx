@@ -1,0 +1,5 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ['build', '-f', 'Dockerfile.social', '-t', 'gcr.io/xsantcastx-1694b/eclipse-hearth:latest', '.']
+images:
+  - gcr.io/xsantcastx-1694b/eclipse-hearth:latest

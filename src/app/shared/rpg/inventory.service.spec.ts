@@ -205,6 +205,29 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.snapshot.equipped['hands']?.id).toBe('seed-helm');
   });
 
+  it('sends an unaimed authored weapon to the weapon well, not the first free one', () => {
+    // Every authored piece is `type: 'artifact'`, which head accepts by type.
+    // Unaimed, the Nullthorn Staff used to target head (free here once the
+    // helm is off), fail the definition check and refuse outright.
+    expect(inventory.unequip('seed-helm')).toBe(true);
+    const staff = {
+      id: 'staff', name: 'Nullthorn Staff', definitionId: 'nullthorn-staff',
+      type: 'artifact' as const, rarity: 'rare' as const,
+      stats: { strikePower: 1 }, sellValue: 40, equipped: false,
+      foundAt: '2026-08-06T00:00:00.000Z', soulbound: false,
+    };
+    expect(inventory.add(staff)?.id).toBe('staff');
+    expect(inventory.equip('staff')).toBe(true);
+    expect(inventory.snapshot.equipped['weapon']?.id).toBe('staff');
+    expect(inventory.snapshot.equipped['head']).toBeUndefined();
+
+    // With the weapon well full, an unaimed second weapon swaps into it.
+    expect(inventory.add({ ...staff, id: 'staff-2' })?.id).toBe('staff-2');
+    expect(inventory.equip('staff-2')).toBe(true);
+    expect(inventory.snapshot.equipped['weapon']?.id).toBe('staff-2');
+    expect(inventory.snapshot.bag.some(row => row.id === 'staff')).toBe(true);
+  });
+
   it('equips into off-hand and displaces the occupant atomically', () => {
     const helm = {
       id: 'helm', name: 'Helm', type: 'artifact' as const, rarity: 'rare' as const,
