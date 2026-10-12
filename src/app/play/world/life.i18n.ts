@@ -68,4 +68,15 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.trials-warden.2': { en: 'A gate, a test, an ending. Step through when you are ready.', es: 'Una puerta, una prueba, un final. Cruza cuando estes listo.' },
   'play.life.line.lodge-warden.1': { en: 'Every swing of a tool teaches a skill. The lodge keeps count.', es: 'Cada golpe de herramienta ensena un oficio. El refugio lleva la cuenta.' },
   'play.life.line.lodge-warden.2': { en: 'A better tool opens harder ground. Level the skill to match.', es: 'Una herramienta mejor abre terreno mas duro. Sube el oficio a la par.' },
+
+  // ── Creatures: the enemy bar, keyed by MonsterDef `creature` (engine `enemyId`) ──
+  // English must match the MonsterDef `name` in world/towns/*.ts.
+  'play.creature.rivet-maw': { en: 'Rivet Maw', es: 'Fauce Remachada' },
+  'play.creature.magma-maw': { en: 'Magma Maw', es: 'Fauce de Magma' },
+  'play.creature.ephemeris-leech': { en: 'Ephemeris Leech', es: 'Sanguijuela de Efemerides' },
+  'play.creature.mirror-substitute': { en: 'Mirror Substitute', es: 'Sustituto Espejo' },
+  'play.creature.prism-forager': { en: 'Prism Forager', es: 'Forrajeador Prismatico' },
+  'play.creature.rootglass-stag': { en: 'Rootglass Stag', es: 'Ciervo de Raizvidrio' },
+  'play.creature.rune-warden': { en: 'Rune-Warden', es: 'Custodio Runico' },
+  'play.creature.unknown': { en: 'Enemy', es: 'Enemigo' },
 };

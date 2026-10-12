@@ -1508,7 +1508,7 @@ export class SeamworksEngine {
     const site = !station && !use ? this.siteInReach() : null;
     const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
-    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name,
+    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name, enemyId: nearest?.def.creature,
       nearby: use ?? station?.id ?? (site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
       x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
