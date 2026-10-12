@@ -17,9 +17,7 @@ import { InventoryService, InventorySnapshot } from './inventory.service';
 import { MagicFindService } from './magic-find.service';
 import {
   GameItem,
-  ITEM_STAT_IS_PERCENT,
   ITEM_STAT_KEYS,
-  ITEM_STAT_LABELS,
   ItemStats,
   formatItemMod,
   rarityLabel,
@@ -44,6 +42,9 @@ import {
 import { wardFailReductionPct } from './item-upgrade';
 import { strikeValuePct } from '../rune-forge/strike-value';
 
+import { KeeperStatSheetComponent } from './keeper-stat-sheet.component';
+import { compareStats, netDelta, type StatDeltaRow } from './stat-delta';
+
 /** One stat's difference between a candidate and the worn item. */
 export interface StatDelta {
   key: keyof ItemStats;
@@ -55,25 +56,10 @@ export interface StatDelta {
   better: boolean;
 }
 
-/**
- * Two decimal places, then trailing zeros trimmed.
- *
- * Gold/sec rolls at fractional values, so a raw subtraction produces
- * `0.30000000000000004` often enough to matter — and a delta chip reading
- * "Gold/sec +0.30000000000000004" is worse than no chip at all.
- */
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
-
-function formatDelta(key: keyof ItemStats, value: number): string {
-  return `${value}${ITEM_STAT_IS_PERCENT[key] ? '%' : ''}`;
-}
-
 @Component({
   selector: 'app-equipment-panel',
   standalone: true,
-  imports: [CommonModule, InspectButtonComponent],
+  imports: [CommonModule, InspectButtonComponent, KeeperStatSheetComponent],
   templateUrl: './equipment-panel.component.html',
   styleUrls: ['./equipment-panel.component.css'],
 })
@@ -348,32 +334,36 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   comparison(slot: PaperDollSlotManifest, item: GameItem): StatDelta[] {
     const worn = slot.liveSlot ? this.snap.equipped[slot.liveSlot] : undefined;
     // Nothing worn: every stat is a straight gain, and the mod line beside it
-    // already says so. A column of "+9 (new)" would be the same information
-    // twice, so the picker keeps the mod line and skips the deltas.
+    // already says so. Kept empty here so `isUpgrade` only flags a real swap;
+    // the full compare view (`compareView`) is what shows the from-zero gains.
     if (!worn || worn.id === item.id) return [];
+    return compareStats(item.stats, worn.stats).map(row => ({
+      key: row.key,
+      label: row.label,
+      delta: row.delta,
+      text: row.text,
+      better: row.direction === 'up',
+    }));
+  }
 
-    const rows: StatDelta[] = [];
-    for (const key of ITEM_STAT_KEYS) {
-      const next = item.stats[key] ?? 0;
-      const now = worn.stats[key] ?? 0;
-      const delta = round2(next - now);
-      if (delta === 0) continue;
-      rows.push({
-        key,
-        label: ITEM_STAT_LABELS[key],
-        delta,
-        text: `${ITEM_STAT_LABELS[key]} ${delta > 0 ? '+' : '−'}${formatDelta(key, Math.abs(delta))}`,
-        better: delta > 0,
-      });
-    }
-    return rows;
+  /**
+   * The picker's compare view: every stat either item touches, against what is
+   * worn — or against nothing, when the slot is empty — with unchanged stats
+   * kept (and dimmed by the template) so the row says "this does not move
+   * Ward" rather than leaving the player to wonder whether it was forgotten.
+   */
+  compareView(slot: PaperDollSlotManifest, item: GameItem): StatDeltaRow[] {
+    if (!slot.liveSlot) return [];
+    const worn = this.snap.equipped[slot.liveSlot];
+    if (worn?.id === item.id) return [];
+    return compareStats(item.stats, worn?.stats, { includeUnchanged: true });
   }
 
   /** True when a candidate is, on balance, an upgrade on what is worn. */
   isUpgrade(slot: PaperDollSlotManifest, item: GameItem): boolean {
-    const rows = this.comparison(slot, item);
-    if (!rows.length) return false;
-    return rows.reduce((sum, row) => sum + row.delta, 0) > 0;
+    const worn = slot.liveSlot ? this.snap.equipped[slot.liveSlot] : undefined;
+    if (!worn || worn.id === item.id) return false;
+    return netDelta(compareStats(item.stats, worn.stats)) > 0;
   }
 
   /** The item currently in a slot, for the "replacing" line in the picker. */

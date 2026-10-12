@@ -12,9 +12,12 @@ import { artFor } from '../shared/art/art';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { definitionFor, itemFitsSlot } from '../shared/rpg/item-definition';
 import {
-  CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, SLOT_BY_ID, SlotId,
+  CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, SLOT_BY_ID, SLOT_IDS, SlotId,
   formatItemMod, rarityColor, rarityLabel,
 } from '../shared/rpg/item.model';
+import { KeeperCombatStats, keeperCombatStats } from '../shared/rpg/keeper-combat';
+import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
+import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
 import { SeamworksEngine, EngineInput, EngineState, InteractionTarget } from './engine/engine';
 
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
@@ -25,7 +28,13 @@ const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
 interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; }
 interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; }
-interface BagSlip { name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean; }
+interface BagSlip {
+  name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
+  /** Wearing it, against what that place holds now. Empty for worn items and materials. */
+  compare: StatDeltaRow[];
+  /** "Against Basalt Edge" / "Against an empty Head". */
+  compareLabel: string;
+}
 
 function monogram(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
@@ -33,7 +42,7 @@ function monogram(name: string): string {
 }
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -72,6 +81,9 @@ export class SideScrollerComponent implements OnDestroy {
   showKeys = false;
   now = Date.now();
   message = '';
+  /** Last combat numbers handed to the engine. Drives the HP meter's ceiling. */
+  pushed: KeeperCombatStats = { damage: 10, maxHp: 100 };
+  private statsKey = '';
 
   constructor() {
     // Hydration can swap the server canvas after the first callback. Wait until
@@ -98,7 +110,7 @@ export class SideScrollerComponent implements OnDestroy {
         this.engine?.setChat(snapshot.messages, snapshot.id);
       }));
       this.mountEngine();
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -118,6 +130,7 @@ export class SideScrollerComponent implements OnDestroy {
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
+    this.statsKey = '';
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
@@ -154,6 +167,8 @@ export class SideScrollerComponent implements OnDestroy {
     return edges.find(item => item.equipped) ?? edges[0];
   }
   get equipped(): boolean { return !!this.edge?.equipped; }
+  /** What the worn loadout buys in a fight. Strike drives damage, Ward max HP. */
+  get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals); }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
     if (this.state.area === 'Ember Quarry') return 'Hunt the Maws. Walk over drops to collect coins and ore. Return through the west portal.';
@@ -296,7 +311,7 @@ export class SideScrollerComponent implements OnDestroy {
     return {
       name, art: display?.art ?? '', mark: monogram(name), kicker: 'Material',
       note: this.stackNote(stackKey, stack.quantity), stats: [`${stack.quantity} held`],
-      canWear: false, canStow: false,
+      canWear: false, canStow: false, compare: [], compareLabel: '',
     };
   }
   private stackNote(stackKey: string, qty: number): string {
@@ -313,7 +328,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private emptyWell(slot: SlotId): BagSlip {
     const name = SLOT_BY_ID.get(slot)?.name ?? 'Place';
-    return { name, art: '', mark: monogram(name), kicker: 'Worn', note: 'Nothing rests in this place.', stats: [], canWear: false, canStow: false };
+    return { name, art: '', mark: monogram(name), kicker: 'Worn', note: 'Nothing rests in this place.', stats: [], canWear: false, canStow: false, compare: [], compareLabel: '' };
   }
   private itemSlip(item: GameItem, worn: boolean): BagSlip {
     const def = definitionFor(item);
@@ -328,9 +343,43 @@ export class SideScrollerComponent implements OnDestroy {
       stats,
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
       canStow: worn,
+      ...this.slipCompare(item, worn),
     };
   }
-  private sync(): void { this.engine?.setProgress({ equipped: this.equipped, restored: this.restored }); }
+  /**
+   * The slot `wear()` would put this in — the same pick `InventoryService.equip`
+   * makes unaimed (a free fitting place first, else the first fitting one), and
+   * the weapon slot for the Edge — and the delta against what is there now.
+   */
+  private slipCompare(item: GameItem, worn: boolean): Pick<BagSlip, 'compare' | 'compareLabel'> {
+    if (worn) return { compare: [], compareLabel: '' };
+    const equipped = this.inventory.snapshot.equipped;
+    const fits = (s: SlotId) => itemFitsSlot(s, item);
+    const target: SlotId | undefined = isBasaltEdge(item) ? 'weapon'
+      : SLOT_IDS.find(s => fits(s) && !equipped[s]) ?? SLOT_IDS.find(fits);
+    if (!target || !fits(target)) return { compare: [], compareLabel: '' };
+    const current = equipped[target];
+    const there = current && !current.explorerId ? current : undefined;
+    const place = SLOT_BY_ID.get(target)?.name ?? target;
+    return {
+      compare: compareStats(item.stats, there?.stats, { includeUnchanged: true }),
+      compareLabel: there ? `Against ${there.name}` : `Against an empty ${place}`,
+    };
+  }
+  private sync(): void {
+    this.engine?.setProgress({ equipped: this.equipped, restored: this.restored });
+    this.pushStats();
+  }
+  /** Hand the engine the loadout's combat numbers when they change. */
+  private pushStats(): void {
+    if (!this.engine) return;
+    const stats = this.combat;
+    const key = `${stats.damage}:${stats.maxHp}`;
+    if (key === this.statsKey) return;
+    this.statsKey = key;
+    this.pushed = stats;
+    this.engine.setStats(stats);
+  }
   private act(target: InteractionTarget): void {
     if (!this.browser || this.state?.paused || this.state?.defeated) return;
     if (target === 'ore') this.mine();

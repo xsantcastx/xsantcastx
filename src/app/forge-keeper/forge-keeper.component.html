@@ -76,6 +76,9 @@
        the cheapest way to keep that true is to not give it any. -->
   <div class="fk-rpg">
     <app-stat-panel />
+    <!-- What the worn gear pays, including the Seamworks combat numbers it
+         buys. Same live sheet as the loadout's, so the two never disagree. -->
+    <app-keeper-stat-sheet heading="Worn gear" [combat]="true" />
   </div>
 
   <!-- ══ 3. Realm affinity ══════════════════════════════════════════════ -->
