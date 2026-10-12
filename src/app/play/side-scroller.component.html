@@ -47,7 +47,7 @@
     </div>
     @if (state.enemyHp > 0) {
       <div class="vital">
-        <label>Nearest Maw <b>{{ state.enemyHp }}</b></label>
+        <label>{{ enemyName }} <b>{{ state.enemyHp }}</b></label>
         <div class="meter enemy"><s [style.--fill]="state.enemyHp / 100"></s><i [style.--fill]="state.enemyHp / 100"></i></div>
       </div>
     }

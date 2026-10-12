@@ -16,6 +16,7 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
+  ElementRef,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
@@ -95,6 +96,12 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   /** Polite announcement for the purchase result. */
   announce = '';
   error = '';
+  /** Everything past the first view (source, holdings, recipe list, quick quantities). */
+  detailsOpen = false;
+  /** The "+5 Pyrite Dust to the forge" pop after a buy. Cleared after it plays. */
+  flash: { key: number; name: string; quantity: number } | null = null;
+  private flashTimer?: ReturnType<typeof setTimeout>;
+  private readonly host = inject(ElementRef<HTMLElement>);
   /** The last crate bought, for the receipt line. */
   lastBought: { name: string; quantity: number; total: number } | null = null;
 
@@ -121,6 +128,7 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.subs.forEach(sub => sub.unsubscribe());
     this.subs = [];
+    if (this.flashTimer) clearTimeout(this.flashTimer);
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -189,7 +197,9 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
 
   buy(event?: Event): void {
     if (!this.canBuy) {
-      if (this.short > 0) this.error = `You need ${this.fmt(this.short)} more Gold.`;
+      // The reason is already on screen under the button; say it for screen readers too.
+      if (this.short > 0) this.announce = `Need ${this.fmt(this.short)} more Gold.`;
+      this.nudge('.mv-why');
       this.cdr.markForCheck();
       return;
     }
@@ -227,7 +237,20 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     };
     this.cards = this.buildCards();
     this.needs = this.needsFor(card.listing.materialId);
+    this.flash = { key: this.floorSeq, name: card.name, quantity: receipt.quantity };
+    if (this.flashTimer) clearTimeout(this.flashTimer);
+    this.flashTimer = setTimeout(() => { this.flash = null; this.cdr.markForCheck(); }, 1600);
+    this.nudge('.mv-purse__gold');
     this.cdr.markForCheck();
+  }
+
+  /** A short pop on an element: the purse after paying, the reason after a refused click. */
+  private nudge(selector: string): void {
+    if (!this.isBrowser || matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
+    queueMicrotask(() => {
+      const el = (this.host.nativeElement as HTMLElement).querySelector(selector) as HTMLElement | null;
+      el?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)', offset: .35 }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.22, 1, .36, 1)' });
+    });
   }
 
   trackCard = (_: number, card: ShelfCard) => card.listing.materialId;
