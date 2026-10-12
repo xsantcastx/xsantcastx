@@ -48,6 +48,7 @@ import { ForgedTodayComponent } from './shared/social-proof/forged-today.compone
 import { InspectComponent } from './shared/entity/inspect.component';
 import { Inspect3dOutletComponent } from './shared/inspect-3d/inspect-3d-outlet.component';
 import { CurrentWorkTileComponent } from './shared/activity/current-work-tile.component';
+import { PlaceBannerOutletComponent } from './shared/nav/place-banner-outlet.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
 import { ErrorHandler, APP_INITIALIZER } from '@angular/core';
 import { PwaService } from './shared/pwa.service';
@@ -98,6 +99,7 @@ import { PwaService } from './shared/pwa.service';
     Inspect3dOutletComponent,
     NpcDialogueComponent,
     CurrentWorkTileComponent,
+    PlaceBannerOutletComponent,
     // Standalone, imported here because AppComponent's template is not.
     OnboardingOutletComponent,
     OfflineOutletComponent,

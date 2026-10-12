@@ -2,8 +2,15 @@
 /**
  * nav-audit.js — proves three things about the public game:
  *   1. No dead links: every routerLink in a template resolves to a real route.
- *   2. No orphans: every route with a page on the end of it is linked from
- *      site-wide chrome (header bar, tome, tab bar, footer).
+ *   2. No orphans: every route with a page on the end of it is reachable —
+ *      either the navbar links it (header bar, tome, tab bar: the nav
+ *      manifest, which is World only: Play + Character), or a station in a
+ *      built realm town hosts its panel, so it can be walked to, picked from
+ *      the in-game Places list, or reached through the Waystone. The in-world
+ *      set is DERIVED: the towns in world.model.ts and the routes in
+ *      panel-registry.ts, read through the same placeForRoute() helper the
+ *      page banner uses. There is no hand list, and the footer does not count
+ *      (it is a crawl aid, not navigation).
  *   3. No player-facing leftover of the deleted tool product: Character,
  *      Codex, SEO, and other public templates must not send a player to
  *      /tools/* or tell them to open, search, or master tools.
@@ -97,7 +104,6 @@ for (const [route, where] of links) {
 // ── 2. Orphan routes ───────────────────────────────────────────────────────
 // Routes that render a real page (not a redirect, not the wildcard, not embeds)
 const CHROME = ['app/header/header.component.html', 'app/header/header.component.ts',
-                'app/footer/footer.component.html',
                 'app/shared/nav/nav.manifest.ts'];
 const chromeLinks = new Set();
 for (const [route, where] of links) {
@@ -110,12 +116,41 @@ const EXEMPT = new Set([
   // /play route remains subject to the site-wide navigation requirement.
   '/play/storyboard',
 ]);
+// In-world places: every registry route a station in a built town hosts.
+// Loaded from the TypeScript source itself (transpiled in memory, the way
+// scripts/seamworks-engine.test.cjs loads the world), so the audit and the game
+// cannot disagree about where a page stands.
+function loadTs(file, cache = new Map()) {
+  if (cache.has(file)) return cache.get(file).exports;
+  const ts = require('typescript');
+  const mod = { exports: {} };
+  cache.set(file, mod);
+  const code = ts.transpileModule(fs.readFileSync(file, 'utf8'), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  const req = name => (name.startsWith('.')
+    ? loadTs(path.resolve(path.dirname(file), `${name}.ts`), cache)
+    : require(name));
+  new Function('require', 'module', 'exports', code)(req, mod, mod.exports);
+  return mod.exports;
+}
+const placeHelper = loadTs(path.join(SRC, 'app/shared/world/place-for-route.ts'));
+const worldPlaces = placeHelper.worldPlaces();
+const worldReachable = new Map(worldPlaces.map(p => [p.route, p]));
+
+// The world is only a path if the navbar opens it.
+const worldEntranceMissing = !chromeLinks.has('/play');
+// A station that names a route the router does not serve is a dead place.
+const deadPlaces = worldPlaces.filter(p => !declared.has(p.route) || redirects.has(p.route));
+
 const orphans = [];
 for (const r of declared) {
   if (EXEMPT.has(r) || redirects.has(r) || r.startsWith('/arena/')) continue;
   if (r.startsWith('/world/realms') || r === '/world/fivefold-lock') continue;
   if (r === '/' || r === '/**') continue;
-  if (!chromeLinks.has(r)) orphans.push(r);
+  if (chromeLinks.has(r)) continue;
+  if (!worldEntranceMissing && worldReachable.has(r)) continue;
+  orphans.push(r);
 }
 
 // ── 3. Player-facing leftover of the deleted tool product ──────────────────
@@ -270,12 +305,19 @@ console.log('');
 console.log(dead.length ? '❌ DEAD LINKS:' : '✅ NO DEAD LINKS');
 for (const d of dead) console.log(`   ${d.route}  ←  ${d.where.join(', ')}`);
 console.log('');
-console.log(orphans.length ? '❌ ORPHANED ROUTES (not linked from header/footer):' : '✅ NO ORPHANED ROUTES');
+console.log(worldEntranceMissing ? '❌ THE NAVBAR DOES NOT LINK /play — in-world places are unreachable' : '✅ NAVBAR OPENS THE WORLD (/play)');
+console.log(deadPlaces.length ? '❌ STATIONS FOR ROUTES THE ROUTER DOES NOT SERVE:' : '✅ EVERY IN-WORLD PLACE IS A LIVE ROUTE');
+for (const p of deadPlaces) console.log(`   ${p.route}  ←  ${p.townId}/${p.stationId}`);
+console.log('');
+console.log(orphans.length ? '❌ ORPHANED ROUTES (neither in the navbar nor standing in a built town):' : '✅ NO ORPHANED ROUTES');
 for (const o of orphans.sort()) console.log(`   ${o}`);
 console.log('');
 console.log(leftover.length ? '❌ PLAYER-FACING TOOL PRODUCT:' : '✅ NO PLAYER-FACING TOOL PRODUCT');
 for (const hit of leftover) console.log(`   ${hit.file}:${hit.line}  ${hit.why}  —  ${hit.text}`);
 console.log('');
 console.log('CHROME LINKS    :', [...chromeLinks].sort().join(' '));
+console.log('IN-WORLD PLACES :', [...worldReachable.values()]
+  .sort((a, b) => a.route.localeCompare(b.route))
+  .map(p => `${p.route}@${p.townId}/${p.stationId}`).join(' '));
 
-process.exit(dead.length || orphans.length || leftover.length ? 1 : 0);
+process.exit(dead.length || orphans.length || leftover.length || worldEntranceMissing || deadPlaces.length ? 1 : 0);

@@ -5,7 +5,8 @@ import { TranslationService } from '../translation.service';
 import { PaymentService, DonationAmount, PaymentResult } from '../payment.service';
 import { environment } from '../../environments/environment';
 import { APP_VERSION } from '../version';
-import { MORE_NAV, PRIMARY_NAV } from '../shared/nav/nav.manifest';
+import { PRIMARY_NAV } from '../shared/nav/nav.manifest';
+import { PLACE_DIRECTORY } from '../shared/nav/place-directory';
 import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
 
 interface CryptoAddress {
@@ -26,7 +27,7 @@ export class FooterComponent implements OnInit, OnDestroy {
   readonly appCodename: string = APP_VERSION.codename;
   readonly changelogRoute: string = APP_VERSION.changelog;
   readonly primaryNav = PRIMARY_NAV;
-  readonly moreNav = MORE_NAV;
+  readonly places = PLACE_DIRECTORY;
   private readonly overlays = inject(OverlayStackService);
   private donateUnreg?: () => void;
   /**

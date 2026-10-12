@@ -19,6 +19,7 @@ import { Subscription, filter } from 'rxjs';
 import { CommandPaletteService } from './command-palette.service';
 import { OverlayStackService } from '../overlay/overlay-stack.service';
 import { NAV_MANIFEST, NavDestination } from '../nav/nav.manifest';
+import { PLACE_DIRECTORY } from '../nav/place-directory';
 
 interface ScoredResult {
   dest: NavDestination;
@@ -410,7 +411,8 @@ export class CommandPaletteComponent implements OnInit, OnDestroy, AfterViewInit
 
   query = '';
   activeIndex = 0;
-  private readonly destinations = NAV_MANIFEST;
+  /** The navbar halls, then every place in the world (its standalone page). */
+  private readonly destinations: readonly NavDestination[] = [...NAV_MANIFEST, ...PLACE_DIRECTORY];
   results: ScoredResult[] = [];
   totalCount = 0;
 
