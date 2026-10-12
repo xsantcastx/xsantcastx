@@ -1,29 +1,67 @@
-<!-- The Arena, painted. Layer 1 of the three-layer pattern; the gradient
-     overlay is layer 2, inside the component, and everything below is
-     layer 3. See art-scene.component.ts for why this is a <picture>. -->
-<app-art-scene art="bg-arena" focus="center 40%" />
+<!-- The Trials, painted. Layer 1 of the three-layer pattern. Dropped inside
+     the /play in-world panel, which carries its own backdrop. -->
+@if (!inWorld) {
+  <app-art-scene art="bg-arena" focus="center 40%" />
+}
 
+<!--
+  arena.component.html — the Trials, on the station kit (shared/station-ui;
+  MapleStory journal anatomy).
+
+  First screen: title, tabs (Open · All gates), the GATES strip with one
+  how-line, then the journal: every gate as a row (chained ones dimmed), the
+  picked gate on the right with ONE button — Play. How gates open, the totals
+  and the way out live in Details. The in-world game overlay is unchanged.
+-->
 <div class="games-page arena-page" [class.arena-page--in-world]="inWorld">
+  <app-station-shell class="tr-station"
+                     [title]="t('trials.title')"
+                     [showTitle]="!inWorld"
+                     [detailsHint]="t('trials.details.hint')"
+                     [(detailsOpen)]="detailsOpen">
 
-  <!-- ── HEADER ──────────────────────────────────────────── -->
-  <section class="gp-hero">
-    <div class="gp-hero__bg">
-      <div class="gp-hero__glow gp-hero__glow--cyan"></div>
-      <div class="gp-hero__glow gp-hero__glow--purple"></div>
+    <app-station-tabs stationTabs [tabs]="stationTabs" [active]="tab" (activeChange)="setTab($event)" [label]="t('trials.tabs')" />
+
+    <app-skill-strip stationSkill
+      [level]="null"
+      [title]="t('trials.gates')"
+      [progress]="games.length ? unlockedCount / games.length : 0"
+      [progressLabel]="t('trials.openLabel', { n: unlockedCount, total: games.length })"
+      [hint]="t('trials.hint')" />
+
+    <div stationHero class="tr-hero">
+      <app-station-journal>
+        <app-journal-list journalList [rows]="rows" [selected]="gate?.id ?? null"
+                          [label]="t('trials.gates')" [empty]="t('trials.empty')" (pick)="pickedId = $event" />
+        <div journalDetail class="tr-detail">
+          @if (gate; as g) {
+            <app-detail-head [name]="g.locked ? '???' : g.title"
+                             [line]="g.locked ? g.unlockHint : firstSentence(g.description)" />
+            <dl class="tr-facts" [style.--tier]="g.rarity.color">
+              <div><dt>{{ t('trials.rarity') }}</dt><dd>{{ g.rarity.label }}</dd></div>
+              <div><dt>{{ t('trials.bestFact') }}</dt><dd>{{ g.bestLabel || t('trials.none') }}</dd></div>
+            </dl>
+            <app-action-button
+              [label]="t('trials.play')"
+              chips="none"
+              [blocked]="playBlocked"
+              (act)="play()" />
+          }
+        </div>
+      </app-station-journal>
     </div>
-    <div class="gp-hero__inner">
-      @if (!inWorld) {
-      <p class="gp-eyebrow">
-        <span class="gp-dot"></span>
-        The proving ground
-      </p>
-      <h1 class="gp-hero__title">The Arena</h1>
-      <p class="gp-hero__sub">
-        Where Convergents prove their worth. Stand in the hall and the gates
-        listen. {{ playableCount }} of them lead to a real game.
-      </p>
-      }
 
+    <!-- ── Details: totals, how gates open, the way out ──────────────────── -->
+    <div stationDetails class="tr-details">
+      @if (gate; as g) {
+        @if (!g.locked) {
+          <section class="tr-dpanel">
+            <h2 class="gp-section-title">{{ g.title }}</h2>
+            <p class="gp-card__desc">{{ g.description }}</p>
+          </section>
+        }
+      }
+      <div class="gp-hero__inner">
       <!-- Arena stats -->
       <div class="ar-stats">
         <div class="ar-stat">
@@ -55,9 +93,7 @@
         </div>
         <span class="gp-progress-label">{{ progressPercent }}% of the realm's secrets uncovered</span>
       </div>
-    </div>
-  </section>
-
+      </div>
   <!-- ── HOW IT WORKS ────────────────────────────────────── -->
   <section class="gp-how">
     <div class="gp-how__inner">
@@ -81,70 +117,6 @@
     </div>
   </section>
 
-  <!-- ── GATES ───────────────────────────────────────────── -->
-  <section class="gp-grid-section">
-    <div class="gp-grid-section__inner">
-      <h2 class="gp-section-title">The Gates</h2>
-
-      <div class="gp-grid">
-        @for (game of games; track game.id) {
-          <div
-            class="gp-card glass-card ar-card"
-            [class.gp-card--locked]="game.locked"
-            [class.gp-card--unlocked]="!game.locked"
-            [class.ar-card--locked]="game.locked"
-            [attr.data-tier]="game.tier"
-            [style.--tier]="game.rarity.color"
-            [style.--tier-glow]="game.rarity.glow"
-            >
-            @if (game.isNew) {
-              <span class="ar-new" aria-label="Never played">NEW</span>
-            }
-            <div class="gp-card__top">
-              <span class="gp-card__icon ar-card__icon" [class.gp-card__icon--locked]="game.locked">
-                @if (game.locked) {
-                  <!-- Chain: the gate is held, not merely hidden -->
-                  <svg class="ar-chain" viewBox="0 0 24 24" width="24" height="24" fill="none"
-                       stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
-                       stroke-linejoin="round" aria-hidden="true">
-                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
-                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
-                  </svg>
-                } @else {
-                  {{ game.icon }}
-                }
-              </span>
-              <span class="gp-card__rarity ar-card__tier">{{ game.rarity.label }}</span>
-            </div>
-            <h3 class="gp-card__title">{{ game.locked ? '???' : game.title }}</h3>
-            <p class="gp-card__desc">{{ game.locked ? game.unlockHint : game.description }}</p>
-
-            @if (!game.locked && game.bestLabel) {
-              <p class="ar-card__best">
-                <span class="ar-card__best-dot" aria-hidden="true"></span>
-                Best — {{ game.bestLabel }}
-              </p>
-            }
-
-            <div class="gp-card__footer">
-              @if (game.locked) {
-                <span class="gp-locked-label ar-locked">Chained — find the secret to break it</span>
-              } @else if (game.route && inWorld) {
-                <button type="button" class="gp-play-btn" #enter (click)="openGame(game, enter)">Enter &rarr;</button>
-              } @else if (game.route) {
-                <a [routerLink]="game.route" class="gp-play-btn">Enter &rarr;</a>
-              } @else {
-                <!-- Open, but there is nothing behind it yet. Saying so beats a
-                     button that does nothing when pressed. -->
-                <span class="gp-locked-label ar-forging">Unchained — still in the forge</span>
-              }
-            </div>
-          </div>
-        }
-      </div>
-    </div>
-  </section>
-
   <!-- ── CTA ────────────────────────────────────────────── -->
   @if (!inWorld) {
   <section class="gp-cta">
@@ -156,6 +128,8 @@
   </section>
   }
 
+    </div>
+  </app-station-shell>
 </div>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the

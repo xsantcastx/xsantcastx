@@ -84,6 +84,10 @@ import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
 import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
+import { TranslationService } from '../translation.service';
+import { injectInWorldPanel } from '../shared/in-world-panel';
+import { STATION_UI, STATION_UI_I18N, type StationCost } from '../shared/station-ui';
+import { CHARACTER_I18N } from './character.i18n';
 /** Which shelf of the inventory is showing. */
 export type InventoryFilter = 'all' | 'upgrades' | 'artifacts' | 'cosmetics' | 'enchantments';
 
@@ -313,6 +317,7 @@ function tierForEssence(cost: number): EclipseRarity {
     StatPanelComponent,
     KeeperStatSheetComponent,
     CharacterHubComponent,
+    ...STATION_UI,
   ],
   templateUrl: './forge-keeper.component.html',
   styleUrls: ['./forge-keeper.component.css'],
@@ -331,6 +336,34 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   private readonly storage = inject(ProgressStorageService);
   private readonly overlays = inject(OverlayStackService);
   private readonly keeperPanel = inject(KeeperPanelService);
+  private readonly i18n = inject(TranslationService);
+
+  /** Inside the /play in-world panel: no backdrop, no big title. */
+  protected readonly inWorld = injectInWorldPanel();
+  /** The station Details drawer (purse, catalogue, cloud save). */
+  detailsOpen = false;
+  /** Wallet readout, top-right. Rebuilt when the ledger moves, never in the template. */
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
+  /** "9.9K XP to Seeker" under the rank bar. */
+  rankLabel = '';
+
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(CHARACTER_I18N);
+    this.syncStation();
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  private syncStation(): void {
+    const gold = this.wallet.gold;
+    this.walletGold = { kind: 'gold', label: this.t('stationUi.gold'), need: gold, have: gold };
+    this.rankLabel = this.snap.next
+      ? this.t('character.toNext', { n: this.money(this.snap.toNext), rank: this.snap.next.title })
+      : this.t('character.maxed');
+  }
 
   private subs: Subscription[] = [];
 
@@ -499,6 +532,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
 
     this.snap = this.xp.snapshot;
     this.wallet = this.economy.snapshot;
+    this.syncStation();
     this.memberSince = this.xp.createdAt;
     this.forgeMs = this.idle.snapshot.lifetimeMs;
 
@@ -523,10 +557,12 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     // on screen and the sheet should follow.
     this.subs.push(this.xp.snapshot$.subscribe(s => {
       this.snap = s;
+      this.syncStation();
       this.calendar = this.buildCalendar(this.xp.history);
     }));
     this.subs.push(this.economy.snapshot$.subscribe(e => {
       this.wallet = e;
+      this.syncStation();
       this.inventory = this.buildInventory(e);
       this.refreshInventoryView();
     }));

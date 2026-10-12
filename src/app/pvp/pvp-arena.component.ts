@@ -77,6 +77,15 @@ import {
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
+import { ARENA_RANKS } from '../shared/arena/arena.model';
+import {
+  STATION_UI,
+  STATION_UI_I18N,
+  type JournalRow,
+  type StationCost,
+  type StationTab,
+} from '../shared/station-ui';
+import { ARENA_STATION_I18N } from './arena-station.i18n';
 /** One challenger on a gate card, with the odds of beating *them*. */
 interface ChallengerRow {
   npc: ArenaOpponent;
@@ -151,7 +160,7 @@ const BEAT_ROUND = 700;
 @Component({
   selector: 'app-pvp-arena',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterModule],
+  imports: [RelatedPagesComponent, CommonModule, RouterModule, ...STATION_UI],
   templateUrl: './pvp-arena.component.html',
   styleUrls: ['./pvp-arena.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -217,7 +226,106 @@ export class PvpArenaComponent implements OnInit, OnDestroy {
   message = '';
   fighting = false;
 
-  t(key: string): string { return this.i18n.translate(key); }
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
+
+  // ── Station frame (shared/station-ui) ──────────────────────────────────────
+
+  tab: 'rings' | 'shop' = 'rings';
+  detailsOpen = false;
+  pickedGate: ArenaTierId | null = null;
+  pickedStock: string | null = null;
+  stationTabs: StationTab[] = [];
+  ringRows: JournalRow[] = [];
+  shopJournal: JournalRow[] = [];
+  wallet: StationCost = { kind: 'item', label: '', need: 0, have: 0 };
+  rankProgress = 0;
+  rankLabel = '';
+
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(ARENA_STATION_I18N);
+    this.buildStation();
+  }
+
+  setTab(id: string): void {
+    this.tab = id === 'shop' ? 'shop' : 'rings';
+  }
+
+  /** The ring the detail pane shows: the pick, else the highest open ring. */
+  get gate(): GateCard | null {
+    const picked = this.pickedGate ? this.gateFor(this.pickedGate) : undefined;
+    if (picked) return picked;
+    const open = this.gates.filter(g => g.unlocked);
+    return open[open.length - 1] ?? this.gates[0] ?? null;
+  }
+
+  get stockRow(): ShopRow | null {
+    return this.shopRows.find(r => r.stock.id === this.pickedStock)
+      ?? this.shopRows.find(r => !r.blocker)
+      ?? this.shopRows[0]
+      ?? null;
+  }
+
+  /** The Challenge button's "why not", or null when it can fight. */
+  get ringBlocked(): string | null {
+    const gate = this.gate;
+    if (!gate) return null;
+    if (!gate.unlocked) return this.t('arenaSt.chained', { n: gate.toUnlock });
+    if (!this.ready) return this.t('arenaSt.wait', { t: this.cooldownLabel });
+    return null;
+  }
+
+  /** The Buy button's "why not". Points shortfalls are the cost chip's job. */
+  stockBlocked(row: ShopRow): string | null {
+    switch (row.blocker) {
+      case 'owned': return this.t('arena.shop.owned');
+      case 'wins': return this.t('arenaSt.needWins', { n: row.stock.requiredWins });
+      case 'capacity': return this.t('arenaSt.bagFull');
+      default: return null;
+    }
+  }
+
+  stockCosts(row: ShopRow): StationCost[] {
+    return this.stockCostCache.get(row) ?? [];
+  }
+
+  private stockCostCache = new Map<ShopRow, StationCost[]>();
+
+  /** Rows, wallet and the rank strip — rebuilt on refresh, never in the template. */
+  private buildStation(): void {
+    const pts = this.t('arena.stat.points');
+    this.stationTabs = [
+      { id: 'rings', label: this.t('arenaSt.tab.rings') },
+      { id: 'shop', label: this.t('arenaSt.tab.shop'), badge: this.shopRows.filter(r => !r.blocker).length || null },
+    ];
+    this.wallet = { kind: 'item', id: 'arena-points', label: pts, need: this.record.points, have: this.record.points };
+    this.ringRows = this.gates.map(g => ({
+      id: g.tier.id,
+      name: g.tier.name,
+      sub: g.unlocked
+        ? this.t('arenaSt.odds', { pct: this.oddsPercent(g.odds), label: this.oddsCopy(g.oddsLabel) })
+        : this.t('arenaSt.lockedSub', { n: g.toUnlock }),
+      locked: !g.unlocked,
+    }));
+    this.shopJournal = this.shopRows.map(r => ({
+      id: r.stock.id,
+      name: r.stock.name,
+      sub: r.owned ? this.t('arena.shop.owned') : this.t('arenaSt.ptsSub', { n: r.stock.cost }),
+      locked: r.blocker === 'wins' || r.owned,
+      ready: !r.blocker,
+    }));
+    this.stockCostCache = new Map(this.shopRows.map(r => [r, [
+      { kind: 'item', id: 'arena-points', label: pts, need: r.stock.cost, have: this.record.points } as StationCost,
+    ]]));
+
+    const wins = this.record.wins;
+    const next = ARENA_RANKS.find(r => r.wins > wins);
+    const cur = this.record.rank;
+    this.rankProgress = next ? (wins - cur.wins) / Math.max(1, next.wins - cur.wins) : 1;
+    this.rankLabel = next
+      ? this.t('arenaSt.winsTo', { n: wins, left: next.wins - wins, rank: next.title })
+      : this.t('arenaSt.top', { n: wins });
+  }
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -417,6 +525,7 @@ export class PvpArenaComponent implements OnInit, OnDestroy {
       affordable: this.record.points >= stock.cost,
       blocker: this.gateway.purchaseBlocker(stock.id),
     }));
+    this.buildStation();
   }
 
   /**

@@ -71,3 +71,15 @@
 @media (max-width: 480px) {
   .ch__tab { padding: 0 10px; font-size: 11px; letter-spacing: 0.06em; }
 }
+
+/* On the /character station the strip is the journal's tab row: one line,
+   scrolling sideways on a phone instead of wrapping into a second row. */
+@media (max-width: 520px) {
+  .ch[data-variant='page'] .ch__tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+    gap: 4px;
+  }
+  .ch[data-variant='page'] .ch__tab { flex: none; padding: 0 9px; }
+}
