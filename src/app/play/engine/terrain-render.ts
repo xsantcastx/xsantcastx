@@ -223,6 +223,16 @@ function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark
       c.fillStyle = fleck; c.fillRect(x + 14, y + 18, 4, 6);
       break;
     }
+    case 'camp': {
+      // A low workbench with a hammer on it, and a small fire beside it.
+      c.fillStyle = dark; c.fillRect(x + 1, y + 18, 18, 3); c.fillRect(x + 3, y + 21, 2, 11); c.fillRect(x + 15, y + 21, 2, 11);
+      c.fillStyle = base; c.fillRect(x + 1, y + 16, 18, 3);
+      c.fillStyle = light; c.fillRect(x + 6, y + 12, 8, 3); c.fillRect(x + 9, y + 12, 2, 4);
+      c.fillStyle = dark; c.fillRect(x + 21, y + 29, 10, 3);
+      c.fillStyle = fleck; c.beginPath(); c.ellipse(x + 26, y + 25, 4, 6, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = light; c.beginPath(); c.ellipse(x + 26, y + 27, 2, 3, 0, 0, Math.PI * 2); c.fill();
+      break;
+    }
     case 'platform': {
       // A plank across the top, a lit edge, two thin struts to the wall.
       c.fillStyle = dark; c.fillRect(x, y + 6, 32, 3); c.fillRect(x + 5, y + 6, 2, 12); c.fillRect(x + 25, y + 6, 2, 12);

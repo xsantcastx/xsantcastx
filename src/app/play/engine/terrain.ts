@@ -153,6 +153,9 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     base: '#8a6a40', dark: '#3a2a18', light: '#c9a06a', fleck: '#5a4026' },
   { id: 'chest', label: 'Chest', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'chest', use: 'chest',
     base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#e8c47a' },
+  // A portable workbench and its fire: crafting in the Delve, and a way back down from town.
+  { id: 'camp', label: 'Camp', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'camp', use: 'camp',
+    base: '#5a3f2a', dark: '#2e1f14', light: '#b08a55', fleck: '#ff9b4f', glow: { color: '#ff9b4f', radius: 140 } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -409,7 +412,7 @@ export function cellKey(col: number, row: number): string { return `${col},${row
 // ── Building ───────────────────────────────────────────────────────────────
 
 /** Satchel stack ids of the things a Keeper can place in a delve. */
-export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform' | 'chest';
+export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform' | 'chest' | 'camp';
 
 export interface PlaceableDef {
   /** The satchel stack it is placed from and taken back to. */
@@ -426,6 +429,8 @@ export interface PlaceableDef {
   aim: PlaceAim;
   /** Needs solid ground (or a platform) under its cell. */
   grounded?: true;
+  /** One per delve: a second is refused until the first is taken back. */
+  single?: true;
 }
 export type PlaceAim = 'block' | 'beside' | 'here';
 
@@ -437,6 +442,7 @@ export const PLACEABLES: readonly PlaceableDef[] = [
   { id: 'ladder', label: 'Ladder', node: 'ladder', aim: 'here' },
   { id: 'platform', label: 'Platform', node: 'platform', aim: 'block' },
   { id: 'chest', label: 'Chest', node: 'chest', aim: 'beside', grounded: true },
+  { id: 'camp', label: 'Camp', node: 'camp', aim: 'beside', grounded: true, single: true },
 ];
 const PLACEABLE_BY_ID = new Map(PLACEABLES.map(def => [def.id, def]));
 export function placeableById(id: string | null | undefined): PlaceableDef | undefined {
@@ -472,6 +478,12 @@ export function placeTarget(t: Terrain, x: number, feetY: number, facing: number
   if (ahead >= 0) return ahead;
   // Walled in: a torch can go where you stand.
   return aim === 'beside' ? lowest(own) : -1;
+}
+
+/** The first cell holding node `id`, as an index, or -1. A scan: call on placement or travel, never per frame. */
+export function findNode(t: Terrain, id: string): number {
+  const kind = nodeIndex(id);
+  return t.kind.indexOf(kind);
 }
 
 /** True when the cell is a one-way floor (a platform or a ladder). */

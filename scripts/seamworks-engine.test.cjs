@@ -1463,3 +1463,53 @@ test('chests: placed on ground only, E (or a tap) opens one by its cell, taking 
   assert.equal(engine.nodeIdAt('nowhere', 0), null);
   engine.destroy();
 });
+
+// ── Building: the camp ──────────────────────────────────────────────────────
+test('camp: one per Delve, opens the bench on what can be made now, and town descends straight to it', () => {
+  const recipe = craftMod.craftingRecipeById('craft-delve-camp');
+  assert.equal(recipe.output.itemId, 'camp'); assert.equal(recipe.output.stack, true);
+  // Every Delve-kit recipe makes a placeable from materials the Delve itself gives.
+  const placeables = new Set(terrainMod.PLACEABLES.map(p => p.id));
+  for (const kit of craftMod.DELVE_KIT_RECIPES) {
+    assert.ok(placeables.has(kit.output.itemId), kit.id);
+    assert.equal(kit.requiredLevel, 1, kit.id);
+  }
+  assert.deepEqual(terrainMod.PLACEABLES.map(p => p.id), ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp'], 'hotbar order, keys 1-7');
+  for (const p of terrainMod.PLACEABLES) assert.equal(terrainMod.TERRAIN_NODES[p.node].placeable ?? terrainMod.TERRAIN_NODES[p.node].block, p.id, p.id);
+
+  const delve = memoryDelve(71); const used = [];
+  const { engine, state } = enterOwnDelve(delve, { onUse: e => used.push(e) });
+  const t = buildRoom(engine);
+  engine.setPlaceable('camp');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'camp');
+  assert.ok(terrainMod.glowIntensity(t.nodeAt(31, 8), false) > 0, 'its fire lights the dark');
+  engine.facing = -1;
+  assert.equal(engine.place(), false, 'a second camp is refused');
+  assert.match(state().message, /already have a camp/);
+  engine.facing = 1; engine.update(1 / 60);
+  assert.equal(state().nearby, 'camp'); assert.equal(state().nearbyLabel, 'YOUR CAMP');
+  engine.interact();
+  assert.equal(used[0].kind, 'camp');
+  // Back to town: the shaft offers the camp, and descending stands the Keeper beside it.
+  engine.returnToCamp();
+  assert.equal(state().areaId, 'infernal');
+  assert.equal(engine.hasDelveCamp(), true);
+  assert.equal(engine.descendToCamp(), true);
+  assert.equal(state().areaId, 'ember-delve');
+  assert.equal(engine.player.x, 31 * 32 + 16); assert.equal(engine.player.y, 610 + 9 * 32);
+  assert.equal(engine.descendToCamp(), false, 'only from town');
+  engine.destroy();
+  // A new session from the save: still there. (buildRoom's rock was never saved, so the
+  // camp now stands in the generated tunnel; it still has its floor and room to stand.)
+  const next = fixture(() => true, { delve });
+  assert.equal(next.engine.hasDelveCamp(), true);
+  assert.equal(next.engine.descendToCamp(), true);
+  assert.equal(next.state().areaId, 'ember-delve');
+  next.engine.destroy();
+  // No camp: nothing to descend to.
+  const none = fixture(() => true, { delve: memoryDelve(72) });
+  assert.equal(none.engine.hasDelveCamp(), false);
+  assert.equal(none.engine.descendToCamp(), false);
+  none.engine.destroy();
+});
