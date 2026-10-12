@@ -82,18 +82,20 @@ test.describe('Hunting, played', () => {
     await expect(page.locator('.satchel .ore-count')).not.toHaveText('0');
   });
 
-  // BUG (playtest-findings.md P-3): no code path grants Hunting XP for a kill (or Mining
-  // XP for a picked-up ore drop). `godforge-activity` is never even created by a hunt.
+  // Was playtest-findings.md P-3: a kill pays Hunting XP, and an ore drop walked over
+  // is booked like a vein (ore + Mining XP in one gateway write).
   test('a kill trains Hunting (and the ore pickup trains Mining)', async ({ page }) => {
     await toQuarry(page);
     const hunting = await xp(page, 'hunting');
+    const mining = await xp(page, 'mining');
     await huntOne(page);
     await sweep(page);
     await expect.poll(() => xp(page, 'hunting'), { timeout: 8000 }).toBeGreaterThan(hunting);
+    await expect.poll(() => xp(page, 'mining'), { timeout: 8000 }).toBeGreaterThan(mining);
   });
 
-  // BUG (playtest-findings.md P-4): monster coins are an engine-only session counter.
-  // onLoot ignores coin drops, so they never reach the Gold purse and are gone on reload.
+  // Was playtest-findings.md P-4: coin drops are credited to the Gold purse (once per
+  // drop), and the satchel's coin count is saved with the town.
   test('coins picked up from a kill are kept (they reach the purse and survive a reload)', async ({ page }) => {
     await toQuarry(page);
     await huntOne(page);
