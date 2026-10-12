@@ -206,3 +206,20 @@ test('visible-document notifications preserve current input and destroy removes 
   assert.equal(browserWindow.listenerCount('blur'), beforeBlur);
   assert.equal(browserDocument.listenerCount('visibilitychange'), beforeVisibility);
 });
+
+test('setStats drives melee damage and max HP, keeping the share of health', () => {
+  const { engine, state } = fixture();
+  const monster = engine.monsters[0];
+  engine.player.x = monster.x - 50;
+  strike(engine);
+  assert.equal(monster.hp, 50, 'without setStats the legacy unarmed 10 still applies');
+  engine.setStats({ damage: 25, maxHp: 100 });
+  strike(engine);
+  assert.equal(monster.hp, 25);
+  engine.hp = 50;
+  engine.setStats({ damage: 25, maxHp: 200 });
+  assert.equal(state().hp, 100, 'half health stays half health');
+  engine.retry();
+  assert.equal(state().hp, 200, 'a fresh hunt starts at the new ceiling');
+  engine.destroy();
+});
