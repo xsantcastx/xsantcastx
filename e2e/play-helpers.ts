@@ -1,0 +1,161 @@
+import { expect, type Locator, type Page } from '@playwright/test';
+
+/**
+ * Shared helpers for the `play-*` specs: specs that PLAY the /play world in a
+ * real browser instead of asserting markup.
+ *
+ * Seeding rules (see docs/handoff/playtest-findings.md):
+ *   - Save blobs are written from `/robots.txt`, a same-origin page that does
+ *     not boot Angular. Writing them from inside the app and reloading loses the
+ *     write: the outgoing page flushes its in-memory copy on pagehide.
+ *   - Never seed with `addInitScript` in a spec that reloads: the init script
+ *     runs again on the reload and overwrites what the game just saved.
+ */
+
+export type Blobs = Record<string, unknown>;
+
+/** Clear storage and write the given save blobs from a page that runs no app code. */
+export async function seed(page: Page, blobs: Blobs = {}): Promise<void> {
+  await page.goto('/robots.txt');
+  await page.evaluate(entries => {
+    const keepOnboarding = localStorage.getItem('eclipse-onboarding');
+    localStorage.clear();
+    sessionStorage.clear();
+    if (keepOnboarding) localStorage.setItem('eclipse-onboarding', keepOnboarding);
+    localStorage.setItem('xsantcastx_consent', 'denied');
+    sessionStorage.setItem('visit-counted', '1');
+    for (const [key, value] of Object.entries(entries)) {
+      localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
+    }
+  }, blobs);
+}
+
+/** Read a save blob (parsed) without touching the app. */
+export async function blob<T = unknown>(page: Page, key: string): Promise<T | null> {
+  return page.evaluate(k => {
+    const raw = localStorage.getItem(k);
+    if (!raw) return null;
+    try { return JSON.parse(raw); } catch { return raw; }
+  }, key) as Promise<T | null>;
+}
+
+export function canvas(page: Page): Locator {
+  return page.locator('.viewport canvas');
+}
+
+export async function playerX(page: Page): Promise<number> {
+  return Number(await canvas(page).getAttribute('data-player-x'));
+}
+
+/** Open /play (optionally with a query) and wait for the engine to report a position. */
+export async function openPlay(page: Page, query = ''): Promise<void> {
+  await page.goto(`/play${query}`);
+  await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 20000 });
+  // The engine binds after hydration; give it the first frames.
+  await page.waitForTimeout(400);
+  await focusWorld(page);
+}
+
+/** Put keyboard focus on the canvas without clicking it (a click walks or swings). */
+export async function focusWorld(page: Page): Promise<void> {
+  await canvas(page).evaluate(c => (c as HTMLCanvasElement).focus({ preventScroll: true }));
+}
+
+/** Hold A or D until the Keeper passes `target` (real time). */
+export async function walk(page: Page, key: 'a' | 'd', target: number, timeout = 30000): Promise<void> {
+  await focusWorld(page);
+  await page.keyboard.down(key);
+  try {
+    await expect.poll(async () => {
+      const x = await playerX(page);
+      return key === 'd' ? x >= target : x <= target;
+    }, { timeout, intervals: [50] }).toBe(true);
+  } finally {
+    await page.keyboard.up(key);
+  }
+}
+
+/** Walk so the Keeper ends near `target` (within `slack` px). */
+export async function walkTo(page: Page, target: number, slack = 30): Promise<void> {
+  const x = await playerX(page);
+  if (Math.abs(x - target) <= slack) return;
+  if (x < target) await walk(page, 'd', target - slack / 2);
+  else await walk(page, 'a', target + slack / 2);
+}
+
+/** Hold a key for `ms` milliseconds of real time. */
+export async function hold(page: Page, key: string, ms: number): Promise<void> {
+  await page.keyboard.down(key);
+  await page.waitForTimeout(ms);
+  await page.keyboard.up(key);
+}
+
+/** The objective / message line under the title. */
+export function messageLine(page: Page): Locator {
+  return page.locator('.objective');
+}
+
+/** The open in-world place dialog. */
+export function placePanel(page: Page): Locator {
+  return page.locator('section.place');
+}
+
+/** One hotbar slot's held count, from its aria-label ("Torch, 3 held"). */
+export async function hotbarCount(page: Page, name: string): Promise<number> {
+  const label = await page.locator('.hotbar button.hot', { hasText: '' })
+    .evaluateAll((buttons, n) => buttons.map(b => b.getAttribute('aria-label') ?? '').find(l => l.startsWith(`${n},`)) ?? '', name);
+  const match = /,\s*(\d+) held/.exec(label);
+  return match ? Number(match[1]) : -1;
+}
+
+/** Keep in step with INVENTORY_ERA (src/app/shared/rpg/inventory.model.ts); a stale era wipes the bag at boot. */
+export const ERA = 55;
+
+/** An inventory ledger holding only these material stacks. */
+export function ledger(stacks: Record<string, number>): unknown {
+  const rows = Object.entries(stacks);
+  return {
+    version: 2,
+    records: rows.map(([key], i) => ({
+      id: `stack:${key}`, definitionId: key, kind: 'stack',
+      category: 'materials', tags: ['material', key], soulbound: false,
+      acquiredAt: '2026-10-01T00:00:00.000Z',
+      revision: { hlc: i + 1, deviceId: 'e2e', sequence: i + 1 },
+      source: 'inventory', stackKey: key, location: { kind: 'bag' },
+    })),
+    tombstones: [],
+    stackOps: rows.map(([key, quantity], i) => ({
+      id: `seed:${key}`, stackKey: key, kind: 'grant', quantity, hlc: i + 1, deviceId: 'e2e', sequence: i + 1,
+    })),
+    goldFromSales: 0,
+    sold: 0,
+    hlc: rows.length,
+    legacyBackup: null,
+    era: ERA,
+  };
+}
+
+/** Blobs for a bag of material stacks (with the era stamp the boot check wants). */
+export function bag(stacks: Record<string, number>): Blobs {
+  return { 'godforge-realm-era': String(ERA), 'godforge-inventory': ledger(stacks) };
+}
+
+/** A v3 economy purse (gold alone merges over a fresh ledger). */
+export function purse(gold: number): Blobs {
+  return { 'godforge-economy': { version: 3, gold, totalGoldEarned: gold, runGoldEarned: gold } };
+}
+
+/** Stack quantity in the inventory ledger blob: checkpoints plus the op log above them. */
+export async function stackQty(page: Page, stackKey: string): Promise<number> {
+  return page.evaluate(key => {
+    const ledger = JSON.parse(localStorage.getItem('godforge-inventory') || '{}');
+    const cp = (ledger.stackCheckpoints || []).find((c: { stackKey: string }) => c.stackKey === key);
+    let qty = cp ? cp.quantity : 0;
+    const floor = cp ? cp.upToHlc : -Infinity;
+    for (const op of ledger.stackOps || []) {
+      if (op.stackKey !== key || op.hlc <= floor) continue;
+      qty += op.kind === 'grant' ? op.quantity : -op.quantity;
+    }
+    return qty;
+  }, stackKey);
+}
