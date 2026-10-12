@@ -87,6 +87,10 @@ export interface DelvePersistence {
   cells(areaId: string, layout: string): ReadonlyMap<number, number> | null;
   /** A cell changed. `kind` null: it is back to what the seed generated. Debounce on the host side. */
   changed(areaId: string, layout: string, index: number, kind: number | null): void;
+  /** Whether a once-per-player flag (a felled guardian, a paid find) is set. Optional: absent = never. */
+  isClaimed?(id: string): boolean;
+  /** Set a once-per-player flag, saved at once. Optional: absent = this session only. */
+  claim?(id: string): boolean;
 }
 export interface WorldActionEvent {
   kind: WorldActionKind;

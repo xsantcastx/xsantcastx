@@ -39,7 +39,7 @@ import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.mode
 import type { DiscoverEvent } from './engine/engine';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
-const ONCE_PER_PLAYER = new Set(['godforge-fragment']);
+const ONCE_PER_PLAYER = new Set(['godforge-fragment', 'kaels-hammer']);
 
 /** Where Delve swings are recorded in the activity ledger. */
 const EMBER_DELVE_LOCATION = 'infernal/ember-delve';
@@ -864,7 +864,7 @@ export class SideScrollerComponent implements OnDestroy {
     // still showed it): the rock breaks, nothing is paid twice.
     const once = event.materialId && ONCE_PER_PLAYER.has(event.materialId) ? event.materialId : null;
     if (once && this.delve.isClaimed(once)) {
-      this.message = 'Only an echo of the fragment is left. You already carry what was here.';
+      this.message = `Only an echo is left here. You already found the ${materialDisplay(once)?.name ?? once}.`;
       return true;
     }
     const result = this.skillActions.act({

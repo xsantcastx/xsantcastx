@@ -55,6 +55,9 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'shadow-root-cutting': 'Shadow-Root Cutting',
   'glowcap': 'Glowcap',
   'godforge-fragment': 'Godforge Fragment',
+  // Kael's lost hammer, from his old cache in the Basalt Caverns (once per
+  // player). A quest stack for "The Old Seam": no ItemDefinition on purpose.
+  'kaels-hammer': "Kael's Hammer",
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {
