@@ -28,7 +28,8 @@ import { Observable, Subject } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { QuestService } from './quest.service';
 import { dayKey } from './quest.model';
-import { TOOLS_REGISTRY, ToolDefinition } from '../../tools/tools-registry';
+import type { ToolDefinition } from '../../tools/tools-registry';
+import { isToolPath, toolForRoute } from '../../tools/tool-for-route';
 import { realmForCategory } from '../realms/realm.model';
 import { LoreService } from '../lore/lore.service';
 import { canonicalizePlayerPath } from '../canonical-routes';
@@ -79,6 +80,8 @@ export class QuestWiringService {
 
   /** The tool page currently open, or null everywhere else. */
   private currentTool: ToolDefinition | null = null;
+  /** The canonical path last navigated to, so a late registry load cannot land on a newer page. */
+  private currentPath = '';
   /** tool id → last beat timestamp. */
   private readonly lastBeat = new Map<string, number>();
   private lastCopyAt = 0;
@@ -139,6 +142,7 @@ export class QuestWiringService {
 
   private onNavigate(url: string): void {
     const path = canonicalizePlayerPath(url);
+    this.currentPath = path;
     if (path.startsWith('/embed/')) {
       this.currentTool = null;
       return;
@@ -146,7 +150,14 @@ export class QuestWiringService {
 
     this.quests.addToSet('pages', path);
 
-    this.currentTool = TOOLS_REGISTRY.find(t => t.route === path) ?? null;
+    // Tool routes are retired and redirect to /world (see tool-for-route.ts);
+    // the registry is only fetched for a path that could still be one.
+    this.currentTool = null;
+    if (isToolPath(path)) {
+      void toolForRoute(path).then(tool => {
+        if (this.currentPath === path) this.currentTool = tool;
+      });
+    }
   }
 
   /**
