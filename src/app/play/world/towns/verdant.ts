@@ -12,7 +12,7 @@
  */
 import { FLOOR } from '../../engine/engine.model';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
-import type { HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
 /**
  * What a Rootglass Stag drops. Every material is a real stack id the Crafting
@@ -58,6 +58,22 @@ const THICKET_PLATFORMS: Platform[] = [
 /** Where the passage from the Thicket sets the Keeper down in town. */
 const PASSAGE_X = 2240;
 
+/**
+ * Gathering in the Thicket, the Woodcutting and Foraging realm: starlight and
+ * a World-Root sapling for the starter kit, a sap tree for an Axe II and
+ * Woodcutting 10, and a thornroot bramble for a Sickle III and Foraging 25.
+ */
+export const THICKET_NODES: readonly GatherNodeDef[] = [
+  { id: 'starlight-clump', x: 330, kind: 'herb', label: 'Starlight Herb clump', tools: { sickle: 1 }, hp: 1, discipline: 'foraging', xp: 2, minLevel: 1,
+    yield: { materialId: 'starlight-herb', qty: 1 }, respawn: 25 },
+  { id: 'world-root-sapling', x: 520, kind: 'wood', label: 'World-Root sapling', tools: { axe: 1 }, hp: 3, discipline: 'woodcutting', xp: 4, minLevel: 1,
+    yield: { materialId: 'world-root-bark', qty: 1 }, respawn: 35 },
+  { id: 'sap-tree', x: 720, kind: 'wood', label: 'Sap tree', tools: { axe: 2 }, hp: 3, discipline: 'woodcutting', xp: 7, minLevel: 10,
+    yield: { materialId: 'verdant-sap', qty: 1 }, respawn: 40 },
+  { id: 'thornroot-bramble', x: 1050, kind: 'herb', label: 'Thornroot bramble', tools: { sickle: 3 }, hp: 2, discipline: 'foraging', xp: 15, minLevel: 25,
+    yield: { materialId: 'thornroot', qty: 1 }, respawn: 45 },
+];
+
 export const ROOTGLASS_THICKET: HuntZoneDef = {
   id: 'rootglass-thicket',
   name: 'Rootglass Thicket',
@@ -69,6 +85,7 @@ export const ROOTGLASS_THICKET: HuntZoneDef = {
   ],
   monsters: [{ creature: 'rootglass-stag', name: 'Rootglass Stag', hp: 50, spawnXs: [1300, 1700, 2100, 2450] }],
   drops: ROOTGLASS_STAG_DROPS,
+  nodes: THICKET_NODES,
   spawnX: 240,
   // The Stags keep east of the root path, so arriving is never an ambush.
   safeX: 900,
@@ -88,6 +105,8 @@ export const VERDANT_TOWN: TownDef = {
     { id: 'quests', x: 1030, label: 'QUEST BOARD', kind: 'panel', panel: 'quests', art: 'rift-map-fragment', width: 170, blurb: 'The daily, weekly and epic orders the realms are asking of you.' },
     { id: 'arena', x: 1340, label: 'ARENA GATE', kind: 'panel', panel: 'arena', art: 'rootwall-shield', width: 170, blurb: 'Test your might and guard against the ring.' },
     { id: 'trials', x: 1650, label: 'TRIALS GATE', kind: 'panel', panel: 'trials', art: 'eclipse-banner', width: 170, blurb: 'The proving ground: gates opened by the secrets you find.' },
+    // The Skills Lodge: every craft the Keeper trains, its level and what the next one opens.
+    { id: 'skills', x: 1805, label: 'SKILLS LODGE', kind: 'panel', panel: 'skills', art: 'world-root-bark', width: 130, blurb: 'Your skills: levels, tools, and what the next level opens.' },
     { id: 'passage', x: PASSAGE_X, label: 'ROOT PATH', kind: 'passage', to: 'rootglass-thicket', arriveX: 240, width: 120, blurb: 'Down through the roots to the Rootglass Thicket.' },
   ],
   monsters: [],

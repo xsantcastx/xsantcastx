@@ -13,10 +13,10 @@ import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-rend
 import type { DelvePersistence } from './engine.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
 import type { DisciplineId } from '../../shared/activity/activity.model';
-import { AreaDef, areaOf, clientToWorld, DropEntry, LootRarity, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
+import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
-export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
+export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
@@ -35,6 +35,12 @@ interface Drop {
   /** Presentation, fixed at spill time so the render allocates nothing: beam colour/height, hover caption and its measured width. */
   rarity?: LootRarity; color: string; beam: number; caption: string; captionW: number;
 }
+/**
+ * A gathering node's live state. `gen` counts harvests this session: it keys
+ * the grant's mutation id, so each regrowth is a new grant and a retried
+ * break is the same one. `shake` is presentation only.
+ */
+interface GatherSite { def: GatherNodeDef; hp: number; ready: boolean; timer: number; gen: number; shake: number }
 /** A picked-up item flying to the satchel, in canvas CSS px. Pooled; render-only. */
 interface Flight { active: boolean; t: number; sx: number; sy: number; ex: number; ey: number; art?: string; coins: boolean; color: string }
 const FLIGHT_POOL = 16;
@@ -49,6 +55,13 @@ const BLAST_TIME = .3;
 const BLAST_COOLDOWN = 1.1;
 /** What hitCell did to one cell. */
 const HIT_NONE = 0, HIT_CHIP = 1, HIT_BROKE = 2, HIT_BLOCKED = 3, HIT_REFUSED = 4;
+/** Gathering nodes: the glow of a ready node and the colour of its chips, by kind. */
+const SITE_GLOW: Readonly<Record<GatherNodeDef['kind'], string>> = { herb: '#b6f28a', wood: '#e8c47a', ore: '#8fd6cf' };
+const SITE_FLECK: Readonly<Record<GatherNodeDef['kind'], string>> = { herb: '#7fb85a', wood: '#b08a55', ore: '#9fd0c8' };
+/** Where an outcrop's nuggets glint, relative to its foot. */
+const SITE_NUGGETS: readonly (readonly [number, number])[] = [[-18, -26], [6, -44], [20, -22], [-4, -14]];
+/** The skill a node's discipline trains, where the stored id differs ("Needs Foraging 6"). */
+const SKILL_NAME: Partial<Record<DisciplineId, string>> = { forge: 'smithing', exploration: 'delving' };
 /** 'cinder-ore' → 'Cinder Ore'. */
 function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
 /** The prompt over a usable cell. */
@@ -181,6 +194,9 @@ export class SeamworksEngine {
   private readonly halosAt = new Int32Array(32);
   private readonly hitScratch = new Int32Array(160);
   private tools: ToolTiers = {};
+  /** The current area's gathering nodes, and every visited area's (regrowth timers keep running per session). */
+  private sites: GatherSite[] = [];
+  private readonly siteCache = new Map<string, GatherSite[]>();
   private lanternRadius = DEFAULT_LANTERN;
   private skillLevels: Partial<Record<DisciplineId, number>> | null = null;
   /** True while the Keeper is on a ladder (set in the fixed step): Up climbs instead of jumping. */
@@ -224,7 +240,18 @@ export class SeamworksEngine {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
     this.terrain = this.terrainFor(area); this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
+    this.sites = this.sitesFor(area);
     this.motes.reset();
+  }
+  /** An area's gathering nodes, created on the first visit and kept for the session. */
+  private sitesFor(area: AreaDef): GatherSite[] {
+    if (!area.nodes?.length) return [];
+    let sites = this.siteCache.get(area.id);
+    if (!sites) {
+      sites = area.nodes.map(def => ({ def, hp: def.hp, ready: true, timer: 0, gen: 0, shake: 0 }));
+      this.siteCache.set(area.id, sites);
+    }
+    return sites;
   }
   /** The area's terrain: cached for the session, else generated from the player's seed with their diff applied. */
   private terrainFor(area: AreaDef): Terrain | null {
@@ -559,18 +586,23 @@ export class SeamworksEngine {
    *
    * A swing works a terrain cell with the best of pickaxe/axe/sickle/blade that
    * meets the cell's minimum tier; the staff works only through its blast (L).
-   * `lanternRadius` is world px (default 230). `levels` (optional) are skill
-   * levels by discipline: a cell with a higher `minLevel` clangs before the
-   * host is asked, instead of cracking all the way and being refused.
+   * The lantern: `lanternTiles` is the Skills unit (toolTiers().lanternRadius,
+   * which grows with Delving), one tile = one CELL; `lanternRadius` is the
+   * same reach in world px, for callers that already have px. Tiles win when
+   * both are given. Default DEFAULT_LANTERN (7 tiles). `levels` (optional)
+   * are skill levels by discipline: a cell or gathering node with a higher
+   * `minLevel` clangs before the host is asked, instead of cracking all the
+   * way and being refused.
    */
-  setTools(tools: ToolTiers & { lanternRadius?: number; levels?: Partial<Record<DisciplineId, number>> }): void {
+  setTools(tools: ToolTiers & { lanternTiles?: number; lanternRadius?: number; levels?: Partial<Record<DisciplineId, number>> }): void {
     const next: ToolTiers = {};
     for (const tool of ['pickaxe', 'axe', 'sickle', 'blade', 'staff'] as ToolKind[]) {
       const tier = tools[tool];
       if (Number.isFinite(tier) && (tier as number) > 0) next[tool] = Math.floor(tier as number);
     }
     this.tools = next;
-    if (Number.isFinite(tools.lanternRadius) && (tools.lanternRadius as number) > 0) this.lanternRadius = tools.lanternRadius as number;
+    if (Number.isFinite(tools.lanternTiles) && (tools.lanternTiles as number) > 0) this.lanternRadius = (tools.lanternTiles as number) * CELL;
+    else if (Number.isFinite(tools.lanternRadius) && (tools.lanternRadius as number) > 0) this.lanternRadius = tools.lanternRadius as number;
     if (tools.levels) this.skillLevels = { ...tools.levels };
   }
   /**
@@ -579,9 +611,94 @@ export class SeamworksEngine {
    * there instead).
    */
   strikeAt(clientX: number, clientY: number): boolean {
-    if (!this.terrain || this.paused || this.hp <= 0) return false;
+    if (this.paused || this.hp <= 0) return false;
+    if (!this.terrain) return this.sites.length ? this.strikeSite(this.pick(clientX, clientY)) : false;
     const point = this.pick(clientX, clientY);
     return this.strikeCell(point.x, point.y);
+  }
+  /**
+   * A click on a gathering node: work it when the Keeper is beside it, else
+   * walk there and swing once on arrival. False when the click missed every node.
+   */
+  private strikeSite(point: { x: number; y: number }): boolean {
+    let site: GatherSite | null = null;
+    for (const s of this.sites) if (Math.abs(s.def.x - point.x) <= 46 && point.y > FLOOR - 150 && point.y < FLOOR + 30) { site = s; break; }
+    if (!site) return false;
+    const target = site;
+    if (Math.abs(target.def.x - this.player.x) <= NODE_REACH && this.player.y > FLOOR - 120) {
+      this.cancelMove();
+      if (this.attackCooldown <= 0) this.workSite(target);
+      this.report();
+      return true;
+    }
+    const side = this.player.x < target.def.x ? -1 : 1;
+    this.moveTo(target.def.x + side * 44, () => { if (this.attackCooldown <= 0) this.workSite(target); this.report(); });
+    return true;
+  }
+  /** The gathering node the Keeper stands at (nearest within reach, on the floor), or null. */
+  private siteInReach(): GatherSite | null {
+    if (!this.sites.length || this.player.y < FLOOR - 120) return null;
+    let best: GatherSite | null = null, bestDistance = NODE_REACH;
+    for (const site of this.sites) {
+      const d = Math.abs(site.def.x - this.player.x);
+      if (d <= bestDistance) { best = site; bestDistance = d; }
+    }
+    return best;
+  }
+  /** What still stops the Keeper working a node ("Sickle II", "Foraging 6"), or null. */
+  private siteNeed(def: GatherNodeDef): string | null {
+    const check = toolFor(def, this.tools, SWING_TOOLS);
+    if (!check.ok) return check.need ? toolName(check.need.tool, check.need.tier) : 'nothing';
+    const level = def.minLevel && this.skillLevels ? this.skillLevels[def.discipline] : undefined;
+    if (def.minLevel && level !== undefined && level < def.minLevel) return `${titleCase(SKILL_NAME[def.discipline] ?? def.discipline)} ${def.minLevel}`;
+    return null;
+  }
+  /**
+   * One swing at a gathering node: the Delve's rule (best swing tool that
+   * meets the node's tier; 1 + (tier - min) / 2 per hit), then the skill
+   * level, then the host books the break. A refusal leaves it standing on
+   * its last crack; a harvest rests it for `respawn` seconds.
+   */
+  private workSite(site: GatherSite): void {
+    const def = site.def;
+    this.attackTime = .4; this.attackCooldown = .52;
+    if (Math.abs(def.x - this.player.x) > 6) this.facing = def.x > this.player.x ? 1 : -1;
+    const top = FLOOR - (def.kind === 'wood' ? 120 : 50);
+    if (!site.ready) {
+      this.message = `The ${def.label.toLowerCase()} is growing back (${Math.ceil(site.timer)}s).`;
+      return;
+    }
+    const check = toolFor(def, this.tools, SWING_TOOLS);
+    const need = this.siteNeed(def);
+    if (!check.ok || need) {
+      this.debris.chip(def.x, top, '#ffe2a8', 6);
+      this.clang(def.x, top, check.ok ? `Clang! Needs ${need}` : `Clang! Need ${need}`);
+      return;
+    }
+    site.shake = 1;
+    const left = site.hp - check.damage;
+    if (left > 1e-3) {
+      site.hp = left;
+      this.debris.chip(def.x, top, SITE_FLECK[def.kind], this.reducedMotion ? 2 : 5);
+      this.impact(.025, 1.6);
+      return;
+    }
+    let material: string | undefined;
+    const pays = def.yield;
+    if (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance) material = pays.materialId;
+    const accepted = this.options.onWorldAction?.({
+      kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: def.id, site: def.id,
+      materialId: material, qty: material ? pays.qty : undefined, discipline: def.discipline, xp: def.xp,
+      mutationId: `gather:${this.lootSession}:${this.areaDef.id}:${def.id}:${site.gen}`,
+    });
+    if (accepted === false) { site.hp = Math.min(site.hp, 1e-3); this.debris.chip(def.x, top, SITE_FLECK[def.kind], 3); return; }
+    site.ready = false; site.timer = def.respawn; site.gen++; site.hp = def.hp;
+    for (let n = 0; n < (this.reducedMotion ? 4 : 10); n++) this.debris.chip(def.x + (n - 5) * 4, top, SITE_FLECK[def.kind], 1);
+    this.impact(.05, 3);
+    if (material) {
+      this.atmosphere.burst(def.x, top - 16, `+${pays.qty} ${titleCase(material)}`);
+      this.message = `${titleCase(material)} gathered from the ${def.label.toLowerCase()}. It grows back in ${def.respawn}s.`;
+    } else this.message = `Nothing worth keeping on the ${def.label.toLowerCase()} this time. It grows back in ${def.respawn}s.`;
   }
   /** Swing at the cell under a world point, if it is solid and in reach. */
   strikeCell(x: number, y: number): boolean {
@@ -711,6 +828,7 @@ export class SeamworksEngine {
       struck = true;
     }
     if (!struck && this.terrain) this.hitCells(this.swingTargets(), SWING_TOOLS, false);
+    else if (!struck) { const site = this.siteInReach(); if (site) this.workSite(site); }
   }
   private hurtMonster(monster: Monster, damage: number): void {
     const floor = monster.def.floorY ?? FLOOR;
@@ -723,6 +841,7 @@ export class SeamworksEngine {
       monster.dying = DEATH_FADE;
       monster.respawn = 8; this.kills++; this.guardianDefeated = true;
       this.spill(monster);
+      this.options.onKill?.({ id: `${this.lootSession}:${this.kills}`, areaId: this.areaDef.id, creature: monster.def.creature, name: monster.def.name, hp: monster.maxHp });
       if (monster.def.once) {
         // Felled for good: saved per player, never respawns, and what it guarded opens.
         monster.respawn = Infinity;
@@ -945,6 +1064,8 @@ export class SeamworksEngine {
     if (this.paused || this.hp <= 0) return;
     const station = this.nearbyStation();
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
+    const site = station ? null : this.siteInReach();
+    if (site) { if (this.attackCooldown <= 0) this.workSite(site); this.report(); return; }
     if (!station) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
     const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
     if (locked) this.message = station.lockedMessage ?? 'This way is not open yet.';
@@ -1065,6 +1186,10 @@ export class SeamworksEngine {
       if (this.input.has('attack') && this.attackCooldown <= 0) this.attack();
       if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
       this.interactAt = this.findInteractive();
+    } else if (this.sites.length && this.input.has('attack') && this.attackCooldown <= 0 && this.siteInReach()) this.attack();
+    for (const sites of this.siteCache.values()) for (const s of sites) {
+      s.shake = Math.max(0, s.shake - dt * 5);
+      if (!s.ready && (s.timer -= dt) <= 0) { s.ready = true; s.timer = 0; s.hp = s.def.hp; }
     }
     if (!wasGrounded && this.player.grounded && !this.climbing) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
@@ -1132,9 +1257,12 @@ export class SeamworksEngine {
     const at = !station && t && this.interactAt >= 0 ? this.interactAt : -1;
     // A carved wall reads as 'inscription'; a placed chest or camp by its use.
     const use = at >= 0 ? (t!.inscriptions.has(at) ? 'inscription' : TERRAIN_NODE_LIST[t!.kind[at]].use ?? null) : null;
+    const site = !station && !use ? this.siteInReach() : null;
+    const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
     this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name,
-      nearby: use ?? station?.id ?? null, nearbyLabel: use ? USE_LABEL[use] : station?.label, nearbyKind: station?.kind,
+      nearby: use ?? station?.id ?? (site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
+      gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
       x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
@@ -1518,6 +1646,65 @@ export class SeamworksEngine {
     if (near) { c.fillStyle = '#fff0cb'; c.fillText('[ E ] INTERACT', x, FLOOR + 58); }
     else if (hovered) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, FLOOR + 58); }
   }
+  /**
+   * A gathering node, drawn in code: a herb patch, a tree or an outcrop. Ready,
+   * it carries its material's art and a soft glow that breathes (held still
+   * under reduced motion); harvested, it is a dim stump with a ring filling
+   * as it grows back. Render-only.
+   */
+  private drawSite(c: CanvasRenderingContext2D, site: GatherSite, near: boolean, time: number): void {
+    const def = site.def, x = def.x + (this.reducedMotion ? 0 : Math.sin(time * 60) * site.shake * 2.5);
+    const ready = site.ready, glow = SITE_GLOW[def.kind];
+    c.save();
+    if (ready) {
+      c.globalAlpha = (near ? .5 : .28) * (this.reducedMotion ? 1 : .8 + Math.sin(time * 2.4 + def.x) * .2);
+      c.fillStyle = glow;
+      c.beginPath(); c.ellipse(x, FLOOR + 2, def.kind === 'wood' ? 58 : 44, 10, 0, 0, Math.PI * 2); c.fill();
+      c.globalAlpha = 1;
+    } else c.globalAlpha = .55;
+    if (def.kind === 'wood') {
+      const h = ready ? 150 : 34;
+      c.fillStyle = '#4a3324'; c.fillRect(x - 11, FLOOR - h, 22, h);
+      c.fillStyle = '#7a5a36'; c.fillRect(x - 11, FLOOR - h, 4, h);
+      if (ready) {
+        c.fillStyle = '#2f4a2c'; c.beginPath(); c.arc(x, FLOOR - h, 46, 0, Math.PI * 2); c.fill();
+        c.fillStyle = '#4c6e3a'; c.beginPath(); c.arc(x - 16, FLOOR - h - 10, 26, 0, Math.PI * 2); c.arc(x + 18, FLOOR - h + 4, 24, 0, Math.PI * 2); c.fill();
+      } else { c.fillStyle = '#c9a06a'; c.beginPath(); c.ellipse(x, FLOOR - h, 11, 4, 0, 0, Math.PI * 2); c.fill(); }
+    } else if (def.kind === 'ore') {
+      const lift = ready ? 1 : .32;
+      c.fillStyle = '#3f3440'; c.beginPath(); c.moveTo(x - 40, FLOOR); c.lineTo(x - 30, FLOOR - 48 * lift); c.lineTo(x - 4, FLOOR - 62 * lift); c.lineTo(x + 26, FLOOR - 44 * lift); c.lineTo(x + 40, FLOOR); c.closePath(); c.fill();
+      c.strokeStyle = '#6b5a6e'; c.lineWidth = 2; c.stroke();
+      if (ready) { c.fillStyle = glow; for (const [dx, dy] of SITE_NUGGETS) c.fillRect(x + dx - 3, FLOOR + dy - 3, 6, 6); }
+    } else {
+      c.strokeStyle = ready ? '#5f8a46' : '#5a4a36'; c.lineWidth = 3;
+      for (let i = -3; i <= 3; i++) {
+        const h = ready ? 34 + (i & 1) * 12 : 8;
+        c.beginPath(); c.moveTo(x + i * 6, FLOOR); c.quadraticCurveTo(x + i * 9, FLOOR - h * .6, x + i * 11, FLOOR - h); c.stroke();
+      }
+      if (ready) { c.fillStyle = glow; for (let i = -2; i <= 2; i += 2) { c.beginPath(); c.arc(x + i * 11, FLOOR - 40 - Math.abs(i) * 2, 5, 0, Math.PI * 2); c.fill(); } }
+    }
+    c.globalAlpha = 1;
+    const iconY = FLOOR - (def.kind === 'wood' ? 228 : 104);
+    if (ready) {
+      c.shadowColor = glow; c.shadowBlur = near ? 18 : 10;
+      if (!this.art(def.yield.materialId, x - 15, iconY, 30, 30)) { c.fillStyle = glow; c.beginPath(); c.arc(x, iconY + 15, 8, 0, Math.PI * 2); c.fill(); }
+      c.shadowBlur = 0;
+    } else {
+      // Regrowth: a ring filling clockwise as the node comes back.
+      const share = 1 - site.timer / Math.max(1, def.respawn);
+      c.lineWidth = 4;
+      c.strokeStyle = '#3a3040'; c.beginPath(); c.arc(x, iconY + 15, 12, 0, Math.PI * 2); c.stroke();
+      c.strokeStyle = glow; c.beginPath(); c.arc(x, iconY + 15, 12, -Math.PI / 2, -Math.PI / 2 + share * Math.PI * 2); c.stroke();
+    }
+    if (near) {
+      c.font = '600 12px system-ui'; c.textAlign = 'center'; c.fillStyle = '#fff1c9';
+      c.fillText(def.label.toUpperCase(), x, FLOOR + 35);
+      const need = ready ? this.siteNeed(def) : null;
+      c.fillStyle = need ? '#ffb39a' : '#fff0cb';
+      c.fillText(!ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, FLOOR + 58);
+    }
+    c.restore();
+  }
   /** A timber market stall: posts, a striped awning, a counter, and the station's art on a lit plaque. */
   private drawStall(c: CanvasRenderingContext2D, station: StationDef, hot: boolean): void {
     const x = station.x;
@@ -1605,6 +1792,14 @@ export class SeamworksEngine {
       if (station.x < this.camera - 200 || station.x > this.camera + viewport + 200) continue;
       this.drawStation(c, station, station.id === nearId, station.id === this.hovered, motionTime);
     }
+    if (this.sites.length) {
+      const near = this.nearbyStation() ? null : this.siteInReach();
+      for (const site of this.sites) {
+        if (site.def.x < this.camera - 120 || site.def.x > this.camera + viewport + 120) continue;
+        this.drawSite(c, site, site === near, motionTime);
+      }
+    }
+    if (!t) this.debris.draw(c);
     for (const drop of this.drops) this.drawDropBeam(c, drop, motionTime);
     for (const drop of this.drops) {
       // Spilled from the body: an arc out and a short bounce, then the idle bob.

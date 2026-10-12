@@ -57,12 +57,12 @@
 
   @if (state.delve) {
     <!-- The Delve hotbar: what you can place, and how many. Pick one, then B (or hold a tap where it goes). -->
-    <nav class="hotbar" aria-label="Things to place" [attr.inert]="panel ? '' : null">
+    <nav class="hotbar" [attr.aria-label]="t('play.hotbar.label')" [attr.inert]="panel ? '' : null">
       <ul>
         @for (slot of hotbar; track slot.id) {
           <li>
             <button type="button" class="hot" [class.picked]="slot.id === placing" [class.empty]="!slot.count"
-              (click)="choosePlaceable(slot.id)" [attr.aria-pressed]="slot.id === placing" [attr.aria-label]="slot.name + ', ' + slot.count + ' held'" [title]="slot.name">
+              (click)="choosePlaceable(slot.id)" [attr.aria-pressed]="slot.id === placing" [attr.aria-label]="t('play.hotbar.held', { name: slot.name, n: slot.count })" [title]="slot.name">
               @if (slot.art) { <img [src]="slot.art" alt=""> } @else { <em>{{ slot.name.slice(0, 2) }}</em> }
               <b>{{ slot.count }}</b>
               <kbd class="key-hint">{{ slot.key }}</kbd>
@@ -71,9 +71,9 @@
         }
       </ul>
       <p class="hot-line">
-        @if (placingSlot; as slot) { <span>{{ slot.name }}</span> } @else { <span>Nothing chosen</span> }
-        <button type="button" class="hot-place" (click)="placeHere()" [disabled]="!placingSlot?.count">Place <kbd class="key-hint">B</kbd></button>
-        <button type="button" class="hot-place" (click)="takeBack()" title="Take back a torch, ladder or chest beside you">Take <kbd class="key-hint">X</kbd></button>
+        @if (placingSlot; as slot) { <span>{{ slot.name }}</span> } @else { <span>{{ t('play.hotbar.none') }}</span> }
+        <button type="button" class="hot-place" (click)="placeHere()" [disabled]="!placingSlot?.count">{{ t('play.hotbar.place') }} <kbd class="key-hint">B</kbd></button>
+        <button type="button" class="hot-place" (click)="takeBack()" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }} <kbd class="key-hint">X</kbd></button>
       </p>
     </nav>
   }

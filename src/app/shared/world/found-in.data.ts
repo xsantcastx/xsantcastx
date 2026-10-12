@@ -3,7 +3,8 @@
  *
  * Sources, all read rather than transcribed:
  *  - gathering sites: MINING_TIERS / FORAGING_TIERS / PROSPECTING_TIERS
- *  - every town and hunt: area drop tables, per-monster overrides, and the
+ *  - every town and hunt: area drop tables, per-monster overrides, the
+ *    hunting grounds' gathering nodes (AreaDef.nodes → their yields), and the
  *    Delve's terrain nodes (bands, veins and stamps → TERRAIN_NODES yields)
  *  - the expedition each expedition-only material comes from (read off the
  *    Material Vendor's buyback board, which names it; the Vendor itself only
@@ -46,7 +47,10 @@ function terrainNodes(spec: TerrainSpec | undefined): string[] {
 }
 
 function areaLike(area: AreaDef): AreaLike {
-  return { name: area.name, drops: area.drops, monsters: area.monsters, terrainNodes: terrainNodes(area.terrain) };
+  return {
+    name: area.name, drops: area.drops, monsters: area.monsters, terrainNodes: terrainNodes(area.terrain),
+    gatherMaterials: (area.nodes ?? []).map(node => node.yield.materialId),
+  };
 }
 
 export function buildFoundInIndex(): FoundInIndex {

@@ -186,7 +186,7 @@ export type ToolCheck =
  * The best of `allowed` tools the Keeper holds that can work `node`, and its
  * damage per hit; or the requirement to show when none can. Pure.
  */
-export function toolFor(node: TerrainNodeDef, tiers: ToolTiers, allowed: readonly ToolKind[] = TOOL_KINDS): ToolCheck {
+export function toolFor(node: Pick<TerrainNodeDef, 'tools'>, tiers: ToolTiers, allowed: readonly ToolKind[] = TOOL_KINDS): ToolCheck {
   let best: { tool: ToolKind; tier: number; damage: number } | null = null;
   let need: { tool: ToolKind; tier: number } | null = null;
   for (const tool of TOOL_KINDS) {
