@@ -90,6 +90,9 @@ import {
 } from './socket.model';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
+import { RuneRitualComponent } from '../minigames/rune-ritual.component';
+import { MINIGAMES_I18N } from '../minigames/minigames.i18n';
+import { SkillActionService, craftSkillXp } from '../skills/skill-actions.service';
 import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
 import { floorThing, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 /** One socketable item in the bag or on the body, as the picker renders it. */
@@ -168,7 +171,7 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
 @Component({
   selector: 'app-enchanting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, RouterLink, ...STATION_UI],
+  imports: [RelatedPagesComponent, ForgeFloorComponent, RuneRitualComponent, CommonModule, RouterLink, ...STATION_UI],
   templateUrl: './enchanting-bench.component.html',
   styleUrls: ['./enchanting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -183,8 +186,19 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly infusions = inject(InfusionService);
   private readonly celebration = inject(CelebrationService);
+  private readonly skills = inject(SkillActionService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
+
+  /** The rune ritual is open. Nothing is spent until it succeeds. */
+  ritual: {
+    runeId: string;
+    itemId: string;
+    runeName: string;
+    runeArt: StationArt | null;
+    itemName: string;
+    itemArt: StationArt | null;
+  } | null = null;
 
   private subs: Subscription[] = [];
   private ticker: ReturnType<typeof setInterval> | null = null;
@@ -246,6 +260,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(ENCHANTING_I18N);
+    this.i18n.register(MINIGAMES_I18N);
     this.forgeTabs = forgeTabs(key => this.t(key));
     this.enchantTabs = [
       { id: 'runes', label: this.t('enchant.tab.runes') },
@@ -480,6 +495,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
 
   pickGear(id: string): void {
     const row = this.socketables.find(r => r.item.id === id);
+    if (row?.item.id !== this.ritual?.itemId) this.ritual = null;
     if (row) this.select(row.item);
   }
 
@@ -504,6 +520,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
   }
 
   chooseRune(runeId: string): void {
+    if (runeId !== this.ritual?.runeId) this.ritual = null;
     this.chosenRuneId = runeId;
     this.error = null;
     this.buildCta();
@@ -557,8 +574,46 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
 
   // ── Actions ────────────────────────────────────────────────────────────────
 
-  /** The big button. Same gateway call the per-well drawer made, aimed at the first empty slot. */
+  /**
+   * The big button opens the ritual. Nothing is spent until the ritual
+   * succeeds — then it is the same gateway call the per-well drawer made,
+   * aimed at the first empty slot.
+   */
   addRune(): void {
+    const runeId = this.chosenRuneId;
+    const well = this.firstEmptyWell();
+    if (!this.selected || !runeId || well === null) return;
+    const rune = runeById(runeId);
+    this.error = null;
+    this.reward = null;
+    this.ritual = {
+      runeId,
+      itemId: this.selected.id,
+      runeName: rune?.name ?? runeId,
+      runeArt: runeCard(runeId) ?? null,
+      itemName: this.selected.name,
+      itemArt: itemArt(this.selected),
+    };
+    this.cdr.markForCheck();
+  }
+
+  closeRitual(): void {
+    this.ritual = null;
+    this.cdr.markForCheck();
+  }
+
+  /** The ritual succeeded: seat the rune, then pay Enchanting XP through the skills hook. */
+  onRitualDone(quality: number): void {
+    const ritual = this.ritual;
+    this.ritual = null;
+    if (!ritual || this.selected?.id !== ritual.itemId || this.chosenRuneId !== ritual.runeId) {
+      this.cdr.markForCheck();
+      return;
+    }
+    this.socketChosen(quality);
+  }
+
+  private socketChosen(quality: number): void {
     const runeId = this.chosenRuneId;
     const well = this.firstEmptyWell();
     if (!this.selected || !runeId || well === null) return;
@@ -571,6 +626,11 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.error = null;
     const rune = runeById(runeId);
     const item = this.selected;
+    // Enchanting XP for the ritual. Socketing has no mutation id of its own, so
+    // this one is unique per seat; the gateway dedupes on it.
+    let enchantXp = 0;
+    const granted = this.skills.grantEnchantingXp(quality, `ritual:${item.id}:${well}:${runeId}:${newRitualId()}`);
+    if (granted.ok && !granted.replayed) enchantXp = craftSkillXp(quality);
     this.emitFloor(
       [floorThing(runeId, rune?.name)],
       { id: item.id, name: item.name, art: itemArt(item) },
@@ -588,7 +648,10 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       art: word ? itemArt(item) : (runeCard(runeId) ?? itemArt(item)),
       rarity: tier,
       rarityLabel: tier ? RUNE_TIERS[tier]?.label : undefined,
-      caption: word ? word.effect : describeStats(socketEffectOf(runeId)).join(', '),
+      caption: [
+        word ? word.effect : describeStats(socketEffectOf(runeId)).join(', '),
+        enchantXp ? this.t('minigame.ritual.xp', { n: enchantXp }) : '',
+      ].filter(Boolean).join(' · ') || undefined,
     };
     if (result.discovered && result.word) {
       // Scaled to the rarest rune the word demands, which is the same scale the
@@ -675,4 +738,11 @@ function describeStats(stats: ItemStats): string[] {
   return ITEM_STAT_KEYS
     .filter(key => (stats[key] ?? 0) !== 0)
     .map(key => formatItemMod(key, stats[key] as number));
+}
+
+let ritualCounter = 0;
+/** A fresh suffix per seated rune, for the Enchanting XP mutation id. */
+function newRitualId(): string {
+  ritualCounter = (ritualCounter + 1) % 1_000_000;
+  return `${Date.now().toString(36)}-${ritualCounter.toString(36)}`;
 }

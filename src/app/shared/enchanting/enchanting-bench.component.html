@@ -37,14 +37,19 @@
                                 [minCells]="2" [empty]="t('enchant.why.noRunes')" (pick)="chooseRune($event)" />
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="2" [pending]="!hydrated" />
 
-          <app-action-button
-            [label]="t('enchant.ctaShort')"
-            [costs]="ctaCosts"
-            chips="none"
-            [blocked]="ctaBlocked"
-            [pending]="!hydrated"
-            (act)="addRune()"
-            (refused)="announce = $event" />
+          @if (ritual; as r) {
+            <app-rune-ritual [runeName]="r.runeName" [runeArt]="r.runeArt" [itemName]="r.itemName" [itemArt]="r.itemArt"
+                             (done)="onRitualDone($event)" (cancel)="closeRitual()" />
+          } @else {
+            <app-action-button
+              [label]="t('enchant.ctaShort')"
+              [costs]="ctaCosts"
+              chips="none"
+              [blocked]="ctaBlocked"
+              [pending]="!hydrated"
+              (act)="addRune()"
+              (refused)="announce = $event" />
+          }
 
           @if (hydrated && !drawer.length && !inWorld) {
             <a class="eb-link" routerLink="/forge/runes">{{ t('enchant.toForge') }}</a>

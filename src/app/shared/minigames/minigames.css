@@ -1,0 +1,308 @@
+/**
+ * minigames.css — the anvil game and the rune ritual.
+ *
+ * Tokens only (check-ds-adherence). Keyframes at the top level; inside the
+ * reduced-motion query only `animation: none`. Every motion here is
+ * transform / opacity. No fixed positioning: both games live in the station's
+ * detail pane, which routed hosts and the in-world panel would trap.
+ */
+@keyframes mgNudgeA {
+  0%, 100% { transform: translate(0, 0); }
+  30% { transform: translate(-3px, 2px); }
+  60% { transform: translate(2px, -1px); }
+}
+@keyframes mgNudgeB {
+  0%, 100% { transform: translate(0, 0); }
+  30% { transform: translate(3px, 2px); }
+  60% { transform: translate(-2px, -1px); }
+}
+@keyframes mgRing {
+  0% { transform: translate(-50%, -50%) scale(0.3); opacity: 1; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+}
+@keyframes mgSpark {
+  0% { transform: rotate(calc(var(--a, 0) * 1deg)) translateY(0) scale(1); opacity: 1; }
+  100% { transform: rotate(calc(var(--a, 0) * 1deg)) translateY(-46px) scale(0.3); opacity: 0; }
+}
+@keyframes mgGlyphSpin {
+  to { transform: rotate(360deg); }
+}
+@keyframes mgBreathe {
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 1; }
+}
+@keyframes mgBurst {
+  0% { transform: scale(0.4); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+@keyframes mgPop {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+:host { display: block; }
+
+.mg {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge-gold);
+  background: var(--veil-panel);
+  box-shadow: var(--shadow-inset);
+  justify-items: stretch;
+}
+.mg.is-nudge-a { animation: mgNudgeA 180ms var(--ease-standard); }
+.mg.is-nudge-b { animation: mgNudgeB 180ms var(--ease-standard); }
+
+.mg__how {
+  margin: 0;
+  text-align: center;
+  color: var(--text-heading);
+  font: var(--weight-semibold) var(--text-md)/1.3 var(--font-ui);
+}
+
+/* ── Anvil: the heat bar ─────────────────────────────────────────────────── */
+.mg-bar {
+  position: relative;
+  container-type: inline-size;
+  height: 56px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--edge-raised);
+  background: linear-gradient(90deg, var(--obsidian-2), var(--ember) 50%, var(--obsidian-2));
+  overflow: visible;
+  touch-action: manipulation;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+.mg-bar__good,
+.mg-bar__perfect {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: calc(var(--w, 0.3) * 100%);
+  transform: translateX(-50%);
+  border-radius: var(--radius-pill);
+  pointer-events: none;
+}
+.mg-bar__good { background: color-mix(in srgb, var(--gold) 28%, transparent); }
+.mg-bar__perfect {
+  background: color-mix(in srgb, var(--gold-bright) 70%, transparent);
+  box-shadow: 0 0 18px var(--gold-bright);
+  animation: mgBreathe 1.6s var(--ease-standard) infinite;
+}
+.mg-bar__marker {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  left: 0;
+  width: 8px;
+  margin-left: -4px;
+  border-radius: var(--radius-pill);
+  background: var(--text-heading);
+  box-shadow: 0 0 12px var(--gold-bright), 0 0 4px var(--text-heading);
+  transform: translateX(calc(var(--pos, 0) * 100cqw));
+  will-change: transform;
+  pointer-events: none;
+}
+.mg-bar__ring {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 0;
+  height: 0;
+  transform: translateX(calc(var(--at, 0.5) * 100cqw));
+  pointer-events: none;
+}
+.mg-bar__ring::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 3px solid var(--gold-bright);
+  animation: mgRing 480ms var(--ease-standard) forwards;
+}
+.mg-bar__ring[data-grade='good']::before { border-color: var(--status-good); }
+.mg-bar__ring[data-grade='off']::before { border-color: var(--status-danger); }
+.mg-spark {
+  position: absolute;
+  left: -3px;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  box-shadow: 0 0 8px var(--gold-bright);
+  animation: mgSpark 520ms var(--ease-standard) forwards;
+}
+
+.mg-pips {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.mg-pip {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--edge-raised);
+  background: var(--surface-well);
+}
+.mg-pip[data-grade='perfect'] { background: var(--gold-bright); border-color: var(--gold-bright); }
+.mg-pip[data-grade='good'] { background: var(--status-good); border-color: var(--status-good); }
+.mg-pip[data-grade='off'] { background: var(--status-danger); border-color: var(--status-danger); }
+
+.mg__grade {
+  margin: 0;
+  min-height: 1.4em;
+  text-align: center;
+  font: var(--weight-bold) var(--text-lg)/1.2 var(--font-ui);
+  color: var(--text-body);
+}
+.mg__grade[data-grade='perfect'] { color: var(--gold-bright); animation: mgPop 260ms var(--ease-spring); }
+.mg__grade[data-grade='good'] { color: var(--status-good); }
+.mg__grade[data-grade='off'] { color: var(--status-danger); }
+
+/* ── Shared: the big button and the quiet skip ───────────────────────────── */
+.mg__go {
+  min-height: 72px;
+  border: 1px solid var(--edge-gold);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  color: var(--text-on-accent);
+  background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 45%, var(--gold-core) 100%);
+  box-shadow: 0 4px 0 var(--gold-deep);
+  font: var(--weight-black) var(--text-lg)/1 var(--font-ui);
+  letter-spacing: var(--tracking-nav);
+  text-transform: uppercase;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+.mg__go:active { transform: translateY(4px); box-shadow: 0 0 0 var(--gold-deep); }
+.mg__go:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.mg__go[aria-disabled='true'] { filter: saturate(0.4); cursor: default; }
+
+.mg__skip {
+  justify-self: center;
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border: 0;
+  background: none;
+  color: var(--text-muted);
+  font: var(--weight-medium) var(--text-sm)/1 var(--font-ui);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.mg__skip:hover { color: var(--text-heading); }
+.mg__skip:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
+
+/* ── Ritual: the circle ──────────────────────────────────────────────────── */
+.mg-stage {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+}
+.mg-circle {
+  position: relative;
+  width: clamp(200px, 64vw, 260px);
+  aspect-ratio: 1;
+  padding: 0;
+  border-radius: 50%;
+  border: 1px solid var(--edge-violet);
+  background:
+    radial-gradient(circle at 50% 50%, color-mix(in srgb, var(--violet-bright) 26%, transparent) 0%, transparent 62%),
+    radial-gradient(circle at 50% 50%, var(--obsidian-2) 0%, var(--obsidian-0) 100%);
+  box-shadow: 0 0 32px var(--violet-glow-soft), inset 0 0 24px var(--violet-glow-soft);
+  cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
+}
+.mg-circle:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.mg-circle.is-armed { box-shadow: 0 0 44px var(--violet-glow-lit), inset 0 0 28px var(--violet-glow-soft); }
+.mg-circle__glyphs {
+  position: absolute;
+  inset: 8%;
+  border-radius: 50%;
+  border: 2px dashed color-mix(in srgb, var(--violet-bright) 60%, transparent);
+  animation: mgGlyphSpin 24s linear infinite;
+}
+.mg-circle__socket {
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 4px solid var(--gold);
+  box-shadow: 0 0 14px var(--gold-bright), inset 0 0 10px var(--gold);
+}
+.mg-circle__pulse {
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 4px solid var(--violet-bright);
+  box-shadow: 0 0 18px var(--violet-glow-lit);
+  transform: scale(var(--s, 1.7));
+  will-change: transform;
+  pointer-events: none;
+}
+.mg-circle__item,
+.mg-circle__rune {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  object-fit: contain;
+  pointer-events: none;
+}
+.mg-circle__item { width: 72px; height: 72px; margin: -36px 0 0 -36px; opacity: 0.85; }
+.mg-circle__rune { width: 56px; height: 56px; margin: -28px 0 0 -28px; animation: mgPop 320ms var(--ease-spring); }
+.mg-circle__burst {
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  border: 6px solid var(--gold-bright);
+  animation: mgBurst 700ms var(--ease-standard) forwards;
+  pointer-events: none;
+}
+
+.mg-token {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-1);
+  min-width: 96px;
+  min-height: 96px;
+  padding: var(--space-2);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--edge-gold);
+  background: var(--surface-raised);
+  color: var(--text-heading);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  z-index: 1;
+}
+.mg-token:active { cursor: grabbing; }
+.mg-token:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+.mg-token img { width: 56px; height: 56px; object-fit: contain; pointer-events: none; }
+.mg-token__name { font: var(--weight-bold) var(--text-sm)/1.1 var(--font-ui); }
+
+@media (prefers-reduced-motion: reduce) {
+  .mg.is-nudge-a,
+  .mg.is-nudge-b,
+  .mg-bar__perfect,
+  .mg-bar__ring::before,
+  .mg-spark,
+  .mg__grade[data-grade='perfect'],
+  .mg-circle__glyphs,
+  .mg-circle__rune,
+  .mg-circle__burst { animation: none; }
+}
