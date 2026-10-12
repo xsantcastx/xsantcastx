@@ -19,7 +19,14 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { LoreChapter, ToolLore, loreForTool } from './lore.model';
+// Types only. The corpus itself (lore.model.ts, ~134 kB of prose) is loaded
+// through a dynamic import in `load()` below: this service is root-provided and
+// reached from the app shell (QuestToast, QuestWiring, EconomyWiring), so a
+// static import here put every chapter of every story in the initial bundle of
+// every page, for a codex that is only ever read on /forge-keeper.
+import type { LoreChapter, ToolLore } from './lore.model';
+
+type LoreModel = typeof import('./lore.model');
 
 export const LORE_KEY = 'eclipse-lore';
 
@@ -84,6 +91,12 @@ export class LoreService {
   private state: LoreState = emptyState();
   private initialised = false;
 
+  /** The corpus, once its chunk has arrived. Null until then. */
+  private model: LoreModel | null = null;
+  private modelLoad: Promise<void> | null = null;
+  /** Uses recorded before the corpus arrived, replayed in order once it does. */
+  private pendingUses: string[] = [];
+
   /**
    * Scales every chapter threshold. The Codex Solarii artifact sets this to
    * 0.5; with nothing installed it is 1 and no chapter moves.
@@ -106,6 +119,7 @@ export class LoreService {
     if (!this.isBrowser || this.initialised) return;
     this.initialised = true;
     this.state = this.load();
+    void this.ready();
 
     // `persist()` writes this whole blob from memory, so chapters merged in from
     // another device would be dropped at the next tool use without this.
@@ -117,6 +131,33 @@ export class LoreService {
         this.changed$$.next(this.changed$$.value + 1);
       },
     });
+  }
+
+  /**
+   * Resolves once the lore corpus has loaded. Callers that read
+   * `progressFor()` synchronously await this first.
+   */
+  ready(): Promise<void> {
+    this.modelLoad ??= import('./lore.model').then(
+      m => {
+        this.model = m;
+        const queued = this.pendingUses;
+        this.pendingUses = [];
+        for (const slug of queued) this.recordUse(slug);
+        // Panels re-resolve off this counter; the corpus arriving is a change.
+        this.changed$$.next(this.changed$$.value + 1);
+      },
+      () => {
+        // A failed chunk load leaves the codex empty for this page view, the
+        // same as a tool with no entry. Allow a retry on the next call.
+        this.modelLoad = null;
+      },
+    );
+    return this.modelLoad;
+  }
+
+  private loreForTool(slug: string): ToolLore | null {
+    return this.model ? this.model.loreForTool(slug) : null;
   }
 
   /** Install a threshold scale. Called once by the economy's wiring layer. */
@@ -155,7 +196,13 @@ export class LoreService {
     if (!this.isBrowser) return;
     this.init();
 
-    const lore = loreForTool(slug);
+    if (!this.model) {
+      this.pendingUses.push(slug);
+      void this.ready();
+      return;
+    }
+
+    const lore = this.loreForTool(slug);
     // Tools with no codex entry are not tracked at all. 116 of 126 tools have
     // none, and storing a counter for each would be a kilobyte of nothing.
     if (!lore) return;
@@ -187,7 +234,7 @@ export class LoreService {
 
   /** The full picture for a tool, or null when it has no codex entry. */
   progressFor(slug: string): LoreProgress | null {
-    const lore = loreForTool(slug);
+    const lore = this.loreForTool(slug);
     if (!lore) return null;
 
     const uses = this.usesOf(slug);

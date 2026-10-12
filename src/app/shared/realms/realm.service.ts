@@ -15,7 +15,7 @@ import { DOCUMENT } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { filter } from 'rxjs/operators';
-import { TOOLS_REGISTRY } from '../../tools/tools-registry';
+import { isToolPath, toolForRoute } from '../../tools/tool-for-route';
 import { RealmDefinition, realmForCategory } from './realm.model';
 
 @Injectable({ providedIn: 'root' })
@@ -58,17 +58,27 @@ export class RealmService {
     this.resolve(this.router.url);
   }
 
-  /** The realm for a tool slug, for callers that already know the tool. */
-  realmForTool(toolId: string): RealmDefinition | null {
-    const tool = TOOLS_REGISTRY.find(t => t.id === toolId);
-    return tool ? realmForCategory(tool.category) : null;
-  }
+  /** Bumped on every resolve, so a slow registry load cannot paint a stale route. */
+  private resolveSeq = 0;
 
   private resolve(url: string): void {
     const path = url.split('?')[0].split('#')[0];
-    const tool = TOOLS_REGISTRY.find(t => t.route === path);
-    const realm = tool ? realmForCategory(tool.category) : null;
+    const seq = ++this.resolveSeq;
 
+    // Only a /tools/ path can be a tool page, and tool routes are retired (see
+    // tool-for-route.ts) — every real route resolves synchronously to null and
+    // the registry is never downloaded.
+    if (!isToolPath(path)) {
+      this.apply(null);
+      return;
+    }
+    void toolForRoute(path).then(tool => {
+      if (seq !== this.resolveSeq) return;
+      this.apply(tool ? realmForCategory(tool.category) : null);
+    });
+  }
+
+  private apply(realm: RealmDefinition | null): void {
     if (realm?.id === this.current?.id) return;
     this.current$$.next(realm);
     this.paint(realm);
