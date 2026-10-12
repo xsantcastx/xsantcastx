@@ -222,7 +222,7 @@ export const EGG_HINTS: Record<string, string> = {
   'forge-market-mogul': 'Three times a handful. The price climbs 15% every time you say yes.',
   'forge-artifact-collector': 'Essence buys permanence. Own enough permanence to make a shelf.',
   'forge-complete-collection': 'Every shelf, empty. Nothing left in the case with a price on it.',
-  'forge-click-frenzy': 'The ember pays twice a second at most. Spend a whole minute finding out.',
+  'forge-click-frenzy': 'The ember pays eight times a second at most. Spend a whole minute finding out.',
 
   // ── The Rune Forge ── the hints name the price, never the odds. A hint that
   // says "one in two thousand" turns a run of bad luck into a grievance; one

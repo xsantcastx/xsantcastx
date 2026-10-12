@@ -30,10 +30,13 @@ import {
   ESSENCE_PER_WEEKLY,
   GOLD_PER_TOOL_ACTION,
   goldForQuestXp,
+  incomeRewardBase,
+  questRewardSeconds,
   runewordQuestMultiplier,
   loreThresholdScale,
   xpMultiplier,
 } from './economy.model';
+import { REWARD_SECONDS } from './economy-curve';
 import { ECONOMY_ACHIEVEMENTS } from './economy-achievements';
 
 import { XpService } from '../gamification/xp.service';
@@ -117,13 +120,21 @@ export class EconomyWiringService {
     // seconds per tool upstream, which is what stops a slider drag from paying
     // four hundred times.
     this.questWiring.beat$.subscribe(() => {
-      this.economy.earnGold(GOLD_PER_TOOL_ACTION, 'tool');
+      // Economy v3: max(5, five seconds of income), so a tool beat stays worth
+      // something past the first hour.
+      this.economy.earnGold(
+        incomeRewardBase(GOLD_PER_TOOL_ACTION, REWARD_SECONDS.toolActionS, this.economy.snapshot),
+        'tool',
+      );
     });
 
     // A claimed quest. Gold is derived from the XP the quest already pays
     // rather than authored a second time — see `goldForQuestXp`.
     this.quests.claim$.subscribe(({ quest }) => {
-      const base = goldForQuestXp(quest.rewards.xp);
+      // Economy v3: max(floor, 120-600 s of income), floor = the v2 band × ρ.
+      const base = incomeRewardBase(
+        goldForQuestXp(quest.rewards.xp), questRewardSeconds(quest.rewards.xp), this.economy.snapshot,
+      );
       // The Relic of the Third Dawn doubles quest rewards. It doubles the XP
       // through the multiplier hook, so it has to double the Gold here or the
       // artifact would only be half true.

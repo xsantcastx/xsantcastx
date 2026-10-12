@@ -210,7 +210,8 @@ describe('NpcQuestService', () => {
     settle();
 
     expect(svc.claim('kael-1')).toBe(true);
-    expect(paid.gold).toEqual([NPC_CHAINS['kael'][0].reward.gold]);
+    // Economy v3: max(authored × ρ, N s of income); the fake has no income.
+    expect(paid.gold).toEqual([Math.round(NPC_CHAINS['kael'][0].reward.gold * 0.06)]);
     expect(svc.chains['kael'].done).toBe(1);
     expect(svc.chains['kael'].active!.id).toBe('kael-2');
 
@@ -223,7 +224,7 @@ describe('NpcQuestService', () => {
     // Walk the Merchant to their capstone, which is the step that carries a
     // title and an achievement, and check the payout from step two as well
     // because that is the one with an item on it.
-    w.goldEarned = 1_000_000;
+    w.goldEarned = 6_000_000_000;
     settle();
     expect(svc.claim('merchant-1')).toBe(true);
     expect(svc.claim('merchant-2')).toBe(true);
@@ -234,7 +235,7 @@ describe('NpcQuestService', () => {
     expect(svc.claim('merchant-3')).toBe(true);
     expect(paid.titles).toEqual(['the-solvent']);
 
-    w.goldEarned = 25_000_000;
+    w.goldEarned = 500_000_000_000;
     settle();
     expect(svc.claim('merchant-4')).toBe(true);
     expect(paid.cosmetics).toEqual(['cursor-trail/eclipse']);
@@ -256,7 +257,7 @@ describe('NpcQuestService', () => {
     w.rarities.add('singular');
     settle();
     // merchant-5 is the mythic ask; walk the chain to it.
-    w.goldEarned = 25_000_000;
+    w.goldEarned = 500_000_000_000;
     w.items = 25;
     settle();
     for (const id of ['merchant-1', 'merchant-2', 'merchant-3', 'merchant-4']) {
@@ -328,7 +329,7 @@ describe('NpcQuestService', () => {
       expect(mission('delve-verrin-shadow').turnInReady).toBe(true);
       expect(svc.claimMission('delve-verrin-shadow')).toBe(true);
       expect(stacks$.value['shadow-root-cutting']).toBe(1);
-      expect(paid.gold).toEqual([20_000]);
+      expect(paid.gold).toEqual([1_200]); // economy v3: 20,000 × ρ floor
       expect(svc.isRecipeUnlocked('craft-nullthorn-staff')).toBe(true);
       // Claimed is claimed: no second payout even with cuttings in the bag.
       stacks$.next({ 'shadow-root-cutting': 9 });

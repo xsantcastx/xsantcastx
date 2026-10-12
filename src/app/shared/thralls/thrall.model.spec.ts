@@ -82,10 +82,10 @@ describe('thrall.model — the ladder', () => {
 
   it('ships the briefed numbers exactly', () => {
     expect(THRALL_TIERS.common).toEqual(jasmine.objectContaining({
-      price: 50_000, baseStamina: 100, magicFindShare: 0.5, rollInterval: 30_000,
+      price: 25_000, baseStamina: 100, magicFindShare: 0.5, rollInterval: 30_000,
     }));
     expect(THRALL_TIERS.legendary).toEqual(jasmine.objectContaining({
-      price: 25_000_000, baseStamina: 500, magicFindShare: 0.9, rollInterval: 5_000,
+      price: 3_000_000_000, baseStamina: 500, magicFindShare: 0.9, rollInterval: 5_000,
     }));
   });
 

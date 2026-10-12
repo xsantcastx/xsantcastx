@@ -248,50 +248,38 @@ describe('EconomyService.purchaseListing', () => {
   });
 });
 
-describe('the free doorway rung', () => {
+describe('the doorway rung (economy v3: 15 Gold, no longer free)', () => {
   let economy: EconomyService;
 
   beforeEach(() => {
     economy = configure(new MemoryGateway());
-    // A brand-new ledger. The whole point of the rung is that this is the
-    // state a first-time visitor is in when they open the Market.
+    // A brand-new ledger: the state a first-time visitor opens the Market in.
     economy['state'].gold = 0;
   });
 
-  it('gives the first Forge Bellows away and charges full price for the second', () => {
-    expect(economy.nextCost('forge-bellows')).toBe(0);
+  it('prices the first Forge Bellows at 15 Gold and escalates by 1.15', () => {
+    expect(economy.nextCost('forge-bellows')).toBe(15);
+    expect(economy.buyUpgrade('forge-bellows')).toBe(false);
+    economy['state'].gold = 15;
     expect(economy.buyUpgrade('forge-bellows')).toBe(true);
     expect(economy.levelOf('forge-bellows')).toBe(1);
     expect(economy.snapshot.gold).toBe(0);
-    // 5,000 x 1.25 ^ 1. The ladder above the doorway is untouched.
-    expect(economy.nextCost('forge-bellows')).toBe(6_250);
-    expect(economy.buyUpgrade('forge-bellows')).toBe(false);
+    // ceil(15 × 1.15).
+    expect(economy.nextCost('forge-bellows')).toBe(18);
   });
 
-  it('leaves every other rung priced as authored', () => {
-    expect(economy.nextCost('ember-stoker')).toBe(20_000);
-    expect(economy.nextCost('iron-hammer')).toBe(10_000);
-    expect(economy.buyUpgrade('ember-stoker')).toBe(false);
+  it('prices every other rung from the curve, and sells a hammer once', () => {
+    expect(economy.nextCost('ember-stoker')).toBe(100);
+    expect(economy.nextCost('iron-hammer')).toBe(100);
+    economy['state'].gold = 1_000;
+    expect(economy.buyUpgrade('iron-hammer')).toBe(true);
+    expect(economy.isMaxed('iron-hammer')).toBe(true);
+    expect(economy.buyUpgrade('iron-hammer')).toBe(false);
   });
 
-  it('records the free purchase as an op the cloud merge can read back', () => {
-    economy.buyUpgrade('forge-bellows');
-    const ops = economy['state'].ops ?? [];
-    const buy = ops.find(op => op.kind === 'buy-upgrade');
-    expect(buy).toBeDefined();
-    expect(buy!.amount).toBe(0);
-    // parseOp used to reject this and the level vanished on the next sync.
-    expect(parseOp({ ...buy })).not.toBeNull();
-  });
-
-  it('sells the free rung through the catalogue path at its quoted price', () => {
-    const receipt = economy.purchaseListing({
-      mutationKey: 'buy:forge-bellows:free',
-      listingId: 'forge-bellows',
-      kind: 'upgrade',
-      expectedCost: economy.nextCost('forge-bellows'),
-    });
-    expect(receipt.ok).toBe(true);
-    expect(economy.levelOf('forge-bellows')).toBe(1);
+  it('still reads back a zero-amount buy-upgrade op, should a free rung return', () => {
+    expect(parseOp({
+      id: 'd:1', deviceId: 'd', seq: 1, kind: 'buy-upgrade', amount: 0, itemId: 'forge-bellows', hlc: 1, wall: 1,
+    })).not.toBeNull();
   });
 });

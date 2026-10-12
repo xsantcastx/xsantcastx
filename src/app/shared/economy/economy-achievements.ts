@@ -16,8 +16,12 @@
 import { EconomyService } from './economy.service';
 import { ARTIFACTS } from './economy.model';
 
-/** Strikes inside sixty seconds that count as a frenzy. */
-export const FRENZY_CLICKS = 100;
+/**
+ * Strikes inside sixty seconds that count as a frenzy. 300 since economy v3:
+ * the strike cooldown fell from 500 ms to 125 ms (a ceiling of 480 a minute),
+ * and the old 100 — most of the old 120 ceiling — would be a walk.
+ */
+export const FRENZY_CLICKS = 300;
 
 export interface EconomyAchievement {
   /** Egg id, registered in EASTER_EGGS. */

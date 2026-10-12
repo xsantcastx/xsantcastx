@@ -31,6 +31,7 @@
 
 import { ANVIL_STRIKES, ANVIL_ZONES, STRIKE_SCORE, anvilQuality, type StrikeGrade } from './anvil.model';
 import { PULSE_WINDOW, PULSE_WINDOW_MAX } from './ritual.model';
+import { HOME_FORGE_PRICES } from '../economy/economy-curve';
 
 /** Saved through the game-state gateway; synced as progress/home-forge. */
 export const HOME_FORGE_KEY = 'godforge-home-forge';
@@ -64,7 +65,7 @@ export interface CircleTierRules {
  */
 export const HOME_FORGE_CONFIG = {
   anvil: {
-    price: [750_000, 6_000_000, 250_000_000] as readonly number[],
+    price: HOME_FORGE_PRICES,
     tiers: [
       { zones: { perfect: ANVIL_ZONES.perfect, good: ANVIL_ZONES.good }, strikes: ANVIL_STRIKES, counted: ANVIL_STRIKES },
       { zones: { perfect: 0.16, good: ANVIL_ZONES.good }, strikes: ANVIL_STRIKES, counted: ANVIL_STRIKES },
@@ -73,7 +74,7 @@ export const HOME_FORGE_CONFIG = {
     ] as readonly AnvilTierRules[],
   },
   circle: {
-    price: [750_000, 6_000_000, 250_000_000] as readonly number[],
+    price: HOME_FORGE_PRICES,
     tiers: [
       { window: PULSE_WINDOW, rarestFirst: false },
       { window: 0.18, rarestFirst: false },

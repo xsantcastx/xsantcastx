@@ -16,7 +16,6 @@ import { Subscription } from 'rxjs';
 
 import { PlayerStatsService, StatsSnapshot } from './player-stats.service';
 import {
-  RESPEC_COST,
   STAT_DEFINITIONS,
   StatDefinition,
   StatId,
@@ -264,7 +263,8 @@ export class StatPanelComponent implements OnInit, OnDestroy {
   readonly service = inject(PlayerStatsService);
 
   readonly stats: StatDefinition[] = STAT_DEFINITIONS;
-  readonly respecCost = RESPEC_COST;
+  /** Live: max(20,000, ten minutes of income) — economy v3. */
+  get respecCost(): number { return this.service.respecCost; }
 
   snap: StatsSnapshot = this.service.snapshot;
 

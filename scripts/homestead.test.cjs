@@ -54,24 +54,24 @@ test('the Homestead is reachable from the Infernal town and back, with every bui
 test('bestRung offers the most gain per Gold; a free rung wins; maxed rungs are skipped', () => {
   const rungs = economy.FORGE_UPGRADES.map(u => ({ id: u.id, name: u.name, gain: u.ratePerSecond }));
   const quote = quoteOf({}, economy.FORGE_UPGRADES);
-  // forge-bellows: 0.5/5000 = 1e-4, the best ratio on a fresh ledger.
-  assert.equal(model.bestRung(rungs, quote).id, 'forge-bellows');
+  // Economy v3: ember-stoker 1/100 beats forge-bellows 0.1/15 on a fresh ledger.
+  assert.equal(model.bestRung(rungs, quote).id, 'ember-stoker');
   const free = { ...quote, cost: id => id === 'nether-furnace' ? 0 : quote.cost(id) };
   assert.equal(model.bestRung(rungs, free).id, 'nether-furnace');
   const allMaxed = { ...quote, maxed: () => true };
   assert.equal(model.bestRung(rungs, allMaxed), null);
-  // Ten bellows later (5000 * 1.25^10 ≈ 46.6K for 0.5/s) the stoker is the better buy.
-  assert.equal(model.bestRung(rungs, quoteOf({ 'forge-bellows': 10 }, economy.FORGE_UPGRADES)).id, 'ember-stoker');
+  // Ten stokers later (100 * 1.15^10 ≈ 405 for 1/s) the nether furnace (8/1,100) is the better buy.
+  assert.equal(model.bestRung(rungs, quoteOf({ 'ember-stoker': 10 }, economy.FORGE_UPGRADES)).id, 'nether-furnace');
 });
 
 test('buildingAction names the rung and its cost, and says the shortfall in plain words', () => {
   const rung = { id: 'apprentice-striker', name: 'Apprentice Striker', gain: 1 };
   const quote = quoteOf({}, economy.AUTO_CLICKERS);
-  const poor = model.buildingAction(rung, quote, 100_000, 'Unlock');
-  assert.equal(poor.label, 'Unlock: Apprentice Striker · 500,000 Gold');
+  const poor = model.buildingAction(rung, quote, 50, 'Unlock');
+  assert.equal(poor.label, 'Unlock: Apprentice Striker · 200 Gold');
   assert.equal(poor.affordable, false);
-  assert.equal(poor.locked, 'You need 400,000 more Gold.');
-  const rich = model.buildingAction(rung, quote, 600_000, 'Unlock');
+  assert.equal(poor.locked, 'You need 150 more Gold.');
+  const rich = model.buildingAction(rung, quote, 600, 'Unlock');
   assert.equal(rich.affordable, true); assert.equal(rich.locked, ''); assert.equal(rich.upgradeId, 'apprentice-striker');
   assert.equal(model.buildingAction(null, quote, 0, 'Upgrade').upgradeId, null, 'fully built has no purchase');
   const gated = model.buildingAction(rung, quote, 1e12, 'Add', 'Recruit a Thrall at the Market first.');
@@ -108,8 +108,8 @@ test('the buildings column: cheapest first, one mystery row ahead, shortfall and
   const quote = quoteOf({}, all);
   const fresh = model.columnRows(defs, quote, 0, 0, () => 0.5);
   assert.deepEqual(fresh.map(r => r.state), ['shown', 'mystery'], 'a new player sees one rung and one ???');
-  assert.equal(fresh[0].id, 'forge-bellows'); assert.equal(fresh[0].shortfall, 5000);
-  assert.equal(fresh[1].unlockAt, Math.ceil(20_000 * model.REVEAL_SHARE));
+  assert.equal(fresh[0].id, 'forge-bellows'); assert.equal(fresh[0].shortfall, 15);
+  assert.equal(fresh[1].unlockAt, Math.ceil(100 * model.REVEAL_SHARE));
   const later = model.columnRows(defs, quoteOf({ 'forge-bellows': 2 }, all), 30_000, 60_000, () => 1);
   const shown = later.filter(r => r.state === 'shown');
   assert.ok(shown.length >= 3 && later.filter(r => r.state === 'mystery').length === 1);
@@ -118,7 +118,7 @@ test('the buildings column: cheapest first, one mystery row ahead, shortfall and
     assert.ok(cost(later[i - 1].id) <= cost(later[i].id), 'cheapest first');
   }
   const bellows = later.find(r => r.id === 'forge-bellows');
-  assert.equal(bellows.owned, 2); assert.equal(bellows.cost, economy.costOf(5000, 2)); assert.equal(bellows.affordable, true);
+  assert.equal(bellows.owned, 2); assert.equal(bellows.cost, economy.costOf(15, 2)); assert.equal(bellows.affordable, true);
   assert.equal(model.formatPerSecond(0.5), '+0.5 Gold/s');
   assert.equal(model.formatPerSecond(1250), '+1.3K Gold/s');
 });

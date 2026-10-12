@@ -1,93 +1,99 @@
 /**
- * material-vendor.model.ts — the Seamworks Material Vendor's shelf, prices and
- * the one purchase routine.
+ * material-vendor.model.ts — the Seamworks Material Vendor's buyback counter:
+ * what it takes, what it pays, and the one sale routine.
  *
- * Pure data and pure functions. Type-only imports, so the node harness and the
- * Karma spec can both load it, and it is safe on the server.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * WHAT IS ON THE SHELF, AND WHY ONLY THAT
- * ─────────────────────────────────────────────────────────────────────────────
- * Nine materials: the Art Bible materials that crafting recipes consume and
- * that NOTHING but an expedition hands over. They are the wall a new Keeper
- * hits at the Crafting Bench — every recipe from Briarvein Kris up asks for one
- * of them, and a player who has never sent an explorer out cannot get any.
- *
- * Deliberately NOT stocked:
- *   · Hand-gathered materials (Cinder Ore, Thornroot, Celestial Alloy, …).
- *     Mining, Foraging and Prospecting are the way to get those, and the
- *     Exchange already trades them. A fixed-price vendor beside a floating
- *     market is an arbitrage machine: the Exchange can quote up to
- *     PRICE_CEILING_MULT (5×) its base, so any vendor price under ~4.75× base
- *     lets a player buy here and sell there for free Gold forever. The spec
- *     fails if a shelf material is ever listed on the Exchange below that line.
- *   · Runes. The Rune Forge strikes them; a shelf price would delete the anvil.
- *   · Void Crystal, Void Shard. Legendary / mythic gates. Found, not bought.
+ * Pure data and pure functions. Type-only imports plus the economy curve
+ * (itself import-free), so the node harness and the Karma spec can both load
+ * it, and it is safe on the server.
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * HOW THE PRICES WERE SET
+ * PLAYERS RUN THE ECONOMY. NPCs ARE SINKS.
  * ─────────────────────────────────────────────────────────────────────────────
- * Drop rate: an expedition draw lands on the Art Bible band 6% of the time
- * (`ARTBIBLE_SHARE` in explorer.model), split across five to seven entries, so
- * any one of these is roughly a 1-in-100 draw. That is rarer than every
- * Exchange "rare" good, which sit at 6,500–14,000 Gold a unit (Starlight Herb,
- * Umbral Ink, Luminous Prism). So the shelf is anchored on that band:
+ * Economy v3 (owner amendment to the rebalance spec): no NPC sells anything a
+ * player can produce. The player auction house is the market; the Vendor used
+ * to sell the nine expedition materials for Gold, and now it only BUYS. It is
+ * the floor under the market, not the market:
  *
- *   regional    6,000  one realm's expedition material, feeding uncommon and
- *                      rare recipes (Pyrite Dust, World-Root Bark, …)
- *   deep        9,000  one realm's material that mostly gates EPIC recipes
- *                      (Emberheart Ore, Celestial Quartz)
- *   universal  12,000  Orichalcum Ore and Godforge Slag: every realm drops them,
- *                      but they are the spine of the epic → mythic recipes
+ *   buyback price = max(1, floor(base worth × VENDOR_BUYBACK_FRACTION))
+ *   base worth    = the material's v2 anchor × ρ (ITEM_ECONOMY_SCALE, 0.06)
  *
- * Checked against the bench (50 recipes use at least one shelf material):
- * buying a recipe's shelf ingredients costs a median 0.67× the recipe's own
- * Gold fee (Briarvein Kris: 2 bark = 12,000 against a 12,000 fee; Meridian
- * Longbow: 51,000 against 52,000; Godforge Tongs: 144,000 against 225,000).
- * The vendor makes a craft cost roughly 1.5–2× — a real shortcut for a Keeper
- * with Gold and no explorers, never cheaper than sending an expedition. The
- * outliers are the cheap Verdant consumables (Thornberry Elixir: 18,000 of
- * moonpetal against a 4,000 fee), where the fee is token and gathering is the
- * intended path; and the mythic tier, where the shelf share is tiny because
- * Void Crystal and the runes are not for sale.
+ * with VENDOR_BUYBACK_FRACTION = 0.08. The anchors are the Grand Exchange's
+ * material base prices (the spec asserts the table below matches
+ * `EXCHANGE_CATALOGUE` × ρ) and, for the expedition-only materials the
+ * Exchange does not list, the v2 shelf prices (6k regional, 9k deep, 12k
+ * universal). 8% of base worth is under even the Exchange's floor quote (10%
+ * of base), so it is well under anything a player market will clear at, so the counter is where surplus and junk go to become a
+ * little Gold — never a way to print it, because the Vendor sells nothing back.
  */
+import { ITEM_ECONOMY_SCALE, VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
 
-/** One row on the shelf. */
+export type VendorTier = 'gathered' | 'regional' | 'deep' | 'universal';
+
+/** One row on the buyback board. */
 export interface VendorListing {
   materialId: string;
-  /** Gold per unit. Whole Gold. */
+  /** Base worth in v3 Gold (v2 anchor × ρ). What the market is anchored on. */
+  worth: number;
+  /** Gold the counter pays per unit. Whole Gold, ≥ 1. */
   price: number;
   tier: VendorTier;
-  /** Where the material is otherwise found, for the counter's "found in" line. */
+  /**
+   * The expedition that brings it home, for the expedition-only rows. Empty
+   * for gathered materials (the Codex's found-in index already places those).
+   */
   source: string;
 }
 
-export type VendorTier = 'regional' | 'deep' | 'universal';
+/** The buyback price for a base worth. */
+export function buybackPrice(worth: number): number {
+  if (!(worth > 0)) return 0;
+  return Math.max(1, Math.floor(worth * VENDOR_BUYBACK_FRACTION));
+}
 
-export const VENDOR_TIER_PRICE: Readonly<Record<VendorTier, number>> = {
+/** v2 anchors (Gold). Times ρ is the v3 base worth. */
+const V2_SHELF_ANCHOR: Readonly<Record<Exclude<VendorTier, 'gathered'>, number>> = {
   regional: 6_000,
   deep: 9_000,
   universal: 12_000,
 };
 
-const row = (materialId: string, tier: VendorTier, source: string): VendorListing =>
-  ({ materialId, tier, source, price: VENDOR_TIER_PRICE[tier] });
+const row = (materialId: string, tier: VendorTier, source: string, v2Anchor: number): VendorListing => {
+  const worth = Math.round(v2Anchor * ITEM_ECONOMY_SCALE);
+  return { materialId, tier, source, worth, price: buybackPrice(worth) };
+};
+const expedition = (materialId: string, tier: Exclude<VendorTier, 'gathered'>, source: string) =>
+  row(materialId, tier, source, V2_SHELF_ANCHOR[tier]);
 
-/** The shelf, Infernal goods first: this is the Seamworks' stall. */
+/**
+ * What the counter takes. Gathered materials first (the surplus a Keeper
+ * actually piles up), then the expedition-only materials. The `v2Anchor` of a
+ * gathered row is the Exchange base price.
+ */
 export const VENDOR_SHELF: readonly VendorListing[] = [
-  row('pyrite-dust', 'regional', 'Nexus expeditions'),
-  row('emberheart-ore', 'deep', 'Nexus expeditions'),
-  row('world-root-bark', 'regional', 'Verge expeditions'),
-  row('shadowthread-silk', 'regional', 'Umbral expeditions'),
-  row('solar-resin', 'regional', 'Luminous expeditions'),
-  row('moonpetal-herb', 'regional', 'Archivum expeditions'),
-  row('celestial-quartz', 'deep', 'Archivum expeditions'),
-  row('orichalcum-ore', 'universal', 'Every realm, rarely'),
-  row('godforge-slag', 'universal', 'Every realm, rarely'),
+  row('slag-fragment', 'gathered', '', 260),
+  row('cinder-ore', 'gathered', '', 420),
+  row('thornroot', 'gathered', '', 1_400),
+  row('ember-residue', 'gathered', '', 1_800),
+  row('sunbloom', 'gathered', '', 2_600),
+  row('nightbloom', 'gathered', '', 2_900),
+  row('verdant-sap', 'gathered', '', 4_200),
+  row('starlight-herb', 'gathered', '', 6_500),
+  row('umbral-ink', 'gathered', '', 9_000),
+  row('luminous-prism', 'gathered', '', 14_000),
+  row('celestial-alloy', 'gathered', '', 26_000),
+  expedition('pyrite-dust', 'regional', 'Nexus expeditions'),
+  expedition('emberheart-ore', 'deep', 'Nexus expeditions'),
+  expedition('world-root-bark', 'regional', 'Verge expeditions'),
+  expedition('shadowthread-silk', 'regional', 'Umbral expeditions'),
+  expedition('solar-resin', 'regional', 'Luminous expeditions'),
+  expedition('moonpetal-herb', 'regional', 'Archivum expeditions'),
+  expedition('celestial-quartz', 'deep', 'Archivum expeditions'),
+  expedition('orichalcum-ore', 'universal', 'Every realm, rarely'),
+  expedition('godforge-slag', 'universal', 'Every realm, rarely'),
 ];
 
-/** Most units one purchase can carry. A crate, not a warehouse. */
-export const VENDOR_MAX_QTY = 25;
+/** Most units one sale can carry. A crate, not a warehouse. */
+export const VENDOR_MAX_QTY = 99;
 
 export function vendorListing(materialId: string): VendorListing | undefined {
   return VENDOR_SHELF.find(listing => listing.materialId === materialId);
@@ -100,24 +106,13 @@ export function clampQuantity(quantity: number, max = VENDOR_MAX_QTY): number {
   return Math.min(ceiling, Math.max(1, n));
 }
 
-/** Gold for `quantity` units. No volume discount: the shelf price is the price. */
+/** Gold paid for `quantity` units. No volume bonus: the counter price is the price. */
 export function vendorTotal(listing: Pick<VendorListing, 'price'>, quantity: number): number {
   return listing.price * Math.max(0, Math.floor(quantity));
 }
 
-/** How many units `gold` buys, capped at the crate size. 0 when not even one. */
-export function maxAffordable(price: number, gold: number, cap = VENDOR_MAX_QTY): number {
-  if (!(price > 0) || !(gold > 0)) return 0;
-  return Math.min(Math.max(0, Math.floor(cap)), Math.floor(gold / price));
-}
-
-/** Gold still missing for `quantity` units. 0 when affordable. */
-export function goldShort(listing: Pick<VendorListing, 'price'>, quantity: number, gold: number): number {
-  return Math.max(0, vendorTotal(listing, quantity) - Math.max(0, Math.floor(gold)));
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
-// "You need X for <recipe>"
+// "Keep enough for <recipe>"
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** The slice of a crafting recipe the vendor reads. `CraftingRecipe` fits. */
@@ -140,7 +135,8 @@ export interface RecipeNeed {
 
 /**
  * The recipes that consume `materialId`, the ones the Keeper is short for
- * first, then the lowest level, then by name. `limit` rows at most.
+ * first, then the lowest level, then by name. `limit` rows at most. The
+ * counter shows them so a Keeper does not sell what the bench wants.
  */
 export function recipeNeeds(
   materialId: string,
@@ -175,34 +171,44 @@ export function recipeCount(materialId: string, recipes: readonly RecipeLike[]):
   return recipes.filter(recipe => recipe.ingredients.some(row => row.materialId === materialId)).length;
 }
 
-/** The quantity worth suggesting: the first recipe's shortfall, else 1. */
-export function suggestedQuantity(needs: readonly RecipeNeed[]): number {
-  const first = needs.find(need => need.short > 0);
-  return clampQuantity(first ? first.short : 1);
+/**
+ * Units that are surplus: what is held beyond the largest single recipe that
+ * wants it. Everything when no recipe does. The quantity the counter suggests.
+ */
+export function surplusOf(materialId: string, recipes: readonly RecipeLike[], held: number): number {
+  const have = Math.max(0, Math.floor(held));
+  let keep = 0;
+  for (const recipe of recipes) {
+    const need = recipe.ingredients
+      .filter(ingredient => ingredient.materialId === materialId)
+      .reduce((sum, ingredient) => sum + ingredient.count, 0);
+    keep = Math.max(keep, need);
+  }
+  return Math.max(0, have - keep);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The purchase
+// The sale
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * The two ledgers a purchase touches, as functions. The service hands in
+ * The two ledgers a sale touches, as functions. The service hands in
  * EconomyService and InventoryService; the spec hands in fakes.
  */
 export interface VendorLedger {
-  gold(): number;
-  /** EconomyService.spendGold: false when unaffordable, never a partial debit, flushes before returning. */
-  spendGold(amount: number, reason: string): boolean;
-  /** Put Gold back after a debit whose goods could not be delivered. */
-  refundGold(amount: number, reason: string): void;
-  /** InventoryService.canAcceptStackGrant. */
-  canAccept(materialId: string): boolean;
-  /** InventoryService.grantStack: idempotent by grant id. */
-  grantStack(grantId: string, materialId: string, quantity: number): boolean;
+  /** Units of a material held. */
+  held(materialId: string): number;
+  /**
+   * InventoryService.consumeStacks: idempotent by `mutationId`. `replayed`
+   * means this exact sale already took the goods (a retry after a reload).
+   */
+  consume(mutationId: string, materialId: string, quantity: number): { ok: boolean; replayed: boolean };
+  /** EconomyService.earnGold: the counter's payment. */
+  payGold(amount: number, reason: string): void;
 }
 
 export interface VendorIntent {
-  /** One intentional purchase. Reuse it only to retry that same purchase. */
+  /** One intentional sale. Reuse it only to retry that same sale. */
   mutationId: string;
   materialId: string;
   quantity: number;
@@ -210,7 +216,7 @@ export interface VendorIntent {
   expectedUnitPrice: number;
 }
 
-export type VendorCode = 'ok' | 'replay' | 'unknown' | 'bad-quantity' | 'stale' | 'bag-full' | 'funds' | 'delivery';
+export type VendorCode = 'ok' | 'replay' | 'unknown' | 'bad-quantity' | 'stale' | 'short' | 'delivery';
 
 export interface VendorReceipt {
   ok: boolean;
@@ -218,34 +224,31 @@ export interface VendorReceipt {
   mutationId: string;
   materialId: string;
   quantity: number;
+  /** Gold paid. */
   total: number;
-  /** The inventory grant id, `vendor:<mutationId>`. */
-  grantId: string;
+  /** The inventory consume id, `vendor-sell:<mutationId>`. */
+  consumeId: string;
 }
 
-/** The inventory grant id for a purchase. Stable per mutation id, so a retried grant lands once. */
-export function vendorGrantId(mutationId: string): string {
-  return `vendor:${mutationId}`;
+/** The inventory consume id for a sale. Stable per mutation id, so a retried consume lands once. */
+export function vendorConsumeId(mutationId: string): string {
+  return `vendor-sell:${mutationId}`;
 }
 
 /**
- * Buy. The Exchange's order of operations (exchange.service.ts header):
+ * Sell. Same order of operations as the Exchange:
  *
  *   1. A mutation id that already settled returns its first receipt as a
- *      `replay` and touches nothing — a double-submit is one purchase.
- *   2. Validate: known listing, sane quantity, the price the Keeper saw.
- *   3. Room in the bag first. Debiting and then finding nowhere to put the
- *      goods takes the Gold and hands back nothing.
- *   4. Debit. If that fails nothing else has happened.
- *   5. Grant under `vendor:<mutationId>`. `grantStack` is idempotent by that
- *      id. If it refuses after the debit (the save failed, or the bag filled in
- *      between — effectively never) the Gold is refunded rather than
- *      swallowed.
- *
- * Only a settled outcome (ok) is remembered in `settled`. A refused purchase
- * may be retried with the same id once the Keeper has room or Gold.
+ *      `replay` and touches nothing — a double-submit is one sale.
+ *   2. Validate: known material, sane quantity, the price the Keeper saw.
+ *   3. Enough held.
+ *   4. Take the goods under `vendor-sell:<mutationId>` (idempotent).
+ *   5. Pay. A consume that reports `replayed` was already paid for by the
+ *      session that took the goods; it is not paid twice. (Across a crash
+ *      between 4 and 5 that costs the Keeper one payment — the counter is a
+ *      sink, and it errs toward taking, never toward minting.)
  */
-export function buyFromVendor(
+export function sellToVendor(
   ledger: VendorLedger,
   intent: VendorIntent,
   settled: Map<string, VendorReceipt>,
@@ -255,9 +258,9 @@ export function buyFromVendor(
 
   const listing = vendorListing(intent.materialId);
   const quantity = Math.floor(intent.quantity);
-  const grantId = vendorGrantId(intent.mutationId);
+  const consumeId = vendorConsumeId(intent.mutationId);
   const receipt = (code: VendorCode, total = 0): VendorReceipt => ({
-    ok: code === 'ok', code, mutationId: intent.mutationId, materialId: intent.materialId, quantity, total, grantId,
+    ok: code === 'ok', code, mutationId: intent.mutationId, materialId: intent.materialId, quantity, total, consumeId,
   });
 
   if (!intent.mutationId || !listing) return receipt('unknown');
@@ -265,15 +268,17 @@ export function buyFromVendor(
     return receipt('bad-quantity');
   }
   if (listing.price !== intent.expectedUnitPrice) return receipt('stale');
+  if (ledger.held(listing.materialId) < quantity) return receipt('short');
 
   const total = vendorTotal(listing, quantity);
-  if (!ledger.canAccept(listing.materialId)) return receipt('bag-full', total);
-  if (ledger.gold() < total || !ledger.spendGold(total, 'material-vendor')) return receipt('funds', total);
-
-  if (!ledger.grantStack(grantId, listing.materialId, quantity)) {
-    ledger.refundGold(total, 'material-vendor-refund');
-    return receipt('delivery', total);
+  const taken = ledger.consume(consumeId, listing.materialId, quantity);
+  if (!taken.ok) return receipt('delivery');
+  if (taken.replayed) {
+    const done = receipt('replay', total);
+    settled.set(intent.mutationId, done);
+    return done;
   }
+  ledger.payGold(total, 'material-vendor');
 
   const done = receipt('ok', total);
   settled.set(intent.mutationId, done);

@@ -50,6 +50,7 @@ import { ITEM_DEFINITIONS, stickerPrice } from '../rpg/item-definition';
 import { isUnique } from '../rpg/unique-items';
 import { materialDisplay } from '../rpg/material-catalog';
 import type { ItemRarity } from '../rpg/item.model';
+import { itemScaled } from '../economy/economy-curve';
 
 export const HOUR_MS = 3_600_000;
 export const DAY_MS = 24 * HOUR_MS;
@@ -656,7 +657,10 @@ function buildCatalogue(): ExchangeGood[] {
       category: market.category,
       rarity: market.rarity,
       stackKey: id,
-      basePrice: market.base,
+      // Economy v3: the authored table is v2 Gold; the market quotes it × ρ,
+      // the factor every sink moved by (economy-curve.ts), so selling to the
+      // NPC hall is never a faucet beside ρ-scaled sinks.
+      basePrice: itemScaled(market.base),
       liquidity: market.liquidity,
       seed: seedFor(id),
       art: materialDisplay(id)?.art,
@@ -703,7 +707,8 @@ function buildCatalogue(): ExchangeGood[] {
         category: categoryForSlot(def.slot),
         rarity,
         definitionId: def.id,
-        basePrice: Math.max(500, Math.round(stickerPrice(def, rarity))),
+        // stickerPrice is already v3 (EQUIPMENT_SCRAP × ρ); the floor is 500 × ρ.
+        basePrice: Math.max(itemScaled(500), Math.round(stickerPrice(def, rarity))),
         liquidity: EQUIPMENT_LIQUIDITY[rarity] ?? 10,
         seed: seedFor(id),
       });
