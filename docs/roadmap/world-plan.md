@@ -111,11 +111,11 @@ things with tools you crafted, and you see your economy working.
 - [ ] Implement the rebalance in one coordinated change **after** the Homestead, Skills and Station-kit branches merge (they all touch Gold prices); versioned, idempotent save migration; tests guard the curve
 - [ ] Golden-spark burst event
 
-## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[ ]`
+## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[~]`
 
-- [ ] **Per-player persistent Delve**: a seed per player stored in the save; dug, placed and built cells saved as a compact diff through the save gateway (local + Firestore when signed in), idempotent with the existing mutation ids. Owner decision 2026-10-12. Today the layout is one fixed seed for everyone and dug state is session-only
-- [ ] **Biomes by depth**, each with its own palette, light, nodes and creatures: **Root Hollows** (roots, petrified trunks, mushrooms → Foraging/Woodcutting), **Basalt Caverns** (Cinder/Slag → Mining; today's Delve), **Glowcap Grotto** (glowing herbs, e.g. Moonpetal-type → Foraging), **Magma Halls** (Heartstone, Ember Residue, tough Maws → Mining/Delving)
-- [ ] **Delve lore and missions** (owner, 2026-10-12): the Delve is **the way down the Godforge's fracture beneath the Seamworks**; each biome is a lore layer, driven by the existing quest board / NPC quests (`src/app/shared/npc/npc-quest.service.ts`). Canon sources: `~/Documents/1. Projects/Eclipse Realms/docs/03-lore-and-design/` (narrative bible, creature atlas, item lore codex)
+- [~] **Per-player persistent Delve**: a seed per player stored in the save; dug, placed and built cells saved as a compact diff through the save gateway (local + Firestore when signed in), idempotent with the existing mutation ids. Owner decision 2026-10-12. Today the layout is one fixed seed for everyone and dug state is session-only
+- [~] **Biomes by depth**, each with its own palette, light, nodes and creatures: **Root Hollows** (roots, petrified trunks, mushrooms → Foraging/Woodcutting), **Basalt Caverns** (Cinder/Slag → Mining; today's Delve), **Glowcap Grotto** (glowing herbs, e.g. Moonpetal-type → Foraging), **Magma Halls** (Heartstone, Ember Residue, tough Maws → Mining/Delving)
+- [~] **Delve lore and missions** (owner, 2026-10-12): the Delve is **the way down the Godforge's fracture beneath the Seamworks**; each biome is a lore layer, driven by the existing quest board / NPC quests (`src/app/shared/npc/npc-quest.service.ts`). Canon sources: `~/Documents/1. Projects/Eclipse Realms/docs/03-lore-and-design/` (narrative bible, creature atlas, item lore codex)
   - Root Hollows = **the World-Root's shadow** ("the inverse tree that grows downward beneath the Godforge", Nullthorn Staff lore) → **Verrin**: bring a shadow-root cutting → unlocks the Nullthorn Staff recipe (the staff opens cracked walls)
   - Basalt Caverns = **Kael's abandoned forge-mines** → **Kael**: reopen the old seam, recover his lost hammer → next Smithing tier
   - Glowcap Grotto = **light seeping through the fracture** → **The Merchant**: standing Glowcap orders (Gold; teaches where herbs are)
@@ -123,7 +123,7 @@ things with tools you crafted, and you see your economy working.
   - **Inscriptions** carved in walls everywhere → **The Archivist**: copy them → Codex lore entries + Delving XP
   - Deepest: **The Nameless**, the long-term mystery
 
-- [ ] **"Found in…"** for every material: a line in the Skills panel and the Codex ("Moonpetal — Ember Delve, Glowcap Grotto"), generated from the node and drop-table data so it can't drift. Today herbs only come from Foraging work and hunt drops, and nothing says where
+- [~] **"Found in…"** for every material: a line in the Skills panel and the Codex ("Moonpetal — Ember Delve, Glowcap Grotto"), generated from the node and drop-table data so it can't drift. Today herbs only come from Foraging work and hunt drops, and nothing says where
 
 Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
@@ -180,6 +180,11 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 7. PWA: real install tests on Android Chrome, iOS Safari, desktop Chrome (`docs/handoff/pwa.md`).
 
 ## Running in parallel right now
+
+| Work | Branch | Status |
+|---|---|---|
+| Delve: per-player persistence, biomes, lore nodes (inscriptions, shadow-root, glowcap, Godforge fragment), Delve labels | agent worktree | `[~]` |
+| Delve lore missions (Verrin, Kael, Merchant, Archivist), Codex inscriptions, "Found in…" | agent worktree | `[~]` |
 
 | Work | Branch | Status |
 |---|---|---|
