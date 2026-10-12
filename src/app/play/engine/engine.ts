@@ -2,8 +2,16 @@ import { Atmosphere } from './atmosphere';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, PLATFORMS, WORLD_WIDTH } from './engine.model';
 export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation } from './engine.model';
 
-interface Monster { x: number; spawn: number; hp: number; phase: 'idle' | 'windup' | 'strike' | 'recover'; timer: number; facing: number; respawn: number }
-interface Drop { id: string; x: number; coins: number; ore: number; age: number }
+// `flash`, `knock`, `dying`, `born` and `shownHp` are presentation only: they
+// shape how a Maw is drawn and never feed back into position, HP or loot.
+interface Monster {
+  x: number; spawn: number; hp: number; phase: 'idle' | 'windup' | 'strike' | 'recover'; timer: number; facing: number; respawn: number;
+  flash: number; knock: number; dying: number; born: number; shownHp: number;
+}
+interface Drop { id: string; x: number; coins: number; ore: number; age: number; spin: number }
+/** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
+const DEATH_FADE = .45;
+const SPAWN_RISE = .4;
 const KEEPER_ANIMATIONS = new Set<KeeperAnimation>(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 export interface RemoteKeeper { id: string; name: string; x: number; y: number; area: string; facing?: number; animation?: string }
 interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number }
@@ -44,6 +52,10 @@ export class SeamworksEngine {
   private dodgeTime = 0;
   private dodgeCooldown = 0;
   private hurtTime = 0;
+  /** Game feel, render-only: frozen frames on impact, camera shake, red edge on a wound. */
+  private hitstop = 0;
+  private shake = 0;
+  private wound = 0;
   private equipped = false;
   private restored = false;
   private paused = false;
@@ -61,7 +73,7 @@ export class SeamworksEngine {
     ];
   }
   private createMonsters(): Monster[] {
-    return [1350, 1670, 1990].map((x) => ({ x, spawn: x, hp: 60, phase: 'idle', timer: 1, facing: -1, respawn: 0 }));
+    return [1350, 1670, 1990].map((x) => ({ x, spawn: x, hp: 60, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: 60 }));
   }
   private resetPosition(x: number): void {
     this.player.x = x; this.player.y = FLOOR; this.player.vy = 0; this.player.grounded = true;
@@ -158,10 +170,14 @@ export class SeamworksEngine {
           if (monster.hp <= 0 || !meleeHits(this.player, monster.x, this.facing)) continue;
           this.atmosphere.burst(monster.x, FLOOR - 85, String(this.equipped ? 20 : 10));
           monster.hp = Math.max(0, monster.hp - (this.equipped ? 20 : 10));
+          monster.flash = .14;
+          this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
+          if (!this.reducedMotion) monster.knock = Math.sign(monster.x - this.player.x || this.facing) * 22;
           if (monster.hp === 0) {
+            monster.dying = DEATH_FADE;
             monster.respawn = 8; this.kills++; this.guardianDefeated = true;
-            this.drops.push({ id: `${this.lootSession}:${this.kills}:coins`, x: monster.x - 25, coins: 8 + this.kills % 5, ore: 0, age: 0 });
-            this.drops.push({ id: `${this.lootSession}:${this.kills}:ore`, x: monster.x + 25, coins: 0, ore: 1, age: 0 });
+            this.drops.push({ id: `${this.lootSession}:${this.kills}:coins`, x: monster.x - 25, coins: 8 + this.kills % 5, ore: 0, age: 0, spin: -1 });
+            this.drops.push({ id: `${this.lootSession}:${this.kills}:ore`, x: monster.x + 25, coins: 0, ore: 1, age: 0, spin: 1 });
             this.message = 'Rivet Maw defeated! Walk over the coins and Cinder Ore to collect them.';
           }
         }
@@ -183,6 +199,12 @@ export class SeamworksEngine {
       this.message = this.area === 'quarry' ? 'Ember Quarry. Hunt the Maws for coins and ore. The return portal is behind you.' : 'Returned to Seamworks. Explore freely or head out for another hunt.';
     } else this.options.onInteract(target);
     this.report();
+  }
+  /** Freeze a few frames and kick the camera. Reduced motion keeps neither. */
+  private impact(stop: number, kick: number): void {
+    if (this.reducedMotion) return;
+    this.hitstop = Math.max(this.hitstop, stop);
+    this.shake = Math.max(this.shake, kick);
   }
   private nearby(): InteractionTarget | null {
     return this.stations.find(station => Math.abs(station.x - this.player.x) < 110 && this.player.y > 475)?.target ?? null;
@@ -225,7 +247,12 @@ export class SeamworksEngine {
       const blend = 1 - Math.exp(-12 * delta);
       view.x += dx * blend; view.y += (view.peer.y - view.y) * blend;
     }
-    if (!this.paused && this.hp > 0) {
+    this.shake = Math.max(0, this.shake - delta * 30);
+    this.wound = Math.max(0, this.wound - delta * 1.8);
+    // Hitstop holds the simulation for a beat; the frame still draws so the
+    // impact flash is what the eye lands on.
+    if (this.hitstop > 0) this.hitstop = Math.max(0, this.hitstop - delta);
+    else if (!this.paused && this.hp > 0) {
       this.accumulator += delta;
       while (this.accumulator >= 1 / 60) { this.update(1 / 60); this.accumulator -= 1 / 60; }
     }
@@ -258,9 +285,14 @@ export class SeamworksEngine {
     }
     this.drops = this.drops.filter(drop => drop.age >= 0 && drop.age < 120);
     for (const monster of this.monsters) {
+      monster.flash = Math.max(0, monster.flash - dt);
+      monster.knock *= Math.exp(-14 * dt);
+      monster.dying = Math.max(0, monster.dying - dt);
+      monster.born = Math.max(0, monster.born - dt);
+      monster.shownHp += (monster.hp - monster.shownHp) * (1 - Math.exp(-6 * dt));
       if (monster.hp <= 0) {
         monster.respawn -= dt;
-        if (monster.respawn <= 0) { monster.hp = 60; monster.x = monster.spawn; monster.phase = 'idle'; monster.timer = 1; }
+        if (monster.respawn <= 0) { monster.hp = 60; monster.shownHp = 60; monster.x = monster.spawn; monster.phase = 'idle'; monster.timer = 1; monster.born = SPAWN_RISE; }
         continue;
       }
       monster.timer -= dt;
@@ -279,7 +311,8 @@ export class SeamworksEngine {
         if (monster.phase === 'windup') {
           monster.phase = 'strike'; monster.timer = .2;
           if (Math.abs(distance) < 170 && distance * monster.facing > -40 && this.player.y > FLOOR - 105 && this.dodgeTime <= 0 && this.hurtTime <= 0) {
-            this.hp = Math.max(0, this.hp - 12); this.hurtTime = .8;
+            this.hp = Math.max(0, this.hp - 12); this.hurtTime = .8; this.wound = 1;
+            this.impact(.07, this.hp === 0 ? 12 : 8);
             if (this.hp === 0) this.message = 'The Keeper falls. Restart the hunt or return to camp.';
           }
         } else if (monster.phase === 'strike') { monster.phase = 'recover'; monster.timer = 1.1; }
@@ -409,7 +442,8 @@ export class SeamworksEngine {
     }
     const shade = c.createLinearGradient(0, 0, 0, 720); shade.addColorStop(0, '#b97a4530'); shade.addColorStop(1, '#30232b99');
     c.fillStyle = shade; c.fillRect(0, 0, viewport, 720);
-    c.translate(-this.camera, 0);
+    const jolt = this.shake > 0 ? this.shake : 0;
+    c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0);
     const motionTime = this.reducedMotion ? 0 : this.elapsed;
     this.atmosphere.scenery(c, motionTime, this.camera, viewport);
     for (const platform of PLATFORMS) {
@@ -437,16 +471,22 @@ export class SeamworksEngine {
       if (near) { c.fillStyle = '#fff0cb'; c.fillText('[ E ] INTERACT', station.x, FLOOR + 58); }
     }
     for (const drop of this.drops) {
-      const y = FLOOR - 18 + Math.sin(motionTime * 5 + drop.x) * 4;
+      // Spilled from the body: an arc out and a short bounce, then the idle bob.
+      const t = Math.min(1, drop.age / .5);
+      const arc = this.reducedMotion ? 0 : t < .7 ? Math.sin(t / .7 * Math.PI) * 70 : Math.sin((t - .7) / .3 * Math.PI) * 12;
+      const fling = this.reducedMotion ? 0 : drop.spin * 24 * (1 - t);
+      const y = FLOOR - 18 - arc + (t < 1 ? 0 : Math.sin(motionTime * 5 + drop.x) * 4);
+      c.save(); c.translate(-fling, 0);
       c.shadowBlur = 14; c.shadowColor = drop.coins ? '#ffd36d' : '#ed9069';
       if (drop.coins) {
         c.fillStyle = '#ffd36d'; c.beginPath(); c.ellipse(drop.x, y, 3 + Math.abs(Math.cos(motionTime * 3)) * 7, 13, 0, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#9e602c'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('$', drop.x, y + 5);
       } else if (!this.art('ore', drop.x - 15, y - 15, 30, 30)) { c.fillStyle = '#ed9069'; c.fillRect(drop.x - 8, y - 8, 16, 16); }
-      c.shadowBlur = 0;
+      c.shadowBlur = 0; c.restore();
     }
     for (const monster of this.monsters) {
-      if (monster.hp <= 0) continue;
+      if (monster.hp <= 0 && monster.dying <= 0) continue;
+      if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       if (warning) {
         c.fillStyle = monster.phase === 'strike' ? '#ff765caa' : '#ff765c40';
@@ -454,10 +494,15 @@ export class SeamworksEngine {
         c.fillStyle = '#ffc589'; c.font = 'bold 18px system-ui'; c.textAlign = 'center'; c.fillText('!', monster.x, FLOOR - 150);
       }
       const squash = this.reducedMotion ? 0 : monster.phase === 'windup' ? .12 : monster.phase === 'strike' ? -.12 : Math.sin(motionTime * 3 + monster.spawn) * .025;
-      c.save(); c.translate(monster.x, FLOOR); c.scale(1 + squash, 1 - squash);
-      if (!this.art('creature', -70, -110, 140, 110)) { c.fillStyle = '#b26460'; c.fillRect(-35, -75, 70, 75); }
+      const rise = monster.born > 0 ? 1 - monster.born / SPAWN_RISE : 1;
+      c.save(); c.translate(monster.x + monster.knock, FLOOR);
+      c.globalAlpha = rise; c.scale((1 + squash) * (.6 + rise * .4), (1 - squash) * (.6 + rise * .4));
+      this.creature(c, monster.flash > 0);
       c.restore();
-      c.fillStyle = '#302530'; c.fillRect(monster.x - 45, FLOOR - 130, 90, 6); c.fillStyle = '#dd866f'; c.fillRect(monster.x - 45, FLOOR - 130, monster.hp / 60 * 90, 6);
+      // The chip bar trails the real HP so a hit reads as a chunk taken.
+      c.fillStyle = '#302530'; c.fillRect(monster.x - 45, FLOOR - 130, 90, 6);
+      c.fillStyle = '#ffe2c4'; c.fillRect(monster.x - 45, FLOOR - 130, Math.max(monster.hp, monster.shownHp) / 60 * 90, 6);
+      c.fillStyle = '#dd866f'; c.fillRect(monster.x - 45, FLOOR - 130, monster.hp / 60 * 90, 6);
     }
     for (const view of this.peers.values()) {
       if (view.peer.area !== (this.area === 'camp' ? 'Basalt Seamworks' : 'Ember Quarry') || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
@@ -524,6 +569,40 @@ export class SeamworksEngine {
     }
     c.restore();
     this.atmosphere.feedback(c, this.reducedMotion);
+    c.restore();
+    if (this.wound > 0) {
+      // A wound reddens the edges of the screen, not the Keeper: the eye stays on the fight.
+      const edge = c.createRadialGradient(this.width / 2, this.height / 2, Math.min(this.width, this.height) * .35, this.width / 2, this.height / 2, Math.max(this.width, this.height) * .75);
+      edge.addColorStop(0, '#c0303000'); edge.addColorStop(1, `rgba(192, 48, 48, ${(.42 * this.wound).toFixed(3)})`);
+      c.fillStyle = edge; c.fillRect(0, 0, this.width, this.height);
+    }
+  }
+  /** The creature sprite, or a white silhouette of it for the frames after a hit. */
+  private creature(c: CanvasRenderingContext2D, flash: boolean): void {
+    if (!flash) {
+      if (!this.art('creature', -70, -110, 140, 110)) { c.fillStyle = '#b26460'; c.fillRect(-35, -75, 70, 75); }
+      return;
+    }
+    // brightness() whitens the painted sprite in place, so no tinted copy is needed.
+    c.filter = 'brightness(3.2) saturate(0)';
+    if (!this.art('creature', -70, -110, 140, 110)) { c.fillStyle = '#fff4ea'; c.fillRect(-35, -75, 70, 75); }
+    c.filter = 'none';
+  }
+  /** A felled Maw sinks, flattens and fades, shedding embers as it goes. */
+  private dissolve(c: CanvasRenderingContext2D, monster: Monster): void {
+    const t = 1 - monster.dying / DEATH_FADE;
+    c.save(); c.translate(monster.x + monster.knock, FLOOR);
+    c.globalAlpha = 1 - t;
+    if (!this.reducedMotion) c.scale(1 + t * .35, 1 - t * .7);
+    this.creature(c, t < .25);
+    c.restore();
+    if (this.reducedMotion) return;
+    c.save(); c.fillStyle = '#ffb46a';
+    for (let n = 0; n < 7; n++) {
+      const a = n * 2.4 + monster.spawn;
+      c.globalAlpha = (1 - t) * .8;
+      c.beginPath(); c.arc(monster.x + Math.cos(a) * 40 * t, FLOOR - 50 - t * 70 - Math.sin(a) * 18, 3 * (1 - t) + 1, 0, Math.PI * 2); c.fill();
+    }
     c.restore();
   }
 }
