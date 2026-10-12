@@ -26,6 +26,7 @@ world — and every system visible while it works.
 | Navbar | **World only**: shrinks to Play + Character at the end | Must keep URLs, SEO prerenders, nav audit and an accessible "Places" list working first |
 | Monster loot | **Zone-specific drop tables**, hand-authored per hunting ground | More flavour; each table needs balancing |
 | Translucent art | **Solidify at import** (`SOLIDIFY` in `scripts/import-assets.py`) | Keeper is solid; same treatment available for any future see-through export |
+| Platform | **Browser-first**; installable PWA now; wrap the same web build for Steam / app stores later only if it gets traction. No engine rewrite (Unity / Godot) | Keeps zero-friction play, SEO traffic, cloud saves and instant updates; revisit only for 3D or real-time multiplayer combat |
 | Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
 
 ### Where each page lives (proposal; change here, then build)
@@ -96,6 +97,12 @@ Sequential: everything after it plugs into its data model and panel host.
 - [ ] Engine sprite-sheet renderer (per-action frames, hand anchors for weapon attachment), with the rig as fallback
 - [ ] A/B the test set in the Seamworks on a branch, then decide go / no-go for the full sprite pass
 - [-] Full sprite pass for every town, creature and NPC (after the A/B)
+
+## Distribution
+
+- [ ] **Installable app (PWA) polish:** proper install prompt, full-screen standalone window, app icons and splash for iOS / Android / desktop, offline shell that opens straight into the game, save-sync on reconnect. Builds on the existing `service-worker.js` + `manifest.webmanifest`
+- [-] **Desktop / Steam wrapper (later, on traction):** Tauri (or Electron) around the same web build; Steam overlay, achievements mapped to Collection eggs, cloud save via the existing Firestore account
+- [-] **App-store wrapper (later, on traction):** Capacitor for iOS / Android from the same build; store review requirements (payments, sign-in) checked before starting
 
 ## Phase 4: Life
 
