@@ -1,25 +1,24 @@
 /**
- * material-vendor.model.spec.ts — the shelf, the prices and the purchase.
+ * material-vendor.model.spec.ts — the buyback board, its prices and the sale.
  *
+ * Economy v3: the Vendor only buys (NPCs are sinks; players run the market).
  * Pure functions with fake ledgers: no TestBed, no services, nothing async.
  */
 import { CRAFTING_RECIPES } from '../crafting/crafting.model';
-import { EXCHANGE_CATALOGUE, PRICE_CEILING_MULT, SALE_TAX_RATE } from '../exchange/exchange.model';
+import { ITEM_ECONOMY_SCALE, VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
+import { EXCHANGE_CATALOGUE, PRICE_FLOOR_MULT } from '../exchange/exchange.model';
 import { REALM_ARTBIBLE_MATERIALS } from '../explorer/explorer.model';
 import { materialDisplay } from '../rpg/material-catalog';
 import {
   VENDOR_MAX_QTY,
   VENDOR_SHELF,
-  VENDOR_TIER_PRICE,
-  buyFromVendor,
+  buybackPrice,
   clampQuantity,
-  goldShort,
-  maxAffordable,
   newVendorMutationId,
-  recipeCount,
   recipeNeeds,
-  suggestedQuantity,
-  vendorGrantId,
+  sellToVendor,
+  surplusOf,
+  vendorConsumeId,
   vendorListing,
   vendorTotal,
   type VendorLedger,
@@ -27,185 +26,147 @@ import {
 } from './material-vendor.model';
 
 /** An in-memory pair of ledgers that records every call. */
-function fakeLedger(gold: number, opts: { room?: boolean; grantFails?: boolean } = {}) {
-  const state = { gold, stacks: new Map<string, number>(), grants: new Set<string>(), spends: [] as number[], refunds: [] as number[] };
+function fakeLedger(held: Record<string, number>, opts: { consumeFails?: boolean } = {}) {
+  const state = { gold: 0, stacks: new Map(Object.entries(held)), consumed: new Set<string>(), pays: [] as number[] };
   const ledger: VendorLedger = {
-    gold: () => state.gold,
-    spendGold: amount => {
-      if (amount <= 0 || state.gold < amount) return false;
-      state.gold -= amount; state.spends.push(amount); return true;
+    held: id => state.stacks.get(id) ?? 0,
+    consume: (mutationId, id, qty) => {
+      if (opts.consumeFails) return { ok: false, replayed: false };
+      if (state.consumed.has(mutationId)) return { ok: true, replayed: true };
+      state.consumed.add(mutationId);
+      state.stacks.set(id, (state.stacks.get(id) ?? 0) - qty);
+      return { ok: true, replayed: false };
     },
-    refundGold: amount => { state.gold += amount; state.refunds.push(amount); },
-    canAccept: () => opts.room !== false,
-    grantStack: (grantId, materialId, qty) => {
-      if (opts.grantFails) return false;
-      if (state.grants.has(grantId)) return true;
-      state.grants.add(grantId);
-      state.stacks.set(materialId, (state.stacks.get(materialId) ?? 0) + qty);
-      return true;
-    },
+    payGold: amount => { state.gold += amount; state.pays.push(amount); },
   };
   return { ledger, state };
 }
 
-describe('material vendor shelf', () => {
-  it('stocks only materials a crafting recipe actually consumes', () => {
-    for (const listing of VENDOR_SHELF) {
-      expect(recipeCount(listing.materialId, CRAFTING_RECIPES)).withContext(listing.materialId).toBeGreaterThan(0);
-    }
-  });
-
-  it('paints every shelf material (a name and art in the catalogue)', () => {
-    for (const listing of VENDOR_SHELF) {
-      const display = materialDisplay(listing.materialId);
-      expect(display?.art).withContext(listing.materialId).toBeTruthy();
-      expect(display?.name).withContext(listing.materialId).not.toBe(listing.materialId);
-    }
-  });
-
-  it('sells expedition materials, never runes, and has no duplicates', () => {
-    const expedition = new Set(Object.values(REALM_ARTBIBLE_MATERIALS).flat());
+describe('material vendor buyback board', () => {
+  it('paints every board material (a name and art in the catalogue), no duplicates', () => {
     const ids = VENDOR_SHELF.map(listing => listing.materialId);
     expect(new Set(ids).size).toBe(ids.length);
-    for (const id of ids) {
-      expect(expedition.has(id)).withContext(`${id} comes from expeditions`).toBeTrue();
-      expect(id.startsWith('rune-')).withContext(id).toBeFalse();
+    for (const listing of VENDOR_SHELF) {
+      const display = materialDisplay(listing.materialId);
+      expect(display?.name).withContext(listing.materialId).toBeTruthy();
+      expect(listing.materialId.startsWith('rune-')).withContext(listing.materialId).toBeFalse();
     }
   });
 
-  it('prices by tier, whole Gold', () => {
-    for (const listing of VENDOR_SHELF) {
-      expect(listing.price).toBe(VENDOR_TIER_PRICE[listing.tier]);
-      expect(Number.isInteger(listing.price) && listing.price > 0).toBeTrue();
+  it('names an expedition for every expedition-only material', () => {
+    const expedition = new Set(Object.values(REALM_ARTBIBLE_MATERIALS).flat());
+    for (const listing of VENDOR_SHELF.filter(row => row.tier !== 'gathered')) {
+      expect(expedition.has(listing.materialId)).withContext(listing.materialId).toBeTrue();
+      expect(listing.source).withContext(listing.materialId).toBeTruthy();
     }
   });
 
-  it('can never be arbitraged against the Exchange (buy here, sell there)', () => {
-    // The most the Exchange can ever pay for one unit, after its sale tax.
+  it('pays a whole-Gold fraction of base worth, never more than the worth', () => {
     for (const listing of VENDOR_SHELF) {
+      expect(listing.price).toBe(buybackPrice(listing.worth));
+      expect(Number.isInteger(listing.price) && listing.price >= 1).withContext(listing.materialId).toBeTrue();
+      expect(listing.price).toBeLessThanOrEqual(Math.max(1, listing.worth * VENDOR_BUYBACK_FRACTION));
+    }
+  });
+
+  it('anchors gathered materials on the Exchange base × ρ', () => {
+    for (const listing of VENDOR_SHELF.filter(row => row.tier === 'gathered')) {
       const good = EXCHANGE_CATALOGUE.find(row => row.kind === 'material' && row.stackKey === listing.materialId);
-      if (!good) continue;
-      const bestSale = good.basePrice * PRICE_CEILING_MULT * (1 - SALE_TAX_RATE);
-      expect(listing.price).withContext(listing.materialId).toBeGreaterThan(bestSale);
+      expect(good).withContext(listing.materialId).toBeTruthy();
+      // The Exchange may already be ρ-scaled (another change owns it): accept either anchor.
+      const v2 = Math.round(good!.basePrice * ITEM_ECONOMY_SCALE);
+      expect([v2, good!.basePrice]).withContext(listing.materialId).toContain(listing.worth);
+    }
+  });
+
+  it('can never be arbitraged: it pays less than the Exchange ever quotes, even ρ-scaled', () => {
+    for (const listing of VENDOR_SHELF) {
+      const cheapestQuote = listing.worth * PRICE_FLOOR_MULT;
+      expect(listing.price).withContext(listing.materialId).toBeLessThan(Math.max(1.0001, cheapestQuote));
     }
   });
 });
 
 describe('material vendor arithmetic', () => {
-  const pyrite = vendorListing('pyrite-dust')!;
-
-  it('clamps quantities into a whole 1..25', () => {
+  it('clamps quantities into a whole 1..max', () => {
     expect(clampQuantity(0)).toBe(1);
     expect(clampQuantity(-4)).toBe(1);
     expect(clampQuantity(NaN)).toBe(1);
     expect(clampQuantity(3.9)).toBe(3);
-    expect(clampQuantity(400)).toBe(VENDOR_MAX_QTY);
+    expect(clampQuantity(4000)).toBe(VENDOR_MAX_QTY);
     expect(clampQuantity(9, 5)).toBe(5);
   });
 
-  it('totals, affordability and shortfall agree', () => {
+  it('totals and surplus agree', () => {
+    const pyrite = vendorListing('pyrite-dust')!;
     expect(vendorTotal(pyrite, 3)).toBe(3 * pyrite.price);
-    expect(maxAffordable(pyrite.price, pyrite.price * 2 + 1)).toBe(2);
-    expect(maxAffordable(pyrite.price, pyrite.price - 1)).toBe(0);
-    expect(maxAffordable(pyrite.price, pyrite.price * 1000)).toBe(VENDOR_MAX_QTY);
-    expect(maxAffordable(0, 1000)).toBe(0);
-    expect(goldShort(pyrite, 2, pyrite.price)).toBe(pyrite.price);
-    expect(goldShort(pyrite, 1, pyrite.price * 5)).toBe(0);
-  });
-});
-
-describe('material vendor recipe hints', () => {
-  const recipes = [
-    { id: 'a', name: 'Alpha', requiredLevel: 5, ingredients: [{ materialId: 'x', count: 4 }] },
-    { id: 'b', name: 'Bravo', requiredLevel: 1, ingredients: [{ materialId: 'x', count: 2 }, { materialId: 'y', count: 1 }] },
-    { id: 'c', name: 'Charlie', requiredLevel: 2, ingredients: [{ materialId: 'y', count: 9 }] },
-    { id: 'd', name: 'Delta', requiredLevel: 3, ingredients: [{ materialId: 'x', count: 1 }, { materialId: 'x', count: 1 }] },
-  ];
-
-  it('lists recipes that are short first, then by level', () => {
-    const needs = recipeNeeds('x', recipes, 2);
-    expect(needs.map(n => n.recipeId)).toEqual(['a', 'b', 'd']);
-    expect(needs[0]).toEqual(jasmine.objectContaining({ need: 4, short: 2 }));
-    expect(needs[1].short).toBe(0);
+    const recipes = [
+      { id: 'a', name: 'Alpha', ingredients: [{ materialId: 'x', count: 4 }] },
+      { id: 'b', name: 'Bravo', ingredients: [{ materialId: 'x', count: 2 }, { materialId: 'x', count: 3 }] },
+    ];
+    expect(surplusOf('x', recipes, 9)).toBe(4); // keeps 5 for Bravo
+    expect(surplusOf('x', recipes, 3)).toBe(0);
+    expect(surplusOf('nothing-wants-it', recipes, 7)).toBe(7);
   });
 
-  it('sums an ingredient listed twice, and respects the limit', () => {
-    expect(recipeNeeds('x', recipes, 0).find(n => n.recipeId === 'd')?.need).toBe(2);
-    expect(recipeNeeds('x', recipes, 0, 1).length).toBe(1);
-    expect(recipeNeeds('nothing', recipes, 0)).toEqual([]);
-  });
-
-  it('suggests the first shortfall as the quantity', () => {
-    expect(suggestedQuantity(recipeNeeds('x', recipes, 0))).toBe(2); // Bravo, level 1, needs 2
-    expect(suggestedQuantity(recipeNeeds('x', recipes, 99))).toBe(1);
-  });
-
-  it('finds real hints for the real bench', () => {
+  it('finds real recipe hints for the real bench', () => {
     const needs = recipeNeeds('world-root-bark', CRAFTING_RECIPES, 0);
     expect(needs.length).toBeGreaterThan(0);
     expect(needs[0].short).toBe(needs[0].need);
   });
 });
 
-describe('buyFromVendor', () => {
+describe('sellToVendor', () => {
   const pyrite = vendorListing('pyrite-dust')!;
   const intent = (over: Partial<{ mutationId: string; materialId: string; quantity: number; expectedUnitPrice: number }> = {}) => ({
     mutationId: 'm1', materialId: 'pyrite-dust', quantity: 3, expectedUnitPrice: pyrite.price, ...over,
   });
 
-  it('debits once, grants under vendor:<id>, and reports the total', () => {
-    const { ledger, state } = fakeLedger(pyrite.price * 10);
-    const settled = new Map<string, VendorReceipt>();
-    const receipt = buyFromVendor(ledger, intent(), settled);
+  it('takes the goods once under vendor-sell:<id> and pays the total', () => {
+    const { ledger, state } = fakeLedger({ 'pyrite-dust': 10 });
+    const receipt = sellToVendor(ledger, intent(), new Map());
     expect(receipt.code).toBe('ok');
     expect(receipt.total).toBe(pyrite.price * 3);
-    expect(receipt.grantId).toBe(vendorGrantId('m1'));
-    expect(state.gold).toBe(pyrite.price * 7);
-    expect(state.stacks.get('pyrite-dust')).toBe(3);
+    expect(receipt.consumeId).toBe(vendorConsumeId('m1'));
+    expect(state.gold).toBe(pyrite.price * 3);
+    expect(state.stacks.get('pyrite-dust')).toBe(7);
   });
 
-  it('a replayed mutation id is one purchase', () => {
-    const { ledger, state } = fakeLedger(pyrite.price * 10);
+  it('a replayed mutation id is one sale', () => {
+    const { ledger, state } = fakeLedger({ 'pyrite-dust': 10 });
     const settled = new Map<string, VendorReceipt>();
-    buyFromVendor(ledger, intent(), settled);
-    const again = buyFromVendor(ledger, intent(), settled);
-    expect(again.code).toBe('replay');
-    expect(state.spends.length).toBe(1);
-    expect(state.stacks.get('pyrite-dust')).toBe(3);
+    sellToVendor(ledger, intent(), settled);
+    expect(sellToVendor(ledger, intent(), settled).code).toBe('replay');
+    expect(state.pays.length).toBe(1);
+    expect(state.stacks.get('pyrite-dust')).toBe(7);
   });
 
-  it('refuses what it cannot afford without touching either ledger', () => {
-    const { ledger, state } = fakeLedger(pyrite.price * 2);
-    const receipt = buyFromVendor(ledger, intent(), new Map());
-    expect(receipt.code).toBe('funds');
-    expect(state.spends.length).toBe(0);
-    expect(state.stacks.size).toBe(0);
+  it('a consume that was already taken (after a reload) is never paid twice', () => {
+    const { ledger, state } = fakeLedger({ 'pyrite-dust': 10 });
+    sellToVendor(ledger, intent(), new Map());
+    // Fresh settled map: the session that sold is gone.
+    expect(sellToVendor(ledger, intent(), new Map()).code).toBe('replay');
+    expect(state.pays.length).toBe(1);
   });
 
-  it('checks the bag before taking Gold', () => {
-    const { ledger, state } = fakeLedger(pyrite.price * 10, { room: false });
-    expect(buyFromVendor(ledger, intent(), new Map()).code).toBe('bag-full');
-    expect(state.gold).toBe(pyrite.price * 10);
-  });
-
-  it('refunds when the grant is refused after the debit, and allows a retry', () => {
-    const { ledger, state } = fakeLedger(pyrite.price * 10, { grantFails: true });
-    const settled = new Map<string, VendorReceipt>();
-    expect(buyFromVendor(ledger, intent(), settled).code).toBe('delivery');
-    expect(state.gold).toBe(pyrite.price * 10);
-    expect(state.refunds).toEqual([pyrite.price * 3]);
-    expect(settled.size).toBe(0);
+  it('refuses what is not held, and a failed hand-over pays nothing', () => {
+    const short = fakeLedger({ 'pyrite-dust': 2 });
+    expect(sellToVendor(short.ledger, intent(), new Map()).code).toBe('short');
+    expect(short.state.pays.length).toBe(0);
+    const broken = fakeLedger({ 'pyrite-dust': 10 }, { consumeFails: true });
+    expect(sellToVendor(broken.ledger, intent(), new Map()).code).toBe('delivery');
+    expect(broken.state.pays.length).toBe(0);
   });
 
   it('rejects unknown goods, bad quantities and a moved price', () => {
-    const { ledger, state } = fakeLedger(1e9);
-    expect(buyFromVendor(ledger, intent({ materialId: 'rune-of-cinder' }), new Map()).code).toBe('unknown');
-    expect(buyFromVendor(ledger, intent({ mutationId: '' }), new Map()).code).toBe('unknown');
-    expect(buyFromVendor(ledger, intent({ quantity: 0 }), new Map()).code).toBe('bad-quantity');
-    expect(buyFromVendor(ledger, intent({ quantity: 2.5 }), new Map()).code).toBe('bad-quantity');
-    expect(buyFromVendor(ledger, intent({ quantity: VENDOR_MAX_QTY + 1 }), new Map()).code).toBe('bad-quantity');
-    expect(buyFromVendor(ledger, intent({ expectedUnitPrice: pyrite.price - 1 }), new Map()).code).toBe('stale');
-    expect(state.spends.length).toBe(0);
+    const { ledger, state } = fakeLedger({ 'pyrite-dust': 1e6 });
+    expect(sellToVendor(ledger, intent({ materialId: 'rune-of-cinder' }), new Map()).code).toBe('unknown');
+    expect(sellToVendor(ledger, intent({ mutationId: '' }), new Map()).code).toBe('unknown');
+    expect(sellToVendor(ledger, intent({ quantity: 0 }), new Map()).code).toBe('bad-quantity');
+    expect(sellToVendor(ledger, intent({ quantity: 2.5 }), new Map()).code).toBe('bad-quantity');
+    expect(sellToVendor(ledger, intent({ quantity: VENDOR_MAX_QTY + 1 }), new Map()).code).toBe('bad-quantity');
+    expect(sellToVendor(ledger, intent({ expectedUnitPrice: pyrite.price + 1 }), new Map()).code).toBe('stale');
+    expect(state.pays.length).toBe(0);
   });
 
   it('mints distinct mutation ids', () => {
