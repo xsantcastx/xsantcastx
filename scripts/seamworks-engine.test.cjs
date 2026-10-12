@@ -530,3 +530,37 @@ test('drop tables are data: chances roll on the engine RNG and materials carry t
   assert.ok(loot.some(drop => drop.material === 'ember-residue' && drop.ore === 2));
   engine.destroy();
 });
+
+test('the Celestial town: Codex and Leaderboards stand in Meridian Orrery, and the Rings drop real Celestial materials', () => {
+  const town = world.TOWNS.celestial;
+  assert.ok(town, 'Meridian Orrery is built');
+  assert.equal(town.name, 'Meridian Orrery');
+  assert.equal(town.background, 'bg-celestial');
+  const byId = Object.fromEntries(town.stations.map(station => [station.id, station]));
+  assert.equal(byId.codex.panel, 'codex');
+  assert.equal(byId.leaderboards.panel, 'leaderboards');
+  assert.equal(byId.waystone.kind, 'waystone');
+  assert.equal(town.monsters.length, 0, 'the terrace is quiet ground');
+  const rings = world.areaOf(town, byId.passage.to);
+  assert.equal(rings.monsters[0].creature, 'ephemeris-leech', 'the canon Celestial creature');
+
+  // Every material the Rings drop is something a crafting recipe actually consumes.
+  const recipes = fs.readFileSync(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const materials = rings.drops.entries.filter(entry => entry.kind === 'material');
+  assert.ok(materials.length >= 1 && materials.length <= 3);
+  for (const entry of materials) assert.ok(recipes.includes(`m('${entry.material}'`), `${entry.material} feeds a recipe`);
+
+  // Walk it in the engine: arrive, take the passage, kill a Leech, see alloy fall.
+  const { engine, state } = fixture();
+  engine.setTown(town);
+  assert.equal(state().area, 'Meridian Orrery');
+  engine.goToStation('passage', true);
+  assert.equal(state().areaId, 'orrery-rings');
+  engine.random = () => .99;
+  const leech = engine.monsters[0];
+  engine.player.x = leech.x - 50;
+  for (let n = 0; n < 20 && leech.hp > 0; n++) strike(engine);
+  assert.equal(leech.hp, 0);
+  assert.deepEqual([...engine.drops.map(drop => drop.material ?? 'coins')].sort(), ['celestial-alloy', 'coins'], 'missed chances drop nothing; alloy is certain');
+  engine.destroy();
+});
