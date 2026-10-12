@@ -21,7 +21,7 @@ import { Observable, Subject } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
-  DELVE_KEY, DelveSave, claimOnce, coerceDelveSave, decodeCells, encodeCells, newDelveSave, rollSeed,
+  DELVE_KEY, DelveChest, DelveSave, chestKey, claimOnce, coerceDelveSave, decodeCells, encodeCells, newDelveSave, rollSeed,
 } from './delve-save.model';
 
 /** How long dug cells wait in memory before they are written. */
@@ -74,6 +74,52 @@ export class DelveSaveService {
     if (!save || !claimOnce(save, id)) return false;
     this.write();
     return true;
+  }
+
+  // ── Chests (contents; DelveChestService moves the stacks) ─────────────────
+
+  /**
+   * The chest record at a cell of an area, made on first ask (`create`) under
+   * the area's live layout. Null on the server, or when there is none and
+   * `create` is false.
+   */
+  chest(areaId: string, index: number, create = true): DelveChest | null {
+    const save = this.ensure();
+    if (!save) return null;
+    const key = chestKey(areaId, index);
+    const layout = this.live.get(areaId)?.layout ?? '';
+    let chest = save.chests?.[key];
+    if (!create) return chest && chest.layout === layout ? chest : null;
+    if (!chest || chest.layout !== layout) {
+      chest = { layout, born: Date.now() * 1000 + Math.floor(Math.random() * 1000), n: 0, slots: {} };
+      save.chests = { ...(save.chests ?? {}), [key]: chest };
+    }
+    return chest;
+  }
+
+  /** Every chest record with its key, for the orphan sweep. */
+  chests(): { key: string; areaId: string; index: number; chest: DelveChest }[] {
+    const save = this.ensure();
+    return Object.entries(save?.chests ?? {}).map(([key, chest]) => {
+      const at = key.lastIndexOf(':');
+      return { key, areaId: key.slice(0, at), index: parseInt(key.slice(at + 1), 36), chest };
+    });
+  }
+
+  /** The layout an area is dug under right now (once the engine has asked), or null. */
+  layoutOf(areaId: string): string | null { return this.live.get(areaId)?.layout ?? null; }
+
+  /** Write a chest's new contents now (moves are rare; the satchel side already saved). */
+  saveChest(): void { if (this.save) this.write(); }
+
+  /** Forget a chest (taken back empty, or refunded). */
+  dropChest(key: string): void {
+    const save = this.ensure();
+    if (!save?.chests?.[key]) return;
+    const { [key]: _gone, ...rest } = save.chests;
+    save.chests = Object.keys(rest).length ? rest : undefined;
+    if (!save.chests) delete save.chests;
+    this.write();
   }
 
   // ── Persistence ───────────────────────────────────────────────────────────
