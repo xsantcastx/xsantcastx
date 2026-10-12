@@ -39,15 +39,15 @@ function seeded(values: readonly number[]): () => number {
 describe('item-reforge', () => {
   // ── cost ──────────────────────────────────────────────────────────────────
 
-  it('prices a reroll off rarity, at the owner-specified ladder', () => {
-    expect(REFORGE_GOLD.common).toBe(500);
-    expect(REFORGE_GOLD.uncommon).toBe(2_000);
-    expect(REFORGE_GOLD.rare).toBe(10_000);
-    expect(REFORGE_GOLD.epic).toBe(50_000);
-    expect(REFORGE_GOLD.legendary).toBe(200_000);
-    expect(REFORGE_GOLD.mythic).toBe(1_000_000);
+  it('prices a reroll off rarity, at the economy-v3 ladder (rebalance spec §3)', () => {
+    expect(REFORGE_GOLD.common).toBe(150);
+    expect(REFORGE_GOLD.uncommon).toBe(600);
+    expect(REFORGE_GOLD.rare).toBe(3_000);
+    expect(REFORGE_GOLD.epic).toBe(15_000);
+    expect(REFORGE_GOLD.legendary).toBe(60_000);
+    expect(REFORGE_GOLD.mythic).toBe(300_000);
     // Not in the brief; extrapolates the same step and is the only tier above Mythic.
-    expect(REFORGE_GOLD.singular).toBe(5_000_000);
+    expect(REFORGE_GOLD.singular).toBe(1_500_000);
   });
 
   it('rises strictly with rarity, and every tier has a price', () => {
@@ -59,9 +59,9 @@ describe('item-reforge', () => {
 
   it('doubles the bill when a stat is locked', () => {
     expect(REFORGE_LOCK_MULTIPLIER).toBe(2);
-    expect(reforgeGoldCost('rare')).toBe(10_000);
-    expect(reforgeGoldCost('rare', true)).toBe(20_000);
-    expect(reforgeGoldCost('mythic', true)).toBe(2_000_000);
+    expect(reforgeGoldCost('rare')).toBe(3_000);
+    expect(reforgeGoldCost('rare', true)).toBe(6_000);
+    expect(reforgeGoldCost('mythic', true)).toBe(600_000);
   });
 
   // ── eligibility ───────────────────────────────────────────────────────────
