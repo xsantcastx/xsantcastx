@@ -270,21 +270,21 @@ interface LootDrop {
            a phone, so this is a real panel: hover opens it on a pointer device,
            and the long-press-free path is the Market link inside it. -->
       <div class="ff__hud" [class.ff__hud--open]="hudOpen" aria-hidden="true">
-        <span class="ff__hud-gold">{{ gold }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"></span>
+        <span class="ff__hud-gold">{{ gold }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.webp" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"></span>
         <span class="ff__hud-rate">+{{ rate }}/sec</span>
         @if (snap.autoPerSecond > 0) {
           <span class="ff__hud-auto">⚙ Auto: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'click' : 'clicks' }}/sec</span>
         }
         @if (anvil) {
           <span class="ff__hud-cost" [class.ff__hud-cost--broke]="!canForge">
-            ⚒ {{ strikeCost }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> a strike
+            ⚒ {{ strikeCost }} <img class="ff__hud-coin gf-icon currency-icon" src="assets/icons/currencies/gold.webp" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> a strike
           </span>
           <span class="ff__hud-hint">Click to strike a rune · hold for the anvil</span>
         } @else {
           <span class="ff__hud-hint">Click to forge · hold for runes</span>
         }
         @if (snap.essence > 0) {
-          <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.png" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
+          <span class="ff__hud-essence"><img class="gf-icon currency-icon currency-icon--essence" src="assets/icons/currencies/essence.webp" alt="" aria-hidden="true" width="13" height="13" decoding="async" draggable="false"> {{ essence }} Essence</span>
         }
         <a class="ff__hud-forge" routerLink="/forge/runes">Strike the Rune Forge &rarr;</a>
         <a class="ff__hud-market" routerLink="/market">Open the Market &rarr;</a>
@@ -350,7 +350,7 @@ interface LootDrop {
             <span class="ff__core"></span>
             <span class="ff__ring"></span>
             <span class="ff__ring ff__ring--outer"></span>
-            <img class="ff__glyph forge-flame" src="assets/icons/forge-flame-128.png"
+            <img class="ff__glyph forge-flame" src="assets/icons/forge-flame-128.webp"
                  alt="" aria-hidden="true" width="34" height="34"
                  decoding="async" draggable="false">
           </span>

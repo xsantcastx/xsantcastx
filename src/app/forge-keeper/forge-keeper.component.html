@@ -29,11 +29,11 @@
 
     <div class="fk-stage__bar" aria-label="Purse">
       <span class="fk-stage__coin">
-        <img src="assets/icons/currencies/gold.png" alt="" width="20" height="20">
+        <img src="assets/icons/currencies/gold.webp" alt="" width="20" height="20">
         {{ money(wallet.gold) }}
       </span>
       <span class="fk-stage__coin">
-        <img src="assets/icons/currencies/essence.png" alt="" width="20" height="20">
+        <img src="assets/icons/currencies/essence.webp" alt="" width="20" height="20">
         {{ money(wallet.essence) }}
       </span>
       <span class="fk-stage__rate">{{ perSecond }} / sec</span>
@@ -514,7 +514,7 @@
                 <p class="fk-inv__price">
                   <a routerLink="/market" class="fk-inv__price-link">
                     <img class="gf-icon currency-icon" [class.currency-icon--essence]="stack.lead.currency !== 'gold'"
-                         [src]="'assets/icons/currencies/' + (stack.lead.currency === 'gold' ? 'gold' : 'essence') + '.png'"
+                         [src]="'assets/icons/currencies/' + (stack.lead.currency === 'gold' ? 'gold' : 'essence') + '.webp'"
                          alt="" aria-hidden="true" width="14" height="14"
                          loading="lazy" decoding="async" draggable="false">
                     {{ money(stack.lead.cost) }} in The Market
