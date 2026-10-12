@@ -31,6 +31,11 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, ToolTiers, WorldActionEvent } from './engine/engine';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolTiers } from '../shared/skills/tools';
+import { SkillActionService } from '../shared/skills/skill-actions.service';
+import { skillForDiscipline } from '../shared/skills/skill.model';
+
+/** Where Delve swings are recorded in the activity ledger. */
+const EMBER_DELVE_LOCATION = 'infernal/ember-delve';
 import type { InventorySnapshot } from '../shared/rpg/inventory.service';
 
 /**
@@ -130,6 +135,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead's canvas view and its data (homestead/homestead.service.ts). */
   private readonly homestead = inject(HomesteadService);
   private readonly activity = inject(ActivityProgressionGateway);
+  private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
   private readonly zone = inject(NgZone);
   readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -826,11 +832,21 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.materialId) this.toastLoot(`+1 ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
       return true;
     }
-    if (!event.materialId || !event.qty) return true;
-    if (!this.inventory.grantStack(`${event.mutationId}:${event.materialId}`, event.materialId, event.qty)) {
-      this.message = 'Your satchel is full. Make room, then swing again.'; return false;
+    // Everything else trains the skill the node belongs to (rock → Mining,
+    // roots → Foraging, trunks → Woodcutting, walls and caches → Delving):
+    // one idempotent gateway write grants the item and the XP together and
+    // plays that skill's level-up moment.
+    const skill = skillForDiscipline(event.discipline);
+    if (!skill || (!event.xp && !(event.materialId && event.qty))) return true;
+    const result = this.skillActions.act({
+      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: EMBER_DELVE_LOCATION,
+      ...(event.materialId && event.qty ? { materialId: event.materialId, qty: event.qty } : {}),
+    });
+    if (!result.ok) {
+      this.message = result.code === 'capacity' ? 'Your satchel is full. Make room, then swing again.' : 'That swing could not be saved. Swing again.';
+      return false;
     }
-    this.toastLoot(`+${event.qty} ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
+    if (event.materialId && event.qty) this.toastLoot(`+${event.qty} ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
     return true;
   }
   private act(target: InteractionTarget): void {

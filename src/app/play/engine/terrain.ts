@@ -74,8 +74,8 @@ const ROCK = { base: '#3a2b2c', dark: '#241a1c', light: '#5a4440', fleck: '#6b51
 export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   { id: 'air', label: 'Open air', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, base: '#120c10', dark: '#0b0709', light: '#1d1418', fleck: '#000' },
   { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, base: '#5b3b2c', dark: '#3d271d', light: '#7f5640', fleck: '#8c6a4f' },
-  { id: 'rock', label: 'Basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, ...ROCK },
-  { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, base: '#2a2027', dark: '#171116', light: '#443540', fleck: '#57474f' },
+  { id: 'rock', label: 'Basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, ...ROCK },
+  { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, base: '#2a2027', dark: '#171116', light: '#443540', fleck: '#57474f' },
   { id: 'cinder-vein', label: 'Cinder Ore vein', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, minLevel: 1,
     yield: { materialId: 'cinder-ore', qty: 1 }, ...ROCK, fleck: '#ff9b4f', glow: { color: '#ff9b4f', radius: 46 } },
   { id: 'slag-vein', label: 'Slag vein', solid: true, hp: 4, tools: { pickaxe: 2 }, discipline: 'mining', xp: 5, minLevel: 8,
@@ -86,6 +86,10 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     base: '#33263a', dark: '#1d1522', light: '#54405e', fleck: '#c9a0ff', glow: { color: '#b88cff', radius: 34 } },
   { id: 'roots', label: 'Tangled roots', solid: true, hp: 1, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 1,
     yield: { materialId: 'thornroot', qty: 1, chance: .5 }, base: '#1f1513', dark: '#130c0b', light: '#6d5a3a', fleck: '#9b8452' },
+  // A trunk the World-Root sank into the basalt: the axe's work, so the Delve
+  // trains Woodcutting by what you find, not only Mining.
+  { id: 'petrified-trunk', label: 'Petrified trunk', solid: true, hp: 3, tools: { axe: 1 }, discipline: 'woodcutting', xp: 4,
+    yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, base: '#3a2a1c', dark: '#24190f', light: '#7a5a36', fleck: '#b08a55' },
   { id: 'bedrock', label: 'Bedrock', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0, base: '#141016', dark: '#09070a', light: '#231c25', fleck: '#2d2430' },
   { id: 'ember-rock', label: 'Ember-veined basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0,
     ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
