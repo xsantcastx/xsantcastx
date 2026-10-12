@@ -121,6 +121,20 @@
 }
 .hc-buy small { font-weight: 500; font-size: 0.7rem; }
 
+.hc-group {
+  margin: 0.2rem 0 0;
+  padding: 0 0.3rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-2, var(--ink-1));
+}
+/* A home station row: icon + name on top, the one upgrade button full width below. */
+.hc-row--home { grid-template-columns: 40px 1fr; }
+.hc-row--home .hc-text small { white-space: normal; }
+.hc-buy--home { grid-column: 1 / -1; width: 100%; }
+
 .hc-notice { margin: 0; text-align: center; font-weight: 600; color: var(--feedback-success); }
 
 @media (prefers-reduced-motion: reduce) {
