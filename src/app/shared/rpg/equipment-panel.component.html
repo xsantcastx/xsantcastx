@@ -11,6 +11,9 @@
       <ng-template #emptyTotals>
         <p class="ld__totals ld__totals--empty">{{ t('loadout.stat.empty') }}</p>
       </ng-template>
+      <!-- The live sheet: counts to the new totals and floats a signed chip
+           on every equip and unequip, so a swap is something you watch. -->
+      <app-keeper-stat-sheet class="ld__sheet" [heading]="t('loadout.sheet.title')" />
       <p class="ld__armed" *ngIf="armed">{{ t('loadout.armed', { name: armed.name }) }}</p>
 
       <div class="ld__doll" role="group" [attr.aria-label]="t('loadout.doll.label')">
@@ -193,9 +196,12 @@
 
         <ng-container *ngIf="slot.liveSlot; else slotLocked">
           <p class="ld__picker-label">{{ t('loadout.picker.choose') }}</p>
-          <p class="ld__compare-head" *ngIf="wornIn(slot) as worn">
+          <p class="ld__compare-head" *ngIf="wornIn(slot) as worn; else compareEmpty">
             {{ t('loadout.compare.against', { name: worn.name }) }}
           </p>
+          <ng-template #compareEmpty>
+            <p class="ld__compare-head">{{ t('loadout.compare.empty') }}</p>
+          </ng-template>
           <!--
             Each candidate carries its difference from what is worn, not just
             its own stats. Two Rares whose mod lines both read "Magic Find +1x%"
@@ -218,11 +224,17 @@
                   <span class="ld__pick-flag" *ngIf="isUpgrade(slot, item)">{{ t('loadout.compare.upgrade') }}</span>
                 </span>
                 <span class="ld__pick-mods">{{ modsOf(item).join(' · ') || label(item) }}</span>
-                <span class="ld__deltas" *ngIf="comparison(slot, item).length">
-                  <span class="ld__delta"
-                        *ngFor="let row of comparison(slot, item)"
-                        [class.ld__delta--up]="row.better"
-                        [class.ld__delta--down]="!row.better">{{ row.text }}</span>
+                <!-- Every stat either item touches: gains green, losses red,
+                     unchanged dimmed. Against nothing when the slot is empty,
+                     so the first piece of gear shows what it adds too. -->
+                <span class="ld__deltas" *ngIf="compareView(slot, item) as rows">
+                  <ng-container *ngIf="rows.length">
+                    <span class="ld__delta"
+                          *ngFor="let row of rows"
+                          [class.ld__delta--up]="row.direction === 'up'"
+                          [class.ld__delta--down]="row.direction === 'down'"
+                          [class.ld__delta--same]="row.direction === 'same'">{{ row.text }}</span>
+                  </ng-container>
                 </span>
               </button>
             </li>

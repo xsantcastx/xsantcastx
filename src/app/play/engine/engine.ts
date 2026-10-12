@@ -40,6 +40,10 @@ export class SeamworksEngine {
   private camera = 0;
   private facing = 1;
   private hp = 100;
+  /** Health ceiling, from the worn loadout via `setStats`. 100 until told otherwise. */
+  private maxHp = 100;
+  /** Melee damage from the worn loadout via `setStats`; null keeps the legacy 10/20. */
+  private damage: number | null = null;
   private monsters: Monster[] = this.createMonsters();
   private drops: Drop[] = [];
   private readonly lootSession = crypto.randomUUID();
@@ -77,7 +81,7 @@ export class SeamworksEngine {
   }
   private resetPosition(x: number): void {
     this.player.x = x; this.player.y = FLOOR; this.player.vy = 0; this.player.grounded = true;
-    this.hp = 100; this.hurtTime = 1.5; this.attackTime = 0; this.attackCooldown = 0;
+    this.hp = this.maxHp; this.hurtTime = 1.5; this.attackTime = 0; this.attackCooldown = 0;
     this.dodgeTime = 0; this.dodgeCooldown = 0; this.complete = false; this.setPaused(false);
   }
   returnToCamp(): void {
@@ -128,6 +132,21 @@ export class SeamworksEngine {
     if (this.restored) this.guardianDefeated = true;
     this.report();
   }
+  /**
+   * Combat numbers derived from the worn loadout (see rpg/keeper-combat.ts).
+   * A max-HP change keeps the Keeper's *share* of health, so equipping mid-fight
+   * neither heals nor wounds; a fallen Keeper stays fallen.
+   */
+  setStats(stats: { damage: number; maxHp: number }): void {
+    if (Number.isFinite(stats.damage)) this.damage = Math.max(1, Math.round(stats.damage));
+    const maxHp = Math.round(stats.maxHp);
+    if (Number.isFinite(maxHp) && maxHp >= 1 && maxHp !== this.maxHp) {
+      const share = this.hp / this.maxHp;
+      this.maxHp = maxHp;
+      if (this.hp > 0) this.hp = Math.max(1, Math.min(maxHp, Math.round(maxHp * share)));
+    }
+    this.report();
+  }
   setPeers(peers: RemoteKeeper[]): void {
     const present = new Set<string>();
     for (const peer of peers) {
@@ -168,8 +187,9 @@ export class SeamworksEngine {
         this.attackTime = .4; this.attackCooldown = .52;
         for (const monster of this.monsters) {
           if (monster.hp <= 0 || !meleeHits(this.player, monster.x, this.facing)) continue;
-          this.atmosphere.burst(monster.x, FLOOR - 85, String(this.equipped ? 20 : 10));
-          monster.hp = Math.max(0, monster.hp - (this.equipped ? 20 : 10));
+          const damage = this.damage ?? (this.equipped ? 20 : 10);
+          this.atmosphere.burst(monster.x, FLOOR - 85, String(damage));
+          monster.hp = Math.max(0, monster.hp - damage);
           monster.flash = .14;
           this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
           if (!this.reducedMotion) monster.knock = Math.sign(monster.x - this.player.x || this.facing) * 22;

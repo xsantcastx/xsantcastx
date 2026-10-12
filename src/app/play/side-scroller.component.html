@@ -26,7 +26,7 @@
   <div class="vitals" aria-label="Health">
     <div class="vital">
       <label>Keeper <b>{{ state.hp }}</b></label>
-      <div class="meter"><s [style.--fill]="state.hp / 100"></s><i [style.--fill]="state.hp / 100"></i></div>
+      <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
     </div>
     @if (state.enemyHp > 0) {
       <div class="vital">
@@ -45,6 +45,7 @@
     <p><span>Cinder ore</span><b>{{ ore }}</b></p>
     <p><span>Ember</span><b>{{ ember }}</b></p>
     <p><span>Edge</span><b>{{ edge ? (equipped ? 'Worn' : 'Bag') : '—' }}</b></p>
+    <p><span>Damage</span><b>{{ pushed.damage }}</b></p>
     <p><span>Defeated</span><b>{{ state.kills || 0 }}</b></p>
   </aside>
 
@@ -78,6 +79,9 @@
           }
         </div>
       </div>
+      <!-- What the worn gear pays, live. Counts and floats a signed chip on
+           Wear / Stow, including the Damage and Max HP the fight now reads. -->
+      <app-keeper-stat-sheet class="book-stats" heading="Keeper stats" [compact]="true" [combat]="true" [hideZero]="true" />
       <div class="lining" aria-label="Pockets">
         @if (!pockets.length) {
           <p class="bare">The pockets are empty. Ore and ember gather here, and stay on this device.</p>
@@ -109,6 +113,14 @@
             @if (row.stats.length) {
               <ul>
                 @for (stat of row.stats; track stat) { <li>{{ stat }}</li> }
+              </ul>
+            }
+            @if (row.compare.length) {
+              <p class="compare-label">{{ row.compareLabel }}</p>
+              <ul class="compare">
+                @for (d of row.compare; track d.key) {
+                  <li [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'" [class.same]="d.direction === 'same'">{{ d.text }}</li>
+                }
               </ul>
             }
           </div>
