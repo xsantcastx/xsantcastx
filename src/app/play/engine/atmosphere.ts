@@ -14,7 +14,7 @@ export class Atmosphere {
     this.motes = this.motes.filter(p => p.age > 0);
   }
   /** Hand-painted camp furnishings sit behind Keepers and never obstruct movement. */
-  hub(c: CanvasRenderingContext2D, time: number): void {
+  hub(c: CanvasRenderingContext2D, time: number, boardsTo = 1120): void {
     c.save();
     // Overhead festival bunting, with a restrained sway between timber posts.
     c.strokeStyle = '#bd9971'; c.lineWidth = 2;
@@ -40,7 +40,7 @@ export class Atmosphere {
     c.fillStyle = '#f1d8ad'; c.font = '600 11px system-ui'; c.textAlign = 'center'; c.fillText('KEEPER SUPPLIES', 695, 577);
     // Worn boards only cover the safe camp. The hunting trail stays bare stone.
     c.save();
-    for (let x = 0; x < 1120; x += 34) {
+    for (let x = 0; x < boardsTo; x += 34) {
       c.fillStyle = (x / 34) % 2 ? '#7a5342' : '#624433';
       c.globalAlpha = .72; c.fillRect(x, 610, 32, 28);
     }
