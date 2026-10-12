@@ -57,6 +57,9 @@ import {
   formatPerSecond, ladderLevels, nextUnheld, splitIdleGain,
 } from './homestead.model';
 
+/** How often a waiting golden spark re-flares over the Forge, ms. */
+const SPARK_PULSE_MS = 2_500;
+
 export const FURNACE_RUNGS: readonly RungDef[] = FORGE_UPGRADES.map(u => ({ id: u.id, name: u.name, gain: u.ratePerSecond }));
 export const AUTOMATON_RUNGS: readonly RungDef[] = AUTO_CLICKERS.map(u => ({ id: u.id, name: u.name, gain: u.clicksPerSecond }));
 export const TREASURY_RUNGS: readonly RungDef[] = MULTIPLIER_UPGRADES.map(u => ({ id: u.id, name: u.name, gain: 1 }));
@@ -188,8 +191,12 @@ export class HomesteadService implements OnDestroy {
     }));
     subs.add(this.explorers.returned$.subscribe(r => this.scene.addPending('camp', { gold: Math.max(0, r.reward.gold || 0), returns: 1 })));
     subs.add(this.thrallService.find$.subscribe(() => { this.scene.addPending('workshop', { runes: 1 }); this.scene.rune(); }));
-    // The shared Golden Spark clock runs while the Homestead is open.
+    // The shared Golden Spark clock runs while the Homestead is open. While a
+    // spark is waiting, the Forge flares with it every couple of seconds (the
+    // `goldenSpark` burst), so it is visible on the plot; striking catches it.
     subs.add(this.spark.attach());
+    subs.add(this.spark.offer$.subscribe(offer => this.showWaitingSpark(offer !== null)));
+    subs.add(() => this.showWaitingSpark(false));
     subs.add(this.homeForge.state$.subscribe(() => this.refresh()));
     this.subs = subs;
   }
@@ -245,8 +252,9 @@ export class HomesteadService implements OnDestroy {
   }
 
   /**
-   * Play a golden spark over the Forge. Grants nothing — the spark was already
-   * credited through GoldenSparkService → EconomyService (see `strike()`).
+   * Play a golden spark over the Forge. Grants nothing: it marks a spark that
+   * is waiting to be struck (see `showWaitingSpark`) and the one just caught,
+   * which GoldenSparkService has already credited through EconomyService.
    */
   goldenSpark(): void {
     this.scene.goldenSpark();
@@ -254,6 +262,18 @@ export class HomesteadService implements OnDestroy {
   }
 
   // ── Reading ──
+
+  private sparkPulse: ReturnType<typeof setInterval> | null = null;
+
+  /** Flare the Forge now and every SPARK_PULSE_MS while a spark waits; stop when it goes. */
+  private showWaitingSpark(waiting: boolean): void {
+    if (this.sparkPulse !== null) { clearInterval(this.sparkPulse); this.sparkPulse = null; }
+    if (!waiting || !this.browser) return;
+    this.scene.goldenSpark();
+    this.zone.runOutsideAngular(() => {
+      this.sparkPulse = setInterval(() => this.scene.goldenSpark(), SPARK_PULSE_MS);
+    });
+  }
 
   /** The one action a building's panel offers. */
   action(id: HomesteadBuildingId): BuildingAction {
