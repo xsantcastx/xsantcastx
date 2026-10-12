@@ -733,9 +733,9 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     // Solari and Nocturne are the two realms with painted sigils; Unclaimed and
     // True Convergent are states rather than realms and keep their glyph.
     return this.aetherPercent > 55
-      ? { icon: 'assets/icons/realms/luminous.png', art: true, title: 'Solari',
+      ? { icon: 'assets/icons/realms/luminous.webp', art: true, title: 'Solari',
           line: 'The Light burns bright in you, Solari.' }
-      : { icon: 'assets/icons/realms/umbral.png', art: true, title: 'Nocturne',
+      : { icon: 'assets/icons/realms/umbral.webp', art: true, title: 'Nocturne',
           line: 'The Shadow knows your name, Nocturne.' };
   }
 

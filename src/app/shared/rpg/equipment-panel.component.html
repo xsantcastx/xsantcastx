@@ -14,8 +14,8 @@
       <p class="ld__armed" *ngIf="armed">{{ t('loadout.armed', { name: armed.name }) }}</p>
 
       <div class="ld__doll" role="group" [attr.aria-label]="t('loadout.doll.label')">
-        <img class="ld__doll-art" [src]="dollSrc" [alt]="t('loadout.doll.alt')"
-             width="720" height="720" loading="lazy" decoding="async">
+        <img class="ld__doll-art" [src]="dollSrc" [attr.srcset]="dollSrcset" sizes="auto, (max-width: 420px) 100vw, 380px"
+             [alt]="t('loadout.doll.alt')" width="720" height="720" loading="lazy" decoding="async">
         <img *ngFor="let slot of filledOverlays"
              class="ld__overlay"
              [src]="slot.overlay!.asset"

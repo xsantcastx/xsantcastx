@@ -7,6 +7,7 @@
  * weapon overlay when that instance is worn.
  */
 import type { SlotId } from './item.model';
+import { ART_ALL } from '../art/art-manifest.generated';
 
 export type DollSlotId =
   | 'head'
@@ -50,7 +51,11 @@ export interface PaperDollSlotManifest {
  * which is why nothing caught it. `01-keeper-base.png` is the real cut-out
  * (83% transparent, corners at alpha 0) and is better art besides.
  */
-export const PAPER_DOLL_SRC = 'assets/game/characters/01-keeper-base-1024.webp';
+// Read from the generated manifest rather than hand-pointed at the 1024 master:
+// the doll is capped at 380px, so a 1x screen only needs the 512.
+const KEEPER_BASE = ART_ALL['keeper-base'];
+export const PAPER_DOLL_SRC = KEEPER_BASE.src;
+export const PAPER_DOLL_SRCSET = KEEPER_BASE.srcset;
 
 export const DOLL_SLOT_GLYPH: Record<DollSlotId, string> = {
   head: 'assets/ui/svg/character/head.svg',

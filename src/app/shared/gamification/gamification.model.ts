@@ -90,7 +90,7 @@ export function energyForCategory(category: string | undefined): EnergyType {
  */
 export function rankSigil(level: number): string {
   const n = Math.min(10, Math.max(1, Math.round(level)));
-  return `assets/icons/ranks/rank-${n}.png`;
+  return `assets/icons/ranks/rank-${n}.webp`;
 }
 
 export interface LevelDefinition {
