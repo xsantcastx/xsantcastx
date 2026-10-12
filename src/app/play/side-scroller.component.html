@@ -13,8 +13,8 @@
   <header class="topbar" [attr.inert]="panel ? '' : null">
     <a routerLink="/world" class="wordmark">Eclipse</a>
     <div class="title-block">
-      <span class="realm-tag">{{ realmLabel }}</span>
-      <h1 id="game-title">{{ town.name }}</h1>
+      <span class="realm-tag">{{ realmLabel }}@if (state.delve && state.biome) { · {{ state.biome }} }</span>
+      <h1 id="game-title">{{ areaTitle }}</h1>
     </div>
     <p class="objective" aria-live="polite">{{ message || state.message || objective }}</p>
     <div class="top-actions">

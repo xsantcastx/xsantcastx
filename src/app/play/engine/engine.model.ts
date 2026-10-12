@@ -16,6 +16,14 @@ export interface EngineState {
   facing?: number; animation?: KeeperAnimation;
   /** True in an area with diggable terrain. `depth`: terrain rows below the surface the Keeper stands at. */
   delve?: boolean; depth?: number;
+  /** In a delve with biomes: the name of the biome the Keeper stands in ("Glowcap Grotto"). */
+  biome?: string;
+  /**
+   * Name of the creature the enemy bar measures: the nearest living one the
+   * Keeper could meet (in a delve, on roughly the Keeper's level). Absent, with
+   * `enemyHp` 0, when there is none — the bar hides.
+   */
+  enemyName?: string;
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export interface EngineOptions {
@@ -49,6 +57,36 @@ export interface EngineOptions {
    * without asking.
    */
   onWorldAction?: (event: WorldActionEvent) => boolean | void;
+  /**
+   * The Keeper read something in the world (E or a tap beside it). Fires on
+   * every read; the host decides whether it is new (DelveLoreService).
+   */
+  onDiscover?: (event: DiscoverEvent) => void;
+  /**
+   * Per-player delves: where a delve area's seed comes from and where its dug
+   * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
+   * state lives for the engine session. Settable later with `setDelve()`.
+   */
+  delve?: DelvePersistence | null;
+}
+export interface DiscoverEvent {
+  kind: 'inscription';
+  /** Inscription id from the terrain spec (shared/delve/delve-lore.model.ts lists them). */
+  id: string;
+  /** Biome id the inscription sits in ('root-hollows', …). */
+  biome: string;
+}
+/**
+ * The engine's whole view of a per-player delve save. `layout` is
+ * `terrainLayout(spec, seed)`: a saved diff under another layout is stale.
+ */
+export interface DelvePersistence {
+  /** This player's seed for a delve area, or undefined for the spec's own. */
+  seed(areaId: string): number | undefined;
+  /** Saved cell overrides (cell index → node index) for that layout, or null. */
+  cells(areaId: string, layout: string): ReadonlyMap<number, number> | null;
+  /** A cell changed. `kind` null: it is back to what the seed generated. Debounce on the host side. */
+  changed(areaId: string, layout: string, index: number, kind: number | null): void;
 }
 export interface WorldActionEvent {
   kind: WorldActionKind;

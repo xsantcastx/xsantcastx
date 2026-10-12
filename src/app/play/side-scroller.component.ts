@@ -33,6 +33,13 @@ import { miningLevelView } from '../shared/activity/mining-level';
 import { toolTiers } from '../shared/skills/tools';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
 import { skillForDiscipline } from '../shared/skills/skill.model';
+import { DelveSaveService } from '../shared/delve/delve-save.service';
+import { DelveLoreService } from '../shared/delve/delve-lore.service';
+import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.model';
+import type { DiscoverEvent } from './engine/engine';
+
+/** Finds a player is paid once, ever (delve-save `claimed`). */
+const ONCE_PER_PLAYER = new Set(['godforge-fragment']);
 
 /** Where Delve swings are recorded in the activity ledger. */
 const EMBER_DELVE_LOCATION = 'infernal/ember-delve';
@@ -137,6 +144,10 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly activity = inject(ActivityProgressionGateway);
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
+  /** The player's own Delve (seed + dug cells) and the inscriptions they have read. */
+  private readonly delve = inject(DelveSaveService);
+  private readonly delveLore = inject(DelveLoreService);
+  private delveSub?: Subscription;
   private readonly zone = inject(NgZone);
   readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private engine?: SeamworksEngine;
@@ -199,6 +210,8 @@ export class SideScrollerComponent implements OnDestroy {
       }));
       this.mountEngine();
       this.atSub = this.route.queryParamMap.subscribe(params => this.zone.run(() => this.applyAt(params.get('at'))));
+      // Cloud save replaced the Delve (another device's dig): rebuild it from the merged save.
+      this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
       this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); }), 200);
     });
   }
@@ -220,6 +233,9 @@ export class SideScrollerComponent implements OnDestroy {
       onStation: station => this.zone.run(() => this.openStation(station)),
       onLoot: loot => loot.ore === 0 || this.zone.run(() => this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)),
       onWorldAction: event => this.zone.run(() => this.worldAction(event)),
+      onDiscover: event => this.zone.run(() => this.discover(event)),
+      // Each player digs their own Delve: seed and dug cells from the save.
+      delve: this.delve,
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
         if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
@@ -350,7 +366,8 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) this.homestead.stop();
-    this.atSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
   }
@@ -472,12 +489,16 @@ export class SideScrollerComponent implements OnDestroy {
     }));
   }
   get realmLabel(): string { return TOWN_LABELS[this.town.realm]; }
+  /** The header title: the area the Keeper stands in ("Ember Delve"), not only its town. */
+  get areaTitle(): string { return this.state.area || this.town.name; }
   /**
    * The creature the enemy bar is measuring. The engine reports only its HP, so
    * name it from the area's data: the one kind that lives here, or — in a mixed
    * hunt — the kind whose spawn points sit nearest the Keeper.
    */
   get enemyName(): string {
+    // The engine names the creature it measured; the area data is the fallback for an older state.
+    if (this.state.enemyName) return this.state.enemyName;
     const area = areaOf(this.town, this.state.areaId ?? this.town.id) ?? this.town;
     const monsters = area.monsters;
     if (!monsters.length) return 'Enemy';
@@ -554,6 +575,7 @@ export class SideScrollerComponent implements OnDestroy {
       case 'ore': return this.remaining ? `Seam recovering (${this.remaining}s)` : 'Mine Cinder Ore';
       case 'forge': return this.equipped ? 'Blade equipped' : this.edge ? 'Equip Basalt Edge' : 'Forge Basalt Edge';
       case 'beacon': return this.restored ? 'Beacon restored' : 'Restore beacon';
+      case 'inscription': return 'Read the inscription';
       case 'passage': return this.state.area === 'Ember Quarry' ? 'Return to Seamworks' : 'Enter Ember Quarry';
       default: return 'Walk closer to a landmark';
     }
@@ -838,6 +860,13 @@ export class SideScrollerComponent implements OnDestroy {
     // plays that skill's level-up moment.
     const skill = skillForDiscipline(event.discipline);
     if (!skill || (!event.xp && !(event.materialId && event.qty))) return true;
+    // A once-per-player find already paid (its diff was lost, or a second device
+    // still showed it): the rock breaks, nothing is paid twice.
+    const once = event.materialId && ONCE_PER_PLAYER.has(event.materialId) ? event.materialId : null;
+    if (once && this.delve.isClaimed(once)) {
+      this.message = 'Only an echo of the fragment is left. You already carry what was here.';
+      return true;
+    }
     const result = this.skillActions.act({
       mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: EMBER_DELVE_LOCATION,
       ...(event.materialId && event.qty ? { materialId: event.materialId, qty: event.qty } : {}),
@@ -846,8 +875,26 @@ export class SideScrollerComponent implements OnDestroy {
       this.message = result.code === 'capacity' ? 'Your satchel is full. Make room, then swing again.' : 'That swing could not be saved. Swing again.';
       return false;
     }
+    if (once) this.delve.claim(once);
     if (event.materialId && event.qty) this.toastLoot(`+${event.qty} ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
     return true;
+  }
+  /**
+   * The Keeper read a carved wall. The first reading is recorded (for the
+   * Archivist's missions and the Codex) and pays a little Delving XP, keyed by
+   * the inscription so it can never pay twice; every reading shows the words.
+   */
+  private discover(event: DiscoverEvent): void {
+    if (!this.browser || event.kind !== 'inscription') return;
+    const text = inscriptionById(event.id)?.text ?? 'The carving is too worn to read.';
+    const fresh = this.delveLore.recordInscription(event.id);
+    if (fresh) {
+      const result = this.skillActions.act({
+        mutationId: `delve-inscription:${event.id}`, skill: 'delving', xp: INSCRIPTION_XP, locationId: EMBER_DELVE_LOCATION,
+      });
+      if (result.ok) this.toastLoot(`+${INSCRIPTION_XP} Delving XP`);
+    }
+    this.message = `${fresh ? 'New inscription. ' : ''}${text}`;
   }
   private act(target: InteractionTarget): void {
     if (!this.browser || this.state?.paused || this.state?.defeated) return;

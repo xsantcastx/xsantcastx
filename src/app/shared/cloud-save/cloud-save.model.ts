@@ -43,6 +43,8 @@ import { mergeChapterLedgers } from '../narrative/chapter-ops';
 import { mergeCollectionLedgers } from '../collection/collection.model';
 import { mergeCrafting as mergeCraftingState } from '../crafting/crafting.model';
 import { mergeInfusionLedgers } from '../enchanting/infusion.model';
+import { mergeDelveSaves } from '../delve/delve-save.model';
+import { mergeDelveLore } from '../delve/delve-lore.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -329,6 +331,28 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // structural rules are already right for it (a flag that has been set stays
     // set), and `grantsSettled` riding the same OR is what stops the currency
     // grant being minted a second time on the device that adopts it.
+  },
+  {
+    key: 'godforge-delve',
+    collection: 'progress',
+    doc: 'delve',
+    label: 'Ember Delve',
+    // `{ version, seed, createdAt, areas: { id: { layout, cells } }, claimed }`.
+    // The structural rules would be wrong on the first field: two seeds are two
+    // different Delves, not a number to take the larger of, and a dig diff only
+    // means anything under the seed it was dug in. The hand-written merge keeps
+    // the earlier-rolled seed, unions diffs dug in the same layout, and unions
+    // the once-per-player finds. See delve-save.model.ts.
+    merge: mergeDelveSaves,
+  },
+  {
+    key: 'godforge-delve-lore',
+    collection: 'progress',
+    doc: 'delve-lore',
+    label: 'Delve inscriptions',
+    // `{ version, inscriptions: string[] }`: a reading cannot be undone, so the
+    // union. Hand-written only so unknown ids are dropped on the way through.
+    merge: mergeDelveLore,
   },
 ];
 
