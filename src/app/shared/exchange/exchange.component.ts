@@ -71,6 +71,7 @@ import { RUNE_TIERS, type RuneTier } from '../rune-forge/rune.model';
 import type { ItemRarity } from '../rpg/item.model';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
+import { injectInWorldPanel } from '../in-world-panel';
 type SortKey = 'name' | 'price' | 'change' | 'volume';
 type TrendFilter = 'all' | Trend;
 type Side = 'buy' | 'sell';
@@ -115,6 +116,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
   private timer: ReturnType<typeof setInterval> | null = null;
+  /** Hosted as the Exchange in the Nocturne Archive (/play): no backdrop, hero or cross-page links. */
+  protected readonly inWorld = injectInWorldPanel();
 
   readonly categories = GOOD_CATEGORIES;
   readonly categoryLabels = CATEGORY_LABELS;

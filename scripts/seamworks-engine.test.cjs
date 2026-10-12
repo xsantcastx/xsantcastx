@@ -431,6 +431,32 @@ test('world data is valid: unique ids, stations inside the town, every panel reg
   }
 });
 
+test('every built town has a waystone, and every material a zone drops is catalogued and crafted with', () => {
+  const catalog = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/material-catalog.ts'));
+  const { CRAFTING_RECIPES } = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+  const used = new Set(CRAFTING_RECIPES.flatMap(recipe => recipe.ingredients.map(ingredient => ingredient.materialId)));
+  assert.ok(used.size > 10, 'the recipe table loaded');
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    assert.ok(town.stations.some(station => station.kind === 'waystone'), `${town.id} has a waystone`);
+    for (const area of [town, ...town.hunts]) {
+      const tables = [area.drops, ...area.monsters.map(monster => monster.drops).filter(Boolean)];
+      for (const entry of tables.flatMap(table => table.entries)) {
+        if (entry.chance !== undefined) assert.ok(entry.chance > 0 && entry.chance <= 1, `${area.id}/${entry.id}: chance in (0, 1]`);
+        if (entry.kind !== 'material') continue;
+        const display = catalog.materialDisplay(entry.material);
+        assert.ok(display, `${area.id}/${entry.id}: ${entry.material} is a catalogued material (the bag can name and paint it)`);
+        assert.equal(display.name, entry.label, `${area.id}/${entry.id}: the pickup label matches the bag's name`);
+        assert.ok(entry.qty > 0);
+        assert.ok(used.has(entry.material), `${area.id}/${entry.id}: ${entry.material} feeds a crafting recipe`);
+      }
+    }
+  }
+  const umbral = world.TOWNS.umbral;
+  assert.ok(umbral, 'the Umbral town is built');
+  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['exchange', 'gambler']);
+  assert.equal(umbral.hunts[0].monsters[0].creature, 'mirror-substitute', 'Umbral hunts its canon creature');
+});
+
 test('the station nearest the Keeper wins, and a click hits a station by its footprint', () => {
   const stations = world.TOWNS.infernal.stations;
   assert.equal(world.nearestStation(stations, 1230).id, 'crafting');
