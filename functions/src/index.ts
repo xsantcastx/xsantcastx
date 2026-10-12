@@ -27,6 +27,9 @@ import { sendContactEmail } from "./contact";
 // Import activity feed pruning trigger
 import { pruneActivityFeed } from "./pruneActivity";
 
+// Player market (Grand Exchange): server-held order book and escrow
+import { placeOrderFn, cancelOrderFn, collectFn } from "./market";
+
 // Set global options for cost control
 setGlobalOptions({ maxInstances: 10, enforceAppCheck: true });
 
@@ -35,6 +38,15 @@ export { sendContactEmail };
 
 // Export activity feed pruning (Firestore onCreate trigger)
 export { pruneActivityFeed };
+
+// Export player market callables: market-placeOrder, market-cancelOrder,
+// market-collect. Dormant until market/v1.enabled is set — see
+// docs/handoff/player-market.md.
+export const market = {
+  placeOrder: placeOrderFn,
+  cancelOrder: cancelOrderFn,
+  collect: collectFn,
+};
 
 // Export PayPal functions
 export const paypal = {

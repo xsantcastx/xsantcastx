@@ -407,6 +407,48 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ── Player market (Grand Exchange) ───────────────────────────────────────
+    // Server-held: every write under market/** is made by the market Cloud
+    // Functions (Admin SDK, which bypasses these rules). No client may write
+    // an order, a trade, a price or an escrow balance directly — that is the
+    // whole anti-cheat model, so there is deliberately no client write grant
+    // anywhere below except the owner's switch on the config document.
+    //
+    //   market/v1                 config: { enabled, haltNewOrders }. Public
+    //                             read so the client can show "market closed";
+    //                             only the owner may flip it.
+    //   market/v1/orders/*        the order book — public read.
+    //   market/v1/trades/*        executed trades — public read (charts).
+    //   market/v1/prices/*        last price, 24h VWAP, hourly buckets — public.
+    //   market/v1/escrow/{uid}    held Gold, claims, rate stamps — owner only.
+    //   market/v1/listed/*        burned item ids — server only.
+    //
+    // See docs/handoff/player-market.md.
+    match /market/{version} {
+      allow read: if true;
+      allow write: if isOwner();
+
+      match /orders/{orderId} {
+        allow read: if true;
+        allow write: if false;
+      }
+      match /trades/{tradeId} {
+        allow read: if true;
+        allow write: if false;
+      }
+      match /prices/{itemKey} {
+        allow read: if true;
+        allow write: if false;
+      }
+      match /escrow/{uid} {
+        allow read: if request.auth != null && request.auth.uid == uid;
+        allow write: if false;
+      }
+      match /listed/{itemId} {
+        allow read, write: if false;
+      }
+    }
+
     // ── Deny everything else ─────────────────────────────────────────────────
     match /{document=**} {
       allow read, write: if false;
