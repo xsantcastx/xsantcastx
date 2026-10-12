@@ -149,7 +149,7 @@ export class LeaderboardsComponent implements OnInit, OnDestroy {
   // ── Station frame (shared/station-ui) ──────────────────────────────────────
   detailsOpen = false;
   stationTabs: StationTab[] = [];
-  journal: Record<string, JournalRow[]> = {};
+  journal: Partial<Record<string, JournalRow[]>> = {};
   /** Picked row per board, by `rank:name`. Null → the player's own row. */
   picked: Record<string, string | null> = {};
 
