@@ -14,26 +14,23 @@ export interface NavDestination {
 }
 
 /**
- * The only list of chrome destinations. Header halls / tabs / tome and the
- * footer link rows iterate this. Remounted player halls go through CANONICAL
- * so a later rename cannot drift the shell off the router.
+ * The navbar: World only (world plan, Phase 3). Two destinations, Play and
+ * Character. Every other hall is a station in a realm town; its standalone URL
+ * stays for SEO and opens into the world. place-directory.ts holds the
+ * crawlable list the footer and command palette show, and
+ * shared/world/place-for-route.ts answers where each page stands.
+ *
+ * The header's desktop halls, mobile tome and bottom tab bar iterate this.
+ * scripts/audit-nav.js counts a route as reachable when it is listed here OR a
+ * station in a built town hosts its panel, so a page dropped from here must
+ * stand somewhere in the world or the deploy fails.
  */
 export const NAV_MANIFEST: readonly NavDestination[] = [
   {
-    // Keep the playable village reachable from every hall, the mobile tome,
-    // and the footer without crowding the five primary mobile tabs.
     id: 'play',
     route: '/play',
-    labelKey: 'godforge.hero.playAdventure',
-    glyph: 'home',
-    exact: true,
-    group: 'more',
-  },
-  {
-    id: 'world',
-    route: CANONICAL.world,
-    labelKey: 'gfnav.world',
-    hintKey: 'gfnav.hint.world',
+    labelKey: 'gfnav.play',
+    hintKey: 'gfnav.hint.play',
     glyph: 'home',
     exact: true,
     group: 'primary',
@@ -54,128 +51,6 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
       active: 'assets/icons/tabs/profile-active.webp',
     },
   },
-  {
-    id: 'market',
-    route: '/market',
-    labelKey: 'gfnav.market',
-    hintKey: 'gfnav.hint.market',
-    glyph: 'market',
-    group: 'primary',
-  },
-  {
-    id: 'forge',
-    route: CANONICAL.forge,
-    labelKey: 'gfnav.forge',
-    hintKey: 'gfnav.hint.runeForge',
-    glyph: 'forge',
-    group: 'primary',
-  },
-  {
-    // The bench is a room inside the Forge hall, and the Forge's own page links
-    // through to it. It is listed here as well for the reason the Gambler
-    // eventually had to be: a player who is not already standing in the Forge
-    // has no way to find a room reached only from inside it, and reads the
-    // route as a dead page. See the note above the Gambler below.
-    id: 'crafting',
-    route: '/forge/crafting',
-    labelKey: 'gfnav.crafting',
-    hintKey: 'gfnav.hint.crafting',
-    glyph: 'forge',
-    group: 'more',
-  },
-  {
-    // The Enchanting Table is a second room inside the Forge hall, reached from
-    // the Forge page the same way the Bench is. Listed here for the same reason
-    // the Bench is: a player who is not already standing in the Forge has no way
-    // to find a room that is only reached from inside it.
-    id: 'enchanting',
-    route: '/forge/enchanting',
-    labelKey: 'gfnav.enchanting',
-    hintKey: 'gfnav.hint.enchanting',
-    glyph: 'forge',
-    group: 'more',
-  },
-  {
-    id: 'codex',
-    route: '/codex',
-    labelKey: 'gfnav.codex',
-    hintKey: 'gfnav.hint.codex',
-    glyph: 'codex',
-    group: 'primary',
-    tabIcons: {
-      inactive: 'assets/icons/tabs/codex-inactive.webp',
-      active: 'assets/icons/tabs/codex-active.webp',
-    },
-  },
-  {
-    id: 'quests',
-    route: CANONICAL.quests,
-    labelKey: 'gfnav.quests',
-    hintKey: 'gfnav.hint.quests',
-    glyph: 'quests',
-    group: 'more',
-  },
-  {
-    id: 'trials',
-    route: CANONICAL.trials,
-    labelKey: 'gfnav.trials',
-    hintKey: 'gfnav.hint.arena',
-    glyph: 'arena',
-    group: 'more',
-  },
-  {
-    // The Coliseum sits beside the Trials rather than inside them: they share a
-    // glyph and a word, and nothing else. The Trials are five mini-games behind
-    // easter-egg gates; this is the combat hall the equipment stats were always
-    // documented as feeding. Listed in `more` because a player arrives at it
-    // after they have kit worth fighting in, not before.
-    id: 'coliseum',
-    route: '/world/arena',
-    labelKey: 'gfnav.coliseum',
-    hintKey: 'gfnav.hint.coliseum',
-    glyph: 'arena',
-    group: 'more',
-  },
-  {
-    id: 'leaderboards',
-    route: '/leaderboards',
-    labelKey: 'gfnav.leaderboards',
-    hintKey: 'gfnav.hint.leaderboards',
-    glyph: 'codex',
-    group: 'more',
-  },
-  {
-    id: 'sanctum',
-    route: '/sanctum',
-    labelKey: 'gfnav.sanctum',
-    hintKey: 'gfnav.hint.sanctum',
-    glyph: 'sanctum',
-    group: 'more',
-  },
-  {
-    id: 'exchange',
-    route: '/exchange',
-    labelKey: 'gfnav.exchange',
-    hintKey: 'gfnav.hint.exchange',
-    glyph: 'exchange',
-    group: 'more',
-  },
-  // The Gambler shipped in v2.71.0 reachable only from the Market strip, on the
-  // reasoning that it is a room entered through its parent hall. In practice a
-  // player not already standing in the Market has no way to find it and reads
-  // the route as a dead page — which is exactly how it came back reported. The
-  // Exchange above is the same kind of economy hall and has always been listed
-  // here, so the Gambler joins it. The Market doorway stays: that is the
-  // in-world path, and this is the one that works from anywhere.
-  {
-    id: 'gambler',
-    route: '/gambler',
-    labelKey: 'gfnav.gambler',
-    hintKey: 'gfnav.hint.gambler',
-    glyph: 'gambler',
-    group: 'more',
-  },
 ];
 
 export const PRIMARY_NAV = NAV_MANIFEST.filter(d => d.group === 'primary');
-export const MORE_NAV = NAV_MANIFEST.filter(d => d.group === 'more');

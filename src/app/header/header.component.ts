@@ -6,11 +6,15 @@
  * same thing and splitting them across components would mean three copies of
  * "is the drawer open" to keep in step. Destinations come from NAV_MANIFEST.
  *
- *  · Desktop (>= 961px): persistent left sidebar — lockup, primary halls,
- *    MORE, then the visitor's standing. No top bar, no hamburger, no tabs.
- *  · Mobile: the bar keeps the lockup and the status pills; primary
- *    navigation moves to a fixed five-tab bar at the bottom of the viewport,
- *    and the hamburger opens the tome for everything secondary.
+ *  · Desktop (>= 961px): persistent left sidebar — lockup, the two halls
+ *    (Play, Character), then the visitor's standing. No top bar, no
+ *    hamburger, no tabs.
+ *  · Mobile: the bar keeps the lockup and the status pills; the two halls
+ *    move to a fixed tab bar at the bottom of the viewport, and the hamburger
+ *    opens the tome (account, cloud save, language).
+ *
+ * World only (world plan, Phase 3): every other hall is a station in a realm
+ * town. Its standalone URL still works and offers "Enter the world".
  *
  * What survived earlier passes, because the reasons still hold:
  *  · --nav-h / --header-offset / --shell-sidebar-w are published so pages
@@ -47,7 +51,7 @@ import { rankSigil } from '../shared/gamification/gamification.model';
 import { keeperAvatarArt } from '../shared/art/art';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
-import { MORE_NAV, NavDestination, PRIMARY_NAV } from '../shared/nav/nav.manifest';
+import { NavDestination, PRIMARY_NAV } from '../shared/nav/nav.manifest';
 import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
 import { InventoryService } from '../shared/rpg/inventory.service';
 import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
@@ -143,19 +147,21 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   /** The masked Keeper on the Character button. Neutral: no realm is chosen. */
   readonly keeperAvatar = keeperAvatarArt(null);
 
-  /** The five player halls. Same list as the mobile tab bar. */
+  /** The player halls: Play and Character. Same list as the mobile tab bar. */
   readonly primaryNav = PRIMARY_NAV;
-  readonly moreNav = MORE_NAV;
   readonly tabs = PRIMARY_NAV;
 
-  /**
-   * MAIN is the same five halls as the bar. MORE is demoted product surfaces
-   * that still have real pages — never a redirect stub.
-   */
+  /** The tome lists the same halls; everything else is a place in the world. */
   readonly tomeSections: TomeSection[] = [
     { titleKey: 'gfnav.section.main', halls: PRIMARY_NAV },
-    { titleKey: 'gfnav.section.more', halls: MORE_NAV },
   ];
+
+  /**
+   * The Essence pill opens the Market where it stands, in the Luminous town.
+   * The station id is pinned by header.component.spec against placeForRoute,
+   * which cannot be imported here: it pulls the towns into the eager bundle.
+   */
+  readonly marketPlace = { at: 'market' } as const;
 
   readonly socials = [
     { href: 'https://x.com/xsantcastx',            label: 'X',       glyph: 'x' },

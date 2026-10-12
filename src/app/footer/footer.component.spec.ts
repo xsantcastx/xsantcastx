@@ -6,7 +6,7 @@ import { of } from 'rxjs';
 import { FooterComponent } from './footer.component';
 import { TranslationService } from '../translation.service';
 import { PaymentService } from '../payment.service';
-import { MORE_NAV } from '../shared/nav/nav.manifest';
+import { PLACE_DIRECTORY } from '../shared/nav/place-directory';
 
 describe('FooterComponent', () => {
   let component: FooterComponent;
@@ -59,7 +59,7 @@ describe('FooterComponent', () => {
   it('does not expose retired product surfaces', () => {
     const hrefs = [...fixture.nativeElement.querySelectorAll('a')]
       .map(a => a.getAttribute('routerLink') || a.getAttribute('ng-reflect-router-link') || a.getAttribute('href') || '');
-    const moreRoutes = MORE_NAV.map(d => d.route);
+    const moreRoutes = PLACE_DIRECTORY.map(d => d.route);
     for (const route of ['/tools', '/blueprint', '/mcp', '/mission-control', '/sponsors', '/donate', '/pro']) {
       expect(moreRoutes).not.toContain(route);
       expect(hrefs).not.toContain(route);
