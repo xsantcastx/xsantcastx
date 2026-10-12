@@ -26,6 +26,11 @@
   color: var(--ink-0);
 }
 
+/* In-world panel (the Verdant Arena gate): no navbar to clear, and the panel
+   is narrower than a page. The fight screen below stays position:fixed — the
+   panel's `contain: layout` makes it fill the panel instead of the viewport. */
+.ar--in-world { max-width: none; padding: 4px 4px 24px; gap: 1.25rem; }
+
 .ar-sr {
   position: absolute; width: 1px; height: 1px;
   padding: 0; margin: -1px; overflow: hidden;
