@@ -19,6 +19,28 @@ export type DisciplineId =
 
 export type ActivityLocationId = string;
 
+/**
+ * Ceiling on the XP of one world action (`resolveWorldAction` refuses more) —
+ * a host bug cannot mint a level in one swing. Lives here, import-free, so the
+ * pure reward models can split a large grant against the same number.
+ */
+export const WORLD_ACTION_MAX_XP = 500;
+
+/**
+ * A large XP reward as whole grants of at most `cap` each, summing to `xp`
+ * exactly. A one-off reward over the per-action ceiling (The Fracture's 600
+ * Delving XP, playtest P-6) used to be refused whole; split, every grant
+ * passes the gateway's validation unchanged. Empty for a non-positive amount.
+ */
+export function xpGrantChunks(xp: number, cap = WORLD_ACTION_MAX_XP): number[] {
+  const total = Math.floor(xp);
+  const size = Math.max(1, Math.floor(cap));
+  if (!Number.isFinite(total) || total <= 0) return [];
+  const chunks: number[] = [];
+  for (let left = total; left > 0; left -= size) chunks.push(Math.min(size, left));
+  return chunks;
+}
+
 export interface HlcRevision {
   wallTimeMs: number;
   logicalCounter: number;

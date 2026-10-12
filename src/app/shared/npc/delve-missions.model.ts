@@ -21,6 +21,7 @@ import type { ItemRarity } from '../rpg/item.model';
 import { DELVE_INSCRIPTIONS, GLOWCAP, GODFORGE_FRAGMENT, SHADOW_ROOT_CUTTING } from '../delve/delve-lore.model';
 import type { NpcId } from './npc.model';
 import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
+import { xpGrantChunks } from '../activity/activity.model';
 
 /**
  * Kael's lost hammer. A quest material (a stack key), dropped once from a
@@ -231,6 +232,28 @@ const BY_ID = new Map(DELVE_MISSIONS.map(m => [m.id, m]));
 
 export function delveMissionById(id: string): DelveMission | undefined {
   return BY_ID.get(id);
+}
+
+/** One Delving XP grant of a mission claim, with its idempotency key. */
+export interface MissionXpGrant {
+  mutationId: string;
+  xp: number;
+}
+
+/**
+ * The Delving XP a claim pays, as grants the world-action gateway accepts
+ * (each ≤ WORLD_ACTION_MAX_XP). The Fracture's 600 used to go as one action
+ * over the 500 ceiling and was refused whole (playtest P-6); now it is two.
+ * The first grant keeps the key a single grant always had
+ * (`npc-mission:<id>:<times>:xp`), so a claim that already paid is a replay,
+ * never paid twice; any further grant appends its index.
+ */
+export function missionXpGrants(mission: Pick<DelveMission, 'id' | 'reward'>, times: number): MissionXpGrant[] {
+  const base = `npc-mission:${mission.id}:${times}:xp`;
+  return xpGrantChunks(mission.reward.delvingXp ?? 0).map((xp, i) => ({
+    mutationId: i === 0 ? base : `${base}:${i + 1}`,
+    xp,
+  }));
 }
 
 /** The missions a character offers, as giver or co-giver, in list order. */

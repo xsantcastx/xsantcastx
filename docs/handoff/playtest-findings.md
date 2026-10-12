@@ -8,6 +8,8 @@ Run: `PW_PORT=4291 npx playwright test e2e/play-*.spec.ts --project=chromium` (p
 
 ### P-1 · Critical · The Exchange round trip prints Gold
 
+**Status: fixed** by `8bbe142` (orders priced along their own impact; buys round up, sales down). Re-played on current main: 10 in pays 131 and 10 out returns 123; a Max lot of 999 takes the purse 100,000 → 99,041. The spec is un-fixme'd and passes. `exchange.model.spec.ts` now also checks the pure quotes for every material, at 20 sizes up to 999, at three instants and from a market already pushed either way, plus a Max buy sold back in pieces.
+
 **Repro:** start with a 100,000 Gold purse. Go to Umbral by the Waystone, open the Exchange, and pick Cinder Ore. Buy with **Max** (999), then go to Sell and sell with **Max**.
 
 **Expected:** the purse ends no higher than it started (the 5% sale tax is the sink).
@@ -61,6 +63,8 @@ Run: `PW_PORT=4291 npx playwright test e2e/play-*.spec.ts --project=chromium` (p
 
 ### P-5 · Low · The Vendor ties the Exchange's floor quote after tax
 
+**Status: fixed.** `buybackPrice` is now `max(1, floor(worth × 8%) − 1)`. Cinder Ore pays 1 (the Exchange floor nets 2), and every other material is 1 to 2 Gold lower than before. `material-vendor.model.spec.ts` checks every board material, gathered and expedition-only, three ways: against the whole-Gold floor quote net of tax, against the floor rate on lots of 10, 50 and 99, and against the lowest ask. **One tie remains, and it cannot be removed:** Slag Fragment's floor quote nets 1 Gold, and the counter cannot pay less than its 1-Gold minimum. That is not a faucet, because the cheapest Slag on the Exchange costs 2. The spec pins it as the only tie. Both the e2e test and the unit spec allow exactly that case. To remove it, the Vendor would have to stop buying Slag; that is an owner call.
+
 **Expected:** the comment in `material-vendor.model.ts` promises that 8% of base worth is "under even the Exchange's floor quote (10% of base)".
 
 **Actual:** that holds for the gross price but not for what the player receives. For two materials, the Exchange floor price after its 5% sale tax equals the Vendor:
@@ -75,6 +79,8 @@ Both sides round to whole Gold, which eats the 2-point margin. In normal play th
 **Spec:** `play-economy.spec.ts`, "the Vendor pays below the Exchange floor quote, after tax".
 
 ### P-6 · Medium · The Fracture's 600 Delving XP is silently lost
+
+**Status: fixed** by splitting the grant. The per-action ceiling stays in place, so there is no bypass path. `WORLD_ACTION_MAX_XP` moved to the import-free `activity.model.ts`, and the gateway re-exports it. `xpGrantChunks` splits an amount into grants of at most 500. `missionXpGrants` gives each grant its own key. The first grant keeps the old key `npc-mission:<id>:<n>:xp`, so a claim that already paid replays and is never paid twice. Later grants add `:2`, `:3`. The Fracture now pays 500 + 100. `payMission` logs any refused grant or failed chunk load with `console.warn`, instead of dropping it. `delve-missions.model.spec.ts` asserts that every mission's reward is grantable: whole grants, each 1–500, summing exactly to the reward, with unique keys. The e2e chain is un-fixme'd and passes.
 
 **Repro:** seed the deliveries. On the Quest Board's Delve tab, claim The Shadow Beneath, The Old Seam and Glowcap Orders. Delving XP reaches 350. Then claim The Fracture.
 
