@@ -38,7 +38,7 @@
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="2" [pending]="!hydrated" />
 
           @if (ritual; as r) {
-            <app-rune-ritual [runeName]="r.runeName" [runeArt]="r.runeArt" [itemName]="r.itemName" [itemArt]="r.itemArt"
+            <app-rune-ritual [runeName]="r.runeName" [runeArt]="r.runeArt" [itemName]="r.itemName" [itemArt]="r.itemArt" [tier]="r.tier"
                              (done)="onRitualDone($event)" (cancel)="closeRitual()" />
           } @else {
             <app-action-button

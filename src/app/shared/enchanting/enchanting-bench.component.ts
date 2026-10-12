@@ -29,7 +29,7 @@
  * `aria-live` region, and the countdown updates its text rather than only its
  * bar so a screen reader can read the time left.
  */
-import { injectInWorldPanel } from '../in-world-panel';
+import { injectHomeForge, injectInWorldPanel } from '../in-world-panel';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -55,7 +55,7 @@ import {
   type ItemStats,
 } from '../rpg/item.model';
 import { RuneForgeService } from '../rune-forge/rune-forge.service';
-import { RUNES, RUNE_TIERS, runeById, type Rune } from '../rune-forge/rune.model';
+import { RUNES, RUNE_TIERS, RUNE_TIER_ORDER, runeById, type Rune } from '../rune-forge/rune.model';
 import { runeCard, type CardArt } from '../rune-forge/rune-cards';
 import {
   STATION_UI, STATION_UI_I18N, forgeTabs,
@@ -92,6 +92,7 @@ import {
 import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { RuneRitualComponent } from '../minigames/rune-ritual.component';
 import { MINIGAMES_I18N } from '../minigames/minigames.i18n';
+import { circleTierRules } from '../minigames/home-forge.model';
 import { SkillActionService, craftSkillXp } from '../skills/skill-actions.service';
 import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
 import { floorThing, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
@@ -179,6 +180,8 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
 export class EnchantingBenchComponent implements OnInit, OnDestroy {
   /** Rendered as a place inside /play: the panel carries the title, so the hero and room links stand down. */
   protected readonly inWorld = injectInWorldPanel();
+  /** Present only at the player's own Homestead circle: its tier shapes the ritual. */
+  private readonly home = injectHomeForge();
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly gateway = inject(EnchantingGateway);
   private readonly inventory = inject(InventoryService);
@@ -198,6 +201,8 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     runeArt: StationArt | null;
     itemName: string;
     itemArt: StationArt | null;
+    /** Home circle tier the ritual plays at: 1 (today's ritual) unless opened from the Homestead. */
+    tier: number;
   } | null = null;
 
   private subs: Subscription[] = [];
@@ -350,7 +355,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     this.wells = this.buildWells(this.selected);
 
     const held = this.runeForge.snapshot.held;
-    this.drawer = RUNES
+    const drawer = RUNES
       .filter(rune => (held[rune.id] ?? 0) > 0)
       .map(rune => ({
         rune,
@@ -358,6 +363,13 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
         effect: describeStats(socketEffectOf(rune.id)).join(', ') || '—',
         card: runeCard(rune.id),
       }));
+    // A home circle at tier III+ lists the rarest rune first (and so picks it by
+    // default). A convenience only: any held rune can still be chosen, here and in town.
+    const rarestFirst = !!this.home && circleTierRules(this.home.circleTier()).rarestFirst;
+    this.drawer = rarestFirst
+      ? drawer.map((row, i) => ({ row, i, rank: RUNE_TIER_ORDER.indexOf(row.rune.tier) }))
+        .sort((a, b) => b.rank - a.rank || a.i - b.i).map(x => x.row)
+      : drawer;
     if (!this.drawer.some(row => row.rune.id === this.chosenRuneId)) {
       this.chosenRuneId = this.drawer[0]?.rune.id ?? null;
     }
@@ -593,6 +605,7 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
       runeArt: runeCard(runeId) ?? null,
       itemName: this.selected.name,
       itemArt: itemArt(this.selected),
+      tier: this.home?.circleTier() ?? 1,
     };
     this.cdr.markForCheck();
   }
