@@ -1,15 +1,82 @@
-<section class="ar" [class.ar--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'ar-title'" [attr.aria-label]="inWorld ? t('arena.title') : null">
+<!--
+  pvp-arena.component.html — the Arena, on the station kit (shared/station-ui;
+  MapleStory journal anatomy).
 
-  <!-- ── Header ────────────────────────────────────────────────────────── -->
-  <header class="ar-head">
-    @if (!inWorld) {
-    <div class="ar-head__copy">
-      <p class="ar-eyebrow"><span class="ar-eyebrow__pulse" aria-hidden="true"></span>{{ t('arena.eyebrow') }}</p>
-      <h1 class="ar-title" id="ar-title">{{ t('arena.title') }}</h1>
-      <p class="ar-tagline">{{ t('arena.tagline') }}</p>
+  First screen: title + arena points, tabs (Rings · Shop), the rank strip with
+  one how-line, then the journal: the five rings as a list, the picked ring
+  with its rewards and ONE button — Challenge. The Shop tab is the same shape
+  with ONE Buy button. Record, Might/Guard, the challenger roster, ring lore
+  and the lock line live in Details. The fight screen is unchanged.
+-->
+<section class="ar" [class.ar--in-world]="inWorld">
+  <app-station-shell class="ar-station"
+                     [title]="t('arena.title')"
+                     [showTitle]="!inWorld"
+                     [detailsHint]="t('arenaSt.details.hint')"
+                     [(detailsOpen)]="detailsOpen">
+
+    <app-cost-chip stationWallet [cost]="wallet" [quiet]="true" />
+
+    <app-station-tabs stationTabs [tabs]="stationTabs" [active]="tab" (activeChange)="setTab($event)" [label]="t('arenaSt.tabs')" />
+
+    <app-skill-strip stationSkill
+      [level]="null"
+      [title]="record.rank.title"
+      [progress]="rankProgress"
+      [progressLabel]="rankLabel"
+      [hint]="tab === 'shop' ? t('arenaSt.hintShop') : t('arenaSt.hint')" />
+
+    <div stationHero class="ar-hero">
+      @if (message) { <p class="ar-message">{{ message }}</p> }
+
+      @if (tab === 'rings') {
+        <app-station-journal>
+          <app-journal-list journalList [rows]="ringRows" [selected]="gate?.tier?.id ?? null"
+                            [label]="t('arenaSt.rings')" (pick)="pickedGate = $any($event)" />
+          <div journalDetail class="ar-detail">
+            @if (gate; as g) {
+              <app-detail-head [name]="g.tier.name" [line]="t('arenaSt.line')" />
+              <dl class="ar-facts" [style.--tier]="g.tier.color">
+                <div><dt>{{ t('arena.rings.gold') }}</dt><dd>+{{ g.tier.gold | number }}</dd></div>
+                <div><dt>{{ t('arena.rings.xp') }}</dt><dd>+{{ g.tier.xp | number }}</dd></div>
+                <div><dt>{{ t('arena.rings.points') }}</dt><dd>+{{ g.tier.points }}</dd></div>
+              </dl>
+              <app-action-button
+                [label]="t('arenaSt.challenge')"
+                chips="none"
+                [blocked]="ringBlocked"
+                [loading]="fighting"
+                [loadingLabel]="t('arenaSt.fighting')"
+                (act)="enter(g)"
+                (refused)="announcement = $event" />
+            }
+          </div>
+        </app-station-journal>
+      } @else {
+        <app-station-journal>
+          <app-journal-list journalList [rows]="shopJournal" [selected]="stockRow?.stock?.id ?? null"
+                            [label]="t('arenaSt.stock')" (pick)="pickedStock = $event" />
+          <div journalDetail class="ar-detail">
+            @if (stockRow; as row) {
+              <app-detail-head [name]="row.stock.name" [line]="row.stock.description" />
+              <app-action-button
+                [label]="t('arena.shop.buy')"
+                [costs]="stockCosts(row)"
+                chips="all"
+                [blocked]="stockBlocked(row)"
+                (act)="buy(row)"
+                (refused)="announcement = $event" />
+            }
+          </div>
+        </app-station-journal>
+      }
     </div>
-    }
 
+    <!-- ── Live region ─────────────────────────────────────────────────── -->
+    <p class="ar-sr" aria-live="polite" role="status">{{ announcement }}</p>
+
+    <!-- ── Details: record, loadout, the roster, ring lore ─────────────── -->
+    <div stationDetails class="ar-details">
     <dl class="ar-record">
       <div>
         <dt>{{ t('arena.stat.points') }}</dt>
@@ -28,9 +95,11 @@
         <dd class="ar-record__rank">{{ record.rank.title }}</dd>
       </div>
     </dl>
-  </header>
-
-  <!-- ── Your two numbers ──────────────────────────────────────────────── -->
+  <p class="ar-lock" [class.ar-lock--ready]="ready">
+    <span class="ar-lock__dot" aria-hidden="true"></span>
+    <ng-container *ngIf="ready">{{ t('arena.lock.ready') }}</ng-container>
+    <ng-container *ngIf="!ready">{{ t('arena.lock.waiting') }} <b>{{ cooldownLabel }}</b></ng-container>
+  </p>
   <section class="ar-loadout" aria-labelledby="ar-loadout-title">
     <h2 class="ar-h2" id="ar-loadout-title">{{ t('arena.loadout.title') }}</h2>
     <div class="ar-loadout__grid">
@@ -59,110 +128,42 @@
     </p>
   </section>
 
-  <!-- ── The lock ──────────────────────────────────────────────────────── -->
-  <p class="ar-lock" [class.ar-lock--ready]="ready">
-    <span class="ar-lock__dot" aria-hidden="true"></span>
-    <ng-container *ngIf="ready">{{ t('arena.lock.ready') }}</ng-container>
-    <ng-container *ngIf="!ready">{{ t('arena.lock.waiting') }} <b>{{ cooldownLabel }}</b></ng-container>
-  </p>
-
-  <p class="ar-message" *ngIf="message">{{ message }}</p>
-
-  <!-- ── The five rings ────────────────────────────────────────────────── -->
-  <section class="ar-rings" aria-labelledby="ar-rings-title">
-    <h2 class="ar-h2" id="ar-rings-title">{{ t('arena.rings.title') }}</h2>
-
-    <ul class="ar-ring-list">
-      <li class="ar-ring"
-          *ngFor="let gate of gates; trackBy: trackTier"
-          [class.ar-ring--locked]="!gate.unlocked"
-          [style.--tier]="gate.tier.color"
-          [style.--glow]="gate.tier.glow">
-
-        <header class="ar-ring__head">
-          <h3 class="ar-ring__name">{{ gate.tier.name }}</h3>
-          <span class="ar-ring__wins" *ngIf="gate.wins > 0">{{ gate.wins }} {{ t('arena.rings.won') }}</span>
-        </header>
-
-        <p class="ar-ring__flavour">{{ gate.tier.flavour }}</p>
-
-        <dl class="ar-ring__payout">
-          <div><dt>{{ t('arena.rings.gold') }}</dt><dd>{{ gate.tier.gold | number }}</dd></div>
-          <div><dt>{{ t('arena.rings.xp') }}</dt><dd>{{ gate.tier.xp | number }}</dd></div>
-          <div><dt>{{ t('arena.rings.points') }}</dt><dd>{{ gate.tier.points }}</dd></div>
-        </dl>
-
-        <p class="ar-ring__odds" *ngIf="gate.unlocked">
-          <span class="ar-ring__odds-label" [attr.data-odds]="gate.oddsLabel">{{ oddsCopy(gate.oddsLabel) }}</span>
-          <span class="ar-ring__odds-num">{{ oddsPercent(gate.odds) }}%</span>
-          <span class="ar-ring__odds-note">{{ t('arena.rings.oddsNote') }}</span>
-        </p>
-
-        <p class="ar-ring__locked" *ngIf="!gate.unlocked">
-          {{ t('arena.rings.locked') }} <b>{{ gate.toUnlock }}</b> {{ t('arena.rings.lockedTail') }}
-        </p>
-
-        <details class="ar-ring__roster">
-          <summary>{{ t('arena.rings.roster') }}</summary>
-          <ul>
-            <li *ngFor="let row of gate.roster; trackBy: trackName">
-              <button type="button"
-                      class="ar-ring__npc"
-                      [disabled]="!gate.unlocked || !ready || fighting"
-                      (click)="enter(gate, row.npc)"
-                      [attr.aria-label]="t('arena.rings.challenge') + ' ' + row.npc.name">
-                <b>{{ row.npc.name }}</b>
-                <span class="ar-ring__npc-stats">{{ row.npc.might }} / {{ row.npc.guard }}</span>
-                <span class="ar-ring__npc-odds" [attr.data-odds]="row.oddsLabel">{{ oddsCopy(row.oddsLabel) }}</span>
-              </button>
-            </li>
+      @if (gate; as g) {
+        <section class="ar-dpanel" [style.--tier]="g.tier.color" [style.--glow]="g.tier.glow">
+          <h2 class="ar-h2">{{ g.tier.name }}</h2>
+          <p class="ar-ring__flavour">{{ g.tier.flavour }}</p>
+          @if (g.unlocked) {
+            <p class="ar-ring__odds">
+              <span class="ar-ring__odds-label" [attr.data-odds]="g.oddsLabel">{{ oddsCopy(g.oddsLabel) }}</span>
+              <span class="ar-ring__odds-num">{{ oddsPercent(g.odds) }}%</span>
+              <span class="ar-ring__odds-note">{{ t('arena.rings.oddsNote') }}</span>
+            </p>
+          }
+          <h3 class="ar-dpanel__sub">{{ t('arenaSt.pick') }}</h3>
+          <ul class="ar-roster">
+            @for (row of g.roster; track row.npc.id) {
+              <li>
+                <button type="button"
+                        class="ar-ring__npc"
+                        [disabled]="!g.unlocked || !ready || fighting"
+                        (click)="enter(g, row.npc)"
+                        [attr.aria-label]="t('arena.rings.challenge') + ' ' + row.npc.name">
+                  <b>{{ row.npc.name }}</b>
+                  <span class="ar-ring__npc-stats">{{ row.npc.might }} / {{ row.npc.guard }}</span>
+                  <span class="ar-ring__npc-odds" [attr.data-odds]="row.oddsLabel">{{ oddsCopy(row.oddsLabel) }}</span>
+                </button>
+              </li>
+            }
           </ul>
-        </details>
+        </section>
+      }
 
-        <button type="button"
-                class="ar-ring__enter"
-                [disabled]="!gate.unlocked || !ready || fighting"
-                (click)="enter(gate)">
-          <ng-container *ngIf="gate.unlocked && ready">{{ t('arena.rings.enter') }}</ng-container>
-          <ng-container *ngIf="gate.unlocked && !ready">{{ cooldownLabel }}</ng-container>
-          <ng-container *ngIf="!gate.unlocked">{{ t('arena.rings.chained') }}</ng-container>
-        </button>
-      </li>
-    </ul>
-  </section>
-
-  <!-- ── The quartermaster ─────────────────────────────────────────────── -->
-  <section class="ar-shop" aria-labelledby="ar-shop-title">
-    <h2 class="ar-h2" id="ar-shop-title">{{ t('arena.shop.title') }}</h2>
-    <p class="ar-shop__blurb">{{ t('arena.shop.blurb') }}</p>
-
-    <ul class="ar-shop__list">
-      <li class="ar-shop__row"
-          *ngFor="let row of shopRows; trackBy: trackStock"
-          [class.ar-shop__row--owned]="row.owned"
-          [class.ar-shop__row--locked]="row.blocker === 'wins'">
-        <div class="ar-shop__copy">
-          <h3>{{ row.stock.name }}</h3>
-          <p>{{ row.stock.description }}</p>
-          <p class="ar-shop__gate" *ngIf="row.stock.requiredWins > 0">
-            {{ t('arena.shop.needs') }} {{ row.stock.requiredWins }} {{ t('arena.shop.wins') }}
-          </p>
-        </div>
-        <div class="ar-shop__buy">
-          <span class="ar-shop__cost">{{ row.stock.cost }} <small>{{ t('arena.shop.pts') }}</small></span>
-          <button type="button"
-                  [disabled]="!!row.blocker"
-                  (click)="buy(row)">
-            <ng-container *ngIf="row.owned">{{ t('arena.shop.owned') }}</ng-container>
-            <ng-container *ngIf="!row.owned">{{ t('arena.shop.buy') }}</ng-container>
-          </button>
-        </div>
-      </li>
-    </ul>
-  </section>
-
-  <!-- ── Live region ───────────────────────────────────────────────────── -->
-  <p class="ar-sr" aria-live="polite" role="status">{{ announcement }}</p>
+      <section class="ar-dpanel">
+        <h2 class="ar-h2">{{ t('arena.shop.title') }}</h2>
+        <p class="ar-shop__blurb">{{ t('arena.shop.blurb') }}</p>
+      </section>
+    </div>
+  </app-station-shell>
 
   <!-- ── The fight screen ──────────────────────────────────────────────── -->
   <div class="ar-fight" *ngIf="stage !== 'idle' && bout as result" [class.ar-fight--won]="result.won">
