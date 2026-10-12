@@ -87,7 +87,7 @@ export function foundIn(materialId: string, index: FoundInIndex): FoundInPlace[]
 
   for (const row of index.vendor) {
     if (row.materialId !== materialId) continue;
-    add(row.place, 'vendor');
+    if (row.place) add(row.place, 'vendor');
     if (row.source) add(row.source, 'expedition');
   }
   return out;
