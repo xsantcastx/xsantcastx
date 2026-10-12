@@ -20,8 +20,8 @@ export interface Light {
 
 /** The darkness colour (`r,g,b`) when a biome names none: basalt's violet-black. */
 export const DEFAULT_DARK = '5,3,9';
-/** Default lantern radius in world px when the host has not set one. */
-export const DEFAULT_LANTERN = 230;
+/** Default lantern radius in world px when the host has not set one: 7 tiles of 32 px, the Skills lantern at Delving 1 (skills/tools.ts lanternRadiusFor). */
+export const DEFAULT_LANTERN = 7 * 32;
 /** Most lights drawn in one frame. */
 export const LIGHT_CAP = 24;
 

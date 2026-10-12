@@ -14,7 +14,7 @@ import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
 import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
-import { areaOf, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
+import { areaOf, findStation, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { RUNE_TIER_ORDER } from '../shared/rune-forge/rune.model';
@@ -30,13 +30,15 @@ import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
-import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
+import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolTiers } from '../shared/skills/tools';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
-import { skillForDiscipline } from '../shared/skills/skill.model';
+import { skillForDiscipline, skillLevel } from '../shared/skills/skill.model';
+import { huntingXpFor } from '../shared/skills/hunting';
+import { TranslationService } from '../translation.service';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.model';
@@ -179,6 +181,9 @@ export class SideScrollerComponent implements OnDestroy {
   chestView: ChestView | null = null;
   private delveSub?: Subscription;
   private readonly zone = inject(NgZone);
+  private readonly i18n = inject(TranslationService);
+  /** A translated string (EN / ES). The hotbar, the gathering prompt and the Hunting toast use it. */
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
   readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private engine?: SeamworksEngine;
   private boundCanvas: HTMLCanvasElement | null = null;
@@ -272,6 +277,7 @@ export class SideScrollerComponent implements OnDestroy {
       onPlace: event => this.zone.run(() => this.placeFromSatchel(event)),
       onTakeBack: event => this.zone.run(() => this.takeToSatchel(event)),
       onUse: event => this.zone.run(() => this.useCell(event)),
+      onKill: event => this.zone.run(() => this.hunted(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       onState: (state: EngineState) => this.zone.run(() => {
@@ -460,15 +466,23 @@ export class SideScrollerComponent implements OnDestroy {
   private get reducedMotion(): boolean {
     return this.browser && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
-  /** `?at=<station id>`: stand at that station of the current town and open it. Unknown ids are ignored. */
+  /**
+   * `?at=<station id>`: stand at that station and open it, in whichever built
+   * town has it (`findStation`; the current town first, since 'waystone' and
+   * 'passage' repeat). Another town, or a hunt of this one, travels there
+   * first. Unknown ids are ignored.
+   */
   private applyAt(at: string | null): void {
     if (!this.browser) return;
     if (!at) { if (this.panel) this.closePanel(false); return; }
     if (this.panel?.stationId === at) return;
     if (!this.engine) { this.pendingAt = at; return; }
-    if (!this.engine.inTown) return;
-    const station = this.town.stations.find(row => row.id === at);
-    if (!station) return;
+    const found = findStation(at, this.town.id);
+    if (!found) return;
+    const town = TOWNS[found.townId];
+    if (!town) return;
+    if (town.id !== this.town.id || !this.engine.inTown) { this.town = town; this.engine.setTown(town); }
+    const station = found.station;
     this.engine.placeAt(station.x);
     if (station.kind === 'panel' || station.kind === 'waystone') this.openStation(station);
   }
@@ -667,6 +681,12 @@ export class SideScrollerComponent implements OnDestroy {
   get actionLabel(): string {
     if (this.state?.nearby === 'hs-forge') return 'Strike the Forge';
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return `Enter ${titleCase(this.state.nearbyLabel ?? 'place')}`;
+    const gather = this.state?.nearby === 'gather' ? this.state.gather : undefined;
+    if (gather) {
+      if (!gather.ready) return this.t('play.gather.regrowing', { name: gather.label, n: gather.seconds });
+      if (gather.need) return this.t('play.gather.needs', { name: gather.label, need: gather.need });
+      return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
+    }
     switch (this.state?.nearby) {
       case 'ore': return this.remaining ? `Seam recovering (${this.remaining}s)` : 'Mine Cinder Ore';
       case 'forge': return this.equipped ? 'Blade equipped' : this.edge ? 'Equip Basalt Edge' : 'Forge Basalt Edge';
@@ -680,6 +700,7 @@ export class SideScrollerComponent implements OnDestroy {
     }
   }
   get actionDisabled(): boolean {
+    if (this.state?.nearby === 'gather' && (!this.state.gather?.ready || !!this.state.gather?.need)) return true;
     return !this.state?.nearby || !!this.state.paused || !!this.state.defeated || (this.state.nearby === 'ore' && this.remaining > 0);
   }
   interact(): void { this.engine?.interact(); }
@@ -879,11 +900,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.pushLoadout();
     this.refreshHotbar();
     // Crafted tools (skills/tools.ts) raise the floor; the provisional tier-I kit
-    // keeps a fresh save able to dig before it owns a pickaxe. Lantern radius
-    // stays on the engine default: toolTiers() measures it in tiles, the engine
-    // in its own units — reconcile before passing it (see world-plan watch list).
+    // keeps a fresh save able to dig before it owns a pickaxe. The lantern goes
+    // in tiles (toolTiers' unit; the engine multiplies by its 32 px cell), so
+    // each ten Delving levels light one more tile.
     const floor = provisionalToolTiers(this.inventory.snapshot);
-    const crafted = toolTiers(this.inventory.snapshot, this.activity.snapshot.progress);
+    const progress = this.activity.snapshot.progress;
+    const crafted = toolTiers(this.inventory.snapshot, progress);
     const tools = {
       pickaxe: Math.max(floor.pickaxe ?? 0, crafted.pickaxe),
       axe: Math.max(floor.axe ?? 0, crafted.axe),
@@ -891,9 +913,15 @@ export class SideScrollerComponent implements OnDestroy {
       blade: Math.max(floor.blade ?? 0, crafted.blade),
       staff: Math.max(floor.staff ?? 0, crafted.staff),
     };
-    const mining = miningLevelView(this.activity.snapshot.progress.xpByDiscipline.mining ?? 0).level;
-    const toolKey = `${JSON.stringify(tools)}:${mining}`;
-    if (toolKey !== this.toolKey) { this.toolKey = toolKey; this.engine.setTools({ ...tools, levels: { mining } }); }
+    // Levels by discipline: Delve cells and hunting-ground nodes with a
+    // `minLevel` clang before the host is asked.
+    const levels = {
+      mining: miningLevelView(progress.xpByDiscipline.mining ?? 0).level,
+      foraging: skillLevel(progress, 'foraging'),
+      woodcutting: skillLevel(progress, 'woodcutting'),
+    };
+    const toolKey = `${JSON.stringify(tools)}:${JSON.stringify(levels)}:${crafted.lanternRadius}`;
+    if (toolKey !== this.toolKey) { this.toolKey = toolKey; this.engine.setTools({ ...tools, lanternTiles: crafted.lanternRadius, levels }); }
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
@@ -946,7 +974,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (key === this.hotbarKey && this.hotbar.length) return;
     this.hotbarKey = key;
     this.hotbar = PLACEABLES.map((def, i) => ({
-      id: def.id, name: def.label, art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String(i + 1),
+      id: def.id, name: this.t(`play.place.${def.id}`), art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String(i + 1),
     }));
     // Nothing chosen yet: the first thing the satchel holds.
     if (!this.placing) {
@@ -961,7 +989,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.setPlaceable(id);
     if (!quiet) {
       const slot = this.placingSlot;
-      this.message = slot ? `${slot.name} ready (${slot.count}). Press B, or hold a tap where it should go.` : '';
+      this.message = slot ? this.t('play.hotbar.ready', { name: slot.name, n: slot.count }) : '';
     }
   }
   /** The hotbar's Place button: same as B. */
@@ -1074,7 +1102,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser) return false;
     // Plain dirt and placed blocks pay only the block.
     if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
-    if (event.kind === 'mine' && event.discipline === 'mining') {
+    if (event.kind === 'mine' && event.discipline === 'mining' && !event.site) {
       if (this.activity.snapshot.currentWork?.disciplineId === 'mining' && this.remaining > 0) {
         this.message = `The seam needs a breath (${this.remaining}s).`; return false;
       }
@@ -1103,7 +1131,8 @@ export class SideScrollerComponent implements OnDestroy {
       return true;
     }
     const result = this.skillActions.act({
-      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: EMBER_DELVE_LOCATION,
+      // A hunting-ground node is booked where it stands; a Delve cell in the Delve.
+      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: event.site ? this.worldLocation(event.areaId) : EMBER_DELVE_LOCATION,
       ...(event.materialId && event.qty ? { materialId: event.materialId, qty: event.qty } : {}),
     });
     if (!result.ok) {
@@ -1114,6 +1143,21 @@ export class SideScrollerComponent implements OnDestroy {
     if (event.materialId && event.qty) this.toastLoot(`+${event.qty} ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
     this.grantBlock(event);
     return true;
+  }
+  /** Where a world action is booked in the activity ledger: `<town>/<area>` ('verdant/rootglass-thicket'). */
+  private worldLocation(areaId: string): string {
+    return areaId === this.town.id ? `${this.town.id}/town` : `${this.town.id}/${areaId}`;
+  }
+  /**
+   * A creature fell: Hunting XP scaled by its full HP (skills/hunting.ts),
+   * keyed by the kill so a replay never pays twice. SkillActionService plays
+   * the Hunting level-up moment when it crosses one.
+   */
+  private hunted(event: KillEvent): void {
+    if (!this.browser) return;
+    const xp = huntingXpFor(event.hp);
+    const result = this.skillActions.act({ mutationId: `hunt:${event.id}`, skill: 'hunting', xp, locationId: this.worldLocation(event.areaId) });
+    if (result.ok && !result.replayed) this.toastLoot(this.t('play.hunt.xp', { n: xp }));
   }
   /**
    * The Keeper read a carved wall. The first reading is recorded (for the

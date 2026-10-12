@@ -24,6 +24,12 @@ export interface EngineState {
    * `enemyHp` 0, when there is none — the bar hides.
    */
   enemyName?: string;
+  /**
+   * The gathering node within reach (a herb patch, a tree, an outcrop) when
+   * no station is: `nearby` is then 'gather'. `need` is what still stops the
+   * Keeper ("Sickle II", "Foraging 6"); `seconds` is the regrowth left.
+   */
+  gather?: { id: string; label: string; ready: boolean; seconds: number; need?: string; materialId: string };
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export interface EngineOptions {
@@ -78,11 +84,25 @@ export interface EngineOptions {
   /** A placed chest or camp was used (E beside it, or a tap on it). The host opens it. */
   onUse?: (event: UseEvent) => void;
   /**
+   * A creature fell to the Keeper. Fires once per kill (`id` is unique per
+   * kill per engine session, the same prefix its drops are keyed by): the
+   * host pays Hunting XP through SkillActionService, keyed by it.
+   */
+  onKill?: (event: KillEvent) => void;
+  /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
    * state lives for the engine session. Settable later with `setDelve()`.
    */
   delve?: DelvePersistence | null;
+}
+export interface KillEvent {
+  id: string;
+  areaId: string;
+  creature: string;
+  name: string;
+  /** The creature's full HP: what Hunting XP scales with. */
+  hp: number;
 }
 export interface DiscoverEvent {
   kind: 'inscription';
@@ -139,6 +159,12 @@ export interface WorldActionEvent {
    * loses the block; it never stops the dig.
    */
   block?: PlaceableId;
+  /**
+   * Set when a hunting-ground gathering node (GatherNodeDef) broke rather
+   * than a delve cell: the node's id. The host books it as a skill action at
+   * that area, never through the Seamworks seam.
+   */
+  site?: string;
 }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }
