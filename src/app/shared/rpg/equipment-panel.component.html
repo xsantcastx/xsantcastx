@@ -14,11 +14,88 @@
       <!-- The live sheet: counts to the new totals and floats a signed chip
            on every equip and unequip, so a swap is something you watch. -->
       <app-keeper-stat-sheet class="ld__sheet" [heading]="t('loadout.sheet.title')" />
+
+      <!-- Build identity: what the worn stats add up to, in one word, and
+           which piece is carrying each of the three heaviest stats. -->
+      <section class="ld__build" [attr.data-archetype]="build.archetype" [attr.aria-label]="t('loadout.build.eyebrow')">
+        <p class="ld__build-eyebrow">{{ t('loadout.build.eyebrow') }}</p>
+        <h3 class="ld__build-name">{{ buildName() }}</h3>
+        <p class="ld__build-desc">{{ buildDesc() }}</p>
+        @if (build.contributions.length) {
+          <ul class="ld__build-bars">
+            @for (row of build.contributions; track row.key) {
+              <li class="ld__build-row"
+                  [style.--rar]="rarityVar(row.top?.rarity)"
+                  [style.--rar-glow]="rarityGlowVar(row.top?.rarity)">
+                <span class="ld__build-stat">{{ statLabel(row.key) }} <b>{{ statValue(row.key, row.total) }}</b></span>
+                <span class="ld__build-pct">{{ t('loadout.build.share', { n: sharePct(row.share) }) }}</span>
+                <span class="ld__build-bar" aria-hidden="true">
+                  <span class="ld__build-fill" [style.transform]="'scaleX(' + barScale(row.share) + ')'"></span>
+                </span>
+                @if (row.top) {
+                  <span class="ld__build-src">{{ t('loadout.build.from', { name: row.top.name }) }}</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
       <p class="ld__armed" *ngIf="armed">{{ t('loadout.armed', { name: armed.name }) }}</p>
 
       <div class="ld__doll" role="group" [attr.aria-label]="t('loadout.doll.label')">
-        <img class="ld__doll-art" [src]="dollSrc" [attr.srcset]="dollSrcset" sizes="auto, (max-width: 420px) 100vw, 380px"
-             [alt]="t('loadout.doll.alt')" width="720" height="720" loading="lazy" decoding="async">
+        <!-- The stage centres a square figure in the frame, so socket anchors
+             can be percentages of the Keeper render itself rather than of a
+             frame whose aspect changes with the viewport. -->
+        <div class="ld__stage">
+          <div class="ld__figure" [class.ld__figure--pulse]="pulsing">
+            <img class="ld__doll-art" [src]="dollSrc" [attr.srcset]="dollSrcset" sizes="auto, (max-width: 420px) 100vw, 380px"
+                 [alt]="t('loadout.doll.alt')" width="720" height="720" loading="lazy" decoding="async">
+            <!-- Worn gear, on the Keeper: each item's own art in a rarity-lit
+                 socket at its slot's anchor. Decorative — the wells beside the
+                 figure are the controls and carry the names. Empty sockets are
+                 still rendered (invisibly) so an equip has somewhere to fly to. -->
+            <div class="ld__sockets" aria-hidden="true">
+              @for (slot of sockets; track slot.slotId) {
+                <span class="ld__socket"
+                      [attr.data-socket]="slot.slotId"
+                      [style.left.%]="slot.anchor!.x"
+                      [style.top.%]="slot.anchor!.y"
+                      [style.z-index]="slot.anchor!.z ?? 1">
+                  @if (itemInDoll(slot); as worn) {
+                    @for (key of [socketKey(slot, worn)]; track key) {
+                      <span class="ld__socket-frame"
+                            [class.ld__socket-frame--landing]="isLanding(slot)"
+                            [attr.data-quality-tag]="qualityTag(worn)"
+                            [style.--rar]="rarityVar(worn.rarity)"
+                            [style.--rar-glow]="rarityGlowVar(worn.rarity)"
+                            [style.--from-x]="flyFrom(slot, 'x')"
+                            [style.--from-y]="flyFrom(slot, 'y')">
+                        @if (tileArt(worn); as art) {
+                          <img class="ld__socket-art" [src]="art" [attr.srcset]="tileArtSrcset(worn)"
+                               sizes="64px" alt="" width="64" height="64" decoding="async">
+                        } @else {
+                          <span class="ld__socket-orb">{{ initialsOf(worn) }}</span>
+                        }
+                        <span class="ld__socket-burst"></span>
+                      </span>
+                    }
+                  }
+                  @for (ghost of leavingFor(slot); track ghost.nonce) {
+                    <span class="ld__socket-frame ld__socket-frame--leaving"
+                          [style.--rar]="rarityVar(ghost.item.rarity)"
+                          [style.--rar-glow]="rarityGlowVar(ghost.item.rarity)">
+                      @if (tileArt(ghost.item); as art) {
+                        <img class="ld__socket-art" [src]="art" sizes="64px" alt="" width="64" height="64" decoding="async">
+                      } @else {
+                        <span class="ld__socket-orb">{{ initialsOf(ghost.item) }}</span>
+                      }
+                    </span>
+                  }
+                </span>
+              }
+            </div>
+          </div>
+        </div>
         <img *ngFor="let slot of filledOverlays"
              class="ld__overlay"
              [src]="slot.overlay!.asset"
@@ -40,6 +117,8 @@
           [class.ld__slot--selected]="selectedSlot === slot.slotId"
           [class.ld__slot--flash]="flashSlot === slot.slotId"
           [class.ld__slot--target]="isTarget(slot)"
+          [style.--rar]="itemInDoll(slot) ? rarityVar(itemInDoll(slot)!.rarity) : null"
+          [style.--rar-glow]="itemInDoll(slot) ? rarityGlowVar(itemInDoll(slot)!.rarity) : null"
           [style.left.%]="slot.control.x"
           [style.top.%]="slot.control.y"
           (click)="onSlotClick(slot)"
@@ -107,6 +186,12 @@
               [class.ld__charm--selected]="selectedSlot === slot.slotId"
               [class.ld__charm--flash]="flashSlot === slot.slotId"
               [class.ld__charm--target]="isTarget(slot)"
+              [class.ld__charm--landing]="isLanding(slot)"
+              [attr.data-charm]="slot.slotId"
+              [style.--rar]="itemInDoll(slot) ? rarityVar(itemInDoll(slot)!.rarity) : null"
+              [style.--rar-glow]="itemInDoll(slot) ? rarityGlowVar(itemInDoll(slot)!.rarity) : null"
+              [style.--from-x]="flyFrom(slot, 'x')"
+              [style.--from-y]="flyFrom(slot, 'y')"
               (click)="onSlotClick(slot)"
               [attr.aria-label]="slotAnnounce(slot)"
               [attr.title]="slotTooltip(slot)"
@@ -213,6 +298,7 @@
               <button type="button" class="ld__pick"
                       [class.ld__pick--upgrade]="isUpgrade(slot, item)"
                       [attr.data-quality-tag]="qualityTag(item)"
+                      [attr.data-pick-id]="item.id"
                       (click)="equipFromPicker(slot, item)"
                       [attr.title]="itemTooltip(item)">
                 <img class="ld__pick-art" *ngIf="tileArt(item) as art" [src]="art"
