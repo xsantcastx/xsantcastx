@@ -140,7 +140,9 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] **Ladders and platforms** (`0f57c99`): traverse deep shafts back up
 - [x] **Portable workbench / campfire** (`0f57c99`; one per Delve; opens Crafting on "Ready now"; "Descend to your camp" from town): craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
 - [x] **Chests** (`0f57c99`; 4 material kinds each, through the satchel ledger; supports/bombs still to do) to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
-- [ ] Tile, torch, ladder, platform and workbench art → `docs/art-commissions/`
+- [x] Tile, torch, ladder, platform and workbench art briefs → `docs/art-commissions/` second wave (`d9702b6`; 223 entries total; make-first list in `01-second-wave.md`)
+- [ ] Importer: add a `Sprites/Tiles` family that accepts **opaque** 32px tiles (today the cut-out corner guard would reject them)
+- [ ] Engine: spawn the Rune-Warden and Magma Maw under their own art keys (`rune-warden`, `magma-maw`); they currently borrow `mirror-substitute` / `rivet-maw`
 
 ## Phase 3: World only `[~]` (started 2026-10-12)
 
@@ -195,7 +197,6 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 | Gathering nodes in every realm, Skills station, Hunting XP, Smithing XP banner, cross-town `?at=`, lantern units, Delve hotbar i18n | agent worktree | `[~]` |
 | Automated playtests (Playwright plays today's mechanics; app bugs → `docs/handoff/playtest-findings.md`) | agent worktree | `[~]` |
 | Player market UI binding (flag off; dev-only fake backend) | agent worktree | `[~]` |
-| Art pack second wave (tiles, placeables, tools, Delve items, Rune-Warden, shopkeepers) | agent worktree | `[~]` |
 
 | Work | Branch | Status |
 |---|---|---|
