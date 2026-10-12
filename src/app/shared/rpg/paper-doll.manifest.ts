@@ -37,6 +37,14 @@ export interface PaperDollSlotManifest {
   labelKey: string;
   glyph: string;
   control: { x: number; y: number };
+  /**
+   * Where the worn item's art sits *on* the Keeper, in % of the square figure
+   * (the 512² `keeper-base` render), not of the frame. Item art in a framed
+   * socket — never pretend armour painted onto the figure; see the overlay
+   * note below for why. `z` orders sockets that touch (a held weapon over the
+   * gauntlet behind it). Absent for slots with nothing to wear yet.
+   */
+  anchor?: { x: number; y: number; z?: number };
   overlay?: PaperDollOverlay;
 }
 
@@ -92,20 +100,26 @@ export const DOLL_SLOT_GLYPH: Record<DollSlotId, string> = {
  * plus per-slot x/y/width/height — not the item masters.
  */
 /*
+ * Anchors (where worn art sits on the figure) were measured against the
+ * 512² render: hood ~9%, sternum ~27%, belt ~43%, knees ~66%, boots ~90%; the
+ * Keeper's right hand (image left) hangs at ~30%/53% and the left at ~70%/50%.
+ * Weapon and off-hand sit *at* the hands, as held items; gauntlets sit just
+ * above the left hand so they do not stack on the off-hand.
+ *
  * Two flanking columns plus a head well, deliberately *beside* the Keeper
  * rather than over it. The previous centre column put chest, legs and feet
  * directly on the figure, so the art the loadout exists to show was covered by
  * the controls describing it. Each column reads top-to-bottom in wear order.
  */
 export const PAPER_DOLL_SLOTS: readonly PaperDollSlotManifest[] = [
-  { slotId: 'head', liveSlot: 'head', labelKey: 'loadout.slot.head', glyph: DOLL_SLOT_GLYPH.head, control: { x: 50, y: 5 } },
-  { slotId: 'chest', liveSlot: 'chest', labelKey: 'loadout.slot.chest', glyph: DOLL_SLOT_GLYPH.chest, control: { x: 11, y: 26 } },
-  { slotId: 'hands', liveSlot: 'hands', labelKey: 'loadout.slot.hands', glyph: DOLL_SLOT_GLYPH.hands, control: { x: 11, y: 50 } },
-  { slotId: 'weapon', liveSlot: 'weapon', labelKey: 'loadout.slot.weapon', glyph: DOLL_SLOT_GLYPH.weapon, control: { x: 11, y: 74 } },
-  { slotId: 'trinket', liveSlot: 'trinket', labelKey: 'loadout.slot.trinket', glyph: DOLL_SLOT_GLYPH.trinket, control: { x: 89, y: 26 } },
-  { slotId: 'legs', liveSlot: 'legs', labelKey: 'loadout.slot.legs', glyph: DOLL_SLOT_GLYPH.legs, control: { x: 89, y: 50 } },
-  { slotId: 'off-hand', liveSlot: 'off-hand', labelKey: 'loadout.slot.offhand', glyph: DOLL_SLOT_GLYPH['off-hand'], control: { x: 89, y: 74 } },
-  { slotId: 'feet', labelKey: 'loadout.slot.feet', glyph: DOLL_SLOT_GLYPH.feet, control: { x: 50, y: 93 } },
+  { slotId: 'head', liveSlot: 'head', labelKey: 'loadout.slot.head', glyph: DOLL_SLOT_GLYPH.head, control: { x: 50, y: 5 }, anchor: { x: 50, y: 9 } },
+  { slotId: 'chest', liveSlot: 'chest', labelKey: 'loadout.slot.chest', glyph: DOLL_SLOT_GLYPH.chest, control: { x: 11, y: 26 }, anchor: { x: 50, y: 27 } },
+  { slotId: 'hands', liveSlot: 'hands', labelKey: 'loadout.slot.hands', glyph: DOLL_SLOT_GLYPH.hands, control: { x: 11, y: 50 }, anchor: { x: 66, y: 43 } },
+  { slotId: 'weapon', liveSlot: 'weapon', labelKey: 'loadout.slot.weapon', glyph: DOLL_SLOT_GLYPH.weapon, control: { x: 11, y: 74 }, anchor: { x: 30, y: 53, z: 2 } },
+  { slotId: 'trinket', liveSlot: 'trinket', labelKey: 'loadout.slot.trinket', glyph: DOLL_SLOT_GLYPH.trinket, control: { x: 89, y: 26 }, anchor: { x: 50, y: 43 } },
+  { slotId: 'legs', liveSlot: 'legs', labelKey: 'loadout.slot.legs', glyph: DOLL_SLOT_GLYPH.legs, control: { x: 89, y: 50 }, anchor: { x: 50, y: 66 } },
+  { slotId: 'off-hand', liveSlot: 'off-hand', labelKey: 'loadout.slot.offhand', glyph: DOLL_SLOT_GLYPH['off-hand'], control: { x: 89, y: 74 }, anchor: { x: 73, y: 57, z: 2 } },
+  { slotId: 'feet', labelKey: 'loadout.slot.feet', glyph: DOLL_SLOT_GLYPH.feet, control: { x: 50, y: 93 }, anchor: { x: 50, y: 90 } },
 ];
 
 /**
