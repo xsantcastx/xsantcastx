@@ -33,6 +33,7 @@ import {
 import {matchOrder, remaining, sellerTax} from "./matching";
 import {checkBand, recordTrade} from "./pricing";
 import {checkRate} from "./rate-limit";
+import {applyBoardChange} from "./summary";
 import {REFERENCE_GOODS} from "./reference.generated";
 import {
   EconLedger,
@@ -53,6 +54,7 @@ import {
   stripUndefined,
 } from "./save-ops";
 import type {
+  BoardSummaryDoc,
   Claim,
   EscrowDoc,
   EscrowMark,
@@ -80,6 +82,8 @@ export interface MarketTx {
   /** The raw stored document (`{ v, updatedAt }`), or null. */
   saveDoc(uid: string, which: SaveWhich): Promise<Record<string, any> | null>;
   listed(itemId: string): Promise<boolean>;
+  /** `market/v1/summary/board`, the Exchange list (see summary.ts). */
+  summary(): Promise<BoardSummaryDoc | null>;
 
   setOrder(order: MarketOrder): void;
   setTrade(trade: MarketTrade): void;
@@ -87,6 +91,7 @@ export interface MarketTx {
   setEscrow(escrow: EscrowDoc): void;
   setSaveDoc(uid: string, which: SaveWhich, data: Record<string, any>): void;
   setListed(itemId: string, doc: ListedItemDoc): void;
+  setSummary(doc: BoardSummaryDoc): void;
 }
 
 export interface MarketStore {
@@ -311,7 +316,11 @@ export async function placeOrder(
     }
 
     const restingSide: OrderSide = input.side === "buy" ? "sell" : "buy";
-    const book = await tx.book(input.itemKey, restingSide, MAX_FILLS_PER_ORDER * 2);
+    const bookLimit = MAX_FILLS_PER_ORDER * 2;
+    const book = await tx.book(input.itemKey, restingSide, bookLimit);
+    // For the list summary only: the incoming side's current best.
+    const incomingTop = await tx.book(input.itemKey, input.side, 1);
+    const summary = await tx.summary();
 
     const incoming: MarketOrder = {
       id: orderId,
@@ -422,6 +431,16 @@ export async function placeOrder(
     if (record) tx.setListed(String(record["id"]), {uid, orderId, at: now});
     if (inv && JSON.stringify(inv) !== invBefore) tx.setSaveDoc(uid, "inventory", envelope(invDoc, inv, now));
     if (econ && JSON.stringify(econ) !== econBefore) tx.setSaveDoc(uid, "economy", envelope(econDoc, econ, now));
+    const filled = outFills.reduce((n, f) => n + f.qty, 0);
+    tx.setSummary(applyBoardChange(summary, {
+      itemKey: input.itemKey,
+      written: [incoming, ...makerWrites],
+      sides: [
+        {side: restingSide, read: book, limit: bookLimit, qtyDelta: -filled},
+        {side: input.side, read: incomingTop, limit: 1, qtyDelta: incoming.status === "open" ? remaining(incoming) : 0},
+      ],
+      price: trades.length ? updatedPrice : null,
+    }, now));
     for (const [owner, e] of ledgers.escrows) {
       e.updatedAt = now;
       tx.setEscrow(stripUndefined({...e, uid: owner}));
@@ -477,6 +496,10 @@ export async function cancelOrder(
     if (order.status !== "open") throw new MarketError("failed-precondition", "That order has already filled or been cancelled.", "not-open");
     const e = cloneEscrow((await tx.escrow(uid)) ?? emptyEscrow(uid, now));
     e.tradeStamps = rate(e.tradeStamps, now, "trade");
+    // For the list summary: the top two of this side hold the next best
+    // whether or not the cancelled order was the best.
+    const top = await tx.book(order.itemKey, order.side, 2);
+    const summary = await tx.summary();
 
     const left = remaining(order);
     const good = REFERENCE_GOODS[order.itemKey];
@@ -492,6 +515,11 @@ export async function cancelOrder(
     const next: MarketOrder = {...order, status: "cancelled", updatedAt: now};
     tx.setOrder(stripUndefined(next));
     tx.setEscrow(stripUndefined(e));
+    tx.setSummary(applyBoardChange(summary, {
+      itemKey: order.itemKey,
+      written: [next],
+      sides: [{side: order.side, read: top, limit: 2, qtyDelta: -left}],
+    }, now));
     return {order: next};
   });
 }

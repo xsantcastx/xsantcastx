@@ -13,6 +13,7 @@
  *   market/v1/trades/{id}        MarketTrade                  public read
  *   market/v1/prices/{itemKey}   MarketPrice                  public read
  *   market/v1/escrow/{uid}       MarketEscrow                 owner read
+ *   market/v1/summary/board      MarketSummary                public read (the Exchange list)
  */
 
 /**
@@ -324,25 +325,80 @@ export interface MarketBoardRow {
   volume24h: number;
 }
 
+/** One item's line in `market/v1/summary/board` (functions/src/market/types.ts BoardSummaryRow). */
+export interface MarketSummaryRow {
+  bestBid: number | null;
+  bestAsk: number | null;
+  bidQty: number;
+  askQty: number;
+  lastPrice: number;
+  lastTradeAt: number;
+  /** As of `lastTradeAt`: nothing rewrites a row when its trades age out. */
+  volume24h: number;
+  vwap24h: number;
+}
+
 /**
- * Fold open orders and price docs into one row per item that has either a
+ * `market/v1/summary/board` — written by the server in the same transaction as
+ * every placement and cancel, so the Exchange list is one document listener
+ * instead of two collection queries (see functions/src/market/summary.ts).
+ */
+export interface MarketSummary {
+  rows: Record<string, MarketSummaryRow>;
+  updatedAt: number;
+}
+
+const DAY_MS = 86_400_000;
+
+/**
+ * The Exchange list from the server's summary: one row per item that has a
  * resting order or a trade in the last day. Items with neither are not a
  * market yet and stay off the board (a seller can still list them from the
  * Sell tab). Sorted busiest first: 24h volume, then units on the book.
+ *
+ * A row's 24h figures are as of its last trade, so they read as 0 once that
+ * trade is a day old — the server only prunes a row when it next writes.
  */
-export function buildBoard(
+export function boardFromSummary(summary: MarketSummary | null, now: number): MarketBoardRow[] {
+  const rows: MarketBoardRow[] = [];
+  for (const [itemKey, r] of Object.entries(summary?.rows ?? {})) {
+    if (!r) continue;
+    const fresh = r.lastTradeAt > 0 && now - r.lastTradeAt < DAY_MS;
+    const bidQty = Math.max(0, r.bidQty || 0);
+    const askQty = Math.max(0, r.askQty || 0);
+    if (!fresh && bidQty === 0 && askQty === 0) continue;
+    rows.push({
+      itemKey,
+      bestBid: bidQty > 0 ? r.bestBid ?? null : null,
+      bestAsk: askQty > 0 ? r.bestAsk ?? null : null,
+      bidQty,
+      askQty,
+      lastPrice: r.lastPrice || 0,
+      vwap24h: fresh ? r.vwap24h || 0 : 0,
+      volume24h: fresh ? r.volume24h || 0 : 0,
+    });
+  }
+  return rows.sort((a, b) =>
+    b.volume24h - a.volume24h
+    || (b.bidQty + b.askQty) - (a.bidQty + a.askQty)
+    || a.itemKey.localeCompare(b.itemKey));
+}
+
+/**
+ * The summary a server would hold for these open orders and price docs. The
+ * dev fake builds its summary with this; the real one is maintained
+ * incrementally by functions/src/market/summary.ts.
+ */
+export function summarizeMarket(
   orders: readonly MarketOrder[],
   prices: readonly MarketPrice[],
-): MarketBoardRow[] {
-  const rows = new Map<string, MarketBoardRow>();
-  const row = (itemKey: string): MarketBoardRow => {
-    let r = rows.get(itemKey);
-    if (!r) {
-      r = { itemKey, bestBid: null, bestAsk: null, bidQty: 0, askQty: 0, lastPrice: 0, vwap24h: 0, volume24h: 0 };
-      rows.set(itemKey, r);
-    }
-    return r;
-  };
+  now: number,
+): MarketSummary {
+  const rows: Record<string, MarketSummaryRow> = {};
+  const row = (itemKey: string): MarketSummaryRow =>
+    (rows[itemKey] ??= {
+      bestBid: null, bestAsk: null, bidQty: 0, askQty: 0, lastPrice: 0, lastTradeAt: 0, volume24h: 0, vwap24h: 0,
+    });
   for (const o of orders) {
     if (o.status !== 'open') continue;
     const qty = remainingQty(o);
@@ -357,16 +413,15 @@ export function buildBoard(
     }
   }
   for (const p of prices) {
-    if (!p || (!(p.volume24h > 0) && !rows.has(p.itemKey))) continue;
+    if (!p || !(p.lastTradeAt > 0)) continue;
+    if (!rows[p.itemKey] && now - p.lastTradeAt >= DAY_MS) continue;
     const r = row(p.itemKey);
     r.lastPrice = p.lastPrice || 0;
+    r.lastTradeAt = p.lastTradeAt;
     r.vwap24h = p.vwap24h || 0;
     r.volume24h = p.volume24h || 0;
   }
-  return [...rows.values()].sort((a, b) =>
-    b.volume24h - a.volume24h
-    || (b.bidQty + b.askQty) - (a.bidQty + a.askQty)
-    || a.itemKey.localeCompare(b.itemKey));
+  return { rows, updatedAt: now };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

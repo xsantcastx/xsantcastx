@@ -70,11 +70,14 @@ describe('ExchangeService', () => {
     const { exchange, economy, inventory } = configure(memory, 10_000_000);
     const before = economy.snapshot.gold;
     const price = shown(ORE, now, exchange);
+    // Charged along the order's own price walk, not spot × qty (quoteBuyAt).
+    const quote = exchange.previewBuy(goodById(ORE)!, 10, now);
 
     const result = exchange.buy(ORE, 10, price, now);
 
     expect(result.ok).toBe(true);
-    expect(economy.snapshot.gold).toBe(before - price * 10);
+    expect(quote.net).toBeGreaterThanOrEqual(price * 10 - 10);
+    expect(economy.snapshot.gold).toBe(before - quote.net);
     expect(inventory.stackOf('cinder-ore')).toBe(10);
   });
 
@@ -123,11 +126,13 @@ describe('ExchangeService', () => {
     const { exchange, economy } = configure(memory, 10_000_000);
     const live = shown(ORE, now, exchange);
     const before = economy.snapshot.gold;
+    const charged = exchange.previewBuy(goodById(ORE)!, 1, now).net;
 
     const result = exchange.buy(ORE, 1, live * 10, now);
 
     expect(result.ok).toBe(true);
-    expect(economy.snapshot.gold).toBe(before - live);
+    expect(charged).toBeLessThanOrEqual(live + 1);
+    expect(economy.snapshot.gold).toBe(before - charged);
   });
 
   it('rejects a quote of zero or nonsense rather than treating it as free', () => {
@@ -145,7 +150,8 @@ describe('ExchangeService', () => {
 
     const goldAfterBuy = economy.snapshot.gold;
     const sellPrice = shown(ORE, now, exchange);
-    const gross = sellPrice * 20;
+    // Paid along the sale's own price walk (quoteSellAt), then taxed.
+    const gross = exchange.previewSell(goodById(ORE)!, 20, now).gross;
     const tax = Math.ceil(gross * SALE_TAX_RATE);
 
     const result = exchange.sell(ORE, 20, sellPrice, now);
@@ -186,6 +192,32 @@ describe('ExchangeService', () => {
     exchange.sell(ORE, 10, shown(ORE, now, exchange), now);
 
     expect(economy.snapshot.gold).toBeLessThan(before);
+  });
+
+  it('loses on a bulk buy sold back one unit at a time', () => {
+    // Charging a bulk buy at the pre-trade spot price let the player sell back
+    // unit by unit up the price the buy itself lifted, at a profit.
+    const { exchange, economy } = configure(memory, 1_000_000_000);
+    const good = goodById(ORE)!;
+    const before = economy.snapshot.gold;
+
+    expect(exchange.buy(ORE, good.liquidity, shown(ORE, now, exchange), now).ok).toBe(true);
+    for (let i = 0; i < 40; i++) exchange.sell(ORE, 1, shown(ORE, now, exchange), now);
+    exchange.sell(ORE, good.liquidity - 40, shown(ORE, now, exchange), now);
+
+    expect(economy.snapshot.gold).toBeLessThan(before);
+  });
+
+  it('never profits from a same-instant round trip, whatever the size', () => {
+    for (const qty of [1, 2, 3, 7, 10, 25, 99, 400]) {
+      TestBed.resetTestingModule();
+      memory = new MemoryGateway();
+      const { exchange, economy } = configure(memory, 1_000_000_000);
+      const before = economy.snapshot.gold;
+      exchange.buy(ORE, qty, shown(ORE, now, exchange), now);
+      exchange.sell(ORE, qty, shown(ORE, now, exchange), now);
+      expect(economy.snapshot.gold).withContext(`qty ${qty}`).toBeLessThan(before);
+    }
   });
 
   // ── Pressure ──────────────────────────────────────────────────────────────
@@ -230,13 +262,14 @@ describe('ExchangeService', () => {
   it('records the trade and the day’s running totals', () => {
     const { exchange } = configure(memory, 10_000_000);
     const price = shown(ORE, now, exchange);
+    const quote = exchange.previewBuy(goodById(ORE)!, 5, now);
     exchange.buy(ORE, 5, price, now);
 
     const snap = exchange.snapshot;
     expect(snap.trades.length).toBe(1);
     expect(snap.trades[0].side).toBe('buy');
     expect(snap.trades[0].quantity).toBe(5);
-    expect(snap.spentToday).toBe(price * 5);
+    expect(snap.spentToday).toBe(quote.net);
     expect(snap.earnedToday).toBe(0);
   });
 

@@ -57,7 +57,7 @@ import {
   PendingAction,
   PlaceOrderInput,
   PlaceOrderResult,
-  buildBoard,
+  boardFromSummary,
   buildBook,
   describeMarketError,
   emptyBook,
@@ -67,9 +67,6 @@ import {
 
 /** Depth fetched per side of the book. The UI shows the top of it. */
 const BOOK_DEPTH = 50;
-/** Bounds on the board's two collection listeners (each change re-reads only the changed docs). */
-const BOARD_ORDERS = 400;
-const BOARD_PRICES = 200;
 
 /**
  * The two save-sync moves the market needs, behind a seam for the specs.
@@ -237,19 +234,26 @@ export class PlayerMarketService {
    * Every item with a live player market (a resting order or a trade in the
    * last day), busiest first, with best bid/ask and 24h price and volume.
    * Public: works signed out.
+   *
+   * One document listener (`market/v1/summary/board`, server-written in the
+   * same transaction as each order change). Depth is only fetched by `book$`
+   * for the item the player opens.
    */
   get board$(): Observable<MarketBoardRow[]> {
     if (!this.clientEnabled()) return of([]);
     if (!this.board$$) {
-      this.board$$ = combineLatest([
-        this.backend.watchOpenOrders(BOARD_ORDERS).pipe(catchError(() => of([] as MarketOrder[]))),
-        this.backend.watchPrices(BOARD_PRICES).pipe(catchError(() => of([] as MarketPrice[]))),
-      ]).pipe(
-        map(([orders, prices]) => buildBoard(orders, prices)),
+      this.board$$ = this.backend.watchSummary().pipe(
+        catchError(() => of(null)),
+        map(summary => boardFromSummary(summary, this.now())),
         shareReplay({ bufferSize: 1, refCount: true }),
       );
     }
     return this.board$$;
+  }
+
+  /** Overridable in specs. */
+  protected now(): number {
+    return Date.now();
   }
 
   /** This player's orders (open and recent), newest first. Empty signed out. */
