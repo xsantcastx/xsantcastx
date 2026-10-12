@@ -168,7 +168,7 @@
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
   </div>
   @if (showKeys) {
-    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
   }
 
   <section class="dock" aria-labelledby="hearth-title" [attr.inert]="panel ? '' : null">
@@ -214,6 +214,10 @@
     <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)">Jump</button>
     <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)">Attack</button>
     <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)">Dodge</button>
+    @if (state.delve) {
+      <button type="button" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)">Down</button>
+      <button type="button" (pointerdown)="input($event,'blast',true)" (pointerup)="input($event,'blast',false)" (lostpointercapture)="input($event,'blast',false)" (pointercancel)="input($event,'blast',false)">Blast</button>
+    }
   </div>
 
   <!-- The open place. Always in the DOM (hidden when closed) so #panelHost
