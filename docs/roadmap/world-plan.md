@@ -78,10 +78,11 @@ Sequential: everything after it plugs into its data model and panel host.
 - [x] Celestial town **Meridian Orrery**: Codex, Leaderboards (tabs local in-world); hunt Orrery Rings (Ephemeris Leech → Celestial Alloy, Moonpetal Herb, Celestial Quartz) (`1948b55`)
 - [x] Verdant town **Rootglass Canopy**: Sanctum, Quest Board, Arena gate, Trials gate (games fill the panel); hunt Rootglass Thicket (Rootglass Stag → Thornroot, Verdant Sap, World-Root Bark) (`1948b55`)
 - [x] Zone drop tables: every drop is a catalogued material a recipe uses (enforced by a test)
-- [~] Rarity beams and pickup flights (engine agent)
+- [x] Rarity beams, drop captions, pickup flights to the satchel (`378269a`)
 - [~] Material Vendor in Infernal: purchases fly to the forge stockpile (reuse the forge-floor flight)
-- [~] Per-creature rigs for Prism Forager, Ephemeris Leech, Mirror Substitute, Rootglass Stag (engine agent)
-- [~] Your gear on the Keeper in the world: weapon in hand, off-hand on the back arm, rarity aura (engine `setLoadout` + side-scroller wiring)
+- [x] Per-creature rigs: Forager skitters, Leech undulates, Mirror Substitute sways in reflection, Stag lowers its head to charge (`378269a`); checked: Stags drawn with their own rig in Rootglass Thicket
+- [x] Engine side of gear on the Keeper: `setLoadout`, `setSatchelTarget` (`378269a`)
+- [~] Side-scroller wiring of `setLoadout` / satchel target (Infernal agent)
 - [~] In-game UI polish: HUD, satchel, panel transitions, focus returns to canvas (Infernal agent)
 
 ## Phase 3: World only
@@ -119,7 +120,6 @@ Sequential: everything after it plugs into its data model and panel host.
 | Work | Branch | Status |
 |---|---|---|
 | Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
-| Phase 2 · Engine visuals (creature rigs, loot beams, gear on Keeper) | agent worktree | `[~]` |
 | Phase 2 · Infernal vendor + side-scroller UI | agent worktree | `[~]` |
 | Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
 
@@ -137,6 +137,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- HUD enemy bar is labelled "Nearest Maw" in every hunt; should name the creature
 - **Initial bundle is AT the 2 MB hard limit** (2.00 MB; warn 1.85). The next eager addition fails the build and blocks deploys. Biggest eager modules: `lore.model.ts` 134 kB, `tools-registry.ts` 77 kB (retired tools product), `art-manifest.generated.ts` 64 kB, `equipment-panel` 44 kB. Towns are lazy and don't count
 - `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
 - New creatures still draw with the Rivet Maw rig until the engine-visuals branch lands
