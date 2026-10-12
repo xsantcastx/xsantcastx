@@ -100,7 +100,7 @@ things with tools you crafted, and you see your economy working.
 - [x] **Skills + tool progression** (`102bc57`): new disciplines (Woodcutting, Enchanting; Smithing = forge, Delving = exploration); one 1–99 curve with migration-safe XP; unlock table every ~10 levels; craftable tool tiers I–IV from existing materials, gated by Smithing; generic `resolveWorldAction`; in-world Skills panel; a level-up moment for every skill
 - [x] **Homestead** (`102bc57`): the idle economy as buildings you can see: forge automatons hammering, treasury, explorer camp (real expedition timestamps), thrall workshop; walk past to collect (visual only, no double credit); upgrade in-world with the existing Market upgrades
 - [x] **Personal anvil + enchanting circle in the Homestead** (`47c3b5c`; tiers I–IV in `HOME_FORGE_CONFIG`: Perfect window 0.12→0.20, 5th strike at III, ritual window 0.14→0.26, rarest rune pre-selected at III+; home-only via a `HOME_FORGE` token; prices to retune on the new curve) (owner, 2026-10-12): your own crafting corner on the plot. It opens the same Crafting / Enchanting panels with the Smithing and Enchanting mini-games. Upgrade tiers for Gold: a better anvil widens the "perfect" window or adds a strike; a better circle makes the ritual check more forgiving and can seat a rarer rune. Upgrades are visible on the plot. **Starts after** the Delve-building and mini-games branches merge (they own `src/app/play/**` and the mini-games right now)
-- [~] Foraging/woodcutting nodes in each realm's hunt (herbs, rootglass, bark), using the same tool system
+- [x] Gathering nodes in every realm's hunt (`cde77a2`): herbs/wood/ore with tool tier + skill-level gates; regrowth timers (**not yet persisted** — reload resets); Found-in lists them. Also: **Skills Lodge** station in Rootglass Canopy (`/play?at=skills`), **Hunting XP** round(hp/5) per kill, Smithing level-up banner on bench crafts, cross-town `?at=` via `findStation()`, lantern = 7 + Delving/10 tiles, Delve hotbar EN+ES. Was: (herbs, rootglass, bark), using the same tool system
 - [x] **Smithing anvil mini-game** (`26218be`): 4 strikes graded Perfect/Good/Off → quality q; Smithing XP 8–40; roll bias r → r^(1−0.2q) stays inside today's band and ceiling (spec-proven), mean grade 0.5 → ≤0.556; Craft all / qty>1 / Skip = today's behaviour
 - [x] **Enchanting ritual** (`26218be`): drag or tap the rune onto the circle, then tap when the shrinking ring meets the socket; a hit sockets and pays Enchanting XP 8–40; a miss costs nothing and widens the window
 - [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
@@ -110,7 +110,7 @@ things with tools you crafted, and you see your economy working.
 - [x] **Owner approved the spec** (2026-10-12)
 - [x] **Implementation** (`cf7ddce`): the numbers live in `economy-curve.ts`; `migrateEconomyV3` runs on load and on both sides of cloud merges; `VETERAN_SHARD_CAP = 40` (owner-confirmed); Exchange base prices on the same ×0.06 scale (a spec keeps vendor buyback below the lowest Exchange quote, so no faucet); "Earn N Gold" goals placed by the simulator (`--place`); homestead anvil/circle tiers at 5M / 1B / 1T; golden spark flares over the Forge; checked in a build: a mid-game save converted v2→v3 (356K → 237K Gold), Forge Bellows costs 15, a reload doesn't re-convert. Was: all number changes, versioned idempotent save migration with fixtures, simulator `--check` in CI, golden-spark reward, copy updated; NPC vendor → buyback counter at a low floor, Merchant orders rescaled
 - [x] **Player auction house backend** (`a435266`, **flagged off**; rules/indexes held in `docs/handoff/player-market/*.proposed` for a manual deploy, since a CI rules change has 403'd and blocked hosting before; 28 functions tests on an in-memory store; the Firestore emulator didn't run because this machine has no Java): Firestore order book + trades + escrow + price history; callable Cloud Functions `placeOrder` / `cancelOrder` / `collect` with transactional matching (price-time, partial fills), seller tax, rate limits, sanity bands, provenance check; client-read-only rules; lazy `PlayerMarketService`; feature flag
-- [ ] Bind the redesigned Exchange UI (Menus A has landed) to `PlayerMarketService`; flip the flag after an emulator + staging check
+- [x] Exchange UI bound to `PlayerMarketService` behind `PLAYER_MARKET_CLIENT_ENABLED` (`cde77a2`): Buy · Sell · Your orders, order-book depth, fee line, Collect bar, plain errors; dev-only fake backend at `/exchange?market=fake`. Remaining: flip the flag after an emulator + staging check
 - [ ] **Owner-approved deploy**, by hand, in this order: rules + indexes (from `.proposed`) → `functions:market` → create `market/v1 {enabled: true}` → flip `PLAYER_MARKET_CLIENT_ENABLED` → bind the Exchange UI. Install Java so the Firestore emulator can test real queries and transactions first
 
 - [x] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
@@ -193,9 +193,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Gathering nodes in every realm, Skills station, Hunting XP, Smithing XP banner, cross-town `?at=`, lantern units, Delve hotbar i18n | agent worktree | `[~]` |
 | Automated playtests (Playwright plays today's mechanics; app bugs → `docs/handoff/playtest-findings.md`) | agent worktree | `[~]` |
-| Player market UI binding (flag off; dev-only fake backend) | agent worktree | `[~]` |
 
 | Work | Branch | Status |
 |---|---|---|
@@ -217,6 +215,9 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- Gathering-node regrowth is session-only (reload resets every node)
+- Karma `ExchangeService … round trip` (exchange.service.spec.ts) reported failing; suspected fallout from the ×0.06 Exchange rescale — verify and fix
+- Player market list needs two always-on Firestore listeners per visitor (`watchOpenOrders`, `watchPrices`); a server-written summary doc is the follow-up before launch (read cost)
 - The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Market strings left unused by the redesign could be pruned from the eager translation table
 - **Market residual cheat risks** (the client still writes saves): a player can edit their own save then sell what they minted; a restored escrowed item stays usable single-player until their next market call; an offline device's earlier spends can make the client skip a server Gold debit; server repair marks expire after 7 days. See `docs/handoff/player-market.md`
 - The CSP now allows `us-central1-xsantcastx-1694b.cloudfunctions.net`, which was missing and had also blocked Stripe's callable
