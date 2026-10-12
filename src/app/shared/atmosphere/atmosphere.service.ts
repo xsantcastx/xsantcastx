@@ -34,7 +34,7 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
-import { TOOLS_REGISTRY } from '../../tools/tools-registry';
+import { isToolPath, toolForRoute } from '../../tools/tool-for-route';
 import { CANONICAL } from '../canonical-routes';
 import { XpService } from '../gamification/xp.service';
 import {
@@ -95,10 +95,8 @@ export class PageAtmosphereService {
   atmosphereFor(path: string): Atmosphere {
     const clean = path.split('?')[0].split('#')[0];
 
-    // Tool pages first: they are the only routes with more than two segments,
-    // and `/tools` itself must not be mistaken for one.
-    const tool = TOOLS_REGISTRY.find(t => t.route === clean);
-    if (tool) return atmosphereForCategory(tool.category);
+    // Tool pages are resolved in `resolve()`, asynchronously: the registry
+    // is loaded on demand (see tool-for-route.ts) and only for a /tools/ path.
 
     const segment = clean.split('/').filter(Boolean)[0] ?? '';
 
@@ -114,8 +112,24 @@ export class PageAtmosphereService {
     return atmosphereForSegment(segment) ?? NO_ATMOSPHERE;
   }
 
+  /** Bumped on every resolve, so a slow registry load cannot paint a stale route. */
+  private resolveSeq = 0;
+
   private resolve(path: string): void {
     this.currentPath = path;
+    const seq = ++this.resolveSeq;
+    const clean = path.split('?')[0].split('#')[0];
+
+    // Tool pages first: they are the only routes with more than two segments,
+    // and `/tools` itself must not be mistaken for one. Tool routes are retired
+    // and redirect to /world, so in practice this branch never loads anything.
+    if (isToolPath(clean)) {
+      void toolForRoute(clean).then(tool => {
+        if (seq !== this.resolveSeq) return;
+        this.paint(tool ? atmosphereForCategory(tool.category) : this.atmosphereFor(path));
+      });
+      return;
+    }
     this.paint(this.atmosphereFor(path));
   }
 
