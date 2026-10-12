@@ -26,7 +26,7 @@ import {
 import { KeeperCombatStats, keeperCombatStats } from '../shared/rpg/keeper-combat';
 import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
 import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
-import { SeamworksEngine, EngineInput, EngineState, InteractionTarget } from './engine/engine';
+import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout } from './engine/engine';
 
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
 const CRAFT_ID = 'seamworks-world:basalt-edge:v1';
@@ -54,18 +54,6 @@ const PANEL_CLOSE_MS = 160;
 /** How long a touched station stays highlighted, with its name card up. */
 const TOUCH_TIP_MS = 1400;
 
-/** One worn piece as the engine draws it on the Keeper. */
-interface LoadoutPiece { art: string; rarity: ItemRarity }
-/**
- * What the engine needs to dress the Keeper. Mirrors the engine's upcoming
- * `setLoadout` contract; tightened to its exported type once that lands.
- */
-interface KeeperLoadout { weapon?: LoadoutPiece; offhand?: LoadoutPiece; auraRarity?: ItemRarity }
-/** The engine methods that are still landing. Called only when present. */
-interface PendingEngineApi {
-  setLoadout?: (loadout: KeeperLoadout) => void;
-  setSatchelTarget?: (point: { x: number; y: number }) => void;
-}
 interface LootToast { key: number; text: string }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
@@ -119,7 +107,6 @@ export class SideScrollerComponent implements OnDestroy {
   lootToasts: LootToast[] = [];
   private toastKey = 0;
   private loadoutKey = '';
-  private satchelKey = '';
   private tipStation: string | null = null;
   private tipTimer?: ReturnType<typeof setTimeout>;
   private readonly host = inject(ElementRef<HTMLElement>);
@@ -201,6 +188,8 @@ export class SideScrollerComponent implements OnDestroy {
       // Scene paintings follow the ArtScene convention: assets/images/<basename>-<width>.webp.
       scene: name => `assets/images/${name}-1536.webp`,
       town: this.town,
+      // Pickups fly to the satchel's coin count, wherever the HUD layout put it. Read per pickup.
+      satchelTarget: () => this.satchelPoint(),
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
       onStation: station => this.zone.run(() => this.openStation(station)),
       onLoot: loot => loot.ore === 0 || this.zone.run(() => this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)),
@@ -213,7 +202,6 @@ export class SideScrollerComponent implements OnDestroy {
     });
     this.statsKey = '';
     this.loadoutKey = '';
-    this.satchelKey = '';
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
@@ -240,7 +228,7 @@ export class SideScrollerComponent implements OnDestroy {
       };
       const leave = (event: PointerEvent): void => {
         if (event.pointerType !== 'mouse') return;
-        this.engine?.setHover(null); canvas.style.cursor = ''; this.showTip(null, 0, 0);
+        this.engine?.setHover(null); this.engine?.clearPointer(); canvas.style.cursor = ''; this.showTip(null, 0, 0);
       };
       // Touch has no hover: light the touched station and show its name card
       // for a beat, so a tap reads as "going there" before the Keeper arrives.
@@ -451,6 +439,19 @@ export class SideScrollerComponent implements OnDestroy {
     }));
   }
   get realmLabel(): string { return TOWN_LABELS[this.town.realm]; }
+  /**
+   * The creature the enemy bar is measuring. The engine reports only its HP, so
+   * name it from the area's data: the one kind that lives here, or — in a mixed
+   * hunt — the kind whose spawn points sit nearest the Keeper.
+   */
+  get enemyName(): string {
+    const area = areaOf(this.town, this.state.areaId ?? this.town.id) ?? this.town;
+    const monsters = area.monsters;
+    if (!monsters.length) return 'Enemy';
+    if (monsters.every(monster => monster.name === monsters[0].name)) return monsters[0].name;
+    const reach = (spawns: readonly number[]) => Math.min(...spawns.map(x => Math.abs(x - this.state.x)));
+    return monsters.reduce((best, monster) => reach(monster.spawnXs) < reach(best.spawnXs) ? monster : best).name;
+  }
   travel(id: RealmTownId): void {
     const town = TOWNS[id];
     if (!town || town.id === this.town.id) { this.closePanel(); return; }
@@ -714,7 +715,6 @@ export class SideScrollerComponent implements OnDestroy {
   private pushStats(): void {
     if (!this.engine) return;
     this.pushLoadout();
-    this.pushSatchelTarget();
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
@@ -722,23 +722,18 @@ export class SideScrollerComponent implements OnDestroy {
     this.pushed = stats;
     this.engine.setStats(stats);
   }
-  /** The engine's still-landing methods, present or not. Never assume they exist. */
-  private get engineExtras(): PendingEngineApi {
-    return (this.engine ?? {}) as unknown as PendingEngineApi;
-  }
   /**
    * What the Keeper wears, for the engine to draw: the weapon and off-hand art
    * (the same `itemArt()` the satchel uses) and the highest worn rarity for the
-   * aura. Sent only when it changes, and only once `engine.setLoadout` exists.
+   * aura. Visual only. Sent when it changes (checked on the HUD tick).
    */
   private pushLoadout(): void {
-    const setLoadout = this.engineExtras.setLoadout;
-    if (typeof setLoadout !== 'function') return;
+    if (!this.engine) return;
     const loadout = this.loadout();
     const key = `${loadout.weapon?.art}:${loadout.weapon?.rarity}|${loadout.offhand?.art}:${loadout.offhand?.rarity}|${loadout.auraRarity}`;
     if (key === this.loadoutKey) return;
     this.loadoutKey = key;
-    setLoadout.call(this.engine, loadout);
+    this.engine.setLoadout(loadout);
   }
   private loadout(): KeeperLoadout {
     const equipped = this.inventory.snapshot.equipped;
@@ -746,34 +741,22 @@ export class SideScrollerComponent implements OnDestroy {
       const item = equipped[slot];
       return item && !item.explorerId ? item : undefined;
     };
-    const piece = (item: GameItem | undefined): LoadoutPiece | undefined => {
+    const held = (item: GameItem | undefined): HeldItem | null => {
       const art = item ? itemArt(item)?.src : undefined;
-      return item && art ? { art, rarity: item.rarity } : undefined;
+      return item && art ? { art, rarity: item.rarity } : null;
     };
-    let aura: ItemRarity | undefined;
+    let aura: ItemRarity | null = null;
     for (const slot of SLOT_IDS) {
       const item = worn(slot);
       if (item && (!aura || RUNE_TIER_ORDER.indexOf(item.rarity) > RUNE_TIER_ORDER.indexOf(aura))) aura = item.rarity;
     }
-    return { weapon: piece(worn('weapon')), offhand: piece(worn('off-hand')), auraRarity: aura };
+    return { weapon: held(worn('weapon')), offhand: held(worn('off-hand')), auraRarity: aura };
   }
-  /**
-   * Where pickups should fly: the satchel's coin row, in canvas CSS px (the
-   * canvas element's own box, not world units). Re-sent when the HUD moves
-   * (resize, the mobile layout), and only once the engine accepts a target.
-   */
-  private pushSatchelTarget(): void {
-    const setTarget = this.engineExtras.setSatchelTarget;
-    if (typeof setTarget !== 'function' || !this.boundCanvas) return;
+  /** The satchel's coin count, in viewport px, for the engine's pickup flights. Null → the engine's default corner. */
+  private satchelPoint(): { x: number; y: number } | null {
     const target = this.host.nativeElement.querySelector('.satchel .coin-count') as HTMLElement | null;
-    if (!target) return;
-    const canvasBox = this.boundCanvas.getBoundingClientRect();
-    const box = target.getBoundingClientRect();
-    const point = { x: Math.round(box.left + box.width / 2 - canvasBox.left), y: Math.round(box.top + box.height / 2 - canvasBox.top) };
-    const key = `${point.x},${point.y}`;
-    if (key === this.satchelKey) return;
-    this.satchelKey = key;
-    setTarget.call(this.engine, point);
+    const box = target?.getBoundingClientRect();
+    return box && (box.width || box.height) ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
   }
   private act(target: InteractionTarget): void {
     if (!this.browser || this.state?.paused || this.state?.defeated) return;
