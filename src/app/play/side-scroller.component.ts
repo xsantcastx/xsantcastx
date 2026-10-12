@@ -1,14 +1,21 @@
 import { SocialRoom, RoomSnapshot } from './social/social-room';
-import { afterNextRender, Component, ElementRef, HostListener, NgZone, OnDestroy, PLATFORM_ID, ViewChild, inject } from '@angular/core';
+import {
+  afterNextRender, Component, ComponentRef, ElementRef, HostListener, Injector, NgZone, OnDestroy, PLATFORM_ID, ViewChild,
+  ViewContainerRef, inject,
+} from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
 import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID } from '../shared/activity/activity.model';
 import { InventoryService, MAX_INVENTORY } from '../shared/rpg/inventory.service';
 import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
-import { artFor } from '../shared/art/art';
+import { artFor, REALM_ART } from '../shared/art/art';
+import { IN_WORLD_PANEL } from '../shared/in-world-panel';
+import { areaOf, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
+import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { definitionFor, itemFitsSlot } from '../shared/rpg/item-definition';
 import {
@@ -36,6 +43,17 @@ interface BagSlip {
   compareLabel: string;
 }
 
+/** What the in-world panel is showing: a hosted page, or the waystone's travel list. */
+interface OpenPlace { kind: 'page' | 'waystone'; stationId: string; title: string; kicker: string; route?: string }
+interface PlaceRow { id: string; name: string; blurb: string }
+interface WaystoneRow { id: RealmTownId; realm: string; town: string; crest: string; available: boolean; current: boolean }
+
+const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+function titleCase(label: string): string {
+  return label.toLowerCase().replace(/\b\w/g, letter => letter.toUpperCase());
+}
+
 function monogram(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '·';
@@ -47,6 +65,31 @@ function monogram(name: string): string {
 })
 export class SideScrollerComponent implements OnDestroy {
   @ViewChild('worldCanvas') canvas!: ElementRef<HTMLCanvasElement>;
+  /**
+   * Where a place's page is created. Deliberately NOT inside an @if: a
+   * ViewChild in control flow is intermittently unresolved for lazily created
+   * components, so the shell is always rendered (hidden when closed) and this
+   * resolves statically, before any panel can open.
+   */
+  @ViewChild('panelHost', { read: ViewContainerRef, static: true }) panelHost!: ViewContainerRef;
+  @ViewChild('placePanel', { static: true }) placePanel!: ElementRef<HTMLElement>;
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
+  private readonly injector = inject(Injector);
+  /** Pages built in the panel see IN_WORLD_PANEL and drop their full-page backdrop and hero. */
+  private readonly panelInjector = Injector.create({ providers: [{ provide: IN_WORLD_PANEL, useValue: true }], parent: this.injector });
+  private panelRef: ComponentRef<unknown> | null = null;
+  /** Bumped on every open/close so a slow lazy import never lands in a newer (or closed) panel. */
+  private panelSeq = 0;
+  private atSub?: Subscription;
+  /** A `?at=` that arrived before the engine existed. Applied once it mounts. */
+  private pendingAt: string | null = null;
+  private unbindPointer: (() => void) | null = null;
+  town: TownDef = TOWNS.infernal!;
+  panel: OpenPlace | null = null;
+  panelLoading = false;
+  panelError = '';
+  placesOpen = false;
   private readonly host = inject(ElementRef<HTMLElement>);
   readonly inventory = inject(InventoryService);
   private readonly activity = inject(ActivityProgressionGateway);
@@ -110,6 +153,7 @@ export class SideScrollerComponent implements OnDestroy {
         this.engine?.setChat(snapshot.messages, snapshot.id);
       }));
       this.mountEngine();
+      this.atSub = this.route.queryParamMap.subscribe(params => this.zone.run(() => this.applyAt(params.get('at'))));
       this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); }), 200);
     });
   }
@@ -120,9 +164,14 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.destroy();
     this.boundCanvas = canvas;
     this.engine = new SeamworksEngine(canvas, {
-      assets: { background: 'assets/images/bg-basalt-seamworks-1536.webp', keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
+      assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
+      art: key => this.art(key),
+      // Scene paintings follow the ArtScene convention: assets/images/<basename>-<width>.webp.
+      scene: name => `assets/images/${name}-1536.webp`,
+      town: this.town,
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
-      onLoot: loot => loot.ore === 0 || this.zone.run(() => this.inventory.grantStack(`seamworks-loot:${loot.id}`, CINDER_ORE_ID, loot.ore)),
+      onStation: station => this.zone.run(() => this.openStation(station)),
+      onLoot: loot => loot.ore === 0 || this.zone.run(() => this.inventory.grantStack(`seamworks-loot:${loot.id}`, loot.material ?? CINDER_ORE_ID, loot.ore)),
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
         if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bumpCoins();
@@ -134,7 +183,42 @@ export class SideScrollerComponent implements OnDestroy {
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
+    this.bindPointer(canvas);
     this.engine.start();
+    if (this.panel) this.engine.setPaused(true);
+    if (this.pendingAt) { const at = this.pendingAt; this.pendingAt = null; this.applyAt(at); }
+  }
+  /**
+   * Click/tap to walk and to interact, hover to highlight. Bound outside the
+   * zone: a pointermove per frame must not run change detection. Anything that
+   * changes component state comes back in through the engine callbacks, which
+   * already re-enter the zone.
+   */
+  private bindPointer(canvas: HTMLCanvasElement): void {
+    this.unbindPointer?.();
+    this.zone.runOutsideAngular(() => {
+      const move = (event: PointerEvent): void => {
+        if (event.pointerType !== 'mouse' || !this.engine || this.panel) return;
+        const station = this.engine.pick(event.clientX, event.clientY).station;
+        this.engine.setHover(station?.id ?? null);
+        canvas.style.cursor = station ? 'pointer' : '';
+      };
+      const leave = (): void => { this.engine?.setHover(null); canvas.style.cursor = ''; };
+      const click = (event: MouseEvent): void => {
+        if (!this.engine || this.panel || this.state.defeated) return;
+        const hit = this.engine.pick(event.clientX, event.clientY);
+        if (hit.station) this.engine.goToStation(hit.station.id);
+        else this.engine.moveTo(hit.x);
+      };
+      canvas.addEventListener('pointermove', move);
+      canvas.addEventListener('pointerleave', leave);
+      canvas.addEventListener('click', click);
+      this.unbindPointer = () => {
+        canvas.removeEventListener('pointermove', move);
+        canvas.removeEventListener('pointerleave', leave);
+        canvas.removeEventListener('click', click);
+      };
+    });
   }
   /** Pop the satchel's coin count when a pickup lands. Web Animations, so a
    *  burst of pickups restarts the pop instead of queueing class toggles. */
@@ -146,7 +230,122 @@ export class SideScrollerComponent implements OnDestroy {
       { duration: 420, easing: 'cubic-bezier(.22, 1, .36, 1)' },
     );
   }
-  ngOnDestroy(): void { this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer); }
+  ngOnDestroy(): void {
+    this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
+    this.atSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+  }
+
+  // ── Places: stations as in-world panels ────────────────────────────────────
+
+  private get reducedMotion(): boolean {
+    return this.browser && typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+  /** `?at=<station id>`: stand at that station of the current town and open it. Unknown ids are ignored. */
+  private applyAt(at: string | null): void {
+    if (!this.browser) return;
+    if (!at) { if (this.panel) this.closePanel(false); return; }
+    if (this.panel?.stationId === at) return;
+    if (!this.engine) { this.pendingAt = at; return; }
+    if (!this.engine.inTown) return;
+    const station = this.town.stations.find(row => row.id === at);
+    if (!station) return;
+    this.engine.placeAt(station.x);
+    if (station.kind === 'panel' || station.kind === 'waystone') this.openStation(station);
+  }
+  private openStation(station: StationDef): void {
+    if (!this.browser) return;
+    if (station.kind === 'waystone') {
+      this.showPanel({ kind: 'waystone', stationId: station.id, title: 'The Waystone', kicker: 'Travel' });
+      return;
+    }
+    const entry = station.panel ? PANEL_REGISTRY[station.panel] : undefined;
+    if (!entry) return;
+    this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker, route: entry.route });
+    const seq = this.panelSeq;
+    this.panelLoading = true;
+    entry.load().then(type => {
+      if (seq !== this.panelSeq || !this.panel) return;
+      this.panelHost.clear();
+      this.panelRef = this.panelHost.createComponent(type, { injector: this.panelInjector });
+      this.panelLoading = false;
+    }).catch(() => {
+      if (seq !== this.panelSeq) return;
+      this.panelLoading = false;
+      this.panelError = 'This place could not be reached. Check your connection and try again.';
+    });
+  }
+  private showPanel(place: OpenPlace): void {
+    this.panelSeq++;
+    this.panelHost.clear(); this.panelRef = null;
+    this.panelError = ''; this.panelLoading = false;
+    this.bagOpen = false; this.placesOpen = false;
+    this.panel = place;
+    this.engine?.setHover(null);
+    this.engine?.setPaused(true);
+    this.setAt(place.stationId);
+    // Focus moves into the dialog once it is shown; the close button is always there.
+    setTimeout(() => this.placePanel.nativeElement.querySelector<HTMLElement>('.place-close')?.focus());
+  }
+  /** Close the place and hand focus back to the world. `syncUrl` is false when the URL already changed (back/forward). */
+  closePanel(syncUrl = true): void {
+    if (!this.panel) return;
+    this.panelSeq++;
+    this.panelHost.clear(); this.panelRef = null;
+    this.panel = null; this.panelLoading = false; this.panelError = '';
+    this.engine?.setPaused(false);
+    if (syncUrl) this.setAt(null);
+    this.boundCanvas?.focus();
+  }
+  private setAt(at: string | null): void {
+    if ((this.route.snapshot.queryParamMap.get('at') ?? null) === at) return;
+    void this.router.navigate([], { relativeTo: this.route, queryParams: { at }, queryParamsHandling: 'merge', replaceUrl: true });
+  }
+  /** Keep Tab inside the open dialog. The rest of the stage is also `inert` while it is up. */
+  trapFocus(event: KeyboardEvent): void {
+    if (event.key !== 'Tab' || !this.panel) return;
+    const root = this.placePanel.nativeElement;
+    const items = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(el => el.getClientRects().length > 0);
+    if (!items.length) { event.preventDefault(); return; }
+    const first = items[0], last = items[items.length - 1];
+    const active = document.activeElement;
+    if (event.shiftKey && (active === first || !root.contains(active))) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && (active === last || !root.contains(active))) { event.preventDefault(); first.focus(); }
+  }
+  get waystone(): WaystoneRow[] {
+    return REALM_TOWN_IDS.map(id => ({
+      id, realm: TOWN_LABELS[id], town: TOWNS[id]?.name ?? 'Not yet charted',
+      crest: this.art(REALM_ART[id].crest), available: !!TOWNS[id], current: this.town.id === id,
+    }));
+  }
+  get realmLabel(): string { return TOWN_LABELS[this.town.realm]; }
+  travel(id: RealmTownId): void {
+    const town = TOWNS[id];
+    if (!town || town.id === this.town.id) { this.closePanel(); return; }
+    this.town = town;
+    this.closePanel();
+    this.engine?.setTown(town);
+  }
+  private placesCache: { area: string; rows: PlaceRow[] } | null = null;
+  /** The current area's stations for the accessible Places list. Pure data, so it renders on the server too. */
+  get places(): PlaceRow[] {
+    const area = this.state.areaId ?? this.town.id;
+    if (this.placesCache?.area !== area) {
+      const stations = (areaOf(this.town, area) ?? this.town).stations;
+      this.placesCache = { area, rows: stations.map(station => ({ id: station.id, name: titleCase(station.label), blurb: station.blurb ?? '' })) };
+    }
+    return this.placesCache.rows;
+  }
+  togglePlaces(): void {
+    this.placesOpen = !this.placesOpen;
+    if (this.placesOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#places-list button')?.focus());
+  }
+  /** Walk to the place and interact on arrival; with reduced motion, go there and open it at once. */
+  choosePlace(place: PlaceRow): void {
+    this.placesOpen = false;
+    if (!this.engine?.goToStation(place.id, this.reducedMotion)) {
+      this.message = this.state.paused ? 'Close the open place first.' : 'The Keeper cannot travel right now.';
+    }
+  }
   async joinRoom(name: string): Promise<void> {
     if (this.joining || !name.trim()) return;
     this.joining = true;
@@ -180,6 +379,7 @@ export class SideScrollerComponent implements OnDestroy {
     return 'Mine 6 Cinder Ore and find 1 Ember Residue.';
   }
   get actionLabel(): string {
+    if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return `Enter ${titleCase(this.state.nearbyLabel ?? 'place')}`;
     switch (this.state?.nearby) {
       case 'ore': return this.remaining ? `Seam recovering (${this.remaining}s)` : 'Mine Cinder Ore';
       case 'forge': return this.equipped ? 'Blade equipped' : this.edge ? 'Equip Basalt Edge' : 'Forge Basalt Edge';
@@ -203,6 +403,13 @@ export class SideScrollerComponent implements OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onBagKey(event: KeyboardEvent): void {
     if (!this.browser || event.repeat) return;
+    // An open place owns the keyboard. Escape closes it unless the page inside
+    // already used the key (its own dialog, a reveal) — window is the last stop.
+    if (this.panel) {
+      if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); this.closePanel(); }
+      return;
+    }
+    if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.placesOpen = false; return; }
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
