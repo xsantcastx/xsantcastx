@@ -11,9 +11,10 @@ import {
   Component,
   OnDestroy,
   OnInit,
+  PLATFORM_ID,
   inject,
 } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { OverlayStackService } from '../overlay/overlay-stack.service';
@@ -41,7 +42,13 @@ import { KeeperPanelService } from './keeper-panel.service';
         </header>
 
         <div class="kp__body">
-          <app-character-hub variant="drawer" />
+          <!-- Deferred: the hub (equipment panel, bank, paper doll — ~100 kB)
+               is only ever shown inside this drawer, and the drawer is shut on
+               every page load. The chunk is warmed at idle (ngOnInit) so
+               opening the drawer does not wait on the network. -->
+          @defer (on immediate) {
+            <app-character-hub variant="drawer" />
+          }
         </div>
 
         <a routerLink="/character" class="kp__hall" (click)="close()">Open the hall →</a>
@@ -140,6 +147,7 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
   private readonly xp = inject(XpService);
   private readonly inventory = inject(InventoryService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly platformId = inject(PLATFORM_ID);
   private subs = new Subscription();
   private unreg?: () => void;
 
@@ -155,6 +163,7 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.inventory.init();
+    this.warmHub();
     this.subs.add(this.keeper.open$.subscribe(open => {
       this.open = open;
       if (open) {
@@ -180,4 +189,16 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
   }
 
   close(): void { this.keeper.close(); }
+
+  /**
+   * Fetch the deferred hub's chunk once the page is idle, so the first open of
+   * the drawer renders straight away. Same module the @defer block imports, so
+   * the bundler hands both the same chunk.
+   */
+  private warmHub(): void {
+    if (!isPlatformBrowser(this.platformId)) return;
+    const warm = () => { void import('../character/character-hub.component').catch(() => undefined); };
+    if ('requestIdleCallback' in window) window.requestIdleCallback(warm, { timeout: 8000 });
+    else setTimeout(warm, 3000);
+  }
 }
