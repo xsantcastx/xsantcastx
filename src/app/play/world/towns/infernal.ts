@@ -1,7 +1,7 @@
 /**
  * The Infernal town — the Basalt Seamworks camp, widened into a town quarter.
  *
- * Layout west → east: the hearth camp (spawn, ore, forge), the town quarter
+ * Layout west → east: the hearth camp (spawn, ore, material vendor, forge), the town quarter
  * (crafting bench, rune forge, enchanting table, waystone), then the safe line
  * at `safeX`; beyond it the Rivet Maws guard the beacon and the east passage
  * to Ember Quarry. This file is the template Phase 2 towns copy.
@@ -64,6 +64,7 @@ export const INFERNAL_TOWN: TownDef = {
   ],
   stations: [
     { id: 'ore', x: 480, label: 'CINDER ORE', kind: 'resource', art: CINDER_ORE, width: 130, blurb: 'Mine Cinder Ore from the seam.' },
+    { id: 'vendor', x: 705, label: 'MATERIAL VENDOR', kind: 'panel', panel: 'vendor', art: 'trade-complete', width: 130, blurb: 'Buy expedition materials for Gold; crates go to the forge stockpile.' },
     { id: 'forge', x: 930, label: 'SEAMWORKS FORGE', kind: 'quest', width: 120, blurb: 'Forge and equip the Basalt Edge.' },
     { id: 'crafting', x: 1220, label: 'CRAFTING BENCH', kind: 'panel', panel: 'crafting', art: 'iron-hammer', width: 170, blurb: 'Strike gathered materials into gear.' },
     { id: 'runes', x: 1500, label: 'RUNE FORGE', kind: 'panel', panel: 'runes', art: 'rune-of-cinder', width: 170, blurb: 'Gamble Gold on the anvil for runes.' },

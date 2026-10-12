@@ -213,6 +213,8 @@
   filter: drop-shadow(0 0 6px rgba(232, 200, 152, 0.7));
 }
 .ff-sprite--feed { animation: ffFeed 900ms var(--ease-standard, ease-in-out) var(--delay, 0ms) both; }
+.ff-sprite--in   { animation: ffDeliver 900ms var(--ease-standard, ease-in-out) var(--delay, 0ms) both; }
+.ff-pile.is-received { animation: ffReceive 520ms var(--ease-spring, ease-out) both; }
 .ff-sprite--out  { width: 40px; height: 40px; margin: -20px 0 0 -20px; animation: ffOut 1150ms var(--ease-standard, ease-in-out) both; }
 
 .ff-burst {
@@ -269,6 +271,14 @@
   15%  { opacity: 1; transform: translate(var(--x0), calc(var(--y0) - 10px)) scale(1); }
   55%  { opacity: 1; transform: translate(calc((var(--x0) + var(--x1)) / 2), calc(var(--y0) - 34px)) scale(0.95); }
   100% { opacity: 0; transform: translate(var(--x1), var(--y1)) scale(0.35); }
+}
+
+/* A delivery drops in from above and settles onto the pile (arrives full size, unlike a feed). */
+@keyframes ffDeliver {
+  0%   { opacity: 0; transform: translate(var(--x0), var(--y0)) scale(0.6); }
+  15%  { opacity: 1; transform: translate(var(--x0), var(--y0)) scale(1.1); }
+  60%  { opacity: 1; transform: translate(calc((var(--x0) + var(--x1)) / 2), calc(var(--y0) - 18px)) scale(1); }
+  100% { opacity: 0.85; transform: translate(var(--x1), var(--y1)) scale(0.8); }
 }
 
 @keyframes ffOut {
