@@ -397,6 +397,8 @@
   color: rgba(226, 222, 245, 0.6);
 }
 .cl-card__hint { font-style: italic; color: rgba(226, 222, 245, 0.42); }
+/* "Found in: …" — derived from world data (shared/world/found-in.ts). */
+.cl-card__where { margin: 6px 0 0; font-size: 11px; line-height: 1.35; color: rgba(226, 222, 245, 0.6); }
 .cl-card__foot {
   margin: auto 0 0; display: flex; gap: 0.45rem; align-items: center;
   font-size: 0.62rem; color: rgba(226, 222, 245, 0.4);

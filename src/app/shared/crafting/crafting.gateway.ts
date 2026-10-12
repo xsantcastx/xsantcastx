@@ -44,6 +44,7 @@ import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
 import { itemDefinitionById, mintEquipment } from '../rpg/item-definition';
 import { qualityOf } from '../rpg/item-quality';
 import type { GameItem } from '../rpg/item.model';
+import { NpcQuestService } from '../npc/npc-quest.service';
 import { CraftingService, type CraftingProgress } from './crafting.service';
 import {
   type CraftingRecipe,
@@ -56,6 +57,8 @@ export type CraftReject =
   | 'ssr'
   | 'unknown-recipe'
   | 'level'
+  /** A Delve mission teaches this pattern and it has not been claimed. */
+  | 'locked'
   | 'missing'
   | 'funds'
   | 'capacity'
@@ -86,6 +89,7 @@ export class CraftingGateway {
   private readonly economy = inject(EconomyService);
   private readonly crafting = inject(CraftingService);
   private readonly collection = inject(CollectionService);
+  private readonly npc = inject(NpcQuestService);
 
   init(): void {
     if (!this.isBrowser) return;
@@ -108,6 +112,7 @@ export class CraftingGateway {
   blocker(recipe: CraftingRecipe): CraftReject | null {
     if (!this.isBrowser) return 'ssr';
     this.init();
+    if (!this.isUnlocked(recipe)) return 'locked';
     if (!this.crafting.meetsLevel(recipe)) return 'level';
     if (this.missing(recipe).length) return 'missing';
     if (this.economy.snapshot.gold < recipe.goldCost) return 'funds';
@@ -198,6 +203,14 @@ export class CraftingGateway {
       replayed: false,
       masteryBonus: bonus,
     };
+  }
+
+  /**
+   * A mission-taught pattern is open once its mission is claimed, and stays
+   * open for anyone who had already crafted it before the gate existed.
+   */
+  isUnlocked(recipe: CraftingRecipe): boolean {
+    return this.npc.isRecipeUnlocked(recipe.id) || this.crafting.hasCrafted(recipe.id);
   }
 
   private roomFor(recipe: CraftingRecipe): boolean {

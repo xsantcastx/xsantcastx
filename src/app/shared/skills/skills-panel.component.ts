@@ -22,6 +22,9 @@ import { ROOTGLASS_CANOPY_HREF } from '../activity/foraging.model';
 import { MERIDIAN_ORRERY_HREF } from '../activity/prospecting.model';
 import { SKILLS, skillXp, type SkillDef, type SkillId } from './skill.model';
 import { SKILL_UNLOCKS, describeUnlock, nextUnlock, type SkillUnlock } from './skill-unlocks';
+import { foundInPlaces } from '../world/found-in';
+import { foundInWorld } from '../world/found-in.data';
+import { DelveMissionChipComponent } from '../npc/delve-mission-chip.component';
 
 /** Skills with a place to train them get one obvious button there. */
 const GO: Partial<Record<SkillId, { href: string; key: string }>> = {
@@ -36,19 +39,21 @@ interface SkillCard {
   pct: number;
   /** Translated "what's next" line, or null at the end of the table. */
   next: string | null;
-  rows: ReadonlyArray<{ level: number; text: string; earned: boolean }>;
+  /** `where` is the "Found in" line for a gathering row, derived from world data. */
+  rows: ReadonlyArray<{ level: number; text: string; earned: boolean; where: string | null }>;
   go: { href: string; key: string } | null;
 }
 
 @Component({
   selector: 'app-skills-panel',
   standalone: true,
-  imports: [RouterLink],
+  imports: [RouterLink, DelveMissionChipComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="sk" aria-labelledby="sk-title">
       <h2 id="sk-title" class="sk__title">{{ t('skills.title') }}</h2>
       <p class="sk__lead">{{ t('skills.lead') }}</p>
+      <app-delve-mission-chip class="sk__mission"></app-delve-mission-chip>
 
       <ul class="sk__grid">
         @for (card of cards; track card.def.id) {
@@ -83,7 +88,11 @@ interface SkillCard {
                 @for (row of card.rows; track $index) {
                   <li class="sk__row" [class.sk__row--earned]="row.earned">
                     <span class="sk__row-lvl">{{ row.level }}</span>
-                    <span class="sk__row-text">{{ row.text }}</span>
+                    <span class="sk__row-text">{{ row.text }}
+                      @if (row.where; as where) {
+                        <span class="sk__row-where">{{ t('skills.foundIn', { where }) }}</span>
+                      }
+                    </span>
                   </li>
                 }
               </ol>
@@ -156,6 +165,8 @@ interface SkillCard {
     .sk__table { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
     .sk__row { display: grid; grid-template-columns: 2.4em minmax(0, 1fr); gap: 8px; font-size: 0.76rem; color: var(--gf-faint); }
     .sk__row--earned { color: var(--gf-ink); }
+    .sk__mission { margin: 0 0 1rem; }
+    .sk__row-where { display: block; color: var(--gf-faint); font-size: 0.7rem; }
     .sk__row-lvl { font-variant-numeric: tabular-nums; text-align: right; color: var(--gf-dim); }
     .sk__row--earned .sk__row-lvl { color: var(--gf-accent-text); }
 
@@ -195,7 +206,12 @@ export class SkillsPanelComponent implements OnInit {
         view,
         pct: levelProgressPct(view),
         next: upcoming ? this.t('skills.next', { what: this.text(upcoming.unlocks[0]), level: upcoming.level }) : null,
-        rows: SKILL_UNLOCKS[def.id].map(u => ({ level: u.level, text: this.text(u), earned: u.level <= view.level })),
+        rows: SKILL_UNLOCKS[def.id].map(u => ({
+          level: u.level,
+          text: this.text(u),
+          earned: u.level <= view.level,
+          where: u.kind === 'node' ? foundInPlaces(foundInWorld(u.materialId)) : null,
+        })),
         go: GO[def.id] ?? null,
       };
     });

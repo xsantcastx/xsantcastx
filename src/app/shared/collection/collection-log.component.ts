@@ -34,6 +34,8 @@ import { RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import type { ItemRarity } from '../rpg/item.model';
 import { FIVE_REALMS, type NarrativeRealmId } from '../narrative/five-realms.narrative';
 import { CollectionService } from './collection.service';
+import { foundInPlaces } from '../world/found-in';
+import { foundInWorld } from '../world/found-in.data';
 import {
   COLLECTION_CATALOG,
   COLLECTION_CATEGORIES,
@@ -129,6 +131,15 @@ export class CollectionLogComponent implements OnInit, OnDestroy {
   }
 
   // ══ Completion ═════════════════════════════════════════════════════════════
+
+  private readonly whereCache = new Map<string, string | null>();
+
+  /** "Found in" for a material or consumable, from world data. Null when unknown. */
+  whereFound(id: string, category: CollectionCategory): string | null {
+    if (category !== 'material' && category !== 'consumable') return null;
+    if (!this.whereCache.has(id)) this.whereCache.set(id, foundInPlaces(foundInWorld(id)));
+    return this.whereCache.get(id) ?? null;
+  }
 
   get overall(): CompletionCount {
     return overallCompletion(this.ledger);

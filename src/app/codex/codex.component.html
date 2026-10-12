@@ -575,6 +575,34 @@
         <a routerLink="/forge/runes">strike it</a> and the codex fills in.
       </p>
     }
+
+    <!-- Delve Inscriptions: carved in the walls of the Ember Delve, copied by
+         walking up to them. Sealed until copied; the text is never shown early. -->
+    <div class="cx-secrets__hd cx-inscriptions__hd">
+      <h2 class="cx-secrets__count">Delve Inscriptions: {{ inscriptionsFound }} of {{ inscriptionsTotal }} copied</h2>
+      <p class="cx-secrets__blurb">Words cut into the rock on the way down the fracture. Find them in the Ember Delve to copy them here.</p>
+    </div>
+    @for (shelf of inscriptionShelves; track shelf.name) {
+      <div class="cx-section cx-section--scrolls" style="--realm: #c89868; --realm-glow: rgba(200, 152, 104, 0.6)">
+        <div class="cx-section__hd">
+          <h3 class="cx-section__title">{{ shelf.name }}</h3>
+          <span class="cx-section__count">{{ shelf.found }} / {{ shelf.cards.length }}</span>
+        </div>
+        <ul class="cx-inscriptions">
+          @for (card of shelf.cards; track card.id) {
+            <li class="cx-inscription" [class.cx-inscription--locked]="!card.found">
+              @if (card.found) {
+                <p class="cx-inscription__title">{{ card.title }}</p>
+                <p class="cx-inscription__text">{{ card.text }}</p>
+              } @else {
+                <p class="cx-inscription__title">Not yet copied</p>
+                <p class="cx-inscription__text">Somewhere in the {{ shelf.name }}.</p>
+              }
+            </li>
+          }
+        </ul>
+      </div>
+    }
   </section>
 
 
