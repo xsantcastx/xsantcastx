@@ -3,6 +3,12 @@
 **xsantcastx.com is a free idle RPG that runs in a browser tab.** No sign-up, no
 install, no server-side game loop. Read this before touching anything.
 
+**Current focus — read [`docs/roadmap/world-plan.md`](docs/roadmap/world-plan.md)
+first.** It is the live build tracker for turning every page into a place in
+the game world (five realm towns, in-world panels, zone drops, world-only
+navigation): what's decided, what's shipped, what's in progress on which branch,
+and what's next. Tick items there in the same merge that ships them.
+
 This file replaced a 662-line manual for a developer-tools site. That product is
 gone — see §2 — and every instruction in the old file pointed at routes that now
 redirect. If something here disagrees with a comment in the code, the comment
