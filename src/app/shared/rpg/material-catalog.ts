@@ -48,6 +48,13 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
    * collection.model.ts's copy of this table that never had a row here.
    */
   'ember-elixir': 'Ember Elixir',
+  // Ember Delve biome finds (Phase 2.6). Painted by stand-ins in art.ts until
+  // their own art lands: a sickle's cut from the World-Root's shadow (Root
+  // Hollows), a cap of the Grotto's light, and the one Godforge fragment each
+  // player can pry from the Magma Halls.
+  'shadow-root-cutting': 'Shadow-Root Cutting',
+  'glowcap': 'Glowcap',
+  'godforge-fragment': 'Godforge Fragment',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

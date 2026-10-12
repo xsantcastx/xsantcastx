@@ -1,0 +1,102 @@
+/* Keyframes at the top level only. */
+@keyframes stPopIn {
+  0%   { opacity: 0; transform: scale(0.86) translateY(8px); }
+  60%  { opacity: 1; transform: scale(1.03) translateY(0); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+@keyframes stBurst {
+  0%   { opacity: 0; transform: scale(0.2) rotate(0deg); }
+  30%  { opacity: 1; }
+  100% { opacity: 0.55; transform: scale(1) rotate(45deg); }
+}
+@keyframes stRing {
+  0%   { opacity: 0.9; transform: scale(0.5); }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+@keyframes stArtDrop {
+  0%   { transform: scale(0.4) rotate(-12deg); }
+  70%  { transform: scale(1.12) rotate(3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+:host { display: block; }
+
+.rp {
+  --rp-color: var(--rarity, var(--st-accent));
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4);
+  border-radius: var(--st-radius);
+  border: 1px solid color-mix(in srgb, var(--rp-color) 55%, transparent);
+  background:
+    radial-gradient(120% 140% at 0% 50%, color-mix(in srgb, var(--rp-color) 22%, transparent), transparent 60%),
+    var(--st-surface);
+  box-shadow: var(--rarity-glow, none), var(--shadow-raised);
+  animation: stPopIn var(--dur-enter) var(--ease-spring) both;
+}
+
+.rp__stage {
+  position: relative;
+  flex: none;
+  width: 96px;
+  height: 96px;
+  display: grid;
+  place-items: center;
+}
+.rp__burst {
+  position: absolute;
+  inset: -14px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(color-mix(in srgb, var(--rp-color) 55%, transparent) 0deg 10deg, transparent 10deg 30deg);
+  -webkit-mask: radial-gradient(circle, black 30%, transparent 70%);
+  mask: radial-gradient(circle, black 30%, transparent 70%);
+  animation: stBurst 900ms var(--ease-standard) both;
+}
+.rp__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid var(--rp-color);
+  animation: stRing 800ms var(--ease-standard) both;
+}
+.rp__art, .rp__glyph {
+  position: relative;
+  width: 88px;
+  height: 88px;
+  object-fit: contain;
+  animation: stArtDrop 520ms var(--ease-spring) both;
+}
+.rp__glyph {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--st-well);
+  font: var(--weight-bold) var(--text-2xl)/1 var(--font-display);
+  color: var(--rp-color);
+}
+
+.rp__copy { min-width: 0; display: grid; gap: 2px; justify-items: start; }
+.rp__kicker { margin: 0; font: var(--type-label); letter-spacing: var(--tracking-eyebrow); text-transform: uppercase; color: var(--st-text-muted); }
+.rp__name { margin: 0; font: var(--weight-bold) var(--text-lg)/1.15 var(--font-ui); color: var(--st-text); overflow-wrap: anywhere; }
+.rp__tier { margin: 0; font: var(--weight-semibold) var(--text-xs)/1.2 var(--font-ui); color: var(--rp-color); text-transform: uppercase; letter-spacing: var(--tracking-nav); }
+.rp__caption { margin: 2px 0 0; font-size: var(--text-sm); color: var(--st-text-soft); }
+.rp__ok {
+  margin-top: var(--space-2);
+  min-height: var(--st-tap);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--rp-color) 60%, transparent);
+  background: color-mix(in srgb, var(--rp-color) 18%, var(--st-well));
+  color: var(--st-text);
+  font: var(--weight-semibold) var(--text-sm)/1 var(--font-ui);
+  cursor: pointer;
+  transition: transform var(--dur-press) var(--ease-standard);
+}
+.rp__ok:active { transform: scale(var(--press-scale)); }
+.rp__ok:focus-visible { outline: var(--focus-ring); outline-offset: var(--focus-offset); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rp, .rp__burst, .rp__ring, .rp__art, .rp__glyph { animation: none; }
+  .rp__ring { opacity: 0; }
+}

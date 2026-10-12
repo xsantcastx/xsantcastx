@@ -450,12 +450,28 @@ const TOOL_RECIPES: readonly CraftingRecipe[] = [
   tool('staff', 4, [m('void-shard', 6), m('celestial-quartz', 6), m('void-crystal', 2)]),
 ];
 
+/**
+ * Patterns a Delve mission teaches (see `npc/delve-missions.model.ts`, which
+ * owns which mission opens which recipe; the bench asks NpcQuestService).
+ * Kael's Seam Pick is a second road to Pickaxe III: the same Smithing gate,
+ * but Delve ore only, so a Keeper who has never sent an explorer out can
+ * still reach the Heartstone seam's tier.
+ */
+export const MISSION_PATTERN_RECIPES: readonly CraftingRecipe[] = [
+  r('craft-pickaxe-3-seam', "Kael's Seam Pick", 'tool', 'rare', 'pickaxe-3',
+    [m('slag-fragment', 16), m('cinder-ore', 12), m('infernal-heartstone', 4)],
+    TOOL_GOLD[3], TOOL_TIER_LEVEL[3],
+    `Kael's own pattern: a Pickaxe III from Delve ore alone. Needs Smithing ${TOOL_TIER_LEVEL[3]}.`,
+    { skill: 'smithing', craftTime: 4 }),
+];
+
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...WEAPON_RECIPES,
   ...ARMOR_RECIPES,
   ...CHARM_RECIPES,
   ...CONSUMABLE_RECIPES,
   ...TOOL_RECIPES,
+  ...MISSION_PATTERN_RECIPES,
 ];
 
 const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));

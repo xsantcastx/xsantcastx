@@ -6,16 +6,17 @@ import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchel
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
 import {
-  BLAST_TOOLS, BodyBox, CELL, cellKey, coneCells, generateTerrain, stepTerrainBody, SWING_TOOLS, Terrain, TERRAIN_NODE_LIST,
-  TerrainNodeDef, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, nodeIndex, stepTerrainBody, SWING_TOOLS, Terrain, TERRAIN_NODE_LIST,
+  TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
 } from './terrain';
-import { Debris, TerrainRenderer } from './terrain-render';
+import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
+import type { DelvePersistence } from './engine.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, LootRarity, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
-export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, WorldActionEvent } from './engine.model';
+export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, WorldActionEvent } from './engine.model';
 export type { ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
@@ -153,16 +154,29 @@ export class SeamworksEngine {
   private readonly homesteadFrame: HomesteadFrame = { areaId: '', camera: 0, viewport: 0, time: 0, playerX: 0, reduced: false, art: (key, x, y, w, h) => this.art(key, x, y, w, h) };
   /** Plug in (or remove) the Homestead's view: drawn each frame, may paint stations and take interactions. */
   setHomesteadView(view: HomesteadView | null): void { this.homestead = view; }
-  /** The current area's diggable terrain, or null outside a delve. Dug state lives for this engine session. */
+  /**
+   * The current area's diggable terrain, or null outside a delve. Generated
+   * from the player's seed with their saved diff laid over it (see `delve`);
+   * without a save, dug state lives for this engine session.
+   */
   private terrain: Terrain | null = null;
   private readonly terrains = new Map<string, Terrain>();
+  /** `terrainLayout()` each cached terrain was generated under: the key its diff is saved by. */
+  private readonly layouts = new Map<string, string>();
+  private delve: DelvePersistence | null = null;
   private readonly terrainRenderer = new TerrainRenderer();
+  private readonly motes = new AmbientMotes();
+  private readonly halos = new GlowHalos();
+  /** The carved wall within reach, as a cell index (-1 = none). Refreshed in the fixed step. */
+  private inscriptionAt = -1;
   private readonly darkness = new DarknessLayer();
   private readonly lightPool = new LightPool(96);
   private readonly debris = new Debris();
   /** Glinting cells this frame (indices), drawn over the darkness. */
   private readonly glints = new Int32Array(64);
   private glintCount = 0;
+  /** Exposed glowing cells in view this frame (indices), for their coloured halos. */
+  private readonly halosAt = new Int32Array(32);
   private readonly hitScratch = new Int32Array(160);
   private tools: ToolTiers = {};
   private lanternRadius = DEFAULT_LANTERN;
@@ -191,13 +205,78 @@ export class SeamworksEngine {
   }
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
-    let terrain: Terrain | null = null;
-    if (area.terrain) {
-      terrain = this.terrains.get(area.id) ?? generateTerrain(area.terrain);
-      this.terrains.set(area.id, terrain);
+    this.terrain = this.terrainFor(area); this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
+    this.blastTime = 0; this.blastFlash = 0; this.inscriptionAt = -1;
+    this.motes.reset();
+  }
+  /** The area's terrain: cached for the session, else generated from the player's seed with their diff applied. */
+  private terrainFor(area: AreaDef): Terrain | null {
+    const spec = area.terrain;
+    if (!spec) return null;
+    const cached = this.terrains.get(area.id);
+    if (cached) return cached;
+    let seed = spec.seed;
+    try {
+      const own = this.delve?.seed(area.id);
+      if (Number.isInteger(own)) seed = (own as number) >>> 0;
+    } catch { /* a broken save falls back to the shared seed */ }
+    const terrain = generateTerrain(spec, seed);
+    const layout = terrainLayout(spec, seed);
+    try {
+      const cells = this.delve?.cells(area.id, layout);
+      if (cells) applyTerrainDiff(terrain, cells);
+    } catch { /* an unreadable diff is fresh rock, not a crash */ }
+    this.terrains.set(area.id, terrain);
+    this.layouts.set(area.id, layout);
+    return terrain;
+  }
+  /**
+   * Plug in (or replace) where per-player delves come from. Cached terrains
+   * are dropped so the next entry regenerates from the save; a delve the
+   * Keeper stands in is rebuilt now (cloud save adopted another device's dig).
+   */
+  setDelve(delve: DelvePersistence | null): void {
+    this.delve = delve;
+    this.terrains.clear(); this.layouts.clear();
+    if (this.areaDef?.terrain) {
+      this.terrain = this.terrainFor(this.areaDef);
+      this.terrainRenderer.attach(this.terrain);
+      // A Keeper the new rock now buries is lifted to the surface ledge.
+      if (this.terrain && boxHits(this.terrain, this.player.x, this.player.y, DELVE_BOX)) {
+        this.cancelMove();
+        this.player.x = this.areaDef.spawnX; this.player.y = FLOOR; this.player.vy = 0; this.player.grounded = true;
+      }
     }
-    this.terrain = terrain; this.terrainRenderer.attach(terrain); this.cameraY = 0;
-    this.blastTime = 0; this.blastFlash = 0;
+  }
+  /** Tell the save about a cell that changed, as a diff against what was generated. */
+  private recordCell(t: Terrain, index: number): void {
+    if (!this.delve) return;
+    const layout = this.layouts.get(this.areaDef.id);
+    if (!layout) return;
+    try { this.delve.changed(this.areaDef.id, layout, index, t.kind[index] === t.base[index] ? null : t.kind[index]); } catch { /* the dig still stands this session */ }
+  }
+  /**
+   * Building, stubbed: put a block of `nodeId` into an open cell of the
+   * current delve and save it. Refuses (false) outside a delve, off the grid,
+   * into rock, onto a carved wall, or into the Keeper or a living creature.
+   * Satchel cost, reach and art come with the building features.
+   */
+  placeCell(col: number, row: number, nodeId: string): boolean {
+    const t = this.terrain;
+    const node = TERRAIN_NODES[nodeId];
+    if (!t || !node || !node.solid || !Number.isFinite(node.hp) || !t.inside(col, row)) return false;
+    const index = t.index(col, row);
+    if (t.solid(col, row) || t.inscriptions.has(index)) return false;
+    const x0 = col * CELL, y0 = t.top + row * CELL;
+    const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
+      x + halfWidth > x0 && x - halfWidth < x0 + CELL && feet > y0 && feet - height < y0 + CELL;
+    if (overlaps(this.player.x, this.player.y, DELVE_BOX.halfWidth, DELVE_BOX.height)) return false;
+    for (const monster of this.monsters) {
+      if (monster.hp > 0 && overlaps(monster.x, monster.def.floorY ?? FLOOR, 30 * this.figure, 110 * this.figure)) return false;
+    }
+    t.set(col, row, nodeIndex(nodeId));
+    this.recordCell(t, index);
+    return true;
   }
   private resetPosition(x: number): void {
     this.cancelMove();
@@ -219,6 +298,7 @@ export class SeamworksEngine {
     this.context = context;
     this.town = options.town ?? INFERNAL_TOWN;
     this.satchelTarget = options.satchelTarget ?? null;
+    this.delve = options.delve ?? null;
     this.enter(this.town);
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
@@ -336,9 +416,12 @@ export class SeamworksEngine {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
     const col = t.colAt(x), row = t.rowAt(y);
-    if (!t.inside(col, row) || !t.solid(col, row)) return false;
+    if (!t.inside(col, row)) return false;
     const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
-    if (Math.hypot(cx - this.player.x, cy - (this.player.y - DELVE_BOX.height * .5)) > DELVE_REACH) return false;
+    const inReach = Math.hypot(cx - this.player.x, cy - (this.player.y - DELVE_BOX.height * .5)) <= DELVE_REACH;
+    // A tap on a carved wall within reach reads it.
+    if (inReach && t.inscriptions.has(t.index(col, row))) { this.cancelMove(); this.readInscription(t.index(col, row)); this.report(); return true; }
+    if (!t.solid(col, row) || !inReach) return false;
     this.cancelMove();
     if (this.attackCooldown > 0) return true;
     if (Math.abs(cx - this.player.x) > 6) this.facing = cx > this.player.x ? 1 : -1;
@@ -557,12 +640,41 @@ export class SeamworksEngine {
       }
     }
     t.set(col, row, 0);
+    this.recordCell(t, index);
     this.debris.crumble(cx, cy, node.base, node.fleck, this.reducedMotion);
     if (material) {
       this.atmosphere.burst(cx, cy - 12, `+${qty} ${titleCase(material)}`);
       this.message = `${titleCase(material)} gathered from the ${node.label.toLowerCase()}.`;
     }
     return HIT_BROKE;
+  }
+  /** The carved wall the Keeper's body stands against (cell index), or -1. No allocation. */
+  private findInscription(): number {
+    const t = this.terrain;
+    if (!t || !t.inscriptions.size) return -1;
+    const p = this.player;
+    const c0 = t.colAt(p.x - DELVE_BOX.halfWidth - CELL * .5), c1 = t.colAt(p.x + DELVE_BOX.halfWidth + CELL * .5);
+    const r0 = t.rowAt(p.y - DELVE_BOX.height), r1 = t.rowAt(p.y - .01);
+    for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
+      for (let col = Math.max(0, c0); col <= Math.min(t.cols - 1, c1); col++) {
+        const index = t.index(col, row);
+        if (t.inscriptions.has(index)) return index;
+      }
+    }
+    return -1;
+  }
+  /** Read a carved wall: tell the host (it decides if this is a first reading), glint it. */
+  private readInscription(index: number): void {
+    const t = this.terrain;
+    const id = t?.inscriptions.get(index);
+    if (!t || !id) return;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
+    this.debris.chip(cx, cy, '#e8c47a', this.reducedMotion ? 2 : 6);
+    this.message = 'You trace the carving with a finger. The words are older than the Seamworks.';
+    // Reported before the host hears of it, so a message the host shows in reply is not cleared by this one.
+    this.report();
+    this.options.onDiscover?.({ kind: 'inscription', id, biome: t.biomeAt(row).id });
   }
   private clang(x: number, y: number, text: string): void {
     this.message = `${text}.`;
@@ -630,6 +742,7 @@ export class SeamworksEngine {
   interact(): void {
     if (this.paused || this.hp <= 0) return;
     const station = this.nearbyStation();
+    if (!station && this.inscriptionAt >= 0) { this.readInscription(this.inscriptionAt); this.report(); return; }
     if (!station) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
     const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
     if (locked) this.message = station.lockedMessage ?? 'This way is not open yet.';
@@ -741,6 +854,7 @@ export class SeamworksEngine {
       // Holding a tool button keeps working the rock: digging is held, not tapped.
       if (this.input.has('attack') && this.attackCooldown <= 0) this.attack();
       if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
+      this.inscriptionAt = this.findInscription();
     }
     if (!wasGrounded && this.player.grounded) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
@@ -802,15 +916,37 @@ export class SeamworksEngine {
   }
 
   private report(): void {
-    const living = this.monsters.filter(monster => monster.hp > 0);
-    const nearest = living.sort((a, b) => Math.abs(a.x - this.player.x) - Math.abs(b.x - this.player.x))[0];
+    const nearest = this.nearestFoe();
     const station = this.nearbyStation();
-    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.round(nearest.hp / nearest.maxHp * 100) : 0, nearby: station?.id ?? null, nearbyLabel: station?.label, nearbyKind: station?.kind,
+    const t = this.terrain;
+    const reading = !station && t && this.inscriptionAt >= 0;
+    const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
+    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name,
+      nearby: reading ? 'inscription' : station?.id ?? null, nearbyLabel: reading ? 'CARVED INSCRIPTION' : station?.label, nearbyKind: station?.kind,
       x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
       facing: this.facing, animation: this.pose(),
-      delve: !!this.terrain, depth: this.terrain ? Math.max(0, Math.floor((this.player.y - this.terrain.top) / CELL)) : undefined });
+      delve: !!t, depth, biome: t && depth !== undefined ? t.biomeAt(depth).name || undefined : undefined });
+  }
+  /**
+   * The living creature the enemy bar should measure: the nearest one the
+   * Keeper could actually meet. In a delve that means on about the Keeper's
+   * level and within a screen; on open ground, within a screen and a half.
+   * Null when nothing qualifies, and the bar hides.
+   */
+  private nearestFoe(): Monster | null {
+    let best: Monster | null = null, bestDistance = Infinity;
+    const delve = !!this.terrain;
+    const reach = delve ? 900 : 1500;
+    for (const monster of this.monsters) {
+      if (monster.hp <= 0) continue;
+      const dx = Math.abs(monster.x - this.player.x);
+      if (dx > reach) continue;
+      if (delve && Math.abs(this.player.y - (monster.def.floorY ?? FLOOR)) > 200) continue;
+      if (dx < bestDistance) { best = monster; bestDistance = dx; }
+    }
+    return best;
   }
   private pose(): KeeperAnimation {
     if (this.hp <= 0 || this.hurtTime > 0) return 'hurt';
@@ -1403,21 +1539,50 @@ export class SeamworksEngine {
     const c0 = Math.max(0, t.colAt(this.camera)), c1 = Math.min(t.cols - 1, t.colAt(this.camera + viewport));
     const r0 = Math.max(0, t.rowAt(this.cameraY)), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720));
     const reach = this.lanternRadius * 1.6;
+    let haloCount = 0;
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
         const node = TERRAIN_NODE_LIST[t.kind[t.index(col, row)]];
         if (!node.glow) continue;
         const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
-        if (t.exposed(col, row)) pool.add(x, y, node.glow.radius * 1.6, .55);
+        if (t.exposed(col, row)) {
+          pool.add(x, y, node.glow.radius * 1.6, .55);
+          if (haloCount < this.halosAt.length) this.halosAt[haloCount++] = t.index(col, row);
+        }
         if (this.glintCount < this.glints.length && Math.hypot(x - this.player.x, y - this.player.y + 50) < reach) this.glints[this.glintCount++] = t.index(col, row);
       }
+    }
+    // The biome under the middle of the view sets the dark, the wash, the air.
+    const biome = t.biomeAt(t.rowAt(this.cameraY + 360));
+    if (biome.wash.alpha > 0) {
+      c.save(); c.globalCompositeOperation = 'soft-light'; c.globalAlpha = biome.wash.alpha * 2.5;
+      c.fillStyle = biome.wash.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
+      c.restore();
     }
     const count = selectLights(pool.lights, pool.count, LIGHT_CAP, this.player.x, this.player.y);
     c.save();
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-    this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top));
+    this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark);
     c.restore();
     c.save(); c.globalCompositeOperation = 'lighter';
+    // Coloured light from exposed glowing cells: glowcaps wash the Grotto blue, embers the Halls red.
+    for (let n = 0; n < haloCount; n++) {
+      const index = this.halosAt[n], col = index % t.cols, row = (index - col) / t.cols;
+      const glow = TERRAIN_NODE_LIST[t.kind[index]].glow;
+      if (!glow) continue;
+      const pulse = this.reducedMotion ? 1 : .85 + .15 * Math.sin(time * 1.7 + index * .37);
+      this.halos.halo(c, (col + .5) * CELL, t.top + (row + .5) * CELL, glow.radius * 1.4, glow.color, .16 * pulse);
+    }
+    if (biome.shimmer) {
+      // Heat rising: slow columns of warm air. Still under reduced motion.
+      for (let n = 0; n < 4; n++) {
+        const drift = this.reducedMotion ? 0 : Math.sin(time * .6 + n * 1.9) * 40;
+        const x = this.camera + (n + .5) * viewport / 4 - 70 + drift;
+        this.halos.band(c, x, this.cameraY, 140, 720, biome.wash.color, .05 + (this.reducedMotion ? 0 : .02 * Math.sin(time * 1.3 + n)));
+      }
+    }
+    this.motes.update(this.frameDt, biome, this.camera, this.cameraY, viewport, 720, this.reducedMotion);
+    this.motes.draw(c);
     for (let n = 0; n < this.glintCount; n++) {
       const index = this.glints[n], col = index % t.cols, row = (index - col) / t.cols;
       const node: TerrainNodeDef = TERRAIN_NODE_LIST[t.kind[index]];
