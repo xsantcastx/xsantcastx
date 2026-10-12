@@ -29,6 +29,7 @@ import {
   CHARM_DOLL_SLOTS,
   PAPER_DOLL_SLOTS,
   PAPER_DOLL_SRC,
+  PAPER_DOLL_SRCSET,
   type PaperDollSlotManifest,
 } from './paper-doll.manifest';
 import { itemArt } from './material-catalog';
@@ -86,6 +87,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   /** `select` is doll-only. `bank` is bag-only. `full` is both, and may sync the URL. */
 
   readonly dollSrc = PAPER_DOLL_SRC;
+  readonly dollSrcset = PAPER_DOLL_SRCSET;
   readonly dollSlots = PAPER_DOLL_SLOTS;
   readonly charmSlots = CHARM_DOLL_SLOTS;
 

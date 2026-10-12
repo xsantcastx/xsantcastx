@@ -38,8 +38,8 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     exact: true,
     group: 'primary',
     tabIcons: {
-      inactive: 'assets/icons/tabs/home-inactive.png',
-      active: 'assets/icons/tabs/home-active.png',
+      inactive: 'assets/icons/tabs/home-inactive.webp',
+      active: 'assets/icons/tabs/home-active.webp',
     },
   },
   {
@@ -50,8 +50,8 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     glyph: 'profile',
     group: 'primary',
     tabIcons: {
-      inactive: 'assets/icons/tabs/profile-inactive.png',
-      active: 'assets/icons/tabs/profile-active.png',
+      inactive: 'assets/icons/tabs/profile-inactive.webp',
+      active: 'assets/icons/tabs/profile-active.webp',
     },
   },
   {
@@ -103,8 +103,8 @@ export const NAV_MANIFEST: readonly NavDestination[] = [
     glyph: 'codex',
     group: 'primary',
     tabIcons: {
-      inactive: 'assets/icons/tabs/codex-inactive.png',
-      active: 'assets/icons/tabs/codex-active.png',
+      inactive: 'assets/icons/tabs/codex-inactive.webp',
+      active: 'assets/icons/tabs/codex-active.webp',
     },
   },
   {
