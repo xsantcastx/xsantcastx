@@ -98,6 +98,7 @@ If something slips, it moves backwards here. The point of a public roadmap is lo
 
 ## Related
 
+- [`docs/roadmap/world-plan.md`](roadmap/world-plan.md) — the working build tracker: every page becomes a place in the world
 - [`src/app/blueprint/eclipse-roadmap.ts`](../src/app/blueprint/eclipse-roadmap.ts) — the data the site renders
 - [`src/app/shared/realms/realm.model.ts`](../src/app/shared/realms/realm.model.ts) — the five realms
 - [`src/app/shared/rarity/rarity.model.ts`](../src/app/shared/rarity/rarity.model.ts) — the six tiers
