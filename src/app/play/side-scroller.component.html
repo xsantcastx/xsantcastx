@@ -19,8 +19,8 @@
     <p class="objective" aria-live="polite">{{ message || state.message || objective }}</p>
     <div class="top-actions">
       <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list">Places</button>
-      <button type="button" (click)="returnToCamp()">Return to camp</button>
-      <button type="button" (click)="restartHunt()">Restart hunt</button>
+      <button type="button" class="quiet" (click)="returnToCamp()">Return to camp</button>
+      <button type="button" class="quiet" (click)="restartHunt()">Restart hunt</button>
     </div>
   </header>
 
@@ -47,7 +47,7 @@
     </div>
     @if (state.enemyHp > 0) {
       <div class="vital">
-        <label>Nearest Maw <b>{{ state.enemyHp }}</b></label>
+        <label>{{ enemyName }} <b>{{ state.enemyHp }}</b></label>
         <div class="meter enemy"><s [style.--fill]="state.enemyHp / 100"></s><i [style.--fill]="state.enemyHp / 100"></i></div>
       </div>
     }
@@ -58,12 +58,18 @@
       <span>Satchel</span>
       <kbd>I</kbd>
     </button>
-    <p><span>Coins</span><b class="coin-count">{{ state.coins || 0 }}</b></p>
-    <p><span>Cinder ore</span><b>{{ ore }}</b></p>
-    <p><span>Ember</span><b>{{ ember }}</b></p>
-    <p><span>Edge</span><b>{{ edge ? (equipped ? 'Worn' : 'Bag') : '—' }}</b></p>
-    <p><span>Damage</span><b>{{ pushed.damage }}</b></p>
-    <p><span>Defeated</span><b>{{ state.kills || 0 }}</b></p>
+    <div class="tally">
+      <p><span>Coins</span><b class="coin-count">{{ state.coins || 0 }}</b></p>
+      <p><span>Ore</span><b class="ore-count">{{ ore }}</b></p>
+      <p><span>Ember</span><b class="ember-count">{{ ember }}</b></p>
+      <p><span>Edge</span><b>{{ edge ? (equipped ? 'Worn' : 'Bag') : '—' }}</b></p>
+      <p><span>Damage</span><b>{{ pushed.damage }}</b></p>
+      <p><span>Defeated</span><b>{{ state.kills || 0 }}</b></p>
+    </div>
+    <!-- Pickups announce through the objective line; these chips are only the picture. -->
+    <div class="loot-toasts" aria-hidden="true">
+      @for (toast of lootToasts; track toast.key) { <span class="loot-toast">{{ toast.text }}</span> }
+    </div>
   </aside>
 
   @if (bagOpen) {
@@ -157,7 +163,7 @@
   <div class="prompt" [class.armed]="!!state.nearby" [attr.inert]="panel ? '' : null">
     @if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
-      <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact</button>
+      <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact <kbd class="key-hint">E</kbd></button>
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
   </div>
@@ -213,7 +219,10 @@
   <!-- The open place. Always in the DOM (hidden when closed) so #panelHost
        resolves statically; see the component for why it is not in an @if.
        data-engine-ignore keeps the world's key handlers off anything typed here. -->
-  <section #placePanel class="place" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)">
+  <!-- The station under the pointer (or the finger): name and what it is for. Positioned from code. -->
+  <div #stationTip class="station-tip" hidden aria-hidden="true"><b></b><small></small></div>
+
+  <section #placePanel class="place" [class.place--closing]="closing" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)">
     <header class="place-head">
       <div>
         <span class="realm-tag">{{ panel?.kicker }}</span>

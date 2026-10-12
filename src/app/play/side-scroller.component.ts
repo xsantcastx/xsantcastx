@@ -17,15 +17,16 @@ import { IN_WORLD_PANEL } from '../shared/in-world-panel';
 import { areaOf, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
+import { RUNE_TIER_ORDER } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot } from '../shared/rpg/item-definition';
 import {
-  CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, SLOT_BY_ID, SLOT_IDS, SlotId,
+  CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, ItemRarity, SLOT_BY_ID, SLOT_IDS, SlotId,
   formatItemMod, rarityColor, rarityLabel,
 } from '../shared/rpg/item.model';
 import { KeeperCombatStats, keeperCombatStats } from '../shared/rpg/keeper-combat';
 import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
 import { compareStats, StatDeltaRow } from '../shared/rpg/stat-delta';
-import { SeamworksEngine, EngineInput, EngineState, InteractionTarget } from './engine/engine';
+import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout } from './engine/engine';
 
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
 const CRAFT_ID = 'seamworks-world:basalt-edge:v1';
@@ -47,6 +48,13 @@ interface BagSlip {
 interface OpenPlace { kind: 'page' | 'waystone'; stationId: string; title: string; kicker: string; route?: string }
 interface PlaceRow { id: string; name: string; blurb: string }
 interface WaystoneRow { id: RealmTownId; realm: string; town: string; crest: string; available: boolean; current: boolean }
+
+/** How long the place's content takes to fold away. Kept in step with `place-out` in the stylesheet. */
+const PANEL_CLOSE_MS = 160;
+/** How long a touched station stays highlighted, with its name card up. */
+const TOUCH_TIP_MS = 1400;
+
+interface LootToast { key: number; text: string }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -73,6 +81,8 @@ export class SideScrollerComponent implements OnDestroy {
    */
   @ViewChild('panelHost', { read: ViewContainerRef, static: true }) panelHost!: ViewContainerRef;
   @ViewChild('placePanel', { static: true }) placePanel!: ElementRef<HTMLElement>;
+  /** The station name card that follows the pointer. Written directly, outside change detection. */
+  @ViewChild('stationTip', { static: true }) stationTip!: ElementRef<HTMLElement>;
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly injector = inject(Injector);
@@ -89,7 +99,16 @@ export class SideScrollerComponent implements OnDestroy {
   panel: OpenPlace | null = null;
   panelLoading = false;
   panelError = '';
+  /** True for the moment the place's content folds away before the panel hides. */
+  closing = false;
+  private closeTimer?: ReturnType<typeof setTimeout>;
   placesOpen = false;
+  /** "+2 Pyrite Dust" chips over the satchel. Decorative; the objective line announces pickups. */
+  lootToasts: LootToast[] = [];
+  private toastKey = 0;
+  private loadoutKey = '';
+  private tipStation: string | null = null;
+  private tipTimer?: ReturnType<typeof setTimeout>;
   private readonly host = inject(ElementRef<HTMLElement>);
   readonly inventory = inject(InventoryService);
   private readonly activity = inject(ActivityProgressionGateway);
@@ -169,17 +188,20 @@ export class SideScrollerComponent implements OnDestroy {
       // Scene paintings follow the ArtScene convention: assets/images/<basename>-<width>.webp.
       scene: name => `assets/images/${name}-1536.webp`,
       town: this.town,
+      // Pickups fly to the satchel's coin count, wherever the HUD layout put it. Read per pickup.
+      satchelTarget: () => this.satchelPoint(),
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
       onStation: station => this.zone.run(() => this.openStation(station)),
-      onLoot: loot => loot.ore === 0 || this.zone.run(() => this.inventory.grantStack(`seamworks-loot:${loot.id}`, loot.material ?? CINDER_ORE_ID, loot.ore)),
+      onLoot: loot => loot.ore === 0 || this.zone.run(() => this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)),
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
-        if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bumpCoins();
+        if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
         this.state = state;
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
     this.statsKey = '';
+    this.loadoutKey = '';
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
@@ -202,8 +224,23 @@ export class SideScrollerComponent implements OnDestroy {
         const station = this.engine.pick(event.clientX, event.clientY).station;
         this.engine.setHover(station?.id ?? null);
         canvas.style.cursor = station ? 'pointer' : '';
+        this.showTip(station, event.clientX, event.clientY);
       };
-      const leave = (): void => { this.engine?.setHover(null); canvas.style.cursor = ''; };
+      const leave = (event: PointerEvent): void => {
+        if (event.pointerType !== 'mouse') return;
+        this.engine?.setHover(null); this.engine?.clearPointer(); canvas.style.cursor = ''; this.showTip(null, 0, 0);
+      };
+      // Touch has no hover: light the touched station and show its name card
+      // for a beat, so a tap reads as "going there" before the Keeper arrives.
+      const down = (event: PointerEvent): void => {
+        if (event.pointerType === 'mouse' || !this.engine || this.panel) return;
+        const station = this.engine.pick(event.clientX, event.clientY).station;
+        if (!station) return;
+        this.engine.setHover(station.id);
+        this.showTip(station, event.clientX, event.clientY);
+        if (this.tipTimer) clearTimeout(this.tipTimer);
+        this.tipTimer = setTimeout(() => { this.engine?.setHover(null); this.showTip(null, 0, 0); }, TOUCH_TIP_MS);
+      };
       const click = (event: MouseEvent): void => {
         if (!this.engine || this.panel || this.state.defeated) return;
         const hit = this.engine.pick(event.clientX, event.clientY);
@@ -212,27 +249,77 @@ export class SideScrollerComponent implements OnDestroy {
       };
       canvas.addEventListener('pointermove', move);
       canvas.addEventListener('pointerleave', leave);
+      canvas.addEventListener('pointerdown', down);
       canvas.addEventListener('click', click);
       this.unbindPointer = () => {
         canvas.removeEventListener('pointermove', move);
         canvas.removeEventListener('pointerleave', leave);
+        canvas.removeEventListener('pointerdown', down);
         canvas.removeEventListener('click', click);
       };
     });
   }
-  /** Pop the satchel's coin count when a pickup lands. Web Animations, so a
-   *  burst of pickups restarts the pop instead of queueing class toggles. */
-  private bumpCoins(): void {
-    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    const count = this.host.nativeElement.querySelector('.coin-count') as HTMLElement | null;
-    count?.animate(
+  /**
+   * The station name card beside the pointer. Written straight to the DOM:
+   * it moves with every pointermove, which must not run change detection.
+   */
+  private showTip(station: StationDef | null, clientX: number, clientY: number): void {
+    const tip = this.stationTip?.nativeElement;
+    if (!tip) return;
+    if (!station || this.panel) {
+      if (this.tipStation !== null) { tip.hidden = true; this.tipStation = null; }
+      return;
+    }
+    if (this.tipStation !== station.id) {
+      this.tipStation = station.id;
+      const name = tip.querySelector('b'); const blurb = tip.querySelector('small');
+      if (name) name.textContent = titleCase(station.label);
+      if (blurb) blurb.textContent = station.blurb ?? '';
+      tip.hidden = false;
+    }
+    const stage = (this.host.nativeElement as HTMLElement).getBoundingClientRect();
+    const x = Math.min(Math.max(clientX - stage.left + 16, 8), stage.width - 248);
+    const y = Math.max(clientY - stage.top - 64, 72);
+    tip.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+  }
+  /** Pop a satchel number when a pickup lands. Web Animations, so a burst of
+   *  pickups restarts the pop instead of queueing class toggles. */
+  private bump(selector: string): void {
+    if (this.reducedMotion) return;
+    const el = this.host.nativeElement.querySelector(selector) as HTMLElement | null;
+    el?.animate(
       [{ transform: 'scale(1)' }, { transform: 'scale(1.45)', color: '#ffe08a', offset: .35 }, { transform: 'scale(1)' }],
       { duration: 420, easing: 'cubic-bezier(.22, 1, .36, 1)' },
     );
   }
+  /**
+   * A monster's material drop reached the Keeper. The grant id is the engine's
+   * drop id (session uuid : kill count : drop-table entry), so a pickup the
+   * engine reports twice is still one grant. Refused → the drop stays on the
+   * floor and the Keeper is told why.
+   */
+  private collectMaterial(dropId: string, material: string, quantity: number): boolean {
+    if (!this.inventory.grantStack(`seamworks-loot:${dropId}`, material, quantity)) {
+      this.message = this.inventory.canAcceptStackGrant(material)
+        ? 'That pickup could not be saved. Walk over it again.'
+        : 'Your satchel is full. Make room to pick that up.';
+      return false;
+    }
+    const name = materialDisplay(material)?.name ?? titleCase(material.replace(/-/g, ' '));
+    this.toastLoot(`+${quantity} ${name}`);
+    this.bump(material === CINDER_ORE_ID ? '.ore-count' : material === EMBER_RESIDUE_ID ? '.ember-count' : '.satchel .clasp span');
+    return true;
+  }
+  private toastLoot(text: string): void {
+    const key = ++this.toastKey;
+    this.lootToasts = [...this.lootToasts, { key, text }].slice(-3);
+    setTimeout(() => { this.lootToasts = this.lootToasts.filter(toast => toast.key !== key); }, 1800);
+  }
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     this.atSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    if (this.closeTimer) clearTimeout(this.closeTimer);
+    if (this.tipTimer) clearTimeout(this.tipTimer);
   }
 
   // ── Places: stations as in-world panels ────────────────────────────────────
@@ -275,6 +362,10 @@ export class SideScrollerComponent implements OnDestroy {
     });
   }
   private showPanel(place: OpenPlace): void {
+    // A place opening while the last one folds away takes over the panel at once.
+    if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = undefined; }
+    this.closing = false;
+    this.showTip(null, 0, 0);
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panelError = ''; this.panelLoading = false;
@@ -286,15 +377,45 @@ export class SideScrollerComponent implements OnDestroy {
     // Focus moves into the dialog once it is shown; the close button is always there.
     setTimeout(() => this.placePanel.nativeElement.querySelector<HTMLElement>('.place-close')?.focus());
   }
-  /** Close the place and hand focus back to the world. `syncUrl` is false when the URL already changed (back/forward). */
+  /**
+   * Close the place and hand focus back to the world. `syncUrl` is false when
+   * the URL already changed (back/forward). The content folds away first
+   * (PANEL_CLOSE_MS); with reduced motion it closes at once.
+   */
   closePanel(syncUrl = true): void {
+    if (!this.panel || this.closing) return;
+    if (this.reducedMotion) { this.finishClose(syncUrl); return; }
+    this.closing = true;
+    this.closeTimer = setTimeout(() => this.finishClose(syncUrl), PANEL_CLOSE_MS);
+  }
+  private finishClose(syncUrl: boolean): void {
+    if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = undefined; }
+    this.closing = false;
     if (!this.panel) return;
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panel = null; this.panelLoading = false; this.panelError = '';
     this.engine?.setPaused(false);
     if (syncUrl) this.setAt(null);
-    this.boundCanvas?.focus();
+    this.focusWorld();
+  }
+  /**
+   * Put keyboard focus back on the game canvas.
+   *
+   * Not synchronously: until change detection drops `[attr.inert]` from the
+   * viewport, the canvas sits in an inert subtree and `focus()` silently
+   * refuses — focus fell to <body> and keyboard players had to click once
+   * before A/D/E worked again. So focus after the next render, and check.
+   */
+  private focusWorld(): void {
+    if (!this.browser) return;
+    const attempt = (retry: boolean): void => {
+      const canvas = this.boundCanvas?.isConnected ? this.boundCanvas : this.liveCanvas();
+      if (!canvas || this.panel) return;
+      if (canvas.closest('[inert]')) { if (retry) setTimeout(() => attempt(false), 50); return; }
+      canvas.focus({ preventScroll: true });
+    };
+    afterNextRender(() => attempt(true), { injector: this.injector });
   }
   private setAt(at: string | null): void {
     if ((this.route.snapshot.queryParamMap.get('at') ?? null) === at) return;
@@ -318,6 +439,19 @@ export class SideScrollerComponent implements OnDestroy {
     }));
   }
   get realmLabel(): string { return TOWN_LABELS[this.town.realm]; }
+  /**
+   * The creature the enemy bar is measuring. The engine reports only its HP, so
+   * name it from the area's data: the one kind that lives here, or — in a mixed
+   * hunt — the kind whose spawn points sit nearest the Keeper.
+   */
+  get enemyName(): string {
+    const area = areaOf(this.town, this.state.areaId ?? this.town.id) ?? this.town;
+    const monsters = area.monsters;
+    if (!monsters.length) return 'Enemy';
+    if (monsters.every(monster => monster.name === monsters[0].name)) return monsters[0].name;
+    const reach = (spawns: readonly number[]) => Math.min(...spawns.map(x => Math.abs(x - this.state.x)));
+    return monsters.reduce((best, monster) => reach(monster.spawnXs) < reach(best.spawnXs) ? monster : best).name;
+  }
   travel(id: RealmTownId): void {
     const town = TOWNS[id];
     if (!town || town.id === this.town.id) { this.closePanel(); return; }
@@ -580,12 +714,49 @@ export class SideScrollerComponent implements OnDestroy {
   /** Hand the engine the loadout's combat numbers when they change. */
   private pushStats(): void {
     if (!this.engine) return;
+    this.pushLoadout();
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
     this.statsKey = key;
     this.pushed = stats;
     this.engine.setStats(stats);
+  }
+  /**
+   * What the Keeper wears, for the engine to draw: the weapon and off-hand art
+   * (the same `itemArt()` the satchel uses) and the highest worn rarity for the
+   * aura. Visual only. Sent when it changes (checked on the HUD tick).
+   */
+  private pushLoadout(): void {
+    if (!this.engine) return;
+    const loadout = this.loadout();
+    const key = `${loadout.weapon?.art}:${loadout.weapon?.rarity}|${loadout.offhand?.art}:${loadout.offhand?.rarity}|${loadout.auraRarity}`;
+    if (key === this.loadoutKey) return;
+    this.loadoutKey = key;
+    this.engine.setLoadout(loadout);
+  }
+  private loadout(): KeeperLoadout {
+    const equipped = this.inventory.snapshot.equipped;
+    const worn = (slot: SlotId): GameItem | undefined => {
+      const item = equipped[slot];
+      return item && !item.explorerId ? item : undefined;
+    };
+    const held = (item: GameItem | undefined): HeldItem | null => {
+      const art = item ? itemArt(item)?.src : undefined;
+      return item && art ? { art, rarity: item.rarity } : null;
+    };
+    let aura: ItemRarity | null = null;
+    for (const slot of SLOT_IDS) {
+      const item = worn(slot);
+      if (item && (!aura || RUNE_TIER_ORDER.indexOf(item.rarity) > RUNE_TIER_ORDER.indexOf(aura))) aura = item.rarity;
+    }
+    return { weapon: held(worn('weapon')), offhand: held(worn('off-hand')), auraRarity: aura };
+  }
+  /** The satchel's coin count, in viewport px, for the engine's pickup flights. Null → the engine's default corner. */
+  private satchelPoint(): { x: number; y: number } | null {
+    const target = this.host.nativeElement.querySelector('.satchel .coin-count') as HTMLElement | null;
+    const box = target?.getBoundingClientRect();
+    return box && (box.width || box.height) ? { x: box.left + box.width / 2, y: box.top + box.height / 2 } : null;
   }
   private act(target: InteractionTarget): void {
     if (!this.browser || this.state?.paused || this.state?.defeated) return;
