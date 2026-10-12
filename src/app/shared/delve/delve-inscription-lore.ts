@@ -32,7 +32,6 @@ export const DELVE_INSCRIPTION_LORE: Readonly<Record<string, InscriptionLore>> =
       'Above the Godforge the World-Root reached for light. Below it, its shadow reached for the fracture, ' +
       'and found it first. Every root in these hollows is growing toward the same crack.',
   },
-  // Not yet placed in the Delve (the engine's model lists 8): ready for more inscriptions.
   'roots-cutting-mark': {
     title: 'A Cut, Healed Over',
     text:

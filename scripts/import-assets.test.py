@@ -136,6 +136,40 @@ class TileFamily(unittest.TestCase):
         self.assertEqual(len(problems), 1)
         self.assertIn('22-tile-torch.png: opaque corners', problems[0])
 
+    def prop(self, name, extra):
+        props = os.path.join(ia.LIBRARY, 'Sprites', 'Props')
+        os.makedirs(props, exist_ok=True)
+        img = Image.new('RGBA', (64, 64), (0, 0, 0, 0))
+        img.putpixel((32, 32), (200, 100, 50, 255))
+        img.save(os.path.join(props, name))
+        meta = {'scale': 2, 'frame': {'w': 64, 'h': 64},
+                'actions': [{'name': 'idle', 'frames': 1, 'fps': 0, 'loop': False}]}
+        meta.update(extra)
+        with open(os.path.join(props, name[:-4] + '.json'), 'w') as fh:
+            json.dump(meta, fh)
+
+    def test_pixel_art_flag_passes_through_to_the_manifest(self):
+        self.prop('01-crisp-lamp.png', {'pixelArt': True})
+        self.prop('02-soft-lamp.png', {})
+        problems, pending = [], []
+        ia.import_sprites(False, [], problems, pending)
+        self.assertEqual(problems, [])
+        ia.write_sprite_manifest()
+        with open(ia.SPRITE_MANIFEST_OUT) as fh:
+            ts = fh.read()
+        crisp = next(l for l in ts.splitlines() if "'crisp-lamp'" in l)
+        soft = next(l for l in ts.splitlines() if "'soft-lamp'" in l)
+        self.assertTrue(crisp.endswith(', pixelArt: true },'), crisp)
+        self.assertNotIn('pixelArt', soft)
+        self.assertIn('pixelArt?: boolean;', ts)
+
+    def test_pixel_art_flag_must_be_boolean(self):
+        self.prop('03-odd-lamp.png', {'pixelArt': 'yes'})
+        problems, pending = [], []
+        ia.import_sprites(True, [], problems, pending)
+        self.assertEqual(len(problems), 1)
+        self.assertIn('pixelArt must be true or false', problems[0])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -7,7 +7,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
-import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID } from '../shared/activity/activity.model';
+import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor } from '../shared/activity/activity.model';
+import { EconomyService } from '../shared/economy/economy.service';
 import { InventoryService, MAX_INVENTORY } from '../shared/rpg/inventory.service';
 import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
@@ -31,7 +32,8 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
-import { ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
+import { ChestGearRow, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
+import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolTiers } from '../shared/skills/tools';
@@ -65,6 +67,15 @@ export function provisionalToolTiers(snapshot: Pick<InventorySnapshot, 'equipped
 }
 
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
+/**
+ * Where the Keeper last stood and what the hunts have paid in coins, local to
+ * this device: `{ town?: RealmTownId, coins?: number }`. The town is restored
+ * on load (a `?at=` link still wins); `coins` is the satchel's running count
+ * of coins picked up (each one was also credited to the Gold purse).
+ */
+const PLAY_KEY = 'eclipse-play-world-v1';
+/** Mining XP for an ore drop walked over, the same as a Cinder vein swung open. */
+const ORE_PICKUP_XP = 2;
 const CRAFT_ID = 'seamworks-world:basalt-edge:v1';
 const TUTORIAL_EMBER_ID = 'seamworks-opening:keeper-ember:v1';
 const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 'feet', 'trinket'];
@@ -88,7 +99,7 @@ interface OpenPlace {
   own?: true;
 }
 /** The open chest: what is in it and what the satchel could put in. Rebuilt after every move. */
-interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; note: string }
+interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; gear: ChestGearRow[]; bagGear: ChestGearRow[]; gearSlots: number; note: string }
 interface PlaceRow { id: string; name: string; blurb: string }
 interface WaystoneRow { id: RealmTownId; realm: string; town: string; crest: string; available: boolean; current: boolean }
 
@@ -175,6 +186,11 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly activity = inject(ActivityProgressionGateway);
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
+  private readonly economy = inject(EconomyService);
+  /** Coins picked up across sessions (PLAY_KEY), shown in the satchel. */
+  coinsKept = 0;
+  /** Drops already credited this page (the engine reports an accepted drop once; this makes sure). */
+  private readonly creditedDrops = new Set<string>();
   /** The player's own Delve (seed + dug cells) and the inscriptions they have read. */
   private readonly delve = inject(DelveSaveService);
   private readonly delveLore = inject(DelveLoreService);
@@ -247,6 +263,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.homestead.start();
     const saved = this.store.read(SAVE_KEY) as { era?: number; resetAt?: string | null; restored?: boolean } | null;
     this.restored = saved?.restored === true && saved.era === INVENTORY_ERA && saved.resetAt === this.store.readRaw(RESET_STAMP_KEY);
+    this.economy.init();
+    // Back where the Keeper last stood. A `?at=` link resolves after this and still wins.
+    const play = this.playSave();
+    const home = typeof play.town === 'string' ? TOWNS[play.town as RealmTownId] : undefined;
+    if (home) this.town = home;
+    this.coinsKept = Number.isInteger(play.coins) && (play.coins as number) > 0 ? play.coins as number : 0;
     this.zone.runOutsideAngular(() => {
       this.room = new SocialRoom(snapshot => this.zone.run(() => {
         this.social = snapshot;
@@ -281,7 +303,8 @@ export class SideScrollerComponent implements OnDestroy {
       satchelTarget: () => this.satchelPoint(),
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
       onStation: station => this.zone.run(() => this.openStation(station)),
-      onLoot: loot => loot.ore === 0 || this.zone.run(() => this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)),
+      onLoot: loot => this.zone.run(() => (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
+        && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore))),
       onWorldAction: event => this.zone.run(() => this.worldAction(event)),
       onDiscover: event => this.zone.run(() => this.discover(event)),
       onPlace: event => this.zone.run(() => this.placeFromSatchel(event)),
@@ -294,7 +317,6 @@ export class SideScrollerComponent implements OnDestroy {
       gathering: this.gatherSave,
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
-        if ((state.coins ?? 0) > (this.state.coins ?? 0)) this.bump('.coin-count');
         if (state.delve && !this.state.delve) this.refundOrphanChests();
         // At the shaft: is there a camp below to descend to? Asked once per arrival, not per frame.
         if (state.nearby === 'delve' && this.state.nearby !== 'delve') this.campReady = !!this.engine?.hasDelveCamp();
@@ -448,7 +470,17 @@ export class SideScrollerComponent implements OnDestroy {
    * floor and the Keeper is told why.
    */
   private collectMaterial(dropId: string, material: string, quantity: number): boolean {
-    if (!this.inventory.grantStack(`seamworks-loot:${dropId}`, material, quantity)) {
+    // Ore trains Mining like a vein does: one gateway write grants the ore and the XP together.
+    if (miningTierFor(material)) {
+      const result = this.skillActions.act({
+        mutationId: `seamworks-loot:${dropId}`, skill: 'mining', xp: ORE_PICKUP_XP, materialId: material, qty: quantity,
+        locationId: this.worldLocation(this.state.areaId ?? this.town.id),
+      });
+      if (!result.ok) {
+        this.message = result.code === 'capacity' ? 'Your satchel is full. Make room to pick that up.' : 'That pickup could not be saved. Walk over it again.';
+        return false;
+      }
+    } else if (!this.inventory.grantStack(`seamworks-loot:${dropId}`, material, quantity)) {
       this.message = this.inventory.canAcceptStackGrant(material)
         ? 'That pickup could not be saved. Walk over it again.'
         : 'Your satchel is full. Make room to pick that up.';
@@ -458,6 +490,31 @@ export class SideScrollerComponent implements OnDestroy {
     this.toastLoot(`+${quantity} ${name}`);
     this.bump(material === CINDER_ORE_ID ? '.ore-count' : material === EMBER_RESIDUE_ID ? '.ember-count' : '.satchel .clasp span');
     return true;
+  }
+  /**
+   * A coin drop reached the Keeper: the coins go to the Gold purse (once per
+   * drop id) and onto the satchel's kept count, saved with the town.
+   */
+  private collectCoins(dropId: string, coins: number): boolean {
+    if (this.creditedDrops.has(dropId)) return true;
+    this.creditedDrops.add(dropId);
+    this.economy.earnGold(coins, 'hunt');
+    this.coinsKept += coins;
+    this.writePlay({ coins: this.coinsKept });
+    this.bump('.coin-count');
+    return true;
+  }
+  private playSave(): { town?: unknown; coins?: unknown } {
+    const raw = this.store.read(PLAY_KEY);
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as { town?: unknown; coins?: unknown } : {};
+  }
+  /** Merge a change into PLAY_KEY; a write that changes nothing is skipped. */
+  private writePlay(patch: { town?: RealmTownId; coins?: number }): void {
+    if (!this.browser) return;
+    const before = this.playSave();
+    const next = { ...before, ...patch };
+    if (next.town === before.town && next.coins === before.coins) return;
+    this.store.write(PLAY_KEY, next);
   }
   private toastLoot(text: string): void {
     const key = ++this.toastKey;
@@ -493,7 +550,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (!found) return;
     const town = TOWNS[found.townId];
     if (!town) return;
-    if (town.id !== this.town.id || !this.engine.inTown) { this.town = town; this.engine.setTown(town); }
+    if (town.id !== this.town.id || !this.engine.inTown) { this.town = town; this.engine.setTown(town); this.writePlay({ town: town.id as RealmTownId }); }
     const station = found.station;
     this.engine.placeAt(station.x);
     if (station.kind === 'panel' || station.kind === 'waystone') this.openStation(station);
@@ -632,6 +689,7 @@ export class SideScrollerComponent implements OnDestroy {
     const town = TOWNS[id];
     if (!town || town.id === this.town.id) { this.closePanel(); return; }
     this.town = town;
+    this.writePlay({ town: id });
     this.closePanel();
     this.engine?.setTown(town);
   }
@@ -738,8 +796,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
-    else if (this.state.delve && /^Digit[1-9]$/.test(event.code)) {
-      const slot = this.hotbar[Number(event.code.slice(5)) - 1];
+    else if (this.state.delve && /^Digit[0-9]$/.test(event.code)) {
+      // Keys 1-9, then 0 for the tenth slot.
+      const slot = this.hotbar[(Number(event.code.slice(5)) + 9) % 10];
       if (slot) { event.preventDefault(); this.choosePlaceable(slot.id); }
     }
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
@@ -917,7 +976,9 @@ export class SideScrollerComponent implements OnDestroy {
     // each ten Delving levels light one more tile.
     const floor = provisionalToolTiers(this.inventory.snapshot);
     const progress = this.activity.snapshot.progress;
-    const crafted = toolTiers(this.inventory.snapshot, progress);
+    // A tool stored in a Delve chest is not in hand.
+    const snapshot = this.inventory.snapshot;
+    const crafted = toolTiers({ ...snapshot, items: snapshot.items.filter(item => !isChestHolder(item.explorerId)) }, progress);
     const tools = {
       pickaxe: Math.max(floor.pickaxe ?? 0, crafted.pickaxe),
       axe: Math.max(floor.axe ?? 0, crafted.axe),
@@ -986,7 +1047,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (key === this.hotbarKey && this.hotbar.length) return;
     this.hotbarKey = key;
     this.hotbar = PLACEABLES.map((def, i) => ({
-      id: def.id, name: this.t(`play.place.${def.id}`), art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String(i + 1),
+      id: def.id, name: this.t(`play.place.${def.id}`), art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String((i + 1) % 10),
     }));
     // Nothing chosen yet: the first thing the satchel holds.
     if (!this.placing) {
@@ -1070,7 +1131,10 @@ export class SideScrollerComponent implements OnDestroy {
         return { stackKey: stack.stackKey, name: display?.name ?? stack.stackKey, art: display?.art ?? '', qty: stack.quantity };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
-    this.chestView = { rows: this.chests.contents(at.areaId, at.index), satchel, slots: this.chests.slots, note };
+    this.chestView = {
+      rows: this.chests.contents(at.areaId, at.index), satchel, slots: this.chests.slots,
+      gear: this.chests.gear(at.areaId, at.index), bagGear: this.chests.bagGear(), gearSlots: this.chests.gearSlots, note,
+    };
   }
   chestPut(row: ChestRow): void {
     const at = this.panel?.chest;
@@ -1085,6 +1149,18 @@ export class SideScrollerComponent implements OnDestroy {
     const result = this.chests.take(at.areaId, at.index, row.stackKey);
     this.refreshChest(result.ok ? `${result.qty} ${row.name} back in the satchel.` : result.message);
     this.refreshHotbar();
+  }
+  chestPutGear(row: ChestGearRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.putGear(at.areaId, at.index, row.id);
+    this.refreshChest(result.ok ? `${row.name} put in the chest.` : result.message);
+  }
+  chestTakeGear(row: ChestGearRow): void {
+    const at = this.panel?.chest;
+    if (!at) return;
+    const result = this.chests.takeGear(at.areaId, at.index, row.id);
+    this.refreshChest(result.ok ? `${row.name} back in the satchel.` : result.message);
   }
   /** Chests whose Delve changed under them (a version bump, a merged seed) hand their contents back. */
   private refundOrphanChests(): void {

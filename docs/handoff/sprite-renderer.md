@@ -99,8 +99,8 @@ image has loaded:
 **Town life:** `LifeFrame.sprite` and `LifeFrame.spriteImage` are optional.
 
 **Crispness:** a sidecar with `"pixelArt": true` turns image smoothing off and snaps the draw to whole pixels.
-The style guide asks for smooth sprites, so **the importer does not emit this flag yet**. Pixel-art sheets
-need a one-line change in `write_sprite_manifest()` to pass it through.
+The importer passes the flag through to the manifest entry (`pixelArt: true`) and rejects a non-boolean
+value. The style guide asks for smooth sprites, so leave it out unless a sheet really is pixel art.
 
 ## Tests
 
