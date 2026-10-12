@@ -1107,7 +1107,17 @@ test('inscriptions: E beside a carved wall reports it; the lore ledger records i
   // The model's list and the spec's placements agree, id for id.
   assert.deepEqual(loreMod.INSCRIPTIONS.map(i => [i.id, i.col, i.row]), delveSpec.inscriptions.map(i => [i.id, i.col, i.row]));
   for (const ins of loreMod.INSCRIPTIONS) assert.equal(terrainMod.biomeAt(delveSpec, ins.row).id, ins.biome, ins.id);
-  assert.equal(loreMod.INSCRIPTIONS.length, 8);
+  assert.equal(loreMod.INSCRIPTIONS.length, 12, 'three per biome');
+  for (const biome of ['root-hollows', 'basalt-caverns', 'glowcap-grotto', 'magma-halls']) {
+    assert.equal(loreMod.INSCRIPTIONS.filter(i => i.biome === biome).length, 3, biome);
+  }
+  // Each carving sits in a cell every seed already opens: no saved dig can name it, so `version` stays.
+  const bare = { ...delveSpec, inscriptions: [] };
+  for (const seed of [1, 77, 0xabcdef, 0x5eed_de1e]) {
+    const t = terrainMod.generateTerrain(bare, seed);
+    for (const ins of delveSpec.inscriptions) assert.equal(t.nodeAt(ins.col, ins.row).id, 'air', `${ins.id} @ seed ${seed}`);
+  }
+  assert.equal(delveSpec.version, 2);
   const found = [];
   const { engine, state } = enterOwnDelve(null, { onDiscover: e => found.push(e) });
   // The old tunnel in the Root Hollows: floor at row 9, the carving at (19, 7).
@@ -1472,9 +1482,11 @@ test('camp: one per Delve, opens the bench on what can be made now, and town des
   const placeables = new Set(terrainMod.PLACEABLES.map(p => p.id));
   for (const kit of craftMod.DELVE_KIT_RECIPES) {
     assert.ok(placeables.has(kit.output.itemId), kit.id);
-    assert.equal(kit.requiredLevel, 1, kit.id);
+    // Level 1, except the Smithing-gated shoring and charges.
+    if (kit.skill !== 'smithing') assert.equal(kit.requiredLevel, 1, kit.id);
   }
-  assert.deepEqual(terrainMod.PLACEABLES.map(p => p.id), ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp'], 'hotbar order, keys 1-7');
+  assert.deepEqual(terrainMod.PLACEABLES.map(p => p.id),
+    ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp', 'timber-support', 'basalt-support', 'blast-charge'], 'hotbar order, keys 1-9 then 0');
   for (const p of terrainMod.PLACEABLES) assert.equal(terrainMod.TERRAIN_NODES[p.node].placeable ?? terrainMod.TERRAIN_NODES[p.node].block, p.id, p.id);
 
   const delve = memoryDelve(71); const used = [];
@@ -1512,6 +1524,180 @@ test('camp: one per Delve, opens the bench on what can be made now, and town des
   assert.equal(none.engine.hasDelveCamp(), false);
   assert.equal(none.engine.descendToCamp(), false);
   none.engine.destroy();
+});
+
+// ── Delve extras: loose rock and supports, blasting charges, gear in chests ──
+const SWING = ['pickaxe', 'axe', 'sickle', 'blade'];
+const HALL_FLOOR = 49; // the Magma Maws' hall: open rows 44-48 over a bedrock floor
+/** A Delve whose Magma hall ceiling (row 43) has a loose cell over the hall, and that column. */
+function looseHall() {
+  for (let seed = 1; seed < 400; seed++) {
+    const t = terrainMod.generateTerrain(delveSpec, seed);
+    const cols = [];
+    for (let col = 32; col <= 58; col++) if (terrainMod.isLoose(t, col, 43)) cols.push(col);
+    if (cols.length >= 2 && cols[1] - cols[0] > 8) return { seed, cols };
+  }
+  throw new Error('no seed with two loose hall cells');
+}
+
+test('loose rock: only the Magma Halls, about one cell in five, fixed for every seed, and generation untouched', () => {
+  const t = terrainMod.generateTerrain(delveSpec, 4242);
+  let band = 0, loose = 0;
+  for (let row = 0; row < t.rows; row++) for (let col = 0; col < t.cols; col++) {
+    if (!terrainMod.isLoose(t, col, row)) { if (row >= 40 && t.nodeAt(col, row).id === 'scorched-basalt') band++; continue; }
+    loose++; band++;
+    assert.equal(t.biomeAt(row).id, 'magma-halls');
+    assert.equal(t.nodeAt(col, row).id, 'scorched-basalt');
+  }
+  assert.ok(loose / band > .12 && loose / band < .28, `share ${loose}/${band}`);
+  // Dug or replaced, it is no longer loose rock.
+  const [col, row] = (() => { for (let r = 40; r < 54; r++) for (let c = 0; c < t.cols; c++) if (terrainMod.isLoose(t, c, r)) return [c, r]; })();
+  t.set(col, row, terrainMod.nodeIndex('basalt-block'));
+  assert.equal(terrainMod.isLoose(t, col, row), false);
+  // Supports: the post holds within its reach (Chebyshev), timber 3, basalt 5.
+  const s = terrainMod.generateTerrain(delveSpec, 4242);
+  s.set(40, 48, terrainMod.nodeIndex('timber-support'));
+  assert.equal(terrainMod.supportNear(s, 43, 45), true);
+  assert.equal(terrainMod.supportNear(s, 40, 44), false, 'four rows up is past timber');
+  s.set(40, 48, terrainMod.nodeIndex('basalt-support'));
+  assert.equal(terrainMod.supportNear(s, 40, 43), true, 'basalt reaches five');
+  assert.equal(terrainMod.supportNear(s, 46, 43), false);
+  assert.equal(terrainMod.TERRAIN_NODES['timber-support'].solid, false, 'walked through');
+});
+
+test('loose rock: digging it with no support drops rubble that bruises, never fells; a support holds it', () => {
+  const { seed, cols: [first, second] } = looseHall();
+  const { engine, state } = enterOwnDelve(memoryDelve(seed));
+  engine.setTools({ pickaxe: 3 });
+  const t = engine.terrain;
+  const stand = col => { engine.player.x = col * 32 + 16; engine.player.y = 610 + HALL_FLOOR * 32; engine.player.vy = 0; engine.player.grounded = true; engine.hurtTime = 0; };
+  const dig = (col, row) => { for (let n = 0; n < 10 && t.solid(col, row); n++) engine.hitCell(col, row, SWING, false); };
+  stand(first);
+  engine.update(1 / 60);
+  assert.match(state().message, /Loose rock overhead/, 'named once, when it is close');
+  assert.equal(engine.hp, 100);
+  dig(first, 43);
+  assert.equal(t.solid(first, 43), false);
+  assert.match(state().message, /Loose rock!/, 'the groan before it falls');
+  engine.update(1 / 60);
+  assert.equal(engine.hp, 100, 'nothing falls during the groan: time to step aside');
+  for (let n = 0; n < 90; n++) engine.update(1 / 60);
+  assert.ok(engine.hp < 100 && engine.hp >= 90, `bruised, ${engine.hp}`);
+  assert.match(state().message, /Loose rock hits you/);
+  // Never lethal: at 2 HP a chunk leaves the Keeper standing.
+  engine.hp = 2; engine.hurtTime = 0;
+  engine.dropRubble(engine.player.x, t.top + 44 * 32, '#3a1e1c');
+  for (let n = 0; n < 90; n++) engine.update(1 / 60);
+  assert.equal(engine.hp, 1);
+  // A basalt support on the hall floor holds the ceiling five rows up: no rubble.
+  stand(second);
+  engine.hp = 100;
+  assert.equal(engine.placeCell(second + 2, 48, 'basalt-support'), true);
+  dig(second, 43);
+  assert.equal(t.solid(second, 43), false);
+  for (let n = 0; n < 90; n++) engine.update(1 / 60);
+  assert.equal(engine.hp, 100, 'held by the support');
+  assert.equal(engine.rubble.some(r => r.active), false);
+  engine.destroy();
+});
+
+test('blasting charges: Smithing-gated, lit from a staff, clear a small round of rock once, and persist like digging', () => {
+  for (const [id, level, out] of [['craft-delve-timber-support', 5, 'timber-support'], ['craft-delve-basalt-support', 12, 'basalt-support'], ['craft-delve-blast-charge', 10, 'blast-charge']]) {
+    const recipe = craftMod.craftingRecipeById(id);
+    assert.equal(recipe.skill, 'smithing', id); assert.equal(recipe.requiredLevel, level, id);
+    assert.equal(recipe.output.itemId, out); assert.equal(recipe.output.stack, true); assert.equal(recipe.category, 'delve');
+  }
+  const delve = memoryDelve(91); const events = []; const placed = [];
+  const { engine, state } = enterOwnDelve(delve, {
+    onWorldAction: e => { events.push(e); return true; },
+    onPlace: e => { placed.push(e); return true; },
+  });
+  engine.setTools({ pickaxe: 1 });
+  const t = buildRoom(engine);
+  t.base = t.kind.slice(); // the test room counts as generated rock (placed cells pay no XP)
+  const rock = terrainMod.nodeIndex('rock');
+  engine.setPlaceable('blast-charge');
+  // No staff: refused before the satchel is asked.
+  assert.equal(engine.place(), false);
+  assert.match(state().message, /staff to light the fuse/);
+  assert.equal(placed.length, 0);
+  engine.setTools({ pickaxe: 1, staff: 1 });
+  // Bedrock and a protected stamp sit in the blast; neither may go.
+  t.set(33, 9, terrainMod.nodeIndex('bedrock'));
+  t.protect[t.index(29, 9)] = 1;
+  // A placed block in reach pays its block back, no XP.
+  assert.equal(engine.placeCell(32, 7, 'basalt-block'), true);
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'blast-charge');
+  assert.match(state().message, /Fuse lit/);
+  // The fuse burns: nothing yet.
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.equal(t.nodeAt(31, 9).id, 'rock');
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.equal(t.nodeAt(31, 8).id, 'air', 'the charge is spent');
+  for (const [col, row] of [[31, 9], [31, 10], [30, 9], [32, 9], [30, 10], [32, 10]]) {
+    assert.equal(t.solid(col, row), false, `cleared ${col},${row}`);
+  }
+  assert.equal(t.nodeAt(33, 9).id, 'bedrock', 'never bedrock');
+  assert.equal(t.nodeAt(29, 9).id, 'rock', 'never a protected stamp');
+  assert.equal(t.solid(31, 12), true, 'outside the radius stands');
+  const rockEvents = events.filter(e => e.kind === 'blast' && e.cellKey !== '32,7');
+  assert.ok(rockEvents.length >= 6);
+  for (const e of rockEvents) { assert.equal(e.discipline, 'mining'); assert.ok(e.xp >= 1); assert.match(e.mutationId, /^delve:/); }
+  const block = events.find(e => e.cellKey === '32,7');
+  assert.equal(block.xp, 0); assert.equal(block.block, 'basalt-block');
+  assert.match(state().message, /charge goes off: \d+ cells/);
+  // Saved like digging.
+  const layout = terrainMod.terrainLayout(delveSpec, 91);
+  const diff = saveMod.cellsFor(delve.save, 'ember-delve', layout);
+  assert.equal(diff.get(t.index(31, 9)), 0);
+  // X beside a lit charge pinches it out: it comes back and never goes off.
+  t.set(31, 9, rock); t.set(30, 9, rock); t.set(32, 9, rock);
+  engine.player.x = 30 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0; engine.facing = 1;
+  assert.equal(engine.place(), true);
+  assert.equal(engine.takeBack(), true);
+  assert.match(state().message, /pinch the fuse out/);
+  for (let n = 0; n < 150; n++) engine.update(1 / 60);
+  assert.equal(t.nodeAt(31, 9).id, 'rock');
+  engine.destroy();
+  const again = enterOwnDelve(delve);
+  assert.equal(again.engine.terrain.solid(31, 10), false, 'the blast survives a reload');
+  again.engine.destroy();
+});
+
+test('blasting charges: the fragment chamber is sealed to a charge until its warden falls, the fragment and caches never', () => {
+  const t = terrainMod.generateTerrain(delveSpec, 5);
+  const shut = () => false, open = () => true;
+  let wall = null;
+  for (let row = 44; row < 52 && !wall; row++) for (let col = 90; col < 110 && !wall; col++) {
+    if (terrainMod.blastable(t, col, row, 2, open) && !t.protect[t.index(col, row)]) wall = [col, row];
+  }
+  assert.ok(wall, 'a chamber wall a charge could break');
+  assert.equal(terrainMod.blastable(t, ...wall, 2, shut), false, 'sealed until the warden falls');
+  for (const [col, row] of [[106, 50], [85, 18], [103, 24], [100, 21]]) assert.equal(terrainMod.blastable(t, col, row, 9, open), false, `${col},${row} protected`);
+  // Power is the staff's tier + 1: heartstone (Pickaxe III) needs Staff II.
+  t.set(10, 10, terrainMod.nodeIndex('heartstone-vein'));
+  assert.equal(terrainMod.blastable(t, 10, 10, 2, open), false);
+  assert.equal(terrainMod.blastable(t, 10, 10, 3, open), true);
+  const out = new Int32Array(32);
+  const n = terrainMod.blastCells(t, 10, 10, 3, open, out);
+  assert.ok(n > 0 && n <= 21);
+  assert.equal(out[0], t.index(10, 10), 'nearest first');
+});
+
+test('chest gear: held by the chest through the ledger location, strays come home', () => {
+  const chest = { layout: 'L', born: 1234, n: 0, slots: {} };
+  assert.equal(saveMod.chestHolderId(chest), 'delve-chest:1234');
+  assert.equal(saveMod.isChestHolder('delve-chest:1234'), true);
+  assert.equal(saveMod.isChestHolder('explorer-7'), false);
+  assert.equal(saveMod.isChestHolder(undefined), false);
+  const items = [
+    { id: 'a', explorerId: 'delve-chest:1234' }, { id: 'b', explorerId: 'delve-chest:99' },
+    { id: 'c', explorerId: 'thrall-1' }, { id: 'd' },
+  ];
+  assert.deepEqual(saveMod.strayChestGear(items, { 'ember-delve:8c': chest }), ['b']);
+  assert.deepEqual(saveMod.strayChestGear(items, undefined), ['a', 'b']);
+  assert.equal(saveMod.CHEST_GEAR_SLOTS, 6);
 });
 
 // ── Gathering in the hunting grounds, Hunting XP, cross-town ?at=, the lantern ──
