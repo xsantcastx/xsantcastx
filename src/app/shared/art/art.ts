@@ -50,6 +50,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   'kaels-hammer': 'iron-hammer',
   // Delve building placeables. Stand-ins until the commission pack paints them.
   'dirt-block': 'relic-dust', 'basalt-block': 'godforge-slag', 'torch': 'ember-stoker',
+  'ladder': 'world-root-bark', 'platform': 'rootwall-shield',
 };
 
 /**

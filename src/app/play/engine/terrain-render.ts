@@ -208,6 +208,21 @@ function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark
       c.fillStyle = light; c.beginPath(); c.ellipse(x + 16, y + 10, 2.5, 4, 0, 0, Math.PI * 2); c.fill();
       break;
     }
+    case 'ladder': {
+      // Two rails and three rungs; rungs at the same heights in every cell, so a run reads as one ladder.
+      c.fillStyle = dark; c.fillRect(x + 6, y, 4, 32); c.fillRect(x + 22, y, 4, 32);
+      c.fillStyle = base; c.fillRect(x + 7, y, 2, 32); c.fillRect(x + 23, y, 2, 32);
+      for (const ry of [4, 15, 26]) { c.fillStyle = dark; c.fillRect(x + 8, y + ry + 1, 16, 3); c.fillStyle = light; c.fillRect(x + 8, y + ry, 16, 2); }
+      break;
+    }
+    case 'platform': {
+      // A plank across the top, a lit edge, two thin struts to the wall.
+      c.fillStyle = dark; c.fillRect(x, y + 6, 32, 3); c.fillRect(x + 5, y + 6, 2, 12); c.fillRect(x + 25, y + 6, 2, 12);
+      c.fillStyle = base; c.fillRect(x, y, 32, 6);
+      c.fillStyle = light; c.fillRect(x, y, 32, 2);
+      c.fillStyle = fleck; c.fillRect(x + 10, y + 2, 1, 4); c.fillRect(x + 21, y + 2, 1, 4);
+      break;
+    }
   }
 }
 
