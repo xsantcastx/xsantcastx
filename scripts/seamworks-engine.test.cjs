@@ -530,3 +530,189 @@ test('drop tables are data: chances roll on the engine RNG and materials carry t
   assert.ok(loot.some(drop => drop.material === 'ember-residue' && drop.ore === 2));
   engine.destroy();
 });
+
+// ── Phase 2 renderer: per-creature rigs, loot beams and flights, gear on the Keeper ──
+const creatures = loadTs(path.resolve(__dirname, '../src/app/play/engine/creature-rigs.ts'));
+const lootFx = loadTs(path.resolve(__dirname, '../src/app/play/engine/loot-fx.ts'));
+const loadout = loadTs(path.resolve(__dirname, '../src/app/play/engine/loadout.ts'));
+const PAINTED = ['rivet-maw', 'prism-forager', 'ephemeris-leech', 'mirror-substitute', 'rootglass-stag'];
+const poseInput = (extra = {}) => ({ phase: 'idle', timer: 1, time: 1.3, seed: 0, reduced: false, hurt: 0, ...extra });
+
+test('each painted creature gets its own rig; unknown keys get the generic one', () => {
+  const specs = new Set();
+  for (const key of PAINTED) {
+    const def = creatures.creatureRigFor(key);
+    assert.equal(def.key, key);
+    specs.add(def.spec);
+  }
+  assert.equal(specs.size, PAINTED.length, 'no two creatures share a bone layout');
+  assert.equal(creatures.creatureRigFor('rivet-maw').spec, poses.MAW_RIG, 'the Rivet Maw keeps its rig');
+  for (const key of ['not-a-creature', '', undefined, 'constructor', 'toString']) {
+    assert.equal(creatures.creatureRigFor(key), creatures.GENERIC_CREATURE, `${String(key)} falls back`);
+  }
+  for (const def of [...PAINTED.map(creatures.creatureRigFor), creatures.GENERIC_CREATURE]) {
+    const mesh = rig.buildMesh(def.spec, 1);
+    assert.ok(mesh.nt <= 150, `${def.key}: ${mesh.nt} triangles`);
+    def.spec.bones.forEach((bone, index) => assert.ok(bone.parent < index, `${def.key}.${bone.name} parent precedes it`));
+    for (let i = 0; i < mesh.nv; i++) {
+      let sum = 0;
+      for (let k = 0; k < rig.MAX_INFLUENCES; k++) sum += mesh.wVal[i * rig.MAX_INFLUENCES + k];
+      assert.ok(Math.abs(sum - 1) < 1e-5, `${def.key} vertex ${i}`);
+    }
+    const pose = rig.createPose(def.spec.bones.length);
+    def.pose(pose, poseInput({ phase: 'windup', timer: .1, reduced: true, hurt: 1 }));
+    assert.equal(rig.isRestPose(pose), true, `${def.key}: reduced motion is the still painting`);
+    for (const phase of ['idle', 'windup', 'strike', 'recover']) {
+      def.pose(pose, poseInput({ phase, timer: .05 }));
+      for (const value of pose) assert.ok(Number.isFinite(value), `${def.key} ${phase} pose is finite`);
+    }
+    const calm = rig.createPose(def.spec.bones.length), struck = rig.createPose(def.spec.bones.length);
+    def.pose(calm, poseInput()); def.pose(struck, poseInput({ hurt: 1 }));
+    assert.notDeepEqual([...struck], [...calm], `${def.key}: a hit shows`);
+  }
+});
+
+test('creature motion: the stag lowers its head, the leech undulates, the mirror sways in reflection, the forager skitters', () => {
+  const S = rig.POSE_STRIDE;
+  const stag = creatures.creatureRigFor('rootglass-stag');
+  const pose = rig.createPose(stag.spec.bones.length);
+  stag.pose(pose, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(pose[creatures.STAG.NECK * S] > .3, 'wind-up drops the neck (the stag faces right)');
+  stag.pose(pose, poseInput({ phase: 'strike', timer: .01 }));
+  assert.ok(pose[creatures.STAG.ROOT * S + 1] > .12, 'the charge drives forward');
+
+  const leech = creatures.creatureRigFor('ephemeris-leech');
+  const L = creatures.LEECH;
+  const a = rig.createPose(leech.spec.bones.length);
+  // A travelling wave: the abdomen peaks after the head does.
+  let headPeak = 0, bellyPeak = 0, headBest = -Infinity, bellyBest = -Infinity;
+  for (let n = 0; n < 160; n++) {
+    const time = n / 60;
+    leech.pose(a, poseInput({ time, seed: 0 }));
+    if (a[L.HEAD * S] > headBest) { headBest = a[L.HEAD * S]; headPeak = time; }
+    if (a[L.ABDOMEN * S] > bellyBest) { bellyBest = a[L.ABDOMEN * S]; bellyPeak = time; }
+  }
+  assert.ok(bellyPeak > headPeak, `the wave runs head → abdomen (${headPeak} → ${bellyPeak})`);
+  leech.pose(a, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(a[L.ABDOMEN * S] < -.2, 'the wind-up arches the abdomen forward (faces left)');
+
+  const mirror = creatures.creatureRigFor('mirror-substitute');
+  const m = rig.createPose(mirror.spec.bones.length), M = creatures.MIRROR;
+  for (const time of [.4, 1.9, 2.6]) {
+    mirror.pose(m, poseInput({ time }));
+    assert.ok(Math.abs(m[M.ARM_L * S] + m[M.ARM_R * S]) < 1e-6, 'the arms are reflections');
+    assert.ok(m[M.HIPS * S] * m[M.CHEST * S] <= 0, 'hips and chest lean opposite ways');
+  }
+  mirror.pose(m, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(m[M.ARM_L * S] > .8 && m[M.ARM_R * S] < -.8, 'the wind-up opens both arms wide');
+
+  const forager = creatures.creatureRigFor('prism-forager');
+  const f = rig.createPose(forager.spec.bones.length), F = creatures.FORAGER;
+  forager.pose(f, poseInput({ time: Math.PI / 3.8 }));
+  assert.ok(f[F.LEG_F * S] * f[F.LEG_B * S] < 0, 'the legs skitter in alternation');
+  forager.pose(f, poseInput({ phase: 'windup', timer: .05 }));
+  assert.ok(f[F.CLAW * S] > 1, 'the claw cocks back before the swipe');
+});
+
+test('the engine builds one rig per creature key and reuses it', () => {
+  const { engine } = fixture();
+  const stag = engine.creatureRig('rootglass-stag');
+  assert.equal(stag.def.key, 'rootglass-stag');
+  assert.equal(engine.creatureRig('rootglass-stag'), stag, 'built once');
+  assert.equal(engine.creatureRig('ephemeris-leech').def.key, 'ephemeris-leech');
+  assert.equal(engine.creatureRig('mystery-beast').def.key, 'generic');
+  assert.notEqual(engine.creatureRig('prism-forager').sprite, stag.sprite);
+  engine.destroy();
+});
+
+test('loot beams take the rarity colour; coins and plain materials have defaults', () => {
+  assert.equal(lootFx.beamColor('epic', false), lootFx.RARITY_COLORS.epic);
+  assert.equal(lootFx.beamColor(undefined, true), lootFx.COIN_BEAM_COLOR);
+  assert.equal(lootFx.beamColor(undefined, false), lootFx.RARITY_COLORS.common);
+  assert.ok(lootFx.beamHeight('legendary', false) > lootFx.beamHeight('rare', false));
+  assert.ok(lootFx.beamHeight('rare', false) > lootFx.beamHeight(undefined, false));
+  const { engine } = fixture(() => true, { town: { ...world.TOWNS.infernal, drops: { id: 't', entries: [
+    { id: 'coins', kind: 'coins', base: 4 },
+    { id: 'gem', kind: 'material', material: 'm', art: 'm', label: 'Star Shard', short: 'shard', qty: 3, rarity: 'rare' },
+  ] } } });
+  killFirst(engine);
+  const [coins, gem] = engine.drops;
+  assert.equal(coins.caption, '4 coins');
+  assert.equal(gem.caption, '3 x Star Shard');
+  assert.equal(gem.color, lootFx.RARITY_COLORS.rare);
+  engine.destroy();
+});
+
+test('pickup flights start at the drop and end exactly on the satchel', () => {
+  const out = { x: 0, y: 0, scale: 0 };
+  lootFx.flightPoint(100, 500, 900, 40, 0, out);
+  assert.deepEqual([out.x, out.y, out.scale], [100, 500, 1]);
+  lootFx.flightPoint(100, 500, 900, 40, 1, out);
+  assert.ok(Math.abs(out.x - 900) < 1e-9 && Math.abs(out.y - 40) < 1e-9);
+  lootFx.flightPoint(100, 500, 900, 40, .5, out);
+  assert.ok(out.y < 500 && out.x > 100 && out.x < 900, 'mid-flight it is in the air between the two');
+  lootFx.flightPoint(100, 500, 900, 40, 7, out);
+  assert.ok(Math.abs(out.x - 900) < 1e-9, 't is clamped');
+  const point = { x: 0, y: 0 };
+  lootFx.satchelPoint(null, { left: 0, top: 0, width: 1200, height: 720 }, 1200, 720, point);
+  assert.deepEqual(point, { x: 1200 - lootFx.SATCHEL_DEFAULT_INSET, y: lootFx.SATCHEL_DEFAULT_INSET }, 'default: top-right');
+  lootFx.satchelPoint({ x: 350, y: 120 }, { left: 50, top: 100, width: 600, height: 360 }, 1200, 720, point);
+  assert.deepEqual(point, { x: 600, y: 40 }, 'client px → canvas CSS px, undoing a CSS stretch');
+  lootFx.satchelPoint({ x: 2000, y: -30 }, { left: 0, top: 0, width: 1200, height: 720 }, 1200, 720, point);
+  assert.deepEqual(point, { x: 1200, y: 0 }, 'an off-canvas satchel clamps to the edge');
+
+  // In the engine: a pickup launches one flight toward the host's satchel.
+  const { engine } = fixture(() => true, { satchelTarget: () => ({ x: 600, y: 20 }) });
+  const monster = killFirst(engine);
+  engine.player.x = monster.x;
+  for (let n = 0; n < 40; n++) engine.update(1 / 60);
+  const flying = engine.flights.filter(row => row.active);
+  assert.equal(flying.length, 2, 'coins and ore both fly');
+  for (const row of flying) assert.deepEqual([row.ex, row.ey], [600, 20]);
+  engine.setSatchelTarget(null);
+  engine.destroy();
+});
+
+test('a worn weapon is held by its grip in the hand and points along the swing', () => {
+  const t = loadout.createHeldTransform();
+  const item = { art: 'x.webp' };
+  const aim = loadout.aimFromBladeRotation(-.95);
+  loadout.heldTransform(40, -110, aim, item, loadout.WEAPON_DEFAULTS, t);
+  const grip = { x: 0, y: 0 }, tip = { x: 0, y: 0 };
+  loadout.heldPoint(t, loadout.WEAPON_DEFAULTS.grip.u, loadout.WEAPON_DEFAULTS.grip.v, grip);
+  assert.ok(Math.abs(grip.x - 40) < 1e-9 && Math.abs(grip.y + 110) < 1e-9, 'the grip lands on the hand');
+  // The painted axis runs grip → tip at the default tilt (diagonal up-right).
+  const d = Math.SQRT1_2 * .5;
+  loadout.heldPoint(t, loadout.WEAPON_DEFAULTS.grip.u + d, loadout.WEAPON_DEFAULTS.grip.v - d, tip);
+  assert.ok(Math.abs(Math.atan2(tip.y - grip.y, tip.x - grip.x) - aim) < 1e-9, 'the blade points along the aim');
+  assert.equal(loadout.aimFromBladeRotation(0), -Math.PI / 2, 'an unrotated blade points straight up');
+  // A custom grip and tilt.
+  loadout.heldTransform(0, 0, 0, { art: 'y', grip: { u: .5, v: 1 }, tilt: -Math.PI / 2, size: 40 }, loadout.WEAPON_DEFAULTS, t);
+  loadout.heldPoint(t, .5, 0, tip);
+  assert.ok(Math.abs(tip.x - 40) < 1e-9 && Math.abs(tip.y) < 1e-9, 'an upright painting aimed at 0 points right');
+
+  // In the engine: setLoadout draws the weapon at the rig's hand, the off-hand at the back hand.
+  const { engine } = fixture();
+  const noop = () => {};
+  const drawn = [];
+  engine.context = new Proxy({ measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+    drawImage: (image) => drawn.push(image) }, { get: (target, key) => key in target ? target[key] : noop, set: () => true });
+  const sword = { complete: true, naturalWidth: 96, naturalHeight: 96 }, shield = { complete: true, naturalWidth: 96, naturalHeight: 96 };
+  engine.urlImages.set('assets/sword.webp', sword); engine.urlImages.set('assets/shield.webp', shield);
+  engine.keeperRig.render = () => true;
+  engine.keeperRig.blit = noop;
+  const placed = [];
+  engine.keeperRig.attach = (bone, u, v, out) => { out.x = bone * 10; out.y = -100; out.angle = 0; placed.push(bone); return true; };
+  engine.setLoadout({ weapon: { art: 'assets/sword.webp', rarity: 'epic' }, offhand: { art: 'assets/shield.webp' }, auraRarity: 'epic' });
+  const before = JSON.stringify({ p: engine.player, hp: engine.hp });
+  engine.render();
+  assert.ok(drawn.includes(sword) && drawn.includes(shield), 'both items are drawn');
+  assert.ok(drawn.indexOf(shield) < drawn.indexOf(sword), 'the off-hand goes down first, behind the body');
+  assert.deepEqual(placed, [poses.KEEPER.ARM_B, poses.KEEPER.ARM_F]);
+  assert.equal(engine.held.x, poses.KEEPER.ARM_F * 10, 'the weapon sits at the front hand');
+  assert.equal(JSON.stringify({ p: engine.player, hp: engine.hp }), before, 'gear never touches combat state');
+  engine.setLoadout(null);
+  drawn.length = 0; engine.render();
+  assert.ok(!drawn.includes(sword), 'cleared');
+  engine.destroy();
+});
