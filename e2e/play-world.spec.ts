@@ -81,7 +81,7 @@ test.describe('Waystone travel and ?at= deep links', () => {
   // travelled to, so a reload of /play?at=exchange boots in the Infernal town, finds no
   // `exchange` station there and silently ignores the link. Unfixme once the town persists
   // (or ?at= carries the town).
-  test.fixme('a deep link copied in another town reopens that place after a reload', async ({ page }) => {
+  test('a deep link copied in another town reopens that place after a reload', async ({ page }) => {
     await seed(page);
     await openPlay(page, '?at=waystone');
     await page.locator('.waystone-road', { hasText: 'Umbral' }).click();
