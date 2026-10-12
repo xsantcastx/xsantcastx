@@ -113,9 +113,9 @@ things with tools you crafted, and you see your economy working.
 
 ## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[~]`
 
-- [~] **Per-player persistent Delve**: a seed per player stored in the save; dug, placed and built cells saved as a compact diff through the save gateway (local + Firestore when signed in), idempotent with the existing mutation ids. Owner decision 2026-10-12. Today the layout is one fixed seed for everyone and dug state is session-only
-- [~] **Biomes by depth**, each with its own palette, light, nodes and creatures: **Root Hollows** (roots, petrified trunks, mushrooms → Foraging/Woodcutting), **Basalt Caverns** (Cinder/Slag → Mining; today's Delve), **Glowcap Grotto** (glowing herbs, e.g. Moonpetal-type → Foraging), **Magma Halls** (Heartstone, Ember Residue, tough Maws → Mining/Delving)
-- [~] **Delve lore and missions** (owner, 2026-10-12): the Delve is **the way down the Godforge's fracture beneath the Seamworks**; each biome is a lore layer, driven by the existing quest board / NPC quests (`src/app/shared/npc/npc-quest.service.ts`). Canon sources: `~/Documents/1. Projects/Eclipse Realms/docs/03-lore-and-design/` (narrative bible, creature atlas, item lore codex)
+- [x] **Per-player persistent Delve** (`88cb159`): a seed per player stored in the save; dug, placed and built cells saved as a compact diff through the save gateway (local + Firestore when signed in), idempotent with the existing mutation ids. Owner decision 2026-10-12. Today the layout is one fixed seed for everyone and dug state is session-only
+- [x] **Biomes by depth** (`88cb159`), each with its own palette, light, nodes and creatures: **Root Hollows** (roots, petrified trunks, mushrooms → Foraging/Woodcutting), **Basalt Caverns** (Cinder/Slag → Mining; today's Delve), **Glowcap Grotto** (glowing herbs, e.g. Moonpetal-type → Foraging), **Magma Halls** (Heartstone, Ember Residue, tough Maws → Mining/Delving)
+- [x] **Delve lore and missions** (`88cb159`) (owner, 2026-10-12): the Delve is **the way down the Godforge's fracture beneath the Seamworks**; each biome is a lore layer, driven by the existing quest board / NPC quests (`src/app/shared/npc/npc-quest.service.ts`). Canon sources: `~/Documents/1. Projects/Eclipse Realms/docs/03-lore-and-design/` (narrative bible, creature atlas, item lore codex)
   - Root Hollows = **the World-Root's shadow** ("the inverse tree that grows downward beneath the Godforge", Nullthorn Staff lore) → **Verrin**: bring a shadow-root cutting → unlocks the Nullthorn Staff recipe (the staff opens cracked walls)
   - Basalt Caverns = **Kael's abandoned forge-mines** → **Kael**: reopen the old seam, recover his lost hammer → next Smithing tier
   - Glowcap Grotto = **light seeping through the fracture** → **The Merchant**: standing Glowcap orders (Gold; teaches where herbs are)
@@ -123,7 +123,7 @@ things with tools you crafted, and you see your economy working.
   - **Inscriptions** carved in walls everywhere → **The Archivist**: copy them → Codex lore entries + Delving XP
   - Deepest: **The Nameless**, the long-term mystery
 
-- [~] **"Found in…"** for every material: a line in the Skills panel and the Codex ("Moonpetal — Ember Delve, Glowcap Grotto"), generated from the node and drop-table data so it can't drift. Today herbs only come from Foraging work and hunt drops, and nothing says where
+- [x] **"Found in…"** (`88cb159`) for every material: a line in the Skills panel and the Codex ("Moonpetal — Ember Delve, Glowcap Grotto"), generated from the node and drop-table data so it can't drift. Today herbs only come from Foraging work and hunt drops, and nothing says where
 
 Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
@@ -183,8 +183,6 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Delve: per-player persistence, biomes, lore nodes (inscriptions, shadow-root, glowcap, Godforge fragment), Delve labels | agent worktree | `[~]` |
-| Delve lore missions (Verrin, Kael, Merchant, Archivist), Codex inscriptions, "Found in…" | agent worktree | `[~]` |
 
 | Work | Branch | Status |
 |---|---|---|
@@ -203,6 +201,10 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- **Delve finale gaps:** the Rune-Warden respawns after 8 s like any Maw, and the Godforge fragment can be mined before the warden falls. **Kael's Hammer (`kaels-hammer`) has no cache placed yet**, so "The Old Seam" can't be completed
+- Nullthorn Staff recipe is now locked behind Verrin's mission (players who crafted it keep it)
+- New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet
+- 4 extra inscription texts written but not placed (`roots-cutting-mark`, `basalt-seam-ledger`, `grotto-tally-marks`, `magma-unsigned`)
 - Enemy bar names the creature by guessing from spawn positions; an `enemyName` on engine state would make mixed-creature hunts exact
 - Initial bundle fixed: 2.00 MB → **1.68 MB** (`92a3b68`): tools registry, lore corpus and character hub moved out of the initial chunk. Keep new code lazy; biggest eager modules now `translation.service` 92 kB, `art-manifest.generated` 64 kB, header 50 kB
 - `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
