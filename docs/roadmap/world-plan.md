@@ -30,6 +30,7 @@ world — and every system visible while it works.
 | World interactions | **Tools are verbs; the world has things to use them on** (inspired by Subgloom's destructible underground). **Tile-grid terrain**, not per-pixel. Delve + Homestead built **in parallel** | Crafting gets a purpose: each tool tier opens new rock, veins, paths and rooms |
 | New skills | **Smithing, Foraging/Woodcutting, Delving/Exploration, Enchanting ritual** (+ Mining, Hunting, Prospecting); one 1–99 curve with an unlock every ~10 levels | Extends the existing discipline ledger; no XP lost |
 | Economy | **Full rebalance to a Cookie-Clicker curve** (owner's original inspiration): first building in ~15 s, a new affordable goal every 30–90 s early, ×1.15 price scaling, click upgrades, golden-spark bursts; the Homestead is the "cookie" | Every Gold price is retuned together (runes, gambler, vendor, recipes, expeditions); existing saves migrated; designed + simulated before any number changes |
+| Who runs the economy | **Players, not NPCs** (owner, 2026-10-12): a **player auction house** (shared Grand Exchange, supply-and-demand prices) with **server escrow + limits** (signed-in only, rate limits, price sanity bands, provenance against the cloud save); **NPCs become sinks only** (buy junk at a low floor, charge fees/taxes; never sell what players make) | Trades become server-authoritative (Firestore + Cloud Functions); the simulated Exchange stays behind a flag until the real one is live; the Material Vendor turns into a buyback counter |
 | Menu UX | **"For dummies" simple, MapleStory-crafting-journal anatomy**: tabs per skill, skill strip with XP bar, list → detail, requirement icon grids with have/need counts, one CRAFT / CRAFT ALL row; extras behind Details. Reference: `docs/design-references/` | Every station and panel is held to it; a shared station UI kit enforces it |
 | Delve layout | **Your own persistent Delve**: one layout per player, carved out permanently; everything dug, placed or built stays (local save + cloud when signed in) | Persistence is the foundation for building in the Delve; layout seed is per player, stored with the save |
 | Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
@@ -104,6 +105,12 @@ things with tools you crafted, and you see your economy working.
 - [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
 
 ## Economy rebalance (Cookie-Clicker start) `[~]`
+
+- [x] **Owner approved the spec** (2026-10-12)
+- [~] **Implementation** (one coordinated change): all number changes, versioned idempotent save migration with fixtures, simulator `--check` in CI, golden-spark reward, copy updated; NPC vendor → buyback counter at a low floor, Merchant orders rescaled
+- [~] **Player auction house backend**: Firestore order book + trades + escrow + price history; callable Cloud Functions `placeOrder` / `cancelOrder` / `collect` with transactional matching (price-time, partial fills), seller tax, rate limits, sanity bands, provenance check; client-read-only rules; lazy `PlayerMarketService`; feature flag
+- [ ] Bind the redesigned Exchange UI (Menus A) to `PlayerMarketService`; flip the flag after an emulator + staging check
+- [ ] Deploy functions + rules + indexes (watch: rules deploy 403s have blocked hosting before)
 
 - [x] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
 - [x] Homestead built Cookie-style: big clickable Forge + always-visible buildings column (current numbers; new ones flow through later)
