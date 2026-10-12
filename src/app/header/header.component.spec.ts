@@ -13,6 +13,7 @@ import { EconomyService } from '../shared/economy/economy.service';
 import { InventoryService } from '../shared/rpg/inventory.service';
 import { CANONICAL } from '../shared/canonical-routes';
 import { PRIMARY_NAV } from '../shared/nav/nav.manifest';
+import { placeForRoute } from '../shared/world/place-for-route';
 
 @Component({ standalone: true, template: '' })
 class HallStubComponent {}
@@ -33,6 +34,7 @@ describe('HeaderComponent', () => {
       declarations: [HeaderComponent],
       imports: [RouterTestingModule.withRoutes([
         { path: 'world', component: HallStubComponent },
+        { path: 'play', component: HallStubComponent },
         { path: 'world/quests', component: HallStubComponent },
         { path: 'character', component: HallStubComponent },
         { path: 'market', component: HallStubComponent },
@@ -115,24 +117,47 @@ describe('HeaderComponent', () => {
     expect(routes).toEqual(PRIMARY_NAV.map(d => d.route));
   });
 
-  it('World destinations require an exact active match', () => {
+  it('Play requires an exact active match', () => {
+    expect(PRIMARY_NAV[0].id).toBe('play');
     expect(PRIMARY_NAV[0].exact).toBeTrue();
     expect(component.tabs[0].exact).toBeTrue();
     expect(component.tomeSections[0].halls[0].exact).toBeTrue();
   });
 
-  it('does not mark World active on /world/quests', async () => {
+  it('is World only: two halls, two tabs, one tome section, no MORE list', () => {
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    expect(el.querySelectorAll('.gfnav__hall').length).toBe(2);
+    expect(el.querySelectorAll('.gftabs__tab').length).toBe(2);
+    expect(component.tomeSections.length).toBe(1);
+    expect(el.querySelector('.gfnav__more')).toBeNull();
+    const hrefs = Array.from(el.querySelectorAll('a')).map(a => a.getAttribute('href') ?? '');
+    for (const page of ['/market', '/codex', '/forge/runes', CANONICAL.quests, '/sanctum', '/gambler', '/exchange']) {
+      expect(hrefs).withContext(page).not.toContain(page);
+    }
+  });
+
+  it('the Play hall is a keyboard-reachable link to /play', () => {
+    fixture.detectChanges();
+    const play = [...fixture.nativeElement.querySelectorAll('.gfnav__hall')]
+      .find((el: Element) => el.getAttribute('href') === '/play') as HTMLAnchorElement | undefined;
+    expect(play).toBeTruthy();
+    expect(play!.tabIndex).toBe(0);
+  });
+
+  it('the Essence pill opens the Market station the world data names', () => {
+    expect(component.marketPlace.at).toBe(placeForRoute('/market')!.stationId);
+  });
+
+  it('does not mark Play active on /world/quests', async () => {
     const router = TestBed.inject(Router);
     fixture.detectChanges();
     await router.navigateByUrl(CANONICAL.quests);
     fixture.detectChanges();
-    const worldTab = [...fixture.nativeElement.querySelectorAll('.gftabs__tab')]
-      .find((el: Element) => el.getAttribute('href') === CANONICAL.world || el.getAttribute('ng-reflect-router-link') === CANONICAL.world);
-    expect(worldTab).toBeTruthy();
-    expect(worldTab.classList.contains('is-active')).toBeFalse();
-    const worldHall = [...fixture.nativeElement.querySelectorAll('.gfnav__hall')]
-      .find((el: Element) => el.getAttribute('href') === CANONICAL.world || el.getAttribute('ng-reflect-router-link') === CANONICAL.world);
-    expect(worldHall.classList.contains('is-active')).toBeFalse();
+    const playTab = [...fixture.nativeElement.querySelectorAll('.gftabs__tab')]
+      .find((el: Element) => el.getAttribute('href') === '/play');
+    expect(playTab).toBeTruthy();
+    expect(playTab.classList.contains('is-active')).toBeFalse();
   });
 
   it('opens the keeper panel from the Character hall instead of navigating', () => {
