@@ -15,6 +15,7 @@
  * Visual only: reads the Keeper's x, never writes combat, loot or economy state.
  */
 import { createPose, POSE_STRIDE, resetPose, RigSpec, RigSprite } from './rig';
+import { figureSpriteId, frameAt, NPC_SPRITE_FALLBACKS, SpriteRenderer } from './sprite';
 import { FLOOR } from './engine.model';
 import {
   CHATTER_SHOW, FACE_RANGE, KeeperChatter, keeperAt, KeeperPlacement, LifePalette, LifeSilhouette, onScreen, placeKeepers, TownsfolkCrowd, townsfolkArt,
@@ -76,6 +77,13 @@ export interface LifeFrame {
   image: (key: string) => HTMLImageElement | undefined;
   /** i18n lookup; the key's English fallback lives in world/life.ts. */
   translate: (key: string) => string;
+  /**
+   * A world-layer sprite sheet by sprite id when it exists and has loaded, else
+   * null; `spriteImage()` is then the image it chose. Absent (tests) or null:
+   * the painted rig or the placeholder draws, exactly as before sprites.
+   */
+  sprite?: (id: string) => SpriteRenderer | null;
+  spriteImage?: () => HTMLImageElement | undefined;
 }
 
 /** Draw box of a keeper's painting, feet at the origin. Townsfolk use the same box scaled down. */
@@ -162,7 +170,7 @@ export class TownLife {
       for (const p of crowd.folk) {
         if (!onScreen(p.x, f.camera, f.viewport)) continue;
         const walking = p.pause <= 0;
-        this.figure(c, f, this.realmArt, p.x, p.facing, p.build * .86, p.palette, p.silhouette, p.seed, p.step, walking, 0, .92);
+        this.figure(c, f, this.realmArt, p.x, p.facing, p.build * .86, p.palette, p.silhouette, p.seed, p.step, walking, 0, .92, walking ? 'walk' : 'idle');
       }
     }
     for (let i = 0; i < this.placements.length; i++) {
@@ -172,7 +180,8 @@ export class TownLife {
       const look = Math.abs(f.playerX - p.x) < FACE_RANGE ? 1 : 0;
       // Turning reads as a narrowing through edge-on: scale x by the smoothed facing, never below a sliver.
       const sx = Math.sign(face || 1) * Math.max(.18, Math.abs(face));
-      this.figure(c, f, p.def.art, p.x, sx, 1, p.def.palette, p.def.silhouette, i * 1.7, 0, false, look, 1);
+      const talking = this.chatter?.speaker === i;
+      this.figure(c, f, p.def.art, p.x, sx, 1, p.def.palette, p.def.silhouette, i * 1.7, 0, false, look, 1, talking ? 'talk' : 'idle');
       this.nameTag(c, f, i, p);
     }
     this.speech(c, f);
@@ -180,12 +189,20 @@ export class TownLife {
 
   /** One figure, feet on the floor at x. Painted through the rig when its art resolves; the placeholder otherwise. */
   private figure(c: CanvasRenderingContext2D, f: LifeFrame, art: string, x: number, facing: number, scale: number, palette: LifePalette,
-    shape: LifeSilhouette, seed: number, step: number, walking: boolean, look: number, alpha: number): void {
+    shape: LifeSilhouette, seed: number, step: number, walking: boolean, look: number, alpha: number, state: 'idle' | 'walk' | 'talk' = 'idle'): void {
     c.save();
     c.globalAlpha = .28 * alpha; c.fillStyle = '#000';
     c.beginPath(); c.ellipse(x, FLOOR + 2, 30 * scale, 7 * scale, 0, 0, Math.PI * 2); c.fill();
     c.globalAlpha = alpha;
     c.translate(x, FLOOR); c.scale(facing * scale, scale);
+    // A sprite sheet (W3: idle/talk, optional walk) faces right like the painting; frames replace the rig.
+    const sheet = f.sprite?.(figureSpriteId(art)) ?? null;
+    const sheetImage = sheet ? f.spriteImage?.() : undefined;
+    if (sheet && sheetImage) {
+      const action = sheet.action(state, NPC_SPRITE_FALLBACKS[state]);
+      const act = action ? sheet.entry.actions[action] : undefined;
+      if (action && act && sheet.draw(c, sheetImage, action, f.reduced ? 0 : frameAt(act, f.time + seed))) { c.restore(); return; }
+    }
     const image = f.image(art);
     if (image?.complete && image.naturalWidth) {
       let rig = this.rigs.get(art);
