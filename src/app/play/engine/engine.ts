@@ -2,7 +2,11 @@ import { Atmosphere } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
 import { resetPose, RigSprite } from './rig';
-import { CreatureRigDef, creatureRigFor, RIVET_MAW_CREATURE } from './creature-rigs';
+import { CREATURE_STRIKE, CREATURE_WINDUP, CreatureRigDef, creatureRigFor, RIVET_MAW_CREATURE } from './creature-rigs';
+import {
+  CREATURE_SPRITE_FALLBACKS, createSpriteAnchor, createSpriteClock, frameAt, frameAtProgress, KEEPER_SPRITE_FALLBACKS, SpriteClock, SpriteDraw, SpriteRenderer, tickClock,
+} from './sprite';
+import { spriteFor } from '../../shared/art/sprite-manifest.generated';
 import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
@@ -75,7 +79,7 @@ function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\
 const USE_LABEL: Readonly<Record<string, string>> = { inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP' };
 const KEEPER_ANIMATIONS = new Set<KeeperAnimation>(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 export interface RemoteKeeper { id: string; name: string; x: number; y: number; area: string; facing?: number; animation?: string }
-interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number; motion: KeeperMotion }
+interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number; motion: KeeperMotion; clock: SpriteClock }
 interface Speech { text: string; at: number }
 /** Fixed-step farming runtime with reversible camp and hunting-ground portals. */
 export class SeamworksEngine {
@@ -111,12 +115,30 @@ export class SeamworksEngine {
     camera: 0, viewport: 0, time: 0, reduced: false, playerX: 0, pixelScale: 1,
     image: key => this.image(key),
     translate: key => this.options.translate?.(key) ?? key,
+    sprite: id => this.readySprite(id),
+    spriteImage: () => this.readyImage,
   };
   /** Mesh rigs bending the single Keeper and Maw paintings. Render-only. */
   private readonly keeperRig = new RigSprite(KEEPER_RIG);
   /** One rig per creature art key, built on first sight and shared by every monster using that painting. */
   private readonly creatureRigs = new Map<string, { def: CreatureRigDef; sprite: RigSprite }>();
   private readonly creaturePose = { phase: 'idle' as Monster['phase'], timer: 0, time: 0, seed: 0, reduced: false, hurt: 0 };
+  /**
+   * World-layer sprite sheets by id, resolved once (null = no sheet, keep the
+   * rig). With a sheet, a figure is drawn from its frames; without one,
+   * exactly as before. `readyImage` is the image the last `readySprite` hit chose.
+   */
+  private readonly sprites = new Map<string, SpriteRenderer | null>();
+  private readyImage: HTMLImageElement | undefined;
+  private readonly playerClock = createSpriteClock();
+  private readonly spriteHand = createSpriteAnchor();
+  private readonly spriteDraw: SpriteDraw = {};
+  /** The one SpriteDraw options object, refilled per draw (no per-frame literals). */
+  private spriteOpts(scale: number, offsetX = 0, offsetY = 0, flash = false): SpriteDraw {
+    const o = this.spriteDraw;
+    o.scale = scale; o.offsetX = offsetX; o.offsetY = offsetY; o.flash = flash; o.mirror = false;
+    return o;
+  }
   /** Worn gear drawn on the Keeper (see setLoadout). Images by URL, cached. */
   private loadout: KeeperLoadout = {};
   private readonly urlImages = new Map<string, HTMLImageElement>();
@@ -780,7 +802,7 @@ export class SeamworksEngine {
         name: peer.name.slice(0, 24), x: Math.max(30, Math.min(this.areaDef.width - 30, peer.x)), y: Math.max(-300, Math.min(FLOOR, peer.y)),
       };
       if (previous && previous.peer.area === peer.area) previous.peer = snapshot;
-      else this.peers.set(peer.id, { peer: snapshot, x: snapshot.x, y: snapshot.y, facing, motion: createKeeperMotion() });
+      else this.peers.set(peer.id, { peer: snapshot, x: snapshot.x, y: snapshot.y, facing, motion: createKeeperMotion(), clock: createSpriteClock() });
     }
     for (const id of this.peers.keys()) if (!present.has(id)) this.peers.delete(id);
   }
@@ -1406,9 +1428,14 @@ export class SeamworksEngine {
     shown: string | undefined, time: number, motion: KeeperMotion, worldX: number, worldY: number, facing: number,
     attackT: number, swing: number, armed: boolean, feel: { landing: number; recoil: number; rim: number },
     fallback: { bob: number; tilt: number; sx: number; sy: number; sway: number },
-    gear = false,
+    gear = false, clock?: SpriteClock, fallen = false,
   ): void {
     trackKeeper(motion, worldX, worldY, this.frameDt);
+    const sheet = clock ? this.readySprite('keeper') : null;
+    if (sheet && clock) {
+      this.drawKeeperSprite(c, sheet, this.readyImage!, box.h / 196, fallen ? 'death' : shown, clock, motion.vx * facing, attackT, swing, armed, feel.rim, gear, time);
+      return;
+    }
     const rig = this.keeperRig;
     poseKeeper(rig.pose, motion, {
       animation: shown, time, attackT, swing, landing: feel.landing, recoil: feel.recoil,
@@ -1461,6 +1488,89 @@ export class SeamworksEngine {
         this.art('blade', -8, -78, 58, 92);
         c.restore();
       }
+    }
+  }
+  /**
+   * The sprite sheet for `id` when it exists AND its image has loaded, else
+   * null (the caller keeps its rig or placeholder). Sets `readyImage`. The 2x
+   * sheet is chosen on dense screens, the 1x otherwise; either one stands in
+   * while the other is still loading.
+   */
+  private readySprite(id: string): SpriteRenderer | null {
+    let sheet = this.sprites.get(id);
+    if (sheet === undefined) {
+      const entry = (this.options.sprite ?? spriteFor)(id);
+      sheet = entry ? new SpriteRenderer(entry) : null;
+      this.sprites.set(id, sheet);
+    }
+    if (!sheet) return null;
+    const sharp = this.pixelScale > 1.25;
+    const first = this.urlImage(sharp ? sheet.entry.src2x : sheet.entry.src);
+    let image = first?.complete && first.naturalWidth ? first : undefined;
+    if (!image) {
+      const other = this.urlImage(sharp ? sheet.entry.src : sheet.entry.src2x);
+      image = other?.complete && other.naturalWidth ? other : undefined;
+    }
+    this.readyImage = image;
+    return image ? sheet : null;
+  }
+  /**
+   * A Keeper from the sprite sheet: the state picks the action, the attack
+   * plays its frames across the game's attack window, gear rides the per-frame
+   * hand anchors. The context is already at the feet and flipped to face.
+   */
+  private drawKeeperSprite(
+    c: CanvasRenderingContext2D, sheet: SpriteRenderer, image: HTMLImageElement, scale: number,
+    shown: string | undefined, clock: SpriteClock, speed: number, attackT: number, swing: number, armed: boolean, rim: number, gear: boolean, time: number,
+  ): void {
+    const wanted = shown ?? 'idle';
+    const action = sheet.action(wanted, KEEPER_SPRITE_FALLBACKS[wanted]) ?? 'idle';
+    const act = sheet.entry.actions[action];
+    const into = tickClock(clock, action, this.reducedMotion ? 0 : this.elapsed);
+    const frame = !act ? 0 : action === 'attack' ? frameAtProgress(act, attackT) : this.reducedMotion ? 0 : frameAt(act, into);
+    const aura = gear ? this.loadout.auraRarity : null;
+    if (aura) this.drawAura(c, aura, time);
+    const hand = this.spriteHand;
+    const offhand = gear ? this.loadout.offhand : null;
+    const offhandImage = this.heldImage(offhand);
+    if (offhand && offhandImage) {
+      if (!sheet.anchor(action, 'hand_back', frame, false, hand, scale)) { hand.x = -16 * scale; hand.y = -100 * scale; hand.angled = false; }
+      heldTransform(hand.x, hand.y, -Math.PI / 2 + (hand.angled ? hand.rotation : 0), offhand, OFFHAND_DEFAULTS, this.held);
+      this.drawHeld(c, offhandImage);
+    }
+    if (!this.reducedMotion && Math.abs(speed) > 420) {
+      // Smear: two fading after-images trail the direction of travel.
+      const reach = Math.min(1, (Math.abs(speed) - 420) / 300);
+      c.save(); c.shadowBlur = 0;
+      const alpha = c.globalAlpha;
+      c.globalAlpha = alpha * .1 * reach; sheet.draw(c, image, action, frame, this.spriteOpts(scale, -speed * .04));
+      c.globalAlpha = alpha * .22 * reach; sheet.draw(c, image, action, frame, this.spriteOpts(scale, -speed * .02));
+      c.restore();
+    }
+    sheet.draw(c, image, action, frame, this.spriteOpts(scale));
+    if (rim > .01) {
+      // Rim light: an additive copy nudged toward the light brightens the leading edge.
+      c.save(); c.shadowBlur = 0; c.filter = 'none';
+      c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, rim) * .45;
+      sheet.draw(c, image, action, frame, this.spriteOpts(scale, 1.6, -1.2));
+      c.restore();
+    }
+    const weapon = gear ? this.loadout.weapon : null;
+    const weaponImage = this.heldImage(weapon);
+    if (!weaponImage && !armed) return;
+    // The authored angle wins; a frame without one swings like the rig did.
+    let rotation = -.95 + swing * 1.85;
+    if (sheet.anchor(action, 'hand_front', frame, false, hand, scale)) { if (hand.angled) rotation = hand.rotation; }
+    else { hand.x = (22 + Math.max(0, swing) * 16) * scale; hand.y = -96 * scale; }
+    if (weapon && weaponImage) {
+      heldTransform(hand.x, hand.y, aimFromBladeRotation(rotation), weapon, WEAPON_DEFAULTS, this.held);
+      this.drawHeld(c, weaponImage, attackT > .3 ? 1.06 : 1);
+    } else {
+      c.save();
+      c.translate(hand.x, hand.y); c.rotate(rotation);
+      if (attackT > .3) c.scale(1.06, 1.06);
+      this.art('blade', -8, -78, 58, 92);
+      c.restore();
     }
   }
   /** An image by URL (or an `artFor()` key when it is not URL-shaped), loaded once and cached. */
@@ -1878,8 +1988,10 @@ export class SeamworksEngine {
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       const rigDef = this.creatureRig(monster.def.creature).def;
+      // A sprite sheet faces right and stands on its pivot; a painting has its own box and facing.
+      const sheet = this.readySprite(monster.def.creature);
       const floor = monster.def.floorY ?? FLOOR;
-      const crown = floor - (rigDef.box.h + 20) * k;
+      const crown = floor - ((sheet ? sheet.entry.pivotY : rigDef.box.h) + 20) * k;
       if (warning) {
         c.fillStyle = monster.phase === 'strike' ? '#ff765caa' : '#ff765c40';
         c.fillRect(monster.facing < 0 ? monster.x - 170 * k : monster.x, floor - 10, 170 * k, 10);
@@ -1889,7 +2001,7 @@ export class SeamworksEngine {
       if (!t) this.groundShadow(c, monster.x + monster.knock, FLOOR, rigDef.shadow * (.6 + rise * .4));
       // Turn the painting toward its target. Purely a drawing choice.
       const looking = monster.phase === 'idle' ? Math.sign(this.player.x - monster.x) || monster.facing : monster.facing;
-      const mirror = rigDef.facesLeft ? looking > 0 : looking < 0;
+      const mirror = sheet ? looking < 0 : rigDef.facesLeft ? looking > 0 : looking < 0;
       c.save(); c.translate(monster.x + monster.knock, floor);
       c.globalAlpha = rise; c.scale((.6 + rise * .4) * (mirror ? -1 : 1) * k, (.6 + rise * .4) * k);
       this.creature(c, monster.flash > 0, monster.def.creature, monster);
@@ -1922,7 +2034,7 @@ export class SeamworksEngine {
       c.globalAlpha = motion.alpha;
       c.shadowColor = warm ? '#ffc27a' : '#deb8f3'; c.shadowBlur = warm ? 12 : 6; c.filter = 'none';
       this.drawKeeper(c, { x: -70, y: -176, w: 140, h: 176 }, shown, motionTime + view.x, view.motion, view.x, view.y, view.facing,
-        attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion);
+        attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion, false, view.clock);
       c.restore();
     }
     // Keep the player readable against the dark realm art at narrow viewport sizes.
@@ -1960,7 +2072,7 @@ export class SeamworksEngine {
         landing: this.landing > 0 ? this.landing / .18 : 0,
         recoil: this.hp <= 0 ? 1 : Math.max(0, Math.min(1, this.hurtTime / .8)),
         rim: Math.max(strikeGlow, this.wound * .9),
-      }, motion, true);
+      }, motion, true, this.playerClock, this.hp <= 0);
     c.filter = 'none'; c.shadowBlur = 0; c.globalAlpha = 1;
     if (attackT > .3) {
       const u = (attackT - .3) / .7;
@@ -2084,7 +2196,9 @@ export class SeamworksEngine {
    * after a hit. Until the painting loads, the legacy `creature` asset (the Rivet
    * Maw) stands in through the Maw rig, so a pose is never applied to the wrong body.
    */
-  private creature(c: CanvasRenderingContext2D, flash: boolean, key: string, monster?: Monster): void {
+  private creature(c: CanvasRenderingContext2D, flash: boolean, key: string, monster?: Monster, dying = -1): void {
+    const sheet = this.readySprite(key);
+    if (sheet) { this.creatureSprite(c, sheet, this.readyImage!, flash, monster, dying); return; }
     const painted = this.image(key);
     const ready = !!(painted?.complete && painted.naturalWidth);
     const entry = this.creatureRig(ready ? key : RIVET_MAW_CREATURE.key);
@@ -2119,6 +2233,34 @@ export class SeamworksEngine {
     if (!this.art(sprite, boxX, boxY, box.w, box.h)) { c.fillStyle = '#fff4ea'; c.fillRect(-35, -75, 70, 75); }
     c.filter = 'none';
   }
+  /**
+   * A creature from its sprite sheet (W2: idle/walk/windup/strike/hurt/death).
+   * The windup and strike play across the game's own windows, so the tell the
+   * player reads lands exactly when the hit does; a hit shows `hurt` while the
+   * recoil lasts; `dying` (0..1) plays `death`. Flash is the cached white copy.
+   */
+  private creatureSprite(c: CanvasRenderingContext2D, sheet: SpriteRenderer, image: HTMLImageElement, flash: boolean, monster: Monster | undefined, dying: number): void {
+    let wanted: string = monster?.phase ?? 'idle';
+    if (dying >= 0) wanted = 'death';
+    else if (monster && monster.recoil > .3 && sheet.entry.actions['hurt']) wanted = 'hurt';
+    const action = sheet.action(wanted, CREATURE_SPRITE_FALLBACKS[wanted]) ?? 'idle';
+    const act = sheet.entry.actions[action];
+    let frame = 0;
+    if (act && this.reducedMotion) frame = action === 'death' ? act.frames - 1 : 0;
+    else if (act) {
+      if (action === 'death') frame = frameAtProgress(act, dying);
+      else if (action === 'hurt' && monster) frame = frameAtProgress(act, 1 - monster.recoil);
+      else if (action === 'windup' && monster?.phase === 'windup') frame = frameAtProgress(act, 1 - monster.timer / CREATURE_WINDUP);
+      else if (action !== 'idle' && monster?.phase === 'strike') frame = frameAtProgress(act, 1 - monster.timer / CREATURE_STRIKE);
+      else frame = frameAt(act, this.elapsed + (monster ? monster.spawn * .013 : 0));
+    }
+    sheet.draw(c, image, action, frame, this.spriteOpts(1, 0, 0, flash));
+    if (monster?.phase === 'strike' && !flash && dying < 0) {
+      c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= .35;
+      sheet.draw(c, image, action, frame, this.spriteOpts(1, -1.5, -1));
+      c.restore();
+    }
+  }
   /** A felled Maw sinks, flattens and fades, shedding embers as it goes. */
   private dissolve(c: CanvasRenderingContext2D, monster: Monster): void {
     const t = 1 - monster.dying / DEATH_FADE;
@@ -2126,8 +2268,11 @@ export class SeamworksEngine {
     c.save(); c.translate(monster.x + monster.knock, floor);
     c.globalAlpha = 1 - t;
     c.scale(k, k);
-    if (!this.reducedMotion) c.scale(1 + t * .35, 1 - t * .7);
-    this.creature(c, t < .25, monster.def.creature);
+    // A sheet with its own death frames plays them (no squash); everything else flattens as before.
+    const sheet = this.readySprite(monster.def.creature);
+    if (sheet && monster.facing < 0) c.scale(-1, 1);
+    if (!this.reducedMotion && !sheet?.entry.actions['death']) c.scale(1 + t * .35, 1 - t * .7);
+    this.creature(c, t < .25, monster.def.creature, sheet ? monster : undefined, sheet ? t : -1);
     c.restore();
     if (this.reducedMotion) return;
     c.save(); c.fillStyle = '#ffb46a';
