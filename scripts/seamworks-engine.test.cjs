@@ -872,3 +872,80 @@ test('a worn weapon is held by its grip in the hand and points along the swing',
   assert.ok(!drawn.includes(sword), 'cleared');
   engine.destroy();
 });
+
+// ── Ember Delve: terrain, tools, light ──────────────────────────────────────
+const terrainMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/terrain.ts'));
+const lightMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/lighting.ts'));
+const delveSpec = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve').terrain;
+function enterDelve(onWorldAction) {
+  const { engine, state } = fixture(() => true, { onWorldAction });
+  engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+  assert.equal(state().areaId, 'ember-delve');
+  return { engine, state };
+}
+
+test('delve terrain generates deterministically from its seed', () => {
+  const a = terrainMod.generateTerrain(delveSpec), b = terrainMod.generateTerrain(delveSpec);
+  assert.deepEqual(Array.from(a.kind), Array.from(b.kind));
+  assert.equal(a.nodeAt(103, 24).id, 'cache');
+  assert.equal(a.nodeAt(0, a.rows - 1).id, 'bedrock');
+});
+
+test('tools: right tier cracks, low tier clangs with the requirement', () => {
+  const n = terrainMod.TERRAIN_NODES;
+  assert.equal(terrainMod.toolFor(n['slag-vein'], { pickaxe: 1 }).ok, false);
+  assert.deepEqual(terrainMod.toolFor(n['slag-vein'], { pickaxe: 1 }).need, { tool: 'pickaxe', tier: 2 });
+  assert.equal(terrainMod.toolFor(n['cinder-vein'], { pickaxe: 2 }).damage, 1.5);
+  assert.deepEqual(terrainMod.toolFor(n['cracked-wall'], { pickaxe: 3 }, terrainMod.SWING_TOOLS).need, { tool: 'staff', tier: 1 });
+  assert.equal(terrainMod.toolFor(n.bedrock, { pickaxe: 9 }).need, null);
+  const { MINING_TIERS } = loadTs(path.resolve(__dirname, '../src/app/shared/activity/activity.model.ts'));
+  for (const tier of MINING_TIERS) {
+    const node = terrainMod.TERRAIN_NODE_LIST.find(row => row.yield && row.yield.materialId === tier.oreId);
+    assert.equal(node.minLevel, tier.unlockLevel); assert.equal(node.xp, tier.xpPerAction);
+  }
+});
+
+test('digging down: a broken cell is fallable, the Keeper stands on terrain', () => {
+  const { engine } = enterDelve(() => true);
+  engine.setTools({ pickaxe: 1 });
+  const t = engine.terrain;
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.equal(engine.player.y, 610, 'stands on the surface');
+  const col = t.colAt(engine.player.x);
+  engine.input.add('down');
+  for (let n = 0; n < 8 && t.solid(col, 0); n++) { engine.attackCooldown = 0; engine.attack(); }
+  engine.input.delete('down');
+  assert.equal(t.solid(col, 0), false, 'the cell under the feet broke');
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.ok(engine.player.y > 610, 'fell into the hole');
+  assert.equal(engine.player.grounded, true);
+  engine.destroy();
+});
+
+test('onWorldAction refusal leaves the ore standing; acceptance breaks it once', () => {
+  let accept = false; const events = [];
+  const { engine } = enterDelve(e => { events.push(e); return accept; });
+  engine.setTools({ pickaxe: 1 });
+  const t = engine.terrain;
+  t.set(12, 0, terrainMod.nodeIndex('cinder-vein'));
+  engine.player.x = 12 * 32 - 30; engine.player.y = 610; engine.facing = 1;
+  const hit = () => { engine.attackCooldown = 0; engine.strikeCell(12 * 32 + 16, 626); };
+  for (let n = 0; n < 5; n++) hit();
+  assert.equal(t.nodeAt(12, 0).id, 'cinder-vein', 'refused: still there');
+  assert.ok(events.length >= 1);
+  assert.equal(events[0].kind, 'mine'); assert.equal(events[0].materialId, 'cinder-ore'); assert.equal(events[0].discipline, 'mining');
+  accept = true; hit();
+  assert.equal(t.solid(12, 0), false);
+  assert.equal(new Set(events.map(e => e.mutationId)).size, 1, 'retries reuse one mutation id');
+  engine.destroy();
+});
+
+test('light math: the lantern lifts the dark at its centre and not past its radius', () => {
+  const pool = new lightMod.LightPool(4);
+  pool.add(0, 0, 200, 1); pool.add(5000, 0, 100, 1);
+  assert.equal(lightMod.darknessAt(0, 0, pool.lights, 2, .9), 0);
+  assert.equal(lightMod.darknessAt(300, 0, pool.lights, 2, .9), .9);
+  assert.equal(lightMod.selectLights(pool.lights, 2, 1, 4990, 0), 1);
+  assert.equal(pool.lights[0].x, 5000);
+  assert.ok(lightMod.ambientDarkness(0) < lightMod.ambientDarkness(1000));
+});
