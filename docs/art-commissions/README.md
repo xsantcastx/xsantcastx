@@ -25,14 +25,18 @@ sprite sheet for the world, with identical costume, colours and silhouette.
 | File | What |
 |---|---|
 | [00-first-test-set.md](00-first-test-set.md) | the seven sheets to make first |
+| [01-second-wave.md](01-second-wave.md) | what was added after the first pack (Delve tiles and kit, tools, gathering nodes, Homestead, Delve creatures) and the order to make it in |
 | [INVENTORY.md](INVENTORY.md) | every missing asset: id, category, where it is used, what shows today, where to save it |
 | [commissions.csv](commissions.csv) | the same, plus prompt and negative prompt, machine-readable (the importer's `--commissions` check reads it) |
-| `menu-paintings/01-npc-portraits.md` … `06-town-backdrops.md` | painterly briefs |
-| `world-sprites/01-keeper.md` … `04-town-sets.md` | sprite briefs |
+| `menu-paintings/01-npc-portraits.md` … `07-tools-and-delve-items.md` | painterly briefs |
+| `world-sprites/01-keeper.md` … `08-delve-creatures.md` | sprite briefs |
 
-Totals: **129 files** — 68 menu paintings (6 NPC portraits, 18 explorer portraits, 6 Thralls, 23 uniques,
-5 creature masters, 5 boss concept sheets, 5 town backdrops) and 61 world sprites (1 Keeper sheet,
-14 attachable equipment sprites, 5 creature sheets, 9 NPC sheets, 11 buildings, 21 props).
+Totals: **223 files** — 96 menu paintings (6 NPC portraits, 18 explorer portraits, 6 Thralls, 23 uniques,
+6 creature masters, 5 boss concept sheets, 5 town backdrops, 16 tool icons, 10 Delve kit and material icons,
+1 quest item) and 127 world sprites (1 Keeper sheet, 14 attachable equipment sprites, 7 creature sheets,
+12 NPC and automaton sheets, 16 buildings, 51 props, 26 Delve tiles). The 94 added in the second wave are
+listed in [01-second-wave.md](01-second-wave.md). The tile strips are a new spec, W7, defined in
+[world-sprites/05-delve-tiles.md](world-sprites/05-delve-tiles.md).
 
 ## How to use the pack
 
