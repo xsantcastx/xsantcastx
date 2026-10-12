@@ -17,6 +17,13 @@
 
   <p class="gb__error" *ngIf="error" role="alert">{{ error }}</p>
 
+  <div class="gb__table">
+    <ng-container *ngTemplateOutlet="pulls"></ng-container>
+    <button type="button" class="gb__mini gb__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
+      Fast reveal {{ fast ? 'on' : 'off' }}
+    </button>
+  </div>
+
   <!-- ── The shelf ──────────────────────────────────────────────────────── -->
   <ul class="gb__shelf">
     <li class="gb__box" *ngFor="let box of boxes; trackBy: trackBox"
@@ -103,59 +110,130 @@
 
 <!-- ── The reveal ────────────────────────────────────────────────────────────
      Full-viewport, above everything, and dismissible from three places: the
-     backdrop, the Escape key and the button. The payload is already banked. -->
+     backdrop, the Escape key and the button. The payload is already banked
+     before the first frame, so every beat below is theatre over a settled roll:
+     wager -> charging (length set by the rarity actually rolled) -> cracking
+     -> revealed. Skip jumps straight to the same result. -->
 <div class="gb-reveal" *ngIf="phase !== 'idle'"
      [attr.data-phase]="phase"
+     [attr.data-rank]="revealRank"
+     [class.gb-reveal--fast]="fast"
+     [class.gb-reveal--still]="still"
      [style.--reveal-color]="revealColor"
      [style.--reveal-glow]="revealGlow"
+     [style.--charge]="timing?.intensity ?? 0"
+     [style.--phase-ms]="revealPhaseMs"
      role="dialog" aria-modal="true" aria-label="Mystery box"
      (click)="phase === 'revealed' ? dismiss() : skip()">
 
   <div class="gb-reveal__stage" (click)="$event.stopPropagation()">
 
-    <!-- Anticipation: the box, shaking, with light leaking out of the seam. -->
-    <div class="gb-reveal__box" *ngIf="phase !== 'revealed'" aria-hidden="true">
-      <span class="gb-reveal__seam"></span>
-      <span class="gb-reveal__beam gb-reveal__beam--a"></span>
-      <span class="gb-reveal__beam gb-reveal__beam--b"></span>
-      <span class="gb-reveal__beam gb-reveal__beam--c"></span>
-    </div>
-    <p class="gb-reveal__waiting" *ngIf="phase !== 'revealed'">
-      {{ active?.name }}<br><button type="button" class="gb-reveal__skip" (click)="skip()">Skip</button>
-    </p>
+    <!-- The altar. Every picture on it comes through the art manifest. -->
+    <div class="gb-altar">
+      <img class="gb-altar__sigil" *ngIf="stage.sigil as art" [src]="art.src" [attr.srcset]="art.srcset"
+           sizes="280px" alt="" decoding="async">
+      <img class="gb-altar__flame gb-altar__flame--l" *ngIf="stage.flame as art" [src]="art.src"
+           [attr.srcset]="art.srcset" sizes="72px" alt="" decoding="async">
+      <img class="gb-altar__flame gb-altar__flame--r" *ngIf="stage.flame as art" [src]="art.src"
+           [attr.srcset]="art.srcset" sizes="72px" alt="" decoding="async">
+      <img class="gb-altar__portal" *ngIf="phase !== 'wager' && stage.portal as art" [src]="art.src"
+           [attr.srcset]="art.srcset" sizes="220px" alt="" decoding="async">
+      <span class="gb-altar__slab"></span>
 
-    <!-- Payoff. -->
-    <ng-container *ngIf="phase === 'revealed' && result as shown">
-      <p class="gb-reveal__pity" *ngIf="shown.pityApplied">✦ Bad luck protection paid out</p>
+      <!-- The wager settles onto the slab. -->
+      <img class="gb-altar__coin" *ngIf="phase === 'wager' && stage.coin as art" [src]="art.src"
+           width="48" height="48" alt="" decoding="async">
 
-      <p class="gb-reveal__named" *ngIf="shown.unique">A named object</p>
+      <!-- The veiled card: it shakes and charges, then cracks and flips away. -->
+      <div class="gb-card" *ngIf="phase !== 'revealed'">
+        <span class="gb-card__veil"></span>
+        <span class="gb-card__glyph"></span>
+        <span class="gb-card__crack gb-card__crack--a"></span>
+        <span class="gb-card__crack gb-card__crack--b"></span>
+      </div>
 
-      <div class="gb-reveal__item" [attr.data-quality-tag]="revealTag">
+      <img class="gb-altar__burst" *ngIf="(phase === 'cracking' || phase === 'revealed') && stage.burst as art"
+           [src]="art.src" [attr.srcset]="art.srcset" sizes="260px" alt="" decoding="async">
+      <span class="gb-altar__wave" *ngIf="phase === 'revealed'"></span>
+
+      <!-- Payoff: the item itself. -->
+      <div class="gb-reveal__item" *ngIf="phase === 'revealed' && result as shown"
+           [attr.data-quality-tag]="revealTag">
+        <img class="gb-reveal__aura" *ngIf="revealRank >= 3 && stage.aura as art" [src]="art.src"
+             [attr.srcset]="art.srcset" sizes="200px" alt="" decoding="async">
         <img class="gb-reveal__art" *ngIf="artSrc(shown.item) as art" [src]="art" alt=""
              width="96" height="96" decoding="async">
-        <span class="gb-reveal__orb" *ngIf="!artSrc(shown.item)" aria-hidden="true">{{ initials(shown.item) }}</span>
+        <span class="gb-reveal__orb" *ngIf="!artSrc(shown.item)">{{ initials(shown.item) }}</span>
       </div>
+    </div>
 
-      <p class="gb-reveal__rarity" [style.color]="revealColor">{{ revealRarityLabel }}</p>
-      <h2 class="gb-reveal__name">{{ shown.item.name }}</h2>
-      <p class="gb-reveal__tag" *ngIf="revealTagLabel">{{ revealTagLabel }}</p>
-      <p class="gb-reveal__passive" *ngIf="revealPassive">{{ revealPassive }}</p>
-
-      <app-roll-quality [item]="shown.item" />
-
-      <p class="gb-reveal__lore" *ngIf="shown.item.lore">{{ shown.item.lore }}</p>
-
-      <div class="gb-reveal__actions">
-        <button type="button" class="gb-reveal__again"
-                [disabled]="!active || gold < active.cost"
-                (click)="again()">
-          Open another — {{ compact(active?.cost ?? 0) }}
+    <ng-container *ngIf="phase !== 'revealed'">
+      <p class="gb-reveal__waiting" aria-live="polite">
+        <span class="gb-reveal__box-name">{{ active?.name }}</span>
+        <span *ngIf="phase === 'wager'">The wager is placed.</span>
+        <span *ngIf="phase === 'charging'">Something stirs under the veil.</span>
+        <span *ngIf="phase === 'cracking'">The veil breaks.</span>
+      </p>
+      <div class="gb-reveal__controls">
+        <button type="button" class="gb-reveal__skip" (click)="skip()">Skip</button>
+        <button type="button" class="gb-reveal__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
+          Fast reveal {{ fast ? 'on' : 'off' }}
         </button>
-        <button type="button" class="gb-reveal__done" (click)="dismiss()">Into the bag</button>
       </div>
+    </ng-container>
+
+    <ng-container *ngIf="phase === 'revealed' && result as shown">
+      <div class="gb-reveal__card">
+        <p class="gb-reveal__pity" *ngIf="shown.pityApplied">Bad luck protection paid out</p>
+        <p class="gb-reveal__named" *ngIf="shown.unique">A named object</p>
+
+        <p class="gb-reveal__rarity" [style.color]="revealColor">{{ revealRarityLabel }}</p>
+        <h2 class="gb-reveal__name">{{ shown.item.name }}</h2>
+        <p class="gb-reveal__tag" *ngIf="revealTagLabel">{{ revealTagLabel }}</p>
+        <p class="gb-reveal__passive" *ngIf="revealPassive">{{ revealPassive }}</p>
+
+        <app-roll-quality [item]="shown.item" />
+        <!-- Ungraded mints have no roll bars, so list the rolled stats plainly. -->
+        <ul class="gb-reveal__mods" *ngIf="!shown.item.rollQuality && mods(shown.item).length">
+          <li *ngFor="let line of mods(shown.item)">{{ line }}</li>
+        </ul>
+
+        <p class="gb-reveal__lore" *ngIf="shown.item.lore">{{ shown.item.lore }}</p>
+
+        <div class="gb-reveal__actions">
+          <button type="button" class="gb-reveal__done" (click)="dismiss()">Take</button>
+          <button type="button" class="gb-reveal__again"
+                  [disabled]="!active || gold < active.cost"
+                  (click)="again()">
+            Again — {{ compact(active?.cost ?? 0) }} Gold
+          </button>
+        </div>
+        <button type="button" class="gb-reveal__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
+          Fast reveal {{ fast ? 'on' : 'off' }}
+        </button>
+      </div>
+
+      <ng-container *ngTemplateOutlet="pulls"></ng-container>
     </ng-container>
   </div>
 </div>
+
+<!-- The last few pulls, newest first. Session-only: the bag is the record. -->
+<ng-template #pulls>
+  <div class="gb-pulls" *ngIf="history.length">
+    <p class="gb-pulls__label">Last pulls</p>
+    <ol class="gb-pulls__strip">
+      <li class="gb-pulls__tile" *ngFor="let pull of history; trackBy: trackPull; let first = first"
+          [class.gb-pulls__tile--new]="first"
+          [style.--pull-color]="pull.color" [style.--pull-glow]="pull.glow"
+          [attr.title]="pull.name + ' — ' + rarityLabel(pull.rarity)">
+        <img *ngIf="pull.art" [src]="pull.art" alt="" width="40" height="40" decoding="async" loading="lazy">
+        <span class="gb-pulls__initials" *ngIf="!pull.art">{{ pull.initials }}</span>
+        <span class="gb-pulls__sr">{{ pull.name }}, {{ rarityLabel(pull.rarity) }}</span>
+      </li>
+    </ol>
+  </div>
+</ng-template>
 
 <!-- Contextual links to the adjacent rooms. Static, so they are in the
      prerendered HTML where a crawler can follow them. See
