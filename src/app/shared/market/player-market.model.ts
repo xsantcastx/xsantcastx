@@ -303,3 +303,118 @@ export function newClientRequestId(rand: () => number = Math.random, now: number
   for (let i = 0; i < 12; i++) tail += Math.floor(rand() * 36).toString(36);
   return `r${now.toString(36)}-${tail}`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// The board: which items have a live market right now
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** One row of the Exchange list while the player market is on. */
+export interface MarketBoardRow {
+  itemKey: string;
+  /** Dearest open buy, or null when nobody is bidding. */
+  bestBid: number | null;
+  /** Cheapest open sell, or null when nobody is selling. */
+  bestAsk: number | null;
+  /** Units resting on each side. */
+  bidQty: number;
+  askQty: number;
+  /** From `market/v1/prices`: 0 when the item has never traded. */
+  lastPrice: number;
+  vwap24h: number;
+  volume24h: number;
+}
+
+/**
+ * Fold open orders and price docs into one row per item that has either a
+ * resting order or a trade in the last day. Items with neither are not a
+ * market yet and stay off the board (a seller can still list them from the
+ * Sell tab). Sorted busiest first: 24h volume, then units on the book.
+ */
+export function buildBoard(
+  orders: readonly MarketOrder[],
+  prices: readonly MarketPrice[],
+): MarketBoardRow[] {
+  const rows = new Map<string, MarketBoardRow>();
+  const row = (itemKey: string): MarketBoardRow => {
+    let r = rows.get(itemKey);
+    if (!r) {
+      r = { itemKey, bestBid: null, bestAsk: null, bidQty: 0, askQty: 0, lastPrice: 0, vwap24h: 0, volume24h: 0 };
+      rows.set(itemKey, r);
+    }
+    return r;
+  };
+  for (const o of orders) {
+    if (o.status !== 'open') continue;
+    const qty = remainingQty(o);
+    if (qty <= 0) continue;
+    const r = row(o.itemKey);
+    if (o.side === 'buy') {
+      r.bidQty += qty;
+      if (r.bestBid === null || o.unitPrice > r.bestBid) r.bestBid = o.unitPrice;
+    } else {
+      r.askQty += qty;
+      if (r.bestAsk === null || o.unitPrice < r.bestAsk) r.bestAsk = o.unitPrice;
+    }
+  }
+  for (const p of prices) {
+    if (!p || (!(p.volume24h > 0) && !rows.has(p.itemKey))) continue;
+    const r = row(p.itemKey);
+    r.lastPrice = p.lastPrice || 0;
+    r.vwap24h = p.vwap24h || 0;
+    r.volume24h = p.volume24h || 0;
+  }
+  return [...rows.values()].sort((a, b) =>
+    b.volume24h - a.volume24h
+    || (b.bidQty + b.askQty) - (a.bidQty + a.askQty)
+    || a.itemKey.localeCompare(b.itemKey));
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Which market the Exchange talks to
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ *   off   — the simulated Exchange (client flag off, the default).
+ *   live  — the player market on Firebase.
+ *   fake  — the player market against an in-memory backend, for clicking
+ *           through the UX locally. Dev builds only: `?market=fake`.
+ */
+export type MarketModeName = 'off' | 'live' | 'fake';
+export type FakeMarketScenario = 'ready' | 'guest' | 'closed';
+
+export interface MarketMode {
+  mode: MarketModeName;
+  /** Fake only: start signed in, signed out, or with the market closed. */
+  scenario: FakeMarketScenario;
+  /** Fake only: every placement is refused with this server reason (to see the copy). */
+  failReason: string | null;
+}
+
+/**
+ * Decide the mode from the build flag, dev mode and the page's query string.
+ *
+ * The fake can only ever be chosen in dev mode; a production build ignores the
+ * query parameter entirely, whatever the client flag says.
+ *   ?market=fake          signed in, market open
+ *   ?market=fake-guest    signed out
+ *   ?market=fake-closed   server switch off
+ *   &fail=<reason>        every placement is refused with that reason
+ */
+export function resolveMarketMode(opts: {
+  clientFlag: boolean;
+  devMode: boolean;
+  search: string | null | undefined;
+}): MarketMode {
+  const base: MarketMode = { mode: opts.clientFlag ? 'live' : 'off', scenario: 'ready', failReason: null };
+  if (!opts.devMode || !opts.search) return base;
+  let params: URLSearchParams;
+  try { params = new URLSearchParams(opts.search); } catch { return base; }
+  const q = params.get('market');
+  if (q !== 'fake' && q !== 'fake-guest' && q !== 'fake-closed') return base;
+  const fail = params.get('fail');
+  return {
+    mode: 'fake',
+    scenario: q === 'fake-guest' ? 'guest' : q === 'fake-closed' ? 'closed' : 'ready',
+    failReason: fail && /^[a-z-]{2,32}$/.test(fail) ? fail : null,
+  };
+}
