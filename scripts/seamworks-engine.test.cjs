@@ -1273,3 +1273,65 @@ test('a long-press places where it lands, in reach only', () => {
   assert.equal(t.nodeAt(39, 4).id, 'air');
   engine.destroy();
 });
+
+// ── Building: torches ───────────────────────────────────────────────────────
+const craftMod = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+
+test('torches: crafted from Delve materials, placed beside you, always lit, walked through, taken back', () => {
+  // The recipe: a stack of three from Root Hollows finds, in the Delve kit.
+  const recipe = craftMod.craftingRecipeById('craft-delve-torch');
+  assert.equal(recipe.category, 'delve'); assert.equal(recipe.output.stack, true);
+  assert.equal(recipe.output.itemId, 'torch'); assert.equal(recipe.output.count, 3);
+  assert.deepEqual(recipe.ingredients.map(i => i.materialId).sort(), ['cinder-ore', 'world-root-bark']);
+  assert.ok(craftMod.CRAFTING_CATEGORIES.some(c => c.id === 'delve'));
+  assert.equal(craftMod.craftXpFor(recipe), craftMod.CRAFT_XP.common, 'a handful is one craft of XP');
+  // Light: a torch burns wherever it stands; a vein only once exposed.
+  const n = terrainMod.TERRAIN_NODES;
+  assert.equal(n.torch.solid, false); assert.equal(n.torch.placeable, 'torch');
+  assert.ok(terrainMod.glowIntensity(n.torch, false) > terrainMod.glowIntensity(n['cinder-vein'], true));
+  assert.equal(terrainMod.glowIntensity(n['cinder-vein'], false), 0);
+  assert.equal(terrainMod.glowIntensity(n.rock, true), 0);
+
+  const delve = memoryDelve(41); const taken = [];
+  const { engine, state } = enterOwnDelve(delve, { onTakeBack: e => { taken.push(e); return true; } });
+  const t = buildRoom(engine);
+  t.set(31, 9, 0); // a hole ahead: a torch never goes in the floor
+  engine.setPlaceable('torch');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'torch', 'beside the body, at the feet');
+  // Walled in, it goes where you stand.
+  const rock = terrainMod.nodeIndex('rock');
+  for (let row = 3; row <= 9; row++) t.set(29, row, rock);
+  engine.facing = -1;
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(30, 8).id, 'torch');
+  // Torches never block: the Keeper walks through.
+  engine.facing = 1; t.set(31, 9, rock);
+  engine.player.x = 30 * 32 + 16;
+  engine.input.add('right');
+  for (let n = 0; n < 40; n++) engine.update(1 / 60);
+  engine.input.delete('right');
+  assert.ok(engine.player.x > 31 * 32 + 16, 'walked past the torch');
+  // Saved, and back after a reload.
+  engine.destroy();
+  const again = enterOwnDelve(delve, { onTakeBack: e => { taken.push(e); return true; } });
+  const t2 = again.engine.terrain;
+  assert.equal(t2.nodeAt(31, 8).id, 'torch');
+  // X beside it takes it back into the satchel; the cell is open air again and saved so.
+  again.engine.player.x = 30 * 32 + 16; again.engine.player.y = 610 + 9 * 32; again.engine.facing = 1;
+  assert.equal(again.engine.takeBack(), true);
+  assert.equal(taken.at(-1).item, 'torch'); assert.equal(taken.at(-1).cellKey, '31,8');
+  assert.equal(t2.nodeAt(31, 8).id, 'air');
+  assert.match(again.state().message, /Torch back in the satchel/);
+  // Refused (a full satchel): it stays.
+  again.engine.destroy();
+  const third = enterOwnDelve(delve, { onTakeBack: () => false });
+  third.engine.player.x = 30 * 32 + 16; third.engine.player.y = 610 + 9 * 32; third.engine.facing = -1;
+  assert.equal(third.engine.takeBack(), false);
+  assert.equal(third.engine.terrain.nodeAt(30, 8).id, 'torch');
+  third.engine.destroy();
+  // (31, 8) lies in the Root Hollows' old tunnel, generated open: taken back, it needs no diff entry at all.
+  assert.equal(t2.base[t2.index(31, 8)], 0);
+  assert.equal(saveMod.cellsFor(delve.save, 'ember-delve', terrainMod.terrainLayout(delveSpec, 41)).has(t2.index(31, 8)), false,
+    'back to what was generated: the diff stays compact');
+});

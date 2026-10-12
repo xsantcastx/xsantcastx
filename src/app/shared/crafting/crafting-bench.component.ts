@@ -560,6 +560,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       mastered: result.progress?.masteredNow === true,
     };
     const name = result.items[0]?.name ?? result.recipe.name;
+    const made = result.stack ? result.stack.quantity : result.items.length;
     this.announce = result.progress?.masteredNow
       ? `${name} forged. This recipe is now mastered.`
       : `${name} forged.`;
@@ -569,7 +570,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     this.reward = {
       seq: ++this.rewardSeq,
       kicker: result.progress?.masteredNow ? this.t('crafting.madeMastered') : this.t('crafting.made'),
-      name: result.items.length > 1 ? `${name} ×${result.items.length}` : name,
+      name: made > 1 ? `${name} ×${made}` : name,
       art: artFor(result.recipe.output.itemId),
       rarity: result.recipe.rarity,
       rarityLabel: this.rarityLabel(result.recipe.rarity),

@@ -7,7 +7,7 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
-  placeTarget, stepTerrainBody, SWING_TOOLS, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  glowIntensity, isTakeable, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import type { DelvePersistence } from './engine.model';
@@ -290,17 +290,22 @@ export class SeamworksEngine {
     const def = placeableById(this.placing);
     if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
     const down = this.input.has('down');
-    const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX);
+    const node = TERRAIN_NODES[def.node];
+    const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX, !!node?.solid);
     if (index < 0) { this.message = `No open space ${down ? 'under your feet' : 'in front of you'} for the ${def.label.toLowerCase()}.`; this.report(); return false; }
     return this.placeItem(def, index);
   }
-  /** A long-press (or right-click) on a cell within reach: place the chosen thing there. */
+  /**
+   * A long-press (or right-click) on a cell within reach: place the chosen
+   * thing there, or take back the placed thing already there.
+   */
   placeAtClient(clientX: number, clientY: number): boolean {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
     const point = this.pick(clientX, clientY);
     const col = t.colAt(point.x), row = t.rowAt(point.y);
     if (!t.inside(col, row) || !this.inReach(col, row)) return false;
+    if (isTakeable(t, col, row)) return this.takeItem(t.index(col, row));
     const def = placeableById(this.placing);
     if (!def) { this.message = 'Choose something to place first (keys 1-9, or tap the bar).'; this.report(); return false; }
     return this.placeItem(def, t.index(col, row));
@@ -343,6 +348,35 @@ export class SeamworksEngine {
     if (accepted === false) { this.report(); return false; }
     this.fill(t, col, row, node!, gen);
     this.message = `${def.label} placed.`;
+    this.report();
+    return true;
+  }
+  /** X: take back the placed thing beside the Keeper (or where they stand). */
+  takeBack(): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return false;
+    const index = takeTarget(t, this.player.x, this.player.y, this.facing, DELVE_BOX);
+    if (index < 0) { this.message = 'Nothing placed here to take back. Blocks are dug, like rock.'; this.report(); return false; }
+    return this.takeItem(index);
+  }
+  /** Ask the host to return the placed thing to the satchel, then clear the cell. */
+  private takeItem(index: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const node = t.nodeAt(col, row);
+    const def = placeableById(node.placeable);
+    if (!def || node.solid) return false;
+    const accepted = this.options.onTakeBack?.({
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row),
+      mutationId: `delve-take:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
+    });
+    if (accepted === false) { this.report(); return false; }
+    t.set(col, row, 0);
+    this.placedGen.delete(index);
+    this.recordCell(t, index);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, node.fleck, this.reducedMotion ? 2 : 4);
+    this.message = `${def.label} back in the satchel.`;
     this.report();
     return true;
   }
@@ -888,6 +922,7 @@ export class SeamworksEngine {
     if (action) { event.preventDefault(); if (!event.repeat) this.setInput(action, true); }
     if (!event.repeat && event.code === 'KeyE') { event.preventDefault(); this.interact(); }
     if (!event.repeat && event.code === 'KeyB' && this.terrain) { event.preventDefault(); this.place(); }
+    if (!event.repeat && event.code === 'KeyX' && this.terrain) { event.preventDefault(); this.takeBack(); }
   };
   private readonly keyUp = (event: KeyboardEvent): void => { const action = this.action(event.code); if (action) this.setInput(action, false); };
   private resize(): void {
@@ -1648,8 +1683,10 @@ export class SeamworksEngine {
         const node = TERRAIN_NODE_LIST[t.kind[t.index(col, row)]];
         if (!node.glow) continue;
         const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
-        if (t.exposed(col, row)) {
-          pool.add(x, y, node.glow.radius * 1.6, .55);
+        // Placed torches always burn; a vein glows once a tunnel exposes it.
+        const lift = glowIntensity(node, node.solid && t.exposed(col, row));
+        if (lift > 0) {
+          pool.add(x, y, node.glow.radius * 1.6, lift);
           if (haloCount < this.halosAt.length) this.halosAt[haloCount++] = t.index(col, row);
         }
         if (this.glintCount < this.glints.length && Math.hypot(x - this.player.x, y - this.player.y + 50) < reach) this.glints[this.glintCount++] = t.index(col, row);
