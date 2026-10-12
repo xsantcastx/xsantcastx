@@ -24,14 +24,18 @@
  */
 // Town files take only TYPES from this module, so this value import is one-way.
 import { INFERNAL_TOWN } from './towns/infernal';
+import { CELESTIAL_TOWN } from './towns/celestial';
+import { LUMINOUS_TOWN } from './towns/luminous';
+import { UMBRAL_TOWN } from './towns/umbral';
+import { VERDANT_TOWN } from './towns/verdant';
 
 /** Every built town. A Phase 2 town is a new file in towns/ and one line here. */
 export const TOWNS: Readonly<Record<RealmTownId, TownDef | undefined>> = {
   infernal: INFERNAL_TOWN,
-  luminous: undefined,
-  umbral: undefined,
-  celestial: undefined,
-  verdant: undefined,
+  luminous: LUMINOUS_TOWN,
+  umbral: UMBRAL_TOWN,
+  celestial: CELESTIAL_TOWN,
+  verdant: VERDANT_TOWN,
 };
 
 /** What the waystone shows for each realm, built or not. */
@@ -106,8 +110,15 @@ export interface StationDef {
  *  certain drops never touches the RNG, so the fixed-step tests stay exact.
  */
 export type DropEntry =
-  | { id: string; kind: 'coins'; base: number; spread?: number; chance?: number }
-  | { id: string; kind: 'material'; material: string; art: string; label: string; short: string; qty: number; chance?: number };
+  | { id: string; kind: 'coins'; base: number; spread?: number; chance?: number; rarity?: LootRarity }
+  | { id: string; kind: 'material'; material: string; art: string; label: string; short: string; qty: number; chance?: number; rarity?: LootRarity };
+
+/**
+ * Optional, presentation only: the colour of a drop's light beam on the ground
+ * (the item / rune tier ladder). Omitted → coins burn gold, materials 'common'.
+ * Never affects what is granted.
+ */
+export type LootRarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic' | 'singular';
 
 export interface ZoneDropTable {
   id: string;
@@ -115,7 +126,7 @@ export interface ZoneDropTable {
 }
 
 export interface MonsterDef {
-  /** `artFor()` key of the creature painting (drawn through the Maw rig for now). */
+  /** `artFor()` key of the creature painting. Picks its rig in engine/creature-rigs.ts (unknown keys get a generic one). */
   creature: string;
   name: string;
   hp: number;

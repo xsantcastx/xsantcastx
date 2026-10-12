@@ -1,10 +1,14 @@
 import { Atmosphere } from './atmosphere';
-import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, MAW_RIG, poseKeeper, poseMaw, trackKeeper } from './rig-poses';
+import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
 import { resetPose, RigSprite } from './rig';
+import { CreatureRigDef, creatureRigFor, RIVET_MAW_CREATURE } from './creature-rigs';
+import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
+import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
-import { AreaDef, areaOf, clientToWorld, DropEntry, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
+import { AreaDef, areaOf, clientToWorld, DropEntry, LootRarity, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation } from './engine.model';
+export type { HeldItem, KeeperLoadout } from './loadout';
 
 // `flash`, `knock`, `dying`, `born` and `shownHp` are presentation only: they
 // shape how a Maw is drawn and never feed back into position, HP or loot.
@@ -12,9 +16,18 @@ interface Monster {
   def: MonsterDef; maxHp: number;
   x: number; spawn: number; hp: number; phase: 'idle' | 'windup' | 'strike' | 'recover'; timer: number; facing: number; respawn: number;
   flash: number; knock: number; dying: number; born: number; shownHp: number;
+  /** Hit recoil 1 → 0, drives each creature's hurt pose. Presentation only. */
+  recoil: number;
 }
 /** `ore` is the material quantity (legacy name). `art`/`label`/`short` come from the drop entry. */
-interface Drop { id: string; x: number; coins: number; ore: number; material?: string; art?: string; label?: string; short?: string; age: number; spin: number }
+interface Drop {
+  id: string; x: number; coins: number; ore: number; material?: string; art?: string; label?: string; short?: string; age: number; spin: number;
+  /** Presentation, fixed at spill time so the render allocates nothing: beam colour/height, hover caption and its measured width. */
+  rarity?: LootRarity; color: string; beam: number; caption: string; captionW: number;
+}
+/** A picked-up item flying to the satchel, in canvas CSS px. Pooled; render-only. */
+interface Flight { active: boolean; t: number; sx: number; sy: number; ex: number; ey: number; art?: string; coins: boolean; color: string }
+const FLIGHT_POOL = 16;
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
@@ -52,11 +65,34 @@ export class SeamworksEngine {
   private readonly atmosphere = new Atmosphere();
   /** Mesh rigs bending the single Keeper and Maw paintings. Render-only. */
   private readonly keeperRig = new RigSprite(KEEPER_RIG);
-  private readonly mawRig = new RigSprite(MAW_RIG);
+  /** One rig per creature art key, built on first sight and shared by every monster using that painting. */
+  private readonly creatureRigs = new Map<string, { def: CreatureRigDef; sprite: RigSprite }>();
+  private readonly creaturePose = { phase: 'idle' as Monster['phase'], timer: 0, time: 0, seed: 0, reduced: false, hurt: 0 };
+  /** Worn gear drawn on the Keeper (see setLoadout). Images by URL, cached. */
+  private loadout: KeeperLoadout = {};
+  private readonly urlImages = new Map<string, HTMLImageElement>();
+  private readonly held = createHeldTransform();
+  private readonly backHand = { x: 0, y: 0, angle: 0 };
+  /** Pickup flights to the satchel. Preallocated; never grows. */
+  private readonly flights: Flight[] = Array.from({ length: FLIGHT_POOL }, () => ({ active: false, t: 0, sx: 0, sy: 0, ex: 0, ey: 0, coins: false, color: '' }));
+  private readonly flightAt = { x: 0, y: 0, scale: 1 };
+  private readonly satchelAt = { x: 0, y: 0 };
+  private satchelTarget: (() => { x: number; y: number } | null | undefined) | null = null;
+  /** Arrival pulse on the satchel point, 1 → 0. */
+  private satchelPulse = 0;
+  private satchelPulseColor = '';
+  /** Last pointer position in world px (from pick), for drop captions. NaN = none. */
+  private pointerX = NaN;
+  private pointerY = NaN;
+  /** Gradients built once per colour in local units and reused every frame. */
+  private readonly beamGradients = new Map<string, CanvasGradient>();
+  private readonly auraGradients = new Map<string, CanvasGradient>();
   private readonly playerMotion = createKeeperMotion();
   private readonly hand = { x: 0, y: 0, angle: 0 };
   /** Real seconds since the last drawn frame (0 during hitstop), for springs only. */
   private frameDt = 0;
+  /** Real seconds since the last drawn frame, hitstop included: flights keep flying through a freeze. */
+  private flightDelta = 0;
   private pixelRatio = 1;
   private pixelScale = 1;
   private readonly reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -99,7 +135,7 @@ export class SeamworksEngine {
     const monsters: Monster[] = [];
     for (const def of this.areaDef.monsters) {
       for (const x of def.spawnXs) {
-        monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp });
+        monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp, recoil: 0 });
       }
     }
     return monsters;
@@ -126,6 +162,7 @@ export class SeamworksEngine {
     if (!context) throw new Error('Your browser does not support Canvas 2D.');
     this.context = context;
     this.town = options.town ?? INFERNAL_TOWN;
+    this.satchelTarget = options.satchelTarget ?? null;
     this.enter(this.town);
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
@@ -178,6 +215,37 @@ export class SeamworksEngine {
     }
     this.report();
   }
+  /**
+   * The Keeper's worn gear, drawn in the world. Call whenever equipment changes;
+   * repeated calls with the same URLs are cheap (images are cached by URL).
+   *
+   *   setLoadout({
+   *     weapon?:  { art, rarity?, grip?, tilt?, size? } | null,  // front hand, follows the swing
+   *     offhand?: { art, rarity?, grip?, tilt?, size? } | null,  // back arm, behind the body
+   *     auraRarity?: LootRarity | null,                         // subtle glow in that tier's colour
+   *   })
+   *
+   * `art` is an image URL (e.g. `artFor(key).src`) or an `artFor()` key.
+   * `grip` is where the hand closes on the painting (normalised; weapon default
+   * {u:.24, v:.78}, off-hand {u:.5, v:.55}); `tilt` is the painted angle of the
+   * item's grip → tip axis (weapon default -PI/4 = diagonal up-right, off-hand
+   * -PI/2 = upright); `size` is world px (72 / 52). Pass null or {} to clear.
+   * With no weapon, the quest Basalt Edge still shows once `setProgress` says
+   * it is equipped. Visual only: damage and HP come from `setStats`.
+   */
+  setLoadout(loadout: KeeperLoadout | null): void {
+    this.loadout = loadout ? { weapon: loadout.weapon ?? null, offhand: loadout.offhand ?? null, auraRarity: loadout.auraRarity ?? null } : {};
+    this.heldImage(this.loadout.weapon); this.heldImage(this.loadout.offhand);
+  }
+  /**
+   * Where picked-up loot flies: a function returning the satchel HUD's centre in
+   * CLIENT (viewport) px, e.g. `() => { const r = satchel.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }`.
+   * Called once per pickup, never per frame. null (or returning null) → the
+   * canvas's top-right corner. Same as the `satchelTarget` engine option.
+   */
+  setSatchelTarget(target: (() => { x: number; y: number } | null | undefined) | null): void { this.satchelTarget = target; }
+  /** Forget the pointer (pointer left the canvas): hover captions on drops hide. */
+  clearPointer(): void { this.pointerX = NaN; this.pointerY = NaN; }
   setPeers(peers: RemoteKeeper[]): void {
     const present = new Set<string>();
     for (const peer of peers) {
@@ -256,6 +324,7 @@ export class SeamworksEngine {
       left: rect.left, top: rect.top, rectWidth: rect.width, rectHeight: rect.height,
       cssWidth: this.width, cssHeight: this.height, camera: this.camera,
     });
+    this.pointerX = point.x; this.pointerY = point.y;
     return { x: point.x, y: point.y, station: stationAt(this.stations, point.x, point.y, FLOOR) };
   }
   /** Highlight a station (pointer hover). Render-only. */
@@ -275,7 +344,7 @@ export class SeamworksEngine {
           const damage = this.damage ?? (this.equipped ? 20 : 10);
           this.atmosphere.burst(monster.x, FLOOR - 85, String(damage));
           monster.hp = Math.max(0, monster.hp - damage);
-          monster.flash = .14;
+          monster.flash = .14; monster.recoil = 1;
           this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
           if (!this.reducedMotion) monster.knock = Math.sign(monster.x - this.player.x || this.facing) * 22;
           if (monster.hp === 0) {
@@ -299,11 +368,15 @@ export class SeamworksEngine {
       const offset = (i - (entries.length - 1) / 2) * 50;
       const id = `${this.lootSession}:${this.kills}:${entry.id}`;
       const spin = offset < 0 ? -1 : 1;
+      const rarity = entry.rarity;
       if (entry.kind === 'coins') {
-        this.drops.push({ id, x: monster.x + offset, coins: entry.base + (entry.spread ? this.kills % entry.spread : 0), ore: 0, age: 0, spin });
+        const coins = entry.base + (entry.spread ? this.kills % entry.spread : 0);
+        this.drops.push({ id, x: monster.x + offset, coins, ore: 0, age: 0, spin,
+          rarity, color: beamColor(rarity, true), beam: beamHeight(rarity, true), caption: `${coins} coins`, captionW: 0 });
         names.push('coins');
       } else {
-        this.drops.push({ id, x: monster.x + offset, coins: 0, ore: entry.qty, material: entry.material, art: entry.art, label: entry.label, short: entry.short, age: 0, spin });
+        this.drops.push({ id, x: monster.x + offset, coins: 0, ore: entry.qty, material: entry.material, art: entry.art, label: entry.label, short: entry.short, age: 0, spin,
+          rarity, color: beamColor(rarity, false), beam: beamHeight(rarity, false), caption: entry.qty > 1 ? `${entry.qty} x ${entry.label}` : entry.label, captionW: 0 });
         names.push(entry.label);
       }
     }
@@ -385,6 +458,7 @@ export class SeamworksEngine {
     this.shake = Math.max(0, this.shake - delta * 30);
     this.wound = Math.max(0, this.wound - delta * 1.8);
     this.frameDt = this.hitstop > 0 ? 0 : delta;
+    this.flightDelta = delta;
     // Hitstop holds the simulation for a beat; the frame still draws so the
     // impact flash is what the eye lands on.
     if (this.hitstop > 0) this.hitstop = Math.max(0, this.hitstop - delta);
@@ -425,12 +499,14 @@ export class SeamworksEngine {
         if (this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore, material: drop.material }) === false) continue;
         this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
         this.coins += drop.coins; drop.age = -1;
+        this.launchFlight(drop);
         this.message = drop.coins ? `Collected ${drop.coins} coins.` : `Collected ${drop.label ?? 'Cinder Ore'}.`;
       }
     }
     this.drops = this.drops.filter(drop => drop.age >= 0 && drop.age < 120);
     for (const monster of this.monsters) {
       monster.flash = Math.max(0, monster.flash - dt);
+      monster.recoil = Math.max(0, monster.recoil - dt * 3);
       monster.knock *= Math.exp(-14 * dt);
       monster.dying = Math.max(0, monster.dying - dt);
       monster.born = Math.max(0, monster.born - dt);
@@ -546,6 +622,7 @@ export class SeamworksEngine {
     shown: string | undefined, time: number, motion: KeeperMotion, worldX: number, worldY: number, facing: number,
     attackT: number, swing: number, armed: boolean, feel: { landing: number; recoil: number; rim: number },
     fallback: { bob: number; tilt: number; sx: number; sy: number; sway: number },
+    gear = false,
   ): void {
     trackKeeper(motion, worldX, worldY, this.frameDt);
     const rig = this.keeperRig;
@@ -556,6 +633,15 @@ export class SeamworksEngine {
     if (!rig.render(this.images['keeper'], box.x, box.y, box.w, box.h, this.pixelScale)) {
       this.posedKeeper(c, box.x, box.y, box.w, box.h, shown, time, fallback, attackT, swing, armed);
       return;
+    }
+    // Worn gear (player only): aura and off-hand sit behind the body.
+    const aura = gear ? this.loadout.auraRarity : null;
+    if (aura) this.drawAura(c, aura, time);
+    const offhand = gear ? this.loadout.offhand : null;
+    const offhandImage = this.heldImage(offhand);
+    if (offhand && offhandImage && rig.attach(KEEPER.ARM_B, KEEPER_BACK_HAND.u, KEEPER_BACK_HAND.v, this.backHand)) {
+      heldTransform(this.backHand.x, this.backHand.y, -Math.PI / 2 + this.backHand.angle * .6, offhand, OFFHAND_DEFAULTS, this.held);
+      this.drawHeld(c, offhandImage);
     }
     const speed = motion.vx * facing;
     if (!this.reducedMotion && Math.abs(speed) > 420) {
@@ -575,14 +661,140 @@ export class SeamworksEngine {
       rig.blit(c, 1.6, -1.2);
       c.restore();
     }
-    if (armed && rig.attach(KEEPER.ARM_F, KEEPER_HAND.u, KEEPER_HAND.v, this.hand)) {
-      c.save();
-      c.translate(this.hand.x, this.hand.y);
-      c.rotate(-.95 + swing * 1.85 + (attackT > 0 ? 0 : this.hand.angle * .6));
-      if (attackT > .3) c.scale(1.06, 1.06);
-      this.art('blade', -8, -78, 58, 92);
-      c.restore();
+    // Main hand: the worn weapon's own art, else the quest Basalt Edge once equipped.
+    const weapon = gear ? this.loadout.weapon : null;
+    const weaponImage = this.heldImage(weapon);
+    if ((weaponImage || armed) && rig.attach(KEEPER.ARM_F, KEEPER_HAND.u, KEEPER_HAND.v, this.hand)) {
+      const rotation = -.95 + swing * 1.85 + (attackT > 0 ? 0 : this.hand.angle * .6);
+      if (weapon && weaponImage) {
+        heldTransform(this.hand.x, this.hand.y, aimFromBladeRotation(rotation), weapon, WEAPON_DEFAULTS, this.held);
+        this.drawHeld(c, weaponImage, attackT > .3 ? 1.06 : 1);
+      } else {
+        c.save();
+        c.translate(this.hand.x, this.hand.y);
+        c.rotate(rotation);
+        if (attackT > .3) c.scale(1.06, 1.06);
+        this.art('blade', -8, -78, 58, 92);
+        c.restore();
+      }
     }
+  }
+  /** An image by URL (or an `artFor()` key when it is not URL-shaped), loaded once and cached. */
+  private urlImage(art: string | undefined): HTMLImageElement | undefined {
+    if (!art) return undefined;
+    if (!/[/.:]/.test(art)) return this.image(art);
+    let image = this.urlImages.get(art);
+    if (!image) { image = new Image(); image.src = art; this.urlImages.set(art, image); }
+    return image;
+  }
+  private heldImage(item: HeldItem | null | undefined): HTMLImageElement | undefined {
+    const image = item ? this.urlImage(item.art) : undefined;
+    return image?.complete && image.naturalWidth ? image : undefined;
+  }
+  /** Draw a held item at the current `held` transform. */
+  private drawHeld(c: CanvasRenderingContext2D, image: HTMLImageElement, grow = 1): void {
+    const t = this.held;
+    c.save();
+    c.translate(t.x, t.y); c.rotate(t.rotation);
+    if (grow !== 1) c.scale(grow, grow);
+    c.drawImage(image, t.drawX, t.drawY, t.size, t.size);
+    c.restore();
+  }
+  /** A soft aura behind the Keeper in the highest worn rarity's colour. One cached gradient per colour. */
+  private drawAura(c: CanvasRenderingContext2D, rarity: LootRarity, time: number): void {
+    const color = RARITY_COLORS[rarity];
+    if (!color) return;
+    let gradient = this.auraGradients.get(color);
+    if (!gradient) {
+      gradient = c.createRadialGradient(0, 0, 0, 0, 0, 1);
+      gradient.addColorStop(0, `${color}55`); gradient.addColorStop(.55, `${color}22`); gradient.addColorStop(1, `${color}00`);
+      this.auraGradients.set(color, gradient);
+    }
+    const breath = this.reducedMotion ? 0 : Math.sin(time * 1.6) * .08;
+    c.save();
+    c.shadowBlur = 0; c.filter = 'none'; c.globalCompositeOperation = 'lighter';
+    c.translate(0, -96); c.scale(70 * (1 + breath), 108 * (1 + breath));
+    c.fillStyle = gradient; c.beginPath(); c.arc(0, 0, 1, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
+  /** Start a pickup's flight to the satchel. Visual only; the loot is already granted. */
+  private launchFlight(drop: Drop): void {
+    if (this.reducedMotion) return;
+    const flight = this.flights.find(row => !row.active);
+    if (!flight) return;
+    const scale = this.height / 720;
+    let target: { x: number; y: number } | null | undefined = null;
+    try { target = this.satchelTarget?.(); } catch { target = null; }
+    const rect = this.canvas.getBoundingClientRect();
+    satchelPoint(target, rect, this.width, this.height, this.satchelAt);
+    flight.active = true; flight.t = 0;
+    flight.sx = (drop.x - this.camera) * scale; flight.sy = (FLOOR - 18) * scale;
+    flight.ex = this.satchelAt.x; flight.ey = this.satchelAt.y;
+    flight.art = drop.art; flight.coins = drop.coins > 0; flight.color = drop.color;
+  }
+  /** Flights and the satchel's arrival pulse, in canvas CSS px (after the world transform is popped). */
+  private drawFlights(c: CanvasRenderingContext2D, delta: number): void {
+    const scale = this.height / 720;
+    for (const flight of this.flights) {
+      if (!flight.active) continue;
+      flight.t += delta / FLIGHT_TIME;
+      if (flight.t >= 1) {
+        flight.active = false;
+        this.satchelPulse = 1; this.satchelPulseColor = flight.color; this.satchelAt.x = flight.ex; this.satchelAt.y = flight.ey;
+        continue;
+      }
+      flightPoint(flight.sx, flight.sy, flight.ex, flight.ey, flight.t, this.flightAt);
+      const at = this.flightAt, size = 30 * scale * at.scale;
+      c.save();
+      c.globalCompositeOperation = 'lighter'; c.globalAlpha = .55; c.fillStyle = flight.color;
+      c.beginPath(); c.arc(at.x, at.y, size * .75, 0, Math.PI * 2); c.fill();
+      c.restore();
+      if (flight.coins) {
+        c.fillStyle = '#ffd36d'; c.beginPath(); c.arc(at.x, at.y, size * .4, 0, Math.PI * 2); c.fill();
+      } else if (!this.art(flight.art, at.x - size / 2, at.y - size / 2, size, size)) {
+        c.fillStyle = flight.color; c.fillRect(at.x - size / 4, at.y - size / 4, size / 2, size / 2);
+      }
+    }
+    if (this.satchelPulse > 0) {
+      const k = this.satchelPulse;
+      c.save(); c.strokeStyle = this.satchelPulseColor; c.lineWidth = 3; c.globalAlpha = k;
+      c.beginPath(); c.arc(this.satchelAt.x, this.satchelAt.y, 12 + (1 - k) * 26, 0, Math.PI * 2); c.stroke();
+      c.restore();
+      this.satchelPulse = Math.max(0, k - delta * 3.5);
+    }
+  }
+  /** A drop's light beam and ground ring, coloured by rarity. Two fills and an ellipse. */
+  private drawDropBeam(c: CanvasRenderingContext2D, drop: Drop, time: number): void {
+    const grow = Math.max(0, Math.min(1, (drop.age - .35) / .4));
+    if (grow <= 0) return;
+    let gradient = this.beamGradients.get(drop.color);
+    if (!gradient) {
+      gradient = c.createLinearGradient(0, 0, 0, -1);
+      gradient.addColorStop(0, `${drop.color}cc`); gradient.addColorStop(.35, `${drop.color}55`); gradient.addColorStop(1, `${drop.color}00`);
+      this.beamGradients.set(drop.color, gradient);
+    }
+    const pulse = this.reducedMotion ? .85 : .75 + Math.sin(time * 3 + drop.x * .05) * .25;
+    c.save();
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = drop.color; c.globalAlpha = .3 * pulse * grow;
+    c.beginPath(); c.ellipse(drop.x, FLOOR + 1, 26, 6, 0, 0, Math.PI * 2); c.fill();
+    c.translate(drop.x, FLOOR); c.scale(1, drop.beam * grow);
+    c.fillStyle = gradient;
+    c.globalAlpha = .45 * pulse; c.fillRect(-13, -1, 26, 1);
+    c.globalAlpha = pulse; c.fillRect(-3.5, -1, 7, 1);
+    c.restore();
+  }
+  /** The drop's name, shown while the Keeper stands near it or the pointer is over it. */
+  private drawDropCaption(c: CanvasRenderingContext2D, drop: Drop, y: number): void {
+    const near = Math.abs(drop.x - this.player.x) < 170 && Math.abs(this.player.y - FLOOR) < 120;
+    const pointed = Math.abs(drop.x - this.pointerX) < 45 && Math.abs(FLOOR - 30 - this.pointerY) < 70;
+    if (!near && !pointed) return;
+    c.font = '600 13px system-ui'; c.textAlign = 'center';
+    if (!drop.captionW) drop.captionW = Math.min(200, c.measureText(drop.caption).width + 16);
+    const w = drop.captionW, top = y - 46;
+    c.fillStyle = '#1a120fe6'; c.fillRect(drop.x - w / 2, top, w, 20);
+    c.fillStyle = drop.color; c.fillRect(drop.x - w / 2, top + 19, w, 1);
+    c.fillStyle = '#fff1d6'; c.fillText(drop.caption, drop.x, top + 14, w - 8);
   }
   /** A soft contact shadow on the ground below a figure, smaller and fainter the higher it is. */
   private groundShadow(c: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
@@ -772,6 +984,7 @@ export class SeamworksEngine {
       if (station.x < this.camera - 200 || station.x > this.camera + viewport + 200) continue;
       this.drawStation(c, station, station.id === nearId, station.id === this.hovered, motionTime);
     }
+    for (const drop of this.drops) this.drawDropBeam(c, drop, motionTime);
     for (const drop of this.drops) {
       // Spilled from the body: an arc out and a short bounce, then the idle bob.
       const t = Math.min(1, drop.age / .5);
@@ -779,35 +992,40 @@ export class SeamworksEngine {
       const fling = this.reducedMotion ? 0 : drop.spin * 24 * (1 - t);
       const y = FLOOR - 18 - arc + (t < 1 ? 0 : Math.sin(motionTime * 5 + drop.x) * 4);
       c.save(); c.translate(-fling, 0);
-      c.shadowBlur = 14; c.shadowColor = drop.coins ? '#ffd36d' : '#ed9069';
+      c.shadowBlur = 14; c.shadowColor = drop.color;
       if (drop.coins) {
         c.fillStyle = '#ffd36d'; c.beginPath(); c.ellipse(drop.x, y, 3 + Math.abs(Math.cos(motionTime * 3)) * 7, 13, 0, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#9e602c'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('$', drop.x, y + 5);
       } else if (!this.art(drop.art, drop.x - 15, y - 15, 30, 30) && !this.art('ore', drop.x - 15, y - 15, 30, 30)) { c.fillStyle = '#ed9069'; c.fillRect(drop.x - 8, y - 8, 16, 16); }
       c.shadowBlur = 0; c.restore();
+      if (t >= 1) this.drawDropCaption(c, drop, y);
     }
     for (const monster of this.monsters) {
       if (monster.hp <= 0 && monster.dying <= 0) continue;
       if (monster.x < this.camera - 220 || monster.x > this.camera + viewport + 220) continue;
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
+      const rigDef = this.creatureRig(monster.def.creature).def;
+      const crown = FLOOR - rigDef.box.h - 20;
       if (warning) {
         c.fillStyle = monster.phase === 'strike' ? '#ff765caa' : '#ff765c40';
         c.fillRect(monster.facing < 0 ? monster.x - 170 : monster.x, FLOOR - 10, 170, 10);
-        c.fillStyle = '#ffc589'; c.font = 'bold 18px system-ui'; c.textAlign = 'center'; c.fillText('!', monster.x, FLOOR - 150);
+        c.fillStyle = '#ffc589'; c.font = 'bold 18px system-ui'; c.textAlign = 'center'; c.fillText('!', monster.x, crown - 20);
       }
       const rise = monster.born > 0 ? 1 - monster.born / SPAWN_RISE : 1;
-      this.groundShadow(c, monster.x + monster.knock, FLOOR, 54 * (.6 + rise * .4));
-      // The painting faces left; turn it toward its target. Purely a drawing choice.
+      this.groundShadow(c, monster.x + monster.knock, FLOOR, rigDef.shadow * (.6 + rise * .4));
+      // Turn the painting toward its target. Purely a drawing choice.
       const looking = monster.phase === 'idle' ? Math.sign(this.player.x - monster.x) || monster.facing : monster.facing;
+      const mirror = rigDef.facesLeft ? looking > 0 : looking < 0;
       c.save(); c.translate(monster.x + monster.knock, FLOOR);
-      c.globalAlpha = rise; c.scale((.6 + rise * .4) * (looking > 0 ? -1 : 1), .6 + rise * .4);
+      c.globalAlpha = rise; c.scale((.6 + rise * .4) * (mirror ? -1 : 1), .6 + rise * .4);
       this.creature(c, monster.flash > 0, monster.def.creature, monster);
       c.restore();
       // The chip bar trails the real HP so a hit reads as a chunk taken.
-      c.fillStyle = '#302530'; c.fillRect(monster.x - 45, FLOOR - 130, 90, 6);
-      c.fillStyle = '#ffe2c4'; c.fillRect(monster.x - 45, FLOOR - 130, Math.max(monster.hp, monster.shownHp) / 60 * 90, 6);
-      c.fillStyle = '#dd866f'; c.fillRect(monster.x - 45, FLOOR - 130, monster.hp / 60 * 90, 6);
+      const full = monster.maxHp || 1;
+      c.fillStyle = '#302530'; c.fillRect(monster.x - 45, crown, 90, 6);
+      c.fillStyle = '#ffe2c4'; c.fillRect(monster.x - 45, crown, Math.max(monster.hp, monster.shownHp) / full * 90, 6);
+      c.fillStyle = '#dd866f'; c.fillRect(monster.x - 45, crown, monster.hp / full * 90, 6);
     }
     for (const view of this.peers.values()) {
       if (view.peer.area !== this.areaDef.name || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
@@ -869,7 +1087,7 @@ export class SeamworksEngine {
         landing: this.landing > 0 ? this.landing / .18 : 0,
         recoil: this.hp <= 0 ? 1 : Math.max(0, Math.min(1, this.hurtTime / .8)),
         rim: Math.max(strikeGlow, this.wound * .9),
-      }, motion);
+      }, motion, true);
     c.filter = 'none'; c.shadowBlur = 0; c.globalAlpha = 1;
     if (attackT > .3) {
       const u = (attackT - .3) / .7;
@@ -884,6 +1102,7 @@ export class SeamworksEngine {
     c.restore();
     this.atmosphere.feedback(c, this.reducedMotion);
     c.restore();
+    this.drawFlights(c, this.flightDelta);
     if (this.wound > 0) {
       // A wound reddens the edges of the screen, not the Keeper: the eye stays on the fight.
       const edge = c.createRadialGradient(this.width / 2, this.height / 2, Math.min(this.width, this.height) * .35, this.width / 2, this.height / 2, Math.max(this.width, this.height) * .75);
@@ -891,15 +1110,38 @@ export class SeamworksEngine {
       c.fillStyle = edge; c.fillRect(0, 0, this.width, this.height);
     }
   }
-  /** The creature sprite, or a white silhouette of it for the frames after a hit. */
+  /** The rig for a creature art key, built once per key. */
+  private creatureRig(key: string): { def: CreatureRigDef; sprite: RigSprite } {
+    let entry = this.creatureRigs.get(key);
+    if (!entry) {
+      const def = creatureRigFor(key);
+      entry = { def, sprite: new RigSprite(def.spec) };
+      this.creatureRigs.set(key, entry);
+    }
+    return entry;
+  }
+  /**
+   * The creature through its own rig, or a white silhouette of it for the frames
+   * after a hit. Until the painting loads, the legacy `creature` asset (the Rivet
+   * Maw) stands in through the Maw rig, so a pose is never applied to the wrong body.
+   */
   private creature(c: CanvasRenderingContext2D, flash: boolean, key: string, monster?: Monster): void {
-    const rig = this.mawRig;
-    if (monster) poseMaw(rig.pose, { phase: monster.phase, timer: monster.timer, time: this.reducedMotion ? 0 : this.elapsed, seed: monster.spawn * .013, reduced: this.reducedMotion });
-    else resetPose(rig.pose);
-    // The data names the creature by art key; the legacy `creature` asset stands in until it loads.
     const painted = this.image(key);
-    const sprite = painted?.complete && painted.naturalWidth ? key : 'creature';
-    if (rig.render(this.image(sprite), -70, -110, 140, 110, this.pixelScale)) {
+    const ready = !!(painted?.complete && painted.naturalWidth);
+    const entry = this.creatureRig(ready ? key : RIVET_MAW_CREATURE.key);
+    const def = entry.def;
+    const rig = entry.sprite;
+    const sprite = ready ? key : 'creature';
+    if (monster) {
+      const input = this.creaturePose;
+      input.phase = monster.phase; input.timer = monster.timer; input.time = this.reducedMotion ? 0 : this.elapsed;
+      input.seed = monster.spawn * .013; input.reduced = this.reducedMotion; input.hurt = monster.recoil;
+      def.pose(rig.pose, input);
+    } else resetPose(rig.pose);
+    // Contain-fit, bottom aligned, then lowered so the painted feet touch the floor.
+    const box = def.box, drawn = Math.min(box.w, box.h);
+    const boxX = -box.w / 2, boxY = -box.h + (1 - def.ground) * drawn;
+    if (rig.render(this.image(sprite), boxX, boxY, box.w, box.h, this.pixelScale)) {
       // brightness() whitens the painted sprite in place, so no tinted copy is needed.
       if (flash) c.filter = 'brightness(3.2) saturate(0)';
       rig.blit(c);
@@ -910,12 +1152,12 @@ export class SeamworksEngine {
       return;
     }
     if (!flash) {
-      if (!this.art(sprite, -70, -110, 140, 110)) { c.fillStyle = '#b26460'; c.fillRect(-35, -75, 70, 75); }
+      if (!this.art(sprite, boxX, boxY, box.w, box.h)) { c.fillStyle = '#b26460'; c.fillRect(-35, -75, 70, 75); }
       return;
     }
     // brightness() whitens the painted sprite in place, so no tinted copy is needed.
     c.filter = 'brightness(3.2) saturate(0)';
-    if (!this.art(sprite, -70, -110, 140, 110)) { c.fillStyle = '#fff4ea'; c.fillRect(-35, -75, 70, 75); }
+    if (!this.art(sprite, boxX, boxY, box.w, box.h)) { c.fillStyle = '#fff4ea'; c.fillRect(-35, -75, 70, 75); }
     c.filter = 'none';
   }
   /** A felled Maw sinks, flattens and fades, shedding embers as it goes. */

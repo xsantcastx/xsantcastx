@@ -71,17 +71,19 @@ Sequential: everything after it plugs into its data model and panel host.
 - [x] Checked in a production build: `/play?at=crafting` opens the real Crafting Bench in-world (backdrop + hero suppressed, forge floor works); Escape closes and clears `?at`; Places lists all 8 stations; choosing the Waystone walks there and opens travel (4 towns "Not yet charted")
 - How Phase 2 adds content (data only): a town = `src/app/play/world/towns/<realm>.ts` exporting a `TownDef`, registered in `TOWNS`; a station = a `StationDef` (`kind: 'panel'` + `panel` id opens a page; a new page needs a `PanelId` + `PANEL_REGISTRY` row); a hunt = a `HuntZoneDef` reached by a passage `to`; monsters and `ZoneDropTable`s are data on the area or monster
 
-## Phase 2: Fan out (parallel, after Phase 1 merges)
+## Phase 2: Fan out `[~]` (started 2026-10-12, 6 agents)
 
-- [ ] Luminous town: Market
-- [ ] Umbral town: Gambler, Exchange
-- [ ] Celestial town (Meridian Orrery): Codex, Leaderboards
-- [ ] Verdant town (Rootglass Canopy): Sanctum, Quests, Arena + Trials gates
-- [ ] Zone drop tables per hunting ground: real items and materials, rarity beams, items fly into the satchel
-- [ ] Material Vendor in Infernal: purchases fly to the forge stockpile (reuse the forge-floor flight)
-- [ ] One hunting-ground monster per realm from the 5 painted creatures (Rivet Maw done; Prism Forager, Ephemeris Leech, Mirror Substitute, Rootglass Stag)
-- [ ] Your gear on the Keeper in the world: weapon in hand, off-hand on the back arm, trinket and rarity auras (needs Phase 1's engine)
-- [ ] In-game UI polish: HUD, satchel, panel open/close transitions (needs Phase 1's side-scroller)
+- [x] Luminous town **Heliograph Court**: Market; hunt Reflection Channels (Prism Forager → Luminous Prism, Sunbloom, Solar Resin = Aurumleaf Pendant) (`1948b55`)
+- [x] Umbral town **Nocturne Archive**: Gambler (reveal fills the panel), Exchange; hunt Unrecorded Corridors (Mirror Substitute → Umbral Ink, Nightbloom, Shadowthread Silk = Inkwell Talisman) (`1948b55`)
+- [x] Celestial town **Meridian Orrery**: Codex, Leaderboards (tabs local in-world); hunt Orrery Rings (Ephemeris Leech → Celestial Alloy, Moonpetal Herb, Celestial Quartz) (`1948b55`)
+- [x] Verdant town **Rootglass Canopy**: Sanctum, Quest Board, Arena gate, Trials gate (games fill the panel); hunt Rootglass Thicket (Rootglass Stag → Thornroot, Verdant Sap, World-Root Bark) (`1948b55`)
+- [x] Zone drop tables: every drop is a catalogued material a recipe uses (enforced by a test)
+- [x] Rarity beams, drop captions, pickup flights to the satchel (`378269a`)
+- [~] Material Vendor in Infernal: purchases fly to the forge stockpile (reuse the forge-floor flight)
+- [x] Per-creature rigs: Forager skitters, Leech undulates, Mirror Substitute sways in reflection, Stag lowers its head to charge (`378269a`); checked: Stags drawn with their own rig in Rootglass Thicket
+- [x] Engine side of gear on the Keeper: `setLoadout`, `setSatchelTarget` (`378269a`)
+- [~] Side-scroller wiring of `setLoadout` / satchel target (Infernal agent)
+- [~] In-game UI polish: HUD, satchel, panel transitions, focus returns to canvas (Infernal agent)
 
 ## Phase 3: World only
 
@@ -118,6 +120,7 @@ Sequential: everything after it plugs into its data model and panel host.
 | Work | Branch | Status |
 |---|---|---|
 | Missing-art commission pack, now split for the hybrid style (sprites + paintings) | agent worktree (pending report) | `[~]` |
+| Phase 2 · Infernal vendor + side-scroller UI | agent worktree | `[~]` |
 | Installable app (PWA) polish | agent worktree (pending report) | `[~]` |
 
 ## Art still missing (placeholders in game)
@@ -134,6 +137,10 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
+- HUD enemy bar is labelled "Nearest Maw" in every hunt; should name the creature
+- **Initial bundle is AT the 2 MB hard limit** (2.00 MB; warn 1.85). The next eager addition fails the build and blocks deploys. Biggest eager modules: `lore.model.ts` 134 kB, `tools-registry.ts` 77 kB (retired tools product), `art-manifest.generated.ts` 64 kB, `equipment-panel` 44 kB. Towns are lazy and don't count
+- `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
+- New creatures still draw with the Rivet Maw rig until the engine-visuals branch lands
 - After closing an in-world panel, focus lands on the page body, not the game canvas (keyboard players must click once) — Phase 2 UI polish
 - The Infernal town is 900px wider, so for a while after deploy, peers on an older client appear ~900px off east of the forge
 - Gambler / rune-forge fixed overlays inside panels not yet exercised in-world (the gambler moves in-world with the Umbral town)
