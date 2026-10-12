@@ -1,4 +1,6 @@
 import { Atmosphere } from './atmosphere';
+import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, MAW_RIG, poseKeeper, poseMaw, trackKeeper } from './rig-poses';
+import { resetPose, RigSprite } from './rig';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, PLATFORMS, WORLD_WIDTH } from './engine.model';
 export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation } from './engine.model';
 
@@ -14,7 +16,7 @@ const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
 const KEEPER_ANIMATIONS = new Set<KeeperAnimation>(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 export interface RemoteKeeper { id: string; name: string; x: number; y: number; area: string; facing?: number; animation?: string }
-interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number }
+interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number; motion: KeeperMotion }
 interface Speech { text: string; at: number }
 /** Fixed-step farming runtime with reversible camp and hunting-ground portals. */
 export class SeamworksEngine {
@@ -31,6 +33,15 @@ export class SeamworksEngine {
   private accumulator = 0;
   private elapsed = 0;
   private readonly atmosphere = new Atmosphere();
+  /** Mesh rigs bending the single Keeper and Maw paintings. Render-only. */
+  private readonly keeperRig = new RigSprite(KEEPER_RIG);
+  private readonly mawRig = new RigSprite(MAW_RIG);
+  private readonly playerMotion = createKeeperMotion();
+  private readonly hand = { x: 0, y: 0, angle: 0 };
+  /** Real seconds since the last drawn frame (0 during hitstop), for springs only. */
+  private frameDt = 0;
+  private pixelRatio = 1;
+  private pixelScale = 1;
   private readonly reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   private landing = 0;
   private stepAt = 0;
@@ -140,7 +151,7 @@ export class SeamworksEngine {
         name: peer.name.slice(0, 24), x: Math.max(30, Math.min(WORLD_WIDTH - 30, peer.x)), y: Math.max(-300, Math.min(FLOOR, peer.y)),
       };
       if (previous && previous.peer.area === peer.area) previous.peer = snapshot;
-      else this.peers.set(peer.id, { peer: snapshot, x: snapshot.x, y: snapshot.y, facing });
+      else this.peers.set(peer.id, { peer: snapshot, x: snapshot.x, y: snapshot.y, facing, motion: createKeeperMotion() });
     }
     for (const id of this.peers.keys()) if (!present.has(id)) this.peers.delete(id);
   }
@@ -231,6 +242,7 @@ export class SeamworksEngine {
     const cssWidth = this.canvas.parentElement?.clientWidth || parent?.width || bounds.width;
     const cssHeight = this.canvas.parentElement?.clientHeight || parent?.height || bounds.height;
     const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    this.pixelRatio = ratio;
     this.width = Math.max(320, cssWidth || this.canvas.clientWidth || 320); this.height = Math.max(300, cssHeight || this.canvas.clientHeight || 300);
     this.canvas.width = Math.round(this.width * ratio); this.canvas.height = Math.round(this.height * ratio);
     this.context.setTransform(ratio, 0, 0, ratio, 0, 0);
@@ -249,6 +261,7 @@ export class SeamworksEngine {
     }
     this.shake = Math.max(0, this.shake - delta * 30);
     this.wound = Math.max(0, this.wound - delta * 1.8);
+    this.frameDt = this.hitstop > 0 ? 0 : delta;
     // Hitstop holds the simulation for a beat; the frame still draws so the
     // impact flash is what the eye lands on.
     if (this.hitstop > 0) this.hitstop = Math.max(0, this.hitstop - delta);
@@ -388,6 +401,66 @@ export class SeamworksEngine {
     if (armed) this.drawBlade(c, swing, attackT);
     c.restore();
   }
+  /**
+   * A Keeper through the mesh rig: bones posed per animation, cape/hem/head on
+   * springs, a motion smear on fast moves and a rim flash on strike or hurt.
+   * Falls back to the whole-painting pose when the painting has not loaded.
+   */
+  private drawKeeper(
+    c: CanvasRenderingContext2D, box: { x: number; y: number; w: number; h: number },
+    shown: string | undefined, time: number, motion: KeeperMotion, worldX: number, worldY: number, facing: number,
+    attackT: number, swing: number, armed: boolean, feel: { landing: number; recoil: number; rim: number },
+    fallback: { bob: number; tilt: number; sx: number; sy: number; sway: number },
+  ): void {
+    trackKeeper(motion, worldX, worldY, this.frameDt);
+    const rig = this.keeperRig;
+    poseKeeper(rig.pose, motion, {
+      animation: shown, time, attackT, swing, landing: feel.landing, recoil: feel.recoil,
+      facing, dt: this.frameDt, reduced: this.reducedMotion,
+    });
+    if (!rig.render(this.images['keeper'], box.x, box.y, box.w, box.h, this.pixelScale)) {
+      this.posedKeeper(c, box.x, box.y, box.w, box.h, shown, time, fallback, attackT, swing, armed);
+      return;
+    }
+    const speed = motion.vx * facing;
+    if (!this.reducedMotion && Math.abs(speed) > 420) {
+      // Smear: two fading after-images trail the direction of travel.
+      const reach = Math.min(1, (Math.abs(speed) - 420) / 300);
+      c.save(); c.shadowBlur = 0;
+      const alpha = c.globalAlpha;
+      c.globalAlpha = alpha * .1 * reach; rig.blit(c, -speed * .04, 0);
+      c.globalAlpha = alpha * .22 * reach; rig.blit(c, -speed * .02, 0);
+      c.restore();
+    }
+    rig.blit(c);
+    if (feel.rim > .01) {
+      // Rim light: an additive copy nudged toward the light brightens the leading edge.
+      c.save(); c.shadowBlur = 0; c.filter = 'none';
+      c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, feel.rim) * .45;
+      rig.blit(c, 1.6, -1.2);
+      c.restore();
+    }
+    if (armed && rig.attach(KEEPER.ARM_F, KEEPER_HAND.u, KEEPER_HAND.v, this.hand)) {
+      c.save();
+      c.translate(this.hand.x, this.hand.y);
+      c.rotate(-.95 + swing * 1.85 + (attackT > 0 ? 0 : this.hand.angle * .6));
+      if (attackT > .3) c.scale(1.06, 1.06);
+      this.art('blade', -8, -78, 58, 92);
+      c.restore();
+    }
+  }
+  /** A soft contact shadow on the ground below a figure, smaller and fainter the higher it is. */
+  private groundShadow(c: CanvasRenderingContext2D, x: number, y: number, radius: number): void {
+    let ground = FLOOR;
+    for (const platform of PLATFORMS) {
+      if (platform.y >= y - 1 && platform.y < ground && x + 16 > platform.x && x - 16 < platform.x + platform.width) ground = platform.y;
+    }
+    const lift = 1 / (1 + Math.max(0, ground - y) / 140);
+    c.save(); c.fillStyle = '#0a0608';
+    c.globalAlpha = .18 * lift; c.beginPath(); c.ellipse(x, ground + 1, radius * 1.35 * lift, 9 * lift, 0, 0, Math.PI * 2); c.fill();
+    c.globalAlpha = .3 * lift; c.beginPath(); c.ellipse(x, ground + 1, radius * .8 * lift, 5.5 * lift, 0, 0, Math.PI * 2); c.fill();
+    c.restore();
+  }
   private drawBlade(c: CanvasRenderingContext2D, swing: number, attackT: number): void {
     c.save();
     c.translate(22 + Math.max(0, swing) * 16, -96);
@@ -432,6 +505,7 @@ export class SeamworksEngine {
   }
   private render(): void {
     const c = this.context; const scale = this.height / 720; const viewport = this.width / scale;
+    this.pixelScale = scale * this.pixelRatio;
     this.camera = Math.max(0, Math.min(WORLD_WIDTH - viewport, this.player.x - viewport * .38));
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
     c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
@@ -486,6 +560,7 @@ export class SeamworksEngine {
     }
     for (const monster of this.monsters) {
       if (monster.hp <= 0 && monster.dying <= 0) continue;
+      if (monster.x < this.camera - 220 || monster.x > this.camera + viewport + 220) continue;
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       if (warning) {
@@ -493,11 +568,13 @@ export class SeamworksEngine {
         c.fillRect(monster.facing < 0 ? monster.x - 170 : monster.x, FLOOR - 10, 170, 10);
         c.fillStyle = '#ffc589'; c.font = 'bold 18px system-ui'; c.textAlign = 'center'; c.fillText('!', monster.x, FLOOR - 150);
       }
-      const squash = this.reducedMotion ? 0 : monster.phase === 'windup' ? .12 : monster.phase === 'strike' ? -.12 : Math.sin(motionTime * 3 + monster.spawn) * .025;
       const rise = monster.born > 0 ? 1 - monster.born / SPAWN_RISE : 1;
+      this.groundShadow(c, monster.x + monster.knock, FLOOR, 54 * (.6 + rise * .4));
+      // The painting faces left; turn it toward its target. Purely a drawing choice.
+      const looking = monster.phase === 'idle' ? Math.sign(this.player.x - monster.x) || monster.facing : monster.facing;
       c.save(); c.translate(monster.x + monster.knock, FLOOR);
-      c.globalAlpha = rise; c.scale((1 + squash) * (.6 + rise * .4), (1 - squash) * (.6 + rise * .4));
-      this.creature(c, monster.flash > 0);
+      c.globalAlpha = rise; c.scale((.6 + rise * .4) * (looking > 0 ? -1 : 1), .6 + rise * .4);
+      this.creature(c, monster.flash > 0, monster);
       c.restore();
       // The chip bar trails the real HP so a hit reads as a chunk taken.
       c.fillStyle = '#302530'; c.fillRect(monster.x - 45, FLOOR - 130, 90, 6);
@@ -508,6 +585,7 @@ export class SeamworksEngine {
       if (view.peer.area !== (this.area === 'camp' ? 'Basalt Seamworks' : 'Ember Quarry') || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
       // Spawn puts every Keeper on the same tile. Spread guests so names and sprites stay readable.
       const spread = (([...view.peer.id].reduce((hash, char) => (hash * 33 + char.charCodeAt(0)) >>> 0, 0) % 5) - 2) * 46;
+      this.groundShadow(c, view.x + spread, view.y, 40);
       c.save(); c.translate(view.x + spread, view.y);
       c.strokeStyle = '#edc9ff'; c.fillStyle = '#edc9ff25'; c.lineWidth = 2;
       c.beginPath(); c.ellipse(0, 0, 32, 8, 0, 0, Math.PI * 2); c.fill(); c.stroke();
@@ -524,11 +602,13 @@ export class SeamworksEngine {
       c.scale(view.facing, 1); this.stepDust(c, shown, motionTime + view.x);
       c.globalAlpha = motion.alpha;
       c.shadowColor = warm ? '#ffc27a' : '#deb8f3'; c.shadowBlur = warm ? 12 : 6; c.filter = 'none';
-      this.posedKeeper(c, -70, -176, 140, 176, shown, motionTime + view.x, motion, attackT, swing, false);
+      this.drawKeeper(c, { x: -70, y: -176, w: 140, h: 176 }, shown, motionTime + view.x, view.motion, view.x, view.y, view.facing,
+        attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion);
       c.restore();
     }
     // Keep the player readable against the dark realm art at narrow viewport sizes.
     const byFire = this.area === 'camp' && Math.abs(this.player.x - 245) < 220;
+    this.groundShadow(c, this.player.x, this.player.y, 44);
     c.save(); c.translate(this.player.x, this.player.y);
     c.strokeStyle = byFire ? '#ffc27a' : '#b8e6ec'; c.fillStyle = byFire ? '#ffc27a30' : '#b8e6ec30'; c.lineWidth = 3;
     c.beginPath(); c.ellipse(0, 0, 46, 10, 0, 0, Math.PI * 2); c.fill(); c.stroke();
@@ -555,7 +635,13 @@ export class SeamworksEngine {
     else if (this.dodgeTime > 0) c.globalAlpha = motion.alpha;
     c.shadowColor = shown === 'rest' ? '#ffc27a' : '#b8e6ec'; c.shadowBlur = shown === 'rest' ? 12 : 6;
     c.filter = 'none';
-    this.posedKeeper(c, -78, -196, 156, 196, shown, this.elapsed, motion, attackT, swing, this.equipped);
+    const strikeGlow = attackT > .3 ? Math.max(0, 1 - Math.abs(attackT - .45) / .2) : 0;
+    this.drawKeeper(c, { x: -78, y: -196, w: 156, h: 196 }, shown, motionTime, this.playerMotion, this.player.x, this.player.y, this.facing,
+      attackT, swing, this.equipped, {
+        landing: this.landing > 0 ? this.landing / .18 : 0,
+        recoil: this.hp <= 0 ? 1 : Math.max(0, Math.min(1, this.hurtTime / .8)),
+        rim: Math.max(strikeGlow, this.wound * .9),
+      }, motion);
     c.filter = 'none'; c.shadowBlur = 0; c.globalAlpha = 1;
     if (attackT > .3) {
       const u = (attackT - .3) / .7;
@@ -578,7 +664,20 @@ export class SeamworksEngine {
     }
   }
   /** The creature sprite, or a white silhouette of it for the frames after a hit. */
-  private creature(c: CanvasRenderingContext2D, flash: boolean): void {
+  private creature(c: CanvasRenderingContext2D, flash: boolean, monster?: Monster): void {
+    const rig = this.mawRig;
+    if (monster) poseMaw(rig.pose, { phase: monster.phase, timer: monster.timer, time: this.reducedMotion ? 0 : this.elapsed, seed: monster.spawn * .013, reduced: this.reducedMotion });
+    else resetPose(rig.pose);
+    if (rig.render(this.images['creature'], -70, -110, 140, 110, this.pixelScale)) {
+      // brightness() whitens the painted sprite in place, so no tinted copy is needed.
+      if (flash) c.filter = 'brightness(3.2) saturate(0)';
+      rig.blit(c);
+      c.filter = 'none';
+      if (monster?.phase === 'strike' && !flash) {
+        c.save(); c.globalCompositeOperation = 'lighter'; c.globalAlpha *= .35; rig.blit(c, -1.5, -1); c.restore();
+      }
+      return;
+    }
     if (!flash) {
       if (!this.art('creature', -70, -110, 140, 110)) { c.fillStyle = '#b26460'; c.fillRect(-35, -75, 70, 75); }
       return;
