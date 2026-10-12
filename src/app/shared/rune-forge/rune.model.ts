@@ -103,37 +103,37 @@ export interface RuneTierDefinition {
  */
 export const RUNE_TIERS: Record<RuneTier, RuneTierDefinition> = {
   common: {
-    id: 'common', label: 'Common', budget: 0.9973515, worth: 10_000, sellValue: 5_000,
+    id: 'common', label: 'Common', budget: 0.9973515, worth: 600, sellValue: 300,
     color: '#8f8aa1', glow: 'rgba(143, 138, 161, 0.45)',
     reveal: 'plain', sound: 'blip', semitones: 0, duration: 1600, xp: 2,
   },
   uncommon: {
-    id: 'uncommon', label: 'Uncommon', budget: 0.0025, worth: 50_000, sellValue: 25_000,
+    id: 'uncommon', label: 'Uncommon', budget: 0.0025, worth: 3_000, sellValue: 1_500,
     color: '#9db8a8', glow: 'rgba(157, 184, 168, 0.5)',
     reveal: 'glow', sound: 'blip', semitones: 2, duration: 2000, xp: 8,
   },
   rare: {
-    id: 'rare', label: 'Rare', budget: 0.0001, worth: 200_000, sellValue: 100_000,
+    id: 'rare', label: 'Rare', budget: 0.0001, worth: 12_000, sellValue: 6_000,
     color: '#00d4ff', glow: 'rgba(0, 212, 255, 0.55)',
     reveal: 'burst', sound: 'chime', semitones: 4, duration: 2600, xp: 30,
   },
   epic: {
-    id: 'epic', label: 'Epic', budget: 0.000035, worth: 1_000_000, sellValue: 500_000,
+    id: 'epic', label: 'Epic', budget: 0.000035, worth: 60_000, sellValue: 30_000,
     color: '#a855f7', glow: 'rgba(168, 85, 247, 0.6)',
     reveal: 'shimmer', sound: 'horn', semitones: 5, duration: 3200, xp: 90,
   },
   legendary: {
-    id: 'legendary', label: 'Legendary', budget: 0.00001, worth: 5_000_000, sellValue: 2_500_000,
+    id: 'legendary', label: 'Legendary', budget: 0.00001, worth: 300_000, sellValue: 150_000,
     color: '#e8c898', glow: 'rgba(232, 200, 152, 0.7)',
     reveal: 'edge', sound: 'horn', semitones: 7, duration: 4200, xp: 300,
   },
   mythic: {
-    id: 'mythic', label: 'Mythic', budget: 0.000003, worth: 20_000_000, sellValue: 10_000_000,
+    id: 'mythic', label: 'Mythic', budget: 0.000003, worth: 1_200_000, sellValue: 600_000,
     color: '#f8e8c8', glow: 'rgba(248, 232, 200, 0.85)',
     reveal: 'flash', sound: 'impact', semitones: 10, duration: 5600, xp: 1_200,
   },
   singular: {
-    id: 'singular', label: 'Singular', budget: 0.0000005, worth: 100_000_000, sellValue: 50_000_000,
+    id: 'singular', label: 'Singular', budget: 0.0000005, worth: 6_000_000, sellValue: 3_000_000,
     color: '#ff6dd7', glow: 'rgba(255, 109, 215, 0.95)',
     reveal: 'void', sound: 'prism', semitones: 12, duration: 9000, xp: 5_000,
   },
@@ -150,9 +150,9 @@ export const RUNE_TIER_ORDER: RuneTier[] = [
  * the floor of the ladder is worth" is the rule, and a second literal is a
  * second thing to forget when the ladder is retuned.
  *
- * At 10,000 Gold a strike, the Singular tier's 0.00005% works out to twenty
- * billion Gold before the Void turns up. That is the intended shape — the last
- * rune in the game should be measured in years, not in an afternoon.
+ * Economy v3: every worth on the ladder is the v2 figure × ρ (0.06, see
+ * economy-curve.ts), so a strike is 600 Gold — affordable about four minutes
+ * into a first visit — and each rune still sells for half its worth.
  */
 export const STRIKE_COST = RUNE_TIERS.common.worth;
 

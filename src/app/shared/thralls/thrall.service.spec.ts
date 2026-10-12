@@ -95,10 +95,10 @@ describe('ThrallService', () => {
 
   describe('recruiting', () => {
     it('takes the tier price and mints one worker', () => {
-      fund(50_000);
+      fund(25_000);
       const before = economy.snapshot.gold;
       expect(thralls.recruit('common', sequence(0.5))).toBe('ok');
-      expect(economy.snapshot.gold).toBe(before - 50_000);
+      expect(economy.snapshot.gold).toBe(before - 25_000);
       expect(thralls.count).toBe(1);
     });
 

@@ -39,6 +39,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable, Subject } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
+import { incomeRewardBase } from '../economy/economy.model';
+import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { InventoryService } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
@@ -291,7 +293,11 @@ export class CollectionService {
       this.publish();
 
       for (const reward of due) {
-        this.economy.earnGold(reward.gold, 'collection');
+        // Economy v3: max(v2 Gold × ρ, 10/30/60/120 min of income).
+        this.economy.earnGold(
+          incomeRewardBase(itemScaled(reward.gold), steppedRewardSeconds(reward.gold, REWARD_SECONDS.collection), this.economy.snapshot),
+          'collection',
+        );
         this.economy.grantCosmetic('title-prefix', reward.titleVariant);
         if (reward.trailVariant) this.economy.grantCosmetic('cursor-trail', reward.trailVariant);
         if (reward.item) {

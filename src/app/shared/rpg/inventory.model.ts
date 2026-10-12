@@ -84,6 +84,12 @@ export interface OwnedItemInstance extends OwnedItemBase {
   /** Per-stat roll grade, 0..1. Absent on records written before grading. */
   rollQuality?: Partial<Record<keyof ItemStats, number>>;
   sellValue: number;
+  /**
+   * Economy version `sellValue` is written in. Absent (or < 3) means v2 Gold,
+   * which the parser scales by ρ exactly once and then stamps 3 — a per-record
+   * marker, so a merge that picks either copy of a record stays consistent.
+   */
+  econ?: number;
   location: ItemLocation;
   upgradeLevel?: number;
   lastUpgradeAt?: string;

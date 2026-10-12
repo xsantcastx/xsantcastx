@@ -72,8 +72,9 @@ describe('foundIn (the real world data)', () => {
     expect(labels('slag-fragment')).toEqual(jasmine.arrayContaining(['Basalt Seamworks', 'Ember Delve']));
   });
 
-  it('lists the vendor and the expedition for a shelf material', () => {
-    expect(labels('pyrite-dust')).toEqual(jasmine.arrayContaining(['Material Vendor', 'Nexus expeditions']));
+  it('lists the expedition, not the buy-only Vendor, for an expedition material', () => {
+    expect(labels('pyrite-dust')).toEqual(jasmine.arrayContaining(['Nexus expeditions']));
+    expect(labels('pyrite-dust')).not.toContain('Material Vendor');
   });
 
   it('places every material a town drop table names somewhere', () => {

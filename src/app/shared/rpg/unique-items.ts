@@ -401,15 +401,18 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
   },
 ];
 
-/** First temper price by rarity. Steeper than the Keeper kit's flat 50k. */
+/**
+ * First temper price by rarity. Steeper than the Keeper kit's flat 6,000.
+ * Economy v3: the v2 bases × 0.12, the same factor the kit's base moved by.
+ */
 export const UNIQUE_TEMPER_BASE: Readonly<Record<ItemRarity, number>> = {
-  common: 40_000,
-  uncommon: 60_000,
-  rare: 90_000,
-  epic: 140_000,
-  legendary: 220_000,
-  mythic: 400_000,
-  singular: 750_000,
+  common: 4_800,
+  uncommon: 7_200,
+  rare: 10_800,
+  epic: 16_800,
+  legendary: 26_400,
+  mythic: 48_000,
+  singular: 90_000,
 };
 
 /**

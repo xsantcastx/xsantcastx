@@ -18,6 +18,6 @@ describe('anvil reel', () => {
 
   it('prices Auto ×10 as ten full strikes', () => {
     expect(AUTO_ROLLS).toBe(10);
-    expect(AUTO_ROLLS * STRIKE_COST).toBe(100_000);
+    expect(AUTO_ROLLS * STRIKE_COST).toBe(6_000); // economy v3: 600 a strike
   });
 });

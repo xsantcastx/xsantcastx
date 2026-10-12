@@ -1,6 +1,6 @@
-<!-- First view, by the owner's station rule: one short hint, the shelf, one big
-     action that names what it does and what it costs. Everything else is
-     behind Details. -->
+<!-- Economy v3: a buyback counter. First view, by the owner's station rule:
+     one short hint, the board, one big action that names what it does and
+     what it pays. Everything else is behind Details. -->
 <section class="mv" [class.mv--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'mv-title'" [attr.aria-label]="inWorld ? 'Material Vendor' : null">
   <header class="mv-head">
     @if (!inWorld) { <h1 id="mv-title" class="mv-title">Material Vendor</h1> }
@@ -10,13 +10,15 @@
     </p>
   </header>
 
-  <div class="mv-shelf" role="group" aria-label="Pick a material">
+  <p class="mv-hint">The Vendor buys surplus at a low floor price. The market pays more.</p>
+
+  <div class="mv-shelf" role="group" aria-label="Pick a material to sell">
     @for (card of cards; track card.listing.materialId; let i = $index) {
       <button type="button" class="mv-card" [attr.data-material]="card.listing.materialId"
               [class.is-picked]="card.listing.materialId === selectedId"
-              [class.is-dear]="card.listing.price > gold"
+              [class.is-dear]="card.held < 1"
               [attr.aria-pressed]="card.listing.materialId === selectedId"
-              [attr.aria-label]="card.name + ', ' + fmt(card.listing.price) + ' Gold each'"
+              [attr.aria-label]="card.name + ', you hold ' + card.held + ', pays ' + fmt(card.listing.price) + ' Gold each'"
               [attr.tabindex]="card.listing.materialId === selectedId ? 0 : -1"
               (click)="select(card.listing.materialId)" (keydown)="shelfKey($event, i)">
         <span class="mv-card__art" aria-hidden="true">
@@ -32,12 +34,14 @@
     }
   </div>
 
-  <section class="mv-counter" aria-label="Buy">
+  <section class="mv-counter" aria-label="Sell">
     <p class="mv-hint">
-      @if (fillNeed; as need) {
-        You need <b>{{ need.short }}</b> more for <strong>{{ need.recipeName }}</strong>.
+      @if (wouldShort; as need) {
+        Selling {{ quantity }} leaves too few for <strong>{{ need.recipeName }}</strong> (it takes {{ need.need }}).
+      } @else if (selected.held < 1) {
+        You hold no {{ selected.name }}.
       } @else {
-        Goes straight to the forge stockpile.
+        You hold <b>{{ selected.held }}</b>. Gold goes straight to your purse.
       }
     </p>
 
@@ -48,16 +52,16 @@
                (change)="setQuantity($any($event.target).value)" (keydown.enter)="setQuantity($any($event.target).value)">
         <button type="button" class="mv-qty__step" (click)="step(1)" [disabled]="quantity >= maxQty" aria-label="One more">+</button>
       </div>
-      <button type="button" class="mv-buy__btn" [attr.aria-disabled]="!canBuy" [class.is-off]="!canBuy"
-              [attr.aria-describedby]="short > 0 ? 'mv-why' : null" (click)="buy($event)">
-        Buy {{ quantity }} {{ selected.name }} · {{ fmt(total) }} Gold
+      <button type="button" class="mv-buy__btn" [attr.aria-disabled]="!canSell" [class.is-off]="!canSell"
+              [attr.aria-describedby]="!canSell ? 'mv-why' : null" (click)="sell()">
+        Sell {{ quantity }} {{ selected.name }} · {{ fmt(total) }} Gold
       </button>
     </div>
-    @if (short > 0) { <p id="mv-why" class="mv-why">Need {{ fmt(short) }} more Gold.</p> }
-    @if (error && short === 0) { <p class="mv-why" role="alert">{{ error }}</p> }
+    @if (!canSell) { <p id="mv-why" class="mv-why">You hold {{ selected.held }}.</p> }
+    @if (error && canSell) { <p class="mv-why" role="alert">{{ error }}</p> }
 
     @for (f of flash ? [flash] : []; track f.key) {
-      <p class="mv-flash" aria-hidden="true">+{{ f.quantity }} {{ f.name }} to the forge</p>
+      <p class="mv-flash" aria-hidden="true">+{{ fmt(f.total) }} Gold</p>
     }
 
     <button type="button" class="mv-details-toggle" (click)="detailsOpen = !detailsOpen" [attr.aria-expanded]="detailsOpen" aria-controls="mv-details">
@@ -66,7 +70,8 @@
     @if (detailsOpen) {
       <div id="mv-details" class="mv-details">
         <p class="mv-details__meta">
-          {{ selected.name }}: {{ fmt(selected.listing.price) }} Gold each. Usually found in {{ selected.listing.source }}.
+          {{ selected.name }}: the Vendor pays {{ fmt(selected.listing.price) }} Gold each, {{ buybackPercent }}% of its {{ fmt(selected.listing.worth) }} Gold base worth.
+          @if (selected.listing.source) { Found on {{ selected.listing.source }}. }
           You hold {{ selected.held }}. Used in {{ selected.uses }} {{ selected.uses === 1 ? 'recipe' : 'recipes' }}.
         </p>
         @if (needs.length) {
@@ -80,19 +85,15 @@
           </ul>
         }
         <div class="mv-qty__chips">
-          @if (fillNeed; as need) {
-            <button type="button" class="mv-chip" (click)="fill()">Just enough for {{ need.recipeName }} ({{ need.short }})</button>
-          }
-          <button type="button" class="mv-chip" (click)="max()" [disabled]="affordable < 1">As many as I can afford ({{ affordable }})</button>
+          <button type="button" class="mv-chip" (click)="sellSurplus()" [disabled]="surplus < 1">Only the surplus ({{ surplus }})</button>
+          <button type="button" class="mv-chip" (click)="all()" [disabled]="selected.held < 1">Everything I hold ({{ selected.held }})</button>
         </div>
-        @if (lastBought; as bought) {
-          <p class="mv-receipt">Last crate: {{ bought.quantity }} {{ bought.name }} for {{ fmt(bought.total) }} Gold. It is on the forge stockpile.</p>
+        @if (lastSold; as sold) {
+          <p class="mv-receipt">Last sale: {{ sold.quantity }} {{ sold.name }} for {{ fmt(sold.total) }} Gold.</p>
         }
       </div>
     }
   </section>
-
-  <app-forge-floor class="mv-floor" [active]="null" [event]="floorEvent" [stock]="floorStock"></app-forge-floor>
 
   <p class="mv-sr" role="status" aria-live="polite">{{ announce }}</p>
 </section>

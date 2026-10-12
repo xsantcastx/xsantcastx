@@ -1,6 +1,6 @@
 # Economy rebalance: Cookie-Clicker curve (design and simulation only)
 
-Status: this is a draft. Every number below comes from `scripts/economy-sim.mjs` (run with `node scripts/economy-sim.mjs --days=30 --stages`). Nothing under `src/` has changed. Sections marked **TODO** were not finished because the budget ran out.
+Status: **approved by the owner and implemented** (economy save version 3). Every number below comes from `scripts/economy-sim.mjs` (run with `node scripts/economy-sim.mjs --days=30 --stages`), which now reads the shipped numbers from `src/app/shared/economy/economy-curve.ts` — the single source of truth the game's catalogues are built from. The former **TODO**s are resolved in §6, "Implementation decisions".
 
 ## 1. Inventory: current Gold and Essence sources and sinks (origin/main a0c9efe)
 
@@ -106,7 +106,7 @@ Stage table for PROPOSED, used for every "seconds of income" price:
 | Thrall pull | 1M | 60k (still strike × 100) | R |
 | Thrall tiers | 50k…25M | **25k / 400k / 8M / 150M / 3B** | S |
 | Gambler boxes | 5k/25k/100k/500k/5M | **300 / 1.5k / 6k / 30k / 300k** | R |
-| Vendor | 6k/9k/12k | **360 / 540 / 720** | R |
+| Vendor | sells 6k/9k/12k | **buys only** (owner amendment): pays 8% of base worth (v2 anchor × ρ), e.g. Cinder Ore 2, Pyrite Dust 28, Orichalcum 57 | NPCs are sinks; see §6 |
 | Exchange bases, item scrap, unsocket | as listed above | ×ρ (scrap 36 / 150 / 720 / 3.6k / 18k / 90k / 480k) | R |
 | Craft fees | 4k…3.2M | uncommon ≥1k, rare ≥10k, epic ≥150k, legendary ≥2.5M, mythic 60M; each tier's spread kept | S; always ≥ old × ρ, so no craft-and-sell arbitrage |
 | Temper base | 50k ×1.65^L | **6k** ×1.65^L; unique bases ×0.12 | S |
@@ -119,7 +119,7 @@ Stage table for PROPOSED, used for every "seconds of income" price:
 | Prestige | 1B, sqrt(t/1e5) | **opens at 1e13 all-time**; shards = floor(cbrt(t/1e10)); SHARD_BONUS stays 0.05 | about 3 days to the first Eclipse, then a bounded tail |
 | Essence | as listed | unchanged (it is not Gold) | n/a |
 | Offline cap and rate | 8 h, full | unchanged (`--offlineRate=0.5` tests a cut) | n/a |
-| RPG flat Gold/s | flat addend | **TODO:** convert to +0.5% per point so it does not vanish after the first hour | n/a |
+| RPG flat Gold/s | flat addend | Forge Power **+0.5% of the forge per point**; gear `goldPerSec` stays flat (see §6) | n/a |
 
 ## 4. Migration for existing saves
 
@@ -146,7 +146,12 @@ migrateEconomyV3(e):
 
 Gear and runes the player already owns keep their stored `sellValue`. It is multiplied by ρ the first time it is read, which the inventory's v3 migration step does (inventory-ops.ts `migrateV1` pattern). Exchange and vendor prices are not stored, because they come from the tables.
 
-**TODO:** decide the Essence-held policy (it stays unchanged) and add a spec of 20 fixture saves, from a fresh account to a quadratic-era veteran.
+Essence held is unchanged (decided). The fixtures live in `src/app/shared/economy/economy-migration.spec.ts`: fresh, mid-game, quadratic-era veteran with prestige, a veteran under the cap, already-migrated (no double conversion), plus the v2-remote/v3-local merge in both orders and the inventory sell-value marker.
+
+As implemented (`economy-migration.ts`), two details sharpen the rule above:
+- `totalGoldEarned = max(total × f, S³ × 1e10)` with S the v2 shard count, so shard parity holds and small accounts scale like everything else.
+- The shard cap applies to **held + still claimable**, otherwise an unclaimed v2 curve would pay the veteran's stack straight back on the next Eclipse.
+- The op log is folded (ops, origin and the `applied` watermark cleared). At the merge boundary a just-migrated side merges under the conservative max/union rule, so a stale v2 device keeps its unsynced purchases.
 
 ## 5. Rollout
 
@@ -156,10 +161,31 @@ Gear and runes the player already owns keep their stored `sellValue`. It is mult
 4. Golden Spark: replace the Forge View trader.
 5. Prestige constants.
 
-Ship it one-shot behind a single `ECONOMY_V3` constant. Do not use a runtime flag, because two economies cannot share a cloud save. Re-run `node scripts/economy-sim.mjs` in CI as a smoke test (**TODO**).
+Shipped one-shot behind `ECONOMY_VERSION = 3` (economy-curve.ts). No runtime flag, because two economies cannot share a cloud save. CI runs `node scripts/economy-sim.mjs --check` (fails when the first purchase is later than 15 s or fewer than 20 purchases land in the first 10 minutes).
 
 **Risks**
 - Veterans of the quadratic era lose relative power. The shard cap is the hard call.
 - The 125 ms cooldown makes the 100-clicks/min Click Frenzy achievement trivial.
 - Version races between cloud and local saves.
 - Hidden flat literals: the version-history copy still cites old strike costs.
+
+## 6. Implementation decisions
+
+Decisions taken while implementing; each is a constant in `economy-curve.ts` unless noted.
+
+| Topic | Decision | Why |
+|---|---|---|
+| **Veteran shard cap** (flagged for the owner) | `VETERAN_SHARD_CAP = 40` shards held + claimable (×3 income) | The v3 curve pays about 36 shards after 30 days of play; 40 keeps a veteran ahead of a fresh month-one account without importing the quadratic-era stack. Accounts under the cap are untouched. |
+| **RPG / item Gold/s** | Forge Power becomes +0.5% of the furnace + automaton rate per point (new ledger field `rpgForgePercent`). Gear `goldPerSec` stays a flat addend. | The spec assumed items pay ~0.4-1.1/s; the real mint ranges run 0.2/s (Common) to 1,400/s (Singular), so gear keeps pace through the mid game. As a percentage, a full Legendary kit would be ×20 income. Revisit with a gear rebalance. |
+| **NPCs are sinks** (owner amendment) | The Material Vendor only buys: `price = max(1, floor(worth × 0.08))`, `worth = v2 anchor × ρ` (Exchange base for gathered materials, the old shelf price for expedition materials). It sells nothing. | 8% is under the Exchange's own floor quote (10% of base), so even a ρ-scaled NPC Exchange cannot be bought from and sold back here at a profit. The player auction house is the market. |
+| **Merchant glowcap order** | Floor buyer: max(180 Gold, 90 s of income) per 5 Glowcaps (was 3,000 floor). | Rule I with the floor at v2 × ρ. |
+| **Pro pack Gold** | max(500, 5 min of income); the floor is kept at 500. | It is a paid product and its page promises 500 Gold. |
+| **Respec** | max(20,000, 600 s of income), read live by the stat panel. | As specified. |
+| **Golden Spark** | `GoldenSparkService` owns one clock shared by the Forge View (replacing the trader) and the Homestead (caught by striking the Forge). The kind is rolled when the spark appears, so the offer can name it. Frenzy is in memory and multiplies furnaces, automatons and strikes. | One reward rule everywhere; no new fixed-position widget. |
+| **Click Frenzy achievement** | 300 strikes in a minute (was 100). | The cooldown fell to 125 ms (480/min ceiling). |
+| **Owned item sell values** | Scaled by ρ once per inventory record, marked `econ: 3`. | A per-record marker stays consistent whichever copy a merge keeps. |
+| **NPC Exchange** | Material base worth = authored v2 base × ρ (`itemScaled`, economy-curve.ts); equipment floor 500 × ρ (its sticker price already followed EQUIPMENT_SCRAP). `functions/src/market/reference.generated.ts` regenerated. | With sinks at ×ρ and the hall still at v2 prices, selling to the NPC hall was a Gold faucet. The Vendor's buyback is spec'd below the hall's lowest quote. |
+| **"Earn N Gold" objectives** | Placed with `node scripts/economy-sim.mjs --place=…`: the v3 all-time Gold held when a v2 player first reached the old target (same wall-clock pacing from a fresh start). 100k→700k, 250k→25M, 1M→6B, 2M→10B, 10M→250B, 25M→500B (challenge pools + NPC chains). | The v3 curve banks ~26M all-time in the first hour; the old targets would fall in minutes. |
+| **Home Anvil / Circle** | Tiers II / III / IV: 5M / 1B / 1T (`HOME_FORGE_PRICES`). Sim: affordable ~8 h (first return), ~13 h, ~2.4 d (just before the first Eclipse). | Early-mid, end of day one, late game. |
+| **Unchanged** | Essence, Essence prices, cosmetics' Gold prices, the arena purse (50k), offline cap and rate. | Not in the approved table. |
+

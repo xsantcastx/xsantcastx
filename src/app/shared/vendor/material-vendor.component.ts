@@ -1,12 +1,12 @@
 /**
- * material-vendor.component.ts — the Seamworks Material Vendor.
+ * material-vendor.component.ts — the Seamworks Material Vendor's buyback
+ * counter.
  *
- * A counter that sells the expedition-only crafting materials for Gold (the
- * shelf and its prices are explained in material-vendor.model.ts). Pick a
- * material, read which recipes want it and how many you are short, choose a
- * quantity, buy. The bought crate then visibly flies onto the forge floor's
- * stockpile — the same floor that sits above the Crafting Bench — so the
- * purchase reads as "this feeds the forge", not as a number changing.
+ * Economy v3: players run the economy and NPCs are sinks only. The Vendor no
+ * longer sells anything; it buys surplus materials at a low floor price (8%
+ * of base worth — the board and its prices are explained in
+ * material-vendor.model.ts). Pick a material you hold, read which recipes want
+ * it (so you keep what the bench needs), choose how many, sell.
  *
  * Hosted in-world by the /play side-scroller (IN_WORLD_PANEL: the panel carries
  * the title, so the heading stands down). It also works on its own; there is
@@ -31,20 +31,17 @@ import { InventoryService } from '../rpg/inventory.service';
 import { materialDisplay } from '../rpg/material-catalog';
 import { artFor } from '../art/art';
 import { CRAFTING_RECIPES } from '../crafting/crafting.model';
-import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
-import { floorThing, FLOOR_MAX_INPUTS, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 import { injectInWorldPanel } from '../in-world-panel';
+import { VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
 import { MaterialVendorService } from './material-vendor.service';
 import {
   VENDOR_MAX_QTY,
   VENDOR_SHELF,
   clampQuantity,
-  goldShort,
-  maxAffordable,
   newVendorMutationId,
   recipeCount,
   recipeNeeds,
-  suggestedQuantity,
+  surplusOf,
   vendorTotal,
   type RecipeNeed,
   type VendorCode,
@@ -61,18 +58,17 @@ interface ShelfCard {
 }
 
 const REFUSALS: Readonly<Record<Exclude<VendorCode, 'ok' | 'replay'>, string>> = {
-  unknown: 'That is not on the shelf.',
+  unknown: 'The counter does not buy that.',
   'bad-quantity': `Choose between 1 and ${VENDOR_MAX_QTY}.`,
   stale: 'The price changed. Check it and try again.',
-  'bag-full': 'Your satchel is full. Make room for a new material first.',
-  funds: 'Not enough Gold for that crate.',
-  delivery: 'The crate could not be stored, so your Gold was returned. Try again.',
+  short: 'You do not hold that many.',
+  delivery: 'The goods could not be handed over. Nothing was taken. Try again.',
 };
 
 @Component({
   selector: 'app-material-vendor',
   standalone: true,
-  imports: [ForgeFloorComponent],
+  imports: [],
   templateUrl: './material-vendor.component.html',
   styleUrls: ['./material-vendor.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -84,30 +80,29 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly inventory = inject(InventoryService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly host = inject(ElementRef<HTMLElement>);
   private subs: Subscription[] = [];
 
   readonly maxQty = VENDOR_MAX_QTY;
+  readonly buybackPercent = Math.round(VENDOR_BUYBACK_FRACTION * 100);
   readonly goldArt = artFor('gold');
   gold = 0;
   cards: ShelfCard[] = this.buildCards();
   selectedId = VENDOR_SHELF[0].materialId;
   quantity = 1;
   needs: RecipeNeed[] = [];
-  /** Polite announcement for the purchase result. */
+  /** Polite announcement for the sale result. */
   announce = '';
   error = '';
-  /** Everything past the first view (source, holdings, recipe list, quick quantities). */
+  /** Everything past the first view (holdings, recipe list, quick quantities). */
   detailsOpen = false;
-  /** The "+5 Pyrite Dust to the forge" pop after a buy. Cleared after it plays. */
-  flash: { key: number; name: string; quantity: number } | null = null;
+  /** The "+90 Gold" pop after a sale. Cleared after it plays. */
+  flash: { key: number; total: number } | null = null;
   private flashTimer?: ReturnType<typeof setTimeout>;
-  private readonly host = inject(ElementRef<HTMLElement>);
-  /** The last crate bought, for the receipt line. */
-  lastBought: { name: string; quantity: number; total: number } | null = null;
-
-  floorEvent: ForgeFloorEvent | null = null;
-  private floorSeq = 0;
-  /** One intentional purchase. Minted when the Keeper commits, cleared once it settles. */
+  private flashSeq = 0;
+  /** The last sale, for the receipt line. */
+  lastSold: { name: string; quantity: number; total: number } | null = null;
+  /** One intentional sale. Minted when the Keeper commits, cleared once it settles. */
   private mutationId: string | null = null;
 
   ngOnInit(): void {
@@ -122,7 +117,8 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
       this.needs = this.needsFor(this.selectedId);
       this.cdr.markForCheck();
     }));
-    this.select(this.selectedId);
+    // Open on the first material actually held, when there is one.
+    this.select(this.cards.find(card => card.held > 0)?.listing.materialId ?? this.selectedId);
   }
 
   ngOnDestroy(): void {
@@ -137,21 +133,14 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     return this.cards.find(card => card.listing.materialId === this.selectedId) ?? this.cards[0];
   }
   get total(): number { return vendorTotal(this.selected.listing, this.quantity); }
-  get affordable(): number { return maxAffordable(this.selected.listing.price, this.gold); }
-  get short(): number { return goldShort(this.selected.listing, this.quantity, this.gold); }
-  get canBuy(): boolean { return this.isBrowser && this.short === 0 && this.quantity >= 1; }
-  /** The first recipe the Keeper is short for, for the "Fill" chip. */
-  get fillNeed(): RecipeNeed | undefined { return this.needs.find(need => need.short > 0); }
-  /** What the floor's pile shows before anything is bought: the selected material. Cached per selection. */
-  get floorStock(): readonly ForgeFloorThing[] {
-    if (this.stockFor !== this.selectedId) {
-      this.stockFor = this.selectedId;
-      this.stockCache = [this.thing(this.selected)];
-    }
-    return this.stockCache;
+  /** Units beyond the biggest recipe that wants this material. */
+  get surplus(): number { return surplusOf(this.selected.listing.materialId, CRAFTING_RECIPES, this.selected.held); }
+  get canSell(): boolean { return this.isBrowser && this.selected.held >= this.quantity && this.quantity >= 1; }
+  /** The first recipe the Keeper would fall short for after this sale. */
+  get wouldShort(): RecipeNeed | undefined {
+    const after = this.selected.held - this.quantity;
+    return this.needs.find(need => need.need > after && need.short === 0);
   }
-  private stockFor = '';
-  private stockCache: readonly ForgeFloorThing[] = [];
 
   fmt(n: number): string { return formatCurrencyExact(n); }
 
@@ -161,7 +150,8 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     if (!this.cards.some(card => card.listing.materialId === materialId)) return;
     this.selectedId = materialId;
     this.needs = this.needsFor(materialId);
-    this.quantity = suggestedQuantity(this.needs);
+    const card = this.selected;
+    this.quantity = clampQuantity(Math.max(1, surplusOf(materialId, CRAFTING_RECIPES, card.held) || 1));
     this.mutationId = null;
     this.error = '';
     this.cdr.markForCheck();
@@ -177,14 +167,13 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
 
   step(by: number): void { this.setQuantity(this.quantity + by); }
 
-  fill(): void {
-    const need = this.fillNeed;
-    if (need) this.setQuantity(need.short);
-  }
+  /** Sell only the surplus: keep enough for the biggest recipe. */
+  sellSurplus(): void { this.setQuantity(Math.max(1, this.surplus)); }
 
-  max(): void { this.setQuantity(Math.max(1, this.affordable)); }
+  /** Sell everything held (up to a crate). */
+  all(): void { this.setQuantity(Math.max(1, this.selected.held)); }
 
-  /** Arrow keys on a shelf card move the selection along the shelf. */
+  /** Arrow keys on a board card move the selection along the board. */
   shelfKey(event: KeyboardEvent, index: number): void {
     const delta = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
     if (!delta) return;
@@ -195,24 +184,23 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     queueMicrotask(() => (host?.querySelector(`[data-material="${next.listing.materialId}"]`) as HTMLElement | null)?.focus());
   }
 
-  buy(event?: Event): void {
-    if (!this.canBuy) {
-      // The reason is already on screen under the button; say it for screen readers too.
-      if (this.short > 0) this.announce = `Need ${this.fmt(this.short)} more Gold.`;
+  sell(): void {
+    if (!this.canSell) {
+      this.announce = this.selected.held < 1 ? `You hold no ${this.selected.name}.` : `You hold only ${this.selected.held}.`;
       this.nudge('.mv-why');
       this.cdr.markForCheck();
       return;
     }
     const card = this.selected;
     this.mutationId ??= newVendorMutationId(card.listing.materialId, Date.now());
-    const receipt = this.vendor.buy({
+    const receipt = this.vendor.sell({
       mutationId: this.mutationId,
       materialId: card.listing.materialId,
       quantity: this.quantity,
       expectedUnitPrice: card.listing.price,
     });
     if (receipt.code !== 'ok' && receipt.code !== 'replay') {
-      // A refused purchase took nothing; a new click is a new intent.
+      // A refused sale took nothing; a new click is a new intent.
       this.mutationId = null;
       this.error = REFUSALS[receipt.code];
       this.announce = this.error;
@@ -223,28 +211,19 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     if (receipt.code === 'replay') { this.cdr.markForCheck(); return; }
 
     this.error = '';
-    this.lastBought = { name: card.name, quantity: receipt.quantity, total: receipt.total };
-    this.announce = `Bought ${receipt.quantity} ${card.name} for ${this.fmt(receipt.total)} Gold. It is on the forge stockpile.`;
-    const origin = event?.currentTarget instanceof HTMLElement ? event.currentTarget.getBoundingClientRect() : null;
-    const thing = this.thing(card);
-    this.floorEvent = {
-      seq: ++this.floorSeq,
-      station: 'anvil',
-      inputs: [],
-      output: null,
-      delivered: Array.from({ length: Math.min(receipt.quantity, FLOOR_MAX_INPUTS) }, () => thing),
-      deliveredFrom: origin ? { x: origin.left + origin.width / 2, y: origin.top + origin.height / 2 } : undefined,
-    };
+    this.lastSold = { name: card.name, quantity: receipt.quantity, total: receipt.total };
+    this.announce = `Sold ${receipt.quantity} ${card.name} for ${this.fmt(receipt.total)} Gold.`;
     this.cards = this.buildCards();
     this.needs = this.needsFor(card.listing.materialId);
-    this.flash = { key: this.floorSeq, name: card.name, quantity: receipt.quantity };
+    this.quantity = clampQuantity(Math.max(1, this.surplus || 1));
+    this.flash = { key: ++this.flashSeq, total: receipt.total };
     if (this.flashTimer) clearTimeout(this.flashTimer);
     this.flashTimer = setTimeout(() => { this.flash = null; this.cdr.markForCheck(); }, 1600);
     this.nudge('.mv-purse__gold');
     this.cdr.markForCheck();
   }
 
-  /** A short pop on an element: the purse after paying, the reason after a refused click. */
+  /** A short pop on an element: the purse after a sale, the reason after a refused click. */
   private nudge(selector: string): void {
     if (!this.isBrowser || matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
     queueMicrotask(() => {
@@ -252,8 +231,6 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
       el?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)', offset: .35 }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.22, 1, .36, 1)' });
     });
   }
-
-  trackCard = (_: number, card: ShelfCard) => card.listing.materialId;
 
   // ── Building ───────────────────────────────────────────────────────────────
 
@@ -274,9 +251,5 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   private needsFor(materialId: string): RecipeNeed[] {
     const held = this.cards.find(card => card.listing.materialId === materialId)?.held ?? 0;
     return recipeNeeds(materialId, CRAFTING_RECIPES, held, 3);
-  }
-
-  private thing(card: ShelfCard): ForgeFloorThing {
-    return floorThing(card.listing.materialId, card.name);
   }
 }

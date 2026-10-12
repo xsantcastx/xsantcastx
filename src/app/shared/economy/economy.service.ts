@@ -96,6 +96,9 @@ import {
   type CommerceKind,
   type CommerceReceipt,
 } from './commerce-ops';
+import * as CURVE from './economy-curve';
+import { CENTURY_STRIKE_MULTIPLIER, incomeRewardBase } from './economy.model';
+import { migrateEconomyV3WithReport, needsEconomyV3, type EconomyMigrationReport } from './economy-migration';
 
 export const ECONOMY_KEY = 'godforge-economy';
 
@@ -112,7 +115,7 @@ const MINUTE_MS = 60_000;
  * hand over a fortnight of Gold in a single frame — and short enough that
  * moving the system clock forward is not a strategy.
  */
-const MAX_OFFLINE_SECONDS = 8 * 60 * 60;
+const MAX_OFFLINE_SECONDS = CURVE.MAX_OFFLINE_SECONDS;
 
 /**
  * How often the ledger is actually written, in ms.
@@ -131,8 +134,11 @@ const MAX_OFFLINE_SECONDS = 8 * 60 * 60;
  */
 const PERSIST_INTERVAL_MS = 5_000;
 
-/** Minimum ms between two paying strikes of the Forge Flame. */
-export const CLICK_COOLDOWN_MS = 500;
+/**
+ * Minimum ms between two paying strikes of the Forge Flame. 125 ms (8/s) since
+ * economy v3, so a human clicking at 4-6/s is never throttled.
+ */
+export const CLICK_COOLDOWN_MS = CURVE.CLICK_COOLDOWN_MS;
 
 /** What the Flame, the currency rail and the Market all render. */
 export interface EconomySnapshot {
@@ -180,6 +186,11 @@ export interface EconomySnapshot {
   enchantment: { def: Enchantment; expiresAt: number } | null;
   /** True while the Fragment of the First Sun is held. */
   doubled: boolean;
+  /**
+   * Epoch ms a Golden Spark's Forge Frenzy (×5 income) runs until. 0 or absent
+   * when none is running. Optional so hand-built snapshots in specs still fit.
+   */
+  frenzyUntil?: number;
 }
 
 /** Emitted on every mint, so the Flame can float a "+5" and the rail can pulse. */
@@ -260,7 +271,7 @@ export class EconomyService implements OnDestroy {
   private offlineSettlement: { seconds: number; gold: number } | null = null;
   private settlementNoted = false;
 
-  /** Epoch ms of the last strike that paid, for the 500ms cooldown. */
+  /** Epoch ms of the last strike that paid, for the strike cooldown. */
   private deviceId = '';
   private opSeq = 0;
   private readonly buying = new Set<string>();
@@ -273,6 +284,11 @@ export class EconomyService implements OnDestroy {
    * frenzy anyone sustained.
    */
   private recentClicks: number[] = [];
+  /** A Golden Spark's Forge Frenzy window, epoch ms. In memory only. */
+  private frenzyFrom = 0;
+  private frenzyUntil = 0;
+  /** What the v3 migration did on this page load, or null. For the console and the spec. */
+  migrationReport: EconomyMigrationReport | null = null;
 
   private readonly snapshot$$ = new BehaviorSubject<EconomySnapshot>(this.snapshotOf(this.state, 0));
   private readonly gain$$ = new Subject<CurrencyGain>();
@@ -320,6 +336,9 @@ export class EconomyService implements OnDestroy {
     this.state = this.load();
     this.bindDevice();
     this.recoverCommerce();
+    // A v2 ledger was converted on read. Write the v3 copy now, so the next
+    // load (or cloud push) reads the converted ledger rather than the source.
+    if (this.migrationReport) this.flush();
     // First run: start the idle clock now rather than at epoch zero, or the
     // first settlement pays out the eight-hour cap for a visitor who has been
     // here four seconds.
@@ -430,6 +449,60 @@ export class EconomyService implements OnDestroy {
     this.publish();
     this.gain$$.next({ currency: 'gold', amount: credited, source });
     return credited;
+  }
+
+  /**
+   * Gold a reward of "N seconds of income" is worth right now, with `floor` as
+   * its minimum (economy v3, rule I). Pure read; mints nothing.
+   */
+  incomeReward(floor: number, seconds: number): number {
+    return CURVE.incomeReward(floor, seconds, goldPerSecond(this.state));
+  }
+
+  /**
+   * Mint a reward priced as max(floor, N seconds of income).
+   *
+   * Routed through `earnGold` so live events still boost it, with the
+   * Fragment's ×2 taken back out of the income term first: `goldPerSecond`
+   * already includes it, and the mint would otherwise apply it twice. The floor
+   * is a flat payout and is doubled exactly once, as before.
+   */
+  earnIncome(floor: number, seconds: number, source: string): number {
+    return this.earnGold(incomeRewardBase(floor, seconds, this.snapshot), source);
+  }
+
+  /**
+   * Pay a caught Golden Spark (economy v3, replaces the wandering trader).
+   *
+   * Windfall: max(60 s of income, min(15% of the bank, 900 s of income)) + 25.
+   * Frenzy: ×5 income (furnaces, automatons and strikes) for 60 s, in memory.
+   * Returns the Gold credited (0 for a Frenzy, whose Gold arrives as income).
+   */
+  grantGoldenSpark(kind: 'windfall' | 'frenzy'): number {
+    if (!this.isBrowser) return 0;
+    if (kind === 'frenzy') {
+      // Settle up to now first, so the window only multiplies time after the catch.
+      this.settleIdle();
+      const now = Date.now();
+      this.frenzyFrom = now;
+      this.frenzyUntil = now + CURVE.GOLDEN_SPARK.frenzyS * SECOND_MS;
+      this.publish();
+      return 0;
+    }
+    const amount = CURVE.goldenSparkWindfall(goldPerSecond(this.state), this.state.gold);
+    return this.earnGold(amount / globalMultiplier(this.state), 'golden-spark');
+  }
+
+  /** ×5 while a Forge Frenzy runs, else 1. */
+  private frenzyMultiplier(now: number): number {
+    return now >= this.frenzyFrom && now < this.frenzyUntil ? CURVE.GOLDEN_SPARK.frenzyMultiplier : 1;
+  }
+
+  /** Extra seconds of income a settled span owes for overlapping a Frenzy. */
+  private frenzyExtraSeconds(from: number, to: number): number {
+    const overlap = Math.min(to, this.frenzyUntil) - Math.max(from, this.frenzyFrom);
+    if (!(overlap > 0)) return 0;
+    return (overlap / SECOND_MS) * (CURVE.GOLDEN_SPARK.frenzyMultiplier - 1);
   }
 
   /**
@@ -550,8 +623,12 @@ export class EconomyService implements OnDestroy {
     const century = count % 100 === 0;
     const millennium = count % 1000 === 0;
 
-    let gold = goldPerClick(this.state);
-    if (century) gold += 10;
+    // Economy v3: the 100th strike pays ten strikes' worth, so the bonus keeps
+    // pace with the hammers instead of being a flat +10. A Forge Frenzy (a
+    // caught Golden Spark) multiplies strikes as well as the furnaces.
+    const strikeValue = goldPerClick(this.state) * this.frenzyMultiplier(now);
+    let gold = century ? strikeValue * CENTURY_STRIKE_MULTIPLIER : strikeValue;
+    gold = Math.round(gold);
 
     // Credit directly rather than through earnGold(): goldPerClick() has already
     // applied every multiplier to the per-strike figure, and running it through
@@ -566,7 +643,7 @@ export class EconomyService implements OnDestroy {
     this.publish();
     this.gain$$.next({ currency: 'gold', amount: gold, source: 'strike' });
     if (century || millennium) {
-      this.milestone$$.next({ clicks: count, bonus: century ? 10 : 0 });
+      this.milestone$$.next({ clicks: count, bonus: century ? Math.round(gold - strikeValue) : 0 });
     }
 
     return { gold, count, century, millennium };
@@ -613,6 +690,7 @@ export class EconomyService implements OnDestroy {
     if (wholeSeconds < 1) return;
 
     const seconds = Math.min(wholeSeconds, MAX_OFFLINE_SECONDS);
+    const spanStart = this.state.lastIdleAt;
     // Advance by exactly what was paid for, leaving the sub-second remainder.
     this.state.lastIdleAt += wholeSeconds * SECOND_MS;
 
@@ -625,7 +703,7 @@ export class EconomyService implements OnDestroy {
       return;
     }
 
-    const gold = goldPerSecond(this.state) * seconds;
+    const gold = goldPerSecond(this.state) * (seconds + this.frenzyExtraSeconds(spanStart, this.state.lastIdleAt));
     this.noteFirstSettlement(seconds, Math.max(0, gold));
     if (gold <= 0) {
       this.persistSoon();
@@ -699,6 +777,18 @@ export class EconomyService implements OnDestroy {
    * through the same method, so there is one price function for all four.
    */
   nextCost(id: string): number {
+    return this.costAtLevel(id, this.levelOf(id));
+  }
+
+  /**
+   * What level `level` (0-based: the price paid when holding `level`) of an
+   * upgrade costs, with every rule `nextCost` applies — the escalator from
+   * economy-curve.ts, the Charisma discount, a free first rung. The single
+   * price function: "Buy max" walks it level by level instead of re-deriving
+   * the curve. Infinity for an unknown id. (Ignores the level cap, as
+   * `nextCost` always has; `affordableLevels` honours it.)
+   */
+  costAtLevel(id: string, level: number): number {
     const def = upgradeById(id);
     if (!def) return Infinity;
     // A `firstFree` rung is free on its first level only, and the zero has to
@@ -706,8 +796,26 @@ export class EconomyService implements OnDestroy {
     // price at 1 on purpose, so that a Charisma discount can never make a
     // ladder free. This is the one price that is meant to be, and it is
     // authored in the catalogue rather than derived from a stat.
-    if (isFirstFree(def) && this.levelOf(id) === 0) return 0;
-    return this.discounted(costOf(def.baseCost, this.levelOf(id)));
+    if (isFirstFree(def) && level === 0) return 0;
+    return this.discounted(costOf(def.baseCost, level));
+  }
+
+  /**
+   * How many levels of `id` the purse covers in a row (capped at `max` and the
+   * level cap), walking `costAtLevel`. For the Market's "Buy max".
+   */
+  affordableLevels(id: string, gold = this.state.gold, max = Infinity): number {
+    let purse = gold;
+    let n = 0;
+    const level = this.levelOf(id);
+    const room = Math.min(max, levelCap(id) - level);
+    while (n < room) {
+      const price = this.costAtLevel(id, level + n);
+      if (!Number.isFinite(price) || price > purse) break;
+      purse -= price;
+      n++;
+    }
+    return n;
   }
 
   /**
@@ -1087,6 +1195,20 @@ export class EconomyService implements OnDestroy {
   }
 
   /**
+   * Mirror Forge Power's income percentage into the ledger (economy v3: +0.5%
+   * of the furnace + automaton rate per point). Persisted for the reason
+   * `rpgFlatGold` is: offline settlement prices from the blob alone.
+   */
+  setRpgForgePercent(percent: number): void {
+    if (!this.isBrowser) return;
+    const next = Number.isFinite(percent) ? Math.round(Math.max(0, percent) * 10) / 10 : 0;
+    if (next === (this.state.rpgForgePercent ?? 0)) return;
+    this.state.rpgForgePercent = next;
+    this.persistSoon();
+    this.publish();
+  }
+
+  /**
    * Mirror the Enchanting Table's Gold multiplier into the ledger.
    *
    * Pushed for the reason `setRpgFlatGold` is pushed: `goldBreakdown` is a pure
@@ -1349,7 +1471,7 @@ export class EconomyService implements OnDestroy {
       if (!raw) return emptyEconomy();
       const parsed = JSON.parse(raw) as Partial<PlayerEconomy>;
       const now = Date.now();
-      return {
+      const ledger: PlayerEconomy = {
         // Merged over a fresh blob so a ledger written by an older build still
         // hydrates rather than throwing on a field added since.
         ...emptyEconomy(),
@@ -1370,12 +1492,12 @@ export class EconomyService implements OnDestroy {
         // offline payout. Reset to 1 and let the wiring layer push the truth a
         // tick later. See the field's note in `economy.model.ts`.
         infusionGold: 1,
-        // Version 1 blobs carry none of the prestige fields. The spread over a
-        // fresh `emptyEconomy()` above has already supplied them at zero, which
-        // is the correct starting point for every one of them: no shards held,
-        // none granted, no Eclipses taken, and a run that has earned whatever
-        // the all-time total says. No migration step is needed and none is run.
-        version: 2,
+        // The stored version, kept so the v3 migration below can tell a v2
+        // ledger from one already converted. Every v1/v2 build stamped it; a
+        // blob with none was never written by a build and reads as current.
+        // (v1 blobs carry none of the prestige fields; the spread over a fresh
+        // `emptyEconomy()` above supplies them at zero, which is correct.)
+        version: typeof parsed.version === 'number' ? parsed.version : emptyEconomy().version,
         ops: parsed.ops ?? [],
         commerceOps: parseCommerceOps(parsed.commerceOps),
         commerceApplied: parseCommerceApplied(parsed.commerceApplied),
@@ -1386,6 +1508,11 @@ export class EconomyService implements OnDestroy {
         acks: parsed.acks ?? {},
         seenAt: parsed.seenAt ?? {},
       };
+      // Economy v3 (the Cookie-curve rebalance): converted once, idempotent.
+      if (!needsEconomyV3(ledger)) return ledger;
+      const migrated = migrateEconomyV3WithReport(ledger);
+      this.migrationReport = migrated.report;
+      return migrated.ledger;
     } catch {
       return emptyEconomy();
     }
@@ -1478,7 +1605,13 @@ export class EconomyService implements OnDestroy {
 
   private bindDevice(): void {
     this.deviceId = this.readDeviceId();
-    this.opSeq = maxSeqFor(this.deviceId, this.state.ops ?? []);
+    // Past the folded watermark as well as the live log, so an op id below a
+    // checkpoint (or the v3 migration's fold) is never reused.
+    this.opSeq = Math.max(
+      maxSeqFor(this.deviceId, this.state.ops ?? []),
+      this.state.applied?.[this.deviceId] ?? 0,
+      this.state.origin?.applied?.[this.deviceId] ?? 0,
+    );
   }
 
   private readDeviceId(): string {
@@ -1557,6 +1690,7 @@ export class EconomyService implements OnDestroy {
       equipped: { ...state.equipped },
       enchantment: activeEnchantment(state, now),
       doubled: globalMultiplier(state) > 1,
+      frenzyUntil: now < this.frenzyUntil ? this.frenzyUntil : 0,
     };
   }
 }

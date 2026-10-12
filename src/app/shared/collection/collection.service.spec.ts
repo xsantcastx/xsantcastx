@@ -140,7 +140,8 @@ describe('CollectionService', () => {
 
       expect(paid).toContain('collector-apprentice');
       expect(storedLedger().rewards).toContain('collector-apprentice');
-      expect(economy.snapshot.gold).toBeGreaterThanOrEqual(goldBefore + 10_000);
+      // Economy v3: max(10,000 × ρ, ten minutes of income).
+      expect(economy.snapshot.gold).toBeGreaterThanOrEqual(goldBefore + 600);
       expect(economy.ownsCosmetic('title-prefix')).toBe(true);
       expect(economy.equippedIn('prefix')).toBe('apprentice-collector');
     });

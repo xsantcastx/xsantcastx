@@ -87,7 +87,8 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.sell('seed-helm')).toBe(0);
     expect(inventory.itemById('seed-helm')).toBeTruthy();
     const gold = inventory.sell('old-charm');
-    expect(gold).toBe(12);
+    // A pre-v3 (v1 blob) sell value is scaled by ρ once on the way in.
+    expect(gold).toBe(Math.max(1, Math.round(12 * 0.06)));
     expect(inventory.itemById('old-charm')).toBeUndefined();
     const stored = coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!));
     expect(stored?.tombstones.some(row => row.id === 'old-charm')).toBe(true);
@@ -528,8 +529,8 @@ describe('InventoryService reforge', () => {
     expect(result.replayed).toBe(false);
     expect(result.lockedKey).toBeNull();
     expect(result.item.stats).not.toEqual(before);
-    // 'rare' — 10,000 Gold, nothing else.
-    expect(economy.snapshot.gold).toBe(gold - 10_000);
+    // 'rare' — 3,000 Gold (economy v3), nothing else.
+    expect(economy.snapshot.gold).toBe(gold - 3_000);
     expect(inventory.itemById('reforge-blade')!.reforgeCount).toBe(1);
   });
 
@@ -554,7 +555,7 @@ describe('InventoryService reforge', () => {
     expect(result.lockedKey).toBe('goldPerSec');
     expect(result.item.stats.goldPerSec).toBe(before.goldPerSec);
     expect(result.item.stats.strikePower).not.toBe(before.strikePower);
-    expect(economy.snapshot.gold).toBe(gold - 20_000);
+    expect(economy.snapshot.gold).toBe(gold - 6_000);
   });
 
   it('charges the plain price when the lock names a stat the item does not roll', () => {
@@ -563,7 +564,7 @@ describe('InventoryService reforge', () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.lockedKey).toBeNull();
-    expect(economy.snapshot.gold).toBe(gold - 10_000);
+    expect(economy.snapshot.gold).toBe(gold - 3_000);
   });
 
   it('replays the same mutation id without rerolling or charging twice', () => {
@@ -588,14 +589,14 @@ describe('InventoryService reforge', () => {
     const lean = configure(poor);
     const poorEconomy = TestBed.inject(EconomyService);
     poorEconomy.init();
-    poorEconomy.earnGold(9_999, 'test');
+    poorEconomy.earnGold(2_999, 'test');
     expect(lean.add(blade())).toBeTruthy();
     const before = { ...lean.itemById('reforge-blade')!.stats };
 
     expect(lean.reforge('reforge-blade', 'r1', null, Date.now(), () => 0.99))
       .toEqual({ ok: false, code: 'funds' });
     expect(lean.itemById('reforge-blade')!.stats).toEqual(before);
-    expect(poorEconomy.snapshot.gold).toBe(9_999);
+    expect(poorEconomy.snapshot.gold).toBe(2_999);
     expect(lean.itemById('reforge-blade')!.reforgeCount).toBeUndefined();
   });
 

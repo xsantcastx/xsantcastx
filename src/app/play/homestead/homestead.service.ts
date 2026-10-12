@@ -22,8 +22,12 @@
  * (nextCost / levelOf / goldPerSecond / goldPerClick), so new numbers flow
  * through untouched. The rung lists (`FURNACE_RUNGS`, `AUTOMATON_RUNGS`,
  * `COLUMN_RUNGS`) are built from FORGE_UPGRADES / AUTO_CLICKERS /
- * MULTIPLIER_UPGRADES, so new rungs appear by themselves. `goldenSpark()` is
- * the presentation hook for a future bonus — it grants nothing.
+ * MULTIPLIER_UPGRADES, so new rungs appear by themselves.
+ *
+ * GOLDEN SPARK (economy v3): the Homestead holds the shared GoldenSparkService
+ * clock while it is open. A spark offered while you are here is caught by
+ * striking the Forge within its 13 seconds; EconomyService credits it
+ * (Windfall or Forge Frenzy) and only then `goldenSpark()` plays the burst.
  */
 import { Injectable, NgZone, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -34,6 +38,7 @@ import {
 } from '../../shared/economy/economy.model';
 import { CommerceCode, newPurchaseActionId } from '../../shared/economy/commerce-ops';
 import { ComboService } from '../../shared/economy/combo.service';
+import { GoldenSparkService } from '../../shared/economy/golden-spark.service';
 import { pitchFor } from '../../shared/economy/combo.model';
 import { ForgeAudioService } from '../../shared/economy/forge-audio.service';
 import { IdleService } from '../../shared/idle/idle.service';
@@ -51,6 +56,9 @@ import {
   BuildingAction, ColumnRow, ColumnRungDef, Pending, RungDef, RungQuote, bestRung, buildingAction, columnRows,
   formatPerSecond, ladderLevels, nextUnheld, splitIdleGain,
 } from './homestead.model';
+
+/** How often a waiting golden spark re-flares over the Forge, ms. */
+const SPARK_PULSE_MS = 2_500;
 
 export const FURNACE_RUNGS: readonly RungDef[] = FORGE_UPGRADES.map(u => ({ id: u.id, name: u.name, gain: u.ratePerSecond }));
 export const AUTOMATON_RUNGS: readonly RungDef[] = AUTO_CLICKERS.map(u => ({ id: u.id, name: u.name, gain: u.clicksPerSecond }));
@@ -123,6 +131,7 @@ export class HomesteadService implements OnDestroy {
   private readonly thrallService = inject(ThrallService);
   private readonly idle = inject(IdleService);
   private readonly combo = inject(ComboService);
+  private readonly spark = inject(GoldenSparkService);
   private readonly audio = inject(ForgeAudioService);
   private readonly zone = inject(NgZone);
   private readonly homeForge = inject(HomeForgeService);
@@ -182,6 +191,12 @@ export class HomesteadService implements OnDestroy {
     }));
     subs.add(this.explorers.returned$.subscribe(r => this.scene.addPending('camp', { gold: Math.max(0, r.reward.gold || 0), returns: 1 })));
     subs.add(this.thrallService.find$.subscribe(() => { this.scene.addPending('workshop', { runes: 1 }); this.scene.rune(); }));
+    // The shared Golden Spark clock runs while the Homestead is open. While a
+    // spark is waiting, the Forge flares with it every couple of seconds (the
+    // `goldenSpark` burst), so it is visible on the plot; striking catches it.
+    subs.add(this.spark.attach());
+    subs.add(this.spark.offer$.subscribe(offer => this.showWaitingSpark(offer !== null)));
+    subs.add(() => this.showWaitingSpark(false));
     subs.add(this.homeForge.state$.subscribe(() => this.refresh()));
     this.subs = subs;
   }
@@ -204,6 +219,8 @@ export class HomesteadService implements OnDestroy {
     const run = this.combo.strike();
     this.audio.strike(pitchFor(run.count));
     this.scene.strikeFx(hit.gold, hit.century || hit.millennium);
+    // A spark on offer is caught by striking the Forge. Credited first, then shown.
+    if (this.spark.offer && this.spark.catch()) this.goldenSpark();
   }
 
   /**
@@ -235,8 +252,9 @@ export class HomesteadService implements OnDestroy {
   }
 
   /**
-   * HOOK for the rebalance: play a golden spark over the Forge. Grants nothing —
-   * credit any bonus through EconomyService first, then call this.
+   * Play a golden spark over the Forge. Grants nothing: it marks a spark that
+   * is waiting to be struck (see `showWaitingSpark`) and the one just caught,
+   * which GoldenSparkService has already credited through EconomyService.
    */
   goldenSpark(): void {
     this.scene.goldenSpark();
@@ -244,6 +262,18 @@ export class HomesteadService implements OnDestroy {
   }
 
   // ── Reading ──
+
+  private sparkPulse: ReturnType<typeof setInterval> | null = null;
+
+  /** Flare the Forge now and every SPARK_PULSE_MS while a spark waits; stop when it goes. */
+  private showWaitingSpark(waiting: boolean): void {
+    if (this.sparkPulse !== null) { clearInterval(this.sparkPulse); this.sparkPulse = null; }
+    if (!waiting || !this.browser) return;
+    this.scene.goldenSpark();
+    this.zone.runOutsideAngular(() => {
+      this.sparkPulse = setInterval(() => this.scene.goldenSpark(), SPARK_PULSE_MS);
+    });
+  }
 
   /** The one action a building's panel offers. */
   action(id: HomesteadBuildingId): BuildingAction {
