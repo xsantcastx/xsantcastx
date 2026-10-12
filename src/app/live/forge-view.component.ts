@@ -141,6 +141,31 @@ import { RARITIES } from '../shared/rarity/rarity.model';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
+import { TranslationService } from '../translation.service';
+import {
+  STATION_UI,
+  STATION_UI_I18N,
+  type JournalRow,
+  type StationCost,
+  type StationTab,
+} from '../shared/station-ui';
+import { SANCTUM_I18N } from './sanctum.i18n';
+
+/** The Sanctum's tabs. Send leads: dispatch is the one thing to do here. */
+export type SanctumTab = 'send' | 'works' | 'forge' | 'cast';
+
+/** Everything the station frame binds, built once per change, never in the template. */
+interface SanctumStation {
+  wallet: StationCost;
+  tabs: StationTab[];
+  /** 0..1 — explorers out of slots. */
+  busy: number;
+  stripLabel: string;
+  siteRows: JournalRow[];
+  sendLine: string;
+  sendCosts: StationCost[];
+  sendBlocked: string | null;
+}
 /**
  * The two energies, as colours.
  *
@@ -555,6 +580,7 @@ const HUM_KEY = 'godforge-forge-hum';
   imports: [RelatedPagesComponent, 
     CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent,
     ChallengePanelComponent, ThrallPanelComponent, ArtSceneComponent, WorksMapComponent,
+    ...STATION_UI,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './forge-view.component.html',
@@ -628,6 +654,124 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   readonly realms = EXPLORER_REALMS;
   readonly missions = MISSIONS;
   readonly maxSlots = MAX_EXPLORER_SLOTS;
+
+  // ── Station frame (shared/station-ui) ──────────────────────────────────────
+
+  private readonly i18n = inject(TranslationService);
+  tab: SanctumTab = 'send';
+  detailsOpen = false;
+  announce = '';
+  /** The second tab row inside Send: one tab per realm. */
+  readonly realmTabs: StationTab[] = EXPLORER_REALMS.map(r => ({ id: r.id, label: r.name }));
+  private stationKey = '';
+  private stationCache: SanctumStation | null = null;
+
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(SANCTUM_I18N);
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  setTab(id: string): void {
+    this.tab = id as SanctumTab;
+  }
+
+  pickRealmTab(id: string): void {
+    this.pickRealm(id as RealmId);
+  }
+
+  pickSiteRow(id: string): void {
+    this.pickSite(id);
+  }
+
+  /** Where the armed length sits on the ladder, for the − / + stepper. */
+  get missionIndex(): number {
+    return this.missions.findIndex(m => m.id === this.pickedMission);
+  }
+
+  /** One rung shorter or longer. Same `pickMission` the full ladder uses. */
+  stepMission(delta: number): void {
+    const next = this.missions[this.missionIndex + delta];
+    if (next) this.pickMission(next.id);
+  }
+
+  /**
+   * The frame's bindings, memoised on the inputs that move them.
+   *
+   * The page ticks once a second and every getter here walks the services, so
+   * this is rebuilt only when a pick, the Gold, the slots or the second changes
+   * — and the kit components (OnPush) see the same objects in between.
+   */
+  get station(): SanctumStation {
+    const key = [
+      this.pickedRealm, this.pickedMission, this.pickedSite, this.pickedExplorer,
+      this.snap.gold, this.freeSlots, this.slots, this.activeCount,
+      Math.floor((this.now || 0) / 1000), this.i18n.getCurrentLanguage(),
+    ].join('|');
+    if (this.stationCache && key === this.stationKey) return this.stationCache;
+    this.stationKey = key;
+    this.stationCache = this.buildStation();
+    return this.stationCache;
+  }
+
+  private buildStation(): SanctumStation {
+    const gold = this.snap.gold;
+    const soonest = this.soonestMission;
+    const stripLabel = soonest
+      ? (soonest.done
+          ? this.t('sanctum.strip.arriving', { n: this.activeCount })
+          : this.t('sanctum.strip.out', { n: this.activeCount, t: soonest.countdown }))
+      : this.t('sanctum.strip.free', { n: this.freeSlots, total: this.slots });
+
+    const options = this.siteOptions;
+    const siteRows: JournalRow[] = options.map(o => ({
+      id: o.site.id,
+      name: o.site.name,
+      sub: o.block
+        ? o.blockLabel
+        : this.t('sanctum.siteSub', { d: o.site.difficulty, time: o.duration, cost: o.cost }),
+      locked: !!o.block,
+    }));
+
+    const picked = options.find(o => o.site.id === this.pickedSite);
+    const cost = this.explorers.dispatchCost(this.pickedMission, this.pickedSite);
+    const sendCosts: StationCost[] = cost
+      ? [{ kind: 'gold', label: this.t('stationUi.gold'), need: cost, have: gold }]
+      : [];
+
+    let sendBlocked: string | null = null;
+    if (this.freeSlots <= 0) {
+      sendBlocked = this.t('sanctum.allOut');
+    } else {
+      const block = this.explorers.blockedReason(this.pickedMission, this.armedExplorerId, this.pickedSite);
+      // A Gold refusal is the kit's job: the cost chip names the shortfall and
+      // draws the bar. Every other refusal is a sentence.
+      if (block && block.code !== 'gold') sendBlocked = blockLabel(block);
+    }
+
+    return {
+      wallet: { kind: 'gold', label: this.t('stationUi.gold'), need: gold, have: gold },
+      tabs: [
+        { id: 'send', label: this.t('sanctum.tab.send'), badge: this.freeSlots || null },
+        { id: 'works', label: this.t('sanctum.tab.works') },
+        { id: 'forge', label: this.t('sanctum.tab.forge') },
+        { id: 'cast', label: this.t('sanctum.tab.cast') },
+      ],
+      busy: this.slots ? this.activeCount / this.slots : 0,
+      stripLabel,
+      siteRows,
+      sendLine: this.t('sanctum.sendLine', {
+        who: this.nextExplorerName,
+        site: this.pickedSiteDef.name,
+        time: picked?.duration ?? '',
+      }),
+      sendCosts,
+      sendBlocked,
+    };
+  }
 
   ngOnInit(): void {
     this.economy.init();

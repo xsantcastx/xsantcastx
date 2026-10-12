@@ -27,3 +27,21 @@ export const IN_WORLD_FOCUS = new InjectionToken<'ready'>('IN_WORLD_FOCUS');
 export function injectInWorldFocus(): 'ready' | null {
   return inject(IN_WORLD_FOCUS, { optional: true }) ?? null;
 }
+
+/**
+ * HOME_FORGE: present only when a bench was opened from the player's own
+ * Homestead station (Your Anvil / Your Enchanting Circle). It reports the
+ * station tiers bought there (home-forge model); the bench hands them to the
+ * mini-games. Absent everywhere else (town benches, the Delve camp, the routed
+ * pages), so those keep today's behaviour exactly. Read live, so an upgrade
+ * bought while the panel is open applies to the next game.
+ */
+export interface HomeForgeContext {
+  anvilTier(): number;
+  circleTier(): number;
+}
+export const HOME_FORGE = new InjectionToken<HomeForgeContext>('HOME_FORGE');
+
+export function injectHomeForge(): HomeForgeContext | null {
+  return inject(HOME_FORGE, { optional: true }) ?? null;
+}

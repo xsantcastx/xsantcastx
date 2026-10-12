@@ -16,9 +16,10 @@
  */
 import { cycleAt, journeyAt, progressAt } from '../../shared/expedition/works-map.model';
 import {
-  HOMESTEAD_BUILDINGS, HOMESTEAD_FORGE_STATION, HOMESTEAD_GATE_ID, HOMESTEAD_GATE_X, HOMESTEAD_ID,
-  HomesteadBuildingId, buildingOfStation,
+  HOME_FORGE_STATIONS, HOMESTEAD_BUILDINGS, HOMESTEAD_FORGE_STATION, HOMESTEAD_GATE_ID, HOMESTEAD_GATE_X, HOMESTEAD_ID,
+  HomesteadBuildingId, buildingOfStation, homeStationOf,
 } from '../world/homestead';
+import type { HomeStationId } from '../../shared/minigames/home-forge.model';
 import { collectable, emptyLedger, hasPending, Pending, PendingLedger, pendingLine } from '../homestead/homestead.model';
 
 const FLOOR = 610;
@@ -62,10 +63,12 @@ export interface HomesteadModel {
   thralls: readonly { working: boolean; lastRollAt: number; rollInterval: number; color: string }[];
   /** Plain "Unlock: … · cost" signs on unbuilt plots. */
   signs: Partial<Record<HomesteadBuildingId, string>>;
+  /** Tiers (1..4) of the player's own Anvil and Enchanting Circle (home-forge model). */
+  homeForge: Record<HomeStationId, number>;
 }
 
 export function emptyModel(): HomesteadModel {
-  return { gold: 0, perSecond: 0, perClick: 1, furnace: [], automatons: [], multipliers: 0, explorers: { slots: 1, idle: 0, out: [] }, thralls: [], signs: {} };
+  return { gold: 0, perSecond: 0, perClick: 1, furnace: [], automatons: [], multipliers: 0, explorers: { slots: 1, idle: 0, out: [] }, thralls: [], signs: {}, homeForge: { anvil: 1, circle: 1 } };
 }
 
 // ── Pure layout ──────────────────────────────────────────────────────────────
@@ -75,6 +78,30 @@ const X: Record<HomesteadBuildingId, number> = Object.fromEntries(
 ) as Record<HomesteadBuildingId, number>;
 /** World x of a building. */
 export function buildingX(id: HomesteadBuildingId): number { return X[id]; }
+
+const HOME_X: Record<HomeStationId, number> = Object.fromEntries(
+  HOME_FORGE_STATIONS.map(s => [homeStationOf(s.id)!, s.x]),
+) as Record<HomeStationId, number>;
+/** World x of the player's own Anvil / Enchanting Circle. */
+export function homeStationX(id: HomeStationId): number { return HOME_X[id]; }
+
+/** Where the plot's fence ends: just past the last station. */
+export const FENCE_END = Math.max(...[...HOMESTEAD_BUILDINGS, ...HOME_FORGE_STATIONS].map(s => s.x)) + 160;
+
+/**
+ * How the home Anvil looks at `tier` (1..4): it grows a little each tier, and
+ * from tier II its face glows, brighter each tier. Pure, for the node test.
+ */
+export function anvilLook(tier: number): { scale: number; glow: number } {
+  const t = Math.min(4, Math.max(1, Math.floor(Number.isFinite(tier) ? tier : 1)));
+  return { scale: 1 + (t - 1) * 0.14, glow: t <= 1 ? 0 : 0.35 + (t - 2) * 0.3 };
+}
+
+/** How bright the Enchanting Circle's runes burn at `tier` (1..4), 0.25..1, and how many of its ten are lit. */
+export function circleLook(tier: number): { bright: number; runes: number } {
+  const t = Math.min(4, Math.max(1, Math.floor(Number.isFinite(tier) ? tier : 1)));
+  return { bright: 0.25 + (t - 1) * 0.25, runes: 2 + t * 2 };
+}
 
 /** Most figures drawn per building; the panel says the true count. */
 export const MAX_FIGURES = 12;
@@ -156,6 +183,7 @@ export class HomesteadScene implements HomesteadView {
   private readonly ledger: PendingLedger = emptyLedger();
   private readonly lastCollect: Partial<Record<HomesteadBuildingId, number>> = {};
   private readonly flash: Partial<Record<HomesteadBuildingId, number>> = {};
+  private readonly homeFlash: Partial<Record<HomeStationId, number>> = {};
   private fx: Fx[] = [];
   private arcs: Arc[] = [];
   private strikeAt = -Infinity;
@@ -218,6 +246,20 @@ export class HomesteadScene implements HomesteadView {
     }
   }
 
+  /** A home station was upgraded: a burst and its new tier floating up. */
+  homeGrew(id: HomeStationId, line: string): void {
+    const now = this.clock();
+    const x = HOME_X[id];
+    this.homeFlash[id] = now;
+    this.pushText(x, FLOOR - 250, line, '#a6ffcf', true, now);
+    if (this.reduced) return;
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * Math.PI * 2;
+      const color = id === 'anvil' ? (i % 2 ? GOLD : EMBER) : (i % 2 ? VIOLET : GOLD);
+      this.push({ x, y: FLOOR - 70, vx: Math.cos(a) * 240, vy: Math.sin(a) * 170 - 70, born: now, life: 800, color, size: 3 });
+    }
+  }
+
   /** A coin popping out of a building on an idle tick, landing on its pile. */
   tick(id: HomesteadBuildingId): void {
     if (this.reduced) return;
@@ -259,7 +301,7 @@ export class HomesteadScene implements HomesteadView {
   // ── HomesteadView ──
 
   paints(areaId: string, stationId: string): boolean {
-    if (areaId === HOMESTEAD_ID) return buildingOfStation(stationId) !== null;
+    if (areaId === HOMESTEAD_ID) return buildingOfStation(stationId) !== null || homeStationOf(stationId) !== null;
     return stationId === HOMESTEAD_GATE_ID && areaId !== HOMESTEAD_ID && this.gateArea(areaId);
   }
 
@@ -289,6 +331,8 @@ export class HomesteadScene implements HomesteadView {
     if (visible(X.automatons)) this.drawAutomatons(c, frame, now);
     if (visible(X.camp)) this.drawCamp(c, frame, wall);
     if (visible(X.workshop)) this.drawWorkshop(c, frame, wall);
+    if (visible(HOME_X.anvil)) this.drawHomeAnvil(c, frame, now);
+    if (visible(HOME_X.circle)) this.drawHomeCircle(c, frame, now);
     for (const b of this.buildings) if (visible(b.x)) this.drawPending(c, b.id, frame);
     this.drawArcs(c, now);
     this.drawFx(c, now);
@@ -350,9 +394,9 @@ export class HomesteadScene implements HomesteadView {
 
   private drawFence(c: CanvasRenderingContext2D, f: HomesteadFrame): void {
     c.fillStyle = '#4b332c';
-    const start = Math.max(220, Math.floor((f.camera - 40) / 60) * 60), end = Math.min(2240, f.camera + f.viewport + 40);
+    const start = Math.max(220, Math.floor((f.camera - 40) / 60) * 60), end = Math.min(FENCE_END, f.camera + f.viewport + 40);
     for (let x = start; x < end; x += 60) c.fillRect(x, FLOOR - 34, 6, 34);
-    c.fillRect(Math.max(220, f.camera - 40), FLOOR - 26, Math.min(2240, f.camera + f.viewport + 40) - Math.max(220, f.camera - 40), 4);
+    c.fillRect(Math.max(220, f.camera - 40), FLOOR - 26, Math.min(FENCE_END, f.camera + f.viewport + 40) - Math.max(220, f.camera - 40), 4);
   }
 
   private drawTreasury(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
@@ -515,6 +559,98 @@ export class HomesteadScene implements HomesteadView {
       this.figure(c, tx, FLOOR, t.color, 1, tx < x ? 1 : -1, false, -1.4 + cyc * 1.8);
     });
     if (list.length > shown.length) this.label(c, `x${list.length}`, x, FLOOR - 146, VIOLET, 14, 700);
+  }
+
+  /** The tier as a small plaque over a home station: "I" .. "IV". */
+  private tierPlaque(c: CanvasRenderingContext2D, x: number, tier: number, color: string): void {
+    const text = ['I', 'II', 'III', 'IV'][Math.min(4, Math.max(1, tier)) - 1];
+    c.fillStyle = '#1a120fe6'; c.fillRect(x - 22, FLOOR - 200, 44, 24);
+    c.strokeStyle = color; c.lineWidth = 2; c.strokeRect(x - 22, FLOOR - 200, 44, 24);
+    this.label(c, text, x, FLOOR - 182, color, 15, 800);
+  }
+
+  private homeFlashGlow(c: CanvasRenderingContext2D, id: HomeStationId, now: number, color: string): void {
+    const t = (now - (this.homeFlash[id] ?? -Infinity)) / 900;
+    if (t < 0 || t > 1) return;
+    c.save(); c.globalAlpha = (1 - t) * .55; c.fillStyle = color;
+    c.beginPath(); c.ellipse(HOME_X[id], FLOOR - 60, 120 * (0.7 + t * .4), 100, 0, 0, Math.PI * 2); c.fill(); c.restore();
+  }
+
+  /** The player's own anvil: a stone block and an iron anvil that grows, and glows from tier II. */
+  private drawHomeAnvil(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
+    const x = HOME_X.anvil, tier = this.model.homeForge.anvil;
+    const look = anvilLook(tier);
+    this.homeFlashGlow(c, 'anvil', now, '#a6ffcf');
+    if (look.glow > 0) {
+      const pulse = f.reduced ? 1 : .85 + Math.sin(f.time * 2.2) * .15;
+      c.save(); c.globalAlpha = look.glow * pulse * .6; c.fillStyle = EMBER;
+      c.beginPath(); c.ellipse(x, FLOOR - 58 * look.scale, 90 * look.scale, 50 * look.scale, 0, 0, Math.PI * 2); c.fill(); c.restore();
+    }
+    c.save(); c.translate(x, FLOOR); c.scale(look.scale, look.scale);
+    // Stone block.
+    c.fillStyle = '#4b332c'; c.fillRect(-34, -40, 68, 40);
+    c.fillStyle = '#5a3d2e'; c.fillRect(-38, -44, 76, 6);
+    // Anvil: waist, body, horn.
+    c.fillStyle = '#2a2430'; c.fillRect(-14, -62, 28, 18);
+    if (look.glow > 0) { c.shadowColor = EMBER; c.shadowBlur = 10 + look.glow * 22; }
+    c.fillStyle = '#3e3846'; c.fillRect(-46, -84, 92, 22);
+    c.beginPath(); c.moveTo(-46, -84); c.lineTo(-74, -78); c.lineTo(-46, -66); c.closePath(); c.fill();
+    c.shadowBlur = 0;
+    // The face, hotter per tier.
+    c.fillStyle = look.glow > 0 ? `rgba(255, 170, 90, ${(0.45 + look.glow * 0.5).toFixed(2)})` : '#6d6474';
+    c.fillRect(-46, -84, 92, 4);
+    // A hammer resting on it.
+    c.fillStyle = '#5a3d2e'; c.fillRect(10, -98, 30, 4);
+    c.fillStyle = '#9aa0a8'; c.fillRect(36, -104, 10, 16);
+    c.restore();
+    // Sparks drifting off an upgraded anvil: one more per tier.
+    if (look.glow > 0 && !f.reduced) {
+      for (let i = 0; i < tier; i++) {
+        const u = (f.time * .7 + i * .31) % 1;
+        c.save(); c.globalAlpha = (1 - u) * .8; c.fillStyle = i % 2 ? GOLD : EMBER;
+        c.beginPath(); c.arc(x - 20 + i * 14 + Math.sin(u * 6 + i) * 6, FLOOR - 90 * look.scale - u * 70, 2.2, 0, Math.PI * 2); c.fill(); c.restore();
+      }
+    }
+    this.tierPlaque(c, x, tier, GOLD);
+  }
+
+  /** The player's own enchanting circle: a ring on the ground whose runes brighten per tier. */
+  private drawHomeCircle(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
+    const x = HOME_X.circle, tier = this.model.homeForge.circle;
+    const look = circleLook(tier);
+    this.homeFlashGlow(c, 'circle', now, VIOLET);
+    const breathe = f.reduced ? 1 : .85 + Math.sin(f.time * 1.6) * .15;
+    c.save();
+    // The ring, seen from the side: an ellipse on the floor.
+    c.globalAlpha = .25 + look.bright * .35 * breathe; c.fillStyle = VIOLET;
+    c.beginPath(); c.ellipse(x, FLOOR - 8, 110, 26, 0, 0, Math.PI * 2); c.fill();
+    c.globalAlpha = 1; c.strokeStyle = '#c2a26a'; c.lineWidth = 3;
+    c.beginPath(); c.ellipse(x, FLOOR - 8, 110, 26, 0, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = VIOLET; c.lineWidth = 2; c.globalAlpha = .5 + look.bright * .5;
+    c.beginPath(); c.ellipse(x, FLOOR - 8, 80, 18, 0, 0, Math.PI * 2); c.stroke();
+    // Ten standing runes around it: more are lit, and they burn brighter, per tier.
+    const total = 10, spin = f.reduced ? 0 : f.time * .25;
+    for (let i = 0; i < total; i++) {
+      const a = (i / total) * Math.PI * 2 + spin;
+      const rx = x + Math.cos(a) * 110, ry = FLOOR - 8 + Math.sin(a) * 26;
+      const lit = i < look.runes;
+      c.globalAlpha = lit ? Math.min(1, look.bright * breathe + .1) : .25;
+      c.shadowColor = VIOLET; c.shadowBlur = lit ? 6 + look.bright * 16 : 0;
+      c.fillStyle = lit ? '#e6d4ff' : '#5b4a72';
+      c.fillRect(rx - 3, ry - 22, 6, 18);
+      c.fillRect(rx - 6, ry - 16, 12, 3);
+    }
+    c.shadowBlur = 0;
+    // From tier III a rune hovers over the centre.
+    if (tier >= 3) {
+      const bob = f.reduced ? 0 : Math.sin(f.time * 2) * 6;
+      c.globalAlpha = look.bright; c.shadowColor = VIOLET; c.shadowBlur = 20;
+      c.fillStyle = '#e6d4ff';
+      c.beginPath(); c.moveTo(x, FLOOR - 120 + bob); c.lineTo(x + 14, FLOOR - 96 + bob); c.lineTo(x, FLOOR - 72 + bob); c.lineTo(x - 14, FLOOR - 96 + bob); c.closePath(); c.fill();
+      c.shadowBlur = 0;
+    }
+    c.restore();
+    this.tierPlaque(c, x, tier, VIOLET);
   }
 
   /** A small stick figure: the placeholder until sprites land. */

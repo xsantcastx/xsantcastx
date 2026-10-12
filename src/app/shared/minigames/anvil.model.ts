@@ -68,11 +68,15 @@ export function markerAt(elapsedMs: number, periodMs: number, phase = 0): number
   return t < 0.5 ? t * 2 : 2 - t * 2;
 }
 
-/** Grade a press at marker position `pos` (0..1; the centre is 0.5). */
-export function gradeStrike(pos: number): StrikeGrade {
+/**
+ * Grade a press at marker position `pos` (0..1; the centre is 0.5). `zones`
+ * defaults to ANVIL_ZONES; only an upgraded home anvil (home-forge.model)
+ * passes wider ones.
+ */
+export function gradeStrike(pos: number, zones: { perfect: number; good: number } = ANVIL_ZONES): StrikeGrade {
   const off = Math.abs(clamp01(pos) - 0.5) * 2;
-  if (off <= ANVIL_ZONES.perfect) return 'perfect';
-  if (off <= ANVIL_ZONES.good) return 'good';
+  if (off <= zones.perfect) return 'perfect';
+  if (off <= zones.good) return 'good';
   return 'off';
 }
 

@@ -85,7 +85,7 @@ test.describe('Collection Log', () => {
   test('shows what has been found, and only that', async ({ page }) => {
     await openLog(page, true);
 
-    await expect(page.locator('.cl-dial__count')).toHaveText('3 / 253');
+    await expect(page.locator('.cl-dial__count')).toHaveText('3 / 270');
     await expect(page.locator('.cl-card:not(.cl-card--locked)')).toHaveCount(3);
 
     const ash = page.locator('.cl-card', { hasText: 'Ash' }).first();
@@ -129,9 +129,11 @@ test.describe('Collection Log', () => {
     }
     // ...and says so under the grid, so the denominator is not a mystery. The
     // number moved from 201 to 253 when the crafting bench added its fifty-two
+    // recipes, and from 253 to 270 when the Delve (blocks, torches, ladders, platforms,
+    // chests, camp, quest and lore materials) added its seventeen; the original note continued:
     // recipes as their own category: a recipe is a thing you can know, so it is
     // counted like everything else the log tracks.
-    await expect(page.locator('.cl-foot')).toContainText('253 entries count toward completion');
+    await expect(page.locator('.cl-foot')).toContainText('270 entries count toward completion');
   });
 
   test('filters down to one category and back', async ({ page }) => {

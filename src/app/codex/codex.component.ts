@@ -81,6 +81,31 @@ import { injectInWorldPanel } from '../shared/in-world-panel';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { DELVE_BIOMES, DELVE_INSCRIPTIONS } from '../shared/delve/delve-lore.model';
 import { DELVE_INSCRIPTION_LORE } from '../shared/delve/delve-inscription-lore';
+import { TranslationService } from '../translation.service';
+import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationTab } from '../shared/station-ui';
+import { CODEX_I18N } from './codex.i18n';
+
+/** The three Codex tabs that read as a journal: list | the selected entry. */
+type JournalTabKey = 'achievements' | 'scrolls' | 'secrets';
+
+/** The selected entry, flattened for the detail pane. */
+interface CodexEntry {
+  id: string;
+  name: string;
+  /** The description when found, the clue when not. */
+  line: string;
+  facts: { label: string; value: string }[];
+  /** Body text: a scroll's paragraphs, an inscription, a secret's reveal. */
+  body: string[];
+  /** One extra line (a gate, a lore whisper). */
+  note: string | null;
+  found: boolean;
+}
+
+interface CodexJournal {
+  rows: JournalRow[];
+  entries: Map<string, CodexEntry>;
+}
 
 /** One Delve biome's wall of inscriptions. Locked cards show no text. */
 interface InscriptionShelf {
@@ -199,7 +224,7 @@ const SCROLL_TIER_TO_RARITY: Record<RuneTier, EclipseRarity> = {
 @Component({
   selector: 'app-codex',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent, ...STATION_UI],
   templateUrl: './codex.component.html',
   styleUrls: ['./codex.component.css'],
 })
@@ -213,6 +238,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   private readonly delveLore = inject(DelveLoreService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly i18n = inject(TranslationService);
   /**
    * Inside the /play panel (the Celestial town's Codex observatory) the
    * ActivatedRoute is /play's, so the tab is local state only: `?tab=` is not
@@ -828,5 +854,221 @@ export class CodexComponent implements OnInit, OnDestroy {
   get affinityTag(): string {
     if (this.isBalanced && this.snap.xp > 0) return 'Convergent';
     return this.aetherPercent > 55 ? 'Solari' : this.aetherPercent < 45 ? 'Nocturne' : 'Unaligned';
+  }
+
+  // ══ Station frame (shared/station-ui) ═════════════════════════════════════
+
+  detailsOpen = false;
+  /** The picked row per journal tab. Null → the first found entry, else the first. */
+  picked: Record<JournalTabKey, string | null> = { achievements: null, scrolls: null, secrets: null };
+
+  private tabsKey = '';
+  private tabsCache: StationTab[] = [];
+  private journalKeys: Partial<Record<JournalTabKey, unknown[]>> = {};
+  private journalCache: Partial<Record<JournalTabKey, CodexJournal>> = {};
+
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(CODEX_I18N);
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  get stationTabs(): StationTab[] {
+    const key = this.i18n.getCurrentLanguage();
+    if (key !== this.tabsKey) {
+      this.tabsKey = key;
+      this.tabsCache = this.tabs.map(tab => ({ id: tab.key, label: this.t('codex.tab.' + tab.key) }));
+    }
+    return this.tabsCache;
+  }
+
+  pickTab(id: string): void {
+    this.selectTab(id as CodexTab);
+  }
+
+  get stripLabel(): string {
+    return this.t('codex.foundLabel', { n: this.foundAchievements, total: this.totalAchievements });
+  }
+
+  /**
+   * One journal per reading tab, memoised on the inputs that change it — the
+   * page runs default change detection, and the kit components are OnPush, so
+   * handing them a fresh array every pass would re-render every row.
+   */
+  journal(tab: JournalTabKey): CodexJournal {
+    const key: unknown[] = tab === 'achievements'
+      ? [this.achievements, this.categoryFilter, this.rarityFilter, this.statusFilter, this.sort, this.search]
+      : tab === 'scrolls'
+        ? [this.scrollShelves, this.inscriptionShelves]
+        : [this.secrets, this.socketWords];
+    key.push(this.i18n.getCurrentLanguage());
+    const last = this.journalKeys[tab];
+    const cached = this.journalCache[tab];
+    if (cached && last && last.length === key.length && last.every((v, i) => v === key[i])) return cached;
+    this.journalKeys[tab] = key;
+    const built = tab === 'achievements' ? this.buildAchievementJournal()
+      : tab === 'scrolls' ? this.buildLoreJournal()
+      : this.buildSecretJournal();
+    this.journalCache[tab] = built;
+    return built;
+  }
+
+  /** The entry the detail pane shows for a journal tab. */
+  entry(tab: JournalTabKey): CodexEntry | null {
+    const j = this.journal(tab);
+    const id = this.picked[tab];
+    if (id && j.entries.has(id)) return j.entries.get(id)!;
+    const firstFound = j.rows.find(r => !r.locked);
+    const fallback = firstFound ?? j.rows[0];
+    return fallback ? j.entries.get(fallback.id) ?? null : null;
+  }
+
+  pickEntry(tab: JournalTabKey, id: string): void {
+    this.picked[tab] = id;
+    // Opening a found scroll is what marks it read — the same side effect the
+    // old accordion's toggle had.
+    if (tab === 'scrolls' && id.startsWith('s:')) {
+      const scrollId = id.slice(2);
+      if (this.hydrated && this.scrollsService.isFound(scrollId)) {
+        this.openScroll = scrollId;
+        this.scrollsService.markRead(scrollId);
+      }
+    }
+  }
+
+  private buildAchievementJournal(): CodexJournal {
+    // Found first, so the strip opens on something you can read; the chosen
+    // sort (Details) still orders each half.
+    const all = this.sections.flatMap(section => section.items);
+    const items = [...all.filter(a => a.unlocked), ...all.filter(a => !a.unlocked)];
+    const entries = new Map<string, CodexEntry>();
+    const rows: JournalRow[] = items.map(a => {
+      const facts = [
+        { label: this.t('codex.rarity'), value: a.rarity.label },
+        { label: this.t('codex.realm'), value: a.category.label },
+        { label: this.t('codex.reward'), value: `+${a.xp} XP` },
+      ];
+      if (a.unlocked) facts.push({ label: this.t('codex.foundOn'), value: this.formatDate(a.unlockedAt) });
+      entries.set(a.id, {
+        id: a.id,
+        name: a.unlocked ? a.name : '???',
+        line: a.unlocked ? a.description : a.hint,
+        facts,
+        body: [],
+        note: a.gate
+          ? (a.unlocked ? this.t('codex.gateOpen', { gate: a.gate }) : this.t('codex.gateLocked'))
+          : null,
+        found: a.unlocked,
+      });
+      return {
+        id: a.id,
+        name: a.unlocked ? a.name : '???',
+        sub: a.unlocked ? a.rarity.label : this.t('codex.hidden'),
+        locked: !a.unlocked,
+      };
+    });
+    return { rows, entries };
+  }
+
+  private buildLoreJournal(): CodexJournal {
+    const entries = new Map<string, CodexEntry>();
+    const rows: JournalRow[] = [];
+    for (const shelf of this.scrollShelves) {
+      for (const card of shelf.cards) {
+        const id = 's:' + card.scroll.id;
+        entries.set(id, {
+          id,
+          name: card.found ? card.scroll.subtitle : '???',
+          line: card.scroll.title,
+          facts: card.found
+            ? [
+                { label: this.t('codex.rarity'), value: card.rarity.label },
+                { label: this.t('codex.foundOn'), value: this.formatDate(card.at) },
+              ]
+            : [{ label: this.t('codex.rarity'), value: card.rarity.label }],
+          body: card.found ? card.paragraphs : [this.t('codex.scrollSealed')],
+          note: card.found ? null : (shelf.found > 0 ? shelf.chapter.epigraph : shelf.chapter.hint),
+          found: card.found,
+        });
+        rows.push({
+          id,
+          name: card.found ? card.scroll.subtitle : '???',
+          sub: `${shelf.chapter.name} · ${this.t('codex.part', { n: card.scroll.partNumber })}`,
+          locked: !card.found,
+          ready: card.unread,
+        });
+      }
+    }
+    for (const shelf of this.inscriptionShelves) {
+      for (const card of shelf.cards) {
+        const id = 'i:' + card.id;
+        entries.set(id, {
+          id,
+          name: card.found ? card.title : '???',
+          line: this.t('codex.inscription') + ' · ' + shelf.name,
+          facts: [],
+          body: card.found ? [card.text] : [this.t('codex.notCopied', { place: shelf.name })],
+          note: null,
+          found: card.found,
+        });
+        rows.push({
+          id,
+          name: card.found ? card.title : '???',
+          sub: `${this.t('codex.inscription')} · ${shelf.name}`,
+          locked: !card.found,
+        });
+      }
+    }
+    return { rows, entries };
+  }
+
+  private buildSecretJournal(): CodexJournal {
+    const entries = new Map<string, CodexEntry>();
+    const rows: JournalRow[] = [];
+    for (const card of this.secrets) {
+      const id = 'x:' + card.def.id;
+      const facts = [{ label: this.t('codex.rarity'), value: card.rarity.label }];
+      if (card.found) facts.push({ label: this.t('codex.foundOn'), value: card.how ? `${this.formatDate(card.at)} — ${card.how}` : this.formatDate(card.at) });
+      entries.set(id, {
+        id,
+        name: card.found ? card.def.name : '???',
+        line: card.found ? card.def.reveal : card.def.clue,
+        facts,
+        body: [],
+        note: !card.found && card.def.lore ? card.def.lore : null,
+        found: card.found,
+      });
+      rows.push({
+        id,
+        name: card.found ? card.def.name : '???',
+        sub: `${card.group.label} · ${card.found ? card.rarity.label : this.t('codex.sealed')}`,
+        locked: !card.found,
+      });
+    }
+    for (const word of this.socketWords) {
+      const id = 'w:' + word.id;
+      entries.set(id, {
+        id,
+        name: word.name,
+        line: word.found ? word.effect : word.clue,
+        facts: [
+          { label: this.t('codex.rarity'), value: word.tier },
+          { label: this.t('codex.socketWord'), value: `${word.frame} · ${word.wells}` },
+        ],
+        body: word.found ? [word.runes] : [],
+        note: word.found ? word.lore : null,
+        found: word.found,
+      });
+      rows.push({
+        id,
+        name: word.name,
+        sub: `${this.t('codex.socketWord')} · ${word.found ? word.tier : this.t('codex.sealed')}`,
+        locked: !word.found,
+      });
+    }
+    return { rows, entries };
   }
 }

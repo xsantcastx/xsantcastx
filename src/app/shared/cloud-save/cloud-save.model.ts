@@ -354,6 +354,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // union. Hand-written only so unknown ids are dropped on the way through.
     merge: mergeDelveLore,
   },
+  {
+    key: 'godforge-home-forge',
+    collection: 'progress',
+    doc: 'home-forge',
+    label: 'Homestead anvil and circle',
+    // `{ version, anvil: 1..4, circle: 1..4 }`: the tiers of the player's own
+    // Anvil and Enchanting Circle. A tier is bought once and never goes down,
+    // so the structural "higher wins" is exactly right and there is no
+    // hand-written merge (which also keeps the home-forge model out of this
+    // eager file). The Gold paid for a tier rides the economy's own op log.
+  },
 ];
 
 /** Roster ceiling. Mirrors MAX_ROSTER in explorer-roster.service.ts. */
