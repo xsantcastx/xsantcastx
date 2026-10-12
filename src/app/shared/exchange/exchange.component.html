@@ -1,17 +1,23 @@
 <!-- The trading floor, painted. Layer 1 of the three-layer pattern; the
      gradient overlay is layer 2, inside the component. See art-scene for why
      this is a <picture>. -->
+@if (!inWorld) {
 <app-art-scene art="bg-war-table" focus="center 45%" />
+}
 
-<section class="ge" [class.ge--hydrated]="hydrated">
+<section class="ge" [class.ge--hydrated]="hydrated" [class.ge--in-world]="inWorld"
+         [attr.aria-label]="inWorld ? 'The Grand Exchange' : null">
 
   <!-- ── Hero ────────────────────────────────────────────────────────────── -->
+  <!-- In the world the panel already names the place; the hero would only push the board down. -->
+  @if (!inWorld) {
   <header class="ge__hero">
     <span class="ge__sigil" aria-hidden="true">⚖</span>
     <p class="ge__eyebrow"><span class="ge__eyebrow-pulse"></span>THE MERCHANT HOUSES</p>
     <h1 class="ge__title">The Grand Exchange</h1>
     <p class="ge__tagline">every price on this board is set by the clock, the houses, and what you did to it</p>
   </header>
+  }
 
   <!-- ── Active market events ─────────────────────────────────────────────
        Only rendered when something is actually happening. An empty banner
@@ -389,7 +395,12 @@
           stranger's price and calling it a market.
         </p>
         <p class="ge__note">
+          <!-- In the world the Market is a place in another town, not a link out of /play. -->
+          @if (inWorld) {
+          The Godforge Market is where
+          } @else {
           <a routerLink="/market" class="ge__note-link">The Godforge Market</a> is where
+          }
           upgrades are bought. This board trades what you carry.
         </p>
       </section>
@@ -401,4 +412,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/exchange"></app-related-pages>
+}

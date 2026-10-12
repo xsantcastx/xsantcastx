@@ -431,6 +431,32 @@ test('world data is valid: unique ids, stations inside the town, every panel reg
   }
 });
 
+test('every built town has a waystone, and every material a zone drops is catalogued and crafted with', () => {
+  const catalog = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/material-catalog.ts'));
+  const { CRAFTING_RECIPES } = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+  const used = new Set(CRAFTING_RECIPES.flatMap(recipe => recipe.ingredients.map(ingredient => ingredient.materialId)));
+  assert.ok(used.size > 10, 'the recipe table loaded');
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    assert.ok(town.stations.some(station => station.kind === 'waystone'), `${town.id} has a waystone`);
+    for (const area of [town, ...town.hunts]) {
+      const tables = [area.drops, ...area.monsters.map(monster => monster.drops).filter(Boolean)];
+      for (const entry of tables.flatMap(table => table.entries)) {
+        if (entry.chance !== undefined) assert.ok(entry.chance > 0 && entry.chance <= 1, `${area.id}/${entry.id}: chance in (0, 1]`);
+        if (entry.kind !== 'material') continue;
+        const display = catalog.materialDisplay(entry.material);
+        assert.ok(display, `${area.id}/${entry.id}: ${entry.material} is a catalogued material (the bag can name and paint it)`);
+        assert.equal(display.name, entry.label, `${area.id}/${entry.id}: the pickup label matches the bag's name`);
+        assert.ok(entry.qty > 0);
+        assert.ok(used.has(entry.material), `${area.id}/${entry.id}: ${entry.material} feeds a crafting recipe`);
+      }
+    }
+  }
+  const umbral = world.TOWNS.umbral;
+  assert.ok(umbral, 'the Umbral town is built');
+  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['exchange', 'gambler']);
+  assert.equal(umbral.hunts[0].monsters[0].creature, 'mirror-substitute', 'Umbral hunts its canon creature');
+});
+
 test('the station nearest the Keeper wins, and a click hits a station by its footprint', () => {
   const stations = world.TOWNS.infernal.stations;
   assert.equal(world.nearestStation(stations, 1230).id, 'crafting');
@@ -528,5 +554,135 @@ test('drop tables are data: chances roll on the engine RNG and materials carry t
   engine.player.x = gem.x;
   for (let n = 0; n < 30; n++) engine.update(1 / 60);
   assert.ok(loot.some(drop => drop.material === 'ember-residue' && drop.ore === 2));
+  engine.destroy();
+});
+
+test('the Celestial town: Codex and Leaderboards stand in Meridian Orrery, and the Rings drop real Celestial materials', () => {
+  const town = world.TOWNS.celestial;
+  assert.ok(town, 'Meridian Orrery is built');
+  assert.equal(town.name, 'Meridian Orrery');
+  assert.equal(town.background, 'bg-celestial');
+  const byId = Object.fromEntries(town.stations.map(station => [station.id, station]));
+  assert.equal(byId.codex.panel, 'codex');
+  assert.equal(byId.leaderboards.panel, 'leaderboards');
+  assert.equal(byId.waystone.kind, 'waystone');
+  assert.equal(town.monsters.length, 0, 'the terrace is quiet ground');
+  const rings = world.areaOf(town, byId.passage.to);
+  assert.equal(rings.monsters[0].creature, 'ephemeris-leech', 'the canon Celestial creature');
+
+  // Every material the Rings drop is something a crafting recipe actually consumes.
+  const recipes = fs.readFileSync(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const materials = rings.drops.entries.filter(entry => entry.kind === 'material');
+  assert.ok(materials.length >= 1 && materials.length <= 3);
+  for (const entry of materials) assert.ok(recipes.includes(`m('${entry.material}'`), `${entry.material} feeds a recipe`);
+
+  // Walk it in the engine: arrive, take the passage, kill a Leech, see alloy fall.
+  const { engine, state } = fixture();
+  engine.setTown(town);
+  assert.equal(state().area, 'Meridian Orrery');
+  engine.goToStation('passage', true);
+  assert.equal(state().areaId, 'orrery-rings');
+  engine.random = () => .99;
+  const leech = engine.monsters[0];
+  engine.player.x = leech.x - 50;
+  for (let n = 0; n < 20 && leech.hp > 0; n++) strike(engine);
+  assert.equal(leech.hp, 0);
+  assert.deepEqual([...engine.drops.map(drop => drop.material ?? 'coins')].sort(), ['celestial-alloy', 'coins'], 'missed chances drop nothing; alloy is certain');
+  engine.destroy();
+});
+
+// Drop tables name real stacks: a drop must render (catalogue) and must feed a recipe.
+const materialCatalog = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/material-catalog.ts'));
+const craftingModel = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
+const forgeRecipes = loadTs(path.resolve(__dirname, '../src/app/shared/rpg/forge-recipes.ts'));
+
+test('every drop-table material is catalogued and used by at least one recipe', () => {
+  const used = new Set([
+    ...craftingModel.CRAFTING_RECIPES.flatMap(recipe => recipe.ingredients.map(ingredient => ingredient.materialId)),
+    ...forgeRecipes.FORGE_EQUIPMENT_RECIPES.flatMap(recipe => recipe.inputs.map(input => input.id)),
+  ]);
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    for (const area of [town, ...town.hunts]) {
+      const tables = [area.drops, ...area.monsters.map(monster => monster.drops).filter(Boolean)];
+      for (const table of tables) {
+        for (const entry of table.entries) {
+          if (entry.kind !== 'material') continue;
+          const where = `${town.id}/${area.id}/${table.id}/${entry.id}`;
+          const display = materialCatalog.materialDisplay(entry.material);
+          assert.ok(display, `${where}: ${entry.material} is in the material catalogue`);
+          assert.equal(entry.label, display.name, `${where}: the label matches the catalogue name`);
+          assert.ok(used.has(entry.material), `${where}: ${entry.material} feeds a recipe`);
+          assert.ok(entry.qty >= 1 && (entry.chance ?? 1) > 0 && (entry.chance ?? 1) <= 1, `${where}: qty and chance are sane`);
+        }
+      }
+    }
+  }
+});
+
+test('the Heliograph Court: Market stall, waystone, and a Forager hunt that feeds the Aurumleaf Pendant', () => {
+  const town = world.TOWNS.luminous;
+  assert.ok(town, 'the Luminous town is registered');
+  assert.equal(town.background, 'bg-luminous');
+  const market = town.stations.find(station => station.id === 'market');
+  assert.equal(market.kind, 'panel'); assert.equal(market.panel, 'market');
+  assert.ok(town.stations.some(station => station.kind === 'waystone'), 'the Court has a waystone');
+  const passage = town.stations.find(station => station.kind === 'passage');
+  const hunt = world.areaOf(town, passage.to);
+  assert.ok(hunt && hunt !== town, 'the east stair leads to a hunting ground');
+  assert.ok(hunt.stations.some(station => station.kind === 'passage' && station.to === town.id), 'and back');
+  assert.deepEqual(hunt.monsters.map(monster => monster.creature), ['prism-forager']);
+  // The pendant's inputs come from the Forager table alone, in about ten kills or fewer.
+  const pendant = craftingModel.CRAFTING_RECIPES.find(recipe => recipe.id === 'craft-aurumleaf-pendant');
+  const kills = pendant.ingredients.map(({ materialId, count }) => {
+    const entry = hunt.drops.entries.find(drop => drop.kind === 'material' && drop.material === materialId);
+    assert.ok(entry, `the Forager drops ${materialId}`);
+    return count / (entry.qty * (entry.chance ?? 1));
+  });
+  assert.ok(Math.max(...kills) <= 10, `expected kills for one pendant: ${Math.max(...kills).toFixed(1)}`);
+  // A town with no monsters runs: the Keeper walks the Court without a hunt to fight.
+  const { engine, state } = fixture(() => true, { town });
+  assert.equal(engine.monsters.length, 0);
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.ok(state().hp > 0);
+  engine.destroy();
+});
+
+// ── The Verdant town (Rootglass Canopy) ──────────────────────────────────────
+test('Verdant: Rootglass Canopy hosts the Sanctum, the boards and both gates, and the root path reaches the Thicket', () => {
+  const town = world.TOWNS.verdant;
+  assert.ok(town, 'the Verdant town is built');
+  assert.equal(town.name, 'Rootglass Canopy');
+  assert.equal(town.background, 'bg-verdant');
+  const panels = Object.fromEntries(town.stations.filter(s => s.kind === 'panel').map(s => [s.id, s.panel]));
+  assert.deepEqual(panels, { sanctum: 'sanctum', quests: 'quests', arena: 'arena', trials: 'trials' }, 'each panel station id is its own ?at= place');
+  assert.ok(town.stations.some(s => s.kind === 'waystone'), 'a Waystone stands in the canopy');
+  assert.equal(town.monsters.length, 0, 'the town itself is safe ground');
+  const passage = town.stations.find(s => s.kind === 'passage');
+  assert.equal(passage.requires, undefined, 'the Thicket is open from the start: the beacon gate is Infernal-only');
+  const thicket = world.areaOf(town, passage.to);
+  assert.equal(thicket.id, 'rootglass-thicket');
+  assert.deepEqual([...thicket.monsters.map(m => m.creature)], ['rootglass-stag']);
+});
+
+test('Verdant: a Stag drops coins and real Verdant crafting materials, rolled on the engine RNG', () => {
+  const crafting = fs.readFileSync(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const town = world.TOWNS.verdant;
+  const table = town.hunts[0].drops;
+  for (const entry of table.entries.filter(e => e.kind === 'material')) {
+    assert.ok(crafting.includes(`m('${entry.material}'`), `${entry.material} is consumed by a crafting recipe`);
+    assert.equal(entry.art, entry.material, `${entry.material} draws its own art`);
+  }
+  const { engine } = fixture(() => true, { town });
+  engine.goToStation('passage', true);
+  assert.equal(engine.areaDef.id, 'rootglass-thicket');
+  engine.random = () => 0; // every chance hits
+  killFirst(engine);
+  assert.deepEqual([...engine.drops.map(d => d.material ?? 'coins')], ['coins', 'thornroot', 'verdant-sap', 'world-root-bark']);
+  engine.random = () => .99; // every chance misses: the certain lines still drop
+  const next = engine.monsters[1];
+  engine.player.x = next.x - 50;
+  for (let n = 0; n < 6; n++) strike(engine);
+  const second = engine.drops.filter(d => d.id.includes(':2:')).map(d => d.material ?? 'coins');
+  assert.deepEqual([...second], ['coins', 'thornroot']);
   engine.destroy();
 });

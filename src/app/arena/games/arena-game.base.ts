@@ -5,12 +5,20 @@
  * exposes the formatted best score for the shell's header chip. Subclasses own
  * everything else; this deliberately knows nothing about how a game is played.
  */
-import { Directive, PLATFORM_ID, inject } from '@angular/core';
+import { Directive, HostBinding, InjectionToken, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { EasterEggService } from '../../shared/easter-eggs/easter-egg.service';
 import { XpService } from '../../shared/gamification/xp.service';
 import { ArenaScoresService, RunResult } from './arena-scores.service';
 import { ArenaPlayableGame, formatScore, isPlayableGateOpen, playableById } from './arena-game.model';
+import { injectInWorldPanel } from '../../shared/in-world-panel';
+
+/**
+ * How a game hosted inside the Trials gate (the in-world panel on /play) goes
+ * back to the gates. Provided only by ArenaComponent's in-panel game overlay;
+ * a game on its own route has no provider and links to /world/trials instead.
+ */
+export const ARENA_GAME_EXIT = new InjectionToken<() => void>('ARENA_GAME_EXIT');
 
 @Directive()
 export abstract class ArenaGameBase {
@@ -18,6 +26,9 @@ export abstract class ArenaGameBase {
   protected readonly eggs = inject(EasterEggService);
   protected readonly scores = inject(ArenaScoresService);
   protected readonly xp = inject(XpService);
+  /** True inside the Trials gate on /play: "Back to the Arena" closes the overlay instead of routing away. */
+  @HostBinding('class.ag-in-world') protected readonly inWorld = injectInWorldPanel();
+  private readonly exitGame = inject(ARENA_GAME_EXIT, { optional: true });
 
   /** The registry entry for this game. Set by the subclass. */
   abstract readonly gameId: string;
@@ -51,6 +62,11 @@ export abstract class ArenaGameBase {
     // hydration — the visitor would clear the gate and get nothing for it.
     await Promise.all([this.xp.init(), this.eggs.init()]);
     this.locked = !isPlayableGateOpen(this.game, id => this.eggs.isFound(id));
+  }
+
+  /** In-world "Back to the Arena": close the overlay, stay on /play. */
+  protected leaveGame(): void {
+    this.exitGame?.();
   }
 
   /**

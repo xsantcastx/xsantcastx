@@ -1,7 +1,8 @@
-<div class="cx-page">
+<div class="cx-page" [class.cx-page--in-world]="inWorld">
 
   <!-- ═══ Hero ═══════════════════════════════════════════════════════════ -->
   <header class="cx-hero">
+    @if (!inWorld) {
     <p class="cx-eyebrow">
       <span class="cx-eyebrow__pulse" aria-hidden="true"></span>
       The Ancient Record
@@ -18,6 +19,7 @@
     <p class="cx-tagline">the Godforge remembers every secret you have found — and every one you have not</p>
     <p class="cx-hero__sub">The record of what you have found. The bag lives on Character. Crafting lives at the Forge.</p>
     <p class="cx-hero__sub"><a routerLink="/forge/runes">Open the Forge →</a></p>
+    }
 
     <!-- Headline completion bar -->
     <div class="cx-hero__meter" [style.--tier]="progressRarity.color" [style.--tier-glow]="progressRarity.glow">
@@ -770,4 +772,6 @@
      prerendered HTML where a crawler can follow them. See
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
+@if (!inWorld) {
 <app-related-pages here="/codex"></app-related-pages>
+}
