@@ -40,7 +40,7 @@ import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
 import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
 import { ForgeSceneComponent } from './shared/forge-scene/forge-scene.component';
 import { ForgeEffectsToggleComponent } from './shared/forge-scene/forge-effects-toggle.component';
-import { InstallPromptComponent } from './shared/pwa/install-prompt.component';
+import { PwaOutletComponent } from './shared/pwa/pwa-outlet.component';
 import { NpcDialogueComponent } from './shared/npc/npc-dialogue.component';
 import { OnboardingOutletComponent } from './shared/onboarding/onboarding-outlet.component';
 import { OfflineOutletComponent } from './shared/offline/offline-outlet.component';
@@ -93,7 +93,7 @@ import { PwaService } from './shared/pwa.service';
     GodforgeLoaderComponent,
     ForgeSceneComponent,
     ForgeEffectsToggleComponent,
-    InstallPromptComponent,
+    PwaOutletComponent,
     InspectComponent,
     Inspect3dOutletComponent,
     NpcDialogueComponent,
