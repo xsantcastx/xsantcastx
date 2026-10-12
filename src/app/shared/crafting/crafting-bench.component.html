@@ -35,6 +35,9 @@
           <app-requirement-grid [title]="t('stationUi.requiredTools')" [costs]="tools" [showCount]="false" />
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="4" [pending]="!hydrated" />
 
+          @if (anvilRecipe) {
+            <app-anvil-game [itemName]="anvilRecipe.name" [rarity]="anvilRecipe.rarity" (done)="onAnvilDone($event)" />
+          } @else {
           <app-action-button
             [label]="t('crafting.craftBtn')"
             [costs]="ctaCosts"
@@ -48,9 +51,17 @@
             [(quantity)]="quantity"
             [allCount]="allCount"
             [allLabel]="t('crafting.craftAll')"
-            (act)="craftMany($event)"
+            (act)="craftOne($event)"
             (actAll)="craftMany($event)"
             (refused)="announce = $event" />
+          @if (hasRolls(card.recipe) && !striking) {
+            <label class="cb-skip">
+              <input type="checkbox" [(ngModel)]="skipAnvil">
+              <span class="cb-skip__box" aria-hidden="true"></span>
+              <span>{{ t('minigame.anvil.skipToggle') }}</span>
+            </label>
+          }
+          }
         }
         @if (error) { <p class="cb-error" role="alert">{{ error }}</p> }
       </div>
@@ -82,6 +93,7 @@
             }
           </ul>
           <p class="cb-panel__hint">{{ t('crafting.rollNote') }}</p>
+          <p class="cb-panel__hint">{{ t('minigame.anvil.bonusNote') }}</p>
         }
         @if (masteryOf(card.recipe); as m) {
           <div class="cb-mastery">
