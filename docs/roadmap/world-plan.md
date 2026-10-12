@@ -141,6 +141,22 @@ things with tools you crafted, and you see your economy working.
 
 ---
 
+## ⏸ Checkpoint — resume here (2026-10-12, owner's token budget low)
+
+All work below lives on local branches (agent worktrees under `.claude/worktrees/`), **not yet on main**. Each agent was told to commit and write `docs/handoff/<name>.md` on its branch. To resume, for each branch in order:
+`git merge --no-ff <branch>` onto a fresh branch from `origin/main` → `node --test scripts/seamworks-engine.test.cjs` → `node scripts/check-ds-adherence.js && node scripts/check-i18n-keys.js && node scripts/audit-nav.js` → `npx tsc --noEmit -p tsconfig.app.json` → `npx ng build` (Initial total must stay < 1.85 MB; it was 1.68 MB) → look at it in a production build (`node scripts/serve-preview.js dist/xsantcastx/browser 4301`) → push to `main` and `dev` → tick the items here. Expect append-only conflicts in `scripts/seamworks-engine.test.cjs`, `world.model.ts`, `panel-registry.ts`, `towns/infernal.ts`: keep both sides.
+
+| Order | Work | Branch | Notes |
+|---|---|---|---|
+| 1 | PWA polish | `worktree-agent-a6cbb15fe61234ee9` | Small; check `verify-csp-hashes.js` after build |
+| 2 | Station UI kit + forge redesign | `worktree-agent-a31ee37374f223268` | MapleStory anatomy; next: convert the other 10 menus with the kit |
+| 3 | Skills + tool progression | `worktree-agent-a18b6c7c04d1e7641` | Before Delve: provides `toolTiers()` + `resolveWorldAction` |
+| 4 | World interactions + Ember Delve | `worktree-agent-a76ac595122a7ea4d` | Replace its `provisionalToolTiers` with `toolTiers()` after merging 3 |
+| 5 | Homestead (Cookie-style) | `worktree-agent-a94e77009d31f5bb1` | Engine hook is small; conflicts with 4 in engine.ts are expected |
+| 6 | Economy rebalance spec + simulator | `worktree-agent-a088a03819c05ee38` | Docs/script only. **Owner reviews before any number changes** |
+
+If a branch has no commits, its worktree still holds the uncommitted work (`git -C .claude/worktrees/agent-<id> status`).
+
 ## Running in parallel right now
 
 | Work | Branch | Status |
