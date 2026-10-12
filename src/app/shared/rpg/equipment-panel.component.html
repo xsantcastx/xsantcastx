@@ -1,45 +1,6 @@
 <section class="ld" [attr.data-ready]="ready ? '1' : '0'" data-variant="select">
   <div class="ld__layout ld__layout--select">
     <div class="ld__doll-col">
-      <p class="ld__totals" *ngIf="hasTotals(); else emptyTotals">
-        <span *ngIf="snap.totals.goldPerSec">{{ t('loadout.stat.gold') }} <b>+{{ snap.totals.goldPerSec }}</b></span>
-        <span *ngIf="magicFind.total">{{ t('loadout.stat.mf') }} <b>+{{ magicFind.total }}%</b></span>
-        <span *ngIf="snap.totals.xpBonus">{{ t('loadout.stat.xp') }} <b>+{{ snap.totals.xpBonus }}%</b></span>
-        <span *ngIf="strikePct">{{ t('loadout.stat.strike') }} <b>+{{ strikePct }}%</b></span>
-        <span *ngIf="wardPct">{{ t('loadout.stat.ward') }} <b>−{{ wardPct }}%</b></span>
-      </p>
-      <ng-template #emptyTotals>
-        <p class="ld__totals ld__totals--empty">{{ t('loadout.stat.empty') }}</p>
-      </ng-template>
-      <!-- The live sheet: counts to the new totals and floats a signed chip
-           on every equip and unequip, so a swap is something you watch. -->
-      <app-keeper-stat-sheet class="ld__sheet" [heading]="t('loadout.sheet.title')" />
-
-      <!-- Build identity: what the worn stats add up to, in one word, and
-           which piece is carrying each of the three heaviest stats. -->
-      <section class="ld__build" [attr.data-archetype]="build.archetype" [attr.aria-label]="t('loadout.build.eyebrow')">
-        <p class="ld__build-eyebrow">{{ t('loadout.build.eyebrow') }}</p>
-        <h3 class="ld__build-name">{{ buildName() }}</h3>
-        <p class="ld__build-desc">{{ buildDesc() }}</p>
-        @if (build.contributions.length) {
-          <ul class="ld__build-bars">
-            @for (row of build.contributions; track row.key) {
-              <li class="ld__build-row"
-                  [style.--rar]="rarityVar(row.top?.rarity)"
-                  [style.--rar-glow]="rarityGlowVar(row.top?.rarity)">
-                <span class="ld__build-stat">{{ statLabel(row.key) }} <b>{{ statValue(row.key, row.total) }}</b></span>
-                <span class="ld__build-pct">{{ t('loadout.build.share', { n: sharePct(row.share) }) }}</span>
-                <span class="ld__build-bar" aria-hidden="true">
-                  <span class="ld__build-fill" [style.transform]="'scaleX(' + barScale(row.share) + ')'"></span>
-                </span>
-                @if (row.top) {
-                  <span class="ld__build-src">{{ t('loadout.build.from', { name: row.top.name }) }}</span>
-                }
-              </li>
-            }
-          </ul>
-        }
-      </section>
       <p class="ld__armed" *ngIf="armed">{{ t('loadout.armed', { name: armed.name }) }}</p>
 
       <div class="ld__doll" role="group" [attr.aria-label]="t('loadout.doll.label')">
@@ -332,6 +293,51 @@
         <ng-template #slotLocked>
           <p class="ld__picker-empty">{{ t('loadout.slot.locked') }}</p>
         </ng-template>
+      </div>
+
+      <!-- Doll first: the paper doll is what you act on (tap a slot, pick,
+           equip), so it leads the first screen. The numbers it changes — the
+           totals, the live sheet and the build card — follow it. -->
+      <div class="ld__stats-after">
+      <p class="ld__totals" *ngIf="hasTotals(); else emptyTotals">
+        <span *ngIf="snap.totals.goldPerSec">{{ t('loadout.stat.gold') }} <b>+{{ snap.totals.goldPerSec }}</b></span>
+        <span *ngIf="magicFind.total">{{ t('loadout.stat.mf') }} <b>+{{ magicFind.total }}%</b></span>
+        <span *ngIf="snap.totals.xpBonus">{{ t('loadout.stat.xp') }} <b>+{{ snap.totals.xpBonus }}%</b></span>
+        <span *ngIf="strikePct">{{ t('loadout.stat.strike') }} <b>+{{ strikePct }}%</b></span>
+        <span *ngIf="wardPct">{{ t('loadout.stat.ward') }} <b>−{{ wardPct }}%</b></span>
+      </p>
+      <ng-template #emptyTotals>
+        <p class="ld__totals ld__totals--empty">{{ t('loadout.stat.empty') }}</p>
+      </ng-template>
+      <!-- The live sheet: counts to the new totals and floats a signed chip
+           on every equip and unequip, so a swap is something you watch. -->
+      <app-keeper-stat-sheet class="ld__sheet" [heading]="t('loadout.sheet.title')" />
+
+      <!-- Build identity: what the worn stats add up to, in one word, and
+           which piece is carrying each of the three heaviest stats. -->
+      <section class="ld__build" [attr.data-archetype]="build.archetype" [attr.aria-label]="t('loadout.build.eyebrow')">
+        <p class="ld__build-eyebrow">{{ t('loadout.build.eyebrow') }}</p>
+        <h3 class="ld__build-name">{{ buildName() }}</h3>
+        <p class="ld__build-desc">{{ buildDesc() }}</p>
+        @if (build.contributions.length) {
+          <ul class="ld__build-bars">
+            @for (row of build.contributions; track row.key) {
+              <li class="ld__build-row"
+                  [style.--rar]="rarityVar(row.top?.rarity)"
+                  [style.--rar-glow]="rarityGlowVar(row.top?.rarity)">
+                <span class="ld__build-stat">{{ statLabel(row.key) }} <b>{{ statValue(row.key, row.total) }}</b></span>
+                <span class="ld__build-pct">{{ t('loadout.build.share', { n: sharePct(row.share) }) }}</span>
+                <span class="ld__build-bar" aria-hidden="true">
+                  <span class="ld__build-fill" [style.transform]="'scaleX(' + barScale(row.share) + ')'"></span>
+                </span>
+                @if (row.top) {
+                  <span class="ld__build-src">{{ t('loadout.build.from', { name: row.top.name }) }}</span>
+                }
+              </li>
+            }
+          </ul>
+        }
+      </section>
       </div>
 
     </div>

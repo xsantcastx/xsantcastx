@@ -22,6 +22,9 @@
   border: 0;
   padding: 0;
 }
+/* The numbers the doll changes follow it (doll first — see the template). */
+.ld__stats-after { margin-top: 1rem; }
+
 .ld__totals {
   display: flex;
   flex-wrap: wrap;
