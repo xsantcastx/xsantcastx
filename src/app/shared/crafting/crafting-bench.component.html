@@ -36,7 +36,7 @@
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="4" [pending]="!hydrated" />
 
           @if (anvilRecipe) {
-            <app-anvil-game [itemName]="anvilRecipe.name" [rarity]="anvilRecipe.rarity" (done)="onAnvilDone($event)" />
+            <app-anvil-game [itemName]="anvilRecipe.name" [rarity]="anvilRecipe.rarity" [tier]="anvilTier" (done)="onAnvilDone($event)" />
           } @else {
           <app-action-button
             [label]="t('crafting.craftBtn')"

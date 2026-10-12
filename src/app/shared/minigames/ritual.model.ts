@@ -35,10 +35,15 @@ export function pulseAt(elapsedMs: number, periodMs = PULSE_PERIOD_MS): number {
   return PULSE_FROM + (PULSE_TO - PULSE_FROM) * t;
 }
 
-/** The hit window after `misses` misses. */
-export function pulseWindow(misses: number): number {
+/**
+ * The hit window after `misses` misses. `base` is the first-try window: today's
+ * PULSE_WINDOW everywhere except an upgraded Enchanting Circle at home
+ * (home-forge.model), which starts wider. Never past PULSE_WINDOW_MAX.
+ */
+export function pulseWindow(misses: number, base = PULSE_WINDOW): number {
   const m = Number.isFinite(misses) ? Math.max(0, Math.floor(misses)) : 0;
-  return Math.min(PULSE_WINDOW_MAX, PULSE_WINDOW + m * PULSE_WINDOW_STEP);
+  const start = Number.isFinite(base) ? Math.min(PULSE_WINDOW_MAX, Math.max(PULSE_WINDOW, base)) : PULSE_WINDOW;
+  return Math.min(PULSE_WINDOW_MAX, start + m * PULSE_WINDOW_STEP);
 }
 
 export type PulseResult = { hit: true; quality: number } | { hit: false };
@@ -47,11 +52,12 @@ export type PulseResult = { hit: true; quality: number } | { hit: false };
  * Grade a tap at pulse `scale`. A dead-centre hit is quality 1; the window's
  * edge is RITUAL_MIN_HIT_QUALITY. Each miss before the hit costs a little
  * quality (never below the floor), so trying again is always worth it.
+ * `firstWindow` is today's PULSE_WINDOW unless an upgraded home circle passes a wider one.
  */
-export function gradePulse(scale: number, misses = 0): PulseResult {
+export function gradePulse(scale: number, misses = 0, firstWindow = PULSE_WINDOW): PulseResult {
   if (!Number.isFinite(scale)) return { hit: false };
   const err = Math.abs(scale - 1);
-  const win = pulseWindow(misses);
+  const win = pulseWindow(misses, firstWindow);
   if (err > win) return { hit: false };
   const closeness = 1 - err / win;
   const base = RITUAL_MIN_HIT_QUALITY + (1 - RITUAL_MIN_HIT_QUALITY) * closeness;

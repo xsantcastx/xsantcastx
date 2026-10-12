@@ -34,7 +34,7 @@
  * `aria-live` region, and `prefers-reduced-motion` replaces the anvil animation
  * with a static held state rather than removing the feedback.
  */
-import { injectInWorldFocus, injectInWorldPanel } from '../in-world-panel';
+import { injectHomeForge, injectInWorldFocus, injectInWorldPanel } from '../in-world-panel';
 import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
@@ -150,6 +150,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   protected readonly inWorld = injectInWorldPanel();
   /** 'ready' at a camp in the Delve: the journal opens on what can be made now. */
   private readonly focus = injectInWorldFocus();
+  /** Present only at the player's own Homestead anvil: its tier shapes the anvil game. */
+  private readonly home = injectHomeForge();
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly gateway = inject(CraftingGateway);
   private readonly crafting = inject(CraftingService);
@@ -166,6 +168,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
    * gateway is called only when the game reports back (see onAnvilDone).
    */
   anvilRecipe: CraftingRecipe | null = null;
+  /** The anvil tier the open game plays at: 1 (today's game) unless opened from the Homestead. */
+  anvilTier = 1;
 
   /** "Skip the anvil game" — kept for the session (module state, never saved). */
   get skipAnvil(): boolean { return skipAnvilGame; }
@@ -526,6 +530,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       this.error = null;
       this.reward = null;
       this.lastCraft = null;
+      this.anvilTier = this.home?.anvilTier() ?? 1;
       this.anvilRecipe = recipe;
       this.announce = this.t('minigame.anvil.how');
       this.cdr.markForCheck();

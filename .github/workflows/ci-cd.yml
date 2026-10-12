@@ -33,7 +33,7 @@ jobs:
         run: node scripts/audit-nav.js
 
       - name: Test game engine and social transport
-        run: node --test scripts/seamworks-engine.test.cjs scripts/homestead.test.cjs scripts/social-client.test.mjs scripts/social-server.test.mjs
+        run: node --test scripts/seamworks-engine.test.cjs scripts/homestead.test.cjs scripts/home-forge.test.cjs scripts/social-client.test.mjs scripts/social-server.test.mjs
 
       - name: Check design-system adherence
         # Ratchet, not a wall: fails only when a rule's count rises above the
