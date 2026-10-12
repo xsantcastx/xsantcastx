@@ -179,6 +179,14 @@ export class ErrorTrackingService {
    * reload, which is what actually gets the visitor a working page.
    */
   private recoverFromStaleDeploy(message: string): void {
+    // Offline is not a stale build. A chunk that was never cached cannot load
+    // with no network, and it fails with exactly the stale-deploy wording — but
+    // purging here would delete the service worker's whole offline cache and
+    // then reload a disconnected visitor into the browser's own error page.
+    // The marker is not spent either, so a real stale build is still recovered
+    // once the connection is back.
+    if (navigator.onLine === false) return;
+
     let alreadyTried = false;
     try {
       alreadyTried = sessionStorage.getItem(RECOVERY_KEY) !== null;
@@ -215,8 +223,35 @@ export class ErrorTrackingService {
     // dozen already-hashed files over one warm connection and finishes well
     // inside this on any real network; the ceiling exists for the case where it
     // does not.
-    const deadline = new Promise((resolve) => setTimeout(resolve, 5000));
-    Promise.race([this.purgeClientCaches(), deadline]).then(() => this.reloadPage());
+    //
+    // The reachability probe goes first because `navigator.onLine` cannot be
+    // trusted in the positive: a document the service worker served offline can
+    // report `true`, and that is exactly the case where an uncached chunk fails
+    // with stale-deploy wording. Offline, nothing is purged and nothing reloads —
+    // the worker's cache is the only thing still working — and the marker is
+    // handed back so a genuine stale build is still repaired once online.
+    void this.networkReachable().then((online) => {
+      if (!online) {
+        try { sessionStorage.removeItem(RECOVERY_KEY); } catch { /* storage blocked */ }
+        return;
+      }
+      const deadline = new Promise((resolve) => setTimeout(resolve, 5000));
+      return Promise.race([this.purgeClientCaches(), deadline]).then(() => this.reloadPage());
+    });
+  }
+
+  /**
+   * Can this page reach the origin right now? A HEAD for robots.txt with a
+   * cache-busting query: non-GET requests are never answered by the service
+   * worker and `no-store` skips the HTTP cache, so only a real network round
+   * trip resolves it. Any HTTP status counts as reachable; a rejection or no
+   * answer within three seconds counts as offline.
+   */
+  private networkReachable(): Promise<boolean> {
+    const probe = fetch(`/robots.txt?reachable=${Date.now()}`, { method: 'HEAD', cache: 'no-store' })
+      .then(() => true, () => false);
+    const timeout = new Promise<boolean>((resolve) => setTimeout(() => resolve(false), 3000));
+    return Promise.race([probe, timeout]);
   }
 
   /**

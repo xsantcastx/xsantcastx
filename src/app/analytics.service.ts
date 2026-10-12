@@ -178,6 +178,21 @@ export class AnalyticsService {
     this.log('onboarding_complete', { completed, last_step: lastStep });
   }
 
+  /**
+   * The installable app. `action` is the install offer's lifecycle on this
+   * device — shown, accepted, dismissed — plus `installed`, which comes from the
+   * browser's own `appinstalled` event and so also counts installs made from
+   * the address-bar icon or the browser menu, without the offer ever showing.
+   */
+  trackPwaInstall(action: 'shown' | 'accepted' | 'dismissed' | 'installed', platform: string): void {
+    this.log('pwa_install', { action, platform });
+  }
+
+  /** A session that opened in the installed app's own window. */
+  trackPwaLaunch(): void {
+    this.log('pwa_launch', {});
+  }
+
   /** The first strike this browser has ever landed. Fires once, ever. */
   trackFirstForgeStrike(): void {
     this.log('first_forge_strike', {});

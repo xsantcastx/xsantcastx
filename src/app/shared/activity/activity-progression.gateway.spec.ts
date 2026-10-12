@@ -7,6 +7,7 @@ import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { ActivityProgressionGateway } from './activity-progression.gateway';
 import {
   ACTIVITY_KEY,
+  ACTIVITY_OPS_MAX,
   BASALT_SEAMWORKS_ID,
   EMBER_GUARANTEE_AT,
   INFERNAL_HEARTSTONE_ID,
@@ -590,5 +591,105 @@ describe('ActivityProgressionGateway', () => {
       expect(again.snapshot.currentWork?.disciplineId).toBe('prospecting');
       expect(again.snapshot.prospectingAccepted).toBe(1);
     });
+  });
+});
+
+describe('ActivityProgressionGateway.resolveWorldAction', () => {
+  let memory: MemoryGateway;
+  let gateway: ActivityProgressionGateway;
+  let inventory: InventoryService;
+
+  beforeEach(() => {
+    memory = new MemoryGateway();
+    gateway = configure(memory);
+    inventory = TestBed.inject(InventoryService);
+  });
+
+  it('banks the material and the XP once, with no Current Work selected', () => {
+    const input = {
+      mutationId: 'chop-1', discipline: 'woodcutting' as const, materialId: 'world-root-bark', qty: 2, xp: 7,
+      locationId: 'verdant/grove', now: 4_000,
+    };
+    const first = gateway.resolveWorldAction(input);
+    expect(first.ok).toBe(true);
+    if (!first.ok) return;
+    expect(first.replayed).toBe(false);
+    expect(first.xpBefore).toBe(0);
+    expect(first.xpAfter).toBe(7);
+    expect(inventory.stackOf('world-root-bark')).toBe(2);
+    expect(gateway.snapshot.progress.xpByDiscipline.woodcutting).toBe(7);
+
+    const again = gateway.resolveWorldAction({ ...input, now: 5_000 });
+    expect(again.ok).toBe(true);
+    if (!again.ok) return;
+    expect(again.replayed).toBe(true);
+    expect(inventory.stackOf('world-root-bark')).toBe(2);
+    expect(gateway.snapshot.progress.xpByDiscipline.woodcutting).toBe(7);
+  });
+
+  it('grants XP-only actions (smithing, enchanting, delving) without touching the bag', () => {
+    const r = gateway.resolveWorldAction({ mutationId: 'anvil-1', discipline: 'forge', xp: 40, locationId: 'forge/anvil', now: 4_000 });
+    expect(r.ok).toBe(true);
+    expect(gateway.snapshot.progress.xpByDiscipline.forge).toBe(40);
+    expect(inventory.snapshot.stacks.length).toBe(0);
+  });
+
+  it('refuses gathering-site locations, bad XP, bad quantities and non-materials', () => {
+    const base = { discipline: 'foraging' as const, xp: 3, now: 4_000 };
+    expect(gateway.resolveWorldAction({ ...base, mutationId: 'a', locationId: ROOTGLASS_CANOPY_ID }))
+      .toEqual({ ok: false, code: 'location' });
+    expect(gateway.resolveWorldAction({ ...base, mutationId: 'b', locationId: '' }))
+      .toEqual({ ok: false, code: 'location' });
+    expect(gateway.resolveWorldAction({ ...base, mutationId: 'c', locationId: 'w', xp: 1.5 }))
+      .toEqual({ ok: false, code: 'invalid' });
+    expect(gateway.resolveWorldAction({ ...base, mutationId: 'd', locationId: 'w', xp: 10_000 }))
+      .toEqual({ ok: false, code: 'invalid' });
+    expect(gateway.resolveWorldAction({ ...base, mutationId: 'e', locationId: 'w', materialId: STARLIGHT_HERB_ID, qty: 0 }))
+      .toEqual({ ok: false, code: 'invalid' });
+    expect(gateway.resolveWorldAction({ ...base, mutationId: 'f', locationId: 'w', materialId: 'dawnrender' }))
+      .toEqual({ ok: false, code: 'invalid' });
+    expect(gateway.resolveWorldAction({ ...base, mutationId: 'g', locationId: 'w', xp: 0 }))
+      .toEqual({ ok: false, code: 'invalid' });
+    expect(gateway.snapshot.operations.length).toBe(0);
+  });
+
+  it('refuses when the bag cannot take the material, and books nothing', () => {
+    for (let i = 0; i < MAX_INVENTORY; i++) {
+      inventory.add({
+        id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
+        stats: {}, sellValue: 1, equipped: false,
+        foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
+      });
+    }
+    const r = gateway.resolveWorldAction({
+      mutationId: 'full', discipline: 'foraging', materialId: SUNBLOOM_ID, xp: 3, locationId: 'w', now: 4_000,
+    });
+    expect(r).toEqual({ ok: false, code: 'capacity' });
+    expect(gateway.snapshot.progress.xpByDiscipline.foraging ?? 0).toBe(0);
+  });
+
+  it('keeps the op window bounded without losing a point of XP', () => {
+    for (let i = 0; i < ACTIVITY_OPS_MAX + 10; i++) {
+      expect(gateway.resolveWorldAction({
+        mutationId: `d${i}`, discipline: 'exploration', xp: 2, locationId: 'delve/1', now: 4_000 + i,
+      }).ok).toBe(true);
+    }
+    expect(gateway.snapshot.operations.length).toBe(ACTIVITY_OPS_MAX);
+    expect(gateway.snapshot.progress.xpByDiscipline.exploration).toBe(2 * (ACTIVITY_OPS_MAX + 10));
+    // A site verb after the trim adds to the stored totals rather than re-deriving them down.
+    expect(gateway.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, 10_000)).toBeTruthy();
+    expect(gateway.resolveMine({ mutationId: 'm-after', now: 11_000, roll: 0.9 }).ok).toBe(true);
+    expect(gateway.snapshot.progress.xpByDiscipline.exploration).toBe(2 * (ACTIVITY_OPS_MAX + 10));
+    expect(gateway.snapshot.progress.xpByDiscipline.mining).toBe(MINING_XP_PER_ACTION);
+  });
+
+  it('survives a reload: replays stay replays', () => {
+    const input = { mutationId: 'blast-1', discipline: 'enchanting' as const, xp: 9, locationId: 'delve/seal', now: 4_000 };
+    expect(gateway.resolveWorldAction(input).ok).toBe(true);
+    TestBed.resetTestingModule();
+    const again = configure(memory);
+    const replay = again.resolveWorldAction({ ...input, now: 9_000 });
+    expect(replay.ok && replay.replayed).toBe(true);
+    expect(again.snapshot.progress.xpByDiscipline.enchanting).toBe(9);
   });
 });

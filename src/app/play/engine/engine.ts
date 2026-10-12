@@ -5,9 +5,18 @@ import { CreatureRigDef, creatureRigFor, RIVET_MAW_CREATURE } from './creature-r
 import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
+import {
+  BLAST_TOOLS, BodyBox, CELL, cellKey, coneCells, generateTerrain, stepTerrainBody, SWING_TOOLS, Terrain, TERRAIN_NODE_LIST,
+  TerrainNodeDef, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+} from './terrain';
+import { Debris, TerrainRenderer } from './terrain-render';
+import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
+import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, LootRarity, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
-export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation } from './engine.model';
+import type { HomesteadFrame, HomesteadView } from './homestead-render';
+export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, WorldActionEvent } from './engine.model';
+export type { ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
 // `flash`, `knock`, `dying`, `born` and `shownHp` are presentation only: they
@@ -21,7 +30,7 @@ interface Monster {
 }
 /** `ore` is the material quantity (legacy name). `art`/`label`/`short` come from the drop entry. */
 interface Drop {
-  id: string; x: number; coins: number; ore: number; material?: string; art?: string; label?: string; short?: string; age: number; spin: number;
+  id: string; x: number; y: number; coins: number; ore: number; material?: string; art?: string; label?: string; short?: string; age: number; spin: number;
   /** Presentation, fixed at spill time so the render allocates nothing: beam colour/height, hover caption and its measured width. */
   rarity?: LootRarity; color: string; beam: number; caption: string; captionW: number;
 }
@@ -31,6 +40,16 @@ const FLIGHT_POOL = 16;
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
+/** The Keeper's body in a delve (figure scale 0.5): fits a three-cell tunnel. */
+const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
+/** How far from the Keeper's chest a click can swing at a cell, world px. */
+const DELVE_REACH = CELL * 2.7;
+const BLAST_TIME = .3;
+const BLAST_COOLDOWN = 1.1;
+/** What hitCell did to one cell. */
+const HIT_NONE = 0, HIT_CHIP = 1, HIT_BROKE = 2, HIT_BLOCKED = 3, HIT_REFUSED = 4;
+/** 'cinder-ore' → 'Cinder Ore'. */
+function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
 const KEEPER_ANIMATIONS = new Set<KeeperAnimation>(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 export interface RemoteKeeper { id: string; name: string; x: number; y: number; area: string; facing?: number; animation?: string }
 interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number; motion: KeeperMotion }
@@ -129,7 +148,37 @@ export class SeamworksEngine {
   private complete = false;
   private destroyed = false;
   private message = 'Find the Cinder Ore deposit. Walk close and interact.';
+  // ── Homestead hook (homestead-render.ts owns the drawing; this is the whole seam) ──
+  private homestead: HomesteadView | null = null;
+  private readonly homesteadFrame: HomesteadFrame = { areaId: '', camera: 0, viewport: 0, time: 0, playerX: 0, reduced: false, art: (key, x, y, w, h) => this.art(key, x, y, w, h) };
+  /** Plug in (or remove) the Homestead's view: drawn each frame, may paint stations and take interactions. */
+  setHomesteadView(view: HomesteadView | null): void { this.homestead = view; }
+  /** The current area's diggable terrain, or null outside a delve. Dug state lives for this engine session. */
+  private terrain: Terrain | null = null;
+  private readonly terrains = new Map<string, Terrain>();
+  private readonly terrainRenderer = new TerrainRenderer();
+  private readonly darkness = new DarknessLayer();
+  private readonly lightPool = new LightPool(96);
+  private readonly debris = new Debris();
+  /** Glinting cells this frame (indices), drawn over the darkness. */
+  private readonly glints = new Int32Array(64);
+  private glintCount = 0;
+  private readonly hitScratch = new Int32Array(160);
+  private tools: ToolTiers = {};
+  private lanternRadius = DEFAULT_LANTERN;
+  private skillLevels: Partial<Record<DisciplineId, number>> | null = null;
+  /** Vertical camera, world px. 0 outside delves. */
+  private cameraY = 0;
+  private blastTime = 0;
+  private blastCooldown = 0;
+  /** The blast's afterglow lighting the delve, 1 → 0. */
+  private blastFlash = 0;
+  private readonly blastAt = { x: 0, y: 0, dx: 1, dy: 0, range: 0 };
+  /** When the last "clang" was shown: one per beat, not one per cell. */
+  private clangAt = -1;
   private get stations(): readonly StationDef[] { return this.areaDef.stations; }
+  /** Draw scale of figures in this area (delves draw the Keeper at half size). */
+  private get figure(): number { return this.areaDef.figureScale ?? 1; }
   private get isTown(): boolean { return this.areaDef === this.town; }
   private createMonsters(): Monster[] {
     const monsters: Monster[] = [];
@@ -142,6 +191,13 @@ export class SeamworksEngine {
   }
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
+    let terrain: Terrain | null = null;
+    if (area.terrain) {
+      terrain = this.terrains.get(area.id) ?? generateTerrain(area.terrain);
+      this.terrains.set(area.id, terrain);
+    }
+    this.terrain = terrain; this.terrainRenderer.attach(terrain); this.cameraY = 0;
+    this.blastTime = 0; this.blastFlash = 0;
   }
   private resetPosition(x: number): void {
     this.cancelMove();
@@ -244,6 +300,54 @@ export class SeamworksEngine {
    * canvas's top-right corner. Same as the `satchelTarget` engine option.
    */
   setSatchelTarget(target: (() => { x: number; y: number } | null | undefined) | null): void { this.satchelTarget = target; }
+  /**
+   * The Keeper's tools, by tier (0 or absent = none), and the lantern:
+   *
+   *   setTools({ pickaxe?, axe?, sickle?, blade?, staff?, lanternRadius?, levels? })
+   *
+   * A swing works a terrain cell with the best of pickaxe/axe/sickle/blade that
+   * meets the cell's minimum tier; the staff works only through its blast (L).
+   * `lanternRadius` is world px (default 230). `levels` (optional) are skill
+   * levels by discipline: a cell with a higher `minLevel` clangs before the
+   * host is asked, instead of cracking all the way and being refused.
+   */
+  setTools(tools: ToolTiers & { lanternRadius?: number; levels?: Partial<Record<DisciplineId, number>> }): void {
+    const next: ToolTiers = {};
+    for (const tool of ['pickaxe', 'axe', 'sickle', 'blade', 'staff'] as ToolKind[]) {
+      const tier = tools[tool];
+      if (Number.isFinite(tier) && (tier as number) > 0) next[tool] = Math.floor(tier as number);
+    }
+    this.tools = next;
+    if (Number.isFinite(tools.lanternRadius) && (tools.lanternRadius as number) > 0) this.lanternRadius = tools.lanternRadius as number;
+    if (tools.levels) this.skillLevels = { ...tools.levels };
+  }
+  /**
+   * Delves: a click or tap on a solid cell within reach of the Keeper swings
+   * at it. Returns false when there was nothing to swing at (the host walks
+   * there instead).
+   */
+  strikeAt(clientX: number, clientY: number): boolean {
+    if (!this.terrain || this.paused || this.hp <= 0) return false;
+    const point = this.pick(clientX, clientY);
+    return this.strikeCell(point.x, point.y);
+  }
+  /** Swing at the cell under a world point, if it is solid and in reach. */
+  strikeCell(x: number, y: number): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return false;
+    const col = t.colAt(x), row = t.rowAt(y);
+    if (!t.inside(col, row) || !t.solid(col, row)) return false;
+    const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
+    if (Math.hypot(cx - this.player.x, cy - (this.player.y - DELVE_BOX.height * .5)) > DELVE_REACH) return false;
+    this.cancelMove();
+    if (this.attackCooldown > 0) return true;
+    if (Math.abs(cx - this.player.x) > 6) this.facing = cx > this.player.x ? 1 : -1;
+    this.attackTime = .4; this.attackCooldown = .52;
+    this.hitScratch[0] = t.index(col, row);
+    this.hitCells(1, SWING_TOOLS, false);
+    this.report();
+    return true;
+  }
   /** Forget the pointer (pointer left the canvas): hover captions on drops hide. */
   clearPointer(): void { this.pointerX = NaN; this.pointerY = NaN; }
   setPeers(peers: RemoteKeeper[]): void {
@@ -322,7 +426,7 @@ export class SeamworksEngine {
     const rect = this.canvas.getBoundingClientRect();
     const point = clientToWorld(clientX, clientY, {
       left: rect.left, top: rect.top, rectWidth: rect.width, rectHeight: rect.height,
-      cssWidth: this.width, cssHeight: this.height, camera: this.camera,
+      cssWidth: this.width, cssHeight: this.height, camera: this.camera, cameraY: this.cameraY,
     });
     this.pointerX = point.x; this.pointerY = point.y;
     return { x: point.x, y: point.y, station: stationAt(this.stations, point.x, point.y, FLOOR) };
@@ -335,28 +439,165 @@ export class SeamworksEngine {
     if (this.paused || this.hp <= 0 || this.input.has(action)) return;
     this.input.add(action);
     if (action === 'left' || action === 'right') this.cancelMove();
-    if (action === 'jump' && this.player.grounded) { this.player.vy = -680; this.player.grounded = false; }
-    if (action === 'attack' && this.attackCooldown <= 0) {
-      {
-        this.attackTime = .4; this.attackCooldown = .52;
-        for (const monster of this.monsters) {
-          if (monster.hp <= 0 || !meleeHits(this.player, monster.x, this.facing)) continue;
-          const damage = this.damage ?? (this.equipped ? 20 : 10);
-          this.atmosphere.burst(monster.x, FLOOR - 85, String(damage));
-          monster.hp = Math.max(0, monster.hp - damage);
-          monster.flash = .14; monster.recoil = 1;
-          this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
-          if (!this.reducedMotion) monster.knock = Math.sign(monster.x - this.player.x || this.facing) * 22;
-          if (monster.hp === 0) {
-            monster.dying = DEATH_FADE;
-            monster.respawn = 8; this.kills++; this.guardianDefeated = true;
-            this.spill(monster);
-          }
-        }
-      }
-    }
+    if (action === 'jump' && this.player.grounded) { this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false; }
+    if (action === 'attack' && this.attackCooldown <= 0) this.attack();
+    if (action === 'blast') this.blast();
     if (action === 'dodge' && this.dodgeCooldown <= 0) { this.dodgeTime = .26; this.dodgeCooldown = 1.05; }
     this.report();
+  }
+  /** One swing: monsters in reach take the hit; in a delve, a swing at nothing living works the rock instead. */
+  private attack(): void {
+    this.attackTime = .4; this.attackCooldown = .52;
+    let struck = false;
+    const k = this.figure;
+    for (const monster of this.monsters) {
+      if (monster.hp <= 0 || !meleeHits(this.player, monster.x, this.facing, monster.def.floorY ?? FLOOR, k)) continue;
+      this.hurtMonster(monster, this.damage ?? (this.equipped ? 20 : 10));
+      struck = true;
+    }
+    if (!struck && this.terrain) this.hitCells(this.swingTargets(), SWING_TOOLS, false);
+  }
+  private hurtMonster(monster: Monster, damage: number): void {
+    const floor = monster.def.floorY ?? FLOOR;
+    this.atmosphere.burst(monster.x, floor - 85 * this.figure, String(damage));
+    monster.hp = Math.max(0, monster.hp - damage);
+    monster.flash = .14; monster.recoil = 1;
+    this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
+    if (!this.reducedMotion) monster.knock = Math.sign(monster.x - this.player.x || this.facing) * 22 * this.figure;
+    if (monster.hp === 0) {
+      monster.dying = DEATH_FADE;
+      monster.respawn = 8; this.kills++; this.guardianDefeated = true;
+      this.spill(monster);
+    }
+  }
+
+  // -- Delve: tools hitting the world -------------------------------------
+
+  /**
+   * The cells a swing reaches, written to hitScratch: holding Down, the cells
+   * under the Keeper's feet; otherwise the column in front of the body.
+   */
+  private swingTargets(): number {
+    const t = this.terrain;
+    if (!t) return 0;
+    const out = this.hitScratch, box = DELVE_BOX, p = this.player;
+    let n = 0;
+    if (this.input.has('down')) {
+      const row = t.rowAt(p.y + 1);
+      for (let col = t.colAt(p.x - box.halfWidth); col <= t.colAt(p.x + box.halfWidth - .01); col++) {
+        if (t.inside(col, row) && t.solid(col, row)) out[n++] = t.index(col, row);
+      }
+      return n;
+    }
+    const col = t.colAt(p.x + this.facing * (box.halfWidth + CELL * .5));
+    for (let row = t.rowAt(p.y - box.height); row <= t.rowAt(p.y - .01); row++) {
+      if (t.inside(col, row) && t.solid(col, row)) out[n++] = t.index(col, row);
+    }
+    return n;
+  }
+  /** Work the first `count` cells of hitScratch, then give the whole swing one feel. */
+  private hitCells(count: number, allowed: readonly ToolKind[], quiet: boolean): void {
+    const t = this.terrain;
+    if (!t || !count) return;
+    let broke = 0, chipped = 0, blocked = 0, rich = false;
+    for (let n = 0; n < count; n++) {
+      const index = this.hitScratch[n];
+      const col = index % t.cols, row = (index - col) / t.cols;
+      const node = t.nodeAt(col, row);
+      const result = this.hitCell(col, row, allowed, quiet || blocked > 0);
+      if (result === HIT_BROKE) { broke++; rich ||= !!node.yield; }
+      else if (result === HIT_CHIP || result === HIT_REFUSED) chipped++;
+      else if (result === HIT_BLOCKED) blocked++;
+    }
+    if (broke) this.impact(rich ? .07 : .04, rich ? 5 : 3);
+    else if (chipped) this.impact(.025, 1.6);
+    else if (blocked && !quiet) this.impact(.02, 1);
+  }
+  /** One tool strike on one cell. Asks the host before a paying cell breaks. */
+  private hitCell(col: number, row: number, allowed: readonly ToolKind[], quiet: boolean): number {
+    const t = this.terrain;
+    if (!t || !t.inside(col, row)) return HIT_NONE;
+    const node = t.nodeAt(col, row);
+    if (!node.solid) return HIT_NONE;
+    const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
+    const check = toolFor(node, this.tools, allowed);
+    if (!check.ok) {
+      this.debris.chip(cx, cy, '#ffe2a8', quiet ? 2 : 6);
+      if (!quiet) this.clang(cx, cy, check.need ? `Clang! Need ${toolName(check.need.tool, check.need.tier)}` : `${node.label} will not break`);
+      return HIT_BLOCKED;
+    }
+    const level = node.minLevel && this.skillLevels ? this.skillLevels[node.discipline] ?? 1 : Infinity;
+    if (node.minLevel && level < node.minLevel) {
+      this.debris.chip(cx, cy, '#ffe2a8', quiet ? 2 : 6);
+      if (!quiet) this.clang(cx, cy, `Clang! Needs ${titleCase(node.discipline)} ${node.minLevel}`);
+      return HIT_BLOCKED;
+    }
+    const index = t.index(col, row);
+    const left = t.hp[index] - check.damage;
+    if (left > 1e-3) {
+      t.setHp(col, row, left);
+      this.debris.chip(cx, cy, node.fleck, this.reducedMotion ? 2 : 4);
+      return HIT_CHIP;
+    }
+    let material: string | undefined;
+    let qty = 0;
+    const pays = node.yield;
+    if (pays && (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance)) { material = pays.materialId; qty = pays.qty; }
+    if (node.xp > 0 || pays) {
+      const accepted = this.options.onWorldAction?.({
+        kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: cellKey(col, row),
+        materialId: material, qty: material ? qty : undefined, discipline: node.discipline, xp: node.xp,
+        mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}`,
+      });
+      if (accepted === false) {
+        // Refused: it stands, cracked to the last stage, and the next hit asks again.
+        t.setHp(col, row, Math.min(t.hp[index], 1e-3));
+        this.debris.chip(cx, cy, node.fleck, 3);
+        return HIT_REFUSED;
+      }
+    }
+    t.set(col, row, 0);
+    this.debris.crumble(cx, cy, node.base, node.fleck, this.reducedMotion);
+    if (material) {
+      this.atmosphere.burst(cx, cy - 12, `+${qty} ${titleCase(material)}`);
+      this.message = `${titleCase(material)} gathered from the ${node.label.toLowerCase()}.`;
+    }
+    return HIT_BROKE;
+  }
+  private clang(x: number, y: number, text: string): void {
+    this.message = `${text}.`;
+    if (this.clangAt >= 0 && this.elapsed - this.clangAt < .45) return;
+    this.clangAt = this.elapsed;
+    this.atmosphere.burst(x, y - 14, text);
+  }
+  /**
+   * The staff's blast: a short bright cone ahead (or below, holding Down; above,
+   * holding Jump) that works every cell the staff can in reach, hurts monsters
+   * in it, and lights the delve for a moment.
+   */
+  private blast(): void {
+    const t = this.terrain;
+    if (!t) return;
+    const staff = this.tools.staff ?? 0;
+    if (!staff) { this.clang(this.player.x, this.player.y - 80, 'No staff to channel a blast'); return; }
+    if (this.blastCooldown > 0) return;
+    this.blastCooldown = BLAST_COOLDOWN; this.blastTime = BLAST_TIME; this.blastFlash = 1;
+    const down = this.input.has('down'), up = this.input.has('jump') && !down;
+    const dx = down || up ? 0 : this.facing, dy = down ? 1 : up ? -1 : 0;
+    const at = this.blastAt;
+    at.x = this.player.x + this.facing * 8; at.y = this.player.y - DELVE_BOX.height * .55;
+    at.dx = dx; at.dy = dy; at.range = CELL * (5 + staff - 1);
+    const count = coneCells(t, at.x, at.y, dx, dy, at.range, .5, this.hitScratch);
+    this.hitCells(count, BLAST_TOOLS, true);
+    for (const monster of this.monsters) {
+      if (monster.hp <= 0) continue;
+      const vx = monster.x - at.x, vy = (monster.def.floorY ?? FLOOR) - 40 * this.figure - at.y;
+      const d = Math.hypot(vx, vy);
+      if (d <= at.range && d > 0 && (vx * dx + vy * dy) / d >= Math.cos(.6)) this.hurtMonster(monster, Math.round((this.damage ?? 12) * 1.2));
+    }
+    for (let n = 0; n < 6; n++) this.debris.chip(at.x + dx * at.range * n / 6, at.y + dy * at.range * n / 6, '#d9c2ff', 2);
+    this.impact(.05, 4);
+    this.message = 'The staff answers: a lance of light.';
   }
   /** Roll the monster's drop table (or its area's) and spill the results around the body. */
   private spill(monster: Monster): void {
@@ -371,11 +612,11 @@ export class SeamworksEngine {
       const rarity = entry.rarity;
       if (entry.kind === 'coins') {
         const coins = entry.base + (entry.spread ? this.kills % entry.spread : 0);
-        this.drops.push({ id, x: monster.x + offset, coins, ore: 0, age: 0, spin,
+        this.drops.push({ id, x: monster.x + offset, y: monster.def.floorY ?? FLOOR, coins, ore: 0, age: 0, spin,
           rarity, color: beamColor(rarity, true), beam: beamHeight(rarity, true), caption: `${coins} coins`, captionW: 0 });
         names.push('coins');
       } else {
-        this.drops.push({ id, x: monster.x + offset, coins: 0, ore: entry.qty, material: entry.material, art: entry.art, label: entry.label, short: entry.short, age: 0, spin,
+        this.drops.push({ id, x: monster.x + offset, y: monster.def.floorY ?? FLOOR, coins: 0, ore: entry.qty, material: entry.material, art: entry.art, label: entry.label, short: entry.short, age: 0, spin,
           rarity, color: beamColor(rarity, false), beam: beamHeight(rarity, false), caption: entry.qty > 1 ? `${entry.qty} x ${entry.label}` : entry.label, captionW: 0 });
         names.push(entry.label);
       }
@@ -392,6 +633,7 @@ export class SeamworksEngine {
     if (!station) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
     const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
     if (locked) this.message = station.lockedMessage ?? 'This way is not open yet.';
+    else if (this.homestead?.interact(this.areaDef.id, station.id)) { /* handled by the Homestead view */ }
     else if (station.kind === 'passage') {
       const area = station.to ? areaOf(this.town, station.to) : undefined;
       if (area) {
@@ -410,11 +652,11 @@ export class SeamworksEngine {
     this.shake = Math.max(this.shake, kick);
   }
   private nearbyStation(): StationDef | null {
-    return this.player.y > 475 ? nearestStation(this.stations, this.player.x) : null;
+    return this.player.y > 475 && this.player.y <= FLOOR + 40 ? nearestStation(this.stations, this.player.x) : null;
   }
   private nearby(): string | null { return this.nearbyStation()?.id ?? null; }
   private action(key: string): EngineInput | undefined {
-    return ({ ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', KeyJ: 'attack', KeyK: 'dodge' } as Record<string, EngineInput>)[key];
+    return ({ ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'jump', KeyW: 'jump', Space: 'jump', KeyJ: 'attack', KeyK: 'dodge', ArrowDown: 'down', KeyS: 'down', KeyL: 'blast' } as Record<string, EngineInput>)[key];
   }
   // Key/pointer releases can be lost when focus leaves the game. Release held
   // controls without pausing the shared world or discarding an active action.
@@ -476,6 +718,8 @@ export class SeamworksEngine {
     this.landing = Math.max(0, this.landing - dt);
     this.attackTime = Math.max(0, this.attackTime - dt); this.attackCooldown -= dt;
     this.dodgeTime = Math.max(0, this.dodgeTime - dt); this.dodgeCooldown -= dt; this.hurtTime -= dt;
+    this.blastCooldown -= dt; this.blastTime = Math.max(0, this.blastTime - dt); this.blastFlash = Math.max(0, this.blastFlash - dt * 1.5);
+    this.debris.update(dt, this.terrain);
     let direction = Number(this.input.has('right')) - Number(this.input.has('left'));
     if (direction) this.cancelMove();
     else if (this.walking) {
@@ -488,14 +732,23 @@ export class SeamworksEngine {
     }
     if (direction) this.facing = direction;
     const wasGrounded = this.player.grounded;
-    advanceBody(this.player, this.dodgeTime > 0 ? this.facing * 620 : direction * 265, dt, this.areaDef.platforms, this.areaDef.width);
+    // Delves move a half-size Keeper a little slower, through the terrain.
+    const pace = this.terrain ? .72 : 1;
+    const velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace;
+    if (this.terrain) stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width);
+    else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
+    if (this.terrain) {
+      // Holding a tool button keeps working the rock: digging is held, not tapped.
+      if (this.input.has('attack') && this.attackCooldown <= 0) this.attack();
+      if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
+    }
     if (!wasGrounded && this.player.grounded) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
       this.stepAt = this.elapsed; if (!this.reducedMotion) this.atmosphere.burst(this.player.x - direction * 16, this.player.y - 3);
     }
     for (const drop of this.drops) {
       drop.age += dt;
-      if (drop.age > .3 && Math.abs(drop.x - this.player.x) < 65 && Math.abs(this.player.y - FLOOR) < 80) {
+      if (drop.age > .3 && Math.abs(drop.x - this.player.x) < 65 && Math.abs(this.player.y - drop.y) < 80) {
         if (this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore, material: drop.material }) === false) continue;
         this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
         this.coins += drop.coins; drop.age = -1;
@@ -518,21 +771,26 @@ export class SeamworksEngine {
       }
       monster.timer -= dt;
       const safeX = this.areaDef.safeX ?? 0;
-      if (safeX && this.player.x < safeX) {
+      const floor = monster.def.floorY ?? FLOOR, k = this.figure;
+      // In a delve a Maw only cares about a Keeper standing in its cavern.
+      const away = !!this.terrain && Math.abs(this.player.y - floor) > 120;
+      if ((safeX && this.player.x < safeX) || away) {
         monster.x += Math.sign(monster.spawn - monster.x) * Math.min(Math.abs(monster.spawn - monster.x), 65 * dt);
         monster.phase = 'idle'; monster.timer = .5;
         continue;
       }
       const distance = this.player.x - monster.x;
       if (monster.phase === 'idle') {
-        if (Math.abs(distance) < 380 && Math.abs(distance) > 95) monster.x = Math.max(safeX || 30, monster.x + Math.sign(distance) * 65 * dt);
-        if (Math.abs(distance) < 170 && monster.timer <= 0) {
+        if (Math.abs(distance) < 380 * k && Math.abs(distance) > 95 * k) monster.x = Math.max(safeX || 30, monster.x + Math.sign(distance) * 65 * dt);
+        const range = monster.def.range;
+        if (range) monster.x = Math.max(range[0], Math.min(range[1], monster.x));
+        if (Math.abs(distance) < 170 * k && monster.timer <= 0) {
           monster.phase = 'windup'; monster.timer = .85; monster.facing = Math.sign(distance) || -1;
         }
       } else if (monster.timer <= 0) {
         if (monster.phase === 'windup') {
           monster.phase = 'strike'; monster.timer = .2;
-          if (Math.abs(distance) < 170 && distance * monster.facing > -40 && this.player.y > FLOOR - 105 && this.dodgeTime <= 0 && this.hurtTime <= 0) {
+          if (Math.abs(distance) < 170 * k && distance * monster.facing > -40 * k && this.player.y > floor - 105 * Math.max(k, .6) && this.player.y < floor + 40 && this.dodgeTime <= 0 && this.hurtTime <= 0) {
             this.hp = Math.max(0, this.hp - 12); this.hurtTime = .8; this.wound = 1;
             this.impact(.07, this.hp === 0 ? 12 : 8);
             if (this.hp === 0) this.message = 'The Keeper falls. Restart the hunt or return to camp.';
@@ -551,7 +809,8 @@ export class SeamworksEngine {
       x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
-      facing: this.facing, animation: this.pose() });
+      facing: this.facing, animation: this.pose(),
+      delve: !!this.terrain, depth: this.terrain ? Math.max(0, Math.floor((this.player.y - this.terrain.top) / CELL)) : undefined });
   }
   private pose(): KeeperAnimation {
     if (this.hp <= 0 || this.hurtTime > 0) return 'hurt';
@@ -728,7 +987,7 @@ export class SeamworksEngine {
     const rect = this.canvas.getBoundingClientRect();
     satchelPoint(target, rect, this.width, this.height, this.satchelAt);
     flight.active = true; flight.t = 0;
-    flight.sx = (drop.x - this.camera) * scale; flight.sy = (FLOOR - 18) * scale;
+    flight.sx = (drop.x - this.camera) * scale; flight.sy = (drop.y - 18 - this.cameraY) * scale;
     flight.ex = this.satchelAt.x; flight.ey = this.satchelAt.y;
     flight.art = drop.art; flight.coins = drop.coins > 0; flight.color = drop.color;
   }
@@ -777,8 +1036,8 @@ export class SeamworksEngine {
     c.save();
     c.globalCompositeOperation = 'lighter';
     c.fillStyle = drop.color; c.globalAlpha = .3 * pulse * grow;
-    c.beginPath(); c.ellipse(drop.x, FLOOR + 1, 26, 6, 0, 0, Math.PI * 2); c.fill();
-    c.translate(drop.x, FLOOR); c.scale(1, drop.beam * grow);
+    c.beginPath(); c.ellipse(drop.x, drop.y + 1, 26, 6, 0, 0, Math.PI * 2); c.fill();
+    c.translate(drop.x, drop.y); c.scale(1, drop.beam * grow);
     c.fillStyle = gradient;
     c.globalAlpha = .45 * pulse; c.fillRect(-13, -1, 26, 1);
     c.globalAlpha = pulse; c.fillRect(-3.5, -1, 7, 1);
@@ -786,8 +1045,8 @@ export class SeamworksEngine {
   }
   /** The drop's name, shown while the Keeper stands near it or the pointer is over it. */
   private drawDropCaption(c: CanvasRenderingContext2D, drop: Drop, y: number): void {
-    const near = Math.abs(drop.x - this.player.x) < 170 && Math.abs(this.player.y - FLOOR) < 120;
-    const pointed = Math.abs(drop.x - this.pointerX) < 45 && Math.abs(FLOOR - 30 - this.pointerY) < 70;
+    const near = Math.abs(drop.x - this.player.x) < 170 && Math.abs(this.player.y - drop.y) < 120;
+    const pointed = Math.abs(drop.x - this.pointerX) < 45 && Math.abs(drop.y - 30 - this.pointerY) < 70;
     if (!near && !pointed) return;
     c.font = '600 13px system-ui'; c.textAlign = 'center';
     if (!drop.captionW) drop.captionW = Math.min(200, c.measureText(drop.caption).width + 16);
@@ -883,7 +1142,7 @@ export class SeamworksEngine {
       c.beginPath(); c.ellipse(x, FLOOR + 2, (station.width ?? 120) * .55, 11, 0, 0, Math.PI * 2); c.fill();
       c.restore();
     }
-    switch (station.kind) {
+    if (!this.homestead?.paints(this.areaDef.id, station.id)) switch (station.kind) {
       case 'resource':
         if (!this.art(station.art, x - 58, FLOOR - 92, 116, 92)) this.art('ore', x - 58, FLOOR - 92, 116, 92);
         break;
@@ -959,26 +1218,40 @@ export class SeamworksEngine {
     const c = this.context; const scale = this.height / 720; const viewport = this.width / scale;
     this.pixelScale = scale * this.pixelRatio;
     this.camera = Math.max(0, Math.min(this.areaDef.width - viewport, this.player.x - viewport * .38));
+    const t = this.terrain;
+    if (t) {
+      // Delves follow the Keeper down; the surface sits low in the frame at the top.
+      const target = Math.max(0, Math.min(t.bottom + 40 - 720, this.player.y - 720 * .58));
+      this.cameraY += (target - this.cameraY) * (this.reducedMotion ? 1 : 1 - Math.exp(-7 * this.frameDt));
+    } else this.cameraY = 0;
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
     c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
     const bg = this.sceneImage();
     if (bg?.complete && bg.naturalWidth) {
       const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
-      c.globalAlpha = .94; c.drawImage(bg, -this.camera * .16, 0, bgWidth, 720); c.globalAlpha = 1;
+      c.globalAlpha = t ? .5 : .94; c.drawImage(bg, -this.camera * .16, -this.cameraY * .6, bgWidth, 720); c.globalAlpha = 1;
     }
     const shade = c.createLinearGradient(0, 0, 0, 720); shade.addColorStop(0, '#b97a4530'); shade.addColorStop(1, '#30232b99');
     c.fillStyle = shade; c.fillRect(0, 0, viewport, 720);
     const jolt = this.shake > 0 ? this.shake : 0;
-    c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0);
+    c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), -this.cameraY + (jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0));
     const motionTime = this.reducedMotion ? 0 : this.elapsed;
-    this.atmosphere.scenery(c, motionTime, this.camera, viewport);
-    for (const platform of this.areaDef.platforms) {
+    const k = this.figure;
+    if (!t) this.atmosphere.scenery(c, motionTime, this.camera, viewport);
+    // A delve's only platform is the net under its bedrock: nothing to draw.
+    if (!t) for (const platform of this.areaDef.platforms) {
       c.fillStyle = '#3b3034'; c.fillRect(platform.x, platform.y, platform.width, platform.y === FLOOR ? 110 : 24);
       c.fillStyle = '#a67858'; c.fillRect(platform.x, platform.y, platform.width, 4);
       c.fillStyle = '#f6a668'; c.fillRect(platform.x + 8, platform.y, Math.max(0, platform.width - 16), 1);
       for (let x = platform.x + 18; x < platform.x + platform.width; x += 65) { c.fillStyle = '#3c3039'; c.fillRect(x, platform.y + 12, 32, 7); }
     }
     if (this.isTown && this.areaDef.scenery === 'seamworks-hub') this.atmosphere.hub(c, motionTime, this.areaDef.safeX || 1120);
+    if (t) this.terrainRenderer.draw(c, this.camera, this.cameraY, viewport, 720, this.pixelScale);
+    if (this.homestead) {
+      const f = this.homesteadFrame;
+      f.areaId = this.areaDef.id; f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.playerX = this.player.x; f.reduced = this.reducedMotion;
+      this.homestead.draw(c, f);
+    }
     const nearId = this.nearby();
     for (const station of this.stations) {
       if (station.x < this.camera - 200 || station.x > this.camera + viewport + 200) continue;
@@ -990,7 +1263,7 @@ export class SeamworksEngine {
       const t = Math.min(1, drop.age / .5);
       const arc = this.reducedMotion ? 0 : t < .7 ? Math.sin(t / .7 * Math.PI) * 70 : Math.sin((t - .7) / .3 * Math.PI) * 12;
       const fling = this.reducedMotion ? 0 : drop.spin * 24 * (1 - t);
-      const y = FLOOR - 18 - arc + (t < 1 ? 0 : Math.sin(motionTime * 5 + drop.x) * 4);
+      const y = drop.y - 18 - arc + (t < 1 ? 0 : Math.sin(motionTime * 5 + drop.x) * 4);
       c.save(); c.translate(-fling, 0);
       c.shadowBlur = 14; c.shadowColor = drop.color;
       if (drop.coins) {
@@ -1006,33 +1279,34 @@ export class SeamworksEngine {
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       const rigDef = this.creatureRig(monster.def.creature).def;
-      const crown = FLOOR - rigDef.box.h - 20;
+      const floor = monster.def.floorY ?? FLOOR;
+      const crown = floor - (rigDef.box.h + 20) * k;
       if (warning) {
         c.fillStyle = monster.phase === 'strike' ? '#ff765caa' : '#ff765c40';
-        c.fillRect(monster.facing < 0 ? monster.x - 170 : monster.x, FLOOR - 10, 170, 10);
+        c.fillRect(monster.facing < 0 ? monster.x - 170 * k : monster.x, floor - 10, 170 * k, 10);
         c.fillStyle = '#ffc589'; c.font = 'bold 18px system-ui'; c.textAlign = 'center'; c.fillText('!', monster.x, crown - 20);
       }
       const rise = monster.born > 0 ? 1 - monster.born / SPAWN_RISE : 1;
-      this.groundShadow(c, monster.x + monster.knock, FLOOR, rigDef.shadow * (.6 + rise * .4));
+      if (!t) this.groundShadow(c, monster.x + monster.knock, FLOOR, rigDef.shadow * (.6 + rise * .4));
       // Turn the painting toward its target. Purely a drawing choice.
       const looking = monster.phase === 'idle' ? Math.sign(this.player.x - monster.x) || monster.facing : monster.facing;
       const mirror = rigDef.facesLeft ? looking > 0 : looking < 0;
-      c.save(); c.translate(monster.x + monster.knock, FLOOR);
-      c.globalAlpha = rise; c.scale((.6 + rise * .4) * (mirror ? -1 : 1), .6 + rise * .4);
+      c.save(); c.translate(monster.x + monster.knock, floor);
+      c.globalAlpha = rise; c.scale((.6 + rise * .4) * (mirror ? -1 : 1) * k, (.6 + rise * .4) * k);
       this.creature(c, monster.flash > 0, monster.def.creature, monster);
       c.restore();
       // The chip bar trails the real HP so a hit reads as a chunk taken.
-      const full = monster.maxHp || 1;
-      c.fillStyle = '#302530'; c.fillRect(monster.x - 45, crown, 90, 6);
-      c.fillStyle = '#ffe2c4'; c.fillRect(monster.x - 45, crown, Math.max(monster.hp, monster.shownHp) / full * 90, 6);
-      c.fillStyle = '#dd866f'; c.fillRect(monster.x - 45, crown, monster.hp / full * 90, 6);
+      const full = monster.maxHp || 1, bar = 90 * Math.max(k, .7);
+      c.fillStyle = '#302530'; c.fillRect(monster.x - bar / 2, crown, bar, 6);
+      c.fillStyle = '#ffe2c4'; c.fillRect(monster.x - bar / 2, crown, Math.max(monster.hp, monster.shownHp) / full * bar, 6);
+      c.fillStyle = '#dd866f'; c.fillRect(monster.x - bar / 2, crown, monster.hp / full * bar, 6);
     }
     for (const view of this.peers.values()) {
       if (view.peer.area !== this.areaDef.name || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
       // Spawn puts every Keeper on the same tile. Spread guests so names and sprites stay readable.
       const spread = (([...view.peer.id].reduce((hash, char) => (hash * 33 + char.charCodeAt(0)) >>> 0, 0) % 5) - 2) * 46;
-      this.groundShadow(c, view.x + spread, view.y, 40);
-      c.save(); c.translate(view.x + spread, view.y);
+      if (!t) this.groundShadow(c, view.x + spread, view.y, 40);
+      c.save(); c.translate(view.x + spread, view.y); if (k !== 1) c.scale(k, k);
       c.strokeStyle = '#edc9ff'; c.fillStyle = '#edc9ff25'; c.lineWidth = 2;
       c.beginPath(); c.ellipse(0, 0, 32, 8, 0, 0, Math.PI * 2); c.fill(); c.stroke();
       c.font = '600 16px "Cormorant Garamond", Georgia, serif'; c.textAlign = 'center';
@@ -1054,8 +1328,8 @@ export class SeamworksEngine {
     }
     // Keep the player readable against the dark realm art at narrow viewport sizes.
     const byFire = this.isTown && this.areaDef.scenery === 'seamworks-hub' && Math.abs(this.player.x - 245) < 220;
-    this.groundShadow(c, this.player.x, this.player.y, 44);
-    c.save(); c.translate(this.player.x, this.player.y);
+    if (!t) this.groundShadow(c, this.player.x, this.player.y, 44);
+    c.save(); c.translate(this.player.x, this.player.y); if (k !== 1) c.scale(k, k);
     c.strokeStyle = byFire ? '#ffc27a' : '#b8e6ec'; c.fillStyle = byFire ? '#ffc27a30' : '#b8e6ec30'; c.lineWidth = 3;
     c.beginPath(); c.ellipse(0, 0, 46, 10, 0, 0, Math.PI * 2); c.fill(); c.stroke();
     c.font = '600 15px "Cormorant Garamond", Georgia, serif';
@@ -1067,7 +1341,7 @@ export class SeamworksEngine {
     c.fillText('You', 0, -188);
     this.speechBubble(c, this.selfId, -234);
     c.restore();
-    c.save(); c.translate(this.player.x, this.player.y); c.scale(this.facing, 1);
+    c.save(); c.translate(this.player.x, this.player.y); c.scale(this.facing * k, k);
     const shown = this.present(this.pose(), this.player.x, this.player.y);
     const motion = this.keeperMotion(shown, this.elapsed);
     if (this.landing > 0 && !this.reducedMotion) {
@@ -1100,6 +1374,7 @@ export class SeamworksEngine {
       c.restore();
     }
     c.restore();
+    if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
     this.atmosphere.feedback(c, this.reducedMotion);
     c.restore();
     this.drawFlights(c, this.flightDelta);
@@ -1109,6 +1384,60 @@ export class SeamworksEngine {
       edge.addColorStop(0, '#c0303000'); edge.addColorStop(1, `rgba(192, 48, 48, ${(.42 * this.wound).toFixed(3)})`);
       c.fillStyle = edge; c.fillRect(0, 0, this.width, this.height);
     }
+  }
+  /**
+   * Delve light, in world space: debris, then the darkness overlay with the
+   * lantern, exposed glowing cells and the blast's flash punched out of it,
+   * then glints of veins near the lantern and the blast beam over the dark.
+   */
+  private drawDelveLight(c: CanvasRenderingContext2D, t: Terrain, scale: number, viewport: number, time: number): void {
+    this.debris.draw(c);
+    const pool = this.lightPool; pool.clear(); this.glintCount = 0;
+    const flicker = this.reducedMotion ? 1 : 1 + Math.sin(time * 13) * .015 + Math.sin(time * 7.3 + 1) * .02;
+    pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker, 1);
+    if (this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);
+    if (this.blastFlash > 0) {
+      const at = this.blastAt;
+      pool.add(at.x + at.dx * at.range * .6, at.y + at.dy * at.range * .6, at.range * 1.5 * this.blastFlash, this.blastFlash);
+    }
+    const c0 = Math.max(0, t.colAt(this.camera)), c1 = Math.min(t.cols - 1, t.colAt(this.camera + viewport));
+    const r0 = Math.max(0, t.rowAt(this.cameraY)), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720));
+    const reach = this.lanternRadius * 1.6;
+    for (let row = r0; row <= r1; row++) {
+      for (let col = c0; col <= c1; col++) {
+        const node = TERRAIN_NODE_LIST[t.kind[t.index(col, row)]];
+        if (!node.glow) continue;
+        const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
+        if (t.exposed(col, row)) pool.add(x, y, node.glow.radius * 1.6, .55);
+        if (this.glintCount < this.glints.length && Math.hypot(x - this.player.x, y - this.player.y + 50) < reach) this.glints[this.glintCount++] = t.index(col, row);
+      }
+    }
+    const count = selectLights(pool.lights, pool.count, LIGHT_CAP, this.player.x, this.player.y);
+    c.save();
+    c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
+    this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top));
+    c.restore();
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for (let n = 0; n < this.glintCount; n++) {
+      const index = this.glints[n], col = index % t.cols, row = (index - col) / t.cols;
+      const node: TerrainNodeDef = TERRAIN_NODE_LIST[t.kind[index]];
+      const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
+      const near = 1 - Math.hypot(x - this.player.x, y - this.player.y + 50) / reach;
+      const twinkle = this.reducedMotion ? .7 : .5 + .5 * Math.sin(time * 3 + index * 1.7);
+      c.globalAlpha = Math.max(0, near) * twinkle;
+      c.fillStyle = node.glow?.color ?? '#fff';
+      c.fillRect(x - 5, y - .75, 10, 1.5); c.fillRect(x - .75, y - 5, 1.5, 10); c.fillRect(x - 1.5, y - 1.5, 3, 3);
+    }
+    if (this.blastTime > 0) {
+      const at = this.blastAt, u = 1 - this.blastTime / BLAST_TIME;
+      const ex = at.x + at.dx * at.range, ey = at.y + at.dy * at.range;
+      const px = -at.dy * at.range * .5, py = at.dx * at.range * .5;
+      c.globalAlpha = .35 * (1 - u); c.fillStyle = '#c9a0ff';
+      c.beginPath(); c.moveTo(at.x, at.y); c.lineTo(ex + px, ey + py); c.lineTo(ex - px, ey - py); c.closePath(); c.fill();
+      c.globalAlpha = 1 - u; c.strokeStyle = '#f3e6ff'; c.lineWidth = 5 * (1 - u) + 1;
+      c.beginPath(); c.moveTo(at.x, at.y); c.lineTo(ex, ey); c.stroke();
+    }
+    c.restore();
   }
   /** The rig for a creature art key, built once per key. */
   private creatureRig(key: string): { def: CreatureRigDef; sprite: RigSprite } {
@@ -1163,8 +1492,10 @@ export class SeamworksEngine {
   /** A felled Maw sinks, flattens and fades, shedding embers as it goes. */
   private dissolve(c: CanvasRenderingContext2D, monster: Monster): void {
     const t = 1 - monster.dying / DEATH_FADE;
-    c.save(); c.translate(monster.x + monster.knock, FLOOR);
+    const floor = monster.def.floorY ?? FLOOR, k = this.figure;
+    c.save(); c.translate(monster.x + monster.knock, floor);
     c.globalAlpha = 1 - t;
+    c.scale(k, k);
     if (!this.reducedMotion) c.scale(1 + t * .35, 1 - t * .7);
     this.creature(c, t < .25, monster.def.creature);
     c.restore();
@@ -1173,7 +1504,7 @@ export class SeamworksEngine {
     for (let n = 0; n < 7; n++) {
       const a = n * 2.4 + monster.spawn;
       c.globalAlpha = (1 - t) * .8;
-      c.beginPath(); c.arc(monster.x + Math.cos(a) * 40 * t, FLOOR - 50 - t * 70 - Math.sin(a) * 18, 3 * (1 - t) + 1, 0, Math.PI * 2); c.fill();
+      c.beginPath(); c.arc(monster.x + Math.cos(a) * 40 * t * k, floor - (50 + t * 70 + Math.sin(a) * 18) * k, 3 * (1 - t) + 1, 0, Math.PI * 2); c.fill();
     }
     c.restore();
   }

@@ -65,4 +65,28 @@ describe('skill XP curve', () => {
     expect(miningLevelView(3_000).level).toBeGreaterThanOrEqual(2);
     expect(miningLevelView(9_000).level).toBeGreaterThanOrEqual(3);
   });
+
+  describe('the 1-99 extension is migration-safe', () => {
+    // Pinned literals from the 50-cap curve. If any of these move, a stored XP
+    // total would read as a different level than it did yesterday.
+    const PINNED: ReadonlyArray<[number, number]> = [[2, 100], [10, 12_569], [20, 65_051], [50, 522_915]];
+
+    it('keeps every pre-99 threshold to the XP', () => {
+      for (const [level, xp] of PINNED) expect(xpForLevel(level)).toBe(xp);
+    });
+
+    it('reads the same level as before for any total under the old cap', () => {
+      for (const [level, xp] of PINNED) {
+        expect(miningLevelView(xp).level).toBe(level);
+        expect(miningLevelView(xp - 1).level).toBe(level - 1);
+      }
+    });
+
+    it('runs to 99 and caps there', () => {
+      expect(MAX_SKILL_LEVEL).toBe(99);
+      expect(miningLevelView(xpForLevel(99)).level).toBe(99);
+      expect(miningLevelView(xpForLevel(99)).next).toBeNull();
+      expect(xpForLevel(99)).toBeGreaterThan(xpForLevel(98));
+    });
+  });
 });

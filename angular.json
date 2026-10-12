@@ -25,6 +25,7 @@
               "src/favicon.svg",
               "src/manifest.webmanifest",
               "src/service-worker.js",
+              "src/offline.html",
               "src/favicon.ico",
               "src/robots.txt",
               "src/sitemap.xml",

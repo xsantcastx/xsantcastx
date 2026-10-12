@@ -1,5 +1,8 @@
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
-export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge';
+import type { DisciplineId } from '../../shared/activity/activity.model';
+import type { WorldActionKind } from './terrain';
+/** `down` aims a delve swing (or blast) below the Keeper; `blast` channels the staff. */
+export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge' | 'down' | 'blast';
 export type InteractionTarget = 'ore' | 'forge' | 'beacon' | 'passage';
 export type KeeperAnimation = 'idle' | 'run' | 'jump' | 'fall' | 'attack' | 'dodge' | 'hurt';
 export interface EngineState {
@@ -11,6 +14,8 @@ export interface EngineState {
   areaId?: string;
   coins?: number; kills?: number; area?: string;
   facing?: number; animation?: KeeperAnimation;
+  /** True in an area with diggable terrain. `depth`: terrain rows below the surface the Keeper stands at. */
+  delve?: boolean; depth?: number;
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export interface EngineOptions {
@@ -35,6 +40,27 @@ export interface EngineOptions {
    * `engine.setSatchelTarget()`.
    */
   satchelTarget?: () => { x: number; y: number } | null | undefined;
+  /**
+   * A tool is about to break a terrain cell that pays XP or a material (see
+   * engine/terrain.ts). Grant it through the progression gateway, keyed by
+   * `mutationId` (stable per cell per engine session, so a retry is the same
+   * grant). Return false to refuse: the cell stays standing, fully cracked,
+   * and the next hit asks again. Cells that pay nothing (dirt, basalt) break
+   * without asking.
+   */
+  onWorldAction?: (event: WorldActionEvent) => boolean | void;
+}
+export interface WorldActionEvent {
+  kind: WorldActionKind;
+  areaId: string;
+  /** `col,row` of the cell in its area's terrain. */
+  cellKey: string;
+  /** Rolled yield; absent when the node pays only XP or its chance missed. */
+  materialId?: string;
+  qty?: number;
+  discipline: DisciplineId;
+  xp: number;
+  mutationId: string;
 }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }
@@ -59,9 +85,10 @@ export function advanceBody(body: Body, velocityX: number, dt: number, platforms
     }
   }
 }
-export function meleeHits(player: Body, enemyX: number, facing: number): boolean {
+/** `floorY`: the ground the enemy stands on; `scale`: the area's figure scale (reach shrinks with the figures). */
+export function meleeHits(player: Body, enemyX: number, facing: number, floorY = FLOOR, scale = 1): boolean {
   const distance = enemyX - player.x;
-  return Math.abs(distance) < 145 && distance * facing >= -20 && Math.abs(player.y - FLOOR) < 105;
+  return Math.abs(distance) < 145 * scale && distance * facing >= -20 * scale && Math.abs(player.y - floorY) < 105 * Math.max(scale, .6);
 }
 /** Arrival tolerance for click-to-move, in world px. One fixed step at walk speed is ~4.4px. */
 export const ARRIVE_DISTANCE = 6;

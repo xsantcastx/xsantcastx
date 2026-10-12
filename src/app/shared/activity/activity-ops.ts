@@ -177,6 +177,26 @@ export function progressFromOps(ops: readonly ActivityOperation[]): DisciplinePr
   return { version: 1, xpByDiscipline };
 }
 
+/**
+ * Progress after one new operation lands: the stored totals plus that op's XP,
+ * never below what the op window itself sums to.
+ *
+ * Plain `progressFromOps(ops)` is only right while the op window still holds
+ * every op ever written. Once anything trims it (a merge, or the world-action
+ * path, which caps the window), re-deriving from the window would *shrink* the
+ * stored totals — XP lost on the next action. Adding to the stored totals is
+ * what survives the trim.
+ */
+export function progressAfter(
+  previous: DisciplineProgress,
+  ops: readonly ActivityOperation[],
+  op: Pick<ActivityOperation, 'disciplineId' | 'xpGrant'>,
+): DisciplineProgress {
+  const added: Partial<Record<DisciplineId, number>> = { ...previous.xpByDiscipline };
+  added[op.disciplineId] = (added[op.disciplineId] ?? 0) + op.xpGrant.amount;
+  return maxProgress({ version: 1, xpByDiscipline: added }, progressFromOps(ops));
+}
+
 export function maxProgress(...rows: DisciplineProgress[]): DisciplineProgress {
   const xpByDiscipline: Partial<Record<DisciplineId, number>> = {};
   for (const row of rows) {
@@ -391,7 +411,8 @@ function parseDiscovery(raw: unknown): ActivityDiscovery | null {
 
 function isDiscipline(value: unknown): value is DisciplineId {
   return value === 'mining' || value === 'foraging' || value === 'prospecting'
-    || value === 'exploration' || value === 'forge' || value === 'hunting';
+    || value === 'exploration' || value === 'forge' || value === 'hunting'
+    || value === 'woodcutting' || value === 'enchanting';
 }
 
 function isPlain(value: unknown): value is Record<string, unknown> {
