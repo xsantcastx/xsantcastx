@@ -7,6 +7,7 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, LootRarity, MonsterDef, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
+import type { HomesteadFrame, HomesteadView } from './homestead-render';
 export type { EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation } from './engine.model';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
@@ -129,6 +130,11 @@ export class SeamworksEngine {
   private complete = false;
   private destroyed = false;
   private message = 'Find the Cinder Ore deposit. Walk close and interact.';
+  // ── Homestead hook (homestead-render.ts owns the drawing; this is the whole seam) ──
+  private homestead: HomesteadView | null = null;
+  private readonly homesteadFrame: HomesteadFrame = { areaId: '', camera: 0, viewport: 0, time: 0, playerX: 0, reduced: false, art: (key, x, y, w, h) => this.art(key, x, y, w, h) };
+  /** Plug in (or remove) the Homestead's view: drawn each frame, may paint stations and take interactions. */
+  setHomesteadView(view: HomesteadView | null): void { this.homestead = view; }
   private get stations(): readonly StationDef[] { return this.areaDef.stations; }
   private get isTown(): boolean { return this.areaDef === this.town; }
   private createMonsters(): Monster[] {
@@ -392,6 +398,7 @@ export class SeamworksEngine {
     if (!station) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
     const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
     if (locked) this.message = station.lockedMessage ?? 'This way is not open yet.';
+    else if (this.homestead?.interact(this.areaDef.id, station.id)) { /* handled by the Homestead view */ }
     else if (station.kind === 'passage') {
       const area = station.to ? areaOf(this.town, station.to) : undefined;
       if (area) {
@@ -883,7 +890,7 @@ export class SeamworksEngine {
       c.beginPath(); c.ellipse(x, FLOOR + 2, (station.width ?? 120) * .55, 11, 0, 0, Math.PI * 2); c.fill();
       c.restore();
     }
-    switch (station.kind) {
+    if (!this.homestead?.paints(this.areaDef.id, station.id)) switch (station.kind) {
       case 'resource':
         if (!this.art(station.art, x - 58, FLOOR - 92, 116, 92)) this.art('ore', x - 58, FLOOR - 92, 116, 92);
         break;
@@ -979,6 +986,11 @@ export class SeamworksEngine {
       for (let x = platform.x + 18; x < platform.x + platform.width; x += 65) { c.fillStyle = '#3c3039'; c.fillRect(x, platform.y + 12, 32, 7); }
     }
     if (this.isTown && this.areaDef.scenery === 'seamworks-hub') this.atmosphere.hub(c, motionTime, this.areaDef.safeX || 1120);
+    if (this.homestead) {
+      const f = this.homesteadFrame;
+      f.areaId = this.areaDef.id; f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.playerX = this.player.x; f.reduced = this.reducedMotion;
+      this.homestead.draw(c, f);
+    }
     const nearId = this.nearby();
     for (const station of this.stations) {
       if (station.x < this.camera - 200 || station.x > this.camera + viewport + 200) continue;

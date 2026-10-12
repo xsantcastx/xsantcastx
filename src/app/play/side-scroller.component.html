@@ -53,6 +53,8 @@
     }
   </div>
 
+  @if (state.areaId === 'homestead' && !panel) { <app-homestead-column /> }
+
   <aside class="satchel" aria-label="Satchel" (click)="openBag()" [attr.inert]="panel ? '' : null">
     <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book">
       <span>Satchel</span>
