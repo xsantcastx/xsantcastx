@@ -95,6 +95,7 @@ export const EMBER_DELVE: HuntZoneDef = {
       { node: 'ember-rock', from: 6, to: 36, count: 18, size: 3 },
       { node: 'slag-vein', from: 12, to: 31, count: 14, size: 4 },
       { node: 'heartstone-vein', from: 31, to: 38, count: 3, size: 4, cols: [50, 76] },
+      { node: 'petrified-trunk', from: 4, to: 24, count: 9, size: 3 },
     ],
     stamps: [
       // The entry ledge the return shaft stands on.
