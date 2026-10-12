@@ -1055,3 +1055,68 @@ input::placeholder { color: var(--adventure-hud-muted); }
   from { opacity: 0; }
   to { opacity: 1; }
 }
+
+/* The Delve hotbar: one column of placeables under the vitals, counts on each. */
+.hotbar {
+  position: absolute;
+  z-index: 3;
+  top: 172px;
+  left: 16px;
+  display: grid;
+  gap: 6px;
+  width: 200px;
+  pointer-events: auto;
+}
+.hotbar ul {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hotbar .hot {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 46px;
+  padding: 4px;
+}
+.hotbar .hot img { width: 30px; height: 30px; object-fit: contain; }
+.hotbar .hot em { font: 600 11px Orbitron, sans-serif; font-style: normal; color: var(--adventure-dialogue); }
+.hotbar .hot b {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  font: 600 11px Orbitron, sans-serif;
+  color: var(--adventure-parchment);
+}
+.hotbar .hot .key-hint { position: absolute; top: 2px; left: 3px; margin: 0; font-size: 9px; }
+.hotbar .hot.empty { opacity: .45; }
+.hotbar .hot.picked {
+  border-color: var(--adventure-ember);
+  box-shadow: inset 0 0 0 1px var(--adventure-ember), 0 0 12px color-mix(in srgb, var(--adventure-ember) 40.00%, transparent);
+}
+.hot-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin: 0;
+  padding: 4px 6px 4px 10px;
+  background: var(--adventure-hud-panel-solid);
+  border: 1px solid var(--adventure-hud-shadow);
+  color: var(--adventure-dialogue);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.hot-line span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hot-line .hot-place { min-height: 36px; }
+
+@media (max-width: 900px) {
+  .hotbar { top: 236px; left: 10px; right: 10px; width: auto; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .hotbar ul { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 46px; overflow-x: auto; }
+  .stage:has(.book) .hotbar { visibility: hidden; }
+}

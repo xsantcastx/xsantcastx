@@ -1178,3 +1178,98 @@ test("finale: Kael's old cache sits in the Maws' cavern for every seed and pays 
   assert.deepEqual(events.filter(e => e.materialId === 'kaels-hammer').map(e => e.qty), [1]);
   engine.destroy();
 });
+
+// ── Building: place blocks ──────────────────────────────────────────────────
+/** A fresh, flat test pit: an open room (cols 20-40, rows 3-8) over a stone floor. */
+function buildRoom(engine) {
+  const t = engine.terrain, rock = terrainMod.nodeIndex('rock');
+  for (let row = 0; row < 12; row++) for (let col = 16; col < 46; col++) t.set(col, row, rock);
+  for (let row = 3; row <= 8; row++) for (let col = 20; col <= 40; col++) t.set(col, row, 0);
+  engine.player.x = 30 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0; engine.player.grounded = true; engine.facing = 1;
+  return t;
+}
+
+test('placeTarget: the floor ahead first (bridging), then the lowest open cell beside the body; Down = under the feet', () => {
+  const t = terrainMod.generateTerrain(delveSpec);
+  const rock = terrainMod.nodeIndex('rock'), box = { halfWidth: 13, height: 90 };
+  for (let row = 0; row < 12; row++) for (let col = 16; col < 46; col++) t.set(col, row, rock);
+  for (let row = 3; row <= 8; row++) for (let col = 20; col <= 40; col++) t.set(col, row, 0);
+  const x = 30 * 32 + 16, feet = 610 + 9 * 32;
+  // Flat floor: the floor ahead is rock, so the lowest open cell beside the body (feet row 8).
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, false, box), t.index(31, 8));
+  assert.equal(terrainMod.placeTarget(t, x, feet, -1, false, box), t.index(29, 8));
+  // A hole ahead: the floor cell first.
+  t.set(31, 9, 0);
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, false, box), t.index(31, 9));
+  // Under the feet: only when it is open.
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, true, box), -1);
+  t.set(30, 9, 0);
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, true, box), t.index(30, 9));
+  // A wall ahead: nowhere to go.
+  for (let row = 5; row <= 9; row++) t.set(31, row, rock);
+  assert.equal(terrainMod.placeTarget(t, x, feet, 1, false, box), -1);
+  // Never onto a carved wall.
+  const ins = delveSpec.inscriptions[0];
+  assert.equal(terrainMod.isAir(t, ins.col, ins.row), false);
+});
+
+test('placing a block: B asks the satchel first, fills the cell, saves it, and the block digs back out', () => {
+  const delve = memoryDelve(31); const placed = []; const actions = [];
+  let have = 2;
+  const { engine, state } = enterOwnDelve(delve, {
+    onPlace: e => { placed.push(e); if (have < 1) return false; have--; return true; },
+    onWorldAction: e => { actions.push(e); return true; },
+  });
+  engine.setTools({ pickaxe: 1 });
+  const t = buildRoom(engine);
+  assert.equal(engine.place(), false, 'nothing chosen yet');
+  assert.match(state().message, /Choose something to place/);
+  engine.setPlaceable('dirt-block');
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 8).id, 'packed-dirt');
+  assert.equal(placed[0].item, 'dirt-block'); assert.equal(placed[0].cellKey, '31,8');
+  assert.match(state().message, /Dirt block placed/);
+  // Stairs: the next goes on top of it.
+  assert.equal(engine.place(), true);
+  assert.equal(t.nodeAt(31, 7).id, 'packed-dirt');
+  assert.notEqual(placed[0].mutationId, placed[1].mutationId, 'each placement its own consume');
+  // The satchel is empty: refused, nothing placed.
+  assert.equal(engine.place(), false);
+  assert.equal(t.nodeAt(31, 6).id, 'air');
+  // Never inside the Keeper.
+  engine.setPlaceable('basalt-block');
+  assert.equal(engine.placeCell(30, 8, 'basalt-block'), false);
+  // Saved: the diff carries the placed blocks.
+  const layout = terrainMod.terrainLayout(delveSpec, 31);
+  const diff = saveMod.cellsFor(delve.save, 'ember-delve', layout);
+  assert.equal(diff.get(t.index(31, 8)), terrainMod.nodeIndex('packed-dirt'));
+  // Digging a placed block pays the block back (no XP), under a fresh mutation id.
+  engine.facing = 1;
+  for (let n = 0; n < 4 && t.solid(31, 8); n++) { engine.attackCooldown = 0; engine.strikeCell(31 * 32 + 16, 610 + 8 * 32 + 16); }
+  assert.equal(t.solid(31, 8), false);
+  const back = actions.find(e => e.cellKey === '31,8');
+  assert.equal(back.block, 'dirt-block'); assert.equal(back.xp, 0); assert.match(back.mutationId, /:p\d+$/);
+  // Natural dirt and stone drop their blocks too.
+  assert.equal(terrainMod.TERRAIN_NODES.dirt.block, 'dirt-block');
+  assert.equal(terrainMod.TERRAIN_NODES.rock.block, 'basalt-block');
+  assert.equal(terrainMod.TERRAIN_NODES['cinder-vein'].block, undefined, 'ore pays ore, not a block');
+  engine.destroy();
+  // Reloaded from the save: the second block still stands.
+  const again = enterOwnDelve(delve);
+  assert.equal(again.engine.terrain.nodeAt(31, 7).id, 'packed-dirt');
+  again.engine.destroy();
+});
+
+test('a long-press places where it lands, in reach only', () => {
+  const { engine } = enterOwnDelve(memoryDelve(32));
+  const t = buildRoom(engine);
+  engine.setPlaceable('basalt-block');
+  // Client px = world px here (1200×720 canvas, scale 1); the camera follows the Keeper.
+  engine.render = () => {};
+  const at = (col, row) => [col * 32 + 16 - engine.camera, 610 + row * 32 + 16 - engine.cameraY];
+  assert.equal(engine.placeAtClient(...at(32, 8)), true);
+  assert.equal(t.nodeAt(32, 8).id, 'basalt-block');
+  assert.equal(engine.placeAtClient(...at(39, 4)), false, 'out of reach');
+  assert.equal(t.nodeAt(39, 4).id, 'air');
+  engine.destroy();
+});

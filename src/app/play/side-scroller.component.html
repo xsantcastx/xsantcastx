@@ -55,6 +55,28 @@
 
   @if (state.areaId === 'homestead' && !panel) { <app-homestead-column /> }
 
+  @if (state.delve) {
+    <!-- The Delve hotbar: what you can place, and how many. Pick one, then B (or hold a tap where it goes). -->
+    <nav class="hotbar" aria-label="Things to place" [attr.inert]="panel ? '' : null">
+      <ul>
+        @for (slot of hotbar; track slot.id) {
+          <li>
+            <button type="button" class="hot" [class.picked]="slot.id === placing" [class.empty]="!slot.count"
+              (click)="choosePlaceable(slot.id)" [attr.aria-pressed]="slot.id === placing" [attr.aria-label]="slot.name + ', ' + slot.count + ' held'" [title]="slot.name">
+              @if (slot.art) { <img [src]="slot.art" alt=""> } @else { <em>{{ slot.name.slice(0, 2) }}</em> }
+              <b>{{ slot.count }}</b>
+              <kbd class="key-hint">{{ slot.key }}</kbd>
+            </button>
+          </li>
+        }
+      </ul>
+      <p class="hot-line">
+        @if (placingSlot; as slot) { <span>{{ slot.name }}</span> } @else { <span>Nothing chosen</span> }
+        <button type="button" class="hot-place" (click)="placeHere()" [disabled]="!placingSlot?.count">Place <kbd class="key-hint">B</kbd></button>
+      </p>
+    </nav>
+  }
+
   <aside class="satchel" aria-label="Satchel" (click)="openBag()" [attr.inert]="panel ? '' : null">
     <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book">
       <span>Satchel</span>
@@ -170,7 +192,7 @@
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
   </div>
   @if (showKeys) {
-    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>1</kbd>-<kbd>9</kbd> choose <kbd>B</kbd> place (hold S: below) <kbd>Hold tap</kbd> place there <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
   }
 
   <section class="dock" aria-labelledby="hearth-title" [attr.inert]="panel ? '' : null">

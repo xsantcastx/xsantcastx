@@ -48,6 +48,8 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   // pack paints them; delete each row when its file lands.
   'shadow-root-cutting': 'thornroot', 'glowcap': 'nightbloom', 'godforge-fragment': 'godstone',
   'kaels-hammer': 'iron-hammer',
+  // Delve building placeables. Stand-ins until the commission pack paints them.
+  'dirt-block': 'relic-dust', 'basalt-block': 'godforge-slag',
 };
 
 /**
