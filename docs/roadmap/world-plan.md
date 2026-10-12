@@ -126,12 +126,13 @@ things with tools you crafted, and you see your economy working.
 - [x] **"Found in…"** (`88cb159`) for every material: a line in the Skills panel and the Codex ("Moonpetal — Ember Delve, Glowcap Grotto"), generated from the node and drop-table data so it can't drift. Today herbs only come from Foraging work and hunt drops, and nothing says where
 
 Turn the mine from "dig and collect" into a place you shape. Foundation first:
-- [ ] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
-- [ ] **Place blocks back**: mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs)
-- [ ] **Torches**: crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
-- [ ] **Ladders and platforms**: traverse deep shafts back up
-- [ ] **Portable workbench / campfire**: craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
-- [ ] **Chests** to stash finds underground; later **supports and bombs** gated by staff/Smithing tiers
+- [x] **Persistent dug state** per delve (through the save gateway, idempotent), the prerequisite for everything below
+- [x] **Place blocks back**: mined dirt/rock go to the satchel as placeable blocks; place in front/below (bridge gaps, wall off monsters, stairs). Hotbar, B / long-press (`docs/handoff/delve-building.md`)
+- [x] **Torches**: crafted (ore + wood); placed torches permanently light cleared areas (ties into lantern/darkness)
+- [x] **Ladders and platforms**: traverse deep shafts back up
+- [x] **Portable workbench / campfire**: craft inside the dungeon with the station-kit journal, filtered to what's craftable there; doubles as a waypoint back down
+- [x] **Chests** to stash finds underground (materials, through the inventory ledger)
+- [ ] Later: **supports and bombs** gated by staff/Smithing tiers
 - [ ] Tile, torch, ladder, platform and workbench art → `docs/art-commissions/`
 
 ## Phase 3: World only
@@ -201,7 +202,7 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
-- **Delve finale gaps:** the Rune-Warden respawns after 8 s like any Maw, and the Godforge fragment can be mined before the warden falls. **Kael's Hammer (`kaels-hammer`) has no cache placed yet**, so "The Old Seam" can't be completed
+- Delve finale fixed: the Rune-Warden falls once per player, the fragment is sealed until it does, Kael's cache sits in the Maws' cavern. Building placeables (blocks, torch, ladder, platform, chest, camp) use stand-in art and code-drawn tiles
 - Nullthorn Staff recipe is now locked behind Verrin's mission (players who crafted it keep it)
 - New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet
 - 4 extra inscription texts written but not placed (`roots-cutting-mark`, `basalt-seam-ledger`, `grotto-tally-marks`, `magma-unsigned`)
