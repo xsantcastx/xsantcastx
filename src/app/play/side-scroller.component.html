@@ -1,4 +1,4 @@
-<section class="stage" aria-labelledby="game-title">
+<section class="stage" [class.hearth-shut]="!hearthOpen" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel ? '' : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" aria-label="Playable Basalt Seamworks side-scrolling world. Click or tap a place to walk there, or use the Places list."></canvas>
     @if (state.defeated) {
@@ -199,13 +199,23 @@
     <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>1</kbd>-<kbd>9</kbd> choose <kbd>B</kbd> place (hold S: below) <kbd>X</kbd> take back <kbd>W</kbd>/<kbd>S</kbd> climb a ladder, S drops through a platform <kbd>Hold tap</kbd> place or take back there <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
   }
 
-  <section class="dock" aria-labelledby="hearth-title" [attr.inert]="panel ? '' : null">
+  <!-- The Hearth chat. Folded it is one pill clear of the stalls and the action
+       bar; open, the panel. The body stays in the DOM (hidden) so the pill's
+       aria-controls always resolves and the room keeps whatever was typed. -->
+  <section class="dock" [class.collapsed]="!hearthOpen" [attr.aria-labelledby]="hearthOpen ? 'hearth-title' : null" [attr.aria-label]="hearthOpen ? null : t('play.hearth.name')" [attr.inert]="panel ? '' : null" data-engine-ignore>
+    @if (!hearthOpen) {
+      <button type="button" class="hearth-pill" (click)="toggleHearth()" aria-expanded="false" aria-controls="hearth-body" [attr.aria-label]="t('play.hearth.open') + ' (' + hearthPill + ')'">
+        <span class="hearth-ember" aria-hidden="true"></span>{{ hearthPill }}
+      </button>
+    }
+    <div id="hearth-body" class="dock-body" [hidden]="!hearthOpen">
     <div class="dock-head">
       <div>
         <span class="realm-tag">Hearth</span>
         <h2 id="hearth-title">The fire is open</h2>
       </div>
       <p class="room-status" role="status">{{ social.status }}</p>
+      <button type="button" class="hearth-hide" (click)="toggleHearth()" aria-expanded="true" aria-controls="hearth-body" [attr.aria-label]="t('play.hearth.hideLabel')">{{ t('play.hearth.hide') }}</button>
     </div>
     @if (!social.connected) {
       <form class="join" (submit)="$event.preventDefault(); joinRoom(keeperName.value)">
@@ -234,6 +244,7 @@
       <input #chatText id="hearth-message" maxlength="240" required placeholder="Say hello…" [disabled]="!social.connected" autocomplete="off">
       <button type="submit" [disabled]="!social.connected || sending">Send</button>
     </form>
+    </div>
   </section>
 
   <div class="touch" aria-label="Touch controls" [attr.inert]="panel ? '' : null">
