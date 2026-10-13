@@ -1362,11 +1362,13 @@ test('a long-press places where it lands, in reach only', () => {
 const craftMod = loadTs(path.resolve(__dirname, '../src/app/shared/crafting/crafting.model.ts'));
 
 test('torches: crafted from Delve materials, placed beside you, always lit, walked through, taken back', () => {
-  // The recipe: a stack of three from Root Hollows finds, in the Delve kit.
+  // The recipe: a stack of three from Seamworks ore, in the Delve kit.
   const recipe = craftMod.craftingRecipeById('craft-delve-torch');
   assert.equal(recipe.category, 'delve'); assert.equal(recipe.output.stack, true);
   assert.equal(recipe.output.itemId, 'torch'); assert.equal(recipe.output.count, 3);
-  assert.deepEqual(recipe.ingredients.map(i => i.materialId).sort(), ['cinder-ore', 'world-root-bark']);
+  // The guaranteed first bench craft: Seamworks ore only, cheap enough for the first two minutes.
+  assert.deepEqual(recipe.ingredients.map(i => i.materialId), ['cinder-ore']);
+  assert.ok(recipe.ingredients[0].count <= 2 && recipe.goldCost <= 2 && recipe.requiredLevel === 1 && !recipe.skill);
   assert.ok(craftMod.CRAFTING_CATEGORIES.some(c => c.id === 'delve'));
   assert.equal(craftMod.craftXpFor(recipe), craftMod.CRAFT_XP.common, 'a handful is one craft of XP');
   // Light: a torch burns wherever it stands; a vein only once exposed.

@@ -18,7 +18,7 @@ import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-p
 import { areaOf, findStation, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
-import { RUNE_TIER_ORDER } from '../shared/rune-forge/rune.model';
+import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot } from '../shared/rpg/item-definition';
 import {
   CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, ItemRarity, SLOT_BY_ID, SLOT_IDS, SlotId,
@@ -46,7 +46,7 @@ import { DELVE_I18N } from './world/delve.i18n';
 import { HEARTH_I18N } from './world/hearth.i18n';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
-import { firstGoal, FirstGoalView } from './world/first-goals';
+import { firstGoal, FirstGoalView, runeForgeHint } from './world/first-goals';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -59,6 +59,8 @@ import type { DiscoverEvent } from './engine/engine';
  * not progress: plain localStorage behind try/catch, never the save gateway.
  */
 const HEARTH_OPEN_KEY = 'eclipse-hearth-open';
+/** The one-time Rune Forge hint (world/first-goals.ts runeForgeHint) was followed or dismissed. A UI note, like the Hearth's. */
+const RUNE_HINT_KEY = 'eclipse-rune-hint-seen';
 const ONCE_PER_PLAYER = new Set(['godforge-fragment', 'kaels-hammer']);
 
 /** Where Delve swings are recorded in the activity ledger. */
@@ -604,6 +606,8 @@ export class SideScrollerComponent implements OnDestroy {
     }
     const entry = station.panel ? PANEL_REGISTRY[station.panel] : undefined;
     if (!entry) return;
+    // Found the Rune Forge on their own: the one-time hint has nothing left to say.
+    if (station.panel === 'runes') this.markRuneHintSeen();
     const home = homeStationOf(station.id);
     if (home) {
       // No "Open full page": the routed bench would drop the home tier.
@@ -782,21 +786,54 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private refreshGuide(): void {
     const progress = this.activity.snapshot.progress;
-    const next = firstGoal({
+    const worn = this.inventory.snapshot.equipped['weapon'];
+    const areaId = this.state.areaId ?? this.town.id;
+    const goal = firstGoal({
       bought: this.boughtBuilding,
       hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
       crafted: this.activity.snapshot.craftedBasaltEdge || !!this.edge || (progress.xpByDiscipline['forge'] ?? 0) > 0,
+      edge: !!this.edge,
+      armed: !!worn && !worn.explorerId,
       dug: this.delve.hasDug('ember-delve'),
-      areaId: this.state.areaId ?? this.town.id,
+      areaId,
       ore: this.ore,
       ember: this.ember,
     });
+    // After the four goals: the Rune Forge, once, the first time a strike is affordable.
+    const next = goal ?? runeForgeHint({
+      goalsDone: true,
+      gold: this.economy.snapshot.gold,
+      strikeCost: STRIKE_COST,
+      seen: this.runeHintSeen,
+      areaId,
+    });
     if (next?.key !== this.guide?.key || next?.n !== this.guide?.n) this.guide = next;
+  }
+  /** The Rune Forge hint was followed, dismissed, or the forge opened: it never shows again. */
+  private runeHintSeen = this.readRuneHintSeen();
+  private readRuneHintSeen(): boolean {
+    if (!this.browser) return false;
+    try { return localStorage.getItem(RUNE_HINT_KEY) === '1'; } catch { return false; }
+  }
+  private markRuneHintSeen(): void {
+    if (this.runeHintSeen) return;
+    this.runeHintSeen = true;
+    try { localStorage.setItem(RUNE_HINT_KEY, '1'); } catch { /* private mode: the hint is gone for this page only */ }
+    if (this.guide?.id === 'rune') this.guide = null;
+  }
+  /** "Not now" on the Rune Forge hint. */
+  hideHint(): void {
+    this.markRuneHintSeen();
+    this.focusWorld();
   }
   /** "Show me": walk to the goal's place (and use it on arrival), or to its spot on the floor. */
   showGoal(): void {
+    // Re-read first: a press right after an area change must not use the last area's target
+    // (the Homestead's 'passage' is the Seamworks' east passage to the Quarry).
+    this.refreshGuide();
     const target = this.guide?.target;
     if (!target || !this.engine) return;
+    if (this.guide?.id === 'rune') this.markRuneHintSeen();
     this.placesOpen = false;
     const ok = 'station' in target
       ? this.engine.goToStation(target.station, this.reducedMotion)

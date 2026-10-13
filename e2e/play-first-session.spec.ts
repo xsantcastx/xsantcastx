@@ -4,13 +4,16 @@
  * A browser that has never been here lands on the entry route, walks through
  * the tutorial, takes its "Enter the world" door into /play, and then follows
  * nothing but the HUD's goal line ("Goal n of 4" + "Show me") through the four
- * first goals: buy a Homestead building, defeat a Rivet Maw, forge the Basalt
- * Edge, dig in the Ember Delve. When all four are done the line is gone.
+ * first goals: buy a Homestead building, forge AND equip the Basalt Edge,
+ * defeat a Rivet Maw with it, dig in the Ember Delve. When all four are done
+ * the line is gone, and the Crafting Bench has something in "Ready now" made
+ * from what those goals left in the satchel.
  *
  * The audit that produced this (docs/handoff/first-session-audit.md) found the
  * first purchase unreachable on a phone: the Interact prompt sat on the Forge
  * Bellows' Buy button. The phone test checks that button with a hit test at its
- * centre, which is what a thumb does, rather than trusting visibility.
+ * centre, which is what a thumb does, rather than trusting visibility. The
+ * order change (blade before the hunt) is docs/handoff/onboarding-aaa.md.
  *
  * Seeding: storage is cleared from /robots.txt (see play-helpers), and the
  * suite-wide "tutorial already seen" record is removed for the first test only.
@@ -20,9 +23,10 @@ import { canvas, focusWorld, openPlay, seed } from './play-helpers';
 
 const guide = (page: Page) => page.locator('.guide');
 const goal = (page: Page) => guide(page).getAttribute('data-goal');
+const panel = (page: Page) => page.locator('section.place');
 
 async function showMe(page: Page): Promise<void> {
-  await guide(page).getByRole('button').click();
+  await guide(page).getByRole('button', { name: /^Walk there/ }).click();
 }
 
 async function tally(page: Page): Promise<string> {
@@ -30,6 +34,11 @@ async function tally(page: Page): Promise<string> {
 }
 async function kills(page: Page): Promise<number> {
   return Number(/DEFEATED (\d+)/.exec(await tally(page))?.[1] ?? 0);
+}
+
+/** The satchel's Damage figure: what the worn loadout hits for. */
+async function damage(page: Page): Promise<number> {
+  return Number(/DAMAGE (\d+)/.exec(await tally(page))?.[1] ?? 0);
 }
 
 /** True when nothing paints over the centre of `target` (the way a tap would land). */
@@ -50,11 +59,13 @@ async function strikeForBellows(page: Page, strike: () => Promise<void>): Promis
 }
 
 test.describe('First session, played', () => {
-  test('a first visit: tutorial → world → the goal line walks buy, hunt, craft, Delve', async ({ page }) => {
+  test('a first visit: tutorial → world → the goal line walks buy, forge + equip, hunt, Delve; then a Ready-now craft', async ({ page }) => {
     test.setTimeout(300000);
     await page.setViewportSize({ width: 1280, height: 800 });
     await seed(page);
     await page.evaluate(() => localStorage.removeItem('eclipse-onboarding'));
+    const t0 = Date.now();
+    const mark = (what: string) => test.info().annotations.push({ type: 'timing', description: `${what}: ${((Date.now() - t0) / 1000).toFixed(1)} s` });
 
     // ── The entry route raises the tutorial; its first door is the world. ──
     await page.goto('/');
@@ -71,6 +82,7 @@ test.describe('First session, played', () => {
     await expect(page).toHaveURL(/\/play$/);
     await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 20000 });
     await expect(ob).toBeHidden();
+    mark('into the world');
 
     // ── Goal 1: buy a building. ──
     await expect(guide(page)).toContainText('Goal 1 of 4');
@@ -85,13 +97,40 @@ test.describe('First session, played', () => {
     expect(await reachable(bellows), 'the Bellows Buy button is covered').toBe(true);
     await bellows.click();
     await expect(page.locator('.hc-notice')).toContainText(/Forge Bellows built/);
+    mark('goal 1, first building');
 
-    // ── Goal 2: defeat a Rivet Maw. ──
-    await expect.poll(() => goal(page)).toBe('hunt');
+    // ── Goal 2: forge the Basalt Edge, then equip it. No fighting needed. ──
+    await expect.poll(() => goal(page)).toBe('craft');
     await expect(guide(page)).toContainText('Goal 2 of 4');
     await showMe(page); // back to the Seamworks
     await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks', { timeout: 30000 });
+    await expect(guide(page)).toContainText('Mine the Cinder Ore seam'); // the town line, not the Homestead's way back
+    await showMe(page); // walks to the Cinder Ore seam and mines once
+    await expect(page.locator('.prompt')).toContainText(/Cinder Ore|Seam recovering/i, { timeout: 20000 });
+    // The seam recovers between strikes; an ember turns up by the 8th ore.
+    await expect.poll(async () => {
+      if (await guide(page).textContent().then(t => /Seamworks Forge/.test(t ?? ''))) return true;
+      await focusWorld(page);
+      await page.keyboard.press('e');
+      return false;
+    }, { timeout: 60000, intervals: [600] }).toBe(true);
+    await showMe(page); // walks to the forge and forges the blade
+    await expect(page.locator('.objective')).toContainText(/Basalt Edge is ready|equipped/, { timeout: 30000 });
+    // Forged is not armed: the line sends the Keeper back to the forge to wear it.
+    await expect(guide(page)).toContainText('equip it before you hunt');
+    const bare = await damage(page);
+    expect(bare, 'no Damage figure in the satchel').toBeGreaterThan(0);
+    await showMe(page); // the forge equips the blade
+    await expect(page.locator('.objective')).toContainText('Basalt Edge equipped', { timeout: 10000 });
+    await expect.poll(() => damage(page), { timeout: 10000 }).toBeGreaterThan(bare);
+    const armed = await damage(page);
+    mark('goal 2, Basalt Edge forged and worn');
+
+    // ── Goal 3: defeat a Rivet Maw, blade in hand. ──
+    await expect.poll(() => goal(page), { timeout: 10000 }).toBe('hunt');
+    await expect(guide(page)).toContainText('Goal 3 of 4');
     await expect(guide(page)).toContainText('east past the Waystone');
+    expect(await damage(page), 'the Keeper walks to the Maws unarmed').toBe(armed);
     await showMe(page); // walks east, short of the first Maw
     await expect.poll(async () => Number(await canvas(page).getAttribute('data-player-x')), { timeout: 40000 }).toBeGreaterThan(2000);
     await focusWorld(page);
@@ -107,25 +146,10 @@ test.describe('First session, played', () => {
       if (await page.locator('.fall-card').isVisible()) await page.locator('.fall-card button').click();
     }
     expect(await kills(page), 'no Rivet Maw fell').toBeGreaterThan(start);
-
-    // ── Goal 3: forge the Basalt Edge. ──
-    await expect.poll(() => goal(page), { timeout: 10000 }).toBe('craft');
-    await expect(guide(page)).toContainText('Goal 3 of 4');
-    await showMe(page); // walks to the Cinder Ore seam and mines once
-    await expect(guide(page)).toContainText('Cinder Ore');
-    await expect(page.locator('.prompt')).toContainText(/Cinder Ore|Seam recovering/i, { timeout: 20000 });
-    // The seam recovers between strikes; an ember turns up by the 8th ore.
-    await expect.poll(async () => {
-      if (await guide(page).textContent().then(t => /Seamworks Forge/.test(t ?? ''))) return true;
-      await focusWorld(page);
-      await page.keyboard.press('e');
-      return false;
-    }, { timeout: 60000, intervals: [600] }).toBe(true);
-    await showMe(page); // walks to the forge and forges the blade
-    await expect(page.locator('.objective')).toContainText(/Basalt Edge is ready|equipped/, { timeout: 30000 });
+    mark('goal 3, first Rivet Maw');
 
     // ── Goal 4: dig in the Ember Delve. ──
-    await expect.poll(() => goal(page)).toBe('delve');
+    await expect.poll(() => goal(page), { timeout: 10000 }).toBe('delve');
     await expect(guide(page)).toContainText('Goal 4 of 4');
     await showMe(page); // walks into the shaft
     await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 30000 });
@@ -140,6 +164,48 @@ test.describe('First session, played', () => {
       await page.keyboard.up('j');
       await page.keyboard.up('s');
     }
+    mark('goal 4, first Delve dig (all four done)');
+
+    // ── The Crafting Bench: something is ready now, from what the goals left behind. ──
+    await page.waitForTimeout(2500); // the debounced Delve write lands before the navigation
+    await openPlay(page, '?at=crafting');
+    await expect(panel(page).locator('.cb-hero')).toBeVisible({ timeout: 15000 });
+    const readyTab = panel(page).locator('.tab', { hasText: 'Ready now' });
+    await expect(readyTab).toHaveClass(/is-on/);
+    await expect(readyTab.locator('.tab__badge')).toHaveText(/[1-9]/);
+    await expect(panel(page).locator('.cb-hero .dh__name')).toHaveText('Torch');
+    await expect(panel(page).locator('.cb-hero .ab__btn')).not.toHaveAttribute('aria-disabled', 'true');
+    mark('Crafting Bench, Torch ready now');
+
+    // ── The Rune Forge: not yet (the purse is far short of a strike)… ──
+    await page.keyboard.press('Escape');
+    await expect(panel(page)).toBeHidden({ timeout: 10000 });
+    await expect(guide(page)).toBeHidden();
+
+    // …then the purse first covers a strike (the Gold is topped up from a page that
+    // runs no app code, so nothing flushes over it), and one "next step" line appears.
+    await page.waitForTimeout(1500);
+    await page.goto('/robots.txt');
+    await page.evaluate(() => {
+      const economy = JSON.parse(localStorage.getItem('godforge-economy') ?? '{}');
+      localStorage.setItem('godforge-economy', JSON.stringify({ ...economy, gold: 5000 }));
+    });
+    await openPlay(page);
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
+    await expect(guide(page)).toHaveAttribute('data-goal', 'rune', { timeout: 10000 });
+    await expect(guide(page)).toContainText('Next step');
+    await expect(guide(page)).toContainText('Rune Forge');
+    await showMe(page); // walks to the Rune Forge and opens it
+    await expect(panel(page)).toBeVisible({ timeout: 30000 });
+    await expect(page).toHaveURL(/at=runes/);
+    await expect(guide(page)).toBeHidden();
+    // Once: a reload with the same purse does not bring it back.
+    await page.keyboard.press('Escape');
+    await expect(panel(page)).toBeHidden({ timeout: 10000 });
+    await page.waitForTimeout(500);
+    await openPlay(page);
+    await page.waitForTimeout(1000);
+    await expect(guide(page)).toBeHidden();
   });
 
   test.describe('on a phone', () => {
@@ -167,7 +233,8 @@ test.describe('First session, played', () => {
       expect(await reachable(bellows), 'the Bellows Buy button is covered (by the Interact prompt?)').toBe(true);
       await bellows.tap();
       await expect(page.locator('.hc-notice')).toContainText(/Forge Bellows built/);
-      await expect.poll(() => goal(page)).toBe('hunt');
+      // Next: the blade, not the Maws.
+      await expect.poll(() => goal(page)).toBe('craft');
     });
   });
 

@@ -27,9 +27,12 @@
   <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
   @if (guide; as goal) {
     <div class="guide" [attr.data-goal]="goal.id" [attr.inert]="panel ? '' : null" data-engine-ignore>
-      <p class="guide-text"><b>{{ t('play.goal.label', { n: goal.n, total: goal.total }) }}</b> <span>{{ t(goal.key) }}</span></p>
+      <p class="guide-text"><b>{{ goal.n ? t('play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span>{{ t(goal.key) }}</span></p>
       @if (goal.target) {
         <button type="button" class="guide-go" (click)="showGoal()" [attr.aria-label]="t('play.goal.goAria', { goal: t(goal.key) })">{{ t('play.goal.go') }}</button>
+      }
+      @if (goal.id === 'rune') {
+        <button type="button" class="guide-hide" (click)="hideHint()">{{ t('play.goal.hide') }}</button>
       }
     </div>
   }
