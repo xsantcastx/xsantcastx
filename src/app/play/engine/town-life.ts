@@ -90,6 +90,8 @@ export interface LifeFrame {
 const BOX = { x: -64, y: -172, w: 128, h: 172 };
 const OUTLINE = '#1a1020';
 const TAG_FONT = '600 14px "Cormorant Garamond", Georgia, serif';
+/** Clear canvas left between a name tag's plate and the viewport edge, world px. */
+const TAG_EDGE = 4;
 const BUBBLE_FONT = '600 15px "Cormorant Garamond", Georgia, serif';
 const BUBBLE_MAX = 250;
 
@@ -222,9 +224,16 @@ export class TownLife {
     c.font = TAG_FONT; c.textAlign = 'center';
     if (this.tagText[i] !== name) { this.tagText[i] = name; this.tagWidth[i] = Math.min(200, c.measureText(name).width + 20); }
     const w = this.tagWidth[i], y = FLOOR - 196;
-    c.fillStyle = '#1a120fe6'; c.fillRect(p.x - w / 2, y, w, 22);
-    c.fillStyle = p.def.palette.glow; c.fillRect(p.x - w / 2, y + 20, w, 2);
-    c.fillStyle = '#ffe1b0'; c.fillText(name, p.x, y + 16, 190);
+    // Keep the plate inside the visible canvas: a keeper near the edge (or
+    // walking off it) keeps a readable tag pinned to that edge instead of a
+    // half-cut one. Once the keeper is no longer under its pinned plate at all,
+    // the tag goes with it.
+    const lo = f.camera + w / 2 + TAG_EDGE, hi = f.camera + f.viewport - w / 2 - TAG_EDGE;
+    const x = lo > hi ? p.x : Math.min(hi, Math.max(lo, p.x));
+    if (Math.abs(x - p.x) > w / 2) { c.restore(); return; }
+    c.fillStyle = '#1a120fe6'; c.fillRect(x - w / 2, y, w, 22);
+    c.fillStyle = p.def.palette.glow; c.fillRect(x - w / 2, y + 20, w, 2);
+    c.fillStyle = '#ffe1b0'; c.fillText(name, x, y + 16, 190);
     c.restore();
   }
 

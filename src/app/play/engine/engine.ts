@@ -1543,6 +1543,10 @@ export class SeamworksEngine {
   private nearestFoe(): Monster | null {
     let best: Monster | null = null, bestDistance = Infinity;
     const delve = !!this.terrain;
+    // On a town's safe ground the Maws ignore the Keeper (see the monster step),
+    // so nothing is engaged and the HUD's enemy bar stays hidden.
+    const safeX = this.areaDef.safeX ?? 0;
+    if (safeX && this.player.x < safeX) return null;
     const reach = delve ? 900 : 1500;
     for (const monster of this.monsters) {
       if (monster.hp <= 0) continue;
@@ -1996,8 +2000,9 @@ export class SeamworksEngine {
         this.drawStall(c, station, hot);
     }
     c.font = '600 12px system-ui'; c.textAlign = 'center'; c.fillStyle = hot ? '#fff1c9' : '#c9bdc8'; c.fillText(station.label, x, FLOOR + 35);
-    if (near) { c.fillStyle = '#fff0cb'; c.fillText('[ E ] INTERACT', x, FLOOR + 58); }
-    else if (hovered) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, FLOOR + 58); }
+    // Near a station the HUD's action bar already says "Interact E"; a second
+    // "[ E ] INTERACT" here sat under that bar and was clipped. Only the hover cue remains.
+    if (hovered && !near) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, FLOOR + 58); }
   }
   /**
    * A gathering node, drawn in code: a herb patch, a tree or an outcrop. Ready,
