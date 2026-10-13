@@ -39,6 +39,15 @@
  * without a build manifest. The app warms the game route's chunk and art into
  * the cache itself once it knows it is installed (app-chrome.component.ts).
  *
+ * ─── UPDATES ────────────────────────────────────────────────────────────────
+ * Network-first navigations only help a page that navigates; an installed app
+ * or a long-open tab never does. So every deploy stamps BUILD_ID (below) and
+ * /version.json (scripts/stamp-build-id.js), the page polls for both
+ * (shared/pwa/app-update.service.ts), and a changed worker installs and then
+ * WAITS — no skipWaiting on install — until the player taps Reload on the
+ * "new version ready" toast. The page flushes saves, posts SKIP_WAITING, and
+ * reloads once on controllerchange.
+ *
  * If this ever does need to be killed remotely, deploy a service-worker.js
  * whose body is just:
  *     self.addEventListener('install', () => self.skipWaiting());
@@ -52,8 +61,19 @@
 
 'use strict';
 
-// Bump on any change to this file so old caches are dropped on activate.
+// Bump on any change to the CACHING rules so old caches are dropped on
+// activate. Not per deploy: the hashed bundles a still-open old tab may yet
+// lazy-load live in these caches, and a deploy must not delete them under it.
 const VERSION = 'godforge-sw-v3';
+
+/**
+ * Which deploy this worker belongs to. scripts/stamp-build-id.js replaces the
+ * placeholder after every build, so the worker's bytes change with each deploy
+ * and `registration.update()` actually finds something. Before this the file
+ * was identical across deploys and the update path could never fire.
+ * Answered to `{ type: 'GET_BUILD' }` on a MessageChannel port.
+ */
+const BUILD_ID = '__GF_BUILD_ID__';
 const SHELL_CACHE = `${VERSION}-shell`;
 const ASSET_CACHE = `${VERSION}-assets`;
 
@@ -215,7 +235,11 @@ self.addEventListener('install', (event) => {
         }))
       ))
       .then(() => maybeRefreshShell())
-      .then(() => self.skipWaiting())
+      // No skipWaiting here. An update now WAITS until the player accepts the
+      // "new version ready" toast (AppUpdateService posts SKIP_WAITING and
+      // reloads once on controllerchange), or until every tab has closed. Taking
+      // over a page mid-play would swap the worker under a running old bundle.
+      // A very first install has no active worker and activates regardless.
   );
 });
 
@@ -341,4 +365,7 @@ self.addEventListener('fetch', (event) => {
 /** Lets the page trigger an immediate takeover after an update is found. */
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
+  else if (event.data && event.data.type === 'GET_BUILD' && event.ports && event.ports[0]) {
+    event.ports[0].postMessage({ build: BUILD_ID });
+  }
 });
