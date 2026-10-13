@@ -1766,8 +1766,18 @@ body.gf-art-route::after {
 /* /play: the world canvas is the whole screen, so the site backdrop behind it
    is never seen, only paid for. cosmic-engine.js parks the starfield and pulsar
    loops on the same class (SideScrollerComponent sets it). */
-body.gf-world-route .particle-layer {
+body.gf-world-route .particle-layer,
+body.gf-world-route::before,
+body.gf-world-route::after {
   display: none;
+}
+
+/* The routed host's fade-in fill (routeFadeIn, forwards) holds an "active"
+   transform animation forever, which keeps the whole world in its own
+   full-viewport compositor layer on top of the root one. The world fades in
+   on its own canvas; drop the route fade there. */
+body.gf-world-route router-outlet + * {
+  animation: none;
 }
 
 body.gf-art-route .particle-layer {

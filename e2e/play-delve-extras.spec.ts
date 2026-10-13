@@ -183,12 +183,27 @@ async function crack(page: Page, col: number, n: number): Promise<void> {
  * 2026-10-13: in the Delve digging is never blocked, only the reward is
  * rate-limited). Three swings leave it standing; the fourth opens it.
  */
+/** The Keeper's x once two reads 150 ms apart agree (or after ~1.5 s). */
+async function settledX(page: Page): Promise<number> {
+  let last = await playerX(page);
+  for (let i = 0; i < 10; i++) {
+    await page.waitForTimeout(150);
+    const now = await playerX(page);
+    if (now === last) return now;
+    last = now;
+  }
+  return last;
+}
+
 async function digOverhead(page: Page, col: number): Promise<void> {
   // Stand right under it: falling rock only hits within 23 px of the Keeper's
   // centre, and a walk slides up to ~20 px past where it stops. Each click on
   // the open air at that column is a shorter, slower walk back, so it settles.
   await walkTo(page, colX(col), 6);
-  for (let i = 0; i < 5 && Math.abs((await playerX(page)) - colX(col)) > 8; i++) {
+  // Read the Keeper only once they have stopped: data-player-x is reported at
+  // most every 100 ms, so a read right after a walk can be a step behind, pass
+  // the check, and leave the Keeper a few pixels further on when it matters.
+  for (let i = 0; i < 5 && Math.abs((await settledX(page)) - colX(col)) > 8; i++) {
     await clickCell(page, col, CEIL + 2, GALLERY_FEET);
     await page.waitForTimeout(700);
   }
@@ -200,7 +215,7 @@ async function digOverhead(page: Page, col: number): Promise<void> {
 }
 
 test.describe('Delve extras: loose rock and supports, played', () => {
-  test.describe.configure({ timeout: 180000 });
+  test.describe.configure({ timeout: 300000 }); // the rubble walk digs ~13 cells in turn (~2.5 min)
 
   test('a loose Magma Halls ceiling cell dug with no support falls and bruises 8% of max HP', async ({ page }) => {
     const { f, loose } = gallery();
