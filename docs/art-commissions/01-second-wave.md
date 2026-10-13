@@ -6,7 +6,7 @@ Added 2026-10-13 for everything shipped after the first pack: Skills and tools, 
 
 ## Importer status (code, not art)
 
-The `Sprites/Tiles` family now exists (`import_tiles` in `scripts/import-assets.py`, manifest `tile-manifest.generated.ts`), so W7 feature strips and W7b back walls import today. The **W7a auto-tile sheets** do not yet: the tile importer accepts only a one-row `tile` strip, and the terrain renderer does not read neighbours (style guide IMP-1, RND-1). Until then, import row 0 of a W7a sheet alone (256 x 64 with the one-action sidecar) to see the interiors. Everything else below imports today (`Sprites/Props`, `Sprites/Buildings`, `Sprites/NPCs`, `Sprites/Creatures`, `Items/**`, `Creatures/Masters`).
+The `Sprites/Tiles` family now exists (`import_tiles` in `scripts/import-assets.py`, manifest `tile-manifest.generated.ts`), so W7 feature strips and W7b back walls import today. So do the **W7a auto-tile sheets**: the importer accepts the full 4 x 7 sheet and the terrain renderer picks the piece from each cell's neighbours (style guide IMP-1, RND-1). Everything else below imports today (`Sprites/Props`, `Sprites/Buildings`, `Sprites/NPCs`, `Sprites/Creatures`, `Items/**`, `Creatures/Masters`).
 
 ## Make these first (in this order)
 
@@ -29,7 +29,7 @@ Then, same batch if time allows: the other Delve tiles (P0 first: `tile-packed-d
 | Priority | Count | What |
 |---|---:|---|
 | P0 | 51 | 16 tools, 11 Delve kit / material / quest icons, 16 core tiles, 5 placeables, `node-cinder-ore`, `hs-anvil-1`, `hs-circle-1` |
-| P1 | 32 | the rest of the tiles and back walls, `tile-inscription`, Homestead buildings and automatons, `homestead-forge`, the Delve creatures and Rune-Warden master, the Slag, Heartstone, World-Root and Starlight nodes, `hs-anvil-2..4`, `hs-circle-2..4` |
+| P1 | 32 | the rest of the tiles and back walls, `tile-inscription`, Homestead buildings and automatons, `homestead-forge`, the Delve creatures and Seam Eater master, the Slag, Heartstone, World-Root and Starlight nodes, `hs-anvil-2..4`, `hs-circle-2..4` |
 | P2 | 11 | ten gathering nodes (realm herbs, trees, crystals, Emberheart) and `homestead-workshop-hammer` |
 
 The first test set (2026-10-13) moved `tile-grotto-stone` and `tile-scorched-basalt` from P1 to P0 (they prove the Glowcap Grotto and Magma Halls palettes); the counts above are as the wave was added.
@@ -54,6 +54,6 @@ The first test set (2026-10-13) moved `tile-grotto-stone` and `tile-scorched-bas
 ## Id and path notes (code vs. canon)
 
 - Delve tile ids follow the terrain node ids in `src/app/play/engine/terrain.ts`: **Basalt is `rock`, Hard basalt is `hard-rock`**, and the placed Dirt block is the node `packed-dirt` while its item stack is `dirt-block`. The tile art is `tile-packed-dirt`; the menu icon is `dirt-block`.
-- The Delve's two enemies borrow other creatures: the engine spawns `creature: 'mirror-substitute'` named Rune-Warden and `creature: 'rivet-maw'` named Magma Maw (`towns/infernal.ts`). The new `rune-warden` and `magma-maw` sprites need the engine to switch to those keys; until then the old sprites keep working.
+- The Delve's two enemies are the atlas's Seam Eater and Cinder Bailiff. The engine spawns them under their own keys (`seam-eater`, `cinder-bailiff`) and borrows the Mirror Substitute and Rivet Maw art and rigs only until their sheets land; the briefs use those keys, so an import takes over at once (style guide ENG-1, done).
 - `kaels-hammer` is a quest stack key with no `ItemDefinition`; its art resolves through `artFor` only.
 - Numbering: tools continue the Art Bible after unique 123 (`124`-`139`); `Items/Materials` continues from 14; `Items/Quest` from 05; `Creatures/Masters` from 11; the sprite families continue each family's own count.

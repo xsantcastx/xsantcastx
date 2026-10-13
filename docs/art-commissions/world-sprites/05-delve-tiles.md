@@ -8,7 +8,7 @@ Pixel scale, sizes, outline and shading, palettes, animation and the sidecar are
 - **W7 feature strip** for objects set into the rock (cracked wall, caches, the Godforge fragment) and **W7b back-wall strip**: one row of 4 variants, 256x64, the existing importer layout.
 - **W7 overlay** for the inscription: transparent, drawn over the back wall.
 
-Ids are `tile-<node id>` using the ids in `src/app/play/engine/terrain.ts` (`rock` is Basalt, `hard-rock` is Hard basalt, `packed-dirt` is the placed Dirt block). Palettes are the node colours (style guide §5.3). Glow halos, crack stages and dust are drawn by the engine. **Importer:** the `Sprites/Tiles` family exists and imports W7 strips today; W7a needs IMP-1 and RND-1 (style guide §12). Placeables live in `Sprites/Props/` as W6 cell props (16x16 art px, x4) and import today.
+Ids are `tile-<node id>` using the ids in `src/app/play/engine/terrain.ts` (`rock` is Basalt, `hard-rock` is Hard basalt, `packed-dirt` is the placed Dirt block). Palettes are the node colours (style guide §5.3). Glow halos, crack stages and dust are drawn by the engine. **Importer:** the `Sprites/Tiles` family imports W7 strips and full W7a sheets; the renderer picks the auto-tile piece per cell (style guide §12, IMP-1 and RND-1). Placeables live in `Sprites/Props/` as W6 cell props (16x16 art px, x4) and import today.
 
 ### `tile-dirt` — Loose dirt  ★ FIRST TEST SET
 
@@ -35,7 +35,7 @@ Ids are `tile-<node id>` using the ids in `src/app/play/engine/terrain.ts` (`roc
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -74,7 +74,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -113,7 +113,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -152,7 +152,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -191,7 +191,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -230,7 +230,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -269,7 +269,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -308,7 +308,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -347,7 +347,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -386,7 +386,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -425,7 +425,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -464,7 +464,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -503,7 +503,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -542,7 +542,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -581,7 +581,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -620,7 +620,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -659,7 +659,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -775,7 +775,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | On screen | 32 x 32 px (one Delve cell, 2 px per art px) |
 | Cell | 16x16 art px = 64x64 authored; fills the cell |
 | Priority | P0 |
-| Used in | Ember Delve: Magma Halls fragment chamber; yields `godforge-fragment` once per player (guarded by the Rune-Warden) |
+| Used in | Ember Delve: Magma Halls fragment chamber; yields `godforge-fragment` once per player (guarded by the Seam Eater) |
 | Shows today | flat colour fill drawn in code (terrain-render.ts) |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 64, "h": 64}, "actions": [{"name": "tile", "frames": 4, "fps": 0, "loop": false}]}` |
 

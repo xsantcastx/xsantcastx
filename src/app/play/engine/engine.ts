@@ -22,6 +22,8 @@ import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
 import { CaveBackdrop } from './cave-backdrop';
+import { ParallaxBackdrop } from './parallax';
+import { GroundStrip } from './ground-strip';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
@@ -60,6 +62,8 @@ interface Drop {
 interface GatherSite { def: GatherNodeDef; hp: number; at: number | null; ready: boolean; timer: number; gen: number; shake: number }
 /** A picked-up item flying to the satchel, in canvas CSS px. Pooled; render-only. */
 interface Flight { active: boolean; t: number; sx: number; sy: number; ex: number; ey: number; art?: string; coins: boolean; color: string }
+/** Lit ground in the Delve takes on the lantern's and torches' warmth (DarknessLayer.draw `warm`). */
+const WARM_LIGHT = { color: '#ffb066', alpha: .14 };
 const FLIGHT_POOL = 16;
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
@@ -257,7 +261,11 @@ export class SeamworksEngine {
   /** How far light reaches into the rock, per cell; rebuilt only when a cell changes. */
   private readonly rockShade = new RockShade();
   /** The distant cave behind the generated caverns (two parallax layers per biome). */
-  private readonly caveBackdrop = new CaveBackdrop();
+  private readonly caveBackdrop = new CaveBackdrop(url => this.urlImage(url));
+  /** Imported W8 parallax layers for towns and hunting grounds (none until commissioned). */
+  private readonly parallax = new ParallaxBackdrop(url => this.urlImage(url));
+  /** The town ground as pixel art, per realm. */
+  private readonly ground = new GroundStrip();
   private readonly lightPool = new LightPool(96);
   private readonly debris = new Debris();
   /** Glinting cells this frame (indices), drawn over the darkness. */
@@ -2221,11 +2229,13 @@ export class SeamworksEngine {
     } else this.cameraY = 0;
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
     const bg = this.sceneImage();
-    const cached = !t && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
+    // Imported parallax layers replace the painting once every one of them has loaded (RND-2).
+    const layered = !t && this.parallax.draw(c, this.town.realm, this.camera, viewport, FLOOR, this.pixelScale > 1.25);
+    const cached = !t && !layered && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
     // Below a delve's surface the distant cave fills the frame (it shows through the caverns);
     // the town painting and its shade are drawn only while the surface is in view.
     const underground = !!t && t.top - this.cameraY <= 0;
-    if (!cached && !underground) {
+    if (!cached && !underground && !layered) {
       c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
       if (bg?.complete && bg.naturalWidth) {
         const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
@@ -2242,7 +2252,10 @@ export class SeamworksEngine {
     if (!t) this.atmosphere.scenery(c, motionTime, this.camera, viewport, this.town.realm);
     // A delve's only platform is the net under its bedrock: nothing to draw.
     if (!t) for (const platform of this.areaDef.platforms) {
-      c.fillStyle = '#3b3034'; c.fillRect(platform.x, platform.y, platform.width, platform.y === FLOOR ? 110 : 24);
+      const depth = platform.y === FLOOR ? 110 : 24;
+      if (platform.x + platform.width < this.camera || platform.x > this.camera + viewport) continue;
+      if (this.ground.draw(c, this.town.realm, platform.x, platform.y, platform.width, depth)) continue;
+      c.fillStyle = '#3b3034'; c.fillRect(platform.x, platform.y, platform.width, depth);
       c.fillStyle = '#a67858'; c.fillRect(platform.x, platform.y, platform.width, 4);
       c.fillStyle = '#f6a668'; c.fillRect(platform.x + 8, platform.y, Math.max(0, platform.width - 16), 1);
       for (let x = platform.x + 18; x < platform.x + platform.width; x += 65) { c.fillStyle = '#3c3039'; c.fillRect(x, platform.y + 12, 32, 7); }
@@ -2458,7 +2471,7 @@ export class SeamworksEngine {
     const count = selectLights(pool.lights, pool.count, LIGHT_CAP, this.player.x, this.player.y);
     c.save();
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t));
+    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT);
     c.restore();
     if (fold && !dark) {
       // No overlay canvas: the tint on its own, as before.
@@ -2473,7 +2486,9 @@ export class SeamworksEngine {
       const glow = TERRAIN_NODE_LIST[t.kind[index]].glow;
       if (!glow) continue;
       const pulse = this.reducedMotion ? 1 : .85 + .15 * Math.sin(time * 1.7 + index * .37);
-      this.halos.halo(c, (col + .5) * CELL, t.top + (row + .5) * CELL, glow.radius * 1.4, glow.color, .16 * pulse, !this.budget.blendModes);
+      // Placed lights (torches, the camp fire) throw a stronger warm pool than a glowing vein.
+      const placed = !TERRAIN_NODE_LIST[t.kind[index]].solid;
+      this.halos.halo(c, (col + .5) * CELL, t.top + (row + .5) * CELL, glow.radius * (placed ? 1.2 : 1.4), glow.color, (placed ? .3 : .2) * pulse, !this.budget.blendModes);
     }
     if (biome.shimmer) {
       // Heat rising: slow columns of warm air. Still under reduced motion.
@@ -2531,15 +2546,22 @@ export class SeamworksEngine {
       c.setLineDash([]);
       c.globalAlpha = blink;
       c.fillStyle = '#fff4d0';
-      const sx = x + 4, sy = y - 14 + (this.reducedMotion ? 0 : Math.sin(time * 23) * 1.5);
-      c.beginPath(); c.arc(sx, sy, 2.5 + 1.5 * blink, 0, Math.PI * 2); c.fill();
-      c.fillStyle = '#ffb066'; c.fillRect(sx - 6, sy - .75, 12, 1.5); c.fillRect(sx - .75, sy - 6, 1.5, 12);
+      // The spark at the fuse's tip (tile-art.ts PLACED_ART), a pixel star on the 2 px art grid.
+      const sx = x + 5, sy = y - 11 - (this.reducedMotion || Math.sin(time * 23) < 0 ? 0 : ART);
+      c.fillRect(sx - ART, sy - ART, ART * 2, ART * 2);
+      c.fillStyle = '#ffb066';
+      const arm = blink > .8 ? ART * 3 : ART * 2;
+      c.fillRect(sx - ART - arm, sy - ART / 2, arm, ART); c.fillRect(sx + ART, sy - ART / 2, arm, ART);
+      c.fillRect(sx - ART / 2, sy - ART - arm, ART, arm); c.fillRect(sx - ART / 2, sy + ART, ART, arm);
     }
     c.globalAlpha = 1;
     for (const r of this.rubble) {
       if (!r.active || r.wait > 0) continue;
-      c.fillStyle = r.color; c.fillRect(r.x - 9, r.y - 8, 18, 15);
-      c.fillStyle = '#b8a69a'; c.fillRect(r.x - 9, r.y - 8, 18, 3);
+      // On the art grid, like the rock it fell from.
+      const rx = Math.round((r.x - 9) / ART) * ART, ry = Math.round((r.y - 8) / ART) * ART;
+      c.fillStyle = '#140a1f'; c.fillRect(rx - ART, ry, 18 + ART * 2, 16);
+      c.fillStyle = r.color; c.fillRect(rx, ry, 18, 14);
+      c.fillStyle = '#d8c8bc'; c.fillRect(rx, ry, 18, ART);
     }
   }
   /** The rig for a creature art key, built once per key. */

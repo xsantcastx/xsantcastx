@@ -234,8 +234,34 @@ def has_real_alpha(img: Image.Image) -> bool:
     return lo < 255
 
 
+def pixel_art_paths() -> set[str]:
+    """Library paths commissioned as pixel art for a menu ladder (`menu-pixel` rows of
+    commissions.csv: I1 icons and I2 portraits). Read once."""
+    cached = getattr(pixel_art_paths, 'cache', None)
+    if cached is None:
+        cached = set()
+        try:
+            with open(COMMISSIONS_CSV, newline='') as fh:
+                cached = {r['library_path'] for r in csv.DictReader(fh) if r.get('layer') == 'menu-pixel'}
+        except OSError:
+            pass
+        pixel_art_paths.cache = cached
+    return cached
+
+
+def is_pixel_art(src_path: str) -> bool:
+    """IMP-3: a collectible or portrait drawn as pixel art — commissioned as `menu-pixel`,
+    or marked by a `-px` stem — is resized nearest-neighbour, never Lanczos."""
+    stem = os.path.splitext(os.path.basename(src_path))[0]
+    if stem.endswith(PIXEL_SUFFIX) or f'{PIXEL_SUFFIX}-' in stem:
+        return True
+    rel = os.path.relpath(src_path, LIBRARY).replace(os.sep, '/')
+    return rel in pixel_art_paths()
+
+
 def emit(src_path: str, out_dir: str, widths, check: bool) -> tuple[int, int]:
     """Returns (files_written, bytes_written)."""
+    pixel = is_pixel_art(src_path)
     img = Image.open(src_path)
     if img.mode != 'RGBA':
         img = img.convert('RGBA')
@@ -255,7 +281,8 @@ def emit(src_path: str, out_dir: str, widths, check: bool) -> tuple[int, int]:
         out = os.path.join(out_dir, f'{stem}{SOLID_SUFFIX if stem in SOLIDIFY else ""}-{w}.webp')
         if not check:
             os.makedirs(out_dir, exist_ok=True)
-            img.resize((w, h), Image.LANCZOS).save(
+            # IMP-3: pixel art keeps hard pixels down the ladder (nearest), paintings stay Lanczos.
+            img.resize((w, h), Image.NEAREST if pixel else Image.LANCZOS).save(
                 out, 'WEBP', quality=QUALITY, method=4
             )
             total += os.path.getsize(out)
@@ -299,16 +326,22 @@ export interface ArtEntry {
 # browser that cached the old see-through painting (images are cached for 7
 # days under the same name) fetches the fixed one at once; the key is unchanged.
 SOLID_SUFFIX = '-solid'
-STATE_SUFFIXES = ('-idle', SOLID_SUFFIX)
+# `-px` marks a pixel-art collectible or portrait (IMP-3, `is_pixel_art`); like
+# `-idle` it is not part of the key.
+PIXEL_SUFFIX = '-px'
+STATE_SUFFIXES = ('-idle', SOLID_SUFFIX, PIXEL_SUFFIX)
 
 
 def strip_index(stem: str) -> str:
     """`01-eclipse-longblade` -> `eclipse-longblade`, `001-dawnrender-idle` -> `dawnrender`."""
     parts = stem.split('-', 1)
     key = parts[1] if len(parts) == 2 and parts[0].isdigit() else stem
-    for suffix in STATE_SUFFIXES:
-        if key.endswith(suffix):
-            return key[: -len(suffix)]
+    stripped = True
+    while stripped:  # `-px-idle` carries two markers
+        stripped = False
+        for suffix in STATE_SUFFIXES:
+            if key.endswith(suffix):
+                key, stripped = key[: -len(suffix)], True
     return key
 
 
@@ -573,10 +606,10 @@ def write_sprite_manifest() -> int:
     import json
     root = os.path.join(OUT_ROOT, SPRITE_OUT)
     entries: dict[str, str] = {}
-    tiles_dir = os.path.abspath(os.path.join(OUT_ROOT, TILE_OUT))
+    own = [os.path.abspath(os.path.join(OUT_ROOT, d)) for d in (TILE_OUT, PARALLAX_OUT)]
     for dirpath, _dirs, names in os.walk(root):
-        if os.path.commonpath([os.path.abspath(dirpath), tiles_dir]) == tiles_dir:
-            continue  # tiles have their own manifest (write_tile_manifest)
+        if any(os.path.commonpath([os.path.abspath(dirpath), d]) == d for d in own):
+            continue  # tiles and parallax have their own manifests
         for n in sorted(names):
             if not n.endswith('.json'):
                 continue
@@ -648,6 +681,11 @@ TILE_GRID = 32
 # Lowest alpha a tile pixel may have. Lossless export keeps 255; the slack only
 # forgives an editor that rounds a fully opaque edge down by a step or two.
 TILE_MIN_ALPHA = 250
+# W7a auto-tile sheets (style guide §7.1, IMP-1): 4 pieces per row, one row per
+# neighbour case. Row 0 (interiors) must be opaque like a strip; the edge rows
+# may round their outer corners off with transparent pixels.
+AUTOTILE_ROWS = ('tile', 'top', 'bottom', 'sides', 'thin', 'caps', 'inner')
+AUTOTILE_COLS = 4
 TILE_MANIFEST_OUT = os.path.join(
     os.path.dirname(__file__), '..', 'src', 'app', 'shared', 'art', 'tile-manifest.generated.ts'
 )
@@ -664,20 +702,32 @@ def tile_meta(png_path: str, img) -> tuple[dict | None, list[str]]:
             return None, errs
     else:
         errs = []
-        scale = h // TILE_GRID if h >= TILE_GRID and h % TILE_GRID == 0 else 0
-        if not scale or w % h:
-            return None, [f'sheet is {w}x{h}: a W7 strip is N square {TILE_GRID * 2}x{TILE_GRID * 2} '
-                          f'cells in one row (or add a sidecar)']
-        meta = {'scale': scale, 'frame': {'w': h, 'h': h}, 'pivot': {'x': h // 2, 'y': h},
-                'actions': [{'name': 'tile', 'frames': w // h, 'fps': 0, 'loop': False}]}
+        cell = w // AUTOTILE_COLS if w % AUTOTILE_COLS == 0 else 0
+        if cell and h == cell * len(AUTOTILE_ROWS) and cell % TILE_GRID == 0:
+            # A W7a sheet without a sidecar: 4 columns x 7 rows of square cells.
+            meta = {'scale': cell // TILE_GRID, 'frame': {'w': cell, 'h': cell}, 'pivot': {'x': cell // 2, 'y': cell},
+                    'actions': [{'name': n, 'frames': AUTOTILE_COLS, 'fps': 0, 'loop': False} for n in AUTOTILE_ROWS]}
+        else:
+            scale = h // TILE_GRID if h >= TILE_GRID and h % TILE_GRID == 0 else 0
+            if not scale or w % h:
+                return None, [f'sheet is {w}x{h}: a W7 strip is N square {TILE_GRID * 2}x{TILE_GRID * 2} '
+                              f'cells in one row, a W7a sheet 4 x 7 of them (or add a sidecar)']
+            meta = {'scale': scale, 'frame': {'w': h, 'h': h}, 'pivot': {'x': h // 2, 'y': h},
+                    'actions': [{'name': 'tile', 'frames': w // h, 'fps': 0, 'loop': False}]}
     fw, fh_, sc = meta['frame']['w'], meta['frame']['h'], meta['scale']
     if fw != fh_:
         errs.append(f'tile frame must be square, got {fw}x{fh_}')
     if fw != TILE_GRID * sc:
         errs.append(f'tile frame {fw}px at scale {sc} is {fw / sc:g}px, not the {TILE_GRID}px grid')
     names = [a.get('name') for a in meta.get('actions') or []]
-    if names != ['tile']:
-        errs.append(f"a tile strip has exactly one action, 'tile' (got {names})")
+    if names == list(AUTOTILE_ROWS):
+        # IMP-1: a full W7a auto-tile sheet. Every row holds the four pieces.
+        meta['autotile'] = True
+        if any(a.get('frames') != AUTOTILE_COLS for a in meta['actions']):
+            errs.append(f'a W7a sheet has {AUTOTILE_COLS} pieces in every row')
+    elif names != ['tile']:
+        errs.append(f"a tile strip has exactly one action, 'tile', and a W7a sheet the rows "
+                    f"{', '.join(AUTOTILE_ROWS)} (got {names})")
     return meta, errs
 
 
@@ -722,7 +772,8 @@ def import_tiles(check: bool, only: list[str], problems: list[str], pending: lis
         if errs:
             problems.extend(f'{src_rel}/{name}: {e}' for e in errs)
             continue
-        why = tile_opacity_problem(img)
+        # A W7a sheet: only its interior row must be opaque (edge pieces round off).
+        why = tile_opacity_problem(img.crop((0, 0, img.size[0], meta['frame']['h'])) if meta.get('autotile') else img)
         if why:
             problems.append(f'{src_rel}/{name}: {why}')
             continue
@@ -754,6 +805,12 @@ export interface TileEntry {
   size: number;
   /** Interchangeable variants, left to right; pick one per cell by hash. */
   variants: number;
+  /**
+   * A full W7a auto-tile sheet (style guide §7.1): 7 rows of 4 pieces (tile,
+   * top, bottom, sides, thin, caps, inner); the renderer picks the piece from
+   * the cell's neighbours. Absent: a one-row W7 strip of interiors (or a wall).
+   */
+  autotile?: boolean;
 }
 """
 
@@ -774,7 +831,8 @@ def write_tile_manifest() -> int:
             entries[key] = (
                 f"  '{key}': {{ src: 'assets/game/{TILE_OUT}/{stem}@1x.webp', "
                 f"src2x: 'assets/game/{TILE_OUT}/{stem}@{sc}x.webp', "
-                f"size: {meta['frame']['w'] // sc}, variants: {meta['actions'][0]['frames']} }},"
+                f"size: {meta['frame']['w'] // sc}, variants: {meta['actions'][0]['frames']}"
+                + (', autotile: true' if meta.get('autotile') else '') + ' },'
             )
     lines = [TILE_MANIFEST_HEADER,
              'export const TILES: Readonly<Record<string, TileEntry>> = {']
@@ -793,6 +851,160 @@ def write_tile_manifest() -> int:
         fh.write('\n'.join(lines))
     print(f'tiles:    {len(entries)} manifest entries')
     return len(entries)
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Parallax layers (spec W8, docs/art-commissions/world-sprites/09-parallax.md; IMP-2)
+# ─────────────────────────────────────────────────────────────────────────────
+#
+# Four layers per town or hunting ground, `NN-parallax-<realm>-<layer>.png`,
+# layer in sky / far / mid / near, each 480x192 art px exported x8 (3840x1536)
+# with a one-action sidecar (`layer`, the whole sheet is the frame). `sky` is
+# opaque; the others are transparent above their silhouette, so their top
+# corners must be clear. Output is the same lossless WebP pair as a sprite and
+# `parallax-manifest.generated.ts`, which `parallaxFor(realm, layer)` reads; the
+# world keeps its painted backdrop (towns) or procedural cave (the Delve) on null.
+PARALLAX_FAMILY = ('Sprites/Parallax', 'sprites/parallax')
+PARALLAX_OUT = PARALLAX_FAMILY[1]
+PARALLAX_LAYERS = ('sky', 'far', 'mid', 'near')
+PARALLAX_MANIFEST_OUT = os.path.join(
+    os.path.dirname(__file__), '..', 'src', 'app', 'shared', 'art', 'parallax-manifest.generated.ts'
+)
+
+
+def parallax_layer_of(key: str) -> str | None:
+    """`parallax-infernal-far` -> `far`, or None when the key names no layer."""
+    if not key.startswith('parallax-'):
+        return None
+    last = key.rsplit('-', 1)[-1]
+    return last if last in PARALLAX_LAYERS else None
+
+
+def import_parallax(check: bool, only: list[str], problems: list[str], pending: list[str]) -> int:
+    """Validate and emit `Assets/Sprites/Parallax/*.png`. Returns source files scanned."""
+    src_rel, out_rel = PARALLAX_FAMILY
+    if only and not any(src_rel == o or src_rel.startswith(o + '/') for o in only):
+        return 0
+    src_dir = os.path.join(LIBRARY, src_rel)
+    if not os.path.isdir(src_dir):
+        pending.append(src_rel)
+        print('parallax: 0 ok (folder not created yet)')
+        return 0
+    files = 0
+    ok: list[str] = []
+    for name in sorted(os.listdir(src_dir)):
+        if not name.lower().endswith('.png'):
+            continue
+        files += 1
+        if not slug_ok(name):
+            problems.append(f'{src_rel}/{name}: not kebab-case')
+            continue
+        stem = os.path.splitext(name)[0]
+        key = strip_index(stem)
+        layer = parallax_layer_of(key)
+        if not layer:
+            problems.append(f"{src_rel}/{name}: name it NN-parallax-<realm>-<{'|'.join(PARALLAX_LAYERS)}>")
+            continue
+        path = os.path.join(src_dir, name)
+        img = Image.open(path)
+        if img.mode != 'RGBA':
+            img = img.convert('RGBA')
+        w, h = img.size
+        side = os.path.splitext(path)[0] + '.json'
+        if os.path.isfile(side):
+            meta, errs = load_sidecar(path, img)
+            if meta is None:
+                problems.extend(f'{src_rel}/{name}: {e}' for e in errs)
+                continue
+        else:
+            errs = []
+            meta = {'scale': 2, 'frame': {'w': w, 'h': h}, 'pivot': {'x': w // 2, 'y': h},
+                    'actions': [{'name': 'layer', 'frames': 1, 'fps': 0, 'loop': False}]}
+        if [a.get('name') for a in meta['actions']] != ['layer'] or (meta['frame']['w'], meta['frame']['h']) != (w, h):
+            errs.append("a parallax layer is one frame, the whole sheet, action 'layer'")
+        if w % meta['scale'] or h % meta['scale']:
+            errs.append(f'{w}x{h} is not divisible by scale {meta["scale"]}')
+        if layer == 'sky':
+            why = tile_opacity_problem(img)
+            if why:
+                errs.append(why.replace('tile', 'sky layer').replace('W7 tiles fill their cell to every edge', 'the sky is opaque'))
+        elif img.getpixel((0, 0))[3] > 8 or img.getpixel((w - 1, 0))[3] > 8:
+            errs.append(f'the {layer} layer is transparent above its silhouette; its top corners are painted')
+        if errs:
+            problems.extend(f'{src_rel}/{name}: {e}' for e in errs)
+            continue
+        meta['pixelArt'] = meta.get('pixelArt', True) is True
+        emit_sprite(img, meta, os.path.join(OUT_ROOT, out_rel), stem, check)
+        ok.append(key)
+    print(f'parallax: {len(ok)} ok' + (f" ({', '.join(ok)})" if ok else ''))
+    return files
+
+
+PARALLAX_MANIFEST_HEADER = """/**
+ * parallax-manifest.generated.ts — DO NOT EDIT BY HAND.
+ *
+ * Written by `scripts/import-assets.py` from `Assets/Sprites/Parallax/` (spec W8,
+ * docs/art-commissions/world-sprites/09-parallax.md). One entry per layer, keyed
+ * `parallax-<realm>-<layer>` (layer: sky, far, mid, near; back to front).
+ *
+ * Every number here is in logical (1x) pixels. `src` is the 1x sheet and
+ * `src2x` the authored one. A layer repeats left to right; its bottom edge is
+ * the town ground line.
+ *
+ * Pure data, no browser APIs, safe to import from an SSR path.
+ */
+
+export type ParallaxLayer = 'sky' | 'far' | 'mid' | 'near';
+
+export interface ParallaxEntry {
+  src: string;
+  src2x: string;
+  width: number;
+  height: number;
+  /** Always true for this pack: smoothing off, whole-pixel draws. */
+  pixelArt?: boolean;
+}
+"""
+
+
+def write_parallax_manifest() -> int:
+    import json
+    root = os.path.join(OUT_ROOT, PARALLAX_OUT)
+    entries: dict[str, str] = {}
+    if os.path.isdir(root):
+        for n in sorted(os.listdir(root)):
+            if not n.endswith('.json'):
+                continue
+            stem = n[:-5]
+            with open(os.path.join(root, n)) as fh:
+                meta = json.load(fh)
+            sc = meta['scale']
+            key = meta.get('id') or strip_index(stem)
+            entries[key] = (
+                f"  '{key}': {{ src: 'assets/game/{PARALLAX_OUT}/{stem}@1x.webp', "
+                f"src2x: 'assets/game/{PARALLAX_OUT}/{stem}@{sc}x.webp', "
+                f"width: {meta['frame']['w'] // sc}, height: {meta['frame']['h'] // sc}"
+                + (', pixelArt: true' if meta.get('pixelArt') is True else '') + ' },'
+            )
+    lines = [PARALLAX_MANIFEST_HEADER,
+             'export const PARALLAX: Readonly<Record<string, ParallaxEntry>> = {']
+    lines += [entries[k] for k in sorted(entries)]
+    lines += ['};', '',
+              '/** Layers drawn back to front. */',
+              "export const PARALLAX_LAYERS: readonly ParallaxLayer[] = ['sky', 'far', 'mid', 'near'];", '',
+              '/**',
+              ' * An imported parallax layer for a realm or place (`infernal`, `delve-magma-halls`), or',
+              ' * null until it lands. The world keeps its painted or procedural backdrop on null.',
+              ' */',
+              'export function parallaxFor(place: string | undefined | null, layer: ParallaxLayer): ParallaxEntry | null {',
+              '  if (!place) return null;',
+              '  const key = `parallax-${place}-${layer}`;',
+              '  return Object.prototype.hasOwnProperty.call(PARALLAX, key) ? PARALLAX[key] : null;',
+              '}', '']
+    with open(PARALLAX_MANIFEST_OUT, 'w') as fh:
+        fh.write('\n'.join(lines))
+    print(f'parallax: {len(entries)} manifest entries')
+    return len(entries)
+
 
 ART_TS = os.path.join(os.path.dirname(__file__), '..', 'src', 'app', 'shared', 'art', 'art.ts')
 
@@ -846,7 +1058,33 @@ def commissions(strict: bool) -> int:
         for r in rows:
             if r not in missing:
                 print(f"  {r.get('layer', ''):14s} {r['id']:34s} {r['library_path']}")
-    return 1 if (strict and missing) else 0
+    unknown = unknown_creature_keys(rows)
+    if unknown:
+        print('\ncreature sprites whose id the game never spawns (creature-rigs.ts CREATURE_RIGS) — rename them:')
+        for r in unknown:
+            print(f"  {r['id']:34s} {r['library_path']}")
+    else:
+        print('\ncreature sprite ids: all match a creature key the game spawns')
+    return 1 if (strict and (missing or unknown)) else 0
+
+
+CREATURE_RIGS_TS = os.path.join(os.path.dirname(__file__), '..', 'src', 'app', 'play', 'engine', 'creature-rigs.ts')
+
+
+def unknown_creature_keys(rows: list[dict]) -> list[dict]:
+    """World-sprite creature rows whose id is not a key of CREATURE_RIGS (ENG-1):
+    `spriteFor(monster.def.creature)` looks a sheet up by exactly that key, so a
+    sheet filed under a stale name (`rune-warden`) would never be drawn."""
+    try:
+        with open(CREATURE_RIGS_TS) as fh:
+            src = fh.read()
+    except OSError:
+        return []
+    block = re.search(r'export const CREATURE_RIGS[^=]*=\s*\{(.*?)\n\};', src, re.S)
+    keys = set(re.findall(r"^\s*'([a-z0-9-]+)':", block.group(1), re.M)) if block else set()
+    if not keys:
+        return []
+    return [r for r in rows if r.get('layer') == 'world-sprite' and r.get('category') == 'creature' and r['id'] not in keys]
 
 
 def main() -> int:
@@ -859,6 +1097,7 @@ def main() -> int:
         write_manifest()
         write_sprite_manifest()
         write_tile_manifest()
+        write_parallax_manifest()
         return 0
     check = '--check' in sys.argv
     # `--only Characters/avatars` limits the run to families whose source dir
@@ -927,6 +1166,7 @@ def main() -> int:
 
     files += import_sprites(check, only, problems, pending_dirs)
     files += import_tiles(check, only, problems, pending_dirs)
+    files += import_parallax(check, only, problems, pending_dirs)
 
     print(f'library:  {LIBRARY}')
     print(f'scanned:  {files} source files')
@@ -938,6 +1178,7 @@ def main() -> int:
         write_manifest()
         write_sprite_manifest()
         write_tile_manifest()
+        write_parallax_manifest()
         report_retired_pending()
     if problems:
         print(f'\nrejected ({len(problems)}):')
