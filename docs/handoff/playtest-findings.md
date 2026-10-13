@@ -100,7 +100,7 @@ Both sides round to whole Gold, which eats the 2-point margin. In normal play th
 
 **Spec:** `play-missions.spec.ts`, "the whole Delve chain … The Fracture pays its 600 Delving XP".
 
-### P-7 · Low · A Smithing-gated recipe's refusal names the crafting ladder
+### P-7 · Low · A Smithing-gated recipe's refusal names the crafting ladder — **FIXED** (button now reads "Reach Smithing N first", progress meter reads Smithing; spec un-fixme'd)
 
 **Repro:** with Smithing 9 (forge XP one short of level 10) and the inputs in the satchel, open the Crafting Bench, search "Blasting" and pick Blasting charge.
 

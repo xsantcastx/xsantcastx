@@ -273,9 +273,8 @@ test.describe('Delve extras: blasting charges, played', () => {
     expect(await stackQty(page, 'slag-fragment')).toBe(0);
   });
 
-  // P-7 (playtest-findings.md): the refusal names the wrong ladder. The gate is Smithing (the
-  // recipe card says "Needs Smithing 10") but the button reads "Reach crafting level 10 first".
-  test.fixme('a Smithing-gated recipe says which skill it waits for', async ({ page }) => {
+  // P-7 (fixed): the refusal names the Smithing ladder, not the bench's crafting level.
+  test('a Smithing-gated recipe says which skill it waits for', async ({ page }) => {
     await seed(page, { ...bag(CHARGE_BAG), ...purse(10_000), ...activity({ forge: xpForLevel(10) - 1 }) });
     expect((await benchWhy(page, 'Blasting', 'Blasting charge')).why).toContain('Smithing');
   });
