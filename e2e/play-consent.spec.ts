@@ -179,12 +179,15 @@ test.describe('the goal line and the open Hearth on desktop', () => {
         { x: dock.left + 12, y: dock.top + 12 });
       expect(onDock, `${width}px: the panel's top-left takes its own click`).toBe(true);
     }
-    // Folded, the goal line is back in the centre of the strip.
+    // Folded, the goal line comes back (its folded placement per width is play-hud.spec's job)
+    // and stays clear of the pill it folded into.
     await page.setViewportSize({ width: 1000, height: 800 });
     await page.locator('.hearth-hide').click();
     await expect(page.locator('#hearth-body')).toBeHidden();
     await expect(page.locator('.guide')).toBeVisible();
     const guide = (await rectOf(page, '.guide'))!;
-    expect(Math.abs((guide.left + guide.right) / 2 - 500)).toBeLessThanOrEqual(2);
+    const pill = (await rectOf(page, '.hearth-pill'))!;
+    const overlaps = guide.left < pill.right && pill.left < guide.right && guide.top < pill.bottom && pill.top < guide.bottom;
+    expect(overlaps, 'folded: the goal line clears the Hearth pill').toBe(false);
   });
 });
