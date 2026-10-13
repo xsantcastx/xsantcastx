@@ -93,6 +93,11 @@ export interface NpcReward {
    * the step a real object with real rolled stats and adds no art debt.
    */
   item?: { defId: string; rarity: ItemRarity };
+  /**
+   * An Essence-shop artifact id (`ARTIFACTS`): the step pays its Essence price
+   * and the Keeper takes it at once. Already owned, the Essence stays.
+   */
+  artifact?: string;
   /** A `title-prefix` cosmetic variant id. Granted, never sold. */
   title?: string;
   /** Any other cosmetic slot: catalogue id plus variant id. */
@@ -156,7 +161,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
         gold: 15_000,
         xp: 300,
         energy: 'aether',
-        item: { defId: 'relic-third-dawn', rarity: 'rare' },
+        artifact: 'relic-third-dawn',
       },
     },
     {
@@ -230,7 +235,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
         gold: 15_000,
         xp: 300,
         energy: 'nox',
-        item: { defId: 'obsidian-heart', rarity: 'rare' },
+        artifact: 'obsidian-heart',
       },
     },
     {
@@ -362,7 +367,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
         gold: 15_000,
         xp: 300,
         energy: 'aether',
-        item: { defId: 'codex-solarii', rarity: 'rare' },
+        artifact: 'codex-solarii',
       },
     },
     {

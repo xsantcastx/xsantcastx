@@ -41,6 +41,7 @@ import { CRAFTING_RECIPES, recipeCollectionId } from '../crafting/crafting.model
 import { ARTBIBLE_RARITY } from '../rpg/artbible-items';
 import { UNIQUE_ITEMS } from '../rpg/unique-items';
 import { RUNES, RUNEWORDS, RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
+import { ARTIFACTS } from '../economy/economy.model';
 import type { NarrativeRealmId } from '../narrative/five-realms.narrative';
 
 /** The localStorage key. Registered in `SYNCED_BLOBS` so it reaches the cloud. */
@@ -219,13 +220,13 @@ const RUNE_HINT: Readonly<Record<ItemRarity, string>> = {
   singular: 'the last rune in the game. Measured in years, not afternoons.',
 };
 
-/** Collection rarity for the five Market artifacts, by what they cost. */
-const ARTIFACT_RARITY: Readonly<Record<string, ItemRarity>> = {
-  'obsidian-heart': 'rare',
-  'mirrorblade-kael': 'epic',
-  'relic-third-dawn': 'epic',
-  'codex-solarii': 'legendary',
-  'fragment-first-sun': 'mythic',
+/** Collection rarity (by what they cost) and realm for the five Essence-shop artifacts. */
+const ARTIFACT_ROWS: Readonly<Record<string, { rarity: ItemRarity; style: string }>> = {
+  'obsidian-heart': { rarity: 'rare', style: 'infernal' },
+  'mirrorblade-kael': { rarity: 'epic', style: 'void' },
+  'relic-third-dawn': { rarity: 'epic', style: 'luminous' },
+  'codex-solarii': { rarity: 'legendary', style: 'celestial' },
+  'fragment-first-sun': { rarity: 'mythic', style: 'luminous' },
 };
 
 /** Collection rarity for the authored equipment, by its stature in the lore. */
@@ -408,20 +409,22 @@ function buildCatalogue(): CollectionEntry[] {
     });
   }
 
+  // One meaning per name: an artifact is its Essence-shop flag, not an item.
+  for (const artifact of ARTIFACTS) {
+    const row = ARTIFACT_ROWS[artifact.id];
+    rows.push({
+      id: artifact.id,
+      category: 'artifact',
+      name: artifact.name,
+      rarity: row?.rarity ?? 'legendary',
+      realm: row ? realmForStyle(row.style) : undefined,
+      lore: artifact.lore,
+      hint: 'the Market will sell you one, for a number with a lot of zeroes on it',
+      obtainable: true,
+    });
+  }
+
   for (const def of ITEM_DEFINITIONS) {
-    if (def.family === 'artifact') {
-      rows.push({
-        id: def.id,
-        category: 'artifact',
-        name: def.name,
-        rarity: ARTIFACT_RARITY[def.id] ?? 'legendary',
-        realm: realmForStyle(def.style),
-        lore: def.lore,
-        hint: 'the Market will sell you one, for a number with a lot of zeroes on it',
-        obtainable: true,
-      });
-      continue;
-    }
     if (def.family === 'equipment' || def.family === 'charm') {
       const isReward = REWARD_IDS.has(def.id);
       rows.push({
