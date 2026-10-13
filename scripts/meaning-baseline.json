@@ -1,9 +1,6 @@
 [
   "creature:never-spawns:afterimage-moth",
   "creature:never-spawns:anchor-warden",
-  "creature:never-spawns:cinder-bailiff",
   "creature:never-spawns:graftling",
-  "creature:never-spawns:ink-lantern",
-  "creature:no-lore:magma-maw",
-  "creature:no-lore:rune-warden"
+  "creature:never-spawns:ink-lantern"
 ]
