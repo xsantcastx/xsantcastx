@@ -148,6 +148,16 @@
             "value": "/"
           }
         ]
+      },
+      {
+        "//": "Polled by AppUpdateService to notice a new deploy in a page that never navigates (an installed app, a long-open tab). Written per build by scripts/stamp-build-id.js. The client fetches it no-store; no-cache here keeps any intermediary from answering with the previous deploy's id.",
+        "source": "/version.json",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache"
+          }
+        ]
       }
     ],
     "redirects": [
