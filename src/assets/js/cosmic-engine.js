@@ -18,6 +18,29 @@
       // see src/app/shared/loading/godforge-loader.component.css for why the
       // engine must not be on that path.
 
+      // Routes that paint their own full-screen scene. On them the site-wide
+      // backdrop is display:none (styles.css), so its loops only burn frames:
+      //   body.gf-world-route  /play — set by SideScrollerComponent
+      //   body.gf-art-route    painted pages — set by ArtSceneComponent & co.
+      // The constellation and pulsar loops park while either class is on and
+      // resume from a class observer, so a phone running the game is not also
+      // drawing a hidden 0.7-megapixel starfield at 60 fps behind it.
+      function backdropHidden() {
+        var b = document.body;
+        return !!b && (b.classList.contains('gf-world-route') || b.classList.contains('gf-art-route'));
+      }
+      var backdropResumers = [];
+      function onBackdropShown(fn) { backdropResumers.push(fn); }
+      if ('MutationObserver' in window && document.body) {
+        var wasHidden = backdropHidden();
+        new MutationObserver(function () {
+          var hidden = backdropHidden();
+          if (hidden === wasHidden) return;
+          wasHidden = hidden;
+          if (!hidden) for (var bi = 0; bi < backdropResumers.length; bi++) backdropResumers[bi]();
+        }).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      }
+
       // rAF-throttled debouncer — coalesces bursty mutations into 1 scan per frame
       function rafThrottle(fn) {
         var queued = false;
@@ -135,6 +158,11 @@
         }
 
         function step(t) {
+          if (backdropHidden()) {
+            // Parked: no frame is requested until the backdrop shows again.
+            rafId = 0; ftLast = 0;
+            return;
+          }
           if (prefersReduced) {
             // Static draw, no rAF loop
             draw(0);
@@ -306,6 +334,7 @@
         window.addEventListener('resize', resize, { passive: true });
         resize();
         rafId = requestAnimationFrame(step);
+        onBackdropShown(function () { if (!rafId) rafId = requestAnimationFrame(step); });
 
         // Mouse parallax — cursor pulls particles slightly opposite direction
         window.addEventListener('mousemove', function (e) {
@@ -323,7 +352,7 @@
 
         // Click anywhere → ripple wavefront (skipped if user is interacting with form/input)
         window.addEventListener('click', function (e) {
-          if (prefersReduced) return;
+          if (prefersReduced || backdropHidden()) return;
           var t = e.target;
           // Skip ripples on form fields so typing doesn't feel laggy
           if (t && t.closest && t.closest('input,textarea,select,[contenteditable="true"]')) return;
@@ -474,7 +503,9 @@
         // Touch start → ripple per touch point + small spark burst (mobile cursor companion)
         if ('ontouchstart' in window) {
           window.addEventListener('touchstart', function (e) {
-            if (prefersReduced) return;
+            // A hidden starfield needs no ripple, and on /play every tap is a
+            // move: a DOM starburst per step is layout work over the game.
+            if (prefersReduced || backdropHidden()) return;
             var t = e.target;
             if (t && t.closest && t.closest('input,textarea,select,[contenteditable="true"]')) return;
             for (var i = 0; i < e.touches.length; i++) {
@@ -494,21 +525,23 @@
       // ─────────────────────────────────────────────────────────────
       var pulsar = document.querySelector('.cosmic-pulsar');
       if (pulsar && !prefersReduced) {
-        var pulsarTX = 0, pulsarTY = 0, pulsarX = 0, pulsarY = 0;
+        var pulsarTX = 0, pulsarTY = 0, pulsarX = 0, pulsarY = 0, pulsarRaf = 0;
         function pulsarLoop() {
+          if (backdropHidden()) { pulsarRaf = 0; return; }
           pulsarX += (pulsarTX - pulsarX) * 0.04;
           pulsarY += (pulsarTY - pulsarY) * 0.04;
           pulsar.style.setProperty('--cursor-shift-x', pulsarX.toFixed(2) + 'px');
           pulsar.style.setProperty('--cursor-shift-y', pulsarY.toFixed(2) + 'px');
-          requestAnimationFrame(pulsarLoop);
+          pulsarRaf = requestAnimationFrame(pulsarLoop);
         }
+        onBackdropShown(function () { if (!pulsarRaf) pulsarRaf = requestAnimationFrame(pulsarLoop); });
         window.addEventListener('mousemove', function (e) {
           var nx = (e.clientX / window.innerWidth) - 0.5;
           var ny = (e.clientY / window.innerHeight) - 0.5;
           pulsarTX = nx * 80;
           pulsarTY = ny * 60;
         }, { passive: true });
-        requestAnimationFrame(pulsarLoop);
+        pulsarRaf = requestAnimationFrame(pulsarLoop);
       }
 
       // ─────────────────────────────────────────────────────────────
