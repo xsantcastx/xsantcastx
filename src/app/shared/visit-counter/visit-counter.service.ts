@@ -122,8 +122,13 @@ export class VisitCounterService {
         // step over one while the cache is cold. `>=` against the previous
         // displayed value fires once on the crossing instead of demanding an
         // exact equality that a cached total may never land on.
-        const previous = cached ?? 0;
-        const hit = MILESTONES.find(m => m.at > previous && m.at <= shown);
+        //
+        // No cached count means this browser has never seen a total, which is
+        // every first visit: "previous" would be 0 and the very first
+        // milestone (crossed long ago) would fire for every newcomer, as a
+        // full-screen card right after the tutorial. Only a browser that saw
+        // the count below a milestone can have watched it cross.
+        const hit = cached === null ? undefined : MILESTONES.find(m => m.at > cached && m.at <= shown);
         if (hit) {
           this.milestone$.next({
             count: shown,

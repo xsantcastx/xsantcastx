@@ -1,4 +1,4 @@
-<section class="stage" [class.hearth-shut]="!hearthOpen" aria-labelledby="game-title">
+<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--column]="columnOpen && state.areaId === 'homestead'" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel ? '' : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" aria-label="Playable Basalt Seamworks side-scrolling world. Click or tap a place to walk there, or use the Places list."></canvas>
     @if (state.defeated) {
@@ -23,6 +23,16 @@
       <button type="button" class="quiet" (click)="restartHunt()">Restart hunt</button>
     </div>
   </header>
+
+  <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
+  @if (guide; as goal) {
+    <div class="guide" [attr.data-goal]="goal.id" [attr.inert]="panel ? '' : null" data-engine-ignore>
+      <p class="guide-text"><b>{{ t('play.goal.label', { n: goal.n, total: goal.total }) }}</b> <span>{{ t(goal.key) }}</span></p>
+      @if (goal.target) {
+        <button type="button" class="guide-go" (click)="showGoal()" [attr.aria-label]="t('play.goal.goAria', { goal: t(goal.key) })">{{ t('play.goal.go') }}</button>
+      }
+    </div>
+  }
 
   @if (placesOpen) {
     <nav id="places-list" class="places" [attr.aria-label]="'Places in ' + (state.area || town.name)" data-engine-ignore>
@@ -53,7 +63,7 @@
     }
   </div>
 
-  @if (state.areaId === 'homestead' && !panel) { <app-homestead-column /> }
+  @if (state.areaId === 'homestead' && !panel) { <app-homestead-column (openChange)="columnOpen = $event" /> }
 
   @if (state.delve) {
     <!-- The Delve hotbar: what you can place, and how many. Pick one, then B (or hold a tap where it goes). -->
