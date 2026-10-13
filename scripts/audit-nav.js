@@ -163,9 +163,6 @@ const PLAYER_FACING = files.filter(f => {
   // including the tool product that has since been retired, and rewriting
   // history to please a copy audit would be the wrong fix.
   if (rel === 'version-history.ts') return false;
-  if (rel === 'translation.service.ts') return false;
-  if (rel === 'shared/easter-eggs/easter-egg.service.ts') return false;
-  if (rel === 'codex/codex-hints.ts') return false;
   if (/\.spec\.ts$/.test(rel)) return false;
   return /\.(html|ts)$/.test(rel);
 });
