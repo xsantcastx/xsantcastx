@@ -47,6 +47,11 @@ export interface EngineState {
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export interface EngineOptions {
+  /**
+   * Force the render budget (engine/render-budget.ts): true = phone tier, false
+   * = desktop tier. Omitted, it follows the device (a touch-first pointer is lite).
+   */
+  lite?: boolean;
   /** Pre-resolved legacy images. `creature`/`ore` are fallbacks when `art` cannot resolve a data key. */
   assets: { background?: string; keeper?: string; creature?: string; ore?: string; blade?: string };
   /** Resolves an `artFor()` key from world data to a URL. */
