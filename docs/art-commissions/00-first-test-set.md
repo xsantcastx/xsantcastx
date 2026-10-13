@@ -78,7 +78,7 @@ python3 scripts/import-assets.py --commissions              # confirms what land
 - **Tiles:** the tile importer takes one-row strips only, so for the in-game look import the **row-0 crop**
   (`NN-tile-<id>.png`, 256 x 64, sidecar `{"scale": 2, "pixelArt": true, "frame": {"w": 64, "h": 64},
   "actions": [{"name": "tile", "frames": 4, "fps": 0, "loop": false}]}`) and keep the full sheet beside the
-  library for review. Edges, top faces and corners show in game once IMP-1 and RND-1 land (style guide §12).
+  library for review. The full sheet imports too (IMP-1), and edges, top faces and corners then show in game (RND-1, style guide §12).
 - **Parallax:** reviewed as images until IMP-2 and RND-2 add a parallax family and renderer; then it replaces
   `bg-basalt-seamworks` behind the town.
 - **Verdict:** go / no-go for the full pass, per class (characters, creatures, tiles, icons, parallax). A
@@ -229,7 +229,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -268,7 +268,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -307,7 +307,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -346,7 +346,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -385,7 +385,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -424,7 +424,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -463,7 +463,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -502,7 +502,7 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | 5 | `caps` | 4 | 0 | no | pillar top (N+E+W), pillar foot (S+E+W), ledge left (N+S+W), ledge right (N+S+E) |
 | 6 | `inner` | 4 | 0 | no | inner corners NW, NE, SW, SE: interior with a 2x2 art px notch of outline and bevel |
 
-_Interior row 0 alone imports today (crop it to 256x64 with the one-action W7 sidecar); the full sheet needs the auto-tile importer and renderer (style guide IMP-1, RND-1). Keep the full sheet in the library._
+_The full W7a sheet imports as is and the Delve draws the right piece for each cell's neighbours (style guide §12, IMP-1 and RND-1)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -672,11 +672,11 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, opaque |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `sky` layer, scroll factor 0.0-0.05; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `sky` layer, scroll factor 0.0-0.05; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.0-0.05. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.0-0.05. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -698,11 +698,11 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, transparent above the silhouette |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `far` layer, scroll factor 0.15-0.25; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `far` layer, scroll factor 0.15-0.25; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.15-0.25. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.15-0.25. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -724,11 +724,11 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, transparent above the silhouette |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `mid` layer, scroll factor 0.4-0.5; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `mid` layer, scroll factor 0.4-0.5; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.4-0.5. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.4-0.5. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -750,11 +750,11 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, transparent above the silhouette |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `near` layer, scroll factor 0.65-0.75; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `near` layer, scroll factor 0.65-0.75; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.65-0.75. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.65-0.75. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 

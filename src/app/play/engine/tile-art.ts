@@ -35,8 +35,10 @@ export const VARIANTS = 3;
 const WALL_SLOTS = 8;
 
 // Palette slots a texture's pixels index.
-export const P_BASE = 0, P_DARK = 1, P_LIGHT = 2, P_FLECK = 3, P_DEEP = 4, P_SHINE = 5;
+export const P_BASE = 0, P_DARK = 1, P_LIGHT = 2, P_FLECK = 3, P_DEEP = 4, P_SHINE = 5, P_HI = 6;
 const P_CLEAR = 255;
+/** The palette index of a clear (transparent) art pixel. */
+export const P_CLEAR_INDEX = P_CLEAR;
 
 // Neighbour bits.
 export const N = 1, E = 2, S = 4, W = 8, NE = 16, SE = 32, SW = 64, NW = 128;
@@ -90,20 +92,23 @@ function strHash(s: string): number {
 
 /** A node's palette, in P_* order. */
 export function nodePalette(node: Pick<TerrainNodeDef, 'base' | 'dark' | 'light' | 'fleck'>): string[] {
-  return [node.base, node.dark, node.light, node.fleck, mixHex(node.dark, '#000000', .5), '#fff4e0'];
+  // Deep: the outline, the darkest step pulled to the art bible's outline floor (#140a1f), never black.
+  // Hi: the lit-edge highlight, a step above `light` (style guide §4: one highlight per ramp).
+  return [node.base, node.dark, node.light, node.fleck, mixHex(node.dark, '#140a1f', .72), '#fff4e0', mixHex(node.light, '#fff4e0', .28)];
 }
 /** A biome's back-wall palette, in P_* order. */
 export function wallPalette(biome: Pick<BiomeDef, 'wall'>): string[] {
   const [a, b, shadow] = biome.wall;
-  return [a, b, mixHex(a, '#ffffff', .06), shadow, mixHex(shadow, '#000000', .3), a];
+  return [a, b, mixHex(a, '#fff4e0', .1), shadow, mixHex(shadow, '#140a1f', .4), a, a];
 }
 
 // ── Pixel patterns (pure: 16×16 palette indices) ───────────────────────────
 
-export type TilePattern = 'rock' | 'ore' | 'roots' | 'grain' | 'glowcap' | 'fragment' | 'cracked' | 'bedrock' | 'cache' | 'block';
+export type TilePattern = 'rock' | 'ore' | 'roots' | 'grain' | 'glowcap' | 'fragment' | 'cracked' | 'bedrock' | 'cache' | 'block' | 'placed';
 
 /** The pattern a node is drawn with. Pure. */
-export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'>): TilePattern {
+export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & { placeable?: string }): TilePattern {
+  if (node.placeable && PLACED_ART[node.id]) return 'placed';
   switch (node.id) {
     case 'roots': case 'shadow-root': return 'roots';
     case 'petrified-trunk': return 'grain';
@@ -119,7 +124,7 @@ export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'>): 
 
 /** Whether a node wears its biome's top face where open to the air above. */
 export function takesTopFace(pattern: TilePattern): boolean {
-  return pattern !== 'cache' && pattern !== 'fragment' && pattern !== 'glowcap' && pattern !== 'block';
+  return pattern !== 'cache' && pattern !== 'fragment' && pattern !== 'glowcap' && pattern !== 'block' && pattern !== 'placed';
 }
 
 export interface TilePixels {
@@ -130,6 +135,162 @@ export interface TilePixels {
 }
 
 const at = (x: number, y: number) => y * TILE + x;
+
+/**
+ * Placed things (torch, ladder, platform, chest, camp, supports, charge) as
+ * 16 × 16 art-pixel maps in their node's own palette, on the same 2 px grid as
+ * the rock: `.` clear, `o` outline, `d` dark, `b` base, `l` light, `h` highlight,
+ * `f` fleck, `s` shine. Transparent around the object, so the back wall shows.
+ * A ladder's rungs and a platform's plank sit at the same rows in every cell,
+ * so a run reads as one piece. Commissioned art (`Sprites/Props/`) replaces these.
+ */
+const PLACED_KEY: Readonly<Record<string, number>> = { '.': P_CLEAR, o: P_DEEP, d: P_DARK, b: P_BASE, l: P_LIGHT, h: P_HI, f: P_FLECK, s: P_SHINE };
+export const PLACED_ART: Readonly<Record<string, readonly string[]>> = {
+  torch: [
+    '................',
+    '.......f........',
+    '......ff........',
+    '......fsf.......',
+    '.....fssf.......',
+    '.....fsslf......',
+    '.....flssf......',
+    '......flf.......',
+    '......obho......',
+    '......obdo......',
+    '.....oobdoo.....',
+    '....oddbdddo....',
+    '.....oobdoo.....',
+    '......obdo......',
+    '......obdo......',
+    '......oooo......',
+  ],
+  ladder: [
+    '..ohd......ohd..',
+    '..old......old..',
+    '..old......old..',
+    '..ohhhhhhhhhhd..',
+    '..oddddddddddd..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..ohhhhhhhhhhd..',
+    '..oddddddddddd..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+  ],
+  platform: [
+    'hhhhhhhhhhhhhhhh',
+    'lllflllllllllfll',
+    'bbbbbbbfbbbbbbbb',
+    'dddddddddddddddd',
+    'oooooooooooooooo',
+    '..od........do..',
+    '...od......do...',
+    '....od....do....',
+    '.....oddddo.....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  chest: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '..oooooooooooo..',
+    '..ohhhhhhhhhho..',
+    '..ollllllllldo..',
+    '..offffffffffo..',
+    '..oddddssddddo..',
+    '..obbbbffbbbbo..',
+    '..obbbbffbbbbo..',
+    '..obbbbbbbbbdo..',
+    '..offffffffffo..',
+    '..obbbbbbbbddo..',
+    '..oooooooooooo..',
+  ],
+  camp: [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '...........f....',
+    '..........ff....',
+    '..hh......fsf...',
+    '..lld....fssf...',
+    'ohhhhhho.fsslf..',
+    'obbbbbbo..fllf..',
+    '.od..od..oddddo.',
+    '.od..od..oddddo.',
+  ],
+  'timber-support': [
+    'oooooooooooooooo',
+    'hhhhhhhhhhhhhhhh',
+    'bbbbbbbbbbbbbbbb',
+    'dddddddddddddddd',
+    'ooooo.ohbdo.oooo',
+    '.....fohbdof....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '.....folbdof....',
+    '.....oolbdoo....',
+    '....oooooooooo..',
+  ],
+  'basalt-support': [
+    'oooooooooooooooo',
+    'hhhhhhhhhhhhhhhh',
+    'bbbbbbbbbbbbbbbb',
+    'ddddfdddddddfddd',
+    'ooooo.ohbdo.oooo',
+    '......ohbdo.....',
+    '......olbdo.....',
+    '......olfdo.....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '......olbfo.....',
+    '......olbdo.....',
+    '......olbdo.....',
+    '.....oolbdoo....',
+    '....ohhbbbddo...',
+    '....oooooooooo..',
+  ],
+  'blast-charge': [
+    '................',
+    '................',
+    '..........l.....',
+    '...........l....',
+    '...........l....',
+    '..........l.....',
+    '.........l......',
+    '.........l......',
+    '..........l.....',
+    '.........l......',
+    '...oooooolooo...',
+    '...ohbdhbdhbdo..',
+    '...olbdlbdlbdo..',
+    '...offfffffffo..',
+    '...olbdlbdlbdo..',
+    '...ooooooooooo..',
+  ],
+};
 const inTile = (x: number, y: number) => x >= 0 && y >= 0 && x < TILE && y < TILE;
 
 /** Blotchy stone: coarse 4-pixel patches plus fine grain, with pebbles. */
@@ -247,6 +408,12 @@ export function patternPixels(pattern: TilePattern, seedKey: string, variant: nu
       }
       for (let y = 8; y < 12; y++) { px[at(7, y)] = P_FLECK; px[at(8, y)] = P_FLECK; }
       px[at(7, 8)] = P_SHINE; sparkle = at(7, 8);
+      break;
+    }
+    case 'placed': {
+      const rows = PLACED_ART[seedKey];
+      px.fill(P_CLEAR);
+      if (rows) for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) px[at(x, y)] = PLACED_KEY[rows[y][x]] ?? P_CLEAR;
       break;
     }
     case 'block': {
@@ -381,8 +548,9 @@ interface Painter { fillStyle: unknown; globalAlpha: number; fillRect(x: number,
 export function paintEdges(c: Painter, x: number, y: number, mask: number, palette: readonly string[]): void {
   const A = ART, R = x + CELL - A, B = y + CELL - A;
   const deep = palette[P_DEEP];
-  if (!(mask & N)) { c.fillStyle = palette[P_LIGHT]; c.fillRect(x, y + A, CELL, A); }
-  if (!(mask & W)) { c.fillStyle = palette[P_LIGHT]; c.globalAlpha = .7; c.fillRect(x + A, y, A, CELL); c.globalAlpha = 1; }
+  // Lit from the upper left: the highlight step along an open top, the light step down an open left side.
+  if (!(mask & N)) { c.fillStyle = palette[P_HI] ?? palette[P_LIGHT]; c.fillRect(x, y + A, CELL, A); }
+  if (!(mask & W)) { c.fillStyle = palette[P_LIGHT]; c.fillRect(x + A, y, A, CELL); }
   if (!(mask & S)) { c.fillStyle = palette[P_DARK]; c.fillRect(x, B - A, CELL, A); }
   if (!(mask & E)) { c.fillStyle = palette[P_DARK]; c.fillRect(R - A, y, A, CELL); }
   c.fillStyle = deep;
@@ -402,6 +570,33 @@ export function paintEdges(c: Painter, x: number, y: number, mask: number, palet
   if ((mask & (S | E)) === (S | E) && !(mask & SE)) c.fillRect(R, B, A, A);
 }
 
+/** Rows of a W7a auto-tile sheet (style guide §7.1), top to bottom. */
+export const AUTOTILE_ROWS = ['tile', 'top', 'bottom', 'sides', 'thin', 'caps', 'inner'] as const;
+
+/**
+ * The W7a piece for a cell's auto-tile mask (style guide §7.1): `[row, col]`
+ * in the 4 × 7 sheet. A side is open when its neighbour is not solid; `h`
+ * picks between the A/B (or A–D) variants. Pure.
+ */
+export function autoTilePiece(mask: number, h: number): [number, number] {
+  const n = !(mask & N), e = !(mask & E), s = !(mask & S), w = !(mask & W);
+  const open = (n ? 1 : 0) + (e ? 1 : 0) + (s ? 1 : 0) + (w ? 1 : 0);
+  if (open === 0) {
+    if (!(mask & NW)) return [6, 0];
+    if (!(mask & NE)) return [6, 1];
+    if (!(mask & SW)) return [6, 2];
+    if (!(mask & SE)) return [6, 3];
+    return [0, h & 3];
+  }
+  if (open === 4) return [4, 2 + (h & 1)];
+  if (open === 3) return !s ? [5, 0] : !n ? [5, 1] : !e ? [5, 2] : [5, 3];
+  if (n && s) return [4, 0];
+  if (e && w) return [4, 1];
+  if (n) return w ? [1, 2] : e ? [1, 3] : [1, h & 1];
+  if (s) return w ? [2, 2] : e ? [2, 3] : [2, h & 1];
+  return w ? [3, h & 1] : [3, 2 + (h & 1)];
+}
+
 export type TopFace = 'moss' | 'ash' | 'lichen' | 'crust';
 /** The top face a biome grows, from what it breathes. Pure. */
 export function topFaceOf(biome: Pick<BiomeDef, 'particles'> | null | undefined): TopFace | null {
@@ -415,10 +610,10 @@ export function topFaceOf(biome: Pick<BiomeDef, 'particles'> | null | undefined)
 }
 /** [lit, body, accent] per top face. Lichen and crust reuse the glowcap's and the embers' own colours. */
 const FACE_COLORS: Readonly<Record<TopFace, readonly [string, string, string]>> = {
-  moss: ['#8fa64a', '#4d6a2e', '#c9b27a'],
-  ash: ['#b3a397', '#8a7468', '#5a4a44'],
-  lichen: ['#a8e4ff', '#2f6f8f', '#5fb8e8'],
-  crust: ['#ffb35c', '#3a1410', '#ff6a3a'],
+  moss: ['#9ad84e', '#4c9a2e', '#d8f2a0'],
+  ash: ['#d4c8bc', '#9a8c84', '#6a5c56'],
+  lichen: ['#bff4ff', '#2a8eb0', '#6fe0ff'],
+  crust: ['#ffc45c', '#8a2a14', '#ff7a3a'],
 };
 
 /** The biome's crust along a cell's top edge (open to the air above). `h` picks the ragged shape. */
