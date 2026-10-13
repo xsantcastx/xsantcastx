@@ -213,3 +213,5 @@ A Delve rock cell that pays Mining XP (every mining-discipline cell, including p
 - The specs now click every 1.0 s (`SWING_GAP`). Measured that way, all 13 cells in the rubble test opened on exactly swing 4.
 - Part of the playtest's "7 swings" may have been this same effect. The refusal was real either way: the old code returned false during the breath.
 - The gallery ceiling's first columns sit under the HUD at the default viewport. A click on col 6 never swung; col 10 did. The new test picks cells from col 12 on.
+- A walk slides up to ~20 px past where it stops: velocity carries on after `walkDirection` reaches 0. Falling rock only hits within 23 px of the Keeper's centre, so the rubble tests flaked whenever the overshoot was large. `digOverhead` now clicks the open air at the column until the Keeper is within 8 px.
+- The chest test's "X beside the chest" depends on the same overshoot and flaked once in three runs. It was not touched here.
