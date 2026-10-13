@@ -480,9 +480,12 @@ test.describe('Delve extras: gear in chests, played', () => {
     await expect(placePanel(page)).toBeHidden();
     // X on a chest with gear in it is refused, and the chest stays.
     await page.waitForTimeout(400); // keys pressed while the panel folds away are lost
-    await focusWorld(page);
-    await page.keyboard.press('x');
-    await expect(messageLine(page)).toContainText('Empty the chest first');
+    // A key pressed while the panel is still folding away is dropped; press again until it lands.
+    await expect(async () => {
+      await focusWorld(page);
+      await page.keyboard.press('x');
+      await expect(messageLine(page)).toContainText('Empty the chest first', { timeout: 1500 });
+    }).toPass({ timeout: 12000 });
     expect(await hotbarCount(page, 'Chest')).toBeLessThan(1);
     await expect(page.locator('.prompt')).toContainText('Open the chest');
     // Reload: the chest record and the stored weapon are both still there.
@@ -502,9 +505,12 @@ test.describe('Delve extras: gear in chests, played', () => {
     await page.keyboard.press('Escape');
     await expect(placePanel(page)).toBeHidden();
     await page.waitForTimeout(400);
-    await focusWorld(page);
-    await page.keyboard.press('x');
-    await expect(messageLine(page)).toContainText('Chest back in the satchel');
+    // A key pressed while the panel is still folding away is dropped; press again until it lands.
+    await expect(async () => {
+      await focusWorld(page);
+      await page.keyboard.press('x');
+      await expect(messageLine(page)).toContainText('Chest back in the satchel', { timeout: 1500 });
+    }).toPass({ timeout: 12000 });
     await expect.poll(() => hotbarCount(page, 'Chest')).toBe(1);
   });
 });
