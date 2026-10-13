@@ -103,29 +103,12 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
 export const CODEX_CATEGORY_ORDER: CodexCategoryId[] = CODEX_CATEGORIES.map(c => c.id);
 
 /**
- * The eggs that chain the Arena gates, keyed egg id → gate name.
- *
- * The five playable gates are read straight out of `ARENA_PLAYABLE`, which is
- * pure data with no browser APIs, so those can never drift.
- *
- * The seven flavour gates are still literals here: they live in a private field
- * inside `ArenaComponent`, and importing that component would pull its template
- * and styles into the Codex chunk for seven strings. `arenaGateDrift()` below is
- * the guard for those.
+ * Eggs that chain an Arena gate, keyed egg id → gate name. Empty since the
+ * seven tool-era "flavour gates" (Shadow Puzzle, Regex Race, …) went with the
+ * tool eggs that opened them; the five playable gates unlock from
+ * `ARENA_PLAYABLE` and are not Codex achievements.
  */
-const FLAVOUR_GATE_EGGS: Record<string, string> = {
-  'shadow-lord': 'Shadow Puzzle',
-  'regex-master': 'Regex Race',
-  'json-inception': 'JSON Tower',
-  'uuid-lucky': 'UUID Lottery',
-  'chmod-god': 'Chmod Chess',
-  'hash-meaning': 'Hash Hunt',
-  'css-important': 'CSS Golf',
-};
-
-export const ARENA_GATE_EGGS: Record<string, string> = {
-  ...FLAVOUR_GATE_EGGS,
-};
+export const ARENA_GATE_EGGS: Record<string, string> = {};
 
 export function categoryForEgg(egg: EasterEgg): CodexCategoryId {
   return ARENA_GATE_EGGS[egg.id] ? 'arena' : 'global';
