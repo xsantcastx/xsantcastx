@@ -50,8 +50,7 @@ export class LoreScrollService {
 
   /**
    * Bumps whenever the ledger moves. Replayed, so a Codex that mounts after a
-   * discovery still rebuilds — `LoreService.unlock$` is a plain Subject and is
-   * unusable for exactly that reason.
+   * discovery still rebuilds — a plain Subject would miss it.
    */
   readonly changed$: Observable<number> = this.changed$$.asObservable();
 

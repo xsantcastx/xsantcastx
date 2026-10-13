@@ -628,7 +628,6 @@ describe('the registry', () => {
       'eclipse-arena-scores',
       'eclipse-combo',
       'eclipse-idle',
-      'eclipse-lore',
       'eclipse-npc',
       'eclipse-quests',
       'eclipse-realm-rush-board',
@@ -653,7 +652,6 @@ describe('the registry', () => {
       'godforge-scrolls',
       'godforge-stats',
       'godforge-thralls',
-      'tool-usage-counts',
     ]);
   });
 

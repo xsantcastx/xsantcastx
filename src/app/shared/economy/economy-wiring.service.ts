@@ -3,18 +3,14 @@
  *
  * The same shape as XpWiringService and QuestWiringService, and for the same
  * reason: every signal the economy needs already exists somewhere in the app as
- * an observable. Tool work is the quest board's interaction beat, quest claims
- * are `QuestService.claim$`, ranks are `XpService.gain$`, and Mythic drops are
- * `EasterEggService.discovery$`. Nothing is added to 126 tool components, and
- * "using a tool" cannot come to mean one thing on the mission board and a
- * different thing in the Market — there is one beat and both read it.
+ * an observable. Quest claims are `QuestService.claim$`, ranks are
+ * `XpService.gain$`, and Mythic drops are `EasterEggService.discovery$`.
  *
- * It also runs in the other direction. Three things the economy sells only
+ * It also runs in the other direction. Two things the economy sells only
  * mean anything if a system that predates it consults the ledger:
  *   • enchantments and two artifacts multiply XP, via `XpService`'s multiplier
  *     hook — a settable function rather than an injected EconomyService, so
  *     progression does not gain a dependency on the shop;
- *   • the Codex Solarii halves lore thresholds, via `LoreService`'s scale hook;
  *   • cosmetics are painted onto `<html>` as data attributes, in the same style
  *     RealmService already publishes the active realm.
  */
@@ -28,21 +24,16 @@ import {
   ESSENCE_PER_MYTHIC,
   ESSENCE_PER_STREAK_WEEK,
   ESSENCE_PER_WEEKLY,
-  GOLD_PER_TOOL_ACTION,
   goldForQuestXp,
   incomeRewardBase,
   questRewardSeconds,
   runewordQuestMultiplier,
-  loreThresholdScale,
   xpMultiplier,
 } from './economy.model';
-import { REWARD_SECONDS } from './economy-curve';
 import { ECONOMY_ACHIEVEMENTS } from './economy-achievements';
 
 import { XpService } from '../gamification/xp.service';
 import { QuestService } from '../quests/quest.service';
-import { QuestWiringService } from '../quests/quest-wiring.service';
-import { LoreService } from '../lore/lore.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { tierForEgg } from '../rarity/rarity.model';
 import { ProService } from '../pro/pro.service';
@@ -56,8 +47,6 @@ export class EconomyWiringService {
   private readonly economy = inject(EconomyService);
   private readonly xp = inject(XpService);
   private readonly quests = inject(QuestService);
-  private readonly questWiring = inject(QuestWiringService);
-  private readonly lore = inject(LoreService);
   private readonly eggs = inject(EasterEggService);
   private readonly pro = inject(ProService);
   private readonly stats = inject(PlayerStatsService);
@@ -115,18 +104,6 @@ export class EconomyWiringService {
     this.xp.snapshot$.subscribe(() => this.mirrorProgression());
 
     // ── Gold in ─────────────────────────────────────────────────────────────
-
-    // One interaction beat on a tool page. The beat is coalesced to one per six
-    // seconds per tool upstream, which is what stops a slider drag from paying
-    // four hundred times.
-    this.questWiring.beat$.subscribe(() => {
-      // Economy v3: max(5, five seconds of income), so a tool beat stays worth
-      // something past the first hour.
-      this.economy.earnGold(
-        incomeRewardBase(GOLD_PER_TOOL_ACTION, REWARD_SECONDS.toolActionS, this.economy.snapshot),
-        'tool',
-      );
-    });
 
     // A claimed quest. Gold is derived from the XP the quest already pays
     // rather than authored a second time — see `goldForQuestXp`.
@@ -210,9 +187,6 @@ export class EconomyWiringService {
         weakerEnergy: weaker,
       }) * this.pro.xpMultiplier() * this.rpgXpMultiplier();
     });
-
-    // The Codex Solarii.
-    this.lore.setThresholdScale(() => loreThresholdScale(this.economy.economy));
 
     // Repaint whenever a cosmetic is bought or swapped.
     this.economy.snapshot$.subscribe(() => this.paintCosmetics());
