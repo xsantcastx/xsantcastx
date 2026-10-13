@@ -221,6 +221,47 @@ test('visible-document notifications preserve current input and destroy removes 
   assert.equal(browserDocument.listenerCount('visibilitychange'), beforeVisibility);
 });
 
+// play-hunting.spec.ts saw "two Maws dying" from one J. That is the cleave, not
+// a double count: a swing hits every Maw in reach, and two Maws that walked up
+// to the same spot have taken the same blows. Each still pays exactly once.
+test('one swing that fells two stacked Maws counts two kills, each paid once', () => {
+  const kills = [];
+  const loot = [];
+  const { engine, state } = fixture(drop => { loot.push(drop); return true; }, { onKill: event => kills.push(event) });
+  const [a, b, c] = engine.monsters;
+  engine.player.x = a.x - 50; engine.facing = 1;
+  b.x = a.x + 30; // the second Maw stands in the same reach
+  for (let n = 0; n < 6; n++) strike(engine);
+  assert.equal(a.hp, 0); assert.equal(b.hp, 0);
+  assert.equal(c.hp, 60, 'a Maw out of reach takes nothing');
+  assert.equal(state().kills, 2);
+  assert.equal(kills.length, 2, 'onKill fires once per Maw');
+  assert.equal(new Set(kills.map(event => event.id)).size, 2, 'each kill has its own id, so Hunting XP is keyed once each');
+  assert.equal(engine.drops.length, 4, 'each Maw spills its own coins and ore');
+  strike(engine);
+  assert.equal(engine.drops.length, 4, 'swinging at the fallen spills nothing more');
+  engine.player.x = a.x;
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  engine.player.x = b.x;
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.equal(loot.length, 4);
+  assert.equal(new Set(loot.map(drop => drop.id)).size, 4, 'no drop is granted twice');
+  assert.equal(state().coins, loot.reduce((sum, drop) => sum + (drop.coins ?? 0), 0));
+  assert.equal(state().kills, 2, 'collecting does not count a kill again');
+  engine.destroy();
+});
+
+test('combat swings keep the base pace: a forged pickaxe does not speed up hitting a Maw', () => {
+  const { engine } = fixture();
+  engine.setTools({ pickaxe: 3, swing: { pickaxe: .25 }, power: { pickaxe: 1.5 } });
+  const monster = engine.monsters[0];
+  engine.player.x = monster.x - 50; engine.facing = 1;
+  engine.setInput('attack', true); engine.setInput('attack', false);
+  assert.equal(monster.hp, 50, 'a swing at a Maw deals melee damage, not tool power');
+  assert.ok(Math.abs(engine.attackCooldown - .52) < 1e-9, 'the next combat swing waits the full 0.52 s');
+  engine.destroy();
+});
+
 test('setStats drives melee damage and max HP, keeping the share of health', () => {
   const { engine, state } = fixture();
   const monster = engine.monsters[0];
