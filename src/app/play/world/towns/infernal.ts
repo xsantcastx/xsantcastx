@@ -272,6 +272,8 @@ export const INFERNAL_TOWN: TownDef = {
     ...GUARD_PLATFORMS.slice(1).map(p => ({ ...p, x: p.x + QUARTER })),
   ],
   stations: [
+    // West of the seam, by the camp: the first stop when the satchel fills. (The spec's x≈1075 is the Homestead gate.)
+    { id: 'vault', x: 330, label: 'THE VAULT', kind: 'panel', panel: 'vault', art: 'artifacts', width: 100, blurb: 'Keep what you do not carry. A full satchel sends things here; the benches still use them.' },
     { id: 'ore', x: 480, label: 'CINDER ORE', kind: 'resource', art: CINDER_ORE, width: 130, blurb: 'Mine Cinder Ore from the seam.' },
     { id: 'delve', x: 590, label: 'EMBER DELVE', kind: 'passage', to: 'ember-delve', arriveX: 260, width: 90, blurb: 'A mine shaft into the rock under the Seamworks. Dig for ore.' },
     { id: 'vendor', x: 705, label: 'MATERIAL VENDOR', kind: 'panel', panel: 'vendor', art: 'trade-complete', width: 130, blurb: 'Sell surplus materials for a little Gold. The Vendor buys; it does not sell.' },

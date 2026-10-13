@@ -325,8 +325,9 @@ export class EnchantingBenchComponent implements OnInit, OnDestroy {
     const now = Date.now();
     const snap = this.inventory.snapshot;
 
+    // Worn, lent and carried gear; what rests in the Vault is taken out there first (inventory spec S6).
     this.socketables = snap.items
-      .filter(item => isSocketable(item))
+      .filter(item => isSocketable(item) && !item.explorerId?.startsWith('vault:'))
       .map(item => {
         const frame = socketFrameOf(item);
         return {

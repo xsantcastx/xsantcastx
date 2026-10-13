@@ -10,6 +10,7 @@
  */
 export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Name tags ──
+  'play.life.name.vault-clerk': { en: 'Vault Clerk', es: 'Empleado de la Bóveda' },
   'play.life.name.buyback-clerk': { en: 'Buyback Clerk', es: 'Comprador de materiales' },
   'play.life.name.bench-smith': { en: 'Bench Smith', es: 'Herrero del banco' },
   'play.life.name.kael': { en: 'Kael', es: 'Kael' },
@@ -28,6 +29,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.name.lodge-warden': { en: 'Lodge Warden', es: 'Custodio del refugio' },
 
   // ── Infernal: Basalt Seamworks ──
+  'play.life.line.vault-clerk.1': { en: 'A full satchel never drops a thing here. It comes to me, and I write it down.', es: 'Aqui una mochila llena nunca tira nada. Viene a mi, y lo anoto.' },
+  'play.life.line.vault-clerk.2': { en: 'What you leave with me the benches can still reach. Only your back gets lighter.', es: 'Lo que me dejas, los bancos aun lo alcanzan. Solo tu espalda pesa menos.' },
   'play.life.line.buyback-clerk.1': { en: 'I buy what you carry. Selling is the Market\'s trade, not mine.', es: 'Compro lo que cargas. Vender es oficio del Mercado, no mio.' },
   'play.life.line.buyback-clerk.2': { en: 'Surplus ore weighs on a satchel. Let it weigh on my scales.', es: 'El mineral de sobra pesa en la bolsa. Deja que pese en mi balanza.' },
   'play.life.line.bench-smith.1': { en: 'Bring materials. The bench turns them into gear.', es: 'Trae materiales. El banco los convierte en equipo.' },

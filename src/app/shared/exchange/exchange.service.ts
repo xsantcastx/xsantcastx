@@ -207,6 +207,13 @@ export class ExchangeService {
     return this.sellableInstances(good).length;
   }
 
+  /** Pieces of an equipment good resting in the Vault: not for sale until taken out (inventory spec S6). */
+  storedInVault(good: ExchangeGood): number {
+    if (!this.isBrowser || good.kind !== 'equipment') return 0;
+    return this.inventory.snapshot.items.filter(item =>
+      item.definitionId === good.definitionId && item.rarity === good.rarity && item.explorerId?.startsWith('vault:')).length;
+  }
+
   /** The loose instances of a good, oldest first — the order a sale consumes. */
   sellableInstances(good: ExchangeGood): GameItem[] {
     if (!this.isBrowser || good.kind !== 'equipment') return [];

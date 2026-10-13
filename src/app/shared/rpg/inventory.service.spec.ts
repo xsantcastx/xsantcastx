@@ -247,7 +247,8 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.snapshot.bag.some(row => row.id === 'helm')).toBe(true);
   });
 
-  it('displaces at the 250-row cap without evicting the occupant', () => {
+  // The satchel holds 40 (inventory spec S4/S5): arrivals past it rest in the Vault.
+  it('displaces into a full satchel without evicting the occupant', () => {
     const fillers = MAX_INVENTORY - inventory.snapshot.items.length - 1;
     for (let i = 0; i < fillers; i++) {
       expect(inventory.add({
@@ -263,10 +264,14 @@ describe('InventoryService C3 adapter', () => {
     };
     expect(inventory.add(spare)).toBeTruthy();
     expect(inventory.snapshot.items.length).toBe(MAX_INVENTORY);
-    expect(inventory.equip('spare', 'head')).toBe(true);
-    expect(inventory.snapshot.equipped['head']?.id).toBe('spare');
-    expect(inventory.itemById('seed-helm')).toBeTruthy();
-    expect(inventory.snapshot.bag.some(row => row.id === 'seed-helm')).toBe(true);
+    expect(inventory.snapshot.bag.length).toBe(inventory.snapshot.satchelCap);
+    // Gear resting in the Vault is taken out before it is worn: wear one the satchel holds.
+    const carried = inventory.snapshot.bag.find(row => row.id.startsWith('fill-'))!;
+    expect(inventory.equip(carried.id, 'head')).toBe(true);
+    expect(inventory.snapshot.equipped['head']?.id).toBe(carried.id);
+    const helm = inventory.itemById('seed-helm');
+    expect(helm).toBeTruthy();
+    expect(!helm!.equipped && (!helm!.explorerId || helm!.explorerId.startsWith('vault:'))).toBe(true);
     expect(inventory.snapshot.items.length).toBe(MAX_INVENTORY);
     const stored = coerceInventoryLedger(JSON.parse(memory.readRaw(INVENTORY_KEY)!));
     expect(stored?.tombstones.some(row => row.id === 'seed-helm')).toBe(false);
@@ -330,11 +335,13 @@ describe('InventoryService C3 adapter', () => {
       tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 2, legacyBackup: null,
     }));
     inventory = configure(memory);
-    expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY);
+    // The load settles 250 loose pieces into a 40-slot satchel: the rest wait in the Vault.
+    expect(inventory.snapshot.bag.length).toBe(inventory.snapshot.satchelCap);
+    expect(inventory.snapshot.inVault).toBe(MAX_INVENTORY - inventory.snapshot.satchelCap);
     expect(inventory.equip('blade', 'head')).toBe(true);
     expect(inventory.snapshot.equipped['head']?.id).toBe('blade');
-    expect(inventory.snapshot.bag.some(row => row.id === 'helm')).toBe(true);
-    expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY + 1);
+    // The displaced helm meets a full satchel and goes to the Vault: moved, never refused or deleted.
+    expect(inventory.itemById('helm')?.explorerId?.startsWith('vault:')).toBe(true);
     expect(inventory.snapshot.items.length).toBe(MAX_INVENTORY + 2);
   });
 
