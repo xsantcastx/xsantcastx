@@ -457,8 +457,9 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     family: 'consumable',
     type: 'charm',
     style: 'infernal',
-    rollKeys: ['xpBonus'],
-    base: { xpBonus: 4 },
+    // Ward: canon says it lets a bearer "endure a moment of heat distortion".
+    rollKeys: ['ward'],
+    base: { ward: 2 },
     temperable: false,
     maxTemper: 0,
     temperGoldBase: 0,

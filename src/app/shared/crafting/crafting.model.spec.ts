@@ -45,6 +45,13 @@ describe('crafting catalogue', () => {
     expect(CRAFTING_RECIPES.length).toBeGreaterThanOrEqual(30);
   });
 
+  it('brews the Ember Elixir from Ember Residue and Infernal Heartstone (meaning audit #9)', () => {
+    const recipe = CRAFTING_RECIPES.find(r => r.id === 'craft-ember-elixir')!;
+    expect(recipe.output.itemId).toBe('ember-elixir');
+    expect(recipe.ingredients.map(i => i.materialId).sort()).toEqual(['ember-residue', 'infernal-heartstone']);
+    expect(itemDefinitionById('ember-elixir')!.rollKeys).toEqual(['ward']);
+  });
+
   it('gives every recipe a unique id', () => {
     const ids = new Set(CRAFTING_RECIPES.map(r => r.id));
     expect(ids.size).toBe(CRAFTING_RECIPES.length);

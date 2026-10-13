@@ -432,6 +432,12 @@ const CONSUMABLE_RECIPES: readonly CraftingRecipe[] = [
     [m('ember-residue', 2), m('cinder-ore', 8), m('pyrite-dust', 3)],
     22_000, 4, 'Sealed hot. It has never once cooled and nobody has asked why.',
     { realm: 'infernal', craftTime: 2 }),
+  // Meaning audit #9: the Ember Elixir's first world source. The blurb is the
+  // Collection Log's own hint for it.
+  r('craft-ember-elixir', 'Ember Elixir', 'consumable', 'uncommon', 'ember-elixir',
+    [m('ember-residue', 2), m('infernal-heartstone', 1)],
+    8_000, 3, 'Brewed from what a hot seam leaves behind.',
+    { realm: 'infernal', craftTime: 1 }),
   r('craft-liquid-dawn', 'Flask of Liquid Dawn', 'consumable', 'rare', 'liquid-dawn',
     [m('solar-resin', 3), m('sunbloom', 10), m('luminous-prism', 3)],
     24_000, 5, 'One mouthful of the morning the Luminous Realm keeps in reserve.',
