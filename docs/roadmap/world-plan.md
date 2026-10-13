@@ -180,8 +180,9 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 
 - [x] **Phase 4 seen in a real build** (2026-10-13, all five towns at 1280×800): keepers beside their stalls, canon lines, townsfolk off stalls; keepers and townsfolk are still placeholder figures until sprites exist
 - [x] **In-world HUD fixes** (`eb065ee`): the Hearth chat folds to a 44px pill (top HUD strip on desktop, its own band on phones), remembers open/folded, folds when a station opens; the duplicate "[E] INTERACT" canvas hint is gone; no enemy bar on safe town ground; keeper name tags stay inside the canvas. `e2e/play-hud.spec.ts`; full `play-*` suite 58/58
-- [~] **First-session audit**: a true first visit at phone and desktop sizes; fix what stops a new player reaching first buy → first hunt → first craft → first dig
-- [~] **Phone performance of /play**: frame times at 4× CPU throttle in each town, a hunt and the Delve; includes pausing the site-wide cosmic canvas that keeps running behind the game
+- [x] **First-session pass** (`c9ffcd5`; audit in `docs/handoff/first-session-audit.md`): a "Goal n of 4" HUD line with **Show me** (buy a building → defeat a Rivet Maw → forge the Basalt Edge → dig in the Delve; read from the save, gone once done); phone Homestead Buy no longer covered by the Interact prompt; no "visitor number N" card on a first visit; the tutorial ends in the world and its doors open stations in-world. All four goals: 1m39s phone / 2m18s desktop. `e2e/play-first-session.spec.ts`
+  - **Owner decisions:** restore the Rune Forge door in the tutorial? Maws before the blade (bare-handed kill 8–17 s, never fatal)? Nothing craftable at the Bench on a fresh save — add a cheap starter recipe? Cookie banner over the world on a first visit. HUD quest lines are English-only
+- [x] **Phone performance of /play** (`c865d7c`; `docs/handoff/play-perf.md`): 390×844 DPR 3, 4× CPU, software raster: towns/hunt p50 33 → 17 ms, Delve 83 → 50 ms; per-frame allocation −55%; site backdrop (starfield, pulsar) hidden and paused on in-world routes; phone render tier (DPR cap 1.5, no shadowBlur, cached town backdrop, cheaper Delve light); `AppComponent.isPlayMode` cached. Opt-in harness `PLAY_PERF=1 e2e/perf-play.spec.ts`. Not yet on a real phone; the Delve's darkness overlay and `RigSprite.render` are what's left
 - Left over from the HUD fix: between 901 and ~1000px the open satchel book draws over the Hearth pill; the canvas "[ J / E ] GATHER" and "CLICK TO WALK HERE" cues share the line the old hint was clipped on
 
 ---
@@ -204,7 +205,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| First-session audit; phone performance of /play | agent worktrees | `[~]` |
+| (nothing in flight) | | |
 
 ## Art still missing (placeholders in game)
 
