@@ -171,9 +171,9 @@ describe('collection catalogue', () => {
       .filter(e => e.category === 'rune' || e.category === 'runeword' || e.category === 'artifact')
       .filter(e => !hasArt(e.id))
       .map(e => e.id);
-    // Three runes were never painted (mote, seam, ledger); the glyph fallback
-    // covers them. Anything beyond those three is a regression in the manifest.
-    expect(missing.sort()).toEqual(['ledger', 'mote', 'seam']);
+    // The three unpainted runes (mote, seam, ledger) are gone; anything missing
+    // now is a regression in the manifest.
+    expect(missing).toEqual([]);
   });
 });
 
