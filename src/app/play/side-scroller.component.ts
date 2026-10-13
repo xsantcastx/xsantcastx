@@ -19,7 +19,7 @@ import { areaOf, findStation, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABE
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
-import { definitionFor, itemFitsSlot } from '../shared/rpg/item-definition';
+import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
 import {
   CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, ItemRarity, SLOT_BY_ID, SLOT_IDS, SlotId,
   formatItemMod, rarityColor, rarityLabel,
@@ -36,7 +36,10 @@ import { ChestGearRow, ChestRow, DelveChestService } from '../shared/delve/delve
 import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
-import { toolTiers } from '../shared/skills/tools';
+import { toolCard, toolCardLines, toolTiers } from '../shared/skills/tools';
+import { TOOLS_I18N } from '../shared/skills/tools.i18n';
+import { CharacterHubService } from '../shared/character/character-hub.service';
+import { STARTER_FAMILIES, starterInstanceId, starterToolId } from '../shared/skills/tool-items';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
 import { skillForDiscipline, skillLevel } from '../shared/skills/skill.model';
 import { huntingXpFor } from '../shared/skills/hunting';
@@ -70,14 +73,15 @@ const EMBER_DELVE_LOCATION = 'infernal/ember-delve';
 import type { InventorySnapshot } from '../shared/rpg/inventory.service';
 
 /**
- * Tool tiers for the delve until real tool items exist.
- * The floor under toolTiers(): crafted tools raise it (see pushStats).
+ * What a held weapon lends the delve: any weapon cuts vines (blade I), and a
+ * staff/wand-like one breaks wards (staff I). Pickaxe, axe and sickle have no
+ * floor any more: every Keeper holds the real starter tools (ensureStarterTools).
  */
 export function provisionalToolTiers(snapshot: Pick<InventorySnapshot, 'equipped'>): ToolTiers {
   const held = [snapshot.equipped['weapon'], snapshot.equipped['off-hand']].filter(item => item && !item.explorerId);
   const staff = held.some(item => /staff|wand|rod|scepter|sceptre/i.test(`${item!.definitionId} ${item!.name}`));
   const weapon = snapshot.equipped['weapon'];
-  return { pickaxe: 1, axe: 1, sickle: 1, blade: weapon && !weapon.explorerId ? 1 : 0, staff: staff ? 1 : 0 };
+  return { blade: weapon && !weapon.explorerId ? 1 : 0, staff: staff ? 1 : 0 };
 }
 
 /** On <body> while the world is mounted. styles.css and cosmic-engine.js key the backdrop off it. */
@@ -208,6 +212,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead's canvas view and its data (homestead/homestead.service.ts). */
   private readonly homestead = inject(HomesteadService);
   private readonly activity = inject(ActivityProgressionGateway);
+  private readonly hub = inject(CharacterHubService);
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
   private readonly economy = inject(EconomyService);
@@ -299,6 +304,7 @@ export class SideScrollerComponent implements OnDestroy {
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
     this.i18n.register(HUD_I18N);
+    this.i18n.register(TOOLS_I18N);
   }
   private liveCanvas(): HTMLCanvasElement | null {
     const candidates = [this.canvas?.nativeElement, this.host.nativeElement.querySelector('canvas'), document.querySelector('main.play-mode canvas')];
@@ -641,6 +647,17 @@ export class SideScrollerComponent implements OnDestroy {
       return;
     }
     this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker, route: entry.route });
+    this.loadPanel(entry, this.panelInjector);
+  }
+  /**
+   * Character → Stats in the world: the Character page in the place panel,
+   * opened on its Stats tab (Keeper stats and the Tools block).
+   */
+  openCharacter(): void {
+    if (!this.browser) return;
+    this.hub.setTab('stats');
+    const entry = PANEL_REGISTRY.character;
+    this.showPanel({ kind: 'page', stationId: 'character', title: entry.title, kicker: entry.kicker, route: entry.route, own: true });
     this.loadPanel(entry, this.panelInjector);
   }
   /** Build a hosted page into the open panel (a slow import never lands in a newer or closed one). */
@@ -1125,6 +1142,17 @@ export class SideScrollerComponent implements OnDestroy {
     const def = definitionFor(item);
     const stats = ITEM_STAT_KEYS.filter(key => (item.stats[key] ?? 0) !== 0).map(key => formatItemMod(key, item.stats[key]!));
     const level = item.upgradeLevel ?? 0;
+    // A tool: its power, pace and what it opens, and the rule that it works from the satchel.
+    const tool = toolCard(item.definitionId, this.activity.snapshot.progress);
+    if (tool) {
+      return {
+        name: item.name, art: itemArt(item)?.src ?? '', mark: monogram(item.name),
+        kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
+        note: this.t('toolStat.fromSatchel'),
+        stats: toolCardLines(tool, (key, vars) => this.t(key, vars)),
+        canWear: false, canStow: worn, compare: [], compareLabel: '',
+      };
+    }
     return {
       name: level > 0 ? `${item.name} +${level}` : item.name,
       art: itemArt(item)?.src ?? '',
@@ -1157,6 +1185,25 @@ export class SideScrollerComponent implements OnDestroy {
       compareLabel: there ? this.t('play.hud.slip.against', { name: there.name }) : this.t('play.hud.slip.againstEmpty', { place }),
     };
   }
+  /**
+   * Every Keeper holds a Worn Pickaxe, Axe and Sickle: a fresh save gets them,
+   * and one that lost one gets it back. Fixed instance ids, so this can never
+   * mint a second copy; skipped when the satchel has no room (never evicts).
+   */
+  private starterAsked = 0;
+  private ensureStarterTools(): void {
+    if (!this.browser) return;
+    // Asked at most once a second (pushStats runs on a 200 ms tick), so a write that fails cannot spin.
+    const now = Date.now();
+    if (now - this.starterAsked < 1000) return;
+    this.starterAsked = now;
+    for (const family of STARTER_FAMILIES) {
+      const id = starterInstanceId(family);
+      if (this.inventory.itemById(id) || !this.inventory.canAcceptInstance()) continue;
+      const item = mintEquipment(starterToolId(family), 'common', Math.random, new Date().toISOString(), id);
+      if (item) this.inventory.add(item);
+    }
+  }
   private sync(): void {
     this.engine?.setProgress({ equipped: this.equipped, restored: this.restored });
     this.pushStats();
@@ -1164,10 +1211,11 @@ export class SideScrollerComponent implements OnDestroy {
   /** Hand the engine the loadout's combat numbers when they change. */
   private pushStats(): void {
     if (!this.engine) return;
+    this.ensureStarterTools();
     this.pushLoadout();
     this.refreshHotbar();
-    // Crafted tools (skills/tools.ts) raise the floor; the provisional tier-I kit
-    // keeps a fresh save able to dig before it owns a pickaxe. The lantern goes
+    // Tools come from the satchel (skills/tools.ts): the starter set, raised by
+    // forged ones, which also swing faster. The lantern goes
     // in tiles (toolTiers' unit; the engine multiplies by its 32 px cell), so
     // each ten Delving levels light one more tile.
     const floor = provisionalToolTiers(this.inventory.snapshot);
@@ -1176,6 +1224,7 @@ export class SideScrollerComponent implements OnDestroy {
     const snapshot = this.inventory.snapshot;
     const crafted = toolTiers({ ...snapshot, items: snapshot.items.filter(item => !isChestHolder(item.explorerId)) }, progress);
     const tools = {
+      swing: { pickaxe: crafted.swing.pickaxe, axe: crafted.swing.axe, sickle: crafted.swing.sickle },
       pickaxe: Math.max(floor.pickaxe ?? 0, crafted.pickaxe),
       axe: Math.max(floor.axe ?? 0, crafted.axe),
       sickle: Math.max(floor.sickle ?? 0, crafted.sickle),
@@ -1190,7 +1239,12 @@ export class SideScrollerComponent implements OnDestroy {
       woodcutting: skillLevel(progress, 'woodcutting'),
     };
     const toolKey = `${JSON.stringify(tools)}:${JSON.stringify(levels)}:${crafted.lanternRadius}`;
-    if (toolKey !== this.toolKey) { this.toolKey = toolKey; this.engine.setTools({ ...tools, lanternTiles: crafted.lanternRadius, levels }); }
+    if (toolKey !== this.toolKey) {
+      this.toolKey = toolKey;
+      this.engine.setTools({ ...tools, lanternTiles: crafted.lanternRadius, levels });
+      // The pickaxe's pace on the canvas, for tests and tools (the HUD says it in words).
+      this.canvas?.nativeElement.setAttribute('data-swing-pickaxe', crafted.swing.pickaxe.toFixed(2));
+    }
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;

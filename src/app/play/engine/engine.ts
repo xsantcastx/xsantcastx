@@ -66,6 +66,10 @@ const SPAWN_RISE = .4;
 const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
 /** How far from the Keeper's chest a click can swing at a cell, world px. */
 const DELVE_REACH = CELL * 2.7;
+/** Seconds between swings: combat, and digging/gathering with a starter tool. */
+const BASE_SWING = .52;
+/** No tool pace may beat this (guards a bad setTools value). */
+const MIN_SWING = .25;
 const BLAST_TIME = .3;
 const BLAST_COOLDOWN = 1.1;
 /** Loose rock: the groan before it falls (s), its fastest fall, and its bruise as a share of max HP. */
@@ -257,6 +261,10 @@ export class SeamworksEngine {
   /** Cells one charge clears (CHARGE_RADIUS 2.3 reaches 21). */
   private readonly blastScratch = new Int32Array(32);
   private tools: ToolTiers = {};
+  /** Seconds per digging/gathering swing, by tool (setTools({ swing })). Combat swings stay BASE_SWING. */
+  private swing: Partial<Record<ToolKind, number>> = {};
+  /** The tool the last hitCell worked with, so the swing takes that tool's pace. */
+  private swingTool: ToolKind | null = null;
   /** The current area's gathering nodes, and every visited area's (regrowth timers keep running per session). */
   private sites: GatherSite[] = [];
   private readonly siteCache = new Map<string, GatherSite[]>();
@@ -712,13 +720,17 @@ export class SeamworksEngine {
    * `minLevel` clangs before the host is asked, instead of cracking all the
    * way and being refused.
    */
-  setTools(tools: ToolTiers & { lanternTiles?: number; lanternRadius?: number; levels?: Partial<Record<DisciplineId, number>> }): void {
+  setTools(tools: ToolTiers & { lanternTiles?: number; lanternRadius?: number; levels?: Partial<Record<DisciplineId, number>>; swing?: Partial<Record<ToolKind, number>> }): void {
     const next: ToolTiers = {};
+    const swing: Partial<Record<ToolKind, number>> = {};
     for (const tool of ['pickaxe', 'axe', 'sickle', 'blade', 'staff'] as ToolKind[]) {
       const tier = tools[tool];
       if (Number.isFinite(tier) && (tier as number) > 0) next[tool] = Math.floor(tier as number);
+      const pace = tools.swing?.[tool];
+      if (Number.isFinite(pace) && (pace as number) > 0) swing[tool] = Math.min(BASE_SWING, Math.max(MIN_SWING, pace as number));
     }
     this.tools = next;
+    this.swing = swing;
     if (Number.isFinite(tools.lanternTiles) && (tools.lanternTiles as number) > 0) this.lanternRadius = (tools.lanternTiles as number) * CELL;
     else if (Number.isFinite(tools.lanternRadius) && (tools.lanternRadius as number) > 0) this.lanternRadius = tools.lanternRadius as number;
     if (tools.levels) this.skillLevels = { ...tools.levels };
@@ -779,7 +791,7 @@ export class SeamworksEngine {
    */
   private workSite(site: GatherSite): void {
     const def = site.def;
-    this.attackTime = .4; this.attackCooldown = .52;
+    this.attackTime = .4; this.attackCooldown = BASE_SWING;
     if (Math.abs(def.x - this.player.x) > 6) this.facing = def.x > this.player.x ? 1 : -1;
     const top = FLOOR - (def.kind === 'wood' ? 120 : 50);
     if (!site.ready) {
@@ -793,6 +805,7 @@ export class SeamworksEngine {
       this.clang(def.x, top, check.ok ? `Clang! Needs ${need}` : `Clang! Need ${need}`);
       return;
     }
+    this.attackCooldown = this.swingFor(check.tool);
     site.shake = 1;
     const left = site.hp - check.damage;
     if (left > 1e-3) {
@@ -833,9 +846,11 @@ export class SeamworksEngine {
     this.cancelMove();
     if (this.attackCooldown > 0) return true;
     if (Math.abs(cx - this.player.x) > 6) this.facing = cx > this.player.x ? 1 : -1;
-    this.attackTime = .4; this.attackCooldown = .52;
+    this.attackTime = .4; this.attackCooldown = BASE_SWING;
     this.hitScratch[0] = t.index(col, row);
+    this.swingTool = null;
     this.hitCells(1, SWING_TOOLS, false);
+    this.attackCooldown = this.swingFor(this.swingTool);
     this.report();
     return true;
   }
@@ -937,9 +952,11 @@ export class SeamworksEngine {
     if (action === 'dodge' && this.dodgeCooldown <= 0) { this.dodgeTime = .26; this.dodgeCooldown = 1.05; }
     this.report();
   }
+  /** Seconds until the next swing after working with `tool` (a forged tool swings faster). */
+  private swingFor(tool: ToolKind | null): number { return (tool && this.swing[tool]) || BASE_SWING; }
   /** One swing: monsters in reach take the hit; in a delve, a swing at nothing living works the rock instead. */
   private attack(): void {
-    this.attackTime = .4; this.attackCooldown = .52;
+    this.attackTime = .4; this.attackCooldown = BASE_SWING;
     let struck = false;
     const k = this.figure;
     for (const monster of this.monsters) {
@@ -947,8 +964,11 @@ export class SeamworksEngine {
       this.hurtMonster(monster, this.damage ?? (this.equipped ? 20 : 10));
       struck = true;
     }
-    if (!struck && this.terrain) this.hitCells(this.swingTargets(), SWING_TOOLS, false);
-    else if (!struck) { const site = this.siteInReach(); if (site) this.workSite(site); }
+    if (!struck && this.terrain) {
+      this.swingTool = null;
+      this.hitCells(this.swingTargets(), SWING_TOOLS, false);
+      this.attackCooldown = this.swingFor(this.swingTool);
+    } else if (!struck) { const site = this.siteInReach(); if (site) this.workSite(site); }
   }
   private hurtMonster(monster: Monster, damage: number): void {
     const floor = monster.def.floorY ?? FLOOR;
@@ -1038,6 +1058,8 @@ export class SeamworksEngine {
       return HIT_BLOCKED;
     }
     const index = t.index(col, row);
+    // The pace of a swing is the tool that actually bit.
+    if (!this.swingTool || (this.swing[check.tool] ?? BASE_SWING) < (this.swing[this.swingTool] ?? BASE_SWING)) this.swingTool = check.tool;
     const left = t.hp[index] - check.damage;
     if (left > 1e-3) {
       t.setHp(col, row, left);

@@ -1,5 +1,5 @@
 /**
- * hub-stats.component.ts — rank, wallet rates, attributes. Existing ledgers only.
+ * hub-stats.component.ts — rank, wallet rates, attributes, tools. Existing ledgers only.
  */
 import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
@@ -9,11 +9,12 @@ import { XpService, type XpSnapshot } from '../gamification/xp.service';
 import { EconomyService, type EconomySnapshot } from '../economy/economy.service';
 import { formatCompact, formatCurrency } from '../economy/economy.model';
 import { StatPanelComponent } from '../rpg/stat-panel.component';
+import { ToolStatsComponent } from '../skills/tool-stats.component';
 
 @Component({
   selector: 'app-hub-stats',
   standalone: true,
-  imports: [StatPanelComponent],
+  imports: [StatPanelComponent, ToolStatsComponent],
   template: `
     <section class="ht" aria-labelledby="ht-title">
       <h2 id="ht-title">{{ t('hub.stats.title') }}</h2>
@@ -44,6 +45,7 @@ import { StatPanelComponent } from '../rpg/stat-panel.component';
         </div>
       </dl>
       <app-stat-panel />
+      <app-tool-stats />
     </section>
   `,
   styles: [`
