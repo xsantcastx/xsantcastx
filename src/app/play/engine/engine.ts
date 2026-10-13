@@ -10,7 +10,7 @@ import {
 import { spriteFor } from '../../shared/art/sprite-manifest.generated';
 import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
-import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
+import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
   climbTerrainBody, findNode, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
@@ -2013,8 +2013,9 @@ export class SeamworksEngine {
     }
     c.font = '600 12px system-ui'; c.textAlign = 'center'; c.fillStyle = hot ? '#fff1c9' : '#c9bdc8'; c.fillText(station.label, x, FLOOR + 35);
     // Near a station the HUD's action bar already says "Interact E"; a second
-    // "[ E ] INTERACT" here sat under that bar and was clipped. Only the hover cue remains.
-    if (hovered && !near) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, FLOOR + 58); }
+    // "[ E ] INTERACT" here sat under that bar and was clipped. Only the hover
+    // cue remains, drawn over the station, clear of the bar (STATION_CUE_Y).
+    if (hovered && !near) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, STATION_CUE_Y); }
   }
   /**
    * A gathering node, drawn in code: a herb patch, a tree or an outcrop. Ready,
@@ -2071,7 +2072,8 @@ export class SeamworksEngine {
       c.fillText(def.label.toUpperCase(), x, FLOOR + 35);
       const need = ready ? this.siteNeed(def) : null;
       c.fillStyle = need ? '#ffb39a' : '#fff0cb';
-      c.fillText(!ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, FLOOR + 58);
+      // Over the node's icon, not under its label: the floor band is the action bar's (SITE_CUE_RISE).
+      c.fillText(!ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, iconY - SITE_CUE_RISE);
     }
     c.restore();
   }

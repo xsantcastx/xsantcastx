@@ -2428,6 +2428,36 @@ test('sprite: figure keys map to their sheet ids; the manifest ships empty so no
   assert.equal(spriteManifest.spriteFor('keeper'), null, 'no sheet imported: the rig stays');
 });
 
+test('canvas cues sit above their station or node, never on the floor band under the action bar', () => {
+  const { engine } = fixture();
+  const noop = () => {};
+  const texts = [];
+  engine.context = new Proxy({ globalAlpha: 1, measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+    fillText: (text, x, y) => texts.push([text, y]) }, { get: (target, key) => key in target ? target[key] : noop, set: (target, key, value) => { target[key] = value; return true; } });
+  const FLOOR = 610;
+  // A hovered stall the Keeper is not standing at.
+  const far = engine.places.find(station => Math.abs(station.x - engine.player.x) > 400);
+  engine.setHover(far.id);
+  engine.render();
+  const hover = texts.find(([text]) => text === 'CLICK TO WALK HERE');
+  assert.ok(hover, 'the hover cue is drawn');
+  assert.ok(hover[1] <= FLOOR - 240, `hover cue at ${hover[1]}, above the stall hit box`);
+  engine.setHover(null);
+  // A gathering node in Ember Quarry, Keeper beside it.
+  engine.setProgress({ equipped: true, restored: true });
+  engine.player.x = stationX(engine, 'passage'); engine.player.y = FLOOR; engine.interact();
+  assert.equal(engine.areaDef.id === 'ember-quarry' || engine.areaDef.name === 'Ember Quarry', true);
+  for (const node of engine.areaDef.nodes) {
+    engine.player.x = node.x; texts.length = 0;
+    engine.render();
+    const cue = texts.find(([text]) => /GATHER|^NEEDS |^GROWING BACK/.test(text));
+    assert.ok(cue, `${node.id}: a cue is drawn`);
+    assert.ok(cue[1] < FLOOR - 100, `${node.id}: cue at ${cue[1]} sits above the node`);
+    assert.ok(!texts.some(([, y]) => y > FLOOR + 40), `${node.id}: nothing drawn below the label line`);
+  }
+  engine.destroy();
+});
+
 function spriteEngine(sheets) {
   const { engine } = fixture(() => true, { sprite: id => sheets[id] ?? null });
   const noop = () => {};
