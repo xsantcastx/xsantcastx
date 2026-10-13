@@ -234,3 +234,16 @@ See [01-second-wave.md](01-second-wave.md) for the order to make these in.
 | world-sprite | `node-celestial-quartz` | gathering-node | P2 | Gathering node for `celestial-quartz` (Staff III, staff); the material icon is already painted. `ready` shows while the node can be shattered; `harvested` while it recovers | not in the world yet | `Sprites/Props/40-node-celestial-quartz.png` |
 | world-sprite | `node-void-crystal` | gathering-node | P2 | Gathering node for `void-crystal` (Staff IV, staff); the material icon is already painted. `ready` shows while the node can be shattered; `harvested` while it recovers | not in the world yet | `Sprites/Props/41-node-void-crystal.png` |
 | world-sprite | `homestead-workshop-hammer` | homestead | P2 | Homestead Thrall Workshop: the hammer swung by the roll timer | a rectangle rotated in code | `Sprites/Props/51-homestead-workshop-hammer.png` |
+
+## Delve extras (added 2026-10-13)
+
+Supports and blasting charges. Briefs at the end of [menu-paintings/07-tools-and-delve-items.md](menu-paintings/07-tools-and-delve-items.md) and [world-sprites/05-delve-tiles.md](world-sprites/05-delve-tiles.md).
+
+| Layer | Id | Category | Pri | Used in | Shows today | Save as (under `Assets/`) |
+|---|---|---|---|---|---|---|
+| menu-painting | `timber-support` | delve-kit | P1 | Delve kit craft (x2: 3 World-Root Bark + 1 Thornroot, Smithing 5); Delve hotbar slot, bag, Crafting Bench, chests | stand-in via ART_ALIAS: the world-root-bark painting | `Items/Materials/24-timber-support.png` |
+| menu-painting | `basalt-support` | delve-kit | P1 | Delve kit craft (x2: 3 Slag Fragment + 2 Cinder Ore + 1 World-Root Bark, Smithing 12); Delve hotbar slot, bag, Crafting Bench, chests | stand-in via ART_ALIAS: the godforge-slag painting | `Items/Materials/25-basalt-support.png` |
+| menu-painting | `blast-charge` | delve-kit | P1 | Delve kit craft (x2: 3 Cinder Ore + 1 Ember Residue + 2 Slag Fragment, Smithing 10); lit from a staff in the Delve; Delve hotbar slot, bag, Crafting Bench, chests | stand-in via ART_ALIAS: the ember-stoker painting | `Items/Materials/26-blast-charge.png` |
+| world-sprite | `tile-timber-support` | delve-placeable | P1 | Ember Delve: placed beside the Keeper on solid ground; loose rock within 3 cells holds when dug; walked through, taken back whole (X) | shape drawn in code (terrain-render.ts) | `Sprites/Props/52-tile-timber-support.png` |
+| world-sprite | `tile-basalt-support` | delve-placeable | P1 | Ember Delve: placed beside the Keeper on solid ground; loose rock within 5 cells holds when dug; walked through, taken back whole (X) | shape drawn in code (terrain-render.ts) | `Sprites/Props/53-tile-basalt-support.png` |
+| world-sprite | `tile-blast-charge` | delve-placeable | P1 | Ember Delve: placed beside the Keeper, lit at once from a staff; the fuse burns about 2 s, then it clears a small round of rock (X beside it pinches the fuse out) | shape drawn in code (terrain-render.ts) | `Sprites/Props/54-tile-blast-charge.png` |

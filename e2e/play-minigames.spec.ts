@@ -119,6 +119,69 @@ test.describe('Anvil mini-game, played', () => {
     const items = await blob<{ records?: { definitionId?: string }[] }>(page, 'godforge-inventory');
     expect((items?.records ?? []).filter(r => r.definitionId === 'briarvein-kris')).toHaveLength(1);
   });
+
+  test('at 390 px the NPC bubble yields and Skip is the element under its own centre', async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openBench(page);
+    await startCraft(page);
+    await expect(page.locator('app-npc-dialogue .npc')).toHaveCount(0);
+    const skip = panel(page).locator('app-anvil-game .mg__skip');
+    await skip.scrollIntoViewIfNeeded();
+    const hit = await skip.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!at && (at === el || el.contains(at));
+    });
+    expect(hit).toBe(true);
+    await skip.click();
+    await expect(panel(page).locator('app-anvil-game')).toHaveCount(0);
+  });
+});
+
+test('routed /forge/crafting at 390 px: Kael yields while the anvil is open, Skip is hit-testable, and he returns', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page, { ...bag(KRIS_BAG), ...purse(3_000_000) });
+  await page.goto('/forge/crafting');
+  const npc = page.locator('app-npc-dialogue .npc');
+  await expect(npc).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('.cb-hero .dh__name')).toHaveText(KRIS, { timeout: 15000 });
+  await page.locator('.cb-hero .ab__btn').click();
+  const skip = page.locator('app-anvil-game .mg__skip');
+  await expect(skip).toBeVisible();
+  await expect(npc).toHaveCount(0);
+  await skip.scrollIntoViewIfNeeded();
+  const hit = await skip.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!at && (at === el || el.contains(at));
+  });
+  expect(hit).toBe(true);
+  await skip.click();
+  await expect(page.locator('app-anvil-game')).toHaveCount(0);
+  await expect(npc).toBeVisible();
+});
+
+test.describe('In-world panel focus', () => {
+  test('closing a place with Escape hands focus back to the game canvas, not <body>', async ({ page }) => {
+    await seed(page, { ...bag(KRIS_BAG), ...purse(3_000_000) });
+    await openPlay(page, '?at=crafting');
+    await expect(panel(page).locator('.cb-hero')).toBeVisible({ timeout: 15000 });
+    await page.keyboard.press('Escape');
+    await expect(panel(page)).toBeHidden({ timeout: 5000 });
+    await expect.poll(() => page.evaluate(() => document.activeElement?.tagName), { timeout: 3000 }).toBe('CANVAS');
+  });
+
+  test('a place opened from a keyboard-focused control returns focus to that control', async ({ page }) => {
+    await seed(page, { ...bag(KRIS_BAG), ...purse(3_000_000) });
+    await openPlay(page);
+    // Tab onto the Places toggle (focus-visible), then Enter: the list opens and focuses its first row.
+    await page.locator('.places-toggle').focus();
+    await page.keyboard.press('Enter');
+    await expect(page.locator('#places-list')).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(page.locator('#places-list')).toHaveCount(0);
+    await expect(page.locator('.places-toggle')).toBeFocused();
+  });
 });
 
 test.describe('Rune ritual, played', () => {
