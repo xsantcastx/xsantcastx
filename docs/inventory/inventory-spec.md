@@ -700,3 +700,107 @@ Total is about 10 days.
 
 Everything else above is a manager decision already taken: the prices, the tab
 set, the Seamworks location, derived placement and the sigil stacking.
+
+---
+
+## Shipped (2026-10-13): S1–S4, with two manager changes
+
+Branch `worktree-agent-aa2feecccbf275e26`. Two decisions arrived mid-build and
+override the text above:
+
+- **Zero players, so no back-compat.** The S2 soak, the grandfathering notice
+  and the "display old Sigils as stacks" rules (§4.1, §4.3) were dropped, and
+  S3 + S4 shipped in the same branch.
+- **Sigils are gone, not stacked** (meaning audit). A rune find mints no item
+  at all. The rune is the find, and it lands in the Rune Forge ledger, which
+  the reveal, library, Runewords and sockets already read. The 0.24% charm
+  still lands.
+  - **Legacy Sigil records are tombstoned on load** (`dropLegacySigils`). A
+    legacy Sigil is a record with `type 'rune'`, named `<Rune> Sigil`, with no
+    stats, no roll grade, no temper or reforge, and no socket. Anything that
+    carries a grade is never touched.
+  - **Removed with them:** the `sigil` slot class, the `sigil:*` keys, the
+    **Runes Vault tab** and its 1M price, `mintRuneItem`, and the Sigil sell
+    path.
+  - **One consumer depended on Sigil records:** the NPC objective "hold an item
+    of epic / mythic quality" (`verrin-3`, `merchant-5`). A rune's Sigil met
+    it, so it now also counts a held rune of that tier from the Forge ledger.
+
+**S1: `src/app/shared/rpg/inventory-layout.ts`.** All pure functions:
+`slotClassOf`, `stackCapOf`, `capacityOf(entitlements)`, `layoutOf`,
+`routeFor` and `settle`, plus the constants `INVENTORY_LAYOUT = 1`,
+`INSTANCE_RECORD_BUDGET = 700` and `VAULT_LIVE`. Departures from §2:
+
+- **Instances outrank stacks for space everywhere** (a simplification of §2.4).
+  A stack is placed only after every instance, so routing counts instances only,
+  and `settle` holds bag instances to `capacity.satchel`.
+- **The §2.2 identity key was not built.** Nothing is left for it to group.
+- **Supply keys are a copied list,** pinned to `PLACEABLES` by the spec. A copy
+  keeps the bag from pulling the Delve engine into the initial bundle.
+
+Property test: 40 random device pairs are merged in both orders and settled.
+Every instance id and every stack total is conserved.
+
+**S2: nothing is deleted for space.**
+
+- `evictRecordsToCap` and `lowestValueUnequipped` are gone. `add()` and
+  `mergeInventoryLedgers` never tombstone for space.
+- `grantStack` never refuses for space; it refuses only on a failed save. So the
+  Delve "crumble", the explorer material drop and `pickupFull` can no longer
+  trigger. Their copy is left for S5, because those files are being edited
+  elsewhere.
+- `INVENTORY_TOMBSTONE_MAX` is now 512.
+- The local stack-op log is compacted on every write (`compactStackOps`, the
+  same fold a merge does).
+- `inventoryCensus()` is on `window` for reading a real save.
+
+The only tombstone writers left are explicit player actions (sell, drop, a
+shattering temper), the GM reset, and the one-time Sigil purge. No other path
+deletes an item.
+
+**S3: prices.**
+
+- `STORAGE_CURVE` lives in `economy-curve.ts`, and `economy-sim --inventory`
+  reads it.
+- `StorageService.buy(id, mutationId)` spends the Gold, then grants
+  `storage:satchel-row` or `storage:tab:<id>` under the mutation id. It refunds
+  if the grant fails to save. It replays without charging when the grant op is
+  already there, including one synced from another device.
+- The GM bag reset keeps `storage:*`. Entitlements are hidden from the bag and
+  can't be dropped.
+
+**S4: the satchel and the Vault (gated).**
+
+- Capacity comes from entitlements.
+- `add`, crafts, `unequip`, `clearExplorer` and an equip-displace all call
+  `settle`. An item arriving into a full satchel goes to Gear, then General,
+  then Overflow. Load and rehydrate settle too.
+- `stow(id, tab?)` and `takeOut(id)` write the location without emitting
+  `equipped$`.
+- Gold purchases (Gambler, Exchange, Arena gear, the crafting bench) are refused
+  **before** the spend, and only at the 700-record budget.
+- `vault:*` owners read "In your Vault" in Inspect.
+- `snapshot.usedRows` now counts satchel slots used, not records.
+  `snapshot.satchelCap` and `snapshot.overflow` are new.
+
+**The gate: `VAULT_LIVE = false`.** There is no UI to take an item out of the
+Vault until the S5 station exists. So for now live capacity is unbounded and
+nothing is routed. Flip the flag with S5.
+
+**Where the spec was wrong or underspecified**
+
+1. §4.3 says S4 is "the slice that lets total records pass 250". S2's own tests
+   (300 adds, a 2 × 250 merge) already pass 250. This no longer matters with
+   zero players.
+2. §2.3 puts elixirs in the Material class, but §2.5 lists them on the Supplies
+   tab. Built per §2.3: elixirs are Materials.
+3. §2.8 sizes stack ops at "256 + about 100" but doesn't say who compacts them.
+   Only the merge did, so a device that never synced grew its op log without
+   bound. The log is now folded on write. The fold keeps the old known limits:
+   - An op one device never saw, from before another device's compaction
+     watermark passed it, can't be recovered.
+   - A replayed grant whose op was already folded counts a second time.
+
+   Removing Sigils removed most of the op churn that would have exposed this.
+4. §4.4's market follow-ups (S7) still stand. `INVENTORY_BAG_CAP` is kept only
+   for `generate-market-reference.mjs`. `functions/` was not touched.
