@@ -348,6 +348,20 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'a survey on the side of the Orrery the sun never crosses' },
   { id: 'void-shard', rarity: 'epic', realm: 'umbral',
     hint: 'the deepest survey there is, and still mostly a rumour' },
+  // The Ember Delve (meaning audit #15: so their lore has a page). Hints name
+  // the place the Found-in line names.
+  { id: 'dirt-block', rarity: 'common', realm: 'infernal',
+    hint: 'any loose dirt in the Ember Delve' },
+  { id: 'basalt-block', rarity: 'common', realm: 'infernal',
+    hint: 'any basalt wall in the Ember Delve' },
+  { id: 'shadow-root-cutting', rarity: 'uncommon', realm: 'infernal',
+    hint: 'the Root Hollows, in the Ember Delve' },
+  { id: 'glowcap', rarity: 'uncommon', realm: 'infernal',
+    hint: 'the Glowcap Grotto, in the Ember Delve' },
+  { id: 'kaels-hammer', rarity: 'rare', realm: 'infernal',
+    hint: 'an old cache in the Basalt Caverns, in the Ember Delve' },
+  { id: 'godforge-fragment', rarity: 'legendary', realm: 'infernal',
+    hint: 'the Magma Halls, at the bottom of the Ember Delve, once' },
 ];
 
 /** Consumables, with the same treatment. */
@@ -360,6 +374,20 @@ const CONSUMABLE_SEEDS: readonly MaterialSeed[] = [
 
 /** Lore for the ids that have no `ItemDefinition` of their own. */
 const SEED_LORE: Readonly<Record<string, string>> = {
+  // Ember Delve finds (meaning audit #15). No new canon: each line reuses text
+  // the game or the canon already has, quoted from the source named above it.
+  // Verrin's order, delve-missions.model.ts `delve-verrin-shadow`.
+  'shadow-root-cutting': 'Under the Godforge a tree grows downward, toward the crack. This is a piece of its shadow.',
+  // The Grotto inscription, delve-inscription-lore.ts `grotto-light-through-the-crack`.
+  'glowcap': 'The glowcaps do not make their light. They drink it from a crack in the ceiling that should open onto rock and opens onto something brighter.',
+  // Canon, eclipse-realms-lore-and-art-direction-canon.md: the Keeper is "a
+  // mortal attuned to runes and capable of safely carrying Godforge fragments".
+  'godforge-fragment': 'A piece of the Godforge. Only a Keeper, attuned to runes, can carry one safely.',
+  // Kael's order, delve-missions.model.ts `delve-kael-seam`.
+  'kaels-hammer': '"I closed those mines when the heat stopped coming from the rock. My hammer is still down there." Kael',
+  // Functional lines: what the two Delve blocks are for (PLACEABLES).
+  'dirt-block': 'Loose dirt dug out of the Delve. Set it back down to fill a gap or build a step.',
+  'basalt-block': 'Basalt cut from the Delve walls. Set it down to build a wall or a step.',
   'slag-fragment': 'The part of the strike that was never going to be anything. Kept, because the Seamworks weighs what it throws away.',
   'infernal-heartstone': 'It is warm on one face and cold on the other, and the warm face is always the one turned away from you.',
   'starlight-herb': 'It grows toward a light that has not been overhead for four thousand years, and it has not been told.',
@@ -541,6 +569,12 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'infernal-heartstone': 'Infernal Heartstone',
   'clarity-elixir': 'Clarity Elixir',
   'ember-elixir': 'Ember Elixir',
+  'dirt-block': 'Dirt block',
+  'basalt-block': 'Basalt block',
+  'shadow-root-cutting': 'Shadow-Root Cutting',
+  'glowcap': 'Glowcap',
+  'kaels-hammer': "Kael's Hammer",
+  'godforge-fragment': 'Godforge Fragment',
 };
 
 function loreFor(id: string): string {
