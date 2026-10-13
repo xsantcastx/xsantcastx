@@ -243,19 +243,6 @@
        route, has no ?render= param so App Check can't use it anyway, and
        nothing in the app touches window.grecaptcha directly. -->
 
-  <!--
-    TODO: Google AdSense
-    ═══════════════════
-    1. Apply at https://adsense.google.com and wait for site approval.
-    2. Uncomment the script below and replace ca-pub-XXXXXXXXXX with your
-       real publisher ID from the AdSense dashboard.
-    3. Also update AD_CLIENT in src/app/shared/adsense/adsense.component.ts
-       and AD_SLOT with a real slot ID from your AdSense ad units.
-
-  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXX"
-       crossorigin="anonymous"></script>
-  -->
-
   <!-- ░▒▓█ GODFORGE BOOT — first-visit vs. returning-visit cut █▓▒░
        Inline, synchronous, and in <head> on purpose. The boot sequence is
        driven entirely by CSS on the prerendered <app-godforge-loader>, so the
