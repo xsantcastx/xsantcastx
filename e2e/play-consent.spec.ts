@@ -139,7 +139,7 @@ test.describe('the consent bar on /play on a 390×844 phone', () => {
     await page.route(ANALYTICS, route => route.abort());
     await firstVisit(page);
     await openPlay(page);
-    await assertBarClear(page, '390×844', ['.prompt', '.touch', '.dock', '.hearth-pill', '.guide', '.satchel', '.vitals']);
+    await assertBarClear(page, '390×844', ['.prompt', '.touch-move', '.touch-act', '.dock', '.hearth-pill', '.guide', '.satchel', '.vitals']);
     expect(await page.evaluate(k => localStorage.getItem(k), CONSENT_KEY)).toBeNull();
     expect(analytics, 'no analytics request before an answer').toEqual([]);
 
