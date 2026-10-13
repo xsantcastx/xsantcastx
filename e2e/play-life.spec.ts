@@ -6,8 +6,11 @@
  * engine DRAWS. An init script wraps three CanvasRenderingContext2D methods on
  * the world canvas and records, frame by frame (a frame starts at the engine's
  * full clearRect):
- *   - name tags: `fillText` in the tag font at the tag's fixed height. Its x is
- *     the keeper's world x (town-life.ts draws in world space, after the camera).
+ *   - name tags: `fillText` in the tag font at the tag's fixed height, with the
+ *     plate's on-canvas left/right edges (device px, through the current
+ *     transform) and the canvas width. The tag is pinned inside the viewport,
+ *     so near an edge its x is not the keeper's: a tag is paired with the
+ *     nearest keeper shadow in the same frame, and that shadow is the keeper's x.
  *   - speech bubbles: `fillText` in the bubble font and ink. The wrapped lines are
  *     joined and matched against the keeper lines in life.i18n.ts.
  *   - figures' floor shadows: `ellipse` at FLOOR + 2 in the 30 : 7 shadow
@@ -23,7 +26,9 @@ import type { RealmTownId, StationDef, TownDef } from '../src/app/play/world/wor
 import { KEEPER_HALF, TOWN_KEEPERS } from '../src/app/play/world/life';
 import { LIFE_I18N } from '../src/app/play/world/life.i18n';
 
-interface Frame { tags: [string, number][]; bubble: string[]; keepers: number[]; folk: number[] }
+/** A drawn name tag: text, world x, plate left / right on the canvas (device px), canvas width. */
+type Tag = [string, number, number, number, number];
+interface Frame { tags: Tag[]; bubble: string[]; keepers: number[]; folk: number[] }
 
 const REALMS: RealmTownId[] = ['infernal', 'luminous', 'umbral', 'celestial', 'verdant'];
 
@@ -33,7 +38,7 @@ async function instrument(page: Page): Promise<void> {
     W.__life = { on: false, frames: [] };
     const P = CanvasRenderingContext2D.prototype;
     const clear = P.clearRect, fill = P.fillText, ellipse = P.ellipse;
-    let cur: { tags: [string, number][]; bubble: string[]; keepers: number[]; folk: number[] } | null = null;
+    let cur: { tags: [string, number, number, number, number][]; bubble: string[]; keepers: number[]; folk: number[] } | null = null;
     const world = (c: CanvasRenderingContext2D) => !!(c.canvas as HTMLCanvasElement).closest?.('.viewport');
     P.clearRect = function (this: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
       if (x === 0 && y === 0 && world(this)) {
@@ -45,7 +50,11 @@ async function instrument(page: Page): Promise<void> {
     P.fillText = function (this: CanvasRenderingContext2D, text: string, x: number, y: number, max?: number) {
       if (cur && world(this) && /Cormorant/.test(this.font)) {
         // Tag: '#ffe1b0' on the plate; bubble: '#2a1c16' ink (the Keeper's own "You" label shares the font).
-        if (/\b14px/.test(this.font) && y === 430 && this.fillStyle === '#ffe1b0') cur.tags.push([text, x]);
+        if (/\b14px/.test(this.font) && y === 430 && this.fillStyle === '#ffe1b0') {
+          // The plate is min(200, text + 20) wide, centred on x (town-life.ts nameTag).
+          const m = this.getTransform(), w = Math.min(200, this.measureText(text).width + 20);
+          cur.tags.push([text, x, m.a * (x - w / 2) + m.e, m.a * (x + w / 2) + m.e, this.canvas.width]);
+        }
         else if (/\b15px/.test(this.font) && this.fillStyle === '#2a1c16') cur.bubble.push(text);
       }
       return max === undefined ? fill.call(this, text, x, y) : fill.call(this, text, x, y, max);
@@ -111,8 +120,21 @@ function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
   const lines = new Map<string, Set<string>>();
   const unknown = new Set<string>();
   const folk: number[] = [];
+  /** Tags whose plate ran past a canvas edge (a little slack for the hit jolt). */
+  const clipped: string[] = [];
+  /** Tags drawn with no keeper figure under them. */
+  const orphans: string[] = [];
   for (const f of all) {
-    for (const [text, x] of f.tags) { if (!tagX.has(text)) tagX.set(text, []); tagX.get(text)!.push(x); }
+    for (const [text, x, left, right, width] of f.tags) {
+      if (left < -12 || right > width + 12) clipped.push(`${text} ${Math.round(left)}..${Math.round(right)} of ${width}`);
+      // A plate pinned to an edge (4 world px in, ~4.4 device px) never leaves its keeper:
+      // some figure stands within half a plate (≤ 100 px) of it.
+      if (!f.keepers.some(k => Math.abs(k - x) <= 100)) { orphans.push(text); continue; }
+      // Only an unpinned plate is centred on its keeper: those carry the keeper's x.
+      if (left <= 10 || right >= width - 10) continue;
+      if (!tagX.has(text)) tagX.set(text, []);
+      tagX.get(text)!.push(x);
+    }
     if (f.bubble.length) {
       const text = f.bubble.join(' ');
       const who = lineKeeper(text, lang);
@@ -121,7 +143,7 @@ function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
     }
     folk.push(...f.folk);
   }
-  return { tagX, lines, unknown, folk };
+  return { tagX, lines, unknown, folk, clipped, orphans };
 }
 
 test.describe('Phase 4 Life, walked in every town', () => {
@@ -133,8 +155,11 @@ test.describe('Phase 4 Life, walked in every town', () => {
       const town = await enterTown(page, realm);
       const all = await walkTown(page, town);
       expect(all.length, 'frames drawn while walking').toBeGreaterThan(30);
-      const { tagX, lines, unknown, folk } = analyse(town, all, 'en');
+      const { tagX, lines, unknown, folk, clipped, orphans } = analyse(town, all, 'en');
       expect([...unknown], 'every bubble is a keeper line').toEqual([]);
+      // Name tags stay inside the visible canvas, and always over their keeper.
+      expect([...new Set(clipped)], 'name tags cut by the viewport edge').toEqual([]);
+      expect([...new Set(orphans)], 'name tags with no keeper under them').toEqual([]);
       for (const def of TOWN_KEEPERS[realm]) {
         const xs = tagX.get(def.name) ?? [];
         expect(xs.length, `${def.name}'s name tag is drawn`).toBeGreaterThan(0);
@@ -149,8 +174,6 @@ test.describe('Phase 4 Life, walked in every town', () => {
         expect(gap, `${def.name} is beside ${own.id}`).toBeLessThanOrEqual(100);
         // And on no other stall either.
         for (const s of town.stations) expect(onStall(x, KEEPER_HALF, s), `${def.name} at ${x} overlaps ${s.id}`).toBe(false);
-        // A keeper's shadow is drawn where its tag is.
-        expect(all.some(f => f.keepers.includes(x)), `${def.name}'s figure is drawn at ${x}`).toBe(true);
         // Greets once on the way past: exactly one of its lines, never the second.
         expect([...(lines.get(def.id) ?? [])], `${def.name} greets exactly once`).toHaveLength(1);
       }
