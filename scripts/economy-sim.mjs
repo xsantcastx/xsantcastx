@@ -497,6 +497,10 @@ function check(E) {
   console.log(`economy-sim --check (${E.name}): first purchase ${fmtT(first)}, ${inTen} purchases in 10 min`);
   // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
+  // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
+  fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
+  fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
+  fails.push(...crashScenario({ rounds: 400_000, quiet: true }));
   if (fails.length) {
     for (const f of fails) console.error(`  FAIL ${f}`);
     process.exit(1);
@@ -653,7 +657,166 @@ function reelsScenario({ rounds, plays, quiet }) {
   return fails;
 }
 
-if (argv.reels) {
+// ───────────────────────────────────────────────────────────────────────────
+// --plinko / --mines / --crash: the Croupier's other three games (Rune Drop,
+// Seam Sweeper, Eclipse Ascent). Gold only; RTP must sit in 94–96%.
+//   Each is proven EXACTLY (sums over the binomial board; the multiplier ×
+//   survival identity; the crash tail P(C ≥ x) = RTP / x), then cross-checked
+//   by simulating the shipped pure model on the seeded RNG. A simulation fails
+//   only when it misses the exact value by more than 4 standard errors.
+// ───────────────────────────────────────────────────────────────────────────
+
+const OWNER_BAND = [0.94, 0.96];
+
+/** Mean and standard error of per-play returns (in multiples of the bet). */
+function moments(xs) {
+  let s = 0, s2 = 0;
+  for (const x of xs) { s += x; s2 += x * x; }
+  const n = xs.length, mean = s / n;
+  return { mean, se: Math.sqrt(Math.max(0, s2 / n - mean * mean) / n) };
+}
+const pctS = x => `${(x * 100).toFixed(2)}%`;
+
+function plinkoScenario({ plays, quiet }) {
+  const D = loadTsTree('src/app/shared/rune-drop/rune-drop.model.ts');
+  const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
+  const fails = [];
+  const rows = [];
+  for (const risk of D.DROP_RISKS) for (let n = D.DROP_ROWS.min; n <= D.DROP_ROWS.max; n++) {
+    const exact = D.dropRtp(risk, n);
+    const pays = D.dropPays(risk, n);
+    rows.push([risk, n, exact, pays]);
+    if (exact < OWNER_BAND[0] || exact > OWNER_BAND[1]) fails.push(`Rune Drop ${risk}/${n} returns ${pctS(exact)}, outside 94–96%`);
+    if (pays.some(t => !Number.isInteger(t) || t < 1)) fails.push(`Rune Drop ${risk}/${n} has a pay that is not whole tenths`);
+    for (let k = 0; k < pays.length; k++) if (pays[k] !== pays[n - k]) fails.push(`Rune Drop ${risk}/${n} is not symmetric`);
+  }
+  if (!quiet) {
+    console.log('Rune Drop · exact RTP per board (sum of C(n,k)/2^n × pay)\n');
+    for (const risk of D.DROP_RISKS) {
+      console.log(`  ${risk.padEnd(6)} ` + rows.filter(r => r[0] === risk).map(([, n, e]) => `${n}: ${pctS(e)}`).join(' · '));
+    }
+    console.log('\n  pay tables (× bet, edge → centre):');
+    for (const [risk, n, , pays] of rows) console.log(`  ${risk.padEnd(6)} ${String(n).padStart(2)} rows  ${pays.slice(0, Math.floor(n / 2) + 1).map(t => t / 10).join(' · ')}`);
+    console.log();
+  }
+  // Simulate the shipped play on a few boards.
+  const sample = [['low', 8], ['medium', 12], ['high', 16], ['high', 8], ['low', 16]];
+  for (const [risk, n] of sample) {
+    const r = rng.seededRng(`economy-sim:plinko:${risk}:${n}`);
+    const xs = new Array(plays);
+    for (let i = 0; i < plays; i++) xs[i] = D.playRuneDrop(r, 10, risk, n).win / 10;
+    const { mean, se } = moments(xs);
+    const exact = D.dropRtp(risk, n);
+    if (Math.abs(mean - exact) > 4 * se) fails.push(`Rune Drop ${risk}/${n}: ${plays} drops returned ${pctS(mean)}, exact ${pctS(exact)} (> 4 s.e. ${pctS(se)})`);
+    if (!quiet) console.log(`  simulated ${risk}/${n}: ${fmtN(plays)} drops at bet 10 → ${pctS(mean)} ± ${pctS(se)} (exact ${pctS(exact)})`);
+  }
+  const all = rows.map(r => r[2]);
+  console.log(`economy-sim plinko: every board ${pctS(Math.min(...all))}–${pctS(Math.max(...all))}, max ×${D.DROP_MAX_X}`);
+  return fails;
+}
+
+function minesScenario({ rounds, quiet }) {
+  const M = loadTsTree('src/app/shared/seam-sweeper/seam-sweeper.model.ts');
+  const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
+  const fails = [];
+  if (M.SEAM_RTP < OWNER_BAND[0] || M.SEAM_RTP > OWNER_BAND[1]) fails.push(`Seam Sweeper RTP ${pctS(M.SEAM_RTP)} outside 94–96%`);
+  // Exact: every (collapses, ore) cash-out the board offers returns RTP.
+  let worst = 0, offered = 0, top = 0;
+  for (let m = M.SEAM_COLLAPSES.min; m <= M.SEAM_COLLAPSES.max; m++) {
+    const deep = M.seamDeepest(m);
+    if (deep < 1) fails.push(`Seam Sweeper with ${m} collapses offers no dig`);
+    for (let k = 1; k <= deep; k++) {
+      offered++;
+      worst = Math.max(worst, Math.abs(M.seamReturnAt(m, k) - M.SEAM_RTP));
+      top = Math.max(top, M.seamMultiplier(m, k));
+      // The survival chance the multiplier divides by, counted directly.
+      let p = 1;
+      for (let i = 0; i < k; i++) p *= (25 - m - i) / (25 - i);
+      if (Math.abs(p * M.seamMultiplier(m, k) - M.SEAM_RTP) > 1e-9) fails.push(`Seam Sweeper ${m}/${k}: survival × multiplier is not RTP`);
+    }
+  }
+  if (worst > 1e-9) fails.push(`Seam Sweeper exact return off by ${worst}`);
+  if (top > M.SEAM_MAX_X) fails.push(`Seam Sweeper offers ×${top.toFixed(2)} > ×${M.SEAM_MAX_X}`);
+  if (!quiet) {
+    console.log(`Seam Sweeper · exact: all ${offered} (collapses, ore) cash-outs the board offers return ${pctS(M.SEAM_RTP)} (max error ${worst.toExponential(1)}); top multiplier ×${top.toFixed(2)}`);
+    for (const m of [1, 3, 5, 10, 24]) {
+      const ks = [1, 2, 3, 5, 8, 12].filter(k => k <= M.seamDeepest(m));
+      console.log(`  ${String(m).padStart(2)} collapses: ` + ks.map(k => `${k} ore ×${M.seamMultiplier(m, k).toFixed(2)} (${pctS(1 / M.seamFair(m, k))})`).join(' · '));
+    }
+  }
+  // Simulate whole rounds at the 10-Gold minimum (wholeGold rounding included):
+  // random collapse count, random cash-out target, random dig order.
+  const r = rng.seededRng('economy-sim:mines');
+  const xs = new Array(rounds);
+  for (let i = 0; i < rounds; i++) {
+    const m = 1 + Math.floor(r() * 8);
+    const target = 1 + Math.floor(r() * 5);
+    xs[i] = M.playSeamRound(r, 10, m, target).win / 10;
+  }
+  const { mean, se } = moments(xs);
+  if (Math.abs(mean - M.SEAM_RTP) > 4 * se) fails.push(`Seam Sweeper: ${rounds} rounds returned ${pctS(mean)}, exact ${pctS(M.SEAM_RTP)} (> 4 s.e. ${pctS(se)})`);
+  if (!quiet) console.log(`  simulated: ${fmtN(rounds)} rounds at bet 10, 1–8 collapses + cash-out after 1–5 ore → ${pctS(mean)} ± ${pctS(se)}`);
+  console.log(`economy-sim mines: exact ${pctS(M.SEAM_RTP)} on all ${offered} cash-outs, simulated ${pctS(mean)} ± ${pctS(se)}`);
+  return fails;
+}
+
+function crashScenario({ rounds, quiet }) {
+  const A = loadTsTree('src/app/shared/eclipse-ascent/eclipse-ascent.model.ts');
+  const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
+  const fails = [];
+  if (A.ASCENT_RTP < OWNER_BAND[0] || A.ASCENT_RTP > OWNER_BAND[1]) fails.push(`Eclipse Ascent RTP ${pctS(A.ASCENT_RTP)} outside 94–96%`);
+  // Exact: P(crash ≥ x) = RTP·100/x, so a cash-out at x returns x/100 × that = RTP.
+  // The draw: crash ≥ x ⇔ floor(100·RTP/(1−a)) ≥ x ⇔ 1−a ≤ 100·RTP/x (x whole, a in [0,1)).
+  const targets = [101, 150, 200, 500, 1_000, 10_000, 100_000];
+  for (const x of targets) {
+    const ret = (x / 100) * A.holdChance(x);
+    if (Math.abs(ret - A.ASCENT_RTP) > 1e-12) fails.push(`Eclipse Ascent: cash-out at ${x} returns ${ret}`);
+  }
+  // Simulate: the break-point tail, the instant-break share, and whole rounds.
+  const r = rng.seededRng('economy-sim:crash');
+  const crashes = new Array(rounds);
+  for (let i = 0; i < rounds; i++) crashes[i] = A.drawAscent(r).crash;
+  for (const x of targets.slice(0, 5)) {
+    const hit = crashes.filter(c => c >= x).length / rounds;
+    const p = A.holdChance(x);
+    const se = Math.sqrt((p * (1 - p)) / rounds);
+    if (Math.abs(hit - p) > 4 * se + 1e-12) fails.push(`Eclipse Ascent: P(≥${x}) simulated ${hit}, exact ${p}`);
+    if (!quiet) console.log(`  P(holds to ${A.fmtX(x)}) simulated ${pctS(hit)} · exact ${pctS(p)}`);
+  }
+  const instant = crashes.filter(c => c === A.ASCENT_FLOOR).length / rounds;
+  const instantExact = 1 - A.holdChance(A.ASCENT_MIN_CASH);
+  const instantSe = Math.sqrt((instantExact * (1 - instantExact)) / rounds);
+  if (Math.abs(instant - instantExact) > 4 * instantSe) fails.push(`Eclipse Ascent: ${pctS(instant)} instant breaks, exact ${pctS(instantExact)}`);
+  // Whole rounds at bet 10 with a log-uniform target from ×1.01 to ×100.
+  const xs = new Array(rounds);
+  for (let i = 0; i < rounds; i++) {
+    const target = Math.max(A.ASCENT_MIN_CASH, Math.floor(101 * Math.exp(r() * Math.log(100))));
+    xs[i] = A.playAscentRound(r, 10, target).win / 10;
+  }
+  const { mean, se } = moments(xs);
+  if (Math.abs(mean - A.ASCENT_RTP) > 4 * se) fails.push(`Eclipse Ascent: ${rounds} rounds returned ${pctS(mean)} (> 4 s.e. ${pctS(se)} from ${pctS(A.ASCENT_RTP)})`);
+  if (!quiet) {
+    console.log(`Eclipse Ascent · exact: a cash-out at any ×x from ×1.01 to ×1,000 returns ${pctS(A.ASCENT_RTP)}; 1 − RTP/1.01 = ${pctS(instantExact)} of launches break at ×1.00 (simulated ${pctS(instant)})`);
+    console.log(`  simulated: ${fmtN(rounds)} rounds at bet 10, log-uniform target ×1.01–×100 → ${pctS(mean)} ± ${pctS(se)}`);
+  }
+  console.log(`economy-sim crash: exact ${pctS(A.ASCENT_RTP)} at every target, simulated ${pctS(mean)} ± ${pctS(se)}`);
+  return fails;
+}
+
+function runGame(fn, opts) {
+  const fails = fn(opts);
+  for (const f of fails) console.error(`  FAIL ${f}`);
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+}
+
+if (argv.plinko) {
+  runGame(plinkoScenario, { plays: Number(argv.plays ?? 1_000_000), quiet: false });
+} else if (argv.mines) {
+  runGame(minesScenario, { rounds: Number(argv.rounds ?? 2_000_000), quiet: false });
+} else if (argv.crash) {
+  runGame(crashScenario, { rounds: Number(argv.rounds ?? 2_000_000), quiet: false });
+} else if (argv.reels) {
   const fails = reelsScenario({ rounds: Number(argv.rounds ?? 2_000_000), plays: Number(argv.plays ?? 1_000_000), quiet: false });
   for (const f of fails) console.error(`  FAIL ${f}`);
   if (fails.length) process.exit(1);
