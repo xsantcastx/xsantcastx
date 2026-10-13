@@ -67,6 +67,8 @@ export function provisionalToolTiers(snapshot: Pick<InventorySnapshot, 'equipped
   return { pickaxe: 1, axe: 1, sickle: 1, blade: weapon && !weapon.explorerId ? 1 : 0, staff: staff ? 1 : 0 };
 }
 
+/** On <body> while the world is mounted. styles.css and cosmic-engine.js key the backdrop off it. */
+const WORLD_ROUTE_CLASS = 'gf-world-route';
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
 /**
  * Where the Keeper last stood and what the hunts have paid in coins, local to
@@ -265,6 +267,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private startWorld(): void {
     if (!this.browser) return;
+    // The game is the screen: the site-wide backdrop (starfield canvas, pulsar,
+    // sigil, runes) hides under this class and cosmic-engine.js parks its loops.
+    document.body.classList.add(WORLD_ROUTE_CLASS);
     this.inventory.init();
     this.activity.init();
     this.homestead.start();
@@ -531,7 +536,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
-    if (this.browser) this.homestead.stop();
+    if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
     this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);

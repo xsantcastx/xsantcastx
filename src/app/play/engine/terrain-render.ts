@@ -489,8 +489,20 @@ export class AmbientMotes {
 export class GlowHalos {
   private readonly radial = new Map<string, CanvasGradient>();
   private readonly column = new Map<string, CanvasGradient>();
-  /** A soft disc of `color` at (x, y), radius r, in the current transform. */
-  halo(c: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha: number): void {
+  /** Pre-rendered halo discs per colour (phones): a bitmap blit instead of shading a gradient per pixel. */
+  private readonly discs = new Map<string, HTMLCanvasElement | null>();
+  /**
+   * A soft disc of `color` at (x, y), radius r, in the current transform.
+   * `sprite` (the phone tier) draws a cached 128 px disc of the same gradient
+   * instead: on a software canvas that halves the cost of each halo.
+   */
+  halo(c: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha: number, sprite = false): void {
+    const disc = sprite ? this.disc(color) : null;
+    if (disc) {
+      const was = c.globalAlpha;
+      c.globalAlpha = alpha; c.drawImage(disc, x - r, y - r, r * 2, r * 2); c.globalAlpha = was;
+      return;
+    }
     let gradient = this.radial.get(color);
     if (!gradient) {
       gradient = c.createRadialGradient(0, 0, 0, 0, 0, 1);
@@ -500,6 +512,25 @@ export class GlowHalos {
     c.save(); c.globalAlpha = alpha; c.fillStyle = gradient;
     c.translate(x, y); c.scale(r, r); c.fillRect(-1, -1, 2, 2);
     c.restore();
+  }
+  private disc(color: string): HTMLCanvasElement | null {
+    let disc = this.discs.get(color);
+    if (disc === undefined) {
+      disc = null;
+      if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
+        const canvas = document.createElement('canvas');
+        const d = canvas.getContext?.('2d');
+        if (d) {
+          canvas.width = canvas.height = 128;
+          const g = d.createRadialGradient(64, 64, 0, 64, 64, 64);
+          g.addColorStop(0, color); g.addColorStop(1, 'rgba(0,0,0,0)');
+          d.fillStyle = g; d.fillRect(0, 0, 128, 128);
+          disc = canvas;
+        }
+      }
+      this.discs.set(color, disc);
+    }
+    return disc;
   }
   /** A vertical band of `color`, clear at both ends, w × h at (x, y). */
   band(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string, alpha: number): void {
