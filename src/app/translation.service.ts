@@ -288,6 +288,8 @@ export class TranslationService {
     'gffoot.build':       { en: 'Build',        es: 'Construye' },
     'gffoot.together':    { en: 'Together',     es: 'Juntos' },
     'gffoot.nextThing':   { en: 'The next thing is yours', es: 'Lo siguiente es tuyo' },
+    'gffoot.support':     { en: 'Support the forge', es: 'Apoya la forja' },
+    'gffoot.support.card': { en: 'Card',        es: 'Tarjeta' },
 
     // The WebGL forge's escape hatch. One key: the switch's own state says
     // whether it is on, so a second "effects reduced" string would be a label
