@@ -1,0 +1,71 @@
+<!-- The Vault: tabs → strip → list | detail → ONE button. Prices and the
+     routing explainer are behind Details (stations must be dummy-simple). -->
+<app-station-shell class="vs"
+                   [title]="t('vault.title')"
+                   [purpose]="t('vault.purpose')"
+                   [showTitle]="!inWorld"
+                   [detailsLabel]="t('vault.details')"
+                   [detailsHint]="t('vault.details.hint')"
+                   [(detailsOpen)]="detailsOpen">
+
+  <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
+
+  <app-station-tabs stationTabs class="vs-tabs" [tabs]="tabs" [active]="view" (activeChange)="setView($event)" [label]="t('vault.tabs')" />
+
+  <app-skill-strip stationSkill [title]="strip.title" [level]="null" [progress]="strip.progress"
+                   [progressLabel]="strip.label" [hint]="strip.hint" />
+
+  <div stationHero class="vs-hero">
+    @if (locked) {
+      <p class="vs-locked">{{ lockedLine }}</p>
+    } @else {
+      <div class="vs-find">
+        <input type="search" class="vs-search" [value]="query" [attr.aria-label]="t('vault.search')"
+               [placeholder]="t('vault.search')" (input)="setQuery($any($event.target).value)">
+        <label class="vs-sort">
+          <span class="vs-sr">{{ t('vault.sort') }}</span>
+          <select [value]="sort" (change)="setSort($any($event.target).value)" [attr.aria-label]="t('vault.sort')">
+            @for (s of sorts; track s) { <option [value]="s" [selected]="s === sort">{{ t('vault.sort.' + s) }}</option> }
+          </select>
+        </label>
+      </div>
+    }
+
+    <app-station-journal>
+      <app-journal-list journalList [rows]="rows" [selected]="selectedId" [label]="t('vault.list')"
+                        [empty]="locked ? '' : (query ? t('vault.noMatch', { q: query }) : t('vault.empty'))" (pick)="pick($event)" />
+
+      <div journalDetail class="vs-detail">
+        @if (selected; as row) {
+          <app-detail-head [art]="row.art" [name]="row.name" [rarity]="row.rarity" [line]="where" [count]="row.quantity" />
+        }
+        @if (primary; as p) {
+          <app-action-button [label]="p.label" [costs]="p.costs" chips="currency" [blocked]="p.blocked"
+                             [pending]="!hydrated && p.costs.length > 0" (act)="act()" (refused)="announce = $event" />
+        }
+      </div>
+    </app-station-journal>
+    @if (announce) { <p class="vs-announce" role="status">{{ announce }}</p> }
+  </div>
+
+  <div stationDetails class="vs-more">
+    <p>{{ t('vault.details.how') }}</p>
+    @if (view === 'satchel' && entries.length) {
+      <button type="button" class="vs-chip" (click)="sendAllGear()">{{ t('vault.act.sendAllGear') }}</button>
+    }
+    <h3>{{ t('vault.details.prices') }}</h3>
+    <ul class="vs-offers">
+      @for (o of offers; track o.id) {
+        <li>
+          <span>{{ o.label }}</span>
+          @if (o.owned || o.price === null) {
+            <em>{{ t('vault.details.owned') }}</em>
+          } @else {
+            <button type="button" class="vs-chip" (click)="buy(o.id)">{{ fmt(o.price) }} {{ t('stationUi.gold') }}</button>
+          }
+        </li>
+      }
+    </ul>
+    <p class="vs-note">{{ t('vault.details.keep') }}</p>
+  </div>
+</app-station-shell>

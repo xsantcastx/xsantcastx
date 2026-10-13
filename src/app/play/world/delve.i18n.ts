@@ -27,7 +27,6 @@ export const DELVE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.delve.takenBack': { en: '{{name}} back in the satchel.', es: 'De vuelta en la mochila: {{name}}.' },
   'play.delve.noneLeft': { en: 'You have no {{lname}} left. Dig or craft more.', es: 'No te queda: {{lname}}. Excava o fabrica mas.' },
   'play.delve.emptyChestFirst': { en: 'Empty the chest first: open it (E) and take everything out.', es: 'Vacia primero el cofre: abrelo (E) y saca todo.' },
-  'play.delve.bagFullTake': { en: 'Your satchel is full. Make room to take it back.', es: 'Tu mochila esta llena. Haz sitio para recogerlo.' },
 
   // ── Engine: blasting charges ──
   'play.delve.needStaff': { en: 'You need a staff to light the fuse (Staff I or better).', es: 'Necesitas un baston para encender la mecha (Baston I o mejor).' },

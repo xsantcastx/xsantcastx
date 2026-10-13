@@ -75,12 +75,61 @@ export async function walk(page: Page, key: 'a' | 'd', target: number, timeout =
   }
 }
 
-/** Walk so the Keeper ends near `target` (within `slack` px). */
+/**
+ * Walk so the Keeper ends near `target` (within `slack` px).
+ *
+ * The key is released by a 50 ms poll, so the Keeper always walks on a little
+ * past the crossing. Normally that is one frame (≤ 27 px in town). When this
+ * machine is busy, though (other worktrees building or running suites), the
+ * poll can fire 0.4 s late. The Keeper then stops 100 px past the shaft, at the
+ * Material Vendor, and E answers the wrong place. So once the trailing frame
+ * has landed, the stop is checked, and up to two short walks bring the Keeper
+ * back. Those walk-backs are best effort: one that is blocked (a wall, or a pit
+ * the slide dropped into) leaves the Keeper where they are, as before.
+ */
 export async function walkTo(page: Page, target: number, slack = 30): Promise<void> {
   const x = await playerX(page);
   if (Math.abs(x - target) <= slack) return;
   if (x < target) await walk(page, 'd', target - slack / 2);
   else await walk(page, 'a', target + slack / 2);
+  for (let i = 0; i < 2; i++) {
+    await page.waitForTimeout(250);
+    const at = await playerX(page);
+    if (Math.abs(at - target) <= slack) return;
+    try {
+      if (at < target) await walk(page, 'd', target - slack / 2, 4000);
+      else await walk(page, 'a', target + slack / 2, 4000);
+    } catch {
+      return;
+    }
+  }
+}
+
+/**
+ * Tap toward [lo, hi] until the Keeper's x is inside it (inclusive).
+ *
+ * `walkTo` alone can stop ~27 px past its target, a whole Delve column. The
+ * Keeper has no momentum, but a headless frame can last the engine's 0.1 s
+ * cap (191 px/s × 0.1 s ≈ 19 px per frame in a Delve), and the poll that
+ * releases the key runs 50 ms behind the frame. Use this wherever the spec
+ * depends on which cell the Keeper stands in. Keep the window wider than one
+ * frame's step (~20 px) or the taps can hop over it.
+ */
+export async function settleBetween(page: Page, lo: number, hi: number, tries = 12): Promise<number> {
+  await page.waitForTimeout(250); // the frame after the key-up still moves the Keeper; read after it
+  let x = await playerX(page);
+  for (let i = 0; i < tries && (x < lo || x > hi); i++) {
+    await focusWorld(page);
+    const key = x < lo ? 'd' : 'a';
+    await page.keyboard.down(key);
+    await page.waitForTimeout(40);
+    await page.keyboard.up(key);
+    await page.waitForTimeout(350); // a key released between frames may not move at all; re-read and retry
+    x = await playerX(page);
+  }
+  expect(x, `the Keeper settles between ${lo} and ${hi}`).toBeGreaterThanOrEqual(lo);
+  expect(x, `the Keeper settles between ${lo} and ${hi}`).toBeLessThanOrEqual(hi);
+  return x;
 }
 
 /** Hold a key for `ms` milliseconds of real time. */
@@ -145,17 +194,19 @@ export function purse(gold: number): Blobs {
   return { 'godforge-economy': { version: 3, gold, totalGoldEarned: gold, runGoldEarned: gold } };
 }
 
-/** Stack quantity in the inventory ledger blob: checkpoints plus the op log above them. */
+/** Stack quantity in the inventory ledger blob: every device's fold plus the live ops past it. */
 export async function stackQty(page: Page, stackKey: string): Promise<number> {
   return page.evaluate(key => {
+    type Fold = { deviceId: string; upToHlc: number; net: Record<string, number> };
     const ledger = JSON.parse(localStorage.getItem('godforge-inventory') || '{}');
-    const cp = (ledger.stackCheckpoints || []).find((c: { stackKey: string }) => c.stackKey === key);
-    let qty = cp ? cp.quantity : 0;
-    const floor = cp ? cp.upToHlc : -Infinity;
+    const folds: Fold[] = ledger.stackFolds || [];
+    let qty = folds.reduce((sum, fold) => sum + (fold.net[key] ?? 0), 0);
     for (const op of ledger.stackOps || []) {
-      if (op.stackKey !== key || op.hlc <= floor) continue;
+      if (op.stackKey !== key) continue;
+      const own = folds.find(fold => fold.deviceId === op.deviceId);
+      if (own && op.hlc <= own.upToHlc) continue;
       qty += op.kind === 'grant' ? op.quantity : -op.quantity;
     }
-    return qty;
+    return Math.max(0, qty);
   }, stackKey);
 }

@@ -424,6 +424,24 @@ button:disabled { opacity: .4; cursor: default; }
 
 .capacity.full b, .capacity.full span { color: var(--adventure-ember); }
 
+/* Satchel slots on the clasp ("23/40"), amber at the limit; a dot when Overflow holds things. */
+.clasp-count { margin-left: auto; padding-right: 8px; font: 600 10px Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-smoke); }
+.satchel .clasp.is-full .clasp-count { color: var(--adventure-ember); }
+.bag-dot {
+  display: block;
+  width: 8px;
+  height: 8px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: var(--adventure-ember);
+  box-shadow: 0 0 0 2px var(--adventure-hud-panel-solid);
+}
+.vault-note {
+  margin: 0;
+  font: italic 400 13px/1.3 var(--font-lore, Georgia, serif);
+  color: var(--adventure-dialogue);
+}
+
 .belt { display: grid; gap: 6px; }
 
 .wells, .pockets {
@@ -1778,4 +1796,10 @@ input::placeholder { color: var(--adventure-hud-muted); }
     width: calc(25% - 12px);
     max-height: calc(100% - var(--hud-top) - var(--hud-bottom) - 8px);
   }
+}
+
+/* Phones: the slot count rides the badge; the Overflow dot sits on the button's lower left. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .bag-dot { position: absolute; left: 3px; bottom: 3px; margin: 0; }
+  .satchel .clasp.is-full .bag-badge { background: var(--adventure-hud-gold); }
 }
