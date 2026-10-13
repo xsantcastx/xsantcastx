@@ -1550,6 +1550,52 @@ test('chests: placed on ground only, E (or a tap) opens one by its cell, taking 
   engine.destroy();
 });
 
+test('X reaches as far as E: the chest the prompt names is the one X takes back', () => {
+  const taken = [];
+  const { engine, state } = enterOwnDelve(memoryDelve(62), { onUse() {}, onTakeBack: e => { taken.push(e); return true; } });
+  const t = buildRoom(engine);
+  const chest = terrainMod.nodeIndex('chest');
+  // The finding: the body overlaps the chest's column, the centre is in the next
+  // column, the Keeper faces away. E's prompt names the chest; X used to answer
+  // "Nothing placed here".
+  t.set(29, 8, chest);
+  engine.player.x = 30 * 32 + 6; engine.facing = 1; // body spans x 953..979, into col 29
+  engine.update(1 / 60);
+  assert.equal(state().nearby, 'chest', 'the prompt names the chest');
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.nodeAt(29, 8).id, 'air');
+  assert.equal(taken[0].cellKey, '29,8');
+  // Clear of the body but within half a cell of it, facing away: still E's reach, so still X's.
+  t.set(29, 8, chest);
+  engine.player.x = 30 * 32 + 20; engine.facing = 1; // body 967..993 (cols 30-31), E reaches x 951 (col 29)
+  engine.update(1 / 60);
+  assert.equal(state().nearby, 'chest');
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.nodeAt(29, 8).id, 'air');
+  // Two things in reach: the one the prompt names wins over the one in front.
+  t.set(29, 8, chest); t.set(31, 8, chest);
+  engine.player.x = 30 * 32 + 16; engine.facing = 1;
+  engine.update(1 / 60);
+  const named = engine.findInteractive();
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.kind[named], 0, 'the named chest went back');
+  // Out of E's reach: X does not take it either.
+  t.set(29, 8, 0); t.set(31, 8, 0); t.set(26, 8, chest);
+  engine.update(1 / 60);
+  assert.notEqual(state().nearby, 'chest');
+  assert.equal(engine.takeBack(), false);
+  assert.match(state().message, /Nothing placed here/);
+  // The pure helper agrees: prefer, then front, then own column, then E's window.
+  const box = { halfWidth: 13, height: 90 }, feet = 610 + 9 * 32;
+  t.set(26, 8, 0); t.set(28, 8, chest);
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box), t.index(28, 8), 'E\'s window, behind the Keeper');
+  t.set(30, 8, chest);
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box), t.index(30, 8), 'front first');
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box, t.index(28, 8)), t.index(28, 8), 'the named cell first');
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box, t.index(20, 3)), t.index(30, 8), 'a named cell that is not takeable is ignored');
+  engine.destroy();
+});
+
 // ── Building: the camp ──────────────────────────────────────────────────────
 test('camp: one per Delve, opens the bench on what can be made now, and town descends straight to it', () => {
   const recipe = craftMod.craftingRecipeById('craft-delve-camp');
