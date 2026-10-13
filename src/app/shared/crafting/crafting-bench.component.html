@@ -32,6 +32,13 @@
           <app-detail-head [art]="card.art" [name]="card.recipe.name" [rarity]="card.recipe.rarity"
                            [line]="craftLine()" [count]="card.recipe.output.count" [working]="striking" />
 
+          @if (toolLines(card.recipe); as lines) {
+            @if (lines.length) {
+              <ul class="cb-tool">
+                @for (line of lines; track $index) { <li>{{ line }}</li> }
+              </ul>
+            }
+          }
           <app-requirement-grid [title]="t('stationUi.requiredTools')" [costs]="tools" [showCount]="false" />
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="4" [pending]="!hydrated" />
 

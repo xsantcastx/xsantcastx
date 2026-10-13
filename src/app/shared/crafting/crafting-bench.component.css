@@ -23,6 +23,17 @@
   letter-spacing: var(--tracking-nav);
 }
 
+/* A tool recipe: power, pace, what it opens — plain lines under the head. */
+.cb-tool {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: var(--space-1);
+  color: var(--text-body);
+  font-size: var(--text-sm);
+}
+
 .cb-error {
   margin: 0;
   padding: var(--space-2) var(--space-3);
