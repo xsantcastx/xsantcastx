@@ -28,17 +28,11 @@ export type QuestStatus = 'available' | 'active' | 'completed' | 'expired';
 /**
  * How a quest knows it is done.
  *
- * The brief specified seven of these. The four extra — `page-variety`,
- * `speed-run`, `level` and `energy-balance` — exist because the epic and Verge
- * quests it also specified ("reach Level 5", "visit 10 different pages",
- * "complete 3 tools in under 5 minutes", "have Aether and Nox within 5% of each
- * other") cannot be expressed with the original seven.
- *
  * Conditions split into two families, and QuestService resolves them
  * differently:
  *
- *   counted   tool-use, tool-variety, page-variety, copy-count, arena-game,
- *             time-on-site, speed-run — read from the activity buckets that
+ *   counted   page-variety, page-visit, copy-count, arena-game, time-on-site —
+ *             read from the activity buckets that
  *             QuestWiringService fills. `progressKey()` below is the single
  *             place that decides which bucket, so the writer and the reader can
  *             never disagree about a key.
@@ -47,15 +41,11 @@ export type QuestStatus = 'available' | 'active' | 'completed' | 'expired';
  *             XP ledger. Nothing to record; the answer is already in state.
  */
 export type QuestConditionType =
-  | 'tool-use'
-  | 'tool-variety'
-  | 'realm-spread'
   | 'page-variety'
   | 'page-visit'
   | 'copy-count'
   | 'arena-game'
   | 'time-on-site'
-  | 'speed-run'
   | 'streak'
   | 'level'
   | 'achievement'
@@ -63,25 +53,11 @@ export type QuestConditionType =
 
 export interface QuestCondition {
   type: QuestConditionType;
-  /** Restrict to one tool. */
-  toolSlug?: string;
-  /** Or to any tool in a registry category. */
-  category?: string;
-  /** Or to any tool in a realm — broader than a category, since a realm spans several. */
-  realm?: RealmId;
   /**
    * For `page-visit`: the exact routes that must be stood on. `count` must
    * equal this length, so a quest can never ask for more places than it names.
    */
   paths?: string[];
-  /**
-   * Only count work done inside a slice of the day. `night` is 22:00–04:00 and
-   * `dawn` is 04:00–07:00, both in the visitor's local time, because a quest
-   * about working late is about *their* late.
-   */
-  window?: 'night' | 'dawn';
-  /** For `speed-run`: the number of distinct tools must land inside this many minutes. */
-  withinMinutes?: number;
   /** The target. Progress is `min(observed, count) / count`. */
   count: number;
 }
@@ -145,19 +121,7 @@ export interface BucketAddress {
  * Returns null for the derived conditions, which have no bucket at all.
  */
 export function progressKey(c: QuestCondition): BucketAddress | null {
-  const w = c.window ? `|${c.window}` : '';
   switch (c.type) {
-    case 'tool-use':
-      if (c.toolSlug) return { kind: 'tally', key: `use:${c.toolSlug}${w}` };
-      if (c.category) return { kind: 'tally', key: `use:cat:${c.category}${w}` };
-      if (c.realm) return { kind: 'tally', key: `use:realm:${c.realm}${w}` };
-      return { kind: 'tally', key: `use:*${w}` };
-    case 'tool-variety':
-      if (c.category) return { kind: 'set', key: `var:cat:${c.category}` };
-      if (c.realm) return { kind: 'set', key: `var:realm:${c.realm}` };
-      return { kind: 'set', key: 'var:*' };
-    case 'realm-spread':
-      return { kind: 'set', key: 'realms' };
     case 'page-variety':
     case 'page-visit':
       // Both read the same set of visited paths. `page-variety` counts its
@@ -169,8 +133,6 @@ export function progressKey(c: QuestCondition): BucketAddress | null {
       return { kind: 'set', key: 'arena' };
     case 'time-on-site':
       return { kind: 'tally', key: 'minutes' };
-    case 'speed-run':
-      return { kind: 'tally', key: `speed:${c.count}x${c.withinMinutes ?? 5}` };
     default:
       return null;
   }
@@ -278,301 +240,14 @@ function gcd(a: number, b: number): number {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The daily pool — thirty quests, three drawn a day
+// The daily pool — three drawn a day
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Thirty is the number that matters here: at three a day, a visitor sees the
- * same quest roughly once every ten days, which is long enough that it reads as
- * a rotation rather than a loop.
- *
  * Targets are deliberately small. A daily quest that cannot be finished in one
  * sitting is not a daily quest, it is a chore with a countdown on it.
  */
 export const DAILY_QUESTS: QuestDefinition[] = [
-  // ── Luminous ── light, surface, the making of visible things.
-  {
-    id: 'forge-three-shadows',
-    title: 'Forge Three Shadows',
-    description: 'Shape three shadows in the Shadow Weaver\'s Loom.',
-    loreText: 'The Luminous smiths need three anchors before a shadow will hold its shape. Two drift. Four fight.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-use', toolSlug: 'box-shadow-generator', count: 3 },
-    rewards: { xp: 20, energy: 'aether' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'paint-the-spectrum',
-    title: 'Paint the Spectrum',
-    description: 'Draw five palettes from the Prismatic Sanctum.',
-    loreText: 'Colour is the oldest argument in the realms. Everyone thinks they have settled it; nobody has.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-use', toolSlug: 'color-palette', count: 5 },
-    rewards: { xp: 15, energy: 'aether' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'shape-the-light',
-    title: 'Shape the Light',
-    description: 'Work in three different Luminous tools.',
-    loreText: 'A smith who knows one hammer knows one shape. The Loom is patient with beginners and merciless with the incurious.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-variety', realm: 'luminous', count: 3 },
-    rewards: { xp: 25, energy: 'aether' },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'the-gradient-path',
-    title: 'The Gradient Path',
-    description: 'Lay three gradients across the Aurora Bridge.',
-    loreText: 'Nothing in the Luminous realm changes all at once. The bridge is the proof: one colour becomes another and no one can say where.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-use', toolSlug: 'gradient-generator', count: 3 },
-    rewards: { xp: 20, energy: 'aether' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'typography-ritual',
-    title: 'Typography Ritual',
-    description: 'Pair three sets of letterforms.',
-    loreText: 'Two voices in one sentence. Get it wrong and the reader hears an argument instead of a line.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-use', toolSlug: 'font-pairer', count: 3 },
-    rewards: { xp: 15, energy: 'aether' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-measured-eye',
-    title: 'The Measured Eye',
-    description: 'Test three colour pairs for contrast.',
-    loreText: 'The Luminous keep one law above the rest: light that cannot be read by everyone is not light, it is decoration.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-use', toolSlug: 'contrast-checker', count: 3 },
-    rewards: { xp: 20, energy: 'aether' },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'the-lattice-rite',
-    title: 'The Lattice Rite',
-    description: 'Raise three grids or flex frames.',
-    loreText: 'Every hall in the Luminous vaults stands on an invisible lattice. Walk carelessly and you will still be walking its lines.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-variety', category: 'CSS Tools', count: 3 },
-    rewards: { xp: 20, energy: 'aether' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-motion-vow',
-    title: 'The Motion Vow',
-    description: 'Compose three animations or transitions.',
-    loreText: 'Movement is a promise about where a thing came from. Break the promise and the eye stops trusting the room.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-use', toolSlug: 'animation-generator', count: 3 },
-    rewards: { xp: 20, energy: 'aether' },
-    rarity: 'eclipsed',
-  },
-
-  // ── Umbral ── secrets, keys, the things that must not be read.
-  {
-    id: 'decode-the-cipher',
-    title: 'Decode the Cipher',
-    description: 'Turn three strings through the Cipher Stone.',
-    loreText: 'Base64 hides nothing. That is the joke the Nocturne never tire of: the most common lock in the realms has no key at all.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', toolSlug: 'base64-encoder', count: 3 },
-    rewards: { xp: 20, energy: 'nox' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'forge-a-shield',
-    title: 'Forge a Shield',
-    description: 'Inspect two certificates.',
-    loreText: 'A ward is only as good as the day it expires. The Nocturne have lost more ground to forgotten dates than to any siege.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', toolSlug: 'ssl-certificate-inspector', count: 2 },
-    rewards: { xp: 15, energy: 'nox' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'hash-the-shadows',
-    title: 'Hash the Shadows',
-    description: 'Cast five digests in the Soul Furnace.',
-    loreText: 'The furnace takes anything and returns the same length of nothing. Feed it a name and you cannot get the name back — only proof you once had it.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', toolSlug: 'hash-generator', count: 5 },
-    rewards: { xp: 20, energy: 'nox' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-regex-incantation',
-    title: 'The Regex Incantation',
-    description: 'Write three patterns.',
-    loreText: 'Speak it wrong and it matches everything. Speak it right and it matches only what you meant. There is no third outcome.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', toolSlug: 'regex-builder', count: 3 },
-    rewards: { xp: 25, energy: 'nox' },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'inspect-the-wards',
-    title: 'Inspect the Wards',
-    description: 'Audit a domain\'s mail defences.',
-    loreText: 'SPF, DKIM, DMARC — three seals on one door. The Nexus couriers will tell you which is missing; they will not tell you twice.',
-    type: 'daily',
-    realm: 'nexus',
-    condition: { type: 'tool-use', toolSlug: 'email-deliverability-auditor', count: 1 },
-    rewards: { xp: 15, energy: 'nox' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-vault-turning',
-    title: 'The Vault Turning',
-    description: 'Draw three keys from the Vault of Infinite Keys.',
-    loreText: 'The vault has no lock and no door. It has never run out. Nobody has ever drawn the same key twice, and nobody has ever proved it.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', toolSlug: 'password-generator', count: 3 },
-    rewards: { xp: 20, energy: 'nox' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'read-the-sealed-token',
-    title: 'Read the Sealed Token',
-    description: 'Break open two tokens and read what they claim.',
-    loreText: 'Every token carries its own account of who sent it. The Nocturne read them the way a border guard reads a passport: politely, and without believing a word.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', toolSlug: 'jwt-decoder', count: 2 },
-    rewards: { xp: 20, energy: 'nox' },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'walk-the-shadow-roads',
-    title: 'Walk the Shadow Roads',
-    description: 'Work in three different Umbral tools.',
-    loreText: 'No one is initiated in a single night. The Nocturne count arrivals, not intentions.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-variety', realm: 'umbral', count: 3 },
-    rewards: { xp: 25, energy: 'nox' },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'the-name-lookup',
-    title: 'The Name Lookup',
-    description: 'Trace two names back to their addresses.',
-    loreText: 'Names are a courtesy the realms extend to each other. Underneath, everything is a number, and the numbers do not lie about where they live.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', toolSlug: 'dns-lookup', count: 2 },
-    rewards: { xp: 15, energy: 'nox' },
-    rarity: 'mortal',
-  },
-
-  // ── Verge ── translation, the unstable border where forms change.
-  {
-    id: 'restore-the-crystals',
-    title: 'Restore the Crystals',
-    description: 'Repair three malformed structures.',
-    loreText: 'The Shattering left the archives full of half-sentences. A missing brace is not a small thing to the Scribes; it is a door that will not close.',
-    type: 'daily',
-    realm: 'verge',
-    condition: { type: 'tool-use', toolSlug: 'json-formatter', count: 3 },
-    rewards: { xp: 20, energy: 'nox' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-translators-toll',
-    title: 'The Translator\'s Toll',
-    description: 'Work in three different Verge tools.',
-    loreText: 'Nothing crosses the Verge unchanged. The toll is always paid in precision, and it is always paid by whoever comes after you.',
-    type: 'daily',
-    realm: 'verge',
-    condition: { type: 'tool-variety', realm: 'verge', count: 3 },
-    rewards: { xp: 25, energy: 'nox' },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'the-shape-of-truth',
-    title: 'The Shape of Truth',
-    description: 'Convert two documents between forms.',
-    loreText: 'YAML and JSON describe the same world. They disagree only about how much whitespace a truth is worth.',
-    type: 'daily',
-    realm: 'verge',
-    condition: { type: 'tool-use', toolSlug: 'yaml-json', count: 2 },
-    rewards: { xp: 20, energy: 'nox' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-difference-engine',
-    title: 'The Difference Engine',
-    description: 'Set two texts against each other.',
-    loreText: 'The Verge keeps no originals, only differences. Ask what a thing was and it will tell you what changed.',
-    type: 'daily',
-    realm: 'verge',
-    condition: { type: 'tool-use', toolSlug: 'diff-checker', count: 2 },
-    rewards: { xp: 20, energy: 'nox' },
-    rarity: 'mortal',
-  },
-
-  // ── Archivum ── record, count, the keeping of things.
-  {
-    id: 'the-identity-draw',
-    title: 'The Identity Draw',
-    description: 'Draw five identifiers from the Well.',
-    loreText: 'The Well has given a name to every thing that has ever needed one, and has never once repeated itself. The Archivum finds this reassuring. The Nocturne find it suspicious.',
-    type: 'daily',
-    realm: 'archivum',
-    condition: { type: 'tool-use', toolSlug: 'uuid-generator', count: 5 },
-    rewards: { xp: 15, energy: 'aether' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-essence-toll',
-    title: 'The Essence Toll',
-    description: 'Distil three images.',
-    loreText: 'Every image carries more than it needs. The Distillery takes the excess and asks, each time, whether you can still tell what you have lost.',
-    type: 'daily',
-    realm: 'archivum',
-    condition: { type: 'tool-use', toolSlug: 'image-compressor', count: 3 },
-    rewards: { xp: 20, energy: 'aether' },
-    rarity: 'mortal',
-  },
-  {
-    id: 'the-scribes-hour',
-    title: 'The Scribe\'s Hour',
-    description: 'Work in three different Archivum tools.',
-    loreText: 'The archive does not reward brilliance. It rewards showing up, filing correctly, and being findable in a hundred years.',
-    type: 'daily',
-    realm: 'archivum',
-    condition: { type: 'tool-variety', realm: 'archivum', count: 3 },
-    rewards: { xp: 25, energy: 'aether' },
-    rarity: 'eclipsed',
-  },
-
-  // ── Verge-agnostic wanderer quests — any realm, any road.
-  {
-    id: 'the-wanderers-path',
-    title: 'The Wanderer\'s Path',
-    description: 'Use five different tools.',
-    loreText: 'A Wanderer belongs to no realm, which is the only rank that can walk into all five without being asked why.',
-    type: 'daily',
-    condition: { type: 'tool-variety', count: 5 },
-    rewards: { xp: 30 },
-    rarity: 'eclipsed',
-  },
   {
     id: 'copy-merchant',
     title: 'Copy Merchant',
@@ -584,16 +259,6 @@ export const DAILY_QUESTS: QuestDefinition[] = [
     rarity: 'mortal',
   },
   {
-    id: 'speed-forging',
-    title: 'Speed Forging',
-    description: 'Work three tools within five minutes.',
-    loreText: 'The old smiths worked cold and slow. The Convergents work hot, and lose more, and finish.',
-    type: 'daily',
-    condition: { type: 'speed-run', count: 3, withinMinutes: 5 },
-    rewards: { xp: 25 },
-    rarity: 'sacred',
-  },
-  {
     id: 'the-explorer',
     title: 'The Explorer',
     description: 'Stand in five different halls.',
@@ -601,28 +266,6 @@ export const DAILY_QUESTS: QuestDefinition[] = [
     type: 'daily',
     condition: { type: 'page-variety', count: 5 },
     rewards: { xp: 20 },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'night-shift',
-    title: 'Night Shift',
-    description: 'Work any tool after 22:00.',
-    loreText: 'The Nocturne did not choose the night. They were simply the ones still working when the light went.',
-    type: 'daily',
-    realm: 'umbral',
-    condition: { type: 'tool-use', window: 'night', count: 1 },
-    rewards: { xp: 15, energy: 'nox' },
-    rarity: 'eclipsed',
-  },
-  {
-    id: 'dawn-patrol',
-    title: 'Dawn Patrol',
-    description: 'Work any tool before 07:00.',
-    loreText: 'The first light of the broken Sun falls on whoever is already standing. It has no opinion about how they slept.',
-    type: 'daily',
-    realm: 'luminous',
-    condition: { type: 'tool-use', window: 'dawn', count: 1 },
-    rewards: { xp: 15, energy: 'aether' },
     rarity: 'eclipsed',
   },
   {
@@ -636,7 +279,6 @@ export const DAILY_QUESTS: QuestDefinition[] = [
     rarity: 'mortal',
   },
 
-  // ── Game halls — the public product after the tool pages were retired. ──
   {
     id: 'walk-the-world',
     title: 'Walk the World',
@@ -720,7 +362,7 @@ export const DAILY_QUESTS: QuestDefinition[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The weekly pool — eight quests, two drawn a week
+// The weekly pool — two drawn a week
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -729,38 +371,6 @@ export const DAILY_QUESTS: QuestDefinition[] = [
  * the weekly board is a reason to keep the habit.
  */
 export const WEEKLY_QUESTS: QuestDefinition[] = [
-  {
-    id: 'realm-mastery-luminous',
-    title: 'Realm Mastery: Luminous',
-    description: 'Work twelve Luminous tools this week.',
-    loreText: 'To master a realm is not to have seen it. It is to have left fingerprints on enough of it that the realm knows your hands.',
-    type: 'weekly',
-    realm: 'luminous',
-    condition: { type: 'tool-variety', realm: 'luminous', count: 12 },
-    rewards: { xp: 100, energy: 'aether' },
-    rarity: 'sacred',
-  },
-  {
-    id: 'realm-mastery-umbral',
-    title: 'Realm Mastery: Umbral',
-    description: 'Work six Umbral tools this week.',
-    loreText: 'The Umbral realm is small and does not apologise for it. Every door in it leads somewhere you were not supposed to go.',
-    type: 'weekly',
-    realm: 'umbral',
-    condition: { type: 'tool-variety', realm: 'umbral', count: 6 },
-    rewards: { xp: 100, energy: 'nox' },
-    rarity: 'sacred',
-  },
-  {
-    id: 'the-full-circuit',
-    title: 'The Full Circuit',
-    description: 'Use twenty-five different tools this week.',
-    loreText: 'Twenty-five is the number the Archivum settled on after an argument that lasted a century. Nobody remembers why. Everybody honours it.',
-    type: 'weekly',
-    condition: { type: 'tool-variety', count: 25 },
-    rewards: { xp: 150 },
-    rarity: 'anomalous',
-  },
   {
     id: 'arena-champion',
     title: 'Arena Champion',
@@ -802,16 +412,6 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
     rarity: 'sacred',
   },
   {
-    id: 'the-crossing',
-    title: 'The Crossing',
-    description: 'Work tools in four of the five realms.',
-    loreText: 'The Convergents are not loved in any realm. They are, however, the only ones who can be sent to all of them.',
-    type: 'weekly',
-    condition: { type: 'realm-spread', count: 4 },
-    rewards: { xp: 120 },
-    rarity: 'anomalous',
-  },
-  {
     id: 'walk-the-five-stations',
     title: 'Walk the Five Stations',
     description: 'Visit World, Character, the Forge, Quests and the Trials.',
@@ -838,7 +438,7 @@ export const WEEKLY_QUESTS: QuestDefinition[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────────────────────
-// The epics — five, permanent, no clock
+// The epics — permanent, no clock
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -859,38 +459,6 @@ export const EPIC_QUESTS: QuestDefinition[] = [
       xp: 500,
       achievement: 'quest-convergent-trial',
       loreFragment: 'The Convergents were never a faction. They were an accounting error that learned to walk.',
-    },
-    rarity: 'sacred',
-  },
-  {
-    id: 'master-of-light',
-    title: 'Master of Light',
-    description: 'Work twenty-five Luminous tools.',
-    loreText: 'The Loom keeps a list of every pair of hands that has touched it. It is not a short list. It is not a long one either.',
-    type: 'epic',
-    realm: 'luminous',
-    condition: { type: 'tool-variety', realm: 'luminous', count: 25 },
-    rewards: {
-      xp: 300,
-      energy: 'aether',
-      achievement: 'quest-master-of-light',
-      loreFragment: 'Light does not belong to the Luminous. They were only the first to write down how it behaves.',
-    },
-    rarity: 'sacred',
-  },
-  {
-    id: 'shadow-adept',
-    title: 'Shadow Adept',
-    description: 'Work eight Umbral tools.',
-    loreText: 'The Nocturne do not initiate. They notice, eventually, that you have stopped needing to be told where things are.',
-    type: 'epic',
-    realm: 'umbral',
-    condition: { type: 'tool-variety', realm: 'umbral', count: 8 },
-    rewards: {
-      xp: 300,
-      energy: 'nox',
-      achievement: 'quest-shadow-adept',
-      loreFragment: 'Every lock in the Umbral realm was built by someone who wanted, one day, to be let back in.',
     },
     rarity: 'sacred',
   },
@@ -936,15 +504,10 @@ export function questById(id: string): QuestDefinition | undefined {
 }
 
 /**
- * True when a quest can be finished on a live game route.
- *
- * Tool-use, tool-variety, realm-spread and speed-run all required /tools/*
- * pages that no longer exist. Those authored quests stay in the pools for
- * save-history lookups, but they are not drawn onto the public board.
+ * True when a quest can be finished on a live game route — a guard against a
+ * quest naming a retired tools-site path, which would sit on the board forever.
  */
 export function isPlayableQuest(def: QuestDefinition): boolean {
-  const retired: QuestConditionType[] = ['tool-use', 'tool-variety', 'realm-spread', 'speed-run'];
-  if (retired.includes(def.condition.type)) return false;
   return !(def.condition.paths ?? []).some(path =>
     path === '/tools' || path.startsWith('/tools/') || path === '/blueprint' || path === '/embed');
 }
