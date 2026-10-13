@@ -4,7 +4,7 @@ The working build tracker for turning Eclipse Realms into one walkable world.
 Update it in the same commit that lands the work; an item is only `[x]` once it
 is merged to `main` **and** checked in a production build.
 
-Last updated: 2026-10-13
+Last updated: 2026-10-14
 
 Legend: `[x]` shipped · `[~]` in progress (branch named) · `[ ]` next · `[-]` later / blocked
 
@@ -213,6 +213,31 @@ Replaces "hybrid sprites + paintings" (2026-10-12). Art bible: `docs/art/style-g
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for the pixel sprite sheets (the rig retires after the A/B)
 - [~] **The Croupier's Reels** (owner, 2026-10-13: "slot machines… stake-style super bonus"; branch `worktree-agent-afd96296a31970cf4`): Umbral station between the Gambler and the Exchange, run by the Croupier (`/play?at=reels`); 3×3, 5 lines, world symbols, Eclipse Round (10 free spins, sticky ×2–×50 rune orbs, paid at the end), prizes through the rune/material gateways; Gold only, RTP 92.1% Gold + ~0.7% prizes (exact + simulated proof in `economy-sim.mjs --reels`, checked in `--check`), bet cap = two minutes of income. Shared kit `src/app/shared/games/` (seeded RNG, idempotent play ledger, bet tiers, RTP harness, win celebration) for Rune Drop / Seam Sweeper / Eclipse Ascent. Handoff `docs/handoff/reels.md`; lore line pending owner review; art briefs `world-sprites/10-reels.md`
+
+## Phase 6+: The Delve and beyond `[ ]` (planned 2026-10-14)
+
+Owner brief (2026-10-13): navigation in the Delve (minimap, missions), an infinite generated world, Fishing, lakes and lava, "Terraria with a galactic mix: universe, other dimensions, realms", better lore. **Design bible + full roadmap: [`docs/world/delve-and-beyond.md`](../world/delve-and-beyond.md)**; the new lore stories are in [`docs/world/lore-addendum.md`](../world/lore-addendum.md) ("The Delve and beyond", shipped — owner reviews in play). Owner, 2026-10-14: new layers, creatures and stories are approved to ship and reviewed in play; the bible lists only canon/cost questions (§10).
+
+The layer cake: Root Hollows → Basalt Caverns → Glowcap Grotto → Magma Halls (shipped) → **the Underhearth** (the Infernal realm's banked furnace; Kael's four) → the Breach → **Starfall Deep** (the sky under the world) → **the Void Shore** (the Void sea and the shattered realm-islands) → **the Unmade** (no bottom; "One More"). The deep places are *Reaches*, never realms. Left and right of the shaft, the Delve is generated without end per player seed, with four realm **Echo regions** that finally spawn the atlas creatures of meaning audit #16.
+
+- [ ] **Phase 6: Water, lava and Fishing v1** (fits today's engine; parallel with Phase 7)
+  - [ ] 6.1 Liquids v1: water + lava, 10 Hz cellular flow with sleeping cells, water + lava → obsidian, lava chars wooden placeables back to the satchel, Seam Bucket, swim/breath/lava damage, Ember Elixir immunity, liquid diff in the save (L)
+  - [ ] 6.2 Lakes in the core: Grotto Mere, Magma lava pools, flooded shafts, placed in already-carved air so no `version` bump (S)
+  - [ ] 6.3 Fishing v1: skill 1–99, Worn/Root/Seam/Glowline rods, bait, catch tables, junk, crates, the Line Tension mini-game (always lands, grade only adds), auto-fish, Lampfish Oil + Gill Draught, Catalogue of Strange Fish, Lodge Warden Ledger Catch, Merchant fish order, the Drowned Lamp chain + mini-boss (L)
+  - [ ] 6.4 `economy-sim.mjs --fishing --check` in CI: fishing ≤ 10% of forge Gold/min, crate EV, rod gates, 60–250 h to 99 (S)
+- [ ] **Phase 7: The endless Delve** (horizontal first)
+  - [ ] 7.1 Sector world: 32×32-cell sectors, sector-local deterministic generator (noise caves, clipped veins, structure lattice), loaded window, per-sector spawns; the core unchanged (XL, split a/b)
+  - [ ] 7.2 Save v2: index doc + region docs (8×8 sectors) under `progress/` (no rules deploy), IndexedDB locally, RLE diffs, merge, healing of far unheld tunnels (L) — needs the save-gateway owners' review first
+  - [ ] 7.3 Structures v1: Kael's waycaches, flooded shafts, lakes, field-note walls (M)
+  - [ ] 7.4 Map v2 on top of minimap v1: fog per sector, full map, pins, waypoints, Broken Astral Compass, Rift Map Fragment (M)
+  - [ ] 7.5 Board Herald's daily Delve bounties (S)
+- [ ] **Phase 8: The Underhearth**: stratum + nodes + lava lakes + the Breach gate (Delving 15); Banked Ember, Ironwood Sentinel, the Banked Furnace; Kael's "The Four Who Went Down" + Verrin; tool tier V; rope, Thornroot Grapple, Seam Rails + Cart, camps per stratum, Rift Anchors + Waystone Shards, Seam Siphon
+- [ ] **Phase 9: Starfall Deep** (first Reach): low gravity + shear, starlight liquid (rises), starglass; Ephemeris Leech + Anchor Warden spawn, Lodestar Drift, the Unlit Star; Aureth's chain; Starfall and Eclipse Surge events; Rod V, Starlight Jar, Anchor Ring
+- [ ] **Phase 10: Echo regions**: Prism Shelf, Ink Deeps, Orrery Underworks, Rootglass Depths; Afterimage Moth, Ink Lantern, Graftling spawn (closes audit #16); Echo fish; Veil Draught
+- [ ] **Phase 11: The Void Shore**: void sea (light holds it back), five shattered islands, Plausibles, the Undertow (summoned by fishing), Breach Tide; the Merchant's chain; Rod VI, Pickaxe VI, Hollow Flask
+- [ ] **Phase 12: The Unmade**: witnessing (light finishes outline cells), "One More" bands with no bottom, Drafts, the Nameless at band thresholds (owner question)
+- Art briefs per slice are listed in the bible §9 (W7L liquid sheets are a new spec class for the style guide in 6.1)
+- **Owner:** (1) may the Nameless appear as a figure in the Unmade; (2) Firestore cost of one region doc per explored 256×256-cell area
 
 ---
 
