@@ -10,12 +10,19 @@
  * the generated air (caverns, the old tunnel): dug cells paint their own back
  * wall over it (terrain-render.ts).
  *
+ * Imported art (RND-2): `parallax-delve-<biome id>-far` / `-near`
+ * (scripts/import-assets.py, `Assets/Sprites/Parallax/`) replaces a
+ * procedural layer once its image has loaded, laid at 2 world px per art px
+ * like the tiles; the procedural layer stands in until then and for any
+ * biome without one.
+ *
  * Cheap on purpose: no per-frame allocation, two pattern fills per biome band
  * in view, and below the surface the town painting and its shade (which the
  * opaque terrain used to hide entirely) are skipped instead.
  */
 import { BiomeDef, CELL, seededRandom, Terrain } from './terrain';
 import { ART, mixHex } from './tile-art';
+import { parallaxFor } from '../../shared/art/parallax-manifest.generated';
 
 /** Texels of each layer (one texel = ART world px). Both tile in x and y. */
 const FAR = { w: 128, h: 96, speed: .2 };
@@ -78,14 +85,19 @@ function layerColors(biome: BiomeDef, layer: 'far' | 'near'): (string | null)[] 
   const wash = biome.wash.alpha > 0 ? biome.wash.color : wall0;
   return layer === 'far'
     ? [null, mixHex(mixHex(wall1, wall0, .5), wash, .06), mixHex(wall0, wash, .18), mixHex(shadow, wall1, .45)]
-    : [null, mixHex(shadow, '#000000', .25), mixHex(wall0, wash, .3), null];
+    : [null, mixHex(shadow, '#140a1f', .25), mixHex(wall0, wash, .45), null];
 }
 
 interface Layer { canvas: HTMLCanvasElement | null; pattern: CanvasPattern | null; context: CanvasRenderingContext2D | null }
 
+type ImageFor = (url: string) => HTMLImageElement | undefined;
+
 export class CaveBackdrop {
   private readonly layers = new Map<string, Layer>();
+  /** Imported layers: their 1x image and its pattern for the current context. */
+  private readonly imported = new Map<string, { url: string | null; image: HTMLImageElement | null; pattern: CanvasPattern | null; context: CanvasRenderingContext2D | null }>();
   private failed = false;
+  constructor(private readonly image: ImageFor | null = null, private readonly lookup: typeof parallaxFor = parallaxFor) {}
 
   /**
    * Fill the screen below the terrain's top edge with each biome's two layers.
@@ -113,6 +125,18 @@ export class CaveBackdrop {
 
   private fill(c: CanvasRenderingContext2D, biome: BiomeDef, layer: 'far' | 'near', camera: number, cameraY: number, viewport: number, y0: number, y1: number): void {
     const spec = layer === 'far' ? FAR : NEAR;
+    const art = this.importedPattern(c, biome, layer);
+    if (art) {
+      // Imported: the 1x image is 4 px per art px; the Delve lays it at 2 (half size), snapped.
+      const tw = art.w / 2, th = art.h / 2;
+      const ox = -Math.round(((camera * spec.speed) % tw) / ART) * ART, oy = -Math.round(((cameraY * spec.speed) % th) / ART) * ART;
+      c.save();
+      c.translate(ox, oy); c.scale(.5, .5);
+      c.fillStyle = art.pattern;
+      c.fillRect(-ox * 2, (y0 - oy) * 2, viewport * 2, (y1 - y0) * 2);
+      c.restore();
+      return;
+    }
     const pattern = this.pattern(c, biome, layer);
     if (!pattern) {
       if (layer === 'far') { c.fillStyle = biome.wall[2]; c.fillRect(0, y0, viewport, y1 - y0); }
@@ -126,6 +150,29 @@ export class CaveBackdrop {
     c.fillStyle = pattern;
     c.fillRect(-ox / ART, (y0 - oy) / ART, viewport / ART, (y1 - y0) / ART);
     c.restore();
+  }
+
+  /** The imported layer's pattern once its image has loaded, else null. */
+  private importedPattern(c: CanvasRenderingContext2D, biome: BiomeDef, layer: 'far' | 'near'): { pattern: CanvasPattern; w: number; h: number } | null {
+    if (!this.image) return null;
+    const key = `${biome.id}:${layer}`;
+    let entry = this.imported.get(key);
+    if (!entry) {
+      const found = this.lookup(`delve-${biome.id}`, layer);
+      entry = { url: found ? found.src : null, image: null, pattern: null, context: null };
+      this.imported.set(key, entry);
+    }
+    if (!entry.url) return null;
+    if (!entry.image) {
+      const image = this.image(entry.url);
+      if (!image?.complete || !image.naturalWidth) return null;
+      entry.image = image;
+    }
+    if (entry.context !== c) {
+      entry.context = c;
+      entry.pattern = typeof c.createPattern === 'function' ? c.createPattern(entry.image, 'repeat') ?? null : null;
+    }
+    return entry.pattern ? { pattern: entry.pattern, w: entry.image.naturalWidth, h: entry.image.naturalHeight } : null;
   }
 
   private pattern(c: CanvasRenderingContext2D, biome: BiomeDef, layer: 'far' | 'near'): CanvasPattern | null {

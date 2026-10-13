@@ -6,7 +6,53 @@ back walls, a distant cave behind the caverns and a smoothed light grid. No new 
 assets. Gameplay did not change: cell HP, collision, tools and saves are untouched,
 and so are the save format and the generator.
 
-## What changed
+## Pass 2 (2026-10-13): bright, saturated, high-contrast; pipeline follow-ups
+
+Manager review of pass 1: the structure was right but it read "brown on black". Terraria's caverns are
+bright, saturated and high-contrast. Render-only again: no HP, collision, tool, save or generator change
+(node colours and biome walls/washes are render-only fields).
+
+| Area | File | What |
+|---|---|---|
+| Palettes | `terrain.ts`, `towns/infernal.ts` | Every solid node's `dark/base/light/fleck` re-picked brighter and more saturated, by biome: Root Hollows warm brown dirt + green moss (wash now `#6a8a3a`), Basalt Caverns mid-grey basalt with orange/teal ore, Glowcap Grotto teal stone + cyan caps, Magma Halls red scorched basalt + rose heartstone. Back walls lifted from near-black to ~2 steps under the tiles. Style guide §5.3 has the new table |
+| Contrast | `tile-art.ts` | Two renderer steps per palette: the **outline** (`dark` 72% towards `#140a1f`, never black) and a **highlight** (`light` 28% towards `#fff4e0`) on every open top edge; the open left edge takes the full light step. Top faces brighter (green moss, pale ash, cyan lichen, gold-orange crust) |
+| Light | `lighting.ts`, `engine.ts` | Ambient floor 0.5–0.94 → **0.42–0.80**: unlit rock keeps its shape, lit ground is full colour. Falloff `(1−d²/r²)²` → **`1−d²/r²`** (a broad bright pool; `lightGrid` and `darknessAt` still agree). Lit samples take a **warm cast** (`#ffb066`, up to 0.14) folded into the same single darkness blend (formula in `DarknessLayer.draw`). Torch radius 120 → 150; placed lights' halos 0.16 → 0.30 |
+| Placed objects | `tile-art.ts PLACED_ART`, `terrain-render.ts` | Torch, ladder, platform, chest, camp, timber/basalt supports and the blasting charge are 16×16 pixel maps in their node palette, baked into the atlas like the rock (transparent around the object). Ladder rails and the platform plank meet across cells. Inscriptions, the fuse spark and falling rubble moved onto the 2 px art grid. Nothing vector remains in the Delve's terrain layer |
+| Town ground | `ground-strip.ts` (new), `engine.ts` | Town and hunting-ground platforms are a per-realm pixel texture (lit lip, outline, stone courses) laid as a pattern at 4 px per art px, instead of three flat rects; off-screen platforms are culled |
+| IMP-1 | `scripts/import-assets.py` | `import_tiles` accepts a full W7a sheet (7 rows `tile top bottom sides thin caps inner` × 4; inferred from a 4×7 sheet without a sidecar). Only row 0 must be opaque. Manifest entries carry `autotile: true` |
+| RND-1 | `terrain-render.ts`, `tile-art.ts autoTilePiece` | When `tileFor(<node id>)` (or `wall-<biome id>`) has an entry and its image has loaded, a W7a sheet draws the §7.1 piece per cell and replaces the procedural edges/top face; a one-row strip replaces the interior only. Cached chunks repaint once when a sheet loads (`epoch`) |
+| IMP-2 | importer | `Sprites/Parallax` family → `parallax-manifest.generated.ts` (`parallaxFor(place, layer)`); sky must be opaque, other layers clear at the top corners |
+| RND-2 | `parallax.ts` (new), `cave-backdrop.ts`, `engine.ts` | Towns draw the realm's imported layers (sky/far/mid/near at 0.03/0.2/0.45/0.7, ground line at `FLOOR`, art-pixel snapped) only once every imported layer has loaded, else the painting. The Delve cave uses `parallax-delve-<biome>-far/near` at 2 px per art px when present, else the procedural layers |
+| IMP-3 | importer | Collectible/portrait ladders resize nearest-neighbour for `menu-pixel` rows of `commissions.csv` or a `-px` stem (stripped from the key) |
+| ENG-1 / ids | `docs/art-commissions/*`, style guide | The engine already spawned `seam-eater` / `cinder-bailiff`; briefs, paths and CSV rows renamed from `rune-warden` / `magma-maw` (sprites `06-seam-eater`, `07-cinder-bailiff`, master `11-seam-eater`) with the atlas designs. `--commissions` now checks that every creature sprite id is a `CREATURE_RIGS` key |
+
+Importer verified against a synthetic library (Pillow venv): a W7a sheet with clear edge-row corners and a W7b
+wall import; a W7a with a clear row-0 pixel and a far layer with painted top corners are rejected; the
+generated manifests carried `autotile: true` and the parallax entries. Outputs were removed afterwards.
+
+### Pass 2 perf (opt-in harness, 390×844 @3, 4× CPU, 30 s, software raster, alternated against base `1df261c`)
+
+| Run | Frames | p50 / p95 ms | Task ms/frame | Script ms/frame | Alloc KB/frame |
+|---|---|---|---|---|---|
+| before delve #1 | 1121 | 32.1 / 35.1 | 26.76 | 5.99 | 37.9 |
+| after delve #1 | 1106 | 32.3 / 35.0 | 27.13 | 6.04 | 39.1 |
+| before delve #2 | 1120 | 31.9 / 35.1 | 26.76 | 5.99 | 37.5 |
+| after delve #2 | 1105 | 31.9 / 35.2 | 27.12 | 6.01 | 38.2 |
+| before delve #3 | 1118 | 31.7 / 35.2 | 26.83 | 6.03 | 38.2 |
+| after delve #3 | 1107 | 31.9 / 35.2 | 27.09 | 6.04 | 37.7 |
+| before town (infernal) | 1785 | 16.7 / 18.6 | 15.53 | 5.12 | 40.3 |
+| after town (infernal) | 1762 | 16.7 / 18.6 | 16.27 | 5.20 | 39.3 |
+
+Frame time p50/p95 is unchanged in both scenes. Main thread is +0.3 ms/frame in the Delve (the per-sample warm
+fold and the stronger torch halos; script time is flat) and +0.7 ms in town (one run each; the ground pattern fill
+replaces three flat rects). Allocation is unchanged. The machine was quieter than pass 1's runs (delve ~32 ms vs
+~66–83 ms then).
+
+Screenshots (not committed): `output/terrain-pass2/{before,after}-{root-hollows,basalt-caverns,glowcap-grotto,magma-halls,town-infernal}-{desktop,phone}.png`
+(1280×800 and 390×844 @3; a camp, two torches, a chest, both supports and a dug pocket with a ladder, platform,
+charge and torch in each biome's cavern).
+
+## What changed (pass 1)
 
 | Area | File | What |
 |---|---|---|
@@ -77,8 +123,10 @@ footer intercepts the Rune Forge button. It predates this work and has nothing t
 
 ## Not done / next
 
-- Placed things (torch, ladder, chest, camp, supports, charge, platform) are still vector stand-ins drawn over
-  the wall. They should become pixel tiles when their art is commissioned (`delve-building.md`).
+- Placed things are procedural pixel maps (pass 2). Commissioned W6 cell props (`Sprites/Props/`) are not yet
+  wired into the terrain renderer the way RND-1 wires tiles; that is the next small step when they land.
+- RND-1/RND-2 were verified by unit tests and a synthetic import, not yet in the browser with real art.
+- Supports have no ground check in the look (a support placed mid-air draws as a T): gameplay places them grounded.
 - Light does not flood around corners (no BFS propagation). Rock only attenuates it. A real flood fill on the
   grid would be the next step if caves should go fully black behind a bend.
 - Rows above the surface keep the town painting. The parallax starts at the terrain's top edge.
