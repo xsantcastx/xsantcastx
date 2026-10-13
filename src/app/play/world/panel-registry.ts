@@ -36,6 +36,7 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelEntry>> = {
   quests: { title: 'Quest Board', kicker: 'World', route: '/world/quests', load: () => import('../../quests/quests.component').then(m => m.QuestsComponent) },
   arena: { title: 'The Arena', kicker: 'World', route: '/world/arena', load: () => import('../../pvp/pvp-arena.component').then(m => m.PvpArenaComponent) },
   trials: { title: 'The Trials', kicker: 'World', route: '/world/trials', load: () => import('../../arena/arena.component').then(m => m.ArenaComponent) },
+  character: { title: 'Character', kicker: 'Keeper', route: '/character', load: () => import('../../forge-keeper/forge-keeper.component').then(m => m.ForgeKeeperComponent) },
   skills: { title: 'Skills', kicker: 'Keeper', load: () => import('../../shared/skills/skills-panel.component').then(m => m.SkillsPanelComponent) },
   vendor: { title: 'Material Vendor', kicker: 'Trade', load: () => import('../../shared/vendor/material-vendor.component').then(m => m.MaterialVendorComponent) },
   homestead: { title: 'Your Homestead', kicker: 'Homestead', load: () => import('../homestead/homestead-panel.component').then(m => m.HomesteadPanelComponent) },

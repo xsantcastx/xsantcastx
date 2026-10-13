@@ -255,6 +255,10 @@ for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) 
 for (const d of ITEM_DEFINITIONS) {
   const m = /^(pickaxe|axe|sickle|staff)-(\d)$/.exec(d.id);
   if (m && toolFamilies.has(m[1])) use(d.id, `tool: works ${m[1]} nodes`);
+  // The Worn starter tools (src/app/shared/skills/tool-items.ts): handed to
+  // every Keeper by SideScrollerComponent.ensureStarterTools, used as tier I.
+  const st = /^starter-(pickaxe|axe|sickle)$/.exec(d.id);
+  if (st && toolFamilies.has(st[1])) { src(d.id, 'starter kit: every Keeper is handed one'); use(d.id, `tool: works ${st[1]} nodes (tier I)`); }
 }
 
 // A crafted thing with no lore of its own still has the Bench's blurb.
@@ -426,6 +430,9 @@ for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) 
   if (!s.blurb) flag('station', 'not-visible', id, 'no blurb for the Places list');
   if (a === town && s.kind === 'panel' && a.id !== 'homestead' && !keeperStations.has(`${town.id}/${s.id}`)) flag('station', 'no-keeper', id, 'panel station with nobody behind it');
 }
+// Panels a HUD control opens rather than a station: 'character' is the
+// Places/☰ menu's "Character & stats" (SideScrollerComponent.openCharacter).
+for (const p of ['character']) placedPanels.add(p);
 for (const p of PANEL_IDS) if (!placedPanels.has(p)) { node('station', `panel:${p}`); flag('station', 'never-placed', `panel:${p}`, 'a panel no station opens'); }
 
 // ── Canon (informational) ──────────────────────────────────────────────────
