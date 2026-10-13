@@ -53,15 +53,7 @@
               "@firebase/storage",
               "@grpc/grpc-js",
               "@grpc/proto-loader",
-              "faye-websocket",
-              "jspdf",
-              "html2canvas",
-              "fflate",
-              "dompurify",
-              "canvg",
-              "core-js",
-              "raf",
-              "rgbcolor"
+              "faye-websocket"
             ]
           },
           "configurations": {
