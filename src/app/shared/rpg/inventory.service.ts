@@ -96,14 +96,18 @@ import {
 import type { ItemStatKey } from './item-definition';
 import {
   INSTANCE_RECORD_BUDGET,
-  TAB_SLOTS,
   VAULT_LIVE,
   dropLegacySigils,
+  identityOfRecord,
   instanceRecordCount,
   layoutOf,
   ledgerCapacity,
+  occupancyOf,
   routeFor,
   settle,
+  stowPlan,
+  tabHasRoomFor,
+  takeOutPlan,
   slotClassOf,
   vaultHolder,
   vaultTabOf,
@@ -1412,18 +1416,29 @@ export class InventoryService {
     const row = this.instanceRow(itemId);
     if (!row || row.location.kind !== 'bag') return false;
     const capacity = this.capacity();
-    if (tab && (!capacity.tabs.has(tab) || layoutOf(this.ledger, capacity).instancesIn[tab] >= TAB_SLOTS[tab])) return false;
-    return this.relocate(row, { kind: 'explorer', explorerId: vaultHolder(tab ?? this.vaultRoute(capacity)) });
+    if (tab && !tabHasRoomFor(this.ledger, capacity, tab, row)) return false;
+    const route = tab ?? routeFor(occupancyOf(this.ledger), capacity, identityOfRecord(row));
+    return this.relocate(row, { kind: 'explorer', explorerId: vaultHolder(route) });
   }
 
-  /** Take an item out of the Vault (Overflow included) into the satchel, if it has a free slot. */
+  /**
+   * Take an item out of the Vault (Overflow included) into the satchel, if it
+   * fits: a free slot, or a slot an identical group there still has room in.
+   */
   takeOut(itemId: string): boolean {
     if (!this.isBrowser) return false;
     const row = this.instanceRow(itemId);
     if (!row || !vaultTabOf(row.location)) return false;
-    const capacity = this.capacity();
-    if (layoutOf(this.ledger, capacity).bagInstances >= capacity.satchel) return false;
+    if (!takeOutPlan(this.ledger, this.capacity(), [itemId]).length) return false;
     return this.relocate(row, { kind: 'bag' });
+  }
+
+  /**
+   * How many of these Vault pieces the satchel can take right now, identical
+   * pieces sharing slots (20 to a slot). What a "Take out N" button says.
+   */
+  takeOutRoom(itemIds: readonly string[]): number {
+    return takeOutPlan(this.ledger, this.capacity(), itemIds).length;
   }
 
   /**
@@ -1435,32 +1450,25 @@ export class InventoryService {
    */
   stowMany(itemIds: readonly string[]): string[] {
     if (!this.isBrowser) return [];
-    const rows = [...new Set(itemIds)]
-      .map(id => this.instanceRow(id))
-      .filter((row): row is OwnedItemInstance => !!row && row.location.kind === 'bag');
-    if (!rows.length) return [];
-    const capacity = this.capacity();
-    const instancesIn = { ...layoutOf(this.ledger, capacity).instancesIn };
-    return this.relocateMany(rows.map(row => {
-      const tab = routeFor(instancesIn, capacity);
-      instancesIn[tab] += 1;
-      return { row, location: { kind: 'explorer', explorerId: vaultHolder(tab) } };
+    const plan = stowPlan(this.ledger, this.capacity(), itemIds);
+    return this.relocateMany(plan.flatMap(({ id, tab }) => {
+      const row = this.instanceRow(id);
+      return row ? [{ row, location: { kind: 'explorer' as const, explorerId: vaultHolder(tab) } }] : [];
     }));
   }
 
   /**
-   * Take several items out of the Vault in ONE write, as many as the satchel
-   * has free slots for (the rest stay where they are). Returns the ids moved.
+   * Take several items out of the Vault in ONE write, as many as fit in the
+   * satchel (identical pieces share slots, 20 to a slot; the rest stay where
+   * they are). Returns the ids moved.
    */
   takeOutMany(itemIds: readonly string[]): string[] {
     if (!this.isBrowser) return [];
-    const capacity = this.capacity();
-    const free = Math.max(0, capacity.satchel - layoutOf(this.ledger, capacity).bagInstances);
-    const rows = [...new Set(itemIds)]
-      .map(id => this.instanceRow(id))
-      .filter((row): row is OwnedItemInstance => !!row && !!vaultTabOf(row.location))
-      .slice(0, free);
-    return this.relocateMany(rows.map(row => ({ row, location: { kind: 'bag' } })));
+    const plan = takeOutPlan(this.ledger, this.capacity(), itemIds);
+    return this.relocateMany(plan.flatMap(id => {
+      const row = this.instanceRow(id);
+      return row ? [{ row, location: { kind: 'bag' as const } }] : [];
+    }));
   }
 
   private relocateMany(moves: { row: OwnedItemInstance; location: OwnedItemInstance['location'] }[]): string[] {
@@ -1497,10 +1505,6 @@ export class InventoryService {
     }
     this.publish();
     return true;
-  }
-
-  private vaultRoute(capacity: Capacity): VaultTabId {
-    return routeFor(layoutOf(this.ledger, capacity).instancesIn, capacity);
   }
 
   // ───────────────────────────────────────────────────────────────────────────

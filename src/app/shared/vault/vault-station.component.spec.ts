@@ -246,16 +246,17 @@ describe('VaultStationComponent: identical items as one ×N row', () => {
   let memory: MemoryGateway;
   beforeEach(() => { memory = new MemoryGateway(); });
 
-  it('shows one ×7 row and the two rolled variants as their own rows, side by side; slots stay honest', () => {
+  it('shows one ×7 row and the two rolled variants as their own rows, side by side; the seven share one slot', () => {
     seedTwins(memory);
     const { inventory } = configure(memory);
     const vs = station();
     expect(vs.rows.length).toBe(3);
     expect(vs.rows.every(r => r.name === 'Mote Charm')).toBeTrue();
     const group = vs.rows.find(r => r.sub?.includes('×7'));
-    expect(group?.sub).toContain('×7 · 7 slots');
-    expect(vs.strip.label).toBe('9 / 40 slots');
-    expect(inventory.snapshot.usedRows).toBe(9);
+    expect(group?.sub).toContain('×7 · 1 slot');
+    expect(group?.sub).not.toContain('slots');
+    expect(vs.strip.label).toBe('3 / 40 slots');
+    expect(inventory.snapshot.usedRows).toBe(3);
 
     vs.pick(group!.id);
     expect(vs.selected?.quantity).toBe(7);
@@ -298,13 +299,27 @@ describe('VaultStationComponent: identical items as one ×N row', () => {
     writes.calls.reset();
     vs.act();
     expect(writes).toHaveBeenCalledTimes(1);
-    expect(inventory.snapshot.usedRows).toBe(9);
+    expect(inventory.snapshot.usedRows).toBe(3);
     expect(inventory.snapshot.inVault).toBe(0);
   });
 
-  it('Take out N moves only what the satchel has room for, and says that number', () => {
-    const filler = Array.from({ length: SATCHEL_BASE_SLOTS - 3 }, (_, i) => record(`fill-${i}`, 'Ashen Helm', i));
-    const vaulted = Array.from({ length: 5 }, (_, i) => twin(`v-${i}`, { location: { kind: 'explorer', explorerId: vaultHolder('general-1') } }));
+  it('25 alike read "×25 · 2 slots", and take 2 slots in the satchel and in the Vault tab', () => {
+    seedTwins(memory, Array.from({ length: 18 }, (_, i) => twin(`mote-x${i}`)));
+    const { inventory } = configure(memory);
+    const vs = station();
+    const group = vs.rows.find(r => r.sub?.includes('×25'));
+    expect(group?.sub).toContain('×25 · 2 slots');
+    expect(inventory.snapshot.usedRows).toBe(4);
+    vs.pick(group!.id);
+    vs.act();
+    expect(inventory.snapshot.usedRows).toBe(2);
+    vs.setView('general-1');
+    expect(vs.strip.label).toBe('2 / 60 slots');
+  });
+
+  it('Take out N moves only what fits — 30 alike into one free slot takes 20 — and says so', () => {
+    const filler = Array.from({ length: SATCHEL_BASE_SLOTS - 1 }, (_, i) => record(`fill-${i}`, 'Ashen Helm', i));
+    const vaulted = Array.from({ length: 30 }, (_, i) => twin(`v-${String(i).padStart(2, '0')}`, { location: { kind: 'explorer', explorerId: vaultHolder('general-1') } }));
     memory.writeRaw(INVENTORY_KEY, JSON.stringify({
       version: 2, records: [...filler, ...vaulted], tombstones: [], stackOps: [], goldFromSales: 0, sold: 0,
       hlc: 100, legacyBackup: null, era: INVENTORY_ERA,
@@ -313,12 +328,32 @@ describe('VaultStationComponent: identical items as one ×N row', () => {
     const vs = station();
     vs.setView('general-1');
     expect(vs.rows.length).toBe(1);
-    expect(vs.primary?.label).toBe('Take out 3');
+    expect(vs.primary?.label).toBe('Take out 20');
+    vs.act();
+    expect(vs.announce).toBe('20 × Mote Charm are back in your satchel. 10 stay in the Vault: no more room.');
+    expect(inventory.snapshot.usedRows).toBe(SATCHEL_BASE_SLOTS);
+    expect(inventory.snapshot.inVault).toBe(10);
+    expect(inventory.snapshot.items.length).toBe(SATCHEL_BASE_SLOTS - 1 + 30);
+    expect(vs.primary?.blocked).toBe('Satchel full — make room first');
+  });
+
+  it('pieces joining their group in a full satchel need no free slot', () => {
+    const filler = Array.from({ length: SATCHEL_BASE_SLOTS - 1 }, (_, i) => record(`fill-${i}`, 'Ashen Helm', i));
+    const carried = Array.from({ length: 5 }, (_, i) => twin(`c-${i}`));
+    const vaulted = Array.from({ length: 5 }, (_, i) => twin(`v-${i}`, { location: { kind: 'explorer', explorerId: vaultHolder('general-1') } }));
+    memory.writeRaw(INVENTORY_KEY, JSON.stringify({
+      version: 2, records: [...filler, ...carried, ...vaulted], tombstones: [], stackOps: [], goldFromSales: 0, sold: 0,
+      hlc: 100, legacyBackup: null, era: INVENTORY_ERA,
+    }));
+    const { inventory } = configure(memory);
+    expect(inventory.snapshot.usedRows).toBe(SATCHEL_BASE_SLOTS);
+    const vs = station();
+    vs.setView('general-1');
+    expect(vs.primary?.label).toBe('Take out 5');
+    expect(vs.primary?.blocked).toBeNull();
     vs.act();
     expect(inventory.snapshot.usedRows).toBe(SATCHEL_BASE_SLOTS);
-    expect(inventory.snapshot.inVault).toBe(2);
-    expect(inventory.snapshot.items.length).toBe(SATCHEL_BASE_SLOTS - 3 + 5);
-    expect(vs.primary?.blocked).toBe('Satchel full — make room first');
+    expect(inventory.snapshot.inVault).toBe(0);
   });
 
   it('Details: Move just one sends a single piece and leaves a ×6 row', () => {
