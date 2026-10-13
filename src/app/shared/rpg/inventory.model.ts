@@ -39,8 +39,17 @@ export const INVENTORY_LEGACY_VERSION = 1 as const;
 export const INVENTORY_TOMBSTONE_RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 /** 512 since the eviction was removed (inventory spec §2.8: ~56 KB). */
 export const INVENTORY_TOMBSTONE_MAX = 512;
-/** Hard cap on stack grant/consume ops. Oldest-by-hlc evict after this. */
-export const INVENTORY_STACK_OPS_MAX = 256;
+/**
+ * Own stack ops one device keeps unfolded. Past it, the device folds its own
+ * oldest ops into its {@link InventoryStackFold} (down to half), so a device
+ * that never syncs does not grow its blob without bound.
+ */
+export const INVENTORY_STACK_OPS_MAX = 64;
+/**
+ * Folded op ids a device remembers (as hashes), so a grant replayed after its
+ * op was folded is still recognised and lands once. ~13 B each, ~27 KB a device.
+ */
+export const INVENTORY_FOLD_ID_MEMORY = 2048;
 /**
  * The retired 250-record ceiling. Nothing on the client enforces it any more;
  * kept only because the (undeployed) market server reads it via
@@ -144,25 +153,28 @@ export interface InventoryBlobV1 {
 }
 
 /**
- * A compacted summary of every stack op at or below `upToHlc` for one stack.
+ * One device's compacted stack history: the net of every stack op *that device
+ * wrote* with `hlc <= upToHlc`, per stack key, plus the hashes of the newest
+ * folded op ids.
  *
- * Stack quantities are *derived* by summing the op log, and the log is capped
- * at {@link INVENTORY_STACK_OPS_MAX}. Truncating it therefore used to subtract
- * the oldest grants from the player's total — mined ore silently vanished once
- * a save crossed the cap. A checkpoint is the retain window this file's header
- * always called for: the overflow is folded into `quantity` instead of dropped.
+ * Per device, because only the writer of an op is sure to hold it: a device
+ * folds its own ops and nobody else's, so an op another device has not seen
+ * yet can never be folded away under it (the old global watermark lost those).
+ * A device writes its ops in strictly increasing hlc and is the only writer of
+ * its fold, so two copies of one device's fold are ordered by `upToHlc` and a
+ * merge keeps the higher one whole — a state-based counter per device.
  *
- * Merge keeps the checkpoint with the highest `upToHlc` per stack and discards
- * ops already covered by it, which makes the fold idempotent. The known limit
- * is inherent to log compaction: an op that no device saw before compaction
- * raised the watermark past it cannot be recovered. That is strictly better
- * than the previous behaviour, which dropped ops unconditionally.
+ * `ids` is the replay memory: a grant retried after its op was folded must
+ * still be recognised (`ledgerKnowsOp`), or it would land a second time.
+ * Bounded: the newest {@link INVENTORY_FOLD_ID_MEMORY} per device. `net` may be
+ * negative (a device can spend what another granted); only the total clamps.
  */
-export interface InventoryStackCheckpoint {
-  stackKey: string;
-  /** Net of every grant minus consume at or below `upToHlc`. Never negative. */
-  quantity: number;
+export interface InventoryStackFold {
+  deviceId: string;
   upToHlc: number;
+  net: Record<string, number>;
+  /** `opIdHash` of folded op ids, oldest first. */
+  ids: string[];
 }
 
 export interface InventoryLedger {
@@ -170,8 +182,8 @@ export interface InventoryLedger {
   records: OwnedItemRecord[];
   tombstones: InventoryTombstone[];
   stackOps: InventoryStackOp[];
-  /** Compacted stack history. Absent on saves written before this existed. */
-  stackCheckpoints?: InventoryStackCheckpoint[];
+  /** Compacted stack history, one fold per device. Absent until a device first folds. */
+  stackFolds?: InventoryStackFold[];
   goldFromSales: number;
   sold: number;
   hlc: number;
