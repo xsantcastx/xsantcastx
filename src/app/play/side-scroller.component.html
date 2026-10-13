@@ -1,4 +1,4 @@
-<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--column]="columnOpen && state.areaId === 'homestead'" aria-labelledby="game-title">
+<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--column]="columnOpen && state.areaId === 'homestead'" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel ? '' : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -16,9 +16,11 @@
       <span class="realm-tag">{{ realmLabel }}@if (state.delve && state.biome) { · {{ state.biome }} }</span>
       <h1 id="game-title">{{ areaTitle }}</h1>
     </div>
-    <p class="objective" aria-live="polite">{{ message || engineMessage || objective }}</p>
+    <!-- One line. Desktop: always there. Phones: a toast that fades after each
+         change (the span is re-created per line, which restarts its fade). -->
+    <p class="objective" aria-live="polite">@for (line of [message || engineMessage || objective]; track line) {<span class="objective-line">{{ line }}</span>}</p>
     <div class="top-actions">
-      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list">{{ t('play.hud.places') }}</button>
+      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span></button>
       <button type="button" class="quiet" (click)="returnToCamp()">{{ t('play.hud.returnCamp') }}</button>
       <button type="button" class="quiet" (click)="restartHunt()">{{ t('play.hud.restartHunt') }}</button>
     </div>
@@ -26,7 +28,9 @@
 
   <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
   @if (guide; as goal) {
-    <div class="guide" [attr.data-goal]="goal.id" [attr.inert]="panel ? '' : null" data-engine-ignore>
+    <div class="guide" [class.guide--folded]="guideFolded" [attr.data-goal]="goal.id" [attr.inert]="panel ? '' : null" data-engine-ignore>
+      <!-- Phones: the goal folds to its "Goal n of 4" chip and back. -->
+      <button type="button" class="guide-fold" (click)="guideFolded = !guideFolded" [attr.aria-expanded]="!guideFolded" [attr.aria-label]="t(guideFolded ? 'play.hud.goalUnfold' : 'play.hud.goalFold')"><i aria-hidden="true"></i></button>
       <p class="guide-text"><b>{{ goal.n ? t('play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span>{{ t(goal.key) }}</span></p>
       @if (goal.target) {
         <button type="button" class="guide-go" (click)="showGoal()" [attr.aria-label]="t('play.goal.goAria', { goal: t(goal.key) })">{{ t('play.goal.go') }}</button>
@@ -50,6 +54,12 @@
           </li>
         }
       </ul>
+      <!-- Phones: the rest of the old top bar lives in this menu. -->
+      <div class="menu-extra">
+        <button type="button" (click)="placesOpen = false; returnToCamp()">{{ t('play.hud.returnCamp') }}</button>
+        <button type="button" (click)="placesOpen = false; restartHunt()">{{ t('play.hud.restartHunt') }}</button>
+        <button type="button" (click)="placesOpen = false; showKeys = !showKeys" [attr.aria-expanded]="showKeys">{{ t('play.hud.keys') }}</button>
+      </div>
     </nav>
   }
 
@@ -70,12 +80,16 @@
 
   @if (state.delve) {
     <!-- The Delve hotbar: what you can place, and how many. Pick one, then B (or hold a tap where it goes). -->
-    <nav class="hotbar" [attr.aria-label]="t('play.hotbar.label')" [attr.inert]="panel ? '' : null">
+    <nav class="hotbar" [class.tool-pick]="touchTool === 'pick'" [attr.aria-label]="t('play.hotbar.label')" [attr.inert]="panel ? '' : null">
       <ul>
+        <!-- Phones: the pick is the first slot. With it chosen a tap on a block digs it; with a placeable chosen a tap places it. -->
+        <li class="hot-pick-slot">
+          <button type="button" class="hot hot--pick" [class.picked]="touchTool === 'pick'" (click)="choosePick()" [attr.aria-pressed]="touchTool === 'pick'" [attr.aria-label]="t('play.hud.pickAria')"><i class="pick-ico" aria-hidden="true"></i><em>{{ t('play.hud.pick') }}</em></button>
+        </li>
         @for (slot of hotbar; track slot.id) {
           <li>
             <button type="button" class="hot" [class.picked]="slot.id === placing" [class.empty]="!slot.count"
-              (click)="choosePlaceable(slot.id)" [attr.aria-pressed]="slot.id === placing" [attr.aria-label]="t('play.hotbar.held', { name: slot.name, n: slot.count })" [title]="slot.name">
+              (click)="choosePlaceable(slot.id); touchTool = 'place'" [attr.aria-pressed]="slot.id === placing" [attr.aria-label]="t('play.hotbar.held', { name: slot.name, n: slot.count })" [title]="slot.name">
               @if (slot.art) { <img [src]="slot.art" alt=""> } @else { <em>{{ slot.name.slice(0, 2) }}</em> }
               <b>{{ slot.count }}</b>
               <kbd class="key-hint">{{ slot.key }}</kbd>
@@ -92,9 +106,11 @@
   }
 
   <aside class="satchel" [attr.aria-label]="t('play.hud.satchel')" (click)="openBag()" [attr.inert]="panel ? '' : null">
-    <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book">
+    <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book" [attr.aria-label]="t('play.hud.satchel')">
       <span>{{ t('play.hud.satchel') }}</span>
       <kbd>I</kbd>
+      <i class="bag-ico" aria-hidden="true"></i>
+      @if (inventory.snapshot.usedRows) { <em class="bag-badge" aria-hidden="true">{{ inventory.snapshot.usedRows }}</em> }
     </button>
     <div class="tally">
       <p><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
@@ -208,6 +224,10 @@
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">{{ t('play.hud.keys') }}</button>
   </div>
+  @if (state.delve) {
+    <!-- Phones: the hotbar's Take, in the band over the touch row (Place is the Use button). -->
+    <button type="button" class="m-take" (click)="takeBack()" [attr.inert]="panel ? '' : null" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }}</button>
+  }
   @if (showKeys) {
     <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
   }
@@ -260,16 +280,29 @@
     </div>
   </section>
 
-  <div class="touch" [attr.aria-label]="t('play.hud.touch.label')" [attr.inert]="panel ? '' : null">
-    <button type="button" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)">{{ t('play.hud.touch.left') }}</button>
-    <button type="button" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)">{{ t('play.hud.touch.right') }}</button>
-    <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)">{{ t('play.hud.touch.jump') }}</button>
-    <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)">{{ t('play.hud.touch.attack') }}</button>
-    <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)">{{ t('play.hud.touch.dodge') }}</button>
-    @if (state.delve) {
-      <button type="button" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)">{{ t('play.hud.touch.down') }}</button>
-      <button type="button" (pointerdown)="input($event,'blast',true)" (pointerup)="input($event,'blast',false)" (lostpointercapture)="input($event,'blast',false)" (pointercancel)="input($event,'blast',false)">{{ t('play.hud.touch.blast') }}</button>
-    }
+  <!-- Touch. A coarse pointer from 901px: one grid row, as it always was.
+       Phones: movement on the left, actions on the right, one row, in a band
+       under the world (the clusters are display: contents on desktop). -->
+  <div class="touch" role="group" [attr.aria-label]="t('play.hud.touch.label')" [attr.inert]="panel ? '' : null">
+    <div class="touch-move">
+      <button type="button" class="tb tb--left" [attr.aria-label]="t('play.hud.touch.left')" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)"><span class="tl">{{ t('play.hud.touch.left') }}</span><i class="tri" aria-hidden="true"></i></button>
+      <button type="button" class="tb tb--right" [attr.aria-label]="t('play.hud.touch.right')" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)"><span class="tl">{{ t('play.hud.touch.right') }}</span><i class="tri" aria-hidden="true"></i></button>
+      @if (state.delve) {
+        <button type="button" class="tb tb--down tb--phone" [attr.aria-label]="t('play.hud.touch.down')" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)"><span class="tl">{{ t('play.hud.touch.down') }}</span><i class="tri" aria-hidden="true"></i></button>
+      }
+    </div>
+    <div class="touch-act">
+      <button type="button" class="tb tb--jump" [attr.aria-label]="t('play.hud.touch.jump')" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)"><span class="tl">{{ t('play.hud.touch.jump') }}</span><span class="ts">{{ t('play.hud.touch.jump') }}</span></button>
+      @if (state.delve && touchTool === 'place' && placingSlot?.count) {
+        <button type="button" class="tb tb--use tb--phone" [attr.aria-label]="t('play.hotbar.place') + ': ' + (placingSlot?.name ?? '')" (click)="placeHere()"><span class="ts">{{ t('play.hud.touch.place') }}</span></button>
+      }
+      <button type="button" class="tb tb--use" [class.tb--off]="state.delve && touchTool === 'place' && !!placingSlot?.count" [attr.aria-label]="t('play.hud.touch.attack')" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)"><span class="tl">{{ t('play.hud.touch.attack') }}</span><span class="ts">{{ t('play.hud.touch.attackShort') }}</span></button>
+      <button type="button" class="tb tb--dodge" [attr.aria-label]="t('play.hud.touch.dodge')" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)"><span class="tl">{{ t('play.hud.touch.dodge') }}</span><span class="ts">{{ t('play.hud.touch.dodgeShort') }}</span></button>
+      @if (state.delve) {
+        <button type="button" class="tb tb--desk" [attr.aria-label]="t('play.hud.touch.down')" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)"><span class="tl">{{ t('play.hud.touch.down') }}</span><span class="ts">{{ t('play.hud.touch.down') }}</span></button>
+        <button type="button" class="tb tb--blast" [attr.aria-label]="t('play.hud.touch.blast')" (pointerdown)="input($event,'blast',true)" (pointerup)="input($event,'blast',false)" (lostpointercapture)="input($event,'blast',false)" (pointercancel)="input($event,'blast',false)"><span class="tl">{{ t('play.hud.touch.blast') }}</span><span class="ts">{{ t('play.hud.touch.blast') }}</span></button>
+      }
+    </div>
   </div>
 
   <!-- The open place. Always in the DOM (hidden when closed) so #panelHost
