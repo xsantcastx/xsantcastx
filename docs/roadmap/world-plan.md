@@ -4,7 +4,7 @@ The working build tracker for turning Eclipse Realms into one walkable world.
 Update it in the same commit that lands the work; an item is only `[x]` once it
 is merged to `main` **and** checked in a production build.
 
-Last updated: 2026-10-12
+Last updated: 2026-10-13
 
 Legend: `[x]` shipped · `[~]` in progress (branch named) · `[ ]` next · `[-]` later / blocked
 
@@ -176,6 +176,14 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] Townsfolk (2–4 per town) + per-realm atmosphere (Infernal embers/ash, Luminous light shafts/motes, Umbral ink motes, Celestial star glints, Verdant leaves/spores; reduced motion freezes) (`cea9d40`)
 - [ ] True layered or frame animation once the art exists (`docs/animation/layered-art-spec.md`)
 
+## Phase 5: Polish the first hour (started 2026-10-13) `[~]`
+
+- [x] **Phase 4 seen in a real build** (2026-10-13, all five towns at 1280×800): keepers beside their stalls, canon lines, townsfolk off stalls; keepers and townsfolk are still placeholder figures until sprites exist
+- [x] **In-world HUD fixes** (`eb065ee`): the Hearth chat folds to a 44px pill (top HUD strip on desktop, its own band on phones), remembers open/folded, folds when a station opens; the duplicate "[E] INTERACT" canvas hint is gone; no enemy bar on safe town ground; keeper name tags stay inside the canvas. `e2e/play-hud.spec.ts`; full `play-*` suite 58/58
+- [~] **First-session audit**: a true first visit at phone and desktop sizes; fix what stops a new player reaching first buy → first hunt → first craft → first dig
+- [~] **Phone performance of /play**: frame times at 4× CPU throttle in each town, a hunt and the Delve; includes pausing the site-wide cosmic canvas that keeps running behind the game
+- Left over from the HUD fix: between 901 and ~1000px the open satchel book draws over the Hearth pill; the canvas "[ J / E ] GATHER" and "CLICK TO WALK HERE" cues share the line the old hint was clipped on
+
 ---
 
 ## ✅ Checkpoint merged (2026-10-12, `102bc57`)
@@ -196,7 +204,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| (nothing in flight) | | |
+| First-session audit; phone performance of /play | agent worktrees | `[~]` |
 
 ## Art still missing (placeholders in game)
 
