@@ -37,13 +37,13 @@ function fullSatchel(): Record<string, unknown> {
   };
 }
 
-/** Seven identical Ember Rings and two rolled variants of it, in the satchel. */
-function twinsSatchel(): Record<string, unknown> {
+/** `n` identical Ember Rings and two rolled variants of it, in the satchel. */
+function twinsSatchel(n = 7): Record<string, unknown> {
   const ring = (id: string, stats: Record<string, number>, rollQuality: Record<string, number>) => ({
     ...(gear(id, 'Ember Ring', 0) as Record<string, unknown>), rarity: 'common', stats, rollQuality, sellValue: 60,
   });
   const records = [
-    ...Array.from({ length: 7 }, (_, i) => ring(`e2e-ring-${i}`, { ward: 2 }, { ward: 0.5 })),
+    ...Array.from({ length: n }, (_, i) => ring(`e2e-ring-${String(i).padStart(2, '0')}`, { ward: 2 }, { ward: 0.5 })),
     ring('e2e-ring-rolled-a', { ward: 4 }, { ward: 0.9 }),
     ring('e2e-ring-rolled-b', { ward: 2 }, { ward: 0.55 }),
   ];
@@ -59,6 +59,12 @@ const tab = (page: Page, name: string) => vault(page).locator('.tab', { hasText:
 const row = (page: Page, name: string) => vault(page).locator('.jl__row', { hasText: name }).first();
 const primary = (page: Page) => vault(page).locator('.ab__btn').first();
 const clasp = (page: Page) => page.locator('.satchel .clasp');
+
+/** Slots used, from the clasp's "N/40". */
+async function satchelUsed(page: Page): Promise<number> {
+  const text = (await clasp(page).locator('.clasp-count').textContent()) ?? '';
+  return Number(text.split('/')[0]);
+}
 
 async function goldNow(page: Page): Promise<number> {
   return ((await blob<{ gold: number }>(page, 'godforge-economy'))?.gold) ?? -1;
@@ -159,11 +165,12 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await page.screenshot({ path: `output/vault/vault-${size.width}x${size.height}.png` });
     });
 
-    test('identical items show as one ×7 row; Send 7 moves the group, found again in the Vault', async ({ page }) => {
+    test('identical items show as one ×7 row taking 1 slot; Send 7 moves the group, found again in the Vault', async ({ page }) => {
       await page.setViewportSize(size);
       await seed(page, twinsSatchel());
       await openPlay(page);
       await expect(clasp(page)).toContainText('/40');
+      const withSeven = await satchelUsed(page);
 
       // The satchel book: one cell for the seven, two for the rolled variants.
       await clasp(page).click();
@@ -179,28 +186,58 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect(vault(page)).toBeVisible({ timeout: 10000 });
       const rings = vault(page).locator('.jl__row', { hasText: 'Ember Ring' });
       await expect(rings).toHaveCount(3);
-      const group = rings.filter({ hasText: '×7 · 7 slots' });
+      const group = rings.filter({ hasText: '×7 · 1 slot' });
       await expect(group).toHaveCount(1);
       await group.click();
       await expect(primary(page)).toContainText('Send 7 to Vault');
       await primary(page).click();
       await expect(vault(page).locator('.vs-announce')).toContainText('7 × Ember Ring went to your Vault.');
       await expect(rings).toHaveCount(2);
+      // The seven took ONE slot: sending them frees one, not seven.
+      await expect.poll(() => satchelUsed(page)).toBe(withSeven - 1);
 
-      // Found again in General I, still one row of seven.
+      // Found again in General I, still one row of seven, one slot of 60.
       await tab(page, 'General I').click();
       await expect(vault(page).locator('.jl__row', { hasText: 'Ember Ring' })).toHaveCount(1);
-      await expect(vault(page).locator('.jl__row', { hasText: '×7 · 7 slots' })).toHaveCount(1);
+      await expect(vault(page).locator('.jl__row', { hasText: '×7 · 1 slot' })).toHaveCount(1);
+      await expect(vault(page).locator('app-skill-strip')).toContainText('1 / 60 slots');
       await expect(primary(page)).toContainText('Take out 7');
+      await primary(page).click();
+      await expect.poll(() => satchelUsed(page)).toBe(withSeven);
 
       // Nothing duplicated or lost; the variants stayed in the satchel with their grades.
       type Rec = { kind: string; id: string; rollQuality?: Record<string, number>; location?: { kind: string; explorerId?: string } };
       const ledger = (await blob<{ records: Rec[] }>(page, 'godforge-inventory'))!;
       const ringRecs = ledger.records.filter(r => r.kind === 'instance' && r.id.startsWith('e2e-ring'));
       expect(ringRecs).toHaveLength(9);
-      expect(ringRecs.filter(r => r.location?.explorerId === 'vault:general-1')).toHaveLength(7);
-      expect(ringRecs.find(r => r.id === 'e2e-ring-rolled-a')?.location?.kind).toBe('bag');
+      expect(ringRecs.filter(r => r.location?.kind === 'bag')).toHaveLength(9);
       expect(ringRecs.find(r => r.id === 'e2e-ring-rolled-a')?.rollQuality).toEqual({ ward: 0.9 });
+    });
+
+    test('25 identical items read "×25 · 2 slots" and free two slots when sent', async ({ page }) => {
+      await page.setViewportSize(size);
+      await seed(page, twinsSatchel(25));
+      await openPlay(page);
+      await expect(clasp(page)).toContainText('/40');
+      const before = await satchelUsed(page);
+
+      await walkTo(page, 330, 20);
+      await focusWorld(page);
+      await page.keyboard.press('e');
+      await expect(vault(page)).toBeVisible({ timeout: 10000 });
+      const group = vault(page).locator('.jl__row', { hasText: '×25 · 2 slots' });
+      await expect(group).toHaveCount(1);
+      await group.click();
+      await expect(primary(page)).toContainText('Send 25 to Vault');
+      await primary(page).click();
+      await expect(vault(page).locator('.vs-announce')).toContainText('25 × Ember Ring went to your Vault.');
+      await expect.poll(() => satchelUsed(page)).toBe(before - 2);
+
+      type Rec = { kind: string; id: string; location?: { kind: string; explorerId?: string } };
+      const ledger = (await blob<{ records: Rec[] }>(page, 'godforge-inventory'))!;
+      const ringRecs = ledger.records.filter(r => r.kind === 'instance' && r.id.startsWith('e2e-ring'));
+      expect(ringRecs).toHaveLength(27);
+      expect(ringRecs.filter(r => r.location?.explorerId === 'vault:general-1')).toHaveLength(25);
     });
   });
 }
