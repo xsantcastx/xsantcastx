@@ -24,12 +24,16 @@ import { Injectable, inject } from '@angular/core';
 import { InventoryService } from '../rpg/inventory.service';
 import { itemArt, materialDisplay } from '../rpg/material-catalog';
 import type { GameItem } from '../rpg/item.model';
+import { clusterBy, familyOf, groupItems, type ItemGroup } from '../rpg/item-groups';
 import { DelveSaveService } from './delve-save.service';
 import { CHEST_GEAR_SLOTS, CHEST_SLOTS, DelveChest, chestHolderId, chestKey, chestPut, chestTake, strayChestGear } from './delve-save.model';
 
 export interface ChestRow { stackKey: string; name: string; art: string; qty: number }
-/** One piece of gear, in the chest or in the bag beside it. */
-export interface ChestGearRow { id: string; name: string; art: string; rarity: string }
+/**
+ * One row of gear, in the chest or in the bag beside it: a piece, or a group of
+ * identical pieces (item-groups) — `ids` holds every one, `id` the first.
+ */
+export interface ChestGearRow { id: string; name: string; art: string; rarity: string; qty: number; ids: string[] }
 /** A refusal carries its English line and a play.delve.chest.* key (+ vars) the HUD translates. */
 export type ChestMove = { ok: true; qty: number } | { ok: false; message: string; key: string; vars?: Record<string, number> };
 
@@ -55,12 +59,12 @@ export class DelveChestService {
   /** The gear a chest holds. */
   gear(areaId: string, index: number): ChestGearRow[] {
     const chest = this.saves.chest(areaId, index, false);
-    return chest ? this.inventory.itemsOnExplorer(chestHolderId(chest)).map(gearRow) : [];
+    return chest ? gearRows(this.inventory.itemsOnExplorer(chestHolderId(chest))) : [];
   }
 
   /** Gear in the bag that could go in: not worn, not held by anyone. */
   bagGear(): ChestGearRow[] {
-    return this.inventory.snapshot.bag.map(gearRow);
+    return gearRows(this.inventory.snapshot.bag);
   }
 
   /** Put one piece of gear from the bag into the chest. */
@@ -156,8 +160,14 @@ export class DelveChestService {
   }
 }
 
-function gearRow(item: GameItem): ChestGearRow {
-  return { id: item.id, name: item.name, art: itemArt(item)?.src ?? '', rarity: item.rarity };
+function gearRow(group: ItemGroup): ChestGearRow {
+  const item = group.first;
+  return { id: item.id, name: item.name, art: itemArt(item)?.src ?? '', rarity: item.rarity, qty: group.ids.length, ids: group.ids };
+}
+
+/** One row per group of identical pieces, variants of one definition side by side. */
+function gearRows(items: readonly GameItem[]): ChestGearRow[] {
+  return clusterBy(groupItems(items), group => familyOf(group.first)).map(gearRow);
 }
 
 function moveId(chest: DelveChest): string { return `delve-chest:${chest.born}:${chest.n}`; }
