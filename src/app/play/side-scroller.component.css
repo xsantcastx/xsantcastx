@@ -671,17 +671,66 @@ kbd {
   font: 600 10px Orbitron, sans-serif;
 }
 
+/* The Hearth hangs in the top HUD strip, left of the satchel: above every
+   stall's hit box (they start ~410px down at 800px tall) and well clear of the
+   action bar at the bottom. Open, it drops down from there, still ending above
+   the action bar; folded, it is a single pill. */
 .dock {
-  right: 16px;
-  bottom: 16px;
-  width: min(320px, calc(100% - 32px));
-  max-height: min(360px, calc(100dvh - 250px));
+  top: 66px;
+  right: 248px;
+  width: min(320px, calc(100% - 248px - 232px));
+  max-height: min(360px, calc(100dvh - 66px - 96px));
   display: grid;
   align-content: start;
   gap: 8px;
   padding: 12px 12px 12px 14px;
   overflow: auto;
   border-left: 2px solid var(--adventure-ember);
+}
+
+.dock-body { display: grid; gap: 8px; min-width: 0; }
+.dock-body[hidden] { display: none; }
+
+.dock.collapsed {
+  width: auto;
+  max-height: none;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+
+.hearth-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  max-width: 220px;
+  padding: 0 14px;
+  white-space: nowrap;
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--adventure-parchment);
+}
+
+.hearth-ember {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--adventure-ember);
+  box-shadow: 0 0 8px var(--adventure-ember);
+}
+
+.hearth-hide { min-height: 44px; padding: 0 12px; }
+
+/* Desktop panel: title and Hide share the first row, the room status gets its own. */
+@media (min-width: 901px) {
+  .dock-head { flex-wrap: wrap; align-items: center; }
+  .dock-head h2 { white-space: nowrap; }
+  .dock-head .room-status { order: 3; flex-basis: 100%; max-width: none; text-align: left; }
 }
 
 .dock-head {
@@ -844,7 +893,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
     font-size: 15px;
     line-height: 1.35;
   }
-  .dock { left: 10px; right: 10px; bottom: 10px; width: auto; max-height: 172px; }
+  .dock { top: auto; left: 10px; right: 10px; bottom: 10px; width: auto; max-height: 172px; }
   .chat-log { min-height: 40px; max-height: 56px; }
   .prompt { left: 12px; bottom: 198px; transform: none; }
   .prompt.armed { right: 12px; max-width: none; }
@@ -858,6 +907,22 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .prompt { bottom: 256px; }
   .keys { bottom: 256px; }
   .book { bottom: 72px; }
+}
+
+/* Phones, Hearth folded: the pill sits alone in the band under the world (above
+   the touch row when there is one), so the world, the action bar and the
+   satchel get the room the open panel would take. */
+@media (max-width: 900px) {
+  .stage.hearth-shut .viewport { inset: 0 0 64px 0; }
+  .stage.hearth-shut .dock { left: 10px; right: auto; bottom: 10px; width: auto; }
+  .stage.hearth-shut .prompt,
+  .stage.hearth-shut .keys { bottom: 74px; }
+}
+@media (max-width: 900px) and (pointer: coarse) {
+  .stage.hearth-shut .viewport { inset: 0 0 118px 0; }
+  .stage.hearth-shut .dock { bottom: 64px; }
+  .stage.hearth-shut .prompt,
+  .stage.hearth-shut .keys { bottom: 128px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
