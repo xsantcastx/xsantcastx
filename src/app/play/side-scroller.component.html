@@ -16,7 +16,7 @@
       <span class="realm-tag">{{ realmLabel }}@if (state.delve && state.biome) { · {{ state.biome }} }</span>
       <h1 id="game-title">{{ areaTitle }}</h1>
     </div>
-    <p class="objective" aria-live="polite">{{ message || state.message || objective }}</p>
+    <p class="objective" aria-live="polite">{{ message || engineMessage || objective }}</p>
     <div class="top-actions">
       <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list">Places</button>
       <button type="button" class="quiet" (click)="returnToCamp()">Return to camp</button>
@@ -190,7 +190,7 @@
       <strong>{{ actionLabel }}</strong>
       <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact <kbd class="key-hint">E</kbd></button>
       @if (state.nearby === 'delve' && campReady) {
-        <button type="button" class="camp-go" (click)="descendToCamp()">Descend to your camp <kbd class="key-hint">C</kbd></button>
+        <button type="button" class="camp-go" (click)="descendToCamp()">{{ t('play.delve.camp.descend') }} <kbd class="key-hint">C</kbd></button>
       }
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
@@ -283,53 +283,53 @@
         <p class="place-note" role="status">{{ view.note }}</p>
         <div class="chest">
           <section aria-labelledby="chest-in">
-            <h3 id="chest-in">In the chest <small>{{ view.rows.length }} / {{ view.slots }} kinds</small></h3>
-            @if (!view.rows.length && !view.gear.length) { <p class="chest-empty">Empty. An empty chest can be taken back (X).</p> }
+            <h3 id="chest-in">{{ t('play.delve.chest.inChest') }} <small>{{ t('play.delve.chest.kinds', { n: view.rows.length, total: view.slots }) }}</small></h3>
+            @if (!view.rows.length && !view.gear.length) { <p class="chest-empty">{{ t('play.delve.chest.empty') }}</p> }
             <ul>
               @for (row of view.rows; track row.stackKey) {
                 <li>
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
                   <span><b>{{ row.name }}</b><small>{{ row.qty }}</small></span>
-                  <button type="button" (click)="chestTake(row)">Take all</button>
+                  <button type="button" (click)="chestTake(row)">{{ t('play.delve.chest.takeAll') }}</button>
                 </li>
               }
             </ul>
           </section>
           <section aria-labelledby="chest-gear">
-            <h3 id="chest-gear">Gear in the chest <small>{{ view.gear.length }} / {{ view.gearSlots }}</small></h3>
-            @if (!view.gear.length) { <p class="chest-empty">No gear stored.</p> }
+            <h3 id="chest-gear">{{ t('play.delve.chest.gearInChest') }} <small>{{ view.gear.length }} / {{ view.gearSlots }}</small></h3>
+            @if (!view.gear.length) { <p class="chest-empty">{{ t('play.delve.chest.noGear') }}</p> }
             <ul>
               @for (row of view.gear; track row.id) {
                 <li>
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
                   <span><b>{{ row.name }}</b><small>{{ row.rarity }}</small></span>
-                  <button type="button" (click)="chestTakeGear(row)">Take</button>
+                  <button type="button" (click)="chestTakeGear(row)">{{ t('play.hotbar.take') }}</button>
                 </li>
               }
             </ul>
           </section>
           <section aria-labelledby="chest-bag">
-            <h3 id="chest-bag">In your satchel</h3>
-            @if (!view.satchel.length) { <p class="chest-empty">Nothing to put in.</p> }
+            <h3 id="chest-bag">{{ t('play.delve.chest.inSatchel') }}</h3>
+            @if (!view.satchel.length) { <p class="chest-empty">{{ t('play.delve.chest.nothingToPut') }}</p> }
             <ul>
               @for (row of view.satchel; track row.stackKey) {
                 <li>
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
                   <span><b>{{ row.name }}</b><small>{{ row.qty }}</small></span>
-                  <button type="button" (click)="chestPut(row)">Put in</button>
+                  <button type="button" (click)="chestPut(row)">{{ t('play.delve.chest.putIn') }}</button>
                 </li>
               }
             </ul>
           </section>
           <section aria-labelledby="chest-bag-gear">
-            <h3 id="chest-bag-gear">Gear in your satchel</h3>
-            @if (!view.bagGear.length) { <p class="chest-empty">No unworn gear to put in.</p> }
+            <h3 id="chest-bag-gear">{{ t('play.delve.chest.gearInSatchel') }}</h3>
+            @if (!view.bagGear.length) { <p class="chest-empty">{{ t('play.delve.chest.noBagGear') }}</p> }
             <ul>
               @for (row of view.bagGear; track row.id) {
                 <li>
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
                   <span><b>{{ row.name }}</b><small>{{ row.rarity }}</small></span>
-                  <button type="button" (click)="chestPutGear(row)">Put in</button>
+                  <button type="button" (click)="chestPutGear(row)">{{ t('play.delve.chest.putIn') }}</button>
                 </li>
               }
             </ul>
