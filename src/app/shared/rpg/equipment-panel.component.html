@@ -12,9 +12,12 @@
             <img class="ld__doll-art" [src]="dollSrc" [attr.srcset]="dollSrcset" sizes="auto, (max-width: 420px) 100vw, 380px"
                  [alt]="t('loadout.doll.alt')" width="720" height="720" loading="lazy" decoding="async">
             <!-- Worn gear, on the Keeper: each item's own art in a rarity-lit
-                 socket at its slot's anchor. Decorative — the wells beside the
-                 figure are the controls and carry the names. Empty sockets are
-                 still rendered (invisibly) so an equip has somewhere to fly to. -->
+                 socket at its slot's anchor. The wells beside the figure are
+                 the accessible controls and carry the names, so the sockets
+                 stay aria-hidden; a worn socket is also a pointer shortcut to
+                 its well, because on a phone people tap the gear they can see.
+                 Empty sockets are still rendered (invisibly, untappable) so an
+                 equip has somewhere to fly to. -->
             <div class="ld__sockets" aria-hidden="true">
               @for (slot of sockets; track slot.slotId) {
                 <span class="ld__socket"
@@ -24,7 +27,8 @@
                       [style.z-index]="slot.anchor!.z ?? 1">
                   @if (itemInDoll(slot); as worn) {
                     @for (key of [socketKey(slot, worn)]; track key) {
-                      <span class="ld__socket-frame"
+                      <span class="ld__socket-frame ld__socket-frame--worn"
+                            (click)="onSlotClick(slot)"
                             [class.ld__socket-frame--landing]="isLanding(slot)"
                             [attr.data-quality-tag]="qualityTag(worn)"
                             [style.--rar]="rarityVar(worn.rarity)"
