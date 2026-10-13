@@ -404,6 +404,7 @@ const registry = loadTs(path.resolve(__dirname, '../src/app/play/world/panel-reg
 test('world data is valid: unique ids, stations inside the town, every panel registered, passages resolve', () => {
   assert.deepEqual([...world.REALM_TOWN_IDS].sort(), Object.keys(world.TOWNS).sort(), 'every realm has a TOWNS entry');
   assert.deepEqual([...world.PANEL_IDS].sort(), Object.keys(registry.PANEL_REGISTRY).sort(), 'the registry covers every PanelId and nothing else');
+  assert.ok(!world.PANEL_IDS.includes('character'), 'no orphan character panel: the Character page is a route (meaning audit #17)');
   for (const entry of Object.values(registry.PANEL_REGISTRY)) {
     assert.equal(typeof entry.load, 'function'); assert.ok(entry.title && (entry.route === undefined || entry.route.startsWith('/')), 'a route, when given, is absolute');
   }
@@ -975,6 +976,12 @@ test('tools: right tier cracks, low tier clangs with the requirement', () => {
   }
 });
 
+test('ember-veined basalt leaves Ember Residue a quarter of the time (meaning audit #1)', () => {
+  const rock = terrainMod.TERRAIN_NODES['ember-rock'];
+  assert.deepEqual(rock.yield, { materialId: 'ember-residue', qty: 1, chance: 0.25 });
+  assert.equal(rock.xp, 1);
+});
+
 test('digging down: a broken cell is fallable, the Keeper stands on terrain', () => {
   const { engine } = enterDelve(() => true);
   engine.setTools({ pickaxe: 1 });
@@ -1143,7 +1150,7 @@ test('biome bands: every row maps to its biome, and the engine reports where the
   assert.equal(state().enemyHp, 0); assert.equal(state().enemyName, undefined); assert.equal(state().enemyId, undefined);
   // In the fragment chamber, the guardian.
   engine.player.x = 100 * 32; engine.player.y = 610 + 51 * 32;
-  assert.equal(state().enemyName, 'Rune-Warden'); assert.equal(state().enemyId, 'rune-warden'); assert.equal(state().biome, 'Magma Halls');
+  assert.equal(state().enemyName, 'Seam Eater'); assert.equal(state().enemyId, 'seam-eater'); assert.equal(state().biome, 'Magma Halls');
   engine.destroy();
 });
 
@@ -1207,19 +1214,19 @@ test('inscriptions: E beside a carved wall reports it; the lore ledger records i
 });
 
 // ── Delve finale: the warden stays down, the fragment waits for it, Kael's cache ──
-test('finale: the Rune-Warden falls once per player and unseals the fragment', () => {
+test('finale: the Seam Eater falls once per player and unseals the fragment', () => {
   const delve = memoryDelve(77); const events = [];
   const { engine, state } = enterOwnDelve(delve, { onWorldAction: e => { events.push(e); return true; } });
   engine.setTools({ pickaxe: 3, staff: 1 });
   const t = engine.terrain;
-  const warden = () => engine.monsters.find(m => m.def.name === 'Rune-Warden');
+  const warden = () => engine.monsters.find(m => m.def.name === 'Seam Eater');
   assert.ok(warden(), 'the warden guards the chamber');
   // Swinging at the fragment while the warden stands: it clangs and holds.
   engine.player.x = 105 * 32 + 8; engine.player.y = 610 + 51 * 32; engine.facing = 1;
   const swing = () => { engine.attackCooldown = 0; engine.strikeCell(106 * 32 + 16, 610 + 50 * 32 + 16); };
   for (let n = 0; n < 20; n++) swing();
   assert.equal(t.nodeAt(106, 50).id, 'godforge-fragment', 'sealed while the warden stands');
-  assert.match(state().message, /Rune-Warden still stands/);
+  assert.match(state().message, /Seam Eater still stands/);
   assert.equal(events.filter(e => e.materialId === 'godforge-fragment').length, 0);
   // Fell it.
   const w = warden(); w.hp = 1; engine.hurtMonster(w, 50);
@@ -1234,12 +1241,12 @@ test('finale: the Rune-Warden falls once per player and unseals the fragment', (
   engine.destroy();
   // A new session from the same save: no warden at all.
   const back = enterOwnDelve(delve);
-  assert.equal(back.engine.monsters.some(m => m.def.name === 'Rune-Warden'), false);
-  assert.equal(back.engine.monsters.some(m => m.def.name === 'Magma Maw'), true, 'ordinary Maws still live');
+  assert.equal(back.engine.monsters.some(m => m.def.name === 'Seam Eater'), false);
+  assert.equal(back.engine.monsters.some(m => m.def.name === 'Cinder Bailiff'), true, 'ordinary Maws still live');
   back.engine.destroy();
   // A fresh player still meets it.
   const fresh = enterOwnDelve(memoryDelve(78));
-  assert.equal(fresh.engine.monsters.some(m => m.def.name === 'Rune-Warden'), true);
+  assert.equal(fresh.engine.monsters.some(m => m.def.name === 'Seam Eater'), true);
   fresh.engine.destroy();
 });
 
@@ -1604,7 +1611,7 @@ test('camp: one per Delve, opens the bench on what can be made now, and town des
 
 // ── Delve extras: loose rock and supports, blasting charges, gear in chests ──
 const SWING = ['pickaxe', 'axe', 'sickle', 'blade'];
-const HALL_FLOOR = 49; // the Magma Maws' hall: open rows 44-48 over a bedrock floor
+const HALL_FLOOR = 49; // the Cinder Bailiffs' hall: open rows 44-48 over a bedrock floor
 /** A Delve whose Magma hall ceiling (row 43) has a loose cell over the hall, and that column. */
 function looseHall() {
   for (let seed = 1; seed < 400; seed++) {
@@ -2064,14 +2071,19 @@ test('gathering save model: coerced, merged by the later harvest, pruned, and id
 });
 
 // ── The Delve's own creatures spawn under their own art keys, on their stand-ins' bodies ──
-test('art keys: the Magma Maw and the Rune-Warden spawn as magma-maw / rune-warden and keep their stand-in rigs', () => {
+test('art keys: the Cinder Bailiff and the Seam Eater spawn as cinder-bailiff / seam-eater and keep their stand-in rigs', () => {
   const delve = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve');
   const byName = Object.fromEntries(delve.monsters.map(m => [m.name, m.creature]));
-  assert.equal(byName['Magma Maw'], 'magma-maw');
-  assert.equal(byName['Rune-Warden'], 'rune-warden');
+  assert.equal(byName['Cinder Bailiff'], 'cinder-bailiff');
+  assert.equal(byName['Seam Eater'], 'seam-eater');
   assert.equal(byName['Rivet Maw'], 'rivet-maw', 'the Basalt Maws are still Rivet Maws');
-  const maw = creatures.creatureRigFor('magma-maw'), warden = creatures.creatureRigFor('rune-warden');
-  assert.equal(maw.key, 'magma-maw'); assert.equal(warden.key, 'rune-warden');
+  // Atlas names, each with its own drop table (meaning audit #14).
+  const mats = name => delve.monsters.find(m => m.name === name).drops.entries.filter(e => e.kind === 'material').map(e => e.material);
+  assert.deepEqual(mats('Cinder Bailiff'), ['cinder-ore', 'ember-residue', 'infernal-heartstone']);
+  assert.deepEqual(mats('Seam Eater'), ['slag-fragment', 'ember-residue', 'infernal-heartstone']);
+  assert.equal(delve.monsters.find(m => m.name === 'Seam Eater').once, terrainMod.WARDEN_FLAG, 'the Seam Eater still falls once per player');
+  const maw = creatures.creatureRigFor('cinder-bailiff'), warden = creatures.creatureRigFor('seam-eater');
+  assert.equal(maw.key, 'cinder-bailiff'); assert.equal(warden.key, 'seam-eater');
   for (const [own, standIn] of [[maw, creatures.creatureRigFor('rivet-maw')], [warden, creatures.creatureRigFor('mirror-substitute')]]) {
     assert.equal(own.spec, standIn.spec, `${own.key} keeps ${standIn.key}'s bones`);
     assert.equal(own.pose, standIn.pose);
@@ -2189,6 +2201,26 @@ test('life: townsfolk wander only open floor, stay in bounds, yield to the Keepe
   p.pause = 0; p.target = p.hi; p.x = p.lo;
   crowd.update(1 / 60, p.lo + 40);
   assert.ok(p.pause > 0 && p.x === p.lo, 'stops when the Keeper is just ahead');
+});
+
+test('life: every townsperson names where a local material is found (meaning audit #6)', () => {
+  assert.ok(lifeI18n[life.TOWNSFOLK_LINE].en.includes('{{material}}') && lifeI18n[life.TOWNSFOLK_LINE].es.includes('{{place}}'));
+  for (const town of builtTowns()) {
+    const lines = life.townsfolkLines(town);
+    assert.ok(lines.length > 0, `${town.id}: its hunts yield something to name`);
+    for (const line of lines) assert.ok(town.hunts.some(h => h.name === line.place), `${town.id}: ${line.place} is one of its hunts`);
+    const crowd = new life.TownsfolkCrowd(town, life.placeKeepers(town));
+    for (const p of crowd.folk) assert.deepEqual(p.def.lines, [life.TOWNSFOLK_LINE]);
+    if (crowd.folk.length > 1 && lines.length > 1) assert.notDeepEqual(crowd.folk[0].says, crowd.folk[1].says, `${town.id}: neighbours say different things`);
+  }
+  // A townsperson speaks when the Keeper walks up, and the bubble fills the line.
+  const town = world.TOWNS.infernal;
+  const tl = new townLifeMod.TownLife();
+  tl.enter(town, town);
+  const folk = tl.townsfolk.folk[0];
+  let t = 0;
+  for (let n = 0; n < 30 && tl.townsfolkSpeaking < 0; n++) { t += 1 / 60; tl.update(1 / 60, folk.x, t); }
+  assert.ok(tl.townsfolkSpeaking >= 0, 'a townsperson greets the Keeper');
 });
 
 test('life: off-camera figures are culled; keepers face the Keeper; chatter is one line per approach', () => {

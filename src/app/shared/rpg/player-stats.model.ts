@@ -92,13 +92,13 @@ export const STAT_DEFINITIONS: StatDefinition[] = [
   {
     id: 'endurance',
     name: 'Endurance',
-    unit: 'mission length',
+    unit: 'expedition haul',
     per: 10,
     flavour: 'Explorers do not walk faster for you. They simply stop turning back.',
     color: '#ff9a5a',
     glow: 'rgba(255, 140, 60, 0.6)',
     effectOf: p => p * 10,
-    format: p => `+${trim(p * 10)}% mission length`,
+    format: p => `+${trim(p * 10)}% expedition haul`,
   },
   {
     id: 'wisdom',
@@ -192,7 +192,7 @@ export function luckMagicFind(stats: PlayerStats): number {
   return STAT_BY_ID.get('luck')!.effectOf(stats.luck);
 }
 
-/** Mission-duration multiplier from Endurance. 1.0 at zero points. */
+/** Expedition haul (payout) multiplier from Endurance. 1.0 at zero points. */
 export function enduranceMultiplier(stats: PlayerStats): number {
   return 1 + STAT_BY_ID.get('endurance')!.effectOf(stats.endurance) / 100;
 }

@@ -104,8 +104,6 @@ export interface ItemStats {
   magicFind?: number;
   /** Percentage XP bonus. */
   xpBonus?: number;
-  /** Percentage bonus to expedition loot quality. Only reads on an explorer. */
-  lootBonus?: number;
   /**
    * Anvil / forge power. Two consumers, both off the worn total or the weapon:
    * the Forge's yield (`rune-forge/strike-value.ts`, 2.5%/pt chance of a
@@ -122,7 +120,7 @@ export interface ItemStats {
 }
 
 export const ITEM_STAT_KEYS: (keyof ItemStats)[] = [
-  'goldPerSec', 'magicFind', 'xpBonus', 'lootBonus', 'strikePower', 'ward',
+  'goldPerSec', 'magicFind', 'xpBonus', 'strikePower', 'ward',
 ];
 
 /** How each stat is written on a tooltip. */
@@ -130,7 +128,6 @@ export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
   goldPerSec: 'Gold/sec',
   magicFind: 'Magic Find',
   xpBonus: 'XP',
-  lootBonus: 'Loot quality',
   strikePower: 'Strike',
   ward: 'Ward',
 };
@@ -140,7 +137,6 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   goldPerSec: false,
   magicFind: true,
   xpBonus: true,
-  lootBonus: true,
   strikePower: false,
   ward: false,
 };
@@ -360,13 +356,11 @@ export const ITEM_ROLLS: Record<ItemRarity, RollTable> = {
     goldPerSec: [200, 480],
     magicFind: [25, 55],
     xpBonus: [25, 50],
-    lootBonus: [25, 50],
   },
   singular: {
     goldPerSec: [500, 1400],
     magicFind: [40, 80],
     xpBonus: [40, 80],
-    lootBonus: [40, 80],
   },
 };
 
@@ -737,7 +731,7 @@ export function mintCharm(
 /** Sum a set of stat blocks. Used for equipped totals on both player and explorer. */
 export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
   const total: Required<ItemStats> = {
-    goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0, strikePower: 0, ward: 0,
+    goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
   };
   for (const block of blocks) {
     for (const key of ITEM_STAT_KEYS) {

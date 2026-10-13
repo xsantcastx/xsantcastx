@@ -3,7 +3,7 @@
  *
  * Hunting XP scales with the creature's full HP, so a sturdier creature is
  * worth more and nothing needs a hand-set table: a Rootglass Stag (50 HP)
- * pays 10, a Rivet Maw (60) 12, a Magma Maw (110) 22, the Rune-Warden (260)
+ * pays 10, a Rivet Maw (60) 12, a Cinder Bailiff (110) 22, the Seam Eater (260)
  * 52. On the shared curve that is ~9 Maws for Hunting 2.
  *
  * Pure. No Angular — the engine harness loads it under node.

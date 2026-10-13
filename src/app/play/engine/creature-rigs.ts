@@ -354,8 +354,8 @@ export const CREATURE_RIGS: Readonly<Record<string, CreatureRigDef>> = {
   // painted and rigged it keeps the body it was cast from: `artFor` aliases the
   // key to that creature's painting (art.ts ART_ALIAS), so the rig must match.
   // Give each its own spec when its painting lands.
-  'magma-maw': { ...RIVET_MAW_CREATURE, key: 'magma-maw' },
-  'rune-warden': { ...MIRROR_SUBSTITUTE_CREATURE, key: 'rune-warden' },
+  'cinder-bailiff': { ...RIVET_MAW_CREATURE, key: 'cinder-bailiff' },
+  'seam-eater': { ...MIRROR_SUBSTITUTE_CREATURE, key: 'seam-eater' },
   'rootglass-stag': { key: 'rootglass-stag', spec: STAG_RIG, facesLeft: false, box: { w: 165, h: 165 }, ground: .93, shadow: 62, pose: poseStag },
 };
 

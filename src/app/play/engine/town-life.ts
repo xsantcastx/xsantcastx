@@ -20,6 +20,7 @@ import { FLOOR } from './engine.model';
 import {
   CHATTER_SHOW, FACE_RANGE, KeeperChatter, keeperAt, KeeperPlacement, LifePalette, LifeSilhouette, onScreen, placeKeepers, TownsfolkCrowd, townsfolkArt,
 } from '../world/life';
+import { materialDisplay } from '../../shared/rpg/material-catalog';
 import type { AreaDef, StationDef, TownDef } from '../world/world.model';
 
 /** Humanoid bones for a standing NPC painting that faces right (the commission's three-quarter view). */
@@ -107,6 +108,8 @@ export class TownLife {
   private placements: KeeperPlacement[] = [];
   private crowd: TownsfolkCrowd | null = null;
   private chatter: KeeperChatter | null = null;
+  /** Townsfolk speak too, one line each; a keeper's line wins when both start. */
+  private folkChatter: KeeperChatter | null = null;
   /** Smoothed facing per keeper, -1..1 (passes through 0 as it turns). */
   private facing = new Float32Array(0);
   private tagText: string[] = [];
@@ -128,17 +131,20 @@ export class TownLife {
     const c = this.chatter;
     return c && c.speaker >= 0 ? { keeper: this.placements[c.speaker].def.id, line: c.line } : null;
   }
+  /** The townsperson speaking (index into `townsfolk.folk`), or -1. */
+  get townsfolkSpeaking(): number { return this.folkChatter?.speaker ?? -1; }
 
   /** Populate a town, or clear the stage in a hunt, delve or homestead. Allocates; called on area entry only. */
   enter(area: AreaDef, town: TownDef): void {
     if (area !== town) {
-      this.placements = []; this.crowd = null; this.chatter = null; this.facing = new Float32Array(0);
+      this.placements = []; this.crowd = null; this.chatter = null; this.folkChatter = null; this.facing = new Float32Array(0);
       this.tagText = []; this.tagWidth = new Float32Array(0); this.bubbleFor = -1;
       return;
     }
     this.placements = placeKeepers(town);
     this.crowd = new TownsfolkCrowd(town, this.placements);
     this.chatter = new KeeperChatter(this.placements);
+    this.folkChatter = new KeeperChatter(this.crowd.folk);
     this.facing = new Float32Array(this.placements.length);
     this.placements.forEach((p, i) => { this.facing[i] = Math.sign(p.station.x - p.x) || 1; });
     this.tagText = this.placements.map(() => '');
@@ -157,6 +163,7 @@ export class TownLife {
     this.clock = time;
     this.crowd?.update(dt, playerX);
     this.chatter?.update(playerX, time);
+    this.folkChatter?.update(playerX, time);
     const blend = Math.min(1, dt * 7);
     for (let i = 0; i < this.placements.length; i++) {
       const p = this.placements[i];
@@ -239,15 +246,22 @@ export class TownLife {
 
   /** The current speaker's line, wrapped once when it starts, fading in and out. */
   private speech(c: CanvasRenderingContext2D, f: LifeFrame): void {
-    const chatter = this.chatter;
+    // A keeper's line first; otherwise a townsperson's (indexed past the keepers).
+    const keeper = this.chatter && this.chatter.speaker >= 0;
+    const chatter = keeper ? this.chatter : this.folkChatter;
     if (!chatter || chatter.speaker < 0) return;
-    const p = this.placements[chatter.speaker];
+    const folk = keeper ? undefined : this.crowd?.folk[chatter.speaker];
+    const p = keeper ? this.placements[chatter.speaker] : folk;
     if (!p || !onScreen(p.x, f.camera, f.viewport, 200)) return;
+    const who = keeper ? chatter.speaker : this.placements.length + chatter.speaker;
     c.save();
     c.font = BUBBLE_FONT; c.textAlign = 'center';
-    if (this.bubbleFor !== chatter.speaker || this.bubbleKey !== chatter.line + chatter.at) {
-      this.bubbleFor = chatter.speaker; this.bubbleKey = chatter.line + chatter.at;
-      const text = f.translate(chatter.line);
+    if (this.bubbleFor !== who || this.bubbleKey !== chatter.line + chatter.at) {
+      this.bubbleFor = who; this.bubbleKey = chatter.line + chatter.at;
+      let text = f.translate(chatter.line);
+      if (folk?.says && text !== chatter.line) {
+        text = text.replace('{{material}}', materialDisplay(folk.says.material)?.name ?? folk.says.material).replace('{{place}}', folk.says.place);
+      }
       this.bubble = wrap(c, text === chatter.line ? '' : text, BUBBLE_MAX);
       this.bubbleWidth = this.bubble.reduce((w, line) => Math.max(w, c.measureText(line).width), 0) + 24;
     }

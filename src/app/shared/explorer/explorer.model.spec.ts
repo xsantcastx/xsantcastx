@@ -349,6 +349,11 @@ describe('realm freight', () => {
     for (const [, holders] of seen) expect(holders.length).toBe(1);
   });
 
+  it('no longer returns the three runes nothing used (meaning audit #11)', () => {
+    const all = Object.values(REALM_ARTBIBLE_MATERIALS).flat();
+    for (const id of ['rune-of-dawns-edge', 'rune-of-root', 'rune-of-overgrowth']) expect(all).not.toContain(id);
+  });
+
   it('lists the commons, then the exclusives, then the Art Bible band', () => {
     const all = realmMaterials('umbral');
     const commons = REALM_COMMON_MATERIALS.length;

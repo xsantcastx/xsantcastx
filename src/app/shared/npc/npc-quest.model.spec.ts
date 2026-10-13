@@ -8,7 +8,8 @@
  * error anywhere. Those are the gates worth having, and every one of them is
  * cheap because the catalogues are all pure data.
  */
-import { COSMETICS } from '../economy/economy.model';
+import { ARTIFACTS, COSMETICS } from '../economy/economy.model';
+import { DELVE_MISSIONS } from './delve-missions.model';
 import { ITEM_DEFINITIONS } from '../rpg/item-definition';
 import { EASTER_EGGS } from '../easter-eggs/easter-egg.service';
 import { EGG_HINTS } from '../../codex/codex-hints';
@@ -118,6 +119,20 @@ describe('rewards name things that exist', () => {
       expect(def!.variants.some(v => v.id === c.variant))
         .withContext(`${s.id} -> ${c.id}/${c.variant}`).toBe(true);
     }
+  });
+
+  it('grants the Essence-shop flag, not a twin item, for the four artifact rewards (meaning audit #13)', () => {
+    const ids = new Set(ARTIFACTS.map(a => a.id));
+    const byStep = new Map<string, string | undefined>([
+      ...ALL_NPC_STEPS.map(s => [s.id, s.reward.artifact] as [string, string | undefined]),
+      ...DELVE_MISSIONS.map(m => [m.id, m.reward.artifact] as [string, string | undefined]),
+    ]);
+    expect(byStep.get('aureth-2')).toBe('relic-third-dawn');
+    expect(byStep.get('verrin-2')).toBe('obsidian-heart');
+    expect(byStep.get('archivist-2')).toBe('codex-solarii');
+    expect(byStep.get('delve-archivist-words-3')).toBe('codex-solarii');
+    for (const [step, id] of byStep) if (id) expect(ids.has(id)).withContext(step).toBeTrue();
+    for (const id of ids) expect(ITEM_DEFINITIONS.some(d => d.id === id)).withContext(id).toBeFalse();
   });
 
   it('names a real equipment definition for every item reward', () => {

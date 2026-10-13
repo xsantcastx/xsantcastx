@@ -15,6 +15,7 @@ import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { eraIsCurrent, ledgerFromPriorEra, REALM_ERA } from '../save/realm-era';
 import { materialDisplay } from '../rpg/material-catalog';
+import { itemDefinitionById, mintEquipment } from '../rpg/item-definition';
 import {
   ACTIVITY_KEY,
   ACTIVITY_OPS_MAX,
@@ -38,7 +39,6 @@ import {
   foragingEligibleCount,
   hasClarityElixir,
   hasEmberBeforeCraft,
-  hasRiftKey,
   isEnabledMine,
   prospectingEligibleCount,
   miningEligibleCount,
@@ -54,7 +54,6 @@ import {
   effectiveForagingRecoveryMs,
   foragingSpeedupPct,
   isEnabledForage,
-  rollForageDiscovery,
 } from './foraging-ops';
 import { PROSPECTING_TIERS, isProspectingTierUnlocked, prospectingTierFor } from './prospecting.model';
 import {
@@ -408,7 +407,6 @@ export class ActivityProgressionGateway {
     /** Which growth to gather. Defaults to Starlight Herb — always unlocked. */
     herbId?: string;
     now?: number;
-    roll?: number;
   }): ActivityResolveResult {
     if (!this.isBrowser) return { ok: false, code: 'ssr' };
     const existing = this.ledger.operations.find(op => op.id === input.mutationId);
@@ -442,14 +440,6 @@ export class ActivityProgressionGateway {
       return { ok: false, code: 'capacity' };
     }
 
-    const discovery = rollForageDiscovery({
-      eligibleIndex: Math.max(
-        this.ledger.foragingAccepted,
-        foragingEligibleCount(this.ledger.operations, locationId),
-      ) + 1,
-      previousRiftKey: this.ledger.riftKeyGranted || hasRiftKey(this.ledger.operations),
-      roll: input.roll ?? Math.random(),
-    });
     const operation = buildForageOperation({
       id: input.mutationId,
       deviceId: this.deviceId,
@@ -458,7 +448,6 @@ export class ActivityProgressionGateway {
       locationId,
       herbId: tier.herbId,
       xpAmount: tier.xpPerAction,
-      discovery,
     });
 
     const previous = this.ledger;
@@ -468,7 +457,6 @@ export class ActivityProgressionGateway {
       operations,
       progress: progressAfter(this.ledger.progress, operations, operation),
       currentWork: rebuildCurrentWork(work, operations),
-      riftKeyGranted: this.ledger.riftKeyGranted || operation.discovery.result !== 'none',
       foragingAccepted: Math.max(
         this.ledger.foragingAccepted,
         foragingEligibleCount(operations, locationId),
@@ -544,6 +532,10 @@ export class ActivityProgressionGateway {
       previousClarityElixir: this.ledger.clarityElixirGranted || hasClarityElixir(this.ledger.operations),
       roll: input.roll ?? Math.random(),
     });
+    // The elixir is an item, not a stack: it needs a free bag row of its own.
+    if (discovery.result !== 'none' && !this.inventory.canAcceptInstance()) {
+      return { ok: false, code: 'capacity' };
+    }
     const operation = buildProspectOperation({
       id: input.mutationId,
       deviceId: this.deviceId,
@@ -667,6 +659,14 @@ export class ActivityProgressionGateway {
 
   private applyGrants(operation: ActivityOperation): boolean {
     for (const grant of operation.inventoryGrants) {
+      // A grant naming a wearable definition (the Clarity Elixir) mints one
+      // item under the grant id; everything else is a stack.
+      const def = itemDefinitionById(grant.definitionId);
+      if (def && def.family !== 'material') {
+        const item = mintEquipment(def.id, 'rare', Math.random, operation.resolvedAt, grant.id);
+        if (!item || !this.inventory.add(item)) return false;
+        continue;
+      }
       if (!this.inventory.grantStack(grant.id, grant.definitionId, grant.quantity)) return false;
     }
     return true;

@@ -37,8 +37,8 @@ describe('art lookup', () => {
   });
 
   it('shows the Delve creatures their stand-ins until their own paintings land', () => {
-    // Own key first: an alias is a stand-in, so an imported `rune-warden` wins at once.
-    for (const [own, standIn] of [['rune-warden', 'mirror-substitute'], ['magma-maw', 'rivet-maw']]) {
+    // Own key first: an alias is a stand-in, so an imported `seam-eater` wins at once.
+    for (const [own, standIn] of [['seam-eater', 'mirror-substitute'], ['cinder-bailiff', 'rivet-maw']]) {
       expect(ART_ALIAS[own]).withContext(own).toBe(standIn);
       expect(artFor(own)).withContext(own).toBe(ART_ALL[own] ?? ART_ALL[standIn]);
     }

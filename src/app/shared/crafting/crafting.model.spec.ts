@@ -8,7 +8,7 @@
  */
 import { ARTBIBLE_DEFINITIONS, ARTBIBLE_RARITY } from '../rpg/artbible-items';
 import { ITEM_DEFINITIONS, itemDefinitionById } from '../rpg/item-definition';
-import { RUNE_TIER_ORDER } from '../rune-forge/rune.model';
+import { RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
 import { COLLECTION_CATALOG } from '../collection/collection.model';
 import {
   CRAFTING_CATEGORIES,
@@ -45,6 +45,22 @@ describe('crafting catalogue', () => {
     expect(CRAFTING_RECIPES.length).toBeGreaterThanOrEqual(30);
   });
 
+  it('brews the Ember Elixir from Ember Residue and Infernal Heartstone (meaning audit #9)', () => {
+    const recipe = CRAFTING_RECIPES.find(r => r.id === 'craft-ember-elixir')!;
+    expect(recipe.output.itemId).toBe('ember-elixir');
+    expect(recipe.ingredients.map(i => i.materialId).sort()).toEqual(['ember-residue', 'infernal-heartstone']);
+    expect(itemDefinitionById('ember-elixir')!.rollKeys).toEqual(['ward']);
+  });
+
+  it('takes the canon Forge rune where a "Rune of ..." reagent stood (owner rule: one name, one meaning)', () => {
+    const ids = CRAFTING_RECIPES.flatMap(r => r.ingredients.map(i => i.materialId));
+    expect(ids.filter(id => id.startsWith('rune-of-'))).toEqual([]);
+    const runeOf = (recipeId: string) => CRAFTING_RECIPES.find(r => r.id === recipeId)!.ingredients.filter(i => i.rune).map(i => i.materialId);
+    expect(runeOf('craft-cindergnaw')).toEqual(['ash']);
+    expect(runeOf('craft-hollow-fang')).toEqual(['hollow']);
+    expect(runeOf('craft-eclipse-edge')).toEqual(['convergence']);
+  });
+
   it('gives every recipe a unique id', () => {
     const ids = new Set(CRAFTING_RECIPES.map(r => r.id));
     expect(ids.size).toBe(CRAFTING_RECIPES.length);
@@ -54,7 +70,8 @@ describe('crafting catalogue', () => {
     const unknown: string[] = [];
     for (const recipe of CRAFTING_RECIPES) {
       for (const ing of recipe.ingredients) {
-        if (!GRANTABLE.has(ing.materialId)) unknown.push(`${recipe.id} → ${ing.materialId}`);
+        // A rune ingredient is a Forge rune, spent from the ledger.
+        if (ing.rune ? !runeById(ing.materialId) : !GRANTABLE.has(ing.materialId)) unknown.push(`${recipe.id} → ${ing.materialId}`);
       }
     }
     expect(unknown).toEqual([]);

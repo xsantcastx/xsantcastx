@@ -133,7 +133,7 @@ describe('InspectComponent temper feedback', () => {
   let root: HTMLElement;
   let current: any;
 
-  const totals = { goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0, strikePower: 0, ward: 0 };
+  const totals = { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 };
   const basalt = (over: Record<string, unknown> = {}) => ({
     id: 'i1', name: 'Basalt Edge', type: 'artifact', rarity: 'rare', definitionId: 'basalt-edge',
     stats: { goldPerSec: 1.3, strikePower: 2 },

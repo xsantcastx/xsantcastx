@@ -3,7 +3,7 @@
  *
  * The only public Gather control — A2 Foraging's surface, a concrete copy of
  * basalt-seamworks.component.ts with the nouns swapped. Templates call the
- * gateway; they do not roll discovery, grant XP, or write inventory.
+ * gateway; they do not grant XP or write inventory. Foraging has no rare find.
  *
  * Differences from the Seamworks page, all deliberate:
  *  - No ChapterGateway, no chapter note. Verdant has no chapter component and
@@ -32,9 +32,6 @@ import {
 import type { ActivityLedger, ActivityOperation } from '../shared/activity/activity.model';
 import {
   FORAGING_TIERS,
-  RIFT_KEY_CHANCE,
-  RIFT_KEY_GUARANTEE_AT,
-  RIFT_KEY_ID,
   ROOTGLASS_CANOPY_ID,
   STARLIGHT_HERB_ID,
   isForagingTierUnlocked,
@@ -55,11 +52,8 @@ type GatherPanelState =
   | 'persist'
   | 'unavailable';
 
-type FloaterKind = 'herb' | 'key';
-
 interface Floater {
   id: number;
-  kind: FloaterKind;
   text: string;
 }
 
@@ -85,10 +79,6 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
   readonly locationId = ROOTGLASS_CANOPY_ID;
   readonly verdantHref = '/world/realms/verdant';
   readonly tiers = FORAGING_TIERS;
-  /** The rare find. Named + painted via material-catalog so the bank and this page agree. */
-  readonly key: MaterialDisplay = materialDisplay(RIFT_KEY_ID)!;
-  readonly chance = Number((RIFT_KEY_CHANCE * 100).toPrecision(2));
-  readonly guaranteeAt = RIFT_KEY_GUARANTEE_AT;
 
   /** Which growth is armed right now. Starlight Herb is always open, so it's the default. */
   selectedHerbId: string = STARLIGHT_HERB_ID;
@@ -97,9 +87,7 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
   now = Date.now();
   lastOp: ActivityOperation | null = null;
   lastHerb = 0;
-  lastKey = 0;
   herbHeld = 0;
-  keyHeld = 0;
   lastError: ActivityRejectCode | null = null;
   pendingId: string | null = null;
   busy = false;
@@ -153,7 +141,6 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
     // new one, so the last-gather readout clears on every tier switch.
     this.lastOp = null;
     this.lastHerb = 0;
-    this.lastKey = 0;
     this.refreshHeld();
   }
 
@@ -171,7 +158,6 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
 
   private refreshHeld(): void {
     this.herbHeld = this.inventory.stackOf(this.selectedHerbId);
-    this.keyHeld = this.inventory.stackOf(RIFT_KEY_ID);
   }
 
   ngOnDestroy(): void {
@@ -180,12 +166,11 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
     for (const t of this.floaterTimers) clearTimeout(t);
   }
 
-  herbFloaters(): Floater[] { return this.floaters.filter(f => f.kind === 'herb'); }
-  keyFloaters(): Floater[] { return this.floaters.filter(f => f.kind === 'key'); }
+  herbFloaters(): Floater[] { return this.floaters; }
 
-  private spawnFloater(kind: FloaterKind, text: string): void {
+  private spawnFloater(text: string): void {
     const id = ++this.floaterSeq;
-    this.floaters = [...this.floaters, { id, kind, text }];
+    this.floaters = [...this.floaters, { id, text }];
     this.floaterTimers.push(setTimeout(() => {
       this.floaters = this.floaters.filter(f => f.id !== id);
       this.cdr.markForCheck();
@@ -250,14 +235,12 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
     if (result.ok) {
       this.lastOp = result.operation;
       this.lastHerb = grantQty(result.operation, this.selectedHerbId);
-      this.lastKey = grantQty(result.operation, RIFT_KEY_ID);
       this.lastError = null;
       this.pendingId = null;
       this.refreshHeld();
-      if (this.lastHerb > 0) this.spawnFloater('herb', `+${this.lastHerb}`);
-      if (this.lastKey > 0) this.spawnFloater('key', `+${this.lastKey}`);
+      if (this.lastHerb > 0) this.spawnFloater(`+${this.lastHerb}`);
       this.levelUp.checkForaging(xpBefore, this.snap.progress.xpByDiscipline.foraging ?? 0);
-      if (this.lastKey > 0 || this.keeper.isOpen) this.keeper.show('bank');
+      if (this.keeper.isOpen) this.keeper.show('bank');
       this.cdr.markForCheck();
       return;
     }
@@ -273,14 +256,6 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
   refresh(): void {
     this.lastError = null;
     this.pendingId = null;
-  }
-
-  discoveryLabel(): string {
-    const result = this.lastOp?.discovery.result;
-    if (result === 'rift-key') return this.t('canopy.discovery.bonus');
-    if (result === 'rift-key-guarantee') return this.t('canopy.discovery.guarantee');
-    if (this.lastOp) return this.t('canopy.discovery.none');
-    return this.t('canopy.discovery.pending', { chance: this.chance, at: this.guaranteeAt });
   }
 }
 
