@@ -57,11 +57,14 @@ function recordAnalytics(page: Page): string[] {
 async function assertBarClear(page: Page, sizeLabel: string, hud: string[]): Promise<Rect> {
   const bar = page.locator('.cookie-banner--world');
   await expect(bar, `${sizeLabel}: the in-world consent bar`).toBeVisible();
-  // Its height is handed to the frame: the frame ends where the bar starts.
+  // The bar's height follows its webfont; measure once the fonts have settled.
+  await page.evaluate(() => document.fonts.ready.then(() => undefined));
+  // Its height is handed to the frame: the frame ends where the bar starts
+  // (re-measured by a ResizeObserver, so allow it a frame or two to settle).
   await expect.poll(async () => {
     const b = await rectOf(page, '.cookie-banner--world');
     const c = await rectOf(page, '.viewport canvas');
-    return !!b && !!c && c.bottom <= b.top + 1;
+    return !!b && !!c && c.bottom <= b.top;
   }, { message: `${sizeLabel}: canvas ends above the consent bar`, timeout: 10000 }).toBe(true);
   const box = (await rectOf(page, '.cookie-banner--world'))!;
   const vp = page.viewportSize()!;
