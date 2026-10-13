@@ -734,38 +734,6 @@ export function mintCharm(
   };
 }
 
-/**
- * Mint an equippable from a rune that was just found.
- *
- * The rune itself still lands in the Rune Forge ledger — this is a *separate*
- * object that happens to be named after it, the way a Nexus charm is named after
- * the Nexus rune. Runes in the ledger craft Runewords; items in the inventory
- * get equipped. Conflating the two would mean equipping a rune takes it out of
- * a recipe, which is a trap the player cannot see before they spring it.
- */
-export function mintRuneItem(
-  runeId: string,
-  runeName: string,
-  rarity: ItemRarity,
-  lore: string,
-  _rng: () => number = Math.random,
-  foundAt = new Date().toISOString(),
-): GameItem {
-  return {
-    id: mintId(`item-${runeId}`),
-    name: `${runeName} Sigil`,
-    type: 'rune',
-    rarity,
-    stats: {},
-    sellValue: sellValueFor('rune', rarity),
-    equipped: false,
-    lore,
-    foundAt,
-    soulbound: false,
-    upgradeLevel: 0,
-  };
-}
-
 /** Sum a set of stat blocks. Used for equipped totals on both player and explorer. */
 export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
   const total: Required<ItemStats> = {

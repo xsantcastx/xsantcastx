@@ -37,9 +37,15 @@ export const INVENTORY_ERA = 55 as const;
 export const INVENTORY_LEGACY_VERSION = 1 as const;
 /** Same window as ledger ACK_STALE_MS: tombstones survive this long after delete. */
 export const INVENTORY_TOMBSTONE_RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
-export const INVENTORY_TOMBSTONE_MAX = 256;
+/** 512 since the eviction was removed (inventory spec §2.8: ~56 KB). */
+export const INVENTORY_TOMBSTONE_MAX = 512;
 /** Hard cap on stack grant/consume ops. Oldest-by-hlc evict after this. */
 export const INVENTORY_STACK_OPS_MAX = 256;
+/**
+ * The retired 250-record ceiling. Nothing on the client enforces it any more;
+ * kept only because the (undeployed) market server reads it via
+ * scripts/generate-market-reference.mjs — inventory spec §4.4 / slice S7.
+ */
 export const INVENTORY_BAG_CAP = 250;
 
 export type OwnedItemCategory =

@@ -1157,6 +1157,7 @@ export class TranslationService {
     'inspect.location.bag':     { en: 'Bag', es: 'Bolsa' },
     'inspect.location.equipped':{ en: 'Loadout — {{slot}}', es: 'Equipo — {{slot}}' },
     'inspect.location.explorer':{ en: 'Held by explorer', es: 'En manos de un explorador' },
+    'inspect.location.vault':   { en: 'In your Vault', es: 'En tu Bóveda' },
     'inspect.action.dossier':   { en: 'Open dossier', es: 'Abrir expediente' },
 
     'market.eyebrow':           { en: 'The Godforge Market', es: 'El Mercado de la Godforge' },

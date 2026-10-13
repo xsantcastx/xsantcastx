@@ -4,7 +4,7 @@
  * Reads registries and current snapshots only. Does not write Economy,
  * Inventory, cloud-save, or Firestore.
  */
-import { Injectable, inject } from '@angular/core';
+import { Injectable, Injector, inject } from '@angular/core';
 
 import { TranslationService } from '../../translation.service';
 import {
@@ -28,6 +28,9 @@ import { wardFailReductionPct } from '../rpg/item-upgrade';
 import { miningSpeedupPct } from '../activity/mining-recovery';
 import { RUNES, RUNEWORDS, RUNE_TIERS, tierOf } from '../rune-forge/rune.model';
 import { strikeValuePct } from '../rune-forge/strike-value';
+import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
+import { toolCard, toolCardLines } from '../skills/tools';
+import { TOOLS_I18N } from '../skills/tools.i18n';
 import {
   type EntityAction,
   type EntityFact,
@@ -49,6 +52,8 @@ export function slugifyThreat(name: string): string {
 export class EntityResolver {
   private readonly i18n = inject(TranslationService);
   private readonly inventory = inject(InventoryService);
+  /** Read only for a tool's skill cap, so resolving anything else never builds the activity gateway. */
+  private readonly injector = inject(Injector);
 
   resolve(ref: EntityRef): EntityResolution {
     try {
@@ -188,6 +193,16 @@ export class EntityResolver {
         value: effects.length ? `${mod} · ${effects.join(' · ')}` : mod,
         exactValue: String(raw),
       });
+    }
+    // A tool: power, pace, what it opens, the skill cap — and that it works from the satchel.
+    const tool = toolCard(item.definitionId);
+    if (tool) {
+      this.i18n.register(TOOLS_I18N);
+      const capped = toolCard(item.definitionId, this.injector.get(ActivityProgressionGateway).snapshot.progress);
+      if (capped) Object.assign(tool, capped);
+      for (const line of [...toolCardLines(tool, (key, vars) => this.t(key, vars)), this.t('toolStat.fromSatchel')]) {
+        facts.push({ kind: 'mod', label: line, value: line, exactValue: line });
+      }
     }
     const level = item.upgradeLevel ?? 0;
     facts.push({
@@ -411,6 +426,13 @@ export class EntityResolver {
         label: this.t('inspect.fact.location'),
         value: this.t('inspect.location.equipped', { slot: item.slot ?? '' }),
         exactValue: item.slot ?? 'equipped',
+      };
+    }
+    if (item.explorerId?.startsWith('vault:')) {
+      return {
+        label: this.t('inspect.fact.location'),
+        value: this.t('inspect.location.vault'),
+        exactValue: item.explorerId,
       };
     }
     if (item.explorerId) {

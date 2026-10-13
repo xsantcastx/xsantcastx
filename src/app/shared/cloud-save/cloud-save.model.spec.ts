@@ -371,14 +371,14 @@ describe('the RPG layer', () => {
       expect(merged.goldFromSales).toBe(900);
     });
 
-    it('stays inside the bag cap, and never drops what is worn', () => {
+    it('keeps every item from both sides (no eviction), worn included', () => {
       const many = (prefix: string) => Array.from({ length: 200 }, (_, i) =>
         item(`${prefix}${i}`, { sellValue: i }));
       const merged = merge(
         { version: 1, items: many('r'), goldFromSales: 0, sold: 0 },
         { version: 1, items: [...many('l'), item('worn', { equipped: true, slot: 'head', sellValue: 0 })], goldFromSales: 0, sold: 0 },
       );
-      expect(merged.records.length).toBe(250);
+      expect(merged.records.length).toBe(401);
       expect(merged.records.some(i => i.id === 'worn')).toBe(true);
     });
   });

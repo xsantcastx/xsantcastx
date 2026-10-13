@@ -296,7 +296,7 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.itemById('kit')?.explorerId).toBeUndefined();
   });
 
-  it('refuses a bag-growing displace when the bag already has 250 tiles', () => {
+  it('never refuses a bag-growing displace for space when the bag is past the old 250 cap', () => {
     TestBed.resetTestingModule();
     const fills = Array.from({ length: MAX_INVENTORY }, (_, i) => ({
       id: `fill-${i}`, definitionId: `artifact:fill-${i}`, kind: 'instance' as const,
@@ -331,14 +331,11 @@ describe('InventoryService C3 adapter', () => {
     }));
     inventory = configure(memory);
     expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY);
-    expect(inventory.equip('blade', 'head')).toBe(false);
-    expect(inventory.snapshot.equipped['head']?.id).toBe('helm');
-    expect(inventory.snapshot.equipped['chest']?.id).toBe('blade');
-    expect(inventory.itemById('helm')).toBeTruthy();
-    expect(inventory.equip('fill-0', 'head')).toBe(true);
-    expect(inventory.snapshot.equipped['head']?.id).toBe('fill-0');
+    expect(inventory.equip('blade', 'head')).toBe(true);
+    expect(inventory.snapshot.equipped['head']?.id).toBe('blade');
     expect(inventory.snapshot.bag.some(row => row.id === 'helm')).toBe(true);
-    expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY);
+    expect(inventory.snapshot.bag.length).toBe(MAX_INVENTORY + 1);
+    expect(inventory.snapshot.items.length).toBe(MAX_INVENTORY + 2);
   });
 
   it('drops an unequipped item without paying gold and refuses worn gear', () => {
@@ -820,24 +817,17 @@ describe('InventoryService C1 refine', () => {
     expect(storedOps().length).toBe(before);
   });
 
-  it('refuses a full bag with no target row BEFORE consuming', () => {
+  it('refines at any record count: a new target stack never refuses for space', () => {
     inventory.grantStack('ore:1', 'cinder-ore', 6);
-    // Fill every remaining row with a distinct material stack; cinder-ore
-    // already holds one, so MAX_INVENTORY - 1 more brings the bag to the cap.
-    for (let i = 0; i < MAX_INVENTORY - 1; i++) {
+    for (let i = 0; i < MAX_INVENTORY; i++) {
       expect(inventory.grantStack(`fill:${i}`, `filler-${i}`, 1)).toBe(true);
     }
-    expect(inventory.snapshot.full).toBe(true);
-    expect(inventory.canAcceptStackGrant('slag-fragment')).toBe(false);
-    const before = storedOps().length;
-
+    expect(inventory.canAcceptStackGrant('slag-fragment')).toBe(true);
     const result = inventory.refineStack('r8', 'cinder-ore');
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.code).toBe('capacity');
-    expect(inventory.stackOf('cinder-ore')).toBe(6);
-    expect(inventory.stackOf('slag-fragment')).toBe(0);
-    expect(storedOps().length).toBe(before);
-    expect(inventory.snapshot.stacks.some(s => s.stackKey === 'slag-fragment')).toBe(false);
+    expect(result.ok).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(3);
+    expect(inventory.stackOf('slag-fragment')).toBe(1);
+    expect(inventory.stackOf('filler-0')).toBe(1);
   });
 
   it('rolls back both ops when persist fails', () => {

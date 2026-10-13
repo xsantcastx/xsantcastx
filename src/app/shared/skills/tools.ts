@@ -17,7 +17,7 @@
 import type { DisciplineProgress } from '../activity/activity.model';
 import type { ItemRarity } from '../rpg/item.model';
 import { skillLevel, type SkillId } from './skill.model';
-import { parseToolId, type ToolFamily, type ToolTier } from './tool-items';
+import { parseToolId, TOOL_FAMILIES, type ToolFamily, type ToolTier } from './tool-items';
 
 export interface ToolTiers {
   pickaxe: number;
@@ -28,6 +28,41 @@ export interface ToolTiers {
   blade: number;
   /** World tiles the Delve lantern lights. Grows with Delving. */
   lanternRadius: number;
+  /**
+   * Seconds between digging/gathering swings, per family (Terraria's "use
+   * time"). A starter tool swings at STARTER_SWING_SECONDS; a forged one at its
+   * effective tier's TOOL_SWING_SECONDS. No tool: the starter pace.
+   */
+  swing: Record<ToolFamily, number>;
+}
+
+/** The starter tools' pace — and every swing that is not digging or gathering (combat stays here). */
+export const STARTER_SWING_SECONDS = 0.52;
+/** A forged tool's pace by effective tier. Faster per tier; rewards stay capped by the seam's breath and node regrowth. */
+export const TOOL_SWING_SECONDS: Readonly<Record<ToolTier, number>> = { 1: 0.46, 2: 0.40, 3: 0.35, 4: 0.31 };
+
+/**
+ * One tool's power against a node of tier `min`: the engine's rule
+ * (1 + (tier − min) / 2 per swing).
+ */
+export function toolPower(tier: number, min = 1): number { return 1 + Math.max(0, tier - min) / 2; }
+
+/** What one family is doing for the Keeper right now, for the stats sheet and the item card. */
+export interface ToolFamilyStatus {
+  family: ToolFamily;
+  skill: SkillId;
+  /** The best tool held (0 = none). */
+  owned: number;
+  /** The tier it works as after the skill cap (0 = none). */
+  tier: number;
+  /** The best tool held is the starter (slowest pace). */
+  starter: boolean;
+  /** Swings per second's inverse: seconds per swing. */
+  swing: number;
+  /** Power against a tier-I node. */
+  power: number;
+  /** The skill level that lifts the cap, when the cap bites (owned > tier). */
+  capUntil: number | null;
 }
 
 /**
@@ -116,14 +151,23 @@ export interface ToolInventoryView {
  */
 export function toolTiers(inventory: ToolInventoryView | null | undefined, progress?: DisciplineProgress | null): ToolTiers {
   const owned: Record<ToolFamily, number> = { pickaxe: 0, axe: 0, sickle: 0, staff: 0 };
+  // Best forged (non-starter) tier per family: that is what sets the pace.
+  const forged: Record<ToolFamily, number> = { pickaxe: 0, axe: 0, sickle: 0, staff: 0 };
   for (const item of inventory?.items ?? []) {
     const tool = parseToolId(item?.definitionId);
-    if (tool && tool.tier > owned[tool.family]) owned[tool.family] = tool.tier;
+    if (!tool) continue;
+    if (tool.tier > owned[tool.family]) owned[tool.family] = tool.tier;
+    if (!tool.starter && tool.tier > forged[tool.family]) forged[tool.family] = tool.tier;
   }
 
-  const cap = (family: ToolFamily): number => {
-    if (!progress) return owned[family];
-    return Math.min(owned[family], maxTierForLevel(skillLevel(progress, TOOL_SKILL[family])));
+  const capOf = (family: ToolFamily, tier: number): number => {
+    if (!progress) return tier;
+    return Math.min(tier, maxTierForLevel(skillLevel(progress, TOOL_SKILL[family])));
+  };
+  const cap = (family: ToolFamily): number => capOf(family, owned[family]);
+  const pace = (family: ToolFamily): number => {
+    const tier = capOf(family, forged[family]);
+    return tier > 0 ? TOOL_SWING_SECONDS[tier as ToolTier] : STARTER_SWING_SECONDS;
   };
 
   const weapon = inventory?.equipped?.['weapon'];
@@ -136,5 +180,96 @@ export function toolTiers(inventory: ToolInventoryView | null | undefined, progr
     staff: cap('staff'),
     blade,
     lanternRadius: lanternRadiusFor(progress ? skillLevel(progress, 'delving') : 1),
+    swing: { pickaxe: pace('pickaxe'), axe: pace('axe'), sickle: pace('sickle'), staff: pace('staff') },
+  };
+}
+
+/**
+ * Per family: the best tool held, what it works as, its pace and power, and
+ * the level that lifts a skill cap. Pure; what the Keeper Stats "Tools" block
+ * shows.
+ */
+export function toolStatus(inventory: ToolInventoryView | null | undefined, progress?: DisciplineProgress | null): ToolFamilyStatus[] {
+  const owned = toolTiers(inventory);
+  const working = toolTiers(inventory, progress);
+  const starterOnly = (family: ToolFamily): boolean => {
+    let forged = false, starter = false;
+    for (const item of inventory?.items ?? []) {
+      const tool = parseToolId(item?.definitionId);
+      if (tool?.family !== family) continue;
+      if (tool.starter) starter = true; else forged = true;
+    }
+    return starter && !forged;
+  };
+  return TOOL_FAMILIES.map(family => {
+    const tier = working[family];
+    const have = owned[family];
+    return {
+      family,
+      skill: TOOL_SKILL[family],
+      owned: have,
+      tier,
+      starter: starterOnly(family),
+      swing: working.swing[family],
+      power: tier > 0 ? toolPower(tier) : 0,
+      capUntil: have > tier && tier > 0 ? TOOL_TIER_LEVEL[(tier + 1) as ToolTier] : null,
+    };
+  });
+}
+
+/** The card facts for one tool item: power, pace, what it opens, and the cap line. */
+export interface ToolCard {
+  family: ToolFamily;
+  tier: ToolTier;
+  starter: boolean;
+  skill: SkillId;
+  /** Power against a tier-I node when wielded at full tier. */
+  power: number;
+  /** Seconds per swing at full tier. */
+  swing: number;
+  opens: string;
+  /** Works as this tier until `capUntil` (the skill level) — null when no cap. */
+  worksAs: number | null;
+  capUntil: number | null;
+}
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
+const NUMERAL = ['', 'I', 'II', 'III', 'IV'];
+
+/** "0.46" — a pace as the cards print it. */
+export function formatSwing(seconds: number): string { return seconds.toFixed(2); }
+
+/**
+ * The item card lines for one tool (keys in tools.i18n.ts): power, pace, what
+ * it opens, and "works as tier N until <Skill> L" when the skill cap bites.
+ */
+export function toolCardLines(card: ToolCard, t: Translate): string[] {
+  const skill = t(`toolStat.skill.${card.skill}`);
+  const lines = [
+    t('toolStat.power', { skill, n: card.power }),
+    t(card.starter ? 'toolStat.swingStarter' : 'toolStat.swing', { s: formatSwing(card.swing) }),
+    t(`toolStat.opens.${card.family}.${card.tier}`),
+  ];
+  if (card.worksAs && card.capUntil) lines.push(t('toolStat.worksAs', { tier: NUMERAL[card.worksAs], skill, level: card.capUntil }));
+  return lines;
+}
+
+export function toolCard(definitionId: string | undefined | null, progress?: DisciplineProgress | null): ToolCard | null {
+  const tool = parseToolId(definitionId);
+  if (!tool) return null;
+  const skill = TOOL_SKILL[tool.family];
+  const max = progress ? maxTierForLevel(skillLevel(progress, skill)) : 4;
+  const capped = tool.tier > max;
+  const tier = capped ? max : tool.tier;
+  return {
+    family: tool.family,
+    tier: tool.tier,
+    starter: !!tool.starter,
+    skill,
+    power: toolPower(tool.tier),
+    swing: tool.starter ? STARTER_SWING_SECONDS : TOOL_SWING_SECONDS[tool.tier],
+    opens: TOOL_OPENS[tool.family][tool.tier].label,
+    worksAs: capped ? tier : null,
+    capUntil: capped ? TOOL_TIER_LEVEL[(tier + 1) as ToolTier] : null,
   };
 }
