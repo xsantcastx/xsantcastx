@@ -13,7 +13,7 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
-  climbTerrainBody, findNode, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
   blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
@@ -511,7 +511,8 @@ export class SeamworksEngine {
   takeBack(): boolean {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
-    const index = takeTarget(t, this.player.x, this.player.y, this.facing, DELVE_BOX);
+    // The same reach as E: the cell the prompt names wins, so "Open the chest" and X agree.
+    const index = takeTarget(t, this.player.x, this.player.y, this.facing, DELVE_BOX, this.findInteractive());
     if (index < 0) { this.say('play.delve.nothingToTake', 'Nothing placed here to take back. Blocks are dug, like rock.'); this.report(); return false; }
     return this.takeItem(index);
   }
@@ -1271,7 +1272,7 @@ export class SeamworksEngine {
     const t = this.terrain;
     if (!t) return -1;
     const p = this.player;
-    const c0 = t.colAt(p.x - DELVE_BOX.halfWidth - CELL * .5), c1 = t.colAt(p.x + DELVE_BOX.halfWidth + CELL * .5);
+    const c0 = t.colAt(p.x - DELVE_BOX.halfWidth - INTERACT_REACH), c1 = t.colAt(p.x + DELVE_BOX.halfWidth + INTERACT_REACH);
     const r0 = t.rowAt(p.y - DELVE_BOX.height), r1 = t.rowAt(p.y - .01);
     for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
       for (let col = Math.max(0, c0); col <= Math.min(t.cols - 1, c1); col++) {
