@@ -17,6 +17,7 @@
  *
  * Pure data and pure functions. No Angular, no browser APIs.
  */
+import { ARTIFACTS } from '../economy/economy.model';
 import type { ItemRarity } from '../rpg/item.model';
 import { DELVE_INSCRIPTIONS, GLOWCAP, GODFORGE_FRAGMENT, SHADOW_ROOT_CUTTING } from '../delve/delve-lore.model';
 import type { NpcId } from './npc.model';
@@ -80,6 +81,8 @@ export interface MissionReward {
   rune?: string;
   /** An existing equipment definition minted at this rarity. */
   item?: { defId: string; rarity: ItemRarity };
+  /** An Essence-shop artifact id, granted as an `NpcReward.artifact` is. */
+  artifact?: string;
   /** The lore reveal, shown on the claim and in the mission card once done. */
   loreFragment?: string;
 }
@@ -198,7 +201,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     reward: {
       ...incomeGold(80_000),
       delvingXp: 300,
-      item: { defId: 'codex-solarii', rarity: 'epic' },
+      artifact: 'codex-solarii',
       loreFragment:
         'Every inscription in the Delve was cut by a Keeper. The Archivist checked. One of them is still being written.',
     },
@@ -342,5 +345,6 @@ export function missionRewardLine(reward: MissionReward, gold: number, recipeNam
   if (reward.recipe) parts.push(`${recipeName ?? 'a new'} recipe`);
   if (reward.rune) parts.push(`${runeName ?? reward.rune} rune`);
   if (reward.item) parts.push(`a ${reward.item.rarity} keepsake`);
+  if (reward.artifact) parts.push(ARTIFACTS.find(a => a.id === reward.artifact)?.name ?? 'an artifact');
   return parts.join(' · ');
 }

@@ -156,8 +156,9 @@ describe('temper fail chance and ward', () => {
       expect(successChanceFor(level)).toBe(UPGRADE_SUCCESS_CHANCE[level]);
       expect(successChanceFor(level, undefined, 1)).toBeGreaterThan(UPGRADE_SUCCESS_CHANCE[level]);
     }
-    const heart = itemDefinitionById('obsidian-heart')!;
-    expect(heart.family).toBe('artifact');
+    // No authored definition is an artifact any more (the five are Essence
+    // flags), so the family's table is exercised on a stand-in.
+    const heart = { ...itemDefinitionById('keeper-signet')!, family: 'artifact' as const };
     for (let level = 0; level < ARTIFACT_SUCCESS_CHANCE.length; level++) {
       expect(successChanceFor(level, heart)).toBe(ARTIFACT_SUCCESS_CHANCE[level]);
       expect(successChanceFor(level, heart, 2)).toBeGreaterThan(ARTIFACT_SUCCESS_CHANCE[level]);
@@ -170,7 +171,7 @@ describe('temper fail chance and ward', () => {
     const pastTable = UPGRADE_SUCCESS_CHANCE.length + 5;
     expect(successChanceFor(pastTable)).toBe(0);
     expect(successChanceFor(pastTable, undefined, 3)).toBe(0);
-    const heart = itemDefinitionById('obsidian-heart')!;
+    const heart = { ...itemDefinitionById('keeper-signet')!, family: 'artifact' as const };
     expect(successChanceFor(ARTIFACT_SUCCESS_CHANCE.length + 5, heart, 3)).toBe(0);
   });
 

@@ -370,6 +370,7 @@ export class NpcQuestService {
       const minted = mintEquipment(r.item.defId, r.item.rarity);
       if (minted) this.inventory.add(minted);
     }
+    if (r.artifact) this.economy.grantArtifact(r.artifact);
     const grants = missionXpGrants(mission, times);
     if (grants.length > 0) {
       // Lazy, so the skill pipeline (and the crafting catalogue behind it)
@@ -475,6 +476,7 @@ export class NpcQuestService {
       // clear inventory slot would be worse than losing one grant.
       if (minted) this.inventory.add(minted);
     }
+    if (r.artifact) this.economy.grantArtifact(r.artifact);
     if (r.title) this.economy.grantCosmetic('title-prefix', r.title);
     if (r.cosmetic) this.economy.grantCosmetic(r.cosmetic.id, r.cosmetic.variant);
     if (r.achievement) this.xp.claimAchievement(r.achievement);
