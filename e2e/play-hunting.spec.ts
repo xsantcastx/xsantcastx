@@ -39,8 +39,19 @@ async function toQuarry(page: Page): Promise<void> {
   await focusWorld(page);
 }
 
-/** Swing with J; when the swings stop landing, take a step. Ends when the Defeated count rises. */
-async function huntOne(page: Page): Promise<void> {
+/**
+ * Swing with J; when the swings stop landing, take a step. Ends when the
+ * Defeated count rises, and returns by how much.
+ *
+ * Usually by one. A swing hits every Maw in reach, though, and a Maw walks up
+ * to stand ~95 px in front of the Keeper, so a second Maw can arrive on the
+ * same spot and take every blow the first one takes: then one J fells both and
+ * Defeated rises by two. That is the cleave, not a double count (each kill has
+ * its own id and pays once; seamworks-engine.test.cjs "one swing that fells two
+ * stacked Maws"). It happens when the walk to x=1100 overshoots on a busy
+ * machine, which is why this used to fail a different test each run.
+ */
+async function huntOne(page: Page): Promise<number> {
   const start = await kills(page);
   await walkTo(page, 1100, 40);
   let last = await enemyHp(page), stale = 0, moves = 0;
@@ -57,7 +68,10 @@ async function huntOne(page: Page): Promise<void> {
       if (++moves % 12 === 0) dir = dir === 'd' ? 'a' : 'd';
     }
   }
-  expect(await kills(page), 'the Maw never fell').toBe(start + 1);
+  const felled = (await kills(page)) - start;
+  expect(felled, 'the Maw never fell').toBeGreaterThanOrEqual(1);
+  expect(felled, 'one swing reaches at most the Maws standing in front of the Keeper').toBeLessThanOrEqual(3);
+  return felled;
 }
 
 /** Pace back and forth over the kill site so the drops are walked over. */
@@ -88,9 +102,11 @@ test.describe('Hunting, played', () => {
     await toQuarry(page);
     const hunting = await xp(page, 'hunting');
     const mining = await xp(page, 'mining');
-    await huntOne(page);
+    const felled = await huntOne(page);
     await sweep(page);
     await expect.poll(() => xp(page, 'hunting'), { timeout: 8000 }).toBeGreaterThan(hunting);
+    // Never paid twice: a 60 HP Maw is worth 12 Hunting XP (skills/hunting.ts), once per kill.
+    expect(await xp(page, 'hunting') - hunting).toBeLessThanOrEqual(12 * felled);
     await expect.poll(() => xp(page, 'mining'), { timeout: 8000 }).toBeGreaterThan(mining);
   });
 
