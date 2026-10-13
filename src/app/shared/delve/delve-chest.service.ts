@@ -30,7 +30,8 @@ import { CHEST_GEAR_SLOTS, CHEST_SLOTS, DelveChest, chestHolderId, chestKey, che
 export interface ChestRow { stackKey: string; name: string; art: string; qty: number }
 /** One piece of gear, in the chest or in the bag beside it. */
 export interface ChestGearRow { id: string; name: string; art: string; rarity: string }
-export type ChestMove = { ok: true; qty: number } | { ok: false; message: string };
+/** A refusal carries its English line and a play.delve.chest.* key (+ vars) the HUD translates. */
+export type ChestMove = { ok: true; qty: number } | { ok: false; message: string; key: string; vars?: Record<string, number> };
 
 @Injectable({ providedIn: 'root' })
 export class DelveChestService {
@@ -65,14 +66,14 @@ export class DelveChestService {
   /** Put one piece of gear from the bag into the chest. */
   putGear(areaId: string, index: number, itemId: string): ChestMove {
     const item = this.inventory.itemById(itemId);
-    if (!item || item.equipped || item.explorerId) return { ok: false, message: 'Only gear in your satchel (not worn) can go in.' };
+    if (!item || item.equipped || item.explorerId) return { ok: false, message: 'Only gear in your satchel (not worn) can go in.', key: 'play.delve.chest.gearOnlyBag' };
     const chest = this.saves.chest(areaId, index);
-    if (!chest) return { ok: false, message: 'The chest is not ready yet.' };
+    if (!chest) return { ok: false, message: 'The chest is not ready yet.', key: 'play.delve.chest.notReady' };
     const holder = chestHolderId(chest);
     if (this.inventory.itemsOnExplorer(holder).length >= CHEST_GEAR_SLOTS) {
-      return { ok: false, message: `The chest holds ${CHEST_GEAR_SLOTS} pieces of gear. Take one out first.` };
+      return { ok: false, message: `The chest holds ${CHEST_GEAR_SLOTS} pieces of gear. Take one out first.`, key: 'play.delve.chest.gearFull', vars: { n: CHEST_GEAR_SLOTS } };
     }
-    if (!this.inventory.equipOnExplorer(itemId, holder, CHEST_GEAR_SLOTS)) return { ok: false, message: 'That could not be saved. Try again.' };
+    if (!this.inventory.equipOnExplorer(itemId, holder, CHEST_GEAR_SLOTS)) return { ok: false, message: 'That could not be saved. Try again.', key: 'play.delve.chest.saveFailed' };
     chest.n++;
     this.saves.saveChest();
     return { ok: true, qty: 1 };
@@ -82,8 +83,8 @@ export class DelveChestService {
   takeGear(areaId: string, index: number, itemId: string): ChestMove {
     const chest = this.saves.chest(areaId, index, false);
     const item = this.inventory.itemById(itemId);
-    if (!chest || !item || item.explorerId !== chestHolderId(chest)) return { ok: false, message: 'That is not in the chest.' };
-    if (!this.inventory.unequip(itemId)) return { ok: false, message: 'That could not be saved. Try again.' };
+    if (!chest || !item || item.explorerId !== chestHolderId(chest)) return { ok: false, message: 'That is not in the chest.', key: 'play.delve.chest.notInChest' };
+    if (!this.inventory.unequip(itemId)) return { ok: false, message: 'That could not be saved. Try again.', key: 'play.delve.chest.saveFailed' };
     chest.n++;
     this.saves.saveChest();
     return { ok: true, qty: 1 };
@@ -92,14 +93,14 @@ export class DelveChestService {
   /** Put every one of a satchel stack into the chest. */
   put(areaId: string, index: number, stackKey: string): ChestMove {
     const chest = this.saves.chest(areaId, index);
-    if (!chest) return { ok: false, message: 'The chest is not ready yet.' };
+    if (!chest) return { ok: false, message: 'The chest is not ready yet.', key: 'play.delve.chest.notReady' };
     const qty = this.inventory.stackOf(stackKey);
-    if (qty < 1) return { ok: false, message: 'You have none of that left.' };
+    if (qty < 1) return { ok: false, message: 'You have none of that left.', key: 'play.delve.chest.noneLeft' };
     if (!chest.slots[stackKey] && Object.keys(chest.slots).length >= CHEST_SLOTS) {
-      return { ok: false, message: `The chest is full (${CHEST_SLOTS} kinds of thing). Take something out first.` };
+      return { ok: false, message: `The chest is full (${CHEST_SLOTS} kinds of thing). Take something out first.`, key: 'play.delve.chest.full', vars: { n: CHEST_SLOTS } };
     }
     const result = this.inventory.consumeStacks(moveId(chest), [{ id: stackKey, count: qty }]);
-    if (!result.ok) return { ok: false, message: 'That could not be saved. Try again.' };
+    if (!result.ok) return { ok: false, message: 'That could not be saved. Try again.', key: 'play.delve.chest.saveFailed' };
     chestPut(chest, stackKey, qty);
     this.saves.saveChest();
     return { ok: true, qty };
@@ -109,9 +110,11 @@ export class DelveChestService {
   take(areaId: string, index: number, stackKey: string): ChestMove {
     const chest = this.saves.chest(areaId, index, false);
     const qty = chest?.slots[stackKey] ?? 0;
-    if (!chest || qty < 1) return { ok: false, message: 'That is not in the chest.' };
+    if (!chest || qty < 1) return { ok: false, message: 'That is not in the chest.', key: 'play.delve.chest.notInChest' };
     if (!this.inventory.grantStack(moveId(chest), stackKey, qty)) {
-      return { ok: false, message: this.inventory.canAcceptStackGrant(stackKey) ? 'That could not be saved. Try again.' : 'Your satchel is full. Make room first.' };
+      return this.inventory.canAcceptStackGrant(stackKey)
+        ? { ok: false, message: 'That could not be saved. Try again.', key: 'play.delve.chest.saveFailed' }
+        : { ok: false, message: 'Your satchel is full. Make room first.', key: 'play.delve.chest.bagFull' };
     }
     chestTake(chest, stackKey, qty);
     this.saves.saveChest();

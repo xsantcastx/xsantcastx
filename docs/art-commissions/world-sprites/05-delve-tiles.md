@@ -937,3 +937,103 @@ a tiny Keeper's camp: a small patched canvas lean-to over a bedroll, a ring of b
 ```text
 painterly texture, brush noise, soft airbrush shading, photorealism, 3D render, blur, motion blur, gradient background, scenery, floor tiles, text, UI, watermark, signature, frame, border, pixel-art dithering, jagged aliasing, inconsistent outline weight, front-facing view, multiple characters, skulls, horns, demonic anatomy, angel wings, halo
 ```
+
+## Delve extras: supports and blasting charges (added 2026-10-13)
+
+Placeables like the torch and chest, so they live in `Sprites/Props/` (transparent, not tile strips) and import today; numbering continues at 52. Loose rock needs no tile: it is the biome's own rock, and the engine draws its cracks and dust.
+
+### `tile-timber-support` - Timber support
+
+| | |
+|---|---|
+| Save as | `Assets/Sprites/Props/52-tile-timber-support.png` + sidecar `Assets/Sprites/Props/52-tile-timber-support.json` |
+| Spec | W6 prop - 64x64 cell, single frame |
+| On screen (1x) | 32 x 32 px |
+| Cell (authored 2x) | 64x64; pivot (32, 62) |
+| Priority | P1 |
+| Used in | Ember Delve: placed beside the Keeper on solid ground; loose rock within 3 cells holds when dug; walked through, taken back whole (X) |
+| Shows today | shape drawn in code (terrain-render.ts) |
+
+**Actions** - one sheet row per action, in this order
+
+| Row | Action | Frames | fps | Loop | Key poses |
+|---|---|---:|---:|:---:|---|
+| 0 | `idle` | 1 | 0 | no | standing in the cell |
+
+_Sits in a grid cell and the Keeper walks through it, so no baked ground shadow and keep the middle open._
+
+**Design prompt** (key pose / model sheet; animate from it)
+
+```text
+a mine shoring prop: two rootwood posts with iron bands holding up a short cap beam across the top of the cell; the posts stand on the cell floor; transparent between and around the posts so the wall behind shows; transparent background, one grid cell (64x64 authored = 32 px on screen), pivot bottom-centre (32, 62); side view. Infernal sprite palette: iron black, basalt grey, ember orange #E8752A seams. stylised 2D side-scroller game sprite, chibi-leaning proportions, clean cel shading in two to three tone steps, crisp dark violet-black outline of even weight, limited palette, flat transparent background, lit from the upper left, strong readable silhouette at small size, Eclipse Realms world-sprite style.
+```
+
+**Negative**
+
+```text
+painterly texture, brush noise, soft airbrush shading, photorealism, 3D render, blur, motion blur, gradient background, scenery, floor tiles, text, UI, watermark, signature, frame, border, pixel-art dithering, jagged aliasing, inconsistent outline weight, front-facing view, multiple characters, skulls, horns, demonic anatomy, angel wings, halo
+```
+
+### `tile-basalt-support` - Basalt support
+
+| | |
+|---|---|
+| Save as | `Assets/Sprites/Props/53-tile-basalt-support.png` + sidecar `Assets/Sprites/Props/53-tile-basalt-support.json` |
+| Spec | W6 prop - 64x64 cell, single frame |
+| On screen (1x) | 32 x 32 px |
+| Cell (authored 2x) | 64x64; pivot (32, 62) |
+| Priority | P1 |
+| Used in | Ember Delve: placed beside the Keeper on solid ground; loose rock within 5 cells holds when dug; walked through, taken back whole (X) |
+| Shows today | shape drawn in code (terrain-render.ts) |
+
+**Actions** - one sheet row per action, in this order
+
+| Row | Action | Frames | fps | Loop | Key poses |
+|---|---|---:|---:|:---:|---|
+| 0 | `idle` | 1 | 0 | no | standing in the cell |
+
+_Sits in a grid cell and the Keeper walks through it, so no baked ground shadow._
+
+**Design prompt** (key pose / model sheet; animate from it)
+
+```text
+a dressed basalt pillar with a squared capital and an iron collar, faint ember-orange seams at its joints, standing on the cell floor and reaching the top edge; clearly sturdier than the timber prop; transparent to either side of the pillar; transparent background, one grid cell (64x64 authored = 32 px on screen), pivot bottom-centre (32, 62); side view. Infernal sprite palette: iron black, basalt grey, ember orange #E8752A seams. stylised 2D side-scroller game sprite, chibi-leaning proportions, clean cel shading in two to three tone steps, crisp dark violet-black outline of even weight, limited palette, flat transparent background, lit from the upper left, strong readable silhouette at small size, Eclipse Realms world-sprite style.
+```
+
+**Negative**
+
+```text
+painterly texture, brush noise, soft airbrush shading, photorealism, 3D render, blur, motion blur, gradient background, scenery, floor tiles, text, UI, watermark, signature, frame, border, pixel-art dithering, jagged aliasing, inconsistent outline weight, front-facing view, multiple characters, skulls, horns, demonic anatomy, angel wings, halo
+```
+
+### `tile-blast-charge` - Blasting charge
+
+| | |
+|---|---|
+| Save as | `Assets/Sprites/Props/54-tile-blast-charge.png` + sidecar `Assets/Sprites/Props/54-tile-blast-charge.json` |
+| Spec | W6 prop loop - 64x64 cell, 4-frame `ambient` fuse loop (fps 12) |
+| On screen (1x) | 32 x 32 px |
+| Cell (authored 2x) | 64x64; pivot (32, 62) |
+| Priority | P1 |
+| Used in | Ember Delve: placed beside the Keeper, lit at once from a staff; the fuse burns about 2 s, then it clears a small round of rock (X beside it pinches the fuse out) |
+| Shows today | shape drawn in code (terrain-render.ts) |
+
+**Actions** - one sheet row per action, in this order
+
+| Row | Action | Frames | fps | Loop | Key poses |
+|---|---|---:|---:|:---:|---|
+| 0 | `ambient` | 4 | 12 | yes | the fuse spark sputters; the keg stays still |
+
+_The engine draws the blast flash and debris; paint only the lit keg. No baked ground shadow._
+
+**Design prompt** (key pose / model sheet; animate from it)
+
+```text
+a squat iron-banded keg of cinder powder sitting in the lower half of the cell, a short fuse rising from its lid with a bright spark #ffd36d that sputters across 4 frames; glowing orange cracks between the staves; transparent background, one grid cell (64x64 authored = 32 px on screen), pivot bottom-centre (32, 62); side view. Infernal sprite palette: iron black, basalt grey, ember orange #E8752A seams. stylised 2D side-scroller game sprite, chibi-leaning proportions, clean cel shading in two to three tone steps, crisp dark violet-black outline of even weight, limited palette, flat transparent background, lit from the upper left, strong readable silhouette at small size, Eclipse Realms world-sprite style.
+```
+
+**Negative**
+
+```text
+painterly texture, brush noise, soft airbrush shading, photorealism, 3D render, blur, motion blur, gradient background, scenery, floor tiles, text, UI, watermark, signature, frame, border, pixel-art dithering, jagged aliasing, inconsistent outline weight, front-facing view, multiple characters, skulls, horns, demonic anatomy, angel wings, halo
+```

@@ -60,6 +60,7 @@ import {
 import { MINIGAMES_I18N } from './minigames.i18n';
 import { HOME_FORGE_I18N } from './home-forge.i18n';
 import { anvilTierRules, homeAnvilQuality, tierNumeral } from './home-forge.model';
+import { MinigamePresenceService } from './minigame-presence.service';
 
 /** How long the result line shows before `done` fires. */
 const RESULT_HOLD_MS = 1100;
@@ -155,7 +156,11 @@ export class AnvilGameComponent implements OnDestroy {
   private timers: ReturnType<typeof setTimeout>[] = [];
   private seq = 0;
 
+  /** Tells the fixed NPC bubble to yield so Skip / Cancel is never covered. */
+  private readonly presenceSvc = inject(MinigamePresenceService);
+
   constructor() {
+    this.presenceSvc.enter();
     this.i18n.register(MINIGAMES_I18N);
     this.i18n.register(HOME_FORGE_I18N);
     this.reduced = this.isBrowser && typeof matchMedia === 'function'
@@ -168,6 +173,7 @@ export class AnvilGameComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.presenceSvc.leave();
     if (this.raf) cancelAnimationFrame(this.raf);
     this.raf = 0;
     this.timers.forEach(clearTimeout);
