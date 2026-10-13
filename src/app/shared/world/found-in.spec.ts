@@ -86,6 +86,10 @@ describe('foundIn (the real world data)', () => {
     expect(labels('celestial-alloy')).toContain('Orrery Rings');
   });
 
+  it('reads the veins each Delve biome lays out (World-Root Bark from petrified trunks)', () => {
+    expect(labels('world-root-bark')).toContain('Ember Delve');
+  });
+
   it('lists the expedition, not the buy-only Vendor, for an expedition material', () => {
     expect(labels('pyrite-dust')).toEqual(jasmine.arrayContaining(['Nexus expeditions']));
     expect(labels('pyrite-dust')).not.toContain('Material Vendor');
