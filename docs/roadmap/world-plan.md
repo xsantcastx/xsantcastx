@@ -4,7 +4,7 @@ The working build tracker for turning Eclipse Realms into one walkable world.
 Update it in the same commit that lands the work; an item is only `[x]` once it
 is merged to `main` **and** checked in a production build.
 
-Last updated: 2026-10-13
+Last updated: 2026-10-14
 
 Legend: `[x]` shipped · `[~]` in progress (branch named) · `[ ]` next · `[-]` later / blocked
 
@@ -280,6 +280,24 @@ filename the importer picks up automatically.
 
 The site is now only the game. Removed: tool pages/registry/embeds/ads, the visit counter (a Firestore write per page load), tool lore/mastery/usage, 34 tool quests, 135 tool easter eggs, most of the cosmic engine (59 → 9.5 kB; the cursor trail and ritual drone stay because the game uses them), dead CSS, `jspdf`, 138 sync duplicates; `/play/storyboard` 301 → `/play`. Initial bundle 1.75 → 1.67 MB, dist 51.9 → 43.9 MB, styles.css 135 → 104 kB. The footer gained a "Support the forge" row (donation modals were unreachable since August). `CLAUDE.md` rewritten as the game's operating manual. Details: `docs/cleanup/site-removal.md`
 - [~] Leftovers: daily tool pipeline, Pro Pack, Codex Solarii, empty Codex categories, Achievement Frame target, 4 stale Karma specs
+
+## World & cast (2026-10-14) `[ ]`
+
+Design: [`docs/world/world-and-cast.md`](../world/world-and-cast.md); new lore in
+`docs/world/lore-addendum.md` ("World and cast", shipped — owner reviews in play,
+per the owner's 2026-10-14 trust). The overworld, the main story (Prologue → Act
+I *The Old Seam* in the Delve → Act II *Five Witnesses*, the narrative bible's
+five chapters → Act III *The Fivefold Lock* below the Magma Halls → seasons),
+17 named people (the six canon, the bible's ten chapter characters placed at
+existing stations, and **Glim, the Margin-Light**, a lantern-moth companion
+inspired by Claude), and the ethical daily/weekly/season rhythms. The infinite
+Delve, liquids, fishing and the galactic dimensions are `docs/world/delve-and-beyond.md`.
+
+- [ ] S1 Glim, onboarding companion (voices the goal line, 3-step hint ladder, the Delve light)
+- [ ] S2 Story Act I framing (Prologue + Act I break scenes, Story journal, versioned `story` record)
+- [ ] S3 NPC depth pass (personal names on role keepers, act-aware lines)
+- [ ] S4 Glim's Atlas + "The Blank Places" · S5 commissions + bounties (banked, no streaks) · S6 Act II ch. 1 + ch. 3 in-world · S7 reputation · S8 ch. 2/4/5 · S9 Act III + the Long Eclipse
+- Watch: the old progression ledger still settles a daily streak (`app.component.ts`); it must never gate or reset a reward (reframe as "days visited" in S5)
 
 ## How to work on this plan
 
