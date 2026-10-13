@@ -150,9 +150,14 @@ FAMILIES = [
 # mismatch the cut-out guard above exists to stop. The two names without art of
 # their own get no item definition either, so nothing in the game points at a
 # painting that does not depict it.
+#
+# `32-codex-solarii` painted an artifact that was removed from the game (its
+# only effect went with the tools site); importing it would ship a card no
+# artifact id resolves to.
 SKIP_FILES = {
     'Items/ArtBible/Runes/051-rune-of-eclipse.png',
     'Items/ArtBible/Runes/052-rune-of-meridian.png',
+    'Items/Artifacts/32-codex-solarii.png',
 }
 
 

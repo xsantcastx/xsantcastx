@@ -1362,18 +1362,17 @@ export class EconomyService implements OnDestroy {
   /**
    * Unlock a cosmetic without charging for it, equipping a chosen variant.
    *
-   * The Pro Pack's entitlement path. Kept separate from `buyCosmetic` rather
-   * than added as a `free` flag, because the two differ in more than price:
-   * a grant picks its own variant (the Pack promises a *golden* XP bar, not
-   * whichever variant happens to be listed first), and it must not publish a
-   * `purchase$` event — that stream drives the "you bought something" toast and
-   * the spending achievements, neither of which should fire for something the
-   * visitor was given.
+   * The reward path (Collection Log, NPC chains). Kept separate from
+   * `buyCosmetic` rather than added as a `free` flag, because the two differ in
+   * more than price: a grant picks its own variant (a chain promises *its*
+   * title, not whichever variant happens to be listed first), and it must not
+   * publish a `purchase$` event — that stream drives the "you bought something"
+   * toast and the spending achievements, neither of which should fire for
+   * something the visitor was given.
    *
    * Idempotent on the cosmetic: re-granting an already-owned slot still moves
-   * the equipped variant, so a buyer who had bought the frame themselves and
-   * then bought Pro ends up wearing the Pro variant rather than silently
-   * getting nothing.
+   * the equipped variant, so a visitor who had bought the slot themselves ends
+   * up wearing the granted variant rather than silently getting nothing.
    */
   grantCosmetic(cosmeticId: string, variantId: string): boolean {
     if (!this.isBrowser) return false;
