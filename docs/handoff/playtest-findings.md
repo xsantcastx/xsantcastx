@@ -100,10 +100,23 @@ Both sides round to whole Gold, which eats the 2-point margin. In normal play th
 
 **Spec:** `play-missions.spec.ts`, "the whole Delve chain … The Fracture pays its 600 Delving XP".
 
+### P-7 · Low · A Smithing-gated recipe's refusal names the crafting ladder
+
+**Repro:** with Smithing 9 (forge XP one short of level 10) and the inputs in the satchel, open the Crafting Bench, search "Blasting" and pick Blasting charge.
+
+**Expected:** the button says what the gate is: Smithing 10, as the card's blurb does ("Needs Smithing 10").
+
+**Actual:** "Reach crafting level 10 first". The gate itself is right (at exactly the Smithing 10 threshold the recipe opens and makes two), only the sentence points at the wrong ladder. Same for every `skill: 'smithing'` recipe (tools, the Delve kit's supports and charges).
+
+**Suspect:** `CraftingBenchComponent.buildCta` (`src/app/shared/crafting/crafting-bench.component.ts`, around line 444) always uses `crafting.why.level`, and its progress meter reads `this.level.level` (the bench ladder) even for a Smithing recipe.
+
+**Spec:** `play-delve-extras.spec.ts`, "a Smithing-gated recipe says which skill it waits for" (fixme).
+
 ## Observations (not asserted, low)
 
 - **Keys pressed while a panel folds away are lost.** After a Waystone road or Escape there is a 160 ms fold during which the engine is still paused. A key already held, or pressed in that window, never registers until it is pressed again. The town and `data-area` switch before the fold ends.
 - **Ladder top:** while the Keeper hangs on a ladder (climbing state), D alone never steps off onto a one-cell ledge, because `climbTerrainBody` has no step-up. Holding W+D gets off. A player who releases W on the top rung and presses D appears stuck.
+- **Rock in the Delve breaks slower than four swings, silently.** A rock cell that pays Mining XP goes through the town seam's `selectCurrentWork` + `resolveMine` (`side-scroller.component.ts` `worldAction`, the `kind === 'mine'` branch), which refuses a break within `MINING_RECOVERY_MS` (2.5 s) of starting or of the last break. Measured on a fresh save: clicking one scorched-basalt ceiling cell every 0.65 s, it opened on the 7th swing (4.6 s), not the 4th (Pickaxe I does 1 of its 4 HP per swing), and the first Mining operation was booked at the same moment. While the breaks were refused the HUD line kept showing the previous message; no "seam needs a breath" was ever visible. The specs swing until the save shows the cell open. Owner call: is the town seam's breath meant to apply to Delve rock, and should the refusal show?
 - **Doc drift:** `home-forge.md` prices Anvil II at 750K. The live column asks 5M, because the rebalance re-placed the prices; the doc is stale, not the game.
 
 ## What the passing specs prove (chromium)
@@ -119,11 +132,26 @@ Both sides round to whole Gold, which eats the 2-point margin. In normal play th
 | Missions | Verrin: 3 cuttings consumed, Gold paid, +150 Delving XP, and the Nullthorn bench lock ("A Delve mission teaches this pattern") is gone. A short delivery (2/3) cannot be claimed. Archivist I pays once 3 inscriptions are copied, and II then shows 3/6. |
 | Vendor | It only buys. Selling 5 ore pays 5 × 2 Gold, and its price is below the Exchange's live net quote. |
 | Anvil | 4 Perfect → 100% and +40 Smithing XP. 4 Off → ≤20% and a smaller bonus. Skip → today's timed craft, the item, no anvil bonus. |
+| Delve supports | In a Magma Halls gallery (row 41 ceiling, generated loose cells), digging a loose cell overhead with no support groans and the rock hits for max(4, round(8% max HP)) = 8. A basalt support (key 9, B) placed under a loose cell holds it (no groan, no HP lost, cell open in the save); a loose cell more than 5 columns from it still falls. Thirteen falls in a row take 100 HP to exactly 1 and stop there. |
+| Blasting charges | The recipe is refused at Smithing 9 and makes two at Smithing 10. Without a staff, B refuses ("You need a staff"). With a crafted Staff I, 0 then B lights it; after the fuse the cells `blastCells` names (all within 2.3) are open in the save, Mining XP rises by exactly their per-cell pay, the sealed pocket's protected cracked walls and cache stay. A reload keeps the same diff and pays nothing again, also after descending back. In the fragment chamber (warden felled), the bedrock floor and the protected fragment stand. |
+| Inscriptions | The four new carvings (`roots-cutting-mark`, `basalt-seam-ledger`, `grotto-tally-marks`, `magma-unsigned`) each read with E ("New inscription." + their text) and land in `godforge-delve-lore`. With the eight older ones that is 12: Words I and II claim, Words III reads "Copy all 12 inscriptions", shows 12/12 and claims. With 11 it shows 11/12 and stays disabled. |
+| Gear in chests | A crafted Briarvein Kris (there is no sword recipe; the Kris is the weapon the other specs craft) goes into a chest: its ledger row moves to `explorer: delve-chest:<born>`. X on that chest says "Empty the chest first". After a reload the chest record and the Kris's location are unchanged; "Take" returns it to the bag, and the now-empty chest comes back with X. |
+| Keepers and townsfolk | In all five towns (read from what the engine draws, see below): every keeper's name tag is drawn at one fixed x, its body (±24) overlaps no station hit box, and it stands 0–100 px from its own stall. Walking west to east past them, each keeper says exactly one line (never its second). Standing by Kael for 7 s, stepping 210 px away and back does not re-greet. Every townsperson shadow drawn in the walk stands off every stall. With `preferred-language` es, every town draws exactly its keepers' Spanish name tags and every bubble is a Spanish keeper line. |
 | Ritual | A miss says "Almost", stays in the pulse phase and spends no rune. A hit sockets `ash` into the Kris (rune count 2 → 1) and pays Enchanting XP. |
+
+## How the October specs get there (play-delve-extras, play-life)
+
+- **Deep Delve rows without a scripted dig.** The production build has no `ng` global, so the services cannot be driven from the page. `e2e/play-delve-fixtures.ts` builds the `godforge-delve` save in Node with the game's own pure code (`generateTerrain` for the pinned seed, `terrainDiff`, `encodeCells`, `terrainLayout`): "this player dug a gallery here and pitched a camp". The Keeper then takes the shaft's real "Descend to your camp" and everything after is keys and clicks. Smithing XP is seeded the same way, through `emptyActivityLedger()` and the skill curve (`xpForLevel`).
+- **Clicking a cell.** Ceiling cells are dug by clicking them, mapped world → client with the engine's own camera rule and the Keeper's known feet. Rubble only lands on the Keeper from a cell dug straight overhead, which the keyboard cannot aim at.
+- **Keepers and townsfolk without screenshots.** `play-life.spec.ts` wraps `fillText` and `ellipse` on the world canvas: name tags (tag font and colour at the tag's height) and bubbles (bubble font and ink) give each keeper's world x and every line spoken; the floor shadows (30 : 7) give where each figure stands. Station hit boxes are the town data `stationAt` reads.
+
+**October run (chromium, PW_PORT 4291):** 48 passed, 1 fixme (P-7) across all `play-*` specs; a second full run matched. One flake in the first run: the Celestial life walk drew exactly 100 frames against a `> 100` floor (the walk there is short); the floor is now 30 and the town passed on rerun. WebKit was not run for the new specs.
 
 ## Untestable or not covered
 
 - **Anvil quality changing the roll:** the bias is statistical (E[r] 0.5 → 0.556), so a single craft cannot show it. The ceiling proof is covered by unit and node tests. The specs assert the quality and XP the game reports instead.
 - **Delve materials dug by hand** (shadow-root cuttings and the rest) are seeded for the mission specs. Reaching them takes long scripted digs through seed-dependent rock, which would make the specs slow and brittle.
-- **Rune-Warden, Kael's cache and the fragment chamber:** too deep to reach reliably by keyboard in a spec.
+- **Rune-Warden and Kael's cache:** not fought or broken. The fragment chamber is now reached by a camp (with the warden's `claimed` flag set), for the charge and inscription specs.
+- **Timber support (reach 3):** not exercised; the basalt support (reach 5) is.
+- **Sealed chamber before the warden falls:** the charge spec only covers it with the flag set (open).
 - **WebKit:** the whole suite also passes on the `webkit` project (25 passed, 6 fixme). The canvas specs move in real time, so they assert ranges rather than exact positions.
