@@ -1,31 +1,62 @@
 @if (showBanner) {
-  <div class="cookie-banner" [attr.aria-label]="translate('cookies.banner.aria')">
-    <div class="cookie-content">
-      <div class="cookie-text">
-        <h3>🍪 {{ translate('cookies.banner.title') }}</h3>
-        <p>{{ translate('cookies.banner.description') }}</p>
-        <p class="cookie-details">
+  @if (world) {
+    <!-- In-world: one slim bar docked under the game frame (the /play host
+         shrinks by its height), never over the canvas or the HUD.
+         data-engine-ignore: Space on a focused button must press it, not jump. -->
+    <div #bar class="cookie-banner cookie-banner--world" role="region" [attr.aria-label]="translate('cookies.banner.aria')" data-engine-ignore>
+      <div class="cookie-content">
+        <p class="cookie-line">
+          <strong>{{ translate('cookies.banner.title') }}</strong>
+          <span>{{ translate('cookies.banner.description') }}</span>
           <small>{{ translate('cookies.banner.details') }}</small>
         </p>
-      </div>
-      <div class="cookie-actions">
-        <button
-          type="button"
-          class="btn-accept"
-          (click)="acceptCookies()"
-          [attr.aria-label]="translate('cookies.accept.aria')">
-          <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-          {{ translate('cookies.accept') }}
-        </button>
-        <button
-          type="button"
-          class="btn-deny"
-          (click)="denyCookies()"
-          [attr.aria-label]="translate('cookies.deny.aria')">
-          <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
-          {{ translate('cookies.deny') }}
-        </button>
+        <div class="cookie-actions">
+          <button
+            type="button"
+            class="btn-accept"
+            (click)="acceptCookies()"
+            [attr.aria-label]="translate('cookies.accept.aria')">
+            {{ translate('cookies.accept') }}
+          </button>
+          <button
+            type="button"
+            class="btn-deny"
+            (click)="denyCookies()"
+            [attr.aria-label]="translate('cookies.deny.aria')">
+            {{ translate('cookies.deny') }}
+          </button>
+        </div>
       </div>
     </div>
-  </div>
+  } @else {
+    <div #bar class="cookie-banner" role="region" [attr.aria-label]="translate('cookies.banner.aria')">
+      <div class="cookie-content">
+        <div class="cookie-text">
+          <h3>🍪 {{ translate('cookies.banner.title') }}</h3>
+          <p>{{ translate('cookies.banner.description') }}</p>
+          <p class="cookie-details">
+            <small>{{ translate('cookies.banner.details') }}</small>
+          </p>
+        </div>
+        <div class="cookie-actions">
+          <button
+            type="button"
+            class="btn-accept"
+            (click)="acceptCookies()"
+            [attr.aria-label]="translate('cookies.accept.aria')">
+            <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+            {{ translate('cookies.accept') }}
+          </button>
+          <button
+            type="button"
+            class="btn-deny"
+            (click)="denyCookies()"
+            [attr.aria-label]="translate('cookies.deny.aria')">
+            <svg class="ds-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" focusable="false"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+            {{ translate('cookies.deny') }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 }

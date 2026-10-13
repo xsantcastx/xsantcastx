@@ -46,9 +46,10 @@
   <app-footer></app-footer>
 }
 
-<!-- GDPR Cookie Banner -->
+<!-- GDPR Cookie Banner. On /play it is the compact in-world bar, docked under
+     the game frame (the frame shrinks by its height) rather than over it. -->
 @if (!isEmbedMode) {
-  <app-cookie-banner></app-cookie-banner>
+  <app-cookie-banner [world]="isPlayMode"></app-cookie-banner>
 }
 
 <!-- Mystery milestone celebration -->
