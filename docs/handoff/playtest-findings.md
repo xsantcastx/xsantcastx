@@ -161,6 +161,7 @@ Both sides round to whole Gold, which eats the 2-point margin. In normal play th
   - `play-update` "off /play it shows below the site nav too": the toast was not visible within 5 s.
 
   Both are logged here as load flakes still to watch.
+- **Second full run: 80 passed, 1 failed.** Both of the first run's flakes passed. The failure was `play-minigames` "routed /forge/crafting at 390 px…" at `expect(hit).toBe(true)`: at the Skip button's centre, `elementFromPoint` found something other than Skip. It then failed 3/3 when rerun alone, yet it had passed in the first full run. A stripped-down repro (same bag, no wait for the NPC) hit Skip itself, inside `.mg--anvil.gf-reveal.gf-in-view`. The spec uses neither `walkTo` nor `settleBetween`, so this change cannot affect it. It looks timing-dependent, perhaps the reveal animation or the NPC fading out. Left to whoever owns the /forge phone layout.
 
 ## Untestable or not covered
 
