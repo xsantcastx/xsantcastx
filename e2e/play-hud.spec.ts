@@ -130,7 +130,7 @@ async function assertCueClear(page: Page, kind: 'hover' | 'site'): Promise<void>
   // Above the bottom HUD band's top edge, wherever along it the cue falls: the
   // armed bar's width follows its label, so missing it sideways is luck.
   const vh = page.viewportSize()!.height;
-  for (const sel of ['.prompt', '.touch', '.dock']) {
+  for (const sel of ['.prompt', '.touch', '.touch-move', '.touch-act', '.dock']) {
     const other = await rectOf(page, sel);
     if (other && other.top > vh / 2) expect(at.bottom, `${kind} cue reaches down to ${sel}`).toBeLessThanOrEqual(other.top);
   }
@@ -437,7 +437,7 @@ test.describe('the /play HUD on a 390×844 phone', () => {
     for (const realm of Object.keys(STANDS) as RealmTownId[]) {
       const town = await standIn(page, realm);
       await expect(page.locator('.prompt.armed')).toBeVisible();
-      await assertPillClear(page, town, ['.prompt', '.satchel', '.vitals', '.touch']);
+      await assertPillClear(page, town, ['.prompt', '.satchel', '.vitals', '.touch', '.touch-move', '.touch-act']);
       await expect(page.locator('.vitals .meter.enemy'), `${town.name}: no enemy bar in town`).toHaveCount(0);
     }
   });
