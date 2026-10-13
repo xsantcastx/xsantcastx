@@ -84,7 +84,7 @@
       <ul>
         <!-- Phones: the pick is the first slot. With it chosen a tap on a block digs it; with a placeable chosen a tap places it. -->
         <li class="hot-pick-slot">
-          <button type="button" class="hot hot--pick" [class.picked]="touchTool === 'pick'" (click)="choosePick()" [attr.aria-pressed]="touchTool === 'pick'" [attr.aria-label]="t('play.hud.pickAria')"><i class="pick-ico" aria-hidden="true"></i><em>{{ t('play.hud.pick') }}</em></button>
+          <button type="button" class="hot hot--pick" [class.picked]="touchTool === 'pick'" (click)="choosePick()" [attr.aria-pressed]="touchTool === 'pick'" [attr.aria-label]="t('play.hud.pickAria')"><i class="pick-ico" aria-hidden="true"></i></button>
         </li>
         @for (slot of hotbar; track slot.id) {
           <li>
@@ -282,7 +282,8 @@
 
   <!-- Touch. A coarse pointer from 901px: one grid row, as it always was.
        Phones: movement on the left, actions on the right, one row, in a band
-       under the world (the clusters are display: contents on desktop). -->
+       under the world (the clusters are display: contents on desktop). On
+       phones each button is an icon (.ts / .tri); its name is its aria-label. -->
   <div class="touch" role="group" [attr.aria-label]="t('play.hud.touch.label')" [attr.inert]="panel ? '' : null">
     <div class="touch-move">
       <button type="button" class="tb tb--left" [attr.aria-label]="t('play.hud.touch.left')" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)"><span class="tl">{{ t('play.hud.touch.left') }}</span><i class="tri" aria-hidden="true"></i></button>
@@ -292,15 +293,15 @@
       }
     </div>
     <div class="touch-act">
-      <button type="button" class="tb tb--jump" [attr.aria-label]="t('play.hud.touch.jump')" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)"><span class="tl">{{ t('play.hud.touch.jump') }}</span><span class="ts">{{ t('play.hud.touch.jump') }}</span></button>
+      <button type="button" class="tb tb--jump" [attr.aria-label]="t('play.hud.touch.jump')" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)"><span class="tl">{{ t('play.hud.touch.jump') }}</span><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 3 4 12h5v8h6v-8h5z"/></svg></button>
       @if (state.delve && touchTool === 'place' && placingSlot?.count) {
-        <button type="button" class="tb tb--use tb--phone" [attr.aria-label]="t('play.hotbar.place') + ': ' + (placingSlot?.name ?? '')" (click)="placeHere()"><span class="ts">{{ t('play.hud.touch.place') }}</span></button>
+        <button type="button" class="tb tb--use tb--phone" [attr.aria-label]="t('play.hotbar.place') + ': ' + (placingSlot?.name ?? '')" (click)="placeHere()"><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="10" width="11" height="11" rx="1"/><path d="M18.5 3v8M14.5 7h8"/></svg></button>
       }
-      <button type="button" class="tb tb--use" [class.tb--off]="state.delve && touchTool === 'place' && !!placingSlot?.count" [attr.aria-label]="t('play.hud.touch.attack')" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)"><span class="tl">{{ t('play.hud.touch.attack') }}</span><span class="ts">{{ t('play.hud.touch.attackShort') }}</span></button>
-      <button type="button" class="tb tb--dodge" [attr.aria-label]="t('play.hud.touch.dodge')" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)"><span class="tl">{{ t('play.hud.touch.dodge') }}</span><span class="ts">{{ t('play.hud.touch.dodgeShort') }}</span></button>
+      <button type="button" class="tb tb--use" [class.tb--off]="state.delve && touchTool === 'place' && !!placingSlot?.count" [attr.aria-label]="t('play.hud.touch.attack')" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)"><span class="tl">{{ t('play.hud.touch.attack') }}</span><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 4 10.5 13.5"/><path d="M20 4v3.5L11.5 16 8 12.5 16.5 4z"/><path d="M6.5 11.5l6 6"/><path d="M9 15l-4.5 4.5"/></svg></button>
+      <button type="button" class="tb tb--dodge" [attr.aria-label]="t('play.hud.touch.dodge')" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)"><span class="tl">{{ t('play.hud.touch.dodge') }}</span><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M19.5 12a7.5 7.5 0 1 1-2.2-5.3"/><path d="M19.5 3.5v4h-4"/></svg></button>
       @if (state.delve) {
         <button type="button" class="tb tb--desk" [attr.aria-label]="t('play.hud.touch.down')" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)"><span class="tl">{{ t('play.hud.touch.down') }}</span><span class="ts">{{ t('play.hud.touch.down') }}</span></button>
-        <button type="button" class="tb tb--blast" [attr.aria-label]="t('play.hud.touch.blast')" (pointerdown)="input($event,'blast',true)" (pointerup)="input($event,'blast',false)" (lostpointercapture)="input($event,'blast',false)" (pointercancel)="input($event,'blast',false)"><span class="tl">{{ t('play.hud.touch.blast') }}</span><span class="ts">{{ t('play.hud.touch.blast') }}</span></button>
+        <button type="button" class="tb tb--blast" [attr.aria-label]="t('play.hud.touch.blast')" (pointerdown)="input($event,'blast',true)" (pointerup)="input($event,'blast',false)" (lostpointercapture)="input($event,'blast',false)" (pointercancel)="input($event,'blast',false)"><span class="tl">{{ t('play.hud.touch.blast') }}</span><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 2l1.9 6 5.6-3-3 5.6 6 1.9-6 1.9 3 5.6-5.6-3L12 22l-1.9-6-5.6 3 3-5.6L1.5 11.5l6-1.9-3-5.6 5.6 3z"/></svg></button>
       }
     </div>
   </div>
