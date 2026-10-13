@@ -1,13 +1,12 @@
 import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import {
-  Firestore, collection, collectionData, doc, getDoc, getDocs,
-  query, orderBy, limit, updateDoc
+  Firestore, collection, getDocs,
+  query, orderBy, limit
 } from '@angular/fire/firestore';
 import { Observable, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
 
-import { TOOLS_REGISTRY } from '../tools/tools-registry';
 import { EASTER_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { CACHE_TTL, FirestoreCacheService } from '../shared/firestore-cache.service';
 
@@ -33,30 +32,12 @@ export function unavailablePanel<T>(note: string): Panel<T> {
   return { state: 'unavailable', data: null, note };
 }
 
-export interface ToolUsageRow {
-  id: string;
-  title: string;
-  category: string;
-  count: number;
-}
-
 export interface EggRow {
   id: string;
   name: string;
   icon: string;
   rarity: string;
   discoveries: number;
-}
-
-export interface Suggestion {
-  id: string;
-  name: string;
-  description: string;
-  email: string;
-  submittedAt: string;
-  source: string;
-  /** Absent on every doc written before the admin panel existed. */
-  review?: 'reviewed' | 'accepted' | 'rejected';
 }
 
 export interface GitCommit {
@@ -89,7 +70,7 @@ const GITHUB_REPO = 'xsantcastx/xsantcastx';
 /**
  * Reads for the /admin dashboard.
  *
- * House rule inherited from ChangelogService: a missing rule or an
+ * House rule: a missing rule or an
  * SSR-hydration SDK mismatch is an expected, quiet degrade — it returns an
  * empty result, never a console.error. The dashboard's job is to render
  * something useful even when half its sources are unreachable, so every read
@@ -110,11 +91,10 @@ export class AdminDataService {
    * ───────────────────────────────────────────────────────────────────────────
    * WHY THE DASHBOARD IS THE WORST OFFENDER PER LOAD
    * ───────────────────────────────────────────────────────────────────────────
-   * Two of these panels are whole-collection scans: every tool-usage counter and
-   * every easter egg. There is no `limit` that would help, because the panels
-   * are totals — they have to see every document to add them up. One dashboard
-   * open is therefore several hundred reads, and it used to be several hundred
-   * reads *per render*.
+   * The egg panel is a whole-collection scan. There is no `limit` that would
+   * help, because the panel is a total — it has to see every document to add
+   * them up. One dashboard open is therefore over a hundred reads, and it used
+   * to be that many reads *per render*.
    *
    * Five minutes, with a Refresh button next to the timestamp, is the shape that
    * fits: the numbers move slowly, the person reading them knows when they want
@@ -131,7 +111,7 @@ export class AdminDataService {
 
   /** When the oldest cached panel was read, for the "last updated" line. */
   cachedAt(): number | null {
-    return this.cache.writtenAt(ADMIN_CACHE_PREFIX + 'tool-usage');
+    return this.cache.writtenAt(ADMIN_CACHE_PREFIX + 'egg-discoveries');
   }
 
   /** True for the failure modes we treat as "not wired up yet", not as bugs. */
@@ -156,99 +136,11 @@ export class AdminDataService {
 
   // ── Static sources (no network, always available) ───────────────────────
 
-  /** Live tool count straight off the registry — the same number /blueprint shows. */
-  get liveToolCount(): number {
-    return TOOLS_REGISTRY.filter(t => t.status === 'live').length;
-  }
-
-  get totalToolCount(): number {
-    return TOOLS_REGISTRY.length;
-  }
-
-  get comingSoonCount(): number {
-    return TOOLS_REGISTRY.filter(t => t.status === 'coming-soon').length;
-  }
-
-  get categoryCount(): number {
-    return new Set(TOOLS_REGISTRY.map(t => t.category)).size;
-  }
-
   get eggCount(): number {
     return EASTER_EGGS.length;
   }
 
   // ── Firestore: real data ────────────────────────────────────────────────
-
-  /**
-   * Site-wide visit count. Written by VisitCounterService on every page view,
-   * publicly readable, so this is a genuine number rather than an estimate.
-   */
-  async totalVisits(force = false): Promise<number | null> {
-    if (!this.isBrowser) return null;
-    try {
-      return await this.cached('visits', async () => {
-      const snap = await getDoc(doc(this.firestore, 'site-stats', 'visits'));
-      return snap.exists() ? (snap.data()['count'] ?? 0) : 0;
-      }, force);
-    } catch (err) {
-      return this.degrade(err, null, 'totalVisits');
-    }
-  }
-
-  /**
-   * Viewers currently on /mission-control. The presence docs are written with a heartbeat
-   * and deleted on unload, but a hard tab-close leaves one behind — so anything
-   * older than five minutes is treated as gone. This is the closest thing to a
-   * real "active users now" the site has without GA4.
-   */
-  async activeViewers(force = false): Promise<number | null> {
-    if (!this.isBrowser) return null;
-    try {
-      return await this.cached('active-viewers', async () => {
-      const snap = await getDocs(collection(this.firestore, 'live-viewers'));
-      const cutoff = Date.now() - 5 * 60 * 1000;
-      let live = 0;
-      snap.forEach(d => {
-        const ts = d.data()['timestamp'];
-        const ms = typeof ts === 'number' ? ts
-          : typeof ts === 'string' ? Date.parse(ts)
-          : ts?.toMillis?.() ?? 0;
-        if (ms >= cutoff) live++;
-      });
-      return live;
-      }, force);
-    } catch (err) {
-      return this.degrade(err, null, 'activeViewers');
-    }
-  }
-
-  /**
-   * Per-tool usage counters, joined against the registry so the table shows
-   * titles rather than slugs. Counters are session-deduped by ToolUsageService,
-   * so one row is roughly one session that opened that tool.
-   */
-  async toolUsage(force = false): Promise<ToolUsageRow[] | null> {
-    if (!this.isBrowser) return null;
-    try {
-      return await this.cached('tool-usage', async () => {
-      const snap = await getDocs(collection(this.firestore, 'tool-usage'));
-      const byId = new Map(TOOLS_REGISTRY.map(t => [t.id, t]));
-      const rows: ToolUsageRow[] = [];
-      snap.forEach(d => {
-        const meta = byId.get(d.id);
-        rows.push({
-          id: d.id,
-          title: meta?.title ?? d.id,
-          category: meta?.category ?? 'Unknown',
-          count: d.data()['count'] ?? 0
-        });
-      });
-      return rows.sort((a, b) => b.count - a.count);
-      }, force);
-    } catch (err) {
-      return this.degrade(err, null, 'toolUsage');
-    }
-  }
 
   /**
    * Easter-egg discovery counts, joined against the EASTER_EGGS definition so
@@ -272,39 +164,6 @@ export class AdminDataService {
       }, force);
     } catch (err) {
       return this.degrade(err, null, 'eggDiscoveries');
-    }
-  }
-
-  /**
-   * Tool suggestions from /blueprint. Admin-only in firestore.rules — an
-   * empty array here on a wrong-email session is the rules doing their job.
-   */
-  async suggestions(force = false): Promise<Suggestion[] | null> {
-    if (!this.isBrowser) return null;
-    try {
-      return await this.cached('suggestions', async () => {
-      const q = query(
-        collection(this.firestore, 'blueprint-suggestions'),
-        orderBy('submittedAt', 'desc'),
-        limit(100)
-      );
-      const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...(d.data() as any) })) as Suggestion[];
-      }, force);
-    } catch (err) {
-      return this.degrade(err, null, 'suggestions');
-    }
-  }
-
-  /** Triage a suggestion. Gated on the owner's email in firestore.rules. */
-  async setSuggestionReview(id: string, review: Suggestion['review']): Promise<boolean> {
-    if (!this.isBrowser) return false;
-    try {
-      await updateDoc(doc(this.firestore, 'blueprint-suggestions', id), { review });
-      return true;
-    } catch (err) {
-      this.degrade(err, false, 'setSuggestionReview');
-      return false;
     }
   }
 
@@ -334,27 +193,6 @@ export class AdminDataService {
     }, { force }).pipe(
       catchError(err => of(this.degrade(err, [], 'recentChangelog')))
     );
-  }
-
-  /**
-   * Activity written by the Claude Code hook that powers /mission-control. Doubles as a
-   * build-pulse indicator: if the newest entry is hours old, nothing is running.
-   */
-  async lastActivityAt(force = false): Promise<string | null> {
-    if (!this.isBrowser) return null;
-    try {
-      return await this.cached('last-activity', async () => {
-      const q = query(collection(this.firestore, 'claude-activity'), orderBy('timestamp', 'desc'), limit(1));
-      const snap = await getDocs(q);
-      if (snap.empty) return null;
-      const ts = snap.docs[0].data()['timestamp'];
-      if (typeof ts === 'string') return ts;
-      if (typeof ts === 'number') return new Date(ts).toISOString();
-      return ts?.toDate?.().toISOString() ?? null;
-      }, force);
-    } catch (err) {
-      return this.degrade(err, null, 'lastActivityAt');
-    }
   }
 
   // ── Build stats (emitted by scripts/generate-sitemap.js) ────────────────

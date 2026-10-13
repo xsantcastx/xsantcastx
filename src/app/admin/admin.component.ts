@@ -7,7 +7,7 @@ import { Subscription } from 'rxjs';
 import { APP_VERSION } from '../version';
 import { VERSION_HISTORY } from '../version-history';
 import {
-  AdminDataService, Panel, ToolUsageRow, EggRow, Suggestion,
+  AdminDataService, Panel, EggRow,
   GitCommit, CiRun, BuildStats, loadingPanel, unavailablePanel
 } from './admin-data.service';
 import { isAdminEmail, ADMIN_EMAIL } from './admin.guard';
@@ -26,14 +26,6 @@ export type AdminView = 'dashboard' | GmView;
 interface NavItem {
   id: AdminView;
   label: string;
-}
-
-interface Bar {
-  label: string;
-  sub: string;
-  value: number;
-  /** 0-100, relative to the largest bar in the set. */
-  pct: number;
 }
 
 @Component({
@@ -92,19 +84,9 @@ export class AdminComponent implements OnInit, OnDestroy {
   // ── 1. Overview ────────────────────────────────────────────────────────
   readonly version = APP_VERSION;
   readonly releaseCount = VERSION_HISTORY.length;
-  liveTools = 0;
-  comingSoon = 0;
-  categories = 0;
-  activeNow: Panel<number> = loadingPanel();
-  totalVisits: Panel<number> = loadingPanel();
   build: Panel<BuildStats> = loadingPanel();
-  lastActivity: Panel<string> = loadingPanel();
 
   // ── 2. Engagement ──────────────────────────────────────────────────────
-  topTools: Panel<Bar[]> = loadingPanel();
-  totalToolUses = 0;
-  toolsWithUsage = 0;
-  /** GA4-backed panels have nothing to read until Analytics is wired. */
   pageViews: Panel<null> = unavailablePanel(
     'Page-view history, session duration, bounce rate and new-vs-returning all come from GA4. The measurement ID is already in environment.ts — what is missing is the Data API, which cannot be called from the browser because it needs a service-account credential. Add a Cloud Function that proxies runReport() and this card fills in.'
   );
@@ -120,27 +102,22 @@ export class AdminComponent implements OnInit, OnDestroy {
   eggsTotal = 0;
   eggDiscoveryTotal = 0;
 
-  // ── 5. Blueprint & community ───────────────────────────────────────────
-  suggestions: Panel<Suggestion[]> = loadingPanel();
+  // ── 5. Dev log ─────────────────────────────────────────────────────────
   changelogEntries: Panel<any[]> = loadingPanel();
-  busySuggestion = '';
 
   /** True while a manual refresh is in flight, to disable the button. */
   refreshing = false;
 
   /**
-   * How many rows of each long list are on screen.
+   * How many rows of the egg table are on screen.
    *
-   * The egg table is 139 rows and the suggestion list is unbounded; both used to
-   * render in full. Ten at a time with a "Show more" is enough to see the shape
+   * The egg table is long and used to render in full. Ten at a time with a "Show more" is enough to see the shape
    * of the data without handing the browser a table nobody scrolls to the end of.
    */
   static readonly PAGE_SIZE = 10;
   eggsShown = AdminComponent.PAGE_SIZE;
-  suggestionsShown = AdminComponent.PAGE_SIZE;
 
   showMoreEggs(): void { this.eggsShown += AdminComponent.PAGE_SIZE; }
-  showMoreSuggestions(): void { this.suggestionsShown += AdminComponent.PAGE_SIZE; }
 
   // ── 6. SEO ─────────────────────────────────────────────────────────────
   seo: Panel<null> = unavailablePanel(
@@ -155,9 +132,6 @@ export class AdminComponent implements OnInit, OnDestroy {
   get actionsUrl(): string { return this.data.actionsUrl; }
 
   ngOnInit(): void {
-    this.liveTools = this.data.liveToolCount;
-    this.comingSoon = this.data.comingSoonCount;
-    this.categories = this.data.categoryCount;
     this.eggsTotal = this.data.eggCount;
 
     // On the server, leave `gate` at 'checking'. Two reasons: the prerendered
@@ -247,27 +221,10 @@ export class AdminComponent implements OnInit, OnDestroy {
    * unreachable source must not hold up the whole dashboard.
    */
   private loadAll(force = false): void {
-    this.data.activeViewers(force).then(v => this.settle('activeNow', v));
-    this.data.totalVisits(force).then(v => this.settle('totalVisits', v));
-    this.data.lastActivityAt(force).then(v => this.settle('lastActivity', v));
-
     this.data.buildStats().then(stats => {
       this.build = stats
         ? { state: 'ready', data: stats }
         : unavailablePanel('Written by scripts/generate-sitemap.js during a production build. `ng serve` has no dist/ to measure, so this is expected in dev — run `npm run build` to populate it.');
-      this.cdr.markForCheck();
-    });
-
-    this.data.toolUsage(force).then(rows => {
-      if (!rows) {
-        this.topTools = { state: 'error', data: null };
-      } else if (!rows.length) {
-        this.topTools = { state: 'empty', data: null };
-      } else {
-        this.totalToolUses = rows.reduce((sum, r) => sum + r.count, 0);
-        this.toolsWithUsage = rows.length;
-        this.topTools = { state: 'ready', data: this.toBars(rows.slice(0, 10)) };
-      }
       this.cdr.markForCheck();
     });
 
@@ -279,13 +236,6 @@ export class AdminComponent implements OnInit, OnDestroy {
         this.eggDiscoveryTotal = rows.reduce((s, r) => s + r.discoveries, 0);
         this.eggs = { state: 'ready', data: rows };
       }
-      this.cdr.markForCheck();
-    });
-
-    this.data.suggestions(force).then(rows => {
-      this.suggestions = !rows
-        ? { state: 'error', data: null }
-        : rows.length ? { state: 'ready', data: rows } : { state: 'empty', data: null };
       this.cdr.markForCheck();
     });
 
@@ -311,32 +261,6 @@ export class AdminComponent implements OnInit, OnDestroy {
         this.cdr.markForCheck();
       })
     );
-  }
-
-  /** Numbers-with-null: null means the read failed, 0 is a real zero. */
-  private settle(key: 'activeNow' | 'totalVisits' | 'lastActivity', value: any): void {
-    (this as any)[key] = value === null || value === undefined
-      ? { state: 'error', data: null }
-      : { state: 'ready', data: value };
-    this.cdr.markForCheck();
-  }
-
-  private toBars(rows: ToolUsageRow[]): Bar[] {
-    const max = Math.max(...rows.map(r => r.count), 1);
-    return rows.map(r => ({
-      label: r.title,
-      sub: r.category,
-      value: r.count,
-      pct: Math.round((r.count / max) * 100)
-    }));
-  }
-
-  async review(s: Suggestion, verdict: Suggestion['review']): Promise<void> {
-    this.busySuggestion = s.id;
-    const ok = await this.data.setSuggestionReview(s.id, verdict);
-    if (ok) s.review = verdict;
-    this.busySuggestion = '';
-    this.cdr.markForCheck();
   }
 
   // ── Formatting helpers ─────────────────────────────────────────────────
@@ -375,9 +299,7 @@ export class AdminComponent implements OnInit, OnDestroy {
     return 163.4 - (163.4 * this.eggUnlockRate) / 100;
   }
 
-  trackBar = (_: number, b: Bar) => b.label;
   trackEgg = (_: number, e: EggRow) => e.id;
-  trackSuggestion = (_: number, s: Suggestion) => s.id;
   trackCommit = (_: number, c: GitCommit) => c.sha;
   trackRun = (_: number, r: CiRun) => r.id;
 }

@@ -41,7 +41,7 @@
  * Pure data and pure functions — no browser APIs — so it is safe to import from
  * an SSR path.
  */
-import { REALMS, RealmDefinition, realmForCategory } from '../realms/realm.model';
+import { REALMS, RealmDefinition } from '../realms/realm.model';
 
 /**
  * The five wash slots. All optional; anything omitted is `transparent`, i.e.
@@ -157,11 +157,6 @@ export function atmosphereForRealm(realm: RealmDefinition): Atmosphere {
     center: tint(realm.color, 0.06),
     bottom: tint(realm.color, 0.025),
   };
-}
-
-/** The atmosphere for a tool, by its registry category. */
-export function atmosphereForCategory(category: string | undefined): Atmosphere {
-  return atmosphereForRealm(realmForCategory(category));
 }
 
 /**
