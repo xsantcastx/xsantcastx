@@ -105,20 +105,65 @@ export function ambientLayer(c: CanvasRenderingContext2D, realm: AmbientRealm, t
   c.restore();
 }
 
-/** Warm scenery and short-lived feedback. Visuals never affect combat state. */
+/** Most feedback motes alive at once; a burst past it retires the oldest. */
+export const FEEDBACK_CAP = 100;
+interface FeedbackMote { x: number; y: number; vx: number; vy: number; age: number; text?: string }
+
+/**
+ * Warm scenery and short-lived feedback. Visuals never affect combat state.
+ *
+ * Feedback motes are pooled: a burst fires every 0.2 s while the Keeper walks,
+ * and each used to push seven fresh objects and then copy the whole list in
+ * `slice`, with `update` copying it again through `filter` sixty times a
+ * second. Now `motes` is one array, compacted in place, and retired motes go
+ * back to `spare` to be reused.
+ */
 export class Atmosphere {
-  private motes: { x: number; y: number; vx: number; vy: number; age: number; text?: string }[] = [];
+  /**
+   * The scenery's gradients, built once per context. They used to be created
+   * every frame: one per hanging lantern in view, plus the hearth glow and the
+   * rug in the Seamworks. The lantern and hearth are unit radials scaled into
+   * place (inner radius as a fraction of the outer), the rug is fixed.
+   */
+  private cache: { c: CanvasRenderingContext2D; rug: CanvasGradient; hearth: CanvasGradient; lantern: CanvasGradient } | null = null;
+  private gradients(c: CanvasRenderingContext2D): { rug: CanvasGradient; hearth: CanvasGradient; lantern: CanvasGradient } {
+    if (this.cache?.c === c) return this.cache;
+    const rug = c.createLinearGradient(120, 590, 370, 620);
+    rug.addColorStop(0, '#6e3a3a'); rug.addColorStop(.5, '#8d4e42'); rug.addColorStop(1, '#6e3a3a');
+    const hearth = c.createRadialGradient(0, 0, 5 / 168, 0, 0, 1);
+    hearth.addColorStop(0, '#ffc27a66'); hearth.addColorStop(1, '#ffbc6d00');
+    const lantern = c.createRadialGradient(0, 0, 4 / 150, 0, 0, 1);
+    lantern.addColorStop(0, '#ffd69055'); lantern.addColorStop(1, '#ffbd7300');
+    this.cache = { c, rug, hearth, lantern };
+    return this.cache;
+  }
+  private readonly motes: FeedbackMote[] = [];
+  private readonly spare: FeedbackMote[] = [];
+  /** Live feedback motes (read by tests). */
+  get count(): number { return this.motes.length; }
+  private add(x: number, y: number, vx: number, vy: number, age: number, text?: string): void {
+    if (this.motes.length >= FEEDBACK_CAP) this.spare.push(this.motes.shift()!);
+    const p = this.spare.pop() ?? { x: 0, y: 0, vx: 0, vy: 0, age: 0, text: undefined };
+    p.x = x; p.y = y; p.vx = vx; p.vy = vy; p.age = age;
+    p.text = text;
+    this.motes.push(p);
+  }
   burst(x: number, y: number, text?: string): void {
-    if (text) this.motes.push({ x, y, vx: 0, vy: -48, age: 1, text });
+    if (text) this.add(x, y, 0, -48, 1, text);
     for (let i = 0; i < 7; i++) {
       const angle = i * Math.PI * 2 / 7;
-      this.motes.push({ x, y, vx: Math.cos(angle) * 65, vy: Math.sin(angle) * 50 - 35, age: .55 });
+      this.add(x, y, Math.cos(angle) * 65, Math.sin(angle) * 50 - 35, .55);
     }
-    this.motes = this.motes.slice(-100);
   }
   update(dt: number): void {
-    for (const p of this.motes) { p.x += p.vx * dt; p.y += p.vy * dt; p.age -= dt; }
-    this.motes = this.motes.filter(p => p.age > 0);
+    const motes = this.motes;
+    let kept = 0;
+    for (let i = 0; i < motes.length; i++) {
+      const p = motes[i];
+      p.x += p.vx * dt; p.y += p.vy * dt; p.age -= dt;
+      if (p.age > 0) motes[kept++] = p; else this.spare.push(p);
+    }
+    motes.length = kept;
   }
   /** Hand-painted camp furnishings sit behind Keepers and never obstruct movement. */
   hub(c: CanvasRenderingContext2D, time: number, boardsTo = 1120): void {
@@ -171,9 +216,7 @@ export class Atmosphere {
     c.beginPath(); c.moveTo(14, 602); c.lineTo(46, 588); c.moveTo(12, 596); c.lineTo(48, 600); c.moveTo(16, 608); c.lineTo(44, 592); c.stroke();
     c.fillStyle = '#7a5344'; c.beginPath();
     c.moveTo(78, 528); c.quadraticCurveTo(108, 500, 142, 534); c.lineTo(128, 546); c.quadraticCurveTo(100, 528, 86, 548); c.closePath(); c.fill();
-    const rug = c.createLinearGradient(120, 590, 370, 620);
-    rug.addColorStop(0, '#6e3a3a'); rug.addColorStop(.5, '#8d4e42'); rug.addColorStop(1, '#6e3a3a');
-    c.fillStyle = rug; c.beginPath(); c.ellipse(245, 604, 128, 16, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = this.gradients(c).rug; c.beginPath(); c.ellipse(245, 604, 128, 16, 0, 0, Math.PI * 2); c.fill();
     c.strokeStyle = '#e2c091'; c.lineWidth = 2; c.beginPath(); c.ellipse(245, 604, 108, 10, 0, 0, Math.PI * 2); c.stroke();
     c.fillStyle = '#d7b07a';
     for (let i = 0; i < 5; i++) { c.fillRect(168 + i * 32, 600, 8, 8); }
@@ -194,9 +237,11 @@ export class Atmosphere {
       c.globalAlpha = 1;
     }
     const pulse = 168 + Math.sin(time * 3) * 16;
-    const glow = c.createRadialGradient(245, 560, 5, 245, 560, pulse);
-    glow.addColorStop(0, '#ffc27a66'); glow.addColorStop(1, '#ffbc6d00');
-    c.fillStyle = glow; c.fillRect(70, 385, 350, 225);
+    // The hearth's glow: one unit gradient scaled to this frame's pulse, clipped
+    // to the same 350×225 box (in unit space) the per-frame gradient filled.
+    c.save(); c.fillStyle = this.gradients(c).hearth;
+    c.translate(245, 560); c.scale(pulse, pulse); c.fillRect(-175 / pulse, -175 / pulse, 350 / pulse, 225 / pulse);
+    c.restore();
     c.fillStyle = '#65504a'; c.beginPath(); c.ellipse(245, 600, 53, 13, 0, 0, Math.PI * 2); c.fill();
     c.strokeStyle = '#a17d61'; c.lineWidth = 10; c.beginPath(); c.moveTo(219, 593); c.lineTo(272, 577); c.moveTo(220, 577); c.lineTo(268, 594); c.stroke();
     for (let i = 0; i < 3; i++) {
@@ -238,9 +283,10 @@ export class Atmosphere {
       const y = 270 + Math.sin(x) * 45;
       c.strokeStyle = '#776454'; c.lineWidth = 2;
       c.beginPath(); c.moveTo(x, 0); c.lineTo(x, y); c.stroke();
-      const glow = c.createRadialGradient(x, y + 14, 4, x, y + 14, 150);
-      glow.addColorStop(0, '#ffd69055'); glow.addColorStop(1, '#ffbd7300');
-      c.fillStyle = glow; c.fillRect(x - 150, y - 140, 300, 300);
+      // Its warm pool: the cached unit gradient at the lantern, 150 px out (the box is y-140..y+160).
+      c.save(); c.fillStyle = this.gradients(c).lantern;
+      c.translate(x, y + 14); c.scale(150, 150); c.fillRect(-1, -154 / 150, 2, 2);
+      c.restore();
       c.fillStyle = '#564333'; c.fillRect(x - 13, y - 5, 26, 36);
       c.fillStyle = '#ffdca0'; c.fillRect(x - 8, y, 16, 23);
       c.fillStyle = '#fff0c4'; c.fillRect(x - 3, y + 4, 6, 15);

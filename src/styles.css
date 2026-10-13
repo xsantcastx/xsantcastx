@@ -2623,6 +2623,17 @@ body.gf-art-route::after {
   display: none;
 }
 
+/* /play: the world canvas is the whole screen, so the site backdrop behind it
+   is never seen, only paid for. cosmic-engine.js parks the starfield and pulsar
+   loops on the same class (SideScrollerComponent sets it). */
+body.gf-world-route .matrix-background,
+body.gf-world-route .cosmic-canvas,
+body.gf-world-route .cosmic-pulsar,
+body.gf-world-route .rune-whisper,
+body.gf-world-route .particle-layer {
+  display: none;
+}
+
 body.gf-art-route .matrix-background,
 body.gf-art-route .cosmic-canvas,
 body.gf-art-route .cosmic-pulsar,

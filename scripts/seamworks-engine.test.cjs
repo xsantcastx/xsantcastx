@@ -2528,3 +2528,165 @@ test('enemy bar: every creature has a play.creature.<id> name tag in EN + ES, an
   }
   assert.ok(LIFE_I18N['play.creature.unknown'].es);
 });
+
+// ── Render budget and the hot draw path (docs/handoff/play-perf.md) ─────────
+const budgetMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/render-budget.ts'));
+
+/** A context that counts gradient creations and records every nonzero shadowBlur written. */
+function budgetContext() {
+  const noop = () => {};
+  const seen = { gradients: 0, blurs: [] };
+  const target = {
+    globalAlpha: 1, globalCompositeOperation: 'source-over', filter: 'none', shadowBlur: 0,
+    measureText: () => ({ width: 10 }),
+    createLinearGradient: () => { seen.gradients++; return { addColorStop: noop }; },
+    createRadialGradient: () => { seen.gradients++; return { addColorStop: noop }; },
+  };
+  const ctx = new Proxy(target, {
+    get: (t, key) => key in t ? t[key] : noop,
+    set: (t, key, value) => { if (key === 'shadowBlur' && value > 0) seen.blurs.push(value); t[key] = value; return true; },
+  });
+  return { ctx, seen };
+}
+
+test('render budget: a touch-first device gets the lite tier, a desktop the full one, and the option wins', () => {
+  assert.deepEqual(budgetMod.renderBudget({ coarse: false }), budgetMod.FULL_BUDGET);
+  assert.deepEqual(budgetMod.renderBudget({ coarse: true }), budgetMod.LITE_BUDGET);
+  assert.equal(budgetMod.renderBudget({ coarse: true }, false).tier, 'full');
+  assert.equal(budgetMod.renderBudget({ coarse: false }, true).tier, 'lite');
+  assert.equal(budgetMod.FULL_BUDGET.maxPixelRatio, 2, 'desktop keeps its 2× backing store');
+  assert.ok(budgetMod.FULL_BUDGET.glows, 'desktop keeps its glows');
+  assert.equal(budgetMod.coarseDevice(undefined), false);
+  assert.equal(budgetMod.coarseDevice({ matchMedia: q => ({ matches: q.includes('coarse') }) }), true);
+  assert.equal(budgetMod.coarseDevice({ matchMedia: () => { throw new Error('no'); } }), false);
+});
+
+test('render budget: on a DPR-3 phone the canvas backing store is 1.5×, on desktop still 2×', () => {
+  const was = browserWindow.devicePixelRatio;
+  browserWindow.devicePixelRatio = 3;
+  try {
+    const sized = lite => {
+      const canvas = {
+        getContext: () => ({ setTransform() {} }),
+        getBoundingClientRect: () => ({ left: 0, top: 0, width: 390, height: 596 }),
+        parentElement: { clientWidth: 390, clientHeight: 596, getBoundingClientRect: () => ({ width: 390, height: 596 }) },
+      };
+      const engine = new Engine(canvas, { assets: {}, onInteract() {}, onState() {}, lite });
+      const size = [canvas.width, canvas.height];
+      engine.destroy();
+      return size;
+    };
+    assert.deepEqual(sized(true), [585, 894]);
+    assert.deepEqual(sized(false), [780, 1192]);
+  } finally { browserWindow.devicePixelRatio = was; }
+});
+
+test('render budget: the lite tier draws no shadowBlur glow anywhere in a town or a hunt; desktop still does', () => {
+  for (const lite of [true, false]) {
+    const { engine } = fixture(() => true, { lite });
+    const { ctx, seen } = budgetContext();
+    engine.context = ctx;
+    engine.frameDt = 1 / 60;
+    for (const town of builtTowns()) {
+      engine.setTown(town);
+      for (let n = 0; n < 4; n++) { engine.update(1 / 60); engine.render(); }
+      engine.goToStation('passage', true);
+      for (let n = 0; n < 4; n++) { engine.update(1 / 60); engine.render(); }
+    }
+    if (lite) assert.deepEqual(seen.blurs, [], 'no glow on a phone');
+    else assert.ok(seen.blurs.length > 0, 'the desktop look keeps its glows');
+    engine.destroy();
+  }
+});
+
+test('render budget: in the Delve a phone tints with plain alpha; desktop keeps the soft-light wash', () => {
+  for (const lite of [true, false]) {
+    const { engine } = fixture(() => true, { lite });
+    const ops = [];
+    const { ctx } = budgetContext();
+    engine.context = new Proxy(ctx, { get: (t, k) => t[k], set: (t, k, v) => { if (k === 'globalCompositeOperation') ops.push(v); t[k] = v; return true; } });
+    engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+    engine.frameDt = 1 / 60;
+    for (let n = 0; n < 5; n++) { engine.update(1 / 60); engine.render(); }
+    assert.equal(ops.includes('soft-light'), !lite, lite ? 'no soft-light read-back on a phone' : 'desktop look unchanged');
+    engine.destroy();
+  }
+});
+
+test('render budget: a phone bakes the town backdrop once and blits it; desktop draws it live as before', () => {
+  const painting = { complete: true, naturalWidth: 1536, naturalHeight: 864 };
+  const baked = [];
+  browserDocument.createElement = () => {
+    const canvas = { width: 0, height: 0, ops: [] };
+    canvas.getContext = () => new Proxy({}, { get: (_, k) => (...args) => { canvas.ops.push(k); return { addColorStop() {} }; }, set: () => true });
+    baked.push(canvas);
+    return canvas;
+  };
+  try {
+    for (const lite of [true, false]) {
+      baked.length = 0;
+      const { engine } = fixture(() => true, { lite });
+      engine.lazyImages.set(engine.sceneKey, painting);
+      const drawn = [];
+      const { ctx } = budgetContext();
+      engine.context = new Proxy(ctx, {
+        get: (t, k) => k === 'drawImage' ? (...args) => drawn.push(args[0]) : t[k],
+        set: (t, k, v) => { t[k] = v; return true; },
+      });
+      engine.frameDt = 1 / 60;
+      for (let n = 0; n < 30; n++) { engine.setInput('right', n < 20); engine.update(1 / 60); engine.render(); }
+      const caches = baked.filter(c => c.ops.includes('drawImage'));
+      if (lite) {
+        assert.equal(caches.length, 1, 'one backdrop canvas, built once, walking or not');
+        assert.deepEqual(caches[0].ops.filter(op => op === 'drawImage').length, 1, 'the painting was drawn into it once');
+        assert.equal(drawn.filter(d => d === painting).length, 0, 'the painting is never scaled onto the screen');
+        assert.equal(drawn.filter(d => d === caches[0]).length, 30, 'one blit per frame');
+      } else {
+        assert.equal(caches.length, 0, 'desktop bakes nothing');
+        assert.equal(drawn.filter(d => d === painting).length, 30, 'desktop draws the painting live every frame, as before');
+      }
+      engine.destroy();
+    }
+  } finally { delete browserDocument.createElement; }
+});
+
+test('hot draw path: after the first frames, a town, a hunt and the Delve render without building a gradient', () => {
+  const { engine } = fixture();
+  const { ctx, seen } = budgetContext();
+  engine.context = ctx;
+  engine.frameDt = 1 / 60;
+  const frames = n => { for (let i = 0; i < n; i++) { engine.update(1 / 60); engine.render(); } };
+  // Caches fill on first sight (a glow colour, the darkness hole), so walk the
+  // same stretch twice: the second pass must build nothing at all.
+  const pass = () => { engine.setInput('right', true); frames(60); engine.setInput('right', false); frames(30); };
+  const steady = label => {
+    const x = engine.player.x, y = engine.player.y;
+    frames(3); pass();
+    engine.player.x = x; engine.player.y = y; frames(3);
+    const before = seen.gradients;
+    pass();
+    assert.equal(seen.gradients - before, 0, `${label}: 90 frames, walking and standing, built no gradient`);
+  };
+  for (const town of builtTowns()) {
+    engine.setTown(town); steady(town.id);
+    engine.goToStation('passage', true); steady(`${town.id} hunt`);
+  }
+  engine.setTown(world.TOWNS.infernal);
+  engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+  steady('ember-delve');
+  engine.destroy();
+});
+
+test('hot draw path: feedback motes are pooled, never reallocated, and capped', () => {
+  const atmosphere = new atmosphereMod.Atmosphere();
+  const list = atmosphere.motes;
+  for (let n = 0; n < 40; n++) { atmosphere.burst(n, 0, n % 5 ? undefined : '+1'); atmosphere.update(1 / 60); }
+  assert.ok(atmosphere.count <= atmosphereMod.FEEDBACK_CAP, 'capped');
+  assert.equal(atmosphere.motes, list, 'one array for the life of the layer');
+  for (let n = 0; n < 120; n++) atmosphere.update(1 / 60);
+  assert.equal(atmosphere.count, 0, 'all faded');
+  const pooled = atmosphere.spare.length;
+  atmosphere.burst(0, 0);
+  assert.equal(atmosphere.spare.length, pooled - 7, 'a burst reuses retired motes instead of allocating');
+  assert.equal(atmosphere.motes[0].text, undefined, 'a reused mote does not keep an old caption');
+});

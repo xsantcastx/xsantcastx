@@ -96,9 +96,26 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.embed.isEmbed;
   }
 
+  /**
+   * The template reads this about twenty times per change-detection pass, and
+   * on /play the HUD runs a pass ten to fifteen times a second. `router.url`
+   * serialises the whole URL tree on every read, which made this getter one of
+   * the biggest allocators on the game screen (docs/handoff/play-perf.md). The
+   * answer only changes when the navigation or the committed router state
+   * does: the router replaces `routerState` together with the URL tree it
+   * serialises, so either object's identity is a sound cache key.
+   */
+  private playModeKey: object | null = null;
+  private playModeValue = false;
   get isPlayMode(): boolean {
-    const url = this.router.getCurrentNavigation()?.extractedUrl.toString() ?? this.router.url;
-    return url.split(/[?#]/)[0].startsWith('/play');
+    const navigation = this.router.getCurrentNavigation();
+    const key: object = navigation ?? this.router.routerState;
+    if (key !== this.playModeKey) {
+      const url = navigation?.extractedUrl.toString() ?? this.router.url;
+      this.playModeValue = url.split(/[?#]/)[0].startsWith('/play');
+      this.playModeKey = key;
+    }
+    return this.playModeValue;
   }
 
   get showEmbedBranding(): boolean {
