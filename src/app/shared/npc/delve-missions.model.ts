@@ -217,7 +217,7 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
       'At the bottom of the Delve the Godforge broke, and a piece of it is still lying where it fell. Something guards it. Bring it up, and do not try to use it on the way.',
     objective: {
       kind: 'deliver',
-      items: [{ materialId: GODFORGE_FRAGMENT, count: 1, where: 'the Magma Halls, past the rune-warden' }],
+      items: [{ materialId: GODFORGE_FRAGMENT, count: 1, where: 'the Magma Halls, past the Seam Eater' }],
     },
     reward: {
       ...incomeGold(150_000),

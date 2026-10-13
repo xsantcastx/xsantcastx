@@ -75,11 +75,11 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Creatures: the enemy bar, keyed by MonsterDef `creature` (engine `enemyId`) ──
   // English must match the MonsterDef `name` in world/towns/*.ts.
   'play.creature.rivet-maw': { en: 'Rivet Maw', es: 'Fauce Remachada' },
-  'play.creature.magma-maw': { en: 'Magma Maw', es: 'Fauce de Magma' },
+  'play.creature.cinder-bailiff': { en: 'Cinder Bailiff', es: 'Alguacil de Ceniza' },
   'play.creature.ephemeris-leech': { en: 'Ephemeris Leech', es: 'Sanguijuela de Efemerides' },
   'play.creature.mirror-substitute': { en: 'Mirror Substitute', es: 'Sustituto Espejo' },
   'play.creature.prism-forager': { en: 'Prism Forager', es: 'Forrajeador Prismatico' },
   'play.creature.rootglass-stag': { en: 'Rootglass Stag', es: 'Ciervo de Raizvidrio' },
-  'play.creature.rune-warden': { en: 'Rune-Warden', es: 'Custodio Runico' },
+  'play.creature.seam-eater': { en: 'Seam Eater', es: 'Devorador de Costuras' },
   'play.creature.unknown': { en: 'Enemy', es: 'Enemigo' },
 };

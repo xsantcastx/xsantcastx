@@ -64,7 +64,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   // Delve creatures that spawn under their own keys (towns/infernal.ts). Until
   // their paintings land they wear the creature they were cast from; their rigs
   // in creature-rigs.ts are those same bodies, so nothing changes on screen.
-  'rune-warden': 'mirror-substitute', 'magma-maw': 'rivet-maw',
+  'seam-eater': 'mirror-substitute', 'cinder-bailiff': 'rivet-maw',
 };
 
 /**
@@ -174,7 +174,7 @@ export const ART_PENDING: ReadonlySet<string> = new Set(
  * Painted art for a catalogue id, or null when nothing has been painted.
  *
  * The id's own painting wins over its alias: an alias is a stand-in, so the
- * import that lands `rune-warden` (or `pickaxe-1`) takes over at once, with no
+ * import that lands `seam-eater` (or `pickaxe-1`) takes over at once, with no
  * code change, and the alias row becomes housekeeping. No aliased id had art
  * of its own when this order was introduced, so it changed nothing on screen.
  */

@@ -24,6 +24,35 @@ export const SEAMWORKS_DROPS: ZoneDropTable = {
   ],
 };
 
+/**
+ * The Delve's two named creatures, from the creature atlas (canon proposal,
+ * eclipse-realms-creature-atlas-proposal.md, Infernal). Their drops are drawn
+ * from the atlas lines and the Delve's own materials:
+ *  - Cinder Bailiff, "walks work routes and stamps heat debts onto shortcuts":
+ *    the heat it collects (Ember Residue, now and then Infernal Heartstone).
+ *  - Seam Eater, "colossal serpentine mass of cooled slag, broken braces, and
+ *    molten interior channels": slag, residue and the heartstone of its
+ *    channels. It falls once per player.
+ */
+export const CINDER_BAILIFF_DROPS: ZoneDropTable = {
+  id: 'delve-cinder-bailiff',
+  entries: [
+    { id: 'coins', kind: 'coins', base: 16, spread: 8 },
+    { id: 'ore', kind: 'material', material: CINDER_ORE, art: CINDER_ORE, label: 'Cinder Ore', short: 'ore', qty: 1 },
+    { id: 'residue', kind: 'material', material: 'ember-residue', art: 'ember-residue', label: 'Ember Residue', short: 'residue', qty: 1, chance: 0.35, rarity: 'uncommon' },
+    { id: 'heartstone', kind: 'material', material: 'infernal-heartstone', art: 'infernal-heartstone', label: 'Infernal Heartstone', short: 'heart', qty: 1, chance: 0.05, rarity: 'legendary' },
+  ],
+};
+export const SEAM_EATER_DROPS: ZoneDropTable = {
+  id: 'delve-seam-eater',
+  entries: [
+    { id: 'coins', kind: 'coins', base: 60, spread: 20 },
+    { id: 'slag', kind: 'material', material: 'slag-fragment', art: 'slag-fragment', label: 'Slag Fragment', short: 'slag', qty: 4 },
+    { id: 'residue', kind: 'material', material: 'ember-residue', art: 'ember-residue', label: 'Ember Residue', short: 'residue', qty: 2, rarity: 'uncommon' },
+    { id: 'heartstone', kind: 'material', material: 'infernal-heartstone', art: 'infernal-heartstone', label: 'Infernal Heartstone', short: 'heart', qty: 1, rarity: 'legendary' },
+  ],
+};
+
 /** The camp is widened by this much: the town quarter sits between the forge and the Maws. */
 const QUARTER = 900;
 
@@ -77,8 +106,8 @@ export const EMBER_QUARRY: HuntZoneDef = {
  *   Root Hollows    rows  0–11  the World-Root's shadow: roots, petrified trunks, shadow-root
  *   Basalt Caverns  rows 12–25  Kael's abandoned forge-mines: Cinder, Slag, the Maws' cavern
  *   Glowcap Grotto  rows 26–39  light seeping through the fracture: glowcaps, soft blue light
- *   Magma Halls     rows 40–55  the fracture itself: Heartstone, ember-rock, heat, tougher Maws,
- *                               and the Godforge fragment chamber guarded by a Rune-Warden
+ *   Magma Halls     rows 40–55  the fracture itself: Heartstone, ember-rock, heat, Cinder Bailiffs,
+ *                               and the Godforge fragment chamber guarded by a Seam Eater
  *
  * Every player digs their own Delve: the host hands the engine a per-player
  * seed (shared/delve/delve-save.service.ts), which moves the veins and band
@@ -110,15 +139,16 @@ export const EMBER_DELVE: HuntZoneDef = {
     // Basalt Caverns: the Maws' cavern.
     { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1900, 2250, 2550],
       floorY: delveRow(19), range: [delveCol(48) + 40, delveCol(87) - 40] },
-    // Magma Halls: Maws that grew up in the heat.
+    // Magma Halls: Cinder Bailiffs walk the hall's work routes (creature atlas).
     // Own art key; until it is painted `artFor` shows the Rivet Maw (art.ts ART_ALIAS).
-    { creature: 'magma-maw', name: 'Magma Maw', hp: 110, spawnXs: [delveCol(38), delveCol(50)],
-      floorY: delveRow(49), range: [delveCol(30) + 40, delveCol(61) - 40] },
-    // The fragment chamber's guardian, under its own art key. Until it is painted
-    // it wears the Mirror Substitute's painting (art.ts ART_ALIAS) and rig.
+    { creature: 'cinder-bailiff', name: 'Cinder Bailiff', hp: 110, spawnXs: [delveCol(38), delveCol(50)],
+      floorY: delveRow(49), range: [delveCol(30) + 40, delveCol(61) - 40], drops: CINDER_BAILIFF_DROPS },
+    // The fragment chamber's guardian: the Seam Eater, the atlas's boss-scale
+    // Infernal creature, risen "from the deepest failed repairs". Until it is
+    // painted it wears the Mirror Substitute's painting (art.ts ART_ALIAS) and rig.
     // Felled once per player: it never rises again, and its fall unseals the fragment.
-    { creature: 'rune-warden', name: 'Rune-Warden', hp: 260, spawnXs: [delveCol(100)],
-      floorY: delveRow(51), range: [delveCol(92) + 30, delveCol(108) - 30], once: WARDEN_FLAG },
+    { creature: 'seam-eater', name: 'Seam Eater', hp: 260, spawnXs: [delveCol(100)],
+      floorY: delveRow(51), range: [delveCol(92) + 30, delveCol(108) - 30], once: WARDEN_FLAG, drops: SEAM_EATER_DROPS },
   ],
   drops: SEAMWORKS_DROPS,
   spawnX: 260,
@@ -223,11 +253,11 @@ export const EMBER_DELVE: HuntZoneDef = {
       { col: 20, row: 35, w: 25, h: 1, node: 'grotto-stone' },
       { col: 23, row: 34, node: 'glowcap' }, { col: 29, row: 34, node: 'glowcap' }, { col: 36, row: 34, node: 'glowcap' }, { col: 42, row: 34, node: 'glowcap' },
       { col: 87, row: 35, w: 2, h: 3, node: 'air' },
-      // Magma Halls: the Magma Maws' hall on a bedrock floor.
+      // Magma Halls: the Cinder Bailiffs' hall on a bedrock floor.
       { col: 30, row: 44, w: 31, h: 5, node: 'air' },
       { col: 29, row: 49, w: 33, h: 1, node: 'bedrock' },
       { col: 64, row: 47, w: 3, h: 2, node: 'heartstone-vein' },
-      // The fragment chamber: a bedrock floor, the Rune-Warden, the fragment at the back wall.
+      // The fragment chamber: a bedrock floor, the Seam Eater, the fragment at the back wall.
       { col: 92, row: 46, w: 16, h: 5, node: 'air' },
       { col: 91, row: 51, w: 18, h: 1, node: 'bedrock' },
       // One cell: each cell pays its yield, and there is one fragment per player.
