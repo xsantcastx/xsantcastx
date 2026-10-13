@@ -47,6 +47,7 @@ import { MINIGAMES_I18N } from './minigames.i18n';
 import { PULSE_WINDOW, RITUAL_CONFIRM_QUALITY, gradePulse, pulseAt } from './ritual.model';
 import { HOME_FORGE_I18N } from './home-forge.i18n';
 import { circleTierRules, tierNumeral } from './home-forge.model';
+import { MinigamePresenceService } from './minigame-presence.service';
 
 type Phase = 'place' | 'pulse' | 'hit' | 'confirm';
 
@@ -147,7 +148,11 @@ export class RuneRitualComponent implements OnDestroy {
   private dragFrom: { x: number; y: number; id: number } | null = null;
   private dragged = false;
 
+  /** Tells the fixed NPC bubble to yield so Skip / Cancel is never covered. */
+  private readonly presenceSvc = inject(MinigamePresenceService);
+
   constructor() {
+    this.presenceSvc.enter();
     this.i18n.register(MINIGAMES_I18N);
     this.i18n.register(HOME_FORGE_I18N);
     const reduced = this.isBrowser && typeof matchMedia === 'function'
@@ -160,6 +165,7 @@ export class RuneRitualComponent implements OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.presenceSvc.leave();
     this.stopPulse();
     this.timers.forEach(clearTimeout);
     this.timers = [];

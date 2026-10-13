@@ -47,7 +47,7 @@ Then, same batch if time allows: the other Delve tiles (P0 first: `tile-packed-d
 
 ## ART_ALIAS rows that retire as files land
 
-`src/app/shared/art/art.ts` currently stands in for these ids. Delete the row when its file is imported: `pickaxe-1..4`, `axe-1..4`, `sickle-1..4`, `staff-1..4` (16), `shadow-root-cutting`, `glowcap`, `godforge-fragment`, `kaels-hammer`, `dirt-block`, `basalt-block`, `torch`, `ladder`, `platform`, `chest`, `camp` (11). Note `staff-1` and `staff-2` both alias `keeper-staff` today.
+`src/app/shared/art/art.ts` currently stands in for these ids. Delete the row when its file is imported: `pickaxe-1..4`, `axe-1..4`, `sickle-1..4`, `staff-1..4` (16), `shadow-root-cutting`, `glowcap`, `godforge-fragment`, `kaels-hammer`, `dirt-block`, `basalt-block`, `torch`, `ladder`, `platform`, `chest`, `camp` (11). Note `staff-1` and `staff-2` both alias `keeper-staff` today. Delve extras (added later): `timber-support`, `basalt-support`, `blast-charge` (3) borrow `world-root-bark`, `godforge-slag` and `ember-stoker`; briefs at the end of `menu-paintings/07` and `world-sprites/05`.
 
 ## Id and path notes (code vs. canon)
 
