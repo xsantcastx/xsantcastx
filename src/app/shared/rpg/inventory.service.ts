@@ -61,7 +61,8 @@ import {
   itemsFromLedger,
   nextRevision,
   restoreCharms,
-  stackQuantity,
+  stackQuantityOf,
+  ledgerKnowsOp,
   tombstoneRecord,
   upsertRecord,
 } from './inventory-ops';
@@ -306,7 +307,7 @@ export class InventoryService {
       stacks,
       tombstones: ledger.tombstones.length,
       stackOps: ledger.stackOps.length,
-      checkpoints: (ledger.stackCheckpoints ?? []).length,
+      checkpoints: (ledger.stackFolds ?? []).length,
       bytes: JSON.stringify(ledger).length,
       budgetLeft: this.instanceRoom(),
       satchel: { used: layout.satchelUsed, cap: this.capacity().satchel },
@@ -337,7 +338,7 @@ export class InventoryService {
 
   /** Count of a material stack derived from grant/consume ops. */
   stackOf(stackKey: string): number {
-    return stackQuantity(this.ledger.stackOps, stackKey, this.ledger.stackCheckpoints ?? []);
+    return stackQuantityOf(this.ledger, stackKey);
   }
 
   /**
@@ -352,7 +353,7 @@ export class InventoryService {
   /** C7 grant adapter. Same grant id is a no-op. Refuses only on a failed save. */
   grantStack(grantId: string, stackKey: string, quantity: number): boolean {
     if (!this.isBrowser || !grantId || !stackKey || quantity <= 0) return false;
-    if (this.ledger.stackOps.some(op => op.id === grantId)) return true;
+    if (ledgerKnowsOp(this.ledger, grantId)) return true;
 
     const stepped = this.advanceRevision();
     const previous = this.ledger;
@@ -665,13 +666,13 @@ export class InventoryService {
 
   /** True when a stack op with this id is in the (uncompacted) log. */
   hasStackOp(opId: string): boolean {
-    return !!opId && this.ledger.stackOps.some(op => op.id === opId);
+    return ledgerKnowsOp(this.ledger, opId);
   }
 
   /** True when a `craftStack` under this mutation id has already landed. */
   stackCraftedFor(mutationId: string): boolean {
     const id = `${mutationId}:out`;
-    return !!mutationId && this.ledger.stackOps.some(op => op.id === id);
+    return !!mutationId && ledgerKnowsOp(this.ledger, id);
   }
 
   /** What a recipe is still short of, for the bench's ingredient slots. */
@@ -708,7 +709,7 @@ export class InventoryService {
     if (!mutationId || !inputs.length) return { ok: false, code: 'clock' };
 
     const opIds = inputs.map(input => `${mutationId}:in:${input.id}`);
-    if (opIds.every(id => this.ledger.stackOps.some(op => op.id === id))) {
+    if (opIds.every(id => ledgerKnowsOp(this.ledger, id))) {
       return { ok: true, replayed: true };
     }
     for (const input of inputs) {
@@ -807,14 +808,16 @@ export class InventoryService {
 
     const ids = refineOpIds(mutationId);
     const stored = this.ledger.stackOps.find(op => op.id === ids.grant);
-    if (stored) {
+    if (stored || ledgerKnowsOp(this.ledger, ids.grant)) {
+      // Folded ops keep only their id: a replay of one reports the request's own size.
+      const produced = stored?.quantity ?? Math.max(0, Math.floor(batches));
       const consumedOp = this.ledger.stackOps.find(op => op.id === ids.consume);
       return {
         ok: true,
         from: recipe.from,
         to: recipe.to,
-        consumed: consumedOp?.quantity ?? stored.quantity * recipe.ratio,
-        produced: stored.quantity,
+        consumed: consumedOp?.quantity ?? produced * recipe.ratio,
+        produced,
         replayed: true,
       };
     }
@@ -1198,7 +1201,7 @@ export class InventoryService {
 
     for (const stackKey of stackKeys) {
       if (!stackKey || slotClassOf(stackKey) === 'entitlement') continue;
-      const have = stackQuantity(next.stackOps, stackKey, next.stackCheckpoints ?? []);
+      const have = stackQuantityOf(next, stackKey);
       if (have <= 0) continue;
       const row = next.records.find(
         entry => entry.kind === 'stack' && entry.stackKey === stackKey && entry.source === 'inventory',
@@ -1613,7 +1616,7 @@ export class InventoryService {
 
   private save(): boolean {
     if (!this.isBrowser) return false;
-    this.ledger = compactStackOps(this.ledger);
+    this.ledger = compactStackOps(this.ledger, this.deviceId);
     const raw = JSON.stringify(this.ledger);
     this.store.write(INVENTORY_KEY, this.ledger);
     return this.store.readRaw(INVENTORY_KEY) === raw;
@@ -1646,7 +1649,7 @@ export class InventoryService {
     for (const row of ledger.records) {
       if (row.kind !== 'stack' || row.source !== 'inventory') continue;
       if (slotClassOf(row.stackKey) === 'entitlement') continue;
-      const quantity = stackQuantity(ledger.stackOps, row.stackKey, ledger.stackCheckpoints ?? []);
+      const quantity = stackQuantityOf(ledger, row.stackKey);
       if (quantity <= 0) continue;
       stacks.push({ id: row.id, stackKey: row.stackKey, quantity });
     }
