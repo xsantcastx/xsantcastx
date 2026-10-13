@@ -64,6 +64,20 @@ export class DelveSaveService {
     this.schedule();
   }
 
+  /**
+   * Whether the player has dug (or placed) anything in this area yet, under any
+   * layout. A read only: it never rolls a seed or writes a save, so asking it on
+   * a first visit leaves a browser that has not entered the Delve untouched.
+   */
+  hasDug(areaId: string): boolean {
+    if (!this.isBrowser) return false;
+    if (!this.hydrated) {
+      const raw = coerceDelveSave(this.store.read(DELVE_KEY));
+      return !!raw?.areas?.[areaId]?.cells;
+    }
+    return (this.live.get(areaId)?.cells.size ?? 0) > 0;
+  }
+
   // ── Once-per-player finds ─────────────────────────────────────────────────
 
   isClaimed(id: string): boolean { return !!this.ensure()?.claimed.includes(id); }

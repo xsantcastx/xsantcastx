@@ -265,7 +265,7 @@ test.describe('Delve extras: blasting charges, played', () => {
     const short = await benchWhy(page, 'Blasting', 'Blasting charge');
     expect(short.disabled).toBe(true);
     // The bench words it as "crafting level"; the level it reads is Smithing (the card says "Needs Smithing 10").
-    expect(short.why).toMatch(/level 10/);
+    expect(short.why).toMatch(/Smithing 10|level 10/);
     await seed(page, { ...bag(CHARGE_BAG), ...purse(10_000), ...activity({ forge: xpForLevel(10) }) });
     expect((await benchWhy(page, 'Blasting', 'Blasting charge')).disabled).toBe(false);
     await craft(page, 'Blasting', 'Blasting charge');

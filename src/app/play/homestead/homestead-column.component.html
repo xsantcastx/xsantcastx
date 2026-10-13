@@ -5,25 +5,10 @@
   </button>
   @if (open) {
     <button type="button" class="hc-strike" (click)="strike()">Strike the Forge · +{{ gold(hud.perClick) }} Gold</button>
+    <!-- Buildings first: the 15-Gold Bellows is a new player's first goal, so it
+         sits right under the Strike button, above the million-Gold corner. -->
     <ol class="hc-rows">
-      @if (hud.forge.length) {
-        <li class="hc-group">{{ t('homeForge.column.title') }}</li>
-        @for (row of hud.forge; track row.station) {
-          <li class="hc-row hc-row--home" [class.hc-row--ready]="row.affordable" [class.hc-row--bought]="bought === 'home:' + row.station">
-            @if (art(row)) { <img class="hc-icon" [src]="art(row)" alt="" width="40" height="40" loading="lazy"> }
-            @else { <span class="hc-icon" aria-hidden="true"></span> }
-            <span class="hc-text">
-              <b>{{ row.name }} <em>{{ row.tierLabel }}</em></b>
-              <small>{{ row.line }}</small>
-            </span>
-            <button type="button" class="hc-buy hc-buy--home" [disabled]="!row.affordable" (click)="upgradeHome(row)">
-              {{ row.button }}
-              @if (row.need) { <small>{{ row.need }}</small> }
-            </button>
-          </li>
-        }
-        <li class="hc-group">{{ t('homeForge.column.buildings') }}</li>
-      }
+      @if (hud.forge.length) { <li class="hc-group">{{ t('homeForge.column.buildings') }}</li> }
       @for (row of hud.rows; track row.id) {
         @if (row.state === 'mystery') {
           <li class="hc-row hc-row--mystery">
@@ -44,6 +29,23 @@
               @else if (row.cost <= 0) { Free }
               @else { {{ gold(row.cost) }} }
               @if (!row.affordable && !row.maxed) { <small>Need {{ gold(row.shortfall) }} more</small> }
+            </button>
+          </li>
+        }
+      }
+      @if (hud.forge.length) {
+        <li class="hc-group">{{ t('homeForge.column.title') }}</li>
+        @for (row of hud.forge; track row.station) {
+          <li class="hc-row hc-row--home" [class.hc-row--ready]="row.affordable" [class.hc-row--bought]="bought === 'home:' + row.station">
+            @if (art(row)) { <img class="hc-icon" [src]="art(row)" alt="" width="40" height="40" loading="lazy"> }
+            @else { <span class="hc-icon" aria-hidden="true"></span> }
+            <span class="hc-text">
+              <b>{{ row.name }} <em>{{ row.tierLabel }}</em></b>
+              <small>{{ row.line }}</small>
+            </span>
+            <button type="button" class="hc-buy hc-buy--home" [disabled]="!row.affordable" (click)="upgradeHome(row)">
+              {{ row.button }}
+              @if (row.need) { <small>{{ row.need }}</small> }
             </button>
           </li>
         }

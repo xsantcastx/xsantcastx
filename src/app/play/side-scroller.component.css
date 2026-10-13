@@ -801,11 +801,11 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .topbar { flex-wrap: wrap; gap: 8px; padding-bottom: 8px; background: linear-gradient(180deg, color-mix(in srgb, var(--adventure-hud-stage) 96.08%, transparent) 78%, color-mix(in srgb, var(--adventure-hud-stage) 0.00%, transparent)); }
   .objective { order: 5; flex-basis: 100%; padding: 2px 0 4px; border-left: 0; }
   .vitals, .satchel { top: 148px; width: calc(50% - 16px); min-width: 0; }
-  .tally { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .tally { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 6px; }
   .station-tip { max-width: 200px; }
   .vitals { left: 10px; }
   .satchel { right: 10px; }
-  .satchel b { font-size: 18px; }
+  .satchel b { font-size: 15px; }
   .stage:has(.book) .satchel,
   .stage:has(.book) .vitals { visibility: hidden; }
   .book {
@@ -1116,8 +1116,16 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .hot-line span { flex-basis: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hot-line .hot-place { min-height: 36px; }
 
+/* Phones: the hotbar sits on the floor of the view, just above the Interact
+   prompt, so it never covers the satchel plate or the Keeper (the Delve camera
+   holds the Keeper in the upper half of a phone's short view). */
 @media (max-width: 900px) {
-  .hotbar { top: 236px; left: 10px; right: 10px; width: auto; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+  .hotbar { top: auto; bottom: 254px; left: 10px; right: 10px; width: auto; grid-template-columns: minmax(0, 1fr) auto; align-items: center; }
+}
+@media (max-width: 900px) and (pointer: coarse) {
+  .hotbar { bottom: 312px; }
+}
+@media (max-width: 900px) {
   .hotbar ul { grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 46px; overflow-x: auto; }
   .stage:has(.book) .hotbar { visibility: hidden; }
 }
@@ -1148,3 +1156,101 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .chest li small { font: 600 11px Orbitron, sans-serif; color: var(--adventure-dialogue); }
 .chest li button { grid-column: 3; min-height: 44px; }
 .chest-empty { margin: 0 0 6px; color: var(--adventure-dialogue); font: italic 400 15px var(--font-lore, Georgia, serif); }
+
+/*
+ * The first-session goal line (world/first-goals.ts): "Goal 1 of 4 · Buy your
+ * first building" and one button that walks there. Desktop: centred under the
+ * top bar, between the health and satchel plates. Phones: a full-width row
+ * under the top bar, and the plates below it step down by its height.
+ */
+.guide {
+  position: absolute;
+  z-index: 4;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: min(600px, calc(100% - 500px));
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 6px 6px 14px;
+  border: 1px solid var(--adventure-ember);
+  border-radius: 2px;
+  background: var(--adventure-hud-panel-solid);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--adventure-ember) 25.00%, transparent), 0 10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
+  pointer-events: auto;
+}
+.guide-text {
+  margin: 0;
+  color: var(--adventure-parchment);
+  font-size: 15px;
+  line-height: 1.3;
+}
+.guide-text b {
+  margin-right: 6px;
+  color: var(--adventure-beacon-text);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.guide-go {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  color: var(--adventure-parchment);
+  border-color: var(--adventure-ember);
+  animation: guide-glow 2.4s ease-in-out infinite;
+}
+@keyframes guide-glow {
+  0%, 100% { outline: 1px solid color-mix(in srgb, var(--adventure-ember) 0.00%, transparent); }
+  50% { outline: 1px solid color-mix(in srgb, var(--adventure-ember) 70.00%, transparent); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .guide-go { animation: none; }
+}
+
+@media (max-width: 900px) {
+  .stage--guide { --guide-h: 64px; }
+  .guide {
+    top: 148px;
+    left: 10px;
+    right: 10px;
+    transform: none;
+    width: auto;
+    max-width: none;
+    height: 58px;
+    padding: 4px 4px 4px 10px;
+  }
+  .guide-text {
+    flex: 1;
+    min-width: 0;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    font-size: 13px;
+    line-height: 1.25;
+  }
+  .stage--guide .vitals,
+  .stage--guide .satchel { top: calc(148px + var(--guide-h)); }
+  .stage:has(.book) .guide { visibility: hidden; }
+
+  /* The Homestead's Gold list on a phone: full width where the plates were,
+     ending above the Interact prompt so the prompt never covers a Buy button. */
+  .stage--column app-homestead-column {
+    top: calc(148px + var(--guide-h, 0px));
+    left: 10px;
+    right: 10px;
+    width: auto;
+    max-height: calc(100% - 148px - var(--guide-h, 0px) - 256px);
+  }
+  .stage--column .vitals,
+  .stage--column .satchel { visibility: hidden; }
+}
+@media (max-width: 900px) and (pointer: coarse) {
+  .stage--column app-homestead-column { max-height: calc(100% - 148px - var(--guide-h, 0px) - 314px); }
+}
