@@ -134,8 +134,6 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.msg.stowed': { en: '{{name}} is back in the satchel.', es: 'De vuelta en la mochila: {{name}}.' },
   'play.hud.msg.stowFailed': { en: '{{name}} could not be stowed. Try again.', es: 'No se pudo guardar: {{name}}. Vuelve a intentarlo.' },
   'play.hud.msg.crumbles': { en: 'Your satchel is full, so the {{lname}} crumbles.', es: 'Tu mochila esta llena, asi que se desmorona: {{lname}}.' },
-  'play.hud.msg.seamBreathN': { en: 'The seam needs a breath ({{n}}s).', es: 'La veta necesita un respiro ({{n}} s).' },
-  'play.hud.msg.seamBreath': { en: 'The seam needs a breath.', es: 'La veta necesita un respiro.' },
   'play.hud.msg.miningNotSaved': { en: 'Mining could not be saved.', es: 'No se pudo guardar la mineria.' },
   'play.hud.msg.miningNotSavedStorage': { en: 'Mining could not be saved. Check browser storage and try again.', es: 'No se pudo guardar la mineria. Revisa el almacenamiento del navegador y vuelve a intentarlo.' },
   'play.hud.msg.bagFull': { en: 'Your bag is full.', es: 'Tu mochila esta llena.' },

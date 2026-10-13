@@ -134,10 +134,103 @@
   .cookie-actions {
     width: 100%;
   }
-  
+
   .btn-accept,
   .btn-deny {
     flex: 1;
     justify-content: center;
   }
+}
+
+/*
+ * In-world (/play): one slim bar docked under the game frame. The component
+ * writes its height to --gf-consent-h on <html> and the /play host gives that
+ * much back, so the canvas, the action bar, the touch row and the Hearth all
+ * end above it. Accept and Essential Only are the same size and weight: the
+ * choice is offered evenly, and both are plain buttons in the tab order.
+ */
+.cookie-banner--world {
+  padding: 8px 16px calc(8px + env(safe-area-inset-bottom, 0px));
+  border-top: 1px solid var(--adventure-ember);
+  background: var(--adventure-hud-panel-solid);
+  backdrop-filter: none;
+  color: var(--adventure-parchment);
+  animation: none;
+}
+
+.cookie-banner--world .cookie-content {
+  max-width: none;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
+  text-align: left;
+  gap: 8px 16px;
+}
+
+.cookie-line {
+  flex: 1 1 320px;
+  min-width: 0;
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.35;
+  color: var(--adventure-parchment);
+}
+
+.cookie-line strong {
+  margin-right: 6px;
+  color: var(--adventure-beacon-text);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.cookie-line small {
+  margin-left: 4px;
+  font-size: 12px;
+  color: var(--adventure-dialogue);
+}
+
+/* Two equal columns: each button as wide as the wider label needs. */
+.cookie-banner--world .cookie-actions {
+  flex: 0 1 auto;
+  width: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.cookie-banner--world .btn-accept,
+.cookie-banner--world .btn-deny {
+  justify-content: center;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--adventure-ember);
+  border-radius: 2px;
+  background: var(--adventure-hud-panel-solid);
+  color: var(--adventure-parchment);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  transition: none;
+}
+
+.cookie-banner--world .btn-accept:hover,
+.cookie-banner--world .btn-deny:hover {
+  transform: none;
+  box-shadow: none;
+  background: color-mix(in srgb, var(--adventure-ember) 18.00%, var(--adventure-hud-panel-solid));
+  color: var(--adventure-parchment);
+  border-color: var(--adventure-ember);
+}
+
+.cookie-banner--world .btn-accept:focus-visible,
+.cookie-banner--world .btn-deny:focus-visible {
+  outline: 2px solid var(--adventure-beacon-text);
+  outline-offset: 2px;
+}
+
+@media (max-width: 600px) {
+  .cookie-banner--world { padding: 8px 10px calc(8px + env(safe-area-inset-bottom, 0px)); }
+  .cookie-line { flex-basis: 100%; font-size: 13px; }
+  .cookie-banner--world .cookie-actions { flex: 1 1 100%; }
 }

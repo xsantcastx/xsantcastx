@@ -36,6 +36,9 @@ export const DELVE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.delve.chargeCleared': { en: 'The charge goes off: {{n}} cells of rock come down.', es: 'La carga estalla: caen {{n}} casillas de roca.' },
   'play.delve.chargeNothing': { en: 'The charge goes off, but nothing here would give.', es: 'La carga estalla, pero aqui nada cede.' },
 
+  // ── Host: a rock cell dug during the Mining seam's recovery (play/delve-reward.ts) ──
+  'play.delve.restingXp': { en: '+0 XP · the seam is catching its breath', es: '+0 XP · la veta recupera el aliento' },
+
   // ── Engine: loose rock and supports ──
   'play.delve.rockGroans': { en: 'The rock groans. Loose rock! A timber or basalt support nearby would hold it.', es: 'La roca cruje. Roca suelta! Un puntal de madera o de basalto cerca la sostendria.' },
   'play.delve.rockHits': { en: 'Loose rock hits you (-{{n}}). Place a support near loose rock (cracked, dusting) before you dig it.', es: 'Te golpea roca suelta (-{{n}}). Coloca un puntal junto a la roca suelta (agrietada, soltando polvo) antes de excavarla.' },
