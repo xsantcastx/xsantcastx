@@ -189,7 +189,8 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] **Onboarding owner calls, decided AAA-style** (`docs/handoff/onboarding-aaa.md`): goals reordered to buy → forge **and equip** the Basalt Edge → defeat a Rivet Maw → dig (the Edge needs only seam ore + the guaranteed ember, so no starter weapon); the Torch is the guaranteed first bench craft (2 Cinder Ore + 2 Gold, in "Ready now" as soon as the Edge is forged); a one-time "Next step" line points at the Rune Forge after the four goals once a strike is affordable (EN+ES). All four goals 64.5 s at 1280×800 (was 2m18s)
 - [x] **Delve: the dig is never blocked** (AAA call): a Pickaxe I basalt cell opens on swing 4 every time; during the seam's 2.5 s recovery the break is unpaid (no XP, no ore) with a throttled "+0 XP · the seam is catching its breath" cue; a full satchel / locked tier / failed save still refuse so nothing is lost (`src/app/play/delve-reward.ts`). Test harness: clicks 1 s apart, walks nudged to ≤8 px so rubble specs are deterministic
 - [x] **Consent bar in-world** (AAA call): docked under the game frame on `/play` (`--gf-consent-h`), Accept and Essential Only equal, no analytics before an answer, `e2e/play-consent.spec.ts`; the goal line moves beside the open Hearth or hides under 1180px
-- [~] **Phone HUD, Terraria-mobile style** (owner, 2026-10-13: "not playable" on a real phone): hotbar top-left with a satchel button, health top-right, joystick bottom-left, Use/Jump/Dodge/Interact bottom-right, tap a cell to use the selected item, transient messages, collapsible quest tracker, menu holds Return/Restart/Keys; landscape-first, portrait playable; target ≥65% unobstructed world
+- [x] **Phone HUD, Terraria-mobile style** (owner, 2026-10-13: "not playable" on a real phone; `docs/handoff/mobile-hud.md`): hotbar top-left (Pick slot first) + satchel button with badge, area title + slim health + menu top-right; menu holds Places/Return/Restart/Keys; goal line folds to a chip; messages are 4 s toasts; one touch row (movement left, Blast/Dodge/Use/Jump right, ≥44px, fits 360px); tap a cell to dig (Pick) or place (block). Unobstructed world: Delve 37–50% → 71–77% portrait, 18.5% → 69% landscape; desktop identical. `e2e/play-mobile-hud.spec.ts` (chromium + webkit)
+  - Next: phones in landscape wider than 900px (e.g. 932×430) still get the desktop layout; the Homestead Gold list unfolded on a phone covers mid-world; touch labels are 8–11px text, icons would read better
 - Owner's phone showed a build from before the Hearth fold: an installed app or a long-open tab never navigates, so it keeps an old bundle. Add a "new version — tap to reload" prompt when the service worker updates
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for sprite sheets
@@ -214,7 +215,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Phone HUD, Terraria-mobile style | agent worktree | `[~]` |
+| Service-worker "new version — Reload" prompt | agent worktree | `[~]` |
 
 ## Art still missing (placeholders in game)
 

@@ -216,17 +216,17 @@ test.describe('First session, played', () => {
       await seed(page);
       await openPlay(page);
       await expect(guide(page)).toContainText('Goal 1 of 4');
-      expect(await reachable(guide(page).getByRole('button')), 'Show me is covered').toBe(true);
-      // The goal line sits under the top bar and above the health and satchel plates.
+      expect(await reachable(guide(page).locator('.guide-go')), 'Show me is covered').toBe(true);
+      // The goal line sits under the top band, which holds the health bar and the satchel button.
       const [g, v, s] = await Promise.all([guide(page), page.locator('.vitals'), page.locator('.satchel')].map(l => l.boundingBox()));
-      expect(g!.y + g!.height).toBeLessThanOrEqual(v!.y);
-      expect(g!.y + g!.height).toBeLessThanOrEqual(s!.y);
+      expect(g!.y).toBeGreaterThanOrEqual(v!.y + v!.height);
+      expect(g!.y).toBeGreaterThanOrEqual(s!.y + s!.height);
 
-      await guide(page).getByRole('button').tap();
+      await guide(page).locator('.guide-go').tap();
       await expect(canvas(page)).toHaveAttribute('data-area', 'Your Homestead', { timeout: 30000 });
       // A Keeper with no building yet gets the Gold list unfolded, not a folded "1 Gold" chip.
       await expect(page.locator('.hc-toggle')).toHaveAttribute('aria-expanded', 'true');
-      await guide(page).getByRole('button').tap(); // to the Forge: the Interact prompt is now up
+      await guide(page).locator('.guide-go').tap(); // to the Forge: the Interact prompt is now up
       await expect(page.locator('.prompt.armed')).toBeVisible({ timeout: 20000 });
       const strike = page.locator('.hc-strike');
       const bellows = await strikeForBellows(page, async () => { await strike.tap(); });
