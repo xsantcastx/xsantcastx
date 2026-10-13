@@ -515,9 +515,13 @@ export const MISSION_PATTERN_RECIPES: readonly CraftingRecipe[] = [
  * bench and at a camp placed in the Delve.
  */
 export const DELVE_KIT_RECIPES: readonly CraftingRecipe[] = [
+  // The guaranteed first bench craft: Seamworks ore only, and a fee the
+  // Bellows pays in 20 seconds. The four first goals leave 2-3 Cinder Ore
+  // in the satchel (8 mined for the Basalt Edge, 6 spent, one per Maw), so a
+  // fresh save has this in "Ready now" by the end of its first two minutes.
   r('craft-delve-torch', 'Torch', 'delve', 'common', 'torch',
-    [m('cinder-ore', 1), m('world-root-bark', 1)],
-    30, 1, 'Three torches. Placed in the Delve they burn for good and push the dark back.',
+    [m('cinder-ore', 2)],
+    2, 1, 'Three torches of slow-burning Cinder Ore. Placed in the Delve they burn for good and push the dark back.',
     { count: 3, stack: true }),
   r('craft-delve-ladder', 'Ladder', 'delve', 'common', 'ladder',
     [m('world-root-bark', 2)],
