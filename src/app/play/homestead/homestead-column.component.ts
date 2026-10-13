@@ -9,7 +9,7 @@
  * reads nextCost / goldPerSecond live); buying is the Market's receipted
  * purchase, and the plot building grows on the purchase event.
  */
-import { ChangeDetectionStrategy, ChangeDetectorRef, Component, EventEmitter, OnDestroy, OnInit, Output, PLATFORM_ID, inject } from '@angular/core';
+import { ChangeDetectionStrategy, ChangeDetectorRef, Component, ElementRef, EventEmitter, HostListener, OnDestroy, OnInit, Output, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { artFor } from '../../shared/art/art';
@@ -18,6 +18,11 @@ import { TranslationService } from '../../translation.service';
 import { HOME_FORGE_I18N } from '../../shared/minigames/home-forge.i18n';
 import { tierNumeral } from '../../shared/minigames/home-forge.model';
 import { ColumnRow, formatGoldWhole, formatPerSecond } from './homestead.model';
+
+/** A touch-first screen whose short side is a phone's: the play view's phone HUD from 901px up. */
+const TOUCH_PHONE = '(hover: none) and (pointer: coarse) and (max-height: 500px)';
+/** The play view's phone HUD, where the unfolded list is a bottom sheet or a side drawer. */
+const PHONE_HUD = `(max-width: 900px), ${TOUCH_PHONE}`;
 
 @Component({
   selector: 'app-homestead-column',
@@ -31,6 +36,7 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly i18n = inject(TranslationService);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private sub?: Subscription;
 
   hud: HomesteadHud = { gold: 0, perSecond: 0, perClick: 1, rows: [], forge: [] };
@@ -39,7 +45,7 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
    * who owns no building yet: their first goal is a row in this list, so it
    * opens once for them (see ngOnInit).
    */
-  open = !this.browser || typeof window.matchMedia !== 'function' || !window.matchMedia('(max-width: 720px)').matches;
+  open = !this.browser || typeof window.matchMedia !== 'function' || !window.matchMedia(`(max-width: 720px), ${TOUCH_PHONE}`).matches;
   /** Folded or unfolded. The play view uses it to make room on a phone. */
   @Output() readonly openChange = new EventEmitter<boolean>();
   private firstHud = true;
@@ -77,6 +83,23 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
   art(row: ColumnRow | HomeForgeRow): string { return artFor(row.art)?.src ?? ''; }
 
   toggle(): void { this.open = !this.open; this.announce(); }
+
+  /** On a phone the unfolded list is a drawer over the world: Escape folds it. */
+  @HostListener('document:keydown.escape')
+  onEscape(): void { this.fold(); }
+
+  /** …and so does a tap on the world (Terraria's inventory). Taps on other HUD buttons leave it open. */
+  @HostListener('document:pointerdown', ['$event'])
+  onPointerDown(event: PointerEvent): void {
+    const target = event.target as Element | null;
+    if (target instanceof HTMLCanvasElement && !this.host.nativeElement.contains(target)) this.fold();
+  }
+
+  private fold(): void {
+    if (!this.open || !this.browser || typeof window.matchMedia !== 'function' || !window.matchMedia(PHONE_HUD).matches) return;
+    this.toggle();
+    this.cdr.markForCheck();
+  }
 
   /** Tell the play view, after this check: it styles its own stage from the answer. */
   private announce(): void { queueMicrotask(() => this.openChange.emit(this.open)); }
