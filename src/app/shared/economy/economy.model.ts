@@ -863,8 +863,8 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'nox', label: 'Nox shadows', color: '#7b61ff' },
       { id: 'eclipse', label: 'Eclipse fire', color: '#E8752A' },
       // Collection Log exclusive — granted by CollectionService at 100%, and
-      // not purchasable with Gold. Same precedent as the Pro Pack variants
-      // below: the catalogue has to know the id or `grantCosmetic` rejects it.
+      // not purchasable with Gold. The catalogue has to know the id or
+      // `grantCosmetic` rejects it.
       { id: 'archivist', label: 'Archivist light', color: '#e6dcff' },
     ],
   },
@@ -881,8 +881,6 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'shadowborn', label: 'Shadowborn', color: '#8B2252' },
       { id: 'unbroken', label: 'The Unbroken', color: '#c89868' },
       { id: 'ashwalker', label: 'Ashwalker', color: '#9fb4ae' },
-      // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
-      { id: 'pro', label: 'Pro', color: '#f8e8c8' },
       // Collection Log exclusive — the four Collector titles, granted by
       // CollectionService as the log crosses 25/50/75/100%. Real variants on
       // the real cosmetic rather than a label that only exists on one page:
@@ -937,8 +935,6 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'ornate', label: 'Ornate', color: '#c89868' },
       { id: 'molten', label: 'Molten', color: '#E8752A' },
       { id: 'void', label: 'Void', color: '#7b61ff' },
-      // Pro Pack exclusive — granted by ProService, not purchasable with Gold.
-      { id: 'golden', label: 'Golden', color: '#f8e8c8' },
     ],
   },
   {
