@@ -103,7 +103,7 @@ things with tools you crafted, and you see your economy working.
 - [x] Gathering nodes in every realm's hunt (`cde77a2`): herbs/wood/ore with tool tier + skill-level gates; regrowth timers (**not yet persisted** — reload resets); Found-in lists them. Also: **Skills Lodge** station in Rootglass Canopy (`/play?at=skills`), **Hunting XP** round(hp/5) per kill, Smithing level-up banner on bench crafts, cross-town `?at=` via `findStation()`, lantern = 7 + Delving/10 tiles, Delve hotbar EN+ES. Was: (herbs, rootglass, bark), using the same tool system
 - [x] **Smithing anvil mini-game** (`26218be`): 4 strikes graded Perfect/Good/Off → quality q; Smithing XP 8–40; roll bias r → r^(1−0.2q) stays inside today's band and ceiling (spec-proven), mean grade 0.5 → ≤0.556; Craft all / qty>1 / Skip = today's behaviour
 - [x] **Enchanting ritual** (`26218be`): drag or tap the rune onto the circle, then tap when the shrinking ring meets the socket; a hit sockets and pays Enchanting XP 8–40; a miss costs nothing and widens the window
-- [ ] Tile and tool art added to the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers)
+- [x] Tile and tool art in the commission pack (rock, dirt, ore veins, cracked wall, roots; pickaxe/axe/sickle/staff tiers; + support/charge icons and props, `6e329ea`, 229 entries)
 
 ## Economy rebalance (Cookie-Clicker start) `[x]`
 
@@ -116,7 +116,7 @@ things with tools you crafted, and you see your economy working.
 - [x] Spec + simulator (`docs/economy/rebalance-spec.md`, `scripts/economy-sim.mjs`): inventory of every Gold source/sink, target pacing, new numbers table, save migration, rollout plan; before/after timings from the simulator
 - [x] Homestead built Cookie-style: big clickable Forge + always-visible buildings column (current numbers; new ones flow through later)
 - [x] **Owner:** spec approved; shard cap 40 confirmed
-- [ ] Implement the rebalance in one coordinated change **after** the Homestead, Skills and Station-kit branches merge (they all touch Gold prices); versioned, idempotent save migration; tests guard the curve
+- [x] Implement the rebalance in one coordinated change (`cf7ddce`, see above)
 - [x] Golden-spark burst event
 
 ## Phase 2.6: Build and craft in the Delve (owner idea, 2026-10-12) `[x]`
@@ -196,13 +196,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Automated playtests (Playwright plays today's mechanics; app bugs → `docs/handoff/playtest-findings.md`) | agent worktree | `[~]` |
-
-| Work | Branch | Status |
-|---|---|---|
-
-| Work | Branch | Status |
-|---|---|---|
+| Playtests for supports, charges, inscriptions, chest gear, keeper/townsfolk placement | agent worktree | `[~]` |
 
 ## Art still missing (placeholders in game)
 
@@ -227,17 +221,16 @@ filename the importer picks up automatically.
 - The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Market strings left unused by the redesign could be pruned from the eager translation table
 - **Market residual cheat risks** (the client still writes saves): a player can edit their own save then sell what they minted; a restored escrowed item stays usable single-player until their next market call; an offline device's earlier spends can make the client skip a server Gold debit; server repair marks expire after 7 days. See `docs/handoff/player-market.md`
 - The CSP now allows `us-central1-xsantcastx-1694b.cloudfunctions.net`, which was missing and had also blocked Stripe's callable
-- The NPC chat bubble covers the mini-game's Skip link at 390 px width
+- Fixed (`6e329ea`): the NPC bubble hides while a mini-game is open (`MinigamePresenceService`), so Skip is reachable at 390 px
 - Delve finale gaps fixed (`0f57c99`): the warden falls once per player, the fragment stays sealed until then, Kael's cache is at (85,18)
-- Delve hotbar text is English-only; 8 new item icons + 5 placeable tiles need art; supports and charges borrow existing item art
+- Delve text is EN+ES (`6e329ea`, lazy table `delve.i18n.ts`; item names and inscription lore stay English); 8 new item icons + 5 placeable tiles need art; supports and charges borrow existing item art
 - Storing gear in a chest counts toward the "item equipped" challenge (same as equipping a thrall)
 - Nullthorn Staff recipe is now locked behind Verrin's mission (players who crafted it keep it)
 - New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet
-- Enemy bar names the creature by guessing from spawn positions; an `enemyName` on engine state would make mixed-creature hunts exact
+- Fixed (`6e329ea`): the enemy bar uses the engine's `enemyId` (`play.creature.<id>`, EN+ES); a new creature needs a name key (engine test enforces it)
 - Initial bundle fixed: 2.00 MB → **1.68 MB** (`92a3b68`): tools registry, lore corpus and character hub moved out of the initial chunk. Keep new code lazy; biggest eager modules now `translation.service` 92 kB, `art-manifest.generated` 64 kB, header 50 kB
-- `?at=<place>` only resolves stations in the current town (e.g. `?at=gambler` from Infernal is ignored); needs cross-town resolution (travel, then open)
 - New creatures still draw with the Rivet Maw rig until the engine-visuals branch lands
-- After closing an in-world panel, focus lands on the page body, not the game canvas (keyboard players must click once) — Phase 2 UI polish
+- Fixed (`6e329ea`): closing a panel returns focus to the keyboard opener or the canvas; Places/satchel return focus too
 - The Infernal town is 900px wider, so for a while after deploy, peers on an older client appear ~900px off east of the forge
 - Gambler / rune-forge fixed overlays inside panels not yet exercised in-world (the gambler moves in-world with the Umbral town)
 - Paper-doll gear sockets are small on phones (~17% of the doll); the equip/unequip flight and swap haven't been watched in motion yet
