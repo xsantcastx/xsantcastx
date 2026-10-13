@@ -13,11 +13,17 @@
  *     the folded Hearth pill or the goal line, and the book and an open Hearth
  *     take turns.
  *
+ *   - The canvas cues ("CLICK TO WALK HERE" on a hovered or tapped station,
+ *     "[ J / E ] GATHER" / "NEEDS …" at a gathering node) are drawn clear of the
+ *     action bar at 1280×800 and on a 390×844 phone: an init script records
+ *     where `fillText` put them on screen (through the canvas transform).
+ *
  * Name tags staying inside the canvas is checked frame by frame in
  * play-life.spec.ts, which already records every tag the engine draws.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, focusWorld, openPlay, placePanel, playerX, seed } from './play-helpers';
+import { canvas, ERA, focusWorld, openPlay, placePanel, playerX, seed, walkTo } from './play-helpers';
+import { STATION_CUE_Y } from '../src/app/play/engine/engine.model';
 import { TOWNS, VIEW_HEIGHT } from '../src/app/play/world/world.model';
 import type { RealmTownId, TownDef } from '../src/app/play/world/world.model';
 
@@ -81,6 +87,78 @@ async function standIn(page: Page, realm: RealmTownId): Promise<TownDef> {
   await expect(placePanel(page)).toBeHidden();
   await page.waitForTimeout(300);
   return town;
+}
+
+/** Record where the engine draws its one-line canvas cues, in CSS px. */
+async function recordCues(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const W = window as unknown as { __cues: Record<string, { left: number; top: number; right: number; bottom: number }> };
+    W.__cues = {};
+    const P = CanvasRenderingContext2D.prototype, fill = P.fillText;
+    P.fillText = function (this: CanvasRenderingContext2D, text: string, x: number, y: number, max?: number) {
+      const el = this.canvas as HTMLCanvasElement;
+      if (/^(CLICK TO WALK HERE|\[ J \/ E \] GATHER|NEEDS |GROWING BACK )/.test(text) && el.closest?.('.viewport')) {
+        const m = this.getTransform(), box = el.getBoundingClientRect(), k = box.height / el.height;
+        const w = this.measureText(text).width;
+        // Baseline-alphabetic, 12px: the glyphs sit in the 12px above the baseline.
+        W.__cues[text.startsWith('CLICK') ? 'hover' : 'site'] = {
+          left: box.left + (m.a * (x - w / 2) + m.e) * k, right: box.left + (m.a * (x + w / 2) + m.e) * k,
+          top: box.top + (m.d * (y - 12) + m.f) * k, bottom: box.top + (m.d * (y + 2) + m.f) * k,
+        };
+      }
+      return max === undefined ? fill.call(this, text, x, y) : fill.call(this, text, x, y, max);
+    };
+  });
+}
+
+async function cue(page: Page, kind: 'hover' | 'site'): Promise<Rect> {
+  await expect.poll(() => page.evaluate(k => !!(window as unknown as { __cues: Record<string, unknown> }).__cues[k], kind), { timeout: 10000 }).toBe(true);
+  return page.evaluate(k => (window as unknown as { __cues: Record<string, Rect> }).__cues[k], kind);
+}
+
+/** The cue is on the canvas and clear of the action bar (and the touch row on a phone). */
+async function assertCueClear(page: Page, kind: 'hover' | 'site'): Promise<void> {
+  const at = await cue(page, kind);
+  const view = (await rectOf(page, '.viewport canvas'))!;
+  expect(at.top, `${kind} cue inside the canvas`).toBeGreaterThanOrEqual(view.top);
+  expect(at.bottom, `${kind} cue inside the canvas`).toBeLessThanOrEqual(view.bottom);
+  // Above the bottom HUD band's top edge, wherever along it the cue falls: the
+  // armed bar's width follows its label, so missing it sideways is luck.
+  const vh = page.viewportSize()!.height;
+  for (const sel of ['.prompt', '.touch', '.dock']) {
+    const other = await rectOf(page, sel);
+    if (other && other.top > vh / 2) expect(at.bottom, `${kind} cue reaches down to ${sel}`).toBeLessThanOrEqual(other.top);
+  }
+}
+
+/** Point at (desktop) or tap (phone) a station far from the Keeper; its hover cue lights. */
+async function pointAtFarStation(page: Page, town: TownDef, touch: boolean): Promise<void> {
+  // From the spawn (x 160) a phone shows no stall yet; a few steps east bring the ore seam on screen.
+  await walkTo(page, 320, 30);
+  const view = await canvas(page).evaluate(c => { const r = c.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; });
+  const x = await playerX(page);
+  const scale = view.height / VIEW_HEIGHT;
+  const viewport = view.width / scale;
+  const camera = Math.max(0, Math.min(town.width - viewport, x - viewport * .38));
+  const station = town.stations.find(s => Math.abs(s.x - x) > (s.width ?? 120) / 2 + 60 && (s.x - camera) * scale > 30 && (s.x - camera) * scale < view.width - 30);
+  expect(station, `a station on screen away from the Keeper (x ${x}, camera ${camera})`).toBeTruthy();
+  const at = { x: view.left + (station!.x - camera) * scale, y: view.top + (FLOOR - 100) * scale };
+  if (touch) await page.touchscreen.tap(at.x, at.y);
+  else await page.mouse.move(at.x, at.y);
+  // The cue is drawn over the station, never on the floor band.
+  expect(STATION_CUE_Y).toBeLessThan(FLOOR - 200);
+}
+
+/** Through the East Passage (beacon lit) to Ember Quarry, beside its Starlight Herb tuft (x 340). */
+async function besideQuarryHerb(page: Page): Promise<void> {
+  await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } });
+  await openPlay(page);
+  await page.locator('.places-toggle').click();
+  await page.locator('#places-list button', { hasText: 'East Passage' }).click();
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+  await page.waitForTimeout(400);
+  await walkTo(page, 340, 25);
+  await expect(page.locator('.prompt.armed')).toBeVisible();
 }
 
 async function assertPillClear(page: Page, town: TownDef, also: string[]): Promise<void> {
@@ -190,6 +268,36 @@ test.describe('the /play HUD at 1280×800', () => {
     await openPlay(page, '?at=forge');
     await expect(page.locator('.prompt.armed strong')).toHaveText(/^(Forjar|Equipar) Basalt Edge|Hoja equipada$/);
     await expect(page.locator('.prompt.armed button').first()).toContainText('Interactuar');
+  });
+});
+
+test.describe('the /play canvas cues clear the action bar', () => {
+  test.describe.configure({ timeout: 150000 });
+
+  test('at 1280×800: hover cue over a stall, gather cue over a node', async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await recordCues(page);
+    await seed(page);
+    await openPlay(page);
+    await pointAtFarStation(page, TOWNS.infernal!, false);
+    await assertCueClear(page, 'hover');
+    await besideQuarryHerb(page);
+    await assertCueClear(page, 'site');
+  });
+});
+
+test.describe('the /play canvas cues on a 390×844 phone', () => {
+  test.use({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  test.describe.configure({ timeout: 150000 });
+
+  test('a tapped stall\'s cue and a node\'s gather cue clear the action bar and the touch row', async ({ page }) => {
+    await recordCues(page);
+    await seed(page);
+    await openPlay(page);
+    await pointAtFarStation(page, TOWNS.infernal!, true);
+    await assertCueClear(page, 'hover');
+    await besideQuarryHerb(page);
+    await assertCueClear(page, 'site');
   });
 });
 

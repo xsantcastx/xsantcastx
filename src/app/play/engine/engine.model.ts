@@ -221,6 +221,16 @@ export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }
 export const WORLD_WIDTH = 2700;
 export const FLOOR = 610;
+/**
+ * Where the canvas draws its one-line cues ("CLICK TO WALK HERE" over a
+ * hovered station; "[ J / E ] GATHER" / "NEEDS …" / "GROWING BACK …" over a
+ * gathering node): above the thing, never on the floor band below FLOOR,
+ * which the HUD's action bar covers at 1280×800 and on a 390×844 phone.
+ * Station cue: just over the stall hit box (FLOOR − 240). Node cue: this far
+ * above the node's material icon.
+ */
+export const STATION_CUE_Y = FLOOR - 250;
+export const SITE_CUE_RISE = 14;
 export const PLATFORMS: Platform[] = [
   { x: 0, y: FLOOR, width: WORLD_WIDTH }, { x: 370, y: 500, width: 210 },
   { x: 670, y: 410, width: 180 }, { x: 1000, y: 505, width: 250 },
