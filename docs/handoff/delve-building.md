@@ -168,3 +168,48 @@ New stack ids: `timber-support`, `basalt-support`, `blast-charge`. They are name
 - Karma passes 238/238 for npc, crafting and cloud-save.
 - The e2e specs for play-world, play-hunting and play-delve pass on chromium. The ladder spec flaked once on Delve entry, then passed twice on repeat.
 - tsc, i18n, ds-adherence and audit-nav pass. `ng build` gives an initial total of 1.73 MB.
+
+---
+
+# Delve rock: digging is never blocked, only the reward is rate-limited (2026-10-13)
+
+Owner-delegated call, answering the playtest observation about the seam's 2.5 s breath in the Delve (`docs/handoff/playtest-findings.md`).
+
+## Before
+A Delve rock cell that pays Mining XP (every mining-discipline cell, including plain scorched basalt) went through the town seam's `selectCurrentWork` + `resolveMine`. Within `MINING_RECOVERY_MS` (2.5 s) of the last booked Mining operation, the host refused the break. The cell stood fully cracked and every later swing asked again. A Pickaxe I scorched-basalt cell took **7 swings at 0.65 s instead of 4**. The HUD kept showing the previous message.
+
+## Now
+- **The cell breaks on tool tier, strength and swings alone.** Scorched basalt with Pickaxe I always opens on swing 4. The crack stages, the dug state and the save diff are unchanged.
+- **The reward follows the action economy.** The decision lives in `src/app/play/delve-reward.ts` (`settleDelveMine`, pure, with no Angular):
+  - `paid`: the seam was due. One `resolveMine` operation books the Mining XP **and** the ore it grants, exactly as before.
+  - `resting`: the seam is recovering. The pre-check reads the selected Current Work, and a `'recovering'` answer from the gateway counts the same. The cell breaks and pays **no XP and no ore**. The host returns `WORLD_ACTION_UNPAID` (`'unpaid'`, new in `engine.model.ts`), so the engine skips its "+1 ore" burst and its "gathered" line. The cell is gone, so its mutation id can never pay later. There is no farming past the per-action cap, and nothing is paid twice.
+  - `refused`: any other reason (a full satchel, a failed save, a locked tier, Current Work not selectable). The cell still stands, cracked, so nothing is lost. These are not the breath; making room and swinging again pays.
+- **Material yield.** The ore was always part of the same `resolveMine` operation, so the recovery gated it implicitly. It stays gated the same way: reward-limited, not dig-limited. A rock cell with no ore yield of its own (scorched basalt) still books a default Cinder Ore operation when the seam is due, as before. The **block** (`basalt-block`, etc.) still drops on an unpaid break. It is the rock itself, building material, not a reward. Dirt and placed blocks pay nothing and never asked the seam.
+- **The cue.** An unpaid break shows a loot toast "+0 XP · the seam is catching its breath" (`play.delve.restingXp`, EN + ES in the lazy `delve.i18n.ts`). It shows at most once per `REST_CUE_GAP_MS` (6 s), so a run of cells in one breath does not stack toasts.
+- The orphaned `play.hud.msg.seamBreath` and `seamBreathN` keys were removed from `hud.i18n.ts`.
+- Blasts (`kind: 'blast'`) and non-mining cells (`SkillActionService.act`) are untouched. They never went through the seam's recovery.
+
+## Swing counts (Pickaxe I, scorched basalt, 4 HP)
+| | Fresh seam | During the 2.5 s breath |
+|---|---|---|
+| Before | 4 | 7 at 0.65 s per swing (refused until the breath ran out) |
+| Now | 4 | 4 (unpaid) |
+
+## Tests
+- `scripts/seamworks-engine.test.cjs` adds 3 tests. They drive the real engine through the real `settleDelveMine` against a fake 2.5 s seam:
+  - Swing counts are 4/4/3 for a fresh rock, a rock during the breath, and a vein during the breath.
+  - XP is paid once, and a replay pays nothing.
+  - A full satchel still refuses, and room made pays.
+  - The cue throttle.
+- `e2e/play-delve-extras.spec.ts`: `digOverhead` no longer "swings until open". It swings 3 times, asserts the cell still stands, then swings once more and asserts it opens. A new test cracks two firm ceiling cells to their last stage, breaks the first (paid, which starts the breath), and breaks the second a second later. It checks:
+  - the second still opens on its 4th swing
+  - the "+0 XP" toast shows
+  - Mining XP is unchanged by the second cell
+  - both basalt blocks drop
+
+## Gotcha found on the way: clicks under the swing cooldown are dropped silently
+- The swing cooldown (0.52 s) runs on **game** time, and the engine caps a frame at 0.1 s.
+- A headless page under load measured 9.5-16.5 fps. At ~9 fps, game time runs slower than the wall clock, so clicks 0.62 s apart sometimes land inside the cooldown and do nothing.
+- The specs now click every 1.0 s (`SWING_GAP`). Measured that way, all 13 cells in the rubble test opened on exactly swing 4.
+- Part of the playtest's "7 swings" may have been this same effect. The refusal was real either way: the old code returned false during the breath.
+- The gallery ceiling's first columns sit under the HUD at the default viewport. A click on col 6 never swung; col 10 did. The new test picks cells from col 12 on.

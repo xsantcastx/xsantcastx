@@ -2795,3 +2795,111 @@ test('hot draw path: feedback motes are pooled, never reallocated, and capped', 
   assert.equal(atmosphere.spare.length, pooled - 7, 'a burst reuses retired motes instead of allocating');
   assert.equal(atmosphere.motes[0].text, undefined, 'a reused mote does not keep an old caption');
 });
+
+// ── Delve: digging is never blocked, only the reward is rate-limited ────────
+const rewardMod = loadTs(path.resolve(__dirname, '../src/app/play/delve-reward.ts'));
+/**
+ * The town seam's action economy, reduced to what the Delve asks of it: one
+ * booked Mining operation per 2.5 s (MINING_RECOVERY_MS), idempotent by
+ * mutation id, each worth its XP. `full` stands in for a full satchel.
+ */
+function fakeSeam(recoveryMs = 2500) {
+  const ops = new Map(); let lastAt = null;
+  const seam = {
+    ops, full: false, xp: 0,
+    recoveryRemainingMs: now => lastAt === null ? 0 : Math.max(0, lastAt + recoveryMs - now),
+    resolve(mutationId, now) {
+      if (ops.has(mutationId)) return { ok: true, replayed: true };
+      if (lastAt !== null && now < lastAt + recoveryMs) return { ok: false, code: 'recovering' };
+      if (seam.full) return { ok: false, code: 'capacity' };
+      ops.set(mutationId, 2); seam.xp += 2; lastAt = now;
+      return { ok: true, replayed: false };
+    },
+  };
+  return seam;
+}
+/** The side-scroller's host rule (worldAction's mining branch), against the fake seam and a test clock. */
+function delveHost(seam, clock) {
+  const outcomes = [];
+  const onWorldAction = e => {
+    if (!(e.kind === 'mine' && e.discipline === 'mining')) return true;
+    const settled = rewardMod.settleDelveMine(seam, e.mutationId, clock.now);
+    outcomes.push({ id: e.mutationId, ...settled });
+    return settled.outcome === 'resting' ? 'unpaid' : settled.outcome === 'paid';
+  };
+  return { onWorldAction, outcomes };
+}
+
+test('delve rock breaks on tool and swings alone: four Pickaxe I swings even during the seam\'s recovery, and XP is paid once', () => {
+  const seam = fakeSeam(), clock = { now: 1_700_000_000_000 };
+  const host = delveHost(seam, clock);
+  const { engine, state } = enterDelve(host.onWorldAction);
+  engine.setTools({ pickaxe: 1 });
+  const t = engine.terrain;
+  const rock = terrainMod.nodeIndex('scorched-basalt'), vein = terrainMod.nodeIndex('cinder-vein');
+  assert.equal(terrainMod.TERRAIN_NODES['scorched-basalt'].hp, 4, 'four Pickaxe I swings of 1');
+  /** Swing at one surface cell every `gap` ms of wall clock until it opens; the swing count. */
+  const dig = (col, gap) => {
+    engine.player.x = col * 32 - 30; engine.player.y = 610; engine.facing = 1;
+    let swings = 0;
+    while (t.solid(col, 0) && swings < 20) {
+      clock.now += gap; engine.attackCooldown = 0; engine.strikeCell(col * 32 + 16, 626); swings++;
+    }
+    return swings;
+  };
+  t.set(12, 0, rock); t.set(14, 0, rock); t.set(16, 0, vein);
+  // A: the seam is fresh, so the break books an operation.
+  assert.equal(dig(12, 650), 4);
+  assert.equal(seam.xp, 2);
+  assert.equal(host.outcomes.at(-1).outcome, 'paid');
+  // B: dug straight after, well inside the 2.5 s breath. It still opens on the
+  // fourth swing (before: refused until the breath ran out, 7 swings at 0.65 s).
+  assert.equal(dig(14, 300), 4, 'the breath never adds swings');
+  assert.equal(host.outcomes.at(-1).outcome, 'resting');
+  assert.equal(seam.xp, 2, 'a cell dug during the breath pays no XP');
+  assert.equal(seam.ops.has(host.outcomes.at(-1).id), false, 'and books nothing');
+  // An ore vein during the breath: opens in three swings, no "gathered" line, no ore.
+  assert.equal(dig(16, 300), 3);
+  assert.equal(host.outcomes.at(-1).outcome, 'resting');
+  assert.notEqual(state().messageKey, 'play.hud.eng.cellGathered', 'an unpaid vein says nothing was gathered');
+  assert.equal(seam.xp, 2);
+  // Every break was one ask: the engine never retried a cell (no refusals).
+  assert.equal(host.outcomes.length, 3);
+  assert.equal(new Set(host.outcomes.map(o => o.id)).size, 3);
+  // A replayed grant (a second device, a retried write) never pays twice.
+  clock.now += 10_000;
+  const paidId = host.outcomes[0].id;
+  assert.deepEqual(rewardMod.settleDelveMine(seam, paidId, clock.now), { outcome: 'paid', replayed: true });
+  assert.equal(seam.xp, 2);
+  // Once the breath is over, the next cell pays again.
+  t.set(18, 0, rock);
+  assert.equal(dig(18, 650), 4);
+  assert.equal(host.outcomes.at(-1).outcome, 'paid');
+  assert.equal(seam.xp, 4);
+  engine.destroy();
+});
+
+test('delve rock: a full satchel still refuses the break (nothing lost), the breath alone never does', () => {
+  const seam = fakeSeam(), clock = { now: 1_700_000_000_000 };
+  const host = delveHost(seam, clock);
+  const { engine } = enterDelve(host.onWorldAction);
+  engine.setTools({ pickaxe: 1 });
+  const t = engine.terrain;
+  t.set(12, 0, terrainMod.nodeIndex('scorched-basalt'));
+  engine.player.x = 12 * 32 - 30; engine.player.y = 610; engine.facing = 1;
+  seam.full = true;
+  for (let n = 0; n < 6; n++) { clock.now += 650; engine.attackCooldown = 0; engine.strikeCell(12 * 32 + 16, 626); }
+  assert.equal(t.solid(12, 0), true, 'capacity: the cell stands, cracked');
+  assert.equal(host.outcomes.at(-1).outcome, 'refused');
+  seam.full = false; clock.now += 650; engine.attackCooldown = 0; engine.strikeCell(12 * 32 + 16, 626);
+  assert.equal(t.solid(12, 0), false, 'room made: the next swing breaks it and pays');
+  assert.equal(seam.xp, 2);
+  engine.destroy();
+});
+
+test('the "+0 XP" cue shows at most once per window', () => {
+  assert.equal(rewardMod.restCueDue(null, 1000), true);
+  assert.equal(rewardMod.restCueDue(1000, 1000 + rewardMod.REST_CUE_GAP_MS - 1), false);
+  assert.equal(rewardMod.restCueDue(1000, 1000 + rewardMod.REST_CUE_GAP_MS), true);
+  assert.equal(rewardMod.restCueDue(5000, 1000), true, 'a clock that went back does not mute it forever');
+});
