@@ -12,10 +12,9 @@ async function freezeAnimations(page: Page) {
       transition-duration: 0s !important;
       transition-delay: 0s !important;
     }
-    /* JS-driven / randomized layers CSS freezing can't make deterministic:
-       canvas particles are random per load, pulsar drifts via JS-set vars,
-       trail + cursor follow the (absent) mouse. Hide them entirely. */
-    .cosmic-canvas, .cosmic-pulsar, .cosmic-trail-layer, .cosmic-cursor, .cosmic-boot {
+    /* JS-driven layer CSS freezing can't make deterministic: the cursor
+       trail follows the (absent) mouse. Hide it entirely. */
+    .cosmic-trail-layer {
       visibility: hidden !important;
     }`,
   });
@@ -26,8 +25,7 @@ async function waitForFonts(page: Page) {
   await page.evaluate(() => document.fonts.ready);
 }
 
-// hp-live feed lines are a JS-driven fake log stream — mask, don't compare
-const DYNAMIC_MASKS = ['[class*="carbon"]', '#carbonads', 'ins', '[data-counter]', '.hp-live__card'];
+const DYNAMIC_MASKS = ['ins', '[data-counter]'];
 
 const VIEWPORTS = [
   { name: '375', width: 375, height: 812 },

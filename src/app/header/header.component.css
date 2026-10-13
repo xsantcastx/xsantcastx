@@ -53,7 +53,6 @@
   transition: height 0.28s var(--gfnav-ease);
 }
 .gfnav--compact .gfnav__row { height: var(--gfnav-h-compact); }
-.gfnav--compact .gfnav__creed { opacity: 0; }
 
 /* The bar is full width and scaled down, rather than sized to the progress.
    Two reasons, both measured on the scroll path:
@@ -131,16 +130,6 @@
   transition: color 0.25s var(--gfnav-ease);
 }
 .gfnav__brand:hover .gfnav__wordmark { color: var(--primary-color); }
-
-.gfnav__creed {
-  font-size: 0.52rem;
-  font-weight: 600;
-  letter-spacing: 0.26em;
-  line-height: 1;
-  color: var(--gfnav-gold-text);
-  white-space: nowrap;
-  transition: opacity 0.25s var(--gfnav-ease);
-}
 
 /* ── Halls ─────────────────────────────────────────────────────────────── */
 
@@ -998,9 +987,6 @@ button.gftome__keeper {
    Spanish the six-hall row was still 3px over with it shown. Shedding 130px of
    decoration to buy a hall its full label is the trade this whole block is
    making, and this is the cheapest instance of it. */
-@media (max-width: 1500px) {
-  .gfnav__creed { display: none; }
-}
 @media (max-width: 1240px) {
   .gfnav__keeper { display: none; }   /* the rank pill already goes there */
 }

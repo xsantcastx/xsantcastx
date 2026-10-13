@@ -276,6 +276,11 @@ filename the importer picks up automatically.
 - Rig unverified in motion on mobile, high-DPR seams, Safari rim light (the test browser pane runs hidden, so the loop doesn't advance)
 - "Daily Tool Generation Pipeline" has failed every day since 2026-03-26: the Anthropic API account behind `ANTHROPIC_API_KEY` is out of credit (400 "credit balance is too low"), and Reddit also returns 403 to the collector. This is not a code fix. **Owner:** top up the credit, or disable the workflow if the tools surface is retired for good
 
+## Legacy website removed (owner, 2026-10-14) `[x]`
+
+The site is now only the game. Removed: tool pages/registry/embeds/ads, the visit counter (a Firestore write per page load), tool lore/mastery/usage, 34 tool quests, 135 tool easter eggs, most of the cosmic engine (59 → 9.5 kB; the cursor trail and ritual drone stay because the game uses them), dead CSS, `jspdf`, 138 sync duplicates; `/play/storyboard` 301 → `/play`. Initial bundle 1.75 → 1.67 MB, dist 51.9 → 43.9 MB, styles.css 135 → 104 kB. The footer gained a "Support the forge" row (donation modals were unreachable since August). `CLAUDE.md` rewritten as the game's operating manual. Details: `docs/cleanup/site-removal.md`
+- [~] Leftovers: daily tool pipeline, Pro Pack, Codex Solarii, empty Codex categories, Achievement Frame target, 4 stale Karma specs
+
 ## How to work on this plan
 
 - One owner per file area at a time; parallel agents get disjoint file lists.
