@@ -453,12 +453,10 @@ export const REALM_EXCLUSIVE_MATERIALS: Record<RealmId, readonly string[]> = {
 const UNIVERSAL = ['orichalcum-ore', 'godforge-slag'] as const;
 
 export const REALM_ARTBIBLE_MATERIALS: Record<RealmId, readonly string[]> = {
-  luminous: ['solar-resin', 'rune-of-radiance', 'rune-of-dawns-edge',
-    'rune-of-the-solstice', ...UNIVERSAL],
+  luminous: ['solar-resin', 'rune-of-radiance', 'rune-of-the-solstice', ...UNIVERSAL],
   umbral: ['shadowthread-silk', 'void-crystal', 'rune-of-hollow',
     'rune-of-erasure', ...UNIVERSAL],
-  verge: ['world-root-bark', 'rune-of-root', 'rune-of-overgrowth',
-    'rune-of-the-world-root', ...UNIVERSAL],
+  verge: ['world-root-bark', 'rune-of-the-world-root', ...UNIVERSAL],
   archivum: ['celestial-quartz', 'moonpetal-herb', 'rune-of-starfire',
     'rune-of-void-navigation', ...UNIVERSAL],
   nexus: ['pyrite-dust', 'emberheart-ore', 'rune-of-the-forge',
