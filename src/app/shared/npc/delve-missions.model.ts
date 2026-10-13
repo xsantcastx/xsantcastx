@@ -201,7 +201,6 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     reward: {
       ...incomeGold(80_000),
       delvingXp: 300,
-      artifact: 'codex-solarii',
       loreFragment:
         'Every inscription in the Delve was cut by a Keeper. The Archivist checked. One of them is still being written.',
     },

@@ -124,12 +124,12 @@ describe('mergeDeep', () => {
 
     it('never drops an artifact, whichever device bought it', () => {
       const merged = mergeDeep(
-        { artifacts: ['obsidian-heart', 'codex-solarii'] },
+        { artifacts: ['obsidian-heart', 'relic-third-dawn'] },
         { artifacts: ['mirrorblade-kael'] },
       ) as { artifacts: string[] };
 
       expect(new Set(merged.artifacts)).toEqual(
-        new Set(['obsidian-heart', 'codex-solarii', 'mirrorblade-kael']),
+        new Set(['obsidian-heart', 'relic-third-dawn', 'mirrorblade-kael']),
       );
     });
 

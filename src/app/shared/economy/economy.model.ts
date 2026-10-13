@@ -801,15 +801,6 @@ export const ARTIFACTS: Artifact[] = [
     tier: 'anomalous',
   },
   {
-    id: 'codex-solarii',
-    name: 'Codex Solarii',
-    effect: 'Lore chapters open at half the usual number of uses.',
-    lore: 'The Solarii wrote everything twice: once for the reader they had, and once for the reader who would arrive already knowing. This is the second copy.',
-    icon: '📜',
-    cost: 100_000,
-    tier: 'anomalous',
-  },
-  {
     id: 'fragment-first-sun',
     name: 'Fragment of the First Sun',
     effect: 'Everything doubles. Gold, strikes, idle, XP.',
@@ -1288,11 +1279,6 @@ export function xpMultiplier(
  */
 export function runewordQuestMultiplier(e: PlayerEconomy): number {
   return 1 + totalBonus(e.runewords).questGold;
-}
-
-/** How many uses a lore chapter should cost, given the Codex Solarii. */
-export function loreThresholdScale(e: PlayerEconomy): number {
-  return e.artifacts.includes('codex-solarii') ? 0.5 : 1;
 }
 
 /** Idle keeps running with the tab hidden only once the Heart is held. */
