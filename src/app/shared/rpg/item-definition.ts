@@ -15,7 +15,7 @@ import {
 } from './item.model';
 import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { UNIQUE_DEFINITIONS } from './unique-items';
-import { TOOL_DEFINITIONS } from '../skills/tool-items';
+import { STARTER_TOOL_DEFINITIONS, TOOL_DEFINITIONS } from '../skills/tool-items';
 import {
   bandFor,
   qualityAdjustedSellValue,
@@ -489,6 +489,7 @@ export const ITEM_DEFINITIONS: readonly ItemDefinition[] = [
   // Pickaxe / axe / sickle / staff, tiers I-IV — forged at the bench, read by
   // the skills module's toolTiers. Soulbound, no rolls.
   ...TOOL_DEFINITIONS,
+  ...STARTER_TOOL_DEFINITIONS,
 ];
 
 const BY_ID = new Map(ITEM_DEFINITIONS.map(def => [def.id, def]));

@@ -2905,3 +2905,134 @@ test('the "+0 XP" cue shows at most once per window', () => {
   assert.equal(rewardMod.restCueDue(1000, 1000 + rewardMod.REST_CUE_GAP_MS), true);
   assert.equal(rewardMod.restCueDue(5000, 1000), true, 'a clock that went back does not mute it forever');
 });
+
+// ── Tool tiers swing faster (Terraria "use time"); rewards stay capped ──────
+const toolItems = loadTs(path.resolve(__dirname, '../src/app/shared/skills/tool-items.ts'));
+const skillModel = loadTs(path.resolve(__dirname, '../src/app/shared/skills/skill.model.ts'));
+/** A progress ledger at these skill levels (the least XP that reaches each). */
+function progressAt(levels) {
+  const xpFor = (skill, lvl) => {
+    let lo = 0, hi = 1e9;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (skillModel.skillLevel({ xpByDiscipline: { [skill]: mid } }, skill) >= lvl) hi = mid; else lo = mid + 1;
+    }
+    return lo;
+  };
+  return { xpByDiscipline: Object.fromEntries(Object.entries(levels).map(([skill, lvl]) => [skill, xpFor(skill, lvl)])) };
+}
+const bag = ids => ({ items: ids.map(definitionId => ({ definitionId })), equipped: {} });
+
+test('tool pace: starter 0.52 s, forged I-IV 0.46/0.40/0.35/0.31, capped by the skill like the tier', () => {
+  assert.equal(skillTools.STARTER_SWING_SECONDS, 0.52);
+  assert.deepEqual({ ...skillTools.TOOL_SWING_SECONDS }, { 1: 0.46, 2: 0.40, 3: 0.35, 4: 0.31 });
+  assert.deepEqual({ ...toolItems.parseToolId('starter-pickaxe') }, { family: 'pickaxe', tier: 1, starter: true });
+  const starter = skillTools.toolTiers(bag(['starter-pickaxe', 'starter-axe', 'starter-sickle']));
+  assert.deepEqual([starter.pickaxe, starter.axe, starter.sickle, starter.staff], [1, 1, 1, 0], 'the starter set works as tier I');
+  assert.deepEqual({ ...starter.swing }, { pickaxe: 0.52, axe: 0.52, sickle: 0.52, staff: 0.52 });
+  assert.equal(skillTools.toolTiers(bag([])).pickaxe, 0, 'no invisible floor: nothing held, nothing digs');
+  for (const tier of [1, 2, 3, 4]) {
+    const t = skillTools.toolTiers(bag(['starter-pickaxe', `pickaxe-${tier}`]));
+    assert.equal(t.pickaxe, tier); assert.equal(t.swing.pickaxe, skillTools.TOOL_SWING_SECONDS[tier]);
+  }
+  // A Pickaxe III at Mining 1 digs (and swings) like a Pickaxe I; the card says so.
+  const low = progressAt({ mining: 1 });
+  const capped = skillTools.toolTiers(bag(['pickaxe-3']), low);
+  assert.equal(capped.pickaxe, 1); assert.equal(capped.swing.pickaxe, 0.46);
+  const card = skillTools.toolCard('pickaxe-3', low);
+  assert.equal(card.worksAs, 1); assert.equal(card.capUntil, 10);
+  const lines = skillTools.toolCardLines(card, (key, vars) => `${key}${vars ? JSON.stringify(vars) : ''}`);
+  assert.ok(lines.some(line => line.startsWith('toolStat.worksAs') && line.includes('"level":10')), lines.join('\n'));
+  assert.equal(skillTools.toolCard('pickaxe-3', progressAt({ mining: 25 })).worksAs, null);
+  const status = skillTools.toolStatus(bag(['starter-pickaxe', 'pickaxe-3']), low).find(s => s.family === 'pickaxe');
+  assert.deepEqual([status.owned, status.tier, status.starter, status.swing, status.power, status.capUntil], [3, 1, false, 0.46, 1, 10]);
+});
+
+/** Hold the swing at one delve rock that grows back after each break, for `seconds`. */
+function swingsIn(pace, seconds, onWorldAction = () => true, clock = null) {
+  const { engine } = enterDelve(onWorldAction);
+  engine.setTools(pace ? { pickaxe: 1, swing: { pickaxe: pace } } : { pickaxe: 1 });
+  const t = engine.terrain;
+  const rock = terrainMod.nodeIndex('scorched-basalt');
+  const col = 12;
+  engine.player.x = col * 32 - 30; engine.player.y = 610; engine.facing = 1;
+  t.set(col, 0, rock);
+  let swings = 0;
+  const original = engine.hitCell.bind(engine);
+  engine.hitCell = (...args) => { swings++; return original(...args); };
+  const dt = 1 / 60;
+  engine.attackCooldown = 0;
+  for (let n = 0; n < Math.round(seconds / dt); n++) {
+    if (clock) clock.now += dt * 1000;
+    if (engine.attackCooldown <= 0) engine.strikeCell(col * 32 + 16, 626);
+    engine.attackCooldown -= dt;
+    if (!t.solid(col, 0)) t.set(col, 0, rock);
+  }
+  engine.attackCooldown = 0; engine.strikeCell(col * 32 + 16, 626);
+  const cooldown = engine.attackCooldown;
+  engine.destroy();
+  return { swings, cooldown };
+}
+
+test('delve: a forged pickaxe swings faster, tier by tier; combat keeps its pace', () => {
+  const base = swingsIn(null, 10);
+  assert.equal(base.cooldown, 0.52, 'starter pace');
+  const counts = [base.swings];
+  for (const tier of [1, 2, 3, 4]) {
+    const pace = skillTools.TOOL_SWING_SECONDS[tier];
+    const run = swingsIn(pace, 10);
+    assert.ok(Math.abs(run.cooldown - pace) < 1e-9, `tier ${tier}: cooldown ${run.cooldown}`);
+    assert.ok(Math.abs(run.swings - Math.ceil(10 / pace)) <= 1, `tier ${tier}: ${run.swings} swings in 10 s at ${pace}`);
+    counts.push(run.swings);
+  }
+  for (let i = 1; i < counts.length; i++) assert.ok(counts[i] > counts[i - 1], `strictly more swings per tier: ${counts}`);
+  // Combat: a swing at a monster keeps the old 0.52 whatever the tools.
+  const { engine } = fixture();
+  engine.setTools({ pickaxe: 4, axe: 4, sickle: 4, swing: { pickaxe: 0.31, axe: 0.31, sickle: 0.31 } });
+  killFirst(engine);
+  assert.equal(engine.attackCooldown, 0.52);
+  // A bad pace from a host is clamped, never instant.
+  engine.setTools({ pickaxe: 1, swing: { pickaxe: 0.001 } });
+  assert.equal(engine.swing.pickaxe, 0.25);
+  engine.destroy();
+});
+
+test('delve rewards per second do not grow with the faster swing: the seam\'s breath caps paid XP', () => {
+  const paid = pace => {
+    const seam = fakeSeam(), clock = { now: 1_700_000_000_000 };
+    const host = delveHost(seam, clock);
+    const run = swingsIn(pace, 60, host.onWorldAction, clock);
+    return { xp: seam.xp, breaks: host.outcomes.length, swings: run.swings };
+  };
+  const slow = paid(null), fast = paid(skillTools.TOOL_SWING_SECONDS[4]);
+  assert.ok(fast.swings > slow.swings * 1.5, `faster swings (${fast.swings} vs ${slow.swings})`);
+  assert.ok(fast.breaks > slow.breaks, 'more rock opened');
+  // One booked op per 2.5 s: at most 60 / 2.5 + 1 = 25 in a minute, 2 XP each.
+  assert.ok(fast.xp <= 25 * 2, `paid XP capped: ${fast.xp}`);
+  assert.ok(slow.xp <= 25 * 2);
+  assert.ok(fast.xp - slow.xp <= 2 * 2, `no more than a breath's rounding apart (${slow.xp} vs ${fast.xp})`);
+});
+
+test('gathering: a forged axe fells a sapling sooner, but a node still pays once per regrowth', () => {
+  const run = pace => {
+    let clock = 1_700_000_000_000;
+    const start = clock;
+    const { engine, calls } = enterThicket({ now: () => clock });
+    engine.setTools(pace ? { axe: 1, swing: { axe: pace } } : { axe: 1 });
+    standAt(engine, nodeX(engine, 'world-root-sapling'));
+    engine.setInput('attack', true);
+    let felledAt = null;
+    for (let n = 0; n < 120 * 60; n++) {
+      clock += 1000 / 60; engine.update(1 / 60);
+      if (felledAt === null && calls.length) felledAt = clock - start;
+    }
+    engine.destroy();
+    return { felledAt, paid: calls.length };
+  };
+  const slow = run(null), fast = run(skillTools.TOOL_SWING_SECONDS[4]);
+  // Three hits: two cooldowns between the first swing and the break.
+  assert.ok(Math.abs(slow.felledAt - 2 * 520) <= 40, `starter: felled at ${slow.felledAt} ms`);
+  assert.ok(Math.abs(fast.felledAt - 2 * 310) <= 40, `Axe IV pace: felled at ${fast.felledAt} ms`);
+  assert.equal(fast.paid, slow.paid, 'the same harvests in two minutes: regrowth is the cap');
+  assert.ok(slow.paid >= 2);
+});
