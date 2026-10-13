@@ -13,7 +13,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import {
-  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, purse, seed, stackQty, walkTo,
+  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, purse, seed, settleBetween, stackQty, walkTo,
 } from './play-helpers';
 import {
   activity, CELL, colX, DelveFixture, isLoose, SPEC, TERRAIN_NODE_LIST, xpForLevel,
@@ -528,8 +528,10 @@ test.describe('Delve extras: gear in chests, played', () => {
     // Walk west, clear of the carving at 19,7, and place the chest where the Keeper
     // stands with a right-click on that cell (a chest is walked through).
     await walkTo(page, colX(16), 6);
+    // Read the column once the Keeper has settled (the x read right after the
+    // key-up can be a frame stale). Any column near 16 will do: X reaches as far as E.
+    const chestCol = Math.floor(await settleBetween(page, 15 * CELL + 4, 17 * CELL + CELL - 4) / CELL);
     await chooseSlot(page, 'Digit6', 'Chest');
-    const chestCol = Math.floor(await playerX(page) / CELL);
     await clickCell(page, chestCol, 8, TUNNEL_FEET, 'right');
     await expect(messageLine(page)).toContainText('Chest placed');
     await expect(page.locator('.prompt')).toContainText('Open the chest');
@@ -556,6 +558,9 @@ test.describe('Delve extras: gear in chests, played', () => {
     expect((await krisLocation(page))?.explorerId ?? '').toMatch(/^delve-chest:/);
     await descend(page);
     await walkTo(page, colX(chestCol), 6);
+    // Anywhere in E's reach of the chest (half a cell past the 13 px half-body),
+    // whichever way the Keeper faces: X takes back exactly what the prompt names.
+    await settleBetween(page, chestCol * CELL - 24, chestCol * CELL + CELL + 24);
     await expect(page.locator('.prompt')).toContainText('Open the chest');
     await page.keyboard.press('e');
     const stored = page.locator('.chest section[aria-labelledby="chest-gear"] li', { hasText: KRIS });

@@ -32,6 +32,10 @@ jobs:
       - name: Audit public navigation and retired-tool copy
         run: node scripts/audit-nav.js
 
+      - name: Everything has a meaning (no new orphan items, blocks, stats, NPCs)
+        # Fails only on violations not in scripts/meaning-baseline.json; see docs/world/meaning-audit.md.
+        run: node scripts/check-meaning.js
+
       - name: Test game engine and social transport
         run: node --test scripts/seamworks-engine.test.cjs scripts/homestead.test.cjs scripts/home-forge.test.cjs scripts/social-client.test.mjs scripts/social-server.test.mjs
 
