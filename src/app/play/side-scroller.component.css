@@ -1279,6 +1279,16 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (prefers-reduced-motion: reduce) {
   .guide-go { animation: none; }
 }
+/* "Not now" on the one-time Rune Forge hint: quieter than Show me. */
+.guide-hide {
+  flex: none;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  color: var(--adventure-parchment);
+  background: transparent;
+  opacity: .8;
+}
 
 /* The goal line sits in the HUD strip the open book covers: step aside while it is open. */
 .stage:has(.book) .guide { visibility: hidden; }
