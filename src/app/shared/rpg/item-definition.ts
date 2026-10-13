@@ -464,6 +464,21 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     temperGoldBase: 0,
     lore: 'Lets a bearer endure heat distortion, leaving a visible line where the strain was absorbed.',
   },
+  // The Orrery's rare find (Prospecting discovery). Worn in a charm slot like
+  // the Ember Elixir; the discovery mints it (activity gateway).
+  {
+    id: 'clarity-elixir',
+    name: 'Clarity Elixir',
+    family: 'consumable',
+    type: 'charm',
+    style: 'celestial',
+    rollKeys: ['magicFind'],
+    base: { magicFind: 4 },
+    temperable: false,
+    maxTemper: 0,
+    temperGoldBase: 0,
+    lore: 'Two mouthfuls. The first shows you what you were looking at. The second shows you what you were looking for.',
+  },
 ];
 
 /**

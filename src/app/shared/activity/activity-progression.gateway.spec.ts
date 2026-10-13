@@ -502,14 +502,19 @@ describe('ActivityProgressionGateway', () => {
         expect(result.ok).toBe(true);
         t += PROSPECTING_RECOVERY_MS + 1;
       }
-      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(0);
+      expect(inventory.snapshot.items.filter(i => i.definitionId === CLARITY_ELIXIR_ID).length).toBe(0);
       expect(gateway.snapshot.clarityElixirGranted).toBe(false);
       const last = gateway.resolveProspect({ mutationId: `p${CLARITY_ELIXIR_GUARANTEE_AT}`, now: t, roll: 0.99 });
       expect(last.ok).toBe(true);
       if (!last.ok) return;
       expect(last.operation.discovery.result).toBe('clarity-elixir-guarantee');
       expect(inventory.stackOf(CELESTIAL_ALLOY_ID)).toBe(CLARITY_ELIXIR_GUARANTEE_AT);
-      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(1);
+      expect(inventory.snapshot.items.filter(i => i.definitionId === CLARITY_ELIXIR_ID).length).toBe(1);
+      // Minted as a wearable charm with Magic Find, not a stack (meaning audit #8).
+      const elixir = inventory.snapshot.items.find(i => i.definitionId === CLARITY_ELIXIR_ID)!;
+      expect(elixir.type).toBe('charm');
+      expect(elixir.stats.magicFind).toBeGreaterThan(0);
+      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(0);
       expect(gateway.snapshot.prospectingAccepted).toBe(CLARITY_ELIXIR_GUARANTEE_AT);
       expect(gateway.snapshot.clarityElixirGranted).toBe(true);
       // Neither earlier skill's pity moved.
@@ -530,7 +535,7 @@ describe('ActivityProgressionGateway', () => {
       expect(lucky.ok).toBe(true);
       if (!lucky.ok) return;
       expect(lucky.operation.discovery.result).toBe('clarity-elixir');
-      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(2);
+      expect(inventory.snapshot.items.filter(i => i.definitionId === CLARITY_ELIXIR_ID).length).toBe(2);
     });
 
     it('refuses to create an operation when the bag cannot take minerals', () => {
