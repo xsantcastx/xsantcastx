@@ -100,7 +100,8 @@ image has loaded:
 
 **Crispness:** a sidecar with `"pixelArt": true` turns image smoothing off and snaps the draw to whole pixels.
 The importer passes the flag through to the manifest entry (`pixelArt: true`) and rejects a non-boolean
-value. The style guide asks for smooth sprites, so leave it out unless a sheet really is pixel art.
+value. Since 2026-10-13 the whole game is pixel art (`docs/art/style-guide.md`), so every sheet in the
+commission pack ships with `"pixelArt": true`.
 
 ## Tests
 
