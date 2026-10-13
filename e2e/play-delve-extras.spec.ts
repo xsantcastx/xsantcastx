@@ -148,24 +148,55 @@ function gallery(): { f: DelveFixture; loose: number[] } {
   return { f, loose };
 }
 
+/** Pickaxe I does 1 of scorched basalt's 4 HP per swing. */
+const ROCK_SWINGS = 4;
+
 /**
- * Dig the ceiling cell straight overhead by clicking it, until it is open in
- * the save or the rock comes down. Scorched basalt takes four Pickaxe I swings,
- * and a breaking rock cell goes through the Mining seam, which refuses a break
- * within 2.5 s of the last ("the seam needs a breath"): so keep swinging, as a
- * player would, rather than counting four. Done when the save shows the cell open.
+ * Wall time between clicks so each one is a swing. The swing cooldown is 0.52 s
+ * of *game* time, and the engine caps a frame at 0.1 s: a headless page that
+ * drops to ~9 fps runs game time slower than the wall clock, and clicks at
+ * 0.62 s then land inside the cooldown and are ignored. That, not the seam,
+ * is what made the old "swing until open" loop need 5-7 clicks under load.
+ */
+const SWING_GAP = 1000;
+
+/** One click on a gallery ceiling cell, then let the swing's cooldown run out. */
+async function swingAt(page: Page, col: number, gap = SWING_GAP): Promise<void> {
+  await clickCell(page, col, CEIL, GALLERY_FEET);
+  if (gap) await page.waitForTimeout(gap);
+}
+
+async function cellOpen(page: Page, col: number): Promise<boolean> {
+  return (await delveDiff(page)).get(col + CEIL * SPEC.cols) === 0;
+}
+
+/** Swing `n` times at a ceiling cell, then check (after the 1.5 s save) that it still stands. */
+async function crack(page: Page, col: number, n: number): Promise<void> {
+  for (let i = 0; i < n; i++) await swingAt(page, col);
+  await page.waitForTimeout(1700); // a cell that broke early would be in the save by now
+  expect(await cellOpen(page, col), `${col},${CEIL} still stands after ${n} swings`).toBe(false);
+}
+
+/**
+ * Dig the ceiling cell straight overhead by clicking it: exactly four Pickaxe I
+ * swings, whatever the Mining seam's 2.5 s recovery is doing (owner call
+ * 2026-10-13: in the Delve digging is never blocked, only the reward is
+ * rate-limited). Three swings leave it standing; the fourth opens it.
  */
 async function digOverhead(page: Page, col: number): Promise<void> {
+  // Stand right under it: falling rock only hits within 23 px of the Keeper's
+  // centre, and a walk slides up to ~20 px past where it stops. Each click on
+  // the open air at that column is a shorter, slower walk back, so it settles.
   await walkTo(page, colX(col), 6);
-  await page.waitForTimeout(200);
-  const index = col + CEIL * SPEC.cols;
-  for (let i = 0; i < 24; i++) {
-    await clickCell(page, col, CEIL, GALLERY_FEET);
-    await page.waitForTimeout(620); // the swing's 0.52 s cooldown
-    // The dig is saved 1.5 s after the break, by which time any rock has fallen.
-    if ((await delveDiff(page)).get(index) === 0) break;
+  for (let i = 0; i < 5 && Math.abs((await playerX(page)) - colX(col)) > 8; i++) {
+    await clickCell(page, col, CEIL + 2, GALLERY_FEET);
+    await page.waitForTimeout(700);
   }
-  await page.waitForTimeout(400);
+  expect(Math.abs((await playerX(page)) - colX(col)), `the Keeper stands under ${col},${CEIL}`).toBeLessThanOrEqual(12);
+  await crack(page, col, ROCK_SWINGS - 1);
+  await swingAt(page, col, 0);
+  await expect.poll(() => cellOpen(page, col), { timeout: 8000, message: `${col},${CEIL} opens on swing ${ROCK_SWINGS}` }).toBe(true);
+  await page.waitForTimeout(400); // any loose rock has fallen by now
 }
 
 test.describe('Delve extras: loose rock and supports, played', () => {
@@ -208,6 +239,37 @@ test.describe('Delve extras: loose rock and supports, played', () => {
     await digOverhead(page, far);
     await expect(messageLine(page)).toContainText('Loose rock hits you');
     expect(await keeperHp(page)).toBeLessThan(full);
+  });
+
+  test('digging is never blocked by the seam\'s breath: the next cell opens in four swings and pays no Mining XP', async ({ page }) => {
+    const { f } = gallery();
+    // Two firm ceiling cells side by side, both in reach from one spot.
+    // Clear of the vitals panel, which covers the ceiling over the first columns.
+    const col = Array.from({ length: 70 }, (_, i) => i + 12).find(c => !isLoose(f.t, c, CEIL) && !isLoose(f.t, c + 1, CEIL))!;
+    expect(col, 'two firm ceiling cells side by side').toBeTruthy();
+    await seed(page, f.blobs());
+    await descend(page);
+    await walkTo(page, colX(col), 6);
+    await page.waitForTimeout(200);
+    const mining0 = await xp(page, 'mining');
+    const blocks0 = await hotbarCount(page, 'Basalt block');
+    // Crack both cells to their last stage first (a chip never asks the seam).
+    await crack(page, col + 1, ROCK_SWINGS - 1);
+    await crack(page, col, ROCK_SWINGS - 1);
+    // The fourth swing on the first cell breaks it and books a Mining action:
+    // the seam's 2.5 s breath starts here.
+    await swingAt(page, col);
+    await expect.poll(() => xp(page, 'mining'), { timeout: 3000 }).toBeGreaterThan(mining0);
+    const mining1 = await xp(page, 'mining');
+    // The fourth swing on the second, a second later, is inside the breath. It
+    // still breaks (before, it was refused until the breath ran out) and pays nothing.
+    await swingAt(page, col + 1, 0);
+    await expect(page.locator('.loot-toast', { hasText: '+0 XP · the seam is catching its breath' })).toBeVisible();
+    await expect.poll(() => cellOpen(page, col + 1), { timeout: 5000 }).toBe(true);
+    expect(await cellOpen(page, col)).toBe(true);
+    expect(await xp(page, 'mining'), 'the cell dug during the breath paid nothing').toBe(mining1);
+    // The block still drops: it is the rock itself, not a reward.
+    await expect.poll(() => hotbarCount(page, 'Basalt block')).toBe(blocks0 + 2);
   });
 
   test('rubble never takes the Keeper below 1 HP', async ({ page }) => {

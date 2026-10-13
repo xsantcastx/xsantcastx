@@ -52,6 +52,8 @@ import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
 import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.model';
 import type { DiscoverEvent } from './engine/engine';
+import { WORLD_ACTION_UNPAID } from './engine/engine.model';
+import { restCueDue, settleDelveMine } from './delve-reward';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
 /**
@@ -196,6 +198,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** "+2 Pyrite Dust" chips over the satchel. Decorative; the objective line announces pickups. */
   lootToasts: LootToast[] = [];
   private toastKey = 0;
+  /** When the Delve last said "+0 XP, the seam is catching its breath" (delve-reward.ts). */
+  private restCueAt: number | null = null;
   private loadoutKey = '';
   private tipStation: string | null = null;
   private tipTimer?: ReturnType<typeof setTimeout>;
@@ -1384,24 +1388,35 @@ export class SideScrollerComponent implements OnDestroy {
   }
 
   /**
-   * A delve tool is about to break a paying cell. Ore goes through resolveMine
-   * (same gate, cooldown and idempotency as the ore station); other yields are
-   * granted idempotently by the engine's per-cell mutation id.
-   * TODO: XP for non-mining actions needs a gateway sibling (resolveWorldAction).
+   * A delve tool is about to break a paying cell. Mining rock goes through
+   * resolveMine (same gate, cooldown and idempotency as the ore station), but
+   * only the reward is rate-limited: during the seam's recovery the cell still
+   * breaks and pays nothing (delve-reward.ts). Other yields are granted
+   * idempotently by the engine's per-cell mutation id.
    */
-  private worldAction(event: WorldActionEvent): boolean {
+  private worldAction(event: WorldActionEvent): boolean | typeof WORLD_ACTION_UNPAID {
     if (!this.browser) return false;
     // Plain dirt and placed blocks pay only the block.
     if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
     if (event.kind === 'mine' && event.discipline === 'mining' && !event.site) {
-      if (this.activity.snapshot.currentWork?.disciplineId === 'mining' && this.remaining > 0) {
-        this.message = this.t('play.hud.msg.seamBreathN', { n: this.remaining }); return false;
+      const now = Date.now();
+      const settled = settleDelveMine({
+        // The selected Current Work's breath, read before switching to it; with
+        // another discipline selected the gateway answers "recovering" itself.
+        recoveryRemainingMs: at => this.activity.snapshot.currentWork?.disciplineId === 'mining' ? this.activity.recoveryRemainingMs(at) : 0,
+        resolve: (mutationId, at) => this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, at)
+          ? this.activity.resolveMine({ mutationId, locationId: BASALT_SEAMWORKS_ID, oreId: event.materialId, now: at })
+          : { ok: false, code: 'not-selected' },
+      }, event.mutationId, now);
+      this.now = now;
+      if (settled.outcome === 'resting') {
+        // Dug, unpaid. The block still drops: it is the rock itself, not a reward.
+        if (restCueDue(this.restCueAt, now)) { this.restCueAt = now; this.toastLoot(this.t('play.delve.restingXp')); }
+        this.grantBlock(event);
+        return WORLD_ACTION_UNPAID;
       }
-      if (!this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID)) { this.message = this.t('play.hud.msg.miningNotSaved'); return false; }
-      const result = this.activity.resolveMine({ mutationId: event.mutationId, locationId: BASALT_SEAMWORKS_ID, oreId: event.materialId });
-      this.now = Date.now();
-      if (!result.ok) {
-        this.message = this.t(result.code === 'capacity' ? 'play.hud.msg.bagFull' : result.code === 'tier-locked' ? 'play.hud.msg.tierLocked' : result.code === 'recovering' ? 'play.hud.msg.seamBreath' : 'play.hud.msg.strikeNotSaved');
+      if (settled.outcome === 'refused') {
+        this.message = this.t(settled.code === 'not-selected' ? 'play.hud.msg.miningNotSaved' : settled.code === 'capacity' ? 'play.hud.msg.bagFull' : settled.code === 'tier-locked' ? 'play.hud.msg.tierLocked' : 'play.hud.msg.strikeNotSaved');
         return false;
       }
       if (event.materialId) this.toastLoot(`+1 ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
