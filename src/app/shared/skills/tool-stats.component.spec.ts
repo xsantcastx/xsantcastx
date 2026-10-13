@@ -5,6 +5,7 @@ import { BehaviorSubject } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
 import { emptyActivityLedger } from '../activity/activity.model';
+import { xpForLevel } from '../activity/mining-level';
 import { InventoryService } from '../rpg/inventory.service';
 import { ToolStatsComponent } from './tool-stats.component';
 
@@ -60,6 +61,17 @@ describe('ToolStatsComponent (Keeper Stats → Tools)', () => {
     fixture.detectChanges();
     expect(row('pickaxe').textContent).toContain('Pickaxe · tier I');
     expect(row('pickaxe').textContent).toContain('Works as tier I until Mining 10');
+  });
+
+  it('a higher Mining level shows its share: faster and harder than the tool alone', () => {
+    const ledger = emptyActivityLedger();
+    activity$.next({ ...ledger, progress: { ...ledger.progress, xpByDiscipline: { ...ledger.progress.xpByDiscipline, mining: xpForLevel(42) } } });
+    inv$.next({ items: [{ definitionId: 'pickaxe-2' }], equipped: {} });
+    fixture.detectChanges();
+    expect(row('pickaxe').textContent).toContain('Power ×1.81 (tool ×1.5 · Mining 42 +21%)');
+    expect(row('pickaxe').textContent).toContain('Swing 0.36 s (tool 0.40 · Mining 42 −10%)');
+    // Woodcutting is still 1: the plain lines.
+    expect(row('axe').textContent).toContain('None');
   });
 
   it('a tool left in a Delve chest is not in hand', () => {

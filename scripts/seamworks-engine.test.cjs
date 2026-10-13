@@ -2980,9 +2980,9 @@ test('tool pace: starter 0.52 s, forged I-IV 0.46/0.40/0.35/0.31, capped by the 
 });
 
 /** Hold the swing at one delve rock that grows back after each break, for `seconds`. */
-function swingsIn(pace, seconds, onWorldAction = () => true, clock = null) {
+function swingsIn(pace, seconds, onWorldAction = () => true, clock = null, tools = null) {
   const { engine } = enterDelve(onWorldAction);
-  engine.setTools(pace ? { pickaxe: 1, swing: { pickaxe: pace } } : { pickaxe: 1 });
+  engine.setTools(tools ?? (pace ? { pickaxe: 1, swing: { pickaxe: pace } } : { pickaxe: 1 }));
   const t = engine.terrain;
   const rock = terrainMod.nodeIndex('scorched-basalt');
   const col = 12;
@@ -3066,4 +3066,152 @@ test('gathering: a forged axe fells a sapling sooner, but a node still pays once
   assert.ok(Math.abs(fast.felledAt - 2 * 310) <= 40, `Axe IV pace: felled at ${fast.felledAt} ms`);
   assert.equal(fast.paid, slow.paid, 'the same harvests in two minutes: regrowth is the cap');
   assert.ok(slow.paid >= 2);
+});
+
+// ── The skill level sharpens the tool: faster swings, harder hits; rewards stay capped ──
+const toolLevel = loadTs(path.resolve(__dirname, '../src/app/shared/skills/tool-level.ts'));
+const close = (a, b, eps = 1e-9) => Math.abs(a - b) < eps;
+
+test('tool level: swing × (1 − 0.25·(L−1)/98), power × (1 + 0.5·(L−1)/98), floored at 0.25 s; staff swing untouched', () => {
+  assert.deepEqual({ ...toolLevel.TOOL_SKILL }, { pickaxe: 'mining', axe: 'woodcutting', sickle: 'foraging', staff: 'enchanting' });
+  assert.equal(toolLevel.levelSwingFactor(1), 1); assert.equal(toolLevel.levelPowerFactor(1), 1);
+  assert.equal(toolLevel.levelSwingFactor(99), 0.75); assert.equal(toolLevel.levelPowerFactor(99), 1.5);
+  assert.equal(toolLevel.levelSwingFactor(150), 0.75, 'past 99 adds nothing'); assert.equal(toolLevel.levelPowerFactor(0), 1);
+  assert.ok(close(toolLevel.levelSwingFactor(50), 1 - 0.25 * 49 / 98));
+  const table = [];
+  for (const tier of ['starter', 1, 2, 3, 4]) {
+    const base = tier === 'starter' ? skillTools.STARTER_SWING_SECONDS : skillTools.TOOL_SWING_SECONDS[tier];
+    const power = tier === 'starter' ? 1 : skillTools.toolPower(tier);
+    for (const level of [1, 20, 50, 99]) {
+      const swing = skillTools.levelSwing(base, level, 'mining');
+      assert.ok(close(swing, Math.max(0.25, base * toolLevel.levelSwingFactor(level))));
+      assert.ok(swing >= 0.25 && swing <= 0.52);
+      table.push({ tier, level, swing: +swing.toFixed(3), power: +(power * toolLevel.levelPowerFactor(level)).toFixed(3) });
+    }
+  }
+  assert.equal(table.find(r => r.tier === 4 && r.level === 99).swing, 0.25, 'Pickaxe IV at 99 hits the floor (0.31 × 0.75 = 0.2325)');
+  assert.equal(skillTools.levelSwing(0.52, 99, 'enchanting'), 0.52, 'the staff blast keeps its pace');
+  if (process.env.TOOL_LEVEL_TABLE) console.table(table);
+  // toolTiers reads the level per family.
+  const t = skillTools.toolTiers(bag(['starter-axe', 'pickaxe-4']), progressAt({ mining: 99, woodcutting: 50 }));
+  assert.equal(t.swing.pickaxe, 0.25); assert.equal(t.toolSwing.pickaxe, 0.31); assert.equal(t.power.pickaxe, 1.5);
+  assert.ok(close(t.swing.axe, 0.52 * toolLevel.levelSwingFactor(50))); assert.equal(t.toolSwing.axe, 0.52);
+  assert.equal(t.power.sickle, 1, 'Foraging 1: no bonus');
+});
+
+test('tool level: the card and stats lines show the split above level 1, the plain lines at 1', () => {
+  const t = (key, vars) => `${key}${vars ? JSON.stringify(vars) : ''}`;
+  const at42 = skillTools.toolCard('pickaxe-2', progressAt({ mining: 42 }));
+  assert.equal(at42.level, 42); assert.equal(at42.toolSwing, 0.40); assert.equal(at42.toolPower, 1.5);
+  const lines = skillTools.toolCardLines(at42, t);
+  assert.ok(lines[0].startsWith('toolStat.powerSplit') && lines[0].includes('"tool":"1.5"') && lines[0].includes('"pct":21'), lines[0]);
+  assert.ok(lines[1].startsWith('toolStat.swingSplit') && lines[1].includes('"s":"0.36"') && lines[1].includes('"tool":"0.40"') && lines[1].includes('"pct":10'), lines[1]);
+  const at1 = skillTools.toolCardLines(skillTools.toolCard('pickaxe-1', progressAt({ mining: 1 })), t);
+  assert.ok(at1[0].startsWith('toolStat.power{') && at1[1].startsWith('toolStat.swing{'), at1.join('\n'));
+  // The staff's power is split, its pace is not.
+  const staff = skillTools.toolPaceLines({ skill: 'enchanting', starter: false, power: 1.25, swing: 0.46, toolPower: 1, toolSwing: 0.46, level: 50 }, t);
+  assert.ok(staff[0].startsWith('toolStat.powerSplit') && staff[1].startsWith('toolStat.swing{'), staff.join('\n'));
+  // The EN templates, filled.
+  const { TOOLS_I18N } = loadTs(path.resolve(__dirname, '../src/app/shared/skills/tools.i18n.ts'));
+  const en = (key, vars) => TOOLS_I18N[key].en.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars?.[k]));
+  assert.deepEqual(skillTools.toolPaceLines(at42, en), ['Power ×1.81 (tool ×1.5 · Mining 42 +21%)', 'Swing 0.36 s (tool 0.40 · Mining 42 −10%)']);
+  assert.deepEqual({ ...toolLevel.levelGain(41, 42) }, { swing: '0.3', power: '0.5' });
+  assert.equal(en('toolStat.levelUp', { skill: 'Mining', level: 42, ...toolLevel.levelGain(41, 42) }), 'Mining 42: swings 0.3% faster, hits 0.5% harder');
+  for (const key of ['toolStat.powerSplit', 'toolStat.swingSplit', 'toolStat.levelUp', 'toolStat.levelUpPower']) assert.ok(TOOLS_I18N[key].es, `${key} ES`);
+});
+
+/** Swings to open one cell of `nodeId` with a Pickaxe `tier` at Mining `level` (power from the level). */
+function hitsToBreak(nodeId, tier, level) {
+  const { engine } = enterDelve(() => true);
+  engine.setTools({ pickaxe: tier, power: { pickaxe: toolLevel.levelPowerFactor(level) }, levels: { mining: level } });
+  const t = engine.terrain;
+  const col = 12;
+  engine.player.x = col * 32 - 30; engine.player.y = 610; engine.facing = 1;
+  t.set(col, 0, terrainMod.nodeIndex(nodeId));
+  let hits = 0;
+  while (t.solid(col, 0) && hits < 50) { engine.attackCooldown = 0; engine.strikeCell(col * 32 + 16, 626); hits++; }
+  engine.destroy();
+  return hits;
+}
+
+test('delve: a higher Mining level opens rock in fewer swings (fractional damage, the crack logic agrees)', () => {
+  const rows = {};
+  for (const [node, tier] of [['scorched-basalt', 1], ['hard-rock', 1], ['cinder-vein', 1], ['heartstone-vein', 3], ['grotto-stone', 1]]) {
+    // A vein's own level gate comes first (Heartstone needs Mining 20).
+    const levels = [1, 20, 50, 99].map(level => Math.max(level, terrainMod.TERRAIN_NODES[node].minLevel ?? 1));
+    rows[node] = levels.map(level => hitsToBreak(node, tier, level));
+    const hp = terrainMod.TERRAIN_NODES[node].hp, min = terrainMod.TERRAIN_NODES[node].tools.pickaxe;
+    levels.forEach((level, i) => {
+      const damage = (1 + (tier - min) / 2) * toolLevel.levelPowerFactor(level);
+      assert.equal(rows[node][i], Math.ceil(hp / damage - 1e-3), `${node} at Mining ${level}: ${rows[node][i]} swings`);
+    });
+    for (let i = 1; i < 4; i++) assert.ok(rows[node][i] <= rows[node][i - 1], `${node}: never more swings at a higher level (${rows[node]})`);
+  }
+  if (process.env.TOOL_LEVEL_TABLE) console.log(rows);
+  assert.deepEqual(rows['scorched-basalt'], [4, 4, 4, 3]);
+  // A fractional hit cracks a cell to the right stage: 4 HP − 1.5 leaves 2.5 (62%: stage 2).
+  const { engine } = enterDelve(() => true);
+  engine.setTools({ pickaxe: 1, power: { pickaxe: 1.5 } });
+  const t = engine.terrain; const col = 12;
+  engine.player.x = col * 32 - 30; engine.player.y = 610; engine.facing = 1;
+  t.set(col, 0, terrainMod.nodeIndex('scorched-basalt'));
+  engine.attackCooldown = 0; engine.strikeCell(col * 32 + 16, 626);
+  assert.ok(close(t.hp[t.index(col, 0)], 2.5, 1e-6)); assert.equal(t.stage(col, 0), 2);
+  // A bad multiplier from a host is clamped to [1, 1.5].
+  engine.setTools({ pickaxe: 1, power: { pickaxe: 9 } }); assert.equal(engine.power.pickaxe, 1.5);
+  engine.setTools({ pickaxe: 1, power: { pickaxe: 0.2 } }); assert.equal(engine.power.pickaxe, 1);
+  engine.destroy();
+});
+
+test('combat is unchanged by the gathering levels', () => {
+  const hit = power => {
+    const { engine } = fixture();
+    engine.setTools({ pickaxe: 4, axe: 4, sickle: 4, swing: { pickaxe: 0.25, axe: 0.25, sickle: 0.25 }, power });
+    const monster = engine.monsters[0];
+    engine.player.x = monster.x - 50; const before = monster.hp; strike(engine);
+    const dealt = before - monster.hp, cooldown = engine.attackCooldown;
+    engine.destroy();
+    return { dealt, cooldown };
+  };
+  const plain = hit(undefined), sharp = hit({ pickaxe: 1.5, axe: 1.5, sickle: 1.5, staff: 1.5 });
+  assert.deepEqual(sharp, plain); assert.equal(sharp.cooldown, 0.52); assert.ok(plain.dealt > 0);
+});
+
+test('rewards per minute do not rise with the level: delve paid XP and gathering harvests stay capped', () => {
+  const tools = level => ({
+    pickaxe: 4, levels: { mining: level },
+    swing: { pickaxe: skillTools.levelSwing(skillTools.TOOL_SWING_SECONDS[4], level, 'mining') },
+    power: { pickaxe: toolLevel.levelPowerFactor(level) },
+  });
+  const paid = level => {
+    const seam = fakeSeam(), clock = { now: 1_700_000_000_000 };
+    const host = delveHost(seam, clock);
+    // Every break is a fresh cell (its own mutation id), so only the seam's breath can cap the pay.
+    let cell = 0;
+    const run = swingsIn(null, 60, e => host.onWorldAction({ ...e, mutationId: `${e.mutationId}:${cell++}` }), clock, tools(level));
+    return { xp: seam.xp, breaks: host.outcomes.length, swings: run.swings };
+  };
+  const l1 = paid(1), l99 = paid(99);
+  if (process.env.TOOL_LEVEL_TABLE) console.log({ l1, l99 });
+  assert.ok(l99.swings > l1.swings, `faster swings at 99 (${l99.swings} vs ${l1.swings})`);
+  assert.ok(l99.breaks >= l1.breaks, 'at least as much rock opened');
+  // One booked op per 2.5 s: at most 25 in a minute, 2 XP each — at every level. Level 1 already reaches it.
+  assert.ok(l1.xp <= 25 * 2 && l99.xp <= 25 * 2, `paid XP capped: ${l1.xp} / ${l99.xp}`);
+  assert.ok(l1.xp >= 20 * 2, `level 1 already digs at the cap (${l1.xp})`);
+  assert.ok(l99.xp - l1.xp <= 2 * 2, `no more than a breath's rounding apart (${l1.xp} vs ${l99.xp})`);
+
+  const harvests = level => {
+    let clock = 1_700_000_000_000;
+    const { engine, calls } = enterThicket({ now: () => clock });
+    engine.setTools({ axe: 1, swing: { axe: skillTools.levelSwing(0.52, level, 'woodcutting') }, power: { axe: toolLevel.levelPowerFactor(level) } });
+    standAt(engine, nodeX(engine, 'world-root-sapling'));
+    engine.setInput('attack', true);
+    for (let n = 0; n < 120 * 60; n++) { clock += 1000 / 60; engine.update(1 / 60); }
+    engine.destroy();
+    return calls.length;
+  };
+  const w1 = harvests(1), w99 = harvests(99);
+  if (process.env.TOOL_LEVEL_TABLE) console.log({ w1, w99 });
+  assert.equal(w99, w1, `the same harvests in two minutes at Woodcutting 1 and 99 (${w1}): regrowth is the cap`);
+  assert.ok(w1 >= 2);
 });

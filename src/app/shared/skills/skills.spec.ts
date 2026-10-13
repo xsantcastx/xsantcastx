@@ -49,6 +49,8 @@ describe('toolTiers', () => {
     expect(t).toEqual({
       pickaxe: 3, axe: 2, sickle: 0, staff: 0, blade: 0, lanternRadius: 7,
       swing: { pickaxe: 0.35, axe: 0.40, sickle: 0.52, staff: 0.52 },
+      toolSwing: { pickaxe: 0.35, axe: 0.40, sickle: 0.52, staff: 0.52 },
+      power: { pickaxe: 1, axe: 1, sickle: 1, staff: 1 },
     });
   });
 

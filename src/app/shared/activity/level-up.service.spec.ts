@@ -20,6 +20,16 @@ describe('LevelUpService', () => {
     expect(events[0].level).toBe(5);
   });
 
+  it('names what a gathering level adds to its tool; Enchanting only the power, Hunting nothing', () => {
+    const at = xpForLevel(42);
+    service.checkMining(at - 1, at);
+    expect(events[0].tool).toEqual({ swing: '0.3', power: '0.5' });
+    service.checkSkill('enchanting', at - 1, at);
+    expect(events[1].tool).toEqual({ swing: null, power: '0.5' });
+    service.checkSkill('hunting', at - 1, at);
+    expect(events[2].tool).toBeNull();
+  });
+
   it('does not fire when XP moves without crossing a level boundary', () => {
     const floor = xpForLevel(4);
     service.checkMining(floor, floor + 3);

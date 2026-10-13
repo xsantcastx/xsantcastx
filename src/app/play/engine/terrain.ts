@@ -198,9 +198,11 @@ export type ToolCheck =
 
 /**
  * The best of `allowed` tools the Keeper holds that can work `node`, and its
- * damage per hit; or the requirement to show when none can. Pure.
+ * damage per hit (1 + (tier - min) / 2, times the wielding skill's `power`
+ * multiplier when given — fractional, so a cell's HP may go fractional too);
+ * or the requirement to show when none can. Pure.
  */
-export function toolFor(node: Pick<TerrainNodeDef, 'tools'>, tiers: ToolTiers, allowed: readonly ToolKind[] = TOOL_KINDS): ToolCheck {
+export function toolFor(node: Pick<TerrainNodeDef, 'tools'>, tiers: ToolTiers, allowed: readonly ToolKind[] = TOOL_KINDS, power?: Partial<Record<ToolKind, number>>): ToolCheck {
   let best: { tool: ToolKind; tier: number; damage: number } | null = null;
   let need: { tool: ToolKind; tier: number } | null = null;
   for (const tool of TOOL_KINDS) {
@@ -208,7 +210,7 @@ export function toolFor(node: Pick<TerrainNodeDef, 'tools'>, tiers: ToolTiers, a
     if (!min) continue;
     const have = tiers[tool] ?? 0;
     if (allowed.includes(tool) && have >= min) {
-      const damage = 1 + (have - min) / 2;
+      const damage = (1 + (have - min) / 2) * (power?.[tool] ?? 1);
       if (!best || damage > best.damage) best = { tool, tier: have, damage };
     } else if (!need || (allowed.includes(tool) && !allowed.includes(need.tool))) {
       // Prefer naming a tool this action could use (a swing names the pickaxe, not the staff).

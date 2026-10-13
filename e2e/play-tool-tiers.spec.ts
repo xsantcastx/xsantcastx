@@ -10,6 +10,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { bag, canvas, focusWorld, openPlay, placePanel, purse, seed } from './play-helpers';
+import { activity, xpForLevel } from './play-delve-fixtures';
 
 const exactName = (name: string) => new RegExp(`${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`);
 
@@ -80,6 +81,25 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
     const pick = tools.locator('.tst__row[data-family="pickaxe"]');
     await expect(pick).toContainText('Pickaxe · tier I');
     await expect(pick).toContainText('0.46 s per swing');
+    await expect(tools.locator('.tst__row[data-family="axe"]')).toContainText('0.52 s per swing (slowest)');
+  });
+
+  test('Mining 42 sharpens the Worn Pickaxe: a faster swing, a harder hit, and the cards show the split', async ({ page }) => {
+    await seed(page, { ...bag({ 'cinder-ore': 2 }), ...activity({ mining: xpForLevel(42) }) });
+    await openPlay(page);
+    // 0.52 × (1 − 0.25 × 41/98) = 0.466; power 1 × (1 + 0.5 × 41/98) = 1.21.
+    await expect(canvas(page)).toHaveAttribute('data-swing-pickaxe', '0.47', { timeout: 10000 });
+    await expect(canvas(page)).toHaveAttribute('data-power-pickaxe', '1.21');
+    const worn = await slipFor(page, 'Worn Pickaxe');
+    await expect(worn).toContainText('Swing 0.47 s (tool 0.52 · Mining 42 −10%)');
+    await expect(worn).toContainText('Power ×1.21 (tool ×1 · Mining 42 +21%)');
+    await page.keyboard.press('Escape');
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button[data-open="character"]').click();
+    const tools = placePanel(page).locator('app-tool-stats');
+    await expect(tools).toBeVisible({ timeout: 15000 });
+    await expect(tools.locator('.tst__row[data-family="pickaxe"]')).toContainText('Swing 0.47 s (tool 0.52 · Mining 42 −10%)');
+    // Woodcutting is still 1: the axe keeps the plain starter line.
     await expect(tools.locator('.tst__row[data-family="axe"]')).toContainText('0.52 s per swing (slowest)');
   });
 
