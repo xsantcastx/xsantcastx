@@ -1227,18 +1227,28 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 /*
  * The first-session goal line (world/first-goals.ts): "Goal 1 of 4 · Buy your
- * first building" and one button that walks there. Desktop: centred under the
- * top bar, between the health and satchel plates. Phones: a full-width row
+ * first building" and one button that walks there. Phones: a full-width row
  * under the top bar, and the plates below it step down by its height.
+ *
+ * Desktop: the HUD strip at 66px holds, left to right, the health plate
+ * (16–216px), the goal line, the folded Hearth pill (its right edge 248px from
+ * the right, at most 220px wide) and the satchel (232px from the right). The
+ * line is boxed between the plate and the pill's widest extent and centred in
+ * that gap, so it can never reach under the pill, however long the goal or the
+ * pill's label. Below 1200px that gap is too narrow for a sentence, so the line
+ * drops to its own row under the pill (118px), between the two plates. Beside
+ * the Homestead's buildings column (16–306px, from 132px down) it starts clear
+ * of the column instead.
  */
 .guide {
   position: absolute;
   z-index: 4;
-  top: 66px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content;
-  max-width: min(600px, calc(100% - 500px));
+  top: 118px;
+  left: 232px;
+  right: 248px;
+  margin-inline: auto;
+  width: fit-content;
+  max-width: 600px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -1282,6 +1292,13 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 /* The goal line sits in the HUD strip the open book covers: step aside while it is open. */
 .stage:has(.book) .guide { visibility: hidden; }
+
+@media (min-width: 1200px) {
+  .guide { top: 66px; right: calc(248px + 220px + 16px); }
+}
+@media (min-width: 901px) {
+  .stage--column .guide { left: 322px; }
+}
 
 @media (max-width: 900px) {
   .stage--guide { --guide-h: 64px; }
