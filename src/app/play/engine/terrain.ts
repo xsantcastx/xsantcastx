@@ -431,6 +431,9 @@ export class Terrain {
     if (lc === CHUNK - 1) this.bump(cc + 1, cr);
     if (lr === 0) this.bump(cc, cr - 1);
     if (lr === CHUNK - 1) this.bump(cc, cr + 1);
+    // A corner cell is also a diagonal neighbour's corner notch (auto-tiling reads 8 neighbours).
+    const dc = lc === 0 ? -1 : lc === CHUNK - 1 ? 1 : 0, dr = lr === 0 ? -1 : lr === CHUNK - 1 ? 1 : 0;
+    if (dc && dr) this.bump(cc + dc, cr + dr);
   }
   private bump(cc: number, cr: number): void {
     if (cc < 0 || cr < 0 || cc >= this.chunkCols || cr >= this.chunkRows) return;

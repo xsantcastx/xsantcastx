@@ -1,11 +1,18 @@
 /**
  * lighting.ts — darkness and light for delve areas.
  *
- * One offscreen canvas at half resolution is filled with the ambient dark,
- * then every light punches a soft hole in it (`destination-out`, one cached
- * unit radial gradient scaled per light), and the result is laid over the
- * world. The pure helpers below are the model the renderer approximates; the
- * tests check them.
+ * Terraria-style: the dark is a grid of light values, one sample every
+ * LIGHT_STEP world px (half a cell), interpolated smoothly over the screen.
+ * Each sample starts at the ambient dark and every light lifts it
+ * multiplicatively (`lightGrid`, the same model as `darknessAt`). Light
+ * reaches less far into solid rock: a sample inside rock that touches no air
+ * takes only part of each light (`LightShade`, built in tile-art.ts), so caves
+ * read as hollows in the stone. The grid goes into a tiny canvas (one pixel
+ * per sample) and is upscaled with bilinear filtering: on desktop straight
+ * onto the frame; on a phone into the half-resolution overlay, which is then
+ * laid nearest-neighbour as before (render-budget.ts `smoothDarkness`).
+ * Nothing builds a gradient per frame, and nothing allocates once the grid
+ * buffers exist.
  */
 
 export interface Light {
@@ -81,31 +88,99 @@ export class LightPool {
   }
 }
 
-/** The darkness overlay. Owns one offscreen canvas; draws nothing where a canvas cannot be made. */
+/** World px between light samples: two per cell edge. */
+export const LIGHT_STEP = 16;
+
+/** How much of each light reaches a cell (1 = all), per terrain cell, row-major from `top`. */
+export interface LightShade { readonly values: Float32Array; readonly cols: number; readonly rows: number; readonly top: number }
+
+/**
+ * Darkness at each sample of a grid, row-major: sample (i, j) sits at
+ * (x0 + (i + .5)·step, y0 + (j + .5)·step). The ambient dark lifted by every
+ * light as in `darknessAt`, each light's lift scaled by `shade` (of the cell
+ * holding the sample, 32 px cells) when given. Only samples inside a light's
+ * radius are visited. Pure apart from `out`.
+ */
+export function lightGrid(out: Float32Array, gw: number, gh: number, x0: number, y0: number, step: number,
+  lights: readonly Light[], count: number, ambient: number, shade?: LightShade | null, cell = 32): void {
+  const total = gw * gh;
+  out.fill(1, 0, total);
+  for (let n = 0; n < count; n++) {
+    const light = lights[n];
+    const intensity = Math.min(1, light.intensity), r = light.radius;
+    if (intensity <= 0 || r <= 0) continue;
+    const r2 = r * r;
+    const i0 = Math.max(0, Math.ceil((light.x - r - x0) / step - .5)), i1 = Math.min(gw - 1, Math.floor((light.x + r - x0) / step - .5));
+    const j0 = Math.max(0, Math.ceil((light.y - r - y0) / step - .5)), j1 = Math.min(gh - 1, Math.floor((light.y + r - y0) / step - .5));
+    for (let j = j0; j <= j1; j++) {
+      const sy = y0 + (j + .5) * step, dy2 = (sy - light.y) ** 2;
+      if (dy2 >= r2) continue;
+      const row = shade ? Math.floor((sy - shade.top) / cell) : -1;
+      const shadeRow = shade && row >= 0 && row < shade.rows ? row * shade.cols : -1;
+      for (let i = i0; i <= i1; i++) {
+        const sx = x0 + (i + .5) * step, d2 = (sx - light.x) ** 2 + dy2;
+        if (d2 >= r2) continue;
+        const k = 1 - d2 / r2;
+        let lift = intensity * k * k;
+        if (shadeRow >= 0) {
+          const col = Math.floor(sx / cell);
+          if (col >= 0 && col < shade!.cols) lift *= shade!.values[shadeRow + col];
+        }
+        out[j * gw + i] *= 1 - lift;
+      }
+    }
+  }
+  for (let k = 0; k < total; k++) out[k] *= ambient;
+}
+
+interface Grid { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; image: ImageData; dark: Float32Array; w: number; h: number }
+
+/** The darkness overlay. Owns a tiny grid canvas (and, for phones, a half-res overlay); draws nothing where a canvas cannot be made. */
 export class DarknessLayer {
   private canvas: HTMLCanvasElement | null = null;
   private context: CanvasRenderingContext2D | null = null;
-  private hole: CanvasGradient | null = null;
+  private grid: Grid | null = null;
   private failed = false;
-  /** Fill strings per darkness tint (`r,g,b`), indexed by ambient hundredth. */
-  private readonly fills = new Map<string, string[]>();
-  /** Fraction of CSS px the overlay is drawn at. Light is soft; half is plenty. */
+  /** Parsed colours (`r,g,b` tints and #rrggbb washes), cached so a frame parses nothing. */
+  private readonly colors = new Map<string, readonly [number, number, number]>();
+  /** Fraction of CSS px the phone's overlay is drawn at. Light is soft; half is plenty. */
   private readonly resolution = .5;
 
-  private ensure(width: number, height: number): CanvasRenderingContext2D | null {
+  private make(): { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D } | null {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') return null;
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    return context ? { canvas, context } : null;
+  }
+  private ensureGrid(w: number, h: number): Grid | null {
     if (this.failed) return null;
+    if (this.grid && this.grid.w === w && this.grid.h === h) return this.grid;
+    const made = this.grid ?? this.make();
+    if (!made) { this.failed = true; return null; }
+    made.canvas.width = w; made.canvas.height = h;
+    const image = typeof made.context.createImageData === 'function' ? made.context.createImageData(w, h) : null;
+    if (!image?.data || image.data.length < w * h * 4) { this.failed = true; return null; }
+    this.grid = { canvas: made.canvas, context: made.context, image, dark: new Float32Array(w * h), w, h };
+    return this.grid;
+  }
+  private ensureOverlay(width: number, height: number): CanvasRenderingContext2D | null {
     if (!this.canvas) {
-      if (typeof document === 'undefined' || typeof document.createElement !== 'function') { this.failed = true; return null; }
-      this.canvas = document.createElement('canvas');
-      this.context = this.canvas.getContext('2d');
-      if (!this.context) { this.failed = true; return null; }
-      const hole = this.context.createRadialGradient(0, 0, 0, 0, 0, 1);
-      for (const stop of [0, .25, .5, .75, 1]) hole.addColorStop(stop, `rgba(0,0,0,${lightFalloff(stop, 1).toFixed(3)})`);
-      this.hole = hole;
+      const made = this.make();
+      if (!made) return null;
+      this.canvas = made.canvas; this.context = made.context;
     }
     const w = Math.max(1, Math.ceil(width * this.resolution)), h = Math.max(1, Math.ceil(height * this.resolution));
     if (this.canvas.width !== w || this.canvas.height !== h) { this.canvas.width = w; this.canvas.height = h; }
     return this.context;
+  }
+  private rgb(color: string): readonly [number, number, number] {
+    let c = this.colors.get(color);
+    if (!c) {
+      if (color.startsWith('#')) { const v = parseInt(color.slice(1, 7), 16); c = [(v >> 16) & 255, (v >> 8) & 255, v & 255]; }
+      else { const [r, g, b] = color.split(',').map(Number); c = [r || 0, g || 0, b || 0]; }
+      this.colors.set(color, c);
+    }
+    return c;
   }
 
   /**
@@ -113,56 +188,58 @@ export class DarknessLayer {
    * world transform popped). `scale` is world → CSS px; camera in world px.
    *
    * `under`: a uniform tint the caller would otherwise fill over the whole
-   * frame just before this (the phone's biome wash, source-over). It is laid
-   * into the overlay itself, beneath the darkness (`destination-over`):
-   * premultiplied, tint-then-dark over the world is
+   * frame just before this (the phone's biome wash, source-over). It is folded
+   * into each grid sample beneath its darkness: premultiplied, tint-then-dark
+   * over the world is
    *   colour = dark·d + tint·a·(1 − d),  alpha = 1 − (1 − a)(1 − d),
-   * which is exactly what destination-over composes. One full-frame blend
-   * instead of two, and the extra fill runs on the small offscreen canvas.
-   * Returns false when nothing was drawn (no canvas), so the caller can tint.
-   * `smooth` false: upscale nearest-neighbour (the phone tier; render-budget.ts).
+   * so one full-frame blend does both. Returns false when nothing was drawn
+   * (no canvas), so the caller can tint.
+   * `smooth` false: the phone tier (render-budget.ts) — the grid is filtered
+   * into the half-res overlay and that is upscaled nearest-neighbour.
+   * `shade`: how far light reaches into rock, per cell (optional).
    */
   draw(target: CanvasRenderingContext2D, width: number, height: number, scale: number, cameraX: number, cameraY: number,
-    lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK, under?: { color: string; alpha: number }, smooth = true): boolean {
-    const c = this.ensure(width, height);
-    if (!c || !this.canvas || !this.hole) return false;
-    const k = this.resolution * scale;
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
-    c.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    c.fillStyle = this.fill(ambient, tint);
-    c.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    c.globalCompositeOperation = 'destination-out';
-    c.fillStyle = this.hole;
-    for (let i = 0; i < count; i++) {
-      const light = lights[i];
-      const r = light.radius * k;
-      if (r < 1) continue;
-      c.globalAlpha = Math.min(1, light.intensity);
-      c.setTransform(r, 0, 0, r, (light.x - cameraX) * k, (light.y - cameraY) * k);
-      c.fillRect(-1, -1, 2, 2);
+    lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK, under?: { color: string; alpha: number }, smooth = true,
+    shade?: LightShade | null): boolean {
+    const step = LIGHT_STEP;
+    // One sample of margin all round, so the filtered edge never shows.
+    const gx0 = Math.floor(cameraX / step) - 1, gy0 = Math.floor(cameraY / step) - 1;
+    const gw = Math.ceil(width / scale / step) + 3, gh = Math.ceil(height / scale / step) + 3;
+    const grid = this.ensureGrid(gw, gh);
+    if (!grid) return false;
+    lightGrid(grid.dark, gw, gh, gx0 * step, gy0 * step, step, lights, count, ambient, shade);
+    const [tr, tg, tb] = this.rgb(tint);
+    const ua = under && under.alpha > 0 ? Math.min(1, under.alpha) : 0;
+    const [ur, ug, ub] = ua > 0 ? this.rgb(under!.color) : [0, 0, 0];
+    const data = grid.image.data, dark = grid.dark;
+    for (let k = 0, p = 0; k < gw * gh; k++, p += 4) {
+      const d = dark[k];
+      if (ua > 0) {
+        const a = 1 - (1 - ua) * (1 - d), w = a > 0 ? 1 / a : 0, t = ua * (1 - d);
+        data[p] = (tr * d + ur * t) * w; data[p + 1] = (tg * d + ug * t) * w; data[p + 2] = (tb * d + ub * t) * w; data[p + 3] = a * 255 + .5;
+      } else {
+        data[p] = tr; data[p + 1] = tg; data[p + 2] = tb; data[p + 3] = d * 255 + .5;
+      }
     }
-    c.setTransform(1, 0, 0, 1, 0, 0);
-    if (under && under.alpha > 0) {
-      c.globalCompositeOperation = 'destination-over'; c.globalAlpha = Math.min(1, under.alpha);
-      c.fillStyle = under.color;
-      c.fillRect(0, 0, this.canvas.width, this.canvas.height);
-    }
-    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    grid.context.putImageData(grid.image, 0, 0);
+    const left = (gx0 * step - cameraX) * scale, top = (gy0 * step - cameraY) * scale, span = step * scale;
     const was = target.imageSmoothingEnabled;
-    if (!smooth) target.imageSmoothingEnabled = false;
-    target.drawImage(this.canvas, 0, 0, width, height);
-    if (!smooth) target.imageSmoothingEnabled = was;
+    if (smooth) {
+      target.imageSmoothingEnabled = true;
+      target.drawImage(grid.canvas, 0, 0, gw, gh, left, top, gw * span, gh * span);
+    } else {
+      const c = this.ensureOverlay(width, height);
+      if (!c || !this.canvas) return false;
+      const k = this.resolution;
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
+      c.clearRect(0, 0, this.canvas.width, this.canvas.height);
+      c.imageSmoothingEnabled = true;
+      c.drawImage(grid.canvas, 0, 0, gw, gh, left * k, top * k, gw * span * k, gh * span * k);
+      target.imageSmoothingEnabled = false;
+      target.drawImage(this.canvas, 0, 0, width, height);
+    }
+    target.imageSmoothingEnabled = was;
     return true;
-  }
-
-  /** The ambient fill colour, cached per tint and hundredth so no string is built per frame. */
-  private fill(ambient: number, tint: string): string {
-    const key = Math.round(Math.max(0, Math.min(1, ambient)) * 100);
-    let row = this.fills.get(tint);
-    if (!row) { row = new Array<string>(101); this.fills.set(tint, row); }
-    let fill = row[key];
-    if (!fill) { fill = `rgba(${tint},${(key / 100).toFixed(2)})`; row[key] = fill; }
-    return fill;
   }
 }

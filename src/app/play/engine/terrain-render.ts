@@ -7,21 +7,28 @@
  * crossed a crack stage). Chunk canvases are pooled with an LRU cap, so a long
  * delve never holds more than CHUNK_CAP of them. Debris and dust are a fixed
  * pool of particles.
+ *
+ * The look is Terraria's (tile-art.ts): every cell is 16 × 16 art pixels from
+ * a baked texture, solid cells join their neighbours and are outlined and
+ * bevelled only where they meet air, the biome's crust grows on top faces,
+ * dug cells show a back wall, and generated air (caverns) is left clear so the
+ * distant cave (cave-backdrop.ts) shows through. Chunks are painted and
+ * blitted unsmoothed, so an art pixel stays a crisp block.
  */
-import { BiomeDef, CELL, CHUNK, crackStage, isLoose, Terrain } from './terrain';
+import { BiomeDef, CELL, CHUNK, crackStage, isLoose, Terrain, TERRAIN_NODE_LIST } from './terrain';
+import { ART, cellHash, N, nodePalette, paintEdges, paintTopFace, patternOf, pixelLine, takesTopFace, TILE, TileAtlas, tileMask, tileVariant, topFaceOf } from './tile-art';
+
+export { cellHash } from './tile-art';
 
 /** Most chunk canvases kept. A 1280×720 view touches about 24. */
 const CHUNK_CAP = 36;
 const SIZE = CELL * CHUNK;
 
-/** A cheap, stable per-cell hash for flecks and crack shapes. */
-export function cellHash(col: number, row: number, salt = 0): number {
-  let h = (col * 374761393 + row * 668265263 + salt * 2246822519) >>> 0;
-  h = Math.imul(h ^ (h >>> 13), 1274126177) >>> 0;
-  return (h ^ (h >>> 16)) >>> 0;
-}
-
 interface ChunkCanvas { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; key: number; rev: number; used: number; res: number }
+
+/** Palettes and patterns per node kind, built once. */
+const PALETTES = TERRAIN_NODE_LIST.map(node => nodePalette(node));
+const PATTERNS = TERRAIN_NODE_LIST.map(node => patternOf(node));
 
 export class TerrainRenderer {
   private terrain: Terrain | null = null;
@@ -29,6 +36,8 @@ export class TerrainRenderer {
   private readonly free: ChunkCanvas[] = [];
   private frame = 0;
   private offscreen = true;
+  /** The baked tile textures, shared by every chunk. */
+  readonly atlas = new TileAtlas();
 
   /** Point at a (new) terrain. Cached chunks go back to the pool. */
   attach(terrain: Terrain | null): void {
@@ -49,6 +58,8 @@ export class TerrainRenderer {
     const scale = Math.max(1, Math.min(2, Math.round(res * 2) / 2));
     const cc0 = Math.max(0, Math.floor(left / SIZE)), cc1 = Math.min(t.chunkCols - 1, Math.floor((left + width) / SIZE));
     const cr0 = Math.max(0, Math.floor((top - t.top) / SIZE)), cr1 = Math.min(t.chunkRows - 1, Math.floor((top + height - t.top) / SIZE));
+    const smoothing = c.imageSmoothingEnabled;
+    c.imageSmoothingEnabled = false;
     for (let cr = cr0; cr <= cr1; cr++) {
       for (let cc = cc0; cc <= cc1; cc++) {
         const x = cc * SIZE, y = t.top + cr * SIZE;
@@ -56,19 +67,21 @@ export class TerrainRenderer {
         const chunk = this.offscreen ? this.chunk(key, scale) : null;
         if (!chunk) {
           // No offscreen canvas (tests, very old browsers): paint the cells straight in.
-          paintCells(c, t, cc * CHUNK, cr * CHUNK, x, y);
+          paintCells(c, t, cc * CHUNK, cr * CHUNK, x, y, null);
           continue;
         }
         if (chunk.rev !== t.chunkRev[key] || chunk.res !== scale) {
           const p = chunk.context;
           p.setTransform(1, 0, 0, 1, 0, 0); p.clearRect(0, 0, chunk.canvas.width, chunk.canvas.height);
           p.setTransform(scale, 0, 0, scale, -x * scale, -y * scale);
-          paintCells(p, t, cc * CHUNK, cr * CHUNK, x, y);
+          p.imageSmoothingEnabled = false;
+          paintCells(p, t, cc * CHUNK, cr * CHUNK, x, y, this.atlas);
           chunk.rev = t.chunkRev[key]; chunk.res = scale;
         }
         c.drawImage(chunk.canvas, x, y, SIZE, SIZE);
       }
     }
+    c.imageSmoothingEnabled = smoothing;
   }
 
   private chunk(key: number, scale: number): ChunkCanvas | null {
@@ -102,98 +115,52 @@ export class TerrainRenderer {
 }
 
 /** Paint one chunk's cells (world px; the caller's transform maps them). */
-function paintCells(c: CanvasRenderingContext2D, t: Terrain, col0: number, row0: number, x0: number, y0: number): void {
+function paintCells(c: CanvasRenderingContext2D, t: Terrain, col0: number, row0: number, x0: number, y0: number, atlas: TileAtlas | null): void {
+  const solid = (col: number, row: number) => t.solid(col, row);
   for (let row = row0; row < Math.min(t.rows, row0 + CHUNK); row++) {
     for (let col = col0; col < Math.min(t.cols, col0 + CHUNK); col++) {
-      paintCell(c, t, col, row, x0 + (col - col0) * CELL, y0 + (row - row0) * CELL);
+      paintCell(c, t, col, row, x0 + (col - col0) * CELL, y0 + (row - row0) * CELL, atlas, solid);
     }
   }
 }
 
-function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: number, x: number, y: number): void {
-  const node = t.nodeAt(col, row);
+/** One baked texture into a cell, or the flat colour where there is no atlas. */
+function blitTile(c: CanvasRenderingContext2D, atlas: TileAtlas | null, row: number, variant: number, x: number, y: number, flat: string): void {
+  const image = atlas?.canvas;
+  if (image && row >= 0) c.drawImage(image, variant * TILE, row * TILE, TILE, TILE, x, y, CELL, CELL);
+  else { c.fillStyle = flat; c.fillRect(x, y, CELL, CELL); }
+}
+
+/** A dug cell's back wall: the biome's wall texture, shadowed under and beside rock. */
+function paintWall(c: CanvasRenderingContext2D, t: Terrain, atlas: TileAtlas | null, biome: BiomeDef, col: number, row: number, x: number, y: number, h: number): void {
+  blitTile(c, atlas, atlas ? atlas.wall(biome) : -1, tileVariant(col, row), x, y, (h & 3) === 0 ? biome.wall[0] : biome.wall[1]);
+  c.fillStyle = biome.wall[2];
+  if (t.solid(col, row - 1)) { c.fillRect(x, y, CELL, ART * 2); c.globalAlpha = .5; c.fillRect(x, y + ART * 2, CELL, ART); c.globalAlpha = 1; }
+  if (t.solid(col - 1, row)) { c.fillRect(x, y, ART, CELL); c.globalAlpha = .5; c.fillRect(x + ART, y, ART, CELL); c.globalAlpha = 1; }
+  if (t.solid(col + 1, row)) { c.fillRect(x + CELL - ART, y, ART, CELL); c.globalAlpha = .5; c.fillRect(x + CELL - ART * 2, y, ART, CELL); c.globalAlpha = 1; }
+}
+
+function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: number, x: number, y: number, atlas: TileAtlas | null, solid: (col: number, row: number) => boolean): void {
+  const index = t.index(col, row);
+  const kind = t.kind[index];
+  const node = TERRAIN_NODE_LIST[kind];
   const h = cellHash(col, row);
   if (!node.solid) {
-    // A dug tunnel: the biome's dark back wall, shadowed under rock.
-    const wall = t.biomeAt(row).wall;
-    c.fillStyle = (h & 3) === 0 ? wall[0] : wall[1]; c.fillRect(x, y, CELL, CELL);
+    // Generated air (a cavern) stays clear: the distant cave shows through.
+    // A dug or built-in cell, and a carved slab, sits on the biome's back wall.
+    if (TERRAIN_NODE_LIST[t.base[index]].solid || node.id === 'inscription') paintWall(c, t, atlas, t.biomeAt(row), col, row, x, y, h);
     if (node.id === 'inscription') paintInscription(c, node.light, node.fleck, x, y, h);
     else if (node.placeable) paintPlaced(c, node.id, node.base, node.dark, node.light, node.fleck, x, y);
-    c.fillStyle = wall[2];
-    if (t.solid(col, row - 1)) c.fillRect(x, y, CELL, 7);
-    if (t.solid(col - 1, row)) c.fillRect(x, y, 4, CELL);
-    if (t.solid(col + 1, row)) c.fillRect(x + CELL - 4, y, 4, CELL);
     return;
   }
-  if (node.id === 'cache' || node.id === 'kaels-cache') {
-    c.fillStyle = '#160e12'; c.fillRect(x, y, CELL, CELL);
-    c.fillStyle = node.dark; c.fillRect(x + 3, y + 10, CELL - 6, CELL - 10);
-    c.fillStyle = node.base; c.fillRect(x + 4, y + 11, CELL - 8, CELL - 13);
-    c.fillStyle = node.light; c.fillRect(x + 3, y + 16, CELL - 6, 3);
-    c.fillStyle = node.fleck; c.fillRect(x + CELL / 2 - 3, y + 15, 6, 7);
-    paintCracks(c, t, col, row, x, y, h);
-    return;
+  const pattern = PATTERNS[kind];
+  blitTile(c, atlas, atlas ? atlas.node(kind) : -1, tileVariant(col, row), x, y, node.base);
+  const mask = tileMask(solid, col, row);
+  paintEdges(c, x, y, mask, PALETTES[kind]);
+  if (!(mask & N) && takesTopFace(pattern)) {
+    const face = topFaceOf(t.biomeAt(row));
+    if (face) paintTopFace(c, x, y, face, h);
   }
-  c.fillStyle = node.base; c.fillRect(x, y, CELL, CELL);
-  // Mottling: two darker patches per cell, placed by hash.
-  c.fillStyle = node.dark;
-  c.fillRect(x + (h & 15), y + ((h >> 4) & 15), 8 + ((h >> 8) & 7), 6);
-  c.fillRect(x + ((h >> 12) & 15) + 6, y + ((h >> 16) & 15) + 8, 6, 5 + ((h >> 20) & 3));
-  switch (node.id) {
-    case 'glowcap': {
-      // Three caps on pale stems, the biggest by hash.
-      for (let s = 0; s < 3; s++) {
-        const bits = h >> (s * 5);
-        const sx = x + 6 + s * 9 + (bits & 3), r = 3 + ((bits >> 2) & 3) + (s === 1 ? 2 : 0), top = y + 10 + ((bits >> 4) & 7);
-        c.fillStyle = node.light; c.fillRect(sx - 1, top, 2, y + CELL - 3 - top);
-        c.fillStyle = node.fleck; c.beginPath(); c.ellipse(sx, top, r, r * .6, 0, Math.PI, 0); c.fill();
-      }
-      break;
-    }
-    case 'godforge-fragment': {
-      // A wedge of the Godforge's shell, edge-lit.
-      c.fillStyle = node.light; c.beginPath(); c.moveTo(x + 8, y + CELL - 3); c.lineTo(x + 15, y + 4); c.lineTo(x + 25, y + CELL - 6); c.closePath(); c.fill();
-      c.fillStyle = node.fleck; c.fillRect(x + 14, y + 12, 3, 10);
-      break;
-    }
-    case 'roots': case 'shadow-root': {
-      c.strokeStyle = node.light; c.lineWidth = 2;
-      for (let s = 0; s < 3; s++) {
-        const sx = x + 6 + s * 10 + ((h >> (s * 3)) & 3);
-        c.beginPath(); c.moveTo(sx, y); c.quadraticCurveTo(sx + ((h >> (s + 5)) & 1 ? 6 : -6), y + CELL / 2, sx, y + CELL); c.stroke();
-      }
-      c.fillStyle = node.fleck; c.fillRect(x + 4 + (h & 15), y + 8 + ((h >> 6) & 7), 4, 3);
-      break;
-    }
-    case 'cracked-wall': {
-      c.strokeStyle = node.fleck; c.globalAlpha = .75; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(x + 4 + (h & 7), y); c.lineTo(x + 14 + ((h >> 3) & 7), y + 12); c.lineTo(x + 8 + ((h >> 6) & 7), y + 22); c.lineTo(x + 18, y + CELL); c.stroke();
-      c.globalAlpha = 1;
-      break;
-    }
-    case 'bedrock': {
-      c.strokeStyle = node.light; c.lineWidth = 1;
-      c.beginPath(); c.moveTo(x, y + 10); c.lineTo(x + 10, y); c.moveTo(x, y + 26); c.lineTo(x + 26, y); c.moveTo(x + 12, y + CELL); c.lineTo(x + CELL, y + 12); c.stroke();
-      break;
-    }
-    default: {
-      // Flecks; ore veins get fat bright nuggets instead.
-      const ore = !!node.yield || !!node.glow;
-      c.fillStyle = node.fleck;
-      const count = ore ? 4 : 2;
-      for (let n = 0; n < count; n++) {
-        const bits = h >> (n * 7);
-        const size = ore ? 4 + (bits & 3) : 2 + (bits & 1);
-        c.fillRect(x + 3 + ((bits >> 2) & 15) + (n & 1) * 8, y + 3 + ((bits >> 4) & 15) + (n >> 1) * 6, size, ore ? size - 1 : size);
-      }
-      if (ore) { c.fillStyle = '#fff4e0'; c.fillRect(x + 6 + (h & 15), y + 6 + ((h >> 5) & 15), 2, 2); }
-    }
-  }
-  // Exposed faces: a lit crust on top, a shadow lip below, soft sides.
-  if (!t.solid(col, row - 1)) { c.fillStyle = node.light; c.fillRect(x, y, CELL, 3); }
-  if (!t.solid(col, row + 1)) { c.fillStyle = '#0a0608'; c.fillRect(x, y + CELL - 4, CELL, 4); }
-  if (!t.solid(col - 1, row)) { c.fillStyle = node.light; c.globalAlpha = .5; c.fillRect(x, y, 2, CELL); c.globalAlpha = 1; }
-  if (!t.solid(col + 1, row)) { c.fillStyle = '#0a0608'; c.globalAlpha = .6; c.fillRect(x + CELL - 2, y, 2, CELL); c.globalAlpha = 1; }
   paintCracks(c, t, col, row, x, y, h);
   if (isLoose(t, col, row)) paintLoose(c, x, y, h);
 }
@@ -203,12 +170,11 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
  * along its underside, so it reads as "this lets go" before any dust falls.
  */
 function paintLoose(c: CanvasRenderingContext2D, x: number, y: number, h: number): void {
-  c.strokeStyle = '#d8c2b0'; c.globalAlpha = .55; c.lineWidth = 1.3;
-  c.beginPath();
-  c.moveTo(x, y + 9 + (h & 7)); c.lineTo(x + 10, y + 14 + ((h >> 3) & 3)); c.lineTo(x + 17, y + 8 + ((h >> 5) & 7)); c.lineTo(x + CELL, y + 15 + ((h >> 8) & 7));
-  c.moveTo(x + 12 + ((h >> 11) & 7), y + CELL); c.lineTo(x + 15, y + 20); c.lineTo(x + 10, y + 14 + ((h >> 3) & 3));
-  c.stroke();
-  c.globalAlpha = .7; c.fillStyle = '#0a0608'; c.fillRect(x + 3, y + CELL - 3, CELL - 6, 2);
+  c.fillStyle = '#d8c2b0'; c.globalAlpha = .55;
+  const a = y + 9 + (h & 7), b = y + 14 + ((h >> 3) & 3), d = y + 8 + ((h >> 5) & 7), e = y + 15 + ((h >> 8) & 7);
+  pixelLine(c, x, a, x + 10, b); pixelLine(c, x + 10, b, x + 17, d); pixelLine(c, x + 17, d, x + CELL - 1, e);
+  pixelLine(c, x + 12 + ((h >> 11) & 7), y + CELL - 1, x + 15, y + 20); pixelLine(c, x + 15, y + 20, x + 10, b);
+  c.globalAlpha = .7; c.fillStyle = '#0a0608'; c.fillRect(x + ART * 2, y + CELL - ART * 2, CELL - ART * 4, ART);
   c.globalAlpha = 1;
 }
 
@@ -293,21 +259,22 @@ function paintInscription(c: CanvasRenderingContext2D, slab: string, glyph: stri
   c.stroke();
 }
 
-/** Crack lines that deepen with each stage of damage. */
+/** Crack lines that deepen with each stage of damage, on the art-pixel grid and inside the cell. */
 function paintCracks(c: CanvasRenderingContext2D, t: Terrain, col: number, row: number, x: number, y: number, h: number): void {
   const stage = crackStage(t.health(col, row));
   if (!stage) return;
-  c.strokeStyle = '#070406'; c.lineWidth = stage === 3 ? 2.2 : 1.6;
-  c.beginPath();
+  c.fillStyle = '#070406';
   const cx = x + CELL / 2 + ((h & 7) - 3), cy = y + CELL / 2 + (((h >> 3) & 7) - 3);
+  const inX = (v: number) => Math.max(x, Math.min(x + CELL - 1, v)), inY = (v: number) => Math.max(y, Math.min(y + CELL - 1, v));
   for (let n = 0; n < stage * 2; n++) {
     const a = ((h >> (n * 3)) & 7) * .785 + n * .9;
     const len = 8 + ((h >> (n + 9)) & 7) + stage * 2;
-    c.moveTo(cx, cy);
-    const mx = cx + Math.cos(a) * len * .5 + ((h >> n) & 1 ? 2 : -2), my = cy + Math.sin(a) * len * .5;
-    c.lineTo(mx, my); c.lineTo(cx + Math.cos(a) * len, cy + Math.sin(a) * len);
+    const mx = inX(cx + Math.cos(a) * len * .5 + ((h >> n) & 1 ? 2 : -2)), my = inY(cy + Math.sin(a) * len * .5);
+    pixelLine(c, cx, cy, mx, my);
+    pixelLine(c, mx, my, inX(cx + Math.cos(a) * len), inY(cy + Math.sin(a) * len));
+    // The deepest stage splits the cell: a second pixel wide.
+    if (stage === 3) pixelLine(c, inX(cx + ART), cy, inX(mx + ART), my);
   }
-  c.stroke();
 }
 
 // ── Debris ─────────────────────────────────────────────────────────────────
