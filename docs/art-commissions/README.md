@@ -192,18 +192,16 @@ Assets/
     └── **Parallax/**          NN-parallax-<realm>-<layer>.png + .json   (W8; no importer family yet)
 ```
 
-## Pipeline gaps
+## Pipeline status
 
-The art can be made now. These code changes (none in this pack; ids from
-[style guide §12](../art/style-guide.md#12-what-the-pipeline-cannot-do-yet)) are needed before parts of it show:
+The importer and renderer changes the pack needed have landed
+([style guide §12](../art/style-guide.md#12-pipeline-status)):
 
-- **IMP-1 / RND-1** auto-tiles: the tile importer accepts only a one-row `tile` strip and the terrain renderer
-  knows no neighbours. Until then, import row 0 of a W7a sheet alone (256 x 64) to see the interiors.
-- **IMP-2 / RND-2** parallax: no `Sprites/Parallax` family and no layered background renderer.
-- **IMP-3** pixel icons and portraits: the width ladder resizes with Lanczos, so the 96 px rung is slightly soft;
-  the 256 / 512 rungs are exact.
-- **RND-3** in-world HUD frames ([style guide §9](../art/style-guide.md#9-in-world-ui-slots-and-panels)).
-- **ENG-1** the Delve still spawns `mirror-substitute` / `rivet-maw` for its two enemies.
+- **IMP-1 / RND-1** auto-tiles: full W7a sheets import, and the Delve draws the piece for each cell's neighbours.
+- **IMP-2 / RND-2** parallax: `Sprites/Parallax` imports W8 layers; a town draws its four once all have loaded.
+- **IMP-3** pixel icons and portraits resize nearest-neighbour down the width ladder.
+- **ENG-1** the Delve's creatures use their own keys, `seam-eater` and `cinder-bailiff`.
+- Still open: **RND-3** in-world HUD frames ([style guide §9](../art/style-guide.md#9-in-world-ui-slots-and-panels)).
 
 ## The ten menu files to make first (by how often a player sees the placeholder)
 

@@ -32,17 +32,25 @@ export const DEFAULT_LANTERN = 7 * 32;
 /** Most lights drawn in one frame. */
 export const LIGHT_CAP = 24;
 
-/** Smooth falloff: 1 at the centre, 0 at and beyond the radius. */
+/**
+ * Smooth falloff: 1 at the centre, 0 at and beyond the radius. Terraria-like:
+ * a broad bright pool that rolls off near the edge (1 − d²/r², not its square),
+ * so the area a light reaches reads clearly instead of fading from the middle.
+ */
 export function lightFalloff(distance: number, radius: number): number {
   if (radius <= 0 || distance >= radius) return 0;
-  const k = 1 - (distance / radius) ** 2;
-  return k * k;
+  return 1 - (distance / radius) ** 2;
 }
 
-/** How dark the delve is with no light, by how far below the surface the view sits. */
+/**
+ * How dark the delve is with no light, by how far below the surface the view
+ * sits. The floor stays short of black (0.8 deep down): unlit rock still shows
+ * its shape faintly, as in Terraria's caverns, while only lit ground reads in
+ * full colour, so the lantern and torches keep their meaning.
+ */
 export function ambientDarkness(depthPx: number): number {
   const deep = Math.max(0, Math.min(1, depthPx / 320));
-  return .5 + deep * .44;
+  return .42 + deep * .38;
 }
 
 /** Darkness left at a point: ambient, lifted multiplicatively by each light. Pure. */
@@ -120,8 +128,7 @@ export function lightGrid(out: Float32Array, gw: number, gh: number, x0: number,
       for (let i = i0; i <= i1; i++) {
         const sx = x0 + (i + .5) * step, d2 = (sx - light.x) ** 2 + dy2;
         if (d2 >= r2) continue;
-        const k = 1 - d2 / r2;
-        let lift = intensity * k * k;
+        let lift = intensity * (1 - d2 / r2);
         if (shadeRow >= 0) {
           const col = Math.floor(sx / cell);
           if (col >= 0 && col < shade!.cols) lift *= shade!.values[shadeRow + col];
@@ -197,10 +204,14 @@ export class DarknessLayer {
    * `smooth` false: the phone tier (render-budget.ts) — the grid is filtered
    * into the half-res overlay and that is upscaled nearest-neighbour.
    * `shade`: how far light reaches into rock, per cell (optional).
+   * `warm`: the colour lit ground takes on (lantern and torch light is warm):
+   * a sample lifted from the ambient dark is tinted by `alpha` × how far it was
+   * lifted, folded into the same blend (tint, then warmth, then dark):
+   *   colour = U·u·(1−w)(1−d) + W·w·(1−d) + T·d,  alpha = 1 − (1−u)(1−w)(1−d).
    */
   draw(target: CanvasRenderingContext2D, width: number, height: number, scale: number, cameraX: number, cameraY: number,
     lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK, under?: { color: string; alpha: number }, smooth = true,
-    shade?: LightShade | null): boolean {
+    shade?: LightShade | null, warm?: { color: string; alpha: number }): boolean {
     const step = LIGHT_STEP;
     // One sample of margin all round, so the filtered edge never shows.
     const gx0 = Math.floor(cameraX / step) - 1, gy0 = Math.floor(cameraY / step) - 1;
@@ -211,10 +222,18 @@ export class DarknessLayer {
     const [tr, tg, tb] = this.rgb(tint);
     const ua = under && under.alpha > 0 ? Math.min(1, under.alpha) : 0;
     const [ur, ug, ub] = ua > 0 ? this.rgb(under!.color) : [0, 0, 0];
+    const wa = warm && warm.alpha > 0 && ambient > 0 ? Math.min(1, warm.alpha) : 0;
+    const [wr, wg, wb] = wa > 0 ? this.rgb(warm!.color) : [0, 0, 0];
     const data = grid.image.data, dark = grid.dark;
     for (let k = 0, p = 0; k < gw * gh; k++, p += 4) {
       const d = dark[k];
-      if (ua > 0) {
+      if (wa > 0) {
+        const lw = wa * Math.max(0, 1 - d / ambient), open = 1 - d;
+        const a = 1 - (1 - ua) * (1 - lw) * open, inv = a > 0 ? 1 / a : 0;
+        const tu = ua * (1 - lw) * open, tw = lw * open;
+        data[p] = (ur * tu + wr * tw + tr * d) * inv; data[p + 1] = (ug * tu + wg * tw + tg * d) * inv; data[p + 2] = (ub * tu + wb * tw + tb * d) * inv;
+        data[p + 3] = a * 255 + .5;
+      } else if (ua > 0) {
         const a = 1 - (1 - ua) * (1 - d), w = a > 0 ? 1 / a : 0, t = ua * (1 - d);
         data[p] = (tr * d + ur * t) * w; data[p + 1] = (tg * d + ug * t) * w; data[p + 2] = (tb * d + ub * t) * w; data[p + 3] = a * 255 + .5;
       } else {

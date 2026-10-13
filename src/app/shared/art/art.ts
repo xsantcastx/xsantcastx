@@ -35,6 +35,15 @@ export { TILES, tileFor } from './tile-manifest.generated';
 export type { TileEntry } from './tile-manifest.generated';
 
 /**
+ * Parallax layers (spec W8): four per town or hunting ground, `parallax-<realm>-<layer>`,
+ * and the Delve's `parallax-delve-<biome>-far|near`. `parallaxFor` is null until a layer
+ * is imported from `Assets/Sprites/Parallax/`; the world keeps its painted or procedural
+ * backdrop on null.
+ */
+export { PARALLAX, PARALLAX_LAYERS, parallaxFor } from './parallax-manifest.generated';
+export type { ParallaxEntry, ParallaxLayer } from './parallax-manifest.generated';
+
+/**
  * Model id -> manifest key, for ids whose file is named more verbosely than
  * the model. Keep this small: a new entry here is usually a sign the art
  * should have been named after the id instead.
