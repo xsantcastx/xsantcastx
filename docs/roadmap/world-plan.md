@@ -43,7 +43,7 @@ world — and every system visible while it works.
 |---|---|---|
 | **Infernal**: Basalt Seamworks | Crafting Bench, Rune Forge, Enchanting Table, Material Vendor, quest stations (ore, forge, beacon, passage) | Cinder ore, ember residue |
 | **Luminous** | Market (upgrades) | Light-touched materials |
-| **Umbral** | Gambler, Exchange | Shadow materials, scrolls |
+| **Umbral** | Gambler, Reels, Exchange | Shadow materials, scrolls |
 | **Celestial**: Meridian Orrery | Codex (observatory), Leaderboards board | Star fragments, runes |
 | **Verdant**: Rootglass Canopy | Sanctum (expeditions), Quests board, Arena gate, Trials gate | Rootglass, seeds |
 | *Everywhere* | Character + Satchel overlays, Waystone, Places list | |
@@ -212,6 +212,7 @@ Replaces "hybrid sprites + paintings" (2026-10-12). Art bible: `docs/art/style-g
   - [~] Identical items as one ×N row (owner, 2026-10-13: "so many of the same items, they should be stacked"; branch `worktree-agent-ae993023d5dfbea84`): mechanically identical instances (same definition, rarity, stats + frozen grade, no temper/reforge/socketed rune, same place) show as ONE row in the Vault tabs, the satchel book and the Delve chest panel; variants sort side by side; "Send 7 to Vault" / "Take out 7" move the group in one write, Details has "Move just one"; identical pieces share slots, 20 to a slot ("×7 · 1 slot", "×25 · 2 slots"; manager decision 2026-10-13) in the satchel and the slot-limited Vault tabs, counted in one place (`inventory-layout.ts` occupancy; layout, routing, settle, take-out all read it; 48-seed multi-device property test). Each piece stays its own record. `e2e/play-vault.spec.ts`. S7: the market's `bagRoom` must use the same rule
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for the pixel sprite sheets (the rig retires after the A/B)
+- [~] **The Croupier's Reels** (owner, 2026-10-13: "slot machines… stake-style super bonus"; branch `worktree-agent-afd96296a31970cf4`): Umbral station between the Gambler and the Exchange, run by the Croupier (`/play?at=reels`); 3×3, 5 lines, world symbols, Eclipse Round (10 free spins, sticky ×2–×50 rune orbs, paid at the end), prizes through the rune/material gateways; Gold only, RTP 92.1% Gold + ~0.7% prizes (exact + simulated proof in `economy-sim.mjs --reels`, checked in `--check`), bet cap = two minutes of income. Shared kit `src/app/shared/games/` (seeded RNG, idempotent play ledger, bet tiers, RTP harness, win celebration) for Rune Drop / Seam Sweeper / Eclipse Ascent. Handoff `docs/handoff/reels.md`; lore line pending owner review; art briefs `world-sprites/10-reels.md`
 
 ---
 

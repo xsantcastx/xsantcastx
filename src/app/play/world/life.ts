@@ -81,6 +81,8 @@ export interface KeeperDef {
   id: string;
   /** The station it stands beside (a station id in the same town). */
   station: string;
+  /** Other panel stations in the same town this keeper also runs (it stands between them). */
+  serves?: readonly string[];
   /** Set for the canon cast: their lines come from npc.model.ts DIALOGUE. */
   npc?: NpcId;
   /** English name tag, the fallback when no translation is wired (tests, SSR). */
@@ -133,7 +135,8 @@ export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> =
     keeper('aureth', 'waystone', 'Aureth', AURETH, 'robe', -1, 'npc-aureth-figure', 'aureth'),
   ],
   umbral: [
-    keeper('croupier', 'gambler', 'Croupier', P.umbral[0], 'hood', 1, 'npc-croupier-figure'),
+    // The Croupier also runs the Reels, which stand just east of where it waits.
+    { ...keeper('croupier', 'gambler', 'Croupier', P.umbral[0], 'hood', 1, 'npc-croupier-figure'), serves: ['reels'] },
     keeper('broker', 'exchange', 'Exchange Broker', P.umbral[1], 'coat', 1, 'npc-exchange-broker-figure'),
     // Where two reflections disagree, a corridor opens. Verrin watches it.
     keeper('verrin', 'passage', 'Verrin', VERRIN, 'hood', -1, 'npc-verrin-figure', 'verrin'),
