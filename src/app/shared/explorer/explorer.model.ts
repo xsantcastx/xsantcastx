@@ -453,14 +453,13 @@ export const REALM_EXCLUSIVE_MATERIALS: Record<RealmId, readonly string[]> = {
 const UNIVERSAL = ['orichalcum-ore', 'godforge-slag'] as const;
 
 export const REALM_ARTBIBLE_MATERIALS: Record<RealmId, readonly string[]> = {
-  luminous: ['solar-resin', 'rune-of-radiance', 'rune-of-the-solstice', ...UNIVERSAL],
-  umbral: ['shadowthread-silk', 'void-crystal', 'rune-of-hollow',
-    'rune-of-erasure', ...UNIVERSAL],
-  verge: ['world-root-bark', 'rune-of-the-world-root', ...UNIVERSAL],
-  archivum: ['celestial-quartz', 'moonpetal-herb', 'rune-of-starfire',
-    'rune-of-void-navigation', ...UNIVERSAL],
-  nexus: ['pyrite-dust', 'emberheart-ore', 'rune-of-the-forge',
-    'rune-of-cinder', 'rune-of-the-underhearth', ...UNIVERSAL],
+  // The "Rune of ..." reagents are gone: they were the Forge runes under a
+  // second name, and expeditions already bring Forge runes home.
+  luminous: ['solar-resin', ...UNIVERSAL],
+  umbral: ['shadowthread-silk', 'void-crystal', ...UNIVERSAL],
+  verge: ['world-root-bark', ...UNIVERSAL],
+  archivum: ['celestial-quartz', 'moonpetal-herb', ...UNIVERSAL],
+  nexus: ['pyrite-dust', 'emberheart-ore', ...UNIVERSAL],
 };
 
 /** The share of a draw that lands on the Art Bible band. Taken from commons. */
