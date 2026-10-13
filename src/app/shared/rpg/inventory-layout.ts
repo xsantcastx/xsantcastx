@@ -17,7 +17,6 @@
  */
 import { compareRevision, nextRevision, stackQuantityOf, tombstoneRecord } from './inventory-ops';
 import type { InventoryLedger, ItemLocation, OwnedItemInstance } from './inventory.model';
-import { RUNES } from '../rune-forge/rune.model';
 
 /** Names the rule set. Placement is recomputed, so bumping it converts nothing on disk. */
 export const INVENTORY_LAYOUT = 1;
@@ -281,7 +280,9 @@ export function settle(
   return { ledger: next, moved };
 }
 
-const SIGIL_NAMES = new Set(RUNES.map(rune => `${rune.name} Sigil`));
+// Any "<Name> Sigil", not only today's runes: Mote, Seam and Ledger were
+// retired after their Sigils were minted, and those must go too.
+const SIGIL_NAME = /^[A-Z][A-Za-z' -]* Sigil$/;
 
 /**
  * A pre-removal "<Rune> Sigil" record: every rune find used to mint one, with
@@ -289,7 +290,7 @@ const SIGIL_NAMES = new Set(RUNES.map(rune => `${rune.name} Sigil`));
  * Anything carrying any of those is not one, so a frozen grade is never lost.
  */
 export function isLegacySigil(row: OwnedItemInstance): boolean {
-  if (row.type !== 'rune' || !SIGIL_NAMES.has(row.name)) return false;
+  if (row.type !== 'rune' || !SIGIL_NAME.test(row.name)) return false;
   if (Object.keys(row.stats).length || row.rollQuality) return false;
   if ((row.upgradeLevel ?? 0) > 0 || (row.reforgeCount ?? 0) > 0) return false;
   return !row.sockets?.some(Boolean);
