@@ -187,6 +187,10 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] **Phase 5 leftovers** (`57593a1`): HUD lines EN+ES (lazy `hud.i18n.ts`; engine non-Delve messages carry `messageKey` too; item/place/creature names stay English); the satchel book opens below the HUD strip and takes turns with the Hearth (it overlapped at every desktop width, not just 901–1000px); "CLICK TO WALK HERE" and gather cues draw above their stall/node, never under the action bar; Delve phone tier −12% main-thread (unsmoothed darkness upscale, tint folded into the overlay). Full `play-*` 65/65
 - [x] **Goal line vs Hearth pill**: the desktop goal line is boxed between the health plate and the pill's widest extent (220px) from 1200px up, and drops to its own row under the pill (118px) from 901 to 1199px; beside the Homestead column it starts at 322px. `e2e/play-hud.spec.ts` checks goal line / pill / satchel / vitals / top bar pairwise apart, plus hit tests on the pill and Show me, at 905–1920px in the Seamworks, the Quarry (two-line goal) and the Homestead
 - [x] **Onboarding owner calls, decided AAA-style** (`docs/handoff/onboarding-aaa.md`): goals reordered to buy → forge **and equip** the Basalt Edge → defeat a Rivet Maw → dig (the Edge needs only seam ore + the guaranteed ember, so no starter weapon); the Torch is the guaranteed first bench craft (2 Cinder Ore + 2 Gold, in "Ready now" as soon as the Edge is forged); a one-time "Next step" line points at the Rune Forge after the four goals once a strike is affordable (EN+ES). All four goals 64.5 s at 1280×800 (was 2m18s)
+- [x] **Delve: the dig is never blocked** (AAA call): a Pickaxe I basalt cell opens on swing 4 every time; during the seam's 2.5 s recovery the break is unpaid (no XP, no ore) with a throttled "+0 XP · the seam is catching its breath" cue; a full satchel / locked tier / failed save still refuse so nothing is lost (`src/app/play/delve-reward.ts`). Test harness: clicks 1 s apart, walks nudged to ≤8 px so rubble specs are deterministic
+- [x] **Consent bar in-world** (AAA call): docked under the game frame on `/play` (`--gf-consent-h`), Accept and Essential Only equal, no analytics before an answer, `e2e/play-consent.spec.ts`; the goal line moves beside the open Hearth or hides under 1180px
+- [~] **Phone HUD, Terraria-mobile style** (owner, 2026-10-13: "not playable" on a real phone): hotbar top-left with a satchel button, health top-right, joystick bottom-left, Use/Jump/Dodge/Interact bottom-right, tap a cell to use the selected item, transient messages, collapsible quest tracker, menu holds Return/Restart/Keys; landscape-first, portrait playable; target ≥65% unobstructed world
+- Owner's phone showed a build from before the Hearth fold: an installed app or a long-open tab never navigates, so it keeps an old bundle. Add a "new version — tap to reload" prompt when the service worker updates
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for sprite sheets
 
@@ -210,7 +214,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Onboarding: arm first, starter craft, Rune Forge in context · Delve: dig never blocked · Consent bar in-world + open-Hearth overlap | agent worktrees | `[~]` |
+| Phone HUD, Terraria-mobile style | agent worktree | `[~]` |
 
 ## Art still missing (placeholders in game)
 
