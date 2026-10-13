@@ -310,18 +310,6 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // histories from growing without bound.
   },
   {
-    key: 'godforge-pro',
-    collection: 'progress',
-    doc: 'pro',
-    label: 'Pro pack',
-    // Not progression — an entitlement somebody paid for, and the one blob where
-    // the visible bug was the reverse of the others: buying the pack on a
-    // desktop and then opening the site on a phone showed the ads again. The
-    // structural rules are already right for it (a flag that has been set stays
-    // set), and `grantsSettled` riding the same OR is what stops the currency
-    // grant being minted a second time on the device that adopts it.
-  },
-  {
     key: 'godforge-delve',
     collection: 'progress',
     doc: 'delve',

@@ -244,8 +244,6 @@ export const REWARD_SECONDS = {
   arena: [[2_500, 60], [9_000, 3 * 60], [32_000, 8 * 60], [120_000, 20 * 60], [420_000, 60 * 60]] as const,
   /** One interaction beat on a tool page. */
   toolActionS: 5,
-  /** The Pro pack's Gold. */
-  proPackS: 5 * 60,
 } as const;
 
 /**
