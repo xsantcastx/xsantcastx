@@ -70,6 +70,8 @@ const DELVE_REACH = CELL * 2.7;
 const BASE_SWING = .52;
 /** No tool pace may beat this (guards a bad setTools value). */
 const MIN_SWING = .25;
+/** No skill level multiplies a tool's damage past this (level 99 is ×1.5; guards a bad setTools value). */
+const MAX_POWER = 1.5;
 const BLAST_TIME = .3;
 const BLAST_COOLDOWN = 1.1;
 /** Loose rock: the groan before it falls (s), its fastest fall, and its bruise as a share of max HP. */
@@ -263,6 +265,8 @@ export class SeamworksEngine {
   private tools: ToolTiers = {};
   /** Seconds per digging/gathering swing, by tool (setTools({ swing })). Combat swings stay BASE_SWING. */
   private swing: Partial<Record<ToolKind, number>> = {};
+  /** Damage multiplier per tool from the wielding skill's level (setTools({ power })); 1 when absent. */
+  private power: Partial<Record<ToolKind, number>> = {};
   /** The tool the last hitCell worked with, so the swing takes that tool's pace. */
   private swingTool: ToolKind | null = null;
   /** The current area's gathering nodes, and every visited area's (regrowth timers keep running per session). */
@@ -720,17 +724,21 @@ export class SeamworksEngine {
    * `minLevel` clangs before the host is asked, instead of cracking all the
    * way and being refused.
    */
-  setTools(tools: ToolTiers & { lanternTiles?: number; lanternRadius?: number; levels?: Partial<Record<DisciplineId, number>>; swing?: Partial<Record<ToolKind, number>> }): void {
+  setTools(tools: ToolTiers & { lanternTiles?: number; lanternRadius?: number; levels?: Partial<Record<DisciplineId, number>>; swing?: Partial<Record<ToolKind, number>>; power?: Partial<Record<ToolKind, number>> }): void {
     const next: ToolTiers = {};
     const swing: Partial<Record<ToolKind, number>> = {};
+    const power: Partial<Record<ToolKind, number>> = {};
     for (const tool of ['pickaxe', 'axe', 'sickle', 'blade', 'staff'] as ToolKind[]) {
       const tier = tools[tool];
       if (Number.isFinite(tier) && (tier as number) > 0) next[tool] = Math.floor(tier as number);
       const pace = tools.swing?.[tool];
       if (Number.isFinite(pace) && (pace as number) > 0) swing[tool] = Math.min(BASE_SWING, Math.max(MIN_SWING, pace as number));
+      const boost = tools.power?.[tool];
+      if (Number.isFinite(boost) && (boost as number) > 0) power[tool] = Math.min(MAX_POWER, Math.max(1, boost as number));
     }
     this.tools = next;
     this.swing = swing;
+    this.power = power;
     if (Number.isFinite(tools.lanternTiles) && (tools.lanternTiles as number) > 0) this.lanternRadius = (tools.lanternTiles as number) * CELL;
     else if (Number.isFinite(tools.lanternRadius) && (tools.lanternRadius as number) > 0) this.lanternRadius = tools.lanternRadius as number;
     if (tools.levels) this.skillLevels = { ...tools.levels };
@@ -777,7 +785,7 @@ export class SeamworksEngine {
   }
   /** What still stops the Keeper working a node ("Sickle II", "Foraging 6"), or null. */
   private siteNeed(def: GatherNodeDef): string | null {
-    const check = toolFor(def, this.tools, SWING_TOOLS);
+    const check = toolFor(def, this.tools, SWING_TOOLS, this.power);
     if (!check.ok) return check.need ? toolName(check.need.tool, check.need.tier) : 'nothing';
     const level = def.minLevel && this.skillLevels ? this.skillLevels[def.discipline] : undefined;
     if (def.minLevel && level !== undefined && level < def.minLevel) return `${titleCase(SKILL_NAME[def.discipline] ?? def.discipline)} ${def.minLevel}`;
@@ -798,7 +806,7 @@ export class SeamworksEngine {
       this.say('play.hud.eng.growingBack', `The ${def.label.toLowerCase()} is growing back (${Math.ceil(site.timer)}s).`, { lname: def.label.toLowerCase(), n: Math.ceil(site.timer) });
       return;
     }
-    const check = toolFor(def, this.tools, SWING_TOOLS);
+    const check = toolFor(def, this.tools, SWING_TOOLS, this.power);
     const need = this.siteNeed(def);
     if (!check.ok || need) {
       this.debris.chip(def.x, top, '#ffe2a8', 6);
@@ -1040,7 +1048,7 @@ export class SeamworksEngine {
     const node = t.nodeAt(col, row);
     if (!node.solid) return HIT_NONE;
     const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
-    const check = toolFor(node, this.tools, allowed);
+    const check = toolFor(node, this.tools, allowed, this.power);
     if (!check.ok) {
       this.debris.chip(cx, cy, '#ffe2a8', quiet ? 2 : 6);
       if (!quiet) this.clang(cx, cy, check.need ? `Clang! Need ${toolName(check.need.tool, check.need.tier)}` : `${node.label} will not break`);
