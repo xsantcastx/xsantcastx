@@ -49,6 +49,9 @@
   </div>
 
   <div stationDetails class="vs-more">
+    @if (selected && selected.ids.length > 1 && !locked) {
+      <button type="button" class="vs-chip" (click)="moveOne()">{{ t('vault.act.moveOne') }}</button>
+    }
     <p>{{ t('vault.details.how') }}</p>
     @if (view === 'satchel' && entries.length) {
       <button type="button" class="vs-chip" (click)="sendAllGear()">{{ t('vault.act.sendAllGear') }}</button>

@@ -218,3 +218,129 @@ describe('VaultStationComponent', () => {
     expect(vs.view).toBe('general-1');
   });
 });
+
+/** Seven identical Mote Charms + two rolled variants, in the satchel; optionally more in General I. */
+function twin(id: string, over: Record<string, unknown> = {}): Record<string, unknown> {
+  return {
+    id, definitionId: 'artifact:Mote Charm', kind: 'instance', category: 'artifacts', tags: ['artifact'], rarity: 'common',
+    soulbound: false, acquiredAt: '2026-08-01T00:00:00.000Z', revision: { hlc: 1, deviceId: 'old', sequence: 1 },
+    source: 'inventory', name: 'Mote Charm', type: 'artifact', stats: { ward: 1 }, rollQuality: { ward: 0.4 }, sellValue: 20, econ: 3,
+    location: { kind: 'bag' }, ...over,
+  };
+}
+
+function seedTwins(memory: MemoryGateway, extra: Record<string, unknown>[] = []): void {
+  const records = [
+    ...Array.from({ length: 7 }, (_, i) => twin(`mote-${i}`)),
+    twin('mote-rolled-a', { stats: { ward: 3 }, rollQuality: { ward: 0.9 } }),
+    twin('mote-rolled-b', { stats: { ward: 1 }, rollQuality: { ward: 0.41 } }),
+    ...extra,
+  ];
+  memory.writeRaw(INVENTORY_KEY, JSON.stringify({
+    version: 2, records, tombstones: [], stackOps: [], goldFromSales: 0, sold: 0,
+    hlc: 10, legacyBackup: null, era: INVENTORY_ERA,
+  }));
+}
+
+describe('VaultStationComponent: identical items as one ×N row', () => {
+  let memory: MemoryGateway;
+  beforeEach(() => { memory = new MemoryGateway(); });
+
+  it('shows one ×7 row and the two rolled variants as their own rows, side by side; slots stay honest', () => {
+    seedTwins(memory);
+    const { inventory } = configure(memory);
+    const vs = station();
+    expect(vs.rows.length).toBe(3);
+    expect(vs.rows.every(r => r.name === 'Mote Charm')).toBeTrue();
+    const group = vs.rows.find(r => r.sub?.includes('×7'));
+    expect(group?.sub).toContain('×7 · 7 slots');
+    expect(vs.strip.label).toBe('9 / 40 slots');
+    expect(inventory.snapshot.usedRows).toBe(9);
+
+    vs.pick(group!.id);
+    expect(vs.selected?.quantity).toBe(7);
+    expect(vs.where).toContain('7 alike');
+    expect(vs.primary?.label).toBe('Send 7 to Vault');
+  });
+
+  it('Send 7 is ONE save write, moves exactly the seven, keeps their frozen grades, and a replay moves nothing', () => {
+    seedTwins(memory);
+    const { inventory } = configure(memory);
+    const equipped = jasmine.createSpy('equipped');
+    inventory.equipped$.subscribe(equipped);
+    const vs = station();
+    const before = JSON.stringify(inventory.snapshot.items.map(i => [i.id, i.stats, i.rollQuality, i.sellValue]).sort());
+    const group = vs.rows.find(r => r.sub?.includes('×7'))!;
+    vs.pick(group.id);
+    const ids = [...vs.selected!.ids];
+
+    const writes = spyOn(memory, 'write').and.callThrough();
+    vs.act();
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(vs.announce).toBe('7 × Mote Charm went to your Vault.');
+    for (const id of ids) expect(inventory.itemById(id)?.explorerId).toBe(vaultHolder('general-1'));
+    expect(inventory.itemById('mote-rolled-a')?.explorerId).toBeUndefined();
+    expect(inventory.itemById('mote-rolled-b')?.explorerId).toBeUndefined();
+    expect(inventory.snapshot.items.length).toBe(9);
+    expect(JSON.stringify(inventory.snapshot.items.map(i => [i.id, i.stats, i.rollQuality, i.sellValue]).sort())).toBe(before);
+    expect(equipped).not.toHaveBeenCalled();
+
+    // A replayed press (same ids, already moved) writes nothing and moves nothing.
+    writes.calls.reset();
+    expect(inventory.stowMany(ids)).toEqual([]);
+    expect(writes).not.toHaveBeenCalled();
+    expect(inventory.snapshot.items.length).toBe(9);
+
+    // In General I the seven are one row again; Take out 7 brings them all back in one write.
+    vs.setView('general-1');
+    expect(vs.rows.length).toBe(1);
+    expect(vs.primary?.label).toBe('Take out 7');
+    writes.calls.reset();
+    vs.act();
+    expect(writes).toHaveBeenCalledTimes(1);
+    expect(inventory.snapshot.usedRows).toBe(9);
+    expect(inventory.snapshot.inVault).toBe(0);
+  });
+
+  it('Take out N moves only what the satchel has room for, and says that number', () => {
+    const filler = Array.from({ length: SATCHEL_BASE_SLOTS - 3 }, (_, i) => record(`fill-${i}`, 'Ashen Helm', i));
+    const vaulted = Array.from({ length: 5 }, (_, i) => twin(`v-${i}`, { location: { kind: 'explorer', explorerId: vaultHolder('general-1') } }));
+    memory.writeRaw(INVENTORY_KEY, JSON.stringify({
+      version: 2, records: [...filler, ...vaulted], tombstones: [], stackOps: [], goldFromSales: 0, sold: 0,
+      hlc: 100, legacyBackup: null, era: INVENTORY_ERA,
+    }));
+    const { inventory } = configure(memory);
+    const vs = station();
+    vs.setView('general-1');
+    expect(vs.rows.length).toBe(1);
+    expect(vs.primary?.label).toBe('Take out 3');
+    vs.act();
+    expect(inventory.snapshot.usedRows).toBe(SATCHEL_BASE_SLOTS);
+    expect(inventory.snapshot.inVault).toBe(2);
+    expect(inventory.snapshot.items.length).toBe(SATCHEL_BASE_SLOTS - 3 + 5);
+    expect(vs.primary?.blocked).toBe('Satchel full — make room first');
+  });
+
+  it('Details: Move just one sends a single piece and leaves a ×6 row', () => {
+    seedTwins(memory);
+    const { inventory } = configure(memory);
+    const vs = station();
+    vs.pick(vs.rows.find(r => r.sub?.includes('×7'))!.id);
+    vs.moveOne();
+    expect(inventory.snapshot.inVault).toBe(1);
+    const group = vs.rows.find(r => r.sub?.includes('×6'));
+    expect(group).toBeTruthy();
+  });
+
+  it('a failed save moves nothing and says so', () => {
+    seedTwins(memory);
+    const { inventory } = configure(memory);
+    const vs = station();
+    vs.pick(vs.rows.find(r => r.sub?.includes('×7'))!.id);
+    memory.failWrites = true;
+    vs.act();
+    expect(inventory.snapshot.inVault).toBe(0);
+    expect(inventory.snapshot.items.length).toBe(9);
+    expect(vs.announce).toBe('That could not be saved. Nothing was spent. Try again.');
+  });
+});

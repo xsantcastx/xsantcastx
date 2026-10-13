@@ -12,6 +12,10 @@
  *   a tab not owned yet      → Buy the <tab> tab · Gold
  *   a stack (ore, torches)   → no button: benches use the total wherever it shows
  *
+ * Mechanically identical instances (item-groups) show as ONE row with ×N, and
+ * the button moves the whole group in one write ("Send 7 to Vault", "Take out
+ * 7"); Details has "Move just one". Each instance still takes its own slot.
+ *
  * Every price comes from STORAGE_CURVE through StorageService; every move is
  * InventoryService.stow / takeOut, which never emit `equipped$`.
  */
@@ -43,6 +47,7 @@ import {
 } from '../rpg/inventory-layout';
 import { itemArt, materialDisplay } from '../rpg/material-catalog';
 import { rarityLabel, type GameItem } from '../rpg/item.model';
+import { clusterBy, familyOf, groupItems, type ItemGroup } from '../rpg/item-groups';
 import { RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import {
   STATION_UI,
@@ -70,6 +75,8 @@ interface Entry {
   value: number;
   found: string;
   item?: GameItem;
+  /** Every instance this row stands for (one row per group of identical items). */
+  ids: string[];
 }
 
 interface Primary {
@@ -206,11 +213,9 @@ export class VaultStationComponent implements OnInit, OnDestroy {
   }
 
   sendAllGear(): void {
-    let sent = 0;
-    for (const item of this.inventory.snapshot.bag) {
-      if (item.equipped || item.explorerId) continue;
-      if (this.inventory.stow(item.id)) sent++;
-    }
+    // One write for the lot, routed one by one as single sends would be.
+    const sent = this.inventory.stowMany(this.inventory.snapshot.bag
+      .filter(item => !item.equipped && !item.explorerId).map(item => item.id)).length;
     this.announce = this.t('vault.done.sendAll', { n: sent });
     this.refresh();
   }
@@ -240,14 +245,23 @@ export class VaultStationComponent implements OnInit, OnDestroy {
     const view = this.view;
     this.locked = view !== 'satchel' && !capacity.tabs.has(view);
     const cells: Cell[] = view === 'satchel' ? layout.satchel : this.locked ? [] : layout.tabs[view];
-    this.entries = this.sorted(this.filtered(cells.map(cell => this.entryOf(cell, snap.items))
-      .filter((row): row is Entry => !!row)));
+    const byId = new Map(snap.items.map(item => [item.id, item]));
+    const here = cells.filter(cell => cell.kind === 'instance')
+      .map(cell => byId.get(cell.key))
+      .filter((item): item is GameItem => !!item);
+    const all: Entry[] = [
+      ...cells.filter(cell => cell.kind === 'stack').map(cell => this.stackEntry(cell)),
+      ...groupItems(here).map(group => this.groupEntry(group, byId)),
+    ];
+    // Sorted, then variants of one definition kept side by side.
+    this.entries = clusterBy(this.sorted(this.filtered(all)), row => row.item ? familyOf(row.item) : null);
     this.rows = this.entries.map(row => ({
       id: row.id,
       name: row.name,
       art: row.art,
       rarity: row.rarity || undefined,
-      sub: row.kind === 'stack' ? this.t('vault.held', { n: this.fmt(row.quantity) }) : row.item ? rarityLabel(row.item.rarity) : '',
+      sub: row.kind === 'stack' ? this.t('vault.held', { n: this.fmt(row.quantity) })
+        : row.item ? rarityLabel(row.item.rarity) + (row.quantity > 1 ? ` · ${this.t('vault.group', { n: row.quantity })}` : '') : '',
     }));
 
     if (resetPick || !this.entries.some(row => row.id === this.selectedId)) {
@@ -281,14 +295,15 @@ export class VaultStationComponent implements OnInit, OnDestroy {
     this.where = this.selected
       ? this.selected.kind === 'stack'
         ? this.t('vault.line.benches')
-        : view === 'satchel' ? this.t('vault.line.inSatchel') : this.t('vault.line.inVault', { tab: this.tabName(view as VaultTabId) })
+        : (view === 'satchel' ? this.t('vault.line.inSatchel') : this.t('vault.line.inVault', { tab: this.tabName(view as VaultTabId) }))
+          + (this.selected.quantity > 1 ? `. ${this.t('vault.line.group', { n: this.selected.quantity })}` : '')
       : '';
-    this.primary = this.primaryFor(view, layout.bagInstances >= capacity.satchel);
+    this.primary = this.primaryFor(view, Math.max(0, capacity.satchel - layout.bagInstances));
     this.offers = this.buildOffers();
     this.cdr.markForCheck();
   }
 
-  private primaryFor(view: VaultView, satchelFull: boolean): Primary | null {
+  private primaryFor(view: VaultView, satchelFree: number): Primary | null {
     const gold = (need: number): StationCost[] => [{ kind: 'gold', label: this.t('stationUi.gold'), need, have: this.gold }];
     if (view !== 'satchel' && this.locked) {
       const price = this.storage.priceOf(view);
@@ -296,6 +311,7 @@ export class VaultStationComponent implements OnInit, OnDestroy {
       return { label: this.t('vault.act.buyTab', { tab: this.tabName(view) }), costs: gold(price), blocked: null, run: () => this.buy(view) };
     }
     const pick = this.selected;
+    if (pick?.kind === 'item' && pick.item && pick.ids.length > 1) return this.groupPrimary(view, pick, satchelFree);
     if (pick?.kind === 'item' && pick.item) {
       const item = pick.item;
       if (view === 'satchel') {
@@ -312,7 +328,7 @@ export class VaultStationComponent implements OnInit, OnDestroy {
         };
       }
       return {
-        label: this.t('vault.act.takeOut'), costs: [], blocked: satchelFull ? this.t('vault.why.satchelFull') : null,
+        label: this.t('vault.act.takeOut'), costs: [], blocked: satchelFree < 1 ? this.t('vault.why.satchelFull') : null,
         run: () => {
           if (!this.inventory.takeOut(item.id)) { this.announce = this.t('vault.why.satchelFull'); return; }
           this.announce = this.t('vault.done.takeOut', { name: item.name });
@@ -330,6 +346,47 @@ export class VaultStationComponent implements OnInit, OnDestroy {
     return null;
   }
 
+  /**
+   * A ×N row: the button moves the whole group in one write. Taking out moves
+   * as many as the satchel has room for, and the label says that number.
+   */
+  private groupPrimary(view: VaultView, pick: Entry, satchelFree: number): Primary {
+    const name = pick.item?.name ?? pick.name;
+    if (view === 'satchel') {
+      return {
+        label: this.t('vault.act.sendN', { n: pick.ids.length }), costs: [], blocked: null,
+        run: () => {
+          const moved = this.inventory.stowMany(pick.ids);
+          this.announce = moved.length ? this.t('vault.done.sendN', { n: moved.length, name }) : this.t('vault.why.failed');
+          if (moved.length) this.selectedId = null;
+          this.refresh();
+        },
+      };
+    }
+    const n = Math.min(pick.ids.length, satchelFree);
+    return {
+      label: this.t('vault.act.takeOutN', { n: Math.max(1, n) }), costs: [],
+      blocked: n < 1 ? this.t('vault.why.satchelFull') : null,
+      run: () => {
+        const moved = this.inventory.takeOutMany(pick.ids);
+        this.announce = moved.length ? this.t('vault.done.takeOutN', { n: moved.length, name }) : this.t('vault.why.satchelFull');
+        this.refresh();
+      },
+    };
+  }
+
+  /** Details: move a single one out of a ×N row. */
+  moveOne(): void {
+    const pick = this.selected;
+    const id = pick?.ids[0];
+    if (!pick?.item || !id) return;
+    const ok = this.view === 'satchel' ? this.inventory.stow(id) : this.inventory.takeOut(id);
+    this.announce = ok
+      ? this.t(this.view === 'satchel' ? 'vault.done.sendN' : 'vault.done.takeOutN', { n: 1, name: pick.item.name })
+      : this.t(this.view === 'satchel' ? 'vault.why.failed' : 'vault.why.satchelFull');
+    this.refresh();
+  }
+
   private buildOffers(): Offer[] {
     const rows = this.storage.rowsOwned();
     const row: Offer = {
@@ -344,22 +401,27 @@ export class VaultStationComponent implements OnInit, OnDestroy {
     return [row, ...tabs];
   }
 
-  private entryOf(cell: Cell, items: readonly GameItem[]): Entry | null {
-    if (cell.kind === 'stack') {
-      const display = materialDisplay(cell.key);
-      return {
-        id: `s:${cell.key}`, kind: 'stack', name: display?.name ?? cell.key,
-        art: display?.art ? { src: display.art, srcset: display.srcset } : null,
-        rarity: '', quantity: cell.quantity, value: 0, found: '',
-      };
-    }
-    const item = items.find(row => row.id === cell.key);
-    if (!item) return null;
+  private stackEntry(cell: Cell): Entry {
+    const display = materialDisplay(cell.key);
+    return {
+      id: `s:${cell.key}`, kind: 'stack', name: display?.name ?? cell.key,
+      art: display?.art ? { src: display.art, srcset: display.srcset } : null,
+      rarity: '', quantity: cell.quantity, value: 0, found: '', ids: [],
+    };
+  }
+
+  /** One row for a group of identical instances (or a one-of-a-kind one). Newest = its newest member. */
+  private groupEntry(group: ItemGroup, byId: ReadonlyMap<string, GameItem>): Entry {
+    const item = group.first;
     const art = itemArt(item);
+    const found = group.ids.reduce((max, id) => {
+      const at = byId.get(id)?.foundAt ?? '';
+      return at > max ? at : max;
+    }, '');
     return {
       id: `i:${item.id}`, kind: 'item', name: (item.upgradeLevel ?? 0) > 0 ? `${item.name} +${item.upgradeLevel}` : item.name,
       art: art ? { src: art.src, srcset: art.srcset } : null,
-      rarity: item.rarity, quantity: 1, value: item.sellValue ?? 0, found: item.foundAt ?? '', item,
+      rarity: item.rarity, quantity: group.ids.length, value: item.sellValue ?? 0, found, item, ids: group.ids,
     };
   }
 

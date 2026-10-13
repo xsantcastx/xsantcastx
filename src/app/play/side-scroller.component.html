@@ -211,7 +211,7 @@
             <div class="slip-actions">
               @if (row.canWear) { <button type="button" class="wear" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
-              @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ t('play.hud.book.toVault') }}</button> }
+              @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
             </div>
           }
         } @else {
@@ -361,14 +361,14 @@
             </ul>
           </section>
           <section aria-labelledby="chest-gear">
-            <h3 id="chest-gear">{{ t('play.delve.chest.gearInChest') }} <small>{{ view.gear.length }} / {{ view.gearSlots }}</small></h3>
+            <h3 id="chest-gear">{{ t('play.delve.chest.gearInChest') }} <small>{{ view.gearUsed }} / {{ view.gearSlots }}</small></h3>
             @if (!view.gear.length) { <p class="chest-empty">{{ t('play.delve.chest.noGear') }}</p> }
             <ul>
               @for (row of view.gear; track row.id) {
                 <li>
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
-                  <span><b>{{ row.name }}</b><small>{{ row.rarity }}</small></span>
-                  <button type="button" (click)="chestTakeGear(row)">{{ t('play.hotbar.take') }}</button>
+                  <span><b>{{ row.name }}</b><small>{{ row.rarity }}@if (row.qty > 1) { · ×{{ row.qty }}}</small></span>
+                  <button type="button" (click)="chestTakeGear(row)">{{ row.qty > 1 ? t('play.delve.chest.takeAllN', { n: row.qty }) : t('play.hotbar.take') }}</button>
                 </li>
               }
             </ul>
@@ -393,8 +393,8 @@
               @for (row of view.bagGear; track row.id) {
                 <li>
                   @if (row.art) { <img [src]="row.art" alt="" width="40" height="40"> }
-                  <span><b>{{ row.name }}</b><small>{{ row.rarity }}</small></span>
-                  <button type="button" (click)="chestPutGear(row)">{{ t('play.delve.chest.putIn') }}</button>
+                  <span><b>{{ row.name }}</b><small>{{ row.rarity }}@if (row.qty > 1) { · ×{{ row.qty }}}</small></span>
+                  <button type="button" (click)="chestPutGear(row)">{{ row.qty > 1 ? t('play.delve.chest.putAll', { n: row.qty }) : t('play.delve.chest.putIn') }}</button>
                 </li>
               }
             </ul>
