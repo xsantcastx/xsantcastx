@@ -919,3 +919,32 @@ now `true`: the satchel holds 40 slots (+8 per bought row).
   search, and check 44 px controls.
 - e2e: `play-inventory-stacks` now checks the 40-slot count.
   `rune-forge-all` seeds the current v3 economy.
+
+## Shipped (2026-10-13): identical items as one ×N row
+
+Branch `worktree-agent-ae993023d5dfbea84`. The owner: *"look at my inventory —
+so many of the same items, they should be stacked to easily put in stash."*
+This is the §2.2 identity key S1 skipped, rebuilt for gear and display only.
+
+- **The key** (`src/app/shared/rpg/item-groups.ts`, `groupKeyOf`): definition
+  id, name, type, rarity, sell value, soulbound, the rolled stats **and** the
+  frozen roll grade (key order ignored, values exact), and the place (bag or a
+  holder id). A piece is one of a kind (key `null`) when it is worn, tempered
+  (or has a failed temper attempt on record), reforged, or has a rune set in a
+  socket. Empty socket wells read as no sockets. Nothing is rewritten; the
+  grade is never recomputed.
+- **Where:** every Vault tab (Satchel included), the satchel book's cells
+  (the badge shows the count, the slip's kicker reads "Common · ×7 · 7 slots"),
+  and the Delve chest panel (both gear lists). Variants of one definition sort
+  side by side in every order (`clusterBy`).
+- **Buttons:** a ×N row's one button moves the group: "Send 7 to Vault",
+  "Take out 7" (or as many as the satchel has room for, with that number on
+  the button), the book's "Send 7 to Vault", the chest's "Put in 7" / "Take 7".
+  The Vault's Details has "Move just one". `InventoryService.stowMany` /
+  `takeOutMany` are one save each, skip ids already moved (a replayed press
+  moves nothing) and never emit `equipped$`. "Send all gear to the Vault" now
+  uses the same single write. The chest still moves gear one save per piece,
+  because each move bumps the chest's own counter.
+- **Slots are unchanged:** each instance still takes one slot, and the row
+  says so ("×7 · 7 slots"; "7 alike. Each still takes its own slot.").
+
