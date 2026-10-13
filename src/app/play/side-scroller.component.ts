@@ -19,7 +19,7 @@ import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-p
 import { areaOf, findStation, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
-import { clusterBy, familyOf, groupItems } from '../shared/rpg/item-groups';
+import { clusterBy, familyOf, groupItems, slotsForGroup } from '../shared/rpg/item-groups';
 import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
 import {
@@ -1145,8 +1145,10 @@ export class SideScrollerComponent implements OnDestroy {
     if (!item) return null;
     const slip = this.itemSlip(item, item.equipped);
     const count = item.equipped ? 1 : this.pickedGroup().length;
-    // A ×N cell says so, slots included: each identical piece still takes one.
-    return count > 1 ? { ...slip, count, kicker: `${slip.kicker} · ${this.t('play.hud.book.group', { n: count })}` } : slip;
+    // A ×N cell says so, slots included: up to 20 identical pieces share one.
+    const slots = slotsForGroup(count);
+    const group = slots === 1 ? this.t('play.hud.book.group.one', { n: count }) : this.t('play.hud.book.group', { n: count, s: slots });
+    return count > 1 ? { ...slip, count, kicker: `${slip.kicker} · ${group}` } : slip;
   }
   wear(): void {
     const item = this.selectedGear();
