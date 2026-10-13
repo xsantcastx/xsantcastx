@@ -19,6 +19,7 @@ import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-p
 import { areaOf, findStation, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
+import { clusterBy, familyOf, groupItems } from '../shared/rpg/item-groups';
 import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
 import {
@@ -33,7 +34,7 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
-import { ChestGearRow, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
+import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
@@ -102,12 +103,15 @@ const TUTORIAL_EMBER_ID = 'seamworks-opening:keeper-ember:v1';
 const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 'feet', 'trinket'];
 
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
-interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; }
+/** A satchel cell: a stack, or a group of identical items (`ids`, item-groups) shown once with its count. */
+interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; }
 interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; }
 interface BagSlip {
   name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
   /** A loose satchel item: a secondary "Send to Vault" makes room from anywhere. */
   canSend?: boolean;
+  /** How many identical pieces the picked cell holds: "Send 7 to Vault" moves them all. */
+  count?: number;
   /** Wearing it, against what that place holds now. Empty for worn items and materials. */
   compare: StatDeltaRow[];
   /** "Against Basalt Edge" / "Against an empty Head". */
@@ -122,7 +126,7 @@ interface OpenPlace {
   own?: true;
 }
 /** The open chest: what is in it and what the satchel could put in. Rebuilt after every move. */
-interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; gear: ChestGearRow[]; bagGear: ChestGearRow[]; gearSlots: number; note: string }
+interface ChestView { rows: ChestRow[]; satchel: ChestRow[]; slots: number; gear: ChestGearRow[]; bagGear: ChestGearRow[]; gearSlots: number; gearUsed: number; note: string }
 interface PlaceRow { id: string; name: string; blurb: string }
 interface WaystoneRow { id: RealmTownId; realm: string; town: string; crest: string; available: boolean; current: boolean }
 
@@ -1051,6 +1055,18 @@ export class SideScrollerComponent implements OnDestroy {
   sendToVault(): void {
     const item = this.selectedGear();
     if (!item || item.equipped || item.explorerId) return;
+    const ids = this.pickedGroup();
+    if (ids.length > 1) {
+      // A ×N cell: the whole group, in one write.
+      const moved = this.inventory.stowMany(ids);
+      this.message = moved.length
+        ? this.t('play.hud.msg.sentVaultN', { n: moved.length, name: item.name })
+        : this.t('play.hud.msg.stowFailed', { name: item.name });
+      if (!moved.length) return;
+      this.pick = null;
+      this.ensurePick();
+      return;
+    }
     if (!this.inventory.stow(item.id)) { this.message = this.t('play.hud.msg.stowFailed', { name: item.name }); return; }
     const tab = this.inventory.itemById(item.id)?.explorerId?.replace(/^vault:/, '') ?? 'general-1';
     this.message = this.t('play.hud.msg.sentVault', { name: item.name, tab: this.t(`vault.tab.${tab}`) });
@@ -1108,11 +1124,11 @@ export class SideScrollerComponent implements OnDestroy {
     const materials: BagPocket[] = stacks.map(stack => {
       const display = materialDisplay(stack.stackKey);
       const name = display?.name ?? stack.stackKey;
-      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name) };
+      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name), ids: [] };
     });
-    const gear: BagPocket[] = snap.bag.map(item => ({
+    const gear: BagPocket[] = clusterBy(groupItems(snap.bag), group => familyOf(group.first)).map(({ first: item, ids }) => ({
       key: `item:${item.id}`, kind: 'item', ref: item.id, name: item.name,
-      art: itemArt(item)?.src ?? '', qty: 1, pip: rarityColor(item.rarity), mark: monogram(item.name),
+      art: itemArt(item)?.src ?? '', qty: ids.length, pip: rarityColor(item.rarity), mark: monogram(item.name), ids,
     }));
     return [...materials, ...gear];
   }
@@ -1126,7 +1142,11 @@ export class SideScrollerComponent implements OnDestroy {
       return this.itemSlip(item, true);
     }
     const item = this.inventory.snapshot.items.find(row => row.id === pick.ref && !row.explorerId);
-    return item ? this.itemSlip(item, item.equipped) : null;
+    if (!item) return null;
+    const slip = this.itemSlip(item, item.equipped);
+    const count = item.equipped ? 1 : this.pickedGroup().length;
+    // A ×N cell says so, slots included: each identical piece still takes one.
+    return count > 1 ? { ...slip, count, kicker: `${slip.kicker} · ${this.t('play.hud.book.group', { n: count })}` } : slip;
   }
   wear(): void {
     const item = this.selectedGear();
@@ -1150,6 +1170,12 @@ export class SideScrollerComponent implements OnDestroy {
   private ensurePick(): void {
     const first = this.pockets[0];
     this.pick = first ? { kind: first.kind, ref: first.ref } : { kind: 'slot', ref: 'weapon' };
+  }
+  /** The ids of the picked satchel cell's group (one id for a one-of-a-kind item). */
+  private pickedGroup(): string[] {
+    const pick = this.pick;
+    if (pick?.kind !== 'item') return [];
+    return this.pockets.find(pocket => pocket.kind === 'item' && pocket.ref === pick.ref)?.ids ?? [pick.ref];
   }
   private selectedGear(): GameItem | null {
     const pick = this.pick;
@@ -1472,9 +1498,11 @@ export class SideScrollerComponent implements OnDestroy {
         return { stackKey: stack.stackKey, name: display?.name ?? stack.stackKey, art: display?.art ?? '', qty: stack.quantity };
       })
       .sort((a, b) => a.name.localeCompare(b.name));
+    const gear = this.chests.gear(at.areaId, at.index);
     this.chestView = {
       rows: this.chests.contents(at.areaId, at.index), satchel, slots: this.chests.slots,
-      gear: this.chests.gear(at.areaId, at.index), bagGear: this.chests.bagGear(), gearSlots: this.chests.gearSlots, note,
+      gear, bagGear: this.chests.bagGear(), gearSlots: this.chests.gearSlots,
+      gearUsed: gear.reduce((sum, row) => sum + row.qty, 0), note,
     };
   }
   chestPut(row: ChestRow): void {
@@ -1491,17 +1519,30 @@ export class SideScrollerComponent implements OnDestroy {
     this.refreshChest(result.ok ? this.t('play.delve.chest.takeQty', { n: result.qty, name: row.name }) : this.chestRefusal(result));
     this.refreshHotbar();
   }
+  /** Put a row in: every piece of a ×N group, until the chest refuses (then says why). */
   chestPutGear(row: ChestGearRow): void {
-    const at = this.panel?.chest;
-    if (!at) return;
-    const result = this.chests.putGear(at.areaId, at.index, row.id);
-    this.refreshChest(result.ok ? this.t('play.delve.chest.putGear', { name: row.name }) : this.chestRefusal(result));
+    this.chestMoveGear(row, (at, id) => this.chests.putGear(at.areaId, at.index, id), 'play.delve.chest.putGear', 'play.delve.chest.putGearN');
   }
   chestTakeGear(row: ChestGearRow): void {
+    this.chestMoveGear(row, (at, id) => this.chests.takeGear(at.areaId, at.index, id), 'play.delve.chest.takeGear', 'play.delve.chest.takeGearN');
+  }
+  private chestMoveGear(
+    row: ChestGearRow,
+    move: (at: { areaId: string; index: number }, id: string) => ChestMove,
+    one: string,
+    many: string,
+  ): void {
     const at = this.panel?.chest;
     if (!at) return;
-    const result = this.chests.takeGear(at.areaId, at.index, row.id);
-    this.refreshChest(result.ok ? this.t('play.delve.chest.takeGear', { name: row.name }) : this.chestRefusal(result));
+    let moved = 0;
+    let refused = '';
+    for (const id of row.ids) {
+      const result = move(at, id);
+      if (!result.ok) { refused = this.chestRefusal(result); break; }
+      moved++;
+    }
+    const done = moved === 1 ? this.t(one, { name: row.name }) : moved > 1 ? this.t(many, { n: moved, name: row.name }) : '';
+    this.refreshChest([done, refused].filter(Boolean).join(' '));
   }
   /** Chests whose Delve changed under them (a version bump, a merged seed) hand their contents back. */
   private refundOrphanChests(): void {
