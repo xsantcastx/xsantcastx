@@ -766,7 +766,6 @@ const STAT_LABELS: Readonly<Partial<Record<ItemStatKey, string>>> = {
   goldPerSec: 'Gold / sec',
   xpBonus: 'XP bonus',
   magicFind: 'Magic Find',
-  lootBonus: 'Loot bonus',
   ward: 'Ward',
   strikePower: 'Strike power',
 };

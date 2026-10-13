@@ -48,10 +48,10 @@ describe('deriveBuild', () => {
     expect(build.contributions[0].top?.id).toBe('edge');
   });
 
-  it('pools Magic Find and Loot quality into a Treasure Seeker', () => {
+  it('pools Magic Find across slots into a Treasure Seeker', () => {
     const build = deriveBuild(worn({
       charm1: item('fortune', { magicFind: 5 }),
-      trinket: item('loot', { lootBonus: 5 }),
+      trinket: item('loot', { magicFind: 5 }),
       head: item('ward-cap', { ward: 0.8 }),
     }));
     expect(build.archetype).toBe('treasure-seeker');

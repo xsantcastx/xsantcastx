@@ -17,8 +17,7 @@
  * bases, so `value / unit` is "how many Common pieces' worth of this stat you
  * are wearing" — comparable across stats.
  *
- * Magic Find and Loot quality are one axis (both are "find better things"), so
- * a loadout split between them still reads as a Treasure Seeker.
+ * Magic Find is the "find better things" axis: a Treasure Seeker.
  */
 import {
   ITEM_STAT_KEYS,
@@ -46,7 +45,6 @@ export const STAT_UNIT: Readonly<Record<StatKey, number>> = {
   goldPerSec: 2,
   magicFind: 5,
   xpBonus: 3,
-  lootBonus: 5,
   strikePower: 1,
   ward: 1,
 };
@@ -54,7 +52,6 @@ export const STAT_UNIT: Readonly<Record<StatKey, number>> = {
 export const STAT_AXIS: Readonly<Record<StatKey, BuildAxis>> = {
   goldPerSec: 'gold',
   magicFind: 'treasure',
-  lootBonus: 'treasure',
   xpBonus: 'lore',
   strikePower: 'strike',
   ward: 'ward',

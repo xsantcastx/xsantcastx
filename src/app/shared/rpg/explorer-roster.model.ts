@@ -232,19 +232,20 @@ export function explorerEquipmentStats(
 /**
  * The loot bonus this explorer actually carries: their tier, plus what they wear.
  *
- * An item's `lootBonus` and `magicFind` both count here and are added together.
- * They are the same thing from the explorer's side — a charm that makes the
+ * An item's `magicFind` counts here, on top of the tier's bonus. It is the same
+ * thing from the explorer's side — a charm that makes the
  * wearer find better runes does not care whether the wearer is the player or the
  * person the player sent into Umbral — and keeping them separate would mean
  * every Magic Find charm silently does nothing once equipped on an explorer,
- * which is exactly the trap this system exists to avoid.
+ * which is exactly the trap this system exists to avoid. (Items once carried a
+ * separate "loot quality" stat; it is folded into Magic Find.)
  */
 export function explorerLootBonus(
   explorer: RosterExplorer,
   itemById: (id: string) => GameItem | undefined,
 ): number {
   const worn = explorerEquipmentStats(explorer, itemById);
-  return explorerTier(explorer.rarity).lootBonus + worn.lootBonus + worn.magicFind;
+  return explorerTier(explorer.rarity).lootBonus + worn.magicFind;
 }
 
 /** How long a mission takes for this explorer, after their speed. */

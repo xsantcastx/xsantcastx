@@ -16,7 +16,7 @@ function snap(quantity: number, extra: InventorySnapshot['stacks'] = []): Invent
     bag: [],
     stacks: [{ id: 'stack-cinder', stackKey: 'cinder-ore', quantity }, ...extra],
     equipped: {},
-    totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0, strikePower: 0, ward: 0 },
+    totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 },
     goldFromSales: 0,
     sold: 0,
     usedRows: 1 + extra.length,
