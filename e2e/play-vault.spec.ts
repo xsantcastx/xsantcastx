@@ -4,7 +4,8 @@
  * A full satchel never drops anything: an arrival goes to the Vault with a
  * message. Then the Vault's station in the Basalt Seamworks: Take out (refused
  * while the satchel is full, with the reason), Send to Vault, buy 8 satchel
- * slots with Gold, sort and search. Desktop and the Terraria-style phone HUD.
+ * slots with Gold, sort and search. Identical items show as one ×N row and
+ * move as a group. Desktop and the Terraria-style phone HUD.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { ERA, blob, focusWorld, messageLine, openPlay, placePanel, playerX, purse, seed, walkTo } from './play-helpers';
@@ -33,6 +34,23 @@ function fullSatchel(): Record<string, unknown> {
     'godforge-realm-era': String(ERA),
     'godforge-inventory': { version: 2, records, tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 50, legacyBackup: null, era: ERA },
     ...purse(1_000_000),
+  };
+}
+
+/** Seven identical Ember Rings and two rolled variants of it, in the satchel. */
+function twinsSatchel(): Record<string, unknown> {
+  const ring = (id: string, stats: Record<string, number>, rollQuality: Record<string, number>) => ({
+    ...(gear(id, 'Ember Ring', 0) as Record<string, unknown>), rarity: 'common', stats, rollQuality, sellValue: 60,
+  });
+  const records = [
+    ...Array.from({ length: 7 }, (_, i) => ring(`e2e-ring-${i}`, { ward: 2 }, { ward: 0.5 })),
+    ring('e2e-ring-rolled-a', { ward: 4 }, { ward: 0.9 }),
+    ring('e2e-ring-rolled-b', { ward: 2 }, { ward: 0.55 }),
+  ];
+  return {
+    'godforge-realm-era': String(ERA),
+    'godforge-inventory': { version: 2, records, tombstones: [], stackOps: [], goldFromSales: 0, sold: 0, hlc: 50, legacyBackup: null, era: ERA },
+    ...purse(1_000),
   };
 }
 
@@ -139,6 +157,50 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       const ledger = (await blob<Ledger>(page, 'godforge-inventory'))!;
       expect(ledger.records.filter(r => r.kind === 'instance')).toHaveLength(41);
       await page.screenshot({ path: `output/vault/vault-${size.width}x${size.height}.png` });
+    });
+
+    test('identical items show as one ×7 row; Send 7 moves the group, found again in the Vault', async ({ page }) => {
+      await page.setViewportSize(size);
+      await seed(page, twinsSatchel());
+      await openPlay(page);
+      await expect(clasp(page)).toContainText('/40');
+
+      // The satchel book: one cell for the seven, two for the rolled variants.
+      await clasp(page).click();
+      const pockets = page.locator('#satchel-book .pocket');
+      await expect(pockets.filter({ has: page.locator('b', { hasText: /^7$/ }) })).toHaveCount(1);
+      await expect(page.locator('#satchel-book .pocket[aria-label^="Ember Ring"]')).toHaveCount(3);
+      await page.locator('#satchel-book .book-close').click();
+
+      // At the Vault: the Satchel tab lists the group once, slots stated honestly.
+      await walkTo(page, 330, 20);
+      await focusWorld(page);
+      await page.keyboard.press('e');
+      await expect(vault(page)).toBeVisible({ timeout: 10000 });
+      const rings = vault(page).locator('.jl__row', { hasText: 'Ember Ring' });
+      await expect(rings).toHaveCount(3);
+      const group = rings.filter({ hasText: '×7 · 7 slots' });
+      await expect(group).toHaveCount(1);
+      await group.click();
+      await expect(primary(page)).toContainText('Send 7 to Vault');
+      await primary(page).click();
+      await expect(vault(page).locator('.vs-announce')).toContainText('7 × Ember Ring went to your Vault.');
+      await expect(rings).toHaveCount(2);
+
+      // Found again in General I, still one row of seven.
+      await tab(page, 'General I').click();
+      await expect(vault(page).locator('.jl__row', { hasText: 'Ember Ring' })).toHaveCount(1);
+      await expect(vault(page).locator('.jl__row', { hasText: '×7 · 7 slots' })).toHaveCount(1);
+      await expect(primary(page)).toContainText('Take out 7');
+
+      // Nothing duplicated or lost; the variants stayed in the satchel with their grades.
+      type Rec = { kind: string; id: string; rollQuality?: Record<string, number>; location?: { kind: string; explorerId?: string } };
+      const ledger = (await blob<{ records: Rec[] }>(page, 'godforge-inventory'))!;
+      const ringRecs = ledger.records.filter(r => r.kind === 'instance' && r.id.startsWith('e2e-ring'));
+      expect(ringRecs).toHaveLength(9);
+      expect(ringRecs.filter(r => r.location?.explorerId === 'vault:general-1')).toHaveLength(7);
+      expect(ringRecs.find(r => r.id === 'e2e-ring-rolled-a')?.location?.kind).toBe('bag');
+      expect(ringRecs.find(r => r.id === 'e2e-ring-rolled-a')?.rollQuality).toEqual({ ward: 0.9 });
     });
   });
 }
