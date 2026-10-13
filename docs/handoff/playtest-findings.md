@@ -175,3 +175,7 @@ Both sides round to whole Gold, which eats the 2-point margin. In normal play th
 - **Timber support (reach 3):** not exercised; the basalt support (reach 5) is.
 - **Sealed chamber before the warden falls:** the charge spec only covers it with the flag set (open).
 - **WebKit:** the whole suite also passes on the `webkit` project (25 passed, 6 fixme). The canvas specs move in real time, so they assert ranges rather than exact positions.
+
+## play-delve-extras "each new carving" flake (fixed, test-only)
+
+Root cause: the spec waited on the transient message line ("New inscription. ..." and, in the shared `descend()` helper, "climb down the ropes to your camp"). On a Delve with loose rock the "Loose rock overhead..." warning replaces that line, so the assertion failed about 1 run in 3 although the game state was right. Fix: `descend()` relies on `data-area` only; the carving test settles the Keeper with `settleBetween`, then presses E inside a `toPass` loop until the `godforge-delve-lore` blob contains the inscription id. No engine change. Verified `--repeat-each=10` green and the full file green twice.
