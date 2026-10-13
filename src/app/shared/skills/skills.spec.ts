@@ -46,7 +46,16 @@ describe('toolTiers', () => {
 
   it('takes the best owned tier per family; 0 when none', () => {
     const t = toolTiers(inv(['pickaxe-1', 'pickaxe-3', 'axe-2']));
-    expect(t).toEqual({ pickaxe: 3, axe: 2, sickle: 0, staff: 0, blade: 0, lanternRadius: 7 });
+    expect(t).toEqual({
+      pickaxe: 3, axe: 2, sickle: 0, staff: 0, blade: 0, lanternRadius: 7,
+      swing: { pickaxe: 0.35, axe: 0.40, sickle: 0.52, staff: 0.52 },
+    });
+  });
+
+  it('a starter tool works as tier I at the slowest pace; a forged one is faster', () => {
+    expect(toolTiers(inv(['starter-pickaxe'])).pickaxe).toBe(1);
+    expect(toolTiers(inv(['starter-pickaxe'])).swing.pickaxe).toBe(0.52);
+    expect(toolTiers(inv(['starter-pickaxe', 'pickaxe-1'])).swing.pickaxe).toBe(0.46);
   });
 
   it('caps by the wielding skill when progress is given', () => {
