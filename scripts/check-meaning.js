@@ -123,6 +123,7 @@ const { NPC_CHAINS } = L('shared/npc/npc-quest.model.ts');
 const { NPCS, DIALOGUE } = L('shared/npc/npc.model.ts');
 const { DELVE_MISSIONS, DELVE_MATERIAL_NAMES } = L('shared/npc/delve-missions.model.ts');
 const { MYSTERY_BOXES, boxWindow, boxPool } = L('shared/gambler/mystery-box.ts');
+const { REEL_SYMBOLS } = L('shared/reels/reels.model.ts');
 const { UNIQUE_ITEMS } = L('shared/rpg/unique-items.ts');
 const { INFUSIONS } = L('shared/enchanting/infusion.model.ts');
 const { SOCKET_CHANNEL } = L('shared/enchanting/socket.model.ts');
@@ -205,6 +206,9 @@ for (const a of ARENA_SHOP) {
 const boxRarities = new Set(MYSTERY_BOXES.flatMap(b => boxWindow(b)));
 for (const rarity of boxRarities) for (const d of boxPool(rarity)) src(d.id, 'Gambler boxes');
 for (const u of UNIQUE_ITEMS) if (boxRarities.has(u.rarity)) src(u.id, 'Gambler boxes (unique)');
+// The Croupier's Reels: a winning line may hand over one of its symbol's thing.
+const reelRunePrizes = new Set();
+for (const s of REEL_SYMBOLS) if (s.prize) { if (s.prize.kind === 'rune') reelRunePrizes.add(s.prize.id); else src(s.prize.id, 'Reels prize'); }
 /** Exchange rows are `mat:<id>` for stacks and carry `definitionId` for gear. */
 const exchangeId = g => g.definitionId || g.materialId || (/^mat:(.+)$/.exec(g.id) || [])[1];
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).market.add('Exchange'); }
@@ -305,6 +309,7 @@ const socketWordRunes = new Set(SOCKET_WORDS.flatMap(w => w.runes || []));
 for (const r of RUNES) {
   const n = node('rune', r.id, r.name);
   if (r.dropRate > 0) n.sources.add('Rune Forge strike');
+  if (reelRunePrizes.has(r.id)) n.sources.add('Reels prize');
   if (SOCKET_CHANNEL[r.id]) n.uses.add(`socket → ${SOCKET_CHANNEL[r.id]}`);
   if (runewordRunes.has(r.id)) n.uses.add('runeword');
   if (socketWordRunes.has(r.id)) n.uses.add('socket word');
@@ -399,6 +404,7 @@ for (const [townId, keepers] of Object.entries(TOWN_KEEPERS)) {
     const st = town && town.stations.find(s => s.id === k.station);
     const n = node('npc', `keeper:${townId}/${k.id}`, k.name);
     if (st && (st.kind === 'panel' || st.kind === 'waystone')) n.uses.add(`opens ${st.panel || st.kind}`);
+    for (const id of k.serves || []) { const also = town && town.stations.find(s => s.id === id); if (also && also.panel) n.uses.add(`opens ${also.panel}`); }
     if (k.npc && giverIds.has(k.npc)) n.uses.add('gives quests');
     if (!n.uses.size) flag('npc', 'no-role', `keeper:${townId}/${k.id}`, st ? `stands at ${st.kind} "${st.id}", which opens nothing` : `station "${k.station}" does not exist`);
     if (!k.lines || !k.lines.length) flag('npc', 'no-lines', `keeper:${townId}/${k.id}`, 'says nothing');
@@ -422,7 +428,7 @@ for (const [realm, count] of Object.entries(TOWNSFOLK_COUNT)) {
 
 // Stations + panels ─────────────────────────────────────────────────────────
 const placedPanels = new Set();
-const keeperStations = new Set(Object.entries(TOWN_KEEPERS).flatMap(([t, ks]) => ks.map(k => `${t}/${k.station}`)));
+const keeperStations = new Set(Object.entries(TOWN_KEEPERS).flatMap(([t, ks]) => ks.flatMap(k => [k.station, ...(k.serves || [])].map(s => `${t}/${s}`))));
 for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) for (const s of a.stations) {
   const id = `${a.id}/${s.id}`;
   const n = node('station', id, s.label);

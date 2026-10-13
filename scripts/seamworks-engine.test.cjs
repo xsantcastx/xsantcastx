@@ -505,7 +505,7 @@ test('every built town has a waystone, and every material a zone drops is catalo
   }
   const umbral = world.TOWNS.umbral;
   assert.ok(umbral, 'the Umbral town is built');
-  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['exchange', 'gambler']);
+  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['exchange', 'gambler', 'reels']);
   assert.equal(umbral.hunts[0].monsters[0].creature, 'mirror-substitute', 'Umbral hunts its canon creature');
 });
 
@@ -2204,7 +2204,7 @@ test('life: every panel station has a keeper beside it, never on a footprint or 
     const placed = life.placeKeepers(town);
     assert.equal(placed.length, life.TOWN_KEEPERS[town.realm].length, `${town.id}: every keeper found a spot`);
     for (const station of town.stations.filter(s => s.kind === 'panel')) {
-      assert.ok(placed.some(p => p.station.id === station.id), `${town.id}/${station.id} has a keeper`);
+      assert.ok(placed.some(p => p.station.id === station.id || (p.def.serves || []).includes(station.id)), `${town.id}/${station.id} has a keeper`);
     }
     for (const p of placed) {
       const body = [p.x - life.KEEPER_HALF, p.x + life.KEEPER_HALF];
@@ -2227,6 +2227,11 @@ test('life: every panel station has a keeper beside it, never on a footprint or 
   assert.equal(at('celestial', 'archivist').station.id, 'codex', 'the Archivist at the Codex');
   assert.ok(at('luminous', 'aureth'), 'Aureth stands in Luminous');
   assert.ok(at('umbral', 'verrin'), 'Verrin stands in Umbral');
+  // The Croupier runs the Gambler and the Reels and stands between the two.
+  const croupier = at('umbral', 'croupier');
+  const reels = world.TOWNS.umbral.stations.find(s => s.id === 'reels');
+  assert.deepEqual([...croupier.def.serves], ['reels']);
+  assert.ok(croupier.x < footprintOf(reels)[0] && footprintOf(reels)[0] - croupier.x <= life.KEEPER_HALF + life.KEEPER_GAP + 80, 'the Croupier stands beside the Reels too');
 });
 
 test('life: name tags and chatter are i18n keys in EN + ES; canon keepers only say their canon lines', () => {

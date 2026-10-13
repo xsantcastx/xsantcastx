@@ -1,0 +1,295 @@
+/* The Croupier's Reels. A chunky pixel cabinet in the Umbral palette (tokens
+   only); the 16×16 symbols are drawn at a whole multiple so pixels stay square.
+   Keyframes live at the top level; reduced motion only turns animation off. */
+
+:host { display: block; --rl-cell: 72px; --rl-sprite: 48px; }
+
+@media (min-width: 641px) { :host { --rl-cell: 88px; --rl-sprite: 64px; } }
+
+.rl-stage {
+  display: grid;
+  justify-items: center;
+  gap: var(--space-3);
+}
+
+.rl-cabinet {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  background: var(--obsidian-2);
+  border: 4px solid var(--violet-ink);
+  box-shadow:
+    0 0 0 2px var(--obsidian-0),
+    inset 0 4px 0 var(--obsidian-4),
+    inset 0 -4px 0 var(--obsidian-0),
+    0 0 24px var(--realm-umbral-tint);
+}
+
+.rl-cabinet.is-shake { animation: rlShake 400ms steps(8) both; }
+
+@keyframes rlShake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 0); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-2px, 2px); }
+  80% { transform: translate(2px, 0); }
+}
+
+.rl-round {
+  position: absolute;
+  top: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--obsidian-0);
+  border: 2px solid var(--realm-umbral);
+  color: var(--gold-bright);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+  z-index: 2;
+}
+
+.rl-round__mult { color: var(--gold); font-weight: 700; }
+
+.rl-window {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, var(--rl-cell));
+  gap: 4px;
+  padding: 4px;
+  background: var(--obsidian-0);
+  border: 2px solid var(--obsidian-5);
+}
+
+.rl-reel {
+  position: relative;
+  display: grid;
+  grid-template-rows: repeat(3, var(--rl-cell));
+  gap: 4px;
+  height: calc(var(--rl-cell) * 3 + 8px);
+  overflow: hidden;
+  background: var(--obsidian-1);
+}
+
+.rl-cell {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: var(--rl-cell);
+  height: var(--rl-cell);
+  background: var(--obsidian-3);
+  box-shadow: inset 0 2px 0 var(--obsidian-4), inset 0 -2px 0 var(--obsidian-1);
+}
+
+/* Landing: a short drop into place, the same for every symbol. */
+.rl-reel:not(.is-rolling) .rl-cell { animation: rlLand 160ms steps(4) both; }
+
+@keyframes rlLand {
+  from { transform: translateY(-10px); }
+  to { transform: translateY(0); }
+}
+
+.rl-cell.is-lit {
+  background: var(--violet-ink);
+  box-shadow: inset 0 0 0 3px var(--gold), 0 0 12px var(--violet-glow-lit);
+  animation: rlLit 600ms steps(2) infinite alternate;
+}
+
+@keyframes rlLit {
+  from { box-shadow: inset 0 0 0 3px var(--gold), 0 0 6px var(--violet-glow-soft); }
+  to { box-shadow: inset 0 0 0 3px var(--gold-bright), 0 0 16px var(--violet-glow-lit); }
+}
+
+.rl-sprite {
+  width: var(--rl-sprite);
+  height: var(--rl-sprite);
+  image-rendering: pixelated;
+}
+
+/* A rolling reel: a strip of symbols scrolling in whole-pixel steps. */
+.rl-strip {
+  display: grid;
+  gap: 4px;
+  animation: rlRoll 240ms steps(6) infinite;
+  filter: brightness(.8);
+}
+
+@keyframes rlRoll {
+  from { transform: translateY(calc(var(--rl-cell) * -4 - 16px)); }
+  to { transform: translateY(0); }
+}
+
+.rl-orb {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  padding: 0 var(--space-1);
+  background: var(--realm-umbral);
+  color: var(--on-realm);
+  font-style: normal;
+  font-weight: 700;
+  font-size: var(--text-sm);
+  box-shadow: 0 0 0 2px var(--obsidian-0);
+  animation: rlOrb var(--dur-enter) var(--ease-spring) both;
+}
+
+@keyframes rlOrb {
+  from { transform: scale(0); }
+  to { transform: scale(1); }
+}
+
+.rl-lines {
+  position: absolute;
+  inset: 4px;
+  width: calc(100% - 8px);
+  height: calc(100% - 8px);
+  pointer-events: none;
+}
+
+.rl-lines line {
+  stroke: var(--gold-bright);
+  stroke-width: .06;
+  stroke-linecap: square;
+  opacity: .85;
+}
+
+/* The lever: decorative twin of the Spin button (the button is the control). */
+.rl-lever {
+  position: relative;
+  width: 44px;
+  min-height: 160px;
+  align-self: stretch;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.rl-lever::before {
+  content: '';
+  position: absolute;
+  left: 18px;
+  top: 30px;
+  bottom: 20px;
+  width: 8px;
+  background: var(--obsidian-5);
+  box-shadow: 0 0 0 2px var(--obsidian-0);
+}
+
+.rl-lever__knob {
+  position: absolute;
+  left: 8px;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  background: var(--realm-umbral);
+  box-shadow: inset -4px -4px 0 var(--violet-deep), inset 4px 4px 0 var(--violet-bright), 0 0 0 2px var(--obsidian-0);
+  transition: transform var(--dur-base) steps(3);
+}
+
+.rl-lever.is-pulled .rl-lever__knob { transform: translateY(96px); }
+
+.rl-result {
+  min-height: 1.5em;
+  margin: 0;
+  text-align: center;
+  color: var(--ink-0);
+  font-size: var(--text-base);
+}
+
+.rl-roundline {
+  margin: 0;
+  color: var(--gold);
+  font-size: var(--text-sm);
+  font-variant-numeric: tabular-nums;
+}
+
+.rl-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.rl-bet {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.rl-bet__btn {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border: 2px solid var(--edge-gold);
+  background: var(--obsidian-3);
+  color: var(--gold-bright);
+  font: inherit;
+  font-size: var(--text-lg);
+  cursor: pointer;
+}
+
+.rl-bet__btn:disabled { opacity: .45; cursor: default; }
+.rl-bet__btn:focus-visible, .rl-skip:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+.rl-bet__val {
+  display: grid;
+  min-width: 84px;
+  text-align: center;
+  color: var(--gold);
+  font-size: var(--text-lg);
+  font-variant-numeric: tabular-nums;
+}
+
+.rl-bet__val small { color: var(--ink-2); font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .08em; }
+
+.rl-spin { flex: 1 1 200px; max-width: 360px; }
+
+.rl-skip {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: 2px solid var(--edge-hairline);
+  background: transparent;
+  color: var(--ink-1);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rl-more { display: grid; gap: var(--space-2); color: var(--ink-1); font-size: var(--text-sm); }
+.rl-more h3 { margin: var(--space-2) 0 0; font-size: var(--text-base); color: var(--gold); }
+.rl-more p { margin: 0; }
+
+.rl-pay { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--space-1); }
+.rl-pay li { display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: var(--space-2); }
+.rl-pay em { color: var(--ink-2); font-style: normal; font-variant-numeric: tabular-nums; }
+.rl-pay__icon { width: 32px; height: 32px; }
+
+.rl-proof { color: var(--ink-0); }
+.rl-history { margin: 0; padding-left: var(--space-5); }
+.rl-history .is-won { color: var(--gold); }
+.rl-lore { font-style: italic; color: var(--ink-2); }
+
+/* Phones: the panel body is ~340px wide at 390. 64px cells keep the cabinet at
+   296px; the smallest phones drop to 56px (whole multiples of the art grid). */
+@media (max-width: 440px) {
+  :host { --rl-cell: 64px; }
+  .rl-cabinet { padding: var(--space-2); }
+}
+
+@media (max-width: 350px) {
+  :host { --rl-cell: 56px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rl-cabinet.is-shake,
+  .rl-reel:not(.is-rolling) .rl-cell,
+  .rl-cell.is-lit,
+  .rl-strip,
+  .rl-orb { animation: none; }
+}
