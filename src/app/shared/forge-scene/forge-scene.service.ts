@@ -317,6 +317,9 @@ export class ForgeSceneService implements OnDestroy {
 
   private listeners: Array<() => void> = [];
 
+  /** Bumped by every unmount, so a mount still waiting on three.js knows it was cancelled. */
+  private generation = 0;
+
   /** True once a GL context exists and the loop owns the canvas. */
   get active(): boolean { return this.renderer !== null; }
 
@@ -331,10 +334,17 @@ export class ForgeSceneService implements OnDestroy {
     if (!this.isBrowser || this.mounting || this.renderer) return;
     if (!this.effects.shouldRender()) return;
     this.mounting = true;
+    const generation = this.generation;
     try {
       const THREE = this.three ?? (this.three = await import('three'));
       // A second mount can win the race while the chunk is in flight.
       if (this.renderer) return;
+      // So can an unmount: the component that asked is gone. On /play the
+      // scene's host renders for the first hydration pass and is destroyed
+      // the moment the router settles, while three.js is still downloading.
+      // Building anyway left a detached, full-viewport WebGL canvas drawing at
+      // 60 fps behind the game for the whole session.
+      if (generation !== this.generation || !canvas.isConnected) return;
       this.canvas = canvas;
       this.build(THREE, canvas);
       this.bind();
@@ -355,6 +365,7 @@ export class ForgeSceneService implements OnDestroy {
 
   /** Tear the whole thing down and give the GPU its memory back. */
   unmount(): void {
+    this.generation++;
     this.stop();
     this.clearFx();
     if (this.isBrowser) document.documentElement.classList.remove('forge-scene-on');
