@@ -59,6 +59,8 @@ import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.mode
 import type { DiscoverEvent } from './engine/engine';
 import { WORLD_ACTION_UNPAID } from './engine/engine.model';
 import { restCueDue, settleDelveMine } from './delve-reward';
+import { DelveMapView } from './delve-map-view';
+import { MAP_MARKER_COLORS } from './engine/delve-map';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
 /**
@@ -138,9 +140,6 @@ const TOUCH_TIP_MS = 1400;
 interface LootToast { key: number; text: string }
 /** One slot of the Delve hotbar: a placeable and how many the satchel holds. */
 interface HotbarSlot { id: PlaceableId; name: string; art: string; count: number; key: string }
-
-/** How long a press on the world must be held to place there. */
-const LONG_PRESS_MS = 450;
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -305,6 +304,8 @@ export class SideScrollerComponent implements OnDestroy {
   touchTool: 'pick' | 'place' = 'pick';
   /** Phones: the goal line folded to its "Goal n of 4" chip. */
   guideFolded = false;
+  /** The Delve's minimap and full map (M): drawn on the HUD tick from the engine's explored cells. */
+  readonly map = new DelveMapView(() => this.engine?.mapSource() ?? null);
 
   constructor() {
     // Hydration can swap the server canvas after the first callback. Wait until
@@ -355,7 +356,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.drawMaps(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -424,7 +425,10 @@ export class SideScrollerComponent implements OnDestroy {
     this.unbindPointer?.();
     this.zone.runOutsideAngular(() => {
       const move = (event: PointerEvent): void => {
-        if (event.pointerType !== 'mouse' || !this.engine || this.panel) return;
+        if (!this.engine || this.panel) return;
+        // Smart cursor (Terraria): in a delve the mouse aims wherever it is; a finger aims while it is down.
+        if (this.state.delve && (event.pointerType === 'mouse' || held)) this.engine.aimAt(event.clientX, event.clientY);
+        if (event.pointerType !== 'mouse') return;
         const station = this.engine.pick(event.clientX, event.clientY).station;
         this.engine.setHover(station?.id ?? null);
         canvas.style.cursor = station ? 'pointer' : '';
@@ -432,7 +436,7 @@ export class SideScrollerComponent implements OnDestroy {
       };
       const leave = (event: PointerEvent): void => {
         if (event.pointerType !== 'mouse') return;
-        this.engine?.setHover(null); this.engine?.clearPointer(); canvas.style.cursor = ''; this.showTip(null, 0, 0);
+        this.engine?.setHover(null); this.engine?.clearPointer(); this.engine?.clearAim(); canvas.style.cursor = ''; this.showTip(null, 0, 0);
       };
       // Touch has no hover: light the touched station and show its name card
       // for a beat, so a tap reads as "going there" before the Keeper arrives.
@@ -445,38 +449,35 @@ export class SideScrollerComponent implements OnDestroy {
         if (this.tipTimer) clearTimeout(this.tipTimer);
         this.tipTimer = setTimeout(() => { this.engine?.setHover(null); this.showTip(null, 0, 0); }, TOUCH_TIP_MS);
       };
-      // Delves: hold a press on a cell (or right-click it) to place the hotbar's choice there.
-      let pressTimer: ReturnType<typeof setTimeout> | undefined;
-      let pressAt = { x: 0, y: 0 };
-      let pressed = false;
-      const cancelPress = (): void => { if (pressTimer) { clearTimeout(pressTimer); pressTimer = undefined; } };
+      // Delves, held use (Terraria): hold the left button (or a finger, with the pick) on a
+      // cell to keep mining it at the tool's pace; hold the right button (or a finger, with a
+      // placeable chosen) and drag to place along the way. A press on a placed thing takes it back.
+      let held = false;
+      /** The press that just ended did something: the click that follows it does not do it again. */
+      let acted = false;
       const pressStart = (event: PointerEvent): void => {
-        cancelPress();
-        pressed = false;
-        if (!this.engine || this.panel || !this.state.delve || event.button > 0) return;
-        pressAt = { x: event.clientX, y: event.clientY };
-        pressTimer = setTimeout(() => {
-          pressTimer = undefined;
-          if (!this.engine || this.panel) return;
-          pressed = true;
-          this.zone.run(() => this.engine?.placeAtClient(pressAt.x, pressAt.y));
-        }, LONG_PRESS_MS);
+        acted = false;
+        if (!this.engine || this.panel || !this.state.delve || (event.button !== 0 && event.button !== 2)) return;
+        const place = event.button === 2 || (event.pointerType !== 'mouse' && this.touchTool === 'place' && !!this.engine.placeable);
+        held = true;
+        try { canvas.setPointerCapture(event.pointerId); } catch { /* a synthetic pointer: no capture */ }
+        this.zone.run(() => this.engine?.useHold(event.clientX, event.clientY, place ? 'place' : 'dig'));
       };
-      const pressMove = (event: PointerEvent): void => {
-        if (pressTimer && Math.hypot(event.clientX - pressAt.x, event.clientY - pressAt.y) > 12) cancelPress();
+      const pressEnd = (event: PointerEvent): void => {
+        if (!held) return;
+        held = false;
+        acted = (this.engine?.useRelease() ?? 0) > 0;
+        if (event.pointerType !== 'mouse') this.engine?.clearAim();
       };
-      const context = (event: MouseEvent): void => {
-        if (!this.engine || this.panel || !this.state.delve) return;
-        event.preventDefault();
-        this.zone.run(() => this.engine?.placeAtClient(event.clientX, event.clientY));
-      };
+      // The right button's work is done on press (above); the menu never opens over the world.
+      const context = (event: MouseEvent): void => { if (this.state.delve) event.preventDefault(); };
       // The kind of pointer that started the press: a tap, unlike a mouse click, follows the touch tool.
       let tapped = false;
       const note = (event: PointerEvent): void => { tapped = event.pointerType !== 'mouse'; };
       const click = (event: MouseEvent): void => {
         if (!this.engine || this.panel || this.state.defeated) return;
-        // The click that ends a long-press placed something; it does not also swing.
-        if (pressed) { pressed = false; return; }
+        // The press already mined, placed or took back: the click does not do it twice.
+        if (acted) { acted = false; return; }
         // A tap with a placeable chosen places it on that cell (or takes back what is there);
         // out of reach, the Keeper walks toward it instead of digging it.
         if (tapped && this.state.delve && this.touchTool === 'place' && this.engine.placeable) {
@@ -497,23 +498,19 @@ export class SideScrollerComponent implements OnDestroy {
       canvas.addEventListener('pointerdown', note);
       canvas.addEventListener('click', click);
       canvas.addEventListener('pointerdown', pressStart);
-      canvas.addEventListener('pointermove', pressMove);
-      canvas.addEventListener('pointerup', cancelPress);
-      canvas.addEventListener('pointercancel', cancelPress);
-      canvas.addEventListener('pointerleave', cancelPress);
+      canvas.addEventListener('pointerup', pressEnd);
+      canvas.addEventListener('pointercancel', pressEnd);
       canvas.addEventListener('contextmenu', context);
       this.unbindPointer = () => {
-        cancelPress();
+        this.engine?.useRelease();
         canvas.removeEventListener('pointermove', move);
         canvas.removeEventListener('pointerleave', leave);
         canvas.removeEventListener('pointerdown', down);
         canvas.removeEventListener('pointerdown', note);
         canvas.removeEventListener('click', click);
         canvas.removeEventListener('pointerdown', pressStart);
-        canvas.removeEventListener('pointermove', pressMove);
-        canvas.removeEventListener('pointerup', cancelPress);
-        canvas.removeEventListener('pointercancel', cancelPress);
-        canvas.removeEventListener('pointerleave', cancelPress);
+        canvas.removeEventListener('pointerup', pressEnd);
+        canvas.removeEventListener('pointercancel', pressEnd);
         canvas.removeEventListener('contextmenu', context);
       };
     });
@@ -1002,6 +999,11 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); this.closePanel(); }
       return;
     }
+    // The full map owns the keyboard while it is open: M or Escape folds it.
+    if (this.map.open) {
+      if (event.key === 'Escape' || event.code === 'KeyM') { event.preventDefault(); this.closeMap(); }
+      return;
+    }
     if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
     // Escape inside the open Hearth folds it and hands focus back to the pill.
     if (this.hearthOpen && event.key === 'Escape' && (event.target as HTMLElement | null)?.closest?.('.dock')) {
@@ -1011,12 +1013,48 @@ export class SideScrollerComponent implements OnDestroy {
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
+    else if (event.code === 'KeyM' && this.state.delve) { event.preventDefault(); this.openMap(); }
     else if (this.state.delve && /^Digit[0-9]$/.test(event.code)) {
       // Keys 1-9, then 0 for the tenth slot.
       const slot = this.hotbar[(Number(event.code.slice(5)) + 9) % 10];
       if (slot) { event.preventDefault(); this.choosePlaceable(slot.id); }
     }
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
+  }
+  // ── The Delve map ──
+  /** The full map: the world holds still while it is open (nothing can reach the Keeper). */
+  openMap(): void {
+    if (!this.state.delve || this.panel) return;
+    this.map.show();
+    this.engine?.setPaused(true);
+    // Drawn once it is laid out; the HUD tick keeps it current. Focus goes to its Close.
+    setTimeout(() => {
+      this.drawMaps();
+      (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.map-close')?.focus({ preventScroll: true });
+    });
+  }
+  closeMap(): void {
+    if (!this.map.open) return;
+    this.map.hide();
+    if (!this.panel) this.engine?.setPaused(false);
+    (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.map-mini-open, .map-toggle')?.focus({ preventScroll: true });
+  }
+  /** The minimap and the open full map, from the engine's explored cells (the HUD tick, 5 a second). */
+  private drawMaps(): void {
+    if (!this.state.delve) { if (this.map.open) this.closeMap(); return; }
+    const host = this.host.nativeElement as HTMLElement;
+    this.map.drawMini(host.querySelector<HTMLCanvasElement>('.map-mini canvas') ?? undefined);
+    this.map.drawFull(host.querySelector<HTMLCanvasElement>('.map-full canvas') ?? undefined);
+  }
+  zoomMap(step: number): void { this.map.zoomBy(step); this.drawMaps(); }
+  centreMap(): void { this.map.centre(); if (this.map.zoom < 0) this.map.zoomBy(1); this.drawMaps(); }
+  /** What each mark on the map is. */
+  readonly mapLegend = (['keeper', 'camp', 'chest', 'torch', 'inscription', 'shaft'] as const)
+    .map(kind => ({ key: `play.map.legend.${kind}`, color: MAP_MARKER_COLORS[kind] }));
+  /** The way-to-camp line under the full map. */
+  get mapHint(): string {
+    const n = this.map.campPath;
+    return n < 0 ? this.t('play.map.noCamp') : n === 0 ? this.t('play.map.noWay') : this.t('play.map.toCamp', { n });
   }
   openBag(): void { if (!this.bagOpen) this.toggleBag(); }
   closeBag(): void {

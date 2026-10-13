@@ -106,6 +106,38 @@
     </nav>
   }
 
+  @if (state.delve) {
+    <!-- The minimap (Terraria): explored cells round the Keeper; a click or tap opens the full map (M).
+         Phones fold it with the toggle; it keeps to the top corners, clear of the middle of the world. -->
+    <div class="map-mini" [class.map-mini--shown]="map.miniShown" [attr.inert]="panel ? '' : null" data-engine-ignore>
+      <button type="button" class="map-toggle" (click)="map.toggleMini()" [attr.aria-pressed]="map.miniShown" [attr.aria-label]="t('play.map.toggle')"><i class="map-ico" aria-hidden="true"></i></button>
+      @if (map.miniShown) {
+        <button type="button" class="map-mini-open" (click)="openMap()" [attr.aria-label]="t('play.map.open')"><canvas aria-hidden="true"></canvas><kbd class="key-hint">M</kbd></button>
+      }
+    </div>
+  }
+  @if (map.open && state.delve) {
+    <section class="map-full" role="dialog" aria-modal="true" aria-labelledby="map-title" data-engine-ignore>
+      <header class="map-head">
+        <div>
+          <span class="realm-tag">{{ t('play.delve.yourDelve') }}</span>
+          <h2 id="map-title">{{ t('play.map.title') }}</h2>
+        </div>
+        <div class="map-tools">
+          <button type="button" class="map-zoom" (click)="zoomMap(-1)" [attr.aria-label]="t('play.map.zoomOut')">-</button>
+          <button type="button" class="map-zoom" (click)="zoomMap(1)" [attr.aria-label]="t('play.map.zoomIn')">+</button>
+          <button type="button" (click)="centreMap()">{{ t('play.map.centre') }}</button>
+          <button type="button" class="book-close map-close" (click)="closeMap()">{{ t('play.hud.book.close') }} <kbd class="key-hint">M</kbd></button>
+        </div>
+      </header>
+      <canvas class="map-canvas" (pointerdown)="map.press($event)" (pointermove)="map.move($event)" (pointerup)="map.release()" (pointercancel)="map.release()" (wheel)="map.wheel($event)" [attr.aria-label]="mapHint"></canvas>
+      <p class="map-hint" role="status">{{ mapHint }} <span>{{ t('play.map.drag') }}</span></p>
+      <ul class="map-legend">
+        @for (row of mapLegend; track row.key) { <li><i [style.background]="row.color" aria-hidden="true"></i>{{ t(row.key) }}</li> }
+      </ul>
+    </section>
+  }
+
   <aside class="satchel" [attr.aria-label]="t('play.hud.satchel')" (click)="openBag()" [attr.inert]="panel ? '' : null">
     <button type="button" class="clasp" [class.is-full]="bagFull" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book"
             [attr.aria-label]="t('play.hud.satchelCount', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) + (inventory.snapshot.overflow ? '. ' + t('play.hud.book.overflow', { n: inventory.snapshot.overflow }) : '')">
@@ -236,7 +268,7 @@
     <button type="button" class="m-take" (click)="takeBack()" [attr.inert]="panel ? '' : null" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }}</button>
   }
   @if (showKeys) {
-    <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>M</kbd> {{ t('play.hud.key.map') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
   }
 
   <!-- The Hearth chat. Folded it is one pill clear of the stalls and the action
