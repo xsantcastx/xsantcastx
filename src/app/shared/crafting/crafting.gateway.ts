@@ -45,6 +45,7 @@ import { itemDefinitionById, mintEquipment } from '../rpg/item-definition';
 import { qualityOf } from '../rpg/item-quality';
 import type { GameItem } from '../rpg/item.model';
 import { NpcQuestService } from '../npc/npc-quest.service';
+import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import { SkillActionService } from '../skills/skill-actions.service';
 import { CraftingService, type CraftingProgress } from './crafting.service';
 import {
@@ -93,6 +94,8 @@ export class CraftingGateway {
   private readonly crafting = inject(CraftingService);
   private readonly collection = inject(CollectionService);
   private readonly npc = inject(NpcQuestService);
+  /** Rune ingredients (`CraftingIngredient.rune`) are spent from the forge's ledger. */
+  private readonly runes = inject(RuneForgeService);
   /** Bench XP is part of Smithing: each settled craft reports it, so the Smithing level-up banner fires. */
   private readonly skills = inject(SkillActionService);
 
@@ -101,13 +104,20 @@ export class CraftingGateway {
     this.inventory.init();
     this.economy.init();
     this.crafting.init();
+    this.runes.init();
   }
 
   /** What this recipe is still short of, for the bench's ingredient slots. */
   missing(recipe: CraftingRecipe): { id: string; need: number; have: number }[] {
-    return this.inventory.missingInputs(
-      recipe.ingredients.map(row => ({ id: row.materialId, count: row.count })),
+    const short = this.inventory.missingInputs(
+      recipe.ingredients.filter(row => !row.rune).map(row => ({ id: row.materialId, count: row.count })),
     );
+    for (const row of recipe.ingredients) {
+      if (!row.rune) continue;
+      const have = this.runes.countOf(row.materialId);
+      if (have < row.count) short.push({ id: row.materialId, need: row.count, have });
+    }
+    return short;
   }
 
   /**
@@ -163,14 +173,22 @@ export class CraftingGateway {
     const voidTouched = def.style === 'void' || def.style === 'void-touched';
     const rolls = masteryRng(rng, bonus, recipe.rarity, voidTouched);
 
+    // Runes first (the blocker checked they are there), handed back if the bag refuses.
+    const runeRows = recipe.ingredients.filter(row => row.rune);
+    const spent = runeRows.filter(row => this.runes.spendRune(row.materialId, row.count));
+    if (spent.length < runeRows.length) {
+      for (const row of spent) this.runes.returnRune(row.materialId, row.count);
+      return { ok: false, code: 'missing' };
+    }
     const crafted = this.inventory.craftRecipe(
       mutationId,
-      recipe.ingredients.map(row => ({ id: row.materialId, count: row.count })),
+      recipe.ingredients.filter(row => !row.rune).map(row => ({ id: row.materialId, count: row.count })),
       (itemId, _index, foundAt) => mintEquipment(def.id, recipe.rarity, rolls, foundAt, itemId),
       recipe.output.count,
       now,
     );
     if (!crafted.ok) {
+      for (const row of runeRows) this.runes.returnRune(row.materialId, row.count);
       return { ok: false, code: crafted.code === 'clock' ? 'persist' : crafted.code };
     }
 

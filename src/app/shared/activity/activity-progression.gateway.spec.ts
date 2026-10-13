@@ -20,8 +20,6 @@ import {
 import {
   FORAGING_RECOVERY_MS,
   FORAGING_XP_PER_ACTION,
-  RIFT_KEY_GUARANTEE_AT,
-  RIFT_KEY_ID,
   STARLIGHT_HERB_ID,
   SUNBLOOM_ID,
   THORNROOT_ID,
@@ -217,7 +215,7 @@ describe('ActivityProgressionGateway', () => {
     });
 
     it('grants one Starlight Herb and two foraging XP, and a retry of the same id is a no-op', () => {
-      const first = gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 });
+      const first = gateway.resolveForage({ mutationId: 'f1', now: 4_000 });
       expect(first.ok).toBe(true);
       if (!first.ok) return;
       expect(first.replayed).toBe(false);
@@ -230,7 +228,7 @@ describe('ActivityProgressionGateway', () => {
       expect(gateway.snapshot.foragingAccepted).toBe(1);
       expect(gateway.snapshot.miningAccepted).toBe(0);
 
-      const again = gateway.resolveForage({ mutationId: 'f1', now: 8_000, roll: 0.0001 });
+      const again = gateway.resolveForage({ mutationId: 'f1', now: 8_000 });
       expect(again.ok).toBe(true);
       if (!again.ok) return;
       expect(again.replayed).toBe(true);
@@ -240,15 +238,15 @@ describe('ActivityProgressionGateway', () => {
     });
 
     it('rejects a second gather while regrowing, using the foraging cooldown', () => {
-      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 }).ok).toBe(true);
-      const early = gateway.resolveForage({ mutationId: 'f2', now: 4_000 + FORAGING_RECOVERY_MS - 1, roll: 0.9 });
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000 }).ok).toBe(true);
+      const early = gateway.resolveForage({ mutationId: 'f2', now: 4_000 + FORAGING_RECOVERY_MS - 1 });
       expect(early).toEqual({ ok: false, code: 'recovering' });
       expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(1);
       // recoveryEndsAt follows the *current discipline*: 2,500ms at foraging level 1.
       expect(gateway.currentRecoveryMs()).toBe(FORAGING_RECOVERY_MS);
       expect(gateway.recoveryRemainingMs(4_001)).toBe(FORAGING_RECOVERY_MS - 1);
       expect(gateway.recoveryRemainingMs(4_000 + FORAGING_RECOVERY_MS + 1)).toBe(0);
-      const late = gateway.resolveForage({ mutationId: 'f2', now: 4_000 + FORAGING_RECOVERY_MS, roll: 0.9 });
+      const late = gateway.resolveForage({ mutationId: 'f2', now: 4_000 + FORAGING_RECOVERY_MS });
       expect(late.ok).toBe(true);
     });
 
@@ -256,7 +254,7 @@ describe('ActivityProgressionGateway', () => {
       const mineHere = gateway.resolveMine({ mutationId: 'm1', now: 4_000, roll: 0.9 });
       expect(mineHere).toEqual({ ok: false, code: 'location' });
       expect(gateway.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, 5_000)).toBeTruthy();
-      const gatherThere = gateway.resolveForage({ mutationId: 'f1', now: 6_000, roll: 0.9 });
+      const gatherThere = gateway.resolveForage({ mutationId: 'f1', now: 6_000 });
       expect(gatherThere).toEqual({ ok: false, code: 'location' });
       expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(0);
       expect(inventory.stackOf('cinder-ore')).toBe(0);
@@ -266,7 +264,7 @@ describe('ActivityProgressionGateway', () => {
       // The round-trip a Keeper actually walks: Canopy (foraging selected) →
       // Seamworks. The Seamworks page re-selects mining on entry; this pins
       // that the gateway honours the swap rather than remembering the Canopy.
-      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 }).ok).toBe(true);
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000 }).ok).toBe(true);
       expect(gateway.resolveMine({ mutationId: 'm0', now: 5_000, roll: 0.9 })).toEqual({ ok: false, code: 'location' });
       expect(gateway.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, 6_000)).toBeTruthy();
       const mined = gateway.resolveMine({ mutationId: 'm1', now: 7_000, roll: 0.9 });
@@ -279,7 +277,7 @@ describe('ActivityProgressionGateway', () => {
     });
 
     it('refuses a growth the current foraging level has not reached', () => {
-      const refused = gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9, herbId: SUNBLOOM_ID });
+      const refused = gateway.resolveForage({ mutationId: 'f1', now: 4_000, herbId: SUNBLOOM_ID });
       expect(refused).toEqual({ ok: false, code: 'tier-locked' });
       expect(inventory.stackOf(SUNBLOOM_ID)).toBe(0);
       expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
@@ -310,14 +308,13 @@ describe('ActivityProgressionGateway', () => {
         emberGranted: false,
         miningAccepted: 0,
         foragingAccepted: 1,
-        riftKeyGranted: false,
       });
       TestBed.resetTestingModule();
       const levelled = configure(memory);
       expect(levelled.selectCurrentWork('foraging', ROOTGLASS_CANOPY_ID, 10_000)).toBeTruthy();
       const freshInventory = TestBed.inject(InventoryService);
 
-      const result = levelled.resolveForage({ mutationId: 'f2', now: 10_000, roll: 0.9, herbId: SUNBLOOM_ID });
+      const result = levelled.resolveForage({ mutationId: 'f2', now: 10_000, herbId: SUNBLOOM_ID });
       expect(result.ok).toBe(true);
       if (!result.ok) return;
       expect(result.operation.xpGrant.amount).toBe(4);
@@ -326,44 +323,17 @@ describe('ActivityProgressionGateway', () => {
 
       // Foraging level 6 (mining level 40 is irrelevant) — Thornroot stays shut.
       const tooDeep = levelled.resolveForage({
-        mutationId: 'f3', now: 10_000 + FORAGING_RECOVERY_MS + 1, roll: 0.9, herbId: THORNROOT_ID,
+        mutationId: 'f3', now: 10_000 + FORAGING_RECOVERY_MS + 1, herbId: THORNROOT_ID,
       });
       expect(tooDeep).toEqual({ ok: false, code: 'tier-locked' });
     });
 
-    it('guarantees the first Rift Key on the 600th accepted gather and keeps rolling after', () => {
-      let t = 4_000;
-      for (let i = 1; i < RIFT_KEY_GUARANTEE_AT; i++) {
-        const result = gateway.resolveForage({ mutationId: `f${i}`, now: t, roll: 0.99 });
-        expect(result.ok).toBe(true);
-        t += FORAGING_RECOVERY_MS + 1;
-      }
-      expect(inventory.stackOf(RIFT_KEY_ID)).toBe(0);
-      expect(gateway.snapshot.riftKeyGranted).toBe(false);
-      const last = gateway.resolveForage({ mutationId: `f${RIFT_KEY_GUARANTEE_AT}`, now: t, roll: 0.99 });
-      expect(last.ok).toBe(true);
-      if (!last.ok) return;
-      expect(last.operation.discovery.result).toBe('rift-key-guarantee');
-      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(RIFT_KEY_GUARANTEE_AT);
-      expect(inventory.stackOf(RIFT_KEY_ID)).toBe(1);
-      expect(gateway.snapshot.foragingAccepted).toBe(RIFT_KEY_GUARANTEE_AT);
-      expect(gateway.snapshot.riftKeyGranted).toBe(true);
-      expect(gateway.snapshot.emberGranted).toBe(false);
-      expect(gateway.snapshot.miningAccepted).toBe(0);
-      expect(gateway.snapshot.progress.xpByDiscipline.foraging).toBe(RIFT_KEY_GUARANTEE_AT * FORAGING_XP_PER_ACTION);
-
-      // 601st: no second guarantee, but the 0.1% roll is still live.
-      t += FORAGING_RECOVERY_MS + 1;
-      const after = gateway.resolveForage({ mutationId: 'f-after', now: t, roll: 0.99 });
-      expect(after.ok).toBe(true);
-      if (!after.ok) return;
-      expect(after.operation.discovery.result).toBe('none');
-      t += FORAGING_RECOVERY_MS + 1;
-      const lucky = gateway.resolveForage({ mutationId: 'f-lucky', now: t, roll: 0.0005 });
-      expect(lucky.ok).toBe(true);
-      if (!lucky.ok) return;
-      expect(lucky.operation.discovery.result).toBe('rift-key');
-      expect(inventory.stackOf(RIFT_KEY_ID)).toBe(2);
+    it('rolls no rare find: a gather grants only its herb (the Rift Key was removed)', () => {
+      const result = gateway.resolveForage({ mutationId: 'f1', now: 4_000 });
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.operation.discovery).toEqual({ rolled: false, result: 'none' });
+      expect(result.operation.inventoryGrants.map(g => g.definitionId)).toEqual([STARLIGHT_HERB_ID]);
     });
 
     it('refuses to create an operation when the bag cannot take herbs', () => {
@@ -374,17 +344,17 @@ describe('ActivityProgressionGateway', () => {
           foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
         })).toBeTruthy();
       }
-      const refused = gateway.resolveForage({ mutationId: 'full', now: 4_000, roll: 0.9 });
+      const refused = gateway.resolveForage({ mutationId: 'full', now: 4_000 });
       expect(refused).toEqual({ ok: false, code: 'capacity' });
       expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(0);
       expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
     });
 
     it('rehydrates the merged ledger without awarding again', () => {
-      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 }).ok).toBe(true);
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000 }).ok).toBe(true);
       TestBed.resetTestingModule();
       const again = configure(memory);
-      const replay = again.resolveForage({ mutationId: 'f1', now: 20_000, roll: 0.0001 });
+      const replay = again.resolveForage({ mutationId: 'f1', now: 20_000 });
       expect(replay.ok).toBe(true);
       if (!replay.ok) return;
       expect(replay.replayed).toBe(true);
@@ -441,7 +411,7 @@ describe('ActivityProgressionGateway', () => {
 
     it('rejects the other verbs at the Orrery and a Survey at either other site', () => {
       expect(gateway.resolveMine({ mutationId: 'm1', now: 4_000, roll: 0.9 })).toEqual({ ok: false, code: 'location' });
-      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000, roll: 0.9 })).toEqual({ ok: false, code: 'location' });
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 4_000 })).toEqual({ ok: false, code: 'location' });
       expect(gateway.selectCurrentWork('mining', BASALT_SEAMWORKS_ID, 5_000)).toBeTruthy();
       expect(gateway.resolveProspect({ mutationId: 'p1', now: 6_000, roll: 0.9 })).toEqual({ ok: false, code: 'location' });
       expect(gateway.selectCurrentWork('foraging', ROOTGLASS_CANOPY_ID, 7_000)).toBeTruthy();
@@ -458,7 +428,7 @@ describe('ActivityProgressionGateway', () => {
       expect(gateway.resolveMine({ mutationId: 'm1', now: 6_000, roll: 0.9 }).ok).toBe(true);
 
       expect(gateway.selectCurrentWork('foraging', ROOTGLASS_CANOPY_ID, 7_000)).toBeTruthy();
-      expect(gateway.resolveForage({ mutationId: 'f1', now: 8_000, roll: 0.9 }).ok).toBe(true);
+      expect(gateway.resolveForage({ mutationId: 'f1', now: 8_000 }).ok).toBe(true);
 
       expect(inventory.stackOf(CELESTIAL_ALLOY_ID)).toBe(1);
       expect(inventory.stackOf('cinder-ore')).toBe(1);
@@ -503,7 +473,6 @@ describe('ActivityProgressionGateway', () => {
         emberGranted: false,
         miningAccepted: 0,
         foragingAccepted: 0,
-        riftKeyGranted: false,
         prospectingAccepted: 1,
         clarityElixirGranted: false,
       });
@@ -533,20 +502,24 @@ describe('ActivityProgressionGateway', () => {
         expect(result.ok).toBe(true);
         t += PROSPECTING_RECOVERY_MS + 1;
       }
-      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(0);
+      expect(inventory.snapshot.items.filter(i => i.definitionId === CLARITY_ELIXIR_ID).length).toBe(0);
       expect(gateway.snapshot.clarityElixirGranted).toBe(false);
       const last = gateway.resolveProspect({ mutationId: `p${CLARITY_ELIXIR_GUARANTEE_AT}`, now: t, roll: 0.99 });
       expect(last.ok).toBe(true);
       if (!last.ok) return;
       expect(last.operation.discovery.result).toBe('clarity-elixir-guarantee');
       expect(inventory.stackOf(CELESTIAL_ALLOY_ID)).toBe(CLARITY_ELIXIR_GUARANTEE_AT);
-      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(1);
+      expect(inventory.snapshot.items.filter(i => i.definitionId === CLARITY_ELIXIR_ID).length).toBe(1);
+      // Minted as a wearable charm with Magic Find, not a stack (meaning audit #8).
+      const elixir = inventory.snapshot.items.find(i => i.definitionId === CLARITY_ELIXIR_ID)!;
+      expect(elixir.type).toBe('charm');
+      expect(elixir.stats.magicFind).toBeGreaterThan(0);
+      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(0);
       expect(gateway.snapshot.prospectingAccepted).toBe(CLARITY_ELIXIR_GUARANTEE_AT);
       expect(gateway.snapshot.clarityElixirGranted).toBe(true);
       // Neither earlier skill's pity moved.
       expect(gateway.snapshot.emberGranted).toBe(false);
       expect(gateway.snapshot.miningAccepted).toBe(0);
-      expect(gateway.snapshot.riftKeyGranted).toBe(false);
       expect(gateway.snapshot.foragingAccepted).toBe(0);
       expect(gateway.snapshot.progress.xpByDiscipline.prospecting)
         .toBe(CLARITY_ELIXIR_GUARANTEE_AT * PROSPECTING_XP_PER_ACTION);
@@ -562,7 +535,7 @@ describe('ActivityProgressionGateway', () => {
       expect(lucky.ok).toBe(true);
       if (!lucky.ok) return;
       expect(lucky.operation.discovery.result).toBe('clarity-elixir');
-      expect(inventory.stackOf(CLARITY_ELIXIR_ID)).toBe(2);
+      expect(inventory.snapshot.items.filter(i => i.definitionId === CLARITY_ELIXIR_ID).length).toBe(2);
     });
 
     it('refuses to create an operation when the bag cannot take minerals', () => {

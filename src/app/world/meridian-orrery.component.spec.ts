@@ -61,7 +61,7 @@ describe('MeridianOrreryComponent', () => {
   };
 
   const inventory = {
-    snapshot: { bag: [], stacks: [], usedRows: 0, full: false },
+    snapshot: { items: [], bag: [], stacks: [], usedRows: 0, full: false },
     snapshot$: of({ bag: [], stacks: [], usedRows: 0, full: false }),
     init: () => { /* noop */ },
     stackOf: (id: string) => (id === CELESTIAL_ALLOY_ID ? 4 : 0),

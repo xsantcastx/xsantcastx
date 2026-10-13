@@ -42,7 +42,7 @@ const COUNT_MS = 650;
 const CHIP_MS = 1800;
 const FLASH_MS = 1100;
 
-const ZERO: Totals = { goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0, strikePower: 0, ward: 0 };
+const ZERO: Totals = { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 };
 
 /** Shown number on the sheet: two places at most, % where the stat is a percent. */
 export function formatSheetValue(key: StatKey, value: number): string {

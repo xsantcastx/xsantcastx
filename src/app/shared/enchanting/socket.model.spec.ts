@@ -7,6 +7,7 @@
  * somebody's Mythic.
  */
 import { RUNES, RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
+import { SOCKET_WORDS } from './socket-words';
 import { ITEM_STAT_KEYS, type GameItem, type ItemRarity } from '../rpg/item.model';
 import {
   MAX_SOCKETS,
@@ -97,6 +98,16 @@ describe('socket counts', () => {
 });
 
 describe('socket effects', () => {
+  it('folds the old loot-quality runes into Magic Find (meaning audit #5)', () => {
+    expect(ITEM_STAT_KEYS as string[]).not.toContain('lootBonus');
+    expect(SOCKET_CHANNEL['codex']).toBe('magicFind');
+  });
+
+  it('channels only canon runes: Mote, Seam and Ledger are gone (meaning audit #12)', () => {
+    for (const id of ['mote', 'seam', 'ledger']) expect(SOCKET_CHANNEL[id]).withContext(id).toBeUndefined();
+    for (const word of SOCKET_WORDS) for (const id of word.runes) expect(runeById(id)).withContext(`${word.id} -> ${id}`).toBeTruthy();
+  });
+
   it('gives every rune in the registry a channel, or the Void treatment', () => {
     for (const rune of RUNES) {
       const effect = socketEffectOf(rune.id);

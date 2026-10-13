@@ -128,9 +128,18 @@ export function craftingCategory(id: CraftingCategory): CraftingCategoryDefiniti
 }
 
 export interface CraftingIngredient {
-  /** A material definition id. Must be something the game can actually grant. */
+  /**
+   * A material definition id. Must be something the game can actually grant.
+   * With `rune`, a Forge rune id instead, spent from the Rune Forge ledger.
+   */
   materialId: string;
   count: number;
+  /**
+   * A Forge rune, not a stack. The Art Bible's ten "Rune of ..." reagents were
+   * the canon runes under a second name (owner rule 2026-10-13: one name, one
+   * meaning), so the recipes that took them take the rune itself.
+   */
+  rune?: true;
 }
 
 export interface CraftingRecipe {
@@ -237,6 +246,8 @@ function r(
 }
 
 const m = (materialId: string, count: number): CraftingIngredient => ({ materialId, count });
+/** A Forge rune as an ingredient (see `CraftingIngredient.rune`). */
+const rn = (runeId: string, count: number): CraftingIngredient => ({ materialId: runeId, count, rune: true });
 
 const WEAPON_RECIPES: readonly CraftingRecipe[] = [
   r('craft-briarvein-kris', 'Briarvein Kris', 'weapon', 'uncommon', 'briarvein-kris',
@@ -276,7 +287,7 @@ const WEAPON_RECIPES: readonly CraftingRecipe[] = [
     62_000, 8, 'Grown from a cutting of the World-Root\'s shadow.',
     { realm: 'umbral', craftTime: 6 }),
   r('craft-cindergnaw', 'Cindergnaw', 'weapon', 'epic', 'cindergnaw',
-    [m('emberheart-ore', 6), m('infernal-heartstone', 3), m('rune-of-cinder', 1)],
+    [m('emberheart-ore', 6), m('infernal-heartstone', 3), rn('ash', 1)],
     195_000, 13, 'Made to fell the ironwood pillars holding up the Underhearth.',
     { realm: 'infernal', craftTime: 8 }),
   r('craft-astral-glaive', 'Astral Glaive', 'weapon', 'epic', 'astral-glaive',
@@ -284,19 +295,19 @@ const WEAPON_RECIPES: readonly CraftingRecipe[] = [
     210_000, 14, 'The Celestial Realm measures time by the motion of their glaives.',
     { realm: 'celestial', craftTime: 8 }),
   r('craft-godforge-tongs', 'Godforge Tongs', 'weapon', 'epic', 'godforge-tongs',
-    [m('godforge-slag', 8), m('orichalcum-ore', 4), m('rune-of-the-forge', 2)],
+    [m('godforge-slag', 8), m('orichalcum-ore', 4), rn('forge', 2)],
     225_000, 15, 'They shaped the first anvil, which shaped everything else.',
     { craftTime: 9 }),
   r('craft-starfall-maul', 'Starfall Maul', 'weapon', 'legendary', 'starfall-maul',
-    [m('celestial-quartz', 10), m('orichalcum-ore', 6), m('void-shard', 2), m('rune-of-starfire', 1)],
+    [m('celestial-quartz', 10), m('orichalcum-ore', 6), m('void-shard', 2), rn('aether', 1)],
     720_000, 20, 'A fragment of dead star, fallen through an open window.',
     { realm: 'celestial', craftTime: 12 }),
   r('craft-hollow-fang', 'Hollow Fang', 'weapon', 'legendary', 'hollow-fang',
-    [m('void-crystal', 3), m('shadowthread-silk', 8), m('umbral-ink', 10), m('rune-of-hollow', 2)],
+    [m('void-crystal', 3), m('shadowthread-silk', 8), m('umbral-ink', 10), rn('hollow', 2)],
     760_000, 22, 'Pulled from the jaw of something whose teeth had become glass.',
     { realm: 'umbral', craftTime: 12 }),
   r('craft-eclipse-edge', 'Eclipse Edge', 'weapon', 'mythic', 'eclipse-edge',
-    [m('void-crystal', 6), m('void-shard', 5), m('orichalcum-ore', 12), m('rune-of-the-world-root', 1)],
+    [m('void-crystal', 6), m('void-shard', 5), m('orichalcum-ore', 12), rn('convergence', 1)],
     3_200_000, 28, 'The tool the Nameless used to cut one world into five.',
     { craftTime: 15 }),
 ];
@@ -339,7 +350,7 @@ const ARMOR_RECIPES: readonly CraftingRecipe[] = [
     190_000, 12, 'Cut to the Luminous calendar, one plate per turning of the light.',
     { realm: 'luminous', craftTime: 8 }),
   r('craft-cometfall-helm', 'Cometfall Helm', 'armor', 'epic', 'cometfall-helm',
-    [m('celestial-quartz', 5), m('orichalcum-ore', 4), m('rune-of-void-navigation', 1)],
+    [m('celestial-quartz', 5), m('orichalcum-ore', 4), rn('rift', 1)],
     205_000, 14, 'The dent on the crown is original and the smith refused to beat it out.',
     { realm: 'celestial', craftTime: 8 }),
   r('craft-duskmail-hauberk', 'Duskmail Hauberk', 'armor', 'epic', 'duskmail-hauberk',
@@ -347,19 +358,19 @@ const ARMOR_RECIPES: readonly CraftingRecipe[] = [
     198_000, 13, 'Every ring is a shadow of the ring beside it, which is why it is quiet.',
     { realm: 'umbral', craftTime: 8 }),
   r('craft-forgeborn-warhelm', 'Forgeborn Warhelm', 'armor', 'epic', 'forgeborn-warhelm',
-    [m('godforge-slag', 10), m('emberheart-ore', 4), m('rune-of-the-forge', 1)],
+    [m('godforge-slag', 10), m('emberheart-ore', 4), rn('forge', 1)],
     215_000, 15, 'Poured, not beaten. The Godforge does not repeat itself.',
     { craftTime: 9 }),
   r('craft-abyssal-aegis', 'Abyssal Aegis', 'armor', 'legendary', 'abyssal-aegis',
-    [m('void-crystal', 4), m('void-shard', 4), m('shadowthread-silk', 10), m('rune-of-erasure', 1)],
+    [m('void-crystal', 4), m('void-shard', 4), m('shadowthread-silk', 10), rn('eclipse', 1)],
     780_000, 22, 'It does not block. It declines to have been struck.',
     { realm: 'umbral', craftTime: 12 }),
   r('craft-luminous-aegis-mantle', 'Luminous Aegis Mantle', 'armor', 'legendary', 'luminous-aegis-mantle',
-    [m('solar-resin', 10), m('luminous-prism', 14), m('orichalcum-ore', 6), m('rune-of-the-solstice', 1)],
+    [m('solar-resin', 10), m('luminous-prism', 14), m('orichalcum-ore', 6), rn('aether', 1)],
     810_000, 24, 'Aureth wore one of these and it is not known what happened to it.',
     { realm: 'luminous', craftTime: 12 }),
   r('craft-crown-first-dawn', 'Crown of the First Dawn', 'armor', 'legendary', 'crown-of-the-first-dawn',
-    [m('solar-resin', 12), m('celestial-quartz', 8), m('orichalcum-ore', 8), m('rune-of-radiance', 3)],
+    [m('solar-resin', 12), m('celestial-quartz', 8), m('orichalcum-ore', 8), rn('glint', 3)],
     950_000, 26, 'The original absorbed enough light during the Shattering to burn forever.',
     { realm: 'luminous', craftTime: 14 }),
 ];
@@ -398,7 +409,7 @@ const CHARM_RECIPES: readonly CraftingRecipe[] = [
     66_000, 6, 'It is not alive. It has never been told.',
     { realm: 'verdant', craftTime: 4 }),
   r('craft-cinder-compass', 'Cinder Compass', 'charm', 'epic', 'cinder-compass',
-    [m('infernal-heartstone', 4), m('emberheart-ore', 5), m('rune-of-cinder', 1)],
+    [m('infernal-heartstone', 4), m('emberheart-ore', 5), rn('ash', 1)],
     240_000, 16, 'Its needle finds heat, and it has been wrong exactly once.',
     { realm: 'infernal', craftTime: 7 }),
   r('craft-gilded-quill', 'Gilded Quill', 'charm', 'epic', 'gilded-quill',
@@ -410,7 +421,7 @@ const CHARM_RECIPES: readonly CraftingRecipe[] = [
     245_000, 17, 'What the Godforge keeps back, weighed and carried.',
     { realm: 'infernal', craftTime: 7 }),
   r('craft-phantom-toll', 'Phantom Toll', 'charm', 'legendary', 'phantom-toll',
-    [m('void-crystal', 3), m('umbral-ink', 12), m('shadowthread-silk', 6), m('rune-of-hollow', 1)],
+    [m('void-crystal', 3), m('umbral-ink', 12), m('shadowthread-silk', 6), rn('hollow', 1)],
     840_000, 25, 'A coin paid to a ferryman who is not there and takes it anyway.',
     { realm: 'umbral', craftTime: 11 }),
 ];
@@ -432,6 +443,12 @@ const CONSUMABLE_RECIPES: readonly CraftingRecipe[] = [
     [m('ember-residue', 2), m('cinder-ore', 8), m('pyrite-dust', 3)],
     22_000, 4, 'Sealed hot. It has never once cooled and nobody has asked why.',
     { realm: 'infernal', craftTime: 2 }),
+  // Meaning audit #9: the Ember Elixir's first world source. The blurb is the
+  // Collection Log's own hint for it.
+  r('craft-ember-elixir', 'Ember Elixir', 'consumable', 'uncommon', 'ember-elixir',
+    [m('ember-residue', 2), m('infernal-heartstone', 1)],
+    8_000, 3, 'Brewed from what a hot seam leaves behind.',
+    { realm: 'infernal', craftTime: 1 }),
   r('craft-liquid-dawn', 'Flask of Liquid Dawn', 'consumable', 'rare', 'liquid-dawn',
     [m('solar-resin', 3), m('sunbloom', 10), m('luminous-prism', 3)],
     24_000, 5, 'One mouthful of the morning the Luminous Realm keeps in reserve.',
@@ -449,11 +466,11 @@ const CONSUMABLE_RECIPES: readonly CraftingRecipe[] = [
     120_000, 10, 'The label is blank. So, reportedly, is the phial.',
     { realm: 'umbral', craftTime: 4 }),
   r('craft-scroll-shattering-memory', 'Scroll of Shattering Memory', 'consumable', 'legendary', 'scroll-shattering-memory',
-    [m('void-crystal', 2), m('celestial-quartz', 6), m('rune-of-erasure', 1)],
+    [m('void-crystal', 2), m('celestial-quartz', 6), rn('eclipse', 1)],
     560_000, 21, 'Read once. It removes what it was read to remove, and one thing more.',
     { craftTime: 9 }),
   r('craft-eclipse-fragment-capsule', 'Eclipse Fragment Capsule', 'consumable', 'mythic', 'eclipse-fragment-capsule',
-    [m('void-crystal', 5), m('void-shard', 6), m('orichalcum-ore', 8), m('rune-of-the-underhearth', 1)],
+    [m('void-crystal', 5), m('void-shard', 6), m('orichalcum-ore', 8), rn('nox', 1)],
     2_400_000, 30, 'A piece of the cut itself, sealed in glass that does not want it.',
     { craftTime: 14 }),
 ];

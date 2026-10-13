@@ -36,7 +36,7 @@ import { ChestGearRow, ChestRow, DelveChestService } from '../shared/delve/delve
 import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
-import { toolCard, toolCardLines, toolTiers } from '../shared/skills/tools';
+import { toolCard, toolCardLines, toolPower, toolTiers } from '../shared/skills/tools';
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
 import { CharacterHubService } from '../shared/character/character-hub.service';
 import { STARTER_FAMILIES, starterInstanceId, starterToolId } from '../shared/skills/tool-items';
@@ -1225,6 +1225,8 @@ export class SideScrollerComponent implements OnDestroy {
     const crafted = toolTiers({ ...snapshot, items: snapshot.items.filter(item => !isChestHolder(item.explorerId)) }, progress);
     const tools = {
       swing: { pickaxe: crafted.swing.pickaxe, axe: crafted.swing.axe, sickle: crafted.swing.sickle },
+      // The wielding skill's level sharpens each tool (skills/tool-level.ts).
+      power: { pickaxe: crafted.power.pickaxe, axe: crafted.power.axe, sickle: crafted.power.sickle, staff: crafted.power.staff },
       pickaxe: Math.max(floor.pickaxe ?? 0, crafted.pickaxe),
       axe: Math.max(floor.axe ?? 0, crafted.axe),
       sickle: Math.max(floor.sickle ?? 0, crafted.sickle),
@@ -1242,8 +1244,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (toolKey !== this.toolKey) {
       this.toolKey = toolKey;
       this.engine.setTools({ ...tools, lanternTiles: crafted.lanternRadius, levels });
-      // The pickaxe's pace on the canvas, for tests and tools (the HUD says it in words).
+      // The pickaxe's pace and power (tier × Mining level) on the canvas, for tests and tools (the HUD says it in words).
       this.canvas?.nativeElement.setAttribute('data-swing-pickaxe', crafted.swing.pickaxe.toFixed(2));
+      this.canvas?.nativeElement.setAttribute('data-power-pickaxe', (crafted.pickaxe ? toolPower(crafted.pickaxe) * crafted.power.pickaxe : 0).toFixed(2));
     }
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;

@@ -169,6 +169,9 @@ interface RuneSeed {
   lore: string;
 }
 
+// The 22 runes of the canon rune table (item lore codex). Mote, Seam and Ledger
+// were removed (2026-10-13): each repeated a canon rune's socket effect.
+// See docs/world/lore-addendum.md.
 const RUNE_SEEDS: RuneSeed[] = [
   // ── Common ── what the floor of the world is made of.
   { id: 'ash', name: 'Ash', tier: 'common',
@@ -179,8 +182,6 @@ const RUNE_SEEDS: RuneSeed[] = [
     lore: 'Picked up by someone walking and set down somewhere else. That is the whole of its history.' },
   { id: 'shade', name: 'Shade', tier: 'common',
     lore: 'The Umbral keep these the way other realms keep coins, and spend them about as carefully.' },
-  { id: 'mote', name: 'Mote', tier: 'common',
-    lore: 'Too small to have been broken. It simply is this size, and was, before there was anything to break.' },
 
   // ── Uncommon ── the realms, each leaving one mark.
   { id: 'glint', name: 'Glint', tier: 'uncommon',
@@ -193,8 +194,6 @@ const RUNE_SEEDS: RuneSeed[] = [
     lore: 'From the last growing thing. It defended something, and it lost.' },
   { id: 'scorch', name: 'Scorch', tier: 'uncommon',
     lore: 'The mark fire leaves when it is in a hurry and does not intend to come back.' },
-  { id: 'seam', name: 'Seam', tier: 'uncommon',
-    lore: 'Where two realms were sewn back together badly. The stitch outlived the wound.' },
 
   // ── Rare ── things that were made on purpose.
   { id: 'nexus', name: 'Nexus', tier: 'rare',
@@ -205,8 +204,6 @@ const RUNE_SEEDS: RuneSeed[] = [
     lore: 'A hole, held open and carried. Do not set it down on anything you intend to keep.' },
   { id: 'hollow', name: 'Hollow', tier: 'rare',
     lore: 'What is left in the shape of a thing after the thing has been taken out of it.' },
-  { id: 'ledger', name: 'Ledger', tier: 'rare',
-    lore: 'The Archivum wrote down what was lost. This is the page with the total on it.' },
 
   // ── Epic ── the Shattering itself, in three pieces.
   { id: 'fracture', name: 'Fracture', tier: 'epic',

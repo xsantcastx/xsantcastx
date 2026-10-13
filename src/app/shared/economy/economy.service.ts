@@ -1307,6 +1307,22 @@ export class EconomyService implements OnDestroy {
     return true;
   }
 
+  /**
+   * A quest reward that hands over an Essence-shop artifact (meaning audit
+   * #13: the artifact is one thing, the shop flag). The step pays the
+   * artifact's Essence price and the Keeper takes it at once, so the ledger
+   * records two ordinary ops (credit-essence, buy-artifact) and the cloud
+   * merge and the market's save mirror need no new op kind. Already owned,
+   * the Essence stays as the reward.
+   */
+  grantArtifact(id: string): boolean {
+    const def = ARTIFACTS.find(a => a.id === id);
+    if (!def || !this.isBrowser) return false;
+    this.earnEssence(def.cost, 'quest');
+    if (!this.ownsArtifact(id)) this.buyArtifact(id);
+    return true;
+  }
+
   /** Buy an artifact. Once only — a second attempt returns false. */
   buyArtifact(id: string): boolean {
     const def = ARTIFACTS.find(a => a.id === id);

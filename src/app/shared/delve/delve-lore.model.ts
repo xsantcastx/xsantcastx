@@ -46,7 +46,7 @@ export const INSCRIPTIONS: readonly InscriptionDef[] = [
   { id: 'magma-the-fracture', biome: 'magma-halls', col: 44, row: 46,
     text: 'A map of a crack, with the Godforge drawn on both sides of it.' },
   { id: 'magma-warden-oath', biome: 'magma-halls', col: 96, row: 49,
-    text: 'The Rune-Warden\'s orders, cut in Godstone runes around the chamber.' },
+    text: 'Orders to the fragment\'s guardian, cut in Godstone runes around the chamber.' },
   // Placed with the Delve extras: three per biome now.
   { id: 'roots-cutting-mark', biome: 'root-hollows', col: 28, row: 7,
     text: 'A cut in the shadow-root, sealed with ink. A thorn has grown where the blade went in.' },

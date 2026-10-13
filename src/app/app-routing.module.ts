@@ -414,7 +414,7 @@ export const APP_ROUTES: Routes = [
           '@id': `${SITE_URL}/forge/runes`,
           url: `${SITE_URL}/forge/runes`,
           name: 'The Forge',
-          description: 'Strike the anvil for one of twenty-five runes, then set them into Runewords for permanent Gold and XP bonuses.',
+          description: 'Strike the anvil for one of twenty-two runes, then set them into Runewords for permanent Gold and XP bonuses.',
           breadcrumb: {
             '@type': 'BreadcrumbList',
             itemListElement: [

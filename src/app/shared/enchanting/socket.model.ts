@@ -155,20 +155,17 @@ export const SOCKET_CHANNEL: Readonly<Record<string, keyof ItemStats>> = {
   ember: 'strikePower',
   drift: 'magicFind',
   shade: 'ward',
-  mote: 'xpBonus',
   // Uncommon — the realms, each leaving one mark.
   glint: 'magicFind',
   veil: 'ward',
   pulse: 'goldPerSec',
   thorn: 'strikePower',
   scorch: 'strikePower',
-  seam: 'lootBonus',
   // Rare — things that were made on purpose.
   nexus: 'goldPerSec',
   sigil: 'xpBonus',
   rift: 'magicFind',
   hollow: 'ward',
-  ledger: 'lootBonus',
   // Epic — the Shattering, in three pieces.
   fracture: 'strikePower',
   eclipse: 'magicFind',
@@ -176,7 +173,7 @@ export const SOCKET_CHANNEL: Readonly<Record<string, keyof ItemStats>> = {
   // Legendary — the two energies and the book that named them.
   aether: 'xpBonus',
   nox: 'magicFind',
-  codex: 'lootBonus',
+  codex: 'magicFind',
   // Mythic — the two halves of the thing that broke.
   convergence: 'goldPerSec',
   godstone: 'strikePower',
@@ -200,9 +197,6 @@ export const SOCKET_LADDER: Readonly<Record<keyof ItemStats, Record<RuneTier, nu
     common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 12, mythic: 20, singular: 32,
   },
   xpBonus: {
-    common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 12, mythic: 20, singular: 32,
-  },
-  lootBonus: {
     common: 1, uncommon: 2, rare: 4, epic: 7, legendary: 12, mythic: 20, singular: 32,
   },
   strikePower: {
