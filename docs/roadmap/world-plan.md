@@ -196,7 +196,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Playtests for supports, charges, inscriptions, chest gear, keeper/townsfolk placement | agent worktree | `[~]` |
+| (nothing in flight) | | |
 
 ## Art still missing (placeholders in game)
 
@@ -212,9 +212,9 @@ filename the importer picks up automatically.
 
 ## Known issues / watch list
 
-- **Playtests merged** (`13b3e7e`): `e2e/play-*.spec.ts` (run with `PW_PORT=4291`), 25 pass + 6 `fixme` = app bugs in `docs/handoff/playtest-findings.md`: P-1 Exchange buy→sell profit (likely already fixed by the exploit fix), P-2 `?at=` to another town lost on reload, P-3 no Hunting XP from kills / no Mining XP from ore pickup (Hunting partly fixed by the gathering merge), P-4 monster coins never reach the purse, P-5 vendor pays equal to (not below) the Exchange floor, P-6 The Fracture's 600 XP exceeds the 500 per-action cap and is lost. Fix round: **P-1 confirmed fixed, P-5 fixed (Slag Fragment ties at 1 Gold, not a loop), P-6 fixed (mission XP split ≤500 per grant)** (`0c1c50f`); **P-2 fixed** (current town saved in `eclipse-play-world-v1`, `?at=` still wins), **P-3 fixed** (ore pickup pays 2 Mining XP), **P-4 fixed** (coins reach the purse once per drop) (`5471a66`); all six playtest findings closed, fixme specs un-fixme'd
+- **Playtests merged** (`13b3e7e`): `e2e/play-*.spec.ts` (run with `PW_PORT=4291`), 25 pass + 6 `fixme` = app bugs in `docs/handoff/playtest-findings.md`: P-1 Exchange buy→sell profit (likely already fixed by the exploit fix), P-2 `?at=` to another town lost on reload, P-3 no Hunting XP from kills / no Mining XP from ore pickup (Hunting partly fixed by the gathering merge), P-4 monster coins never reach the purse, P-5 vendor pays equal to (not below) the Exchange floor, P-6 The Fracture's 600 XP exceeds the 500 per-action cap and is lost. Fix round: **P-1 confirmed fixed, P-5 fixed (Slag Fragment ties at 1 Gold, not a loop), P-6 fixed (mission XP split ≤500 per grant)** (`0c1c50f`); **P-2 fixed** (current town saved in `eclipse-play-world-v1`, `?at=` still wins), **P-3 fixed** (ore pickup pays 2 Mining XP), **P-4 fixed** (coins reach the purse once per drop) (`5471a66`); all six playtest findings closed, fixme specs un-fixme'd. **Second playtest wave merged** (`87346a3`): `e2e/play-delve-extras.spec.ts` (supports, charges, inscriptions, chest gear) + `e2e/play-life.spec.ts` (keepers beside their stalls in all five towns, greet once, townsfolk never on a stall, ES name tags) — 49 pass on chromium; **P-7 fixed** (Smithing-gated recipes now say "Reach Smithing N first"). Open owner question: Delve rock that pays Mining XP inherits the town seam's 2.5 s recovery, so a fresh-save cell can take 7 swings instead of 4, with no "seam needs a breath" line shown — intended?
 - **Owner: confirm 11 keeper role titles**: Buyback Clerk, Croupier, Exchange Broker, Expedition Steward (from the art pack) + Bench Smith, Enchanter, Chart Clerk, Board Herald, Arena Gatekeeper, Trials Warden, Lodge Warden (Phase 4). Titles only, no personal names until approved
-- **Owner: look at Phase 4 in a browser**: keeper placement beside (not on) stalls, greeting once on approach, townsfolk never on a stall, realm particles, ES name tags
+- **Owner: look at Phase 4 in a browser** (placement, greet-once, townsfolk off stalls and ES tags are now covered by `play-life.spec.ts`; what's left is how it looks): realm particles, keeper art/feel
 - Gathering regrowth now persisted (`9ec52e4`, blob `godforge-gathering`)
 - Fixed (`8bbe142`): a live **Exchange Gold exploit** after the ×0.06 rescale: bulk buys were priced before their own price move and could be sold back unit by unit at a profit; orders now price across their own movement (buys round up, sells down). Karma 1933/1933
 - Player market list now reads one summary doc `market/v1/summary/board` (`8bbe142`); it caps sustained market writes at ~1/s (shard it before heavy traffic)

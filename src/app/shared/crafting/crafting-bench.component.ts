@@ -441,8 +441,11 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     this.allCount = code === 'level' || code === 'capacity' ? 0 : maxAffordable(this.ctaCosts);
     if (code === 'level') {
       const need = recipe.requiredLevel ?? 1;
-      this.ctaBlocked = this.t('crafting.why.level', { n: need });
-      this.ctaProgress = Math.min(1, this.level.level / need);
+      // Smithing-gated recipes climb the Smithing skill, not the bench ladder.
+      const smithing = recipe.skill === 'smithing';
+      this.ctaBlocked = this.t(smithing ? 'crafting.why.smithing' : 'crafting.why.level', { n: need });
+      const have = smithing ? this.crafting.smithingLevel() : this.level.level;
+      this.ctaProgress = Math.min(1, have / need);
     } else if (code === 'capacity') {
       this.ctaBlocked = this.t('crafting.why.bag');
       this.ctaProgress = null;
