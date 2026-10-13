@@ -112,9 +112,6 @@ for (const [route, where] of links) {
 
 const EXEMPT = new Set([
   '/admin', '/embed', '/tools', '/world', '/**', '/',
-  // An internal art-direction preview, not a playable destination. The real
-  // /play route remains subject to the site-wide navigation requirement.
-  '/play/storyboard',
 ]);
 // In-world places: every registry route a station in a built town hosts.
 // Loaded from the TypeScript source itself (transpiled in memory, the way
