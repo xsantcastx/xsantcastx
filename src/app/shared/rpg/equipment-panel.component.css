@@ -760,6 +760,30 @@
   opacity: 0;
   pointer-events: none;
 }
+/*
+ * A worn socket is tappable: it opens its slot, exactly as the well beside the
+ * figure does. The medallion is 17% of the figure, which is 33–35px on a
+ * 375–390px phone, so the hit area is a pad of at least 44px centred on it
+ * rather than the medallion itself. The pad is invisible and only grows the
+ * target, never the art, so desktop (where 17% is already ~39–44px) looks the
+ * same. Neighbouring pads overlap on a phone (chest, trinket and hands are
+ * ~32px apart there); each socket's own centre still lands on its own pad,
+ * which is what the e2e check asserts. Leaving ghosts stay inert.
+ */
+.ld__socket-frame--worn {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.ld__socket-frame--worn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100%, 44px);
+  height: max(100%, 44px);
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+}
 .ld__socket-frame[data-quality-tag='perfect'],
 .ld__socket-frame[data-quality-tag='flawless'] {
   border-width: 2px;
