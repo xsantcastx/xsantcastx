@@ -32,9 +32,11 @@ export interface EngineState {
    */
   enemyId?: string;
   /**
-   * The i18n key (`play.delve.*`) of `message`, when it is a Delve line the
-   * HUD can translate. `messageVars.item` is a placeable id (the HUD turns it
-   * into `name` / `lname`). Absent for every other message: show `message`.
+   * The i18n key (`play.delve.*`, `play.hud.*`) of `message`, when it is a
+   * line the HUD can translate. `messageVars.item` is a placeable id (the HUD
+   * turns it into `name` / `lname`); `messageVars.items` is an English " and "
+   * list the HUD re-joins. Absent otherwise (town arrivals, refusals written
+   * in world data): show `message`.
    */
   messageKey?: string;
   messageVars?: Record<string, string | number>;
