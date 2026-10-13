@@ -335,6 +335,41 @@ export const STORAGE_CURVE = {
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Games of chance (the Croupier's Reels and its siblings): Gold only, a sink
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Bets climb a 1-2-5 ladder from `min`. Every rung is a multiple of 10, so a
+ * game can pay in tenths of the bet without rounding.
+ *
+ * The highest bet open to a player is the highest rung at or under
+ * max(`floorCap`, `incomeSeconds` × Gold/s): two minutes of income. A new
+ * Keeper (no income yet) can bet 10, 20 or 50 — the first 10 Gold is a few
+ * strikes in — and nobody can stake more than two minutes of their forge on one
+ * play, so a game can never drain a bank built over hours.
+ * `node scripts/economy-sim.mjs --reels` prints the cap at each stage.
+ */
+export const GAMES_BET = { min: 10, floorCap: 50, incomeSeconds: 120, top: 1e15 } as const;
+
+/** The whole ladder: 10, 20, 50, 100, 200, 500, … up to `top`. */
+export function gamesBetLadder(): number[] {
+  const out: number[] = [];
+  for (let decade: number = GAMES_BET.min; decade <= GAMES_BET.top; decade *= 10) {
+    for (const k of [1, 2, 5]) if (decade * k <= GAMES_BET.top) out.push(decade * k);
+  }
+  return out;
+}
+
+/** The highest bet open at this income. */
+export function gamesBetCap(goldPerSecond: number): number {
+  const gps = Number.isFinite(goldPerSecond) ? Math.max(0, goldPerSecond) : 0;
+  const limit = Math.max(GAMES_BET.floorCap, GAMES_BET.incomeSeconds * gps);
+  let cap: number = GAMES_BET.min;
+  for (const rung of gamesBetLadder()) if (rung <= limit) cap = rung;
+  return cap;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Save migration (v2 → v3)
 // ─────────────────────────────────────────────────────────────────────────────
 

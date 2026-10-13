@@ -4,7 +4,7 @@ The working build tracker for turning Eclipse Realms into one walkable world.
 Update it in the same commit that lands the work; an item is only `[x]` once it
 is merged to `main` **and** checked in a production build.
 
-Last updated: 2026-10-13
+Last updated: 2026-10-14
 
 Legend: `[x]` shipped · `[~]` in progress (branch named) · `[ ]` next · `[-]` later / blocked
 
@@ -43,7 +43,7 @@ world — and every system visible while it works.
 |---|---|---|
 | **Infernal**: Basalt Seamworks | Crafting Bench, Rune Forge, Enchanting Table, Material Vendor, quest stations (ore, forge, beacon, passage) | Cinder ore, ember residue |
 | **Luminous** | Market (upgrades) | Light-touched materials |
-| **Umbral** | Gambler, Exchange | Shadow materials, scrolls |
+| **Umbral** | Gambler, Reels, Exchange | Shadow materials, scrolls |
 | **Celestial**: Meridian Orrery | Codex (observatory), Leaderboards board | Star fragments, runes |
 | **Verdant**: Rootglass Canopy | Sanctum (expeditions), Quests board, Arena gate, Trials gate | Rootglass, seeds |
 | *Everywhere* | Character + Satchel overlays, Waystone, Places list | |
@@ -212,6 +212,32 @@ Replaces "hybrid sprites + paintings" (2026-10-12). Art bible: `docs/art/style-g
   - [~] Identical items as one ×N row (owner, 2026-10-13: "so many of the same items, they should be stacked"; branch `worktree-agent-ae993023d5dfbea84`): mechanically identical instances (same definition, rarity, stats + frozen grade, no temper/reforge/socketed rune, same place) show as ONE row in the Vault tabs, the satchel book and the Delve chest panel; variants sort side by side; "Send 7 to Vault" / "Take out 7" move the group in one write, Details has "Move just one"; identical pieces share slots, 20 to a slot ("×7 · 1 slot", "×25 · 2 slots"; manager decision 2026-10-13) in the satchel and the slot-limited Vault tabs, counted in one place (`inventory-layout.ts` occupancy; layout, routing, settle, take-out all read it; 48-seed multi-device property test). Each piece stays its own record. `e2e/play-vault.spec.ts`. S7: the market's `bagRoom` must use the same rule
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for the pixel sprite sheets (the rig retires after the A/B)
+- [~] **The Croupier's Reels** (owner, 2026-10-13: "slot machines… stake-style super bonus"; branch `worktree-agent-afd96296a31970cf4`): Umbral station between the Gambler and the Exchange, run by the Croupier (`/play?at=reels`); 3×3, 5 lines, world symbols, Eclipse Round (10 free spins, sticky ×2–×50 rune orbs, paid at the end), prizes through the rune/material gateways; Gold only, RTP 92.1% Gold + ~0.7% prizes (exact + simulated proof in `economy-sim.mjs --reels`, checked in `--check`), bet cap = two minutes of income. Shared kit `src/app/shared/games/` (seeded RNG, idempotent play ledger, bet tiers, RTP harness, win celebration) for Rune Drop / Seam Sweeper / Eclipse Ascent. Handoff `docs/handoff/reels.md`; lore line pending owner review; art briefs `world-sprites/10-reels.md`
+
+## Phase 6+: The Delve and beyond `[ ]` (planned 2026-10-14)
+
+Owner brief (2026-10-13): navigation in the Delve (minimap, missions), an infinite generated world, Fishing, lakes and lava, "Terraria with a galactic mix: universe, other dimensions, realms", better lore. **Design bible + full roadmap: [`docs/world/delve-and-beyond.md`](../world/delve-and-beyond.md)**; the new lore stories are in [`docs/world/lore-addendum.md`](../world/lore-addendum.md) ("The Delve and beyond", shipped — owner reviews in play). Owner, 2026-10-14: new layers, creatures and stories are approved to ship and reviewed in play; the bible lists only canon/cost questions (§10).
+
+The layer cake: Root Hollows → Basalt Caverns → Glowcap Grotto → Magma Halls (shipped) → **the Underhearth** (the Infernal realm's banked furnace; Kael's four) → the Breach → **Starfall Deep** (the sky under the world) → **the Void Shore** (the Void sea and the shattered realm-islands) → **the Unmade** (no bottom; "One More"). The deep places are *Reaches*, never realms. Left and right of the shaft, the Delve is generated without end per player seed, with four realm **Echo regions** that finally spawn the atlas creatures of meaning audit #16.
+
+- [ ] **Phase 6: Water, lava and Fishing v1** (fits today's engine; parallel with Phase 7)
+  - [ ] 6.1 Liquids v1: water + lava, 10 Hz cellular flow with sleeping cells, water + lava → obsidian, lava chars wooden placeables back to the satchel, Seam Bucket, swim/breath/lava damage, Ember Elixir immunity, liquid diff in the save (L)
+  - [ ] 6.2 Lakes in the core: Grotto Mere, Magma lava pools, flooded shafts, placed in already-carved air so no `version` bump (S)
+  - [ ] 6.3 Fishing v1: skill 1–99, Worn/Root/Seam/Glowline rods, bait, catch tables, junk, crates, the Line Tension mini-game (always lands, grade only adds), auto-fish, Lampfish Oil + Gill Draught, Catalogue of Strange Fish, Lodge Warden Ledger Catch, Merchant fish order, the Drowned Lamp chain + mini-boss (L)
+  - [ ] 6.4 `economy-sim.mjs --fishing --check` in CI: fishing ≤ 10% of forge Gold/min, crate EV, rod gates, 60–250 h to 99 (S)
+- [ ] **Phase 7: The endless Delve** (horizontal first)
+  - [ ] 7.1 Sector world: 32×32-cell sectors, sector-local deterministic generator (noise caves, clipped veins, structure lattice), loaded window, per-sector spawns; the core unchanged (XL, split a/b)
+  - [ ] 7.2 Save v2: index doc + region docs (8×8 sectors) under `progress/` (no rules deploy), IndexedDB locally, RLE diffs, merge, healing of far unheld tunnels (L) — needs the save-gateway owners' review first
+  - [ ] 7.3 Structures v1: Kael's waycaches, flooded shafts, lakes, field-note walls (M)
+  - [ ] 7.4 Map v2 on top of minimap v1: fog per sector, full map, pins, waypoints, Broken Astral Compass, Rift Map Fragment (M)
+  - [ ] 7.5 Board Herald's daily Delve bounties (S)
+- [ ] **Phase 8: The Underhearth**: stratum + nodes + lava lakes + the Breach gate (Delving 15); Banked Ember, Ironwood Sentinel, the Banked Furnace; Kael's "The Four Who Went Down" + Verrin; tool tier V; rope, Thornroot Grapple, Seam Rails + Cart, camps per stratum, Rift Anchors + Waystone Shards, Seam Siphon
+- [ ] **Phase 9: Starfall Deep** (first Reach): low gravity + shear, starlight liquid (rises), starglass; Ephemeris Leech + Anchor Warden spawn, Lodestar Drift, the Unlit Star; Aureth's chain; Starfall and Eclipse Surge events; Rod V, Starlight Jar, Anchor Ring
+- [ ] **Phase 10: Echo regions**: Prism Shelf, Ink Deeps, Orrery Underworks, Rootglass Depths; Afterimage Moth, Ink Lantern, Graftling spawn (closes audit #16); Echo fish; Veil Draught
+- [ ] **Phase 11: The Void Shore**: void sea (light holds it back), five shattered islands, Plausibles, the Undertow (summoned by fishing), Breach Tide; the Merchant's chain; Rod VI, Pickaxe VI, Hollow Flask
+- [ ] **Phase 12: The Unmade**: witnessing (light finishes outline cells), "One More" bands with no bottom, Drafts, the Nameless at band thresholds (owner question)
+- Art briefs per slice are listed in the bible §9 (W7L liquid sheets are a new spec class for the style guide in 6.1)
+- **Owner:** (1) may the Nameless appear as a figure in the Unmade; (2) Firestore cost of one region doc per explored 256×256-cell area
 
 ---
 
@@ -280,6 +306,24 @@ filename the importer picks up automatically.
 
 The site is now only the game. Removed: tool pages/registry/embeds/ads, the visit counter (a Firestore write per page load), tool lore/mastery/usage, 34 tool quests, 135 tool easter eggs, most of the cosmic engine (59 → 9.5 kB; the cursor trail and ritual drone stay because the game uses them), dead CSS, `jspdf`, 138 sync duplicates; `/play/storyboard` 301 → `/play`. Initial bundle 1.75 → 1.67 MB, dist 51.9 → 43.9 MB, styles.css 135 → 104 kB. The footer gained a "Support the forge" row (donation modals were unreachable since August). `CLAUDE.md` rewritten as the game's operating manual. Details: `docs/cleanup/site-removal.md`
 - [~] Leftovers: daily tool pipeline, Pro Pack, Codex Solarii, empty Codex categories, Achievement Frame target, 4 stale Karma specs
+
+## World & cast (2026-10-14) `[ ]`
+
+Design: [`docs/world/world-and-cast.md`](../world/world-and-cast.md); new lore in
+`docs/world/lore-addendum.md` ("World and cast", shipped — owner reviews in play,
+per the owner's 2026-10-14 trust). The overworld, the main story (Prologue → Act
+I *The Old Seam* in the Delve → Act II *Five Witnesses*, the narrative bible's
+five chapters → Act III *The Fivefold Lock* below the Magma Halls → seasons),
+17 named people (the six canon, the bible's ten chapter characters placed at
+existing stations, and **Glim, the Margin-Light**, a lantern-moth companion
+inspired by Claude), and the ethical daily/weekly/season rhythms. The infinite
+Delve, liquids, fishing and the galactic dimensions are `docs/world/delve-and-beyond.md`.
+
+- [ ] S1 Glim, onboarding companion (voices the goal line, 3-step hint ladder, the Delve light)
+- [ ] S2 Story Act I framing (Prologue + Act I break scenes, Story journal, versioned `story` record)
+- [ ] S3 NPC depth pass (personal names on role keepers, act-aware lines)
+- [ ] S4 Glim's Atlas + "The Blank Places" · S5 commissions + bounties (banked, no streaks) · S6 Act II ch. 1 + ch. 3 in-world · S7 reputation · S8 ch. 2/4/5 · S9 Act III + the Long Eclipse
+- Watch: the old progression ledger still settles a daily streak (`app.component.ts`); it must never gate or reset a reward (reframe as "days visited" in S5)
 
 ## How to work on this plan
 
