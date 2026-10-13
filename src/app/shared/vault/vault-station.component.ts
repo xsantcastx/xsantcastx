@@ -47,7 +47,7 @@ import {
 } from '../rpg/inventory-layout';
 import { itemArt, materialDisplay } from '../rpg/material-catalog';
 import { rarityLabel, type GameItem } from '../rpg/item.model';
-import { clusterBy, familyOf, groupItems, type ItemGroup } from '../rpg/item-groups';
+import { clusterBy, familyOf, groupItems, slotsForGroup, type ItemGroup } from '../rpg/item-groups';
 import { RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import {
   STATION_UI,
@@ -261,7 +261,7 @@ export class VaultStationComponent implements OnInit, OnDestroy {
       art: row.art,
       rarity: row.rarity || undefined,
       sub: row.kind === 'stack' ? this.t('vault.held', { n: this.fmt(row.quantity) })
-        : row.item ? rarityLabel(row.item.rarity) + (row.quantity > 1 ? ` · ${this.t('vault.group', { n: row.quantity })}` : '') : '',
+        : row.item ? rarityLabel(row.item.rarity) + (row.quantity > 1 ? ` · ${this.groupLabel(row.quantity)}` : '') : '',
     }));
 
     if (resetPick || !this.entries.some(row => row.id === this.selectedId)) {
@@ -298,12 +298,18 @@ export class VaultStationComponent implements OnInit, OnDestroy {
         : (view === 'satchel' ? this.t('vault.line.inSatchel') : this.t('vault.line.inVault', { tab: this.tabName(view as VaultTabId) }))
           + (this.selected.quantity > 1 ? `. ${this.t('vault.line.group', { n: this.selected.quantity })}` : '')
       : '';
-    this.primary = this.primaryFor(view, Math.max(0, capacity.satchel - layout.bagInstances));
+    this.primary = this.primaryFor(view);
     this.offers = this.buildOffers();
     this.cdr.markForCheck();
   }
 
-  private primaryFor(view: VaultView, satchelFree: number): Primary | null {
+  /** "×7 · 1 slot", "×25 · 2 slots": identical pieces share slots, 20 to a slot. */
+  private groupLabel(n: number): string {
+    const slots = slotsForGroup(n);
+    return slots === 1 ? this.t('vault.group.one', { n }) : this.t('vault.group', { n, s: slots });
+  }
+
+  private primaryFor(view: VaultView): Primary | null {
     const gold = (need: number): StationCost[] => [{ kind: 'gold', label: this.t('stationUi.gold'), need, have: this.gold }];
     if (view !== 'satchel' && this.locked) {
       const price = this.storage.priceOf(view);
@@ -311,7 +317,7 @@ export class VaultStationComponent implements OnInit, OnDestroy {
       return { label: this.t('vault.act.buyTab', { tab: this.tabName(view) }), costs: gold(price), blocked: null, run: () => this.buy(view) };
     }
     const pick = this.selected;
-    if (pick?.kind === 'item' && pick.item && pick.ids.length > 1) return this.groupPrimary(view, pick, satchelFree);
+    if (pick?.kind === 'item' && pick.item && pick.ids.length > 1) return this.groupPrimary(view, pick);
     if (pick?.kind === 'item' && pick.item) {
       const item = pick.item;
       if (view === 'satchel') {
@@ -328,7 +334,7 @@ export class VaultStationComponent implements OnInit, OnDestroy {
         };
       }
       return {
-        label: this.t('vault.act.takeOut'), costs: [], blocked: satchelFree < 1 ? this.t('vault.why.satchelFull') : null,
+        label: this.t('vault.act.takeOut'), costs: [], blocked: this.inventory.takeOutRoom([item.id]) < 1 ? this.t('vault.why.satchelFull') : null,
         run: () => {
           if (!this.inventory.takeOut(item.id)) { this.announce = this.t('vault.why.satchelFull'); return; }
           this.announce = this.t('vault.done.takeOut', { name: item.name });
@@ -350,7 +356,7 @@ export class VaultStationComponent implements OnInit, OnDestroy {
    * A ×N row: the button moves the whole group in one write. Taking out moves
    * as many as the satchel has room for, and the label says that number.
    */
-  private groupPrimary(view: VaultView, pick: Entry, satchelFree: number): Primary {
+  private groupPrimary(view: VaultView, pick: Entry): Primary {
     const name = pick.item?.name ?? pick.name;
     if (view === 'satchel') {
       return {
@@ -363,13 +369,17 @@ export class VaultStationComponent implements OnInit, OnDestroy {
         },
       };
     }
-    const n = Math.min(pick.ids.length, satchelFree);
+    // Identical pieces share slots, so one free slot can take up to 20 of them.
+    const n = this.inventory.takeOutRoom(pick.ids);
     return {
       label: this.t('vault.act.takeOutN', { n: Math.max(1, n) }), costs: [],
       blocked: n < 1 ? this.t('vault.why.satchelFull') : null,
       run: () => {
         const moved = this.inventory.takeOutMany(pick.ids);
-        this.announce = moved.length ? this.t('vault.done.takeOutN', { n: moved.length, name }) : this.t('vault.why.satchelFull');
+        const left = pick.ids.length - moved.length;
+        this.announce = !moved.length ? this.t('vault.why.satchelFull')
+          : left > 0 ? this.t('vault.done.takeOutSome', { n: moved.length, name, left })
+          : this.t('vault.done.takeOutN', { n: moved.length, name });
         this.refresh();
       },
     };

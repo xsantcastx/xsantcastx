@@ -11,11 +11,16 @@
  *   · Stackables (materials, supplies) have one account-wide quantity
  *     from the stack ops. Where they *show* is computed here, never stored, so
  *     two devices cannot disagree about it and a merge has nothing to move.
+ *   · Identical instances share slots (item-groups.ts, manager decision
+ *     2026-10-13): a group of n identical pieces in one place takes
+ *     ceil(n / 20) slots. Each piece is still its own record; only counting
+ *     changes, and every surface reads the count from here.
  *   · Instances outrank stacks for space. A stack that no longer fits in the
  *     satchel shows in a Vault tab or Overflow; benches read the total anyway.
  *   · Nothing here deletes. `settle` only ever rewrites `location`.
  */
-import { compareRevision, nextRevision, stackQuantityOf, tombstoneRecord } from './inventory-ops';
+import { compareRevision, nextRevision, recordToItem, stackQuantityOf, tombstoneRecord } from './inventory-ops';
+import { IDENTICAL_PER_SLOT, identityKeyOf } from './item-groups';
 import type { InventoryLedger, ItemLocation, OwnedItemInstance } from './inventory.model';
 
 /** Names the rule set. Placement is recomputed, so bumping it converts nothing on disk. */
@@ -128,7 +133,12 @@ export interface Cell {
   key: string;
   kind: 'instance' | 'stack';
   quantity: number;
-  /** Slots it takes where it sits: 1 for an instance, ceil(qty / cap) for a stack, 0 in a no-cap tab. */
+  /**
+   * Slots it takes where it sits: ceil(qty / cap) for a stack (0 in a no-cap
+   * tab); 1 for a one-of-a-kind instance. Identical instances share: the 1st,
+   * 21st, 41st… piece of a group (by id) carries the slot, the rest carry 0,
+   * so a group of n sums to ceil(n / 20).
+   */
   slots: number;
 }
 
@@ -138,10 +148,86 @@ export interface Layout {
   quest: Cell[];
   /** Slots used in the satchel, instances and stacks together. */
   satchelUsed: number;
-  /** Instance cells per tab (stacks are derived and yield to instances). */
+  /** Instance pieces per tab ("N more in your Vault" counts these). */
   instancesIn: Record<VaultTabId, number>;
-  /** Bag instances: the number `settle` holds to `capacity.satchel`. */
+  /** Slots instances take per tab, identical groups sharing (stacks yield to these). */
+  instanceSlotsIn: Record<VaultTabId, number>;
+  /** Instance pieces loose in the satchel. */
   bagInstances: number;
+  /** Slots those pieces take: the number `settle` holds to `capacity.satchel`. */
+  bagSlots: number;
+}
+
+/** Where an instance takes slots: the satchel, or a Vault tab. */
+export type SlotPlace = 'bag' | VaultTabId;
+
+/**
+ * Instance slots in use, place by place, with each place's identical groups
+ * (identity key → pieces). The one model every slot check reads, so the
+ * counters, the routing and settle cannot disagree.
+ */
+export interface Occupancy {
+  slots: Record<SlotPlace, number>;
+  groups: Record<SlotPlace, Map<string, number>>;
+}
+
+// Records are replaced, never edited in place, so a key cached per record
+// object stays right; the layout is recomputed on every publish.
+const IDENTITY = new WeakMap<OwnedItemInstance, string | null>();
+
+/** A record's identity key (item-groups), or null when it is one of a kind. */
+export function identityOfRecord(row: OwnedItemInstance): string | null {
+  const cached = IDENTITY.get(row);
+  if (cached !== undefined) return cached;
+  const key = identityKeyOf(recordToItem(row));
+  IDENTITY.set(row, key);
+  return key;
+}
+
+/** The place an instance takes slots in, or null (worn, lent, in a chest). */
+export function slotPlaceOf(location: ItemLocation): SlotPlace | null {
+  return location.kind === 'bag' ? 'bag' : vaultTabOf(location);
+}
+
+/** Slots one more piece with this identity key adds in `place`: 1, or 0 when it joins a group with room. */
+export function slotCostOf(occupancy: Occupancy, place: SlotPlace, key: string | null): number {
+  if (key === null) return 1;
+  return (occupancy.groups[place].get(key) ?? 0) % IDENTICAL_PER_SLOT === 0 ? 1 : 0;
+}
+
+/** Add one piece to `place`. Mutates. */
+export function occupy(occupancy: Occupancy, place: SlotPlace, key: string | null): void {
+  occupancy.slots[place] += slotCostOf(occupancy, place, key);
+  if (key !== null) occupancy.groups[place].set(key, (occupancy.groups[place].get(key) ?? 0) + 1);
+}
+
+/** Take one piece out of `place`. Mutates. */
+export function vacate(occupancy: Occupancy, place: SlotPlace, key: string | null): void {
+  if (key === null) { occupancy.slots[place] -= 1; return; }
+  const n = occupancy.groups[place].get(key) ?? 0;
+  if (n <= 0) return;
+  if (n === 1) occupancy.groups[place].delete(key);
+  else occupancy.groups[place].set(key, n - 1);
+  if (n % IDENTICAL_PER_SLOT === 1) occupancy.slots[place] -= 1;
+}
+
+const SLOT_PLACES: readonly SlotPlace[] = ['bag', ...VAULT_TABS];
+
+function emptyOccupancy(): Occupancy {
+  return {
+    slots: Object.fromEntries(SLOT_PLACES.map(place => [place, 0])) as Record<SlotPlace, number>,
+    groups: Object.fromEntries(SLOT_PLACES.map(place => [place, new Map<string, number>()])) as Record<SlotPlace, Map<string, number>>,
+  };
+}
+
+/** The instance slots a ledger uses, place by place. */
+export function occupancyOf(ledger: InventoryLedger): Occupancy {
+  const occupancy = emptyOccupancy();
+  for (const row of liveInstances(ledger)) {
+    const place = slotPlaceOf(row.location);
+    if (place) occupy(occupancy, place, identityOfRecord(row));
+  }
+  return occupancy;
 }
 
 function liveInstances(ledger: InventoryLedger): OwnedItemInstance[] {
@@ -172,20 +258,29 @@ export function layoutOf(ledger: InventoryLedger, capacity: Capacity): Layout {
   const satchel: Cell[] = [];
   const quest: Cell[] = [];
 
+  const instanceSlotsIn = emptyTabs(() => 0);
+  let bagSlots = 0;
+
+  // Sorted by id, so which piece of a group carries its slot is stable.
   const instances = liveInstances(ledger).sort((a, b) => a.id.localeCompare(b.id));
+  const occupancy = emptyOccupancy();
   for (const row of instances) {
-    const cell: Cell = { key: row.id, kind: 'instance', quantity: 1, slots: 1 };
-    if (row.location.kind === 'bag') { satchel.push(cell); continue; }
-    const tab = vaultTabOf(row.location);
-    if (!tab) continue; // worn, lent, in a chest: no slot
-    tabs[tab].push(cell);
-    instancesIn[tab] += 1;
+    const place = slotPlaceOf(row.location);
+    if (!place) continue; // worn, lent, in a chest: no slot
+    const key = identityOfRecord(row);
+    const slots = slotCostOf(occupancy, place, key);
+    occupy(occupancy, place, key);
+    const cell: Cell = { key: row.id, kind: 'instance', quantity: 1, slots };
+    if (place === 'bag') { satchel.push(cell); bagSlots += slots; continue; }
+    tabs[place].push(cell);
+    instancesIn[place] += 1;
+    instanceSlotsIn[place] += slots;
   }
   const bagInstances = satchel.length;
 
-  let satchelFree = capacity.satchel - bagInstances;
+  let satchelFree = capacity.satchel - bagSlots;
   const tabFree = emptyTabs(() => 0);
-  for (const tab of VAULT_TABS) tabFree[tab] = TAB_SLOTS[tab] - instancesIn[tab];
+  for (const tab of VAULT_TABS) tabFree[tab] = TAB_SLOTS[tab] - instanceSlotsIn[tab];
 
   const keys = [...new Set(ledger.records
     .filter(row => row.kind === 'stack' && row.source === 'inventory')
@@ -224,26 +319,95 @@ export function layoutOf(ledger: InventoryLedger, capacity: Capacity): Layout {
   }
 
   const satchelUsed = satchel.reduce((sum, cell) => sum + cell.slots, 0);
-  return { satchel, tabs, quest, satchelUsed, instancesIn, bagInstances };
+  return { satchel, tabs, quest, satchelUsed, instancesIn, instanceSlotsIn, bagInstances, bagSlots };
 }
 
 /**
  * Where an instance goes when it is sent to the Vault (or arrives to a full
- * satchel): the Gear tab if owned with room, else the first General tab with
- * room, else Overflow. Room counts instances only — stacks yield.
+ * satchel). First, an owned tab where an identical group has room for one
+ * more (it costs no slot, and the group stays together); else the Gear tab if
+ * owned with room; else the first General tab with room; else Overflow. Room
+ * counts instance slots only — stacks yield.
  */
-export function routeFor(instancesIn: Readonly<Record<VaultTabId, number>>, capacity: Capacity): VaultTabId {
-  const room = (tab: VaultTabId) => capacity.tabs.has(tab) && instancesIn[tab] < TAB_SLOTS[tab];
-  if (room('gear')) return 'gear';
-  return GENERAL_TABS.find(room) ?? 'overflow';
+export function routeFor(occupancy: Occupancy, capacity: Capacity, key: string | null = null): VaultTabId {
+  const owned = (tab: VaultTabId) => capacity.tabs.has(tab) && tab !== 'overflow';
+  const room = (tab: VaultTabId) =>
+    owned(tab) && occupancy.slots[tab] + slotCostOf(occupancy, tab, key) <= TAB_SLOTS[tab];
+  const order: VaultTabId[] = ['gear', ...GENERAL_TABS];
+  if (key !== null) {
+    const joins = order.find(tab => owned(tab) && slotCostOf(occupancy, tab, key) === 0);
+    if (joins) return joins;
+  }
+  return order.find(room) ?? 'overflow';
 }
 
 /**
- * Hold the satchel to its capacity: move the bag instances over it — the most
- * recently written first — to the Vault route. The only automatic write in the
- * design, and it is the same single-field location write an equip makes, so a
- * merge of two devices that settled different sets loses and copies nothing.
- * Idempotent: a settled ledger comes back unchanged (the same object).
+ * Plan sending satchel pieces to the Vault: each routed in turn, as single
+ * sends would be, so identical pieces land together. Ids not loose in the
+ * satchel are skipped. Pure.
+ */
+export function stowPlan(
+  ledger: InventoryLedger,
+  capacity: Capacity,
+  ids: readonly string[],
+): { id: string; tab: VaultTabId }[] {
+  const occupancy = occupancyOf(ledger);
+  const plan: { id: string; tab: VaultTabId }[] = [];
+  for (const row of rowsFor(ledger, ids)) {
+    if (row.location.kind !== 'bag') continue;
+    const key = identityOfRecord(row);
+    const tab = routeFor(occupancy, capacity, key);
+    vacate(occupancy, 'bag', key);
+    occupy(occupancy, tab, key);
+    plan.push({ id: row.id, tab });
+  }
+  return plan;
+}
+
+/**
+ * Plan taking Vault pieces into the satchel: as many as fit, counting shared
+ * slots — 30 identical pieces into a satchel with one free slot take 20.
+ * Ids not in the Vault are skipped. Pure.
+ */
+export function takeOutPlan(ledger: InventoryLedger, capacity: Capacity, ids: readonly string[]): string[] {
+  const occupancy = occupancyOf(ledger);
+  const plan: string[] = [];
+  for (const row of rowsFor(ledger, ids)) {
+    const tab = vaultTabOf(row.location);
+    if (!tab) continue;
+    const key = identityOfRecord(row);
+    if (occupancy.slots.bag + slotCostOf(occupancy, 'bag', key) > capacity.satchel) continue;
+    vacate(occupancy, tab, key);
+    occupy(occupancy, 'bag', key);
+    plan.push(row.id);
+  }
+  return plan;
+}
+
+/** Whether a Vault tab has room for one more of this piece (shared slots counted). */
+export function tabHasRoomFor(ledger: InventoryLedger, capacity: Capacity, tab: VaultTabId, row: OwnedItemInstance): boolean {
+  if (!capacity.tabs.has(tab)) return false;
+  const occupancy = occupancyOf(ledger);
+  return occupancy.slots[tab] + slotCostOf(occupancy, tab, identityOfRecord(row)) <= TAB_SLOTS[tab];
+}
+
+function rowsFor(ledger: InventoryLedger, ids: readonly string[]): OwnedItemInstance[] {
+  const byId = new Map(liveInstances(ledger).map(row => [row.id, row]));
+  return [...new Set(ids)].map(id => byId.get(id)).filter((row): row is OwnedItemInstance => !!row);
+}
+
+/**
+ * Hold the satchel to its capacity: move bag instances to the Vault route
+ * until their slots fit. The only automatic write in the design, and it is
+ * the same single-field location write an equip makes, so a merge of two
+ * devices that settled different sets loses and copies nothing.
+ *
+ * Which pieces: the most recently written piece whose move frees a slot (a
+ * one-of-a-kind piece, or the odd piece of a group past a multiple of 20).
+ * When none would, the group closest to freeing one gives up its newest piece.
+ * Deterministic for a given ledger, so two devices settling the same merged
+ * ledger make the same moves. Idempotent: a settled ledger comes back
+ * unchanged (the same object).
  */
 export function settle(
   ledger: InventoryLedger,
@@ -251,19 +415,31 @@ export function settle(
   deviceId: string,
   now: number,
 ): { ledger: InventoryLedger; moved: string[] } {
-  const bag = liveInstances(ledger).filter(row => row.location.kind === 'bag');
-  const over = bag.length - capacity.satchel;
-  if (over <= 0) return { ledger, moved: [] };
+  const occupancy = occupancyOf(ledger);
+  if (occupancy.slots.bag <= capacity.satchel) return { ledger, moved: [] };
 
-  const instancesIn = { ...layoutOf(ledger, capacity).instancesIn };
-  const doomed = [...bag]
-    .sort((a, b) => compareRevision(b.revision, a.revision) || a.id.localeCompare(b.id))
-    .slice(0, over);
+  const candidates = liveInstances(ledger)
+    .filter(row => row.location.kind === 'bag')
+    .map(row => ({ row, key: identityOfRecord(row) }))
+    .sort((a, b) => compareRevision(b.row.revision, a.row.revision) || a.row.id.localeCompare(b.row.id));
+  // Pieces a group is past its last full slot; 1 means moving this one frees a slot.
+  const remainder = (key: string | null) =>
+    key === null ? 1 : (((occupancy.groups.bag.get(key) ?? 1) - 1) % IDENTICAL_PER_SLOT) + 1;
+
   let next = ledger;
   const moved: string[] = [];
-  for (const row of doomed) {
-    const tab = routeFor(instancesIn, capacity);
-    instancesIn[tab] += 1;
+  while (occupancy.slots.bag > capacity.satchel && candidates.length) {
+    let at = candidates.findIndex(c => remainder(c.key) === 1);
+    if (at < 0) {
+      at = 0;
+      for (let i = 1; i < candidates.length; i++) {
+        if (remainder(candidates[i].key) < remainder(candidates[at].key)) at = i;
+      }
+    }
+    const [{ row, key }] = candidates.splice(at, 1);
+    const tab = routeFor(occupancy, capacity, key);
+    vacate(occupancy, 'bag', key);
+    occupy(occupancy, tab, key);
     const stepped = nextRevision(next, deviceId, now, row.revision);
     const updated: OwnedItemInstance = {
       ...row,

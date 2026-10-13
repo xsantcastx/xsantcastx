@@ -460,6 +460,8 @@ market is deployed** (it's flagged off today):
    against 250. With the Vault, records can pass 250 and **instance claims
    would wait forever**. Change it to "always deliver at `location: bag`". The
    client settles the excess. Keep the record budget (700) as the only refusal.
+   If it ever counts satchel room instead, it must use the shared-slot rule:
+   identical pieces take `ceil(n / 20)` slots (see the last Shipped section).
 2. `findListableInstance` requires `location.kind === 'bag'`. Also accept
    `explorer` holders that start with `vault:` (idle storage), or the client
    shows "Take it out of the Vault to sell it". The client does the latter
@@ -945,6 +947,66 @@ This is the §2.2 identity key S1 skipped, rebuilt for gear and display only.
   moves nothing) and never emit `equipped$`. "Send all gear to the Vault" now
   uses the same single write. The chest still moves gear one save per piece,
   because each move bumps the chest's own counter.
-- **Slots are unchanged:** each instance still takes one slot, and the row
-  says so ("×7 · 7 slots"; "7 alike. Each still takes its own slot.").
+- **Slots:** superseded by the next section (identical pieces now share
+  slots).
+
+## Shipped (2026-10-13): identical items share slots, 20 to a slot
+
+Owner: identical items "should be stacked". Manager decision: adopt the
+grouping proposal. **A group of identical items takes `ceil(n / 20)` slots**
+in the satchel and in the slot-limited Vault tabs (General I–IV, Gear,
+Supplies). Each piece is still its own record with its own frozen grade; no
+data changes, only the counting.
+
+- **One model counts** (`inventory-layout.ts`). `identityKeyOf` (item-groups)
+  is `groupKeyOf` without the place; `occupancyOf(ledger)` holds, for the
+  satchel and each tab, the slots used and the pieces per identity key.
+  `slotCostOf` says what one more piece adds: 1, or 0 when it joins a group
+  whose last slot has room. One-of-a-kind pieces (worn, tempered, reforged,
+  rune in a socket) always cost 1.
+- **`layoutOf`:** instance cells keep one cell per piece, but only the 1st,
+  21st, 41st… piece of a group (by id, so order-free) carries a slot. New
+  fields `bagSlots` and `instanceSlotsIn` (what `settle`, routing and the tab
+  bars read); `bagInstances` / `instancesIn` stay piece counts ("N more in
+  your Vault"). `satchelUsed` → `snapshot.usedRows`, which the clasp, phone
+  badge, book, header pill, keeper panel and Exchange strip already read, so
+  they all show the same used/cap. The Vault tab bars sum cell slots.
+- **`routeFor(occupancy, capacity, key)`:** first an owned tab where the
+  piece joins its group at no slot cost (so a group is not split across tabs),
+  else Gear with room, else the first General with room, else Overflow.
+- **`stowPlan` / `takeOutPlan`** (pure) back `stow`, `stowMany`, `takeOut`
+  and `takeOutMany`. Taking out moves as many as fit: 30 identical pieces into
+  a satchel with one free slot take 20 ("Take out 20"; after: "20 × Ember Ring
+  are back in your satchel. 10 stay in the Vault: no more room."). Pieces that
+  join a group already in a full satchel need no free slot.
+  `InventoryService.takeOutRoom(ids)` gives the button its number.
+- **`settle`:** holds `bagSlots` (not pieces) to the cap. It moves the most
+  recently written piece whose move frees a slot (a one-of-a-kind piece, or a
+  group's odd piece past a multiple of 20); when none would, the group
+  closest to freeing one gives up its newest pieces. Deterministic for a given
+  ledger, so two devices settling the same merged ledger make the same moves;
+  still idempotent, still location-only.
+- **Copy:** "×7 · 1 slot", "×25 · 2 slots" (Vault rows and the satchel book's
+  slip; EN + ES); Details: "7 alike. Up to 20 alike share one slot."
+- **Not changed:** the Delve chest's own gear count (pieces against its
+  `CHEST_GEAR_SLOTS`), the Materials tab and Overflow (no cap), stacks.
+- **Tests:** `inventory-group-slots.spec.ts`: slot math (7 → 1, 20 → 1,
+  21 → 2, 25 → 2, variants and tempered pieces apart, tabs), plans (30 into
+  one free slot → 20; joiners need no slot; routing keeps a group together;
+  a full tab still takes a joiner), settle (fewest moves, idempotent), and a
+  **48-seed property test** in the stack-folds harness shape: 2–3 devices,
+  120 random steps of grant bursts (then settle), partial group sends,
+  take-outs and syncs in random merge order (then settle). After every step,
+  on every device: no record lost, invented or duplicated; the satchel fits;
+  settle is a no-op; and the layout's slot counts equal the counts the UI
+  derives from its own ×N rows, satchel and every tab. After a full sync all
+  devices agree on every piece's place, and the merge is order-free. The run
+  asserts it exercised settle moves, partial take-outs and split groups.
+  `vault-station.component.spec.ts` and `e2e/play-vault.spec.ts` (7 rings →
+  "×7 · 1 slot", sending them frees one slot; 25 → "×25 · 2 slots", frees two).
+- **Market server (S7), added follow-up:** `bagRoom()`
+  (`functions/src/market/save-ops.ts`) must count satchel slots with this rule
+  (identical pieces `ceil(n / 20)`, via the same identity key), or simply
+  always deliver at `location: bag` and let the client settle, as §4.4 item 1
+  already proposes. `functions/` was not touched.
 
