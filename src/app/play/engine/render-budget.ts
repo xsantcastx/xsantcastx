@@ -19,7 +19,9 @@
  *     rather than shaded per pixel). Over the near-black of a delve the
  *     two read almost the same, and a blend mode has to read back every
  *     destination pixel it touches (measured in the handoff: the soft-light
- *     wash alone was ~10 ms a frame on a throttled software canvas).
+ *     wash alone was ~10 ms a frame on a throttled software canvas). The
+ *     tint is then laid inside the darkness overlay (identical pixels, one
+ *     full-frame pass fewer), and the overlay is upscaled without smoothing.
  *
  * Pure: the engine reads the media queries and passes them in, tests do not.
  */
@@ -39,10 +41,18 @@ export interface RenderBudget {
    * keeps drawing it live).
    */
   readonly cacheBackdrop: boolean;
+  /**
+   * Whether the Delve's darkness overlay (half CSS resolution) is upscaled
+   * with bilinear smoothing. A phone takes it nearest-neighbour: one overlay
+   * texel is 2 CSS px, the darkness is a slow gradient (a step is ~2/255 of
+   * alpha at the lantern's edge), and the full-frame filtered blit was the
+   * largest single cost left in the Delve (docs/handoff/play-perf.md).
+   */
+  readonly smoothDarkness: boolean;
 }
 
-export const FULL_BUDGET: RenderBudget = { tier: 'full', maxPixelRatio: 2, glows: true, blendModes: true, cacheBackdrop: false };
-export const LITE_BUDGET: RenderBudget = { tier: 'lite', maxPixelRatio: 1.5, glows: false, blendModes: false, cacheBackdrop: true };
+export const FULL_BUDGET: RenderBudget = { tier: 'full', maxPixelRatio: 2, glows: true, blendModes: true, cacheBackdrop: false, smoothDarkness: true };
+export const LITE_BUDGET: RenderBudget = { tier: 'lite', maxPixelRatio: 1.5, glows: false, blendModes: false, cacheBackdrop: true, smoothDarkness: false };
 
 /**
  * The budget for a device. `coarse`: the primary pointer is a finger and

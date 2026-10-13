@@ -1,11 +1,11 @@
 <section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--column]="columnOpen && state.areaId === 'homestead'" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel ? '' : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" aria-label="Playable Basalt Seamworks side-scrolling world. Click or tap a place to walk there, or use the Places list."></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
-        <strong>The Keeper falls</strong>
-        <span>Your inventory is safe.</span>
-        <button type="button" (click)="retry()">Return to camp</button>
+        <strong>{{ t('play.hud.fall.title') }}</strong>
+        <span>{{ t('play.hud.fall.safe') }}</span>
+        <button type="button" (click)="retry()">{{ t('play.hud.returnCamp') }}</button>
       </div>
     }
   </div>
@@ -18,9 +18,9 @@
     </div>
     <p class="objective" aria-live="polite">{{ message || engineMessage || objective }}</p>
     <div class="top-actions">
-      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list">Places</button>
-      <button type="button" class="quiet" (click)="returnToCamp()">Return to camp</button>
-      <button type="button" class="quiet" (click)="restartHunt()">Restart hunt</button>
+      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list">{{ t('play.hud.places') }}</button>
+      <button type="button" class="quiet" (click)="returnToCamp()">{{ t('play.hud.returnCamp') }}</button>
+      <button type="button" class="quiet" (click)="restartHunt()">{{ t('play.hud.restartHunt') }}</button>
     </div>
   </header>
 
@@ -35,8 +35,8 @@
   }
 
   @if (placesOpen) {
-    <nav id="places-list" class="places" [attr.aria-label]="'Places in ' + (state.area || town.name)" data-engine-ignore>
-      <p class="places-hint">Choose a place and the Keeper walks there.</p>
+    <nav id="places-list" class="places" [attr.aria-label]="t('play.hud.placesIn', { area: state.area || town.name })" data-engine-ignore>
+      <p class="places-hint">{{ t('play.hud.placesHint') }}</p>
       <ul>
         @for (place of places; track place.id) {
           <li>
@@ -50,9 +50,9 @@
     </nav>
   }
 
-  <div class="vitals" aria-label="Health" [attr.inert]="panel ? '' : null">
+  <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel ? '' : null">
     <div class="vital">
-      <label>Keeper <b>{{ state.hp }}</b></label>
+      <label>{{ t('play.hud.keeper') }} <b>{{ state.hp }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
     </div>
     @if (state.enemyHp > 0) {
@@ -88,18 +88,18 @@
     </nav>
   }
 
-  <aside class="satchel" aria-label="Satchel" (click)="openBag()" [attr.inert]="panel ? '' : null">
+  <aside class="satchel" [attr.aria-label]="t('play.hud.satchel')" (click)="openBag()" [attr.inert]="panel ? '' : null">
     <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book">
-      <span>Satchel</span>
+      <span>{{ t('play.hud.satchel') }}</span>
       <kbd>I</kbd>
     </button>
     <div class="tally">
-      <p><span>Coins</span><b class="coin-count">{{ coinsKept }}</b></p>
-      <p><span>Ore</span><b class="ore-count">{{ ore }}</b></p>
-      <p><span>Ember</span><b class="ember-count">{{ ember }}</b></p>
-      <p><span>Edge</span><b>{{ edge ? (equipped ? 'Worn' : 'Bag') : '—' }}</b></p>
-      <p><span>Damage</span><b>{{ pushed.damage }}</b></p>
-      <p><span>Defeated</span><b>{{ state.kills || 0 }}</b></p>
+      <p><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
+      <p><span>{{ t('play.hud.tally.ore') }}</span><b class="ore-count">{{ ore }}</b></p>
+      <p><span>{{ t('play.hud.tally.ember') }}</span><b class="ember-count">{{ ember }}</b></p>
+      <p><span>{{ t('play.hud.tally.edge') }}</span><b>{{ edge ? t(equipped ? 'play.hud.tally.worn' : 'play.hud.tally.bag') : '—' }}</b></p>
+      <p><span>{{ t('play.hud.tally.damage') }}</span><b>{{ pushed.damage }}</b></p>
+      <p><span>{{ t('play.hud.tally.defeated') }}</span><b>{{ state.kills || 0 }}</b></p>
     </div>
     <!-- Pickups announce through the objective line; these chips are only the picture. -->
     <div class="loot-toasts" aria-hidden="true">
@@ -111,18 +111,18 @@
     <section id="satchel-book" class="book" aria-labelledby="satchel-title">
       <header class="book-head">
         <div>
-          <span class="realm-tag">Satchel</span>
-          <h2 id="satchel-title">What you carry</h2>
+          <span class="realm-tag">{{ t('play.hud.satchel') }}</span>
+          <h2 id="satchel-title">{{ t('play.hud.book.title') }}</h2>
         </div>
-        <button type="button" class="book-close" (click)="closeBag()">Close</button>
+        <button type="button" class="book-close" (click)="closeBag()">{{ t('play.hud.book.close') }}</button>
       </header>
       <p class="capacity" [class.full]="inventory.snapshot.full">
         <b>{{ inventory.snapshot.usedRows }}</b>
-        <span>{{ inventory.snapshot.full ? 'Satchel full' : (inventory.snapshot.usedRows ? 'pockets filled' : 'pockets') }}</span>
+        <span>{{ t(inventory.snapshot.full ? 'play.hud.book.full' : (inventory.snapshot.usedRows ? 'play.hud.book.filled' : 'play.hud.book.pockets')) }}</span>
         <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
       </p>
-      <div class="belt" aria-label="Worn">
-        <span class="belt-label">Worn</span>
+      <div class="belt" [attr.aria-label]="t('play.hud.book.worn')">
+        <span class="belt-label">{{ t('play.hud.book.worn') }}</span>
         <div class="wells">
           @for (well of wells; track well.id) {
             <button type="button" class="well" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label">
@@ -139,10 +139,10 @@
       </div>
       <!-- What the worn gear pays, live. Counts and floats a signed chip on
            Wear / Stow, including the Damage and Max HP the fight now reads. -->
-      <app-keeper-stat-sheet class="book-stats" heading="Keeper stats" [compact]="true" [combat]="true" [hideZero]="true" />
-      <div class="lining" aria-label="Pockets">
+      <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" />
+      <div class="lining" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
         @if (!pockets.length) {
-          <p class="bare">The pockets are empty. Ore and ember gather here, and stay on this device.</p>
+          <p class="bare">{{ t('play.hud.book.empty') }}</p>
         } @else {
           <div class="pockets">
             @for (pocket of pockets; track pocket.key) {
@@ -184,12 +184,12 @@
           </div>
           @if (row.canWear || row.canStow) {
             <div class="slip-actions">
-              @if (row.canWear) { <button type="button" class="wear" (click)="wear()">Wear</button> }
-              @if (row.canStow) { <button type="button" class="wear" (click)="stow()">Stow</button> }
+              @if (row.canWear) { <button type="button" class="wear" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
+              @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
             </div>
           }
         } @else {
-          <p class="bare">Choose a pocket, or a place on the belt.</p>
+          <p class="bare">{{ t('play.hud.book.choose') }}</p>
         }
       </footer>
     </section>
@@ -198,15 +198,15 @@
   <div class="prompt" [class.armed]="!!state.nearby" [attr.inert]="panel ? '' : null">
     @if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
-      <button type="button" [disabled]="actionDisabled" (click)="interact()">Interact <kbd class="key-hint">E</kbd></button>
+      <button type="button" [disabled]="actionDisabled" (click)="interact()">{{ t('play.hud.interact') }} <kbd class="key-hint">E</kbd></button>
       @if (state.nearby === 'delve' && campReady) {
         <button type="button" class="camp-go" (click)="descendToCamp()">{{ t('play.delve.camp.descend') }} <kbd class="key-hint">C</kbd></button>
       }
     }
-    <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">Keys</button>
+    <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">{{ t('play.hud.keys') }}</button>
   </div>
   @if (showKeys) {
-    <p class="keys"><kbd>A</kbd><kbd>D</kbd> move <kbd>Space</kbd> jump <kbd>J</kbd> attack <kbd>K</kbd> dodge <kbd>S</kbd> dig down <kbd>L</kbd> staff blast <kbd>1</kbd>-<kbd>9</kbd> choose <kbd>B</kbd> place (hold S: below) <kbd>X</kbd> take back <kbd>W</kbd>/<kbd>S</kbd> climb a ladder, S drops through a platform <kbd>Hold tap</kbd> place or take back there <kbd>E</kbd> interact <kbd>I</kbd> satchel <kbd>Click</kbd> walk</p>
+    <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
   }
 
   <!-- The Hearth chat. Folded it is one pill clear of the stalls and the action
@@ -221,51 +221,51 @@
     <div id="hearth-body" class="dock-body" [hidden]="!hearthOpen">
     <div class="dock-head">
       <div>
-        <span class="realm-tag">Hearth</span>
-        <h2 id="hearth-title">The fire is open</h2>
+        <span class="realm-tag">{{ t('play.hearth.name') }}</span>
+        <h2 id="hearth-title">{{ t('play.hearth.title') }}</h2>
       </div>
       <p class="room-status" role="status">{{ social.status }}</p>
       <button type="button" class="hearth-hide" (click)="toggleHearth()" aria-expanded="true" aria-controls="hearth-body" [attr.aria-label]="t('play.hearth.hideLabel')">{{ t('play.hearth.hide') }}</button>
     </div>
     @if (!social.connected) {
       <form class="join" (submit)="$event.preventDefault(); joinRoom(keeperName.value)">
-        <label class="sr" for="keeper-name">Name</label>
-        <input #keeperName id="keeper-name" maxlength="20" minlength="2" required placeholder="Your name" autocomplete="nickname">
-        <button type="submit" [disabled]="joining">{{ joining ? 'Joining…' : 'Join the hearth' }}</button>
+        <label class="sr" for="keeper-name">{{ t('play.hearth.nameLabel') }}</label>
+        <input #keeperName id="keeper-name" maxlength="20" minlength="2" required [placeholder]="t('play.hearth.namePlaceholder')" autocomplete="nickname">
+        <button type="submit" [disabled]="joining">{{ t(joining ? 'play.hearth.joining' : 'play.hearth.join') }}</button>
       </form>
     } @else {
       <div class="room-row">
-        <ul class="keeper-list" aria-label="Connected Keepers">
+        <ul class="keeper-list" [attr.aria-label]="t('play.hearth.keepers')">
           @for (player of social.players; track player.id) {
-            <li>{{ player.name }} <small>{{ player.id === social.id ? 'You' : (player.zone === 'Ember Quarry' ? 'Quarry' : 'Camp') }}</small></li>
+            <li>{{ player.name }} <small>{{ t(player.id === social.id ? 'play.hearth.you' : (player.zone === 'Ember Quarry' ? 'play.hearth.quarry' : 'play.hearth.camp')) }}</small></li>
           }
         </ul>
-        <button type="button" class="leave" (click)="leaveRoom()">Leave</button>
+        <button type="button" class="leave" (click)="leaveRoom()">{{ t('play.hearth.leave') }}</button>
       </div>
     }
-    <div class="chat-log" role="log" aria-label="Room messages" aria-live="polite">
+    <div class="chat-log" role="log" [attr.aria-label]="t('play.hearth.log')" aria-live="polite">
       @for (entry of social.messages.slice().reverse(); track entry.id) {
         <p><strong>{{ entry.name }}</strong> {{ entry.text }}</p>
       }
-      @if (!social.messages.length) { <p class="chat-empty">The fire is quiet. Join, then say hello.</p> }
+      @if (!social.messages.length) { <p class="chat-empty">{{ t('play.hearth.empty') }}</p> }
     </div>
     <form class="say" (submit)="$event.preventDefault(); sendChat(chatText)">
-      <label class="sr" for="hearth-message">Message</label>
-      <input #chatText id="hearth-message" maxlength="240" required placeholder="Say hello…" [disabled]="!social.connected" autocomplete="off">
-      <button type="submit" [disabled]="!social.connected || sending">Send</button>
+      <label class="sr" for="hearth-message">{{ t('play.hearth.messageLabel') }}</label>
+      <input #chatText id="hearth-message" maxlength="240" required [placeholder]="t('play.hearth.messagePlaceholder')" [disabled]="!social.connected" autocomplete="off">
+      <button type="submit" [disabled]="!social.connected || sending">{{ t('play.hearth.send') }}</button>
     </form>
     </div>
   </section>
 
-  <div class="touch" aria-label="Touch controls" [attr.inert]="panel ? '' : null">
-    <button type="button" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)">Left</button>
-    <button type="button" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)">Right</button>
-    <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)">Jump</button>
-    <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)">Attack</button>
-    <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)">Dodge</button>
+  <div class="touch" [attr.aria-label]="t('play.hud.touch.label')" [attr.inert]="panel ? '' : null">
+    <button type="button" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)">{{ t('play.hud.touch.left') }}</button>
+    <button type="button" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)">{{ t('play.hud.touch.right') }}</button>
+    <button type="button" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)">{{ t('play.hud.touch.jump') }}</button>
+    <button type="button" (pointerdown)="input($event,'attack',true)" (pointerup)="input($event,'attack',false)" (lostpointercapture)="input($event,'attack',false)" (pointercancel)="input($event,'attack',false)">{{ t('play.hud.touch.attack') }}</button>
+    <button type="button" (pointerdown)="input($event,'dodge',true)" (pointerup)="input($event,'dodge',false)" (lostpointercapture)="input($event,'dodge',false)" (pointercancel)="input($event,'dodge',false)">{{ t('play.hud.touch.dodge') }}</button>
     @if (state.delve) {
-      <button type="button" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)">Down</button>
-      <button type="button" (pointerdown)="input($event,'blast',true)" (pointerup)="input($event,'blast',false)" (lostpointercapture)="input($event,'blast',false)" (pointercancel)="input($event,'blast',false)">Blast</button>
+      <button type="button" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)">{{ t('play.hud.touch.down') }}</button>
+      <button type="button" (pointerdown)="input($event,'blast',true)" (pointerup)="input($event,'blast',false)" (lostpointercapture)="input($event,'blast',false)" (pointercancel)="input($event,'blast',false)">{{ t('play.hud.touch.blast') }}</button>
     }
   </div>
 
@@ -282,19 +282,19 @@
         <h2 id="place-title">{{ panel?.title }}</h2>
       </div>
       <div class="place-actions">
-        @if (panel?.route; as route) { <a class="place-full" [routerLink]="route">Open full page</a> }
-        <button type="button" class="book-close place-close" (click)="closePanel()">Close <kbd>Esc</kbd></button>
+        @if (panel?.route; as route) { <a class="place-full" [routerLink]="route">{{ t('play.hud.panel.full') }}</a> }
+        <button type="button" class="book-close place-close" (click)="closePanel()">{{ t('play.hud.book.close') }} <kbd>Esc</kbd></button>
       </div>
     </header>
     <div class="place-body">
       @if (panel?.kind === 'waystone') {
-        <p class="place-note">The stone hums with five roads. Only the charted ones will carry you.</p>
+        <p class="place-note">{{ t('play.hud.way.note') }}</p>
         <ul class="waystone">
           @for (row of waystone; track row.id) {
             <li>
               <button type="button" class="waystone-road" [disabled]="!row.available" [class.here]="row.current" (click)="travel(row.id)">
                 @if (row.crest) { <img [src]="row.crest" alt="" width="48" height="48"> }
-                <span><b>{{ row.realm }}</b><small>{{ row.current ? 'You are here' : row.town }}</small></span>
+                <span><b>{{ row.realm }}</b><small>{{ row.current ? t('play.hud.way.here') : row.town }}</small></span>
               </button>
             </li>
           }
@@ -357,7 +357,7 @@
           </section>
         </div>
       }
-      @if (panelLoading) { <p class="place-note" role="status">Opening {{ panel?.title }}...</p> }
+      @if (panelLoading) { <p class="place-note" role="status">{{ t('play.hud.panel.opening', { title: panel?.title ?? '' }) }}</p> }
       @if (panelError) { <p class="place-note" role="alert">{{ panelError }}</p> }
       <ng-container #panelHost></ng-container>
     </div>

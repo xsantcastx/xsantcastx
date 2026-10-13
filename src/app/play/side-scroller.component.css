@@ -314,9 +314,12 @@ button:disabled { opacity: .4; cursor: default; }
 
 .satchel .clasp:hover { color: var(--adventure-beacon-text); }
 
+/* Desktop: the book opens under the HUD strip, so the folded Hearth pill
+   (66–110px, right of centre) is never beneath it at any width; an open
+   Hearth folds when the book opens (toggleBag). */
 .book {
   z-index: 4;
-  top: 76px;
+  top: 120px;
   right: 348px;
   bottom: 78px;
   width: min(440px, calc(100% - 348px - 228px));
@@ -1277,6 +1280,9 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .guide-go { animation: none; }
 }
 
+/* The goal line sits in the HUD strip the open book covers: step aside while it is open. */
+.stage:has(.book) .guide { visibility: hidden; }
+
 @media (max-width: 900px) {
   .stage--guide { --guide-h: 64px; }
   .guide {
@@ -1302,7 +1308,6 @@ input::placeholder { color: var(--adventure-hud-muted); }
   }
   .stage--guide .vitals,
   .stage--guide .satchel { top: calc(148px + var(--guide-h)); }
-  .stage:has(.book) .guide { visibility: hidden; }
 
   /* The Homestead's Gold list on a phone: full width where the plates were,
      ending above the Interact prompt so the prompt never covers a Buy button. */

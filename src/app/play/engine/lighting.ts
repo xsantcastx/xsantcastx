@@ -111,11 +111,21 @@ export class DarknessLayer {
   /**
    * Lay the darkness over the frame. `target` must be in canvas CSS px (the
    * world transform popped). `scale` is world → CSS px; camera in world px.
+   *
+   * `under`: a uniform tint the caller would otherwise fill over the whole
+   * frame just before this (the phone's biome wash, source-over). It is laid
+   * into the overlay itself, beneath the darkness (`destination-over`):
+   * premultiplied, tint-then-dark over the world is
+   *   colour = dark·d + tint·a·(1 − d),  alpha = 1 − (1 − a)(1 − d),
+   * which is exactly what destination-over composes. One full-frame blend
+   * instead of two, and the extra fill runs on the small offscreen canvas.
+   * Returns false when nothing was drawn (no canvas), so the caller can tint.
+   * `smooth` false: upscale nearest-neighbour (the phone tier; render-budget.ts).
    */
   draw(target: CanvasRenderingContext2D, width: number, height: number, scale: number, cameraX: number, cameraY: number,
-    lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK): void {
+    lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK, under?: { color: string; alpha: number }, smooth = true): boolean {
     const c = this.ensure(width, height);
-    if (!c || !this.canvas || !this.hole) return;
+    if (!c || !this.canvas || !this.hole) return false;
     const k = this.resolution * scale;
     c.setTransform(1, 0, 0, 1, 0, 0);
     c.globalCompositeOperation = 'source-over'; c.globalAlpha = 1;
@@ -132,8 +142,18 @@ export class DarknessLayer {
       c.setTransform(r, 0, 0, r, (light.x - cameraX) * k, (light.y - cameraY) * k);
       c.fillRect(-1, -1, 2, 2);
     }
-    c.setTransform(1, 0, 0, 1, 0, 0); c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    if (under && under.alpha > 0) {
+      c.globalCompositeOperation = 'destination-over'; c.globalAlpha = Math.min(1, under.alpha);
+      c.fillStyle = under.color;
+      c.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    }
+    c.globalAlpha = 1; c.globalCompositeOperation = 'source-over';
+    const was = target.imageSmoothingEnabled;
+    if (!smooth) target.imageSmoothingEnabled = false;
     target.drawImage(this.canvas, 0, 0, width, height);
+    if (!smooth) target.imageSmoothingEnabled = was;
+    return true;
   }
 
   /** The ambient fill colour, cached per tint and hundredth so no string is built per frame. */
