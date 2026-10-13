@@ -259,7 +259,7 @@
 .hb__confirm-actions { display: flex; gap: 8px; }
 .hb__drop { border-color: rgba(200, 152, 104, 0.4); color: var(--gold-core); }
 
-.hb__empty, .hb__full {
+.hb__empty, .hb__full, .hb__vault {
   margin: 0 0 0.6rem;
   color: var(--gf-dim);
   font-size: 0.88rem;

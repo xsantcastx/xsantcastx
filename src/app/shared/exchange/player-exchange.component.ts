@@ -28,7 +28,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Subscription, combineLatest, of, switchMap } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
-import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
+import { InventoryService } from '../rpg/inventory.service';
 import { TranslationService } from '../../translation.service';
 import { injectInWorldPanel } from '../in-world-panel';
 import { artFor } from '../art/art';
@@ -91,7 +91,8 @@ export class PlayerExchangeComponent implements OnInit, OnDestroy {
   protected readonly inWorld = injectInWorldPanel();
 
   readonly taxPct = Math.round(MARKET_TAX_RATE * 100);
-  readonly bagCap = MAX_INVENTORY;
+  /** Satchel slots (40 + bought rows): the strip reads used / cap. */
+  bagCap = 40;
   readonly stripArt: StationArt | null = artFor('unique-merchants-scale');
   readonly fake = this.market.isFake;
 
@@ -160,6 +161,7 @@ export class PlayerExchangeComponent implements OnInit, OnDestroy {
     }));
     this.subs.add(this.inventory.snapshot$.subscribe(s => {
       this.bagUsed = s.usedRows;
+      this.bagCap = s.satchelCap;
       this.refresh();
     }));
     this.subs.add(this.market.access$.subscribe(a => {

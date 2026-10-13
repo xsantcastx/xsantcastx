@@ -8,9 +8,9 @@
  * A parse failure returns the legacy backup when one exists. A later retry
  * of the same stack mutation id is one grant or one consume.
  *
- * Stack ops are unioned by mutation id and capped at
- * {@link INVENTORY_STACK_OPS_MAX}. C4/C5 should not lean on unbounded
- * stack history without a retain/ack window like commerce receipts.
+ * Stack ops are unioned by mutation id. Each device folds its OWN oldest ops
+ * into its per-device {@link InventoryStackFold} past
+ * {@link INVENTORY_STACK_OPS_MAX}; a merge never folds anything.
  */
 import {
   ITEM_STAT_KEYS,
@@ -23,6 +23,7 @@ import {
 } from './item.model';
 import {
   INVENTORY_ERA,
+  INVENTORY_FOLD_ID_MEMORY,
   INVENTORY_STACK_OPS_MAX,
   INVENTORY_TOMBSTONE_MAX,
   INVENTORY_TOMBSTONE_RETAIN_MS,
@@ -32,7 +33,7 @@ import {
   type InventoryRecordSource,
   type InventoryRevision,
   type InventoryStackOp,
-  type InventoryStackCheckpoint,
+  type InventoryStackFold,
   type InventoryTombstone,
   type ItemLocation,
   type OwnedItemCategory,
@@ -332,12 +333,13 @@ export function parseInventoryLedger(raw: unknown): InventoryLedger | null {
     seen.add(record.id);
     records.push(record);
   }
+  const stacks = parseStackHistory(raw['stackOps'], raw['stackFolds'], raw['stackCheckpoints']);
   return {
     version: 2,
     records: dedupeRecordSlots(records),
     tombstones: parseTombstones(raw['tombstones']),
-    stackOps: parseStackOps(raw['stackOps']),
-    stackCheckpoints: parseStackCheckpoints(raw['stackCheckpoints']),
+    stackOps: stacks.ops,
+    ...(stacks.folds.length ? { stackFolds: stacks.folds } : {}),
     goldFromSales: finiteNumber(raw['goldFromSales']),
     sold: finiteNumber(raw['sold']),
     hlc: finiteNumber(raw['hlc']),
@@ -421,33 +423,81 @@ export function dropLegacyBackup(ledger: InventoryLedger): InventoryLedger {
 }
 
 /**
- * Net quantity held for one stack.
- *
- * `checkpoints` carries the compacted history for stacks whose op log has been
- * folded past {@link INVENTORY_STACK_OPS_MAX}; omit it only for a log known not
- * to have been compacted. Ops at or below the checkpoint watermark are already
- * counted in it and are skipped here, so passing both never double-counts.
+ * A short, stable hash of an op id (53-bit cyrb53, base 36): what a fold keeps
+ * of each op it folds, so a replay of that id is still recognised. A false
+ * match needs two of ~10^16 values to collide among a few thousand.
+ */
+export function opIdHash(id: string): string {
+  let h1 = 0xdeadbeef;
+  let h2 = 0x41c6ce57;
+  for (let i = 0; i < id.length; i++) {
+    const ch = id.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  return (4294967296 * (2097151 & h2) + (h1 >>> 0)).toString(36);
+}
+
+const FOLD_HASHES = new WeakMap<readonly InventoryStackFold[], ReadonlySet<string>>();
+
+/** Every op-id hash any device has folded. Cached per folds array (they are replaced, never mutated). */
+function foldedHashes(folds: readonly InventoryStackFold[]): ReadonlySet<string> {
+  let set = FOLD_HASHES.get(folds);
+  if (!set) {
+    set = new Set(folds.flatMap(fold => fold.ids));
+    FOLD_HASHES.set(folds, set);
+  }
+  return set;
+}
+
+/**
+ * True when this op is already counted by a fold: its own device folded it
+ * (`hlc <= upToHlc`), or any device folded an op with the same id (the same
+ * grant issued on two devices before they synced).
+ */
+function foldCovers(folds: readonly InventoryStackFold[], op: InventoryStackOp): boolean {
+  if (!folds.length) return false;
+  const own = folds.find(fold => fold.deviceId === op.deviceId);
+  if (own && op.hlc <= own.upToHlc) return true;
+  return foldedHashes(folds).has(opIdHash(op.id));
+}
+
+/**
+ * Net quantity held for one stack: every device's folded net plus the live
+ * ops no fold already counts. Clamped at zero only here, on the total.
  */
 export function stackQuantity(
   ops: readonly InventoryStackOp[],
   stackKey: string,
-  checkpoints: readonly InventoryStackCheckpoint[] = [],
+  folds: readonly InventoryStackFold[] = [],
 ): number {
-  const checkpoint = checkpoints.find(cp => cp.stackKey === stackKey);
+  let qty = 0;
+  for (const fold of folds) qty += fold.net[stackKey] ?? 0;
   const seen = new Set<string>();
-  let qty = checkpoint?.quantity ?? 0;
   for (const op of ops) {
     if (op.stackKey !== stackKey || seen.has(op.id)) continue;
-    if (checkpoint && op.hlc <= checkpoint.upToHlc) continue;
     seen.add(op.id);
+    if (foldCovers(folds, op)) continue;
     qty += op.kind === 'grant' ? op.quantity : -op.quantity;
   }
   return Math.max(0, qty);
 }
 
-/** {@link stackQuantity} against a whole ledger, checkpoints included. */
+/** {@link stackQuantity} against a whole ledger, folds included. */
 export function stackQuantityOf(ledger: InventoryLedger, stackKey: string): number {
-  return stackQuantity(ledger.stackOps, stackKey, ledger.stackCheckpoints ?? []);
+  return stackQuantity(ledger.stackOps, stackKey, ledger.stackFolds ?? []);
+}
+
+/**
+ * True when a stack op with this id has landed on this ledger — live, or
+ * folded by any device (within its id memory). Every replay guard reads this.
+ */
+export function ledgerKnowsOp(ledger: InventoryLedger, opId: string): boolean {
+  if (!opId) return false;
+  if (ledger.stackOps.some(op => op.id === opId)) return true;
+  return !!ledger.stackFolds?.length && foldedHashes(ledger.stackFolds).has(opIdHash(opId));
 }
 
 export function applyStackOp(
@@ -482,12 +532,7 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     }
   }
 
-  const stacks = mergeStackOps(
-    a.stackOps,
-    b.stackOps,
-    a.stackCheckpoints ?? [],
-    b.stackCheckpoints ?? [],
-  );
+  const stacks = mergeStackHistory(a.stackOps, b.stackOps, a.stackFolds ?? [], b.stackFolds ?? []);
   // A pure union: a merge never tombstones a live record. The satchel's limit
   // is held by `settle` (inventory-layout.ts), which only moves things.
   const records = dedupeRecordSlots([...byId.values()]);
@@ -498,10 +543,10 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     // stale live record resurrect on the next merge.
     tombstones: pruneTombstones(tombstones, Date.now(), Number.MAX_SAFE_INTEGER),
     stackOps: stacks.ops,
-    stackCheckpoints: stacks.checkpoints,
+    ...(stacks.folds.length ? { stackFolds: stacks.folds } : {}),
     goldFromSales: Math.max(a.goldFromSales, b.goldFromSales),
     sold: Math.max(a.sold, b.sold),
-    hlc: Math.max(a.hlc, b.hlc, ...records.map(row => row.revision.hlc)),
+    hlc: Math.max(a.hlc, b.hlc, ...records.map(row => row.revision.hlc), ...stacks.folds.map(fold => fold.upToHlc)),
     legacyBackup: a.legacyBackup ?? b.legacyBackup,
     era: Math.max(aEra, bEra),
   };
@@ -561,95 +606,98 @@ export function pruneTombstones(
     .slice(-max);
 }
 
-/**
- * Fold a local op log past {@link INVENTORY_STACK_OPS_MAX} into checkpoints —
- * the same fold a merge does, run on write so a device that never syncs (and
- * a rune find is one op) does not grow its blob without bound.
- */
-export function compactStackOps(ledger: InventoryLedger): InventoryLedger {
-  if (ledger.stackOps.length <= INVENTORY_STACK_OPS_MAX) return ledger;
-  const stacks = mergeStackOps(ledger.stackOps, [], ledger.stackCheckpoints ?? [], []);
-  return { ...ledger, stackOps: stacks.ops, stackCheckpoints: stacks.checkpoints };
-}
+/** Devices that never fold: no stable id, so their ops cannot be told apart. */
+const NON_FOLDING_DEVICES: ReadonlySet<string> = new Set(['', 'unknown', 'legacy']);
 
-/** Highest `upToHlc` per stack wins; that checkpoint already covers the lower one. */
-function mergeStackCheckpoints(
-  a: readonly InventoryStackCheckpoint[],
-  b: readonly InventoryStackCheckpoint[],
-): InventoryStackCheckpoint[] {
-  const byKey = new Map<string, InventoryStackCheckpoint>();
-  for (const cp of [...a, ...b]) {
-    const held = byKey.get(cp.stackKey);
-    if (!held || cp.upToHlc > held.upToHlc) byKey.set(cp.stackKey, cp);
+/**
+ * Fold THIS device's oldest ops past `live` into its fold (down to half of
+ * `live`), so a device that never syncs does not grow its blob without bound.
+ * Only own ops: an op is folded by the one device sure to hold it, so no other
+ * device's unsynced op can be lost under a watermark. Own ops another device
+ * already folded under the same id are dropped, not counted again.
+ */
+export function compactStackOps(
+  ledger: InventoryLedger,
+  deviceId: string,
+  live = INVENTORY_STACK_OPS_MAX,
+  memory = INVENTORY_FOLD_ID_MEMORY,
+): InventoryLedger {
+  if (NON_FOLDING_DEVICES.has(deviceId)) return ledger;
+  const own = ledger.stackOps.filter(op => op.deviceId === deviceId);
+  if (own.length <= live) return ledger;
+
+  own.sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
+  const cutHlc = own[own.length - Math.floor(live / 2) - 1].hlc;
+  const folds = ledger.stackFolds ?? [];
+  const others = folds.filter(fold => fold.deviceId !== deviceId);
+  const previous = folds.find(fold => fold.deviceId === deviceId);
+  const net: Record<string, number> = { ...(previous?.net ?? {}) };
+  const ids = [...(previous?.ids ?? [])];
+  const folded = new Set<string>();
+  for (const op of own) {
+    if (op.hlc > cutHlc) break;
+    folded.add(op.id);
+    // Counted already: by this fold, or by another device's under the same id.
+    if (foldCovers(folds, op)) continue;
+    net[op.stackKey] = (net[op.stackKey] ?? 0) + (op.kind === 'grant' ? op.quantity : -op.quantity);
+    ids.push(opIdHash(op.id));
   }
-  return [...byKey.values()].sort((x, y) => x.stackKey.localeCompare(y.stackKey));
+  for (const key of Object.keys(net)) if (net[key] === 0) delete net[key];
+  const fold: InventoryStackFold = {
+    deviceId,
+    upToHlc: Math.max(previous?.upToHlc ?? 0, cutHlc),
+    net,
+    ids: ids.slice(-memory),
+  };
+  return {
+    ...ledger,
+    stackOps: ledger.stackOps.filter(op => !folded.has(op.id)),
+    stackFolds: [...others, fold].sort((x, y) => x.deviceId.localeCompare(y.deviceId)),
+    hlc: Math.max(ledger.hlc, fold.upToHlc),
+  };
 }
 
 /**
- * Union stack ops by mutation id, then compact rather than truncate.
- *
- * Overflow past {@link INVENTORY_STACK_OPS_MAX} is *folded into* the per-stack
- * checkpoint instead of being dropped, so a derived quantity survives the cap.
- * Ops already covered by a checkpoint watermark are discarded, which is what
- * makes repeated merges idempotent.
+ * One device's fold, merged: the higher `upToHlc` is the later state of the
+ * same counter and wins whole. A tie (only possible after a device lost its
+ * local copy) keeps the canonical larger, so the merge stays commutative.
  */
-function mergeStackOps(
+function mergeFolds(
+  a: readonly InventoryStackFold[],
+  b: readonly InventoryStackFold[],
+): InventoryStackFold[] {
+  const byDevice = new Map<string, InventoryStackFold>();
+  for (const fold of [...a, ...b]) {
+    const held = byDevice.get(fold.deviceId);
+    if (!held || fold.upToHlc > held.upToHlc
+      || (fold.upToHlc === held.upToHlc && JSON.stringify(fold) > JSON.stringify(held))) {
+      byDevice.set(fold.deviceId, fold);
+    }
+  }
+  return [...byDevice.values()].sort((x, y) => x.deviceId.localeCompare(y.deviceId));
+}
+
+/**
+ * Union stack ops by id and the folds by device. Nothing is folded here — a
+ * merge does not know which device it runs on — and ops a fold already counts
+ * are dropped, which is what makes repeated merges idempotent.
+ */
+function mergeStackHistory(
   a: readonly InventoryStackOp[],
   b: readonly InventoryStackOp[],
-  checkpointsA: readonly InventoryStackCheckpoint[],
-  checkpointsB: readonly InventoryStackCheckpoint[],
-): { ops: InventoryStackOp[]; checkpoints: InventoryStackCheckpoint[] } {
-  const checkpoints = new Map(
-    mergeStackCheckpoints(checkpointsA, checkpointsB).map(cp => [cp.stackKey, { ...cp }]),
-  );
-
+  foldsA: readonly InventoryStackFold[],
+  foldsB: readonly InventoryStackFold[],
+): { ops: InventoryStackOp[]; folds: InventoryStackFold[] } {
+  const folds = mergeFolds(foldsA, foldsB);
   const byId = new Map<string, InventoryStackOp>();
   for (const op of [...a, ...b]) {
-    if (byId.has(op.id)) continue;
-    // Already folded into a checkpoint — replaying it would double-count.
-    const cp = checkpoints.get(op.stackKey);
-    if (cp && op.hlc <= cp.upToHlc) continue;
-    byId.set(op.id, op);
+    if (foldCovers(folds, op)) continue;
+    const held = byId.get(op.id);
+    // The same id from two devices: keep one, deterministically (the earlier write).
+    if (!held || op.hlc < held.hlc || (op.hlc === held.hlc && op.deviceId < held.deviceId)) byId.set(op.id, op);
   }
-
-  const merged = [...byId.values()].sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
-  if (merged.length <= INVENTORY_STACK_OPS_MAX) {
-    return { ops: merged, checkpoints: [...checkpoints.values()] };
-  }
-
-  // Provisional split, then widen it: the watermark is an hlc, so any op left
-  // behind that shares an hlc with a folded op for the same stack would be
-  // discarded by the `op.hlc <= cp.upToHlc` gate on the next merge. Fold those
-  // too, so `kept` and the checkpoint never overlap.
-  const cut = merged.length - INVENTORY_STACK_OPS_MAX;
-  const watermark = new Map<string, number>();
-  for (const op of merged.slice(0, cut)) {
-    watermark.set(op.stackKey, Math.max(watermark.get(op.stackKey) ?? 0, op.hlc));
-  }
-
-  const overflow: InventoryStackOp[] = [];
-  const kept: InventoryStackOp[] = [];
-  for (const [i, op] of merged.entries()) {
-    const mark = watermark.get(op.stackKey);
-    if (i < cut || (mark !== undefined && op.hlc <= mark)) overflow.push(op);
-    else kept.push(op);
-  }
-
-  for (const op of overflow) {
-    const cp = checkpoints.get(op.stackKey)
-      ?? { stackKey: op.stackKey, quantity: 0, upToHlc: 0 };
-    const delta = op.kind === 'grant' ? op.quantity : -op.quantity;
-    checkpoints.set(op.stackKey, {
-      stackKey: op.stackKey,
-      quantity: Math.max(0, cp.quantity + delta),
-      upToHlc: Math.max(cp.upToHlc, op.hlc),
-    });
-  }
-
-  return {
-    ops: kept,
-    checkpoints: [...checkpoints.values()].sort((x, y) => x.stackKey.localeCompare(y.stackKey)),
-  };
+  const ops = [...byId.values()].sort((x, y) => x.hlc - y.hlc || x.id.localeCompare(y.id));
+  return { ops, folds };
 }
 
 function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
@@ -752,22 +800,52 @@ function parseTombstones(raw: unknown): InventoryTombstone[] {
   return out;
 }
 
-/** Absent on saves written before compaction existed — an empty list is correct there. */
-function parseStackCheckpoints(raw: unknown): InventoryStackCheckpoint[] {
+function parseFolds(raw: unknown): InventoryStackFold[] {
   if (!Array.isArray(raw)) return [];
-  const out: InventoryStackCheckpoint[] = [];
-  const seen = new Set<string>();
+  const out: InventoryStackFold[] = [];
   for (const row of raw) {
-    if (!isPlainObject(row)) continue;
-    if (typeof row['stackKey'] !== 'string' || !row['stackKey'] || seen.has(row['stackKey'])) continue;
-    seen.add(row['stackKey']);
-    out.push({
-      stackKey: row['stackKey'],
-      quantity: Math.max(0, finiteNumber(row['quantity'])),
-      upToHlc: Math.max(0, finiteNumber(row['upToHlc'])),
-    });
+    if (!isPlainObject(row) || typeof row['deviceId'] !== 'string' || !row['deviceId']) continue;
+    const net: Record<string, number> = {};
+    if (isPlainObject(row['net'])) {
+      for (const [key, value] of Object.entries(row['net'])) {
+        if (key && typeof value === 'number' && Number.isFinite(value) && value !== 0) net[key] = value;
+      }
+    }
+    const ids = Array.isArray(row['ids'])
+      ? row['ids'].filter((id): id is string => typeof id === 'string' && !!id).slice(-INVENTORY_FOLD_ID_MEMORY)
+      : [];
+    out.push({ deviceId: row['deviceId'], upToHlc: Math.max(0, finiteNumber(row['upToHlc'])), net, ids });
   }
-  return out;
+  return mergeFolds(out, []);
+}
+
+/**
+ * Ops + folds. A save from before per-device folds carries global
+ * `stackCheckpoints` ({stackKey, quantity, upToHlc}): each becomes the net of
+ * a `legacy` fold and the ops it covered are dropped, so the total is
+ * unchanged. (Zero players then; two such saves merging is not reconciled.)
+ */
+function parseStackHistory(
+  rawOps: unknown,
+  rawFolds: unknown,
+  rawCheckpoints: unknown,
+): { ops: InventoryStackOp[]; folds: InventoryStackFold[] } {
+  let ops = parseStackOps(rawOps);
+  const folds = parseFolds(rawFolds);
+  if (!Array.isArray(rawCheckpoints) || !rawCheckpoints.length || folds.some(fold => fold.deviceId === 'legacy')) {
+    return { ops, folds };
+  }
+  const net: Record<string, number> = {};
+  const floor = new Map<string, number>();
+  for (const row of rawCheckpoints) {
+    if (!isPlainObject(row) || typeof row['stackKey'] !== 'string' || !row['stackKey'] || floor.has(row['stackKey'])) continue;
+    const qty = Math.max(0, finiteNumber(row['quantity']));
+    if (qty) net[row['stackKey']] = qty;
+    floor.set(row['stackKey'], Math.max(0, finiteNumber(row['upToHlc'])));
+  }
+  ops = ops.filter(op => op.hlc > (floor.get(op.stackKey) ?? -Infinity));
+  const legacy: InventoryStackFold = { deviceId: 'legacy', upToHlc: 0, net, ids: [] };
+  return { ops, folds: mergeFolds(folds, [legacy]) };
 }
 
 function parseStackOps(raw: unknown): InventoryStackOp[] {
