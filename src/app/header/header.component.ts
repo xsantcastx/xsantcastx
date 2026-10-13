@@ -187,9 +187,11 @@ export class HeaderComponent implements AfterViewInit, OnInit, OnDestroy {
   get xpNow(): number { return this.snap.xp; }
   /** The XP figure the next rank starts at, for the "1,364 / 2,500" readout. */
   get xpTarget(): number { return this.snap.next ? this.snap.next.minXp : this.snap.xp; }
-  get bagCount(): number {
+  /** Satchel slots, "23/40": the same count the satchel's clasp shows in /play. */
+  get bagCount(): string {
     const snap = this.inventory.snapshot;
-    return typeof snap.usedRows === 'number' ? snap.usedRows : snap.bag.length;
+    const used = typeof snap.usedRows === 'number' ? snap.usedRows : snap.bag.length;
+    return Number.isFinite(snap.satchelCap) ? `${used}/${snap.satchelCap}` : `${used}`;
   }
 
   openCharacter(): void { this.closeMobileMenu(); this.keeper.toggle('character'); }

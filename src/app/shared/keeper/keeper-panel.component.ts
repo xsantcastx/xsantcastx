@@ -35,7 +35,7 @@ import { KeeperPanelService } from './keeper-panel.service';
       <aside class="kp" role="complementary" [attr.aria-label]="label">
         <header class="kp__head">
           <p class="kp__who">{{ rankTitle }} · {{ rankLevel }}</p>
-          @if (bagCount > 0) {
+          @if (bagUsed > 0) {
             <span class="kp__n">{{ bagCount }}</span>
           }
           <button type="button" class="kp__x" (click)="close()" aria-label="Close">✕</button>
@@ -156,7 +156,12 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
 
   get rankTitle(): string { return this.xp.snapshot.level.title; }
   get rankLevel(): number { return this.xp.snapshot.level.level; }
-  get bagCount(): number { return this.inventory.snapshot.usedRows; }
+  get bagUsed(): number { return this.inventory.snapshot.usedRows; }
+  /** "23/40" satchel slots, as the header and the satchel's clasp read. */
+  get bagCount(): string {
+    const { usedRows, satchelCap } = this.inventory.snapshot;
+    return Number.isFinite(satchelCap) ? `${usedRows}/${satchelCap}` : `${usedRows}`;
+  }
   get label(): string {
     return this.tab === 'bank' ? 'Bank' : 'Character';
   }

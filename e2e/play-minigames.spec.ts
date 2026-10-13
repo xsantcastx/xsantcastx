@@ -149,16 +149,24 @@ test('routed /forge/crafting at 390 px: Kael yields while the anvil is open, Ski
   const skip = page.locator('app-anvil-game .mg__skip');
   await expect(skip).toBeVisible();
   await expect(npc).toHaveCount(0);
-  await skip.scrollIntoViewIfNeeded();
-  const hit = await skip.evaluate(el => {
-    const r = el.getBoundingClientRect();
-    const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
-    return !!at && (at === el || el.contains(at));
-  });
-  expect(hit).toBe(true);
+  // The corner Forge Flame steps aside too: on a phone it is centred at the
+  // bottom and its mode switch sat right where a scrolled-to Skip lands.
+  await expect(page.locator('app-forge-flame .ff')).toBeHidden();
+  // Every phone width the layout claims, not just the one the test opened at.
+  for (const width of [390, 360, 430]) {
+    await page.setViewportSize({ width, height: 844 });
+    await skip.scrollIntoViewIfNeeded();
+    const hit = await skip.evaluate(el => {
+      const r = el.getBoundingClientRect();
+      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return !!at && (at === el || el.contains(at));
+    });
+    expect(hit, `Skip is the element under its own centre at ${width} px`).toBe(true);
+  }
   await skip.click();
   await expect(page.locator('app-anvil-game')).toHaveCount(0);
   await expect(npc).toBeVisible();
+  await expect(page.locator('app-forge-flame .ff')).toBeVisible();
 });
 
 test.describe('In-world panel focus', () => {

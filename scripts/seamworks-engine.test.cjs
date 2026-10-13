@@ -221,6 +221,47 @@ test('visible-document notifications preserve current input and destroy removes 
   assert.equal(browserDocument.listenerCount('visibilitychange'), beforeVisibility);
 });
 
+// play-hunting.spec.ts saw "two Maws dying" from one J. That is the cleave, not
+// a double count: a swing hits every Maw in reach, and two Maws that walked up
+// to the same spot have taken the same blows. Each still pays exactly once.
+test('one swing that fells two stacked Maws counts two kills, each paid once', () => {
+  const kills = [];
+  const loot = [];
+  const { engine, state } = fixture(drop => { loot.push(drop); return true; }, { onKill: event => kills.push(event) });
+  const [a, b, c] = engine.monsters;
+  engine.player.x = a.x - 50; engine.facing = 1;
+  b.x = a.x + 30; // the second Maw stands in the same reach
+  for (let n = 0; n < 6; n++) strike(engine);
+  assert.equal(a.hp, 0); assert.equal(b.hp, 0);
+  assert.equal(c.hp, 60, 'a Maw out of reach takes nothing');
+  assert.equal(state().kills, 2);
+  assert.equal(kills.length, 2, 'onKill fires once per Maw');
+  assert.equal(new Set(kills.map(event => event.id)).size, 2, 'each kill has its own id, so Hunting XP is keyed once each');
+  assert.equal(engine.drops.length, 4, 'each Maw spills its own coins and ore');
+  strike(engine);
+  assert.equal(engine.drops.length, 4, 'swinging at the fallen spills nothing more');
+  engine.player.x = a.x;
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  engine.player.x = b.x;
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.equal(loot.length, 4);
+  assert.equal(new Set(loot.map(drop => drop.id)).size, 4, 'no drop is granted twice');
+  assert.equal(state().coins, loot.reduce((sum, drop) => sum + (drop.coins ?? 0), 0));
+  assert.equal(state().kills, 2, 'collecting does not count a kill again');
+  engine.destroy();
+});
+
+test('combat swings keep the base pace: a forged pickaxe does not speed up hitting a Maw', () => {
+  const { engine } = fixture();
+  engine.setTools({ pickaxe: 3, swing: { pickaxe: .25 }, power: { pickaxe: 1.5 } });
+  const monster = engine.monsters[0];
+  engine.player.x = monster.x - 50; engine.facing = 1;
+  engine.setInput('attack', true); engine.setInput('attack', false);
+  assert.equal(monster.hp, 50, 'a swing at a Maw deals melee damage, not tool power');
+  assert.ok(Math.abs(engine.attackCooldown - .52) < 1e-9, 'the next combat swing waits the full 0.52 s');
+  engine.destroy();
+});
+
 test('setStats drives melee damage and max HP, keeping the share of health', () => {
   const { engine, state } = fixture();
   const monster = engine.monsters[0];
@@ -1553,6 +1594,52 @@ test('chests: placed on ground only, E (or a tap) opens one by its cell, taking 
   assert.equal(t.nodeAt(31, 8).id, 'air');
   assert.equal(engine.nodeIdAt('ember-delve', t.index(31, 8)), 'air');
   assert.equal(engine.nodeIdAt('nowhere', 0), null);
+  engine.destroy();
+});
+
+test('X reaches as far as E: the chest the prompt names is the one X takes back', () => {
+  const taken = [];
+  const { engine, state } = enterOwnDelve(memoryDelve(62), { onUse() {}, onTakeBack: e => { taken.push(e); return true; } });
+  const t = buildRoom(engine);
+  const chest = terrainMod.nodeIndex('chest');
+  // The finding: the body overlaps the chest's column, the centre is in the next
+  // column, the Keeper faces away. E's prompt names the chest; X used to answer
+  // "Nothing placed here".
+  t.set(29, 8, chest);
+  engine.player.x = 30 * 32 + 6; engine.facing = 1; // body spans x 953..979, into col 29
+  engine.update(1 / 60);
+  assert.equal(state().nearby, 'chest', 'the prompt names the chest');
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.nodeAt(29, 8).id, 'air');
+  assert.equal(taken[0].cellKey, '29,8');
+  // Clear of the body but within half a cell of it, facing away: still E's reach, so still X's.
+  t.set(29, 8, chest);
+  engine.player.x = 30 * 32 + 20; engine.facing = 1; // body 967..993 (cols 30-31), E reaches x 951 (col 29)
+  engine.update(1 / 60);
+  assert.equal(state().nearby, 'chest');
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.nodeAt(29, 8).id, 'air');
+  // Two things in reach: the one the prompt names wins over the one in front.
+  t.set(29, 8, chest); t.set(31, 8, chest);
+  engine.player.x = 30 * 32 + 16; engine.facing = 1;
+  engine.update(1 / 60);
+  const named = engine.findInteractive();
+  assert.equal(engine.takeBack(), true);
+  assert.equal(t.kind[named], 0, 'the named chest went back');
+  // Out of E's reach: X does not take it either.
+  t.set(29, 8, 0); t.set(31, 8, 0); t.set(26, 8, chest);
+  engine.update(1 / 60);
+  assert.notEqual(state().nearby, 'chest');
+  assert.equal(engine.takeBack(), false);
+  assert.match(state().message, /Nothing placed here/);
+  // The pure helper agrees: prefer, then front, then own column, then E's window.
+  const box = { halfWidth: 13, height: 90 }, feet = 610 + 9 * 32;
+  t.set(26, 8, 0); t.set(28, 8, chest);
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box), t.index(28, 8), 'E\'s window, behind the Keeper');
+  t.set(30, 8, chest);
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box), t.index(30, 8), 'front first');
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box, t.index(28, 8)), t.index(28, 8), 'the named cell first');
+  assert.equal(terrainMod.takeTarget(t, 29 * 32 + 6, feet, 1, box, t.index(20, 3)), t.index(30, 8), 'a named cell that is not takeable is ignored');
   engine.destroy();
 });
 

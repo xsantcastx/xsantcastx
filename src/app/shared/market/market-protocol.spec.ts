@@ -58,7 +58,6 @@ function inventory(): InventoryLedger {
       id: 'g1', stackKey: 'cinder-ore', kind: 'grant', quantity: 40,
       hlc: NOW - 50_000, deviceId: 'dev-a', sequence: 3,
     }],
-    stackCheckpoints: [],
     goldFromSales: 0,
     sold: 0,
     hlc: NOW - 50_000,

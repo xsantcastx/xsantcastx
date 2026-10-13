@@ -120,6 +120,7 @@ function keeper(id: string, station: string, name: string, palette: LifePalette,
  */
 export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> = {
   infernal: [
+    keeper('vault-clerk', 'vault', 'Vault Clerk', P.infernal[2], 'coat', -1, 'npc-vault-clerk-figure'),
     keeper('buyback-clerk', 'vendor', 'Buyback Clerk', P.infernal[1], 'coat', 1, 'npc-material-vendor-figure'),
     keeper('bench-smith', 'crafting', 'Bench Smith', P.infernal[2], 'smith', 1, 'npc-bench-smith-figure'),
     // Kael's sprite brief stands him at the Rune Forge.

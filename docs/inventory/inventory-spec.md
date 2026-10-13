@@ -804,3 +804,118 @@ nothing is routed. Flip the flag with S5.
    Removing Sigils removed most of the op churn that would have exposed this.
 4. §4.4's market follow-ups (S7) still stand. `INVENTORY_BAG_CAP` is kept only
    for `generate-market-reference.mjs`. `functions/` was not touched.
+
+## Shipped (2026-10-13): S5, S6 and the compaction fix
+
+Branch `worktree-agent-a2575ec9d43a353f8` (on top of S1–S4). `VAULT_LIVE` is
+now `true`: the satchel holds 40 slots (+8 per bought row).
+
+**S5: the Vault station.**
+
+- **Where:** in-world only, like the Material Vendor. It has a `PanelId`
+  `'vault'` and a `PANEL_REGISTRY` row, with no route. It stands at
+  **x = 330, west of the Cinder Ore seam**. §5.2's x ≈ 1075 is taken by the
+  Homestead gate, and no gap between the forge and the bench fits a station
+  and its keeper. `?at=vault` and the Places list work as for any panel
+  station.
+- **Keeper:** the **Vault Clerk** ("Empleado de la Bóveda", approved), drawn
+  with the role-keeper placeholder figure (`npc-vault-clerk-figure`,
+  unpainted). It has no personal name. Its two lines give its role: a full
+  satchel never drops anything, and the benches still reach what is stored.
+- **Tabs:** Satchel · General I · Materials · Supplies · Gear · General II–IV ·
+  Overflow. Overflow shows only while it holds something, with a count badge.
+  There is no Runes tab, because Sigils are gone (see S1–S4). Every tab has
+  search and sort (Newest, Name, Rarity, Value). Stacks always lead the list.
+- **One button per view:**
+  - an item in a Vault tab: **Take out**, or "Satchel full — make room first"
+  - an item in the satchel: **Send to Vault**
+  - the Satchel tab with nothing picked: **Add 8 slots · Gold**, or "Your
+    satchel is at its largest"
+  - a tab you don't own: **Buy the <tab> tab · Gold**
+  - a stack: no button, and the line "Benches use these straight from here."
+- **Details:** every price as a secondary buy chip, "Send all gear to the
+  Vault", the routing rule, and "purchases are permanent". Prices come from
+  `STORAGE_CURVE` through `StorageService`. Moves use `stow` / `takeOut`, so
+  the Contract Board never pays "item equipped" for one.
+- **Satchel count:**
+  - the clasp shows "23/40", with an aria label "Satchel, 23 of 40 slots"
+  - the phone badge shows the same
+  - the book's capacity line reads "23 / 40 slots", with a bar
+  - the header pill and the keeper panel read the same count
+  - an amber dot *inside* the satchel button means Overflow holds things (no
+    new fixed widget; see the memory note "fixed corner widgets collide")
+  - the book notes "N more in your Vault", and its slip has a secondary
+    **Send to Vault** for any loose item
+  - the book lists only the stacks the satchel shows
+- **Routing feedback:**
+  - `InventoryService.routed$` fires once for each arrival that a full satchel
+    turned away: an item that `settle` moved, or a stack that landed outside
+    the satchel and outside its own affinity tab. It never fires on load or
+    on a merge.
+  - `/play` shows "Satchel full — Cinder Ore sent to the Vault: General I
+    tab." The line is written after the caller's own message, and further
+    arrivals within 4 s add "(+n more)" to it.
+- **Retired copy:** `play.hud.msg.crumbles`, `play.hud.msg.pickupFull` and
+  `play.delve.bagFullTake`. A pickup can now fail only on a failed save, which
+  shows `pickupFailed`.
+
+**S6: every surface that lists items.**
+
+- **Exchange:**
+  - The strip reads the satchel's used/cap (it used to read the old 250).
+  - A full satchel no longer blocks a buy. Only the record budget does, and
+    bought gear routes to the Vault.
+  - Gear in the Vault isn't for sale. Asking to sell more than you carry says
+    "N more in your Vault. Take it out of the Vault to sell it."
+- **Enchanting:** lists carried and worn gear, not Vault gear.
+- **Character → Bank:** shows "N more rest in your Vault. Visit the Vault in
+  the Basalt Seamworks…" as read-only. Its stack rows are account totals, as
+  the benches read them.
+- **Delve chest panel:** its satchel side lists the satchel's stacks.
+- **No change needed:** the Gambler's Sell and Till, the paper doll, Thrall
+  and explorer kit, and chest gear already read `snapshot.bag`, which excludes
+  the Vault. Codex, Leaderboards and NPC checks read `snapshot.items`, which
+  counts everything you own once.
+
+**The compaction weakness (point 3 above), fixed with per-device folds.**
+
+- `stackCheckpoints` (one global watermark per stack) is replaced by
+  `stackFolds`: one fold per device `{deviceId, upToHlc, net, ids}`.
+  - Each device folds **only its own** oldest ops, past 64 live and down to 32.
+  - A merge keeps each device's highest-`upToHlc` fold whole, and never folds
+    anything itself.
+  - `net` may go negative (one device spends what another granted). Only the
+    total clamps at zero.
+- **Defect 1 (an op lost under another device's watermark) is gone.** An op is
+  folded only by the device that wrote it, which is the one device certain to
+  hold it.
+- **Defect 2 (a folded grant replayed counts twice) is gone.** A fold keeps
+  53-bit hashes of the newest 2,048 op ids it folded. `ledgerKnowsOp` reads
+  them, and every replay guard uses it (`grantStack`, `hasStackOp`,
+  `stackCraftedFor`, `consumeStacks`, `refineStack`).
+- **Known bounds:**
+  - A replay older than a device's last 2,048 folded ops is not recognised.
+  - Two devices that each issue the *same* new id while offline **and** each
+    fold it before they sync count it twice. That needs 32+ further ops on
+    both devices.
+  - A device without a stable id (`unknown`) never folds.
+- **Old saves:** an old save's `stackCheckpoints` are read as a `legacy` fold
+  with the same totals.
+- **Property test** (`inventory-stack-folds.spec.ts`): 48 seeds, 2–3 devices,
+  220 random steps each. Steps are grants, spends, replays of seen ids, folds
+  every 2–7 ops, and syncs in random direction and argument order. After every
+  step, every device's every total equals the ground truth over the ids it has
+  seen. After a full sync, all devices agree.
+- **Market server (S7):** `functions/src/market/save-ops.ts` still reads
+  `stackCheckpoints`. Point it at `stackFolds` before the market deploys.
+
+**Tests:**
+- Karma: `vault-station.component.spec.ts` covers the panel, routing and
+  purchases. `inventory-stack-folds.spec.ts` covers the compaction fix.
+  `inventory.service.spec.ts` was updated for the 40-slot satchel.
+- e2e: `play-vault.spec.ts`, at 1280×800 and 390×844, runs: fill the satchel,
+  mine (the ore routes, with the message), open the Vault at its station, see
+  Take out refused while full, Send to Vault, Take out, buy a row, sort,
+  search, and check 44 px controls.
+- e2e: `play-inventory-stacks` now checks the 40-slot count.
+  `rune-forge-all` seeds the current v3 economy.

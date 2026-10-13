@@ -554,17 +554,31 @@ export function isTakeable(t: Terrain, col: number, row: number): boolean {
   return row >= 0 && t.inside(col, row) && TAKEABLE_KIND[t.kind[t.index(col, row)]] === 1;
 }
 
+/** How far E (and X) reach past either side of the Keeper's body, in px: half a cell. */
+export const INTERACT_REACH = CELL * .5;
+
 /**
- * The placed thing X takes back, as a cell index, or -1: the nearest beside
- * the body in the facing direction, else where the Keeper stands (feet up),
- * else just under the feet. Pure.
+ * The placed thing X takes back, as a cell index, or -1. X reaches exactly as
+ * far as E: `prefer` (the cell the prompt names, when it is takeable) first,
+ * then the nearest beside the body in the facing direction, then the Keeper's
+ * own column (feet up), then anything else in E's reach (half a cell past
+ * either side of the body), else just under the feet. Pure, no allocation.
  */
-export function takeTarget(t: Terrain, x: number, feetY: number, facing: number, box: BodyBox): number {
-  const feetRow = t.rowAt(feetY - EPS), headRow = t.rowAt(feetY - box.height);
-  for (const col of [frontCol(t, x, facing, box), t.colAt(x)]) {
-    for (let row = feetRow; row >= headRow; row--) if (isTakeable(t, col, row)) return t.index(col, row);
+export function takeTarget(t: Terrain, x: number, feetY: number, facing: number, box: BodyBox, prefer = -1): number {
+  if (prefer >= 0 && prefer < t.kind.length) {
+    const col = prefer % t.cols;
+    if (isTakeable(t, col, (prefer - col) / t.cols)) return prefer;
   }
-  return isTakeable(t, t.colAt(x), feetRow + 1) ? t.index(t.colAt(x), feetRow + 1) : -1;
+  const feetRow = t.rowAt(feetY - EPS), headRow = t.rowAt(feetY - box.height);
+  const front = frontCol(t, x, facing, box), own = t.colAt(x);
+  for (let row = feetRow; row >= headRow; row--) if (isTakeable(t, front, row)) return t.index(front, row);
+  for (let row = feetRow; row >= headRow; row--) if (isTakeable(t, own, row)) return t.index(own, row);
+  // The rest of E's reach: the same window findInteractive scans.
+  const c0 = t.colAt(x - box.halfWidth - INTERACT_REACH), c1 = t.colAt(x + box.halfWidth + INTERACT_REACH);
+  for (let row = feetRow; row >= headRow; row--) {
+    for (let col = c0; col <= c1; col++) if (isTakeable(t, col, row)) return t.index(col, row);
+  }
+  return isTakeable(t, own, feetRow + 1) ? t.index(own, feetRow + 1) : -1;
 }
 
 // ── Loose rock and supports ────────────────────────────────────────────────

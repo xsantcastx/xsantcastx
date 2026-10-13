@@ -107,11 +107,15 @@
   }
 
   <aside class="satchel" [attr.aria-label]="t('play.hud.satchel')" (click)="openBag()" [attr.inert]="panel ? '' : null">
-    <button type="button" class="clasp" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book" [attr.aria-label]="t('play.hud.satchel')">
+    <button type="button" class="clasp" [class.is-full]="bagFull" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book"
+            [attr.aria-label]="t('play.hud.satchelCount', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) + (inventory.snapshot.overflow ? '. ' + t('play.hud.book.overflow', { n: inventory.snapshot.overflow }) : '')">
       <span>{{ t('play.hud.satchel') }}</span>
+      <span class="clasp-count">{{ bagCount }}</span>
       <kbd>I</kbd>
       <i class="bag-ico" aria-hidden="true"></i>
-      @if (inventory.snapshot.usedRows) { <em class="bag-badge" aria-hidden="true">{{ inventory.snapshot.usedRows }}</em> }
+      <em class="bag-badge" aria-hidden="true">{{ bagCount }}</em>
+      <!-- Amber when something waits in Overflow; inside the button, never a new fixed widget. -->
+      @if (inventory.snapshot.overflow) { <i class="bag-dot" aria-hidden="true"></i> }
     </button>
     <div class="tally">
       <p><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
@@ -136,11 +140,12 @@
         </div>
         <button type="button" class="book-close" (click)="closeBag()">{{ t('play.hud.book.close') }}</button>
       </header>
-      <p class="capacity" [class.full]="inventory.snapshot.full">
-        <b>{{ inventory.snapshot.usedRows }}</b>
-        <span>{{ t(inventory.snapshot.full ? 'play.hud.book.full' : (inventory.snapshot.usedRows ? 'play.hud.book.filled' : 'play.hud.book.pockets')) }}</span>
+      <p class="capacity" [class.full]="bagFull">
+        <b>{{ bagCount }}</b>
+        <span>{{ t('play.hud.book.slots', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) }}</span>
         <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
       </p>
+      @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
       <div class="belt" [attr.aria-label]="t('play.hud.book.worn')">
         <span class="belt-label">{{ t('play.hud.book.worn') }}</span>
         <div class="wells">
@@ -202,10 +207,11 @@
               </ul>
             }
           </div>
-          @if (row.canWear || row.canStow) {
+          @if (row.canWear || row.canStow || row.canSend) {
             <div class="slip-actions">
               @if (row.canWear) { <button type="button" class="wear" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
+              @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ t('play.hud.book.toVault') }}</button> }
             </div>
           }
         } @else {
