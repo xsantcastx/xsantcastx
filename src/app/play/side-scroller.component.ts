@@ -43,6 +43,7 @@ import { huntingXpFor } from '../shared/skills/hunting';
 import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
 import { DELVE_I18N } from './world/delve.i18n';
+import { HEARTH_I18N } from './world/hearth.i18n';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -50,6 +51,11 @@ import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.mode
 import type { DiscoverEvent } from './engine/engine';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
+/**
+ * Whether this viewer last left the Hearth chat open. A per-device convenience,
+ * not progress: plain localStorage behind try/catch, never the save gateway.
+ */
+const HEARTH_OPEN_KEY = 'eclipse-hearth-open';
 const ONCE_PER_PLAYER = new Set(['godforge-fragment', 'kaels-hammer']);
 
 /** Where Delve swings are recorded in the activity ledger. */
@@ -219,11 +225,18 @@ export class SideScrollerComponent implements OnDestroy {
   social: RoomSnapshot = { status: 'Solo — join the hearth to meet other Keepers.', connected: false, players: [], messages: [], id: '' };
   joining = false;
   sending = false;
+  /**
+   * The Hearth chat is a small pill in the world until the player opens it
+   * (it used to stand over the stalls in every town). Remembered per device;
+   * a station opening folds it away again without forgetting the choice.
+   */
+  hearthOpen = false;
   private pendingMine: string | null = null;
   private timer?: ReturnType<typeof setInterval>;
   state: EngineState = {
     hp: 100,
-    enemyHp: 100,
+    // No creature is measured until the engine reports one (the enemy bar hides at 0).
+    enemyHp: 0,
     nearby: null,
     x: 160,
     y: 610,
@@ -255,6 +268,8 @@ export class SideScrollerComponent implements OnDestroy {
     // Hydration can swap the server canvas after the first callback. Wait until
     // the canvas that is actually on screen has a size, then draw into that one.
     afterNextRender(() => this.startWorld());
+    // The hearth pill renders on the server too: its strings must exist before the engine does.
+    this.i18n.register(HEARTH_I18N);
   }
   private liveCanvas(): HTMLCanvasElement | null {
     const candidates = [this.canvas?.nativeElement, this.host.nativeElement.querySelector('canvas'), document.querySelector('main.play-mode canvas')];
@@ -265,6 +280,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private startWorld(): void {
     if (!this.browser) return;
+    this.hearthOpen = this.readHearthOpen();
     this.inventory.init();
     this.activity.init();
     this.homestead.start();
@@ -607,6 +623,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.panelHost.clear(); this.panelRef = null;
     this.panelError = ''; this.panelLoading = false;
     this.bagOpen = false; this.placesOpen = false;
+    // The panel needs the room: fold the Hearth (the remembered choice stands for next time).
+    this.hearthOpen = false;
     this.panel = place;
     this.engine?.setHover(null);
     this.engine?.setPaused(true);
@@ -751,6 +769,29 @@ export class SideScrollerComponent implements OnDestroy {
     try { await this.room?.join(name.trim()); } finally { this.joining = false; }
   }
   leaveRoom(): void { this.room?.leave(); }
+  /** "Hearth · 3 online" when in the room, "Hearth · chat" before joining. */
+  get hearthPill(): string {
+    const tail = this.social.connected ? this.t('play.hearth.online', { n: this.social.players.length }) : this.t('play.hearth.chat');
+    return `${this.t('play.hearth.name')} · ${tail}`;
+  }
+  /** Open or fold the Hearth chat; focus follows (into the form, or back to the pill). */
+  toggleHearth(): void {
+    this.hearthOpen = !this.hearthOpen;
+    this.rememberHearth(this.hearthOpen);
+    const root = this.host.nativeElement as HTMLElement;
+    setTimeout(() => {
+      const target = this.hearthOpen
+        ? root.querySelector<HTMLElement>('.dock input:not([disabled])') ?? root.querySelector<HTMLElement>('.hearth-hide')
+        : root.querySelector<HTMLElement>('.hearth-pill');
+      target?.focus({ preventScroll: true });
+    });
+  }
+  private readHearthOpen(): boolean {
+    try { return localStorage.getItem(HEARTH_OPEN_KEY) === '1'; } catch { return false; }
+  }
+  private rememberHearth(open: boolean): void {
+    try { localStorage.setItem(HEARTH_OPEN_KEY, open ? '1' : '0'); } catch { /* private mode: the pill simply starts folded */ }
+  }
   async sendChat(input: HTMLInputElement): Promise<void> {
     if (this.sending || !input.value.trim()) return;
     this.sending = true;
@@ -823,6 +864,10 @@ export class SideScrollerComponent implements OnDestroy {
       return;
     }
     if (this.placesOpen && event.key === 'Escape') { event.preventDefault(); this.closePlaces(); return; }
+    // Escape inside the open Hearth folds it and hands focus back to the pill.
+    if (this.hearthOpen && event.key === 'Escape' && (event.target as HTMLElement | null)?.closest?.('.dock')) {
+      event.preventDefault(); this.toggleHearth(); return;
+    }
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }

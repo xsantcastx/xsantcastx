@@ -93,6 +93,17 @@ test('unarmed farming kills a monster, drops loot once, and respawns after eight
   engine.destroy();
 });
 
+test('the enemy bar hides on a town\'s safe ground and names a Maw past it', () => {
+  const { engine, state } = fixture();
+  const safeX = engine.areaDef.safeX;
+  assert.ok(safeX > 0);
+  engine.player.x = engine.areaDef.spawnX;
+  assert.equal(state().enemyHp, 0); assert.equal(state().enemyName, undefined);
+  engine.player.x = safeX + 10;
+  assert.ok(state().enemyHp > 0); assert.equal(state().enemyId, 'rivet-maw');
+  engine.destroy();
+});
+
 test('rejected pickups stay in the world and accepted drops are not granted twice', () => {
   let accepted = false;
   const granted = [];
