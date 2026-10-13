@@ -68,13 +68,9 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.touch.dodge': { en: 'Dodge', es: 'Esquivar' },
   'play.hud.touch.down': { en: 'Down', es: 'Abajo' },
   'play.hud.touch.blast': { en: 'Blast', es: 'Rafaga' },
-  // Phones: the one-row touch band wants six letters at most.
-  'play.hud.touch.attackShort': { en: 'Attack', es: 'Golpe' },
-  'play.hud.touch.dodgeShort': { en: 'Dodge', es: 'Evadir' },
-  'play.hud.touch.place': { en: 'Place', es: 'Poner' },
+  // Phones show these as icons; the words are the buttons' aria-labels.
 
   // ── Phone HUD: the pick slot (tap a block to dig it) and the folding goal line ──
-  'play.hud.pick': { en: 'Pick', es: 'Pico' },
   'play.hud.pickAria': { en: 'Pick: tap a block to dig it', es: 'Pico: toca un bloque para excavarlo' },
   'play.hud.pickReady': { en: 'Pick ready. Tap a block within reach to dig it.', es: 'Pico listo. Toca un bloque a tu alcance para excavarlo.' },
   'play.hud.goalFold': { en: 'Fold the goal line', es: 'Plegar el objetivo' },
