@@ -9,7 +9,9 @@
  *    TERRAIN_NODES yields)
  *  - the expedition each expedition-only material comes from (read off the
  *    Material Vendor's buyback board, which names it; the Vendor itself only
- *    buys since economy v3, so it is not a source)
+ *    buys since economy v3, so it is not a source), and the realm expeditions
+ *    that return each material the board does not name (the expedition loot
+ *    tables themselves)
  *  - the Delve biomes' materials (contract ids; replaced by the terrain's own
  *    biome data once the Delve engine names its biomes)
  *
@@ -20,6 +22,9 @@ import { MINING_TIERS } from '../activity/activity.model';
 import { FORAGING_TIERS } from '../activity/foraging.model';
 import { CLARITY_ELIXIR_ID, PROSPECTING_TIERS } from '../activity/prospecting.model';
 import { VENDOR_SHELF } from '../vendor/material-vendor.model';
+import { REALM_ARTBIBLE_MATERIALS, REALM_EXCLUSIVE_MATERIALS } from '../explorer/explorer.model';
+import { realmById } from '../realms/realm.model';
+import type { RealmId } from '../realms/realm.model';
 import { DELVE_BIOMES, GLOWCAP, GODFORGE_FRAGMENT, SHADOW_ROOT_CUTTING, type DelveBiomeId } from '../delve/delve-lore.model';
 import { KAELS_HAMMER } from '../npc/delve-missions.model';
 import { TOWNS, type AreaDef } from '../../play/world/world.model';
@@ -55,6 +60,19 @@ function areaLike(area: AreaDef): AreaLike {
   };
 }
 
+/** "<Realm> expeditions" for every material a realm's loot table returns that the board does not already name. */
+function expeditionRows(): FoundInIndex['vendor'] {
+  const named = new Set(VENDOR_SHELF.filter(row => row.source).map(row => row.materialId));
+  const rows: { materialId: string; place: string; source: string }[] = [];
+  for (const table of [REALM_EXCLUSIVE_MATERIALS, REALM_ARTBIBLE_MATERIALS]) {
+    for (const [realm, ids] of Object.entries(table) as [RealmId, readonly string[]][]) {
+      const source = `${realmById(realm)?.name ?? realm} expeditions`;
+      for (const materialId of ids) if (!named.has(materialId)) rows.push({ materialId, place: '', source });
+    }
+  }
+  return rows;
+}
+
 export function buildFoundInIndex(): FoundInIndex {
   const areas: AreaLike[] = [];
   for (const town of Object.values(TOWNS)) {
@@ -74,7 +92,10 @@ export function buildFoundInIndex(): FoundInIndex {
     delve: DELVE_MATERIALS,
     // The Vendor buys, it does not sell (economy v3): no 'Material Vendor'
     // place, only the expedition each listing names.
-    vendor: VENDOR_SHELF.filter(row => row.source).map(row => ({ materialId: row.materialId, place: '', source: row.source })),
+    vendor: [
+      ...VENDOR_SHELF.filter(row => row.source).map(row => ({ materialId: row.materialId, place: '', source: row.source })),
+      ...expeditionRows(),
+    ],
   };
 }
 

@@ -94,6 +94,11 @@ describe('foundIn (the real world data)', () => {
     expect(labels('clarity-elixir')).toEqual(['Meridian Orrery']);
   });
 
+  it('reads expedition sources from the realm loot tables, not only the buyback board (meaning audit #10)', () => {
+    expect(labels('void-crystal')).toEqual(['Umbral expeditions']);
+    expect(labels('sunbloom')).toContain('Luminous expeditions');
+  });
+
   it('lists the expedition, not the buy-only Vendor, for an expedition material', () => {
     expect(labels('pyrite-dust')).toEqual(jasmine.arrayContaining(['Nexus expeditions']));
     expect(labels('pyrite-dust')).not.toContain('Material Vendor');
