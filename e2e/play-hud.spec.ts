@@ -172,6 +172,22 @@ test.describe('the /play HUD at 1280×800', () => {
     await expect(page.locator('.hearth-pill')).toContainText('Hogar');
     await expect(page.locator('.hearth-pill')).toHaveAttribute('aria-label', /Abrir la charla del Hogar/);
   });
+
+  test('the HUD\'s own lines speak Spanish: top bar, quest chain, satchel, action bar', async ({ page }) => {
+    await seed(page, { 'preferred-language': 'es' });
+    await openPlay(page);
+    await expect(page.locator('.top-actions')).toContainText('Lugares');
+    await expect(page.locator('.top-actions')).toContainText('Volver al campamento');
+    await expect(page.locator('.satchel .clasp')).toContainText('Mochila');
+    await expect(page.locator('.satchel .tally')).toContainText('Monedas');
+    await expect(page.locator('.keys-toggle')).toHaveText('Teclas');
+    // The Seamworks quest chain on the objective line (engine-keyed or the HUD's own), never the English.
+    await page.locator('.top-actions .quiet').first().click();
+    await expect(page.locator('.objective')).toHaveText('De vuelta en el campamento. Tu equipo y el botin recogido estan a salvo.');
+    await openPlay(page, '?at=forge');
+    await expect(page.locator('.prompt.armed strong')).toHaveText(/^(Forjar|Equipar) Basalt Edge|Hoja equipada$/);
+    await expect(page.locator('.prompt.armed button').first()).toContainText('Interactuar');
+  });
 });
 
 test.describe('the /play HUD on a 390×844 phone', () => {

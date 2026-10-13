@@ -909,6 +909,42 @@ test('Delve lines: every play.delve.* key the engine, chest service and HUD use 
   }
   assert.ok(used > 40, `found ${used} keyed lines`);
 });
+const { HUD_I18N } = loadTs(path.resolve(__dirname, '../src/app/play/world/hud.i18n.ts'));
+/** A keyed HUD line: its EN template, filled with the engine's vars, is exactly the engine's English; ES exists. */
+function assertHudLine(s, key) {
+  assert.equal(s.messageKey, key, `keyed as ${key}: ${s.message}`);
+  const entry = HUD_I18N[key];
+  assert.ok(entry && entry.es, `${key} has EN + ES`);
+  assert.equal(entry.en.replace(/\{\{(\w+)\}\}/g, (_, k) => String(s.messageVars?.[k])), s.message);
+}
+
+test('HUD lines: every play.hud.* key the engine and the HUD use has EN + ES', () => {
+  const files = ['../src/app/play/engine/engine.ts', '../src/app/play/side-scroller.component.ts', '../src/app/play/side-scroller.component.html'];
+  let used = 0;
+  for (const file of files) {
+    const src = fs.readFileSync(path.resolve(__dirname, file), 'utf8');
+    for (const [, key] of src.matchAll(/'(play\.hud\.[\w.]+)'/g)) {
+      used++;
+      assert.ok(HUD_I18N[key]?.en && HUD_I18N[key]?.es, `${file}: ${key} has EN + ES`);
+    }
+  }
+  assert.ok(used > 100, `found ${used} keyed lines`);
+});
+
+test('HUD lines: the quest chain, camp, hunt and drop messages are keyed, and their English matches', () => {
+  const { engine, state } = fixture();
+  assertHudLine(state(), 'play.hud.obj.start');
+  engine.player.x = -9999; engine.interact();
+  assertHudLine(state(), 'play.hud.eng.moveCloser');
+  killFirst(engine);
+  assert.ok(['play.hud.eng.defeatedDrops', 'play.hud.eng.defeated'].includes(state().messageKey));
+  assertHudLine(state(), state().messageKey);
+  engine.restartHunt();
+  assertHudLine(state(), 'play.hud.eng.freshHunt');
+  engine.returnToCamp();
+  assertHudLine(state(), 'play.hud.eng.backAtCamp');
+  engine.destroy();
+});
 const lightMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/lighting.ts'));
 const delveSpec = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve').terrain;
 function enterDelve(onWorldAction) {
