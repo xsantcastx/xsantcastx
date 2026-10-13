@@ -2799,26 +2799,31 @@ test('render budget: in the Delve a phone tints with plain alpha; desktop keeps 
   }
 });
 
-test('render budget: in the Delve a phone lays its tint inside the darkness overlay and upscales it unsmoothed; desktop unchanged', () => {
-  const overlays = [];
+test('render budget: in the Delve the light grid is upscaled filtered; a phone folds its tint in and lays it through the half-res overlay unsmoothed', () => {
+  const made = [];
   browserDocument.createElement = () => {
-    const canvas = { width: 0, height: 0, ops: [] };
-    const ctx = { globalCompositeOperation: 'source-over', globalAlpha: 1 };
+    const canvas = { width: 0, height: 0, ops: [], image: null };
+    const ctx = {
+      globalCompositeOperation: 'source-over', globalAlpha: 1, imageSmoothingEnabled: true,
+      createImageData: (w, h) => (canvas.image = { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+      drawImage: (src) => canvas.ops.push(['drawImage', src, ctx.imageSmoothingEnabled]),
+      putImageData: () => canvas.ops.push(['putImageData']),
+    };
     canvas.getContext = () => new Proxy(ctx, {
-      get: (t, k) => k in t ? t[k] : (...args) => { canvas.ops.push(k === 'fillRect' ? `fillRect:${t.globalCompositeOperation}` : k); return { addColorStop() {} }; },
+      get: (t, k) => k in t ? t[k] : (...args) => { canvas.ops.push([k]); return { addColorStop() {} }; },
       set: (t, k, v) => { t[k] = v; return true; },
     });
-    overlays.push(canvas);
+    made.push(canvas);
     return canvas;
   };
   try {
     for (const lite of [true, false]) {
-      overlays.length = 0;
+      made.length = 0;
       const { engine } = fixture(() => true, { lite });
       const { ctx } = budgetContext();
       const blits = [];
       engine.context = new Proxy(ctx, {
-        get: (t, k) => k === 'drawImage' ? (src, ...rest) => { if (overlays.includes(src)) blits.push([src, t.imageSmoothingEnabled !== false]); }
+        get: (t, k) => k === 'drawImage' ? (src, ...rest) => { if (made.includes(src)) blits.push([src, t.imageSmoothingEnabled !== false]); }
           : t[k] ?? (() => {}),
         set: (t, k, v) => { t[k] = v; return true; },
       });
@@ -2826,13 +2831,28 @@ test('render budget: in the Delve a phone lays its tint inside the darkness over
       // Deep enough to stand in a biome with a wash (Magma Halls), like the perf scene.
       const t = engine.terrain; engine.cameraY = t.top + 41 * 32 - 300;
       for (let n = 0; n < 3; n++) { engine.frameDt = 1 / 60; engine.render(); }
-      const overlay = overlays.find(o => o.ops.includes('fillRect:destination-out'));
-      assert.ok(overlay, 'lights are punched out of the overlay');
-      const laid = blits.filter(([src]) => src === overlay).map(([, smooth]) => smooth);
-      assert.ok(laid.length > 0, 'the darkness overlay is laid over the frame');
-      assert.ok(laid.every(smooth => smooth === !lite), lite ? 'a phone upscales the overlay unsmoothed' : 'desktop keeps the smoothed overlay');
+      const grid = made.find(c => c.ops.some(op => op[0] === 'putImageData'));
+      assert.ok(grid, 'the light grid is written as pixels');
+      assert.ok(!grid.ops.some(op => op[0] === 'createRadialGradient'), 'the grid needs no gradient');
+      const overlay = made.find(c => c !== grid && c.ops.some(op => op[0] === 'drawImage' && op[1] === grid));
+      const laid = blits.filter(([src]) => src === (lite ? overlay : grid)).map(([, smooth]) => smooth);
+      assert.ok(laid.length > 0, 'the darkness is laid over the frame');
+      if (lite) {
+        assert.ok(overlay, 'a phone filters the grid into its half-res overlay');
+        assert.ok(overlay.ops.filter(op => op[0] === 'drawImage').every(op => op[2] === true), '…smoothed');
+        assert.ok(laid.every(smooth => smooth === false), 'and upscales the overlay unsmoothed');
+      } else {
+        assert.equal(overlay, undefined, 'desktop needs no overlay');
+        assert.ok(laid.every(smooth => smooth === true), 'desktop upscales the grid smoothed');
+      }
       assert.ok(ctx.imageSmoothingEnabled !== false, 'smoothing is restored for everything drawn after');
-      assert.equal(overlay.ops.includes('fillRect:destination-over'), lite, lite ? 'the tint rides under the darkness, inside the overlay' : 'desktop tints the world with soft-light instead');
+      // The biome's dark is laid as is on desktop; a phone folds the biome's (redder) wash under it.
+      const darkRed = Number(t.biomeAt(t.rowAt(engine.cameraY + 360)).dark.split(',')[0]);
+      const data = grid.image.data;
+      let reddest = 0;
+      for (let p = 0; p < data.length; p += 4) reddest = Math.max(reddest, data[p]);
+      if (lite) assert.ok(reddest > darkRed, 'the phone tint rides inside the grid');
+      else assert.equal(reddest, darkRed, 'desktop lays the plain dark (the wash is a soft-light pass of its own)');
       engine.destroy();
     }
   } finally { delete browserDocument.createElement; }
@@ -3301,4 +3321,194 @@ test('rewards per minute do not rise with the level: delve paid XP and gathering
   if (process.env.TOOL_LEVEL_TABLE) console.log({ w1, w99 });
   assert.equal(w99, w1, `the same harvests in two minutes at Woodcutting 1 and 99 (${w1}): regrowth is the cap`);
   assert.ok(w1 >= 2);
+});
+
+// ── Terraria-style terrain: auto-tiling, baked textures, light grid (docs/handoff/terraria-terrain.md) ──
+const tileArt = loadTs(path.resolve(__dirname, '../src/app/play/engine/tile-art.ts'));
+const caveMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/cave-backdrop.ts'));
+
+/** A solid() over a little ASCII map: '#' solid, '.' air; outside the map is solid (like the Delve's sides). */
+function asciiSolid(rows) {
+  return (col, row) => row < 0 || col < 0 || row >= rows.length || col >= rows[0].length || rows[row][col] === '#';
+}
+
+test('auto-tile: the mask names solid neighbours, and a diagonal only counts between two solid sides', () => {
+  const { N, E, S, W, NE, SE, SW, NW, tileMask } = tileArt;
+  const solid = asciiSolid([
+    '#####',
+    '##.##',
+    '#####',
+    '#.###',
+    '#####',
+  ]);
+  assert.equal(tileMask(solid, 2, 2), E | S | W | SE, 'below one hole, NE of another: N open (so no NE or NW), SW open');
+  assert.equal(tileMask(solid, 3, 1), N | E | S | NE | SE, 'right of the hole: W open, so SW and NW drop out');
+  assert.equal(tileMask(solid, 3, 2), N | E | S | W | NE | SE | SW, 'diagonal to the hole: only the NW notch is missing');
+  assert.equal(tileMask(solid, 0, 0), N | E | S | W | NE | SE | SW | NW, 'buried rock is fully joined');
+  const lone = asciiSolid(['...', '.#.', '...']);
+  assert.equal(tileMask(lone, 1, 1), 0, 'a lone block meets air on every side');
+  // Diagonal-only solids never set a bit on their own.
+  const corners = asciiSolid(['#.#', '...', '#.#']);
+  assert.equal(tileMask(corners, 1, 1) & (NE | SE | SW | NW), 0);
+});
+
+test('auto-tile: the variant is fixed per cell, in range, and every variant is used', () => {
+  const seen = new Set();
+  for (let row = 0; row < 40; row++) for (let col = 0; col < 40; col++) {
+    const v = tileArt.tileVariant(col, row);
+    assert.ok(v >= 0 && v < tileArt.VARIANTS);
+    assert.equal(tileArt.tileVariant(col, row), v, 'stable');
+    seen.add(v);
+  }
+  assert.equal(seen.size, tileArt.VARIANTS, 'no variant is dead');
+});
+
+test('auto-tile: edges outline only the open sides, notch an open diagonal, and stay on the art-pixel grid', () => {
+  const { N, E, S, W, NE, SE, SW, ART, paintEdges } = tileArt;
+  const rects = [];
+  const c = { fillStyle: '', globalAlpha: 1, fillRect: (x, y, w, h) => rects.push({ x, y, w, h, color: c.fillStyle }) };
+  const palette = tileArt.nodePalette({ base: '#3a2b2c', dark: '#241a1c', light: '#5a4440', fleck: '#6b5148' });
+  paintEdges(c, 64, 96, N | E | S | W | NE | SE | SW, palette);
+  assert.deepEqual(rects, [{ x: 64, y: 96, w: ART, h: ART, color: palette[tileArt.P_DEEP] }], 'fully joined but the NW diagonal: one notch pixel');
+  rects.length = 0;
+  paintEdges(c, 64, 96, E | S | W | SE | SW, palette);
+  const top = rects.filter(r => r.y === 96 && r.w === 32);
+  assert.ok(top.some(r => r.color === palette[tileArt.P_DEEP]), 'an outline along the open top');
+  assert.ok(rects.some(r => r.y === 96 + ART && r.color === palette[tileArt.P_LIGHT]), 'a lit bevel under it');
+  assert.ok(!rects.some(r => r.y >= 96 + 32 - ART && r.h === ART && r.w === 32), 'no outline along the joined bottom');
+  for (const r of rects) for (const v of [r.x, r.y, r.w, r.h]) assert.equal(v % ART, 0, 'whole art pixels');
+});
+
+test('auto-tile: each biome grows its own top face, from what it breathes', () => {
+  const faces = { spore: 'moss', ash: 'ash', mote: 'lichen', ember: 'crust' };
+  for (const [kind, face] of Object.entries(faces)) assert.equal(tileArt.topFaceOf({ particles: { kind, color: '#fff', count: 5 } }), face);
+  assert.equal(tileArt.topFaceOf(terrainMod.DEFAULT_BIOME), null, 'the plain delve look keeps a bare bevel');
+  const { EMBER_DELVE } = loadTs(path.resolve(__dirname, '../src/app/play/world/towns/infernal.ts'));
+  assert.deepEqual(EMBER_DELVE.terrain.biomes.map(b => tileArt.topFaceOf(b)), ['moss', 'ash', 'lichen', 'crust'], 'Root Hollows, Basalt Caverns, Glowcap Grotto, Magma Halls');
+});
+
+test('tile textures: every node kind has a pattern; pixels are deterministic, varied, and ore has a lit nugget to sparkle on', () => {
+  const { patternPixels, patternOf, TILE, VARIANTS, P_FLECK, P_SHINE } = tileArt;
+  for (const node of terrainMod.TERRAIN_NODE_LIST) {
+    if (!node.solid) continue;
+    const pattern = patternOf(node);
+    const a = patternPixels(pattern, node.id, 0), b = patternPixels(pattern, node.id, 0);
+    assert.equal(a.px.length, TILE * TILE);
+    assert.deepEqual(a.px, b.px, `${node.id}: same pixels every time`);
+    if (pattern !== 'cache') for (let v = 1; v < VARIANTS; v++) assert.notDeepEqual(patternPixels(pattern, node.id, v).px, a.px, `${node.id}: variant ${v} differs`);
+  }
+  for (const id of ['cinder-vein', 'slag-vein', 'heartstone-vein', 'ember-rock']) {
+    const node = terrainMod.TERRAIN_NODES[id];
+    assert.equal(patternOf(node), 'ore', id);
+    for (let v = 0; v < VARIANTS; v++) {
+      const { px, sparkle } = patternPixels('ore', id, v);
+      assert.ok(px.filter(p => p === P_FLECK).length >= 4, `${id}/${v}: clustered nugget pixels`);
+      assert.equal(px[sparkle], P_SHINE, `${id}/${v}: the sparkle sits on the nugget's shine`);
+      assert.equal(tileArt.sparkleOffset(terrainMod.nodeIndex(id), v), sparkle, 'memoised offset matches');
+    }
+  }
+  assert.equal(patternOf(terrainMod.TERRAIN_NODES.rock), 'rock');
+  assert.equal(tileArt.sparkleOffset(terrainMod.nodeIndex('rock'), 0), -1, 'plain rock does not sparkle');
+});
+
+test('tile textures: the atlas is one canvas, bakes each kind and each biome wall once, and never repaints', () => {
+  const surfaces = [];
+  let fills = 0;
+  const atlas = new tileArt.TileAtlas((w, h) => {
+    const surface = { canvas: { width: w, height: h }, context: { fillStyle: '', fillRect: () => fills++ } };
+    surfaces.push(surface);
+    return surface;
+  });
+  const rock = terrainMod.nodeIndex('rock'), ore = terrainMod.nodeIndex('cinder-vein');
+  assert.equal(atlas.node(rock), rock, 'a node kind lives in its own row');
+  const afterFirst = fills;
+  assert.ok(afterFirst > 0);
+  for (let n = 0; n < 50; n++) atlas.node(rock);
+  assert.equal(fills, afterFirst, 'asking again paints nothing');
+  atlas.node(ore);
+  assert.equal(atlas.baked, tileArt.VARIANTS * 2, 'two kinds, every variant, once each');
+  const biome = { id: 'magma-halls', wall: ['#1e0d0a', '#190a08', '#0b0403'] };
+  const wallRow = atlas.wall(biome);
+  assert.ok(wallRow >= terrainMod.TERRAIN_NODE_LIST.length, 'walls sit below the node rows');
+  assert.equal(atlas.wall({ ...biome }), wallRow, 'keyed by biome id');
+  assert.equal(atlas.baked, tileArt.VARIANTS * 3);
+  assert.equal(surfaces.length, 1, 'one canvas for everything');
+  assert.equal(surfaces[0].canvas.width, tileArt.TILE * tileArt.VARIANTS);
+  assert.ok(surfaces[0].canvas.height >= (wallRow + 1) * tileArt.TILE, 'tall enough for every row');
+  // No canvas (SSR, node): nothing is drawn, nothing throws, and it is not retried every call.
+  let asked = 0;
+  const none = new tileArt.TileAtlas(() => { asked++; return null; });
+  assert.equal(none.node(rock), -1); assert.equal(none.wall(biome), -1); assert.equal(none.canvas, null);
+  assert.equal(asked, 1);
+});
+
+test('terrain: digging a chunk-corner cell also redraws the diagonal chunk (its corner notch)', () => {
+  const t = new terrainMod.Terrain(24, 24, 0);
+  const before = Array.from(t.chunkRev);
+  t.set(7, 7, 0); // the bottom-right corner cell of chunk (0, 0)
+  const bumped = Array.from(t.chunkRev).map((v, i) => v - before[i]);
+  const at = (cc, cr) => bumped[cr * t.chunkCols + cc];
+  assert.equal(at(0, 0), 1); assert.equal(at(1, 0), 1); assert.equal(at(0, 1), 1);
+  assert.equal(at(1, 1), 1, 'the diagonal neighbour chunk');
+  const mid = Array.from(t.chunkRev);
+  t.set(3, 3, 0);
+  assert.deepEqual(Array.from(t.chunkRev).map((v, i) => v - mid[i]).filter(Boolean), [1], 'an inner cell touches only its own chunk');
+});
+
+test('light grid: samples match darknessAt, and rock shade dims light only inside the rock', () => {
+  const pool = new lightMod.LightPool(4);
+  pool.add(100, 80, 200, 1); pool.add(300, 200, 120, .8);
+  const gw = 30, gh = 20, step = lightMod.LIGHT_STEP, out = new Float32Array(gw * gh);
+  lightMod.lightGrid(out, gw, gh, 0, 0, step, pool.lights, pool.count, .9);
+  for (let j = 0; j < gh; j += 3) for (let i = 0; i < gw; i += 4) {
+    const expect = lightMod.darknessAt((i + .5) * step, (j + .5) * step, pool.lights, pool.count, .9);
+    assert.ok(Math.abs(out[j * gw + i] - expect) < 1e-5, `sample ${i},${j}`);
+  }
+  // Shade: one cell deep in rock takes 0.8 of each light.
+  const values = new Float32Array(20 * 20).fill(1);
+  values[2 * 20 + 3] = tileArt.ROCK_DEEP1;
+  const shaded = new Float32Array(gw * gh);
+  lightMod.lightGrid(shaded, gw, gh, 0, 0, step, pool.lights, pool.count, .9, { values, cols: 20, rows: 20, top: 0 });
+  const inRock = 4 * gw + 6; // sample centre (104, 72): cell (3, 2)
+  assert.ok(shaded[inRock] > out[inRock], 'darker inside the rock');
+  assert.equal(shaded[0], out[0], 'air untouched');
+});
+
+test('rock shade: rock touching air takes all the light, one cell in less, deeper less again; rebuilt only when a cell changes', () => {
+  const t = new terrainMod.Terrain(12, 12, 0);
+  t.kind.fill(terrainMod.nodeIndex('rock'));
+  t.set(5, 5, 0);
+  const shade = new tileArt.RockShade();
+  shade.update(t);
+  const v = (col, row) => shade.values[row * 12 + col];
+  assert.equal(v(5, 5), 1, 'air');
+  assert.equal(v(5, 4), 1, 'rock face');
+  assert.equal(v(5, 3), Math.fround(tileArt.ROCK_DEEP1), 'one in');
+  assert.equal(v(5, 2), Math.fround(tileArt.ROCK_DEEP2), 'deep');
+  assert.equal(v(4, 2), Math.fround(tileArt.ROCK_DEEP2));
+  const values = shade.values;
+  shade.update(t);
+  assert.equal(shade.values, values, 'same buffer');
+  t.set(5, 3, 0);
+  shade.update(t);
+  assert.equal(v(5, 3), 1, 'dug: rebuilt');
+  assert.equal(v(5, 2), 1, 'a new rock face');
+  assert.equal(v(4, 2), Math.fround(tileArt.ROCK_DEEP1), 'and behind it, one in');
+});
+
+test('cave backdrop: both parallax layers tile seamlessly, the far one is opaque and the near one leaves the cavern open', () => {
+  for (const layer of ['far', 'near']) {
+    const px = caveMod.parallaxPixels(layer, 1234);
+    assert.deepEqual(px, caveMod.parallaxPixels(layer, 1234), `${layer}: deterministic`);
+    const w = layer === 'far' ? 128 : 160, h = px.length / w;
+    const count = v => px.filter(p => p === v).length;
+    if (layer === 'far') assert.equal(count(0), 0, 'far: no hole');
+    else assert.ok(count(0) > px.length * .4, 'near: mostly open');
+    assert.ok(count(1) + count(2) > 0, `${layer}: has rock`);
+    // Seamless: across the wrap the hanging rock steps no more than between any two neighbouring columns inside.
+    const depth = col => { let y = 0; while (y < h && px[y * w + col] !== 0 && px[y * w + col] !== 3) y++; return y; };
+    let steepest = 0;
+    for (let x = 0; x < w - 1; x++) steepest = Math.max(steepest, Math.abs(depth(x + 1) - depth(x)));
+    assert.ok(Math.abs(depth(0) - depth(w - 1)) <= steepest + 2, `${layer}: wraps in x`);
+  }
 });
