@@ -58,10 +58,14 @@ player-facing tool route ever comes back.
 Practical consequences:
 
 - **Do not add a tool page.** The nav audit will reject it.
-- The cosmic engine, the pulsar, the galaxy map, the tool registry, the
-  guestbook, the sponsors page and the donate page are all gone. If you find a
-  reference to one in prose, it is stale — `docs/ECLIPSE_REALMS_ROADMAP.md`
-  still describes Phase I in those terms and has not been rewritten.
+- The pulsar, the galaxy map, the tool registry, the tool quests, eggs and
+  lore, embed mode, the ad units, the visit counter, the guestbook and the
+  sponsors and donate pages are all gone (inventory and reasons:
+  `docs/cleanup/site-removal.md`). `src/assets/js/cosmic-engine.js` survives
+  only as the cursor trail (a Market cosmetic) and the ritual drone (a Codex
+  secret). Donations are the footer's "Support the forge" row. If you find a
+  reference to any of the rest in prose, it is stale —
+  `docs/ECLIPSE_REALMS_ROADMAP.md` still describes Phase I in those terms.
 - Old SEO surfaces still resolve, because breaking them would cost the rankings
   they earned. That is why the redirect table is long.
 

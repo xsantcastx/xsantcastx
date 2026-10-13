@@ -4,11 +4,8 @@ import { Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
-import { EmbedService } from './shared/embed.service';
-import { VisitCounterService } from './shared/visit-counter/visit-counter.service';
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
-import { RealmService } from './shared/realms/realm.service';
 import { PageAtmosphereService } from './shared/atmosphere/atmosphere.service';
 import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { ChallengeWiringService } from './shared/challenges/challenge-wiring.service';
@@ -37,11 +34,8 @@ export class AppComponent implements OnInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private ngZone = inject(NgZone);
-  readonly embed = inject(EmbedService);
-  private visitCounter = inject(VisitCounterService);
   private eggTriggers = inject(GlobalEggTriggersService);
   private xpWiring = inject(XpWiringService);
-  private realms = inject(RealmService);
   private atmosphere = inject(PageAtmosphereService);
   private questWiring = inject(QuestWiringService);
   private challengeWiring = inject(ChallengeWiringService);
@@ -92,10 +86,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   constructor(private seo: SeoService) {}
 
-  get isEmbedMode(): boolean {
-    return this.embed.isEmbed;
-  }
-
   /**
    * The template reads this about twenty times per change-detection pass, and
    * on /play the HUD runs a pass ten to fifteen times a second. `router.url`
@@ -118,10 +108,6 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.playModeValue;
   }
 
-  get showEmbedBranding(): boolean {
-    return this.embed.showBranding;
-  }
-
   /**
    * The corner flame stands down while a page mounts its own.
    *
@@ -139,17 +125,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.seo.init();
-
-    // Set before the browser guard so the prerendered HTML is correct too: an
-    // embed that shipped a flame in its SSR output would paint one for a frame
-    // on every embedded tool page.
-    this.showCornerFlame = !this.isEmbedMode;
-
-    // Also before the guard, and for the same reason: `data-realm` selects the
-    // painted room behind all 126 tool pages. Resolved on the client only, the
-    // page would prerender bare and then paint a background the instant the
-    // bundle booted. RealmService touches no browser-only API.
-    this.realms.init();
 
     if (!isPlatformBrowser(this.platformId)) return;
 
@@ -174,7 +149,7 @@ export class AppComponent implements OnInit, OnDestroy {
       // Deliberately not `requestAnimationFrame`: frames do not run in a
       // background tab, and the corner flame would stay wrong there.
       queueMicrotask(() => {
-        this.showCornerFlame = !this.isEmbedMode && !active;
+        this.showCornerFlame = !active;
       });
     });
 
@@ -182,9 +157,6 @@ export class AppComponent implements OnInit, OnDestroy {
     // bootstrap dragged ~333 kB of reCAPTCHA into the critical path of every
     // route; see app-check.bootstrap.ts.
     scheduleAppCheck();
-
-    // Track site visit and trigger milestone celebration if applicable
-    this.visitCounter.recordVisit();
 
     // Initialize global easter egg triggers
     this.eggTriggers.init();
@@ -310,7 +282,7 @@ export class AppComponent implements OnInit, OnDestroy {
    * and is a no-op on the server, so there is no second guard here.
    */
   private startFunnel(): void {
-    if (this.isEmbedMode || this.isPlayMode) return;
+    if (this.isPlayMode) return;
 
     if (this.onboarding.shouldOnboard()) {
       this.analytics.trackOnboardingStart();

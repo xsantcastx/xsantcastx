@@ -52,6 +52,16 @@
       <a href="mailto:xsantcastx&#64;xsantcastx.com">xsantcastx&#64;xsantcastx.com</a>
     </p>
 
+    <!-- Support. The only way into the three donation modals below: the old
+         donate block went with the tools site and nothing replaced it, which
+         left the whole flow unreachable. -->
+    <p class="gffoot__support">
+      <span class="gffoot__support-label">{{ translate('gffoot.support') }}</span>
+      <button type="button" (click)="openCryptoDonate()">Crypto</button>
+      <button type="button" (click)="openPayPalDonate()">PayPal</button>
+      <button type="button" (click)="openStripeDonate()">{{ translate('gffoot.support.card') }}</button>
+    </p>
+
     <p class="gffoot__mark">{{ translate('gffoot.forgedBy') }}</p>
 
     <!-- The WebGL forge's off switch. Here rather than behind a settings route

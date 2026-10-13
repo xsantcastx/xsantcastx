@@ -13,8 +13,7 @@
  */
 import { EasterEgg, PUBLIC_CODEX_EGGS, isPublicCodexEgg } from '../shared/easter-eggs/easter-egg.service';
 import { EclipseRarity, RarityDefinition, rarityOf, tierForEgg } from '../shared/rarity/rarity.model';
-import { RealmId, realmForCategory } from '../shared/realms/realm.model';
-import { TOOLS_REGISTRY, ToolDefinition } from '../tools/tools-registry';
+import { RealmId } from '../shared/realms/realm.model';
 import { hintFor } from './codex-hints';
 
 export type CodexCategoryId = RealmId | 'arena' | 'global';
@@ -104,41 +103,15 @@ export const CODEX_CATEGORIES: CodexCategory[] = [
 export const CODEX_CATEGORY_ORDER: CodexCategoryId[] = CODEX_CATEGORIES.map(c => c.id);
 
 /**
- * The eggs that chain the Arena gates, keyed egg id → gate name.
- *
- * The five playable gates are read straight out of `ARENA_PLAYABLE`, which is
- * pure data with no browser APIs, so those can never drift.
- *
- * The seven flavour gates are still literals here: they live in a private field
- * inside `ArenaComponent`, and importing that component would pull its template
- * and styles into the Codex chunk for seven strings. `arenaGateDrift()` below is
- * the guard for those.
+ * Eggs that chain an Arena gate, keyed egg id → gate name. Empty since the
+ * seven tool-era "flavour gates" (Shadow Puzzle, Regex Race, …) went with the
+ * tool eggs that opened them; the five playable gates unlock from
+ * `ARENA_PLAYABLE` and are not Codex achievements.
  */
-const FLAVOUR_GATE_EGGS: Record<string, string> = {
-  'shadow-lord': 'Shadow Puzzle',
-  'regex-master': 'Regex Race',
-  'json-inception': 'JSON Tower',
-  'uuid-lucky': 'UUID Lottery',
-  'chmod-god': 'Chmod Chess',
-  'hash-meaning': 'Hash Hunt',
-  'css-important': 'CSS Golf',
-};
-
-export const ARENA_GATE_EGGS: Record<string, string> = {
-  ...FLAVOUR_GATE_EGGS,
-};
-
-const TOOLS_BY_ID = new Map<string, ToolDefinition>(TOOLS_REGISTRY.map(t => [t.id, t]));
+export const ARENA_GATE_EGGS: Record<string, string> = {};
 
 export function categoryForEgg(egg: EasterEgg): CodexCategoryId {
-  if (ARENA_GATE_EGGS[egg.id]) return 'arena';
-  if (!egg.tool || egg.tool === 'global') return 'global';
-  const tool = TOOLS_BY_ID.get(egg.tool);
-  // An egg pointing at a tool that is not in the registry is a registry bug, not
-  // a Luminous secret. Global is where unattributed things go — visible, so it
-  // gets noticed, rather than quietly filed under a realm it does not belong to.
-  if (!tool) return 'global';
-  return realmForCategory(tool.category).id;
+  return ARENA_GATE_EGGS[egg.id] ? 'arena' : 'global';
 }
 
 export function categoryById(id: CodexCategoryId): CodexCategory {

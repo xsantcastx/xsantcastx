@@ -26,7 +26,6 @@ import { rankSigil } from '../shared/gamification/gamification.model';
 import { EconomyService, EconomySnapshot } from '../shared/economy/economy.service';
 import { formatCurrency } from '../shared/economy/economy.model';
 import { RouterModule } from '@angular/router';
-import { AdsenseComponent } from '../shared/adsense/adsense.component';
 import { WorldAtlasComponent } from '../world/world-atlas.component';
 import { InspectButtonComponent } from '../shared/entity/inspect-button.component';
 import { CurrentWorkTileComponent } from '../shared/activity/current-work-tile.component';
@@ -46,7 +45,7 @@ export interface ForgeStation {
   templateUrl: './landing.component.html',
   styleUrls: ['./landing.component.css'],
   standalone: true,
-  imports: [RelatedPagesComponent, RouterModule, AdsenseComponent, WorldAtlasComponent, InspectButtonComponent, CurrentWorkTileComponent]
+  imports: [RelatedPagesComponent, RouterModule, WorldAtlasComponent, InspectButtonComponent, CurrentWorkTileComponent]
 })
 export class LandingComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

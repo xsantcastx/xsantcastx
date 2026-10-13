@@ -544,7 +544,7 @@ export class CloudSaveService {
 
   /**
    * Log a non-fatal Firestore failure without the console noise a real error
-   * deserves. Same house rule as ChangelogService: a missing rule is a
+   * deserves. House rule: a missing rule is a
    * deployment state, not a bug, and it must not look like one.
    */
   private quietly(label: string, err: unknown): void {

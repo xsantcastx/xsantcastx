@@ -162,9 +162,8 @@ export class ForgedTodayService {
       }
     } catch (err: unknown) {
       // permission-denied means the rules have not been deployed to this
-      // project yet, which is the normal state in a local emulator. Silent, for
-      // the same reason VisitCounterService is: a red console on a decoration
-      // trains people to ignore the console.
+      // project yet, which is the normal state in a local emulator. Silent: a
+      // red console on a decoration trains people to ignore the console.
       if (!isPermissionDenied(err)) console.warn('[ForgedToday] write degraded:', err);
     }
   }

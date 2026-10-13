@@ -34,7 +34,6 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
-import { EmbedService } from '../embed.service';
 import { ForgeEffectsService } from './forge-effects.service';
 import { ForgeSceneService } from './forge-scene.service';
 import { paletteForPath } from './forge-scene.model';
@@ -75,7 +74,6 @@ import { paletteForPath } from './forge-scene.model';
 export class ForgeSceneComponent implements AfterViewInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly router = inject(Router);
-  private readonly embed = inject(EmbedService);
   private readonly effects = inject(ForgeEffectsService);
   private readonly scene = inject(ForgeSceneService);
   private readonly cdr = inject(ChangeDetectorRef);
@@ -93,7 +91,7 @@ export class ForgeSceneComponent implements AfterViewInit, OnDestroy {
    * live GL context is a leak waiting to happen. The toggle handles the live
    * case explicitly below.
    */
-  show = this.effects.shouldRender({ embed: this.embed.isEmbed });
+  show = this.effects.shouldRender();
 
   ngAfterViewInit(): void {
     if (!this.isBrowser) return;
@@ -117,7 +115,7 @@ export class ForgeSceneComponent implements AfterViewInit, OnDestroy {
         return;
       }
       if (this.show) return;
-      this.show = this.effects.shouldRender({ embed: this.embed.isEmbed });
+      this.show = this.effects.shouldRender();
       if (!this.show) return;
       // Synchronous, not markForCheck: "attach()" needs the canvas to exist on
       // the very next line, and under OnPush the view would otherwise not be
@@ -134,6 +132,6 @@ export class ForgeSceneComponent implements AfterViewInit, OnDestroy {
 
   private attach(): void {
     const canvas = this.canvasRef?.nativeElement;
-    if (canvas) void this.scene.mount(canvas, { embed: this.embed.isEmbed });
+    if (canvas) void this.scene.mount(canvas);
   }
 }

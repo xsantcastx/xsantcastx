@@ -24,8 +24,8 @@ export interface GodforgeError {
  *                             filename. Expected on every deploy for anyone with
  *                             a tab already open; the reload recovers it.
  *  - permission-denied        Firestore rules rejecting an unauthenticated read.
- *                             VisitCounterService and ChangelogService both
- *                             silent-degrade on this by design.
+ *                             The Firestore readers silent-degrade on this by
+ *                             design.
  *  - Non-Error promise reject library code rejecting with a plain object; carries
  *                             no stack, so nothing to act on.
  */

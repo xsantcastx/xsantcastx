@@ -1,8 +1,8 @@
 {
-  "no-raw-hex-css": 750,
+  "no-raw-hex-css": 685,
   "no-retired-golds": 0,
-  "no-emoji-in-templates": 94,
-  "no-emoji-in-code": 469,
+  "no-emoji-in-templates": 85,
+  "no-emoji-in-code": 243,
   "no-icon-cdn": 0,
   "no-raw-zindex": 0
 }
