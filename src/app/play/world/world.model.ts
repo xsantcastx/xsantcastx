@@ -59,11 +59,11 @@ export type PanelId =
   | 'crafting' | 'enchanting' | 'runes'
   | 'sanctum' | 'codex' | 'leaderboards'
   | 'quests' | 'arena' | 'trials' | 'character'
-  | 'vendor' | 'homestead' | 'skills' | 'vault';
+  | 'vendor' | 'homestead' | 'skills' | 'vault' | 'reels';
 export const PANEL_IDS: readonly PanelId[] = [
   'market', 'gambler', 'exchange', 'crafting', 'enchanting', 'runes',
   'sanctum', 'codex', 'leaderboards', 'quests', 'arena', 'trials', 'character',
-  'vendor', 'homestead', 'skills', 'vault',
+  'vendor', 'homestead', 'skills', 'vault', 'reels',
 ];
 
 export interface Platform { x: number; y: number; width: number }
