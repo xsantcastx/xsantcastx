@@ -132,7 +132,8 @@
   <link rel="preload" href="/assets/fonts/cormorant-garamond-latin-var.woff2" as="font" type="font/woff2" crossorigin>
 
 
-  <!-- Global JSON-LD — WebSite + SearchAction -->
+  <!-- Global JSON-LD — the site and its author. The game itself (VideoGame)
+       is described on /world, which carries the full graph. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -141,97 +142,16 @@
         "@type": "WebSite",
         "@id": "https://xsantcastx.com/#website",
         "url": "https://xsantcastx.com",
-        "name": "The Godforge",
-        "alternateName": "xsantcastx",
-        "description": "The Godforge — free browser-based tools for developers and designers, forged in the Eclipse.",
+        "name": "Eclipse Realms",
+        "alternateName": "The Godforge",
+        "description": "A free idle RPG in the browser — forge Gold, gamble runes, craft gear with rolled stats, and send explorers into five realms.",
         "inLanguage": "en-US"
       },
       {
         "@type": "Person",
         "@id": "https://xsantcastx.com/#person",
         "name": "xsantcastx",
-        "url": "https://xsantcastx.com",
-        "knowsAbout": ["Angular", "TypeScript", "Node.js", "Firebase", "React", "Web Development"]
-      },
-      {
-        "@type": "WebPage",
-        "url": "https://xsantcastx.com/tools",
-        "name": "Free Browser Tools",
-        "description": "Free browser-based utilities for developers and designers — no sign-up, no installs, runs entirely in your browser.",
-        "hasPart": [
-          {
-            "@type": "SoftwareApplication",
-            "name": "CSS Box Shadow Generator",
-            "url": "https://xsantcastx.com/tools/box-shadow-generator",
-            "applicationCategory": "UtilityApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "Email Deliverability Auditor",
-            "url": "https://xsantcastx.com/tools/email-deliverability-auditor",
-            "applicationCategory": "UtilityApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "Gmail Deliverability Checker",
-            "url": "https://xsantcastx.com/tools/gmail-deliverability-checker",
-            "applicationCategory": "UtilityApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "SSL Certificate Inspector",
-            "url": "https://xsantcastx.com/tools/ssl-certificate-inspector",
-            "applicationCategory": "UtilityApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "SVG to Code Converter",
-            "url": "https://xsantcastx.com/tools/svg-to-code",
-            "applicationCategory": "UtilityApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "PDF Catalog Generator",
-            "url": "https://xsantcastx.com/tools/pdf-generator",
-            "applicationCategory": "BusinessApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "Color Palette Extractor",
-            "url": "https://xsantcastx.com/tools/color-palette",
-            "applicationCategory": "DesignApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "WCAG Contrast Checker",
-            "url": "https://xsantcastx.com/tools/contrast-checker",
-            "applicationCategory": "DesignApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          },
-          {
-            "@type": "SoftwareApplication",
-            "name": "Image Compressor",
-            "url": "https://xsantcastx.com/tools/image-compressor",
-            "applicationCategory": "UtilityApplication",
-            "operatingSystem": "Web Browser",
-            "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
-          }
-        ]
+        "url": "https://xsantcastx.com"
       }
     ]
   }
@@ -279,14 +199,6 @@
        ↑ ↑ ↓ ↓ ← → ← →  the veil lifts.
        Or click the seal. The curious are always rewarded.
   -->
-  <div class="matrix-background" aria-hidden="true"></div>
-  <canvas class="cosmic-canvas" aria-hidden="true"></canvas>
-  <div class="cosmic-pulsar" aria-hidden="true"></div>
-  <div class="cosmic-cursor" aria-hidden="true"></div>
-  <span class="rune-whisper rune-whisper--tl" aria-hidden="true">✦ ⟡ ⚝</span>
-  <span class="rune-whisper rune-whisper--tr" aria-hidden="true">☽ ✧ ☾</span>
-  <span class="rune-whisper rune-whisper--bl" aria-hidden="true">⚜ ⧫ ❂</span>
-  <span class="rune-whisper rune-whisper--br" aria-hidden="true">✶ ⟢ ✷</span>
   <app-root></app-root>
   <button
     type="button"
@@ -299,7 +211,7 @@
        a CSP hash on an inline block is a silent-breakage hazard. -->
   <script src="/assets/js/easter-eggs.js" defer></script>
 
-  <!-- ░▒▓█ COSMIC ENGINE — interactive starfield, mouse parallax, scroll-reveal, magnetic CTAs █▓▒░ -->
+  <!-- ░▒▓█ SITE ENGINE — cursor trail (a Market cosmetic) and the ritual drone (a Codex secret) █▓▒░ -->
   <script src="/assets/js/cosmic-engine.js" defer></script>
 </body>
 </html>

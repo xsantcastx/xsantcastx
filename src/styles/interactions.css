@@ -61,8 +61,8 @@
 
 /* ───────────────────────────────────────────────────────────────────────────
    1 + 2 + 6. BUTTONS — lift, glow, and a physical press
-   The press uses `scale`, so a button that already has a transform (the magnetic
-   CTAs in cosmic-engine.js set one every frame) still presses.
+   The press uses `scale`, so a button that already has a transform still
+   presses.
    ─────────────────────────────────────────────────────────────────────────── */
 :is(button, [role='button'], input[type='submit'], input[type='button']):not(:disabled):not([aria-disabled='true']),
 a:is([class*='btn'], [class*='button'], [class*='cta']):not([aria-disabled='true']) {
@@ -109,9 +109,7 @@ a:is([class*='btn'], [class*='button'], [class*='cta']):not([aria-disabled='true
    card-dense surface on the site — does not use a "card" class at all, so a
    pattern match on [class*="card"] silently skips all 30 tools per realm.
    ─────────────────────────────────────────────────────────────────────────── */
-:is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']),
-a.orbit-star,
-.gf-interactive {
+:is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']) {
   transition:
     translate var(--gf-dur) var(--gf-ease),
     scale var(--gf-dur-press) var(--gf-ease),
@@ -123,18 +121,14 @@ a.orbit-star,
 }
 
 @media (hover: hover) {
-  :is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']):hover,
-  a.orbit-star:hover,
-  .gf-interactive:hover {
+  :is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']):hover {
     translate: 0 var(--gf-lift);
     outline-color: var(--realm-color, var(--star-color, var(--gf-interactive)));
     filter: drop-shadow(0 6px 20px var(--realm-glow, var(--star-glow, var(--gf-glow-soft))));
   }
 }
 
-:is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']):active,
-a.orbit-star:active,
-.gf-interactive:active {
+:is(a[href], button, [role='button'], [tabindex]:not([tabindex='-1'])):is([class*='-card'], [class*='__card'], [class*='-tile'], [class*='__tile']):active {
   scale: var(--gf-press);
   translate: 0 0;
   transition-duration: var(--gf-dur-press);
@@ -186,7 +180,6 @@ a.orbit-star:active,
    the skeletons that already exist (admin's .adm-skel and friends) so they stop
    being grey boxes without touching each component.
    ─────────────────────────────────────────────────────────────────────────── */
-.gf-skeleton,
 [class*='skel']:not(input):not(textarea) {
   position: relative;
   overflow: hidden;
@@ -194,7 +187,6 @@ a.orbit-star:active,
   border-radius: 8px;
 }
 
-.gf-skeleton::after,
 [class*='skel']:not(input):not(textarea)::after {
   content: '';
   position: absolute;
@@ -215,41 +207,6 @@ a.orbit-star:active,
   to { transform: translateX(100%); }
 }
 
-/* ───────────────────────────────────────────────────────────────────────────
-   10. TOASTS — spring in, ease out.
-   Direction is intentionally NOT forced to "from the right": the flame and the
-   achievement drop both live in the bottom-right and a toast sliding into that
-   corner has already eaten clicks on the flame once (see version 2.x history).
-   Each toast springs along the axis it already occupies.
-   ─────────────────────────────────────────────────────────────────────────── */
-.gf-toast-enter {
-  animation: gfToastIn var(--gf-dur-enter) var(--gf-spring) both;
-}
-
-@keyframes gfToastIn {
-  from { opacity: 0; translate: 24px 0; }
-  to   { opacity: 1; translate: 0 0; }
-}
-
-/* ───────────────────────────────────────────────────────────────────────────
-   4. SCROLL REVEAL — the class the observer in cosmic-engine.js adds.
-   The engine owns which elements get observed; this owns what the reveal looks
-   like. Sections start 18px low and settle, rather than the 28px the old cosmic
-   reveal used — shorter travel reads as responsive instead of sluggish.
-   ─────────────────────────────────────────────────────────────────────────── */
-.gf-reveal {
-  opacity: 0;
-  translate: 0 18px;
-  transition:
-    opacity var(--gf-dur-enter) var(--gf-ease),
-    translate var(--gf-dur-enter) var(--gf-ease);
-}
-
-.gf-reveal.gf-in-view {
-  opacity: 1;
-  translate: 0 0;
-}
-
 /* 3. ROUTE TRANSITION is not here on purpose — `routeFadeIn` already owns
    `router-outlet + *` in styles.css and was retuned to this file's curve there.
    Declaring a second animation on the same element would not layer with it; the
@@ -262,38 +219,21 @@ a.orbit-star:active,
    focused, so outlines, colours and the skeleton's flat tint all remain.
    ─────────────────────────────────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
-  :is(button, [role='button'], input[type='submit'], input[type='button'], a, [tabindex]),
-  .gf-interactive,
-  .gf-reveal,
-  main > *.ng-star-inserted,
-  router-outlet + * {
+  :is(button, [role='button'], input[type='submit'], input[type='button'], a, [tabindex]), router-outlet + * {
     transition-duration: 1ms !important;
     animation-duration: 1ms !important;
     animation-iteration-count: 1 !important;
   }
 
   /* No travel, no press, no halo — but the edge and the ring stay. */
-  :is(button, [role='button'], a, [tabindex]):hover,
-  :is(button, [role='button'], a, [tabindex]):active,
-  .gf-interactive:hover,
-  .gf-interactive:active {
+  :is(button, [role='button'], a, [tabindex]):hover, :is(button, [role='button'], a, [tabindex]):active {
     translate: none !important;
     scale: none !important;
     filter: none !important;
   }
 
-  .gf-reveal {
-    opacity: 1;
-    translate: none;
-  }
-
-  .gf-skeleton::after,
   [class*='skel']:not(input):not(textarea)::after {
     animation: none;
     opacity: 0;
-  }
-
-  .gf-toast-enter {
-    animation: none;
   }
 }
