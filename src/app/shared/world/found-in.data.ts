@@ -5,7 +5,8 @@
  *  - gathering sites: MINING_TIERS / FORAGING_TIERS / PROSPECTING_TIERS
  *  - every town and hunt: area drop tables, per-monster overrides, the
  *    hunting grounds' gathering nodes (AreaDef.nodes → their yields), and the
- *    Delve's terrain nodes (bands, veins and stamps → TERRAIN_NODES yields)
+ *    Delve's terrain nodes (bands, veins, stamps and each biome's veins →
+ *    TERRAIN_NODES yields)
  *  - the expedition each expedition-only material comes from (read off the
  *    Material Vendor's buyback board, which names it; the Vendor itself only
  *    buys since economy v3, so it is not a source)
@@ -43,6 +44,7 @@ function terrainNodes(spec: TerrainSpec | undefined): string[] {
     ...spec.bands.map(b => b.node),
     ...spec.veins.map(v => v.node),
     ...spec.stamps.map(s => s.node),
+    ...(spec.biomes ?? []).flatMap(b => b.veins.map(v => v.node)),
   ])];
 }
 
