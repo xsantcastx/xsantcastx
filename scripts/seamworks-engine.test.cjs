@@ -2198,6 +2198,26 @@ test('life: townsfolk wander only open floor, stay in bounds, yield to the Keepe
   assert.ok(p.pause > 0 && p.x === p.lo, 'stops when the Keeper is just ahead');
 });
 
+test('life: every townsperson names where a local material is found (meaning audit #6)', () => {
+  assert.ok(lifeI18n[life.TOWNSFOLK_LINE].en.includes('{{material}}') && lifeI18n[life.TOWNSFOLK_LINE].es.includes('{{place}}'));
+  for (const town of builtTowns()) {
+    const lines = life.townsfolkLines(town);
+    assert.ok(lines.length > 0, `${town.id}: its hunts yield something to name`);
+    for (const line of lines) assert.ok(town.hunts.some(h => h.name === line.place), `${town.id}: ${line.place} is one of its hunts`);
+    const crowd = new life.TownsfolkCrowd(town, life.placeKeepers(town));
+    for (const p of crowd.folk) assert.deepEqual(p.def.lines, [life.TOWNSFOLK_LINE]);
+    if (crowd.folk.length > 1 && lines.length > 1) assert.notDeepEqual(crowd.folk[0].says, crowd.folk[1].says, `${town.id}: neighbours say different things`);
+  }
+  // A townsperson speaks when the Keeper walks up, and the bubble fills the line.
+  const town = world.TOWNS.infernal;
+  const tl = new townLifeMod.TownLife();
+  tl.enter(town, town);
+  const folk = tl.townsfolk.folk[0];
+  let t = 0;
+  for (let n = 0; n < 30 && tl.townsfolkSpeaking < 0; n++) { t += 1 / 60; tl.update(1 / 60, folk.x, t); }
+  assert.ok(tl.townsfolkSpeaking >= 0, 'a townsperson greets the Keeper');
+});
+
 test('life: off-camera figures are culled; keepers face the Keeper; chatter is one line per approach', () => {
   assert.equal(life.onScreen(500, 0, 1200), true);
   assert.equal(life.onScreen(-200, 0, 1200), false);
