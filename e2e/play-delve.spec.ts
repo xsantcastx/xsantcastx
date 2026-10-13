@@ -9,7 +9,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import {
-  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, seed, stackQty, walkTo,
+  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, seed, settleBetween, stackQty, walkTo,
 } from './play-helpers';
 
 const SEED = 424242;
@@ -113,6 +113,10 @@ test.describe('Ember Delve, played', () => {
     // Control: on untouched rock, Up + Right walks the Keeper away from the shaft.
     expect(await tryEscape(page, 1000)).toBeGreaterThan(40);
     await walkTo(page, ARRIVE_X, 4);
+    // The walk back can slide a column past 260. Dug there, the pit misses the
+    // arrival columns and the reloaded Keeper lands on rock beside it. Stand in
+    // 246..266 instead: the 26 px body then spans exactly columns 7 and 8.
+    await settleBetween(page, ARRIVE_X - 14, ARRIVE_X + 6);
     await digDown(page, 12); // six rows of two columns
     // The dig is written 1.5 s after the last swing.
     await expect.poll(async () => (await delveCells(page)).split(',').length, { timeout: 8000 }).toBeGreaterThanOrEqual(12);
