@@ -1232,17 +1232,6 @@
   contain: layout paint;
 }
 
-/* ─── Ad banner (between the realms and the pulse) ──────────────── */
-.hp-ad-banner {
-  padding: 0 var(--page-gutter);
-}
-
-.hp-ad-banner__inner {
-  max-width: var(--page-max-width);
-  margin: 0 auto;
-  padding: 2rem 0 0.5rem;
-}
-
 /* ═══════════════════════════════════════════════════════════════════
    §3.4 — Hairlines: pure-decorative 1px lines → 0.5px at 2dppx.
    Only borders that are visually thin stripes (not card edges that need
