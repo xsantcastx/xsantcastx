@@ -180,8 +180,9 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 
 - [x] **Phase 4 seen in a real build** (2026-10-13, all five towns at 1280×800): keepers beside their stalls, canon lines, townsfolk off stalls; keepers and townsfolk are still placeholder figures until sprites exist
 - [x] **In-world HUD fixes** (`eb065ee`): the Hearth chat folds to a 44px pill (top HUD strip on desktop, its own band on phones), remembers open/folded, folds when a station opens; the duplicate "[E] INTERACT" canvas hint is gone; no enemy bar on safe town ground; keeper name tags stay inside the canvas. `e2e/play-hud.spec.ts`; full `play-*` suite 58/58
-- [~] **First-session audit**: a true first visit at phone and desktop sizes; fix what stops a new player reaching first buy → first hunt → first craft → first dig
-- [~] **Phone performance of /play**: frame times at 4× CPU throttle in each town, a hunt and the Delve; includes pausing the site-wide cosmic canvas that keeps running behind the game
+- [x] **First-session pass** (`c9ffcd5`; audit in `docs/handoff/first-session-audit.md`): a "Goal n of 4" HUD line with **Show me** (buy a building → defeat a Rivet Maw → forge the Basalt Edge → dig in the Delve; read from the save, gone once done); phone Homestead Buy no longer covered by the Interact prompt; no "visitor number N" card on a first visit; the tutorial ends in the world and its doors open stations in-world. All four goals: 1m39s phone / 2m18s desktop. `e2e/play-first-session.spec.ts`
+  - **Owner decisions:** restore the Rune Forge door in the tutorial? Maws before the blade (bare-handed kill 8–17 s, never fatal)? Nothing craftable at the Bench on a fresh save — add a cheap starter recipe? Cookie banner over the world on a first visit. HUD quest lines are English-only
+- [x] **Phone performance of /play** (`c865d7c`; `docs/handoff/play-perf.md`): 390×844 DPR 3, 4× CPU, software raster: towns/hunt p50 33 → 17 ms, Delve 83 → 50 ms; per-frame allocation −55%; site backdrop (starfield, pulsar) hidden and paused on in-world routes; phone render tier (DPR cap 1.5, no shadowBlur, cached town backdrop, cheaper Delve light); `AppComponent.isPlayMode` cached. Opt-in harness `PLAY_PERF=1 e2e/perf-play.spec.ts`. Not yet on a real phone; the Delve's darkness overlay and `RigSprite.render` are what's left
 - Left over from the HUD fix: between 901 and ~1000px the open satchel book draws over the Hearth pill; the canvas "[ J / E ] GATHER" and "CLICK TO WALK HERE" cues share the line the old hint was clipped on
 
 ---
@@ -204,7 +205,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| First-session audit; phone performance of /play | agent worktrees | `[~]` |
+| (nothing in flight) | | |
 
 ## Art still missing (placeholders in game)
 
@@ -219,6 +220,8 @@ filename the importer picks up automatically.
 - Guild screen does not exist yet (crests, banners and ranks are imported, unused)
 
 ## Known issues / watch list
+
+- **First-session audit** (`docs/handoff/first-session-audit.md`, spec `e2e/play-first-session.spec.ts`): a true first visit at 390 and 1280 px. Fixed on branch `worktree-agent-a534a7a255ebea4e2` (not yet merged): the Homestead's first Buy button was unreachable on phones (the Interact prompt covered it); a HUD **goal line** ("Goal n of 4" + Show me) now walks buy → hunt → craft → Delve, derived from the save (lazy EN + ES); every first visitor got the visitor-milestone card; the tutorial's doors now enter the world (`/play`, `/play?at=…`, Rune Forge door removed); forge jargon; buildings listed above the 5M crafting corner; Delve hotbar vs satchel on phones. **Owner:** the removed Rune Forge door, the cookie banner and always-open Hearth over the phone world, nothing craftable at the bench on a fresh save
 
 - **Playtests merged** (`13b3e7e`): `e2e/play-*.spec.ts` (run with `PW_PORT=4291`), 25 pass + 6 `fixme` = app bugs in `docs/handoff/playtest-findings.md`: P-1 Exchange buy→sell profit (likely already fixed by the exploit fix), P-2 `?at=` to another town lost on reload, P-3 no Hunting XP from kills / no Mining XP from ore pickup (Hunting partly fixed by the gathering merge), P-4 monster coins never reach the purse, P-5 vendor pays equal to (not below) the Exchange floor, P-6 The Fracture's 600 XP exceeds the 500 per-action cap and is lost. Fix round: **P-1 confirmed fixed, P-5 fixed (Slag Fragment ties at 1 Gold, not a loop), P-6 fixed (mission XP split ≤500 per grant)** (`0c1c50f`); **P-2 fixed** (current town saved in `eclipse-play-world-v1`, `?at=` still wins), **P-3 fixed** (ore pickup pays 2 Mining XP), **P-4 fixed** (coins reach the purse once per drop) (`5471a66`); all six playtest findings closed, fixme specs un-fixme'd. **Second playtest wave merged** (`87346a3`): `e2e/play-delve-extras.spec.ts` (supports, charges, inscriptions, chest gear) + `e2e/play-life.spec.ts` (keepers beside their stalls in all five towns, greet once, townsfolk never on a stall, ES name tags) — 49 pass on chromium; **P-7 fixed** (Smithing-gated recipes now say "Reach Smithing N first"). Open owner question: Delve rock that pays Mining XP inherits the town seam's 2.5 s recovery, so a fresh-save cell can take 7 swings instead of 4, with no "seam needs a breath" line shown — intended?
 - **Owner: confirm 11 keeper role titles**: Buyback Clerk, Croupier, Exchange Broker, Expedition Steward (from the art pack) + Bench Smith, Enchanter, Chart Clerk, Board Herald, Arena Gatekeeper, Trials Warden, Lodge Warden (Phase 4). Titles only, no personal names until approved

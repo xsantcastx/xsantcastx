@@ -44,6 +44,8 @@ import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
 import { DELVE_I18N } from './world/delve.i18n';
 import { HEARTH_I18N } from './world/hearth.i18n';
+import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
+import { firstGoal, FirstGoalView } from './world/first-goals';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -73,6 +75,8 @@ export function provisionalToolTiers(snapshot: Pick<InventorySnapshot, 'equipped
   return { pickaxe: 1, axe: 1, sickle: 1, blade: weapon && !weapon.explorerId ? 1 : 0, staff: staff ? 1 : 0 };
 }
 
+/** On <body> while the world is mounted. styles.css and cosmic-engine.js key the backdrop off it. */
+const WORLD_ROUTE_CLASS = 'gf-world-route';
 const SAVE_KEY = 'eclipse-seamworks-world-v1';
 /**
  * Where the Keeper last stood and what the hunts have paid in coins, local to
@@ -214,6 +218,13 @@ export class SideScrollerComponent implements OnDestroy {
   chestView: ChestView | null = null;
   private delveSub?: Subscription;
   private gatherSub?: Subscription;
+  private homeSub?: Subscription;
+  /** At least one Homestead building owned: the first goal is met. */
+  private boughtBuilding = false;
+  /** The first-session goal line (world/first-goals.ts); null once all four are done. */
+  guide: FirstGoalView | null = null;
+  /** The Homestead's Gold list is unfolded: on phones it takes the HUD plates' place. */
+  columnOpen = false;
   private readonly zone = inject(NgZone);
   private readonly i18n = inject(TranslationService);
   /** A translated string (EN / ES). The hotbar, the gathering prompt and the Hunting toast use it. */
@@ -281,6 +292,9 @@ export class SideScrollerComponent implements OnDestroy {
   private startWorld(): void {
     if (!this.browser) return;
     this.hearthOpen = this.readHearthOpen();
+    // The game is the screen: the site-wide backdrop (starfield canvas, pulsar,
+    // sigil, runes) hides under this class and cosmic-engine.js parks its loops.
+    document.body.classList.add(WORLD_ROUTE_CLASS);
     this.inventory.init();
     this.activity.init();
     this.homestead.start();
@@ -304,7 +318,8 @@ export class SideScrollerComponent implements OnDestroy {
       this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
       // Cloud save merged another device's harvests: nodes re-read their regrowth.
       this.gatherSub = this.gatherSave.reloaded$.subscribe(() => this.engine?.setGathering(this.gatherSave));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); }), 200);
+      this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -315,6 +330,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.boundCanvas = canvas;
     this.i18n.register(LIFE_I18N);
     this.i18n.register(DELVE_I18N);
+    this.i18n.register(FIRST_GOALS_I18N);
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
@@ -547,8 +563,8 @@ export class SideScrollerComponent implements OnDestroy {
   }
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
-    if (this.browser) this.homestead.stop();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -756,6 +772,35 @@ export class SideScrollerComponent implements OnDestroy {
       this.message = this.state.paused ? 'Close the open place first.' : 'The Keeper cannot travel right now.';
     }
     // The list (and the focused row) is gone: keep the keyboard in the world, not on <body>.
+    this.focusWorld();
+  }
+  /**
+   * The first-session goal: buy a building, defeat a Maw, forge the blade, dig
+   * in the Delve. Read from the save on the HUD tick (never stored itself), so
+   * it moves on the moment the thing is done, wherever it was done.
+   */
+  private refreshGuide(): void {
+    const progress = this.activity.snapshot.progress;
+    const next = firstGoal({
+      bought: this.boughtBuilding,
+      hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
+      crafted: this.activity.snapshot.craftedBasaltEdge || !!this.edge || (progress.xpByDiscipline['forge'] ?? 0) > 0,
+      dug: this.delve.hasDug('ember-delve'),
+      areaId: this.state.areaId ?? this.town.id,
+      ore: this.ore,
+      ember: this.ember,
+    });
+    if (next?.key !== this.guide?.key || next?.n !== this.guide?.n) this.guide = next;
+  }
+  /** "Show me": walk to the goal's place (and use it on arrival), or to its spot on the floor. */
+  showGoal(): void {
+    const target = this.guide?.target;
+    if (!target || !this.engine) return;
+    this.placesOpen = false;
+    const ok = 'station' in target
+      ? this.engine.goToStation(target.station, this.reducedMotion)
+      : this.reducedMotion ? (this.engine.placeAt(target.x), true) : this.engine.moveTo(target.x);
+    if (!ok) this.message = this.state.paused ? 'Close the open place first.' : 'The Keeper cannot travel right now.';
     this.focusWorld();
   }
   /** Close the Places list from the keyboard and hand focus back to its toggle. */
@@ -1402,7 +1447,7 @@ export class SideScrollerComponent implements OnDestroy {
     // Reuse the storyboard's claim ID so switching prototypes cannot duplicate it.
     if (this.activity.snapshot.miningAccepted >= 8 && !this.edge && this.ember < 1) {
       const granted = this.inventory.grantStack(TUTORIAL_EMBER_ID, EMBER_RESIDUE_ID, 1);
-      this.message = !granted ? 'Ore saved. The first-craft tutorial ember could not be stored; make room and mine again.' : this.ember > 0 ? 'First-craft tutorial ember found. Bring 6 Cinder Ore and 1 Ember Residue to the forge.' : 'The tutorial ember was already claimed. Retrieve it from your bank, or keep mining for another discovery.';
+      this.message = !granted ? 'Ore saved. The first-craft tutorial ember could not be stored; make room and mine again.' : this.ember > 0 ? this.t('play.goal.forge.ember') : 'The tutorial ember was already claimed. Retrieve it from your bank, or keep mining for another discovery.';
     } else if (this.ember >= 1 && this.ore >= 6) this.message = 'The forge has everything it needs. Walk right to craft your blade.';
   }
   private forge(): void {
@@ -1411,7 +1456,7 @@ export class SideScrollerComponent implements OnDestroy {
       return;
     }
     const result = this.inventory.craftBasaltEdge(CRAFT_ID);
-    this.message = result.ok ? 'Your Basalt Edge is ready. Interact once more to equip it.' : result.code === 'persist' ? 'The craft could not be saved. Try again to finish safely.' : result.code === 'capacity' ? 'Make room in your bag for the blade.' : 'You need 6 Cinder Ore and 1 Ember Residue. A first-craft tutorial ember is available after 8 accepted strikes.';
+    this.message = result.ok ? 'Your Basalt Edge is ready. Interact once more to equip it.' : result.code === 'persist' ? 'The craft could not be saved. Try again to finish safely.' : result.code === 'capacity' ? 'Make room in your bag for the blade.' : this.t('play.goal.forge.need');
     if (result.ok) this.activity.markCraftedBasaltEdge();
   }
   private restore(): void {

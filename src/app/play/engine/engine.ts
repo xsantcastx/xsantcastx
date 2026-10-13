@@ -1,3 +1,4 @@
+import { coarseDevice, renderBudget, type RenderBudget } from './render-budget';
 import { Atmosphere } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
@@ -176,6 +177,10 @@ export class SeamworksEngine {
   private pixelRatio = 1;
   private pixelScale = 1;
   private readonly reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  /** Full on desktop; lite on phones (render-budget.ts): a lower backing-store cap and no shadowBlur glows. */
+  private readonly budget: RenderBudget;
+  /** A shadowBlur radius under the render budget: as given on desktop, 0 on a phone. */
+  private blur(radius: number): number { return this.budget.glows ? radius : 0; }
   private landing = 0;
   private stepAt = 0;
   private reportAt = 0;
@@ -602,6 +607,7 @@ export class SeamworksEngine {
     this.message = 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.'; this.report();
   }
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
+    this.budget = renderBudget({ coarse: coarseDevice(window) }, options.lite);
     const context = canvas.getContext('2d');
     if (!context) throw new Error('Your browser does not support Canvas 2D.');
     this.context = context;
@@ -1376,7 +1382,7 @@ export class SeamworksEngine {
     const parent = this.canvas.parentElement?.getBoundingClientRect();
     const cssWidth = this.canvas.parentElement?.clientWidth || parent?.width || bounds.width;
     const cssHeight = this.canvas.parentElement?.clientHeight || parent?.height || bounds.height;
-    const ratio = Math.min(window.devicePixelRatio || 1, 2);
+    const ratio = Math.min(window.devicePixelRatio || 1, this.budget.maxPixelRatio);
     this.pixelRatio = ratio;
     this.width = Math.max(320, cssWidth || this.canvas.clientWidth || 320); this.height = Math.max(300, cssHeight || this.canvas.clientHeight || 300);
     this.canvas.width = Math.round(this.width * ratio); this.canvas.height = Math.round(this.height * ratio);
@@ -1469,7 +1475,10 @@ export class SeamworksEngine {
         this.message = drop.coins ? `Collected ${drop.coins} coins.` : `Collected ${drop.label ?? 'Cinder Ore'}.`;
       }
     }
-    this.drops = this.drops.filter(drop => drop.age >= 0 && drop.age < 120);
+    // In place: this runs every fixed step, and drops are few and rarely leave.
+    let kept = 0;
+    for (const drop of this.drops) if (drop.age >= 0 && drop.age < 120) this.drops[kept++] = drop;
+    this.drops.length = kept;
     for (const monster of this.monsters) {
       monster.flash = Math.max(0, monster.flash - dt);
       monster.recoil = Math.max(0, monster.recoil - dt * 3);
@@ -1569,33 +1578,35 @@ export class SeamworksEngine {
   private present(animation: string | undefined, x: number, y: number): string | undefined {
     return animation === 'idle' && this.isTown && x > 70 && x < 430 && y > 560 ? 'rest' : animation;
   }
+  /** The one KeeperFeel, refilled by keeperMotion. Each caller uses it before the next call. */
+  private readonly motionScratch = { bob: 0, tilt: 0, sx: 1, sy: 1, alpha: 1, sway: 0 };
+  private feel(bob: number, tilt: number, sx: number, sy: number, alpha: number, sway: number): { bob: number; tilt: number; sx: number; sy: number; alpha: number; sway: number } {
+    const m = this.motionScratch;
+    m.bob = bob; m.tilt = tilt; m.sx = sx; m.sy = sy; m.alpha = alpha; m.sway = sway;
+    return m;
+  }
+  /** Whole-figure motion for a Keeper (the painting fallback and the landing squash). Returns the shared scratch object. */
   private keeperMotion(animation: string | undefined, time: number): { bob: number; tilt: number; sx: number; sy: number; alpha: number; sway: number } {
-    if (this.reducedMotion) return { bob: 0, tilt: 0, sx: 1, sy: 1, alpha: animation === 'dodge' ? .5 : 1, sway: 0 };
+    if (this.reducedMotion) return this.feel(0, 0, 1, 1, animation === 'dodge' ? .5 : 1, 0);
     switch (animation) {
       case 'run': {
         const phase = time * 9;
         const lift = Math.sin(phase);
-        return {
-          bob: lift > 0 ? -lift * 10 : lift * 1.6,
-          tilt: Math.cos(phase) * .06,
-          sx: 1 + Math.max(0, -lift) * .07,
-          sy: 1 - Math.max(0, -lift) * .09,
-          alpha: 1,
-          sway: Math.cos(phase) * 5,
-        };
+        return this.feel(lift > 0 ? -lift * 10 : lift * 1.6, Math.cos(phase) * .06,
+          1 + Math.max(0, -lift) * .07, 1 - Math.max(0, -lift) * .09, 1, Math.cos(phase) * 5);
       }
-      case 'jump': return { bob: -4, tilt: -.1, sx: .94, sy: 1.08, alpha: 1, sway: 0 };
-      case 'fall': return { bob: 2, tilt: .08, sx: 1.06, sy: .92, alpha: 1, sway: 0 };
-      case 'attack': return { bob: 0, tilt: 0, sx: 1, sy: 1, alpha: 1, sway: 0 };
-      case 'dodge': return { bob: 2, tilt: .28, sx: 1.08, sy: .9, alpha: .5, sway: 6 };
-      case 'hurt': return { bob: 1, tilt: -.1, sx: 1.08, sy: .92, alpha: .55, sway: -3 };
+      case 'jump': return this.feel(-4, -.1, .94, 1.08, 1, 0);
+      case 'fall': return this.feel(2, .08, 1.06, .92, 1, 0);
+      case 'attack': return this.feel(0, 0, 1, 1, 1, 0);
+      case 'dodge': return this.feel(2, .28, 1.08, .9, .5, 6);
+      case 'hurt': return this.feel(1, -.1, 1.08, .92, .55, -3);
       case 'rest': {
         const rock = Math.sin(time * 1.1);
-        return { bob: rock * .6, tilt: rock * .015, sx: 1.02, sy: .985, alpha: 1, sway: rock * 1.1 };
+        return this.feel(rock * .6, rock * .015, 1.02, .985, 1, rock * 1.1);
       }
       default: {
         const breath = Math.sin(time * 2.2);
-        return { bob: 0, tilt: Math.sin(time * 1.3) * .012, sx: 1 + breath * .012, sy: 1 - breath * .018, alpha: 1, sway: 0 };
+        return this.feel(0, Math.sin(time * 1.3) * .012, 1 + breath * .012, 1 - breath * .018, 1, 0);
       }
     }
   }
@@ -1982,7 +1993,7 @@ export class SeamworksEngine {
       case 'quest':
         if (station.id === 'beacon') {
           c.fillStyle = '#423f51'; c.fillRect(x - 20, FLOOR - 160, 40, 160);
-          c.shadowColor = this.restored ? '#b8e6ec' : '#f29b68'; c.shadowBlur = 35;
+          c.shadowColor = this.restored ? '#b8e6ec' : '#f29b68'; c.shadowBlur = this.blur(35);
           c.fillStyle = this.restored ? '#d5fffa' : '#b96d55'; c.beginPath(); c.arc(x, FLOOR - 173, 20, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
         } else {
           c.fillStyle = '#493543'; c.fillRect(x - 46, FLOOR - 60, 92, 60);
@@ -2044,7 +2055,7 @@ export class SeamworksEngine {
     c.globalAlpha = 1;
     const iconY = FLOOR - (def.kind === 'wood' ? 228 : 104);
     if (ready) {
-      c.shadowColor = glow; c.shadowBlur = near ? 18 : 10;
+      c.shadowColor = glow; c.shadowBlur = this.blur(near ? 18 : 10);
       if (!this.art(def.yield.materialId, x - 15, iconY, 30, 30)) { c.fillStyle = glow; c.beginPath(); c.arc(x, iconY + 15, 8, 0, Math.PI * 2); c.fill(); }
       c.shadowBlur = 0;
     } else {
@@ -2084,7 +2095,7 @@ export class SeamworksEngine {
     c.fillStyle = '#a67858'; c.fillRect(x - half - 6, FLOOR - 62, half * 2 + 12, 8);
     c.fillStyle = '#f6a668'; c.fillRect(x - half, FLOOR - 62, half * 2, 1);
     // Plaque with the station's art.
-    c.shadowColor = '#ffb46a'; c.shadowBlur = hot ? 28 : 12;
+    c.shadowColor = '#ffb46a'; c.shadowBlur = this.blur(hot ? 28 : 12);
     c.fillStyle = '#1d1418'; c.beginPath(); c.arc(x, FLOOR - 108, 34, 0, Math.PI * 2); c.fill();
     c.shadowBlur = 0;
     c.strokeStyle = hot ? '#ffe0a8' : '#a68456'; c.lineWidth = hot ? 3 : 2; c.stroke();
@@ -2103,9 +2114,58 @@ export class SeamworksEngine {
     c.beginPath(); c.moveTo(x - 6, FLOOR - 40); c.lineTo(x + 6, FLOOR - 70); c.lineTo(x - 6, FLOOR - 100); c.lineTo(x + 6, FLOOR - 130); c.stroke();
     c.globalAlpha = 1;
     const pulse = this.reducedMotion ? .5 : .5 + Math.sin(time * 2) * .5;
-    c.shadowColor = '#c9a0ff'; c.shadowBlur = 18 + pulse * 18 + (hot ? 12 : 0);
+    c.shadowColor = '#c9a0ff'; c.shadowBlur = this.blur(18 + pulse * 18 + (hot ? 12 : 0));
     if (!this.art(station.art, x - 34, FLOOR - 252, 68, 68)) { c.fillStyle = '#c9a0ff'; c.beginPath(); c.arc(x, FLOOR - 214, 16, 0, Math.PI * 2); c.fill(); }
     c.restore();
+  }
+  /**
+   * Phones only (render-budget.ts `cacheBackdrop`): a town's or hunt's backdrop
+   * (the floor colour, the scene painting at 94% and the dusk shade) composed
+   * once into an offscreen canvas at the device's pixel scale, then laid down
+   * each frame as ONE unscaled blit at the parallax offset. Uncached that is a
+   * full-screen scaled image draw plus a full-screen gradient fill every frame,
+   * the two largest fills in a town. Exact, not approximate: the same three
+   * operations in the same order, only baked. The shade is vertical-only and a
+   * town's camera never moves vertically, which is what makes it bakeable; the
+   * Delve (vertical camera) keeps the live path. Rebuilt when the painting,
+   * the view width or the pixel scale changes. False when no canvas can be made.
+   */
+  private backdrop: { canvas: HTMLCanvasElement; image: HTMLImageElement; width: number; scale: number } | null = null;
+  private backdropFailed = false;
+  private drawCachedBackdrop(c: CanvasRenderingContext2D, bg: HTMLImageElement, viewport: number): boolean {
+    if (this.backdropFailed) return false;
+    const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
+    const ps = this.pixelScale;
+    let cache = this.backdrop;
+    if (!cache || cache.image !== bg || cache.width !== bgWidth || cache.scale !== ps) {
+      const canvas = cache?.canvas ?? (typeof document !== 'undefined' && typeof document.createElement === 'function' ? document.createElement('canvas') : null);
+      const b = canvas?.getContext('2d');
+      if (!canvas || !b) { this.backdropFailed = true; return false; }
+      canvas.width = Math.ceil(bgWidth * ps); canvas.height = Math.ceil(720 * ps);
+      b.setTransform(ps, 0, 0, ps, 0, 0);
+      b.fillStyle = '#11101a'; b.fillRect(0, 0, bgWidth, 720);
+      b.globalAlpha = .94; b.drawImage(bg, 0, 0, bgWidth, 720); b.globalAlpha = 1;
+      b.fillStyle = this.sceneShade(b); b.fillRect(0, 0, bgWidth, 720);
+      cache = this.backdrop = { canvas, image: bg, width: bgWidth, scale: ps };
+    }
+    const ox = -this.camera * .16;
+    c.drawImage(cache.canvas, ox, 0, bgWidth, 720);
+    // A very wide area can pan past the painting's right edge: that strip is floor and shade, as before.
+    if (ox + bgWidth < viewport) {
+      c.fillStyle = '#11101a'; c.fillRect(ox + bgWidth, 0, viewport - ox - bgWidth, 720);
+      c.fillStyle = this.sceneShade(c); c.fillRect(ox + bgWidth, 0, viewport - ox - bgWidth, 720);
+    }
+    return true;
+  }
+  /** The warm-to-dusk wash over every scene. Built once per context rather than every frame. */
+  private readonly shades = new WeakMap<CanvasRenderingContext2D, CanvasGradient>();
+  private sceneShade(c: CanvasRenderingContext2D): CanvasGradient {
+    let gradient = this.shades.get(c);
+    if (!gradient) {
+      gradient = c.createLinearGradient(0, 0, 0, 720); gradient.addColorStop(0, '#b97a4530'); gradient.addColorStop(1, '#30232b99');
+      this.shades.set(c, gradient);
+    }
+    return gradient;
   }
   private render(): void {
     const c = this.context; const scale = this.height / 720; const viewport = this.width / scale;
@@ -2118,14 +2178,16 @@ export class SeamworksEngine {
       this.cameraY += (target - this.cameraY) * (this.reducedMotion ? 1 : 1 - Math.exp(-7 * this.frameDt));
     } else this.cameraY = 0;
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
-    c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
     const bg = this.sceneImage();
-    if (bg?.complete && bg.naturalWidth) {
-      const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
-      c.globalAlpha = t ? .5 : .94; c.drawImage(bg, -this.camera * .16, -this.cameraY * .6, bgWidth, 720); c.globalAlpha = 1;
+    const cached = !t && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
+    if (!cached) {
+      c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
+      if (bg?.complete && bg.naturalWidth) {
+        const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
+        c.globalAlpha = t ? .5 : .94; c.drawImage(bg, -this.camera * .16, -this.cameraY * .6, bgWidth, 720); c.globalAlpha = 1;
+      }
+      c.fillStyle = this.sceneShade(c); c.fillRect(0, 0, viewport, 720);
     }
-    const shade = c.createLinearGradient(0, 0, 0, 720); shade.addColorStop(0, '#b97a4530'); shade.addColorStop(1, '#30232b99');
-    c.fillStyle = shade; c.fillRect(0, 0, viewport, 720);
     const jolt = this.shake > 0 ? this.shake : 0;
     c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), -this.cameraY + (jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0));
     const motionTime = this.reducedMotion ? 0 : this.elapsed;
@@ -2173,7 +2235,7 @@ export class SeamworksEngine {
       const fling = this.reducedMotion ? 0 : drop.spin * 24 * (1 - t);
       const y = drop.y - 18 - arc + (t < 1 ? 0 : Math.sin(motionTime * 5 + drop.x) * 4);
       c.save(); c.translate(-fling, 0);
-      c.shadowBlur = 14; c.shadowColor = drop.color;
+      c.shadowBlur = this.blur(14); c.shadowColor = drop.color;
       if (drop.coins) {
         c.fillStyle = '#ffd36d'; c.beginPath(); c.ellipse(drop.x, y, 3 + Math.abs(Math.cos(motionTime * 3)) * 7, 13, 0, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#9e602c'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('$', drop.x, y + 5);
@@ -2231,7 +2293,7 @@ export class SeamworksEngine {
       const swing = attackT === 0 ? 0 : attackT < .3 ? -attackT / .3 : Math.sin((attackT - .3) / .7 * Math.PI);
       c.scale(view.facing, 1); this.stepDust(c, shown, motionTime + view.x);
       c.globalAlpha = motion.alpha;
-      c.shadowColor = warm ? '#ffc27a' : '#deb8f3'; c.shadowBlur = warm ? 12 : 6; c.filter = 'none';
+      c.shadowColor = warm ? '#ffc27a' : '#deb8f3'; c.shadowBlur = this.blur(warm ? 12 : 6); c.filter = 'none';
       this.drawKeeper(c, { x: -70, y: -176, w: 140, h: 176 }, shown, motionTime + view.x, view.motion, view.x, view.y, view.facing,
         attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion, false, view.clock);
       c.restore();
@@ -2263,7 +2325,7 @@ export class SeamworksEngine {
     this.stepDust(c, shown, this.elapsed);
     if (this.hurtTime > 0) c.globalAlpha = .45 + Math.sin(this.elapsed * 35) * .2;
     else if (this.dodgeTime > 0) c.globalAlpha = motion.alpha;
-    c.shadowColor = shown === 'rest' ? '#ffc27a' : '#b8e6ec'; c.shadowBlur = shown === 'rest' ? 12 : 6;
+    c.shadowColor = shown === 'rest' ? '#ffc27a' : '#b8e6ec'; c.shadowBlur = this.blur(shown === 'rest' ? 12 : 6);
     c.filter = 'none';
     const strikeGlow = attackT > .3 ? Math.max(0, 1 - Math.abs(attackT - .45) / .2) : 0;
     this.drawKeeper(c, { x: -78, y: -196, w: 156, h: 196 }, shown, motionTime, this.playerMotion, this.player.x, this.player.y, this.facing,
@@ -2275,7 +2337,7 @@ export class SeamworksEngine {
     c.filter = 'none'; c.shadowBlur = 0; c.globalAlpha = 1;
     if (attackT > .3) {
       const u = (attackT - .3) / .7;
-      c.save(); c.shadowColor = '#ffe7c2'; c.shadowBlur = 12; c.lineCap = 'round';
+      c.save(); c.shadowColor = '#ffe7c2'; c.shadowBlur = this.blur(12); c.lineCap = 'round';
       c.globalAlpha = .35 * (1 - u); c.strokeStyle = '#ffb46a'; c.lineWidth = 14;
       c.beginPath(); c.arc(24, -82, 100, -1.05, -1.05 + Math.max(0, u - .12) * 2.15); c.stroke();
       c.globalAlpha = .92 * (1 - u * .35); c.strokeStyle = '#ffd7a1'; c.lineWidth = 6;
@@ -2336,7 +2398,11 @@ export class SeamworksEngine {
     // The biome under the middle of the view sets the dark, the wash, the air.
     const biome = t.biomeAt(t.rowAt(this.cameraY + 360));
     if (biome.wash.alpha > 0) {
-      c.save(); c.globalCompositeOperation = 'soft-light'; c.globalAlpha = biome.wash.alpha * 2.5;
+      // Desktop: a soft-light wash. Phone (render-budget.ts): a plain tint at the biome's own alpha, which
+      // costs a fill instead of a read-back of every pixel; the darkness laid over it next keeps the blacks.
+      c.save();
+      if (this.budget.blendModes) { c.globalCompositeOperation = 'soft-light'; c.globalAlpha = biome.wash.alpha * 2.5; }
+      else c.globalAlpha = biome.wash.alpha;
       c.fillStyle = biome.wash.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
       c.restore();
     }
@@ -2345,14 +2411,14 @@ export class SeamworksEngine {
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
     this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark);
     c.restore();
-    c.save(); c.globalCompositeOperation = 'lighter';
+    c.save(); c.globalCompositeOperation = this.budget.blendModes ? 'lighter' : 'source-over';
     // Coloured light from exposed glowing cells: glowcaps wash the Grotto blue, embers the Halls red.
     for (let n = 0; n < haloCount; n++) {
       const index = this.halosAt[n], col = index % t.cols, row = (index - col) / t.cols;
       const glow = TERRAIN_NODE_LIST[t.kind[index]].glow;
       if (!glow) continue;
       const pulse = this.reducedMotion ? 1 : .85 + .15 * Math.sin(time * 1.7 + index * .37);
-      this.halos.halo(c, (col + .5) * CELL, t.top + (row + .5) * CELL, glow.radius * 1.4, glow.color, .16 * pulse);
+      this.halos.halo(c, (col + .5) * CELL, t.top + (row + .5) * CELL, glow.radius * 1.4, glow.color, .16 * pulse, !this.budget.blendModes);
     }
     if (biome.shimmer) {
       // Heat rising: slow columns of warm air. Still under reduced motion.

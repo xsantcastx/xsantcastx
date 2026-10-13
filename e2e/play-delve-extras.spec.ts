@@ -264,7 +264,7 @@ test.describe('Delve extras: blasting charges, played', () => {
     await seed(page, { ...bag(CHARGE_BAG), ...purse(10_000), ...activity({ forge: xpForLevel(10) - 1 }) });
     const short = await benchWhy(page, 'Blasting', 'Blasting charge');
     expect(short.disabled).toBe(true);
-    // The bench words it as "crafting level"; the level it reads is Smithing (the card says "Needs Smithing 10").
+    // Since P-7 (7754feb) the refusal names the ladder it reads: "Reach Smithing 10 first".
     expect(short.why).toMatch(/Smithing 10/);
     await seed(page, { ...bag(CHARGE_BAG), ...purse(10_000), ...activity({ forge: xpForLevel(10) }) });
     expect((await benchWhy(page, 'Blasting', 'Blasting charge')).disabled).toBe(false);
