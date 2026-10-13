@@ -23,7 +23,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { canvas, focusWorld, openPlay, playerX, seed, walk, type Blobs } from './play-helpers';
 import { TOWNS } from '../src/app/play/world/world.model';
 import type { RealmTownId, StationDef, TownDef } from '../src/app/play/world/world.model';
-import { KEEPER_HALF, TOWN_KEEPERS } from '../src/app/play/world/life';
+import { KEEPER_HALF, TOWN_KEEPERS, TOWNSFOLK_LINE } from '../src/app/play/world/life';
 import { LIFE_I18N } from '../src/app/play/world/life.i18n';
 
 /** A drawn name tag: text, world x, plate left / right on the canvas (device px), canvas width. */
@@ -115,6 +115,15 @@ async function walkTown(page: Page, town: TownDef): Promise<Frame[]> {
   return frames(page);
 }
 
+/** "<material> is found in <one of this town's hunts>." in the given language. */
+function isTownsfolkLine(town: TownDef, text: string, lang: 'en' | 'es'): boolean {
+  const [before, after] = LIFE_I18N[TOWNSFOLK_LINE][lang].split('{{material}}');
+  const [middle, end] = after.split('{{place}}');
+  if (!text.startsWith(before) || !text.endsWith(end) || !text.includes(middle)) return false;
+  const place = text.slice(text.lastIndexOf(middle) + middle.length, text.length - end.length);
+  return town.hunts.some(hunt => hunt.name === place);
+}
+
 function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
   const tagX = new Map<string, number[]>();
   const lines = new Map<string, Set<string>>();
@@ -138,6 +147,8 @@ function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
     if (f.bubble.length) {
       const text = f.bubble.join(' ');
       const who = lineKeeper(text, lang);
+      // A townsperson's line: where a material of this town's hunts is found (life.ts townsfolkLines).
+      if (!who && isTownsfolkLine(town, text, lang)) continue;
       if (!who) unknown.add(text);
       else { if (!lines.has(who.keeper)) lines.set(who.keeper, new Set()); lines.get(who.keeper)!.add(who.key); }
     }

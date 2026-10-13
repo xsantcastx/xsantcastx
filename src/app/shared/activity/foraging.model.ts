@@ -31,8 +31,6 @@ export const STARLIGHT_HERB_ID = 'starlight-herb';
 export const SUNBLOOM_ID = 'sunbloom';
 export const NIGHTBLOOM_ID = 'nightbloom';
 export const THORNROOT_ID = 'thornroot';
-/** The rare find. A consumable in the art manifest, so repeat drops are sensible. */
-export const RIFT_KEY_ID = 'rift-key';
 
 /**
  * The level-1 baseline between gathers. Not what actually gates a gather —
@@ -41,10 +39,6 @@ export const RIFT_KEY_ID = 'rift-key';
  */
 export const FORAGING_RECOVERY_MS = 2500;
 export const FORAGING_XP_PER_ACTION = 2;
-/** 0.1% on any gather. */
-export const RIFT_KEY_CHANCE = 0.001;
-/** The 600th accepted Canopy gather guarantees the first key if none has landed. */
-export const RIFT_KEY_GUARANTEE_AT = 600;
 export const ROOTGLASS_CANOPY_HREF = '/world/realms/verdant/rootglass-canopy';
 
 export interface ForagingTier {

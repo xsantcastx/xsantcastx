@@ -41,6 +41,7 @@ import { CRAFTING_RECIPES, recipeCollectionId } from '../crafting/crafting.model
 import { ARTBIBLE_RARITY } from '../rpg/artbible-items';
 import { UNIQUE_ITEMS } from '../rpg/unique-items';
 import { RUNES, RUNEWORDS, RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
+import { ARTIFACTS } from '../economy/economy.model';
 import type { NarrativeRealmId } from '../narrative/five-realms.narrative';
 
 /** The localStorage key. Registered in `SYNCED_BLOBS` so it reaches the cloud. */
@@ -219,13 +220,13 @@ const RUNE_HINT: Readonly<Record<ItemRarity, string>> = {
   singular: 'the last rune in the game. Measured in years, not afternoons.',
 };
 
-/** Collection rarity for the five Market artifacts, by what they cost. */
-const ARTIFACT_RARITY: Readonly<Record<string, ItemRarity>> = {
-  'obsidian-heart': 'rare',
-  'mirrorblade-kael': 'epic',
-  'relic-third-dawn': 'epic',
-  'codex-solarii': 'legendary',
-  'fragment-first-sun': 'mythic',
+/** Collection rarity (by what they cost) and realm for the five Essence-shop artifacts. */
+const ARTIFACT_ROWS: Readonly<Record<string, { rarity: ItemRarity; style: string }>> = {
+  'obsidian-heart': { rarity: 'rare', style: 'infernal' },
+  'mirrorblade-kael': { rarity: 'epic', style: 'void' },
+  'relic-third-dawn': { rarity: 'epic', style: 'luminous' },
+  'codex-solarii': { rarity: 'legendary', style: 'celestial' },
+  'fragment-first-sun': { rarity: 'mythic', style: 'luminous' },
 };
 
 /** Collection rarity for the authored equipment, by its stature in the lore. */
@@ -347,20 +348,46 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'a survey on the side of the Orrery the sun never crosses' },
   { id: 'void-shard', rarity: 'epic', realm: 'umbral',
     hint: 'the deepest survey there is, and still mostly a rumour' },
+  // The Ember Delve (meaning audit #15: so their lore has a page). Hints name
+  // the place the Found-in line names.
+  { id: 'dirt-block', rarity: 'common', realm: 'infernal',
+    hint: 'any loose dirt in the Ember Delve' },
+  { id: 'basalt-block', rarity: 'common', realm: 'infernal',
+    hint: 'any basalt wall in the Ember Delve' },
+  { id: 'shadow-root-cutting', rarity: 'uncommon', realm: 'infernal',
+    hint: 'the Root Hollows, in the Ember Delve' },
+  { id: 'glowcap', rarity: 'uncommon', realm: 'infernal',
+    hint: 'the Glowcap Grotto, in the Ember Delve' },
+  { id: 'kaels-hammer', rarity: 'rare', realm: 'infernal',
+    hint: 'an old cache in the Basalt Caverns, in the Ember Delve' },
+  { id: 'godforge-fragment', rarity: 'legendary', realm: 'infernal',
+    hint: 'the Magma Halls, at the bottom of the Ember Delve, once' },
 ];
 
 /** Consumables, with the same treatment. */
 const CONSUMABLE_SEEDS: readonly MaterialSeed[] = [
   { id: 'ember-elixir', rarity: 'uncommon', realm: 'infernal',
     hint: 'brewed from what a hot seam leaves behind' },
-  { id: 'rift-key', rarity: 'rare', realm: 'verdant',
-    hint: 'about one forage in a thousand, in the Canopy' },
   { id: 'clarity-elixir', rarity: 'rare', realm: 'celestial',
     hint: 'about one survey in fifteen hundred, at the Orrery' },
 ];
 
 /** Lore for the ids that have no `ItemDefinition` of their own. */
 const SEED_LORE: Readonly<Record<string, string>> = {
+  // Ember Delve finds (meaning audit #15). No new canon: each line reuses text
+  // the game or the canon already has, quoted from the source named above it.
+  // Verrin's order, delve-missions.model.ts `delve-verrin-shadow`.
+  'shadow-root-cutting': 'Under the Godforge a tree grows downward, toward the crack. This is a piece of its shadow.',
+  // The Grotto inscription, delve-inscription-lore.ts `grotto-light-through-the-crack`.
+  'glowcap': 'The glowcaps do not make their light. They drink it from a crack in the ceiling that should open onto rock and opens onto something brighter.',
+  // Canon, eclipse-realms-lore-and-art-direction-canon.md: the Keeper is "a
+  // mortal attuned to runes and capable of safely carrying Godforge fragments".
+  'godforge-fragment': 'A piece of the Godforge. Only a Keeper, attuned to runes, can carry one safely.',
+  // Kael's order, delve-missions.model.ts `delve-kael-seam`.
+  'kaels-hammer': '"I closed those mines when the heat stopped coming from the rock. My hammer is still down there." Kael',
+  // Functional lines: what the two Delve blocks are for (PLACEABLES).
+  'dirt-block': 'Loose dirt dug out of the Delve. Set it back down to fill a gap or build a step.',
+  'basalt-block': 'Basalt cut from the Delve walls. Set it down to build a wall or a step.',
   'slag-fragment': 'The part of the strike that was never going to be anything. Kept, because the Seamworks weighs what it throws away.',
   'infernal-heartstone': 'It is warm on one face and cold on the other, and the warm face is always the one turned away from you.',
   'starlight-herb': 'It grows toward a light that has not been overhead for four thousand years, and it has not been told.',
@@ -372,8 +399,6 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'verdant-sap': 'Still moving. The Orrery is a machine and this is the part of it that is alive, and nobody at the Orrery will discuss that.',
   'umbral-ink': 'Drawn from the meridian the sun does not cross. It writes perfectly well and it will not photograph.',
   'void-shard': 'Not a piece of the Void — the Void does not have pieces. A place where something was carved and the cut is still open.',
-  'rift-key': 'It fits a door that has not been built, in a wall that has not been raised, in a realm nobody has named.',
-  'clarity-elixir': 'Two mouthfuls. The first shows you what you were looking at. The second shows you what you were looking for.',
   'keeper-signet': 'A Keeper is issued one signet in a life. This is the second, and the Archivum has no record of who authorised it.',
   'sealed-codex-page': 'A page the Archivum sealed rather than burned, which is the Archivum admitting it might be wrong.',
 };
@@ -412,20 +437,22 @@ function buildCatalogue(): CollectionEntry[] {
     });
   }
 
+  // One meaning per name: an artifact is its Essence-shop flag, not an item.
+  for (const artifact of ARTIFACTS) {
+    const row = ARTIFACT_ROWS[artifact.id];
+    rows.push({
+      id: artifact.id,
+      category: 'artifact',
+      name: artifact.name,
+      rarity: row?.rarity ?? 'legendary',
+      realm: row ? realmForStyle(row.style) : undefined,
+      lore: artifact.lore,
+      hint: 'the Market will sell you one, for a number with a lot of zeroes on it',
+      obtainable: true,
+    });
+  }
+
   for (const def of ITEM_DEFINITIONS) {
-    if (def.family === 'artifact') {
-      rows.push({
-        id: def.id,
-        category: 'artifact',
-        name: def.name,
-        rarity: ARTIFACT_RARITY[def.id] ?? 'legendary',
-        realm: realmForStyle(def.style),
-        lore: def.lore,
-        hint: 'the Market will sell you one, for a number with a lot of zeroes on it',
-        obtainable: true,
-      });
-      continue;
-    }
     if (def.family === 'equipment' || def.family === 'charm') {
       const isReward = REWARD_IDS.has(def.id);
       rows.push({
@@ -540,9 +567,14 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'slag-fragment': 'Slag Fragment',
   'ember-residue': 'Ember Residue',
   'infernal-heartstone': 'Infernal Heartstone',
-  'rift-key': 'Rift Key',
   'clarity-elixir': 'Clarity Elixir',
   'ember-elixir': 'Ember Elixir',
+  'dirt-block': 'Dirt block',
+  'basalt-block': 'Basalt block',
+  'shadow-root-cutting': 'Shadow-Root Cutting',
+  'glowcap': 'Glowcap',
+  'kaels-hammer': "Kael's Hammer",
+  'godforge-fragment': 'Godforge Fragment',
 };
 
 function loreFor(id: string): string {

@@ -22,15 +22,15 @@ import {
 } from './rune-cards';
 
 /**
- * The three the painter did not get to. Named here rather than counted so that
- * painting one later is a one-line change with a failing test to prompt it, and
- * so that a *new* unpainted rune cannot hide inside a tolerance.
+ * Runes the painter did not get to. Named here rather than counted so that a
+ * *new* unpainted rune cannot hide inside a tolerance. Empty since the three
+ * unpainted ones (Mote, Seam, Ledger) left the ledger: every canon rune is painted.
  */
-const UNPAINTED_RUNES = ['mote', 'seam', 'ledger'];
+const UNPAINTED_RUNES: string[] = [];
 
 describe('rune-cards', () => {
   describe('runes', () => {
-    it('has a card for every rune except the three that were never painted', () => {
+    it('has a card for every rune', () => {
       const missing = RUNES.filter(r => !runeCard(r.id)).map(r => r.id);
       expect(missing.sort()).toEqual([...UNPAINTED_RUNES].sort());
     });
@@ -41,9 +41,9 @@ describe('rune-cards', () => {
       expect(orphans).toEqual([]);
     });
 
-    it('covers 22 of the 25 runes', () => {
+    it('covers all 22 runes', () => {
       expect(Object.keys(RUNE_CARDS).length).toBe(22);
-      expect(RUNES.length).toBe(25);
+      expect(RUNES.length).toBe(22);
     });
   });
 

@@ -173,7 +173,7 @@ export class MeridianOrreryComponent implements OnInit, OnDestroy {
 
   private refreshHeld(): void {
     this.mineralHeld = this.inventory.stackOf(this.selectedMineralId);
-    this.elixirHeld = this.inventory.stackOf(CLARITY_ELIXIR_ID);
+    this.elixirHeld = this.inventory.snapshot.items.filter(item => item.definitionId === CLARITY_ELIXIR_ID).length;
   }
 
   ngOnDestroy(): void {
