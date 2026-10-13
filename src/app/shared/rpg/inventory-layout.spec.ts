@@ -9,6 +9,7 @@ import {
   isLegacySigil,
   layoutOf,
   ledgerCapacity,
+  occupancyOf,
   routeFor,
   settle,
   slotClassOf,
@@ -181,11 +182,13 @@ describe('inventory-layout: layoutOf', () => {
 
 describe('inventory-layout: routeFor + settle', () => {
   it('routes to Gear, then General with room, then Overflow', () => {
-    const counts = { 'general-1': 0, 'general-2': 0, 'general-3': 0, 'general-4': 0, materials: 0, supplies: 0, gear: 0, overflow: 0 };
-    expect(routeFor(counts, BASE)).toBe('general-1');
-    expect(routeFor(counts, all())).toBe('gear');
-    expect(routeFor({ ...counts, gear: 120 }, all())).toBe('general-1');
-    expect(routeFor({ ...counts, 'general-1': 60 }, BASE)).toBe('overflow');
+    const fill = (tab: VaultTabId, n: number) =>
+      Array.from({ length: n }, (_, i) => instance(`${tab}-${i}`, 1, { location: { kind: 'explorer', explorerId: vaultHolder(tab) } }));
+    const empty = occupancyOf(ledger([]));
+    expect(routeFor(empty, BASE)).toBe('general-1');
+    expect(routeFor(empty, all())).toBe('gear');
+    expect(routeFor(occupancyOf(ledger(fill('gear', 120))), all())).toBe('general-1');
+    expect(routeFor(occupancyOf(ledger(fill('general-1', 60))), BASE)).toBe('overflow');
   });
 
   it('moves the most recently written bag instances over the cap, writes only location, and is idempotent', () => {
@@ -268,7 +271,7 @@ describe('inventory-layout: property — merge both orders, then settle, conserv
       // Settling then merging (each device settles its own copy) still conserves.
       const merged = mergeInventoryLedgers(settle(a, cap, 'a', 1e6).ledger, settle(b, cap, 'b', 1e6).ledger);
       expect(census(merged)).toEqual(census(ab));
-      expect(layoutOf(sa, cap).bagInstances).toBeLessThanOrEqual(cap.satchel);
+      expect(layoutOf(sa, cap).bagSlots).toBeLessThanOrEqual(cap.satchel);
     }
   });
 });
