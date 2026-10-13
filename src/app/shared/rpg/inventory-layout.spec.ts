@@ -117,6 +117,14 @@ describe('inventory-layout: classes', () => {
     expect(mergeInventoryLedgers(out, l).records.some(r => r.id === 's1')).toBeFalse();
   });
 
+  it('deletes Sigils of retired runes too (Mote, Seam, Ledger left the rune table after minting)', () => {
+    const retired = ['Mote Sigil', 'Seam Sigil', 'Ledger Sigil'].map((name, i) =>
+      instance(`r${i}`, 1, { type: 'rune', name, stats: {}, rollQuality: undefined }));
+    const out = dropLegacySigils(ledger([...retired, instance('charm')]), 'tab', 5000);
+    expect(out.records.map(r => r.id)).toEqual(['charm']);
+    expect(isLegacySigil(instance('n', 1, { type: 'rune', name: 'Sigil of Dawn', stats: {}, rollQuality: undefined }))).toBeFalse();
+  });
+
   it('names a Vault tab by owner id, and an unknown tab reads as Overflow', () => {
     expect(vaultTabOf({ kind: 'explorer', explorerId: vaultHolder('gear') })).toBe('gear');
     expect(vaultTabOf({ kind: 'explorer', explorerId: 'vault:attic' })).toBe('overflow');
