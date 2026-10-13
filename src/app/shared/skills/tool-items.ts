@@ -46,11 +46,28 @@ export function toolName(family: ToolFamily, tier: ToolTier): string {
   return `${FAMILY_NAME[family]} ${TOOL_NUMERALS[tier]}`;
 }
 
-/** The family and tier a definition id names, or null if it is not a tool. */
-export function parseToolId(id: string | undefined | null): { family: ToolFamily; tier: ToolTier } | null {
+/**
+ * The starter tools every Keeper is handed (owner rule, 2026-10-13: "everything
+ * needs a meaning" — no invisible floor). Each works as tier I and swings at the
+ * slowest speed, so the first forged tool is a felt upgrade. One fixed instance
+ * id per family: granting again can never make a second copy.
+ */
+export type StarterFamily = Exclude<ToolFamily, 'staff'>;
+export const STARTER_FAMILIES: readonly StarterFamily[] = ['pickaxe', 'axe', 'sickle'];
+export function starterToolId(family: StarterFamily): string { return `starter-${family}`; }
+export function starterInstanceId(family: StarterFamily): string { return `starter-${family}:v1`; }
+const STARTER_NAME: Readonly<Record<StarterFamily, string>> = { pickaxe: 'Worn Pickaxe', axe: 'Worn Axe', sickle: 'Worn Sickle' };
+
+/**
+ * The family and tier a definition id names, or null if it is not a tool.
+ * A starter tool is tier I with `starter: true`.
+ */
+export function parseToolId(id: string | undefined | null): { family: ToolFamily; tier: ToolTier; starter?: true } | null {
   if (!id) return null;
   const m = /^(pickaxe|axe|sickle|staff)-([1-4])$/.exec(id);
-  return m ? { family: m[1] as ToolFamily, tier: Number(m[2]) as ToolTier } : null;
+  if (m) return { family: m[1] as ToolFamily, tier: Number(m[2]) as ToolTier };
+  const s = /^starter-(pickaxe|axe|sickle)$/.exec(id);
+  return s ? { family: s[1] as ToolFamily, tier: 1, starter: true } : null;
 }
 
 export const TOOL_DEFINITIONS: readonly ItemDefinition[] = TOOL_FAMILIES.flatMap(family =>
@@ -70,3 +87,21 @@ export const TOOL_DEFINITIONS: readonly ItemDefinition[] = TOOL_FAMILIES.flatMap
     soulbound: true,
   })),
 );
+
+/** The three starter tools: tier I, soulbound, no rolls, worth nothing. */
+export const STARTER_TOOL_DEFINITIONS: readonly ItemDefinition[] = STARTER_FAMILIES.map((family): ItemDefinition => ({
+  id: starterToolId(family),
+  name: STARTER_NAME[family],
+  family: 'equipment',
+  type: 'artifact',
+  slot: 'off-hand',
+  style: FAMILY_STYLE[family],
+  rollKeys: [],
+  base: {},
+  temperable: false,
+  maxTemper: 0,
+  temperGoldBase: 0,
+  lore: 'Every Keeper starts with one. It does the job, slowly. Forge a real one at the Crafting Bench to swing faster.',
+  soulbound: true,
+}));
+

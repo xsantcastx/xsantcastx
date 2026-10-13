@@ -98,6 +98,9 @@ import { AnvilGameComponent } from '../minigames/anvil-game.component';
 import { anvilRng } from '../minigames/anvil.model';
 import { MINIGAMES_I18N } from '../minigames/minigames.i18n';
 import { SkillActionService, craftSkillXp } from '../skills/skill-actions.service';
+import { toolCard, toolCardLines } from '../skills/tools';
+import { TOOLS_I18N } from '../skills/tools.i18n';
+import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
 import { floorThing, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 /** One ingredient, as the anvil renders it. */
 export interface SlotView {
@@ -160,6 +163,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   private readonly celebration = inject(CelebrationService);
   private readonly skills = inject(SkillActionService);
   private readonly i18n = inject(TranslationService);
+  private readonly activity = inject(ActivityProgressionGateway);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly host: ElementRef<HTMLElement> = inject(ElementRef);
 
@@ -261,6 +265,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(CRAFTING_I18N);
+    this.i18n.register(TOOLS_I18N);
     this.i18n.register(MINIGAMES_I18N);
     this.forgeTabs = forgeTabs(key => this.t(key));
     this.tools = [{ kind: 'item', id: 'iron-hammer', label: this.t('crafting.tool.anvil'), need: 0, have: 0, art: artFor('iron-hammer') }];
@@ -341,6 +346,12 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
 
   get canCraft(): boolean {
     return this.isBrowser && this.hydrated && !this.striking && !this.blocker;
+  }
+
+  /** A tool recipe's card: power, pace, what it opens, the skill cap, and that it works from the satchel. */
+  toolLines(recipe: { output: { itemId: string } }): string[] {
+    const card = toolCard(recipe.output.itemId, this.activity.snapshot.progress);
+    return card ? [...toolCardLines(card, (key, vars) => this.t(key, vars)), this.t('toolStat.fromSatchel')] : [];
   }
 
   /** The stat line the output can reach at this tier, for the preview. */

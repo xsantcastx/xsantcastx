@@ -46,7 +46,6 @@ import { RosterExplorer } from '../rpg/explorer-roster.model';
 import {
   GameItem,
   mintCharm,
-  mintRuneItem,
   rollCharmSeed,
 } from '../rpg/item.model';
 
@@ -74,7 +73,7 @@ export const BRIDGE_ESSENCE_PER_STRIKE = 1;
  * a Small Charm of Fortune within their first evening.
  */
 /**
- * Chance a rune find mints a charm instead of a rune sigil.
+ * Chance a rune find also mints a charm.
  *
  * Tripled from 0.0008 when the charm table went from one family to three. The
  * table's weights are identical across Magic Find, Gold and XP, so a drop is an
@@ -379,27 +378,22 @@ export class RuneForgeService {
   }
 
   /**
-   * Mint the equippable that comes with a rune find.
+   * The equippable a rune find can turn up: a charm, `CHARM_DROP_CHANCE` of the
+   * time, or nothing. The rune itself is the find, and it lands in this
+   * service's ledger — that is what the reveal, the library, Runewords and
+   * sockets all read.
    *
-   * Two rolls, in order:
+   * There used to be a third outcome: every other find minted an empty-stat
+   * "<Rune> Sigil" item. It had no use but the till, buried the satchel (a
+   * ×1000 strike is a thousand of them) and drove the 250-row eviction that
+   * deleted real gear, so it is gone (inventory spec, Shipped §S2).
    *
-   *   • `CHARM_DROP_CHANCE` of the find being a charm instead of a rune sigil.
-   *     Charms are the only source of large flat Magic Find and the only thing
-   *     the three charm wells accept, so they cannot be gated behind the rune
-   *     tier — a player who never sees a Rare would never see a charm either,
-   *     and Luck would have no equipment to pair with. Which of the three
-   *     families it lands in is `rollCharmSeed`'s business, not this one's.
-   *   • Otherwise a sigil at the rune's own tier, with rolled stats.
-   *
-   * Returns null when the bag refused it, which the caller renders as a rune
-   * find with no item rather than as an error. The rune itself has already
+   * Null when no charm dropped, or the save refused it. The rune has already
    * landed in the ledger by this point and is not at risk.
    */
-  private mintFor(rune: Rune, random: () => number): GameItem | null {
-    const item = random() < CHARM_DROP_CHANCE
-      ? mintCharm(rollCharmSeed(random), undefined, random)
-      : mintRuneItem(rune.id, rune.name, rune.tier, rune.lore, random);
-    return this.inventory.add(item);
+  private mintFor(_rune: Rune, random: () => number): GameItem | null {
+    if (random() >= CHARM_DROP_CHANCE) return null;
+    return this.inventory.add(mintCharm(rollCharmSeed(random), undefined, random));
   }
 
   // ───────────────────────────────────────────────────────────────────────────

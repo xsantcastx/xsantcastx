@@ -16,6 +16,7 @@ import {
 import {
   INVENTORY_BAG_CAP,
   INVENTORY_STACK_OPS_MAX,
+  INVENTORY_TOMBSTONE_MAX,
   INVENTORY_TOMBSTONE_RETAIN_MS,
   type InventoryLedger,
   type InventoryRevision,
@@ -242,49 +243,36 @@ describe('inventory adapter (C3)', () => {
       now,
     );
     expect(expired.find(row => row.id === 'old')).toBeUndefined();
-    const many = Array.from({ length: 300 }, (_, i) => ({
+    const many = Array.from({ length: INVENTORY_TOMBSTONE_MAX + 44 }, (_, i) => ({
       id: `t${i}`,
       revision: revision(i),
       deletedAt: now - 1,
     }));
-    expect(pruneTombstones(many, now).length).toBe(256);
+    expect(INVENTORY_TOMBSTONE_MAX).toBe(512);
+    expect(pruneTombstones(many, now).length).toBe(INVENTORY_TOMBSTONE_MAX);
   });
 
-  it('does not evict worn, explorer, soulbound, zero-value, or stack records', () => {
-    const worn = instance('worn', { location: { kind: 'equipped', slotId: 'head' }, sellValue: 1 });
-    const carried = instance('carried', { location: { kind: 'explorer', explorerId: 'e1' }, sellValue: 1 });
-    const bound = instance('bound', { soulbound: true, sellValue: 99 });
-    const worthless = instance('worthless', { sellValue: 0 });
-    const filler = Array.from({ length: INVENTORY_BAG_CAP }, (_, i) =>
-      instance(`f${i}`, { sellValue: 50 + i, acquiredAt: `2026-01-01T00:00:00.00${String(i).padStart(1, '0')}Z` }));
-    const merged = mergeInventoryLedgers(
-      ledger({ records: [worn, carried, bound, worthless] }),
-      ledger({ records: filler }),
-    );
-    const ids = new Set(merged.records.map(row => row.id));
-    expect(ids.has('worn')).toBe(true);
-    expect(ids.has('carried')).toBe(true);
-    expect(ids.has('bound')).toBe(true);
-    expect(ids.has('worthless')).toBe(true);
-    expect(merged.records.length).toBeGreaterThanOrEqual(INVENTORY_BAG_CAP);
+  it('a merge of two over-cap devices keeps every record and writes no tombstone (2 x 250 = 500)', () => {
+    const phone = Array.from({ length: INVENTORY_BAG_CAP }, (_, i) =>
+      instance(`p${i}`, { sellValue: 1, revision: revision(1 + i, 'phone') }));
+    const tablet = Array.from({ length: INVENTORY_BAG_CAP }, (_, i) =>
+      instance(`t${i}`, { sellValue: 80, revision: revision(1 + i, 'tablet') }));
+    for (const merged of [
+      mergeInventoryLedgers(ledger({ records: phone }), ledger({ records: tablet })),
+      mergeInventoryLedgers(ledger({ records: tablet }), ledger({ records: phone })),
+    ]) {
+      expect(merged.records.length).toBe(500);
+      expect(merged.tombstones.length).toBe(0);
+    }
   });
 
-  it('eviction tombstones block a stale pre-eviction copy', () => {
-    const cheap = Array.from({ length: 180 }, (_, i) =>
-      instance(`c${i}`, { sellValue: 1, acquiredAt: '2026-01-01T00:00:00.000Z', revision: revision(1, 'phone') }));
-    const pricey = Array.from({ length: 180 }, (_, i) =>
-      instance(`p${i}`, { sellValue: 80, acquiredAt: '2026-02-01T00:00:00.000Z', revision: revision(1, 'tablet') }));
-    const merged = mergeInventoryLedgers(
-      ledger({ records: cheap }),
-      ledger({ records: pricey }),
-    );
-    expect(merged.records.length).toBe(INVENTORY_BAG_CAP);
-    const evicted = cheap.find(row => !merged.records.some(kept => kept.id === row.id));
-    expect(evicted).toBeTruthy();
-    const stale = ledger({ records: [evicted!], hlc: 1 });
-    const again = mergeInventoryLedgers(merged, stale);
-    expect(again.records.find(row => row.id === evicted!.id)).toBeUndefined();
-    expect(again.tombstones.find(row => row.id === evicted!.id)).toBeTruthy();
+  it('never merges two instances, even identical-looking frozen-grade ones', () => {
+    const a = instance('a', { stats: { goldPerSec: 1 }, rollQuality: { goldPerSec: 0.4 } });
+    const b = instance('b', { stats: { goldPerSec: 1 }, rollQuality: { goldPerSec: 0.4 } });
+    const merged = mergeInventoryLedgers(ledger({ records: [a] }), ledger({ records: [b] }));
+    expect(merged.records.map(row => row.id).sort()).toEqual(['a', 'b']);
+    const kept = merged.records.find(row => row.id === 'a') as OwnedItemInstance;
+    expect(kept.rollQuality).toEqual({ goldPerSec: 0.4 });
   });
 
   it('same-slot merge keeps the higher revision and is commutative', () => {
