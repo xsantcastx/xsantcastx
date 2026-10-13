@@ -194,17 +194,19 @@ export function purse(gold: number): Blobs {
   return { 'godforge-economy': { version: 3, gold, totalGoldEarned: gold, runGoldEarned: gold } };
 }
 
-/** Stack quantity in the inventory ledger blob: checkpoints plus the op log above them. */
+/** Stack quantity in the inventory ledger blob: every device's fold plus the live ops past it. */
 export async function stackQty(page: Page, stackKey: string): Promise<number> {
   return page.evaluate(key => {
+    type Fold = { deviceId: string; upToHlc: number; net: Record<string, number> };
     const ledger = JSON.parse(localStorage.getItem('godforge-inventory') || '{}');
-    const cp = (ledger.stackCheckpoints || []).find((c: { stackKey: string }) => c.stackKey === key);
-    let qty = cp ? cp.quantity : 0;
-    const floor = cp ? cp.upToHlc : -Infinity;
+    const folds: Fold[] = ledger.stackFolds || [];
+    let qty = folds.reduce((sum, fold) => sum + (fold.net[key] ?? 0), 0);
     for (const op of ledger.stackOps || []) {
-      if (op.stackKey !== key || op.hlc <= floor) continue;
+      if (op.stackKey !== key) continue;
+      const own = folds.find(fold => fold.deviceId === op.deviceId);
+      if (own && op.hlc <= own.upToHlc) continue;
       qty += op.kind === 'grant' ? op.quantity : -op.quantity;
     }
-    return qty;
+    return Math.max(0, qty);
   }, stackKey);
 }

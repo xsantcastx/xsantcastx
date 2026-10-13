@@ -45,7 +45,7 @@ import { Subscription } from 'rxjs';
 
 import { ArtSceneComponent } from '../art-scene/art-scene.component';
 import { EconomyService } from '../economy/economy.service';
-import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
+import { InventoryService } from '../rpg/inventory.service';
 import { PriceChartComponent } from './price-chart.component';
 import {
   ExchangeService,
@@ -158,7 +158,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   hydrated = false;
   gold = 0;
   bagUsed = 0;
-  readonly bagCap = MAX_INVENTORY;
+  /** Satchel slots (40 + bought rows): the strip reads used / cap. */
+  bagCap = 40;
 
   listings: MarketListing[] = [];
   /** Everything matching the filters. */
@@ -247,6 +248,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
     }));
     this.subs.add(this.inventory.snapshot$.subscribe(s => {
       this.bagUsed = s.usedRows;
+      this.bagCap = s.satchelCap;
       // Holdings changed: the Sell list and the have/need counts follow.
       this.applyFilters();
       this.cdr.markForCheck();
@@ -382,7 +384,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
       const unit = this.exchange.previewBuy(sel.good, 1, this.now).unitPrice;
       this.unitCosts = [{ kind: 'gold', label: 'Gold', need: unit, have: this.gold }];
       let max = Math.min(999, Math.floor(this.gold / Math.max(1, unit)));
-      if (sel.good.kind === 'equipment') max = Math.min(max, Math.max(0, this.bagCap - this.bagUsed));
+      // A full satchel routes bought gear to the Vault; only the record budget caps a buy.
+      if (sel.good.kind === 'equipment') max = Math.min(max, this.inventory.instanceRoom());
       this.maxCount = max >= 2 ? max : 0;
     } else {
       const goods: StationCost = {
@@ -562,22 +565,22 @@ export class ExchangeComponent implements OnInit, OnDestroy {
       return this.bagBlocker();
     }
 
-    if (this.holdings(this.selected.good) < quote.quantity) return 'You do not hold that many.';
+    if (this.holdings(this.selected.good) < quote.quantity) {
+      // Gear resting in the Vault is not for sale until it is carried again.
+      const stored = this.exchange.storedInVault(this.selected.good);
+      return stored ? `${stored} more in your Vault. Take it out of the Vault to sell it.` : 'You do not hold that many.';
+    }
     return null;
   }
 
-  /** The one refusal that is not a price: a buy with no room in the bag. */
+  /**
+   * The one refusal that is not a price. A full satchel is not one — a bought
+   * piece goes to the Vault — only the save's record budget is (inventory spec §2.8).
+   */
   private bagBlocker(): string | null {
-    if (!this.selected || this.side !== 'buy') return null;
-    const need = this.selected.good.kind === 'equipment' ? this.quantity : 1;
-    if (this.bagCap - this.bagUsed < need && !this.toppingUpAStack()) return 'No room in the bag.';
+    if (!this.selected || this.side !== 'buy' || this.selected.good.kind !== 'equipment') return null;
+    if (this.inventory.instanceRoom() < this.quantity) return 'Your Overflow is very full. Sell or take things out first.';
     return null;
-  }
-
-  /** True when a material purchase lands on a stack that already has a row. */
-  private toppingUpAStack(): boolean {
-    const good = this.selected?.good;
-    return !!good && good.kind === 'material' && this.holdings(good) > 0;
   }
 
   // ───────────────────────────────────────────────────────────────────────────

@@ -338,8 +338,10 @@ describe('inventory adapter (C3)', () => {
     expect((ba.records[0] as OwnedItemInstance).location).toEqual({ kind: 'bag' });
   });
 
-  it('caps stack ops so the blob cannot grow without bound', () => {
-    const ops = Array.from({ length: INVENTORY_STACK_OPS_MAX + 40 }, (_, i) => ({
+  // Folding moved from the merge to the writing device (per-device folds):
+  // a merge never drops an op, whatever the log length.
+  it('a merge keeps every op and folds nothing', () => {
+    const ops = Array.from({ length: INVENTORY_STACK_OPS_MAX * 3 }, (_, i) => ({
       id: `grant:${i}`,
       stackKey: 'cinder-ore',
       kind: 'grant' as const,
@@ -348,53 +350,13 @@ describe('inventory adapter (C3)', () => {
       deviceId: 'phone',
       sequence: i + 1,
     }));
-    const merged = mergeInventoryLedgers(ledger({ stackOps: ops.slice(0, 200) }), ledger({ stackOps: ops.slice(100) }));
-    expect(merged.stackOps.length).toBe(INVENTORY_STACK_OPS_MAX);
-    expect(merged.stackOps[0].id).toBe(`grant:${ops.length - INVENTORY_STACK_OPS_MAX}`);
+    const merged = mergeInventoryLedgers(ledger({ stackOps: ops.slice(0, 100) }), ledger({ stackOps: ops.slice(50) }));
+    expect(merged.stackOps.length).toBe(ops.length);
+    expect(merged.stackFolds).toBeUndefined();
+    expect(stackQuantity(merged.stackOps, 'cinder-ore', merged.stackFolds)).toBe(ops.length);
   });
 
-  // The cap used to *subtract* the overflow from the player's total, because
-  // stack quantities are derived by summing the log. Mined ore vanished.
-  it('folds overflow into a checkpoint instead of dropping the quantity', () => {
-    const total = INVENTORY_STACK_OPS_MAX + 40;
-    const ops = Array.from({ length: total }, (_, i) => ({
-      id: `grant:${i}`,
-      stackKey: 'cinder-ore',
-      kind: 'grant' as const,
-      quantity: 1,
-      hlc: i + 1,
-      deviceId: 'phone',
-      sequence: i + 1,
-    }));
-    const merged = mergeInventoryLedgers(ledger({ stackOps: ops }), ledger({ stackOps: [] }));
-
-    expect(merged.stackOps.length).toBe(INVENTORY_STACK_OPS_MAX);
-    expect(stackQuantity(merged.stackOps, 'cinder-ore', merged.stackCheckpoints)).toBe(total);
-    const checkpoint = merged.stackCheckpoints?.find(cp => cp.stackKey === 'cinder-ore');
-    expect(checkpoint?.quantity).toBe(40);
-  });
-
-  it('keeps the quantity stable across repeated merges past the cap', () => {
-    const total = INVENTORY_STACK_OPS_MAX + 40;
-    const ops = Array.from({ length: total }, (_, i) => ({
-      id: `grant:${i}`,
-      stackKey: 'cinder-ore',
-      kind: 'grant' as const,
-      quantity: 1,
-      hlc: i + 1,
-      deviceId: 'phone',
-      sequence: i + 1,
-    }));
-    const once = mergeInventoryLedgers(ledger({ stackOps: ops }), ledger({ stackOps: [] }));
-    const twice = mergeInventoryLedgers(once, once);
-    const thrice = mergeInventoryLedgers(twice, ledger({ stackOps: ops }));
-
-    for (const round of [once, twice, thrice]) {
-      expect(stackQuantity(round.stackOps, 'cinder-ore', round.stackCheckpoints)).toBe(total);
-    }
-  });
-
-  it('does not double-count an op already folded into a checkpoint', () => {
+  it('does not double-count an op its own device already folded', () => {
     const covered = {
       id: 'grant:old',
       stackKey: 'cinder-ore',
@@ -404,12 +366,15 @@ describe('inventory adapter (C3)', () => {
       deviceId: 'phone',
       sequence: 1,
     };
-    const checkpoints = [{ stackKey: 'cinder-ore', quantity: 7, upToHlc: 5 }];
-    expect(stackQuantity([covered], 'cinder-ore', checkpoints)).toBe(7);
+    const folds = [{ deviceId: 'phone', upToHlc: 5, net: { 'cinder-ore': 7 }, ids: [] }];
+    expect(stackQuantity([covered], 'cinder-ore', folds)).toBe(7);
   });
 
-  it('counts consumes that arrive after the checkpoint watermark', () => {
-    const checkpoints = [{ stackKey: 'cinder-ore', quantity: 10, upToHlc: 5 }];
+  it('counts consumes past the fold, and a fold may be negative', () => {
+    const folds = [
+      { deviceId: 'phone', upToHlc: 5, net: { 'cinder-ore': 10 }, ids: [] },
+      { deviceId: 'tablet', upToHlc: 3, net: { 'cinder-ore': -2 }, ids: [] },
+    ];
     const spend = {
       id: 'consume:1',
       stackKey: 'cinder-ore',
@@ -419,7 +384,7 @@ describe('inventory adapter (C3)', () => {
       deviceId: 'phone',
       sequence: 1,
     };
-    expect(stackQuantity([spend], 'cinder-ore', checkpoints)).toBe(6);
+    expect(stackQuantity([spend], 'cinder-ore', folds)).toBe(4);
   });
 
   it('repeated delivery of the same two ledgers does not duplicate items', () => {

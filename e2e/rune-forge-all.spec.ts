@@ -14,19 +14,15 @@
  * that used to be wrong is not sensitive to the size of the number.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { ERA, purse, seed } from './play-helpers';
+import { STRIKE_COST } from '../src/app/shared/rune-forge/rune.model';
 
 const ECONOMY_KEY = 'godforge-economy';
-const STRIKE_COST = 10_000;
 
 async function openForge(page: Page, strikes: number): Promise<void> {
-  await page.addInitScript(
-    ({ key, gold }) => {
-      window.localStorage.setItem('xsantcastx_consent', 'denied');
-      window.sessionStorage.setItem('visit-counted', '1');
-      window.localStorage.setItem(key, JSON.stringify({ version: 2, gold }));
-    },
-    { key: ECONOMY_KEY, gold: STRIKE_COST * strikes },
-  );
+  // The current (v3) economy format: a v2 purse is converted on load and no
+  // longer holds the Gold it was seeded with.
+  await seed(page, { 'godforge-realm-era': String(ERA), ...purse(STRIKE_COST * strikes) });
   await page.goto('/forge/runes', { waitUntil: 'load' });
   await page.waitForFunction(() => {
     const l = document.querySelector('.gf-loader');

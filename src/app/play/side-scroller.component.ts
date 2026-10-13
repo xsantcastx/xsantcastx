@@ -9,7 +9,8 @@ import { Subscription } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
 import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor } from '../shared/activity/activity.model';
 import { EconomyService } from '../shared/economy/economy.service';
-import { InventoryService, MAX_INVENTORY } from '../shared/rpg/inventory.service';
+import { InventoryService, type VaultRouted } from '../shared/rpg/inventory.service';
+import { VAULT_STATION_I18N } from '../shared/vault/vault-station.i18n';
 import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
@@ -105,6 +106,8 @@ interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: st
 interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; }
 interface BagSlip {
   name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
+  /** A loose satchel item: a secondary "Send to Vault" makes room from anywhere. */
+  canSend?: boolean;
   /** Wearing it, against what that place holds now. Empty for worn items and materials. */
   compare: StatDeltaRow[];
   /** "Against Basalt Edge" / "Against an empty Head". */
@@ -231,6 +234,9 @@ export class SideScrollerComponent implements OnDestroy {
   private delveSub?: Subscription;
   private gatherSub?: Subscription;
   private homeSub?: Subscription;
+  private routedSub?: Subscription;
+  /** The routing burst being summed: "+12 more sent to the Vault" (inventory spec §5.3). */
+  private routedBurst = { first: '', more: 0, until: 0 };
   /** At least one Homestead building owned: the first goal is met. */
   private boughtBuilding = false;
   /** The first-session goal line (world/first-goals.ts); null once all four are done. */
@@ -274,7 +280,6 @@ export class SideScrollerComponent implements OnDestroy {
   restored = false;
   bagOpen = false;
   pick: BagPick | null = null;
-  readonly bagCap = MAX_INVENTORY;
   showKeys = false;
   now = Date.now();
   message = '';
@@ -305,6 +310,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(HEARTH_I18N);
     this.i18n.register(HUD_I18N);
     this.i18n.register(TOOLS_I18N);
+    this.i18n.register(VAULT_STATION_I18N);
   }
   private liveCanvas(): HTMLCanvasElement | null {
     const candidates = [this.canvas?.nativeElement, this.host.nativeElement.querySelector('canvas'), document.querySelector('main.play-mode canvas')];
@@ -343,6 +349,8 @@ export class SideScrollerComponent implements OnDestroy {
       // Cloud save merged another device's harvests: nodes re-read their regrowth.
       this.gatherSub = this.gatherSave.reloaded$.subscribe(() => this.engine?.setGathering(this.gatherSave));
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
+      // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
+      this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
       this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); }), 200);
     });
   }
@@ -553,11 +561,11 @@ export class SideScrollerComponent implements OnDestroy {
         locationId: this.worldLocation(this.state.areaId ?? this.town.id),
       });
       if (!result.ok) {
-        this.message = this.t(result.code === 'capacity' ? 'play.hud.msg.pickupFull' : 'play.hud.msg.pickupFailed');
+        this.message = this.t('play.hud.msg.pickupFailed');
         return false;
       }
     } else if (!this.inventory.grantStack(`seamworks-loot:${dropId}`, material, quantity)) {
-      this.message = this.t(this.inventory.canAcceptStackGrant(material) ? 'play.hud.msg.pickupFailed' : 'play.hud.msg.pickupFull');
+      this.message = this.t('play.hud.msg.pickupFailed');
       return false;
     }
     const name = materialDisplay(material)?.name ?? titleCase(material.replace(/-/g, ' '));
@@ -598,7 +606,7 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -1027,8 +1035,49 @@ export class SideScrollerComponent implements OnDestroy {
   pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
   pickedWell(id: SlotId): boolean { return this.pick?.kind === 'slot' && this.pick.ref === id; }
   get pocketFill(): number {
-    const used = this.inventory.snapshot.usedRows;
-    return used <= 0 ? 0 : Math.min(100, (used / this.bagCap) * 100);
+    const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
+    return used <= 0 || !Number.isFinite(cap) ? 0 : Math.min(100, (used / cap) * 100);
+  }
+  /** "23/40": the satchel's slots, on the clasp and in the book. */
+  get bagCount(): string {
+    const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
+    return Number.isFinite(cap) ? `${used}/${cap}` : `${used}`;
+  }
+  get bagFull(): boolean {
+    const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
+    return used >= cap;
+  }
+  /** Send the picked satchel item to the Vault, from anywhere (inventory spec §5.1). */
+  sendToVault(): void {
+    const item = this.selectedGear();
+    if (!item || item.equipped || item.explorerId) return;
+    if (!this.inventory.stow(item.id)) { this.message = this.t('play.hud.msg.stowFailed', { name: item.name }); return; }
+    const tab = this.inventory.itemById(item.id)?.explorerId?.replace(/^vault:/, '') ?? 'general-1';
+    this.message = this.t('play.hud.msg.sentVault', { name: item.name, tab: this.t(`vault.tab.${tab}`) });
+    this.pick = null;
+    this.ensurePick();
+  }
+  /**
+   * An arrival a full satchel turned away. The first of a burst names itself;
+   * the rest within 4 s are summed on the same line, so a Delve dig with a full
+   * satchel reads as one message, not a flicker.
+   */
+  private onRouted(routed: VaultRouted): void {
+    const now = Date.now();
+    const name = routed.kind === 'item' ? routed.name : (materialDisplay(routed.stackKey)?.name ?? routed.stackKey);
+    const burst = this.routedBurst;
+    if (now < burst.until && burst.first) {
+      burst.more += 1;
+      burst.until = now + 4000;
+      this.message = `${burst.first} ${this.t('play.hud.msg.routedMore', { n: burst.more })}`;
+      return;
+    }
+    const first = routed.tab === 'overflow'
+      ? this.t('play.hud.msg.routedOverflow', { name })
+      : this.t('play.hud.msg.routedVault', { name, tab: this.t(`vault.tab.${routed.tab}`) });
+    this.routedBurst = { first, more: 0, until: now + 4000 };
+    this.message = first;
+    this.bump('.satchel .clasp');
   }
   get wells(): BagWell[] {
     const snap = this.inventory.snapshot;
@@ -1050,7 +1099,7 @@ export class SideScrollerComponent implements OnDestroy {
   get pockets(): BagPocket[] {
     const snap = this.inventory.snapshot;
     const pin = [CINDER_ORE_ID, EMBER_RESIDUE_ID];
-    const stacks = [...snap.stacks].sort((a, b) => {
+    const stacks = snap.stacks.filter(stack => snap.stackPlace[stack.stackKey] === 'satchel').sort((a, b) => {
       const ai = pin.indexOf(a.stackKey);
       const bi = pin.indexOf(b.stackKey);
       if (ai !== -1 || bi !== -1) return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
@@ -1150,7 +1199,7 @@ export class SideScrollerComponent implements OnDestroy {
         kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
         note: this.t('toolStat.fromSatchel'),
         stats: toolCardLines(tool, (key, vars) => this.t(key, vars)),
-        canWear: false, canStow: worn, compare: [], compareLabel: '',
+        canWear: false, canStow: worn, canSend: !worn, compare: [], compareLabel: '',
       };
     }
     return {
@@ -1162,6 +1211,7 @@ export class SideScrollerComponent implements OnDestroy {
       stats,
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
       canStow: worn,
+      canSend: !worn,
       ...this.slipCompare(item, worn),
     };
   }
@@ -1385,7 +1435,7 @@ export class SideScrollerComponent implements OnDestroy {
       return false;
     }
     if (!this.inventory.grantStack(event.mutationId, event.item, 1)) {
-      this.message = this.t('play.delve.bagFullTake');
+      this.message = this.t('play.hud.msg.pickupFailed');
       return false;
     }
     if (event.item === 'chest') this.chests.forget(event.areaId, event.index);
@@ -1414,8 +1464,9 @@ export class SideScrollerComponent implements OnDestroy {
   private refreshChest(note: string): void {
     const at = this.panel?.chest;
     if (!at) { this.chestView = null; return; }
+    const place = this.inventory.snapshot.stackPlace;
     const satchel = this.inventory.snapshot.stacks
-      .filter(stack => stack.quantity > 0)
+      .filter(stack => stack.quantity > 0 && place[stack.stackKey] === 'satchel')
       .map(stack => {
         const display = materialDisplay(stack.stackKey);
         return { stackKey: stack.stackKey, name: display?.name ?? stack.stackKey, art: display?.art ?? '', qty: stack.quantity };
@@ -1460,14 +1511,14 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The hotbar's Take back button: same as X. */
   takeBack(): void { this.engine?.takeBack(); }
-  /** A break dropped a block: into the satchel, or crumbled when there is no room. Never refuses the dig. */
+  /** A break dropped a block: into the satchel, or the Vault when the satchel is full (routed$ says so). Never refuses the dig. */
   private grantBlock(event: WorldActionEvent): void {
     if (!event.block) return;
     const name = materialDisplay(event.block)?.name ?? event.block;
     if (this.inventory.grantStack(`${event.mutationId}:block`, event.block, 1)) {
       this.toastLoot(`+1 ${name}`);
       this.refreshHotbar();
-    } else this.message = this.t('play.hud.msg.crumbles', { lname: name.toLowerCase() });
+    } else this.message = this.t('play.hud.msg.pickupFailed');
   }
 
   /**
