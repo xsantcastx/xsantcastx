@@ -1,8 +1,8 @@
 /**
  * pwa-outlet.component.ts — the seam the installed-app UI arrives through.
  *
- * The install offer and the app chrome (offline pill, title-bar strip, game
- * route gesture class) are not needed for the first paint of anybody's visit:
+ * The install offer, the app chrome (offline pill, title-bar strip, game
+ * route gesture class) and the "new version ready" toast are not needed for the first paint of anybody's visit:
  * the offer waits at least MIN_DWELL_MS by rule, and the pill only matters once
  * the network drops. The initial bundle sits at its hard error budget, so both
  * load as their own chunk once the browser is idle, the same way the onboarding
@@ -22,7 +22,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 
-export type PwaOutletKind = 'offer' | 'chrome';
+export type PwaOutletKind = 'offer' | 'chrome' | 'update';
 
 @Component({
   selector: 'app-pwa-outlet',
@@ -70,7 +70,9 @@ export class PwaOutletComponent implements OnInit, OnDestroy {
     try {
       const component = this.kind === 'offer'
         ? (await import('./install-prompt.component')).InstallPromptComponent
-        : (await import('./app-chrome.component')).PwaChromeComponent;
+        : this.kind === 'update'
+          ? (await import('./update-toast.component')).UpdateToastComponent
+          : (await import('./app-chrome.component')).PwaChromeComponent;
       // The host may have been torn down (route change into /play) while the
       // chunk was in flight; mounting now would attach to a dead view.
       if (this.destroyed) return;
