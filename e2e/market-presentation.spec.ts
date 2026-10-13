@@ -81,11 +81,12 @@ test.describe('C1 Market journal', () => {
     await page.locator('app-station-shell.mk').screenshot({ path: resolve(shotDir, 'desktop-journal.png') });
   });
 
-  test('a fresh purse sees the free Forge Bellows ready to take', async ({ page }) => {
+  // Since the 2026-10-12 rebalance the first rung costs 15 Gold (economy-curve.ts), not free.
+  test('a fresh purse sees the Forge Bellows first, priced at 15 Gold', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openMarket(page);
     await expect(page.locator('.mkj-detail')).toContainText('Forge Bellows');
-    await expect(page.locator('.mkj-detail .ab__btn')).toContainText(/free/i);
+    await expect(page.locator('.mkj-detail .ab__btn')).toContainText(/15\s*Gold/i);
     await assertDetailPaints(page);
     mkdirSync(shotDir, { recursive: true });
     await page.screenshot({ path: resolve(shotDir, 'mobile-first-view.png') });
