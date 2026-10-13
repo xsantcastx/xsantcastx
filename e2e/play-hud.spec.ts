@@ -9,12 +9,15 @@
  *     remembered across a reload; it is all reachable from the keyboard.
  *   - Standing in a town (the Infernal camp included, where Rivet Maws roam
  *     past the safe ground) shows no enemy bar.
+ *   - From 901px up (the 960 band included) the open satchel book never covers
+ *     the folded Hearth pill or the goal line, and the book and an open Hearth
+ *     take turns.
  *
  * Name tags staying inside the canvas is checked frame by frame in
  * play-life.spec.ts, which already records every tag the engine draws.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, openPlay, placePanel, playerX, seed } from './play-helpers';
+import { canvas, focusWorld, openPlay, placePanel, playerX, seed } from './play-helpers';
 import { TOWNS, VIEW_HEIGHT } from '../src/app/play/world/world.model';
 import type { RealmTownId, TownDef } from '../src/app/play/world/world.model';
 
@@ -187,6 +190,46 @@ test.describe('the /play HUD at 1280×800', () => {
     await openPlay(page, '?at=forge');
     await expect(page.locator('.prompt.armed strong')).toHaveText(/^(Forjar|Equipar) Basalt Edge|Hoja equipada$/);
     await expect(page.locator('.prompt.armed button').first()).toContainText('Interactuar');
+  });
+});
+
+test.describe('the /play HUD at 960×800 (the 901–1000px band)', () => {
+  test.use({ viewport: { width: 960, height: 800 } });
+  test.describe.configure({ timeout: 120000 });
+
+  test('the open satchel book never covers the Hearth pill, and the book and an open Hearth take turns', async ({ page }) => {
+    await seed(page);
+    await openPlay(page);
+    for (const width of [905, 960, 1000, 1280]) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.keyboard.press('i');
+      await expect(page.locator('#satchel-book')).toBeVisible();
+      await expect(page.locator('.dock.collapsed .hearth-pill')).toBeVisible();
+      const book = (await rectOf(page, '#satchel-book'))!;
+      const pill = (await rectOf(page, '.hearth-pill'))!;
+      expect(meets(book, pill), `${width}px: satchel book over the Hearth pill`).toBe(false);
+      // Hit test at the pill's centre: a click there reaches the pill, not the book.
+      const onPill = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.hearth-pill'),
+        { x: (pill.left + pill.right) / 2, y: (pill.top + pill.bottom) / 2 });
+      expect(onPill, `${width}px: the pill takes its own click`).toBe(true);
+      // The goal line steps aside rather than sit under the book.
+      const guide = await rectOf(page, '.guide');
+      if (guide) expect(meets(book, guide), `${width}px: book over the goal line`).toBe(false);
+      await page.keyboard.press('Escape');
+      await expect(page.locator('#satchel-book')).toHaveCount(0);
+      await focusWorld(page);
+    }
+    // Opening the Hearth closes the book; opening the book folds the Hearth (the choice is remembered as open).
+    await page.setViewportSize({ width: 960, height: 800 });
+    await page.keyboard.press('i');
+    await expect(page.locator('#satchel-book')).toBeVisible();
+    await page.locator('.hearth-pill').click();
+    await expect(page.locator('#hearth-body')).toBeVisible();
+    await expect(page.locator('#satchel-book')).toHaveCount(0);
+    await page.locator('.satchel .clasp').click();
+    await expect(page.locator('#satchel-book')).toBeVisible();
+    await expect(page.locator('#hearth-body')).toBeHidden();
+    expect(await page.evaluate(k => localStorage.getItem(k), HEARTH_KEY)).toBe('1');
   });
 });
 

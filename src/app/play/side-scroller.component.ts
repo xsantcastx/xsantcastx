@@ -824,6 +824,8 @@ export class SideScrollerComponent implements OnDestroy {
   toggleHearth(): void {
     this.hearthOpen = !this.hearthOpen;
     this.rememberHearth(this.hearthOpen);
+    // The open panel and the satchel book share the right of the HUD strip: one at a time.
+    if (this.hearthOpen) this.closeBag();
     const root = this.host.nativeElement as HTMLElement;
     setTimeout(() => {
       const target = this.hearthOpen
@@ -937,6 +939,9 @@ export class SideScrollerComponent implements OnDestroy {
   toggleBag(): void {
     this.bagOpen = !this.bagOpen;
     if (this.bagOpen && !this.pick) this.ensurePick();
+    // The book needs the room an open Hearth takes: fold it, like a station
+    // does (the remembered choice stands for next time).
+    if (this.bagOpen) this.hearthOpen = false;
   }
   choosePocket(pocket: BagPocket): void { this.pick = { kind: pocket.kind, ref: pocket.ref }; }
   chooseWell(well: BagWell): void { this.pick = { kind: 'slot', ref: well.id }; }
