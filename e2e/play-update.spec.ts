@@ -15,10 +15,12 @@
  *   - On a 375px phone the toast sits top-centre and covers no control (it
  *     steps down below /play's top-bar buttons rather than over them).
  *
- * Needs a stamped build: `npx ng build && node scripts/stamp-build-id.js`
- * (`npm run build` runs both). Skips itself on an unstamped dist.
+ * Needs a stamped build (`npm run build` stamps in postbuild); on a bare
+ * `npx ng build` dist the spec runs scripts/stamp-build-id.js itself first.
  */
 import { expect, test, type Page } from '@playwright/test';
+import { execFileSync } from 'child_process';
+import * as path from 'path';
 import { bag, openPlay, placePanel, purse, seed, stackQty } from './play-helpers';
 
 const NEXT_BUILD = '0123456789ab';
@@ -69,9 +71,12 @@ async function toastReport(page: Page) {
 }
 
 test.describe('new version ready', () => {
-  test.beforeEach(async ({ page }) => {
-    const res = await page.request.get('/version.json');
-    test.skip(!res.ok(), 'dist is not stamped — run node scripts/stamp-build-id.js after ng build');
+  test.beforeAll(async ({ request }) => {
+    // A bare `npx ng build` is unstamped (only `npm run build` runs postbuild).
+    // The preview server reads dist from disk per request, so stamping now works.
+    if ((await request.get('/version.json')).ok()) return;
+    execFileSync(process.execPath, [path.join(__dirname, '..', 'scripts', 'stamp-build-id.js')], { stdio: 'inherit' });
+    expect((await request.get('/version.json')).ok(), 'dist could not be stamped').toBe(true);
   });
 
   test('waits out a station panel, then Reload lands on the new build with a fresh sale kept', async ({ page }) => {
