@@ -201,7 +201,7 @@ const CATEGORIES: CategoryDef[] = [
   },
   {
     id: 'artifact', label: 'Artifacts', short: 'Artifacts', icon: 'nox-shop', currency: 'essence',
-    note: 'Permanent, and sold once. Five of them exist and there is no second copy of any.',
+    note: 'Permanent, and sold once. Four of them exist and there is no second copy of any.',
   },
   {
     id: 'cosmetic', label: 'Cosmetics', short: 'Cosmetics', icon: 'aether-shop', currency: 'gold',

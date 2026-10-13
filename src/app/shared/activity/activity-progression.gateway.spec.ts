@@ -1,7 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 
 import { EconomyService } from '../economy/economy.service';
-import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
+import { INVENTORY_KEY, InventoryService } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { ActivityProgressionGateway } from './activity-progression.gateway';
@@ -39,12 +39,38 @@ class MemoryGateway {
   private readonly bag = new Map<string, string>();
   attached = false;
   pending = 0;
+  /** A key whose writes silently fail — the "storage refused" case. */
+  dropWritesTo: string | null = null;
   write(key: string, value: unknown): void {
+    if (key === this.dropWritesTo) return;
     this.bag.set(key, JSON.stringify(value));
   }
   writeRaw(key: string, raw: string): void { this.bag.set(key, raw); }
   readRaw(key: string): string | null { return this.bag.get(key) ?? null; }
   remove(key: string): void { this.bag.delete(key); }
+}
+
+/**
+ * Fill the satchel to its cap. Since the Vault went live a full satchel refuses
+ * nothing: arrivals route to the Vault, so the only refusal left on a grant is
+ * a save that did not stick.
+ */
+function fillSatchel(inventory: InventoryService): void {
+  const cap = inventory.snapshot.satchelCap;
+  expect(Number.isFinite(cap)).toBe(true);
+  for (let i = 0; i < cap; i++) {
+    expect(inventory.add({
+      id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
+      stats: {}, sellValue: 1, equipped: false,
+      foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
+    })).toBeTruthy();
+  }
+  expect(inventory.snapshot.usedRows).toBe(cap);
+}
+
+function storedOps(memory: MemoryGateway): number {
+  const raw = memory.readRaw(ACTIVITY_KEY);
+  return raw ? JSON.parse(raw).operations.length : 0;
 }
 
 function configure(memory: MemoryGateway): ActivityProgressionGateway {
@@ -130,18 +156,30 @@ describe('ActivityProgressionGateway', () => {
     expect(gateway.snapshot.progress.xpByDiscipline.mining).toBe(EMBER_GUARANTEE_AT * MINING_XP_PER_ACTION);
   });
 
-  it('refuses to create an operation when the bag cannot take ore', () => {
-    for (let i = 0; i < MAX_INVENTORY; i++) {
-      expect(inventory.add({
-        id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
-        stats: {}, sellValue: 1, equipped: false,
-        foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
-      })).toBeTruthy();
-    }
-    const refused = gateway.resolveMine({ mutationId: 'full', now: 4_000, roll: 0.9 });
-    expect(refused).toEqual({ ok: false, code: 'capacity' });
+  it('banks ore past a full satchel: it routes to the Vault instead of refusing', () => {
+    fillSatchel(inventory);
+    const result = gateway.resolveMine({ mutationId: 'full', now: 4_000, roll: 0.9 });
+    expect(result.ok).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(1);
+    expect(inventory.snapshot.stackPlace['cinder-ore']).toBeDefined();
+    expect(inventory.snapshot.stackPlace['cinder-ore']).not.toBe('satchel');
+    expect(storedOps(memory)).toBe(1);
+  });
+
+  it('refuses with persist when the bag cannot be saved, books nothing, and lets the retry land', () => {
+    memory.dropWritesTo = INVENTORY_KEY;
+    const refused = gateway.resolveMine({ mutationId: 'm1', now: 4_000, roll: 0.9 });
+    expect(refused).toEqual({ ok: false, code: 'persist' });
     expect(inventory.stackOf('cinder-ore')).toBe(0);
-    expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
+    expect(gateway.snapshot.progress.xpByDiscipline.mining ?? 0).toBe(0);
+    expect(gateway.snapshot.operations.length).toBe(0);
+    expect(storedOps(memory)).toBe(0);
+
+    // Not latched: once storage takes writes again, the same mutation resolves.
+    memory.dropWritesTo = null;
+    expect(gateway.resolveMine({ mutationId: 'm1', now: 4_000, roll: 0.9 }).ok).toBe(true);
+    expect(inventory.stackOf('cinder-ore')).toBe(1);
+    expect(gateway.snapshot.progress.xpByDiscipline.mining).toBe(MINING_XP_PER_ACTION);
   });
 
   it('refuses a tier the current level has not reached', () => {
@@ -336,18 +374,20 @@ describe('ActivityProgressionGateway', () => {
       expect(result.operation.inventoryGrants.map(g => g.definitionId)).toEqual([STARLIGHT_HERB_ID]);
     });
 
-    it('refuses to create an operation when the bag cannot take herbs', () => {
-      for (let i = 0; i < MAX_INVENTORY; i++) {
-        expect(inventory.add({
-          id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
-          stats: {}, sellValue: 1, equipped: false,
-          foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
-        })).toBeTruthy();
-      }
-      const refused = gateway.resolveForage({ mutationId: 'full', now: 4_000 });
-      expect(refused).toEqual({ ok: false, code: 'capacity' });
+    it('banks herbs past a full satchel, and refuses only when the bag cannot be saved', () => {
+      memory.dropWritesTo = INVENTORY_KEY;
+      expect(gateway.resolveForage({ mutationId: 'f-lost', now: 4_000 })).toEqual({ ok: false, code: 'persist' });
       expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(0);
-      expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
+      expect(gateway.snapshot.progress.xpByDiscipline.foraging ?? 0).toBe(0);
+      memory.dropWritesTo = null;
+
+      fillSatchel(inventory);
+      const result = gateway.resolveForage({ mutationId: 'full', now: 4_000 });
+      expect(result.ok).toBe(true);
+      expect(inventory.stackOf(STARLIGHT_HERB_ID)).toBe(1);
+      expect(inventory.snapshot.stackPlace[STARLIGHT_HERB_ID]).toBeDefined();
+      expect(inventory.snapshot.stackPlace[STARLIGHT_HERB_ID]).not.toBe('satchel');
+      expect(gateway.snapshot.operations.filter(op => op.disciplineId === 'foraging').length).toBe(1);
     });
 
     it('rehydrates the merged ledger without awarding again', () => {
@@ -538,18 +578,21 @@ describe('ActivityProgressionGateway', () => {
       expect(inventory.snapshot.items.filter(i => i.definitionId === CLARITY_ELIXIR_ID).length).toBe(2);
     });
 
-    it('refuses to create an operation when the bag cannot take minerals', () => {
-      for (let i = 0; i < MAX_INVENTORY; i++) {
-        expect(inventory.add({
-          id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
-          stats: {}, sellValue: 1, equipped: false,
-          foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
-        })).toBeTruthy();
-      }
-      const refused = gateway.resolveProspect({ mutationId: 'full', now: 4_000, roll: 0.9 });
-      expect(refused).toEqual({ ok: false, code: 'capacity' });
+    it('banks minerals past a full satchel, and refuses only when the bag cannot be saved', () => {
+      memory.dropWritesTo = INVENTORY_KEY;
+      expect(gateway.resolveProspect({ mutationId: 'p-lost', now: 4_000, roll: 0.9 }))
+        .toEqual({ ok: false, code: 'persist' });
       expect(inventory.stackOf(CELESTIAL_ALLOY_ID)).toBe(0);
-      expect(JSON.parse(memory.readRaw(ACTIVITY_KEY)!).operations.length).toBe(0);
+      expect(gateway.snapshot.progress.xpByDiscipline.prospecting ?? 0).toBe(0);
+      memory.dropWritesTo = null;
+
+      fillSatchel(inventory);
+      const result = gateway.resolveProspect({ mutationId: 'full', now: 4_000, roll: 0.9 });
+      expect(result.ok).toBe(true);
+      expect(inventory.stackOf(CELESTIAL_ALLOY_ID)).toBe(1);
+      expect(inventory.snapshot.stackPlace[CELESTIAL_ALLOY_ID]).toBeDefined();
+      expect(inventory.snapshot.stackPlace[CELESTIAL_ALLOY_ID]).not.toBe('satchel');
+      expect(gateway.snapshot.operations.filter(op => op.disciplineId === 'prospecting').length).toBe(1);
     });
 
     it('rehydrates the merged ledger without awarding again', () => {
@@ -626,19 +669,24 @@ describe('ActivityProgressionGateway.resolveWorldAction', () => {
     expect(gateway.snapshot.operations.length).toBe(0);
   });
 
-  it('refuses when the bag cannot take the material, and books nothing', () => {
-    for (let i = 0; i < MAX_INVENTORY; i++) {
-      inventory.add({
-        id: `fill-${i}`, name: `Fill ${i}`, type: 'artifact', rarity: 'common',
-        stats: {}, sellValue: 1, equipped: false,
-        foundAt: '2026-08-01T00:00:00.000Z', soulbound: false,
-      });
-    }
-    const r = gateway.resolveWorldAction({
-      mutationId: 'full', discipline: 'foraging', materialId: SUNBLOOM_ID, xp: 3, locationId: 'w', now: 4_000,
-    });
-    expect(r).toEqual({ ok: false, code: 'capacity' });
+  it('banks the material past a full satchel, and refuses only when the bag cannot be saved', () => {
+    const input = {
+      discipline: 'foraging' as const, materialId: SUNBLOOM_ID, xp: 3, locationId: 'w', now: 4_000,
+    };
+    memory.dropWritesTo = INVENTORY_KEY;
+    expect(gateway.resolveWorldAction({ ...input, mutationId: 'lost' })).toEqual({ ok: false, code: 'persist' });
+    expect(inventory.stackOf(SUNBLOOM_ID)).toBe(0);
     expect(gateway.snapshot.progress.xpByDiscipline.foraging ?? 0).toBe(0);
+    expect(gateway.snapshot.operations.length).toBe(0);
+    memory.dropWritesTo = null;
+
+    fillSatchel(inventory);
+    const r = gateway.resolveWorldAction({ ...input, mutationId: 'full' });
+    expect(r.ok).toBe(true);
+    expect(inventory.stackOf(SUNBLOOM_ID)).toBe(1);
+    expect(inventory.snapshot.stackPlace[SUNBLOOM_ID]).toBeDefined();
+    expect(inventory.snapshot.stackPlace[SUNBLOOM_ID]).not.toBe('satchel');
+    expect(gateway.snapshot.progress.xpByDiscipline.foraging).toBe(3);
   });
 
   it('keeps the op window bounded without losing a point of XP', () => {

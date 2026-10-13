@@ -109,14 +109,7 @@ src/sitemap.xml
 src/assets/build-stats.json
 dist-preview/
 
-# Pipeline run artifacts (JSON outputs, logs) — generated tool source files are NOT ignored
-runs/
-
-# Pipeline local env overrides
-pipeline/.env
-pipeline/.env.local
-
-# Python bytecode caches (pipeline/* tooling)
+# Python bytecode caches (scripts/*.py tooling)
 __pycache__/
 *.py[cod]
 *$py.class
