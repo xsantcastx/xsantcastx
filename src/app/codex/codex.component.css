@@ -1018,10 +1018,6 @@
   animation: none;
 }
 
-/* Realm sigils on filter chips, section headers and card meta lines. */
-.cx-cat-icon { width: 18px; height: 18px; flex: none; vertical-align: -4px; }
-.cx-cat-icon--lg { width: 26px; height: 26px; vertical-align: -6px; }
-
 /* ═══════════════════════════════════════════════════════════════════════════
    THE LORE CODEX — the scroll wall
    ═══════════════════════════════════════════════════════════════════════════
