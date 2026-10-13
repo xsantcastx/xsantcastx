@@ -13,7 +13,7 @@ import { ActivityProgressionGateway } from '../activity/activity-progression.gat
 import { InventoryService } from '../rpg/inventory.service';
 import { isChestHolder } from '../delve/delve-save.model';
 import { TOOLS_I18N } from './tools.i18n';
-import { formatSwing, toolStatus, type ToolFamilyStatus } from './tools';
+import { toolPaceLines, toolStatus, type ToolFamilyStatus } from './tools';
 import { TOOL_NUMERALS } from './tool-items';
 
 interface ToolRow { family: string; label: string; lines: string[]; }
@@ -78,10 +78,7 @@ export class ToolStatsComponent implements OnInit {
     const family = this.t(`toolStat.family.${s.family}`);
     if (!s.tier) return { family: s.family, label: family, lines: [this.t('toolStat.none')] };
     const skill = this.t(`toolStat.skill.${s.skill}`);
-    const lines = [
-      this.t('toolStat.power', { skill, n: s.power }),
-      this.t(s.starter ? 'toolStat.swingStarter' : 'toolStat.swing', { s: formatSwing(s.swing) }),
-    ];
+    const lines = toolPaceLines(s, (key, vars) => this.t(key, vars));
     if (s.capUntil) lines.push(this.t('toolStat.worksAs', { tier: TOOL_NUMERALS[s.tier], skill, level: s.capUntil }));
     if (s.starter) lines.push(this.t('toolStat.starterHint'));
     return { family: s.family, label: this.t('toolStat.row', { name: family, tier: TOOL_NUMERALS[s.tier] }), lines };

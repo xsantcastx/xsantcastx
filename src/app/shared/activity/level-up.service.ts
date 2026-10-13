@@ -27,6 +27,7 @@ import { artFor, type ArtEntry } from '../art/art';
 import type { DisciplineId } from './activity.model';
 import { skillDef, skillForDiscipline, type SkillId } from '../skills/skill.model';
 import { describeUnlock, unlocksBetween } from '../skills/skill-unlocks';
+import { levelGain, sharpensSwing, sharpensTool } from '../skills/tool-level';
 
 export interface LevelUpEvent {
   /** i18n key for the skill's display name, e.g. 'work.discipline.mining'. */
@@ -40,6 +41,12 @@ export interface LevelUpEvent {
    * banner to translate. Empty for a level that opened nothing new.
    */
   unlocks: ReadonlyArray<{ key: string; vars: Record<string, string | number> }>;
+  /**
+   * For a skill that sharpens a tool (tool-level.ts): how much faster and
+   * harder it now swings, in percentage points ("0.3", "0.5"); `swing` null
+   * for Enchanting (the staff's blast keeps its cooldown). Null otherwise.
+   */
+  tool: { swing: string | null; power: string } | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -99,6 +106,7 @@ export class LevelUpService {
       milestone: after % 10 === 0,
       art: artFor(def.artId),
       unlocks: unlocksBetween(skill, before, after).map(describeUnlock),
+      tool: sharpensTool(skill) ? { ...levelGain(before, after), ...(sharpensSwing(skill) ? {} : { swing: null }) } : null,
     });
   }
 }

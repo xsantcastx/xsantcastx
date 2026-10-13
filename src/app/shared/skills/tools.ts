@@ -18,6 +18,9 @@ import type { DisciplineProgress } from '../activity/activity.model';
 import type { ItemRarity } from '../rpg/item.model';
 import { skillLevel, type SkillId } from './skill.model';
 import { parseToolId, TOOL_FAMILIES, type ToolFamily, type ToolTier } from './tool-items';
+import { levelPowerFactor, levelPowerPct, levelSwingFactor, levelSwingPct, sharpensSwing, TOOL_SKILL } from './tool-level';
+
+export { TOOL_SKILL } from './tool-level';
 
 export interface ToolTiers {
   pickaxe: number;
@@ -31,15 +34,32 @@ export interface ToolTiers {
   /**
    * Seconds between digging/gathering swings, per family (Terraria's "use
    * time"). A starter tool swings at STARTER_SWING_SECONDS; a forged one at its
-   * effective tier's TOOL_SWING_SECONDS. No tool: the starter pace.
+   * effective tier's TOOL_SWING_SECONDS; then the wielding skill's level takes
+   * up to 25% off (tool-level.ts), floored at SWING_FLOOR_SECONDS. No tool: the
+   * starter pace.
    */
   swing: Record<ToolFamily, number>;
+  /** Per family, the tier's own pace before the level (what the cards call "tool"). */
+  toolSwing: Record<ToolFamily, number>;
+  /** Per family, the wielding skill's power multiplier (1 at level 1, 1.5 at 99). The engine multiplies the tier's damage by it. */
+  power: Record<ToolFamily, number>;
 }
 
 /** The starter tools' pace — and every swing that is not digging or gathering (combat stays here). */
 export const STARTER_SWING_SECONDS = 0.52;
 /** A forged tool's pace by effective tier. Faster per tier; rewards stay capped by the seam's breath and node regrowth. */
 export const TOOL_SWING_SECONDS: Readonly<Record<ToolTier, number>> = { 1: 0.46, 2: 0.40, 3: 0.35, 4: 0.31 };
+/** No swing beats this, whatever the tier and level (the engine clamps to the same floor). */
+export const SWING_FLOOR_SECONDS = 0.25;
+
+/**
+ * A tier's pace sharpened by the wielding skill's level, floored. `skill`
+ * Enchanting leaves it as is: the staff works by its blast, whose cooldown is fixed.
+ */
+export function levelSwing(tierSwing: number, level: number, skill?: SkillId): number {
+  if (skill && !sharpensSwing(skill)) return tierSwing;
+  return Math.max(SWING_FLOOR_SECONDS, tierSwing * levelSwingFactor(level));
+}
 
 /**
  * One tool's power against a node of tier `min`: the engine's rule
@@ -57,10 +77,15 @@ export interface ToolFamilyStatus {
   tier: number;
   /** The best tool held is the starter (slowest pace). */
   starter: boolean;
-  /** Swings per second's inverse: seconds per swing. */
+  /** Seconds per swing: the tier's pace sharpened by the skill level. */
   swing: number;
-  /** Power against a tier-I node. */
+  /** Power against a tier-I node: the tier's power sharpened by the skill level. */
   power: number;
+  /** The tier's own pace and power, before the level. */
+  toolSwing: number;
+  toolPower: number;
+  /** The wielding skill's level (1 without progress). */
+  level: number;
   /** The skill level that lifts the cap, when the cap bites (owned > tier). */
   capUntil: number | null;
 }
@@ -71,14 +96,6 @@ export interface ToolFamilyStatus {
  * "tier II needs level 10".
  */
 export const TOOL_TIER_LEVEL: Readonly<Record<ToolTier, number>> = { 1: 1, 2: 10, 3: 25, 4: 45 };
-
-/** Which skill wields which family. */
-export const TOOL_SKILL: Readonly<Record<ToolFamily, SkillId>> = {
-  pickaxe: 'mining',
-  axe: 'woodcutting',
-  sickle: 'foraging',
-  staff: 'enchanting',
-};
 
 /**
  * What each tier opens in the world. `materialId` is what the node drops (an
@@ -165,10 +182,13 @@ export function toolTiers(inventory: ToolInventoryView | null | undefined, progr
     return Math.min(tier, maxTierForLevel(skillLevel(progress, TOOL_SKILL[family])));
   };
   const cap = (family: ToolFamily): number => capOf(family, owned[family]);
-  const pace = (family: ToolFamily): number => {
+  const levelOf = (family: ToolFamily): number => progress ? skillLevel(progress, TOOL_SKILL[family]) : 1;
+  const tierPace = (family: ToolFamily): number => {
     const tier = capOf(family, forged[family]);
     return tier > 0 ? TOOL_SWING_SECONDS[tier as ToolTier] : STARTER_SWING_SECONDS;
   };
+  const pace = (family: ToolFamily): number => levelSwing(tierPace(family), levelOf(family), TOOL_SKILL[family]);
+  const power = (family: ToolFamily): number => levelPowerFactor(levelOf(family));
 
   const weapon = inventory?.equipped?.['weapon'];
   const blade = weapon ? (BLADE_TIER[weapon.rarity as ItemRarity] ?? 1) : 0;
@@ -181,6 +201,8 @@ export function toolTiers(inventory: ToolInventoryView | null | undefined, progr
     blade,
     lanternRadius: lanternRadiusFor(progress ? skillLevel(progress, 'delving') : 1),
     swing: { pickaxe: pace('pickaxe'), axe: pace('axe'), sickle: pace('sickle'), staff: pace('staff') },
+    toolSwing: { pickaxe: tierPace('pickaxe'), axe: tierPace('axe'), sickle: tierPace('sickle'), staff: tierPace('staff') },
+    power: { pickaxe: power('pickaxe'), axe: power('axe'), sickle: power('sickle'), staff: power('staff') },
   };
 }
 
@@ -204,6 +226,8 @@ export function toolStatus(inventory: ToolInventoryView | null | undefined, prog
   return TOOL_FAMILIES.map(family => {
     const tier = working[family];
     const have = owned[family];
+    const level = progress ? skillLevel(progress, TOOL_SKILL[family]) : 1;
+    const base = tier > 0 ? toolPower(tier) : 0;
     return {
       family,
       skill: TOOL_SKILL[family],
@@ -211,7 +235,10 @@ export function toolStatus(inventory: ToolInventoryView | null | undefined, prog
       tier,
       starter: starterOnly(family),
       swing: working.swing[family],
-      power: tier > 0 ? toolPower(tier) : 0,
+      power: base * working.power[family],
+      toolSwing: working.toolSwing[family],
+      toolPower: base,
+      level,
       capUntil: have > tier && tier > 0 ? TOOL_TIER_LEVEL[(tier + 1) as ToolTier] : null,
     };
   });
@@ -223,10 +250,15 @@ export interface ToolCard {
   tier: ToolTier;
   starter: boolean;
   skill: SkillId;
-  /** Power against a tier-I node when wielded at full tier. */
+  /** Power against a tier-I node when wielded at full tier, sharpened by the skill level. */
   power: number;
-  /** Seconds per swing at full tier. */
+  /** Seconds per swing at full tier, sharpened by the skill level. */
   swing: number;
+  /** The tier's own power and pace, before the level. */
+  toolPower: number;
+  toolSwing: number;
+  /** The wielding skill's level (1 without progress). */
+  level: number;
   opens: string;
   /** Works as this tier until `capUntil` (the skill level) — null when no cap. */
   worksAs: number | null;
@@ -238,6 +270,32 @@ const NUMERAL = ['', 'I', 'II', 'III', 'IV'];
 
 /** "0.46" — a pace as the cards print it. */
 export function formatSwing(seconds: number): string { return seconds.toFixed(2); }
+/** "1.5", "1.81" — a power as the cards print it. */
+export function formatPower(power: number): string { return String(Math.round(power * 100) / 100); }
+
+/** The facts both the card and the stats block print. */
+type ToolFacts = Pick<ToolCard, 'skill' | 'starter' | 'power' | 'swing' | 'toolPower' | 'toolSwing' | 'level'>;
+
+/**
+ * Power and pace lines. At level 1 the plain ones ("Mining power 1.5",
+ * "0.46 s per swing"); above it the split, so the player sees what the tool
+ * gives and what the level adds: "Swing 0.41 s (tool 0.46 · Mining 42 −10%)".
+ */
+export function toolPaceLines(f: ToolFacts, t: Translate): string[] {
+  const skill = t(`toolStat.skill.${f.skill}`);
+  if (f.level <= 1) {
+    return [
+      t('toolStat.power', { skill, n: formatPower(f.power) }),
+      t(f.starter ? 'toolStat.swingStarter' : 'toolStat.swing', { s: formatSwing(f.swing) }),
+    ];
+  }
+  return [
+    t('toolStat.powerSplit', { n: formatPower(f.power), tool: formatPower(f.toolPower), skill, level: f.level, pct: levelPowerPct(f.level) }),
+    sharpensSwing(f.skill)
+      ? t('toolStat.swingSplit', { s: formatSwing(f.swing), tool: formatSwing(f.toolSwing), skill, level: f.level, pct: levelSwingPct(f.level) })
+      : t(f.starter ? 'toolStat.swingStarter' : 'toolStat.swing', { s: formatSwing(f.swing) }),
+  ];
+}
 
 /**
  * The item card lines for one tool (keys in tools.i18n.ts): power, pace, what
@@ -245,11 +303,7 @@ export function formatSwing(seconds: number): string { return seconds.toFixed(2)
  */
 export function toolCardLines(card: ToolCard, t: Translate): string[] {
   const skill = t(`toolStat.skill.${card.skill}`);
-  const lines = [
-    t('toolStat.power', { skill, n: card.power }),
-    t(card.starter ? 'toolStat.swingStarter' : 'toolStat.swing', { s: formatSwing(card.swing) }),
-    t(`toolStat.opens.${card.family}.${card.tier}`),
-  ];
+  const lines = [...toolPaceLines(card, t), t(`toolStat.opens.${card.family}.${card.tier}`)];
   if (card.worksAs && card.capUntil) lines.push(t('toolStat.worksAs', { tier: NUMERAL[card.worksAs], skill, level: card.capUntil }));
   return lines;
 }
@@ -258,16 +312,22 @@ export function toolCard(definitionId: string | undefined | null, progress?: Dis
   const tool = parseToolId(definitionId);
   if (!tool) return null;
   const skill = TOOL_SKILL[tool.family];
-  const max = progress ? maxTierForLevel(skillLevel(progress, skill)) : 4;
+  const level = progress ? skillLevel(progress, skill) : 1;
+  const max = progress ? maxTierForLevel(level) : 4;
   const capped = tool.tier > max;
   const tier = capped ? max : tool.tier;
+  const toolPowerAt = toolPower(tool.tier);
+  const toolSwing = tool.starter ? STARTER_SWING_SECONDS : TOOL_SWING_SECONDS[tool.tier];
   return {
     family: tool.family,
     tier: tool.tier,
     starter: !!tool.starter,
     skill,
-    power: toolPower(tool.tier),
-    swing: tool.starter ? STARTER_SWING_SECONDS : TOOL_SWING_SECONDS[tool.tier],
+    power: toolPowerAt * levelPowerFactor(level),
+    swing: levelSwing(toolSwing, level, skill),
+    toolPower: toolPowerAt,
+    toolSwing,
+    level,
     opens: TOOL_OPENS[tool.family][tool.tier].label,
     worksAs: capped ? tier : null,
     capUntil: capped ? TOOL_TIER_LEVEL[(tier + 1) as ToolTier] : null,

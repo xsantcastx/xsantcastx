@@ -71,3 +71,61 @@ within one breath; two minutes at a sapling: the same harvests).
 - e2e: `e2e/play-tool-tiers.spec.ts` — fresh save holds the Worn Pickaxe (0.52),
   crafts Pickaxe I, pace 0.46 without equipping, slip + Character & stats lines;
   the phone ☰ entry.
+
+## The level sharpens the tool (2026-10-13)
+
+Owner: "this needs to also reflect the level — higher level, better mining and
+speed; remember we also level up."
+
+Each gathering skill sharpens its tool family (`TOOL_SKILL`, now in
+`skills/tool-level.ts`, re-exported from `tools.ts`): Mining → pickaxe,
+Woodcutting → axe, Foraging → sickle, Enchanting → staff. On top of the tier:
+
+- **Swing** = tierSwing × (1 − 0.25 × (L − 1) / 98), floored at 0.25 s
+  (`levelSwing`; the engine clamps to the same [0.25, 0.52]). The staff is the
+  exception: it works by its blast, whose cooldown is fixed, so Enchanting
+  sharpens its power only.
+- **Power** = tierPower × (1 + 0.5 × (L − 1) / 98). `toolTiers().power` carries
+  the multiplier per family; the host passes `setTools({ power })`; the engine
+  clamps it to [1, 1.5] and `toolFor(node, tiers, allowed, power)` multiplies
+  the tier's damage. Cell and node HP go fractional; the existing `> 1e-3`
+  break test and `crackStage` (a health ratio) already handle that.
+- Combat is unchanged (swing 0.52, damage from the loadout).
+
+| Tier \ Mining level | 1 | 20 | 50 | 99 |
+|---|---|---|---|---|
+| Worn | 0.52 s · ×1 | 0.495 · ×1.10 | 0.455 · ×1.25 | 0.39 · ×1.5 |
+| I    | 0.46 · ×1 | 0.438 · ×1.10 | 0.403 · ×1.25 | 0.345 · ×1.5 |
+| II   | 0.40 · ×1.5 | 0.381 · ×1.65 | 0.35 · ×1.88 | 0.30 · ×2.25 |
+| III  | 0.35 · ×2 | 0.333 · ×2.19 | 0.306 · ×2.5 | 0.262 · ×3 |
+| IV   | 0.31 · ×2.5 | 0.295 · ×2.74 | 0.271 · ×3.13 | 0.25 (floor) · ×3.75 |
+
+(Power is against a tier-I node.)
+
+**Rewards stay capped.** Delve Mining pay is one booked op per 2.5 s and a
+gathering node pays once per regrowth, so a higher level opens rock in fewer
+swings, not more XP per minute. `scripts/seamworks-engine.test.cjs`: 60 s with
+a Pickaxe IV at Mining 1 vs 99, every break a fresh cell — 191 vs 226 swings,
+95 vs 113 breaks, paid XP 48 vs 46 (cap 50); two minutes at a sapling at
+Woodcutting 1 vs 99 — 4 harvests each. Swings-to-break at levels 1/20/50/99:
+Scorched basalt 4/4/4/3, Cinder vein 3/3/3/2, Heartstone (Pickaxe III, from
+Mining 20) 6/6/5/4.
+
+**What the player sees** (keys in `tools.i18n.ts`, EN+ES):
+
+- Satchel slip, Quick Inspect, Crafting Bench recipe card and Character →
+  Stats → Tools: above level 1 the split (`toolPaceLines()`) —
+  "Power ×1.81 (tool ×1.5 · Mining 42 +21%)", "Swing 0.36 s (tool 0.40 ·
+  Mining 42 −10%)". At level 1 the plain lines stay.
+- Level-up banner: `LevelUpEvent.tool` (`levelGain`) adds "Mining 42: swings
+  0.3% faster, hits 0.5% harder" (Enchanting: "your staff hits 0.5% harder").
+  The banner lives in the app shell, so it fetches `tools.i18n.ts` with a
+  dynamic import on the first such line; `tool-level.ts` is the only eager
+  addition.
+- Canvas: `data-swing-pickaxe` (effective pace) and `data-power-pickaxe`
+  (effective power vs a tier-I node).
+
+Tests: node (`tool level:` ×2, `delve: a higher Mining level…`, `combat is
+unchanged…`, `rewards per minute…`), Karma (`tool-stats.component.spec.ts`
+Mining 42 split, `level-up.service.spec.ts` tool line), e2e
+(`play-tool-tiers.spec.ts` Mining 42: 0.47 s / ×1.21 and the split lines).
