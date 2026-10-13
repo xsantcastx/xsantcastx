@@ -35,7 +35,7 @@ world — and every system visible while it works.
 | Delve layout | **Your own persistent Delve**: one layout per player, carved out permanently; everything dug, placed or built stays (local save + cloud when signed in) | Persistence is the foundation for building in the Delve; layout seed is per player, stored with the save |
 | First-hour design calls (owner delegated "decide like a AAA game", 2026-10-13) | **Arm before the first fight** (forge the blade first, or a starter weapon); **a guaranteed first craft** at the Bench within ~2 min; **Rune Forge appears in context** once the first strike is affordable, not in the tutorial; **in the Delve the dig is never blocked**, only XP/yield is rate-limited, with a visible cue; **legal notices never cover gameplay** (compact consent bar in-world, same consent semantics); the **11 keeper role titles are approved** as written (personal names still owner's) | Implemented in Phase 5; the market deploy and the out-of-credit daily workflow stay with the owner |
 | World meaning (owner, 2026-10-13) | **Nothing exists without a meaning**: every item, material, block, stat, NPC, creature and station has a **source**, a **use**, **world meaning** (lore or a canon tie) and **visibility** (Found in / Used for / description / tooltip). With zero players, a thing with no natural canon tie is **removed**, not given a forced use; no new canon names | `npm run check:meaning` ratchets against `scripts/meaning-baseline.json`; today's debt and fixes are in `docs/world/meaning-audit.md`; CI wiring after review |
-| Art direction | **Hybrid, Ragnarok-style**: stylised animated **sprites** in the world (characters, creatures, NPCs, buildings, props); existing **paintings** for menus (items, portraits, gambler, Codex, paper doll, town backdrops) | Needs sprite sheets + a sprite renderer in the engine; paintings stay where they shine. The deformation rig remains the fallback until sprites exist |
+| Art direction | **Terraria-style pixel art for the whole game** (owner, 2026-10-13; replaces the 2026-10-12 "hybrid, Ragnarok-style sprites + paintings"): 16×16 art-px tiles drawn at 2× on the 32 px Delve cells (4× in towns), auto-tiled terrain with outlines, bevels and top faces, saturated per-realm and per-biome palettes, parallax backgrounds, chunky outlined animated sprites, 32×32 pixel item icons, framed pixel slots/panels for the in-world HUD. Terraria is a style reference only; nothing is copied. **Paintings stay** only for the Codex Bestiary creature masters, boss concept sheets (review only) and realm town key art (menus/loading, never behind sprites); site chrome outside the game keeps the design system | Art bible `docs/art/style-guide.md`; all 229 briefs rewritten (+4 parallax). Retires, as replacements land: the Keeper mesh rig and creature rigs, painted in-world `bg-*` backdrops, painted bag icons (later re-icon wave), the paper-doll painting. Needs small pipeline follow-ups: auto-tile importer + renderer (IMP-1/RND-1), parallax family + renderer (IMP-2/RND-2), nearest-neighbour icon ladder (IMP-3), HUD frames (RND-3) |
 
 ### Where each page lives (proposal; change here, then build)
 
@@ -156,15 +156,20 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] Standalone URLs (`/market`, `/gambler`, …) keep their SEO prerender and open into the world
 - [x] Navbar shrinks to Play + Character (Essence pill → `/play?at=market`; page links moved to a footer "Places" row + command palette; all 58 routes still prerender)
 
-## Art direction: hybrid sprites
+## Art direction: Terraria-style pixel art (owner, 2026-10-13)
+
+Replaces "hybrid sprites + paintings" (2026-10-12). Art bible: `docs/art/style-guide.md` (pixel scale and grid, sizes per class, outline and shading, realm and Delve-biome palettes, animation frames and fps, auto-tile layout, parallax, HUD slot/panel frames, export, sidecar). Briefs: `docs/art-commissions/`.
 
 - [x] Commission pack `docs/art-commissions/`: 129 assets (61 world sprites, 68 menu paintings), prompt + negative + export spec + exact library path each; `00-first-test-set.md` = make these first (`ccb0de5`)
 - [x] Importer: lossless `Sprites/*` path + sidecar JSON → `sprite-manifest.generated.ts` / `spriteFor()`; see-through figures rejected; `--commissions` lists what's still missing; `ART_PENDING` auto-clears when art lands (`ccb0de5`)
-- [x] Role titles for the 4 invented NPC roles approved (2026-10-13); personal names still the owner's
-- [ ] **Owner:** produce the test set and drop it in the library
+- [x] Role titles for the 4 invented NPC roles approved (2026-10-13); personal names still owner's
 - [x] Engine sprite-sheet renderer (`403b706`): `SpriteRenderer` (frames, pivot, mirroring, hand anchors for `setLoadout`, cached hit-flash), used by Keeper/peers/creatures/keepers/townsfolk whenever `spriteFor(key)` has a loaded sheet; otherwise today's rig/placeholder. Owner steps in `docs/handoff/sprite-renderer.md`. Importer passes the `pixelArt` flag through (`5471a66`)
-- [ ] A/B the test set in the Seamworks on a branch, then decide go / no-go for the full sprite pass
-- [-] Full sprite pass for every town, creature and NPC (after the A/B)
+- [x] **Pixel-art pivot** (2026-10-13): art bible `docs/art/style-guide.md`; all 229 briefs rewritten to pixel art with ids and library paths unchanged (`--commissions` resolves all of them), +4 Basalt Seamworks parallax layers = 233 (217 pixel, 16 kept paintings: 6 Codex masters, 5 boss concept sheets, 5 realm key art). Existing cell sizes are whole art pixels (x8), so no sidecar or engine change; tiles move to W7a auto-tile sheets
+- [ ] **Owner / AI:** produce the new first test set (`docs/art-commissions/00-first-test-set.md`, 21 files): Keeper idle/run/attack, Rivet Maw, Kael, 8 Delve tile sheets (dirt, basalt, hard basalt, bedrock, cinder vein, grotto stone, scorched basalt, basalt block), 6 icons (Pickaxe I, Torch, Dirt Block, Glowcap, Kael's Hammer, Tinder's Due), the Seamworks parallax set
+- [ ] Pipeline follow-ups so the A/B shows everything (code, small, parallel to the art): **IMP-1/RND-1** auto-tile importer + neighbour-aware terrain renderer; **IMP-2/RND-2** `Sprites/Parallax` family + 4-layer background; **IMP-3** nearest-neighbour rungs for pixel icons/portraits; **ENG-1** Delve keys `rune-warden` / `magma-maw` (style guide §12). Until IMP-1, tiles are judged in game from a row-0 crop
+- [ ] **A/B the test set in the Seamworks** on a branch (and the Delve below it): verdict go / no-go per class (characters, creatures, tiles, icons, parallax)
+- [-] Full pixel pass after the A/B: every town, creature, NPC, tile, prop and icon in the pack; then the realm parallax sets for the other four realms, the HUD frame sheet (RND-3), and the re-icon wave for the ~160 already-painted items
+- [-] Retire as replacements land: the Keeper mesh rig and per-creature rigs, the painted in-world `bg-*` backdrops (become key art), the paper-doll painting (Character panel gets a pixel equipment column)
 
 ## Distribution
 
@@ -201,7 +206,7 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
   - [x] S1–S4 shipped: nothing is ever deleted for space (both delete paths gone, incl. cloud merge); rune finds mint no Sigils (old ones cleaned on load; runes live in the Rune Forge record); deleted-record limit 512; storage prices in `STORAGE_CURVE` with refund-safe purchases; Vault routing built behind `VAULT_LIVE = false`. `e2e/play-inventory-stacks.spec.ts`
   - [~] S5+S6: the Vault station (Vault Clerk, Basalt Seamworks), `VAULT_LIVE` on, 40-slot satchel, every item surface, per-device stack-history checkpoints
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
-- Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for sprite sheets
+- Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for the pixel sprite sheets (the rig retires after the A/B)
 
 ---
 
