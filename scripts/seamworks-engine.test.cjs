@@ -909,6 +909,42 @@ test('Delve lines: every play.delve.* key the engine, chest service and HUD use 
   }
   assert.ok(used > 40, `found ${used} keyed lines`);
 });
+const { HUD_I18N } = loadTs(path.resolve(__dirname, '../src/app/play/world/hud.i18n.ts'));
+/** A keyed HUD line: its EN template, filled with the engine's vars, is exactly the engine's English; ES exists. */
+function assertHudLine(s, key) {
+  assert.equal(s.messageKey, key, `keyed as ${key}: ${s.message}`);
+  const entry = HUD_I18N[key];
+  assert.ok(entry && entry.es, `${key} has EN + ES`);
+  assert.equal(entry.en.replace(/\{\{(\w+)\}\}/g, (_, k) => String(s.messageVars?.[k])), s.message);
+}
+
+test('HUD lines: every play.hud.* key the engine and the HUD use has EN + ES', () => {
+  const files = ['../src/app/play/engine/engine.ts', '../src/app/play/side-scroller.component.ts', '../src/app/play/side-scroller.component.html'];
+  let used = 0;
+  for (const file of files) {
+    const src = fs.readFileSync(path.resolve(__dirname, file), 'utf8');
+    for (const [, key] of src.matchAll(/'(play\.hud\.[\w.]+)'/g)) {
+      used++;
+      assert.ok(HUD_I18N[key]?.en && HUD_I18N[key]?.es, `${file}: ${key} has EN + ES`);
+    }
+  }
+  assert.ok(used > 100, `found ${used} keyed lines`);
+});
+
+test('HUD lines: the quest chain, camp, hunt and drop messages are keyed, and their English matches', () => {
+  const { engine, state } = fixture();
+  assertHudLine(state(), 'play.hud.obj.start');
+  engine.player.x = -9999; engine.interact();
+  assertHudLine(state(), 'play.hud.eng.moveCloser');
+  killFirst(engine);
+  assert.ok(['play.hud.eng.defeatedDrops', 'play.hud.eng.defeated'].includes(state().messageKey));
+  assertHudLine(state(), state().messageKey);
+  engine.restartHunt();
+  assertHudLine(state(), 'play.hud.eng.freshHunt');
+  engine.returnToCamp();
+  assertHudLine(state(), 'play.hud.eng.backAtCamp');
+  engine.destroy();
+});
 const lightMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/lighting.ts'));
 const delveSpec = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve').terrain;
 function enterDelve(onWorldAction) {
@@ -2392,6 +2428,36 @@ test('sprite: figure keys map to their sheet ids; the manifest ships empty so no
   assert.equal(spriteManifest.spriteFor('keeper'), null, 'no sheet imported: the rig stays');
 });
 
+test('canvas cues sit above their station or node, never on the floor band under the action bar', () => {
+  const { engine } = fixture();
+  const noop = () => {};
+  const texts = [];
+  engine.context = new Proxy({ globalAlpha: 1, measureText: () => ({ width: 10 }), createLinearGradient: () => ({ addColorStop: noop }), createRadialGradient: () => ({ addColorStop: noop }),
+    fillText: (text, x, y) => texts.push([text, y]) }, { get: (target, key) => key in target ? target[key] : noop, set: (target, key, value) => { target[key] = value; return true; } });
+  const FLOOR = 610;
+  // A hovered stall the Keeper is not standing at.
+  const far = engine.places.find(station => Math.abs(station.x - engine.player.x) > 400);
+  engine.setHover(far.id);
+  engine.render();
+  const hover = texts.find(([text]) => text === 'CLICK TO WALK HERE');
+  assert.ok(hover, 'the hover cue is drawn');
+  assert.ok(hover[1] <= FLOOR - 240, `hover cue at ${hover[1]}, above the stall hit box`);
+  engine.setHover(null);
+  // A gathering node in Ember Quarry, Keeper beside it.
+  engine.setProgress({ equipped: true, restored: true });
+  engine.player.x = stationX(engine, 'passage'); engine.player.y = FLOOR; engine.interact();
+  assert.equal(engine.areaDef.id === 'ember-quarry' || engine.areaDef.name === 'Ember Quarry', true);
+  for (const node of engine.areaDef.nodes) {
+    engine.player.x = node.x; texts.length = 0;
+    engine.render();
+    const cue = texts.find(([text]) => /GATHER|^NEEDS |^GROWING BACK/.test(text));
+    assert.ok(cue, `${node.id}: a cue is drawn`);
+    assert.ok(cue[1] < FLOOR - 100, `${node.id}: cue at ${cue[1]} sits above the node`);
+    assert.ok(!texts.some(([, y]) => y > FLOOR + 40), `${node.id}: nothing drawn below the label line`);
+  }
+  engine.destroy();
+});
+
 function spriteEngine(sheets) {
   const { engine } = fixture(() => true, { sprite: id => sheets[id] ?? null });
   const noop = () => {};
@@ -2611,6 +2677,45 @@ test('render budget: in the Delve a phone tints with plain alpha; desktop keeps 
     assert.equal(ops.includes('soft-light'), !lite, lite ? 'no soft-light read-back on a phone' : 'desktop look unchanged');
     engine.destroy();
   }
+});
+
+test('render budget: in the Delve a phone lays its tint inside the darkness overlay and upscales it unsmoothed; desktop unchanged', () => {
+  const overlays = [];
+  browserDocument.createElement = () => {
+    const canvas = { width: 0, height: 0, ops: [] };
+    const ctx = { globalCompositeOperation: 'source-over', globalAlpha: 1 };
+    canvas.getContext = () => new Proxy(ctx, {
+      get: (t, k) => k in t ? t[k] : (...args) => { canvas.ops.push(k === 'fillRect' ? `fillRect:${t.globalCompositeOperation}` : k); return { addColorStop() {} }; },
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    overlays.push(canvas);
+    return canvas;
+  };
+  try {
+    for (const lite of [true, false]) {
+      overlays.length = 0;
+      const { engine } = fixture(() => true, { lite });
+      const { ctx } = budgetContext();
+      const blits = [];
+      engine.context = new Proxy(ctx, {
+        get: (t, k) => k === 'drawImage' ? (src, ...rest) => { if (overlays.includes(src)) blits.push([src, t.imageSmoothingEnabled !== false]); }
+          : t[k] ?? (() => {}),
+        set: (t, k, v) => { t[k] = v; return true; },
+      });
+      engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+      // Deep enough to stand in a biome with a wash (Magma Halls), like the perf scene.
+      const t = engine.terrain; engine.cameraY = t.top + 41 * 32 - 300;
+      for (let n = 0; n < 3; n++) { engine.frameDt = 1 / 60; engine.render(); }
+      const overlay = overlays.find(o => o.ops.includes('fillRect:destination-out'));
+      assert.ok(overlay, 'lights are punched out of the overlay');
+      const laid = blits.filter(([src]) => src === overlay).map(([, smooth]) => smooth);
+      assert.ok(laid.length > 0, 'the darkness overlay is laid over the frame');
+      assert.ok(laid.every(smooth => smooth === !lite), lite ? 'a phone upscales the overlay unsmoothed' : 'desktop keeps the smoothed overlay');
+      assert.ok(ctx.imageSmoothingEnabled !== false, 'smoothing is restored for everything drawn after');
+      assert.equal(overlay.ops.includes('fillRect:destination-over'), lite, lite ? 'the tint rides under the darkness, inside the overlay' : 'desktop tints the world with soft-light instead');
+      engine.destroy();
+    }
+  } finally { delete browserDocument.createElement; }
 });
 
 test('render budget: a phone bakes the town backdrop once and blits it; desktop draws it live as before', () => {

@@ -45,6 +45,7 @@ import { LIFE_I18N } from './world/life.i18n';
 import { DELVE_I18N } from './world/delve.i18n';
 import { HEARTH_I18N } from './world/hearth.i18n';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
+import { HUD_I18N } from './world/hud.i18n';
 import { firstGoal, FirstGoalView } from './world/first-goals';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
@@ -256,6 +257,7 @@ export class SideScrollerComponent implements OnDestroy {
     enemyDefeated: false,
     complete: false,
     message: 'Find the Cinder Ore deposit. Walk close and interact.',
+    messageKey: 'play.hud.obj.start',
     area: 'Basalt Seamworks',
   };
   restored = false;
@@ -281,6 +283,7 @@ export class SideScrollerComponent implements OnDestroy {
     afterNextRender(() => this.startWorld());
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
+    this.i18n.register(HUD_I18N);
   }
   private liveCanvas(): HTMLCanvasElement | null {
     const candidates = [this.canvas?.nativeElement, this.host.nativeElement.querySelector('canvas'), document.querySelector('main.play-mode canvas')];
@@ -517,13 +520,11 @@ export class SideScrollerComponent implements OnDestroy {
         locationId: this.worldLocation(this.state.areaId ?? this.town.id),
       });
       if (!result.ok) {
-        this.message = result.code === 'capacity' ? 'Your satchel is full. Make room to pick that up.' : 'That pickup could not be saved. Walk over it again.';
+        this.message = this.t(result.code === 'capacity' ? 'play.hud.msg.pickupFull' : 'play.hud.msg.pickupFailed');
         return false;
       }
     } else if (!this.inventory.grantStack(`seamworks-loot:${dropId}`, material, quantity)) {
-      this.message = this.inventory.canAcceptStackGrant(material)
-        ? 'That pickup could not be saved. Walk over it again.'
-        : 'Your satchel is full. Make room to pick that up.';
+      this.message = this.t(this.inventory.canAcceptStackGrant(material) ? 'play.hud.msg.pickupFailed' : 'play.hud.msg.pickupFull');
       return false;
     }
     const name = materialDisplay(material)?.name ?? titleCase(material.replace(/-/g, ' '));
@@ -625,7 +626,7 @@ export class SideScrollerComponent implements OnDestroy {
     }).catch(() => {
       if (seq !== this.panelSeq) return;
       this.panelLoading = false;
-      this.panelError = 'This place could not be reached. Check your connection and try again.';
+      this.panelError = this.t('play.hud.panel.error');
     });
   }
   private showPanel(place: OpenPlace): void {
@@ -721,7 +722,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   get waystone(): WaystoneRow[] {
     return REALM_TOWN_IDS.map(id => ({
-      id, realm: TOWN_LABELS[id], town: TOWNS[id]?.name ?? 'Not yet charted',
+      id, realm: TOWN_LABELS[id], town: TOWNS[id]?.name ?? this.t('play.hud.way.uncharted'),
       crest: this.art(REALM_ART[id].crest), available: !!TOWNS[id], current: this.town.id === id,
     }));
   }
@@ -769,7 +770,7 @@ export class SideScrollerComponent implements OnDestroy {
   choosePlace(place: PlaceRow): void {
     this.placesOpen = false;
     if (!this.engine?.goToStation(place.id, this.reducedMotion)) {
-      this.message = this.state.paused ? 'Close the open place first.' : 'The Keeper cannot travel right now.';
+      this.message = this.t(this.state.paused ? 'play.hud.msg.closeFirst' : 'play.hud.msg.cannotTravel');
     }
     // The list (and the focused row) is gone: keep the keyboard in the world, not on <body>.
     this.focusWorld();
@@ -800,7 +801,7 @@ export class SideScrollerComponent implements OnDestroy {
     const ok = 'station' in target
       ? this.engine.goToStation(target.station, this.reducedMotion)
       : this.reducedMotion ? (this.engine.placeAt(target.x), true) : this.engine.moveTo(target.x);
-    if (!ok) this.message = this.state.paused ? 'Close the open place first.' : 'The Keeper cannot travel right now.';
+    if (!ok) this.message = this.t(this.state.paused ? 'play.hud.msg.closeFirst' : 'play.hud.msg.cannotTravel');
     this.focusWorld();
   }
   /** Close the Places list from the keyboard and hand focus back to its toggle. */
@@ -823,6 +824,8 @@ export class SideScrollerComponent implements OnDestroy {
   toggleHearth(): void {
     this.hearthOpen = !this.hearthOpen;
     this.rememberHearth(this.hearthOpen);
+    // The open panel and the satchel book share the right of the HUD strip: one at a time.
+    if (this.hearthOpen) this.closeBag();
     const root = this.host.nativeElement as HTMLElement;
     setTimeout(() => {
       const target = this.hearthOpen
@@ -855,19 +858,19 @@ export class SideScrollerComponent implements OnDestroy {
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals); }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
-    if (this.state.areaId === 'homestead') return 'Click the Forge to strike it. Buy buildings in the column. Walk past one to collect.';
+    if (this.state.areaId === 'homestead') return this.t('play.hud.obj.homestead');
     if (this.state.delve) return this.t('play.delve.objective');
-    if (this.state.area === 'Ember Quarry') return 'Hunt the Maws. Walk over drops to collect coins and ore. Return through the west portal.';
-    if (this.restored) return 'Walk right to the open passage.';
-    if (this.state?.enemyDefeated) return 'Reach the beacon and rekindle its light.';
-    if (this.equipped) return 'Cross the platforms. Defeat the Rivet Maw.';
-    if (this.edge) return 'Equip your Basalt Edge at the forge.';
-    if (this.ore >= 6 && this.ember >= 1) return 'Walk right to the forge. Craft your first blade.';
-    return 'Mine 6 Cinder Ore and find 1 Ember Residue.';
+    if (this.state.area === 'Ember Quarry') return this.t('play.hud.obj.quarry');
+    if (this.restored) return this.t('play.hud.obj.passage');
+    if (this.state?.enemyDefeated) return this.t('play.hud.obj.beacon');
+    if (this.equipped) return this.t('play.hud.obj.maw');
+    if (this.edge) return this.t('play.hud.obj.equip');
+    if (this.ore >= 6 && this.ember >= 1) return this.t('play.hud.obj.forge');
+    return this.t('play.hud.obj.mine');
   }
   get actionLabel(): string {
-    if (this.state?.nearby === 'hs-forge') return 'Strike the Forge';
-    if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return `Enter ${titleCase(this.state.nearbyLabel ?? 'place')}`;
+    if (this.state?.nearby === 'hs-forge') return this.t('play.hud.act.strikeForge');
+    if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
     const gather = this.state?.nearby === 'gather' ? this.state.gather : undefined;
     if (gather) {
       if (!gather.ready) return this.t('play.gather.regrowing', { name: gather.label, n: gather.seconds });
@@ -875,15 +878,15 @@ export class SideScrollerComponent implements OnDestroy {
       return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
     }
     switch (this.state?.nearby) {
-      case 'ore': return this.remaining ? `Seam recovering (${this.remaining}s)` : 'Mine Cinder Ore';
-      case 'forge': return this.equipped ? 'Blade equipped' : this.edge ? 'Equip Basalt Edge' : 'Forge Basalt Edge';
-      case 'beacon': return this.restored ? 'Beacon restored' : 'Restore beacon';
+      case 'ore': return this.remaining ? this.t('play.hud.act.seamRecovering', { n: this.remaining }) : this.t('play.hud.act.mine');
+      case 'forge': return this.t(this.equipped ? 'play.hud.act.bladeEquipped' : this.edge ? 'play.hud.act.equipEdge' : 'play.hud.act.forgeEdge');
+      case 'beacon': return this.t(this.restored ? 'play.hud.act.beaconRestored' : 'play.hud.act.restoreBeacon');
       case 'inscription': return this.t('play.delve.action.inscription');
       case 'chest': return this.t('play.delve.action.chest');
       case 'camp': return this.t('play.delve.action.camp');
       case 'delve': return this.campReady ? this.t('play.delve.action.enterTop') : this.t('play.delve.action.enter');
-      case 'passage': return this.state.area === 'Ember Quarry' ? 'Return to Seamworks' : 'Enter Ember Quarry';
-      default: return 'Walk closer to a landmark';
+      case 'passage': return this.t(this.state.area === 'Ember Quarry' ? 'play.hud.act.returnSeamworks' : 'play.hud.act.enterQuarry');
+      default: return this.t('play.hud.act.walkCloser');
     }
   }
   get actionDisabled(): boolean {
@@ -936,6 +939,9 @@ export class SideScrollerComponent implements OnDestroy {
   toggleBag(): void {
     this.bagOpen = !this.bagOpen;
     if (this.bagOpen && !this.pick) this.ensurePick();
+    // The book needs the room an open Hearth takes: fold it, like a station
+    // does (the remembered choice stands for next time).
+    if (this.bagOpen) this.hearthOpen = false;
   }
   choosePocket(pocket: BagPocket): void { this.pick = { kind: pocket.kind, ref: pocket.ref }; }
   chooseWell(well: BagWell): void { this.pick = { kind: 'slot', ref: well.id }; }
@@ -998,7 +1004,7 @@ export class SideScrollerComponent implements OnDestroy {
     const item = this.selectedGear();
     if (!item || item.equipped) return;
     const ok = isBasaltEdge(item) ? this.inventory.equip(item.id, 'weapon') : this.inventory.equip(item.id);
-    this.message = ok ? `${item.name} is worn.` : `${item.name} could not be worn. Try again.`;
+    this.message = this.t(ok ? 'play.hud.msg.worn' : 'play.hud.msg.wearFailed', { name: item.name });
     if (!ok) return;
     this.sync();
     const slot = this.inventory.snapshot.items.find(row => row.id === item.id)?.slot;
@@ -1008,7 +1014,7 @@ export class SideScrollerComponent implements OnDestroy {
     const item = this.selectedGear();
     if (!item) return;
     const ok = this.inventory.unequip(item.id);
-    this.message = ok ? `${item.name} is back in the satchel.` : `${item.name} could not be stowed. Try again.`;
+    this.message = this.t(ok ? 'play.hud.msg.stowed' : 'play.hud.msg.stowFailed', { name: item.name });
     if (!ok) return;
     this.sync();
     this.pick = { kind: 'item', ref: item.id };
@@ -1032,26 +1038,26 @@ export class SideScrollerComponent implements OnDestroy {
     const display = materialDisplay(stackKey);
     const name = display?.name ?? stackKey;
     return {
-      name, art: display?.art ?? '', mark: monogram(name), kicker: 'Material',
-      note: this.stackNote(stackKey, stack.quantity), stats: [`${stack.quantity} held`],
+      name, art: display?.art ?? '', mark: monogram(name), kicker: this.t('play.hud.slip.material'),
+      note: this.stackNote(stackKey, stack.quantity), stats: [this.t('play.hud.slip.held', { n: stack.quantity })],
       canWear: false, canStow: false, compare: [], compareLabel: '',
     };
   }
   private stackNote(stackKey: string, qty: number): string {
     if (stackKey === CINDER_ORE_ID) {
-      if (qty >= 6 && this.ember >= 1) return 'The forge has enough ore. One ember residue completes the Basalt Edge.';
-      if (qty >= 6) return 'Six ore are ready. The forge still wants one ember residue.';
+      if (qty >= 6 && this.ember >= 1) return this.t('play.hud.slip.oreReady');
+      if (qty >= 6) return this.t('play.hud.slip.oreSix');
       const more = 6 - qty;
-      return `${more} more ${more === 1 ? 'piece' : 'pieces'}, and one ember residue, forge the Basalt Edge.`;
+      return more === 1 ? this.t('play.hud.slip.oreMoreOne') : this.t('play.hud.slip.oreMore', { n: more });
     }
     if (stackKey === EMBER_RESIDUE_ID) {
-      return this.ore >= 6 ? 'The forge can drink this with the ore you carry.' : 'The forge takes one of these with six cinder ore.';
+      return this.t(this.ore >= 6 ? 'play.hud.slip.emberReady' : 'play.hud.slip.emberNeeds');
     }
-    return 'Kept in the satchel. It stays on this device.';
+    return this.t('play.hud.slip.kept');
   }
   private emptyWell(slot: SlotId): BagSlip {
     const name = SLOT_BY_ID.get(slot)?.name ?? 'Place';
-    return { name, art: '', mark: monogram(name), kicker: 'Worn', note: 'Nothing rests in this place.', stats: [], canWear: false, canStow: false, compare: [], compareLabel: '' };
+    return { name, art: '', mark: monogram(name), kicker: this.t('play.hud.book.worn'), note: this.t('play.hud.slip.emptyWell'), stats: [], canWear: false, canStow: false, compare: [], compareLabel: '' };
   }
   private itemSlip(item: GameItem, worn: boolean): BagSlip {
     const def = definitionFor(item);
@@ -1061,8 +1067,8 @@ export class SideScrollerComponent implements OnDestroy {
       name: level > 0 ? `${item.name} +${level}` : item.name,
       art: itemArt(item)?.src ?? '',
       mark: monogram(item.name),
-      kicker: worn ? 'Worn' : rarityLabel(item.rarity),
-      note: item.lore || def?.lore || (worn ? 'Worn by the Keeper.' : 'In the satchel, ready to be worn.'),
+      kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
+      note: item.lore || def?.lore || this.t(worn ? 'play.hud.slip.wornBy' : 'play.hud.slip.inSatchel'),
       stats,
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
       canStow: worn,
@@ -1086,7 +1092,7 @@ export class SideScrollerComponent implements OnDestroy {
     const place = SLOT_BY_ID.get(target)?.name ?? target;
     return {
       compare: compareStats(item.stats, there?.stats, { includeUnchanged: true }),
-      compareLabel: there ? `Against ${there.name}` : `Against an empty ${place}`,
+      compareLabel: there ? this.t('play.hud.slip.against', { name: there.name }) : this.t('play.hud.slip.againstEmpty', { place }),
     };
   }
   private sync(): void {
@@ -1181,9 +1187,9 @@ export class SideScrollerComponent implements OnDestroy {
     return text === result.key ? result.message : text;
   }
   /**
-   * The engine's line for the objective: a Delve line it keyed (play.delve.*)
-   * is translated, with `item` (a placeable id) turned into `name` / `lname`;
-   * anything else is shown as the engine wrote it.
+   * The engine's line for the objective: a line it keyed (play.delve.*,
+   * play.hud.*) is translated, with `item` (a placeable id) turned into
+   * `name` / `lname`; anything else is shown as the engine wrote it.
    */
   get engineMessage(): string {
     const key = this.state.messageKey;
@@ -1192,6 +1198,10 @@ export class SideScrollerComponent implements OnDestroy {
     if (typeof vars['item'] === 'string') {
       const name = this.placeName(vars['item'] as string);
       vars['name'] = name; vars['lname'] = name.toLowerCase();
+    }
+    // A drop list the engine joined in English ("coins and Cinder Ore"): re-join it here.
+    if (typeof vars['items'] === 'string') {
+      vars['items'] = (vars['items'] as string).split(' and ').map(part => part === 'coins' ? this.t('play.hud.coins') : part).join(this.t('play.hud.and'));
     }
     const text = this.t(key, vars);
     return text === key ? this.state.message : text;
@@ -1333,7 +1343,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.inventory.grantStack(`${event.mutationId}:block`, event.block, 1)) {
       this.toastLoot(`+1 ${name}`);
       this.refreshHotbar();
-    } else this.message = `Your satchel is full, so the ${name.toLowerCase()} crumbles.`;
+    } else this.message = this.t('play.hud.msg.crumbles', { lname: name.toLowerCase() });
   }
 
   /**
@@ -1348,13 +1358,13 @@ export class SideScrollerComponent implements OnDestroy {
     if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
     if (event.kind === 'mine' && event.discipline === 'mining' && !event.site) {
       if (this.activity.snapshot.currentWork?.disciplineId === 'mining' && this.remaining > 0) {
-        this.message = `The seam needs a breath (${this.remaining}s).`; return false;
+        this.message = this.t('play.hud.msg.seamBreathN', { n: this.remaining }); return false;
       }
-      if (!this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID)) { this.message = 'Mining could not be saved.'; return false; }
+      if (!this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID)) { this.message = this.t('play.hud.msg.miningNotSaved'); return false; }
       const result = this.activity.resolveMine({ mutationId: event.mutationId, locationId: BASALT_SEAMWORKS_ID, oreId: event.materialId });
       this.now = Date.now();
       if (!result.ok) {
-        this.message = result.code === 'capacity' ? 'Your bag is full.' : result.code === 'tier-locked' ? 'Your Mining level is too low for this vein.' : result.code === 'recovering' ? 'The seam needs a breath.' : 'That strike could not be saved. Swing again.';
+        this.message = this.t(result.code === 'capacity' ? 'play.hud.msg.bagFull' : result.code === 'tier-locked' ? 'play.hud.msg.tierLocked' : result.code === 'recovering' ? 'play.hud.msg.seamBreath' : 'play.hud.msg.strikeNotSaved');
         return false;
       }
       if (event.materialId) this.toastLoot(`+1 ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
@@ -1371,7 +1381,7 @@ export class SideScrollerComponent implements OnDestroy {
     // still showed it): the rock breaks, nothing is paid twice.
     const once = event.materialId && ONCE_PER_PLAYER.has(event.materialId) ? event.materialId : null;
     if (once && this.delve.isClaimed(once)) {
-      this.message = `Only an echo is left here. You already found the ${materialDisplay(once)?.name ?? once}.`;
+      this.message = this.t('play.hud.msg.echo', { name: materialDisplay(once)?.name ?? once });
       return true;
     }
     const result = this.skillActions.act({
@@ -1380,7 +1390,7 @@ export class SideScrollerComponent implements OnDestroy {
       ...(event.materialId && event.qty ? { materialId: event.materialId, qty: event.qty } : {}),
     });
     if (!result.ok) {
-      this.message = result.code === 'capacity' ? 'Your satchel is full. Make room, then swing again.' : 'That swing could not be saved. Swing again.';
+      this.message = this.t(result.code === 'capacity' ? 'play.hud.msg.swingFull' : 'play.hud.msg.swingNotSaved');
       return false;
     }
     if (once) this.delve.claim(once);
@@ -1410,7 +1420,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private discover(event: DiscoverEvent): void {
     if (!this.browser || event.kind !== 'inscription') return;
-    const text = inscriptionById(event.id)?.text ?? 'The carving is too worn to read.';
+    const text = inscriptionById(event.id)?.text ?? this.t('play.hud.msg.unreadable');
     const fresh = this.delveLore.recordInscription(event.id);
     if (fresh) {
       const result = this.skillActions.act({
@@ -1418,7 +1428,7 @@ export class SideScrollerComponent implements OnDestroy {
       });
       if (result.ok) this.toastLoot(`+${INSCRIPTION_XP} Delving XP`);
     }
-    this.message = `${fresh ? 'New inscription. ' : ''}${text}`;
+    this.message = `${fresh ? this.t('play.hud.msg.newInscription') : ''}${text}`;
   }
   private act(target: InteractionTarget): void {
     if (!this.browser || this.state?.paused || this.state?.defeated) return;
@@ -1431,41 +1441,41 @@ export class SideScrollerComponent implements OnDestroy {
   private mine(): void {
     if (this.remaining > 0) return;
     if (!this.activity.selectCurrentWork('mining', BASALT_SEAMWORKS_ID)) {
-      this.message = 'Mining could not be saved. Check browser storage and try again.'; return;
+      this.message = this.t('play.hud.msg.miningNotSavedStorage'); return;
     }
     this.pendingMine ??= `world-mine:${Date.now()}:${Math.random().toString(36).slice(2)}`;
     const result = this.activity.resolveMine({ mutationId: this.pendingMine, locationId: BASALT_SEAMWORKS_ID, oreId: CINDER_ORE_ID });
     this.now = Date.now();
     if (!result.ok) {
-      this.message = result.code === 'capacity' ? 'Your bag is full. Make room in your inventory before mining.' : result.code === 'persist' ? 'This strike could not be saved. Try again to finish it safely.' : 'The seam is recovering. Wait a moment before striking again.';
+      this.message = this.t(result.code === 'capacity' ? 'play.hud.msg.mineFull' : result.code === 'persist' ? 'play.hud.msg.minePersist' : 'play.hud.msg.mineRecovering');
       if (result.code !== 'persist') this.pendingMine = null;
       return;
     }
     this.pendingMine = null;
-    this.message = 'Cinder Ore gathered. Keep mining for an ember, then walk right to the forge.';
+    this.message = this.t('play.hud.msg.oreGathered');
     // Scoped tutorial supply, separate from the global 800-action discovery guarantee.
     // Reuse the storyboard's claim ID so switching prototypes cannot duplicate it.
     if (this.activity.snapshot.miningAccepted >= 8 && !this.edge && this.ember < 1) {
       const granted = this.inventory.grantStack(TUTORIAL_EMBER_ID, EMBER_RESIDUE_ID, 1);
-      this.message = !granted ? 'Ore saved. The first-craft tutorial ember could not be stored; make room and mine again.' : this.ember > 0 ? this.t('play.goal.forge.ember') : 'The tutorial ember was already claimed. Retrieve it from your bank, or keep mining for another discovery.';
-    } else if (this.ember >= 1 && this.ore >= 6) this.message = 'The forge has everything it needs. Walk right to craft your blade.';
+      this.message = this.t(!granted ? 'play.hud.msg.emberNotStored' : this.ember > 0 ? 'play.goal.forge.ember' : 'play.hud.msg.emberClaimed');
+    } else if (this.ember >= 1 && this.ore >= 6) this.message = this.t('play.hud.msg.forgeReady');
   }
   private forge(): void {
     if (this.edge) {
-      this.message = this.equipped ? 'Your Basalt Edge is equipped. The Rivet Maw waits beyond the platforms.' : this.inventory.equip(this.edge.id, 'weapon') ? 'Basalt Edge equipped. Press J to attack and K to dodge.' : 'Equipping could not be saved. Try again.';
+      this.message = this.t(this.equipped ? 'play.hud.msg.edgeWorn' : this.inventory.equip(this.edge.id, 'weapon') ? 'play.hud.msg.edgeEquipped' : 'play.hud.msg.equipFailed');
       return;
     }
     const result = this.inventory.craftBasaltEdge(CRAFT_ID);
-    this.message = result.ok ? 'Your Basalt Edge is ready. Interact once more to equip it.' : result.code === 'persist' ? 'The craft could not be saved. Try again to finish safely.' : result.code === 'capacity' ? 'Make room in your bag for the blade.' : this.t('play.goal.forge.need');
+    this.message = this.t(result.ok ? 'play.hud.msg.edgeCrafted' : result.code === 'persist' ? 'play.hud.msg.craftPersist' : result.code === 'capacity' ? 'play.hud.msg.craftRoom' : 'play.goal.forge.need');
     if (result.ok) this.activity.markCraftedBasaltEdge();
   }
   private restore(): void {
-    if (this.restored) { this.message = 'The beacon burns. Follow the light to the right-hand passage.'; return; }
-    if (!this.state?.enemyDefeated) { this.message = 'The Rivet Maw still guards this crossing. Defeat it before lighting the beacon.'; return; }
+    if (this.restored) { this.message = this.t('play.hud.msg.beaconBurns'); return; }
+    if (!this.state?.enemyDefeated) { this.message = this.t('play.hud.msg.beaconGuarded'); return; }
     const saved = { restored: true, era: INVENTORY_ERA, resetAt: this.store.readRaw(RESET_STAMP_KEY) };
     this.store.write(SAVE_KEY, saved);
-    if (this.store.readRaw(SAVE_KEY) !== JSON.stringify(saved)) { this.message = 'The beacon could not be saved. Try again.'; return; }
+    if (this.store.readRaw(SAVE_KEY) !== JSON.stringify(saved)) { this.message = this.t('play.hud.msg.beaconNotSaved'); return; }
     this.restored = true;
-    this.message = 'Warm light returns to the Seamworks. The passage is open.';
+    this.message = this.t('play.hud.msg.beaconLit');
   }
 }
