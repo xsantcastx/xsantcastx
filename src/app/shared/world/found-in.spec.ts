@@ -90,6 +90,10 @@ describe('foundIn (the real world data)', () => {
     expect(labels('world-root-bark')).toContain('Ember Delve');
   });
 
+  it('names the Meridian Orrery for its rare find, the Clarity Elixir', () => {
+    expect(labels('clarity-elixir')).toEqual(['Meridian Orrery']);
+  });
+
   it('lists the expedition, not the buy-only Vendor, for an expedition material', () => {
     expect(labels('pyrite-dust')).toEqual(jasmine.arrayContaining(['Nexus expeditions']));
     expect(labels('pyrite-dust')).not.toContain('Material Vendor');

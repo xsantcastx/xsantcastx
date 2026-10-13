@@ -18,7 +18,7 @@
  */
 import { MINING_TIERS } from '../activity/activity.model';
 import { FORAGING_TIERS } from '../activity/foraging.model';
-import { PROSPECTING_TIERS } from '../activity/prospecting.model';
+import { CLARITY_ELIXIR_ID, PROSPECTING_TIERS } from '../activity/prospecting.model';
 import { VENDOR_SHELF } from '../vendor/material-vendor.model';
 import { DELVE_BIOMES, GLOWCAP, GODFORGE_FRAGMENT, SHADOW_ROOT_CUTTING, type DelveBiomeId } from '../delve/delve-lore.model';
 import { KAELS_HAMMER } from '../npc/delve-missions.model';
@@ -66,7 +66,8 @@ export function buildFoundInIndex(): FoundInIndex {
     gathering: [
       { place: 'Basalt Seamworks', materialIds: MINING_TIERS.map(t => t.oreId) },
       { place: 'Rootglass Canopy', materialIds: FORAGING_TIERS.map(t => t.herbId) },
-      { place: 'Meridian Orrery', materialIds: PROSPECTING_TIERS.map(t => t.mineralId) },
+      // The Clarity Elixir is the Orrery's rare find, not a tier.
+      { place: 'Meridian Orrery', materialIds: [...PROSPECTING_TIERS.map(t => t.mineralId), CLARITY_ELIXIR_ID] },
     ],
     areas,
     nodeYields: Object.fromEntries(TERRAIN_NODE_LIST.map(n => [n.id, n.yield?.materialId])),

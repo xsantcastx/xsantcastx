@@ -370,7 +370,6 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'verdant-sap': 'Still moving. The Orrery is a machine and this is the part of it that is alive, and nobody at the Orrery will discuss that.',
   'umbral-ink': 'Drawn from the meridian the sun does not cross. It writes perfectly well and it will not photograph.',
   'void-shard': 'Not a piece of the Void — the Void does not have pieces. A place where something was carved and the cut is still open.',
-  'clarity-elixir': 'Two mouthfuls. The first shows you what you were looking at. The second shows you what you were looking for.',
   'keeper-signet': 'A Keeper is issued one signet in a life. This is the second, and the Archivum has no record of who authorised it.',
   'sealed-codex-page': 'A page the Archivum sealed rather than burned, which is the Archivum admitting it might be wrong.',
 };

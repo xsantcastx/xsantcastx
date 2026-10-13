@@ -678,7 +678,6 @@ const MATERIAL_MARKETS: Readonly<Record<string, {
   'celestial-alloy':     { name: 'Celestial Alloy',     base: 26_000, liquidity: 120, category: 'ore',     rarity: 'epic' },
   'void-shard':          { name: 'Void Shard',          base: 60_000, liquidity: 60,  category: 'essence', rarity: 'legendary' },
   'infernal-heartstone': { name: 'Infernal Heartstone', base: 95_000, liquidity: 40,  category: 'essence', rarity: 'legendary' },
-  'clarity-elixir':      { name: 'Clarity Elixir',      base: 18_000, liquidity: 90,  category: 'reagent', rarity: 'epic' },
 };
 
 /** Which rarities of authored equipment the hall carries. */
