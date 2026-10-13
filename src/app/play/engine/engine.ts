@@ -2400,20 +2400,29 @@ export class SeamworksEngine {
     }
     // The biome under the middle of the view sets the dark, the wash, the air.
     const biome = t.biomeAt(t.rowAt(this.cameraY + 360));
-    if (biome.wash.alpha > 0) {
-      // Desktop: a soft-light wash. Phone (render-budget.ts): a plain tint at the biome's own alpha, which
-      // costs a fill instead of a read-back of every pixel; the darkness laid over it next keeps the blacks.
+    // Desktop: a soft-light wash. Phone (render-budget.ts): a plain tint at the biome's own alpha, which
+    // costs a fill instead of a read-back of every pixel; the darkness laid over it next keeps the blacks.
+    // On a phone that tint rides inside the darkness overlay (DarknessLayer.draw `under`): same pixels,
+    // one full-frame blend fewer.
+    const wash = biome.wash.alpha > 0 ? biome.wash : null;
+    if (wash && this.budget.blendModes) {
       c.save();
-      if (this.budget.blendModes) { c.globalCompositeOperation = 'soft-light'; c.globalAlpha = biome.wash.alpha * 2.5; }
-      else c.globalAlpha = biome.wash.alpha;
-      c.fillStyle = biome.wash.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
+      c.globalCompositeOperation = 'soft-light'; c.globalAlpha = wash.alpha * 2.5;
+      c.fillStyle = wash.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
       c.restore();
     }
+    const fold = wash && !this.budget.blendModes ? wash : undefined;
     const count = selectLights(pool.lights, pool.count, LIGHT_CAP, this.player.x, this.player.y);
     c.save();
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-    this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark);
+    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness);
     c.restore();
+    if (fold && !dark) {
+      // No overlay canvas: the tint on its own, as before.
+      c.save(); c.globalAlpha = fold.alpha;
+      c.fillStyle = fold.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
+      c.restore();
+    }
     c.save(); c.globalCompositeOperation = this.budget.blendModes ? 'lighter' : 'source-over';
     // Coloured light from exposed glowing cells: glowcaps wash the Grotto blue, embers the Halls red.
     for (let n = 0; n < haloCount; n++) {

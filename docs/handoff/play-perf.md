@@ -197,12 +197,79 @@ on a touch-first device (`(hover: none) and (pointer: coarse)`, overridable with
   ~35 ms in software mode). It is skipped on CI, where shared runners make frame
   timing meaningless, and skipped unless `PLAY_PERF=1`.
 
+## Delve, round 2 (2026-10-13): the darkness overlay on the phone tier
+
+Same harness, Delve scene only, 30 s windows (`PLAY_PERF_SECONDS=30`). Baseline is
+the build after the HUD fixes. The Hearth now starts folded, so the phone game
+canvas is 585×1089 (0.64 MP), not the 585×894 of the table above. Read these
+numbers against each other, not against round 1.
+
+**Where the Delve frame went.** This was measured by switching each part off in a
+throwaway build, software raster, 4× CPU, task ms per frame:
+
+| Variant | Task ms/frame | Script ms/frame |
+|---|---|---|
+| As shipped | 37.1–37.7 | 7.4–7.6 |
+| No darkness overlay at all | 31.1 | 5.8 |
+| Overlay built but never blitted | 31.0 | 5.4 |
+| No Keeper rig (painting drawn whole) | 32.7 | 3.0 |
+| Neither | 26.4 | 1.2 |
+| Overlay at 0.25 resolution instead of 0.5 | 36.2 | 6.4 |
+| Overlay blitted nearest-neighbour | 34.0–36.5 | 7.6 |
+| Nearest-neighbour + 0.25 resolution | 32.7 | 6.3 |
+
+So the darkness costs about 6 ms. Almost all of that is the filtered full-frame
+upscale blit, not punching the lights (a quarter of the overlay pixels saves only
+~1 ms). The rig costs about 4.5 ms, and it is mostly JS: per-triangle
+`save` / `clip` / `drawImage` / `restore`.
+
+**What changed (phone tier only; desktop draws exactly as before):**
+
+1. **Nearest-neighbour upscale of the darkness overlay** (`RenderBudget.smoothDarkness`,
+   false on lite). One overlay texel is 2 CSS px, and the darkness is a slow
+   gradient: a step at the lantern's edge is ~2/255 of alpha. Screenshots of the
+   Magma Halls scene at 390×844 @3, smoothed and not, could not be told apart.
+   0.25 resolution plus nearest-neighbour measured faster still, but showed
+   4 CSS px blocks around small lights, so it was not shipped.
+2. **The biome tint rides inside the overlay.** The phone's plain-alpha wash
+   (round 1, item 5) is filled into the overlay *under* the darkness with
+   `destination-over`, after the lights are punched. Premultiplied, that is exactly
+   tint-then-darkness over the world, so the pixels are identical. The phone canvas
+   loses one full-frame fill, and the extra fill runs on the small offscreen canvas.
+   If the overlay canvas cannot be made, the tint is drawn on its own as before.
+
+| Delve, 390×844 @3, 4× CPU, 30 s | Frames | p50 / p95 ms | Task ms/frame | Script ms/frame | Alloc KB/frame |
+|---|---|---|---|---|---|
+| Software raster, before (2 runs) | 804, 799 | 33.4 / 50.9–51.2 | 37.35, 37.56 | 7.36, 7.37 | 41.5, 42.9 |
+| Software raster, after (3 runs) | 908, 882, 884 | 33.3 / 49.9–50.1 | 32.35, 32.83, 33.95 | 7.04–7.51 | 39.5–40.4 |
+| GPU raster (Metal), before | 1801 | 16.7 / 18.4 | 2.63 | 1.44 | 31.9 |
+| GPU raster (Metal), after | 1802 | 16.7 / 18.5 | 2.51 | 1.41 | 31.0 |
+
+Main-thread time per frame fell **~12%** in software raster (37.4 → 33.0 ms), and
+**+11% frames** were drawn in the same 30 s. The p50 and p95 do not move because the
+rAF probe is quantised to vsync: 33.3 is two refreshes, 50 is three. A frame now has
+more slack inside the same two refreshes. In GPU mode the frame was already at 60 fps.
+The main-thread change there (2.63 → 2.51) is within noise. On a real phone GPU the
+filtered blit is cheap anyway, so this mostly helps software-raster and weak-GPU phones.
+
+Guard: the engine test `render budget: in the Delve a phone lays its tint inside the
+darkness overlay and upscales it unsmoothed; desktop unchanged`.
+
+**The rig was not changed, on purpose.** The two cheap ideas were:
+- re-deform the Keeper no more than 30 times a second;
+- deform into a smaller buffer.
+
+The first saves nothing in this harness. The throttled phone already draws at
+≤30 fps, so the cap only helps a phone that runs at 60, where the rig is ~1 ms of
+JS. Re-deforming every other *drawn* frame would drop the pose to 15 Hz there.
+The second blurs the one figure the eye follows. The real fix is still the sprite
+sheets (`sprite.ts`), which replace the rig per figure as art lands.
+
 ## Not done / next
 
-- **The Delve is still the heaviest scene in software raster** (p50 50 ms). What
-  remains is mostly the darkness overlay upscale and the halos. One option is to
-  draw the darkness layer at device resolution / 2 straight into the frame
-  instead of an upscaled `drawImage`.
+- **The Delve is still the heaviest scene in software raster.** Round 2 (above)
+  took ~4.4 ms a frame off the darkness overlay on phones. What is left is the
+  Keeper rig (~4.5 ms, JS) and the main canvas raster itself.
 - **Throttling the lighting pass** (rebuilding darkness every other frame) was not
   done. The overlay is in screen space and the lantern follows the Keeper, so a
   stale frame visibly lags while walking.
