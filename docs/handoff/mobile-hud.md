@@ -104,6 +104,10 @@ only) is the pick, chosen by default.
   Keeper walks toward the tap instead of digging.
 - Only taps read it (`pointerType !== 'mouse'`), so mouse play is unchanged. B,
   X, 1–0 and the long-press behave as before.
+- **2026-10-14 (`delve-navigation.md`):** a held finger now repeats: with the
+  pick it keeps mining the cell (the long-press place is gone), with a
+  placeable it places along the drag. Reach is 4.5 cells. The map toggle and
+  minimap are HUD pieces in `play-mobile-hud.spec.ts`.
 
 ## Numbers
 
