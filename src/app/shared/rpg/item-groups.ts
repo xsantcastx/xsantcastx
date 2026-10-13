@@ -8,7 +8,12 @@
  * (not even a failed attempt), no rune set in a socket, and the same place.
  * Anything else keeps its own row. Nothing here writes or rewrites a record:
  * a grade is never recomputed (the memory note "item rolls carry a frozen
- * grade"), and each instance still takes its own slot.
+ * grade").
+ *
+ * Slots (manager decision 2026-10-13): a group of identical pieces in the
+ * satchel or in a slot-limited Vault tab takes `ceil(n / 20)` slots, not one
+ * per piece. Each piece stays its own record; only the counting changes, and
+ * inventory-layout.ts is the one place that counts.
  *
  * Variants of one definition that differ in rolls stay separate rows, but
  * `clusterBy` keeps them next to each other in whatever order the list sorts.
@@ -31,11 +36,20 @@ function placeOf(item: GameItem): string {
   return item.explorerId ? `held:${item.explorerId}` : 'bag';
 }
 
+/** Identical pieces one slot holds. */
+export const IDENTICAL_PER_SLOT = 20;
+
+/** Slots a group of `n` identical pieces takes: `ceil(n / 20)`. */
+export function slotsForGroup(n: number): number {
+  return n > 0 ? Math.ceil(n / IDENTICAL_PER_SLOT) : 0;
+}
+
 /**
- * The key two instances must share to show as one row, or null when this
- * instance is one of a kind (worn, tempered, reforged, or holding a rune).
+ * What makes two pieces identical, wherever they are: {@link groupKeyOf}
+ * without the place. Null for a one-of-a-kind piece (worn, tempered,
+ * reforged, or holding a rune) — that one always takes a slot of its own.
  */
-export function groupKeyOf(item: GameItem): string | null {
+export function identityKeyOf(item: GameItem): string | null {
   if (item.equipped) return null;
   if ((item.upgradeLevel ?? 0) > 0 || item.lastUpgradeAt || item.lastUpgradeMutationId) return null;
   if ((item.reforgeCount ?? 0) > 0 || item.lastReforgeAt || item.lastReforgeMutationId || item.lastReforgeLock) return null;
@@ -49,8 +63,16 @@ export function groupKeyOf(item: GameItem): string | null {
     item.soulbound ? 1 : 0,
     canonical(item.stats),
     canonical(item.rollQuality),
-    placeOf(item),
   ].join('|');
+}
+
+/**
+ * The key two instances must share to show as one row, or null when this
+ * instance is one of a kind (worn, tempered, reforged, or holding a rune).
+ */
+export function groupKeyOf(item: GameItem): string | null {
+  const identity = identityKeyOf(item);
+  return identity === null ? null : `${identity}|${placeOf(item)}`;
 }
 
 export interface ItemGroup {
