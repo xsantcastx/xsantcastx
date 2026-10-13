@@ -542,8 +542,13 @@ export class GmDataService {
     // `now` — mirroring nextHlc(). A tombstone at a *lower* hlc than the record
     // it is meant to kill does nothing at all.
     const base = Math.max(now, ledger.hlc + 1);
+    // Bought satchel rows and Vault tabs are entitlements, not items: a bag
+    // reset leaves them owned (inventory spec §2.6).
+    const isStorage = (row: (typeof ledger.records)[number]) =>
+      row.kind === 'stack' && row.stackKey.startsWith('storage:');
+    const cleared = ledger.records.filter(row => !isStorage(row));
 
-    const tombstones = ledger.records.map((row, i) => ({
+    const tombstones = cleared.map((row, i) => ({
       id: row.id,
       revision: {
         hlc: base + i,
@@ -555,7 +560,7 @@ export class GmDataService {
       deletedAt: now,
     }));
 
-    const zeroing = ledger.records.flatMap((row, i) => {
+    const zeroing = cleared.flatMap((row, i) => {
       if (row.kind !== 'stack') return [];
       const held = stackQuantityOf(ledger, row.stackKey);
       if (held <= 0) return [];
@@ -574,7 +579,7 @@ export class GmDataService {
     const next: InventoryLedger = {
       ...ledger,
       version: INVENTORY_SCHEMA_VERSION,
-      records: [],
+      records: ledger.records.filter(isStorage),
       tombstones: [...ledger.tombstones, ...tombstones],
       stackOps: [...ledger.stackOps, ...zeroing],
       hlc: base + ledger.records.length,

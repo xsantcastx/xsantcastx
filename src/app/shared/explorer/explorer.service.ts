@@ -606,11 +606,9 @@ export class ExplorerService implements OnDestroy {
       if (items.length) landing.reward.items = items;
 
       // Materials go into the bag as stacks, keyed off the expedition id so a
-      // settlement replayed by a cloud merge lands once. `grantStack` refuses a
-      // new row at the 250-tile cap rather than evicting anything, which is the
-      // right call and is why the *actual* banked map is rebuilt from what it
-      // returned: a haul the bag had no room for must not be reported as though
-      // it were sitting in there.
+      // settlement replayed by a cloud merge lands once. `grantStack` never
+      // refuses for space; it can still fail to save, which is why the *actual*
+      // banked map is rebuilt from what it returned.
       if (landing.reward.materials) {
         const banked: Record<string, number> = {};
         for (const [stackKey, quantity] of Object.entries(landing.reward.materials)) {

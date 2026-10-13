@@ -46,7 +46,7 @@ import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { mintEquipment } from '../rpg/item-definition';
-import { RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
+import { RUNES, RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
 import { materialDisplay } from '../rpg/material-catalog';
 import { DelveLoreService } from '../delve/delve-lore.service';
 import { DELVE_INSCRIPTIONS } from '../delve/delve-lore.model';
@@ -572,8 +572,12 @@ export class NpcQuestService {
 
       case 'item-rarity': {
         // "at this rarity or above", so a Singular drop satisfies a mythic ask.
+        // A held rune of the tier counts too: it used to arrive as a Sigil item
+        // of that rarity, and the Sigil items are gone — the Forge ledger holds it.
         const floor = RUNE_TIER_ORDER.indexOf(o.rarity);
-        return RUNE_TIER_ORDER.slice(floor).some(r => this.inventory.hasRarity(r)) ? 1 : 0;
+        const tiers = RUNE_TIER_ORDER.slice(floor);
+        return tiers.some(r => this.inventory.hasRarity(r))
+          || RUNES.some(rune => tiers.includes(rune.tier) && this.runes.countOf(rune.id) > 0) ? 1 : 0;
       }
 
       case 'gold-earned':

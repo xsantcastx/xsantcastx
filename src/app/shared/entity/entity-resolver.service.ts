@@ -413,6 +413,13 @@ export class EntityResolver {
         exactValue: item.slot ?? 'equipped',
       };
     }
+    if (item.explorerId?.startsWith('vault:')) {
+      return {
+        label: this.t('inspect.fact.location'),
+        value: this.t('inspect.location.vault'),
+        exactValue: item.explorerId,
+      };
+    }
     if (item.explorerId) {
       return {
         label: this.t('inspect.fact.location'),
