@@ -121,6 +121,14 @@
   <app-pwa-outlet kind="chrome"></app-pwa-outlet>
 }
 
+<!-- "A new version is ready — Reload". Top-centre on every route, /play
+     included (an installed app or a long-open tab never navigates, so it would
+     otherwise run an old bundle for days). Hidden while a panel, modal or fight
+     is up; never reloads without a tap. See shared/pwa/app-update.service.ts. -->
+@if (!isEmbedMode) {
+  <app-pwa-outlet kind="update"></app-pwa-outlet>
+}
+
 <!-- The Forge Flame. A sibling of <main>, not a child of any routed component:
      routeFadeIn leaves a transform on every routed host, which makes it a
      containing block, and a position:fixed flame inside one would be pinned to

@@ -191,7 +191,7 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] **Consent bar in-world** (AAA call): docked under the game frame on `/play` (`--gf-consent-h`), Accept and Essential Only equal, no analytics before an answer, `e2e/play-consent.spec.ts`; the goal line moves beside the open Hearth or hides under 1180px
 - [x] **Phone HUD, Terraria-mobile style** (owner, 2026-10-13: "not playable" on a real phone; `docs/handoff/mobile-hud.md`): hotbar top-left (Pick slot first) + satchel button with badge, area title + slim health + menu top-right; menu holds Places/Return/Restart/Keys; goal line folds to a chip; messages are 4 s toasts; one touch row (movement left, Blast/Dodge/Use/Jump right, ≥44px, fits 360px); tap a cell to dig (Pick) or place (block). Unobstructed world: Delve 37–50% → 71–77% portrait, 18.5% → 69% landscape; desktop identical. `e2e/play-mobile-hud.spec.ts` (chromium + webkit)
   - Next: phones in landscape wider than 900px (e.g. 932×430) still get the desktop layout; the Homestead Gold list unfolded on a phone covers mid-world; touch labels are 8–11px text, icons would read better
-- Owner's phone showed a build from before the Hearth fold: an installed app or a long-open tab never navigates, so it keeps an old bundle. Add a "new version — tap to reload" prompt when the service worker updates
+- [x] **"New version — Reload" prompt**: `scripts/stamp-build-id.js` (postbuild) stamps a build id into `version.json`, every page's `<meta name="gf-build">` and `service-worker.js`; `AppUpdateService` checks on start, every 30 min, on return to the tab and on `online`; a top-centre toast (never over controls, waits while a panel/fight is open) flushes saves via `GameStateGateway.settleForReload()` before reloading; the worker no longer skip-waits. `e2e/play-update.spec.ts`. Real-device / iOS standalone check still owed
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for sprite sheets
 
@@ -215,7 +215,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Service-worker "new version — Reload" prompt | agent worktree | `[~]` |
+| Phone HUD follow-ups · Delve e2e positioning (chest X, pit after reload) | agent worktrees | `[~]` |
 
 ## Art still missing (placeholders in game)
 
@@ -263,3 +263,5 @@ filename the importer picks up automatically.
 - One owner per file area at a time; parallel agents get disjoint file lists.
 - Every branch: `node --test scripts/seamworks-engine.test.cjs`, `check-ds-adherence`, `check-i18n-keys`, `audit-nav`, one `ng build`; then a look in a production build before merging to `main` and `dev`.
 - Tick items here in the merge that ships them.
+- **Simplest thing that works.** Write the least code that solves the task; no speculative options, abstractions or configurability nobody asked for. If 200 lines could be 50, make it 50.
+- **Surgical diffs.** Every changed line traces to the task. Don't reformat, refactor or "improve" neighbouring code; remove only what your own change made unused, and report (don't delete) unrelated dead code.
