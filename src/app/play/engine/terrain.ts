@@ -113,8 +113,9 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   { id: 'petrified-trunk', label: 'Petrified trunk', solid: true, hp: 3, tools: { axe: 1 }, discipline: 'woodcutting', xp: 4,
     yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, base: '#3a2a1c', dark: '#24190f', light: '#7a5a36', fleck: '#b08a55' },
   { id: 'bedrock', label: 'Bedrock', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0, base: '#141016', dark: '#09070a', light: '#231c25', fleck: '#2d2430' },
-  { id: 'ember-rock', label: 'Ember-veined basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0,
-    ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
+  // The most common vein: a quarter of strikes leave Ember Residue (audit #1).
+  { id: 'ember-rock', label: 'Ember-veined basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1,
+    yield: { materialId: 'ember-residue', qty: 1, chance: .25 }, ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
   { id: 'cache', label: 'Keeper\'s cache', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 8,
     yield: { materialId: 'ember-residue', qty: 1 }, base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 52 } },
   // ── Biomes (Phase 2.6). Appended: the index is the saved byte. ──
