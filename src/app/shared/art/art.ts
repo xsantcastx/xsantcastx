@@ -52,6 +52,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   'pickaxe-1': 'iron-hammer', 'pickaxe-2': 'obsidian-mallet', 'pickaxe-3': 'nox-crusher', 'pickaxe-4': 'eclipse-hammer',
   'axe-1': 'rootbreaker-mace', 'axe-2': 'radiant-halberd', 'axe-3': 'astral-glaive', 'axe-4': 'starfall-maul',
   'sickle-1': 'briarvein-kris', 'sickle-2': 'ashveil-throwing-knives', 'sickle-3': 'hollow-fang', 'sickle-4': 'cindergnaw',
+  'starter-pickaxe': 'iron-hammer', 'starter-axe': 'rootbreaker-mace', 'starter-sickle': 'briarvein-kris',
   'staff-1': 'keeper-staff', 'staff-2': 'keeper-staff', 'staff-3': 'nullthorn-staff', 'staff-4': 'pyreclast-wand',
   // Ember Delve biome materials (shared/delve). Stand-ins until the commission
   // pack paints them; delete each row when its file lands.
