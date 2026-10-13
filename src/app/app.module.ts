@@ -19,7 +19,6 @@ import { FocusTrapDirective } from './shared/focus-trap.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
-import { EmbedBarComponent } from './shared/embed-bar/embed-bar.component';
 import { MilestoneEffectComponent } from './shared/visit-counter/milestone-effect.component';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
 import { XpBarComponent } from './shared/gamification/xp-bar.component';
@@ -64,7 +63,6 @@ import { PwaService } from './shared/pwa.service';
     FooterComponent,
     CookieBannerComponent,
     FocusTrapDirective,
-    EmbedBarComponent,
     MilestoneEffectComponent,
     CommandPaletteComponent
   ],

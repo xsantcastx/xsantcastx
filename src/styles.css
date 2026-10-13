@@ -1517,29 +1517,7 @@ body.flicker {
    The rotating buzzword pill that used to live under the wordmark went with
    the portfolio navbar. Its rules (.nav-buzzword, @keyframes navWordSwap)
    are deleted rather than left orphaned — the Godforge command bar draws its
-   own mark and has no element they could apply to. *//* ===== Embed Mode ===== */
-.embed-mode {
-  --shell-sidebar-w: 0px;
-  --header-offset: 0px;
-  padding: 12px;
-  min-height: calc(100vh - 36px); /* Reserve space for embed bar */
-  overflow: auto;
-}
-
-/* Light theme override for embeds on light-background sites */
-.embed-theme-light {
-  --surface-color: rgba(245, 245, 250, 0.92);
-  --surface-strong: rgba(235, 235, 245, 0.96);
-  --surface-hover: rgba(225, 225, 240, 0.88);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-border-strong: rgba(0, 150, 200, 0.25);
-  --text-color: #1a1a2e;
-  --text-muted: rgba(40, 44, 60, 0.76);
-  background: #fafafa;
-  color: #1a1a2e;
-}
-
-/* ===== Global Keyboard Focus Styles =====
+   own mark and has no element they could apply to. *//* ===== Global Keyboard Focus Styles =====
  * a11y backlog: previously only .logo had a :focus-visible style, leaving every
  * other interactive element relying on the browser default — invisible against
  * the dark theme. WCAG 2.4.7 Focus Visible.

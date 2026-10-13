@@ -2,16 +2,15 @@
  * forge-effects.service.ts — the one place that answers "may we run WebGL?".
  *
  * ─────────────────────────────────────────────────────────────────────────────
- * FOUR GATES, ONE ANSWER
+ * THREE GATES, ONE ANSWER
  * ─────────────────────────────────────────────────────────────────────────────
- * The 3D background is the single most expensive thing on the site, so four
+ * The 3D background is the single most expensive thing on the site, so three
  * separate things are allowed to switch it off, and they are deliberately
  * collapsed into one boolean rather than being re-checked at each call site:
  *
  *   1. the server            — there is no canvas during prerender
  *   2. the visitor's choice  — the Reduce Effects toggle, persisted
- *   3. embed mode            — an iframed tool never gets a cinematic backdrop
- *   4. WebGL itself          — no context, no scene, fall back to the CSS one
+ *   3. WebGL itself          — no context, no scene, fall back to the CSS one
  *
  * `prefers-reduced-motion` is deliberately NOT one of them. Per the house rule,
  * a reduced-motion visitor gets a *static end state*, not nothing: the scene
@@ -46,16 +45,9 @@ export class ForgeEffectsService {
 
   get reduced(): boolean { return this.reduced$$.value; }
 
-  /**
-   * Whether the WebGL scene should mount at all.
-   *
-   * Embed mode is passed in rather than injected: EmbedService reads the URL,
-   * and a service this low in the graph having an opinion about routing is how
-   * a circular dependency starts.
-   */
-  shouldRender(opts: { embed: boolean }): boolean {
+  /** Whether the WebGL scene should mount at all. */
+  shouldRender(): boolean {
     if (!this.isBrowser) return false;
-    if (opts.embed) return false;
     if (this.reduced) return false;
     return this.webglSupported();
   }
