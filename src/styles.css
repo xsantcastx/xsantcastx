@@ -1489,18 +1489,20 @@ html[data-cos-xpbar="void"] .xpb__track { background: rgba(20, 8, 40, .9); }
 html[data-cos-xpbar="void"] .xpb__rank { box-shadow: 0 0 14px rgba(123, 97, 255, .85); }
 
 /* ─── Achievement Frame ──────────────────────────────────────────────────────
-   Applied to found cards only. A locked card already carries the tier border
-   that says what it is worth, and framing the 130 a visitor has *not* earned
+   The Codex's cards are the Collection Log's (`.cl-card`, inside
+   <app-collection-log> on the Collection tab); the achievement wall is a
+   journal list now and has none. Applied to found cards only: a locked card
+   carries no colour on purpose, and framing what a visitor has *not* found
    would turn a bought ornament into a wall of gold nobody reached. */
-html[data-cos-frame="golden"] .cx-card:not(.cx-card--locked) {
+html[data-cos-frame="golden"] .cl-card:not(.cl-card--locked) {
   border-color: var(--gold-core);
   box-shadow: 0 0 0 1px rgba(200, 152, 104, .35), 0 0 24px -12px rgba(200, 152, 104, .9);
 }
-html[data-cos-frame="obsidian"] .cx-card:not(.cx-card--locked) {
+html[data-cos-frame="obsidian"] .cl-card:not(.cl-card--locked) {
   border-color: #4b4160;
   box-shadow: 0 0 0 1px rgba(20, 16, 32, .9), 0 6px 20px -10px rgba(0, 0, 0, .95);
 }
-html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
+html[data-cos-frame="prismatic"] .cl-card:not(.cl-card--locked) {
   border-color: transparent;
   /* Two backgrounds, clipped to the padding box and the border box in turn:
      the card keeps its own surface and the gradient only paints the 1px ring. */
@@ -1509,6 +1511,12 @@ html[data-cos-frame="prismatic"] .cx-card:not(.cx-card--locked) {
     linear-gradient(135deg, #A78BFA, #7b61ff 40%, #ff6dd7 70%, var(--gold-bright));
   background-origin: border-box;
   background-clip: padding-box, border-box;
+}
+/* Runed — the Archivist's, granted at step four. It had no rule, so wearing it
+   painted nothing. */
+html[data-cos-frame="runed"] .cl-card:not(.cl-card--locked) {
+  border-color: #5fb6ff;
+  box-shadow: 0 0 0 1px rgba(95, 182, 255, .3), 0 0 22px -10px rgba(95, 182, 255, .9);
 }
 
 /* ═══════════════════════════════════════════════════════════════════════

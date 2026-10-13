@@ -931,7 +931,7 @@ export const COSMETICS: Cosmetic[] = [
   {
     id: 'achievement-frame',
     name: 'Achievement Frame',
-    effect: 'Borders every card in the Codex.',
+    effect: 'Borders every found card in the Codex\'s Collection Log.',
     flavour: 'A wall is a wall. A framed wall is a record.',
     icon: '🖼️',
     cost: 1_000_000,
