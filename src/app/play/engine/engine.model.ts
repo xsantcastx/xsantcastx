@@ -32,6 +32,13 @@ export interface EngineState {
    */
   enemyId?: string;
   /**
+   * The i18n key (`play.delve.*`) of `message`, when it is a Delve line the
+   * HUD can translate. `messageVars.item` is a placeable id (the HUD turns it
+   * into `name` / `lname`). Absent for every other message: show `message`.
+   */
+  messageKey?: string;
+  messageVars?: Record<string, string | number>;
+  /**
    * The gathering node within reach (a herb patch, a tree, an outcrop) when
    * no station is: `nearby` is then 'gather'. `need` is what still stops the
    * Keeper ("Sickle II", "Foraging 6"); `seconds` is the regrowth left.
