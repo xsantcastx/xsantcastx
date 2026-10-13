@@ -2679,6 +2679,45 @@ test('render budget: in the Delve a phone tints with plain alpha; desktop keeps 
   }
 });
 
+test('render budget: in the Delve a phone lays its tint inside the darkness overlay and upscales it unsmoothed; desktop unchanged', () => {
+  const overlays = [];
+  browserDocument.createElement = () => {
+    const canvas = { width: 0, height: 0, ops: [] };
+    const ctx = { globalCompositeOperation: 'source-over', globalAlpha: 1 };
+    canvas.getContext = () => new Proxy(ctx, {
+      get: (t, k) => k in t ? t[k] : (...args) => { canvas.ops.push(k === 'fillRect' ? `fillRect:${t.globalCompositeOperation}` : k); return { addColorStop() {} }; },
+      set: (t, k, v) => { t[k] = v; return true; },
+    });
+    overlays.push(canvas);
+    return canvas;
+  };
+  try {
+    for (const lite of [true, false]) {
+      overlays.length = 0;
+      const { engine } = fixture(() => true, { lite });
+      const { ctx } = budgetContext();
+      const blits = [];
+      engine.context = new Proxy(ctx, {
+        get: (t, k) => k === 'drawImage' ? (src, ...rest) => { if (overlays.includes(src)) blits.push([src, t.imageSmoothingEnabled !== false]); }
+          : t[k] ?? (() => {}),
+        set: (t, k, v) => { t[k] = v; return true; },
+      });
+      engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+      // Deep enough to stand in a biome with a wash (Magma Halls), like the perf scene.
+      const t = engine.terrain; engine.cameraY = t.top + 41 * 32 - 300;
+      for (let n = 0; n < 3; n++) { engine.frameDt = 1 / 60; engine.render(); }
+      const overlay = overlays.find(o => o.ops.includes('fillRect:destination-out'));
+      assert.ok(overlay, 'lights are punched out of the overlay');
+      const laid = blits.filter(([src]) => src === overlay).map(([, smooth]) => smooth);
+      assert.ok(laid.length > 0, 'the darkness overlay is laid over the frame');
+      assert.ok(laid.every(smooth => smooth === !lite), lite ? 'a phone upscales the overlay unsmoothed' : 'desktop keeps the smoothed overlay');
+      assert.ok(ctx.imageSmoothingEnabled !== false, 'smoothing is restored for everything drawn after');
+      assert.equal(overlay.ops.includes('fillRect:destination-over'), lite, lite ? 'the tint rides under the darkness, inside the overlay' : 'desktop tints the world with soft-light instead');
+      engine.destroy();
+    }
+  } finally { delete browserDocument.createElement; }
+});
+
 test('render budget: a phone bakes the town backdrop once and blits it; desktop draws it live as before', () => {
   const painting = { complete: true, naturalWidth: 1536, naturalHeight: 864 };
   const baked = [];
