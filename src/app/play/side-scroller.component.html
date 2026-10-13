@@ -53,6 +53,7 @@
             </button>
           </li>
         }
+        <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
       </ul>
       <!-- Phones: the rest of the old top bar lives in this menu. -->
       <div class="menu-extra">
