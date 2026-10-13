@@ -48,7 +48,7 @@ describe('EntityResolver', () => {
     expect(resolver.resolve({ type: 'runeword', id: 'first-light' }).presentation?.facts
       .some(fact => fact.exactValue?.includes('ash'))).toBeTrue();
     expect(resolver.resolve({ type: 'realm', id: 'luminous' }).presentation?.name).toBe('Luminous');
-    expect(resolver.resolve({ type: 'quest', id: 'forge-three-shadows' }).state).toBe('ready');
+    expect(resolver.resolve({ type: 'quest', id: 'walk-the-five-stations' }).state).toBe('ready');
     expect(resolver.resolve({ type: 'creature', id: slugifyThreat('The Pale Refrain') }).presentation?.name)
       .toBe('The Pale Refrain');
   });

@@ -327,9 +327,9 @@ export class ForgeSceneService implements OnDestroy {
    * never touches the initial bundle. A visitor who has Reduce Effects on, or
    * no WebGL, never downloads it at all.
    */
-  async mount(canvas: HTMLCanvasElement, opts: { embed: boolean }): Promise<void> {
+  async mount(canvas: HTMLCanvasElement): Promise<void> {
     if (!this.isBrowser || this.mounting || this.renderer) return;
-    if (!this.effects.shouldRender(opts)) return;
+    if (!this.effects.shouldRender()) return;
     this.mounting = true;
     try {
       const THREE = this.three ?? (this.three = await import('three'));

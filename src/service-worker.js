@@ -114,7 +114,6 @@ const NEVER_CACHE_HOSTS = [
   'js.stripe.com',
   'api.stripe.com',
   'www.paypal.com',
-  'cdn.carbonads.com',
 ];
 
 /** Content-hashed build output: main-A1B2C3D4.js, styles-XXXX.css, chunk-XXXX.js */

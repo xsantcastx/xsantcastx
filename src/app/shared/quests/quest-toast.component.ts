@@ -1,10 +1,8 @@
 /**
- * quest-toast.component.ts — the two announcements this feature owes the visitor.
+ * quest-toast.component.ts — the announcement a claimed quest owes the visitor.
  *
- * A claimed quest and a newly-opened lore chapter both happen while attention
- * is somewhere else, so both need to say so. They share one component because
- * they share one constraint: never more than one on screen, and never long
- * enough to be in the way.
+ * A claim happens while attention is somewhere else, so it needs to say so —
+ * never more than one on screen, and never long enough to be in the way.
  *
  * Deliberately NOT routed through AchievementDropComponent. That component is
  * bound to egg discoveries and its rarest tiers take over the viewport; a quest
@@ -23,11 +21,10 @@ import {
 import { CommonModule, isPlatformBrowser } from '@angular/common';
 import { Subscription } from 'rxjs';
 import { QuestService } from './quest.service';
-import { LoreService } from '../lore/lore.service';
 import { RARITIES } from '../rarity/rarity.model';
 
 interface Toast {
-  kind: 'quest' | 'lore';
+  kind: 'quest';
   icon: string;
   eyebrow: string;
   title: string;
@@ -102,13 +99,6 @@ const DWELL_MS = 5200;
     }
     .qt__detail { font-size: 12px; color: #9fb4ae; }
 
-    /* The codex speaks in serif everywhere else; it should here too. */
-    .qt[data-kind="lore"] .qt__title,
-    .qt[data-kind="lore"] .qt__detail {
-      font-family: Georgia, 'Times New Roman', serif;
-    }
-    .qt[data-kind="lore"] .qt__title { font-weight: 600; letter-spacing: 0; }
-
     @media (prefers-reduced-motion: reduce) {
       .qt { transition: opacity .2s ease; transform: translate(-50%, 0); }
     }
@@ -116,7 +106,6 @@ const DWELL_MS = 5200;
 })
 export class QuestToastComponent implements OnInit, OnDestroy {
   private readonly quests = inject(QuestService);
-  private readonly lore = inject(LoreService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
@@ -145,18 +134,6 @@ export class QuestToastComponent implements OnInit, OnDestroy {
         detail: quest.rewards.loreFragment ?? banked,
         color: tier.color,
         glow: tier.glow,
-      });
-    }));
-
-    this.subs.add(this.lore.unlock$.subscribe(({ chapter }) => {
-      this.show({
-        kind: 'lore',
-        icon: '\u{1F4D6}',
-        eyebrow: 'New lore discovered',
-        title: chapter.title,
-        detail: 'Open the codex at the foot of this page to read it.',
-        color: '#c89868',
-        glow: 'rgba(200, 152, 104, 0.6)',
       });
     }));
   }

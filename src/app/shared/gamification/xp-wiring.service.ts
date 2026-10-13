@@ -11,7 +11,6 @@ import { isPlatformBrowser } from '@angular/common';
 import { NavigationEnd, Router } from '@angular/router';
 import { filter } from 'rxjs/operators';
 import { XpService } from './xp.service';
-import { ToolMasteryService } from './tool-mastery.service';
 import { EASTER_EGGS, EasterEggService } from '../easter-eggs/easter-egg.service';
 import { canonicalizePlayerPath } from '../canonical-routes';
 
@@ -22,7 +21,6 @@ export class XpWiringService {
   private readonly zone = inject(NgZone);
   private readonly xp = inject(XpService);
   private readonly eggs = inject(EasterEggService);
-  private readonly mastery = inject(ToolMasteryService);
 
   private started = false;
   /** Routes already paid for this session — a page visit earns XP once. */
@@ -34,12 +32,6 @@ export class XpWiringService {
   init(): void {
     if (!this.isBrowser || this.started) return;
     this.started = true;
-
-    // Existing mastery counts stay in the save. New public pages no longer
-    // increment them — the /tools/* routes that used to feed this ledger are
-    // gone. Backfill still runs so an old save does not look empty if the
-    // hidden ledger is ever read again.
-    void this.xp.init().then(() => this.mastery.backfill(this.xp.toolsUsed));
 
     this.router.events
       .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))

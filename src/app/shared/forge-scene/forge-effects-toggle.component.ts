@@ -8,7 +8,7 @@
  * struggling device cannot comfortably get to.
  *
  * Rendered only where there is something to reduce — no canvas on the server,
- * none in an embedded tool, and none on a machine with no WebGL at all. It
+ * and none on a machine with no WebGL at all. It
  * deliberately keeps rendering once the visitor has switched effects *off*,
  * which is the only way back.
  */
@@ -16,7 +16,6 @@ import { ChangeDetectionStrategy, Component, PLATFORM_ID, inject } from '@angula
 import { AsyncPipe, isPlatformBrowser } from '@angular/common';
 
 import { TranslationService } from '../../translation.service';
-import { EmbedService } from '../embed.service';
 import { ForgeEffectsService } from './forge-effects.service';
 
 @Component({
@@ -100,12 +99,11 @@ import { ForgeEffectsService } from './forge-effects.service';
 export class ForgeEffectsToggleComponent {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly i18n = inject(TranslationService);
-  private readonly embed = inject(EmbedService);
   readonly effects = inject(ForgeEffectsService);
 
   /** Nothing to offer where there was never going to be a scene. */
   readonly available =
-    this.isBrowser && !this.embed.isEmbed && this.effects.webglSupported();
+    this.isBrowser && this.effects.webglSupported();
 
   t(key: string): string { return this.i18n.translate(key); }
 }

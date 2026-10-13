@@ -4,19 +4,8 @@
  * Route in, five custom properties out. Nothing renders here; the wash itself is
  * five radial gradients on `body`, in front of its base gradient, reading these
  * properties (see the ATMOSPHERE block in styles.css — including why it has to
- * be body and not a layer of its own). Same trick RealmService uses for the realm
- * badge: publish to CSS and every page is reached without editing a template.
- *
- * ─────────────────────────────────────────────────────────────────────────────
- * WHY IT IS NOT PART OF RealmService
- * ─────────────────────────────────────────────────────────────────────────────
- * RealmService answers one question — which realm is this tool in — and returns
- * null everywhere else, including on the eight place-routes that need a wash.
- * It also short-circuits when the realm has not changed, which is true of every
- * navigation between two non-tool routes. Bending it to also answer "what does
- * this page feel like" would mean removing that short-circuit and making a
- * service that 126 tool pages depend on for their badge also responsible for the
- * wallpaper. Two subscriptions to the same router stream cost nothing.
+ * be body and not a layer of its own). Publishing to CSS reaches every page
+ * without editing a template.
  *
  * ─────────────────────────────────────────────────────────────────────────────
  * THE FORGE KEEPER CASE
@@ -34,14 +23,12 @@ import { NavigationEnd, Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 
-import { isToolPath, toolForRoute } from '../../tools/tool-for-route';
 import { CANONICAL } from '../canonical-routes';
 import { XpService } from '../gamification/xp.service';
 import {
   Atmosphere,
   NO_ATMOSPHERE,
   atmosphereForAetherShare,
-  atmosphereForCategory,
   atmosphereForSegment,
 } from './atmosphere.model';
 
@@ -95,9 +82,6 @@ export class PageAtmosphereService {
   atmosphereFor(path: string): Atmosphere {
     const clean = path.split('?')[0].split('#')[0];
 
-    // Tool pages are resolved in `resolve()`, asynchronously: the registry
-    // is loaded on demand (see tool-for-route.ts) and only for a /tools/ path.
-
     const segment = clean.split('/').filter(Boolean)[0] ?? '';
 
     // Nested World remounts share the `world` prefix; keep the old place washes.
@@ -112,24 +96,8 @@ export class PageAtmosphereService {
     return atmosphereForSegment(segment) ?? NO_ATMOSPHERE;
   }
 
-  /** Bumped on every resolve, so a slow registry load cannot paint a stale route. */
-  private resolveSeq = 0;
-
   private resolve(path: string): void {
     this.currentPath = path;
-    const seq = ++this.resolveSeq;
-    const clean = path.split('?')[0].split('#')[0];
-
-    // Tool pages first: they are the only routes with more than two segments,
-    // and `/tools` itself must not be mistaken for one. Tool routes are retired
-    // and redirect to /world, so in practice this branch never loads anything.
-    if (isToolPath(clean)) {
-      void toolForRoute(clean).then(tool => {
-        if (seq !== this.resolveSeq) return;
-        this.paint(tool ? atmosphereForCategory(tool.category) : this.atmosphereFor(path));
-      });
-      return;
-    }
     this.paint(this.atmosphereFor(path));
   }
 

@@ -13,7 +13,6 @@ import {
   NO_ATMOSPHERE,
   allRealmAtmospheres,
   atmosphereForAetherShare,
-  atmosphereForCategory,
   atmosphereForRealm,
   atmosphereForSegment,
   tint,
@@ -119,19 +118,6 @@ describe('atmosphereForRealm', () => {
   it('gives each realm its own id', () => {
     const ids = allRealmAtmospheres().map(a => a.id);
     expect(new Set(ids).size).toBe(REALMS.length);
-  });
-});
-
-describe('atmosphereForCategory', () => {
-  it('maps a known category onto its realm', () => {
-    const verge = REALMS.find(r => r.id === 'verge')!;
-    expect(atmosphereForCategory('Code Converters').id).toBe(`realm-${verge.id}`);
-  });
-
-  it('falls back to the archive for an unmapped category, never to nothing', () => {
-    const a = atmosphereForCategory('Category That Does Not Exist');
-    expect(a.id).toBe('realm-archivum');
-    expect(slots(a).length).toBeGreaterThan(0);
   });
 });
 

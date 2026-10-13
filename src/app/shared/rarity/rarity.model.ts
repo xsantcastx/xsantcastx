@@ -142,9 +142,8 @@ const LEGACY_MAP: Record<string, EclipseRarity> = {
 /**
  * Explicit tiers, keyed by egg id. Everything absent falls back to LEGACY_MAP.
  *
- * The shape of the ladder: 43 Mortal, 79 Eclipsed, 10 Sacred, 5 Anomalous and
- * 2 Mythic across the 139 registered eggs. Singular is not assigned to any egg
- * — it is earned, not authored (see `isSingular`).
+ * Singular is not assigned to any egg — it is earned, not authored (see
+ * `isSingular`).
  */
 export const EGG_TIERS: Record<string, EclipseRarity> = {
   // ── The combo ladder ── the only tiers on the wall priced in time held.
@@ -183,42 +182,12 @@ export const EGG_TIERS: Record<string, EclipseRarity> = {
   'scroll-full-codex': 'mythic',
   'scroll-lore-hunter': 'sacred',
 
-  // ── Mythic ── three eggs that take real intent to reach.
-  'hash-miner': 'mythic',          // a digest with four leading zeros
-  'regex-ouroboros': 'mythic',     // a regex that matches its own source
+  // ── Mythic ── an egg that takes real intent to reach.
   // 5,800 Essence of artifacts, which is months of ranks, weeklies and Mythic
   // drops. The legacy 'legendary' on its registry line would file it as
   // Anomalous alongside holding three, and holding all five is not the same
   // claim as holding three.
   'forge-complete-collection': 'mythic',
-
-  // ── Anomalous ── outcomes you cannot really aim at.
-  'uuid-lucky': 'anomalous',       // a UUID beginning 000
-  'img-pixel-pincher': 'anomalous',// an image compressed below 1 KB
-  'svg-complex-path': 'anomalous', // a path with 50+ commands
-  'heading-perfect': 'anomalous',  // all six heading levels, zero errors
-  'json-tree-forest': 'anomalous', // a tree of 1000+ nodes
-
-  // ── Sacred ── deliberate, but reachable in one sitting.
-  'regex-master': 'sacred',
-  'email-santa': 'sacred',
-  'api-teapot': 'sacred',
-  'url-rickroll': 'sacred',
-  'case-monotone': 'sacred',
-  'json-abyss': 'sacred',
-  'grid-matrix': 'sacred',
-  'anim-seizure': 'sacred',
-  'filter-chaos': 'sacred',
-  'palette-monochrome': 'sacred',
-
-  // ── Demoted from the legacy 'epic' bucket ── these are a single deliberate
-  // input away, which is Eclipsed work, not Sacred.
-  'svg-code': 'eclipsed',
-  'ph-pixel': 'eclipsed',
-  'resize-pixel': 'eclipsed',
-  'button-forbidden': 'eclipsed',
-  'color-badass': 'eclipsed',
-  'responsive-pixel': 'eclipsed',
 };
 
 /** The tier for an egg: explicit assignment first, legacy scale second. */
