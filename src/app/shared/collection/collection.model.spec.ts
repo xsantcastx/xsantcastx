@@ -89,6 +89,14 @@ describe('collection catalogue', () => {
    * not export its map and pulls the art manifest in with it. This is the join
    * that stops the two drifting.
    */
+  it('gives the Ember Delve finds a page with real lore (meaning audit #15)', () => {
+    for (const id of ['shadow-root-cutting', 'glowcap', 'godforge-fragment', 'kaels-hammer', 'dirt-block', 'basalt-block']) {
+      const entry = collectionEntryById(id);
+      expect(entry).withContext(id).toBeTruthy();
+      expect(entry!.lore).withContext(id).not.toContain('has written nothing');
+    }
+  });
+
   it('names materials and consumables exactly as the bag does', () => {
     const wrong: string[] = [];
     for (const entry of COLLECTION_CATALOG) {
