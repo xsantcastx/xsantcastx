@@ -5,16 +5,22 @@
  * mobile style: hotbar + satchel button + area / health / menu along the top,
  * the context row and one row of touch controls along the bottom, with the goal
  * line and the message toast just under the top band. At 360×740, 375×812,
- * 390×844, 430×932 and 844×390, in a town, a hunt and the Ember Delve:
+ * 390×844, 430×932 and 844×390, and the landscape phones wider than 900px
+ * (932×430, 915×412: touch-first and short), in a town, a hunt and the Delve:
  *
  *   - no two HUD pieces meet;
  *   - nothing sits over the middle half (vertically) of the canvas;
- *   - every touch control is at least 44×44, they are all on one row, their
- *     labels fit, and a hit test at each one's centre reaches it (so does the
- *     menu, the satchel button and the goal's Show me);
+ *   - every touch control is at least 44×44, they are all on one row, each is
+ *     an icon with an accessible name (no 8–11px words), and a hit test at each
+ *     one's centre reaches it (so does the menu, the satchel button and the
+ *     goal's Show me); every HUD button there has an accessible name;
  *   - the unobstructed world (the canvas minus every HUD rect over it) is at
  *     least 65% of the viewport, portrait and landscape;
- *   - the first-visit consent bar docks under it all, covering no control.
+ *   - the first-visit consent bar docks under it all, covering no control;
+ *   - the Homestead's Gold list, unfolded, stays off the centre of the world
+ *     (a bottom sheet in portrait, a side drawer in landscape) and folds on a
+ *     tap on the world or Escape;
+ *   - a mouse at 1280×800 (and at 932×430) keeps the desktop HUD.
  *
  * MOBILE_HUD_MEASURE=1 only measures (no assertions) and writes the numbers to
  * MOBILE_HUD_OUT (JSON); MOBILE_HUD_SHOTS=<dir>/<prefix> also saves a
@@ -36,6 +42,8 @@ const SIZES: { width: number; height: number }[] = [
   { width: 390, height: 844 },
   { width: 430, height: 932 },
   { width: 844, height: 390 },
+  { width: 932, height: 430 },
+  { width: 915, height: 412 },
 ];
 
 /** The phone HUD's pieces: none may meet another, none may sit over the middle of the world. */
@@ -91,7 +99,8 @@ async function settle(page: Page): Promise<void> {
   await page.evaluate(() => document.fonts.ready.then(() => undefined));
   await expect.poll(() => page.evaluate(() => {
     const line = document.querySelector('.objective-line');
-    if (!line) return true;
+    // The desktop line (a mouse, or the old build at 932×430) is not a toast: nothing to wait for.
+    if (!line || !line.getAnimations().length) return true;
     const cs = getComputedStyle(line);
     return cs.visibility === 'hidden' || Number(cs.opacity) < .05;
   }), { timeout: 12000, intervals: [250] }).toBe(true);
@@ -137,6 +146,9 @@ async function check(page: Page, scene: string): Promise<void> {
       return {
         name: b.getAttribute('aria-label'), w: r.width, h: r.height, top: r.top,
         right: r.right, left: r.left, fits: b.scrollWidth <= b.clientWidth + 1, reached: !!hit && (hit === b || b.contains(hit)),
+        // An icon, not a word: something drawn at least 14px across, and no visible text.
+        icon: Array.from(b.querySelectorAll('svg, .tri')).some(i => getComputedStyle(i).display !== 'none' && Math.max(i.getBoundingClientRect().width, i.getBoundingClientRect().height) >= 14),
+        text: Array.from(b.querySelectorAll('span')).filter(t => getComputedStyle(t).display !== 'none').map(t => (t.textContent ?? '').trim()).join(''),
       };
     }));
     expect(buttons.length, `${label}: touch controls`).toBeGreaterThanOrEqual(5);
@@ -144,7 +156,10 @@ async function check(page: Page, scene: string): Promise<void> {
       expect(b.w, `${label}: ${b.name} width`).toBeGreaterThanOrEqual(44);
       expect(b.h, `${label}: ${b.name} height`).toBeGreaterThanOrEqual(44);
       expect(Math.abs(b.top - buttons[0]!.top), `${label}: ${b.name} on the one row`).toBeLessThanOrEqual(1);
-      expect(b.fits, `${label}: ${b.name} label fits`).toBe(true);
+      expect(b.fits, `${label}: ${b.name} fits`).toBe(true);
+      expect(b.name?.trim(), `${label}: a touch control without an accessible name`).toBeTruthy();
+      expect(b.icon, `${label}: ${b.name} shows an icon`).toBe(true);
+      expect(b.text, `${label}: ${b.name} shows no small text`).toBe('');
       expect(b.reached, `${label}: ${b.name} takes its own tap`).toBe(true);
       expect(b.left, `${label}: ${b.name} on screen`).toBeGreaterThanOrEqual(0);
       expect(b.right, `${label}: ${b.name} on screen`).toBeLessThanOrEqual(size.width);
@@ -152,6 +167,14 @@ async function check(page: Page, scene: string): Promise<void> {
     // Nothing is drawn behind the touch row: it sits under the canvas, not over it.
     const touchTop = Math.min(...buttons.map(b => b.top));
     expect(c.bottom, `${label}: the world ends above the touch row`).toBeLessThanOrEqual(touchTop);
+
+    // Every HUD button a thumb can reach has a name a screen reader can read.
+    const nameless = await page.evaluate(() => Array.from(document.querySelectorAll(
+      '.touch .tb, .places-toggle, .satchel .clasp, .guide button, .hearth-pill, .prompt.armed > button, .m-take, .hotbar .hot',
+    )).filter(b => getComputedStyle(b).display !== 'none' && b.getBoundingClientRect().width > 0)
+      .filter(b => !(b.getAttribute('aria-label') || (b as HTMLElement).innerText || '').trim())
+      .map(b => b.outerHTML.slice(0, 80)));
+    expect(nameless, `${label}: HUD buttons without an accessible name`).toEqual([]);
 
     for (const sel of ['.places-toggle', '.satchel .clasp', '.guide-go', '.hearth-pill', '.prompt.armed > button', '.m-take']) {
       const ok = await page.evaluate(s => {
@@ -223,7 +246,7 @@ test.describe('the /play HUD on phones', () => {
     await expect(page.locator('.hot--pick')).toHaveAttribute('aria-pressed', 'true');
     await page.locator('.hotbar .hot[title="Torch"]').click();
     await expect(page.locator('.touch-act .tb--use:visible')).toHaveAttribute('aria-label', /^Place: Torch/);
-    await expect(page.locator('.touch-act .tb--use:visible .ts')).toHaveText('Place');
+    await expect(page.locator('.touch-act .tb--use:visible svg.ts')).toBeVisible();
     await page.locator('.hot--pick').click();
     await expect(page.locator('.touch-act .tb--use:visible')).toHaveAttribute('aria-label', 'Attack');
   });
@@ -255,7 +278,7 @@ test.describe('the /play HUD on phones', () => {
     await expect.poll(() => hotbarCount(page, 'Dirt block'), { message: 'a tap with a block chosen placed it' }).toBe(dug - 1);
   });
 
-  test('Spanish: the short touch labels fit at 360px', async ({ page }) => {
+  test('Spanish: the touch controls are named in Spanish and fit at 360px', async ({ page }) => {
     if (MEASURE_ONLY) return; // measuring only
     await seed(page, { 'preferred-language': 'es', ...bag({ torch: 2 }) });
     await page.setViewportSize({ width: 360, height: 740 });
@@ -263,7 +286,8 @@ test.describe('the /play HUD on phones', () => {
     await walkTo(page, 590, 30);
     await page.keyboard.press('e');
     await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 30000 });
-    await expect(page.locator('.touch-act')).toContainText('Evadir');
+    await expect(page.locator('.touch-act .tb--dodge')).toHaveAttribute('aria-label', 'Esquivar');
+    await expect(page.locator('.touch-act .tb--jump')).toHaveAttribute('aria-label', 'Saltar');
     const tight = await page.evaluate(() => Array.from(document.querySelectorAll('.touch .tb'))
       .filter(b => getComputedStyle(b).display !== 'none' && b.scrollWidth > b.clientWidth + 1).map(b => b.textContent));
     expect(tight).toEqual([]);
@@ -291,5 +315,107 @@ test.describe('the /play phone HUD with the first-visit consent bar', () => {
       const bar = m.rects.find(r => r.sel === '.cookie-banner--world');
       return !!bar && m.rects.filter(r => r !== bar).every(r => !meets(r, bar)) && m.canvas.bottom <= bar.top;
     }, { timeout: 10000 }).toBe(true);
+  });
+});
+
+/** The middle half of the canvas, across and down: where the Keeper is. */
+async function centreOf(page: Page): Promise<Rect> {
+  const c = (await canvas(page).boundingBox())!;
+  return { sel: 'centre', left: c.x + c.width * .25, right: c.x + c.width * .75, top: c.y + c.height * .25, bottom: c.y + c.height * .75 };
+}
+async function rectOf(page: Page, sel: string): Promise<Rect> {
+  const b = (await page.locator(sel).first().boundingBox())!;
+  return { sel, left: b.x, top: b.y, right: b.x + b.width, bottom: b.y + b.height };
+}
+/** A hit test at its centre (after scrolling it into its list), which is what a thumb does. */
+async function reachable(page: Page, sel: string): Promise<boolean> {
+  return page.locator(sel).first().evaluate(el => {
+    el.scrollIntoView({ block: 'nearest' });
+    const r = el.getBoundingClientRect();
+    const hit = document.elementFromPoint((r.left + r.right) / 2, (r.top + r.bottom) / 2);
+    return !!hit && (hit === el || el.contains(hit));
+  });
+}
+
+test.describe('the Homestead Gold list on a phone', () => {
+  test.use({ viewport: { width: 375, height: 812 }, hasTouch: true, isMobile: true });
+  test.describe.configure({ timeout: 180000 });
+
+  test('unfolded it is a bottom sheet (portrait) or a side drawer (landscape) off the centre of the world; a world tap or Escape folds it', async ({ page }) => {
+    if (MEASURE_ONLY) return; // measuring only
+    await seed(page);
+    await openPlay(page);
+    await page.locator('.guide-go').tap();
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Your Homestead', { timeout: 30000 });
+    const toggle = page.locator('.hc-toggle');
+    // A Keeper with no building yet gets it unfolded.
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    const sizes = [
+      { width: 375, height: 812 }, { width: 360, height: 740 }, { width: 430, height: 932 },
+      { width: 844, height: 390 }, { width: 932, height: 430 }, { width: 915, height: 412 },
+    ];
+    for (const size of sizes) {
+      const label = `${size.width}×${size.height}`;
+      await page.setViewportSize(size);
+      await page.waitForTimeout(300);
+      if (await toggle.getAttribute('aria-expanded') !== 'true') await toggle.tap();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+      const sheet = await rectOf(page, 'app-homestead-column .hc');
+      const centre = await centreOf(page);
+      if (SHOTS) await page.screenshot({ path: `${SHOTS}-homestead-${size.width}x${size.height}.png` });
+      expect(meets(sheet, centre), `${label}: the Gold list ${JSON.stringify(sheet)} covers the centre of the world ${JSON.stringify(centre)}`).toBe(false);
+      for (const piece of ['.touch-move', '.touch-act', '.vitals', '.places-toggle']) {
+        expect(meets(sheet, await rectOf(page, piece)), `${label}: the Gold list meets ${piece}`).toBe(false);
+      }
+      expect(await reachable(page, '.hc-strike'), `${label}: Strike is covered`).toBe(true);
+      expect(await reachable(page, '.hc-row .hc-buy'), `${label}: the first Buy is covered`).toBe(true);
+      if (size.height > 500) expect(sheet.top, `${label}: a bottom sheet`).toBeGreaterThan(centre.bottom);
+      else expect(sheet.right, `${label}: a side drawer`).toBeLessThan(centre.left);
+    }
+    // A tap on the world folds it; the chip unfolds it again; Escape folds it.
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.waitForTimeout(300);
+    const c = await centreOf(page);
+    await page.touchscreen.tap((c.left + c.right) / 2, (c.top + c.bottom) / 2);
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    await expect(page.locator('.hc-rows')).toHaveCount(0);
+    await toggle.tap();
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    await page.keyboard.press('Escape');
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+  });
+});
+
+test.describe('the /play HUD with a mouse', () => {
+  test.use({ viewport: { width: 1280, height: 800 }, hasTouch: false, isMobile: false });
+
+  test('a mouse keeps the desktop HUD at 1280×800 and on a short 932×430 window', async ({ page }) => {
+    if (MEASURE_ONLY) return; // measuring only
+    await seed(page, bag({ torch: 2 }));
+    await openPlay(page);
+    for (const size of [{ width: 1280, height: 800 }, { width: 932, height: 430 }]) {
+      const label = `${size.width}×${size.height} mouse`;
+      await page.setViewportSize(size);
+      await page.waitForTimeout(250);
+      const hud = await page.evaluate(() => {
+        const shown = (sel: string) => {
+          const el = document.querySelector(sel);
+          return !!el && getComputedStyle(el).display !== 'none' && el.getBoundingClientRect().width > 0;
+        };
+        const v = document.querySelector('.viewport')!.getBoundingClientRect();
+        const st = document.querySelector('.stage')!.getBoundingClientRect();
+        return {
+          phoneVars: getComputedStyle(document.querySelector('.stage')!).getPropertyValue('--hud-top').trim(),
+          fullBleed: Math.abs(v.top - st.top) < 1 && Math.abs(v.bottom - st.bottom) < 1,
+          wordmark: shown('.wordmark'), tally: shown('.satchel .tally'), quiet: shown('.top-actions .quiet'),
+          placesLabel: document.querySelector('.places-label')!.getBoundingClientRect().width > 1,
+          touch: shown('.touch'), menuIcon: shown('.menu-ico'), bagIcon: shown('.bag-ico'),
+        };
+      });
+      expect(hud, label).toEqual({
+        phoneVars: '', fullBleed: true, wordmark: true, tally: true, quiet: true, placesLabel: true,
+        touch: false, menuIcon: false, bagIcon: false,
+      });
+    }
   });
 });

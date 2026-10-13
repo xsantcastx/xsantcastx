@@ -739,7 +739,7 @@ kbd {
 .hearth-hide { min-height: 44px; padding: 0 12px; }
 
 /* Desktop panel: title and Hide share the first row, the room status gets its own. */
-@media (min-width: 901px) {
+@media (min-width: 901px) and (hover: hover), (min-width: 901px) and (pointer: fine), (min-width: 901px) and (pointer: none), (min-width: 901px) and (min-height: 500.02px) {
   .dock-head { flex-wrap: wrap; align-items: center; }
   .dock-head h2 { white-space: nowrap; }
   .dock-head .room-status { order: 3; flex-basis: 100%; max-width: none; text-align: left; }
@@ -858,7 +858,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 /* Phones: the book's and the Hearth's insides. Where every HUD piece sits on a
    phone is in one place, "Phones" at the end of this file. */
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .tally { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 4px 6px; }
   .station-tip { max-width: 200px; }
   .book {
@@ -1047,7 +1047,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 .waystone-road img { width: 48px; height: 48px; object-fit: contain; }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .place { inset: 10px; }
   .place-head h2 { font-size: 22px; }
 }
@@ -1257,7 +1257,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (min-width: 1200px) {
   .guide { top: 66px; right: calc(248px + 220px + 16px); }
 }
-@media (min-width: 901px) {
+@media (min-width: 901px) and (hover: hover), (min-width: 901px) and (pointer: fine), (min-width: 901px) and (pointer: none), (min-width: 901px) and (min-height: 500.02px) {
   .stage--column .guide { left: 322px; }
 }
 /*
@@ -1267,7 +1267,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
  * each, centred there; where that gap is too narrow to hold it (under 1180px
  * wide) it steps aside, as it does for the book. Folding the Hearth puts it back.
  */
-@media (min-width: 901px) {
+@media (min-width: 901px) and (hover: hover), (min-width: 901px) and (pointer: fine), (min-width: 901px) and (pointer: none), (min-width: 901px) and (min-height: 500.02px) {
   .stage:not(.hearth-shut) .guide {
     left: 228px;
     right: 580px;
@@ -1277,17 +1277,22 @@ input::placeholder { color: var(--adventure-hud-muted); }
     max-width: none;
   }
 }
-@media (min-width: 901px) and (max-width: 1179.98px) {
+@media (min-width: 901px) and (max-width: 1179.98px) and (hover: hover), (min-width: 901px) and (max-width: 1179.98px) and (pointer: fine), (min-width: 901px) and (max-width: 1179.98px) and (pointer: none), (min-width: 901px) and (max-width: 1179.98px) and (min-height: 500.02px) {
   .stage:not(.hearth-shut) .guide { visibility: hidden; }
 }
 /* Beside the Homestead's buildings column the open-Hearth gap starts at the column's edge too. */
-@media (min-width: 901px) {
+@media (min-width: 901px) and (hover: hover), (min-width: 901px) and (pointer: fine), (min-width: 901px) and (pointer: none), (min-width: 901px) and (min-height: 500.02px) {
   .stage--column:not(.hearth-shut) .guide { left: 322px; }
 }
 
 
 /*
- * ── Phones (≤ 900px): the world gets the screen ─────────────────────────────
+ * ── Phones: the world gets the screen ───────────────────────────────────────
+ * "Phone" is ≤ 900px wide, or a touch-first screen (hover: none, pointer:
+ * coarse) whose short side is ≤ 500px, so 932×430 and 915×412 landscape phones
+ * get this layout too. Every desktop-only (min-width: 901px) query above is
+ * written out to exclude that touch case, so a mouse at any width keeps the
+ * desktop HUD. The same pair of queries is in homestead-column.component.
  * Terraria-mobile layout (docs/handoff/mobile-hud.md). The HUD lives in two thin
  * bands and the canvas is the space between them:
  *
@@ -1308,7 +1313,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   100% { opacity: 0; visibility: hidden; }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .stage {
     --hud-safe-t: env(safe-area-inset-top, 0px);
     --hud-safe-b: env(safe-area-inset-bottom, 0px);
@@ -1499,8 +1504,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .hot-line { display: none; }
   /* With the pick in hand, the chosen placeable is only remembered, not lit. */
   .hotbar.tool-pick .hot.picked:not(.hot--pick) { border-color: var(--adventure-hud-shadow); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 18.04%, transparent); }
-  .hot--pick em { position: absolute; bottom: 2px; font-size: 8px; letter-spacing: .06em; text-transform: uppercase; }
-  .pick-ico { position: relative; width: 22px; height: 22px; margin-bottom: 8px; color: var(--adventure-parchment); }
+  .pick-ico { position: relative; width: 22px; height: 22px; color: var(--adventure-parchment); }
   .pick-ico::before {
     content: '';
     position: absolute;
@@ -1570,14 +1574,21 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .guide--folded .guide-text { flex: none; padding-right: 12px; }
   .guide--folded .guide-text span, .guide--folded .guide-go, .guide--folded .guide-hide { display: none; }
 
-  /* The Homestead's Gold list: under the goal line, ending above the bottom band. */
-  app-homestead-column,
-  .stage--column app-homestead-column {
+  /* The Homestead's Gold list. Folded: a chip under the goal line. Unfolded: a
+     bottom sheet over the lowest quarter of the world, just above the bottom
+     band, so it never reaches the middle half; a tap on the world or Escape
+     folds it (homestead-column.component.ts). */
+  app-homestead-column {
     top: calc(var(--hud-top) + var(--guide-h) + 4px);
     left: 8px;
     right: 8px;
     width: auto;
     max-height: calc(100% - var(--hud-top) - var(--guide-h) - var(--hud-bottom) - 8px);
+  }
+  .stage--column app-homestead-column {
+    top: auto;
+    bottom: calc(var(--hud-bottom) + 4px);
+    max-height: calc((100% - var(--hud-top) - var(--hud-bottom)) / 4 - 8px);
   }
 
   /* Places: the menu, under the menu button. Return to camp, Restart hunt and Keys live here. */
@@ -1669,7 +1680,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 
 /* The touch row: one row, movement on the left, actions on the right. */
-@media (max-width: 900px) and (pointer: coarse) {
+@media (max-width: 900px) and (pointer: coarse), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .stage { --touch-h: 64px; }
   .touch { display: contents; }
   .touch-move, .touch-act {
@@ -1692,10 +1703,11 @@ input::placeholder { color: var(--adventure-hud-muted); }
     padding: 0 2px;
     overflow: hidden;
     white-space: nowrap;
-    font-size: clamp(8px, 2.3vw, 11px);
     letter-spacing: 0;
     touch-action: none;
   }
+  /* Icons, not 8–11px words: the button's name is its aria-label. */
+  .tb svg.ts { width: 26px; height: 26px; }
   .tb .tl, .tb--desk, .tb--off { display: none !important; }
   .tb .ts, .tb .tri { display: block; }
   /* Jump in the corner, the Use button beside it, then Dodge, then Blast. */
@@ -1715,7 +1727,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 
 /* Landscape phones: the context row rides in the touch band, between the clusters. */
-@media (max-width: 900px) and (max-height: 500px) and (pointer: coarse) {
+@media (max-width: 900px) and (max-height: 500px) and (pointer: coarse), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .stage {
     --ctx-h: 0px;
     --dock-h: 0px;
@@ -1743,7 +1755,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 /* Landscape phones: the goal line moves up into the top band, between the
    satchel (after five hotbar slots in the Delve) and the area / health column,
    so the world keeps every pixel between the two bands. */
-@media (max-width: 900px) and (max-height: 500px) {
+@media (max-width: 900px) and (max-height: 500px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .stage { --band-left: 60px; }
   .stage--delve { --band-left: 302px; }
   .stage--guide { --guide-h: 0px; }
@@ -1757,4 +1769,13 @@ input::placeholder { color: var(--adventure-hud-muted); }
     max-width: none;
   }
   .guide--folded { right: auto; }
+  /* The Gold list is a side drawer down the left quarter of the world. */
+  app-homestead-column,
+  .stage--column app-homestead-column {
+    top: calc(var(--hud-top) + 4px);
+    bottom: auto;
+    right: auto;
+    width: calc(25% - 12px);
+    max-height: calc(100% - var(--hud-top) - var(--hud-bottom) - 8px);
+  }
 }
