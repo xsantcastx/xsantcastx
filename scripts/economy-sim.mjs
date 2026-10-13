@@ -21,6 +21,7 @@
  *   node scripts/economy-sim.mjs --no-expeditions
  *   node scripts/economy-sim.mjs --days=30
  *   node scripts/economy-sim.mjs --stages        # print the PROPOSED stage table
+ *   node scripts/economy-sim.mjs --inventory --days=7  # satchel/Vault prices + rune-find pile-up
  *
  * The player is greedy-with-patience: at every decision point it picks the
  * purchase minimising (seconds to afford) + (payback seconds = cost / Δincome)
@@ -519,7 +520,100 @@ function place(targets) {
   }
 }
 
-if (argv.place) {
+// ───────────────────────────────────────────────────────────────────────────
+// --inventory: satchel rows + Vault tabs on the v3 curve, and how fast rune
+// finds fill a bag (docs/inventory/inventory-spec.md §1 and §3).
+// ───────────────────────────────────────────────────────────────────────────
+
+/**
+ * PROPOSED storage prices (docs/inventory/inventory-spec.md §3). Slice S3 moves
+ * these into economy-curve.ts as STORAGE_CURVE and this table then reads them
+ * from there, the way PROPOSED reads every other price.
+ */
+const STORAGE_PRICES = [
+  ['satchel row 1 (41-48)', 200_000],
+  ['satchel row 2 (49-56)', 5_000_000],
+  ['satchel row 3 (57-64)', 1_000_000_000],
+  ['satchel row 4 (65-72)', 100_000_000_000],
+  ['satchel row 5 (73-80)', 5_000_000_000_000],
+  ['Vault: Runes tab', 1_000_000],
+  ['Vault: Materials tab', 1_000_000],
+  ['Vault: Supplies tab', 25_000_000],
+  ['Vault: Gear tab', 250_000_000],
+  ['Vault: General tab II', 2_500_000_000],
+  ['Vault: General tab III', 250_000_000_000],
+  ['Vault: General tab IV', 25_000_000_000_000],
+];
+
+/** Rune kinds per tier and the tier odds, read from rune.model.ts (not import-free, so parsed). */
+function runeTable() {
+  const src = readFileSync(resolve(here, '..', 'src/app/shared/rune-forge/rune.model.ts'), 'utf8');
+  const kinds = {};
+  for (const m of src.matchAll(/\{ id: '[a-z-]+', name: '[^']*', tier: '([a-z]+)'/g)) kinds[m[1]] = (kinds[m[1]] ?? 0) + 1;
+  const odds = {};
+  for (const m of src.matchAll(/id: '([a-z]+)', label: '[A-Za-z]+', budget: ([0-9.]+)/g)) odds[m[1]] = Number(m[2]);
+  return { kinds, odds };
+}
+
+function inventoryScenario(E) {
+  const sinks = { ...E.sinks };
+  E.sinks = Object.fromEntries(STORAGE_PRICES);
+  const { log } = simulate(E);
+  E.sinks = sinks;
+  const stages = [[1800, '30m'], [3600, '1h'], [86400, '1d'], [3 * 86400, '3d'], [7 * 86400, '7d']];
+  console.log(`Inventory scenario · ${DAYS} day(s) · v3 curve (PROPOSED)\n`);
+  console.log('Storage prices: first affordable (banked, or <= 60 s of income) and seconds of income at each stage');
+  console.log('  ' + 'purchase'.padEnd(26) + 'price'.padStart(8) + '  first'.padEnd(10) + stages.map(([, l]) => l.padStart(9)).join(''));
+  for (const [n, c] of STORAGE_PRICES) {
+    const secs = stages.map(([t]) => {
+      const g = log.at[t]?.gps;
+      if (!g) return '-'.padStart(9);
+      const s = c / g;
+      return (s < 1 ? '<1s' : fmtT(s)).padStart(9);
+    });
+    console.log('  ' + n.padEnd(26) + fmtN(c).padStart(8) + '  ' + fmtT(log.sinks[n]).padEnd(8) + secs.join(''));
+  }
+
+  // Rune finds. Every find (strike or expedition) mints one "<Rune> Sigil"
+  // instance today (rune-forge.service.ts mintFor), or a charm at 0.24%.
+  // A session = one 'active' segment of the sim's schedule. Strikes per session
+  // are what the Strike ×10 / ×100 / ×1000 buttons hand out (rune-reel.ts
+  // BULK_ROLLS); 600 Gold each is under a minute of income from ~30 min on.
+  const { kinds, odds } = runeTable();
+  const CHARM = 0.0024;
+  const sessions = schedule(DAYS).filter(([, m]) => m === 'active').length;
+  const profiles = [['light (x10 a session)', 10], ['typical (x100)', 100], ['heavy (x1000)', 1000], ['grinder (x1000 x5)', 5000]];
+  const CAP = 250; // INVENTORY_BAG_CAP today
+  const SIGIL_STACK = 999; // proposed sigil stack cap (spec §2.2)
+  console.log(`\nRune finds over ${DAYS} day(s) (${sessions} active sessions; tiers ${JSON.stringify(kinds)})`);
+  console.log('  ' + 'profile'.padEnd(24) + 'finds'.padStart(9) + 'sigils'.padStart(9) + 'charms'.padStart(8) + '  | today: rows / evicted'.padEnd(26) + '| proposed: sigil slots (cap 999), kinds');
+  for (const [label, perSession] of profiles) {
+    const finds = sessions * perSession;
+    const charms = Math.round(finds * CHARM);
+    const sigils = finds - charms;
+    let slots = 0;
+    let kindsHeld = 0;
+    for (const [tier, p] of Object.entries(odds)) {
+      const k = kinds[tier] ?? 0;
+      if (!k) continue;
+      const perKind = (sigils * p) / k;
+      for (let i = 0; i < k; i++) {
+        const n = Math.floor(perKind + (i < Math.round((perKind % 1) * k) ? 1 : 0));
+        if (n > 0) { kindsHeld++; slots += Math.ceil(n / SIGIL_STACK); }
+      }
+    }
+    const rows = Math.min(CAP, finds);
+    const evicted = Math.max(0, finds - CAP);
+    console.log('  ' + label.padEnd(24) + String(finds).padStart(9) + String(sigils).padStart(9) + String(charms).padStart(8)
+      + `  | ${rows} / ${evicted}`.padEnd(26) + `| ${slots} slots, ${kindsHeld} kinds (+${charms} charm slots)`);
+  }
+  console.log('\n  "evicted" = records the 250-row cap tombstones today (lowest sell value first: common gear scrap 36-150');
+  console.log('  sits below a Common Sigil at 300, so gear goes before sigils). Under the proposal nothing is evicted.');
+}
+
+if (argv.inventory) {
+  inventoryScenario(PROPOSED);
+} else if (argv.place) {
   place(String(argv.place).split(',').map(Number));
 } else if (argv.check) {
   check(PROPOSED);
