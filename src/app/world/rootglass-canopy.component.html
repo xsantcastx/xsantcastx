@@ -42,7 +42,6 @@
     </div>
 
     <p class="rc__expect">{{ t('canopy.expect', { herb: herb.name, xp: selectedTier().xpPerAction }) }}</p>
-    <p class="rc__chance">{{ discoveryLabel() }}</p>
     @if (speedupPct() > 0) {
       <p class="rc__speedup">{{ t('canopy.speedup', { pct: speedupPct() }) }}</p>
     }
@@ -59,19 +58,6 @@
         <p class="rc__held">{{ t('seamworks.held', { n: herbHeld }) }}</p>
         @if (lastHerb > 0) {
           <p class="rc__gain">{{ t('seamworks.gain', { n: lastHerb }) }}</p>
-        }
-      </figure>
-      <figure [class.is-hit]="lastKey > 0" [class.is-rare]="lastKey > 0 || keyHeld > 0" [class.is-striking]="keyFloaters().length > 0">
-        <div class="rc__art-wrap">
-          <img [src]="key.art" [attr.srcset]="key.srcset" sizes="72px" alt="" width="72" height="72" decoding="async">
-          @for (f of keyFloaters(); track f.id) {
-            <span class="rc__float rc__float--rare" aria-hidden="true">{{ f.text }}</span>
-          }
-        </div>
-        <figcaption>{{ key.name }}</figcaption>
-        <p class="rc__held">{{ t('seamworks.held', { n: keyHeld }) }}</p>
-        @if (lastKey > 0) {
-          <p class="rc__gain rc__gain--rare">{{ t('seamworks.gain.rare', { n: lastKey }) }}</p>
         }
       </figure>
     </div>
@@ -114,13 +100,8 @@
     }
 
     @if (lastOp; as op) {
-      <div class="rc__result" [class.rc__result--rare]="lastKey > 0">
+      <div class="rc__result">
         <p>{{ t('canopy.result.herb', { herb: herb.name, gain: lastHerb, held: herbHeld }) }}</p>
-        @if (lastKey > 0) {
-          <p class="rc__rare">{{ t('canopy.result.key', { gain: lastKey, held: keyHeld }) }}</p>
-        } @else if (op.discovery.result !== 'none') {
-          <p>{{ discoveryLabel() }}</p>
-        }
         <p>{{ t('canopy.result.xp', { amount: op.xpGrant.amount }) }}</p>
       </div>
     }

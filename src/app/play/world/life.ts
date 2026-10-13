@@ -7,7 +7,9 @@
  *    role-titled keeper. Role keepers have NO personal names: names for the
  *    invented roles are not approved (docs/art-commissions/01-second-wave.md).
  *  - Townsfolk: two to four wandering figures per town, on floor segments that
- *    never cover a station or a keeper.
+ *    never cover a station or a keeper. Each says one line naming where a
+ *    material of this town's hunting grounds is found, read off the hunts'
+ *    gathering nodes and drop tables (`townsfolkLines`): no new names.
  *  - Atmosphere: one ambient particle layer per realm (engine/atmosphere.ts).
  *
  * Visual only. Nothing here reads or writes combat, loot or economy state.
@@ -276,6 +278,39 @@ export interface Townsperson {
   seed: number;
   palette: LifePalette;
   silhouette: LifeSilhouette;
+  /** Its one line: `TOWNSFOLK_LINE` filled with `says` (empty when the town has nothing to name). */
+  def: { lines: readonly string[] };
+  says: FolkLine | null;
+}
+
+/** i18n key of a townsperson's line; `{{material}}` and `{{place}}` are filled from `Townsperson.says`. */
+export const TOWNSFOLK_LINE = 'play.life.townsfolk.found';
+
+/** A material id and the hunting ground that yields it. */
+export interface FolkLine { material: string; place: string }
+
+/**
+ * What this town's hunting grounds yield, one hunt at a time in turn so
+ * neighbours name different places: each hunt's gathering nodes first, then
+ * its drop table. The same data "Found in…" reads.
+ */
+export function townsfolkLines(town: TownDef): FolkLine[] {
+  const pools = town.hunts.map(hunt => ({
+    place: hunt.name,
+    ids: [
+      ...(hunt.nodes ?? []).map(node => node.yield.materialId),
+      ...hunt.drops.entries.flatMap(entry => (entry.kind === 'material' ? [entry.material] : [])),
+    ],
+  }));
+  const out: FolkLine[] = [];
+  const seen = new Set<string>();
+  for (let k = 0; pools.some(pool => k < pool.ids.length); k++) {
+    for (const pool of pools) {
+      const id = pool.ids[k];
+      if (id && !seen.has(id)) { seen.add(id); out.push({ material: id, place: pool.place }); }
+    }
+  }
+  return out;
 }
 
 /** Yield distance: a townsperson walking toward the player stops this close. */
@@ -298,6 +333,7 @@ export class TownsfolkCrowd {
     const order = segments.slice().sort((a, b) => (b[1] - b[0]) - (a[1] - a[0]));
     const palettes = REALM_PALETTES[town.realm];
     const shapes: LifeSilhouette[] = ['robe', 'coat', 'hood', 'robe'];
+    const lines = townsfolkLines(town);
     for (let i = 0; i < count; i++) {
       const [lo, hi] = order[i % order.length];
       const x = lo + this.random() * (hi - lo);
@@ -305,6 +341,7 @@ export class TownsfolkCrowd {
         x, facing: this.random() < .5 ? -1 : 1, lo, hi, target: x, speed: 28 + this.random() * 18,
         pause: .5 + this.random() * 3, step: this.random() * 6, build: .85 + this.random() * .15, seed: this.random() * 10,
         palette: palettes[(i + 1) % palettes.length], silhouette: shapes[i % shapes.length],
+        says: lines.length ? lines[i % lines.length] : null, def: { lines: lines.length ? [TOWNSFOLK_LINE] : [] },
       });
     }
   }
@@ -372,7 +409,8 @@ export class KeeperChatter {
   speaker = -1;
   line = '';
   at = 0;
-  constructor(private readonly placements: readonly KeeperPlacement[]) {
+  /** Keepers, or townsfolk: anything with a live `x` and lines. */
+  constructor(private readonly placements: readonly { x: number; def: { lines: readonly string[] } }[]) {
     this.armed = new Uint8Array(placements.length).fill(1);
     this.lastAt = new Float64Array(placements.length).fill(-Infinity);
     this.said = new Uint16Array(placements.length);

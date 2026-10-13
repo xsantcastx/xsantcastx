@@ -97,14 +97,7 @@ export function hasEmberBeforeCraft(ops: readonly ActivityOperation[]): boolean 
   );
 }
 
-/** A2 Foraging twin of hasEmberBeforeCraft: has any Rift Key ever landed in these ops? */
-export function hasRiftKey(ops: readonly ActivityOperation[]): boolean {
-  return ops.some(op =>
-    op.discovery.result === 'rift-key' || op.discovery.result === 'rift-key-guarantee',
-  );
-}
-
-/** B1 Prospecting twin of hasRiftKey: has any Clarity Elixir ever landed in these ops? */
+/** B1 Prospecting twin of hasEmberBeforeCraft: has any Clarity Elixir ever landed in these ops? */
 export function hasClarityElixir(ops: readonly ActivityOperation[]): boolean {
   return ops.some(op =>
     op.discovery.result === 'clarity-elixir' || op.discovery.result === 'clarity-elixir-guarantee',
@@ -236,7 +229,6 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
     b.miningAccepted,
     miningEligibleCount(operations, BASALT_SEAMWORKS_ID),
   );
-  const riftKeyGranted = a.riftKeyGranted || b.riftKeyGranted || hasRiftKey(operations);
   const foragingAccepted = Math.max(
     a.foragingAccepted,
     b.foragingAccepted,
@@ -260,7 +252,6 @@ export function mergeActivityLedgers(remote: unknown, local: unknown): ActivityL
     emberGranted,
     miningAccepted,
     foragingAccepted,
-    riftKeyGranted,
     prospectingAccepted,
     clarityElixirGranted,
   };
@@ -296,9 +287,8 @@ export function coerceActivityLedger(raw: unknown): ActivityLedger | null {
     craftedBasaltEdge: raw['craftedBasaltEdge'] === true,
     emberGranted: raw['emberGranted'] === true || hasEmberBeforeCraft(operations),
     miningAccepted: Math.max(finiteCount(raw['miningAccepted']), miningEligibleCount(operations, BASALT_SEAMWORKS_ID)),
-    // Absent on saves written before A2 — both fall through to their defaults.
+    // Absent on saves written before A2 — falls through to its default.
     foragingAccepted: Math.max(finiteCount(raw['foragingAccepted']), foragingEligibleCount(operations, ROOTGLASS_CANOPY_ID)),
-    riftKeyGranted: raw['riftKeyGranted'] === true || hasRiftKey(operations),
     // Absent on saves written before B1 — both fall through to their defaults.
     prospectingAccepted: Math.max(finiteCount(raw['prospectingAccepted']), prospectingEligibleCount(operations, MERIDIAN_ORRERY_ID)),
     clarityElixirGranted: raw['clarityElixirGranted'] === true || hasClarityElixir(operations),
@@ -403,7 +393,6 @@ function parseDiscovery(raw: unknown): ActivityDiscovery | null {
   const result = raw['result'];
   if (
     result !== 'none' && result !== 'ember-residue' && result !== 'first-craft-guarantee'
-    && result !== 'rift-key' && result !== 'rift-key-guarantee'
     && result !== 'clarity-elixir' && result !== 'clarity-elixir-guarantee'
   ) return null;
   return { rolled: raw['rolled'] === true, result };

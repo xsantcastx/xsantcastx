@@ -12,7 +12,10 @@
  *
  * The notes are a one-line field observation each, written for this page
  * rather than lifted from the atlas, whose briefs are addressed to a concept
- * artist.
+ * artist — except the two creatures the Ember Delve spawns under atlas names
+ * (Cinder Bailiff, Seam Eater), whose notes quote the atlas's "Location and
+ * role" line, as the owner asked (2026-10-13). Until painted they show the
+ * stand-in their spawn wears (art.ts ART_ALIAS).
  *
  * Pure data, no browser APIs, safe on an SSR path.
  */
@@ -83,8 +86,15 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     id: 'cinder-bailiff',
     name: 'Cinder Bailiff',
     realm: 'infernal',
-    haunt: 'Basalt Seamworks',
-    note: 'Stamps a heat debt on every shortcut and will not stop until someone names who pays it.',
+    haunt: 'Ember Delve',
+    note: 'Walks work routes and stamps heat debts onto shortcuts; it forces the local conflict into view.',
+  },
+  {
+    id: 'seam-eater',
+    name: 'Seam Eater',
+    realm: 'infernal',
+    haunt: 'Ember Delve',
+    note: 'Rises from the deepest failed repairs and unthreads the Seamworks’ platforms.',
   },
   {
     id: 'ink-lantern',

@@ -67,9 +67,8 @@ export const UMBRAL_INK_ID = 'umbral-ink';
 export const VOID_SHARD_ID = 'void-shard';
 
 /**
- * The rare find. A consumable in the art manifest, exactly like Foraging's
- * Rift Key and for the same reason: repeat drops of a consumable are sensible,
- * so the roll needs no Mining-style latch (see prospecting-ops.ts). Clarity
+ * The rare find. A consumable, so repeat drops are sensible and the roll
+ * needs no Mining-style latch (see prospecting-ops.ts). Clarity
  * Elixir is Celestial's own object — the realm's function is "prevent
  * preventable catastrophe by making Eclipse behavior legible" — and it is the
  * only unused consumable in the library. `broken-astral-compass` is the

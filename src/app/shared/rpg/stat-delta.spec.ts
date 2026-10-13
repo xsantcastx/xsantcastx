@@ -9,7 +9,7 @@ import {
 } from './stat-delta';
 import { keeperCombatStats } from './keeper-combat';
 
-const ZERO = { goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0, strikePower: 0, ward: 0 };
+const ZERO = { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 };
 
 describe('stat-delta', () => {
   describe('compareStats', () => {

@@ -93,9 +93,6 @@ const STYLE_XP: Partial<Record<ItemStyle, number>> = {
 const STYLE_MF: Partial<Record<ItemStyle, number>> = {
   luminous: 1.08,
 };
-const STYLE_LOOT: Partial<Record<ItemStyle, number>> = {
-  umbral: 1.08,
-};
 const STYLE_WARD: Partial<Record<ItemStyle, number>> = {
   umbral: 1.08,
   'void-touched': 1.08,
@@ -105,7 +102,6 @@ function styleBias(style: ItemStyle, key: ItemStatKey): number {
   if (key === 'goldPerSec') return STYLE_GOLD[style] ?? 1;
   if (key === 'xpBonus') return STYLE_XP[style] ?? 1;
   if (key === 'magicFind') return STYLE_MF[style] ?? 1;
-  if (key === 'lootBonus') return STYLE_LOOT[style] ?? 1;
   if (key === 'ward') return STYLE_WARD[style] ?? 1;
   return 1;
 }
@@ -323,77 +319,6 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     soulbound: true,
   },
   {
-    id: 'obsidian-heart',
-    name: 'Obsidian Heart',
-    family: 'artifact',
-    type: 'artifact',
-    style: 'infernal',
-    rollKeys: ['goldPerSec'],
-    base: { goldPerSec: 12 },
-    temperable: true,
-    maxTemper: 5,
-    temperGoldBase: 120_000,
-    lore: 'It was cut from a furnace that had been cold for six hundred years and was still warm in the centre.',
-    soulbound: true,
-  },
-  {
-    id: 'mirrorblade-kael',
-    name: 'Mirrorblade of Kael',
-    family: 'artifact',
-    type: 'artifact',
-    slot: 'weapon',
-    style: 'void',
-    rollKeys: ['xpBonus', 'goldPerSec'],
-    base: { xpBonus: 15, goldPerSec: 4 },
-    temperable: true,
-    maxTemper: 5,
-    temperGoldBase: 120_000,
-    lore: 'Kael carried it into the Verge to cut the two realms apart and came back having only made them symmetrical.',
-    soulbound: true,
-  },
-  {
-    id: 'relic-third-dawn',
-    name: 'Relic of the Third Dawn',
-    family: 'artifact',
-    type: 'artifact',
-    style: 'luminous',
-    rollKeys: ['xpBonus'],
-    base: { xpBonus: 12 },
-    temperable: true,
-    maxTemper: 5,
-    temperGoldBase: 150_000,
-    lore: 'Two dawns were promised and two dawns came. The third was not promised to anyone.',
-    soulbound: true,
-  },
-  {
-    id: 'codex-solarii',
-    name: 'Codex Solarii',
-    family: 'artifact',
-    type: 'artifact',
-    style: 'celestial',
-    rollKeys: ['xpBonus'],
-    base: { xpBonus: 18 },
-    temperable: true,
-    maxTemper: 4,
-    temperGoldBase: 180_000,
-    lore: 'The Solarii wrote everything twice: once for the reader they had, and once for the reader who would arrive already knowing.',
-    soulbound: true,
-  },
-  {
-    id: 'fragment-first-sun',
-    name: 'Fragment of the First Sun',
-    family: 'artifact',
-    type: 'artifact',
-    style: 'luminous',
-    rollKeys: ['goldPerSec', 'xpBonus'],
-    base: { goldPerSec: 25, xpBonus: 12 },
-    temperable: true,
-    maxTemper: 3,
-    temperGoldBase: 250_000,
-    lore: 'There is one. It has been in the hands of four people and none of them wrote down what it was like.',
-    soulbound: true,
-  },
-  {
     id: 'cinder-ore',
     name: 'Cinder Ore',
     family: 'material',
@@ -461,12 +386,28 @@ const KEEPER_DEFINITIONS: readonly ItemDefinition[] = [
     family: 'consumable',
     type: 'charm',
     style: 'infernal',
-    rollKeys: ['xpBonus'],
-    base: { xpBonus: 4 },
+    // Ward: canon says it lets a bearer "endure a moment of heat distortion".
+    rollKeys: ['ward'],
+    base: { ward: 2 },
     temperable: false,
     maxTemper: 0,
     temperGoldBase: 0,
     lore: 'Lets a bearer endure heat distortion, leaving a visible line where the strain was absorbed.',
+  },
+  // The Orrery's rare find (Prospecting discovery). Worn in a charm slot like
+  // the Ember Elixir; the discovery mints it (activity gateway).
+  {
+    id: 'clarity-elixir',
+    name: 'Clarity Elixir',
+    family: 'consumable',
+    type: 'charm',
+    style: 'celestial',
+    rollKeys: ['magicFind'],
+    base: { magicFind: 4 },
+    temperable: false,
+    maxTemper: 0,
+    temperGoldBase: 0,
+    lore: 'Two mouthfuls. The first shows you what you were looking at. The second shows you what you were looking for.',
   },
 ];
 

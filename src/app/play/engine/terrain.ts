@@ -84,7 +84,7 @@ export interface TerrainNodeDef {
   charge?: true;
 }
 
-/** The flag the Rune-Warden sets when it falls (delve save `claimed`). */
+/** The flag the Seam Eater sets when it falls (delve save `claimed`). */
 export const WARDEN_FLAG = 'warden-defeated';
 
 const ROCK = { base: '#3a2b2c', dark: '#241a1c', light: '#5a4440', fleck: '#6b5148' };
@@ -113,8 +113,9 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   { id: 'petrified-trunk', label: 'Petrified trunk', solid: true, hp: 3, tools: { axe: 1 }, discipline: 'woodcutting', xp: 4,
     yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, base: '#3a2a1c', dark: '#24190f', light: '#7a5a36', fleck: '#b08a55' },
   { id: 'bedrock', label: 'Bedrock', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0, base: '#141016', dark: '#09070a', light: '#231c25', fleck: '#2d2430' },
-  { id: 'ember-rock', label: 'Ember-veined basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0,
-    ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
+  // The most common vein: a quarter of strikes leave Ember Residue (audit #1).
+  { id: 'ember-rock', label: 'Ember-veined basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1,
+    yield: { materialId: 'ember-residue', qty: 1, chance: .25 }, ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
   { id: 'cache', label: 'Keeper\'s cache', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 8,
     yield: { materialId: 'ember-residue', qty: 1 }, base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 52 } },
   // ── Biomes (Phase 2.6). Appended: the index is the saved byte. ──
@@ -138,7 +139,7 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // One per player: the diff keeps it dug, the host keeps it paid once.
   { id: 'godforge-fragment', label: 'Godforge fragment', solid: true, hp: 8, tools: { pickaxe: 1, staff: 1 }, discipline: 'exploration', xp: 40,
     yield: { materialId: 'godforge-fragment', qty: 1 }, base: '#4a3a24', dark: '#2a1f12', light: '#ffe9a8', fleck: '#fff4d0', glow: { color: '#ffe9a8', radius: 96 },
-    guard: { flag: WARDEN_FLAG, refusal: 'The Rune-Warden still stands. Defeat it to free the fragment' } },
+    guard: { flag: WARDEN_FLAG, refusal: 'The Seam Eater still stands. Defeat it to free the fragment' } },
   // Kael's old cache in the Maws' cavern: his lost hammer, once per player (the host's `claimed`).
   { id: 'kaels-cache', label: 'Kael\'s old cache', solid: true, hp: 2, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 10,
     yield: { materialId: 'kaels-hammer', qty: 1 }, base: '#5a3f2a', dark: '#2e1f14', light: '#d8b07a', fleck: '#ffd9a0', glow: { color: '#ffc97a', radius: 56 } },
