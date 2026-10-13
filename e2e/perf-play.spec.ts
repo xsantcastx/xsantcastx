@@ -172,7 +172,7 @@ async function measure(page: Page, cdp: CDPSession, scene: string, walk = true):
     canvases: data.canvases,
   };
   results.push(result);
-  console.log(JSON.stringify(result));
+  process.stdout.write(`${JSON.stringify(result)}\n`);
   return result;
 }
 
@@ -183,8 +183,14 @@ async function travelByPlaces(page: Page, label: RegExp, area: string): Promise<
   await page.waitForTimeout(800);
 }
 
-test.describe('/play on a throttled phone', () => {
-  test.skip(!RUN, 'measuring harness: set PLAY_PERF=1');
+/**
+ * Deliberately skipped unless asked for (not a left-over isolation): the
+ * harness takes ~8 minutes, and frame timing on shared CI runners means nothing.
+ */
+const harness = RUN ? test.describe : test.describe.skip;
+const guard = RUN && !process.env['CI'] ? test.describe : test.describe.skip;
+
+harness('/play on a throttled phone', () => {
   test.describe.configure({ timeout: SECONDS * 1000 + 240000 });
 
   test.afterAll(() => {
@@ -230,8 +236,7 @@ test.describe('/play on a throttled phone', () => {
  * The guard: the Magma Halls is the heaviest scene (lighting + torches +
  * terrain). Skipped on CI: shared runners make frame timing meaningless.
  */
-test.describe('/play perf guard', () => {
-  test.skip(!!process.env['CI'] || !RUN, 'local only: set PLAY_PERF=1');
+guard('/play perf guard', () => {
   test('town p95 frame time at 4× CPU throttle stays under the ceiling', async ({ page }) => {
     test.setTimeout(120000);
     const cdp = await phone(page);
