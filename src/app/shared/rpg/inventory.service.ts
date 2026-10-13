@@ -1426,6 +1426,58 @@ export class InventoryService {
     return this.relocate(row, { kind: 'bag' });
   }
 
+  /**
+   * Send several satchel items to the Vault in ONE write — a "×7" row's
+   * button. Each is routed in turn (Gear, General, Overflow), exactly as seven
+   * single sends would be. Ids not loose in the satchel (already moved, worn,
+   * gone) are skipped, so a replayed press moves nothing twice. Returns the
+   * ids moved; on a failed save nothing moves.
+   */
+  stowMany(itemIds: readonly string[]): string[] {
+    if (!this.isBrowser) return [];
+    const rows = [...new Set(itemIds)]
+      .map(id => this.instanceRow(id))
+      .filter((row): row is OwnedItemInstance => !!row && row.location.kind === 'bag');
+    if (!rows.length) return [];
+    const capacity = this.capacity();
+    const instancesIn = { ...layoutOf(this.ledger, capacity).instancesIn };
+    return this.relocateMany(rows.map(row => {
+      const tab = routeFor(instancesIn, capacity);
+      instancesIn[tab] += 1;
+      return { row, location: { kind: 'explorer', explorerId: vaultHolder(tab) } };
+    }));
+  }
+
+  /**
+   * Take several items out of the Vault in ONE write, as many as the satchel
+   * has free slots for (the rest stay where they are). Returns the ids moved.
+   */
+  takeOutMany(itemIds: readonly string[]): string[] {
+    if (!this.isBrowser) return [];
+    const capacity = this.capacity();
+    const free = Math.max(0, capacity.satchel - layoutOf(this.ledger, capacity).bagInstances);
+    const rows = [...new Set(itemIds)]
+      .map(id => this.instanceRow(id))
+      .filter((row): row is OwnedItemInstance => !!row && !!vaultTabOf(row.location))
+      .slice(0, free);
+    return this.relocateMany(rows.map(row => ({ row, location: { kind: 'bag' } })));
+  }
+
+  private relocateMany(moves: { row: OwnedItemInstance; location: OwnedItemInstance['location'] }[]): string[] {
+    if (!moves.length) return [];
+    const previous = this.ledger;
+    const updated = moves.map(({ row, location }) => this.withRevision({ ...row, location }));
+    let next = this.ledger;
+    for (const row of updated) next = upsertRecord(next, row);
+    this.ledger = next;
+    if (!this.save()) {
+      this.ledger = previous;
+      return [];
+    }
+    this.publish();
+    return updated.map(row => row.id);
+  }
+
   /** Items in the Vault, by tab. */
   vaultItems(tab: VaultTabId): GameItem[] {
     return this.items.filter(item => item.explorerId && item.explorerId === vaultHolder(tab));
