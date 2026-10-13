@@ -39,7 +39,7 @@ function item(id: string, stats: ItemStats, over: Partial<GameItem> = {}): GameI
 function snapshotWith(equipped: Partial<Record<SlotId, GameItem>>): InventorySnapshot {
   return {
     items: [], bag: [], stacks: [], equipped,
-    totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, lootBonus: 0, strikePower: 0, ward: 0 },
+    totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 },
     goldFromSales: 0, sold: 0, usedRows: 0, full: false,
   };
 }

@@ -560,7 +560,7 @@ describe('InventoryService reforge', () => {
 
   it('charges the plain price when the lock names a stat the item does not roll', () => {
     const gold = economy.snapshot.gold;
-    const result = inventory.reforge('reforge-blade', 'r-badlock', 'lootBonus', Date.now(), () => 0.5);
+    const result = inventory.reforge('reforge-blade', 'r-badlock', 'ward', Date.now(), () => 0.5);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.lockedKey).toBeNull();

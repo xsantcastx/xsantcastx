@@ -956,7 +956,7 @@ export class TranslationService {
     'loadout.build.vanguard.name': { en: 'Vanguard', es: 'Vanguardia' },
     'loadout.build.vanguard.desc': { en: 'Strike-heavy. Hits harder in the Seamworks and wrings more runes from the anvil.', es: 'Volcado en el golpe. Pega mas fuerte en Seamworks y saca mas runas del yunque.' },
     'loadout.build.treasureSeeker.name': { en: 'Treasure Seeker', es: 'Buscatesoros' },
-    'loadout.build.treasureSeeker.desc': { en: 'Magic Find and loot quality first. Rarer drops, better hauls.', es: 'Primero Hallazgo Magico y calidad de botin. Botines mas raros y mejores.' },
+    'loadout.build.treasureSeeker.desc': { en: 'Magic Find first. Rarer drops, better hauls.', es: 'Primero Hallazgo Magico. Botines mas raros y mejores.' },
     'loadout.build.forgewright.name': { en: 'Forgewright', es: 'Forjador' },
     'loadout.build.forgewright.desc': { en: 'Built on Gold per second. The forge pays while you are away.', es: 'Construido sobre Oro por segundo. La forja paga mientras no estas.' },
     'loadout.build.bulwark.name': { en: 'Bulwark', es: 'Baluarte' },

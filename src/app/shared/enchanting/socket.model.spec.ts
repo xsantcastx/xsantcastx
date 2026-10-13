@@ -97,6 +97,11 @@ describe('socket counts', () => {
 });
 
 describe('socket effects', () => {
+  it('folds the old loot-quality runes into Magic Find (meaning audit #5)', () => {
+    expect(ITEM_STAT_KEYS as string[]).not.toContain('lootBonus');
+    for (const id of ['seam', 'ledger', 'codex']) expect(SOCKET_CHANNEL[id]).withContext(id).toBe('magicFind');
+  });
+
   it('gives every rune in the registry a channel, or the Void treatment', () => {
     for (const rune of RUNES) {
       const effect = socketEffectOf(rune.id);

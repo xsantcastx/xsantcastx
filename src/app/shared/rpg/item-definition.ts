@@ -93,9 +93,6 @@ const STYLE_XP: Partial<Record<ItemStyle, number>> = {
 const STYLE_MF: Partial<Record<ItemStyle, number>> = {
   luminous: 1.08,
 };
-const STYLE_LOOT: Partial<Record<ItemStyle, number>> = {
-  umbral: 1.08,
-};
 const STYLE_WARD: Partial<Record<ItemStyle, number>> = {
   umbral: 1.08,
   'void-touched': 1.08,
@@ -105,7 +102,6 @@ function styleBias(style: ItemStyle, key: ItemStatKey): number {
   if (key === 'goldPerSec') return STYLE_GOLD[style] ?? 1;
   if (key === 'xpBonus') return STYLE_XP[style] ?? 1;
   if (key === 'magicFind') return STYLE_MF[style] ?? 1;
-  if (key === 'lootBonus') return STYLE_LOOT[style] ?? 1;
   if (key === 'ward') return STYLE_WARD[style] ?? 1;
   return 1;
 }

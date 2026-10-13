@@ -199,7 +199,6 @@ describe('thrall.model — stamina', () => {
 describe('thrall.model — magic find', () => {
   const byId = (id: string) => ({
     'mf-charm': item('mf-charm', { magicFind: 40 }),
-    'loot-charm': item('loot-charm', { lootBonus: 25 }),
   } as Record<string, GameItem>)[id];
 
   const base: Pick<Thrall, 'rarity' | 'level' | 'equipment'> = {
@@ -216,11 +215,6 @@ describe('thrall.model — magic find', () => {
     // value there, or equipping one is strictly worse than not.
     const geared = { ...base, equipment: { charm: 'mf-charm' } };
     expect(thrallMagicFind(geared, 200, byId)).toBe(100 + 40);
-  });
-
-  it('counts lootBonus as magic find, the way an explorer does', () => {
-    const geared = { ...base, equipment: { weapon: 'loot-charm' } };
-    expect(thrallMagicFind(geared, 0, byId)).toBe(25);
   });
 
   it('floors at zero rather than passing a negative to the drop table', () => {

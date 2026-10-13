@@ -323,8 +323,8 @@ export function resumeStaminaFor(thrall: Pick<Thrall, 'maxStamina'>): number {
  * `goldPerSec` and `strikePower` are deliberately *not* read anywhere on a
  * Thrall. The first would mint Gold from a worker whose entire point is
  * burning it; the second is the Keeper's own yield bonus and paying it to a
- * hundred-times-cheaper hand would undo the price. Only `magicFind`,
- * `lootBonus` and `ward` do anything here — see the two functions below.
+ * hundred-times-cheaper hand would undo the price. Only `magicFind` and
+ * `ward` do anything here — see the two functions below.
  */
 export function thrallEquipmentStats(
   thrall: Pick<Thrall, 'equipment'>,
@@ -343,10 +343,8 @@ export function thrallEquipmentStats(
  * The Magic Find this Thrall actually rolls at.
  *
  * The Keeper's own total, scaled by the tier-and-level share, plus whatever
- * the Thrall is wearing at face value. `magicFind` and `lootBonus` both count
- * and are added together for the same reason they are on an explorer: from the
- * wearer's side they are the same thing, and keeping them apart would mean
- * every Magic Find charm silently does nothing the moment it changes hands.
+ * the Thrall is wearing at face value, the same as on an explorer: a Magic
+ * Find charm must not silently do nothing the moment it changes hands.
  *
  * Worn points are *not* scaled by the share. The share is a penalty on the
  * Keeper's build — their Luck, their sheet, their charms — and taxing the gear
@@ -361,7 +359,7 @@ export function thrallMagicFind(
   const share = magicFindShareFor(thrall.rarity, thrall.level);
   const base = Math.max(0, keeperMagicFind) * share;
   const worn = thrallEquipmentStats(thrall, itemById);
-  const total = base + worn.magicFind + worn.lootBonus;
+  const total = base + worn.magicFind;
   return Number.isFinite(total) ? Math.max(0, total) : 0;
 }
 
