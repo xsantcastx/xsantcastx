@@ -19,7 +19,6 @@ export const CODEX_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'codex.hidden':           { en: 'Hidden', es: 'Oculto' },
   'codex.sealed':           { en: 'Sealed', es: 'Sellado' },
   'codex.rarity':           { en: 'Rarity', es: 'Rareza' },
-  'codex.realm':            { en: 'Realm', es: 'Reino' },
   'codex.reward':           { en: 'Reward', es: 'Recompensa' },
   'codex.foundOn':          { en: 'Found', es: 'Hallado' },
   'codex.part':             { en: 'Part {{n}}', es: 'Parte {{n}}' },
@@ -27,7 +26,5 @@ export const CODEX_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'codex.inscription':      { en: 'Delve inscription', es: 'Inscripcion del Abismo' },
   'codex.notCopied':        { en: 'Not yet copied. Somewhere in the {{place}}.', es: 'Aun sin copiar. En algun lugar de {{place}}.' },
   'codex.socketWord':       { en: 'Socket word', es: 'Palabra de engarce' },
-  'codex.gateOpen':         { en: 'Unchains {{gate}} in the Trials', es: 'Libera {{gate}} en las Pruebas' },
-  'codex.gateLocked':       { en: 'Holds a gate in the Trials', es: 'Guarda una puerta en las Pruebas' },
   'codex.details.hint':     { en: 'Filters, totals and what each section is', es: 'Filtros, totales y que es cada seccion' },
 };
