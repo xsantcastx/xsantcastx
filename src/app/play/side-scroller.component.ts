@@ -278,6 +278,15 @@ export class SideScrollerComponent implements OnDestroy {
   private hotbarKey = '';
   /** The hotbar's choice: what B / a long-press places. */
   placing: PlaceableId | null = null;
+  /**
+   * Phones (Terraria's smart cursor): what a tap on a Delve cell does. 'pick'
+   * digs it (the engine's own click-to-strike); 'place' puts the chosen
+   * placeable there. Only taps (not mouse clicks) read it; the keyboard's B
+   * and the long-press place whatever is chosen, as before.
+   */
+  touchTool: 'pick' | 'place' = 'pick';
+  /** Phones: the goal line folded to its "Goal n of 4" chip. */
+  guideFolded = false;
 
   constructor() {
     // Hydration can swap the server canvas after the first callback. Wait until
@@ -439,10 +448,20 @@ export class SideScrollerComponent implements OnDestroy {
         event.preventDefault();
         this.zone.run(() => this.engine?.placeAtClient(event.clientX, event.clientY));
       };
+      // The kind of pointer that started the press: a tap, unlike a mouse click, follows the touch tool.
+      let tapped = false;
+      const note = (event: PointerEvent): void => { tapped = event.pointerType !== 'mouse'; };
       const click = (event: MouseEvent): void => {
         if (!this.engine || this.panel || this.state.defeated) return;
         // The click that ends a long-press placed something; it does not also swing.
         if (pressed) { pressed = false; return; }
+        // A tap with a placeable chosen places it on that cell (or takes back what is there);
+        // out of reach, the Keeper walks toward it instead of digging it.
+        if (tapped && this.state.delve && this.touchTool === 'place' && this.engine.placeable) {
+          if (this.zone.run(() => this.engine?.placeAtClient(event.clientX, event.clientY))) return;
+          this.engine.moveTo(this.engine.pick(event.clientX, event.clientY).x);
+          return;
+        }
         if (this.engine.strikeAt(event.clientX, event.clientY)) return;
         const hit = this.engine.pick(event.clientX, event.clientY);
         // The Homestead Forge strikes where it is clicked, without walking there.
@@ -453,6 +472,7 @@ export class SideScrollerComponent implements OnDestroy {
       canvas.addEventListener('pointermove', move);
       canvas.addEventListener('pointerleave', leave);
       canvas.addEventListener('pointerdown', down);
+      canvas.addEventListener('pointerdown', note);
       canvas.addEventListener('click', click);
       canvas.addEventListener('pointerdown', pressStart);
       canvas.addEventListener('pointermove', pressMove);
@@ -465,6 +485,7 @@ export class SideScrollerComponent implements OnDestroy {
         canvas.removeEventListener('pointermove', move);
         canvas.removeEventListener('pointerleave', leave);
         canvas.removeEventListener('pointerdown', down);
+        canvas.removeEventListener('pointerdown', note);
         canvas.removeEventListener('click', click);
         canvas.removeEventListener('pointerdown', pressStart);
         canvas.removeEventListener('pointermove', pressMove);
@@ -1267,6 +1288,11 @@ export class SideScrollerComponent implements OnDestroy {
       const slot = this.placingSlot;
       this.message = slot ? this.t('play.hotbar.ready', { name: slot.name, n: slot.count }) : '';
     }
+  }
+  /** Phones: the hotbar's pick slot. A tap on a block digs it again. */
+  choosePick(): void {
+    this.touchTool = 'pick';
+    this.message = this.t('play.hud.pickReady');
   }
   /** The hotbar's Place button: same as B. */
   placeHere(): void { this.engine?.place(); }
