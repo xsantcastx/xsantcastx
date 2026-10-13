@@ -192,6 +192,7 @@ Turn the mine from "dig and collect" into a place you shape. Foundation first:
 - [x] **Phone HUD, Terraria-mobile style** (owner, 2026-10-13: "not playable" on a real phone; `docs/handoff/mobile-hud.md`): hotbar top-left (Pick slot first) + satchel button with badge, area title + slim health + menu top-right; menu holds Places/Return/Restart/Keys; goal line folds to a chip; messages are 4 s toasts; one touch row (movement left, Blast/Dodge/Use/Jump right, ≥44px, fits 360px); tap a cell to dig (Pick) or place (block). Unobstructed world: Delve 37–50% → 71–77% portrait, 18.5% → 69% landscape; desktop identical. `e2e/play-mobile-hud.spec.ts` (chromium + webkit)
   - Next: phones in landscape wider than 900px (e.g. 932×430) still get the desktop layout; the Homestead Gold list unfolded on a phone covers mid-world; touch labels are 8–11px text, icons would read better
 - [x] **"New version — Reload" prompt**: `scripts/stamp-build-id.js` (postbuild) stamps a build id into `version.json`, every page's `<meta name="gf-build">` and `service-worker.js`; `AppUpdateService` checks on start, every 30 min, on return to the tab and on `online`; a top-centre toast (never over controls, waits while a panel/fight is open) flushes saves via `GameStateGateway.settleForReload()` before reloading; the worker no longer skip-waits. `e2e/play-update.spec.ts`. Real-device / iOS standalone check still owed
+- [~] **Inventory: stacks, satchel limit, the Vault** (owner, 2026-10-13: runes pile up and items can't be found; POE2-style slots bought with Gold). Spec + sim: `docs/inventory/inventory-spec.md`, `node scripts/economy-sim.mjs --inventory`. Found: every rune find mints a stat-less Sigil record and the 250-record cap **destroys** the cheapest gear to make room (also on every cloud merge). Plan S1 pure layout → S2 stop eviction + sigils stack (soak a release) → S3 storage prices → S4 satchel limit 40 (+8 ×5) + Vault routing/Overflow → S5 Vault station in the Seamworks + satchel UI → S6 surfaces; S7 market server follow-ups before the market deploy. Owner: the Vault keeper's role title Manager calls (2026-10-13): stackables keep one account-wide quantity and the satchel/Vault/Overflow split is derived (no migration); Vault keeper role title **Vault Clerk** approved; S2 (stop deleting items) ships first
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for sprite sheets
 
@@ -215,7 +216,7 @@ All six checkpoint branches are on `main`: PWA, Station UI kit, Skills + tools, 
 
 | Work | Branch | Status |
 |---|---|---|
-| Phone HUD follow-ups · Delve e2e positioning (chest X, pit after reload) | agent worktrees | `[~]` |
+| Phone HUD follow-ups · Delve e2e positioning · Inventory S1+S2 (stop deleting items) · Tool tiers swing faster + readable tool stats | agent worktrees | `[~]` |
 
 ## Art still missing (placeholders in game)
 
