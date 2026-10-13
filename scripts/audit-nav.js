@@ -112,9 +112,6 @@ for (const [route, where] of links) {
 
 const EXEMPT = new Set([
   '/admin', '/embed', '/tools', '/world', '/**', '/',
-  // An internal art-direction preview, not a playable destination. The real
-  // /play route remains subject to the site-wide navigation requirement.
-  '/play/storyboard',
 ]);
 // In-world places: every registry route a station in a built town hosts.
 // Loaded from the TypeScript source itself (transpiled in memory, the way
@@ -154,12 +151,11 @@ for (const r of declared) {
 }
 
 // ── 3. Player-facing leftover of the deleted tool product ──────────────────
-// Templates and SEO are what a player reads. Infrastructure (tools-registry,
-// hidden quest pools, historical changelog) is out of scope.
+// Templates and SEO are what a player reads. Infrastructure (historical
+// changelog, the legacy egg records) is out of scope.
 const PLAYER_FACING = files.filter(f => {
   const rel = path.relative(path.join(SRC, 'app'), f).replace(/\\/g, '/');
   if (rel.startsWith('admin/')) return false;
-  if (rel === 'tools/tools-registry.ts') return false;
   if (rel === 'version.ts') return false;
   // The release log moved out of version.ts in v2.70.0 so its ~140 kB of prose
   // would stop riding the initial bundle. It is the same historical changelog
@@ -167,9 +163,6 @@ const PLAYER_FACING = files.filter(f => {
   // including the tool product that has since been retired, and rewriting
   // history to please a copy audit would be the wrong fix.
   if (rel === 'version-history.ts') return false;
-  if (rel === 'translation.service.ts') return false;
-  if (rel === 'shared/easter-eggs/easter-egg.service.ts') return false;
-  if (rel === 'codex/codex-hints.ts') return false;
   if (/\.spec\.ts$/.test(rel)) return false;
   return /\.(html|ts)$/.test(rel);
 });

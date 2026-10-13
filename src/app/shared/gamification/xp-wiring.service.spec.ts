@@ -5,7 +5,6 @@ import { Subject } from 'rxjs';
 
 import { XpWiringService } from './xp-wiring.service';
 import { XpService } from './xp.service';
-import { ToolMasteryService } from './tool-mastery.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { CANONICAL } from '../canonical-routes';
 
@@ -32,7 +31,6 @@ describe('XpWiringService path identity', () => {
             award: (type: string) => awards.push(type),
           },
         },
-        { provide: ToolMasteryService, useValue: { backfill: () => undefined, record: () => undefined } },
         { provide: EasterEggService, useValue: { discovery$: new Subject() } },
       ],
     });

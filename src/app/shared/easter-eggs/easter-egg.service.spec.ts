@@ -32,14 +32,8 @@ describe('EasterEggService public totals', () => {
     eggs = TestBed.inject(EasterEggService);
   });
 
-  it('does not let hidden tool eggs make found exceed total on a public drop', async () => {
-    const legacy = [
-      'json-inception',
-      'b64-mirror',
-      'regex-master',
-      'shadow-lord',
-      ...Array.from({ length: 76 }, (_, i) => `legacy-tool-${i}`),
-    ];
+  it('does not let unknown saved egg ids make found exceed total on a public drop', async () => {
+    const legacy = Array.from({ length: 80 }, (_, i) => `legacy-tool-${i}`);
     store.set(EGGS_FOUND_KEY, JSON.stringify(legacy));
 
     await eggs.init();

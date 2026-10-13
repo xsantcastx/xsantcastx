@@ -69,7 +69,7 @@ describe('InspectComponent', () => {
     trigger.id = 'qi-trigger';
     document.body.appendChild(trigger);
     trigger.focus();
-    inspect.open({ type: 'quest', id: 'forge-three-shadows' }, { trigger });
+    inspect.open({ type: 'quest', id: 'walk-the-five-stations' }, { trigger });
     fixture.detectChanges();
     await fixture.whenStable();
 

@@ -40,6 +40,7 @@ export const LEGACY_TO_CANONICAL: Readonly<Record<string, string>> = {
   '/games': CANONICAL.trials,
   '/forge-view': '/sanctum',
   '/live': '/sanctum',
+  '/play/storyboard': '/play',
 };
 
 /** Strip query/hash and collapse a remounted hall onto its canonical URL. */
@@ -105,4 +106,5 @@ export const CANONICAL_REDIRECTS: Routes = [
   { path: 'sponsors', redirectTo: 'world', pathMatch: 'full' },
   { path: 'donate', redirectTo: 'world', pathMatch: 'full' },
   { path: 'pro', redirectTo: 'world', pathMatch: 'full' },
+  { path: 'play/storyboard', redirectTo: 'play', pathMatch: 'full' },
 ];

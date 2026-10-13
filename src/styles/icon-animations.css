@@ -144,16 +144,6 @@
 }
 .realm-sigil--active { animation: rank-energy 3.6s ease-in-out infinite; }
 
-.shop-icon {
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.35));
-  transition: filter 220ms ease, transform 220ms ease;
-}
-.shop-icon:hover,
-[class*='is-active'] > .shop-icon {
-  filter: drop-shadow(0 0 14px rgba(200, 152, 104, 0.55)) brightness(1.12);
-  transform: translateY(-1px);
-}
-
 /* ─────────────────────────────────────────────────────────────────────────
    Reduced motion — static end state, never "no styling"
    ───────────────────────────────────────────────────────────────────────── */
@@ -182,6 +172,4 @@
   .rarity-singular { filter: drop-shadow(0 0 20px #a48bff); }
   .rank-current    { filter: drop-shadow(0 0 14px var(--violet)); }
   .realm-sigil--active { filter: drop-shadow(0 0 14px var(--realm-glow, var(--violet))); }
-
-  .shop-icon:hover { transform: none; }
 }

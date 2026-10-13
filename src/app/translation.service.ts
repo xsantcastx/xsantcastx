@@ -22,8 +22,6 @@ export class TranslationService {
   public currentLanguage$ = this.currentLanguageSubject.asObservable();
 
   private translations: Translations = {
-    // Navigation
-
     // ── The Godforge command bar ─────────────────────────────────────────
     // Realm *names* are deliberately absent: they come from REALMS in
     // realm.model.ts and are proper nouns in the lore, untranslated in both
@@ -192,7 +190,6 @@ export class TranslationService {
     'enchant.words.frame.armor':  { en: 'Armour only', es: 'Solo armaduras' },
     'enchant.words.frame.any':    { en: 'Any piece',   es: 'Cualquier pieza' },
 
-
     // ── The Forge floor (strip above all three benches) ───────────────────
     'forgeFloor.label':         { en: 'The forge floor', es: 'El taller de la forja' },
     'forgeFloor.stockpile':     { en: 'Stockpile',       es: 'Acopio' },
@@ -288,6 +285,8 @@ export class TranslationService {
     'gffoot.build':       { en: 'Build',        es: 'Construye' },
     'gffoot.together':    { en: 'Together',     es: 'Juntos' },
     'gffoot.nextThing':   { en: 'The next thing is yours', es: 'Lo siguiente es tuyo' },
+    'gffoot.support':     { en: 'Support the forge', es: 'Apoya la forja' },
+    'gffoot.support.card': { en: 'Card',        es: 'Tarjeta' },
 
     // The WebGL forge's escape hatch. One key: the switch's own state says
     // whether it is on, so a second "effects reduced" string would be a label
@@ -313,20 +312,6 @@ export class TranslationService {
     'godforge.welcome.level': { en: 'Level',    es: 'Nivel' },
     'godforge.hero.descend':  { en: 'Scroll to descend', es: 'Desplaza para descender' },
 
-    // Hero Section
-
-    // Services Section
-
-    // Projects Section
-
-    // About Section
-
-    // Skills Section
-
-    // Contact Section
-
-    // Donation Form
-
     // Footer
     // These two were referenced but never defined. `translate()` falls back to
     // returning the key, which is truthy — so the `|| 'Address copied'` idiom
@@ -348,67 +333,6 @@ export class TranslationService {
     'footer.success': { en: 'Thank you for your support!', es: 'Gracias por tu apoyo!' },
     'footer.error': { en: 'Payment failed. Please try again.', es: 'El pago fallo. Intenta de nuevo.' },
 
-    // ─── Tools section ────────────────────────────────────────────────────────
-
-    // Tools landing page
-
-    // ── /tools — The Five Realms ──────────────────────────────────────────
-    // The map's own copy. `godforge.forges.*` says the same things on the
-    // landing page, but in the voice of a section inside a longer scroll;
-    // these are the words for a page that IS the map.
-
-    // One or two lines on what each realm holds — the gate's own description,
-    // distinct from the codex `quote` that sits beneath it.
-    // Shared button + UI panel labels — reusable across all tool templates (i18n batch 2026-04-26)
-
-    // Tool category eyebrows — shared across every tool header
-
-    // ─── Per-tool headers (title / subtitle) ──────────────────────────────────
-    // Batch 1 — highest-traffic tools
-
-    // Batch 2 — JSON / data / minifier tools
-
-    // Batch 3 — text / markdown / encoding tools
-
-    // Batch 4 — CSS / design-system / color tools
-
-    // Batch 5 — network / device / image tools
-
-    // Batch 6 — SEO / security / project-config tools
-
-    // Batch 7 — DevOps references, productivity and data tools
-
-    // HAR File Analyzer
-
-    // Batch 8 — remaining CSS / TypeScript / utility tools
-
-    // Batch 9 — CSS generators (TranslationService was injected in an earlier
-    // pass, but their headers were still hardcoded English)
-
-    // Batch 10 — email/security/SVG tools with headers still hardcoded
-
-    // Tool card titles & descriptions
-    'tools.pdf.title': { en: 'PDF Catalog Generator', es: 'Generador de Catálogo PDF' },
-    'tools.pdf.desc': { en: 'Upload images, configure layout and captions, and export a polished catalog-style PDF — entirely in your browser. No uploads, no accounts.', es: 'Sube imágenes, configura el diseño y los textos, y exporta un PDF estilo catálogo elegante — todo en tu navegador. Sin subidas, sin cuentas.' },
-    'tools.color.title': { en: 'Color Palette Extractor', es: 'Extractor de Paleta de Colores' },
-    'tools.color.desc': { en: 'Upload any image and instantly extract its dominant colors. Copy hex, RGB or HSL values, export as CSS variables, Tailwind config, or JSON.', es: 'Sube cualquier imagen y extrae al instante sus colores dominantes. Copia valores hex, RGB o HSL, exporta como variables CSS, config de Tailwind o JSON.' },
-    'tools.contrast.title': { en: 'Contrast Checker', es: 'Verificador de Contraste' },
-    'tools.contrast.desc': { en: 'Check WCAG AA/AAA contrast ratios between any two colors. Instant pass/fail for text, UI components, and large text thresholds.', es: 'Verifica las relaciones de contraste WCAG AA/AAA entre dos colores. Resultado inmediato para texto, componentes UI y texto grande.' },
-    'tools.compressor.title': { en: 'Image Compressor', es: 'Compresor de Imágenes' },
-    'tools.compressor.desc': { en: 'Compress JPEG, PNG and WebP images in your browser with live quality preview. Batch compress, no uploads, no accounts — files never leave your device.', es: 'Comprime imágenes JPEG, PNG y WebP en tu navegador con vista previa de calidad en tiempo real. Compresión por lotes, sin subidas, sin cuentas.' },
-    'tools.gradient.title': { en: 'Gradient Generator', es: 'Generador de Gradientes' },
-    'tools.gradient.desc': { en: 'Build CSS gradients visually — linear, radial and conic. Add stops, adjust angles, copy ready-to-use CSS with one click.', es: 'Crea gradientes CSS visualmente — lineales, radiales y cónicos. Agrega paradas, ajusta ángulos, copia CSS listo para usar con un clic.' },
-
-    // Color Palette page
-
-    // Contrast Checker page
-
-    // Image Compressor page
-
-    // PDF Generator page
-
-    // SVG to Code Converter
-
     // Cookie Banner / GDPR Consent
     'cookies.banner.title': { en: 'Cookie preferences', es: 'Preferencias de cookies' },
     'cookies.banner.description': { en: 'Tiny analytics breadcrumbs help us see which stars get visited most.', es: 'Pequenas migas de analytics nos ayudan a ver que estrellas se visitan mas.' },
@@ -418,12 +342,6 @@ export class TranslationService {
     'cookies.banner.aria': { en: 'Cookie consent banner', es: 'Banner de consentimiento de cookies' },
     'cookies.accept.aria': { en: 'Accept analytics cookies', es: 'Aceptar cookies de analytics' },
     'cookies.deny.aria': { en: 'Use essential cookies only', es: 'Usar solo cookies esenciales' },
-
-    // ─── Cosmic eyebrows + taglines ────────────────────────────────────────
-
-    // ─── Guestbook cosmic copy ─────────────────────────────────────────────
-
-    // ─── Cosmic anchor planet ──────────────────────────────────────────────
 
     // ─── First-run tutorial ────────────────────────────────────────────────
     // The five screens a browser with no save gets instead of /world. Written
@@ -1280,23 +1198,6 @@ export class TranslationService {
     // ─── Payment fallback copy ─────────────────────────────────────────────
     'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
 
-    // ─── Trust microcopy ───────────────────────────────────────────────────
-
-    // ─── JSON Formatter page (i18n batch 2026-04-26) ──────────────────────────
-
-    // ─── Hash Generator page (i18n batch 2026-04-26) ──────────────────────────
-
-    // Tool input placeholders — batch
-
-    // Tool input placeholders — batch
-
-    // Tool input placeholders — batch
-
-    // Tool input placeholders — batch
-
-    // Tool input placeholders — batch
-
-    // Tool input placeholders — batch
 };
 
   constructor() {

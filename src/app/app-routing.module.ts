@@ -19,12 +19,6 @@ export const APP_ROUTES: Routes = [
     },
   },
   {
-    path: 'play/storyboard',
-    loadComponent: () => import('./play/infernal-adventure.component').then(m => m.InfernalAdventureComponent),
-    title: 'The Seamworks Storyboard — Eclipse Realms',
-    data: { noindex: true },
-  },
-  {
       path: 'world',
       loadComponent: () => import('./landing/landing.component').then(m => m.LandingComponent),
       title: 'Eclipse Realms — Free Browser RPG & Idle Game, No Download',

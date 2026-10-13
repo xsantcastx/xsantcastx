@@ -120,21 +120,6 @@ export const REALMS: RealmDefinition[] = [
 /** Display order for realm-grouped listings. Mirrors REALMS. */
 export const REALM_ORDER: RealmId[] = REALMS.map(r => r.id);
 
-const BY_CATEGORY = new Map<string, RealmDefinition>();
-for (const realm of REALMS) {
-  for (const category of realm.categories) BY_CATEGORY.set(category, realm);
-}
-
-/**
- * The realm a category belongs to. Archivum is the fallback rather than null:
- * an unmapped category is almost certainly a new utility, and the archive is
- * where unclassified things go until someone files them properly.
- */
-export function realmForCategory(category: string | undefined): RealmDefinition {
-  return (category ? BY_CATEGORY.get(category) : undefined)
-    ?? REALMS.find(r => r.id === 'archivum')!;
-}
-
 export function realmById(id: RealmId | null | undefined): RealmDefinition | null {
   return REALMS.find(r => r.id === id) ?? null;
 }

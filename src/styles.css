@@ -271,17 +271,6 @@ body {
      below them is exactly what it always was. */
   background-color: #07090f;
   background-image:
-    /* Slots 1 and 2 — a painted realm, and the veil that makes text legible on
-       top of it. This is the "when a page gets painted, the artwork takes the
-       first slot" case the ATMOSPHERE block describes, reached by the 126 tool
-       pages via `html[data-realm]`. Both default to `none`, so every route
-       without art is byte-for-byte the background it was before.
-
-       The veil is listed FIRST because background layers paint front-to-back:
-       layer one is nearest the viewer. Art in slot 1 with the veil under it
-       would be a veil behind a painting, which veils nothing. */
-    var(--atm-veil, none),
-    var(--atm-art, none),
     radial-gradient(ellipse 90% 70% at 50% 50%,   var(--atm-center) 0%, transparent 70%),
     radial-gradient(ellipse 95% 55% at 50% 0%,    var(--atm-top)    0%, transparent 65%),
     radial-gradient(ellipse 95% 60% at 50% 100%,  var(--atm-bottom) 0%, transparent 65%),
@@ -382,147 +371,6 @@ body::before {
   background: transparent;
 }
 
-/* The first-paint boot curtain now lives in the Godforge loader component
-   (src/app/shared/loading/godforge-loader.component.{ts,css}), which owns its
-   own scoped styles. The .cosmic-boot rules that were here are gone with it. *//* Interactive starfield canvas — particles + constellation lines */
-.cosmic-canvas {
-  position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-  display: block;
-  mix-blend-mode: screen;
-}
-
-/* Soft cursor halo — only visible on pointer-fine devices */
-.cosmic-cursor {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  pointer-events: none;
-  z-index: var(--z-cursor);
-  background: radial-gradient(circle, rgba(139, 92, 246, 0.55) 0%, rgba(139, 92, 246, 0.18) 35%, transparent 70%);
-  mix-blend-mode: screen;
-  opacity: 0;
-  transition: opacity 0.3s ease, width 0.35s cubic-bezier(0.22, 1, 0.36, 1), height 0.35s cubic-bezier(0.22, 1, 0.36, 1), background 0.35s ease;
-  will-change: transform;
-}
-
-.cosmic-cursor--active { opacity: 1; }
-
-.cosmic-cursor--hover {
-  width: 56px;
-  height: 56px;
-  background: radial-gradient(circle, rgba(123, 97, 255, 0.55) 0%, rgba(139, 92, 246, 0.25) 40%, transparent 75%);
-}
-
-@media (hover: none) { .cosmic-cursor { display: none !important; }
-
-}
-
-/* Scroll-reveal now lives in styles/interactions.css as .gf-reveal /
-   .gf-in-view, which is what cosmic-engine.js applies. The old .cosmic-reveal
-   pair was left stranded here: two of the five staggered selectors below it
-   (.skill-card, .project-card) named pages deleted in 2.44.0, and the 28px /
-   850ms travel read as sluggish next to the 200ms the rest of the site now
-   uses. Nothing adds .cosmic-reveal any more. *//* Stagger child cards inside their grid parent for a sweeping reveal */
-.gf-in-view.tool-card,
-.gf-in-view.hp-tool-card { transition-delay: 0.05s; }
-
-/* ─── 3D card tilt — set via JS on hover ─── */
-.cosmic-tilting {
-  transform: perspective(900px)
-             rotateX(var(--tilt-x, 0deg))
-             rotateY(var(--tilt-y, 0deg));
-  transition: transform 0.18s ease-out, box-shadow 0.18s ease-out;
-}
-
-/* Highlight that follows the cursor across the surface */
-.tool-card.cosmic-tilting,
-.hp-tool-card.cosmic-tilting {
-  background-image: radial-gradient(
-    circle at var(--tilt-mx, 50%) var(--tilt-my, 50%),
-    rgba(255, 255, 255, 0.08),
-    transparent 45%
-  );
-  background-blend-mode: screen;
-}
-
-/* ─── Click sparks — starburst that radiates from click point ─── */
-.cosmic-spark-burst {
-  position: fixed;
-  width: 0;
-  height: 0;
-  pointer-events: none;
-  z-index: var(--z-cursor);
-  transform: translate(-50%, -50%);
-}
-
-.cosmic-spark {
-  --spark-color: var(--violet);
-  --dx: 0px;
-  --dy: 0px;
-  --dur: 0.8s;
-
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 6px;
-  height: 6px;
-  margin: -3px 0 0 -3px;
-  border-radius: 50%;
-  background: radial-gradient(circle, #fff 0%, var(--spark-color) 60%, transparent 100%);
-  box-shadow: 0 0 8px var(--spark-color), 0 0 18px var(--spark-color);
-  opacity: 0;
-  animation: cosmicSparkFly var(--dur) cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  will-change: transform, opacity;
-}
-
-@keyframes cosmicSparkFly {
-  0% {
-    opacity: 0;
-    transform: translate(0, 0) scale(0.4);
-  }
-  10% { opacity: 1; }
-  100% {
-    opacity: 0;
-    transform: translate(var(--dx), var(--dy)) scale(0);
-  }
-}
-
-/* ─── Page-transition cosmic veil ─── */
-.cosmic-route-veil {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: var(--z-veil);
-  background:
-    radial-gradient(circle at center, transparent 0%, rgba(8, 3, 22, 0.6) 60%, rgba(8, 3, 22, 0.92) 100%);
-  opacity: 0;
-  transition: opacity 0.18s ease-in;
-}
-
-.cosmic-route-veil.cosmic-route-veil--active {
-  animation: cosmicRouteVeil 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes cosmicRouteVeil {
-  0%   { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
-  35%  { opacity: 1; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
-  100% { opacity: 0; backdrop-filter: blur(0); -webkit-backdrop-filter: blur(0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .cosmic-tilting { transform: none !important; }
-  .cosmic-spark, .cosmic-route-veil--active { animation: none !important; }
-
-}
-
 /* ─── Constellation cursor trail ─── */
 .cosmic-trail-layer {
   position: fixed;
@@ -562,24 +410,8 @@ body::before {
 
 }
 
-/* ─── Type-on heading animation ─── */
-.cosmic-char {
-  display: inline-block;
-  opacity: 0;
-  transform: translateY(0.45em) scale(0.92);
-  filter: blur(6px);
-  animation: cosmicCharIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-}
-
-@keyframes cosmicCharIn {
-  0%   { opacity: 0; transform: translateY(0.45em) scale(0.92); filter: blur(6px); }
-  60%  { opacity: 1; filter: blur(0); }
-  100% { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
-}
-
 /* ─── Subtitle / accent gradient sweep — animated linear-gradient under .hp-hero__title--accent and like elements ─── */
-.hp-section-title,
-.section-title {
+.hp-section-title {
   background-size: 200% auto;
   animation: cosmicGradientSweep 7s ease-in-out infinite;
 }
@@ -587,9 +419,7 @@ body::before {
 @keyframes cosmicGradientSweep {
   0%, 100% { background-position: 0% 50%; }
   50%       { background-position: 100% 50%; }
-}
-
-/* ─── Scroll-linked hero parallax — applied via root CSS vars set by JS ─── *//* Counter — emphasize when counting */
+}/* Counter — emphasize when counting */
 [data-counter][data-counter-bound] {
   font-variant-numeric: tabular-nums;
   display: inline-block;
@@ -598,147 +428,8 @@ body::before {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .cosmic-char { opacity: 1; transform: none; filter: none; animation: none !important; }
-  .hp-section-title,
-.section-title { animation: none !important; }
-
+  .hp-section-title { animation: none !important; }
 }
-
-/* Central cosmic pulsar — the big moving star in the middle */
-.cosmic-pulsar {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  width: clamp(520px, 80vmin, 980px);
-  height: clamp(520px, 80vmin, 980px);
-  margin: 0;
-  transform: translate(-50%, -50%);
-  pointer-events: none;
-  z-index: -1;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%,
-      rgba(255, 255, 255, 0.95) 0%,
-      rgba(180, 250, 255, 0.85) 3%,
-      rgba(0, 255, 220, 0.7) 12%,
-      rgba(80, 170, 255, 0.55) 28%,
-      rgba(140, 110, 255, 0.42) 46%,
-      rgba(90, 40, 180, 0.22) 64%,
-      transparent 80%);
-  mix-blend-mode: screen;
-  animation: pulsarBeat 10s ease-in-out infinite, pulsarHue 90s linear infinite, pulsarWander 48s ease-in-out infinite;
-  /* `translate` is animated separately from `transform` — both need hinting. */
-  will-change: translate, transform, filter, opacity;
-  z-index: -1;
-  opacity: 1;
-}
-
-.cosmic-pulsar::before {
-  /* tighter hot core */
-  content: '';
-  position: absolute;
-  top: 50%; left: 50%;
-  width: 14%; height: 14%;
-  transform: translate(-50%, -50%);
-  border-radius: 50%;
-  background: radial-gradient(circle at center, #fff 0%, rgba(140, 230, 255, 0.9) 35%, transparent 80%);
-  filter: blur(6px);
-  animation: pulsarCore 3.2s ease-in-out infinite;
-}
-
-.cosmic-pulsar::after {
-  /* outer corona flares */
-  content: '';
-  position: absolute;
-  inset: -20%;
-  border-radius: 50%;
-  background:
-    conic-gradient(from 0deg,
-      rgba(139, 92, 246, 0.18),
-      transparent 60deg,
-      rgba(123, 97, 255, 0.18),
-      transparent 140deg,
-      rgba(255, 0, 180, 0.15),
-      transparent 220deg,
-      rgba(0, 150, 255, 0.18),
-      transparent 320deg,
-      rgba(139, 92, 246, 0.18));
-  filter: blur(24px);
-  opacity: 0.7;
-  animation: coronaSpin 42s linear infinite;
-  mix-blend-mode: screen;
-}
-
-@keyframes pulsarBeat {
-  0%, 100% {
-    transform: translate(calc(-50% + var(--cursor-shift-x, 0px)), calc(-50% + var(--cursor-shift-y, 0px))) scale(0.88);
-    opacity: 0.7;
-  }
-  50% {
-    transform: translate(calc(-50% + var(--cursor-shift-x, 0px)), calc(-50% + var(--cursor-shift-y, 0px))) scale(1.24);
-    opacity: 1;
-  }
-}
-
-@keyframes pulsarCore {
-  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.9; }
-  50%       { transform: translate(-50%, -50%) scale(1.45); opacity: 1; }
-}
-
-@keyframes pulsarHue {
-  0%   { filter: hue-rotate(0deg) blur(18px); }
-  50%  { filter: hue-rotate(180deg) blur(14px); }
-  100% { filter: hue-rotate(360deg) blur(18px); }
-}
-
-/* The wander drifts the orb around the viewport. It used to animate top/left,
-   which are LAYOUT properties: every frame of a 48s loop invalidated layout for
-   a fixed, blurred, 980px element, on every page, forever. CLAUDE.md §7.4 waved
-   this through as "slow, and only one element" — but the cost is not in how far
-   it moves, it is that the frame cannot go straight to the compositor.
-
-   transform was not available to move it to, because pulsarBeat already owns
-   transform (it composes the cursor-shift vars with the beat's scale, and two
-   animations cannot interpolate the same property). `translate` is the way out:
-   it is an independent transform property, so it composes with `transform`
-   instead of competing with it, and it is compositor-only.
-
-   The offsets are vw/vh rather than percentages because these used to be
-   percentages of the VIEWPORT (top/left on a fixed element), whereas a
-   percentage in `translate` would resolve against the element's own box. Same
-   path as before: +8/-8, -4/+6, +4/-6. */
-@keyframes pulsarWander {
-  0%, 100% { translate: 0 0; }
-  25%       { translate: 8vw -8vh; }
-  50%       { translate: -4vw 6vh; }
-  75%       { translate: 4vw -6vh; }
-}
-
-@keyframes coronaSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-/* §2.1 — Mobile pulsar lite mode: keep pulsarBeat (transform/opacity only),
-   drop pulsarHue (filter — repaints every frame), shrink wander to ±20px.
-   prefers-reduced-motion is orthogonal and stronger — handled separately. */
-@media (max-width: 768px) {
-  .cosmic-pulsar {
-    /* pulsarBeat: keep  |  pulsarHue: drop  |  pulsarWander: keep via narrowed keyframe below */
-    animation: pulsarBeat 10s ease-in-out infinite, pulsarWanderMobile 48s ease-in-out infinite;
-    filter: blur(18px); /* static blur instead of animated hue-rotate */
-  }
-
-}
-
-/* Narrowed wander: ±20px offset instead of the desktop ±8%/±6% viewport shift */
-@keyframes pulsarWanderMobile {
-  0%, 100% { translate: 0 0; }
-  25%       { translate: 20px -20px; }
-  50%       { translate: -10px 20px; }
-  75%       { translate: 15px -10px; }
-}
-
 
 body::after {
   content: '';
@@ -842,20 +533,6 @@ p {
   margin: 0 auto;
 }
 
-.section-header {
-  display: grid;
-  gap: 0.75rem;
-  text-align: center;
-  margin-bottom: clamp(2.5rem, 6vw, 4rem);
-}
-
-.section-title {
-  font-size: clamp(2.4rem, 5vw, 3.5rem);
-  line-height: 1.1;
-  color: var(--text-color);
-  text-transform: uppercase;
-}
-
 .lead {
   font-size: clamp(1.05rem, 2.4vw, 1.25rem);
   color: var(--text-muted);
@@ -902,75 +579,6 @@ button.cta-button {
   box-shadow: 0 18px 50px rgba(139, 92, 246, 0.45);
 }
 
-.cta-button.is-ghost {
-  background: transparent;
-  color: var(--text-color);
-  border: 1px solid rgba(255, 255, 255, 0.22);
-  box-shadow: none;
-}
-
-.cta-button.is-ghost:hover {
-  border-color: var(--glass-border-strong);
-  background: rgba(139, 92, 246, 0.08);
-  color: var(--primary-color);
-}
-
-/* ===== Share buttons ===== */
-.share-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.45rem;
-  padding: 0.4rem 0.9rem;
-  border-radius: 999px;
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
-  text-decoration: none;
-  border: 1px solid transparent;
-  cursor: pointer;
-  transition: transform 0.15s, opacity 0.15s, box-shadow 0.15s;
-}
-.share-btn:hover { transform: translateY(-2px); opacity: 0.9; }
-
-.share-btn--twitter {
-  background: #000;
-  color: #fff;
-  border-color: rgba(255,255,255,0.12);
-}
-.share-btn--twitter:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.35); }
-
-.share-btn--linkedin {
-  background: #0a66c2;
-  color: #fff;
-}
-.share-btn--linkedin:hover { box-shadow: 0 6px 20px rgba(10,102,194,0.4); }
-
-/* Short aliases used by the tool pages (`share-btn--x` / `share-btn--li`).
-   Tool components define their own scoped `.share-btn` base, which resolves to
-   `.share-btn[_ngcontent-*]` (0,2,0) and outranks a bare `.share-btn--x` (0,1,0).
-   Qualifying with the element name lifts these to (0,2,1) so the brand colors win
-   regardless of stylesheet order. Every usage in the app is an `<a>`. */
-a.share-btn.share-btn--x {
-  background: #000;
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.12);
-}
-a.share-btn.share-btn--x:hover {
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
-  color: #fff;
-}
-
-a.share-btn.share-btn--li {
-  background: #0a66c2;
-  color: #fff;
-  border-color: rgba(10, 102, 194, 0.45);
-}
-a.share-btn.share-btn--li:hover {
-  box-shadow: 0 6px 20px rgba(10, 102, 194, 0.4);
-  color: #fff;
-}
-
 /* ===== App shell ===== */
 app-root {
   display: block;
@@ -995,9 +603,7 @@ router-outlet + * {
     opacity: 1;
     transform: none;
   }
-}
-
-/* Background variants for scroll syncing removed — single gradient prevents flickering *//* ===== Mystic Ambient Effects ===== */
+}/* ===== Mystic Ambient Effects ===== */
 @keyframes nebulaDrift {
   0%, 100% {
     transform: translate3d(0, 0, 0) scale(1) rotate(0deg);
@@ -1027,31 +633,6 @@ router-outlet + * {
   50%       { opacity: 0.4; }
 }
 
-@keyframes sigilSpin {
-  0%   { transform: translate(-50%, -50%) rotate(0deg); }
-  100% { transform: translate(-50%, -50%) rotate(360deg); }
-}
-
-@keyframes sigilBreathe {
-  0%, 100% { opacity: 0.28; filter: drop-shadow(0 0 14px rgba(139, 92, 246, 0.55)); }
-  50%       { opacity: 0.55; filter: drop-shadow(0 0 34px rgba(123, 97, 255, 0.75)); }
-}
-
-@keyframes fogDrift {
-  0%, 100% { transform: translate3d(0, 0, 0) scale(1) rotate(0deg); }
-  33%      { transform: translate3d(-6%, 4%, 0) scale(1.18) rotate(4deg); }
-  66%      { transform: translate3d(5%, -3%, 0) scale(1.12) rotate(-3deg); }
-}
-
-@keyframes runeFlicker {
-  0%, 88%, 100% { opacity: 0; transform: scale(1); text-shadow: none; }
-  92%, 96%      {
-    opacity: 0.65;
-    transform: scale(1.03);
-    text-shadow: 0 0 12px rgba(139, 92, 246, 0.7), 0 0 24px rgba(123, 97, 255, 0.4);
-  }
-}
-
 /* .particle-layer — optional runic overlay layer (opt-in via class on an element) */
 .particle-layer {
   position: fixed;
@@ -1072,12 +653,7 @@ router-outlet + * {
    on each other read as noise rather than as depth, and `.particle-layer` is
    one of the nine fixed full-viewport compositor layers the mobile pass spent a
    release cutting down — keeping it alive behind a scene that supersedes it is
-   the exact cost that pass was about.
-
-   `.cosmic-canvas` is deliberately NOT hidden here. It looks like the same kind
-   of thing and is not: it carries the click ripple, the cursor trail, the
-   constellation tooltips and the form-success confetti, none of which the forge
-   scene reimplements. Hiding it would silently delete four features. */
+   the exact cost that pass was about. */
 html.forge-scene-on .particle-layer {
   display: none;
 }
@@ -1110,11 +686,9 @@ html.forge-scene-on .particle-layer {
    all of them.
 
    What a visitor actually sees behind the content is therefore body's gradient
-   plus `.cosmic-canvas` (z-index 0, so it is above body). Every other backdrop
-   layer is dead paint. That is a pre-existing bug and it is deliberately NOT
-   fixed here: giving body a stacking context (`isolation: isolate`, or any
-   z-index) would resurrect the sigil, the nebula, the fog and the starfield on
-   every route at once, /home included, which is a redesign and not this change.
+   plus anything at z-index 0 or above (the WebGL forge scene). Every other
+   backdrop layer is dead paint, which is why the old tools-site sigil, nebula
+   and fog layers were deleted rather than fixed (2026-10-13).
 
    So the wash goes where the pixels already are: in front of the base gradient,
    in body's own `background-image` list. Zero new elements, zero new compositor
@@ -1131,99 +705,7 @@ html.forge-scene-on .particle-layer {
    ── SLOT MAP ───────────────────────────────────────────────────────────────
    center  the wash a page sits inside      top     a glow overhead
    bottom  a glow underfoot                 tl / tr corner hints
-   ════════════════════════════════════════════════════════════════════════════ *//* ════════════════════════════════════════════════════════════════════════════
-   REALM ART — the painted room behind a tool page
-   ════════════════════════════════════════════════════════════════════════════
-
-   Five paintings across 126 tool pages, keyed on the `data-realm` attribute
-   RealmService writes onto <html>. Route → tool → category → realm, resolved in
-   TypeScript; which painting that realm wears, resolved here.
-
-   ── WHY CSS AND NOT <app-art-scene> ────────────────────────────────────────
-   The four painted routes each own a component and can host the <picture> the
-   scene component renders. The tool pages do not: they are 126 separate lazily
-   loaded components with nothing in common but the shell around them. Adding a
-   scene to each is 126 edits that a 127th tool would silently not get — the
-   same trap `html[data-realm]` was introduced to avoid for the realm badge.
-
-   So this is genuinely the CSS-background case, and it pays for itself: a
-   selector that does not match downloads nothing, which is the whole of the
-   lazy-loading requirement. A visitor who only ever opens CSS tools never
-   fetches the other four paintings.
-
-   ── WHY url() AND NOT image-set() ──────────────────────────────────────────
-   image-set() would buy a JPEG fallback the way <picture> does, but it cannot
-   be reached through a custom property safely: an image-set() a browser cannot
-   parse makes `background-image` invalid at computed-value time, and that would
-   take the five atmosphere gradients and the base gradient down with it —
-   turning the page transparent rather than merely unpainted. A plain url() to a
-   WebP either loads or does not, and "does not" leaves the gradient underneath
-   exactly as it was. WebP has been in every engine since 2020.
-
-   ── THE VEIL ───────────────────────────────────────────────────────────────
-   Layer 2 of the three-layer pattern, as a gradient rather than an element. The
-   values match art-scene.component.ts so a tool page and /arena read as the
-   same house. Luminous is the exception and needs its own: it is a sunlit
-   marble hall, by far the brightest of the five, and body text over it at the
-   shared alpha is unreadable.
-   ════════════════════════════════════════════════════════════════════════════ */
-
-html[data-realm] body {
-  --atm-veil: linear-gradient(
-    to bottom,
-    rgba(10, 10, 15, 0.62) 0%,
-    rgba(10, 10, 15, 0.88) 60%,
-    rgba(10, 10, 15, 0.95) 100%
-  );
-}
-
-/* Heavier than the shared veil at every stop. Measured against the others:
-   Luminous is a hall of white marble and gold under a stained-glass window, and
-   at 0.62 the tool panels' own text lost its contrast floor against it. */
-html[data-realm='luminous'] body {
-  --atm-veil: linear-gradient(
-    to bottom,
-    rgba(10, 10, 15, 0.78) 0%,
-    rgba(10, 10, 15, 0.92) 60%,
-    rgba(10, 10, 15, 0.96) 100%
-  );
-}
-
-/* Three of these five names do not match their realm id. That is not a typo:
-   the sigil sheet was painted against a later naming pass (Verge became
-   Celestial, Archivum became Verdant, Nexus became Infernal) which the lore and
-   the category tables have not taken yet. realm.model.ts records the same
-   mismatch on its `sigil` field, and the art is the newer artefact, so the file
-   keeps the new name until the rename lands everywhere at once. */
-html[data-realm='luminous'] body { --atm-art: url('assets/images/bg-luminous-1536.webp'); }
-html[data-realm='umbral']   body { --atm-art: url('assets/images/bg-umbral-1536.webp'); }
-html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-1536.webp'); }
-html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-1536.webp'); }
-html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-1536.webp'); }
-
-/* Narrower viewports take the smaller frames, mirroring the <source> widths in
-   art-scene.component.ts. The 768 file is a PORTRAIT crop rather than a scaled
-   landscape one — a phone showing the wide frame under `cover` gets a band of
-   floor and nothing else. */
-@media (max-width: 1280px) {
-  html[data-realm='luminous'] body { --atm-art: url('assets/images/bg-luminous-1280.webp'); }
-  html[data-realm='umbral']   body { --atm-art: url('assets/images/bg-umbral-1280.webp'); }
-  html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-1280.webp'); }
-  html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-1280.webp'); }
-  html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-1280.webp'); }
-
-}
-
-@media (max-width: 768px) {
-  html[data-realm='luminous'] body { --atm-art: url('assets/images/bg-luminous-768.webp'); }
-  html[data-realm='umbral']   body { --atm-art: url('assets/images/bg-umbral-768.webp'); }
-  html[data-realm='verge']    body { --atm-art: url('assets/images/bg-celestial-768.webp'); }
-  html[data-realm='archivum'] body { --atm-art: url('assets/images/bg-verdant-768.webp'); }
-  html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-768.webp'); }
-
-}
-
-@property --atm-center { syntax: '<color>'; inherits: true; initial-value: transparent; }
+   ════════════════════════════════════════════════════════════════════════════ */@property --atm-center { syntax: '<color>'; inherits: true; initial-value: transparent; }
 @property --atm-top    { syntax: '<color>'; inherits: true; initial-value: transparent; }
 @property --atm-bottom { syntax: '<color>'; inherits: true; initial-value: transparent; }
 @property --atm-tl     { syntax: '<color>'; inherits: true; initial-value: transparent; }
@@ -1239,73 +721,6 @@ html[data-realm='nexus']    body { --atm-art: url('assets/images/bg-infernal-153
   }
 
 }
-
-.matrix-background {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: -3;
-  background:
-    radial-gradient(ellipse at 20% 30%, rgba(0, 220, 180, 0.22) 0%, transparent 55%),
-    radial-gradient(ellipse at 80% 70%, rgba(140, 90, 220, 0.28) 0%, transparent 55%),
-    radial-gradient(ellipse at 50% 50%, rgba(28, 14, 58, 0.5) 0%, #0a0420 55%, #03010c 100%),
-    linear-gradient(180deg, #0c0526 0%, #120938 45%, #05010f 100%);
-  overflow: hidden;
-}
-
-/* Slowly rotating alchemical sigil — the seal */
-.matrix-background::before {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: min(150vmin, 1600px);
-  height: min(150vmin, 1600px);
-  transform: translate(-50%, -50%);
-  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 800 800' fill='none' stroke='rgb(139,92,246)' stroke-width='1' stroke-opacity='0.55'><circle cx='400' cy='400' r='390'/><circle cx='400' cy='400' r='340'/><circle cx='400' cy='400' r='220'/><circle cx='400' cy='400' r='140'/><circle cx='400' cy='400' r='60'/><polygon points='400,80 676,560 124,560'/><polygon points='400,720 124,240 676,240'/><line x1='20' y1='400' x2='780' y2='400'/><line x1='400' y1='20' x2='400' y2='780'/><line x1='86' y1='86' x2='714' y2='714'/><line x1='714' y1='86' x2='86' y2='714'/><circle cx='400' cy='10' r='5' fill='rgb(139,92,246)' fill-opacity='0.55' stroke='none'/><circle cx='400' cy='790' r='5' fill='rgb(123,97,255)' fill-opacity='0.55' stroke='none'/><circle cx='10' cy='400' r='5' fill='rgb(255,0,255)' fill-opacity='0.45' stroke='none'/><circle cx='790' cy='400' r='5' fill='rgb(139,92,246)' fill-opacity='0.55' stroke='none'/><circle cx='400' cy='400' r='8' fill='rgb(123,97,255)' fill-opacity='0.6' stroke='none'/></svg>");
-  background-size: contain;
-  background-position: center;
-  background-repeat: no-repeat;
-  mix-blend-mode: screen;
-  animation: sigilSpin 320s linear infinite, sigilBreathe 18s ease-in-out infinite;
-  will-change: transform, opacity;
-}
-
-/* Drifting arcane fog */
-.matrix-background::after {
-  content: '';
-  position: absolute;
-  inset: -15%;
-  background:
-    radial-gradient(ellipse 55% 35% at 25% 35%, rgba(120, 70, 220, 0.38), transparent 70%),
-    radial-gradient(ellipse 45% 45% at 75% 70%, rgba(0, 180, 220, 0.32), transparent 70%),
-    radial-gradient(ellipse 35% 55% at 88% 25%, rgba(200, 80, 180, 0.26), transparent 70%),
-    radial-gradient(ellipse 40% 30% at 15% 85%, rgba(180, 90, 255, 0.26), transparent 70%);
-  filter: blur(80px) saturate(1.2);
-  mix-blend-mode: screen;
-  animation: fogDrift 60s ease-in-out infinite;
-  will-change: transform;
-}
-
-/* Whisper runes — invisible most of the time, flicker briefly as easter eggs */
-.rune-whisper {
-  position: fixed;
-  pointer-events: none;
-  z-index: 0;
-  font-family: 'Orbitron', serif;
-  font-size: clamp(1.2rem, 2.2vw, 2rem);
-  color: rgba(139, 92, 246, 0.85);
-  letter-spacing: 0.3em;
-  user-select: none;
-  opacity: 0;
-  animation: runeFlicker 36s ease-in-out infinite;
-  will-change: opacity, transform;
-}
-
-.rune-whisper--tl { top: 12vh; left: 6vw; animation-delay: 0s; }
-.rune-whisper--tr { top: 22vh; right: 8vw; animation-delay: -9s; color: rgba(123, 97, 255, 0.9); }
-.rune-whisper--bl { bottom: 18vh; left: 10vw; animation-delay: -18s; color: rgba(255, 0, 255, 0.8); }
-.rune-whisper--br { bottom: 10vh; right: 7vw; animation-delay: -27s; }
 
 /* Hidden seal — clickable easter egg in the corner, nearly imperceptible */
 .arcane-seal {
@@ -1353,14 +768,6 @@ body.ritual-open {
   animation: ritualPulse 1.8s ease-in-out infinite;
 }
 
-body.ritual-open .matrix-background::before {
-  animation: sigilSpin 60s linear infinite, sigilBreathe 4s ease-in-out infinite;
-}
-
-body.ritual-open .rune-whisper {
-  animation-duration: 8s;
-}
-
 @keyframes ritualPulse {
   0%, 100% { filter: hue-rotate(0deg) saturate(1); }
   50%       { filter: hue-rotate(25deg) saturate(1.3); }
@@ -1405,22 +812,6 @@ body.flicker {
   100% { filter: none; }
 }
 
-/* ===== Utility ===== */
-.text-gradient {
-  background: linear-gradient(120deg, var(--primary-color), var(--secondary-color));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-}
-
-.btn-reset {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  color: inherit;
-}
-
 /* ===== Media Queries ===== */
 @media (max-width: 1080px) {
   :root {
@@ -1446,10 +837,6 @@ body.flicker {
     padding-inline: clamp(1.25rem, 6vw, 2rem);
   }
 
-  .section-header {
-    margin-bottom: clamp(2rem, 7vw, 3rem);
-  }
-
 }
 
 @media (max-width: 640px) {
@@ -1473,16 +860,6 @@ body.flicker {
     opacity: 0.35;
   }
 
-  .section-header {
-    gap: 0.6rem;
-    margin-bottom: clamp(1.6rem, 6vw, 2.4rem);
-  }
-
-  .section-title {
-    font-size: clamp(1.9rem, 9vw, 2.4rem);
-    letter-spacing: 0.08em;
-  }
-
   .glass-card {
     border-radius: var(--radius-md);
   }
@@ -1494,10 +871,6 @@ body.flicker {
     font-size: 0.88rem;
   }
 
-  .section-title {
-    letter-spacing: 0.06em;
-  }
-
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1507,39 +880,8 @@ body.flicker {
     transition-duration: 0.001ms !important;
     scroll-behavior: auto !important;
   }
-  .cosmic-pulsar { opacity: 0.5; }
 
-}
-
-/* ===== Live Preview Section (landing page) ===== *//* --- Visual card --- */
-
-/* --- Text column --- *//* C-4: .lp-text__eyebrow / .lp-eyebrow-dot removed — unreferenced (dead) *//* Responsive *//* ===== Tools CTA Section (landing page) ===== *//* ===== Header Shared Styles =====
-   The rotating buzzword pill that used to live under the wordmark went with
-   the portfolio navbar. Its rules (.nav-buzzword, @keyframes navWordSwap)
-   are deleted rather than left orphaned — the Godforge command bar draws its
-   own mark and has no element they could apply to. *//* ===== Embed Mode ===== */
-.embed-mode {
-  --shell-sidebar-w: 0px;
-  --header-offset: 0px;
-  padding: 12px;
-  min-height: calc(100vh - 36px); /* Reserve space for embed bar */
-  overflow: auto;
-}
-
-/* Light theme override for embeds on light-background sites */
-.embed-theme-light {
-  --surface-color: rgba(245, 245, 250, 0.92);
-  --surface-strong: rgba(235, 235, 245, 0.96);
-  --surface-hover: rgba(225, 225, 240, 0.88);
-  --glass-border: rgba(0, 0, 0, 0.08);
-  --glass-border-strong: rgba(0, 150, 200, 0.25);
-  --text-color: #1a1a2e;
-  --text-muted: rgba(40, 44, 60, 0.76);
-  background: #fafafa;
-  color: #1a1a2e;
-}
-
-/* ===== Global Keyboard Focus Styles =====
+}/* ===== Global Keyboard Focus Styles =====
  * a11y backlog: previously only .logo had a :focus-visible style, leaving every
  * other interactive element relying on the browser default — invisible against
  * the dark theme. WCAG 2.4.7 Focus Visible.
@@ -1601,26 +943,7 @@ summary:focus-visible {
    fallback — every element below keeps a painted static end state.
    ════════════════════════════════════════════════════════════════════════════ */
 
-@media (max-width: 768px) {/* ── 1. Sigil: a 1600px texture nobody can resolve on a 390px screen ──
-     Drawn at 0.55 stroke-opacity behind three other layers. Removing it costs
-     nothing visually and frees the single largest texture on the page. */
-  .matrix-background::before {
-    display: none;
-  }
-
-/* ── 2. Arcane fog: keep the colour wash, drop the 80px Gaussian ──
-     inset:-15% also meant the layer was 1.3x the viewport in both axes, so the
-     blur was running over ~1.7x the pixels it appeared to cover. */
-  .matrix-background::after {
-    inset: 0;
-    filter: none;
-    mix-blend-mode: normal;
-    animation: none;
-    will-change: auto;
-    /* Slightly softened + dimmed to compensate for the missing blur, so the
-       gradient edges do not read as hard bands. */
-    opacity: 0.55;
-  }
+@media (max-width: 768px) {
 
 /* ── 3. Nebula wash: same treatment ── */
   body::before {
@@ -1642,39 +965,6 @@ summary:focus-visible {
     transform: none;
   }
 
-/* ── 5. Pulsar: keep the signature orb, make it cheap ──
-     Supersedes the earlier lite-mode rule above (later source order wins).
-     The old mobile path still animated top/left, which is a LAYOUT property —
-     every frame invalidated layout for a blurred 980px element. Now it only
-     animates opacity/transform on the compositor, at a size a phone can hold. */
-  .cosmic-pulsar {
-    width: min(90vw, 420px);
-    height: min(90vw, 420px);
-    top: 50%;
-    left: 50%;
-    filter: none;
-    mix-blend-mode: normal;
-    opacity: 0.45;
-    animation: pulsarBeatMobile 12s ease-in-out infinite;
-    will-change: auto;
-  }
-
-/* ── 6. Canvas: drop the blend mode ──
-     mix-blend-mode: screen on a full-viewport canvas forces the compositor off
-     its fast path and makes it read back the backdrop every frame. The
-     particles are additive-bright already; plain compositing looks the same
-     against a near-black backdrop. */
-  .cosmic-canvas {
-    mix-blend-mode: normal;
-    opacity: 0.75;
-  }
-
-/* ── 7. Rune whispers: four permanently-promoted layers for a desktop
-     easter egg that is invisible for 34 of every 36 seconds. ── */
-  .rune-whisper {
-    display: none;
-  }
-
 /* ── 7b. .particle-layer (app.component.html) is a ninth fixed
      full-viewport layer running nebulaDrift forever. Its three tiny radial
      gradients are already indistinguishable from the body::after starfield
@@ -1687,29 +977,10 @@ summary:focus-visible {
 /* ── 8. Cursor trail / custom cursor: already touch-guarded in the engine,
      but make the layer removal declarative too so no stray element is left
      compositing. ── */
-  .cosmic-trail-layer,
-  .cosmic-cursor {
+  .cosmic-trail-layer {
     display: none !important;
   }
 
-/* ── 9. Route veil: the keyframe animates backdrop-filter 0 -> 8px -> 0 on a
-     full-viewport element on every single navigation. Fade the scrim only. ── */
-  .cosmic-route-veil.cosmic-route-veil--active {
-    animation: cosmicRouteVeilMobile 0.3s ease-out forwards;
-  }
-
-}
-
-/* Compositor-only pulsar beat for mobile — no filter, no layout properties. */
-@keyframes pulsarBeatMobile {
-  0%, 100% { opacity: 0.38; transform: translate(-50%, -50%) scale(1); }
-  50%      { opacity: 0.52; transform: translate(-50%, -50%) scale(1.06); }
-}
-
-@keyframes cosmicRouteVeilMobile {
-  0%   { opacity: 0; }
-  40%  { opacity: 1; }
-  100% { opacity: 0; }
 }
 
 /* ── 10. backdrop-filter is the other half of the problem ──
@@ -1943,23 +1214,6 @@ select {
     contain-intrinsic-size: auto 600px;
   }
 
-/* Cards get paint/layout containment so a change inside one card cannot
-     invalidate layout for the whole grid. */
-  .hp-tool-card,
-.tool-card {
-    contain: layout paint;
-  }
-
-}
-
-/* Reduced motion already has its own paths throughout the file; this keeps the
-   mobile overrides from reintroducing an animation on top of them. */
-@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
-  .cosmic-pulsar {
-    animation: none;
-    opacity: 0.4;
-  }
-
 }
 
 /* ════════════════════════════════════════════════════════════════════════════
@@ -2014,16 +1268,8 @@ select {
 /* Links that are already block/flex boxes are standalone controls, not prose.
      Listing them explicitly rather than using a bare `a` selector keeps inline
      links in paragraphs exempt. */
-  a.tool-card,
-a.hp-tool-card,
-a.bp-link,
-a.bp-galaxy__nodes-link,
-.bp-galaxy__nodes a,
-a.footer-mcp-link,
-a.build-version,
-a.hp-tools__view-all,
-a.cta-button,
-.related-tools a {
+  a.build-version,
+a.cta-button {
     min-height: 44px;
     display: flex;
     align-items: center;
@@ -2038,23 +1284,17 @@ a.cta-button,
 /* Named offenders found in the audit that need more than a min-height —
      these are laid out as centred pills, so they also need their box model
      adjusted rather than just growing downward. */
-  .bp-tab,
-.copy-btn,
+  .copy-btn,
 .amount-btn,
-.close-btn,
-.chat-send-btn {
+.close-btn {
     min-height: 44px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-  }
-
-/* Footer social orbs were 40-42px — a couple of pixels short. Keep them
-     circular by growing both axes together. *//* Buttons that were exactly 43px (Notify Me, project Live Demo) are covered
+  }/* Buttons that were exactly 43px (Notify Me, project Live Demo) are covered
      by the rules above; this keeps their internal centring intact once they
      grow the extra pixel. */
-  .cta-button,
-.submit-btn {
+  .cta-button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -2114,33 +1354,13 @@ a.cta-button,
    Desktop is untouched — every rule is inside max-width: 768px.
    ════════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {/* ── Tier A: content & controls → 14px ──────────────────────────────────── *//* Global chrome present on every route */
-  .lang-btn,
-  .footer-mcp-link,
-  .footer-mcp-desc,
-  .donate-btn,
-  .cta-button,
-  .share-btn {
+  .cta-button {
     font-size: 14px !important;
   }
 
 /* Tool-page shell — duplicated across 121 per-tool stylesheets */
-  .back-link,
-  .rt-card__desc,
-  .related-tools__browse-link,
-  .aff-cta__desc,
-  .aff-cta__btn,
-  .nl-capture__sub,
-  .ecg__toggle,
-  .copy-btn,
-  .tool-desc,
-  .why-body,
-  .link-name {
+  .copy-btn {
     font-size: 14px !important;
-  }
-
-  .rt-card__name,
-  .related-tools__title {
-    font-size: 15px !important;
   }
 
 /* The cookie banner's second line is a privacy disclosure — what is collected
@@ -2150,47 +1370,19 @@ a.cta-button,
   .cookie-details small,
   .cookie-banner small {
     font-size: 14px;
-  }
-
-/* The cosmic section eyebrow and tagline pair is shared by /contact,
-     /projects and /skills, and rendered at 11.2px and 11.5px. The tagline is a
-     full sentence, so it is content; the eyebrow is an uppercase label. *//* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
-  .footer-eyebrow,
-.build-version,
-.adsense-label,
-.carbon-ad-label,
-.rt-tag,
-.tool-header__eyebrow,
-.tool-usage__label,
-.tool-usage__count,
-.aff-cta__sponsored,
-.aff-cta__badge,
-.link-label,
-.hero-badge,
-.inline-code {
+  }/* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
+  .build-version {
     font-size: 12px !important;
   }
 
-/* ── Remaining sub-44px controls the v2.1.0 sweep did not reach ─────────── *//* Share buttons were 34-36px tall on every tool page. */
-  .share-btn {
-    min-height: 44px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    touch-action: manipulation;
-  }
+/* ── Remaining sub-44px controls the v2.1.0 sweep did not reach ─────────── */
 
 /* Native colour swatches render at their intrinsic 40px width regardless of
      the min-height rule above, which only grows the vertical axis. */
   input[type='color'] {
     min-width: 44px;
     min-height: 44px;
-  }
-
-/* The email address and GitHub URL on /contact are the primary action of the
-     card they sit in, not links inside a sentence, so the WCAG 2.5.5 prose
-     exemption does not cover them. They were 17px tall — they carry no class,
-     which is why the v2.1.0 sweep's explicit class list missed them. *//* The global 16px rule for form controls sits at specificity (0,0,1) and is
+  }/* The global 16px rule for form controls sits at specificity (0,0,1) and is
      beaten by any component-authored class selector — .arb-method-select still
      computed to 13.1px, which re-arms the iOS focus-zoom trap the rule exists
      to prevent. This wins it back for every control. */
@@ -2204,12 +1396,7 @@ a.cta-button,
      Without it, older iOS Safari scrolls these panes without inertia, which is
      the single most "not a real app" feeling on the site. overscroll-behavior
      stops a flick inside the pane from chaining to the page behind it. */
-  .gftome,
-  .chat-messages,
-  .bot-messages,
-  .feed-panel,
-  .mission-grid,
-  .live-page {
+  .gftome {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
   }
@@ -2231,38 +1418,6 @@ a.cta-button,
     max-width: 100%;
   }
 
-}
-
-/* ════════════════════════════════════════════════════════════════════════
-   REALM BADGE
-   RealmService writes data-realm and --realm-* onto <html> on every tool
-   route. All 126 tool pages already share <header class="tool-header"> with a
-   category eyebrow, so this single rule puts a realm badge beside every tool
-   title without touching a single tool template.
-   ════════════════════════════════════════════════════════════════════════ */
-html[data-realm] .tool-header__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-  flex-wrap: wrap;
-}
-
-html[data-realm] .tool-header__eyebrow::after {
-  content: var(--realm-name);
-  font-family: 'Orbitron', system-ui, sans-serif;
-  font-size: 0.62rem;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 0.25rem 0.55rem;
-  border-radius: 999px;
-  color: var(--realm-color);
-  border: 1px solid color-mix(in srgb, var(--realm-color) 45%, transparent);
-  background: color-mix(in srgb, var(--realm-color) 10%, transparent);
-  box-shadow: 0 0 14px -4px var(--realm-glow);
-  /* Deliberately quiet — it labels the page, it does not compete with the
-     title sitting directly underneath it. */
-  opacity: 0.85;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -2650,18 +1805,10 @@ body.gf-art-route::after {
 /* /play: the world canvas is the whole screen, so the site backdrop behind it
    is never seen, only paid for. cosmic-engine.js parks the starfield and pulsar
    loops on the same class (SideScrollerComponent sets it). */
-body.gf-world-route .matrix-background,
-body.gf-world-route .cosmic-canvas,
-body.gf-world-route .cosmic-pulsar,
-body.gf-world-route .rune-whisper,
 body.gf-world-route .particle-layer {
   display: none;
 }
 
-body.gf-art-route .matrix-background,
-body.gf-art-route .cosmic-canvas,
-body.gf-art-route .cosmic-pulsar,
-body.gf-art-route .rune-whisper,
 body.gf-art-route .particle-layer {
   display: none;
 }
@@ -3185,11 +2332,6 @@ html:has(main.play-mode),
 body:has(main.play-mode) {
   height: 100dvh;
   overflow: hidden;
-}
-/* The site reveal fades every main section in. The play stage is the screen. */
-main.play-mode .stage.gf-reveal {
-  opacity: 1;
-  translate: none;
 }
 
 /* ░▒▓█ THE INSTALLED APP █▓▒░

@@ -1,3 +1,0 @@
-E2E=0
-KARMA=0
-DONE

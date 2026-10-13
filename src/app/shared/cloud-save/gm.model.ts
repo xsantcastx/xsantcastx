@@ -140,7 +140,7 @@ export interface SiteNotice {
 // ── Coercion ────────────────────────────────────────────────────────────────
 //
 // Everything below turns an `unknown` off the wire into a value the templates
-// can render without guarding. The house rule from ChangelogService applies:
+// can render without guarding. The house rule applies:
 // a malformed document degrades to a usable default, it never throws, because
 // one bad row must not take out the table it is in.
 

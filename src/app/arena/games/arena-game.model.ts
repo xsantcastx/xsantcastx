@@ -27,7 +27,7 @@ export interface ArenaPlayableGame {
   icon: string;
   /** The egg that breaks this gate's chain. */
   unlockEggId: string;
-  /** Retired tool eggs that already opened this gate for an existing save. */
+  /** Older eggs that already opened this gate for an existing save. */
   legacyUnlockEggIds?: readonly string[];
   unlockHint: string;
   /** XP paid out the first time the game is beaten. */
@@ -54,7 +54,6 @@ export const ARENA_PLAYABLE: ArenaPlayableGame[] = [
       'The Shattering scattered the fragments in pairs. Turn them face up two at a time and put the realm back together — fewer moves, less time, more Aether.',
     icon: '🌗',
     unlockEggId: 'trials-first',
-    legacyUnlockEggIds: ['color-void'],
     unlockHint: 'Stand in the Trials. The first gate is already listening.',
     xpReward: 50,
     energy: 'aether',
@@ -84,7 +83,6 @@ export const ARENA_PLAYABLE: ArenaPlayableGame[] = [
       'Ten pages of the Codex, every line shuffled out of order. Put them back the way they were written. Hints are available, and the Nocturne charges for them.',
     icon: '🗝️',
     unlockEggId: 'trials-first',
-    legacyUnlockEggIds: ['b64-mirror'],
     unlockHint: 'Stand in the Trials. The first gate is already listening.',
     xpReward: 100,
     energy: 'nox',
@@ -99,7 +97,6 @@ export const ARENA_PLAYABLE: ArenaPlayableGame[] = [
       'Sixty seconds at the anvil. Squash every bug, ship every feature, and never touch a live error — the chain multiplier is worth more than any single strike.',
     icon: '🔨',
     unlockEggId: 'trials-first',
-    legacyUnlockEggIds: ['sql-drop'],
     unlockHint: 'Stand in the Trials. The first gate is already listening.',
     xpReward: 40,
     energy: 'nox',
@@ -114,7 +111,6 @@ export const ARENA_PLAYABLE: ArenaPlayableGame[] = [
       'A maze that is never the same twice, seeded with Aether and Nox. Take both in equal measure. Lean too far either way and the realm closes over you.',
     icon: '🧭',
     unlockEggId: 'trials-first',
-    legacyUnlockEggIds: ['grid-matrix'],
     unlockHint: 'Stand in the Trials. The first gate is already listening.',
     xpReward: 75,
     energy: 'aether',
@@ -126,7 +122,7 @@ export function playableById(id: string): ArenaPlayableGame | undefined {
   return ARENA_PLAYABLE.find(g => g.id === id);
 }
 
-/** True when a live game egg or a retired tool-egg unlock has opened this gate. */
+/** True when the gate egg, or an older egg that opened it, has been found. */
 export function isPlayableGateOpen(
   game: Pick<ArenaPlayableGame, 'unlockEggId' | 'legacyUnlockEggIds'>,
   isFound: (id: string) => boolean,
