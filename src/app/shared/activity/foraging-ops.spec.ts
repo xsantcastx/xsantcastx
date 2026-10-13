@@ -4,8 +4,6 @@ import {
   FORAGING_TIERS,
   FORAGING_XP_PER_ACTION,
   NIGHTBLOOM_ID,
-  RIFT_KEY_GUARANTEE_AT,
-  RIFT_KEY_ID,
   STARLIGHT_HERB_ID,
   SUNBLOOM_ID,
   THORNROOT_ID,
@@ -18,7 +16,6 @@ import {
   effectiveForagingRecoveryMs,
   foragingSpeedupPct,
   isEnabledForage,
-  rollForageDiscovery,
 } from './foraging-ops';
 
 describe('A2 foraging ops', () => {
@@ -45,7 +42,6 @@ describe('A2 foraging ops', () => {
     const op = buildForageOperation({
       id: 'f1', deviceId: 'phone', previousHlc: null, now: 10,
       locationId: ROOTGLASS_CANOPY_ID,
-      discovery: { rolled: true, result: 'none' },
     });
     expect(op.disciplineId).toBe('foraging');
     expect(op.locationId).toBe(ROOTGLASS_CANOPY_ID);
@@ -53,29 +49,16 @@ describe('A2 foraging ops', () => {
     expect(op.inventoryGrants).toEqual([{ id: 'f1:herb', definitionId: STARLIGHT_HERB_ID, quantity: 1 }]);
   });
 
-  it('grants the requested growth and XP, plus a Rift Key when the find lands', () => {
+  it('grants the requested growth and XP, and never a rare find', () => {
     const op = buildForageOperation({
       id: 'f2', deviceId: 'phone', previousHlc: null, now: 10,
       locationId: ROOTGLASS_CANOPY_ID,
       herbId: THORNROOT_ID,
       xpAmount: 15,
-      discovery: { rolled: true, result: 'rift-key' },
     });
     expect(op.xpGrant).toEqual({ id: 'f2:xp', amount: 15 });
-    expect(op.inventoryGrants.map(g => g.definitionId)).toEqual([THORNROOT_ID, RIFT_KEY_ID]);
-    expect(op.inventoryGrants.map(g => g.id)).toEqual(['f2:herb', 'f2:rift-key']);
-  });
-
-  it('rolls 0.1% Rift Key, guarantees the first on the 600th gather, and keeps rolling after', () => {
-    expect(rollForageDiscovery({ eligibleIndex: 1, previousRiftKey: false, roll: 0.0009 }).result).toBe('rift-key');
-    expect(rollForageDiscovery({ eligibleIndex: 1, previousRiftKey: false, roll: 0.001 }).result).toBe('none');
-    expect(rollForageDiscovery({ eligibleIndex: RIFT_KEY_GUARANTEE_AT - 1, previousRiftKey: false, roll: 0.99 }).result).toBe('none');
-    expect(rollForageDiscovery({ eligibleIndex: RIFT_KEY_GUARANTEE_AT, previousRiftKey: false, roll: 0.99 }).result).toBe('rift-key-guarantee');
-    // After the first key: no second guarantee, but the 0.1% roll stays live.
-    expect(rollForageDiscovery({ eligibleIndex: RIFT_KEY_GUARANTEE_AT, previousRiftKey: true, roll: 0.99 }).result).toBe('none');
-    expect(rollForageDiscovery({ eligibleIndex: RIFT_KEY_GUARANTEE_AT + 5, previousRiftKey: true, roll: 0.0005 }).result).toBe('rift-key');
-    // A broken roll fails closed.
-    expect(rollForageDiscovery({ eligibleIndex: 1, previousRiftKey: false, roll: Number.NaN }).result).toBe('none');
+    expect(op.inventoryGrants.map(g => g.id)).toEqual(['f2:herb']);
+    expect(op.discovery).toEqual({ rolled: false, result: 'none' });
   });
 
   it('shortens regrowth 1% per level above 1, caps at 35%, and never drops under the floor', () => {

@@ -38,7 +38,6 @@ import {
   foragingEligibleCount,
   hasClarityElixir,
   hasEmberBeforeCraft,
-  hasRiftKey,
   isEnabledMine,
   prospectingEligibleCount,
   miningEligibleCount,
@@ -54,7 +53,6 @@ import {
   effectiveForagingRecoveryMs,
   foragingSpeedupPct,
   isEnabledForage,
-  rollForageDiscovery,
 } from './foraging-ops';
 import { PROSPECTING_TIERS, isProspectingTierUnlocked, prospectingTierFor } from './prospecting.model';
 import {
@@ -408,7 +406,6 @@ export class ActivityProgressionGateway {
     /** Which growth to gather. Defaults to Starlight Herb — always unlocked. */
     herbId?: string;
     now?: number;
-    roll?: number;
   }): ActivityResolveResult {
     if (!this.isBrowser) return { ok: false, code: 'ssr' };
     const existing = this.ledger.operations.find(op => op.id === input.mutationId);
@@ -442,14 +439,6 @@ export class ActivityProgressionGateway {
       return { ok: false, code: 'capacity' };
     }
 
-    const discovery = rollForageDiscovery({
-      eligibleIndex: Math.max(
-        this.ledger.foragingAccepted,
-        foragingEligibleCount(this.ledger.operations, locationId),
-      ) + 1,
-      previousRiftKey: this.ledger.riftKeyGranted || hasRiftKey(this.ledger.operations),
-      roll: input.roll ?? Math.random(),
-    });
     const operation = buildForageOperation({
       id: input.mutationId,
       deviceId: this.deviceId,
@@ -458,7 +447,6 @@ export class ActivityProgressionGateway {
       locationId,
       herbId: tier.herbId,
       xpAmount: tier.xpPerAction,
-      discovery,
     });
 
     const previous = this.ledger;
@@ -468,7 +456,6 @@ export class ActivityProgressionGateway {
       operations,
       progress: progressAfter(this.ledger.progress, operations, operation),
       currentWork: rebuildCurrentWork(work, operations),
-      riftKeyGranted: this.ledger.riftKeyGranted || operation.discovery.result !== 'none',
       foragingAccepted: Math.max(
         this.ledger.foragingAccepted,
         foragingEligibleCount(operations, locationId),

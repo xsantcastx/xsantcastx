@@ -1,16 +1,17 @@
 /**
- * foraging-ops.ts — A2 Foraging: the rare-find roll, the operation builder,
- * the location check, and the recovery curve.
+ * foraging-ops.ts — A2 Foraging: the operation builder, the location check,
+ * and the recovery curve. Foraging has no rare find (the Rift Key opened no
+ * route in the world and was removed), so a gather never rolls discovery.
  *
- * Mirrors activity-ops.ts's rollDiscovery / buildMineOperation / isEnabledMine
+ * Mirrors activity-ops.ts's buildMineOperation / isEnabledMine
  * and mining-recovery.ts's effectiveMiningRecoveryMs, concretely and by hand.
  * Not generalised: the brief says copy Mining's vertical, and a third skill
  * gets to decide what these two actually share.
  *
  * Import direction: this file takes nextHlc from activity-ops.ts, so
  * activity-ops.ts must never import from here. That is why
- * foragingEligibleCount and hasRiftKey — which coerce/merge need — live over
- * there beside their mining twins.
+ * foragingEligibleCount — which coerce/merge need — lives over there beside
+ * its mining twin.
  *
  * Recovery is a level term only. Mining's cooldown also shortens with the
  * weapon slot's strikePower, because a pickaxe lives in the weapon slot and a
@@ -23,7 +24,6 @@
 import { nextHlc } from './activity-ops';
 import {
   locationDefinition,
-  type ActivityDiscovery,
   type ActivityInventoryGrant,
   type ActivityOperation,
   type DisciplineId,
@@ -32,31 +32,9 @@ import {
 import {
   FORAGING_RECOVERY_MS,
   FORAGING_XP_PER_ACTION,
-  RIFT_KEY_CHANCE,
-  RIFT_KEY_GUARANTEE_AT,
-  RIFT_KEY_ID,
   ROOTGLASS_CANOPY_ID,
   STARLIGHT_HERB_ID,
 } from './foraging.model';
-
-/**
- * 0.1% Rift Key on any gather; the RIFT_KEY_GUARANTEE_AT-th accepted gather
- * guarantees the first if none has landed. After the first key, keys keep
- * rolling at 0.1% with no further guarantee — the key is a consumable, not
- * a one-shot craft ingredient, so mining's "previousEmber → none" latch has
- * no story reason to exist here.
- */
-export function rollForageDiscovery(input: {
-  eligibleIndex: number;
-  previousRiftKey: boolean;
-  roll: number;
-}): ActivityDiscovery {
-  const roll = Number.isFinite(input.roll) ? Math.min(1, Math.max(0, input.roll)) : 1;
-  if (!input.previousRiftKey && input.eligibleIndex >= RIFT_KEY_GUARANTEE_AT) {
-    return { rolled: true, result: 'rift-key-guarantee' };
-  }
-  return { rolled: true, result: roll < RIFT_KEY_CHANCE ? 'rift-key' : 'none' };
-}
 
 export function buildForageOperation(input: {
   id: string;
@@ -67,7 +45,6 @@ export function buildForageOperation(input: {
   /** Defaults to Starlight Herb — the always-unlocked tier. */
   herbId?: string;
   xpAmount?: number;
-  discovery: ActivityDiscovery;
 }): ActivityOperation {
   const herbId = input.herbId ?? STARLIGHT_HERB_ID;
   const xpAmount = input.xpAmount ?? FORAGING_XP_PER_ACTION;
@@ -76,13 +53,6 @@ export function buildForageOperation(input: {
     definitionId: herbId,
     quantity: 1,
   }];
-  if (input.discovery.result !== 'none') {
-    grants.push({
-      id: `${input.id}:rift-key`,
-      definitionId: RIFT_KEY_ID,
-      quantity: 1,
-    });
-  }
   return {
     id: input.id,
     hlcRevision: nextHlc(input.previousHlc, input.deviceId, input.now),
@@ -92,7 +62,7 @@ export function buildForageOperation(input: {
     resolvedAt: new Date(input.now).toISOString(),
     xpGrant: { id: `${input.id}:xp`, amount: xpAmount },
     inventoryGrants: grants,
-    discovery: input.discovery,
+    discovery: { rolled: false, result: 'none' },
   };
 }
 

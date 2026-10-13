@@ -72,9 +72,6 @@ export type DiscoveryResult =
   | 'none'
   | 'ember-residue'
   | 'first-craft-guarantee'
-  /** A2 Foraging: the Rift Key rare find, rolled or pity-granted. */
-  | 'rift-key'
-  | 'rift-key-guarantee'
   /** B1 Prospecting: the Clarity Elixir rare find, rolled or pity-granted. */
   | 'clarity-elixir'
   | 'clarity-elixir-guarantee';
@@ -123,12 +120,11 @@ export interface ActivityLedger {
   emberGranted: boolean;
   miningAccepted: number;
   /**
-   * A2 Foraging twins of the two above: accepted Canopy gathers and whether
-   * the pity Rift Key has already landed. Optional on the wire — saves written
-   * before A2 lack them and coerce to 0 / false — but always present in memory.
+   * A2 Foraging twin of `miningAccepted`: accepted Canopy gathers. Optional on
+   * the wire — saves written before A2 lack it and coerce to 0 — but always
+   * present in memory.
    */
   foragingAccepted: number;
-  riftKeyGranted: boolean;
   /**
    * B1 Prospecting's pair. Same contract as the two above: optional on the
    * wire (saves written before B1 lack them and coerce to 0 / false), always
@@ -238,7 +234,6 @@ export function emptyActivityLedger(): ActivityLedger {
     emberGranted: false,
     miningAccepted: 0,
     foragingAccepted: 0,
-    riftKeyGranted: false,
     prospectingAccepted: 0,
     clarityElixirGranted: false,
   };
