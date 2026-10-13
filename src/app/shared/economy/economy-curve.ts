@@ -314,6 +314,26 @@ export const CRAFT_FEE_FLOOR: Readonly<Record<string, number>> = {
  */
 export const HOME_FORGE_PRICES: readonly number[] = [5_000_000, 1_000_000_000, 1_000_000_000_000];
 
+/**
+ * Satchel rows and Vault tabs (docs/inventory/inventory-spec.md §3), each N
+ * seconds of income at the stage that first needs it — `node
+ * scripts/economy-sim.mjs --inventory`. Permanent: they live in the inventory
+ * ledger as `storage:*` entitlements, so the Eclipse does not clear them.
+ */
+export const STORAGE_CURVE = {
+  /** +8 satchel slots each, in purchase order (41–48 … 73–80). */
+  satchelRows: [200_000, 5_000_000, 1_000_000_000, 100_000_000_000, 5_000_000_000_000] as readonly number[],
+  /** Vault tabs by id. General I and Overflow are free. */
+  tabs: {
+    materials: 1_000_000,
+    supplies: 25_000_000,
+    gear: 250_000_000,
+    'general-2': 2_500_000_000,
+    'general-3': 250_000_000_000,
+    'general-4': 25_000_000_000_000,
+  } as Readonly<Record<string, number>>,
+};
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Save migration (v2 → v3)
 // ─────────────────────────────────────────────────────────────────────────────

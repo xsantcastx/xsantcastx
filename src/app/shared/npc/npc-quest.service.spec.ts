@@ -126,6 +126,7 @@ describe('NpcQuestService', () => {
             get uniqueFound() { return w.runesUnique; },
             get totalStrikes() { return w.runeStrikes; },
             get craftedCount() { return w.runewords; },
+            countOf: () => 0,
           },
         },
         {

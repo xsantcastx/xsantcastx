@@ -237,6 +237,8 @@ export class ArenaGateway {
     if (stock.kind === 'material' && stock.stackKey && !this.inventory.canAcceptStackGrant(stock.stackKey)) {
       return 'capacity';
     }
+    // An item purchase is refused before the spend only at the record budget.
+    if (stock.kind === 'equipment' && !this.inventory.canAcceptInstance()) return 'capacity';
     return null;
   }
 

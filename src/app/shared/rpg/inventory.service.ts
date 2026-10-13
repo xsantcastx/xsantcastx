@@ -54,6 +54,7 @@ import {
 import {
   applyStackOp,
   coerceInventoryLedger,
+  compactStackOps,
   dropLegacyBackup,
   emptyInventoryLedger,
   itemToRecord,
@@ -92,17 +93,30 @@ import {
   type ReforgePreview,
 } from './item-reforge';
 import type { ItemStatKey } from './item-definition';
+import {
+  INSTANCE_RECORD_BUDGET,
+  TAB_SLOTS,
+  VAULT_LIVE,
+  dropLegacySigils,
+  instanceRecordCount,
+  layoutOf,
+  ledgerCapacity,
+  routeFor,
+  settle,
+  slotClassOf,
+  vaultHolder,
+  vaultTabOf,
+  type Capacity,
+  type VaultTabId,
+} from './inventory-layout';
 
 export const INVENTORY_KEY = 'godforge-inventory';
 
 /**
- * The bag's ceiling.
- *
- * Not a difficulty knob — it exists so a visitor who strikes the anvil ten
- * thousand times does not end up with a localStorage blob that takes a second to
- * parse on every page load. When it is reached, the *lowest-value unequipped*
- * item is dropped to make room, which is the only eviction rule that cannot
- * silently destroy something the player would have kept.
+ * The retired 250-row ceiling, still read by a few displays (`used / cap`).
+ * Nothing is refused or evicted at it any more: the satchel's real limit is
+ * `snapshot.satchelCap` (inventory-layout.ts), and overflow moves to the Vault
+ * — it is never destroyed.
  */
 export const MAX_INVENTORY = INVENTORY_BAG_CAP;
 
@@ -125,10 +139,30 @@ export interface InventorySnapshot {
   totals: Required<ItemStats>;
   goldFromSales: number;
   sold: number;
-  /** Inventory-source rows counting toward the cap, including stacks. */
+  /** Satchel slots in use: bag instances plus the stack slots shown there. */
   usedRows: number;
-  /** True when the bag is at its ceiling, so the panel can say so. */
+  /** Satchel slots owned (40 + 8 per bought row); Infinity until the Vault is live. */
+  satchelCap: number;
+  /** Things waiting in Overflow (instances and stack kinds). */
+  overflow: number;
+  /** True at the record budget: Gold purchases that mint an item are refused. */
   full: boolean;
+}
+
+/** `inventoryCensus()` — see {@link InventoryService.census}. */
+export interface InventoryCensus {
+  instances: number;
+  /** Instances by place: bag, equipped, exp, thr, delve, vault:<tab>. */
+  where: Record<string, number>;
+  stacks: Record<string, number>;
+  tombstones: number;
+  stackOps: number;
+  checkpoints: number;
+  /** Serialised ledger size; the Firestore document limit is 1 MiB. */
+  bytes: number;
+  budgetLeft: number;
+  satchel: { used: number; cap: number };
+  overflow: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -191,9 +225,12 @@ export class InventoryService {
     this.deviceId = this.readDeviceId();
     this.ledger = this.load();
     const restored = restoreCharms(this.ledger, this.deviceId, Date.now());
-    this.ledger = restored.ledger;
-    if (this.ledger.legacyBackup || restored.restoredIds.length) this.save();
+    const settledLedger = this.normalised(restored.ledger);
+    this.ledger = settledLedger;
+    if (this.ledger.legacyBackup || restored.restoredIds.length || settledLedger !== restored.ledger) this.save();
     this.publish();
+    // Opt-in console probe: `inventoryCensus()` reads this save (inventory spec §1.3).
+    (globalThis as { inventoryCensus?: () => InventoryCensus }).inventoryCensus = () => this.census();
 
     // `save()` writes this whole bag from memory, so items merged in from another
     // device would be gone at the next equip. Rehydrate re-parses the merged
@@ -202,8 +239,9 @@ export class InventoryService {
       rehydrate: () => {
         this.ledger = this.load();
         const restored = restoreCharms(this.ledger, this.deviceId, Date.now());
-        this.ledger = restored.ledger;
-        let dirty = restored.restoredIds.length > 0;
+        // Settle the merged ledger in the same tick as the read (spec §4.2).
+        this.ledger = this.normalised(restored.ledger);
+        let dirty = restored.restoredIds.length > 0 || this.ledger !== restored.ledger;
         if (this.store.attached && this.ledger.legacyBackup) {
           this.ledger = dropLegacyBackup(this.ledger);
           dirty = true;
@@ -244,32 +282,53 @@ export class InventoryService {
     return this.items.some(i => i.rarity === rarity);
   }
 
+  /** What this save holds, by place and kind, and how close it is to its budgets. Read-only. */
+  census(): InventoryCensus {
+    const ledger = this.ledger;
+    const where: Record<string, number> = {};
+    let instances = 0;
+    for (const row of ledger.records) {
+      if (row.kind !== 'instance' || row.source !== 'inventory') continue;
+      instances += 1;
+      const loc = row.location;
+      const place = loc.kind !== 'explorer' ? loc.kind
+        : vaultTabOf(loc) ? `vault:${vaultTabOf(loc)}` : loc.explorerId.split(/[-:]/)[0];
+      where[place] = (where[place] ?? 0) + 1;
+    }
+    const stacks: Record<string, number> = {};
+    for (const row of ledger.records) {
+      if (row.kind === 'stack' && row.source === 'inventory') stacks[row.stackKey] = this.stackOf(row.stackKey);
+    }
+    const layout = layoutOf(ledger, this.capacity());
+    return {
+      instances,
+      where,
+      stacks,
+      tombstones: ledger.tombstones.length,
+      stackOps: ledger.stackOps.length,
+      checkpoints: (ledger.stackCheckpoints ?? []).length,
+      bytes: JSON.stringify(ledger).length,
+      budgetLeft: this.instanceRoom(),
+      satchel: { used: layout.satchelUsed, cap: this.capacity().satchel },
+      overflow: layout.tabs.overflow.length,
+    };
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Acquiring
   // ───────────────────────────────────────────────────────────────────────────
 
   /**
-   * Put a freshly minted item in the bag.
-   *
-   * Returns the item so the caller can announce it — or null when it was
-   * refused, which happens only if the bag is full of equipped items and there
-   * is nothing evictable. That is a state the player has to actively engineer
-   * (250 items, every one of them worn) and the honest answer there is "no".
+   * Put a freshly minted item in the satchel — or, when the satchel is full, in
+   * the Vault (then Overflow). Never refuses for space and never evicts
+   * anything: a Gold purchase checks `canAcceptInstance()` (the record budget)
+   * *before* it spends, and every other arrival lands. Null only on the server.
    */
   add(item: GameItem): GameItem | null {
     if (!this.isBrowser) return null;
 
     const incoming = this.withRevision(itemToRecord(item));
-    let next = upsertRecord(this.ledger, incoming);
-    if (next.records.filter(row => row.source === 'inventory').length > MAX_INVENTORY) {
-      const evicted = this.lowestValueUnequipped(itemsFromLedger(next), item.id);
-      if (!evicted) return null;
-      const evictedRow = next.records.find(row => row.id === evicted.id);
-      const gone = this.advanceRevision(evictedRow?.revision);
-      next = tombstoneRecord(next, evicted.id, gone.revision, Date.now());
-    }
-
-    this.ledger = next;
+    this.ledger = this.settled(upsertRecord(this.ledger, incoming));
     this.save();
     this.publish();
     this.acquired$$.next(item);
@@ -282,20 +341,18 @@ export class InventoryService {
   }
 
   /**
-   * C7 grant adapter. Same grant id is a no-op. A new stack at the 250-row
-   * cap is refused — Mine must not evict to land ore.
+   * Always true: a stack grant never refuses for space (inventory spec §2.6).
+   * Where the stack *shows* is derived (`layoutOf`); benches read the total.
+   * Kept as a method so the callers' "save failed vs full" branches still read.
    */
-  canAcceptStackGrant(stackKey: string): boolean {
-    if (this.ledger.records.some(row => row.kind === 'stack' && row.stackKey === stackKey && row.source === 'inventory')) {
-      return true;
-    }
-    return this.ledger.records.filter(row => row.source === 'inventory').length < MAX_INVENTORY;
+  canAcceptStackGrant(_stackKey: string): boolean {
+    return true;
   }
 
+  /** C7 grant adapter. Same grant id is a no-op. Refuses only on a failed save. */
   grantStack(grantId: string, stackKey: string, quantity: number): boolean {
     if (!this.isBrowser || !grantId || !stackKey || quantity <= 0) return false;
     if (this.ledger.stackOps.some(op => op.id === grantId)) return true;
-    if (!this.canAcceptStackGrant(stackKey)) return false;
 
     const stepped = this.advanceRevision();
     const previous = this.ledger;
@@ -350,8 +407,17 @@ export class InventoryService {
       .filter(row => row.have < row.need);
   }
 
+  /** Instance records the save can still take before the record budget (spec §2.8). */
+  instanceRoom(): number {
+    return Math.max(0, INSTANCE_RECORD_BUDGET - instanceRecordCount(this.ledger));
+  }
+
+  /**
+   * False only at the record budget. Gold purchases ask this *before* the
+   * spend; it is not a satchel check — a full satchel routes to the Vault.
+   */
   canAcceptInstance(): boolean {
-    return this.ledger.records.filter(row => row.source === 'inventory').length < MAX_INVENTORY;
+    return this.instanceRoom() > 0;
   }
 
   hasBasaltEdge(): boolean {
@@ -397,7 +463,7 @@ export class InventoryService {
       });
     }
     this.ledger = { ...this.ledger, stackOps };
-    this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(item)));
+    this.ledger = this.settled(upsertRecord(this.ledger, this.withRevision(itemToRecord(item))));
     if (this.stackOf(CINDER_ORE_ID) < 0 || this.stackOf(EMBER_RESIDUE_ID) < 0) {
       this.ledger = previous;
       return { ok: false, code: 'missing' };
@@ -464,8 +530,7 @@ export class InventoryService {
     for (const input of inputs) {
       if (this.stackOf(input.id) < input.count) return { ok: false, code: 'missing' };
     }
-    const free = MAX_INVENTORY - this.ledger.records.filter(row => row.source === 'inventory').length;
-    if (free < outputCount) return { ok: false, code: 'capacity' };
+    if (this.instanceRoom() < outputCount) return { ok: false, code: 'capacity' };
 
     const previous = this.ledger;
     const foundAt = new Date(now).toISOString();
@@ -493,6 +558,7 @@ export class InventoryService {
     for (const item of minted) {
       this.ledger = upsertRecord(this.ledger, this.withRevision(itemToRecord(item)));
     }
+    this.ledger = this.settled(this.ledger);
     // Re-read rather than trust the pre-flight: two ingredients that resolve to
     // the same stack key, or an op the ledger already carried, would both pass
     // the loop above and still overdraw.
@@ -595,6 +661,11 @@ export class InventoryService {
     this.publish();
     this.stackGranted$$.next({ stackKey, quantity });
     return { ok: true, replayed: false };
+  }
+
+  /** True when a stack op with this id is in the (uncompacted) log. */
+  hasStackOp(opId: string): boolean {
+    return !!opId && this.ledger.stackOps.some(op => op.id === opId);
   }
 
   /** True when a `craftStack` under this mutation id has already landed. */
@@ -1068,7 +1139,7 @@ export class InventoryService {
    * drop leaves the row in place so the count keeps rendering.
    */
   dropStack(stackKey: string, quantity?: number): boolean {
-    if (!this.isBrowser || !stackKey) return false;
+    if (!this.isBrowser || !stackKey || slotClassOf(stackKey) === 'entitlement') return false;
     const have = this.stackOf(stackKey);
     if (have <= 0) return false;
 
@@ -1126,7 +1197,7 @@ export class InventoryService {
     }
 
     for (const stackKey of stackKeys) {
-      if (!stackKey) continue;
+      if (!stackKey || slotClassOf(stackKey) === 'entitlement') continue;
       const have = stackQuantity(next.stackOps, stackKey, next.stackCheckpoints ?? []);
       if (have <= 0) continue;
       const row = next.records.find(
@@ -1157,24 +1228,6 @@ export class InventoryService {
     }
     this.publish();
     return count;
-  }
-
-  /**
-   * The cheapest thing in the bag that is not being worn, ignoring one id.
-   *
-   * `exceptId` is the item that has just been added — a drop that arrives into a
-   * full bag must never be the thing evicted to make room for itself, even when
-   * it is the least valuable thing there. Losing the drop you just watched land
-   * is the single most confusing outcome this method could produce.
-   */
-  private lowestValueUnequipped(items: GameItem[], exceptId: string): GameItem | null {
-    let worst: GameItem | null = null;
-    for (const item of items) {
-      if (item.id === exceptId) continue;
-      if (item.equipped || item.explorerId) continue;
-      if (!worst || item.sellValue < worst.sellValue) worst = item;
-    }
-    return worst;
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1216,13 +1269,6 @@ export class InventoryService {
     const occupant = this.items.find(row =>
       row.equipped && row.slot === target && row.id !== itemId,
     );
-    // Bag-tile cap: a displace that is not a bag swap would add a bag row.
-    // Refuse rather than evict the occupant (or anyone else) to make room.
-    const incomingFromBag = !item.equipped && !item.explorerId;
-    if (occupant && this.snapshot.bag.length >= MAX_INVENTORY && !incomingFromBag) {
-      return false;
-    }
-
     const previous = this.ledger;
     this.ledger = this.mapInstances(row => {
       if (row.id === itemId) {
@@ -1243,6 +1289,8 @@ export class InventoryService {
         return false;
       }
     }
+    // A displaced occupant that grows a full satchel goes to the Vault.
+    this.ledger = this.settled(this.ledger);
     if (!this.save()) {
       this.ledger = previous;
       return false;
@@ -1260,9 +1308,9 @@ export class InventoryService {
     if (!item || (!item.equipped && !item.explorerId)) return false;
 
     const previous = this.ledger;
-    this.ledger = this.mapInstances(row =>
+    this.ledger = this.settled(this.mapInstances(row =>
       row.id === itemId ? this.withRevision({ ...row, location: { kind: 'bag' } }) : row,
-    );
+    ));
     if (!this.save()) {
       this.ledger = previous;
       return false;
@@ -1313,16 +1361,69 @@ export class InventoryService {
     if (!this.items.some(i => i.explorerId === explorerId)) return;
 
     const previous = this.ledger;
-    this.ledger = this.mapInstances(row =>
+    this.ledger = this.settled(this.mapInstances(row =>
       row.location.kind === 'explorer' && row.location.explorerId === explorerId
         ? this.withRevision({ ...row, location: { kind: 'bag' } })
         : row,
-    );
+    ));
     if (!this.save()) {
       this.ledger = previous;
       return;
     }
     this.publish();
+  }
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // The Vault
+  // ───────────────────────────────────────────────────────────────────────────
+
+  /**
+   * Send a satchel item to the Vault: `tab`, or the routing rule when omitted.
+   * A plain location write — deliberately not `equipOnExplorer`, which emits
+   * `equipped$` and would pay the Contract Board's "item equipped" for a stow.
+   */
+  stow(itemId: string, tab?: VaultTabId): boolean {
+    if (!this.isBrowser) return false;
+    const row = this.instanceRow(itemId);
+    if (!row || row.location.kind !== 'bag') return false;
+    const capacity = this.capacity();
+    if (tab && (!capacity.tabs.has(tab) || layoutOf(this.ledger, capacity).instancesIn[tab] >= TAB_SLOTS[tab])) return false;
+    return this.relocate(row, { kind: 'explorer', explorerId: vaultHolder(tab ?? this.vaultRoute(capacity)) });
+  }
+
+  /** Take an item out of the Vault (Overflow included) into the satchel, if it has a free slot. */
+  takeOut(itemId: string): boolean {
+    if (!this.isBrowser) return false;
+    const row = this.instanceRow(itemId);
+    if (!row || !vaultTabOf(row.location)) return false;
+    const capacity = this.capacity();
+    if (layoutOf(this.ledger, capacity).bagInstances >= capacity.satchel) return false;
+    return this.relocate(row, { kind: 'bag' });
+  }
+
+  /** Items in the Vault, by tab. */
+  vaultItems(tab: VaultTabId): GameItem[] {
+    return this.items.filter(item => item.explorerId && item.explorerId === vaultHolder(tab));
+  }
+
+  private instanceRow(itemId: string): OwnedItemInstance | undefined {
+    const row = this.ledger.records.find(entry => entry.id === itemId);
+    return row && row.kind === 'instance' && row.source === 'inventory' ? row : undefined;
+  }
+
+  private relocate(row: OwnedItemInstance, location: OwnedItemInstance['location']): boolean {
+    const previous = this.ledger;
+    this.ledger = upsertRecord(this.ledger, this.withRevision({ ...row, location }));
+    if (!this.save()) {
+      this.ledger = previous;
+      return false;
+    }
+    this.publish();
+    return true;
+  }
+
+  private vaultRoute(capacity: Capacity): VaultTabId {
+    return routeFor(layoutOf(this.ledger, capacity).instancesIn, capacity);
   }
 
   // ───────────────────────────────────────────────────────────────────────────
@@ -1512,6 +1613,7 @@ export class InventoryService {
 
   private save(): boolean {
     if (!this.isBrowser) return false;
+    this.ledger = compactStackOps(this.ledger);
     const raw = JSON.stringify(this.ledger);
     this.store.write(INVENTORY_KEY, this.ledger);
     return this.store.readRaw(INVENTORY_KEY) === raw;
@@ -1543,13 +1645,15 @@ export class InventoryService {
     const stacks: InventoryStackView[] = [];
     for (const row of ledger.records) {
       if (row.kind !== 'stack' || row.source !== 'inventory') continue;
+      if (slotClassOf(row.stackKey) === 'entitlement') continue;
       const quantity = stackQuantity(ledger.stackOps, row.stackKey, ledger.stackCheckpoints ?? []);
       if (quantity <= 0) continue;
       stacks.push({ id: row.id, stackKey: row.stackKey, quantity });
     }
     stacks.sort((a, b) => a.stackKey.localeCompare(b.stackKey));
 
-    const usedRows = ledger.records.filter(row => row.source === 'inventory').length;
+    const capacity = this.capacityFor(ledger);
+    const layout = layoutOf(ledger, capacity);
 
     return {
       items,
@@ -1559,9 +1663,31 @@ export class InventoryService {
       totals: sumStats(wornBlocks),
       goldFromSales: ledger.goldFromSales,
       sold: ledger.sold,
-      usedRows,
-      full: usedRows >= MAX_INVENTORY,
+      usedRows: layout.satchelUsed,
+      satchelCap: capacity.satchel,
+      overflow: layout.tabs.overflow.length,
+      full: instanceRecordCount(ledger) >= INSTANCE_RECORD_BUDGET,
     };
+  }
+
+  /** Capacity from the entitlements; an unbounded satchel until the Vault is live. */
+  private capacityFor(ledger: InventoryLedger): Capacity {
+    const owned = ledgerCapacity(ledger);
+    return VAULT_LIVE ? owned : { ...owned, satchel: Infinity };
+  }
+
+  private capacity(): Capacity {
+    return this.capacityFor(this.ledger);
+  }
+
+  /** Load-time pass: delete legacy Sigil records, then settle. */
+  private normalised(ledger: InventoryLedger): InventoryLedger {
+    return this.settled(dropLegacySigils(ledger, this.deviceId, Date.now()));
+  }
+
+  /** `settle` against the current capacity: holds the satchel to its limit by moving, never deleting. */
+  private settled(ledger: InventoryLedger): InventoryLedger {
+    return settle(ledger, this.capacityFor(ledger), this.deviceId, Date.now()).ledger;
   }
 
   private mapInstances(
