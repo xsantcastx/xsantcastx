@@ -1,6 +1,9 @@
 :host {
   display: block;
-  height: 100dvh;
+  /* --gf-consent-h: the in-world consent bar's height while it is up
+     (cookie-banner.component.ts). The frame ends above it, so the bar never
+     covers the canvas or any HUD piece inside the stage. */
+  height: calc(100dvh - var(--gf-consent-h, 0px));
   overflow: hidden;
   color: var(--adventure-parchment);
   font-family: var(--font-lore, "Cormorant Garamond", Georgia, serif);
@@ -1308,6 +1311,30 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 @media (min-width: 901px) {
   .stage--column .guide { left: 322px; }
+}
+/*
+ * The open Hearth hangs in the same strip, right of centre: 320px wide, its
+ * right edge 248px in (see .dock). While it is open the goal line moves into
+ * the gap between the health plate (16 + 200px) and the panel, 12px clear of
+ * each, centred there; where that gap is too narrow to hold it (under 1180px
+ * wide) it steps aside, as it does for the book. Folding the Hearth puts it back.
+ */
+@media (min-width: 901px) {
+  .stage:not(.hearth-shut) .guide {
+    left: 228px;
+    right: 580px;
+    margin-inline: auto;
+    transform: none;
+    width: fit-content;
+    max-width: none;
+  }
+}
+@media (min-width: 901px) and (max-width: 1179.98px) {
+  .stage:not(.hearth-shut) .guide { visibility: hidden; }
+}
+/* Beside the Homestead's buildings column the open-Hearth gap starts at the column's edge too. */
+@media (min-width: 901px) {
+  .stage--column:not(.hearth-shut) .guide { left: 322px; }
 }
 
 @media (max-width: 900px) {
