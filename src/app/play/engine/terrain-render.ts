@@ -16,7 +16,8 @@
  * blitted unsmoothed, so an art pixel stays a crisp block.
  */
 import { BiomeDef, CELL, CHUNK, crackStage, isLoose, Terrain, TERRAIN_NODE_LIST } from './terrain';
-import { ART, cellHash, N, nodePalette, paintEdges, paintTopFace, patternOf, pixelLine, takesTopFace, TILE, TileAtlas, tileMask, tileVariant, topFaceOf } from './tile-art';
+import { ART, AUTOTILE_ROWS, autoTilePiece, cellHash, N, nodePalette, P_CLEAR_INDEX, paintEdges, paintTopFace, patternOf, patternPixels, pixelLine, takesTopFace, TILE, TileAtlas, tileMask, tileVariant, topFaceOf } from './tile-art';
+import { tileFor, type TileEntry } from '../../shared/art/tile-manifest.generated';
 
 export { cellHash } from './tile-art';
 
@@ -24,7 +25,12 @@ export { cellHash } from './tile-art';
 const CHUNK_CAP = 36;
 const SIZE = CELL * CHUNK;
 
-interface ChunkCanvas { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; key: number; rev: number; used: number; res: number }
+interface ChunkCanvas { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; key: number; rev: number; used: number; res: number; epoch: number }
+
+/** An imported tile sheet (`tileFor`), its image, and its cell edge in image px once loaded. */
+interface Sheet { entry: TileEntry; image: HTMLImageElement; cell: number; ready: boolean }
+/** Looks up imported art per terrain node / wall id; null keeps the procedural tile. */
+export type SheetLookup = (id: string) => Sheet | null;
 
 /** Palettes and patterns per node kind, built once. */
 const PALETTES = TERRAIN_NODE_LIST.map(node => nodePalette(node));
@@ -38,6 +44,38 @@ export class TerrainRenderer {
   private offscreen = true;
   /** The baked tile textures, shared by every chunk. */
   readonly atlas = new TileAtlas();
+  /** Imported sheets by id (null: none imported). */
+  private readonly sheets = new Map<string, Sheet | null>();
+  /** Bumped when an imported sheet finishes loading: every cached chunk repaints once. */
+  private epoch = 0;
+  /** Art lookup (tests inject one); `tileFor` reads the generated tile manifest. */
+  constructor(private readonly tiles: (id: string) => TileEntry | null = tileFor) {}
+
+  /**
+   * The imported sheet for a node or wall id (`rock`, `wall-root-hollows`), once
+   * its image has loaded, else null and the procedural tile stands in (RND-1).
+   */
+  readonly sheet: SheetLookup = (id: string) => {
+    let sheet = this.sheets.get(id);
+    if (sheet === undefined) {
+      sheet = null;
+      const entry = this.tiles(id);
+      if (entry && typeof Image !== 'undefined') {
+        const image = new Image();
+        const made: Sheet = { entry, image, cell: 0, ready: false };
+        image.onload = () => {
+          const rows = entry.autotile ? AUTOTILE_ROWS.length : 1;
+          made.cell = image.naturalHeight / rows;
+          made.ready = made.cell > 0;
+          if (made.ready) this.epoch++;
+        };
+        image.src = entry.src2x || entry.src;
+        sheet = made;
+      }
+      this.sheets.set(id, sheet);
+    }
+    return sheet && sheet.ready ? sheet : null;
+  };
 
   /** Point at a (new) terrain. Cached chunks go back to the pool. */
   attach(terrain: Terrain | null): void {
@@ -67,16 +105,16 @@ export class TerrainRenderer {
         const chunk = this.offscreen ? this.chunk(key, scale) : null;
         if (!chunk) {
           // No offscreen canvas (tests, very old browsers): paint the cells straight in.
-          paintCells(c, t, cc * CHUNK, cr * CHUNK, x, y, null);
+          paintCells(c, t, cc * CHUNK, cr * CHUNK, x, y, null, this.sheet);
           continue;
         }
-        if (chunk.rev !== t.chunkRev[key] || chunk.res !== scale) {
+        if (chunk.rev !== t.chunkRev[key] || chunk.res !== scale || chunk.epoch !== this.epoch) {
           const p = chunk.context;
           p.setTransform(1, 0, 0, 1, 0, 0); p.clearRect(0, 0, chunk.canvas.width, chunk.canvas.height);
           p.setTransform(scale, 0, 0, scale, -x * scale, -y * scale);
           p.imageSmoothingEnabled = false;
-          paintCells(p, t, cc * CHUNK, cr * CHUNK, x, y, this.atlas);
-          chunk.rev = t.chunkRev[key]; chunk.res = scale;
+          paintCells(p, t, cc * CHUNK, cr * CHUNK, x, y, this.atlas, this.sheet);
+          chunk.rev = t.chunkRev[key]; chunk.res = scale; chunk.epoch = this.epoch;
         }
         c.drawImage(chunk.canvas, x, y, SIZE, SIZE);
       }
@@ -103,7 +141,7 @@ export class TerrainRenderer {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) { this.offscreen = false; return null; }
-    return { canvas, context, key: -1, rev: -1, used: 0, res: 0 };
+    return { canvas, context, key: -1, rev: -1, used: 0, res: 0, epoch: -1 };
   }
   /** Reuse the chunk drawn longest ago that is not on screen this frame. */
   private evict(): ChunkCanvas | null {
@@ -115,11 +153,11 @@ export class TerrainRenderer {
 }
 
 /** Paint one chunk's cells (world px; the caller's transform maps them). */
-function paintCells(c: CanvasRenderingContext2D, t: Terrain, col0: number, row0: number, x0: number, y0: number, atlas: TileAtlas | null): void {
+function paintCells(c: CanvasRenderingContext2D, t: Terrain, col0: number, row0: number, x0: number, y0: number, atlas: TileAtlas | null, sheets: SheetLookup | null): void {
   const solid = (col: number, row: number) => t.solid(col, row);
   for (let row = row0; row < Math.min(t.rows, row0 + CHUNK); row++) {
     for (let col = col0; col < Math.min(t.cols, col0 + CHUNK); col++) {
-      paintCell(c, t, col, row, x0 + (col - col0) * CELL, y0 + (row - row0) * CELL, atlas, solid);
+      paintCell(c, t, col, row, x0 + (col - col0) * CELL, y0 + (row - row0) * CELL, atlas, solid, sheets);
     }
   }
 }
@@ -132,15 +170,22 @@ function blitTile(c: CanvasRenderingContext2D, atlas: TileAtlas | null, row: num
 }
 
 /** A dug cell's back wall: the biome's wall texture, shadowed under and beside rock. */
-function paintWall(c: CanvasRenderingContext2D, t: Terrain, atlas: TileAtlas | null, biome: BiomeDef, col: number, row: number, x: number, y: number, h: number): void {
-  blitTile(c, atlas, atlas ? atlas.wall(biome) : -1, tileVariant(col, row), x, y, (h & 3) === 0 ? biome.wall[0] : biome.wall[1]);
+function paintWall(c: CanvasRenderingContext2D, t: Terrain, atlas: TileAtlas | null, biome: BiomeDef, col: number, row: number, x: number, y: number, h: number, sheets: SheetLookup | null): void {
+  const wall = sheets?.(`wall-${biome.id}`);
+  if (wall) drawSheetCell(c, wall, 0, h % Math.max(1, wall.entry.variants), x, y);
+  else blitTile(c, atlas, atlas ? atlas.wall(biome) : -1, tileVariant(col, row), x, y, (h & 3) === 0 ? biome.wall[0] : biome.wall[1]);
   c.fillStyle = biome.wall[2];
   if (t.solid(col, row - 1)) { c.fillRect(x, y, CELL, ART * 2); c.globalAlpha = .5; c.fillRect(x, y + ART * 2, CELL, ART); c.globalAlpha = 1; }
   if (t.solid(col - 1, row)) { c.fillRect(x, y, ART, CELL); c.globalAlpha = .5; c.fillRect(x + ART, y, ART, CELL); c.globalAlpha = 1; }
   if (t.solid(col + 1, row)) { c.fillRect(x + CELL - ART, y, ART, CELL); c.globalAlpha = .5; c.fillRect(x + CELL - ART * 2, y, ART, CELL); c.globalAlpha = 1; }
 }
 
-function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: number, x: number, y: number, atlas: TileAtlas | null, solid: (col: number, row: number) => boolean): void {
+/** One cell of an imported sheet (row, column) into a 32 px cell, unsmoothed. */
+function drawSheetCell(c: CanvasRenderingContext2D, sheet: Sheet, row: number, col: number, x: number, y: number): void {
+  c.drawImage(sheet.image, col * sheet.cell, row * sheet.cell, sheet.cell, sheet.cell, x, y, CELL, CELL);
+}
+
+function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: number, x: number, y: number, atlas: TileAtlas | null, solid: (col: number, row: number) => boolean, sheets: SheetLookup | null): void {
   const index = t.index(col, row);
   const kind = t.kind[index];
   const node = TERRAIN_NODE_LIST[kind];
@@ -148,16 +193,25 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   if (!node.solid) {
     // Generated air (a cavern) stays clear: the distant cave shows through.
     // A dug or built-in cell, and a carved slab, sits on the biome's back wall.
-    if (TERRAIN_NODE_LIST[t.base[index]].solid || node.id === 'inscription') paintWall(c, t, atlas, t.biomeAt(row), col, row, x, y, h);
+    if (TERRAIN_NODE_LIST[t.base[index]].solid || node.id === 'inscription') paintWall(c, t, atlas, t.biomeAt(row), col, row, x, y, h, sheets);
     if (node.id === 'inscription') paintInscription(c, node.light, node.fleck, x, y, h);
-    else if (node.placeable) paintPlaced(c, node.id, node.base, node.dark, node.light, node.fleck, x, y);
+    else if (node.placeable) paintPlaced(c, atlas, kind, x, y);
     return;
   }
   const pattern = PATTERNS[kind];
-  blitTile(c, atlas, atlas ? atlas.node(kind) : -1, tileVariant(col, row), x, y, node.base);
   const mask = tileMask(solid, col, row);
-  paintEdges(c, x, y, mask, PALETTES[kind]);
-  if (!(mask & N) && takesTopFace(pattern)) {
+  const sheet = sheets?.(node.id);
+  if (sheet?.entry.autotile) {
+    // A full W7a sheet (RND-1): the piece for this cell's neighbours carries its own edges and lip.
+    const [pieceRow, pieceCol] = autoTilePiece(mask, h);
+    drawSheetCell(c, sheet, pieceRow, pieceCol, x, y);
+  } else {
+    // An imported interior strip, or the baked procedural texture; edges and the top face are drawn here.
+    if (sheet) drawSheetCell(c, sheet, 0, h % Math.max(1, sheet.entry.variants), x, y);
+    else blitTile(c, atlas, atlas ? atlas.node(kind) : -1, tileVariant(col, row), x, y, node.base);
+    paintEdges(c, x, y, mask, PALETTES[kind]);
+  }
+  if (!sheet?.entry.autotile && !(mask & N) && takesTopFace(pattern)) {
     const face = topFaceOf(t.biomeAt(row));
     if (face) paintTopFace(c, x, y, face, h);
   }
@@ -178,85 +232,37 @@ function paintLoose(c: CanvasRenderingContext2D, x: number, y: number, h: number
   c.globalAlpha = 1;
 }
 
-/** A placed thing over the tunnel wall. Stand-in drawing until tile art lands. */
-function paintPlaced(c: CanvasRenderingContext2D, id: string, base: string, dark: string, light: string, fleck: string, x: number, y: number): void {
-  switch (id) {
-    case 'torch': {
-      // A bracket on the wall, a haft, and a flame (its light comes from the lighting pass).
-      c.fillStyle = dark; c.fillRect(x + 12, y + 20, 8, 3);
-      c.fillStyle = base; c.fillRect(x + 14, y + 12, 4, 16);
-      c.fillStyle = fleck; c.beginPath(); c.ellipse(x + 16, y + 9, 5, 7, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = light; c.beginPath(); c.ellipse(x + 16, y + 10, 2.5, 4, 0, 0, Math.PI * 2); c.fill();
-      break;
-    }
-    case 'ladder': {
-      // Two rails and three rungs; rungs at the same heights in every cell, so a run reads as one ladder.
-      c.fillStyle = dark; c.fillRect(x + 6, y, 4, 32); c.fillRect(x + 22, y, 4, 32);
-      c.fillStyle = base; c.fillRect(x + 7, y, 2, 32); c.fillRect(x + 23, y, 2, 32);
-      for (let ry = 4; ry < 32; ry += 11) { c.fillStyle = dark; c.fillRect(x + 8, y + ry + 1, 16, 3); c.fillStyle = light; c.fillRect(x + 8, y + ry, 16, 2); }
-      break;
-    }
-    case 'chest': {
-      // A banded box on the floor: lid, body, brass lock.
-      c.fillStyle = dark; c.fillRect(x + 3, y + 12, 26, 20);
-      c.fillStyle = base; c.fillRect(x + 4, y + 13, 24, 18);
-      c.fillStyle = light; c.fillRect(x + 3, y + 12, 26, 3); c.fillRect(x + 3, y + 20, 26, 2);
-      c.fillStyle = fleck; c.fillRect(x + 14, y + 18, 4, 6);
-      break;
-    }
-    case 'camp': {
-      // A low workbench with a hammer on it, and a small fire beside it.
-      c.fillStyle = dark; c.fillRect(x + 1, y + 18, 18, 3); c.fillRect(x + 3, y + 21, 2, 11); c.fillRect(x + 15, y + 21, 2, 11);
-      c.fillStyle = base; c.fillRect(x + 1, y + 16, 18, 3);
-      c.fillStyle = light; c.fillRect(x + 6, y + 12, 8, 3); c.fillRect(x + 9, y + 12, 2, 4);
-      c.fillStyle = dark; c.fillRect(x + 21, y + 29, 10, 3);
-      c.fillStyle = fleck; c.beginPath(); c.ellipse(x + 26, y + 25, 4, 6, 0, 0, Math.PI * 2); c.fill();
-      c.fillStyle = light; c.beginPath(); c.ellipse(x + 26, y + 27, 2, 3, 0, 0, Math.PI * 2); c.fill();
-      break;
-    }
-    case 'timber-support': case 'basalt-support': {
-      // A post from the floor to a cap beam that bears on the rock above.
-      c.fillStyle = dark; c.fillRect(x + 12, y + 4, 8, 28); c.fillRect(x + 2, y, 28, 5);
-      c.fillStyle = base; c.fillRect(x + 13, y + 5, 6, 27); c.fillRect(x + 2, y, 28, 3);
-      c.fillStyle = light; c.fillRect(x + 13, y + 5, 2, 27);
-      c.fillStyle = fleck; c.fillRect(x + 11, y + 6, 3, 3); c.fillRect(x + 18, y + 6, 3, 3);
-      break;
-    }
-    case 'blast-charge': {
-      // A bound bundle of sticks on the floor, its fuse curling up (the spark is drawn live).
-      c.fillStyle = dark; c.fillRect(x + 7, y + 18, 18, 14);
-      c.fillStyle = base; c.fillRect(x + 8, y + 19, 4, 13); c.fillRect(x + 14, y + 19, 4, 13); c.fillRect(x + 20, y + 19, 4, 13);
-      c.fillStyle = light; c.fillRect(x + 7, y + 23, 18, 2);
-      c.strokeStyle = fleck; c.lineWidth = 1.5;
-      c.beginPath(); c.moveTo(x + 16, y + 19); c.quadraticCurveTo(x + 22, y + 14, x + 20, y + 10); c.stroke();
-      break;
-    }
-    case 'platform': {
-      // A plank across the top, a lit edge, two thin struts to the wall.
-      c.fillStyle = dark; c.fillRect(x, y + 6, 32, 3); c.fillRect(x + 5, y + 6, 2, 12); c.fillRect(x + 25, y + 6, 2, 12);
-      c.fillStyle = base; c.fillRect(x, y, 32, 6);
-      c.fillStyle = light; c.fillRect(x, y, 32, 2);
-      c.fillStyle = fleck; c.fillRect(x + 10, y + 2, 1, 4); c.fillRect(x + 21, y + 2, 1, 4);
-      break;
-    }
+/**
+ * A placed thing over the tunnel wall: its 16 x 16 pixel map (tile-art.ts
+ * PLACED_ART) from the atlas, transparent around the object. With no atlas
+ * (tests) the same pixels are filled straight in.
+ */
+function paintPlaced(c: CanvasRenderingContext2D, atlas: TileAtlas | null, kind: number, x: number, y: number): void {
+  const row = atlas ? atlas.node(kind) : -1;
+  const image = atlas?.canvas;
+  if (image && row >= 0) { c.drawImage(image, 0, row * TILE, TILE, TILE, x, y, CELL, CELL); return; }
+  const node = TERRAIN_NODE_LIST[kind], palette = PALETTES[kind];
+  const px = patternPixels(PATTERNS[kind], node.id, 0).px;
+  for (let i = 0; i < px.length; i++) {
+    if (px[i] === P_CLEAR_INDEX) continue;
+    c.fillStyle = palette[px[i]]; c.fillRect(x + (i % TILE) * ART, y + Math.floor(i / TILE) * ART, ART, ART);
   }
 }
 
-/** A dressed slab in the back wall with three rows of carved glyphs, picked by hash. */
+/** A dressed slab in the back wall with three rows of carved glyphs, picked by hash; on the art-pixel grid. */
 function paintInscription(c: CanvasRenderingContext2D, slab: string, glyph: string, x: number, y: number, h: number): void {
-  c.fillStyle = slab; c.globalAlpha = .55; c.fillRect(x + 3, y + 3, CELL - 6, CELL - 6); c.globalAlpha = 1;
-  c.strokeStyle = glyph; c.lineWidth = 1.4;
-  c.beginPath();
+  c.fillStyle = '#140a1f'; c.globalAlpha = .6; c.fillRect(x + ART, y + ART, CELL - ART * 2, CELL - ART * 2);
+  c.fillStyle = slab; c.globalAlpha = .75; c.fillRect(x + ART * 2, y + ART * 2, CELL - ART * 4, CELL - ART * 4); c.globalAlpha = 1;
+  c.fillStyle = glyph;
   for (let line = 0; line < 3; line++) {
     const gy = y + 8 + line * 8;
     for (let g = 0; g < 3; g++) {
-      const bits = (h >> (line * 9 + g * 3)) & 7, gx = x + 7 + g * 7;
-      c.moveTo(gx, gy - 2); c.lineTo(gx + (bits & 1 ? 4 : 0), gy + 3);
-      if (bits & 2) { c.moveTo(gx - 1, gy); c.lineTo(gx + 4, gy); }
-      if (bits & 4) { c.moveTo(gx + 4, gy - 2); c.lineTo(gx + 2, gy + 3); }
+      const bits = (h >> (line * 9 + g * 3)) & 7, gx = x + 6 + g * 7;
+      pixelLine(c, gx, gy - 2, gx + (bits & 1 ? 4 : 0), gy + 3);
+      if (bits & 2) pixelLine(c, gx - 1, gy, gx + 4, gy);
+      if (bits & 4) pixelLine(c, gx + 4, gy - 2, gx + 2, gy + 3);
     }
   }
-  c.stroke();
 }
 
 /** Crack lines that deepen with each stage of damage, on the art-pixel grid and inside the cell. */

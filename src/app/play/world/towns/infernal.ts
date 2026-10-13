@@ -172,8 +172,8 @@ export const EMBER_DELVE: HuntZoneDef = {
     biomes: [
       {
         id: 'root-hollows', name: 'Root Hollows', to: 12,
-        wall: ['#1a130f', '#16100c', '#0a0706'], dark: '6,4,3',
-        wash: { color: '#7a5a36', alpha: .08 },
+        wall: ['#3c2b1e', '#34251a', '#1a110b'], dark: '6,4,3',
+        wash: { color: '#6a8a3a', alpha: .08 },
         particles: { kind: 'spore', color: '#c9b27a', count: 14 },
         veins: [
           { node: 'cinder-vein', from: 2, to: 12, count: 10, size: 5 },
@@ -184,7 +184,7 @@ export const EMBER_DELVE: HuntZoneDef = {
       },
       {
         id: 'basalt-caverns', name: 'Basalt Caverns', to: 26,
-        wall: ['#1a1115', '#160e12', '#0a0608'], dark: '5,3,9',
+        wall: ['#302b32', '#29252b', '#141216'], dark: '5,3,9',
         wash: { color: '#b97a45', alpha: .05 },
         particles: { kind: 'ash', color: '#8a7468', count: 10 },
         veins: [
@@ -195,7 +195,7 @@ export const EMBER_DELVE: HuntZoneDef = {
       },
       {
         id: 'glowcap-grotto', name: 'Glowcap Grotto', to: 40,
-        wall: ['#0f1820', '#0c141b', '#05090c'], dark: '3,7,12',
+        wall: ['#163444', '#122c3a', '#08161e'], dark: '3,7,12',
         wash: { color: '#4fa8e0', alpha: .12 },
         particles: { kind: 'mote', color: '#9fdcff', count: 22 },
         veins: [
@@ -205,7 +205,7 @@ export const EMBER_DELVE: HuntZoneDef = {
       },
       {
         id: 'magma-halls', name: 'Magma Halls', to: DELVE_ROWS,
-        wall: ['#1e0d0a', '#190a08', '#0b0403'], dark: '12,3,2',
+        wall: ['#3e1812', '#35140f', '#1a0806'], dark: '12,3,2',
         wash: { color: '#ff5a2a', alpha: .1 },
         particles: { kind: 'ember', color: '#ff9b4f', count: 26 },
         shimmer: true,
