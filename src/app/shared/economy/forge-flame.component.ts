@@ -41,6 +41,7 @@ import { EconomyService, EconomySnapshot } from './economy.service';
 import { formatCompact, formatCurrency, formatRate } from './economy.model';
 import { ForgeAudioService } from './forge-audio.service';
 import { InlineFlameService } from './inline-flame.service';
+import { MinigamePresenceService } from '../minigames/minigame-presence.service';
 import { ForgeMode, ForgeModeService } from './forge-mode.service';
 import { IdleService } from '../idle/idle.service';
 import { ComboEvent, ComboService, ComboSnapshot } from './combo.service';
@@ -184,6 +185,7 @@ interface LootDrop {
     <div
       class="ff"
       [class.ff--inline]="inline"
+      [class.ff--yield]="!inline && yielding()"
       [attr.data-tier]="snap.flameTier"
       [attr.data-hammer]="snap.hammerVisual"
       [attr.data-combo]="comboLevel"
@@ -452,6 +454,15 @@ interface LootDrop {
       z-index: auto;
     }
     .ff > * { pointer-events: auto; }
+
+    /* A mini-game is on screen: the corner flame steps aside, as the NPC bubble
+       does. Below 768px the flame is centred at the bottom and its mode switch
+       rides 56px above the 80px ember, which is exactly where a panel's Skip
+       link lands when it is scrolled into view; at z-index 940 the switch took
+       the tap. Hidden, not destroyed, so a running combo and the HUD survive.
+       display, not visibility: .ff__hud--open sets visibility: visible on a
+       child, which would keep the HUD hit-testable through a hidden parent. */
+    .ff.ff--yield { display: none; }
 
     /* …except the decorations, which must never intercept a strike.
        The rule above turns pointer events back on for every direct child, and
@@ -1377,6 +1388,9 @@ export class ForgeFlameComponent implements OnInit, OnDestroy {
    * for as long as this one is mounted.
    */
   @Input() inline = false;
+
+  /** True while a mini-game is mounted: the corner flame steps aside so Skip stays tappable. */
+  readonly yielding = inject(MinigamePresenceService).active;
 
   snap: EconomySnapshot = this.economy.snapshot;
   hudOpen = false;
