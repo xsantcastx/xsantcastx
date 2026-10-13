@@ -13,6 +13,11 @@
  *     the folded Hearth pill or the goal line, and the book and an open Hearth
  *     take turns.
  *
+ *   - From 901px to 1920px the first-session goal line, the folded Hearth pill,
+ *     the satchel plate, the health plate and the top bar never overlap, and a
+ *     click at the pill's centre reaches the pill: with the short Seamworks
+ *     goal and with the long two-line one the Ember Quarry shows.
+ *
  *   - The canvas cues ("CLICK TO WALK HERE" on a hovered or tapped station,
  *     "[ J / E ] GATHER" / "NEEDS …" at a gathering node) are drawn clear of the
  *     action bar at 1280×800 and on a 390×844 phone: an init script records
@@ -338,6 +343,88 @@ test.describe('the /play HUD at 960×800 (the 901–1000px band)', () => {
     await expect(page.locator('#satchel-book')).toBeVisible();
     await expect(page.locator('#hearth-body')).toBeHidden();
     expect(await page.evaluate(k => localStorage.getItem(k), HEARTH_KEY)).toBe('1');
+  });
+});
+
+/** Every pair of the top HUD strip's boxes is apart, and the pill takes its own click. */
+async function assertStripApart(page: Page, where: string): Promise<void> {
+  await expect(page.locator('.guide')).toBeVisible();
+  await expect(page.locator('.dock.collapsed .hearth-pill')).toBeVisible();
+  const width = page.viewportSize()!.width;
+  const boxes: Record<string, Rect> = {};
+  for (const sel of ['.guide', '.hearth-pill', '.satchel', '.vitals', '.topbar']) {
+    const r = await rectOf(page, sel);
+    expect(r, `${where} ${width}px: ${sel} has a box`).not.toBeNull();
+    boxes[sel] = r!;
+  }
+  const names = Object.keys(boxes);
+  for (let i = 0; i < names.length; i++) {
+    for (let j = i + 1; j < names.length; j++) {
+      const [a, b] = [names[i]!, names[j]!];
+      expect(meets(boxes[a]!, boxes[b]!), `${where} ${width}px: ${a} ${JSON.stringify(boxes[a])} meets ${b} ${JSON.stringify(boxes[b])}`).toBe(false);
+    }
+  }
+  const pill = boxes['.hearth-pill']!;
+  expect(pill.right, `${where} ${width}px: the pill is on screen`).toBeLessThanOrEqual(width);
+  const onPill = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.hearth-pill'),
+    { x: (pill.left + pill.right) / 2, y: (pill.top + pill.bottom) / 2 });
+  expect(onPill, `${where} ${width}px: the pill takes its own click`).toBe(true);
+  const guide = boxes['.guide']!;
+  const go = await page.evaluate(({ x, y }) => !!document.elementFromPoint(x, y)?.closest('.guide-go'), await page.locator('.guide-go').evaluate(el => {
+    const r = el.getBoundingClientRect();
+    return { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 };
+  }));
+  expect(go, `${where} ${width}px: Show me takes its own click`).toBe(true);
+  expect(guide.left, `${where} ${width}px: the goal line is on screen`).toBeGreaterThanOrEqual(0);
+}
+
+const STRIP_WIDTHS = [905, 960, 1000, 1280, 1440, 1920];
+
+test.describe('the /play goal line and the folded Hearth, 901–1920px', () => {
+  test.use({ viewport: { width: 1280, height: 800 } });
+  test.describe.configure({ timeout: 180000 });
+
+  test('the goal line never meets the pill, the plates or the top bar; the pill takes its own click', async ({ page }) => {
+    // The East Passage's beacon lit, so the Quarry is one Places click away.
+    await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } });
+    await openPlay(page);
+    await expect(page.locator('.guide')).toHaveAttribute('data-goal', 'buy');
+    for (const width of STRIP_WIDTHS) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.waitForTimeout(150);
+      await assertStripApart(page, 'Seamworks');
+    }
+    // The Ember Quarry's goal is the long one ("…Head back to the Seamworks, then to Your Homestead.").
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.locator('.places-toggle').click();
+    await page.locator('#places-list button', { hasText: 'East Passage' }).click();
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+    await page.waitForTimeout(400);
+    await expect(page.locator('.guide-text span')).toContainText('Head back to the Seamworks');
+    for (const width of STRIP_WIDTHS) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.waitForTimeout(150);
+      const text = (await rectOf(page, '.guide-text'))!;
+      // The case that used to bite: the text wraps, and the line is at least two rows tall.
+      expect(text.bottom - text.top, `Quarry ${width}px: the goal wraps`).toBeGreaterThan(30);
+      await assertStripApart(page, 'Quarry');
+    }
+  });
+
+  test('in the Homestead the goal line also clears the buildings column', async ({ page }) => {
+    await seed(page);
+    await openPlay(page);
+    await page.locator('.guide-go').click();
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Your Homestead', { timeout: 30000 });
+    await expect(page.locator('.guide-text span')).toContainText('Forge Bellows');
+    for (const width of STRIP_WIDTHS) {
+      await page.setViewportSize({ width, height: 800 });
+      await page.waitForTimeout(150);
+      await assertStripApart(page, 'Homestead');
+      const column = await rectOf(page, 'app-homestead-column .hc');
+      const guide = (await rectOf(page, '.guide'))!;
+      if (column) expect(meets(guide, column), `Homestead ${width}px: goal line over the buildings column`).toBe(false);
+    }
   });
 });
 
