@@ -198,7 +198,7 @@ test.describe('the /play HUD on phones', () => {
   });
 
   test('the menu holds Return to camp, Restart hunt and Keys; the goal folds; a placeable turns Use into Place', async ({ page }) => {
-    test.skip(MEASURE_ONLY, 'measuring only');
+    if (MEASURE_ONLY) return; // measuring only
     await seed(page, bag({ torch: 6 }));
     await openPlay(page);
     await expect(page.locator('.top-actions .quiet').first()).toBeHidden();
@@ -229,7 +229,7 @@ test.describe('the /play HUD on phones', () => {
   });
 
   test('smart cursor: with the pick a tap digs a block, with a block chosen a tap places it there', async ({ page }) => {
-    test.skip(MEASURE_ONLY, 'measuring only');
+    if (MEASURE_ONLY) return; // measuring only
     // A pinned Delve seed, so the rock beside the shaft is the same every run.
     await seed(page, { ...bag({ 'dirt-block': 9 }), 'godforge-delve': { version: 1, seed: 424242, createdAt: 1, areas: {}, claimed: [] } });
     await openPlay(page);
@@ -256,7 +256,7 @@ test.describe('the /play HUD on phones', () => {
   });
 
   test('Spanish: the short touch labels fit at 360px', async ({ page }) => {
-    test.skip(MEASURE_ONLY, 'measuring only');
+    if (MEASURE_ONLY) return; // measuring only
     await seed(page, { 'preferred-language': 'es', ...bag({ torch: 2 }) });
     await page.setViewportSize({ width: 360, height: 740 });
     await openPlay(page);
@@ -275,7 +275,7 @@ test.describe('the /play phone HUD with the first-visit consent bar', () => {
   test.use({ viewport: { width: 360, height: 740 }, hasTouch: true, isMobile: true });
 
   test('the bar docks under the touch row and covers no control', async ({ page }) => {
-    test.skip(MEASURE_ONLY, 'measuring only');
+    if (MEASURE_ONLY) return; // measuring only
     await page.goto('/robots.txt');
     await page.evaluate(() => {
       const keep = localStorage.getItem('eclipse-onboarding');
