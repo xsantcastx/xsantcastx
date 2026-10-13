@@ -184,8 +184,15 @@ async function crack(page: Page, col: number, n: number): Promise<void> {
  * rate-limited). Three swings leave it standing; the fourth opens it.
  */
 async function digOverhead(page: Page, col: number): Promise<void> {
+  // Stand right under it: falling rock only hits within 23 px of the Keeper's
+  // centre, and a walk slides up to ~20 px past where it stops. Each click on
+  // the open air at that column is a shorter, slower walk back, so it settles.
   await walkTo(page, colX(col), 6);
-  await page.waitForTimeout(200);
+  for (let i = 0; i < 5 && Math.abs((await playerX(page)) - colX(col)) > 8; i++) {
+    await clickCell(page, col, CEIL + 2, GALLERY_FEET);
+    await page.waitForTimeout(700);
+  }
+  expect(Math.abs((await playerX(page)) - colX(col)), `the Keeper stands under ${col},${CEIL}`).toBeLessThanOrEqual(12);
   await crack(page, col, ROCK_SWINGS - 1);
   await swingAt(page, col, 0);
   await expect.poll(() => cellOpen(page, col), { timeout: 8000, message: `${col},${CEIL} opens on swing ${ROCK_SWINGS}` }).toBe(true);
