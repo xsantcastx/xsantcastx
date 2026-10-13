@@ -9,7 +9,7 @@
  * to hear"), which the Codex bestiary also places in the Nocturne Archive.
  *
  * Layout west → east: the Waystone by the spawn, the Gambler (sealed boxes,
- * things the realms will not name) and the Exchange (the merchant houses'
+ * things the realms will not name), the Croupier's Reels, and the Exchange (the merchant houses'
  * board), open stacks with two shelf ledges, then the passage into the
  * Unrecorded Corridors where the Substitutes are hunted. The town itself is
  * safe ground: no monsters, so no `safeX`.
@@ -98,6 +98,8 @@ export const UMBRAL_TOWN: TownDef = {
   stations: [
     { id: 'waystone', x: 360, label: 'WAYSTONE', kind: 'waystone', art: 'rift-portal-core', width: 130, blurb: 'Travel between the realm towns.' },
     { id: 'gambler', x: 760, label: 'THE GAMBLER', kind: 'panel', panel: 'gambler', art: 'eclipse-summoning-sigil', width: 170, blurb: 'Open sealed boxes and sell what the realms hand back.' },
+    // Run by the Croupier, who stands between it and the Gambler (life.ts).
+    { id: 'reels', x: 975, label: 'THE REELS', kind: 'panel', panel: 'reels', art: 'eclipse', width: 110, blurb: 'Spin three reels for Gold; three Eclipses open the Eclipse Round.' },
     { id: 'exchange', x: 1140, label: 'THE EXCHANGE', kind: 'panel', panel: 'exchange', art: 'gold', width: 170, blurb: 'Trade what you carry with the merchant houses.' },
     { id: 'passage', x: 2640, label: 'UNRECORDED CORRIDORS', kind: 'passage', to: 'unrecorded-corridors', arriveX: 240, width: 120, blurb: 'Where two reflections disagree, a corridor opens.' },
   ],

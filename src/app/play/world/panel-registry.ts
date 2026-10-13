@@ -40,5 +40,6 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelEntry>> = {
   skills: { title: 'Skills', kicker: 'Keeper', load: () => import('../../shared/skills/skills-panel.component').then(m => m.SkillsPanelComponent) },
   vendor: { title: 'Material Vendor', kicker: 'Trade', load: () => import('../../shared/vendor/material-vendor.component').then(m => m.MaterialVendorComponent) },
   vault: { title: 'The Vault', kicker: 'Storage', load: () => import('../../shared/vault/vault-station.component').then(m => m.VaultStationComponent) },
+  reels: { title: 'The Reels', kicker: 'Chance', load: () => import('../../shared/reels/reels.component').then(m => m.ReelsComponent) },
   homestead: { title: 'Your Homestead', kicker: 'Homestead', load: () => import('../homestead/homestead-panel.component').then(m => m.HomesteadPanelComponent) },
 };
