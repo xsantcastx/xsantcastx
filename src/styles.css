@@ -1862,6 +1862,30 @@ body.gf-reveal-open .ad-veil {
   pointer-events: none;
 }
 
+/* ── 10a-septies. …and the site footer, which is the whole page below it ──
+   Not a corner widget this time: the footer itself. `<footer>` is
+   `position: relative` with `z-index: auto` and comes after `<main>` in the
+   DOM. The routed host (`app-rune-forge`) keeps an identity transform from
+   routeFadeIn's forwards fill — Chrome computes the `transform: none` end
+   keyframe as `matrix(1,0,0,1,0,0)` — so it is a z-index-0 stacking context,
+   and `.rf-focus`'s 1200 only counts inside it. Same layer, later in the
+   document: the footer paints over the reveal wherever the two overlap.
+
+   On /forge/runes the footer starts about one screen down, so a player who
+   has scrolled at all before striking (1440x900: any scroll past ~350px) gets
+   a reveal whose lower half is the footer's link rows, and the roll buttons
+   under them cannot be clicked. `play-inventory-stacks.spec.ts` hit it on
+   every run because Playwright scrolls the ×100 button into view, which
+   scrolls the page.
+
+   Lift `<main>` rather than the overlay, as routed-host modals do: while the
+   reveal is up the whole main column stacks above the footer and the header.
+   `e2e/forge-reveal.spec.ts` "the footer never covers the roll buttons" guards it. */
+body.gf-reveal-open main#main-content {
+  position: relative;
+  z-index: var(--z-modal);
+}
+
 /* ── 10a-quinquies. Native selects, so Safari stops shrinking them to 25px ──
    Every `<select>` in the app is styled by its own component with a
    `min-height` at or near the 44px touch floor, and in Blink that is what they
