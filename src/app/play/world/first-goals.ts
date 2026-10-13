@@ -1,20 +1,30 @@
 /**
  * first-goals.ts: the four things a brand-new Keeper is walked through, in order:
- * buy a building, defeat a creature, forge a blade, dig in the Delve.
+ * buy a building, forge (and equip) a blade, defeat a creature with it, dig in
+ * the Delve.
+ *
+ * The blade comes before the hunt on purpose (owner call, 2026-10-13): the
+ * Basalt Edge needs only Cinder Ore from the seam and the Ember Residue the
+ * seam guarantees by the 8th ore, so nobody has to fight bare-handed. The blade
+ * goal is not done until a weapon is worn (or a creature has already fallen,
+ * when arming no longer matters).
  *
  * Pure: the play view hands in what the save already says (a building owned,
- * Hunting XP, the Basalt Edge crafted, a Delve cell dug) and where the Keeper
- * stands, and gets back one line to show and one place to walk to. Nothing is
- * stored for the guide itself, so it can never disagree with the save: the
- * first goal the save does not show yet is the current one, and once all four
- * are true the guide is gone for good.
+ * Hunting XP, the Basalt Edge crafted and a weapon worn, a Delve cell dug) and
+ * where the Keeper stands, and gets back one line to show and one place to walk
+ * to. Nothing is stored for the guide itself, so it can never disagree with the
+ * save: the first goal the save does not show yet is the current one, and once
+ * all four are true the guide is gone for good.
+ *
+ * After the four, `runeForgeHint` may surface the Rune Forge once, the first
+ * time a strike is affordable (the host stores only "seen").
  *
  * The copy lives in the lazy first-goals i18n table (EN + ES), never the eager one.
  */
 import { HOMESTEAD_FORGE_STATION, HOMESTEAD_GATE_ID, HOMESTEAD_ID } from './homestead';
 
-export type FirstGoalId = 'buy' | 'hunt' | 'craft' | 'delve';
-export const FIRST_GOALS: readonly FirstGoalId[] = ['buy', 'hunt', 'craft', 'delve'];
+export type FirstGoalId = 'buy' | 'craft' | 'hunt' | 'delve';
+export const FIRST_GOALS: readonly FirstGoalId[] = ['buy', 'craft', 'hunt', 'delve'];
 
 /** What the save says, plus where the Keeper is. */
 export interface FirstGoalFacts {
@@ -24,6 +34,10 @@ export interface FirstGoalFacts {
   hunted: boolean;
   /** The Basalt Edge was forged (or anything was crafted at a bench). */
   crafted: boolean;
+  /** The Basalt Edge is in the satchel or worn. */
+  edge: boolean;
+  /** A weapon is worn in the main hand. */
+  armed: boolean;
   /** Any cell dug in the Ember Delve. */
   dug: boolean;
   /** The engine's current area id: a town id, a hunt zone, the Homestead or the Delve. */
@@ -37,8 +51,9 @@ export interface FirstGoalFacts {
 export type FirstGoalTarget = { station: string } | { x: number };
 
 export interface FirstGoalView {
-  id: FirstGoalId;
-  /** 1-based, for "Goal 2 of 4". */
+  /** A first goal, or 'rune': the one-time Rune Forge hint after all four. */
+  id: FirstGoalId | 'rune';
+  /** 1-based, for "Goal 2 of 4". 0 for the Rune Forge hint, which has no number. */
   n: number;
   total: number;
   /** The line to show (first-goals i18n key). */
@@ -56,11 +71,15 @@ const MAW_APPROACH_X = 2120;
 const BLADE_ORE = 6;
 const BLADE_EMBER = 1;
 
-/** The first goal the save does not show yet, or null when all four are done. */
-export function currentFirstGoal(facts: Pick<FirstGoalFacts, 'bought' | 'hunted' | 'crafted' | 'dug'>): FirstGoalId | null {
+/**
+ * The first goal the save does not show yet, or null when all four are done.
+ * The blade goal is met once the Edge (or any craft) is made and a weapon is
+ * worn; a Keeper who has already felled a creature is past needing it.
+ */
+export function currentFirstGoal(facts: Pick<FirstGoalFacts, 'bought' | 'hunted' | 'crafted' | 'armed' | 'dug'>): FirstGoalId | null {
   if (!facts.bought) return 'buy';
+  if (!facts.hunted && !(facts.crafted && facts.armed)) return 'craft';
   if (!facts.hunted) return 'hunt';
-  if (!facts.crafted) return 'craft';
   if (!facts.dug) return 'delve';
   return null;
 }
@@ -87,11 +106,37 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
 
   switch (id) {
     case 'buy': return view('play.goal.buy.town', { station: HOMESTEAD_GATE_ID });
-    case 'hunt': return view('play.goal.hunt.town', { x: MAW_APPROACH_X });
     case 'craft':
+      // Forged but not worn: the Seamworks Forge equips it on the next use.
+      if (facts.edge && !facts.armed) return view('play.goal.craft.equip', { station: 'forge' });
       return facts.ore >= BLADE_ORE && facts.ember >= BLADE_EMBER
         ? view('play.goal.craft.forge', { station: 'forge' })
         : view('play.goal.craft.mine', { station: 'ore' });
+    case 'hunt': return view('play.goal.hunt.town', { x: MAW_APPROACH_X });
     case 'delve': return view('play.goal.delve.town', { station: 'delve' });
   }
+}
+
+/** What the Rune Forge hint reads: the four goals, the purse, and whether it was already shown. */
+export interface RuneHintFacts {
+  /** All four first goals are done (firstGoal returned null). */
+  goalsDone: boolean;
+  gold: number;
+  /** One rune strike's price (rune.model STRIKE_COST). */
+  strikeCost: number;
+  /** The hint was followed or dismissed, or the Rune Forge was opened: never again. */
+  seen: boolean;
+  areaId: string;
+}
+
+/**
+ * The Rune Forge, surfaced in context. It stays out of the four goals; once
+ * they are behind the Keeper and the purse first covers a strike, one "next
+ * step" line points at it, on the Seamworks floor where it stands. Never twice
+ * (the host stores `seen`), and never as a nag in the Delve or the Homestead.
+ */
+export function runeForgeHint(facts: RuneHintFacts): FirstGoalView | null {
+  if (!facts.goalsDone || facts.seen || facts.areaId !== HOME_TOWN) return null;
+  if (!(facts.strikeCost > 0) || facts.gold < facts.strikeCost) return null;
+  return { id: 'rune', n: 0, total: FIRST_GOALS.length, key: 'play.goal.rune.town', target: { station: 'runes' } };
 }
