@@ -154,12 +154,11 @@ for (const r of declared) {
 }
 
 // ── 3. Player-facing leftover of the deleted tool product ──────────────────
-// Templates and SEO are what a player reads. Infrastructure (tools-registry,
-// hidden quest pools, historical changelog) is out of scope.
+// Templates and SEO are what a player reads. Infrastructure (historical
+// changelog, the legacy egg records) is out of scope.
 const PLAYER_FACING = files.filter(f => {
   const rel = path.relative(path.join(SRC, 'app'), f).replace(/\\/g, '/');
   if (rel.startsWith('admin/')) return false;
-  if (rel === 'tools/tools-registry.ts') return false;
   if (rel === 'version.ts') return false;
   // The release log moved out of version.ts in v2.70.0 so its ~140 kB of prose
   // would stop riding the initial bundle. It is the same historical changelog

@@ -6,7 +6,6 @@ import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
-import { RealmService } from './shared/realms/realm.service';
 import { PageAtmosphereService } from './shared/atmosphere/atmosphere.service';
 import { QuestWiringService } from './shared/quests/quest-wiring.service';
 import { ChallengeWiringService } from './shared/challenges/challenge-wiring.service';
@@ -37,7 +36,6 @@ export class AppComponent implements OnInit, OnDestroy {
   private ngZone = inject(NgZone);
   private eggTriggers = inject(GlobalEggTriggersService);
   private xpWiring = inject(XpWiringService);
-  private realms = inject(RealmService);
   private atmosphere = inject(PageAtmosphereService);
   private questWiring = inject(QuestWiringService);
   private challengeWiring = inject(ChallengeWiringService);
@@ -127,12 +125,6 @@ export class AppComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.seo.init();
-
-    // Also before the guard, and for the same reason: `data-realm` selects the
-    // painted room behind all 126 tool pages. Resolved on the client only, the
-    // page would prerender bare and then paint a background the instant the
-    // bundle booted. RealmService touches no browser-only API.
-    this.realms.init();
 
     if (!isPlatformBrowser(this.platformId)) return;
 

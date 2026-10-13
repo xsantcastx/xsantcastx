@@ -13,8 +13,7 @@
  */
 import { EasterEgg, PUBLIC_CODEX_EGGS, isPublicCodexEgg } from '../shared/easter-eggs/easter-egg.service';
 import { EclipseRarity, RarityDefinition, rarityOf, tierForEgg } from '../shared/rarity/rarity.model';
-import { RealmId, realmForCategory } from '../shared/realms/realm.model';
-import { TOOLS_REGISTRY, ToolDefinition } from '../tools/tools-registry';
+import { RealmId } from '../shared/realms/realm.model';
 import { hintFor } from './codex-hints';
 
 export type CodexCategoryId = RealmId | 'arena' | 'global';
@@ -128,17 +127,8 @@ export const ARENA_GATE_EGGS: Record<string, string> = {
   ...FLAVOUR_GATE_EGGS,
 };
 
-const TOOLS_BY_ID = new Map<string, ToolDefinition>(TOOLS_REGISTRY.map(t => [t.id, t]));
-
 export function categoryForEgg(egg: EasterEgg): CodexCategoryId {
-  if (ARENA_GATE_EGGS[egg.id]) return 'arena';
-  if (!egg.tool || egg.tool === 'global') return 'global';
-  const tool = TOOLS_BY_ID.get(egg.tool);
-  // An egg pointing at a tool that is not in the registry is a registry bug, not
-  // a Luminous secret. Global is where unattributed things go — visible, so it
-  // gets noticed, rather than quietly filed under a realm it does not belong to.
-  if (!tool) return 'global';
-  return realmForCategory(tool.category).id;
+  return ARENA_GATE_EGGS[egg.id] ? 'arena' : 'global';
 }
 
 export function categoryById(id: CodexCategoryId): CodexCategory {

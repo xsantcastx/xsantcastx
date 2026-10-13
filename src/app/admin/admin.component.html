@@ -96,45 +96,9 @@
       <div class="adm-grid adm-grid--stats">
 
         <article class="adm-card adm-card--stat">
-          <p class="adm-stat__label">Active now</p>
-          <ng-container [ngSwitch]="activeNow.state">
-            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
-            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(activeNow.data) }}</p>
-            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
-          </ng-container>
-          <p class="adm-stat__foot">viewers on /mission-control in the last 5 min</p>
-        </article>
-
-        <article class="adm-card adm-card--stat">
-          <p class="adm-stat__label">Total visits</p>
-          <ng-container [ngSwitch]="totalVisits.state">
-            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
-            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(totalVisits.data) }}</p>
-            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
-          </ng-container>
-          <p class="adm-stat__foot">all-time, site-stats counter</p>
-        </article>
-
-        <article class="adm-card adm-card--stat">
-          <p class="adm-stat__label">Tool opens</p>
-          <ng-container [ngSwitch]="topTools.state">
-            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
-            <p *ngSwitchCase="'ready'" class="adm-stat__num">{{ num(totalToolUses) }}</p>
-            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
-          </ng-container>
-          <p class="adm-stat__foot">across {{ toolsWithUsage }} tools, session-deduped</p>
-        </article>
-
-        <article class="adm-card adm-card--stat">
           <p class="adm-stat__label">Version</p>
           <p class="adm-stat__num adm-stat__num--sm">{{ version.version }}</p>
           <p class="adm-stat__foot">“{{ version.codename }}” · {{ version.buildDate }} · {{ releaseCount }} releases</p>
-        </article>
-
-        <article class="adm-card adm-card--stat">
-          <p class="adm-stat__label">Tools</p>
-          <p class="adm-stat__num">{{ num(liveTools) }}</p>
-          <p class="adm-stat__foot">{{ categories }} categories · {{ comingSoon }} coming soon</p>
         </article>
 
         <article class="adm-card adm-card--stat">
@@ -161,46 +125,6 @@
       <h2 class="adm-sec__title" id="sec-engage">Engagement</h2>
 
       <div class="adm-grid adm-grid--wide">
-
-        <article class="adm-card adm-card--span2">
-          <header class="adm-card__head">
-            <h3 class="adm-card__title">Top tools by usage</h3>
-            <span class="adm-card__tag" *ngIf="topTools.state === 'ready'">live data</span>
-          </header>
-
-          <ng-container [ngSwitch]="topTools.state">
-
-            <div *ngSwitchCase="'loading'" class="adm-bars">
-              <div class="adm-bar" *ngFor="let i of [1,2,3,4,5,6,7,8]">
-                <span class="adm-skel adm-skel--line"></span>
-              </div>
-            </div>
-
-            <div *ngSwitchCase="'ready'" class="adm-bars">
-              <div class="adm-bar" *ngFor="let b of topTools.data; trackBy: trackBar">
-                <div class="adm-bar__meta">
-                  <span class="adm-bar__label" [title]="b.label">{{ b.label }}</span>
-                  <span class="adm-bar__value">{{ num(b.value) }}</span>
-                </div>
-                <div class="adm-bar__track">
-                  <div class="adm-bar__fill" [style.width.%]="b.pct"></div>
-                </div>
-                <span class="adm-bar__sub">{{ b.sub }}</span>
-              </div>
-            </div>
-
-            <p *ngSwitchCase="'empty'" class="adm-empty">
-              No tool has been opened yet, or the <code>tool-usage</code> counters
-              have not started writing. Visit any tool page once and this fills in.
-            </p>
-
-            <p *ngSwitchDefault class="adm-empty">
-              Could not read <code>tool-usage</code>. The collection is public-read,
-              so this usually means the rules have not been deployed yet.
-            </p>
-
-          </ng-container>
-        </article>
 
         <article class="adm-card adm-card--setup">
           <header class="adm-card__head">
@@ -314,11 +238,7 @@
             <span class="adm-card__tag adm-card__tag--todo">not instrumented</span>
           </header>
           <p class="adm-note">
-            The games on /world/trials do not write a play counter. The cheapest fix is to
-            call the existing <code>ToolUsageService.recordUsage()</code> with a
-            <code>game-*</code> slug on each game's start handler — it already has a
-            Firestore rule, a session dedupe and a counter, so the plays would show
-            up in the table above with no new collection.
+            The games on /world/trials do not write a play counter yet.
           </p>
           <a class="adm-link" routerLink="/world/trials">Open /world/trials →</a>
         </article>
@@ -328,69 +248,9 @@
     <!-- ── 5. Blueprint & community ────────────────────────────────────── -->
 
     <section class="adm-sec" aria-labelledby="sec-community">
-      <h2 class="adm-sec__title" id="sec-community">Blueprint &amp; community</h2>
+      <h2 class="adm-sec__title" id="sec-community">Dev log</h2>
 
       <div class="adm-grid adm-grid--wide">
-
-        <article class="adm-card adm-card--span2">
-          <header class="adm-card__head">
-            <h3 class="adm-card__title">Tool suggestions</h3>
-            <span class="adm-card__tag" *ngIf="suggestions.state === 'ready'">
-              {{ suggestions.data?.length }} received
-            </span>
-          </header>
-
-          <ng-container [ngSwitch]="suggestions.state">
-
-            <div *ngSwitchCase="'loading'" class="adm-sugs">
-              <span class="adm-skel adm-skel--block" *ngFor="let i of [1,2,3]"></span>
-            </div>
-
-            <ul *ngSwitchCase="'ready'" class="adm-sugs">
-              <li class="adm-sug" *ngFor="let s of (suggestions.data || []).slice(0, suggestionsShown); trackBy: trackSuggestion"
-                  [attr.data-review]="s.review || 'new'">
-                <div class="adm-sug__top">
-                  <h4 class="adm-sug__name">{{ s.name }}</h4>
-                  <span class="adm-sug__badge" [attr.data-review]="s.review || 'new'">
-                    {{ s.review || 'new' }}
-                  </span>
-                </div>
-                <p class="adm-sug__desc">{{ s.description }}</p>
-                <p class="adm-sug__meta">
-                  <span *ngIf="s.email">{{ s.email }} · </span>{{ ago(s.submittedAt) }}
-                </p>
-                <div class="adm-sug__acts">
-                  <button type="button" class="adm-chip adm-chip--ok"
-                          [disabled]="busySuggestion === s.id"
-                          (click)="review(s, 'accepted')">Accept</button>
-                  <button type="button" class="adm-chip"
-                          [disabled]="busySuggestion === s.id"
-                          (click)="review(s, 'reviewed')">Reviewed</button>
-                  <button type="button" class="adm-chip adm-chip--no"
-                          [disabled]="busySuggestion === s.id"
-                          (click)="review(s, 'rejected')">Reject</button>
-                </div>
-              </li>
-              <li *ngIf="(suggestions.data || []).length > suggestionsShown" class="adm-more">
-                <button type="button" class="adm-more__btn" (click)="showMoreSuggestions()">
-                  Show more &mdash; {{ (suggestions.data || []).length - suggestionsShown }} remaining
-                </button>
-              </li>
-            </ul>
-
-            <p *ngSwitchCase="'empty'" class="adm-empty">
-              No suggestions yet. The form lives at the bottom of
-              <a routerLink="/world">/world</a>.
-            </p>
-
-            <p *ngSwitchDefault class="adm-empty">
-              Could not read <code>blueprint-suggestions</code>. This collection is
-              owner-only in firestore.rules — deploy the updated rules with
-              <code>firebase deploy --only firestore:rules</code>.
-            </p>
-
-          </ng-container>
-        </article>
 
         <div class="adm-stack">
 
@@ -527,16 +387,6 @@
             </ul>
             <p *ngSwitchDefault class="adm-empty adm-empty--sm">{{ commits.note }}</p>
           </ng-container>
-        </article>
-
-        <article class="adm-card adm-card--stat">
-          <p class="adm-stat__label">Last build activity</p>
-          <ng-container [ngSwitch]="lastActivity.state">
-            <span *ngSwitchCase="'loading'" class="adm-skel adm-skel--num"></span>
-            <p *ngSwitchCase="'ready'" class="adm-stat__num adm-stat__num--sm">{{ ago(lastActivity.data) }}</p>
-            <p *ngSwitchDefault class="adm-stat__num adm-stat__num--dim">—</p>
-          </ng-container>
-          <p class="adm-stat__foot">newest entry in the /mission-control activity feed</p>
         </article>
 
         <article class="adm-card adm-card--setup adm-card--span2">
