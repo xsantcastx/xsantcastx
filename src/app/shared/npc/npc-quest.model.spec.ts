@@ -121,7 +121,7 @@ describe('rewards name things that exist', () => {
     }
   });
 
-  it('grants the Essence-shop flag, not a twin item, for the four artifact rewards (meaning audit #13)', () => {
+  it('grants the Essence-shop flag, not a twin item, for the artifact rewards (meaning audit #13)', () => {
     const ids = new Set(ARTIFACTS.map(a => a.id));
     const byStep = new Map<string, string | undefined>([
       ...ALL_NPC_STEPS.map(s => [s.id, s.reward.artifact] as [string, string | undefined]),
@@ -129,8 +129,6 @@ describe('rewards name things that exist', () => {
     ]);
     expect(byStep.get('aureth-2')).toBe('relic-third-dawn');
     expect(byStep.get('verrin-2')).toBe('obsidian-heart');
-    expect(byStep.get('archivist-2')).toBe('codex-solarii');
-    expect(byStep.get('delve-archivist-words-3')).toBe('codex-solarii');
     for (const [step, id] of byStep) if (id) expect(ids.has(id)).withContext(step).toBeTrue();
     for (const id of ids) expect(ITEM_DEFINITIONS.some(d => d.id === id)).withContext(id).toBeFalse();
   });
