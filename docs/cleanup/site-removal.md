@@ -72,6 +72,10 @@ cookie banner, kept.
 
 ## 3. Kept on purpose (owner may still want these gone)
 
+- **Daily tool pipeline** (`pipeline/`, `.github/workflows/daily-pipeline.yml`)
+  — a cron that researches, generates and PRs a new browser tool every day.
+  The world plan leaves "the out-of-credit daily workflow" with the owner, so
+  it is untouched here, but it is the opposite of this pass.
 - **Pro Pack (`ProService`)** — `/pro` already 301s and `activatePro()` has no
   caller, so nobody can buy it; it still multiplies XP and owns three cosmetic
   variants. Removing it touches the economy; left for an owner call.
@@ -87,4 +91,28 @@ cookie banner, kept.
 
 ## 4. Results
 
-Filled in when the pass lands — see the bottom of this file.
+Production builds of `77c93df` (before) and of this branch before merging the
+latest main (after), measured the same way:
+
+| Measure | Before | After |
+|---|---|---|
+| Initial bundle (raw / transfer) | 1.75 MB / 452.3 kB | 1.66 MB / 433.4 kB |
+| JS in dist (files / bytes) | 167 / 5.79 MB | 160 / 5.43 MB |
+| dist total (files / bytes) | 1012 / 51.9 MB | 935 / 43.9 MB |
+| Prerendered pages (HTML files) | 33 | 32 (`/play/storyboard` gone) |
+| `src/styles.css` raw / gzip | 135.5 kB / 40.0 kB | 103.6 kB / 31.5 kB |
+| Built global stylesheet raw / gzip | 70.8 kB / 16.4 kB | 54.2 kB / 12.8 kB |
+| `src/index.html` raw / gzip | 19.6 kB / 5.8 kB | 14.8 kB / 4.9 kB |
+| Built `index.csr.html` raw / gzip | 47.7 kB / 13.4 kB | 36.2 kB / 10.9 kB |
+| `assets/js/cosmic-engine.js` | 59.2 kB | 9.5 kB |
+
+Also found and fixed on the way: the footer's donation modals had no button
+since August, so the kept donation flow was unreachable; it now has a
+"Support the forge" row.
+
+Still to decide (owner): the daily tool-generation pipeline
+(`pipeline/`, `.github/workflows/daily-pipeline.yml`) still exists and, if it
+ever runs with credit, opens a PR adding a new tool page to this game site.
+The Codex Solarii artifact's only effect was tool-lore thresholds, so it now
+does nothing. The Achievement Frame cosmetic styles `.cx-card`, which the Codex
+no longer renders (pre-existing).
