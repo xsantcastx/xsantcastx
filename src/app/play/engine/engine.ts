@@ -29,6 +29,8 @@ export type { HeldItem, KeeperLoadout } from './loadout';
 
 // `flash`, `knock`, `dying`, `born` and `shownHp` are presentation only: they
 // shape how a Maw is drawn and never feed back into position, HP or loot.
+/** Why a thing cannot be placed: the English line and its play.delve.* key. */
+interface PlaceProblem { key: string; en: string; vars?: Record<string, string | number> }
 interface Monster {
   def: MonsterDef; maxHp: number;
   x: number; spawn: number; hp: number; phase: 'idle' | 'windup' | 'strike' | 'recover'; timer: number; facing: number; respawn: number;
@@ -207,6 +209,17 @@ export class SeamworksEngine {
   private complete = false;
   private destroyed = false;
   private message = 'Find the Cinder Ore deposit. Walk close and interact.';
+  /**
+   * The i18n key (play.delve.*) and vars of a Delve message, valid only while
+   * `message` is still the English it was set with: any other assignment to
+   * `message` silently retires it, so a stale key can never mask a new line.
+   * `vars.item` is a placeable id the HUD turns into a translated name.
+   */
+  private keyed: { en: string; key: string; vars?: Record<string, string | number> } | null = null;
+  private say(key: string, en: string, vars?: Record<string, string | number>): void {
+    this.message = en;
+    this.keyed = { en, key, ...(vars ? { vars } : {}) };
+  }
   // ── Homestead hook (homestead-render.ts owns the drawing; this is the whole seam) ──
   private homestead: HomesteadView | null = null;
   private readonly homesteadFrame: HomesteadFrame = { areaId: '', camera: 0, viewport: 0, time: 0, playerX: 0, reduced: false, art: (key, x, y, w, h) => this.art(key, x, y, w, h) };
@@ -402,10 +415,10 @@ export class SeamworksEngine {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
     const def = placeableById(this.placing);
-    if (!def) { this.message = 'Choose something to place first (keys 1-0, or tap the bar).'; this.report(); return false; }
+    if (!def) { this.say('play.delve.chooseFirst', 'Choose something to place first (keys 1-0, or tap the bar).'); this.report(); return false; }
     const down = this.input.has('down');
     const index = placeTarget(t, this.player.x, this.player.y, this.facing, down, DELVE_BOX, def.aim);
-    if (index < 0) { this.message = `No open space ${down ? 'under your feet' : 'in front of you'} for the ${def.label.toLowerCase()}.`; this.report(); return false; }
+    if (index < 0) { this.say(down ? 'play.delve.noSpaceBelow' : 'play.delve.noSpaceAhead', `No open space ${down ? 'under your feet' : 'in front of you'} for the ${def.label.toLowerCase()}.`, { item: def.id }); this.report(); return false; }
     return this.placeItem(def, index);
   }
   /**
@@ -420,7 +433,7 @@ export class SeamworksEngine {
     if (!t.inside(col, row) || !this.inReach(col, row)) return false;
     if (isTakeable(t, col, row)) return this.takeItem(t.index(col, row));
     const def = placeableById(this.placing);
-    if (!def) { this.message = 'Choose something to place first (keys 1-0, or tap the bar).'; this.report(); return false; }
+    if (!def) { this.say('play.delve.chooseFirst', 'Choose something to place first (keys 1-0, or tap the bar).'); this.report(); return false; }
     return this.placeItem(def, t.index(col, row));
   }
   /** True when a cell's centre is within a swing of the Keeper's chest. */
@@ -431,18 +444,18 @@ export class SeamworksEngine {
     return Math.hypot(cx - this.player.x, cy - (this.player.y - DELVE_BOX.height * .5)) <= DELVE_REACH;
   }
   /** Why `node` cannot go into a cell right now, or null. */
-  private placeProblem(t: Terrain, col: number, row: number, node: TerrainNodeDef, def?: PlaceableDef): string | null {
-    if (!t.inside(col, row) || row < 0) return 'That is outside the Delve.';
-    if (!isAir(t, col, row)) return 'Something is already there.';
-    if (def?.grounded && !t.solid(col, row + 1) && !isOneWay(t, col, row + 1)) return `The ${def.label.toLowerCase()} needs solid ground under it.`;
-    if (def?.single && findNode(t, def.node) >= 0) return `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`;
+  private placeProblem(t: Terrain, col: number, row: number, node: TerrainNodeDef, def?: PlaceableDef): PlaceProblem | null {
+    if (!t.inside(col, row) || row < 0) return { key: 'play.delve.outside', en: 'That is outside the Delve.' };
+    if (!isAir(t, col, row)) return { key: 'play.delve.occupied', en: 'Something is already there.' };
+    if (def?.grounded && !t.solid(col, row + 1) && !isOneWay(t, col, row + 1)) return { key: 'play.delve.needsGround', en: `The ${def.label.toLowerCase()} needs solid ground under it.`, vars: { item: def.id } };
+    if (def?.single && findNode(t, def.node) >= 0) return { key: 'play.delve.single', en: `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`, vars: { item: def.id } };
     if (!node.solid) return null;
     const x0 = col * CELL, y0 = t.top + row * CELL;
     const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
       x + halfWidth > x0 && x - halfWidth < x0 + CELL && feet > y0 && feet - height < y0 + CELL;
-    if (overlaps(this.player.x, this.player.y, DELVE_BOX.halfWidth, DELVE_BOX.height)) return 'You are standing there.';
+    if (overlaps(this.player.x, this.player.y, DELVE_BOX.halfWidth, DELVE_BOX.height)) return { key: 'play.delve.standing', en: 'You are standing there.' };
     for (const monster of this.monsters) {
-      if (monster.hp > 0 && overlaps(monster.x, monster.def.floorY ?? FLOOR, 30 * this.figure, 110 * this.figure)) return 'A creature is in the way.';
+      if (monster.hp > 0 && overlaps(monster.x, monster.def.floorY ?? FLOOR, 30 * this.figure, 110 * this.figure)) return { key: 'play.delve.creatureInWay', en: 'A creature is in the way.' };
     }
     return null;
   }
@@ -452,11 +465,11 @@ export class SeamworksEngine {
     if (!t) return false;
     const col = index % t.cols, row = (index - col) / t.cols;
     const node = TERRAIN_NODES[def.node];
-    const problem = node ? this.placeProblem(t, col, row, node, def) : 'That cannot be placed.';
-    if (problem) { this.message = problem; this.report(); return false; }
+    const problem: PlaceProblem | null = node ? this.placeProblem(t, col, row, node, def) : { key: 'play.delve.cannotPlace', en: 'That cannot be placed.' };
+    if (problem) { this.say(problem.key, problem.en, problem.vars); this.report(); return false; }
     // A charge is lit from a staff: none, and nothing leaves the satchel.
     if (node!.charge && !(this.tools.staff ?? 0)) {
-      this.message = 'You need a staff to light the fuse (Staff I or better).'; this.report(); return false;
+      this.say('play.delve.needStaff', 'You need a staff to light the fuse (Staff I or better).'); this.report(); return false;
     }
     const gen = ++this.placeSeq;
     const accepted = this.options.onPlace?.({
@@ -468,11 +481,12 @@ export class SeamworksEngine {
     this.fill(t, col, row, node!, gen);
     if (node!.charge) {
       this.fuses.push({ index, left: CHARGE_FUSE });
-      this.message = 'Fuse lit! Stand back. (X beside it pinches the fuse out.)';
+      this.say('play.delve.fuseLit', 'Fuse lit! Stand back. (X beside it pinches the fuse out.)');
       this.report();
       return true;
     }
-    this.message = node!.support ? `${def.label} placed. Loose rock within ${node!.support} cells of it holds.` : `${def.label} placed.`;
+    if (node!.support) this.say('play.delve.supportPlaced', `${def.label} placed. Loose rock within ${node!.support} cells of it holds.`, { item: def.id, n: node!.support });
+    else this.say('play.delve.placed', `${def.label} placed.`, { item: def.id });
     this.report();
     return true;
   }
@@ -481,7 +495,7 @@ export class SeamworksEngine {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
     const index = takeTarget(t, this.player.x, this.player.y, this.facing, DELVE_BOX);
-    if (index < 0) { this.message = 'Nothing placed here to take back. Blocks are dug, like rock.'; this.report(); return false; }
+    if (index < 0) { this.say('play.delve.nothingToTake', 'Nothing placed here to take back. Blocks are dug, like rock.'); this.report(); return false; }
     return this.takeItem(index);
   }
   /** Ask the host to return the placed thing to the satchel, then clear the cell. */
@@ -503,7 +517,8 @@ export class SeamworksEngine {
     this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, node.fleck, this.reducedMotion ? 2 : 4);
     const lit = this.fuses.some(fuse => fuse.index === index);
     if (lit) this.fuses = this.fuses.filter(fuse => fuse.index !== index);
-    this.message = lit ? 'You pinch the fuse out. The charge is back in the satchel.' : `${def.label} back in the satchel.`;
+    if (lit) this.say('play.delve.fusePinched', 'You pinch the fuse out. The charge is back in the satchel.');
+    else this.say('play.delve.takenBack', `${def.label} back in the satchel.`, { item: def.id });
     this.report();
     return true;
   }
@@ -535,14 +550,14 @@ export class SeamworksEngine {
     const col = index % t.cols, row = (index - col) / t.cols;
     const x = (col + .5) * CELL, feet = t.top + (row + 1) * CELL;
     if (boxHits(t, x, feet, DELVE_BOX)) {
-      this.message = 'Something fills the space round your camp. Take the Delve shaft and dig your way down.';
+      this.say('play.delve.campBlocked', 'Something fills the space round your camp. Take the Delve shaft and dig your way down.');
       this.report();
       return false;
     }
     this.enter(entrance.area);
     this.resetPosition(x);
     this.player.y = feet;
-    this.message = 'You climb down the ropes to your camp. The fire is still warm.';
+    this.say('play.delve.campArrive', 'You climb down the ropes to your camp. The fire is still warm.');
     this.report();
     return true;
   }
@@ -1063,7 +1078,7 @@ export class SeamworksEngine {
     const slot = this.rubble.find(r => !r.active);
     if (!slot) return;
     slot.active = true; slot.x = x; slot.y = y; slot.vy = 0; slot.wait = RUBBLE_WAIT; slot.color = color;
-    this.message = 'The rock groans. Loose rock! A timber or basalt support nearby would hold it.';
+    this.say('play.delve.rockGroans', 'The rock groans. Loose rock! A timber or basalt support nearby would hold it.');
     this.impact(.02, 2);
   }
   /** Advance falling rubble: a chunk on the Keeper hurts (never below 1 HP); on the floor it crumbles. */
@@ -1088,7 +1103,7 @@ export class SeamworksEngine {
         this.hp = Math.max(1, this.hp - hit); this.hurtTime = .6; this.wound = .7;
         this.atmosphere.burst(p.x, p.y - DELVE_BOX.height - 8, `-${hit}`);
         this.impact(.06, 7);
-        this.message = `Loose rock hits you (-${hit}). Place a support near loose rock (cracked, dusting) before you dig it.`;
+        this.say('play.delve.rockHits', `Loose rock hits you (-${hit}). Place a support near loose rock (cracked, dusting) before you dig it.`, { n: hit });
         continue;
       }
       if (t.solidAt(r.x, ny + 8) || ny > t.bottom) {
@@ -1121,7 +1136,7 @@ export class SeamworksEngine {
     }
     if (close && !this.looseHinted) {
       this.looseHinted = true;
-      this.message = 'Loose rock overhead: cracked and shedding dust. Dig it out with a support nearby, or it comes down.';
+      this.say('play.delve.looseOverhead', 'Loose rock overhead: cracked and shedding dust. Dig it out with a support nearby, or it comes down.');
     }
     if (picked < 0 || this.reducedMotion) return;
     const col = picked % t.cols, row = (picked - col) / t.cols;
@@ -1166,7 +1181,8 @@ export class SeamworksEngine {
     this.debris.crumble(cx, cy, '#6a2a22', '#ffd36d', this.reducedMotion);
     this.atmosphere.burst(cx, cy - 20, 'BOOM');
     this.impact(.12, 16);
-    this.message = cleared ? `The charge goes off: ${cleared} cells of rock come down.` : 'The charge goes off, but nothing here would give.';
+    if (cleared) this.say('play.delve.chargeCleared', `The charge goes off: ${cleared} cells of rock come down.`, { n: cleared });
+    else this.say('play.delve.chargeNothing', 'The charge goes off, but nothing here would give.');
     this.report();
     return cleared;
   }
@@ -1235,7 +1251,7 @@ export class SeamworksEngine {
     const col = index % t.cols, row = (index - col) / t.cols;
     const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
     this.debris.chip(cx, cy, '#e8c47a', this.reducedMotion ? 2 : 6);
-    this.message = 'You trace the carving with a finger. The words are older than the Seamworks.';
+    this.say('play.delve.inscriptionTrace', 'You trace the carving with a finger. The words are older than the Seamworks.');
     // Reported before the host hears of it, so a message the host shows in reply is not cleared by this one.
     this.report();
     this.options.onDiscover?.({ kind: 'inscription', id, biome: t.biomeAt(row).id });
@@ -1508,7 +1524,8 @@ export class SeamworksEngine {
     const site = !station && !use ? this.siteInReach() : null;
     const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
-    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name,
+    this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name, enemyId: nearest?.def.creature,
+      ...(this.keyed && this.keyed.en === this.message ? { messageKey: this.keyed.key, ...(this.keyed.vars ? { messageVars: this.keyed.vars } : {}) } : {}),
       nearby: use ?? station?.id ?? (site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
       x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,

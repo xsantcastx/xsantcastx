@@ -31,10 +31,11 @@ sprite sheet for the world, with identical costume, colours and silhouette.
 | `menu-paintings/01-npc-portraits.md` … `07-tools-and-delve-items.md` | painterly briefs |
 | `world-sprites/01-keeper.md` … `08-delve-creatures.md` | sprite briefs |
 
-Totals: **223 files** — 96 menu paintings (6 NPC portraits, 18 explorer portraits, 6 Thralls, 23 uniques,
-6 creature masters, 5 boss concept sheets, 5 town backdrops, 16 tool icons, 10 Delve kit and material icons,
-1 quest item) and 127 world sprites (1 Keeper sheet, 14 attachable equipment sprites, 7 creature sheets,
-12 NPC and automaton sheets, 16 buildings, 51 props, 26 Delve tiles). The 94 added in the second wave are
+Totals: **229 files** — 99 menu paintings (6 NPC portraits, 18 explorer portraits, 6 Thralls, 23 uniques,
+6 creature masters, 5 boss concept sheets, 5 town backdrops, 16 tool icons, 13 Delve kit and material icons,
+1 quest item) and 130 world sprites (1 Keeper sheet, 14 attachable equipment sprites, 7 creature sheets,
+12 NPC and automaton sheets, 16 buildings, 54 props, 26 Delve tiles). The six Delve-extras files (supports
+and blasting charges) are listed at the end of [INVENTORY.md](INVENTORY.md). The 94 added in the second wave are
 listed in [01-second-wave.md](01-second-wave.md). The tile strips are a new spec, W7, defined in
 [world-sprites/05-delve-tiles.md](world-sprites/05-delve-tiles.md).
 

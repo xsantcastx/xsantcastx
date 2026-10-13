@@ -676,3 +676,79 @@ Rune-Warden: a towering stone-and-gold guardian of the Godforge fragment, tall a
 ```text
 text, letters, runes as writing, watermark, signature, logo, UI, frame, border, card, vignette, background scene, floor, cast shadow, drop shadow, multiple subjects, cropped subject, blurry, lowres, jpeg artifacts, photo, photorealistic, glossy 3D plastic render, cartoon, anime, chibi, cute mascot, skulls, horns, demonic anatomy, angel wings, halo, real-world religious iconography
 ```
+
+## Delve extras: supports and blasting charges (added 2026-10-13)
+
+The Delve-extras merge added three craftable placeables that borrow other paintings today. Same S1 spec as the kit above; numbering continues `Items/Materials/` at 24.
+
+### `timber-support` - Timber Support
+
+| | |
+|---|---|
+| Save as | `Assets/Items/Materials/24-timber-support.png` |
+| Spec | S1 collectible - 1254x1254 PNG, transparent background, single object, 8% safe margin |
+| Priority | P1 |
+| Used in | Delve kit craft (x2: 3 World-Root Bark + 1 Thornroot, Smithing 5); Delve hotbar slot, bag, Crafting Bench, chests |
+| Shows today | stand-in via ART_ALIAS: the world-root-bark painting |
+
+_Delete the matching ART_ALIAS row when the file lands._
+
+**Prompt**
+
+```text
+Timber Support, a Delve kit item: a mine prop of two rough rootwood posts lashed with iron bands under a short cap beam, laid on the diagonal; reads as shoring that holds a ceiling up; simple and readable at 64 px. Infernal palette: ember red, iron black, furnace orange seams, basalt. single isolated object centred on a fully transparent background, three-quarter view, long items laid on the diagonal from lower left to upper right, filling about 80% of the frame. dark fantasy painterly digital illustration, ornate and highly detailed, deep charcoal and obsidian base tones, aged gold and brass filigree, restrained violet eclipse energy as the shared accent, key light from the upper left, crisp rim light, Eclipse Realms house style.
+```
+
+**Negative**
+
+```text
+text, letters, runes as writing, watermark, signature, logo, UI, frame, border, card, vignette, background scene, floor, cast shadow, drop shadow, multiple subjects, cropped subject, blurry, lowres, jpeg artifacts, photo, photorealistic, glossy 3D plastic render, cartoon, anime, chibi, cute mascot, skulls, horns, demonic anatomy, angel wings, halo, real-world religious iconography
+```
+
+### `basalt-support` - Basalt Support
+
+| | |
+|---|---|
+| Save as | `Assets/Items/Materials/25-basalt-support.png` |
+| Spec | S1 collectible - 1254x1254 PNG, transparent background, single object, 8% safe margin |
+| Priority | P1 |
+| Used in | Delve kit craft (x2: 3 Slag Fragment + 2 Cinder Ore + 1 World-Root Bark, Smithing 12); Delve hotbar slot, bag, Crafting Bench, chests |
+| Shows today | stand-in via ART_ALIAS: the godforge-slag painting |
+
+_Delete the matching ART_ALIAS row when the file lands._
+
+**Prompt**
+
+```text
+Basalt Support, a Delve kit item: a dressed basalt pillar with a squared capital and an iron collar, faint orange seams at the joints, heavier and more permanent than the timber prop; simple and readable at 64 px. Infernal palette: ember red, iron black, furnace orange seams, basalt. single isolated object centred on a fully transparent background, three-quarter view, long items laid on the diagonal from lower left to upper right, filling about 80% of the frame. dark fantasy painterly digital illustration, ornate and highly detailed, deep charcoal and obsidian base tones, aged gold and brass filigree, restrained violet eclipse energy as the shared accent, key light from the upper left, crisp rim light, Eclipse Realms house style.
+```
+
+**Negative**
+
+```text
+text, letters, runes as writing, watermark, signature, logo, UI, frame, border, card, vignette, background scene, floor, cast shadow, drop shadow, multiple subjects, cropped subject, blurry, lowres, jpeg artifacts, photo, photorealistic, glossy 3D plastic render, cartoon, anime, chibi, cute mascot, skulls, horns, demonic anatomy, angel wings, halo, real-world religious iconography
+```
+
+### `blast-charge` - Blasting Charge
+
+| | |
+|---|---|
+| Save as | `Assets/Items/Materials/26-blast-charge.png` |
+| Spec | S1 collectible - 1254x1254 PNG, transparent background, single object, 8% safe margin |
+| Priority | P1 |
+| Used in | Delve kit craft (x2: 3 Cinder Ore + 1 Ember Residue + 2 Slag Fragment, Smithing 10); lit from a staff in the Delve; Delve hotbar slot, bag, Crafting Bench, chests |
+| Shows today | stand-in via ART_ALIAS: the ember-stoker painting |
+
+_Delete the matching ART_ALIAS row when the file lands._
+
+**Prompt**
+
+```text
+Blasting Charge, a Delve kit item: a squat iron-banded keg of cinder powder with a coiled fuse ending in a small spark, glowing orange cracks between the staves; reads as dangerous but tool-like, never a bomb cartoon; simple and readable at 64 px. Infernal palette: ember red, iron black, furnace orange seams, basalt. single isolated object centred on a fully transparent background, three-quarter view, long items laid on the diagonal from lower left to upper right, filling about 80% of the frame. dark fantasy painterly digital illustration, ornate and highly detailed, deep charcoal and obsidian base tones, aged gold and brass filigree, restrained violet eclipse energy as the shared accent, key light from the upper left, crisp rim light, Eclipse Realms house style.
+```
+
+**Negative**
+
+```text
+text, letters, runes as writing, watermark, signature, logo, UI, frame, border, card, vignette, background scene, floor, cast shadow, drop shadow, multiple subjects, cropped subject, blurry, lowres, jpeg artifacts, photo, photorealistic, glossy 3D plastic render, cartoon, anime, chibi, cute mascot, skulls, horns, demonic anatomy, angel wings, halo, real-world religious iconography
+```

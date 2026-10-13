@@ -51,6 +51,7 @@ import { artFor } from '../art/art';
 import { formatCurrency, formatCurrencyExact } from '../economy/economy.model';
 import { NpcPresence, NpcDialogueService } from './npc-dialogue.service';
 import { DelveMissionState, NpcQuestService } from './npc-quest.service';
+import { MinigamePresenceService } from '../minigames/minigame-presence.service';
 
 /** Characters a second. The spec's 30, spelled out so the spec can assert it. */
 export const TYPE_CPS = 30;
@@ -61,7 +62,9 @@ export const TYPE_CPS = 30;
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @if (presence(); as p) {
+    <!-- Yields entirely while a station mini-game is open: at phone widths the
+         bubble otherwise covers the game's Skip / Cancel link. -->
+    @if (!yielding() && presence(); as p) {
       <div
         class="npc"
         #root
@@ -389,6 +392,8 @@ export class NpcDialogueComponent implements OnInit {
   private readonly destroyRef = inject(DestroyRef);
   private readonly dialogue = inject(NpcDialogueService);
   private readonly chains = inject(NpcQuestService);
+  /** True while a mini-game is mounted: the widget steps aside so Skip stays reachable. */
+  readonly yielding = inject(MinigamePresenceService).active;
 
   private readonly root = viewChild<ElementRef<HTMLElement>>('root');
 
@@ -443,6 +448,7 @@ export class NpcDialogueComponent implements OnInit {
      */
     afterRenderEffect(() => {
       this.presence();
+      this.yielding();
       this.open();
       this.typing();
       this.measure();

@@ -875,6 +875,29 @@ test('a worn weapon is held by its grip in the hand and points along the swing',
 
 // ── Ember Delve: terrain, tools, light ──────────────────────────────────────
 const terrainMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/terrain.ts'));
+const { DELVE_I18N } = loadTs(path.resolve(__dirname, '../src/app/play/world/delve.i18n.ts'));
+/** A keyed Delve line: its EN template, filled the way the HUD fills it, is exactly the engine's English; ES exists. */
+function assertDelveLine(s) {
+  const entry = DELVE_I18N[s.messageKey];
+  assert.ok(entry && entry.es, `${s.messageKey} has EN + ES`);
+  const vars = { ...(s.messageVars || {}) };
+  if (vars.item) { const label = terrainMod.placeableById(vars.item).label; vars.name = label; vars.lname = label.toLowerCase(); }
+  assert.equal(entry.en.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars[k])), s.message);
+}
+
+test('Delve lines: every play.delve.* key the engine, chest service and HUD use has EN + ES', () => {
+  const files = ['../src/app/play/engine/engine.ts', '../src/app/shared/delve/delve-chest.service.ts',
+    '../src/app/play/side-scroller.component.ts', '../src/app/play/side-scroller.component.html'];
+  let used = 0;
+  for (const file of files) {
+    const src = fs.readFileSync(path.resolve(__dirname, file), 'utf8');
+    for (const [, key] of src.matchAll(/'(play\.delve\.[\w.]+)'/g)) {
+      used++;
+      assert.ok(DELVE_I18N[key]?.en && DELVE_I18N[key]?.es, `${file}: ${key} has EN + ES`);
+    }
+  }
+  assert.ok(used > 40, `found ${used} keyed lines`);
+});
 const lightMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/lighting.ts'));
 const delveSpec = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve').terrain;
 function enterDelve(onWorldAction) {
@@ -1067,13 +1090,13 @@ test('biome bands: every row maps to its biome, and the engine reports where the
   // Standing in the Maws' cavern (row 19 floor): Basalt Caverns, and the bar names a Maw.
   engine.player.x = 60 * 32; engine.player.y = 610 + 19 * 32;
   assert.equal(state().biome, 'Basalt Caverns');
-  assert.equal(state().enemyName, 'Rivet Maw'); assert.ok(state().enemyHp > 0);
+  assert.equal(state().enemyName, 'Rivet Maw'); assert.equal(state().enemyId, 'rivet-maw'); assert.ok(state().enemyHp > 0);
   // At the surface ledge nothing is on the Keeper's level: the bar hides.
   engine.player.x = 260; engine.player.y = 610;
-  assert.equal(state().enemyHp, 0); assert.equal(state().enemyName, undefined);
+  assert.equal(state().enemyHp, 0); assert.equal(state().enemyName, undefined); assert.equal(state().enemyId, undefined);
   // In the fragment chamber, the guardian.
   engine.player.x = 100 * 32; engine.player.y = 610 + 51 * 32;
-  assert.equal(state().enemyName, 'Rune-Warden'); assert.equal(state().biome, 'Magma Halls');
+  assert.equal(state().enemyName, 'Rune-Warden'); assert.equal(state().enemyId, 'rune-warden'); assert.equal(state().biome, 'Magma Halls');
   engine.destroy();
 });
 
@@ -1234,11 +1257,15 @@ test('placing a block: B asks the satchel first, fills the cell, saves it, and t
   const t = buildRoom(engine);
   assert.equal(engine.place(), false, 'nothing chosen yet');
   assert.match(state().message, /Choose something to place/);
+  assert.equal(state().messageKey, 'play.delve.chooseFirst');
+  assertDelveLine(state());
   engine.setPlaceable('dirt-block');
   assert.equal(engine.place(), true);
   assert.equal(t.nodeAt(31, 8).id, 'packed-dirt');
   assert.equal(placed[0].item, 'dirt-block'); assert.equal(placed[0].cellKey, '31,8');
   assert.match(state().message, /Dirt block placed/);
+  assert.equal(state().messageKey, 'play.delve.placed'); assert.equal(state().messageVars.item, 'dirt-block');
+  assertDelveLine(state());
   // Stairs: the next goes on top of it.
   assert.equal(engine.place(), true);
   assert.equal(t.nodeAt(31, 7).id, 'packed-dirt');
@@ -1620,6 +1647,7 @@ test('blasting charges: Smithing-gated, lit from a staff, clear a small round of
   // No staff: refused before the satchel is asked.
   assert.equal(engine.place(), false);
   assert.match(state().message, /staff to light the fuse/);
+  assert.equal(state().messageKey, 'play.delve.needStaff'); assertDelveLine(state());
   assert.equal(placed.length, 0);
   engine.setTools({ pickaxe: 1, staff: 1 });
   // Bedrock and a protected stamp sit in the blast; neither may go.
@@ -1630,6 +1658,7 @@ test('blasting charges: Smithing-gated, lit from a staff, clear a small round of
   assert.equal(engine.place(), true);
   assert.equal(t.nodeAt(31, 8).id, 'blast-charge');
   assert.match(state().message, /Fuse lit/);
+  assert.equal(state().messageKey, 'play.delve.fuseLit'); assertDelveLine(state());
   // The fuse burns: nothing yet.
   for (let n = 0; n < 60; n++) engine.update(1 / 60);
   assert.equal(t.nodeAt(31, 9).id, 'rock');
@@ -2472,4 +2501,19 @@ test('sprite: town keepers and townsfolk use their sheets (idle/talk/walk) and f
   life.chatter.speaker = kael; log.length = 0;
   life.draw(recorder(log), frame);
   assert.equal(log.find(e => e[0] === 'drawImage' && e[1] === image)[3], 48, 'talk row');
+});
+
+test('enemy bar: every creature has a play.creature.<id> name tag in EN + ES, and its English matches the data', () => {
+  const { LIFE_I18N } = loadTs(path.resolve(__dirname, '../src/app/play/world/life.i18n.ts'));
+  for (const town of Object.values(world.TOWNS).filter(Boolean)) {
+    for (const area of [town, ...town.hunts]) {
+      for (const monster of area.monsters) {
+        const tag = LIFE_I18N[`play.creature.${monster.creature}`];
+        assert.ok(tag, `${town.id}/${area.id}: ${monster.creature} has a name tag`);
+        assert.equal(tag.en, monster.name, `${monster.creature}: EN matches the MonsterDef name`);
+        assert.ok(tag.es && tag.es.trim(), `${monster.creature}: has Spanish`);
+      }
+    }
+  }
+  assert.ok(LIFE_I18N['play.creature.unknown'].es);
 });
