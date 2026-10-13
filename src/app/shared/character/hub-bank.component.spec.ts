@@ -20,7 +20,7 @@ function snap(quantity: number, extra: InventorySnapshot['stacks'] = []): Invent
     goldFromSales: 0,
     sold: 0,
     usedRows: 1 + extra.length,
-    satchelCap: Infinity, overflow: 0, full: false,
+    satchelCap: 40, overflow: 0, stackPlace: {}, inVault: 0, full: false,
   };
 }
 

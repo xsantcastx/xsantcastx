@@ -108,6 +108,7 @@ import {
   vaultHolder,
   vaultTabOf,
   type Capacity,
+  type Layout,
   type VaultTabId,
 } from './inventory-layout';
 
@@ -146,9 +147,24 @@ export interface InventorySnapshot {
   satchelCap: number;
   /** Things waiting in Overflow (instances and stack kinds). */
   overflow: number;
+  /** Where each stack kind shows: the satchel, the quest strip, or a Vault tab. */
+  stackPlace: Readonly<Record<string, StackPlace>>;
+  /** Instances (gear, charms) resting in the Vault, Overflow included. */
+  inVault: number;
   /** True at the record budget: Gold purchases that mint an item are refused. */
   full: boolean;
 }
+
+export type StackPlace = 'satchel' | 'quest' | VaultTabId;
+
+/**
+ * Something that arrived to a full satchel and went to the Vault instead
+ * (inventory spec §5.3). Not for things that live in their own tab anyway (ore
+ * in an owned Materials tab): only the ones the full satchel turned away.
+ */
+export type VaultRouted =
+  | { kind: 'item'; id: string; name: string; tab: VaultTabId }
+  | { kind: 'stack'; stackKey: string; tab: VaultTabId };
 
 /** `inventoryCensus()` — see {@link InventoryService.census}. */
 export interface InventoryCensus {
@@ -183,6 +199,9 @@ export class InventoryService {
   private readonly sold$$ = new Subject<{ item: GameItem; gold: number }>();
   private readonly equipped$$ = new Subject<GameItem>();
   private readonly improved$$ = new Subject<GameItem>();
+  private readonly routed$$ = new Subject<VaultRouted>();
+  /** Items `settle` moved during the current write; announced by `publish()` once it lands. */
+  private routeQueue: string[] = [];
 
   readonly snapshot$: Observable<InventorySnapshot> = this.snapshot$$.asObservable();
   /** One per item that lands. Drives the drop toast. */
@@ -211,6 +230,8 @@ export class InventoryService {
   readonly equipped$: Observable<GameItem> = this.equipped$$.asObservable();
   /** One per successful upgrade or temper, for the same reason. */
   readonly improved$: Observable<GameItem> = this.improved$$.asObservable();
+  /** One per arrival a full satchel turned away to the Vault. Never on load or a merge. */
+  readonly routed$: Observable<VaultRouted> = this.routed$$.asObservable();
 
   get snapshot(): InventorySnapshot { return this.snapshot$$.value; }
 
@@ -393,6 +414,7 @@ export class InventoryService {
     }
     this.publish();
     this.stackGranted$$.next({ stackKey, quantity });
+    this.announceStack(stackKey);
     return true;
   }
 
@@ -1624,6 +1646,30 @@ export class InventoryService {
 
   private publish(): void {
     this.snapshot$$.next(this.snapshotOf(this.ledger));
+    // Announce only what is in the Vault now: a write that failed and rolled
+    // back after settling must not report a move that never happened.
+    const queued = this.routeQueue;
+    this.routeQueue = [];
+    for (const id of queued) {
+      const row = this.instanceRow(id);
+      const tab = row ? vaultTabOf(row.location) : null;
+      if (row && tab) this.routed$$.next({ kind: 'item', id, name: row.name ?? id, tab });
+    }
+  }
+
+  /** A stack that landed outside the satchel because the satchel is full, not because it has its own tab. */
+  private announceStack(stackKey: string): void {
+    const place = this.snapshot.stackPlace[stackKey];
+    if (!place || place === 'satchel' || place === 'quest') return;
+    const cls = slotClassOf(stackKey);
+    const home = cls === 'material' ? 'materials' : cls === 'supply' ? 'supplies' : null;
+    if (place !== home) this.routed$$.next({ kind: 'stack', stackKey, tab: place });
+  }
+
+  /** The current placement of everything, for the Vault station. */
+  vaultLayout(): { layout: Layout; capacity: Capacity } {
+    const capacity = this.capacity();
+    return { layout: layoutOf(this.ledger, capacity), capacity };
   }
 
   private snapshotOf(ledger: InventoryLedger): InventorySnapshot {
@@ -1669,6 +1715,8 @@ export class InventoryService {
       usedRows: layout.satchelUsed,
       satchelCap: capacity.satchel,
       overflow: layout.tabs.overflow.length,
+      stackPlace: placesOf(layout),
+      inVault: Object.values(layout.instancesIn).reduce((sum, n) => sum + n, 0),
       full: instanceRecordCount(ledger) >= INSTANCE_RECORD_BUDGET,
     };
   }
@@ -1683,14 +1731,20 @@ export class InventoryService {
     return this.capacityFor(this.ledger);
   }
 
-  /** Load-time pass: delete legacy Sigil records, then settle. */
+  /** Load-time pass: delete legacy Sigil records, then settle. Quiet: nothing just arrived. */
   private normalised(ledger: InventoryLedger): InventoryLedger {
-    return this.settled(dropLegacySigils(ledger, this.deviceId, Date.now()));
+    return this.settled(dropLegacySigils(ledger, this.deviceId, Date.now()), false);
   }
 
-  /** `settle` against the current capacity: holds the satchel to its limit by moving, never deleting. */
-  private settled(ledger: InventoryLedger): InventoryLedger {
-    return settle(ledger, this.capacityFor(ledger), this.deviceId, Date.now()).ledger;
+  /**
+   * `settle` against the current capacity: holds the satchel to its limit by
+   * moving, never deleting. What it moved is announced on `routed$` by the
+   * next `publish()` (a write that fails never publishes).
+   */
+  private settled(ledger: InventoryLedger, announce = true): InventoryLedger {
+    const result = settle(ledger, this.capacityFor(ledger), this.deviceId, Date.now());
+    if (announce && result.moved.length) this.routeQueue.push(...result.moved);
+    return result.ledger;
   }
 
   private mapInstances(
@@ -1722,6 +1776,16 @@ export class InventoryService {
       return 'unknown';
     }
   }
+}
+
+function placesOf(layout: Layout): Record<string, StackPlace> {
+  const out: Record<string, StackPlace> = {};
+  for (const cell of layout.satchel) if (cell.kind === 'stack') out[cell.key] = 'satchel';
+  for (const cell of layout.quest) out[cell.key] = 'quest';
+  for (const [tab, cells] of Object.entries(layout.tabs) as [VaultTabId, Layout['satchel']][]) {
+    for (const cell of cells) if (cell.kind === 'stack') out[cell.key] = tab;
+  }
+  return out;
 }
 
 /**
