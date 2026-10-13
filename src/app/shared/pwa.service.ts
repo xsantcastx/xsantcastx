@@ -66,8 +66,6 @@ export class PwaService {
   readonly online = signal(true);
   /** True when the browser has offered an install prompt we are holding. */
   readonly canInstall = computed(() => this.hasPromptEvent() && !this.standalone());
-  /** True once a newer service worker is waiting to take over. */
-  readonly updateReady = signal(false);
 
   init(): void {
     if (!this.isBrowser || this.initialised) return;
@@ -87,20 +85,9 @@ export class PwaService {
     if (!('serviceWorker' in navigator)) return;
 
     const register = () => {
+      // Updates (a newer worker, a new deploy) are watched by AppUpdateService,
+      // which owns the "new version ready" toast; see shared/pwa/app-update.service.ts.
       navigator.serviceWorker.register('/service-worker.js', { scope: '/' })
-        .then((reg) => {
-          reg.addEventListener('updatefound', () => {
-            const incoming = reg.installing;
-            if (!incoming) return;
-            incoming.addEventListener('statechange', () => {
-              // `controller` is null on the very first install — that is a fresh
-              // registration, not an update, and must not surface a prompt.
-              if (incoming.state === 'installed' && navigator.serviceWorker.controller) {
-                this.updateReady.set(true);
-              }
-            });
-          });
-        })
         .catch((err) => {
           console.warn('[GODFORGE] service worker registration failed', err);
         });
@@ -157,19 +144,6 @@ export class PwaService {
   /** The offer actually reached the screen. Counted once per page load by the caller. */
   noteOfferShown(): void {
     this.analytics.trackPwaInstall('shown', this.platform());
-  }
-
-  /** Applies a waiting update and reloads once it has taken control. */
-  applyUpdate(): void {
-    if (!this.isBrowser || !('serviceWorker' in navigator)) return;
-    navigator.serviceWorker.getRegistration().then((reg) => {
-      if (reg?.waiting) {
-        navigator.serviceWorker.addEventListener('controllerchange', () => {
-          window.location.reload();
-        }, { once: true });
-        reg.waiting.postMessage('SKIP_WAITING');
-      }
-    });
   }
 
   // ─── internals ───────────────────────────────────────────────────────────

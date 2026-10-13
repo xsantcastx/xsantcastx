@@ -994,6 +994,30 @@ export class GameStateGateway {
     await this.pushDirty({ batched: true });
   }
 
+  /**
+   * Settle everything before the page reloads itself (the "new version is
+   * ready" toast). Owners flush first, synchronously, so every throttled write
+   * is on disk before anything else can happen — localStorage is the part that
+   * must survive. The cloud push is then given `timeoutMs` to land and is not
+   * waited for past that: the queue is in the cache and the next load pushes it,
+   * exactly as after a `pagehide` that the SDK could not finish.
+   *
+   * Nothing is rehydrated: no external write happened, so the owners' memory
+   * IS the latest state, and the `pagehide` flush the reload fires writes the
+   * same values again (see the pagehide note in local-save-registry.service.ts).
+   */
+  async settleForReload(timeoutMs = 2_500): Promise<void> {
+    this.flushOwners();
+    if (!this.attached || this.dirty.size === 0) return;
+    this.cancelFlush();
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    await Promise.race([
+      this.pushDirty({ batched: true }).catch(() => { /* offline: the queue holds */ }),
+      new Promise<void>(resolve => { timer = setTimeout(resolve, timeoutMs); }),
+    ]);
+    if (timer !== null) clearTimeout(timer);
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // Reading the cloud
   // ───────────────────────────────────────────────────────────────────────────
