@@ -64,6 +64,7 @@ import type { Quest } from '../quests/quest.model';
 import { npcById } from '../npc/npc.model';
 import { AnalyticsService } from '../../analytics.service';
 import { TranslationService } from '../../translation.service';
+import { ONBOARDING_I18N } from './onboarding.i18n';
 
 /** One of the two places step 4 offers. Both are real, live routes. */
 interface Doorway {
@@ -165,29 +166,37 @@ export class OnboardingComponent implements OnInit, OnDestroy {
    * dispatchable the moment this screen closes. It is also what makes every
    * other door on this list affordable, which is why it is marked and listed
    * first rather than simply being one of four.
+   *
+   * Since every page became a place in the walkable world (navbar: Play +
+   * Character), the doors open the world rather than standalone pages: the
+   * first one walks straight into /play, where the HUD's goal line takes over
+   * (buy a building at ~15 Gold, defeat a Maw, forge a blade, dig the Delve),
+   * and the others open their station in-world with `?at=`. The Rune Forge
+   * door went: at 600 Gold a strike it was the one door a new Keeper could not
+   * use, and the Seamworks it stands in is where the world door lands anyway.
    */
   readonly doorways: readonly Doorway[] = [
     {
-      path: '/sanctum',
-      titleKey: 'onboarding.door.scout.title',
-      bodyKey: 'onboarding.door.scout.body',
-      accent: 'celestial',
+      path: '/play',
+      titleKey: 'onboarding.door.world.title',
+      bodyKey: 'onboarding.door.world.body',
+      accent: 'forge',
       first: true,
     },
     {
-      path: '/forge/runes',
-      titleKey: 'onboarding.door.runes.title',
-      bodyKey: 'onboarding.door.runes.body',
-      accent: 'forge',
+      path: '/play?at=sanctum',
+      titleKey: 'onboarding.door.scout.title',
+      bodyKey: 'onboarding.door.scout.body',
+      accent: 'celestial',
     },
     {
-      path: '/forge/crafting',
+      path: '/play?at=crafting',
       titleKey: 'onboarding.door.bench.title',
       bodyKey: 'onboarding.door.bench.body',
       accent: 'verdant',
     },
     {
-      path: '/market',
+      path: '/play?at=market',
       titleKey: 'onboarding.door.market.title',
       bodyKey: 'onboarding.door.market.body',
       accent: 'luminous',
@@ -200,6 +209,7 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   }
 
   constructor() {
+    this.i18n.register(ONBOARDING_I18N);
     // Every step change is a funnel event. An effect rather than a call inside
     // next(): the step signal is also moved by the dots and by finish(), and a
     // funnel that only counts one of the three paths is worse than none.
@@ -363,6 +373,8 @@ export class OnboardingComponent implements OnInit, OnDestroy {
     const quest = this.previewQuest();
     if (quest) this.analytics.trackDailyQuestStart(quest.id);
     this.complete();
+    // The last button says "Enter the Godforge": the world is /play now, not this page.
+    void this.router.navigateByUrl('/play');
   }
 
   // ─── Keyboard and focus ─────────────────────────────────────────────────
