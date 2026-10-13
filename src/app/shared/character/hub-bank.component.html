@@ -59,6 +59,10 @@
   @if (snap.full) {
     <p class="hb__full" role="status">{{ t('loadout.bag.full') }}</p>
   }
+  @if (snap.inVault) {
+    <!-- Read-only: Vault gear is listed and moved at the Vault itself (inventory spec §5.2). -->
+    <p class="hb__vault">{{ t('hub.bank.inVault', { n: snap.inVault }) }}</p>
+  }
 
   @if (dropping; as item) {
     <div class="hb__confirm" role="alertdialog" [attr.aria-label]="t('loadout.drop.confirmTitle')">

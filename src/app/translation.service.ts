@@ -858,6 +858,7 @@ export class TranslationService {
     'hub.bank.bulkTitle': { en: 'Drop selected', es: 'Tirar seleccion' },
     'hub.bank.bulkBody': { en: 'Drop {{n}} rows? They are gone for good.', es: 'Tirar {{n}} filas? Se pierden para siempre.' },
     'hub.bank.empty': { en: 'The chest is empty. Mine, strike the anvil, or craft.', es: 'El cofre esta vacio. Mina, golpea el yunque o forja.' },
+    'hub.bank.inVault': { en: '{{n}} more rest in your Vault. Visit the Vault in the Basalt Seamworks to take them out.', es: '{{n}} mas descansan en tu Boveda. Visita la Boveda en los Talleres de Basalto para sacarlos.' },
     'hub.bank.material': { en: 'Material', es: 'Material' },
     'hub.bank.rune': { en: 'Rune', es: 'Runa' },
     'hub.bank.runeword': { en: 'Runeword', es: 'Palabra runica' },

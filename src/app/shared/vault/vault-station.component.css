@@ -1,0 +1,72 @@
+/**
+ * vault-station.component.css — the Vault on the station kit.
+ *
+ * Frame, tabs, strip, journal, detail head and button are the kit's. This is
+ * only the search/sort row, the locked line and the Details list. Tokens only.
+ */
+:host { display: block; }
+
+.vs-hero { display: grid; gap: var(--space-3); min-width: 0; }
+
+/* Search + sort: one row, both full tap height. */
+.vs-find { display: flex; gap: var(--space-2); min-width: 0; }
+.vs-search,
+.vs-sort select {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--edge-hairline);
+  background: var(--surface-well);
+  color: var(--text-heading);
+  font: var(--text-sm) var(--font-ui);
+}
+.vs-search { flex: 1 1 auto; min-width: 0; }
+.vs-sort select { min-width: 7.5rem; }
+.vs-search:focus-visible,
+.vs-sort select:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+.vs-detail { display: grid; gap: var(--space-3); min-width: 0; align-content: start; }
+
+.vs-locked,
+.vs-announce {
+  margin: 0;
+  color: var(--text-body);
+  font-size: var(--text-sm);
+}
+.vs-announce { color: var(--text-heading); }
+
+.vs-more { display: grid; gap: var(--space-3); color: var(--text-body); font-size: var(--text-sm); }
+.vs-more p, .vs-more h3 { margin: 0; }
+.vs-more h3 { color: var(--text-heading); font-size: var(--text-sm); }
+.vs-note { color: var(--text-muted); }
+
+.vs-offers { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--space-2); }
+.vs-offers li { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.vs-offers em { color: var(--text-muted); font-style: normal; }
+
+.vs-chip {
+  min-height: var(--tap-min);
+  padding: 0 var(--space-3);
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--edge-gold);
+  background: transparent;
+  color: var(--gold-bright);
+  font: var(--weight-bold) var(--text-sm) var(--font-ui);
+  cursor: pointer;
+  justify-self: start;
+}
+.vs-chip:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+.vs-sr {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* Many tabs: let the row scroll sideways on a phone instead of wrapping into a wall. */
+@media (max-width: 640px) {
+  .vs-tabs { display: block; overflow-x: auto; }
+}
