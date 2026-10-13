@@ -43,7 +43,7 @@ world — and every system visible while it works.
 |---|---|---|
 | **Infernal**: Basalt Seamworks | Crafting Bench, Rune Forge, Enchanting Table, Material Vendor, quest stations (ore, forge, beacon, passage) | Cinder ore, ember residue |
 | **Luminous** | Market (upgrades) | Light-touched materials |
-| **Umbral** | Gambler, Exchange | Shadow materials, scrolls |
+| **Umbral** | Gambler, Reels, Exchange | Shadow materials, scrolls |
 | **Celestial**: Meridian Orrery | Codex (observatory), Leaderboards board | Star fragments, runes |
 | **Verdant**: Rootglass Canopy | Sanctum (expeditions), Quests board, Arena gate, Trials gate | Rootglass, seeds |
 | *Everywhere* | Character + Satchel overlays, Waystone, Places list | |
@@ -211,6 +211,7 @@ Replaces "hybrid sprites + paintings" (2026-10-12). Art bible: `docs/art/style-g
   - [x] S5+S6 shipped: the Vault station (Vault Clerk, Basalt Seamworks x=330; tabs Satchel/General/Materials/Supplies/Gear/General II–IV/Overflow, search + sort, one button per view, Gold rows/tabs from `STORAGE_CURVE`); `VAULT_LIVE` on: 40 (+8 per row) slot satchel with used/cap everywhere, routing to the Vault with a message ("Satchel full — Cinder Ore sent to the Vault: General I tab"); every item surface updated; per-device stack folds (`stackFolds`, 48-seed multi-device property test). `e2e/play-vault.spec.ts`. S7 (market server reads `stackFolds`, accepts Vault items) is owed before the market deploy
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for the pixel sprite sheets (the rig retires after the A/B)
+- [~] **The Croupier's Reels** (owner, 2026-10-13: "slot machines… stake-style super bonus"; branch `worktree-agent-afd96296a31970cf4`): Umbral station between the Gambler and the Exchange, run by the Croupier (`/play?at=reels`); 3×3, 5 lines, world symbols, Eclipse Round (10 free spins, sticky ×2–×50 rune orbs, paid at the end), prizes through the rune/material gateways; Gold only, RTP 92.1% Gold + ~0.7% prizes (exact + simulated proof in `economy-sim.mjs --reels`, checked in `--check`), bet cap = two minutes of income. Shared kit `src/app/shared/games/` (seeded RNG, idempotent play ledger, bet tiers, RTP harness, win celebration) for Rune Drop / Seam Sweeper / Eclipse Ascent. Handoff `docs/handoff/reels.md`; lore line pending owner review; art briefs `world-sprites/10-reels.md`
 
 ---
 

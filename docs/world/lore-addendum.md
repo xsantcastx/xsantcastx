@@ -92,6 +92,20 @@ Reused text, not new lore, except the two block lines:
 The Cinder Bailiff and Seam Eater Bestiary notes quote the Atlas's "Location
 and role" column verbatim; no new lore.
 
+### The Reels (`shared/reels/reels.i18n.ts`, `reels.lore`; EN + ES)
+
+"Three obsidian drums in the Nocturne Archive, cut with what the realms spend:
+ore, runes, a Maw's iron grin, a Heartstone. When three agree on a line the
+Archive pays as if its record had been right all along. When the Eclipse turns
+up three times, one possibility passes over another, and for a few turns the
+runes count for more."
+
+Builds on Canon (Umbral: the Nocturne Archive, an obsidian library whose
+corridors exist only where two reflections disagree) and Codex, Eclipse: "The
+pressure of one possibility passing over another." Every symbol is an existing
+world thing (Cinder Ore, Ash and Ember runes, Rivet Maw, Infernal Heartstone,
+the Eclipse rune); it is run by the existing Croupier. No new names.
+
 ## Not covered
 
 Stat names, recipe blurbs, socket words and Collection lore are English-only

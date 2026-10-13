@@ -46,6 +46,7 @@ import { mergeInfusionLedgers } from '../enchanting/infusion.model';
 import { mergeDelveSaves } from '../delve/delve-save.model';
 import { mergeDelveLore } from '../delve/delve-lore.model';
 import { mergeGatherSaves } from '../skills/gather-save.model';
+import { mergeGamesLedgers } from '../games/play-ledger';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -292,6 +293,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // four: they are monotone counters, so the higher of two devices' copies is
     // the true one, and taking the higher pity count can only ever pay a
     // guarantee out sooner than one device alone had earned it.
+  },
+  {
+    key: 'godforge-games',
+    collection: 'economy',
+    doc: 'games',
+    label: 'games of chance',
+    // Every play of the Reels (and the games after it), stored with the seed
+    // and outcome under its mutation id so a play is paid exactly once. The
+    // structural merge would union the arrays inside a stored outcome, so it
+    // has its own merge. See play-ledger mergeGamesLedgers.
+    merge: mergeGamesLedgers,
   },
   {
     key: 'godforge-exchange',

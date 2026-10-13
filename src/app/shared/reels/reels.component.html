@@ -1,0 +1,111 @@
+<!-- The Reels: cabinet → bet → ONE "Spin · N Gold". Pay table, odds, rules
+     and history are behind Details (stations must be dummy-simple). -->
+<app-station-shell class="rl"
+                   [title]="t('reels.title')"
+                   [purpose]="t('reels.purpose')"
+                   [showTitle]="!inWorld"
+                   [detailsLabel]="t('stationUi.details')"
+                   [detailsHint]="t('reels.details')"
+                   [(detailsOpen)]="detailsOpen">
+
+  <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
+
+  <div stationHero class="rl-stage">
+    <div class="rl-cabinet" [class.is-shake]="shake" [attr.data-phase]="phase">
+      @if (phase === 'bonus' || (freeTotal > 0 && phase === 'idle')) {
+        <div class="rl-round" aria-hidden="true">
+          <span class="rl-round__spins">{{ freeIndex }}/{{ freeTotal }}</span>
+          <span class="rl-round__mult">×{{ multiplier || 1 }}</span>
+        </div>
+      }
+      <div class="rl-window" role="img" [attr.aria-label]="t('reels.window')">
+        @for (col of cols; track col) {
+          <div class="rl-reel" [class.is-rolling]="rolling[col]" [attr.data-reel]="col">
+            @if (rolling[col]) {
+              <div class="rl-strip" aria-hidden="true">
+                @for (s of blur; track $index) {
+                  <span class="rl-cell"><svg class="rl-sprite" viewBox="0 0 16 16" shape-rendering="crispEdges">
+                    @for (l of layers(s); track l.color) { <path [attr.fill]="l.color" [attr.d]="l.d" /> }
+                  </svg></span>
+                }
+              </div>
+            } @else {
+              @for (row of rows; track row) {
+                <span class="rl-cell" [class.is-lit]="isLit(row * 3 + col)" [attr.data-symbol]="cells[row * 3 + col]">
+                  <svg class="rl-sprite" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+                    @for (l of layers(cells[row * 3 + col]); track l.color) { <path [attr.fill]="l.color" [attr.d]="l.d" /> }
+                  </svg>
+                  @if (orbs[row * 3 + col]; as v) { <em class="rl-orb">×{{ v }}</em> }
+                </span>
+              }
+            }
+          </div>
+        }
+        <svg class="rl-lines" viewBox="0 0 3 3" preserveAspectRatio="none" aria-hidden="true">
+          @for (l of litLines; track l) {
+            <line [attr.x1]="linePoints[l].x1" [attr.y1]="linePoints[l].y1" [attr.x2]="linePoints[l].x2" [attr.y2]="linePoints[l].y2" />
+          }
+        </svg>
+      </div>
+      <button type="button" class="rl-lever" [class.is-pulled]="phase === 'spin'" tabindex="-1" aria-hidden="true"
+              [title]="t('reels.lever')" (click)="spin()"><span class="rl-lever__knob"></span></button>
+      <app-win-celebration [win]="celebrate.win" [bet]="celebrate.bet" [seq]="celebrate.seq" />
+    </div>
+
+    <p class="rl-result" role="status" aria-live="polite">{{ result }}</p>
+    @if (freeTotal > 0) {
+      <p class="rl-roundline">{{ t('reels.roundLines', { n: fmt(roundLinesGold) }) }} · {{ t('reels.multiplier', { n: multiplier || 1 }) }}</p>
+    }
+
+    <div class="rl-controls">
+      <div class="rl-bet" role="group" [attr.aria-label]="t('games.bet.label')">
+        <button type="button" class="rl-bet__btn" [attr.aria-label]="t('games.bet.less')" [disabled]="busy || bet <= bets[0]" (click)="stepBet(-1)">−</button>
+        <span class="rl-bet__val"><small>{{ t('games.bet.label') }}</small>{{ fmt(bet) }}</span>
+        <button type="button" class="rl-bet__btn" [attr.aria-label]="t('games.bet.more')" [disabled]="busy || bet >= bets[bets.length - 1]" (click)="stepBet(1)">+</button>
+      </div>
+      <app-action-button class="rl-spin" [label]="t('reels.spin')" [costs]="costs" chips="currency"
+                         [blocked]="blocked" [pending]="!hydrated" (act)="spin()" (refused)="result = $event" />
+      @if (busy) { <button type="button" class="rl-skip" (click)="skip()">{{ t('reels.skip') }}</button> }
+    </div>
+  </div>
+
+  <div stationDetails class="rl-more">
+    <h3>{{ t('reels.payTable') }}</h3>
+    <ul class="rl-pay">
+      @for (r of payRows; track r.id) {
+        <li>
+          <svg class="rl-pay__icon" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+            @for (l of r.layers; track l.color) { <path [attr.fill]="l.color" [attr.d]="l.d" /> }
+          </svg>
+          <span><b>{{ r.name }}</b> {{ r.line }}@if (r.prize) { <small> · {{ r.prize }}</small> }</span>
+          <em>{{ r.odds }}</em>
+        </li>
+      }
+      <li>
+        <svg class="rl-pay__icon" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+          @for (l of eclipseLayers; track l.color) { <path [attr.fill]="l.color" [attr.d]="l.d" /> }
+        </svg>
+        <span><b>Eclipse</b> {{ eclipseLine }}</span>
+        <em>{{ eclipseOdds }}</em>
+      </li>
+    </ul>
+    <p>{{ t('reels.lines') }} {{ t('reels.odds') }} <i>{{ t('reels.oddsCol') }}</i></p>
+    <p>{{ roundRules }}</p>
+    <p>{{ orbOdds }}</p>
+    <p class="rl-proof">{{ t('reels.rtp', { rtp: stats.rtp, gold: stats.gold }) }}
+      {{ t('reels.bonusOdds', { n: stats.bonusOneIn }) }}
+      {{ t('reels.hitOdds', { n: stats.hitOneIn, max: stats.maxX }) }}</p>
+    <p>{{ t('reels.honest') }}</p>
+    <p>{{ capLine }} {{ t('games.goldOnly') }}</p>
+    <p>{{ record }}</p>
+    @if (history.length) {
+      <h3>{{ t('reels.history') }}</h3>
+      <ol class="rl-history">
+        @for (h of history; track h.id) {
+          <li [class.is-won]="h.won">{{ h.text }}@if (h.bonus) { <small> · {{ t('reels.historyBonus') }}</small> }</li>
+        }
+      </ol>
+    }
+    <p class="rl-lore">{{ t('reels.lore') }}</p>
+  </div>
+</app-station-shell>

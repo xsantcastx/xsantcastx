@@ -51,6 +51,22 @@ function loadTs(rel) {
   return module.exports;
 }
 
+/** As loadTs, for a pure .ts module whose only imports are relative pure .ts modules. */
+function loadTsTree(rel, cache = new Map()) {
+  const file = resolve(here, '..', rel);
+  if (cache.has(file)) return cache.get(file).exports;
+  const module = { exports: {} };
+  cache.set(file, module);
+  const code = ts.transpileModule(readFileSync(file, 'utf8'), {
+    compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS },
+  }).outputText;
+  const req = name => (name.startsWith('.')
+    ? loadTsTree(resolve(dirname(file), name.endsWith('.ts') ? name : `${name}.ts`).slice(resolve(here, '..').length + 1), cache)
+    : require(name));
+  new Function('require', 'module', 'exports', code)(req, module, module.exports);
+  return module.exports;
+}
+
 const C = loadTs('src/app/shared/economy/economy-curve.ts');
 const V2 = loadTs('src/app/shared/economy/economy-legacy-v2.ts');
 
@@ -479,6 +495,8 @@ function check(E) {
   if (!(first <= 15)) fails.push(`first purchase at ${fmtT(first)} (must be <= 15 s)`);
   if (inTen < 20) fails.push(`${inTen} purchases in the first 10 min (must be >= 20)`);
   console.log(`economy-sim --check (${E.name}): first purchase ${fmtT(first)}, ${inTen} purchases in 10 min`);
+  // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
+  fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   if (fails.length) {
     for (const f of fails) console.error(`  FAIL ${f}`);
     process.exit(1);
@@ -574,7 +592,73 @@ function inventoryScenario(E) {
   console.log('  before sigils). Now nothing is evicted, and a rune find adds no record.');
 }
 
-if (argv.inventory) {
+// ───────────────────────────────────────────────────────────────────────────
+// --reels: the Croupier's Reels (src/app/shared/reels/reels.model.ts) and the
+// shared bet ladder (economy-curve GAMES_BET). Gold only; a sink.
+//   RTP proof: exact base lines + scatter + trigger, the Eclipse Round
+//   simulated `rounds` times, prizes priced exactly per stake; then whole
+//   plays on the shared harness (games/rtp-sim.ts) as a cross-check.
+// ───────────────────────────────────────────────────────────────────────────
+
+const RTP_BAND = [0.92, 0.94];
+
+function reelsScenario({ rounds, plays, quiet }) {
+  const R = loadTsTree('src/app/shared/reels/reels.model.ts');
+  const G = loadTsTree('src/app/shared/games/rtp-sim.ts');
+  const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
+  const fails = [];
+  const pct = x => `${(x * 100).toFixed(2)}%`;
+
+  const th = R.reelsTheory(rng.seededRng('economy-sim:reels'), rounds);
+  const stakes = [10, 100, 1_000, 100_000, 1e9];
+  const totals = stakes.map(b => [b, th.goldRtp + R.prizeRtp(b, th)]);
+  if (!quiet) {
+    console.log(`Reels · RTP proof (${fmtN(rounds)} simulated Eclipse Rounds)\n`);
+    console.log(`  base lines        ${pct(th.baseLines)}   (exact)`);
+    console.log(`  Eclipse scatter   ${pct(th.scatter)}   (exact)`);
+    console.log(`  Eclipse Round     1 in ${(1 / th.trigger).toFixed(1)} plays (exact), pays ${th.roundMean.toFixed(2)}× bet on average (sd ${th.roundSd.toFixed(1)}), ${th.roundSpins.toFixed(2)} free spins`);
+    console.log(`  Gold RTP          ${pct(th.goldRtp)} ± ${pct(th.goldRtpSe)} (1 s.e.)   stated: ${pct(R.REELS_STATS.goldRtp)}`);
+    console.log('  with prizes       ' + totals.map(([b, t]) => `${fmtN(b)}: ${pct(t)}`).join(' · '));
+    console.log(`  a 1e6-play measurement has sd ${pct(th.sdOf1e6)}`);
+  }
+  if (Math.abs(th.goldRtp - R.REELS_STATS.goldRtp) > 0.005) fails.push(`Gold RTP ${pct(th.goldRtp)} drifted from the stated ${pct(R.REELS_STATS.goldRtp)}`);
+  for (const [b, t] of totals) if (t < RTP_BAND[0] || t > RTP_BAND[1]) fails.push(`RTP at bet ${b} is ${pct(t)}, outside ${pct(RTP_BAND[0])}–${pct(RTP_BAND[1])}`);
+  if (R.MAX_WIN_X > 10_000) fails.push('max win above ×10,000');
+
+  if (plays) {
+    const rep = G.simulateRtp({ play: R.playReels, value: R.reelsReturn,
+      tags: (o, b) => [o.bonus && 'bonus', G.winTier(o.win, b)].filter(Boolean) }, plays, 100, 'economy-sim:plays');
+    const oneIn = k => (rep.tags[k] ? `1 in ${(plays / rep.tags[k]).toFixed(0)}` : '-');
+    if (!quiet) {
+      console.log(`\n  ${fmtN(plays)} whole plays at bet 100: RTP ${pct(rep.rtp)}, hit 1 in ${(1 / rep.hitRate).toFixed(2)}, round ${oneIn('bonus')}, Big ${oneIn('big')}, Mega ${oneIn('mega')}, Eclipse Win ${oneIn('eclipse')}, max ×${fmtN(rep.maxX)}`);
+    }
+    if (Math.abs(rep.rtp - R.REELS_STATS.rtp) > 0.01) fails.push(`${plays} plays returned ${pct(rep.rtp)}, more than 1 point from ${pct(R.REELS_STATS.rtp)}`);
+  }
+
+  // Bet ladder against the curve: the first bet within minutes, and the cap
+  // never more than two minutes of income past the floor.
+  const { log } = simulate(PROPOSED);
+  const stages = [[60, '1m'], [300, '5m'], [1800, '30m'], [3600, '1h'], [86400, '1d'], [7 * 86400, '7d']];
+  if (!quiet) console.log('\n  Bet cap (two minutes of income, floor 50):  ' + stages.map(([t, l]) => `${l}: ${fmtN(C.gamesBetCap(log.at[t]?.gps ?? 0))}`).join(' · '));
+  const minBet = C.GAMES_BET.min;
+  const bankAt = t => log.trace.filter(([tt]) => tt <= t).map(([, total]) => total).pop() ?? 0;
+  if (!(bankAt(120) >= minBet)) fails.push(`the first ${minBet}-Gold bet is not affordable by 2 min`);
+  for (const [t] of stages) {
+    const gps = log.at[t]?.gps ?? 0;
+    const cap = C.gamesBetCap(gps);
+    if (cap > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps)) fails.push(`cap ${cap} above two minutes of income at ${t}s`);
+  }
+
+  console.log(`economy-sim reels: Gold RTP ${pct(th.goldRtp)}, total ${pct(totals[0][1])}–${pct(totals[totals.length - 1][1])} across stakes`);
+  return fails;
+}
+
+if (argv.reels) {
+  const fails = reelsScenario({ rounds: Number(argv.rounds ?? 2_000_000), plays: Number(argv.plays ?? 1_000_000), quiet: false });
+  for (const f of fails) console.error(`  FAIL ${f}`);
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.inventory) {
   inventoryScenario(PROPOSED);
 } else if (argv.place) {
   place(String(argv.place).split(',').map(Number));
