@@ -85,7 +85,7 @@ export interface StatsSnapshot {
   goldPerSec: number;
   /** Magic Find from Luck alone. */
   magicFind: number;
-  /** Mission-length multiplier from Endurance. */
+  /** Expedition haul (payout) multiplier from Endurance. */
   endurance: number;
   /** XP multiplier from Wisdom. */
   xpMultiplier: number;
