@@ -218,7 +218,7 @@ filename the importer picks up automatically.
 - Gathering regrowth now persisted (`9ec52e4`, blob `godforge-gathering`)
 - Fixed (`8bbe142`): a live **Exchange Gold exploit** after the ×0.06 rescale: bulk buys were priced before their own price move and could be sold back unit by unit at a profit; orders now price across their own movement (buys round up, sells down). Karma 1933/1933
 - Player market list now reads one summary doc `market/v1/summary/board` (`8bbe142`); it caps sustained market writes at ~1/s (shard it before heavy traffic)
-- The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Market strings left unused by the redesign could be pruned from the eager translation table
+- The Market's Buy-max count is computed from `EconomyService.nextCost`; keep it in sync with the economy rebalance. Fixed: 20 orphaned keys (16 `market.*` + 4 nav/hero) pruned from the eager table; `check-i18n-keys` reports 0 unreferenced (`docs/handoff/watchlist-cleanup-2.md`)
 - **Market residual cheat risks** (the client still writes saves): a player can edit their own save then sell what they minted; a restored escrowed item stays usable single-player until their next market call; an offline device's earlier spends can make the client skip a server Gold debit; server repair marks expire after 7 days. See `docs/handoff/player-market.md`
 - The CSP now allows `us-central1-xsantcastx-1694b.cloudfunctions.net`, which was missing and had also blocked Stripe's callable
 - Fixed (`6e329ea`): the NPC bubble hides while a mini-game is open (`MinigamePresenceService`), so Skip is reachable at 390 px
@@ -229,13 +229,13 @@ filename the importer picks up automatically.
 - New Delve materials use stand-in art (shadow-root-cutting, glowcap, godforge-fragment); no Rune-Warden painting/rig yet
 - Fixed (`6e329ea`): the enemy bar uses the engine's `enemyId` (`play.creature.<id>`, EN+ES); a new creature needs a name key (engine test enforces it)
 - Initial bundle fixed: 2.00 MB → **1.68 MB** (`92a3b68`): tools registry, lore corpus and character hub moved out of the initial chunk. Keep new code lazy; biggest eager modules now `translation.service` 92 kB, `art-manifest.generated` 64 kB, header 50 kB
-- New creatures still draw with the Rivet Maw rig until the engine-visuals branch lands
+- Checked, stale: engine visuals are on main (`378269a`). Each creature has its own rig in `creature-rigs.ts`, and unknown keys get the generic body, not the Maw. Only Magma Maw (Rivet Maw painting and rig) and Rune Warden (Mirror Substitute painting and rig) still borrow a body, on purpose, through `ART_ALIAS`, until their paintings land. The Rivet Maw also stands in for any creature until that creature's painting has loaded
 - Fixed (`6e329ea`): closing a panel returns focus to the keyboard opener or the canvas; Places/satchel return focus too
 - The Infernal town is 900px wider, so for a while after deploy, peers on an older client appear ~900px off east of the forge
 - Gambler / rune-forge fixed overlays inside panels not yet exercised in-world (the gambler moves in-world with the Umbral town)
-- Paper-doll gear sockets are small on phones (~17% of the doll); the equip/unequip flight and swap haven't been watched in motion yet
+- Paper-doll sockets: a worn socket now opens its slot and has a ≥44px hit pad on phones; the art is unchanged (`e2e/loadout-socket-targets.spec.ts`). At 375–390px the NPC bubble and the forge-flame toggle can still sit over the doll, depending on scroll (seen in WebKit). Nobody has watched the equip/unequip flight and swap in motion yet
 - Rig unverified in motion on mobile, high-DPR seams, Safari rim light (the test browser pane runs hidden, so the loop doesn't advance)
-- "Daily Tool Generation Pipeline" workflow failing on main (pre-existing, unrelated)
+- "Daily Tool Generation Pipeline" has failed every day since 2026-03-26: the Anthropic API account behind `ANTHROPIC_API_KEY` is out of credit (400 "credit balance is too low"), and Reddit also returns 403 to the collector. This is not a code fix. **Owner:** top up the credit, or disable the workflow if the tools surface is retired for good
 
 ## How to work on this plan
 
