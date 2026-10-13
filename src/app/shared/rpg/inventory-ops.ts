@@ -23,7 +23,6 @@ import {
 } from './item.model';
 import {
   INVENTORY_ERA,
-  INVENTORY_BAG_CAP,
   INVENTORY_STACK_OPS_MAX,
   INVENTORY_TOMBSTONE_MAX,
   INVENTORY_TOMBSTONE_RETAIN_MS,
@@ -489,8 +488,9 @@ export function mergeInventoryLedgers(remote: unknown, local: unknown): Inventor
     a.stackCheckpoints ?? [],
     b.stackCheckpoints ?? [],
   );
-  let records = dedupeRecordSlots([...byId.values()]);
-  records = evictRecordsToCap(records, INVENTORY_BAG_CAP, tombstones, Date.now());
+  // A pure union: a merge never tombstones a live record. The satchel's limit
+  // is held by `settle` (inventory-layout.ts), which only moves things.
+  const records = dedupeRecordSlots([...byId.values()]);
   return {
     version: 2,
     records,
@@ -536,48 +536,6 @@ export function upsertRecord(ledger: InventoryLedger, record: OwnedItemRecord): 
   };
 }
 
-export function isProtectedFromEviction(record: OwnedItemRecord): boolean {
-  if (record.soulbound) return true;
-  if (record.kind === 'stack') return true;
-  if (record.location.kind !== 'bag') return true;
-  if (record.kind === 'instance' && (record as OwnedItemInstance).sellValue <= 0) return true;
-  return false;
-}
-
-function evictRecordsToCap(
-  records: OwnedItemRecord[],
-  cap: number,
-  tombstones: InventoryTombstone[],
-  now: number,
-): OwnedItemRecord[] {
-  if (records.length <= cap) return records;
-  const protectedRows = records.filter(isProtectedFromEviction);
-  const loose = records
-    .filter((row): row is OwnedItemInstance => !isProtectedFromEviction(row) && row.kind === 'instance')
-    .sort((a, b) => {
-      const value = a.sellValue - b.sellValue;
-      if (value !== 0) return value;
-      if (a.acquiredAt !== b.acquiredAt) return a.acquiredAt < b.acquiredAt ? -1 : 1;
-      return a.id.localeCompare(b.id);
-    });
-  const room = Math.max(0, cap - protectedRows.length);
-  const keepLoose = room === 0 ? [] : loose.slice(-room);
-  const keepIds = new Set([...protectedRows, ...keepLoose].map(row => row.id));
-  for (const row of records) {
-    if (keepIds.has(row.id)) continue;
-    tombstones.push({
-      id: row.id,
-      revision: {
-        hlc: nextHlc(row.revision.hlc, now),
-        deviceId: row.revision.deviceId,
-        sequence: row.revision.sequence + 1,
-      },
-      deletedAt: now,
-    });
-  }
-  return records.filter(row => keepIds.has(row.id));
-}
-
 function mergeTombstones(
   a: InventoryTombstone[],
   b: InventoryTombstone[],
@@ -601,6 +559,17 @@ export function pruneTombstones(
   return [...live]
     .sort((a, b) => a.deletedAt - b.deletedAt || compareRevision(a.revision, b.revision))
     .slice(-max);
+}
+
+/**
+ * Fold a local op log past {@link INVENTORY_STACK_OPS_MAX} into checkpoints —
+ * the same fold a merge does, run on write so a device that never syncs (and
+ * a rune find is one op) does not grow its blob without bound.
+ */
+export function compactStackOps(ledger: InventoryLedger): InventoryLedger {
+  if (ledger.stackOps.length <= INVENTORY_STACK_OPS_MAX) return ledger;
+  const stacks = mergeStackOps(ledger.stackOps, [], ledger.stackCheckpoints ?? [], []);
+  return { ...ledger, stackOps: stacks.ops, stackCheckpoints: stacks.checkpoints };
 }
 
 /** Highest `upToHlc` per stack wins; that checkpoint already covers the lower one. */

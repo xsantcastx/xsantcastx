@@ -59,9 +59,10 @@ describe('RuneForgeService — strikePower at the anvil', () => {
   let inventory: InventoryService;
   let economy: EconomyService;
   let award: jasmine.Spy;
+  let memory: MemoryGateway;
 
   beforeEach(() => {
-    const memory = new MemoryGateway();
+    memory = new MemoryGateway();
     memory.writeRaw('godforge-realm-era', '55');
     award = jasmine.createSpy('award');
     TestBed.configureTestingModule({
@@ -95,6 +96,22 @@ describe('RuneForgeService — strikePower at the anvil', () => {
   function craftXpOf(call: jasmine.CallInfo<jasmine.Func>): number {
     return (call.args[1] as { amount: number }).amount;
   }
+
+  it('a x1000 run adds no Sigil items: the runes land in the Forge ledger, only charms are records', () => {
+    economy.earnGold(STRIKE_COST * 1000, 'test');
+    const records = () => JSON.parse(memory.readRaw('godforge-inventory') ?? '{"records":[]}').records as { type?: string }[];
+    let landed = 0;
+    let charms = 0;
+    for (let i = 0; i < 1000; i++) {
+      const find = forge.strike(sequence((i % 97) / 100, 0.9, 0.9, 0.9));
+      landed += find?.copies ?? 0;
+      if (find?.item) { expect(find.item.type).toBe('charm'); charms++; }
+    }
+    expect(records().filter(r => r.type === 'rune').length).toBe(0);
+    expect(records().length).toBe(charms);
+    const held = Object.values(forge.snapshot.held).reduce((a, b) => a + b, 0);
+    expect(held).toBe(landed);
+  });
 
   it('reads nothing worn as a one-rune strike, exactly as before', () => {
     expect(forge.strikeValueMultiplier).toBe(1);

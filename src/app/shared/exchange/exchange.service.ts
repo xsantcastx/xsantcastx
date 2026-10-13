@@ -52,7 +52,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Subject, type Observable } from 'rxjs';
 
 import { EconomyService } from '../economy/economy.service';
-import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
+import { InventoryService } from '../rpg/inventory.service';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { mintEquipment } from '../rpg/item-definition';
@@ -318,18 +318,15 @@ export class ExchangeService {
   /**
    * Whether the bag can take a purchase.
    *
-   * A material the player already holds needs no new row, so topping up a stack
-   * is allowed at the 250-row cap; a new stack, or any instance, is not.
+   * A stack grant never refuses for space. Instances are refused only at the
+   * save's record budget — a full satchel routes to the Vault — and the whole
+   * order has to fit before any of it is paid for.
    */
   private hasRoomFor(good: ExchangeGood, quantity: number): boolean {
     if (good.kind === 'material') {
       return good.stackKey ? this.inventory.canAcceptStackGrant(good.stackKey) : false;
     }
-    // Instances take one row each and there is no partial purchase, so the
-    // whole order has to fit before any of it is paid for. `usedRows` counts
-    // stacks as well as instances, which is the number the cap is actually
-    // enforced against.
-    return MAX_INVENTORY - this.inventory.snapshot.usedRows >= quantity;
+    return this.inventory.instanceRoom() >= quantity;
   }
 
   private deliver(

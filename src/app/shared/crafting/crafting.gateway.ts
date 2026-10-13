@@ -40,7 +40,7 @@ import { isPlatformBrowser } from '@angular/common';
 
 import { CollectionService } from '../collection/collection.service';
 import { EconomyService } from '../economy/economy.service';
-import { InventoryService, MAX_INVENTORY } from '../rpg/inventory.service';
+import { InventoryService } from '../rpg/inventory.service';
 import { itemDefinitionById, mintEquipment } from '../rpg/item-definition';
 import { qualityOf } from '../rpg/item-quality';
 import type { GameItem } from '../rpg/item.model';
@@ -250,13 +250,10 @@ export class CraftingGateway {
   }
 
   private roomFor(recipe: CraftingRecipe): boolean {
-    // A stack needs one row at most, and none when the satchel already holds some.
     if (recipe.output.stack) return this.inventory.canAcceptStackGrant(recipe.output.itemId);
-    // `canAcceptInstance` answers for one row, and a recipe that yields two
-    // needs two. `usedRows` counts exactly what `craftRecipe`'s own capacity
-    // check counts — inventory-source records, stacks included — so the bench's
+    // The same record-budget check `craftRecipe` makes, so the bench's
     // greyed-out reason and the gateway's refusal cannot disagree.
-    return this.inventory.snapshot.usedRows + recipe.output.count <= MAX_INVENTORY;
+    return this.inventory.instanceRoom() >= recipe.output.count;
   }
 }
 
