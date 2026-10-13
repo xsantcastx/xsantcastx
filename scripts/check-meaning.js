@@ -109,7 +109,7 @@ const { foundInWorld } = L('shared/world/found-in.data.ts');
 const { TOWNS } = L('play/world/world.model.ts');
 const { PANEL_IDS } = L('play/world/world.model.ts');
 const { PANEL_REGISTRY } = L('play/world/panel-registry.ts');
-const { TOWN_KEEPERS, TOWNSFOLK_COUNT } = L('play/world/life.ts');
+const { TOWN_KEEPERS, TOWNSFOLK_COUNT, townsfolkLines } = L('play/world/life.ts');
 const { TERRAIN_NODE_LIST, PLACEABLES } = L('play/engine/terrain.ts');
 const { MINING_TIERS } = L('shared/activity/activity.model.ts');
 const { FORAGING_TIERS } = L('shared/activity/foraging.model.ts');
@@ -405,8 +405,10 @@ for (const npc of NPCS) {
 }
 for (const [realm, count] of Object.entries(TOWNSFOLK_COUNT)) {
   if (!count) continue;
-  node('npc', `townsfolk:${realm}`);
-  flag('npc', 'no-role', `townsfolk:${realm}`, `${count} wanderers with no line, station or quest`);
+  const n = node('npc', `townsfolk:${realm}`);
+  const lines = townsfolkLines && TOWNS[realm] ? townsfolkLines(TOWNS[realm]) : [];
+  if (lines.length) n.uses.add(`name where ${lines.length} local materials are found`);
+  else flag('npc', 'no-role', `townsfolk:${realm}`, `${count} wanderers with no line, station or quest`);
 }
 
 // Stations + panels ─────────────────────────────────────────────────────────

@@ -5,10 +5,5 @@
   "creature:never-spawns:graftling",
   "creature:never-spawns:ink-lantern",
   "creature:no-lore:magma-maw",
-  "creature:no-lore:rune-warden",
-  "npc:no-role:townsfolk:celestial",
-  "npc:no-role:townsfolk:infernal",
-  "npc:no-role:townsfolk:luminous",
-  "npc:no-role:townsfolk:umbral",
-  "npc:no-role:townsfolk:verdant"
+  "creature:no-lore:rune-warden"
 ]

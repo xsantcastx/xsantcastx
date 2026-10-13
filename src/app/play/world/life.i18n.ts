@@ -27,6 +27,9 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.name.trials-warden': { en: 'Trials Warden', es: 'Custodio de las pruebas' },
   'play.life.name.lodge-warden': { en: 'Lodge Warden', es: 'Custodio del refugio' },
 
+  // ── Townsfolk: one line each, filled from the town's hunting grounds (life.ts townsfolkLines) ──
+  'play.life.townsfolk.found': { en: '{{material}} is found in {{place}}.', es: '{{material}} se encuentra en {{place}}.' },
+
   // ── Infernal: Basalt Seamworks ──
   'play.life.line.buyback-clerk.1': { en: 'I buy what you carry. Selling is the Market\'s trade, not mine.', es: 'Compro lo que cargas. Vender es oficio del Mercado, no mio.' },
   'play.life.line.buyback-clerk.2': { en: 'Surplus ore weighs on a satchel. Let it weigh on my scales.', es: 'El mineral de sobra pesa en la bolsa. Deja que pese en mi balanza.' },
