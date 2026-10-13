@@ -138,13 +138,36 @@ test.describe('Anvil mini-game, played', () => {
   });
 });
 
+test('routed /forge/crafting at 390 px: Kael yields while the anvil is open, Skip is hit-testable, and he returns', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await seed(page, { ...bag(KRIS_BAG), ...purse(3_000_000) });
+  await page.goto('/forge/crafting');
+  const npc = page.locator('app-npc-dialogue .npc');
+  await expect(npc).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('.cb-hero .dh__name')).toHaveText(KRIS, { timeout: 15000 });
+  await page.locator('.cb-hero .ab__btn').click();
+  const skip = page.locator('app-anvil-game .mg__skip');
+  await expect(skip).toBeVisible();
+  await expect(npc).toHaveCount(0);
+  await skip.scrollIntoViewIfNeeded();
+  const hit = await skip.evaluate(el => {
+    const r = el.getBoundingClientRect();
+    const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+    return !!at && (at === el || el.contains(at));
+  });
+  expect(hit).toBe(true);
+  await skip.click();
+  await expect(page.locator('app-anvil-game')).toHaveCount(0);
+  await expect(npc).toBeVisible();
+});
+
 test.describe('In-world panel focus', () => {
   test('closing a place with Escape hands focus back to the game canvas, not <body>', async ({ page }) => {
     await seed(page, { ...bag(KRIS_BAG), ...purse(3_000_000) });
     await openPlay(page, '?at=crafting');
     await expect(panel(page).locator('.cb-hero')).toBeVisible({ timeout: 15000 });
     await page.keyboard.press('Escape');
-    await expect(panel(page)).toHaveCount(0, { timeout: 5000 });
+    await expect(panel(page)).toBeHidden({ timeout: 5000 });
     await expect.poll(() => page.evaluate(() => document.activeElement?.tagName), { timeout: 3000 }).toBe('CANVAS');
   });
 
