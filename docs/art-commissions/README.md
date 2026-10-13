@@ -1,234 +1,168 @@
 # Eclipse Realms — art commission pack
 
-Every place the game shows a placeholder (a monogram orb, a rarity orb, an emoji, a flat rectangle) has a
-brief in this folder: a ready-to-paste prompt, an export spec, and the **exact library filename** that makes
-the importer wire it in. Nothing else has to change in code: drop the file, run the importer, done.
+Every place the game shows a placeholder (a monogram orb, a rarity orb, an emoji, a flat rectangle, a code-drawn
+tile) has a brief in this folder: a ready-to-paste prompt and negative prompt, an export spec, and the **exact
+library filename** that makes the importer wire it in. Nothing else has to change in code: drop the file, run
+the importer, done (the few exceptions are listed under [Pipeline gaps](#pipeline-gaps)).
 
-> **Make these first:** [00-first-test-set.md](00-first-test-set.md) — Keeper sprite (idle/run/attack),
-> Rivet Maw sprite (idle/windup/strike) and an Infernal camp prop set. The owner is A/B-testing the sprite
-> world layer on these before the rest of the world-sprite pack is commissioned.
+> **Art direction (owner, 2026-10-13): Terraria-style pixel art for the whole game.** It replaces the
+> 2026-10-12 "hybrid, Ragnarok-style sprites + paintings" split. The art bible is
+> **[docs/art/style-guide.md](../art/style-guide.md)**: pixel scale, sizes, outline and shading, palettes,
+> animation, auto-tiles, parallax, UI frames, export and the sidecar. Every brief here follows it.
+>
+> **Make these first:** [00-first-test-set.md](00-first-test-set.md): the Keeper (idle, run, attack),
+> Rivet Maw, Kael, eight Delve tile sheets, six item icons and the Basalt Seamworks parallax set. The owner
+> A/B-tests them in the Seamworks before the full pass.
 
-## The two layers (art-direction decision, 2026-10-12)
+## What is pixel art and what stays a painting
 
-Eclipse Realms uses a hybrid, Ragnarok-Online-style split:
+| Style | What | Count | Where the briefs are |
+|---|---|---:|---|
+| **Pixel art, world** | the Keeper and equipment, creatures, keeper NPCs and automatons, town buildings and props, gathering nodes, Homestead, Delve tiles and placeables, parallax | 134 | [world-sprites/](world-sprites/) `01`–`09` |
+| **Pixel art, menus** | item and tool icons (I1), NPC and explorer portraits (I2), Thralls (I1) | 83 | [menu-paintings/](menu-paintings/) `01`–`04`, `07` |
+| **Paintings (kept)** | Codex Bestiary creature masters (6), boss concept sheets (5, review only), realm town key art (5, menus and loading cards only) | 16 | [menu-paintings/](menu-paintings/) `05`, `06` |
 
-| Layer | Style | What is in it | Folder |
-|---|---|---|---|
-| **World** | stylised 2D **sprites** | everything that stands or moves in the side-scroller and the towns: the Keeper and remote Keepers, NPC shopkeepers and townsfolk, hunting-ground creatures, buildings, stations and props, attachable weapons | [world-sprites/](world-sprites/) |
-| **Menu** | the existing **painterly** style | item and collectible art, uniques, NPC dialogue portraits, explorer and Thrall portraits, Gambler reveals, Codex/Bestiary, paper doll, realm town backdrops | [menu-paintings/](menu-paintings/) |
+Why these 16 stay paintings, and what the new direction retires (the Keeper mesh rig, the painted in-world
+backdrops, the painted bag icons, the paper doll), is in [style guide §1](../art/style-guide.md#1-what-is-pixel-art-and-what-stays-a-painting).
+The folder names `menu-paintings/` and `world-sprites/` are kept so existing links do not break; "menu" now
+means "shown in a panel", not "painted".
 
-Anything that appears in both (the Keeper, named NPCs, creatures) gets **both**: a painting for menus and a
-sprite sheet for the world, with identical costume, colours and silhouette.
+A named NPC who appears in both places gets **both**: a W3 world sprite and an I2 portrait, with identical
+costume, colours and outline.
 
 ## Files
 
 | File | What |
 |---|---|
-| [00-first-test-set.md](00-first-test-set.md) | the seven sheets to make first |
+| [00-first-test-set.md](00-first-test-set.md) | the 21 files to make first, with their full briefs |
 | [01-second-wave.md](01-second-wave.md) | what was added after the first pack (Delve tiles and kit, tools, gathering nodes, Homestead, Delve creatures) and the order to make it in |
-| [INVENTORY.md](INVENTORY.md) | every missing asset: id, category, where it is used, what shows today, where to save it |
-| [commissions.csv](commissions.csv) | the same, plus prompt and negative prompt, machine-readable (the importer's `--commissions` check reads it) |
-| `menu-paintings/01-npc-portraits.md` … `07-tools-and-delve-items.md` | painterly briefs |
-| `world-sprites/01-keeper.md` … `08-delve-creatures.md` | sprite briefs |
+| [INVENTORY.md](INVENTORY.md) | every missing file: id, category, style, priority, where it is used, what shows today, where to save it |
+| [commissions.csv](commissions.csv) | the same plus spec, prompt and negative, machine-readable (the importer's `--commissions` check reads it) |
+| `menu-paintings/01-npc-portraits.md` … `07-tools-and-delve-items.md` | I1 icons, I2 portraits, and the kept paintings (`05`, `06`) |
+| `world-sprites/01-keeper.md` … `09-parallax.md` | world pixel art |
 
-Totals: **229 files** — 99 menu paintings (6 NPC portraits, 18 explorer portraits, 6 Thralls, 23 uniques,
-6 creature masters, 5 boss concept sheets, 5 town backdrops, 16 tool icons, 13 Delve kit and material icons,
-1 quest item) and 130 world sprites (1 Keeper sheet, 14 attachable equipment sprites, 7 creature sheets,
-12 NPC and automaton sheets, 16 buildings, 54 props, 26 Delve tiles). The six Delve-extras files (supports
-and blasting charges) are listed at the end of [INVENTORY.md](INVENTORY.md). The 94 added in the second wave are
-listed in [01-second-wave.md](01-second-wave.md). The tile strips are a new spec, W7, defined in
-[world-sprites/05-delve-tiles.md](world-sprites/05-delve-tiles.md).
+Totals: **233 files**: 217 pixel art (134 world, 83 menu) and 16 paintings. 229 are the original pack, every id
+and library path unchanged; the 4 new files are the Basalt Seamworks parallax layers
+([world-sprites/09-parallax.md](world-sprites/09-parallax.md)). `layer` in the CSV is `world-sprite`,
+`menu-pixel` or `menu-painting`.
 
 ## How to use the pack
 
-1. Pick an asset (start with `P0`; [INVENTORY.md](INVENTORY.md) is sorted by priority).
-2. Paste the **Prompt** and **Negative** into your generator, or hand the section to an artist.
-3. Export to the **spec** named in the section (below). Check the transparency rules.
-4. Save it under `~/Documents/1. Projects/Eclipse Realms/Assets/` at the **exact** "Save as" path. Create the
-   folder if it does not exist yet (`Characters/npcs/`, `Characters/explorers/`, `Market/Items/Thralls/`,
-   `Locations/Towns/`, `Sprites/**` are new). Sprite sheets also need their sidecar `.json` next to them.
+1. Pick an asset (start with the first test set, then `P0`; [INVENTORY.md](INVENTORY.md) is sorted by priority).
+2. Paste the **Prompt** and **Negative** into a generator for the design, or hand the section to a pixel artist.
+   Generator output is a draft: snap it to the art-pixel grid and clean it by hand
+   ([style guide §14](../art/style-guide.md#14-working-from-an-image-generator)).
+3. Export to the **spec** in the section: the art-pixel canvas, scaled up with **nearest-neighbour** by the
+   stated factor (x8 for figures, props, icons, portraits and parallax; x4 for Delve tiles and cell props).
+4. Save it under `~/Documents/1. Projects/Eclipse Realms/Assets/` at the **exact** "Save as" path, with its
+   sidecar `.json` beside it for every `Sprites/**` sheet (the brief gives the sidecar; it always has
+   `"pixelArt": true`). Create the folder if it does not exist yet.
 5. From the repo root:
 
    ```bash
    python3 scripts/import-assets.py --commissions          # what is still missing (needs no Pillow)
-   python3 scripts/import-assets.py --check                # validate what you dropped, writes nothing
-   python3 scripts/import-assets.py --only=Characters/npcs # import one family (or --only=Sprites)
-   python3 scripts/build-scene-art.py --only=bg-town-infernal   # town backdrops only
+   python3 scripts/import-assets.py --check --only=Sprites # validate sprite sheets, writes nothing
+   python3 scripts/import-assets.py --only=Sprites         # import the world layer (or --only=Items/ArtBible/Tools …)
+   python3 scripts/build-scene-art.py --only=bg-town-infernal   # town key art only
    ```
 
-6. Commit the new `src/assets/game/**` files and the regenerated `art-manifest.generated.ts` /
-   `sprite-manifest.generated.ts`. The placeholder is gone; `ART_PENDING` retires the id by itself, and the
-   importer prints the now-stale `ART_PENDING_DECLARED` lines so you can delete them (housekeeping only).
+6. Commit the new `src/assets/game/**` files and the regenerated `art-manifest.generated.ts`,
+   `sprite-manifest.generated.ts` and `tile-manifest.generated.ts`. The placeholder is gone; `ART_PENDING`
+   retires the id by itself, and the importer prints the now-stale `ART_PENDING_DECLARED` lines so you can
+   delete them (housekeeping only).
 
 Filenames: lower-case kebab-case, the two/three-digit prefix is the library's order and is stripped from the
 id, and a `-idle` suffix is stripped too (`101-unique-tinders-due-idle.png` → `unique-tinders-due`). Ids whose
 model name differs from the person's name are already resolved in the paths here (for example
-`explorer-meren-quiet-ledger`, not `meren-of-the-quiet-ledger`). Never save `-key`, `-chromakey`, `-source`,
-`-draft` or `-v2` files into the library.
+`explorer-meren-quiet-ledger`). Never save `-key`, `-chromakey`, `-source`, `-draft` or `-v2` files into the
+library, and never a `name 2.png` copy (the synced folder makes them by itself). Keep the `.aseprite` source
+outside the library.
 
 ---
 
-## Menu layer — painterly
+## Specs at a glance
 
-### Style block (shared by every menu painting)
+Full rules, sizes and palettes are in the [style guide](../art/style-guide.md). One art pixel = 2 logical px in
+the Delve, 4 in towns ([§2](../art/style-guide.md#2-pixel-scale-and-grid)).
 
-Distilled from the canon (`03-lore-and-design/eclipse-realms-lore-and-art-direction-canon.md`) and from the
-approved library files sampled for this pack (Keeper avatar and portrait, Rivet Maw master, Cindergnaw,
-Verrin's Requiem, Duskmail Hauberk, Aurumleaf Pendant, Merchant's Scale, Forge Golem, Hire an Explorer, and
-the Infernal, Umbral and Market scenes).
+| Spec | What | Art-pixel canvas | Export | Sidecar |
+|---|---|---|---|---|
+| **W1** character sheet | the Keeper | 48 x 48 per frame; rows idle 4, run 8, jump 2, fall 2, attack 4, dodge 3, hurt 2, death 5 | x8 (384 x 384 per frame) | yes, with `hand_front` / `hand_back` anchors |
+| **W2** creature sheet | hunting-ground and Delve creatures | 40 x 28 to 64 x 60; idle 4, walk 6, windup 3, strike 3, hurt 2, death 5 | x8 | yes |
+| **W3** NPC sheet | keeper NPCs, townsfolk, automatons | 40 x 48; idle 4, talk 2 (walk 6 for wanderers; automatons idle 4, strike 4) | x8 | yes |
+| **W4** attachable | held weapons and off-hands, pointing straight up | 8 x 16 to 16 x 32 (staff 12 x 40) | x8 | yes, `pivot` = grip |
+| **W5** building / **W6** prop | town buildings, props, gathering nodes, Homestead | per brief; ambient loops 4–6 frames | x8 | optional (none = one still frame, bottom-centre pivot) |
+| **W6** cell prop | Delve placeables (torch, ladder, chest, camp, supports, charge) | 16 x 16 | x4 (64 x 64) | yes, pivot (32, 64) |
+| **W7a** auto-tile | solid Delve terrain | 16 x 16 cells, 4 x 7 grid = 64 x 112 | x4 (256 x 448) | yes (7 actions) |
+| **W7 / W7b** strip | features set in rock, back walls, the inscription overlay | 16 x 16 cells, 4 in a row = 64 x 16 | x4 (256 x 64) | yes (action `tile`) |
+| **W8** parallax | sky, far, mid, near per town | 480 x 192, seamless | x8 (3840 x 1536) | yes |
+| **I1** item icon | items, tools, Delve kit, materials, Thralls | 32 x 32 | x8 (256 x 256) | no |
+| **I2** portrait | NPC and explorer dialogue portraits | 64 x 64 | x8 (512 x 512) | no |
+| **S3 / S6 / S7** | kept paintings (below) | | | no |
 
-- **Rendering:** dark-fantasy digital painting, ornate and highly detailed, crisp edges on the subject, soft
-  painted glow only where something emits light. Not photoreal, not glossy 3D, not cartoon or anime.
-- **Base values:** deep charcoal and obsidian. Every approved collectible sits dark-on-transparent and relies on
-  rim light and one emissive accent to read at 64 px.
-- **Materials (use at least two):** obsidian, carved metal, fractured crystal, runic light, ancient masonry,
-  living rootwork, smoky void, stardust. Gold/brass filigree is the shared trim (Keeper robe, pendant,
-  Merchant's scale).
-- **Light:** key light upper left, crisp rim light on the far edge. **Violet** is the shared Eclipse/Godforge
-  energy (the Keeper's medallion, rune glows, the Market hall), never a substitute for a realm colour.
-- **Realm accents:** Celestial midnight blue / star silver / brass; Infernal ember red, iron black, furnace
-  orange seams (Cindergnaw's lava cracks, the Rivet Maw's mouth seams); Luminous warm gold / ivory / dawn
-  crystal; Umbral amethyst / black-violet / obsidian / moonlight; Verdant moss / amber / rootwood /
-  bioluminescence. The code's three renamed realms map as Verge = Celestial, Nexus = Infernal,
-  Archivum = Verdant.
-- **Rarity aura (items, explorers, Thralls):** a thin halo in the tier colour — Common #8f8aa1, Uncommon
-  #9db8a8, Rare #00d4ff, Epic #a855f7, Legendary #e8c898, Mythic #f8e8c8, Singular #ff6dd7.
-- **Never:** text or letters (runes are shapes, not writing), cards, frames, borders, vignettes, baked UI,
-  skull piles, horns, random wings, halos, real-world religious iconography, cottagecore, castles for their
-  own sake.
-
-### Specs
-
-| Spec | Size | Background | Framing |
-|---|---|---|---|
-| **S1 collectible** | 1254 × 1254 PNG | transparent | one object, three-quarter view; long items on the lower-left → upper-right diagonal (as every Art Bible weapon is); fills ~80% of the frame, 8% safe margin; no floor, no cast shadow |
-| **S2 portrait** | 1254 × 1254 PNG | transparent | head-and-shoulders bust cut at mid-chest (match `Characters/avatars/01-neutral-keeper-avatar.png`); face in the upper-middle; must still read cropped to a circle and shrunk to an 80 px orb |
-| **S3 figure** | 1254 × 1254 PNG | transparent | full body, three-quarter view facing right, feet near the bottom |
-| **S6 scene** | 1536 × 1024 PNG (3:2) | opaque, no alpha | eye-level side view; landmark in the centre third (the phone crop is the centre 3:4); a calm walkable ground plane across the bottom fifth; no people |
-| **S7 concept** | 1122 × 1402 PNG (4:5) | opaque | review sheet, never shipped |
-
-### Transparency and opacity — read this before exporting
-
-- **Cut-outs must have fully transparent corners.** The importer rejects any S1–S3 file whose four corners are
-  opaque (`opaque corners — backdrop is baked into the art`). A painted near-white card behind the subject is
-  the classic failure (`01-keeper-paper-doll.png`). Today `Currencies/void.png` fails this check.
-- **Characters and creatures must be OPAQUE inside the figure.** A previous Keeper export was 97% translucent
-  and read as a ghost over every scene; it had to be rescued with `SOLIDIFY` in the importer. Paint the body,
-  clothing and armour at full alpha; only true glows, smoke and wing membranes may be semi-transparent, and
-  only at the edges. The importer now rejects a portrait, figure, creature master or Thrall where less than
-  **50%** of the painted area is solid (approved avatars measure 95–98%, creature masters 81–98%).
-  Do not rely on `SOLIDIFY` for new work.
-- Note: the three `Market/Items/Automatons/*.png` masters and `hire-an-explorer.png` measure only 7–16% opaque
-  (they are outside the new guard, which covers figure families only); worth re-exporting.
-
----
-
-## World layer — sprites
-
-### Sprite style guide
-
-The canon's palette and mood, translated to something that reads at 60–200 px over a painted backdrop.
-
-- **Form:** stylised 2D, chibi-leaning. Humanoids are **2.5–3 heads tall** (the Keeper 2.75), with big hands,
-  heads and props so silhouettes read at a glance. Creatures keep their atlas anatomy, simplified to 3–5 big
-  shapes.
-- **View:** side-scroller three-quarter side view, **facing right only** (the engine mirrors). Props and
-  buildings: side elevation with a slight high angle so their tops read.
-- **Line:** a clean, even outline in near-black violet (`#140a1f`), **4 px at the authored 2× scale** (2 px on
-  screen), a little heavier on the outer silhouette than on inner detail. The outline must be darker than any
-  value in the backdrops so a sprite never sinks into the painting behind it.
-- **Shading:** cel-shaded, 2–3 tone steps per material plus one highlight; no brush texture, no airbrush
-  gradients, no noise. Emissive parts (violet eclipse glow, ember seams, crystal light) may use one soft glow.
-- **Palette:** limited — about 24 colours per sprite before glows. Shared obsidian / aged gold / violet
-  `#a855f7` system energy, plus the realm accent: Infernal ember `#E8752A` on iron black; Luminous gold
-  `#E8D44D` on ivory; Umbral amethyst `#A855F7` on black-violet; Celestial blue / star silver `#00d4ff`
-  glints; Verdant moss and amber.
-- **Light:** top-left key, the same as the paintings; rim highlight on the right edge.
-- **Against painterly backdrops:** sprites sit in front of painterly town scenes. Keep the outline; keep the
-  sprite a step more saturated and higher-contrast than the backdrop. **Props and buildings** carry a baked
-  soft contact shadow (an ellipse under the base, ≤ 35% opacity, inside the cell). **Characters and creatures
-  do not** — the engine draws theirs because it must follow jumps.
-- **Never:** pixel-art dithering or jagged aliasing (these are smooth, anti-aliased sprites), soft painterly
-  texture, text on signs, baked UI, front-facing walk cycles.
-
-### Scale (keep every sprite relative to the Keeper)
-
-All sizes are **on-screen logical pixels at 1×** (the play canvas' world units at zoom 1). Author at **2×**.
-
-| Thing | On screen (1×) | Authored cell (2×) | Pivot in cell (2×) |
-|---|---|---|---|
-| **Keeper** (and remote Keepers) | **160 px tall** | 384 × 384 | (192, 368) |
-| NPC shopkeepers | 150–170 px tall | 320 × 384 | (160, 368) |
-| Rivet Maw | 150 long, 105 tall | 384 × 288 | (192, 272) |
-| Prism Forager / Mirror Substitute | 165 tall | 320 × 384 | (160, 368) |
-| Ephemeris Leech | 110 long, 70 tall | 320 × 224 | (160, 208) |
-| Rootglass Stag | 200 long, 215 tall | 512 × 480 | (256, 464) |
-| One-handed weapon | 64–96 long | 64–96 × 128–192 | grip centre |
-| Staff / polearm | 160 long | 96 × 320 | grip centre |
-| Bench / campfire | 50–60 tall | 128–256 wide | bottom-centre |
-| Crafting bench / anvil / enchanting table | 90–110 tall | 256–320 wide | bottom-centre |
-| Waystone / lamp posts / beacon | 180–240 tall | 96–192 × 384–480 | bottom-centre |
-| Stalls | 260 tall | 512 × 544 | bottom-centre |
-| Buildings | 400–480 tall | 640–832 × 832–992 | bottom-centre |
-
-The pivot is the **ground contact**: between the feet for characters, the middle of the base for props. It
-sits 16 px (2×) above the bottom of the cell so feet never touch the cell edge. Keep the same pivot in every
-frame — bobbing and jumping happen around it, not by moving it.
-
-### Specs
-
-| Spec | What |
-|---|---|
-| **W1 character sheet** | the Keeper. Uniform grid, one row per action, frames left to right; sheet width = longest action × cell width, height = actions × cell height; unused cells transparent. Empty hands — see anchors. |
-| **W2 creature sheet** | same grid rules; actions `idle 6, walk 8, windup 4, strike 4, hurt 3, death 6` |
-| **W3 NPC sheet** | same grid rules; actions `idle 6, talk 4`, optional `walk 8` |
-| **W4 attachable equipment** | single frame, drawn pointing straight up, grip at the bottom; sidecar `pivot` = grip centre |
-| **W5 building** / **W6 prop** | single frame (no sidecar needed — pivot defaults to bottom-centre), or a 4–6 frame `ambient` loop for fire, glow, turning rings |
-
-Every sheet: PNG, RGBA, transparent background (corners must be transparent), **no resizing after export**,
-opaque body (the 50% solidity guard applies to Characters, Creatures, NPCs and Buildings; sprites are never
-SOLIDIFIED), cell sizes divisible by the scale.
-
-### The sidecar JSON (one per sheet, same name, `.json`)
+### The sidecar JSON (one per `Sprites/**` sheet, same name, `.json`)
 
 ```jsonc
 {
-  "id": "keeper",              // optional; default = filename minus the NN- prefix
-  "scale": 2,                  // authored scale (1-4). The importer emits this and an exact 1x reduction.
-  "frame": { "w": 384, "h": 384 },   // one cell, authored pixels
+  "id": "keeper",               // optional; default = filename minus the NN- prefix
+  "scale": 2,                   // always 2 in this pack; the importer also emits an exact 1x reduction
+  "pixelArt": true,             // always true: the renderer turns smoothing off and snaps to whole pixels
+  "frame": { "w": 384, "h": 384 },   // one cell in authored pixels (art px x export factor)
   "pivot": { "x": 192, "y": 368 },   // ground contact inside a cell; default bottom-centre
-  "actions": [                 // one sheet row each, top to bottom, in this order
-    {
-      "name": "idle",          // unique; the engine plays actions by name
-      "frames": 6,             // cells used in this row, from the left
-      "fps": 8,                // 0 = still
-      "loop": true,
-      "anchors": {             // optional; one point per frame, cell-relative, authored pixels
-        "hand_front": [[236, 236, 150], ...],  // [x, y, deg] — deg = held item's angle, clockwise from up
-        "hand_back":  [[150, 232], ...]        // [x, y]
-      }
-    }
+  "actions": [                  // one sheet row each, top to bottom, in this order
+    { "name": "idle", "frames": 4, "fps": 6, "loop": true,
+      "anchors": { "hand_front": [[196, 236, 150], ...], "hand_back": [[156, 236], ...] } }  // one point per frame
   ]
 }
 ```
 
-The importer rejects a sheet whose size does not equal `max(frames) × frame.w` by `len(actions) × frame.h`,
-an anchor list whose length is not `frames`, repeated action names, or a cell not divisible by `scale`. A prop
-saved **without** a sidecar is imported as one still frame with a bottom-centre pivot.
-
-**What the importer does with sprites** (`scripts/import-assets.py`, "World-layer sprites"): no width ladder,
-no lossy encoding, no SOLIDIFY. Each sheet is written as **lossless WebP** at its authored scale and at 1×,
-reduced by an exact integer factor in premultiplied alpha (no dark fringes), to
-`src/assets/game/sprites/<family>/NN-<id>@{1x,2x}.webp`, with a normalised copy of the sidecar beside it.
-The sidecars are folded into `src/app/shared/art/sprite-manifest.generated.ts` in 1× units:
+The importer rejects a sheet whose size is not `max(frames) x frame.w` by `len(actions) x frame.h`, an anchor
+list whose length is not `frames`, repeated action names, a cell not divisible by `scale`, or a non-boolean
+`pixelArt`. A prop saved **without** a sidecar is imported as one still frame with a bottom-centre pivot (and
+without `pixelArt`, so it draws smoothed: always ship the sidecar). Each sheet is written as lossless WebP at
+its authored scale and at 1x to `src/assets/game/sprites/<family>/`, and folded into
+`sprite-manifest.generated.ts` (tiles into `tile-manifest.generated.ts`) in 1x units:
 
 ```ts
-spriteFor('keeper') // { src, src2x, frameW: 192, frameH: 192, pivotX: 96, pivotY: 184,
-                    //   actions: { idle: { row: 0, frames: 6, fps: 8, loop: true, anchors: { hand_front: [[118, 118, 150], …] } }, … } }
+spriteFor('keeper') // { src, src2x, frameW: 192, frameH: 192, pivotX: 96, pivotY: 184, pixelArt: true,
+                    //   actions: { idle: { row: 0, frames: 4, fps: 6, loop: true, anchors: { … } }, … } }
 ```
 
-`spriteFor()` (re-exported from `src/app/shared/art/art.ts`) returns null until a sheet is imported, so the
-engine keeps its current fallback until then.
+`spriteFor()` returns null until a sheet is imported, so the engine keeps its current fallback until then. How
+the engine maps game states to actions is in [docs/handoff/sprite-renderer.md](../handoff/sprite-renderer.md).
+
+### Transparency and opacity
+
+- **Cut-outs need fully transparent corners** (every sprite, icon and portrait). The importer rejects a file
+  whose four corners are opaque.
+- **Bodies are opaque.** The importer rejects a figure (Characters, Creatures, NPCs, Buildings, portraits,
+  Thralls, masters) where under **50%** of the painted area is solid. In pixel art that means: no
+  semi-transparent pixels except glass, wing membrane and smoke, inside the silhouette.
+- **Opaque on purpose:** W7a row 0, W7 feature strips, W7b back walls and the W8 `sky` layer. The tile importer
+  rejects any see-through pixel in a W7 strip.
+
+---
+
+## The kept paintings (S3, S6, S7)
+
+These 16 briefs keep the painterly house style; their prompts only gained the style guide's palette hexes and
+a note on what they are for now.
+
+**Style block (paintings only).** Dark-fantasy digital painting, ornate and highly detailed, crisp edges on
+the subject, soft painted glow only where something emits light; not photoreal, not glossy 3D, not cartoon.
+Deep charcoal and obsidian base values; at least two of obsidian, carved metal, fractured crystal, runic light,
+ancient masonry, living rootwork, smoky void, stardust; gold/brass filigree trim; key light upper left with a
+crisp rim light; violet `#a855f7` is the shared Eclipse energy, never a realm colour; realm accents from
+[style guide §5.2](../art/style-guide.md#52-realms). Never: text or letters, frames, borders, vignettes, baked
+UI, skull piles, horns, random wings, halos, real-world religious iconography.
+
+| Spec | Size | Background | Framing |
+|---|---|---|---|
+| **S3 figure** (Codex masters) | 1254 x 1254 PNG | transparent | full body, three-quarter view facing right; silhouette and colour blocks match the creature's pixel sprite when one exists |
+| **S6 scene** (realm key art) | 1536 x 1024 PNG (3:2) | opaque | eye-level side view, landmark in the centre third; menus and loading cards, never behind sprites |
+| **S7 concept** (boss review) | 1122 x 1402 PNG (4:5) | opaque | review sheet, never shipped |
+
+S1 (painted collectible) and S2 (painted portrait) are retired for new work: use I1 and I2.
 
 ---
 
@@ -237,51 +171,65 @@ engine keeps its current fallback until then.
 ```text
 Assets/
 ├── Characters/
-│   ├── npcs/                  NN-npc-<id>.png            S2 portraits (menu)
-│   └── explorers/             NN-explorer-<id>.png       S2 portraits (menu)
+│   ├── npcs/                  NN-npc-<id>.png            I2 pixel portraits
+│   └── explorers/             NN-explorer-<id>.png       I2 pixel portraits
 ├── Creatures/
-│   ├── Masters/               06-10-<creature>.png       S3 masters (menu, Codex)
+│   ├── Masters/               06-11-<creature>.png       S3 paintings (Codex)
 │   └── Concepts/              11-15-<boss>-concept.png   S7 review sheets (not imported)
-├── Items/ArtBible/<Family>/   101-123-unique-<id>-idle.png   S1 uniques
-├── Market/Items/Thralls/      thrall-<tier>.png, thrall-slot.png
-├── Locations/Towns/           <realm>-town.png           S6 backdrops (build-scene-art.py)
-└── Sprites/                   (world layer, lossless path)
+├── Items/ArtBible/<Family>/   101-139-<id>-idle.png      I1 icons (uniques, tools)
+├── Items/Materials/           14-26-<id>.png             I1 icons (Delve kit and materials)
+├── Items/Quest/               05-kaels-hammer.png        I1 icon
+├── Market/Items/Thralls/      thrall-<tier>.png, thrall-slot.png   I1 icons
+├── Locations/Towns/           <realm>-town.png           S6 key art (build-scene-art.py)
+└── Sprites/                   (world layer, lossless path, sidecar per sheet)
     ├── Characters/            01-keeper.png + .json
     ├── Creatures/             NN-<creature>.png + .json
     ├── NPCs/                  NN-npc-<id>.png + .json
-    ├── Buildings/             NN-<realm>-<building>.png [+ .json]
-    ├── Props/                 NN-<realm>-<prop>.png [+ .json]
-    └── Equipment/             NN-equip-<class>.png + .json
+    ├── Buildings/             NN-<realm>-<building>.png + .json
+    ├── Props/                 NN-<id>.png + .json        (town props, gathering nodes, Homestead, Delve cell props)
+    ├── Equipment/             NN-equip-<class>.png + .json
+    ├── Tiles/                 NN-tile-<node id>.png + .json   (W7 / W7a / W7b)
+    └── **Parallax/**          NN-parallax-<realm>-<layer>.png + .json   (W8; no importer family yet)
 ```
 
-## The ten to make first (by how often a player sees the placeholder)
+## Pipeline gaps
 
-World-sprite test set aside (it is its own first batch), the menu placeholders a player hits most:
+The art can be made now. These code changes (none in this pack; ids from
+[style guide §12](../art/style-guide.md#12-what-the-pipeline-cannot-do-yet)) are needed before parts of it show:
 
-1. `npc-kael` — onboarding for every new player, then `/world`, `/forge`, `/character`, `/sanctum`.
+- **IMP-1 / RND-1** auto-tiles: the tile importer accepts only a one-row `tile` strip and the terrain renderer
+  knows no neighbours. Until then, import row 0 of a W7a sheet alone (256 x 64) to see the interiors.
+- **IMP-2 / RND-2** parallax: no `Sprites/Parallax` family and no layered background renderer.
+- **IMP-3** pixel icons and portraits: the width ladder resizes with Lanczos, so the 96 px rung is slightly soft;
+  the 256 / 512 rungs are exact.
+- **RND-3** in-world HUD frames ([style guide §9](../art/style-guide.md#9-in-world-ui-slots-and-panels)).
+- **ENG-1** the Delve still spawns `mirror-substitute` / `rivet-maw` for its two enemies.
+
+## The ten menu files to make first (by how often a player sees the placeholder)
+
+Test set aside, the menu placeholders a player hits most:
+
+1. `npc-kael` portrait — onboarding for every new player, then `/world`, `/forge`, `/character`, `/sanctum`.
 2. `npc-merchant` — `/market`, `/gambler`, `/exchange`.
 3. `npc-archivist` — `/codex`, `/world/quests`.
 4. `explorer-tobin-ashfoot` — starter explorer, on the Works map from the first visit.
 5. `explorer-marda-quell` — the other starter.
-6. `thrall-common` — first Thrall shelf row in the Market.
-7. `thrall-slot` — the "Lengthen the Shift" row beside it.
-8. `npc-verrin` — Umbral realm and `/world/trials`.
-9. `npc-aureth` — Luminous realm.
-10. `unique-copper-witness` / `unique-tinders-due` — the uncommon uniques, the ones that actually drop
-    early (all four uncommons are P1).
+6. `axe-1`, `sickle-1`, `staff-1` — the first forged tier of each tool family (Pickaxe I is in the test set), on the Crafting Bench and in Character → Stats early on.
+7. `thrall-common` — first Thrall shelf row in the Market.
+8. `thrall-slot` — the "Lengthen the Shift" row beside it.
+9. `npc-verrin` — Umbral realm and `/world/trials`.
+10. `unique-copper-witness` — the uncommon uniques are the ones that actually drop early.
 
 ## Pipeline notes
 
-- `artFor()` reads only the manifest, so a painting resolves the moment it is imported.
-  `ART_PENDING` is now `ART_PENDING_DECLARED` minus anything painted, so `art.spec.ts` stays green on the
-  import commit; the importer lists the stale declared lines to delete afterwards.
-- The Codex Bestiary lists all ten atlas creatures and shows a creature as soon as its master resolves;
-  the "N more sighted" count is computed.
-- New import families: `Characters/npcs`, `Characters/explorers` (96/256/512 ladder), `Market/Items/Thralls`
-  (collectible ladder), and the six `Sprites/*` families. All are optional: a missing folder is reported as
-  "pending", not as a broken library.
-- Town backdrops are scenes, so they belong to `scripts/build-scene-art.py`, which now reads the library
-  (it used to read a Desktop folder that no longer exists) and builds `bg-town-<realm>-{768,1280,1536}.webp`
+- `artFor()` reads only the manifest, so an icon or portrait resolves the moment it is imported.
+  `ART_PENDING` is `ART_PENDING_DECLARED` minus anything imported, so `art.spec.ts` stays green on the import
+  commit; the importer lists the stale declared lines to delete afterwards.
+- The Codex Bestiary lists all ten atlas creatures and shows one as soon as its master resolves.
+- Import families: `Characters/npcs`, `Characters/explorers` (96/256/512 ladder), `Market/Items/Thralls`
+  (collectible ladder), the six `Sprites/*` sprite families and `Sprites/Tiles`. All are optional: a missing
+  folder is reported as "pending", not as a broken library.
+- Realm key art belongs to `scripts/build-scene-art.py`, which builds `bg-town-<realm>-{768,1280,1536}.webp`
   + `-1536.jpg`; missing towns are skipped.
-- Wiring sprites into the play engine (`src/app/play/**`) is owned by the world-foundation work, not by this
-  pack.
+- Wiring sprites into the play engine is done (`docs/handoff/sprite-renderer.md`): a sheet shows the moment
+  `spriteFor(id)` resolves.

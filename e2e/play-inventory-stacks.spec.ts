@@ -58,5 +58,12 @@ test.describe('rune finds stack instead of filling the satchel', () => {
     await expect(page.locator('#satchel-book')).toBeVisible();
     await expect(page.locator('.pocket[aria-label="Ashen Helm"]')).toBeVisible();
     await expect(page.locator('.pocket[aria-label*="Sigil"]')).toHaveCount(0);
+    // Three hundred finds later the 40-slot satchel is nowhere near full: the
+    // helm, the three starter tools and any charm a find turned up.
+    const count = await page.locator('#satchel-book .capacity span').textContent();
+    const [used, cap] = /(\d+) \/ (\d+) slots/.exec(count ?? '')!.slice(1).map(Number);
+    expect(cap).toBe(40);
+    expect(used).toBeLessThanOrEqual(8);
+    await expect(page.locator('.satchel .clasp')).toHaveAttribute('aria-label', new RegExp(`Satchel, ${used} of 40 slots`));
   });
 });

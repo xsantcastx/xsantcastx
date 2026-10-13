@@ -32,10 +32,10 @@ export const INSTANCE_RECORD_BUDGET = 700;
 /**
  * The 40-slot satchel and the Vault are live. Off, the satchel has no ceiling,
  * nothing is routed and settle never moves anything — the pre-Vault behaviour
- * minus the eviction. Flip on with the Vault station (slice S5), which is the
- * first surface that can take things back out.
+ * minus the eviction. On since slice S5: the Vault station in the Basalt
+ * Seamworks is where things are taken back out.
  */
-export const VAULT_LIVE = false;
+export const VAULT_LIVE = true;
 
 export const SATCHEL_BASE_SLOTS = 40;
 export const SATCHEL_ROW_SLOTS = 8;

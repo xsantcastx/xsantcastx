@@ -40,7 +40,7 @@ function snapshotWith(equipped: Partial<Record<SlotId, GameItem>>): InventorySna
   return {
     items: [], bag: [], stacks: [], equipped,
     totals: { goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0 },
-    goldFromSales: 0, sold: 0, usedRows: 0, satchelCap: Infinity, overflow: 0, full: false,
+    goldFromSales: 0, sold: 0, usedRows: 0, satchelCap: 40, overflow: 0, stackPlace: {}, inVault: 0, full: false,
   };
 }
 
