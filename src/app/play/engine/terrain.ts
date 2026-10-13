@@ -87,7 +87,7 @@ export interface TerrainNodeDef {
 /** The flag the Seam Eater sets when it falls (delve save `claimed`). */
 export const WARDEN_FLAG = 'warden-defeated';
 
-const ROCK = { base: '#3a2b2c', dark: '#241a1c', light: '#5a4440', fleck: '#6b5148' };
+const ROCK = { base: '#5c5359', dark: '#3a3339', light: '#877c84', fleck: '#a0949b' };
 
 /**
  * Every node type. Index in this list is the byte stored per cell, so append
@@ -95,44 +95,44 @@ const ROCK = { base: '#3a2b2c', dark: '#241a1c', light: '#5a4440', fleck: '#6b51
  */
 export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   { id: 'air', label: 'Open air', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, base: '#120c10', dark: '#0b0709', light: '#1d1418', fleck: '#000' },
-  { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block', base: '#5b3b2c', dark: '#3d271d', light: '#7f5640', fleck: '#8c6a4f' },
+  { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block', base: '#8c5a37', dark: '#5c3a22', light: '#b47a4c', fleck: '#cf9c68' },
   { id: 'rock', label: 'Basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, block: 'basalt-block', ...ROCK },
-  { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, block: 'basalt-block', base: '#2a2027', dark: '#171116', light: '#443540', fleck: '#57474f' },
+  { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, block: 'basalt-block', base: '#423b48', dark: '#2a2530', light: '#655c6e', fleck: '#7d7486' },
   { id: 'cinder-vein', label: 'Cinder Ore vein', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, minLevel: 1,
-    yield: { materialId: 'cinder-ore', qty: 1 }, ...ROCK, fleck: '#ff9b4f', glow: { color: '#ff9b4f', radius: 46 } },
+    yield: { materialId: 'cinder-ore', qty: 1 }, ...ROCK, fleck: '#ffa040', glow: { color: '#ff9b4f', radius: 46 } },
   { id: 'slag-vein', label: 'Slag vein', solid: true, hp: 4, tools: { pickaxe: 2 }, discipline: 'mining', xp: 5, minLevel: 8,
-    yield: { materialId: 'slag-fragment', qty: 1 }, base: '#2f2830', dark: '#1b161c', light: '#4a3f48', fleck: '#9fd0c8', glow: { color: '#8fd6cf', radius: 42 } },
+    yield: { materialId: 'slag-fragment', qty: 1 }, base: '#4a454e', dark: '#2e2a32', light: '#6e6874', fleck: '#5ff0d8', glow: { color: '#8fd6cf', radius: 42 } },
   { id: 'heartstone-vein', label: 'Heartstone vein', solid: true, hp: 6, tools: { pickaxe: 3 }, discipline: 'mining', xp: 12, minLevel: 20,
-    yield: { materialId: 'infernal-heartstone', qty: 1 }, base: '#2a1a22', dark: '#160c12', light: '#4a2a36', fleck: '#ff4f7a', glow: { color: '#ff4f7a', radius: 70 } },
+    yield: { materialId: 'infernal-heartstone', qty: 1 }, base: '#5c2438', dark: '#3a1424', light: '#8a3c56', fleck: '#ff5a8a', glow: { color: '#ff4f7a', radius: 70 } },
   { id: 'cracked-wall', label: 'Cracked wall', solid: true, hp: 2, tools: { staff: 1 }, discipline: 'exploration', xp: 3,
-    base: '#33263a', dark: '#1d1522', light: '#54405e', fleck: '#c9a0ff', glow: { color: '#b88cff', radius: 34 } },
+    base: '#4c3a62', dark: '#2e2242', light: '#715a8c', fleck: '#d8b4ff', glow: { color: '#b88cff', radius: 34 } },
   { id: 'roots', label: 'Tangled roots', solid: true, hp: 1, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 1,
-    yield: { materialId: 'thornroot', qty: 1, chance: .5 }, base: '#1f1513', dark: '#130c0b', light: '#6d5a3a', fleck: '#9b8452' },
+    yield: { materialId: 'thornroot', qty: 1, chance: .5 }, base: '#5a3c22', dark: '#3a2614', light: '#a8854c', fleck: '#d8b66c' },
   // A trunk the World-Root sank into the basalt: the axe's work, so the Delve
   // trains Woodcutting by what you find, not only Mining.
   { id: 'petrified-trunk', label: 'Petrified trunk', solid: true, hp: 3, tools: { axe: 1 }, discipline: 'woodcutting', xp: 4,
-    yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, base: '#3a2a1c', dark: '#24190f', light: '#7a5a36', fleck: '#b08a55' },
-  { id: 'bedrock', label: 'Bedrock', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0, base: '#141016', dark: '#09070a', light: '#231c25', fleck: '#2d2430' },
+    yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, base: '#70492a', dark: '#4a2f18', light: '#a6784a', fleck: '#d4a86c' },
+  { id: 'bedrock', label: 'Bedrock', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0, base: '#28222e', dark: '#16121a', light: '#3c3446', fleck: '#4c4258' },
   // The most common vein: a quarter of strikes leave Ember Residue (audit #1).
   { id: 'ember-rock', label: 'Ember-veined basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1,
-    yield: { materialId: 'ember-residue', qty: 1, chance: .25 }, ...ROCK, fleck: '#ffb35c', glow: { color: '#ff8a3d', radius: 64 } },
+    yield: { materialId: 'ember-residue', qty: 1, chance: .25 }, ...ROCK, fleck: '#ffc25c', glow: { color: '#ff8a3d', radius: 64 } },
   { id: 'cache', label: 'Keeper\'s cache', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 8,
     yield: { materialId: 'ember-residue', qty: 1 }, base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 52 } },
   // ── Biomes (Phase 2.6). Appended: the index is the saved byte. ──
   // Root Hollows: soil the World-Root's shadow grew through.
   { id: 'root-loam', label: 'Root-bound loam', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block',
-    base: '#3f2c22', dark: '#2a1c15', light: '#6a4c36', fleck: '#8a6a3c' },
+    base: '#6e4a2e', dark: '#48301e', light: '#946642', fleck: '#7fb04a' },
   // The inverse tree that grows downward: the cutting Verrin asks for.
   { id: 'shadow-root', label: 'Shadow-root', solid: true, hp: 2, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 3,
-    yield: { materialId: 'shadow-root-cutting', qty: 1, chance: .75 }, base: '#1a1220', dark: '#0e0912', light: '#4a3260', fleck: '#9b7ad6', glow: { color: '#9b7ad6', radius: 30 } },
+    yield: { materialId: 'shadow-root-cutting', qty: 1, chance: .75 }, base: '#3e2858', dark: '#281838', light: '#7c54aa', fleck: '#c4a0ff', glow: { color: '#9b7ad6', radius: 30 } },
   // Glowcap Grotto: stone wet with the light seeping through the fracture.
   { id: 'grotto-stone', label: 'Grotto stone', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, block: 'basalt-block',
-    base: '#22303a', dark: '#141d24', light: '#3c5664', fleck: '#6fa8c0' },
+    base: '#2c5668', dark: '#1c3846', light: '#4a8296', fleck: '#86d2e6' },
   { id: 'glowcap', label: 'Glowcap cluster', solid: true, hp: 1, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 2,
-    yield: { materialId: 'glowcap', qty: 1 }, base: '#1b2a36', dark: '#101a22', light: '#5fb8e8', fleck: '#a8e4ff', glow: { color: '#7fc8ff', radius: 58 } },
+    yield: { materialId: 'glowcap', qty: 1 }, base: '#244a5c', dark: '#163242', light: '#6fdcff', fleck: '#d0f6ff', glow: { color: '#7fc8ff', radius: 58 } },
   // Magma Halls: the fracture itself.
   { id: 'scorched-basalt', label: 'Scorched basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, block: 'basalt-block',
-    base: '#3a1e1c', dark: '#220f0e', light: '#6a3328', fleck: '#ff6a3a' },
+    base: '#6e2a1e', dark: '#481812', light: '#9c4630', fleck: '#ff8040' },
   // A carved wall: a backdrop the Keeper stands in front of and reads (E).
   { id: 'inscription', label: 'Carved inscription', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
     base: '#2a2024', dark: '#171114', light: '#5a4636', fleck: '#e8c47a', glow: { color: '#e8c47a', radius: 40 } },
@@ -146,12 +146,12 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // ── Building (Phase 2.6). What the Keeper places. Never generated, only placed. ──
   // Blocks: no XP (placing and re-digging must not farm Mining), the block back on a break.
   { id: 'packed-dirt', label: 'Packed dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block',
-    base: '#6a4532', dark: '#40291e', light: '#8f6448', fleck: '#a07a58' },
+    base: '#96643f', dark: '#684429', light: '#bc8b5e', fleck: '#d2a678' },
   { id: 'basalt-block', label: 'Basalt block', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, block: 'basalt-block',
-    base: '#43333a', dark: '#2a1f25', light: '#6a5560', fleck: '#7a656e' },
+    base: '#645b6a', dark: '#403a46', light: '#8c8494', fleck: '#a49cac' },
   // Placed things that are taken back whole (X, or a long-press), never dug.
   { id: 'torch', label: 'Torch', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'torch',
-    base: '#5a3a22', dark: '#2e1d10', light: '#ffd08a', fleck: '#ff9b4f', glow: { color: '#ffb066', radius: 120 } },
+    base: '#5a3a22', dark: '#2e1d10', light: '#ffd08a', fleck: '#ff9b4f', glow: { color: '#ffb066', radius: 150 } },
   { id: 'ladder', label: 'Ladder', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'ladder', oneWay: true, climb: true,
     base: '#7a5a36', dark: '#3a2a18', light: '#b08a55', fleck: '#5a4026' },
   { id: 'platform', label: 'Platform', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'platform', oneWay: true,

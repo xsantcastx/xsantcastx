@@ -19,6 +19,12 @@ export interface TileEntry {
   size: number;
   /** Interchangeable variants, left to right; pick one per cell by hash. */
   variants: number;
+  /**
+   * A full W7a auto-tile sheet (style guide §7.1): 7 rows of 4 pieces (tile,
+   * top, bottom, sides, thin, caps, inner); the renderer picks the piece from
+   * the cell's neighbours. Absent: a one-row W7 strip of interiors (or a wall).
+   */
+  autotile?: boolean;
 }
 
 export const TILES: Readonly<Record<string, TileEntry>> = {

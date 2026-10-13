@@ -17,7 +17,7 @@ Contents: [1 Layers](#1-what-is-pixel-art-and-what-stays-a-painting) · [2 Pixel
 [5 Palettes](#5-palettes) · [6 Animation](#6-animation) · [7 Auto-tiles](#7-auto-tile-sheets-terrain) ·
 [8 Parallax](#8-parallax-backgrounds) · [9 UI frames](#9-in-world-ui-slots-and-panels) ·
 [10 Export](#10-export-format) · [11 Sidecar](#11-the-importer-sidecar) ·
-[12 Pipeline gaps](#12-what-the-pipeline-cannot-do-yet) · [13 Do and don't](#13-do-and-dont) ·
+[12 Pipeline status](#12-pipeline-status) · [13 Do and don't](#13-do-and-dont) ·
 [14 Generators](#14-working-from-an-image-generator)
 
 ---
@@ -100,8 +100,8 @@ Sizes are in art px. "Town" = on screen at `figureScale` 1, "Delve" = at 0.5.
 | **Keeper NPCs** (shopkeepers, named NPCs) | 36–42 tall | 40 x 48 | 320 x 384 | (160, 368) | 144–168 px tall |
 | **Townsfolk** | 34–40 tall | 40 x 48 | 320 x 384 | (160, 368) | 136–160 px |
 | **Automatons** (Homestead) | 36–42 tall | 40 x 48 | 320 x 384 | (160, 368) | as NPCs |
-| **Small creatures** (Rivet Maw, Magma Maw, Ephemeris Leech) | 26–38 long | 48 x 36 or 40 x 28 | 384 x 288 / 320 x 224 | bottom-centre, 2 art px up | 105–150 px long |
-| **Large creatures** (Prism Forager, Mirror Substitute, Rootglass Stag, Rune-Warden) | 40–56 tall | 40 x 48 to 64 x 60 | 320 x 384 to 512 x 480 | bottom-centre, 2 art px up | 165–215 px |
+| **Small creatures** (Rivet Maw, Ephemeris Leech) | 26–38 long | 48 x 36 or 40 x 28 | 384 x 288 / 320 x 224 | bottom-centre, 2 art px up | 105–150 px long |
+| **Large creatures** (Prism Forager, Mirror Substitute, Rootglass Stag, Cinder Bailiff, Seam Eater) | 40–56 tall | 40 x 48 to 64 x 60 | 320 x 384 to 512 x 480 | bottom-centre, 2 art px up | 165–215 px |
 | **Bosses** (when commissioned) | 72–120 tall | up to 128 x 128 | up to 1024 x 1024 | bottom-centre | 290–480 px |
 | **Held weapons / off-hands** (W4) | 6–24 long | 8 x 16 to 16 x 32 | 64 x 128 to 128 x 256 | grip centre | 32–96 px |
 | **Staff, polearm** | up to 40 long | 12 x 40 | 96 x 320 | grip centre | 160 px |
@@ -198,16 +198,27 @@ The three renamed code realms map as before: Verge = Celestial, Nexus = Infernal
 
 ### 5.3 Ember Delve biomes
 
-Each tile row is the node's `dark` `base` `light` `fleck` from `terrain.ts`. A top face (§7) may add **one**
-lip step above `light`, listed per biome.
+Each tile row is the node's `dark` `base` `light` `fleck` from `terrain.ts`. The renderer adds two steps of its own
+(`tile-art.ts nodePalette`): the **outline**, `dark` pulled 72% towards the outline floor `#140a1f`, and the
+**highlight** on an open top edge, `light` 28% towards `#fff4e0`. A top face (§7) may add **one** lip step above
+`light`, listed per biome.
+
+The Delve reads like Terraria's caverns: bright, saturated blocks with hard lit edges and dark outlines, each biome
+with its own hue (Root Hollows green and brown, Basalt Caverns grey with ember, Glowcap Grotto teal and cyan glow,
+Magma Halls red and orange). Back walls are 2 steps darker and less saturated than their tiles, never black.
 
 | Biome (rows) | Back wall (W7b) | Darkness | Wash / particles | Tiles (dark, base, light, fleck) | Top-face lip |
 |---|---|---|---|---|---|
-| **Root Hollows** (0–11) | `#0a0706` `#16100c` `#1a130f` | `#060403` | `#7a5a36` / spores `#c9b27a` | dirt `#3d271d` `#5b3b2c` `#7f5640` `#8c6a4f`; root-loam `#2a1c15` `#3f2c22` `#6a4c36` `#8a6a3c`; roots `#130c0b` `#1f1513` `#6d5a3a` `#9b8452`; petrified trunk `#24190f` `#3a2a1c` `#7a5a36` `#b08a55`; shadow-root `#0e0912` `#1a1220` `#4a3260` `#9b7ad6` | root-thread fringe `#c9b27a` |
-| **Basalt Caverns** (12–25) | `#0a0608` `#160e12` `#1a1115` | `#050309` | `#b97a45` / ash `#8a7468` | basalt (`rock`) `#241a1c` `#3a2b2c` `#5a4440` `#6b5148`; hard basalt `#171116` `#2a2027` `#443540` `#57474f`; slag vein `#1b161c` `#2f2830` `#4a3f48` `#9fd0c8` (glow `#8fd6cf`); cinder vein = basalt + `#ff9b4f`; ember-veined basalt = basalt + `#ffb35c` (glow `#ff8a3d`) | `#7a6058` |
-| **Glowcap Grotto** (26–39) | `#05090c` `#0c141b` `#0f1820` | `#03070c` | `#4fa8e0` / motes `#9fdcff` | grotto stone `#141d24` `#22303a` `#3c5664` `#6fa8c0`; glowcap `#101a22` `#1b2a36` `#5fb8e8` `#a8e4ff` (glow `#7fc8ff`) | wet sheen `#8fd0e8` |
-| **Magma Halls** (40–) | `#0b0403` `#190a08` `#1e0d0a` | `#0c0302` | `#ff5a2a` / embers `#ff9b4f` | scorched basalt `#220f0e` `#3a1e1c` `#6a3328` `#ff6a3a`; heartstone vein `#160c12` `#2a1a22` `#4a2a36` `#ff4f7a` | hot crust `#ff8a3d` |
-| **Everywhere** | | | | bedrock `#09070a` `#141016` `#231c25` `#2d2430`; packed dirt (placed) `#40291e` `#6a4532` `#8f6448` `#a07a58`; basalt block (placed) `#2a1f25` `#43333a` `#6a5560` `#7a656e`; cracked wall `#1d1522` `#33263a` `#54405e` `#c9a0ff`; Keeper's cache `#3a2617` `#6b4a2c` `#c9a06a` `#ffd36d`; Kael's cache `#2e1f14` `#5a3f2a` `#d8b07a` `#ffd9a0`; Godforge fragment `#2a1f12` `#4a3a24` `#ffe9a8` `#fff4d0`; inscription `#e8c47a` | |
+| **Root Hollows** (0–11) | `#1a110b` `#34251a` `#3c2b1e` | `#060403` | `#6a8a3a` / spores `#c9b27a` | dirt `#5c3a22` `#8c5a37` `#b47a4c` `#cf9c68`; root-loam `#48301e` `#6e4a2e` `#946642` `#7fb04a`; roots `#3a2614` `#5a3c22` `#a8854c` `#d8b66c`; petrified trunk `#4a2f18` `#70492a` `#a6784a` `#d4a86c`; shadow-root `#281838` `#3e2858` `#7c54aa` `#c4a0ff` | moss `#4c9a2e` `#9ad84e`, flower `#d8f2a0` |
+| **Basalt Caverns** (12–25) | `#141216` `#29252b` `#302b32` | `#050309` | `#b97a45` / ash `#8a7468` | basalt (`rock`) `#3a3339` `#5c5359` `#877c84` `#a0949b`; hard basalt `#2a2530` `#423b48` `#655c6e` `#7d7486`; slag vein `#2e2a32` `#4a454e` `#6e6874` `#5ff0d8` (glow `#8fd6cf`); cinder vein = basalt + `#ffa040`; ember-veined basalt = basalt + `#ffc25c` (glow `#ff8a3d`) | ash `#9a8c84` `#d4c8bc` |
+| **Glowcap Grotto** (26–39) | `#08161e` `#122c3a` `#163444` | `#03070c` | `#4fa8e0` / motes `#9fdcff` | grotto stone `#1c3846` `#2c5668` `#4a8296` `#86d2e6`; glowcap `#163242` `#244a5c` `#6fdcff` `#d0f6ff` (glow `#7fc8ff`) | lichen `#2a8eb0` `#bff4ff` |
+| **Magma Halls** (40–) | `#1a0806` `#35140f` `#3e1812` | `#0c0302` | `#ff5a2a` / embers `#ff9b4f` | scorched basalt `#481812` `#6e2a1e` `#9c4630` `#ff8040`; heartstone vein `#3a1424` `#5c2438` `#8a3c56` `#ff5a8a` | hot crust `#8a2a14` `#ffc45c` |
+| **Everywhere** | | | | bedrock `#16121a` `#28222e` `#3c3446` `#4c4258`; packed dirt (placed) `#684429` `#96643f` `#bc8b5e` `#d2a678`; basalt block (placed) `#403a46` `#645b6a` `#8c8494` `#a49cac`; cracked wall `#2e2242` `#4c3a62` `#715a8c` `#d8b4ff`; Keeper's cache `#3a2617` `#6b4a2c` `#c9a06a` `#ffd36d`; Kael's cache `#2e1f14` `#5a3f2a` `#d8b07a` `#ffd9a0`; Godforge fragment `#2a1f12` `#4a3a24` `#ffe9a8` `#fff4d0`; inscription `#e8c47a` | |
+
+Light (`lighting.ts`): unlit rock sits under the biome's darkness at most 80% deep, so its shape still shows; a
+light's pool is broad and bright (falloff `1 − d²/r²`) and lit ground takes a warm `#ffb066` cast. Torches reach
+150 px (240 px of light). Placed objects (§7.2, W6 cell props) are drawn as 16 × 16 pixel maps in their own node
+colours until their art lands (`tile-art.ts PLACED_ART`).
 
 Ore must be told apart at 32 px: **cinder** = orange seams, **slag** = teal glass, **heartstone** = rose-red
 facets, **ember-veined** = scattered warm flecks, not seams.
@@ -432,22 +443,19 @@ panels. Pages outside `/play` keep the design system.
 
 ---
 
-## 12. What the pipeline cannot do yet
+## 12. Pipeline status
 
-The art can be made now; these code changes are needed before parts of it show in game. None is in this
-pack (docs only). Each is small.
+IMP-1, IMP-2, IMP-3, RND-1, RND-2 and ENG-1 landed with the terrain pass 2 (2026-10-13); RND-3 is still open.
 
-| Id | Gap | Effect today |
+| Id | What | Status |
 |---|---|---|
-| **IMP-1** | `import_tiles` accepts only one action named `tile` and rejects any transparent pixel | A W7a sheet fails `--check`. **Interim:** import a copy of row 0 alone (256 x 64, the one-action sidecar) to see the interiors in game; keep the full sheet in the library |
-| **RND-1** | `terrain-render.ts` picks a variant by hash and knows no neighbours | Even with IMP-1, edges render as interiors until the renderer reads the 4-neighbour mask (§7.1) |
-| **IMP-2** | no `Sprites/Parallax` family | W8 layers are listed by `--commissions` but not imported |
-| **RND-2** | no parallax renderer; towns draw one painted `bg-*` image | W8 needs a 4-layer draw with the scroll factors in §8 |
-| **IMP-3** | collectible and portrait ladders resize with Lanczos | I1 icons and I2 portraits come out slightly soft at the 96 px rung (x3 and x1.5). Fix: `Image.NEAREST` for files flagged pixel art (a `-px` stem marker or a per-family set). The 256 / 512 rungs are exact today |
-| **RND-3** | HUD chrome is CSS from the design system | §9 frames need the frame sheet and a CSS pass on the in-world panels |
-| **ENG-1** | the Delve spawns `mirror-substitute` as the Rune-Warden and `rivet-maw` as the Magma Maw | `rune-warden` / `magma-maw` sheets need the one-line key switch (already noted in their briefs) |
-
----
+| **IMP-1** | `import_tiles` accepts a full W7a sheet (rows `tile top bottom sides thin caps inner`, 4 pieces each; inferred from a 4 x 7 sheet without a sidecar). Only row 0 must be opaque; edge pieces may round their corners off. The manifest marks it `autotile: true`. One-row W7 strips (interiors, back walls, feature strips) import as before | done |
+| **RND-1** | `terrain-render.ts` uses an imported sheet when `tileFor(<node id>)` has one and its image has loaded: a W7a sheet draws the piece for the cell's neighbours (`tile-art.ts autoTilePiece`, §7.1) and replaces the procedural edges and top face; a one-row strip replaces only the interior. Back walls are `tile-wall-<biome id>`. Everything else keeps the procedural tile, and cached chunks repaint once when a sheet loads | done |
+| **IMP-2** | `Sprites/Parallax` family: `NN-parallax-<place>-<sky|far|mid|near>.png`, one `layer` action, the sky opaque and the rest clear at their top corners; written to `parallax-manifest.generated.ts` | done |
+| **RND-2** | `parallax.ts`: a town or hunting ground draws its realm's imported layers (`parallax-<realm>-<layer>`, scroll 0.03 / 0.2 / 0.45 / 0.7, bottom edge on the ground line, snapped to art pixels) once every imported layer has loaded, else the painted `bg-*`. The Delve's cave uses `parallax-delve-<biome id>-far|near` at 2 px per art px when imported, else its procedural layers | done |
+| **IMP-3** | collectible and portrait ladders resize nearest-neighbour for pixel art: any file commissioned as `menu-pixel` in `commissions.csv`, or any stem marked `-px` (not part of the key) | done |
+| **RND-3** | HUD chrome is CSS from the design system; §9 frames need the frame sheet and a CSS pass on the in-world panels | open |
+| **ENG-1** | the Delve spawns its creatures under their atlas keys `cinder-bailiff` and `seam-eater` (creature-rigs.ts and art.ts alias them to the Rivet Maw and Mirror Substitute until their art lands); the briefs, paths and CSV rows use those keys | done |
 
 ## 13. Do and don't
 

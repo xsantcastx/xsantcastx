@@ -2852,7 +2852,14 @@ test('render budget: in the Delve the light grid is upscaled filtered; a phone f
       let reddest = 0;
       for (let p = 0; p < data.length; p += 4) reddest = Math.max(reddest, data[p]);
       if (lite) assert.ok(reddest > darkRed, 'the phone tint rides inside the grid');
-      else assert.equal(reddest, darkRed, 'desktop lays the plain dark (the wash is a soft-light pass of its own)');
+      else {
+        // Unlit samples (the most opaque) are the plain dark: the wash is a soft-light pass of its own.
+        let darkest = 0, at = 0;
+        for (let p = 0; p < data.length; p += 4) if (data[p + 3] > darkest) { darkest = data[p + 3]; at = p; }
+        assert.equal(data[at], darkRed, 'desktop lays the plain dark where nothing is lit');
+      }
+      // Lit ground takes on the lantern's warmth: some sample is warmer than the dark.
+      assert.ok(reddest > darkRed + 20, 'the lantern warms what it lights');
       engine.destroy();
     }
   } finally { delete browserDocument.createElement; }
@@ -3374,7 +3381,9 @@ test('auto-tile: edges outline only the open sides, notch an open diagonal, and 
   paintEdges(c, 64, 96, E | S | W | SE | SW, palette);
   const top = rects.filter(r => r.y === 96 && r.w === 32);
   assert.ok(top.some(r => r.color === palette[tileArt.P_DEEP]), 'an outline along the open top');
-  assert.ok(rects.some(r => r.y === 96 + ART && r.color === palette[tileArt.P_LIGHT]), 'a lit bevel under it');
+  assert.ok(rects.some(r => r.y === 96 + ART && r.color === palette[tileArt.P_HI]), 'a highlight bevel under it');
+  assert.notEqual(palette[tileArt.P_HI], palette[tileArt.P_LIGHT], 'the highlight is a step above light');
+  assert.notEqual(palette[tileArt.P_DEEP], '#000000', 'the outline is never pure black');
   assert.ok(!rects.some(r => r.y >= 96 + 32 - ART && r.h === ART && r.w === 32), 'no outline along the joined bottom');
   for (const r of rects) for (const v of [r.x, r.y, r.w, r.h]) assert.equal(v % ART, 0, 'whole art pixels');
 });
@@ -3510,5 +3519,114 @@ test('cave backdrop: both parallax layers tile seamlessly, the far one is opaque
     let steepest = 0;
     for (let x = 0; x < w - 1; x++) steepest = Math.max(steepest, Math.abs(depth(x + 1) - depth(x)));
     assert.ok(Math.abs(depth(0) - depth(w - 1)) <= steepest + 2, `${layer}: wraps in x`);
+  }
+});
+
+// ── Terrain pass 2: brightness, pixel placeables, imported sheets and parallax ──
+
+test('light: a broad bright pool, and unlit depths stay short of black', () => {
+  assert.equal(lightMod.lightFalloff(50, 100), .75, 'half way out, three quarters of the light');
+  assert.equal(lightMod.lightFalloff(100, 100), 0);
+  assert.ok(lightMod.ambientDarkness(10000) <= .82, 'deep down the floor is not black');
+  assert.ok(lightMod.ambientDarkness(10000) >= .75, 'but darkness still matters away from light');
+});
+
+test('placeables are 16 x 16 pixel maps on the art grid, in their own palette, transparent around the object', () => {
+  const ids = ['torch', 'ladder', 'platform', 'chest', 'camp', 'timber-support', 'basalt-support', 'blast-charge'];
+  for (const id of ids) {
+    const rows = tileArt.PLACED_ART[id];
+    assert.ok(rows, `${id} has pixel art`);
+    assert.equal(rows.length, tileArt.TILE, `${id}: 16 rows`);
+    for (const row of rows) assert.match(row, /^[.odblhfs]{16}$/, `${id}: 16 known pixels a row`);
+    const node = terrainMod.TERRAIN_NODE_LIST[terrainMod.nodeIndex(id)];
+    assert.equal(tileArt.patternOf(node), 'placed', `${id} draws from its map`);
+    assert.equal(tileArt.takesTopFace('placed'), false);
+    const { px } = tileArt.patternPixels('placed', id, 0);
+    assert.ok(px.includes(tileArt.P_CLEAR_INDEX), `${id}: the wall shows around it`);
+  }
+  // A ladder's rails and a platform's plank run on through the cell edges, so a run reads as one piece.
+  const ladder = tileArt.PLACED_ART.ladder;
+  assert.equal(ladder[0].replace(/h/g, 'l'), ladder[ladder.length - 1], 'ladder rails meet across cells');
+  assert.ok(!tileArt.PLACED_ART.platform[0].includes('.'), 'the plank spans the cell');
+});
+
+test('auto-tile: the W7a piece follows the open sides (style guide 7.1)', () => {
+  const { N, E, S, W, NE, SE, SW, NW, autoTilePiece } = tileArt;
+  const all = N | E | S | W | NE | SE | SW | NW;
+  assert.deepEqual(autoTilePiece(all, 5), [0, 1], 'interior, variant by hash');
+  assert.deepEqual(autoTilePiece(all & ~NW, 0), [6, 0], 'inner NW');
+  assert.deepEqual(autoTilePiece(all & ~SE, 0), [6, 3], 'inner SE');
+  assert.deepEqual(autoTilePiece(E | S | W | SE | SW, 0), [1, 0], 'top');
+  assert.deepEqual(autoTilePiece(E | S | SE, 0), [1, 2], 'top-left');
+  assert.deepEqual(autoTilePiece(S | W | SW, 0), [1, 3], 'top-right');
+  assert.deepEqual(autoTilePiece(N | E | W, 1), [2, 1], 'bottom B');
+  assert.deepEqual(autoTilePiece(N | E | S, 0), [3, 0], 'left');
+  assert.deepEqual(autoTilePiece(N | W | S, 1), [3, 3], 'right B');
+  assert.deepEqual(autoTilePiece(E | W, 0), [4, 0], 'ledge');
+  assert.deepEqual(autoTilePiece(N | S, 0), [4, 1], 'pillar');
+  assert.deepEqual(autoTilePiece(0, 1), [4, 3], 'single B');
+  assert.deepEqual(autoTilePiece(S, 0), [5, 0], 'pillar top');
+  assert.deepEqual(autoTilePiece(N, 0), [5, 1], 'pillar foot');
+  assert.deepEqual(autoTilePiece(E, 0), [5, 2], 'ledge left');
+  assert.deepEqual(autoTilePiece(W, 0), [5, 3], 'ledge right');
+});
+
+test('RND-1: an imported W7a sheet draws the piece for each cell and replaces the procedural edges; none keeps the code tile', () => {
+  const renderMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/terrain-render.ts'));
+  const images = [];
+  global.Image = class { constructor() { images.push(this); this.naturalWidth = 0; this.naturalHeight = 0; } };
+  try {
+    const entry = { src: 'a@1x.webp', src2x: 'a@2x.webp', size: 32, variants: 4, autotile: true };
+    const r = new renderMod.TerrainRenderer(id => id === 'rock' ? entry : null);
+    const t = new terrainMod.Terrain(3, 3, 0);
+    const rock = terrainMod.nodeIndex('rock');
+    for (let row = 0; row < 3; row++) for (let col = 0; col < 3; col++) t.set(col, row, rock);
+    t.set(1, 0, terrainMod.nodeIndex("air"));
+    r.attach(t);
+    const calls = [];
+    const ctx = { imageSmoothingEnabled: true, globalAlpha: 1, fillStyle: '', drawImage: (...a) => calls.push(['drawImage', ...a]), fillRect: (...a) => calls.push(['fillRect', ...a]) };
+    r.draw(ctx, 0, 0, 96, 96, 1);
+    assert.ok(!calls.some(c => c[0] === 'drawImage'), 'not loaded yet: the procedural tile stands in');
+    const image = images.find(i => i.src === 'a@2x.webp');
+    assert.ok(image, 'the authored sheet is requested');
+    image.naturalWidth = 256; image.naturalHeight = 448; image.onload();
+    calls.length = 0;
+    r.draw(ctx, 0, 0, 96, 96, 1);
+    const blits = calls.filter(c => c[0] === 'drawImage');
+    assert.equal(blits.length, 8, 'every rock cell from the sheet');
+    // The cell under the opening at (1, 0): its top is open, so a `top` piece (row 1, 64 px cells).
+    const under = blits.find(c => c[6] === 32 && c[7] === 32);
+    assert.equal(under[3], 64, 'row 1 of the sheet: a top piece');
+  } finally { delete global.Image; }
+});
+
+test('RND-2: parallax layers draw only once every imported layer has loaded, snapped to art pixels', () => {
+  const parallaxMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/parallax.ts'));
+  assert.equal(parallaxMod.parallaxOffset(0, .2, 1920), 0);
+  const off = parallaxMod.parallaxOffset(1001, .45, 1920);
+  assert.ok(off <= 0 && off > -1920 && off % 4 === 0, 'in range, whole art pixels');
+  const none = new parallaxMod.ParallaxBackdrop(() => undefined, () => null);
+  assert.equal(none.draw({}, 'infernal', 0, 1280, 610, false), false, 'nothing imported: the painting stays');
+  const loaded = new Map();
+  const lookup = (place, layer) => place === 'infernal' && (layer === 'sky' || layer === 'far') ? { src: `${layer}.webp`, src2x: `${layer}@2.webp`, width: 1920, height: 768 } : null;
+  const backdrop = new parallaxMod.ParallaxBackdrop(url => loaded.get(url), lookup);
+  const draws = [];
+  const ctx = { imageSmoothingEnabled: true, drawImage: (img, x, y, w, h) => draws.push([img.name, x, y, w, h]) };
+  loaded.set('sky.webp', { complete: true, naturalWidth: 1920, name: 'sky' });
+  assert.equal(backdrop.draw(ctx, 'infernal', 0, 1280, 610, false), false, 'one layer still loading: nothing drawn');
+  loaded.set('far.webp', { complete: true, naturalWidth: 1920, name: 'far' });
+  assert.equal(backdrop.draw(ctx, 'infernal', 0, 1280, 610, false), true);
+  assert.deepEqual(draws.map(d => d[0]), ['sky', 'far'], 'back to front');
+  assert.ok(draws.every(d => d[2] === 610 - 768), 'bottom edge on the ground line');
+  assert.equal(ctx.imageSmoothingEnabled, true, 'smoothing restored');
+});
+
+test('town ground strip: a deterministic pixel texture with a lit lip over an outline', () => {
+  const groundMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/ground-strip.ts'));
+  for (const realm of Object.keys(groundMod.GROUND_PALETTES)) {
+    const px = groundMod.groundPixels(realm);
+    assert.deepEqual(px, groundMod.groundPixels(realm), `${realm}: deterministic`);
+    for (let x = 0; x < 16; x++) assert.ok(px[x] >= 4 && px[16 + x] === 4, `${realm}: the lip is the top two rows`);
+    assert.ok(px.slice(16 * 3).every(v => v <= 3), `${realm}: stone below`);
   }
 });
