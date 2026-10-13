@@ -92,9 +92,11 @@ export interface EngineOptions {
    * `mutationId` (stable per cell per engine session, so a retry is the same
    * grant). Return false to refuse: the cell stays standing, fully cracked,
    * and the next hit asks again. Cells that pay nothing (dirt, basalt) break
-   * without asking.
+   * without asking. Return `'unpaid'` (WORLD_ACTION_UNPAID) when the cell
+   * should break but pay nothing (a Delve rock cell during the seam's
+   * recovery, play/delve-reward.ts): it breaks with no "gathered" line.
    */
-  onWorldAction?: (event: WorldActionEvent) => boolean | void;
+  onWorldAction?: (event: WorldActionEvent) => boolean | void | typeof WORLD_ACTION_UNPAID;
   /**
    * The Keeper read something in the world (E or a tap beside it). Fires on
    * every read; the host decides whether it is new (DelveLoreService).
@@ -219,6 +221,8 @@ export interface WorldActionEvent {
 }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }
+/** onWorldAction's "break it, pay nothing" answer (see EngineOptions.onWorldAction). */
+export const WORLD_ACTION_UNPAID = 'unpaid' as const;
 export const WORLD_WIDTH = 2700;
 export const FLOOR = 610;
 /**
