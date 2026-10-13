@@ -975,6 +975,12 @@ test('tools: right tier cracks, low tier clangs with the requirement', () => {
   }
 });
 
+test('ember-veined basalt leaves Ember Residue a quarter of the time (meaning audit #1)', () => {
+  const rock = terrainMod.TERRAIN_NODES['ember-rock'];
+  assert.deepEqual(rock.yield, { materialId: 'ember-residue', qty: 1, chance: 0.25 });
+  assert.equal(rock.xp, 1);
+});
+
 test('digging down: a broken cell is fallable, the Keeper stands on terrain', () => {
   const { engine } = enterDelve(() => true);
   engine.setTools({ pickaxe: 1 });
