@@ -10,7 +10,7 @@ import {
 import { spriteFor } from '../../shared/art/sprite-manifest.generated';
 import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
-import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, walkDirection } from './engine.model';
+import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
   climbTerrainBody, findNode, glowIntensity, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
@@ -215,12 +215,12 @@ export class SeamworksEngine {
   private destroyed = false;
   private message = 'Find the Cinder Ore deposit. Walk close and interact.';
   /**
-   * The i18n key (play.delve.*) and vars of a Delve message, valid only while
+   * The i18n key (play.delve.*, play.hud.*) and vars of a message, valid only while
    * `message` is still the English it was set with: any other assignment to
    * `message` silently retires it, so a stale key can never mask a new line.
    * `vars.item` is a placeable id the HUD turns into a translated name.
    */
-  private keyed: { en: string; key: string; vars?: Record<string, string | number> } | null = null;
+  private keyed: { en: string; key: string; vars?: Record<string, string | number> } | null = { en: this.message, key: 'play.hud.obj.start' };
   private say(key: string, en: string, vars?: Record<string, string | number>): void {
     this.message = en;
     this.keyed = { en, key, ...(vars ? { vars } : {}) };
@@ -600,11 +600,11 @@ export class SeamworksEngine {
   }
   returnToCamp(): void {
     this.enter(this.town);
-    this.resetPosition(this.town.spawnX); this.message = 'Back at camp. Your equipment and collected loot are safe.'; this.report();
+    this.resetPosition(this.town.spawnX); this.say('play.hud.eng.backAtCamp', 'Back at camp. Your equipment and collected loot are safe.'); this.report();
   }
   restartHunt(): void {
     this.monsters = this.createMonsters(); this.drops = []; this.resetPosition(this.areaDef.spawnX);
-    this.message = 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.'; this.report();
+    this.say('play.hud.eng.freshHunt', 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.'); this.report();
   }
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
     this.budget = renderBudget({ coarse: coarseDevice(window) }, options.lite);
@@ -783,7 +783,7 @@ export class SeamworksEngine {
     if (Math.abs(def.x - this.player.x) > 6) this.facing = def.x > this.player.x ? 1 : -1;
     const top = FLOOR - (def.kind === 'wood' ? 120 : 50);
     if (!site.ready) {
-      this.message = `The ${def.label.toLowerCase()} is growing back (${Math.ceil(site.timer)}s).`;
+      this.say('play.hud.eng.growingBack', `The ${def.label.toLowerCase()} is growing back (${Math.ceil(site.timer)}s).`, { lname: def.label.toLowerCase(), n: Math.ceil(site.timer) });
       return;
     }
     const check = toolFor(def, this.tools, SWING_TOOLS);
@@ -816,8 +816,8 @@ export class SeamworksEngine {
     this.impact(.05, 3);
     if (material) {
       this.atmosphere.burst(def.x, top - 16, `+${pays.qty} ${titleCase(material)}`);
-      this.message = `${titleCase(material)} gathered from the ${def.label.toLowerCase()}. It grows back in ${def.respawn}s.`;
-    } else this.message = `Nothing worth keeping on the ${def.label.toLowerCase()} this time. It grows back in ${def.respawn}s.`;
+      this.say('play.hud.eng.siteGathered', `${titleCase(material)} gathered from the ${def.label.toLowerCase()}. It grows back in ${def.respawn}s.`, { name: titleCase(material), lsite: def.label.toLowerCase(), n: def.respawn });
+    } else this.say('play.hud.eng.siteNothing', `Nothing worth keeping on the ${def.label.toLowerCase()} this time. It grows back in ${def.respawn}s.`, { lsite: def.label.toLowerCase(), n: def.respawn });
   }
   /** Swing at the cell under a world point, if it is solid and in reach. */
   strikeCell(x: number, y: number): boolean {
@@ -966,7 +966,7 @@ export class SeamworksEngine {
         // Felled for good: saved per player, never respawns, and what it guarded opens.
         monster.respawn = Infinity;
         this.setFlag(monster.def.once);
-        this.message = `${monster.def.name} falls, and stays fallen. What it guarded is open now.`;
+        this.say('play.hud.eng.fallsForGood', `${monster.def.name} falls, and stays fallen. What it guarded is open now.`, { name: monster.def.name });
       }
     }
   }
@@ -1071,7 +1071,7 @@ export class SeamworksEngine {
     this.debris.crumble(cx, cy, node.base, node.fleck, this.reducedMotion);
     if (material) {
       this.atmosphere.burst(cx, cy - 12, `+${qty} ${titleCase(material)}`);
-      this.message = `${titleCase(material)} gathered from the ${node.label.toLowerCase()}.`;
+      this.say('play.hud.eng.cellGathered', `${titleCase(material)} gathered from the ${node.label.toLowerCase()}.`, { name: titleCase(material), lsite: node.label.toLowerCase() });
     }
     if (falls) this.dropRubble(cx, cy, node.base);
     return HIT_BROKE;
@@ -1295,7 +1295,7 @@ export class SeamworksEngine {
     }
     for (let n = 0; n < 6; n++) this.debris.chip(at.x + dx * at.range * n / 6, at.y + dy * at.range * n / 6, '#d9c2ff', 2);
     this.impact(.05, 4);
-    this.message = 'The staff answers: a lance of light.';
+    this.say('play.hud.eng.staffAnswers', 'The staff answers: a lance of light.');
   }
   /** Roll the monster's drop table (or its area's) and spill the results around the body. */
   private spill(monster: Monster): void {
@@ -1319,9 +1319,9 @@ export class SeamworksEngine {
         names.push(entry.label);
       }
     }
-    this.message = names.length
-      ? `${monster.def.name} defeated! Walk over the ${names.join(' and ')} to collect them.`
-      : `${monster.def.name} defeated!`;
+    // `items` is joined in English; the HUD re-joins it in the player's language (hud.i18n.ts).
+    if (names.length) this.say('play.hud.eng.defeatedDrops', `${monster.def.name} defeated! Walk over the ${names.join(' and ')} to collect them.`, { name: monster.def.name, items: names.join(' and ') });
+    else this.say('play.hud.eng.defeated', `${monster.def.name} defeated!`, { name: monster.def.name });
   }
   /** RNG for drop chances. Replaceable in tests; a table of certain drops never calls it. */
   random: () => number = Math.random;
@@ -1331,9 +1331,9 @@ export class SeamworksEngine {
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
     const site = station ? null : this.siteInReach();
     if (site) { if (this.attackCooldown <= 0) this.workSite(site); this.report(); return; }
-    if (!station) { this.message = 'Move closer to a marked location to interact.'; this.report(); return; }
+    if (!station) { this.say('play.hud.eng.moveCloser', 'Move closer to a marked location to interact.'); this.report(); return; }
     const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
-    if (locked) this.message = station.lockedMessage ?? 'This way is not open yet.';
+    if (locked) { if (station.lockedMessage) this.message = station.lockedMessage; else this.say('play.hud.eng.notOpen', 'This way is not open yet.'); }
     else if (this.homestead?.interact(this.areaDef.id, station.id)) { /* handled by the Homestead view */ }
     else if (station.kind === 'passage') {
       const area = station.to ? areaOf(this.town, station.to) : undefined;
@@ -1472,7 +1472,8 @@ export class SeamworksEngine {
         this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
         this.coins += drop.coins; drop.age = -1;
         this.launchFlight(drop);
-        this.message = drop.coins ? `Collected ${drop.coins} coins.` : `Collected ${drop.label ?? 'Cinder Ore'}.`;
+        if (drop.coins) this.say('play.hud.eng.collectedCoins', `Collected ${drop.coins} coins.`, { n: drop.coins });
+        else this.say('play.hud.eng.collected', `Collected ${drop.label ?? 'Cinder Ore'}.`, { name: drop.label ?? 'Cinder Ore' });
       }
     }
     // In place: this runs every fixed step, and drops are few and rarely leave.
@@ -1515,7 +1516,7 @@ export class SeamworksEngine {
           if (Math.abs(distance) < 170 * k && distance * monster.facing > -40 * k && this.player.y > floor - 105 * Math.max(k, .6) && this.player.y < floor + 40 && this.dodgeTime <= 0 && this.hurtTime <= 0) {
             this.hp = Math.max(0, this.hp - 12); this.hurtTime = .8; this.wound = 1;
             this.impact(.07, this.hp === 0 ? 12 : 8);
-            if (this.hp === 0) this.message = 'The Keeper falls. Restart the hunt or return to camp.';
+            if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
           }
         } else if (monster.phase === 'strike') { monster.phase = 'recover'; monster.timer = 1.1; }
         else { monster.phase = 'idle'; monster.timer = .35; }
@@ -2012,8 +2013,9 @@ export class SeamworksEngine {
     }
     c.font = '600 12px system-ui'; c.textAlign = 'center'; c.fillStyle = hot ? '#fff1c9' : '#c9bdc8'; c.fillText(station.label, x, FLOOR + 35);
     // Near a station the HUD's action bar already says "Interact E"; a second
-    // "[ E ] INTERACT" here sat under that bar and was clipped. Only the hover cue remains.
-    if (hovered && !near) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, FLOOR + 58); }
+    // "[ E ] INTERACT" here sat under that bar and was clipped. Only the hover
+    // cue remains, drawn over the station, clear of the bar (STATION_CUE_Y).
+    if (hovered && !near) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, STATION_CUE_Y); }
   }
   /**
    * A gathering node, drawn in code: a herb patch, a tree or an outcrop. Ready,
@@ -2070,7 +2072,8 @@ export class SeamworksEngine {
       c.fillText(def.label.toUpperCase(), x, FLOOR + 35);
       const need = ready ? this.siteNeed(def) : null;
       c.fillStyle = need ? '#ffb39a' : '#fff0cb';
-      c.fillText(!ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, FLOOR + 58);
+      // Over the node's icon, not under its label: the floor band is the action bar's (SITE_CUE_RISE).
+      c.fillText(!ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, iconY - SITE_CUE_RISE);
     }
     c.restore();
   }
@@ -2397,20 +2400,29 @@ export class SeamworksEngine {
     }
     // The biome under the middle of the view sets the dark, the wash, the air.
     const biome = t.biomeAt(t.rowAt(this.cameraY + 360));
-    if (biome.wash.alpha > 0) {
-      // Desktop: a soft-light wash. Phone (render-budget.ts): a plain tint at the biome's own alpha, which
-      // costs a fill instead of a read-back of every pixel; the darkness laid over it next keeps the blacks.
+    // Desktop: a soft-light wash. Phone (render-budget.ts): a plain tint at the biome's own alpha, which
+    // costs a fill instead of a read-back of every pixel; the darkness laid over it next keeps the blacks.
+    // On a phone that tint rides inside the darkness overlay (DarknessLayer.draw `under`): same pixels,
+    // one full-frame blend fewer.
+    const wash = biome.wash.alpha > 0 ? biome.wash : null;
+    if (wash && this.budget.blendModes) {
       c.save();
-      if (this.budget.blendModes) { c.globalCompositeOperation = 'soft-light'; c.globalAlpha = biome.wash.alpha * 2.5; }
-      else c.globalAlpha = biome.wash.alpha;
-      c.fillStyle = biome.wash.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
+      c.globalCompositeOperation = 'soft-light'; c.globalAlpha = wash.alpha * 2.5;
+      c.fillStyle = wash.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
       c.restore();
     }
+    const fold = wash && !this.budget.blendModes ? wash : undefined;
     const count = selectLights(pool.lights, pool.count, LIGHT_CAP, this.player.x, this.player.y);
     c.save();
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-    this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark);
+    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness);
     c.restore();
+    if (fold && !dark) {
+      // No overlay canvas: the tint on its own, as before.
+      c.save(); c.globalAlpha = fold.alpha;
+      c.fillStyle = fold.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
+      c.restore();
+    }
     c.save(); c.globalCompositeOperation = this.budget.blendModes ? 'lighter' : 'source-over';
     // Coloured light from exposed glowing cells: glowcaps wash the Grotto blue, embers the Halls red.
     for (let n = 0; n < haloCount; n++) {
