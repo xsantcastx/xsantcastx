@@ -12,11 +12,11 @@ Spec **W8** (style guide §8): four layers per town or hunting ground, back to f
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, opaque |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `sky` layer, scroll factor 0.0-0.05; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `sky` layer, scroll factor 0.0-0.05; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.0-0.05. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.0-0.05. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -38,11 +38,11 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, transparent above the silhouette |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `far` layer, scroll factor 0.15-0.25; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `far` layer, scroll factor 0.15-0.25; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.15-0.25. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.15-0.25. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -64,11 +64,11 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, transparent above the silhouette |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `mid` layer, scroll factor 0.4-0.5; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `mid` layer, scroll factor 0.4-0.5; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.4-0.5. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.4-0.5. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 
@@ -90,11 +90,11 @@ anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly te
 | Spec | W8 parallax layer (pixel art) - 480x192 art px, seamless left to right, export x8 nearest-neighbour = 3840x1536, transparent above the silhouette |
 | On screen | 1920 x 768 logical px per repeat (4 px per art px), tiled horizontally |
 | Priority | P0 |
-| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `near` layer, scroll factor 0.65-0.75; replaces the painted bg-basalt-seamworks once a parallax family and renderer exist (style guide IMP-2, RND-2) |
+| Used in | Basalt Seamworks (Infernal town and hunting ground) in-world background, `near` layer, scroll factor 0.65-0.75; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) |
 | Shows today | the painted bg-basalt-seamworks backdrop |
 | Sidecar | `{"scale": 2, "pixelArt": true, "frame": {"w": 3840, "h": 1536}, "actions": [{"name": "layer", "frames": 1, "fps": 0, "loop": false}]}` |
 
-_Scroll factor 0.65-0.75. No importer family or renderer exists yet (style guide IMP-2, RND-2): the file is tracked by `--commissions` and waits in the library with its sidecar._
+_Scroll factor 0.65-0.75. The `Sprites/Parallax` family imports it and the town draws it once all four layers have landed (style guide IMP-2, RND-2)._
 
 **Prompt** (design; clean up on the art-pixel grid, style guide §14)
 

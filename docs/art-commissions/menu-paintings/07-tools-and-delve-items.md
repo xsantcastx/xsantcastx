@@ -2,7 +2,7 @@
 
 Pixel scale, palettes and the export rules are in the art bible, [docs/art/style-guide.md](../../art/style-guide.md); the save checklist is in [../README.md](../README.md). Paste **Prompt** as the positive prompt and **Negative** as the negative prompt, then clean the result on the art-pixel grid (style guide §14). The spec line is the export contract.
 
-Library numbering continues the existing Art Bible (tools 124-139 in `Items/ArtBible/Tools/`, after unique 123). Delve materials continue `Items/Materials/` at 14, Kael's Hammer is `Items/Quest/05`, the Rune-Warden master is `Creatures/Masters/11` (it stays a painting). The Fracture rune (`fracture`, `Items/Runes/14-fracture`) and the Codex Solarii (`codex-solarii`, `Items/Artifacts/32-codex-solarii`) are **already painted and in the manifest**; they are re-iconed in the later re-icon wave, not here.
+Library numbering continues the existing Art Bible (tools 124-139 in `Items/ArtBible/Tools/`, after unique 123). Delve materials continue `Items/Materials/` at 14, Kael's Hammer is `Items/Quest/05`, the Seam Eater master is `Creatures/Masters/11` (it stays a painting). The Fracture rune (`fracture`, `Items/Runes/14-fracture`) and the Codex Solarii (`codex-solarii`, `Items/Artifacts/32-codex-solarii`) are **already painted and in the manifest**; they are re-iconed in the later re-icon wave, not here.
 
 ### `pickaxe-1` — Pickaxe I  ★ FIRST TEST SET
 
@@ -679,22 +679,22 @@ Kael's Hammer, an old smith's hammer left behind in the Delve: a heavy cracked-i
 anti-aliasing, soft edges, blur, smooth gradient shading, airbrush, painterly texture, brush strokes, photorealism, 3D render, vector art, mixed pixel sizes, sub-pixel detail, rotated or resized pixels, jpeg artifacts, noise, heavy dithering, pure black outline, pillow shading, glow halo, text, letters, UI, watermark, signature, frame, border, copied or traced sprites from any existing game, skulls, horns, demonic anatomy, angel wings, halo, real-world religious iconography, background, slot frame, rarity aura, glow ring, multiple items, hand holding it, cropped item, cast shadow, isometric view
 ```
 
-### `rune-warden` — Rune-Warden
+### `seam-eater` — Seam Eater
 
 | | |
 |---|---|
-| Save as | `Assets/Creatures/Masters/11-rune-warden.png` |
+| Save as | `Assets/Creatures/Masters/11-seam-eater.png` |
 | Spec | S3 figure - 1254x1254 PNG, transparent background, full body, OPAQUE figure (stays a painting: style guide §1) |
 | Priority | P1 |
 | Used in | Codex > Bestiary card (appears automatically once imported); the model the world sprite is drawn from |
 | Shows today | not shown; counted in the sighted-and-not-yet-drawn total |
 
-_Codex splash painting (style guide §1). The pixel sprite `rune-warden` (`world-sprites/08-delve-creatures.md`) is the gameplay read; the two share silhouette and colour blocks, and whichever is made first is the model for the other._
+_Codex splash painting (style guide §1). The pixel sprite `seam-eater` (`world-sprites/08-delve-creatures.md`) is the gameplay read; the two share silhouette and colour blocks, and whichever is made first is the model for the other._
 
 **Prompt** (painting)
 
 ```text
-Rune-Warden: a towering stone-and-gold guardian of the Godforge fragment, tall armoured plates of basalt carved with glowing Godstone runes in aged gold, a heavy rune-lit shield-arm and a hammer-spear, a blank faceplate with one slit of violet light, dutiful rather than cruel; the one guardian that falls once and never rises again. Infernal palette: ember red, iron black, furnace orange seams (#E8752A, #ff9b4f), basalt (#3a2b2c). full-body figure in three-quarter view facing right, feet near the bottom edge, isolated on a fully transparent background, solid opaque body. Codex splash art: silhouette and colour blocks match the pixel-art world sprite of this creature when one exists; dark fantasy painterly digital illustration, ornate and highly detailed, deep charcoal and obsidian base tones, aged gold and brass filigree, restrained violet eclipse energy as the shared accent, key light from the upper left, crisp rim light, Eclipse Realms house style.
+Seam Eater: a colossal serpentine mass of cooled slag, broken iron braces and snapped rivets coiled up from the floor, molten interior channels glowing through the cracks between its slag plates, a blunt eyeless head split by one glowing seam; it rises from the deepest failed repairs and unthreads the Seamworks' platforms; the one guardian that falls once and never rises again. Infernal palette: ember red, iron black, furnace orange seams (#E8752A, #ff9b4f), basalt (#3a2b2c). full-body figure in three-quarter view facing right, feet near the bottom edge, isolated on a fully transparent background, solid opaque body. Codex splash art: silhouette and colour blocks match the pixel-art world sprite of this creature when one exists; dark fantasy painterly digital illustration, ornate and highly detailed, deep charcoal and obsidian base tones, aged gold and brass filigree, restrained violet eclipse energy as the shared accent, key light from the upper left, crisp rim light, Eclipse Realms house style.
 ```
 
 **Negative**
