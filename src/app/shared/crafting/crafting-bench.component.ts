@@ -63,7 +63,9 @@ import {
 import { formatQuality, qualityOf } from '../rpg/item-quality';
 import type { GameItem, ItemRarity } from '../rpg/item.model';
 import { materialDisplay } from '../rpg/material-catalog';
-import { RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
+import { RUNE_TIERS, RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
+import { runeCard } from '../rune-forge/rune-cards';
+import { RuneForgeService } from '../rune-forge/rune-forge.service';
 import {
   STATION_UI,
   STATION_UI_I18N,
@@ -88,6 +90,7 @@ import {
   craftingLevelView,
   masteryProgress,
   type CraftingCategory,
+  type CraftingIngredient,
   type CraftingLevelView,
   type CraftingRecipe,
 } from './crafting.model';
@@ -156,6 +159,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   private readonly gateway = inject(CraftingGateway);
   private readonly crafting = inject(CraftingService);
   private readonly inventory = inject(InventoryService);
+  private readonly runes = inject(RuneForgeService);
   private readonly economy = inject(EconomyService);
   private readonly celebration = inject(CelebrationService);
   private readonly skills = inject(SkillActionService);
@@ -372,6 +376,11 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   /** Display name for a material stack key. Never the raw id. */
   materialName(id: string): string { return materialName(id); }
 
+  /** What the Keeper holds of one ingredient: a bag stack, or a Forge rune in the ledger. */
+  private haveOf(row: CraftingIngredient): number {
+    return row.rune ? this.runes.countOf(row.materialId) : this.inventory.stackOf(row.materialId);
+  }
+
   qualityOf(item: GameItem): string {
     const q = qualityOf(item);
     return q == null ? '' : formatQuality(q);
@@ -467,8 +476,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
         id: row.materialId,
         label: materialName(row.materialId),
         need: row.count,
-        have: browser ? this.inventory.stackOf(row.materialId) : 0,
-        art: artFor(row.materialId),
+        have: browser ? this.haveOf(row) : 0,
+        art: ingredientArt(row),
       })),
     ];
   }
@@ -729,7 +738,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       const def = itemDefinitionById(recipe.output.itemId);
       const crafted = browser ? this.crafting.craftedCount(recipe.id) : 0;
       const ready = browser
-        ? recipe.ingredients.every(row => this.inventory.stackOf(row.materialId) >= row.count)
+        ? recipe.ingredients.every(row => this.haveOf(row) >= row.count)
         : false;
       return {
         recipe,
@@ -749,13 +758,13 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     if (!recipe) return [];
     const browser = this.isBrowser && this.hydrated;
     return recipe.ingredients.map(row => {
-      const have = browser ? this.inventory.stackOf(row.materialId) : 0;
+      const have = browser ? this.haveOf(row) : 0;
       return {
         materialId: row.materialId,
         name: materialName(row.materialId),
         need: row.count,
         have,
-        art: artFor(row.materialId),
+        art: ingredientArt(row),
         enough: have >= row.count,
       };
     });
@@ -771,7 +780,12 @@ const STAT_LABELS: Readonly<Partial<Record<ItemStatKey, string>>> = {
 };
 
 function materialName(id: string): string {
-  return materialDisplay(id)?.name ?? itemDefinitionById(id)?.name ?? id;
+  return materialDisplay(id)?.name ?? itemDefinitionById(id)?.name ?? (runeById(id) ? `${runeById(id)!.name} rune` : id);
+}
+
+/** A rune ingredient wears its rune card (`artFor('aether')` is the currency glyph). */
+function ingredientArt(row: CraftingIngredient): ArtEntry | null {
+  return row.rune ? runeCard(row.materialId) : artFor(row.materialId);
 }
 
 /** The "Skip the anvil game" toggle. Session-only UI preference; never persisted. */

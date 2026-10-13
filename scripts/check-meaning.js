@@ -210,7 +210,11 @@ const exchangeId = g => g.definitionId || g.materialId || (/^mat:(.+)$/.exec(g.i
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).market.add('Exchange'); }
 
 // Uses ──────────────────────────────────────────────────────────────────────
-for (const r of CRAFTING_RECIPES) for (const i of r.ingredients) use(i.materialId, `recipe ${r.id}`);
+// A `rune: true` ingredient is a Forge rune spent from the ledger, not a stack.
+const recipeRunes = new Set();
+for (const r of CRAFTING_RECIPES) for (const i of r.ingredients) {
+  if (i.rune) recipeRunes.add(i.materialId); else use(i.materialId, `recipe ${r.id}`);
+}
 for (const r of FORGE_EQUIPMENT_RECIPES) for (const i of r.inputs) use(i.id, `forge ${r.id}`);
 for (const r of REFINE_RECIPES) use(r.from, `refine → ${r.to}`);
 for (const inf of INFUSIONS) for (const i of inf.inputs) use(i.materialId, `infusion ${inf.id}`);
@@ -300,6 +304,7 @@ for (const r of RUNES) {
   if (SOCKET_CHANNEL[r.id]) n.uses.add(`socket → ${SOCKET_CHANNEL[r.id]}`);
   if (runewordRunes.has(r.id)) n.uses.add('runeword');
   if (socketWordRunes.has(r.id)) n.uses.add('socket word');
+  if (recipeRunes.has(r.id)) n.uses.add('recipe input');
   n.lore = !!(r.lore && r.lore.trim());
   if (!n.sources.size) flag('rune', 'no-source', r.id, 'drop rate 0');
   if (!n.uses.size) flag('rune', 'no-use', r.id, 'no socket channel, runeword or socket word');
