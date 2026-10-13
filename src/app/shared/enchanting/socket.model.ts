@@ -155,20 +155,17 @@ export const SOCKET_CHANNEL: Readonly<Record<string, keyof ItemStats>> = {
   ember: 'strikePower',
   drift: 'magicFind',
   shade: 'ward',
-  mote: 'xpBonus',
   // Uncommon — the realms, each leaving one mark.
   glint: 'magicFind',
   veil: 'ward',
   pulse: 'goldPerSec',
   thorn: 'strikePower',
   scorch: 'strikePower',
-  seam: 'magicFind',
   // Rare — things that were made on purpose.
   nexus: 'goldPerSec',
   sigil: 'xpBonus',
   rift: 'magicFind',
   hollow: 'ward',
-  ledger: 'magicFind',
   // Epic — the Shattering, in three pieces.
   fracture: 'strikePower',
   eclipse: 'magicFind',
