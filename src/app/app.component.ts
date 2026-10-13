@@ -4,7 +4,6 @@ import { Router, NavigationEnd } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
-import { VisitCounterService } from './shared/visit-counter/visit-counter.service';
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
 import { RealmService } from './shared/realms/realm.service';
@@ -36,7 +35,6 @@ export class AppComponent implements OnInit, OnDestroy {
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
   private ngZone = inject(NgZone);
-  private visitCounter = inject(VisitCounterService);
   private eggTriggers = inject(GlobalEggTriggersService);
   private xpWiring = inject(XpWiringService);
   private realms = inject(RealmService);
@@ -167,9 +165,6 @@ export class AppComponent implements OnInit, OnDestroy {
     // bootstrap dragged ~333 kB of reCAPTCHA into the critical path of every
     // route; see app-check.bootstrap.ts.
     scheduleAppCheck();
-
-    // Track site visit and trigger milestone celebration if applicable
-    this.visitCounter.recordVisit();
 
     // Initialize global easter egg triggers
     this.eggTriggers.init();
