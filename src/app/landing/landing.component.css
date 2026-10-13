@@ -69,431 +69,7 @@
   line-height: 1.15;
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   SECTION 1 — HERO
-   ═══════════════════════════════════════════════════════════════════ */
-
-.hp-hero {
-  position: relative;
-  min-height: clamp(600px, 90vh, 900px);
-  min-height: clamp(600px, 90dvh, 900px);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  overflow: hidden;
-  padding: clamp(5rem, 12vw, 9rem) var(--page-gutter) clamp(3rem, 8vw, 5rem);
-}
-
-/* Background layers */
-.hp-hero__bg {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-
-.hp-hero__bg-glow {
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  opacity: 0.18;
-  animation: glowDrift 18s ease-in-out infinite alternate;
-}
-
-/* Forge glows. Warmer and dimmer than the cosmic pair they replace — the
-   Godforge sits underground and the only real light in the room comes off
-   the core, so these are held below the core's own brightness. */
-.hp-hero__bg-glow--ember {
-  width: 620px;
-  height: 620px;
-  background: radial-gradient(circle, var(--ember), transparent 70%);
-  top: -18%;
-  left: -12%;
-  opacity: 0.13;
-  animation-duration: 20s;
-}
-
-.hp-hero__bg-glow--crimson {
-  width: 520px;
-  height: 520px;
-  background: radial-gradient(circle, #8B2252, transparent 70%);
-  bottom: -12%;
-  right: -6%;
-  opacity: 0.15;
-  animation-duration: 26s;
-  animation-direction: alternate-reverse;
-}
-
-@keyframes glowDrift {
-  0%   { transform: translate(0, 0) scale(1); }
-  100% { transform: translate(40px, 25px) scale(1.12); }
-}
-
-.hp-hero__grid-lines {
-  position: absolute;
-  inset: 0;
-  background-image:
-    linear-gradient(rgba(200, 152, 104, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(200, 152, 104, 0.045) 1px, transparent 1px);
-  background-size: 60px 60px;
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black, transparent);
-  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, black, transparent);
-}
-
-/* Layout — a single centred column. The Godforge is an entrance, not a
-   split marketing hero: title, subtitle, core, rank, door. */
-.hp-hero__inner {
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: var(--page-max-width);
-  display: grid;
-  gap: clamp(2.5rem, 6vw, 5rem);
-  align-items: center;
-}
-
-.gf-hero__inner {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  gap: clamp(0.7rem, 1.6vw, 1.1rem);
-  max-width: 760px;
-  margin: 0 auto;
-}
-
-.hp-hero__text {
-  display: flex;
-  flex-direction: column;
-  gap: clamp(1.2rem, 2.5vw, 1.8rem);
-}
-
-.hp-hero__eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-family: var(--font-heading);
-  font-size: 0.65rem;
-  letter-spacing: 0.22em;
-  text-transform: uppercase;
-  color: var(--primary-color);
-  text-shadow: 0 0 10px rgba(139, 92, 246, 0.4);
-}
-
-.gf-hero__eyebrow {
-  color: var(--gold-core); /* forge gold, lightened past var(--gold-core) for 4.5:1 on the dark base */
-  text-shadow: 0 0 12px rgba(232, 117, 42, 0.45);
-}
-
-.hp-hero__eyebrow-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--primary-color);
-  box-shadow: 0 0 10px var(--primary-color);
-  animation: liveDotPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes liveDotPulse {
-  0%, 100% { opacity: 1;   box-shadow: 0 0 6px currentColor; }
-  50%      { opacity: 0.3; box-shadow: 0 0 2px currentColor; }
-}
-
-.gf-hero__eyebrow .hp-hero__eyebrow-dot {
-  background: var(--ember);
-  box-shadow: 0 0 10px var(--ember);
-}
-
-.hp-hero__title {
-  font-family: var(--font-heading);
-  font-size: clamp(2.4rem, 5.5vw, 4rem);
-  line-height: 1.08;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-color);
-  margin: 0;
-}
-
-/* The name of the place. Serif, not Orbitron — the forge predates the
-   neon. A system serif stack rather than a webfont: the Google Fonts CDN
-   was deliberately removed for LCP (see v2.x perf work) and this title is
-   the largest text on the page, so it must not wait on a network font. */
-.gf-hero__title {
-  font-family: var(--font-lore);
-  font-size: clamp(2.9rem, 9vw, 5.6rem);
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  text-transform: none;
-  line-height: 1.02;
-  background: linear-gradient(168deg, #FFE6B0 0%, var(--ember) 52%, #8B2252 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  /* The gradient clips the glow too, so the halo is drawn behind instead. */
-  filter: drop-shadow(0 0 34px rgba(232, 117, 42, 0.34));
-}
-
-.hp-hero__title--accent {
-  background: linear-gradient(120deg, var(--primary-color), var(--secondary-color));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.hp-hero__sub {
-  font-size: clamp(0.95rem, 2vw, 1.1rem);
-  color: var(--text-muted);
-  line-height: 1.65;
-  margin: 0;
-  max-width: 480px;
-}
-
-.gf-hero__sub {
-  font-family: var(--font-lore);
-  font-style: italic;
-  font-size: clamp(1rem, 2.4vw, 1.3rem);
-  color: #C9B79A;
-  max-width: 620px;
-  letter-spacing: 0.02em;
-}
-
-.hp-hero__sub-br { display: block; }
-
-.hp-hero__cta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 1rem;
-  align-items: center;
-}
-
-.gf-hero__cta {
-  justify-content: center;
-  margin-top: clamp(0.6rem, 2vw, 1.2rem);
-}
-
-/* The door into the forges. Ember fill rather than the site's cyan CTA —
-   this is the one button that belongs to the forge, not the cosmos. */
-.gf-hero__enter {
-  border-color: rgba(232, 117, 42, 0.55);
-  background: linear-gradient(135deg, rgba(232, 117, 42, 0.22), rgba(139, 34, 82, 0.28));
-  color: #FFE6B0;
-  box-shadow: 0 0 30px -10px rgba(232, 117, 42, 0.75);
-}
-
-.gf-hero__enter:hover,
-.gf-hero__enter:focus-visible {
-  border-color: rgba(255, 210, 122, 0.85);
-  box-shadow: 0 0 44px -8px rgba(232, 117, 42, 0.95);
-}
-
-.hp-hero__cta-ghost {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.55rem;
-}
-
-/* The quiet second door under the buttons. Low emphasis on purpose — it
-   must not compete with "Enter the Forge", only catch the visitor who is
-   not ready to pick a tool. */
-.gf-hero__aside {
-  margin: clamp(0.7rem, 1.6vw, 1rem) 0 0;
-  font-family: var(--font-lore, ui-serif, Georgia, serif);
-  font-size: 0.85rem;
-  font-style: italic;
-  letter-spacing: 0.02em;
-  color: rgba(240, 240, 240, 0.5);
-}
-
-.gf-hero__aside-link {
-  color: var(--primary-color);
-  text-decoration: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--primary-color) 40%, transparent);
-  padding-bottom: 1px;
-  transition: color 0.22s ease, border-color 0.22s ease, text-shadow 0.22s ease;
-}
-
-.gf-hero__aside-link:hover,
-.gf-hero__aside-link:focus-visible {
-  color: var(--gold-core);
-  border-bottom-color: var(--gold-core);
-  text-shadow: 0 0 12px rgba(200, 152, 104, 0.6);
-}
-
-/* ─── The forge core ────────────────────────────────────────────────
-   Pure CSS. Read outward: white-hot floor, ember body, a narrow crimson
-   rim, then the shaft goes dark — and past the rims a purple eclipse
-   bloom in the haze and the outer ring. Every layer animates only
-   transform / opacity / filter, so the whole thing composites on the
-   GPU and never triggers layout. Five layers, all decorative. */
-
-/* Sized so that title → subtitle → core → rank → CTA all clear the fold on
-   a 900px-tall desktop viewport. The core is the centrepiece but it is not
-   the destination: a visitor who cannot see "Enter the Forge" without
-   scrolling has been shown an ornament instead of a door. */
-.gf-core {
-  position: relative;
-  width: clamp(180px, 24vw, 260px);
-  height: clamp(180px, 24vw, 260px);
-  margin: clamp(0.4rem, 1.4vw, 1rem) auto clamp(0.8rem, 2vw, 1.4rem);
-  display: grid;
-  place-items: center;
-  isolation: isolate;
-}
-
-/* Heat haze bleeding out past the rings, and the eclipse beyond it.
-   The full read outward is ember → gold → purple → void. The purple lives
-   HERE rather than in the well: pushed inside the shaft it stops reading as
-   a furnace and starts reading as a nebula orb (see the note on
-   .gf-core__well), but out here past the rims it is the eclipse the forge
-   burns inside, which is exactly where it belongs. */
-.gf-core__haze {
-  position: absolute;
-  inset: -32%;
-  border-radius: 50%;
-  background: radial-gradient(
-    circle at 50% 52%,
-    rgba(232, 117, 42, 0.32) 0%,
-    rgba(200, 152, 104, 0.2) 30%,
-    rgba(139, 92, 246, 0.22) 52%,
-    rgba(139, 92, 246, 0.1) 68%,
-    rgba(10, 10, 15, 0) 82%
-  );
-  filter: blur(24px);
-  animation: gfHaze 9s ease-in-out infinite;
-}
-
-/* Two counter-rotating rims: the lip of the forge. */
-.gf-core__ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid rgba(200, 152, 104, 0.28);
-}
-
-/* The outer rim is the eclipse's edge, so it takes the purple; the inner
-   rim stays ember, and the gold band sits between them. */
-.gf-core__ring--outer {
-  inset: 0;
-  border-style: dashed;
-  border-color: rgba(139, 92, 246, 0.42);
-  box-shadow: 0 0 26px -8px rgba(139, 92, 246, 0.6);
-  animation: gfRingSpin 46s linear infinite;
-}
-
-.gf-core__ring--inner {
-  inset: 13%;
-  border-color: rgba(232, 117, 42, 0.34);
-  box-shadow: inset 0 0 30px -8px rgba(232, 117, 42, 0.5);
-  animation: gfRingSpin 31s linear infinite reverse;
-}
-
-/* The well — looking down the shaft. Dark rim, hot floor. */
-.gf-core__well {
-  position: relative;
-  width: 62%;
-  height: 62%;
-  border-radius: 50%;
-  display: grid;
-  place-items: center;
-  /* Read the stops as depth, not as a colour ramp: white-hot floor, a wide
-     ember body, crimson only at the rim, then the shaft goes dark. Crimson
-     is held to a narrow band at high alpha — spread wide and semi-opaque it
-     stops reading as a furnace and starts reading as a purple nebula orb. */
-  background:
-    radial-gradient(circle at 50% 50%,
-      rgba(255, 240, 200, 0.97) 0%,
-      rgba(255, 190, 92, 0.94) 20%,
-      rgba(232, 117, 42, 0.93) 46%,
-      rgba(168, 58, 62, 0.94) 68%,
-      rgba(139, 34, 82, 0.95) 80%,
-      rgba(10, 15, 30, 0.98) 94%);
-  box-shadow:
-    0 0 60px -10px rgba(232, 117, 42, 0.55),
-    0 0 140px -30px rgba(200, 152, 104, 0.5),
-    /* The eclipse bloom, outside the shaft — completes the ember → gold →
-       purple → void ramp without lightening the furnace itself. */
-    0 0 190px -40px rgba(139, 92, 246, 0.65),
-    inset 0 0 30px rgba(10, 15, 30, 0.85);
-  animation: gfWellBreathe 6.4s ease-in-out infinite;
-}
-
-/* The molten heart, on a slower offset cycle so the two never sync. */
-.gf-core__heart {
-  width: 34%;
-  height: 34%;
-  border-radius: 50%;
-  background: radial-gradient(circle at 46% 42%, #fff6dd 0%, #ffd27a 34%, var(--ember) 72%, rgba(139, 34, 82, 0.5) 100%);
-  filter: blur(1px);
-  animation: gfHeartPulse 4.1s ease-in-out infinite;
-}
-
-/* Sparks lifting off the surface. Positioned by --ex, staggered by --ed. */
-.gf-core__ember {
-  position: absolute;
-  bottom: 26%;
-  left: var(--ex);
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: #ffd27a;
-  box-shadow: 0 0 8px rgba(232, 117, 42, 0.9);
-  opacity: 0;
-  animation: gfEmberRise var(--edur, 5.5s) ease-out infinite;
-  animation-delay: var(--ed, 0s);
-}
-
-@keyframes gfHaze {
-  0%, 100% { opacity: 0.6; transform: scale(1); }
-  50%      { opacity: 1;   transform: scale(1.07); }
-}
-
-@keyframes gfRingSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@keyframes gfWellBreathe {
-  0%, 100% { transform: scale(1);     filter: brightness(1); }
-  50%      { transform: scale(1.035); filter: brightness(1.16); }
-}
-
-@keyframes gfHeartPulse {
-  0%, 100% { transform: scale(0.92); opacity: 0.85; }
-  50%      { transform: scale(1.14); opacity: 1; }
-}
-
-@keyframes gfEmberRise {
-  0%   { opacity: 0; transform: translateY(0) scale(0.6); }
-  12%  { opacity: 1; }
-  70%  { opacity: 0.7; }
-  100% { opacity: 0; transform: translateY(-150px) translateX(14px) scale(0.3); }
-}
-
 /* ─── Rank readout ──────────────────────────────────────────────── */
-
-.gf-rank {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  width: min(100%, 380px);
-  margin: 0 auto;
-}
-
-.gf-rank__line {
-  margin: 0;
-  font-size: 0.9rem;
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
-}
-
-.gf-rank__title {
-  font-family: var(--font-heading);
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: #F0CE85;
-}
 
 .gf-rank__bar {
   position: relative;
@@ -515,53 +91,6 @@
   box-shadow: 0 0 14px -2px rgba(232, 117, 42, 0.8);
   transition: width 0.7s cubic-bezier(0.22, 1, 0.36, 1);
 }
-
-.gf-rank__meta {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: rgba(200, 152, 104, 0.75);
-}
-
-/* Scroll hint */
-.hp-hero__scroll-hint {
-  position: absolute;
-  bottom: 2rem;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 1;
-}
-
-.hp-hero__scroll-mouse {
-  width: 18px;
-  height: 28px;
-  border: 1.5px solid rgba(139, 92, 246, 0.3);
-  border-radius: 10px;
-  position: relative;
-}
-
-.hp-hero__scroll-mouse::after {
-  content: '';
-  position: absolute;
-  top: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 3px;
-  height: 7px;
-  background: var(--primary-color);
-  border-radius: 999px;
-  animation: scrollBob 1.8s ease-in-out infinite;
-}
-
-@keyframes scrollBob {
-  0%   { opacity: 0; transform: translateX(-50%) translateY(0); }
-  40%  { opacity: 1; }
-  80%  { opacity: 0; transform: translateX(-50%) translateY(10px); }
-  100% { opacity: 0; transform: translateX(-50%) translateY(0); }
-}
-
 
 /* ═══════════════════════════════════════════════════════════════════
    SECTION 2 — STATS BAR
@@ -658,15 +187,6 @@
   line-height: 1;
 }
 
-.hp-stat__val {
-  font-family: var(--font-heading);
-  font-size: 0.9rem;
-  color: var(--text-color);
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  line-height: 1;
-}
-
 .hp-stat__label {
   font-size: 0.72rem;
   color: var(--text-muted);
@@ -686,7 +206,6 @@
   background: linear-gradient(180deg, transparent, rgba(139, 92, 246, 0.22) 50%, transparent);
   flex-shrink: 0;
 }
-
 
 /* ═══════════════════════════════════════════════════════════════════
    SECTION 3 — TOOL GRID
@@ -718,374 +237,17 @@
   flex-direction: column;
 }
 
-.hp-tools__view-all {
-  font-size: 0.875rem;
-  color: var(--accent-color, var(--violet));
-  text-decoration: none;
-  white-space: nowrap;
-  padding: 0.4rem 0;
-  transition: opacity 0.2s;
-}
-
-.hp-tools__view-all:hover { opacity: 0.7; }
-
-.hp-tools__footer {
-  margin-top: 2.5rem;
-  text-align: center;
-}
-
-/* Category tabs */
-.hp-tools__cats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.hp-cat-btn {
-  padding: 0.45rem 1.1rem;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: transparent;
-  color: var(--text-muted);
-  font-family: var(--font-heading);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: border-color 0.2s, background 0.2s, color 0.2s, box-shadow 0.2s;
-}
-
-/* B-3 — ensure ≥44px touch target on mobile without changing desktop sizing */
-@media (max-width: 768px) {
-  .hp-cat-btn {
-    min-height: 44px;
-    padding: 0.6rem 1.1rem;
-    display: inline-flex;
-    align-items: center;
-  }
-}
-
-.hp-cat-btn:hover {
-  border-color: rgba(139, 92, 246, 0.3);
-  color: var(--text-color);
-}
-
-.hp-cat-btn.active {
-  border-color: var(--primary-color);
-  background: rgba(139, 92, 246, 0.1);
-  color: var(--primary-color);
-  box-shadow: 0 0 12px rgba(139, 92, 246, 0.15);
-}
-
-/* Tool cards grid */
-.hp-tools__grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.25rem;
-}
-
-.hp-tool-card {
-  --star-color: #A78BFA;
-  --star-glow: rgba(139, 92, 246, 0.55);
-  --star-inner: var(--ink-0);
-
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: 0.9rem;
-  padding: 1.6rem 1.4rem 1.4rem;
-  background: rgba(10, 6, 26, 0.58);
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: var(--radius-md);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  text-decoration: none;
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
-  cursor: pointer;
-  overflow: hidden;
-  isolation: isolate;
-}
-
-/* Category palettes — matches tools-page stars */
-.hp-tool-card[data-category="CSS Tools"]        { --star-color: #A78BFA; --star-glow: rgba(139, 92, 246, 0.6);  --star-inner: #F2ECFF; }
-.hp-tool-card[data-category="CSS"]              { --star-color: #A78BFA; --star-glow: rgba(139, 92, 246, 0.6);  --star-inner: #F2ECFF; }
-.hp-tool-card[data-category="CSS Generators"]   { --star-color: #C4B5FD; --star-glow: rgba(196, 181, 253, 0.6);  --star-inner: #EFE8FF; }
-.hp-tool-card[data-category="Email Tools"]      { --star-color: #ff6dd7; --star-glow: rgba(255, 90, 210, 0.6); --star-inner: #ffe6f6; }
-.hp-tool-card[data-category="Security Tools"]   { --star-color: #a48bff; --star-glow: rgba(140, 110, 255, 0.6); --star-inner: #efeaff; }
-.hp-tool-card[data-category="Code Converters"]  { --star-color: #5fb6ff; --star-glow: rgba(80, 180, 255, 0.6);  --star-inner: #e6f4ff; }
-.hp-tool-card[data-category="Productivity"]     { --star-color: var(--gold); --star-glow: rgba(255, 180, 80, 0.6);  --star-inner: #fff2dc; }
-.hp-tool-card[data-category="DevOps"]           { --star-color: #ff9a5a; --star-glow: rgba(255, 140, 60, 0.6);  --star-inner: #ffe6d2; }
-.hp-tool-card[data-category="Text & Data"]      { --star-color: #c48bff; --star-glow: rgba(180, 120, 255, 0.6); --star-inner: #f1e6ff; }
-.hp-tool-card[data-category="SEO Tools"]        { --star-color: #7fd5a3; --star-glow: rgba(100, 220, 150, 0.6); --star-inner: #e6ffef; }
-
-/* Faint inner nebula wash */
-.hp-tool-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse 70% 50% at 20% 0%, var(--star-glow), transparent 55%);
-  opacity: 0.18;
-  pointer-events: none;
-  z-index: -1;
-  transition: opacity 0.4s ease;
-}
-
-/* §2.3 — hover-only affordances wrapped so touch devices never see phantom hovers */
-@media (hover: hover) {
-  .hp-tool-card:hover {
-    transform: translateY(-6px);
-    border-color: var(--star-glow);
-    background: rgba(14, 8, 32, 0.72);
-    box-shadow:
-      0 24px 60px rgba(0, 0, 0, 0.55),
-      0 0 28px -8px var(--star-glow),
-      inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-    outline: none;
-  }
-
-  .hp-tool-card:hover::before { opacity: 0.45; }
-}
-
-/* focus-visible stays unconditional — keyboard navigation must always work */
-.hp-tool-card:focus-visible {
-  transform: translateY(-6px);
-  border-color: var(--star-glow);
-  background: rgba(14, 8, 32, 0.72);
-  box-shadow:
-    0 24px 60px rgba(0, 0, 0, 0.55),
-    0 0 28px -8px var(--star-glow),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.04);
-  outline: none;
-}
-
-.hp-tool-card:focus-visible::before { opacity: 0.45; }
-
-/* Star-like icon orb */
-.hp-tool-card__icon-wrap {
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  position: relative;
-  display: grid;
-  place-items: center;
-  flex-shrink: 0;
-  background:
-    radial-gradient(circle at 32% 28%, var(--star-inner) 0%, rgba(255, 255, 255, 0.3) 18%, rgba(255, 255, 255, 0) 42%),
-    radial-gradient(circle at 50% 50%, var(--star-color) 0%, rgba(8, 3, 24, 0.92) 88%);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow:
-    0 0 12px var(--star-glow),
-    0 0 36px -6px var(--star-glow),
-    inset 0 0 8px rgba(0, 0, 0, 0.4);
-  animation: hpStarBreathe 6.5s ease-in-out infinite;
-  transition: transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.45s ease;
-  will-change: transform;
-}
-
-.hp-tool-card__icon-wrap::before {
-  /* orbital ring */
-  content: '';
-  position: absolute;
-  inset: -8px;
-  border-radius: 50%;
-  border: 1px dashed var(--star-glow);
-  opacity: 0.35;
-  animation: hpOrbitSpin 24s linear infinite;
-  pointer-events: none;
-}
-
-.hp-tool-card__icon-wrap::after {
-  /* outer diffuse halo */
-  content: '';
-  position: absolute;
-  inset: -18px;
-  border-radius: 50%;
-  background: radial-gradient(circle, var(--star-glow), transparent 70%);
-  opacity: 0.3;
-  filter: blur(6px);
-  z-index: -1;
-  transition: opacity 0.4s ease, transform 0.4s ease;
-}
-
-/* Stagger the breathing so every card doesn't pulse in lockstep */
-.hp-tools__grid .hp-tool-card:nth-child(3n)   .hp-tool-card__icon-wrap { animation-delay: -0.8s; }
-.hp-tools__grid .hp-tool-card:nth-child(3n+1) .hp-tool-card__icon-wrap { animation-delay: -2.6s; }
-.hp-tools__grid .hp-tool-card:nth-child(3n+2) .hp-tool-card__icon-wrap { animation-delay: -4.3s; }
-
-@media (hover: hover) {
-  .hp-tool-card:hover .hp-tool-card__icon-wrap {
-    animation-play-state: paused;
-    transform: scale(1.12);
-    box-shadow:
-      0 0 28px var(--star-glow),
-      0 0 80px var(--star-glow),
-      inset 0 0 10px rgba(0, 0, 0, 0.3);
-  }
-
-  .hp-tool-card:hover .hp-tool-card__icon-wrap::after {
-    opacity: 0.85;
-    transform: scale(1.35);
-  }
-}
-
-.hp-tool-card:focus-visible .hp-tool-card__icon-wrap {
-  animation-play-state: paused;
-  transform: scale(1.12);
-  box-shadow:
-    0 0 28px var(--star-glow),
-    0 0 80px var(--star-glow),
-    inset 0 0 10px rgba(0, 0, 0, 0.3);
-}
-
-.hp-tool-card:focus-visible .hp-tool-card__icon-wrap::after {
-  opacity: 0.85;
-  transform: scale(1.35);
-}
-
-.hp-tool-card__icon {
-  font-size: 1.3rem;
-  color: #050212;
-  line-height: 1;
-  filter: drop-shadow(0 0 3px rgba(0, 0, 0, 0.4));
-  z-index: 1;
-}
-
-.hp-tool-card__body {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
-  flex: 1;
-}
-
-.hp-tool-card__cat {
-  font-family: var(--font-heading);
-  font-size: 0.55rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--star-color);
-  text-shadow: 0 0 8px var(--star-glow);
-}
-
-.hp-tool-card__name {
-  font-family: var(--font-heading);
-  font-size: 0.86rem;
-  letter-spacing: 0.06em;
-  color: var(--text-color);
-  margin: 0;
-  line-height: 1.3;
-}
-
-.hp-tool-card__desc {
-  font-size: 0.82rem;
-  color: var(--text-muted);
-  line-height: 1.55;
-  margin: 0;
-}
-
-.hp-tool-card__cta {
-  font-family: var(--font-heading);
-  font-size: 0.62rem;
-  letter-spacing: 0.14em;
-  color: var(--star-color);
-  text-shadow: 0 0 6px var(--star-glow);
-  align-self: flex-end;
-  transition: text-shadow 0.25s ease, letter-spacing 0.25s ease;
-}
-
-@media (hover: hover) {
-  .hp-tool-card:hover .hp-tool-card__cta {
-    text-shadow: 0 0 14px var(--star-glow);
-    letter-spacing: 0.2em;
-  }
-}
-
-.hp-tool-card:focus-visible .hp-tool-card__cta {
-  text-shadow: 0 0 14px var(--star-glow);
-  letter-spacing: 0.2em;
-}
-
-@keyframes hpStarBreathe {
-  0%, 100% { transform: scale(1); filter: brightness(1); }
-  50%       { transform: scale(1.07); filter: brightness(1.18); }
-}
-
-@keyframes hpOrbitSpin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .hp-tool-card__icon-wrap,
-  .hp-tool-card__icon-wrap::before { animation: none !important; }
-}
-
-/* Empty state */
-.hp-tools__empty {
-  grid-column: 1 / -1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 3rem;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.hp-tools__empty-icon {
-  font-size: 2rem;
-  opacity: 0.4;
-}
-
-.hp-tools__clear-btn {
-  padding: 0.45rem 1.2rem;
-  border-radius: 999px;
-  border: 1px solid var(--glass-border);
-  background: transparent;
-  color: var(--primary-color);
-  font-family: var(--font-heading);
-  font-size: 0.62rem;
-  letter-spacing: 0.12em;
-  cursor: pointer;
-  transition: background 0.2s, border-color 0.2s;
-}
-
-.hp-tools__clear-btn:hover {
-  background: rgba(139, 92, 246, 0.08);
-  border-color: rgba(139, 92, 246, 0.3);
-}
-
-
 /* ═══════════════════════════════════════════════════════════════════
    RESPONSIVE
    ═══════════════════════════════════════════════════════════════════ */
 
-/* §2.4 — consolidated from 1080px → 1024px (desktop tools grid) */
-@media (max-width: 1024px) {
-  .hp-tools__grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  /* §2.4 — rule from the old 900px block: tablet single-column layout.
-     900px was a tablet cutoff, so mapped → 1024px rather than 768px to keep
-     the layout change from firing on wide phones. */
-  .hp-hero__inner {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* §2.4 — consolidated from 680px → 480px (phone-only stacking) */
 @media (max-width: 480px) {
-  .hp-tools__grid {
-    grid-template-columns: 1fr;
-  }
 
   .hp-tools__hd {
     flex-direction: column;
     align-items: flex-start;
   }
-
-  .hp-hero__sub-br { display: none; }
 
   .hp-stats__inner {
     gap: 1.2rem;
@@ -1098,31 +260,12 @@
   .hp-stat {
     min-width: 110px;
   }
-
-  .hp-hero__title {
-    font-size: clamp(1.9rem, 9vw, 2.4rem);
-  }
-
-  .gf-hero__title {
-    font-size: clamp(2.4rem, 13vw, 3.2rem);
-  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .hp-hero__bg-glow {
-    animation: none !important;
-  }
 
   /* The forge parks hot rather than dark: the core keeps its gradients and
      its glow, it just stops moving. Embers are motion-only, so they go. */
-  .gf-core__haze,
-  .gf-core__ring,
-  .gf-core__well,
-  .gf-core__heart {
-    animation: none !important;
-  }
-
-  .gf-core__ember { display: none; }
 
   .gf-rank__fill,
   .gf-station__body,
@@ -1140,66 +283,6 @@
    The site stays "alive" — planet, pulsar, carousel all still move.
    ════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
-
-  /* ── Hero background glows: kill the 80px blur (GPU fillrate killer on
-        Adreno/Mali), shrink elements, keep opacity-only fade still readable */
-  .hp-hero__bg-glow,
-  .hp-hero__bg-glow--ember,
-  .hp-hero__bg-glow--crimson {
-    filter: none !important;
-    animation: none !important;
-    opacity: 0.12;
-    will-change: auto;
-  }
-
-  .hp-hero__bg-glow--ember {
-    width: 320px;
-    height: 320px;
-  }
-
-  .hp-hero__bg-glow--crimson {
-    width: 280px;
-    height: 280px;
-  }
-
-  /* ── Forge core on mobile: the 24px-blurred haze is the same fillrate
-        problem as the hero glows above, so it loses the blur and holds a
-        static gradient. The well and the heart keep breathing — they are
-        two small composited layers and they are the point of the section.
-        Embers go: five independently animated 3px nodes buy nothing at
-        this size and each one is its own layer. ── */
-  .gf-core__haze {
-    filter: none !important;
-    animation: none !important;
-    opacity: 0.75;
-  }
-
-  .gf-core__ember { display: none; }
-
-  /* ── backdrop-filter: stays OFF (current behaviour is correct) ──
-     Give each affected card a semi-opaque background-color so the
-     glass look survives without the compositor cost. */
-  .hp-tool-card {
-    backdrop-filter: none !important;
-    -webkit-backdrop-filter: none !important;
-  }
-
-  /* Semi-opaque glass substitute for the tool cards */
-  .hp-tool-card {
-    background: rgba(14, 8, 32, 0.82);
-  }
-
-  /* Grid background: simpler tiling = less composite work */
-  .hp-hero__grid-lines {
-    background-size: 80px 80px;
-    opacity: 0.5;
-  }
-
-  /* Drop box-shadow transitions (no hover on mobile anyway) */
-  .hp-tool-card,
-  .cta-button {
-    transition: transform 0.2s ease !important;
-  }
 
   /* ── Safe-area padding on the closing call for notched iPhones (§2.3) ── */
   .gf-journey {
@@ -1227,11 +310,6 @@
   contain-intrinsic-size: 1px 800px;
 }
 
-/* Paint containment isolates card repaints from their siblings. */
-.hp-tool-card {
-  contain: layout paint;
-}
-
 /* ═══════════════════════════════════════════════════════════════════
    §3.4 — Hairlines: pure-decorative 1px lines → 0.5px at 2dppx.
    Only borders that are visually thin stripes (not card edges that need
@@ -1252,7 +330,6 @@
 
 }
 
-
 /* ════════════════════════════════════════════════════════════════════════════
    MOBILE TYPOGRAPHY FLOOR — v2.3.0
    ════════════════════════════════════════════════════════════════════════════
@@ -1269,28 +346,20 @@
 @media (max-width: 768px) {
   /* ── Tier B: decorative micro-labels → 12px ─────────────────────────────── */
   .gf-station__domain,
-  .gf-station__count,
-  .gf-rank__meta,
   .gf-door__label,
-  .hp-tool-card__cat,
-  .hp-hero__eyebrow,
   .hp-section-eyebrow,
   .hp-stat__label {
     font-size: 12px;
   }
 
   /* ── Tier A: content and controls → 14px ────────────────────────────────── */
-  .hp-tool-card__desc,
-  .hp-tool-card__cta,
   .hp-section-tagline,
   .gf-station__quote,
   .gf-station__more,
-  .gf-door__hint,
-  .gf-rank__line {
+  .gf-door__hint {
     font-size: 14px;
   }
 
-  .hp-tool-card__name,
   .gf-station__name {
     font-size: 15px;
   }
@@ -1315,7 +384,6 @@
    REALMS in realm.model.ts, so adding a realm is a data edit and never
    a stylesheet edit. */
 
-
 /* ─── The Forge's Pulse (stats bar) ─────────────────────────────── */
 
 .gf-pulse {
@@ -1332,7 +400,6 @@
 .gf-pulse .hp-stat__icon {
   color: var(--forge-gold-text);
 }
-
 
 /* ─── The Five Realms ───────────────────────────────────────────── */
 
@@ -1440,22 +507,6 @@
   color: var(--text-muted);
 }
 
-.gf-station__count {
-  flex: none;
-  font-family: var(--font-heading);
-  font-size: 0.72rem;
-  letter-spacing: 0.1em;
-  color: var(--realm-color);
-  white-space: nowrap;
-}
-
-.gf-station__count-word {
-  color: var(--text-muted);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-size: 0.62rem;
-}
-
 .gf-station__chevron {
   flex: none;
   font-size: 1.4rem;
@@ -1504,46 +555,8 @@
   content-visibility: visible;
 }
 
-.gf-station__grid {
-  margin-top: clamp(0.9rem, 2vw, 1.3rem);
-}
-
-/* Realm tint on the cards inside a station. The per-category star colour
-   set by .hp-tool-card[data-category] still drives the icon orb; this
-   only warms the card edge toward its realm. */
-.gf-card {
-  border-color: color-mix(in srgb, var(--realm-color) 18%, rgba(255, 255, 255, 0.06));
-}
-
-.gf-card:hover {
-  border-color: color-mix(in srgb, var(--realm-color) 55%, transparent);
-}
-
-/* The category label carries the realm, not the category star colour. The
-   icon orb keeps --star-color, so a card still reads as "a CSS tool" at a
-   glance while the label and its glow say which realm it hangs in — the
-   text-shadow has to be overridden too or the category glow wins the eye
-   and the tint reads as the wrong colour entirely. */
-.gf-card__cat {
-  color: color-mix(in srgb, var(--realm-color) 78%, white);
-  text-shadow: 0 0 8px var(--realm-glow);
-}
-
-.gf-card__cta {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-}
-
 /* Already used, in this browser. Not a global usage count — the site has
    no per-tool analytics, and inventing one would be a lie in a badge. */
-.gf-card__struck {
-  font-family: var(--font-heading);
-  font-size: 0.6rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--forge-gold-text);
-}
 
 .gf-station__fact {
   margin: 0.7rem 0 0;
@@ -1572,7 +585,6 @@
 .gf-station__more:focus-visible {
   opacity: 1;
 }
-
 
 /* ─── Begin Your Journey ────────────────────────────────────────── */
 
@@ -1749,7 +761,6 @@
   color: var(--text-muted);
 }
 
-
 /* ─── Responsive ────────────────────────────────────────────────── */
 
 @media (max-width: 768px) {
@@ -1774,10 +785,6 @@
 }
 
 @media (max-width: 480px) {
-  .gf-core {
-    width: min(62vw, 210px);
-    height: min(62vw, 210px);
-  }
 
   .gf-station__domain {
     display: none;
@@ -1799,12 +806,6 @@
 
 /* The hero line is a paragraph, so the sigil rides the text baseline rather
    than sitting on its own row. */
-.gf-rank__sigil {
-  width: 34px;
-  height: 34px;
-  vertical-align: -0.6em;
-  margin-right: 0.35rem;
-}
 
 .gf-journey__rank-sigil {
   width: 44px;
@@ -2139,13 +1140,6 @@
   color: rgba(240, 240, 240, 0.78);
 }
 .gfbtn--ghost:hover { border-color: var(--primary-color); color: #f0f0f0; }
-.gfh__live-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  background: #ff4d6a;
-  box-shadow: 0 0 8px #ff4d6a;
-  animation: gfhPulse 2s ease-in-out infinite;
-}
 
 /* ── Descend ───────────────────────────────────────────────────────────── */
 
@@ -2230,14 +1224,8 @@
   .gfstat__bar { margin-top: 0.45rem; }
 }
 
-@media (max-width: 480px) {
-  /* The phone gets its own portrait crop of the art, so `cover` no longer
-     throws away both pillars — nothing to reposition here. */
-}
-
 @media (prefers-reduced-motion: reduce) {
   .gfpanel__dot,
-  .gfh__live-dot,
   .gfh__descend-chev { animation: none; }
   .gfstat__fill { transition: none; }
 }
