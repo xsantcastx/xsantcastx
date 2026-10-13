@@ -135,8 +135,8 @@ export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> =
     keeper('aureth', 'waystone', 'Aureth', AURETH, 'robe', -1, 'npc-aureth-figure', 'aureth'),
   ],
   umbral: [
-    // The Croupier also runs the Reels, which stand just east of where it waits.
-    { ...keeper('croupier', 'gambler', 'Croupier', P.umbral[0], 'hood', 1, 'npc-croupier-figure'), serves: ['reels'] },
+    // The Croupier also runs the games of chance in a row just east of where it waits.
+    { ...keeper('croupier', 'gambler', 'Croupier', P.umbral[0], 'hood', 1, 'npc-croupier-figure'), serves: ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent'] },
     keeper('broker', 'exchange', 'Exchange Broker', P.umbral[1], 'coat', 1, 'npc-exchange-broker-figure'),
     // Where two reflections disagree, a corridor opens. Verrin watches it.
     keeper('verrin', 'passage', 'Verrin', VERRIN, 'hood', -1, 'npc-verrin-figure', 'verrin'),

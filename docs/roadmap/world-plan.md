@@ -43,7 +43,7 @@ world — and every system visible while it works.
 |---|---|---|
 | **Infernal**: Basalt Seamworks | Crafting Bench, Rune Forge, Enchanting Table, Material Vendor, quest stations (ore, forge, beacon, passage) | Cinder ore, ember residue |
 | **Luminous** | Market (upgrades) | Light-touched materials |
-| **Umbral** | Gambler, Reels, Exchange | Shadow materials, scrolls |
+| **Umbral** | Gambler, Reels, Rune Drop, Seam Sweeper, Eclipse Ascent, Exchange | Shadow materials, scrolls |
 | **Celestial**: Meridian Orrery | Codex (observatory), Leaderboards board | Star fragments, runes |
 | **Verdant**: Rootglass Canopy | Sanctum (expeditions), Quests board, Arena gate, Trials gate | Rootglass, seeds |
 | *Everywhere* | Character + Satchel overlays, Waystone, Places list | |
@@ -213,6 +213,7 @@ Replaces "hybrid sprites + paintings" (2026-10-12). Art bible: `docs/art/style-g
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for the pixel sprite sheets (the rig retires after the A/B)
 - [~] **The Croupier's Reels** (owner, 2026-10-13: "slot machines… stake-style super bonus"; branch `worktree-agent-afd96296a31970cf4`): Umbral station between the Gambler and the Exchange, run by the Croupier (`/play?at=reels`); 3×3, 5 lines, world symbols, Eclipse Round (10 free spins, sticky ×2–×50 rune orbs, paid at the end), prizes through the rune/material gateways; Gold only, RTP 92.1% Gold + ~0.7% prizes (exact + simulated proof in `economy-sim.mjs --reels`, checked in `--check`), bet cap = two minutes of income. Shared kit `src/app/shared/games/` (seeded RNG, idempotent play ledger, bet tiers, RTP harness, win celebration) for Rune Drop / Seam Sweeper / Eclipse Ascent. Handoff `docs/handoff/reels.md`; lore line pending owner review; art briefs `world-sprites/10-reels.md`
+- [~] **The Croupier's casino: Rune Drop, Seam Sweeper, Eclipse Ascent** (owner, 2026-10-13/14: stake-style games themed on runes, Gold only): three Umbral stations in a row east of the Reels, run by the Croupier (`serves`), `/play?at=rune-drop|seam-sweeper|eclipse-ascent`; the Exchange moved to x=1560 and the shelf ledges east. Plinko (8–16 rows × 3 risks, path = seeded bits, 27 boards 94.8–95.1% exact), Mines (5×5, 1–24 collapses, seam drawn at the bet and stored, resumes on reload, 95% exact on every cash-out, ≤ ×5,000), Crash (break drawn at launch, P(≥×x) = 0.95/x, auto target, wall-clock resume, 95% exact). Kit gains steered rounds (`openRound`/`closeRound`), `wholeGold`, `<app-game-stepper>`. Proofs in `economy-sim.mjs --plinko/--mines/--crash` (+ `--check`). Handoff `docs/handoff/casino.md`; lore lines shipped for owner review; art briefs `world-sprites/11-casino.md`
 
 ## Phase 6+: The Delve and beyond `[ ]` (planned 2026-10-14)
 

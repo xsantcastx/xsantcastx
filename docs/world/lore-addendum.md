@@ -106,6 +106,29 @@ pressure of one possibility passing over another." Every symbol is an existing
 world thing (Cinder Ore, Ash and Ember runes, Rivet Maw, Infernal Heartstone,
 the Eclipse rune); it is run by the existing Croupier. No new names.
 
+### The Croupier's other three games (shipped — owner reviews in play; EN + ES)
+
+All three stand in a row east of the Reels and are run by the existing
+Croupier. No new names; every noun is an existing world thing.
+
+- **Rune Drop** (`shared/rune-drop/rune-drop.i18n.ts`, `runeDrop.lore`): "The
+  Archive keeps a board of Godforge pins for questions it cannot settle in ink.
+  A rune let fall through them picks a side at every pin, as a reflection does,
+  and the record is written wherever it comes to rest." Builds on Canon (the
+  Nocturne Archive; corridors where two reflections disagree) and Codex
+  ("Runes — compact principles of the Godforge").
+- **Seam Sweeper** (`shared/seam-sweeper/seam-sweeper.i18n.ts`, `seam.lore`):
+  "A slab of Delve seam the Archive keeps under glass, recut every night. The
+  Croupier marks where the roof will give before you swing; the record says
+  only how far you dared to dig." Builds on the game's Ember Delve (seams,
+  collapses) and the Nocturne Archive as a place that keeps records.
+- **Eclipse Ascent** (`shared/eclipse-ascent/eclipse-ascent.i18n.ts`,
+  `ascent.lore`): "From the Archive's roof the fractured moon mirror can be made
+  to pass over its own reflection. While one possibility slides over another the
+  record swells; when the two stop agreeing, the eclipse breaks and the page is
+  blank again." Builds on Canon (Umbral: "beneath a fractured moon mirror") and
+  Codex, Eclipse: "The pressure of one possibility passing over another."
+
 ## Not covered
 
 Stat names, recipe blurbs, socket words and Collection lore are English-only
