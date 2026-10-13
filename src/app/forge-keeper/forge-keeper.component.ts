@@ -9,8 +9,8 @@
  * THIS PAGE OWNS NO STATE
  * ─────────────────────────────────────────────────────────────────────────────
  * Every number on it is already true somewhere else — XpService, EconomyService,
- * InventoryService, QuestService, IdleService, ArenaScoresService,
- * EasterEggService and LoreService each already know their own piece. The only
+ * InventoryService, QuestService, IdleService, ArenaScoresService
+ * and EasterEggService each already know their own piece. The only
  * thing stored on this page's behalf is which trophies are pinned, and that is a
  * display preference in its own key (PinnedAchievementsService).
  *
@@ -73,8 +73,6 @@ import {
 } from '../shared/economy/economy.model';
 import { QuestService } from '../shared/quests/quest.service';
 import { IdleService } from '../shared/idle/idle.service';
-import { LoreService } from '../shared/lore/lore.service';
-import { LORE_SLUGS, TOOL_LORE } from '../shared/lore/lore.model';
 import { ArenaScoresService } from '../arena/games/arena-scores.service';
 import { ARENA_PLAYABLE } from '../arena/games/arena-game.model';
 import { CodexAchievement, buildAchievements } from '../codex/codex.model';
@@ -220,15 +218,6 @@ const STREAK_MILESTONES: Array<{ days: number; name: string }> = [
 ];
 
 /**
- * Chapters across the whole corpus — the denominator on the Lore stat.
- *
- * A property of the authored lore rather than of any visitor, so it is computed
- * once at module load and the server renders the same denominator the browser
- * will. `LoreService` can only answer per-tool and only in the browser.
- */
-const LORE_CHAPTER_TOTAL = TOOL_LORE.reduce((sum, l) => sum + l.chapters.length, 0);
-
-/**
  * The level-1 nothing-yet snapshot.
  *
  * Read instead of `XpService.snapshot` for the first render even in the browser:
@@ -329,7 +318,6 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   private readonly inventoryService = inject(InventoryService);
   private readonly quests = inject(QuestService);
   private readonly idle = inject(IdleService);
-  private readonly lore = inject(LoreService);
   private readonly arena = inject(ArenaScoresService);
   private readonly eggs = inject(EasterEggService);
   private readonly pins = inject(PinnedAchievementsService);
@@ -387,10 +375,8 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   questsCompleted = 0;
   openQuests = 0;
   arenaPlays = 0;
-  loreFound = 0;
   equippedCount = 0;
   readonly slotCount = SLOT_IDS.length;
-  readonly loreTotal = LORE_CHAPTER_TOTAL;
   /** Exposed for the rank sigil painted into the identity crest. */
   readonly rankSigil = rankSigil;
 
@@ -522,10 +508,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     this.economy.init();
     this.inventoryService.init();
     this.quests.init();
-    this.lore.init();
     this.arena.init();
-    // The lore corpus is a lazy chunk now; `progressFor()` below reads it.
-    await this.lore.ready();
 
     this.hydrated = true;
     this.now = Date.now();
@@ -550,7 +533,6 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
     this.questsCompleted = this.quests.board.totalCompleted;
     this.openQuests = this.quests.board.openCount;
     this.arenaPlays = ARENA_PLAYABLE.reduce((sum, g) => sum + this.arena.record(g.id).plays, 0);
-    this.loreFound = LORE_SLUGS.reduce((sum, slug) => sum + (this.lore.progressFor(slug)?.discovered ?? 0), 0);
 
     // The ledgers stay live: the Forge Flame is fixed to the corner of every
     // page including this one, so Gold and strikes can move while the sheet is
@@ -740,7 +722,6 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
       { label: 'Current Streak', value: String(this.snap.streak),               note: this.snap.streak === 1 ? 'day' : 'days', icon: '🔥', color: '#ff8a4c' },
       { label: 'Best Streak',   value: String(this.snap.bestStreak),            note: this.snap.bestStreak === 1 ? 'day' : 'days', icon: '🔥', color: '#ffb26b' },
       { label: 'Arena Runs',    value: formatCurrency(this.arenaPlays),         note: 'gates entered',     icon: '🏟️', color: '#5fb6ff' },
-      { label: 'Lore Chapters', value: `${this.loreFound}/${this.loreTotal}`,   note: 'discovered',        icon: '📜', color: '#7fd5a3' },
     ];
   }
 

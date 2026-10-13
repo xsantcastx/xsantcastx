@@ -75,7 +75,7 @@ export interface SyncedBlob {
  *
  * The economy gets its own subcollection because it is the one ledger with
  * spendable currency in it, and a rule that one day has to say something
- * stricter about Gold should not have to say it about the lore chapters too.
+ * stricter about Gold should not have to say it about the quest log too.
  */
 export const SYNCED_BLOBS: SyncedBlob[] = [
   {
@@ -93,22 +93,10 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     label: 'quest log',
   },
   {
-    key: 'eclipse-lore',
-    collection: 'progress',
-    doc: 'lore',
-    label: 'lore chapters',
-  },
-  {
     key: 'eclipse-idle',
     collection: 'progress',
     doc: 'idle',
     label: 'forge flame',
-  },
-  {
-    key: 'tool-usage-counts',
-    collection: 'progress',
-    doc: 'mastery',
-    label: 'progress ledger',
   },
   {
     key: 'easter-eggs-found',
