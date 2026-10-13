@@ -22,7 +22,6 @@ import {
   compareHlc,
   foragingEligibleCount,
   hasClarityElixir,
-  hasRiftKey,
   mergeActivityLedgers,
   prospectingEligibleCount,
   miningEligibleCount,
@@ -63,7 +62,6 @@ function forage(id: string, extra: Partial<ActivityOperation> = {}): ActivityOpe
     } : null,
     now: extra.hlcRevision?.wallTimeMs ?? 1_000,
     locationId: ROOTGLASS_CANOPY_ID,
-    discovery: extra.discovery ?? { rolled: true, result: 'none' },
   });
 }
 
@@ -226,7 +224,6 @@ describe('C7 activity ops', () => {
       emberGranted: false,
       miningAccepted: 0,
       foragingAccepted: 0,
-      riftKeyGranted: false,
       prospectingAccepted: 0,
       clarityElixirGranted: false,
     });
@@ -251,7 +248,6 @@ describe('C7 activity ops', () => {
     const loaded = coerceActivityLedger(JSON.parse(JSON.stringify(old)))!;
     expect(loaded).not.toBeNull();
     expect(loaded.foragingAccepted).toBe(0);
-    expect(loaded.riftKeyGranted).toBe(false);
     expect(loaded.progress.xpByDiscipline.mining).toBe(6);
     expect(loaded.progress.xpByDiscipline.foraging).toBeUndefined();
     expect(loaded.emberGranted).toBe(true);
@@ -259,7 +255,7 @@ describe('C7 activity ops', () => {
     expect(loaded.operations.length).toBe(3);
   });
 
-  it('parses foraging ops, rift-key discoveries and a foraging Current Work', () => {
+  it('parses foraging ops and a foraging Current Work', () => {
     const work = {
       version: 2 as const,
       disciplineId: 'foraging' as const,
@@ -269,41 +265,36 @@ describe('C7 activity ops', () => {
       selectionRevision: hlc(1, 0, 'phone', 1),
     };
     const ops = [
-      forage('f1', { discovery: { rolled: true, result: 'rift-key' } }),
-      forage('f2', { discovery: { rolled: true, result: 'rift-key-guarantee' } }),
+      forage('f1'),
+      forage('f2'),
       forage('f3'),
     ];
     const loaded = coerceActivityLedger(JSON.parse(JSON.stringify(ledger({ currentWork: work, operations: ops }))))!;
-    expect(loaded.operations.map(op => op.discovery.result)).toEqual(['rift-key', 'rift-key-guarantee', 'none']);
+    expect(loaded.operations.map(op => op.discovery.result)).toEqual(['none', 'none', 'none']);
     expect(loaded.currentWork?.disciplineId).toBe('foraging');
     expect(loaded.currentWork?.locationId).toBe(ROOTGLASS_CANOPY_ID);
     expect(loaded.progress.xpByDiscipline.foraging).toBe(6);
     expect(loaded.progress.xpByDiscipline.mining).toBeUndefined();
     expect(loaded.foragingAccepted).toBe(3);
-    expect(loaded.riftKeyGranted).toBe(true);
     // The mining pity counters do not see foraging ops.
     expect(loaded.miningAccepted).toBe(0);
     expect(loaded.emberGranted).toBe(false);
-    expect(loaded.operations[0].inventoryGrants.map(g => g.definitionId)).toEqual([STARLIGHT_HERB_ID, 'rift-key']);
+    expect(loaded.operations[0].inventoryGrants.map(g => g.definitionId)).toEqual([STARLIGHT_HERB_ID]);
   });
 
-  it('counts only Canopy foraging ops for the rift-key window, and mining ops only for ember', () => {
+  it('counts only Canopy foraging ops for foragingAccepted, and mining ops only for ember', () => {
     const ops = [forage('f1'), forage('f2'), mine('m1')];
     expect(foragingEligibleCount(ops, ROOTGLASS_CANOPY_ID)).toBe(2);
     expect(foragingEligibleCount(ops, BASALT_SEAMWORKS_ID)).toBe(0);
     expect(miningEligibleCount(ops, BASALT_SEAMWORKS_ID)).toBe(1);
-    expect(hasRiftKey(ops)).toBe(false);
-    expect(hasRiftKey([...ops, forage('f3', { discovery: { rolled: true, result: 'rift-key' } })])).toBe(true);
   });
 
-  it('keeps Foraging XP, foragingAccepted and riftKeyGranted after the 256-op window drops oldest rows', () => {
+  it('keeps Foraging XP and foragingAccepted after the 256-op window drops oldest rows', () => {
     const early = Array.from({ length: 8 }, (_, i) => forage(`early-${i}`, {
       hlcRevision: hlc(i + 1, 0, 'phone', i + 1),
-      discovery: { rolled: true, result: i === 7 ? 'rift-key-guarantee' : 'none' },
     }));
     const rest = Array.from({ length: ACTIVITY_OPS_MAX }, (_, i) => forage(`late-${i}`, {
       hlcRevision: hlc(100 + i, 0, 'phone', 20 + i),
-      discovery: { rolled: true, result: 'none' },
     }));
     const full = ledger({ operations: [...early, ...rest] });
     expect(full.progress.xpByDiscipline.foraging).toBe((ACTIVITY_OPS_MAX + 8) * 2);
@@ -313,11 +304,8 @@ describe('C7 activity ops', () => {
     expect(ab.operations.length).toBe(ACTIVITY_OPS_MAX);
     expect(ab.progress.xpByDiscipline.foraging).toBe((ACTIVITY_OPS_MAX + 8) * 2);
     expect(ba.progress.xpByDiscipline.foraging).toBe(ab.progress.xpByDiscipline.foraging);
-    expect(ab.riftKeyGranted).toBe(true);
-    expect(ba.riftKeyGranted).toBe(true);
     expect(ab.foragingAccepted).toBe(ACTIVITY_OPS_MAX + 8);
     expect(ba.foragingAccepted).toBe(ACTIVITY_OPS_MAX + 8);
-    expect(ab.operations.some(op => op.discovery.result === 'rift-key-guarantee')).toBe(false);
     // Foraging pity never bleeds into mining's, and vice versa.
     expect(ab.emberGranted).toBe(false);
     expect(ab.miningAccepted).toBe(0);
@@ -339,7 +327,6 @@ describe('C7 activity ops', () => {
       emberGranted: true,
       miningAccepted: 3,
       foragingAccepted: 2,
-      riftKeyGranted: true,
     };
     const loaded = coerceActivityLedger(JSON.parse(JSON.stringify(old)))!;
     expect(loaded).not.toBeNull();
@@ -352,7 +339,6 @@ describe('C7 activity ops', () => {
     expect(loaded.emberGranted).toBe(true);
     expect(loaded.miningAccepted).toBe(3);
     expect(loaded.foragingAccepted).toBe(2);
-    expect(loaded.riftKeyGranted).toBe(true);
     expect(loaded.operations.length).toBe(5);
   });
 
@@ -384,7 +370,6 @@ describe('C7 activity ops', () => {
     expect(loaded.miningAccepted).toBe(0);
     expect(loaded.emberGranted).toBe(false);
     expect(loaded.foragingAccepted).toBe(0);
-    expect(loaded.riftKeyGranted).toBe(false);
     expect(loaded.operations[0].inventoryGrants.map(g => g.definitionId))
       .toEqual([CELESTIAL_ALLOY_ID, CLARITY_ELIXIR_ID]);
   });
@@ -398,9 +383,8 @@ describe('C7 activity ops', () => {
     expect(foragingEligibleCount(ops, ROOTGLASS_CANOPY_ID)).toBe(1);
     expect(hasClarityElixir(ops)).toBe(false);
     expect(hasClarityElixir([...ops, prospect('p3', { discovery: { rolled: true, result: 'clarity-elixir' } })])).toBe(true);
-    // A rift-key op must not read as an elixir, and vice versa.
-    expect(hasClarityElixir([forage('f9', { discovery: { rolled: true, result: 'rift-key' } })])).toBe(false);
-    expect(hasRiftKey([prospect('p9', { discovery: { rolled: true, result: 'clarity-elixir' } })])).toBe(false);
+    // A gather never reads as an elixir.
+    expect(hasClarityElixir([forage('f9')])).toBe(false);
   });
 
   it('keeps Prospecting XP, prospectingAccepted and clarityElixirGranted after the 256-op window drops oldest rows', () => {
@@ -429,7 +413,6 @@ describe('C7 activity ops', () => {
     // Prospecting pity never bleeds into either earlier skill's.
     expect(ab.emberGranted).toBe(false);
     expect(ab.miningAccepted).toBe(0);
-    expect(ab.riftKeyGranted).toBe(false);
     expect(ab.foragingAccepted).toBe(0);
     expect(ab.progress.xpByDiscipline.mining).toBeUndefined();
     expect(ab.progress.xpByDiscipline.foraging).toBeUndefined();

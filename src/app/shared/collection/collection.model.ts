@@ -353,8 +353,6 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
 const CONSUMABLE_SEEDS: readonly MaterialSeed[] = [
   { id: 'ember-elixir', rarity: 'uncommon', realm: 'infernal',
     hint: 'brewed from what a hot seam leaves behind' },
-  { id: 'rift-key', rarity: 'rare', realm: 'verdant',
-    hint: 'about one forage in a thousand, in the Canopy' },
   { id: 'clarity-elixir', rarity: 'rare', realm: 'celestial',
     hint: 'about one survey in fifteen hundred, at the Orrery' },
 ];
@@ -372,7 +370,6 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'verdant-sap': 'Still moving. The Orrery is a machine and this is the part of it that is alive, and nobody at the Orrery will discuss that.',
   'umbral-ink': 'Drawn from the meridian the sun does not cross. It writes perfectly well and it will not photograph.',
   'void-shard': 'Not a piece of the Void — the Void does not have pieces. A place where something was carved and the cut is still open.',
-  'rift-key': 'It fits a door that has not been built, in a wall that has not been raised, in a realm nobody has named.',
   'clarity-elixir': 'Two mouthfuls. The first shows you what you were looking at. The second shows you what you were looking for.',
   'keeper-signet': 'A Keeper is issued one signet in a life. This is the second, and the Archivum has no record of who authorised it.',
   'sealed-codex-page': 'A page the Archivum sealed rather than burned, which is the Archivum admitting it might be wrong.',
@@ -540,7 +537,6 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'slag-fragment': 'Slag Fragment',
   'ember-residue': 'Ember Residue',
   'infernal-heartstone': 'Infernal Heartstone',
-  'rift-key': 'Rift Key',
   'clarity-elixir': 'Clarity Elixir',
   'ember-elixir': 'Ember Elixir',
 };

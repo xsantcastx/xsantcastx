@@ -37,9 +37,7 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'slag-fragment': 'Slag Fragment',
   'ember-residue': 'Ember Residue',
   'infernal-heartstone': 'Infernal Heartstone',
-  /** A2 Foraging's rare find. Named here so the bank paints it instead of printing the raw id. */
-  'rift-key': 'Rift Key',
-  /** B1 Prospecting's rare find. Same reason. */
+  /** B1 Prospecting's rare find. Named here so the bank paints it instead of printing the raw id. */
   'clarity-elixir': 'Clarity Elixir',
   /**
    * A1 Mining's brew. Painted since the library landed and missing from this

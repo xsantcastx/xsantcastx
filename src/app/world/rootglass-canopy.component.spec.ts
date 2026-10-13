@@ -87,7 +87,7 @@ describe('RootglassCanopyComponent', () => {
     const el = fixture.nativeElement as HTMLElement;
     expect(el.querySelector('h1')?.textContent).toContain('Rootglass Canopy');
     expect(el.textContent).toContain('1 Starlight Herb + 2 Foraging XP');
-    expect(el.textContent).toContain('Rift Key');
+    expect(el.textContent).not.toContain('Rift Key');
     const gather = el.querySelector('.rc__gather') as HTMLButtonElement;
     expect(gather.textContent?.trim()).toBe('Gather');
     expect(el.textContent).toContain('×4');

@@ -112,7 +112,7 @@ const { PANEL_REGISTRY } = L('play/world/panel-registry.ts');
 const { TOWN_KEEPERS, TOWNSFOLK_COUNT } = L('play/world/life.ts');
 const { TERRAIN_NODE_LIST, PLACEABLES } = L('play/engine/terrain.ts');
 const { MINING_TIERS } = L('shared/activity/activity.model.ts');
-const { FORAGING_TIERS, RIFT_KEY_ID } = L('shared/activity/foraging.model.ts');
+const { FORAGING_TIERS } = L('shared/activity/foraging.model.ts');
 const { PROSPECTING_TIERS } = L('shared/activity/prospecting.model.ts');
 const EXPLORER = L('shared/explorer/explorer.model.ts');
 const { VENDOR_SHELF } = L('shared/vendor/material-vendor.model.ts');
@@ -191,7 +191,6 @@ for (const id of ALL_MATERIAL_IDS) for (const p of foundInWorld(id)) src(id, `fo
 for (const t of MINING_TIERS) src(t.oreId, 'Mining (Seamworks)');
 for (const t of FORAGING_TIERS) src(t.herbId, 'Foraging (Canopy)');
 for (const t of PROSPECTING_TIERS) src(t.mineralId, 'Prospecting (Orrery)');
-if (RIFT_KEY_ID) src(RIFT_KEY_ID, 'Foraging discovery');
 if (PROSPECT_DISCOVERY) src(PROSPECT_DISCOVERY, 'Prospecting discovery');
 for (const id of EXPLORER.REALM_COMMON_MATERIALS) src(id, 'expeditions (all realms)');
 for (const [realm, ids] of Object.entries(EXPLORER.REALM_EXCLUSIVE_MATERIALS)) for (const id of ids) src(id, `${realm} expeditions`);

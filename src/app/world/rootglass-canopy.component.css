@@ -104,7 +104,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 .rc__tier-lock { display: block; margin-top: 0.15rem; font-size: 0.68rem; color: rgba(232, 236, 241, 0.55); }
 .rc__tier:focus-visible { outline: 2px solid color-mix(in srgb, var(--canopy) 55%, white); outline-offset: 2px; }
 
-.rc__expect, .rc__chance, .rc__note { margin: 0 0 0.7rem; line-height: 1.5; }
+.rc__expect, .rc__note { margin: 0 0 0.7rem; line-height: 1.5; }
 .rc__speedup {
   margin: -0.3rem 0 0.7rem;
   font-size: 0.78rem;
@@ -113,7 +113,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 
 .rc__loot {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: minmax(0, 1fr);
   gap: 0.75rem;
   margin: 0 0 1rem;
 }
@@ -128,7 +128,6 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   background: rgba(0, 0, 0, 0.28);
 }
 .rc__loot figure.is-hit { border-color: var(--gf-accent, var(--gold-core)); }
-.rc__loot figure.is-rare { border-color: var(--gold-core); }
 /*
  * The art wrapper is the anchor for the floating "+1" — see .rc__float. It
  * used to be a bare <img>; the wrapper adds nothing visible on its own, it
@@ -160,7 +159,6 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   pointer-events: none;
   animation: rcFloatUp 900ms ease-out forwards;
 }
-.rc__float--rare { color: var(--gold-core); }
 @keyframes rcFloatUp {
   0%   { opacity: 0; transform: translate(-50%, 8px) scale(0.85); }
   18%  { opacity: 1; transform: translate(-50%, -6px) scale(1.08); }
@@ -180,7 +178,6 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   text-transform: uppercase;
   font-size: 0.72rem;
 }
-.rc__gain--rare, .rc__rare { color: var(--gold-core); font-weight: 700; }
 
 .rc__gather, .rc__ghost {
   min-width: 44px;
@@ -243,7 +240,6 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   border-radius: 8px;
   background: rgba(0, 0, 0, 0.22);
 }
-.rc__result--rare { border-color: var(--gold-core); }
 
 .rc__sr {
   margin: 0.55rem 0 0;
