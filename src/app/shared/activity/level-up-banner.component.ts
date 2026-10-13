@@ -60,6 +60,9 @@ const MILESTONE_DWELL_MS = 5200;
           @if (event.unlocks.length) {
             <span class="lu__unlock">{{ t('levelUp.unlocked') }} {{ unlockLine(event) }}</span>
           }
+          @if (event.tool && toolWords) {
+            <span class="lu__unlock lu__tool">{{ t(event.tool.swing ? 'toolStat.levelUp' : 'toolStat.levelUpPower', { skill: t(event.skillLabelKey), level: event.level, swing: event.tool.swing ?? '', power: event.tool.power }) }}</span>
+          }
         </span>
       </div>
     }
@@ -149,6 +152,8 @@ export class LevelUpBannerComponent implements OnInit, OnDestroy {
 
   event: LevelUpEvent | null = null;
   visible = false;
+  /** The tools words (skills/tools.i18n.ts) are fetched on the first tool line, so the app shell never carries the table. */
+  toolWords = false;
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -185,6 +190,13 @@ export class LevelUpBannerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     event.milestone ? this.audio.fanfare() : this.audio.ding();
+    if (event.tool && !this.toolWords) {
+      void import('../skills/tools.i18n').then(m => {
+        this.i18n.register(m.TOOLS_I18N);
+        this.toolWords = true;
+        this.cdr.markForCheck();
+      }).catch(() => { /* the banner still names the level */ });
+    }
 
     this.timers.push(setTimeout(() => {
       this.visible = true;
