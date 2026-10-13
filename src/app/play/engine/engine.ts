@@ -20,6 +20,8 @@ import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-rend
 import type { DelvePersistence, GatherPersistence } from './engine.model';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
+import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
+import { CaveBackdrop } from './cave-backdrop';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
@@ -252,6 +254,10 @@ export class SeamworksEngine {
   /** The carved wall, chest or camp within reach, as a cell index (-1 = none). Refreshed in the fixed step. */
   private interactAt = -1;
   private readonly darkness = new DarknessLayer();
+  /** How far light reaches into the rock, per cell; rebuilt only when a cell changes. */
+  private readonly rockShade = new RockShade();
+  /** The distant cave behind the generated caverns (two parallax layers per biome). */
+  private readonly caveBackdrop = new CaveBackdrop();
   private readonly lightPool = new LightPool(96);
   private readonly debris = new Debris();
   /** Glinting cells this frame (indices), drawn over the darkness. */
@@ -2215,7 +2221,10 @@ export class SeamworksEngine {
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
     const bg = this.sceneImage();
     const cached = !t && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
-    if (!cached) {
+    // Below a delve's surface the distant cave fills the frame (it shows through the caverns);
+    // the town painting and its shade are drawn only while the surface is in view.
+    const underground = !!t && t.top - this.cameraY <= 0;
+    if (!cached && !underground) {
       c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
       if (bg?.complete && bg.naturalWidth) {
         const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
@@ -2223,6 +2232,7 @@ export class SeamworksEngine {
       }
       c.fillStyle = this.sceneShade(c); c.fillRect(0, 0, viewport, 720);
     }
+    if (t) this.caveBackdrop.draw(c, t, this.camera, this.cameraY, viewport, 720);
     const jolt = this.shake > 0 ? this.shake : 0;
     c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), -this.cameraY + (jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0));
     const motionTime = this.reducedMotion ? 0 : this.elapsed;
@@ -2447,7 +2457,7 @@ export class SeamworksEngine {
     const count = selectLights(pool.lights, pool.count, LIGHT_CAP, this.player.x, this.player.y);
     c.save();
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness);
+    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t));
     c.restore();
     if (fold && !dark) {
       // No overlay canvas: the tint on its own, as before.
@@ -2476,13 +2486,21 @@ export class SeamworksEngine {
     this.motes.draw(c);
     for (let n = 0; n < this.glintCount; n++) {
       const index = this.glints[n], col = index % t.cols, row = (index - col) / t.cols;
-      const node: TerrainNodeDef = TERRAIN_NODE_LIST[t.kind[index]];
-      const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
+      const kind = t.kind[index];
+      const node: TerrainNodeDef = TERRAIN_NODE_LIST[kind];
+      // On the nugget's brightest art pixel when the tile has one (tile-art.ts), else the cell's centre.
+      const spark = node.solid ? sparkleOffset(kind, tileVariant(col, row)) : -1;
+      const x = spark >= 0 ? col * CELL + (spark % TILE) * ART + ART / 2 : (col + .5) * CELL;
+      const y = spark >= 0 ? t.top + row * CELL + Math.floor(spark / TILE) * ART + ART / 2 : t.top + (row + .5) * CELL;
       const near = 1 - Math.hypot(x - this.player.x, y - this.player.y + 50) / reach;
       const twinkle = this.reducedMotion ? .7 : .5 + .5 * Math.sin(time * 3 + index * 1.7);
       c.globalAlpha = Math.max(0, near) * twinkle;
       c.fillStyle = node.glow?.color ?? '#fff';
-      c.fillRect(x - 5, y - .75, 10, 1.5); c.fillRect(x - .75, y - 5, 1.5, 10); c.fillRect(x - 1.5, y - 1.5, 3, 3);
+      // A pixel star: a centre art pixel and two-pixel arms, the arms dimmer.
+      c.fillRect(x - ART / 2, y - ART / 2, ART, ART);
+      c.globalAlpha *= .6;
+      c.fillRect(x - ART * 2.5, y - ART / 2, ART * 2, ART); c.fillRect(x + ART / 2, y - ART / 2, ART * 2, ART);
+      c.fillRect(x - ART / 2, y - ART * 2.5, ART, ART * 2); c.fillRect(x - ART / 2, y + ART / 2, ART, ART * 2);
     }
     this.drawFusesAndRubble(c, t, time);
     if (this.blastTime > 0) {
