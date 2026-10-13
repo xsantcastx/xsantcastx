@@ -21,6 +21,7 @@
     "test:visual": "playwright test",
     "lhci": "lhci autorun",
     "check:ds": "node scripts/check-ds-adherence.js",
+    "check:meaning": "node scripts/check-meaning.js",
     "start:social": "node scripts/social-server.mjs",
     "test:social": "node --test scripts/social-server.test.mjs"
   },
