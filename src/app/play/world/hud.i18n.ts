@@ -66,6 +66,17 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.touch.dodge': { en: 'Dodge', es: 'Esquivar' },
   'play.hud.touch.down': { en: 'Down', es: 'Abajo' },
   'play.hud.touch.blast': { en: 'Blast', es: 'Rafaga' },
+  // Phones: the one-row touch band wants six letters at most.
+  'play.hud.touch.attackShort': { en: 'Attack', es: 'Golpe' },
+  'play.hud.touch.dodgeShort': { en: 'Dodge', es: 'Evadir' },
+  'play.hud.touch.place': { en: 'Place', es: 'Poner' },
+
+  // ── Phone HUD: the pick slot (tap a block to dig it) and the folding goal line ──
+  'play.hud.pick': { en: 'Pick', es: 'Pico' },
+  'play.hud.pickAria': { en: 'Pick: tap a block to dig it', es: 'Pico: toca un bloque para excavarlo' },
+  'play.hud.pickReady': { en: 'Pick ready. Tap a block within reach to dig it.', es: 'Pico listo. Toca un bloque a tu alcance para excavarlo.' },
+  'play.hud.goalFold': { en: 'Fold the goal line', es: 'Plegar el objetivo' },
+  'play.hud.goalUnfold': { en: 'Show the goal line', es: 'Mostrar el objetivo' },
 
   // ── Top bar, Places, vitals, fall card ──
   'play.hud.canvas': { en: 'Playable Basalt Seamworks side-scrolling world. Click or tap a place to walk there, or use the Places list.', es: 'Mundo jugable de Basalt Seamworks con desplazamiento lateral. Haz clic o toca un lugar para ir alli, o usa la lista de Lugares.' },
