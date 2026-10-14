@@ -3,6 +3,13 @@ import { environment } from '../environments/environment';
 import { ensureFirebaseApp } from './app-check.bootstrap';
 
 describe('ensureFirebaseApp', () => {
+  // Services under test elsewhere (lazy Firestore, analytics, cloud save)
+  // initialise the default app asynchronously, and in a random spec order one
+  // can land just before this suite — so start from no app, not only end there.
+  beforeEach(async () => {
+    await Promise.all(getApps().map(app => deleteApp(app)));
+  });
+
   afterEach(async () => {
     await Promise.all(getApps().map(app => deleteApp(app)));
   });

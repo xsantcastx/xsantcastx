@@ -363,12 +363,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
       description: 'Complete ten quests.',
       loreText: 'A single account is a story. Ten accounts of the same world is a record.',
       objective: { kind: 'quests-completed', count: 10 },
-      reward: {
-        gold: 15_000,
-        xp: 300,
-        energy: 'aether',
-        artifact: 'codex-solarii',
-      },
+      reward: { gold: 15_000, xp: 300, energy: 'aether' },
     },
     {
       id: 'archivist-3',

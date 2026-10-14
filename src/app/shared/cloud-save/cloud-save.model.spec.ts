@@ -124,12 +124,12 @@ describe('mergeDeep', () => {
 
     it('never drops an artifact, whichever device bought it', () => {
       const merged = mergeDeep(
-        { artifacts: ['obsidian-heart', 'codex-solarii'] },
+        { artifacts: ['obsidian-heart', 'relic-third-dawn'] },
         { artifacts: ['mirrorblade-kael'] },
       ) as { artifacts: string[] };
 
       expect(new Set(merged.artifacts)).toEqual(
-        new Set(['obsidian-heart', 'codex-solarii', 'mirrorblade-kael']),
+        new Set(['obsidian-heart', 'relic-third-dawn', 'mirrorblade-kael']),
       );
     });
 
@@ -476,19 +476,6 @@ describe('the RPG layer', () => {
     });
   });
 
-  it('carries a bought Pro pack to the visitor\'s other devices', () => {
-    // The structural default is already right here — a flag that has been set
-    // stays set — and `grantsSettled` riding the same rule is what stops the
-    // adopting device minting the currency grant a second time.
-    const merged = mergeDeep(
-      { active: true, grantsSettled: true, orderId: 'o-1', activatedAt: '2026-08-01T00:00:00.000Z' },
-      { active: false, grantsSettled: false, orderId: null, activatedAt: null },
-    ) as { active: boolean; grantsSettled: boolean; orderId: string };
-
-    expect(merged.active).toBe(true);
-    expect(merged.grantsSettled).toBe(true);
-    expect(merged.orderId).toBe('o-1');
-  });
 });
 
 /**
@@ -647,7 +634,6 @@ describe('the registry', () => {
       'godforge-infusions',
       'godforge-inventory',
       'godforge-pinned',
-      'godforge-pro',
       'godforge-roster',
       'godforge-runes',
       'godforge-scrolls',
