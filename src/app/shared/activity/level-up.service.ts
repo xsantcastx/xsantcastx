@@ -26,21 +26,27 @@ import { miningLevelView } from './mining-level';
 import { artFor, type ArtEntry } from '../art/art';
 import type { DisciplineId } from './activity.model';
 import { skillDef, skillForDiscipline, type SkillId } from '../skills/skill.model';
-import { describeUnlock, unlocksBetween } from '../skills/skill-unlocks';
+import { describeUnlock, unlocksBetween, type UnlockWords } from '../skills/skill-unlocks';
+import { titlesBetween } from '../skills/skill-titles';
 import { levelGain, sharpensSwing, sharpensTool } from '../skills/tool-level';
 
 export interface LevelUpEvent {
   /** i18n key for the skill's display name, e.g. 'work.discipline.mining'. */
   skillLabelKey: string;
   level: number;
-  /** Every tenth level gets the bigger treatment — see level-up-banner. */
+  /** Every tenth level, and every title past 99, gets the bigger treatment — see level-up-banner. */
   milestone: boolean;
   art: ArtEntry | null;
   /**
    * What the crossing opened (skill-unlocks), as i18n key + vars for the
    * banner to translate. Empty for a level that opened nothing new.
    */
-  unlocks: ReadonlyArray<{ key: string; vars: Record<string, string | number> }>;
+  unlocks: ReadonlyArray<UnlockWords>;
+  /**
+   * Past 99: the title this crossing earned (skill-titles.ts) — its i18n key
+   * and stars, for the banner's "Title earned" line. Null otherwise.
+   */
+  title: { key: string; stars: number } | null;
   /**
    * For a skill that sharpens a tool (tool-level.ts): how much faster and
    * harder it now swings, in percentage points ("0.3", "0.5"); `swing` null
@@ -100,13 +106,17 @@ export class LevelUpService {
     // A multi-level jump announces once, at the level actually reached, but
     // still names everything every skipped level opened.
     const def = skillDef(skill);
+    const earned = titlesBetween(skill, before, after).at(-1) ?? null;
+    const tool = sharpensTool(skill) ? { ...levelGain(before, after), ...(sharpensSwing(skill) ? {} : { swing: null }) } : null;
     this.events$$.next({
       skillLabelKey: def.labelKey,
       level: after,
-      milestone: after % 10 === 0,
+      milestone: after % 10 === 0 || !!earned,
       art: artFor(def.artId),
       unlocks: unlocksBetween(skill, before, after).map(describeUnlock),
-      tool: sharpensTool(skill) ? { ...levelGain(before, after), ...(sharpensSwing(skill) ? {} : { swing: null }) } : null,
+      // Far past 99 a single level's sharpening rounds to nothing: no line rather than "0.00%".
+      tool: tool && Number(tool.power) > 0 ? tool : null,
+      title: earned ? { key: earned.key, stars: earned.stars } : null,
     });
   }
 }

@@ -103,6 +103,47 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
     await expect(tools.locator('.tst__row[data-family="axe"]')).toContainText('0.52 s per swing (slowest)');
   });
 
+  test('uncapped levels: Mining 120 swings faster than 99 (above the floor), earns its title, and can wear it', async ({ page }) => {
+    await page.addInitScript(() => { try { localStorage.setItem('preferred-language', 'en'); } catch { /* */ } });
+    await seed(page, { ...bag({ 'cinder-ore': 2 }), ...activity({ mining: xpForLevel(120) }) });
+    await openPlay(page);
+    // 0.52 × (1 − 0.25 − 0.10 × 21/121) = 0.381 (99 alone is 0.39); power 1.5 + 0.5 × 21/121 = 1.59.
+    await expect(canvas(page)).toHaveAttribute('data-swing-pickaxe', '0.38', { timeout: 10000 });
+    await expect(canvas(page)).toHaveAttribute('data-power-pickaxe', '1.59');
+    const swing = Number(await canvas(page).getAttribute('data-swing-pickaxe'));
+    expect(swing).toBeGreaterThanOrEqual(0.25);
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button[data-open="character"]').click();
+    const titles = placePanel(page).locator('app-skill-titles');
+    await expect(titles).toBeVisible({ timeout: 15000 });
+    const row = titles.locator('.stt__row[data-skill="mining"]');
+    await expect(row).toContainText('Vein-Reader');
+    await expect(row).toContainText('Mining 120');
+    await row.getByRole('button', { name: 'Wear' }).click();
+    await expect(placePanel(page).locator('.ht__worn')).toContainText('Vein-Reader');
+    await expect(row.getByRole('button', { name: 'Take off' })).toHaveAttribute('aria-pressed', 'true');
+    // The tools block shows the split past 99.
+    await expect(placePanel(page).locator('app-tool-stats .tst__row[data-family="pickaxe"]')).toContainText('Mining 120 −27%');
+  });
+
+  test('phones: a level-300 skill card reads cleanly (K/M XP, its starred title, no overflow)', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.addInitScript(() => { try { localStorage.setItem('preferred-language', 'en'); } catch { /* */ } });
+    await seed(page, activity({ mining: xpForLevel(300) + 1234 }));
+    await openPlay(page);
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button[data-open="character"]').click();
+    await placePanel(page).locator('#ch-tab-skills').click();
+    const card = placePanel(page).locator('.sk__card').filter({ hasText: 'Eclipse Hewer' }).first();
+    await expect(card).toBeVisible({ timeout: 15000 });
+    await expect(card.locator('.sk__lvl')).toHaveText('300');
+    await expect(card.locator('.sk__epithet')).toHaveText('Eclipse Hewer +1');
+    await expect(card.locator('.sk__tonext')).toHaveText(/^1,234 \/ 49\dK XP to level 301$/);
+    const fits = await card.evaluate(el => el.scrollWidth <= el.clientWidth + 1);
+    expect(fits).toBe(true);
+    await expect(card.locator('.sk__next')).toContainText('Next at level 325');
+  });
+
   test('phones: the ☰ menu has Character & stats, a thumb-sized entry', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await seed(page);

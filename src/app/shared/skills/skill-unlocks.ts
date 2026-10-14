@@ -19,7 +19,8 @@
  *
  * Pure. No Angular.
  */
-import { MAX_SKILL_LEVEL, miningLevelView, xpForLevel } from '../activity/mining-level';
+import { MASTERY_LEVEL, miningLevelView, xpForLevel } from '../activity/mining-level';
+import { TITLE_RANKS, titleAt, titleRank } from './skill-titles';
 import { materialDisplay } from '../rpg/material-catalog';
 import type { SkillId } from './skill.model';
 import { TOOL_NUMERALS, toolName, type ToolFamily, type ToolTier } from './tool-items';
@@ -39,13 +40,15 @@ export type SkillUnlock =
   /** Fishing: a rod works at its own tier from here (fishing.model.ts RODS). */
   | { level: number; kind: 'rod'; rodId: string; name: string }
   /** Fishing: a line of the angler's perks (fishingPerks): bite speed, crate chance, double catch, the reel window, lava. */
-  | { level: number; kind: 'fishperk'; perk: 'bite' | 'crate' | 'double' | 'window' | 'lava'; n: number };
+  | { level: number; kind: 'fishperk'; perk: 'bite' | 'crate' | 'double' | 'window' | 'lava'; n: number }
+  /** Past 99: a title every 25 levels (skill-titles.ts), cosmetic — nothing is gated on it. */
+  | { level: number; kind: 'title'; skill: SkillId; rank: number };
 
 const tool = (family: ToolFamily, tier: ToolTier): SkillUnlock =>
   ({ level: TOOL_TIER_LEVEL[tier], kind: 'tool', family, tier });
 const node = (level: number, materialId: string): SkillUnlock => ({ level, kind: 'node', materialId });
 const perk = (level: number, kind: PerkKind, pct: number): SkillUnlock => ({ level, kind: 'perk', perk: kind, pct });
-const mastery: SkillUnlock = { level: MAX_SKILL_LEVEL, kind: 'mastery' };
+const mastery: SkillUnlock = { level: MASTERY_LEVEL, kind: 'mastery' };
 
 /** Gathering skills share a perk rhythm: speed and double-haul alternate. */
 function gatherPerks(levels: readonly number[]): SkillUnlock[] {
@@ -60,7 +63,7 @@ function sorted(rows: SkillUnlock[]): readonly SkillUnlock[] {
   return [...rows].sort((a, b) => a.level - b.level);
 }
 
-export const SKILL_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = {
+const BASE_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = {
   mining: sorted([
     ...wields('pickaxe'),
     node(1, 'cinder-ore'), node(8, 'slag-fragment'), node(20, 'infernal-heartstone'),
@@ -122,6 +125,23 @@ export const SKILL_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = 
   ]),
 };
 
+function titleRow(skill: SkillId, rank: number): SkillUnlock {
+  const t = titleAt(skill, rank);
+  return { level: t.level, kind: 'title', skill, rank };
+}
+
+/**
+ * Every skill's table: the 1-99 rows above, then the eight authored titles
+ * past mastery (100 ... 275). The starred ranks from 300 are endless, so they
+ * are not listed — `nextUnlock` names the next one.
+ */
+export const SKILL_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = Object.fromEntries(
+  (Object.keys(BASE_UNLOCKS) as SkillId[]).map(skill => [skill, [
+    ...BASE_UNLOCKS[skill],
+    ...Array.from({ length: TITLE_RANKS }, (_, i) => titleRow(skill, i + 1)),
+  ]]),
+) as unknown as Record<SkillId, readonly SkillUnlock[]>;
+
 /** Everything a skill has opened by `level`, in level order. */
 export function unlocksFor(skill: SkillId, level: number): SkillUnlock[] {
   return (SKILL_UNLOCKS[skill] ?? []).filter(u => u.level <= level);
@@ -143,7 +163,9 @@ export interface NextUnlock {
 /** The next level that opens something, from an XP total. Null when none is left. */
 export function nextUnlock(skill: SkillId, xp: number): NextUnlock | null {
   const level = miningLevelView(xp).level;
-  const ahead = (SKILL_UNLOCKS[skill] ?? []).filter(u => u.level > level);
+  const listed = (SKILL_UNLOCKS[skill] ?? []).filter(u => u.level > level);
+  // Past the last authored title the next star is always ahead: the table never runs out.
+  const ahead = listed.length || !SKILL_UNLOCKS[skill] ? listed : [titleRow(skill, titleRank(level) + 1)];
   if (!ahead.length) return null;
   const at = ahead[0].level;
   const total = Number.isFinite(xp) ? Math.max(0, Math.floor(xp)) : 0;
@@ -167,8 +189,14 @@ export function skillPerks(skill: SkillId, level: number): SkillPerks {
   return out;
 }
 
-/** The i18n key and variables for one row. The caller translates. */
-export function describeUnlock(u: SkillUnlock): { key: string; vars: Record<string, string | number> } {
+/**
+ * The i18n key and variables for one row. The caller translates. A title row
+ * also carries `nameKey` (the title's own words, plus `stars`): translate it
+ * into `vars.name` first — `unlockText` does both.
+ */
+export interface UnlockWords { key: string; vars: Record<string, string | number>; nameKey?: string; stars?: number }
+
+export function describeUnlock(u: SkillUnlock): UnlockWords {
   switch (u.kind) {
     case 'tool':
       return { key: 'skills.unlock.tool', vars: { name: toolName(u.family, u.tier), opens: TOOL_OPENS[u.family][u.tier].label } };
@@ -188,5 +216,24 @@ export function describeUnlock(u: SkillUnlock): { key: string; vars: Record<stri
       return { key: 'skills.unlock.rod', vars: { name: u.name } };
     case 'fishperk':
       return { key: `skills.unlock.fish.${u.perk}`, vars: { n: u.n } };
+    case 'title': {
+      const t = titleAt(u.skill, u.rank);
+      return { key: 'skills.unlock.title', vars: {}, nameKey: t.key, stars: t.stars };
+    }
   }
+}
+
+type Translate = (key: string, vars?: Record<string, string | number>) => string;
+
+/** One described row, translated (a title row's name resolved, with its stars). */
+export function wordsText(w: UnlockWords, t: Translate): string {
+  if (!w.nameKey) return t(w.key, w.vars);
+  const name = t(w.nameKey);
+  const shown = w.stars ? t('skills.title.starred', { title: name, n: w.stars }) : name;
+  return t(w.key, { ...w.vars, name: shown });
+}
+
+/** One row, translated. */
+export function unlockText(u: SkillUnlock, t: Translate): string {
+  return wordsText(describeUnlock(u), t);
 }

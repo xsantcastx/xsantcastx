@@ -55,6 +55,25 @@ describe('LevelUpService', () => {
     expect(events[1].milestone).toBe(false);
   });
 
+  it('past 99: every title level is a milestone moment and names the title; levels between are plain', () => {
+    const at100 = xpForLevel(100);
+    service.checkMining(at100 - 1, at100);
+    expect(events[0].level).toBe(100);
+    expect(events[0].milestone).toBe(true);
+    expect(events[0].title).toEqual({ key: 'skills.title.mining.1', stars: 0 });
+    expect(events[0].unlocks.some(u => u.nameKey === 'skills.title.mining.1')).toBe(true);
+    const at101 = xpForLevel(101);
+    service.checkMining(at101 - 1, at101);
+    expect(events[1].milestone).toBe(false);
+    expect(events[1].title).toBeNull();
+    // From 300 the last title earns stars.
+    const at325 = xpForLevel(325);
+    service.checkSkill('delving', at325 - 1, at325);
+    expect(events[2].title).toEqual({ key: 'skills.title.delving.8', stars: 2 });
+    // The tool line keeps growing past 99, in two decimals once it is small.
+    expect(events[0].tool?.power).toBe('0.5');
+  });
+
   it('names the skill and carries art for the banner to render', () => {
     const at = xpForLevel(2);
     service.checkMining(at - 1, at);

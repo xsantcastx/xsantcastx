@@ -85,7 +85,7 @@ export const rowY = (row: number) => SPEC.top + (row + .5) * CELL;
 
 /** The least total XP that shows `level` on the shared skill curve. */
 export function xpForLevel(level: number): number {
-  let lo = 0, hi = 10_000_000;
+  let lo = 0, hi = 2_000_000_000;
   while (lo < hi) {
     const mid = Math.floor((lo + hi) / 2);
     if (miningLevelView(mid).level >= level) hi = mid; else lo = mid + 1;
