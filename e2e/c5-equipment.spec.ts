@@ -120,7 +120,7 @@ test.describe('C5 equipment actions', () => {
 
     await page.locator('.kp').getByRole('button', { name: 'Unequip' }).click();
     await expect(page.locator('.kp').getByRole('button', { name: /Head, empty/ })).toBeVisible();
-    await page.locator('.kp').getByRole('tab', { name: 'Bank' }).click();
+    await page.locator('.kp').getByRole('tab', { name: 'Satchel' }).click();
     await expect(page.locator('.kp').getByRole('button', { name: /Crown/ })).toBeVisible();
   });
 
