@@ -227,12 +227,12 @@ The layer cake: Root Hollows → Basalt Caverns → Glowcap Grotto → Magma Hal
   - [x] 6.2 Lakes in the core: Grotto Mere, Magma lava pools, flooded shafts, placed in already-carved air so no `version` bump (S)
   - [x] 6.3 Fishing v1: skill 1–99, Worn/Root/Seam/Glowline rods, bait, catch tables, junk, crates, the Line Tension mini-game (always lands, grade only adds), auto-fish, Lampfish Oil + Gill Draught, Catalogue of Strange Fish, Lodge Warden Ledger Catch, Merchant fish order, the Drowned Lamp chain + mini-boss (L)
   - [x] 6.4 `economy-sim.mjs --fishing --check` in CI: fishing ≤ 10% of forge Gold/min, crate EV, rod gates, 60–250 h to 99 (S)
-- [ ] **Phase 7: The endless Delve** (horizontal first)
-  - [ ] 7.1 Sector world: 32×32-cell sectors, sector-local deterministic generator (noise caves, clipped veins, structure lattice), loaded window, per-sector spawns; the core unchanged (XL, split a/b)
-  - [ ] 7.2 Save v2: index doc + region docs (8×8 sectors) under `progress/` (no rules deploy), IndexedDB locally, RLE diffs, merge, healing of far unheld tunnels (L) — needs the save-gateway owners' review first
-  - [ ] 7.3 Structures v1: Kael's waycaches, flooded shafts, lakes, field-note walls (M)
-  - [ ] 7.4 Map v2 on top of minimap v1: fog per sector, full map, pins, waypoints, Broken Astral Compass, Rift Map Fragment (M)
-  - [ ] 7.5 Board Herald's daily Delve bounties (S)
+- [ ] **Phase 7: The endless Delve** (horizontal first). 7.1–7.4 built 2026-10-14, handoff [`docs/handoff/endless-delve.md`](../handoff/endless-delve.md)
+  - [x] 7.1 Sector world: 32×32-cell sectors, sector-local deterministic generator (noise caves per stratum, clipped veins, structure lattice), a 128-column ring streamed a sector column at a time with prefetch, per-column hall creatures; the core unchanged
+  - [x] 7.2 Save v2: index (`version: 2`, the core as v1) + regions of 8×8 sectors; IndexedDB locally (localStorage fallback), the 16 most recently changed regions in fixed cloud slots `progress/delve-r0..15` (owner decision; existing rule, no deploy), RLE diffs, merge, regrowth of far unheld tunnels after 14 days
+  - [x] 7.3 Structures v1: Kael's waycaches, flooded shafts, Keepers' ruins, Maw dens, Bailiff halls, grotto lakes, lava basins, rift shrines, field-note walls (8 notes)
+  - [ ] 7.4 Map v2: fog per sector, the world map drawn column by column, regrown tint, shrine marker ✅; pins, waypoints, Broken Astral Compass, Rift Map Fragment — not yet
+  - [ ] 7.5 Board Herald's daily Delve bounties (S) — not built (Quest Board surfaces)
 - [ ] **Phase 8: The Underhearth**: stratum + nodes + lava lakes + the Breach gate (Delving 15); Banked Ember, Ironwood Sentinel, the Banked Furnace; Kael's "The Four Who Went Down" + Verrin; tool tier V; rope, Thornroot Grapple, Seam Rails + Cart, camps per stratum, Rift Anchors + Waystone Shards, Seam Siphon
 - [ ] **Phase 9: Starfall Deep** (first Reach): low gravity + shear, starlight liquid (rises), starglass; Ephemeris Leech + Anchor Warden spawn, Lodestar Drift, the Unlit Star; Aureth's chain; Starfall and Eclipse Surge events; Rod V, Starlight Jar, Anchor Ring
 - [ ] **Phase 10: Echo regions**: Prism Shelf, Ink Deeps, Orrery Underworks, Rootglass Depths; Afterimage Moth, Ink Lantern, Graftling spawn (closes audit #16); Echo fish; Veil Draught

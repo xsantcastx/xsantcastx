@@ -545,6 +545,7 @@ test('save v2: runs round-trip, are compact, and a worst-case region document st
   for (let sx = 0; sx < 8; sx++) for (let sy = 0; sy < 8; sy++) sectors[`${sx},${sy}`] = { g: 1, t: 1, c: region.encodeRuns(worst), l: region.encodeRuns(worst), f: 'ffffffffffffffff', k: region.encodeRuns(worst) };
   const doc = JSON.stringify({ v: 1, seed: 1, rx: 0, ry: 0, t: 1, sectors });
   assert.ok(doc.length < 1024 * 1024, `${doc.length} bytes`);
+  if (process.env.DELVE_SIZES) console.log(`worst-case region doc: ${doc.length} bytes`);
   assert.equal(region.decodeRuns('!!!!').size, 0, 'junk decodes to nothing');
 });
 
