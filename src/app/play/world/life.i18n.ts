@@ -234,5 +234,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.creature.banked-ember': { en: 'Banked Ember', es: 'Brasa Cubierta' },
   'play.creature.ironwood-sentinel': { en: 'Ironwood Sentinel', es: 'Centinela de Hierroleno' },
   'play.creature.banked-furnace': { en: 'The Banked Furnace', es: 'El Horno Cubierto' },
+  // The Ink Deeps (the Umbral's underside, behind its Rift Gate).
+  'play.creature.shadeling': { en: 'Shadeling', es: 'Sombrecilla' },
+  'play.creature.gloam-warden': { en: 'The Gloam Warden', es: 'El Guardian de la Penumbra' },
   'play.creature.unknown': { en: 'Enemy', es: 'Enemigo' },
 };

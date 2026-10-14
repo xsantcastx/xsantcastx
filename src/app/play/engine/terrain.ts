@@ -81,7 +81,7 @@ export interface TerrainNodeDef {
    * contents, a camp's crafting). A rift shrine is the engine's own: it shows
    * the tunnels round it on the map, and the host pays its first touch.
    */
-  use?: 'chest' | 'camp' | 'shrine' | 'anchor' | 'mark' | 'furnace';
+  use?: 'chest' | 'camp' | 'shrine' | 'anchor' | 'mark' | 'furnace' | 'gate' | 'brazier';
   /**
    * A rail the Seam Cart rides (Phase 8, traversal.ts): Kael's old lines
    * (generated) and the Keeper's own (placed). Consecutive rail cells join
@@ -266,6 +266,50 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // The Four's outpost cache: what they left at the forge corner (the dug cell is the receipt).
   { id: 'hearth-cache', label: 'The Four\'s cache', solid: true, hp: 2, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 12,
     yield: { materialId: 'ironwood', qty: 2 }, receipt: true, base: '#4a3a30', dark: '#2a2027', light: '#c9a06a', fleck: '#ffd08a', glow: { color: '#ffb066', radius: 48 } },
+  // ── The Rift Gates (shared/delve/rift-gates.model.ts; lore-addendum.md "The Rift Gates"). ──
+  // A gate's opening, one node per realm (its light is the realm's colour): walked through, never dug.
+  // E: attune it with the realm's sigil, step through, or (on the realm side) step back out.
+  { id: 'rift-gate-umbral', label: 'Umbral rift gate', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'gate',
+    base: '#1a1028', dark: '#0a0612', light: '#a48bff', fleck: '#e8d8ff', glow: { color: '#a48bff', radius: 120 } },
+  { id: 'rift-gate-luminous', label: 'Luminous rift gate', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'gate',
+    base: '#2a2414', dark: '#140f06', light: '#ffe9a8', fleck: '#fff6d8', glow: { color: '#ffe9a8', radius: 120 } },
+  { id: 'rift-gate-celestial', label: 'Celestial rift gate', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'gate',
+    base: '#10202e', dark: '#060e16', light: '#5fb6ff', fleck: '#d8ecff', glow: { color: '#5fb6ff', radius: 120 } },
+  { id: 'rift-gate-verdant', label: 'Verdant rift gate', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'gate',
+    base: '#10241a', dark: '#06120c', light: '#7fd5a3', fleck: '#d8ffe8', glow: { color: '#7fd5a3', radius: 120 } },
+  // The gate's frame: older than the Delve, and it does not break.
+  { id: 'rift-frame', label: 'Rift frame', solid: true, hp: Infinity, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#3a3046', dark: '#1a1424', light: '#7a6a90', fleck: '#d8c0ff' },
+  // Rift splinters: the gate's frame shed them as the rift settled. Pickaxe IV; a Realm Sigil's frame.
+  { id: 'rift-splinter', label: 'Rift splinter', solid: true, hp: 5, tools: { pickaxe: 4 }, discipline: 'mining', xp: 14, minLevel: 40,
+    yield: { materialId: 'rift-splinter', qty: 1 }, base: '#33284a', dark: '#1a1428', light: '#9a84c4', fleck: '#e8d8ff', glow: { color: '#b88cff', radius: 40 } },
+  // ── The Umbral Delve, the Ink Deeps (play/engine/realm-gen.ts; the Umbral's underside). ──
+  // Ink-slate: the Ink Shallows' rock, black-violet and damp. Pickaxe III.
+  { id: 'ink-slate', label: 'Ink-slate', solid: true, hp: 5, tools: { pickaxe: 3 }, discipline: 'mining', xp: 3, block: 'basalt-block',
+    base: '#1e1828', dark: '#0e0a16', light: '#3a2e4c', fleck: '#6a5a86' },
+  // Gloam-slate: the Gloam Deep's rock, pressed under the shallows. Pickaxe IV.
+  { id: 'gloam-slate', label: 'Gloam-slate', solid: true, hp: 6, tools: { pickaxe: 4 }, discipline: 'mining', xp: 4, block: 'obsidian-block',
+    base: '#16121e', dark: '#08060e', light: '#2e2640', fleck: '#4a3e66' },
+  // Inkstone: the "ink ore": stone that has drunk so much ink it writes. Pickaxe IV, Mining 48.
+  { id: 'inkstone-vein', label: 'Inkstone vein', solid: true, hp: 7, tools: { pickaxe: 4 }, discipline: 'mining', xp: 20, minLevel: 48,
+    yield: { materialId: 'inkstone', qty: 1 }, base: '#1c1626', dark: '#0a0812', light: '#2e2440', fleck: '#8a6cff', glow: { color: '#6a4adf', radius: 38 } },
+  // Nightglass: glass the dark made where no light ever fell. Pickaxe IV, Mining 55.
+  { id: 'nightglass-vein', label: 'Nightglass vein', solid: true, hp: 8, tools: { pickaxe: 4 }, discipline: 'mining', xp: 28, minLevel: 55,
+    yield: { materialId: 'nightglass', qty: 1 }, base: '#141020', dark: '#06040c', light: '#3a3060', fleck: '#c8b8ff', glow: { color: '#c8b8ff', radius: 52 } },
+  // An ink seep: where the realm's ink wells out of the rock. Sickle III: Umbral Ink, now and then.
+  { id: 'ink-seep', label: 'Ink seep', solid: true, hp: 3, tools: { sickle: 3 }, discipline: 'foraging', xp: 12, minLevel: 35,
+    yield: { materialId: 'umbral-ink', qty: 1, chance: .35 }, base: '#120c1c', dark: '#06040a', light: '#2a1e3c', fleck: '#a48bff' },
+  // Drift-shale: rock that is only where it is while nobody is looking. No pick holds it; light pins it.
+  { id: 'drift-shale', label: 'Drift-shale', solid: true, hp: Infinity, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#221a30', dark: '#0e0a16', light: '#4a3c66', fleck: '#8a7ab0' },
+  // An ink mirror: a cavern's ceiling polished by the tide. It shows you walking above yourself.
+  { id: 'ink-mirror', label: 'Ink mirror', solid: true, hp: Infinity, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#0c0814', dark: '#040208', light: '#6a5a96', fleck: '#e8d8ff' },
+  // A gloam brazier (the Gloam Warden's hall): E lights it with a torch; it gutters out, and the tide puts it out.
+  { id: 'gloam-brazier', label: 'Gloam brazier', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'brazier',
+    base: '#2a2030', dark: '#120c18', light: '#6a5a7a', fleck: '#8a7a9a' },
+  { id: 'gloam-brazier-lit', label: 'Lit gloam brazier', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#2a2030', dark: '#120c18', light: '#ffd08a', fleck: '#fff4dc', glow: { color: '#ffd8a0', radius: 170 } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -357,12 +401,24 @@ export interface BiomeDef {
    * changes no cell, so it needs no `version` bump.
    */
   loose?: { node: string; chance: number };
+  /**
+   * Ink-blind (the Umbral Delve): the lantern reaches only this share of its
+   * radius here, and the unlit dark is deeper (ambient floor 0.92, not 0.8).
+   * Torches and glowing veins are untouched: placed light is how you push back.
+   */
+  gloom?: number;
 }
 
 /** Liquid types, as stored per cell (`Terrain.liqType`). 0 is none. Append only. */
 export const LIQUID_NONE = 0, LIQUID_WATER = 1, LIQUID_LAVA = 2;
-export type LiquidKind = 'water' | 'lava';
-export const LIQUID_IDS: readonly (LiquidKind | null)[] = [null, 'water', 'lava'];
+/**
+ * Ink (the Umbral Delve's liquid; realm-gen.ts): heavier than water (it sinks
+ * under it, and water rests on it), slow (half water's pace), and it drinks
+ * light: a Keeper whose head is under it carries almost none.
+ */
+export const LIQUID_INK = 3;
+export type LiquidKind = 'water' | 'lava' | 'ink';
+export const LIQUID_IDS: readonly (LiquidKind | null)[] = [null, 'water', 'lava', 'ink'];
 /** A full cell of liquid. Each level is 2 art px (4 world px) of the 16 art px cell. */
 export const LIQUID_FULL = 8;
 /** Generated liquid: fills the open cells of a rectangle at `level` (default full). Solid cells are skipped. */
@@ -417,6 +473,11 @@ export interface TerrainSpec {
    * Bump when the generated liquids change. A saved liquid diff is filed under
    * it (with the terrain layout) and dropped on a mismatch: the cells stay.
    */
+  /**
+   * A realm Delve behind a Rift Gate (rift-gates.model.ts): its wings come from
+   * that realm's own generator (realm-gen.ts), not the Infernal strata's.
+   */
+  realm?: 'umbral';
   liquidVersion?: number;
   /**
    * The core of an endless Delve (Phase 7): sector-world.ts generates sectors

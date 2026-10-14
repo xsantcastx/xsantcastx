@@ -1231,3 +1231,46 @@ a rope bridge, a dead snag and a spire (`play/world/heights.ts`,
   Kesh about the Thicket ("I say it's in the way").
 - **The look-out cairns.** A cairn with a pennant halfway up each route; from
   it every find still waiting on that high road shows as a pale beam.
+
+## The Rift Gates and the Ink Deeps (2026-10-14) — shipped, owner reviews in play
+
+Owner: "inside the delves portals to other realms"; "the realms are like deeper delves or crazy". Code:
+`shared/delve/rift-gates.model.ts`, `play/engine/realm-gen.ts`, `play/engine/umbral.ts`.
+
+**Canon tie.** A Rift Gate is not a door to a sixth realm, nor to the Void (delve-and-beyond.md §1.2). It is a
+place where two undersides wear thin: the rock under the Infernal realm's towns and the rock under another
+realm's. Each gate stands where that realm's Echo colour will one day begin (§2.3). Four frames in every
+Delve, one per realm; older than the Delve, older than Kael. They shed **rift splinters** as they settle.
+A **Realm Sigil** (splinters, the realm's own material, a core that remembers heat) is how a Keeper becomes
+"someone the shadows already know" (Verrin, Game, level-15 line: a door in the Umbral that opens only for
+such a someone) — the gate keeps the sigil and stays open for that Keeper.
+
+**Three gates are still settling** (Luminous, Celestial, Verdant): they hum, they glow their realm's colour,
+Glim feels the other side but cannot see it. "One day."
+
+**The Ink Deeps** — the Umbral's underside. "The dark the light left behind when it went somewhere else"
+(Verrin). The rule it breaks: *the dark is unreliable*.
+- Ink-blind: Glim's light barely reaches past your hands; torches are how you push the dark back.
+- Unlit passages shift: drift-shale is rock that is only where it is while nobody looks. A torch pins it.
+- The ink tide rises and falls on its own clock; it never drowns, it blinds, and it puts braziers out.
+- Mirrored ceilings: ink polished by the tide; your reflection walks above you, a step behind.
+- Ink is heavier than water and never mixes with it.
+
+**Rook Sable's chalk** (Bible proposal, Veil Cartographer): Rook maps these tunnels; some routes are wrong on
+purpose. Field notes: "R.S. This way, if it is still this way." / "Do not map what you have not lit."
+
+**Creatures.** *Shadeling*: only moves where no light is; held in a torch's light it stands like a statue of
+itself, waiting for you to look away. *The Gloam Warden*: keeps the dark that was left when the light went
+somewhere else; "Light me, and I stand still. That is all I ask of anyone." Not cruel: it has kept the dark so
+long it no longer lets anything leave.
+
+**Items.** Rift Splinter ("warm on one face, cold on the other"); Umbral Sigil; Inkstone ("stone that drank so
+much ink it writes; the line is never quite straight"); Nightglass ("hold it to a torch and it shows you the
+torch going out"); Veil Lantern ("it does not shine brighter, it shines further, the way the dark does").
+
+**Verrin's chain.** *What the Light Leaves* (attune the gate, stand in the Ink Deeps) · *Ink and Glass*
+(10 Inkstone, 4 Nightglass; "now you know why I never sign anything") · *The Unlit Warden* (light the
+braziers, end it honestly; the Archivist: "Most things that guard a dark are asking for the same. We just
+never bring a torch.").
+
+Glim's telegraph lines (said once each) are in `play/world/rift.i18n.ts` (`play.rift.rule.*`).

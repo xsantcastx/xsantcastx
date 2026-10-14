@@ -126,6 +126,22 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     haunt: 'The Underhearth',
     note: 'It never moves. It pulls. It is a promise kept so long it forgot who it was kept for.',
   },
+  // The Ink Deeps, the Umbral's underside behind its Rift Gate (lore-addendum.md, The Rift Gates). Pixel figures
+  // (engine.ts drawShade) until their masters are painted (docs/art-commissions/rift-gates.md).
+  {
+    id: 'shadeling',
+    name: 'Shadeling',
+    realm: 'umbral',
+    haunt: 'The Ink Deeps',
+    note: 'Only moves where no light is. Hold it in a torch\'s light and it stands like a statue of itself, waiting for you to look away.',
+  },
+  {
+    id: 'gloam-warden',
+    name: 'The Gloam Warden',
+    realm: 'umbral',
+    haunt: 'The Ink Deeps',
+    note: 'Keeps the dark that was left when the light went somewhere else. It asks only to be lit; in the light it cannot move, and cannot refuse an ending.',
+  },
   {
     id: 'ink-lantern',
     name: 'Ink Lantern',
