@@ -67,6 +67,12 @@ export interface EngineState {
   height?: { id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean };
   /** On a surface with height: free, climb, hang or mantle. */
   climbing?: 'free' | 'climb' | 'hang' | 'mantle';
+  /**
+   * A realm Delve behind a Rift Gate (rift-gates.model.ts, umbral.ts): which realm, the ink tide (its phase,
+   * rows over the pools, seconds to its next change), whether the head is under ink, a mirrored ceiling
+   * overhead, and the drift pockets' last shift epoch.
+   */
+  realm?: { id: string; tide: 'low' | 'rising' | 'high' | 'falling'; tideRows: number; nextTide: number; inkBlind: boolean; mirror: boolean; shift: number };
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
@@ -313,12 +319,14 @@ export interface PlaceEvent {
 }
 export interface UseEvent {
   /** A chest or camp opens; a Rift Anchor offers travel; the Banked Furnace's hearth is where it is summoned. */
-  kind: 'chest' | 'camp' | 'anchor' | 'furnace';
+  kind: 'chest' | 'camp' | 'anchor' | 'furnace' | 'gate' | 'brazier';
   areaId: string;
   cellKey: string;
   index: number;
   /** The cell, as world column and row. */
   col?: number; row?: number;
+  /** A Rift Gate's node (`rift-gate-<realm>`): which realm it opens on. */
+  node?: string;
 }
 export interface WorldActionEvent {
   kind: WorldActionKind;

@@ -45,6 +45,7 @@ import { mergeCrafting as mergeCraftingState } from '../crafting/crafting.model'
 import { mergeInfusionLedgers } from '../enchanting/infusion.model';
 import { mergeDelveSaves } from '../delve/delve-save.model';
 import { mergeRegionSlots, REGION_SLOT_KEYS } from '../delve/delve-region.model';
+import { RIFT_SLOT_KEYS } from '../delve/rift-gates.model';
 import { mergeDelveLore } from '../delve/delve-lore.model';
 import { mergeFishingSaves } from '../fishing/fishing-save';
 import { mergeGatherSaves } from '../skills/gather-save.model';
@@ -348,6 +349,13 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
   // changed later. See delve-region.model.ts.
   ...REGION_SLOT_KEYS.map((key, n): SyncedBlob => ({
     key, collection: 'progress', doc: `delve-r${n}`, label: `Ember Delve region ${n + 1}`, merge: mergeRegionSlots,
+  })),
+  // The realm Delves behind the Rift Gates (rift-gates.model.ts): four region slots
+  // each (`progress/rift-<realm>-r0..3`, the same `progress/{docId}` rule), merged
+  // exactly as the Ember Delve's. Each realm's seed is derived from the Delve's, so a
+  // slot never takes another world's region. A realm not yet shipped writes nothing.
+  ...RIFT_SLOT_KEYS.map((key): SyncedBlob => ({
+    key, collection: 'progress', doc: key.replace('godforge-', ''), label: `Realm Delve region (${key.replace('godforge-rift-', '')})`, merge: mergeRegionSlots,
   })),
   {
     key: 'godforge-delve-lore',

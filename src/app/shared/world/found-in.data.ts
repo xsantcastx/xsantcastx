@@ -59,7 +59,9 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
   rows.push({ place: `${DELVE_AREA}: the Lodge Warden's Ledger Catch, on its day`, materialIds: [...LEDGER_CATCH_IDS] });
   rows.push({ place: 'Crafting Bench (Delve kit)', materialIds: [...RODS.filter(r => r.id !== 'worn-rod').map(r => r.id), 'seam-bucket', 'lampfish-oil',
     // Phase 8: the Underhearth's kit (some of it opened by Kael's missions).
-    'seam-cart', 'seam-rail', 'bark-rope', 'thornroot-grapple', 'rift-anchor'] });
+    'seam-cart', 'seam-rail', 'bark-rope', 'thornroot-grapple', 'rift-anchor',
+    // The Rift Gates: the Umbral Sigil, and the Veil Lantern (Verrin's "What the Light Leaves").
+    'umbral-sigil', 'veil-lantern'] });
   rows.push({ place: 'Your first rod, in the satchel from the start', materialIds: ['worn-rod'] });
   rows.push({ place: `${DELVE_AREA}: a Seam Bucket filled at water or lava`, materialIds: ['seam-bucket-water', 'seam-bucket-lava'] });
   rows.push({ place: 'Rootglass Canopy: the Lodge Warden\'s gifts for Ledger Catches', materialIds: LODGE_CHARMS.map(c => c.id) });
@@ -132,6 +134,9 @@ export function buildFoundInIndex(): FoundInIndex {
       ...underhearthRows(),
       // The endless Delve (Phase 7): Kael's waycaches in the Basalt Caverns east and west of the core.
       { place: `${DELVE_AREA}: Kael's waycaches, in the Basalt Caverns east and west`, materialIds: ['torch'] },
+      // The Rift Gates (rift-gates.model.ts): splinters in every gate's frame; the Ink Deeps behind the Umbral one.
+      { place: `${DELVE_AREA}: the frames of the Rift Gates (Pickaxe IV)`, materialIds: ['rift-splinter'] },
+      { place: 'The Ink Deeps: veins round the ink pools and in the Gloam Deep, behind the Umbral Rift Gate', materialIds: ['inkstone', 'nightglass', 'umbral-ink'] },
     ],
     areas,
     nodeYields: Object.fromEntries(TERRAIN_NODE_LIST.map(n => [n.id, n.yield?.materialId])),

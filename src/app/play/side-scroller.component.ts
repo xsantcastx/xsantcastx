@@ -51,6 +51,11 @@ import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
 import { DELVE_I18N } from './world/delve.i18n';
 import { UNDERHEARTH_I18N } from './world/underhearth.i18n';
+import { RIFT_I18N } from './world/rift.i18n';
+import {
+  attunedFlag, attuneCheck, enteredFlag, GATE_ENTER_XP, GATE_SEEN_XP, realmOfArea, realmOfGateNode, RIFT_GATES, seenFlag, VEIL_LANTERN,
+} from '../shared/delve/rift-gates.model';
+import { UMBRAL_DELVE } from './world/towns/umbral-delve';
 import {
   FOUR_HAMMER_MARKS, FURNACE_FLAG, furnaceDayFlag, HAMMER_MARK_FLAGS, HAMMER_MARK_XP, SEAM_CART, THORNROOT_GRAPPLE, UNSEALED_FLAG, WAYSTONE_SHARD,
 } from '../shared/delve/underhearth.model';
@@ -505,6 +510,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(LIFE_I18N);
     this.i18n.register(DELVE_I18N);
     this.i18n.register(UNDERHEARTH_I18N);
+    this.i18n.register(RIFT_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
@@ -565,6 +571,9 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-riding', state.riding ? 'true' : 'false');
           el.setAttribute('data-grapple', state.grappling ?? '');
           el.setAttribute('data-furnace', state.furnace ? `${state.furnace.phase}:${state.furnace.vents}:${state.furnace.breathing ? 1 : 0}` : '');
+          // The realm Delves behind the Rift Gates: which realm, the ink tide, ink-blind, under a mirror.
+          el.setAttribute('data-realm', state.realm ? `${state.realm.id}:${state.realm.tide}` : '');
+          el.setAttribute('data-ink-blind', state.realm?.inkBlind ? 'true' : 'false');
         }
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
@@ -1398,6 +1407,8 @@ export class SideScrollerComponent implements OnDestroy {
       case 'anchor': return this.t('play.uh.action.anchor');
       case 'furnace': return this.t('play.uh.action.furnace');
       case 'rail': return this.t('play.uh.action.rail');
+      case 'gate': return this.t('play.rift.action.gate');
+      case 'brazier': return this.t('play.rift.action.brazier');
       case 'delve': return this.campReady ? this.t('play.delve.action.enterTop') : this.t('play.delve.action.enter');
       case 'passage': return this.t(this.state.area === 'Ember Quarry' ? 'play.hud.act.returnSeamworks' : 'play.hud.act.enterQuarry');
       default: return this.t('play.hud.act.walkCloser');
@@ -1603,13 +1614,15 @@ export class SideScrollerComponent implements OnDestroy {
     const now = Date.now();
     if (now - this.delveTickAt < 1000) return;
     this.delveTickAt = now;
-    this.pins = this.delve.pins();
+    // Map pins belong to the Ember Delve's regions; a realm Delve shows none (and takes none, below).
+    this.pins = this.engine.realm ? [] : this.delve.pins();
     if (this.selectedPinId && !this.selectedPin) this.selectedPinId = null;
     const read = this.delveLore.inscriptions();
     this.glimMarkMission = activeMark(this.glim.state.lastAt, now);
     this.glimMark = this.glimMarkMission ? this.engine.findMark(GLIM_MARKS[this.glimMarkMission] ?? [], id => read.has(id)) : null;
     this.compassAt = this.compassHeld ? this.engine.compassTarget(id => read.has(id)) : null;
     this.tickBondAbilities(read);
+    this.tickGates();
     const canvas = this.canvas?.nativeElement;
     if (canvas) {
       canvas.setAttribute('data-glim-mark', this.glimMark ? `${this.glimMark.col},${this.glimMark.row}` : '');
@@ -1646,6 +1659,7 @@ export class SideScrollerComponent implements OnDestroy {
       .sort((a, b) => Math.abs(a.col - col) + Math.abs(a.row - row) - Math.abs(b.col - col) - Math.abs(b.row - row))[0];
     if (hit && !this.pinning) { this.selectPin(hit.id); return; }
     if (!this.pinning) return;
+    if (this.engine?.realm) { this.pinning = false; return; }
     const rows = this.engine?.mapSource()?.t.rows ?? 56;
     const pin = { id: newPinId(), col, row: Math.max(0, Math.min(rows - 1, row)), icon: 'star', name: '' };
     this.pinning = false;
@@ -1986,10 +2000,10 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private pushUnderhearth(): void {
     if (!this.engine || !this.browser) return;
-    const gear = `${this.inventory.stackOf(SEAM_CART) > 0}:${this.inventory.stackOf(THORNROOT_GRAPPLE) > 0}`;
+    const gear = `${this.inventory.stackOf(SEAM_CART) > 0}:${this.inventory.stackOf(THORNROOT_GRAPPLE) > 0}:${this.inventory.stackOf(VEIL_LANTERN) > 0}`;
     if (gear !== this.gearKey) {
       this.gearKey = gear;
-      this.engine.setGear({ cart: this.inventory.stackOf(SEAM_CART) > 0, grapple: this.inventory.stackOf(THORNROOT_GRAPPLE) > 0 });
+      this.engine.setGear({ cart: this.inventory.stackOf(SEAM_CART) > 0, grapple: this.inventory.stackOf(THORNROOT_GRAPPLE) > 0, veil: this.inventory.stackOf(VEIL_LANTERN) > 0 });
     }
     if (!this.delve.isClaimed(UNSEALED_FLAG) && this.quests.isMissionDone('delve-fracture')) this.delve.claim(UNSEALED_FLAG);
   }
@@ -2251,7 +2265,8 @@ export class SideScrollerComponent implements OnDestroy {
    * grade at once; otherwise the Line Tension reel decides the grade.
    */
   private fishHooked(event: FishEvent): void {
-    if (!this.browser || !this.engine) return;
+    // Nothing is fished from ink (no rod works it; the engine never casts into it).
+    if (!this.browser || !this.engine || event.liquid === 'ink') return;
     const npc = this.store.read('eclipse-npc') as { claimed?: unknown } | null;
     const pageClaimed = Array.isArray(npc?.claimed) && npc!.claimed.includes('fish-drowned-lamp-2');
     if (this.fishing.lampAnswers({ biome: event.biome, liquid: event.liquid, pageClaimed, fallen: this.delve.isClaimed(DROWNED_LAMP_FLAG) })) {
@@ -2310,6 +2325,10 @@ export class SideScrollerComponent implements OnDestroy {
       this.refreshChest(this.t('play.delve.chest.intro'));
     } else if (event.kind === 'anchor') {
       this.openAnchors();
+    } else if (event.kind === 'gate') {
+      this.useGate(event);
+    } else if (event.kind === 'brazier') {
+      this.lightBrazier(event);
     } else if (event.kind === 'furnace') {
       this.wakeFurnace(event.col ?? 68);
     } else if (event.kind === 'camp') {
@@ -2319,6 +2338,74 @@ export class SideScrollerComponent implements OnDestroy {
       this.loadPanel(entry, this.campInjector);
     }
   }
+  // ── The Rift Gates (rift-gates.model.ts): attune, step through, step back; the Gloam Warden's braziers ──
+
+  /**
+   * E at a Rift Gate. On the realm side it is the way back out. In the Ember
+   * Delve: a settling gate says so; an open one asks for its Delving level and
+   * (once) its Realm Sigil, which it keeps; then the Keeper steps through.
+   */
+  private useGate(event: UseEvent): void {
+    if (!this.engine || event.col === undefined || event.row === undefined) return;
+    if (this.engine.realm) { if (!this.engine.leaveRealm()) this.message = this.t('play.rift.backFailed'); return; }
+    const realm = realmOfGateNode(event.node ?? '');
+    if (!realm) return;
+    const gate = RIFT_GATES[realm];
+    const check = attuneCheck(realm, {
+      delving: skillLevel(this.activity.snapshot.progress, 'delving'),
+      sigils: this.inventory.stackOf(gate.sigil),
+      attuned: this.delve.isClaimed(attunedFlag(realm)),
+    });
+    const name = this.t(`play.rift.realm.${realm}`);
+    if (!check.ok) {
+      this.message = check.why === 'settling' ? this.t('play.rift.settling', { realm: name })
+        : check.why === 'delving' ? this.t('play.rift.needDelving', { n: check.need })
+        : this.t('play.rift.needSigil', { sigil: materialDisplay(check.sigil)?.name ?? check.sigil });
+      return;
+    }
+    if (check.attune) {
+      // The sigil is spent once, keyed by the realm: a replay never takes a second.
+      if (!this.inventory.consumeStacks(`rift-attune:${realm}`, [{ id: gate.sigil, count: 1 }]).ok) { this.message = this.t('play.delve.chest.saveFailed'); return; }
+      this.delve.claim(attunedFlag(realm));
+      this.toastLoot(this.t('play.rift.attuned'));
+    }
+    const first = !this.delve.isClaimed(enteredFlag(realm));
+    if (!gate.area || !this.engine.enterRealm(gate.area, { col: event.col, row: event.row })) { this.message = this.t('play.rift.enterFailed'); return; }
+    if (first) {
+      const result = this.skillActions.act({ mutationId: `rift-enter:${realm}`, skill: 'delving', xp: GATE_ENTER_XP, locationId: this.delveLocation(gate.area) });
+      if (result.ok && !result.replayed) this.toastLoot(this.t('play.rift.firstStep', { n: GATE_ENTER_XP }));
+    }
+  }
+  /** E at an unlit gloam brazier: one torch from the satchel lights it. */
+  private lightBrazier(event: UseEvent): void {
+    if (!this.engine || event.col === undefined || event.row === undefined) return;
+    if (this.inventory.stackOf('torch') < 1) { this.message = this.t('play.rift.brazier.noTorch'); return; }
+    if (!this.engine.lightBrazier(event.col, event.row)) return;
+    this.braziersLit++;
+    this.inventory.consumeStacks(`rift-brazier:${event.areaId}:${event.cellKey}:${Date.now()}:${this.braziersLit}`, [{ id: 'torch', count: 1 }]);
+    this.refreshHotbar();
+  }
+  private braziersLit = 0;
+  /**
+   * Once a second in the Delve: a Rift Gate in sight. The first sighting of
+   * each realm's gate is a moment: Glim says what it is (open or settling) and
+   * it pays a little Delving XP, once.
+   */
+  private tickGates(): void {
+    const near = this.engine?.gateNear(14) ?? null;
+    this.canvas?.nativeElement.setAttribute('data-gate', near ? `${near.realm}:${near.col},${near.row}` : '');
+    if (!near || this.delve.isClaimed(seenFlag(near.realm))) return;
+    if (!this.delve.claim(seenFlag(near.realm))) return;
+    const gate = RIFT_GATES[near.realm];
+    this.message = this.t(gate.open ? 'play.rift.glim.seenOpen' : 'play.rift.glim.seenSettling', { realm: this.t(`play.rift.realm.${near.realm}`) });
+    const result = this.skillActions.act({ mutationId: `rift-seen:${near.realm}`, skill: 'delving', xp: GATE_SEEN_XP, locationId: EMBER_DELVE_LOCATION });
+    if (result.ok && !result.replayed) this.toastLoot(this.t('play.rift.seenXp', { n: GATE_SEEN_XP }));
+  }
+  /** Where a Delve action is filed: the Ember Delve, or the realm Delve it happened in. */
+  private delveLocation(areaId: string | undefined): string {
+    return areaId && realmOfArea(areaId) ? `${this.town.id}/${areaId}` : EMBER_DELVE_LOCATION;
+  }
+
   // ── The Underhearth: Rift Anchor travel, the Banked Furnace's hearth ──
 
   /** The Rift Anchor travel sheet, while open. */
@@ -2327,12 +2414,15 @@ export class SideScrollerComponent implements OnDestroy {
   anchorsReady = false;
   /** The anchors of this town's Delve as travel rows (and the Seamworks, from below). */
   private anchorRows(): AnchorRow[] {
-    const biomes = [...(EMBER_DELVE.terrain?.biomes ?? []), ...(EMBER_DELVE.terrain?.depth?.biomes ?? [])];
+    // In a realm Delve its own anchors, and the way back out is the gate you came in by.
+    const inRealm = !!this.engine?.realm;
+    const spec = inRealm ? UMBRAL_DELVE.terrain : EMBER_DELVE.terrain;
+    const biomes = [...(spec?.biomes ?? []), ...(spec?.depth?.biomes ?? [])];
     const rows: AnchorRow[] = (this.engine?.delveAnchors() ?? []).map((a, n) => ({
       key: `${a.col},${a.row}`, col: a.col, row: a.row,
       label: this.t('play.uh.travel.row', { n: n + 1, place: biomes.find(b => a.row < b.to)?.name ?? '', depth: a.row }),
     }));
-    if (this.state.delve) rows.push({ key: 'home', col: 0, row: 0, label: this.t('play.uh.travel.home'), home: true });
+    if (this.state.delve) rows.push({ key: 'home', col: 0, row: 0, label: this.t(inRealm ? 'play.rift.travel.back' : 'play.uh.travel.home'), home: true });
     return rows;
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
@@ -2351,7 +2441,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.engine) return;
     this.anchorSheet = null;
     this.engine.setPaused(false);
-    if (row.home) this.engine.returnToCamp();
+    if (row.home && this.engine.realm) { if (!this.engine.leaveRealm()) this.message = this.t('play.rift.backFailed'); }
+    else if (row.home) this.engine.returnToCamp();
     else if (!this.engine.travelToAnchor(row.col, row.row)) this.message = this.t('play.uh.travel.failed');
     this.focusWorld();
   }
@@ -2463,7 +2554,11 @@ export class SideScrollerComponent implements OnDestroy {
     }
     // Plain dirt and placed blocks pay only the block.
     if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
-    if (event.kind === 'mine' && event.discipline === 'mining' && !event.site) {
+    // The seam's own ores (and plain rock) go through the Seamworks seam's gate. Any other ore (the
+    // Underhearth's emberheart and pyrite, the Ink Deeps' inkstone and nightglass) pays itself below:
+    // resolveMine only knows MINING_TIERS and would book it as Cinder Ore.
+    const seamOre = !event.materialId || !!miningTierFor(event.materialId);
+    if (event.kind === 'mine' && event.discipline === 'mining' && !event.site && seamOre) {
       const now = Date.now();
       const settled = settleDelveMine({
         // The selected Current Work's breath, read before switching to it; with
@@ -2503,7 +2598,7 @@ export class SideScrollerComponent implements OnDestroy {
     }
     const result = this.skillActions.act({
       // A hunting-ground node is booked where it stands; a Delve cell in the Delve.
-      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: event.site ? this.worldLocation(event.areaId) : EMBER_DELVE_LOCATION,
+      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: event.site ? this.worldLocation(event.areaId) : this.delveLocation(event.areaId),
       ...(event.materialId && event.qty ? { materialId: event.materialId, qty: event.qty } : {}),
     });
     if (!result.ok) {

@@ -10,6 +10,7 @@ import { FLOOR } from '../../engine/engine.model';
 import { HUNT_HEIGHTS } from '../heights';
 import { WARDEN_FLAG } from '../../engine/terrain';
 import { HOMESTEAD, HOMESTEAD_GATE } from '../homestead';
+import { UMBRAL_DELVE } from './umbral-delve';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
@@ -429,5 +430,6 @@ export const INFERNAL_TOWN: TownDef = {
   safeX: 1100 + QUARTER,
   scenery: 'seamworks-hub',
   arrival: 'Returned to Seamworks. Explore freely or head out for another hunt.',
-  hunts: [EMBER_QUARRY, HOMESTEAD, EMBER_DELVE],
+  // The Ink Deeps: the Umbral's underside, behind the Umbral Rift Gate in the Underhearth (no passage from town).
+  hunts: [EMBER_QUARRY, HOMESTEAD, EMBER_DELVE, UMBRAL_DELVE],
 };
