@@ -28,6 +28,7 @@
   color: var(--st-text-soft);
   max-width: 44ch;
 }
+.ss__purpose--details { margin: 0 0 var(--space-3); }
 .ss__wallet { flex: none; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: var(--space-1); }
 .ss__wallet:empty { display: none; }
 

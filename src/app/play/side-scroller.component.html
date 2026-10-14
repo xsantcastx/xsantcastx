@@ -250,25 +250,29 @@
   </div>
 
   @if (bagOpen) {
-    <section id="satchel-book" class="book" aria-labelledby="satchel-title">
+    <!-- The satchel, Diablo II-style: what the Keeper wears, and the pockets. Nothing else
+         until you tap something — then one card with one primary action. -->
+    <section id="satchel-book" class="book" [class.book--card]="!!slip" aria-labelledby="satchel-title">
       <header class="book-head">
-        <div>
-          <span class="realm-tag">{{ t('play.hud.satchel') }}</span>
-          <h2 id="satchel-title">{{ t('play.hud.book.title') }}</h2>
-        </div>
+        <h2 id="satchel-title">{{ t('play.hud.satchel') }}</h2>
+        <p class="capacity" [class.full]="bagFull">
+          <span>{{ t('play.hud.book.slots', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) }}</span>
+          <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
+        </p>
+        <button type="button" class="book-more" (click)="bookStats = !bookStats" [attr.aria-expanded]="bookStats" aria-controls="satchel-stats" [attr.aria-label]="t('play.hud.book.stats')">{{ t('play.hud.book.statsShort') }}</button>
         <button type="button" class="book-close" (click)="closeBag()">{{ t('play.hud.book.close') }}</button>
       </header>
-      <p class="capacity" [class.full]="bagFull">
-        <b>{{ bagCount }}</b>
-        <span>{{ t('play.hud.book.slots', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) }}</span>
-        <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
-      </p>
-      @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
-      <div class="belt" [attr.aria-label]="t('play.hud.book.worn')">
-        <span class="belt-label">{{ t('play.hud.book.worn') }}</span>
+      @if (bookStats) {
+        <!-- The one "details" affordance: the live stat sheet and where the rest of your things are. -->
+        <div id="satchel-stats" class="book-detail">
+          <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" />
+          @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
+        </div>
+      }
+      <div class="belt" role="group" [attr.aria-label]="t('play.hud.book.worn')">
         <div class="wells">
           @for (well of wells; track well.id) {
-            <button type="button" class="well" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label">
+            <button type="button" class="well" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label">
               @if (well.filled && well.art) {
                 <img [src]="well.art" alt="">
               } @else if (well.filled) {
@@ -280,9 +284,6 @@
           }
         </div>
       </div>
-      <!-- What the worn gear pays, live. Counts and floats a signed chip on
-           Wear / Stow, including the Damage and Max HP the fight now reads. -->
-      <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" />
       <div class="lining" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
         @if (!pockets.length) {
           <p class="bare">{{ t('play.hud.book.empty') }}</p>
@@ -298,11 +299,13 @@
                 @if (pocket.qty > 1) { <b>{{ pocket.qty }}</b> }
               </button>
             }
+            @for (cell of emptyCells; track cell) { <span class="cell-empty" aria-hidden="true"></span> }
           </div>
         }
       </div>
-      <footer class="slip">
-        @if (slip; as row) {
+      @if (slip; as row) {
+        <!-- The item card: name in its rarity colour, the few stats, one primary action. -->
+        <footer class="slip" [style.--tone]="row.tone">
           <div class="slip-art" aria-hidden="true">
             @if (row.art) { <img [src]="row.art" alt=""> }
             @else { <em>{{ row.mark }}</em> }
@@ -325,6 +328,7 @@
               </ul>
             }
           </div>
+          <button type="button" class="slip-x" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
           @if (row.canWear || row.canStow || row.canSend || pickIsCrate) {
             <div class="slip-actions">
               @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
@@ -333,10 +337,8 @@
               @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
             </div>
           }
-        } @else {
-          <p class="bare">{{ t('play.hud.book.choose') }}</p>
-        }
-      </footer>
+        </footer>
+      }
     </section>
   }
 

@@ -159,9 +159,11 @@ const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
 /** A satchel cell: a stack, or a group of identical items (`ids`, item-groups) shown once with its count. */
 interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; }
-interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; }
+interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
 interface BagSlip {
   name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
+  /** Rarity colour for the card's name and frame; null for materials. */
+  tone?: string | null;
   /** A loose satchel item: a secondary "Send to Vault" makes room from anywhere. */
   canSend?: boolean;
   /** How many identical pieces the picked cell holds: "Send 7 to Vault" moves them all. */
@@ -370,6 +372,8 @@ export class SideScrollerComponent implements OnDestroy {
   };
   restored = false;
   bagOpen = false;
+  /** The satchel's one details fold: the Keeper's stat sheet and the Vault count. */
+  bookStats = false;
   pick: BagPick | null = null;
   showKeys = false;
   now = Date.now();
@@ -1681,13 +1685,21 @@ export class SideScrollerComponent implements OnDestroy {
   }
   toggleBag(): void {
     this.bagOpen = !this.bagOpen;
-    if (this.bagOpen && !this.pick) this.ensurePick();
+    // Opens on the doll and the pockets alone: the card waits for a tap.
+    if (this.bagOpen) this.pick = null;
     // The book needs the room an open Hearth takes: fold it, like a station
     // does (the remembered choice stands for next time).
     if (this.bagOpen) this.hearthOpen = false;
   }
-  choosePocket(pocket: BagPocket): void { this.pick = { kind: pocket.kind, ref: pocket.ref }; }
-  chooseWell(well: BagWell): void { this.pick = { kind: 'slot', ref: well.id }; }
+  /** Tap a pocket for its card; tap it again to put the card away. */
+  choosePocket(pocket: BagPocket): void {
+    this.pick = this.pickedPocket(pocket) ? null : { kind: pocket.kind, ref: pocket.ref };
+  }
+  /** Tap worn gear for its card (Stow). An empty place has nothing to say, so it closes the card. */
+  chooseWell(well: BagWell): void {
+    this.pick = !well.filled || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
+  }
+  unpick(): void { this.pick = null; }
   pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
   pickedWell(id: SlotId): boolean { return this.pick?.kind === 'slot' && this.pick.ref === id; }
   get pocketFill(): number {
@@ -1698,6 +1710,16 @@ export class SideScrollerComponent implements OnDestroy {
   get bagCount(): string {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
     return Number.isFinite(cap) ? `${used}/${cap}` : `${used}`;
+  }
+  /**
+   * The satchel's free slots, drawn as empty cells after the pockets so the grid reads
+   * as a fixed bag (Diablo II), not a list. Capped so an unbounded satchel draws none.
+   */
+  get emptyCells(): number[] {
+    const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
+    if (!Number.isFinite(cap)) return [];
+    const free = Math.max(0, Math.min(60, cap) - Math.max(used, this.pockets.length));
+    return Array.from({ length: free }, (_, i) => i);
   }
   get bagFull(): boolean {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
@@ -1716,14 +1738,12 @@ export class SideScrollerComponent implements OnDestroy {
         : this.t('play.hud.msg.stowFailed', { name: item.name });
       if (!moved.length) return;
       this.pick = null;
-      this.ensurePick();
       return;
     }
     if (!this.inventory.stow(item.id)) { this.message = this.t('play.hud.msg.stowFailed', { name: item.name }); return; }
     const tab = this.inventory.itemById(item.id)?.explorerId?.replace(/^vault:/, '') ?? 'general-1';
     this.message = this.t('play.hud.msg.sentVault', { name: item.name, tab: this.t(`vault.tab.${tab}`) });
     this.pick = null;
-    this.ensurePick();
   }
   /**
    * An arrival a full satchel turned away. The first of a burst names itself;
@@ -1761,6 +1781,7 @@ export class SideScrollerComponent implements OnDestroy {
         mark: monogram(item?.name ?? name),
         label: item?.name ?? 'Empty',
         filled: !!item,
+        tone: item ? rarityColor(item.rarity) : null,
       };
     });
   }
@@ -1821,10 +1842,6 @@ export class SideScrollerComponent implements OnDestroy {
     this.sync();
     this.pick = { kind: 'item', ref: item.id };
   }
-  private ensurePick(): void {
-    const first = this.pockets[0];
-    this.pick = first ? { kind: first.kind, ref: first.ref } : { kind: 'slot', ref: 'weapon' };
-  }
   /** The ids of the picked satchel cell's group (one id for a one-of-a-kind item). */
   private pickedGroup(): string[] {
     const pick = this.pick;
@@ -1880,6 +1897,7 @@ export class SideScrollerComponent implements OnDestroy {
       return {
         name: item.name, art: itemArt(item)?.src ?? '', mark: monogram(item.name),
         kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
+        tone: rarityColor(item.rarity),
         note: this.t('toolStat.fromSatchel'),
         stats: toolCardLines(tool, (key, vars) => this.t(key, vars)),
         canWear: false, canStow: worn, canSend: !worn, compare: [], compareLabel: '',
@@ -1890,6 +1908,7 @@ export class SideScrollerComponent implements OnDestroy {
       art: itemArt(item)?.src ?? '',
       mark: monogram(item.name),
       kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
+      tone: rarityColor(item.rarity),
       note: item.lore || def?.lore || this.t(worn ? 'play.hud.slip.wornBy' : 'play.hud.slip.inSatchel'),
       stats,
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
@@ -2260,7 +2279,7 @@ export class SideScrollerComponent implements OnDestroy {
     const items = got.map(row => `${row.qty} ${materialDisplay(row.id)?.name ?? row.id}`).join(', ');
     this.message = this.t('play.fish.ui.opened', { items });
     this.toastLoot(items);
-    if (this.inventory.stackOf(pick.ref) < 1) this.ensurePick();
+    if (this.inventory.stackOf(pick.ref) < 1) this.pick = null;
   }
   /** The picked stack is a crate (the slip shows Open). */
   get pickIsCrate(): boolean { return this.pick?.kind === 'stack' && CRATE_IDS.includes(this.pick.ref); }
