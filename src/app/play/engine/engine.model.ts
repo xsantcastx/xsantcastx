@@ -58,6 +58,11 @@ export interface EngineState {
    */
   fishing?: { phase: FishingPhase; liquid: LiquidKind } | null;
   canFish?: LiquidKind | null;
+  /** The Underhearth (Phase 8): riding Kael's rails in the Seam Cart; the grapple's line ('grow' | 'pull' | 'hang'). */
+  riding?: boolean;
+  grappling?: 'grow' | 'pull' | 'hang' | null;
+  /** The Banked Furnace's fight while it is up: banked or open, vents doused (of 4), seconds open, breathing in. */
+  furnace?: { phase: 'banked' | 'open'; doused: number; open: number; breathing: boolean; vents: string };
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
@@ -141,7 +146,7 @@ export interface EngineOptions {
    * true; return false to refuse (none left, a failed save) and say why. The
    * cell is only filled after a yes. Absent: every placement is free (tests).
    */
-  onPlace?: (event: PlaceEvent) => boolean | void;
+  onPlace?: (event: PlaceEvent) => boolean | number | void;
   /**
    * The Keeper takes a placed thing back (X, or a long-press on it): grant one
    * `item` back to the satchel (idempotent on `mutationId`) and return true,
@@ -204,8 +209,9 @@ export interface DiscoverEvent {
    * note carved as `field:<id>`, shared/delve/field-notes.model.ts).
    * 'shrine': a rift shrine was touched (id `rift:<col>,<row>`); the engine has
    * already shown the tunnels round it on the map.
+   * 'mark': one of the Four's hammer-marks in the Underhearth (id `hammer-mark-<n>`): the Keeper took a rubbing.
    */
-  kind: 'inscription' | 'shrine';
+  kind: 'inscription' | 'shrine' | 'mark';
   /** Inscription id from the terrain spec (shared/delve/delve-lore.model.ts lists them), a field note, or a shrine. */
   id: string;
   /** Biome id the inscription sits in ('root-hollows', …). */
@@ -287,12 +293,21 @@ export interface PlaceEvent {
   /** The same cell as an index into the area's terrain (what chests are filed by). */
   index: number;
   mutationId: string;
+  /**
+   * How many of `item` this one action takes or gives (a Bark Rope spools one
+   * coil a cell; its whole strand comes back at once). Absent: one. `onPlace`
+   * may answer with a number: how many it took (fewer, when fewer are left).
+   */
+  count?: number;
 }
 export interface UseEvent {
-  kind: 'chest' | 'camp';
+  /** A chest or camp opens; a Rift Anchor offers travel; the Banked Furnace's hearth is where it is summoned. */
+  kind: 'chest' | 'camp' | 'anchor' | 'furnace';
   areaId: string;
   cellKey: string;
   index: number;
+  /** The cell, as world column and row. */
+  col?: number; row?: number;
 }
 export interface WorldActionEvent {
   kind: WorldActionKind;

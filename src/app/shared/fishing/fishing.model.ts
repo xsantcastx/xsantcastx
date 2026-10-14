@@ -7,13 +7,14 @@
  * A cast lands in a body of liquid; which one (its *water*) comes from the
  * biome and the liquid: water in the Root Hollows and Basalt Caverns is a
  * seep, water in the Glowcap Grotto (and lower) is the Grotto Mere, and lava
- * is the Magma Halls' lava. Each water has a catch table on the spec's rarity
+ * is the Magma Halls' lava, and lava in the Underhearth is the Underhearth's
+ * own (Phase 8: the deepest water, below the Magma Halls). Each water has a catch table on the spec's rarity
  * ladder. XP rises with the water's tier, never with the angler's level
  * (the progression rule). Once hooked a fish is always landed: the Line
  * Tension grade (fishing-reel.ts) only adds XP and a crate step.
  */
 
-export type WaterId = 'seep' | 'mere' | 'magma';
+export type WaterId = 'seep' | 'mere' | 'magma' | 'hearth';
 export type CatchRarity = 'common' | 'uncommon' | 'rare' | 'legendary' | 'junk' | 'crate' | 'quest';
 export type ReelGrade = 'perfect' | 'good' | 'off';
 
@@ -38,11 +39,16 @@ export const WATERS: Readonly<Record<WaterId, WaterDef>> = {
     where: 'the Grotto Mere, the lake in the glowcap cavern of the Glowcap Grotto' },
   magma: { id: 'magma', name: 'Magma Halls lava', liquid: 'lava', tier: 2, xp: [18, 180], crate: 'seam-crate',
     where: 'the lava pools on the Magma Halls floor (a Seam Rod or better)' },
+  // Phase 8. The engine gates a cast by liquid kind (water / lava), not by biome, so the Seam Rod
+  // works this lava as well as the Glowline Rod does; the gate is the way down (Delving 15, the
+  // Breach seal), and the Glowline Rod's quarter-faster bite is its edge here.
+  hearth: { id: 'hearth', name: 'the Underhearth\'s lava', liquid: 'lava', tier: 3, xp: [28, 280], crate: 'hearth-crate',
+    where: 'the lava of the Underhearth, below the Magma Halls (any lava rod; the Glowline Rod bites fastest)' },
 };
 
 /** Which water a cast landed in. Pure. */
 export function waterFor(biome: string, liquid: 'water' | 'lava'): WaterId {
-  if (liquid === 'lava') return 'magma';
+  if (liquid === 'lava') return biome === 'underhearth' ? 'hearth' : 'magma';
   return biome === 'root-hollows' || biome === 'basalt-caverns' ? 'seep' : 'mere';
 }
 
@@ -73,14 +79,21 @@ const FISH: readonly CatchDef[] = [
     lore: 'Lives in lava. Not brave: it has never been anywhere else.', use: 'A second Ember Elixir recipe, with Ember Residue.' },
   { id: 'slagjaw-eel', name: 'Slagjaw Eel', rarity: 'uncommon', waters: ['magma'], anchor: 4_000,
     lore: 'Bites through slag. Do not offer it your hand to compare.', use: 'The Merchant\'s standing fish order.' },
+  // The Underhearth (Phase 8; lore addendum, Item lines: Fish).
+  { id: 'cold-coalfish', name: 'Cold Coalfish', rarity: 'common', waters: ['hearth'], anchor: 3_600,
+    lore: 'Cold until you strike the bucket. Then it remembers.', use: 'Verrin\'s "Endings Kept Warm" asks for one; coal torches at the Crafting Bench.' },
+  { id: 'pressure-pike', name: 'Pressure Pike', rarity: 'uncommon', waters: ['hearth'], anchor: 6_000,
+    lore: 'Swims as if the whole Underhearth were sitting on it, because it is.', use: 'Two Ember Elixirs, with Ember Residue.' },
   { id: 'the-kept-morning', name: 'The Kept Morning', rarity: 'legendary', waters: ['mere'], anchor: 60_000,
     lore: 'A lampfish that has been carrying the same morning since before the Eclipse. It would like to put it down.', use: 'Rendered, it fills five flasks of Lampfish Oil.' },
   { id: 'the-unpaid-debt', name: 'The Unpaid Debt', rarity: 'legendary', waters: ['magma'], anchor: 90_000,
     lore: 'Stamped on the flank with a heat seal. Somebody, somewhere, still owes for this fish.', use: 'The Merchant settles the debt, once.' },
+  { id: 'the-fifth-ember', name: 'The Fifth Ember', rarity: 'legendary', waters: ['hearth'], anchor: 140_000,
+    lore: 'It swims with four others that are not there.', use: 'Banked into three Embervials at the Crafting Bench.' },
 ];
 
 const JUNK: readonly CatchDef[] = [
-  { id: 'rusted-rivet', name: 'Rusted Rivet', rarity: 'junk', waters: ['seep', 'mere', 'magma'], anchor: 120,
+  { id: 'rusted-rivet', name: 'Rusted Rivet', rarity: 'junk', waters: ['seep', 'mere', 'magma', 'hearth'], anchor: 120,
     lore: 'A Maw put this somewhere safe. You have undone a great deal of careful work.', use: 'Three smelt into a Slag Fragment at the Crafting Bench.' },
   { id: 'waterlogged-ledger-page', name: 'Waterlogged Ledger Page', rarity: 'junk', waters: ['seep', 'mere'], anchor: 300,
     lore: 'Kael\'s handwriting, mostly. A column of figures that stops at the waterline.', use: 'The Archivist takes every page (Delving XP and a line of Kael\'s ledger).' },
@@ -91,6 +104,8 @@ const CRATES: readonly CatchDef[] = [
     lore: 'Bark-bound and swollen. Something down here packs for journeys.', use: 'Open it in your satchel: bark, thornroot, bait, ore, sometimes torches.' },
   { id: 'seam-crate', name: 'Seam Crate', rarity: 'crate', waters: ['magma'], anchor: 5_000,
     lore: 'Kael\'s stencil on the lid, upside down.', use: 'Open it in your satchel: slag, ore, ember residue, bait, sometimes torches.' },
+  { id: 'hearth-crate', name: 'Hearth Crate', rarity: 'crate', waters: ['hearth'], anchor: 8_000,
+    lore: 'Warm. Do not ask whose.', use: 'Open it in your satchel: ember residue, pyrite dust, ironwood, rarely emberheart ore.' },
 ];
 
 /**
@@ -121,7 +136,7 @@ const LEDGER_FISH: readonly (readonly [string, string, string])[] = [
   ['closing-entry-carp', 'Closing-Entry Carp', 'The last fish on the page. The Warden underlines it twice.'],
 ];
 const QUEST: readonly CatchDef[] = LEDGER_FISH.map(([id, name, lore]) => ({
-  id, name, lore, rarity: 'quest' as const, waters: ['seep', 'mere', 'magma'] as const, anchor: 500,
+  id, name, lore, rarity: 'quest' as const, waters: ['seep', 'mere', 'magma', 'hearth'] as const, anchor: 500,
   use: 'The Lodge Warden\'s Ledger Catch, on the one day it swims.',
 }));
 
@@ -307,6 +322,12 @@ export const CRATE_CONTENTS: Readonly<Record<string, readonly { id: string; min:
     { id: 'ember-residue', min: 1, max: 2, chance: .7 },
     { id: 'ember-grub', min: 3, max: 3, chance: .6 },
     { id: 'torch', min: 3, max: 3, chance: .35 },
+  ],
+  'hearth-crate': [
+    { id: 'ember-residue', min: 2, max: 3, chance: 1 },
+    { id: 'pyrite-dust', min: 1, max: 3, chance: .8 },
+    { id: 'ironwood', min: 1, max: 2, chance: .6 },
+    { id: 'emberheart-ore', min: 1, max: 1, chance: .1 },
   ],
 };
 /** Open a crate on `random`: the stacks it holds. Never empty. Pure given the rolls. */

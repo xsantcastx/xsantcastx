@@ -90,6 +90,8 @@ export const QUEST_STACKS: ReadonlySet<string> = new Set([
   'worn-rod',
   // The Mirror Slate (shared/slate): a carried key item, never a slot.
   'mirror-slate', 'mirror-slate-ii',
+  // The Underhearth (Phase 8): the Four Hammer-Marks, kept after the first fight (they wake the furnace).
+  'four-hammer-marks',
 ]);
 
 /**
@@ -100,6 +102,8 @@ export const QUEST_STACKS: ReadonlySet<string> = new Set([
 export const SUPPLY_KEYS: ReadonlySet<string> = new Set([
   'dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp',
   'timber-support', 'basalt-support', 'blast-charge', 'obsidian-block',
+  // The Underhearth (Phase 8).
+  'seam-rail', 'bark-rope', 'rift-anchor',
 ]);
 const BLOCK_KEYS: ReadonlySet<string> = new Set(['dirt-block', 'basalt-block']);
 

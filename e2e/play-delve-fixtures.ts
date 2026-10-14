@@ -16,6 +16,7 @@ import {
 } from '../src/app/play/engine/terrain';
 import { EMBER_DELVE } from '../src/app/play/world/towns/infernal';
 import { encodeCells } from '../src/app/shared/delve/delve-save.model';
+import { encodeRuns } from '../src/app/shared/delve/delve-region.model';
 import { emptyActivityLedger } from '../src/app/shared/activity/activity.model';
 import { miningLevelView } from '../src/app/shared/activity/mining-level';
 import type { Blobs } from './play-helpers';
@@ -79,13 +80,33 @@ export class DelveFixture {
   }
 }
 
+/**
+ * The Delve save with cells outside the core (the wings, the Underhearth): the
+ * core fixture's blobs, and each deep or wing cell (world col, row → node id)
+ * in the first cloud region slot, encoded with the game's own run encoder, as
+ * DelveSaveService writes them (Phase 7 save v2; region 0,0 holds sectors 0-7).
+ */
+export function withSectors(core: DelveFixture, cells: { col: number; row: number; id: string }[]): Blobs {
+  const bySector = new Map<string, Map<number, number>>();
+  for (const cell of cells) {
+    const sx = Math.floor(cell.col / 32), sy = Math.floor(cell.row / 32), local = (cell.row - sy * 32) * 32 + (cell.col - sx * 32);
+    const key = `${sx},${sy}`;
+    if (!bySector.has(key)) bySector.set(key, new Map());
+    bySector.get(key)!.set(local, nodeIndex(cell.id));
+  }
+  const now = Date.now();
+  const sectors: Record<string, { g: number; t: number; c: string }> = {};
+  for (const [key, map] of bySector) sectors[key] = { g: 1, t: now, c: encodeRuns(map) };
+  return { ...core.blobs(), 'godforge-delve-r0': { v: 1, seed: DELVE_SEED, rx: 0, ry: 0, t: now, sectors } };
+}
+
 /** World x of a column's centre, and world y of a row's centre. */
 export const colX = (col: number) => (col + .5) * CELL;
 export const rowY = (row: number) => SPEC.top + (row + .5) * CELL;
 
 /** The least total XP that shows `level` on the shared skill curve. */
 export function xpForLevel(level: number): number {
-  let lo = 0, hi = 10_000_000;
+  let lo = 0, hi = 2_000_000_000;
   while (lo < hi) {
     const mid = Math.floor((lo + hi) / 2);
     if (miningLevelView(mid).level >= level) hi = mid; else lo = mid + 1;

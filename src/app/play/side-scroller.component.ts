@@ -50,6 +50,11 @@ import { huntingXpFor } from '../shared/skills/hunting';
 import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
 import { DELVE_I18N } from './world/delve.i18n';
+import { UNDERHEARTH_I18N } from './world/underhearth.i18n';
+import {
+  FOUR_HAMMER_MARKS, FURNACE_FLAG, furnaceDayFlag, HAMMER_MARK_FLAGS, HAMMER_MARK_XP, SEAM_CART, THORNROOT_GRAPPLE, UNSEALED_FLAG, WAYSTONE_SHARD,
+} from '../shared/delve/underhearth.model';
+import { EMBER_DELVE } from './world/towns/infernal';
 import { HEARTH_I18N } from './world/hearth.i18n';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
@@ -58,6 +63,12 @@ import { GLIM_I18N } from '../shared/glim/glim.i18n';
 import { GlimService } from '../shared/glim/glim.service';
 import { GlimVoice } from '../shared/glim/glim-voice';
 import { GlimIconComponent } from '../shared/glim/glim-icon.component';
+import { GlimTalkComponent } from '../shared/glim/glim-talk.component';
+import { GLIM_BOND_I18N } from '../shared/glim/glim-bond.i18n';
+import {
+  BACK_AFTER_MS, GLIM_RARE_KINDS, NOTICE_CELLS, SENSE_CELLS, WAY_FAR_CELLS,
+  answersFor, coloured, hasAbility, momentsFrom, nextTalk, siteMoment, wayHome,
+} from '../shared/glim/glim-bond';
 import { npcById } from '../shared/npc/npc.model';
 import { NpcQuestService } from '../shared/npc/npc-quest.service';
 import { STORY_I18N } from '../shared/story/story.i18n';
@@ -82,7 +93,7 @@ import { reelDuration } from '../shared/fishing/fishing-reel';
 import { catchById, CRATE_IDS, fishingPerks, LODGE_CHARMS } from '../shared/fishing/fishing.model';
 import { InfusionService } from '../shared/enchanting/infusion.service';
 import { DROWNED_LAMP_FLAG } from './world/towns/infernal';
-import type { BucketEvent, BucketId, FishEvent } from './engine/engine';
+import type { BucketEvent, BucketId, FishEvent, HandToolId } from './engine/engine';
 import { HOTBAR_FIXED } from './engine/terrain';
 import { MAP_MARKER_COLORS, POINTER_COLOR, type MapPinView, type MapSource } from './engine/delve-map';
 import { BountyService } from '../shared/bounties/bounty.service';
@@ -180,9 +191,11 @@ const TOUCH_TIP_MS = 1400;
 
 interface LootToast { key: number; text: string }
 /** One slot of the Delve hotbar: a placeable and how many the satchel holds. */
-interface HotbarSlot { id: PlaceableId | BucketId; name: string; art: string; count: number; key: string }
-/** Hotbar slots past key 0, shown only while the satchel holds some: the obsidian block and the buckets. */
-const HOTBAR_EXTRA: readonly (PlaceableId | BucketId)[] = ['seam-bucket', 'seam-bucket-water', 'seam-bucket-lava'];
+interface HotbarSlot { id: PlaceableId | BucketId | HandToolId; name: string; art: string; count: number; key: string }
+/** Hotbar slots past key 0, shown only while the satchel holds some: the obsidian block, the buckets, the grapple. */
+const HOTBAR_EXTRA: readonly (PlaceableId | BucketId | HandToolId)[] = ['seam-bucket', 'seam-bucket-water', 'seam-bucket-lava', THORNROOT_GRAPPLE];
+/** A Rift Anchor travel destination (or the Seamworks Waystone, `home`). */
+interface AnchorRow { key: string; col: number; row: number; label: string; home?: boolean }
 /** The reel in progress: what is on the line, and the Line Tension seed. */
 interface ReelView { pending: PendingCatch; seed: number; widen: number; biome: string; liquid: 'water' | 'lava'; auto: boolean }
 
@@ -201,7 +214,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -307,7 +320,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   readonly glimNpc = npcById('glim');
   readonly glimVoice = new GlimVoice(inject(GlimService));
-  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean } | null = null;
+  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } | null = null;
   /**
    * The Keeper's story (shared/story): beats are read off the save each HUD
    * tick; a beat reached live speaks through Glim's line, and an act boundary
@@ -369,7 +382,7 @@ export class SideScrollerComponent implements OnDestroy {
   hotbar: HotbarSlot[] = [];
   private hotbarKey = '';
   /** The hotbar's choice: what B / a long-press places. */
-  placing: PlaceableId | BucketId | null = null;
+  placing: PlaceableId | BucketId | HandToolId | null = null;
   /**
    * Phones (Terraria's smart cursor): what a tap on a Delve cell does. 'pick'
    * digs it (the engine's own click-to-strike); 'place' puts the chosen
@@ -482,9 +495,11 @@ export class SideScrollerComponent implements OnDestroy {
     this.boundCanvas = canvas;
     this.i18n.register(LIFE_I18N);
     this.i18n.register(DELVE_I18N);
+    this.i18n.register(UNDERHEARTH_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
+    this.i18n.register(GLIM_BOND_I18N);
     this.i18n.register(STORY_I18N);
     this.i18n.register(BOUNTIES_I18N);
     this.keeperKey = '';
@@ -525,7 +540,7 @@ export class SideScrollerComponent implements OnDestroy {
         if (state.message !== this.state.message) this.message = '';
         if (state.delve && !this.state.delve) this.refundOrphanChests();
         // At the shaft: is there a camp below to descend to? Asked once per arrival, not per frame.
-        if (state.nearby === 'delve' && this.state.nearby !== 'delve') this.campReady = !!this.engine?.hasDelveCamp();
+        if (state.nearby === 'delve' && this.state.nearby !== 'delve') { this.campReady = !!this.engine?.hasDelveCamp(); this.anchorsReady = (this.engine?.delveAnchors().length ?? 0) > 0; }
         else if (state.nearby !== 'delve') this.campReady = false;
         this.state = state;
         // Fishing and liquids on the canvas, for tests and tools (the HUD says it in words).
@@ -533,6 +548,12 @@ export class SideScrollerComponent implements OnDestroy {
         if (el) {
           el.setAttribute('data-fishing', state.fishing?.phase ?? (state.canFish ? `can:${state.canFish}` : ''));
           el.setAttribute('data-liquid', state.liquid?.in ?? '');
+          // The Underhearth (Phase 8): depth, the cart, the grapple, the furnace's fight.
+          el.setAttribute('data-depth', state.depth === undefined ? '' : String(state.depth));
+          el.setAttribute('data-biome', state.biome ?? '');
+          el.setAttribute('data-riding', state.riding ? 'true' : 'false');
+          el.setAttribute('data-grapple', state.grappling ?? '');
+          el.setAttribute('data-furnace', state.furnace ? `${state.furnace.phase}:${state.furnace.vents}:${state.furnace.breathing ? 1 : 0}` : '');
         }
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
@@ -1002,6 +1023,128 @@ export class SideScrollerComponent implements OnDestroy {
       dug: this.delve.hasDug('ember-delve'),
     });
     this.tickGlim(areaId, !goal, (progress.xpByDiscipline['hunting'] ?? 0) > 0, !!worn && !worn.explorerId);
+    this.tickBond(areaId);
+  }
+
+  // ── The bond with Glim (shared/glim/glim-bond.ts) ──
+
+  /** The talk card open over the world (a talk Glim offered), or null. */
+  glimTalk: string | null = null;
+  private bondAt = 0;
+  private bondSeenAt = 0;
+  private bondBackChecked = false;
+  private senseKey = '';
+  private noticeId = '';
+  /**
+   * The bond's tick (once a second): file the shared moments the ledgers show
+   * (a place, a carving, a mission, a first catch, a depth, the compass), the
+   * warm hello after a while away, and a stage or quest step reached. While
+   * the play view catches up with a loaded save, nothing is said.
+   */
+  private tickBond(areaId: string): void {
+    if (!this.browser || !this.glimVoice.met) return;
+    const now = Date.now();
+    if (now - this.bondAt < 1000) return;
+    this.bondAt = now;
+    // The warm hello: checked once a visit, against the stamp left by the last one. Never a guilt trip.
+    if (!this.bondBackChecked) {
+      this.bondBackChecked = true;
+      const last = this.glim.state.seenAt;
+      if (last && now - last >= BACK_AFTER_MS) {
+        const n = this.glim.state.moments.filter(m => m.startsWith('back:')).length + 1;
+        this.glim.addMoments([`back:${n}`]);
+        this.glimVoice.bond({ id: 'back', key: coloured('glim.line.back', this.glim.answerTo('deep'), answersFor('deep')) });
+      }
+    }
+    if (now - this.bondSeenAt >= 5 * 60_000) { this.bondSeenAt = now; this.glim.seen(now); }
+    this.bondMoments(momentsFrom({
+      areaId,
+      inscriptions: this.delveLore.inscriptions(),
+      missionsDone: DELVE_MISSIONS.filter(m => this.quests.isMissionDone(m.id)).map(m => m.id),
+      caught: Object.keys(this.fishing.save.caught).filter(id => !CRATE_IDS.includes(id)),
+      deepest: this.delve.hasDug('ember-delve') ? this.bounties.state.deepest : -1,
+      compass: this.compassHeld,
+    }));
+  }
+  /** File moments; when live, a stage reached offers its talk and a quest step says so. */
+  private bondMoments(ids: string[]): void {
+    if (!this.browser || !this.glimVoice.met) return;
+    const added = this.glim.addMoments(ids);
+    const live = Date.now() - this.openedAt >= STORY_CATCH_UP_MS;
+    const stage = this.glim.stage;
+    if (stage.n > this.glim.state.peak) {
+      this.glim.reachStage(stage.n);
+      const talk = nextTalk(stage, this.glim.state.moments);
+      if (live) this.glimVoice.bond({ id: `stage.${stage.n}`, key: `glim.line.stage.${stage.n}`, ...(talk ? { talk: talk.id } : {}) });
+    }
+    if (!live) return;
+    for (const id of added) {
+      const n = Number(id.startsWith('quest:') ? id.slice(6) : 0);
+      if (n >= 1 && n <= 5) this.glimVoice.bond({ id, key: `glim.line.quest.${n}` });
+    }
+  }
+  /** Say a bond ability's line, at most once per `cooldownMs` (remembered through the gateway). */
+  private bondLine(id: string, key: string, cooldownMs: number, vars?: Record<string, string | number>): void {
+    const stamp = `bond.${id}`;
+    const last = this.glim.state.lastAt[stamp] ?? 0;
+    if (last && Date.now() - last < cooldownMs) return;
+    this.glim.said(stamp);
+    this.glimVoice.bond({ id: stamp, key, ...(vars ? { vars } : {}) });
+  }
+  /**
+   * The bond's abilities, in the Delve (once a second): the sense (Glim
+   * brightens near a room no lantern has touched or an uncopied carving), the
+   * notice (a rare find near, and which way) and the way home (said when the
+   * shaft is far). Each is open only at its stage.
+   */
+  private tickBondAbilities(read: ReadonlySet<string>): void {
+    if (!this.engine || !this.glimVoice.met) return;
+    const at = this.engine.keeperCell();
+    const stage = this.glim.stage;
+    let bright = false;
+    if (at && hasAbility(stage, 'sense')) {
+      const near = this.engine.compassTarget(id => read.has(id));
+      if (near && Math.hypot(near.col - at.col, near.row - at.row) <= SENSE_CELLS) {
+        bright = true;
+        const key = `${near.col},${near.row}`;
+        if (key !== this.senseKey) {
+          this.senseKey = key;
+          this.bondLine('sense', coloured('glim.line.sense', this.glim.answerTo('like'), answersFor('like')), 10 * 60_000);
+        }
+      }
+    }
+    this.engine.setGlimBright(bright);
+    if (!at) return;
+    if (hasAbility(stage, 'notice')) {
+      const rare = this.engine.rareNear(GLIM_RARE_KINDS, NOTICE_CELLS);
+      if (rare && rare.id !== this.noticeId) {
+        this.noticeId = rare.id;
+        const dir = this.t(rare.col + rare.w / 2 >= at.col ? 'glim.dir.east' : 'glim.dir.west');
+        this.bondLine('notice', coloured('glim.line.notice', this.glim.answerTo('mark'), answersFor('mark')), 15 * 60_000, { dir });
+      }
+    }
+    if (hasAbility(stage, 'way')) {
+      const way = wayHome(at, this.engine.mapSource()?.shafts ?? []);
+      if (way && way.cols + way.rows >= WAY_FAR_CELLS) {
+        this.bondLine('way', way.dir === 'here' ? 'glim.line.wayHere' : 'glim.line.way', 20 * 60_000,
+          { cols: way.cols, rows: way.rows, dir: way.dir === 'here' ? '' : this.t(`glim.dir.${way.dir}`) });
+      }
+    }
+  }
+  /** Talk (on a bond line): the talk card opens over the world, which waits. */
+  openGlimTalk(id: string): void {
+    this.glimTalk = id;
+    this.glimVoice.dismiss();
+    this.bagOpen = false; this.placesOpen = false;
+    this.engine?.setHover(null);
+    this.engine?.setPaused(true);
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.glim-talk-card button')?.focus({ preventScroll: true }));
+  }
+  closeGlimTalk(): void {
+    if (!this.glimTalk) return;
+    this.glimTalk = null;
+    if (!this.panel && !this.map.open && !this.storyCard) this.engine?.setPaused(false);
+    this.focusWorld();
   }
   /**
    * The story's tick: file the beats the save has reached; a live beat's lines
@@ -1089,12 +1232,12 @@ export class SideScrollerComponent implements OnDestroy {
   /** Glim's tick: maybe a line (glim.ts nextLine), the sprite shown once met, and where it is. */
   private tickGlim(areaId: string, goalsDone: boolean, hunted: boolean, armed: boolean): void {
     const voice = this.glimVoice;
-    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
+    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard || !!this.glimTalk, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
     if (!this.engine) return;
     this.engine.setGlim(voice.met, voice.justMet);
     voice.justMet = false;
     const at = this.engine.glimView;
-    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed } : null;
+    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed, bright: at.bright } : null;
   }
   /** The goal row's Glim button: the next step of this goal's hint ladder; step 3 is Show me. */
   askGlim(): void {
@@ -1191,6 +1334,8 @@ export class SideScrollerComponent implements OnDestroy {
     try { if (await this.room?.chat(text)) { if (input.value.trim() === text) input.value = ''; } } finally { this.sending = false; }
   }
   art(id: string): string { return artFor(id)?.src ?? ''; }
+  /** The Keeper's HP as the bar prints it: whole (lava, breath and the furnace's mouth take fractions a step). */
+  get hpShown(): number { return Math.ceil(this.state.hp); }
   get ore(): number { return this.inventory.stackOf(CINDER_ORE_ID); }
   get ember(): number { return this.inventory.stackOf(EMBER_RESIDUE_ID); }
   get edge() {
@@ -1229,6 +1374,10 @@ export class SideScrollerComponent implements OnDestroy {
       case 'chest': return this.t('play.delve.action.chest');
       case 'camp': return this.t('play.delve.action.camp');
       case 'shrine': return this.t('play.delve.action.shrine');
+      case 'mark': return this.t('play.uh.action.mark');
+      case 'anchor': return this.t('play.uh.action.anchor');
+      case 'furnace': return this.t('play.uh.action.furnace');
+      case 'rail': return this.t('play.uh.action.rail');
       case 'delve': return this.campReady ? this.t('play.delve.action.enterTop') : this.t('play.delve.action.enter');
       case 'passage': return this.t(this.state.area === 'Ember Quarry' ? 'play.hud.act.returnSeamworks' : 'play.hud.act.enterQuarry');
       default: return this.t('play.hud.act.walkCloser');
@@ -1253,6 +1402,11 @@ export class SideScrollerComponent implements OnDestroy {
     // A story card owns the keyboard: Escape (or Enter on Continue) closes it.
     if (this.storyCard) {
       if (event.key === 'Escape') { event.preventDefault(); this.closeStoryCard(); }
+      return;
+    }
+    // So does a talk with Glim.
+    if (this.glimTalk) {
+      if (event.key === 'Escape') { event.preventDefault(); this.closeGlimTalk(); }
       return;
     }
     // An open place owns the keyboard. Escape closes it unless the page inside
@@ -1364,7 +1518,7 @@ export class SideScrollerComponent implements OnDestroy {
   zoomMap(step: number): void { this.map.zoomBy(step); this.drawMaps(); }
   centreMap(): void { this.map.centre(); if (this.map.zoom < 0) this.map.zoomBy(1); this.drawMaps(); }
   /** What each mark on the map is. */
-  readonly mapLegend = (['keeper', 'camp', 'chest', 'torch', 'inscription', 'shrine', 'shaft'] as const)
+  readonly mapLegend = (['keeper', 'camp', 'chest', 'torch', 'inscription', 'shrine', 'anchor', 'mark', 'furnace', 'shaft'] as const)
     .map(kind => ({ key: `play.map.legend.${kind}`, color: MAP_MARKER_COLORS[kind] }))
     .concat([
       { key: 'play.map.legend.pin', color: PIN_COLORS.star },
@@ -1414,11 +1568,15 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private tickDelveV2(): void {
     if (!this.browser || !this.engine) return;
-    if (!this.state.delve) { this.pinning = false; this.lastStructure = ''; return; }
+    if (!this.state.delve) { this.pinning = false; this.lastStructure = ''; this.engine.setGlimBright(false); return; }
     const at = this.engine.keeperCell();
     if (at) this.bounties.reached(stratumOfRow(at.row));
     const here = this.engine.structureHere();
-    if (here && here.id !== this.lastStructure) this.bountyEvent({ kind: 'structure', structure: here.kind, token: here.id });
+    if (here && here.id !== this.lastStructure) {
+      this.bountyEvent({ kind: 'structure', structure: here.kind, token: here.id });
+      // A room found together: a bond moment (each structure once; the first of each kind counts more).
+      this.bondMoments([siteMoment(here.id), `kind:${here.kind}`]);
+    }
     this.lastStructure = here?.id ?? '';
     const now = Date.now();
     if (now - this.delveTickAt < 1000) return;
@@ -1429,6 +1587,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.glimMarkMission = activeMark(this.glim.state.lastAt, now);
     this.glimMark = this.glimMarkMission ? this.engine.findMark(GLIM_MARKS[this.glimMarkMission] ?? [], id => read.has(id)) : null;
     this.compassAt = this.compassHeld ? this.engine.compassTarget(id => read.has(id)) : null;
+    this.tickBondAbilities(read);
     const canvas = this.canvas?.nativeElement;
     if (canvas) {
       canvas.setAttribute('data-glim-mark', this.glimMark ? `${this.glimMark.col},${this.glimMark.row}` : '');
@@ -1782,6 +1941,22 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.setProgress({ equipped: this.equipped, restored: this.restored });
     this.pushStats();
   }
+  /**
+   * The Underhearth (Phase 8): what the Keeper carries that the world uses
+   * without placing it (a Seam Cart rides rails; a Thornroot Grapple is thrown
+   * from the hotbar), and Kael's word on the Banked seal: once The Fracture is
+   * claimed, the seal answers to a pick (the Delve save's `underhearth-unsealed`).
+   */
+  private pushUnderhearth(): void {
+    if (!this.engine || !this.browser) return;
+    const gear = `${this.inventory.stackOf(SEAM_CART) > 0}:${this.inventory.stackOf(THORNROOT_GRAPPLE) > 0}`;
+    if (gear !== this.gearKey) {
+      this.gearKey = gear;
+      this.engine.setGear({ cart: this.inventory.stackOf(SEAM_CART) > 0, grapple: this.inventory.stackOf(THORNROOT_GRAPPLE) > 0 });
+    }
+    if (!this.delve.isClaimed(UNSEALED_FLAG) && this.quests.isMissionDone('delve-fracture')) this.delve.claim(UNSEALED_FLAG);
+  }
+  private gearKey = '';
   /** Hand the engine the loadout's combat numbers when they change. */
   private pushStats(): void {
     if (!this.engine) return;
@@ -1813,6 +1988,8 @@ export class SideScrollerComponent implements OnDestroy {
       mining: miningLevelView(progress.xpByDiscipline.mining ?? 0).level,
       foraging: skillLevel(progress, 'foraging'),
       woodcutting: skillLevel(progress, 'woodcutting'),
+      // Delving: the Banked seal holds below Delving 15 (the Underhearth's depth gate).
+      exploration: skillLevel(progress, 'delving'),
     };
     const toolKey = `${JSON.stringify(tools)}:${JSON.stringify(levels)}:${crafted.lanternRadius}`;
     if (toolKey !== this.toolKey) {
@@ -1823,6 +2000,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.canvas?.nativeElement.setAttribute('data-power-pickaxe', (crafted.pickaxe ? toolPower(crafted.pickaxe) * crafted.power.pickaxe : 0).toFixed(2));
     }
     this.pushFishing();
+    this.pushUnderhearth();
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
@@ -1902,7 +2080,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Rebuild the hotbar when a count changed. Cheap: one stack read per placeable. */
   private refreshHotbar(): void {
-    const ids: (PlaceableId | BucketId)[] = [...PLACEABLES.map(def => def.id), ...HOTBAR_EXTRA];
+    const ids: (PlaceableId | BucketId | HandToolId)[] = [...PLACEABLES.map(def => def.id), ...HOTBAR_EXTRA];
     const counts = ids.map(id => this.inventory.stackOf(id));
     const key = counts.join(',');
     if (key === this.hotbarKey && this.hotbar.length) return;
@@ -1921,7 +2099,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The chosen slot, for the hint line. */
   get placingSlot(): HotbarSlot | undefined { return this.hotbar.find(slot => slot.id === this.placing); }
-  choosePlaceable(id: PlaceableId | BucketId, quiet = false): void {
+  choosePlaceable(id: PlaceableId | BucketId | HandToolId, quiet = false): void {
     this.placing = id;
     this.engine?.setPlaceable(id);
     if (!quiet) {
@@ -1941,14 +2119,16 @@ export class SideScrollerComponent implements OnDestroy {
    * One consume op keyed by the placement's mutation id, so a replay never
    * takes two. Refused (none left, a failed save) → nothing is placed.
    */
-  private placeFromSatchel(event: PlaceEvent): boolean {
+  private placeFromSatchel(event: PlaceEvent): boolean | number {
     if (!this.browser) return false;
-    const name = materialDisplay(event.item)?.name ?? event.item;
-    if (this.inventory.stackOf(event.item) < 1) {
+    const held = this.inventory.stackOf(event.item);
+    if (held < 1) {
       this.message = this.t('play.delve.noneLeft', { lname: this.placeName(event.item).toLowerCase() });
       return false;
     }
-    const result = this.inventory.consumeStacks(event.mutationId, [{ id: event.item, count: 1 }]);
+    // A rope spools one coil a cell: as many as it needs, or as many as are left.
+    const count = Math.max(1, Math.min(held, Math.floor(event.count ?? 1)));
+    const result = this.inventory.consumeStacks(event.mutationId, [{ id: event.item, count }]);
     if (!result.ok) {
       this.message = this.t('play.delve.chest.saveFailed');
       return false;
@@ -1957,7 +2137,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (event.item === 'torch' && event.areaId === 'ember-delve') {
       this.bountyEvent({ kind: 'torch', row: Number(event.cellKey.split(',')[1]), token: event.cellKey });
     }
-    return true;
+    return event.count !== undefined ? count : true;
   }
   /** A placed thing comes back: one grant keyed by the take's mutation id. */
   private takeToSatchel(event: PlaceEvent): boolean {
@@ -1966,7 +2146,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.message = this.t('play.delve.emptyChestFirst');
       return false;
     }
-    if (!this.inventory.grantStack(event.mutationId, event.item, 1)) {
+    if (!this.inventory.grantStack(event.mutationId, event.item, Math.max(1, Math.floor(event.count ?? 1)))) {
       this.message = this.t('play.hud.msg.pickupFailed');
       return false;
     }
@@ -2091,12 +2271,62 @@ export class SideScrollerComponent implements OnDestroy {
     if (event.kind === 'chest') {
       this.showPanel({ kind: 'chest', stationId: 'chest', title: this.t('play.place.chest'), kicker: this.t('play.delve.yourDelve'), chest: { areaId: event.areaId, index: event.index }, own: true });
       this.refreshChest(this.t('play.delve.chest.intro'));
+    } else if (event.kind === 'anchor') {
+      this.openAnchors();
+    } else if (event.kind === 'furnace') {
+      this.wakeFurnace(event.col ?? 68);
     } else if (event.kind === 'camp') {
       // The Crafting Bench, opened on "Ready now": what you can make here with what you carry.
       const entry = PANEL_REGISTRY.crafting;
       this.showPanel({ kind: 'page', stationId: 'camp', title: this.t('play.delve.camp.title'), kicker: this.t('play.delve.camp.kicker'), own: true });
       this.loadPanel(entry, this.campInjector);
     }
+  }
+  // ── The Underhearth: Rift Anchor travel, the Banked Furnace's hearth ──
+
+  /** The Rift Anchor travel sheet, while open. */
+  anchorSheet: AnchorRow[] | null = null;
+  /** Whether this town's Delve holds any anchor (the shaft offers "Descend to an anchor"). */
+  anchorsReady = false;
+  /** The anchors of this town's Delve as travel rows (and the Seamworks, from below). */
+  private anchorRows(): AnchorRow[] {
+    const biomes = [...(EMBER_DELVE.terrain?.biomes ?? []), ...(EMBER_DELVE.terrain?.depth?.biomes ?? [])];
+    const rows: AnchorRow[] = (this.engine?.delveAnchors() ?? []).map((a, n) => ({
+      key: `${a.col},${a.row}`, col: a.col, row: a.row,
+      label: this.t('play.uh.travel.row', { n: n + 1, place: biomes.find(b => a.row < b.to)?.name ?? '', depth: a.row }),
+    }));
+    if (this.state.delve) rows.push({ key: 'home', col: 0, row: 0, label: this.t('play.uh.travel.home'), home: true });
+    return rows;
+  }
+  /** Open the travel sheet (E at an anchor, or the shaft's button). */
+  openAnchors(): void {
+    if (!this.engine) return;
+    this.anchorSheet = this.anchorRows();
+    this.engine.setPaused(true);
+  }
+  closeAnchors(): void {
+    this.anchorSheet = null;
+    this.engine?.setPaused(false);
+    this.focusWorld();
+  }
+  /** Step through to an anchor (or climb home to the Seamworks Waystone). */
+  travelAnchor(row: AnchorRow): void {
+    if (!this.engine) return;
+    this.anchorSheet = null;
+    this.engine.setPaused(false);
+    if (row.home) this.engine.returnToCamp();
+    else if (!this.engine.travelToAnchor(row.col, row.row)) this.message = this.t('play.uh.travel.failed');
+    this.focusWorld();
+  }
+  /**
+   * The Banked Furnace's hearth: the Four Hammer-Marks wake it. After its first
+   * fall it banks itself for a day (once-a-day rekindling: nothing to farm).
+   */
+  private wakeFurnace(col: number): void {
+    if (!this.engine) return;
+    if (this.inventory.stackOf(FOUR_HAMMER_MARKS) < 1) { this.message = this.t('play.uh.furnace.needMarks'); return; }
+    if (this.delve.isClaimed(FURNACE_FLAG) && this.delve.isClaimed(furnaceDayFlag(Date.now()))) { this.message = this.t('play.uh.furnace.restDay'); return; }
+    if (!this.engine.summon('banked-furnace', (col + .5) * 32)) this.message = this.t('play.uh.furnace.already');
   }
   /** "Descend to your camp" at the Delve shaft. */
   descendToCamp(): void {
@@ -2259,6 +2489,8 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
+    // The Banked Furnace banks itself again for a day after every fall.
+    if (event.creature === 'banked-furnace') this.delve.claim(furnaceDayFlag(Date.now()));
     const xp = huntingXpFor(event.hp);
     const result = this.skillActions.act({ mutationId: `hunt:${event.id}`, skill: 'hunting', xp, locationId: this.worldLocation(event.areaId) });
     if (result.ok && !result.replayed) this.toastLoot(this.t('play.hunt.xp', { n: xp }));
@@ -2274,13 +2506,28 @@ export class SideScrollerComponent implements OnDestroy {
     // Each pays a little Delving XP once, keyed by its id (the ledger's replay check is the record).
     if (event.kind === 'shrine') {
       const result = this.skillActions.act({ mutationId: `delve-shrine:${event.id}`, skill: 'delving', xp: SHRINE_XP, locationId: EMBER_DELVE_LOCATION });
-      if (result.ok && !result.replayed) this.message = this.t('play.delve.shrine.first', { n: SHRINE_XP });
+      if (result.ok && !result.replayed) {
+        this.message = this.t('play.delve.shrine.first', { n: SHRINE_XP });
+        // "A splinter from a waystone that was never built": one per shrine, the first time (Rift Anchors, Phase 8).
+        if (this.inventory.grantStack(`delve-shrine-shard:${event.id}`, WAYSTONE_SHARD, 1)) this.toastLoot(this.t('play.uh.shrine.shard'));
+      }
       // Each shrine hands over one Rift Map Fragment, the first time (map v2; the grant id is the receipt).
       const had = this.inventory.stackOf(FRAGMENT_ID);
       if (this.inventory.grantStack(`delve-shrine:${event.id}:fragment`, FRAGMENT_ID, 1) && this.inventory.stackOf(FRAGMENT_ID) > had) {
         this.toastLoot(`+1 ${materialDisplay(FRAGMENT_ID)?.name ?? 'Rift Map Fragment'}`);
         this.message = `${this.message ? `${this.message} ` : ''}${this.t('play.map.fragment.got')}`;
       }
+      return;
+    }
+    if (event.kind === 'mark') {
+      // One of the Four's hammer-marks: the rubbing is filed once (Kael's "Four Hammers"), with a little Delving XP.
+      const fresh = HAMMER_MARK_FLAGS.includes(event.id) && !this.delve.isClaimed(event.id) && this.delve.claim(event.id);
+      if (fresh) {
+        const result = this.skillActions.act({ mutationId: `delve-mark:${event.id}`, skill: 'delving', xp: HAMMER_MARK_XP, locationId: EMBER_DELVE_LOCATION });
+        if (result.ok) this.toastLoot(`+${HAMMER_MARK_XP} Delving XP`);
+      }
+      const n = HAMMER_MARK_FLAGS.filter(flag => this.delve.isClaimed(flag)).length;
+      this.message = this.t(fresh ? 'play.uh.mark.filed' : 'play.uh.mark.again', { n });
       return;
     }
     const note = fieldNoteFor(event.id);

@@ -78,6 +78,10 @@ export const STORY_BEATS: readonly StoryBeat[] = [
   { id: 'a1.dated', chapter: 'act1', reached: f => f.missionDone('delve-archivist-words-3'), lines: 1, speaker: 'archivist' },
   // The act break: Kael holds the Godforge Fragment.
   { id: 'a1.break', chapter: 'act1', reached: f => f.missionDone('delve-fracture'), lines: 1, speaker: 'glim' },
+  // ── Act II — Five Witnesses: The Four Who Went Down (the Underhearth, Phase 8) ──
+  { id: 'a2.under', chapter: 'act2', reached: f => f.missionDone('kael-four-1'), lines: 1, speaker: 'kael' },
+  { id: 'a2.marks', chapter: 'act2', reached: f => f.missionDone('kael-four-2'), lines: 1, speaker: 'kael' },
+  { id: 'a2.furnace', chapter: 'act2', reached: f => f.missionDone('verrin-four-3'), lines: 1, speaker: 'kael' },
 ];
 
 /** One spoken story line: what the play view hands to Glim's speech line. */

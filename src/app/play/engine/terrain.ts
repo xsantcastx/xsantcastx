@@ -81,7 +81,18 @@ export interface TerrainNodeDef {
    * contents, a camp's crafting). A rift shrine is the engine's own: it shows
    * the tunnels round it on the map, and the host pays its first touch.
    */
-  use?: 'chest' | 'camp' | 'shrine';
+  use?: 'chest' | 'camp' | 'shrine' | 'anchor' | 'mark' | 'furnace';
+  /**
+   * A rail the Seam Cart rides (Phase 8, traversal.ts): Kael's old lines
+   * (generated) and the Keeper's own (placed). Consecutive rail cells join
+   * left and right, level or one row up or down.
+   */
+  rail?: true;
+  /**
+   * Dark until struck (cold coal): its glow shows only once a swing has
+   * cracked it ("cold to the touch. Strike it and it remembers").
+   */
+  struckGlow?: true;
   /**
    * A procedural find (the endless Delve's structures): once dug, its empty
    * cell is the receipt, kept by the save. Regrowth (a far tunnel healing,
@@ -200,6 +211,61 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // tunnels round it on the map. Walked through, never dug; its light is violet.
   { id: 'rift-shrine', label: 'Rift shrine', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'shrine',
     base: '#2e2242', dark: '#140a1f', light: '#b88cff', fleck: '#e8d8ff', glow: { color: '#b88cff', radius: 110 } },
+  // ── The Underhearth (Phase 8, delve-and-beyond.md §2.2): rows 56-117 under the Magma Halls. ──
+  // "Where fire is compressed into something else." Palette: iron black and obsidian, ember seams,
+  // white-hot at the hottest (style guide §5.3, the Underhearth ramps).
+  { id: 'iron-basalt', label: 'Iron-black basalt', solid: true, hp: 5, tools: { pickaxe: 3 }, discipline: 'mining', xp: 3, block: 'basalt-block',
+    base: '#2a2027', dark: '#171116', light: '#443540', fleck: '#c4501e' },
+  { id: 'banked-obsidian', label: 'Banked obsidian', solid: true, hp: 6, tools: { pickaxe: 4 }, discipline: 'mining', xp: 4, block: 'obsidian-block',
+    base: '#2e2238', dark: '#1e1428', light: '#463650', fleck: '#6a5878' },
+  // One of the sixteen pillars that held the Underhearth's ceiling (twelve were felled).
+  { id: 'ironwood-pillar', label: 'Ironwood pillar', solid: true, hp: 5, tools: { axe: 4 }, discipline: 'woodcutting', xp: 14, minLevel: 45,
+    yield: { materialId: 'ironwood', qty: 1 }, base: '#4a3a30', dark: '#2a2027', light: '#6e5a48', fleck: '#c4501e' },
+  { id: 'emberheart-vein', label: 'Emberheart vein', solid: true, hp: 7, tools: { pickaxe: 4 }, discipline: 'mining', xp: 22, minLevel: 45,
+    yield: { materialId: 'emberheart-ore', qty: 1 }, base: '#3a2430', dark: '#1e1428', light: '#6a3a3a', fleck: '#ffd08a', glow: { color: '#E8752A', radius: 64 } },
+  { id: 'pyrite-seam', label: 'Pyrite seam', solid: true, hp: 5, tools: { pickaxe: 3 }, discipline: 'mining', xp: 10, minLevel: 25,
+    yield: { materialId: 'pyrite-dust', qty: 1 }, base: '#443540', dark: '#2a2027', light: '#6a5878', fleck: '#e8c47a', glow: { color: '#e8c47a', radius: 30 } },
+  // "The coal down here is cold to the touch. Strike it and it remembers."
+  { id: 'cold-coal', label: 'Cold coal', solid: true, hp: 4, tools: { pickaxe: 4 }, discipline: 'mining', xp: 8, minLevel: 45, struckGlow: true,
+    yield: { materialId: 'ember-residue', qty: 2 }, base: '#1c1420', dark: '#0e0a12', light: '#2e2238', fleck: '#57474f', glow: { color: '#ff9b4f', radius: 56 } },
+  // The Banked Furnace's own slag, pressed so long it is half stone: Pickaxe V.
+  { id: 'furnace-slag', label: 'Furnace slag', solid: true, hp: 8, tools: { pickaxe: 5 }, discipline: 'mining', xp: 30, minLevel: 60,
+    yield: { materialId: 'godforge-slag', qty: 1 }, base: '#3a2a22', dark: '#1c1420', light: '#6a4a3a', fleck: '#ffd08a', glow: { color: '#c4501e', radius: 40 } },
+  // One of the four pillars left standing, its heartwood: Axe V.
+  { id: 'ironwood-heart', label: 'Ironwood heartpost', solid: true, hp: 8, tools: { axe: 5 }, discipline: 'woodcutting', xp: 26, minLevel: 60,
+    yield: { materialId: 'ironwood', qty: 3 }, base: '#5a4434', dark: '#2a2027', light: '#8a6a50', fleck: '#ffd08a', glow: { color: '#c4501e', radius: 36 } },
+  // The fracture's own line through the rock: never breaks, always lit. Lore, not loot.
+  { id: 'fracture-seam', label: 'Fracture seam', solid: true, hp: Infinity, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#2a1440', dark: '#140a1f', light: '#7b3fc4', fleck: '#b88cff', glow: { color: '#7b3fc4', radius: 60 } },
+  // The Breach seal under the fragment chamber: Pickaxe IV, Delving 15, and Kael's word (The Fracture claimed).
+  { id: 'hearth-seal', label: 'Banked seal', solid: true, hp: 2, tools: { pickaxe: 4 }, discipline: 'exploration', xp: 0, minLevel: 15,
+    base: '#443540', dark: '#1e1428', light: '#c4501e', fleck: '#ffd08a', glow: { color: '#c4501e', radius: 44 },
+    guard: { flag: 'underhearth-unsealed', refusal: 'The seal holds. Bring Kael the Godforge Fragment first: he knows what it holds back' } },
+  // The Four's forge masonry: the furnace hall's floor and the furnace's own body. Never breaks.
+  { id: 'hearth-brick', label: 'Hearth brick', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0,
+    base: '#4a2a28', dark: '#2a1418', light: '#7a3a2a', fleck: '#c4501e' },
+  // The Banked Furnace's four vents (douse them with water) and its hearth stone (summon it there).
+  { id: 'furnace-vent', label: 'Furnace vent', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#2a2027', dark: '#140a1f', light: '#ffd08a', fleck: '#E8752A', glow: { color: '#ff9b4f', radius: 70 } },
+  { id: 'furnace-hearth', label: 'The Banked Furnace', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'furnace',
+    base: '#2a2027', dark: '#140a1f', light: '#ffd08a', fleck: '#E8752A', glow: { color: '#E8752A', radius: 90 } },
+  // A hammer-mark cut where one of the Four stood (four in every Delve). E takes a rubbing.
+  { id: 'hammer-mark', label: 'Hammer-mark', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'mark',
+    base: '#2a2027', dark: '#140a1f', light: '#7a656e', fleck: '#ffd08a', glow: { color: '#ffd08a', radius: 36 } },
+  // Kael's old rail (generated, ridden, never taken) and the Keeper's own Seam Rail (placed).
+  { id: 'old-rail', label: 'Kael\'s old rail', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, rail: true,
+    base: '#4a3a30', dark: '#2a2027', light: '#8a7a6a', fleck: '#57474f' },
+  { id: 'seam-rail', label: 'Seam Rail', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'seam-rail', rail: true,
+    base: '#6a5040', dark: '#3a2a18', light: '#a49cac', fleck: '#5a4026' },
+  // Bark Rope: spooled down from a ledge to the floor; climbed like a ladder.
+  { id: 'rope', label: 'Bark Rope', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'bark-rope', climb: true,
+    base: '#8a6a40', dark: '#4a3018', light: '#c9a06a', fleck: '#6a4a2c' },
+  // A Rift Anchor: "a passage that holds only because both ends agree to." Up to eight; E travels.
+  { id: 'rift-anchor', label: 'Rift Anchor', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'rift-anchor', use: 'anchor',
+    base: '#3a2a4a', dark: '#140a1f', light: '#b88cff', fleck: '#e8d8ff', glow: { color: '#b88cff', radius: 96 } },
+  // The Four's outpost cache: what they left at the forge corner (the dug cell is the receipt).
+  { id: 'hearth-cache', label: 'The Four\'s cache', solid: true, hp: 2, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 12,
+    yield: { materialId: 'ironwood', qty: 2 }, receipt: true, base: '#4a3a30', dark: '#2a2027', light: '#c9a06a', fleck: '#ffd08a', glow: { color: '#ffb066', radius: 48 } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -209,6 +275,8 @@ const TAKEABLE_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.placeable 
 const ONEWAY_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.oneWay ? 1 : 0);
 /** 1 where the node is climbable (ladders). */
 const CLIMB_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.climb ? 1 : 0);
+/** 1 where the node is a rail (old or placed). */
+const RAIL_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.rail ? 1 : 0);
 export const TERRAIN_NODES: Readonly<Record<string, TerrainNodeDef>> = Object.fromEntries(TERRAIN_NODE_LIST.map(node => [node.id, node]));
 const NODE_INDEX = new Map(TERRAIN_NODE_LIST.map((node, index) => [node.id, index]));
 export function nodeIndex(id: string): number {
@@ -250,7 +318,7 @@ export function toolFor(node: Pick<TerrainNodeDef, 'tools'>, tiers: ToolTiers, a
   return best ? { ok: true, ...best } : { ok: false, need };
 }
 
-const ROMAN = ['0', 'I', 'II', 'III', 'IV', 'V'];
+const ROMAN = ['0', 'I', 'II', 'III', 'IV', 'V', 'VI'];
 /** "Pickaxe II". */
 export function toolName(tool: ToolKind, tier: number): string {
   return `${TOOL_LABEL[tool]} ${ROMAN[tier] ?? tier}`;
@@ -356,6 +424,13 @@ export interface TerrainSpec {
    * (`DelvePersistence.sectors`). The grid itself is unchanged.
    */
   endless?: true;
+  /**
+   * The deep strata under the core (Phase 8, the Underhearth): the endless
+   * world's rows run on past `rows` down to `depth.rows`, every column
+   * (sector-gen.ts → underhearth-gen.ts), each deep band with its own biome
+   * (appended after `biomes`). The core's own `rows` and grid never change.
+   */
+  depth?: { rows: number; biomes: readonly BiomeDef[] };
 }
 
 /** The look a terrain without biomes gets: today's basalt dark. */
@@ -574,7 +649,8 @@ export function cellKey(col: number, row: number): string { return `${col},${row
 
 /** Satchel stack ids of the things a Keeper can place in a delve. */
 export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform' | 'chest' | 'camp'
-  | 'timber-support' | 'basalt-support' | 'blast-charge' | 'obsidian-block';
+  | 'timber-support' | 'basalt-support' | 'blast-charge' | 'obsidian-block'
+  | 'seam-rail' | 'bark-rope' | 'rift-anchor';
 
 export interface PlaceableDef {
   /** The satchel stack it is placed from and taken back to. */
@@ -593,7 +669,13 @@ export interface PlaceableDef {
   grounded?: true;
   /** One per delve: a second is refused until the first is taken back. */
   single?: true;
+  /** At most this many in the Delve at once (Rift Anchors: 8). */
+  max?: number;
+  /** Spools down from the cell to the floor below, one stack item per cell (Bark Rope, up to SPOOL_MAX). */
+  spool?: true;
 }
+/** The longest strand a Bark Rope spools down, in cells. */
+export const SPOOL_MAX = 24;
 export type PlaceAim = 'block' | 'beside' | 'here';
 
 /** Every placeable, in hotbar order (keys 1, 2, …). */
@@ -610,6 +692,10 @@ export const PLACEABLES: readonly PlaceableDef[] = [
   { id: 'blast-charge', label: 'Blasting charge', node: 'blast-charge', aim: 'beside' },
   // Past key 0: shown in the hotbar only while the satchel holds some.
   { id: 'obsidian-block', label: 'Obsidian block', node: 'obsidian-block', aim: 'block' },
+  // The Underhearth (Phase 8): Kael's rails, Bark Rope, Rift Anchors.
+  { id: 'seam-rail', label: 'Seam Rail', node: 'seam-rail', aim: 'block', grounded: true },
+  { id: 'bark-rope', label: 'Bark Rope', node: 'rope', aim: 'block', spool: true },
+  { id: 'rift-anchor', label: 'Rift Anchor', node: 'rift-anchor', aim: 'beside', grounded: true, max: 8 },
 ];
 /** The first ten placeables always show in the hotbar (keys 1-0); the rest only while held. */
 export const HOTBAR_FIXED = 10;
@@ -658,6 +744,10 @@ export function findNode(t: Terrain, id: string): number {
 /** True when the cell is a one-way floor (a platform or a ladder). */
 export function isOneWay(t: Terrain, col: number, row: number): boolean {
   return row >= 0 && t.inside(col, row) && ONEWAY_KIND[t.kind[t.index(col, row)]] === 1;
+}
+/** True when the cell is a rail (Kael's old line or a placed Seam Rail). */
+export function isRail(t: Terrain, col: number, row: number): boolean {
+  return row >= 0 && t.inside(col, row) && RAIL_KIND[t.kind[t.index(col, row)]] === 1;
 }
 /** True when the cell is climbable. */
 export function isClimbable(t: Terrain, col: number, row: number): boolean {

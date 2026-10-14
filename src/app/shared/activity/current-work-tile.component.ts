@@ -28,7 +28,7 @@ import {
 } from './activity.model';
 import { ROOTGLASS_CANOPY_HREF } from './foraging.model';
 import { MERIDIAN_ORRERY_HREF } from './prospecting.model';
-import { miningLevelView } from './mining-level';
+import { formatXp, miningLevelView } from './mining-level';
 
 type TileDiscipline = 'mining' | 'foraging' | 'prospecting';
 
@@ -211,8 +211,8 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
       activity: this.t(copy.labelKey),
       location: this.t(copy.locationKey),
       level: view.level,
-      xp: view.xp,
-      next,
+      xp: formatXp(view.xp),
+      next: formatXp(next),
     });
   }
 
@@ -220,9 +220,10 @@ export class CurrentWorkTileComponent implements OnInit, OnDestroy {
     const skill = this.t(this.copy().labelKey);
     const view = this.view();
     if (view.next == null) {
-      return this.t('work.tile.xpMax', { skill, xp: view.xp, level: view.level });
+      return this.t('work.tile.xpMax', { skill, xp: formatXp(view.xp), level: view.level });
     }
-    return this.t('work.tile.xp', { skill, xp: view.xp, next: view.next, level: view.level });
+    // K/M past 100,000: a level-300 total is eight digits, too wide for a phone line.
+    return this.t('work.tile.xp', { skill, xp: formatXp(view.xp), next: formatXp(view.next), level: view.level });
   }
 
   recoveryLine(): string {
