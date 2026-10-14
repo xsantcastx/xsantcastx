@@ -15,7 +15,7 @@
     <app-skill-strip stationSkill
       [level]="null"
       [title]="t('quests.today')"
-      [progress]="board.daily.length ? todayDone / board.daily.length : 0"
+      [progress]="todayProgress"
       [progressLabel]="todayLabel"
       [hint]="t('quests.hint')" />
 
