@@ -419,6 +419,11 @@ for (const [townId, keepers] of Object.entries(TOWN_KEEPERS)) {
     const st = town && town.stations.find(s => s.id === k.station);
     const n = node('npc', `keeper:${townId}/${k.id}`, k.name);
     if (st && (st.kind === 'panel' || st.kind === 'waystone')) n.uses.add(`opens ${st.panel || st.kind}`);
+    // A keeper at a passage shows the way through it (a click on them takes it).
+    if (st && st.kind === 'passage' && st.to) n.uses.add(`shows the way to ${st.to}`);
+    // Every keeper is a person in the Codex's People of the Realms (codex-people.component.ts).
+    if (!['where', 'who', 'teaches'].every(f => I18N_KEYS.has(`codex.people.${f}.${k.id}`))) flag('npc', 'not-visible', `keeper:${townId}/${k.id}`, 'no People of the Realms entry (codex/people.i18n.ts)');
+    if (k.titleKey && !I18N_KEYS.has(k.titleKey)) flag('npc', 'not-visible', `keeper:${townId}/${k.id}`, `missing ${k.titleKey}`);
     for (const id of k.serves || []) { const also = town && town.stations.find(s => s.id === id); if (also && also.panel) n.uses.add(`opens ${also.panel}`); }
     if (k.npc && giverIds.has(k.npc)) n.uses.add('gives quests');
     if (!n.uses.size) flag('npc', 'no-role', `keeper:${townId}/${k.id}`, st ? `stands at ${st.kind} "${st.id}", which opens nothing` : `station "${k.station}" does not exist`);

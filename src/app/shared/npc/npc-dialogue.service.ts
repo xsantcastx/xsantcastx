@@ -49,6 +49,8 @@ import {
   triggersFor,
 } from './npc.model';
 import { NpcChainState, NpcQuestService } from './npc-quest.service';
+import { GameStateGateway } from '../save/game-state.gateway';
+import { STORY_KEY, coerceStory } from '../story/story-save.model';
 
 /** The live combo at which the Nameless becomes reachable. Mirrors NAMELESS_AT. */
 const NAMELESS_COMBO = 666;
@@ -75,6 +77,8 @@ export class NpcDialogueService {
   private readonly runes = inject(RuneForgeService);
   private readonly inventory = inject(InventoryService);
   private readonly chains = inject(NpcQuestService);
+  /** The story record, read straight off the gateway (StoryService and story.ts stay out of the eager bundle). */
+  private readonly saves = inject(GameStateGateway);
 
   private initialised = false;
   /** Bumped on navigation only. See the header on flicker. */
@@ -183,6 +187,7 @@ export class NpcDialogueService {
           .map(i => i.definitionId as string),
       ),
       activeQuests: this.chains.activeStepIds,
+      storyBeats: new Set(this.isBrowser ? coerceStory(this.saves.read(STORY_KEY)).beats : []),
     };
   }
 }
