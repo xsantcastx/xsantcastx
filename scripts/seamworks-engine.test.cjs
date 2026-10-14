@@ -3635,3 +3635,318 @@ test('town ground strip: a deterministic pixel texture with a lit lip over an ou
     assert.ok(px.slice(16 * 3).every(v => v <= 3), `${realm}: stone below`);
   }
 });
+
+// ── Delve navigation (Terraria): smart cursor, held use, movement, the map ──
+// docs/handoff/delve-navigation.md. Client px = world px in these fixtures (1200×720, scale 1).
+const mapMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/delve-map.ts'));
+const at = (engine, col, row) => [col * 32 + 16 - engine.camera, 610 + row * 32 + 16 - engine.cameraY];
+const frames = (engine, n) => { for (let i = 0; i < n; i++) engine.update(1 / 60); };
+/** memoryDelve that also keeps the map's explored cells, the way DelveSaveService does. */
+function mappedDelve(seed) {
+  const delve = memoryDelve(seed);
+  const bits = new Map();
+  const changed = delve.changed;
+  delve.changed = (id, layout, index, kind) => { const seen = delve.save.areas[id]?.seen; changed(id, layout, index, kind); if (seen) delve.save.areas[id].seen = seen; };
+  delve.seenCells = (id, layout, cells) => {
+    const key = `${id}|${layout}`;
+    if (!bits.has(key)) bits.set(key, saveMod.decodeSeen(delve.save.areas[id]?.layout === layout ? delve.save.areas[id].seen : '', cells));
+    return bits.get(key);
+  };
+  delve.explored = (id, layout, b) => { delve.save.areas[id] ??= { layout, cells: '' }; delve.save.areas[id].seen = saveMod.encodeSeen(b); };
+  /** A reload: the next engine decodes the save again. */
+  delve.forget = () => bits.clear();
+  return delve;
+}
+
+test('smart cursor: aims at any cell, digs one three cells away, never one out of reach', () => {
+  const events = [];
+  const { engine } = enterOwnDelve(memoryDelve(61), { onWorldAction: e => { events.push(e); return true; } });
+  engine.setTools({ pickaxe: 1 });
+  const t = buildRoom(engine), rock = terrainMod.nodeIndex('rock');
+  t.set(33, 7, rock); t.set(37, 7, rock);
+  engine.aimAt(...at(engine, 33, 7));
+  assert.deepEqual({ ...engine.aimCell() }, { col: 33, row: 7, index: t.index(33, 7), inReach: true }, 'three cells away is in reach');
+  engine.aimAt(...at(engine, 36, 7));
+  assert.equal(engine.aimCell().inReach, false, 'six cells away is not');
+  engine.aimAt(...at(engine, 30, 3));
+  assert.equal(engine.aimCell().inReach, true, 'four up is (reach 4.5 cells from the chest)');
+  // Held on the rock three away: it breaks at the tool's pace, no walking needed.
+  const x = engine.player.x;
+  engine.useHold(...at(engine, 33, 7), 'dig');
+  for (let n = 0; n < 120 && t.solid(33, 7); n++) engine.update(1 / 60);
+  assert.equal(t.solid(33, 7), false, 'dug from three cells away');
+  assert.equal(engine.useRelease(), 2, 'two swings for basalt (2 HP) at Pickaxe I');
+  assert.equal(engine.player.x, x, 'the Keeper did not walk');
+  assert.equal(engine.facing, 1, 'turned to the target');
+  assert.deepEqual(events.map(e => e.cellKey), ['33,7']);
+  // Out of reach: the hold does nothing (the click that follows walks there instead).
+  engine.useHold(...at(engine, 37, 7), 'dig');
+  frames(engine, 60);
+  assert.equal(engine.useRelease(), 0);
+  assert.equal(t.solid(37, 7), true);
+  // Nothing aimed: no cursor.
+  engine.clearAim();
+  assert.equal(engine.aimCell(), null);
+  engine.destroy();
+});
+
+test('held use: never faster than the tool pace, and pays exactly what clicks pay', () => {
+  const run = (pace, mode) => {
+    const events = [], times = [];
+    const { engine } = enterOwnDelve(memoryDelve(62), { onWorldAction: e => { events.push(e); return true; } });
+    engine.setTools(pace ? { pickaxe: 4, swing: { pickaxe: pace } } : { pickaxe: 1 });
+    const t = buildRoom(engine), rock = terrainMod.nodeIndex('ember-rock');
+    const original = engine.hitCell.bind(engine);
+    engine.hitCell = (...args) => { times.push(engine.elapsed); return original(...args); };
+    for (const row of [5, 6, 7]) t.set(32, row, rock);
+    engine.random = () => 0; // the quarter-chance Ember Residue always drops: rewards compare like for like
+    for (const row of [7, 6, 5]) {
+      if (mode === 'hold') {
+        engine.useHold(...at(engine, 32, row), 'dig');
+        for (let n = 0; n < 600 && t.solid(32, row); n++) engine.update(1 / 60);
+        engine.useRelease();
+      } else {
+        for (let n = 0; n < 600 && t.solid(32, row); n++) { engine.strikeAt(...at(engine, 32, row)); engine.update(1 / 60); }
+      }
+    }
+    const gaps = times.slice(1).map((time, i) => time - times[i]);
+    engine.destroy();
+    return { gaps, rewards: events.map(e => ({ ...e, mutationId: e.mutationId.split(':').slice(2).join(':') })) };
+  };
+  for (const pace of [null, 0.31]) {
+    const held = run(pace, 'hold'), clicked = run(pace, 'click');
+    const floor = (pace ?? 0.52) - 1e-6;
+    assert.ok(held.gaps.every(gap => gap >= floor), `held swings ${held.gaps.map(g => g.toFixed(3))} never beat ${pace ?? 0.52}`);
+    assert.deepEqual(held.rewards, clicked.rewards, 'the same three breaks, the same pay, the same mutation ids');
+    assert.equal(held.rewards.length, 3);
+  }
+  // A long hold on rock that grows back: swings fit the pace, ~10 s / 0.52 s.
+  const { engine } = enterOwnDelve(memoryDelve(66), { onWorldAction: () => true });
+  engine.setTools({ pickaxe: 1 });
+  const t = buildRoom(engine), rock = terrainMod.nodeIndex('rock');
+  let swings = 0;
+  const original = engine.hitCell.bind(engine);
+  engine.hitCell = (...args) => { swings++; return original(...args); };
+  t.set(32, 7, rock);
+  engine.useHold(...at(engine, 32, 7), 'dig');
+  for (let n = 0; n < 600; n++) { engine.update(1 / 60); if (!t.solid(32, 7)) t.set(32, 7, rock); }
+  assert.ok(swings <= Math.ceil(10 / 0.52) + 1 && swings >= Math.floor(10 / 0.52) - 1, `${swings} swings in 10 s`);
+  engine.destroy();
+});
+
+test('held place: a drag lays one block per cell crossed, at a steady pace, while there are some left and in reach', () => {
+  const placed = [];
+  let left = 10;
+  const { engine } = enterOwnDelve(memoryDelve(63), { onPlace: e => { if (left <= 0) return false; left--; placed.push({ cell: e.cellKey, at: engine.elapsed }); return true; } });
+  const t = buildRoom(engine);
+  for (let col = 31; col <= 36; col++) t.set(col, 9, 0); // a trench in the floor ahead
+  engine.setPlaceable('dirt-block');
+  engine.useHold(...at(engine, 31, 9), 'place');
+  assert.equal(t.nodeAt(31, 9).id, 'packed-dirt', 'the pressed cell, at once');
+  engine.aimAt(...at(engine, 36, 9)); // one fast drag across the trench
+  frames(engine, 120);
+  assert.deepEqual(placed.map(p => p.cell), ['31,9', '32,9', '33,9', '34,9'], 'every cell crossed, in order; 35 and 36 are out of reach');
+  const gaps = placed.slice(1).map((p, i) => p.at - placed[i].at);
+  assert.ok(gaps.every(gap => gap >= 0.25 - 1e-6), `one block per 0.25 s at most: ${gaps}`);
+  assert.equal(engine.useRelease(), 4);
+  // The count is respected: two left, two placed, then the hold ends.
+  left = 2; placed.length = 0;
+  for (let col = 31; col <= 34; col++) t.set(col, 9, 0);
+  engine.useHold(...at(engine, 31, 9), 'place');
+  engine.aimAt(...at(engine, 34, 9));
+  frames(engine, 120);
+  assert.deepEqual(placed.map(p => p.cell), ['31,9', '32,9']);
+  assert.equal(t.nodeAt(33, 9).id, 'air');
+  engine.useRelease();
+  // A place press on a placed thing takes it back, once.
+  const taken = [];
+  engine.options.onTakeBack = e => { taken.push(e.cellKey); return true; };
+  assert.equal(engine.placeCell(28, 8, 'torch'), true);
+  engine.useHold(...at(engine, 28, 8), 'place');
+  frames(engine, 30);
+  assert.equal(engine.useRelease(), 1);
+  assert.deepEqual(taken, ['28,8']);
+  assert.equal(t.nodeAt(28, 8).id, 'air');
+  engine.destroy();
+});
+
+test('movement: auto-step up a one-cell ledge while walking; a two-cell wall still stops', () => {
+  const { engine } = enterOwnDelve(memoryDelve(64));
+  const t = buildRoom(engine), rock = terrainMod.nodeIndex('rock');
+  t.set(32, 8, rock); t.set(33, 8, rock);
+  engine.input.add('right');
+  for (let n = 0; n < 90 && engine.player.x < 32 * 32 + 16; n++) engine.update(1 / 60);
+  assert.equal(engine.player.y, 610 + 8 * 32, 'stepped up, no jump pressed');
+  assert.ok(engine.player.x >= 32 * 32 + 16);
+  engine.input.delete('right');
+  engine.player.x = 30 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0;
+  t.set(32, 8, 0); t.set(33, 8, 0);
+  t.set(31, 8, rock); t.set(31, 7, rock);
+  engine.input.add('right');
+  frames(engine, 60);
+  engine.input.delete('right');
+  assert.ok(engine.player.x <= 31 * 32 - 13 + 1e-6, 'the wall holds');
+  assert.equal(engine.player.y, 610 + 9 * 32);
+  engine.destroy();
+});
+
+test('movement: Down + Jump drops through a platform; a jump from below passes up through one', () => {
+  const { engine } = enterOwnDelve(memoryDelve(67));
+  const t = buildRoom(engine);
+  for (let row = 9; row <= 11; row++) t.set(31, row, 0);
+  t.set(31, 9, terrainMod.nodeIndex('platform'));
+  engine.player.x = 31 * 32 + 16;
+  frames(engine, 30);
+  assert.equal(engine.player.y, 610 + 9 * 32, 'standing on the platform');
+  engine.setInput('down', true); engine.setInput('jump', true);
+  engine.setInput('jump', false); engine.setInput('down', false);
+  assert.ok(engine.player.vy >= 0, 'no hop');
+  frames(engine, 40);
+  assert.equal(engine.player.y, 610 + 12 * 32, 'dropped to the bottom of the pit');
+  // From below: a platform two cells over the floor is jumped through and landed on.
+  engine.player.x = 28 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0;
+  t.set(28, 7, terrainMod.nodeIndex('platform'));
+  frames(engine, 5);
+  engine.setInput('jump', true); engine.setInput('jump', false);
+  frames(engine, 60);
+  assert.equal(engine.player.y, 610 + 7 * 32, 'up through it and onto it');
+  assert.equal(engine.player.grounded, true);
+  engine.destroy();
+});
+
+test('ladders: Up beside one grabs it, and the climb is brisk', () => {
+  const { engine } = enterOwnDelve(memoryDelve(68));
+  const t = buildRoom(engine), ladder = terrainMod.nodeIndex('ladder');
+  for (let row = 6; row <= 8; row++) t.set(31, row, ladder);
+  engine.player.x = 31 * 32 - 6; // the body overlaps the ladder's column, its centre does not
+  frames(engine, 5);
+  assert.equal(terrainMod.onLadder(t, engine.player.x, engine.player.y, { halfWidth: 13, height: 90 }), false);
+  engine.setInput('jump', true);
+  assert.equal(engine.player.x, 31 * 32 + 16, 'stepped onto the ladder');
+  assert.ok(engine.player.vy >= 0, 'grabbed, not jumped');
+  const y0 = engine.player.y;
+  frames(engine, 15);
+  assert.ok(Math.abs((y0 - engine.player.y) - terrainMod.CLIMB_SPEED * .25) < 1, `climbed ${y0 - engine.player.y}px in 0.25 s`);
+  assert.ok(terrainMod.CLIMB_SPEED >= 200, 'brisker than walking (191 px/s in a delve)');
+  frames(engine, 60);
+  engine.setInput('jump', false);
+  frames(engine, 5);
+  assert.equal(engine.player.y, 610 + 6 * 32, 'up and standing on the top rung');
+  engine.destroy();
+});
+
+test('jumps: coyote time after walking off a ledge, and a press just before landing is kept', () => {
+  const { engine } = enterOwnDelve(memoryDelve(69));
+  const t = buildRoom(engine);
+  for (let col = 31; col <= 40; col++) for (let row = 9; row <= 11; row++) t.set(col, row, 0);
+  const offLedge = () => {
+    engine.player.x = 30 * 32 + 16; engine.player.y = 610 + 9 * 32; engine.player.vy = 0; engine.player.grounded = true;
+    frames(engine, 3);
+    engine.input.add('right');
+    let n = 0;
+    while (engine.player.grounded && n++ < 120) engine.update(1 / 60);
+    engine.input.delete('right');
+  };
+  offLedge();
+  frames(engine, 4); // 0.067 s in the air
+  engine.setInput('jump', true); engine.setInput('jump', false);
+  assert.ok(engine.player.vy < 0, 'a late jump still counts');
+  frames(engine, 90);
+  offLedge();
+  frames(engine, 12); // 0.2 s: too late
+  engine.setInput('jump', true); engine.setInput('jump', false);
+  assert.ok(engine.player.vy > 0, 'past the coyote window there is no air jump');
+  frames(engine, 90);
+  // Buffer: a press 0.05 s before landing jumps on landing; one 0.25 s early does not.
+  const fallAndPress = height => {
+    engine.player.x = 26 * 32 + 16; engine.player.y = 610 + 9 * 32 - 120; engine.player.vy = 0; engine.player.grounded = false;
+    frames(engine, 8);
+    let n = 0;
+    while (610 + 9 * 32 - engine.player.y > height && n++ < 120) engine.update(1 / 60);
+    engine.setInput('jump', true); engine.setInput('jump', false);
+    let jumped = false;
+    for (let i = 0; i < 30; i++) { engine.update(1 / 60); if (engine.player.vy < 0) jumped = true; }
+    frames(engine, 60);
+    return jumped;
+  };
+  assert.equal(fallAndPress(25), true, 'pressed just before landing: jumps on landing');
+  assert.equal(fallAndPress(95), false, 'pressed long before: nothing');
+  engine.destroy();
+});
+
+test('the map: fog of war is revealed round the Keeper, saved compactly with the delve, and survives a reload', () => {
+  const delve = mappedDelve(65);
+  const { engine } = enterOwnDelve(delve);
+  const t = buildRoom(engine);
+  engine.update(1 / 60);
+  const source = engine.mapSource();
+  assert.ok(source && source.t === t);
+  assert.deepEqual({ ...source.keeper }, { col: 30, row: 7 });
+  assert.equal(mapMod.isSeen(source.fog, t.index(30, 7)), true);
+  assert.equal(mapMod.isSeen(source.fog, t.index(36, 7)), true, 'six cells round');
+  assert.equal(mapMod.isSeen(source.fog, t.index(80, 40)), false, 'not the far side of the Delve');
+  assert.deepEqual([...source.shafts], [3], 'the way back up');
+  const seen = mapMod.seenCount(source.fog);
+  // Walking reveals more; standing still never rewrites the save.
+  let writes = 0; const explored = delve.explored;
+  delve.explored = (...args) => { writes++; explored(...args); };
+  frames(engine, 30);
+  assert.equal(writes, 0, 'no new cell, no write');
+  engine.input.add('right'); frames(engine, 60); engine.input.delete('right');
+  assert.ok(writes > 0 && mapMod.seenCount(source.fog) > seen);
+  const after = mapMod.seenCount(source.fog);
+  const encoded = delve.save.areas['ember-delve'].seen;
+  assert.ok(encoded.length < 600, `compact: ${encoded.length} chars for ${after} cells`);
+  // Reload: the same explored cells, decoded from the save.
+  engine.destroy(); delve.forget();
+  const again = enterOwnDelve(delve);
+  const back = again.engine.mapSource();
+  assert.equal(mapMod.seenCount(back.fog), after);
+  assert.equal(mapMod.isSeen(back.fog, t.index(30, 7)), true);
+  again.engine.destroy();
+});
+
+test('the map: seen bits encode per 64-cell block, merge as a union, and draw only what was explored', () => {
+  const bits = mapMod.createFog(6720);
+  bits.fill(255, 0, 16); bits[20] = 0b101;
+  const encoded = saveMod.encodeSeen(bits);
+  assert.equal(encoded, '0,1,2.0000000005000000', 'whole blocks are one number');
+  assert.deepEqual(Array.from(saveMod.decodeSeen(encoded, 6720)), Array.from(bits));
+  assert.equal(saveMod.decodeSeen('zz9.nothex,-1,999999', 6720).every(b => b === 0), true, 'junk is skipped');
+  // Merge: either device's exploring counts.
+  const a = saveMod.newDelveSave(5, 1), b = saveMod.newDelveSave(5, 1);
+  a.areas['ember-delve'] = { layout: 'L', cells: '', seen: '0' };
+  b.areas['ember-delve'] = { layout: 'L', cells: '', seen: '1.ff00000000000000' };
+  const merged = saveMod.mergeDelveSaves(a, b);
+  assert.equal(merged.areas['ember-delve'].seen, '0,1.ff00000000000000');
+  assert.equal(saveMod.coerceDelveSave(JSON.parse(JSON.stringify(merged))).areas['ember-delve'].seen, '0,1.ff00000000000000');
+  // The picture: unexplored is fog, explored rock is its colour, a cavern the cave tone.
+  const t = terrainMod.generateTerrain(delveSpec, 7);
+  const fog = mapMod.createFog(t.kind.length);
+  mapMod.revealAround(t, fog, 30, 7, 3);
+  const data = new Uint8ClampedArray(t.kind.length * 4);
+  mapMod.paintMap(t, fog, data);
+  const px = (col, row) => Array.from(data.slice(t.index(col, row) * 4, t.index(col, row) * 4 + 4));
+  assert.deepEqual(px(80, 40), [20, 10, 31, 255], 'fog');
+  assert.notDeepEqual(px(30, 7), [20, 10, 31, 255]);
+  // Markers: only explored ones, plus the shafts and the Keeper.
+  t.set(31, 7, terrainMod.nodeIndex('camp')); t.set(90, 30, terrainMod.nodeIndex('chest'));
+  const kinds = mapMod.mapMarkers(t, fog, { col: 30, row: 7 }, [3]).map(m => m.kind);
+  assert.deepEqual(kinds, ['inscription', 'camp', 'shaft', 'keeper'], 'the carving at 28,7 and the camp; the unexplored chest is not shown');
+});
+
+test('the map: the way to camp follows explored open cells, or says there is none', () => {
+  const t = terrainMod.generateTerrain(delveSpec, 7);
+  const rock = terrainMod.nodeIndex('rock');
+  for (let row = 0; row < 12; row++) for (let col = 16; col < 46; col++) t.set(col, row, rock);
+  for (let col = 20; col <= 40; col++) t.set(col, 7, 0); // a corridor
+  for (let row = 3; row <= 7; row++) t.set(40, row, 0);   // and a shaft up at its end
+  const fog = mapMod.createFog(t.kind.length);
+  fog.fill(255);
+  const path = mapMod.pathThrough(t, fog, t.index(20, 7), t.index(40, 3));
+  assert.equal(path.length - 1, 20 + 4, 'along the corridor, then up');
+  assert.equal(path[0], t.index(20, 7)); assert.equal(path.at(-1), t.index(40, 3));
+  // A cell of the corridor never explored: no known way.
+  fog.fill(0); mapMod.revealAround(t, fog, 20, 7, 8); mapMod.revealAround(t, fog, 40, 3, 8);
+  assert.equal(mapMod.pathThrough(t, fog, t.index(20, 7), t.index(40, 3)), null);
+});

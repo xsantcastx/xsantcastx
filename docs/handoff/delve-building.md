@@ -10,7 +10,7 @@
 **Building.** One hotbar under the vitals shows every placeable with a count. Keys 1-7 choose a slot (or tap it). Controls:
 - **B** places the chosen thing in front of you. Hold **S** to place it under your feet.
 - **X** takes back a placed thing.
-- Hold a tap (or right-click) on a cell in reach to place there, or to take back what is there.
+- Hold a tap (or right-click) on a cell in reach to place there, or to take back what is there. *(2026-10-14: a held right button or a held finger with a placeable chosen now drags a row; a held finger with the pick mines. See `delve-navigation.md`.)*
 - **E** or a tap uses a chest or a camp.
 
 | Placeable | Comes from | Behaviour |
