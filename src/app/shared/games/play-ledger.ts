@@ -31,6 +31,13 @@ export interface PlayRecord<O = unknown> {
   outcome: O;
   /** True once the Gold and prizes have been handed over. */
   paid: boolean;
+  /**
+   * Rounds the player steers (Seam Sweeper, Eclipse Ascent): true from the bet
+   * until the round closes. An open round pays nothing yet and is never pruned.
+   */
+  open?: boolean;
+  /** The player's moves in a steered round (cells dug, launch time, cash-out). */
+  state?: unknown;
 }
 
 export interface GameTotals { plays: number; wagered: number; paid: number }
@@ -57,7 +64,9 @@ export function parseGamesLedger(raw: unknown): GamesLedger {
   for (const [id, p] of Object.entries(r.plays ?? {})) {
     if (!p || typeof p !== 'object' || typeof (p as PlayRecord).game !== 'string') continue;
     const rec = p as PlayRecord;
-    plays[id] = { ...rec, bet: whole(rec.bet), win: whole(rec.win), seq: whole(rec.seq), paid: rec.paid === true };
+    const paid = rec.paid === true;
+    plays[id] = { ...rec, bet: whole(rec.bet), win: whole(rec.win), seq: whole(rec.seq), paid, open: !paid && rec.open === true ? true : undefined };
+    if (!plays[id].open) delete plays[id].open;
   }
   const totals: Record<string, GameTotals> = {};
   for (const [id, t] of Object.entries(r.totals ?? {})) {
