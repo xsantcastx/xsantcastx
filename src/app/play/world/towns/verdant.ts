@@ -11,6 +11,7 @@
  * `artFor()` key and resolved by the host.
  */
 import { FLOOR } from '../../engine/engine.model';
+import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
@@ -51,9 +52,6 @@ const THICKET_WIDTH = 2700;
 const CANOPY_PLATFORMS: Platform[] = [
   { x: 460, y: 480, width: 160 }, { x: 1120, y: 430, width: 130 }, { x: 1880, y: 470, width: 200 },
 ];
-const THICKET_PLATFORMS: Platform[] = [
-  { x: 420, y: 500, width: 200 }, { x: 1100, y: 450, width: 220 }, { x: 1560, y: 400, width: 170 }, { x: 2150, y: 480, width: 200 },
-];
 
 /** Where the passage from the Thicket sets the Keeper down in town. */
 const PASSAGE_X = 2240;
@@ -79,11 +77,13 @@ export const ROOTGLASS_THICKET: HuntZoneDef = {
   name: 'Rootglass Thicket',
   background: 'bg-verdant',
   width: THICKET_WIDTH,
-  platforms: [{ x: 0, y: FLOOR, width: THICKET_WIDTH }, ...THICKET_PLATFORMS],
+  platforms: [{ x: 0, y: FLOOR, width: THICKET_WIDTH }],
+  // The high ground (world/heights.ts): trees, shelves, ruins and the summit route.
+  heights: HUNT_HEIGHTS['rootglass-thicket'],
   stations: [
     { id: 'passage', x: 110, label: 'RETURN TO THE CANOPY', kind: 'passage', to: 'verdant', arriveX: PASSAGE_X - 140, blurb: 'The root path back up to Rootglass Canopy.' },
   ],
-  monsters: [{ creature: 'rootglass-stag', name: 'Rootglass Stag', hp: 50, spawnXs: [1300, 1700, 2100, 2450] }],
+  monsters: [{ creature: 'rootglass-stag', name: 'Rootglass Stag', hp: 50, spawnXs: [1300, 1700, 2100, 2450] }, ...HUNT_HEIGHTS['rootglass-thicket'].perched],
   drops: ROOTGLASS_STAG_DROPS,
   nodes: THICKET_NODES,
   spawnX: 240,

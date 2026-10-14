@@ -13,6 +13,7 @@
  * TypeScript. See docs/economy/rebalance-spec.md for the design.
  *
  *   node scripts/economy-sim.mjs --bounties      # the Board Herald's daily bounties (in --check too)
+ *   node scripts/economy-sim.mjs --heights       # the high roads' caches and summits (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
  *                                                # first purchase is > 15 s or
  *                                                # < 20 purchases in 10 min
@@ -502,6 +503,8 @@ function check(E) {
   fails.push(...fishingScenario({ quiet: true }));
   // The Board Herald's daily bounties (Phase 7.5): rule I band, the daily envelope, XP, the draw (`--bounties` prints it).
   fails.push(...bountiesScenario({ quiet: true }));
+  // The high roads (surface height): once-only caches and summits on the rule I bands (`--heights` prints them).
+  fails.push(...heightsScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -804,6 +807,53 @@ function fishingScenario({ quiet = false } = {}) {
 //      alike for a seed; gifts: the compass once, a fragment every 7th claim day.
 // ───────────────────────────────────────────────────────────────────────────
 
+// --heights: the high roads (src/app/play/world/heights.ts; docs/handoff/surface-height.md).
+// Once-only finds at the top of a parkour route, so they are a reason to climb,
+// not a Gold strategy:
+//   1. a shelf or mesa cache pays inside the quest band of rule I (2-10 min of
+//      income); a summit inside the daily band (5-20 min);
+//   2. a whole realm's road (two caches and the summit) is at most 30 min of
+//      income, and all five realms at most 2.5 h — paid once, ever;
+//   3. no floor beats the income seconds after the first half hour;
+//   4. each find is paid once (ids unique); materials are checked by heights.service.spec.
+// ───────────────────────────────────────────────────────────────────────────
+
+const HEIGHTS = loadTsTree('src/app/play/world/heights.ts');
+
+function heightsScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const { log } = simulate(PROPOSED);
+  const quest = C.REWARD_SECONDS.quest, daily = C.REWARD_SECONDS.daily;
+  const gps30 = log.at[1800]?.gps ?? 0;
+  say('High roads scenario · v3 curve (PROPOSED)\n');
+  say('  realm        caches (s)   summit (s)   road total');
+  let all = 0;
+  const ids = new Set();
+  for (const [area, h] of Object.entries(HEIGHTS.HUNT_HEIGHTS)) {
+    let road = 0;
+    for (const f of h.finds) {
+      if (ids.has(f.id)) fails.push(`${f.id} is listed twice`);
+      ids.add(f.id);
+      const r = f.reward;
+      if (!r) continue;
+      road += r.goldSeconds;
+      const band = f.kind === 'summit' ? daily : quest;
+      if (r.goldSeconds < band.minS || r.goldSeconds > band.maxS) fails.push(`${f.id} pays ${r.goldSeconds} s of income (band ${band.minS}-${band.maxS} s)`);
+      if (gps30 && r.gold > r.goldSeconds * gps30) fails.push(`${f.id}: its floor ${r.gold} still beats ${r.goldSeconds} s of income at 30 min`);
+    }
+    const caches = h.finds.filter(f => f.kind === 'cache').map(f => f.reward.goldSeconds).join(' + ');
+    say(`  ${area.padEnd(22)} ${caches.padEnd(12)} ${String(h.finds.find(f => f.kind === 'summit').reward.goldSeconds).padEnd(12)} ${(road / 60).toFixed(0)} min`);
+    if (road > 30 * 60) fails.push(`${area}'s road pays ${road / 60} min of income (must be <= 30)`);
+    all += road;
+  }
+  say(`\n  All five roads, once: ${(all / 60).toFixed(0)} min of income.`);
+  if (all > 150 * 60) fails.push(`the five roads pay ${all / 60} min of income (must be <= 150)`);
+  if (quiet) console.log(`economy-sim heights: ${fails.length ? fails.length + ' fail(s)' : 'rule I bands, road envelope and floors ok'}`);
+  else for (const f of fails) console.error(`  FAIL ${f}`);
+  return fails;
+}
+
 const BOUNTY = loadTsTree('src/app/shared/bounties/bounty.model.ts');
 
 function bountiesScenario({ quiet = false } = {}) {
@@ -1033,6 +1083,10 @@ if (argv.plinko) {
   console.log('  ok');
 } else if (argv.fishing && !argv.check) {
   const fails = fishingScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.heights && !argv.check) {
+  const fails = heightsScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.bounties && !argv.check) {

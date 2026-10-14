@@ -79,6 +79,7 @@ import { GlimService } from '../shared/glim/glim.service';
 import { GlimIconComponent } from '../shared/glim/glim-icon.component';
 import { CodexPeopleComponent } from './codex-people.component';
 import { CodexBountiesComponent } from './codex-bounties.component';
+import { CodexHeightsComponent } from './codex-heights.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { DELVE_BIOMES, DELVE_INSCRIPTIONS } from '../shared/delve/delve-lore.model';
@@ -224,7 +225,7 @@ const SCROLL_TIER_TO_RARITY: Record<RuneTier, EclipseRarity> = {
 @Component({
   selector: 'app-codex',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent, GlimIconComponent, CodexPeopleComponent, CodexBountiesComponent, ...STATION_UI],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent, GlimIconComponent, CodexPeopleComponent, CodexBountiesComponent, CodexHeightsComponent, ...STATION_UI],
   templateUrl: './codex.component.html',
   styleUrls: ['./codex.component.css'],
 })

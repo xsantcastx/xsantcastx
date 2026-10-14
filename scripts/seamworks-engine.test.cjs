@@ -726,7 +726,7 @@ test('the Heliograph Court: Market stall, waystone, and a Forager hunt that feed
   const hunt = world.areaOf(town, passage.to);
   assert.ok(hunt && hunt !== town, 'the east stair leads to a hunting ground');
   assert.ok(hunt.stations.some(station => station.kind === 'passage' && station.to === town.id), 'and back');
-  assert.deepEqual(hunt.monsters.map(monster => monster.creature), ['prism-forager']);
+  assert.deepEqual([...new Set(hunt.monsters.map(monster => monster.creature))], ['prism-forager']);
   // The pendant's inputs come from the Forager table alone, in about ten kills or fewer.
   const pendant = craftingModel.CRAFTING_RECIPES.find(recipe => recipe.id === 'craft-aurumleaf-pendant');
   const kills = pendant.ingredients.map(({ materialId, count }) => {
@@ -757,7 +757,7 @@ test('Verdant: Rootglass Canopy hosts the Sanctum, the boards and both gates, an
   assert.equal(passage.requires, undefined, 'the Thicket is open from the start: the beacon gate is Infernal-only');
   const thicket = world.areaOf(town, passage.to);
   assert.equal(thicket.id, 'rootglass-thicket');
-  assert.deepEqual([...thicket.monsters.map(m => m.creature)], ['rootglass-stag']);
+  assert.deepEqual([...new Set(thicket.monsters.map(m => m.creature))], ['rootglass-stag']);
 });
 
 test('Verdant: a Stag drops coins and real Verdant crafting materials, rolled on the engine RNG', () => {
@@ -4473,5 +4473,190 @@ test('buckets through the engine: the host swaps the stack first; scoop the Mere
   const before = t.levelAt(22, 33);
   assert.equal(engine.useBucket('seam-bucket', t.index(22, 33)), false);
   assert.equal(t.levelAt(22, 33), before);
+  engine.destroy();
+});
+
+// ── A surface with height (world/heights.ts, engine/surface-body.ts) ─────────
+const heightsMod = loadTs(path.resolve(__dirname, '../src/app/play/world/heights.ts'));
+function enterQuarryHeights(extra = {}) {
+  const { engine, state } = fixture(() => true, extra);
+  engine.enter(world.TOWNS.infernal.hunts.find(h => h.id === 'ember-quarry'));
+  engine.monsters.length = 0; // no Maws in these movement tests
+  return { engine, state };
+}
+const HX0 = 560, HR = heightsMod.ROUTE;
+function stepUntil(engine, done, max = 400) { for (let n = 0; n < max && !done(); n++) engine.update(1 / 60); return done(); }
+function pressAgain(engine, action) { engine.setInput(action, false); engine.setInput(action, true); }
+
+test('heights: every hunting ground has a route; the pieces are placed from one shape and the summit is the highest point', () => {
+  for (const town of Object.values(world.TOWNS)) for (const hunt of town.hunts.filter(h => heightsMod.HUNT_HEIGHTS[h.id])) {
+    const h = hunt.heights;
+    assert.ok(h, `${hunt.id} has heights`);
+    assert.equal(h.finds.length, 5);
+    const summit = h.finds.find(f => f.kind === 'summit');
+    assert.ok(h.finds.every(f => f.y >= summit.y), 'the summit is the top');
+    assert.ok(h.top < summit.y - 300, 'the camera can see over the summit');
+    assert.ok(h.solids.every(s => s.x + s.w < hunt.width - 60), 'inside the area');
+    // Shelves that hang over the floor leave head room: the Keeper walks under every one.
+    assert.ok(h.solids.every(s => s.y + s.h <= 610 - 168), `${hunt.id}: nothing blocks the floor`);
+    assert.ok(hunt.monsters.some(m => m.floorY === HR.mesa.y), 'a creature perches on the mesa');
+    assert.equal(new Set(h.finds.map(f => f.id)).size, 5);
+  }
+  const spec = () => ({ area: 'x', realm: 'umbral', x0: 500, perched: { creature: 'rivet-maw', name: 'M', hp: 1, spawnXs: [] } });
+  assert.deepEqual(heightsMod.climbRoute(spec()), heightsMod.climbRoute(spec()), 'deterministic');
+  assert.equal(heightsMod.hollisRealm(0), 'infernal'); assert.equal(heightsMod.hollisRealm(7), 'umbral');
+});
+
+test('heights: ledge grab — a jump into the low shelf catches its lip, and pushing on mantles onto it', () => {
+  const { engine, state } = enterQuarryHeights();
+  engine.player.x = HX0 - 60; engine.player.y = 610; engine.player.vy = 0; engine.player.grounded = true;
+  engine.input.add('right'); pressAgain(engine, 'jump');
+  assert.ok(stepUntil(engine, () => state().climbing === 'hang' || state().climbing === 'mantle', 90), 'caught the lip');
+  assert.ok(stepUntil(engine, () => state().climbing === 'free' && engine.player.grounded, 90), 'mantled');
+  assert.equal(engine.player.y, HR.low.y, 'standing on the shelf');
+  assert.ok(engine.player.x > HX0 && engine.player.x < HX0 + HR.low.w);
+  engine.destroy();
+});
+
+test('heights: hanging, Down lets go; a short hop does not reach the lip', () => {
+  const { engine, state } = enterQuarryHeights();
+  engine.player.x = HX0 - 60; engine.player.y = 610; engine.player.grounded = true;
+  engine.input.add('right'); pressAgain(engine, 'jump');
+  assert.ok(stepUntil(engine, () => state().climbing === 'hang', 90));
+  engine.input.delete('right'); engine.setInput('jump', false); engine.setInput('down', true);
+  stepUntil(engine, () => engine.player.grounded, 120);
+  assert.equal(engine.player.y, 610, 'back on the floor');
+  engine.setInput('down', false);
+  // A tapped jump (released at once) is a short hop: it never gets the hands to the lip.
+  engine.player.x = HX0 - 60;
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  engine.input.add('right'); engine.setInput('jump', true); engine.update(1 / 60); engine.setInput('jump', false);
+  let caught = false;
+  for (let n = 0; n < 90; n++) { engine.update(1 / 60); if (state().climbing !== 'free') caught = true; }
+  assert.equal(caught, false, 'a hop does not catch');
+  engine.destroy();
+});
+
+test('heights: Jump at a trunk climbs it into the canopy', () => {
+  const { engine, state } = enterQuarryHeights();
+  const tree = HX0 + HR.tree.dx;
+  engine.player.x = tree + 10; engine.player.y = 610; engine.player.grounded = true;
+  pressAgain(engine, 'jump');
+  assert.equal(state().climbing, 'climb');
+  assert.equal(engine.player.x, tree, 'onto the trunk');
+  const y0 = engine.player.y;
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.ok(Math.abs((y0 - engine.player.y) - 230 * .5) < 2, `climbs at 230 px/s (${y0 - engine.player.y})`);
+  stepUntil(engine, () => state().climbing === 'free', 200);
+  engine.setInput('jump', false);
+  for (let n = 0; n < 10; n++) engine.update(1 / 60);
+  assert.equal(engine.player.y, 610 - HR.tree.height, 'standing in the canopy');
+  assert.ok(engine.player.grounded);
+  engine.destroy();
+});
+
+test('heights: the summit route — snag, wall-jump onto the ruin block, slab, spire', () => {
+  const { engine, state } = enterQuarryHeights();
+  engine.player.x = HX0 + HR.snag.dx; engine.player.y = 610; engine.player.grounded = true;
+  pressAgain(engine, 'jump');
+  assert.ok(stepUntil(engine, () => engine.player.y <= HR.snag.top + .01, 300), 'up the snag');
+  assert.equal(state().climbing, 'climb', 'a snag has no canopy: still holding on at its top');
+  engine.input.add('right'); pressAgain(engine, 'jump');
+  assert.ok(engine.player.vy < -600, 'kicked off');
+  assert.ok(stepUntil(engine, () => state().climbing === 'free' && engine.player.grounded && engine.player.y === HR.block.y, 200), `on the ruin block (at ${engine.player.x},${engine.player.y})`);
+  pressAgain(engine, 'jump');
+  assert.ok(stepUntil(engine, () => engine.player.grounded && engine.player.y === HR.slab.y, 120), `on the slab (at ${engine.player.x},${engine.player.y})`);
+  engine.setInput('jump', false);
+  stepUntil(engine, () => engine.player.x >= HX0 + HR.spire.dx - 19, 120);
+  pressAgain(engine, 'jump');
+  assert.ok(stepUntil(engine, () => engine.player.grounded && engine.player.y === HR.spire.y, 150), `on the summit (at ${engine.player.x},${engine.player.y})`);
+  engine.input.delete('right'); engine.setInput('jump', false);
+  const s = state();
+  assert.equal(s.nearby, 'height'); assert.equal(s.height.kind, 'summit');
+  engine.destroy();
+});
+
+test('heights: at a snag top, Jump with no direction just clings', () => {
+  const { engine, state } = enterQuarryHeights();
+  engine.player.x = HX0 + HR.snag.dx; engine.player.y = 610; engine.player.grounded = true;
+  pressAgain(engine, 'jump');
+  stepUntil(engine, () => engine.player.y <= HR.snag.top + .01, 300);
+  pressAgain(engine, 'jump');
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.equal(state().climbing, 'climb'); assert.equal(engine.player.y, HR.snag.top);
+  engine.destroy();
+});
+
+test('heights: random play never leaves the Keeper inside a solid, and the same inputs give the same path', () => {
+  const run = () => {
+    const { engine } = enterQuarryHeights();
+    const rnd = terrainMod.seededRandom(0xc11b);
+    const solids = engine.areaDef.heights.solids;
+    const trail = [];
+    engine.player.x = HX0 + 300;
+    for (let n = 0; n < 4000; n++) {
+      if (n % 9 === 0) {
+        const r = rnd();
+        for (const a of ['left', 'right', 'down']) engine.input.delete(a);
+        if (r < .35) engine.input.add('left'); else if (r < .7) engine.input.add('right'); else if (r < .78) engine.input.add('down');
+        if (rnd() < .4) pressAgain(engine, 'jump'); else if (rnd() < .3) engine.setInput('jump', false);
+      }
+      engine.update(1 / 60);
+      const p = engine.player;
+      for (const s of solids) {
+        const inside = p.x + 17 > s.x && p.x - 17 < s.x + s.w && p.y - 1 > s.y && p.y - 167 < s.y + s.h;
+        assert.ok(!inside, `frame ${n}: (${p.x.toFixed(1)}, ${p.y.toFixed(1)}) inside the solid at ${s.x},${s.y}`);
+      }
+      if (n % 50 === 0) trail.push(`${p.x.toFixed(2)},${p.y.toFixed(2)}`);
+    }
+    engine.destroy();
+    return trail.join(' ');
+  };
+  const a = run();
+  assert.equal(a, run());
+  assert.ok(new Set(a.split(' ').map(s => s.split(',')[1])).size > 3, 'it went up and down');
+});
+
+test('heights: a find asks the host; the host marks it found and the state says so', () => {
+  const events = [];
+  const { engine, state } = enterQuarryHeights({ onHeightFind: e => events.push(e) });
+  const cache = engine.areaDef.heights.finds[0];
+  engine.player.x = cache.x; engine.player.y = cache.y; engine.player.grounded = true;
+  const s = state();
+  assert.equal(s.nearby, 'height'); assert.equal(JSON.stringify(s.height), JSON.stringify({ id: cache.id, kind: 'cache', found: false }));
+  engine.interact();
+  assert.equal(JSON.stringify(events), JSON.stringify([{ areaId: 'ember-quarry', id: 'ember-quarry:low-cache', kind: 'cache', found: false }]));
+  engine.setHeightsFound(new Set([cache.id]));
+  assert.equal(state().height.found, true);
+  engine.player.y = 610;
+  assert.notEqual(state().nearby, 'height', 'out of reach from the floor below');
+  engine.destroy();
+});
+
+test('heights: perched creatures stand down while the Keeper is on another level', () => {
+  const { engine } = fixture(() => true);
+  engine.enter(world.TOWNS.infernal.hunts.find(h => h.id === 'ember-quarry'));
+  const perched = engine.monsters.find(m => m.def.floorY === HR.mesa.y);
+  assert.ok(perched);
+  engine.monsters.length = 0; engine.monsters.push(perched);
+  engine.player.x = perched.x; engine.player.y = 610; engine.player.grounded = true;
+  const hp = engine.hp;
+  for (let n = 0; n < 240; n++) engine.update(1 / 60);
+  assert.equal(perched.phase, 'idle'); assert.equal(engine.hp, hp, 'never struck from above');
+  engine.destroy();
+});
+
+test('heights: a jump first and a push into the shelf after still catches its lip; Jump again mantles', () => {
+  const { engine, state } = enterQuarryHeights();
+  engine.player.x = HX0 - 70; engine.player.y = 610; engine.player.grounded = true;
+  engine.setInput('jump', true);
+  for (let n = 0; n < 12; n++) engine.update(1 / 60);
+  engine.setInput('right', true);
+  assert.ok(stepUntil(engine, () => state().climbing === 'hang', 90), 'hangs');
+  engine.setInput('right', false);
+  for (let n = 0; n < 20; n++) engine.update(1 / 60);
+  assert.equal(state().climbing, 'hang', 'hangs on with no direction held');
+  pressAgain(engine, 'jump');
+  assert.ok(stepUntil(engine, () => engine.player.grounded && engine.player.y === HR.low.y, 60), 'mantled');
   engine.destroy();
 });

@@ -1044,3 +1044,38 @@ presence").
   diamond on the map for half an hour, at the mission's target: a place, never
   what a carving says (the Archivist's rule stands). Builds on: world-and-cast
   §4 (Glim keeps the maps; "A hint is a kindness. An answer is a theft.").
+
+### The High Roads (surface height, 2026-10-14 — shipped, owner reviews in play)
+
+Every hunting ground got height: a tree, a rock shelf, a floating Godforge ruin,
+a rope bridge, a dead snag and a spire (`play/world/heights.ts`,
+`heights.i18n.ts`; EN + ES). The lore that gives them a reason:
+
+- **The Ridge Couriers.** Before the Waystones (Sera Quill's Meridian Compact,
+  world-and-cast §3), the realms' post went over the high ground on foot.
+  Couriers climbed what they could not go round and cached what they could not
+  carry. The Waystones made them unnecessary; most caches were never collected.
+  The **courier caches** on each shelf and mesa are theirs: once opened, nobody
+  restocks them ("Already opened. Nobody restocks the high road any more.").
+- **Courier carvings.** Road marks cut where a courier waited, one per realm, in
+  the realm's own answer to pressure (Bible: measure, temper, remember, conceal,
+  adapt): the Seamworks' "Road open. Rock warm. Keep climbing"; the Court's sun
+  with one ray missing (the missing dawn); the Corridors' two arrows that
+  disagree ("Both are true"); the Orrery's ring cut by a straight line; the
+  Thicket's leaf over a road mark, half grown over.
+- **The summit cairns.** Each realm's high road ends at a cairn; every courier
+  who reached it added a stone. The Keeper adds one and takes the realm's
+  title: Cinder, Dawn, Unrecorded, Meridian and Canopy **Ridgewalker**. The
+  Codex keeps them under "The High Roads". The Unrecorded Summit's stones carry
+  no names (Umbral conceals), and the Meridian Summit is the only place the
+  Orrery's rings line up for someone on foot ("The couriers knew it before the
+  Compact did").
+- **Hollis Fenn, Last Ridge Courier** (new person). Still walks the high roads,
+  one realm's mesa a day, keeping the old post ledger: "Post used to go over
+  the top. The Waystones are quicker. Quicker isn't the same as seen." Teaches:
+  the high roads and their caches (the meaning rule). Relationships: needles
+  Sera Quill ("Sera hates that a courier knew it first"), respects Rook Sable's
+  wish to keep the Corridors' road off the maps, and sides with Siv against
+  Kesh about the Thicket ("I say it's in the way").
+- **The look-out cairns.** A cairn with a pennant halfway up each route; from
+  it every find still waiting on that high road shows as a pale beam.
