@@ -4,9 +4,9 @@
 -->
 <section class="rp">
   <header class="rp__head">
-    <p class="rp__eyebrow"><span class="rp__pulse"></span> The Roster</p>
-    <h3 class="rp__title">Who walks for you</h3>
-    <p class="rp__tagline">eighteen of them exist — you have met {{ snap.discoveredCount }}</p>
+    <p class="rp__eyebrow"><span class="rp__pulse"></span> {{ t('rosterUi.eyebrow') }}</p>
+    <h3 class="rp__title">{{ t('rosterUi.title') }}</h3>
+    <p class="rp__tagline">{{ t('rosterUi.tagline', { n: snap.discoveredCount }) }}</p>
 
     <!-- The collection bar. The single most important number on this panel:
          it is the only thing that tells a player the roster has an end. -->
@@ -14,22 +14,22 @@
          [attr.aria-valuenow]="snap.discoveredCount"
          aria-valuemin="0"
          [attr.aria-valuemax]="total"
-         aria-label="Explorers discovered">
+         [attr.aria-label]="t('rosterUi.meter.label')">
       <span class="rp__meter-fill" [style.width.%]="collectionPercent"></span>
     </div>
     <p class="rp__meter-foot">
-      <b>{{ snap.discoveredCount }}/{{ total }}</b> found
+      <b>{{ snap.discoveredCount }}/{{ total }}</b> {{ t('rosterUi.meter.found') }}
       @if (snap.title) { · <span class="rp__earned-title">{{ snap.title }}</span> }
       @if (snap.payoutMultiplier > 1) {
-        · expeditions pay +{{ ((snap.payoutMultiplier - 1) * 100).toFixed(0) }}%
+        · {{ t('rosterUi.payout', { n: ((snap.payoutMultiplier - 1) * 100).toFixed(0) }) }}
       }
     </p>
 
     @if (snap.nextReward; as next) {
       <p class="rp__next">
         <span aria-hidden="true">◈</span>
-        {{ next.at - snap.discoveredCount }} more to go —
-        {{ next.detail }}
+        {{ t('rosterUi.next', { n: next.at - snap.discoveredCount }) }}
+        {{ rewardDetail(next) }}
       </p>
     }
   </header>
@@ -40,7 +40,7 @@
     @for (r of rewards; track trackReward($index, r)) {
       <li class="rp__reward" [class.rp__reward--on]="rewardEarned(r)">
         <b>{{ r.at }}</b>
-        <span>{{ r.title || (r.slots ? '+1 slot' : 'bonus') }}</span>
+        <span>{{ rewardTitle(r) || (r.slots ? t('rosterUi.reward.slot') : t('rosterUi.reward.bonus')) }}</span>
       </li>
     }
   </ul>
@@ -49,26 +49,26 @@
        panel is 320px on desktop and a native select on iOS opens a full-screen
        wheel for four options. -->
   <div class="rp__controls">
-    <div class="rp__chips" role="group" aria-label="Sort the roster">
+    <div class="rp__chips" role="group" [attr.aria-label]="t('rosterUi.sort.label')">
       @for (s of sorts; track s.key) {
         <button type="button" class="rp__chip"
                 [class.rp__chip--on]="sort === s.key"
                 [attr.aria-pressed]="sort === s.key"
-                (click)="setSort(s.key)">{{ s.label }}</button>
+                (click)="setSort(s.key)">{{ t('rosterUi.sort.' + s.key) }}</button>
       }
     </div>
-    <div class="rp__chips" role="group" aria-label="Filter the roster">
+    <div class="rp__chips" role="group" [attr.aria-label]="t('rosterUi.filter.label')">
       @for (f of filters; track f.key) {
         <button type="button" class="rp__chip rp__chip--filter"
                 [class.rp__chip--on]="filter === f.key"
                 [attr.aria-pressed]="filter === f.key"
-                (click)="setFilter(f.key)">{{ f.label }}</button>
+                (click)="setFilter(f.key)">{{ t('rosterUi.filter.' + f.key) }}</button>
       }
     </div>
   </div>
 
   @if (!rows.length) {
-    <p class="rp__empty">nobody matches that — try another filter</p>
+    <p class="rp__empty">{{ t('rosterUi.empty') }}</p>
   }
 
   <ul class="rp__list">
@@ -99,22 +99,22 @@
               @if (row.found) { {{ row.name }} } @else { ??? }
             </span>
             <span class="rp__meta">
-              <span class="rp__tier">{{ row.rarityLabel }}</span>
+              <span class="rp__tier">{{ rarityText(row.rarity, row.rarityLabel) }}</span>
               @if (row.realmName) {
                 <span class="rp__realm" [style.--realm]="row.realmColor">{{ row.realmName }}</span>
               }
             </span>
             @if (row.found && row.progress) {
-              <span class="rp__xp" [attr.aria-label]="'Level ' + row.level + ' of ' + maxLevel">
+              <span class="rp__xp" [attr.aria-label]="t('rosterUi.levelOf', { level: row.level, max: maxLevel })">
                 <span class="rp__xp-fill" [style.width.%]="row.progress.percent"></span>
               </span>
             }
           </span>
 
           <span class="rp__state">
-            @if (row.out) { <span class="rp__status">out</span> }
-            @else if (row.found) { <span class="rp__missions">{{ row.explorer?.missions || 0 }} run</span> }
-            @else { <span class="rp__locked-tag">missing</span> }
+            @if (row.out) { <span class="rp__status">{{ t('rosterUi.state.out') }}</span> }
+            @else if (row.found) { <span class="rp__missions">{{ runsLabel(row) }}</span> }
+            @else { <span class="rp__locked-tag">{{ t('rosterUi.state.missing') }}</span> }
           </span>
         </button>
 
@@ -129,8 +129,11 @@
               </p>
               @if (row.archetype; as a) {
                 <p class="rp__silhouette-note">
-                  A {{ row.rarityLabel }}@if (row.realmName) { of {{ row.realmName }} }.
-                  Their name is not yours to know yet.
+                  @if (row.realmName) {
+                    {{ t('rosterUi.silhouette.realm', { rarity: rarityText(row.rarity, row.rarityLabel), realm: row.realmName }) }}
+                  } @else {
+                    {{ t('rosterUi.silhouette', { rarity: rarityText(row.rarity, row.rarityLabel) }) }}
+                  }
                 </p>
 
                 <!-- The two paths that are not drops get a control rather than a
@@ -141,9 +144,9 @@
                           [disabled]="!affordable()"
                           (click)="recruit(row)">
                     @if (affordable()) {
-                      ◈ Recruit for {{ hireCostLabel }} Gold
+                      {{ t('rosterUi.recruit', { cost: hireCostLabel }) }}
                     } @else {
-                      ◈ {{ hireCostLabel }} Gold — you are short
+                      {{ t('rosterUi.recruit.short', { cost: hireCostLabel }) }}
                     }
                   </button>
                 }
@@ -153,14 +156,14 @@
                     <p class="rp__capstone-bar" role="progressbar"
                        [attr.aria-valuenow]="collectionLogPercent"
                        aria-valuemin="0" aria-valuemax="100"
-                       aria-label="Collection Log progress">
+                       [attr.aria-label]="t('rosterUi.capstone.label')">
                       <span [style.width.%]="collectionLogPercent"></span>
                     </p>
-                    <p class="rp__capstone-foot">Collection Log — {{ collectionLogPercent }}%</p>
+                    <p class="rp__capstone-foot">{{ t('rosterUi.capstone.foot', { n: collectionLogPercent }) }}</p>
                     @if (capstoneReady(row)) {
                       <button type="button" class="rp__recruit rp__recruit--capstone"
                               (click)="claimCapstone()">
-                        ✦ The Log is complete — call them in
+                        ✦ {{ t('rosterUi.capstone.claim') }}
                       </button>
                     }
                   </div>
@@ -182,7 +185,7 @@
                 <p class="rp__passive">
                   <span class="rp__passive-mark" aria-hidden="true">◆</span>
                   {{ a.passive.text }}
-                  @if (row.level >= 10) { <em class="rp__passive-up">strengthened</em> }
+                  @if (row.level >= 10) { <em class="rp__passive-up">{{ t('rosterUi.strengthened') }}</em> }
                 </p>
               }
 
@@ -190,16 +193,16 @@
               @if (row.progress; as p) {
                 <div class="rp__level">
                   <p class="rp__level-head">
-                    <b>Level {{ p.level }}</b>
-                    @if (p.capped) { <span>mastered</span> }
-                    @else { <span>{{ p.into }} / {{ p.span }} XP</span> }
+                    <b>{{ t('rosterUi.level', { n: p.level }) }}</b>
+                    @if (p.capped) { <span>{{ t('rosterUi.mastered') }}</span> }
+                    @else { <span>{{ t('rosterUi.xp', { into: p.into, span: p.span }) }}</span> }
                   </p>
                   <span class="rp__level-bar">
                     <span class="rp__level-fill" [style.width.%]="p.percent"></span>
                   </span>
                   @if (nextMilestoneFor(row); as m) {
                     <p class="rp__level-next">
-                      Level {{ m.level }} — {{ m.detail }}
+                      {{ t('rosterUi.level.next', { level: m.level, detail: m.detail }) }}
                     </p>
                   }
                 </div>
@@ -215,32 +218,32 @@
               }
 
               <ul class="rp__stats">
-                <li><b>{{ speedLabel(row) }}</b> speed</li>
-                <li><b>{{ row.explorer?.missions || 0 }}</b> runs</li>
-                <li><b>{{ hoursDeployed(row) }}</b> deployed</li>
-                <li><b>{{ bestFindLabel(row) }}</b> best find</li>
+                <li><b>{{ speedLabel(row) }}</b> {{ t('rosterUi.stat.speed') }}</li>
+                <li><b>{{ row.explorer?.missions || 0 }}</b> {{ t('rosterUi.stat.runs') }}</li>
+                <li><b>{{ hoursDeployed(row) }}</b> {{ t('rosterUi.stat.deployed') }}</li>
+                <li><b>{{ bestFindLabel(row) }}</b> {{ t('rosterUi.stat.bestFind') }}</li>
               </ul>
 
               <!-- Their kit -->
               @if (capacityOf(row) > 0) {
                 <div class="rp__kit">
-                  <p class="rp__kit-title">Carrying ({{ worn(row).length }}/{{ capacityOf(row) }})</p>
+                  <p class="rp__kit-title">{{ t('rosterUi.kit.carrying', { n: worn(row).length, max: capacityOf(row) }) }}</p>
                   <ul class="rp__worn">
                     @for (item of worn(row); track trackItem($index, item)) {
                       <li [style.--star-color]="colorOf(item)">
                         <button type="button" class="rp__worn-btn"
                                 (click)="takeBack(row, item)"
-                                [attr.aria-label]="'Take ' + item.name + ' back'">
+                                [attr.aria-label]="t('rosterUi.kit.takeBack', { name: item.name })">
                           {{ item.name }} <span aria-hidden="true">×</span>
                         </button>
                       </li>
                     }
-                    @if (!worn(row).length) { <li class="rp__worn-none">nothing</li> }
+                    @if (!worn(row).length) { <li class="rp__worn-none">{{ t('rosterUi.kit.none') }}</li> }
                   </ul>
 
                   @if (worn(row).length < capacityOf(row) && charms().length) {
                     <div class="rp__give">
-                      <p class="rp__kit-title">Hand them something</p>
+                      <p class="rp__kit-title">{{ t('rosterUi.kit.give') }}</p>
                       <ul class="rp__offer">
                         @for (item of charms(); track trackItem($index, item)) {
                           <li [style.--star-color]="colorOf(item)">
@@ -253,20 +256,18 @@
                     </div>
                   }
                   @if (worn(row).length >= capacityOf(row)) {
-                    <p class="rp__kit-note">their hands are full</p>
+                    <p class="rp__kit-note">{{ t('rosterUi.kit.full') }}</p>
                   }
                 </div>
               } @else {
-                <p class="rp__kit-note">
-                  a Common carries nothing but what they find — level 15 changes that
-                </p>
+                <p class="rp__kit-note">{{ t('rosterUi.kit.common') }}</p>
               }
 
               @if (!row.out && snap.explorers.length > 1) {
                 <button type="button" class="rp__dismiss" (click)="dismiss(row)">
                   {{ confirmingDismiss === row.key
-                     ? 'Certain? They will not come back'
-                     : 'Let them go' }}
+                     ? t('rosterUi.dismiss.confirm')
+                     : t('rosterUi.dismiss') }}
                 </button>
               }
             }
@@ -278,8 +279,8 @@
 
   @if (snap.explorers.length) {
     <p class="rp__foot">
-      {{ snap.explorers.length }} on the books · {{ snap.found }} hired all-time
-      @if (snap.full) { <span> · the roster is full</span> }
+      {{ t('rosterUi.foot', { n: snap.explorers.length, m: snap.found }) }}
+      @if (snap.full) { <span>{{ t('rosterUi.foot.full') }}</span> }
     </p>
   }
 </section>

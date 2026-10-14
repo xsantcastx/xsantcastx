@@ -56,6 +56,8 @@ import { realmById } from '../realms/realm.model';
 import { EconomyService } from '../economy/economy.service';
 import { CollectionService } from '../collection/collection.service';
 import { formatCompact } from '../economy/economy.model';
+import { TranslationService } from '../../translation.service';
+import { EXPLORER_ROSTER_I18N } from './explorer-roster-panel.i18n';
 
 /**
  * One card on the wall: either somebody you have, or somebody you do not.
@@ -103,6 +105,38 @@ export class ExplorerRosterPanelComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly collection = inject(CollectionService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(TranslationService);
+
+  constructor() {
+    this.i18n.register(EXPLORER_ROSTER_I18N);
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  /** Translated text for a data-owned label, or the data's own English when no key exists. */
+  private tr(key: string, fallback: string): string {
+    const text = this.i18n.translate(key);
+    return text === key ? fallback : text;
+  }
+
+  rarityText(rarity: string, fallback: string): string {
+    return this.tr(`rosterUi.rarity.${rarity}`, fallback);
+  }
+
+  rewardTitle(r: RosterReward): string {
+    return r.title ? this.tr(`rosterUi.reward.${r.at}.title`, r.title) : '';
+  }
+
+  rewardDetail(r: RosterReward): string {
+    return this.tr(`rosterUi.reward.${r.at}.detail`, r.detail);
+  }
+
+  runsLabel(row: RosterRow): string {
+    const n = row.explorer?.missions || 0;
+    return this.t(n === 1 ? 'rosterUi.state.runs.one' : 'rosterUi.state.runs', { n });
+  }
 
   snap: RosterSnapshot = this.roster.snapshot;
   bag: InventorySnapshot = this.inventory.snapshot;
@@ -147,6 +181,7 @@ export class ExplorerRosterPanelComponent implements OnInit, OnDestroy {
   private subs = new Subscription();
 
   ngOnInit(): void {
+    this.subs.add(this.i18n.currentLanguage$.subscribe(() => this.cdr.markForCheck()));
     this.subs.add(this.roster.snapshot$.subscribe(s => {
       this.snap = s;
       this.rebuild();
@@ -295,8 +330,8 @@ export class ExplorerRosterPanelComponent implements OnInit, OnDestroy {
   /** "2× faster" reads better than "0.5", which nobody can rank at a glance. */
   speedLabel(row: RosterRow): string {
     const speed = explorerTier(row.rarity as never).speed;
-    if (speed >= 1) return 'normal';
-    return `${Math.round((1 / speed) * 10) / 10}× faster`;
+    if (speed >= 1) return this.t('rosterUi.speed.normal');
+    return this.t('rosterUi.speed.faster', { n: Math.round((1 / speed) * 10) / 10 });
   }
 
   /** Hours out, for the card's lifetime line. */
@@ -309,7 +344,9 @@ export class ExplorerRosterPanelComponent implements OnInit, OnDestroy {
 
   bestFindLabel(row: RosterRow): string {
     const tier = row.explorer?.bestFindTier;
-    return tier === undefined ? 'nothing yet' : RUNE_TIER_LABELS[tier] ?? 'unknown';
+    if (tier === undefined) return this.t('rosterUi.bestFind.none');
+    const label = RUNE_TIER_LABELS[tier];
+    return label ? this.rarityText(label.toLowerCase(), label) : this.t('rosterUi.rarity.unknown');
   }
 
   rewardEarned(reward: RosterReward): boolean {

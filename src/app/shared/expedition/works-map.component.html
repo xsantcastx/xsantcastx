@@ -8,12 +8,12 @@
 -->
 <section class="wm" aria-labelledby="wm-title" [class.wm--static]="reducedMotion">
   <header class="wm__head">
-    <h2 class="wm__title" id="wm-title">The Works</h2>
+    <h2 class="wm__title" id="wm-title">{{ t('works.title') }}</h2>
     <p class="wm__stock">
-      <span class="wm__stock-label">Treasury</span>
+      <span class="wm__stock-label">{{ t('works.treasury') }}</span>
       <b class="wm__stock-value">{{ goldLabel }}</b>
       @if (perSecond > 0) {
-        <span class="wm__stock-rate">+{{ rateLabel }} Gold/s</span>
+        <span class="wm__stock-rate">{{ t('works.goldPerSec', { n: rateLabel }) }}</span>
       }
     </p>
   </header>
@@ -47,7 +47,7 @@
         @if (b > 0) { <span class="wm__burst wm__burst--gold"></span> }
       }
       <span class="wm__hub-core"></span>
-      <span class="wm__label">Treasury</span>
+      <span class="wm__label">{{ t('works.treasury') }}</span>
     </span>
 
     <!-- The Forge: the idle Gold rate, beating once per settlement -->
@@ -59,7 +59,7 @@
       }
       <span class="wm__node-core"></span>
       <span class="wm__label">
-        Forge @if (autoPerSecond > 0) { · {{ autoPerSecond }}/s strikes }
+        @if (autoPerSecond > 0) { {{ t('works.forgeStrikes', { n: autoPerSecond }) }} } @else { {{ t('works.forge') }} }
       </span>
     </span>
 
@@ -68,14 +68,14 @@
           [class.wm__node--idle]="thrallsWorking === 0"
           [style.--x]="anvilAt.x" [style.--y]="anvilAt.y">
       <span class="wm__node-core"></span>
-      <span class="wm__label wm__label--above">Anvil</span>
+      <span class="wm__label wm__label--above">{{ t('works.anvil') }}</span>
     </span>
     @for (t of thralls; track t.id) {
       <span class="wm__pin wm__thrall"
             [class.wm__thrall--working]="t.status === 'working'"
             [class.wm__thrall--resting]="t.status === 'resting'"
             [style.--x]="t.at.x" [style.--y]="t.at.y" [style.--tone]="t.tone"
-            [attr.title]="t.name + ' · ' + t.status">
+            [attr.title]="t.name + ' · ' + statusLabel(t.status)">
         @for (b of [t.lastRollAt]; track b) {
           @if (b > 0 && t.status === 'working') { <span class="wm__burst"></span> }
         }
@@ -153,38 +153,38 @@
     @for (m of missions; track m.id) {
       <li class="wm__row" [style.--tone]="m.realmColor">
         <span class="wm__row-who">
-          <b>{{ m.name }}</b> · {{ m.missionName }} to {{ m.destination }}
+          <b>{{ m.name }}</b> · {{ t('works.mission', { mission: m.missionName, dest: m.destination }) }}
         </span>
         <span class="wm__row-state">
-          {{ phaseLabel(m) }} · @if (phaseOf(m) === 'home') { now } @else { {{ countdown(m) }} left }
+          {{ phaseLabel(m) }} · @if (phaseOf(m) === 'home') { {{ t('works.now') }} } @else { {{ t('works.timeLeft', { time: countdown(m) }) }} }
         </span>
         <span class="wm__bar" role="progressbar" aria-valuemin="0" aria-valuemax="100"
               [attr.aria-valuenow]="percent(m)"
-              [attr.aria-label]="m.name + ' — ' + m.missionName + ' to ' + m.destination">
+              [attr.aria-label]="t('works.rowAria', { name: m.name, mission: m.missionName, dest: m.destination })">
           <span class="wm__bar-fill" [attr.data-wm-bar]="m.id"
                 [style.transform]="'scaleX(' + percent(m) / 100 + ')'"></span>
         </span>
       </li>
     } @empty {
-      <li class="wm__row wm__row--quiet">No explorers on the road. Send one out below.</li>
+      <li class="wm__row wm__row--quiet">{{ t('works.none') }}</li>
     }
 
     <li class="wm__row wm__row--quiet">
-      <span class="wm__row-who"><b>Forge</b></span>
+      <span class="wm__row-who"><b>{{ t('works.forge') }}</b></span>
       <span class="wm__row-state">
         @if (perSecond > 0) {
-          +{{ rateLabel }} Gold a second into the Treasury@if (autoPerSecond > 0) { · {{ autoPerSecond }} strikes/s }
+          {{ t('works.forgeRate', { n: rateLabel }) }}@if (autoPerSecond > 0) { {{ t('works.forgeStrikesPerSec', { n: autoPerSecond }) }} }
         } @else {
-          Cold — buy an upgrade in the <a routerLink="/market">Market</a> to start the idle rate.
+          {{ t('works.forgeColdBefore') }}<a routerLink="/market">{{ t('works.market') }}</a>{{ t('works.forgeColdAfter') }}
         }
       </span>
     </li>
 
     @if (thralls.length) {
       <li class="wm__row wm__row--quiet">
-        <span class="wm__row-who"><b>Thralls</b></span>
+        <span class="wm__row-who"><b>{{ t('works.thralls') }}</b></span>
         <span class="wm__row-state">
-          {{ thrallsWorking }} working@if (thrallsResting) { · {{ thrallsResting }} resting } at the anvil
+          {{ t('works.thrallsWorking', { n: thrallsWorking }) }}@if (thrallsResting) { {{ t('works.thrallsResting', { n: thrallsResting }) }} }{{ t('works.atAnvil') }}
         </span>
       </li>
     }
@@ -193,7 +193,7 @@
       <li class="wm__row wm__row--quiet">
         <span class="wm__row-who"><b>{{ w.label }}</b> · <a [routerLink]="w.href">{{ w.location }}</a></span>
         <span class="wm__row-state">
-          @if (workReady) { Ready for the next swing } @else { Recovering · {{ workCountdown }} }
+          @if (workReady) { {{ t('works.ready') }} } @else { {{ t('works.recovering', { time: workCountdown }) }} }
         </span>
       </li>
     }

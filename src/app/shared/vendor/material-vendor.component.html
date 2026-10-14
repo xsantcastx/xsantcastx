@@ -1,99 +1,79 @@
-<!-- Economy v3: a buyback counter. First view, by the owner's station rule:
-     one short hint, the board, one big action that names what it does and
-     what it pays. Everything else is behind Details. -->
-<section class="mv" [class.mv--in-world]="inWorld" [attr.aria-labelledby]="inWorld ? null : 'mv-title'" [attr.aria-label]="inWorld ? 'Material Vendor' : null">
-  <header class="mv-head">
-    @if (!inWorld) { <h1 id="mv-title" class="mv-title">Material Vendor</h1> }
-    <p class="mv-purse">
-      @if (goldArt) { <img [src]="goldArt.src" alt="" width="28" height="28" decoding="async"> }
-      <b class="mv-purse__gold">{{ fmt(gold) }}</b> <span class="mv-sr">Gold</span>
+<!-- Material Vendor on the station kit: list of what the counter buys →
+     the selected material → [− n +] Sell for N Gold / Sell all ×N.
+     Everything else (source, recipes, quick amounts, last sale) is in Details. -->
+<app-station-shell class="mv" [class.mv--in-world]="inWorld"
+                   [title]="t('vendor.title')"
+                   [showTitle]="!inWorld"
+                   [purpose]="t('vendor.hint')"
+                   [detailsHint]="t('vendor.detailsHint')"
+                   [(detailsOpen)]="detailsOpen">
+
+  <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
+
+  <div stationHero class="mv-hero">
+    @if (error) { <p class="mv-why" role="alert">{{ error }}</p> }
+
+    <app-reward-pop [reward]="reward" (dismissed)="reward = null" />
+
+    <app-station-journal>
+      <app-journal-list journalList [rows]="rows" [selected]="selectedId"
+                        [label]="t('vendor.list')" (pick)="select($event)" />
+
+      <div journalDetail class="mv-detail">
+        <app-detail-head [art]="selectedArt"
+                         [name]="selected.name"
+                         [line]="t('vendor.sellLine', { name: selected.name, price: fmt(selected.listing.price) })" />
+
+        <p class="mv-hint">
+          @if (wouldShort; as need) {
+            {{ t('vendor.wouldShort', { n: quantity, recipe: need.recipeName, need: need.need }) }}
+          } @else if (selected.held < 1) {
+            {{ t('vendor.holdNone', { name: selected.name }) }}
+          } @else {
+            {{ t('vendor.youHold', { n: selected.held }) }}
+          }
+        </p>
+
+        <app-action-button
+          [label]="t('vendor.sell', { n: fmt(total) })"
+          [costs]="unitCosts"
+          [pending]="!hydrated"
+          [stepper]="true"
+          [quantity]="quantity"
+          (quantityChange)="setQuantity($event)"
+          [stepMax]="maxQty"
+          [allCount]="allCount"
+          [allLabel]="allCount > 1 ? t('vendor.sellAll') : null"
+          (act)="sellN($event)"
+          (actAll)="sellN($event)"
+          (refused)="announce = $event" />
+      </div>
+    </app-station-journal>
+  </div>
+
+  <div stationDetails class="mv-details">
+    <p class="mv-details__meta">
+      {{ t('vendor.meta', { name: selected.name, price: fmt(selected.listing.price), pct: buybackPercent, worth: fmt(selected.listing.worth) }) }}
+      @if (selected.listing.source) { {{ t('vendor.foundOn', { source: sourceText(selected.listing.source) }) }} }
+      {{ selected.uses === 1 ? t('vendor.usedIn.one', { held: selected.held }) : t('vendor.usedIn.many', { held: selected.held, n: selected.uses }) }}
     </p>
-  </header>
-
-  <p class="mv-hint">The Vendor buys surplus at a low floor price. The market pays more.</p>
-
-  <div class="mv-shelf" role="group" aria-label="Pick a material to sell">
-    @for (card of cards; track card.listing.materialId; let i = $index) {
-      <button type="button" class="mv-card" [attr.data-material]="card.listing.materialId"
-              [class.is-picked]="card.listing.materialId === selectedId"
-              [class.is-dear]="card.held < 1"
-              [attr.aria-pressed]="card.listing.materialId === selectedId"
-              [attr.aria-label]="card.name + ', you hold ' + card.held + ', pays ' + fmt(card.listing.price) + ' Gold each'"
-              [attr.tabindex]="card.listing.materialId === selectedId ? 0 : -1"
-              (click)="select(card.listing.materialId)" (keydown)="shelfKey($event, i)">
-        <span class="mv-card__art" aria-hidden="true">
-          @if (card.art) { <img [src]="card.art" [attr.srcset]="card.srcset" sizes="56px" alt="" width="56" height="56" loading="lazy" decoding="async"> }
-          @if (card.held) { <em class="mv-card__held">{{ card.held }}</em> }
-        </span>
-        <span class="mv-card__name" aria-hidden="true">{{ card.name }}</span>
-        <span class="mv-card__price" aria-hidden="true">
-          @if (goldArt) { <img [src]="goldArt.src" alt="" width="14" height="14" decoding="async"> }
-          {{ fmt(card.listing.price) }}
-        </span>
-      </button>
+    @if (needs.length) {
+      <ul class="mv-needs" [attr.aria-label]="t('vendor.needsLabel')">
+        @for (need of needs; track need.recipeId) {
+          <li [class.is-covered]="need.short === 0">
+            <strong>{{ need.recipeName }}</strong> {{ t('vendor.takes', { n: need.need }) }}
+            <small>· {{ need.short > 0 ? t('vendor.short', { n: need.short }) : t('vendor.covered') }}</small>
+          </li>
+        }
+      </ul>
+    }
+    <div class="mv-chips">
+      <button type="button" class="mv-chip" (click)="sellSurplus()" [disabled]="surplus < 1">{{ t('vendor.surplus', { n: surplus }) }}</button>
+    </div>
+    @if (lastSold; as sold) {
+      <p class="mv-receipt">{{ t('vendor.last', { n: sold.quantity, name: sold.name, gold: fmt(sold.total) }) }}</p>
     }
   </div>
 
-  <section class="mv-counter" aria-label="Sell">
-    <p class="mv-hint">
-      @if (wouldShort; as need) {
-        Selling {{ quantity }} leaves too few for <strong>{{ need.recipeName }}</strong> (it takes {{ need.need }}).
-      } @else if (selected.held < 1) {
-        You hold no {{ selected.name }}.
-      } @else {
-        You hold <b>{{ selected.held }}</b>. Gold goes straight to your purse.
-      }
-    </p>
-
-    <div class="mv-row">
-      <div class="mv-qty__stepper" role="group" aria-label="How many">
-        <button type="button" class="mv-qty__step" (click)="step(-1)" [disabled]="quantity <= 1" aria-label="One fewer">-</button>
-        <input id="mv-qty-input" type="number" inputmode="numeric" min="1" [attr.max]="maxQty" [value]="quantity" aria-label="Quantity"
-               (change)="setQuantity($any($event.target).value)" (keydown.enter)="setQuantity($any($event.target).value)">
-        <button type="button" class="mv-qty__step" (click)="step(1)" [disabled]="quantity >= maxQty" aria-label="One more">+</button>
-      </div>
-      <button type="button" class="mv-buy__btn" [attr.aria-disabled]="!canSell" [class.is-off]="!canSell"
-              [attr.aria-describedby]="!canSell ? 'mv-why' : null" (click)="sell()">
-        Sell {{ quantity }} {{ selected.name }} · {{ fmt(total) }} Gold
-      </button>
-    </div>
-    @if (!canSell) { <p id="mv-why" class="mv-why">You hold {{ selected.held }}.</p> }
-    @if (error && canSell) { <p class="mv-why" role="alert">{{ error }}</p> }
-
-    @for (f of flash ? [flash] : []; track f.key) {
-      <p class="mv-flash" aria-hidden="true">+{{ fmt(f.total) }} Gold</p>
-    }
-
-    <button type="button" class="mv-details-toggle" (click)="detailsOpen = !detailsOpen" [attr.aria-expanded]="detailsOpen" aria-controls="mv-details">
-      {{ detailsOpen ? 'Hide details' : 'Details' }}
-    </button>
-    @if (detailsOpen) {
-      <div id="mv-details" class="mv-details">
-        <p class="mv-details__meta">
-          {{ selected.name }}: the Vendor pays {{ fmt(selected.listing.price) }} Gold each, {{ buybackPercent }}% of its {{ fmt(selected.listing.worth) }} Gold base worth.
-          @if (selected.listing.source) { Found on {{ selected.listing.source }}. }
-          You hold {{ selected.held }}. Used in {{ selected.uses }} {{ selected.uses === 1 ? 'recipe' : 'recipes' }}.
-        </p>
-        @if (needs.length) {
-          <ul class="mv-needs" aria-label="Recipes that use it">
-            @for (need of needs; track need.recipeId) {
-              <li [class.is-covered]="need.short === 0">
-                <strong>{{ need.recipeName }}</strong> takes {{ need.need }}
-                @if (need.short > 0) { <small>· {{ need.short }} short</small> } @else { <small>· covered</small> }
-              </li>
-            }
-          </ul>
-        }
-        <div class="mv-qty__chips">
-          <button type="button" class="mv-chip" (click)="sellSurplus()" [disabled]="surplus < 1">Only the surplus ({{ surplus }})</button>
-          <button type="button" class="mv-chip" (click)="all()" [disabled]="selected.held < 1">Everything I hold ({{ selected.held }})</button>
-        </div>
-        @if (lastSold; as sold) {
-          <p class="mv-receipt">Last sale: {{ sold.quantity }} {{ sold.name }} for {{ fmt(sold.total) }} Gold.</p>
-        }
-      </div>
-    }
-  </section>
-
   <p class="mv-sr" role="status" aria-live="polite">{{ announce }}</p>
-</section>
+</app-station-shell>

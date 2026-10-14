@@ -77,13 +77,13 @@
                  [style.--tone]="landing.tone"
                  [style.--tone-glow]="landing.toneGlow">
               <span class="fv__landing-flare" aria-hidden="true"></span>
-              <button type="button" class="fv__landing-close" (click)="dismissLanding()" aria-label="Dismiss">×</button>
+              <button type="button" class="fv__landing-close" (click)="dismissLanding()" [attr.aria-label]="t('sanctum.landing.dismiss')">×</button>
 
               <p class="fv__landing-eyebrow">
                 @if (landing.explorerName) {
-                  {{ landing.explorerName }} returned
+                  {{ t('sanctum.landing.returned', { name: landing.explorerName }) }}
                 } @else {
-                  Explorer returned
+                  {{ t('sanctum.landing.returnedAnon') }}
                 }
               </p>
               <p class="fv__landing-realm">
@@ -91,7 +91,7 @@
                 @if (landing.siteName) { {{ landing.siteName }}, {{ landing.realmName }} }
                 @else { {{ landing.realmName }} }
               </p>
-              <p class="fv__landing-gold">+{{ landing.gold }} Gold <span>+{{ landing.xp }} XP</span></p>
+              <p class="fv__landing-gold">{{ t('sanctum.landing.gold', { n: landing.gold }) }} <span>+{{ landing.xp }} XP</span></p>
 
               <!-- Their own ladder. Distinct from the Keeper's XP above it, and
                    labelled as such, because a player reading two XP numbers on one
@@ -99,11 +99,12 @@
               @if (landing.explorerXp > 0) {
                 <p class="fv__landing-xp" [class.fv__landing-xp--up]="landing.levelledUp">
                   <span aria-hidden="true">◈</span>
-                  {{ landing.explorerName || 'They' }} banked +{{ landing.explorerXp }} XP
+                  @if (landing.explorerName) { {{ t('sanctum.landing.banked', { name: landing.explorerName, n: landing.explorerXp }) }} }
+                  @else { {{ t('sanctum.landing.bankedThey', { n: landing.explorerXp }) }} }
                   @if (landing.levelledUp) {
-                    — <b>Level {{ landing.explorerLevel }}</b>
+                    — <b>{{ t('sanctum.landing.levelUp', { n: landing.explorerLevel }) }}</b>
                   } @else {
-                    · level {{ landing.explorerLevel }}
+                    · {{ t('sanctum.landing.level', { n: landing.explorerLevel }) }}
                   }
                 </p>
               }
@@ -115,9 +116,9 @@
                 <div class="fv__loot fv__loot--step" [style.--step]="0" [style.--tone]="landing.rune.color">
                   <span class="fv__loot-glyph" aria-hidden="true">{{ landing.rune.glyph }}</span>
                   <div>
-                    <p class="fv__loot-name">{{ landing.rune.name }} <span class="fv__loot-tier">{{ landing.rune.tierLabel }} rune</span></p>
+                    <p class="fv__loot-name">{{ landing.rune.name }} <span class="fv__loot-tier">{{ t('sanctum.landing.runeTier', { tier: tierName(landing.rune.tierLabel) }) }}</span></p>
                     <p class="fv__loot-lore">{{ landing.rune.lore }}</p>
-                    <a class="fv__loot-link" routerLink="/forge/runes">Craft with it at the Rune Forge →</a>
+                    <a class="fv__loot-link" routerLink="/forge/runes">{{ t('sanctum.landing.runeForge') }}</a>
                   </div>
                 </div>
               }
@@ -128,7 +129,7 @@
                     <li class="fv__loot-chip" [style.--tone]="extra.color">
                       <span aria-hidden="true">{{ extra.glyph }}</span>
                       {{ extra.name }}
-                      <b>{{ extra.tierLabel }}</b>
+                      <b>{{ tierName(extra.tierLabel) }}</b>
                     </li>
                   }
                 </ul>
@@ -138,14 +139,14 @@
                 <div class="fv__loot fv__loot--step" [style.--step]="1" [style.--tone]="item.color">
                   <span class="fv__loot-glyph" aria-hidden="true">⚔</span>
                   <div>
-                    <p class="fv__loot-name">{{ item.name }} <span class="fv__loot-tier">{{ item.rarityLabel }}</span></p>
+                    <p class="fv__loot-name">{{ item.name }} <span class="fv__loot-tier">{{ tierName(item.rarityLabel) }}</span></p>
                     @if (item.mods) {
                       <p class="fv__loot-mods">{{ item.mods }}</p>
                     }
                     @if (item.wearable) {
-                      <a class="fv__loot-link" routerLink="/character">Equip it in the loadout →</a>
+                      <a class="fv__loot-link" routerLink="/character">{{ t('sanctum.landing.equip') }}</a>
                     } @else {
-                      <a class="fv__loot-link" routerLink="/character">It is in your bag →</a>
+                      <a class="fv__loot-link" routerLink="/character">{{ t('sanctum.landing.inSatchel') }}</a>
                     }
                   </div>
                 </div>
@@ -157,7 +158,7 @@
                   <div>
                     <p class="fv__loot-name">{{ landing.scroll.subtitle }} <span class="fv__loot-tier">{{ landing.scroll.title }}</span></p>
                     <p class="fv__loot-lore">{{ landing.scroll.text }}</p>
-                    <a class="fv__loot-link" routerLink="/codex">Read it on the Codex wall →</a>
+                    <a class="fv__loot-link" routerLink="/codex">{{ t('sanctum.landing.codex') }}</a>
                   </div>
                 </div>
               }
@@ -169,7 +170,7 @@
                 <div class="fv__loot fv__loot--step fv__loot--mats" [style.--step]="3" [style.--tone]="'#c89868'">
                   <span class="fv__loot-glyph" aria-hidden="true">⛏</span>
                   <div>
-                    <p class="fv__loot-name">Freight from the seams</p>
+                    <p class="fv__loot-name">{{ t('sanctum.landing.freight') }}</p>
                     <ul class="fv__mats">
                       @for (mat of landing.materials; track mat.id) {
                         <li class="fv__mat">
@@ -180,7 +181,7 @@
                         </li>
                       }
                     </ul>
-                    <a class="fv__loot-link" routerLink="/character">It is all in your bag →</a>
+                    <a class="fv__loot-link" routerLink="/character">{{ t('sanctum.landing.allInSatchel') }}</a>
                   </div>
                 </div>
               }
@@ -201,7 +202,7 @@
                      [style.--tone-glow]="hire.glow">
                   <span class="fv__hire-orb" aria-hidden="true"></span>
                   <div class="fv__hire-body">
-                    <p class="fv__hire-eyebrow">Somebody came back with them</p>
+                    <p class="fv__hire-eyebrow">{{ t('sanctum.landing.hire') }}</p>
                     <p class="fv__hire-name">
                       {{ hire.name }} <span class="fv__hire-tier">{{ hire.rarityLabel }}</span>
                     </p>
@@ -214,7 +215,7 @@
               }
 
               @if (!landing.rune && !landing.scroll && !landing.items.length && !landing.materials.length && !landing.found) {
-                <p class="fv__landing-none">They came back with the Gold and a story nobody has written down.</p>
+                <p class="fv__landing-none">{{ t('sanctum.landing.none') }}</p>
               }
 
               <!-- Deploy Again.
@@ -225,14 +226,14 @@
                    existing path, so there is a single set of refusal rules. -->
               @if (freeSlots > 0) {
                 <button type="button" class="fv__again" (click)="deployAgain()">
-                  ↻ Send {{ landing.explorerName || 'them' }} back
-                  @if (landing.siteName) { to {{ landing.siteName }} }
+                  @if (landing.siteName) { {{ t('sanctum.landing.againTo', { who: landing.explorerName || t('sanctum.landing.them'), site: landing.siteName }) }} }
+                  @else { {{ t('sanctum.landing.again', { who: landing.explorerName || t('sanctum.landing.them') }) }} }
                 </button>
               }
 
               @if (landingsQueued > 0) {
                 <button type="button" class="fv__landing-next" (click)="dismissLanding()">
-                  {{ landingsQueued }} more {{ landingsQueued === 1 ? 'explorer' : 'explorers' }} came home →
+                  {{ t(landingsQueued === 1 ? 'sanctum.landing.more.one' : 'sanctum.landing.more.many', { n: landingsQueued }) }}
                 </button>
               }
             </div>
@@ -273,10 +274,10 @@
                    justify it. See `canOfferNotifications`. -->
               @if (canOfferNotifications) {
                 <button type="button" class="fv__notify" (click)="enableNotifications()">
-                  🔔 Call me when it lands
+                  🔔 {{ t('sanctum.notify.ask') }}
                 </button>
               } @else if (notificationsOn && pickedMissionOption?.deep) {
-                <p class="fv__notify-on">🔔 The realms will call when this one lands.</p>
+                <p class="fv__notify-on">🔔 {{ t('sanctum.notify.on') }}</p>
               }
             </div>
           </app-station-journal>
@@ -302,21 +303,21 @@
                   <span class="fv__mission-copy">
                     <b>@if (m.site) { {{ m.site.name }} } @else { {{ m.realmName }} }</b>
                     <span class="fv__mission-who">
-                      {{ m.missionName }}@if (m.site) { · {{ m.realmName }} }@if (m.explorerName) { · {{ m.explorerName }} }@if (m.explorerLevel > 1) { <span class="fv__mission-level">Lv {{ m.explorerLevel }}</span> }
+                      {{ m.missionName }}@if (m.site) { · {{ m.realmName }} }@if (m.explorerName) { · {{ m.explorerName }} }@if (m.explorerLevel > 1) { <span class="fv__mission-level">{{ t('sanctum.mission.level', { n: m.explorerLevel }) }}</span> }
                     </span>
                     <span class="fv__mission-bar"
                           role="progressbar"
                           [attr.aria-valuenow]="m.percent"
                           aria-valuemin="0"
                           aria-valuemax="100"
-                          [attr.aria-label]="m.missionName + ' in ' + m.realmName">
+                          [attr.aria-label]="t('sanctum.mission.in', { mission: m.missionName, realm: m.realmName })">
                       <span class="fv__mission-fill"></span>
                     </span>
                     <span class="fv__mission-time">
                       @if (m.done) {
-                        Arriving now…
+                        {{ t('sanctum.mission.arriving') }}
                       } @else {
-                        {{ m.countdown }} left@if (m.eta) { · home {{ m.eta }} }
+                        @if (m.eta) { {{ t('sanctum.mission.leftEta', { t: m.countdown, eta: m.eta }) }} } @else { {{ t('sanctum.mission.left', { t: m.countdown }) }} }
                       }
                     </span>
 
@@ -347,8 +348,8 @@
                   </span>
 
                   <button type="button" class="fv__recall" (click)="recall(m.id)"
-                          [attr.aria-label]="'Recall the explorer in ' + m.realmName">
-                    Recall
+                          [attr.aria-label]="t('sanctum.recallAria', { realm: m.realmName })">
+                    {{ t('sanctum.recall') }}
                   </button>
                 </li>
               }
@@ -365,14 +366,14 @@
           <div class="fv__stage fv__stage--tab">
           <!-- ─── LEFT: forge activity ──────────────────────────────────────────── -->
           <section class="fv__col fv__col--forge" aria-labelledby="fv-forge-title">
-            <h2 class="fv__col-title" id="fv-forge-title">Forge Activity</h2>
+            <h2 class="fv__col-title" id="fv-forge-title">{{ t('sanctum.forge.title') }}</h2>
 
             <div class="fv__rate">
-              <p class="fv__rate-num" [attr.aria-label]="perSecondExact + ' Gold per second'">
-                {{ perSecond }}<span class="fv__rate-unit">/sec</span>
+              <p class="fv__rate-num" [attr.aria-label]="t('sanctum.perSecAria', { n: perSecondExact })">
+                {{ perSecond }}<span class="fv__rate-unit">{{ t('sanctum.perSec') }}</span>
               </p>
               <p class="fv__rate-foot">
-                {{ gold }} Gold held · {{ lifetime }} earned all-time
+                {{ t('sanctum.forge.held', { gold: gold, life: lifetime }) }}
               </p>
             </div>
 
@@ -380,17 +381,17 @@
                  stands down while this is mounted — see InlineFlameService. -->
             <div class="fv__flame">
               <app-forge-flame [inline]="true"></app-forge-flame>
-              <p class="fv__flame-note">{{ perClick }} Gold a strike</p>
+              <p class="fv__flame-note">{{ t('sanctum.forge.perStrike', { n: perClick }) }}</p>
             </div>
 
             @if (snap.autoPerSecond > 0) {
               <p class="fv__auto">
                 <span aria-hidden="true">⚙</span>
-                Automatons: {{ autoRate }} {{ snap.autoPerSecond === 1 ? 'strike' : 'strikes' }}/sec
+                {{ t(snap.autoPerSecond === 1 ? 'sanctum.forge.autoOne' : 'sanctum.forge.autoMany', { rate: autoRate }) }}
               </p>
             }
 
-            <h3 class="fv__sub">Upgrades held</h3>
+            <h3 class="fv__sub">{{ t('sanctum.forge.upgrades') }}</h3>
             @if (ownedUpgrades.length) {
               <ul class="fv__ladder">
                 @for (row of ownedUpgrades; track row.id) {
@@ -406,13 +407,12 @@
               </ul>
             } @else {
               <p class="fv__empty">
-                Nothing but the bare forge yet. The <a routerLink="/market">Market</a> sells the first
-                bellows for 50 Gold.
+                {{ t('sanctum.forge.emptyPre') }} <a routerLink="/market">{{ t('sanctum.forge.market') }}</a> {{ t('sanctum.forge.emptyPost') }}
               </p>
             }
 
             @if (ownedAutomatons.length) {
-              <h3 class="fv__sub">Automatons</h3>
+              <h3 class="fv__sub">{{ t('sanctum.forge.automatons') }}</h3>
               <ul class="fv__ladder">
                 @for (row of ownedAutomatons; track row.id) {
                   <li class="fv__ladder-row">
@@ -430,7 +430,7 @@
 
           <!-- ─── CENTRE: the Keeper ────────────────────────────────────────────── -->
           <section class="fv__col fv__col--keeper" aria-labelledby="fv-keeper-title">
-            <h2 class="fv__col-title fv__col-title--sr" id="fv-keeper-title">The Forge Keeper</h2>
+            <h2 class="fv__col-title fv__col-title--sr" id="fv-keeper-title">{{ t('sanctum.keeper.title') }}</h2>
 
             <div class="fv__keeper">
               <span class="fv__keeper-aura" aria-hidden="true"></span>
@@ -438,7 +438,7 @@
 
               <img class="fv__keeper-sigil"
                    [src]="rankSigil"
-                   [alt]="'Rank ' + rankLevel + ' sigil: ' + rankTitle"
+                   [alt]="t('sanctum.keeper.sigil', { n: rankLevel, title: rankTitle })"
                    width="128" height="128"
                    decoding="async" draggable="false">
 
@@ -457,7 +457,7 @@
             </div>
 
             <p class="fv__rank">
-              <b class="fv__rank-lv">Rank {{ rankLevel }}</b>
+              <b class="fv__rank-lv">{{ t('sanctum.keeper.rank', { n: rankLevel }) }}</b>
               <span class="fv__rank-title">{{ rankTitle }}</span>
             </p>
 
@@ -467,23 +467,23 @@
               </span>
               <span class="fv__xp-note">
                 @if (xpSnap.next) {
-                  {{ xpSnap.toNext }} XP to {{ xpSnap.next.title }}
+                  {{ t('sanctum.keeper.xpTo', { n: xpSnap.toNext, title: xpSnap.next.title }) }}
                 } @else {
-                  The ladder is finished. Nothing above this.
+                  {{ t('sanctum.keeper.done') }}
                 }
               </span>
             </div>
 
             <p class="fv__energy">
-              <span class="fv__energy-a">{{ xpSnap.aether }} Aether</span>
+              <span class="fv__energy-a">{{ t('sanctum.keeper.aether', { n: xpSnap.aether }) }}</span>
               <span class="fv__energy-sep" aria-hidden="true">·</span>
-              <span class="fv__energy-n">{{ xpSnap.nox }} Nox</span>
+              <span class="fv__energy-n">{{ t('sanctum.keeper.nox', { n: xpSnap.nox }) }}</span>
             </p>
 
             @if (!worn.length) {
               <p class="fv__empty fv__empty--centre">
-                The Keeper carries nothing yet. Everything bought in the
-                <a routerLink="/market">Market</a> shows up here.
+                {{ t('sanctum.keeper.emptyPre') }}
+                <a routerLink="/market">{{ t('sanctum.forge.market') }}</a> {{ t('sanctum.keeper.emptyPost') }}
               </p>
             }
 
@@ -494,11 +494,11 @@
               <button type="button" class="fv__trader" (click)="takeTrade()">
                 <span class="fv__trader-glyph" aria-hidden="true">✨</span>
                 <span class="fv__trader-copy">
-                  <b>A golden spark lands on the forge</b>
+                  <b>{{ t('sanctum.spark.title') }}</b>
                   @if (sparkKind === 'frenzy') {
-                    <span>Catch it: Forge Frenzy, five times the Gold for a minute. Going soon.</span>
+                    <span>{{ t('sanctum.spark.frenzy') }}</span>
                   } @else {
-                    <span>Catch it for about {{ traderGold | number }} Gold. Going soon.</span>
+                    <span>{{ t('sanctum.spark.gold', { n: (traderGold | number) ?? 0 }) }}</span>
                   }
                 </span>
               </button>
@@ -509,7 +509,7 @@
         }
         @case ('cast') {
           <section class="fv__roster" aria-labelledby="fv-roster-title">
-            <h2 class="fv__col-title fv__col-title--wide" id="fv-roster-title">The Cast</h2>
+            <h2 class="fv__col-title fv__col-title--wide" id="fv-roster-title">{{ t('sanctum.cast.title') }}</h2>
             <app-explorer-roster-panel />
           </section>
 
@@ -528,9 +528,9 @@
         class="fv__hum"
         (click)="toggleHum()"
         [attr.aria-pressed]="humming"
-        [attr.aria-label]="humming ? 'Mute the forge hum' : 'Play the forge hum'">
+        [attr.aria-label]="humming ? t('sanctum.hum.mute') : t('sanctum.hum.play')">
         <span aria-hidden="true">{{ humming ? '🔊' : '🔇' }}</span>
-        <span class="fv__hum-label">{{ humming ? 'Hum on' : 'Hum off' }}</span>
+        <span class="fv__hum-label">{{ humming ? t('sanctum.hum.on') : t('sanctum.hum.off') }}</span>
       </button>
 
       <!--
@@ -545,54 +545,53 @@
       -->
       <div class="fv__glance" role="list">
         <a class="fv__glance-cell" routerLink="/market" role="listitem">
-          <span class="fv__glance-label">Income</span>
-          <b class="fv__glance-value">{{ perSecond }}<span>/sec</span></b>
-          <span class="fv__glance-note">{{ gold }} Gold held</span>
+          <span class="fv__glance-label">{{ t('sanctum.glance.income') }}</span>
+          <b class="fv__glance-value">{{ perSecond }}<span>{{ t('sanctum.perSec') }}</span></b>
+          <span class="fv__glance-note">{{ t('sanctum.glance.goldHeld', { n: gold }) }}</span>
         </a>
 
         <div class="fv__glance-cell" role="listitem"
              [style.--realm]="soonestMission?.realmColor || 'var(--keeper)'">
-          <span class="fv__glance-label">Expeditions</span>
+          <span class="fv__glance-label">{{ t('sanctum.glance.expeditions') }}</span>
           @if (soonestMission; as next) {
             <b class="fv__glance-value fv__glance-value--realm">
-              @if (next.done) { Arriving } @else { {{ next.countdown }} }
+              @if (next.done) { {{ t('sanctum.glance.arriving') }} } @else { {{ next.countdown }} }
             </b>
             <span class="fv__glance-note">
-              {{ activeCount }} out · next home from {{ next.realmName }}
+              {{ t('sanctum.glance.outNext', { n: activeCount, realm: next.realmName }) }}
             </span>
           } @else {
             <b class="fv__glance-value fv__glance-value--idle">—</b>
             <span class="fv__glance-note">
-              {{ freeSlots }} {{ freeSlots === 1 ? 'explorer' : 'explorers' }} idle
+              {{ t(freeSlots === 1 ? 'sanctum.glance.idleOne' : 'sanctum.glance.idleMany', { n: freeSlots }) }}
             </span>
           }
         </div>
 
         <a class="fv__glance-cell" routerLink="/character" role="listitem">
-          <span class="fv__glance-label">Equipped</span>
+          <span class="fv__glance-label">{{ t('sanctum.glance.equipped') }}</span>
           <b class="fv__glance-value">{{ equippedCount }}<span>/8</span></b>
           <span class="fv__glance-note">
             @if (equippedMods.length) {
               {{ equippedMods.join(' · ') }}
             } @else {
-              nothing worn yet
+              {{ t('sanctum.glance.nothing') }}
             }
           </span>
         </a>
 
         <a class="fv__glance-cell" routerLink="/character" role="listitem">
-          <span class="fv__glance-label">Bag</span>
+          <span class="fv__glance-label">{{ t('sanctum.glance.satchel') }}</span>
           <b class="fv__glance-value">{{ bagCount }}</b>
           <span class="fv__glance-note">
-            {{ runeCount }} {{ runeCount === 1 ? 'rune' : 'runes' }} ·
-            {{ scrollCount }} {{ scrollCount === 1 ? 'fragment' : 'fragments' }} recovered
+            {{ t('sanctum.glance.finds', { runes: t(runeCount === 1 ? 'sanctum.rune.one' : 'sanctum.rune.many', { n: runeCount }), frags: t(scrollCount === 1 ? 'sanctum.fragment.one' : 'sanctum.fragment.many', { n: scrollCount }) }) }}
           </span>
         </a>
       </div>
 
 
       <section class="fv-panel" aria-labelledby="fv-mission-label">
-        <p class="fv__dispatch-label" id="fv-mission-label">For</p>
+        <p class="fv__dispatch-label" id="fv-mission-label">{{ t('sanctum.for') }}</p>
 
         <!-- Six rungs, each louder than the last.
              `--drama` is the only thing that differs between them in CSS: one
@@ -633,7 +632,7 @@
                 } @else if (o.cost) {
                   <span class="fv__length-cost">◆ {{ o.cost }}</span>
                 } @else {
-                  <span class="fv__length-cost fv__length-cost--free">free</span>
+                  <span class="fv__length-cost fv__length-cost--free">{{ t('sanctum.free') }}</span>
                 }
               </button>
             </li>
@@ -650,7 +649,7 @@
                that makes the choice a choice. -->
           <p class="fv__realm-note" [style.--realm]="pickedRealmDef.color">
             <b>{{ pickedRealmDef.name }}</b> — {{ realmSpecialty(pickedRealm) }}
-            <span class="fv__realm-mult">{{ pickedRealmRuneMult }} rune rate</span>
+            <span class="fv__realm-mult">{{ t('sanctum.rate', { n: pickedRealmRuneMult }) }}</span>
           </p>
 
           <!-- The realm's own freight. Added when the deep tiers started paying
@@ -679,9 +678,9 @@
       </section>
 
       @if (freeSlots > 0) {
-        <section class="fv-panel fv__dispatch" aria-label="Who goes">
+        <section class="fv-panel fv__dispatch" [attr.aria-label]="t('sanctum.who.aria')">
           @if (idleExplorers.length > 1) {
-            <p class="fv__dispatch-label" id="fv-who-label">Send</p>
+            <p class="fv__dispatch-label" id="fv-who-label">{{ t('sanctum.who.send') }}</p>
             <ul class="fv__whos" role="radiogroup" aria-labelledby="fv-who-label">
               <li>
                 <button type="button" class="fv__who"
@@ -689,7 +688,7 @@
                         [attr.aria-checked]="!pickedExplorer"
                         [class.fv__who--on]="!pickedExplorer"
                         (click)="pickExplorer('')">
-                  <span class="fv__who-name">Whoever is best</span>
+                  <span class="fv__who-name">{{ t('sanctum.who.best') }}</span>
                 </button>
               </li>
               @for (w of idleExplorers; track w.id) {
@@ -706,7 +705,7 @@
                     <span class="fv__who-name">{{ w.name }}</span>
                     <!-- The one fact that decides the click. -->
                     @if (w.athome) {
-                      <span class="fv__who-home" title="This is their realm">at home</span>
+                      <span class="fv__who-home" [attr.title]="t('sanctum.who.homeTitle')">{{ t('sanctum.who.home') }}</span>
                     }
                     @if (w.block) {
                       <span class="fv__who-block">🔒</span>
@@ -718,20 +717,20 @@
           }
 
           <p class="fv__dispatch-foot">
-            {{ freeSlots }} of {{ slots }} {{ slots === 1 ? 'explorer' : 'explorers' }} free.
+            {{ t(slots === 1 ? 'sanctum.who.footOne' : 'sanctum.who.footMany', { free: freeSlots, slots: slots }) }}
             @if (slots < maxSlots) {
-              <a routerLink="/market">Hire another</a>.
+              <a routerLink="/market">{{ t('sanctum.who.hire') }}</a>.
             }
           </p>
         </section>
       }
 
       <section class="fv-panel" aria-labelledby="fv-exp-title">
-        <h2 class="fv__col-title" id="fv-exp-title">Expeditions</h2>
+        <h2 class="fv__col-title" id="fv-exp-title">{{ t('sanctum.exp.title') }}</h2>
       <p class="fv__collection">
-        <span>🜂 {{ runeCount }} {{ runeCount === 1 ? 'rune' : 'runes' }}</span>
-        <span>📜 {{ scrollCount }} {{ scrollCount === 1 ? 'fragment' : 'fragments' }}</span>
-        <span>◈ {{ goldRecovered }} recovered</span>
+        <span>🜂 {{ t(runeCount === 1 ? 'sanctum.rune.one' : 'sanctum.rune.many', { n: runeCount }) }}</span>
+        <span>📜 {{ t(scrollCount === 1 ? 'sanctum.fragment.one' : 'sanctum.fragment.many', { n: scrollCount }) }}</span>
+        <span>◈ {{ t('sanctum.exp.recovered', { n: goldRecovered }) }}</span>
       </p>
 
       <!--
@@ -744,38 +743,38 @@
         been dismissed used to be the only record that anything happened.
       -->
       @if (history.length) {
-        <h3 class="fv__sub">Last returns</h3>
+        <h3 class="fv__sub">{{ t('sanctum.exp.last') }}</h3>
         <ul class="fv__log">
           @for (row of history; track row.id) {
             <li class="fv__log-row" [style.--realm]="row.realmColor">
               <span class="fv__log-realm">{{ row.realmName }}</span>
               <span class="fv__log-body">
                 <span class="fv__log-line">
-                  <b>+{{ row.gold }}</b> Gold
+                  <b>{{ t('sanctum.exp.gold', { n: row.gold }) }}</b>
                   @if (row.explorerName) { · {{ row.explorerName }} }
                 </span>
                 @if (row.runes.length || row.scrollFound || row.itemCount || row.materialCount) {
                   <span class="fv__log-finds">
                     @for (rune of row.runes; track rune.key) {
                       <span class="fv__log-find" [style.--tone]="rune.color"
-                            [attr.title]="rune.name + ' rune'">
+                            [attr.title]="t('sanctum.exp.runeTitle', { name: rune.name })">
                         <span aria-hidden="true">{{ rune.glyph }}</span>{{ rune.name }}
                       </span>
                     }
                     @if (row.scrollFound) {
-                      <span class="fv__log-find" style="--tone: #c89868" title="A Codex fragment">
-                        <span aria-hidden="true">📜</span>fragment
+                      <span class="fv__log-find" style="--tone: #c89868" [attr.title]="t('sanctum.exp.fragmentTitle')">
+                        <span aria-hidden="true">📜</span>{{ t('sanctum.exp.fragment') }}
                       </span>
                     }
                     @if (row.itemCount) {
                       <span class="fv__log-find" style="--tone: #7FD5A3"
-                            [attr.title]="row.itemCount + ' item(s) carried home'">
+                            [attr.title]="t('sanctum.exp.items', { n: row.itemCount })">
                         <span aria-hidden="true">⚔</span>{{ row.itemCount }}
                       </span>
                     }
                     @if (row.materialCount) {
                       <span class="fv__log-find" style="--tone: #c89868"
-                            [attr.title]="row.materialCount + ' materials hauled back'">
+                            [attr.title]="t('sanctum.exp.materials', { n: row.materialCount })">
                         <span aria-hidden="true">⛏</span>{{ row.materialCount }}
                       </span>
                     }
@@ -796,9 +795,9 @@
            subject is the Gold economy: the XP quests below it are the reason to
            walk the tool halls, and the reason to stand *here* is the ladder that
            pays in the currency the Flame mints. -->
-      <app-challenge-panel [compact]="true" heading="Contracts"></app-challenge-panel>
+      <app-challenge-panel [compact]="true" [heading]="t('sanctum.quests.contracts')"></app-challenge-panel>
 
-      <h2 class="fv__col-title" id="fv-quest-title">Quests</h2>
+      <h2 class="fv__col-title" id="fv-quest-title">{{ t('sanctum.quests.title') }}</h2>
 
       @if (openQuests.length) {
         <ul class="fv__quests">
@@ -813,10 +812,10 @@
                 <span>{{ q.progress }}%</span>
                 @if (q.status === 'completed') {
                   <button type="button" class="fv__claim" (click)="claim(q)">
-                    Claim {{ q.rewards.xp }} XP
+                    {{ t('sanctum.quests.claim', { n: q.rewards.xp }) }}
                   </button>
                 } @else {
-                  <span class="fv__quest-xp">{{ q.rewards.xp }} XP</span>
+                  <span class="fv__quest-xp">{{ t('sanctum.quests.xp', { n: q.rewards.xp }) }}</span>
                 }
               </p>
             </li>
@@ -824,15 +823,14 @@
         </ul>
       } @else {
         <p class="fv__empty">
-          Every quest on the board is claimed. The next three roll at midnight —
-          the <a routerLink="/world/quests">full board</a> has the weeklies and epics.
+          {{ t('sanctum.quests.emptyPre') }} <a routerLink="/world/quests">{{ t('sanctum.quests.board') }}</a> {{ t('sanctum.quests.emptyPost') }}
         </p>
       }
 
       </section>
 
       <section class="fv__feed" aria-labelledby="fv-feed-title">
-        <h2 class="fv__col-title" id="fv-feed-title">Recent drops</h2>
+        <h2 class="fv__col-title" id="fv-feed-title">{{ t('sanctum.feed.title') }}</h2>
 
         @if (feed.length) {
           <ul class="fv__feed-list">
@@ -845,21 +843,21 @@
           </ul>
         } @else {
           <p class="fv__empty">
-            Nothing yet this session. Strike the flame, walk the world, or send someone into a realm.
+            {{ t('sanctum.feed.empty') }}
           </p>
         }
       </section>
 
 
       @if (!inWorld) {
-      <nav class="fv__links" aria-label="Elsewhere in the Godforge">
-        <span class="fv__links-label">Quick actions</span>
-        <a routerLink="/market" class="fv__link">The Market</a>
-        <a routerLink="/character" class="fv__link">Your Character</a>
-        <a routerLink="/world/quests" class="fv__link">Quest board</a>
-        <a routerLink="/forge/runes" class="fv__link">Rune Forge</a>
-        <a routerLink="/codex" class="fv__link">The Codex</a>
-        <a routerLink="/world" class="fv__link">The World</a>
+      <nav class="fv__links" [attr.aria-label]="t('sanctum.links.aria')">
+        <span class="fv__links-label">{{ t('sanctum.links.label') }}</span>
+        <a routerLink="/market" class="fv__link">{{ t('sanctum.links.market') }}</a>
+        <a routerLink="/character" class="fv__link">{{ t('sanctum.links.character') }}</a>
+        <a routerLink="/world/quests" class="fv__link">{{ t('sanctum.links.quests') }}</a>
+        <a routerLink="/forge/runes" class="fv__link">{{ t('sanctum.links.runeForge') }}</a>
+        <a routerLink="/codex" class="fv__link">{{ t('sanctum.links.codex') }}</a>
+        <a routerLink="/world" class="fv__link">{{ t('sanctum.links.world') }}</a>
       </nav>
       }
     </div>

@@ -81,7 +81,7 @@ import {
 } from '../rpg/item.model';
 import { CelebrationService } from '../celebration/celebration.service';
 import { SpotlightService } from '../collection/spotlight.service';
-import { RUNE_TIERS } from '../rune-forge/rune.model';
+import { RARITY_I18N, rarityKey } from '../rune-forge/rarity.i18n';
 import { revealTiming, type RevealSpeed, type RevealTiming } from './reveal-timing';
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
@@ -246,6 +246,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(GAMBLER_I18N);
+    this.i18n.register(RARITY_I18N);
     this.buildJournal();
   }
 
@@ -434,7 +435,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
   oddsFor(box: MysteryBox): OddsRow[] {
     return boxOdds(box).map(row => ({
       rarity: row.rarity,
-      label: RUNE_TIERS[row.rarity].label,
+      label: this.rarityLabel(row.rarity),
       color: rarityColor(row.rarity),
       // Sub-1% chances round to "<1%" rather than to "0%", which would read as
       // "this box cannot pay a Singular" — the exact opposite of the truth.
@@ -672,7 +673,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
   }
 
   get revealRarityLabel(): string {
-    return this.result ? RUNE_TIERS[this.result.item.rarity].label : '';
+    return this.result ? this.rarityLabel(this.result.item.rarity) : '';
   }
 
   /** The named object's passive line, when the box paid one out. */
@@ -766,7 +767,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
   }
 
   rarityColor(rarity: ItemRarity): string { return rarityColor(rarity); }
-  rarityLabel(rarity: ItemRarity): string { return RUNE_TIERS[rarity].label; }
+  rarityLabel(rarity: ItemRarity): string { return this.t(rarityKey(rarity)); }
   tagOf(item: GameItem): QualityTag { return qualityTagOf(item); }
   named(item: GameItem): boolean { return isUnique(item); }
   passiveOf(item: GameItem): string {
