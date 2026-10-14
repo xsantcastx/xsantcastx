@@ -13,6 +13,7 @@
  * grows per-creature rigs.
  */
 import { FLOOR } from '../../engine/engine.model';
+import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
@@ -55,9 +56,6 @@ const RINGS_WIDTH = 2700;
 const TERRACE_PLATFORMS: Platform[] = [
   { x: 330, y: 500, width: 170 }, { x: 1450, y: 470, width: 200 },
 ];
-const RING_PLATFORMS: Platform[] = [
-  { x: 520, y: 500, width: 200 }, { x: 980, y: 440, width: 220 }, { x: 1520, y: 500, width: 200 }, { x: 2060, y: 430, width: 200 },
-];
 
 /**
  * Gathering on the Rings: starlight sprigs on the first ring, star-iron
@@ -78,11 +76,13 @@ export const ORRERY_RINGS: HuntZoneDef = {
   name: 'Orrery Rings',
   background: 'bg-celestial',
   width: RINGS_WIDTH,
-  platforms: [{ x: 0, y: FLOOR, width: RINGS_WIDTH }, ...RING_PLATFORMS],
+  platforms: [{ x: 0, y: FLOOR, width: RINGS_WIDTH }],
+  // The high ground (world/heights.ts): trees, shelves, ruins and the summit route.
+  heights: HUNT_HEIGHTS['orrery-rings'],
   stations: [
     { id: 'passage', x: 110, label: 'RETURN TO THE ORRERY', kind: 'passage', to: 'celestial', arriveX: 1720, blurb: 'The ring walk back to Meridian Orrery.' },
   ],
-  monsters: [{ creature: 'ephemeris-leech', name: 'Ephemeris Leech', hp: 70, spawnXs: [1250, 1650, 2050, 2450] }],
+  monsters: [{ creature: 'ephemeris-leech', name: 'Ephemeris Leech', hp: 70, spawnXs: [1250, 1650, 2050, 2450] }, ...HUNT_HEIGHTS['orrery-rings'].perched],
   drops: ORRERY_DROPS,
   nodes: ORRERY_RING_NODES,
   spawnX: 240,

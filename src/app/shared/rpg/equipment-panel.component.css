@@ -23,7 +23,22 @@
   padding: 0;
 }
 /* The numbers the doll changes follow it (doll first — see the template). */
-.ld__stats-after { margin-top: 1rem; }
+.ld__more { margin-top: 1rem; border-top: 1px solid color-mix(in srgb, var(--gold-deep) 40%, transparent); }
+.ld__more-label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font: 600 11px Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.ld__more-label::-webkit-details-marker { display: none; }
+.ld__more-label::after { content: "+"; margin-left: auto; font-size: 16px; }
+.ld__more[open] .ld__more-label::after { content: "\2212"; }
+.ld__stats-after { margin-top: .5rem; }
 
 .ld__totals {
   display: flex;
@@ -126,6 +141,8 @@
   /* Lifts the near-black render off the panel without recolouring it. */
   filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.34)) contrast(1.06) brightness(1.1);
 }
+/* The player's own pixel Keeper (Make your Keeper): crisp pixels, no tone filter. */
+.ld__doll-art--pixel { image-rendering: pixelated; filter: drop-shadow(0 0 14px rgba(167, 139, 250, 0.3)); }
 .ld__overlay {
   position: absolute;
   object-fit: contain;

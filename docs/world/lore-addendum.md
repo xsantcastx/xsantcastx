@@ -1197,3 +1197,91 @@ streaks). All text: `shared/glim/glim-bond.i18n.ts`, EN + ES.
   Needle, Every Town, Leave It Blank (Act III: shown as still being written).
 - **Coming back** after two days or more: "There you are. The map kept; nothing
   moved while you were away." Never "we missed you".
+### The High Roads (surface height, 2026-10-14 — shipped, owner reviews in play)
+
+Every hunting ground got height: a tree, a rock shelf, a floating Godforge ruin,
+a rope bridge, a dead snag and a spire (`play/world/heights.ts`,
+`heights.i18n.ts`; EN + ES). The lore that gives them a reason:
+
+- **The Ridge Couriers.** Before the Waystones (Sera Quill's Meridian Compact,
+  world-and-cast §3), the realms' post went over the high ground on foot.
+  Couriers climbed what they could not go round and cached what they could not
+  carry. The Waystones made them unnecessary; most caches were never collected.
+  The **courier caches** on each shelf and mesa are theirs: once opened, nobody
+  restocks them ("Already opened. Nobody restocks the high road any more.").
+- **Courier carvings.** Road marks cut where a courier waited, one per realm, in
+  the realm's own answer to pressure (Bible: measure, temper, remember, conceal,
+  adapt): the Seamworks' "Road open. Rock warm. Keep climbing"; the Court's sun
+  with one ray missing (the missing dawn); the Corridors' two arrows that
+  disagree ("Both are true"); the Orrery's ring cut by a straight line; the
+  Thicket's leaf over a road mark, half grown over.
+- **The summit cairns.** Each realm's high road ends at a cairn; every courier
+  who reached it added a stone. The Keeper adds one and takes the realm's
+  title: Cinder, Dawn, Unrecorded, Meridian and Canopy **Ridgewalker**. The
+  Codex keeps them under "The High Roads". The Unrecorded Summit's stones carry
+  no names (Umbral conceals), and the Meridian Summit is the only place the
+  Orrery's rings line up for someone on foot ("The couriers knew it before the
+  Compact did").
+- **Hollis Fenn, Last Ridge Courier** (new person). Still walks the high roads,
+  one realm's mesa a day, keeping the old post ledger: "Post used to go over
+  the top. The Waystones are quicker. Quicker isn't the same as seen." Teaches:
+  the high roads and their caches (the meaning rule). Relationships: needles
+  Sera Quill ("Sera hates that a courier knew it first"), respects Rook Sable's
+  wish to keep the Corridors' road off the maps, and sides with Siv against
+  Kesh about the Thicket ("I say it's in the way").
+- **The look-out cairns.** A cairn with a pennant halfway up each route; from
+  it every find still waiting on that high road shows as a pale beam.
+
+## The Rift Gates and the Ink Deeps (2026-10-14) — shipped, owner reviews in play
+
+Owner: "inside the delves portals to other realms"; "the realms are like deeper delves or crazy". Code:
+`shared/delve/rift-gates.model.ts`, `play/engine/realm-gen.ts`, `play/engine/umbral.ts`.
+
+**Canon tie.** A Rift Gate is not a door to a sixth realm, nor to the Void (delve-and-beyond.md §1.2). It is a
+place where two undersides wear thin: the rock under the Infernal realm's towns and the rock under another
+realm's. Each gate stands where that realm's Echo colour will one day begin (§2.3). Four frames in every
+Delve, one per realm; older than the Delve, older than Kael. They shed **rift splinters** as they settle.
+A **Realm Sigil** (splinters, the realm's own material, a core that remembers heat) is how a Keeper becomes
+"someone the shadows already know" (Verrin, Game, level-15 line: a door in the Umbral that opens only for
+such a someone) — the gate keeps the sigil and stays open for that Keeper.
+
+**Three gates are still settling** (Luminous, Celestial, Verdant): they hum, they glow their realm's colour,
+Glim feels the other side but cannot see it. "One day."
+
+**The Ink Deeps** — the Umbral's underside. "The dark the light left behind when it went somewhere else"
+(Verrin). The rule it breaks: *the dark is unreliable*.
+- Ink-blind: Glim's light barely reaches past your hands; torches are how you push the dark back.
+- Unlit passages shift: drift-shale is rock that is only where it is while nobody looks. A torch pins it.
+- The ink tide rises and falls on its own clock; it never drowns, it blinds, and it puts braziers out.
+- Mirrored ceilings: ink polished by the tide; your reflection walks above you, a step behind.
+- Ink is heavier than water and never mixes with it.
+
+**Rook Sable's chalk** (Bible proposal, Veil Cartographer): Rook maps these tunnels; some routes are wrong on
+purpose. Field notes: "R.S. This way, if it is still this way." / "Do not map what you have not lit."
+
+**Creatures.** *Shadeling*: only moves where no light is; held in a torch's light it stands like a statue of
+itself, waiting for you to look away. *The Gloam Warden*: keeps the dark that was left when the light went
+somewhere else; "Light me, and I stand still. That is all I ask of anyone." Not cruel: it has kept the dark so
+long it no longer lets anything leave.
+
+**Items.** Rift Splinter ("warm on one face, cold on the other"); Umbral Sigil; Inkstone ("stone that drank so
+much ink it writes; the line is never quite straight"); Nightglass ("hold it to a torch and it shows you the
+torch going out"); Veil Lantern ("it does not shine brighter, it shines further, the way the dark does").
+
+**Verrin's chain.** *What the Light Leaves* (attune the gate, stand in the Ink Deeps) · *Ink and Glass*
+(10 Inkstone, 4 Nightglass; "now you know why I never sign anything") · *The Unlit Warden* (light the
+braziers, end it honestly; the Archivist: "Most things that guard a dark are asking for the same. We just
+never bring a torch.").
+
+Glim's telegraph lines (said once each) are in `play/world/rift.i18n.ts` (`play.rift.rule.*`).
+
+## The Glass of Becoming (shipped — owner reviews in play)
+
+Make your Keeper (`docs/handoff/make-your-keeper.md`). Every Keeper carries a
+sliver of the Archive's moon-mirror — the same glass Lune Coyne's Slate is cut
+from. Breathe on it and it shows "the face the realms will know you by, and lets
+you choose it again". A brand-new Keeper is handed it as they step into the world;
+a Keeper who never looked into it sees "The Glass of Becoming remembers a face you
+never chose." Two of the skin tones are not human ones: the Umbral lilac and the
+Verdant sap the realms leave on Keepers who have walked them long. Other Keepers
+seen at the Hearth each have their own face, read off the glass by their name.

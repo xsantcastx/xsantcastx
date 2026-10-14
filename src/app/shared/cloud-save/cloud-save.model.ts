@@ -45,13 +45,16 @@ import { mergeCrafting as mergeCraftingState } from '../crafting/crafting.model'
 import { mergeInfusionLedgers } from '../enchanting/infusion.model';
 import { mergeDelveSaves } from '../delve/delve-save.model';
 import { mergeRegionSlots, REGION_SLOT_KEYS } from '../delve/delve-region.model';
+import { RIFT_SLOT_KEYS } from '../delve/rift-gates.model';
 import { mergeDelveLore } from '../delve/delve-lore.model';
 import { mergeFishingSaves } from '../fishing/fishing-save';
 import { mergeGatherSaves } from '../skills/gather-save.model';
 import { mergeGamesLedgers } from '../games/play-ledger';
 import { mergeGlim } from '../glim/glim-save.model';
+import { mergeKeeperLook } from '../keeper-look/keeper-look.model';
 import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
+import { mergeHeights } from '../heights/heights-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -348,6 +351,13 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
   ...REGION_SLOT_KEYS.map((key, n): SyncedBlob => ({
     key, collection: 'progress', doc: `delve-r${n}`, label: `Ember Delve region ${n + 1}`, merge: mergeRegionSlots,
   })),
+  // The realm Delves behind the Rift Gates (rift-gates.model.ts): four region slots
+  // each (`progress/rift-<realm>-r0..3`, the same `progress/{docId}` rule), merged
+  // exactly as the Ember Delve's. Each realm's seed is derived from the Delve's, so a
+  // slot never takes another world's region. A realm not yet shipped writes nothing.
+  ...RIFT_SLOT_KEYS.map((key): SyncedBlob => ({
+    key, collection: 'progress', doc: key.replace('godforge-', ''), label: `Realm Delve region (${key.replace('godforge-rift-', '')})`, merge: mergeRegionSlots,
+  })),
   {
     key: 'godforge-delve-lore',
     collection: 'progress',
@@ -400,6 +410,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeGlim,
   },
   {
+    key: 'godforge-keeper-look',
+    collection: 'progress',
+    doc: 'keeper-look',
+    label: 'Your Keeper\'s look',
+    // `{ version, made, prompted, body, skin, hair, …, name, updatedAt }`: one
+    // choice made at the Glass of Becoming. The later edit wins whole (never a
+    // face nobody chose); made/prompted are kept if either side has them.
+    merge: mergeKeeperLook,
+  },
+  {
     key: 'godforge-story',
     collection: 'progress',
     doc: 'story',
@@ -421,6 +441,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // counted twice), counts take the higher, the later day's board wins.
     // Hand-written so junk ids are dropped. See bounty-save.model.ts.
     merge: mergeBounties,
+  },
+  {
+    key: 'godforge-heights',
+    collection: 'progress',
+    doc: 'heights',
+    label: 'The high roads',
+    // `{ version, found, titles }`: the high-ground finds used (cache receipts
+    // written before any pay) and the summit titles. Both only grow: a union.
+    // See heights-save.model.ts.
+    merge: mergeHeights,
   },
 ];
 

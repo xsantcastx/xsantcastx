@@ -457,6 +457,17 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'grown from thornroot and slag at the Crafting Bench' },
   { id: 'rift-anchor', rarity: 'rare', realm: 'infernal',
     hint: 'a Waystone Shard, ironwood and obsidian, once Kael has read the Four\'s marks' },
+  // The Rift Gates and the Ink Deeps, the Umbral's underside (rift-gates.model.ts).
+  { id: 'rift-splinter', rarity: 'rare', realm: 'infernal',
+    hint: 'cut from the frame of a Rift Gate deep in the Ember Delve (Pickaxe IV)' },
+  { id: 'umbral-sigil', rarity: 'epic', realm: 'umbral',
+    hint: 'made at the Crafting Bench from rift splinters, Umbral Ink and an emberheart core' },
+  { id: 'inkstone', rarity: 'uncommon', realm: 'umbral',
+    hint: 'veins in the Ink Deeps, behind the Umbral Rift Gate' },
+  { id: 'nightglass', rarity: 'rare', realm: 'umbral',
+    hint: 'veins in the Gloam Deep and the walls of shade dens, behind the Umbral Rift Gate' },
+  { id: 'veil-lantern', rarity: 'rare', realm: 'umbral',
+    hint: 'made at the Crafting Bench from inkstone and nightglass' },
   // Map v2's map tools (shared/delve/map-tools.model.ts).
   { id: 'broken-astral-compass', rarity: 'rare', realm: 'celestial',
     hint: 'the Board Herald\'s first bounty, on the Quest Board' },
@@ -565,6 +576,12 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'bark-rope': 'It unrolls down to the floor and not a hand further. The World-Root has always known where the ground is.',
   'thornroot-grapple': 'Throw it and it grows the rest of the way. It remembers where you aimed better than you do.',
   'rift-anchor': 'A four-point anchor around a Waystone Shard: a passage that holds only because both ends agree to.',
+  // The Rift Gates (lore-addendum.md, "The Rift Gates": shipped, owner reviews in play).
+  'rift-splinter': 'A gate\'s frame sheds these as the rift settles. Warm on one face, cold on the other.',
+  'umbral-sigil': 'A seal the Umbral side will recognise: frame, ink and a core that remembers heat. The gate keeps it.',
+  'inkstone': 'Stone that drank so much ink it writes. It leaves a line on anything it touches, and the line is never quite straight.',
+  'nightglass': 'Glass the dark made where no light ever fell. Hold it to a torch and it shows you the torch going out.',
+  'veil-lantern': 'A lantern behind a veil of nightglass: it does not shine brighter, it shines further, the way the dark does.',
   // Canon (item lore codex): "points toward the nearest fact omitted by the active model".
   'broken-astral-compass': 'It stopped pointing north the day the Godforge broke. Now it points at whatever the map was never told: the room no lantern has reached, the carving nobody copied.',
   // Canon: "a partial route that is legible only beside another keeper's incompatible observation".
@@ -793,6 +810,11 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'bark-rope': 'Bark Rope',
   'thornroot-grapple': 'Thornroot Grapple',
   'rift-anchor': 'Rift Anchor',
+  'rift-splinter': 'Rift Splinter',
+  'umbral-sigil': 'Umbral Sigil',
+  'inkstone': 'Inkstone',
+  'nightglass': 'Nightglass',
+  'veil-lantern': 'Veil Lantern',
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',
   'mirror-slate': 'Mirror Slate',

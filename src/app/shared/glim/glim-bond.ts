@@ -231,7 +231,7 @@ export const NOTICE_CELLS = 64;
  * the Lost Cabinets (ROADMAP #6) join this list when they exist — the hook is
  * the structure kind, nothing else changes.
  */
-export const GLIM_RARE_KINDS: readonly string[] = ['rift-shrine'];
+export const GLIM_RARE_KINDS: readonly string[] = ['rift-shrine', 'rift-gate'];
 /** The way home: said unasked when the shaft is this many cells away (walk + climb). */
 export const WAY_FAR_CELLS = 90;
 

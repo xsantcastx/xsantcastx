@@ -367,16 +367,36 @@ button:disabled { opacity: .4; cursor: default; }
   border: 1px dashed color-mix(in srgb, var(--adventure-hud-brass) 16.86%, transparent);
 }
 
-.book-head, .capacity, .belt, .slip { position: relative; flex: none; }
+.book-head, .book-detail, .belt, .slip { position: relative; flex: none; }
 
+/* One row: the name, how full it is, the one details fold, Close. */
 .book-head {
   display: flex;
-  justify-content: space-between;
-  align-items: end;
+  align-items: center;
   gap: 10px;
+  min-width: 0;
 }
 
-.book h2 { font-size: 28px; }
+.book h2 { flex: none; font-size: 24px; }
+
+.book-more {
+  flex: none;
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: 9px;
+  background: none;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--adventure-hud-brass) 26%, transparent);
+  color: var(--adventure-dialogue);
+}
+.book-more[aria-expanded="true"] { border-color: var(--adventure-ember); color: var(--adventure-beacon-text); }
+
+.book-detail {
+  display: grid;
+  gap: 6px;
+  max-height: 40%;
+  overflow: auto;
+}
 
 .book-close {
   background: none;
@@ -386,21 +406,15 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .capacity {
+  flex: 1;
   display: grid;
-  grid-template-columns: auto 1fr;
-  grid-template-rows: auto 4px;
-  column-gap: 10px;
-  row-gap: 6px;
-  align-items: baseline;
+  gap: 5px;
+  min-width: 0;
   margin: 0;
 }
 
-.capacity b {
-  font: 500 28px/1 var(--font-lore, Georgia, serif);
-  color: var(--adventure-beacon-text);
-}
-
-.capacity span, .belt-label {
+.capacity span {
+  white-space: nowrap;
   font: 600 9px Orbitron, sans-serif;
   letter-spacing: .16em;
   text-transform: uppercase;
@@ -408,9 +422,8 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .capacity i {
-  grid-column: 1 / -1;
   display: block;
-  height: 4px;
+  height: 3px;
   background: var(--adventure-hud-ink);
   box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
 }
@@ -422,7 +435,7 @@ button:disabled { opacity: .4; cursor: default; }
   background: linear-gradient(90deg, var(--adventure-hud-rust), var(--adventure-hud-gold) 88%, var(--adventure-hud-cream));
 }
 
-.capacity.full b, .capacity.full span { color: var(--adventure-ember); }
+.capacity.full span { color: var(--adventure-ember); }
 
 /* Satchel slots on the clasp ("23/40"), amber at the limit; a dot when Overflow holds things. */
 .clasp-count { margin-left: auto; padding-right: 8px; font: 600 10px Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-smoke); }
@@ -442,11 +455,45 @@ button:disabled { opacity: .4; cursor: default; }
   color: var(--adventure-dialogue);
 }
 
-.belt { display: grid; gap: 6px; }
+.belt { display: grid; justify-items: center; }
 
-.wells, .pockets {
+/* The paper doll: the worn places laid out as a body, not as a row of tabs. */
+.wells {
+  --cell: 58px;
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, var(--cell));
+  grid-auto-rows: var(--cell);
+  grid-template-areas:
+    "trinket head  ."
+    "weapon  chest off-hand"
+    "hands   legs  feet";
+  gap: 6px;
+  padding: 4px 18px;
+  /* A faint figure behind the centre column, so the places read as a body. */
+  background: radial-gradient(28% 46% at 50% 50%, color-mix(in srgb, var(--adventure-ember) 10%, transparent), transparent 70%);
+}
+.wells:has([data-slot="charm1"]) {
+  grid-template-areas:
+    "trinket head  charm1"
+    "weapon  chest off-hand"
+    "hands   legs  feet"
+    "charm2  .     charm3";
+}
+.wells [data-slot="weapon"] { grid-area: weapon; }
+.wells [data-slot="off-hand"] { grid-area: off-hand; }
+.wells [data-slot="head"] { grid-area: head; }
+.wells [data-slot="chest"] { grid-area: chest; }
+.wells [data-slot="hands"] { grid-area: hands; }
+.wells [data-slot="legs"] { grid-area: legs; }
+.wells [data-slot="feet"] { grid-area: feet; }
+.wells [data-slot="trinket"] { grid-area: trinket; }
+.wells [data-slot="charm1"] { grid-area: charm1; }
+.wells [data-slot="charm2"] { grid-area: charm2; }
+.wells [data-slot="charm3"] { grid-area: charm3; }
+
+.pockets {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
   gap: 6px;
 }
 
@@ -472,8 +519,23 @@ button:disabled { opacity: .4; cursor: default; }
   text-transform: none;
 }
 
-.book .well { height: 62px; }
+.book .well { height: var(--cell); }
+.book .well:not(.filled) { opacity: .62; }
+.book .well.filled::before {
+  content: "";
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 4px;
+  height: 2px;
+  background: var(--pip, var(--adventure-ember));
+}
 .book .pocket { aspect-ratio: 1; }
+.book .cell-empty {
+  aspect-ratio: 1;
+  border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 9%, transparent);
+  background: color-mix(in srgb, var(--adventure-hud-panel-deep) 55%, transparent);
+}
 
 .book .well em, .book .pocket em, .slip-art em {
   font: 600 8px/1.15 Orbitron, sans-serif;
@@ -554,9 +616,29 @@ button:disabled { opacity: .4; cursor: default; }
   grid-template-columns: 72px minmax(0, 1fr);
   gap: 10px 12px;
   align-items: start;
-  padding-top: 8px;
-  border-top: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 20.00%, transparent);
+  padding: 10px 10px 8px;
+  border: 1px solid color-mix(in srgb, var(--tone, var(--adventure-hud-brass)) 45%, transparent);
+  border-top: 2px solid var(--tone, var(--adventure-hud-brass));
+  background: var(--adventure-hud-panel-deep);
+  animation: slip-in .16s ease-out;
 }
+@keyframes slip-in { from { opacity: 0; transform: translateY(6px); } }
+.slip .realm-tag { color: var(--tone, var(--adventure-ember)); }
+.slip-x {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+  background: none;
+  box-shadow: none;
+  border-color: transparent;
+  color: var(--adventure-dialogue);
+}
+.slip-copy { padding-right: 34px; }
 
 .slip-art {
   width: 72px;
@@ -569,8 +651,8 @@ button:disabled { opacity: .4; cursor: default; }
 
 .slip h3 {
   margin: 0;
-  font: 500 26px/1 var(--font-lore, Georgia, serif);
-  color: var(--adventure-parchment);
+  font: 500 24px/1.05 var(--font-lore, Georgia, serif);
+  color: var(--tone, var(--adventure-parchment));
 }
 
 .slip-copy p { margin: 4px 0 0; }
@@ -591,7 +673,17 @@ button:disabled { opacity: .4; cursor: default; }
   color: var(--adventure-beacon-text);
 }
 
-.slip-actions { grid-column: 1 / -1; display: flex; gap: 8px; }
+.slip-actions { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; }
+.slip-actions .wear { flex: 1; }
+/* Secondary: a quiet text action beside the one primary button. */
+.slip-actions .to-vault {
+  background: none;
+  box-shadow: none;
+  border-color: transparent;
+  color: var(--adventure-dialogue);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 
 /* Wear-preview: what changes against the place it would take. Gains and losses
    carry their sign in the text, so colour is never the only channel. */
@@ -608,6 +700,7 @@ button:disabled { opacity: .4; cursor: default; }
 .slip .compare li.same { opacity: .45; }
 
 .book-stats { position: relative; flex: none; }
+@media (prefers-reduced-motion: reduce) { .slip { animation: none; } }
 
 .tally p {
   display: grid;
@@ -886,18 +979,13 @@ input::placeholder { color: var(--adventure-hud-muted); }
     padding: 12px 12px 10px;
     overflow: hidden;
   }
-  .wells {
-    grid-auto-flow: column;
-    grid-template-columns: none;
-    grid-auto-columns: 58px;
-    overflow-x: auto;
-  }
-  .book .well { height: 58px; }
-  .book .pocket { height: 78px; aspect-ratio: auto; }
+  .wells { --cell: 50px; gap: 5px; }
+  .pockets { grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); }
   .lining { flex: 1; min-height: 88px; overflow: auto; }
   .book ~ .keys { visibility: hidden; }
-  .book h2 { font-size: 22px; }
-  .capacity b { font-size: 22px; }
+  .book h2 { font-size: 20px; }
+  .book-more { min-height: 44px; }
+  .book-close { min-height: 44px; }
   .slip { grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding-top: 6px; }
   .slip-art { width: 56px; height: 56px; }
   .slip h3 { font-size: 20px; }
@@ -1070,6 +1158,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .place { inset: 10px; }
   .place-head h2 { font-size: 22px; }
+  /* A phone's panel already fills the screen: the full-page link and the Esc hint are noise. */
+  .place-full, .place-close kbd { display: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1463,8 +1553,12 @@ input::placeholder { color: var(--adventure-hud-muted); }
   min-width: 44px;
   padding: 0 16px;
   color: var(--adventure-dialogue);
-  border-color: color-mix(in srgb, var(--adventure-hud-brass) 55.00%, transparent);
+  /* Quiet: Glim's answers are the only framed buttons on the card. */
+  border-color: transparent;
   background: none;
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 @keyframes glim-in {
   from { opacity: 0; transform: translateY(-6px); }
@@ -1680,6 +1774,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
     --tb: clamp(44px, calc((100vw - 28px - (var(--tb-n) - 2) * 4px) / var(--tb-n)), 64px);
   }
   .stage--delve { --ctx-left: 206px; --move-n: 3; --tb-n: 7; }
+  .stage--heights { --move-n: 3; --tb-n: 6; }
   .stage--guide { --guide-h: 54px; }
   .stage:not(.hearth-shut) { --dock-h: 176px; }
 
@@ -2180,6 +2275,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 /* ── Fishing and liquids (Phase 6) ─────────────────────────────────────── */
 .meter.breath i { background: var(--adventure-hud-water); }
+/* The Ink Deeps' tide: violet. */
+.meter.tide i { background: var(--realm-umbral); }
 .meter.ward i { background: var(--adventure-hud-ember); }
 .reel-host {
   position: absolute;
@@ -2293,6 +2390,10 @@ input::placeholder { color: var(--adventure-hud-muted); }
     0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
 }
 .place--slate .place-head { border-bottom-color: color-mix(in srgb, var(--gold) 30%, transparent); }
+/* Desktop: the home face is a few big choices, so the bezel hugs them instead of filling the screen. */
+@media (min-width: 901px) {
+  .place--slate:has(.sl[data-face="home"]) { left: max(16px, calc(50% - 320px)); right: max(16px, calc(50% - 320px)); bottom: auto; max-height: calc(100% - 80px); }
+}
 
 /* Phones: the Slate is a full-screen sheet (the bands under it are inert while it is
    open; Close and Escape stay in its own head), clear of the notch and the home bar. */
@@ -2342,12 +2443,30 @@ input::placeholder { color: var(--adventure-hud-muted); }
   text-align: left;
   border: 1px solid var(--adventure-hud-shadow);
   background: var(--adventure-hud-panel-solid);
-  color: var(--adventure-dialogue);
-  font: 600 12px Orbitron, sans-serif;
-  letter-spacing: .06em;
+  color: var(--adventure-parchment);
+  /* A place name reads as a place, not a shouted label. */
+  font: 500 17px/1.25 var(--font-lore, Georgia, serif);
+  letter-spacing: 0;
+  text-transform: none;
 }
-.anchor-row--home { border-left: 2px solid var(--adventure-hud-brass); }
+.anchor-row { min-height: 52px; }
+.anchor-row--home { border-left: 2px solid var(--adventure-hud-brass); color: var(--adventure-beacon-text); }
 .anchor-empty { color: var(--adventure-dialogue); font: italic 400 14px var(--font-lore, Georgia, serif); }
 @media (max-width: 640px) {
   .anchor-sheet { top: calc(var(--hud-safe-t) + 8px); width: calc(100% - 16px); max-height: calc(100% - var(--hud-safe-t) - var(--hud-safe-b) - 16px); }
+}
+
+/* Make your Keeper: the one gentle nudge, a lit dot on Places until the list is opened. */
+.places-toggle { position: relative; }
+.look-nudge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--adventure-hud-shadow);
+  border-radius: 50%;
+  background: var(--adventure-hud-gold);
+  box-shadow: 0 0 6px var(--adventure-hud-gold);
+  pointer-events: none;
 }

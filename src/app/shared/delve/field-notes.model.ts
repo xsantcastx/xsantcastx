@@ -18,7 +18,9 @@
  * Lore: lore-addendum.md, "The Delve and beyond", field notes.
  */
 
-export type FieldNoteStratum = 'root-hollows' | 'basalt-caverns' | 'glowcap-grotto' | 'magma-halls' | 'underhearth';
+export type FieldNoteStratum = 'root-hollows' | 'basalt-caverns' | 'glowcap-grotto' | 'magma-halls' | 'underhearth'
+  // The Rift Gates (rift-gates.model.ts): notes at the gates, and in the Umbral's underside (realm-gen.ts).
+  | 'rift' | 'umbral';
 
 export interface FieldNoteDef {
   id: string;
@@ -67,6 +69,22 @@ export const FIELD_NOTES: readonly FieldNoteDef[] = [
     text: '"Keep the anvil going. Do not come down. If you come down, come down with someone."' },
   { id: 'hearth-unsigned-again', stratum: 'underhearth',
     text: 'A tally mark, and beside it a second one, cut the same day.' },
+  // The Rift Gates: cut into the rock beside each gate (lore-addendum.md, The Rift Gates).
+  { id: 'rift-not-a-door', stratum: 'rift',
+    text: '"Not a door. A place where two undersides wear thin. Bring something of theirs and it lets you be from there, for a while."' },
+  { id: 'rift-settling', stratum: 'rift',
+    text: 'The frame is warm on one side and cold on the other. Nobody has decided yet which side is which.' },
+  // The Ink Deeps, the Umbral's underside: Rook Sable's chalk, and the Warden's own words.
+  { id: 'umbral-rooks-chalk', stratum: 'umbral',
+    text: 'Chalk, in a neat hand: an arrow and "R.S. This way, if it is still this way." The arrow has been rubbed out and redrawn twice.' },
+  { id: 'umbral-unlit-routes', stratum: 'umbral',
+    text: '"Do not map what you have not lit. It will be somewhere else when you come back for it." R.S.' },
+  { id: 'umbral-tide-table', stratum: 'umbral',
+    text: 'A tide table scratched in the slate: rise, hold, fall, rest. No dates. The ink does not keep any.' },
+  { id: 'umbral-two-hands', stratum: 'umbral',
+    text: 'Two hands pressed into the slate, one over the other. One of them is not quite the same size.' },
+  { id: 'umbral-warden-oath', stratum: 'umbral',
+    text: '"I keep the dark that was left when the light went somewhere else. Light me, and I stand still. That is all I ask of anyone."' },
 ];
 
 const BY_ID = new Map(FIELD_NOTES.map(note => [note.id, note]));

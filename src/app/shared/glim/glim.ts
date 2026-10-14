@@ -89,6 +89,10 @@ export const GLIM_HINTS: Readonly<Record<string, GlimHintRow>> = {
   'kael-four-2': { nudge: 'play.glim.hint.u.marks.1', direction: 'play.glim.hint.u.marks.2', show: 'atlas' },
   'verrin-four-3': { nudge: 'play.glim.hint.u.furnace.1', direction: 'play.glim.hint.u.furnace.2', show: 'atlas' },
   'verrin-endings-kept-warm': { nudge: 'play.glim.hint.u.coalfish.1', direction: 'play.glim.hint.u.coalfish.2', show: 'atlas' },
+  // The Rift Gates (rift-gates.model.ts): the Ink Deeps, Verrin's chain.
+  'verrin-ink-1': { nudge: 'play.glim.hint.r.gate.1', direction: 'play.glim.hint.r.gate.2', show: 'atlas' },
+  'verrin-ink-2': { nudge: 'play.glim.hint.r.glass.1', direction: 'play.glim.hint.r.glass.2', show: 'atlas' },
+  'verrin-ink-3': { nudge: 'play.glim.hint.r.warden.1', direction: 'play.glim.hint.r.warden.2', show: 'atlas' },
 };
 
 /** What Glim says to anything off the ladder. */
@@ -128,6 +132,10 @@ export const GLIM_MARKS: Readonly<Record<string, readonly MarkTarget[]>> = {
   'kael-four-2': [{ node: 'hammer-mark' }, { node: 'hearth-seal' }],
   'verrin-four-3': [{ node: 'furnace-hearth' }, { node: 'hearth-seal' }],
   'verrin-endings-kept-warm': [{ liquid: 'lava', rows: [56, 118] }, { liquid: 'water', rows: [0, 26] }],
+  // The Rift Gates: the way down to the Underhearth (the gate is west of its Landing); in the Ink Deeps, its core's own.
+  'verrin-ink-1': [{ node: 'hearth-seal' }],
+  'verrin-ink-2': [{ node: 'inkstone-vein' }, { node: 'nightglass-vein' }, { node: 'hearth-seal' }],
+  'verrin-ink-3': [{ node: 'gloam-brazier' }, { node: 'hearth-seal' }],
 };
 /** How long a mark stays on the map. */
 export const GLIM_MARK_MS = 30 * 60_000;

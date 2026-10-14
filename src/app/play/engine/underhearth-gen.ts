@@ -32,6 +32,8 @@
  */
 import { FIELD_NOTE_PREFIX, fieldNotePool } from '../../shared/delve/field-notes.model';
 import { LIQUID_LAVA, LIQUID_WATER, nodeIndex, seededRandom, type TerrainSpec } from './terrain';
+import { GATE_ROOM, stampGate } from './realm-gen';
+import { gateAt } from '../../shared/delve/rift-gates.model';
 import {
   AIR, BEDROCK, Builder, LATTICE, latticeCache, mix32, noiseColumn, SECTOR, sectorSeed, valueNoise1,
   type LatticeCache, type SectorColumnGen, type StructureKind,
@@ -109,7 +111,7 @@ export const MARK_PREFIX = 'mark:';
 
 // ── Structures (lattice) ────────────────────────────────────────────────────
 
-interface DeepPlan { kind: StructureKind; col: number; row: number; w: number; h: number; salt: number; mark?: number }
+interface DeepPlan { kind: StructureKind; col: number; row: number; w: number; h: number; salt: number; mark?: number; gate?: string }
 
 /** Row bands: the iron-basalt upper half and the obsidian lower half. */
 const BAND_A: readonly [number, number] = [58, 84];
@@ -124,6 +126,7 @@ const DEEP_SIZE: Readonly<Partial<Record<StructureKind, { w: readonly [number, n
   'rift-shrine': { w: [5, 5], h: 4 },
   'hearth-lake': { w: [14, 20], h: 6 },
   'ember-den': { w: [14, 20], h: 5 },
+  'rift-gate': { w: [GATE_ROOM.w, GATE_ROOM.w], h: GATE_ROOM.h },
 };
 /** Cells a deep structure keeps from its lattice cell's sides (its shell and an outpost's side tunnels). */
 const MARGIN = 8;
@@ -141,7 +144,10 @@ export function deepPlans(ctx: DeepContext, cell: number): DeepPlan[] {
     const r = seededRandom(salt);
     const roll = r();
     let kind: StructureKind | null = null;
-    if (band === outpostBand) kind = 'outpost';
+    // The Umbral's Rift Gate (rift-gates.model.ts) stands in the upper band of its lattice cell.
+    const gate = band === 0 ? gateAt(cell, 'deep') : null;
+    if (gate) kind = 'rift-gate';
+    else if (band === outpostBand) kind = 'outpost';
     else {
       let acc = 0;
       for (const [k, weight] of band === 0 ? TABLE_A : TABLE_B) { acc += weight; if (roll < acc) { kind = k; break; } }
@@ -154,7 +160,7 @@ export function deepPlans(ctx: DeepContext, cell: number): DeepPlan[] {
     const top = kind === 'maw-den' ? lo : lo + 1, bottom = (kind === 'maw-den' ? lo + 6 : hi) - size.h - 1;
     const row = top + Math.floor(r() * Math.max(1, bottom - top + 1));
     const col = x + MARGIN + Math.floor(r() * Math.max(1, span - 2 * MARGIN - w));
-    out.push({ kind, col, row, w, h: size.h, salt: mix32(salt ^ 0x51ed270b), ...(kind === 'outpost' ? { mark } : {}) });
+    out.push({ kind, col, row, w, h: size.h, salt: mix32(salt ^ 0x51ed270b), ...(kind === 'outpost' ? { mark } : {}), ...(gate ? { gate: gate.node } : {}) });
   }
   return out;
 }
@@ -284,6 +290,12 @@ function stampDeep(b: Builder, plan: DeepPlan, out: SectorColumnGen): void {
   const { col: x, row: y, w, h } = plan;
   const r = seededRandom(plan.salt);
   switch (plan.kind) {
+    case 'rift-gate': {
+      // The Umbral's Rift Gate: iron-black basalt round it, the Underhearth's own rock.
+      const pool = fieldNotePool('rift');
+      stampGate(b, x, y, nodeIndex(plan.gate ?? 'rift-gate-umbral'), K.iron, pool.length ? pool[Math.floor(r() * pool.length)] : null);
+      break;
+    }
     case 'outpost': {
       // A ruined forge corner: brick floor, an anvil, the hammer-mark on the back wall, what they left.
       b.rect(x - 1, y - 1, w + 2, h + 2, K.iron);

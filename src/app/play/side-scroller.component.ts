@@ -51,6 +51,11 @@ import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
 import { DELVE_I18N } from './world/delve.i18n';
 import { UNDERHEARTH_I18N } from './world/underhearth.i18n';
+import { RIFT_I18N } from './world/rift.i18n';
+import {
+  attunedFlag, attuneCheck, enteredFlag, GATE_ENTER_XP, GATE_SEEN_XP, realmOfArea, realmOfGateNode, RIFT_GATES, seenFlag, VEIL_LANTERN,
+} from '../shared/delve/rift-gates.model';
+import { UMBRAL_DELVE } from './world/towns/umbral-delve';
 import {
   FOUR_HAMMER_MARKS, FURNACE_FLAG, furnaceDayFlag, HAMMER_MARK_FLAGS, HAMMER_MARK_XP, SEAM_CART, THORNROOT_GRAPPLE, UNSEALED_FLAG, WAYSTONE_SHARD,
 } from '../shared/delve/underhearth.model';
@@ -98,6 +103,9 @@ import { HOTBAR_FIXED } from './engine/terrain';
 import { MAP_MARKER_COLORS, POINTER_COLOR, type MapPinView, type MapSource } from './engine/delve-map';
 import { BountyService } from '../shared/bounties/bounty.service';
 import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
+import { HEIGHTS_I18N } from './world/heights.i18n';
+import { HeightsService } from '../shared/heights/heights.service';
+import type { HeightFindEvent } from './engine/engine.model';
 import { COMPASS_ID, FRAGMENT_ID, bountyLine, stratumOfRow, type Bounty, type BountyEvent } from '../shared/bounties/bounty.model';
 import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinId, type MapPin, type PinIcon } from '../shared/delve/map-pins.model';
 import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
@@ -105,6 +113,13 @@ import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 import { SlateService } from '../shared/slate/slate.service';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
+// Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
+import { KeeperLookService } from '../shared/keeper-look/keeper-look.service';
+import { KEEPER_LOOK_I18N } from '../shared/keeper-look/keeper-look.i18n';
+import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.model';
+import { gearKey } from '../shared/keeper-look/keeper-gear';
+import { wornGear } from '../shared/keeper-look/worn-gear';
+import { OnboardingService } from '../shared/onboarding/onboarding.service';
 import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
 import type { PanelEntry } from './world/panel-registry';
 
@@ -159,9 +174,11 @@ const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
 /** A satchel cell: a stack, or a group of identical items (`ids`, item-groups) shown once with its count. */
 interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; }
-interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; }
+interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
 interface BagSlip {
   name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
+  /** Rarity colour for the card's name and frame; null for materials. */
+  tone?: string | null;
   /** A loose satchel item: a secondary "Send to Vault" makes room from anywhere. */
   canSend?: boolean;
   /** How many identical pieces the picked cell holds: "Send 7 to Vault" moves them all. */
@@ -370,6 +387,8 @@ export class SideScrollerComponent implements OnDestroy {
   };
   restored = false;
   bagOpen = false;
+  /** The satchel's one details fold: the Keeper's stat sheet and the Vault count. */
+  bookStats = false;
   pick: BagPick | null = null;
   showKeys = false;
   now = Date.now();
@@ -396,6 +415,8 @@ export class SideScrollerComponent implements OnDestroy {
   readonly map = new DelveMapView(() => this.mapSourceV2());
   // ── Map v2 and the Board Herald's bounties (docs/handoff/bounties-map-v2.md) ──
   private readonly bounties = inject(BountyService);
+  private readonly heights = inject(HeightsService);
+  private heightsSub?: Subscription;
   private readonly glim = inject(GlimService);
   /** The Keeper's map pins (DelveSaveService, saved per region), re-read once a second in the Delve. */
   pins: MapPin[] = [];
@@ -417,6 +438,21 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly toldReady = new Set<string>();
   // ── The Mirror Slate (docs/handoff/mirror-slate.md) ──
   private readonly slate = inject(SlateService);
+  // ── Make your Keeper ──
+  private readonly looks = inject(KeeperLookService);
+  private readonly onboarding = inject(OnboardingService);
+  /** The look + gear last sent to the engine. */
+  private lookPushKey = '';
+  /** "Make your Keeper" opened itself once for a brand-new Keeper (this tab). */
+  private makerOffered = false;
+  /** HUD ticks since the world mounted, before the Glass is offered. */
+  private makerWait = 0;
+  /** The one gentle nudge: a lit dot on the Places button until the list is opened (existing saves). */
+  lookNudge = false;
+  /** The open Places list carries the nudge line this once. */
+  lookNudgeShown = false;
+  /** The Keeper's chosen name (the vitals label), or '' for "Keeper". */
+  keeperName = '';
   /** The pane the Keeper holds (0: none, no button). Re-read on the HUD tick. */
   slateTier: SlateTier = 0;
   /** The Homestead has something worth a look: the button wears a badge. */
@@ -435,6 +471,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
     this.i18n.register(SLATE_I18N);
+    this.i18n.register(KEEPER_LOOK_I18N);
     this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
     try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
   }
@@ -496,12 +533,14 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(LIFE_I18N);
     this.i18n.register(DELVE_I18N);
     this.i18n.register(UNDERHEARTH_I18N);
+    this.i18n.register(RIFT_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
     this.i18n.register(STORY_I18N);
     this.i18n.register(BOUNTIES_I18N);
+    this.i18n.register(HEIGHTS_I18N);
     this.keeperKey = '';
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
@@ -532,6 +571,7 @@ export class SideScrollerComponent implements OnDestroy {
       onBucket: event => this.zone.run(() => this.bucketSwap(event)),
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
+      onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
@@ -554,18 +594,24 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-riding', state.riding ? 'true' : 'false');
           el.setAttribute('data-grapple', state.grappling ?? '');
           el.setAttribute('data-furnace', state.furnace ? `${state.furnace.phase}:${state.furnace.vents}:${state.furnace.breathing ? 1 : 0}` : '');
+          // The realm Delves behind the Rift Gates: which realm, the ink tide, ink-blind, under a mirror.
+          el.setAttribute('data-realm', state.realm ? `${state.realm.id}:${state.realm.tide}` : '');
+          el.setAttribute('data-ink-blind', state.realm?.inkBlind ? 'true' : 'false');
         }
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
     this.engine.setHomesteadView(this.homestead.scene);
     this.statsKey = '';
-    this.loadoutKey = '';
+    this.loadoutKey = ''; this.lookPushKey = '';
     this.toolKey = '';
     this.engine.setPlaceable(this.placing);
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
+    this.heightsSub?.unsubscribe();
+    this.heightsSub = this.heights.found$.subscribe(found => this.engine?.setHeightsFound(found));
+    this.heights.refresh();
     this.bindPointer(canvas);
     this.engine.start();
     if (this.panel) this.engine.setPaused(true);
@@ -763,7 +809,7 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -826,7 +872,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.loadPanel(entry, this.panelInjector);
   }
   /** Build a hosted page into the open panel (a slow import never lands in a newer or closed one). */
-  private loadPanel(entry: Pick<PanelEntry, 'load'>, injector: Injector): void {
+  private loadPanel(entry: Pick<PanelEntry, 'load'>, injector: Injector, created?: (ref: ComponentRef<unknown>) => void): void {
     const seq = this.panelSeq;
     this.panelLoading = true;
     entry.load().then(type => {
@@ -834,6 +880,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.panelHost.clear();
       this.panelRef = this.panelHost.createComponent(type, { injector });
       this.panelLoading = false;
+      created?.(this.panelRef);
     }).catch(() => {
       if (seq !== this.panelSeq) return;
       this.panelLoading = false;
@@ -975,6 +1022,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   togglePlaces(): void {
     this.placesOpen = !this.placesOpen;
+    // The nudge is a one-time thing: seen once the list is open (the entry stays).
+    this.lookNudgeShown = this.placesOpen && this.lookNudge;
+    if (this.placesOpen && this.lookNudge) { this.looks.markPrompted(); this.lookNudge = false; }
     if (this.placesOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#places-list button')?.focus());
   }
   /** Walk to the place and interact on arrival; with reduced motion, go there and open it at once. */
@@ -1366,6 +1416,12 @@ export class SideScrollerComponent implements OnDestroy {
       if (gather.need) return this.t('play.gather.needs', { name: gather.label, need: gather.need });
       return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
     }
+    const height = this.state?.nearby === 'height' ? this.state.height : undefined;
+    if (height) {
+      if (height.kind === 'cache') return this.t(height.found ? 'play.height.act.cacheOpened' : 'play.height.act.cache');
+      if (height.kind === 'summit') return this.t(height.found ? 'play.height.act.summitDone' : 'play.height.act.summit');
+      return this.t(height.kind === 'carving' ? 'play.height.act.carving' : 'play.height.act.lookout');
+    }
     switch (this.state?.nearby) {
       case 'ore': return this.remaining ? this.t('play.hud.act.seamRecovering', { n: this.remaining }) : this.t('play.hud.act.mine');
       case 'forge': return this.t(this.equipped ? 'play.hud.act.bladeEquipped' : this.edge ? 'play.hud.act.equipEdge' : 'play.hud.act.forgeEdge');
@@ -1378,6 +1434,8 @@ export class SideScrollerComponent implements OnDestroy {
       case 'anchor': return this.t('play.uh.action.anchor');
       case 'furnace': return this.t('play.uh.action.furnace');
       case 'rail': return this.t('play.uh.action.rail');
+      case 'gate': return this.t('play.rift.action.gate');
+      case 'brazier': return this.t('play.rift.action.brazier');
       case 'delve': return this.campReady ? this.t('play.delve.action.enterTop') : this.t('play.delve.action.enter');
       case 'passage': return this.t(this.state.area === 'Ember Quarry' ? 'play.hud.act.returnSeamworks' : 'play.hud.act.enterQuarry');
       default: return this.t('play.hud.act.walkCloser');
@@ -1385,6 +1443,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   get actionDisabled(): boolean {
     if (this.state?.nearby === 'gather' && (!this.state.gather?.ready || !!this.state.gather?.need)) return true;
+    if (this.state?.nearby === 'height' && this.state.height?.kind === 'cache' && this.state.height.found) return true;
     return !this.state?.nearby || !!this.state.paused || !!this.state.defeated || (this.state.nearby === 'ore' && this.remaining > 0);
   }
   interact(): void { this.engine?.interact(); }
@@ -1393,7 +1452,8 @@ export class SideScrollerComponent implements OnDestroy {
   retry(): void { this.returnToCamp(); }
   input(event: PointerEvent, input: EngineInput, down: boolean): void {
     event.preventDefault();
-    if (down) (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    // Capture keeps the hold when the finger slides off; a pointer the browser no longer tracks cannot be captured, and the press still counts.
+    if (down) try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch { /* not capturable */ }
     this.engine?.setInput(input, down);
   }
   @HostListener('window:keydown', ['$event'])
@@ -1581,13 +1641,15 @@ export class SideScrollerComponent implements OnDestroy {
     const now = Date.now();
     if (now - this.delveTickAt < 1000) return;
     this.delveTickAt = now;
-    this.pins = this.delve.pins();
+    // Map pins belong to the Ember Delve's regions; a realm Delve shows none (and takes none, below).
+    this.pins = this.engine.realm ? [] : this.delve.pins();
     if (this.selectedPinId && !this.selectedPin) this.selectedPinId = null;
     const read = this.delveLore.inscriptions();
     this.glimMarkMission = activeMark(this.glim.state.lastAt, now);
     this.glimMark = this.glimMarkMission ? this.engine.findMark(GLIM_MARKS[this.glimMarkMission] ?? [], id => read.has(id)) : null;
     this.compassAt = this.compassHeld ? this.engine.compassTarget(id => read.has(id)) : null;
     this.tickBondAbilities(read);
+    this.tickGates();
     const canvas = this.canvas?.nativeElement;
     if (canvas) {
       canvas.setAttribute('data-glim-mark', this.glimMark ? `${this.glimMark.col},${this.glimMark.row}` : '');
@@ -1624,6 +1686,7 @@ export class SideScrollerComponent implements OnDestroy {
       .sort((a, b) => Math.abs(a.col - col) + Math.abs(a.row - row) - Math.abs(b.col - col) - Math.abs(b.row - row))[0];
     if (hit && !this.pinning) { this.selectPin(hit.id); return; }
     if (!this.pinning) return;
+    if (this.engine?.realm) { this.pinning = false; return; }
     const rows = this.engine?.mapSource()?.t.rows ?? 56;
     const pin = { id: newPinId(), col, row: Math.max(0, Math.min(rows - 1, row)), icon: 'star', name: '' };
     this.pinning = false;
@@ -1681,13 +1744,21 @@ export class SideScrollerComponent implements OnDestroy {
   }
   toggleBag(): void {
     this.bagOpen = !this.bagOpen;
-    if (this.bagOpen && !this.pick) this.ensurePick();
+    // Opens on the doll and the pockets alone: the card waits for a tap.
+    if (this.bagOpen) this.pick = null;
     // The book needs the room an open Hearth takes: fold it, like a station
     // does (the remembered choice stands for next time).
     if (this.bagOpen) this.hearthOpen = false;
   }
-  choosePocket(pocket: BagPocket): void { this.pick = { kind: pocket.kind, ref: pocket.ref }; }
-  chooseWell(well: BagWell): void { this.pick = { kind: 'slot', ref: well.id }; }
+  /** Tap a pocket for its card; tap it again to put the card away. */
+  choosePocket(pocket: BagPocket): void {
+    this.pick = this.pickedPocket(pocket) ? null : { kind: pocket.kind, ref: pocket.ref };
+  }
+  /** Tap worn gear for its card (Stow). An empty place has nothing to say, so it closes the card. */
+  chooseWell(well: BagWell): void {
+    this.pick = !well.filled || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
+  }
+  unpick(): void { this.pick = null; }
   pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
   pickedWell(id: SlotId): boolean { return this.pick?.kind === 'slot' && this.pick.ref === id; }
   get pocketFill(): number {
@@ -1698,6 +1769,16 @@ export class SideScrollerComponent implements OnDestroy {
   get bagCount(): string {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
     return Number.isFinite(cap) ? `${used}/${cap}` : `${used}`;
+  }
+  /**
+   * The satchel's free slots, drawn as empty cells after the pockets so the grid reads
+   * as a fixed bag (Diablo II), not a list. Capped so an unbounded satchel draws none.
+   */
+  get emptyCells(): number[] {
+    const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
+    if (!Number.isFinite(cap)) return [];
+    const free = Math.max(0, Math.min(60, cap) - Math.max(used, this.pockets.length));
+    return Array.from({ length: free }, (_, i) => i);
   }
   get bagFull(): boolean {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
@@ -1716,14 +1797,12 @@ export class SideScrollerComponent implements OnDestroy {
         : this.t('play.hud.msg.stowFailed', { name: item.name });
       if (!moved.length) return;
       this.pick = null;
-      this.ensurePick();
       return;
     }
     if (!this.inventory.stow(item.id)) { this.message = this.t('play.hud.msg.stowFailed', { name: item.name }); return; }
     const tab = this.inventory.itemById(item.id)?.explorerId?.replace(/^vault:/, '') ?? 'general-1';
     this.message = this.t('play.hud.msg.sentVault', { name: item.name, tab: this.t(`vault.tab.${tab}`) });
     this.pick = null;
-    this.ensurePick();
   }
   /**
    * An arrival a full satchel turned away. The first of a burst names itself;
@@ -1761,6 +1840,7 @@ export class SideScrollerComponent implements OnDestroy {
         mark: monogram(item?.name ?? name),
         label: item?.name ?? 'Empty',
         filled: !!item,
+        tone: item ? rarityColor(item.rarity) : null,
       };
     });
   }
@@ -1821,10 +1901,6 @@ export class SideScrollerComponent implements OnDestroy {
     this.sync();
     this.pick = { kind: 'item', ref: item.id };
   }
-  private ensurePick(): void {
-    const first = this.pockets[0];
-    this.pick = first ? { kind: first.kind, ref: first.ref } : { kind: 'slot', ref: 'weapon' };
-  }
   /** The ids of the picked satchel cell's group (one id for a one-of-a-kind item). */
   private pickedGroup(): string[] {
     const pick = this.pick;
@@ -1880,6 +1956,7 @@ export class SideScrollerComponent implements OnDestroy {
       return {
         name: item.name, art: itemArt(item)?.src ?? '', mark: monogram(item.name),
         kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
+        tone: rarityColor(item.rarity),
         note: this.t('toolStat.fromSatchel'),
         stats: toolCardLines(tool, (key, vars) => this.t(key, vars)),
         canWear: false, canStow: worn, canSend: !worn, compare: [], compareLabel: '',
@@ -1890,6 +1967,7 @@ export class SideScrollerComponent implements OnDestroy {
       art: itemArt(item)?.src ?? '',
       mark: monogram(item.name),
       kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
+      tone: rarityColor(item.rarity),
       note: item.lore || def?.lore || this.t(worn ? 'play.hud.slip.wornBy' : 'play.hud.slip.inSatchel'),
       stats,
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
@@ -1949,10 +2027,10 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private pushUnderhearth(): void {
     if (!this.engine || !this.browser) return;
-    const gear = `${this.inventory.stackOf(SEAM_CART) > 0}:${this.inventory.stackOf(THORNROOT_GRAPPLE) > 0}`;
+    const gear = `${this.inventory.stackOf(SEAM_CART) > 0}:${this.inventory.stackOf(THORNROOT_GRAPPLE) > 0}:${this.inventory.stackOf(VEIL_LANTERN) > 0}`;
     if (gear !== this.gearKey) {
       this.gearKey = gear;
-      this.engine.setGear({ cart: this.inventory.stackOf(SEAM_CART) > 0, grapple: this.inventory.stackOf(THORNROOT_GRAPPLE) > 0 });
+      this.engine.setGear({ cart: this.inventory.stackOf(SEAM_CART) > 0, grapple: this.inventory.stackOf(THORNROOT_GRAPPLE) > 0, veil: this.inventory.stackOf(VEIL_LANTERN) > 0 });
     }
     if (!this.delve.isClaimed(UNSEALED_FLAG) && this.quests.isMissionDone('delve-fracture')) this.delve.claim(UNSEALED_FLAG);
   }
@@ -2015,11 +2093,52 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private pushLoadout(): void {
     if (!this.engine) return;
+    this.pushKeeper();
     const loadout = this.loadout();
     const key = `${loadout.weapon?.art}:${loadout.weapon?.rarity}|${loadout.offhand?.art}:${loadout.offhand?.rarity}|${loadout.auraRarity}`;
     if (key === this.loadoutKey) return;
     this.loadoutKey = key;
     this.engine.setLoadout(loadout);
+  }
+  /**
+   * The player's pixel Keeper: the look chosen at the Glass of Becoming wearing
+   * what is equipped now (every worn slot is a layer). Sent when either changes;
+   * the canvas carries both keys for tests. A brand-new Keeper (the tutorial
+   * ended in this tab) is offered "Make your Keeper" once; an existing save gets
+   * the nudge dot on Places instead.
+   */
+  private pushKeeper(): void {
+    const look = this.looks.look;
+    const gear = wornGear(this.inventory.snapshot.equipped);
+    const key = `${lookKey(look)}#${gearKey(gear)}`;
+    this.keeperName = look.made ? look.name : '';
+    this.lookNudge = !look.made && !look.prompted;
+    if (key !== this.lookPushKey) {
+      this.lookPushKey = key;
+      this.engine?.setKeeperLook(look, gear);
+      const el = this.canvas?.nativeElement;
+      el?.setAttribute('data-keeper-look', lookKey(look));
+      el?.setAttribute('data-keeper-gear', gearKey(gear));
+    }
+    // Offered once the arrival has settled (the route's first query emissions close any open place).
+    if (!look.made && !this.makerOffered && this.onboarding.finishedHere && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.glimTalk) {
+      this.makerOffered = true;
+      this.openKeeperMaker();
+    }
+  }
+  /** The Glass of Becoming: "Make your Keeper" as a place (the world pauses). */
+  openKeeperMaker(): void {
+    if (!this.browser) return;
+    this.looks.markPrompted();
+    this.lookNudge = false;
+    this.showPanel({ kind: 'page', stationId: 'glass', title: this.t('look.title'), kicker: this.t('look.kicker'), own: true });
+    this.loadPanel({ load: () => import('../shared/keeper-look/keeper-maker.component').then(m => m.KeeperMakerComponent) }, this.panelInjector, ref => {
+      (ref.instance as { done?: { subscribe(fn: (look: KeeperLook) => void): unknown } }).done?.subscribe(() => this.zone.run(() => {
+        this.pushKeeper();
+        this.closePanel();
+        this.message = this.t('look.saved');
+      }));
+    });
   }
   private loadout(): KeeperLoadout {
     const equipped = this.inventory.snapshot.equipped;
@@ -2214,7 +2333,8 @@ export class SideScrollerComponent implements OnDestroy {
    * grade at once; otherwise the Line Tension reel decides the grade.
    */
   private fishHooked(event: FishEvent): void {
-    if (!this.browser || !this.engine) return;
+    // Nothing is fished from ink (no rod works it; the engine never casts into it).
+    if (!this.browser || !this.engine || event.liquid === 'ink') return;
     const npc = this.store.read('eclipse-npc') as { claimed?: unknown } | null;
     const pageClaimed = Array.isArray(npc?.claimed) && npc!.claimed.includes('fish-drowned-lamp-2');
     if (this.fishing.lampAnswers({ biome: event.biome, liquid: event.liquid, pageClaimed, fallen: this.delve.isClaimed(DROWNED_LAMP_FLAG) })) {
@@ -2260,7 +2380,7 @@ export class SideScrollerComponent implements OnDestroy {
     const items = got.map(row => `${row.qty} ${materialDisplay(row.id)?.name ?? row.id}`).join(', ');
     this.message = this.t('play.fish.ui.opened', { items });
     this.toastLoot(items);
-    if (this.inventory.stackOf(pick.ref) < 1) this.ensurePick();
+    if (this.inventory.stackOf(pick.ref) < 1) this.pick = null;
   }
   /** The picked stack is a crate (the slip shows Open). */
   get pickIsCrate(): boolean { return this.pick?.kind === 'stack' && CRATE_IDS.includes(this.pick.ref); }
@@ -2273,6 +2393,10 @@ export class SideScrollerComponent implements OnDestroy {
       this.refreshChest(this.t('play.delve.chest.intro'));
     } else if (event.kind === 'anchor') {
       this.openAnchors();
+    } else if (event.kind === 'gate') {
+      this.useGate(event);
+    } else if (event.kind === 'brazier') {
+      this.lightBrazier(event);
     } else if (event.kind === 'furnace') {
       this.wakeFurnace(event.col ?? 68);
     } else if (event.kind === 'camp') {
@@ -2282,6 +2406,74 @@ export class SideScrollerComponent implements OnDestroy {
       this.loadPanel(entry, this.campInjector);
     }
   }
+  // ── The Rift Gates (rift-gates.model.ts): attune, step through, step back; the Gloam Warden's braziers ──
+
+  /**
+   * E at a Rift Gate. On the realm side it is the way back out. In the Ember
+   * Delve: a settling gate says so; an open one asks for its Delving level and
+   * (once) its Realm Sigil, which it keeps; then the Keeper steps through.
+   */
+  private useGate(event: UseEvent): void {
+    if (!this.engine || event.col === undefined || event.row === undefined) return;
+    if (this.engine.realm) { if (!this.engine.leaveRealm()) this.message = this.t('play.rift.backFailed'); return; }
+    const realm = realmOfGateNode(event.node ?? '');
+    if (!realm) return;
+    const gate = RIFT_GATES[realm];
+    const check = attuneCheck(realm, {
+      delving: skillLevel(this.activity.snapshot.progress, 'delving'),
+      sigils: this.inventory.stackOf(gate.sigil),
+      attuned: this.delve.isClaimed(attunedFlag(realm)),
+    });
+    const name = this.t(`play.rift.realm.${realm}`);
+    if (!check.ok) {
+      this.message = check.why === 'settling' ? this.t('play.rift.settling', { realm: name })
+        : check.why === 'delving' ? this.t('play.rift.needDelving', { n: check.need })
+        : this.t('play.rift.needSigil', { sigil: materialDisplay(check.sigil)?.name ?? check.sigil });
+      return;
+    }
+    if (check.attune) {
+      // The sigil is spent once, keyed by the realm: a replay never takes a second.
+      if (!this.inventory.consumeStacks(`rift-attune:${realm}`, [{ id: gate.sigil, count: 1 }]).ok) { this.message = this.t('play.delve.chest.saveFailed'); return; }
+      this.delve.claim(attunedFlag(realm));
+      this.toastLoot(this.t('play.rift.attuned'));
+    }
+    const first = !this.delve.isClaimed(enteredFlag(realm));
+    if (!gate.area || !this.engine.enterRealm(gate.area, { col: event.col, row: event.row })) { this.message = this.t('play.rift.enterFailed'); return; }
+    if (first) {
+      const result = this.skillActions.act({ mutationId: `rift-enter:${realm}`, skill: 'delving', xp: GATE_ENTER_XP, locationId: this.delveLocation(gate.area) });
+      if (result.ok && !result.replayed) this.toastLoot(this.t('play.rift.firstStep', { n: GATE_ENTER_XP }));
+    }
+  }
+  /** E at an unlit gloam brazier: one torch from the satchel lights it. */
+  private lightBrazier(event: UseEvent): void {
+    if (!this.engine || event.col === undefined || event.row === undefined) return;
+    if (this.inventory.stackOf('torch') < 1) { this.message = this.t('play.rift.brazier.noTorch'); return; }
+    if (!this.engine.lightBrazier(event.col, event.row)) return;
+    this.braziersLit++;
+    this.inventory.consumeStacks(`rift-brazier:${event.areaId}:${event.cellKey}:${Date.now()}:${this.braziersLit}`, [{ id: 'torch', count: 1 }]);
+    this.refreshHotbar();
+  }
+  private braziersLit = 0;
+  /**
+   * Once a second in the Delve: a Rift Gate in sight. The first sighting of
+   * each realm's gate is a moment: Glim says what it is (open or settling) and
+   * it pays a little Delving XP, once.
+   */
+  private tickGates(): void {
+    const near = this.engine?.gateNear(14) ?? null;
+    this.canvas?.nativeElement.setAttribute('data-gate', near ? `${near.realm}:${near.col},${near.row}` : '');
+    if (!near || this.delve.isClaimed(seenFlag(near.realm))) return;
+    if (!this.delve.claim(seenFlag(near.realm))) return;
+    const gate = RIFT_GATES[near.realm];
+    this.message = this.t(gate.open ? 'play.rift.glim.seenOpen' : 'play.rift.glim.seenSettling', { realm: this.t(`play.rift.realm.${near.realm}`) });
+    const result = this.skillActions.act({ mutationId: `rift-seen:${near.realm}`, skill: 'delving', xp: GATE_SEEN_XP, locationId: EMBER_DELVE_LOCATION });
+    if (result.ok && !result.replayed) this.toastLoot(this.t('play.rift.seenXp', { n: GATE_SEEN_XP }));
+  }
+  /** Where a Delve action is filed: the Ember Delve, or the realm Delve it happened in. */
+  private delveLocation(areaId: string | undefined): string {
+    return areaId && realmOfArea(areaId) ? `${this.town.id}/${areaId}` : EMBER_DELVE_LOCATION;
+  }
+
   // ── The Underhearth: Rift Anchor travel, the Banked Furnace's hearth ──
 
   /** The Rift Anchor travel sheet, while open. */
@@ -2290,12 +2482,15 @@ export class SideScrollerComponent implements OnDestroy {
   anchorsReady = false;
   /** The anchors of this town's Delve as travel rows (and the Seamworks, from below). */
   private anchorRows(): AnchorRow[] {
-    const biomes = [...(EMBER_DELVE.terrain?.biomes ?? []), ...(EMBER_DELVE.terrain?.depth?.biomes ?? [])];
+    // In a realm Delve its own anchors, and the way back out is the gate you came in by.
+    const inRealm = !!this.engine?.realm;
+    const spec = inRealm ? UMBRAL_DELVE.terrain : EMBER_DELVE.terrain;
+    const biomes = [...(spec?.biomes ?? []), ...(spec?.depth?.biomes ?? [])];
     const rows: AnchorRow[] = (this.engine?.delveAnchors() ?? []).map((a, n) => ({
       key: `${a.col},${a.row}`, col: a.col, row: a.row,
       label: this.t('play.uh.travel.row', { n: n + 1, place: biomes.find(b => a.row < b.to)?.name ?? '', depth: a.row }),
     }));
-    if (this.state.delve) rows.push({ key: 'home', col: 0, row: 0, label: this.t('play.uh.travel.home'), home: true });
+    if (this.state.delve) rows.push({ key: 'home', col: 0, row: 0, label: this.t(inRealm ? 'play.rift.travel.back' : 'play.uh.travel.home'), home: true });
     return rows;
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
@@ -2314,7 +2509,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.engine) return;
     this.anchorSheet = null;
     this.engine.setPaused(false);
-    if (row.home) this.engine.returnToCamp();
+    if (row.home && this.engine.realm) { if (!this.engine.leaveRealm()) this.message = this.t('play.rift.backFailed'); }
+    else if (row.home) this.engine.returnToCamp();
     else if (!this.engine.travelToAnchor(row.col, row.row)) this.message = this.t('play.uh.travel.failed');
     this.focusWorld();
   }
@@ -2426,7 +2622,11 @@ export class SideScrollerComponent implements OnDestroy {
     }
     // Plain dirt and placed blocks pay only the block.
     if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
-    if (event.kind === 'mine' && event.discipline === 'mining' && !event.site) {
+    // The seam's own ores (and plain rock) go through the Seamworks seam's gate. Any other ore (the
+    // Underhearth's emberheart and pyrite, the Ink Deeps' inkstone and nightglass) pays itself below:
+    // resolveMine only knows MINING_TIERS and would book it as Cinder Ore.
+    const seamOre = !event.materialId || !!miningTierFor(event.materialId);
+    if (event.kind === 'mine' && event.discipline === 'mining' && !event.site && seamOre) {
       const now = Date.now();
       const settled = settleDelveMine({
         // The selected Current Work's breath, read before switching to it; with
@@ -2466,7 +2666,7 @@ export class SideScrollerComponent implements OnDestroy {
     }
     const result = this.skillActions.act({
       // A hunting-ground node is booked where it stands; a Delve cell in the Delve.
-      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: event.site ? this.worldLocation(event.areaId) : EMBER_DELVE_LOCATION,
+      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: event.site ? this.worldLocation(event.areaId) : this.delveLocation(event.areaId),
       ...(event.materialId && event.qty ? { materialId: event.materialId, qty: event.qty } : {}),
     });
     if (!result.ok) {
@@ -2487,6 +2687,20 @@ export class SideScrollerComponent implements OnDestroy {
    * keyed by the kill so a replay never pays twice. SkillActionService plays
    * the Hunting level-up moment when it crosses one.
    */
+  /**
+   * A find on the high ground: the first use pays once (HeightsService writes
+   * the receipt before it pays); later uses only say what it is.
+   */
+  private heightFound(event: HeightFindEvent): void {
+    if (!this.browser || event.found) return;
+    const used = this.heights.use(event.id);
+    if (!used) return;
+    const items = used.materials.map(m => `${m.qty} ${materialDisplay(m.id)?.name ?? titleCase(m.id.replace(/-/g, ' '))}`).join(', ');
+    if (used.kind === 'cache') this.message = this.t('play.height.toast.cache', { gold: used.gold, items });
+    else if (used.kind === 'summit') this.message = this.t('play.height.toast.summit', { gold: used.gold, items, title: this.t(`play.height.title.${used.title}`) });
+    else if (used.kind === 'lookout') this.message = this.t('play.height.toast.lookout');
+    for (const m of used.materials) this.toastLoot(`+${m.qty} ${materialDisplay(m.id)?.name ?? m.id}`);
+  }
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
     // The Banked Furnace banks itself again for a day after every fall.

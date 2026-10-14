@@ -82,6 +82,11 @@ test.describe('First session, played', () => {
     await expect(page).toHaveURL(/\/play$/);
     await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 20000 });
     await expect(ob).toBeHidden();
+    // A brand-new Keeper is offered "Make your Keeper" once (docs/handoff/make-your-keeper.md): keep the look.
+    const glass = page.locator('section.place .km');
+    await expect(glass).toBeVisible({ timeout: 20000 });
+    await glass.getByRole('button', { name: 'Become this Keeper' }).click();
+    await expect(glass).toBeHidden();
     mark('into the world');
 
     // ── Goal 1: buy a building. ──
