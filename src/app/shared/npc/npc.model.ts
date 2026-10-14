@@ -34,7 +34,8 @@ export type NpcId =
   | 'kael'
   | 'archivist'
   | 'merchant'
-  | 'nameless';
+  | 'nameless'
+  | 'glim';
 
 /** Local slices of the day. Dawn is deliberately narrow; it should feel rare. */
 export type TimeOfDay = 'morning' | 'afternoon' | 'evening' | 'night';
@@ -99,6 +100,13 @@ export interface NpcDefinition {
    * everybody, which is the whole point of them.
    */
   priority: number;
+  /**
+   * A companion travels with the Keeper instead of standing on a page: it
+   * claims no route (`paths` is empty) and has no quest chain of its own. The
+   * text says what it does in play; scripts/check-meaning.js counts it as the
+   * NPC's role only when the play view actually wires it (`npcById(id)`).
+   */
+  companion?: string;
 }
 
 export const NPCS: readonly NpcDefinition[] = [
@@ -184,6 +192,22 @@ export const NPCS: readonly NpcDefinition[] = [
     paths: ['/'],
     hidden: true,
     priority: 100,
+  },
+  {
+    // New (docs/world/world-and-cast.md §4; shipped, the owner reviews in play).
+    // Once an Afterimage Moth (creature atlas); the Archive's lamp, lent to new Keepers.
+    id: 'glim',
+    name: 'Glim',
+    epithet: 'the Margin-Light',
+    role: 'A moth of lamplight that keeps the maps. Your companion, and your light in the Delve.',
+    // Luminous gold: the lamplight body. Violet stays at the wing edges, in the sprite.
+    color: '#E8D44D',
+    glow: 'rgba(232, 212, 77, 0.55)',
+    monogram: 'GL',
+    artId: 'npc-glim',
+    paths: [],
+    priority: 0,
+    companion: 'voices the first goals and Show me, hints when asked (never at secrets), says when to stop, and is the Delve lantern',
   },
 ];
 
@@ -416,6 +440,25 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
     lines: [
       'Your entry in the record has grown past one page. Few do.',
       'I have begun cross-referencing you. Do not be alarmed. Everyone is, eventually.',
+    ],
+  },
+
+  // ── Glim, the Margin-Light ─────────────────────────────────────────────────
+  // A companion: it claims no page, so this pool is its voice on record. In
+  // play it speaks through the HUD (play/world/glim.ts, glim.i18n.ts).
+  {
+    npcId: 'glim',
+    page: '*',
+    priority: 0,
+    lines: [
+      "Hello. I'm Glim. I keep the maps. Mostly the blank parts; they're the interesting ones.",
+      "I don't know what's past that wall. I'd rather tell you that than draw you a door.",
+      "I'll mark it dashed until we've seen it. A solid line is a promise.",
+      "I was wrong about that ledge. I've fixed the map, and I've left a note saying I was wrong. Both matter.",
+      "North is a convention. Down is a fact. We're going down.",
+      "That's your third pass by this seam. I'm not judging. I'm annotating.",
+      "This one's yours to find. I'll hold the light.",
+      'This is a good place to stop. The torch is lit and the map is honest.',
     ],
   },
 

@@ -755,6 +755,36 @@ crossed through; the fifth is worn smooth").
   patrolled; Kesh runs the Skills Lodge, where every swing is adaptation." Builds
   on: Bible, the Verdant pair.
 
+### Glim's voice in the game (S1, shipped; `shared/glim/glim.i18n.ts`, EN + ES)
+
+Lines Glim says unasked, each once (or rarely, with a cooldown), never over a
+panel and never two within 25 s:
+
+- Meeting (Prologue, beat 1): "Hello. I'm Glim. I keep the maps. Mostly the blank
+  parts; they're the interesting ones." Builds on: §4 Voice.
+- Homestead (beat 2): "Somebody left you a plot. Nobody left you a reason. We'll
+  find one." Builds on: the Prologue beats.
+- The Basalt Edge worn (beat 3): "A blade made to show where a boundary is before
+  anyone crosses it. Wear it well." Builds on: Codex, Eclipse Longblade.
+- After the first Maw (beat 4): "The Maws drag their bolts toward the Delve shaft.
+  I'd like to know why. I've marked it." Builds on: Atlas, Rivet Maw.
+- First Delve visit (beat 6): "North is a convention. Down is a fact. We're going
+  down." Then the lantern: "I'll be your light down here. The torches you place
+  are my notes; I leave them for you."
+- The good stopping point (once, after the four first goals): "This is a good
+  place to stop. The torch is lit and the map is honest."
+- The tell, beside a Mirror Substitute: "Something here is performing certainty.
+  I go dim around that. Watch which one I dim for." (then, rarely, "Dimming. That
+  one is too sure of itself.") Builds on: Atlas, Afterimage Moth.
+- Delve, far apart: the dashed-line, the wall and the "third pass" lines from §4.
+- Refusal, for anything off the ladder: "This one's yours to find. I'll hold the
+  light." Builds on: Game, archivist ("A hint is a kindness. An answer is a theft.").
+
+The hint ladder's nudges and directions are plain instructions in Glim's voice
+(Kael's "old seam" nudge is §4's own example); they name places and keys, never
+a secret or what a carving means. Codex entry: name, role, the Afterimage Moth
+origin and the Archivist's rule; "Also called: —" (the dash waits for Act III).
+
 ### Items and places
 
 - **Witness Runes** (Glint, Drift, Ash, Veil, Thorn; quest evidence, not

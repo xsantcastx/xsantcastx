@@ -321,7 +321,7 @@ existing stations, and **Glim, the Margin-Light**, a lantern-moth companion
 inspired by Claude), and the ethical daily/weekly/season rhythms. The infinite
 Delve, liquids, fishing and the galactic dimensions are `docs/world/delve-and-beyond.md`.
 
-- [ ] S1 Glim, onboarding companion (voices the goal line, 3-step hint ladder, the Delve light)
+- [x] S1 Glim, onboarding companion (2026-10-14): met on a new save (flies in to the shoulder, one hello), voices the goal line from a moth button that opens the 3-step hint ladder (nudge → direction → Show me, which flies Glim ahead with a trail), never hints at secrets (allowlist; Karma over every Codex secret id), is the Delve lantern (same radius; the light has a source), says when to stop, dims beside Mirror Substitutes; Codex entry; Delve-mission hints (2 steps; step 3 waits for the Atlas, S4). State `godforge-glim` through the gateway, merge-safe. Handoff: `docs/handoff/glim.md`
 - [ ] S2 Story Act I framing (Prologue + Act I break scenes, Story journal, versioned `story` record)
 - [ ] S3 NPC depth pass (personal names on role keepers, act-aware lines)
 - [ ] S4 Glim's Atlas + "The Blank Places" · S5 commissions + bounties (banked, no streaks) · S6 Act II ch. 1 + ch. 3 in-world · S7 reputation · S8 ch. 2/4/5 · S9 Act III + the Long Eclipse
