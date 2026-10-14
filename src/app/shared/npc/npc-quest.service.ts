@@ -313,6 +313,12 @@ export class NpcQuestService {
     return this.state.claimed.includes(missionId);
   }
 
+  /** A Delve mission claimed, or a repeatable one filled at least once (the story reads this). */
+  isMissionDone(missionId: string): boolean {
+    if (this.isBrowser && !this.initialised) this.init();
+    return this.missionDone(missionId);
+  }
+
   /** What one character is offering right now: unlocked and not done. */
   missionsFor(npcId: NpcId): DelveMissionState[] {
     return this.missions.filter(m =>

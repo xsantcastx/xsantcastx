@@ -29,6 +29,10 @@
       @case ('stats') {
         <app-hub-stats />
       }
+      @case ('story') {
+        <!-- The Keeper's Record (shared/story): deferred, so the story text stays out of the shell bundle. -->
+        @defer (on immediate) { <app-hub-story /> }
+      }
       @case ('records') {
         <ng-content select="[hubRecords]"></ng-content>
         @if (variant === 'drawer') {
