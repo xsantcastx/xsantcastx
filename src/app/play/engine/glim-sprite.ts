@@ -44,6 +44,8 @@ export class GlimSprite {
   y = NaN;
   shown = false;
   dim = false;
+  /** The bond's sense (glim-bond.ts): brighter near a room no lantern has touched. Dim wins. */
+  bright = false;
   /** Set while flying ahead on Show me; null otherwise. Read by the HUD (data-glim-*). */
   targetX: number | null = null;
   /** Reached the Show me target this flight (stays true until the next flight). */
@@ -132,8 +134,9 @@ export class GlimSprite {
     c.globalAlpha = 1;
     const halo = this.haloCanvas();
     if (halo) {
-      const r = (this.dim ? 22 : 40) * k * (reduced ? 1 : 1 + Math.sin(time * 3.1) * .05);
-      c.globalAlpha = this.dim ? .3 : .85;
+      const lit = this.bright && !this.dim;
+      const r = (this.dim ? 22 : lit ? 58 : 40) * k * (reduced ? 1 : 1 + Math.sin(time * (lit ? 4.4 : 3.1)) * (lit ? .1 : .05));
+      c.globalAlpha = this.dim ? .3 : lit ? 1 : .85;
       c.drawImage(halo, x - r, y - r, r * 2, r * 2);
       c.globalAlpha = 1;
     }

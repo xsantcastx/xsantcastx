@@ -6,7 +6,7 @@
  * the injected memory (GlimService: the save gateway, merge-safe). One line at a
  * time; a hint replaces whatever was showing; everything is dismissible.
  */
-import { GLIM_HINT_MS, GLIM_LINES, GLIM_SAY_MS, GlimFacts, GlimHint, GlimLineId, glimHint, ladderTop, nextLine, pastBeats } from './glim';
+import { GLIM_GAP_MS, GLIM_HINT_MS, GLIM_LINES, GLIM_SAY_MS, GlimFacts, GlimHint, GlimLineId, glimHint, ladderTop, nextLine, pastBeats } from './glim';
 import type { GlimState } from './glim-save.model';
 
 /** What GlimVoice needs of GlimService. */
@@ -30,6 +30,10 @@ export interface GlimSpeech {
    * (Kael, Verrin, the Merchant, the Archivist) rides it under their own name.
    */
   story?: { beat: string; speaker: string };
+  /** A bond line (glim-bond.ts): its id, and the talk it offers (a Talk button), if any. */
+  bond?: { id: string; talk?: string };
+  /** Values for the line ({{dir}}, {{cols}} …). */
+  vars?: Record<string, string | number>;
   /** Bumped per line, so the view re-creates the bubble (and restarts its fade). */
   seq: number;
   until: number;
@@ -37,6 +41,9 @@ export interface GlimSpeech {
 
 /** A story line waiting its turn (story.ts StoryLine). */
 export interface GlimStoryLine { beat: string; speaker: string; key: string }
+
+/** A bond line waiting its turn: a stage reached, a quest step, the way home, a hello. */
+export interface GlimBondLine { id: string; key: string; talk?: string; vars?: Record<string, string | number> }
 
 /** How long a story line stays up (dismissible any time). */
 export const GLIM_STORY_MS = 9_000;
@@ -52,6 +59,8 @@ export class GlimVoice {
   private seq = 0;
   /** Story lines waiting their turn, said one after another before anything unasked. */
   private readonly storyQueue: GlimStoryLine[] = [];
+  /** Bond lines waiting their turn (after story lines; they keep the unsolicited gap). */
+  private readonly bondQueue: GlimBondLine[] = [];
 
   constructor(private readonly memory: GlimMemoryStore) {}
 
@@ -69,6 +78,13 @@ export class GlimVoice {
       const line = this.storyQueue.shift()!;
       this.lastSpokeAt = f.now;
       this.speech = { key: line.key, story: { beat: line.beat, speaker: line.speaker }, seq: ++this.seq, until: f.now + GLIM_STORY_MS };
+      return null;
+    }
+    // A bond line (asked for by nobody, so it keeps the gap like any unsolicited line).
+    if (state.met && this.bondQueue.length && !f.panelOpen && !this.speech && (!this.lastSpokeAt || f.now - this.lastSpokeAt >= GLIM_GAP_MS)) {
+      const line = this.bondQueue.shift()!;
+      this.lastSpokeAt = f.now;
+      this.speech = { key: line.key, bond: { id: line.id, ...(line.talk ? { talk: line.talk } : {}) }, ...(line.vars ? { vars: line.vars } : {}), seq: ++this.seq, until: f.now + GLIM_STORY_MS };
       return null;
     }
     const id = nextLine({ ...f, met: state.met, memory: state, lastSpokeAt: this.lastSpokeAt, speaking: !!this.speech, delveSince: this.delveSince });
@@ -110,6 +126,14 @@ export class GlimVoice {
   story(lines: readonly GlimStoryLine[]): void {
     this.storyQueue.push(...lines);
   }
+
+  /** Queue a bond line (one of a kind waiting at a time). */
+  bond(line: GlimBondLine): void {
+    if (!this.bondQueue.some(l => l.id === line.id)) this.bondQueue.push(line);
+  }
+
+  /** Bond lines still waiting. */
+  get bondWaiting(): number { return this.bondQueue.length; }
 
   /** Story lines still waiting. */
   get storyWaiting(): number { return this.storyQueue.length; }

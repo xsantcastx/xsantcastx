@@ -1586,10 +1586,12 @@ export class SeamworksEngine {
     this.glim.flyTo(x, this.terrain ? this.player.y - 150 : FLOOR - 170);
     return x;
   }
-  /** Where Glim is, for the HUD's data attributes and the tell: world x, the Show me target, dimmed. */
-  get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean } {
+  /** The bond's sense: Glim glows brighter (the host decides when; a Mirror Substitute's dim still wins). */
+  setGlimBright(bright: boolean): void { this.glim.bright = bright; }
+  /** Where Glim is, for the HUD's data attributes and the tell: world x, the Show me target, dimmed, brightened. */
+  get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } {
     const g = this.glim;
-    return { shown: g.shown, x: Math.round(g.x), targetX: g.targetX, arrived: g.arrived, dimmed: g.dim };
+    return { shown: g.shown, x: Math.round(g.x), targetX: g.targetX, arrived: g.arrived, dimmed: g.dim, bright: g.bright && !g.dim };
   }
   /** Waystone travel: stand in another town's spawn. Monsters, drops and any walk reset. */
   setTown(town: TownDef): void {
@@ -2905,6 +2907,22 @@ export class SeamworksEngine {
     if (!s || !spend(s)) return null;
     world.revealArea(s.col - 4, s.col + s.w + 3, s.row - 3, s.row + s.h + 2);
     return s;
+  }
+  /**
+   * The bond's notice (glim-bond.ts GLIM_RARE_KINDS): the nearest structure of
+   * one of these kinds no lantern has touched, within `cells` columns, or null.
+   */
+  rareNear(kinds: readonly string[], cells: number): PlacedStructure | null {
+    const at = this.keeperCell();
+    const world = this.world && this.world.t === this.terrain ? this.world : null;
+    if (!at || !world) return null;
+    let best: PlacedStructure | null = null, bestD = Infinity;
+    for (const s of world.structuresNear(at.col, 2)) {
+      if (!kinds.includes(s.kind) || world.structureSeen(s)) continue;
+      const d = Math.abs(s.col + s.w / 2 - at.col);
+      if (d <= cells && d < bestD) { bestD = d; best = s; }
+    }
+    return best;
   }
   /** Glim's mark: the cell of the first target the core still holds, nearest the Keeper. */
   findMark(targets: readonly MarkTarget[], isRead: (id: string) => boolean): { col: number; row: number } | null {
