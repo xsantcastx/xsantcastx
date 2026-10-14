@@ -3,6 +3,9 @@
  * (docs/handoff/mirror-slate.md). Lazy: the play view imports it on the first
  * open, so none of it is in the initial bundle.
  *
+ *  - Home: it opens on a few big choices — her four tables, the Homestead, and
+ *    (tier II) the map & bounties — never on a wall. Each is one tap, with a
+ *    Back to the glass.
  *  - Tables: Lune Coyne's four games, EMBEDDED, not copied: the same panel
  *    components her stalls host (PANEL_REGISTRY's own loaders), so the odds,
  *    the bet ladder and caps and the replay-safe play ledger are the same code.
@@ -41,8 +44,8 @@ import { SLATE_I18N } from './slate.i18n';
 import { SlateService } from './slate.service';
 import { SLATE_TABLES, SLATE_WORLD_POINTERS, slateTabs, type SlateTab, type SlateTableGame, type SlateTier } from './slate.model';
 
-/** The last tab and table, per device (a view choice, like the minimap's fold). */
-const VIEW_KEY = 'eclipse-slate-view';
+/** Which face of the glass is up: the home choices, or one of the Slate's screens. */
+export type SlateFace = 'home' | SlateTab;
 
 interface PinRow { id: string; name: string; at: string }
 interface BountyRow { id: string; line: string; progress: string; state: 'open' | 'ready' | 'claimed' }
@@ -85,7 +88,7 @@ export class SlateComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
 
-  /** Always in the DOM (hidden off the Tables tab), so it resolves before any game is asked for. */
+  /** Always in the DOM (hidden off the Tables face), so it resolves before any game is asked for. */
   @ViewChild('gameHost', { read: ViewContainerRef, static: true }) private gameHost!: ViewContainerRef;
   private gameRef: ComponentRef<unknown> | null = null;
   private gameSeq = 0;
@@ -94,7 +97,7 @@ export class SlateComponent implements OnInit, OnDestroy {
   readonly pointers = SLATE_WORLD_POINTERS;
   tier: SlateTier = 0;
   tabs: SlateTab[] = [];
-  tab: SlateTab = 'tables';
+  face: SlateFace = 'home';
   game: SlateTableGame = 'reels';
   gameLoading = false;
   gameError = false;
@@ -127,10 +130,8 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.slate.init();
     this.tier = this.slate.tier();
     this.tabs = slateTabs(this.tier);
-    this.readView();
     this.subs.add(merge(this.economy.snapshot$, this.inventory.snapshot$, this.homestead.hud$, this.explorers.state$).subscribe(() => this.read()));
-    if (this.tab === 'map') this.readMap();
-    this.showGame(this.game);
+    this.read();
   }
 
   ngOnDestroy(): void {
@@ -139,41 +140,40 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.gameRef?.destroy();
   }
 
-  // ── Tabs ──
+  // ── Faces ──
 
-  pick(tab: SlateTab): void {
-    if (!this.tabs.includes(tab)) return;
-    this.tab = tab;
+  /** Open one of the Slate's screens from the home face. */
+  open(face: SlateTab): void {
+    if (!this.tabs.includes(face)) return;
+    this.face = face;
     this.notice = '';
-    if (tab === 'map') this.readMap();
+    if (face === 'map') this.readMap();
     this.read();
-    this.saveView();
   }
 
-  /** Arrow keys walk a tab row (the WAI-ARIA tabs pattern). */
-  tabKey(event: KeyboardEvent, which: 'tabs' | 'games'): void {
-    const step = event.key === 'ArrowRight' ? 1 : event.key === 'ArrowLeft' ? -1 : 0;
-    if (!step) return;
-    event.preventDefault();
-    const row: string[] = which === 'tabs' ? this.tabs : this.gameIds;
-    const current = which === 'tabs' ? this.tab : this.game;
-    const nextId = row[(row.indexOf(current) + step + row.length) % row.length];
-    if (which === 'tabs') this.pick(nextId as SlateTab); else this.chooseGame(nextId);
-    const list = (event.currentTarget as HTMLElement).closest('[role="tablist"]');
-    setTimeout(() => list?.querySelector<HTMLElement>(`[data-id="${nextId}"]`)?.focus());
-  }
-
-  get gameIds(): string[] { return this.tables.map(t => t.game); }
-
-  // ── Tables: the stalls' own components ──
-
-  chooseGame(id: string): void {
+  /** One tap from the home face straight onto a table. */
+  openGame(id: string): void {
     const table = this.tables.find(t => t.game === id);
-    if (!table || (table.game === this.game && this.gameRef)) return;
+    if (!table) return;
+    this.face = 'tables';
+    this.notice = '';
+    if (table.game === this.game && this.gameRef) { this.cdr.markForCheck(); return; }
     this.game = table.game;
-    this.saveView();
     this.showGame(table.game);
   }
+
+  /** Back to the home face. The table keeps its state while the Slate stays open. */
+  back(): void {
+    this.face = 'home';
+    this.notice = '';
+    this.read();
+  }
+
+  get gameTitleKey(): string {
+    return this.tables.find(t => t.game === this.game)?.titleKey ?? 'slate.tab.tables';
+  }
+
+  // ── Tables: the stalls' own components ──
 
   private showGame(id: SlateTableGame): void {
     if (!this.browser) return;
@@ -252,19 +252,5 @@ export class SlateComponent implements OnInit, OnDestroy {
       };
     });
     this.cdr.markForCheck();
-  }
-
-  // ── The remembered view ──
-
-  private readView(): void {
-    try {
-      const raw = JSON.parse(localStorage.getItem(VIEW_KEY) ?? '{}') as { tab?: string; game?: string };
-      if (raw.tab && (this.tabs as string[]).includes(raw.tab)) this.tab = raw.tab as SlateTab;
-      if (raw.game && this.tables.some(t => t.game === raw.game)) this.game = raw.game as SlateTableGame;
-    } catch { /* private mode: the Tables tab and the Reels */ }
-  }
-
-  private saveView(): void {
-    try { localStorage.setItem(VIEW_KEY, JSON.stringify({ tab: this.tab, game: this.game })); } catch { /* the view is not remembered */ }
   }
 }
