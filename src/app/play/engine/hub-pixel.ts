@@ -30,8 +30,12 @@ const FLAG_COLORS = ['#ad766b', '#c2a26a', '#789a91'] as const;
 
 type Ctx = CanvasRenderingContext2D;
 
-/** Paint world-space vector code into an art-px canvas, then snap and outline it. */
-function paint(w: number, h: number, ox: number, oy: number, draw: (c: Ctx) => void, outline = true): HTMLCanvasElement {
+/**
+ * Paint world-space vector code into an art-px canvas (`w`×`h` world px from
+ * (`ox`, `oy`)), snap it to whole pixels and outline it. Blit the result at
+ * (ox − 4, oy − 4), `el.width × 4` wide (the 1 art px margin holds the outline).
+ */
+export function paintWorld(w: number, h: number, ox: number, oy: number, draw: (c: Ctx) => void, outline = true): HTMLCanvasElement {
   const el = canvas(Math.ceil(w / P) + 2, Math.ceil(h / P) + 2);
   const c = el.getContext('2d')!;
   c.translate(1, 1); c.scale(1 / P, 1 / P); c.translate(-ox, -oy);
@@ -123,7 +127,7 @@ export class HubPixel {
     const key = color * 4 + sway + 1;
     let el = this.flags.get(key);
     if (!el) {
-      el = paint(32, 36, 0, 0, c => {
+      el = paintWorld(32, 36, 0, 0, c => {
         c.fillStyle = FLAG_COLORS[color];
         c.beginPath(); c.moveTo(0, 0); c.lineTo(32, 0); c.lineTo(16 + sway * P, 36); c.closePath(); c.fill();
       });
@@ -138,14 +142,14 @@ export class HubPixel {
     // Worn boards over the safe camp: no outline, a little of the ground through them.
     if (!this.boards || this.boardsTo !== boardsTo) {
       this.boardsTo = boardsTo;
-      this.boards = paint(boardsTo, 32, 0, 608, b => {
+      this.boards = paintWorld(boardsTo, 32, 0, 608, b => {
         for (let x = 0, i = 0; x < boardsTo; x += 36, i++) { b.fillStyle = i % 2 ? '#7a5342' : '#624433'; b.fillRect(x, 612, 32, 28); }
       }, false);
     }
     c.save(); c.globalAlpha = .72;
     c.drawImage(this.boards, -P, 608 - P, this.boards.width * P, this.boards.height * P);
     c.restore();
-    this.still ??= paint(WIDTH, BOTTOM - TOP, 0, TOP, stillDressing);
+    this.still ??= paintWorld(WIDTH, BOTTOM - TOP, 0, TOP, stillDressing);
     c.drawImage(this.still, -P, TOP - P, this.still.width * P, this.still.height * P);
     // Pennants on the cord: each sways a whole art pixel, never a fraction.
     for (let i = 0; i < 15; i++) {
@@ -193,7 +197,7 @@ export class HubPixel {
 
 /** A hanging lantern: a brass cap and frame, warm glass, a bright wick; 8 × 10 art px, outlined. */
 export function lanternSprite(): HTMLCanvasElement {
-  return paint(32, 40, 0, 0, c => {
+  return paintWorld(32, 40, 0, 0, c => {
     c.fillStyle = '#564333'; c.fillRect(0, 4, 32, 36); c.fillRect(8, 0, 16, 4);
     c.fillStyle = '#8a6a3a'; c.fillRect(0, 4, 32, 4);
     c.fillStyle = '#ffdca0'; c.fillRect(4, 12, 24, 24);
