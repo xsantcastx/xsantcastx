@@ -111,6 +111,8 @@ const { PANEL_IDS } = L('play/world/world.model.ts');
 const { PANEL_REGISTRY } = L('play/world/panel-registry.ts');
 const { TOWN_KEEPERS, TOWNSFOLK_COUNT, townsfolkLines } = L('play/world/life.ts');
 const { TERRAIN_NODE_LIST, PLACEABLES } = L('play/engine/terrain.ts');
+// The endless Delve's generator (Phase 7): what it lays east and west of the core.
+const { SECTOR_NODES } = L('play/engine/sector-gen.ts');
 const { MINING_TIERS } = L('shared/activity/activity.model.ts');
 const { FORAGING_TIERS } = L('shared/activity/foraging.model.ts');
 const { PROSPECTING_TIERS } = L('shared/activity/prospecting.model.ts');
@@ -362,7 +364,7 @@ for (const key of ITEM_STAT_KEYS) {
 
 // Terrain nodes (Delve blocks) ──────────────────────────────────────────────
 // Roles that are not a yield, a block or a placeable but are still a purpose.
-const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall': 'staff-only gate', inscription: 'Archivist inscription' };
+const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall': 'staff-only gate', inscription: 'Archivist inscription', 'rift-shrine': 'shows the tunnels round it on the map (rift shrine)' };
 const laidOut = new Set();
 for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) {
   const t = a.terrain; if (!t) continue;
@@ -371,6 +373,7 @@ for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) 
   // Inscriptions are carved into always-air cells from the lore table, not the layout.
   if (DELVE_INSCRIPTIONS.length) laidOut.add('inscription');
 }
+for (const id of SECTOR_NODES || []) laidOut.add(id);
 const placedNodes = new Set(PLACEABLES.map(p => p.node));
 for (const n of TERRAIN_NODE_LIST) {
   const g = node('block', n.id, n.label);
