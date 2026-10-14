@@ -125,7 +125,7 @@ export const GLIM_MARKS: Readonly<Record<string, readonly MarkTarget[]>> = {
   // The Underhearth (Phase 8, docs/handoff/underhearth.md): the ring holds rows 0-119, so deep targets resolve.
   'kael-flooded-seams': [{ liquid: 'water', rows: [12, 26] }, { liquid: 'water' }],
   'kael-four-1': [{ node: 'hearth-seal' }, { node: 'godforge-fragment' }],
-  'kael-four-2': [{ node: 'hammer-mark' }],
+  'kael-four-2': [{ node: 'hammer-mark' }, { node: 'hearth-seal' }],
   'verrin-four-3': [{ node: 'furnace-hearth' }, { node: 'hearth-seal' }],
   'verrin-endings-kept-warm': [{ liquid: 'lava', rows: [56, 118] }, { liquid: 'water', rows: [0, 26] }],
 };
