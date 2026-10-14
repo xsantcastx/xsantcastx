@@ -753,6 +753,7 @@ export class TranslationService {
     'hub.tab.bank': { en: 'Satchel', es: 'Mochila' },
     'hub.tab.skills': { en: 'Skills', es: 'Habilidades' },
     'hub.tab.stats': { en: 'Stats', es: 'Datos' },
+    'hub.tab.story': { en: 'Story', es: 'Historia' },
     'hub.tab.records': { en: 'Records', es: 'Archivo' },
     'hub.bank.title': { en: 'Satchel', es: 'Mochila' },
     'hub.bank.tag': { en: '{{n}} held', es: '{{n}} en posesion' },

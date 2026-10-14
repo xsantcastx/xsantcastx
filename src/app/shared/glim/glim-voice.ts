@@ -24,10 +24,22 @@ export interface GlimSpeech {
   line?: GlimLineId;
   /** For a hint: the step shown and the ladder's top (0 = refused). */
   hint?: { step: number; top: number };
+  /**
+   * A story line (shared/story): the beat it belongs to and who says it. Glim's
+   * line is the one speech line in the play view, so a keeper's story line
+   * (Kael, Verrin, the Merchant, the Archivist) rides it under their own name.
+   */
+  story?: { beat: string; speaker: string };
   /** Bumped per line, so the view re-creates the bubble (and restarts its fade). */
   seq: number;
   until: number;
 }
+
+/** A story line waiting its turn (story.ts StoryLine). */
+export interface GlimStoryLine { beat: string; speaker: string; key: string }
+
+/** How long a story line stays up (dismissible any time). */
+export const GLIM_STORY_MS = 9_000;
 
 export type GlimTickFacts = Omit<GlimFacts, 'met' | 'memory' | 'lastSpokeAt' | 'speaking' | 'delveSince'>;
 
@@ -38,6 +50,8 @@ export class GlimVoice {
   private lastSpokeAt = 0;
   private delveSince = 0;
   private seq = 0;
+  /** Story lines waiting their turn, said one after another before anything unasked. */
+  private readonly storyQueue: GlimStoryLine[] = [];
 
   constructor(private readonly memory: GlimMemoryStore) {}
 
@@ -49,6 +63,14 @@ export class GlimVoice {
     if (f.areaId === 'ember-delve') { if (!this.delveSince) this.delveSince = f.now; }
     else this.delveSince = 0;
     const state = this.memory.state;
+    // A story beat just happened: its lines come next, in order, whenever the
+    // Keeper is not in a panel and nothing else is on screen (the meeting first).
+    if (state.met && this.storyQueue.length && !f.panelOpen && !this.speech) {
+      const line = this.storyQueue.shift()!;
+      this.lastSpokeAt = f.now;
+      this.speech = { key: line.key, story: { beat: line.beat, speaker: line.speaker }, seq: ++this.seq, until: f.now + GLIM_STORY_MS };
+      return null;
+    }
     const id = nextLine({ ...f, met: state.met, memory: state, lastSpokeAt: this.lastSpokeAt, speaking: !!this.speech, delveSince: this.delveSince });
     if (!id) return null;
     if (id === 'meet') {
@@ -83,6 +105,14 @@ export class GlimVoice {
     if (!top) return { next: 0, top: 0 };
     return { next: Math.min(top, (this.memory.state.ladder[subject] ?? 0) + 1), top };
   }
+
+  /** Queue story lines (a beat reached live); they play in order on the next quiet ticks. */
+  story(lines: readonly GlimStoryLine[]): void {
+    this.storyQueue.push(...lines);
+  }
+
+  /** Story lines still waiting. */
+  get storyWaiting(): number { return this.storyQueue.length; }
 
   dismiss(): void { this.speech = null; }
 }
