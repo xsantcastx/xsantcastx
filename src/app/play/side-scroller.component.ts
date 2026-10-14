@@ -84,7 +84,12 @@ import { InfusionService } from '../shared/enchanting/infusion.service';
 import { DROWNED_LAMP_FLAG } from './world/towns/infernal';
 import type { BucketEvent, BucketId, FishEvent } from './engine/engine';
 import { HOTBAR_FIXED } from './engine/terrain';
-import { MAP_MARKER_COLORS } from './engine/delve-map';
+import { MAP_MARKER_COLORS, POINTER_COLOR, type MapPinView, type MapSource } from './engine/delve-map';
+import { BountyService } from '../shared/bounties/bounty.service';
+import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
+import { COMPASS_ID, FRAGMENT_ID, bountyLine, stratumOfRow, type Bounty, type BountyEvent } from '../shared/bounties/bounty.model';
+import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinId, type MapPin, type PinIcon } from '../shared/delve/map-pins.model';
+import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
 /**
@@ -185,6 +190,9 @@ function monogram(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '·';
 }
+
+/** The tracked map pin, per device (a view choice, like the minimap's fold). */
+const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
   selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent],
@@ -366,7 +374,30 @@ export class SideScrollerComponent implements OnDestroy {
   /** Phones: the goal line folded to its "Goal n of 4" chip. */
   guideFolded = false;
   /** The Delve's minimap and full map (M): drawn on the HUD tick from the engine's explored cells. */
-  readonly map = new DelveMapView(() => this.engine?.mapSource() ?? null);
+  readonly map = new DelveMapView(() => this.mapSourceV2());
+  // ── Map v2 and the Board Herald's bounties (docs/handoff/bounties-map-v2.md) ──
+  private readonly bounties = inject(BountyService);
+  private readonly glim = inject(GlimService);
+  /** The Keeper's map pins (DelveSaveService, saved per region), re-read once a second in the Delve. */
+  pins: MapPin[] = [];
+  /** The pin open in the editor under the full map, or null. */
+  selectedPinId: string | null = null;
+  /** "Add pin" is armed: the next tap on the full map places one. */
+  pinning = false;
+  /** The pin whose way the map draws (a per-device view choice, like the minimap's fold). */
+  trackedPinId: string | null = null;
+  readonly pinIcons = PIN_ICONS;
+  readonly maxPins = MAX_PINS;
+  /** Glim's mark (a Delve mission's hint step 3) and the compass's target, re-read once a second. */
+  glimMark: { col: number; row: number } | null = null;
+  glimMarkMission: string | null = null;
+  compassAt: { col: number; row: number } | null = null;
+  private delveTickAt = 0;
+  private lastStructure = '';
+  /** Bounties already announced as done this session. */
+  private readonly toldReady = new Set<string>();
+  /** Where each hooked cast's bob sat (a catch bounty needs the water's column). */
+  private readonly hookedAt = new Map<string, { liquid: string; col: number; row: number }>();
 
   constructor() {
     // Hydration can swap the server canvas after the first callback. Wait until
@@ -377,6 +408,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(HUD_I18N);
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
+    this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
+    try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
   }
   private liveCanvas(): HTMLCanvasElement | null {
     const candidates = [this.canvas?.nativeElement, this.host.nativeElement.querySelector('canvas'), document.querySelector('main.play-mode canvas')];
@@ -421,7 +454,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.drawMaps(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -436,6 +469,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(STORY_I18N);
+    this.i18n.register(BOUNTIES_I18N);
     this.keeperKey = '';
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
@@ -451,7 +485,14 @@ export class SideScrollerComponent implements OnDestroy {
       onStation: station => this.zone.run(() => this.openStation(station)),
       onLoot: loot => this.zone.run(() => (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
         && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore))),
-      onWorldAction: event => this.zone.run(() => this.worldAction(event)),
+      onWorldAction: event => this.zone.run(() => {
+        const result = this.worldAction(event);
+        // A generated Delve cell broke (it paid XP, or would have): the Board Herald's dig bounties count it.
+        if (result !== false && event.node && event.xp > 0 && event.areaId === 'ember-delve') {
+          this.bountyEvent({ kind: 'dig', node: event.node, row: Number(event.cellKey.split(',')[1]), token: event.cellKey });
+        }
+        return result;
+      }),
       onDiscover: event => this.zone.run(() => this.discover(event)),
       onPlace: event => this.zone.run(() => this.placeFromSatchel(event)),
       onTakeBack: event => this.zone.run(() => this.takeToSatchel(event)),
@@ -990,6 +1031,7 @@ export class SideScrollerComponent implements OnDestroy {
       topSkill: Math.max(0, ...SKILLS.map(skill => skillLevel(progress, skill.id))),
       fished: (progress.xpByDiscipline['fishing'] ?? 0) > 0,
       mission: DELVE_MISSIONS.some(mission => this.quests.isMissionDone(mission.id)),
+      bountied: this.bounties.state.total > 0,
       goldEarned: economy.totalGoldEarned,
     });
     const beats = this.story.state.beats;
@@ -1256,11 +1298,151 @@ export class SideScrollerComponent implements OnDestroy {
   centreMap(): void { this.map.centre(); if (this.map.zoom < 0) this.map.zoomBy(1); this.drawMaps(); }
   /** What each mark on the map is. */
   readonly mapLegend = (['keeper', 'camp', 'chest', 'torch', 'inscription', 'shrine', 'shaft'] as const)
-    .map(kind => ({ key: `play.map.legend.${kind}`, color: MAP_MARKER_COLORS[kind] }));
-  /** The way-to-camp line under the full map. */
+    .map(kind => ({ key: `play.map.legend.${kind}`, color: MAP_MARKER_COLORS[kind] }))
+    .concat([
+      { key: 'play.map.legend.pin', color: PIN_COLORS.star },
+      { key: 'play.map.legend.glim', color: GLIM_MARK_COLOR },
+      { key: 'play.map.legend.compass', color: POINTER_COLOR },
+    ]);
+  /** The way line under the full map: to the tracked pin, Glim's mark, or the camp. */
   get mapHint(): string {
     const n = this.map.campPath;
+    const goal = this.goalName();
+    if (goal) return n <= 0 ? this.t('play.map.noWayTo', { name: goal }) : this.t('play.map.wayTo', { name: goal, n });
     return n < 0 ? this.t('play.map.noCamp') : n === 0 ? this.t('play.map.noWay') : this.t('play.map.toCamp', { n });
+  }
+
+  // ── Map v2: pins, waypoints, Glim's mark, the compass and the fragment ──
+
+  /** What the maps draw: the engine's source plus the pins, the goal (tracked pin, else Glim's mark) and the compass. */
+  private mapSourceV2(): MapSource | null {
+    const source = this.engine?.mapSource() ?? null;
+    if (!source) return null;
+    const pins: MapPinView[] = this.pins.map(pin => ({
+      id: pin.id, col: pin.col, row: pin.row, color: PIN_COLORS[pin.icon as PinIcon] ?? PIN_COLORS.star,
+      selected: pin.id === this.selectedPinId, tracked: pin.id === this.trackedPinId,
+    }));
+    if (this.glimMark) pins.push({ id: 'glim', ...this.glimMark, color: GLIM_MARK_COLOR, glim: true });
+    const tracked = this.trackedPin;
+    return { ...source, pins, goal: tracked ? { col: tracked.col, row: tracked.row } : this.glimMark, pointer: this.compassAt };
+  }
+  get trackedPin(): MapPin | null { return this.pins.find(pin => pin.id === this.trackedPinId) ?? null; }
+  get selectedPin(): MapPin | null { return this.pins.find(pin => pin.id === this.selectedPinId) ?? null; }
+  /** The name of what the way leads to, or null for the camp. */
+  private goalName(): string | null {
+    const tracked = this.trackedPin;
+    if (tracked) return this.pinLabel(tracked);
+    return this.glimMark ? this.t('play.map.glimMark') : null;
+  }
+  pinLabel(pin: MapPin): string { return pin.name || this.t(`play.map.pin.icon.${pin.icon}`); }
+  pinColor(icon: string): string { return PIN_COLORS[icon as PinIcon] ?? PIN_COLORS.star; }
+  /** Rift Map Fragments held (the full map offers a reading when there are any). */
+  get fragments(): number { return this.browser ? this.inventory.stackOf(FRAGMENT_ID) : 0; }
+  get compassHeld(): boolean { return this.browser && this.inventory.stackOf(COMPASS_ID) > 0; }
+
+  /**
+   * Map v2's tick (HUD, 5 a second; the scans once a second): the deepest
+   * stratum reached and the structure stood in (bounties), the pins, Glim's
+   * mark and the compass's target, and a bounty finished by walking (reach).
+   */
+  private tickDelveV2(): void {
+    if (!this.browser || !this.engine) return;
+    if (!this.state.delve) { this.pinning = false; this.lastStructure = ''; return; }
+    const at = this.engine.keeperCell();
+    if (at) this.bounties.reached(stratumOfRow(at.row));
+    const here = this.engine.structureHere();
+    if (here && here.id !== this.lastStructure) this.bountyEvent({ kind: 'structure', structure: here.kind, token: here.id });
+    this.lastStructure = here?.id ?? '';
+    const now = Date.now();
+    if (now - this.delveTickAt < 1000) return;
+    this.delveTickAt = now;
+    this.pins = this.delve.pins();
+    if (this.selectedPinId && !this.selectedPin) this.selectedPinId = null;
+    const read = this.delveLore.inscriptions();
+    this.glimMarkMission = activeMark(this.glim.state.lastAt, now);
+    this.glimMark = this.glimMarkMission ? this.engine.findMark(GLIM_MARKS[this.glimMarkMission] ?? [], id => read.has(id)) : null;
+    this.compassAt = this.compassHeld ? this.engine.compassTarget(id => read.has(id)) : null;
+    const canvas = this.canvas?.nativeElement;
+    if (canvas) {
+      canvas.setAttribute('data-glim-mark', this.glimMark ? `${this.glimMark.col},${this.glimMark.row}` : '');
+      canvas.setAttribute('data-compass', this.compassAt ? `${this.compassAt.col},${this.compassAt.row}` : '');
+    }
+    // A reach bounty finishes by walking: no event names it, the frontier does.
+    for (const view of this.bounties.refresh()) if (view.ready) this.bountyDone(view.bounty);
+  }
+  /** Offer a Delve event to today's bounties; say so when one is done. */
+  private bountyEvent(event: BountyEvent): void {
+    for (const bounty of this.bounties.observe(event)) this.bountyDone(bounty);
+  }
+  private bountyDone(bounty: Bounty): void {
+    if (this.toldReady.has(bounty.id)) return;
+    this.toldReady.add(bounty.id);
+    const line = bountyLine(bounty);
+    const vars = typeof line.vars['stratum'] === 'string' ? { ...line.vars, stratum: this.t(line.vars['stratum']) } : line.vars;
+    this.toastLoot(this.t('bounty.toast'));
+    // After the engine's own line for the act that finished it ("Torch placed."), which would clear this one.
+    const text = this.t('bounty.ready', { name: this.t(line.key, vars) });
+    setTimeout(() => this.zone.run(() => { this.message = text; }), 250);
+  }
+
+  /** "Add pin": the next tap on the full map places one (or says the satchel of pins is full). */
+  startPin(): void {
+    if (!this.pinning && this.pins.length >= MAX_PINS) { this.message = this.t('play.map.pin.full', { n: MAX_PINS }); return; }
+    this.pinning = !this.pinning;
+    if (this.pinning) this.selectedPinId = null;
+  }
+  /** A tap on the full map: pick the pin there, else place one when armed. */
+  mapTap(col: number, row: number): void {
+    const hit = this.pins
+      .filter(pin => Math.abs(pin.col - col) <= 1 && row >= pin.row - 3 && row <= pin.row + 1)
+      .sort((a, b) => Math.abs(a.col - col) + Math.abs(a.row - row) - Math.abs(b.col - col) - Math.abs(b.row - row))[0];
+    if (hit && !this.pinning) { this.selectPin(hit.id); return; }
+    if (!this.pinning) return;
+    const rows = this.engine?.mapSource()?.t.rows ?? 56;
+    const pin = { id: newPinId(), col, row: Math.max(0, Math.min(rows - 1, row)), icon: 'star', name: '' };
+    this.pinning = false;
+    if (!this.delve.setPin(pin)) { this.message = this.t('play.map.pin.full', { n: MAX_PINS }); return; }
+    this.pins = this.delve.pins();
+    this.selectPin(pin.id);
+  }
+  selectPin(id: string): void {
+    this.selectedPinId = this.selectedPinId === id ? null : id;
+    this.drawMaps();
+  }
+  /** Edit the selected pin: its icon, or its name (blank = the icon's word). */
+  editPin(change: { icon?: string; name?: string }): void {
+    const pin = this.selectedPin;
+    if (!pin) return;
+    const next = { id: pin.id, col: pin.col, row: pin.row, icon: change.icon ?? pin.icon, name: change.name !== undefined ? cleanPinName(change.name) : pin.name };
+    if (next.icon === pin.icon && next.name === pin.name) return;
+    if (this.delve.setPin(next)) this.pins = this.delve.pins();
+    this.drawMaps();
+  }
+  /** Track the selected pin (the map draws its way; the minimap points at it), or stop. */
+  trackPin(): void {
+    const pin = this.selectedPin;
+    if (!pin) return;
+    this.trackedPinId = this.trackedPinId === pin.id ? null : pin.id;
+    try { if (this.trackedPinId) localStorage.setItem(TRACK_KEY, this.trackedPinId); else localStorage.removeItem(TRACK_KEY); } catch { /* this session */ }
+    this.drawMaps();
+  }
+  removePin(): void {
+    const pin = this.selectedPin;
+    if (!pin) return;
+    this.delve.removePin(pin.id);
+    if (this.trackedPinId === pin.id) this.trackPin();
+    this.pins = this.delve.pins();
+    this.selectedPinId = null;
+    this.drawMaps();
+  }
+  /** Read a Rift Map Fragment: the nearest unvisited structure joins the map (one fragment spent, keyed by it). */
+  readFragment(): void {
+    if (!this.engine || this.fragments < 1) return;
+    const found = this.engine.readRiftMap(s => this.inventory.consumeStacks(`rift-map:${s.id}`, [{ id: FRAGMENT_ID, count: 1 }]).ok);
+    this.message = found
+      ? this.t('play.map.fragment.read', { kind: this.t(`play.map.structure.${found.kind}`) })
+      : this.t('play.map.fragment.none');
+    this.drawMaps();
   }
   openBag(): void { if (!this.bagOpen) this.toggleBag(); }
   closeBag(): void {
@@ -1705,6 +1887,9 @@ export class SideScrollerComponent implements OnDestroy {
       return false;
     }
     this.refreshHotbar();
+    if (event.item === 'torch' && event.areaId === 'ember-delve') {
+      this.bountyEvent({ kind: 'torch', row: Number(event.cellKey.split(',')[1]), token: event.cellKey });
+    }
     return true;
   }
   /** A placed thing comes back: one grant keyed by the take's mutation id. */
@@ -1791,6 +1976,7 @@ export class SideScrollerComponent implements OnDestroy {
       return;
     }
     const pending = this.fishing.hooked({ castId: event.castId, biome: event.biome, liquid: event.liquid });
+    this.hookedAt.set(event.castId, { liquid: event.liquid, col: event.col, row: event.row });
     if (event.auto) { this.landCatch(pending, 'off', reelDuration(pending.rarity) + .6); return; }
     const lodgeReel = this.inventory.stackOf('lodge-reel') > 0 ? .1 : 0;
     let seed = 0;
@@ -1809,7 +1995,10 @@ export class SideScrollerComponent implements OnDestroy {
   private landCatch(pending: PendingCatch, grade: 'perfect' | 'good' | 'off', recastIn?: number): void {
     const landed = this.fishing.land(pending, grade);
     this.engine?.landFish(recastIn);
+    const hooked = this.hookedAt.get(pending.castId);
+    this.hookedAt.delete(pending.castId);
     if (!landed) { this.message = this.t('play.fish.ui.saveFailed'); return; }
+    if (hooked) this.bountyEvent({ kind: 'catch', liquid: hooked.liquid, col: hooked.col, row: hooked.row, token: pending.castId });
     this.toastLoot(this.t('play.fish.ui.landed', { name: landed.name, n: landed.qty, xp: landed.xp }));
     this.message = landed.first ? `${this.t('play.fish.ui.grade.' + grade)} ${this.t('play.fish.ui.first')}` : this.t('play.fish.ui.grade.' + grade);
     this.canvas?.nativeElement.setAttribute('data-last-catch', landed.id);
@@ -2019,6 +2208,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (event.kind === 'shrine') {
       const result = this.skillActions.act({ mutationId: `delve-shrine:${event.id}`, skill: 'delving', xp: SHRINE_XP, locationId: EMBER_DELVE_LOCATION });
       if (result.ok && !result.replayed) this.message = this.t('play.delve.shrine.first', { n: SHRINE_XP });
+      // Each shrine hands over one Rift Map Fragment, the first time (map v2; the grant id is the receipt).
+      const had = this.inventory.stackOf(FRAGMENT_ID);
+      if (this.inventory.grantStack(`delve-shrine:${event.id}:fragment`, FRAGMENT_ID, 1) && this.inventory.stackOf(FRAGMENT_ID) > had) {
+        this.toastLoot(`+1 ${materialDisplay(FRAGMENT_ID)?.name ?? 'Rift Map Fragment'}`);
+        this.message = `${this.message ? `${this.message} ` : ''}${this.t('play.map.fragment.got')}`;
+      }
       return;
     }
     const note = fieldNoteFor(event.id);

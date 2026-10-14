@@ -76,6 +76,15 @@ async function kindAt(page: Page, col: number, row: number): Promise<number | un
   return decodeCells(save?.areas?.['ember-delve']?.cells ?? '').get(idx(col, row));
 }
 
+/** A world cell's centre in client px on the open full map, from the transform it publishes (`data-view`). */
+async function mapPoint(page: Page, col: number, row: number): Promise<{ x: number; y: number }> {
+  return page.locator('.map-full canvas').evaluate((c, a) => {
+    const [ox, oy, s, dpr] = (c.getAttribute('data-view') ?? '0,0,1,1').split(',').map(Number);
+    const r = c.getBoundingClientRect();
+    return { x: r.left + (ox + (a.col + .5) * s) / dpr, y: r.top + (oy + (a.row + .5) * s) / dpr };
+  }, { col, row });
+}
+
 /** Pixels of the open full map that are not unexplored fog (rgb 20,10,31). */
 async function exploredPixels(page: Page): Promise<number> {
   return page.locator('.map-full canvas').evaluate(c => {
@@ -171,6 +180,57 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await page.waitForTimeout(500);
       const after = await exploredPixels(page);
       expect(after, `explored before the reload: ${before} px; after: ${after} px`).toBeGreaterThanOrEqual(Math.floor(before * .95));
+    });
+
+    test('map v2: place a pin, choose its icon and name, track the way to it; it survives a reload; remove it', async ({ page }) => {
+      test.setTimeout(150_000);
+      const f = delve();
+      await seed(page, f.blobs());
+      await descend(page);
+      const openMap = async () => {
+        if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); }
+        else await page.locator('.map-mini-open').tap();
+        await expect(page.locator('.map-full')).toBeVisible();
+        await page.waitForTimeout(500);
+      };
+      const press = async (l: ReturnType<Page['locator']>) => { if (touch) await l.tap(); else await l.click(); };
+      await openMap();
+      await expect(page.locator('.map-canvas')).toHaveAttribute('data-pins', '0');
+      // Arm "Add pin", then tap the explored tunnel's west end (col 16, row 7): the way there is explored.
+      await press(page.locator('.map-pin-add'));
+      await expect(page.locator('.map-hint')).toContainText('Tap the map where the pin goes');
+      const at = await mapPoint(page, 16, 7);
+      if (touch) await page.touchscreen.tap(at.x, at.y); else await page.mouse.click(at.x, at.y);
+      await expect(page.locator('.map-canvas')).toHaveAttribute('data-pins', '1');
+      await expect(page.locator('.map-pin-edit')).toBeVisible();
+      // Every editor control is a 44px target.
+      for (const control of await page.locator('.map-pin-edit button, .map-pin-edit input, .map-pins button').all()) {
+        const b = await control.boundingBox();
+        if (b) expect(Math.min(b.width, b.height), 'a pin control under 44px').toBeGreaterThanOrEqual(44);
+      }
+      await press(page.getByRole('radio', { name: 'Fish' }));
+      await expect(page.getByRole('radio', { name: 'Fish' })).toHaveAttribute('aria-checked', 'true');
+      const name = page.locator('.map-pin-name input');
+      await name.fill('Lake');
+      await name.press('Enter');
+      await press(page.locator('.map-pin-track'));
+      await expect(page.locator('.map-pin-chip', { hasText: 'Lake' })).toContainText('tracked');
+      await expect(page.locator('.map-hint')).toContainText(/Way to Lake: \d+ cells/);
+      await shot(page, `${label}-pin`);
+      if (!touch) await page.keyboard.press('Escape'); else await page.locator('.map-close').tap();
+      await page.waitForTimeout(2500); // the pin rides the Delve's 1.5 s debounced write
+
+      // A fresh page load: the pin is still there, tracked, with its icon and name.
+      await descend(page);
+      await openMap();
+      await expect(page.locator('.map-canvas')).toHaveAttribute('data-pins', '1');
+      await expect(page.locator('.map-pin-chip', { hasText: 'Lake' })).toContainText('tracked');
+      await expect(page.locator('.map-hint')).toContainText('Way to Lake');
+      // Remove it: gone from the map and the save.
+      await press(page.locator('.map-pin-chip', { hasText: 'Lake' }));
+      await press(page.locator('.map-pin-remove'));
+      await expect(page.locator('.map-canvas')).toHaveAttribute('data-pins', '0');
+      await expect(page.locator('.map-hint')).toContainText('Way to camp');
     });
   });
 }

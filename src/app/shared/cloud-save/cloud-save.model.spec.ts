@@ -619,6 +619,7 @@ describe('the registry', () => {
       'eclipse-quests',
       'eclipse-realm-rush-board',
       'godforge-activity',
+      'godforge-bounties',
       'godforge-chapter',
       'godforge-collection',
       'godforge-crafting',

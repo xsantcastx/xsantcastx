@@ -1008,3 +1008,39 @@ Every keeper in the five towns now wears a name with a title or epithet under
 it (the engine harness checks that none is called only by its job). Older
 entries in this file that say "Vault Clerk", "Board Herald" or "the Croupier"
 mean these people; their art keys (`npc-vault-clerk-figure`, …) are unchanged.
+
+### The Board Herald's bounties and the map tools (Phase 7.4–7.5, 2026-10-14)
+
+**Shipped — owner reviews in play.** Builds on the Delve and Beyond §6.1 and
+§7.2, Pim Larkin (above), and two canon objects that had painted art and codex
+lines but no place in the game (meaning audit, "Canon items with no game
+presence").
+
+- **Pim's bounties.** The realms post orders on the Quest Board; the Delve
+  posts nothing, so Pim reads it aloud for it: three bounties a day, drawn for
+  the Keeper alone (their Delve's seed and the day), never a streak. "The
+  realms post orders. The Delve posts nothing, so I read it for them: three a
+  day, fresh every morning. Miss a day and nothing is lost; the board just
+  turns over." New keeper line, after a first bounty: "The Delve never posts,
+  so I read it for you. Three bounties a day." (`bounties.i18n.ts`,
+  `life.i18n.ts`; EN + ES.) Builds on: world-and-cast §5 (no punishing
+  streaks); Pim's four generations of neutral reading.
+- **The Broken Astral Compass** (canon codex: "points toward the nearest fact
+  omitted by the active model"). The last Herald left it on the board; Pim hands
+  it over with the first bounty claimed: "It points at what the board forgot to
+  post." Lore line: *It stopped pointing north the day the Godforge broke. Now it
+  points at whatever the map was never told: the room no lantern has reached,
+  the carving nobody copied.* Held, the Delve map draws a short violet ray
+  toward the nearest unvisited structure or uncopied carving.
+- **The Rift Map Fragment** (canon codex: "a partial route that is legible only
+  beside another keeper's incompatible observation"). Tucked behind each rift
+  shrine's stone (the first touch), and Pim's gift every seventh day a bounty is
+  claimed. Lore line: *Half a route, drawn by a Keeper who saw the tunnels
+  differently. It only reads beside your own map; read together, one more room
+  appears.* Read on the full map, it draws the nearest unvisited structure into
+  the Keeper's own explored map.
+- **Glim's mark.** The third step of a Delve mission's hint ladder: "I'll mark
+  it on your Delve map. Open the map (M) and look for my light." A lamplight
+  diamond on the map for half an hour, at the mission's target: a place, never
+  what a carving says (the Archivist's rule stands). Builds on: world-and-cast
+  §4 (Glim keeps the maps; "A hint is a kindness. An answer is a theft.").

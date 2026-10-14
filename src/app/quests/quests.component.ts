@@ -2,7 +2,8 @@
  * quests.component.ts — /world/quests, the Quest Board, as a station
  * (shared/station-ui; MapleStory journal anatomy).
  *
- *   tabs:    Ready · Daily · Weekly · Delve · Story · Contracts
+ *   tabs:    Ready · Bounties · Daily · Weekly · Delve · Story · Contracts
+ *            (Bounties: Pim Larkin's three daily Delve bounties, shared/bounties)
  *   strip:   TODAY  [██░ 1/3 done · new in 4h]   one how-line
  *   journal: quest list | the selected quest → ONE button: Claim
  *   Details: totals, timers, each quest's story, history
@@ -42,6 +43,9 @@ import {
   type StationTab,
 } from '../shared/station-ui';
 import { QUESTS_I18N } from './quests.i18n';
+import { BountyService, BountyView } from '../shared/bounties/bounty.service';
+import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
+import { FRAGMENT_EVERY, bountyLine } from '../shared/bounties/bounty.model';
 
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
@@ -53,7 +57,7 @@ interface LogDay {
   xp: number;
 }
 
-export type BoardTab = 'ready' | 'daily' | 'weekly' | 'delve' | 'epic' | 'contracts';
+export type BoardTab = 'ready' | 'bounties' | 'daily' | 'weekly' | 'delve' | 'epic' | 'contracts';
 
 /** One row of the journal: an authored quest or a Delve mission, flattened. */
 interface BoardEntry {
@@ -77,6 +81,8 @@ interface BoardEntry {
   unlocks: string | null;
   quest: Quest | null;
   mission: DelveMissionState | null;
+  /** One of the Board Herald's bounties. */
+  bounty?: BountyView | null;
 }
 
 @Component({
@@ -90,6 +96,7 @@ interface BoardEntry {
 export class QuestsComponent implements OnInit, OnDestroy {
   private readonly quests = inject(QuestService);
   private readonly npc = inject(NpcQuestService);
+  private readonly bountyService = inject(BountyService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
@@ -101,6 +108,7 @@ export class QuestsComponent implements OnInit, OnDestroy {
 
   board: QuestBoard = this.quests.board;
   missions: DelveMissionState[] = [];
+  bounties: BountyView[] = [];
   dailyCountdown = '—';
   weeklyCountdown = '—';
   history: LogDay[] = [];
@@ -124,6 +132,7 @@ export class QuestsComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(QUESTS_I18N);
+    this.i18n.register(BOUNTIES_I18N);
     this.rebuild();
   }
 
@@ -145,11 +154,19 @@ export class QuestsComponent implements OnInit, OnDestroy {
         this.rebuild();
         this.cdr.markForCheck();
       }));
+      this.subs.add(this.bountyService.views$.subscribe(views => {
+        this.bounties = views;
+        this.rebuild();
+        this.cdr.markForCheck();
+      }));
+      this.bountyService.refresh();
       this.recount();
       this.rebuild();
       // A minute is enough on a page you read — the drawer ticks every second
       // because it is glanced at, this one is not.
       this.ticker = setInterval(() => {
+        // The board turns over at midnight; a reach bounty's frontier moves without an event.
+        this.bountyService.refresh();
         this.recount();
         this.rebuild();
         this.cdr.markForCheck();
@@ -185,13 +202,21 @@ export class QuestsComponent implements OnInit, OnDestroy {
   claim(): void {
     const entry = this.selected;
     if (!entry || !entry.ready) return;
-    const ok = entry.quest ? this.quests.claim(entry.quest.id) : this.npc.claimMission(entry.mission!.mission.id);
-    if (!ok) return;
+    let caption = entry.reward;
+    if (entry.bounty) {
+      const paid = this.bountyService.claim(entry.bounty.bounty.id);
+      if (!paid) return;
+      caption = [this.t('bounty.reward', { gold: paid.gold.toLocaleString('en-US'), xp: paid.xp }),
+        ...paid.gifts.map(id => this.t(id === 'broken-astral-compass' ? 'bounty.giftCompass' : 'bounty.giftFragment'))].join(' · ');
+    } else {
+      const ok = entry.quest ? this.quests.claim(entry.quest.id) : this.npc.claimMission(entry.mission!.mission.id);
+      if (!ok) return;
+    }
     this.reward = {
       seq: ++this.rewardSeq,
       name: entry.name,
       kicker: this.t('quests.claimedKicker'),
-      caption: entry.reward,
+      caption,
     };
     this.announce = `${this.t('quests.claimedKicker')}: ${entry.name}, ${entry.reward}`;
     // Stay on the row so the player sees it turn to Done; the services push
@@ -207,7 +232,7 @@ export class QuestsComponent implements OnInit, OnDestroy {
     if (entry.ready) return null;
     if (entry.done) return this.t('quests.claimedAlready');
     if (entry.locked) return entry.next ?? this.t('quests.sub.locked');
-    if (entry.mission && entry.next) return entry.next;
+    if ((entry.mission || entry.bounty) && entry.next) return entry.next;
     return this.t('quests.notYet', { n: entry.observed, total: entry.target });
   }
 
@@ -219,12 +244,14 @@ export class QuestsComponent implements OnInit, OnDestroy {
       weekly: this.board.weekly.map(q => this.fromQuest(q)),
       epic: this.board.epic.map(q => this.fromQuest(q)),
       delve: this.missions.map(m => this.fromMission(m)),
+      bounties: this.bounties.map(b => this.fromBounty(b)),
     };
-    const ready = [...all.daily, ...all.weekly, ...all.epic, ...all.delve].filter(e => e.ready);
+    const ready = [...all.bounties, ...all.daily, ...all.weekly, ...all.epic, ...all.delve].filter(e => e.ready);
 
     this.tab = this.chosenTab ?? (ready.length ? 'ready' : 'daily');
     this.tabs = [
       { id: 'ready', label: this.t('quests.tab.ready'), badge: ready.length || null },
+      { id: 'bounties', label: this.t('bounty.tab'), badge: all.bounties.filter(e => e.ready).length || null },
       { id: 'daily', label: this.t('quests.tab.daily') },
       { id: 'weekly', label: this.t('quests.tab.weekly') },
       { id: 'delve', label: this.t('quests.tab.delve'), badge: all.delve.filter(e => e.ready).length || null },
@@ -276,6 +303,39 @@ export class QuestsComponent implements OnInit, OnDestroy {
       quest: q,
       mission: null,
     };
+  }
+
+  /** One of Pim Larkin's bounties as a journal row. */
+  private fromBounty(v: BountyView): BoardEntry {
+    const b = v.bounty, line = bountyLine(b);
+    const vars = { ...line.vars, ...(typeof line.vars['stratum'] === 'string' ? { stratum: this.t(line.vars['stratum'] as string) } : {}) };
+    const name = this.t(line.key, vars);
+    return {
+      id: `b:${b.id}`,
+      name,
+      line: name,
+      ready: v.ready,
+      done: v.claimed,
+      locked: false,
+      observed: v.observed,
+      target: v.target,
+      progress: v.target ? v.observed / v.target : 0,
+      reward: this.t('bounty.reward', { gold: v.gold.toLocaleString('en-US'), xp: v.xp }),
+      who: this.t('bounty.postedBy'),
+      next: v.claimed || v.ready ? null : this.t(`bounty.next.${b.kind}`),
+      lore: this.t('bounty.lore'),
+      unlocks: null,
+      quest: null,
+      mission: null,
+      bounty: v,
+    };
+  }
+
+  /** Days visited, bounties claimed, and how far the next Rift Map Fragment is (Details). */
+  get bountyCounts(): { days: number; total: number; toFragment: number } {
+    const s = this.bountyService.state;
+    // Claim days still to go until the next multiple of seven (the next claim day is claimDays + 1).
+    return { days: s.days, total: s.total, toFragment: FRAGMENT_EVERY - (s.claimDays % FRAGMENT_EVERY) };
   }
 
   private fromMission(m: DelveMissionState): BoardEntry {
