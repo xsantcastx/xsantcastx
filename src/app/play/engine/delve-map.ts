@@ -288,7 +288,8 @@ function drawWorldMap(c: CanvasRenderingContext2D, source: MapSource, world: Wor
   const { t, fog } = source;
   const s = Math.max(1, Math.round(view.scale));
   const ox = Math.round(view.width / 2 - view.centerCol * s), oy = Math.round(view.height / 2 - view.centerRow * s);
-  const c0 = Math.max(world.col0, Math.floor(-ox / s) - 1), c1 = Math.min(world.col1, Math.ceil((view.width - ox) / s) + 1);
+  // Every column in view (unexplored ones paint as fog): the picture keeps one width while the view does.
+  const c0 = Math.floor(-ox / s) - 1, c1 = Math.ceil((view.width - ox) / s) + 1;
   c.save();
   c.imageSmoothingEnabled = false;
   c.fillStyle = `rgb(${FOG_RGB.join(',')})`;
@@ -297,17 +298,16 @@ function drawWorldMap(c: CanvasRenderingContext2D, source: MapSource, world: Wor
   c.fillRect(ox + world.col0 * s, oy - s * 2, (world.col1 - world.col0) * s, s * 2);
   const w = c1 - c0;
   if (w > 0) {
-    if (!worldPicture || worldPicture.canvas.width < w || worldPicture.canvas.height !== t.rows) {
-      const canvas = document.createElement('canvas');
-      canvas.width = Math.max(w, worldPicture?.canvas.width ?? 0); canvas.height = t.rows;
+    if (!worldPicture || worldPicture.image.width !== w || worldPicture.canvas.height !== t.rows) {
+      // Sized to the columns in view; reused while the view keeps its width (no allocation per HUD tick).
+      const canvas = worldPicture?.canvas ?? document.createElement('canvas');
+      canvas.width = Math.max(w, canvas.width); canvas.height = t.rows;
       const ctx = canvas.getContext('2d');
       if (!ctx) { c.restore(); return -1; }
-      worldPicture = { canvas, image: ctx.createImageData(canvas.width, t.rows) };
+      worldPicture = { canvas, image: ctx.createImageData(w, t.rows) };
     }
-    const data = new Uint8ClampedArray(w * t.rows * 4);
-    world.paint(c0, c1, data);
-    const image = new ImageData(data, w, t.rows);
-    worldPicture.canvas.getContext('2d')!.putImageData(image, 0, 0);
+    world.paint(c0, c1, worldPicture.image.data);
+    worldPicture.canvas.getContext('2d')!.putImageData(worldPicture.image, 0, 0);
     c.drawImage(worldPicture.canvas, 0, 0, w, t.rows, ox + c0 * s, oy, w * s, t.rows * s);
   }
   const markers = world.markers(c0, c1);

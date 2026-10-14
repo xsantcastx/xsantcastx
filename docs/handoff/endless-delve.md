@@ -165,3 +165,24 @@ Built on main after Phase 6 (liquids + fishing), Story Act I and the fishing pho
 - Perf harness: `PLAY_PERF=1 … e2e/perf-play.spec.ts -g "wide traverse"` (new scene, below).
 
 Screenshots (not committed): `output/endless/{desktop,phone}-{east,border,map,reloaded}.png`.
+
+## Perf (opt-in harness, 390×844 @3, 4× CPU, 30 s, software raster; `before` = main `550571f`)
+
+`PLAY_PERF=1 PLAY_PERF_SECONDS=30 npx playwright test e2e/perf-play.spec.ts -g "delve: "`, before and after
+alternated on a shared machine. The new **wide traverse** scene walks east from a camp at the core's east end for
+the whole window: after, the ring streams a sector column in every few seconds; before, the same walk stops at
+the core's east wall (the same frame, standing). Task / script are ms per frame; alloc KB per frame.
+
+| Scene | before | after |
+|---|---|---|
+| Wide traverse, round 1 | 1222 fr · p50/p95/max 18.6/35.1/35.3 · 0 long tasks · task 24.5 · script 5.74 · alloc 34.1 | 1251 fr · 18.4/35.1/51.8 · 0 · 23.9 · 6.49 · 49.9 |
+| Wide traverse, round 2 | 1263 fr · 18.2/35.0/35.4 · 0 · 23.7 · 5.56 · 34.0 | 1272 fr · 18.2/34.6/35.4 · 0 · 23.6 · 6.38 · 49.9 |
+| Magma Halls gallery (17 torches) | 1120 · 31.8/35.1 · 0 · 26.8 · 5.86 · 38.1 | 1117 · 31.7/35.2 · 0 · 26.8 · 5.91 · 40.2 |
+| Grotto Mere | 1526 · 16.7/33.4 · 0 · 19.6 · 8.90 · 53.8 | 1446 · 16.7/33.8 · 5 (noise; max 100) · 20.5 · 9.16 · 56.8 |
+| Lava pool | 769 · 34.7/51.6 · 2 · 39.0 · 10.84 · 65.4 | 805 · 33.4/51.5 · 0 · 37.3 · 10.41 · 68.8 |
+
+**No hitch while streaming**: zero long tasks and the same p50/p95 as standing still on main; the one 51.8 ms
+frame in round 1 did not repeat. Walking through new rock costs ~0.7 ms of script a frame (the ring's
+prefetch and shifts, the world map, the new rock's glints and halos) and ~16 KB a frame of allocation (the
+columns built ahead, the map's marker scan). The scenes that do not leave the core are within noise of main.
+The map's picture buffer is reused (an earlier build allocated it every HUD tick: +18 KB/frame).
