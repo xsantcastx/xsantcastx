@@ -168,7 +168,8 @@ describe('NpcQuestService', () => {
   }
 
   it('offers only the first step of each chain to a new visitor', () => {
-    for (const npcId of Object.keys(NPC_CHAINS) as (keyof typeof NPC_CHAINS)[]) {
+    // A companion (Glim) has no chain yet: its questline ships with the Atlas.
+    for (const npcId of (Object.keys(NPC_CHAINS) as (keyof typeof NPC_CHAINS)[]).filter(id => NPC_CHAINS[id].length)) {
       const chain = svc.chains[npcId];
       expect(chain.done).withContext(npcId).toBe(0);
       expect(chain.active?.id).withContext(npcId).toBe(NPC_CHAINS[npcId][0].id);

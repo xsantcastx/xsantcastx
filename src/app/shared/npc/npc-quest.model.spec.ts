@@ -24,9 +24,16 @@ import {
   objectiveTarget,
 } from './npc-quest.model';
 
+/** Everyone with a chain. A companion (Glim) travels with the Keeper; its questline ships with the Atlas. */
+const STAFF = NPCS.filter(n => !n.companion);
+
 describe('the chains', () => {
+  it('gives the companion no chain yet', () => {
+    expect(NPC_CHAINS['glim']).toEqual([]);
+  });
+
   it('gives every character a chain', () => {
-    for (const npc of NPCS) {
+    for (const npc of STAFF) {
       expect(NPC_CHAINS[npc.id]?.length).withContext(npc.id).toBeGreaterThanOrEqual(3);
     }
   });
@@ -38,7 +45,7 @@ describe('the chains', () => {
   });
 
   it('files every step under the character that offers it', () => {
-    for (const npc of NPCS) {
+    for (const npc of STAFF) {
       for (const step of NPC_CHAINS[npc.id]) {
         expect(step.npcId).withContext(step.id).toBe(npc.id);
       }
@@ -72,7 +79,7 @@ describe('escalation', () => {
    * when a step is retuned in isolation.
    */
   it('never pays a later step less Gold than an earlier one', () => {
-    for (const npc of NPCS) {
+    for (const npc of STAFF) {
       const gold = NPC_CHAINS[npc.id].map(s => s.reward.gold);
       for (let i = 1; i < gold.length; i++) {
         expect(gold[i]).withContext(`${npc.id} step ${i + 1}`).toBeGreaterThan(gold[i - 1]);
@@ -85,7 +92,7 @@ describe('escalation', () => {
   });
 
   it('closes every chain with a title, an achievement and a lore fragment', () => {
-    for (const npc of NPCS) {
+    for (const npc of STAFF) {
       const last = NPC_CHAINS[npc.id][NPC_CHAINS[npc.id].length - 1];
       expect(last.reward.title).withContext(npc.id).toBeTruthy();
       expect(last.reward.achievement).withContext(npc.id).toBeTruthy();
