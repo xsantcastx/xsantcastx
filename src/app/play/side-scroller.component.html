@@ -190,10 +190,11 @@
       <p><span>{{ t('play.hud.tally.defeated') }}</span><b>{{ state.kills || 0 }}</b></p>
     </div>
     <!-- Pickups announce through the objective line; these chips are only the picture. -->
-    <div class="loot-toasts" aria-hidden="true">
-      @for (toast of lootToasts; track toast.key) { <span class="loot-toast">{{ toast.text }}</span> }
-    </div>
   </aside>
+  <!-- Catch / XP / pickup banners: their own slot above the prompt, clear of the goal line, Glim, the toast and the minimap. -->
+  <div class="loot-toasts" aria-hidden="true">
+    @for (toast of lootToasts; track toast.key) { <span class="loot-toast">{{ toast.text }}</span> }
+  </div>
 
   @if (bagOpen) {
     <section id="satchel-book" class="book" aria-labelledby="satchel-title">
@@ -290,7 +291,7 @@
     @if (!state.nearby && fishPrompt; as fish) {
       <strong>{{ fish }}</strong>
       <button type="button" class="fish-go" [title]="fishInfo"
-        (pointerdown)="fishPress($event, true)" (pointerup)="fishPress($event, false)" (pointercancel)="fishPress($event, false)" (lostpointercapture)="fishPress($event, false)">{{ state.fishing?.phase === 'bite' ? t('play.fish.ui.bite') : state.fishing ? t('play.fish.ui.reelIn') : t('play.fish.ui.fish') }} <kbd class="key-hint">E</kbd></button>
+        (pointerdown)="fishPress($event, true)" (pointerup)="fishPress($event, false)" (pointercancel)="fishPress($event, false)" (lostpointercapture)="fishPress($event, false)">{{ state.fishing?.phase === 'bite' ? t('play.fish.ui.hook') : state.fishing ? t('play.fish.ui.reelIn') : t('play.fish.ui.fish') }} <kbd class="key-hint">E</kbd></button>
     }
     @if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
