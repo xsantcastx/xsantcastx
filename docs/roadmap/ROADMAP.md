@@ -6,7 +6,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## What's next (in order)
 
-1. **Clean & perfect what we have** (owner, 2026-10-14, top priority) — the UI feels crowded and not nice. Strip each surface back to its job, Diablo II-style: the inventory is a slot grid plus a worn-items paper doll and nothing else; the Mirror Slate opens straight to a few clear choices instead of a wall; every panel gets one primary action, details behind a tap. Audit every screen on a phone for clutter, overlap and dead chrome.
+1. **Clean & perfect what we have** (owner, 2026-10-14, top priority) — the UI feels crowded and not nice. Strip each surface back to its job, Diablo II-style: the inventory is a slot grid plus a worn-items paper doll and nothing else; the Mirror Slate opens straight to a few clear choices instead of a wall; every panel gets one primary action, details behind a tap. Audit every screen on a phone for clutter, overlap and dead chrome. *(first pass built 2026-10-14: Satchel as doll + grid with the item card on tap, Slate home face, station/Glim/anchor sweep; see `docs/handoff/ui-clean-pass.md`. Next pass: the desktop HUD tally, the phone clasp badge, the station kit's hero line.)*
 2. **Make your Keeper** (owner, 2026-10-14) — a character creator (body, skin, hair, face, colours, name) saved to the account, and **worn gear that reads on the body**: every weapon held in the hand at the right angle and scale, armour/helm/cloak layered on the sprite, so equipping something visibly changes you (MapleStory-level readability as the floor).
 3. **Rift Gates** (owner, 2026-10-14) — portals deep in the Delve to other realms' Delves, each deeper and stranger; first realm: the Umbral ink-caves. *(in flight)*
 4. **Delves in every realm** — Luminous light-mines, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists; Umbral comes with Rift Gates), each with biomes, creatures, keeper missions and story.
@@ -41,6 +41,7 @@ Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · 
 
 ## Daily review log
 
+- **2026-10-14 (late)** — UI clean pass built (roadmap #1, first pass). The Satchel opens on the paper doll and the slot grid only, with one item card on tap. The Mirror Slate opens on big tiles, so the Reels are one tap away. In-world station purpose lines, the phone full-page link, Glim's Close and the anchor rows are quieter. Gated, merging.
 - **2026-10-14 (night)** — Shipped the Underhearth, uncapped levels + titles and the Glim bond together (24/24 related e2e green after a CSS merge fix). Owner: the UI feels crowded — cleaning and perfecting what exists is now #1, a custom Keeper with gear that shows on the body is #2; Rift Gates in flight.
 - **2026-10-14 (night)** — Built: **a surface with height** (the High Roads): parkour routes in all five hunts with once-only caches and summit titles, ledge-grab, climbing, wall-jump; Hollis Fenn walks the high roads.
 - **2026-10-14 (daily review)** — No app code shipped since the evening entry; docs only (agent brief, SYSTEMS.md, sound + catch & craft added). Trimmed "What's next" to seven (sound and catch & craft merged into World feel; the rest under Later). Risk: five features in flight at once on a shared repo — gate each merge and watch for release-version races.
