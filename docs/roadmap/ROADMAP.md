@@ -8,7 +8,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 0. **Delves in every realm** (owner, 2026-10-14 — "we are in Eclipse Realms") — each of the five realms gets its own Delve: Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists). Own biomes, creatures, keeper missions, story. **Top item after the weekly budget resets (Mon).**
 1. **The Underhearth** (Phase 8). *(in flight)*
-2. **The Mirror Slate** — casino anywhere + Homestead management. *(in flight)*
+2. **The Mirror Slate** — casino anywhere + Homestead management. *(built 2026-10-14, `docs/handoff/mirror-slate.md`)*
 3. **Uncapped levels, Tibia-style** (owner, 2026-10-14) — skills past 99 forever on a steepening curve; tool bonuses keep growing with diminishing returns; swing floor and reward rate caps stay; titles at milestone levels. *(in flight)*
 4. **Glim bond** (owner) — the more you explore with Glim the closer you get: bond levels unlock Glim's story, conversations and small abilities (sensing hidden rooms, remembering routes). *(in flight)*
 5. **A surface with height** (owner) — climbable trees, ledges, floating ruins, parkour routes with rewards at the top, wall-jump/ledge-grab, NPCs and creatures up there. *(in flight)*
@@ -44,6 +44,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## Daily review log
 
+- **2026-10-14 (Mirror Slate)** — Built item 2: the Mirror Slate (Lune's gift at ten plays or 500k Gold; P anywhere; her four tables embedded on the same ledger; the Homestead at a glance; Kael's tier II adds map pins + Pim's bounties). Handoff `docs/handoff/mirror-slate.md`.
 - **2026-10-14 (evening)** — Owner ideas folded in: Lost Cabinets (scan with the Slate), uncapped Tibia-style levels, Glim bond, a surface with height + parkour, pets, a more alive and mysterious Delve, Tibia inspiration.
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board

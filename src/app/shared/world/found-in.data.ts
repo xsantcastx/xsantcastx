@@ -31,6 +31,7 @@ import { TOWNS, type AreaDef } from '../../play/world/world.model';
 import { TERRAIN_NODE_LIST, type TerrainSpec } from '../../play/engine/terrain';
 import { foundIn, type AreaLike, type FoundInIndex, type FoundInPlace } from './found-in';
 import { MAP_TOOLS } from '../delve/map-tools.model';
+import { SLATE_ITEMS } from '../slate/slate-items.model';
 import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
 const DELVE_AREA = 'Ember Delve';
@@ -61,6 +62,8 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
   rows.push({ place: 'Rootglass Canopy: the Lodge Warden\'s gifts for Ledger Catches', materialIds: LODGE_CHARMS.map(c => c.id) });
   // Map v2's map tools (shared/delve/map-tools.model.ts).
   for (const tool of MAP_TOOLS) for (const place of tool.foundIn) rows.push({ place, materialIds: [tool.id] });
+  // The Mirror Slate's two panes (shared/slate/slate-items.model.ts).
+  for (const item of SLATE_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
   void CRATE_IDS;
   return rows;
 }
