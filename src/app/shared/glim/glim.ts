@@ -73,6 +73,14 @@ export const GLIM_HINTS: Readonly<Record<string, GlimHintRow>> = {
   'delve-archivist-words-2': { nudge: 'play.glim.hint.m.words.1', direction: 'play.glim.hint.m.words.2', show: 'atlas' },
   'delve-archivist-words-3': { nudge: 'play.glim.hint.m.words3.1', direction: 'play.glim.hint.m.words.2', show: 'atlas' },
   'delve-fracture': { nudge: 'play.glim.hint.m.fracture.1', direction: 'play.glim.hint.m.fracture.2', show: 'atlas' },
+  // Fishing missions (liquids-fishing.md): which water, never what it hides.
+  'fish-drowned-lamp-1': { nudge: 'play.glim.hint.f.minnow.1', direction: 'play.glim.hint.f.minnow.2', show: 'atlas' },
+  'fish-drowned-lamp-2': { nudge: 'play.glim.hint.f.alcove.1', direction: 'play.glim.hint.f.alcove.2', show: 'atlas' },
+  'fish-drowned-lamp-3': { nudge: 'play.glim.hint.f.lamp.1', direction: 'play.glim.hint.f.lamp.2', show: 'atlas' },
+  'fish-verrin-eels': { nudge: 'play.glim.hint.f.eels.1', direction: 'play.glim.hint.f.eels.2', show: 'atlas' },
+  'fish-merchant-order': { nudge: 'play.glim.hint.f.order.1', direction: 'play.glim.hint.f.order.2', show: 'atlas' },
+  'fish-merchant-debt': { nudge: 'play.glim.hint.f.debt.1', direction: 'play.glim.hint.f.debt.2', show: 'atlas' },
+  'fish-archivist-pages': { nudge: 'play.glim.hint.f.pages.1', direction: 'play.glim.hint.f.pages.2', show: 'atlas' },
 };
 
 /** What Glim says to anything off the ladder. */

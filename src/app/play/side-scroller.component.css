@@ -2023,8 +2023,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 
 /* ── Fishing and liquids (Phase 6) ─────────────────────────────────────── */
-.meter.breath i { background: var(--adventure-hud-water, #86d2e6); }
-.meter.ward i { background: var(--adventure-hud-ember, #ff9b4f); }
+.meter.breath i { background: var(--adventure-hud-water); }
+.meter.ward i { background: var(--adventure-hud-ember); }
 .reel-host {
   position: absolute;
   z-index: 4;
