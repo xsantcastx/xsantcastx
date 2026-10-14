@@ -6,11 +6,16 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## What's next (in order)
 
-1. **The Underhearth** (Phase 8) — the layer below the Magma Halls, the Banked Furnace, tool tier V, rope/grapple/rails/cart, Rift Anchors. *(in flight)*
-2. **The Mirror Slate** (owner idea, 2026-10-14) — a carried device of the Archive's moon-mirror glass in Kael's brass. Sold/awarded by Lune Coyne (Croupier) after you've played her tables; Kael upgrades it. Tier I: **play the casino anywhere** (Reels, Rune Drop, Seam Sweeper, Eclipse Ascent — same odds, Gold only) and **manage the Homestead factory** (collect, buy the next building, explorers/expeditions, ready-notifications). Later tiers: map pins and bounty tracking, a Hearth tab. Crafting, Market, Exchange and selling stay in the world — places stay places.
-3. **Starfall Deep** (Phase 9) — low gravity, rising starlight, Aureth's chain.
-4. **Story Act II** — the Five Witnesses (world & cast).
-5. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
+1. **The Underhearth** (Phase 8). *(in flight)*
+2. **The Mirror Slate** — casino anywhere + Homestead management. *(in flight)*
+3. **Uncapped levels, Tibia-style** (owner, 2026-10-14) — skills past 99 forever on a steepening curve; tool bonuses keep growing with diminishing returns; swing floor and reward rate caps stay; titles at milestone levels. *(in flight)*
+4. **Glim bond** (owner) — the more you explore with Glim the closer you get: bond levels unlock Glim's story, conversations and small abilities (sensing hidden rooms, remembering routes). *(in flight)*
+5. **A surface with height** (owner) — climbable trees, ledges, floating ruins, parkour routes with rewards at the top, wall-jump/ledge-grab, NPCs and creatures up there. *(in flight)*
+6. **Lost Cabinets** (owner) — rare unique slot machines hidden in the Delve; scan one with the Mirror Slate (scan animation) to download its game; collectible. Needs the Slate.
+7. **A living, mysterious Delve** (owner) — per-biome/region backgrounds and assets, hidden rooms, environmental storytelling, ambient life, events (ambushes, rift storms, cave-in chases), more creatures.
+8. **Pets** (owner) — rare befriendable creatures that follow you, each with a trait and lore.
+9. **Tibia-inspired loops** — research pass: hunting grounds, rare drops, open quests, houses → ideas that fit the world.
+10. **Starfall Deep** (Phase 9) · **Story Act II** · **Art test set** *(owner)*.
 
 ## Milestones
 
@@ -36,6 +41,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## Daily review log
 
+- **2026-10-14 (evening)** — Owner ideas folded in: Lost Cabinets (scan with the Slate), uncapped Tibia-style levels, Glim bond, a surface with height + parkour, pets, a more alive and mysterious Delve, Tibia inspiration.
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
   (drawn per player per day, 5–15 min of income, days counted never a streak, `economy-sim --bounties`), map pins
