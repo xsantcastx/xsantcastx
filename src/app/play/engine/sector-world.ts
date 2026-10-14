@@ -22,9 +22,13 @@
  * outside it goes to its sector's diff through `DelvePersistence.sectors`.
  */
 import { CELL, LIQUID_FULL, liquidLayout, nodeIndex, packLiquid, Terrain, TERRAIN_NODE_LIST, terrainLayout, type TerrainSpec } from './terrain';
-import { coreSectorCols, generateSectorColumn, isCoreCell, isCoreCol, SECTOR, SECTOR_GV, sectorContext, type SectorColumnGen, type SectorContext, type SectorHall } from './sector-gen';
+import { coreSectorCols, generateSectorColumn, isCoreCell, isCoreCol, LATTICE, latticePlans, SECTOR, SECTOR_GV, sectorContext, type SectorColumnGen, type SectorContext, type SectorHall, type SectorStructure } from './sector-gen';
 import type { DelvePersistence, DelveSectorStore } from './engine.model';
-import { fogPixel, mapPixel, mapWalls, REVEAL_CELLS, type MapMarker, type WorldMap } from './delve-map';
+import { deepPlans } from './underhearth-gen';
+import { fogPixel, mapPixel, mapWalls, REVEAL_CELLS, type CellReader, type MapMarker, type WorldMap } from './delve-map';
+
+/** A generated structure with a stable id (`<kind>@<col>,<row>`, its room's top-left). */
+export interface PlacedStructure extends SectorStructure { id: string }
 
 /** World columns the ring holds (four sector columns). A power of two. */
 export const RING_COLS = 128;
@@ -579,6 +583,93 @@ export class SectorWorld {
         return out;
       },
       camp: this.find(CAMP),
+    };
+  }
+
+  // ── Map v2: structures, the compass, the fragment, Glim's mark ───────────
+
+  /** The generated structures in the lattice cells within `cells` of world column `col` (from the seed alone). */
+  structuresNear(col: number, cells = 8): PlacedStructure[] {
+    const out: PlacedStructure[] = [];
+    const at = Math.floor(col / (LATTICE * SECTOR));
+    for (let c = at - cells; c <= at + cells; c++) {
+      for (const p of latticePlans(this.ctx, c)) out.push({ kind: p.kind, col: p.col, row: p.row, w: p.w, h: p.h, id: `${p.kind}@${p.col},${p.row}` });
+      // The deep strata's structures (Phase 8, the Underhearth): the Four's outposts, its halls and lakes.
+      if (this.ctx.rows > this.spec.rows) for (const p of deepPlans(this.ctx, c)) out.push({ kind: p.kind, col: p.col, row: p.row, w: p.w, h: p.h, id: `${p.kind}@${p.col},${p.row}` });
+    }
+    return out;
+  }
+  /** The structure whose room holds this cell (one cell of slack round it), or null. */
+  structureAt(col: number, row: number): PlacedStructure | null {
+    for (const s of this.structuresNear(col, 1)) {
+      if (col >= s.col - 1 && col <= s.col + s.w && row >= s.row - 1 && row <= s.row + s.h) return s;
+    }
+    return null;
+  }
+  /** Whether a world cell is explored: the ring, a cached column, or the saved sector's 4 × 4 blocks. */
+  seenAt(col: number, row: number): boolean {
+    if (row < 0 || row >= this.ctx.rows) return false;
+    if (this.t.inside(col, row)) { const i = this.t.index(col, row); return !!(this.fog[i >> 3] & (1 << (i & 7))); }
+    const column = this.columns.get(Math.floor(col / SECTOR));
+    if (column) { const i = row * SECTOR + (col - column.sx * SECTOR); return !!(column.fog[i >> 3] & (1 << (i & 7))); }
+    const { sx, sy } = SectorWorld.local(col, row);
+    let fog: Uint8Array | null = null;
+    try { fog = this.sectors?.sector(this.areaId, sx, sy)?.fog ?? null; } catch { /* unexplored */ }
+    if (!fog) return false;
+    const b = ((row - sy * SECTOR) >> 2) * 8 + ((col - sx * SECTOR) >> 2);
+    return !!(fog[b >> 3] & (1 << (b & 7)));
+  }
+  /** Any cell of the structure's room explored. */
+  structureSeen(s: SectorStructure): boolean {
+    for (let row = s.row; row < s.row + s.h; row++) for (let col = s.col; col < s.col + s.w; col++) if (this.seenAt(col, row)) return true;
+    return false;
+  }
+  /** The nearest structure no explored cell of which has been seen, within `cells` lattice cells. */
+  nearestUnseen(col: number, row: number, cells = 6): PlacedStructure | null {
+    let best: PlacedStructure | null = null, bestD = Infinity;
+    for (const s of this.structuresNear(col, cells)) {
+      const d = Math.hypot(s.col + s.w / 2 - col, s.row + s.h / 2 - row);
+      if (d < bestD && !this.structureSeen(s)) { bestD = d; best = s; }
+    }
+    return best;
+  }
+  /**
+   * Explore a rectangle anywhere (a Rift Map Fragment read): ring cells as the
+   * lantern would, unloaded columns in their own fog (built from the seed and
+   * the save if they are not cached), then hand it all to the save.
+   */
+  revealArea(col0: number, col1: number, row0: number, row1: number): boolean {
+    let changed = false;
+    for (let col = col0; col <= col1; col++) for (let row = Math.max(0, row0); row <= Math.min(this.ctx.rows - 1, row1); row++) {
+      if (this.t.inside(col, row)) { if (this.mark(col, row)) changed = true; continue; }
+      const column = this.column(Math.floor(col / SECTOR));
+      const i = row * SECTOR + (col - column.sx * SECTOR), bit = 1 << (i & 7);
+      if (column.fog[i >> 3] & bit) continue;
+      column.fog[i >> 3] |= bit;
+      changed = true;
+      if (isCoreCell(this.ctx, col, row)) { const ci = row * this.spec.cols + col; this.coreSeen[ci >> 3] |= 1 << (ci & 7); this.coreFogDirty = true; }
+      else { const at = SectorWorld.local(col, row); this.fogDirty.add(`${at.sx},${at.sy}`); }
+    }
+    if (changed) this.flushFog();
+    return changed;
+  }
+  /** The core's cells wherever the ring is (its columns are pinned): where Glim's marks are found. */
+  coreReader(): CellReader {
+    const t = this.t, rows = this.spec.rows;
+    const at = (col: number, row: number) => {
+      if (t.inside(col, row)) return { ring: t.index(col, row), column: null as Column | null, i: 0 };
+      const column = this.columns.get(Math.floor(col / SECTOR))!;
+      return { ring: -1, column, i: row * SECTOR + (col - column.sx * SECTOR) };
+    };
+    return {
+      col0: 0, col1: this.spec.cols, rows,
+      kind: (col, row) => { const a = at(col, row); return a.ring >= 0 ? t.kind[a.ring] : a.column!.kind[a.i]; },
+      liquid: (col, row) => {
+        const a = at(col, row);
+        const type = a.ring >= 0 ? t.liqType[a.ring] : a.column!.liqType[a.i], level = a.ring >= 0 ? t.liqLevel[a.ring] : a.column!.liqLevel[a.i];
+        return level > 0 ? type : 0;
+      },
+      note: (col, row) => this.columns.get(Math.floor(col / SECTOR))?.gen.notes.get(row * SECTOR + (col - Math.floor(col / SECTOR) * SECTOR)),
     };
   }
 

@@ -179,8 +179,34 @@
           <button type="button" class="book-close map-close" (click)="closeMap()">{{ t('play.hud.book.close') }} <kbd class="key-hint">M</kbd></button>
         </div>
       </header>
-      <canvas class="map-canvas" (pointerdown)="map.press($event)" (pointermove)="map.move($event)" (pointerup)="map.release()" (pointercancel)="map.release()" (wheel)="map.wheel($event)" [attr.aria-label]="mapHint"></canvas>
-      <p class="map-hint" role="status">{{ mapHint }} <span>{{ t('play.map.drag') }}</span></p>
+      <canvas class="map-canvas" [class.is-pinning]="pinning" (pointerdown)="map.press($event)" (pointermove)="map.move($event)" (pointerup)="map.release($event)" (pointercancel)="map.release()" (wheel)="map.wheel($event)" [attr.aria-label]="mapHint" [attr.data-pins]="pins.length"></canvas>
+      <p class="map-hint" role="status">{{ pinning ? t('play.map.pin.placing') : mapHint }} <span>{{ t('play.map.drag') }}</span></p>
+      <!-- Map v2: the Keeper's pins (chosen by icon, named if you like), a fragment to read. -->
+      <div class="map-pins" role="group" [attr.aria-label]="t('play.map.pins')">
+        <button type="button" class="map-pin-add" (click)="startPin()" [attr.aria-pressed]="pinning">{{ pinning ? t('play.map.pin.cancel') : t('play.map.pin.add', { n: pins.length, max: maxPins }) }}</button>
+        @if (fragments > 0) {
+          <button type="button" class="map-fragment" (click)="readFragment()">{{ t('play.map.fragment.button', { n: fragments }) }}</button>
+        }
+        @for (pin of pins; track pin.id) {
+          <button type="button" class="map-pin-chip" [class.is-selected]="pin.id === selectedPinId" [attr.aria-pressed]="pin.id === selectedPinId" (click)="selectPin(pin.id)" [attr.data-pin]="pin.id">
+            <i [style.background]="pinColor(pin.icon)" aria-hidden="true"></i>{{ pinLabel(pin) }}@if (pin.id === trackedPinId) { <b class="map-pin-tracked">{{ t('play.map.pin.trackedTag') }}</b> }
+          </button>
+        }
+      </div>
+      @if (selectedPin; as pin) {
+        <div class="map-pin-edit" role="group" [attr.aria-label]="t('play.map.pin.edit')">
+          <div class="map-pin-icons" role="radiogroup" [attr.aria-label]="t('play.map.pin.iconLabel')">
+            @for (icon of pinIcons; track icon) {
+              <button type="button" role="radio" class="map-pin-icon" [attr.aria-checked]="pin.icon === icon" [attr.aria-label]="t('play.map.pin.icon.' + icon)" [title]="t('play.map.pin.icon.' + icon)" (click)="editPin({ icon })"><i [style.background]="pinColor(icon)" aria-hidden="true"></i><span>{{ t('play.map.pin.icon.' + icon) }}</span></button>
+            }
+          </div>
+          <label class="map-pin-name">{{ t('play.map.pin.name') }}
+            <input type="text" maxlength="24" autocomplete="off" [value]="pin.name" [placeholder]="t('play.map.pin.icon.' + pin.icon)" (change)="editPin({ name: $any($event.target).value })" (keydown.enter)="editPin({ name: $any($event.target).value })">
+          </label>
+          <button type="button" class="map-pin-track" (click)="trackPin()" [attr.aria-pressed]="pin.id === trackedPinId">{{ pin.id === trackedPinId ? t('play.map.pin.untrack') : t('play.map.pin.track') }}</button>
+          <button type="button" class="map-pin-remove" (click)="removePin()">{{ t('play.map.pin.remove') }}</button>
+        </div>
+      }
       <ul class="map-legend">
         @for (row of mapLegend; track row.key) { <li><i [style.background]="row.color" aria-hidden="true"></i>{{ t(row.key) }}</li> }
       </ul>

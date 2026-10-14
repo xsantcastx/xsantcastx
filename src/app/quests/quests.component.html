@@ -15,7 +15,7 @@
     <app-skill-strip stationSkill
       [level]="null"
       [title]="t('quests.today')"
-      [progress]="board.daily.length ? todayDone / board.daily.length : 0"
+      [progress]="todayProgress"
       [progressLabel]="todayLabel"
       [hint]="t('quests.hint')" />
 
@@ -87,6 +87,16 @@
         </dl>
         <p class="qb-panel__hint">{{ t('quests.details.daily', { t: dailyCountdown }) }}</p>
         <p class="qb-panel__hint">{{ t('quests.details.weekly', { t: weeklyCountdown }) }}</p>
+      </section>
+
+      <!-- The Board Herald's bounties: counts, never a streak (shared/bounties). -->
+      <section class="qb-panel qb-bounties" aria-labelledby="qb-bounties">
+        <h2 class="qb-panel__title" id="qb-bounties">{{ t('bounty.title') }}</h2>
+        @if (bountyCounts; as c) {
+          <p class="qb-panel__hint" data-bounty-counts>{{ t('bounty.details.counts', { days: c.days, total: c.total }) }}</p>
+          <p class="qb-panel__hint">{{ t('bounty.details.rule') }}</p>
+          <p class="qb-panel__hint">{{ t('bounty.details.fragment', { n: c.toFragment }) }}</p>
+        }
       </section>
 
       @if (selected; as q) {

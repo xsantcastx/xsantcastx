@@ -33,6 +33,7 @@ export const GLIM_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.glim.hint.yours': { en: 'This one\'s yours to find. I\'ll hold the light.', es: 'Este te toca encontrarlo a ti. Yo sostengo la luz.' },
   'play.glim.hint.follow': { en: 'Follow me. I\'ll fly ahead and wait there.', es: 'Sigueme. Volare delante y te esperare alli.' },
   'play.glim.hint.here': { en: 'It\'s right where you\'re standing. Try it; I\'ll watch.', es: 'Esta justo donde estas. Pruebalo; yo miro.' },
+  'play.glim.hint.mark': { en: 'I\'ll mark it on your Delve map. Open the map (M) and look for my light.', es: 'Lo marcare en tu mapa de la Sima. Abre el mapa (M) y busca mi luz.' },
   'play.glim.hint.back.1': { en: 'Everything for this goal is on the Seamworks floor. We\'ve wandered off the map\'s legend.', es: 'Todo para este objetivo esta en Basalt Seamworks. Nos salimos de la leyenda del mapa.' },
   'play.glim.hint.back.2': { en: 'Take the way back marked on the goal line; Show me walks it the short way.', es: 'Toma el camino de vuelta que marca el objetivo; Llevame lo recorre por el atajo.' },
 
@@ -61,7 +62,7 @@ export const GLIM_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.glim.hint.rune.1': { en: 'There\'s a forge here that strikes runes, not blades. You can afford one try now.', es: 'Aqui hay una forja que golpea runas, no hojas. Ya te alcanza para un intento.' },
   'play.glim.hint.rune.2': { en: 'The Rune Forge is east of the Crafting Bench. One strike is 600 Gold; the odds are on the forge.', es: 'La Rune Forge esta al este del Crafting Bench. Un golpe cuesta 600 de oro; las probabilidades estan en la forja.' },
 
-  // Delve missions: where to look, never what a carving means. Step 3 waits for the Atlas.
+  // Delve missions: where to look, never what a carving means. Step 3 is Glim's mark on the map.
   'play.glim.hint.m.shadow.1': { en: 'Verrin wants the shadow of a tree that grows downward. Shallow roots first.', es: 'Verrin quiere la sombra de un arbol que crece hacia abajo. Primero las raices poco profundas.' },
   'play.glim.hint.m.shadow.2': { en: 'The Root Hollows, the Delve\'s first layer. Cut the violet root growths with a sickle or a blade.', es: 'Root Hollows, la primera capa de la Sima. Corta las raices violetas con una hoz o una hoja.' },
   'play.glim.hint.m.seam.1': { en: 'Kael said "old seam". The old things are usually deeper.', es: 'Kael dijo "veta vieja". Lo viejo suele estar mas abajo.' },

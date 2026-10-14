@@ -46,6 +46,12 @@ export class GlimService {
     return next;
   }
 
+  /** Step 3 of a Delve mission's ladder: stamp Glim's mark (the map shows it for GLIM_MARK_MS). */
+  mark(missionId: string, at = Date.now()): void {
+    this.hydrate();
+    this.save({ ...this.current, lastAt: { ...this.current.lastAt, [`mark.${missionId}`]: at } });
+  }
+
   /** Record that a line was said now (count + stamp). */
   said(lineId: string, at = Date.now()): void {
     this.hydrate();

@@ -266,6 +266,74 @@ describe('DelveSaveService (save v2: the endless Delve)', () => {
     expect(back?.sectors['-3,0'].c).toBe(region.sectors['-3,0'].c);
   });
 
+  // ── Map v2: pins ride their region (device store and cloud slot) ──
+
+  it('pins: placed, edited and removed; saved in their cell\'s region, back after a reload, capped at 12', fakeAsync(() => {
+    service.seed(AREA);
+    flush();
+    expect(service.setPin({ id: 'pin00001', col: 300, row: 20, icon: 'fish', name: 'The east lake' })).toBeTrue();
+    expect(service.setPin({ id: 'pin00002', col: 10, row: 5, icon: 'star', name: '' })).toBeTrue();
+    expect(service.setPin({ id: 'pin00003', col: 10, row: 5, icon: 'not-an-icon', name: '' })).toBeFalse();
+    tick(DEBOUNCE_MS);
+    service.flush();
+    // The lake pin lives in region 1_0 (sector column 9), the core pin in 0_0; both ride a slot.
+    expect(service.slotRegions().filter(Boolean).sort()).toEqual(['0_0', '1_0']);
+    const lake = device.regions.find(r => r.rx === 1)!;
+    expect(lake.p?.map(p => p.id)).toEqual(['pin00001']);
+    let again = boot();
+    again.seed(AREA);
+    flush();
+    expect(again.pins().map(p => `${p.id}:${p.icon}:${p.name}`)).toEqual(['pin00001:fish:The east lake', 'pin00002:star:']);
+    // Edit (the later edit wins), move into another region, remove (a tombstone).
+    clock += 1000;
+    expect(again.setPin({ id: 'pin00001', col: 300, row: 20, icon: 'danger', name: 'Lava!' })).toBeTrue();
+    clock += 1000;
+    expect(again.setPin({ id: 'pin00002', col: -40, row: 5, icon: 'star', name: 'West' })).toBeTrue();
+    expect(again.removePin('pin00001')).toBeTrue();
+    expect(again.removePin('pin00001')).toBeFalse();
+    again.flush();
+    again = boot();
+    again.seed(AREA);
+    flush();
+    expect(again.pins().map(p => `${p.id}:${p.col}`)).toEqual(['pin00002:-40']);
+    // Twelve at most.
+    for (let n = 0; n < 11; n++) expect(again.setPin({ id: `cap${String(n).padStart(5, '0')}`, col: 200 + n, row: 3, icon: 'pick', name: '' })).toBeTrue();
+    expect(again.pins().length).toBe(12);
+    expect(again.setPin({ id: 'onetoomany', col: 250, row: 3, icon: 'pick', name: '' })).toBeFalse();
+    expect(again.setPin({ id: 'pin00002', col: -40, row: 6, icon: 'door', name: 'West' })).toBeTrue();
+    flush();
+  }));
+
+  it('pins: another device\'s pins and removals merge in through the region slot', fakeAsync(() => {
+    service.seed(AREA);
+    flush();
+    service.setPin({ id: 'minepin1', col: 300, row: 20, icon: 'fish', name: '' });
+    service.setPin({ id: 'shared01', col: 301, row: 20, icon: 'star', name: '' });
+    service.flush();
+    const slot = service.slotRegions().indexOf('1_0');
+    const seed = service.seed(AREA)!;
+    const theirs: DelveRegion = { v: 1, seed, rx: 1, ry: 0, t: clock + 50, sectors: {}, p: [
+      { id: 'theirs01', c: 290, r: 10, i: 'chest', n: 'Their chest', t: clock + 50 },
+      { id: 'shared01', c: 301, r: 20, i: 'star', n: '', t: clock + 50, d: 1 },
+    ] };
+    localStorage.setItem(REGION_SLOT_KEYS[slot], JSON.stringify(theirs));
+    TestBed.inject(LocalSaveRegistry).rehydrate(REGION_SLOT_KEYS[slot]);
+    expect(service.pins().map(p => p.id).sort()).toEqual(['minepin1', 'theirs01']);
+    flush();
+  }));
+
+  it('exploredSpan: the seed and the frontier, and never rolls a seed before the first Delve', fakeAsync(() => {
+    expect(service.exploredSpan()).toBeNull();
+    expect(localStorage.getItem(DELVE_KEY)).toBeNull();
+    service.seed(AREA);
+    flush();
+    service.sectorExplored(AREA, 9, 0, 1, Uint8Array.from([1, 0, 0, 0, 0, 0, 0, 0]));
+    service.sectorExplored(AREA, -3, 1, 1, Uint8Array.from([1, 0, 0, 0, 0, 0, 0, 0]));
+    service.sectorChanged(AREA, 30, 0, 1, 5, 0); // changed but never explored: not the frontier
+    expect(service.exploredSpan()).toEqual({ seed: service.seed(AREA)!, east: 9, west: -3 });
+    flush();
+  }));
+
   function slotBlob(slot: number): unknown {
     const parsed = JSON.parse(localStorage.getItem(REGION_SLOT_KEYS[slot]) ?? 'null');
     return parsed && typeof parsed === 'object' && 'v' in parsed && 'updatedAt' in parsed ? parsed.v : parsed;

@@ -457,6 +457,11 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'grown from thornroot and slag at the Crafting Bench' },
   { id: 'rift-anchor', rarity: 'rare', realm: 'infernal',
     hint: 'a Waystone Shard, ironwood and obsidian, once Kael has read the Four\'s marks' },
+  // Map v2's map tools (shared/delve/map-tools.model.ts).
+  { id: 'broken-astral-compass', rarity: 'rare', realm: 'celestial',
+    hint: 'the Board Herald\'s first bounty, on the Quest Board' },
+  { id: 'rift-map-fragment', rarity: 'uncommon', realm: 'umbral',
+    hint: 'a rift shrine\'s first touch in the Ember Delve, or the Board Herald on every seventh bounty day' },
 ];
 
 /** Consumables, with the same treatment. */
@@ -555,6 +560,10 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'bark-rope': 'It unrolls down to the floor and not a hand further. The World-Root has always known where the ground is.',
   'thornroot-grapple': 'Throw it and it grows the rest of the way. It remembers where you aimed better than you do.',
   'rift-anchor': 'A four-point anchor around a Waystone Shard: a passage that holds only because both ends agree to.',
+  // Canon (item lore codex): "points toward the nearest fact omitted by the active model".
+  'broken-astral-compass': 'It stopped pointing north the day the Godforge broke. Now it points at whatever the map was never told: the room no lantern has reached, the carving nobody copied.',
+  // Canon: "a partial route that is legible only beside another keeper's incompatible observation".
+  'rift-map-fragment': 'Half a route, drawn by a Keeper who saw the tunnels differently. It only reads beside your own map; read together, one more room appears.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -776,6 +785,8 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'bark-rope': 'Bark Rope',
   'thornroot-grapple': 'Thornroot Grapple',
   'rift-anchor': 'Rift Anchor',
+  'broken-astral-compass': 'Broken Astral Compass',
+  'rift-map-fragment': 'Rift Map Fragment',
 };
 
 function loreFor(id: string): string {
