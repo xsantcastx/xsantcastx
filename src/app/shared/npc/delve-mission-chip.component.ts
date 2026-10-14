@@ -5,12 +5,20 @@
  * first open one-off, then the standing order. One plain next-step line and,
  * when it is ready, one Claim button. Nothing else — the Quest Board has the
  * full cards.
+ *
+ * Once the Keeper has met Glim, a small moth button asks it for a hint: the
+ * mission's ladder opens one step at a time (a nudge, then a direction; the
+ * third step, a pin on Glim's Atlas, ships with the Atlas). shared/glim/glim.ts.
  */
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, PLATFORM_ID, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { TranslationService } from '../../translation.service';
 import { DelveMissionState, NpcQuestService } from './npc-quest.service';
+import { GlimService } from '../glim/glim.service';
+import { GlimIconComponent } from '../glim/glim-icon.component';
+import { GLIM_I18N } from '../glim/glim.i18n';
+import { GlimHint, glimHint, ladderTop } from '../glim/glim';
 
 /** The mission the chip tracks, or null when nothing is open. */
 export function trackedMission(all: readonly DelveMissionState[]): DelveMissionState | null {
@@ -24,6 +32,7 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
 @Component({
   selector: 'app-delve-mission-chip',
   standalone: true,
+  imports: [GlimIconComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (tracked(); as m) {
@@ -36,8 +45,15 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
         </p>
         @if (m.turnInReady) {
           <button type="button" class="dmc__claim" (click)="claim(m.mission.id)">{{ t('delve.chip.claim') }}</button>
+        } @else if (glimMet && ladderTop(m.mission.id)) {
+          <button type="button" class="dmc__glim" (click)="askGlim(m.mission.id)" [attr.aria-label]="t('play.glim.askDone')" [title]="t('play.glim.askDone')"><app-glim-icon /></button>
         }
       </div>
+      @if (glimLine(); as h) {
+        @if (h.mission === m.mission.id) {
+          <p class="dmc__glim-line" role="status"><b>Glim</b> · {{ tv('play.glim.step', { n: h.hint.step, total: h.hint.top }) }} · {{ t(h.hint.key) }}</p>
+        }
+      }
     }
   `,
   styles: [`
@@ -75,6 +91,15 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
       letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
     }
     .dmc__claim:focus-visible { outline: 2px solid var(--gf-accent-text, #6affe0); outline-offset: 2px; }
+    .dmc__glim {
+      flex: 0 0 auto; display: grid; place-items: center;
+      width: 44px; height: 44px; padding: 0;
+      border: 1px solid var(--gf-edge-strong, rgba(255,255,255,.12)); border-radius: 50%;
+      background: transparent; cursor: pointer;
+    }
+    .dmc__glim:focus-visible { outline: 2px solid var(--gf-accent-text, #6affe0); outline-offset: 2px; }
+    .dmc__glim-line { margin: 6px 12px 0; font-size: .8rem; line-height: 1.4; color: var(--gf-ink, #ddd7ee); }
+    .dmc__glim-line b { font: 700 10px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
   `],
 })
 export class DelveMissionChipComponent implements OnInit {
@@ -84,6 +109,13 @@ export class DelveMissionChipComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
 
   readonly tracked = signal<DelveMissionState | null>(null);
+  private readonly glim = inject(GlimService);
+  /** Glim's last hint for the tracked mission, until it changes. */
+  readonly glimLine = signal<{ mission: string; hint: GlimHint } | null>(null);
+  readonly ladderTop = ladderTop;
+  get glimMet(): boolean { return this.isBrowser && this.glim.state.met; }
+
+  constructor() { this.i18n.register(GLIM_I18N); }
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -93,6 +125,13 @@ export class DelveMissionChipComponent implements OnInit {
   }
 
   t(key: string): string { return this.i18n.translate(key); }
+  tv(key: string, vars: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
+
+  /** The next step of this mission's hint ladder (glim.ts; secrets are never on it). */
+  askGlim(id: string): void {
+    const step = this.glim.advance(`mission.${id}`, ladderTop(id));
+    this.glimLine.set({ mission: id, hint: glimHint(id, step) });
+  }
 
   claim(id: string): void { this.npc.claimMission(id); }
 }

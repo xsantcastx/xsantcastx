@@ -29,6 +29,7 @@ import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
+import { GlimSprite } from './glim-sprite';
 export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
@@ -276,6 +277,8 @@ export class SeamworksEngine {
    * without a save, dug state lives for this engine session.
    */
   private terrain: Terrain | null = null;
+  /** Glim, the Keeper's companion and the Delve's lantern (glim-sprite.ts). Drawn once met. */
+  private readonly glim = new GlimSprite();
   private readonly terrains = new Map<string, Terrain>();
   /** `terrainLayout()` each cached terrain was generated under: the key its diff is saved by. */
   private readonly layouts = new Map<string, string>();
@@ -1124,6 +1127,27 @@ export class SeamworksEngine {
     if (!station || this.paused || this.hp <= 0) return false;
     if (instant) { this.placeAt(station.x); this.interact(); return true; }
     return this.moveTo(station.x, () => this.interact());
+  }
+  /**
+   * Glim (glim-sprite.ts). `shown` once the Keeper has met it; `arrive` flies it
+   * in from above to the shoulder (the Prologue meeting, once).
+   */
+  setGlim(shown: boolean, arrive = false): void {
+    if (shown && arrive) this.glim.arrive(this.player.x - 240, this.player.y - 460);
+    this.glim.shown = shown;
+  }
+  /** Show me: Glim flies ahead to a station (or a floor x) and back. The x it flies to, or null. */
+  glimShowMe(target: { station: string } | { x: number }): number | null {
+    if (!this.glim.shown) return null;
+    const x = 'station' in target ? this.stations.find(row => row.id === target.station)?.x : target.x;
+    if (x === undefined || !Number.isFinite(x)) return null;
+    this.glim.flyTo(x, this.terrain ? this.player.y - 150 : FLOOR - 170);
+    return x;
+  }
+  /** Where Glim is, for the HUD's data attributes and the tell: world x, the Show me target, dimmed. */
+  get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean } {
+    const g = this.glim;
+    return { shown: g.shown, x: Math.round(g.x), targetX: g.targetX, arrived: g.arrived, dimmed: g.dim };
   }
   /** Waystone travel: stand in another town's spawn. Monsters, drops and any walk reset. */
   setTown(town: TownDef): void {
@@ -2668,6 +2692,7 @@ export class SeamworksEngine {
     }
     c.restore();
     if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
+    this.drawGlim(c, motionTime);
     if (t) this.drawAim(c, t);
     this.atmosphere.feedback(c, this.reducedMotion);
     c.restore();
@@ -2678,6 +2703,18 @@ export class SeamworksEngine {
       edge.addColorStop(0, '#c0303000'); edge.addColorStop(1, `rgba(192, 48, 48, ${(.42 * this.wound).toFixed(3)})`);
       c.fillStyle = edge; c.fillRect(0, 0, this.width, this.height);
     }
+  }
+  /**
+   * Glim, over everything in the world (in the Delve, over the darkness: it is
+   * the light). It dims beside a living Mirror Substitute, the Atlas moth's
+   * tell for a thing that performs certainty.
+   */
+  private drawGlim(c: CanvasRenderingContext2D, time: number): void {
+    const g = this.glim;
+    if (!g.shown) return;
+    g.update({ dt: this.frameDt, time, reduced: this.reducedMotion, keeperX: this.player.x, keeperY: this.player.y, facing: this.facing, figure: this.figure, delve: !!this.terrain });
+    g.dim = this.monsters.some(m => m.hp > 0 && m.def.creature === 'mirror-substitute' && Math.abs(m.x - this.player.x) < 480);
+    g.draw(c, time, this.reducedMotion, this.budget.glows, this.figure);
   }
   /**
    * Delve light, in world space: debris, then the darkness overlay with the

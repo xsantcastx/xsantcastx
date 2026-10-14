@@ -73,6 +73,21 @@
     [hidden]="activeTab !== 'collection'">
     <app-collection-log></app-collection-log>
 
+    <!-- ── Glim, the Margin-Light: the companion's entry (the "Also called" dash waits for Act III). -->
+    <div class="cx-block cx-companion" data-codex="glim">
+      <div class="cx-companion__head">
+        <app-glim-icon class="cx-companion__art" [dim]="!glimMet" />
+        <div>
+          <h3 class="cx-block__title">{{ t('play.glim.codex.title') }}</h3>
+          <p class="cx-block__sub">{{ glimMet ? t('play.glim.codex.met') : t('play.glim.codex.notMet') }}</p>
+        </div>
+      </div>
+      <p class="cx-companion__line">{{ t('play.glim.codex.role') }}</p>
+      <p class="cx-companion__line">{{ t('play.glim.codex.origin') }}</p>
+      <p class="cx-companion__line">{{ t('play.glim.codex.rule') }}</p>
+      <dl class="cx-facts"><div><dt>{{ t('play.glim.codex.alsoLabel') }}</dt><dd>{{ t('play.glim.codex.also') }}</dd></div></dl>
+    </div>
+
     <!-- ── Bestiary ─────────────────────────────────────────────────────
          Only creatures with an approved master are drawn. Concept sheets are
          not runtime art, so the unpainted ones are a count, not a picture. -->
