@@ -1,0 +1,100 @@
+<!-- The Mirror Slate: the glass inside Kael's brass bezel. One tab row; each tab
+     has one plain primary action. The lore and the rules are under Details. -->
+<div class="sl" [class.sl--ii]="tier >= 2" [attr.data-slate-tier]="tier">
+  <div class="sl-tabs" role="tablist" [attr.aria-label]="t('slate.tabs')">
+    @for (id of tabs; track id) {
+      <button type="button" role="tab" class="sl-tab" [attr.data-id]="id" [attr.data-tab]="id"
+              [attr.aria-selected]="tab === id" [attr.tabindex]="tab === id ? 0 : -1"
+              (click)="pick(id)" (keydown)="tabKey($event, 'tabs')">{{ t('slate.tab.' + id) }}</button>
+    }
+  </div>
+
+  <!-- Tables: always in the DOM, so the host resolves before a game is asked for. -->
+  <section class="sl-pane sl-tables" [hidden]="tab !== 'tables'" role="tabpanel" [attr.aria-label]="t('slate.tab.tables')">
+    <div class="sl-games" role="tablist" [attr.aria-label]="t('slate.games')">
+      @for (table of tables; track table.game) {
+        <button type="button" role="tab" class="sl-game" [attr.data-id]="table.game" [attr.data-game]="table.game"
+                [attr.aria-selected]="game === table.game" [attr.tabindex]="game === table.game ? 0 : -1"
+                (click)="chooseGame(table.game)" (keydown)="tabKey($event, 'games')">{{ t(table.titleKey) }}</button>
+      }
+    </div>
+    <p class="sl-note">{{ t('slate.tables.note') }}</p>
+    @if (gameLoading) { <p class="sl-note" role="status">{{ t('slate.loading') }}</p> }
+    @if (gameError) { <p class="sl-note" role="alert">{{ t('slate.loadError') }}</p> }
+    <div class="sl-host" [attr.data-slate-game]="game"><ng-container #gameHost></ng-container></div>
+  </section>
+
+  @if (tab === 'factory') {
+    <section class="sl-pane sl-factory" role="tabpanel" [attr.aria-label]="t('slate.tab.factory')">
+      <dl class="sl-read">
+        <div><dt>{{ t('slate.factory.purse') }}</dt><dd class="sl-gold">{{ t('slate.factory.gold', { n: gold }) }}</dd></div>
+        <div><dt>{{ t('slate.factory.making') }}</dt><dd class="sl-rate">{{ rate }}</dd></div>
+      </dl>
+
+      <div class="sl-card sl-waiting">
+        <h3>{{ t('slate.factory.waiting') }}</h3>
+        <p class="sl-waiting__line">{{ waiting || t('slate.factory.nothing') }}</p>
+        <button type="button" class="sl-collect" [disabled]="!waiting" (click)="collect()">{{ t('slate.factory.collect') }}</button>
+      </div>
+
+      <div class="sl-card sl-next">
+        <h3>{{ t('slate.factory.next') }}</h3>
+        @if (next; as row) {
+          <p class="sl-next__adds">{{ nextAdds }}</p>
+          <app-action-button [label]="t('slate.factory.buy', { name: row.name, cost: row.cost.toLocaleString('en-US') })" [costs]="nextCosts" [chips]="'none'" (act)="build()" />
+        } @else {
+          <p>{{ t('slate.factory.allBuilt') }}</p>
+        }
+      </div>
+      @if (notice) { <p class="sl-notice" role="status">{{ notice }}</p> }
+
+      <div class="sl-card sl-crew">
+        <h3>{{ t('slate.factory.crew') }}</h3>
+        <p>{{ camp }}@if (nextHome) { {{ nextHome }} }</p>
+        <p>{{ workshop }}</p>
+      </div>
+
+      <div class="sl-card sl-walk">
+        <h3>{{ t('slate.walk.title') }}</h3>
+        <ul>
+          @for (p of pointers; track p.key) { <li>{{ t(p.key) }}</li> }
+        </ul>
+      </div>
+    </section>
+  }
+
+  @if (tab === 'map') {
+    <section class="sl-pane sl-map" role="tabpanel" [attr.aria-label]="t('slate.tab.map')">
+      <div class="sl-card">
+        <h3>{{ t('slate.map.bounties') }}</h3>
+        <ul class="sl-list">
+          @for (b of bountyRows; track b.id) {
+            <li [attr.data-state]="b.state">
+              <span class="sl-list__name">{{ b.line }}</span>
+              <span class="sl-list__meta">{{ b.state === 'claimed' ? t('slate.map.claimed') : b.progress }}</span>
+              @if (b.state === 'ready') { <small>{{ t('slate.map.ready') }}</small> }
+            </li>
+          }
+        </ul>
+      </div>
+      <div class="sl-card">
+        <h3>{{ t('slate.map.pins') }}</h3>
+        @if (pins.length) {
+          <ul class="sl-list">
+            @for (p of pins; track p.id) { <li><span class="sl-list__name">{{ p.name }}</span><span class="sl-list__meta">{{ p.at }}</span></li> }
+          </ul>
+          <p class="sl-note">{{ t('slate.map.pinsHint') }}</p>
+        } @else {
+          <p class="sl-note">{{ t('slate.map.pinsNone') }}</p>
+        }
+      </div>
+    </section>
+  }
+
+  <details class="sl-details">
+    <summary>{{ t('slate.details') }}</summary>
+    <p class="sl-lore">{{ t('slate.lore') }}</p>
+    <p>{{ t('slate.rules') }}</p>
+    @if (tier < 2) { <p>{{ t('slate.upgradeHint') }}</p> }
+  </details>
+</div>

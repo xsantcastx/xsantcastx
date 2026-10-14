@@ -1,0 +1,47 @@
+/* Lune's and Kael's Slate strip: a small brass-bound pane, one line, one small button.
+   Compact on purpose: it rides above a station that has its own primary action. */
+:host { display: block; }
+.sc {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  align-items: center;
+  margin: 0 0 10px;
+  padding: 8px 10px;
+  border: 1px solid color-mix(in srgb, var(--gold-deep) 70%, transparent);
+  border-left-width: 3px;
+  background: linear-gradient(135deg, var(--obsidian-3), var(--obsidian-1));
+}
+/* The pane itself, procedural until the art lands (docs/art-commissions/world-sprites/13-mirror-slate.md). */
+.sc__pane {
+  flex: none;
+  width: 24px;
+  height: 32px;
+  border: 3px solid var(--gold-deep);
+  border-radius: 2px;
+  background: linear-gradient(160deg, var(--gold-bright) 0 14%, var(--adventure-amethyst) 14% 30%, var(--obsidian-4) 30% 100%);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.sc__pane--ii { background: linear-gradient(160deg, var(--gold-bright) 0 14%, var(--adventure-amethyst) 14% 100%); }
+.sc__body { flex: 1 1 260px; min-width: 0; display: grid; gap: 4px; }
+.sc__line { margin: 0; font: italic 400 15px/1.3 var(--font-lore, Georgia, serif); color: var(--adventure-parchment); }
+.sc__what { margin: 0; font-size: 13px; color: var(--adventure-dialogue); }
+.sc__notice { margin: 0; font-size: 14px; color: var(--gold); }
+.sc__chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.sc__btn {
+  flex: none;
+  min-width: 46px;
+  min-height: 46px;
+  padding: 0 14px;
+  border: 1px solid var(--gold-deep);
+  border-radius: 2px;
+  background: var(--obsidian-2);
+  color: var(--gold-bright);
+  font: 600 11px Orbitron, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.sc__btn--primary { background: linear-gradient(180deg, var(--gold), var(--gold-core)); color: var(--obsidian-0); }
+.sc__btn[aria-disabled="true"] { opacity: .6; }
+.sc__btn:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }

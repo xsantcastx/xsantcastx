@@ -1,4 +1,4 @@
-<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -21,6 +21,12 @@
     <p class="objective" aria-live="polite">@for (line of [message || engineMessage || objective]; track line) {<span class="objective-line">{{ line }}</span>}</p>
     <div class="top-actions">
       <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span></button>
+      <!-- The Mirror Slate (P): only once the Keeper carries one. The badge: the Homestead has something worth a look. -->
+      @if (slateTier > 0) {
+        <button type="button" class="quiet slate-btn" [class.slate-btn--ready]="slateReady" (click)="toggleSlate()"
+                [attr.aria-label]="t(slateReady ? 'slate.hud.ready' : 'slate.hud.open')" [attr.data-slate-tier]="slateTier"
+                aria-keyshortcuts="P"><i class="slate-ico" aria-hidden="true"></i><span class="slate-label">{{ t('slate.hud.label') }}</span><kbd class="key-hint">P</kbd>@if (slateReady) {<i class="slate-badge" aria-hidden="true"></i>}</button>
+      }
       <button type="button" class="quiet" (click)="returnToCamp()">{{ t('play.hud.returnCamp') }}</button>
       <button type="button" class="quiet" (click)="restartHunt()">{{ t('play.hud.restartHunt') }}</button>
     </div>
@@ -434,7 +440,7 @@
   <!-- The station under the pointer (or the finger): name and what it is for. Positioned from code. -->
   <div #stationTip class="station-tip" hidden aria-hidden="true"><b></b><small></small></div>
 
-  <section #placePanel class="place" [class.place--closing]="closing" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)">
+  <section #placePanel class="place" [class.place--closing]="closing" [class.place--slate]="panel?.kind === 'slate'" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)">
     <header class="place-head">
       <div>
         <span class="realm-tag">{{ panel?.kicker }}</span>
@@ -516,6 +522,8 @@
           </section>
         </div>
       }
+      <!-- Lune's Slate offer on her counter and tables; Kael's binding at the Rune Forge (shared/slate). -->
+      @if (slateCounter; as who) { <app-slate-counter [who]="who" /> }
       @if (panelLoading) { <p class="place-note" role="status">{{ t('play.hud.panel.opening', { title: panel?.title ?? '' }) }}</p> }
       @if (panelError) { <p class="place-note" role="alert">{{ panelError }}</p> }
       <ng-container #panelHost></ng-container>

@@ -7,7 +7,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 ## What's next (in order)
 
 1. **The Underhearth** (Phase 8) — the layer below the Magma Halls, the Banked Furnace, tool tier V, rope/grapple/rails/cart, Rift Anchors. *(in flight)*
-2. **The Mirror Slate** (owner idea, 2026-10-14) — a carried device of the Archive's moon-mirror glass in Kael's brass. Sold/awarded by Lune Coyne (Croupier) after you've played her tables; Kael upgrades it. Tier I: **play the casino anywhere** (Reels, Rune Drop, Seam Sweeper, Eclipse Ascent — same odds, Gold only) and **manage the Homestead factory** (collect, buy the next building, explorers/expeditions, ready-notifications). Later tiers: map pins and bounty tracking, a Hearth tab. Crafting, Market, Exchange and selling stay in the world — places stay places.
+2. **The Mirror Slate** (owner idea, 2026-10-14) — a carried device of the Archive's moon-mirror glass in Kael's brass. Sold/awarded by Lune Coyne (Croupier) after you've played her tables; Kael upgrades it. Tier I: **play the casino anywhere** (Reels, Rune Drop, Seam Sweeper, Eclipse Ascent — same odds, Gold only) and **manage the Homestead factory** (collect, buy the next building, explorers/expeditions, ready-notifications). Tier II (Kael): map pins and bounty tracking; a Hearth tab later. Places stay places. *(built 2026-10-14, `docs/handoff/mirror-slate.md`)*
 3. **Starfall Deep** (Phase 9) — low gravity, rising starlight, Aureth's chain.
 4. **Story Act II** — the Five Witnesses (world & cast).
 5. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
@@ -35,6 +35,8 @@ Reviewed daily; newest review on top of the log at the bottom.
 - Review new lore in `docs/world/lore-addendum.md`.
 
 ## Daily review log
+
+- **2026-10-14 (Mirror Slate)** — Built item 2: the Mirror Slate (Lune's gift at ten plays or 500k Gold; P anywhere; her four tables embedded on the same ledger; the Homestead at a glance; Kael's tier II adds map pins + Pim's bounties). Handoff `docs/handoff/mirror-slate.md`.
 
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board

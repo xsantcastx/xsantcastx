@@ -2220,3 +2220,71 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .loot-toasts { display: flex; justify-content: center; align-items: flex-end; width: max-content; }
   .loot-toast { min-width: 0; }
 }
+
+/* ── The Mirror Slate (docs/handoff/mirror-slate.md) ───────────────────────
+   The HUD button (only while a pane is carried) and the panel's brass bezel.
+   Procedural until the art lands (docs/art-commissions/world-sprites/13-mirror-slate.md):
+   aged-gold brass round a moon-mirror glass, Umbral violet under it. */
+.slate-btn { position: relative; display: inline-flex; align-items: center; gap: 6px; }
+.slate-ico {
+  display: block;
+  flex: none;
+  width: 14px;
+  height: 18px;
+  border: 2px solid var(--gold-deep);
+  border-radius: 2px;
+  background: linear-gradient(160deg, var(--gold-bright) 0 18%, var(--adventure-amethyst) 18% 34%, var(--obsidian-3) 34% 100%);
+  box-shadow: inset 0 0 0 1px var(--gold);
+}
+.slate-btn .key-hint { margin: 0; }
+/* Something is ready on the Homestead: a small lit rivet on the bezel. */
+.slate-badge {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--adventure-hud-shadow);
+  border-radius: 50%;
+  background: var(--adventure-hud-gold);
+  box-shadow: 0 0 6px var(--adventure-hud-gold);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slate-btn--ready .slate-badge { animation: slate-badge 2.4s ease-in-out infinite; }
+}
+@keyframes slate-badge { 50% { opacity: .55; } }
+
+/* The open Slate: a centred pane in a thick brass bezel on desktop. */
+.place--slate {
+  left: max(16px, calc(50% - 400px));
+  right: max(16px, calc(50% - 400px));
+  border: 6px solid var(--gold-deep);
+  border-radius: 12px;
+  background:
+    radial-gradient(120% 60% at 18% 0%, color-mix(in srgb, var(--adventure-amethyst) 22%, transparent), transparent 60%),
+    linear-gradient(180deg, var(--obsidian-2), var(--obsidian-1));
+  box-shadow:
+    inset 0 0 0 2px var(--gold),
+    inset 0 0 0 4px var(--obsidian-0),
+    0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
+}
+.place--slate .place-head { border-bottom-color: color-mix(in srgb, var(--gold) 30%, transparent); }
+
+/* Phones: the Slate is a full-screen sheet (the bands under it are inert while it is
+   open; Close and Escape stay in its own head), clear of the notch and the home bar. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .place--slate {
+    inset: 0;
+    border-width: 4px;
+    border-radius: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 10px)
+      calc(env(safe-area-inset-bottom, 0px) + 10px) calc(env(safe-area-inset-left, 0px) + 10px);
+  }
+  /* The button joins the menu in the top-right corner (left of it); the area and
+     health column slims to make room, so the hotbar keeps most of its width. */
+  .stage--slate { --vit-w: 72px; --right-w: calc(8px + 44px + 8px + 44px + 8px + var(--vit-w)); }
+  .stage--slate .title-block, .stage--slate .vitals { right: 112px; }
+  .top-actions .slate-btn { display: grid; place-items: center; order: -1; width: 44px; height: 44px; padding: 0; }
+  .slate-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .slate-ico { width: 18px; height: 24px; }
+}
