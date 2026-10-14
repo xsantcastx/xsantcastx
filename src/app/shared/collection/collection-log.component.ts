@@ -34,6 +34,8 @@ import { RUNE_TIERS, RUNE_TIER_ORDER } from '../rune-forge/rune.model';
 import type { ItemRarity } from '../rpg/item.model';
 import { FIVE_REALMS, type NarrativeRealmId } from '../narrative/five-realms.narrative';
 import { CollectionService } from './collection.service';
+import { TranslationService } from '../../translation.service';
+import { COLLECTION_LOG_I18N } from './collection-log.i18n';
 import { foundInPlaces } from '../world/found-in';
 import { foundInWorld } from '../world/found-in.data';
 import {
@@ -47,6 +49,7 @@ import {
   type CollectionCategory,
   type CollectionCategoryDefinition,
   type CollectionFilter,
+  type CollectionReward,
   type CollectionLedger,
   type CollectionSort,
   type CollectionStatus,
@@ -88,7 +91,29 @@ export class CollectionLogComponent implements OnInit, OnDestroy {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly collection = inject(CollectionService);
 
+  private readonly i18n = inject(TranslationService);
   private subs: Subscription[] = [];
+
+  constructor() {
+    this.i18n.register(COLLECTION_LOG_I18N);
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  /** Translated text for a data-owned label, or the data's own English when no key exists. */
+  private tr(key: string, fallback: string): string {
+    const text = this.i18n.translate(key);
+    return text === key ? fallback : text;
+  }
+
+  catLabel(c: CollectionCategoryDefinition): string { return this.tr(`collLog.cat.${c.id}.label`, c.label); }
+  catBlurb(c: CollectionCategoryDefinition): string { return this.tr(`collLog.cat.${c.id}.blurb`, c.blurb); }
+  rarityLabel(r: ItemRarity): string { return this.tr(`collLog.rarity.${r}`, RUNE_TIERS[r].label); }
+  sortLabel(s: CollectionSort): string { return this.tr(`collLog.sortBy.${s}`, COLLECTION_SORT_LABELS[s]); }
+  rewardTitle(r: CollectionReward): string { return this.tr(`collLog.rw.${r.id}.title`, r.title); }
+  rewardBlurb(r: CollectionReward): string { return this.tr(`collLog.rw.${r.id}.blurb`, r.blurb); }
 
   /** Everything derived reads this and reports the locked state while false. */
   hydrated = false;
@@ -203,7 +228,7 @@ export class CollectionLogComponent implements OnInit, OnDestroy {
     // How many more entries, not how many more percent: "four away" is a thing
     // a player can act on and "9% away" is not.
     const need = Math.ceil((next.at / 100) * this.countedTotal) - this.overall.found;
-    return { at: next.at, title: next.title, away: Math.max(1, need) };
+    return { at: next.at, title: this.rewardTitle(next), away: Math.max(1, need) };
   }
 
   // ══ Recent ═════════════════════════════════════════════════════════════════
@@ -298,7 +323,7 @@ export class CollectionLogComponent implements OnInit, OnDestroy {
    * job is being the honest record.
    */
   formatDate(at: number): string {
-    if (!at) return 'found before the log was kept';
+    if (!at) return this.t('collLog.date.unknown');
     return new Date(at).toLocaleDateString(undefined, {
       year: 'numeric', month: 'short', day: 'numeric',
     });

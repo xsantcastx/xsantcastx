@@ -163,7 +163,7 @@ export class KeeperPanelComponent implements OnInit, OnDestroy {
     return Number.isFinite(satchelCap) ? `${usedRows}/${satchelCap}` : `${usedRows}`;
   }
   get label(): string {
-    return this.tab === 'bank' ? 'Bank' : 'Character';
+    return this.tab === 'bank' ? 'Satchel' : 'Character';
   }
 
   ngOnInit(): void {
