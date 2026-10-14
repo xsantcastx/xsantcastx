@@ -34,7 +34,7 @@
           }
           <app-requirement-grid [title]="t('stationUi.additive') + ' · ' + t('enchant.step.rune')"
                                 [costs]="runeChoices" [selectable]="true" [selected]="chosenRuneId"
-                                [minCells]="2" [empty]="t('enchant.why.noRunes')" (pick)="chooseRune($event)" />
+                                [minCells]="2" (pick)="chooseRune($event)" />
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="2" [pending]="!hydrated" />
 
           @if (ritual; as r) {
