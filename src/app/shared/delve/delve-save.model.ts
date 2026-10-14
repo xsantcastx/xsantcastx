@@ -8,7 +8,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  *
  *   {
- *     version: 1,
+ *     version: 2,                 // 2 since the endless Delve; a v1 save reads the same. `areas` IS the core:
+ *                                 // every sector outside it lives in region documents (delve-region.model.ts).
  *     seed: 2894011733,          // uint32, generated once per player
  *     createdAt: 1760000000000,  // epoch ms the seed was rolled; earliest wins a merge
  *     areas: {
