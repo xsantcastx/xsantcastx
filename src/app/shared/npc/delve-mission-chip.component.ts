@@ -94,7 +94,8 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
     .dmc__claim:focus-visible { outline: 2px solid var(--gf-accent-text, #6affe0); outline-offset: 2px; }
     .dmc__glim {
       flex: 0 0 auto; display: grid; place-items: center;
-      width: 44px; height: 44px; padding: 0;
+      /* 46px, not 44: inside a scaled panel 44px can render at 43.99. */
+      width: 46px; height: 46px; padding: 0;
       border: 1px solid var(--gf-edge-strong, rgba(255,255,255,.12)); border-radius: 50%;
       background: transparent; cursor: pointer;
     }

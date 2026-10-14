@@ -225,7 +225,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await expect(chip).toContainText('The Shadow Beneath', { timeout: 15000 });
       const moth = chip.locator('.dmc__glim');
       const mothBox = await moth.boundingBox();
-      expect(Math.min(mothBox!.width, mothBox!.height), 'the moth is a 44px target').toBeGreaterThanOrEqual(43.5);
+      expect(Math.min(mothBox!.width, mothBox!.height), 'the moth is a 44px target').toBeGreaterThanOrEqual(44);
       for (const n of [1, 2, 3]) {
         if (touch) await moth.tap(); else await moth.click();
         await expect(chip.locator('.dmc__glim-line')).toContainText(`Hint ${n} of 3`);
