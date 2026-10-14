@@ -131,7 +131,9 @@ falls. Use the GPU-mode numbers.
 
 - `styles.css`: +2 scoped rules (no removal on this branch; the CSS diet moved
   to the legacy-removal agent).
-- Initial bundle: 1.75 MB / 452.27 kB transfer before, 1.75 MB / 452.29 kB after.
+- Initial bundle: this change adds ~20 bytes of transfer (measured on the
+  pre-rebase base: 1.75 MB / 452.27 kB before, 1.75 MB / 452.29 kB after).
+  Rebased onto the legacy-site removal, the build is 1.67 MB / 434.19 kB.
 
 ### Visual parity
 
@@ -162,9 +164,8 @@ instead of a live one.
   describe allows 5 min. With the hidden layers gone, headless Chromium draws
   more frames. The old one-shot read of the 100 ms-stale `data-player-x` then
   passed the "stands under" check a step early: 3 of 3 runs failed before the
-  fix, 3 of 3 passed after. "Each new carving reads with E… 12 of 12" fails on
-  the untouched base build too (the Keeper stands under loose rock, so the
-  expected camp line is replaced). It is pre-existing and not touched here.
+  fix, 3 of 3 passed after. "Each new carving reads with E… 12 of 12" failed on the base build as well; main has
+  since fixed it (it reads the lore save now).
 
 ## Not done / next
 
