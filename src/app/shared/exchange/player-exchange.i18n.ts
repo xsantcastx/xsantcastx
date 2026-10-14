@@ -13,7 +13,7 @@ export const PLAYER_EXCHANGE_I18N: Readonly<Record<string, { en: string; es: str
   'pmx.tab.sell':       { en: 'Sell', es: 'Vender' },
   'pmx.tab.orders':     { en: 'Your orders', es: 'Tus ordenes' },
   'pmx.tabsLabel':      { en: 'Buy, sell or check your orders', es: 'Compra, vende o revisa tus ordenes' },
-  'pmx.bag':            { en: 'Bag', es: 'Bolsa' },
+  'pmx.bag':            { en: 'Satchel', es: 'Mochila' },
   'pmx.hint.buy':       { en: 'Other players set these prices. Buy at the best price, or offer your own.', es: 'Otros jugadores ponen estos precios. Compra al mejor precio u ofrece el tuyo.' },
   'pmx.hint.sell':      { en: 'List what you carry. The market keeps {{pct}}% of each sale.', es: 'Pon a la venta lo que llevas. El mercado se queda el {{pct}}% de cada venta.' },
   'pmx.hint.orders':    { en: 'Orders wait on the market until another player matches them.', es: 'Las ordenes esperan en el mercado hasta que otro jugador las acepte.' },
@@ -24,7 +24,7 @@ export const PLAYER_EXCHANGE_I18N: Readonly<Record<string, { en: string; es: str
 
   'pmx.list.buy':       { en: 'For sale by players', es: 'En venta por jugadores' },
   'pmx.list.sell':      { en: 'What you carry', es: 'Lo que llevas' },
-  'pmx.empty.buy':      { en: 'Nobody is trading yet. Be the first: sell something from your bag.', es: 'Nadie comercia todavia. Se el primero: vende algo de tu bolsa.' },
+  'pmx.empty.buy':      { en: 'Nobody is trading yet. Be the first: sell something from your satchel.', es: 'Nadie comercia todavia. Se el primero: vende algo de tu mochila.' },
   'pmx.empty.sell':     { en: 'You carry nothing that has a market.', es: 'No llevas nada que tenga mercado.' },
   'pmx.row.from':       { en: 'From {{n}} Gold', es: 'Desde {{n}} de oro' },
   'pmx.row.noSellers':  { en: 'No sellers · buyers pay {{n}}', es: 'Sin vendedores · pagan {{n}}' },
@@ -61,7 +61,7 @@ export const PLAYER_EXCHANGE_I18N: Readonly<Record<string, { en: string; es: str
   'pmx.collect.waiting': { en: 'Waiting for you: {{gold}} Gold and {{items}} items', es: 'Te espera: {{gold}} de oro y {{items}} objetos' },
   'pmx.collect.go':     { en: 'Collect', es: 'Recoger' },
   'pmx.collect.done':   { en: 'Collected {{gold}} Gold and {{items}} items.', es: 'Recogiste {{gold}} de oro y {{items}} objetos.' },
-  'pmx.collect.bagFull': { en: 'Your bag is full. The rest waits here until you make room.', es: 'Tu bolsa esta llena. El resto espera aqui hasta que hagas sitio.' },
+  'pmx.collect.bagFull': { en: 'Your satchel is full. The rest waits here until you make room.', es: 'Tu mochila esta llena. El resto espera aqui hasta que hagas sitio.' },
 
   'pmx.done.filled':    { en: 'Done: it all matched right away. Press Collect to take it.', es: 'Listo: todo se completo al instante. Pulsa Recoger para llevartelo.' },
   'pmx.done.partial':   { en: '{{n}} matched right away. The rest waits on the market.', es: '{{n}} se completaron al instante. El resto espera en el mercado.' },

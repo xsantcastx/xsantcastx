@@ -72,6 +72,7 @@ import type { ItemRarity } from '../rpg/item.model';
 import { artFor } from '../art/art';
 import {
   STATION_UI,
+  STATION_UI_I18N,
   type JournalRow,
   type StationArt,
   type StationCost,
@@ -81,6 +82,8 @@ import {
 
 import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { injectInWorldPanel } from '../in-world-panel';
+import { TranslationService } from '../../translation.service';
+import { EXCHANGE_I18N } from './exchange.i18n';
 import { PLAYER_MARKET_MODE } from '../market/player-market.mode';
 import { PlayerExchangeComponent } from './player-exchange.component';
 type SortKey = 'name' | 'price' | 'change' | 'volume';
@@ -125,6 +128,12 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly inventory = inject(InventoryService);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(TranslationService);
+  // Registered in a field initializer so the tab arrays below can be built from it.
+  private readonly _tables = (this.i18n.register(STATION_UI_I18N), this.i18n.register(EXCHANGE_I18N), true);
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
   private readonly subs = new Subscription();
   private timer: ReturnType<typeof setInterval> | null = null;
   /** Hosted as the Exchange in the Nocturne Archive (/play): no backdrop, hero or cross-page links. */
@@ -201,12 +210,12 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   // Every array below is rebuilt in `applyFilters` / `rebuildTrade`, never in
   // the template: the kit's inputs are signals.
   readonly sorts = [
-    { k: 'change', l: 'Change' }, { k: 'price', l: 'Price' },
-    { k: 'volume', l: 'Demand' }, { k: 'name', l: 'Name' },
+    { k: 'change', l: this.t('ge.sort.change') }, { k: 'price', l: this.t('ge.sort.price') },
+    { k: 'volume', l: this.t('ge.sort.volume') }, { k: 'name', l: this.t('ge.sort.name') },
   ] as const;
-  readonly sideTabs: StationTab[] = [{ id: 'buy', label: 'Buy' }, { id: 'sell', label: 'Sell' }];
+  readonly sideTabs: StationTab[] = [{ id: 'buy', label: this.t('ge.tab.buy') }, { id: 'sell', label: this.t('ge.tab.sell') }];
   readonly categoryTabs: StationTab[] = [
-    { id: 'all', label: 'All' },
+    { id: 'all', label: this.t('ge.cat.all') },
     ...GOOD_CATEGORIES.map(c => ({ id: c, label: CATEGORY_LABELS[c] })),
   ];
   readonly stripArt: StationArt | null = artFor('unique-merchants-scale');
@@ -359,8 +368,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
         art: l.good.art ? { src: l.good.art } : null,
         rarity: l.rarity,
         sub: this.side === 'sell'
-          ? `You hold ${fmt(held)}`
-          : `${fmt(l.currentPrice)} Gold`,
+          ? this.t('ge.hold', { n: fmt(held) })
+          : `${fmt(l.currentPrice)} ${this.t('stationUi.gold')}`,
         locked: this.side === 'buy' && this.hydrated && !affordable,
         ready: this.hydrated && (this.side === 'sell' ? held > 0 : affordable),
       };
@@ -406,7 +415,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   /** What the button will do, in words: "Buy 3 Cinder Ore". */
   get tradeLine(): string {
     if (!this.selected) return '';
-    return `${this.side === 'buy' ? 'Buy' : 'Sell'} ${this.quantity} ${this.selected.itemName}`;
+    return this.t(this.side === 'buy' ? 'ge.line.buy' : 'ge.line.sell', { n: this.quantity, name: this.selected.itemName });
   }
 
   pickCategory(id: string): void {
@@ -556,19 +565,19 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   /** Why the trade button is off, or null when it is on. */
   get blocker(): string | null {
     if (!this.selected) return null;
-    if (!this.hydrated) return 'Waking the hall…';
+    if (!this.hydrated) return this.t('ge.wake');
     const quote = this.quote;
-    if (!quote || quote.quantity <= 0) return 'Choose a quantity.';
+    if (!quote || quote.quantity <= 0) return this.t('ge.chooseQty');
 
     if (this.side === 'buy') {
-      if (quote.net > this.gold) return 'Not enough Gold.';
+      if (quote.net > this.gold) return this.t('ge.noGold');
       return this.bagBlocker();
     }
 
     if (this.holdings(this.selected.good) < quote.quantity) {
       // Gear resting in the Vault is not for sale until it is carried again.
       const stored = this.exchange.storedInVault(this.selected.good);
-      return stored ? `${stored} more in your Vault. Take it out of the Vault to sell it.` : 'You do not hold that many.';
+      return stored ? this.t('ge.inVault', { n: stored }) : this.t('ge.notHeld');
     }
     return null;
   }
@@ -579,7 +588,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
    */
   private bagBlocker(): string | null {
     if (!this.selected || this.side !== 'buy' || this.selected.good.kind !== 'equipment') return null;
-    if (this.inventory.instanceRoom() < this.quantity) return 'Your Overflow is very full. Sell or take things out first.';
+    if (this.inventory.instanceRoom() < this.quantity) return this.t('ge.overflowFull');
     return null;
   }
 
@@ -600,8 +609,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
     if (result.ok) {
       const t = result.trade;
       this.say('ok', t.side === 'buy'
-        ? `Bought ${t.quantity} × ${t.name} for ${fmt(t.net)} Gold.`
-        : `Sold ${t.quantity} × ${t.name}. ${fmt(t.net)} Gold in, ${fmt(t.tax)} to the house.`);
+        ? this.t('ge.did.buy', { n: t.quantity, name: t.name, gold: fmt(t.net) })
+        : this.t('ge.did.sell', { n: t.quantity, name: t.name, gold: fmt(t.net), tax: fmt(t.tax) }));
       this.announce = this.notice?.text ?? '';
       if (t.side === 'buy') {
         // The game-like beat: the goods pop into view, the way a craft does.
@@ -611,13 +620,13 @@ export class ExchangeComponent implements OnInit, OnDestroy {
           art: listing.good.art ? { src: listing.good.art } : null,
           rarity: listing.rarity,
           rarityLabel: this.rarityLabel(listing.rarity),
-          caption: `${fmt(t.net)} Gold`,
-          kicker: 'You bought',
+          caption: `${fmt(t.net)} ${this.t('stationUi.gold')}`,
+          kicker: this.t('ge.kicker'),
         };
       }
       this.quantity = 1;
     } else {
-      this.say('bad', FAILURE_COPY[result.code]);
+      this.say('bad', this.t(FAILURE_KEY[result.code]));
     }
 
     // Re-price immediately: the trade just moved this line, and the player
@@ -663,8 +672,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   remaining(event: ActiveMarketEvent): string {
     const ms = Math.max(0, event.endsAt - this.now);
     const mins = Math.round(ms / 60_000);
-    if (mins >= 60) return `${Math.floor(mins / 60)}h ${mins % 60}m left`;
-    return `${Math.max(1, mins)}m left`;
+    if (mins >= 60) return this.t('ge.left.hm', { h: Math.floor(mins / 60), m: mins % 60 });
+    return this.t('ge.left.m', { m: Math.max(1, mins) });
   }
 
   eventDelta(event: ActiveMarketEvent): string {
@@ -675,11 +684,11 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   ago(at: number): string {
     const ms = Math.max(0, this.now - at);
     const mins = Math.floor(ms / 60_000);
-    if (mins < 1) return 'just now';
-    if (mins < 60) return `${mins}m ago`;
+    if (mins < 1) return this.t('ge.ago.now');
+    if (mins < 60) return this.t('ge.ago.m', { n: mins });
     const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    return `${Math.floor(hours / 24)}d ago`;
+    if (hours < 24) return this.t('ge.ago.h', { n: hours });
+    return this.t('ge.ago.d', { n: Math.floor(hours / 24) });
   }
 
   trackListing = (_: number, l: MarketListing) => l.itemId;
@@ -687,16 +696,16 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   trackEvent = (_: number, e: ActiveMarketEvent) => e.id + e.startsAt;
 }
 
-const FAILURE_COPY: Record<TradeFailure, string> = {
-  ssr: 'The hall has not opened yet.',
-  'unknown-good': 'No such line on the board.',
-  'bad-quantity': 'Choose a quantity.',
-  stale: 'The price moved before the order landed. The board is updated — try again.',
-  'bag-full': 'No room in the bag.',
-  funds: 'Not enough Gold.',
-  'no-stock': 'You do not hold that many.',
-  soulbound: 'That one is bound to you. It has no price here.',
-  delivery: 'The bag filled before delivery. Your Gold was returned.',
+const FAILURE_KEY: Record<TradeFailure, string> = {
+  ssr: 'ge.err.ssr',
+  'unknown-good': 'ge.err.unknown',
+  'bad-quantity': 'ge.chooseQty',
+  stale: 'ge.err.stale',
+  'bag-full': 'ge.err.full',
+  funds: 'ge.noGold',
+  'no-stock': 'ge.notHeld',
+  soulbound: 'ge.err.soulbound',
+  delivery: 'ge.err.delivery',
 };
 
 function fmt(n: number): string {
