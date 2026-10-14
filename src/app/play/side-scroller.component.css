@@ -2048,8 +2048,13 @@ input::placeholder { color: var(--adventure-hud-muted); }
     line-height: 1.3;
   }
   .stage--glim-says .objective-line { visibility: hidden; }
-  /* Glim speaks in the minimap's strip: the map steps aside for the line's few seconds. */
-  .stage--glim-says .map-mini { visibility: hidden; }
+  /* In the Delve the minimap (left) and its toggle (right) share this strip: Glim's
+     line sits between them so both stay visible and take their own taps. */
+  .stage--delve .glim-say {
+    left: calc(min(120px, 25% - 12px) + 16px);
+    right: 60px;
+    max-width: none;
+  }
 }
 @media (max-width: 900px) and (max-height: 500px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .glim-say__text { -webkit-line-clamp: 2; line-clamp: 2; }
