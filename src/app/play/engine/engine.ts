@@ -66,6 +66,14 @@ interface Flight { active: boolean; t: number; sx: number; sy: number; ex: numbe
 /** Lit ground in the Delve takes on the lantern's and torches' warmth (DarknessLayer.draw `warm`). */
 const WARM_LIGHT = { color: '#ffb066', alpha: .14 };
 const FLIGHT_POOL = 16;
+/**
+ * Frame pacing. A 120 Hz display would otherwise draw twice as often as the
+ * game needs; a town where nothing the player drives has moved for a while
+ * draws at half rate. Heat, not looks: the fixed 60 Hz step is unchanged.
+ */
+const MAX_FPS = 60;
+const QUIET_FPS = 30;
+const QUIET_AFTER_MS = 2500;
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
@@ -135,6 +143,17 @@ export class SeamworksEngine {
   /** Station under the pointer, highlighted in the render. */
   private hovered: string | null = null;
   private frame: number | null = null;
+  /** `start()` ran: a parked loop may be resumed (see `setPaused`). */
+  private started = false;
+  /**
+   * Last time (rAF clock) anything the player drives moved: input, a walk, a
+   * swing, a flight, the Keeper's position. A town with none of that for
+   * QUIET_AFTER_MS draws at QUIET_FPS (townsfolk and motes still move, just
+   * less often); everywhere else, and the moment anything moves, at MAX_FPS.
+   */
+  private activeAt = 0;
+  private lastX = NaN;
+  private lastY = NaN;
   private observer: ResizeObserver;
   private previous = 0;
   private accumulator = 0;
@@ -687,7 +706,8 @@ export class SeamworksEngine {
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
     }
-    this.observer = new ResizeObserver(() => this.resize());
+    // A parked loop (a place covers the world) still repaints once at the new size: resizing clears the canvas.
+    this.observer = new ResizeObserver(() => { this.resize(); if (this.started && this.frame === null && !this.destroyed) this.render(); });
     this.observer.observe(canvas);
     window.addEventListener('keydown', this.keyDown);
     window.addEventListener('keyup', this.keyUp);
@@ -697,6 +717,7 @@ export class SeamworksEngine {
   }
   start(): void {
     if (this.frame === null && !this.destroyed) {
+      this.started = true;
       // The component can start during Angular's view pass, before the first
       // ResizeObserver delivery. Read the laid-out canvas here so the first
       // frame is drawn at the viewport size instead of the 300×150 fallback.
@@ -1059,7 +1080,21 @@ export class SeamworksEngine {
     }
     this.speech = next;
   }
-  setPaused(paused: boolean): void { this.paused = paused; this.input.clear(); this.accumulator = 0; if (paused) this.cancelMove(); this.report(); }
+  /**
+   * Pause the world (an in-world place is open over it). A paused world draws
+   * one more frame and then parks its loop: the place covers the canvas, so
+   * drawing it sixty times a second behind an opaque panel only heats the
+   * device. Unpausing resumes the loop.
+   */
+  setPaused(paused: boolean): void {
+    this.paused = paused; this.input.clear(); this.accumulator = 0; if (paused) this.cancelMove(); this.report();
+    if (!paused && this.started && this.frame === null && !this.destroyed) {
+      this.previous = 0;
+      this.frame = requestAnimationFrame(this.tick);
+    }
+  }
+  /** True while the loop is parked behind a place (for tests and the HUD). */
+  get parked(): boolean { return this.started && this.frame === null && !this.destroyed; }
   /**
    * Walk the Keeper to world x, then call `onArrive` from the fixed-step update.
    * Any left/right press, a pause, a reset or travel cancels it (no callback).
@@ -1624,6 +1659,16 @@ export class SeamworksEngine {
   }
   private readonly tick = (now: number): void => {
     if (this.destroyed) return;
+    // Pacing: skip this callback when it comes sooner than the target rate allows.
+    const player = this.player;
+    if (this.input.size || this.walking || this.hitstop > 0 || this.shake > 0 || this.attackTime > 0 || this.dodgeTime > 0
+      || player.x !== this.lastX || player.y !== this.lastY || !this.isTown || this.flights.some(flight => flight.active)) {
+      this.activeAt = now;
+    }
+    this.lastX = player.x; this.lastY = player.y;
+    const fps = now - this.activeAt > QUIET_AFTER_MS ? QUIET_FPS : MAX_FPS;
+    // 2 ms of slack: rAF stamps jitter, and a 60 Hz display must not drop to 30.
+    if (this.previous && now - this.previous < 1000 / fps - 2) { this.frame = requestAnimationFrame(this.tick); return; }
     const delta = this.previous ? Math.min((now - this.previous) / 1000, .1) : 0;
     this.previous = now;
     // Presence continues to arrive while the local game is paused or unfocused.
@@ -1647,6 +1692,8 @@ export class SeamworksEngine {
     }
     this.render();
     if (now - this.reportAt >= 100) { this.reportAt = now; this.report(); }
+    // Paused: that was the last frame until setPaused(false). The place covers the world.
+    if (this.paused) { this.frame = null; return; }
     this.frame = requestAnimationFrame(this.tick);
   };
   private update(dt: number): void {
