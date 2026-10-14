@@ -11,7 +11,7 @@
  */
 import { ART_ALL, type ArtEntry } from './art-manifest.generated';
 import { pixelIcon } from './pixel-icons';
-import { itemIcon } from './item-icons';
+import { artIcon } from './item-icons';
 import { NPCS } from '../npc/npc.model';
 import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 
@@ -198,7 +198,7 @@ export function artFor(id: string | undefined | null): ArtEntry | null {
   // One art style (2026-10-14): every item is its pixel icon first (item-icons.ts), the
   // painting only where no icon exists yet (UI chrome, crests, creatures' Codex splash);
   // the Fishing and Liquids pixel icons last.
-  return itemIcon(id) ?? ART_ALL[id] ?? ART_ALL[ART_ALIAS[id] ?? ''] ?? pixelIcon(id);
+  return artIcon(id) ?? ART_ALL[id] ?? ART_ALL[ART_ALIAS[id] ?? ''] ?? pixelIcon(id);
 }
 
 /** True when `id` has art. Cheaper to read than `!!artFor(id)` at a call site. */

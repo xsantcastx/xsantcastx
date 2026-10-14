@@ -75,6 +75,11 @@ describe('item icons (pixel)', () => {
 
   it('keeps aether the currency and Aether the rune apart', () => {
     expect(itemIcon('aether')!.src).not.toBe(runeIcon('aether')!.src);
+    expect(artFor('aether')!.src).toBe(itemIcon('aether')!.src);
+    // The named runes and rune-words are tablets wherever they show; a plaque reads a bare rune word as the rune.
+    expect(artFor('rune-of-cinder')!.src).toBe(runeIcon('rune-of-cinder')!.src);
+    expect(artFor('first-light')!.src).toBe(runeIcon('first-light')!.src);
+    expect(plaqueIcon('eclipse')!.src).toBe(runeIcon('eclipse')!.src);
   });
 
   it('gives each stall plaque key an icon without touching that key elsewhere', () => {
