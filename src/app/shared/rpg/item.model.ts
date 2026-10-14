@@ -262,7 +262,7 @@ export interface SlotDefinition {
 }
 
 /**
- * Eight slots. feet stays empty until a boot def is authored.
+ * Eight gear slots (feet takes boots like any other artifact slot).
  * Charms have no compatible slot — they retire to the bag in C5.
  */
 export const EQUIPMENT_SLOTS: SlotDefinition[] = [
@@ -272,7 +272,7 @@ export const EQUIPMENT_SLOTS: SlotDefinition[] = [
   { id: 'weapon', name: 'Weapon', accepts: ['rune', 'runeword', 'artifact'], x: 16, y: 48 },
   { id: 'off-hand', name: 'Off-hand', accepts: ['rune', 'runeword', 'artifact'], x: 84, y: 48 },
   { id: 'legs', name: 'Legs', accepts: ['artifact'], x: 50, y: 58 },
-  { id: 'feet', name: 'Feet', accepts: [], x: 50, y: 82 },
+  { id: 'feet', name: 'Feet', accepts: ['artifact'], x: 50, y: 82 },
   { id: 'trinket', name: 'Trinket', accepts: ['artifact'], x: 78, y: 18 },
   // The charm wells accept charms and *only* charms, which is the point of
   // giving them their own row: a rune sigil cannot be parked in one to claim a

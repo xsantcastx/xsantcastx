@@ -155,6 +155,9 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   private sub?: Subscription;
 
   ngOnInit(): void {
+    // Tells the fixed NPC widget (styles.css `has-loadout`) that wells are on
+    // screen, so it keeps its speech bubble folded rather than covering one.
+    if (this.isBrowser) document.body.classList.add('has-loadout');
     this.inventory.init();
     this.sub = this.inventory.snapshot$.subscribe(snap => {
       this.trackUnequips(this.snap.equipped, snap.equipped);
@@ -199,6 +202,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    if (this.isBrowser) document.body.classList.remove('has-loadout');
     if (this.flashTimer !== null) { clearTimeout(this.flashTimer); this.flashTimer = null; }
     for (const timer of this.fxTimers) clearTimeout(timer);
     this.fxTimers.clear();
