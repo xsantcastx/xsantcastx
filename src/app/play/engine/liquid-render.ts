@@ -14,7 +14,7 @@
  * Lava is emissive: `lavaLights` adds its surface to the light grid as extra
  * samples (never one of the 24 capped light slots).
  */
-import { CELL, LIQUID_FULL, LIQUID_LAVA, LIQUID_WATER, Terrain } from './terrain';
+import { CELL, LIQUID_FULL, LIQUID_INK, LIQUID_LAVA, LIQUID_WATER, Terrain } from './terrain';
 import { ART } from './tile-art';
 import { LEVEL_PX } from './liquids';
 import type { LightPool } from './lighting';
@@ -24,6 +24,8 @@ interface LiquidLook { body: readonly [string, string, string]; alpha: number; l
 export const LIQUID_LOOK: Readonly<Record<number, LiquidLook>> = {
   [LIQUID_WATER]: { body: ['#2e6e9a', '#1e4a6a', '#0e2a3a'], alpha: .6, lip: '#86d2e6', fleck: '#d0f6ff', fleck2: '#86d2e6' },
   [LIQUID_LAVA]: { body: ['#E8752A', '#c4501e', '#7a2a12'], alpha: 1, lip: '#ffd08a', fleck: '#ff9b4f', fleck2: '#ffd08a' },
+  // Ink (the Umbral's underside): near-opaque violet-black, a cold lip that catches the lantern.
+  [LIQUID_INK]: { body: ['#1a1030', '#120a22', '#080412'], alpha: .94, lip: '#6a4adf', fleck: '#a48bff', fleck2: '#6a4adf' },
 };
 
 /** A fixed hash per cell, for where the flecks sit. */

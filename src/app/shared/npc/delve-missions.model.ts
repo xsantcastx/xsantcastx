@@ -28,6 +28,10 @@ import type { NpcId } from './npc.model';
 import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { xpGrantChunks } from '../activity/activity.model';
 import { FOUR_HAMMER_MARKS, FURNACE_FLAG, HAMMER_MARK_FLAGS, UNDERHEARTH_REACHED_FLAG } from '../delve/underhearth.model';
+import { enteredFlag, INKSTONE, NIGHTGLASS } from '../delve/rift-gates.model';
+
+/** The flag the Gloam Warden sets when it falls (the same string as play/world/towns/umbral-delve.ts GLOAM_WARDEN_FLAG; a spec pins them). */
+export const GLOAM_WARDEN_FLAG = 'gloam-warden-defeated';
 
 /**
  * Kael's lost hammer. A quest material (a stack key), dropped once from a
@@ -435,6 +439,71 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     },
     unlocks: 'A Hollow rune for the Rune Forge ledger: the useful absence.',
     requires: ['fish-verrin-eels', 'kael-four-1'],
+  },
+  // ── The Rift Gates: the Ink Deeps, the Umbral's underside (rift-gates.model.ts; lore-addendum.md
+  //    "The Rift Gates": shipped, owner reviews in play). Verrin's own realm, seen from under it. ──
+  {
+    id: 'verrin-ink-1',
+    npcId: 'verrin',
+    title: 'What the Light Leaves',
+    brief: 'Attune the Umbral Rift Gate in the Underhearth and stand in the Ink Deeps.',
+    loreText:
+      'West of the Landing, deeper than Kael will walk, there is a frame older than the Delve. It opens on my realm from underneath: the dark the light left behind when it went somewhere else. It opens only for someone the shadows already know. Make it a sigil. I will be on the other side, in the way I am anywhere.',
+    objective: {
+      kind: 'reach', flag: enteredFlag('umbral'), name: 'the Ink Deeps',
+      where: 'the Umbral Rift Gate in the Underhearth, west of the Landing (Delving 20, an Umbral Sigil from the Crafting Bench)',
+    },
+    reward: {
+      ...incomeGold(70_000),
+      delvingXp: 450,
+      rune: 'rift',
+      recipe: 'craft-veil-lantern',
+      loreFragment: 'Verrin, when you came back: "You were gone four minutes and you look as if you counted every one. Good. Down there, counting is how you keep the walls where they were."',
+    },
+    unlocks: 'The Veil Lantern recipe (your lantern reaches further in the Ink Deeps) and a Rift rune.',
+    requires: ['kael-four-1'],
+  },
+  {
+    id: 'verrin-ink-2',
+    npcId: 'verrin',
+    title: 'Ink and Glass',
+    brief: 'Bring Verrin 10 Inkstone and 4 Nightglass from the Ink Deeps.',
+    loreText:
+      'Inkstone writes on anything it touches, and never quite straight. Nightglass shows a torch going out. Bring me enough of both to read. Rook Sable maps those tunnels, and some of Rook\'s routes are wrong on purpose. Yours will not be. That is why I am asking you.',
+    objective: {
+      kind: 'deliver',
+      items: [
+        { materialId: INKSTONE, count: 10, where: 'inkstone veins in the Ink Deeps, round the ink pools (Pickaxe IV, Mining 48)' },
+        { materialId: NIGHTGLASS, count: 4, where: 'the Gloam Deep and the walls of shade dens in the Ink Deeps (Pickaxe IV, Mining 55)' },
+      ],
+    },
+    reward: {
+      ...incomeGold(100_000),
+      delvingXp: 600,
+      rune: 'veil',
+      materials: [{ id: 'waystone-shard', qty: 2 }],
+      loreFragment: 'Verrin wrote one line with the inkstone and held the nightglass over it. The line moved. "There," he said. "Now you know why I never sign anything."',
+    },
+    unlocks: 'Two Waystone Shards (Rift Anchors work in the Ink Deeps too) and a Veil rune.',
+    requires: ['verrin-ink-1'],
+  },
+  {
+    id: 'verrin-ink-3',
+    npcId: 'verrin',
+    alsoFrom: 'archivist',
+    title: 'The Unlit Warden',
+    brief: 'Find the Gloam Warden\'s hall under the Gate Hollow, light its braziers, and put it down while it stands in the light.',
+    loreText:
+      'Something keeps the dark down there, and it is not cruel: it keeps what the light left, as I keep endings. But it has kept it so long it no longer lets anything leave. Light it, Convergent. In the light it cannot move, and what cannot move can be ended honestly.',
+    objective: { kind: 'defeat', flag: GLOAM_WARDEN_FLAG, name: 'the Gloam Warden', where: 'its hall under the Gate Hollow in the Ink Deeps (dig down from the gate; light the three braziers with torches)' },
+    reward: {
+      ...incomeGold(240_000),
+      delvingXp: 1200,
+      rune: 'eclipse',
+      loreFragment: 'The Archivist, filing the Warden\'s oath: "It asked only to be lit. Most things that guard a dark are asking for the same. We just never bring a torch."',
+    },
+    unlocks: 'An Eclipse rune, and the Warden\'s hall is quiet. The Ink Deeps go on, east and west, forever.',
+    requires: ['verrin-ink-2'],
   },
 ];
 

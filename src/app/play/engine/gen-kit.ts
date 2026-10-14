@@ -97,7 +97,9 @@ export function valueNoise1(salt: number, x: number): number {
 export interface SectorHall { creature: string; count: number; col0: number; col1: number; floorRow: number }
 export type StructureKind = 'ruin' | 'waycache' | 'flooded-shaft' | 'maw-den' | 'lake' | 'rift-shrine' | 'lava-basin' | 'bailiff-hall'
   // The Underhearth (Phase 8).
-  | 'outpost' | 'hearth-lake' | 'sentinel-hall' | 'ember-den' | 'rail-gallery' | 'banked-door' | 'furnace-hall';
+  | 'outpost' | 'hearth-lake' | 'sentinel-hall' | 'ember-den' | 'rail-gallery' | 'banked-door' | 'furnace-hall'
+  // The Rift Gates (rift-gates.model.ts), and the Umbral's underside (realm-gen.ts).
+  | 'rift-gate' | 'gate-hollow' | 'warden-hall' | 'ink-pool' | 'drift-pocket' | 'mirror-cavern' | 'shade-den';
 /** A structure as the map and the meaning check see it: its kind and its top-left cell. */
 export interface SectorStructure { kind: StructureKind; col: number; row: number; w: number; h: number }
 

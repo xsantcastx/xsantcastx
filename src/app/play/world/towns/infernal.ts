@@ -7,8 +7,10 @@
  * to Ember Quarry. This file is the template Phase 2 towns copy.
  */
 import { FLOOR } from '../../engine/engine.model';
+import { HUNT_HEIGHTS } from '../heights';
 import { WARDEN_FLAG } from '../../engine/terrain';
 import { HOMESTEAD, HOMESTEAD_GATE } from '../homestead';
+import { UMBRAL_DELVE } from './umbral-delve';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
@@ -138,12 +140,14 @@ export const EMBER_QUARRY: HuntZoneDef = {
   name: 'Ember Quarry',
   background: 'bg-basalt-seamworks',
   width: 2700,
-  platforms: [{ x: 0, y: FLOOR, width: 2700 }, ...CAMP_PLATFORMS, ...GUARD_PLATFORMS],
+  platforms: [{ x: 0, y: FLOOR, width: 2700 }],
+  // The high ground (world/heights.ts): trees, shelves, ruins and the summit route.
+  heights: HUNT_HEIGHTS['ember-quarry'],
   stations: [
     { id: 'passage', x: 110, label: 'RETURN TO SEAMWORKS', kind: 'passage', to: 'infernal', arriveX: 2460 + QUARTER, blurb: 'The portal home to the Seamworks.' },
     { id: 'ore', x: 520, label: 'CINDER ORE', kind: 'resource', art: CINDER_ORE, blurb: 'A seam of Cinder Ore.' },
   ],
-  monsters: [{ creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1350, 1670, 1990] }],
+  monsters: [{ creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [1350, 1670, 1990] }, ...HUNT_HEIGHTS['ember-quarry'].perched],
   drops: SEAMWORKS_DROPS,
   nodes: EMBER_QUARRY_NODES,
   spawnX: 240,
@@ -426,5 +430,6 @@ export const INFERNAL_TOWN: TownDef = {
   safeX: 1100 + QUARTER,
   scenery: 'seamworks-hub',
   arrival: 'Returned to Seamworks. Explore freely or head out for another hunt.',
-  hunts: [EMBER_QUARRY, HOMESTEAD, EMBER_DELVE],
+  // The Ink Deeps: the Umbral's underside, behind the Umbral Rift Gate in the Underhearth (no passage from town).
+  hunts: [EMBER_QUARRY, HOMESTEAD, EMBER_DELVE, UMBRAL_DELVE],
 };

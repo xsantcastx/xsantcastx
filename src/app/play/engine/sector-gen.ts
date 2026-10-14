@@ -39,6 +39,8 @@ import {
   type LatticeCache, type SectorColumnGen, type SectorHall, type SectorStructure, type StructureKind,
 } from './gen-kit';
 import { deepColumn, deepNodes } from './underhearth-gen';
+import { GATE_ROOM, realmColumn, stampGate, umbralNodes } from './realm-gen';
+import { gateAt, RIFT_GATES, RIFT_REALMS } from '../../shared/delve/rift-gates.model';
 
 export {
   LATTICE, latticeCache, mix32, noiseColumn, SECTOR, SECTOR_GV, sectorSeed, valueNoise, valueNoise1,
@@ -173,7 +175,11 @@ const N = {
   scorched: nodeIndex('scorched-basalt'), heartstone: nodeIndex('heartstone-vein'),
 };
 
-interface Plan { kind: StructureKind; col: number; row: number; w: number; h: number; salt: number }
+interface Plan { kind: StructureKind; col: number; row: number; w: number; h: number; salt: number; gate?: string }
+/** Interior top-row range of a Rift Gate chamber per stratum (inside the stratum, clear of its edges). */
+const GATE_ROWS: readonly (readonly [number, number])[] = [[4, 6], [14, 19], [28, 33], [42, 46]];
+/** Each stratum's shell rock round a Rift Gate chamber. */
+const GATE_ROCK: readonly string[] = ['root-loam', 'hard-rock', 'grotto-stone', 'scorched-basalt'];
 /** Cells a structure keeps from its lattice cell's sides: its shell, and a flooded shaft's five-cell adit. */
 const MARGIN = 7;
 
@@ -192,6 +198,14 @@ export function latticePlans(ctx: SectorContext, cell: number): Plan[] {
       for (const [kind, weight] of table) { acc += weight; if (roll < acc) return kind; }
       return null;
     };
+    // A Rift Gate's lattice cell (rift-gates.model.ts): the gate is this stratum's one structure there.
+    const gate = gateAt(cell, s as 0 | 1 | 2 | 3);
+    if (gate) {
+      const [lo, hi] = GATE_ROWS[s];
+      out.push({ kind: 'rift-gate', col: x + MARGIN + 8 + Math.floor(r() * (span - 2 * MARGIN - 16 - GATE_ROOM.w)), row: lo + Math.floor(r() * (hi - lo + 1)),
+        w: GATE_ROOM.w, h: GATE_ROOM.h, salt: mix32(salt ^ 0x51ed270b), gate: gate.node });
+      continue;
+    }
     const kind = pick(STRUCTURE_TABLE[s]);
     if (!kind) continue;
     const size = SIZE[kind]!;
@@ -310,6 +324,13 @@ function stamp(b: Builder, plan: Plan, out: SectorColumnGen): void {
       b.liquid(x + 2, y + h - 1, w - 4, 1, LIQUID_LAVA);
       break;
     }
+    case 'rift-gate': {
+      // A Rift Gate (rift-gates.model.ts): the door to one realm's underside, in its stratum's own rock.
+      const stratum = y < 12 ? 0 : y < 26 ? 1 : y < 40 ? 2 : 3;
+      const pool = fieldNotePool('rift');
+      stampGate(b, x, y, nodeIndex(plan.gate ?? 'rift-gate-luminous'), nodeIndex(GATE_ROCK[stratum]), pool.length ? pool[Math.floor(r() * pool.length)] : null);
+      break;
+    }
     case 'bailiff-hall': {
       // A Bailiff hall: their work route, on a bedrock floor, heartstone in the roof.
       b.rect(x, y, w, h, AIR);
@@ -331,6 +352,8 @@ function stamp(b: Builder, plan: Plan, out: SectorColumnGen): void {
  * wing generator runs. Same (context, sx) → the same arrays, byte for byte.
  */
 export function generateSectorColumn(ctx: SectorContext, sx: number): SectorColumnGen {
+  // A realm Delve behind a Rift Gate has its own generator, its core included (realm-gen.ts).
+  if (ctx.spec.realm) return realmColumn(ctx, sx);
   const spec = ctx.spec, rows = spec.rows, n = SECTOR * ctx.rows, col0 = sx * SECTOR;
   const out: SectorColumnGen = {
     sx, gv: ctx.gv,
@@ -418,4 +441,6 @@ export function columnHash(gen: Pick<SectorColumnGen, 'kind' | 'liqType' | 'liqL
 
 /** Every node id the generator can lay (the meaning check reads this). */
 export const SECTOR_NODES: readonly string[] = ['root-loam', 'petrified-trunk', 'shadow-root', 'cinder-vein', 'hard-rock', 'ember-rock', 'waycache', 'slag-vein',
-  'grotto-stone', 'glowcap', 'rift-shrine', 'scorched-basalt', 'heartstone-vein', 'bedrock', 'inscription', ...deepNodes()];
+  'grotto-stone', 'glowcap', 'rift-shrine', 'scorched-basalt', 'heartstone-vein', 'bedrock', 'inscription', ...deepNodes(),
+  // The Rift Gates and the realm Delves behind them.
+  'rift-frame', 'rift-splinter', ...RIFT_REALMS.map(realm => RIFT_GATES[realm].node), ...umbralNodes()].filter((id, i, all) => all.indexOf(id) === i);

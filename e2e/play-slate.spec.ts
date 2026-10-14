@@ -111,17 +111,26 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await openSlate(page, phone);
       const x = await canvas(page).getAttribute('data-player-x');
       await expect(placePanel(page).locator('[data-slate-tier="1"]')).toBeVisible();
-      await expect(placePanel(page).locator('.sl-tab')).toHaveText(['Tables', 'Homestead']);
+      // It opens on a few big choices: Lune's four tables and the Homestead (no map at tier I).
+      await expect(placePanel(page).locator('.sl-tile--game')).toHaveText(['Reels', 'Rune Drop', 'Seam Sweeper', 'Eclipse Ascent']);
+      await expect(placePanel(page).locator('.sl-tile[data-face="factory"]')).toBeVisible();
+      await expect(placePanel(page).locator('.sl-tile[data-face="map"]')).toHaveCount(0);
+      if (phone) {
+        for (const b of await placePanel(page).locator('.sl-tile').all()) {
+          await expect.poll(async () => { const r = (await b.boundingBox())!; return Math.min(r.width, r.height); }).toBeGreaterThanOrEqual(44);
+        }
+      }
+      await page.screenshot({ path: resolve(SHOTS, `${size.width}-3a-delve-home.png`) });
+      // One tap onto the Reels.
+      await placePanel(page).locator('.sl-tile[data-game="reels"]').click();
       await expect(spin(page)).toBeVisible({ timeout: 15000 });
       await expect(reels(page).locator('.rl-result')).toContainText('Last spin');
       if (phone) {
-        // A full-screen sheet; every tab and table at least 44px.
+        // A full-screen sheet; Back at least 44px.
         const box = (await placePanel(page).boundingBox())!;
         expect(box.width).toBeGreaterThanOrEqual(size.width - 1);
-        // Measured once the panel's open transition (a scale-in) has settled.
-        for (const b of await placePanel(page).locator('.sl-tab, .sl-game').all()) {
-          await expect.poll(async () => { const r = (await b.boundingBox())!; return Math.min(r.width, r.height); }).toBeGreaterThanOrEqual(44);
-        }
+        const back = (await placePanel(page).locator('.sl-back').boundingBox())!;
+        expect(Math.min(back.width, back.height)).toBeGreaterThanOrEqual(44);
       }
       await page.screenshot({ path: resolve(SHOTS, `${size.width}-3-delve-tables.png`) });
       await spin(page).click();
@@ -132,7 +141,8 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       expect(await canvas(page).getAttribute('data-player-x')).toBe(x);
 
       // ── The Homestead tab: collect the receipt, build the next building ──
-      await placePanel(page).locator('.sl-tab', { hasText: 'Homestead' }).click();
+      await placePanel(page).locator('.sl-back').click();
+      await placePanel(page).locator('.sl-tile[data-face="factory"]').click();
       const factory = placePanel(page).locator('.sl-factory');
       await expect(factory.locator('.sl-rate')).toContainText('Gold/s');
       await expect(factory.locator('.sl-waiting__line')).toContainText('since you were last here', { timeout: 15000 });
@@ -158,7 +168,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect(slateBtn(page)).toBeVisible({ timeout: 15000 });
       await page.waitForTimeout(1000);
       await openSlate(page, phone);
-      await placePanel(page).locator('.sl-tab', { hasText: 'Tables' }).click();
+      await placePanel(page).locator('.sl-tile[data-game="reels"]').click();
       await expect(reels(page).locator('.rl-result')).toContainText('Last spin', { timeout: 15000 });
       expect((await plays(page)).length).toBe(records);
       expect(await totalPlays(page)).toBe(11);
@@ -186,7 +196,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
 
       await openSlate(page, phone);
       await expect(page.locator('.place-head .realm-tag')).toContainText('tier II');
-      await placePanel(page).locator('.sl-tab', { hasText: 'Map & bounties' }).click();
+      await placePanel(page).locator('.sl-tile[data-face="map"]').click();
       await expect(placePanel(page).locator('.sl-map .sl-list').first().locator('li')).toHaveCount(3);
       await expect(placePanel(page).locator('.sl-map')).toContainText('No pins yet');
       await page.screenshot({ path: resolve(SHOTS, `${size.width}-7-map-bounties.png`) });

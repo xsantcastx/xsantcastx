@@ -5,27 +5,131 @@
 
 .sl { display: grid; gap: 12px; }
 
-/* Tab rows: every target at least 44px (phones are first-class); 46 so the panel's
-   scale-in never draws one under 44. */
-.sl-tabs, .sl-games { display: flex; flex-wrap: wrap; gap: 6px; }
-.sl-tab, .sl-game {
+/* The home face: a few big choices. Every target well over 44px (phones are first-class). */
+.sl-home { display: grid; gap: 10px; }
+.sl-group {
+  margin: 0;
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--adventure-dialogue);
+}
+.sl-tiles + .sl-tiles { margin-top: 6px; padding-top: 14px; border-top: 1px dashed color-mix(in srgb, var(--gold-deep) 35%, transparent); }
+.sl-tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.sl-tile {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  align-items: center;
+  column-gap: 12px;
+  min-height: 76px;
+  padding: 12px 14px;
+  border: 1px solid color-mix(in srgb, var(--gold-deep) 55%, transparent);
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--obsidian-2), var(--obsidian-1));
+  color: var(--gold-bright);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color .15s ease, transform .15s ease;
+}
+.sl-tile:hover { border-color: var(--gold); }
+.sl-tile:active { transform: translateY(1px); }
+.sl-tile:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.sl-tile .sl-ico { grid-row: 1 / span 2; }
+.sl-tile__name { font: 600 13px/1.2 Orbitron, sans-serif; letter-spacing: .06em; }
+.sl-tile__sub { font-size: 13px; color: var(--adventure-dialogue); font-variant-numeric: tabular-nums; }
+.sl-tile__name:only-of-type { grid-row: 1 / span 2; }
+.sl-dot {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold-bright);
+  box-shadow: 0 0 8px var(--gold);
+}
+
+/* Procedural glyphs until the Slate's art lands: gold strokes, one per choice. */
+.sl-ico {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  border: 1px solid color-mix(in srgb, var(--gold) 55%, transparent);
+  border-radius: 2px;
+  background: var(--obsidian-1);
+}
+.sl-ico::before, .sl-ico::after { content: ""; position: absolute; }
+/* Reels: three windows. */
+.sl-ico[data-ico="reels"]::before {
+  inset: 10px 8px;
+  background:
+    linear-gradient(90deg, var(--gold) 0 6px, transparent 6px 9px, var(--gold) 9px 15px, transparent 15px 18px, var(--gold) 18px 24px);
+  opacity: .85;
+}
+/* Rune Drop: a falling diamond. */
+.sl-ico[data-ico="rune-drop"]::before {
+  left: 13px; top: 9px; width: 14px; height: 14px;
+  border: 2px solid var(--gold-bright);
+  transform: rotate(45deg);
+}
+.sl-ico[data-ico="rune-drop"]::after { left: 19px; top: 28px; width: 2px; height: 6px; background: var(--gold); }
+/* Seam Sweeper: a grid of cells. */
+.sl-ico[data-ico="seam-sweeper"]::before {
+  inset: 9px;
+  background:
+    linear-gradient(var(--gold) 0 0) 0 0 / 6px 6px no-repeat,
+    linear-gradient(var(--gold) 0 0) 50% 0 / 6px 6px no-repeat,
+    linear-gradient(var(--gold-bright) 0 0) 100% 50% / 6px 6px no-repeat,
+    linear-gradient(var(--gold) 0 0) 0 100% / 6px 6px no-repeat,
+    linear-gradient(var(--gold) 0 0) 50% 50% / 6px 6px no-repeat,
+    linear-gradient(var(--gold) 0 0) 100% 100% / 6px 6px no-repeat;
+  opacity: .9;
+}
+/* Eclipse Ascent: a climbing chevron. */
+.sl-ico[data-ico="eclipse-ascent"]::before {
+  left: 11px; top: 15px; width: 16px; height: 16px;
+  border-left: 2px solid var(--gold-bright);
+  border-top: 2px solid var(--gold-bright);
+  transform: rotate(45deg);
+}
+/* Homestead: a roof over a door. */
+.sl-ico[data-ico="factory"]::before {
+  left: 10px; top: 11px; width: 18px; height: 18px;
+  border-left: 2px solid var(--gold);
+  border-top: 2px solid var(--gold);
+  transform: rotate(45deg);
+}
+.sl-ico[data-ico="factory"]::after { left: 15px; top: 20px; width: 10px; height: 12px; border: 2px solid var(--gold-bright); border-bottom: 0; }
+/* Map: a pin. */
+.sl-ico[data-ico="map"]::before {
+  left: 12px; top: 8px; width: 16px; height: 16px;
+  border: 2px solid var(--gold-bright);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+}
+.sl-ico[data-ico="map"]::after { left: 18px; top: 14px; width: 4px; height: 4px; border-radius: 50%; background: var(--gold); }
+
+/* A face's bar: Back to the glass, and what this screen is. */
+.sl-bar { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.sl-back {
+  flex: none;
   min-width: 46px;
   min-height: 46px;
-  padding: 0 14px;
+  padding: 0 14px 0 12px;
   border: 1px solid color-mix(in srgb, var(--gold-deep) 60%, transparent);
   border-radius: 2px;
   background: var(--obsidian-2);
   color: var(--adventure-dialogue);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  cursor: pointer;
 }
-.sl-tab[aria-selected="true"], .sl-game[aria-selected="true"] {
-  border-color: var(--gold);
-  background: linear-gradient(180deg, var(--obsidian-4), var(--obsidian-2));
-  color: var(--gold-bright);
-  box-shadow: inset 0 -2px 0 var(--gold);
-}
-.sl-tab:focus-visible, .sl-game:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
-.sl-games { padding-bottom: 6px; border-bottom: 1px dashed color-mix(in srgb, var(--gold-deep) 35%, transparent); }
-.sl-game { font-size: 10px; }
+.sl-back::before { content: "\2039"; margin-right: 8px; font-size: 16px; line-height: 0; vertical-align: -1px; color: var(--gold); }
+.sl-back:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.sl-face-title { margin: 0; min-width: 0; font: 600 12px Orbitron, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sl-pane[hidden] { display: none; }
 .sl-pane { display: grid; gap: 12px; min-width: 0; }
@@ -49,7 +153,9 @@
 }
 .sl-card h3 { margin: 0; font: 600 11px Orbitron, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
 .sl-card p { margin: 0; color: var(--adventure-parchment); }
-.sl-card ul { margin: 0; padding-left: 18px; color: var(--adventure-dialogue); display: grid; gap: 4px; }
+.sl-card ul, .sl-walk ul { margin: 0; padding-left: 18px; color: var(--adventure-dialogue); display: grid; gap: 4px; }
+.sl-crew, .sl-walk { display: grid; gap: 6px; margin-top: 6px; }
+.sl-crew p { margin: 0; color: var(--adventure-parchment); }
 
 .sl-collect {
   justify-self: start;
@@ -75,6 +181,27 @@
 .sl-list__name { color: var(--adventure-parchment); }
 .sl-list__meta { color: var(--adventure-dialogue); font-variant-numeric: tabular-nums; }
 
-.sl-details summary { min-height: 46px; display: flex; align-items: center; cursor: pointer; color: var(--adventure-dialogue); }
+.sl-details { border-top: 1px dashed color-mix(in srgb, var(--gold-deep) 35%, transparent); }
+.sl-details summary {
+  min-height: 46px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  list-style: none;
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--adventure-dialogue);
+}
+.sl-details summary::-webkit-details-marker { display: none; }
+.sl-details summary::after { content: "+"; margin-left: auto; font-size: 16px; color: var(--gold); }
+.sl-details[open] summary::after { content: "\2212"; }
 .sl-details p { margin: 6px 0 0; color: var(--adventure-dialogue); }
 .sl-lore { font: italic 400 15px/1.4 var(--font-lore, Georgia, serif); color: var(--adventure-parchment) !important; }
+
+@media (max-width: 520px) {
+  .sl-tile { column-gap: 10px; min-height: 84px; padding: 10px; }
+  .sl-tile__name { font-size: 12px; }
+}
+@media (prefers-reduced-motion: reduce) { .sl-tile { transition: none; } }

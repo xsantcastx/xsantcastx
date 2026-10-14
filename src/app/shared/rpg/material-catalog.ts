@@ -129,6 +129,12 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'bark-rope': 'Bark Rope',
   'thornroot-grapple': 'Thornroot Grapple',
   'rift-anchor': 'Rift Anchor',
+  // The Rift Gates and the Ink Deeps (rift-gates.model.ts; art/pixel-icons.ts paints them until the commission lands).
+  'rift-splinter': 'Rift Splinter',
+  'umbral-sigil': 'Umbral Sigil',
+  'inkstone': 'Inkstone',
+  'nightglass': 'Nightglass',
+  'veil-lantern': 'Veil Lantern',
   // Map v2's two map tools (shared/delve/map-tools.model.ts).
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',

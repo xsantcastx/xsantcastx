@@ -1,0 +1,33 @@
+<section class="km" [attr.data-saved]="saved ? '1' : '0'">
+  <p class="km__lore">{{ t('look.lore') }}</p>
+
+  <div class="km__stage">
+    <canvas #preview class="km__preview" width="240" height="240" role="img" [attr.aria-label]="t('look.preview')"></canvas>
+  </div>
+
+  <label class="km__name">
+    <span>{{ t('look.name') }}</span>
+    <input type="text" [value]="draft.name" [attr.maxlength]="nameMax" [placeholder]="t('look.namePlaceholder')"
+           autocomplete="off" spellcheck="false" (input)="setName($any($event.target).value)">
+  </label>
+
+  <ul class="km__fields">
+    @for (field of fields; track field) {
+      <li class="km__row" [attr.data-field]="field">
+        <span class="km__label">{{ fieldLabel(field) }}</span>
+        <button type="button" class="km__step km__step--prev" (click)="step(field, -1)" [attr.aria-label]="t('look.prev', { field: fieldLabel(field) })"><i aria-hidden="true"></i></button>
+        <span class="km__value" aria-live="polite">
+          @if (swatch(field); as color) { <i class="km__swatch" [style.--swatch]="color" aria-hidden="true"></i> }
+          {{ valueLabel(field) }}
+        </span>
+        <button type="button" class="km__step km__step--next" (click)="step(field, 1)" [attr.aria-label]="t('look.next', { field: fieldLabel(field) })"><i aria-hidden="true"></i></button>
+      </li>
+    }
+  </ul>
+
+  <div class="km__actions">
+    <button type="button" class="km__random" (click)="surprise()">{{ t('look.random') }}</button>
+    <button type="button" class="km__keep" (click)="keep()">{{ t('look.keep') }}</button>
+  </div>
+  @if (saved) { <p class="km__saved" role="status">{{ t('look.saved') }}</p> }
+</section>

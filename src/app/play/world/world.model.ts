@@ -29,6 +29,7 @@ import { LUMINOUS_TOWN } from './towns/luminous';
 import { UMBRAL_TOWN } from './towns/umbral';
 import { VERDANT_TOWN } from './towns/verdant';
 import type { TerrainSpec, ToolTiers } from '../engine/terrain';
+import type { AreaHeights } from './heights';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 
 /** Every built town. A Phase 2 town is a new file in towns/ and one line here. */
@@ -161,9 +162,13 @@ export interface MonsterDef {
    *  - 'shoulder': shoulders the ceiling (the Ironwood Sentinel): its strike
    *    brings down unsupported loose rock over the Keeper (a cave-in);
    *  - 'furnace': the Banked Furnace (engine/furnace.ts): never moves, pulls,
-   *    spills Banked Embers, and takes no hit until its four vents are doused.
+   *    spills Banked Embers, and takes no hit until its four vents are doused;
+   *  - 'shade' (the Ink Deeps, engine/umbral.ts): frozen where light falls on it,
+   *    fast where none does; it lunges out of the dark;
+   *  - 'warden': the Gloam Warden, a shade that takes no hit unless it is lit
+   *    (the hall's braziers), and calls shadelings out of the dark.
    */
-  trait?: 'dormant' | 'shoulder' | 'furnace';
+  trait?: 'dormant' | 'shoulder' | 'furnace' | 'shade' | 'warden';
   /** A summoned guardian that, once felled for good (`once`), may still be summoned again for its drops. */
   rematch?: true;
 }
@@ -198,6 +203,8 @@ export interface AreaDef {
   figureScale?: number;
   /** Herb patches, trees and ore outcrops to gather here (hunting grounds). */
   nodes?: readonly GatherNodeDef[];
+  /** Height above the floor: trees, shelves, ruins, bridges and what waits up there (world/heights.ts). */
+  heights?: AreaHeights;
 }
 
 export type HuntZoneDef = AreaDef;

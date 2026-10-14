@@ -25,6 +25,7 @@ import { CELL, LIQUID_FULL, liquidLayout, nodeIndex, packLiquid, Terrain, TERRAI
 import { coreSectorCols, generateSectorColumn, isCoreCell, isCoreCol, LATTICE, latticePlans, SECTOR, SECTOR_GV, sectorContext, type SectorColumnGen, type SectorContext, type SectorHall, type SectorStructure } from './sector-gen';
 import type { DelvePersistence, DelveSectorStore } from './engine.model';
 import { deepPlans } from './underhearth-gen';
+import { realmPlans } from './realm-gen';
 import { fogPixel, mapPixel, mapWalls, REVEAL_CELLS, type CellReader, type MapMarker, type WorldMap } from './delve-map';
 
 /** A generated structure with a stable id (`<kind>@<col>,<row>`, its room's top-left). */
@@ -49,6 +50,8 @@ const KEPT = Uint8Array.from(TERRAIN_NODE_LIST, node =>
 const INSCRIPTION = nodeIndex('inscription');
 const CAMP = nodeIndex('camp'), CHEST = nodeIndex('chest'), TORCH = nodeIndex('torch'), SHRINE = nodeIndex('rift-shrine');
 const ANCHOR = nodeIndex('rift-anchor'), MARK = nodeIndex('hammer-mark'), FURNACE_HEARTH = nodeIndex('furnace-hearth');
+/** Rift Gate openings (one node per realm): the map marks each gate once, at its top-left cell. */
+const GATE = Uint8Array.from(TERRAIN_NODE_LIST, node => node.use === 'gate' ? 1 : 0);
 /** Columns the map may generate per paint (the rest show as fog until a later HUD tick). */
 const MAP_BUILDS = 4;
 
@@ -140,7 +143,7 @@ export class SectorWorld {
     };
     const liquid = (i: number, packed: number) => {
       const type = packed >> 4, level = packed & 15;
-      if (level > LIQUID_FULL || SOLID[column.kind[i]] || (level && (type < 1 || type > 2))) return;
+      if (level > LIQUID_FULL || SOLID[column.kind[i]] || (level && (type < 1 || type > 3))) return;
       column.liqType[i] = level ? type : 0; column.liqLevel[i] = level;
     };
     for (let lc = 0; lc < SECTOR; lc++) {
@@ -576,7 +579,8 @@ export class SectorWorld {
             if (inRing ? !(fog[r >> 3] & (1 << (r & 7))) : !(column.fog[i >> 3] & (1 << (i & 7)))) continue;
             const k = inRing ? t.kind[r] : column.kind[i], note = column.gen.notes.has(i) && k === INSCRIPTION;
             const kind = k === CAMP ? 'camp' : k === CHEST ? 'chest' : k === TORCH ? 'torch' : k === SHRINE ? 'shrine' : note ? 'inscription'
-              : k === ANCHOR ? 'anchor' : k === MARK ? 'mark' : k === FURNACE_HEARTH ? 'furnace' : null;
+              : k === ANCHOR ? 'anchor' : k === MARK ? 'mark' : k === FURNACE_HEARTH ? 'furnace'
+              : GATE[k] && !(i % SECTOR > 0 && GATE[inRing ? t.kind[r - 1] : column.kind[i - 1]]) && !(i >= SECTOR && GATE[inRing ? t.kind[r - t.cols] : column.kind[i - SECTOR]]) ? 'gate' : null;
             if (kind) out.push({ kind, col: sx * SECTOR + (i % SECTOR), row: Math.floor(i / SECTOR) });
           }
         }
@@ -593,6 +597,8 @@ export class SectorWorld {
     const out: PlacedStructure[] = [];
     const at = Math.floor(col / (LATTICE * SECTOR));
     for (let c = at - cells; c <= at + cells; c++) {
+      // A realm Delve's structures come from its own generator (realm-gen.ts).
+      if (this.spec.realm) { for (const p of realmPlans(this.ctx, c)) out.push({ kind: p.kind, col: p.col, row: p.row, w: p.w, h: p.h, id: `${p.kind}@${p.col},${p.row}` }); continue; }
       for (const p of latticePlans(this.ctx, c)) out.push({ kind: p.kind, col: p.col, row: p.row, w: p.w, h: p.h, id: `${p.kind}@${p.col},${p.row}` });
       // The deep strata's structures (Phase 8, the Underhearth): the Four's outposts, its halls and lakes.
       if (this.ctx.rows > this.spec.rows) for (const p of deepPlans(this.ctx, c)) out.push({ kind: p.kind, col: p.col, row: p.row, w: p.w, h: p.h, id: `${p.kind}@${p.col},${p.row}` });
