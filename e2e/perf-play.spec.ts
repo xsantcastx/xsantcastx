@@ -98,7 +98,7 @@ async function mainThread(cdp: CDPSession): Promise<{ task: number; script: numb
   return { task: get('TaskDuration'), script: get('ScriptDuration') };
 }
 
-async function measure(page: Page, cdp: CDPSession, scene: string, walk = true): Promise<SceneResult> {
+async function measure(page: Page, cdp: CDPSession, scene: string, walk: boolean | 'east' = true): Promise<SceneResult> {
   await cdp.send('Performance.enable');
   await cdp.send('HeapProfiler.enable');
   await focusWorld(page);
@@ -132,7 +132,7 @@ async function measure(page: Page, cdp: CDPSession, scene: string, walk = true):
     if (walk) await page.keyboard.down(dir);
     await page.waitForTimeout(slice);
     if (walk) await page.keyboard.up(dir);
-    dir = dir === 'd' ? 'a' : 'd';
+    if (walk !== 'east') dir = dir === 'd' ? 'a' : 'd';
   }
   const busyEnd = await mainThread(cdp);
   const { profile } = await cdp.send('HeapProfiler.stopSampling') as unknown as { profile: { head: ProfileNode } };
@@ -248,6 +248,16 @@ harness('/play on a throttled phone', () => {
     const cdp = await phone(page);
     await descendTo(page, new DelveFixture().camp(30, 34));
     await measure(page, cdp, 'delve:grotto-mere');
+  });
+
+  // Phase 7 (docs/handoff/endless-delve.md): the wide traverse. From a camp at the core's east
+  // end the Keeper walks east along the surface for the whole window (about 18 sector columns at
+  // 4× CPU), so the ring streams a column in every few seconds. On a build without the endless
+  // Delve the same walk stops at the core's east wall: the "before" is the same frame, standing.
+  test('delve: wide traverse east', async ({ page }) => {
+    const cdp = await phone(page);
+    await descendTo(page, new DelveFixture().carve(112, 112, 0, 0).camp(112, 0));
+    await measure(page, cdp, 'delve:wide-traverse', 'east');
   });
 
   test('delve: Magma Halls beside a lava pool', async ({ page }) => {

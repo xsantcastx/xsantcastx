@@ -106,6 +106,8 @@ export function buildFoundInIndex(): FoundInIndex {
       // The Clarity Elixir is the Orrery's rare find, not a tier.
       { place: 'Meridian Orrery', materialIds: [...PROSPECTING_TIERS.map(t => t.mineralId), CLARITY_ELIXIR_ID] },
       ...fishingRows(),
+      // The endless Delve (Phase 7): Kael's waycaches in the Basalt Caverns east and west of the core.
+      { place: `${DELVE_AREA}: Kael's waycaches, in the Basalt Caverns east and west`, materialIds: ['torch'] },
     ],
     areas,
     nodeYields: Object.fromEntries(TERRAIN_NODE_LIST.map(n => [n.id, n.yield?.materialId])),

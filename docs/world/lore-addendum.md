@@ -436,6 +436,56 @@ systems").
 leaves. An empty tunnel it takes back, slowly, and fills with something new.
 Mark what you mean to keep."
 
+(Shipped with Phase 7: the engine says it the first time the Keeper walks into
+a regrown sector, `play.delve.regrown`, EN + ES. The map shows regrown sectors
+muted.)
+
+### The wings: structures and field notes (Phase 7, shipped — owner reviews in play)
+
+Builds on: Kael's seam oath ("Mark every tunnel you open") and Flooded Seams
+(above); the Archivist on field notes ("Field notes were meant to be found");
+Codex, Rift ("a passage created by difference") and the canon rifts the
+fracture "scattered"; Atlas, Cinder Bailiff ("stamps heat debts onto
+shortcuts").
+
+> The Delve does not stop at the shaft's walls. East and west it runs on under
+> every realm, the same four depths all the way: root, basalt, grotto, magma.
+> The Keepers who came before left what Keepers leave: a camp they meant to come
+> back to, a mine let go to the water, a bundle of torches for whoever came next.
+
+- **Kael's waycache** *(new)*: a hard-rock niche in the Basalt Caverns with a
+  bundle of three torches. "For whoever comes next. Light it before you need
+  it." The dug cache is the receipt: it never grows back.
+- **Flooded shaft** *(new)*: one of Kael's mines, let go to the water, with a
+  waycache drowned at the bottom.
+- **Keepers' ruin** *(new)*: a low room in the Root Hollows, trunk posts, a
+  shadow-root knot overhead, a field note on the wall.
+- **Maw den / Bailiff hall** *(new)*: halls on bedrock floors where Rivet Maws
+  and Cinder Bailiffs keep their routes, the way the core's halls do.
+- **Grotto lake / lava basin** *(new)*: water in the Grotto, lava in the Halls,
+  shores to stand on and fish from.
+- **Rift shrine** *(new)*: a standing stone split by a violet seam. Touched, it
+  shows the tunnels round it on the map (and pays a little Delving XP once).
+  In-world line: "A rift the fracture scattered: a passage created by
+  difference."
+
+**Field notes** (`shared/delve/field-notes.model.ts`; a second set beside the
+Archivist's twelve inscriptions, carved into the structures above):
+
+- Root Hollows: "Someone measured the shadow-root here every year. The marks go
+  down the wall toward the crack, a hand a year." · "A Keeper slept here once.
+  The soot is old, the bedding is root, and the wall says only: 'Back by
+  morning.'"
+- Basalt Caverns: "A rail gauge scratched into the rock, and an arrow. The arrow
+  points at the crack, as every one of them does." · "Kael's stencil, upside
+  down, over a hollow in the wall: 'For whoever comes next. Light it before you
+  need it.'" · "'Closed', in chalk, over a seam nobody finished. Under it,
+  smaller: 'It was running toward something.'"
+- Glowcap Grotto: the Grotto Mere's two notes above (The Waterline, For Whoever
+  Fishes).
+- Magma Halls: "A column of heat stamps, each pressed into the rock by a
+  Bailiff's seal. The last one has not been paid."
+
 ### One More (the Unmade)
 
 Builds on: In-game, the Nameless ("There is one more. There is always one
