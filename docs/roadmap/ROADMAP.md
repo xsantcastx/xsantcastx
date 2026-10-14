@@ -6,19 +6,15 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## What's next (in order)
 
-0. **Delves in every realm** (owner, 2026-10-14 — "we are in Eclipse Realms") — each of the five realms gets its own Delve: Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists). Own biomes, creatures, keeper missions, story. **Top item after the weekly budget resets (Mon).**
-1. **The Underhearth** (Phase 8). *(in flight)*
-2. **The Mirror Slate** — casino anywhere + Homestead management. *(in flight)*
-3. **Uncapped levels, Tibia-style** (owner, 2026-10-14) — skills past 99 forever on a steepening curve; tool bonuses keep growing with diminishing returns; swing floor and reward rate caps stay; titles at milestone levels. *(in flight)*
-4. **Glim bond** (owner) — the more you explore with Glim the closer you get: bond levels unlock Glim's story, conversations and small abilities (sensing hidden rooms, remembering routes). *(in flight)*
-5. **A surface with height** (owner) — climbable trees, ledges, floating ruins, parkour routes with rewards at the top, wall-jump/ledge-grab, NPCs and creatures up there. *(in flight)*
-6. **The sound of the world** (owner, 2026-10-14 — "the peaceful stuff Minecraft has") — the game is silent today: only synthesized blips (forge, level-up, rarity, celebration), no music, no ambience, no footsteps. Build an audio director: sparse generative score per realm/biome (soft piano + pads, long silences between phrases, C418-style), ambience beds (surface wind/birds by day, crickets at night, Delve drips/rumble, lava hiss, water lap, city murmur), and world SFX (footsteps by block, mining by material, splash, pickup, door, chest). Music/ambience/SFX volume sliders + mute, starts on first tap (phone autoplay), pauses when the tab hides, low CPU. Built in Web Audio with no audio files, so nothing is licensed and the bundle doesn't grow; a slot for recorded tracks later.
-7. **Catch & craft feel** (owner, 2026-10-14 — "where are the fish? where do crafted items go?") — visible fish shadows in water and lava, splash + the fish arcing to you on a land; Terraria-style "+1 item" pickup popups for catch/craft/mine/loot with the bag icon pulsing; a crafted item pops above the bench with a tap to open the Satchel on it.
-8. **Lost Cabinets** (owner) — rare unique slot machines hidden in the Delve; scan one with the Mirror Slate (scan animation) to download its game; collectible. Needs the Slate.
-9. **A living, mysterious Delve** (owner) — per-biome/region backgrounds and assets, hidden rooms, environmental storytelling, ambient life, events (ambushes, rift storms, cave-in chases), more creatures.
-10. **Pets** (owner) — rare befriendable creatures that follow you, each with a trait and lore.
-11. **Tibia-inspired loops** — research pass: hunting grounds, rare drops, open quests, houses → ideas that fit the world.
-12. **Starfall Deep** (Phase 9) · **Story Act II** · **Art test set** *(owner)*.
+1. **Delves in every realm** (owner, 2026-10-14) — Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists), each with its own biomes, creatures, keeper missions and story. **Top item after the weekly budget resets (Mon).**
+2. **The Underhearth** (Phase 8). *(in flight)*
+3. **The Mirror Slate** — casino anywhere + Homestead management. *(in flight)*
+4. **Uncapped levels, Tibia-style** — skills past 99 on a steepening curve; diminishing tool bonuses; swing floor and reward caps stay; milestone titles. *(in flight)*
+5. **Glim bond** — bond levels unlock Glim's story, conversations and small abilities. *(in flight)*
+6. **A surface with height** — climbable trees, ledges, floating ruins, parkour routes with rewards at the top. *(in flight)*
+7. **World feel** (owner, 2026-10-14) — *the sound of the world*: a Web Audio director (sparse per-realm score, ambience beds, block-aware SFX, sliders + mute, first-tap start, no audio files); *catch & craft*: visible fish shadows, "+1 item" pickup popups, crafted items pop above the bench and open the Satchel.
+
+Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
 ## Milestones
 
@@ -44,6 +40,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## Daily review log
 
+- **2026-10-14 (daily review)** — No app code shipped since the evening entry; docs only (agent brief, SYSTEMS.md, sound + catch & craft added). Trimmed "What's next" to seven (sound and catch & craft merged into World feel; the rest under Later). Risk: five features in flight at once on a shared repo — gate each merge and watch for release-version races.
 - **2026-10-14 (evening)** — Owner ideas folded in: Lost Cabinets (scan with the Slate), uncapped Tibia-style levels, Glim bond, a surface with height + parkour, pets, a more alive and mysterious Delve, Tibia inspiration.
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
