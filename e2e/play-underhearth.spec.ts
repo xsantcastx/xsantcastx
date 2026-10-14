@@ -52,9 +52,12 @@ const BLADE = gear('e2e-blade', 'eclipse-longblade', 'Eclipse Longblade', 2, { c
 
 async function descend(page: Page): Promise<void> {
   await openPlay(page);
-  await walkTo(page, 590, 30);
   const button = page.getByRole('button', { name: /Descend to your camp/ });
-  await expect(button).toBeVisible();
+  // The Keeper can settle by the Material Vendor next door: step back onto the shaft until it offers the camp.
+  await expect(async () => {
+    await walkTo(page, 590, 12);
+    await expect(button).toBeVisible({ timeout: 4000 });
+  }).toPass({ timeout: 40_000 });
   await button.click();
   await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
   await page.waitForTimeout(1200);
@@ -176,8 +179,11 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       });
       await descend(page);
       const mouth = (FURNACE.col + .5) * CELL;
-      await walkTo(page, mouth, 12);
-      await expect(page.locator('.prompt strong')).toContainText(/Wake the Banked Furnace|Despertar/);
+      // Settle at the hearth (the walk can coast a step past its reach): retry until it offers to wake.
+      await expect(async () => {
+        await walkTo(page, mouth, 6);
+        await expect(page.locator('.prompt strong')).toContainText(/Wake the Banked Furnace|Despertar/, { timeout: 3000 });
+      }).toPass({ timeout: 40_000 });
       await use(page, touch);
       await expect.poll(() => attr(page, 'data-furnace')).toMatch(/^banked:0000/);
       await shot(page, `${label}-furnace-wakes`);

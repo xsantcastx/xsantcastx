@@ -98,10 +98,15 @@ map pins / waypoints / compass / fragment / daily bounties (7.4–7.5).
   to the Landing; ride the rail to the gantry and jump out; place an anchor, travel home and descend to it;
   summon and defeat the Banked Furnace from a seeded save (vents doused from the trough, breath dodged).
 - `node scripts/economy-sim.mjs --underhearth` (and `--check`).
+- The boss e2e seeds a late-game Keeper (blade strikePower 5, ward 15 = 250 HP) and allows 360 s, because webkit's
+  slower automation loop otherwise ran out of HP or time. On chromium it passes with ward 6 too.
 
 ## Perf (phone, CDP 4× CPU throttle, `e2e/perf-play.spec.ts`)
 
-PERF_TABLE
+**Not measured yet** (stopped for budget). To measure: build origin/main and this branch, then alternate
+`PLAY_PERF=1 PLAY_PERF_SECONDS=30 npx playwright test e2e/perf-play.spec.ts -g "delve: "` on each. Rows 0–55 of
+every sector generate exactly as before. The ring now holds 120 rows instead of 56 (about 2.1× the sector cells in
+memory). Per-sector generation stays inside the `delve-endless.test.cjs` timing budget.
 
 New scene `delve: the Furnace Hall, the Banked Furnace awake` (camp at (60,109), wakes the furnace, walks the hall).
 
