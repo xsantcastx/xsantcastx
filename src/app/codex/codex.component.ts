@@ -74,6 +74,9 @@ import { RUNE_TIERS, runeById } from '../shared/rune-forge/rune.model';
 import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { REALM_ART, artFor } from '../shared/art/art';
 import { BESTIARY, BESTIARY_UNPAINTED } from './bestiary';
+import { GLIM_I18N } from '../shared/glim/glim.i18n';
+import { GlimService } from '../shared/glim/glim.service';
+import { GlimIconComponent } from '../shared/glim/glim-icon.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { DELVE_BIOMES, DELVE_INSCRIPTIONS } from '../shared/delve/delve-lore.model';
@@ -218,7 +221,7 @@ const SCROLL_TIER_TO_RARITY: Record<RuneTier, EclipseRarity> = {
 @Component({
   selector: 'app-codex',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent, ...STATION_UI],
+  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent, GlimIconComponent, ...STATION_UI],
   templateUrl: './codex.component.html',
   styleUrls: ['./codex.component.css'],
 })
@@ -292,6 +295,11 @@ export class CodexComponent implements OnInit, OnDestroy {
     crest: artFor(REALM_ART[entry.realm].crest),
   }));
   readonly bestiaryUnpainted = BESTIARY_UNPAINTED;
+
+  // ── Glim's entry ──────────────────────────────────────────────────────────
+  /** The companion's Codex entry (shared/glim). Met once the Keeper has entered the world. */
+  private readonly glim = inject(GlimService);
+  get glimMet(): boolean { return this.isBrowser && this.glim.state.met; }
 
   // ── Secrets ───────────────────────────────────────────────────────────────
   readonly secretGroups = SECRET_GROUPS;
@@ -808,6 +816,7 @@ export class CodexComponent implements OnInit, OnDestroy {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(CODEX_I18N);
     this.i18n.register(FISHING_I18N);
+    this.i18n.register(GLIM_I18N);
   }
   private readonly fishingService = inject(FishingService);
   /** The Catalogue of Strange Fish reads the fishing ledger's counts (a silhouette until caught). */

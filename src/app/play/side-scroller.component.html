@@ -1,5 +1,5 @@
-<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--column]="columnOpen && state.areaId === 'homestead'" aria-labelledby="game-title">
-  <div class="viewport" [attr.inert]="panel ? '' : null">
+<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+  <div class="viewport" [attr.inert]="panel ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
@@ -31,6 +31,10 @@
     <div class="guide" [class.guide--folded]="guideFolded" [attr.data-goal]="goal.id" [attr.inert]="panel ? '' : null" data-engine-ignore>
       <!-- Phones: the goal folds to its "Goal n of 4" chip and back. -->
       <button type="button" class="guide-fold" (click)="guideFolded = !guideFolded" [attr.aria-expanded]="!guideFolded" [attr.aria-label]="t(guideFolded ? 'play.hud.goalUnfold' : 'play.hud.goalFold')"><i aria-hidden="true"></i></button>
+      <!-- Glim voices the goal; a press opens its hint ladder one step at a time (shared/glim/glim.ts). -->
+      @if (glimVoice.met) {
+        <button type="button" class="guide-glim" (click)="askGlim()" [attr.aria-label]="glimAskLabel" [title]="glimAskLabel"><app-glim-icon /></button>
+      }
       <p class="guide-text"><b>{{ goal.n ? t('play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span>{{ t(goal.key) }}</span></p>
       @if (goal.target) {
         <button type="button" class="guide-go" (click)="showGoal()" [attr.aria-label]="t('play.goal.goAria', { goal: t(goal.key) })">{{ t('play.goal.go') }}</button>
@@ -38,6 +42,19 @@
       @if (goal.id === 'rune') {
         <button type="button" class="guide-hide" (click)="hideHint()">{{ t('play.goal.hide') }}</button>
       }
+    </div>
+  }
+
+  <!-- Glim's one line: under the goal line on desktop, in the toast band on phones; never over the middle of the world. -->
+  @for (say of glimVoice.speech ? [glimVoice.speech] : []; track say.seq) {
+    <div class="glim-say" [class.glim-say--hint]="!!say.hint" role="status" aria-live="polite" data-engine-ignore [attr.inert]="panel ? '' : null"
+         [attr.data-glim-line]="say.line ?? null" [attr.data-glim-step]="say.hint ? say.hint.step : null">
+      <app-glim-icon class="glim-say__icon" />
+      <p class="glim-say__text">
+        <b>{{ glimNpc?.name }}</b>@if (say.hint && say.hint.top) {<small> · {{ t('play.glim.step', { n: say.hint.step, total: say.hint.top }) }}</small>}
+        <span>{{ t(say.key) }}</span>
+      </p>
+      <button type="button" class="glim-say__close" (click)="dismissGlim()" [attr.aria-label]="t('play.glim.dismiss')"><i aria-hidden="true"></i></button>
     </div>
   }
 

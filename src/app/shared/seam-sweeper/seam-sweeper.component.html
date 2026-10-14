@@ -1,0 +1,89 @@
+<!-- Seam Sweeper: the seam → bet + collapses → ONE "Dig · N Gold", then tap
+     cells and ONE "Cash out ×N". Multipliers, odds, rules behind Details. -->
+<app-station-shell class="ss"
+                   [title]="t('seam.title')"
+                   [purpose]="t('seam.purpose')"
+                   [showTitle]="!inWorld"
+                   [detailsLabel]="t('stationUi.details')"
+                   [detailsHint]="t('seam.details')"
+                   [(detailsOpen)]="detailsOpen">
+
+  <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
+
+  <div stationHero class="ss-stage">
+    <div class="ss-cabinet" [class.is-shake]="shake" [class.is-open]="playing">
+      <div class="ss-grid" role="group" [attr.aria-label]="t('seam.grid')">
+        @for (c of cells; track c.i) {
+          <button type="button" class="ss-cell" [attr.data-view]="c.view" [attr.data-cell]="c.i"
+                  [attr.aria-label]="c.label" [attr.aria-disabled]="canDig(c) ? null : 'true'"
+                  (click)="dig(c.i)">
+            <svg class="ss-sprite" viewBox="0 0 16 16" shape-rendering="crispEdges" aria-hidden="true">
+              @switch (c.view) {
+                @case ('rock') {
+                  <path class="ss-rock" d="M2 3h12v10H2z" />
+                  <path class="ss-rock-lit" d="M2 3h12v2H2zM2 5h2v4H2z" />
+                  <path class="ss-rock-dark" d="M2 11h12v2H2zM12 5h2v6h-2z" />
+                  <path class="ss-crack" d="M6 6h1v1H6zM7 7h1v2H7zM9 8h2v1H9z" />
+                }
+                @case ('ore') {
+                  <path class="ss-hole" d="M2 3h12v10H2z" />
+                  <path class="ss-ore" d="M5 5h6v6H5z" />
+                  <path class="ss-ore-lit" d="M5 5h3v2H5zM6 7h1v1H6z" />
+                  <path class="ss-ore-dark" d="M9 9h2v2H9z" />
+                }
+                @case ('shown-ore') {
+                  <path class="ss-rock" d="M2 3h12v10H2z" />
+                  <path class="ss-ore ss-faded" d="M6 6h4v4H6z" />
+                }
+                @default {
+                  <path class="ss-hole" d="M2 3h12v10H2z" />
+                  <path class="ss-rubble" d="M3 8h4v4H3zM8 6h5v6H8zM6 10h3v2H6z" />
+                  <path class="ss-rubble-lit" d="M3 8h2v1H3zM8 6h3v1H8z" />
+                }
+              }
+            </svg>
+          </button>
+        }
+      </div>
+      <app-win-celebration [win]="celebrate.win" [bet]="celebrate.bet" [seq]="celebrate.seq" />
+    </div>
+
+    <p class="ss-result" role="status" aria-live="polite">{{ result }}</p>
+    @if (playing && nextLine) { <p class="ss-next">{{ nextLine }}</p> }
+
+    <div class="ss-controls">
+      @if (!playing) {
+        <app-game-stepper [label]="t('seam.collapses')" [value]="'' + collapses"
+                          [lessLabel]="t('seam.collapsesLess')" [moreLabel]="t('seam.collapsesMore')"
+                          [canLess]="collapses > 1" [canMore]="collapses < 24"
+                          (less)="stepCollapses(-1)" (more)="stepCollapses(1)" />
+        <app-game-stepper [label]="t('games.bet.label')" [value]="fmt(bet)"
+                          [lessLabel]="t('games.bet.less')" [moreLabel]="t('games.bet.more')"
+                          [canLess]="bet > bets[0]" [canMore]="bet < bets[bets.length - 1]"
+                          (less)="stepBet(-1)" (more)="stepBet(1)" />
+      }
+      <app-action-button class="ss-act" [label]="actionLabel" [costs]="costs" chips="currency"
+                         [blocked]="blocked" [pending]="!hydrated" (act)="act()" (refused)="result = $event" />
+    </div>
+  </div>
+
+  <div stationDetails class="ss-more">
+    <h3>{{ ladderHead }}</h3>
+    <ol class="ss-ladder">
+      @for (r of ladder; track r.k) { <li [class.is-here]="playing && r.k === dugCount">{{ r.text }}</li> }
+    </ol>
+    <p>{{ t('seam.rules') }}</p>
+    <p class="ss-proof">{{ t('seam.rtp', { rtp: rtp }) }} {{ t('seam.max', { max: maxX }) }}</p>
+    <p>{{ t('seam.fraction') }}</p>
+    <p>{{ t('seam.honest') }}</p>
+    <p>{{ capLine }} {{ t('games.goldOnly') }}</p>
+    <p>{{ record }}</p>
+    @if (history.length) {
+      <h3>{{ t('seam.history') }}</h3>
+      <ol class="ss-history">
+        @for (h of history; track h.id) { <li [class.is-won]="h.won">{{ h.text }}</li> }
+      </ol>
+    }
+    <p class="ss-lore">{{ t('seam.lore') }}</p>
+  </div>
+</app-station-shell>

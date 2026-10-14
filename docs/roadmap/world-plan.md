@@ -43,7 +43,7 @@ world — and every system visible while it works.
 |---|---|---|
 | **Infernal**: Basalt Seamworks | Crafting Bench, Rune Forge, Enchanting Table, Material Vendor, quest stations (ore, forge, beacon, passage) | Cinder ore, ember residue |
 | **Luminous** | Market (upgrades) | Light-touched materials |
-| **Umbral** | Gambler, Reels, Exchange | Shadow materials, scrolls |
+| **Umbral** | Gambler, Reels, Rune Drop, Seam Sweeper, Eclipse Ascent, Exchange | Shadow materials, scrolls |
 | **Celestial**: Meridian Orrery | Codex (observatory), Leaderboards board | Star fragments, runes |
 | **Verdant**: Rootglass Canopy | Sanctum (expeditions), Quests board, Arena gate, Trials gate | Rootglass, seeds |
 | *Everywhere* | Character + Satchel overlays, Waystone, Places list | |
@@ -214,6 +214,7 @@ Replaces "hybrid sprites + paintings" (2026-10-12). Art bible: `docs/art/style-g
 - Watch: two Delve e2e tests (`play-delve-extras` rubble ≥1 HP, `play-delve` pit survives reload) fail under CPU load when several worktrees run Playwright at once; both pass 4/4 alone. Harden their fixed waits if they ever fail on a quiet machine
 - Watch: Spanish HUD copy is machine-written, no native review. The Keeper rig's cost on phones waits for the pixel sprite sheets (the rig retires after the A/B)
 - [~] **The Croupier's Reels** (owner, 2026-10-13: "slot machines… stake-style super bonus"; branch `worktree-agent-afd96296a31970cf4`): Umbral station between the Gambler and the Exchange, run by the Croupier (`/play?at=reels`); 3×3, 5 lines, world symbols, Eclipse Round (10 free spins, sticky ×2–×50 rune orbs, paid at the end), prizes through the rune/material gateways; Gold only, RTP 92.1% Gold + ~0.7% prizes (exact + simulated proof in `economy-sim.mjs --reels`, checked in `--check`), bet cap = two minutes of income. Shared kit `src/app/shared/games/` (seeded RNG, idempotent play ledger, bet tiers, RTP harness, win celebration) for Rune Drop / Seam Sweeper / Eclipse Ascent. Handoff `docs/handoff/reels.md`; lore line pending owner review; art briefs `world-sprites/10-reels.md`
+- [~] **The Croupier's casino: Rune Drop, Seam Sweeper, Eclipse Ascent** (owner, 2026-10-13/14: stake-style games themed on runes, Gold only): three Umbral stations in a row east of the Reels, run by the Croupier (`serves`), `/play?at=rune-drop|seam-sweeper|eclipse-ascent`; the Exchange moved to x=1560 and the shelf ledges east. Plinko (8–16 rows × 3 risks, path = seeded bits, 27 boards 94.8–95.1% exact), Mines (5×5, 1–24 collapses, seam drawn at the bet and stored, resumes on reload, 95% exact on every cash-out, ≤ ×5,000), Crash (break drawn at launch, P(≥×x) = 0.95/x, auto target, wall-clock resume, 95% exact). Kit gains steered rounds (`openRound`/`closeRound`), `wholeGold`, `<app-game-stepper>`. Proofs in `economy-sim.mjs --plinko/--mines/--crash` (+ `--check`). Handoff `docs/handoff/casino.md`; lore lines shipped for owner review; art briefs `world-sprites/11-casino.md`
 
 ## Phase 6+: The Delve and beyond `[ ]` (planned 2026-10-14)
 
@@ -320,7 +321,7 @@ existing stations, and **Glim, the Margin-Light**, a lantern-moth companion
 inspired by Claude), and the ethical daily/weekly/season rhythms. The infinite
 Delve, liquids, fishing and the galactic dimensions are `docs/world/delve-and-beyond.md`.
 
-- [ ] S1 Glim, onboarding companion (voices the goal line, 3-step hint ladder, the Delve light)
+- [x] S1 Glim, onboarding companion (2026-10-14): met on a new save (flies in to the shoulder, one hello), voices the goal line from a moth button that opens the 3-step hint ladder (nudge → direction → Show me, which flies Glim ahead with a trail), never hints at secrets (allowlist; Karma over every Codex secret id), is the Delve lantern (same radius; the light has a source), says when to stop, dims beside Mirror Substitutes; Codex entry; Delve-mission hints (2 steps; step 3 waits for the Atlas, S4). State `godforge-glim` through the gateway, merge-safe. Handoff: `docs/handoff/glim.md`
 - [ ] S2 Story Act I framing (Prologue + Act I break scenes, Story journal, versioned `story` record)
 - [ ] S3 NPC depth pass (personal names on role keepers, act-aware lines)
 - [ ] S4 Glim's Atlas + "The Blank Places" · S5 commissions + bounties (banked, no streaks) · S6 Act II ch. 1 + ch. 3 in-world · S7 reputation · S8 ch. 2/4/5 · S9 Act III + the Long Eclipse

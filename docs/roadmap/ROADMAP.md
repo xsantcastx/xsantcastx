@@ -10,9 +10,9 @@ Reviewed daily; newest review on top of the log at the bottom.
 2. **Delve navigation, Terraria-style** — smart cursor + reach, hold-to-mine/drag-to-build, auto-step,
    drop-through platforms, fast ladders, minimap + full map. *(in flight)*
 3. **Cleanup leftovers** — remove the daily tool pipeline, Pro Pack, Codex Solarii; Karma back to 0 failures. *(in flight)*
-4. **The rest of the casino** on the Reels kit — Rune Drop (Plinko), Seam Sweeper (Mines), Eclipse Ascent (Crash). Gold only.
+4. **The rest of the casino** on the Reels kit — Rune Drop (Plinko), Seam Sweeper (Mines), Eclipse Ascent (Crash). Gold only. *(built, awaiting merge: `docs/handoff/casino.md`)*
 5. **Delve & Beyond, slice 1** — liquids v1 (water/lava), a lake biome, Fishing v1. *(design in flight: `docs/world/delve-and-beyond.md`)*
-6. **World & cast, slice 1** — story Act 1 and the lantern companion as the onboarding guide. *(design in flight: `docs/world/world-and-cast.md`)*
+6. **World & cast, slice 1** — story Act 1 and the lantern companion as the onboarding guide. *(S1 Glim shipped on its branch, `docs/handoff/glim.md`; S2 Act I framing next)*
 7. **Art test set** — produce the 21 first-test-set files (`docs/art-commissions/00-first-test-set.md`); the importer drops them straight in. *(owner / image generator)*
 
 ## Milestones
@@ -25,7 +25,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 | **M4 Phone-first & Terraria look** | Terraria-mobile HUD, pixel-art terrain pass 1+2, update prompt, consent bar | ✅ shipped |
 | **M5 Meaning & cleanup** | Everything has a source/use/lore (CI-checked); legacy website removed | ✅ shipped (leftovers in flight) |
 | **M6 Feel & stability** | No phone crash, cool idle, Delve navigation, minimap | 🔨 in progress |
-| **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels shipping; rest next |
+| **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; Fishing next |
 | **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 📐 designing |
 | **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 📐 designing |
 | **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | ⏳ needs art |

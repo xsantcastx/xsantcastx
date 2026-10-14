@@ -206,6 +206,50 @@ for (const cause of ['blur', 'hidden']) {
   });
 }
 
+test('heat: a paused world draws one last frame and parks its loop; unpausing resumes it', () => {
+  const { engine, state } = fixture();
+  let drawn = 0;
+  engine.render = () => { drawn++; };
+  engine.start();
+  assert.equal(drawn, 1, 'start draws the first frame');
+  assert.equal(engine.parked, false);
+  engine.setPaused(true);
+  engine.tick(1000);
+  assert.equal(drawn, 2, 'one frame is drawn after pausing');
+  assert.equal(engine.frame, null, 'then no next frame is requested');
+  assert.equal(engine.parked, true);
+  assert.equal(state().paused, true, 'the HUD still hears the pause');
+  engine.setPaused(false);
+  assert.notEqual(engine.frame, null, 'unpausing requests a frame again');
+  assert.equal(engine.previous, 0, 'and the first delta after the pause is zero, not the time spent in the place');
+  engine.tick(90000);
+  assert.equal(drawn, 3);
+  assert.equal(engine.elapsed, 0, 'no simulation time passes for the minutes the place was open');
+  engine.destroy();
+  engine.setPaused(false);
+  assert.equal(engine.frame, null, 'a destroyed engine never restarts');
+});
+
+test('heat: frames are capped at 60 per second, and a still town draws at 30', () => {
+  const { engine } = fixture();
+  let drawn = 0;
+  engine.render = () => { drawn++; };
+  engine.start();
+  // A 120 Hz display: a callback every 8.33 ms.
+  let t = 1000;
+  const second = () => { const from = drawn; for (let n = 0; n < 120; n++) { t += 1000 / 120; engine.tick(t); } return drawn - from; };
+  const first = second();
+  assert.ok(first >= 58 && first <= 61, `moving or just arrived: ~60 drawn, got ${first}`);
+  second(); second();
+  const still = second();
+  assert.ok(still >= 29 && still <= 31, `nothing the player drives has moved for 2.5 s: ~30 drawn, got ${still}`);
+  engine.setInput('right', true);
+  const walking = second();
+  assert.ok(walking >= 58 && walking <= 61, `walking again: back to ~60, got ${walking}`);
+  engine.setInput('right', false);
+  engine.destroy();
+});
+
 test('visible-document notifications preserve current input and destroy removes focus listeners', () => {
   const beforeBlur = browserWindow.listenerCount('blur');
   const beforeVisibility = browserDocument.listenerCount('visibilitychange');
@@ -505,7 +549,7 @@ test('every built town has a waystone, and every material a zone drops is catalo
   }
   const umbral = world.TOWNS.umbral;
   assert.ok(umbral, 'the Umbral town is built');
-  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['exchange', 'gambler', 'reels']);
+  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['eclipse-ascent', 'exchange', 'gambler', 'reels', 'rune-drop', 'seam-sweeper']);
   assert.equal(umbral.hunts[0].monsters[0].creature, 'mirror-substitute', 'Umbral hunts its canon creature');
 });
 
@@ -2233,10 +2277,13 @@ test('life: every panel station has a keeper beside it, never on a footprint or 
   assert.equal(at('celestial', 'archivist').station.id, 'codex', 'the Archivist at the Codex');
   assert.ok(at('luminous', 'aureth'), 'Aureth stands in Luminous');
   assert.ok(at('umbral', 'verrin'), 'Verrin stands in Umbral');
-  // The Croupier runs the Gambler and the Reels and stands between the two.
+  // The Croupier runs the Gambler and the four games of chance, which stand in
+  // a row just east of it, and stands between the Gambler and the Reels.
   const croupier = at('umbral', 'croupier');
   const reels = world.TOWNS.umbral.stations.find(s => s.id === 'reels');
-  assert.deepEqual([...croupier.def.serves], ['reels']);
+  assert.deepEqual([...croupier.def.serves], ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent']);
+  const games = croupier.def.serves.map(id => world.TOWNS.umbral.stations.find(s => s.id === id));
+  for (let i = 1; i < games.length; i++) assert.ok(footprintOf(games[i])[0] >= footprintOf(games[i - 1])[1], `${games[i].id} stands east of ${games[i - 1].id}, clear of it`);
   assert.ok(croupier.x < footprintOf(reels)[0] && footprintOf(reels)[0] - croupier.x <= life.KEEPER_HALF + life.KEEPER_GAP + 80, 'the Croupier stands beside the Reels too');
 });
 

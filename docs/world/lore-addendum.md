@@ -106,6 +106,29 @@ pressure of one possibility passing over another." Every symbol is an existing
 world thing (Cinder Ore, Ash and Ember runes, Rivet Maw, Infernal Heartstone,
 the Eclipse rune); it is run by the existing Croupier. No new names.
 
+### The Croupier's other three games (shipped — owner reviews in play; EN + ES)
+
+All three stand in a row east of the Reels and are run by the existing
+Croupier. No new names; every noun is an existing world thing.
+
+- **Rune Drop** (`shared/rune-drop/rune-drop.i18n.ts`, `runeDrop.lore`): "The
+  Archive keeps a board of Godforge pins for questions it cannot settle in ink.
+  A rune let fall through them picks a side at every pin, as a reflection does,
+  and the record is written wherever it comes to rest." Builds on Canon (the
+  Nocturne Archive; corridors where two reflections disagree) and Codex
+  ("Runes — compact principles of the Godforge").
+- **Seam Sweeper** (`shared/seam-sweeper/seam-sweeper.i18n.ts`, `seam.lore`):
+  "A slab of Delve seam the Archive keeps under glass, recut every night. The
+  Croupier marks where the roof will give before you swing; the record says
+  only how far you dared to dig." Builds on the game's Ember Delve (seams,
+  collapses) and the Nocturne Archive as a place that keeps records.
+- **Eclipse Ascent** (`shared/eclipse-ascent/eclipse-ascent.i18n.ts`,
+  `ascent.lore`): "From the Archive's roof the fractured moon mirror can be made
+  to pass over its own reflection. While one possibility slides over another the
+  record swells; when the two stop agreeing, the eclipse breaks and the page is
+  blank again." Builds on Canon (Umbral: "beneath a fractured moon mirror") and
+  Codex, Eclipse: "The pressure of one possibility passing over another."
+
 ## Not covered
 
 Stat names, recipe blurbs, socket words and Collection lore are English-only
@@ -731,6 +754,36 @@ crossed through; the fifth is worn smooth").
 - **Siv Moss and Kesh Arbo.** "Siv sends the explorers out along paths she has
   patrolled; Kesh runs the Skills Lodge, where every swing is adaptation." Builds
   on: Bible, the Verdant pair.
+
+### Glim's voice in the game (S1, shipped; `shared/glim/glim.i18n.ts`, EN + ES)
+
+Lines Glim says unasked, each once (or rarely, with a cooldown), never over a
+panel and never two within 25 s:
+
+- Meeting (Prologue, beat 1): "Hello. I'm Glim. I keep the maps. Mostly the blank
+  parts; they're the interesting ones." Builds on: §4 Voice.
+- Homestead (beat 2): "Somebody left you a plot. Nobody left you a reason. We'll
+  find one." Builds on: the Prologue beats.
+- The Basalt Edge worn (beat 3): "A blade made to show where a boundary is before
+  anyone crosses it. Wear it well." Builds on: Codex, Eclipse Longblade.
+- After the first Maw (beat 4): "The Maws drag their bolts toward the Delve shaft.
+  I'd like to know why. I've marked it." Builds on: Atlas, Rivet Maw.
+- First Delve visit (beat 6): "North is a convention. Down is a fact. We're going
+  down." Then the lantern: "I'll be your light down here. The torches you place
+  are my notes; I leave them for you."
+- The good stopping point (once, after the four first goals): "This is a good
+  place to stop. The torch is lit and the map is honest."
+- The tell, beside a Mirror Substitute: "Something here is performing certainty.
+  I go dim around that. Watch which one I dim for." (then, rarely, "Dimming. That
+  one is too sure of itself.") Builds on: Atlas, Afterimage Moth.
+- Delve, far apart: the dashed-line, the wall and the "third pass" lines from §4.
+- Refusal, for anything off the ladder: "This one's yours to find. I'll hold the
+  light." Builds on: Game, archivist ("A hint is a kindness. An answer is a theft.").
+
+The hint ladder's nudges and directions are plain instructions in Glim's voice
+(Kael's "old seam" nudge is §4's own example); they name places and keys, never
+a secret or what a carving means. Codex entry: name, role, the Afterimage Moth
+origin and the Archivist's rule; "Also called: —" (the dash waits for Act III).
 
 ### Items and places
 

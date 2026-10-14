@@ -1,0 +1,104 @@
+/* Rune Drop. A pixel pin board in the Umbral palette (tokens only). One SVG
+   unit is one art pixel; the board scales to the panel width. Keyframes live at
+   the top level; reduced motion turns animation and the fall transition off. */
+
+:host { display: block; }
+
+.rd-stage { display: grid; justify-items: center; gap: var(--space-3); }
+
+.rd-cabinet {
+  position: relative;
+  width: min(100%, 460px);
+  padding: var(--space-2);
+  background: var(--obsidian-2);
+  border: 4px solid var(--violet-ink);
+  box-shadow:
+    0 0 0 2px var(--obsidian-0),
+    inset 0 4px 0 var(--obsidian-4),
+    inset 0 -4px 0 var(--obsidian-0),
+    0 0 24px var(--realm-umbral-tint);
+}
+
+.rd-board { display: block; width: 100%; height: auto; background: var(--obsidian-0); }
+
+.rd-pin { fill: var(--obsidian-5); }
+.rd-pin.is-struck { fill: var(--gold-bright); }
+
+.rd-slot { fill: var(--obsidian-3); }
+.rd-slot[data-tier='mid'] { fill: var(--violet-deep); }
+.rd-slot[data-tier='high'] { fill: var(--realm-umbral); }
+.rd-slot[data-tier='top'] { fill: var(--gold); }
+.rd-slot.is-lit { fill: var(--gold-bright); animation: rdLit 500ms steps(2) 3; }
+
+@keyframes rdLit {
+  from { opacity: 1; }
+  to { opacity: .4; }
+}
+
+.rd-rune { transition-property: transform; transition-timing-function: linear; }
+.rd-rune__body { fill: var(--realm-umbral); stroke: var(--obsidian-0); stroke-width: 1; }
+.rd-rune__glyph { fill: var(--gold-bright); }
+
+.rd-bins {
+  display: grid;
+  margin: var(--space-1) 0 0;
+  padding-block: 0;
+  list-style: none;
+  font-size: var(--text-2xs);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--ink-2);
+}
+
+.rd-bins li { overflow: hidden; white-space: nowrap; }
+.rd-bins li[data-tier='high'] { color: var(--ink-0); }
+.rd-bins li[data-tier='top'] { color: var(--gold); }
+.rd-bins li.is-lit { color: var(--gold-bright); font-weight: 700; }
+
+.rd-result { min-height: 1.5em; margin: 0; text-align: center; color: var(--ink-0); font-size: var(--text-base); }
+
+.rd-settings, .rd-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.rd-risk { min-width: 0; }
+.rd-drop { flex: 1 1 200px; max-width: 360px; }
+
+.rd-skip {
+  min-height: var(--tap-min);
+  min-width: var(--tap-min);
+  padding: 0 var(--space-4);
+  border: 2px solid var(--edge-hairline);
+  background: transparent;
+  color: var(--ink-1);
+  font: inherit;
+  cursor: pointer;
+}
+
+.rd-skip:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+.rd-more { display: grid; gap: var(--space-2); color: var(--ink-1); font-size: var(--text-sm); }
+.rd-more h3 { margin: var(--space-2) 0 0; font-size: var(--text-base); color: var(--gold); }
+.rd-more p { margin: 0; }
+.rd-head { color: var(--ink-2); }
+
+.rd-pay { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 2px var(--space-3); }
+.rd-pay li { display: grid; grid-template-columns: 2ch 1fr auto; gap: var(--space-2); font-variant-numeric: tabular-nums; }
+.rd-pay span { color: var(--ink-2); }
+.rd-pay b { color: var(--gold); }
+.rd-pay em { color: var(--ink-2); font-style: normal; }
+
+.rd-proof { color: var(--ink-0); }
+.rd-history { margin: 0; padding-left: var(--space-5); }
+.rd-history .is-won { color: var(--gold); }
+.rd-lore { font-style: italic; color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .rd-rune { transition: none; }
+  .rd-slot.is-lit { animation: none; }
+}

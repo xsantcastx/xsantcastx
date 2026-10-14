@@ -409,7 +409,7 @@ for (const id of BESTIARY_IDS) if (!spawned.has(id)) {
 }
 
 // NPCs ──────────────────────────────────────────────────────────────────────
-const giverIds = new Set([...Object.keys(NPC_CHAINS), ...DELVE_MISSIONS.map(m => m.npcId)]);
+const giverIds = new Set([...Object.keys(NPC_CHAINS).filter(id => NPC_CHAINS[id].length), ...DELVE_MISSIONS.map(m => m.npcId)]);
 const dialogueNpcs = new Set(DIALOGUE.map(d => d.npcId));
 const keeperNpcs = new Set();
 for (const [townId, keepers] of Object.entries(TOWN_KEEPERS)) {
@@ -430,7 +430,9 @@ for (const npc of NPCS) {
   const n = node('npc', npc.id, npc.name);
   if (keeperNpcs.has(npc.id)) n.uses.add('stands at a station');
   if (giverIds.has(npc.id)) n.uses.add('gives quests');
-  if (!n.uses.size) flag('npc', 'no-role', npc.id, 'canon NPC with no station and no quest in the world');
+  // A companion travels with the Keeper: its role counts only when the play view wires it.
+  if (npc.companion && SOURCES.some(s => s.rel.startsWith(`play${path.sep}`) && s.text.includes(`npcById('${npc.id}')`))) n.uses.add(`companion: ${npc.companion}`);
+  if (!n.uses.size) flag('npc', 'no-role', npc.id, npc.companion ? 'companion the play view never shows' : 'canon NPC with no station and no quest in the world');
   if (!dialogueNpcs.has(npc.id)) flag('npc', 'no-lines', npc.id, 'no DIALOGUE');
 }
 for (const [realm, count] of Object.entries(TOWNSFOLK_COUNT)) {

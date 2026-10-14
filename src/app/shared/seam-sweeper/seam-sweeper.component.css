@@ -1,0 +1,110 @@
+/* Seam Sweeper. A 5×5 slab of Delve seam in a pixel cabinet (tokens only).
+   Each cell is a ≥44px button holding a 16×16 procedural sprite at a whole
+   multiple. Reduced motion turns the pop and the shake off. */
+
+:host { display: block; --ss-cell: 56px; }
+
+@media (min-width: 641px) { :host { --ss-cell: 64px; } }
+@media (max-width: 350px) { :host { --ss-cell: 48px; } }
+
+.ss-stage { display: grid; justify-items: center; gap: var(--space-3); }
+
+.ss-cabinet {
+  position: relative;
+  padding: var(--space-2);
+  background: var(--obsidian-2);
+  border: 4px solid var(--violet-ink);
+  box-shadow:
+    0 0 0 2px var(--obsidian-0),
+    inset 0 4px 0 var(--obsidian-4),
+    inset 0 -4px 0 var(--obsidian-0),
+    0 0 24px var(--realm-umbral-tint);
+}
+
+.ss-cabinet.is-open { border-color: var(--realm-umbral); }
+.ss-cabinet.is-shake { animation: ssShake 400ms steps(8) both; }
+
+@keyframes ssShake {
+  0%, 100% { transform: translate(0, 0); }
+  20% { transform: translate(-4px, 0); }
+  40% { transform: translate(4px, -2px); }
+  60% { transform: translate(-2px, 2px); }
+  80% { transform: translate(2px, 0); }
+}
+
+.ss-grid {
+  display: grid;
+  grid-template-columns: repeat(5, var(--ss-cell));
+  gap: 4px;
+  padding: 4px;
+  background: var(--obsidian-0);
+}
+
+.ss-cell {
+  display: grid;
+  place-items: center;
+  width: var(--ss-cell);
+  height: var(--ss-cell);
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  padding: 0;
+  border: 0;
+  background: var(--obsidian-3);
+  box-shadow: inset 0 2px 0 var(--obsidian-4), inset 0 -2px 0 var(--obsidian-1);
+  cursor: pointer;
+}
+
+.ss-cell[aria-disabled='true'] { cursor: default; }
+.ss-cabinet.is-open .ss-cell[data-view='rock']:not([aria-disabled='true']):hover { background: var(--obsidian-4); }
+.ss-cell:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.ss-cell[data-view='ore'] { background: var(--violet-ink); animation: ssPop 160ms steps(4) both; }
+.ss-cell[data-view='hit'] { background: var(--obsidian-1); box-shadow: inset 0 0 0 3px var(--feedback-error); animation: ssPop 160ms steps(4) both; }
+.ss-cell[data-view='shown-collapse'], .ss-cell[data-view='shown-ore'] { opacity: .55; }
+
+@keyframes ssPop {
+  from { transform: scale(.8); }
+  to { transform: scale(1); }
+}
+
+.ss-sprite { width: 48px; height: 48px; image-rendering: pixelated; }
+@media (max-width: 350px) { .ss-sprite { width: 32px; height: 32px; } }
+
+.ss-rock { fill: var(--obsidian-5); }
+.ss-rock-lit { fill: var(--ink-2); }
+.ss-rock-dark { fill: var(--obsidian-1); }
+.ss-crack { fill: var(--obsidian-0); }
+.ss-hole { fill: var(--obsidian-0); }
+.ss-ore { fill: var(--gold); }
+.ss-ore-lit { fill: var(--gold-bright); }
+.ss-ore-dark { fill: var(--violet-deep); }
+.ss-faded { opacity: .7; }
+.ss-rubble { fill: var(--ember); }
+.ss-rubble-lit { fill: var(--ink-1); }
+
+.ss-result { min-height: 1.5em; margin: 0; text-align: center; color: var(--ink-0); font-size: var(--text-base); }
+.ss-next { margin: 0; color: var(--gold); font-size: var(--text-sm); font-variant-numeric: tabular-nums; }
+
+.ss-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.ss-act { flex: 1 1 200px; max-width: 360px; }
+
+.ss-more { display: grid; gap: var(--space-2); color: var(--ink-1); font-size: var(--text-sm); }
+.ss-more h3 { margin: var(--space-2) 0 0; font-size: var(--text-base); color: var(--gold); }
+.ss-more p { margin: 0; }
+.ss-ladder { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 2px var(--space-3); font-variant-numeric: tabular-nums; }
+.ss-ladder .is-here { color: var(--gold-bright); font-weight: 700; }
+.ss-proof { color: var(--ink-0); }
+.ss-history { margin: 0; padding-left: var(--space-5); }
+.ss-history .is-won { color: var(--gold); }
+.ss-lore { font-style: italic; color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ss-cabinet.is-shake, .ss-cell[data-view='ore'], .ss-cell[data-view='hit'] { animation: none; }
+}

@@ -1,0 +1,86 @@
+<!-- Rune Drop: board → bet, rows, risk → ONE "Drop · N Gold". Pay table,
+     odds, rules and history are behind Details. -->
+<app-station-shell class="rd"
+                   [title]="t('runeDrop.title')"
+                   [purpose]="t('runeDrop.purpose')"
+                   [showTitle]="!inWorld"
+                   [detailsLabel]="t('stationUi.details')"
+                   [detailsHint]="t('runeDrop.details')"
+                   [(detailsOpen)]="detailsOpen">
+
+  <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
+
+  <div stationHero class="rd-stage">
+    <div class="rd-cabinet">
+      <svg class="rd-board" [attr.viewBox]="'0 0 ' + width + ' ' + height" shape-rendering="crispEdges"
+           role="img" [attr.aria-label]="t('runeDrop.board', { rows: rows })">
+        @for (b of bins; track b.k) {
+          <rect class="rd-slot" [attr.data-tier]="b.tier" [class.is-lit]="litBin === b.k"
+                [attr.x]="binX(b.k) - U / 2 + 0.5" [attr.y]="(rows + 1) * U - 3" [attr.width]="U - 1" [attr.height]="U" />
+        }
+        @for (p of pins; track $index) {
+          <rect class="rd-pin" [class.is-struck]="struck === p.row + ':' + p.j" [attr.x]="p.x - 1" [attr.y]="p.y - 1" width="2" height="2" />
+        }
+        @if (ball; as b) {
+          <g class="rd-rune" [style.transform]="'translate(' + b.x + 'px,' + b.y + 'px)'" [style.transition-duration.ms]="pinMs">
+            <rect class="rd-rune__body" x="-2.5" y="-2.5" width="5" height="5" />
+            <rect class="rd-rune__glyph" x="-0.5" y="-1.5" width="1" height="3" />
+            <rect class="rd-rune__glyph" x="-1.5" y="-0.5" width="3" height="1" />
+          </g>
+        }
+      </svg>
+      <ol class="rd-bins" [style.grid-template-columns]="'repeat(' + bins.length + ', 1fr)'" [style.padding-inline.%]="100 / (rows + 3)">
+        @for (b of bins; track b.k) {
+          <li [attr.data-tier]="b.tier" [class.is-lit]="litBin === b.k">{{ b.label }}</li>
+        }
+      </ol>
+      <app-win-celebration [win]="celebrate.win" [bet]="celebrate.bet" [seq]="celebrate.seq" />
+    </div>
+
+    <p class="rd-result" role="status" aria-live="polite">{{ result }}</p>
+
+    <div class="rd-settings">
+      <app-game-stepper [label]="t('runeDrop.rows')" [value]="'' + rows"
+                        [lessLabel]="t('runeDrop.rowsLess')" [moreLabel]="t('runeDrop.rowsMore')"
+                        [canLess]="!busy && rows > 8" [canMore]="!busy && rows < 16"
+                        (less)="stepRows(-1)" (more)="stepRows(1)" />
+      <app-game-stepper class="rd-risk" [label]="t('runeDrop.risk')" [value]="riskLabel"
+                        [lessLabel]="t('runeDrop.riskLess')" [moreLabel]="t('runeDrop.riskMore')"
+                        [canLess]="!busy && riskIndex > 0" [canMore]="!busy && riskIndex < 2"
+                        (less)="stepRisk(-1)" (more)="stepRisk(1)" />
+    </div>
+
+    <div class="rd-controls">
+      <app-game-stepper [label]="t('games.bet.label')" [value]="fmt(bet)"
+                        [lessLabel]="t('games.bet.less')" [moreLabel]="t('games.bet.more')"
+                        [canLess]="!busy && bet > bets[0]" [canMore]="!busy && bet < bets[bets.length - 1]"
+                        (less)="stepBet(-1)" (more)="stepBet(1)" />
+      <app-action-button class="rd-drop" [label]="t('runeDrop.drop')" [costs]="costs" chips="currency"
+                         [blocked]="blocked" [pending]="!hydrated" (act)="drop()" (refused)="result = $event" />
+      @if (busy) { <button type="button" class="rd-skip" (click)="skip()">{{ t('runeDrop.skip') }}</button> }
+    </div>
+  </div>
+
+  <div stationDetails class="rd-more">
+    <h3>{{ t('runeDrop.payTable', { risk: riskLabel, rows: rows }) }}</h3>
+    <p class="rd-head">{{ t('runeDrop.payHead') }}</p>
+    <ol class="rd-pay">
+      @for (b of bins; track b.k) {
+        <li><span>{{ b.k }}</span><b>×{{ b.label }}</b><em>{{ b.chance }}</em></li>
+      }
+    </ol>
+    <p>{{ t('runeDrop.rules') }}</p>
+    <p class="rd-proof">{{ t('runeDrop.rtp', { rtp: boardRtp, lo: band.lo, hi: band.hi }) }}
+      {{ t('runeDrop.hitOdds', { p: hitChance, max: maxX }) }}</p>
+    <p>{{ t('runeDrop.honest') }}</p>
+    <p>{{ capLine }} {{ t('games.goldOnly') }}</p>
+    <p>{{ record }}</p>
+    @if (history.length) {
+      <h3>{{ t('runeDrop.history') }}</h3>
+      <ol class="rd-history">
+        @for (h of history; track h.id) { <li [class.is-won]="h.won">{{ h.text }}</li> }
+      </ol>
+    }
+    <p class="rd-lore">{{ t('runeDrop.lore') }}</p>
+  </div>
+</app-station-shell>
