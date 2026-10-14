@@ -639,6 +639,7 @@ describe('the registry', () => {
       'godforge-runes',
       'godforge-scrolls',
       'godforge-stats',
+      'godforge-story',
       'godforge-thralls',
     ]);
   });

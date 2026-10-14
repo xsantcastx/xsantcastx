@@ -36,7 +36,7 @@ import { homeStationOf } from './world/homestead';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { isChestHolder } from '../shared/delve/delve-save.model';
-import { PLACEABLES } from './engine/terrain';
+import { PLACEABLES, WARDEN_FLAG } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolCard, toolCardLines, toolPower, toolTiers } from '../shared/skills/tools';
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
@@ -57,6 +57,11 @@ import { GlimService } from '../shared/glim/glim.service';
 import { GlimVoice } from '../shared/glim/glim-voice';
 import { GlimIconComponent } from '../shared/glim/glim-icon.component';
 import { npcById } from '../shared/npc/npc.model';
+import { NpcQuestService } from '../shared/npc/npc-quest.service';
+import { STORY_I18N } from '../shared/story/story.i18n';
+import { StoryService } from '../shared/story/story.service';
+import { STORY_CARD_PARAGRAPHS } from '../shared/story/story';
+import type { StoryCardId } from '../shared/story/story-save.model';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -73,6 +78,12 @@ import { MAP_MARKER_COLORS } from './engine/delve-map';
  * not progress: plain localStorage behind try/catch, never the save gateway.
  */
 const HEARTH_OPEN_KEY = 'eclipse-hearth-open';
+/**
+ * The first moments of a visit only catch the story up with the save: beats
+ * found here are filed without a word and their cards marked shown. Long enough
+ * for every service to hydrate; far shorter than anything a player can do.
+ */
+const STORY_CATCH_UP_MS = 1500;
 /** The one-time Rune Forge hint (world/first-goals.ts runeForgeHint) was followed or dismissed. A UI note, like the Hearth's. */
 const RUNE_HINT_KEY = 'eclipse-rune-hint-seen';
 const ONCE_PER_PLAYER = new Set(['godforge-fragment', 'kaels-hammer']);
@@ -258,6 +269,17 @@ export class SideScrollerComponent implements OnDestroy {
   readonly glimNpc = npcById('glim');
   readonly glimVoice = new GlimVoice(inject(GlimService));
   glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean } | null = null;
+  /**
+   * The Keeper's story (shared/story): beats are read off the save each HUD
+   * tick; a beat reached live speaks through Glim's line, and an act boundary
+   * raises its story card. The first moments of a visit only catch up
+   * (STORY_CATCH_UP_MS), so a loaded save is never walked back through it.
+   */
+  private readonly story = inject(StoryService);
+  private readonly quests = inject(NpcQuestService);
+  private readonly openedAt = Date.now();
+  /** The act-boundary card on screen, or null. */
+  storyCard: { id: StoryCardId; paragraphs: string[] } | null = null;
   /** The Homestead's Gold list is unfolded: on phones it takes the HUD plates' place. */
   columnOpen = false;
   private readonly zone = inject(NgZone);
@@ -383,6 +405,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(DELVE_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(GLIM_I18N);
+    this.i18n.register(STORY_I18N);
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
@@ -874,12 +897,67 @@ export class SideScrollerComponent implements OnDestroy {
       areaId,
     });
     if (next?.key !== this.guide?.key || next?.n !== this.guide?.n) this.guide = next;
+    this.tickStory({
+      met: this.glimVoice.met,
+      bought: this.boughtBuilding,
+      armed: !!worn && !worn.explorerId,
+      hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
+      dug: this.delve.hasDug('ember-delve'),
+    });
     this.tickGlim(areaId, !goal, (progress.xpByDiscipline['hunting'] ?? 0) > 0, !!worn && !worn.explorerId);
+  }
+  /**
+   * The story's tick: file the beats the save has reached; a live beat's lines
+   * go to Glim's line (in order, after anything on screen), and a crossed act
+   * boundary raises its card once the Keeper is back in the world.
+   */
+  private tickStory(goals: { met: boolean; bought: boolean; armed: boolean; hunted: boolean; dug: boolean }): void {
+    if (!this.browser) return;
+    const live = Date.now() - this.openedAt >= STORY_CATCH_UP_MS;
+    const lines = this.story.advance({
+      ...goals,
+      inscriptions: this.delveLore.inscriptions(),
+      missionDone: id => this.quests.isMissionDone(id),
+      wardenDown: this.delve.isClaimed(WARDEN_FLAG),
+    }, live);
+    if (lines.length) this.glimVoice.story(lines);
+    if (!this.storyCard && !this.panel && !this.map.open && !this.state.defeated) {
+      const card = this.story.pendingCard();
+      if (card) this.openStoryCard(card);
+    }
+  }
+  private openStoryCard(id: StoryCardId): void {
+    this.storyCard = { id, paragraphs: Array.from({ length: STORY_CARD_PARAGRAPHS[id] }, (_, n) => `story.card.${id}.p${n + 1}`) };
+    this.bagOpen = false; this.placesOpen = false;
+    this.glimVoice.dismiss();
+    this.engine?.setHover(null);
+    this.engine?.setPaused(true);
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.story-card__go')?.focus({ preventScroll: true }));
+  }
+  /** Continue (or Escape): the card is filed as shown and the world moves again. */
+  closeStoryCard(): void {
+    const card = this.storyCard;
+    if (!card) return;
+    this.storyCard = null;
+    this.story.cardShown(card.id);
+    if (!this.panel && !this.map.open) this.engine?.setPaused(false);
+    this.focusWorld();
+  }
+  /** Who says the line on screen: Glim (null), or the keeper whose story line it is. */
+  get sayer(): { name: string; monogram: string; color: string } | null {
+    const speaker = this.glimVoice.speech?.story?.speaker;
+    if (!speaker || speaker === 'glim') return null;
+    const npc = npcById(speaker);
+    return npc ? { name: npc.name, monogram: npc.monogram, color: npc.color } : null;
+  }
+  /** The chapter the goal line belongs to (the Prologue wraps the four first goals). */
+  get chapterTag(): string {
+    return this.story.state.chapter === 'prologue' ? this.t('story.chapter.prologue') : '';
   }
   /** Glim's tick: maybe a line (glim.ts nextLine), the sprite shown once met, and where it is. */
   private tickGlim(areaId: string, goalsDone: boolean, hunted: boolean, armed: boolean): void {
     const voice = this.glimVoice;
-    voice.tick({ now: Date.now(), panelOpen: !!this.panel, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
+    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
     if (!this.engine) return;
     this.engine.setGlim(voice.met, voice.justMet);
     voice.justMet = false;
@@ -1039,6 +1117,11 @@ export class SideScrollerComponent implements OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onBagKey(event: KeyboardEvent): void {
     if (!this.browser || event.repeat) return;
+    // A story card owns the keyboard: Escape (or Enter on Continue) closes it.
+    if (this.storyCard) {
+      if (event.key === 'Escape') { event.preventDefault(); this.closeStoryCard(); }
+      return;
+    }
     // An open place owns the keyboard. Escape closes it unless the page inside
     // already used the key (its own dialog, a reveal) — window is the last stop.
     if (this.panel) {
