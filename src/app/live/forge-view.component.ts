@@ -150,6 +150,10 @@ import {
   type StationTab,
 } from '../shared/station-ui';
 import { SANCTUM_I18N } from './sanctum.i18n';
+import { RARITY_I18N, rarityKey } from '../shared/rune-forge/rarity.i18n';
+
+/** Words for the module-level helpers below; the component points it at TranslationService. */
+let T: (key: string, vars?: Record<string, string | number>) => string = key => key;
 
 /** The Sanctum's tabs. Send leads: dispatch is the one thing to do here. */
 export type SanctumTab = 'send' | 'works' | 'forge' | 'cast';
@@ -438,16 +442,16 @@ const FEED_CAP = 20;
 function missionPromise(def: MissionDefinition): string {
   const parts: string[] = [];
   if (def.guaranteedRunes) {
-    const tier = RUNE_TIERS[RUNE_TIER_ORDER[def.runeFloor ?? 0]]?.label ?? 'Common';
+    const tier = T(rarityKey(RUNE_TIER_ORDER[def.runeFloor ?? 0] ?? 'common'));
     parts.push(
       def.guaranteedRunes === 1
-        ? `guaranteed ${tier}+`
-        : `${def.guaranteedRunes} guaranteed ${tier}+`,
+        ? T('sanctum.promise.one', { tier })
+        : T('sanctum.promise.many', { n: def.guaranteedRunes ?? 0, tier }),
     );
   } else if (def.runeFloor) {
-    parts.push(`${RUNE_TIERS[RUNE_TIER_ORDER[def.runeFloor]]?.label ?? ''}+ runes only`);
+    parts.push(T('sanctum.promise.floor', { tier: T(rarityKey(RUNE_TIER_ORDER[def.runeFloor] ?? 'common')) }));
   }
-  if (def.materialsMax) parts.push(`${def.materialsMin}–${def.materialsMax} materials`);
+  if (def.materialsMax) parts.push(T('sanctum.promise.materials', { min: def.materialsMin ?? 0, max: def.materialsMax }));
   return parts.join(' · ');
 }
 
@@ -456,19 +460,19 @@ function blockLabel(block: ExpeditionBlock | null): string {
   if (!block) return '';
   switch (block.code) {
     case 'level':
-      return `Keeper rank ${block.need} — you are ${block.have}`;
+      return T('sanctum.block.level', { need: block.need ?? 0, have: block.have ?? 0 });
     case 'gold':
-      return `${formatCompact(block.need ?? 0)} Gold — you have ${formatCompact(block.have ?? 0)}`;
+      return T('sanctum.block.gold', { need: formatCompact(block.need ?? 0), have: formatCompact(block.have ?? 0) });
     case 'exclusive':
-      return 'One at a time. Something is already down there.';
+      return T('sanctum.block.exclusive');
     case 'slots':
-      return 'Every explorer is out.';
+      return T('sanctum.block.slots');
     case 'site-keeper-level':
-      return `Keeper rank ${block.need} — you are ${block.have}`;
+      return T('sanctum.block.level', { need: block.need ?? 0, have: block.have ?? 0 });
     case 'site-explorer-level':
-      return `Explorer level ${block.need} — they are ${block.have}`;
+      return T('sanctum.block.explorerLevel', { need: block.need ?? 0, have: block.have ?? 0 });
     default:
-      return 'Not available.';
+      return T('sanctum.block.na');
   }
 }
 
@@ -481,9 +485,9 @@ function blockLabel(block: ExpeditionBlock | null): string {
 function siteBlockCopy(block: ExpeditionBlock | null): string {
   if (!block) return '';
   switch (block.code) {
-    case 'site-keeper-level': return `Rank ${block.need}`;
-    case 'site-explorer-level': return `Lv ${block.need} explorer`;
-    default: return 'Locked';
+    case 'site-keeper-level': return T('sanctum.site.rank', { n: block.need ?? 0 });
+    case 'site-explorer-level': return T('sanctum.site.explorerLv', { n: block.need ?? 0 });
+    default: return T('sanctum.site.locked');
   }
 }
 
@@ -563,12 +567,12 @@ function toneOf(tier: RuneTierDefinition): Tone {
  */
 function relativeTime(at: number, now: number): string {
   const ago = Math.max(0, now - at);
-  if (ago < 60_000) return 'just now';
+  if (ago < 60_000) return T('sanctum.ago.now');
   const minutes = Math.floor(ago / 60_000);
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 60) return T('sanctum.ago.m', { n: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}h ago`;
-  return `${Math.floor(hours / 24)}d ago`;
+  if (hours < 24) return T('sanctum.ago.h', { n: hours });
+  return T('sanctum.ago.d', { n: Math.floor(hours / 24) });
 }
 
 /** Remembers whether the visitor wanted the hum, across visits. */
@@ -669,10 +673,18 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(SANCTUM_I18N);
+    this.i18n.register(RARITY_I18N);
+    T = (key, vars) => this.i18n.translate(key, vars);
   }
 
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
+  }
+
+  /** A rune tier / item rarity label from the models, in the Keeper's language. */
+  tierName(label: string): string {
+    const text = this.i18n.translate(rarityKey(label.toLowerCase()));
+    return text.startsWith('tierLabel.') ? label : text;
   }
 
   setTab(id: string): void {
@@ -966,7 +978,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
       if (level > 0) {
         rows.push({
           id: u.id, name: u.name, icon: u.icon, level,
-          note: `${formatCompact(u.ratePerSecond * level)}/sec`,
+          note: this.t('sanctum.ladder.perSec', { n: formatCompact(u.ratePerSecond * level) }),
         });
       }
     }
@@ -984,7 +996,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
       .filter(x => x.level > 0)
       .map(({ u, level }) => ({
         id: u.id, name: u.name, icon: u.icon, level,
-        note: `${formatRate(u.clicksPerSecond * level)} strikes/sec`,
+        note: this.t('sanctum.ladder.strikesSec', { n: formatRate(u.clicksPerSecond * level) }),
       }));
   }
 
@@ -1071,7 +1083,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
         stars: STAR_SLOTS,
         block,
         blockLabel: siteBlockCopy(block),
-        band: `${formatCompact(Math.round(band.min * site.goldMultiplier))}–${formatCompact(Math.round(band.max * site.goldMultiplier))} Gold`,
+        band: this.t('sanctum.band', { min: formatCompact(Math.round(band.min * site.goldMultiplier)), max: formatCompact(Math.round(band.max * site.goldMultiplier)) }),
         duration: formatSpan(this.explorers.dispatchDuration(
           this.pickedMission, this.armedExplorerId, site.id)),
         cost: cost ? `${formatCompact(cost)} Gold` : 'free',
@@ -1190,7 +1202,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
   goldBand(mission: MissionDefinition): string {
     const band = realmGoldBand(mission, this.pickedRealm, this.snap.perSecond);
     const mult = siteProfile(this.pickedSite).goldMultiplier;
-    return `${formatCompact(Math.round(band.min * mult))}–${formatCompact(Math.round(band.max * mult))} Gold`;
+    return this.t('sanctum.band', { min: formatCompact(Math.round(band.min * mult)), max: formatCompact(Math.round(band.max * mult)) });
   }
 
   /**
@@ -1231,7 +1243,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
       return {
         def,
         band: this.goldBand(def),
-        cost: cost ? `${formatCompact(cost)} Gold` : '',
+        cost: cost ? this.t('sanctum.cost', { n: formatCompact(cost) }) : '',
         block,
         blockLabel: blockLabel(block),
         drama: def.drama ?? 1,
@@ -1274,8 +1286,8 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     const result = await this.explorers.requestNotifications();
     this.push(
       result === 'granted'
-        ? 'The realms will call when a deep run lands.'
-        : 'No notifications, then. The expedition log still keeps every return.',
+        ? this.t('sanctum.notify.granted')
+        : this.t('sanctum.notify.denied'),
       result === 'granted' ? '#7fd5a3' : '#9fb4ae',
       result === 'granted' ? '🔔' : '🔕',
     );
@@ -1420,7 +1432,7 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
 
   recall(id: string): void {
     this.explorers.recall(id);
-    this.push('Explorer recalled. They brought nothing back.', '#9fb4ae', '↩');
+    this.push(this.t('sanctum.recalled'), '#9fb4ae', '↩');
   }
 
   /**
@@ -1607,16 +1619,16 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     else this.showLanding(haul);
 
     this.push(
-      `Explorer home from ${realm?.name ?? 'the realms'} — ${formatCurrency(r.reward.gold)} Gold`,
+      this.t('sanctum.feed.home', { realm: realm?.name ?? this.t('sanctum.feed.realms'), gold: formatCurrency(r.reward.gold) }),
       realm?.color ?? AETHER_COLOR,
       '🧭',
     );
-    if (rune) this.push(`Found the ${rune.name} rune!`, rune.color, rune.icon ?? '🜂');
-    for (const extra of extraRunes) this.push(`Found the ${extra.name} rune!`, extra.color, extra.glyph);
-    if (scroll) this.push(`Recovered a fragment: ${scroll.subtitle}`, tierOf(scroll.rarity).color, '📜');
-    for (const item of items) this.push(`Carried home ${item.name}`, item.color, '⚔');
+    if (rune) this.push(this.t('sanctum.feed.rune', { name: rune.name }), rune.color, rune.icon ?? '🜂');
+    for (const extra of extraRunes) this.push(this.t('sanctum.feed.rune', { name: extra.name }), extra.color, extra.glyph);
+    if (scroll) this.push(this.t('sanctum.feed.fragment', { name: scroll.subtitle }), tierOf(scroll.rarity).color, '📜');
+    for (const item of items) this.push(this.t('sanctum.feed.carried', { name: item.name }), item.color, '⚔');
     for (const [id, quantity] of Object.entries(r.reward.materials ?? {})) {
-      this.push(`Hauled back ${materialDisplay(id)?.name ?? id} ×${quantity}`, '#c89868', '⛏');
+      this.push(this.t('sanctum.feed.hauled', { name: materialDisplay(id)?.name ?? id, n: quantity }), '#c89868', '⛏');
     }
 
     this.cue(rune ? tierOf(rune.tier) : null, best);
@@ -1682,16 +1694,16 @@ export class ForgeViewComponent implements OnInit, OnDestroy {
     this.subs.add(this.economy.gain$.subscribe(g => {
       if (g.currency !== 'gold') return;
       if (g.source === 'forge' || g.source === 'idle' || g.source === 'expedition') return;
-      this.push(`+${formatCurrency(g.amount)} Gold from ${g.source}`, AETHER_COLOR, '◈');
+      this.push(this.t('sanctum.feed.goldFrom', { n: formatCurrency(g.amount), source: g.source }), AETHER_COLOR, '◈');
     }));
 
     this.subs.add(this.economy.purchase$.subscribe(p => {
-      this.push(`Bought ${p.name}`, NOX_COLOR, '⚒');
+      this.push(this.t('sanctum.feed.bought', { name: p.name }), NOX_COLOR, '⚒');
     }));
 
     this.subs.add(this.quests.claim$.subscribe(c => {
       this.push(
-        `Quest complete: ${c.quest.title}`,
+        this.t('sanctum.feed.quest', { name: c.quest.title }),
         RARITIES[c.quest.rarity].color,
         '✦',
       );

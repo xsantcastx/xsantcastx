@@ -70,6 +70,27 @@ async function toastReport(page: Page) {
   });
 }
 
+
+/** The Vendor on the station kit: pick the Cinder Ore row; its per-unit price is on the row. */
+async function pickCinderOre(page: Page): Promise<number> {
+  const row = page.locator('section.place app-journal-list .jl__row', { hasText: 'Cinder Ore' });
+  await expect(row).toBeVisible();
+  await row.click();
+  const price = Number(/([\d,]+) Gold each/i.exec(await row.innerText())?.[1].replace(/,/g, ''));
+  expect(price).toBeGreaterThan(0);
+  return price;
+}
+/** Set the stepper to exactly n (it opens on a suggested quantity). */
+async function stepTo(page: Page, n: number): Promise<void> {
+  const qty = page.locator('section.place .ab__qty');
+  const steps = page.locator('section.place .ab__stepbtn');
+  for (let guard = 0; guard < 40 && Number(await qty.textContent()) !== n; guard++) {
+    await steps.nth(Number(await qty.textContent()) < n ? 1 : 0).click();
+  }
+  await expect(qty).toHaveText(String(n));
+}
+const VENDOR_GOLD = (page: Page) => page.locator('section.place app-cost-chip[stationwallet] .chip__n');
+
 test.describe('new version ready', () => {
   test.beforeAll(async ({ request }) => {
     // A bare `npx ng build` is unstamped (only `npm run build` runs postbuild).
@@ -95,17 +116,11 @@ test.describe('new version ready', () => {
     await expect(toast(page)).toHaveCount(0); // a panel is open: the offer waits
 
     // Sell, close the counter, and reload inside the ledger's write throttle.
-    const card = page.locator('section.place .mv-card[data-material="cinder-ore"]');
-    await card.click();
-    const label = (await card.getAttribute('aria-label')) ?? '';
-    const price = Number(/pays ([\d,]+) Gold each/.exec(label)?.[1].replace(/,/g, ''));
-    expect(price).toBeGreaterThan(0);
-    const goldBefore = GOLD(await page.locator('section.place .mv-purse__gold').textContent());
-    const qty = page.locator('#mv-qty-input');
-    await qty.fill('5');
-    await qty.press('Enter');
-    await page.locator('section.place .mv-buy__btn').click();
-    await expect.poll(async () => GOLD(await page.locator('section.place .mv-purse__gold').textContent()))
+    const price = await pickCinderOre(page);
+    const goldBefore = GOLD(await VENDOR_GOLD(page).textContent());
+    await stepTo(page, 5);
+    await page.locator('section.place .ab__btn').click();
+    await expect.poll(async () => GOLD(await VENDOR_GOLD(page).textContent()))
       .toBeGreaterThanOrEqual(goldBefore + 5 * price);
     await page.keyboard.press('Escape');
     await expect(placePanel(page)).toBeHidden();

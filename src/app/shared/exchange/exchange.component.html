@@ -118,7 +118,7 @@
           <span class="gej-change" [attr.data-trend]="sel.trend">{{ percent(sel.change24h) }} {{ t('ge.in24h') }}</span>
         </p>
         <p class="ge__panel-sub">
-          {{ rarityLabel(sel.rarity) }} · {{ categoryLabels[sel.good.category] }} ·
+          {{ rarityLabel(sel.rarity) }} · {{ categoryLabel(sel.good.category) }} ·
           {{ t('ge.sub.base') }} {{ gold_(sel.basePrice) }} · {{ gold_(sel.supply) }} {{ t('ge.sub.supply') }} · {{ gold_(sel.demand) }} {{ t('ge.sub.demand') }}
           @if (sel.playerMoved) { · {{ t('ge.sub.moved') }} }
           @if (sel.good.kind === 'equipment') { · {{ t('ge.sub.equip') }} }

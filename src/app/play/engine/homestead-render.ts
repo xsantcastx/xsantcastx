@@ -20,7 +20,7 @@ import {
   HomesteadBuildingId, buildingOfStation, homeStationOf,
 } from '../world/homestead';
 import type { HomeStationId } from '../../shared/minigames/home-forge.model';
-import { collectable, emptyLedger, hasPending, Pending, PendingLedger, pendingLine } from '../homestead/homestead.model';
+import { collectable, emptyLedger, hasPending, homesteadT, Pending, PendingLedger, pendingLine } from '../homestead/homestead.model';
 
 const FLOOR = 610;
 
@@ -282,7 +282,7 @@ export class HomesteadScene implements HomesteadView {
   goldenSpark(): void {
     const now = this.clock();
     this.goldenAt = now;
-    this.pushText(X.forge, FLOOR - 300, 'Golden spark!', GOLD, true, now);
+    this.pushText(X.forge, FLOOR - 300, homesteadT('homestead.canvas.spark'), GOLD, true, now);
     if (this.reduced) return;
     for (let i = 0; i < 40; i++) {
       const a = Math.random() * Math.PI * 2, s = 120 + Math.random() * 320;
@@ -422,9 +422,9 @@ export class HomesteadScene implements HomesteadView {
     const s = bump >= 0 && bump < 1 && !f.reduced ? 1 + Math.sin(bump * Math.PI) * .18 : 1;
     c.save(); c.translate(x, FLOOR - 206); c.scale(s, s);
     c.fillStyle = '#1a120fe6'; c.fillRect(-90, -26, 180, 40);
-    this.label(c, `${Math.floor(m.gold).toLocaleString('en-US')} Gold`, 0, 0, GOLD, 18, 700);
+    this.label(c, homesteadT('homestead.canvas.purse', { n: Math.floor(m.gold).toLocaleString('en-US') }), 0, 0, GOLD, 18, 700);
     c.restore();
-    this.label(c, `${compact(m.perSecond)} Gold every second`, x, FLOOR - 176, '#e7d3b4', 12);
+    this.label(c, homesteadT('homestead.canvas.perSecond', { n: compact(m.perSecond) }), x, FLOOR - 176, '#e7d3b4', 12);
   }
 
   private drawForge(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
@@ -453,15 +453,15 @@ export class HomesteadScene implements HomesteadView {
     if (this.strikes < 5) {
       const bob = f.reduced ? 0 : Math.sin(f.time * 4) * 5;
       c.fillStyle = '#1a120fe6'; c.fillRect(x - 70, FLOOR - 222 + bob, 140, 28);
-      this.label(c, near ? 'Press E to strike!' : 'Click me!', x, FLOOR - 203 + bob, GOLD, 15, 700);
+      this.label(c, homesteadT(near ? 'homestead.canvas.pressE' : 'homestead.canvas.clickMe'), x, FLOOR - 203 + bob, GOLD, 15, 700);
     } else {
-      this.label(c, `+${compact(this.model.perClick)} Gold a strike`, x, FLOOR - 200, '#e7d3b4', 12);
+      this.label(c, homesteadT('homestead.canvas.perStrike', { n: compact(this.model.perClick) }), x, FLOOR - 200, '#e7d3b4', 12);
     }
   }
 
   private drawFurnace(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
     const x = X.furnace, levels = this.model.furnace.reduce((a, b) => a + b, 0);
-    if (levels <= 0) { this.drawSign(c, x, this.model.signs.furnace ?? 'Build a Furnace'); return; }
+    if (levels <= 0) { this.drawSign(c, x, this.model.signs.furnace ?? homesteadT('homestead.sign.furnace')); return; }
     this.flashGlow(c, 'furnace', now, 100);
     const s = furnaceScale(levels);
     const w = 60 * s, h = 90 * s;
@@ -482,7 +482,7 @@ export class HomesteadScene implements HomesteadView {
         c.beginPath(); c.arc(cx + puff * 10, FLOOR - h - 6 - ch - puff * 60, 6 + puff * 12, 0, Math.PI * 2); c.fill(); c.restore();
       }
     });
-    this.label(c, `${levels} ${levels === 1 ? 'part' : 'parts'}`, x, FLOOR - h - 70, '#e7d3b4', 12);
+    this.label(c, homesteadT(levels === 1 ? 'homestead.canvas.part.one' : 'homestead.canvas.part.many', { n: levels }), x, FLOOR - h - 70, '#e7d3b4', 12);
   }
 
   /** A figure hammering: size and colour by rung (apprentice, golem, eclipse). */
@@ -491,7 +491,7 @@ export class HomesteadScene implements HomesteadView {
     const kinds: number[] = [];
     this.model.automatons.forEach((lv, rung) => { for (let i = 0; i < lv && kinds.length < MAX_FIGURES; i++) kinds.push(rung); });
     const total = this.model.automatons.reduce((a, b) => a + b, 0);
-    if (total <= 0) { this.drawSign(c, x, this.model.signs.automatons ?? 'Unlock Forge Automatons'); return; }
+    if (total <= 0) { this.drawSign(c, x, this.model.signs.automatons ?? homesteadT('homestead.sign.automatons')); return; }
     this.flashGlow(c, 'automatons', now, 130);
     c.fillStyle = '#2a2430'; c.fillRect(x - 40, FLOOR - 40, 80, 16); c.fillRect(x - 14, FLOOR - 24, 28, 24);
     const beat = Math.max(0, 1 - (now - this.autoBeatAt) / 250);
@@ -546,7 +546,7 @@ export class HomesteadScene implements HomesteadView {
 
   private drawWorkshop(c: CanvasRenderingContext2D, f: HomesteadFrame, wall: number): void {
     const x = X.workshop, list = this.model.thralls;
-    if (!list.length) { this.drawSign(c, x, this.model.signs.workshop ?? 'Recruit a Thrall at the Market'); return; }
+    if (!list.length) { this.drawSign(c, x, this.model.signs.workshop ?? homesteadT('homestead.sign.thrall')); return; }
     c.fillStyle = '#3b3034'; c.fillRect(x - 100, FLOOR - 130, 200, 10);
     c.fillStyle = '#4b332c'; c.fillRect(x - 100, FLOOR - 130, 8, 130); c.fillRect(x + 92, FLOOR - 130, 8, 130);
     c.fillStyle = '#2a2430'; c.fillRect(x - 30, FLOOR - 36, 60, 14); c.fillRect(x - 10, FLOOR - 22, 20, 22);
@@ -668,7 +668,7 @@ export class HomesteadScene implements HomesteadView {
   private drawPending(c: CanvasRenderingContext2D, id: HomesteadBuildingId, f: HomesteadFrame): void {
     const p = this.ledger[id];
     if (!hasPending(p)) return;
-    const text = p.gold >= 1 ? `+${compact(p.gold)}` : p.runes ? `+${p.runes} rune${p.runes === 1 ? '' : 's'}` : `${p.returns} home`;
+    const text = p.gold >= 1 ? `+${compact(p.gold)}` : p.runes ? homesteadT(p.runes === 1 ? 'homestead.canvas.rune.one' : 'homestead.canvas.rune.many', { n: p.runes }) : homesteadT('homestead.canvas.home', { n: p.returns });
     const bob = f.reduced ? 0 : Math.sin(f.time * 3 + X[id]) * 4;
     const y = FLOOR - 300 + bob;
     c.font = '700 13px system-ui';

@@ -20,25 +20,21 @@
     <div class="cl-head__body">
       <p class="cl-eyebrow">
         <span class="cl-eyebrow__pulse" aria-hidden="true"></span>
-        The Collection Log
+        {{ t('collLog.eyebrow') }}
       </p>
-      <h2 class="cl-title">Everything there is to hold</h2>
-      <p class="cl-sub">
-        Every rune, word, artifact, charm, material and worn thing the Godforge
-        can put in your hands — the ones you have held, and the ones you have not.
-        A thing spent is still a thing found: the log keeps it either way.
-      </p>
+      <h2 class="cl-title">{{ t('collLog.title') }}</h2>
+      <p class="cl-sub">{{ t('collLog.sub') }}</p>
 
       @if (nextReward) {
         <p class="cl-next">
           <span class="cl-next__badge">{{ nextReward.at }}%</span>
-          {{ nextReward.away }} more and you are
+          {{ t('collLog.next.pre', { n: nextReward.away }) }}
           <strong>{{ nextReward.title }}</strong>.
         </p>
       } @else if (overall.percent >= 100) {
         <p class="cl-next cl-next--done">
           <span class="cl-next__badge">✦</span>
-          Nothing is left. You have held all of it.
+          {{ t('collLog.done') }}
         </p>
       }
     </div>
@@ -52,12 +48,12 @@
         [class.is-earned]="rewardEarned(reward.id)"
         [class.is-reached]="overall.percent >= reward.at">
         <p class="cl-reward__at">{{ reward.at }}%</p>
-        <p class="cl-reward__title">{{ reward.title }}</p>
-        <p class="cl-reward__gold">{{ reward.gold | number }} Gold</p>
-        <p class="cl-reward__blurb">{{ reward.blurb }}</p>
+        <p class="cl-reward__title">{{ rewardTitle(reward) }}</p>
+        <p class="cl-reward__gold">{{ t('collLog.reward.gold', { n: (reward.gold | number) ?? 0 }) }}</p>
+        <p class="cl-reward__blurb">{{ rewardBlurb(reward) }}</p>
         <p class="cl-reward__state">
-          @if (rewardEarned(reward.id)) { ✦ claimed }
-          @else { {{ reward.at }}% of the log }
+          @if (rewardEarned(reward.id)) { ✦ {{ t('collLog.reward.claimed') }} }
+          @else { {{ t('collLog.reward.ofLog', { n: reward.at }) }} }
         </p>
       </div>
     }
@@ -66,7 +62,7 @@
   <!-- ═══ Recent discoveries ════════════════════════════════════════════════ -->
   @if (recent.length) {
     <section class="cl-recent">
-      <h3 class="cl-recent__title">Recent discoveries</h3>
+      <h3 class="cl-recent__title">{{ t('collLog.recent') }}</h3>
       <div class="cl-recent__row">
         @for (row of recent; track row.card.entry.id) {
           <div
@@ -90,7 +86,7 @@
 
   <!-- ═══ Per-category progress ═════════════════════════════════════════════ -->
   <section class="cl-bars">
-    <h3 class="cl-bars__title">By category</h3>
+    <h3 class="cl-bars__title">{{ t('collLog.byCategory') }}</h3>
     <div class="cl-bars__grid">
       @for (cat of categories; track cat.id) {
         <button
@@ -100,11 +96,11 @@
           [style.--tier]="cat.color"
           [style.--tier-glow]="cat.glow"
           [attr.aria-pressed]="categoryFilter === cat.id"
-          [attr.title]="cat.blurb"
+          [attr.title]="catBlurb(cat)"
           (click)="categoryFilter = categoryFilter === cat.id ? 'all' : cat.id">
           <span class="cl-bar__head">
             <span class="cl-bar__icon" aria-hidden="true">{{ cat.icon }}</span>
-            <span class="cl-bar__label">{{ cat.label }}</span>
+            <span class="cl-bar__label">{{ catLabel(cat) }}</span>
             <span class="cl-bar__count">
               {{ countFor(cat.id).found }}/{{ countFor(cat.id).total }}
               <small>({{ countFor(cat.id).percent }}%)</small>
@@ -120,7 +116,7 @@
 
   <!-- ═══ Rarity breakdown ══════════════════════════════════════════════════ -->
   <section class="cl-rarity">
-    <h3 class="cl-rarity__title">By rarity</h3>
+    <h3 class="cl-rarity__title">{{ t('collLog.byRarity') }}</h3>
     <div class="cl-rarity__row">
       @for (r of rarityOrder; track r) {
         <button
@@ -132,7 +128,7 @@
           [style.--tier-glow]="rarities[r].glow"
           [attr.aria-pressed]="rarityFilter === r"
           (click)="rarityFilter = rarityFilter === r ? 'all' : r">
-          <span class="cl-rarity__label">{{ rarities[r].label }}</span>
+          <span class="cl-rarity__label">{{ rarityLabel(r) }}</span>
           <span class="cl-rarity__count">{{ rarityCount(r).found }}/{{ rarityCount(r).total }}</span>
           <span class="cl-rarity__track" aria-hidden="true">
             <span class="cl-rarity__fill" [style.width.%]="rarityCount(r).percent"></span>
@@ -145,10 +141,10 @@
   <!-- ═══ Filters ═══════════════════════════════════════════════════════════ -->
   <div class="cl-filters">
     <div class="cl-filter-row">
-      <span class="cl-filter-row__label">Realm</span>
+      <span class="cl-filter-row__label">{{ t('collLog.realm') }}</span>
       <div class="cl-chips">
         <button type="button" class="cl-chip" [class.is-on]="realmFilter === 'all'"
-                (click)="realmFilter = 'all'">All</button>
+                (click)="realmFilter = 'all'">{{ t('collLog.all') }}</button>
         @for (realm of realms; track realm.id) {
           <button
             type="button"
@@ -159,42 +155,42 @@
             (click)="realmFilter = realm.id">{{ realm.name }}</button>
         }
         <button type="button" class="cl-chip" [class.is-on]="realmFilter === 'unaligned'"
-                title="Things no realm has claimed"
-                (click)="realmFilter = 'unaligned'">Unaligned</button>
+                [attr.title]="t('collLog.unaligned.title')"
+                (click)="realmFilter = 'unaligned'">{{ t('collLog.unaligned') }}</button>
       </div>
     </div>
 
     <div class="cl-filter-row">
       <div class="cl-filter-group">
-        <label class="cl-filter-label" for="cl-status">Show</label>
+        <label class="cl-filter-label" for="cl-status">{{ t('collLog.show') }}</label>
         <select id="cl-status" class="cl-select" [(ngModel)]="statusFilter">
-          <option value="all">Everything</option>
-          <option value="found">Found only</option>
-          <option value="unfound">Still missing</option>
+          <option value="all">{{ t('collLog.show.all') }}</option>
+          <option value="found">{{ t('collLog.show.found') }}</option>
+          <option value="unfound">{{ t('collLog.show.unfound') }}</option>
         </select>
       </div>
 
       <div class="cl-filter-group">
-        <label class="cl-filter-label" for="cl-sort">Sort</label>
+        <label class="cl-filter-label" for="cl-sort">{{ t('collLog.sort') }}</label>
         <select id="cl-sort" class="cl-select" [(ngModel)]="sort">
           @for (s of sorts; track s) {
-            <option [value]="s">{{ sortLabels[s] }}</option>
+            <option [value]="s">{{ sortLabel(s) }}</option>
           }
         </select>
       </div>
 
       <div class="cl-filter-group cl-filter-group--grow">
-        <label class="cl-visually-hidden" for="cl-search">Search the log</label>
+        <label class="cl-visually-hidden" for="cl-search">{{ t('collLog.search.label') }}</label>
         <input
           id="cl-search"
           type="search"
           class="cl-search"
-          placeholder="Search what you have found…"
+          [attr.placeholder]="t('collLog.search.placeholder')"
           [(ngModel)]="search" />
       </div>
 
       @if (hasActiveFilters) {
-        <button type="button" class="cl-clear" (click)="clearFilters()">Clear</button>
+        <button type="button" class="cl-clear" (click)="clearFilters()">{{ t('collLog.clear') }}</button>
       }
     </div>
   </div>
@@ -208,13 +204,13 @@
         <div class="cl-section__hd">
           <h3 class="cl-section__title">
             <span aria-hidden="true">{{ section.category.icon }}</span>
-            {{ section.category.label }}
+            {{ catLabel(section.category) }}
           </h3>
           <span class="cl-section__count">
             {{ section.completion.found }} / {{ section.completion.total }}
           </span>
         </div>
-        <p class="cl-section__blurb">{{ section.category.blurb }}</p>
+        <p class="cl-section__blurb">{{ catBlurb(section.category) }}</p>
 
         <div class="cl-grid">
           <ng-container *ngTemplateOutlet="grid; context: { $implicit: section.cards }"></ng-container>
@@ -226,15 +222,13 @@
       <ng-container *ngTemplateOutlet="grid; context: { $implicit: visible }"></ng-container>
     </div>
   } @else {
-    <p class="cl-empty">Nothing in the log matches that. <button type="button" class="cl-clear" (click)="clearFilters()">Clear the filters</button></p>
+    <p class="cl-empty">{{ t('collLog.empty') }} <button type="button" class="cl-clear" (click)="clearFilters()">{{ t('collLog.clearFilters') }}</button></p>
   }
 
   <p class="cl-foot">
-    {{ countedTotal }} entries count toward completion.
+    {{ t('collLog.foot.counted', { n: countedTotal }) }}
     @if (unobtainable) {
-      {{ unobtainable }} more are drawn, named and not yet forged — they are shown
-      and they are not counted, because a bar that cannot reach the end is a bar
-      that lies.
+      {{ t('collLog.foot.absent', { n: unobtainable }) }}
     }
   </p>
 </div>
@@ -262,13 +256,13 @@
           <span class="cl-card__glyph cl-card__glyph--silhouette" aria-hidden="true">{{ lockedGlyph(card.index) }}</span>
         }
         @if (card.found && card.count > 1) {
-          <span class="cl-card__count" [attr.title]="card.count + ' found in all'">×{{ card.count }}</span>
+          <span class="cl-card__count" [attr.title]="t('collLog.card.foundAll', { n: card.count })">×{{ card.count }}</span>
         }
       </div>
 
       <div class="cl-card__body">
         <p class="cl-card__meta">
-          <span class="cl-card__badge">{{ tier(card.entry.rarity).label }}</span>
+          <span class="cl-card__badge">{{ rarityLabel(card.entry.rarity) }}</span>
           @if (realmName(card.entry.realm); as realm) {
             <span class="cl-card__realm">{{ realm }}</span>
           }
@@ -280,18 +274,18 @@
           <p class="cl-card__lore">{{ card.entry.lore }}</p>
           <p class="cl-card__foot">
             <span class="cl-card__date">{{ formatDate(card.firstDiscoveredAt) }}</span>
-            @if (card.entry.reward) { <span class="cl-card__tag">reward</span> }
+            @if (card.entry.reward) { <span class="cl-card__tag">{{ t('collLog.card.reward') }}</span> }
           </p>
         } @else {
           <!-- The hint, never the lore: the lore names the thing, and a locked
                card that names itself is a checklist rather than a log. -->
           <p class="cl-card__hint">{{ card.entry.hint }}</p>
           @if (!card.entry.obtainable) {
-            <p class="cl-card__absent">not yet in the world</p>
+            <p class="cl-card__absent">{{ t('collLog.card.absent') }}</p>
           }
         }
         @if (whereFound(card.entry.id, card.entry.category); as where) {
-          <p class="cl-card__where">Found in: {{ where }}</p>
+          <p class="cl-card__where">{{ t('collLog.card.foundIn', { where: where }) }}</p>
         }
       </div>
     </article>

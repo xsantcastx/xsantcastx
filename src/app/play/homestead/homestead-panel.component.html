@@ -12,16 +12,16 @@
 
     @if (details.length) {
       <details class="hp-details">
-        <summary>Details</summary>
+        <summary>{{ t('homestead.panel.details') }}</summary>
         <ul>
           @for (row of details; track row.name) {
-            <li><span>{{ row.name }}</span><b>{{ row.owned ? 'Owned ' + row.owned : 'Not yet' }}</b></li>
+            <li><span>{{ row.name }}</span><b>{{ row.owned ? t('homestead.panel.owned', { n: row.owned }) : t('homestead.panel.notYet') }}</b></li>
           }
         </ul>
-        <p class="hp-fine">Prices are the Market's own. Buying here is the same purchase as buying there.</p>
+        <p class="hp-fine">{{ t('homestead.panel.fine') }}</p>
       </details>
     }
   </section>
 } @else {
-  <p class="hp-sentence">Walk up to a building on your Homestead to see what it can do.</p>
+  <p class="hp-sentence">{{ t('homestead.panel.empty') }}</p>
 }

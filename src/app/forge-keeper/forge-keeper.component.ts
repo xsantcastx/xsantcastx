@@ -86,6 +86,7 @@ import { TranslationService } from '../translation.service';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 import { STATION_UI, STATION_UI_I18N, type StationCost } from '../shared/station-ui';
 import { CHARACTER_I18N } from './character.i18n';
+import { LEDGER_I18N } from './ledger.i18n';
 /** Which shelf of the inventory is showing. */
 export type InventoryFilter = 'all' | 'upgrades' | 'artifacts' | 'cosmetics' | 'enchantments';
 
@@ -338,6 +339,7 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(CHARACTER_I18N);
+    this.i18n.register(LEDGER_I18N);
     this.syncStation();
   }
 
@@ -710,18 +712,19 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
 
   /** The twelve tiles, in reading order. */
   get stats(): StatTile[] {
+    const days = (n: number) => this.t(n === 1 ? 'keeperLedger.day' : 'keeperLedger.days');
     return [
-      { label: 'Total XP',      value: formatCurrency(this.snap.xp),           note: 'earned all time',   icon: '✦', color: '#A78BFA' },
-      { label: 'Loadout',       value: `${this.equippedCount}/${this.slotCount}`, note: 'slots filled',  icon: '⚔', color: '#a48bff' },
-      { label: 'Achievements',  value: `${this.achievementsFound}/${this.achievementsTotal}`, note: 'fragments found', icon: '🏆', color: '#c89868' },
-      { label: 'Quests',        value: formatCurrency(this.questsCompleted),    note: 'completed',         icon: '⚔️', color: '#ff6dd7' },
-      { label: 'Flame Strikes', value: formatCurrency(this.wallet.totalClicks), note: 'on the anvil',      icon: '🔨', color: '#E8752A' },
-      { label: 'Gold Earned',   value: formatCurrency(this.wallet.totalGoldEarned), note: 'all time',      icon: '🪙', color: '#f8e8c8' },
-      { label: 'Gold / Second', value: formatCompact(this.wallet.perSecond),    note: 'while you read',    icon: '⏱️', color: '#7fd5a3' },
-      { label: 'Eclipse Shards', value: formatCurrency(this.wallet.shards),     note: this.wallet.shards > 0 ? `${this.shardMult} forever` : 'no Eclipse taken', icon: '🌑', color: '#c48bff' },
-      { label: 'Current Streak', value: String(this.snap.streak),               note: this.snap.streak === 1 ? 'day' : 'days', icon: '🔥', color: '#ff8a4c' },
-      { label: 'Best Streak',   value: String(this.snap.bestStreak),            note: this.snap.bestStreak === 1 ? 'day' : 'days', icon: '🔥', color: '#ffb26b' },
-      { label: 'Arena Runs',    value: formatCurrency(this.arenaPlays),         note: 'gates entered',     icon: '🏟️', color: '#5fb6ff' },
+      { label: this.t('keeperLedger.totalXp'),       value: formatCurrency(this.snap.xp),           note: this.t('keeperLedger.totalXp.note'),   icon: '✦', color: '#A78BFA' },
+      { label: this.t('keeperLedger.loadout'),       value: `${this.equippedCount}/${this.slotCount}`, note: this.t('keeperLedger.loadout.note'),  icon: '⚔', color: '#a48bff' },
+      { label: this.t('keeperLedger.achievements'),  value: `${this.achievementsFound}/${this.achievementsTotal}`, note: this.t('keeperLedger.achievements.note'), icon: '🏆', color: '#c89868' },
+      { label: this.t('keeperLedger.quests'),        value: formatCurrency(this.questsCompleted),    note: this.t('keeperLedger.quests.note'),         icon: '⚔️', color: '#ff6dd7' },
+      { label: this.t('keeperLedger.strikes'),       value: formatCurrency(this.wallet.totalClicks), note: this.t('keeperLedger.strikes.note'),      icon: '🔨', color: '#E8752A' },
+      { label: this.t('keeperLedger.goldEarned'),    value: formatCurrency(this.wallet.totalGoldEarned), note: this.t('keeperLedger.goldEarned.note'),      icon: '🪙', color: '#f8e8c8' },
+      { label: this.t('keeperLedger.goldRate'),      value: formatCompact(this.wallet.perSecond),    note: this.t('keeperLedger.goldRate.note'),    icon: '⏱️', color: '#7fd5a3' },
+      { label: this.t('keeperLedger.shards'),        value: formatCurrency(this.wallet.shards),     note: this.wallet.shards > 0 ? this.t('keeperLedger.shards.forever', { mult: this.shardMult }) : this.t('keeperLedger.shards.none'), icon: '🌑', color: '#c48bff' },
+      { label: this.t('keeperLedger.streak'),        value: String(this.snap.streak),               note: days(this.snap.streak), icon: '🔥', color: '#ff8a4c' },
+      { label: this.t('keeperLedger.bestStreak'),    value: String(this.snap.bestStreak),            note: days(this.snap.bestStreak), icon: '🔥', color: '#ffb26b' },
+      { label: this.t('keeperLedger.arena'),         value: formatCurrency(this.arenaPlays),         note: this.t('keeperLedger.arena.note'),     icon: '🏟️', color: '#5fb6ff' },
     ];
   }
 

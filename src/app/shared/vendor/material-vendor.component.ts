@@ -16,7 +16,6 @@ import {
   ChangeDetectionStrategy,
   ChangeDetectorRef,
   Component,
-  ElementRef,
   OnDestroy,
   OnInit,
   PLATFORM_ID,
@@ -32,6 +31,9 @@ import { materialDisplay } from '../rpg/material-catalog';
 import { artFor } from '../art/art';
 import { CRAFTING_RECIPES } from '../crafting/crafting.model';
 import { injectInWorldPanel } from '../in-world-panel';
+import { TranslationService } from '../../translation.service';
+import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationArt, type StationCost, type StationReward } from '../station-ui';
+import { VENDOR_I18N, VENDOR_SOURCE_KEY } from './material-vendor.i18n';
 import { VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
 import { MaterialVendorService } from './material-vendor.service';
 import {
@@ -57,18 +59,18 @@ interface ShelfCard {
   uses: number;
 }
 
-const REFUSALS: Readonly<Record<Exclude<VendorCode, 'ok' | 'replay'>, string>> = {
-  unknown: 'The counter does not buy that.',
-  'bad-quantity': `Choose between 1 and ${VENDOR_MAX_QTY}.`,
-  stale: 'The price changed. Check it and try again.',
-  short: 'You do not hold that many.',
-  delivery: 'The goods could not be handed over. Nothing was taken. Try again.',
+const REFUSAL_KEY: Readonly<Record<Exclude<VendorCode, 'ok' | 'replay'>, string>> = {
+  unknown: 'vendor.refuse.unknown',
+  'bad-quantity': 'vendor.refuse.badQuantity',
+  stale: 'vendor.refuse.stale',
+  short: 'vendor.refuse.short',
+  delivery: 'vendor.refuse.delivery',
 };
 
 @Component({
   selector: 'app-material-vendor',
   standalone: true,
-  imports: [],
+  imports: [...STATION_UI],
   templateUrl: './material-vendor.component.html',
   styleUrls: ['./material-vendor.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -80,12 +82,11 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly inventory = inject(InventoryService);
   private readonly cdr = inject(ChangeDetectorRef);
-  private readonly host = inject(ElementRef<HTMLElement>);
   private subs: Subscription[] = [];
+  private readonly i18n = inject(TranslationService);
 
   readonly maxQty = VENDOR_MAX_QTY;
   readonly buybackPercent = Math.round(VENDOR_BUYBACK_FRACTION * 100);
-  readonly goldArt = artFor('gold');
   gold = 0;
   cards: ShelfCard[] = this.buildCards();
   selectedId = VENDOR_SHELF[0].materialId;
@@ -96,35 +97,51 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   error = '';
   /** Everything past the first view (holdings, recipe list, quick quantities). */
   detailsOpen = false;
-  /** The "+90 Gold" pop after a sale. Cleared after it plays. */
-  flash: { key: number; total: number } | null = null;
-  private flashTimer?: ReturnType<typeof setTimeout>;
-  private flashSeq = 0;
+  /** The "you sold it" card after a sale (kit reward pop). */
+  reward: StationReward | null = null;
+  private rewardSeq = 0;
+  /** Journal rows, the stepper's per-one cost and the wallet chip. */
+  rows: JournalRow[] = [];
+  unitCosts: StationCost[] = [];
+  selectedArt: StationArt | null = null;
+  /** False until the save has loaded, so the button does not say "Need…" for a moment. */
+  hydrated = false;
+  walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
   /** The last sale, for the receipt line. */
   lastSold: { name: string; quantity: number; total: number } | null = null;
   /** One intentional sale. Minted when the Keeper commits, cleared once it settles. */
   private mutationId: string | null = null;
 
+  constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(VENDOR_I18N);
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
+
   ngOnInit(): void {
     if (!this.isBrowser) { this.select(this.selectedId); return; }
     this.vendor.init();
+    this.hydrated = true;
     this.subs.push(this.economy.snapshot$.subscribe(snap => {
       this.gold = snap.gold;
+      this.refresh();
       this.cdr.markForCheck();
     }));
     this.subs.push(this.inventory.snapshot$.subscribe(() => {
       this.cards = this.buildCards();
       this.needs = this.needsFor(this.selectedId);
+      this.refresh();
       this.cdr.markForCheck();
     }));
     // Open on the first material actually held, when there is one.
+    this.refresh();
     this.select(this.cards.find(card => card.held > 0)?.listing.materialId ?? this.selectedId);
   }
 
   ngOnDestroy(): void {
     this.subs.forEach(sub => sub.unsubscribe());
     this.subs = [];
-    if (this.flashTimer) clearTimeout(this.flashTimer);
   }
 
   // ── Derived ────────────────────────────────────────────────────────────────
@@ -136,6 +153,13 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   /** Units beyond the biggest recipe that wants this material. */
   get surplus(): number { return surplusOf(this.selected.listing.materialId, CRAFTING_RECIPES, this.selected.held); }
   get canSell(): boolean { return this.isBrowser && this.selected.held >= this.quantity && this.quantity >= 1; }
+  /** Most the "Sell all" button can take: everything held, up to a crate. */
+  get allCount(): number { return Math.min(this.selected.held, this.maxQty); }
+  /** The source the model names in English, in the Keeper's language. */
+  sourceText(source: string): string {
+    const key = VENDOR_SOURCE_KEY[source];
+    return key ? this.t(key) : source;
+  }
   /** The first recipe the Keeper would fall short for after this sale. */
   get wouldShort(): RecipeNeed | undefined {
     const after = this.selected.held - this.quantity;
@@ -154,6 +178,7 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     this.quantity = clampQuantity(Math.max(1, surplusOf(materialId, CRAFTING_RECIPES, card.held) || 1));
     this.mutationId = null;
     this.error = '';
+    this.refresh();
     this.cdr.markForCheck();
   }
 
@@ -162,32 +187,24 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     if (next !== this.quantity) this.mutationId = null;
     this.quantity = next;
     this.error = '';
+    this.refresh();
     this.cdr.markForCheck();
   }
-
-  step(by: number): void { this.setQuantity(this.quantity + by); }
 
   /** Sell only the surplus: keep enough for the biggest recipe. */
   sellSurplus(): void { this.setQuantity(Math.max(1, this.surplus)); }
 
-  /** Sell everything held (up to a crate). */
-  all(): void { this.setQuantity(Math.max(1, this.selected.held)); }
-
-  /** Arrow keys on a board card move the selection along the board. */
-  shelfKey(event: KeyboardEvent, index: number): void {
-    const delta = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
-    if (!delta) return;
-    event.preventDefault();
-    const next = this.cards[(index + delta + this.cards.length) % this.cards.length];
-    this.select(next.listing.materialId);
-    const host = (event.currentTarget as HTMLElement | null)?.parentElement;
-    queueMicrotask(() => (host?.querySelector(`[data-material="${next.listing.materialId}"]`) as HTMLElement | null)?.focus());
+  /** The kit button hands over the quantity; the sale itself is unchanged. */
+  sellN(n: number): void {
+    this.setQuantity(n);
+    this.sell();
   }
 
   sell(): void {
     if (!this.canSell) {
-      this.announce = this.selected.held < 1 ? `You hold no ${this.selected.name}.` : `You hold only ${this.selected.held}.`;
-      this.nudge('.mv-why');
+      this.announce = this.selected.held < 1
+        ? this.t('vendor.holdNone', { name: this.selected.name })
+        : this.t('stationUi.need', { n: this.quantity - this.selected.held, name: this.selected.name });
       this.cdr.markForCheck();
       return;
     }
@@ -202,7 +219,7 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     if (receipt.code !== 'ok' && receipt.code !== 'replay') {
       // A refused sale took nothing; a new click is a new intent.
       this.mutationId = null;
-      this.error = REFUSALS[receipt.code];
+      this.error = this.t(REFUSAL_KEY[receipt.code], { max: VENDOR_MAX_QTY });
       this.announce = this.error;
       this.cdr.markForCheck();
       return;
@@ -212,24 +229,35 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
 
     this.error = '';
     this.lastSold = { name: card.name, quantity: receipt.quantity, total: receipt.total };
-    this.announce = `Sold ${receipt.quantity} ${card.name} for ${this.fmt(receipt.total)} Gold.`;
+    this.announce = this.t('vendor.sold', { n: receipt.quantity, name: card.name, gold: this.fmt(receipt.total) });
     this.cards = this.buildCards();
     this.needs = this.needsFor(card.listing.materialId);
     this.quantity = clampQuantity(Math.max(1, this.surplus || 1));
-    this.flash = { key: ++this.flashSeq, total: receipt.total };
-    if (this.flashTimer) clearTimeout(this.flashTimer);
-    this.flashTimer = setTimeout(() => { this.flash = null; this.cdr.markForCheck(); }, 1600);
-    this.nudge('.mv-purse__gold');
+    this.reward = {
+      seq: ++this.rewardSeq,
+      name: this.t('vendor.rewardName', { n: receipt.quantity, name: card.name }),
+      art: artFor('gold'),
+      rarity: 'common',
+      caption: this.t('vendor.rewardCaption', { n: this.fmt(receipt.total) }),
+      kicker: this.t('vendor.kicker'),
+    };
+    this.refresh();
     this.cdr.markForCheck();
   }
 
-  /** A short pop on an element: the purse after a sale, the reason after a refused click. */
-  private nudge(selector: string): void {
-    if (!this.isBrowser || matchMedia?.('(prefers-reduced-motion: reduce)').matches) return;
-    queueMicrotask(() => {
-      const el = (this.host.nativeElement as HTMLElement).querySelector(selector) as HTMLElement | null;
-      el?.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.18)', offset: .35 }, { transform: 'scale(1)' }], { duration: 380, easing: 'cubic-bezier(.22, 1, .36, 1)' });
-    });
+  /** Journal rows, the per-one cost for the stepper and the wallet chip. */
+  private refresh(): void {
+    const goldLabel = this.t('stationUi.gold');
+    this.rows = this.cards.map(card => ({
+      id: card.listing.materialId,
+      name: card.name,
+      art: card.art ? { src: card.art, srcset: card.srcset } : null,
+      sub: this.t('vendor.rowSub', { held: card.held, price: this.fmt(card.listing.price) }),
+    }));
+    const sel = this.selected;
+    this.selectedArt = sel.art ? { src: sel.art, srcset: sel.srcset } : null;
+    this.unitCosts = [{ kind: 'material', id: sel.listing.materialId, label: sel.name, need: 1, have: sel.held, art: sel.art ? { src: sel.art, srcset: sel.srcset } : null }];
+    this.walletGold = { kind: 'gold', label: goldLabel, need: this.gold, have: this.gold };
   }
 
   // ── Building ───────────────────────────────────────────────────────────────

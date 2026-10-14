@@ -54,8 +54,9 @@ import { HomeForgeService, HomeUpgradeResult } from './home-forge.service';
 import { HomesteadBuildingId } from '../world/homestead';
 import {
   BuildingAction, ColumnRow, ColumnRungDef, Pending, RungDef, RungQuote, bestRung, buildingAction, columnRows,
-  formatPerSecond, ladderLevels, nextUnheld, splitIdleGain,
+  formatPerSecond, homesteadT, ladderLevels, nextUnheld, setHomesteadTranslator, splitIdleGain,
 } from './homestead.model';
+import { HOMESTEAD_I18N } from './homestead.i18n';
 
 /** How often a waiting golden spark re-flares over the Forge, ms. */
 const SPARK_PULSE_MS = 2_500;
@@ -113,12 +114,12 @@ export interface HomesteadHud {
 /** Plain words for a purchase receipt. */
 export function purchaseMessage(code: CommerceCode): string {
   switch (code) {
-    case 'ok': case 'queued': return 'Built!';
-    case 'insufficient-funds': return 'Not enough Gold yet.';
-    case 'stale': return 'The price just changed. Try again.';
-    case 'maxed': return 'That is fully built.';
-    case 'in-flight': return 'Still building the last one…';
-    default: return 'That did not go through. Try again.';
+    case 'ok': case 'queued': return homesteadT('homestead.buy.ok');
+    case 'insufficient-funds': return homesteadT('homestead.buy.funds');
+    case 'stale': return homesteadT('homestead.buy.stale');
+    case 'maxed': return homesteadT('homestead.buy.maxed');
+    case 'in-flight': return homesteadT('homestead.buy.inFlight');
+    default: return homesteadT('homestead.buy.failed');
   }
 }
 
@@ -157,6 +158,8 @@ export class HomesteadService implements OnDestroy {
   };
 
   constructor() {
+    this.i18n.register(HOMESTEAD_I18N);
+    setHomesteadTranslator((key, vars) => this.i18n.translate(key, vars));
     this.scene.onStrike = () => this.zone.run(() => this.strike());
     // Every other building opens its one-action panel through the engine.
     this.scene.onBuilding = () => false;
@@ -186,7 +189,7 @@ export class HomesteadService implements OnDestroy {
       const building = buildingOfUpgrade(p.id);
       if (!building) return;
       const line = p.rateDelta > 0 ? formatPerSecond(p.rateDelta)
-        : building === 'camp' ? '+1 tent' : building === 'workshop' ? '+1 work spot' : 'Upgraded!';
+        : building === 'camp' ? this.t('homestead.grew.tent') : building === 'workshop' ? this.t('homestead.grew.spot') : this.t('homestead.grew.upgraded');
       this.scene.grew(building, line);
     }));
     subs.add(this.explorers.returned$.subscribe(r => this.scene.addPending('camp', { gold: Math.max(0, r.reward.gold || 0), returns: 1 })));
@@ -275,25 +278,28 @@ export class HomesteadService implements OnDestroy {
     });
   }
 
+  /** Words, in the Keeper's language. */
+  private t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
+
   /** The one action a building's panel offers. */
   action(id: HomesteadBuildingId): BuildingAction {
     const gold = this.economy.snapshot.gold;
     switch (id) {
       case 'furnace': {
         const built = ladderLevels(FURNACE_RUNGS, this.quote) > 0;
-        return buildingAction(bestRung(FURNACE_RUNGS, this.quote), this.quote, gold, built ? 'Upgrade Furnace' : 'Build');
+        return buildingAction(bestRung(FURNACE_RUNGS, this.quote), this.quote, gold, this.t(built ? 'homestead.verb.upgradeFurnace' : 'homestead.verb.build'));
       }
       case 'automatons': {
         const built = ladderLevels(AUTOMATON_RUNGS, this.quote) > 0;
-        return buildingAction(bestRung(AUTOMATON_RUNGS, this.quote), this.quote, gold, built ? 'Add Automaton' : 'Unlock');
+        return buildingAction(bestRung(AUTOMATON_RUNGS, this.quote), this.quote, gold, this.t(built ? 'homestead.verb.addAutomaton' : 'homestead.verb.unlock'));
       }
-      case 'treasury': return buildingAction(nextUnheld(TREASURY_RUNGS, this.quote), this.quote, gold, 'Upgrade Treasury');
-      case 'camp': return buildingAction(nextUnheld(CAMP_RUNGS, this.quote), this.quote, gold, 'Add a tent');
+      case 'treasury': return buildingAction(nextUnheld(TREASURY_RUNGS, this.quote), this.quote, gold, this.t('homestead.verb.upgradeTreasury'));
+      case 'camp': return buildingAction(nextUnheld(CAMP_RUNGS, this.quote), this.quote, gold, this.t('homestead.verb.addTent'));
       case 'workshop': {
-        const gate = (this.thralls?.owned ?? 0) > 0 ? '' : 'Recruit a Thrall at the Market first.';
-        return buildingAction(nextUnheld(WORKSHOP_RUNGS, this.quote), this.quote, gold, 'Add a work spot', gate);
+        const gate = (this.thralls?.owned ?? 0) > 0 ? '' : this.t('homestead.gate.thrall');
+        return buildingAction(nextUnheld(WORKSHOP_RUNGS, this.quote), this.quote, gold, this.t('homestead.verb.addSpot'), gate);
       }
-      default: return { upgradeId: null, label: `Strike the Forge · +${Math.floor(this.economy.snapshot.perClick)} Gold`, cost: 0, affordable: true, locked: '' };
+      default: return { upgradeId: null, label: this.t('homestead.column.strike', { n: Math.floor(this.economy.snapshot.perClick) }), cost: 0, affordable: true, locked: '' };
     }
   }
 
@@ -303,15 +309,16 @@ export class HomesteadService implements OnDestroy {
   /** The building's one plain sentence, with its real number. */
   sentence(id: HomesteadBuildingId): string {
     const s = this.economy.snapshot;
+    const n = (v: number) => Math.floor(v).toLocaleString('en-US');
     switch (id) {
-      case 'forge': return `Every strike makes ${Math.floor(s.perClick).toLocaleString('en-US')} Gold. Click it as fast as you like.`;
-      case 'treasury': return `You hold ${Math.floor(s.gold).toLocaleString('en-US')} Gold. Treasury upgrades raise ALL Gold income.`;
-      case 'furnace': return `Your buildings make ${formatPerSecond(s.breakdown.idle * this.mult(s)).slice(1)}, even while you are away.`;
-      case 'automatons': return `${ladderLevels(AUTOMATON_RUNGS, this.quote)} automatons strike for you: ${formatPerSecond(s.breakdown.auto * this.mult(s)).slice(1)}.`;
-      case 'camp': return `${this.explorers.snapshot.active.length} of ${this.explorers.slots} explorers are out. Send them from the Sanctum.`;
+      case 'forge': return this.t('homestead.sentence.forge', { n: n(s.perClick) });
+      case 'treasury': return this.t('homestead.sentence.treasury', { n: n(s.gold) });
+      case 'furnace': return this.t('homestead.sentence.furnace', { rate: formatPerSecond(s.breakdown.idle * this.mult(s)).slice(1) });
+      case 'automatons': return this.t('homestead.sentence.automatons', { n: ladderLevels(AUTOMATON_RUNGS, this.quote), rate: formatPerSecond(s.breakdown.auto * this.mult(s)).slice(1) });
+      case 'camp': return this.t('homestead.sentence.camp', { out: this.explorers.snapshot.active.length, slots: this.explorers.slots });
       case 'workshop': {
         const t = this.thralls;
-        return t && t.owned ? `${t.working} of ${t.owned} Thralls are pulling runes (room for ${t.slots}).` : 'No Thralls yet. Recruit one at the Market and it works here.';
+        return t && t.owned ? this.t('homestead.sentence.workshop', { working: t.working, owned: t.owned, slots: t.slots }) : this.t('homestead.sentence.noThralls');
       }
     }
   }
@@ -338,7 +345,7 @@ export class HomesteadService implements OnDestroy {
     const signs: HomesteadModel['signs'] = {};
     if (!furnace.some(Boolean)) signs.furnace = this.signFor(this.action('furnace'));
     if (!automatons.some(Boolean)) signs.automatons = this.signFor(this.action('automatons'));
-    if (!(this.thralls?.owned)) signs.workshop = 'Recruit a Thrall at the Market';
+    if (!(this.thralls?.owned)) signs.workshop = this.t('homestead.sign.thrall');
     const model: HomesteadModel = {
       ...emptyModel(),
       gold: snapshot.gold,

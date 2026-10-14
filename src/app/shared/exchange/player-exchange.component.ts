@@ -42,6 +42,7 @@ import {
   type StationTab,
 } from '../station-ui';
 import { RUNE_TIERS, type RuneTier } from '../rune-forge/rune.model';
+import { RARITY_I18N, rarityKey } from '../rune-forge/rarity.i18n';
 import type { ItemRarity } from '../rpg/item.model';
 import { ExchangeService } from './exchange.service';
 import { EXCHANGE_CATALOGUE, goodById, type ExchangeGood } from './exchange.model';
@@ -142,6 +143,7 @@ export class PlayerExchangeComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(PLAYER_EXCHANGE_I18N);
+    this.i18n.register(RARITY_I18N);
     this.buildTabs();
   }
 
@@ -447,7 +449,7 @@ export class PlayerExchangeComponent implements OnInit, OnDestroy {
           name: filled > 1 ? `${filled} × ${good.name}` : good.name,
           art: this.selectedArt,
           rarity: good.rarity,
-          rarityLabel: RUNE_TIERS[good.rarity as RuneTier]?.label ?? good.rarity,
+          rarityLabel: RUNE_TIERS[good.rarity as RuneTier] ? this.t(rarityKey(good.rarity)) : good.rarity,
           caption: this.t('pmx.collect.go'),
         };
       }

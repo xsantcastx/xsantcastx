@@ -683,7 +683,7 @@ button.gftome__keeper {
   color: var(--gfnav-ink);
   cursor: pointer;
 }
-.gftome__bank-icon { font-size: 1.1rem; }
+.gftome__bank-icon { width: 1.1rem; height: 1.1rem; flex: none; }
 .gftome__bank-text {
   margin-right: auto;
   font-size: 0.72rem;
@@ -1210,3 +1210,6 @@ button.gftome__keeper {
   .gftome { transform: translateX(0); display: none; }
   .gftome.is-open { display: block; }
 }
+
+/* The satchel mark: an inline glyph that takes the pill's text colour. */
+.gfpill__bag { width: 14px; height: 14px; flex: none; }

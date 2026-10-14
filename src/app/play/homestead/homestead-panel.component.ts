@@ -14,10 +14,8 @@ import { HomesteadService, purchaseMessage, FURNACE_RUNGS, AUTOMATON_RUNGS, TREA
 import { BuildingAction, RungDef, pendingLine } from './homestead.model';
 import { HomesteadBuildingId, buildingOfStation } from '../world/homestead';
 import { EconomyService } from '../../shared/economy/economy.service';
+import { TranslationService } from '../../translation.service';
 
-const NAMES: Record<HomesteadBuildingId, string> = {
-  forge: 'The Forge', treasury: 'Treasury', furnace: 'Furnace', automatons: 'Forge Automatons', camp: 'Explorer Camp', workshop: 'Thrall Workshop',
-};
 const RUNGS: Record<HomesteadBuildingId, readonly RungDef[]> = {
   forge: [], treasury: TREASURY_RUNGS, furnace: FURNACE_RUNGS, automatons: AUTOMATON_RUNGS, camp: CAMP_RUNGS, workshop: WORKSHOP_RUNGS,
 };
@@ -36,7 +34,10 @@ export class HomesteadPanelComponent implements OnInit, OnDestroy {
   private readonly economy = inject(EconomyService);
   private readonly route = inject(ActivatedRoute);
   private readonly cdr = inject(ChangeDetectorRef);
+  private readonly i18n = inject(TranslationService);
   private readonly subs = new Subscription();
+
+  t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
 
   building: HomesteadBuildingId | null = null;
   name = '';
@@ -62,7 +63,7 @@ export class HomesteadPanelComponent implements OnInit, OnDestroy {
   private read(): void {
     const id = this.building;
     if (!id) { this.action = null; this.cdr.markForCheck(); return; }
-    this.name = NAMES[id];
+    this.name = this.t('homestead.name.' + id);
     this.sentence = this.homestead.sentence(id);
     this.action = this.homestead.action(id);
     this.waiting = pendingLine(this.homestead.pending(id));
@@ -77,7 +78,7 @@ export class HomesteadPanelComponent implements OnInit, OnDestroy {
     if (!action.upgradeId || !action.affordable) return;
     const code = this.homestead.buy(action.upgradeId);
     const ok = code === 'ok' || code === 'queued';
-    this.notice = ok ? `${purchaseMessage(code)} Look at your ${this.name} grow.` : purchaseMessage(code);
+    this.notice = ok ? `${purchaseMessage(code)} ${this.t('homestead.panel.grow', { name: this.name })}` : purchaseMessage(code);
     this.noticeTone = ok ? 'ok' : 'denied';
     if (ok) this.celebrate++;
     this.read();
