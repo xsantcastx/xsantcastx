@@ -561,9 +561,10 @@ export class ForgeKeeperComponent implements OnInit, OnDestroy {
 
     this.ticker = setInterval(() => (this.now = Date.now()), 1000);
 
-    // The sheet itself is an achievement. Triggering unconditionally is safe —
-    // EasterEggService only pays out and only toasts on the first discovery.
-    void this.eggs.trigger('forge-self-aware');
+    // The sheet itself is an achievement. Trigger only when not yet found:
+    // `trigger()` pays out once but still announces ("Rediscovered") on every
+    // call, so an unconditional call toasted on every visit.
+    if (!this.eggs.isFound('forge-self-aware')) void this.eggs.trigger('forge-self-aware');
     this.achievements = this.achievements.map(a =>
       a.id === 'forge-self-aware' && !a.unlocked
         ? { ...a, unlocked: true, unlockedAt: this.eggs.foundAt(a.id) }
