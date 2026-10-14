@@ -183,8 +183,14 @@ function sky(realm: BackdropRealm, r: Rng): HTMLCanvasElement {
       disc(c, 132, 112, 20, '#ffe7a0'); disc(c, 132, 112, 17, '#fff1b0'); disc(c, 128, 108, 9, '#fffaf0');
       break;
     case 'umbral':
-      star(70, ['#8a90b0', '#d8dcf0', '#4a3260'], 120);
-      disc(c, 380, 34, 11, '#d8dcf0'); disc(c, 384, 31, 10, bands[0]);
+      // A drift of faint violet across the dark (flat pixels, no gradient), stars, a fractured moon.
+      for (let i = 0; i < 260; i++) {
+        const t = r(), x = Math.floor(t * W), y = Math.floor(30 + t * 70 + (r() - .5) * 26);
+        c.fillStyle = i % 4 ? '#1a1228' : '#2a1f3a'; c.fillRect(x, y, 2, 1);
+      }
+      star(130, ['#8a90b0', '#d8dcf0', '#4a3260'], 130);
+      disc(c, 120, 36, 14, '#d8dcf0'); disc(c, 125, 32, 12, bands[0]);
+      rect(c, 109, 40, 3, 1, '#8a90b0'); rect(c, 112, 41, 1, 3, '#8a90b0');
       break;
     case 'celestial':
       star(120, ['#d8ecff', '#a8b8cc', '#5fb6ff'], 130);

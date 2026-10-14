@@ -516,7 +516,8 @@ export function iconOf(kind: IconKind, mat: Material, acc?: Material, sub?: Mate
 /** The icon on a stall plaque or waystone: its own plaque icon, else the item's. Cached. */
 export function plaqueIcon(key: string | null | undefined): ArtEntry | null {
   if (!key) return null;
-  if (!Object.prototype.hasOwnProperty.call(PLAQUE_ICONS, key)) return itemIcon(key);
+  // On a plaque a rune's name means the rune (the Reels' Eclipse, the Rune Drop's Hollow).
+  if (!Object.prototype.hasOwnProperty.call(PLAQUE_ICONS, key)) return itemIcon(key) ?? runeIcon(key);
   const cacheKey = `plaque:${key}`;
   const hit = cache.get(cacheKey);
   if (hit !== undefined) return hit;
@@ -540,6 +541,16 @@ export function runeIcon(id: string | null | undefined): ArtEntry | null {
   const made = entry(svgOf(centred(runeGrid(id)), paletteOf({ kind: 'rune', mat: tablet, acc: glyph })));
   cache.set(key, made);
   return made;
+}
+
+/**
+ * The icon `artFor()` serves: the item's own, or for the named runes and rune-words
+ * (hyphenated ids: `rune-of-cinder`, `first-light`) their tablet. The bare rune words
+ * (`aether`, `forge`, `eclipse`…) are also currencies and stations, so only the Rune
+ * Forge's cards and the plaques read those as runes.
+ */
+export function artIcon(id: string | null | undefined): ArtEntry | null {
+  return itemIcon(id) ?? (id && id.includes('-') ? runeIcon(id) : null);
 }
 
 /** Every id with an item icon (tests and the art audit read it). */
