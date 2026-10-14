@@ -135,6 +135,8 @@ const { STAT_DEFINITIONS } = L('shared/rpg/player-stats.model.ts');
 const { ARTIFACTS: ESSENCE_ARTIFACTS } = L('shared/economy/economy.model.ts');
 const { DELVE_INSCRIPTIONS } = L('shared/delve/delve-lore.model.ts');
 const FISHING = L('shared/fishing/fishing.model.ts');
+// Map v2's two canon map tools (the compass and the fragment).
+const { MAP_TOOLS } = L('shared/delve/map-tools.model.ts');
 
 // Ids in un-exported tables, read as text.
 function objectKeys(file, constName) {
@@ -242,6 +244,12 @@ for (const [crate, rows] of Object.entries(FISHING.CRATE_CONTENTS)) for (const r
 // The Seam Bucket: scoops into a full bucket, which pours back out (engine useBucket).
 use('seam-bucket', 'scoops water or lava (Delve hotbar)');
 for (const id of ['seam-bucket-water', 'seam-bucket-lava']) { src(id, 'a Seam Bucket scooped full'); use(id, 'poured in the Delve (water on lava sets obsidian)'); }
+// Map v2 (shared/delve/map-tools.model.ts): the Broken Astral Compass and the Rift Map Fragment.
+for (const tool of MAP_TOOLS) {
+  thing(tool.id);
+  for (const s of tool.sources) src(tool.id, s);
+  for (const u of tool.uses) use(tool.id, u);
+}
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).sells.add('Exchange'); }
 

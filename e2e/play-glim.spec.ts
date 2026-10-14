@@ -18,6 +18,7 @@
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import { blob, canvas, focusWorld, openPlay, playerX, seed, walk } from './play-helpers';
+import { DelveFixture } from './play-delve-fixtures';
 
 const say = (page: Page) => page.locator('.glim-say');
 const ask = (page: Page) => page.locator('.guide .guide-glim');
@@ -204,3 +205,48 @@ test.describe('Glim on a phone', () => {
     await expect(ask(page)).toHaveAttribute('aria-label', 'Pide una pista a Glim (1 de 3)');
   });
 });
+
+/**
+ * Map v2: a Delve mission's hint ladder has its third step. In the Skills
+ * Lodge's mission chip, the moth's third answer is "I'll mark it": Glim drops
+ * a temporary mark on the Delve map at the mission's target (the nearest
+ * shadow-root for Verrin's first mission), and the full map leads the way to it.
+ */
+for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]] as const) {
+  test.describe(`Glim's mark on the map (${label})`, () => {
+    test.use({ viewport: size, hasTouch: touch, isMobile: touch });
+
+    test('the third hint of a Delve mission marks its target on the Delve map', async ({ page }) => {
+      test.setTimeout(150_000);
+      const f = new DelveFixture().carve(14, 34, 6, 8).floor(14, 34, 9).camp(22, 8);
+      await seed(page, { ...MET, ...f.blobs() });
+      await openPlay(page, '?at=skills');
+      const chip = page.locator('section.place app-delve-mission-chip');
+      await expect(chip).toContainText('The Shadow Beneath', { timeout: 15000 });
+      const moth = chip.locator('.dmc__glim');
+      const mothBox = await moth.boundingBox();
+      expect(Math.min(mothBox!.width, mothBox!.height), 'the moth is a 44px target').toBeGreaterThanOrEqual(43.5);
+      for (const n of [1, 2, 3]) {
+        if (touch) await moth.tap(); else await moth.click();
+        await expect(chip.locator('.dmc__glim-line')).toContainText(`Hint ${n} of 3`);
+      }
+      await expect(chip.locator('.dmc__glim-line')).toContainText('mark it on your Delve map');
+      const glim = await blob<{ lastAt: Record<string, number> }>(page, 'godforge-glim');
+      expect(glim?.lastAt['mark.delve-verrin-shadow'] ?? 0).toBeGreaterThan(0);
+
+      // Down to the camp: the mark is on the map, on a shadow-root.
+      await openPlay(page, '?at=delve');
+      await page.getByRole('button', { name: /Descend to your camp/ }).click();
+      await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
+      await expect(canvas(page)).toHaveAttribute('data-glim-mark', /^\d+,\d+$/, { timeout: 10000 });
+      const [col, row] = (await canvas(page).getAttribute('data-glim-mark'))!.split(',').map(Number);
+      expect(f.kindAt(col, row)).toBe('shadow-root');
+      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); }
+      else await page.locator('.map-mini-open').tap();
+      await expect(page.locator('.map-full')).toBeVisible();
+      await expect(page.locator('.map-hint')).toContainText('Glim\'s mark');
+      await expect(page.locator('.map-legend')).toContainText('Glim\'s mark');
+      if (process.env['BOUNTY_SHOTS']) await page.screenshot({ path: `output/bounties/${label}-glim-mark.png` });
+    });
+  });
+}

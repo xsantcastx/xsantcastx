@@ -9,7 +9,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 1. **Water, lava, lakes, Fishing v1** — Delve & Beyond slice 1. *(built, awaiting merge: `docs/handoff/liquids-fishing.md`)*
 2. **UX follow-ups** — Material Vendor on the kit, Homestead + six surfaces in Spanish. *(in flight)*
 3. ~~**Story Act I framing**~~ (world & cast S2) — ✅ shipped: Prologue tab on the goals, the Act I card, keeper lines on the missions, the fresh mark, the act break, the Story tab (`docs/handoff/story-act1.md`).
-4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2 *(built, awaiting merge: `docs/handoff/endless-delve.md`)*; next: map pins/waypoints and the Board Herald's daily bounties (7.5).
+4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2 *(built, awaiting merge: `docs/handoff/endless-delve.md`)*; map pins + waypoints, the compass and the fragment, Glim's mark, and Pim Larkin's daily bounties (7.4–7.5) *(built, awaiting merge: `docs/handoff/bounties-map-v2.md`)*. Next: Phase 8, the Underhearth.
 5. ~~**NPC depth pass**~~ (world & cast S3) — ✅ built: names with role-title subtitles, four new keepers, act-aware lines, People of the Realms (`docs/handoff/npc-depth.md`).
 6. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
 
@@ -36,6 +36,11 @@ Reviewed daily; newest review on top of the log at the bottom.
 - Review new lore in `docs/world/lore-addendum.md`.
 
 ## Daily review log
+
+- **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
+  (drawn per player per day, 5–15 min of income, days counted never a streak, `economy-sim --bounties`), map pins
+  and a tracked way, the Broken Astral Compass and the Rift Map Fragment as map tools, Glim's hint step 3 (a mark on
+  the map). Next: Phase 8, the Underhearth.
 
 - **2026-10-14 (endless Delve)** — Phase 7 built (7.1–7.3, most of 7.4): the Delve goes on east and west of the
   untouched core in streamed sector columns, structures (waycaches, flooded shafts, ruins, dens, halls, lakes,

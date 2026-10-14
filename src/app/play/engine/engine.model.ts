@@ -311,6 +311,8 @@ export interface WorldActionEvent {
    * loses the block; it never stops the dig.
    */
   block?: PlaceableId;
+  /** A delve cell: the terrain node that broke ('cinder-vein'…), for the Board Herald's dig bounties. */
+  node?: string;
   /**
    * Set when a hunting-ground gathering node (GatherNodeDef) broke rather
    * than a delve cell: the node's id. The host books it as a skill action at
