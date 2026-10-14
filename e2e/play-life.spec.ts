@@ -159,7 +159,10 @@ function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
       // some figure stands within half a plate (≤ 100 px) of it.
       if (!f.keepers.some(k => Math.abs(k - x) <= 100)) { orphans.push(text); continue; }
       // Only an unpinned plate is centred on its keeper: those carry the keeper's x.
-      if (left <= 10 || right >= width - 10) continue;
+      // A plate pinned to an edge sits off its keeper's x; an unpinned one sits exactly on a
+      // keeper's floor shadow (the engine measures the plate once, so edge maths alone can drift
+      // by a few px once the webfont lands and a subtitle widens the plate).
+      if (left <= 10 || right >= width - 10 || !f.keepers.includes(x)) continue;
       if (!tagX.has(text)) tagX.set(text, []);
       tagX.get(text)!.push(x);
     }
