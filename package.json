@@ -32,29 +32,33 @@
   },
   "overrides": {
     "@angular/build": {
-      "undici": "^7.29.0"
+      "undici": "^7.29.1"
     },
     "@angular/cli": {
       "@hono/node-server": "^2.1.0",
-      "@modelcontextprotocol/sdk": "^1.30.0"
+      "@modelcontextprotocol/sdk": "^1.31.0"
     },
     "@lhci/cli": {
       "tmp": "^0.2.7",
-      "uuid": "^11.1.1"
+      "uuid": "^11.1.1",
+      "basic-ftp": "^6.2.3"
+    },
+    "@firebase/firestore": {
+      "@grpc/grpc-js": "^1.14.6"
     }
   },
   "dependencies": {
-    "@angular/animations": "^21.2.19",
-    "@angular/common": "^21.2.19",
-    "@angular/compiler": "^21.2.19",
-    "@angular/core": "^21.2.19",
+    "@angular/animations": "^21.2.25",
+    "@angular/common": "^21.2.25",
+    "@angular/compiler": "^21.2.25",
+    "@angular/core": "^21.2.25",
     "@angular/fire": "^21.0.0-rc.0",
-    "@angular/forms": "^21.2.19",
-    "@angular/platform-browser": "^21.2.19",
-    "@angular/platform-browser-dynamic": "^21.2.19",
-    "@angular/platform-server": "^21.2.19",
-    "@angular/router": "^21.2.19",
-    "@angular/ssr": "^21.2.20",
+    "@angular/forms": "^21.2.25",
+    "@angular/platform-browser": "^21.2.25",
+    "@angular/platform-browser-dynamic": "^21.2.25",
+    "@angular/platform-server": "^21.2.25",
+    "@angular/router": "^21.2.25",
+    "@angular/ssr": "^21.2.26",
     "firebase": "^12.4.0",
     "rxjs": "~7.8.0",
     "three": "^0.185.1",
@@ -62,9 +66,9 @@
     "zone.js": "~0.15.1"
   },
   "devDependencies": {
-    "@angular/build": "^21.2.19",
-    "@angular/cli": "^21.2.23",
-    "@angular/compiler-cli": "^21.2.19",
+    "@angular/build": "^21.2.26",
+    "@angular/cli": "^21.2.26",
+    "@angular/compiler-cli": "^21.2.25",
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.60.0",
     "@types/jasmine": "~4.3.0",
