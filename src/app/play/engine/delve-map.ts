@@ -24,7 +24,7 @@ export function revealAround(t: Terrain, fog: Uint8Array, col: number, row: numb
   let changed = false;
   const span = Math.ceil(radius), r2 = radius * radius;
   for (let r = Math.max(0, row - span); r <= Math.min(t.rows - 1, row + span); r++) {
-    for (let c = Math.max(0, col - span); c <= Math.min(t.cols - 1, col + span); c++) {
+    for (let c = Math.max(t.colLo, col - span); c <= Math.min(t.colHi - 1, col + span); c++) {
       if ((c - col) * (c - col) + (r - row) * (r - row) > r2) continue;
       const i = t.index(c, r), bit = 1 << (i & 7);
       if (fog[i >> 3] & bit) continue;
@@ -74,7 +74,30 @@ export function paintMap(t: Terrain, fog: Uint8Array, data: Uint8ClampedArray): 
   }
 }
 
-export type MapMarkerKind = 'keeper' | 'camp' | 'chest' | 'torch' | 'inscription' | 'shaft';
+/** The back-wall map colour per biome (a dug cell). */
+export function mapWalls(biomes: Terrain['biomes']): number[][] { return biomes.map(biome => rgb(biome.wall[0]).map(v => Math.min(255, v + 18))); }
+/** A sector the Delve took back (regrowth): its explored cells, muted toward this. */
+const REGROWN_RGB = [90, 82, 104] as const;
+/**
+ * One map pixel (the endless Delve paints column by column, sector-world.ts):
+ * the same colours as `paintMap`, and a regrown sector's cells half-way to a
+ * muted grey-violet ("the Delve took this back"). Pure apart from `data`.
+ */
+export function mapPixel(kind: number, base: number, seen: boolean, biome: number, walls: readonly (readonly number[])[], regrown: boolean, data: Uint8ClampedArray, o: number): void {
+  let color: readonly number[];
+  if (!seen) color = FOG_RGB;
+  else if (kind !== 0) color = NODE_RGB[kind];
+  else if (base !== 0) color = walls[biome] ?? CAVE_RGB;
+  else color = CAVE_RGB;
+  if (seen && regrown) {
+    data[o] = (color[0] + REGROWN_RGB[0]) >> 1; data[o + 1] = (color[1] + REGROWN_RGB[1]) >> 1; data[o + 2] = (color[2] + REGROWN_RGB[2]) >> 1;
+  } else { data[o] = color[0]; data[o + 1] = color[1]; data[o + 2] = color[2]; }
+  data[o + 3] = 255;
+}
+/** Fog, for columns the map has no picture of. */
+export function fogPixel(data: Uint8ClampedArray, o: number): void { data[o] = FOG_RGB[0]; data[o + 1] = FOG_RGB[1]; data[o + 2] = FOG_RGB[2]; data[o + 3] = 255; }
+
+export type MapMarkerKind = 'keeper' | 'camp' | 'chest' | 'torch' | 'inscription' | 'shaft' | 'shrine';
 export interface MapMarker { kind: MapMarkerKind; col: number; row: number }
 
 const CAMP = TERRAIN_NODE_LIST.findIndex(node => node.id === 'camp');
@@ -88,8 +111,7 @@ export function mapMarkers(t: Terrain, fog: Uint8Array, keeper: { col: number; r
     const k = t.kind[i];
     if (k !== CAMP && k !== CHEST && k !== TORCH && !t.inscriptions.has(i)) continue;
     if (!isSeen(fog, i)) continue;
-    const col = i % t.cols, row = (i - col) / t.cols;
-    out.push({ kind: k === CAMP ? 'camp' : k === CHEST ? 'chest' : k === TORCH ? 'torch' : 'inscription', col, row });
+    out.push({ kind: k === CAMP ? 'camp' : k === CHEST ? 'chest' : k === TORCH ? 'torch' : 'inscription', col: t.colOf(i), row: t.rowOf(i) });
   }
   for (const col of shafts) out.push({ kind: 'shaft', col, row: -1 });
   out.push({ kind: 'keeper', ...keeper });
@@ -105,7 +127,7 @@ export function mapMarkers(t: Terrain, fog: Uint8Array, keeper: { col: number; r
 export function pathThrough(t: Terrain, fog: Uint8Array, from: number, to: number): number[] | null {
   const n = t.kind.length;
   if (from < 0 || to < 0 || from >= n || to >= n) return null;
-  const open = (i: number) => i === to || i === from || (isSeen(fog, i) && (!t.solid(i % t.cols, (i / t.cols) | 0) || isOneWay(t, i % t.cols, (i / t.cols) | 0)));
+  const open = (i: number) => i === to || i === from || (isSeen(fog, i) && (!t.solid(t.colOf(i), t.rowOf(i)) || isOneWay(t, t.colOf(i), t.rowOf(i))));
   const prev = new Int32Array(n).fill(-1);
   const queue = new Int32Array(n);
   let head = 0, tail = 0;
@@ -113,8 +135,8 @@ export function pathThrough(t: Terrain, fog: Uint8Array, from: number, to: numbe
   while (head < tail) {
     const i = queue[head++];
     if (i === to) break;
-    const col = i % t.cols;
-    const next = [col > 0 ? i - 1 : -1, col < t.cols - 1 ? i + 1 : -1, i - t.cols, i + t.cols];
+    const col = t.colOf(i), row = t.rowOf(i);
+    const next = [t.inside(col - 1, row) ? t.index(col - 1, row) : -1, t.inside(col + 1, row) ? t.index(col + 1, row) : -1, i - t.cols, i + t.cols];
     for (const j of next) {
       if (j < 0 || j >= n || prev[j] !== -1 || !open(j)) continue;
       prev[j] = i; queue[tail++] = j;
@@ -146,15 +168,34 @@ export interface MapSource {
   keeper: { col: number; row: number };
   /** Columns of the Delve's ways out at the surface. */
   shafts: readonly number[];
+  /** The endless Delve: the whole explored world, beyond the loaded ring `t` (sector-world.ts). */
+  world?: WorldMap;
+}
+
+/** The endless Delve's map, in world columns (map v2: drawn column by column from sector pictures). */
+export interface WorldMap {
+  /** World columns the full map spans when fitted: [col0, col1) (the explored sectors and the core). */
+  col0: number;
+  col1: number;
+  /** Sector columns with anything explored, west to east. */
+  sectors: readonly number[];
+  /** Paint world columns [c0, c1), every row, into `data` (row stride (c1 − c0) × 4). Unknown columns paint as fog. */
+  paint(c0: number, c1: number, data: Uint8ClampedArray): void;
+  /** The explored markers in [c0, c1). */
+  markers(c0: number, c1: number): MapMarker[];
+  /** The camp, wherever it is (the way-to-camp line), or null. */
+  camp: { col: number; row: number } | null;
 }
 
 /** Marker colours from the art bible's world palettes (style guide §5: aged gold, the camp's fire, rune violet), one per kind. The full map's legend reads them too. */
 export const MAP_MARKER_COLORS: Readonly<Record<MapMarkerKind, string>> = {
-  keeper: '#f8e8c8', camp: '#ff9b4f', chest: '#a5793a', torch: '#ffd08a', inscription: '#d9b8ff', shaft: '#9db8a8',
+  keeper: '#f8e8c8', camp: '#ff9b4f', chest: '#a5793a', torch: '#ffd08a', inscription: '#d9b8ff', shaft: '#9db8a8', shrine: '#b88cff',
 };
 
 /** A reusable cell picture per terrain (one canvas, repainted per draw). */
 const pictures = new WeakMap<Terrain, { canvas: HTMLCanvasElement; image: ImageData }>();
+/** The endless map's picture: one canvas, sized to the columns in view. */
+let worldPicture: { canvas: HTMLCanvasElement; image: ImageData } | null = null;
 
 /**
  * Draw the map into `c`: the cell picture scaled nearest-neighbour, the way to
@@ -162,6 +203,7 @@ const pictures = new WeakMap<Terrain, { canvas: HTMLCanvasElement; image: ImageD
  * cells (0 when there is no explored way, -1 when there is no camp).
  */
 export function drawDelveMap(c: CanvasRenderingContext2D, source: MapSource, view: MapView): number {
+  if (source.world) return drawWorldMap(c, source, source.world, view);
   const { t, fog } = source;
   let picture = pictures.get(t);
   if (!picture) {
@@ -211,12 +253,18 @@ export function drawDelveMap(c: CanvasRenderingContext2D, source: MapSource, vie
       }
     }
   }
+  drawMarkers(c, markers, ox, oy, s);
+  c.restore();
+  return length;
+}
+
+/** The markers as pixel glyphs: a dark rim, then the colour (reads on any rock). */
+function drawMarkers(c: CanvasRenderingContext2D, markers: readonly MapMarker[], ox: number, oy: number, s: number): void {
   const g = Math.max(3, s + 2);
   for (const marker of markers) {
     const x = Math.round(ox + (marker.col + .5) * s), y = Math.round(oy + (marker.row + .5) * s);
     const size = marker.kind === 'keeper' || marker.kind === 'camp' ? g + 2 : g;
     const half = Math.floor(size / 2);
-    // A dark rim, then the colour: reads on any rock.
     c.fillStyle = '#140a1f';
     c.fillRect(x - half - 1, y - half - 1, size + 2, size + 2);
     c.fillStyle = MAP_MARKER_COLORS[marker.kind];
@@ -227,6 +275,67 @@ export function drawDelveMap(c: CanvasRenderingContext2D, source: MapSource, vie
       c.fillRect(x - arm / 2 | 0, y - half, arm, size);
     } else c.fillRect(x - half, y - half, size, size);
   }
+}
+
+/**
+ * The endless Delve's map (map v2): only the world columns in view are
+ * painted, column by column from the sector pictures (sector-world.ts), so a
+ * map of a hundred explored sectors costs what is on screen. The way to camp
+ * runs through the loaded ring when the camp is in it, else a dotted straight
+ * line points the way.
+ */
+function drawWorldMap(c: CanvasRenderingContext2D, source: MapSource, world: WorldMap, view: MapView): number {
+  const { t, fog } = source;
+  const s = Math.max(1, Math.round(view.scale));
+  const ox = Math.round(view.width / 2 - view.centerCol * s), oy = Math.round(view.height / 2 - view.centerRow * s);
+  // Every column in view (unexplored ones paint as fog): the picture keeps one width while the view does.
+  const c0 = Math.floor(-ox / s) - 1, c1 = Math.ceil((view.width - ox) / s) + 1;
+  c.save();
+  c.imageSmoothingEnabled = false;
+  c.fillStyle = `rgb(${FOG_RGB.join(',')})`;
+  c.fillRect(0, 0, view.width, view.height);
+  c.fillStyle = '#2c3a4e';
+  c.fillRect(ox + world.col0 * s, oy - s * 2, (world.col1 - world.col0) * s, s * 2);
+  const w = c1 - c0;
+  if (w > 0) {
+    if (!worldPicture || worldPicture.image.width !== w || worldPicture.canvas.height !== t.rows) {
+      // Sized to the columns in view; reused while the view keeps its width (no allocation per HUD tick).
+      const canvas = worldPicture?.canvas ?? document.createElement('canvas');
+      canvas.width = Math.max(w, canvas.width); canvas.height = t.rows;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) { c.restore(); return -1; }
+      worldPicture = { canvas, image: ctx.createImageData(w, t.rows) };
+    }
+    world.paint(c0, c1, worldPicture.image.data);
+    worldPicture.canvas.getContext('2d')!.putImageData(worldPicture.image, 0, 0);
+    c.drawImage(worldPicture.canvas, 0, 0, w, t.rows, ox + c0 * s, oy, w * s, t.rows * s);
+  }
+  const markers = world.markers(c0, c1);
+  for (const col of source.shafts) markers.push({ kind: 'shaft', col, row: -1 });
+  markers.push({ kind: 'keeper', ...source.keeper });
+  let length = -1;
+  const camp = world.camp;
+  if (view.path && camp) {
+    const dot = Math.max(1, Math.round(s / 3));
+    c.fillStyle = '#e8c898';
+    const inRing = t.inside(camp.col, camp.row) && t.inside(source.keeper.col, Math.max(0, Math.min(t.rows - 1, source.keeper.row)));
+    const path = inRing ? pathThrough(t, fog, t.index(source.keeper.col, Math.max(0, Math.min(t.rows - 1, source.keeper.row))), t.index(camp.col, camp.row)) : null;
+    if (path) {
+      length = path.length - 1;
+      for (let n = 1; n < path.length - 1; n += 2) {
+        const col = t.colOf(path[n]), row = t.rowOf(path[n]);
+        c.fillRect(ox + col * s + (s - dot) / 2 | 0, oy + row * s + (s - dot) / 2 | 0, dot, dot);
+      }
+    } else {
+      length = 0;
+      const steps = Math.max(1, Math.round(Math.hypot(camp.col - source.keeper.col, camp.row - source.keeper.row) / 3));
+      for (let n = 1; n < steps; n++) {
+        const col = source.keeper.col + (camp.col - source.keeper.col) * n / steps, row = source.keeper.row + (camp.row - source.keeper.row) * n / steps;
+        c.fillRect(Math.round(ox + (col + .5) * s - dot / 2), Math.round(oy + (row + .5) * s - dot / 2), dot, dot);
+      }
+    }
+  }
+  drawMarkers(c, markers, ox, oy, s);
   c.restore();
   return length;
 }

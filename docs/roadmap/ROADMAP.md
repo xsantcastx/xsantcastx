@@ -9,7 +9,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 1. **Water, lava, lakes, Fishing v1** — Delve & Beyond slice 1. *(built, awaiting merge: `docs/handoff/liquids-fishing.md`)*
 2. **UX follow-ups** — Material Vendor on the kit, Homestead + six surfaces in Spanish. *(in flight)*
 3. ~~**Story Act I framing**~~ (world & cast S2) — ✅ shipped: Prologue tab on the goals, the Act I card, keeper lines on the missions, the fresh mark, the act break, the Story tab (`docs/handoff/story-act1.md`).
-4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2, daily bounties.
+4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2 *(built, awaiting merge: `docs/handoff/endless-delve.md`)*; next: map pins/waypoints and the Board Herald's daily bounties (7.5).
 5. ~~**NPC depth pass**~~ (world & cast S3) — ✅ built: names with role-title subtitles, four new keepers, act-aware lines, People of the Realms (`docs/handoff/npc-depth.md`).
 6. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
 
@@ -37,6 +37,10 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## Daily review log
 
+- **2026-10-14 (endless Delve)** — Phase 7 built (7.1–7.3, most of 7.4): the Delve goes on east and west of the
+  untouched core in streamed sector columns, structures (waycaches, flooded shafts, ruins, dens, halls, lakes,
+  lava basins, rift shrines, field notes), save v2 (IndexedDB + 16 cloud region slots, regrowth), the world map.
+  Next: map pins + bounties, then Phase 8 (the Underhearth).
 - **2026-10-14 (cast)** — Built: **NPC depth** (S3): Mara Voss, Edrin Kade, Ilyra Venn, Tomas Rill, Sera Quill, Nox Aster, Rook Sable, Amina Thorne, Kesh Arbo and Siv Moss at their stations; every keeper's lines follow the story and what you've done there. Next: Glim's Atlas (S4).
 - **2026-10-14 (story)** — Shipped: **Act I framing** (Prologue + Act I, the fresh mark, the Story tab, `godforge-story`). Next: NPC depth (S3) reads the beats.
 - **2026-10-14 (later)** — Phase 6 slice 1 built: water and lava (10 Hz cellular flow, obsidian, buckets,

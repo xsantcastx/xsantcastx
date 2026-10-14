@@ -60,7 +60,7 @@ async function cellPoint(page: Page, col: number, row: number): Promise<{ x: num
     const parent = c.parentElement!;
     const w = Math.max(320, parent.clientWidth || rect.width), h = Math.max(300, parent.clientHeight || rect.height);
     const scale = h / 720, viewport = w / scale;
-    const camera = Math.max(0, Math.min(a.areaWidth - viewport, a.px - viewport * .38));
+    const camera = a.px - viewport * .38; // endless Delve: no wall either side of the core, never clamped there
     const cameraY = Math.max(0, Math.min(a.bottom + 40 - 720, a.feetY - 720 * .58));
     return { x: rect.left + (a.wx - camera) * scale * (rect.width / w), y: rect.top + (a.wy - cameraY) * scale * (rect.height / h) };
   }, { px, feetY: FEET, wx: (col + .5) * CELL, wy: SPEC.top + (row + .5) * CELL, areaWidth: SPEC.cols * CELL, bottom: SPEC.top + SPEC.rows * CELL });

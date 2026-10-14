@@ -8,7 +8,8 @@
  * ─────────────────────────────────────────────────────────────────────────────
  *
  *   {
- *     version: 1,
+ *     version: 2,                 // 2 since the endless Delve; a v1 save reads the same. `areas` IS the core:
+ *                                 // every sector outside it lives in region documents (delve-region.model.ts).
  *     seed: 2894011733,          // uint32, generated once per player
  *     createdAt: 1760000000000,  // epoch ms the seed was rolled; earliest wins a merge
  *     areas: {
@@ -46,7 +47,7 @@
  */
 
 export const DELVE_KEY = 'godforge-delve';
-export const DELVE_SAVE_VERSION = 1;
+export const DELVE_SAVE_VERSION = 2;
 /** Most cells one area's diff may hold: the Delve's whole grid (120 × 56) with room to grow. */
 export const DELVE_MAX_CELLS = 16_384;
 /** Node indices are bytes (terrain.ts TERRAIN_NODE_LIST). */
@@ -68,7 +69,8 @@ export interface DelveAreaSave {
 }
 
 export interface DelveSave {
-  version: 1;
+  /** 2 since the endless Delve (its sectors live in region documents: delve-region.model.ts); 1 is read the same. */
+  version: 1 | 2;
   seed: number;
   createdAt: number;
   areas: Record<string, DelveAreaSave>;

@@ -55,6 +55,14 @@ export const DELVE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.delve.action.camp': { en: 'Craft at your camp', es: 'Fabricar en tu campamento' },
   'play.delve.action.enterTop': { en: 'Enter the Delve at the top', es: 'Entrar en la Sima por arriba' },
   'play.delve.action.enter': { en: 'Enter the Ember Delve', es: 'Entrar en la Sima de Brasas' },
+  'play.delve.action.shrine': { en: 'Touch the rift shrine', es: 'Tocar el santuario de la grieta' },
+
+  // ── The endless Delve (Phase 7): structures, field notes, rift shrines, regrowth ──
+  'play.delve.fieldNoteTrace': { en: 'Someone left a note in the rock for whoever came next.', es: 'Alguien dejo una nota en la roca para quien viniera despues.' },
+  'play.delve.fieldNote.new': { en: 'A field note, found. ', es: 'Una nota de campo, encontrada. ' },
+  'play.delve.shrine.touched': { en: 'The shrine shows you the tunnels round it. Open the map (M) to see them.', es: 'El santuario te muestra los tuneles a su alrededor. Abre el mapa (M) para verlos.' },
+  'play.delve.shrine.first': { en: 'A rift the fracture scattered: a passage created by difference. +{{n}} Delving XP', es: 'Una grieta que disperso la fractura: un paso creado por la diferencia. +{{n}} XP de Exploracion' },
+  'play.delve.regrown': { en: 'The Delve keeps what is held. A torch, a block, a chest, a camp: these it leaves. An empty tunnel it takes back, slowly, and fills with something new. Mark what you mean to keep.', es: 'La Sima guarda lo que se sostiene. Una antorcha, un bloque, un cofre, un campamento: eso lo deja. Un tunel vacio lo recupera, despacio, y lo llena de algo nuevo. Marca lo que quieras conservar.' },
   'play.delve.yourDelve': { en: 'Your Delve', es: 'Tu Sima' },
   'play.delve.camp.title': { en: 'Your camp', es: 'Tu campamento' },
   'play.delve.camp.kicker': { en: 'Craft what you can now', es: 'Fabrica lo que puedas ahora' },
@@ -108,6 +116,7 @@ export const DELVE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.map.legend.torch': { en: 'Torch', es: 'Antorcha' },
   'play.map.legend.inscription': { en: 'Inscription', es: 'Inscripcion' },
   'play.map.legend.shaft': { en: 'Way out', es: 'Salida' },
+  'play.map.legend.shrine': { en: 'Rift shrine', es: 'Santuario de la grieta' },
 
   // ── Liquids (Phase 6): water, lava, obsidian, buckets ──
   'play.delve.liquid.obsidian': { en: 'Water meets lava with a hiss, and sets into obsidian.', es: 'El agua toca la lava con un siseo y se vuelve obsidiana.' },

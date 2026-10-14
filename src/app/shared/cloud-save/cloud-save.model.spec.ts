@@ -624,6 +624,8 @@ describe('the registry', () => {
       'godforge-crafting',
       'godforge-delve',
       'godforge-delve-lore',
+      // The endless Delve's 16 region slots (delve-region.model.ts REGION_SLOT_KEYS).
+      ...Array.from({ length: 16 }, (_, n) => `godforge-delve-r${n}`).sort(),
       'godforge-economy',
       'godforge-exchange',
       'godforge-explorers',
