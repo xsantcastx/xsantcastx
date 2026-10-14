@@ -1636,6 +1636,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
   font: 700 10px/1 Orbitron, sans-serif;
   font-style: normal;
 }
+.glim-say__mono--face { overflow: hidden; }
+.glim-say__mono--face img { width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; object-position: 50% 100%; }
 /*
  * The act-boundary card: a pixel-framed page over a dimmed world, three short
  * paragraphs at most, one Continue. Chunky corner studs and a stepped double

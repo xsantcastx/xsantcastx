@@ -120,6 +120,7 @@ import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.mode
 import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
 import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
+import { npcPortrait } from '../shared/keeper-look/npc-portrait';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
 import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
 import type { PanelEntry } from './world/panel-registry';
@@ -1272,11 +1273,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.focusWorld();
   }
   /** Who says the line on screen: Glim (null), or the keeper whose story line it is. */
-  get sayer(): { name: string; monogram: string; color: string } | null {
+  get sayer(): { name: string; monogram: string; color: string; portrait: string | null } | null {
     const speaker = this.glimVoice.speech?.story?.speaker;
     if (!speaker || speaker === 'glim') return null;
     const npc = npcById(speaker);
-    return npc ? { name: npc.name, monogram: npc.monogram, color: npc.color } : null;
+    // The pixel Keeper's face (cached per id); the monogram stays for the faceless.
+    return npc ? { name: npc.name, monogram: npc.monogram, color: npc.color, portrait: npcPortrait(npc.id) } : null;
   }
   /** The chapter the goal line belongs to (the Prologue wraps the four first goals). */
   get chapterTag(): string {
