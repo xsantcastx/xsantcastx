@@ -206,6 +206,24 @@ export class HomesteadScene implements HomesteadView {
   /** Pending receipts, for the panel's "since you were last here". Read-only copy. */
   pending(id: HomesteadBuildingId): Pending { return { ...this.ledger[id] }; }
 
+  /** Every building's receipt summed (the Mirror Slate's Homestead tab). Read-only. */
+  pendingAll(): Pending {
+    const total: Pending = { gold: 0, runes: 0, returns: 0 };
+    for (const p of Object.values(this.ledger)) { total.gold += p.gold; total.runes += p.runes; total.returns += p.returns; }
+    return total;
+  }
+
+  /** Hand over every receipt at once (the Slate's Collect): zeroes them and returns what they held. Display only: already banked. */
+  collectAll(): Pending {
+    const total = this.pendingAll();
+    const wall = Date.now();
+    for (const [id, p] of Object.entries(this.ledger) as [HomesteadBuildingId, Pending][]) {
+      p.gold = 0; p.runes = 0; p.returns = 0;
+      this.lastCollect[id] = wall;
+    }
+    return total;
+  }
+
   /** Add to a building's "since you were last here" receipt. Display only: the value is already banked. */
   addPending(id: HomesteadBuildingId, add: Partial<Pending>): void {
     const p = this.ledger[id];

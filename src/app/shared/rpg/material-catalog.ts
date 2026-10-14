@@ -119,6 +119,9 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   // Map v2's two map tools (shared/delve/map-tools.model.ts).
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',
+  // The Mirror Slate's two panes (shared/slate/slate-items.model.ts).
+  'mirror-slate': 'Mirror Slate',
+  'mirror-slate-ii': 'Mirror Slate II',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

@@ -137,6 +137,8 @@ const { DELVE_INSCRIPTIONS } = L('shared/delve/delve-lore.model.ts');
 const FISHING = L('shared/fishing/fishing.model.ts');
 // Map v2's two canon map tools (the compass and the fragment).
 const { MAP_TOOLS } = L('shared/delve/map-tools.model.ts');
+// The Mirror Slate's two panes and what Kael binds tier II from.
+const { SLATE_ITEMS, SLATE_UPGRADE_INPUTS, MIRROR_SLATE_II_ID } = L('shared/slate/slate-items.model.ts');
 
 // Ids in un-exported tables, read as text.
 function objectKeys(file, constName) {
@@ -250,6 +252,13 @@ for (const tool of MAP_TOOLS) {
   for (const s of tool.sources) src(tool.id, s);
   for (const u of tool.uses) use(tool.id, u);
 }
+// The Mirror Slate (shared/slate/slate-items.model.ts): Lune's gift or sale, Kael's binding.
+for (const item of SLATE_ITEMS) {
+  thing(item.id);
+  for (const s of item.sources) src(item.id, s);
+  for (const u of item.uses) use(item.id, u);
+}
+for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR_SLATE_II_ID} (SlateService.upgrade)`);
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).sells.add('Exchange'); }
 

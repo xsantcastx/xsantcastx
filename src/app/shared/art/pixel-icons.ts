@@ -1,6 +1,6 @@
 /**
  * pixel-icons.ts — procedural 16 × 16 pixel-art icons for the Fishing and
- * Liquids items, until the commissioned I1 icons land
+ * Liquids items and the Mirror Slate, until the commissioned I1 icons land
  * (docs/art-commissions/fishing-liquids.md). Drawn the Terraria way the style
  * guide asks for (§4): a dark outline that is never black, a lit top-left, a
  * shadowed belly, a one-pixel shine. Each icon is an SVG of crisp rects in a
@@ -246,6 +246,26 @@ const REEL: Shape = [
   '................',
 ];
 
+/** The Mirror Slate: moon-mirror glass with its crack, in a brass bezel (lit top-left, shadowed right and bottom). */
+const SLATE: Shape = [
+  '................',
+  '..oooooooooooo..',
+  '..ollllllllllo..',
+  '..oleeggggggdo..',
+  '..oleggggggfdo..',
+  '..olgggggcffdo..',
+  '..olggggcfffdo..',
+  '..olgggcffffdo..',
+  '..olggcfffffdo..',
+  '..olgfffffffdo..',
+  '..olffffffffdo..',
+  '..olffffffffdo..',
+  '..oddddddddddo..',
+  '..oooooooooooo..',
+  '................',
+  '................',
+];
+
 const BLOCK: Shape = [
   'oooooooooooooooo',
   'ollllllblllllllo',
@@ -294,6 +314,9 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   'tackle-box': { shape: CRATE, palette: { b: '#2e5a3a', l: '#7fb04a', f: '#e8c47a', d: '#1a3a22', e: '#e8c47a' } },
   'anglers-patience': { shape: KNOT, palette: { b: '#6a4a2c', l: '#a6845a', f: '#7fb04a', d: '#3a2614' } },
   'lodge-reel': { shape: REEL, palette: { b: '#5a3f2a', l: '#d8b07a', f: '#8a6a40', d: '#2e1f14', e: '#7fb04a' } },
+  // The Mirror Slate (shared/slate): tier I and Kael's tier II, whose glass wakes violet.
+  'mirror-slate': { shape: SLATE, palette: { l: '#e8c898', d: '#a5793a', g: '#d8dcf0', f: '#33263a', e: '#ffffff', c: '#8a90b0' } },
+  'mirror-slate-ii': { shape: SLATE, palette: { l: '#f8e8c8', d: '#a5793a', g: '#d8dcf0', f: '#7b4fc0', e: '#ffffff', c: '#c9a0ff' }, glow: '#c9a0ff' },
   'obsidian-block': { shape: BLOCK, palette: { b: '#30243f', l: '#62527f', d: '#181024', f: '#b49cff', e: '#a48bff' } },
 };
 

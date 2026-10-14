@@ -88,6 +88,8 @@ export const QUEST_STACKS: ReadonlySet<string> = new Set([
   'kaels-hammer', 'godforge-fragment', 'shadow-root-cutting', 'rift-key',
   // The Worn Rod: handed to every Keeper, soulbound, like the quest finds it takes no slot.
   'worn-rod',
+  // The Mirror Slate (shared/slate): a carried key item, never a slot.
+  'mirror-slate', 'mirror-slate-ii',
 ]);
 
 /**

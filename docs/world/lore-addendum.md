@@ -1044,3 +1044,34 @@ presence").
   diamond on the map for half an hour, at the mission's target: a place, never
   what a carving says (the Archivist's rule stands). Builds on: world-and-cast
   §4 (Glim keeps the maps; "A hint is a kindness. An answer is a theft.").
+
+### The Mirror Slate (2026-10-14)
+
+**Shipped — owner reviews in play.** Builds on Canon (Umbral: the Nocturne
+Archive "beneath a fractured moon mirror"), Lune Coyne (above: *Lune* for that
+mirror, the Croupier who prints the odds anyway), Kael the Broken Flame (the
+smith who binds what the realms break) and Eclipse Ascent's lore line ("From the
+Archive's roof the fractured moon mirror…").
+
+- **What it is.** When the moon mirror over the Archive cracked, the pieces kept
+  showing what they had been facing. Lune swept the shards that had faced her
+  tables into a drawer; Kael, who cannot leave broken glass alone, bound a few in
+  brass. Lore line (Collection Log, Codex): *A palm of the Archive's moon mirror,
+  cut where it cracked and bound in Kael's brass. It shows what it was facing
+  when it broke: the tables, and whatever you left burning at home.*
+- **How a Keeper gets one.** Lune hands one over after ten plays at her four
+  tables ("Ten plays at my tables and I hand you a Slate of the Archive's
+  glass."), or sells it to anyone in a hurry. Her line once it is in your pocket:
+  "The Slate in your pocket is my tables in Kael's brass. Same odds, printed." The
+  odds do not change in a pocket: the Slate shows her tables, it does not copy
+  them.
+- **The second face.** Kael can wake the glass's other face with Grotto light,
+  Delve slag and obsidian: "Lune's glass, my brass. Bring Glowcap, slag and
+  obsidian; I'll wake its other face." (a new canon line for Kael, at the Rune
+  Forge). Lore line: *Kael woke the glass's other face with Grotto light and Delve
+  slag. Now it also remembers where you marked the dark, and what Pim read off
+  the board this morning.*
+- **What it will not do.** It shows; it does not reach. Nothing is crafted, sold
+  or traded through glass: the Bench, the Market, the Exchange and the Vendor
+  stay where they stand, and the Slate only says where to walk. It also goes dark
+  when the Keeper's hands are busy (a fight, a line in the water, a story told).
