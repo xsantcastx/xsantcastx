@@ -1,6 +1,6 @@
-<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -428,7 +428,7 @@
     <div class="touch-move">
       <button type="button" class="tb tb--left" [attr.aria-label]="t('play.hud.touch.left')" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)"><span class="tl">{{ t('play.hud.touch.left') }}</span><i class="tri" aria-hidden="true"></i></button>
       <button type="button" class="tb tb--right" [attr.aria-label]="t('play.hud.touch.right')" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)"><span class="tl">{{ t('play.hud.touch.right') }}</span><i class="tri" aria-hidden="true"></i></button>
-      @if (state.delve) {
+      @if (state.delve || state.climbing) {
         <button type="button" class="tb tb--down tb--phone" [attr.aria-label]="t('play.hud.touch.down')" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)"><span class="tl">{{ t('play.hud.touch.down') }}</span><i class="tri" aria-hidden="true"></i></button>
       }
     </div>
