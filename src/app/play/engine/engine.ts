@@ -4,6 +4,7 @@ import { LifeFrame, TownLife } from './town-life';
 import type { KeeperContext } from '../world/keeper-lines';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { CREATURE_ART, CREATURE_PIXEL, creatureFrame, CreaturePainter } from './creature-pixel';
+import { PropPainter } from './prop-pixel';
 import { keeperAction, type KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { lookFromSeed, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
@@ -278,6 +279,8 @@ export class SeamworksEngine {
   private readonly peerPainters = new Map<string, KeeperPainter>();
   /** Pixel creatures (creature-pixel.ts), one painter per creature key; null = keep the sheet / rig. */
   private readonly creaturePainters = new Map<string, CreaturePainter | null>();
+  /** Pixel props (prop-pixel.ts): stalls, waystone, arches, nodes, coins. Null without a DOM: the vector fallbacks draw. */
+  private readonly props: PropPainter | null = typeof document !== 'undefined' && typeof document.createElement === 'function' ? new PropPainter() : null;
   /** Where each creature was last drawn, to tell a stride from a breath. */
   private readonly creatureLastX = new WeakMap<Monster, number>();
   /** The pixel Keeper paints into small canvases; without a DOM (the node harness) Keepers keep the rig. */
@@ -3950,17 +3953,23 @@ export class SeamworksEngine {
         if (!this.art(station.art, x - 58, FLOOR - 92, 116, 92)) this.art('ore', x - 58, FLOOR - 92, 116, 92);
         break;
       case 'quest':
-        if (station.id === 'beacon') {
+        if (station.id === 'beacon' && this.props) {
+          // The lamp's halo is the engine's light, not the sprite's.
+          c.save(); c.shadowColor = this.restored ? '#b8e6ec' : '#f29b68'; c.shadowBlur = this.blur(24);
+          this.props.beacon(c, x, FLOOR, this.restored);
+          c.restore();
+        } else if (station.id === 'beacon') {
           c.fillStyle = '#423f51'; c.fillRect(x - 20, FLOOR - 160, 40, 160);
           c.shadowColor = this.restored ? '#b8e6ec' : '#f29b68'; c.shadowBlur = this.blur(35);
           c.fillStyle = this.restored ? '#d5fffa' : '#b96d55'; c.beginPath(); c.arc(x, FLOOR - 173, 20, 0, Math.PI * 2); c.fill(); c.shadowBlur = 0;
         } else {
-          c.fillStyle = '#493543'; c.fillRect(x - 46, FLOOR - 60, 92, 60);
-          c.fillStyle = '#ffaf62'; c.fillRect(x - 34, FLOOR - 52, 68, 8);
+          if (this.props) this.props.pedestal(c, x, FLOOR);
+          else { c.fillStyle = '#493543'; c.fillRect(x - 46, FLOOR - 60, 92, 60); c.fillStyle = '#ffaf62'; c.fillRect(x - 34, FLOOR - 52, 68, 8); }
           if (!this.art(station.art, x - 35, FLOOR - 160, 70, 95)) this.art('blade', x - 35, FLOOR - 160, 70, 95);
         }
         break;
       case 'passage':
+        if (this.props) { this.props.arch(c, x, FLOOR, this.restored); break; }
         c.strokeStyle = this.restored ? '#99e3cb' : '#574658'; c.lineWidth = 12; c.beginPath(); c.arc(x, FLOOR - 70, 48, Math.PI, 0); c.lineTo(x + 48, FLOOR); c.moveTo(x - 48, FLOOR - 70); c.lineTo(x - 48, FLOOR); c.stroke();
         break;
       case 'waystone':
@@ -3991,7 +4000,11 @@ export class SeamworksEngine {
       c.beginPath(); c.ellipse(x, FLOOR + 2, def.kind === 'wood' ? 58 : 44, 10, 0, 0, Math.PI * 2); c.fill();
       c.globalAlpha = 1;
     } else c.globalAlpha = .55;
-    if (def.kind === 'wood') {
+    if (this.props) {
+      if (def.kind === 'wood') this.props.tree(c, x, FLOOR, ready);
+      else if (def.kind === 'ore') this.props.outcrop(c, x, FLOOR, ready, glow);
+      else this.props.herbs(c, x, FLOOR, ready, glow);
+    } else if (def.kind === 'wood') {
       const h = ready ? 150 : 34;
       c.fillStyle = '#4a3324'; c.fillRect(x - 11, FLOOR - h, 22, h);
       c.fillStyle = '#7a5a36'; c.fillRect(x - 11, FLOOR - h, 4, h);
@@ -4040,6 +4053,13 @@ export class SeamworksEngine {
     const x = station.x;
     const half = (station.width ?? 150) / 2;
     c.save();
+    if (this.props) {
+      this.props.stall(c, x, FLOOR, half * 2, hot);
+      if (!this.art(station.art, x - 27, FLOOR - 135, 54, 54)) { c.fillStyle = '#c2a26a'; c.fillRect(x - 8, FLOOR - 116, 16, 16); }
+      if (hot) { c.strokeStyle = '#ffe0a8'; c.lineWidth = 4; c.strokeRect(x - half - 6, FLOOR - 198, half * 2 + 12, 198); }
+      c.restore();
+      return;
+    }
     c.fillStyle = '#4b332c'; c.fillRect(x - half + 4, FLOOR - 176, 9, 176); c.fillRect(x + half - 13, FLOOR - 176, 9, 176);
     // Back wall, dim, so the plaque reads against it.
     c.fillStyle = '#2a1d22'; c.fillRect(x - half + 13, FLOOR - 150, half * 2 - 26, 90);
@@ -4068,12 +4088,15 @@ export class SeamworksEngine {
   private drawWaystone(c: CanvasRenderingContext2D, station: StationDef, hot: boolean, time: number): void {
     const x = station.x;
     c.save();
+    if (this.props) this.props.waystone(c, x, FLOOR, hot);
+    else {
     c.fillStyle = '#3d3446';
     c.beginPath(); c.moveTo(x - 26, FLOOR); c.lineTo(x - 14, FLOOR - 170); c.lineTo(x, FLOOR - 186); c.lineTo(x + 14, FLOOR - 170); c.lineTo(x + 26, FLOOR); c.closePath(); c.fill();
     c.strokeStyle = hot ? '#ffe0a8' : '#7d6a86'; c.lineWidth = 2; c.stroke();
     c.strokeStyle = '#c9a0ff'; c.globalAlpha = .55; c.lineWidth = 2;
     c.beginPath(); c.moveTo(x - 6, FLOOR - 40); c.lineTo(x + 6, FLOOR - 70); c.lineTo(x - 6, FLOOR - 100); c.lineTo(x + 6, FLOOR - 130); c.stroke();
     c.globalAlpha = 1;
+    }
     const pulse = this.reducedMotion ? .5 : .5 + Math.sin(time * 2) * .5;
     c.shadowColor = '#c9a0ff'; c.shadowBlur = this.blur(18 + pulse * 18 + (hot ? 12 : 0));
     if (!this.art(station.art, x - 34, FLOOR - 252, 68, 68)) { c.fillStyle = '#c9a0ff'; c.beginPath(); c.arc(x, FLOOR - 214, 16, 0, Math.PI * 2); c.fill(); }
@@ -4230,7 +4253,9 @@ export class SeamworksEngine {
       const y = drop.y - 18 - arc + (t < 1 ? 0 : Math.sin(motionTime * 5 + drop.x) * 4);
       c.save(); c.translate(-fling, 0);
       c.shadowBlur = this.blur(14); c.shadowColor = drop.color;
-      if (drop.coins) {
+      if (drop.coins && this.props) {
+        this.props.coin(c, drop.x, y, this.reducedMotion ? 0 : Math.floor(motionTime * 8 + drop.x));
+      } else if (drop.coins) {
         c.fillStyle = '#ffd36d'; c.beginPath(); c.ellipse(drop.x, y, 3 + Math.abs(Math.cos(motionTime * 3)) * 7, 13, 0, 0, Math.PI * 2); c.fill();
         c.fillStyle = '#9e602c'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('$', drop.x, y + 5);
       } else if (!this.art(drop.art, drop.x - 15, y - 15, 30, 30) && !this.art('ore', drop.x - 15, y - 15, 30, 30)) { c.fillStyle = '#ed9069'; c.fillRect(drop.x - 8, y - 8, 16, 16); }
