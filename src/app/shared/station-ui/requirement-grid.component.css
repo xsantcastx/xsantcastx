@@ -80,3 +80,11 @@ button.rg__cell.is-on {
 @media (max-width: 400px) {
   .rg__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Phones: no hatched filler cells. The box keeps its shape on wider panels;
+   on a phone it shows only what is actually needed (or its empty line). */
+@media (max-width: 480px) {
+  .rg__grid > li:has(> .rg__cell--empty) { display: none; }
+  .rg__grid:not(:has(> li > .rg__cell:not(.rg__cell--empty))) { display: none; }
+  /* Nothing needed and nothing to say: no box at all, not a title over nothing. */
+  .rg:not(:has(.rg__cell:not(.rg__cell--empty))):not(:has(.rg__empty)) { display: none; }
+}
