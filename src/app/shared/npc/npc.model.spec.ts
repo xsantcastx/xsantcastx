@@ -21,6 +21,7 @@ import {
   triggerApplies,
   triggersFor,
 } from './npc.model';
+import { STORY_BEAT_IDS } from '../story/story-save.model';
 
 function ctx(over: Partial<DialogueContext> = {}): DialogueContext {
   return {
@@ -204,6 +205,22 @@ describe('trigger conditions', () => {
     expect(triggerApplies(trigger({ hasItem: 'basalt-edge' }), ctx({ equipped: new Set(['basalt-edge']) }))).toBe(true);
     expect(triggerApplies(trigger({ questActive: 'kael-1' }), ctx())).toBe(false);
     expect(triggerApplies(trigger({ questActive: 'kael-1' }), ctx({ activeQuests: new Set(['kael-1']) }))).toBe(true);
+  });
+
+  it('gates on a story beat the Keeper has reached, and a context without beats reaches none', () => {
+    expect(triggerApplies(trigger({ storyBeat: 'a1.break' }), ctx())).toBe(false);
+    expect(triggerApplies(trigger({ storyBeat: 'a1.break' }), ctx({ storyBeats: new Set(['a1.hammer']) }))).toBe(false);
+    expect(triggerApplies(trigger({ storyBeat: 'a1.break' }), ctx({ storyBeats: new Set(['a1.break']) }))).toBe(true);
+  });
+
+  it('names a real story beat on every act-aware row, and speaks it once reached', () => {
+    const rows = DIALOGUE.filter(t => t.conditions?.storyBeat);
+    expect(rows.length).toBeGreaterThan(0);
+    for (const row of rows) {
+      expect(STORY_BEAT_IDS as readonly string[]).toContain(row.conditions!.storyBeat!);
+      const top = triggersFor(row.npcId, ctx({ storyBeats: new Set([row.conditions!.storyBeat!]) }))[0];
+      expect(top.lines).toEqual(jasmine.arrayContaining([...row.lines]));
+    }
   });
 
   it('requires every named condition, not any of them', () => {
