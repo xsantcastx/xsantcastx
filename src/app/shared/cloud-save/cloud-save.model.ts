@@ -55,6 +55,7 @@ import { mergeKeeperLook } from '../keeper-look/keeper-look.model';
 import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
 import { mergeHeights } from '../heights/heights-save.model';
+import { mergeSound } from '../sound/sound-settings.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -451,6 +452,18 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // written before any pay) and the summit titles. Both only grow: a union.
     // See heights-save.model.ts.
     merge: mergeHeights,
+  },
+  {
+    key: 'godforge-sound',
+    collection: 'progress',
+    doc: 'sound',
+    label: 'Sound levels',
+    // `{ version, music, ambience, effects, muted, updatedAt }`: the world's
+    // three sliders and the mute (sound-settings.model.ts). One choice made on
+    // one screen: the later edit wins whole, so a phone turned down is down on
+    // the PC too. Unlike `godforge-forge-hum` (a per-device toggle), this is
+    // the player's ear, and it travels with them.
+    merge: mergeSound,
   },
 ];
 

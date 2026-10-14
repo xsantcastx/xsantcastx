@@ -123,6 +123,15 @@ import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
 import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
 import type { PanelEntry } from './world/panel-registry';
+import { SoundService } from '../shared/sound/sound.service';
+import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
+import { SOUND_I18N } from '../shared/sound/sound.i18n';
+import { WorldFeelBus, type CraftedFeel } from '../shared/sound/world-feel.bus';
+import { materialOf, REALM_IDS, TOWN_GROUND, type RealmId } from '../shared/sound/sound-palette';
+import { LevelUpAudioService } from '../shared/activity/level-up-audio.service';
+import { ForgeAudioService } from '../shared/economy/forge-audio.service';
+import { RarityAudioService } from '../shared/rarity/rarity-audio.service';
+import type { EngineSfx } from './engine/engine';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
 /**
@@ -207,7 +216,7 @@ const PANEL_CLOSE_MS = 160;
 /** How long a touched station stays highlighted, with its name card up. */
 const TOUCH_TIP_MS = 1400;
 
-interface LootToast { key: number; text: string }
+interface LootToast { key: number; text: string; art?: string }
 /** One slot of the Delve hotbar: a placeable and how many the satchel holds. */
 interface HotbarSlot { id: PlaceableId | BucketId | HandToolId; name: string; art: string; count: number; key: string }
 /** Hotbar slots past key 0, shown only while the satchel holds some: the obsidian block, the buckets, the grapple. */
@@ -232,7 +241,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -287,6 +296,26 @@ export class SideScrollerComponent implements OnDestroy {
   /** "+2 Pyrite Dust" chips over the satchel. Decorative; the objective line announces pickups. */
   lootToasts: LootToast[] = [];
   private toastKey = 0;
+  // ── World feel (docs/handoff/world-feel.md): the sound, the Satchel's pulse, the craft's flight ──
+  private readonly sound = inject(SoundService);
+  private readonly feel = inject(WorldFeelBus);
+  private readonly levelAudio = inject(LevelUpAudioService);
+  private readonly forgeAudio = inject(ForgeAudioService);
+  private readonly rarityAudio = inject(RarityAudioService);
+  private releaseSound: (() => void) | null = null;
+  private feelSub?: Subscription;
+  private soundSub?: Subscription;
+  /** Menu → Sound is open. */
+  soundOpen = false;
+  /** "Crafted X — in your Satchel" with its Open, after a craft; null when none. */
+  craftToast: { key: number; name: string } | null = null;
+  private craftToastTimer?: ReturnType<typeof setTimeout>;
+  /** A craft landed in the Satchel while a panel covered it: it pulses when the panel closes. */
+  private pulseOnClose = false;
+  /** Things that reached the Satchel (the clasp's data-pulse, for tests). */
+  satchelPulses = 0;
+  /** Pickups in a quick run climb in pitch (a little scale). */
+  private pickupRun = { n: 0, at: 0 };
   /** When the Delve last said "+0 XP, the seam is catching its breath" (delve-reward.ts). */
   private restCueAt: number | null = null;
   private loadoutKey = '';
@@ -513,6 +542,7 @@ export class SideScrollerComponent implements OnDestroy {
         this.engine?.setChat(snapshot.messages, snapshot.id);
       }));
       this.mountEngine();
+      this.bindFeel();
       // Only a change of `at` moves the world: a hosted page that writes its own query
       // (the Character hub's ?tab=) must not read as "no place open" and close itself.
       this.atSub = this.route.queryParamMap.pipe(map(params => params.get('at')), distinctUntilChanged())
@@ -544,6 +574,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(STORY_I18N);
     this.i18n.register(BOUNTIES_I18N);
     this.i18n.register(HEIGHTS_I18N);
+    this.i18n.register(SOUND_I18N);
     this.keeperKey = '';
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
@@ -575,6 +606,8 @@ export class SideScrollerComponent implements OnDestroy {
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
+      // The world's sounds: never through the zone (no change detection for a footstep).
+      onSfx: cue => this.engineSfx(cue),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
@@ -591,6 +624,8 @@ export class SideScrollerComponent implements OnDestroy {
         if (el) {
           el.setAttribute('data-fishing', state.fishing?.phase ?? (state.canFish ? `can:${state.canFish}` : ''));
           el.setAttribute('data-liquid', state.liquid?.in ?? '');
+          // The fish under the water in view (fish-shadows.ts): "where are the fish?" — there.
+          el.setAttribute('data-fish-shadows', String(state.fishShadows ?? 0));
           // The Underhearth (Phase 8): depth, the cart, the grapple, the furnace's fight.
           el.setAttribute('data-depth', state.depth === undefined ? '' : String(state.depth));
           el.setAttribute('data-biome', state.biome ?? '');
@@ -601,6 +636,7 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-realm', state.realm ? `${state.realm.id}:${state.realm.tide}` : '');
           el.setAttribute('data-ink-blind', state.realm?.inkBlind ? 'true' : 'false');
         }
+        this.soundScene(state);
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
@@ -775,7 +811,7 @@ export class SideScrollerComponent implements OnDestroy {
       return false;
     }
     const name = materialDisplay(material)?.name ?? titleCase(material.replace(/-/g, ' '));
-    this.toastLoot(`+${quantity} ${name}`);
+    this.gotItem(quantity, name, material);
     this.bump(material === CINDER_ORE_ID ? '.ore-count' : material === EMBER_RESIDUE_ID ? '.ember-count' : '.satchel .clasp span');
     return true;
   }
@@ -790,6 +826,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.coinsKept += coins;
     this.writePlay({ coins: this.coinsKept });
     this.bump('.coin-count');
+    this.sound.sfx('coin');
     return true;
   }
   private playSave(): { town?: unknown; coins?: unknown } {
@@ -804,14 +841,161 @@ export class SideScrollerComponent implements OnDestroy {
     if (next.town === before.town && next.coins === before.coins) return;
     this.store.write(PLAY_KEY, next);
   }
-  private toastLoot(text: string): void {
+  private toastLoot(text: string, art?: string): void {
     const key = ++this.toastKey;
-    this.lootToasts = [...this.lootToasts, { key, text }].slice(-3);
+    this.lootToasts = [...this.lootToasts, { key, text, ...(art ? { art } : {}) }].slice(-3);
     setTimeout(() => { this.lootToasts = this.lootToasts.filter(toast => toast.key !== key); }, 1800);
   }
+
+  // ── World feel: sound, the Satchel's pulse, the craft's flight (docs/handoff/world-feel.md) ──
+
+  /** The sound waits for the first tap; a craft at a bench flies to the Satchel; the old cues follow the mute. */
+  private bindFeel(): void {
+    this.releaseSound = this.sound.arm();
+    this.feelSub = this.feel.crafted$.subscribe(event => this.zone.run(() => this.craftedFx(event)));
+    // The station chimes, rarity stingers and the level-up ding are older, separate voices:
+    // the world's Effects slider at zero (or Mute all) quiets them too while the world is open.
+    this.soundSub = this.sound.settings$.subscribe(s => {
+      const quiet = s.muted || s.effects <= 0;
+      this.levelAudio.setMuted(quiet); this.forgeAudio.setMuted(quiet); this.rarityAudio.setMuted(quiet);
+    });
+    // A soft tick under every HUD button (never the canvas: the world has its own sounds).
+    this.zone.runOutsideAngular(() => {
+      const host = this.host.nativeElement as HTMLElement;
+      const tap = (event: Event): void => {
+        const el = event.target as Element | null;
+        if (el?.closest?.('button, [role="button"], input[type="checkbox"]')) this.sound.sfx('tap');
+      };
+      host.addEventListener('click', tap, { capture: true, passive: true });
+      this.unbindTap = () => host.removeEventListener('click', tap, { capture: true });
+    });
+  }
+  private unbindTap: (() => void) | null = null;
+  private unbindFeel(): void {
+    this.releaseSound?.(); this.releaseSound = null;
+    this.feelSub?.unsubscribe(); this.soundSub?.unsubscribe();
+    this.unbindTap?.(); this.unbindTap = null;
+    if (this.craftToastTimer) clearTimeout(this.craftToastTimer);
+    // The other pages keep their own sound choices.
+    this.levelAudio.setMuted(false); this.forgeAudio.setMuted(false); this.rarityAudio.setMuted(false);
+  }
+  /** The realm whose music and ground this is: a realm Delve's own, else the town's. */
+  private soundRealm(state: EngineState = this.state): RealmId {
+    const id = state.realm?.id ?? this.town.realm;
+    return (REALM_IDS as readonly string[]).includes(id) ? id as RealmId : 'infernal';
+  }
+  /** The engine made a sound: give it its material (a cell's, or the town street's). */
+  private engineSfx(cue: EngineSfx): void {
+    const material = cue.node ? materialOf(cue.node) : TOWN_GROUND[this.soundRealm()] ?? 'stone';
+    this.sound.sfx(cue.kind, { material });
+    // The landed fish reached the Keeper: into the Satchel it goes.
+    if (cue.kind === 'catch') this.zone.run(() => this.pulseSatchel());
+  }
+  /** What the world sounds like here, from the last report (the service ignores a repeat). */
+  private soundScene(state: EngineState): void {
+    if (!this.browser) return;
+    this.sound.setScene({
+      realm: this.soundRealm(state),
+      delve: !!state.delve,
+      boss: !!state.boss && state.enemyHp > 0,
+      hour: new Date().getHours(),
+      water: !!state.near?.water || state.liquid?.in === 'water',
+      lava: !!state.near?.lava || state.liquid?.in === 'lava',
+      ink: !!state.near?.ink,
+      glim: this.glimVoice.met,
+    });
+  }
+  /**
+   * Something entered the Satchel: "+N name" rises from the banner slot (with
+   * its picture when it has one), the Satchel pulses, and a blip sounds — a
+   * quick run of pickups climbs a little scale.
+   */
+  private gotItem(qty: number, name: string, id?: string): void {
+    this.toastLoot(`+${qty} ${name}`, id ? this.art(id) || undefined : undefined);
+    const now = Date.now();
+    this.pickupRun = now - this.pickupRun.at < 900 ? { n: Math.min(this.pickupRun.n + 1, 7), at: now } : { n: 0, at: now };
+    this.sound.sfx('pickup', { pitch: [0, 2, 4, 7, 9, 12, 14, 16][this.pickupRun.n] });
+    this.pulseSatchel();
+  }
+  /** The Satchel button glows and swells once (reduced motion: the count is enough). */
+  private pulseSatchel(): void {
+    this.satchelPulses++;
+    const clasp = (this.host.nativeElement as HTMLElement).querySelector('.satchel .clasp') as HTMLElement | null;
+    if (!clasp) return;
+    clasp.setAttribute('data-pulse', String(this.satchelPulses));
+    if (this.reducedMotion) return;
+    clasp.animate(
+      [{ transform: 'scale(1)', filter: 'none' }, { transform: 'scale(1.12)', filter: 'drop-shadow(0 0 6px var(--adventure-ember))', offset: .35 }, { transform: 'scale(1)', filter: 'none' }],
+      { duration: 520, easing: 'cubic-bezier(.22, 1, .36, 1)' },
+    );
+  }
+  /**
+   * A bench made something (WorldFeelBus): it pops above the bench's reward
+   * card with a sparkle, flies to the Satchel, and a toast says where it went
+   * with one Open. Owner: "when crafting, where do the items go?" — here.
+   */
+  private craftedFx(event: CraftedFeel): void {
+    if (!this.browser) return;
+    this.sound.sfx('craft');
+    const name = event.qty > 1 ? `${event.name} ×${event.qty}` : event.name;
+    this.craftToast = { key: ++this.toastKey, name };
+    if (this.craftToastTimer) clearTimeout(this.craftToastTimer);
+    this.craftToastTimer = setTimeout(() => { this.craftToast = null; }, 6500);
+    if (this.panel) this.pulseOnClose = true; else this.pulseSatchel();
+    this.flyCrafted(event);
+  }
+  /** The flight itself: a pixel icon from the bench's reward (or the panel's middle) to the Satchel. */
+  private flyCrafted(event: CraftedFeel): void {
+    const stage = (this.host.nativeElement as HTMLElement).querySelector('.stage') as HTMLElement | null;
+    const clasp = stage?.querySelector('.satchel .clasp') as HTMLElement | null;
+    if (!stage || !clasp) return;
+    const box = stage.getBoundingClientRect();
+    const from = (stage.querySelector('.place:not([hidden]) app-reward-pop') ?? stage.querySelector('.place:not([hidden]) .place-body')) as HTMLElement | null;
+    const a = from?.getBoundingClientRect(), b = clasp.getBoundingClientRect();
+    const sx = a && a.width ? a.left + a.width / 2 - box.left : box.width / 2, sy = a && a.height ? a.top + Math.min(a.height / 2, 80) - box.top : box.height / 2;
+    const ex = b.left + b.width / 2 - box.left, ey = b.top + b.height / 2 - box.top;
+    const el = document.createElement('div');
+    el.className = 'craft-fly';
+    el.setAttribute('aria-hidden', 'true');
+    el.setAttribute('data-item', event.itemId);
+    if (event.art) { const img = document.createElement('img'); img.src = event.art; img.alt = ''; el.appendChild(img); }
+    else el.textContent = event.name.slice(0, 2);
+    // Inline (Angular's encapsulated CSS skips nodes it did not render): a framed pixel icon with a sparkle.
+    el.style.cssText = `position:absolute;z-index:8;left:${sx}px;top:${sy}px;width:52px;height:52px;display:grid;place-items:center;pointer-events:none;`
+      + 'transform:translate(-50%,-50%);border:2px solid var(--adventure-ember);border-radius:2px;background:var(--adventure-hud-panel-solid);'
+      + 'box-shadow:0 0 0 2px var(--adventure-hud-shadow),0 0 22px var(--adventure-ember);color:var(--adventure-parchment);font:600 14px Orbitron,sans-serif;';
+    el.querySelector('img')?.setAttribute('style', 'width:40px;height:40px;image-rendering:pixelated;');
+    for (const [x, y, delay] of [[-10, -12, 0], [58, 4, 120], [46, 54, 240], [-8, 44, 360]]) {
+      const spark = document.createElement('i');
+      spark.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:4px;height:4px;opacity:0;background:var(--adventure-beacon-text);box-shadow:0 0 6px var(--adventure-ember);`;
+      el.appendChild(spark);
+      if (!this.reducedMotion) spark.animate([{ opacity: 0, transform: 'scale(.4)' }, { opacity: 1, transform: 'scale(1.4)' }, { opacity: 0, transform: 'scale(.4)' }], { duration: 520, delay: 120 + delay, iterations: 2 });
+    }
+    stage.appendChild(el);
+    if (this.reducedMotion) { setTimeout(() => el.remove(), 900); return; }
+    const dx = ex - sx, dy = ey - sy;
+    const anim = el.animate([
+      { transform: 'translate(-50%, -50%) scale(.3)', opacity: 0, offset: 0 },
+      { transform: 'translate(-50%, calc(-50% - 26px)) scale(1.25)', opacity: 1, offset: .22 },
+      { transform: 'translate(-50%, calc(-50% - 20px)) scale(1)', opacity: 1, offset: .45 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.4)`, opacity: .85, offset: 1 },
+    ], { duration: 1300, easing: 'cubic-bezier(.45, 0, .55, 1)', fill: 'forwards' });
+    anim.onfinish = () => el.remove();
+    anim.oncancel = () => el.remove();
+  }
+  /** The craft toast's Open: close the bench, open the Satchel on what was made. */
+  openCrafted(): void {
+    this.craftToast = null;
+    if (this.craftToastTimer) clearTimeout(this.craftToastTimer);
+    if (this.panel) this.closePanel();
+    this.openBag();
+  }
+  /** Menu → Sound. */
+  openSound(): void { this.placesOpen = false; this.soundOpen = true; }
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
+    this.unbindFeel();
     this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
@@ -896,7 +1080,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.closing = false;
     this.showTip(null, 0, 0);
     // Remember a keyboard opener (not one place replacing another: keep the first).
-    if (!this.panel) this.panelOpener = this.keyboardOpener();
+    if (!this.panel) { this.panelOpener = this.keyboardOpener(); this.sound.sfx('open'); }
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panelError = ''; this.panelLoading = false;
@@ -931,6 +1115,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.panel = null; this.panelLoading = false; this.panelError = '';
     this.chestView = null;
     this.engine?.setPaused(false);
+    this.sound.sfx('close');
+    // Something crafted went into the Satchel under the panel: now it is in view, it pulses.
+    if (this.pulseOnClose) { this.pulseOnClose = false; setTimeout(() => this.pulseSatchel()); }
     if (syncUrl) this.setAt(null);
     const opener = this.panelOpener;
     this.panelOpener = null;
@@ -1008,6 +1195,7 @@ export class SideScrollerComponent implements OnDestroy {
   travel(id: RealmTownId): void {
     const town = TOWNS[id];
     if (!town || town.id === this.town.id) { this.closePanel(); return; }
+    this.sound.sfx('portal');
     this.town = town;
     this.writePlay({ town: id });
     this.closePanel();
@@ -1891,6 +2079,7 @@ export class SideScrollerComponent implements OnDestroy {
     const ok = isBasaltEdge(item) ? this.inventory.equip(item.id, 'weapon') : this.inventory.equip(item.id);
     this.message = this.t(ok ? 'play.hud.msg.worn' : 'play.hud.msg.wearFailed', { name: item.name });
     if (!ok) return;
+    this.sound.sfx('equip');
     this.sync();
     const slot = this.inventory.snapshot.items.find(row => row.id === item.id)?.slot;
     if (slot) this.pick = { kind: 'slot', ref: slot };
@@ -2374,12 +2563,13 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private landCatch(pending: PendingCatch, grade: 'perfect' | 'good' | 'off', recastIn?: number): void {
     const landed = this.fishing.land(pending, grade);
-    this.engine?.landFish(recastIn);
+    // The fish arcs out of the water into the Keeper, "+1 Blindfin" rising where it lands (engine), then the Satchel pulses.
+    this.engine?.landFish(recastIn, landed ? `+${landed.qty} ${landed.name}` : undefined);
     const hooked = this.hookedAt.get(pending.castId);
     this.hookedAt.delete(pending.castId);
     if (!landed) { this.message = this.t('play.fish.ui.saveFailed'); return; }
     if (hooked) this.bountyEvent({ kind: 'catch', liquid: hooked.liquid, col: hooked.col, row: hooked.row, token: pending.castId });
-    this.toastLoot(this.t('play.fish.ui.landed', { name: landed.name, n: landed.qty, xp: landed.xp }));
+    this.toastLoot(this.t('play.fish.ui.landed', { name: landed.name, n: landed.qty, xp: landed.xp }), this.art(landed.id) || undefined);
     this.message = landed.first ? `${this.t('play.fish.ui.grade.' + grade)} ${this.t('play.fish.ui.first')}` : this.t('play.fish.ui.grade.' + grade);
     this.canvas?.nativeElement.setAttribute('data-last-catch', landed.id);
     this.refreshHotbar();
@@ -2452,6 +2642,7 @@ export class SideScrollerComponent implements OnDestroy {
     }
     const first = !this.delve.isClaimed(enteredFlag(realm));
     if (!gate.area || !this.engine.enterRealm(gate.area, { col: event.col, row: event.row })) { this.message = this.t('play.rift.enterFailed'); return; }
+    this.sound.sfx('portal');
     if (first) {
       const result = this.skillActions.act({ mutationId: `rift-enter:${realm}`, skill: 'delving', xp: GATE_ENTER_XP, locationId: this.delveLocation(gate.area) });
       if (result.ok && !result.replayed) this.toastLoot(this.t('play.rift.firstStep', { n: GATE_ENTER_XP }));
@@ -2613,7 +2804,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (!event.block) return;
     const name = materialDisplay(event.block)?.name ?? event.block;
     if (this.inventory.grantStack(`${event.mutationId}:block`, event.block, 1)) {
-      this.toastLoot(`+1 ${name}`);
+      this.gotItem(1, name);
       this.refreshHotbar();
     } else this.message = this.t('play.hud.msg.pickupFailed');
   }
@@ -2630,7 +2821,7 @@ export class SideScrollerComponent implements OnDestroy {
     // An Ember Grub in dug dirt (fishing bait, spec §5.2): the block and the grub, no XP, no seam.
     if (event.materialId === 'ember-grub' && !event.xp) {
       this.grantBlock(event);
-      if (this.inventory.grantStack(`${event.mutationId}:grub`, 'ember-grub', event.qty ?? 1)) this.toastLoot(`+1 ${materialDisplay('ember-grub')?.name ?? 'Ember Grub'}`);
+      if (this.inventory.grantStack(`${event.mutationId}:grub`, 'ember-grub', event.qty ?? 1)) this.gotItem(1, materialDisplay('ember-grub')?.name ?? 'Ember Grub', 'ember-grub');
       return true;
     }
     // Plain dirt and placed blocks pay only the block.
@@ -2660,7 +2851,7 @@ export class SideScrollerComponent implements OnDestroy {
         this.message = this.t(settled.code === 'not-selected' ? 'play.hud.msg.miningNotSaved' : settled.code === 'capacity' ? 'play.hud.msg.bagFull' : settled.code === 'tier-locked' ? 'play.hud.msg.tierLocked' : 'play.hud.msg.strikeNotSaved');
         return false;
       }
-      if (event.materialId) this.toastLoot(`+1 ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
+      if (event.materialId) this.gotItem(1, materialDisplay(event.materialId)?.name ?? event.materialId, event.materialId);
       this.grantBlock(event);
       return true;
     }
@@ -2687,7 +2878,7 @@ export class SideScrollerComponent implements OnDestroy {
       return false;
     }
     if (once) this.delve.claim(once);
-    if (event.materialId && event.qty) this.toastLoot(`+${event.qty} ${materialDisplay(event.materialId)?.name ?? event.materialId}`);
+    if (event.materialId && event.qty) this.gotItem(event.qty, materialDisplay(event.materialId)?.name ?? event.materialId, event.materialId);
     this.grantBlock(event);
     return true;
   }
@@ -2712,7 +2903,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (used.kind === 'cache') this.message = this.t('play.height.toast.cache', { gold: used.gold, items });
     else if (used.kind === 'summit') this.message = this.t('play.height.toast.summit', { gold: used.gold, items, title: this.t(`play.height.title.${used.title}`) });
     else if (used.kind === 'lookout') this.message = this.t('play.height.toast.lookout');
-    for (const m of used.materials) this.toastLoot(`+${m.qty} ${materialDisplay(m.id)?.name ?? m.id}`);
+    for (const m of used.materials) this.gotItem(m.qty, materialDisplay(m.id)?.name ?? m.id, m.id);
   }
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
@@ -2741,7 +2932,7 @@ export class SideScrollerComponent implements OnDestroy {
       // Each shrine hands over one Rift Map Fragment, the first time (map v2; the grant id is the receipt).
       const had = this.inventory.stackOf(FRAGMENT_ID);
       if (this.inventory.grantStack(`delve-shrine:${event.id}:fragment`, FRAGMENT_ID, 1) && this.inventory.stackOf(FRAGMENT_ID) > had) {
-        this.toastLoot(`+1 ${materialDisplay(FRAGMENT_ID)?.name ?? 'Rift Map Fragment'}`);
+        this.gotItem(1, materialDisplay(FRAGMENT_ID)?.name ?? 'Rift Map Fragment', FRAGMENT_ID);
         this.message = `${this.message ? `${this.message} ` : ''}${this.t('play.map.fragment.got')}`;
       }
       return;
