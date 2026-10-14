@@ -499,6 +499,8 @@ function check(E) {
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   // Fishing (Phase 6): Gold share, crate values, rod gates and the 99 band (`--fishing` prints the table).
   fails.push(...fishingScenario({ quiet: true }));
+  // The Underhearth (Phase 8): rule I rewards, the furnace is no farm, tool V on the ladder (`--underhearth` prints it).
+  fails.push(...underhearthScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -789,6 +791,54 @@ function fishingScenario({ quiet = false } = {}) {
   return fails;
 }
 
+// --underhearth: Phase 8 on the v3 curve (docs/handoff/underhearth.md). The
+// stratum's Gold comes from missions (rule I: a v2 floor × ρ and the NPC band's
+// seconds of income), the Banked Furnace's drops (its first fall, then at most
+// once a real day) and the vendor floor of what is dug; none of it may become a
+// Gold strategy. Read from source text, like the fishing scenario.
+// ───────────────────────────────────────────────────────────────────────────
+function underhearthScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const missions = readFileSync(resolve(here, '../src/app/shared/npc/delve-missions.model.ts'), 'utf8');
+  const ids = ['kael-flooded-seams', 'kael-four-1', 'kael-four-2', 'verrin-four-3', 'verrin-endings-kept-warm'];
+  const { log } = simulate(PROPOSED);
+  const gpsAt = t => log.at[t]?.gps ?? 0;
+  // The stratum opens at Mining 45 / Smithing 45 / Delving 15: a week into the curve at the earliest.
+  const t7 = 7 * 86400, gps = gpsAt(t7);
+  say(`Underhearth scenario · v3 curve (PROPOSED) · forge ${fmtN(gps * 60)} Gold/min at 7d\n`);
+  for (const id of ids) {
+    const at = missions.indexOf(`id: '${id}'`);
+    if (at < 0) { fails.push(`mission ${id} is missing`); continue; }
+    const block = missions.slice(at, missions.indexOf('\n  },', at));
+    // 1. Every reward is paid in seconds of income with a v2 floor (rule I), never a flat sum.
+    const v2 = /incomeGold\(([\d_]+)\)/.exec(block);
+    if (!v2) { fails.push(`${id} does not pay by rule I (incomeGold)`); continue; }
+    const floor = Number(v2[1].replace(/_/g, '')) * C.ITEM_ECONOMY_SCALE;
+    say(`  ${id.padEnd(26)} floor ${fmtN(floor).padStart(8)} Gold`);
+  }
+  // 2. The Banked Furnace's repeat fights: its coins once a day stay a rounding error of a day's forge income.
+  const infernal = readFileSync(resolve(here, '../src/app/play/world/towns/infernal.ts'), 'utf8');
+  const drops = infernal.slice(infernal.indexOf('BANKED_FURNACE_DROPS'), infernal.indexOf('BANKED_FURNACE_FLAG'));
+  const coins = /base: (\d+), spread: (\d+)/.exec(drops);
+  const perDay = coins ? Number(coins[1]) + Number(coins[2]) : Infinity;
+  const share = perDay / (gps * 86400);
+  say(`\n  Banked Furnace rematch: at most ${perDay} coins a day = ${(share * 100).toFixed(4)}% of a day's forge income at 7d`);
+  if (!(share < .001)) fails.push(`the furnace's daily coins are ${(share * 100).toFixed(3)}% of a day's forge income (must be < 0.1%)`);
+  const engine = readFileSync(resolve(here, '../src/app/play/engine/engine.ts'), 'utf8');
+  // 3. Its spilled embers pay nothing (no drop table, no kill tally): no farm while it is awake.
+  if (!/drops: \{ id: 'furnace-ember', entries: \[\] \}/.test(engine)) fails.push('the furnace\'s spilled embers have a drop table');
+  // 4. Tool tier V sits on the tool ladder: ×3-×5 tier IV's fee.
+  const crafting = readFileSync(resolve(here, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const gold = (/const TOOL_GOLD = \[([\d_,\s]+)\]/.exec(crafting)?.[1] ?? '').split(',').map(s => Number(s.trim().replace(/_/g, '')));
+  const ratio = gold[5] / gold[4];
+  say(`  Tool V fee ${fmtN(gold[5] ?? 0)} Gold (×${ratio.toFixed(1)} tier IV) = ${(gold[5] / (gps * 60)).toFixed(1)} min of the forge at 7d`);
+  if (!(ratio >= 3 && ratio <= 5)) fails.push(`tool tier V costs ×${ratio} tier IV (must be ×3-×5)`);
+  if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
+  if (quiet) console.log(`economy-sim underhearth: ${fails.length ? fails.length + ' fail(s)' : 'rule I rewards, a furnace that is no farm, tool V on the ladder'}`);
+  return fails;
+}
+
 // --plinko / --mines / --crash: the Croupier's other three games (Rune Drop,
 // Seam Sweeper, Eclipse Ascent). Gold only; RTP must sit in 94–96%.
 //   Each is proven EXACTLY (sums over the binomial board; the multiplier ×
@@ -950,6 +1000,10 @@ if (argv.plinko) {
 } else if (argv.reels) {
   const fails = reelsScenario({ rounds: Number(argv.rounds ?? 2_000_000), plays: Number(argv.plays ?? 1_000_000), quiet: false });
   for (const f of fails) console.error(`  FAIL ${f}`);
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.underhearth && !argv.check) {
+  const fails = underhearthScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.fishing && !argv.check) {

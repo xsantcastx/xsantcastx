@@ -88,6 +88,8 @@ export const QUEST_STACKS: ReadonlySet<string> = new Set([
   'kaels-hammer', 'godforge-fragment', 'shadow-root-cutting', 'rift-key',
   // The Worn Rod: handed to every Keeper, soulbound, like the quest finds it takes no slot.
   'worn-rod',
+  // The Underhearth (Phase 8): the Four Hammer-Marks, kept after the first fight (they wake the furnace).
+  'four-hammer-marks',
 ]);
 
 /**
@@ -98,6 +100,8 @@ export const QUEST_STACKS: ReadonlySet<string> = new Set([
 export const SUPPLY_KEYS: ReadonlySet<string> = new Set([
   'dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp',
   'timber-support', 'basalt-support', 'blast-charge', 'obsidian-block',
+  // The Underhearth (Phase 8).
+  'seam-rail', 'bark-rope', 'rift-anchor',
 ]);
 const BLOCK_KEYS: ReadonlySet<string> = new Set(['dirt-block', 'basalt-block']);
 

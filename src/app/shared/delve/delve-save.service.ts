@@ -61,7 +61,8 @@ const CORE_SECTORS = 4;
 /** Nodes that are placed or made: a sector holding one never regrows. */
 const PLACED = Uint8Array.from(TERRAIN_NODE_LIST, node =>
   node.placeable || ['packed-dirt', 'basalt-block', 'obsidian-block', 'obsidian'].includes(node.id) ? 1 : 0);
-const ANCHOR = new Set(TERRAIN_NODE_LIST.flatMap((node, i) => node.id === 'camp' || node.id === 'chest' ? [i] : []));
+// What holds the rock round it (regrowth clearance): a camp, a chest, and (Phase 8) a Rift Anchor.
+const ANCHOR = new Set(TERRAIN_NODE_LIST.flatMap((node, i) => node.id === 'camp' || node.id === 'chest' || node.id === 'rift-anchor' ? [i] : []));
 
 @Injectable({ providedIn: 'root' })
 export class DelveSaveService implements DelveSectorStore {
