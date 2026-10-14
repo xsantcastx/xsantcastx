@@ -42,6 +42,8 @@ Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · 
 
 ## Daily review log
 
+- **2026-10-15** — Deep Delve phone perf built (`docs/handoff/delve-perf.md`). Under 4× throttle at 390 px, the Underhearth by the Umbral gate went from 67 / 100 ms (p50 / p95) to 17 / 18, the Furnace Hall from 65 / 100 to 33 / 50, and the wide traverse from 33 / 50 to 17 / 18. The Ink Deeps holds at 17 / 18. Off-floor creatures are no longer drawn. On phones, heat and halos ride inside the darkness overlay, the cave backdrop is drawn only where it shows, and the Delve sky is baked. The look is unchanged (pixel-checked). A Furnace Hall perf guard was added.
+
 - **2026-10-14 (late night)** — Shipped together: surface height (the High Roads), the UI clean pass (Diablo II satchel, calmer Slate), Rift Gates + the Umbral Ink Deeps, and Make your Keeper (creator + gear on the body); also the dependency security pass. Owner: one art style, everything pixel. In flight: UI polish pass 2, the pixel migration; next: phone perf of the deep Delve (Underhearth ~12 fps under 4× throttle).
 - **2026-10-14 (late)** — UI clean pass built (roadmap #1, first pass). The Satchel opens on the paper doll and the slot grid only, with one item card on tap. The Mirror Slate opens on big tiles, so the Reels are one tap away. In-world station purpose lines, the phone full-page link, Glim's Close and the anchor rows are quieter. Gated, merging.
 - **2026-10-14 (night)** — Shipped the Underhearth, uncapped levels + titles and the Glim bond together (24/24 related e2e green after a CSS merge fix). Owner: the UI feels crowded — cleaning and perfecting what exists is now #1, a custom Keeper with gear that shows on the body is #2; Rift Gates in flight.
