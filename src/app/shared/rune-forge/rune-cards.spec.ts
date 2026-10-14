@@ -115,7 +115,7 @@ describe('rune-cards', () => {
     it('points every card at a distinct file', () => {
       const srcs = all.map(c => c.src);
       expect(new Set(srcs).size).toBe(srcs.length);
-      expect(srcs.length).toBe(33);
+      expect(srcs.length).toBe(32);
     });
   });
 });

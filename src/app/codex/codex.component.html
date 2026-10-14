@@ -470,34 +470,6 @@
     <div class="cx-filters">
 
       <div class="cx-filter-row">
-        <span class="cx-filter-row__label">Realm</span>
-        <div class="cx-chips">
-          <button type="button" class="cx-chip" [class.is-on]="categoryFilter === 'all'"
-                  (click)="categoryFilter = 'all'">
-            All <span class="cx-chip__count">{{ totalAchievements }}</span>
-          </button>
-          @for (cat of categories; track cat.id) {
-            <button
-              type="button"
-              class="cx-chip"
-              [class.is-on]="categoryFilter === cat.id"
-              [style.--chip]="cat.color"
-              [style.--chip-glow]="cat.glow"
-              [attr.title]="cat.blurb"
-              (click)="categoryFilter = cat.id">
-              @if (cat.art) {
-                <img class="cx-cat-icon gf-icon realm-sigil" [src]="cat.icon" alt="" aria-hidden="true"
-                     width="18" height="18" loading="lazy" decoding="async" draggable="false">
-              } @else {
-                <span aria-hidden="true">{{ cat.icon }}</span>
-              } {{ cat.label }}
-              <span class="cx-chip__count">{{ categoryCount(cat.id).found }}/{{ categoryCount(cat.id).total }}</span>
-            </button>
-          }
-        </div>
-      </div>
-
-      <div class="cx-filter-row">
         <span class="cx-filter-row__label">Rarity</span>
         <div class="cx-chips">
           <button type="button" class="cx-chip" [class.is-on]="rarityFilter === 'all'"
@@ -539,7 +511,6 @@
             <option value="rarity">{{ sortLabels['rarity'] }}</option>
             <option value="recent">{{ sortLabels['recent'] }}</option>
             <option value="alpha">{{ sortLabels['alpha'] }}</option>
-            <option value="category">{{ sortLabels['category'] }}</option>
           </select>
         </div>
 
