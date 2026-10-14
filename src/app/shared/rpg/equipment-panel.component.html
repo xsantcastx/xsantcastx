@@ -11,13 +11,10 @@
           <div class="ld__figure" [class.ld__figure--pulse]="pulsing">
             <img class="ld__doll-art" [src]="dollSrc" [attr.srcset]="dollSrcset" [class.ld__doll-art--pixel]="!!dollKey" [attr.data-keeper]="dollKey || null" sizes="auto, (max-width: 420px) 100vw, 380px"
                  [alt]="t('loadout.doll.alt')" width="720" height="720" loading="lazy" decoding="async">
-            <!-- Worn gear, on the Keeper: each item's own art in a rarity-lit
-                 socket at its slot's anchor. The wells beside the figure are
-                 the accessible controls and carry the names, so the sockets
-                 stay aria-hidden; a worn socket is also a pointer shortcut to
-                 its well, because on a phone people tap the gear they can see.
-                 Empty sockets are still rendered (invisibly, untappable) so an
-                 equip has somewhere to fly to. -->
+            <!-- The pixel Keeper wears its gear on the body (Make your Keeper), so
+                 the item medallions are drawn only on the painted fallback figure;
+                 the wells around the figure stay the controls. -->
+            @if (!dollKey) {
             <div class="ld__sockets" aria-hidden="true">
               @for (slot of sockets; track slot.slotId) {
                 <span class="ld__socket"
@@ -59,6 +56,7 @@
                 </span>
               }
             </div>
+            }
           </div>
         </div>
         <img *ngFor="let slot of filledOverlays"
@@ -295,17 +293,6 @@
       <details class="ld__more">
       <summary class="ld__more-label">{{ t('loadout.sheet.title') }}</summary>
       <div class="ld__stats-after">
-      <p class="ld__charmrow-totals" *ngIf="charmTotals.length; else charmHint">
-        <span *ngFor="let mod of charmTotals">{{ mod }}</span>
-      </p>
-      <ng-template #charmHint>
-        <p class="ld__charmrow-hint">
-          {{ charmsHeld
-              ? t('loadout.charms.hint', { n: charmsHeld })
-              : t('loadout.charms.none') }}
-        </p>
-      </ng-template>
-
       <p class="ld__totals" *ngIf="hasTotals(); else emptyTotals">
         <span *ngIf="snap.totals.goldPerSec">{{ t('loadout.stat.gold') }} <b>+{{ snap.totals.goldPerSec }}</b></span>
         <span *ngIf="magicFind.total">{{ t('loadout.stat.mf') }} <b>+{{ magicFind.total }}%</b></span>
@@ -318,7 +305,7 @@
       </ng-template>
       <!-- The live sheet: counts to the new totals and floats a signed chip
            on every equip and unequip, so a swap is something you watch. -->
-      <app-keeper-stat-sheet class="ld__sheet" [heading]="t('loadout.sheet.title')" />
+      <app-keeper-stat-sheet class="ld__sheet" [heading]="t('loadout.sheet.title')" [showHeading]="false" />
 
       <!-- Build identity: what the worn stats add up to, in one word, and
            which piece is carrying each of the three heaviest stats. -->
@@ -345,6 +332,16 @@
           </ul>
         }
       </section>
+      <p class="ld__charmrow-totals" *ngIf="charmTotals.length; else charmHint">
+        <span *ngFor="let mod of charmTotals">{{ mod }}</span>
+      </p>
+      <ng-template #charmHint>
+        <p class="ld__charmrow-hint">
+          {{ charmsHeld
+              ? t('loadout.charms.hint', { n: charmsHeld })
+              : t('loadout.charms.none') }}
+        </p>
+      </ng-template>
       </div>
       </details>
 

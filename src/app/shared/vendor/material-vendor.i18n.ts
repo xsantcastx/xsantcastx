@@ -9,7 +9,6 @@ export const VENDOR_I18N: Readonly<Record<string, { en: string; es: string }>> =
   'vendor.hint':        { en: 'The Vendor buys surplus at a low floor price. The market pays more.', es: 'El Vendedor compra el excedente a un precio mínimo bajo. El mercado paga más.' },
   'vendor.list':        { en: 'Materials the counter buys', es: 'Materiales que compra el mostrador' },
   'vendor.rowSub':      { en: '{{held}} held · {{price}} Gold each', es: '{{held}} en mano · {{price}} de oro c/u' },
-  'vendor.sellLine':    { en: 'Sell 1 {{name}} for {{price}} Gold', es: 'Vender 1 {{name}} por {{price}} de oro' },
   'vendor.youHold':     { en: 'You hold {{n}}. Gold goes straight to your purse.', es: 'Tienes {{n}}. El oro va directo a tu monedero.' },
   'vendor.holdNone':    { en: 'You hold no {{name}}.', es: 'No tienes {{name}}.' },
   'vendor.wouldShort':  { en: 'Selling {{n}} leaves too few for {{recipe}} (it takes {{need}}).', es: 'Vender {{n}} deja muy pocos para {{recipe}} (necesita {{need}}).' },

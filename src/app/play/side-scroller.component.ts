@@ -119,6 +119,7 @@ import { KEEPER_LOOK_I18N } from '../shared/keeper-look/keeper-look.i18n';
 import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.model';
 import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
+import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
 import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
 import type { PanelEntry } from './world/panel-registry';
@@ -453,6 +454,8 @@ export class SideScrollerComponent implements OnDestroy {
   lookNudgeShown = false;
   /** The Keeper's chosen name (the vitals label), or '' for "Keeper". */
   keeperName = '';
+  /** The satchel's paper-doll figure: the player's Keeper wearing what is worn now (a data URL, painted per change). */
+  dollFigure = '';
   /** The pane the Keeper holds (0: none, no button). Re-read on the HUD tick. */
   slateTier: SlateTier = 0;
   /** The Homestead has something worth a look: the button wears a badge. */
@@ -2116,6 +2119,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (key !== this.lookPushKey) {
       this.lookPushKey = key;
       this.engine?.setKeeperLook(look, gear);
+      this.paintDollFigure(look, gear);
       const el = this.canvas?.nativeElement;
       el?.setAttribute('data-keeper-look', lookKey(look));
       el?.setAttribute('data-keeper-gear', gearKey(gear));
@@ -2125,6 +2129,15 @@ export class SideScrollerComponent implements OnDestroy {
       this.makerOffered = true;
       this.openKeeperMaker();
     }
+  }
+  private paintDollFigure(look: KeeperLook, gear: ReturnType<typeof wornGear>): void {
+    if (!this.browser) return;
+    try {
+      const el = document.createElement('canvas');
+      el.width = el.height = 176;
+      new KeeperPainter(look, gear).still(el);
+      this.dollFigure = el.toDataURL('image/png');
+    } catch { /* no 2D canvas: the doll frame stays empty */ }
   }
   /** The Glass of Becoming: "Make your Keeper" as a place (the world pauses). */
   openKeeperMaker(): void {
