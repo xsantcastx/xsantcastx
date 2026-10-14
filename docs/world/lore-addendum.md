@@ -880,10 +880,11 @@ it; which open when is `play/world/keeper-lines.ts`. New here:
   Unrecorded Corridors, on the far side of the mouth from Verrin (the Mirror
   Map waits for ch. 4). Canon keepers wear their epithet as the subtitle
   (Kael · the Broken Flame; the Merchant · of the long till).
-- **Still unnamed:** the Vault Clerk (Edrin's cousin), Enchanter (trained in
+- **Still unnamed (at S3):** the Vault Clerk (Edrin's cousin), Enchanter (trained in
   the Archive), Croupier (the Merchant's employee), Board Herald, Arena
   Gatekeeper (walked the roads with Siv before the knee went) and Trials Warden
   (keeps Verrin's door). Each has the §3 depth line and two or three more.
+  Named the same day: see "Six names for the role keepers" below.
 - **Kael's hammer stays under the anvil.** world-and-cast §2 had Kael give it
   back ("Keep it in the Vault"); the shipped mission consumes it, so his line
   after *The Old Seam* is "It's still under the anvil. I check on it more often
@@ -910,3 +911,50 @@ it; which open when is `play/world/keeper-lines.ts`. New here:
   and Nox, Sera and Kael ("the variable"), Siv and Kesh, the Gatekeeper and Siv.
 - **People of the Realms** (Codex, Collection tab): one public entry per keeper
   (where they stand, who they are, what they teach). No beat or secret is in it.
+
+### Six names for the role keepers (2026-10-14)
+
+**Shipped — owner reviews in play.** The last six keepers called only by their
+job get a person's name; the approved role title stays under it as the
+subtitle, the same as Mara Voss · Bench Smith (`play/world/life.ts`,
+`life.i18n.ts`, Codex `people.i18n.ts`; EN + ES). Naming follows the Bible's
+cast: a short given name and a one- or two-syllable surname that is also a
+thing from the person's trade or realm (Voss, Kade, Rill, Quill, Sable, Thorne,
+Arbo, Moss). None of the six collides with a cast name, a rune, or a name in the
+leaderboard's generated field. Every surname means something the person does.
+
+| Name · title | Town | Who they are | Builds on |
+|---|---|---|---|
+| **Orla Stave** · Vault Clerk | Basalt Seamworks | Edrin Kade's cousin. A *stave* is a notched tally stick; their grandmother notched one for every crate the Seamworks stored. Orla got the stave, Edrin got the scales: the family keeps count and keeps it honest. | world-and-cast §3 (Edrin's cousin; never loses anything; Game: nothing is ever deleted for space); Bible ch. 3, Edrin as Cinder Delegate; Game, `roots-keepers-tally` |
+| **Idris Calder** · Enchanter | Basalt Seamworks | Trained in the Archive, came down to the Seamworks; the Archivist still corrects his footnotes by post. To him a socket is a carving made small: words cut into metal that it can't take back. | world-and-cast §3 (trained in the Archive; sockets are promises); Canon, "Runes are compact principles"; Game, socket words (`socket-words.ts`) |
+| **Lune Coyne** · Croupier | Nocturne Archive | The Merchant's employee, who prints the odds anyway. *Lune* for the Archive's fractured moon mirror, *Coyne* for the coin. Runs the Gambler and the four games east of her: the Reels, Rune Drop, Seam Sweeper and Eclipse Ascent, each with its house cut printed. | world-and-cast §3 (insists on printed odds); Bible ch. 4, Nocturne Archive "beneath a fractured moon mirror"; this file, "The Reels" and "The Croupier's other three games"; Seam Sweeper lore ("marks where the roof will give before you swing") |
+| **Pim Larkin** · Board Herald | Rootglass Canopy | Larkins have read the Quest Board aloud for four generations and never once posted an order; neutral is the family trade. He adds the please. After the Seam Eater sinks he reads the Seamworks' thank-you twice: the first on the board in years. | world-and-cast §3 (reads every faction's commissions aloud; neutral by trade); Bible ch. 3, the Seam Eater |
+| **Corran Holt** · Arena Gatekeeper | Rootglass Canopy | Walked the roads with Siv Moss: she took the long patrols, he took the ones that ended in a fight, until his knee chose which of them stayed out. A *holt* is a stand of trees; he stands at the gate and likes watching people try. | world-and-cast §3 (old ranger, bad knee); §17, Siv Moss, Thornbound Ranger ("has patrolled every path") |
+| **Hesta Cairn** · Trials Warden | Rootglass Canopy | Keeps the door of the trials for Verrin. A *cairn* marks where a path ends so the next walker knows: her name and her whole job. Verrin never comes to the door; the count reaches Verrin before she has shut it. | world-and-cast §3 (Verrin's warden; Game: "a trial is a thing that ends"); §4 Verrin, the Hollow |
+
+**New lines** (EN; ES in `life.i18n.ts`; which open when in `keeper-lines.ts`):
+
+- **Orla Stave:** "You found a tally below. My name is one: a stave, a notched
+  stick. Someone kept count." (after the Keepers' tally) · "Gran notched a stave
+  for every crate we stored. I got the stave. Edrin got the scales."
+- **Idris Calder:** "The Archive taught me footnotes. The Seamworks taught me
+  footnotes in a hurry." · "You've read a carving. A socket is the same,
+  smaller: words the metal can't take back." (after the first carving)
+- **Lune Coyne:** "Reels, Rune Drop, Seam Sweeper, Eclipse Ascent: four games
+  east of me, all odds printed." · "Rune Drop falls where it falls. Seam
+  Sweeper's weak roof is set before you swing." · "Eclipse Ascent climbs until it
+  breaks. The Reels just spin. Both print the house cut."
+- **Pim Larkin:** "Larkins have read this board aloud for four generations.
+  Never posted once. Neutral." · "The Seamworks posted thanks when the Seam
+  Eater sank. First thank-you here in years." (after the Seam Eater)
+- **Corran Holt:** "Siv took the long patrols, I took the ones with a fight. The
+  knee chose who stayed out." · "Nobody watches a fight like someone who can't
+  have one. Go on. Give me something to watch."
+- **Hesta Cairn:** "A cairn marks where a path ends, so the next walker knows.
+  My name, and my whole job." · "Verrin never comes to the door. The count
+  reaches Verrin before I've shut it."
+
+Every keeper in the five towns now wears a name with a title or epithet under
+it (the engine harness checks that none is called only by its job). Older
+entries in this file that say "Vault Clerk", "Board Herald" or "the Croupier"
+mean these people; their art keys (`npc-vault-clerk-figure`, …) are unchanged.

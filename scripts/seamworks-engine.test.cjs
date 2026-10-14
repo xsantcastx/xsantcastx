@@ -2413,7 +2413,9 @@ test('life (S3): people wear their name with the role title under it; every keep
   const people = loadTs(path.resolve(__dirname, '../src/app/codex/people.i18n.ts')).PEOPLE_I18N;
   const named = { 'bench-smith': ['Mara Voss', 'Bench Smith'], 'buyback-clerk': ['Edrin Kade', 'Buyback Clerk'], tomas: ['Tomas Rill', 'Lantern Keeper'],
     ilyra: ['Ilyra Venn', 'Archive Listener'], sera: ['Sera Quill', 'Chief Meridian'], 'chart-clerk': ['Nox Aster', 'Chart Clerk'], rook: ['Rook Sable', 'Veil Cartographer'],
-    broker: ['Amina Thorne', 'Exchange Broker'], 'lodge-warden': ['Kesh Arbo', 'Lodge Warden'], steward: ['Siv Moss', 'Expedition Steward'] };
+    broker: ['Amina Thorne', 'Exchange Broker'], 'lodge-warden': ['Kesh Arbo', 'Lodge Warden'], steward: ['Siv Moss', 'Expedition Steward'],
+    'vault-clerk': ['Orla Stave', 'Vault Clerk'], enchanter: ['Idris Calder', 'Enchanter'], croupier: ['Lune Coyne', 'Croupier'],
+    herald: ['Pim Larkin', 'Board Herald'], gatekeeper: ['Corran Holt', 'Arena Gatekeeper'], 'trials-warden': ['Hesta Cairn', 'Trials Warden'] };
   const all = Object.values(life.TOWN_KEEPERS).flat();
   for (const [id, [name, title]] of Object.entries(named)) {
     const def = all.find(k => k.id === id);
@@ -2421,6 +2423,7 @@ test('life (S3): people wear their name with the role title under it; every keep
     assert.equal(lifeI18n[def.nameKey].en, name);
     assert.equal(lifeI18n[def.titleKey].en, title, `${name}'s subtitle is the approved role title`);
   }
+  assert.ok(all.every(def => def.titleKey), 'every keeper wears a name with a title or epithet under it: none is called only by its job');
   for (const def of all) {
     assert.ok(def.lines.length >= 4 && def.lines.length <= 8, `${def.id}: ${def.lines.length} lines`);
     assert.deepEqual(def.lines, keeperLinesMod.allKeeperLines(def.id));
@@ -2428,7 +2431,7 @@ test('life (S3): people wear their name with the role title under it; every keep
     if (def.titleKey) assert.ok(lifeI18n[def.titleKey]?.es, `${def.titleKey} EN + ES`);
   }
   // The town feels connected: lines that name another keeper.
-  const names = all.map(k => lifeI18n[k.nameKey].en.split(' ')[0]).filter(n => !['The', 'Vault', 'Board', 'Arena', 'Trials', 'Croupier', 'Enchanter'].includes(n));
+  const names = all.map(k => lifeI18n[k.nameKey].en.split(' ')[0]).filter(n => n !== 'The');
   const crossRefs = all.flatMap(def => def.lines.filter(key => names.some(n => n !== lifeI18n[def.nameKey].en.split(' ')[0] && lifeI18n[key].en.includes(n))));
   assert.ok(crossRefs.length >= 5, `${crossRefs.length} lines mention another keeper`);
 });

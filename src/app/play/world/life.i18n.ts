@@ -7,22 +7,23 @@
  * lines their character already says in npc.model.ts DIALOGUE; the engine
  * harness checks the English matches word for word. The Bible's people (S3,
  * docs/world/world-and-cast.md §3) wear their name on the tag and the approved
- * role title as a subtitle (`play.life.title.*`); keepers the cast has not
- * named keep the title as their name. Lines come from world-and-cast §3 in each
- * person's voice; which open when is keeper-lines.ts.
+ * role title as a subtitle (`play.life.title.*`); so do the six role keepers
+ * named on 2026-10-14 (docs/world/lore-addendum.md, "Six names for the role
+ * keepers"). Lines come from world-and-cast §3 in each person's voice; which
+ * open when is keeper-lines.ts.
  */
 export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Name tags: the person; the subtitle is the approved role title (or a canon epithet) ──
-  'play.life.name.vault-clerk': { en: 'Vault Clerk', es: 'Empleado de la Bóveda' },
+  'play.life.name.vault-clerk': { en: 'Orla Stave', es: 'Orla Stave' },
   'play.life.name.buyback-clerk': { en: 'Edrin Kade', es: 'Edrin Kade' },
   'play.life.name.bench-smith': { en: 'Mara Voss', es: 'Mara Voss' },
   'play.life.name.kael': { en: 'Kael', es: 'Kael' },
-  'play.life.name.enchanter': { en: 'Enchanter', es: 'Encantador' },
+  'play.life.name.enchanter': { en: 'Idris Calder', es: 'Idris Calder' },
   'play.life.name.merchant': { en: 'The Merchant', es: 'El Mercader' },
   'play.life.name.aureth': { en: 'Aureth', es: 'Aureth' },
   'play.life.name.tomas': { en: 'Tomas Rill', es: 'Tomas Rill' },
   'play.life.name.ilyra': { en: 'Ilyra Venn', es: 'Ilyra Venn' },
-  'play.life.name.croupier': { en: 'Croupier', es: 'Crupier' },
+  'play.life.name.croupier': { en: 'Lune Coyne', es: 'Lune Coyne' },
   'play.life.name.broker': { en: 'Amina Thorne', es: 'Amina Thorne' },
   'play.life.name.verrin': { en: 'Verrin', es: 'Verrin' },
   'play.life.name.rook': { en: 'Rook Sable', es: 'Rook Sable' },
@@ -30,10 +31,12 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.name.chart-clerk': { en: 'Nox Aster', es: 'Nox Aster' },
   'play.life.name.sera': { en: 'Sera Quill', es: 'Sera Quill' },
   'play.life.name.steward': { en: 'Siv Moss', es: 'Siv Moss' },
-  'play.life.name.herald': { en: 'Board Herald', es: 'Heraldo del tablon' },
-  'play.life.name.gatekeeper': { en: 'Arena Gatekeeper', es: 'Guardian de la arena' },
-  'play.life.name.trials-warden': { en: 'Trials Warden', es: 'Custodio de las pruebas' },
+  'play.life.name.herald': { en: 'Pim Larkin', es: 'Pim Larkin' },
+  'play.life.name.gatekeeper': { en: 'Corran Holt', es: 'Corran Holt' },
+  'play.life.name.trials-warden': { en: 'Hesta Cairn', es: 'Hesta Cairn' },
   'play.life.name.lodge-warden': { en: 'Kesh Arbo', es: 'Kesh Arbo' },
+  'play.life.title.vault-clerk': { en: 'Vault Clerk', es: 'Empleada de la Bóveda' },
+  'play.life.title.enchanter': { en: 'Enchanter', es: 'Encantador' },
   'play.life.title.buyback-clerk': { en: 'Buyback Clerk', es: 'Comprador de materiales' },
   'play.life.title.bench-smith': { en: 'Bench Smith', es: 'Herrera del banco' },
   'play.life.title.kael': { en: 'the Broken Flame', es: 'la Llama Rota' },
@@ -41,6 +44,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.title.aureth': { en: 'the Radiant', es: 'la Radiante' },
   'play.life.title.tomas': { en: 'Lantern Keeper', es: 'Guardian de faroles' },
   'play.life.title.ilyra': { en: 'Archive Listener', es: 'Oyente del Archivo' },
+  'play.life.title.croupier': { en: 'Croupier', es: 'Crupier' },
   'play.life.title.broker': { en: 'Exchange Broker', es: 'Corredora de la Lonja' },
   'play.life.title.verrin': { en: 'the Hollow', es: 'el Hueco' },
   'play.life.title.rook': { en: 'Veil Cartographer', es: 'Cartografo del Velo' },
@@ -48,6 +52,9 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.title.chart-clerk': { en: 'Chart Clerk', es: 'Escribano de las cartas' },
   'play.life.title.sera': { en: 'Chief Meridian', es: 'Meridiana Mayor' },
   'play.life.title.steward': { en: 'Expedition Steward', es: 'Intendenta de expediciones' },
+  'play.life.title.herald': { en: 'Board Herald', es: 'Heraldo del tablon' },
+  'play.life.title.gatekeeper': { en: 'Arena Gatekeeper', es: 'Guardian de la arena' },
+  'play.life.title.trials-warden': { en: 'Trials Warden', es: 'Custodia de las pruebas' },
   'play.life.title.lodge-warden': { en: 'Lodge Warden', es: 'Custodio del refugio' },
 
   // ── Townsfolk: one line each, filled from the town's hunting grounds (life.ts townsfolkLines) ──
@@ -60,6 +67,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.vault-clerk.3': { en: 'I have never lost a thing. I have misplaced my lunch. Different ledger.', es: 'Nunca he perdido nada. He extraviado mi almuerzo. Otro libro.' },
   'play.life.line.vault-clerk.4': { en: 'Your first deposit is in the ledger. Line one. Lines are forever, here.', es: 'Tu primer deposito ya esta en el libro. Linea uno. Aqui las lineas son para siempre.' },
   'play.life.line.vault-clerk.5': { en: 'My cousin Edrin buys what you won\'t keep. I keep what you won\'t sell. Family trade.', es: 'Mi primo Edrin compra lo que no guardas. Yo guardo lo que no vendes. Negocio familiar.' },
+  'play.life.line.vault-clerk.6': { en: 'You found a tally below. My name is one: a stave, a notched stick. Someone kept count.', es: 'Encontraste una cuenta abajo. Mi nombre es una: un palo con muescas. Alguien contaba.' },
+  'play.life.line.vault-clerk.7': { en: 'Gran notched a stave for every crate we stored. I got the stave. Edrin got the scales.', es: 'La abuela marcaba una muesca por cada caja guardada. A mi me toco el palo. A Edrin, la balanza.' },
   'play.life.line.buyback-clerk.1': { en: 'I buy what you carry. Selling is the Market\'s trade, not mine.', es: 'Compro lo que cargas. Vender es oficio del Mercado, no mio.' },
   'play.life.line.buyback-clerk.2': { en: 'Surplus ore weighs on a satchel. Let it weigh on my scales.', es: 'El mineral de sobra pesa en la mochila. Deja que pese en mi balanza.' },
   'play.life.line.buyback-clerk.3': { en: 'Low price, honest scales. Your ore keeps a roof on someone.', es: 'Precio bajo, balanza honrada. Tu mineral mantiene un techo sobre alguien.' },
@@ -89,6 +98,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.enchanter.3': { en: 'Every rune you socket is a sentence. Try to write ones you\'d sign.', es: 'Cada runa que engarzas es una frase. Intenta escribir las que firmarias.' },
   'play.life.line.enchanter.4': { en: 'That socket has spoken now. Read it back before you wear it into a fight.', es: 'Ese engarce ya ha hablado. Releelo antes de llevarlo a una pelea.' },
   'play.life.line.enchanter.5': { en: 'I trained in the Archive. The Archivist still corrects my footnotes by post.', es: 'Me forme en el Archivo. El Archivista aun me corrige las notas por correo.' },
+  'play.life.line.enchanter.6': { en: 'The Archive taught me footnotes. The Seamworks taught me footnotes in a hurry.', es: 'El Archivo me enseno las notas al pie. La Seamworks me enseno a ponerlas deprisa.' },
+  'play.life.line.enchanter.7': { en: 'You\'ve read a carving. A socket is the same, smaller: words the metal can\'t take back.', es: 'Ya leiste una talla. Un engarce es lo mismo, en pequeno: palabras que el metal no retira.' },
 
   // ── Luminous: Heliograph Court ──
   'play.life.line.merchant.1': { en: 'Everything on this shelf is fairly priced. Fairly. To me.', es: 'Todo en este estante tiene un precio justo. Justo. Para mi.' },
@@ -126,6 +137,9 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.croupier.3': { en: 'The odds are on the box. If you want better odds, you want a different box.', es: 'Las probabilidades estan en la caja. Si quieres otras, quieres otra caja.' },
   'play.life.line.croupier.4': { en: 'Sold one back to the house? The Merchant calls that loyalty. I call it arithmetic.', es: 'Le vendiste algo a la casa? El Mercader lo llama lealtad. Yo lo llamo aritmetica.' },
   'play.life.line.croupier.5': { en: 'The Merchant pays my wages and argues my odds. I print them anyway.', es: 'El Mercader paga mi sueldo y discute mis probabilidades. Yo las imprimo igual.' },
+  'play.life.line.croupier.6': { en: 'Reels, Rune Drop, Seam Sweeper, Eclipse Ascent: four games east of me, all odds printed.', es: 'Rodillos, Caida de Runas, Barrido de Veta, Ascenso del Eclipse: cuatro juegos, todo impreso.' },
+  'play.life.line.croupier.7': { en: 'Rune Drop falls where it falls. Seam Sweeper\'s weak roof is set before you swing.', es: 'Caida de Runas cae donde cae. El techo flojo de Barrido de Veta se fija antes de que golpees.' },
+  'play.life.line.croupier.8': { en: 'Eclipse Ascent climbs until it breaks. The Reels just spin. Both print the house cut.', es: 'Ascenso del Eclipse sube hasta romperse. Los Rodillos solo giran. Ambos dicen que guarda la casa.' },
   'play.life.line.broker.1': { en: 'Every trade in this hall is written down. Every one.', es: 'Cada trato en esta sala queda escrito. Cada uno.' },
   'play.life.line.broker.2': { en: 'Name your price. The ledger will tell you if it is fair.', es: 'Di tu precio. El libro te dira si es justo.' },
   'play.life.line.broker.3': { en: 'Erasure starts small. A missing line in a ledger. Then a missing name.', es: 'El borrado empieza pequeno. Una linea que falta en un libro. Luego un nombre.' },
@@ -182,15 +196,21 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.herald.3': { en: 'Five realms asking. None of them say please. I add it for them.', es: 'Cinco reinos pidiendo. Ninguno dice por favor. Yo lo anado por ellos.' },
   'play.life.line.herald.4': { en: 'You claimed a Delve order. The board noticed. The board notices everything.', es: 'Cobraste una orden de la Sima. El tablon se dio cuenta. El tablon se da cuenta de todo.' },
   'play.life.line.herald.5': { en: 'Kael has posted nothing. Kael doesn\'t post. Kael asks you, which is worse.', es: 'Kael no ha publicado nada. Kael no publica. Kael te lo pide a ti, que es peor.' },
+  'play.life.line.herald.6': { en: 'Larkins have read this board aloud for four generations. Never posted once. Neutral.', es: 'Los Larkin leen este tablon desde hace cuatro generaciones. Nunca publicamos nada. Neutrales.' },
+  'play.life.line.herald.7': { en: 'The Seamworks posted thanks when the Seam Eater sank. First thank-you here in years.', es: 'La Seamworks dio las gracias cuando se hundio el Devorador de Costuras. Las primeras en anos.' },
   'play.life.line.gatekeeper.1': { en: 'Past this gate, other Keepers test your might.', es: 'Tras esta puerta, otros Guardianes ponen a prueba tu fuerza.' },
   'play.life.line.gatekeeper.2': { en: 'Guard well. The ring remembers who held their ground.', es: 'Defiendete bien. El ruedo recuerda quien no cedio.' },
   'play.life.line.gatekeeper.3': { en: 'Lose here. It costs nothing. That\'s the point of here.', es: 'Pierde aqui. No cuesta nada. Para eso esta esto.' },
   'play.life.line.gatekeeper.4': { en: 'You\'ve been out on the roads. I walked them with Siv Moss, before the knee went.', es: 'Has estado en los caminos. Yo los recorri con Siv Moss, antes de lo de la rodilla.' },
+  'play.life.line.gatekeeper.5': { en: 'Siv took the long patrols, I took the ones with a fight. The knee chose who stayed out.', es: 'Siv hacia las patrullas largas; yo, las de pelea. La rodilla eligio quien seguia fuera.' },
+  'play.life.line.gatekeeper.6': { en: 'Nobody watches a fight like someone who can\'t have one. Go on. Give me something to watch.', es: 'Nadie mira una pelea como quien ya no puede tenerla. Venga. Dame algo que mirar.' },
   'play.life.line.trials-warden.1': { en: 'The trials open to those who find the secrets.', es: 'Las pruebas se abren a quien encuentra los secretos.' },
   'play.life.line.trials-warden.2': { en: 'A gate, a test, an ending. Step through when you are ready.', es: 'Una puerta, una prueba, un final. Cruza cuando estes listo.' },
   'play.life.line.trials-warden.3': { en: 'Every trial ends. I\'m only here to make sure it ends honestly.', es: 'Toda prueba termina. Solo estoy aqui para que termine con honradez.' },
   'play.life.line.trials-warden.4': { en: 'The hall of trials is Verrin\'s too. I keep the door; Verrin keeps the count.', es: 'La sala de pruebas tambien es de Verrin. Yo guardo la puerta; Verrin lleva la cuenta.' },
   'play.life.line.trials-warden.5': { en: 'Something below didn\'t end when you beat it. That isn\'t a trial. That\'s a warning.', es: 'Algo de abajo no termino cuando lo venciste. Eso no es una prueba. Es un aviso.' },
+  'play.life.line.trials-warden.6': { en: 'A cairn marks where a path ends, so the next walker knows. My name, and my whole job.', es: 'Un hito de piedras marca donde acaba un camino, para el siguiente. Mi nombre y mi oficio.' },
+  'play.life.line.trials-warden.7': { en: 'Verrin never comes to the door. The count reaches Verrin before I\'ve shut it.', es: 'Verrin nunca viene a la puerta. La cuenta le llega antes de que yo la cierre.' },
   'play.life.line.lodge-warden.1': { en: 'Every swing of a tool teaches a skill. The lodge keeps count.', es: 'Cada golpe de herramienta ensena un oficio. El refugio lleva la cuenta.' },
   'play.life.line.lodge-warden.2': { en: 'A better tool opens harder ground. Level the skill to match.', es: 'Una herramienta mejor abre terreno mas duro. Sube el oficio a la par.' },
   'play.life.line.lodge-warden.3': { en: 'You don\'t get stronger. You get adapted. It\'s better. It\'s also slower.', es: 'No te vuelves mas fuerte. Te adaptas. Es mejor. Tambien es mas lento.' },

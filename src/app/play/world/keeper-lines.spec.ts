@@ -85,6 +85,9 @@ describe('keeper lines (S3)', () => {
     const titles: Record<string, string> = {
       'bench-smith': 'Bench Smith', 'buyback-clerk': 'Buyback Clerk', 'chart-clerk': 'Chart Clerk', broker: 'Exchange Broker',
       'lodge-warden': 'Lodge Warden', steward: 'Expedition Steward',
+      // The six role keepers named on 2026-10-14 keep their role title under the name.
+      'vault-clerk': 'Vault Clerk', enchanter: 'Enchanter', croupier: 'Croupier', herald: 'Board Herald',
+      gatekeeper: 'Arena Gatekeeper', 'trials-warden': 'Trials Warden',
     };
     for (const [id, title] of Object.entries(titles)) {
       const k = KEEPERS.find(row => row.id === id)!;
