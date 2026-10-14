@@ -63,6 +63,12 @@ import { GLIM_I18N } from '../shared/glim/glim.i18n';
 import { GlimService } from '../shared/glim/glim.service';
 import { GlimVoice } from '../shared/glim/glim-voice';
 import { GlimIconComponent } from '../shared/glim/glim-icon.component';
+import { GlimTalkComponent } from '../shared/glim/glim-talk.component';
+import { GLIM_BOND_I18N } from '../shared/glim/glim-bond.i18n';
+import {
+  BACK_AFTER_MS, GLIM_RARE_KINDS, NOTICE_CELLS, SENSE_CELLS, WAY_FAR_CELLS,
+  answersFor, coloured, hasAbility, momentsFrom, nextTalk, siteMoment, wayHome,
+} from '../shared/glim/glim-bond';
 import { npcById } from '../shared/npc/npc.model';
 import { NpcQuestService } from '../shared/npc/npc-quest.service';
 import { STORY_I18N } from '../shared/story/story.i18n';
@@ -208,7 +214,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -314,7 +320,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   readonly glimNpc = npcById('glim');
   readonly glimVoice = new GlimVoice(inject(GlimService));
-  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean } | null = null;
+  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } | null = null;
   /**
    * The Keeper's story (shared/story): beats are read off the save each HUD
    * tick; a beat reached live speaks through Glim's line, and an act boundary
@@ -493,6 +499,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(FIRST_GOALS_I18N);
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
+    this.i18n.register(GLIM_BOND_I18N);
     this.i18n.register(STORY_I18N);
     this.i18n.register(BOUNTIES_I18N);
     this.keeperKey = '';
@@ -1016,6 +1023,128 @@ export class SideScrollerComponent implements OnDestroy {
       dug: this.delve.hasDug('ember-delve'),
     });
     this.tickGlim(areaId, !goal, (progress.xpByDiscipline['hunting'] ?? 0) > 0, !!worn && !worn.explorerId);
+    this.tickBond(areaId);
+  }
+
+  // ── The bond with Glim (shared/glim/glim-bond.ts) ──
+
+  /** The talk card open over the world (a talk Glim offered), or null. */
+  glimTalk: string | null = null;
+  private bondAt = 0;
+  private bondSeenAt = 0;
+  private bondBackChecked = false;
+  private senseKey = '';
+  private noticeId = '';
+  /**
+   * The bond's tick (once a second): file the shared moments the ledgers show
+   * (a place, a carving, a mission, a first catch, a depth, the compass), the
+   * warm hello after a while away, and a stage or quest step reached. While
+   * the play view catches up with a loaded save, nothing is said.
+   */
+  private tickBond(areaId: string): void {
+    if (!this.browser || !this.glimVoice.met) return;
+    const now = Date.now();
+    if (now - this.bondAt < 1000) return;
+    this.bondAt = now;
+    // The warm hello: checked once a visit, against the stamp left by the last one. Never a guilt trip.
+    if (!this.bondBackChecked) {
+      this.bondBackChecked = true;
+      const last = this.glim.state.seenAt;
+      if (last && now - last >= BACK_AFTER_MS) {
+        const n = this.glim.state.moments.filter(m => m.startsWith('back:')).length + 1;
+        this.glim.addMoments([`back:${n}`]);
+        this.glimVoice.bond({ id: 'back', key: coloured('glim.line.back', this.glim.answerTo('deep'), answersFor('deep')) });
+      }
+    }
+    if (now - this.bondSeenAt >= 5 * 60_000) { this.bondSeenAt = now; this.glim.seen(now); }
+    this.bondMoments(momentsFrom({
+      areaId,
+      inscriptions: this.delveLore.inscriptions(),
+      missionsDone: DELVE_MISSIONS.filter(m => this.quests.isMissionDone(m.id)).map(m => m.id),
+      caught: Object.keys(this.fishing.save.caught).filter(id => !CRATE_IDS.includes(id)),
+      deepest: this.delve.hasDug('ember-delve') ? this.bounties.state.deepest : -1,
+      compass: this.compassHeld,
+    }));
+  }
+  /** File moments; when live, a stage reached offers its talk and a quest step says so. */
+  private bondMoments(ids: string[]): void {
+    if (!this.browser || !this.glimVoice.met) return;
+    const added = this.glim.addMoments(ids);
+    const live = Date.now() - this.openedAt >= STORY_CATCH_UP_MS;
+    const stage = this.glim.stage;
+    if (stage.n > this.glim.state.peak) {
+      this.glim.reachStage(stage.n);
+      const talk = nextTalk(stage, this.glim.state.moments);
+      if (live) this.glimVoice.bond({ id: `stage.${stage.n}`, key: `glim.line.stage.${stage.n}`, ...(talk ? { talk: talk.id } : {}) });
+    }
+    if (!live) return;
+    for (const id of added) {
+      const n = Number(id.startsWith('quest:') ? id.slice(6) : 0);
+      if (n >= 1 && n <= 5) this.glimVoice.bond({ id, key: `glim.line.quest.${n}` });
+    }
+  }
+  /** Say a bond ability's line, at most once per `cooldownMs` (remembered through the gateway). */
+  private bondLine(id: string, key: string, cooldownMs: number, vars?: Record<string, string | number>): void {
+    const stamp = `bond.${id}`;
+    const last = this.glim.state.lastAt[stamp] ?? 0;
+    if (last && Date.now() - last < cooldownMs) return;
+    this.glim.said(stamp);
+    this.glimVoice.bond({ id: stamp, key, ...(vars ? { vars } : {}) });
+  }
+  /**
+   * The bond's abilities, in the Delve (once a second): the sense (Glim
+   * brightens near a room no lantern has touched or an uncopied carving), the
+   * notice (a rare find near, and which way) and the way home (said when the
+   * shaft is far). Each is open only at its stage.
+   */
+  private tickBondAbilities(read: ReadonlySet<string>): void {
+    if (!this.engine || !this.glimVoice.met) return;
+    const at = this.engine.keeperCell();
+    const stage = this.glim.stage;
+    let bright = false;
+    if (at && hasAbility(stage, 'sense')) {
+      const near = this.engine.compassTarget(id => read.has(id));
+      if (near && Math.hypot(near.col - at.col, near.row - at.row) <= SENSE_CELLS) {
+        bright = true;
+        const key = `${near.col},${near.row}`;
+        if (key !== this.senseKey) {
+          this.senseKey = key;
+          this.bondLine('sense', coloured('glim.line.sense', this.glim.answerTo('like'), answersFor('like')), 10 * 60_000);
+        }
+      }
+    }
+    this.engine.setGlimBright(bright);
+    if (!at) return;
+    if (hasAbility(stage, 'notice')) {
+      const rare = this.engine.rareNear(GLIM_RARE_KINDS, NOTICE_CELLS);
+      if (rare && rare.id !== this.noticeId) {
+        this.noticeId = rare.id;
+        const dir = this.t(rare.col + rare.w / 2 >= at.col ? 'glim.dir.east' : 'glim.dir.west');
+        this.bondLine('notice', coloured('glim.line.notice', this.glim.answerTo('mark'), answersFor('mark')), 15 * 60_000, { dir });
+      }
+    }
+    if (hasAbility(stage, 'way')) {
+      const way = wayHome(at, this.engine.mapSource()?.shafts ?? []);
+      if (way && way.cols + way.rows >= WAY_FAR_CELLS) {
+        this.bondLine('way', way.dir === 'here' ? 'glim.line.wayHere' : 'glim.line.way', 20 * 60_000,
+          { cols: way.cols, rows: way.rows, dir: way.dir === 'here' ? '' : this.t(`glim.dir.${way.dir}`) });
+      }
+    }
+  }
+  /** Talk (on a bond line): the talk card opens over the world, which waits. */
+  openGlimTalk(id: string): void {
+    this.glimTalk = id;
+    this.glimVoice.dismiss();
+    this.bagOpen = false; this.placesOpen = false;
+    this.engine?.setHover(null);
+    this.engine?.setPaused(true);
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.glim-talk-card button')?.focus({ preventScroll: true }));
+  }
+  closeGlimTalk(): void {
+    if (!this.glimTalk) return;
+    this.glimTalk = null;
+    if (!this.panel && !this.map.open && !this.storyCard) this.engine?.setPaused(false);
+    this.focusWorld();
   }
   /**
    * The story's tick: file the beats the save has reached; a live beat's lines
@@ -1103,12 +1232,12 @@ export class SideScrollerComponent implements OnDestroy {
   /** Glim's tick: maybe a line (glim.ts nextLine), the sprite shown once met, and where it is. */
   private tickGlim(areaId: string, goalsDone: boolean, hunted: boolean, armed: boolean): void {
     const voice = this.glimVoice;
-    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
+    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard || !!this.glimTalk, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
     if (!this.engine) return;
     this.engine.setGlim(voice.met, voice.justMet);
     voice.justMet = false;
     const at = this.engine.glimView;
-    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed } : null;
+    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed, bright: at.bright } : null;
   }
   /** The goal row's Glim button: the next step of this goal's hint ladder; step 3 is Show me. */
   askGlim(): void {
@@ -1275,6 +1404,11 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape') { event.preventDefault(); this.closeStoryCard(); }
       return;
     }
+    // So does a talk with Glim.
+    if (this.glimTalk) {
+      if (event.key === 'Escape') { event.preventDefault(); this.closeGlimTalk(); }
+      return;
+    }
     // An open place owns the keyboard. Escape closes it unless the page inside
     // already used the key (its own dialog, a reveal) — window is the last stop.
     if (this.panel) {
@@ -1434,11 +1568,15 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private tickDelveV2(): void {
     if (!this.browser || !this.engine) return;
-    if (!this.state.delve) { this.pinning = false; this.lastStructure = ''; return; }
+    if (!this.state.delve) { this.pinning = false; this.lastStructure = ''; this.engine.setGlimBright(false); return; }
     const at = this.engine.keeperCell();
     if (at) this.bounties.reached(stratumOfRow(at.row));
     const here = this.engine.structureHere();
-    if (here && here.id !== this.lastStructure) this.bountyEvent({ kind: 'structure', structure: here.kind, token: here.id });
+    if (here && here.id !== this.lastStructure) {
+      this.bountyEvent({ kind: 'structure', structure: here.kind, token: here.id });
+      // A room found together: a bond moment (each structure once; the first of each kind counts more).
+      this.bondMoments([siteMoment(here.id), `kind:${here.kind}`]);
+    }
     this.lastStructure = here?.id ?? '';
     const now = Date.now();
     if (now - this.delveTickAt < 1000) return;
@@ -1449,6 +1587,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.glimMarkMission = activeMark(this.glim.state.lastAt, now);
     this.glimMark = this.glimMarkMission ? this.engine.findMark(GLIM_MARKS[this.glimMarkMission] ?? [], id => read.has(id)) : null;
     this.compassAt = this.compassHeld ? this.engine.compassTarget(id => read.has(id)) : null;
+    this.tickBondAbilities(read);
     const canvas = this.canvas?.nativeElement;
     if (canvas) {
       canvas.setAttribute('data-glim-mark', this.glimMark ? `${this.glimMark.col},${this.glimMark.row}` : '');

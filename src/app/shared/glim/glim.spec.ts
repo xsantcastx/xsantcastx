@@ -225,8 +225,8 @@ describe('Glim: its lines are never spammy', () => {
 });
 
 describe('Glim: what it remembers merges', () => {
-  const a: GlimState = { version: 1, met: true, metAt: '2026-10-14T10:00:00.000Z', ladder: { 'goal.buy': 2, 'goal.craft': 1 }, said: { meet: 1, edge: 1 }, lastAt: { meet: 100, edge: 200 } };
-  const b: GlimState = { version: 1, met: true, metAt: '2026-10-13T09:00:00.000Z', ladder: { 'goal.buy': 3 }, said: { meet: 1, stop: 1 }, lastAt: { meet: 50, stop: 900 } };
+  const a: GlimState = { ...emptyGlim(), version: 1, met: true, metAt: '2026-10-14T10:00:00.000Z', ladder: { 'goal.buy': 2, 'goal.craft': 1 }, said: { meet: 1, edge: 1 }, lastAt: { meet: 100, edge: 200 } };
+  const b: GlimState = { ...emptyGlim(), version: 1, met: true, metAt: '2026-10-13T09:00:00.000Z', ladder: { 'goal.buy': 3 }, said: { meet: 1, stop: 1 }, lastAt: { meet: 50, stop: 900 } };
 
   it('keeps the earlier meeting, the further step, the higher count and the later stamp', () => {
     const m = mergeGlim(a, b) as GlimState;
