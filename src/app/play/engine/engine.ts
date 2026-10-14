@@ -112,6 +112,7 @@ const VEIL_CELLS = 4;
 /** Fishing: how far a cast reaches, in cells; the hook window after the dip; a nibble after a miss. */
 const CAST_CELLS = 6;
 const HOOK_WINDOW = .6;
+const LATE_HOOK = .6;
 /** The buckets, empty and full. */
 const BUCKET_FOR: Readonly<Record<number, BucketId>> = { [LIQUID_WATER]: 'seam-bucket-water', [LIQUID_LAVA]: 'seam-bucket-lava' };
 const BUCKET_LIQUID: Readonly<Record<string, number>> = { 'seam-bucket': 0, 'seam-bucket-water': LIQUID_WATER, 'seam-bucket-lava': LIQUID_LAVA };
@@ -1577,7 +1578,9 @@ export class SeamworksEngine {
     if (accepted === false) { this.report(); return false; }
     if (full) sim.pour(index, type); else sim.scoop(index);
     this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, type === LIQUID_LAVA ? '#ffb066' : '#86d2e6', this.reducedMotion ? 2 : 6);
-    if (full) this.say(type === LIQUID_LAVA ? 'play.delve.bucket.pouredLava' : 'play.delve.bucket.pouredWater', type === LIQUID_LAVA ? 'You pour out the lava.' : 'You pour out the water.');
+    // A pour that set obsidian has already said so (reacted).
+    if (full && t.solid(col, row)) { /* the hiss is the line */ }
+    else if (full) this.say(type === LIQUID_LAVA ? 'play.delve.bucket.pouredLava' : 'play.delve.bucket.pouredWater', type === LIQUID_LAVA ? 'You pour out the lava.' : 'You pour out the water.');
     else this.say(type === LIQUID_LAVA ? 'play.delve.bucket.scoopedLava' : 'play.delve.bucket.scoopedWater', type === LIQUID_LAVA ? 'The bucket holds a cell of lava. Mind your hands.' : 'The bucket holds a cell of water.');
     this.saveLiquids(t, sim);
     this.report();
@@ -1664,7 +1667,10 @@ export class SeamworksEngine {
     if (this.useHeld) this.recast = .6;
     this.report();
   }
+  /** Seconds after a dip passes in which E is a late hook (forgiven), not a reel-in. */
+  private lateHook = 0;
   private updateLine(dt: number, t: Terrain): void {
+    this.lateHook = Math.max(0, this.lateHook - dt);
     if (this.recast > 0) { this.recast -= dt; if (this.recast <= 0 && this.useHeld && !this.line) this.cast(); }
     const line = this.line;
     if (!line) return;
@@ -1686,8 +1692,8 @@ export class SeamworksEngine {
       this.report();
       return;
     }
-    // Missed the dip: nothing lost, it nibbles again.
-    line.phase = 'wait'; line.timer = this.biteWait(1, 3);
+    // Missed the dip: nothing lost, it nibbles again (and a tap in the next moment is a late hook, not a reel-in).
+    line.phase = 'wait'; line.timer = this.biteWait(1, 3); this.lateHook = LATE_HOOK;
     this.say('play.fish.missed', 'Missed it. It is still down there: wait for the next dip.');
   }
   /** The line, the bob and its dip (world px; before the darkness, so it is lit like the world). */
@@ -1964,8 +1970,13 @@ export class SeamworksEngine {
   random: () => number = Math.random;
   interact(): void {
     if (this.paused || this.hp <= 0) return;
-    // A line in the water: E hooks a bite, or reels the line back in.
-    if (this.line) { if (!this.hook()) this.reelIn(); return; }
+    // A line in the water: E hooks a bite, or reels the line back in (a tap just
+    // after a dip is a late hook, not a reel-in: the fish is still there).
+    if (this.line) {
+      if (this.hook()) return;
+      if (this.lateHook > 0) { this.say('play.fish.missed', 'Missed it. It is still down there: wait for the next dip.'); this.report(); return; }
+      this.reelIn(); return;
+    }
     const station = this.nearbyStation();
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
     const site = station ? null : this.siteInReach();

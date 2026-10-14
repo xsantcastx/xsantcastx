@@ -62,7 +62,8 @@ describe('the infusion catalogue', () => {
   });
 
   it('runs for between half an hour and four hours', () => {
-    for (const infusion of INFUSIONS) {
+    // The Gill Draught (breath, Fishing) works in the world for one dive, not on income: 3 minutes by design.
+    for (const infusion of INFUSIONS.filter(i => i.channel !== 'breath')) {
       expect(infusion.minutes).withContext(infusion.id).toBeGreaterThanOrEqual(30);
       expect(infusion.minutes).withContext(infusion.id).toBeLessThanOrEqual(240);
       expect(infusion.bonus).withContext(infusion.id).toBeGreaterThan(0);
