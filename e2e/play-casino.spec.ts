@@ -21,6 +21,7 @@ import { wholeGold } from '../src/app/shared/games/rtp-sim';
 const SHOTS = resolve('output/casino');
 const START = 1_000;
 
+// Gold reaches storage on the economy's 5 s write throttle (spends flush at once; pagehide flushes on reload), so polls wait 10 s.
 /** The first `e2e-<game>-<i>` secret whose first play satisfies `ok`. */
 function secretWhere(game: string, ok: (seed: string) => boolean): string {
   for (let i = 0; i < 5_000; i++) if (ok(`e2e-${game}-${i}:0`)) return `e2e-${game}-${i}`;
@@ -114,7 +115,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect(act).toContainText('Dig');
       await expect.poll(() => minSide(page, 'app-seam-sweeper .ss-cell')).toBeGreaterThanOrEqual(44);
       await act.click();
-      await expect.poll(() => gold(page)).toBe(START - 10);
+      await expect.poll(() => gold(page), { timeout: 10000 }).toBe(START - 10);
       await game.locator(`.ss-cell[data-cell="${safe[0]}"]`).click();
       await expect(game.locator(`.ss-cell[data-cell="${safe[0]}"]`)).toHaveAttribute('data-view', 'ore');
       await page.screenshot({ path: resolve(SHOTS, `seam-${size.width}-dug.png`) });
@@ -130,7 +131,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await act.click();
       const win = wholeGold(10 * x, seam.u);
       await expect(game.locator('.ss-result')).toContainText(`${win} Gold`);
-      await expect.poll(() => gold(page)).toBe(START - 10 + win);
+      await expect.poll(() => gold(page), { timeout: 10000 }).toBe(START - 10 + win);
       // Every collapse is shown once the round ends.
       await expect(game.locator('.ss-cell[data-view="shown-collapse"]')).toHaveCount(3);
       await page.screenshot({ path: resolve(SHOTS, `seam-${size.width}-cashed.png`) });
@@ -168,7 +169,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect(placePanel(page)).toBeVisible({ timeout: 15000 });
       const win = wholeGold(10 * 2, o.u);
       await expect(game.locator('.ea-result')).toContainText(`Cashed out at ×2.00: ${win} Gold.`, { timeout: 15000 });
-      await expect.poll(() => gold(page)).toBe(START - 10 + win);
+      await expect.poll(() => gold(page), { timeout: 10000 }).toBe(START - 10 + win);
       await page.screenshot({ path: resolve(SHOTS, `ascent-${size.width}-cashed.png`) });
 
       await page.reload();
