@@ -379,6 +379,8 @@ export class NpcQuestService {
       if (minted) this.inventory.add(minted);
     }
     if (r.artifact) this.economy.grantArtifact(r.artifact);
+    // Quest stacks (the Four Hammer-Marks): each one grant, idempotent on the claim's own key.
+    for (const row of r.materials ?? []) this.inventory.grantStack(`npc-mission:${mission.id}:${times}:mat:${row.id}`, row.id, row.qty);
     const grants = missionXpGrants(mission, times);
     const fishing = missionFishingXpGrants(mission, times);
     if (grants.length > 0 || fishing.length > 0) {

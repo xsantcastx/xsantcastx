@@ -71,6 +71,9 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.say.a1.fresh.2': { en: "Every wall you've cut has it. That mark is yours, and I didn't see you make it.", es: 'Todos los muros que has cortado la tienen. Esa marca es tuya, y no te vi hacerla.' },
   'story.say.a1.dated.1': { en: 'That one is dated tomorrow. I have rechecked it four times. It remains dated tomorrow.', es: 'Esa esta fechada manana. La he revisado cuatro veces. Sigue fechada manana.' },
   'story.say.a1.break.1': { en: "Five witnesses. I've started five blank pages. They're my favourite kind.", es: 'Cinco testigos. He empezado cinco paginas en blanco. Son mis favoritas.' },
+  'story.say.a2.under.1': { en: 'The furnace is not angry. It is doing exactly what we asked. That is the problem with asking.', es: 'El horno no esta enfadado. Hace justo lo que le pedimos. Ese es el problema de pedir.' },
+  'story.say.a2.marks.1': { en: 'You found a mark. Put your hand on it. That was the height of her shoulder.', es: 'Encontraste una marca. Pon la mano encima. Esa era la altura de su hombro.' },
+  'story.say.a2.furnace.1': { en: 'It is out. I thought I would feel lighter. I feel like the forge just got colder by four.', es: 'Se apago. Crei que me sentiria mas ligero. Siento que la forja se enfrio en cuatro.' },
 
   // ── The journal: what was found (shown only once found) ──
   'story.beat.p.arrival.title': { en: 'A light on your shoulder', es: 'Una luz en tu hombro' },
@@ -101,6 +104,12 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.beat.a1.dated.text': { en: 'You copied every carving in the Delve for the Archivist, who found one entry they have never been able to close.', es: 'Copiaste todos los grabados de la Sima para el Archivista, que encontro una entrada que nunca ha podido cerrar.' },
   'story.beat.a1.break.title': { en: 'A line someone had already drawn', es: 'Una linea que alguien ya habia trazado' },
   'story.beat.a1.break.text': { en: 'You brought Kael the Godforge Fragment. The crack was drawn first and broken second. Kael asked for five witnesses.', es: 'Le llevaste a Kael el Godforge Fragment. La grieta se trazo primero y se rompio despues. Kael pidio cinco testigos.' },
+  'story.beat.a2.under.title': { en: 'The Four Who Went Down', es: 'Los Cuatro que Bajaron' },
+  'story.beat.a2.under.text': { en: 'Kael opened the seal under the fragment chamber. Below the Magma Halls is the Underhearth, where four Keepers went to bank a fire and did not come back up.', es: 'Kael abrio el sello bajo la camara del fragmento. Bajo Magma Halls esta el Bajohogar, donde cuatro Guardianes fueron a cubrir un fuego y no volvieron a subir.' },
+  'story.beat.a2.marks.title': { en: 'Four hammers', es: 'Cuatro martillos' },
+  'story.beat.a2.marks.text': { en: 'You took rubbings of the four hammer-marks where the Four stood. You found where the work was. You did not find them.', es: 'Calcaste las cuatro marcas de martillo donde estuvieron los Cuatro. Encontraste donde fue el trabajo. No los encontraste a ellos.' },
+  'story.beat.a2.furnace.title': { en: 'Let it end', es: 'Dejalo terminar' },
+  'story.beat.a2.furnace.text': { en: 'Verrin asked you to file the one ending they never could. The Banked Furnace is out, and the Seamworks is four people colder.', es: 'Verrin te pidio archivar el unico final que nunca pudo. El Horno Cubierto se apago, y las Costuras estan cuatro personas mas frias.' },
 
   // ── Leads: where to look next, never what is there ──
   'story.lead.p.arrival': { en: 'Step into the world at the Seamworks Waystone.', es: 'Entra en el mundo por el Waystone de Basalt Seamworks.' },
@@ -117,6 +126,9 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.lead.a1.fresh': { en: 'Read what is carved deepest in the Magma Halls. Glim says the deepest carving is the newest.', es: 'Lee lo que esta grabado mas hondo en Magma Halls. Glim dice que el grabado mas hondo es el mas nuevo.' },
   'story.lead.a1.dated': { en: 'The Archivist wants every carving in the Delve copied.', es: 'El Archivista quiere copiados todos los grabados de la Sima.' },
   'story.lead.a1.break': { en: 'Bring Kael the Godforge Fragment from the Magma Halls.', es: 'Llevale a Kael el Godforge Fragment de Magma Halls.' },
+  'story.lead.a2.under': { en: 'Kael has something to say about the floor of the fragment chamber. Ask him at the Rune Forge.', es: 'Kael tiene algo que decir sobre el suelo de la camara del fragmento. Preguntale en la Rune Forge.' },
+  'story.lead.a2.marks': { en: 'Four Keepers worked in the Underhearth. Kael wants to know where they stood.', es: 'Cuatro Guardianes trabajaron en el Bajohogar. Kael quiere saber donde estuvieron.' },
+  'story.lead.a2.furnace': { en: 'Verrin has an ending to file, at the bottom of Kael\'s old rail.', es: 'Verrin tiene un final que archivar, al fondo del viejo rail de Kael.' },
   'story.lead.chapter.prologue': { en: 'Read a carving in the Delve.', es: 'Lee un grabado en la Sima.' },
   'story.lead.chapter.act1': { en: 'Bring Kael the Godforge Fragment from the Magma Halls.', es: 'Llevale a Kael el Godforge Fragment de Magma Halls.' },
   'story.lead.chapter.act2': { en: 'Five witnesses, one from each realm. Kael is waiting for their accounts. Act II opens in a later update.', es: 'Cinco testigos, uno de cada reino. Kael espera sus relatos. El Acto II llega en una actualizacion futura.' },

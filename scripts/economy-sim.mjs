@@ -734,8 +734,11 @@ function fishingScenario({ quiet = false } = {}) {
     // The fisher splits time between the Mere and Magma lava (once a Seam Rod works) to fill the order.
     const mere = fishingRate(level, 'mere', 'active');
     const magma = fishingRate(level, 'magma', 'active');
+    // Phase 8: the Underhearth's lava (any lava rod works it); a fisher with lava open adds it to the rotation.
+    const hearth = fishingRate(level, 'hearth', 'active');
+    const rotation = [mere, magma, hearth].filter(Boolean);
     const mix = magma ? .5 : 1;
-    const sell = mere.goldMin * mix + (magma ? magma.goldMin * (1 - mix) : 0);
+    const sell = rotation.reduce((s, w) => s + w.goldMin, 0) / rotation.length;
     // Order fills a minute: limited by its scarcest item at this mix.
     let fills = Infinity;
     for (const [id, n] of order.items) {
@@ -746,13 +749,13 @@ function fishingScenario({ quiet = false } = {}) {
     const orderMin = fills * Math.max(order.floor, gps * order.seconds);
     const share = (sell + orderMin) / forgeMin;
     const ledger = Math.max(FISH.LEDGER_REWARD.goldFloor, gps * FISH.LEDGER_REWARD.goldSeconds);
-    const xpMin = mere.xpMin * mix + (magma ? magma.xpMin * (1 - mix) : 0);
+    const xpMin = rotation.reduce((s, w) => s + w.xpMin, 0) / rotation.length;
     say('  ' + label.padEnd(6) + String(level).padStart(5) + fmtN(forgeMin).padStart(14) + fmtN(sell).padStart(12) + fmtN(orderMin).padStart(13) + `${(share * 100).toFixed(1)}%`.padStart(8) + fmtN(ledger).padStart(16) + xpMin.toFixed(0).padStart(9));
     // 1. Fishing's Gold a minute (selling everything plus the standing order) ≤ 10% of the forge's, after the first 10 minutes.
     if (t > 600 && share > .10) fails.push(`fishing pays ${(share * 100).toFixed(1)}% of the forge's Gold/min at ${label} (must be <= 10%)`);
     // 2. A crate's vendor value ≤ the Gold the forge earns in the minutes it took to fish it.
-    for (const water of ['mere', 'magma']) {
-      const r = water === 'mere' ? mere : magma;
+    for (const water of ['mere', 'magma', 'hearth']) {
+      const r = water === 'mere' ? mere : water === 'magma' ? magma : hearth;
       if (!r) continue;
       const crate = FISH.WATERS[water].crate;
       const value = FISH.crateExpectedAnchor(crate, anchorOf) * C.ITEM_ECONOMY_SCALE * C.VENDOR_BUYBACK_FRACTION;
@@ -771,12 +774,12 @@ function fishingScenario({ quiet = false } = {}) {
   // 4. 99 Fishing takes 60–250 active hours (the band the other skills sit in): the best water at each level, active.
   let hours = 0;
   for (let L = 1; L < 99; L++) {
-    const best = Math.max(...['seep', 'mere', 'magma'].map(w => fishingRate(L, w, 'active')?.xpMin ?? 0));
+    const best = Math.max(...['seep', 'mere', 'magma', 'hearth'].map(w => fishingRate(L, w, 'active')?.xpMin ?? 0));
     hours += (xpFor(L + 1) - xpFor(L)) / best / 60;
   }
   let autoHours = 0;
   for (let L = 1; L < 99; L++) {
-    const best = Math.max(...['seep', 'mere', 'magma'].map(w => fishingRate(L, w, 'auto')?.xpMin ?? 0));
+    const best = Math.max(...['seep', 'mere', 'magma', 'hearth'].map(w => fishingRate(L, w, 'auto')?.xpMin ?? 0));
     autoHours += (xpFor(L + 1) - xpFor(L)) / best / 60;
   }
   say(`\n  99 Fishing: ${hours.toFixed(0)} active hours at the Good grade (${autoHours.toFixed(0)} h on auto at Off); band 60-250 h`);

@@ -81,6 +81,12 @@ export const GLIM_HINTS: Readonly<Record<string, GlimHintRow>> = {
   'fish-merchant-order': { nudge: 'play.glim.hint.f.order.1', direction: 'play.glim.hint.f.order.2', show: 'atlas' },
   'fish-merchant-debt': { nudge: 'play.glim.hint.f.debt.1', direction: 'play.glim.hint.f.debt.2', show: 'atlas' },
   'fish-archivist-pages': { nudge: 'play.glim.hint.f.pages.1', direction: 'play.glim.hint.f.pages.2', show: 'atlas' },
+  // The Underhearth (Phase 8): where to look, never what is down there.
+  'kael-flooded-seams': { nudge: 'play.glim.hint.u.rivets.1', direction: 'play.glim.hint.u.rivets.2', show: 'atlas' },
+  'kael-four-1': { nudge: 'play.glim.hint.u.seal.1', direction: 'play.glim.hint.u.seal.2', show: 'atlas' },
+  'kael-four-2': { nudge: 'play.glim.hint.u.marks.1', direction: 'play.glim.hint.u.marks.2', show: 'atlas' },
+  'verrin-four-3': { nudge: 'play.glim.hint.u.furnace.1', direction: 'play.glim.hint.u.furnace.2', show: 'atlas' },
+  'verrin-endings-kept-warm': { nudge: 'play.glim.hint.u.coalfish.1', direction: 'play.glim.hint.u.coalfish.2', show: 'atlas' },
 };
 
 /** What Glim says to anything off the ladder. */

@@ -22,7 +22,7 @@
 import { MAX_SKILL_LEVEL, miningLevelView, xpForLevel } from '../activity/mining-level';
 import { materialDisplay } from '../rpg/material-catalog';
 import type { SkillId } from './skill.model';
-import { TOOL_NUMERALS, toolName, type ToolFamily, type ToolTier } from './tool-items';
+import { TOOL_MAX_TIER, TOOL_NUMERALS, TOOL_TIER_LIST, toolName, type ToolFamily, type ToolTier } from './tool-items';
 import { TOOL_OPENS, TOOL_TIER_LEVEL, lanternRadiusFor } from './tools';
 import { fishingPerks, RODS } from '../fishing/fishing.model';
 
@@ -53,7 +53,7 @@ function gatherPerks(levels: readonly number[]): SkillUnlock[] {
 }
 
 function wields(family: ToolFamily): SkillUnlock[] {
-  return ([1, 2, 3, 4] as const).map(tier => tool(family, tier));
+  return TOOL_TIER_LIST.filter(tier => tier <= TOOL_MAX_TIER[family]).map(tier => tool(family, tier));
 }
 
 function sorted(rows: SkillUnlock[]): readonly SkillUnlock[] {
@@ -77,12 +77,12 @@ export const SKILL_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = 
   ]),
   woodcutting: sorted([
     ...wields('axe'),
-    ...([1, 2, 3, 4] as const).map(tier => node(TOOL_TIER_LEVEL[tier], TOOL_OPENS.axe[tier].materialId!)),
+    ...([1, 2, 3, 4, 5] as const).map(tier => node(TOOL_TIER_LEVEL[tier], TOOL_OPENS.axe[tier]!.materialId!)),
     ...gatherPerks([20, 30, 40, 50, 60, 70, 80, 90]),
     mastery,
   ]),
   smithing: sorted([
-    ...([1, 2, 3, 4] as const).map((tier): SkillUnlock => ({ level: TOOL_TIER_LEVEL[tier], kind: 'forge', tier })),
+    ...([1, 2, 3, 4, 5] as const).map((tier): SkillUnlock => ({ level: TOOL_TIER_LEVEL[tier], kind: 'forge', tier })),
     perk(15, 'quality', 5), perk(30, 'quality', 10), perk(55, 'quality', 15),
     perk(70, 'quality', 20), perk(85, 'quality', 25),
     mastery,
@@ -171,7 +171,7 @@ export function skillPerks(skill: SkillId, level: number): SkillPerks {
 export function describeUnlock(u: SkillUnlock): { key: string; vars: Record<string, string | number> } {
   switch (u.kind) {
     case 'tool':
-      return { key: 'skills.unlock.tool', vars: { name: toolName(u.family, u.tier), opens: TOOL_OPENS[u.family][u.tier].label } };
+      return { key: 'skills.unlock.tool', vars: { name: toolName(u.family, u.tier), opens: TOOL_OPENS[u.family][u.tier]?.label ?? '' } };
     case 'forge':
       return { key: 'skills.unlock.forge', vars: { tier: TOOL_NUMERALS[u.tier] } };
     case 'node':

@@ -265,6 +265,159 @@ const BLOCK: Shape = [
   'oooooooooooooooo',
 ].map(row => row.padEnd(16, 'o'));
 
+// The Underhearth (Phase 8): ironwood's cut end, the Waystone Shard, rails, cart, rope, grapple, anchor, rubbings.
+const LOG: Shape = [
+  '................',
+  '................',
+  '.....oooooo.....',
+  '...oobbbbbboo...',
+  '..oblllllbbbbdo.',
+  '.oblffffffffbbdo',
+  '.oblfeeeeeefbbdo',
+  '.oblfeeeeeefbddo',
+  '.oblfeeeeeefbddo',
+  '.obdffffffffbddo',
+  '.oddbbbbbbbbddo.',
+  '..oddddddddddoo.',
+  '...ooddddddoo...',
+  '.....oooooo.....',
+  '................',
+  '................',
+];
+
+const SHARD: Shape = [
+  '................',
+  '.......oo.......',
+  '......oleo......',
+  '.....olleeo.....',
+  '....ollfbbeo....',
+  '....olbbbbbdo...',
+  '...olbbbfbbbdo..',
+  '...olbbbbbbbdo..',
+  '...oblbbbbbddo..',
+  '....obbbbbbddo..',
+  '....obbbbbddo...',
+  '.....obbbdddo...',
+  '......obddo.....',
+  '.......odo......',
+  '........o.......',
+  '................',
+];
+
+const RAIL: Shape = [
+  '................',
+  '................',
+  '................',
+  '.oooooooooooooo.',
+  '.olelllllllllbdo',
+  '.obbbbbbbbbbbddo',
+  '.oooooooooooooo.',
+  '.otto.otto.otto.',
+  '.otto.otto.otto.',
+  '.oooooooooooooo.',
+  '.ollllllllllllbo',
+  '.obbbbbbbbbbbddo',
+  '.oooooooooooooo.',
+  '................',
+  '................',
+  '................',
+];
+
+const CART: Shape = [
+  '................',
+  '................',
+  '................',
+  '.oooooooooooooo.',
+  '.olllllllllllbdo',
+  '..obbbbbbbbbbdo.',
+  '..obbbbfbbbbbdo.',
+  '..obbbbbbbbbddo.',
+  '...oddddddddoo..',
+  '..oooo....oooo..',
+  '.oleeo....oleeo.',
+  '.oeddo....oeddo.',
+  '..oooo....oooo..',
+  '................',
+  '................',
+  '................',
+];
+
+const ROPE: Shape = [
+  '................',
+  '................',
+  '....oooooooo....',
+  '..oobbllbbfbboo.',
+  '.obblooooooolbbo',
+  '.oblo......olbdo',
+  '.obdo......obbdo',
+  '.obbo......oddo.',
+  '.oblo......olbdo',
+  '.obbloooooolbddo',
+  '..oobbddbbddboo.',
+  '....oooooooo....',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
+const GRAPPLE: Shape = [
+  '................',
+  '......oooo......',
+  '.....olbbdo.....',
+  '.....ob..do.....',
+  '.....odbbdo.....',
+  '......oooo......',
+  '.......oto......',
+  '.......oto......',
+  '.......oto......',
+  '.......oto......',
+  '.oo....oto....oo',
+  '.oto..ootoo..oto',
+  '..oo...oto...oo.',
+  '.......ooo......',
+  '................',
+  '................',
+];
+
+const ANCHOR: Shape = [
+  '................',
+  '.oooo......oooo.',
+  '.olbdo....olbdo.',
+  '.obbdoooooobbdo.',
+  '.oddo..ee..oddo.',
+  '..oo..oeeo..oo..',
+  '.....olfeeo.....',
+  '....olfeeeeo....',
+  '....oleeeeddo...',
+  '.....oeeeddo....',
+  '..oo..oddo..oo..',
+  '.oddo..oo..oddo.',
+  '.obbdoooooobbdo.',
+  '.olbdo....olbdo.',
+  '.oooo......oooo.',
+  '................',
+];
+
+const RUBBINGS: Shape = [
+  '................',
+  '..oooooooooooo..',
+  '..ollllllllllbo.',
+  '..olffllllffllbo',
+  '..olffllllffllbo',
+  '..ollllllllllbo.',
+  '..ollllllllllbo.',
+  '..olffllllffllbo',
+  '..olffllllffllbo',
+  '..ollllllllllbo.',
+  '..obbbbbbbbbbdo.',
+  '..oddddddddddoo.',
+  '...oooooooooo...',
+  '................',
+  '................',
+  '................',
+];
+
 /** Each icon: a shape and its palette (o outline · b body · l light · d shade · f fleck/stripe · e eye/accent · t tail). */
 const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: string }>> = {
   // Fish (spec §5.3; lore addendum)
@@ -295,6 +448,19 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   'anglers-patience': { shape: KNOT, palette: { b: '#6a4a2c', l: '#a6845a', f: '#7fb04a', d: '#3a2614' } },
   'lodge-reel': { shape: REEL, palette: { b: '#5a3f2a', l: '#d8b07a', f: '#8a6a40', d: '#2e1f14', e: '#7fb04a' } },
   'obsidian-block': { shape: BLOCK, palette: { b: '#30243f', l: '#62527f', d: '#181024', f: '#b49cff', e: '#a48bff' } },
+  // The Underhearth: iron black #171116 #2a2027 #443540 #57474f · obsidian #1e1428 #2e2238 #463650 #6a5878 · ember #c4501e #E8752A · white-hot #ffd08a · violet #b88cff
+  'cold-coalfish': { shape: FISH, palette: { b: '#2a2027', l: '#57474f', f: '#c4501e', e: '#ffd08a', t: '#171116' } },
+  'pressure-pike': { shape: EEL, palette: { b: '#443540', l: '#6a5878', f: '#E8752A', e: '#ffd08a', t: '#2e2238' } },
+  'the-fifth-ember': { shape: FISH, palette: { b: '#c4501e', l: '#ffd08a', f: '#ffffff', e: '#140a1f', t: '#E8752A' }, glow: '#ffd08a' },
+  'hearth-crate': { shape: CRATE, palette: { b: '#2a2027', l: '#57474f', f: '#E8752A', d: '#171116', e: '#ffd08a' } },
+  'ironwood': { shape: LOG, palette: { b: '#2a2027', l: '#57474f', d: '#171116', f: '#443540', e: '#c4501e' } },
+  'waystone-shard': { shape: SHARD, palette: { b: '#8a62d8', l: '#d8c0ff', e: '#b88cff', d: '#5a3a9a', f: '#ffffff' }, glow: '#b88cff' },
+  'four-hammer-marks': { shape: RUBBINGS, palette: { l: '#e8dcc0', b: '#c8b890', d: '#8a7a58', f: '#443540' } },
+  'seam-cart': { shape: CART, palette: { b: '#443540', l: '#57474f', d: '#2a2027', f: '#E8752A', e: '#6a5878' } },
+  'seam-rail': { shape: RAIL, palette: { b: '#443540', l: '#57474f', t: '#6a4a2c', e: '#ffd08a' } },
+  'bark-rope': { shape: ROPE, palette: { b: '#8a6a3a', l: '#c8a060', d: '#5a4020', f: '#7fb04a' } },
+  'thornroot-grapple': { shape: GRAPPLE, palette: { b: '#6a4a2c', l: '#a6845a', d: '#3a2614', t: '#7fb04a' } },
+  'rift-anchor': { shape: ANCHOR, palette: { b: '#463650', l: '#6a5878', d: '#2e2238', e: '#b88cff', f: '#ffffff' }, glow: '#b88cff' },
 };
 
 /**

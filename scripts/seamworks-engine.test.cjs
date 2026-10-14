@@ -1701,7 +1701,8 @@ test('camp: one per Delve, opens the bench on what can be made now, and town des
     if (kit.skill !== 'smithing') assert.equal(kit.requiredLevel, 1, kit.id);
   }
   assert.deepEqual(terrainMod.PLACEABLES.map(p => p.id),
-    ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp', 'timber-support', 'basalt-support', 'blast-charge', 'obsidian-block'], 'hotbar order, keys 1-9 then 0, then shown only while held');
+    ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp', 'timber-support', 'basalt-support', 'blast-charge', 'obsidian-block',
+      'seam-rail', 'bark-rope', 'rift-anchor'], 'hotbar order, keys 1-9 then 0, then shown only while held');
   assert.equal(terrainMod.HOTBAR_FIXED, 10);
   for (const p of terrainMod.PLACEABLES) assert.equal(terrainMod.TERRAIN_NODES[p.node].placeable ?? terrainMod.TERRAIN_NODES[p.node].block, p.id, p.id);
 
@@ -3181,15 +3182,15 @@ function progressAt(levels) {
 }
 const bag = ids => ({ items: ids.map(definitionId => ({ definitionId })), equipped: {} });
 
-test('tool pace: starter 0.52 s, forged I-IV 0.46/0.40/0.35/0.31, capped by the skill like the tier', () => {
+test('tool pace: starter 0.52 s, forged I-V 0.46/0.40/0.35/0.31/0.28, capped by the skill like the tier', () => {
   assert.equal(skillTools.STARTER_SWING_SECONDS, 0.52);
-  assert.deepEqual({ ...skillTools.TOOL_SWING_SECONDS }, { 1: 0.46, 2: 0.40, 3: 0.35, 4: 0.31 });
+  assert.deepEqual({ ...skillTools.TOOL_SWING_SECONDS }, { 1: 0.46, 2: 0.40, 3: 0.35, 4: 0.31, 5: 0.28 });
   assert.deepEqual({ ...toolItems.parseToolId('starter-pickaxe') }, { family: 'pickaxe', tier: 1, starter: true });
   const starter = skillTools.toolTiers(bag(['starter-pickaxe', 'starter-axe', 'starter-sickle']));
   assert.deepEqual([starter.pickaxe, starter.axe, starter.sickle, starter.staff], [1, 1, 1, 0], 'the starter set works as tier I');
   assert.deepEqual({ ...starter.swing }, { pickaxe: 0.52, axe: 0.52, sickle: 0.52, staff: 0.52 });
   assert.equal(skillTools.toolTiers(bag([])).pickaxe, 0, 'no invisible floor: nothing held, nothing digs');
-  for (const tier of [1, 2, 3, 4]) {
+  for (const tier of [1, 2, 3, 4, 5]) {
     const t = skillTools.toolTiers(bag(['starter-pickaxe', `pickaxe-${tier}`]));
     assert.equal(t.pickaxe, tier); assert.equal(t.swing.pickaxe, skillTools.TOOL_SWING_SECONDS[tier]);
   }

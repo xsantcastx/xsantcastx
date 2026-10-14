@@ -487,13 +487,13 @@ const CONSUMABLE_RECIPES: readonly CraftingRecipe[] = [
 // Prospecting at level 1) so a brand-new Keeper can forge a full set; each tier
 // after asks for the node the tier before it opened, so the tools pull the
 // gathering skills along and the gathering skills pay for the tools.
-const TOOL_GOLD = [0, 400, 4_000, 20_000, 80_000] as const;
-const TOOL_RARITY: readonly ItemRarity[] = ['common', 'common', 'uncommon', 'rare', 'epic'];
+const TOOL_GOLD = [0, 400, 4_000, 20_000, 80_000, 320_000] as const;
+const TOOL_RARITY: readonly ItemRarity[] = ['common', 'common', 'uncommon', 'rare', 'epic', 'legendary'];
 function tool(family: ToolFamily, tier: ToolTier, ingredients: readonly CraftingIngredient[]): CraftingRecipe {
   const gate = TOOL_TIER_LEVEL[tier];
   return r(`craft-${toolItemId(family, tier)}`, toolName(family, tier), 'tool', TOOL_RARITY[tier],
     toolItemId(family, tier), ingredients, TOOL_GOLD[tier], gate,
-    `${TOOL_OPENS[family][tier].label}. Needs Smithing ${gate}.`,
+    `${TOOL_OPENS[family][tier]?.label}. Needs Smithing ${gate}.`,
     { skill: 'smithing', craftTime: tier + 1 });
 }
 
@@ -502,10 +502,12 @@ const TOOL_RECIPES: readonly CraftingRecipe[] = [
   tool('pickaxe', 2, [m('slag-fragment', 10), m('world-root-bark', 4)]),
   tool('pickaxe', 3, [m('infernal-heartstone', 8), m('solar-resin', 4), m('pyrite-dust', 6)]),
   tool('pickaxe', 4, [m('emberheart-ore', 6), m('orichalcum-ore', 2), m('ember-residue', 2)]),
+  tool('pickaxe', 5, [m('emberheart-ore', 10), m('godforge-slag', 4), m('ironwood', 6)]),
   tool('axe', 1, [m('cinder-ore', 6), m('starlight-herb', 4)]),
   tool('axe', 2, [m('slag-fragment', 8), m('world-root-bark', 6), m('sunbloom', 2)]),
   tool('axe', 3, [m('infernal-heartstone', 6), m('verdant-sap', 6), m('nightbloom', 4)]),
   tool('axe', 4, [m('emberheart-ore', 4), m('solar-resin', 8), m('void-crystal', 1)]),
+  tool('axe', 5, [m('ironwood', 12), m('emberheart-ore', 6), m('pyrite-dust', 8)]),
   tool('sickle', 1, [m('cinder-ore', 5), m('starlight-herb', 3)]),
   tool('sickle', 2, [m('slag-fragment', 6), m('sunbloom', 6)]),
   tool('sickle', 3, [m('infernal-heartstone', 5), m('nightbloom', 8), m('verdant-sap', 4)]),
@@ -621,6 +623,51 @@ export const FISHING_RECIPES: readonly CraftingRecipe[] = [
     { stack: true }),
 ];
 
+/**
+ * The Underhearth (Phase 8, docs/world/delve-and-beyond.md §2.2, §6.2, §6.3):
+ * the rails and ropes that make the vertical Delve crossable, the cart and the
+ * grapple that ride them, the Rift Anchor that folds it, and the lava fish's
+ * uses. Missions open some (MISSION_RECIPES: Kael's `kael-flooded-seams` and
+ * `kael-four-2`). The cart and the grapple are gear, not placeables, so they
+ * stay out of DELVE_KIT_RECIPES (whose engine test asserts placeable output).
+ * Fees are v3 Gold already (the craft-fee scale, rule S) on the Delve ones.
+ */
+export const UNDERHEARTH_RECIPES: readonly CraftingRecipe[] = [
+  r('craft-bark-rope', 'Bark rope', 'delve', 'common', 'bark-rope',
+    [m('world-root-bark', 2)],
+    20, 3, 'Eight coils of World-Root rope: placed under a ledge, it unrolls to the floor and climbs like a ladder. Needs Smithing 3.',
+    { count: 8, stack: true, skill: 'smithing' }),
+  r('craft-seam-rail', 'Seam rail', 'delve', 'common', 'seam-rail',
+    [m('cinder-ore', 1), m('world-root-bark', 1)],
+    20, 1, 'Four lengths of Kael\'s rail, laid toward the crack for a cart to ride.',
+    { count: 4, stack: true }),
+  r('craft-rift-anchor', 'Rift Anchor', 'delve', 'rare', 'rift-anchor',
+    [m('waystone-shard', 1), m('ironwood', 4), m('obsidian-block', 2)],
+    4_000, 45, 'A four-point anchor around a Waystone Shard: set two or more in the Delve and step between them. Needs Smithing 45.',
+    { stack: true, skill: 'smithing' }),
+  r('craft-seam-cart', 'Seam Cart', 'delve', 'uncommon', 'seam-cart',
+    [m('slag-fragment', 6), m('cinder-ore', 4), m('world-root-bark', 2)],
+    400, 1, 'Kael\'s cart: carried in the satchel, it rides any laid rail down the seam.',
+    { stack: true }),
+  r('craft-thornroot-grapple', 'Thornroot Grapple', 'delve', 'uncommon', 'thornroot-grapple',
+    [m('thornroot', 4), m('slag-fragment', 2), m('shadow-root-cutting', 1)],
+    600, 20, 'A hook that grows the rest of the way: throw it at a ledge and haul up. Needs Smithing 20.',
+    { stack: true, skill: 'smithing' }),
+  // The Underhearth's lava fish (fishing.model.ts): each one gets a use.
+  r('craft-coal-torch', 'Coal torch', 'delve', 'common', 'torch',
+    [m('cold-coalfish', 1), m('world-root-bark', 1)],
+    10, 1, 'Five torches rubbed with a Cold Coalfish. Struck, they remember, and burn for good.',
+    { count: 5, stack: true }),
+  r('craft-ember-elixir-pike', 'Ember Elixir (Pressure Pike)', 'consumable', 'uncommon', 'ember-elixir',
+    [m('pressure-pike', 1), m('ember-residue', 1)],
+    8_000, 3, 'A Pressure Pike carries the weight of the Underhearth. Bottled, it gives two elixirs\' worth.',
+    { realm: 'infernal', craftTime: 1, count: 2 }),
+  r('craft-embervial-fifth-ember', 'Embervial (The Fifth Ember)', 'consumable', 'rare', 'embervial',
+    [m('the-fifth-ember', 1), m('ember-residue', 2)],
+    22_000, 4, 'The Fifth Ember, banked at last into three vials. The other four are not there to object.',
+    { realm: 'infernal', craftTime: 2, count: 3 }),
+];
+
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...WEAPON_RECIPES,
   ...ARMOR_RECIPES,
@@ -630,6 +677,7 @@ export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...MISSION_PATTERN_RECIPES,
   ...DELVE_KIT_RECIPES,
   ...FISHING_RECIPES,
+  ...UNDERHEARTH_RECIPES,
 ];
 
 const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));
