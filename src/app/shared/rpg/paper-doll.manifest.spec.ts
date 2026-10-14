@@ -15,7 +15,7 @@ describe('paper doll manifest', () => {
     expect(liveSlotFor('hands')).toBe('hands');
     expect(liveSlotFor('legs')).toBe('legs');
     expect(liveSlotFor('trinket')).toBe('trinket');
-    expect(liveSlotFor('feet')).toBeNull();
+    expect(liveSlotFor('feet')).toBe('feet');
   });
 
   /*

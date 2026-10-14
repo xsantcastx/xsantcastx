@@ -1,4 +1,6 @@
-import { itemDefinitionById, mintEquipment, rollItemStats } from './item-definition';
+import { ITEM_DEFINITIONS, itemDefinitionById, itemFitsSlot, mintEquipment, rollItemStats } from './item-definition';
+import { EQUIPMENT_SLOTS } from './item.model';
+import { PAPER_DOLL_SLOTS } from './paper-doll.manifest';
 
 describe('item definition rolls', () => {
   it('rolls two mints of the same def and rarity to different stats', () => {
@@ -90,6 +92,30 @@ describe('item definition rolls', () => {
       expect(def.rollKeys[0]).toBe(key);
       expect(def.base[key]).toBe(mid);
       expect(def.maxTemper).toBe(10);
+    }
+  });
+});
+
+describe('slots and wearables agree', () => {
+  const wearable = ITEM_DEFINITIONS.filter(d => d.family === 'equipment' && d.slot);
+
+  it('lets every wearable definition be worn in its own slot', () => {
+    for (const def of wearable) {
+      const item = { definitionId: def.id, name: def.name, type: def.type };
+      expect(itemFitsSlot(def.slot!, item)).withContext(`${def.id} -> ${def.slot}`).toBeTrue();
+    }
+  });
+
+  it('gives every gear slot at least one item that fits it', () => {
+    for (const slot of EQUIPMENT_SLOTS.filter(s => !s.id.startsWith('charm'))) {
+      const fits = wearable.some(d => d.slot === slot.id);
+      expect(fits).withContext(`no item for ${slot.id}`).toBeTrue();
+    }
+  });
+
+  it('wires every paper-doll well to a live slot', () => {
+    for (const well of PAPER_DOLL_SLOTS) {
+      expect(well.liveSlot).withContext(well.slotId).toBe(well.slotId);
     }
   });
 });
