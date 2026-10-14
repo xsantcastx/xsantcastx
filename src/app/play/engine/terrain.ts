@@ -95,7 +95,8 @@ const ROCK = { base: '#5c5359', dark: '#3a3339', light: '#877c84', fleck: '#a094
  */
 export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   { id: 'air', label: 'Open air', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, base: '#120c10', dark: '#0b0709', light: '#1d1418', fleck: '#000' },
-  { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block', base: '#8c5a37', dark: '#5c3a22', light: '#b47a4c', fleck: '#cf9c68' },
+  // Dirt and loam: an Ember Grub (fishing bait) one dig in twenty (delve-and-beyond.md §5.2).
+  { id: 'dirt', label: 'Loose dirt', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block', yield: { materialId: 'ember-grub', qty: 1, chance: .05 }, base: '#8c5a37', dark: '#5c3a22', light: '#b47a4c', fleck: '#cf9c68' },
   { id: 'rock', label: 'Basalt', solid: true, hp: 2, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, block: 'basalt-block', ...ROCK },
   { id: 'hard-rock', label: 'Hard basalt', solid: true, hp: 4, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, block: 'basalt-block', base: '#423b48', dark: '#2a2530', light: '#655c6e', fleck: '#7d7486' },
   { id: 'cinder-vein', label: 'Cinder Ore vein', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 2, minLevel: 1,
@@ -120,7 +121,7 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     yield: { materialId: 'ember-residue', qty: 1 }, base: '#6b4a2c', dark: '#3a2617', light: '#c9a06a', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 52 } },
   // ── Biomes (Phase 2.6). Appended: the index is the saved byte. ──
   // Root Hollows: soil the World-Root's shadow grew through.
-  { id: 'root-loam', label: 'Root-bound loam', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block',
+  { id: 'root-loam', label: 'Root-bound loam', solid: true, hp: 1, tools: { pickaxe: 1, axe: 1, staff: 1 }, discipline: 'mining', xp: 0, block: 'dirt-block', yield: { materialId: 'ember-grub', qty: 1, chance: .05 },
     base: '#6e4a2e', dark: '#48301e', light: '#946642', fleck: '#7fb04a' },
   // The inverse tree that grows downward: the cutting Verrin asks for.
   { id: 'shadow-root', label: 'Shadow-root', solid: true, hp: 2, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 3,
@@ -170,6 +171,16 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // A blasting charge: lit when placed, it clears a small round of rock (engine `detonate`).
   { id: 'blast-charge', label: 'Blasting charge', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, placeable: 'blast-charge', charge: true,
     base: '#6a2a22', dark: '#2e110e', light: '#d8b07a', fleck: '#ffd36d', glow: { color: '#ff6a3a', radius: 44 } },
+  // ── Liquids (Phase 6). Where water meets lava, the smaller volume sets into
+  // obsidian (liquids.ts). Never generated in the core: a made cell pays its
+  // block only (`generated` in the engine), so an obsidian generator builds
+  // walls, it does not mint XP. Phase 8's Underhearth generates it, and there
+  // it pays its Mining XP like any rock.
+  { id: 'obsidian', label: 'Obsidian', solid: true, hp: 5, tools: { pickaxe: 1 }, discipline: 'mining', xp: 3, block: 'obsidian-block',
+    base: '#2a1f3a', dark: '#140e20', light: '#5a4a7a', fleck: '#a48bff' },
+  // A placed obsidian block: built with, dug back as a block, no XP.
+  { id: 'obsidian-block', label: 'Obsidian block', solid: true, hp: 5, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, block: 'obsidian-block',
+    base: '#30243f', dark: '#181024', light: '#62527f', fleck: '#b49cff' },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -261,6 +272,15 @@ export interface BiomeDef {
   loose?: { node: string; chance: number };
 }
 
+/** Liquid types, as stored per cell (`Terrain.liqType`). 0 is none. Append only. */
+export const LIQUID_NONE = 0, LIQUID_WATER = 1, LIQUID_LAVA = 2;
+export type LiquidKind = 'water' | 'lava';
+export const LIQUID_IDS: readonly (LiquidKind | null)[] = [null, 'water', 'lava'];
+/** A full cell of liquid. Each level is 2 art px (4 world px) of the 16 art px cell. */
+export const LIQUID_FULL = 8;
+/** Generated liquid: fills the open cells of a rectangle at `level` (default full). Solid cells are skipped. */
+export interface LiquidStamp { col: number; row: number; w?: number; h?: number; liquid: LiquidKind; level?: number }
+
 export interface VeinSpec { node: string; from: number; to: number; count: number; size: number; cols?: readonly [number, number] }
 
 /** A hand-placed carved wall: interacting reports its id. Fixed for every player. */
@@ -301,6 +321,16 @@ export interface TerrainSpec {
   biomes?: readonly BiomeDef[];
   /** Carved walls, stamped after everything else (they never move). */
   inscriptions?: readonly InscriptionSpec[];
+  /**
+   * Lakes and pools, laid last, into open cells only (never into rock, so they
+   * change no cell and need no `version` bump). They start settled (asleep).
+   */
+  liquids?: readonly LiquidStamp[];
+  /**
+   * Bump when the generated liquids change. A saved liquid diff is filed under
+   * it (with the terrain layout) and dropped on a mismatch: the cells stay.
+   */
+  liquidVersion?: number;
 }
 
 /** The look a terrain without biomes gets: today's basalt dark. */
@@ -363,8 +393,20 @@ export class Terrain {
   readonly protect: Uint8Array;
   /** Sealed rectangles (spec `sealed`): a blast leaves them until their flag is set. */
   sealed: readonly { col: number; row: number; w: number; h: number; flag: string }[] = [];
+  /** Liquid per cell: type (LIQUID_*) and level 0..LIQUID_FULL. Only open (non-solid) cells hold any. */
+  readonly liqType: Uint8Array;
+  readonly liqLevel: Uint8Array;
+  /** The liquids as generated: what a saved liquid diff is measured against. */
+  baseLiqType: Uint8Array;
+  baseLiqLevel: Uint8Array;
+  /** Bumped whenever any liquid cell changes (map thumbnails, tests). */
+  liquidRev = 0;
   constructor(readonly cols: number, readonly rows: number, readonly top: number) {
     this.kind = new Uint8Array(cols * rows);
+    this.liqType = new Uint8Array(cols * rows);
+    this.liqLevel = new Uint8Array(cols * rows);
+    this.baseLiqType = this.liqType;
+    this.baseLiqLevel = this.liqLevel;
     this.protect = new Uint8Array(cols * rows);
     this.base = this.kind;
     this.biomeOfRow = new Uint8Array(rows);
@@ -413,7 +455,19 @@ export class Terrain {
     const i = this.index(col, row);
     this.kind[i] = node;
     this.hp[i] = TERRAIN_NODE_LIST[node].hp;
+    // Rock holds no liquid: a block set into a pool displaces that cell's share (as in Terraria).
+    if (SOLID_KIND[node] && this.liqLevel[i]) { this.liqType[i] = 0; this.liqLevel[i] = 0; this.liquidRev++; }
     this.touch(col, row);
+  }
+  /** Liquid type at a cell (LIQUID_*), 0 outside the grid. */
+  liquidAt(col: number, row: number): number {
+    if (row < 0 || !this.inside(col, row)) return 0;
+    const i = this.index(col, row);
+    return this.liqLevel[i] ? this.liqType[i] : 0;
+  }
+  /** Liquid level at a cell, 0..LIQUID_FULL. */
+  levelAt(col: number, row: number): number {
+    return row < 0 || !this.inside(col, row) ? 0 : this.liqLevel[this.index(col, row)];
   }
   /** Set remaining HP; marks the chunk only when the visible crack stage changes. */
   setHp(col: number, row: number, hp: number): void {
@@ -453,7 +507,7 @@ export function cellKey(col: number, row: number): string { return `${col},${row
 
 /** Satchel stack ids of the things a Keeper can place in a delve. */
 export type PlaceableId = 'dirt-block' | 'basalt-block' | 'torch' | 'ladder' | 'platform' | 'chest' | 'camp'
-  | 'timber-support' | 'basalt-support' | 'blast-charge';
+  | 'timber-support' | 'basalt-support' | 'blast-charge' | 'obsidian-block';
 
 export interface PlaceableDef {
   /** The satchel stack it is placed from and taken back to. */
@@ -487,7 +541,11 @@ export const PLACEABLES: readonly PlaceableDef[] = [
   { id: 'timber-support', label: 'Timber support', node: 'timber-support', aim: 'beside', grounded: true },
   { id: 'basalt-support', label: 'Basalt support', node: 'basalt-support', aim: 'beside', grounded: true },
   { id: 'blast-charge', label: 'Blasting charge', node: 'blast-charge', aim: 'beside' },
+  // Past key 0: shown in the hotbar only while the satchel holds some.
+  { id: 'obsidian-block', label: 'Obsidian block', node: 'obsidian-block', aim: 'block' },
 ];
+/** The first ten placeables always show in the hotbar (keys 1-0); the rest only while held. */
+export const HOTBAR_FIXED = 10;
 const PLACEABLE_BY_ID = new Map(PLACEABLES.map(def => [def.id, def]));
 export function placeableById(id: string | null | undefined): PlaceableDef | undefined {
   return id ? PLACEABLE_BY_ID.get(id as PlaceableId) : undefined;
@@ -741,8 +799,55 @@ export function generateTerrain(spec: TerrainSpec, seed = spec.seed): Terrain {
     t.inscriptions.set(index, inscription.id);
   }
   for (let i = 0; i < t.kind.length; i++) t.hp[i] = TERRAIN_NODE_LIST[t.kind[i]].hp;
+  for (const pool of spec.liquids ?? []) {
+    const type = pool.liquid === 'lava' ? LIQUID_LAVA : LIQUID_WATER;
+    const level = Math.max(1, Math.min(LIQUID_FULL, Math.round(pool.level ?? LIQUID_FULL)));
+    for (let r = pool.row; r < pool.row + (pool.h ?? 1); r++) {
+      for (let c = pool.col; c < pool.col + (pool.w ?? 1); c++) {
+        if (!t.inside(c, r) || SOLID_KIND[t.kind[t.index(c, r)]]) continue;
+        t.liqType[t.index(c, r)] = type; t.liqLevel[t.index(c, r)] = level;
+      }
+    }
+  }
   t.base = t.kind.slice();
+  t.baseLiqType = t.liqType.slice();
+  t.baseLiqLevel = t.liqLevel.slice();
   return t;
+}
+
+/** The key a saved liquid diff is filed under: the terrain's layout and the spec's liquid version. */
+export function liquidLayout(spec: Pick<TerrainSpec, 'cols' | 'rows' | 'version' | 'liquidVersion'>, seed: number): string {
+  return `${terrainLayout(spec, seed)}:l${spec.liquidVersion ?? 1}`;
+}
+
+/** One cell's liquid packed in a byte: type × 16 + level. */
+export function packLiquid(type: number, level: number): number { return level ? type * 16 + level : 0; }
+
+/** The settled liquid that differs from what was generated, as index → packed (type × 16 + level). Pure. */
+export function liquidDiff(t: Terrain): Map<number, number> {
+  const out = new Map<number, number>();
+  for (let i = 0; i < t.kind.length; i++) {
+    const now = packLiquid(t.liqType[i], t.liqLevel[i]), was = packLiquid(t.baseLiqType[i], t.baseLiqLevel[i]);
+    if (now !== was) out.set(i, now);
+  }
+  return out;
+}
+
+/**
+ * Lay a saved liquid diff over a generated grid. Cells that are solid now
+ * (dug diff applied first), out of range or malformed are skipped. Pure apart from `t`.
+ */
+export function applyLiquidDiff(t: Terrain, cells: ReadonlyMap<number, number>): number {
+  let applied = 0;
+  for (const [index, packed] of cells) {
+    if (!Number.isInteger(index) || index < 0 || index >= t.kind.length || !Number.isInteger(packed) || packed < 0) continue;
+    const type = packed >> 4, level = packed & 15;
+    if (level > LIQUID_FULL || (level && (type < 1 || type >= LIQUID_IDS.length)) || SOLID_KIND[t.kind[index]]) continue;
+    t.liqType[index] = level ? type : 0; t.liqLevel[index] = level;
+    applied++;
+  }
+  if (applied) t.liquidRev++;
+  return applied;
 }
 
 /**
@@ -778,6 +883,8 @@ export interface BodyBox { halfWidth: number; height: number }
 /** Fastest fall in px/s: under one cell per fixed step, so a body never tunnels through a row. */
 export const TERMINAL_FALL = 1500;
 const GRAVITY = 1650;
+/** How hard a liquid brakes a body falling faster than its sink speed, px/s². */
+const LIQUID_DRAG = 2600;
 const EPS = .01;
 
 /** True when the box with feet at (x, y) overlaps a solid cell. */
@@ -827,8 +934,13 @@ export function climbTerrainBody(body: TerrainBody, velocityX: number, climb: nu
  * cell ledge is stepped up while grounded, floors catch it, ceilings bump it.
  * One-way platforms (the area's safety floor) still apply. Mirrors advanceBody.
  */
+/**
+ * A liquid the body is in: gravity and the fastest fall are scaled down (the
+ * Keeper sinks slowly and can swim up; liquids.ts `SWIM`). Absent: open air.
+ */
+export interface BodyMedium { gravity: number; terminal: number }
 export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number, t: Terrain, box: BodyBox,
-  platforms: readonly { x: number; y: number; width: number }[], width: number, drop = false): void {
+  platforms: readonly { x: number; y: number; width: number }[], width: number, drop = false, medium?: BodyMedium | null): void {
   // Horizontal, then vertical, so a wall never eats a landing.
   if (velocityX) {
     const nx = Math.max(30, Math.min(width - 30, body.x + velocityX * dt));
@@ -838,7 +950,11 @@ export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number
     }
   }
   const previousY = body.y;
-  body.vy = Math.min(TERMINAL_FALL, body.vy + GRAVITY * dt);
+  if (medium) {
+    // Liquid: light gravity, and drag brakes a fast entry down to the slow sink.
+    body.vy += GRAVITY * medium.gravity * dt;
+    if (body.vy > medium.terminal) body.vy = Math.max(medium.terminal, body.vy - LIQUID_DRAG * dt);
+  } else body.vy = Math.min(TERMINAL_FALL, body.vy + GRAVITY * dt);
   let ny = body.y + body.vy * dt;
   body.grounded = false;
   if (body.vy >= 0) {

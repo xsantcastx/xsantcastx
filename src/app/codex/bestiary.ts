@@ -97,6 +97,13 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     note: 'Rises from the deepest failed repairs and unthreads the Seamworks’ platforms.',
   },
   {
+    id: 'drowned-lamp',
+    name: 'The Drowned Lamp',
+    realm: 'infernal',
+    haunt: 'Ember Delve',
+    note: 'A lampfish the size of a cart that circles the lamp at the bottom of the Grotto Mere and dims every other light in the cavern. In the dark it is a rumour; in the light it is a fight.',
+  },
+  {
     id: 'ink-lantern',
     name: 'Ink Lantern',
     realm: 'umbral',

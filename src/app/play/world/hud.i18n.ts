@@ -198,4 +198,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.eng.keeperFalls': { en: 'The Keeper falls. Restart the hunt or return to camp.', es: 'El Guardian cae. Reinicia la caceria o vuelve al campamento.' },
   'play.hud.and': { en: ' and ', es: ' y ' },
   'play.hud.coins': { en: 'coins', es: 'monedas' },
+  // Liquids (Phase 6): the breath under water, the Ember Elixir's ward in lava.
+  'play.hud.breath': { en: 'Breath', es: 'Aire' },
+  'play.hud.ward': { en: 'Ember ward', es: 'Proteccion de brasa' },
 };
