@@ -3,9 +3,9 @@
  * registered by the game components, never in the eager table.
  */
 export const GAMES_I18N: Readonly<Record<string, { en: string; es: string }>> = {
-  'games.win.big': { en: 'Big Win', es: 'Gran premio' },
-  'games.win.mega': { en: 'Mega Win', es: 'Megapremio' },
-  'games.win.eclipse': { en: 'Eclipse Win', es: 'Premio Eclipse' },
+  'games.win.big': { en: 'Big win', es: 'Gran premio' },
+  'games.win.mega': { en: 'Mega win', es: 'Megapremio' },
+  'games.win.eclipse': { en: 'Eclipse win', es: 'Premio Eclipse' },
   'games.win.times': { en: '×{{n}} your bet', es: '×{{n}} tu apuesta' },
   'games.win.gold': { en: '+{{n}} Gold', es: '+{{n}} Oro' },
   'games.win.done': { en: 'Collect', es: 'Recoger' },

@@ -69,7 +69,7 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
     await expect(forged).toContainText('Mining power 1');
     await expect(forged).toContainText('0.46 s per swing');
     await expect(forged).toContainText('Digs Cinder veins');
-    await expect(forged.getByRole('button', { name: 'Wear' })).toHaveCount(0);
+    await expect(forged.getByRole('button', { name: 'Equip', exact: true })).toHaveCount(0);
     await page.keyboard.press('Escape');
 
     // Character & stats from the top bar's Places menu → the Tools block.

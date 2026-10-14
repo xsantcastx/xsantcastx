@@ -22,7 +22,7 @@ export const ARENA_STATION_I18N: Readonly<Record<string, { en: string; es: strin
   'arenaSt.fighting':   { en: 'Fighting…', es: 'Peleando…' },
   'arenaSt.pick':       { en: 'Pick your challenger', es: 'Elige a tu rival' },
   'arenaSt.needWins':   { en: 'Needs {{n}} wins', es: 'Requiere {{n}} victorias' },
-  'arenaSt.bagFull':    { en: 'Your bag has no room for it.', es: 'Tu bolsa no tiene espacio.' },
-  'arenaSt.ptsSub':     { en: '{{n}} pts', es: '{{n}} pts' },
+  'arenaSt.bagFull':    { en: 'Your satchel has no room for it.', es: 'Tu mochila no tiene espacio.' },
+  'arenaSt.ptsSub':     { en: '{{n}} points', es: '{{n}} puntos' },
   'arenaSt.details.hint': { en: 'Your record, your Might and Guard, every challenger', es: 'Tu historial, tu Poder y Guardia, cada rival' },
 };
