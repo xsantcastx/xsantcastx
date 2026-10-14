@@ -103,6 +103,29 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     haunt: 'Ember Delve',
     note: 'A lampfish the size of a cart that circles the lamp at the bottom of the Grotto Mere and dims every other light in the cavern. In the dark it is a rumour; in the light it is a fight.',
   },
+  // The Underhearth (Phase 8; lore-addendum.md, The Four Who Went Down). Drawn in the world as
+  // pixel figures (engine.ts drawDeepCreature) until their masters are painted.
+  {
+    id: 'banked-ember',
+    name: 'Banked Ember',
+    realm: 'infernal',
+    haunt: 'The Underhearth',
+    note: 'Cold until struck. Every blow releases heat it took from somewhere else, and the tunnel gets warmer for it.',
+  },
+  {
+    id: 'ironwood-sentinel',
+    name: 'Ironwood Sentinel',
+    realm: 'infernal',
+    haunt: 'The Underhearth',
+    note: 'One of the four pillars left standing. It still walks to where the ceiling should be and shoulders it up, whether or not the ceiling is there.',
+  },
+  {
+    id: 'banked-furnace',
+    name: 'The Banked Furnace',
+    realm: 'infernal',
+    haunt: 'The Underhearth',
+    note: 'It never moves. It pulls. It is a promise kept so long it forgot who it was kept for.',
+  },
   {
     id: 'ink-lantern',
     name: 'Ink Lantern',

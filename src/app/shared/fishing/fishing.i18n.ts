@@ -61,6 +61,7 @@ export const FISHING_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'skills.lodge.water.seep': { en: 'a Delve seep (Root Hollows or the flooded seam)', es: 'un manantial de la Grieta (Huecos de Raiz o la veta inundada)' },
   'skills.lodge.water.mere': { en: 'the Grotto Mere', es: 'el Lago de la Gruta' },
   'skills.lodge.water.magma': { en: 'Magma Halls lava (a Seam Rod)', es: 'la lava de las Salas de Magma (una Cana de veta)' },
+  'skills.lodge.water.hearth': { en: 'the Underhearth\'s lava (a lava rod)', es: 'la lava del Hogar Hondo (una cana para lava)' },
 
   // ── The Codex: the Catalogue of Strange Fish ──
   'codex.fish.shelf': { en: 'Catalogue of Strange Fish', es: 'Catalogo de peces extranos' },

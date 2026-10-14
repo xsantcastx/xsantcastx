@@ -22,7 +22,7 @@
  * outside it goes to its sector's diff through `DelvePersistence.sectors`.
  */
 import { CELL, LIQUID_FULL, liquidLayout, nodeIndex, packLiquid, Terrain, TERRAIN_NODE_LIST, terrainLayout, type TerrainSpec } from './terrain';
-import { coreSectorCols, generateSectorColumn, isCoreCol, SECTOR, SECTOR_GV, sectorContext, type SectorColumnGen, type SectorContext, type SectorHall } from './sector-gen';
+import { coreSectorCols, generateSectorColumn, isCoreCell, isCoreCol, SECTOR, SECTOR_GV, sectorContext, type SectorColumnGen, type SectorContext, type SectorHall } from './sector-gen';
 import type { DelvePersistence, DelveSectorStore } from './engine.model';
 import { fogPixel, mapPixel, mapWalls, REVEAL_CELLS, type MapMarker, type WorldMap } from './delve-map';
 
@@ -44,6 +44,7 @@ const KEPT = Uint8Array.from(TERRAIN_NODE_LIST, node =>
   node.id === 'air' || node.placeable || ['packed-dirt', 'basalt-block', 'obsidian-block', 'obsidian'].includes(node.id) ? 1 : 0);
 const INSCRIPTION = nodeIndex('inscription');
 const CAMP = nodeIndex('camp'), CHEST = nodeIndex('chest'), TORCH = nodeIndex('torch'), SHRINE = nodeIndex('rift-shrine');
+const ANCHOR = nodeIndex('rift-anchor'), MARK = nodeIndex('hammer-mark'), FURNACE_HEARTH = nodeIndex('furnace-hearth');
 /** Columns the map may generate per paint (the rest show as fog until a later HUD tick). */
 const MAP_BUILDS = 4;
 
@@ -57,7 +58,7 @@ export interface Column {
   liqLevel: Uint8Array;
   /** Explored cells, one bit per local cell. */
   fog: Uint8Array;
-  /** Per sector (sy 0, 1): when it regrew, or 0. */
+  /** Per sector (sy 0, 1, …): when it regrew, or 0. */
   healed: number[];
   used: number;
 }
@@ -92,11 +93,17 @@ export class SectorWorld {
     this.layout = terrainLayout(spec, seed);
     this.wet = liquidLayout(spec, seed);
     this.coreCols = coreSectorCols(spec);
-    const t = this.t = new Terrain(RING_COLS, spec.rows, spec.top, true);
+    const t = this.t = new Terrain(RING_COLS, this.ctx.rows, spec.top, true);
     t.base = new Uint8Array(t.kind.length);
     t.baseLiqType = new Uint8Array(t.kind.length);
     t.baseLiqLevel = new Uint8Array(t.kind.length);
-    if (spec.biomes?.length) { t.biomes = spec.biomes; for (let row = 0; row < spec.rows; row++) t.biomeOfRow[row] = this.ctx.core.biomeOfRow[row]; }
+    if (spec.biomes?.length) {
+      // The deep strata's biomes follow the core's (Phase 8: the Underhearth is biome 4).
+      t.biomes = [...spec.biomes, ...(spec.depth?.biomes ?? [])];
+      for (let row = 0; row < this.ctx.rows; row++) {
+        t.biomeOfRow[row] = row < spec.rows ? this.ctx.core.biomeOfRow[row] : spec.biomes.length + Math.max(0, deepBiomeAt(spec, row));
+      }
+    }
     if (spec.sealed) t.sealed = spec.sealed;
     this.fog = new Uint8Array((t.kind.length + 7) >> 3);
     let seen: Uint8Array | null = null;
@@ -117,10 +124,10 @@ export class SectorWorld {
   /** A column from the seed, with the save laid over it. */
   private build(sx: number, coreCells?: ReadonlyMap<number, number> | null, coreLiquids?: ReadonlyMap<number, number> | null): Column {
     const gen = generateSectorColumn(this.ctx, sx);
-    const rows = this.spec.rows, n = SECTOR * rows;
+    const rows = this.ctx.rows, n = SECTOR * rows;
     const column: Column = {
       sx, gen, kind: gen.kind.slice(), hp: new Float32Array(n), liqType: gen.liqType.slice(), liqLevel: gen.liqLevel.slice(),
-      fog: new Uint8Array((n + 7) >> 3), healed: [0, 0], used: ++this.clock,
+      fog: new Uint8Array((n + 7) >> 3), healed: new Array(Math.ceil(rows / SECTOR)).fill(0), used: ++this.clock,
     };
     const set = (i: number, kind: number) => {
       if (gen.notes.has(i) || kind === INSCRIPTION || kind < 0 || kind >= TERRAIN_NODE_LIST.length) return;
@@ -135,7 +142,7 @@ export class SectorWorld {
     for (let lc = 0; lc < SECTOR; lc++) {
       const col = sx * SECTOR + lc;
       if (!isCoreCol(this.ctx, col)) continue;
-      for (let row = 0; row < rows; row++) {
+      for (let row = 0; row < this.spec.rows; row++) {
         const ci = row * this.spec.cols + col, i = row * SECTOR + lc;
         const kind = coreCells?.get(ci);
         if (kind !== undefined) set(i, kind);
@@ -152,7 +159,7 @@ export class SectorWorld {
       const same = save.g === this.ctx.gv;
       const toCell = (local: number) => {
         const row = sy * SECTOR + (local >> 5), lc = local & 31;
-        return row < rows && !isCoreCol(this.ctx, sx * SECTOR + lc) && local >= 0 && local < SECTOR * SECTOR ? row * SECTOR + lc : -1;
+        return row < rows && !isCoreCell(this.ctx, sx * SECTOR + lc, row) && local >= 0 && local < SECTOR * SECTOR ? row * SECTOR + lc : -1;
       };
       for (const [local, kind] of save.cells) {
         const i = toCell(local);
@@ -197,7 +204,7 @@ export class SectorWorld {
 
   /** Copy a column into its ring slots. */
   private copyIn(column: Column): void {
-    const t = this.t, rows = this.spec.rows, gen = column.gen, col0 = column.sx * SECTOR;
+    const t = this.t, rows = this.ctx.rows, gen = column.gen, col0 = column.sx * SECTOR;
     for (let row = 0; row < rows; row++) for (let lc = 0; lc < SECTOR; lc++) {
       const i = row * SECTOR + lc, r = t.index(col0 + lc, row);
       t.kind[r] = column.kind[i]; t.base[r] = gen.kind[i]; t.hp[r] = column.hp[i];
@@ -212,7 +219,7 @@ export class SectorWorld {
   }
   /** Copy a column's live state out of the ring (it is leaving). */
   private copyOut(column: Column): void {
-    const t = this.t, rows = this.spec.rows, col0 = column.sx * SECTOR;
+    const t = this.t, rows = this.ctx.rows, col0 = column.sx * SECTOR;
     for (let row = 0; row < rows; row++) for (let lc = 0; lc < SECTOR; lc++) {
       const i = row * SECTOR + lc, r = t.index(col0 + lc, row);
       column.kind[i] = t.kind[r]; column.hp[i] = t.hp[r];
@@ -292,7 +299,7 @@ export class SectorWorld {
     const t = this.t, col = t.colOf(index), row = t.rowOf(index), kind = t.kind[index], base = t.base[index];
     const now = kind === base ? null : kind;
     try {
-      if (isCoreCol(this.ctx, col)) { this.persist?.changed(this.areaId, this.layout, row * this.spec.cols + col, now); return; }
+      if (isCoreCell(this.ctx, col, row)) { this.persist?.changed(this.areaId, this.layout, row * this.spec.cols + col, now); return; }
       const { sx, sy, local } = SectorWorld.local(col, row);
       const receipt = !!TERRAIN_NODE_LIST[base].receipt && kind === AIR;
       this.sectors?.sectorChanged(this.areaId, sx, sy, this.ctx.gv, local, now, receipt || undefined);
@@ -323,14 +330,13 @@ export class SectorWorld {
   private saveColumnLiquids(column: Column): void {
     const store = this.sectors;
     if (!store) return;
-    const t = this.t, rows = this.spec.rows, inRing = this.loaded.has(column.sx);
-    if (column.sx * SECTOR >= 0 && column.sx * SECTOR + SECTOR <= this.spec.cols) return;
+    const t = this.t, rows = this.ctx.rows, inRing = this.loaded.has(column.sx);
     for (let sy = 0; sy * SECTOR < rows; sy++) {
       const cells = new Map<number, number>();
       let wing = false;
       for (let r0 = 0; r0 < SECTOR && sy * SECTOR + r0 < rows; r0++) for (let lc = 0; lc < SECTOR; lc++) {
         const col = column.sx * SECTOR + lc, row = sy * SECTOR + r0;
-        if (isCoreCol(this.ctx, col)) continue;
+        if (isCoreCell(this.ctx, col, row)) continue;
         wing = true;
         const i = row * SECTOR + lc, r = t.index(col, row);
         const type = inRing ? t.liqType[r] : column.liqType[i], level = inRing ? t.liqLevel[r] : column.liqLevel[i];
@@ -365,7 +371,7 @@ export class SectorWorld {
     const i = this.t.index(c, r), bit = 1 << (i & 7);
     if (this.fog[i >> 3] & bit) return false;
     this.fog[i >> 3] |= bit;
-    if (isCoreCol(this.ctx, c)) { const ci = r * this.spec.cols + c; this.coreSeen[ci >> 3] |= 1 << (ci & 7); this.coreFogDirty = true; }
+    if (isCoreCell(this.ctx, c, r)) { const ci = r * this.spec.cols + c; this.coreSeen[ci >> 3] |= 1 << (ci & 7); this.coreFogDirty = true; }
     else { const { sx, sy } = SectorWorld.local(c, r); this.fogDirty.add(`${sx},${sy}`); }
     return true;
   }
@@ -385,13 +391,13 @@ export class SectorWorld {
   }
   /** A sector's explored 4 × 4 blocks (any cell explored → the block is). */
   sectorBlocks(sx: number, sy: number): Uint8Array {
-    const out = new Uint8Array(8), t = this.t, rows = this.spec.rows, inRing = this.loaded.has(sx), column = this.columns.get(sx);
+    const out = new Uint8Array(8), t = this.t, rows = this.ctx.rows, inRing = this.loaded.has(sx), column = this.columns.get(sx);
     for (let b = 0; b < 64; b++) {
       const r0 = sy * SECTOR + (b >> 3) * 4, c0 = (b & 7) * 4;
       let any = false;
       for (let r = r0; r < Math.min(rows, r0 + 4) && !any; r++) for (let c = c0; c < c0 + 4 && !any; c++) {
         const col = sx * SECTOR + c;
-        if (isCoreCol(this.ctx, col)) continue;
+        if (isCoreCell(this.ctx, col, r)) continue;
         if (inRing) { const i = t.index(col, r); any = !!(this.fog[i >> 3] & (1 << (i & 7))); }
         else if (column) { const i = r * SECTOR + c; any = !!(column.fog[i >> 3] & (1 << (i & 7))); }
       }
@@ -404,21 +410,23 @@ export class SectorWorld {
 
   /** A stable number for a world cell: the core keeps its v1 index (chests are filed by it); wings get their own range. */
   cellId(col: number, row: number): number {
-    if (isCoreCol(this.ctx, col)) return row * this.spec.cols + col;
+    if (isCoreCell(this.ctx, col, row)) return row * this.spec.cols + col;
+    // Rows 0-63 keep the Phase 7 ids; each deeper band of 64 rows has its own range (Phase 8).
     const zig = col >= 0 ? col * 2 : -col * 2 - 1;
-    return WING_ID + zig * 64 + row;
+    return WING_ID + (row >> 6) * DEEP_SPAN + zig * 64 + (row & 63);
   }
   /** The world cell of a stable id, or null. */
   cellOf(id: number): { col: number; row: number } | null {
     if (!Number.isInteger(id) || id < 0) return null;
     if (id < WING_ID) { const col = id % this.spec.cols, row = (id - col) / this.spec.cols; return row < this.spec.rows ? { col, row } : null; }
-    const zig = Math.floor((id - WING_ID) / 64), row = (id - WING_ID) % 64;
+    const band = Math.floor((id - WING_ID) / DEEP_SPAN), rest = (id - WING_ID) % DEEP_SPAN;
+    const zig = Math.floor(rest / 64), row = band * 64 + rest % 64;
     const col = zig % 2 === 0 ? zig / 2 : -(zig + 1) / 2;
-    return row < this.spec.rows ? { col, row } : null;
+    return row < this.ctx.rows ? { col, row } : null;
   }
   /** The node at a world cell, from the ring or a cached column; null when neither holds it. */
   kindAt(col: number, row: number): number | null {
-    if (row < 0 || row >= this.spec.rows) return null;
+    if (row < 0 || row >= this.ctx.rows) return null;
     if (this.t.inside(col, row)) return this.t.kind[this.t.index(col, row)];
     const column = this.columns.get(Math.floor(col / SECTOR));
     return column ? column.kind[row * SECTOR + (col - column.sx * SECTOR)] : null;
@@ -446,6 +454,32 @@ export class SectorWorld {
     return null;
   }
 
+  /**
+   * Every cell holding `kind` anywhere the player has been (ring, cached
+   * columns, saved sectors), each once, west to east then top down. A scan:
+   * call on placement or travel, never per frame. (Rift Anchors: at most 8.)
+   */
+  findAll(kind: number): { col: number; row: number }[] {
+    const out = new Map<string, { col: number; row: number }>();
+    const add = (col: number, row: number) => out.set(`${col},${row}`, { col, row });
+    const t = this.t;
+    for (let i = 0; i < t.kind.length; i++) if (t.kind[i] === kind) add(t.colOf(i), t.rowOf(i));
+    for (const column of this.columns.values()) {
+      if (this.loaded.has(column.sx)) continue;
+      for (let i = 0; i < column.kind.length; i++) if (column.kind[i] === kind) add(column.sx * SECTOR + (i % SECTOR), Math.floor(i / SECTOR));
+    }
+    const store = this.sectors;
+    try {
+      for (const { sx, sy } of store?.sectorKeys(this.areaId) ?? []) {
+        if (this.columns.has(sx)) continue;
+        const save = store!.sector(this.areaId, sx, sy);
+        if (!save) continue;
+        for (const [local, k] of save.cells) if (k === kind) add(sx * SECTOR + (local & 31), sy * SECTOR + (local >> 5));
+      }
+    } catch { /* what was found */ }
+    return [...out.values()].sort((a, b) => a.col - b.col || a.row - b.row);
+  }
+
   // ── The map ───────────────────────────────────────────────────────────────
 
   /** Sector columns with anything explored: the core's, every cached column's, every saved sector's. */
@@ -460,7 +494,7 @@ export class SectorWorld {
   }
   private ringColumnSeen(sx: number): boolean {
     const t = this.t;
-    for (let row = 0; row < this.spec.rows; row++) for (let lc = 0; lc < SECTOR; lc++) { const i = t.index(sx * SECTOR + lc, row); if (this.fog[i >> 3] & (1 << (i & 7))) return true; }
+    for (let row = 0; row < this.ctx.rows; row++) for (let lc = 0; lc < SECTOR; lc++) { const i = t.index(sx * SECTOR + lc, row); if (this.fog[i >> 3] & (1 << (i & 7))) return true; }
     return false;
   }
 
@@ -497,7 +531,7 @@ export class SectorWorld {
     const sectors = this.explored();
     const col0 = Math.min(0, sectors.length ? sectors[0] * SECTOR : 0);
     const col1 = Math.max(this.spec.cols, sectors.length ? (sectors[sectors.length - 1] + 1) * SECTOR : 0);
-    const known = new Set(sectors), walls = mapWalls(this.t.biomes), rows = this.spec.rows, biomeOfRow = this.t.biomeOfRow;
+    const known = new Set(sectors), walls = mapWalls(this.t.biomes), rows = this.ctx.rows, biomeOfRow = this.t.biomeOfRow;
     let builds = MAP_BUILDS;
     const columnFor = (sx: number): MapColumn | null => {
       const have = this.loaded.has(sx) || this.columns.has(sx);
@@ -537,7 +571,8 @@ export class SectorWorld {
             const r = inRing ? t.index(sx * SECTOR + (i % SECTOR), (i / SECTOR) | 0) : i;
             if (inRing ? !(fog[r >> 3] & (1 << (r & 7))) : !(column.fog[i >> 3] & (1 << (i & 7)))) continue;
             const k = inRing ? t.kind[r] : column.kind[i], note = column.gen.notes.has(i) && k === INSCRIPTION;
-            const kind = k === CAMP ? 'camp' : k === CHEST ? 'chest' : k === TORCH ? 'torch' : k === SHRINE ? 'shrine' : note ? 'inscription' : null;
+            const kind = k === CAMP ? 'camp' : k === CHEST ? 'chest' : k === TORCH ? 'torch' : k === SHRINE ? 'shrine' : note ? 'inscription'
+              : k === ANCHOR ? 'anchor' : k === MARK ? 'mark' : k === FURNACE_HEARTH ? 'furnace' : null;
             if (kind) out.push({ kind, col: sx * SECTOR + (i % SECTOR), row: Math.floor(i / SECTOR) });
           }
         }
@@ -556,6 +591,15 @@ export class SectorWorld {
 
 /** First stable id of a wing cell (core ids are below it). */
 export const WING_ID = 0x1000000;
+/** Each band of 64 rows below the first has its own id range this wide (Phase 8, the deep strata). */
+export const DEEP_SPAN = 0x1000000;
+
+/** Index of the deep biome holding `row` (rows at or past `spec.rows`), or -1. */
+function deepBiomeAt(spec: TerrainSpec, row: number): number {
+  const biomes = spec.depth?.biomes ?? [];
+  for (let i = 0; i < biomes.length; i++) if (row < biomes[i].to) return i;
+  return biomes.length - 1;
+}
 
 export interface MapColumn {
   kind(i: number): number;

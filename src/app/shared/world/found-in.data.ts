@@ -29,6 +29,7 @@ import { DELVE_BIOMES, GLOWCAP, GODFORGE_FRAGMENT, SHADOW_ROOT_CUTTING, type Del
 import { KAELS_HAMMER } from '../npc/delve-missions.model';
 import { TOWNS, type AreaDef } from '../../play/world/world.model';
 import { TERRAIN_NODE_LIST, type TerrainSpec } from '../../play/engine/terrain';
+import { deepNodes } from '../../play/engine/underhearth-gen';
 import { foundIn, type AreaLike, type FoundInIndex, type FoundInPlace } from './found-in';
 import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
@@ -54,12 +55,28 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
       .concat(CATCHES.filter(c => c.rarity === 'crate' && c.waters.includes(water)).map(c => c.id)),
   }));
   rows.push({ place: `${DELVE_AREA}: the Lodge Warden's Ledger Catch, on its day`, materialIds: [...LEDGER_CATCH_IDS] });
-  rows.push({ place: 'Crafting Bench (Delve kit)', materialIds: [...RODS.filter(r => r.id !== 'worn-rod').map(r => r.id), 'seam-bucket', 'lampfish-oil'] });
+  rows.push({ place: 'Crafting Bench (Delve kit)', materialIds: [...RODS.filter(r => r.id !== 'worn-rod').map(r => r.id), 'seam-bucket', 'lampfish-oil',
+    // Phase 8: the Underhearth's kit (some of it opened by Kael's missions).
+    'seam-cart', 'seam-rail', 'bark-rope', 'thornroot-grapple', 'rift-anchor'] });
   rows.push({ place: 'Your first rod, in the satchel from the start', materialIds: ['worn-rod'] });
   rows.push({ place: `${DELVE_AREA}: a Seam Bucket filled at water or lava`, materialIds: ['seam-bucket-water', 'seam-bucket-lava'] });
   rows.push({ place: 'Rootglass Canopy: the Lodge Warden\'s gifts for Ledger Catches', materialIds: LODGE_CHARMS.map(c => c.id) });
   void CRATE_IDS;
   return rows;
+}
+
+/**
+ * The Underhearth (Phase 8): what its generator lays (deepNodes) yields, read
+ * off the node table; the shrines' Waystone Shards (the play view grants one
+ * on the first touch of each) and the Four Hammer-Marks (Kael's reward).
+ */
+function underhearthRows(): { place: string; materialIds: string[] }[] {
+  const yields = [...new Set(deepNodes().map(id => TERRAIN_NODE_LIST.find(n => n.id === id)?.yield?.materialId).filter((id): id is string => !!id))];
+  return [
+    { place: `${DELVE_AREA}: the Underhearth, below the Magma Halls`, materialIds: yields },
+    { place: `${DELVE_AREA}: the first touch of each rift shrine`, materialIds: ['waystone-shard'] },
+    { place: `${DELVE_AREA}: Kael's mission "Four Hammers" (the Basalt Caverns)`, materialIds: ['four-hammer-marks'] },
+  ];
 }
 
 function terrainNodes(spec: TerrainSpec | undefined): string[] {
@@ -106,6 +123,7 @@ export function buildFoundInIndex(): FoundInIndex {
       // The Clarity Elixir is the Orrery's rare find, not a tier.
       { place: 'Meridian Orrery', materialIds: [...PROSPECTING_TIERS.map(t => t.mineralId), CLARITY_ELIXIR_ID] },
       ...fishingRows(),
+      ...underhearthRows(),
       // The endless Delve (Phase 7): Kael's waycaches in the Basalt Caverns east and west of the core.
       { place: `${DELVE_AREA}: Kael's waycaches, in the Basalt Caverns east and west`, materialIds: ['torch'] },
     ],

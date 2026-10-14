@@ -335,14 +335,14 @@ describe('tool recipes', () => {
 
   it('forges every family at every tier, once (mission patterns are extra roads)', () => {
     const ids = tools.filter(r => !patterns.has(r.id)).map(r => r.output.itemId).sort();
-    const want = ['axe', 'pickaxe', 'sickle', 'staff'].flatMap(f => [1, 2, 3, 4].map(t => `${f}-${t}`)).sort();
+    const want = ['axe', 'pickaxe', 'sickle', 'staff'].flatMap(f => [1, 2, 3, 4, ...(f === 'pickaxe' || f === 'axe' ? [5] : [])].map(t => `${f}-${t}`)).sort();
     expect(ids).toEqual(want);
   });
 
-  it('gates each tier on Smithing 1 / 10 / 25 / 45 and says what it opens', () => {
+  it('gates each tier on Smithing 1 / 10 / 25 / 45 / 60 and says what it opens', () => {
     for (const recipe of tools) {
       const tier = Number(recipe.output.itemId.split('-')[1]);
-      expect(recipe.requiredLevel).withContext(recipe.id).toBe([0, 1, 10, 25, 45][tier]);
+      expect(recipe.requiredLevel).withContext(recipe.id).toBe([0, 1, 10, 25, 45, 60][tier]);
       expect(recipe.blurb).withContext(recipe.id).toContain(`Smithing ${recipe.requiredLevel}`);
     }
   });

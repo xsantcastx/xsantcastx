@@ -18,7 +18,7 @@
  * Lore: lore-addendum.md, "The Delve and beyond", field notes.
  */
 
-export type FieldNoteStratum = 'root-hollows' | 'basalt-caverns' | 'glowcap-grotto' | 'magma-halls';
+export type FieldNoteStratum = 'root-hollows' | 'basalt-caverns' | 'glowcap-grotto' | 'magma-halls' | 'underhearth';
 
 export interface FieldNoteDef {
   id: string;
@@ -54,6 +54,19 @@ export const FIELD_NOTES: readonly FieldNoteDef[] = [
   // Magma Halls: the Cinder Bailiffs' work routes.
   { id: 'magma-heat-debt', stratum: 'magma-halls',
     text: 'A column of heat stamps, each pressed into the rock by a Bailiff\'s seal. The last one has not been paid.' },
+  // The Underhearth (Phase 8): the Four's own words, cut where they worked (lore-addendum.md, The Four Who Went Down).
+  { id: 'hearth-bank-not-quench', stratum: 'underhearth',
+    text: '"Cover it. Slow it. Do not put it out. A fire put out has to be lit again by someone who does not know how it was made."' },
+  { id: 'hearth-pillar-count', stratum: 'underhearth',
+    text: '"Sixteen pillars. We will fell twelve. Four will hold until we are done. After that they can do as they like."' },
+  { id: 'hearth-weight', stratum: 'underhearth',
+    text: '"The coal down here is cold to the touch. Strike it and it remembers. Everything down here remembers."' },
+  { id: 'hearth-four-hammers', stratum: 'underhearth',
+    text: '"One mark for each of us, where we stood. If you find all four you have found where the work was. You have not found us."' },
+  { id: 'hearth-for-the-fifth', stratum: 'underhearth',
+    text: '"Keep the anvil going. Do not come down. If you come down, come down with someone."' },
+  { id: 'hearth-unsigned-again', stratum: 'underhearth',
+    text: 'A tally mark, and beside it a second one, cut the same day.' },
 ];
 
 const BY_ID = new Map(FIELD_NOTES.map(note => [note.id, note]));

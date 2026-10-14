@@ -229,5 +229,9 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.creature.rootglass-stag': { en: 'Rootglass Stag', es: 'Ciervo de Raizvidrio' },
   'play.creature.seam-eater': { en: 'Seam Eater', es: 'Devorador de Costuras' },
   'play.creature.drowned-lamp': { en: 'The Drowned Lamp', es: 'La Lampara Ahogada' },
+  // The Underhearth (Phase 8).
+  'play.creature.banked-ember': { en: 'Banked Ember', es: 'Brasa Cubierta' },
+  'play.creature.ironwood-sentinel': { en: 'Ironwood Sentinel', es: 'Centinela de Hierroleno' },
+  'play.creature.banked-furnace': { en: 'The Banked Furnace', es: 'El Horno Cubierto' },
   'play.creature.unknown': { en: 'Enemy', es: 'Enemigo' },
 };

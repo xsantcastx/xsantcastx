@@ -242,6 +242,10 @@ for (const [crate, rows] of Object.entries(FISHING.CRATE_CONTENTS)) for (const r
 // The Seam Bucket: scoops into a full bucket, which pours back out (engine useBucket).
 use('seam-bucket', 'scoops water or lava (Delve hotbar)');
 for (const id of ['seam-bucket-water', 'seam-bucket-lava']) { src(id, 'a Seam Bucket scooped full'); use(id, 'poured in the Delve (water on lava sets obsidian)'); }
+// The Underhearth's gear (Phase 8): gear stacks the engine reads from the satchel, not placeables or recipe inputs.
+use('seam-cart', 'carried: rides Kael\'s rails and the Keeper\'s Seam Rails (engine/traversal.ts)');
+use('thornroot-grapple', 'the Delve hotbar\'s grapple (engine/traversal.ts)');
+use('four-hammer-marks', 'kept: summons the Banked Furnace at its hearth in the Furnace Hall (not consumed)');
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).sells.add('Exchange'); }
 
@@ -364,7 +368,15 @@ for (const key of ITEM_STAT_KEYS) {
 
 // Terrain nodes (Delve blocks) ──────────────────────────────────────────────
 // Roles that are not a yield, a block or a placeable but are still a purpose.
-const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall': 'staff-only gate', inscription: 'Archivist inscription', 'rift-shrine': 'shows the tunnels round it on the map (rift shrine)' };
+const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall': 'staff-only gate', inscription: 'Archivist inscription', 'rift-shrine': 'shows the tunnels round it on the map (rift shrine)',
+  // The Underhearth (Phase 8): set pieces with a role, not a yield.
+  'hearth-seal': 'the Banked seal: the one way down to the Underhearth (Pickaxe IV, Delving 15, The Fracture claimed)',
+  'hearth-brick': 'the Four\'s masonry: the Furnace Hall\'s floor and the Banked Furnace\'s body (world boundary)',
+  'furnace-vent': 'the Banked Furnace\'s vents: douse them with water to open its core',
+  'furnace-hearth': 'the Banked Furnace\'s hearth: the Four Hammer-Marks wake it there',
+  'hammer-mark': 'the Four\'s hammer-marks: a rubbing for Kael\'s "Four Hammers"',
+  'old-rail': 'Kael\'s old rail: the Seam Cart rides it',
+  'fracture-seam': 'the fracture\'s own line through the rock: lights the Underhearth (lore)' };
 const laidOut = new Set();
 for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) {
   const t = a.terrain; if (!t) continue;

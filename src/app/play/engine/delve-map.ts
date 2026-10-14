@@ -97,7 +97,9 @@ export function mapPixel(kind: number, base: number, seen: boolean, biome: numbe
 /** Fog, for columns the map has no picture of. */
 export function fogPixel(data: Uint8ClampedArray, o: number): void { data[o] = FOG_RGB[0]; data[o + 1] = FOG_RGB[1]; data[o + 2] = FOG_RGB[2]; data[o + 3] = 255; }
 
-export type MapMarkerKind = 'keeper' | 'camp' | 'chest' | 'torch' | 'inscription' | 'shaft' | 'shrine';
+export type MapMarkerKind = 'keeper' | 'camp' | 'chest' | 'torch' | 'inscription' | 'shaft' | 'shrine'
+  // The Underhearth (Phase 8): Rift Anchors, the Four's hammer-marks, the Banked Furnace.
+  | 'anchor' | 'mark' | 'furnace';
 export interface MapMarker { kind: MapMarkerKind; col: number; row: number }
 
 const CAMP = TERRAIN_NODE_LIST.findIndex(node => node.id === 'camp');
@@ -190,6 +192,7 @@ export interface WorldMap {
 /** Marker colours from the art bible's world palettes (style guide §5: aged gold, the camp's fire, rune violet), one per kind. The full map's legend reads them too. */
 export const MAP_MARKER_COLORS: Readonly<Record<MapMarkerKind, string>> = {
   keeper: '#f8e8c8', camp: '#ff9b4f', chest: '#a5793a', torch: '#ffd08a', inscription: '#d9b8ff', shaft: '#9db8a8', shrine: '#b88cff',
+  anchor: '#e8d8ff', mark: '#ffd08a', furnace: '#E8752A',
 };
 
 /** A reusable cell picture per terrain (one canvas, repainted per draw). */

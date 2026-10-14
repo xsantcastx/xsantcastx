@@ -148,6 +148,23 @@
       }
     </div>
   }
+  @if (anchorSheet) {
+    <section class="anchor-sheet" role="dialog" aria-modal="true" aria-labelledby="anchor-title" data-engine-ignore (keydown.escape)="closeAnchors()">
+      <header class="map-head">
+        <div>
+          <span class="realm-tag">{{ t('play.delve.yourDelve') }}</span>
+          <h2 id="anchor-title">{{ t('play.uh.travel.title') }}</h2>
+        </div>
+        <button type="button" class="book-close anchor-close" (click)="closeAnchors()">{{ t('play.hud.book.close') }}</button>
+      </header>
+      <p class="anchor-lead">{{ t('play.uh.travel.lead') }}</p>
+      <ul class="anchor-list">
+        @for (row of anchorSheet; track row.key) {
+          <li><button type="button" class="anchor-row" [class.anchor-row--home]="row.home" [attr.data-anchor]="row.key" (click)="travelAnchor(row)">{{ row.label }}</button></li>
+        } @empty { <li class="anchor-empty">{{ t('play.uh.travel.none') }}</li> }
+      </ul>
+    </section>
+  }
   @if (map.open && state.delve) {
     <section class="map-full" role="dialog" aria-modal="true" aria-labelledby="map-title" data-engine-ignore>
       <header class="map-head">
@@ -298,6 +315,9 @@
       <button type="button" [disabled]="actionDisabled" (click)="interact()">{{ t('play.hud.interact') }} <kbd class="key-hint">E</kbd></button>
       @if (state.nearby === 'delve' && campReady) {
         <button type="button" class="camp-go" (click)="descendToCamp()">{{ t('play.delve.camp.descend') }} <kbd class="key-hint">C</kbd></button>
+      }
+      @if (state.nearby === 'delve' && anchorsReady) {
+        <button type="button" class="camp-go anchor-go" (click)="openAnchors()">{{ t('play.uh.travel.descend') }}</button>
       }
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">{{ t('play.hud.keys') }}</button>

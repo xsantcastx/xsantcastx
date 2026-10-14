@@ -152,7 +152,10 @@ test('generation: the same seed gives the same sector column, byte for byte, in 
 
 test('generation: golden hashes pin the generator (bump SECTOR_GV when these move)', () => {
   const ctx = gen.sectorContext(SPEC, 424242);
-  const got = Object.fromEntries([-5, -1, 4, 6, 11].map(sx => [sx, gen.columnHash(gen.generateSectorColumn(ctx, sx)).toString(16)]));
+  // The shipped strata's rows (0-55) hash exactly as they did in Phase 7: the Underhearth (Phase 8)
+  // only added rows below them, so no saved diff moved and SECTOR_GV stays 1.
+  const upper = column => ({ kind: column.kind.subarray(0, SPEC.rows * SECTOR), liqType: column.liqType.subarray(0, SPEC.rows * SECTOR), liqLevel: column.liqLevel.subarray(0, SPEC.rows * SECTOR) });
+  const got = Object.fromEntries([-5, -1, 4, 6, 11].map(sx => [sx, gen.columnHash(upper(gen.generateSectorColumn(ctx, sx))).toString(16)]));
   assert.equal(gen.SECTOR_GV, 1);
   assert.deepEqual(got, GOLDEN);
 });
@@ -167,6 +170,8 @@ test('generation: the core is copied cell for cell, and sector columns 0-3 hold 
         const col = sx * SECTOR + lc;
         if (col >= SPEC.cols) continue;
         const i = row * SECTOR + lc, c = core.index(col, row);
+        // Phase 8: the Banked seal is cut through the fragment chamber's floor (the one way down).
+        if (col >= 99 && col <= 100 && row >= 51) { assert.equal(TERRAIN_NODE_LIST[column.kind[i]].id, 'hearth-seal'); continue; }
         assert.equal(column.kind[i], core.kind[c]); assert.equal(column.liqLevel[i], core.liqLevel[c]);
         assert.equal(column.notes.get(i), core.inscriptions.get(c));
       }
@@ -258,7 +263,9 @@ test('generation: a sector column takes well under the phone budget', () => {
   const start = performance.now();
   for (let sx = 50; sx < 110; sx++) gen.generateSectorColumn(ctx, sx);
   const each = (performance.now() - start) / 60;
-  assert.ok(each < 4, `${each.toFixed(2)} ms per column (two sectors) in node`);
+  // Phase 8: a column runs down through the Underhearth (rows 0-119, almost four sectors); the budget is per sector (spec §3.5).
+  const sectors = ctx.rows / SECTOR;
+  assert.ok(each / sectors < 2, `${each.toFixed(2)} ms per column (${sectors.toFixed(2)} sectors) in node`);
 });
 
 // ── The loaded ring and streaming ──────────────────────────────────────────
@@ -521,7 +528,7 @@ test('creatures: a hall spawns its creatures when its column loads, and they lea
   assert.ok(hall);
   const { engine } = enter(memoryDelve(424242));
   standAt(engine, hall.col0 + 4);
-  const living = engine.monsters.filter(m => m.sx === hall.sx);
+  const living = engine.monsters.filter(m => m.sx === hall.sx && m.def.creature === hall.creature && m.def.floorY === SPEC.top + hall.floorRow * CELL);
   assert.equal(living.length, hall.count);
   assert.ok(living.every(m => m.def.floorY === SPEC.top + hall.floorRow * CELL && m.x >= hall.col0 * CELL && m.x <= hall.col1 * CELL));
   assert.ok(engine.monsters.length <= 16, 'the creature cap holds');
