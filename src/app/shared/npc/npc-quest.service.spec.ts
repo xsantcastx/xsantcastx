@@ -53,6 +53,7 @@ describe('NpcQuestService', () => {
   let w: World;
   let store: Map<string, string>;
   let paid: { gold: number[]; xp: number[]; titles: string[]; cosmetics: string[]; achievements: string[]; items: string[] };
+  let granted: { grantId: string; id: string; qty: number }[];
   let xpSnapshot$: BehaviorSubject<unknown>;
   let board$: BehaviorSubject<unknown>;
   let svc: NpcQuestService;
@@ -66,6 +67,7 @@ describe('NpcQuestService', () => {
     w = world();
     store = new Map();
     paid = { gold: [], xp: [], titles: [], cosmetics: [], achievements: [], items: [] };
+    granted = [];
     xpSnapshot$ = new BehaviorSubject<unknown>({ level: { level: 1 } });
     board$ = new BehaviorSubject<unknown>({ totalCompleted: 0 });
     stacks$ = new BehaviorSubject<Record<string, number>>({});
@@ -79,6 +81,7 @@ describe('NpcQuestService', () => {
           provide: GameStateGateway,
           useValue: {
             readRaw: (k: string) => store.get(k) ?? null,
+            read: (k: string) => { const raw = store.get(k); return raw ? JSON.parse(raw) : null; },
             write: (k: string, v: unknown) => store.set(k, JSON.stringify(v)),
             remove: (k: string) => store.delete(k),
           },
@@ -138,6 +141,11 @@ describe('NpcQuestService', () => {
             init: () => undefined,
             snapshot$: stacks$,
             stackOf: (id: string) => stacks$.value[id] ?? 0,
+            grantStack: (grantId: string, id: string, qty: number) => {
+              if (granted.some(g => g.grantId === grantId)) return true;
+              granted.push({ grantId, id, qty });
+              return true;
+            },
             consumeStacks: (mutationId: string, inputs: { id: string; count: number }[]) => {
               if (consumed.has(mutationId)) return { ok: true, replayed: true };
               if (inputs.some(i => (stacks$.value[i.id] ?? 0) < i.count)) return { ok: false, code: 'missing' };
@@ -359,6 +367,25 @@ describe('NpcQuestService', () => {
       stacks$.next({ 'godforge-fragment': 1 });
       expect(mission('delve-fracture').locked).toBe(true);
       expect(svc.claimMission('delve-fracture')).toBe(false);
+    });
+
+    // The Underhearth (Phase 8): the Four Hammers read the Delve save's flags and hand over the summon once.
+    it('Four Hammers: counts the four rubbings off the Delve save, then grants the Four Hammer-Marks and the anchor recipe once', () => {
+      store.set(NPC_KEY, JSON.stringify({ version: 1, claimed: ['delve-verrin-shadow', 'delve-kael-seam', 'delve-merchant-glowcaps', 'delve-fracture', 'kael-four-1'], seen: [] }));
+      rehydrate();
+      expect(mission('kael-four-2').locked).toBe(false);
+      store.set('godforge-delve', JSON.stringify({ version: 2, seed: 1, createdAt: 1, areas: {}, claimed: ['hammer-mark-1', 'hammer-mark-2', 'hammer-mark-3'] }));
+      expect(svc.claimMission('kael-four-2')).toBe(false);
+      rehydrate();
+      expect(mission('kael-four-2').nextStep).toContain('1 more');
+      store.set('godforge-delve', JSON.stringify({ version: 2, seed: 1, createdAt: 1, areas: {}, claimed: ['hammer-mark-1', 'hammer-mark-2', 'hammer-mark-3', 'hammer-mark-4'] }));
+      expect(svc.isRecipeUnlocked('craft-rift-anchor')).toBe(false);
+      expect(svc.claimMission('kael-four-2')).toBe(true);
+      expect(granted.map(g => `${g.id}×${g.qty}`)).toEqual(['four-hammer-marks×1']);
+      expect(svc.isRecipeUnlocked('craft-rift-anchor')).toBe(true);
+      expect(svc.claimMission('kael-four-2')).toBe(false);
+      expect(granted.length).toBe(1);
+      expect(mission('verrin-four-3').locked).toBe(false);
     });
 
     it('reads the Archivist milestones off copied inscriptions', () => {

@@ -6,6 +6,7 @@ import { coerceRegion, decodeRuns, encodeRuns, REGION_SLOT_KEYS, REGROW_MS, type
 import { DELVE_FAR_KEY, IdbRegionStore, LocalRegionStore, openRegionStore, type RegionStore } from './delve-region-store';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
+import { TERRAIN_NODE_LIST } from '../../play/engine/terrain';
 
 const KEYS = [DELVE_KEY, DELVE_FAR_KEY, ...REGION_SLOT_KEYS];
 const AREA = 'ember-delve';
@@ -182,6 +183,63 @@ describe('DelveSaveService (save v2: the endless Delve)', () => {
     expect(healed.healed).toBe(clock);
     expect(healed.fog).not.toBeNull();
     expect(s.sector(AREA, 26, 0)!.cells.size).toBe(1);
+  }));
+
+  // ── The Underhearth (Phase 8): deep sectors, Rift Anchors ──
+  const ANCHOR = TERRAIN_NODE_LIST.findIndex(node => node.id === 'rift-anchor');
+  const TORCH = TERRAIN_NODE_LIST.findIndex(node => node.id === 'torch');
+
+  it('anchors: a Rift Anchor in a deep sector (sy 2, 3) round-trips through the device and a fresh service', fakeAsync(() => {
+    service.seed(AREA);
+    flush();
+    service.sectorChanged(AREA, 2, 2, 1, 42, ANCHOR);
+    service.sectorChanged(AREA, -5, 3, 1, 7, ANCHOR);
+    tick(DEBOUNCE_MS);
+    service.flush();
+    const again = boot();
+    again.seed(AREA);
+    flush();
+    expect(again.sector(AREA, 2, 2)!.cells.get(42)).toBe(ANCHOR);
+    expect(again.sector(AREA, -5, 3)!.cells.get(7)).toBe(ANCHOR);
+    expect(again.sectorKeys(AREA).map(k => `${k.sx},${k.sy}`).sort()).toEqual(['-5,3', '2,2']);
+  }));
+
+  it('anchors: two devices\' anchors in the same deep sector are unioned on a slot merge', fakeAsync(() => {
+    service.seed(AREA);
+    flush();
+    service.sectorChanged(AREA, 20, 3, 1, 10, ANCHOR);
+    service.flush();
+    const slot = service.slotRegions().indexOf('2_0');
+    expect(slot).toBeGreaterThanOrEqual(0);
+    const seed = service.seed(AREA)!;
+    const theirs: DelveRegion = { v: 1, seed, rx: 2, ry: 0, t: clock + 5, sectors: { '20,3': { g: 1, t: clock + 5, c: encodeRuns(new Map([[200, ANCHOR]])) } } };
+    localStorage.setItem(REGION_SLOT_KEYS[slot], JSON.stringify(theirs));
+    TestBed.inject(LocalSaveRegistry).rehydrate(REGION_SLOT_KEYS[slot]);
+    const cells = service.sector(AREA, 20, 3)!.cells;
+    expect(cells.get(10)).toBe(ANCHOR);
+    expect(cells.get(200)).toBe(ANCHOR);
+    flush();
+  }));
+
+  it('anchors: a sector holding one never regrows, and it holds the rock round it like a camp', fakeAsync(() => {
+    service.seed(AREA);
+    flush();
+    const seed = service.seed(AREA)!;
+    const old = clock - REGROW_MS - 1000;
+    device.regions = [{ v: 1, seed, rx: 3, ry: 0, t: old, sectors: {
+      '25,2': { g: 1, t: old, c: encodeRuns(new Map([[1, ANCHOR], [2, 0]])) },
+      // Two sectors away: within the anchor's clearance, so its tunnel stays too.
+      '27,2': { g: 1, t: old, c: encodeRuns(new Map([[3, 0]])) },
+      // Far away and unheld: it regrows.
+      '31,2': { g: 1, t: old, c: encodeRuns(new Map([[4, 0], [5, TORCH]])) },
+      '31,6': { g: 1, t: old, c: encodeRuns(new Map([[4, 0]])) },
+    } }];
+    const s = boot();
+    s.seed(AREA);
+    flush();
+    expect(s.sector(AREA, 25, 2)!.cells.get(1)).toBe(ANCHOR);
+    expect(s.sector(AREA, 27, 2)!.cells.get(3)).toBe(0);
+    expect(s.sector(AREA, 31, 6)!.cells.size).withContext('far and unheld').toBe(0);
   }));
 
   it('IndexedDB missing: the store falls back to a device-only localStorage key through the gateway', async () => {
