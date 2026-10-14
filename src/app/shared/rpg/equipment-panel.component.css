@@ -23,7 +23,22 @@
   padding: 0;
 }
 /* The numbers the doll changes follow it (doll first — see the template). */
-.ld__stats-after { margin-top: 1rem; }
+.ld__more { margin-top: 1rem; border-top: 1px solid color-mix(in srgb, var(--gold-deep) 40%, transparent); }
+.ld__more-label {
+  display: flex;
+  align-items: center;
+  min-height: 44px;
+  cursor: pointer;
+  list-style: none;
+  font: 600 11px Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--gold);
+}
+.ld__more-label::-webkit-details-marker { display: none; }
+.ld__more-label::after { content: "+"; margin-left: auto; font-size: 16px; }
+.ld__more[open] .ld__more-label::after { content: "\2212"; }
+.ld__stats-after { margin-top: .5rem; }
 
 .ld__totals {
   display: flex;
