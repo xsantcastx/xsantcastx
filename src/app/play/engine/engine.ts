@@ -16,7 +16,7 @@ import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
   climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
   blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
-  applyLiquidDiff, LIQUID_FULL, LIQUID_IDS, LIQUID_LAVA, LIQUID_WATER, liquidDiff, liquidLayout, LiquidKind,
+  applyLiquidDiff, LIQUID_FULL, LIQUID_IDS, LIQUID_INK, LIQUID_LAVA, LIQUID_WATER, liquidDiff, liquidLayout, LiquidKind,
   isRail,
 } from './terrain';
 import {
@@ -25,6 +25,12 @@ import {
 } from './traversal';
 import { douseVent, FURNACE_TUNING, furnaceBreathing, furnaceOpen, furnaceWarning, inMouth, newFurnace, pullAt, stepFurnace, type FurnaceState } from './furnace';
 import { FURNACE, MARK_PREFIX } from './underhearth-gen';
+import { realmArrival } from './realm-gen';
+import {
+  BRAZIER_BURN, circleMeetsRect, inInk, litBy, pocketPhase, rectsMeet, SHADE_SPEED, SHADE_WINDUP, SHIFT_PERIOD, tideAt, WARDEN_CALL,
+  type CellRect, type TidePhase,
+} from './umbral';
+import { enteredFlag, REALM_ARRIVAL, realmOfArea, realmOfGateNode, RIFT_GATES, ruleFlag, type RiftRealm } from '../../shared/delve/rift-gates.model';
 import { ANCHOR_MAX, GRAPPLE_CELLS, THORNROOT_GRAPPLE, UNDERHEARTH_REACHED_FLAG, UNDERHEARTH_TOP } from '../../shared/delve/underhearth.model';
 import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
 import { drawLiquids, lavaLights } from './liquid-render';
@@ -65,6 +71,8 @@ interface Monster {
   awake?: boolean;
   /** Spilled by the Banked Furnace: gone for good once felled (no respawn). */
   minion?: boolean;
+  /** A shade (the Ink Deeps) standing in strong light: it cannot move or strike (umbral.ts). */
+  frozen?: boolean;
 }
 /** The hand's extra tools (not placed): the Thornroot Grapple. */
 export type HandToolId = typeof THORNROOT_GRAPPLE;
@@ -164,11 +172,16 @@ function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\
 const USE_LABEL: Readonly<Record<string, string>> = {
   inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP', shrine: 'RIFT SHRINE',
   mark: 'HAMMER-MARK', anchor: 'RIFT ANCHOR', furnace: 'THE BANKED FURNACE', rail: 'KAEL\'S RAIL',
+  gate: 'RIFT GATE', brazier: 'GLOAM BRAZIER',
 };
 /** Node kinds the Underhearth's engine code keys on (looked up once). */
 const ROPE_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'rope');
 const ANCHOR_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'rift-anchor');
 const VENT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'furnace-vent');
+/** The Ink Deeps' node kinds the engine keys on (realm-gen.ts, umbral.ts). */
+const BRAZIER_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'gloam-brazier');
+const BRAZIER_LIT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'gloam-brazier-lit');
+const DRIFT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'drift-shale');
 const RAIL_KINDS = Uint8Array.from(TERRAIN_NODE_LIST, node => node.rail ? 1 : 0);
 /** How far a launched or released Keeper's momentum carries, and how fast it bleeds (on the ground / in the air), 1/s. */
 const CARRY_GROUND = 9, CARRY_AIR = .5;
@@ -270,6 +283,8 @@ export class SeamworksEngine {
   private readonly beamGradients = new Map<string, CanvasGradient>();
   private readonly auraGradients = new Map<string, CanvasGradient>();
   private readonly playerMotion = createKeeperMotion();
+  /** The reflection under a mirrored ceiling keeps its own motion state (it walks a step behind). */
+  private readonly mirrorMotion = createKeeperMotion();
   private readonly hand = { x: 0, y: 0, angle: 0 };
   /** Real seconds since the last drawn frame (0 during hitstop), for springs only. */
   private frameDt = 0;
@@ -360,7 +375,7 @@ export class SeamworksEngine {
   /** Momentum a launch off a rail or a grapple release carries, px/s along x; bleeds away. */
   private carryX = 0;
   /** What the Keeper carries that is not placed: a Seam Cart (rides rails), a Thornroot Grapple. */
-  private gear = { cart: false, grapple: false };
+  private gear = { cart: false, grapple: false, veil: false };
   /** The Banked Furnace's fight while it is up: its state, its vents' cells, its trough's cells. */
   private furnace: { monster: Monster; state: FurnaceState; vents: number[]; trough: number[] } | null = null;
   private readonly terrainRenderer = new TerrainRenderer();
@@ -510,6 +525,7 @@ export class SeamworksEngine {
     this.fog = this.terrain ? this.fogs.get(area.id) ?? null : null; this.fogAt = NaN;
     this.holdMode = null; this.clearAim(); this.dropTime = 0; this.jumpBuffer = 0;
     this.cart = null; this.grapple = null; this.carryX = 0; this.furnace = null;
+    this.braziers.clear(); this.inkBlind = false; this.mirror = null; this.mirrorTrail.length = 0; this.wardenCall = WARDEN_CALL;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.fuses = [];
     for (const r of this.rubble) r.active = false;
@@ -1026,9 +1042,15 @@ export class SeamworksEngine {
    * player has been), west to east. Generates the Delve once if it has not been.
    */
   delveAnchors(): { col: number; row: number }[] {
+    const home = this.anchorWorld();
+    return home ? this.findAllPlaced(home.t, 'rift-anchor') : [];
+  }
+  /** Where Rift Anchors are looked for: the realm Delve the Keeper stands in, else this town's Delve. */
+  private anchorWorld(): { area: AreaDef; t: Terrain } | null {
+    if (this.areaDef.terrain?.realm && this.terrain) return { area: this.areaDef, t: this.terrain };
     const entrance = this.delveEntrance();
     const t = entrance ? this.terrainFor(entrance.area) : null;
-    return t ? this.findAllPlaced(t, 'rift-anchor') : [];
+    return entrance && t ? { area: entrance.area, t } : null;
   }
   /**
    * Step through a Rift Anchor: from town or anywhere in its Delve, stand
@@ -1038,8 +1060,8 @@ export class SeamworksEngine {
    */
   travelToAnchor(col: number, row: number): boolean {
     if (this.paused || this.hp <= 0) return false;
-    const entrance = this.delveEntrance();
-    const t = entrance ? this.terrainFor(entrance.area) : null;
+    const home = this.anchorWorld();
+    const entrance = home ? { area: home.area } : null, t = home?.t ?? null;
     if (!entrance || !t) return false;
     this.worlds.get(entrance.area.id)?.center(col);
     if (!t.inside(col, row) || t.kind[t.index(col, row)] !== ANCHOR_KIND) return false;
@@ -1240,8 +1262,9 @@ export class SeamworksEngine {
    * a Seam Cart (E on a rail boards it) and a Thornroot Grapple (chosen on the
    * hotbar, a press on a cell within GRAPPLE_CELLS throws it).
    */
-  setGear(gear: { cart?: boolean; grapple?: boolean }): void {
-    this.gear = { cart: !!gear.cart, grapple: !!gear.grapple };
+  setGear(gear: { cart?: boolean; grapple?: boolean; veil?: boolean }): void {
+    // The Veil Lantern (the Ink Deeps): carried, it lets the lantern reach further in the gloom and keep some light under ink.
+    this.gear = { cart: !!gear.cart, grapple: !!gear.grapple, veil: !!gear.veil };
     if (!this.gear.cart && this.cart) this.leaveCart(0, 0);
     if (!this.gear.grapple) this.grapple = null;
   }
@@ -1703,6 +1726,11 @@ export class SeamworksEngine {
       this.clang(monster.x, floor - 140 * this.figure, 'Banked. Douse its four vents with water');
       return;
     }
+    if (monster.def.trait === 'warden' && !monster.frozen) {
+      monster.flash = .08;
+      this.clang(monster.x, floor - 120 * this.figure, 'It is not there while it is dark. Light a brazier and hold it in the light');
+      return;
+    }
     if (monster.def.trait === 'dormant' && !monster.awake) {
       // Struck, it remembers: the heat it took comes out, and so does it.
       monster.awake = true; monster.timer = .7;
@@ -2021,6 +2049,10 @@ export class SeamworksEngine {
       else this.say('play.delve.bucket.tooShallow', 'Too shallow: a bucket needs a full cell of it, joined together.');
       this.report(); return false;
     }
+    if (!full && type === LIQUID_INK) {
+      this.say('play.rift.ink.bucket', 'The ink runs straight back out of the bucket. It will not be carried out of the dark.');
+      this.report(); return false;
+    }
     const to: BucketId = full ? 'seam-bucket' : BUCKET_FOR[type];
     const accepted = this.options.onBucket?.({
       from: bucket, to, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index), liquid: LIQUID_IDS[type] as LiquidKind,
@@ -2332,7 +2364,9 @@ export class SeamworksEngine {
     const col = t.colOf(index), row = t.rowOf(index);
     if (use === 'shrine') { this.touchShrine(t, col, row); return; }
     this.report();
-    this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index), ...(use === 'anchor' || use === 'furnace' ? { col, row } : {}) });
+    this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
+      ...(use === 'anchor' || use === 'furnace' || use === 'gate' || use === 'brazier' ? { col, row } : {}),
+      ...(use === 'gate' ? { node: TERRAIN_NODE_LIST[t.kind[index]].id } : {}) });
   }
   /**
    * A rift shrine: "a passage created by difference". Touched, it shows the
@@ -2637,6 +2671,7 @@ export class SeamworksEngine {
       this.updateLiquids(dt, this.terrain);
       this.updateLine(dt, this.terrain);
       this.updateFurnace(dt, this.terrain);
+      if (this.areaDef.terrain?.realm) this.updateRealm(dt, this.terrain);
     } else if (this.sites.length && this.input.has('attack') && this.attackCooldown <= 0 && this.siteInReach()) this.attack();
     const now = this.clock();
     for (const sites of this.siteCache.values()) for (const s of sites) {
@@ -2679,6 +2714,8 @@ export class SeamworksEngine {
       if (monster.def.trait === 'furnace') continue;
       // A Banked Ember lies cold until something strikes it.
       if (monster.def.trait === 'dormant' && !monster.awake) { monster.phase = 'idle'; continue; }
+      // The Ink Deeps' shades: frozen in light, fast in the dark (umbral.ts).
+      if (monster.def.trait === 'shade' || monster.def.trait === 'warden') { this.stepShade(monster, dt); continue; }
       const safeX = this.areaDef.safeX ?? 0;
       const floor = monster.def.floorY ?? FLOOR, k = this.figure;
       // In a delve a Maw only cares about a Keeper standing in its cavern.
@@ -2718,6 +2755,347 @@ export class SeamworksEngine {
     }
   }
 
+  // ── The Rift Gates and the realm Delves behind them (rift-gates.model.ts, umbral.ts) ──
+
+  /** Where the Keeper came in from (the Ember Delve's gate cell), so the way out is the way in. */
+  private realmReturn: { areaId: string; col: number; row: number } | null = null;
+  /** The realm Delve's own clock (seconds since stepping in): the tide runs on it, so every arrival is at low tide. */
+  private realmTime = 0;
+  private tide: { phase: TidePhase; rows: number; next: number } = { phase: 'low', rows: 0, next: 0 };
+  /** The dark's last chance to move the drift pockets (SHIFT_PERIOD epochs of realm time). */
+  private shiftEpoch = 0;
+  /** Lit braziers: cell index → seconds left. Session only (a reloaded brazier is out). */
+  private readonly braziers = new Map<number, number>();
+  /** The Keeper's head is under ink (a pool or the tide): the lantern all but goes out. */
+  private inkBlind = false;
+  /** The mirrored ceiling over the Keeper (its underside's world y), while standing under one. */
+  private mirror: { y: number } | null = null;
+  /** Where the Keeper was, the last few tenths of a second (the reflection walks a little behind). */
+  private readonly mirrorTrail: { x: number; y: number; facing: number }[] = [];
+  private wardenCall = WARDEN_CALL;
+
+  /** The realm whose Delve the Keeper stands in, or null. */
+  get realm(): RiftRealm | null { return this.areaDef?.terrain?.realm ? realmOfArea(this.areaDef.id) : null; }
+  /**
+   * Step through a Rift Gate (the cell at `from` in the Ember Delve) into the
+   * realm Delve `areaId`, beside its return gate. Nothing between is simulated;
+   * it does not heal (a door, not a rest). False when there is no such Delve.
+   */
+  enterRealm(areaId: string, from: { col: number; row: number }): boolean {
+    if (this.paused || this.hp <= 0) return false;
+    const area = areaOf(this.town, areaId), realm = realmOfArea(areaId);
+    if (!area?.terrain || !realm) return false;
+    this.realmReturn = { areaId: this.areaDef.id, col: from.col, row: from.row };
+    this.terrainFor(area);
+    this.worlds.get(area.id)?.center(REALM_ARRIVAL.col);
+    this.enter(area);
+    const t = this.terrain!, at = realmArrival(t.top);
+    this.cancelMove(); this.climbing = false;
+    this.player.x = at.x; this.player.y = at.feet; this.player.vy = 0; this.player.grounded = true;
+    this.worldAt = ''; this.fogAt = NaN;
+    this.realmTime = 0; this.tide = tideAt(0); this.shiftEpoch = 0;
+    this.setFlag(enteredFlag(realm));
+    if (!this.tell('dark', 'play.rift.rule.dark', 'Glim: Ink-blind down here. My light barely reaches past your hands. Torches push the dark back; set them as you go.')) {
+      this.say('play.rift.arrive', 'You step out into the Ink Deeps. The gate behind you holds.');
+    }
+    this.report();
+    return true;
+  }
+  /** Step back out through the realm's gate: the Ember Delve, beside the gate you came in by. False outside a realm Delve. */
+  leaveRealm(): boolean {
+    const realm = this.realm;
+    if (!realm || this.paused || this.hp <= 0) return false;
+    const entrance = this.delveEntrance();
+    if (!entrance) return false;
+    const t = this.terrainFor(entrance.area);
+    const back = this.realmReturn?.areaId === entrance.area.id ? this.realmReturn : t ? this.gateCellOf(entrance.area, realm) : null;
+    if (!t || !back) return false;
+    this.worlds.get(entrance.area.id)?.center(back.col);
+    // Beside the gate's opening, east of it, feet on its frame.
+    let east = back.col, floor = back.row;
+    for (let c = back.col - 2; c <= back.col + 2; c++) for (let r = back.row - 3; r <= back.row + 3; r++) {
+      if (t.inside(c, r) && TERRAIN_NODE_LIST[t.kind[t.index(c, r)]].use === 'gate') { east = Math.max(east, c); floor = Math.max(floor, r); }
+    }
+    this.enter(entrance.area);
+    this.cancelMove(); this.climbing = false;
+    this.player.x = (east + 2.5) * CELL; this.player.y = t.top + (floor + 1) * CELL; this.player.vy = 0; this.player.grounded = true;
+    this.worldAt = ''; this.fogAt = NaN;
+    this.say('play.rift.back', 'Back through the gate. The Underhearth\'s heat feels like a welcome after that.');
+    this.report();
+    return true;
+  }
+  /** The Ember Delve's gate of `realm`, from the seed (its lattice cell and stratum), as a cell of its opening. */
+  private gateCellOf(area: AreaDef, realm: RiftRealm): { col: number; row: number } | null {
+    const world = this.worlds.get(area.id);
+    if (!world) return null;
+    const place = RIFT_GATES[realm].place;
+    const deep = place.stratum === 'deep';
+    const s = world.structuresNear(place.cell * 64 + 32, 0).find(p => p.kind === 'rift-gate' && (p.row >= 56) === deep);
+    return s ? { col: s.col + 3, row: s.row + 4 } : null;
+  }
+  /** The Rift Gate within `cells` columns of the Keeper (and in sight of their row), its realm and its opening's cell, or null. */
+  gateNear(cells: number): { realm: RiftRealm; col: number; row: number; id: string } | null {
+    const at = this.keeperCell(), t = this.terrain;
+    const world = this.world && this.world.t === t ? this.world : null;
+    if (!at || !t || !world || this.areaDef.terrain?.realm) return null;
+    for (const s of world.structuresNear(at.col, 1)) {
+      if (s.kind !== 'rift-gate' || Math.abs(s.col + s.w / 2 - at.col) > cells || Math.abs(s.row + 3 - at.row) > 10) continue;
+      const col = s.col + 3, row = s.row + 4;
+      if (!t.inside(col, row)) continue;
+      const realm = realmOfGateNode(TERRAIN_NODE_LIST[t.kind[t.index(col, row)]].id);
+      if (realm) return { realm, col, row, id: s.id };
+    }
+    return null;
+  }
+  /** Light a gloam brazier (the host has taken the torch). False when it is not one, or the tide stands over it. */
+  lightBrazier(col: number, row: number): boolean {
+    const t = this.terrain;
+    if (!t || !t.inside(col, row) || t.kind[t.index(col, row)] !== BRAZIER_KIND) return false;
+    if (inInk(t, (col + .5) * CELL, t.top + (row + .5) * CELL, this.tide.rows)) {
+      this.say('play.rift.brazier.drowned', 'The tide is over it. Wait for the ink to fall.');
+      this.report(); return false;
+    }
+    const index = t.index(col, row);
+    t.set(col, row, BRAZIER_LIT_KIND);
+    this.braziers.set(index, BRAZIER_BURN);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#ffd8a0', this.reducedMotion ? 2 : 8);
+    this.say('play.rift.brazier.lit', 'The brazier takes the torch. Anything standing in its light stands still.');
+    this.report();
+    return true;
+  }
+  /** A broken rule's telegraph, said once per player (the flag is the record). True when it was said now. */
+  private tell(rule: string, key: string, en: string): boolean {
+    const realm = this.realm;
+    if (!realm) return false;
+    const flag = ruleFlag(realm, rule);
+    if (this.flagged(flag)) return false;
+    this.setFlag(flag);
+    this.say(key, en);
+    return true;
+  }
+  /** The lantern's reach here: the biome's gloom (ink-blind), and almost none with the head under ink. */
+  private lanternShare(t: Terrain): number {
+    const gloom = t.biomeAt(Math.max(0, Math.min(t.rows - 1, t.rowAt(this.player.y - 50)))).gloom;
+    if (!gloom) return 1;
+    // The Veil Lantern: half the gloom's toll, and the ink only halves what is left.
+    const reach = this.gear.veil ? gloom + (1 - gloom) * .5 : gloom;
+    return reach * (this.inkBlind ? (this.gear.veil ? .5 : .35) : 1);
+  }
+  /** One fixed step of the Ink Deeps' rule: the tide, ink-blindness, braziers, drift pockets, the mirror, the Warden. */
+  private updateRealm(dt: number, t: Terrain): void {
+    this.realmTime += dt;
+    const was = this.tide.phase;
+    this.tide = tideAt(this.realmTime);
+    if (this.tide.phase === 'rising' && was !== 'rising') {
+      if (!this.tell('tide', 'play.rift.rule.tide', 'Glim: The ink is rising. At high tide it stands over the low passages and puts out braziers. It never drowns you; it blinds you. Wait high, or cross at low tide.')) {
+        this.say('play.rift.tide.rising', 'The ink is rising.');
+      }
+      this.report();
+    }
+    const blind = inInk(t, this.player.x, this.player.y - DELVE_BOX.height * .85, this.tide.rows);
+    if (blind !== this.inkBlind) {
+      this.inkBlind = blind;
+      if (blind) this.tell('ink', 'play.rift.rule.ink', 'Glim: Under the ink I can hardly see you. It does not drown you. It just takes the light.');
+      this.report();
+    }
+    for (const [index, left] of this.braziers) {
+      const col = t.colOf(index), row = t.rowOf(index);
+      const drowned = inInk(t, (col + .5) * CELL, t.top + (row + .5) * CELL, this.tide.rows);
+      if (left - dt > 0 && !drowned && t.kind[index] === BRAZIER_LIT_KIND) { this.braziers.set(index, left - dt); continue; }
+      this.braziers.delete(index);
+      if (t.kind[index] === BRAZIER_LIT_KIND) t.set(col, row, BRAZIER_KIND);
+      if (Math.abs(col - t.colAt(this.player.x)) < 30) this.say(drowned ? 'play.rift.brazier.tide' : 'play.rift.brazier.out', drowned ? 'The tide puts a brazier out.' : 'A brazier gutters out.');
+    }
+    const epoch = Math.floor(this.realmTime / SHIFT_PERIOD);
+    if (epoch !== this.shiftEpoch) { this.shiftEpoch = epoch; this.shiftPockets(t, epoch); }
+    // The mirrored ceiling: the reflection walks above you, a little behind.
+    const at = this.keeperCell();
+    const room = at && this.world ? this.world.structureAt(at.col, at.row) : null;
+    this.mirror = room && (room.kind === 'mirror-cavern' || room.kind === 'warden-hall') ? { y: t.top + room.row * CELL } : null;
+    if (this.mirror) {
+      this.tell('mirror', 'play.rift.rule.mirror', 'Glim: Look up. The ceiling is ink, polished by the tide. That is you up there, walking a step behind.');
+      this.mirrorTrail.push({ x: this.player.x, y: this.player.y, facing: this.facing });
+      if (this.mirrorTrail.length > 22) this.mirrorTrail.shift();
+    } else this.mirrorTrail.length = 0;
+    // Shades: said the first time one is within a dozen cells.
+    for (const m of this.monsters) {
+      if (m.hp <= 0 || (m.def.trait !== 'shade' && m.def.trait !== 'warden') || Math.abs(m.x - this.player.x) > 12 * CELL || Math.abs((m.def.floorY ?? FLOOR) - this.player.y) > 4 * CELL) continue;
+      if (this.tell('shade', 'play.rift.rule.shade', 'Glim: A shade. In the dark it is fast; in light it cannot move at all. Keep it in the light: a torch, a brazier, my glow right beside you.')) this.report();
+      // The Gloam Warden calls shadelings out of the dark while nothing lights it.
+      if (m.def.trait === 'warden' && !m.frozen && (this.wardenCall -= dt) <= 0) {
+        this.wardenCall = WARDEN_CALL;
+        const base = this.areaDef.monsters.find(def => def.trait === 'shade');
+        if (base) for (const dx of [-90, 90]) {
+          const x = m.x + dx, def: MonsterDef = { ...base, spawnXs: [x], floorY: m.def.floorY, range: m.def.range };
+          this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1.2, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0, minion: true });
+        }
+        this.say('play.rift.warden.calls', 'The Warden calls two shades out of the dark.');
+      }
+    }
+  }
+  /**
+   * The dark's chance to move the drift pockets near the Keeper: each one that
+   * no light reaches, nobody can see and nothing holds takes this epoch's state
+   * (umbral.ts pocketPhase). The change is saved like a dig, so a reload shows
+   * the pocket as it was left.
+   */
+  private shiftPockets(t: Terrain, epoch: number): void {
+    const world = this.world, at = this.keeperCell();
+    if (!world || world.t !== t || !at) return;
+    const scale = this.height / 720 || 1, vw = (this.width || 1280) / scale;
+    const view: CellRect = { c0: t.colAt(this.camera) - 1, c1: t.colAt(this.camera + vw) + 1, r0: t.rowAt(this.cameraY) - 1, r1: t.rowAt(this.cameraY + 720) + 1 };
+    const lantern = this.lanternRadius * this.lanternShare(t);
+    let moved = false;
+    for (const s of world.structuresNear(at.col, 3)) {
+      if (s.kind !== 'drift-pocket') continue;
+      const rect: CellRect = { c0: s.col, c1: s.col + s.w - 1, r0: s.row, r1: s.row + s.h - 1 };
+      if (!t.inside(rect.c0, rect.r0) || !t.inside(rect.c1, rect.r1)) continue;
+      // Seen, or lit by the lantern: it holds still.
+      if (rectsMeet(rect, view) || circleMeetsRect(this.player.x, this.player.y - 50, lantern, rect, t.top)) continue;
+      // Anything placed in or beside it (a torch, a ladder, a block) pins it for good; so does a living creature in it.
+      let pinned = false;
+      for (let r = rect.r0 - 1; r <= rect.r1 + 1 && !pinned; r++) for (let c = rect.c0 - 1; c <= rect.c1 + 1 && !pinned; c++) {
+        if (!t.inside(c, r)) continue;
+        const k = t.kind[t.index(c, r)];
+        const inside = r >= rect.r0 && r <= rect.r1 && c >= rect.c0 && c <= rect.c1;
+        if ((inside && k !== 0 && k !== DRIFT_KIND) || (TERRAIN_NODE_LIST[k].placeable && TERRAIN_NODE_LIST[k].glow)) pinned = true;
+      }
+      if (pinned || this.monsters.some(m => m.hp > 0 && m.x >= rect.c0 * CELL && m.x <= (rect.c1 + 1) * CELL && Math.abs(t.rowAt((m.def.floorY ?? FLOOR) - 1) - rect.r1) <= 1)) continue;
+      const want = pocketPhase(world.seed, s.id, epoch), now = t.kind[t.index(rect.c0, rect.r0)] === DRIFT_KIND ? 1 : 0;
+      if (want === now) continue;
+      for (let r = rect.r0; r <= rect.r1; r++) for (let c = rect.c0; c <= rect.c1; c++) {
+        const index = t.index(c, r);
+        t.set(c, r, want ? DRIFT_KIND : 0);
+        this.recordCell(t, index);
+      }
+      if (Math.abs(s.col - at.col) < 48) moved = true;
+    }
+    if (moved && this.tell('shift', 'play.rift.rule.shift', 'Glim: Somewhere behind us a passage just moved. Rock here does not stay put while nobody looks. A torch inside one pins it.')) this.report();
+  }
+  /**
+   * Whether a shade stands in strong light (umbral.ts litBy): the bright middle
+   * of a placed light, a lit brazier, a glowing vein a tunnel exposes, or the
+   * lantern's own core. Read from the cells round it, never from a frame (so it
+   * is the same whether or not anything was drawn).
+   */
+  private shadeLit(m: Monster): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const y = (m.def.floorY ?? FLOOR) - 40 * this.figure;
+    const lights = this.shadeLights;
+    let count = 0;
+    const col = t.colAt(m.x), row = t.rowAt(y);
+    for (let r = row - 6; r <= row + 6; r++) for (let c = col - 6; c <= col + 6; c++) {
+      if (!t.inside(c, r) || count >= lights.length) continue;
+      const node = TERRAIN_NODE_LIST[t.kind[t.index(c, r)]];
+      if (!node.glow || (node.solid && !t.exposed(c, r)) || (node.struckGlow && t.hp[t.index(c, r)] >= node.hp)) continue;
+      const l = lights[count++];
+      l.x = (c + .5) * CELL; l.y = t.top + (r + .5) * CELL; l.radius = node.glow.radius * 1.6;
+    }
+    const lantern = { x: this.player.x, y: this.player.y - 50, radius: this.lanternRadius * this.lanternShare(t) };
+    return litBy(m.x, y, lights, count, lantern);
+  }
+  private readonly shadeLights = Array.from({ length: 24 }, () => ({ x: 0, y: 0, radius: 0 }));
+  /** One fixed step of a shade: frozen in light; in the dark it crosses fast and lunges. */
+  private stepShade(m: Monster, dt: number): void {
+    const floor = m.def.floorY ?? FLOOR, k = this.figure;
+    const lit = this.shadeLit(m);
+    if (lit !== !!m.frozen) {
+      m.frozen = lit;
+      if (lit) this.debris.chip(m.x, floor - 30 * k, '#e8d8ff', this.reducedMotion ? 2 : 5);
+    }
+    if (lit) { if (m.phase !== 'idle') { m.phase = 'idle'; m.timer = .4; } return; }
+    const away = !!this.terrain && Math.abs(this.player.y - floor) > 120;
+    if (away) {
+      m.x += Math.sign(m.spawn - m.x) * Math.min(Math.abs(m.spawn - m.x), 65 * dt);
+      m.phase = 'idle'; m.timer = .5;
+      return;
+    }
+    const distance = this.player.x - m.x;
+    if (m.phase === 'idle') {
+      // A shade senses a Keeper across its whole hall (a hall is a screen or two wide).
+      if (Math.abs(distance) < 900 && Math.abs(distance) > 70 * k) m.x += Math.sign(distance) * SHADE_SPEED * (m.def.trait === 'warden' ? .7 : 1) * dt;
+      const range = m.def.range;
+      if (range) m.x = Math.max(range[0], Math.min(range[1], m.x));
+      if (Math.abs(distance) < 170 * k && m.timer <= 0) { m.phase = 'windup'; m.timer = SHADE_WINDUP; m.facing = Math.sign(distance) || -1; }
+    } else if (m.timer <= 0) {
+      if (m.phase === 'windup') {
+        m.phase = 'strike'; m.timer = .2;
+        if (Math.abs(distance) < 170 * k && distance * m.facing > -40 * k && this.player.y > floor - 105 * Math.max(k, .6) && this.player.y < floor + 40 && this.dodgeTime <= 0 && this.hurtTime <= 0) {
+          this.hp = Math.max(0, this.hp - (m.def.trait === 'warden' ? 26 : 18)); this.hurtTime = .8; this.wound = 1;
+          this.impact(.07, this.hp === 0 ? 12 : 8);
+          if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
+        }
+      } else if (m.phase === 'strike') { m.phase = 'recover'; m.timer = .9; }
+      else { m.phase = 'idle'; m.timer = .3; }
+    }
+  }
+  /** A shade: a tall wisp of the dark, eyes like two struck sparks; stone-grey and still while lit. Returns its height (world px). */
+  private drawShade(c: CanvasRenderingContext2D, m: Monster, time: number, flash: boolean): number {
+    const big = m.def.trait === 'warden' ? 2 : 1;
+    const W = 10 * big, H = 26 * big;
+    const frozen = !!m.frozen, hot = m.phase === 'windup' || m.phase === 'strike';
+    const sway = frozen || this.reducedMotion ? 0 : Math.round(Math.sin(time * 5 + m.spawn) * 1);
+    const body = flash ? '#e8d8ff' : frozen ? '#5a5466' : '#120a1e', edge = frozen ? '#8a8496' : '#3a2a5a';
+    for (let y = 0; y < H; y++) {
+      // A wisp: narrow head, broad middle, frayed hem.
+      const u = y / H, half = Math.max(1, Math.round((u < .25 ? .3 + u * 2 : u < .8 ? .8 : .8 - (u - .8) * 2.5) * W / 2));
+      const dx = frozen ? 0 : Math.round(Math.sin(time * 3 + y * .4 + m.spawn) * (u > .7 ? 1 : 0));
+      c.fillStyle = edge; c.fillRect((-half - 1 + dx + (y < H * .3 ? sway : 0)) * ART, (y - H) * ART, (half * 2 + 2) * ART, ART);
+      c.fillStyle = body; c.fillRect((-half + dx + (y < H * .3 ? sway : 0)) * ART, (y - H) * ART, half * 2 * ART, ART);
+    }
+    if (frozen) for (let n = 0; n < 3 * big; n++) { c.fillStyle = '#c8c0d8'; c.fillRect(((n * 3) % W - W / 2) * ART, (-H + 4 + n * 5) * ART, ART, ART * 2); }
+    return H * ART;
+  }
+  /** Shades' eyes, over the darkness: you always see where they are. Brighter as they wind up to lunge. */
+  private drawShadeEyes(c: CanvasRenderingContext2D, time: number, viewport: number): void {
+    for (const m of this.monsters) {
+      if (m.hp <= 0 || (m.def.trait !== 'shade' && m.def.trait !== 'warden') || m.x < this.camera - 60 || m.x > this.camera + viewport + 60) continue;
+      const big = m.def.trait === 'warden' ? 2 : 1, floor = m.def.floorY ?? FLOOR;
+      const looking = m.phase === 'idle' ? Math.sign(this.player.x - m.x) || m.facing : m.facing;
+      const y = floor - (26 * big - 4 * big) * ART, x = m.x + looking * ART * big;
+      const hot = m.phase === 'windup' || m.phase === 'strike';
+      c.globalAlpha = m.frozen ? .35 : hot ? 1 : .8 + (this.reducedMotion ? 0 : .2 * Math.sin(time * 4 + m.spawn));
+      c.fillStyle = hot ? '#fff4dc' : m.frozen ? '#8a8496' : '#c8b8ff';
+      c.fillRect(x - 2 * ART * big, y, ART * big, ART * big); c.fillRect(x + ART * big, y, ART * big, ART * big);
+    }
+    c.globalAlpha = 1;
+  }
+  /** The ink tide standing over every pool in view (umbral.ts): over the figures, under the dark. */
+  private drawTide(c: CanvasRenderingContext2D, t: Terrain, c0: number, c1: number, r0: number, r1: number): void {
+    const rows = this.tide.rows;
+    if (rows <= 0) return;
+    const alpha = c.globalAlpha;
+    for (let col = Math.max(t.colLo, c0); col <= Math.min(t.colHi - 1, c1); col++) {
+      for (let row = Math.max(1, r0); row <= Math.min(t.rows - 1, r1); row++) {
+        const i = t.index(col, row);
+        if (!t.liqLevel[i] || t.liqType[i] !== LIQUID_INK) continue;
+        const above = t.index(col, row - 1);
+        if (t.liqLevel[above] && t.liqType[above] === LIQUID_INK) continue;
+        const surface = t.top + (row + 1) * CELL - t.liqLevel[i] * (CELL / 8);
+        let top = surface - rows * CELL;
+        for (let k = 1; k <= Math.ceil(rows) + 1; k++) if (t.solid(col, row - k)) { top = Math.max(top, t.top + (row - k + 1) * CELL); break; }
+        if (top >= surface) continue;
+        c.globalAlpha = alpha * .9; c.fillStyle = '#120a22'; c.fillRect(col * CELL, top, CELL, surface - top);
+        c.globalAlpha = alpha; c.fillStyle = '#6a4adf'; c.fillRect(col * CELL, top, CELL, ART);
+      }
+    }
+    c.globalAlpha = alpha;
+  }
+  /** Under a mirrored ceiling: the Keeper's reflection walks on it, upside down, a step behind. */
+  private drawReflection(c: CanvasRenderingContext2D, t: Terrain, k: number): void {
+    const was = this.mirrorTrail[0];
+    if (!was || !this.mirror) return;
+    const shown = this.present(this.pose(), was.x, was.y);
+    c.save();
+    c.globalAlpha = .42;
+    c.translate(was.x, this.mirror.y); c.scale(was.facing * k, -k);
+    this.drawKeeper(c, { x: -78, y: -196, w: 156, h: 196 }, shown, this.reducedMotion ? 0 : this.elapsed, this.mirrorMotion, was.x, this.mirror.y * 2 - was.y, was.facing,
+      0, 0, this.equipped, { landing: 0, recoil: 0, rim: 0 }, this.keeperMotion(shown, this.elapsed), true);
+    c.restore();
+    void t;
+  }
+
   // ── The Underhearth: the Banked Furnace, the Sentinels, the stratum's door (Phase 8) ──
 
   /** A spilled ember has been spent this step (the monster list sheds it once it has faded). */
@@ -2729,7 +3107,7 @@ export class SeamworksEngine {
 
   /** The first step into the Underhearth: the flag (Kael's first step) and the line, once per player. */
   private reachedUnderhearth(t: Terrain): void {
-    if (this.reachedSaid || !this.world || this.world.t !== t) return;
+    if (this.reachedSaid || !this.world || this.world.t !== t || this.areaDef.terrain?.realm) return;
     if (t.rowAt(this.player.y - DELVE_BOX.height * .5) < UNDERHEARTH_TOP) return;
     this.reachedSaid = true;
     if (this.flagged(UNDERHEARTH_REACHED_FLAG)) return;
@@ -2973,6 +3351,10 @@ export class SeamworksEngine {
         fishing: this.line ? { phase: this.line.phase, liquid: LIQUID_IDS[this.line.liquid] as LiquidKind } : null,
         canFish: this.line ? null : this.fishable(t),
         riding: !!this.cart, grappling: this.grapple?.phase ?? null,
+        ...(this.areaDef.terrain?.realm ? { realm: {
+          id: realmOfArea(this.areaDef.id) ?? '', tide: this.tide.phase, tideRows: Math.round(this.tide.rows * 10) / 10, nextTide: Math.ceil(this.tide.next),
+          inkBlind: this.inkBlind, mirror: !!this.mirror, shift: this.shiftEpoch,
+        } } : {}),
         ...(this.furnace ? { furnace: {
           phase: this.furnace.state.phase, doused: this.furnace.state.doused.filter(Boolean).length,
           open: Math.ceil(this.furnace.state.open), breathing: furnaceBreathing(this.furnace.state),
@@ -3806,6 +4188,7 @@ export class SeamworksEngine {
       c.restore();
     }
     c.restore();
+    if (t && this.mirror) this.drawReflection(c, t, k);
     if (t && this.cart) this.drawCart(c, motionTime);
     if (t && this.grapple) this.drawGrappleLine(c);
     if (t) {
@@ -3813,9 +4196,11 @@ export class SeamworksEngine {
       const c0 = t.colAt(this.camera) - 1, c1 = t.colAt(this.camera + viewport) + 1;
       const r0 = t.rowAt(this.cameraY) - 1, r1 = t.rowAt(this.cameraY + 720) + 1;
       drawLiquids(c, t, c0, c1, r0, r1, this.reducedMotion ? 0 : Math.floor(this.elapsed * 2.5) & 1);
+      if (this.areaDef.terrain?.realm) this.drawTide(c, t, c0, c1, r0, r1);
       this.drawLine(c, motionTime);
     }
     if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
+    if (t && this.areaDef.terrain?.realm) this.drawShadeEyes(c, motionTime, viewport);
     this.drawGlim(c, motionTime);
     if (t) this.drawAim(c, t);
     this.atmosphere.feedback(c, this.reducedMotion);
@@ -3850,7 +4235,7 @@ export class SeamworksEngine {
     const pool = this.lightPool; pool.clear(); this.glintCount = 0;
     const flicker = this.reducedMotion ? 1 : 1 + Math.sin(time * 13) * .015 + Math.sin(time * 7.3 + 1) * .02;
     // A veiled creature (the Drowned Lamp) dims the lantern while it lives.
-    pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker * (this.veiledUp() ? .55 : 1), 1);
+    pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker * (this.veiledUp() ? .55 : 1) * this.lanternShare(t), 1);
     if (this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);
     if (this.blastFlash > 0) {
       const at = this.blastAt;
@@ -3911,7 +4296,9 @@ export class SeamworksEngine {
     lavaLights(t, c0, c1, r0, r1, this.lavaPool, flicker);
     c.save();
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT, this.lavaPool.lights, this.lavaPool.count);
+    // Ink-blind (BiomeDef.gloom): the unlit dark is deeper than any stratum's.
+    const ambient = biome.gloom ? Math.max(.92, ambientDarkness(this.cameraY + 360 - t.top)) : ambientDarkness(this.cameraY + 360 - t.top);
+    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambient, biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT, this.lavaPool.lights, this.lavaPool.count);
     c.restore();
     if (fold && !dark) {
       // No overlay canvas: the tint on its own, as before.
@@ -4146,7 +4533,7 @@ export class SeamworksEngine {
     c.translate(Math.round(m.x + m.knock), floor);
     if (looking < 0) c.scale(-1, 1);
     const flash = m.flash > 0;
-    const top = trait === 'dormant' ? this.drawEmber(c, m, time, flash) : this.drawSentinel(c, m, time, flash);
+    const top = trait === 'dormant' ? this.drawEmber(c, m, time, flash) : trait === 'shade' || trait === 'warden' ? this.drawShade(c, m, time, flash) : this.drawSentinel(c, m, time, flash);
     c.restore();
     if (m.hp <= 0) return;
     const full = m.maxHp || 1, bar = 64, crown = floor - top - 12;
