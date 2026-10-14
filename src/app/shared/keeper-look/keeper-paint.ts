@@ -106,8 +106,8 @@ export function bodyFrame(action: KeeperAction, frame: number): BodyFrame {
       const p = frame / RUN_FRAMES * Math.PI * 2, s = Math.sin(p), k = Math.cos(p);
       return {
         bob: Math.abs(s) > .7 ? 0 : -1, lean: 1,
-        front: { dx: Math.round(3.5 * s), lift: Math.max(0, Math.round(2.5 * k)) },
-        back: { dx: Math.round(-3.5 * s), lift: Math.max(0, Math.round(-2.5 * k)) },
+        front: { dx: Math.round(3 * s), lift: Math.max(0, Math.round(2.5 * k)) },
+        back: { dx: -Math.round(3 * s), lift: Math.max(0, Math.round(-2.5 * k)) },
         armB: 1.57 - .7 * s, cape: 3 + (frame & 1),
       };
     }

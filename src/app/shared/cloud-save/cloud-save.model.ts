@@ -50,6 +50,7 @@ import { mergeFishingSaves } from '../fishing/fishing-save';
 import { mergeGatherSaves } from '../skills/gather-save.model';
 import { mergeGamesLedgers } from '../games/play-ledger';
 import { mergeGlim } from '../glim/glim-save.model';
+import { mergeKeeperLook } from '../keeper-look/keeper-look.model';
 import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
 
@@ -398,6 +399,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // field only grows; the hand-written merge keeps the earlier meeting stamp
     // (the structural rule would keep the later one) and drops junk ids.
     merge: mergeGlim,
+  },
+  {
+    key: 'godforge-keeper-look',
+    collection: 'progress',
+    doc: 'keeper-look',
+    label: 'Your Keeper\'s look',
+    // `{ version, made, prompted, body, skin, hair, …, name, updatedAt }`: one
+    // choice made at the Glass of Becoming. The later edit wins whole (never a
+    // face nobody chose); made/prompted are kept if either side has them.
+    merge: mergeKeeperLook,
   },
   {
     key: 'godforge-story',

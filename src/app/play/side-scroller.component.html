@@ -20,7 +20,7 @@
          change (the span is re-created per line, which restarts its fade). -->
     <p class="objective" aria-live="polite">@for (line of [message || engineMessage || objective]; track line) {<span class="objective-line">{{ line }}</span>}</p>
     <div class="top-actions">
-      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span></button>
+      <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span>@if (lookNudge) {<i class="look-nudge" aria-hidden="true"></i>}</button>
       <!-- The Mirror Slate (P): only once the Keeper carries one. The badge: the Homestead has something worth a look. -->
       @if (slateTier > 0) {
         <button type="button" class="quiet slate-btn" [class.slate-btn--ready]="slateReady" (click)="toggleSlate()"
@@ -82,6 +82,7 @@
             </button>
           </li>
         }
+        <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
       </ul>
       <!-- Phones: the rest of the old top bar lives in this menu. -->
@@ -95,7 +96,7 @@
 
   <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || glimTalk ? '' : null">
     <div class="vital">
-      <label>{{ t('play.hud.keeper') }} <b>{{ hpShown }}</b></label>
+      <label>{{ keeperName || t('play.hud.keeper') }} <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
     </div>
     @if (state.enemyHp > 0) {

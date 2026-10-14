@@ -1197,3 +1197,14 @@ streaks). All text: `shared/glim/glim-bond.i18n.ts`, EN + ES.
   Needle, Every Town, Leave It Blank (Act III: shown as still being written).
 - **Coming back** after two days or more: "There you are. The map kept; nothing
   moved while you were away." Never "we missed you".
+
+## The Glass of Becoming (shipped — owner reviews in play)
+
+Make your Keeper (`docs/handoff/make-your-keeper.md`). Every Keeper carries a
+sliver of the Archive's moon-mirror — the same glass Lune Coyne's Slate is cut
+from. Breathe on it and it shows "the face the realms will know you by, and lets
+you choose it again". A brand-new Keeper is handed it as they step into the world;
+a Keeper who never looked into it sees "The Glass of Becoming remembers a face you
+never chose." Two of the skin tones are not human ones: the Umbral lilac and the
+Verdant sap the realms leave on Keepers who have walked them long. Other Keepers
+seen at the Hearth each have their own face, read off the glass by their name.

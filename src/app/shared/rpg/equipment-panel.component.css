@@ -126,6 +126,8 @@
   /* Lifts the near-black render off the panel without recolouring it. */
   filter: drop-shadow(0 0 18px rgba(167, 139, 250, 0.34)) contrast(1.06) brightness(1.1);
 }
+/* The player's own pixel Keeper (Make your Keeper): crisp pixels, no tone filter. */
+.ld__doll-art--pixel { image-rendering: pixelated; filter: drop-shadow(0 0 14px rgba(167, 139, 250, 0.3)); }
 .ld__overlay {
   position: absolute;
   object-fit: contain;

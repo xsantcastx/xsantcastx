@@ -1,0 +1,47 @@
+:host { display: block; }
+
+.km { display: grid; gap: 12px; max-width: 520px; margin: 0 auto; color: var(--text-body); }
+.km__lore { margin: 0; font-size: .92rem; line-height: 1.45; color: var(--text-muted); }
+
+.km__stage {
+  display: grid; place-items: center; padding: 8px 0;
+  background: radial-gradient(ellipse 60% 55% at 50% 60%, color-mix(in srgb, var(--gold) 14%, transparent), transparent 70%), var(--surface-well);
+  border: 1px solid var(--edge-hairline); border-radius: var(--radius-lg);
+}
+.km__preview { width: min(240px, 62vw); height: auto; aspect-ratio: 1; image-rendering: pixelated; }
+
+.km__name { display: grid; gap: 4px; font-size: .85rem; color: var(--text-muted); }
+.km__name input {
+  min-height: var(--tap-min, 44px); padding: 0 12px; font: inherit; font-size: 1rem; color: var(--text-heading);
+  background: var(--surface-well); border: 1px solid var(--edge-hairline); border-radius: var(--radius-lg);
+}
+.km__name input:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+.km__fields { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+.km__row {
+  display: grid; grid-template-columns: minmax(84px, 1fr) var(--tap-min, 44px) minmax(110px, 1.4fr) var(--tap-min, 44px);
+  align-items: center; gap: 6px;
+}
+.km__label { font-size: .85rem; color: var(--text-muted); }
+.km__value {
+  display: flex; align-items: center; justify-content: center; gap: 8px; min-height: var(--tap-min, 44px);
+  color: var(--text-heading); background: var(--surface-well); border-radius: var(--radius-lg); font-size: .92rem; text-align: center;
+}
+.km__swatch { width: 18px; height: 18px; border-radius: 50%; background: var(--swatch); border: 1px solid var(--edge-hairline); flex: none; }
+.km__step {
+  width: var(--tap-min, 44px); height: var(--tap-min, 44px); display: grid; place-items: center; cursor: pointer;
+  background: var(--surface-raised); border: 1px solid var(--edge-hairline); border-radius: var(--radius-lg); color: var(--text-heading);
+}
+.km__step i { width: 10px; height: 10px; border: solid currentColor; border-width: 0 0 2px 2px; transform: rotate(45deg); margin-left: 4px; }
+.km__step--next i { transform: rotate(-135deg); margin: 0 4px 0 0; }
+.km__step:hover, .km__step:focus-visible { border-color: var(--gold); }
+.km__step:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
+
+.km__actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.km__random, .km__keep {
+  min-height: var(--tap-min, 44px); padding: 0 14px; font: inherit; font-weight: 600; cursor: pointer; border-radius: var(--radius-lg);
+}
+.km__random { background: transparent; color: var(--text-heading); border: 1px solid var(--edge-hairline); }
+.km__keep { background: var(--gold); color: var(--surface-well); border: 1px solid var(--gold); }
+.km__random:focus-visible, .km__keep:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.km__saved { margin: 0; text-align: center; color: var(--gold); font-size: .9rem; }
