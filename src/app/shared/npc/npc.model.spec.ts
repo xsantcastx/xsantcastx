@@ -36,9 +36,16 @@ function ctx(over: Partial<DialogueContext> = {}): DialogueContext {
 }
 
 describe('the cast', () => {
-  it('has six characters with unique ids', () => {
-    expect(NPCS.length).toBe(6);
-    expect(new Set(NPCS.map(n => n.id)).size).toBe(6);
+  it('has seven characters with unique ids', () => {
+    expect(NPCS.length).toBe(7);
+    expect(new Set(NPCS.map(n => n.id)).size).toBe(7);
+  });
+
+  it('has one companion, Glim, who claims no page', () => {
+    const companions = NPCS.filter(n => n.companion);
+    expect(companions.map(n => n.id)).toEqual(['glim']);
+    expect(companions[0]!.paths).toEqual([]);
+    for (const path of ['/', '/play', '/world', '/codex']) expect(npcForPage(path)?.id).withContext(path).not.toBe('glim');
   });
 
   it('gives every character a distinct portrait id', () => {

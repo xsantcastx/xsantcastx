@@ -514,6 +514,9 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
       },
     },
   ],
+  // A companion has no chain here: its questline, "The Blank Places", reads
+  // the Atlas (world-and-cast.md §4, slice S4) and ships with it.
+  glim: [],
 };
 
 /** Every step in the game, flattened. Order is chain order within each NPC. */

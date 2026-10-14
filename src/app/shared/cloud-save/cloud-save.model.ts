@@ -47,6 +47,7 @@ import { mergeDelveSaves } from '../delve/delve-save.model';
 import { mergeDelveLore } from '../delve/delve-lore.model';
 import { mergeGatherSaves } from '../skills/gather-save.model';
 import { mergeGamesLedgers } from '../games/play-ledger';
+import { mergeGlim } from '../glim/glim-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -376,6 +377,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // so the structural "higher wins" is exactly right and there is no
     // hand-written merge (which also keeps the home-forge model out of this
     // eager file). The Gold paid for a tier rides the economy's own op log.
+  },
+  {
+    key: 'godforge-glim',
+    collection: 'progress',
+    doc: 'glim',
+    label: 'Glim, the Margin-Light',
+    // `{ version, met, metAt, ladder, said, lastAt }`: the companion's meeting,
+    // how far each hint ladder was opened and which lines it has said. Every
+    // field only grows; the hand-written merge keeps the earlier meeting stamp
+    // (the structural rule would keep the later one) and drops junk ids.
+    merge: mergeGlim,
   },
 ];
 

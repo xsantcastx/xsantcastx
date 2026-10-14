@@ -52,6 +52,11 @@ import { HEARTH_I18N } from './world/hearth.i18n';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
 import { firstGoal, FirstGoalView, runeForgeHint } from './world/first-goals';
+import { GLIM_I18N } from '../shared/glim/glim.i18n';
+import { GlimService } from '../shared/glim/glim.service';
+import { GlimVoice } from '../shared/glim/glim-voice';
+import { GlimIconComponent } from '../shared/glim/glim-icon.component';
+import { npcById } from '../shared/npc/npc.model';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -154,7 +159,7 @@ function monogram(name: string): string {
 }
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, GlimIconComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -245,6 +250,15 @@ export class SideScrollerComponent implements OnDestroy {
   private boughtBuilding = false;
   /** The first-session goal line (world/first-goals.ts); null once all four are done. */
   guide: FirstGoalView | null = null;
+  /**
+   * Glim, the Margin-Light (shared/glim): the companion who voices the goal
+   * line, opens the hint ladder when asked and is the Delve's lantern. Its
+   * memory goes through the save gateway (GlimService); this is its one line on
+   * screen. `glimAt` mirrors the engine's sprite for the e2e (data-glim-*).
+   */
+  readonly glimNpc = npcById('glim');
+  readonly glimVoice = new GlimVoice(inject(GlimService));
+  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean } | null = null;
   /** The Homestead's Gold list is unfolded: on phones it takes the HUD plates' place. */
   columnOpen = false;
   private readonly zone = inject(NgZone);
@@ -367,6 +381,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(LIFE_I18N);
     this.i18n.register(DELVE_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
+    this.i18n.register(GLIM_I18N);
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
@@ -862,6 +877,35 @@ export class SideScrollerComponent implements OnDestroy {
       areaId,
     });
     if (next?.key !== this.guide?.key || next?.n !== this.guide?.n) this.guide = next;
+    this.tickGlim(areaId, !goal, (progress.xpByDiscipline['hunting'] ?? 0) > 0, !!worn && !worn.explorerId);
+  }
+  /** Glim's tick: maybe a line (glim.ts nextLine), the sprite shown once met, and where it is. */
+  private tickGlim(areaId: string, goalsDone: boolean, hunted: boolean, armed: boolean): void {
+    const voice = this.glimVoice;
+    voice.tick({ now: Date.now(), panelOpen: !!this.panel, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
+    if (!this.engine) return;
+    this.engine.setGlim(voice.met, voice.justMet);
+    voice.justMet = false;
+    const at = this.engine.glimView;
+    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed } : null;
+  }
+  /** The goal row's Glim button: the next step of this goal's hint ladder; step 3 is Show me. */
+  askGlim(): void {
+    const goal = this.guide;
+    if (!goal) return;
+    const hint = this.glimVoice.ask(`goal.${goal.id}`, goal.key, Date.now());
+    if (hint.walk) this.showGoal();
+  }
+  /** "Ask Glim for a hint (2 of 3)". */
+  get glimAskLabel(): string {
+    const goal = this.guide;
+    if (!goal) return '';
+    const { next, top } = this.glimVoice.peek(`goal.${goal.id}`, goal.key);
+    return top ? this.t('play.glim.ask', { n: next, total: top }) : this.t('play.glim.askDone');
+  }
+  dismissGlim(): void {
+    this.glimVoice.dismiss();
+    this.focusWorld();
   }
   /** The Rune Forge hint was followed, dismissed, or the forge opened: it never shows again. */
   private runeHintSeen = this.readRuneHintSeen();
@@ -893,6 +937,8 @@ export class SideScrollerComponent implements OnDestroy {
       ? this.engine.goToStation(target.station, this.reducedMotion)
       : this.reducedMotion ? (this.engine.placeAt(target.x), true) : this.engine.moveTo(target.x);
     if (!ok) this.message = this.t(this.state.paused ? 'play.hud.msg.closeFirst' : 'play.hud.msg.cannotTravel');
+    // Glim flies ahead to the place and back, leaving a short trail (it sits still under reduced motion).
+    else this.engine.glimShowMe(target);
     this.focusWorld();
   }
   /** Close the Places list from the keyboard and hand focus back to its toggle. */

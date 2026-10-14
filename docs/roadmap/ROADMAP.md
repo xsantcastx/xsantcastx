@@ -12,7 +12,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 3. **Cleanup leftovers** — remove the daily tool pipeline, Pro Pack, Codex Solarii; Karma back to 0 failures. *(in flight)*
 4. **The rest of the casino** on the Reels kit — Rune Drop (Plinko), Seam Sweeper (Mines), Eclipse Ascent (Crash). Gold only.
 5. **Delve & Beyond, slice 1** — liquids v1 (water/lava), a lake biome, Fishing v1. *(design in flight: `docs/world/delve-and-beyond.md`)*
-6. **World & cast, slice 1** — story Act 1 and the lantern companion as the onboarding guide. *(design in flight: `docs/world/world-and-cast.md`)*
+6. **World & cast, slice 1** — story Act 1 and the lantern companion as the onboarding guide. *(S1 Glim shipped on its branch, `docs/handoff/glim.md`; S2 Act I framing next)*
 7. **Art test set** — produce the 21 first-test-set files (`docs/art-commissions/00-first-test-set.md`); the importer drops them straight in. *(owner / image generator)*
 
 ## Milestones
