@@ -894,7 +894,7 @@ export class TranslationService {
     'loadout.slot.offhand': { en: 'Off-hand', es: 'Mano izquierda' },
     'loadout.slot.trinket': { en: 'Trinket', es: 'Amuleto' },
     'loadout.slot.empty': { en: 'Empty', es: 'Vacio' },
-    'loadout.slot.locked': { en: 'Awaiting a compatible piece', es: 'Espera una pieza compatible' },
+    'loadout.slot.locked': { en: 'None yet', es: 'Aún nada' },
     'loadout.slot.announce.empty': { en: '{{name}}, empty', es: '{{name}}, vacio' },
     'loadout.slot.announce.filled': { en: '{{name}}, equipped {{item}}. Inspect.', es: '{{name}}, equipado {{item}}. Inspeccionar.' },
     'loadout.slot.announce.locked': { en: '{{name}}, locked until a compatible item exists', es: '{{name}}, bloqueado hasta que exista un objeto compatible' },

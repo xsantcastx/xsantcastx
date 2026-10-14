@@ -59,7 +59,8 @@ interface SkillCard {
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="sk" aria-labelledby="sk-title">
-      <h2 id="sk-title" class="sk__title">{{ t('skills.title') }}</h2>
+      <!-- Named by its host (the place head, the Character tab): the heading stays for screen readers. -->
+      <h2 id="sk-title" class="sk__title visually-hidden">{{ t('skills.title') }}</h2>
       <p class="sk__lead">{{ t('skills.lead') }}</p>
       <app-delve-mission-chip class="sk__mission"></app-delve-mission-chip>
       <!-- The Lodge Warden's daily fish (Fishing, Phase 6). -->

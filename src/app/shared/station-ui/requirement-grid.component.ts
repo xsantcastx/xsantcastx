@@ -61,7 +61,7 @@ interface Cell { cost: StationCost; art: StationArt | null; met: boolean; have: 
       <span class="rg__text">
         <span class="rg__name">{{ cell.cost.label }}</span>
         @if (showCount()) {
-          <span class="rg__count">{{ pending() ? cell.need : cell.have + '/' + cell.need }}</span>
+          <span class="rg__count">@if (pending()) { {{ cell.need }} } @else { {{ cell.have }}/<wbr>{{ cell.need }} }</span>
         }
       </span>
     </ng-template>

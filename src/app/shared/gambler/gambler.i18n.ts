@@ -18,7 +18,6 @@ export const GAMBLER_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'gambler.boxes':        { en: 'Boxes', es: 'Cajas' },
   'gambler.sellable':     { en: 'Sellable items', es: 'Objetos vendibles' },
   'gambler.emptySell':    { en: 'Nothing in your satchel the till will take.', es: 'Nada en tu mochila que la caja acepte.' },
-  'gambler.openLine':     { en: 'Open 1 {{name}}', es: 'Abrir 1 {{name}}' },
   'gambler.odds':         { en: 'What can come out', es: 'Que puede salir' },
   'gambler.open':         { en: 'Open', es: 'Abrir' },
   'gambler.sellLine':     { en: 'Sell for {{n}} Gold', es: 'Vender por {{n}} de oro' },

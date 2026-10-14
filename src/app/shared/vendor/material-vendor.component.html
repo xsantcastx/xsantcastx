@@ -20,9 +20,8 @@
                         [label]="t('vendor.list')" (pick)="select($event)" />
 
       <div journalDetail class="mv-detail">
-        <app-detail-head [art]="selectedArt"
-                         [name]="selected.name"
-                         [line]="t('vendor.sellLine', { name: selected.name, price: fmt(selected.listing.price) })" />
+        <!-- No hero line: the button and its chip already say "sell this, for that". -->
+        <app-detail-head [art]="selectedArt" [name]="selected.name" />
 
         <p class="mv-hint">
           @if (wouldShort; as need) {

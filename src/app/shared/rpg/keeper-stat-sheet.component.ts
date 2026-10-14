@@ -65,6 +65,8 @@ export class KeeperStatSheetComponent implements OnInit, OnDestroy {
 
   /** Sheet heading. Hosts pass a translated string where they translate. */
   @Input() heading = 'Keeper stats';
+  /** False when the host already titles it (a fold whose summary is the heading); it stays the aria-label. */
+  @Input() showHeading = true;
   /** Dense layout for the Seamworks satchel. */
   @Input() compact = false;
   /** Also show the Seamworks combat numbers the loadout buys. */
