@@ -49,7 +49,7 @@ const SIZES: { width: number; height: number }[] = [
 /** The phone HUD's pieces: none may meet another, none may sit over the middle of the world. */
 const PIECES = [
   '.title-block', '.places-toggle', '.vitals', '.satchel', '.hotbar', '.guide', '.objective-line',
-  '.prompt.armed', '.dock', '.m-take', '.touch-move', '.touch-act', '.map-toggle', '.map-mini-open',
+  '.prompt.armed', '.dock', '.m-take', '.touch-move', '.touch-act', '.map-toggle', '.map-mini-open', '.glim-say', '.loot-toast',
 ];
 /** Everything that can cover the world, old layout and new (for the before/after numbers). */
 const COVERS = [
@@ -129,7 +129,21 @@ async function check(page: Page, scene: string): Promise<void> {
 
     expect(all.ratio, `${label}: unobstructed world ${(all.ratio * 100).toFixed(1)}%`).toBeGreaterThanOrEqual(.65);
 
+    // A catch banner at its longest ("BLINDFIN ×1 · +8 FISHING XP", three stacked) has its own slot:
+    // injected into the real container, un-animated, so it is measured at full opacity.
+    await page.evaluate(() => {
+      const host = document.querySelector('.loot-toasts');
+      for (const text of ['Blindfin ×1 · +8 Fishing XP', '+2 Pyrite Dust', '+1 Ember Grub']) {
+        const chip = document.createElement('span');
+        chip.className = 'loot-toast test-banner';
+        chip.style.animation = 'none';
+        chip.textContent = text;
+        host?.appendChild(chip);
+      }
+    });
     const { rects, canvas: c } = await measure(page, PIECES);
+    await page.evaluate(() => document.querySelectorAll('.test-banner').forEach(n => n.remove()));
+    expect(rects.some(r => r.sel === '.loot-toast'), `${label}: the catch banner is on screen`).toBe(true);
     for (let i = 0; i < rects.length; i++) {
       for (let j = i + 1; j < rects.length; j++) {
         expect(meets(rects[i]!, rects[j]!), `${label}: ${rects[i]!.sel} ${JSON.stringify(rects[i])} meets ${rects[j]!.sel} ${JSON.stringify(rects[j])}`).toBe(false);
@@ -138,6 +152,21 @@ async function check(page: Page, scene: string): Promise<void> {
     const h = c.bottom - c.top;
     const middle: Rect = { sel: 'middle', left: c.left, right: c.right, top: c.top + h * .25, bottom: c.top + h * .75 };
     for (const r of rects) expect(meets(r, middle), `${label}: ${r.sel} over the middle of the world`).toBe(false);
+
+    // A prompt's label and its button never say the same thing ("FISH HERE | FISH HERE").
+    const prompt = await page.evaluate(() => {
+      const el = document.querySelector('.prompt.armed');
+      if (!el) return null;
+      const norm = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+      const label = norm(el.querySelector('strong')?.textContent);
+      const buttons = Array.from(el.querySelectorAll('button:not(.keys-toggle)')).map(b => {
+        const clone = b.cloneNode(true) as HTMLElement;
+        clone.querySelectorAll('kbd').forEach(k => k.remove());
+        return norm(clone.textContent);
+      });
+      return { label, buttons };
+    });
+    if (prompt) for (const b of prompt.buttons) expect(b, `${label}: the prompt label "${prompt.label}" repeats its button`).not.toBe(prompt.label);
 
     // The touch row: ≥ 44×44, one row, labels that fit, and each takes its own tap.
     const buttons = await page.evaluate(() => Array.from(document.querySelectorAll('.touch .tb')).filter(b => getComputedStyle(b).display !== 'none').map(b => {
