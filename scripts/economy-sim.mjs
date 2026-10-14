@@ -507,6 +507,8 @@ function check(E) {
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   // Fishing (Phase 6): Gold share, crate values, rod gates and the 99 band (`--fishing` prints the table).
   fails.push(...fishingScenario({ quiet: true }));
+  // The Underhearth (Phase 8): rule I rewards, the furnace is no farm, tool V on the ladder (`--underhearth` prints it).
+  fails.push(...underhearthScenario({ quiet: true }));
   // The Board Herald's daily bounties (Phase 7.5): rule I band, the daily envelope, XP, the draw (`--bounties` prints it).
   fails.push(...bountiesScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
@@ -744,8 +746,11 @@ function fishingScenario({ quiet = false } = {}) {
     // The fisher splits time between the Mere and Magma lava (once a Seam Rod works) to fill the order.
     const mere = fishingRate(level, 'mere', 'active');
     const magma = fishingRate(level, 'magma', 'active');
+    // Phase 8: the Underhearth's lava (any lava rod works it); a fisher with lava open adds it to the rotation.
+    const hearth = fishingRate(level, 'hearth', 'active');
+    const rotation = [mere, magma, hearth].filter(Boolean);
     const mix = magma ? .5 : 1;
-    const sell = mere.goldMin * mix + (magma ? magma.goldMin * (1 - mix) : 0);
+    const sell = rotation.reduce((s, w) => s + w.goldMin, 0) / rotation.length;
     // Order fills a minute: limited by its scarcest item at this mix.
     let fills = Infinity;
     for (const [id, n] of order.items) {
@@ -756,13 +761,13 @@ function fishingScenario({ quiet = false } = {}) {
     const orderMin = fills * Math.max(order.floor, gps * order.seconds);
     const share = (sell + orderMin) / forgeMin;
     const ledger = Math.max(FISH.LEDGER_REWARD.goldFloor, gps * FISH.LEDGER_REWARD.goldSeconds);
-    const xpMin = mere.xpMin * mix + (magma ? magma.xpMin * (1 - mix) : 0);
+    const xpMin = rotation.reduce((s, w) => s + w.xpMin, 0) / rotation.length;
     say('  ' + label.padEnd(6) + String(level).padStart(5) + fmtN(forgeMin).padStart(14) + fmtN(sell).padStart(12) + fmtN(orderMin).padStart(13) + `${(share * 100).toFixed(1)}%`.padStart(8) + fmtN(ledger).padStart(16) + xpMin.toFixed(0).padStart(9));
     // 1. Fishing's Gold a minute (selling everything plus the standing order) ≤ 10% of the forge's, after the first 10 minutes.
     if (t > 600 && share > .10) fails.push(`fishing pays ${(share * 100).toFixed(1)}% of the forge's Gold/min at ${label} (must be <= 10%)`);
     // 2. A crate's vendor value ≤ the Gold the forge earns in the minutes it took to fish it.
-    for (const water of ['mere', 'magma']) {
-      const r = water === 'mere' ? mere : magma;
+    for (const water of ['mere', 'magma', 'hearth']) {
+      const r = water === 'mere' ? mere : water === 'magma' ? magma : hearth;
       if (!r) continue;
       const crate = FISH.WATERS[water].crate;
       const value = FISH.crateExpectedAnchor(crate, anchorOf) * C.ITEM_ECONOMY_SCALE * C.VENDOR_BUYBACK_FRACTION;
@@ -781,18 +786,66 @@ function fishingScenario({ quiet = false } = {}) {
   // 4. 99 Fishing takes 60–250 active hours (the band the other skills sit in): the best water at each level, active.
   let hours = 0;
   for (let L = 1; L < 99; L++) {
-    const best = Math.max(...['seep', 'mere', 'magma'].map(w => fishingRate(L, w, 'active')?.xpMin ?? 0));
+    const best = Math.max(...['seep', 'mere', 'magma', 'hearth'].map(w => fishingRate(L, w, 'active')?.xpMin ?? 0));
     hours += (xpFor(L + 1) - xpFor(L)) / best / 60;
   }
   let autoHours = 0;
   for (let L = 1; L < 99; L++) {
-    const best = Math.max(...['seep', 'mere', 'magma'].map(w => fishingRate(L, w, 'auto')?.xpMin ?? 0));
+    const best = Math.max(...['seep', 'mere', 'magma', 'hearth'].map(w => fishingRate(L, w, 'auto')?.xpMin ?? 0));
     autoHours += (xpFor(L + 1) - xpFor(L)) / best / 60;
   }
   say(`\n  99 Fishing: ${hours.toFixed(0)} active hours at the Good grade (${autoHours.toFixed(0)} h on auto at Off); band 60-250 h`);
   if (hours < 60 || hours > 250) fails.push(`99 Fishing takes ${hours.toFixed(0)} active hours (must be 60-250)`);
   if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
   if (quiet) console.log(`economy-sim fishing: 99 Fishing in ${hours.toFixed(0)} h; ${fails.length ? fails.length + ' fail(s)' : 'gold share, crates and rod gates ok'}`);
+  return fails;
+}
+
+// --underhearth: Phase 8 on the v3 curve (docs/handoff/underhearth.md). The
+// stratum's Gold comes from missions (rule I: a v2 floor × ρ and the NPC band's
+// seconds of income), the Banked Furnace's drops (its first fall, then at most
+// once a real day) and the vendor floor of what is dug; none of it may become a
+// Gold strategy. Read from source text, like the fishing scenario.
+// ───────────────────────────────────────────────────────────────────────────
+function underhearthScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const missions = readFileSync(resolve(here, '../src/app/shared/npc/delve-missions.model.ts'), 'utf8');
+  const ids = ['kael-flooded-seams', 'kael-four-1', 'kael-four-2', 'verrin-four-3', 'verrin-endings-kept-warm'];
+  const { log } = simulate(PROPOSED);
+  const gpsAt = t => log.at[t]?.gps ?? 0;
+  // The stratum opens at Mining 45 / Smithing 45 / Delving 15: a week into the curve at the earliest.
+  const t7 = 7 * 86400, gps = gpsAt(t7);
+  say(`Underhearth scenario · v3 curve (PROPOSED) · forge ${fmtN(gps * 60)} Gold/min at 7d\n`);
+  for (const id of ids) {
+    const at = missions.indexOf(`id: '${id}'`);
+    if (at < 0) { fails.push(`mission ${id} is missing`); continue; }
+    const block = missions.slice(at, missions.indexOf('\n  },', at));
+    // 1. Every reward is paid in seconds of income with a v2 floor (rule I), never a flat sum.
+    const v2 = /incomeGold\(([\d_]+)\)/.exec(block);
+    if (!v2) { fails.push(`${id} does not pay by rule I (incomeGold)`); continue; }
+    const floor = Number(v2[1].replace(/_/g, '')) * C.ITEM_ECONOMY_SCALE;
+    say(`  ${id.padEnd(26)} floor ${fmtN(floor).padStart(8)} Gold`);
+  }
+  // 2. The Banked Furnace's repeat fights: its coins once a day stay a rounding error of a day's forge income.
+  const infernal = readFileSync(resolve(here, '../src/app/play/world/towns/infernal.ts'), 'utf8');
+  const drops = infernal.slice(infernal.indexOf('BANKED_FURNACE_DROPS'), infernal.indexOf('BANKED_FURNACE_FLAG'));
+  const coins = /base: (\d+), spread: (\d+)/.exec(drops);
+  const perDay = coins ? Number(coins[1]) + Number(coins[2]) : Infinity;
+  const share = perDay / (gps * 86400);
+  say(`\n  Banked Furnace rematch: at most ${perDay} coins a day = ${(share * 100).toFixed(4)}% of a day's forge income at 7d`);
+  if (!(share < .001)) fails.push(`the furnace's daily coins are ${(share * 100).toFixed(3)}% of a day's forge income (must be < 0.1%)`);
+  const engine = readFileSync(resolve(here, '../src/app/play/engine/engine.ts'), 'utf8');
+  // 3. Its spilled embers pay nothing (no drop table, no kill tally): no farm while it is awake.
+  if (!/drops: \{ id: 'furnace-ember', entries: \[\] \}/.test(engine)) fails.push('the furnace\'s spilled embers have a drop table');
+  // 4. Tool tier V sits on the tool ladder: ×3-×5 tier IV's fee.
+  const crafting = readFileSync(resolve(here, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const gold = (/const TOOL_GOLD = \[([\d_,\s]+)\]/.exec(crafting)?.[1] ?? '').split(',').map(s => Number(s.trim().replace(/_/g, '')));
+  const ratio = gold[5] / gold[4];
+  say(`  Tool V fee ${fmtN(gold[5] ?? 0)} Gold (×${ratio.toFixed(1)} tier IV) = ${(gold[5] / (gps * 60)).toFixed(1)} min of the forge at 7d`);
+  if (!(ratio >= 3 && ratio <= 5)) fails.push(`tool tier V costs ×${ratio} tier IV (must be ×3-×5)`);
+  if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
+  if (quiet) console.log(`economy-sim underhearth: ${fails.length ? fails.length + ' fail(s)' : 'rule I rewards, a furnace that is no farm, tool V on the ladder'}`);
   return fails;
 }
 
@@ -1036,6 +1089,10 @@ if (argv.plinko) {
 } else if (argv.reels) {
   const fails = reelsScenario({ rounds: Number(argv.rounds ?? 2_000_000), plays: Number(argv.plays ?? 1_000_000), quiet: false });
   for (const f of fails) console.error(`  FAIL ${f}`);
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.underhearth && !argv.check) {
+  const fails = underhearthScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.fishing && !argv.check) {

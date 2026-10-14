@@ -213,6 +213,7 @@ Magma Halls red and orange). Back walls are 2 steps darker and less saturated th
 | **Basalt Caverns** (12–25) | `#141216` `#29252b` `#302b32` | `#050309` | `#b97a45` / ash `#8a7468` | basalt (`rock`) `#3a3339` `#5c5359` `#877c84` `#a0949b`; hard basalt `#2a2530` `#423b48` `#655c6e` `#7d7486`; slag vein `#2e2a32` `#4a454e` `#6e6874` `#5ff0d8` (glow `#8fd6cf`); cinder vein = basalt + `#ffa040`; ember-veined basalt = basalt + `#ffc25c` (glow `#ff8a3d`) | ash `#9a8c84` `#d4c8bc` |
 | **Glowcap Grotto** (26–39) | `#08161e` `#122c3a` `#163444` | `#03070c` | `#4fa8e0` / motes `#9fdcff` | grotto stone `#1c3846` `#2c5668` `#4a8296` `#86d2e6`; glowcap `#163242` `#244a5c` `#6fdcff` `#d0f6ff` (glow `#7fc8ff`) | lichen `#2a8eb0` `#bff4ff` |
 | **Magma Halls** (40–) | `#1a0806` `#35140f` `#3e1812` | `#0c0302` | `#ff5a2a` / embers `#ff9b4f` | scorched basalt `#481812` `#6e2a1e` `#9c4630` `#ff8040`; heartstone vein `#3a1424` `#5c2438` `#8a3c56` `#ff5a8a` | hot crust `#8a2a14` `#ffc45c` |
+| **The Underhearth** (56–117, Phase 8) | `#0e0a12` `#241a28` `#1c1420` | `#040206` | `#c4501e` α .10 / embers `#ffd08a` | iron-black basalt `#171116` `#2a2027` `#443540` `#c4501e`; banked obsidian `#1e1428` `#2e2238` `#463650` `#6a5878`; ironwood pillar `#2a2027` `#4a3a30` `#6e5a48` `#c4501e`; ironwood heartpost `#2a2027` `#5a4434` `#8a6a50` `#ffd08a`; emberheart vein `#1e1428` `#3a2430` `#6a3a3a` `#ffd08a` (glow `#E8752A`); pyrite seam `#2a2027` `#443540` `#6a5878` `#e8c47a`; cold coal `#0e0a12` `#1c1420` `#2e2238` `#57474f` (glow `#ff9b4f` only once struck); furnace slag `#1c1420` `#3a2a22` `#6a4a3a` `#ffd08a`; fracture seam `#140a1f` `#2a1440` `#7b3fc4` `#b88cff` (Godforge violet: the crack only); hearth brick (the Four's masonry, brick pattern) `#2a1418` `#4a2a28` `#7a3a2a` `#c4501e`; the Banked seal `#1e1428` `#443540` `#c4501e` `#ffd08a` | hot crust (shared with the Halls) |
 | **Everywhere** | | | | bedrock `#16121a` `#28222e` `#3c3446` `#4c4258`; packed dirt (placed) `#684429` `#96643f` `#bc8b5e` `#d2a678`; basalt block (placed) `#403a46` `#645b6a` `#8c8494` `#a49cac`; cracked wall `#2e2242` `#4c3a62` `#715a8c` `#d8b4ff`; Keeper's cache `#3a2617` `#6b4a2c` `#c9a06a` `#ffd36d`; Kael's cache `#2e1f14` `#5a3f2a` `#d8b07a` `#ffd9a0`; Godforge fragment `#2a1f12` `#4a3a24` `#ffe9a8` `#fff4d0`; inscription `#e8c47a` | |
 
 Light (`lighting.ts`): unlit rock sits under the biome's darkness at most 80% deep, so its shape still shows; a
@@ -221,7 +222,17 @@ light's pool is broad and bright (falloff `1 − d²/r²`) and lit ground takes 
 colours until their art lands (`tile-art.ts PLACED_ART`).
 
 Ore must be told apart at 32 px: **cinder** = orange seams, **slag** = teal glass, **heartstone** = rose-red
-facets, **ember-veined** = scattered warm flecks, not seams.
+facets, **ember-veined** = scattered warm flecks, not seams. In the Underhearth: **emberheart** = white-hot
+nuggets on obsidian, **pyrite** = gold glints, **cold coal** = matte black until a swing cracks it (then ember).
+
+**The Underhearth's figures and props** (Phase 8, drawn in code on the 2 px grid until their art lands; `engine.ts`
+`drawDeepCreature`, `drawFurnaceFacade`, `drawRails`, `tile-art.ts PLACED_ART`): Banked Ember (14 × 10 art px,
+coal `#1c1420` with cracks `#3a2a30` asleep, `#ff9b4f`/`#ffd08a` awake, `#fff4dc` before it strikes); Ironwood
+Sentinel (12 × 46, wood `#4a3a30`, grain `#2a2027`, lit edge `#6e5a48`, ember seams `#c4501e`, eyes `#ffd08a`);
+the Banked Furnace's face (mortar seams `#7a2a12` asleep → `#E8752A` awake → `#ffd08a` open, eye-slits, a grate
+`#171116`/`#57474f`, a round core `#3a1410`…`#fff4dc`); rails (iron `#a49cac` with a `#d8c8bc` running edge,
+sleepers in the rail's dark, timber trestles `#2a1c12`/`#6a5040` over open air); the Seam Cart (`#443540` body,
+`#7a656e` rim, Kael's stencil `#c4501e`); rope, Rift Anchor (violet shard `#b88cff`), hammer-mark slab, vent grate.
 
 **Liquids and obsidian** (Phase 6, `liquid-render.ts`, `docs/world/delve-and-beyond.md` §4.1): water body
 `#2e6e9a` `#1e4a6a` `#0e2a3a` at α 0.6, lip `#86d2e6`, sparkle `#d0f6ff` (the Grotto ramp); lava body `#E8752A`

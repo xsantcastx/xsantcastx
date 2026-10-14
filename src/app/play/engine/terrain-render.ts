@@ -16,7 +16,7 @@
  * blitted unsmoothed, so an art pixel stays a crisp block.
  */
 import { BiomeDef, CELL, CHUNK, crackStage, isLoose, Terrain, TERRAIN_NODE_LIST } from './terrain';
-import { ART, AUTOTILE_ROWS, autoTilePiece, cellHash, N, nodePalette, P_CLEAR_INDEX, paintEdges, paintTopFace, patternOf, patternPixels, pixelLine, takesTopFace, TILE, TileAtlas, tileMask, tileVariant, topFaceOf } from './tile-art';
+import { ART, PLACED_ART, AUTOTILE_ROWS, autoTilePiece, cellHash, N, nodePalette, P_CLEAR_INDEX, paintEdges, paintTopFace, patternOf, patternPixels, pixelLine, takesTopFace, TILE, TileAtlas, tileMask, tileVariant, topFaceOf } from './tile-art';
 import { tileFor, type TileEntry } from '../../shared/art/tile-manifest.generated';
 
 export { cellHash } from './tile-art';
@@ -201,7 +201,7 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
       if (tally) paintTally(c, node.light, tally, x, y);
       else paintInscription(c, node.light, node.fleck, x, y, h);
     }
-    else if (node.placeable || node.use === 'shrine') paintPlaced(c, atlas, kind, x, y);
+    else if (node.placeable || node.use === 'shrine' || PLACED_ART[node.id]) paintPlaced(c, atlas, kind, x, y);
     return;
   }
   const pattern = PATTERNS[kind];

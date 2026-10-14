@@ -23,8 +23,8 @@
  */
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import * as fs from 'fs';
-import { canvas, ERA, focusWorld, openPlay, seed } from './play-helpers';
-import { DelveFixture } from './play-delve-fixtures';
+import { bag as bagOf, canvas, ERA, focusWorld, openPlay, seed } from './play-helpers';
+import { DelveFixture, withSectors } from './play-delve-fixtures';
 
 const RUN = !!process.env['PLAY_PERF'];
 const SECONDS = Number(process.env['PLAY_PERF_SECONDS'] ?? 60);
@@ -258,6 +258,28 @@ harness('/play on a throttled phone', () => {
     const cdp = await phone(page);
     await descendTo(page, new DelveFixture().carve(112, 112, 0, 0).camp(112, 0));
     await measure(page, cdp, 'delve:wide-traverse', 'east');
+  });
+
+  // Phase 8 (docs/handoff/underhearth.md): the Furnace Hall with the Banked Furnace awake (its face, core,
+  // breath and vents, the trough, embers spilling), walking the hall floor. The rows below the Magma
+  // Halls only exist on a build with the Underhearth: on one without, the camp is not found (no "before").
+  test('delve: the Furnace Hall, the Banked Furnace awake', async ({ page }) => {
+    const cdp = await phone(page);
+    const f = new DelveFixture();
+    f.claimed = ['warden-defeated', 'underhearth-unsealed', 'underhearth-reached'];
+    await seed(page, { ...RESTORED, ...withSectors(f, [{ col: 60, row: 109, id: 'camp' }]), ...bagOf({ 'four-hammer-marks': 1 }) });
+    await openPlay(page, '?at=delve');
+    const descend = page.getByRole('button', { name: /Descend to your camp/ });
+    await expect(descend).toBeVisible({ timeout: 60000 });
+    await descend.click();
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
+    await page.waitForTimeout(1500);
+    // Walk to the hearth and wake it (E), then measure walking the hall either side of it.
+    await focusWorld(page);
+    await page.keyboard.down('d'); await page.waitForTimeout(1300); await page.keyboard.up('d');
+    await page.keyboard.press('e');
+    await page.waitForTimeout(500);
+    await measure(page, cdp, 'delve:furnace-hall');
   });
 
   test('delve: Magma Halls beside a lava pool', async ({ page }) => {

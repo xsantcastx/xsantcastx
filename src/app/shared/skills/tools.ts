@@ -17,7 +17,7 @@
 import type { DisciplineProgress } from '../activity/activity.model';
 import type { ItemRarity } from '../rpg/item.model';
 import { skillLevel, type SkillId } from './skill.model';
-import { parseToolId, TOOL_FAMILIES, type ToolFamily, type ToolTier } from './tool-items';
+import { parseToolId, TOOL_FAMILIES, TOOL_MAX_TIER, type ToolFamily, type ToolTier } from './tool-items';
 import { levelPowerFactor, levelPowerPct, levelSwingFactor, levelSwingPct, sharpensSwing, TOOL_SKILL } from './tool-level';
 
 export { TOOL_SKILL } from './tool-level';
@@ -48,7 +48,7 @@ export interface ToolTiers {
 /** The starter tools' pace — and every swing that is not digging or gathering (combat stays here). */
 export const STARTER_SWING_SECONDS = 0.52;
 /** A forged tool's pace by effective tier. Faster per tier; rewards stay capped by the seam's breath and node regrowth. */
-export const TOOL_SWING_SECONDS: Readonly<Record<ToolTier, number>> = { 1: 0.46, 2: 0.40, 3: 0.35, 4: 0.31 };
+export const TOOL_SWING_SECONDS: Readonly<Record<ToolTier, number>> = { 1: 0.46, 2: 0.40, 3: 0.35, 4: 0.31, 5: 0.28 };
 /** No swing beats this, whatever the tier and level (the engine clamps to the same floor). */
 export const SWING_FLOOR_SECONDS = 0.25;
 
@@ -95,7 +95,7 @@ export interface ToolFamilyStatus {
  * family's gathering skill). One table so the player learns one rule:
  * "tier II needs level 10".
  */
-export const TOOL_TIER_LEVEL: Readonly<Record<ToolTier, number>> = { 1: 1, 2: 10, 3: 25, 4: 45 };
+export const TOOL_TIER_LEVEL: Readonly<Record<ToolTier, number>> = { 1: 1, 2: 10, 3: 25, 4: 45, 5: 60 };
 
 /**
  * What each tier opens in the world. `materialId` is what the node drops (an
@@ -105,18 +105,20 @@ export const TOOL_TIER_LEVEL: Readonly<Record<ToolTier, number>> = { 1: 1, 2: 10
  */
 export interface ToolOpens { materialId: string | null; label: string }
 
-export const TOOL_OPENS: Readonly<Record<ToolFamily, Readonly<Record<ToolTier, ToolOpens>>>> = {
+export const TOOL_OPENS: Readonly<Record<ToolFamily, Readonly<Record<1 | 2 | 3 | 4, ToolOpens> & Partial<Record<5, ToolOpens>>>>> = {
   pickaxe: {
     1: { materialId: 'cinder-ore', label: 'Digs Cinder veins' },
     2: { materialId: 'slag-fragment', label: 'Digs Slag veins' },
     3: { materialId: 'infernal-heartstone', label: 'Digs Heartstone veins' },
     4: { materialId: 'emberheart-ore', label: 'Digs Emberheart veins' },
+    5: { materialId: 'godforge-slag', label: 'Digs Banked Furnace slag' },
   },
   axe: {
     1: { materialId: 'world-root-bark', label: 'Fells World-Root saplings' },
     2: { materialId: 'verdant-sap', label: 'Taps sap trees' },
     3: { materialId: 'solar-resin', label: 'Fells Golden Oaks' },
     4: { materialId: 'shadowthread-silk', label: 'Fells Shadowbark trees' },
+    5: { materialId: 'ironwood', label: 'Fells ironwood heartposts' },
   },
   sickle: {
     1: { materialId: 'starlight-herb', label: 'Cuts Starlight Herb' },
@@ -134,6 +136,7 @@ export const TOOL_OPENS: Readonly<Record<ToolFamily, Readonly<Record<ToolTier, T
 
 /** The highest tier a skill level may wield. Level 1 always wields tier I. */
 export function maxTierForLevel(level: number): ToolTier {
+  if (level >= TOOL_TIER_LEVEL[5]) return 5;
   if (level >= TOOL_TIER_LEVEL[4]) return 4;
   if (level >= TOOL_TIER_LEVEL[3]) return 3;
   if (level >= TOOL_TIER_LEVEL[2]) return 2;
@@ -266,7 +269,7 @@ export interface ToolCard {
 }
 
 type Translate = (key: string, vars?: Record<string, string | number>) => string;
-const NUMERAL = ['', 'I', 'II', 'III', 'IV'];
+const NUMERAL = ['', 'I', 'II', 'III', 'IV', 'V'];
 
 /** "0.46" — a pace as the cards print it. */
 export function formatSwing(seconds: number): string { return seconds.toFixed(2); }
@@ -313,7 +316,7 @@ export function toolCard(definitionId: string | undefined | null, progress?: Dis
   if (!tool) return null;
   const skill = TOOL_SKILL[tool.family];
   const level = progress ? skillLevel(progress, skill) : 1;
-  const max = progress ? maxTierForLevel(level) : 4;
+  const max = progress ? Math.min(maxTierForLevel(level), TOOL_MAX_TIER[tool.family]) : TOOL_MAX_TIER[tool.family];
   const capped = tool.tier > max;
   const tier = capped ? max : tool.tier;
   const toolPowerAt = toolPower(tool.tier);
@@ -328,7 +331,7 @@ export function toolCard(definitionId: string | undefined | null, progress?: Dis
     toolPower: toolPowerAt,
     toolSwing,
     level,
-    opens: TOOL_OPENS[tool.family][tool.tier].label,
+    opens: TOOL_OPENS[tool.family][tool.tier]?.label ?? '',
     worksAs: capped ? tier : null,
     capUntil: capped ? TOOL_TIER_LEVEL[(tier + 1) as ToolTier] : null,
   };

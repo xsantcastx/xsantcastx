@@ -1,6 +1,8 @@
 # The Delve and Beyond: design bible and roadmap (Phase 6+)
 
-**Status:** design proposal, 2026-10-14. Docs only; nothing here is built yet.
+**Status:** design proposal, 2026-10-14. Built so far: Phase 6 (`docs/handoff/liquids-fishing.md`), Phase 7
+(`docs/handoff/endless-delve.md`, `docs/handoff/bounties-map-v2.md`), Phase 8 the Underhearth
+(`docs/handoff/underhearth.md`; what was built differently from this plan is listed there).
 **Owner brief (2026-10-13):** "plan navigation in the delves: mini map, delve missions, an infinite
 generated world; skills like fishing; lakes, lava and stuff; Terraria inspiration with a galactic mix:
 universe, other dimensions, realms; read the lore and write better lore stories; everything we imagine

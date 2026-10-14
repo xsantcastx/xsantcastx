@@ -83,6 +83,12 @@ export const GLIM_HINTS: Readonly<Record<string, GlimHintRow>> = {
   'fish-merchant-order': { nudge: 'play.glim.hint.f.order.1', direction: 'play.glim.hint.f.order.2', show: 'atlas' },
   'fish-merchant-debt': { nudge: 'play.glim.hint.f.debt.1', direction: 'play.glim.hint.f.debt.2', show: 'atlas' },
   'fish-archivist-pages': { nudge: 'play.glim.hint.f.pages.1', direction: 'play.glim.hint.f.pages.2', show: 'atlas' },
+  // The Underhearth (Phase 8): where to look, never what is down there.
+  'kael-flooded-seams': { nudge: 'play.glim.hint.u.rivets.1', direction: 'play.glim.hint.u.rivets.2', show: 'atlas' },
+  'kael-four-1': { nudge: 'play.glim.hint.u.seal.1', direction: 'play.glim.hint.u.seal.2', show: 'atlas' },
+  'kael-four-2': { nudge: 'play.glim.hint.u.marks.1', direction: 'play.glim.hint.u.marks.2', show: 'atlas' },
+  'verrin-four-3': { nudge: 'play.glim.hint.u.furnace.1', direction: 'play.glim.hint.u.furnace.2', show: 'atlas' },
+  'verrin-endings-kept-warm': { nudge: 'play.glim.hint.u.coalfish.1', direction: 'play.glim.hint.u.coalfish.2', show: 'atlas' },
 };
 
 /** What Glim says to anything off the ladder. */
@@ -116,6 +122,12 @@ export const GLIM_MARKS: Readonly<Record<string, readonly MarkTarget[]>> = {
   'fish-merchant-order': [{ liquid: 'water', rows: [26, 40] }, { liquid: 'lava', rows: [40, 56] }],
   'fish-merchant-debt': [{ liquid: 'lava', rows: [40, 56] }],
   'fish-archivist-pages': [{ liquid: 'water' }],
+  // The Underhearth (Phase 8, docs/handoff/underhearth.md): the ring holds rows 0-119, so deep targets resolve.
+  'kael-flooded-seams': [{ liquid: 'water', rows: [12, 26] }, { liquid: 'water' }],
+  'kael-four-1': [{ node: 'hearth-seal' }, { node: 'godforge-fragment' }],
+  'kael-four-2': [{ node: 'hammer-mark' }, { node: 'hearth-seal' }],
+  'verrin-four-3': [{ node: 'furnace-hearth' }, { node: 'hearth-seal' }],
+  'verrin-endings-kept-warm': [{ liquid: 'lava', rows: [56, 118] }, { liquid: 'water', rows: [0, 26] }],
 };
 /** How long a mark stays on the map. */
 export const GLIM_MARK_MS = 30 * 60_000;
