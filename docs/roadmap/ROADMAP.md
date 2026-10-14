@@ -30,7 +30,7 @@ Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · 
 | **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; liquids + Fishing v1 built |
 | **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 🔨 endless Delve ✅ · Underhearth in flight |
 | **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I ✅ · NPC depth ✅ · Atlas next |
-| **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | ⏳ needs art |
+| **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | 🔨 in-house pixel pass built 2026-10-14: Keeper, every NPC + townsfolk, all 8 painted creatures, stalls/props/nodes/coins (`docs/handoff/one-art-style.md`); backdrops, item icons, portraits, Homestead figures remain |
 | **M11 Players** | Player market live (owner deploy), real-device QA, launch | ⏳ owner |
 
 ## Waiting on the owner
@@ -41,6 +41,7 @@ Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · 
 
 ## Daily review log
 
+- **2026-10-14 (one art style)** — Owner: "go pixel… make it consistent". Built: every town person (21 keepers, townsfolk, Hollis Fenn) is a pixel Keeper with a lore-true look; the eight painted creatures are pixel sprites with idle/stride/wind-up/strike/hurt frames; stalls, waystones, arches, nodes and coins are pixel. Audit and what remains: `docs/handoff/one-art-style.md`.
 - **2026-10-14 (late)** — UI clean pass built (roadmap #1, first pass). The Satchel opens on the paper doll and the slot grid only, with one item card on tap. The Mirror Slate opens on big tiles, so the Reels are one tap away. In-world station purpose lines, the phone full-page link, Glim's Close and the anchor rows are quieter. Gated, merging.
 - **2026-10-14 (night)** — Shipped the Underhearth, uncapped levels + titles and the Glim bond together (24/24 related e2e green after a CSS merge fix). Owner: the UI feels crowded — cleaning and perfecting what exists is now #1, a custom Keeper with gear that shows on the body is #2; Rift Gates in flight.
 - **2026-10-14 (night)** — Built: **a surface with height** (the High Roads): parkour routes in all five hunts with once-only caches and summit titles, ledge-grab, climbing, wall-jump; Hollis Fenn walks the high roads.
