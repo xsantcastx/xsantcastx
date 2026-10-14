@@ -41,7 +41,7 @@ export const FISHING_I18N: Readonly<Record<string, { en: string; es: string }>> 
 
   // ── The Lodge Warden: the Ledger Catch (Skills panel, Rootglass Canopy) ──
   'skills.lodge.title': { en: 'The Ledger Catch', es: 'La captura del libro' },
-  'skills.lodge.kicker': { en: 'Lodge Warden', es: 'Guardian del Pabellon' },
+  'skills.lodge.kicker': { en: 'Kesh Arbo, Lodge Warden', es: 'Kesh Arbo, Guardian del Pabellon' },
   'skills.lodge.line1': { en: 'Today\'s ledger wants one fish. Only one. It only swims on days like this.', es: 'El libro de hoy pide un pez. Solo uno. Solo nada en dias como este.' },
   'skills.lodge.line2': { en: 'Bring it to me wet. The ledger can tell.', es: 'Traemelo mojado. El libro lo nota.' },
   'skills.lodge.line3': { en: 'Thirty catches. You may now call yourself patient. I never have.', es: 'Treinta capturas. Ya puedes llamarte paciente. Yo nunca he podido.' },
@@ -64,5 +64,5 @@ export const FISHING_I18N: Readonly<Record<string, { en: string; es: string }>> 
   'codex.fish.unknown': { en: 'Not caught yet', es: 'Aun sin pescar' },
   'codex.fish.where': { en: 'Found in: {{where}}', es: 'Se encuentra en: {{where}}' },
   'codex.fish.used': { en: 'Used for: {{use}}', es: 'Sirve para: {{use}}' },
-  'codex.fish.caught': { en: 'Caught: {{n}}', es: 'Pescados: {{n}}' },
+  'codex.fish.caught': { en: 'Caught', es: 'Pescados' },
 };

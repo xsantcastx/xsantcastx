@@ -980,7 +980,7 @@ export class CodexComponent implements OnInit, OnDestroy {
         id,
         name: n ? fish.name : '???',
         line: shelf,
-        facts: n ? [{ label: this.t('codex.rarity'), value: fish.rarity }, { label: this.t('codex.fish.caught', { n }), value: '' }] : [],
+        facts: n ? [{ label: this.t('codex.rarity'), value: fish.rarity }, { label: this.t('codex.fish.caught'), value: String(n) }] : [],
         body: n
           ? [fish.lore, this.t('codex.fish.where', { where }), this.t('codex.fish.used', { use: fish.use })]
           : [this.t('codex.fish.unknown'), this.t('codex.fish.where', { where })],
