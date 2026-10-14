@@ -422,6 +422,12 @@ export class SideScrollerComponent implements OnDestroy {
         if (state.nearby === 'delve' && this.state.nearby !== 'delve') this.campReady = !!this.engine?.hasDelveCamp();
         else if (state.nearby !== 'delve') this.campReady = false;
         this.state = state;
+        // Fishing and liquids on the canvas, for tests and tools (the HUD says it in words).
+        const el = this.canvas?.nativeElement;
+        if (el) {
+          el.setAttribute('data-fishing', state.fishing?.phase ?? (state.canFish ? `can:${state.canFish}` : ''));
+          el.setAttribute('data-liquid', state.liquid?.in ?? '');
+        }
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });

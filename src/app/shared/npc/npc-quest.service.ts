@@ -413,8 +413,10 @@ export class NpcQuestService {
       read: id => this.lore.inscriptions().has(id),
       // A felled boss is a once-per-player flag in the Delve save; read, never created here.
       flagged: flag => {
-        const save = this.store.read(DELVE_KEY) as { claimed?: unknown } | null;
-        return Array.isArray(save?.claimed) && save!.claimed.includes(flag);
+        try {
+          const save = this.store.read(DELVE_KEY) as { claimed?: unknown } | null;
+          return Array.isArray(save?.claimed) && save!.claimed.includes(flag);
+        } catch { return false; }
       },
     };
   }

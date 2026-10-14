@@ -4230,3 +4230,146 @@ test('liquids: the tick budget caps cell updates, and a big flood still ends', (
   assert.equal(sim.settled, true);
   assert.equal(sim.volume(WATER), 40 * 8 * 8);
 });
+
+// ── Fishing in the engine (Phase 6.3): cast, bite, hook, the host lands it ────
+/** The Keeper on the Grotto Mere's west shore (the glowcap cavern), facing the water. */
+function atTheMere(extra = {}) {
+  const fished = [];
+  const { engine, state } = enterDelve(() => true);
+  engine.options.onFish = e => fished.push(e);
+  Object.assign(engine.options, extra);
+  const t = engine.terrain;
+  // Stand on the cavern floor beside the lake: open the west wall so there is a shore.
+  for (let row = 30; row <= 34; row++) for (let col = 16; col <= 19; col++) t.set(col, row, 0);
+  for (let col = 16; col <= 19; col++) t.set(col, 35, terrainMod.nodeIndex('bedrock'));
+  for (let row = 33; row <= 34; row++) for (let col = 16; col <= 19; col++) { t.liqType[t.index(col, row)] = 0; t.liqLevel[t.index(col, row)] = 0; }
+  // A sill keeps the Mere where it is.
+  t.set(19, 34, terrainMod.nodeIndex('bedrock')); t.set(19, 33, terrainMod.nodeIndex('bedrock'));
+  engine.liquid = new liquidMod.LiquidSim(t);
+  engine.player.x = 17 * 32 + 16; engine.player.y = t.top + 33 * 32; engine.player.vy = 0; engine.facing = 1;
+  engine.update(1 / 60);
+  return { engine, state, fished, t };
+}
+
+test('fishing: no rod, no cast; a rod casts at the water within six cells, and the HUD offers "Fish"', () => {
+  const { engine, state } = atTheMere();
+  engine.cast();
+  assert.equal(state().fishing, null);
+  assert.equal(state().messageKey, 'play.fish.noRod');
+  engine.setFishing({ tier: 1, liquids: ['water'] });
+  engine.update(1 / 60);
+  assert.equal(state().canFish, 'water', 'the prompt can offer Fish here');
+  assert.equal(engine.cast(), true);
+  assert.equal(state().fishing.phase, 'wait');
+  assert.equal(state().fishing.liquid, 'water');
+  // Facing away from the lake: nothing to cast at.
+  engine.reelIn(true); engine.facing = -1;
+  assert.equal(engine.cast(), false);
+  assert.equal(state().messageKey, 'play.fish.noWater');
+  engine.destroy();
+});
+
+test('fishing: the bite comes in 3-9 s (faster with bite speed), a hook in the 0.6 s dip hands the fish to the host, a miss nibbles again', () => {
+  for (const bite of [1, 2]) {
+    const { engine, state, fished } = atTheMere();
+    engine.random = () => .5;
+    engine.setFishing({ tier: 1, liquids: ['water'], bite });
+    assert.equal(engine.cast(), true);
+    let t = 0;
+    while (state().fishing.phase === 'wait' && t < 20) { engine.update(1 / 60); t += 1 / 60; }
+    assert.ok(Math.abs(t - 6 / bite) < .05, `bite after ${t.toFixed(2)} s at bite speed ${bite}`);
+    // Let the dip pass: nothing lost, it nibbles again.
+    for (let n = 0; n < 40; n++) engine.update(1 / 60);
+    assert.equal(state().fishing.phase, 'wait');
+    assert.equal(fished.length, 0);
+    while (state().fishing.phase === 'wait') engine.update(1 / 60);
+    engine.interact(); // E during the dip
+    assert.equal(state().fishing.phase, 'hooked');
+    assert.equal(fished.length, 1);
+    assert.equal(fished[0].biome, 'glowcap-grotto');
+    assert.equal(fished[0].liquid, 'water');
+    assert.equal(fished[0].auto, false);
+    assert.ok(fished[0].castId.startsWith('fish:'));
+    // Reeling holds the Keeper still: walking does nothing until the host lands it.
+    const x = engine.player.x;
+    engine.setInput('right', true); for (let n = 0; n < 20; n++) engine.update(1 / 60); engine.setInput('right', false);
+    assert.equal(engine.player.x, x);
+    engine.landFish();
+    assert.equal(state().fishing, null);
+    engine.destroy();
+  }
+});
+
+test('fishing: holding Use is auto-fish (hooked at once at the Off grade, recast after landing); walking reels the line in', () => {
+  const { engine, state, fished } = atTheMere();
+  engine.random = () => 0;
+  engine.setFishing({ tier: 1, liquids: ['water'] });
+  engine.setUseHeld(true);
+  engine.cast();
+  for (let n = 0; n < 60 * 4 && !fished.length; n++) engine.update(1 / 60);
+  assert.equal(fished.length, 1);
+  assert.equal(fished[0].auto, true);
+  engine.landFish();
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.equal(state().fishing?.phase, 'wait', 'recast while Use is held');
+  engine.setUseHeld(false);
+  engine.setInput('left', true); engine.update(1 / 60); engine.setInput('left', false);
+  assert.equal(state().fishing, null, 'walking pulls the line out');
+  engine.destroy();
+});
+
+test('fishing: a Worn Rod cannot fish lava; a Seam Rod can, and the water drained from under the bob takes the line', () => {
+  const { engine, state, t } = atTheMere();
+  for (let row = 33; row <= 34; row++) for (let col = 20; col <= 44; col++) if (t.liqLevel[t.index(col, row)]) t.liqType[t.index(col, row)] = terrainMod.LIQUID_LAVA;
+  engine.setFishing({ tier: 1, liquids: ['water'] });
+  assert.equal(engine.cast(), false);
+  engine.setFishing({ tier: 2, liquids: ['water', 'lava'] });
+  assert.equal(engine.cast(), true);
+  assert.equal(state().fishing.liquid, 'lava');
+  const line = engine.line;
+  t.liqLevel[t.index(line.col, line.row)] = 0;
+  engine.update(1 / 60);
+  assert.equal(state().fishing, null);
+  assert.equal(state().messageKey, 'play.fish.waterGone');
+  engine.destroy();
+});
+
+test('the Drowned Lamp: summoned once, veiled until a torch burns near it, felled for good', () => {
+  const { engine, state } = atTheMere();
+  const t = engine.terrain;
+  const def = engine.areaDef.monsters.find(m => m.creature === 'drowned-lamp');
+  assert.ok(def && def.summoned && def.veiled && def.once === 'drowned-lamp-defeated');
+  assert.equal(engine.monsters.some(m => m.def === def), false, 'not there until summoned');
+  assert.equal(engine.summon('drowned-lamp', 30 * 32), true);
+  assert.equal(engine.summon('drowned-lamp', 30 * 32), false, 'one at a time');
+  const lamp = engine.monsters.find(m => m.def === def);
+  engine.hurtMonster(lamp, 50);
+  assert.equal(lamp.hp, def.hp, 'veiled: the blow is swallowed');
+  t.set(t.colAt(lamp.x), 32, terrainMod.nodeIndex('torch'));
+  engine.hurtMonster(lamp, 500);
+  assert.equal(lamp.hp, 0);
+  assert.equal(engine.flagged('drowned-lamp-defeated'), true);
+  assert.equal(engine.summon('drowned-lamp', 30 * 32), false, 'fallen for good');
+  void state;
+  engine.destroy();
+});
+
+test('buckets through the engine: the host swaps the stack first; scoop the Mere, pour it on lava, obsidian pays its block only', () => {
+  const swaps = [];
+  const { engine, t } = atTheMere({ onBucket: e => { swaps.push(e); return true; } });
+  engine.setPlaceable('seam-bucket');
+  const mere = t.index(21, 33);
+  assert.equal(engine.useBucket('seam-bucket', mere), true);
+  assert.deepEqual([swaps[0].from, swaps[0].to, swaps[0].liquid], ['seam-bucket', 'seam-bucket-water', 'water']);
+  const lava = t.index(21, 31);
+  t.set(21, 31, 0); t.liqType[lava] = terrainMod.LIQUID_LAVA; t.liqLevel[lava] = 4;
+  assert.equal(engine.useBucket('seam-bucket-water', lava), true);
+  assert.equal(t.nodeAt(21, 31).id, 'obsidian');
+  assert.deepEqual([swaps[1].from, swaps[1].to], ['seam-bucket-water', 'seam-bucket']);
+  // A refused swap moves nothing in the world.
+  engine.options.onBucket = () => false;
+  const before = t.levelAt(22, 33);
+  assert.equal(engine.useBucket('seam-bucket', t.index(22, 33)), false);
+  assert.equal(t.levelAt(22, 33), before);
+  engine.destroy();
+});
