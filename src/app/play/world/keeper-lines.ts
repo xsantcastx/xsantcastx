@@ -112,18 +112,18 @@ const L = (n: number, open: { beat?: StoryBeatId; deed?: KeeperDeed } = {}): Kee
 /** Every keeper's pool, in the order it is said when nothing new has happened. */
 export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
   // ── Infernal: Basalt Seamworks ──
-  'vault-clerk': [L(1), L(2), L(3), L(4, { deed: 'vaulted' }), L(5)],
+  'vault-clerk': [L(1), L(2), L(3), L(4, { deed: 'vaulted' }), L(5), L(6, { beat: 'a1.tally' }), L(7)],
   'buyback-clerk': [L(1), L(2), L(3), L(4, { deed: 'sold' }), L(5), L(6, { deed: 'hunted' }), L(7, { beat: 'a1.eater' }), L(8, { beat: 'a1.break' })],
   'bench-smith': [L(1), L(2), L(3), L(4, { deed: 'crafted' }), L(5), L(6, { beat: 'p.edge' }), L(7, { beat: 'a1.hammer' }), L(8, { beat: 'a1.break' })],
   kael: [L(1), L(2), L(3), L(4, { deed: 'struck' }), L(5, { beat: 'p.words' }), L(6, { beat: 'a1.hammer' }), L(7, { beat: 'a1.break' }), L(8)],
-  enchanter: [L(1), L(2), L(3), L(4, { deed: 'socketed' }), L(5)],
+  enchanter: [L(1), L(2), L(3), L(4, { deed: 'socketed' }), L(5), L(6), L(7, { beat: 'p.words' })],
   // ── Luminous: Heliograph Court ──
   merchant: [L(1), L(2), L(3), L(4, { deed: 'bought' }), L(5), L(6, { beat: 'a1.prices' }), L(7, { beat: 'a1.break' }), L(8)],
   aureth: [L(1), L(2), L(3), L(4, { deed: 'bought' }), L(5), L(6), L(7, { beat: 'a1.break' })],
   tomas: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.fresh' }), L(6, { beat: 'a1.break' })],
   ilyra: [L(1), L(2), L(3), L(4), L(5, { beat: 'p.words' }), L(6, { beat: 'a1.dated' }), L(7)],
   // ── Umbral: Nocturne Archive ──
-  croupier: [L(1), L(2), L(3), L(4, { deed: 'sold' }), L(5)],
+  croupier: [L(1), L(2), L(3), L(4, { deed: 'sold' }), L(5), L(6), L(7), L(8)],
   broker: [L(1), L(2), L(3), L(4), L(5), L(6, { deed: 'sold' }), L(7, { beat: 'a1.prices' }), L(8, { beat: 'a1.break' })],
   verrin: [L(1), L(2), L(3), L(4, { beat: 'a1.tally' }), L(5), L(6, { beat: 'a1.eater' }), L(7)],
   rook: [L(1), L(2), L(3), L(4, { deed: 'dug' }), L(5, { beat: 'a1.tally' }), L(6)],
@@ -133,9 +133,9 @@ export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
   sera: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.break' })],
   // ── Verdant: Rootglass Canopy ──
   steward: [L(1), L(2), L(3), L(4), L(5, { deed: 'hunted' }), L(6), L(7, { beat: 'a1.eater' })],
-  herald: [L(1), L(2), L(3), L(4, { deed: 'mission' }), L(5, { beat: 'a1.break' })],
-  gatekeeper: [L(1), L(2), L(3), L(4, { deed: 'hunted' })],
-  'trials-warden': [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.eater' })],
+  herald: [L(1), L(2), L(3), L(4, { deed: 'mission' }), L(5, { beat: 'a1.break' }), L(6), L(7, { beat: 'a1.eater' })],
+  gatekeeper: [L(1), L(2), L(3), L(4, { deed: 'hunted' }), L(5), L(6)],
+  'trials-warden': [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.eater' }), L(6), L(7)],
   'lodge-warden': [L(1), L(2), L(3), L(4), L(5, { deed: 'skilled' }), L(6, { deed: 'fished' }), L(7)],
 };
 

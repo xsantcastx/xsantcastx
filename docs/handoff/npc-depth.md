@@ -14,16 +14,16 @@ Keeper has done at their station, and opinions about each other.
 
 | Town | Keeper (tag · subtitle) | Station | What opens their lines |
 |---|---|---|---|
-| Seamworks | Vault Clerk | Vault | first deposit |
+| Seamworks | **Orla Stave** · Vault Clerk | Vault | first deposit |
 | Seamworks | **Edrin Kade** · Buyback Clerk | Material Vendor | first sale, first hunt, the Seam Eater, the act break |
 | Seamworks | **Mara Voss** · Bench Smith | Crafting Bench | first craft, the Basalt Edge, Kael's hammer, the act break |
 | Seamworks | Kael · the Broken Flame | Rune Forge | first anvil strike, first carving, the hammer, the act break |
-| Seamworks | Enchanter | Enchanting Table | first socketed rune |
+| Seamworks | **Idris Calder** · Enchanter | Enchanting Table | first socketed rune, first carving |
 | Heliograph Court | The Merchant · of the long till | Market | first building, the Grotto prices, the act break |
 | Heliograph Court | Aureth · the Radiant | Waystone (west) | first building, the act break |
 | Heliograph Court | **Tomas Rill** · Lantern Keeper (new) | Waystone (east) | the fresh mark, the act break |
 | Heliograph Court | **Ilyra Venn** · Archive Listener (new) | East Stair | first carving, *dated tomorrow* |
-| Nocturne Archive | Croupier | Gambler + house games | first sale |
+| Nocturne Archive | **Lune Coyne** · Croupier | Gambler + Reels, Rune Drop, Seam Sweeper, Eclipse Ascent | first sale |
 | Nocturne Archive | **Amina Thorne** · Exchange Broker | Exchange | first sale, the Grotto prices, the act break |
 | Nocturne Archive | Verrin · the Hollow | Unrecorded Corridors (west) | the tally, the Seam Eater |
 | Nocturne Archive | **Rook Sable** · Veil Cartographer (new) | Unrecorded Corridors (east) | first dig, the tally |
@@ -31,15 +31,17 @@ Keeper has done at their station, and opinions about each other.
 | Meridian Orrery | **Nox Aster** · Chart Clerk | Leaderboards | 10,000 Gold earned, the act break |
 | Meridian Orrery | **Sera Quill** · Chief Meridian (new) | Waystone | the act break |
 | Rootglass Canopy | **Siv Moss** · Expedition Steward | Sanctum | first hunt, the Seam Eater |
-| Rootglass Canopy | Board Herald | Quest Board | first Delve order, the act break |
-| Rootglass Canopy | Arena Gatekeeper | Arena Gate | first hunt |
-| Rootglass Canopy | Trials Warden | Trials Gate | the Seam Eater |
+| Rootglass Canopy | **Pim Larkin** · Board Herald | Quest Board | first Delve order, the Seam Eater, the act break |
+| Rootglass Canopy | **Corran Holt** · Arena Gatekeeper | Arena Gate | first hunt |
+| Rootglass Canopy | **Hesta Cairn** · Trials Warden | Trials Gate | the Seam Eater |
 | Rootglass Canopy | **Kesh Arbo** · Lodge Warden | Skills Lodge | a skill at 10, first fish |
 
 Each keeper has 4 to 8 lines. 30 of them name another keeper (Mara and Kael,
 Edrin and Mara, the Merchant and Edrin, Ilyra and Tomas, Amina and the Merchant,
-Rook and Amina, Sera and Nox, Siv and Kesh…). Six role keepers stay unnamed, as
-world-and-cast §3 says ("until the owner names them").
+Rook and Amina, Sera and Nox, Siv and Kesh…). The six role keepers that S3
+left unnamed were named the same day (Orla Stave, Idris Calder, Lune Coyne, Pim
+Larkin, Corran Holt, Hesta Cairn; lore-addendum, "Six names for the role
+keepers"), so every keeper now wears a name with a title under it.
 
 ## How it works
 

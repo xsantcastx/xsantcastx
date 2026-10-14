@@ -784,8 +784,13 @@ ladder, where to go next.** See §4.
 
 ### The other keepers (role-titled; a line of depth each)
 
-They keep their approved role titles and stay unnamed until the owner names
-them; each gets a reason to stand where they stand, and one new line.
+They keep their approved role titles as the subtitle under a personal name
+(named 2026-10-14, shipped, owner reviews in play; full entries and the canon
+each builds on: lore-addendum, "Six names for the role keepers"): **Orla
+Stave** (Vault Clerk), **Idris Calder** (Enchanter), **Lune Coyne** (Croupier),
+**Pim Larkin** (Board Herald), **Corran Holt** (Arena Gatekeeper), **Hesta
+Cairn** (Trials Warden). Each gets a reason to stand where they stand, and one
+new line.
 
 | Keeper | Station | Depth | New line |
 |---|---|---|---|
