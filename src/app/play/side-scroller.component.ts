@@ -68,6 +68,9 @@ import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
 import { INSCRIPTION_XP, inscriptionById } from '../shared/delve/delve-lore.model';
+import { FIELD_NOTE_XP, fieldNoteFor } from '../shared/delve/field-notes.model';
+/** Delving XP for a rift shrine's first touch (an inscription's worth: a find). */
+const SHRINE_XP = 15;
 import type { DiscoverEvent } from './engine/engine';
 import { WORLD_ACTION_UNPAID } from './engine/engine.model';
 import { restCueDue, settleDelveMine } from './delve-reward';
@@ -1165,6 +1168,7 @@ export class SideScrollerComponent implements OnDestroy {
       case 'inscription': return this.t('play.delve.action.inscription');
       case 'chest': return this.t('play.delve.action.chest');
       case 'camp': return this.t('play.delve.action.camp');
+      case 'shrine': return this.t('play.delve.action.shrine');
       case 'delve': return this.campReady ? this.t('play.delve.action.enterTop') : this.t('play.delve.action.enter');
       case 'passage': return this.t(this.state.area === 'Ember Quarry' ? 'play.hud.act.returnSeamworks' : 'play.hud.act.enterQuarry');
       default: return this.t('play.hud.act.walkCloser');
@@ -1251,7 +1255,7 @@ export class SideScrollerComponent implements OnDestroy {
   zoomMap(step: number): void { this.map.zoomBy(step); this.drawMaps(); }
   centreMap(): void { this.map.centre(); if (this.map.zoom < 0) this.map.zoomBy(1); this.drawMaps(); }
   /** What each mark on the map is. */
-  readonly mapLegend = (['keeper', 'camp', 'chest', 'torch', 'inscription', 'shaft'] as const)
+  readonly mapLegend = (['keeper', 'camp', 'chest', 'torch', 'inscription', 'shrine', 'shaft'] as const)
     .map(kind => ({ key: `play.map.legend.${kind}`, color: MAP_MARKER_COLORS[kind] }));
   /** The way-to-camp line under the full map. */
   get mapHint(): string {
@@ -2009,7 +2013,22 @@ export class SideScrollerComponent implements OnDestroy {
    * the inscription so it can never pay twice; every reading shows the words.
    */
   private discover(event: DiscoverEvent): void {
-    if (!this.browser || event.kind !== 'inscription') return;
+    if (!this.browser) return;
+    // The endless Delve (Phase 7): a rift shrine's first touch, and field-note walls.
+    // Each pays a little Delving XP once, keyed by its id (the ledger's replay check is the record).
+    if (event.kind === 'shrine') {
+      const result = this.skillActions.act({ mutationId: `delve-shrine:${event.id}`, skill: 'delving', xp: SHRINE_XP, locationId: EMBER_DELVE_LOCATION });
+      if (result.ok && !result.replayed) this.message = this.t('play.delve.shrine.first', { n: SHRINE_XP });
+      return;
+    }
+    const note = fieldNoteFor(event.id);
+    if (note) {
+      const result = this.skillActions.act({ mutationId: `delve-fieldnote:${note.id}`, skill: 'delving', xp: FIELD_NOTE_XP, locationId: EMBER_DELVE_LOCATION });
+      const fresh = result.ok && !result.replayed;
+      if (fresh) this.toastLoot(`+${FIELD_NOTE_XP} Delving XP`);
+      this.message = `${fresh ? this.t('play.delve.fieldNote.new') : ''}${note.text}`;
+      return;
+    }
     const text = inscriptionById(event.id)?.text ?? this.t('play.hud.msg.unreadable');
     const fresh = this.delveLore.recordInscription(event.id);
     if (fresh) {

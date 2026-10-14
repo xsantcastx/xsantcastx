@@ -94,14 +94,16 @@ export class TerrainRenderer {
     if (!t) return;
     this.frame++;
     const scale = Math.max(1, Math.min(2, Math.round(res * 2) / 2));
-    const cc0 = Math.max(0, Math.floor(left / SIZE)), cc1 = Math.min(t.chunkCols - 1, Math.floor((left + width) / SIZE));
+    // World chunk columns in view, inside the loaded span (a ring's span moves; the plain grid's is 0..cols).
+    const cc0 = Math.max(Math.floor(t.colLo / CHUNK), Math.floor(left / SIZE)), cc1 = Math.min(Math.ceil(t.colHi / CHUNK) - 1, Math.floor((left + width) / SIZE));
     const cr0 = Math.max(0, Math.floor((top - t.top) / SIZE)), cr1 = Math.min(t.chunkRows - 1, Math.floor((top + height - t.top) / SIZE));
     const smoothing = c.imageSmoothingEnabled;
     c.imageSmoothingEnabled = false;
     for (let cr = cr0; cr <= cr1; cr++) {
       for (let cc = cc0; cc <= cc1; cc++) {
         const x = cc * SIZE, y = t.top + cr * SIZE;
-        const key = cr * t.chunkCols + cc;
+        const key = t.chunkKey(cc, cr);
+        if (key < 0) continue;
         const chunk = this.offscreen ? this.chunk(key, scale) : null;
         if (!chunk) {
           // No offscreen canvas (tests, very old browsers): paint the cells straight in.
@@ -156,7 +158,7 @@ export class TerrainRenderer {
 function paintCells(c: CanvasRenderingContext2D, t: Terrain, col0: number, row0: number, x0: number, y0: number, atlas: TileAtlas | null, sheets: SheetLookup | null): void {
   const solid = (col: number, row: number) => t.solid(col, row);
   for (let row = row0; row < Math.min(t.rows, row0 + CHUNK); row++) {
-    for (let col = col0; col < Math.min(t.cols, col0 + CHUNK); col++) {
+    for (let col = col0; col < Math.min(t.colHi, col0 + CHUNK); col++) {
       paintCell(c, t, col, row, x0 + (col - col0) * CELL, y0 + (row - row0) * CELL, atlas, solid, sheets);
     }
   }
@@ -199,7 +201,7 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
       if (tally) paintTally(c, node.light, tally, x, y);
       else paintInscription(c, node.light, node.fleck, x, y, h);
     }
-    else if (node.placeable) paintPlaced(c, atlas, kind, x, y);
+    else if (node.placeable || node.use === 'shrine') paintPlaced(c, atlas, kind, x, y);
     return;
   }
   const pattern = PATTERNS[kind];

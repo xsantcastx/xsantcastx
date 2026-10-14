@@ -76,8 +76,18 @@ export interface TerrainNodeDef {
   oneWay?: true;
   /** Climbable: Up/Down move the Keeper along it, and it holds them still (ladders). */
   climb?: true;
-  /** Used with E or a tap, like a station: the host opens it (a chest's contents, a camp's crafting). */
-  use?: 'chest' | 'camp';
+  /**
+   * Used with E or a tap, like a station: the host opens it (a chest's
+   * contents, a camp's crafting). A rift shrine is the engine's own: it shows
+   * the tunnels round it on the map, and the host pays its first touch.
+   */
+  use?: 'chest' | 'camp' | 'shrine';
+  /**
+   * A procedural find (the endless Delve's structures): once dug, its empty
+   * cell is the receipt, kept by the save. Regrowth (a far tunnel healing,
+   * sector-world.ts) never brings it back, so it pays once per player.
+   */
+  receipt?: true;
   /** A placed support: loose rock within this many cells (Chebyshev) holds when dug. */
   support?: number;
   /** A placed blasting charge: its fuse is lit when placed (engine `fuses`). */
@@ -181,6 +191,15 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // A placed obsidian block: built with, dug back as a block, no XP.
   { id: 'obsidian-block', label: 'Obsidian block', solid: true, hp: 5, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0, block: 'obsidian-block',
     base: '#30243f', dark: '#181024', light: '#62527f', fleck: '#b49cff' },
+  // ── The endless Delve (Phase 7). Laid by sector-gen.ts east and west of the core. ──
+  // Kael's waycache: "For whoever comes next. Light it before you need it." A bundle of
+  // torches he left in the Basalt Caverns; the dug cell is the receipt (it never regrows).
+  { id: 'waycache', label: 'Kael\'s waycache', solid: true, hp: 2, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 6,
+    yield: { materialId: 'torch', qty: 3 }, receipt: true, base: '#5e4630', dark: '#30221a', light: '#d3a873', fleck: '#ffcf8a', glow: { color: '#ffb066', radius: 48 } },
+  // A rift the fracture scattered ("a passage created by difference"): touched, it shows the
+  // tunnels round it on the map. Walked through, never dug; its light is violet.
+  { id: 'rift-shrine', label: 'Rift shrine', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'shrine',
+    base: '#2e2242', dark: '#140a1f', light: '#b88cff', fleck: '#e8d8ff', glow: { color: '#b88cff', radius: 110 } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -331,6 +350,12 @@ export interface TerrainSpec {
    * it (with the terrain layout) and dropped on a mismatch: the cells stay.
    */
   liquidVersion?: number;
+  /**
+   * The core of an endless Delve (Phase 7): sector-world.ts generates sectors
+   * east and west of this grid, forever, when the host's save can hold them
+   * (`DelvePersistence.sectors`). The grid itself is unchanged.
+   */
+  endless?: true;
 }
 
 /** The look a terrain without biomes gets: today's basalt dark. */
@@ -401,7 +426,23 @@ export class Terrain {
   baseLiqLevel: Uint8Array;
   /** Bumped whenever any liquid cell changes (map thumbnails, tests). */
   liquidRev = 0;
-  constructor(readonly cols: number, readonly rows: number, readonly top: number) {
+  /**
+   * Endless Delve (sector-world.ts): the arrays hold a RING of `cols` world
+   * columns (a power of two), the loaded span [colLo, colHi). A world column
+   * lives in slot `col & (cols - 1)`, so a cell's index is stable while it is
+   * loaded and nothing else moves when the span does: the column that leaves
+   * and the one that arrives share a slot. Off: the plain grid, cols 0..cols-1.
+   */
+  readonly ring: boolean;
+  private readonly mask: number;
+  /** World columns loaded: [colLo, colHi). The plain grid is [0, cols). */
+  colLo = 0;
+  colHi: number;
+  constructor(readonly cols: number, readonly rows: number, readonly top: number, ring = false) {
+    if (ring && (cols < CHUNK || (cols & (cols - 1)))) throw new Error('A ring terrain needs a power-of-two width');
+    this.ring = ring;
+    this.mask = cols - 1;
+    this.colHi = cols;
     this.kind = new Uint8Array(cols * rows);
     this.liqType = new Uint8Array(cols * rows);
     this.liqLevel = new Uint8Array(cols * rows);
@@ -417,8 +458,30 @@ export class Terrain {
     this.bottom = top + rows * CELL;
     this.width = cols * CELL;
   }
-  index(col: number, row: number): number { return row * this.cols + col; }
-  inside(col: number, row: number): boolean { return col >= 0 && row >= 0 && col < this.cols && row < this.rows; }
+  index(col: number, row: number): number { return row * this.cols + (this.ring ? col & this.mask : col); }
+  inside(col: number, row: number): boolean { return col >= this.colLo && row >= 0 && col < this.colHi && row < this.rows; }
+  /** The world column of a cell index (the ring maps its slot back into the loaded span). */
+  colOf(index: number): number {
+    const slot = index % this.cols;
+    return this.ring ? this.colLo + ((slot - this.colLo) & this.mask) : slot;
+  }
+  rowOf(index: number): number { return (index / this.cols) | 0; }
+  /** World x of the loaded span's edges. */
+  get left(): number { return this.colLo * CELL; }
+  get right(): number { return this.colHi * CELL; }
+  /** A body's x kept inside the loaded span (the plain grid: inside `width`, as the area declares). */
+  clampX(x: number, width: number): number {
+    return this.ring ? Math.max(this.left + 30, Math.min(this.right - 30, x)) : Math.max(30, Math.min(width - 30, x));
+  }
+  /** The chunkRev slot of a chunk (world chunk column `cc`, row `cr`), or -1 outside the loaded span. */
+  chunkKey(cc: number, cr: number): number {
+    if (cr < 0 || cr >= this.chunkRows) return -1;
+    if (this.ring) {
+      if (cc * CHUNK < this.colLo || cc * CHUNK >= this.colHi) return -1;
+      return cr * this.chunkCols + (cc & (this.chunkCols - 1));
+    }
+    return cc < 0 || cc >= this.chunkCols ? -1 : cr * this.chunkCols + cc;
+  }
   colAt(x: number): number { return Math.floor(x / CELL); }
   rowAt(y: number): number { return Math.floor((y - this.top) / CELL); }
   /** The biome a row lies in (rows above the grid read as the first). */
@@ -480,7 +543,7 @@ export class Terrain {
   touch(col: number, row: number): void {
     const cc = Math.floor(col / CHUNK), cr = Math.floor(row / CHUNK);
     this.bump(cc, cr);
-    const lc = col % CHUNK, lr = row % CHUNK;
+    const lc = col - cc * CHUNK, lr = row - cr * CHUNK;
     if (lc === 0) this.bump(cc - 1, cr);
     if (lc === CHUNK - 1) this.bump(cc + 1, cr);
     if (lr === 0) this.bump(cc, cr - 1);
@@ -490,8 +553,12 @@ export class Terrain {
     if (dc && dr) this.bump(cc + dc, cr + dr);
   }
   private bump(cc: number, cr: number): void {
-    if (cc < 0 || cr < 0 || cc >= this.chunkCols || cr >= this.chunkRows) return;
-    this.chunkRev[cr * this.chunkCols + cc]++;
+    const key = this.chunkKey(cc, cr);
+    if (key >= 0) this.chunkRev[key]++;
+  }
+  /** Every chunk of world columns [col0, col1) is drawn afresh (a column arrived in its ring slots). */
+  touchColumns(col0: number, col1: number): void {
+    for (let cc = Math.floor(col0 / CHUNK); cc * CHUNK < col1; cc++) for (let cr = 0; cr < this.chunkRows; cr++) this.bump(cc, cr);
   }
 }
 
@@ -624,8 +691,7 @@ export const INTERACT_REACH = CELL * .5;
  */
 export function takeTarget(t: Terrain, x: number, feetY: number, facing: number, box: BodyBox, prefer = -1): number {
   if (prefer >= 0 && prefer < t.kind.length) {
-    const col = prefer % t.cols;
-    if (isTakeable(t, col, (prefer - col) / t.cols)) return prefer;
+    if (isTakeable(t, t.colOf(prefer), t.rowOf(prefer))) return prefer;
   }
   const feetRow = t.rowAt(feetY - EPS), headRow = t.rowAt(feetY - box.height);
   const front = frontCol(t, x, facing, box), own = t.colAt(x);
@@ -671,7 +737,7 @@ const SUPPORT_RANGE = Uint8Array.from(TERRAIN_NODE_LIST, node => node.support ??
 /** True when a placed support holds the cell: within its reach in both directions (Chebyshev). Pure. */
 export function supportNear(t: Terrain, col: number, row: number): boolean {
   for (let r = Math.max(0, row - SUPPORT_REACH); r <= Math.min(t.rows - 1, row + SUPPORT_REACH); r++) {
-    for (let c = Math.max(0, col - SUPPORT_REACH); c <= Math.min(t.cols - 1, col + SUPPORT_REACH); c++) {
+    for (let c = Math.max(t.colLo, col - SUPPORT_REACH); c <= Math.min(t.colHi - 1, col + SUPPORT_REACH); c++) {
       const reach = SUPPORT_RANGE[t.kind[t.index(c, r)]];
       if (reach && Math.max(Math.abs(c - col), Math.abs(r - row)) <= reach) return true;
     }
@@ -915,7 +981,7 @@ export const CLIMB_SPEED = 220;
  */
 export function climbTerrainBody(body: TerrainBody, velocityX: number, climb: number, dt: number, t: Terrain, box: BodyBox, width: number): void {
   if (velocityX) {
-    const nx = Math.max(30, Math.min(width - 30, body.x + velocityX * dt));
+    const nx = t.clampX(body.x + velocityX * dt, width);
     if (!boxHits(t, nx, body.y, box)) body.x = nx;
   }
   body.vy = 0; body.grounded = true;
@@ -943,7 +1009,7 @@ export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number
   platforms: readonly { x: number; y: number; width: number }[], width: number, drop = false, medium?: BodyMedium | null): void {
   // Horizontal, then vertical, so a wall never eats a landing.
   if (velocityX) {
-    const nx = Math.max(30, Math.min(width - 30, body.x + velocityX * dt));
+    const nx = t.clampX(body.x + velocityX * dt, width);
     if (!boxHits(t, nx, body.y, box)) body.x = nx;
     else if (body.grounded && !boxHits(t, nx, body.y - CELL, box) && !boxHits(t, body.x, body.y - CELL, box)) {
       body.x = nx; body.y -= CELL;
@@ -991,7 +1057,7 @@ export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number
  */
 export function coneCells(t: Terrain, ox: number, oy: number, dx: number, dy: number, range: number, halfAngle: number, out: Int32Array): number {
   const cos = Math.cos(halfAngle);
-  const c0 = Math.max(0, t.colAt(ox - range)), c1 = Math.min(t.cols - 1, t.colAt(ox + range));
+  const c0 = Math.max(t.colLo, t.colAt(ox - range)), c1 = Math.min(t.colHi - 1, t.colAt(ox + range));
   const r0 = Math.max(0, t.rowAt(oy - range)), r1 = Math.min(t.rows - 1, t.rowAt(oy + range));
   let n = 0;
   for (let r = r0; r <= r1; r++) {
