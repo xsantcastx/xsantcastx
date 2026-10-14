@@ -120,8 +120,8 @@ const BASE_SWING = .52;
 const MIN_SWING = .25;
 /** Holding to place along a drag: one block per this many seconds, never faster than the fastest swing. */
 const PLACE_PACE = MIN_SWING;
-/** No skill level multiplies a tool's damage past this (level 99 is ×1.5; guards a bad setTools value). */
-const MAX_POWER = 1.5;
+/** No skill level multiplies a tool's damage past this (×1.5 at 99, approaching ×2.0 past it — tool-level.ts MAX_LEVEL_POWER; guards a bad setTools value). */
+const MAX_POWER = 2;
 const BLAST_TIME = .3;
 const BLAST_COOLDOWN = 1.1;
 /** Loose rock: the groan before it falls (s), its fastest fall, and its bruise as a share of max HP. */

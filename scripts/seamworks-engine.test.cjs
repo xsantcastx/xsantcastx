@@ -3304,7 +3304,9 @@ test('tool level: swing × (1 − 0.25·(L−1)/98), power × (1 + 0.5·(L−1)/
   assert.deepEqual({ ...toolLevel.TOOL_SKILL }, { pickaxe: 'mining', axe: 'woodcutting', sickle: 'foraging', staff: 'enchanting' });
   assert.equal(toolLevel.levelSwingFactor(1), 1); assert.equal(toolLevel.levelPowerFactor(1), 1);
   assert.equal(toolLevel.levelSwingFactor(99), 0.75); assert.equal(toolLevel.levelPowerFactor(99), 1.5);
-  assert.equal(toolLevel.levelSwingFactor(150), 0.75, 'past 99 adds nothing'); assert.equal(toolLevel.levelPowerFactor(0), 1);
+  assert.equal(toolLevel.levelPowerFactor(0), 1);
+  // Past 99 (uncapped levels) it keeps sharpening, half the extra by 199, never reaching 0.65 / x2.0.
+  assert.ok(close(toolLevel.levelSwingFactor(199), 0.70)); assert.ok(close(toolLevel.levelPowerFactor(199), 1.75));
   assert.ok(close(toolLevel.levelSwingFactor(50), 1 - 0.25 * 49 / 98));
   const table = [];
   for (const tier of ['starter', 1, 2, 3, 4]) {
@@ -3348,6 +3350,51 @@ test('tool level: the card and stats lines show the split above level 1, the pla
   for (const key of ['toolStat.powerSplit', 'toolStat.swingSplit', 'toolStat.levelUp', 'toolStat.levelUpPower']) assert.ok(TOOLS_I18N[key].es, `${key} ES`);
 });
 
+// ── Uncapped levels, Tibia-style (docs/handoff/uncapped-levels.md) ──
+const curve = loadTs(path.resolve(__dirname, '../src/app/shared/activity/mining-level.ts'));
+
+test('uncapped levels: 1-99 unchanged, continuous at 99 -> 100, steepening, exact to level 1000', () => {
+  // The 1-99 curve is exactly the old formula.
+  for (let level = 2; level <= 99; level++) assert.equal(curve.xpForLevel(level), Math.floor(100 * Math.pow(level - 1, 2.2)), `level ${level}`);
+  const step = level => curve.xpForLevel(level) - curve.xpForLevel(level - 1);
+  assert.equal(curve.MASTERY_STEP, step(99));
+  // Continuity: the step to 100 is within 3% of the step to 99.
+  assert.ok(step(100) > step(99) && step(100) / step(99) < 1.03, `99->100 ${step(100)} vs 98->99 ${step(99)}`);
+  // Monotonic, steepening, integer and safe all the way to 1000.
+  for (let level = 100; level <= 1000; level++) {
+    const xp = curve.xpForLevel(level);
+    assert.ok(Number.isSafeInteger(xp), `level ${level} safe`);
+    assert.ok(step(level) > 0 && step(level) >= step(level - 1), `level ${level} steepens`);
+    assert.equal(curve.levelForXp(xp), level); assert.equal(curve.levelForXp(xp - 1), level - 1);
+  }
+  // Tibia's shape: the step grows with the square of the level.
+  assert.ok(Math.abs(step(198) / step(99) - 4) < 0.1, `step at 198 ~4x the step at 99 (${(step(198) / step(99)).toFixed(2)})`);
+  const v = curve.miningLevelView(curve.xpForLevel(300) + 10);
+  assert.equal(v.level, 300); assert.equal(v.into, 10); assert.equal(v.next, curve.xpForLevel(301)); assert.equal(v.span, step(301));
+  assert.equal(curve.miningLevelView(Number.MAX_SAFE_INTEGER).level, curve.LEVEL_SEARCH_LIMIT);
+  assert.equal(curve.miningLevelView(NaN).level, 1);
+  assert.deepEqual([999, 53_607, 240_000, 2_402_687, 50_079_060, 1_826_523_753].map(curve.formatXp), ['999', '53,607', '240K', '2.4M', '50.1M', '1.83B']);
+});
+
+test('uncapped levels: tool bonus grows past 99 toward its asymptote; the swing never beats 0.25 s', () => {
+  let prevSwing = toolLevel.levelSwingFactor(99), prevPower = toolLevel.levelPowerFactor(99);
+  for (let level = 100; level <= 1000; level++) {
+    const swing = toolLevel.levelSwingFactor(level), power = toolLevel.levelPowerFactor(level);
+    assert.ok(swing < prevSwing && swing > 0.65, `swing ${level}`);
+    assert.ok(power > prevPower && power < toolLevel.MAX_LEVEL_POWER, `power ${level}`);
+    // Diminishing: each level adds less than the one before.
+    assert.ok(prevSwing - swing <= toolLevel.levelSwingFactor(level - 2) - prevSwing + 1e-12 || level === 100);
+    prevSwing = swing; prevPower = power;
+    for (const base of [skillTools.STARTER_SWING_SECONDS, ...Object.values(skillTools.TOOL_SWING_SECONDS)]) {
+      assert.ok(skillTools.levelSwing(base, level, 'mining') >= 0.25, `floor at ${level}`);
+    }
+  }
+  assert.equal(skillTools.levelSwing(skillTools.TOOL_SWING_SECONDS[4], 300, 'mining'), 0.25);
+  assert.ok(toolLevel.levelPowerFactor(10_000) < 2);
+  // The banner's per-level line past 300 shows two decimals rather than "0.0".
+  assert.deepEqual({ ...toolLevel.levelGain(299, 300) }, { swing: '0.01', power: '0.06' });
+});
+
 /** Swings to open one cell of `nodeId` with a Pickaxe `tier` at Mining `level` (power from the level). */
 function hitsToBreak(nodeId, tier, level) {
   const { engine } = enterDelve(() => true);
@@ -3385,8 +3432,8 @@ test('delve: a higher Mining level opens rock in fewer swings (fractional damage
   t.set(col, 0, terrainMod.nodeIndex('scorched-basalt'));
   engine.attackCooldown = 0; engine.strikeCell(col * 32 + 16, 626);
   assert.ok(close(t.hp[t.index(col, 0)], 2.5, 1e-6)); assert.equal(t.stage(col, 0), 2);
-  // A bad multiplier from a host is clamped to [1, 1.5].
-  engine.setTools({ pickaxe: 1, power: { pickaxe: 9 } }); assert.equal(engine.power.pickaxe, 1.5);
+  // A bad multiplier from a host is clamped to [1, 2] (x2.0 is the level bonus's asymptote).
+  engine.setTools({ pickaxe: 1, power: { pickaxe: 9 } }); assert.equal(engine.power.pickaxe, toolLevel.MAX_LEVEL_POWER);
   engine.setTools({ pickaxe: 1, power: { pickaxe: 0.2 } }); assert.equal(engine.power.pickaxe, 1);
   engine.destroy();
 });
@@ -3419,8 +3466,11 @@ test('rewards per minute do not rise with the level: delve paid XP and gathering
     const run = swingsIn(null, 60, e => host.onWorldAction({ ...e, mutationId: `${e.mutationId}:${cell++}` }), clock, tools(level));
     return { xp: seam.xp, breaks: host.outcomes.length, swings: run.swings };
   };
-  const l1 = paid(1), l99 = paid(99);
-  if (process.env.TOOL_LEVEL_TABLE) console.log({ l1, l99 });
+  const l1 = paid(1), l99 = paid(99), l300 = paid(300);
+  if (process.env.TOOL_LEVEL_TABLE) console.log({ l1, l99, l300 });
+  // Uncapped levels: level 300 swings at least as fast, and is paid exactly what 99 is.
+  assert.ok(l300.swings >= l99.swings, `no slower at 300 (${l300.swings} vs ${l99.swings})`);
+  assert.equal(l300.xp, l99.xp, `paid XP a minute at 300 equals 99 (${l300.xp} vs ${l99.xp})`);
   assert.ok(l99.swings > l1.swings, `faster swings at 99 (${l99.swings} vs ${l1.swings})`);
   assert.ok(l99.breaks >= l1.breaks, 'at least as much rock opened');
   // One booked op per 2.5 s: at most 25 in a minute, 2 XP each — at every level. Level 1 already reaches it.
@@ -3438,8 +3488,9 @@ test('rewards per minute do not rise with the level: delve paid XP and gathering
     engine.destroy();
     return calls.length;
   };
-  const w1 = harvests(1), w99 = harvests(99);
-  if (process.env.TOOL_LEVEL_TABLE) console.log({ w1, w99 });
+  const w1 = harvests(1), w99 = harvests(99), w300 = harvests(300);
+  if (process.env.TOOL_LEVEL_TABLE) console.log({ w1, w99, w300 });
+  assert.equal(w300, w99, `the same harvests at Woodcutting 300 as at 99 (${w99})`);
   assert.equal(w99, w1, `the same harvests in two minutes at Woodcutting 1 and 99 (${w1}): regrowth is the cap`);
   assert.ok(w1 >= 2);
 });

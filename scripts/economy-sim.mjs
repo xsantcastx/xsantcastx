@@ -13,6 +13,7 @@
  * TypeScript. See docs/economy/rebalance-spec.md for the design.
  *
  *   node scripts/economy-sim.mjs --bounties      # the Board Herald's daily bounties (in --check too)
+ *   node scripts/economy-sim.mjs --levels        # uncapped levels: time to 100/150/200/300 per skill (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
  *                                                # first purchase is > 15 s or
  *                                                # < 20 purchases in 10 min
@@ -511,6 +512,8 @@ function check(E) {
   fails.push(...underhearthScenario({ quiet: true }));
   // The Board Herald's daily bounties (Phase 7.5): rule I band, the daily envelope, XP, the draw (`--bounties` prints it).
   fails.push(...bountiesScenario({ quiet: true }));
+  // Uncapped levels: 1-99 untouched, 99 -> 100 continuous, time to 300 per skill (`--levels` prints it).
+  fails.push(...levelsScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -729,6 +732,68 @@ function fishingRate(level, water, mode) {
     per[row.id] = (per[row.id] ?? 0) + row.p * perMin * (1 + perks.double);
   }
   return { perMin, xpMin: xp * perMin, goldMin: gold * perMin, per, crateP: table.filter(r => r.rarity === 'crate').reduce((s, r) => s + r.p, 0), table };
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Uncapped levels, Tibia-style (docs/handoff/uncapped-levels.md)
+// ───────────────────────────────────────────────────────────────────────────
+// The real curve (mining-level.ts) and each skill's best XP a minute at level
+// 99, read from the source: a gathering site pays its top tier's XP once per
+// recovery (the level cut stops at 36, so 99 and 300 recover alike), Fishing
+// is the scenario above at its best water. The five skills with no per-minute
+// model of their own (Woodcutting, Smithing, Delving, Enchanting, Hunting)
+// are shown at the median of the four measured rates, marked ≈. Rates do not
+// rise past 99 — the per-minute caps stay — so every hour below is the curve
+// alone.
+const CURVE = loadTs('src/app/shared/activity/mining-level.ts');
+const MINE = loadTsTree('src/app/shared/activity/activity.model.ts');
+const RECOVERY = loadTsTree('src/app/shared/activity/mining-recovery.ts');
+const FORAGE = loadTsTree('src/app/shared/activity/foraging.model.ts');
+const PROSPECT = loadTsTree('src/app/shared/activity/prospecting.model.ts');
+
+function levelsScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = line => { if (!quiet) console.log(line); };
+  const best = tiers => Math.max(...tiers.map(t => t.xpPerAction));
+  // A level-99 site recovers like a level-36 one: 35% off the 2.5 s base (mining-recovery.ts, foraging-ops.ts).
+  const siteMs = RECOVERY.effectiveMiningRecoveryMs(99, 0);
+  const fishMin = Math.max(...['seep', 'mere', 'magma'].map(w => fishingRate(99, w, 'active')?.xpMin ?? 0));
+  const measured = {
+    mining: best(MINE.MINING_TIERS) * 60_000 / siteMs,
+    foraging: best(FORAGE.FORAGING_TIERS) * 60_000 / siteMs,
+    prospecting: best(PROSPECT.PROSPECTING_TIERS) * 60_000 / PROSPECT.PROSPECTING_RECOVERY_MS,
+    fishing: fishMin,
+  };
+  const sorted = Object.values(measured).sort((a, b) => a - b);
+  const median = (sorted[1] + sorted[2]) / 2;
+  const skills = ['mining', 'foraging', 'woodcutting', 'smithing', 'delving', 'enchanting', 'hunting', 'prospecting', 'fishing'];
+  const targets = [100, 150, 200, 300];
+  const hoursFrom99 = (rate, L) => (CURVE.xpForLevel(L) - CURVE.xpForLevel(99)) / rate / 60;
+  const fmtH = h => h < 10 ? h.toFixed(1) + ' h' : h < 1000 ? Math.round(h) + ' h' : (h / 1000).toFixed(1) + 'k h';
+
+  say('Uncapped levels · xp(L) = xp(99) + floor(53,607 · (S(L) − S(99)) / 99²), S(n) = Σk² (k ≤ n)');
+  say(`  XP to reach:  99 ${fmtN(CURVE.xpForLevel(99))} · 100 ${fmtN(CURVE.xpForLevel(100))} · 150 ${fmtN(CURVE.xpForLevel(150))} · 200 ${fmtN(CURVE.xpForLevel(200))} · 300 ${fmtN(CURVE.xpForLevel(300))}`);
+  say(`  one level at:  99 ${fmtN(CURVE.MASTERY_STEP)} · 150 ${fmtN(CURVE.xpForLevel(150) - CURVE.xpForLevel(149))} · 200 ${fmtN(CURVE.xpForLevel(200) - CURVE.xpForLevel(199))} · 300 ${fmtN(CURVE.xpForLevel(300) - CURVE.xpForLevel(299))}\n`);
+  say('  active hours past 99, at the best rate a level-99 Keeper has (rates are capped: 300 earns what 99 earns)');
+  say('  ' + 'skill'.padEnd(13) + 'XP/min'.padStart(8) + targets.map(L => `→${L}`.padStart(10)).join(''));
+  for (const skill of skills) {
+    const rate = measured[skill] ?? median;
+    const mark = measured[skill] ? ' ' : '≈';
+    say('  ' + skill.padEnd(13) + (mark + Math.round(rate)).padStart(8) + targets.map(L => fmtH(hoursFrom99(rate, L)).padStart(10)).join(''));
+  }
+
+  // 1. Levels 1-99 cost exactly what they always did (the sim's own copy of the old formula).
+  for (let L = 1; L <= 99; L++) if (CURVE.xpForLevel(L) !== xpFor(L)) { fails.push(`level ${L} moved: ${CURVE.xpForLevel(L)} vs ${xpFor(L)}`); break; }
+  // 2. 99 -> 100 is continuous: within 3% of the 98 -> 99 step, and under 5 hours at the slowest measured rate (Fishing).
+  const step100 = CURVE.xpForLevel(100) - CURVE.xpForLevel(99);
+  if (!(step100 / CURVE.MASTERY_STEP < 1.03)) fails.push(`99 -> 100 costs ${step100} (> 3% over the step to 99)`);
+  const slowest = sorted[0];
+  if (hoursFrom99(slowest, 100) > 5) fails.push(`99 -> 100 takes ${hoursFrom99(slowest, 100).toFixed(1)} h at ${Math.round(slowest)} XP/min`);
+  // 3. The long climb is long but finite: 300 lands between 500 and 5,000 active hours at the fastest measured rate.
+  const h300 = hoursFrom99(sorted[3], 300);
+  if (h300 < 500 || h300 > 5000) fails.push(`300 takes ${Math.round(h300)} h at the fastest rate (band 500-5,000)`);
+  if (quiet) console.log(`economy-sim levels: 99->100 ${fmtH(hoursFrom99(median, 100))}, ->300 ${fmtH(hoursFrom99(median, 300))} at ${Math.round(median)} XP/min; ${fails.length ? fails.length + ' fail(s)' : 'curve ok'}`);
+  return fails;
 }
 
 function fishingScenario({ quiet = false } = {}) {
@@ -1097,6 +1162,11 @@ if (argv.plinko) {
   console.log('  ok');
 } else if (argv.fishing && !argv.check) {
   const fails = fishingScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.levels && !argv.check) {
+  const fails = levelsScenario({ quiet: false });
+  for (const f of fails) console.error(`  FAIL ${f}`);
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.bounties && !argv.check) {
