@@ -22,6 +22,7 @@ import {
   ART_ITEMS_RUNEWORDS,
 } from '../art/art-manifest.generated';
 import { ART_ALIAS, type ArtEntry } from '../art/art';
+import { itemIcon, runeIcon } from '../art/item-icons';
 
 export interface CardArt {
   /** Path from the app root, no leading slash. */
@@ -50,8 +51,14 @@ function toCards(source: Readonly<Record<string, ArtEntry>>): Readonly<Record<st
  * meaningful — the whole point of that suite is catching the day a rune is
  * renamed and its art silently stops resolving.
  */
-export const RUNE_CARDS: Readonly<Record<string, CardArt>> = toCards(ART_ITEMS_RUNES);
-export const RUNEWORD_CARDS: Readonly<Record<string, CardArt>> = toCards(ART_ITEMS_RUNEWORDS);
+/** Each card as its pixel tablet (item-icons.ts runeIcon), the painting only where a rune has none. */
+function pixelCards(source: Readonly<Record<string, CardArt>>, pixel: (id: string) => ArtEntry | null): Readonly<Record<string, CardArt>> {
+  const out: Record<string, CardArt> = {};
+  for (const [id, painted] of Object.entries(source)) out[id] = card(pixel(id) ?? undefined) ?? painted;
+  return out;
+}
+export const RUNE_CARDS: Readonly<Record<string, CardArt>> = pixelCards(toCards(ART_ITEMS_RUNES), runeIcon);
+export const RUNEWORD_CARDS: Readonly<Record<string, CardArt>> = pixelCards(toCards(ART_ITEMS_RUNEWORDS), runeIcon);
 export const ARTIFACT_CARDS: Readonly<Record<string, CardArt>> = (() => {
   const byFileStem = toCards(ART_ITEMS_ARTIFACTS);
   const out: Record<string, CardArt> = { ...byFileStem };
@@ -61,7 +68,7 @@ export const ARTIFACT_CARDS: Readonly<Record<string, CardArt>> = (() => {
     out[modelId] = hit;
     delete out[fileKey];
   }
-  return out;
+  return pixelCards(out, itemIcon);
 })();
 
 export function runeCard(id: string): CardArt | null {

@@ -190,7 +190,7 @@
 
   <div class="gb-reveal__stage" (click)="$event.stopPropagation()">
 
-    <!-- The altar. Every picture on it comes through the art manifest. -->
+    <!-- The altar, in pixels (pixel-fx.ts, item-icons.ts). -->
     <div class="gb-altar">
       <img class="gb-altar__sigil" *ngIf="stage.sigil as art" [src]="art.src" [attr.srcset]="art.srcset"
            sizes="280px" alt="" decoding="async">
@@ -200,7 +200,7 @@
            [attr.srcset]="art.srcset" sizes="72px" alt="" decoding="async">
       <img class="gb-altar__portal" *ngIf="phase !== 'wager' && stage.portal as art" [src]="art.src"
            [attr.srcset]="art.srcset" sizes="220px" alt="" decoding="async">
-      <span class="gb-altar__slab"></span>
+      <img class="gb-altar__slab" [src]="stage.slab.src" alt="" decoding="async">
 
       <!-- The wager settles onto the slab. -->
       <img class="gb-altar__coin" *ngIf="phase === 'wager' && stage.coin as art" [src]="art.src"
