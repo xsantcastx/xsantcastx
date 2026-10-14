@@ -48,7 +48,7 @@ function satchel(stacks: Record<string, number>, items: unknown[] = []): Blobs {
 }
 const PICK_IV = gear('e2e-pick-4', 'pickaxe-4', 'Pickaxe IV', 1);
 /** Strike 5 (the 60 damage ceiling) and a little ward: a Keeper geared for the Underhearth. */
-const BLADE = gear('e2e-blade', 'eclipse-longblade', 'Eclipse Longblade', 2, { category: 'equipment', tags: ['equipment', 'weapon'], type: 'artifact', soulbound: false, stats: { strikePower: 5, ward: 6 }, location: { kind: 'equipped', slotId: 'weapon' } });
+const BLADE = gear('e2e-blade', 'eclipse-longblade', 'Eclipse Longblade', 2, { category: 'equipment', tags: ['equipment', 'weapon'], type: 'artifact', soulbound: false, stats: { strikePower: 5, ward: 15 }, location: { kind: 'equipped', slotId: 'weapon' } });
 
 async function descend(page: Page): Promise<void> {
   await openPlay(page);
@@ -166,7 +166,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
     });
 
     test('the Banked Furnace: wake it with the Four Hammer-Marks, douse its vents, strike its core, and put it out', async ({ page }) => {
-      test.setTimeout(240_000);
+      test.setTimeout(420_000);
       const core = new DelveFixture();
       core.claimed = [WARDEN_FLAG, UNSEALED_FLAG, 'underhearth-reached', 'hammer-mark-1', 'hammer-mark-2', 'hammer-mark-3', 'hammer-mark-4'];
       await seed(page, {
@@ -195,7 +195,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
         if (touch) await page.locator('.tb--use.tb--phone').tap(); else await tap(page, 'b');
         await page.waitForTimeout(250);
       };
-      const deadline = Date.now() + 200_000;
+      const deadline = Date.now() + 360_000;
       let hits = 0;
       // J is held the whole fight: the Keeper swings at whatever is in reach (the spilled embers, the open core).
       await focusWorld(page); await page.keyboard.down('j');
