@@ -2,7 +2,7 @@ import { coarseDevice, renderBudget, type RenderBudget } from './render-budget';
 import { Atmosphere } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import type { KeeperContext } from '../world/keeper-lines';
-import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { FIGURE_TOP, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { CREATURE_ART, CREATURE_PIXEL, creatureFrame, CreaturePainter } from './creature-pixel';
 import { PropPainter } from './prop-pixel';
 import { keeperAction, type KeeperGear } from '../../shared/keeper-look/keeper-gear';
@@ -125,6 +125,8 @@ const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
 /** How far from the Keeper's chest a click, a tap or the smart cursor reaches a cell, in cells (Terraria's tile reach). */
 export const REACH_CELLS = 4.5;
 const DELVE_REACH = CELL * REACH_CELLS;
+/** World px per art px of a pixel Keeper at figure scale 1 (the 196 box / 49; keeper-paint.ts). */
+const KEEPER_ART_PX = 4;
 /** Forgiving jumps: a jump pressed this long before landing still happens, and one pressed this long after walking off a ledge too. */
 const JUMP_BUFFER = .12;
 const COYOTE = .1;
@@ -318,6 +320,9 @@ export class SeamworksEngine {
   /** A shadowBlur radius under the render budget: as given on desktop, 0 on a phone. */
   private blur(radius: number): number { return this.budget.glows ? radius : 0; }
   private landing = 0;
+  /** A flash of feeling on the Keeper's face (loot, a level up) and when it ends (engine seconds). */
+  private feelFace: 'happy' | 'surprised' | null = null;
+  private feelUntil = 0;
   private stepAt = 0;
   private reportAt = 0;
   private width = 1100;
@@ -1321,6 +1326,10 @@ export class SeamworksEngine {
     const next = new KeeperPainter(look, gear);
     if (next.key !== this.keeperPainter?.key) this.keeperPainter = next;
   }
+  /** Light up the pixel Keeper's face for a moment: joy on a level up, surprise on a rare find. Visual only. */
+  keeperFeel(face: 'happy' | 'surprised', seconds = 1): void {
+    this.feelFace = face; this.feelUntil = this.elapsed + seconds;
+  }
   private peerPainter(id: string): KeeperPainter | null {
     if (!this.canPaint) return null;
     let painter = this.peerPainters.get(id);
@@ -1725,7 +1734,7 @@ export class SeamworksEngine {
     if (!this.glim.shown) return null;
     const x = 'station' in target ? this.stations.find(row => row.id === target.station)?.x : target.x;
     if (x === undefined || !Number.isFinite(x)) return null;
-    this.glim.flyTo(x, this.terrain ? this.player.y - 150 : FLOOR - 170);
+    this.glim.flyTo(x, this.terrain ? this.player.y - 110 : FLOOR - 130);
     return x;
   }
   /** The bond's sense: Glim glows brighter (the host decides when; a Mirror Substitute's dim still wins). */
@@ -2819,6 +2828,7 @@ export class SeamworksEngine {
         if (this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore, material: drop.material }) === false) continue;
         this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
         this.coins += drop.coins; drop.age = -1;
+        this.keeperFeel('happy', .8);
         this.launchFlight(drop);
         if (drop.coins) this.say('play.hud.eng.collectedCoins', `Collected ${drop.coins} coins.`, { n: drop.coins });
         else this.say('play.hud.eng.collected', `Collected ${drop.label ?? 'Cinder Ore'}.`, { name: drop.label ?? 'Cinder Ore' });
@@ -3597,8 +3607,11 @@ export class SeamworksEngine {
       // The pixel Keeper (keeper-paint.ts): its own frames, gear as layers, the weapon at its grip.
       const aura = gear ? this.loadout.auraRarity : null;
       if (aura) this.drawAura(c, aura, time);
+      // The player's own Keeper (gear) shows the landing squash and a flash of feeling; peers stay plain.
+      const face = gear && this.feelFace && this.elapsed < this.feelUntil ? this.feelFace : undefined;
       painter.draw(c, box.h / 49, {
         action: keeperAction(shown, fallen), time, attackT, rim: feel.rim, reduced: this.reducedMotion, weapon: gear,
+        squash: feel.landing, ...(face ? { face } : {}),
       });
       return;
     }
@@ -4314,9 +4327,10 @@ export class SeamworksEngine {
       c.beginPath(); c.ellipse(0, 0, 32, 8, 0, 0, Math.PI * 2); c.fill(); c.stroke();
       c.font = '600 16px "Cormorant Garamond", Georgia, serif'; c.textAlign = 'center';
       const labelWidth = Math.min(240, c.measureText(view.peer.name).width + 22);
-      c.fillStyle = '#1a120fe6'; c.fillRect(-labelWidth / 2, -208, labelWidth, 24);
-      c.fillStyle = '#ffe1b0'; c.fillText(view.peer.name, 0, -190, 220);
-      this.speechBubble(c, view.peer.id, -214);
+      const peerTop = -((this.peerPainter(view.peer.id)?.top ?? FIGURE_TOP + 6) * KEEPER_ART_PX + 12);
+      c.fillStyle = '#1a120fe6'; c.fillRect(-labelWidth / 2, peerTop - 24, labelWidth, 24);
+      c.fillStyle = '#ffe1b0'; c.fillText(view.peer.name, 0, peerTop - 6, 220);
+      this.speechBubble(c, view.peer.id, peerTop - 30);
       const shown = this.present(view.peer.animation, view.peer.x, view.y);
       const motion = this.keeperMotion(shown, motionTime + view.x);
       const warm = shown === 'rest';
@@ -4338,12 +4352,14 @@ export class SeamworksEngine {
     c.beginPath(); c.ellipse(0, 0, 46, 10, 0, 0, Math.PI * 2); c.fill(); c.stroke();
     c.font = '600 15px "Cormorant Garamond", Georgia, serif';
     const youWidth = Math.min(120, c.measureText('You').width + 20);
+    // The plate rides just over the head: the chibi Keeper's own top (hair, hat, helm crest), else the painting's.
+    const tip = -(this.keeperPainter ? this.keeperPainter.top * KEEPER_ART_PX + 8 : 174);
     c.fillStyle = '#1a120fe6'; c.textAlign = 'center';
-    c.fillRect(-youWidth / 2, -204, youWidth, 22);
-    c.beginPath(); c.moveTo(-6, -182); c.lineTo(6, -182); c.lineTo(0, -174); c.closePath(); c.fill();
+    c.fillRect(-youWidth / 2, tip - 30, youWidth, 22);
+    c.beginPath(); c.moveTo(-6, tip - 8); c.lineTo(6, tip - 8); c.lineTo(0, tip); c.closePath(); c.fill();
     c.fillStyle = '#ffe1b0';
-    c.fillText('You', 0, -188);
-    this.speechBubble(c, this.selfId, -234);
+    c.fillText('You', 0, tip - 14);
+    this.speechBubble(c, this.selfId, tip - 60);
     c.restore();
     c.save(); c.translate(this.player.x, this.player.y); c.scale(this.facing * k, k);
     const shown = this.present(this.pose(), this.player.x, this.player.y);

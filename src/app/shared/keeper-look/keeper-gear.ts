@@ -183,7 +183,7 @@ export const WEAPON_SPECS: Readonly<Record<WeaponKind, WeaponSpec>> = {
 };
 
 /** How far the hand sits from the shoulder (pixels). */
-export const ARM_LENGTH = 8;
+export const ARM_LENGTH = 6;
 /** The arm's angle with no weapon in hand (hanging, a touch forward). */
 export const EMPTY_ARM = 1.45;
 
