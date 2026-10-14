@@ -497,6 +497,8 @@ function check(E) {
   console.log(`economy-sim --check (${E.name}): first purchase ${fmtT(first)}, ${inTen} purchases in 10 min`);
   // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
+  // Fishing (Phase 6): Gold share, crate values, rod gates and the 99 band (`--fishing` prints the table).
+  fails.push(...fishingScenario({ quiet: true }));
   if (fails.length) {
     for (const f of fails) console.error(`  FAIL ${f}`);
     process.exit(1);
@@ -653,9 +655,140 @@ function reelsScenario({ rounds, plays, quiet }) {
   return fails;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// --fishing: Fishing v1 on the v3 curve (docs/world/delve-and-beyond.md §5.7).
+// Fishing is a materials, XP and discovery loop, not a Gold strategy. Per stage
+// of the simulation: catches a minute by level and rod (actively at the Good
+// grade, auto at Off), fish and crates sold at the vendor floor, the Merchant's
+// standing fish order, the daily Ledger Catch (reported; a daily, not a rate),
+// and the rods' gates. `--check` runs the four checks; CI's --check includes it.
+// ───────────────────────────────────────────────────────────────────────────
+
+const FISH = loadTsTree('src/app/shared/fishing/fishing.model.ts');
+/** Seconds of a cast that are not the bite wait: the hook reaction, the reel (or auto's instant land), the recast. */
+const CAST_OVERHEAD = { active: .3 + 2.8 + 1, auto: .6 + 2.8 + .6 };
+/** The Merchant's standing fish order (delve-missions.model `fish-merchant-order`), read from the source text. */
+function merchantOrder() {
+  const text = readFileSync(resolve(here, '../src/app/shared/npc/delve-missions.model.ts'), 'utf8');
+  const block = text.slice(text.indexOf("id: 'fish-merchant-order'"), text.indexOf("id: 'fish-merchant-debt'"));
+  const items = [...block.matchAll(/materialId: '([a-z-]+)', count: (\d+)/g)].map(m => [m[1], Number(m[2])]);
+  const seconds = Number((/goldSeconds: (\d+)/.exec(block) || [])[1] ?? 0);
+  const floor = Number((/itemScaled\(([\d_]+)\)/.exec(block) || [])[1]?.replace(/_/g, '') ?? 0) * C.ITEM_ECONOMY_SCALE;
+  return { items, seconds, floor };
+}
+/** Each rod's recipe gate (crafting.model FISHING_RECIPES), read from the source text: { gold, level, skill }. */
+function rodRecipe(id) {
+  const text = readFileSync(resolve(here, '../src/app/shared/crafting/crafting.model.ts'), 'utf8');
+  const at = text.indexOf(`'${id}', [`) >= 0 ? text.indexOf(`'${id}', [`) : text.indexOf(`, '${id}',\n`);
+  const tail = text.slice(at, at + 600);
+  const m = /\]\s*,\s*\n?\s*([\d_]+),\s*(\d+),/.exec(tail);
+  const skill = (/skill: '([a-z]+)'/.exec(tail.slice(0, tail.indexOf('}),') + 3)) || [])[1];
+  return m ? { gold: Number(m[1].replace(/_/g, '')), level: Number(m[2]), skill } : null;
+}
+const xpFor = L => Math.floor(100 * Math.pow(Math.max(0, L - 1), 2.2));
+const buyback = anchor => Math.max(1, Math.floor(Math.round(anchor * C.ITEM_ECONOMY_SCALE) * C.VENDOR_BUYBACK_FRACTION) - 1);
+const anchorOf = id => FISH.catchById(id)?.anchor ?? ({ 'world-root-bark': 1500, thornroot: 1400, 'ember-grub': 200, 'cinder-ore': 420, torch: 300, 'slag-fragment': 260, 'ember-residue': 1800 })[id] ?? 300;
+
+/** The best rod and bait at a Fishing level, and what a minute of fishing gives in one water. */
+function fishingRate(level, water, mode) {
+  const held = id => FISH.RODS.some(r => r.id === id && r.level <= level) ? 1 : 0;
+  const rod = FISH.rodFor(held, level);
+  if (!rod || !rod.works.liquids.includes(FISH.WATERS[water].liquid)) return null;
+  // Bait a fisher of that level keeps: Shadow-Root Cuttings from 10, Ember Grubs before.
+  const bait = level >= 10 ? .35 : .1;
+  const perks = FISH.fishingPerks(level);
+  const bite = rod.works.bite * (1 + bait) * perks.bite;
+  const seconds = 6 / bite + CAST_OVERHEAD[mode];
+  const perMin = 60 / seconds;
+  const grade = mode === 'active' ? 'good' : 'off';
+  const table = FISH.catchTable({ water, bait, cratePerk: perks.crate });
+  let xp = 0, gold = 0;
+  const per = {};
+  for (const row of table) {
+    xp += row.p * FISH.catchXp(water, row.rarity, grade);
+    const value = row.rarity === 'crate'
+      ? FISH.crateExpectedAnchor(row.id, anchorOf) * C.ITEM_ECONOMY_SCALE * C.VENDOR_BUYBACK_FRACTION
+      : buyback(row.p ? anchorOf(row.id) : 0);
+    gold += row.p * value;
+    per[row.id] = (per[row.id] ?? 0) + row.p * perMin * (1 + perks.double);
+  }
+  return { perMin, xpMin: xp * perMin, goldMin: gold * perMin, per, crateP: table.filter(r => r.rarity === 'crate').reduce((s, r) => s + r.p, 0), table };
+}
+
+function fishingScenario({ quiet = false } = {}) {
+  const fails = [];
+  const { log } = simulate(PROPOSED);
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const order = merchantOrder();
+  say(`Fishing scenario · v3 curve (PROPOSED) · order ${order.items.map(([id, n]) => `${n} ${id}`).join(' + ')} for max(${order.floor}, ${order.seconds} s of income)\n`);
+  const stages = [[600, '10m', 5], [1800, '30m', 8], [3600, '1h', 12], [3 * 3600, '3h', 20], [86400, '1d', 30], [3 * 86400, '3d', 45], [7 * 86400, '7d', 60], [14 * 86400, '14d', 80], [30 * 86400, '30d', 99]];
+  say('  ' + 'stage'.padEnd(6) + 'Fish'.padStart(5) + 'forge G/min'.padStart(14) + 'sell G/min'.padStart(12) + 'order G/min'.padStart(13) + 'share'.padStart(8) + 'ledger (daily)'.padStart(16) + 'XP/min'.padStart(9));
+  for (const [t, label, level] of stages) {
+    const gps = log.at[t]?.gps;
+    if (!gps) continue;
+    const forgeMin = gps * 60;
+    // The fisher splits time between the Mere and Magma lava (once a Seam Rod works) to fill the order.
+    const mere = fishingRate(level, 'mere', 'active');
+    const magma = fishingRate(level, 'magma', 'active');
+    const mix = magma ? .5 : 1;
+    const sell = mere.goldMin * mix + (magma ? magma.goldMin * (1 - mix) : 0);
+    // Order fills a minute: limited by its scarcest item at this mix.
+    let fills = Infinity;
+    for (const [id, n] of order.items) {
+      const rate = (mere.per[id] ?? 0) * mix + (magma ? (magma.per[id] ?? 0) * (1 - mix) : 0);
+      fills = Math.min(fills, rate / n);
+    }
+    if (!Number.isFinite(fills)) fills = 0;
+    const orderMin = fills * Math.max(order.floor, gps * order.seconds);
+    const share = (sell + orderMin) / forgeMin;
+    const ledger = Math.max(FISH.LEDGER_REWARD.goldFloor, gps * FISH.LEDGER_REWARD.goldSeconds);
+    const xpMin = mere.xpMin * mix + (magma ? magma.xpMin * (1 - mix) : 0);
+    say('  ' + label.padEnd(6) + String(level).padStart(5) + fmtN(forgeMin).padStart(14) + fmtN(sell).padStart(12) + fmtN(orderMin).padStart(13) + `${(share * 100).toFixed(1)}%`.padStart(8) + fmtN(ledger).padStart(16) + xpMin.toFixed(0).padStart(9));
+    // 1. Fishing's Gold a minute (selling everything plus the standing order) ≤ 10% of the forge's, after the first 10 minutes.
+    if (t > 600 && share > .10) fails.push(`fishing pays ${(share * 100).toFixed(1)}% of the forge's Gold/min at ${label} (must be <= 10%)`);
+    // 2. A crate's vendor value ≤ the Gold the forge earns in the minutes it took to fish it.
+    for (const water of ['mere', 'magma']) {
+      const r = water === 'mere' ? mere : magma;
+      if (!r) continue;
+      const crate = FISH.WATERS[water].crate;
+      const value = FISH.crateExpectedAnchor(crate, anchorOf) * C.ITEM_ECONOMY_SCALE * C.VENDOR_BUYBACK_FRACTION;
+      const minutes = 1 / Math.max(1e-9, r.crateP * r.perMin);
+      if (value > forgeMin * minutes) fails.push(`${crate} worth ${value.toFixed(0)} beats ${minutes.toFixed(0)} min of the forge at ${label}`);
+    }
+  }
+  // 3. No rod is bought past its gate: each rod's recipe asks for the Fishing level that wears it.
+  say('\n  Rods: recipe gate and Gold');
+  for (const rod of FISH.RODS.filter(r => r.id !== 'worn-rod')) {
+    const recipe = rodRecipe(rod.id);
+    say(`    ${rod.name.padEnd(14)} Fishing ${String(rod.level).padStart(2)}  recipe: ${recipe ? `${recipe.skill} ${recipe.level}, ${fmtN(recipe.gold)} Gold` : 'missing'}`);
+    if (!recipe) fails.push(`${rod.id}: no recipe`);
+    else if (recipe.skill !== 'fishing' || recipe.level !== rod.level) fails.push(`${rod.id} can be crafted before Fishing ${rod.level} (recipe gate: ${recipe.skill} ${recipe.level})`);
+  }
+  // 4. 99 Fishing takes 60–250 active hours (the band the other skills sit in): the best water at each level, active.
+  let hours = 0;
+  for (let L = 1; L < 99; L++) {
+    const best = Math.max(...['seep', 'mere', 'magma'].map(w => fishingRate(L, w, 'active')?.xpMin ?? 0));
+    hours += (xpFor(L + 1) - xpFor(L)) / best / 60;
+  }
+  let autoHours = 0;
+  for (let L = 1; L < 99; L++) {
+    const best = Math.max(...['seep', 'mere', 'magma'].map(w => fishingRate(L, w, 'auto')?.xpMin ?? 0));
+    autoHours += (xpFor(L + 1) - xpFor(L)) / best / 60;
+  }
+  say(`\n  99 Fishing: ${hours.toFixed(0)} active hours at the Good grade (${autoHours.toFixed(0)} h on auto at Off); band 60-250 h`);
+  if (hours < 60 || hours > 250) fails.push(`99 Fishing takes ${hours.toFixed(0)} active hours (must be 60-250)`);
+  if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
+  if (quiet) console.log(`economy-sim fishing: 99 Fishing in ${hours.toFixed(0)} h; ${fails.length ? fails.length + ' fail(s)' : 'gold share, crates and rod gates ok'}`);
+  return fails;
+}
+
 if (argv.reels) {
   const fails = reelsScenario({ rounds: Number(argv.rounds ?? 2_000_000), plays: Number(argv.plays ?? 1_000_000), quiet: false });
   for (const f of fails) console.error(`  FAIL ${f}`);
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.fishing && !argv.check) {
+  const fails = fishingScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.inventory) {
