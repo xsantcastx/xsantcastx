@@ -19,9 +19,8 @@
  * go to output/underhearth/ when UNDERHEARTH_SHOTS is set (not committed).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { activity, DelveFixture, DELVE_SEED, nodeIndex, SPEC, xpForLevel } from './play-delve-fixtures';
+import { activity, DelveFixture, withSectors, xpForLevel } from './play-delve-fixtures';
 import { canvas, ERA, focusWorld, ledger, messageLine, openPlay, playerX, seed, stackQty as stackQtyOf, walkTo, type Blobs } from './play-helpers';
-import { encodeRuns } from '../src/app/shared/delve/delve-region.model';
 import { WARDEN_FLAG } from '../src/app/play/engine/terrain';
 import { FURNACE, GANTRY, LANDING } from '../src/app/play/engine/underhearth-gen';
 import { FURNACE_FLAG, UNSEALED_FLAG } from '../src/app/shared/delve/underhearth.model';
@@ -50,26 +49,6 @@ function satchel(stacks: Record<string, number>, items: unknown[] = []): Blobs {
 const PICK_IV = gear('e2e-pick-4', 'pickaxe-4', 'Pickaxe IV', 1);
 /** Strike 5 (the 60 damage ceiling) and a little ward: a Keeper geared for the Underhearth. */
 const BLADE = gear('e2e-blade', 'eclipse-longblade', 'Eclipse Longblade', 2, { category: 'equipment', tags: ['equipment', 'weapon'], type: 'artifact', soulbound: false, stats: { strikePower: 5, ward: 6 }, location: { kind: 'equipped', slotId: 'weapon' } });
-
-/**
- * The Delve save: the core diff and claimed flags (DelveFixture), and deep
- * sector cells (world col, row → node id) in the first cloud slot, encoded
- * with the game's own run encoder, as DelveSaveService writes them.
- */
-function delve(core: DelveFixture, deep: { col: number; row: number; id: string }[]): Blobs {
-  const blobs = core.blobs();
-  const sectors: Record<string, { g: number; t: number; c: string }> = {};
-  const bySector = new Map<string, Map<number, number>>();
-  for (const cell of deep) {
-    const sx = Math.floor(cell.col / 32), sy = Math.floor(cell.row / 32), local = (cell.row - sy * 32) * 32 + (cell.col - sx * 32);
-    const key = `${sx},${sy}`;
-    if (!bySector.has(key)) bySector.set(key, new Map());
-    bySector.get(key)!.set(local, nodeIndex(cell.id));
-  }
-  const now = Date.now();
-  for (const [key, cells] of bySector) sectors[key] = { g: 1, t: now, c: encodeRuns(cells) };
-  return { ...blobs, 'godforge-delve-r0': { v: 1, seed: DELVE_SEED, rx: 0, ry: 0, t: now, sectors } };
-}
 
 async function descend(page: Page): Promise<void> {
   await openPlay(page);
@@ -135,7 +114,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       test.setTimeout(120_000);
       const core = new DelveFixture();
       core.claimed = [WARDEN_FLAG, UNSEALED_FLAG, 'underhearth-reached'];
-      await seed(page, { ...delve(core, [{ col: 107, row: 64, id: 'camp' }]), ...satchel({ 'seam-cart': 1 }), ...activity(LEVELS) });
+      await seed(page, { ...withSectors(core, [{ col: 107, row: 64, id: 'camp' }]), ...satchel({ 'seam-cart': 1 }), ...activity(LEVELS) });
       await descend(page);
       expect(await depth(page)).toBe(LANDING.row + LANDING.h);
       await walkTo(page, 100.5 * CELL, 10);
@@ -160,7 +139,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       test.setTimeout(120_000);
       const core = new DelveFixture();
       core.claimed = [WARDEN_FLAG, UNSEALED_FLAG, 'underhearth-reached'];
-      await seed(page, { ...delve(core, [{ col: 107, row: 64, id: 'camp' }]), ...satchel({ 'rift-anchor': 1 }), ...activity(LEVELS) });
+      await seed(page, { ...withSectors(core, [{ col: 107, row: 64, id: 'camp' }]), ...satchel({ 'rift-anchor': 1 }), ...activity(LEVELS) });
       await descend(page);
       await walkTo(page, 109.3 * CELL, 6);
       await tap(page, 'd', 40);
@@ -191,7 +170,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       const core = new DelveFixture();
       core.claimed = [WARDEN_FLAG, UNSEALED_FLAG, 'underhearth-reached', 'hammer-mark-1', 'hammer-mark-2', 'hammer-mark-3', 'hammer-mark-4'];
       await seed(page, {
-        ...delve(core, [{ col: 40, row: FURNACE.floorRow - 1, id: 'camp' }]),
+        ...withSectors(core, [{ col: 40, row: FURNACE.floorRow - 1, id: 'camp' }]),
         ...satchel({ 'four-hammer-marks': 1, 'seam-bucket-water': 10 }, [BLADE]),
         ...activity(LEVELS),
       });

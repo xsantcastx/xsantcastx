@@ -1928,11 +1928,10 @@ export class SideScrollerComponent implements OnDestroy {
       return false;
     }
     this.refreshHotbar();
-    return event.count !== undefined ? count : true;
     if (event.item === 'torch' && event.areaId === 'ember-delve') {
       this.bountyEvent({ kind: 'torch', row: Number(event.cellKey.split(',')[1]), token: event.cellKey });
     }
-    return true;
+    return event.count !== undefined ? count : true;
   }
   /** A placed thing comes back: one grant keyed by the take's mutation id. */
   private takeToSatchel(event: PlaceEvent): boolean {
