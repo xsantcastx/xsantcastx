@@ -242,13 +242,15 @@
       <!-- Amber when something waits in Overflow; inside the button, never a new fixed widget. -->
       @if (inventory.snapshot.overflow) { <i class="bag-dot" aria-hidden="true"></i> }
     </button>
+    <!-- Coins, Ore and Ember are the plate; edge, damage and kills are read out (screen
+         readers, the specs) but not painted: the doll and Stats already show them. -->
     <div class="tally">
       <p><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
       <p><span>{{ t('play.hud.tally.ore') }}</span><b class="ore-count">{{ ore }}</b></p>
       <p><span>{{ t('play.hud.tally.ember') }}</span><b class="ember-count">{{ ember }}</b></p>
-      <p><span>{{ t('play.hud.tally.edge') }}</span><b>{{ edge ? t(equipped ? 'play.hud.tally.worn' : 'play.hud.tally.bag') : '—' }}</b></p>
-      <p><span>{{ t('play.hud.tally.damage') }}</span><b>{{ pushed.damage }}</b></p>
-      <p><span>{{ t('play.hud.tally.defeated') }}</span><b>{{ state.kills || 0 }}</b></p>
+      <p class="tally-quiet"><span>{{ t('play.hud.tally.edge') }}</span><b>{{ edge ? t(equipped ? 'play.hud.tally.worn' : 'play.hud.tally.bag') : '—' }}</b></p>
+      <p class="tally-quiet"><span>{{ t('play.hud.tally.damage') }}</span><b>{{ pushed.damage }}</b></p>
+      <p class="tally-quiet"><span>{{ t('play.hud.tally.defeated') }}</span><b>{{ state.kills || 0 }}</b></p>
     </div>
     <!-- Pickups announce through the objective line; these chips are only the picture. -->
   </aside>
@@ -279,6 +281,8 @@
       }
       <div class="belt" role="group" [attr.aria-label]="t('play.hud.book.worn')">
         <div class="wells">
+          <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
+          <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
           @for (well of wells; track well.id) {
             <button type="button" class="well" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label">
               @if (well.filled && well.art) {
