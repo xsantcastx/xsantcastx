@@ -20,6 +20,7 @@ import { FLOOR } from './engine.model';
 import {
   CHATTER_SHOW, FACE_RANGE, KeeperChatter, keeperAt, KeeperPlacement, LifePalette, LifeSilhouette, onScreen, placeKeepers, TownsfolkCrowd, townsfolkArt,
 } from '../world/life';
+import { EMPTY_KEEPER_CONTEXT, KeeperContext, keeperLines } from '../world/keeper-lines';
 import { materialDisplay } from '../../shared/rpg/material-catalog';
 import type { AreaDef, StationDef, TownDef } from '../world/world.model';
 
@@ -91,6 +92,8 @@ export interface LifeFrame {
 const BOX = { x: -64, y: -172, w: 128, h: 172 };
 const OUTLINE = '#1a1020';
 const TAG_FONT = '600 14px "Cormorant Garamond", Georgia, serif';
+/** The subtitle under a person's name: their role title (or a canon epithet). */
+const TITLE_FONT = 'italic 600 11px "Cormorant Garamond", Georgia, serif';
 /** Clear canvas left between a name tag's plate and the viewport edge, world px. */
 const TAG_EDGE = 4;
 const BUBBLE_FONT = '600 15px "Cormorant Garamond", Georgia, serif';
@@ -108,11 +111,19 @@ export class TownLife {
   private placements: KeeperPlacement[] = [];
   private crowd: TownsfolkCrowd | null = null;
   private chatter: KeeperChatter | null = null;
+  /**
+   * What each keeper says to this Keeper: `keeperLines()` for the story beats
+   * and station deeds in `context` (keeper-lines.ts). Index-aligned with the
+   * placements; the chatter reads `def.lines` off these.
+   */
+  private voices: { x: number; def: { lines: readonly string[] } }[] = [];
+  private context: KeeperContext = EMPTY_KEEPER_CONTEXT;
   /** Townsfolk speak too, one line each; a keeper's line wins when both start. */
   private folkChatter: KeeperChatter | null = null;
   /** Smoothed facing per keeper, -1..1 (passes through 0 as it turns). */
   private facing = new Float32Array(0);
   private tagText: string[] = [];
+  private tagTitle: string[] = [];
   private tagWidth = new Float32Array(0);
   /** The bubble's wrapped lines and width, set when a line starts. */
   private bubble: string[] = [];
@@ -138,19 +149,38 @@ export class TownLife {
   enter(area: AreaDef, town: TownDef): void {
     if (area !== town) {
       this.placements = []; this.crowd = null; this.chatter = null; this.folkChatter = null; this.facing = new Float32Array(0);
-      this.tagText = []; this.tagWidth = new Float32Array(0); this.bubbleFor = -1;
+      this.voices = []; this.tagText = []; this.tagTitle = []; this.tagWidth = new Float32Array(0); this.bubbleFor = -1;
       return;
     }
     this.placements = placeKeepers(town);
     this.crowd = new TownsfolkCrowd(town, this.placements);
-    this.chatter = new KeeperChatter(this.placements);
+    this.voices = this.placements.map(p => ({ x: p.x, def: { lines: keeperLines(p.def.id, this.context) } }));
+    this.chatter = new KeeperChatter(this.voices);
     this.folkChatter = new KeeperChatter(this.crowd.folk);
     this.facing = new Float32Array(this.placements.length);
     this.placements.forEach((p, i) => { this.facing[i] = Math.sign(p.station.x - p.x) || 1; });
     this.tagText = this.placements.map(() => '');
+    this.tagTitle = this.placements.map(() => '');
     this.tagWidth = new Float32Array(this.placements.length);
     this.bubbleFor = -1;
     this.realmArt = townsfolkArt(town.realm);
+  }
+
+  /**
+   * The Keeper's story beats and station deeds changed: re-read each keeper's
+   * pool. A keeper whose pool changed starts again from the top, so the line
+   * about what just happened is the next thing it says. Allocates only when
+   * something changed (the host calls this when its signature changes).
+   */
+  setContext(context: KeeperContext): void {
+    this.context = context;
+    for (let i = 0; i < this.voices.length; i++) {
+      const lines = keeperLines(this.placements[i].def.id, context);
+      const before = this.voices[i].def.lines;
+      if (lines.length === before.length && lines.every((key, n) => key === before[n])) continue;
+      this.voices[i].def.lines = lines;
+      this.chatter?.restart(i);
+    }
   }
 
   /** The station a click on a keeper should open, or null. */
@@ -227,10 +257,19 @@ export class TownLife {
   private nameTag(c: CanvasRenderingContext2D, f: LifeFrame, i: number, p: KeeperPlacement): void {
     const text = f.translate(p.def.nameKey);
     const name = text === p.def.nameKey ? p.def.name : text;
+    // A person's role title (or a canon epithet) rides under the name, smaller.
+    const titled = p.def.titleKey ? f.translate(p.def.titleKey) : '';
+    const title = !p.def.titleKey ? '' : titled === p.def.titleKey ? p.def.title ?? '' : titled;
     c.save();
-    c.font = TAG_FONT; c.textAlign = 'center';
-    if (this.tagText[i] !== name) { this.tagText[i] = name; this.tagWidth[i] = Math.min(200, c.measureText(name).width + 20); }
-    const w = this.tagWidth[i], y = FLOOR - 196;
+    c.textAlign = 'center';
+    if (this.tagText[i] !== name || this.tagTitle[i] !== title) {
+      this.tagText[i] = name; this.tagTitle[i] = title;
+      c.font = TAG_FONT;
+      let w = c.measureText(name).width;
+      if (title) { c.font = TITLE_FONT; w = Math.max(w, c.measureText(title).width); }
+      this.tagWidth[i] = Math.min(200, w + 20);
+    }
+    const w = this.tagWidth[i], y = FLOOR - 196, h = title ? 35 : 22;
     // Keep the plate inside the visible canvas: a keeper near the edge (or
     // walking off it) keeps a readable tag pinned to that edge instead of a
     // half-cut one. Once the keeper is no longer under its pinned plate at all,
@@ -238,9 +277,10 @@ export class TownLife {
     const lo = f.camera + w / 2 + TAG_EDGE, hi = f.camera + f.viewport - w / 2 - TAG_EDGE;
     const x = lo > hi ? p.x : Math.min(hi, Math.max(lo, p.x));
     if (Math.abs(x - p.x) > w / 2) { c.restore(); return; }
-    c.fillStyle = '#1a120fe6'; c.fillRect(x - w / 2, y, w, 22);
-    c.fillStyle = p.def.palette.glow; c.fillRect(x - w / 2, y + 20, w, 2);
-    c.fillStyle = '#ffe1b0'; c.fillText(name, x, y + 16, 190);
+    c.fillStyle = '#1a120fe6'; c.fillRect(x - w / 2, y, w, h);
+    c.fillStyle = p.def.palette.glow; c.fillRect(x - w / 2, y + h - 2, w, 2);
+    c.font = TAG_FONT; c.fillStyle = '#ffe1b0'; c.fillText(name, x, y + 16, 190);
+    if (title) { c.font = TITLE_FONT; c.fillStyle = '#d9bf98'; c.fillText(title, x, y + 30, 190); }
     c.restore();
   }
 
