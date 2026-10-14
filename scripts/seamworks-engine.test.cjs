@@ -2346,6 +2346,16 @@ test('life: townsfolk wander only open floor, stay in bounds, yield to the Keepe
   p.pause = 0; p.target = p.hi; p.x = p.lo;
   crowd.update(1 / 60, p.lo + 40);
   assert.ok(p.pause > 0 && p.x === p.lo, 'stops when the Keeper is just ahead');
+  // Elbow room: one standing where the Keeper stands walks off, and never stops behind the Keeper.
+  const q = crowd.folk[0];
+  const mid = (q.lo + q.hi) / 2;
+  q.x = mid; q.pause = 5; q.target = mid;
+  for (let n = 0; n < 60 * 8; n++) crowd.update(1 / 60, mid + 10);
+  assert.ok(Math.abs(q.x - (mid + 10)) >= life.TOWNSFOLK_CLEAR, 'a townsperson does not stand behind the Keeper');
+  // Pinned against the end of its floor (a stall, a keeper): it passes behind the Keeper to the open side.
+  q.x = q.hi; q.pause = 5; q.target = q.hi; q.passing = false;
+  for (let n = 0; n < 60 * 8; n++) crowd.update(1 / 60, q.hi - 10);
+  assert.ok(Math.abs(q.x - (q.hi - 10)) >= life.TOWNSFOLK_CLEAR, 'a cornered townsperson passes to the open side');
 });
 
 test('life: every townsperson names where a local material is found (meaning audit #6)', () => {

@@ -304,6 +304,8 @@ export interface Townsperson {
   pause: number;
   /** Walk cycle phase, advanced only while walking. */
   step: number;
+  /** Stepping past the Keeper to the far side (the near side had no room): no yielding until arrived. */
+  passing?: boolean;
   /** Draw scale, 0.85..1. */
   build: number;
   /** Phase offset for the idle breath. */
@@ -347,6 +349,12 @@ export function townsfolkLines(town: TownDef): FolkLine[] {
 
 /** Yield distance: a townsperson walking toward the player stops this close. */
 export const TOWNSFOLK_YIELD = 56;
+/**
+ * Elbow room: a townsperson standing closer than this to the Keeper (the Keeper
+ * arrived on top of them, or spawned there) walks off to the far side, so no
+ * figure ever stands behind the Keeper and reads as a dark shape on the body.
+ */
+export const TOWNSFOLK_CLEAR = 50;
 
 /**
  * Two to four wanderers. Each owns one open-floor segment and drifts between
@@ -381,6 +389,7 @@ export class TownsfolkCrowd {
   update(dt: number, playerX: number): void {
     for (const p of this.folk) {
       if (p.pause > 0) {
+        if (Math.abs(playerX - p.x) < TOWNSFOLK_CLEAR && this.stepAside(p, playerX)) continue;
         p.pause -= dt;
         if (p.pause <= 0) {
           p.pause = 0;
@@ -391,13 +400,29 @@ export class TownsfolkCrowd {
       const dx = p.target - p.x;
       const dir = dx > 0 ? 1 : -1;
       const ahead = (playerX - p.x) * dir;
-      if (ahead > 0 && ahead < TOWNSFOLK_YIELD) { p.facing = dir; p.pause = .8 + this.random() * 1.2; continue; }
+      if (!p.passing && ahead > 0 && ahead < TOWNSFOLK_YIELD) { p.facing = dir; p.pause = .8 + this.random() * 1.2; continue; }
       const move = p.speed * dt;
-      if (Math.abs(dx) <= move) { p.x = p.target; p.pause = 1.5 + this.random() * 4.5; }
+      if (Math.abs(dx) <= move) { p.x = p.target; p.pause = 1.5 + this.random() * 4.5; p.passing = false; }
       else { p.x += dir * move; p.facing = dir; p.step += dt * p.speed / 9; }
       // Hard bounds: whatever happens, never leave the segment.
       if (p.x < p.lo) p.x = p.lo; else if (p.x > p.hi) p.x = p.hi;
     }
+  }
+  /**
+   * Walk off to the side away from the Keeper; when that side of the segment is
+   * too short (a stall or a keeper is right there), pass behind the Keeper to the
+   * other side instead.
+   */
+  private stepAside(p: Townsperson, playerX: number): boolean {
+    const away = p.x >= playerX ? 1 : -1;
+    const reach = TOWNSFOLK_CLEAR + 30 + this.random() * 40;
+    for (const side of [away, -away]) {
+      const target = Math.min(p.hi, Math.max(p.lo, playerX + side * reach));
+      if (Math.abs(target - playerX) < TOWNSFOLK_CLEAR) continue;
+      p.pause = 0; p.target = target; p.passing = side !== away;
+      return true;
+    }
+    return false;
   }
   /** mulberry32 on a number field: no allocation. */
   private random(): number {

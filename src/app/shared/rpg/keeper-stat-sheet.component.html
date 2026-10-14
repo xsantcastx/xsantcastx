@@ -1,5 +1,5 @@
 <section class="ks" [class.ks--compact]="compact" [attr.aria-label]="heading">
-  <h3 class="ks__head">{{ heading }}</h3>
+  @if (showHeading) { <h3 class="ks__head">{{ heading }}</h3> }
   <dl class="ks__list">
     @for (key of keys; track key) {
       @if (visible(key)) {
