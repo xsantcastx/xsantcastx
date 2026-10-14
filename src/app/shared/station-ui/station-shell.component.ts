@@ -39,7 +39,8 @@ let nextId = 0;
           } @else {
             <h2 class="ss__sr" [id]="titleId">{{ title() }}</h2>
           }
-          @if (purpose()) { <p class="ss__purpose">{{ purpose() }}</p> }
+          <!-- In the world the panel already names the place, so its sentence waits under Details. -->
+          @if (purpose() && showTitle()) { <p class="ss__purpose">{{ purpose() }}</p> }
         </div>
         <div class="ss__wallet"><ng-content select="[stationWallet]" /></div>
       </header>
@@ -52,6 +53,7 @@ let nextId = 0;
       <ng-content />
 
       <app-details-drawer class="ss__details" [label]="detailsLabel()" [hint]="detailsHint()" [(open)]="detailsOpen">
+        @if (purpose() && !showTitle()) { <p class="ss__purpose ss__purpose--details">{{ purpose() }}</p> }
         <ng-content select="[stationDetails]" />
       </app-details-drawer>
     </section>

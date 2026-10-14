@@ -192,16 +192,6 @@
           </li>
         </ul>
 
-        <p class="ld__charmrow-totals" *ngIf="charmTotals.length; else charmHint">
-          <span *ngFor="let mod of charmTotals">{{ mod }}</span>
-        </p>
-        <ng-template #charmHint>
-          <p class="ld__charmrow-hint">
-            {{ charmsHeld
-                ? t('loadout.charms.hint', { n: charmsHeld })
-                : t('loadout.charms.none') }}
-          </p>
-        </ng-template>
       </div>
       <!--
         Slot picker. Selecting a well shows what is worn there and every item in
@@ -299,10 +289,23 @@
         </ng-template>
       </div>
 
-      <!-- Doll first: the paper doll is what you act on (tap a slot, pick,
-           equip), so it leads the first screen. The numbers it changes — the
-           totals, the live sheet and the build card — follow it. -->
+      <!-- Diablo II rule: the doll and its wells are the screen. Everything the
+           worn gear adds up to — totals, the live sheet, the build card, what the
+           charms buy — is one tap away, not stacked under the doll. -->
+      <details class="ld__more">
+      <summary class="ld__more-label">{{ t('loadout.sheet.title') }}</summary>
       <div class="ld__stats-after">
+      <p class="ld__charmrow-totals" *ngIf="charmTotals.length; else charmHint">
+        <span *ngFor="let mod of charmTotals">{{ mod }}</span>
+      </p>
+      <ng-template #charmHint>
+        <p class="ld__charmrow-hint">
+          {{ charmsHeld
+              ? t('loadout.charms.hint', { n: charmsHeld })
+              : t('loadout.charms.none') }}
+        </p>
+      </ng-template>
+
       <p class="ld__totals" *ngIf="hasTotals(); else emptyTotals">
         <span *ngIf="snap.totals.goldPerSec">{{ t('loadout.stat.gold') }} <b>+{{ snap.totals.goldPerSec }}</b></span>
         <span *ngIf="magicFind.total">{{ t('loadout.stat.mf') }} <b>+{{ magicFind.total }}%</b></span>
@@ -343,6 +346,7 @@
         }
       </section>
       </div>
+      </details>
 
     </div>
 
