@@ -49,10 +49,7 @@ import { LoreScrollService } from '../shared/rune-forge/lore-scroll.service';
 import { LEVELS, LevelDefinition, rankSigil } from '../shared/gamification/gamification.model';
 import { XpService, XpSnapshot, localDay } from '../shared/gamification/xp.service';
 import {
-  CODEX_CATEGORIES,
   CodexAchievement,
-  CodexCategory,
-  CodexCategoryId,
   CodexSort,
   CodexStatus,
   SORT_LABELS,
@@ -123,13 +120,6 @@ interface TabDefinition {
   label: string;
   icon: string;
   hint: string;
-}
-
-/** A section of the wall: one category with its achievements and its counts. */
-interface AchievementSection {
-  category: CodexCategory;
-  items: CodexAchievement[];
-  found: number;
 }
 
 /** One day cell in the streak calendar. */
@@ -272,14 +262,12 @@ export class CodexComponent implements OnInit, OnDestroy {
   activeTab: CodexTab = 'achievements';
 
   // ── Achievements ──────────────────────────────────────────────────────────
-  readonly categories = CODEX_CATEGORIES;
   readonly rarityOrder = RARITY_ORDER;
   readonly rarities = RARITIES;
   readonly sortLabels = SORT_LABELS;
 
   achievements: CodexAchievement[] = buildAchievements();
 
-  categoryFilter: CodexCategoryId | 'all' = 'all';
   rarityFilter: EclipseRarity | 'all' = 'all';
   statusFilter: CodexStatus = 'all';
   sort: CodexSort = 'rarity';
@@ -517,13 +505,7 @@ export class CodexComponent implements OnInit, OnDestroy {
     return { found: of.filter(a => a.unlocked).length, total: of.length };
   }
 
-  categoryCount(id: CodexCategoryId): { found: number; total: number } {
-    const of = this.achievements.filter(a => a.category.id === id);
-    return { found: of.filter(a => a.unlocked).length, total: of.length };
-  }
-
   private matchesFilters(a: CodexAchievement): boolean {
-    if (this.categoryFilter !== 'all' && a.category.id !== this.categoryFilter) return false;
     if (this.rarityFilter !== 'all' && a.tier !== this.rarityFilter) return false;
     if (this.statusFilter === 'locked' && a.unlocked) return false;
     if (this.statusFilter === 'unlocked' && !a.unlocked) return false;
@@ -533,7 +515,7 @@ export class CodexComponent implements OnInit, OnDestroy {
     // A locked card shows "???" and its hint, so searching its real name would
     // let the search box spoil the wall. Locked cards match on hint text only.
     return a.unlocked
-      ? `${a.name} ${a.description} ${a.toolTitle ?? ''}`.toLowerCase().includes(q)
+      ? `${a.name} ${a.description}`.toLowerCase().includes(q)
       : a.hint.toLowerCase().includes(q);
   }
 
@@ -558,76 +540,24 @@ export class CodexComponent implements OnInit, OnDestroy {
         });
       case 'alpha':
         return by.sort((a, b) => a.name.localeCompare(b.name));
-      case 'category':
-        return by.sort((a, b) =>
-          this.categories.findIndex(c => c.id === a.category.id) -
-          this.categories.findIndex(c => c.id === b.category.id) ||
-          b.rarity.weight - a.rarity.weight ||
-          a.name.localeCompare(b.name));
     }
   }
 
-  /**
-   * The wall, grouped into sections. Sorting by category collapses to one
-   * section per category; every other sort renders a single flat section, since
-   * grouping and sorting by different keys would produce sections whose internal
-   * order contradicts their headings.
-   */
-  get sections(): AchievementSection[] {
-    const visible = this.sorted(this.achievements.filter(a => this.matchesFilters(a)));
-
-    if (this.sort !== 'category') {
-      if (visible.length === 0) return [];
-      return [{
-        category: {
-          id: 'global',
-          label: this.filterSummary,
-          icon: '✦',
-          color: '#A78BFA',
-          glow: 'rgba(139, 92, 246, 0.6)',
-          blurb: '',
-        },
-        items: visible,
-        found: visible.filter(a => a.unlocked).length,
-      }];
-    }
-
-    return this.categories
-      .map(category => {
-        const items = visible.filter(a => a.category.id === category.id);
-        return { category, items, found: items.filter(a => a.unlocked).length };
-      })
-      .filter(section => section.items.length > 0);
-  }
-
-  /** Heading for the flat (non-category) view — says what is being shown. */
-  get filterSummary(): string {
-    const bits: string[] = [];
-    if (this.rarityFilter !== 'all') bits.push(RARITIES[this.rarityFilter].label);
-    if (this.categoryFilter !== 'all') {
-      bits.push(this.categories.find(c => c.id === this.categoryFilter)?.label ?? '');
-    }
-    if (this.statusFilter !== 'all') bits.push(this.statusFilter === 'locked' ? 'Undiscovered' : 'Discovered');
-    return bits.length ? bits.join(' · ') : 'All Fragments';
+  /** The wall as filtered and sorted in Details. */
+  private get visibleAchievements(): CodexAchievement[] {
+    return this.sorted(this.achievements.filter(a => this.matchesFilters(a)));
   }
 
   get hasActiveFilters(): boolean {
-    return this.categoryFilter !== 'all'
-      || this.rarityFilter !== 'all'
+    return this.rarityFilter !== 'all'
       || this.statusFilter !== 'all'
       || this.search.trim().length > 0;
   }
 
   clearFilters(): void {
-    this.categoryFilter = 'all';
     this.rarityFilter = 'all';
     this.statusFilter = 'all';
     this.search = '';
-  }
-
-  /** Jump to a category from anywhere — used by the section headers. */
-  focusCategory(id: CodexCategoryId): void {
-    this.categoryFilter = this.categoryFilter === id ? 'all' : id;
   }
 
   // ── Lore Scrolls ──────────────────────────────────────────────────────────
@@ -909,7 +839,7 @@ export class CodexComponent implements OnInit, OnDestroy {
    */
   journal(tab: JournalTabKey): CodexJournal {
     const key: unknown[] = tab === 'achievements'
-      ? [this.achievements, this.categoryFilter, this.rarityFilter, this.statusFilter, this.sort, this.search]
+      ? [this.achievements, this.rarityFilter, this.statusFilter, this.sort, this.search]
       : tab === 'scrolls'
         ? [this.scrollShelves, this.inscriptionShelves]
         : [this.secrets, this.socketWords];
@@ -951,13 +881,12 @@ export class CodexComponent implements OnInit, OnDestroy {
   private buildAchievementJournal(): CodexJournal {
     // Found first, so the strip opens on something you can read; the chosen
     // sort (Details) still orders each half.
-    const all = this.sections.flatMap(section => section.items);
+    const all = this.visibleAchievements;
     const items = [...all.filter(a => a.unlocked), ...all.filter(a => !a.unlocked)];
     const entries = new Map<string, CodexEntry>();
     const rows: JournalRow[] = items.map(a => {
       const facts = [
         { label: this.t('codex.rarity'), value: a.rarity.label },
-        { label: this.t('codex.realm'), value: a.category.label },
         { label: this.t('codex.reward'), value: `+${a.xp} XP` },
       ];
       if (a.unlocked) facts.push({ label: this.t('codex.foundOn'), value: this.formatDate(a.unlockedAt) });
@@ -967,9 +896,7 @@ export class CodexComponent implements OnInit, OnDestroy {
         line: a.unlocked ? a.description : a.hint,
         facts,
         body: [],
-        note: a.gate
-          ? (a.unlocked ? this.t('codex.gateOpen', { gate: a.gate }) : this.t('codex.gateLocked'))
-          : null,
+        note: null,
         found: a.unlocked,
       });
       return {
