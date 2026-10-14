@@ -86,6 +86,8 @@ export function vaultTabOf(location: ItemLocation): VaultTabId | null {
 /** POE2's quest items take no slot either. */
 export const QUEST_STACKS: ReadonlySet<string> = new Set([
   'kaels-hammer', 'godforge-fragment', 'shadow-root-cutting', 'rift-key',
+  // The Worn Rod: handed to every Keeper, soulbound, like the quest finds it takes no slot.
+  'worn-rod',
 ]);
 
 /**
