@@ -13,10 +13,13 @@ import { TranslationService } from '../../translation.service';
 import { StoryService } from './story.service';
 import { JournalView, journalView } from './story';
 import { STORY_I18N } from './story.i18n';
+import { GlimService } from '../glim/glim.service';
+import { HubGlimBondComponent } from '../glim/hub-glim-bond.component';
 
 @Component({
   selector: 'app-hub-story',
   standalone: true,
+  imports: [HubGlimBondComponent],
   template: `
     <section class="hs" [attr.data-story-chapter]="view.chapter" aria-labelledby="hs-title">
       <header class="hs__head">
@@ -44,6 +47,8 @@ import { STORY_I18N } from './story.i18n';
           }
         </article>
       }
+      <!-- The bond with Glim (shared/glim/glim-bond.ts), once the two of you have met. -->
+      @if (glimMet) { <app-hub-glim-bond /> }
     </section>
   `,
   styles: [`
@@ -68,6 +73,7 @@ import { STORY_I18N } from './story.i18n';
 export class HubStoryComponent implements OnInit, OnDestroy {
   private readonly story = inject(StoryService);
   private readonly i18n = inject(TranslationService);
+  private readonly glim = inject(GlimService);
   private sub?: Subscription;
   view: JournalView = journalView(this.story.state);
 
@@ -82,6 +88,8 @@ export class HubStoryComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
   }
+
+  get glimMet(): boolean { return this.glim.state.met; }
 
   t(key: string, params?: Record<string, string | number>): string {
     return this.i18n.translate(key, params);
