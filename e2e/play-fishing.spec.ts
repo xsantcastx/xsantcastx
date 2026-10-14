@@ -44,6 +44,13 @@ async function descend(page: Page): Promise<void> {
 
 const NAMES = new Map(CATCHES.map(c => [c.id, c.name]));
 
+/** A finger tap on a button, down and up in one task (it may leave the DOM the moment it is pressed). */
+async function tap(el: import('@playwright/test').Locator): Promise<void> {
+  await el.evaluate(b => {
+    for (const type of ['pointerdown', 'pointerup']) b.dispatchEvent(new PointerEvent(type, { pointerType: 'touch', pointerId: 3, isPrimary: true, button: 0, bubbles: true, cancelable: true }));
+  });
+}
+
 for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, false], ['phone', { width: 390, height: 844 }, true]] as const) {
   test.describe(`Fishing (${label})`, () => {
     test.use({ viewport: size, hasTouch: touch, isMobile: touch });
@@ -61,20 +68,21 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await shot(page, `${label}-shore`);
       // Cast.
       if (!touch) { await focusWorld(page); await page.keyboard.press('KeyE'); }
-      else { await fish.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 3, isPrimary: true, button: 0 }); await fish.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 3, isPrimary: true, button: 0 }); }
+      else await tap(fish);
       await expect(canvas(page)).toHaveAttribute('data-fishing', 'wait');
       await expect(messageLine(page)).toContainText('The line is in');
       await shot(page, `${label}-cast`);
-      // The dip comes in 3-9 s; hook it inside its 0.6 s window (a miss only nibbles again).
-      await expect(canvas(page)).toHaveAttribute('data-fishing', 'bite', { timeout: 15000 });
-      if (!touch) await page.keyboard.press('KeyE');
-      else { await fish.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 3, isPrimary: true, button: 0 }); await fish.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 3, isPrimary: true, button: 0 }); }
+      // The dip comes in 3-9 s; hook it inside its 0.6 s window (a miss only nibbles again, and a late tap is forgiven).
       const reel = page.locator('app-line-tension');
-      // A missed dip (a slow frame) nibbles again: hook the next one.
-      for (let tries = 0; tries < 3 && !(await reel.isVisible()); tries++) {
-        await expect(canvas(page)).toHaveAttribute('data-fishing', 'bite', { timeout: 15000 });
+      const hook = async () => {
         if (!touch) await page.keyboard.press('KeyE');
-        else { await fish.dispatchEvent('pointerdown', { pointerType: 'touch', pointerId: 3, isPrimary: true, button: 0 }); await fish.dispatchEvent('pointerup', { pointerType: 'touch', pointerId: 3, isPrimary: true, button: 0 }); }
+        else await tap(fish);
+      };
+      for (let tries = 0; tries < 4; tries++) {
+        await expect(canvas(page)).toHaveAttribute('data-fishing', 'bite', { timeout: 15000 });
+        await hook();
+        await expect.poll(() => canvas(page).getAttribute('data-fishing'), { timeout: 3000 }).not.toBe('bite');
+        if (await canvas(page).getAttribute('data-fishing') === 'hooked') break;
       }
       await expect(reel).toBeVisible();
       await expect(canvas(page)).toHaveAttribute('data-fishing', 'hooked');
