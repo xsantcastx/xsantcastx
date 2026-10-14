@@ -129,7 +129,8 @@ test.describe('tool tiers: a forged pickaxe swings faster, and the stats say so'
   test('phones: a level-300 skill card reads cleanly (K/M XP, its starred title, no overflow)', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.addInitScript(() => { try { localStorage.setItem('preferred-language', 'en'); } catch { /* */ } });
-    await seed(page, activity({ mining: xpForLevel(300) + 1234 }));
+    // bag() stamps the realm era; without it the app's one-shot era wipe drops the activity ledger.
+    await seed(page, { ...bag({}), ...activity({ mining: xpForLevel(300) + 1234 }) });
     await openPlay(page);
     await page.locator('.places-toggle').first().click();
     await page.locator('#places-list button[data-open="character"]').click();
