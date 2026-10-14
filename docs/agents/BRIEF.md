@@ -3,6 +3,7 @@
 You are building **Eclipse Realms** (Angular 21 SSR, Firebase). The task prompt tells you WHAT; this file is HOW.
 Keep token use lean: read the handoff summaries for the systems you touch (`docs/handoff/<name>.md`), not whole
 design bibles, unless the task says "your spec". Don't re-read large files you've already read; grep first.
+Find files via `docs/agents/SYSTEMS.md` before searching.
 
 ## Setup (once)
 1. If your branch has no commits: `git fetch origin && git reset --hard origin/main` (or the base the task names).
