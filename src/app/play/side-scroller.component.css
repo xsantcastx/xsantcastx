@@ -629,16 +629,18 @@ button:disabled { opacity: .4; cursor: default; }
 /* "+2 Pyrite Dust" — rises out of the satchel and fades. Pure decoration. */
 .loot-toasts {
   position: absolute;
-  top: 100%;
-  right: 0;
+  z-index: 4;
+  left: 50%;
+  bottom: 84px;
+  transform: translateX(-50%);
   display: grid;
-  justify-items: end;
+  justify-items: center;
   gap: 4px;
-  margin-top: 6px;
+  max-width: calc(100% - 32px);
   pointer-events: none;
 }
 
-.satchel .loot-toast {
+.loot-toast {
   padding: 3px 9px;
   border: 1px solid color-mix(in srgb, var(--adventure-ember) 45.00%, transparent);
   border-radius: 2px;
@@ -1071,7 +1073,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .place, .place-head, .place-body, .satchel .loot-toast, .station-tip { animation: none; }
+  .place, .place-head, .place-body, .loot-toast, .station-tip { animation: none; }
 }
 
 @keyframes place-open {
@@ -1785,9 +1787,10 @@ input::placeholder { color: var(--adventure-hud-muted); }
     font-style: normal;
     text-align: center;
   }
-  .satchel .loot-toast { font-size: 9px; }
-  .loot-toasts { left: 0; right: auto; justify-items: start; margin-top: calc(6px + var(--guide-h)); }
-  .stage--delve .loot-toasts { left: auto; right: 0; justify-items: end; }
+  /* Catch / XP banners ride just over the context row, bottom-centre: the top strip
+     belongs to the goal line, Glim, the message toast, the minimap and its toggle. */
+  .loot-toast { max-width: 100%; font-size: 9px; white-space: normal; text-align: center; }
+  .loot-toasts { bottom: calc(var(--hud-bottom) + 8px); }
 
   /* Delve hotbar: a scrolling row of slots across the top-left, the pick first. */
   .hotbar {
@@ -2195,4 +2198,11 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 @media (max-width: 900px) and (max-height: 500px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .glim-say__text { -webkit-line-clamp: 2; line-clamp: 2; }
+}
+
+/* Landscape phones: the world is short, so a catch banner's chips sit side by side
+   in the one line over the context row instead of stacking up into the middle. */
+@media (max-width: 900px) and (max-height: 500px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .loot-toasts { display: flex; justify-content: center; align-items: flex-end; width: max-content; }
+  .loot-toast { min-width: 0; }
 }

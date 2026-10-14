@@ -1713,12 +1713,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setFishing({ tier: rod?.tier ?? 0, liquids: rod?.liquids ?? [], bite: rod?.bite ?? 1 });
     this.engine.setWards({ breath, lavaWard: elixir ? 10 : 0 });
   }
-  /** A cast name and phase for the prompt, or null when nothing fishing-related is in reach. */
+  /** The prompt's label: the place (water / lava) or the line's state; the button beside it holds the verb, or null when nothing fishing-related is in reach. */
   get fishPrompt(): string | null {
     const fishing = this.state.fishing;
     if (this.reel) return null;
-    if (fishing) return this.t(fishing.phase === 'bite' ? 'play.fish.ui.bite' : 'play.fish.ui.waiting');
-    if (this.state.canFish) return this.t(this.state.canFish === 'lava' ? 'play.fish.ui.fishLava' : 'play.fish.ui.fish');
+    if (fishing) return this.t(fishing.phase === 'bite' ? 'play.fish.ui.biteCall' : 'play.fish.ui.waiting');
+    if (this.state.canFish) return this.t(this.state.canFish === 'lava' ? 'play.fish.ui.lava' : 'play.fish.ui.water');
     return null;
   }
   /** The rod and bait the next cast uses, for the prompt's tooltip and tests. */
