@@ -84,5 +84,6 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.creature.prism-forager': { en: 'Prism Forager', es: 'Forrajeador Prismatico' },
   'play.creature.rootglass-stag': { en: 'Rootglass Stag', es: 'Ciervo de Raizvidrio' },
   'play.creature.seam-eater': { en: 'Seam Eater', es: 'Devorador de Costuras' },
+  'play.creature.drowned-lamp': { en: 'The Drowned Lamp', es: 'La Lampara Ahogada' },
   'play.creature.unknown': { en: 'Enemy', es: 'Enemigo' },
 };

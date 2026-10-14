@@ -223,6 +223,12 @@ colours until their art lands (`tile-art.ts PLACED_ART`).
 Ore must be told apart at 32 px: **cinder** = orange seams, **slag** = teal glass, **heartstone** = rose-red
 facets, **ember-veined** = scattered warm flecks, not seams.
 
+**Liquids and obsidian** (Phase 6, `liquid-render.ts`, `docs/world/delve-and-beyond.md` §4.1): water body
+`#2e6e9a` `#1e4a6a` `#0e2a3a` at α 0.6, lip `#86d2e6`, sparkle `#d0f6ff` (the Grotto ramp); lava body `#E8752A`
+`#c4501e` `#7a2a12` opaque, lip `#ffd08a`, flecks `#ff9b4f` (the Infernal ember; lava lights its cavern from
+its own surface). Obsidian `#140e20` `#2a1f3a` `#5a4a7a` `#a48bff`; the placed block one step lighter. A liquid
+level is 2 art px (8 to a cell), so every surface sits on the art grid.
+
 ### 5.4 Rarity and tier
 
 Rarity is **never baked into an icon** (no aura, no glow ring). The slot frame's inner rim and the item name
@@ -348,6 +354,8 @@ placeable):
 | **W7b back wall** (4 interior variants, row `tile` only, no outline, 2 steps darker and less saturated than the biome's tiles) | `tile-wall-root-hollows`, `tile-wall-basalt-caverns`, `tile-wall-glowcap-grotto`, `tile-wall-magma-halls` |
 | **W7 overlay** (transparent, drawn over the back wall) | `tile-inscription` |
 | **W6 cell prop** (transparent, `Sprites/Props/`) | torch, ladder, platform, chest, camp, timber and basalt supports, blasting charge |
+| **W7a** (Phase 6) | `obsidian` (made where water meets lava), `obsidian-block` (placed) |
+| **W7L liquid** (Phase 6, proposed): per liquid a 16 × 16 body tile × 2 variants and a 16 × 4 surface strip × 4 frames, seamless, no outline; brief in `docs/art-commissions/world-sprites/12-fishing-liquids.md` | `liquid-water`, `liquid-lava` (procedural flat fills until they land) |
 
 Crack stages, glow halos, loose-rock dust and the dig highlight are drawn by the engine over the tile.
 

@@ -1032,6 +1032,8 @@ test('HUD lines: the quest chain, camp, hunt and drop messages are keyed, and th
 });
 const lightMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/lighting.ts'));
 const delveSpec = world.TOWNS.infernal.hunts.find(h => h.id === 'ember-delve').terrain;
+/** Set a cell as if the seed had generated it (only generated cells pay, spec §4.2). */
+function setGenerated(t, col, row, kind) { t.set(col, row, kind); t.base[t.index(col, row)] = kind; }
 function enterDelve(onWorldAction) {
   const { engine, state } = fixture(() => true, { onWorldAction });
   engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
@@ -1088,7 +1090,7 @@ test('onWorldAction refusal leaves the ore standing; acceptance breaks it once',
   const { engine } = enterDelve(e => { events.push(e); return accept; });
   engine.setTools({ pickaxe: 1 });
   const t = engine.terrain;
-  t.set(12, 0, terrainMod.nodeIndex('cinder-vein'));
+  setGenerated(t, 12, 0, terrainMod.nodeIndex('cinder-vein'));
   engine.player.x = 12 * 32 - 30; engine.player.y = 610; engine.facing = 1;
   const hit = () => { engine.attackCooldown = 0; engine.strikeCell(12 * 32 + 16, 626); };
   for (let n = 0; n < 5; n++) hit();
@@ -1699,7 +1701,8 @@ test('camp: one per Delve, opens the bench on what can be made now, and town des
     if (kit.skill !== 'smithing') assert.equal(kit.requiredLevel, 1, kit.id);
   }
   assert.deepEqual(terrainMod.PLACEABLES.map(p => p.id),
-    ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp', 'timber-support', 'basalt-support', 'blast-charge'], 'hotbar order, keys 1-9 then 0');
+    ['dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp', 'timber-support', 'basalt-support', 'blast-charge', 'obsidian-block'], 'hotbar order, keys 1-9 then 0, then shown only while held');
+  assert.equal(terrainMod.HOTBAR_FIXED, 10);
   for (const p of terrainMod.PLACEABLES) assert.equal(terrainMod.TERRAIN_NODES[p.node].placeable ?? terrainMod.TERRAIN_NODES[p.node].block, p.id, p.id);
 
   const delve = memoryDelve(71); const used = [];
@@ -1747,7 +1750,8 @@ function looseHall() {
   for (let seed = 1; seed < 400; seed++) {
     const t = terrainMod.generateTerrain(delveSpec, seed);
     const cols = [];
-    for (let col = 32; col <= 58; col++) if (terrainMod.isLoose(t, col, 43)) cols.push(col);
+    // Clear of the hall's two lava pools (cols 31-35 and 54-58), so the Keeper stands on dry floor.
+    for (let col = 37; col <= 52; col++) if (terrainMod.isLoose(t, col, 43)) cols.push(col);
     if (cols.length >= 2 && cols[1] - cols[0] > 8) return { seed, cols };
   }
   throw new Error('no seed with two loose hall cells');
@@ -1782,6 +1786,8 @@ test('loose rock: digging it with no support drops rubble that bruises, never fe
   const { seed, cols: [first, second] } = looseHall();
   const { engine, state } = enterOwnDelve(memoryDelve(seed));
   engine.setTools({ pickaxe: 3 });
+  // The Bailiffs patrol this hall; this test is about the ceiling, not them.
+  engine.monsters.length = 0;
   const t = engine.terrain;
   const stand = col => { engine.player.x = col * 32 + 16; engine.player.y = 610 + HALL_FLOOR * 32; engine.player.vy = 0; engine.player.grounded = true; engine.hurtTime = 0; };
   const dig = (col, row) => { for (let n = 0; n < 10 && t.solid(col, row); n++) engine.hitCell(col, row, SWING, false); };
@@ -3046,7 +3052,7 @@ test('delve rock breaks on tool and swings alone: four Pickaxe I swings even dur
     }
     return swings;
   };
-  t.set(12, 0, rock); t.set(14, 0, rock); t.set(16, 0, vein);
+  setGenerated(t, 12, 0, rock); setGenerated(t, 14, 0, rock); setGenerated(t, 16, 0, vein);
   // A: the seam is fresh, so the break books an operation.
   assert.equal(dig(12, 650), 4);
   assert.equal(seam.xp, 2);
@@ -3745,7 +3751,7 @@ test('held use: never faster than the tool pace, and pays exactly what clicks pa
     const t = buildRoom(engine), rock = terrainMod.nodeIndex('ember-rock');
     const original = engine.hitCell.bind(engine);
     engine.hitCell = (...args) => { times.push(engine.elapsed); return original(...args); };
-    for (const row of [5, 6, 7]) t.set(32, row, rock);
+    for (const row of [5, 6, 7]) setGenerated(t, 32, row, rock);
     engine.random = () => 0; // the quarter-chance Ember Residue always drops: rewards compare like for like
     for (const row of [7, 6, 5]) {
       if (mode === 'hold') {
@@ -3996,4 +4002,421 @@ test('the map: the way to camp follows explored open cells, or says there is non
   // A cell of the corridor never explored: no known way.
   fog.fill(0); mapMod.revealAround(t, fog, 20, 7, 8); mapMod.revealAround(t, fog, 40, 3, 8);
   assert.equal(mapMod.pathThrough(t, fog, t.index(20, 7), t.index(40, 3)), null);
+});
+
+// ── Liquids (Phase 6.1/6.2): flow, reactions, saves, swimming ─────────────────
+const liquidMod = loadTs(path.resolve(__dirname, '../src/app/play/engine/liquids.ts'));
+const { LIQUID_WATER: WATER, LIQUID_LAVA: LAVA } = terrainMod;
+/** A sealed box of bedrock with an open room: cols 1..w, rows 1..h. */
+function liquidRoom(w = 12, h = 8) {
+  const t = new terrainMod.Terrain(w + 2, h + 2, 0);
+  const bedrock = terrainMod.nodeIndex('bedrock');
+  for (let row = 0; row < h + 2; row++) for (let col = 0; col < w + 2; col++) {
+    if (row === 0 || col === 0 || row === h + 1 || col === w + 1) t.set(col, row, bedrock);
+  }
+  return t;
+}
+function runTicks(sim, n) { for (let i = 0; i < n; i++) sim.tick(); }
+
+test('liquids: water falls and spreads to rest, the same way every time, and conserves its volume', () => {
+  const states = [];
+  for (const chunk of [1 / 60, .05, .1]) {
+    const t = liquidRoom();
+    const sim = new liquidMod.LiquidSim(t);
+    // A full column of water in the air at one side.
+    for (let row = 1; row <= 4; row++) { t.liqType[t.index(2, row)] = WATER; t.liqLevel[t.index(2, row)] = 8; sim.wake(t.index(2, row)); }
+    const volume = sim.volume(WATER);
+    assert.equal(volume, 32);
+    // 12 s of game time in different frame chunks: the same number of 10 Hz ticks.
+    let ran = 0;
+    for (let time = 0; time < 12 - 1e-9; time += chunk) ran += sim.step(chunk);
+    assert.ok(Math.abs(ran - 120) <= 1, `${ran} ticks in 12 s`);
+    runTicks(sim, 120 - ran);
+    assert.equal(sim.volume(WATER), volume, 'nothing appears or vanishes while it flows');
+    assert.equal(sim.settled, true, 'and then it sleeps');
+    // Nothing floats: every wet cell sits on rock or on a full cell of water.
+    for (let row = 1; row <= 7; row++) for (let col = 1; col <= 12; col++) {
+      if (!t.levelAt(col, row)) continue;
+      assert.ok(t.solid(col, row + 1) || t.levelAt(col, row + 1) === 8, `water at ${col},${row} rests on something`);
+    }
+    // The floor took it: no step of more than 2 between neighbours (the spread rule's rest).
+    for (let col = 1; col < 12; col++) assert.ok(Math.abs(t.levelAt(col, 8) - t.levelAt(col + 1, 8)) <= 2);
+    states.push(Array.from(t.liqLevel).join(','));
+  }
+  assert.equal(new Set(states).size, 1, 'deterministic: the same water whatever the frame rate');
+});
+
+test('liquids: a settled pool sleeps, a dig beside it wakes it, and it drains into the new hole', () => {
+  const t = liquidRoom(10, 6);
+  const rock = terrainMod.nodeIndex('rock');
+  // A basin: rock floor at row 6 except one cell that will be dug.
+  for (let col = 1; col <= 10; col++) t.set(col, 6, rock);
+  for (let col = 3; col <= 6; col++) { t.liqType[t.index(col, 5)] = WATER; t.liqLevel[t.index(col, 5)] = 8; }
+  for (const col of [2, 7]) t.set(col, 5, rock);
+  const sim = new liquidMod.LiquidSim(t);
+  sim.wakeAll(); runTicks(sim, 5);
+  assert.equal(sim.settled, true, 'held in its basin, it settles at once');
+  const before = Array.from(t.liqLevel);
+  runTicks(sim, 50);
+  assert.deepEqual(Array.from(t.liqLevel), before, 'asleep: nothing moves');
+  assert.equal(sim.updates, 0, 'and no cell is even looked at');
+  // Dig the basin floor under the middle: the 3x3 wakes and the water pours down.
+  t.set(4, 6, 0); sim.wakeAround(4, 6);
+  runTicks(sim, 80);
+  assert.equal(sim.volume(WATER), 32, 'conserved through the drain');
+  assert.ok(t.levelAt(4, 6) > 0, 'water ran down into the hole');
+});
+
+test('liquids: water meets lava and the smaller volume sets into obsidian; a made cell pays its block only', () => {
+  const t = liquidRoom(6, 4);
+  const sim = new liquidMod.LiquidSim(t, {});
+  // Lava pool on the floor, water dropped on it.
+  t.liqType[t.index(3, 4)] = LAVA; t.liqLevel[t.index(3, 4)] = 4;
+  t.liqType[t.index(3, 3)] = WATER; t.liqLevel[t.index(3, 3)] = 8;
+  sim.wake(t.index(3, 3)); sim.wake(t.index(3, 4));
+  runTicks(sim, 3);
+  assert.equal(t.nodeAt(3, 4).id, 'obsidian', 'the lava (4) was smaller than the water (8): it set');
+  assert.equal(sim.volume(LAVA), 0);
+  assert.equal(sim.volume(WATER), 4, 'the water lost the lava\'s volume');
+  assert.equal(sim.urgent, true, 'a reaction is saved at once, not at the next settle');
+  // Through the engine: the made cell breaks into its block, with no XP and no yield (farm-proof).
+  const events = [];
+  const { engine } = enterDelve(e => { events.push(e); return true; });
+  engine.setTools({ pickaxe: 1 });
+  const d = engine.terrain;
+  d.set(12, 0, terrainMod.nodeIndex('obsidian'));
+  engine.player.x = 12 * 32 - 30; engine.player.y = 610; engine.facing = 1;
+  for (let n = 0; n < 10 && d.solid(12, 0); n++) { engine.attackCooldown = 0; engine.strikeCell(12 * 32 + 16, 626); }
+  assert.equal(d.solid(12, 0), false);
+  assert.equal(events.length, 1);
+  assert.equal(events[0].xp, 0, 'no XP from a reaction\'s cell');
+  assert.equal(events[0].materialId, undefined, 'no yield');
+  assert.equal(events[0].block, 'obsidian-block', 'only the block');
+  engine.destroy();
+});
+
+test('liquids: the core\'s lakes sit only in carved air, at rest, for every seed (no cell changes, no version bump)', () => {
+  assert.equal(delveSpec.version, 2, 'the cells did not change');
+  for (const seed of [delveSpec.seed, 424242, 7, 0xabcdef]) {
+    const t = terrainMod.generateTerrain(delveSpec, seed);
+    let wet = 0;
+    for (let i = 0; i < t.kind.length; i++) {
+      if (!t.liqLevel[i]) continue;
+      wet++;
+      assert.equal(terrainMod.TERRAIN_NODE_LIST[t.kind[i]].solid, false, `liquid only in open cells (${i})`);
+    }
+    assert.ok(wet >= 60, `the Mere, the seep, the flooded seam, the lamp's alcove and two lava pools (${wet} cells)`);
+    assert.equal(t.liquidAt(30, 34), WATER, 'the Grotto Mere');
+    assert.equal(t.liquidAt(33, 48), LAVA, 'a Magma Halls pool');
+    assert.equal(t.liquidAt(87, 36), WATER, 'the drowned lamp\'s carving is under water');
+    const sim = new liquidMod.LiquidSim(t);
+    sim.wakeAll();
+    const water = sim.volume(WATER), lava = sim.volume(LAVA);
+    runTicks(sim, 30);
+    assert.equal(sim.settled, true, `seed ${seed}: every lake is at rest as generated`);
+    assert.deepEqual(Array.from(t.liqLevel), Array.from(t.baseLiqLevel), 'nothing moved');
+    assert.equal(sim.volume(WATER), water); assert.equal(sim.volume(LAVA), lava);
+  }
+});
+
+test('liquids: the settled diff round-trips through the save, merges per cell, and a new liquid version drops it', () => {
+  const t = terrainMod.generateTerrain(delveSpec, 5);
+  const sim = new liquidMod.LiquidSim(t);
+  // Scoop a bucket from the Mere: the diff is exactly what changed.
+  assert.equal(sim.scoop(t.index(30, 33)), WATER);
+  const diff = terrainMod.liquidDiff(t);
+  assert.ok(diff.size >= 1);
+  const save = saveMod.newDelveSave(5, 1);
+  const wet = terrainMod.liquidLayout(delveSpec, 5);
+  save.areas['ember-delve'] = { layout: terrainMod.terrainLayout(delveSpec, 5), cells: '', wet, liquids: saveMod.encodeCells(diff) };
+  const back = saveMod.coerceDelveSave(JSON.parse(JSON.stringify(save)));
+  const fresh = terrainMod.generateTerrain(delveSpec, 5);
+  terrainMod.applyLiquidDiff(fresh, saveMod.liquidsFor(back, 'ember-delve', wet));
+  assert.deepEqual(Array.from(fresh.liqLevel), Array.from(t.liqLevel), 'the same water after a reload');
+  assert.equal(saveMod.liquidsFor(back, 'ember-delve', `${wet}x`).size, 0, 'another liquid layout: dropped');
+  // Merge: same layout, a per-cell union, local winning.
+  const other = JSON.parse(JSON.stringify(save));
+  const scooped = [...diff.keys()][0];
+  other.areas['ember-delve'].liquids = saveMod.encodeCells(new Map([[1, 0x18], [scooped, 0x14]]));
+  const merged = saveMod.mergeDelveSaves(other, save);
+  const cells = saveMod.liquidsFor(saveMod.coerceDelveSave(merged), 'ember-delve', wet);
+  assert.equal(cells.get(1), 0x18, 'the other device\'s cell kept');
+  assert.equal(cells.get(scooped), diff.get(scooped), 'local wins a disagreeing cell');
+  // A liquid diff never lands in rock: a cell dug full of a block since is skipped.
+  const blocked = terrainMod.generateTerrain(delveSpec, 5);
+  blocked.set(30, 33, terrainMod.nodeIndex('basalt-block'));
+  terrainMod.applyLiquidDiff(blocked, new Map([[blocked.index(30, 33), 0x18]]));
+  assert.equal(blocked.levelAt(30, 33), 0);
+});
+
+test('liquids: buckets scoop a full cell and pour it back; water poured on lava makes obsidian', () => {
+  const t = liquidRoom(8, 4);
+  const sim = new liquidMod.LiquidSim(t);
+  for (let col = 1; col <= 4; col++) { t.liqType[t.index(col, 4)] = WATER; t.liqLevel[t.index(col, 4)] = 3; }
+  // 12 joined levels: enough for one full bucket, taken evenly from the pool.
+  assert.equal(sim.scoop(t.index(1, 4), true), WATER, 'a dry run only checks');
+  assert.equal(sim.volume(WATER), 12);
+  assert.equal(sim.scoop(t.index(1, 4)), WATER);
+  assert.equal(sim.volume(WATER), 4);
+  assert.equal(sim.scoop(t.index(1, 4)), 0, 'too shallow for another');
+  // Pour onto lava: that cell sets.
+  t.liqType[t.index(7, 4)] = LAVA; t.liqLevel[t.index(7, 4)] = 5;
+  assert.equal(sim.pour(t.index(7, 4), WATER), true);
+  assert.equal(t.nodeAt(7, 4).id, 'obsidian');
+  assert.equal(t.levelAt(7, 3), 3, 'the rest of the pour lands on top');
+  assert.equal(sim.pour(t.index(0, 0), WATER), false, 'never into rock');
+});
+
+test('liquids: the Keeper wades and swims, holds a breath that runs out, and lava burns unless warded', () => {
+  const { engine, state } = enterDelve(() => true);
+  const t = engine.terrain;
+  // A pool round the Keeper: open cells, water three deep, on the surface ledge.
+  const col = 20;
+  for (let row = 0; row <= 4; row++) for (let c = col - 3; c <= col + 3; c++) t.set(c, row, 0);
+  for (let c = col - 3; c <= col + 3; c++) t.set(c, 5, terrainMod.nodeIndex('bedrock'));
+  for (let row = 2; row <= 4; row++) for (let c = col - 3; c <= col + 3; c++) { t.liqType[t.index(c, row)] = WATER; t.liqLevel[t.index(c, row)] = 8; }
+  engine.liquid = new liquidMod.LiquidSim(t);
+  engine.player.x = col * 32 + 16; engine.player.y = t.top + 5 * 32; engine.player.vy = 0;
+  engine.update(1 / 60);
+  assert.equal(state().liquid.in, 'water');
+  // Walking through water is slower.
+  engine.setInput('right', true);
+  const x0 = engine.player.x; for (let n = 0; n < 6; n++) engine.update(1 / 60);
+  engine.setInput('right', false);
+  const waded = engine.player.x - x0;
+  assert.ok(waded > 0 && waded < 265 * .72 * .7 * .1, `wading is slower (${waded.toFixed(1)} px in 0.1 s)`);
+  // Head under water: the breath runs down; out of breath, it hurts.
+  engine.player.x = col * 32 + 16; engine.player.y = t.top + 5 * 32;
+  const hp0 = engine.hp;
+  for (let n = 0; n < 60 * 4; n++) { engine.player.y = t.top + 5 * 32; engine.update(1 / 60); }
+  assert.ok(state().liquid.breath < .55 && state().liquid.breath > .4, `half a breath after 4 s (${state().liquid.breath})`);
+  assert.equal(engine.hp, hp0, 'no harm while there is breath');
+  for (let n = 0; n < 60 * 6; n++) { engine.player.y = t.top + 5 * 32; engine.update(1 / 60); }
+  assert.ok(engine.hp < hp0, 'drowning hurts');
+  // Jump held swims up.
+  engine.hp = engine.maxHp; engine.player.y = t.top + 5 * 32; engine.player.vy = 0;
+  engine.setInput('jump', true);
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  engine.setInput('jump', false);
+  assert.ok(engine.player.y < t.top + 5 * 32 - 20, 'rose through the water');
+  // Lava burns; an Ember Elixir's ward holds it off for a while.
+  for (let row = 2; row <= 4; row++) for (let c = col - 3; c <= col + 3; c++) t.liqType[t.index(c, row)] = LAVA;
+  engine.hp = engine.maxHp; engine.player.y = t.top + 5 * 32; engine.player.vy = 0;
+  engine.setWards({ lavaWard: 10 });
+  for (let n = 0; n < 60; n++) { engine.player.y = t.top + 5 * 32; engine.update(1 / 60); }
+  assert.equal(engine.hp, engine.maxHp, 'warded: one second in lava costs nothing');
+  engine.setWards({});
+  for (let n = 0; n < 60; n++) { engine.player.y = t.top + 5 * 32; engine.update(1 / 60); }
+  assert.ok(engine.hp <= engine.maxHp * (1 - .14), `about 15% a second in lava (${engine.hp})`);
+  assert.equal(state().liquid.burning, true);
+  engine.destroy();
+});
+
+test('liquids: lava chars a wooden placed thing back into the satchel; a refused chest holds the lava back', () => {
+  const taken = [];
+  let refuse = false;
+  const { engine } = enterDelve(() => true);
+  engine.options.onTakeBack = e => { if (refuse) return false; taken.push(e); return true; };
+  const t = engine.terrain;
+  const col = 30, row = 3;
+  for (let c = col - 2; c <= col + 2; c++) { t.set(c, row, 0); t.set(c, row + 1, terrainMod.nodeIndex('bedrock')); }
+  t.set(col + 1, row, terrainMod.nodeIndex('torch'));
+  t.liqType[t.index(col, row)] = LAVA; t.liqLevel[t.index(col, row)] = 6;
+  engine.liquid = new liquidMod.LiquidSim(t, { char: i => { if (!engine.chars.has(i)) engine.chars.set(i, 3); } });
+  engine.liquid.wake(t.index(col, row));
+  engine.player.x = 200; engine.player.y = 610;
+  for (let n = 0; n < 60 * 4; n++) engine.update(1 / 60);
+  assert.equal(taken.length, 1, 'charred once, after 3 s');
+  assert.equal(taken[0].item, 'torch');
+  assert.ok(taken[0].mutationId.startsWith('delve-char:'));
+  assert.equal(t.nodeAt(col + 1, row).id, 'air');
+  for (let n = 0; n < 60 * 2; n++) engine.update(1 / 60);
+  assert.ok(t.levelAt(col + 1, row) > 0, 'the lava flows on where it stood');
+  // A chest the host will not take (it holds things): lava waits beside it, for good.
+  refuse = true; taken.length = 0;
+  t.liqLevel[t.index(col - 1, row)] = 0; t.liqType[t.index(col - 1, row)] = 0;
+  t.set(col - 1, row, terrainMod.nodeIndex('chest'));
+  for (let n = 0; n < 60 * 8; n++) engine.update(1 / 60);
+  assert.equal(t.nodeAt(col - 1, row).id, 'chest');
+  assert.equal(t.levelAt(col - 1, row), 0, 'never inside it');
+  engine.destroy();
+});
+
+test('liquids: a parked (paused) loop runs no ticks, and resumes to exactly the continuous result', () => {
+  const make = () => {
+    const { engine } = enterDelve(() => true);
+    const t = engine.terrain;
+    for (let c = 40; c <= 50; c++) { t.set(c, 2, 0); t.set(c, 3, terrainMod.nodeIndex('bedrock')); }
+    for (let c = 40; c <= 41; c++) { t.liqType[t.index(c, 2)] = WATER; t.liqLevel[t.index(c, 2)] = 8; }
+    engine.liquid = new liquidMod.LiquidSim(t); engine.liquid.wakeAll();
+    engine.player.x = 200; engine.player.y = 610;
+    return engine;
+  };
+  const steady = make(), parked = make();
+  for (let n = 0; n < 120; n++) steady.update(1 / 60);
+  for (let n = 0; n < 60; n++) parked.update(1 / 60);
+  const ticksBefore = parked.liquid.ticks;
+  parked.setPaused(true);
+  parked.render = () => {};
+  for (let at = 1000; at < 6000; at += 16) parked.tick(at);
+  assert.equal(parked.liquid.ticks, ticksBefore, 'no liquid time passes while parked');
+  parked.setPaused(false);
+  for (let n = 0; n < 60; n++) parked.update(1 / 60);
+  assert.equal(parked.liquid.ticks, steady.liquid.ticks);
+  assert.deepEqual(Array.from(parked.terrain.liqLevel), Array.from(steady.terrain.liqLevel), 'the same water as never parked');
+  steady.destroy(); parked.destroy();
+});
+
+test('liquids: the tick budget caps cell updates, and a big flood still ends', () => {
+  const t = liquidRoom(60, 12);
+  const sim = new liquidMod.LiquidSim(t);
+  for (let row = 1; row <= 8; row++) for (let col = 1; col <= 40; col++) { t.liqType[t.index(col, row)] = WATER; t.liqLevel[t.index(col, row)] = 8; sim.wake(t.index(col, row)); }
+  let most = 0;
+  for (let n = 0; n < 2000 && !sim.settled; n++) { sim.tick(); most = Math.max(most, sim.updates); }
+  assert.ok(most <= liquidMod.TICK_BUDGET, `at most ${liquidMod.TICK_BUDGET} cells a tick (${most})`);
+  assert.equal(sim.settled, true);
+  assert.equal(sim.volume(WATER), 40 * 8 * 8);
+});
+
+// ── Fishing in the engine (Phase 6.3): cast, bite, hook, the host lands it ────
+/** The Keeper on the Grotto Mere's west shore (the glowcap cavern), facing the water. */
+function atTheMere(extra = {}) {
+  const fished = [];
+  const { engine, state } = enterDelve(() => true);
+  engine.options.onFish = e => fished.push(e);
+  Object.assign(engine.options, extra);
+  const t = engine.terrain;
+  // Stand on the cavern floor beside the lake: open the west wall so there is a shore.
+  for (let row = 30; row <= 34; row++) for (let col = 16; col <= 19; col++) t.set(col, row, 0);
+  for (let col = 16; col <= 19; col++) t.set(col, 35, terrainMod.nodeIndex('bedrock'));
+  for (let row = 33; row <= 34; row++) for (let col = 16; col <= 19; col++) { t.liqType[t.index(col, row)] = 0; t.liqLevel[t.index(col, row)] = 0; }
+  // A sill keeps the Mere where it is.
+  t.set(19, 34, terrainMod.nodeIndex('bedrock')); t.set(19, 33, terrainMod.nodeIndex('bedrock'));
+  engine.liquid = new liquidMod.LiquidSim(t);
+  engine.player.x = 17 * 32 + 16; engine.player.y = t.top + 33 * 32; engine.player.vy = 0; engine.facing = 1;
+  engine.update(1 / 60);
+  return { engine, state, fished, t };
+}
+
+test('fishing: no rod, no cast; a rod casts at the water within six cells, and the HUD offers "Fish"', () => {
+  const { engine, state } = atTheMere();
+  engine.cast();
+  assert.equal(state().fishing, null);
+  assert.equal(state().messageKey, 'play.fish.noRod');
+  engine.setFishing({ tier: 1, liquids: ['water'] });
+  engine.update(1 / 60);
+  assert.equal(state().canFish, 'water', 'the prompt can offer Fish here');
+  assert.equal(engine.cast(), true);
+  assert.equal(state().fishing.phase, 'wait');
+  assert.equal(state().fishing.liquid, 'water');
+  // Facing away from the lake: nothing to cast at.
+  engine.reelIn(true); engine.facing = -1;
+  assert.equal(engine.cast(), false);
+  assert.equal(state().messageKey, 'play.fish.noWater');
+  engine.destroy();
+});
+
+test('fishing: the bite comes in 3-9 s (faster with bite speed), a hook in the 0.6 s dip hands the fish to the host, a miss nibbles again', () => {
+  for (const bite of [1, 2]) {
+    const { engine, state, fished } = atTheMere();
+    engine.random = () => .5;
+    engine.setFishing({ tier: 1, liquids: ['water'], bite });
+    assert.equal(engine.cast(), true);
+    let t = 0;
+    while (state().fishing.phase === 'wait' && t < 20) { engine.update(1 / 60); t += 1 / 60; }
+    assert.ok(Math.abs(t - 6 / bite) < .05, `bite after ${t.toFixed(2)} s at bite speed ${bite}`);
+    // Let the dip pass: nothing lost, it nibbles again.
+    for (let n = 0; n < 40; n++) engine.update(1 / 60);
+    assert.equal(state().fishing.phase, 'wait');
+    assert.equal(fished.length, 0);
+    while (state().fishing.phase === 'wait') engine.update(1 / 60);
+    engine.interact(); // E during the dip
+    assert.equal(state().fishing.phase, 'hooked');
+    assert.equal(fished.length, 1);
+    assert.equal(fished[0].biome, 'glowcap-grotto');
+    assert.equal(fished[0].liquid, 'water');
+    assert.equal(fished[0].auto, false);
+    assert.ok(fished[0].castId.startsWith('fish:'));
+    // Reeling holds the Keeper still: walking does nothing until the host lands it.
+    const x = engine.player.x;
+    engine.setInput('right', true); for (let n = 0; n < 20; n++) engine.update(1 / 60); engine.setInput('right', false);
+    assert.equal(engine.player.x, x);
+    engine.landFish();
+    assert.equal(state().fishing, null);
+    engine.destroy();
+  }
+});
+
+test('fishing: holding Use is auto-fish (hooked at once at the Off grade, recast after landing); walking reels the line in', () => {
+  const { engine, state, fished } = atTheMere();
+  engine.random = () => 0;
+  engine.setFishing({ tier: 1, liquids: ['water'] });
+  engine.setUseHeld(true);
+  engine.cast();
+  for (let n = 0; n < 60 * 4 && !fished.length; n++) engine.update(1 / 60);
+  assert.equal(fished.length, 1);
+  assert.equal(fished[0].auto, true);
+  engine.landFish();
+  for (let n = 0; n < 60; n++) engine.update(1 / 60);
+  assert.equal(state().fishing?.phase, 'wait', 'recast while Use is held');
+  engine.setUseHeld(false);
+  engine.setInput('left', true); engine.update(1 / 60); engine.setInput('left', false);
+  assert.equal(state().fishing, null, 'walking pulls the line out');
+  engine.destroy();
+});
+
+test('fishing: a Worn Rod cannot fish lava; a Seam Rod can, and the water drained from under the bob takes the line', () => {
+  const { engine, state, t } = atTheMere();
+  for (let row = 33; row <= 34; row++) for (let col = 20; col <= 44; col++) if (t.liqLevel[t.index(col, row)]) t.liqType[t.index(col, row)] = terrainMod.LIQUID_LAVA;
+  engine.setFishing({ tier: 1, liquids: ['water'] });
+  assert.equal(engine.cast(), false);
+  engine.setFishing({ tier: 2, liquids: ['water', 'lava'] });
+  assert.equal(engine.cast(), true);
+  assert.equal(state().fishing.liquid, 'lava');
+  const line = engine.line;
+  t.liqLevel[t.index(line.col, line.row)] = 0;
+  engine.update(1 / 60);
+  assert.equal(state().fishing, null);
+  assert.equal(state().messageKey, 'play.fish.waterGone');
+  engine.destroy();
+});
+
+test('the Drowned Lamp: summoned once, veiled until a torch burns near it, felled for good', () => {
+  const { engine, state } = atTheMere();
+  const t = engine.terrain;
+  const def = engine.areaDef.monsters.find(m => m.creature === 'drowned-lamp');
+  assert.ok(def && def.summoned && def.veiled && def.once === 'drowned-lamp-defeated');
+  assert.equal(engine.monsters.some(m => m.def === def), false, 'not there until summoned');
+  assert.equal(engine.summon('drowned-lamp', 30 * 32), true);
+  assert.equal(engine.summon('drowned-lamp', 30 * 32), false, 'one at a time');
+  const lamp = engine.monsters.find(m => m.def === def);
+  engine.hurtMonster(lamp, 50);
+  assert.equal(lamp.hp, def.hp, 'veiled: the blow is swallowed');
+  t.set(t.colAt(lamp.x), 32, terrainMod.nodeIndex('torch'));
+  engine.hurtMonster(lamp, 500);
+  assert.equal(lamp.hp, 0);
+  assert.equal(engine.flagged('drowned-lamp-defeated'), true);
+  assert.equal(engine.summon('drowned-lamp', 30 * 32), false, 'fallen for good');
+  void state;
+  engine.destroy();
+});
+
+test('buckets through the engine: the host swaps the stack first; scoop the Mere, pour it on lava, obsidian pays its block only', () => {
+  const swaps = [];
+  const { engine, t } = atTheMere({ onBucket: e => { swaps.push(e); return true; } });
+  engine.setPlaceable('seam-bucket');
+  const mere = t.index(21, 33);
+  assert.equal(engine.useBucket('seam-bucket', mere), true);
+  assert.deepEqual([swaps[0].from, swaps[0].to, swaps[0].liquid], ['seam-bucket', 'seam-bucket-water', 'water']);
+  const lava = t.index(21, 31);
+  t.set(21, 31, 0); t.liqType[lava] = terrainMod.LIQUID_LAVA; t.liqLevel[lava] = 4;
+  assert.equal(engine.useBucket('seam-bucket-water', lava), true);
+  assert.equal(t.nodeAt(21, 31).id, 'obsidian');
+  assert.deepEqual([swaps[1].from, swaps[1].to], ['seam-bucket-water', 'seam-bucket']);
+  // A refused swap moves nothing in the world.
+  engine.options.onBucket = () => false;
+  const before = t.levelAt(22, 33);
+  assert.equal(engine.useBucket('seam-bucket', t.index(22, 33)), false);
+  assert.equal(t.levelAt(22, 33), before);
+  engine.destroy();
 });

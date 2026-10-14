@@ -190,6 +190,10 @@ export class LevelUpBannerComponent implements OnInit, OnDestroy {
     this.cdr.markForCheck();
 
     event.milestone ? this.audio.fanfare() : this.audio.ding();
+    if (event.skillLabelKey === 'skills.name.fishing') {
+      // Fishing's words are in its lazy table (shared/fishing): fetched on its first level.
+      void import('../fishing/fishing.i18n').then(m => { this.i18n.register(m.FISHING_I18N); this.cdr.markForCheck(); }).catch(() => { /* the banner still shows */ });
+    }
     if (event.tool && !this.toolWords) {
       void import('../skills/tools.i18n').then(m => {
         this.i18n.register(m.TOOLS_I18N);

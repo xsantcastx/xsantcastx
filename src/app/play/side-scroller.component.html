@@ -92,6 +92,19 @@
         <div class="meter enemy"><s [style.--fill]="state.enemyHp / 100"></s><i [style.--fill]="state.enemyHp / 100"></i></div>
       </div>
     }
+    <!-- Under water the breath shows, always (spec §6 risk: never a surprise); in lava, the Ember ward. -->
+    @if (state.liquid?.breath != null) {
+      <div class="vital vital--breath">
+        <label>{{ t('play.hud.breath') }} <b>{{ ((state.liquid?.breath ?? 1) * 100).toFixed(0) }}%</b></label>
+        <div class="meter breath"><i [style.--fill]="state.liquid?.breath ?? 1"></i></div>
+      </div>
+    }
+    @if (state.liquid?.in === 'lava' && state.liquid?.ward != null) {
+      <div class="vital vital--ward">
+        <label>{{ t('play.hud.ward') }}</label>
+        <div class="meter ward"><i [style.--fill]="state.liquid?.ward ?? 0"></i></div>
+      </div>
+    }
   </div>
 
   @if (state.areaId === 'homestead' && !panel) { <app-homestead-column (openChange)="columnOpen = $event" /> }
@@ -256,8 +269,9 @@
               </ul>
             }
           </div>
-          @if (row.canWear || row.canStow || row.canSend) {
+          @if (row.canWear || row.canStow || row.canSend || pickIsCrate) {
             <div class="slip-actions">
+              @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
               @if (row.canWear) { <button type="button" class="wear" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
               @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
               @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
@@ -270,7 +284,12 @@
     </section>
   }
 
-  <div class="prompt" [class.armed]="!!state.nearby" [attr.inert]="panel ? '' : null">
+  <div class="prompt" [class.armed]="!!state.nearby || !!fishPrompt" [attr.inert]="panel ? '' : null">
+    @if (!state.nearby && fishPrompt; as fish) {
+      <strong>{{ fish }}</strong>
+      <button type="button" class="fish-go" [title]="fishInfo"
+        (pointerdown)="fishPress($event, true)" (pointerup)="fishPress($event, false)" (pointercancel)="fishPress($event, false)" (lostpointercapture)="fishPress($event, false)">{{ state.fishing?.phase === 'bite' ? t('play.fish.ui.bite') : state.fishing ? t('play.fish.ui.reelIn') : t('play.fish.ui.fish') }} <kbd class="key-hint">E</kbd></button>
+    }
     @if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
       <button type="button" [disabled]="actionDisabled" (click)="interact()">{{ t('play.hud.interact') }} <kbd class="key-hint">E</kbd></button>
@@ -280,6 +299,12 @@
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">{{ t('play.hud.keys') }}</button>
   </div>
+  @if (reel) {
+    <!-- Line Tension: the reel, in the HUD band over the prompt (no fixed overlay). -->
+    <div class="reel-host" [attr.inert]="panel ? '' : null">
+      <app-line-tension [seed]="reel.seed" [rarity]="reel.pending.rarity" [widen]="reel.widen" (done)="reelDone($event)" />
+    </div>
+  }
   @if (state.delve) {
     <!-- Phones: the hotbar's Take, in the band over the touch row (Place is the Use button). -->
     <button type="button" class="m-take" (click)="takeBack()" [attr.inert]="panel ? '' : null" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }}</button>

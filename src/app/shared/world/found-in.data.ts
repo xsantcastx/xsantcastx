@@ -30,6 +30,7 @@ import { KAELS_HAMMER } from '../npc/delve-missions.model';
 import { TOWNS, type AreaDef } from '../../play/world/world.model';
 import { TERRAIN_NODE_LIST, type TerrainSpec } from '../../play/engine/terrain';
 import { foundIn, type AreaLike, type FoundInIndex, type FoundInPlace } from './found-in';
+import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
 const DELVE_AREA = 'Ember Delve';
 
@@ -41,7 +42,25 @@ const DELVE_MATERIALS: FoundInIndex['delve'] = {
   [KAELS_HAMMER]: { area: DELVE_AREA, biomes: [biome('basalt-caverns')] },
   [GLOWCAP]: { area: DELVE_AREA, biomes: [biome('glowcap-grotto')] },
   [GODFORGE_FRAGMENT]: { area: DELVE_AREA, biomes: [biome('magma-halls')] },
+  // Wherever water meets lava (the Magma Halls' pools): a made block (liquids.ts).
+  'obsidian-block': { area: DELVE_AREA, biomes: [biome('magma-halls')] },
 };
+
+/** Fishing (Phase 6): each water's catches, the Ledger Catch family, and what the Bench and the Lodge give. */
+function fishingRows(): { place: string; materialIds: string[] }[] {
+  const rows: { place: string; materialIds: string[] }[] = (Object.keys(WATERS) as WaterId[]).map(water => ({
+    place: `${DELVE_AREA}: fishing ${WATERS[water].name}`,
+    materialIds: CATCHES.filter(c => c.rarity !== 'quest' && c.rarity !== 'crate' && c.waters.includes(water)).map(c => c.id)
+      .concat(CATCHES.filter(c => c.rarity === 'crate' && c.waters.includes(water)).map(c => c.id)),
+  }));
+  rows.push({ place: `${DELVE_AREA}: the Lodge Warden's Ledger Catch, on its day`, materialIds: [...LEDGER_CATCH_IDS] });
+  rows.push({ place: 'Crafting Bench (Delve kit)', materialIds: [...RODS.filter(r => r.id !== 'worn-rod').map(r => r.id), 'seam-bucket', 'lampfish-oil'] });
+  rows.push({ place: 'Your first rod, in the satchel from the start', materialIds: ['worn-rod'] });
+  rows.push({ place: `${DELVE_AREA}: a Seam Bucket filled at water or lava`, materialIds: ['seam-bucket-water', 'seam-bucket-lava'] });
+  rows.push({ place: 'Rootglass Canopy: the Lodge Warden\'s gifts for Ledger Catches', materialIds: LODGE_CHARMS.map(c => c.id) });
+  void CRATE_IDS;
+  return rows;
+}
 
 function terrainNodes(spec: TerrainSpec | undefined): string[] {
   if (!spec) return [];
@@ -86,6 +105,7 @@ export function buildFoundInIndex(): FoundInIndex {
       { place: 'Rootglass Canopy', materialIds: FORAGING_TIERS.map(t => t.herbId) },
       // The Clarity Elixir is the Orrery's rare find, not a tier.
       { place: 'Meridian Orrery', materialIds: [...PROSPECTING_TIERS.map(t => t.mineralId), CLARITY_ELIXIR_ID] },
+      ...fishingRows(),
     ],
     areas,
     nodeYields: Object.fromEntries(TERRAIN_NODE_LIST.map(n => [n.id, n.yield?.materialId])),

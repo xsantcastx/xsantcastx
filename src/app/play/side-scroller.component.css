@@ -2021,6 +2021,28 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .map-full { inset: calc(var(--hud-safe-t) + 8px) 8px calc(var(--hud-safe-b) + 8px); padding: 10px; }
   .map-hint { font-size: 14px; }
 }
+
+/* ── Fishing and liquids (Phase 6) ─────────────────────────────────────── */
+.meter.breath i { background: var(--adventure-hud-water, #86d2e6); }
+.meter.ward i { background: var(--adventure-hud-ember, #ff9b4f); }
+.reel-host {
+  position: absolute;
+  z-index: 4;
+  left: 50%;
+  bottom: 76px;
+  width: min(440px, calc(100% - 32px));
+  transform: translateX(-50%);
+  pointer-events: auto;
+}
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .reel-host {
+    left: 8px;
+    right: 8px;
+    width: auto;
+    transform: none;
+    bottom: calc(var(--touch-h) + var(--dock-h) + var(--hud-safe-b) + 52px);
+  }
+}
 /* Phones: Glim's button is a bare 44px moth in the goal row, and its line speaks
    in the toast band under the row (the message toast steps aside while it does),
    two or three lines at most, well above the middle half of the world. */

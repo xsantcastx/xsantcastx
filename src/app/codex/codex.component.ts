@@ -85,6 +85,10 @@ import { TranslationService } from '../translation.service';
 import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationTab } from '../shared/station-ui';
 import { CODEX_I18N } from './codex.i18n';
 import { CODEX_EXTRA_I18N } from './codex-extra.i18n';
+import { FishingService } from '../shared/fishing/fishing.service';
+import { FISHING_I18N } from '../shared/fishing/fishing.i18n';
+import { CATCHES, WATERS } from '../shared/fishing/fishing.model';
+import type { FishingSave } from '../shared/fishing/fishing-save';
 
 /** The three Codex tabs that read as a journal: list | the selected entry. */
 type JournalTabKey = 'achievements' | 'scrolls' | 'secrets';
@@ -419,6 +423,9 @@ export class CodexComponent implements OnInit, OnDestroy {
     // Delve inscriptions: copied in the world, read here. `inscription$` replays
     // the current set, so this also fills the shelf on first open.
     this.subs.push(this.delveLore.inscription$.subscribe(() => (this.inscriptionShelves = this.buildInscriptions())));
+    // The Catalogue of Strange Fish: every catch, a silhouette until it is landed.
+    this.subs.push(this.fishingService.save$.subscribe(save => (this.fishCaught = save)));
+    void this.fishingService.save;
 
     // The page itself is an achievement. Triggering unconditionally is safe —
     // EasterEggService only pays out and only toasts on the first discovery.
@@ -817,8 +824,12 @@ export class CodexComponent implements OnInit, OnDestroy {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(CODEX_I18N);
     this.i18n.register(CODEX_EXTRA_I18N);
+    this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
   }
+  private readonly fishingService = inject(FishingService);
+  /** The Catalogue of Strange Fish reads the fishing ledger's counts (a silhouette until caught). */
+  fishCaught: FishingSave | null = null;
 
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
@@ -850,7 +861,7 @@ export class CodexComponent implements OnInit, OnDestroy {
     const key: unknown[] = tab === 'achievements'
       ? [this.achievements, this.rarityFilter, this.statusFilter, this.sort, this.search]
       : tab === 'scrolls'
-        ? [this.scrollShelves, this.inscriptionShelves]
+        ? [this.scrollShelves, this.inscriptionShelves, this.fishCaught]
         : [this.secrets, this.socketWords];
     key.push(this.i18n.getCurrentLanguage());
     const last = this.journalKeys[tab];
@@ -966,6 +977,26 @@ export class CodexComponent implements OnInit, OnDestroy {
           locked: !card.found,
         });
       }
+    }
+    // The Archivist's Catalogue of Strange Fish (Phase 6): every catch, where it
+    // swims and what it is for, even before it is caught (the meaning rule).
+    const shelf = this.t('codex.fish.shelf');
+    for (const fish of CATCHES) {
+      const id = 'f:' + fish.id;
+      const n = this.fishCaught?.caught[fish.id] ?? 0;
+      const where = fish.rarity === 'quest' ? this.t('skills.lodge.title') : fish.waters.map(w => WATERS[w].name).join(', ');
+      entries.set(id, {
+        id,
+        name: n ? fish.name : '???',
+        line: shelf,
+        facts: n ? [{ label: this.t('codex.rarity'), value: fish.rarity }, { label: this.t('codex.fish.caught'), value: String(n) }] : [],
+        body: n
+          ? [fish.lore, this.t('codex.fish.where', { where }), this.t('codex.fish.used', { use: fish.use })]
+          : [this.t('codex.fish.unknown'), this.t('codex.fish.where', { where })],
+        note: this.t('codex.fish.note'),
+        found: n > 0,
+      });
+      rows.push({ id, name: n ? fish.name : '???', sub: `${shelf} · ${where}`, locked: !n });
     }
     return { rows, entries };
   }

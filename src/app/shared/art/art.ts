@@ -10,6 +10,7 @@
  * Pure data — no browser APIs — so it is safe to import from an SSR path.
  */
 import { ART_ALL, type ArtEntry } from './art-manifest.generated';
+import { pixelIcon } from './pixel-icons';
 import { NPCS } from '../npc/npc.model';
 import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 
@@ -74,7 +75,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   // Delve creatures that spawn under their own keys (towns/infernal.ts). Until
   // their paintings land they wear the creature they were cast from; their rigs
   // in creature-rigs.ts are those same bodies, so nothing changes on screen.
-  'seam-eater': 'mirror-substitute', 'cinder-bailiff': 'rivet-maw',
+  'seam-eater': 'mirror-substitute', 'cinder-bailiff': 'rivet-maw', 'drowned-lamp': 'ephemeris-leech',
 };
 
 /**
@@ -190,7 +191,8 @@ export const ART_PENDING: ReadonlySet<string> = new Set(
  */
 export function artFor(id: string | undefined | null): ArtEntry | null {
   if (!id) return null;
-  return ART_ALL[id] ?? ART_ALL[ART_ALIAS[id] ?? ''] ?? null;
+  // Then a procedural pixel icon (Fishing and Liquids items) until their I1 art is painted.
+  return ART_ALL[id] ?? ART_ALL[ART_ALIAS[id] ?? ''] ?? pixelIcon(id);
 }
 
 /** True when `id` has art. Cheaper to read than `!!artFor(id)` at a call site. */

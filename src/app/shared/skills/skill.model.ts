@@ -21,7 +21,8 @@ export type SkillId =
   | 'delving'
   | 'enchanting'
   | 'hunting'
-  | 'prospecting';
+  | 'prospecting'
+  | 'fishing';
 
 export interface SkillDef {
   id: SkillId;
@@ -44,6 +45,8 @@ export const SKILLS: readonly SkillDef[] = [
   { id: 'enchanting', discipline: 'enchanting', labelKey: 'skills.name.enchanting', hintKey: 'skills.hint.enchanting', artId: 'rune-of-radiance' },
   { id: 'hunting', discipline: 'hunting', labelKey: 'skills.name.hunting', hintKey: 'skills.hint.hunting', artId: 'shadowthread-silk' },
   { id: 'prospecting', discipline: 'prospecting', labelKey: 'work.discipline.prospecting', hintKey: 'skills.hint.prospecting', artId: 'celestial-alloy' },
+  // Fishing (Phase 6): its words live in the lazy fishing table (shared/fishing/fishing.i18n.ts).
+  { id: 'fishing', discipline: 'fishing', labelKey: 'skills.name.fishing', hintKey: 'skills.hint.fishing', artId: 'glowcap-minnow' },
 ];
 
 const BY_ID = new Map(SKILLS.map(s => [s.id, s]));

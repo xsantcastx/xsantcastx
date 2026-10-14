@@ -45,6 +45,7 @@ import { mergeCrafting as mergeCraftingState } from '../crafting/crafting.model'
 import { mergeInfusionLedgers } from '../enchanting/infusion.model';
 import { mergeDelveSaves } from '../delve/delve-save.model';
 import { mergeDelveLore } from '../delve/delve-lore.model';
+import { mergeFishingSaves } from '../fishing/fishing-save';
 import { mergeGatherSaves } from '../skills/gather-save.model';
 import { mergeGamesLedgers } from '../games/play-ledger';
 import { mergeGlim } from '../glim/glim-save.model';
@@ -343,6 +344,15 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // `{ version, inscriptions: string[] }`: a reading cannot be undone, so the
     // union. Hand-written only so unknown ids are dropped on the way through.
     merge: mergeDelveLore,
+  },
+  {
+    key: 'godforge-fishing',
+    collection: 'progress',
+    doc: 'fishing',
+    label: 'Fishing',
+    // `{ caught, turnIns, lastTurnIn, opened }`: the most of each count, the later
+    // turn-in day (a counter that only grows; fishing-save.ts).
+    merge: mergeFishingSaves,
   },
   {
     key: 'godforge-gathering',

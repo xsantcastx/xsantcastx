@@ -8,6 +8,7 @@ export const CRAFTING_I18N: Readonly<Record<string, { en: string; es: string }>>
   'crafting.ctaWorking':    { en: 'Crafting… {{s}}s', es: 'Fabricando… {{s}}s' },
   'crafting.why.level':     { en: 'Reach crafting level {{n}} first', es: 'Primero llega al nivel {{n}} de fabricacion' },
   'crafting.why.smithing':  { en: 'Reach Smithing {{n}} first', es: 'Primero llega a Herreria {{n}}' },
+  'crafting.why.fishing':  { en: 'Reach Fishing {{n}} first', es: 'Primero llega a Pesca {{n}}' },
   'crafting.why.bag':       { en: 'Your satchel is full — make room first', es: 'Tu mochila esta llena: haz sitio primero' },
   'crafting.readyBadge':    { en: 'Ready', es: 'Listo' },
   'crafting.made':          { en: 'Crafted!', es: '¡Fabricado!' },
