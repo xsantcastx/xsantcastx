@@ -93,13 +93,13 @@
       </div>
     }
     <!-- Under water the breath shows, always (spec §6 risk: never a surprise); in lava, the Ember ward. -->
-    @if (state.liquid?.breath !== undefined) {
+    @if (state.liquid?.breath != null) {
       <div class="vital vital--breath">
         <label>{{ t('play.hud.breath') }} <b>{{ ((state.liquid?.breath ?? 1) * 100).toFixed(0) }}%</b></label>
         <div class="meter breath"><i [style.--fill]="state.liquid?.breath ?? 1"></i></div>
       </div>
     }
-    @if (state.liquid?.in === 'lava' && state.liquid?.ward !== undefined) {
+    @if (state.liquid?.in === 'lava' && state.liquid?.ward != null) {
       <div class="vital vital--ward">
         <label>{{ t('play.hud.ward') }}</label>
         <div class="meter ward"><i [style.--fill]="state.liquid?.ward ?? 0"></i></div>
