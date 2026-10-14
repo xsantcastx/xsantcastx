@@ -22,6 +22,9 @@ import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
 import { drawLiquids, lavaLights } from './liquid-render';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import { createFog, MapSource, revealAround } from './delve-map';
+import { Column, SectorWorld } from './sector-world';
+import { SECTOR } from './sector-gen';
+import { FIELD_NOTE_PREFIX } from '../../shared/delve/field-notes.model';
 import type { BucketId, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
@@ -48,7 +51,11 @@ interface Monster {
   flash: number; knock: number; dying: number; born: number; shownHp: number;
   /** Hit recoil 1 → 0, drives each creature's hurt pose. Presentation only. */
   recoil: number;
+  /** The endless Delve: the sector column whose hall it lives in (it leaves with the column). */
+  sx?: number;
 }
+/** Set once the Keeper has been told what regrowth is (the delve save's `claimed`). */
+const REGROWTH_FLAG = 'delve-regrowth-seen';
 /** `ore` is the material quantity (legacy name). `art`/`label`/`short` come from the drop entry. */
 interface Drop {
   id: string; x: number; y: number; coins: number; ore: number; material?: string; art?: string; label?: string; short?: string; age: number; spin: number;
@@ -139,7 +146,7 @@ const SKILL_NAME: Partial<Record<DisciplineId, string>> = { forge: 'smithing', e
 /** 'cinder-ore' → 'Cinder Ore'. */
 function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
 /** The prompt over a usable cell. */
-const USE_LABEL: Readonly<Record<string, string>> = { inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP' };
+const USE_LABEL: Readonly<Record<string, string>> = { inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP', shrine: 'RIFT SHRINE' };
 const KEEPER_ANIMATIONS = new Set<KeeperAnimation>(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 export interface RemoteKeeper { id: string; name: string; x: number; y: number; area: string; facing?: number; animation?: string }
 interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number; motion: KeeperMotion; clock: SpriteClock }
@@ -306,6 +313,15 @@ export class SeamworksEngine {
   /** `terrainLayout()` each cached terrain was generated under: the key its diff is saved by. */
   private readonly layouts = new Map<string, string>();
   private delve: DelvePersistence | null = null;
+  /**
+   * The endless Delve (Phase 7): the loaded world round the Keeper when the
+   * area's spec is `endless` and the save holds sectors (sector-world.ts).
+   * Its ring is `terrain`; null in the plain core (tests, SSR) and in towns.
+   */
+  private world: SectorWorld | null = null;
+  private readonly worlds = new Map<string, SectorWorld>();
+  /** The sector column (and sector row) the Keeper last stood in: the regrowth line is said on entering a healed one. */
+  private worldAt = '';
   private readonly terrainRenderer = new TerrainRenderer();
   private readonly motes = new AmbientMotes();
   private readonly halos = new GlowHalos();
@@ -441,7 +457,12 @@ export class SeamworksEngine {
   }
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
-    this.terrain = this.terrainFor(area); this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
+    const fresh = !this.worlds.has(area.id);
+    this.terrain = this.terrainFor(area); this.world = this.terrain ? this.worlds.get(area.id) ?? null : null;
+    // A world already loaded keeps its ring: its halls' creatures come back with the area.
+    if (this.world && !fresh) for (const column of this.world.loadedColumns()) this.spawnHalls(area, column);
+    this.worldAt = '';
+    this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
     this.liquid = this.terrain ? this.sims.get(area.id) ?? null : null;
     this.chars.clear(); this.line = null; this.recast = 0;
     this.breath = this.breathMax; this.burning = 0; this.immersed = 0; this.headUnder = false;
@@ -500,6 +521,7 @@ export class SeamworksEngine {
       const own = this.delve?.seed(area.id);
       if (Number.isInteger(own)) seed = (own as number) >>> 0;
     } catch { /* a broken save falls back to the shared seed */ }
+    if (spec.endless && this.delve?.sectors) return this.endlessFor(area, seed);
     const terrain = generateTerrain(spec, seed);
     const layout = terrainLayout(spec, seed);
     try {
@@ -529,15 +551,99 @@ export class SeamworksEngine {
     return terrain;
   }
   /**
+   * The endless Delve's world for an area: the ring round the area's spawn,
+   * its liquid sim and fog. Creatures of a column's halls come and go with it.
+   */
+  private endlessFor(area: AreaDef, seed: number): Terrain {
+    const spec = area.terrain!;
+    let sim: LiquidSim | null = null;
+    const world = new SectorWorld(spec, seed, area.id, this.delve, {
+      loaded: column => {
+        sim?.wakeColumns(column.sx * SECTOR - 1, (column.sx + 1) * SECTOR + 1);
+        if (this.areaDef === area) this.spawnHalls(area, column);
+      },
+      unloading: column => this.columnLeaving(world, column, sim),
+    });
+    const t = world.t;
+    world.center(t.colAt(area.spawnX));
+    this.worlds.set(area.id, world);
+    this.terrains.set(area.id, t);
+    this.layouts.set(area.id, world.layout);
+    this.liquidLayouts.set(area.id, world.wet);
+    sim = new LiquidSim(t, {
+      canSet: index => this.terrain !== t || !this.bodyIn(t, index),
+      reacted: (index, made) => this.reacted(t, area.id, index, made),
+      char: index => { if (this.terrain === t && !this.chars.has(index)) this.chars.set(index, CHAR_TIME); },
+    });
+    sim.wakeAll();
+    this.sims.set(area.id, sim);
+    this.fogs.set(area.id, world.fog);
+    return t;
+  }
+  /** A column's hall creatures, from the area's own creature of that kind (its HP and drops), in the hall. */
+  private spawnHalls(area: AreaDef, column: Column): void {
+    const t = this.terrain;
+    for (const hall of column.gen.halls) {
+      const base = area.monsters.find(m => m.creature === hall.creature && !m.once && !m.summoned);
+      if (!base) continue;
+      const x0 = hall.col0 * CELL + 40, x1 = hall.col1 * CELL - 40;
+      const xs = Array.from({ length: hall.count }, (_, n) => Math.round(x0 + (x1 - x0) * (n + .5) / hall.count));
+      const def: MonsterDef = { ...base, spawnXs: xs, floorY: (t?.top ?? FLOOR) + hall.floorRow * CELL, range: [x0, x1] };
+      for (const x of xs) this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp, recoil: 0, sx: column.sx });
+    }
+  }
+  /** A column is leaving the ring: its creatures go, and nothing here holds its cells any more. */
+  private columnLeaving(world: SectorWorld, column: Column, sim: LiquidSim | null): void {
+    const t = world.t, col0 = column.sx * SECTOR, col1 = col0 + SECTOR;
+    sim?.forgetColumns(col0, col1);
+    if (this.world === world) {
+      this.monsters = this.monsters.filter(m => m.sx !== column.sx);
+      const gone = (index: number) => { const col = t.colOf(index); return col >= col0 && col < col1; };
+      for (const index of [...this.chars.keys()]) if (gone(index)) this.chars.delete(index);
+      for (const index of [...this.placedGen.keys()]) if (gone(index)) this.placedGen.delete(index);
+      this.fuses = this.fuses.filter(fuse => !gone(fuse.index));
+      this.dragQueue = []; this.dragLast = -1; this.interactAt = -1;
+      if (this.line && this.line.col >= col0 && this.line.col < col1) this.line = null;
+    }
+  }
+  /**
+   * Keep the endless Delve's ring round the Keeper: a teleport (the camp, a
+   * reload) re-centres it, walking shifts it a sector column at a time. The
+   * first step into a regrown sector says what happened, once per player.
+   */
+  private keepWorld(): void {
+    const world = this.world;
+    if (!world) return;
+    const t = world.t, col = t.colAt(this.player.x);
+    if (col < t.colLo + 8 || col >= t.colHi - 8) world.center(col);
+    else world.follow(col);
+    const row = Math.max(0, Math.min(t.rows - 1, t.rowAt(this.player.y - DELVE_BOX.height * .5)));
+    const sx = Math.floor(col / SECTOR), sy = Math.floor(row / SECTOR), at = `${sx},${sy}`;
+    if (at === this.worldAt) return;
+    this.worldAt = at;
+    if (world.cached(sx)?.healed[sy] && !this.flagged(REGROWTH_FLAG)) {
+      this.setFlag(REGROWTH_FLAG);
+      this.say('play.delve.regrown', 'The Delve keeps what is held. A torch, a block, a chest, a camp: these it leaves. An empty tunnel it takes back, slowly, and fills with something new. Mark what you mean to keep.');
+    }
+  }
+  /** A stable id for a cell of the current delve (what chests are filed by): the core keeps its v1 index. */
+  private cellIdOf(t: Terrain, index: number): number {
+    return this.world && this.world.t === t ? this.world.cellId(t.colOf(index), t.rowOf(index)) : index;
+  }
+  /**
    * Plug in (or replace) where per-player delves come from. Cached terrains
    * are dropped so the next entry regenerates from the save; a delve the
    * Keeper stands in is rebuilt now (cloud save adopted another device's dig).
    */
   setDelve(delve: DelvePersistence | null): void {
     this.delve = delve;
-    this.terrains.clear(); this.layouts.clear(); this.fogs.clear(); this.sims.clear(); this.liquidLayouts.clear();
+    this.terrains.clear(); this.layouts.clear(); this.fogs.clear(); this.sims.clear(); this.liquidLayouts.clear(); this.worlds.clear();
     if (this.areaDef?.terrain) {
+      this.monsters = this.monsters.filter(m => m.sx === undefined);
       this.terrain = this.terrainFor(this.areaDef);
+      this.world = this.worlds.get(this.areaDef.id) ?? null;
+      // The rebuilt ring stands where the Keeper is, not at the spawn.
+      if (this.world) { this.world.center(this.world.t.colAt(this.player.x)); this.worldAt = ''; }
       this.liquid = this.sims.get(this.areaDef.id) ?? null; this.chars.clear(); this.line = null;
       this.fog = this.fogs.get(this.areaDef.id) ?? null; this.fogAt = NaN;
       this.terrainRenderer.attach(this.terrain);
@@ -552,7 +658,8 @@ export class SeamworksEngine {
   private recordCell(t: Terrain, index: number): void {
     // Any changed cell lets the liquid round it move (a dug wall, a placed block).
     const sim = this.terrain === t ? this.liquid : null;
-    if (sim) { const col = index % t.cols; sim.wakeAround(col, (index - col) / t.cols); }
+    if (sim) sim.wakeAround(t.colOf(index), t.rowOf(index));
+    if (this.world && this.world.t === t) { this.world.record(index); return; }
     if (!this.delve) return;
     const layout = this.layouts.get(this.areaDef.id);
     if (!layout) return;
@@ -614,7 +721,7 @@ export class SeamworksEngine {
     if (!isAir(t, col, row)) return { key: 'play.delve.occupied', en: 'Something is already there.' };
     if (def?.grounded && !t.solid(col, row + 1) && !isOneWay(t, col, row + 1)) return { key: 'play.delve.needsGround', en: `The ${def.label.toLowerCase()} needs solid ground under it.`, vars: { item: def.id } };
     if (t.liquidAt(col, row) === LIQUID_LAVA && WOODEN_IDS.includes(node.id)) return { key: 'play.delve.liquid.tooHot', en: 'Too hot: that would char in the lava.' };
-    if (def?.single && findNode(t, def.node) >= 0) return { key: 'play.delve.single', en: `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`, vars: { item: def.id } };
+    if (def?.single && this.findPlaced(t, def.node)) return { key: 'play.delve.single', en: `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`, vars: { item: def.id } };
     if (!node.solid) return null;
     const x0 = col * CELL, y0 = t.top + row * CELL;
     const overlaps = (x: number, feet: number, halfWidth: number, height: number) =>
@@ -629,7 +736,7 @@ export class SeamworksEngine {
   private placeItem(def: PlaceableDef, index: number): boolean {
     const t = this.terrain;
     if (!t) return false;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     const node = TERRAIN_NODES[def.node];
     const problem: PlaceProblem | null = node ? this.placeProblem(t, col, row, node, def) : { key: 'play.delve.cannotPlace', en: 'That cannot be placed.' };
     if (problem) { this.say(problem.key, problem.en, problem.vars); this.report(); return false; }
@@ -639,7 +746,7 @@ export class SeamworksEngine {
     }
     const gen = ++this.placeSeq;
     const accepted = this.options.onPlace?.({
-      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index,
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
       mutationId: `delve-place:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${gen}`,
     });
     // Refused: the host already said why (none left, the save failed).
@@ -669,12 +776,12 @@ export class SeamworksEngine {
   private takeItem(index: number): boolean {
     const t = this.terrain;
     if (!t) return false;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     const node = t.nodeAt(col, row);
     const def = placeableById(node.placeable);
     if (!def || node.solid) return false;
     const accepted = this.options.onTakeBack?.({
-      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index,
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
       mutationId: `delve-take:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
     });
     if (accepted === false) { this.report(); return false; }
@@ -701,7 +808,18 @@ export class SeamworksEngine {
   hasDelveCamp(): boolean {
     const entrance = this.delveEntrance();
     const t = entrance ? this.terrainFor(entrance.area) : null;
-    return !!t && findNode(t, 'camp') >= 0;
+    return !!t && !!this.findPlaced(t, 'camp');
+  }
+  /**
+   * Where a node is, as a world cell: in the plain core a scan of the grid; in
+   * the endless Delve anywhere the player has been (the ring, the cached
+   * columns, then the saved sectors). Null when there is none.
+   */
+  private findPlaced(t: Terrain, id: string): { col: number; row: number } | null {
+    const world = [...this.worlds.values()].find(w => w.t === t);
+    if (world) return world.find(nodeIndex(id));
+    const index = findNode(t, id);
+    return index >= 0 ? { col: t.colOf(index), row: t.rowOf(index) } : null;
   }
   /**
    * "Descend to your camp": from town, straight to the camp placed in this
@@ -712,9 +830,11 @@ export class SeamworksEngine {
     if (this.paused || this.hp <= 0 || !this.isTown) return false;
     const entrance = this.delveEntrance();
     const t = entrance ? this.terrainFor(entrance.area) : null;
-    const index = t ? findNode(t, 'camp') : -1;
-    if (!entrance || !t || index < 0) return false;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const camp = t ? this.findPlaced(t, 'camp') : null;
+    if (!entrance || !t || !camp) return false;
+    const { col, row } = camp;
+    // The endless Delve: bring the camp's sectors into the ring before anything is asked of its cells.
+    this.worlds.get(entrance.area.id)?.center(col);
     const x = (col + .5) * CELL, feet = t.top + (row + 1) * CELL;
     if (boxHits(t, x, feet, DELVE_BOX)) {
       this.say('play.delve.campBlocked', 'Something fills the space round your camp. Take the Delve shaft and dig your way down.');
@@ -730,6 +850,13 @@ export class SeamworksEngine {
   }
   /** The node id at a cell of an area the engine has loaded, or null (another area, not generated yet). */
   nodeIdAt(areaId: string, index: number): string | null {
+    const world = this.worlds.get(areaId);
+    if (world) {
+      // The endless Delve files cells by a stable id (SectorWorld.cellId); null when that cell is not in memory.
+      const at = world.cellOf(index);
+      const kind = at ? world.kindAt(at.col, at.row) : null;
+      return kind === null ? null : TERRAIN_NODE_LIST[kind].id;
+    }
     const t = this.terrains.get(areaId);
     if (!t || index < 0 || index >= t.kind.length) return null;
     return TERRAIN_NODE_LIST[t.kind[index]].id;
@@ -766,6 +893,7 @@ export class SeamworksEngine {
   }
   restartHunt(): void {
     this.monsters = this.createMonsters(); this.drops = []; this.resetPosition(this.areaDef.spawnX);
+    if (this.world) for (const column of this.world.loadedColumns()) this.spawnHalls(this.areaDef, column);
     this.say('play.hud.eng.freshHunt', 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.'); this.report();
   }
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
@@ -1084,7 +1212,7 @@ export class SeamworksEngine {
     const aim = this.aimCell(), t = this.terrain;
     if (!aim || !t || aim.index === this.dragLast) return;
     if (this.dragLast < 0) { this.dragQueue.push(aim.index); this.dragLast = aim.index; return; }
-    let col = this.dragLast % t.cols, row = (this.dragLast - col) / t.cols;
+    let col = t.colOf(this.dragLast), row = t.rowOf(this.dragLast);
     const dc = Math.abs(aim.col - col), dr = -Math.abs(aim.row - row), sc = col < aim.col ? 1 : -1, sr = row < aim.row ? 1 : -1;
     let err = dc + dr;
     while ((col !== aim.col || row !== aim.row) && this.dragQueue.length < 32) {
@@ -1114,7 +1242,7 @@ export class SeamworksEngine {
     const node = def ? TERRAIN_NODES[def.node] : undefined;
     while (this.dragQueue.length) {
       const index = this.dragQueue.shift()!;
-      const col = index % t.cols, row = (index - col) / t.cols;
+      const col = t.colOf(index), row = t.rowOf(index);
       if (!this.inReach(col, row)) continue;
       if (!def || !node) {
         this.say('play.delve.chooseFirst', 'Choose something to place first (keys 1-0, or tap the bar).'); this.report();
@@ -1185,11 +1313,13 @@ export class SeamworksEngine {
   moveTo(x: number, onArrive?: () => void): boolean {
     if (this.paused || this.hp <= 0 || !Number.isFinite(x)) return false;
     this.walking = true;
-    this.walkX = Math.max(30, Math.min(this.areaDef.width - 30, x));
+    this.walkX = this.clampX(x);
     this.onArrive = onArrive ?? null;
     return true;
   }
   cancelMove(): void { this.walking = false; this.onArrive = null; }
+  /** An x the Keeper can stand at: inside the area, or (the endless Delve) inside the loaded ring. */
+  private clampX(x: number): number { return this.world ? this.world.t.clampX(x, this.areaDef.width) : Math.max(30, Math.min(this.areaDef.width - 30, x)); }
   /** True while a click-to-move walk is in progress. */
   get moving(): boolean { return this.walking; }
   /** The current area's stations, for the Places list. */
@@ -1241,7 +1371,7 @@ export class SeamworksEngine {
   /** Stand the Keeper on the floor at x in the current area. No interaction. */
   placeAt(x: number): void {
     this.cancelMove();
-    this.player.x = Math.max(30, Math.min(this.areaDef.width - 30, x));
+    this.player.x = this.clampX(x);
     this.player.y = FLOOR; this.player.vy = 0; this.player.grounded = true;
     this.report();
   }
@@ -1377,7 +1507,7 @@ export class SeamworksEngine {
   summon(creature: string, x: number): boolean {
     const def = this.areaDef.monsters.find(m => m.creature === creature && m.summoned);
     if (!def || (def.once && this.flagged(def.once)) || this.monsters.some(m => m.def === def && m.hp > 0)) return false;
-    const [lo, hi] = def.range ?? [0, this.areaDef.width];
+    const [lo, hi] = def.range ?? [this.clampX(-Infinity), this.clampX(Infinity)];
     const at = Math.max(lo, Math.min(hi, x));
     this.monsters.push({ def, maxHp: def.hp, x: at, spawn: at, hp: def.hp, phase: 'idle', timer: 1.5, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0 });
     this.say('play.fish.lampRises', `${def.name} rises, and every light in the cavern dims. Light a torch beside it to fight it.`, { name: def.name });
@@ -1416,7 +1546,7 @@ export class SeamworksEngine {
     let broke = 0, chipped = 0, blocked = 0, rich = false;
     for (let n = 0; n < count; n++) {
       const index = this.hitScratch[n];
-      const col = index % t.cols, row = (index - col) / t.cols;
+      const col = t.colOf(index), row = t.rowOf(index);
       const node = t.nodeAt(col, row);
       const result = this.hitCell(col, row, allowed, quiet || blocked > 0);
       if (result === HIT_BROKE) { broke++; rich ||= !!node.yield; }
@@ -1503,16 +1633,18 @@ export class SeamworksEngine {
 
   /** True when cell `index` overlaps the Keeper's body (a reaction never sets rock into them). */
   private bodyIn(t: Terrain, index: number): boolean {
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     const x0 = col * CELL, y0 = t.top + row * CELL, p = this.player;
     return p.x + DELVE_BOX.halfWidth > x0 && p.x - DELVE_BOX.halfWidth < x0 + CELL && p.y > y0 && p.y - DELVE_BOX.height < y0 + CELL;
   }
   /** Water met lava: save the obsidian cell (a made cell: its block only, never XP), hiss and say so. */
   private reacted(t: Terrain, areaId: string, index: number, made: boolean): void {
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     if (made && this.terrain === t) {
       this.placedGen.delete(index);
       this.recordCell(t, index);
+    } else if (made && this.worlds.get(areaId)?.t === t) {
+      this.worlds.get(areaId)!.record(index);
     } else if (made) {
       try { const layout = this.layouts.get(areaId); if (layout) this.delve?.changed(areaId, layout, index, t.kind[index] === t.base[index] ? null : t.kind[index]); } catch { /* this session */ }
     }
@@ -1524,6 +1656,7 @@ export class SeamworksEngine {
   /** Save the liquid as it is now, filed by its liquid layout. */
   private saveLiquids(t: Terrain, sim: LiquidSim): void {
     sim.markSaved();
+    if (this.world && this.world.t === t) { this.world.saveLiquids(); return; }
     const layout = this.liquidLayouts.get(this.areaDef.id);
     if (!layout || !this.delve?.liquidsChanged) return;
     try { this.delve.liquidsChanged(this.areaDef.id, layout, liquidDiff(t)); } catch { /* flowing for this session */ }
@@ -1593,9 +1726,9 @@ export class SeamworksEngine {
     const node = TERRAIN_NODE_LIST[t.kind[index]];
     const def = placeableById(node.placeable);
     if (!def || node.solid) { this.chars.delete(index); return; }
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     const accepted = this.options.onTakeBack?.({
-      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index,
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
       mutationId: `delve-char:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
     });
     // Refused (a chest with things in it): it holds the lava back.
@@ -1627,7 +1760,7 @@ export class SeamworksEngine {
     const full = BUCKET_LIQUID[bucket];
     const type = t && index >= 0 ? full || (t.liqLevel[index] ? t.liqType[index] : 0) : 0;
     if (!t || !sim || !type) { this.say('play.delve.bucket.nothing', 'Nothing here for the bucket: stand at the edge of water or lava.'); this.report(); return false; }
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     // The world must take it before the satchel is asked.
     const ok = full ? sim.pour(index, type, true) : sim.scoop(index, true) === type;
     if (!ok) {
@@ -1637,7 +1770,7 @@ export class SeamworksEngine {
     }
     const to: BucketId = full ? 'seam-bucket' : BUCKET_FOR[type];
     const accepted = this.options.onBucket?.({
-      from: bucket, to, areaId: this.areaDef.id, cellKey: cellKey(col, row), index, liquid: LIQUID_IDS[type] as LiquidKind,
+      from: bucket, to, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index), liquid: LIQUID_IDS[type] as LiquidKind,
       mutationId: `delve-bucket:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
     });
     if (accepted === false) { this.report(); return false; }
@@ -1671,7 +1804,7 @@ export class SeamworksEngine {
     const p = this.player, own = t.colAt(p.x), mid = t.rowAt(p.y - DELVE_BOX.height * .5);
     for (let d = 0; d <= CAST_CELLS; d++) {
       const col = own + this.facing * d;
-      if (col < 0 || col >= t.cols) break;
+      if (col < t.colLo || col >= t.colHi) break;
       for (let row = Math.max(0, mid - 1); row <= Math.min(t.rows - 1, mid + CAST_CELLS); row++) {
         const i = t.index(col, row);
         if (t.solid(col, row)) { if (row > mid) break; continue; }
@@ -1696,7 +1829,7 @@ export class SeamworksEngine {
     if (!this.rod.tier) { this.say('play.fish.noRod', 'You need a rod to fish. The Lodge Warden in the Rootglass Canopy keeps a worn one for you.'); this.report(); return false; }
     const index = this.castTarget(t);
     if (index < 0) { this.say('play.fish.noWater', 'Nothing to fish here: face water your rod can work, within six cells.'); this.report(); return false; }
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     this.cancelMove();
     this.line = {
       phase: 'wait', liquid: t.liqType[index], biome: t.biomeAt(row).id, col, row,
@@ -1843,7 +1976,7 @@ export class SeamworksEngine {
     if (!t.biomeAt(pr).loose) return;
     let picked = -1, seen = 0, close = false;
     for (let row = Math.max(0, pr - 6); row <= Math.min(t.rows - 1, pr + 2); row++) {
-      for (let col = Math.max(0, pc - 8); col <= Math.min(t.cols - 1, pc + 8); col++) {
+      for (let col = Math.max(t.colLo, pc - 8); col <= Math.min(t.colHi - 1, pc + 8); col++) {
         if (t.solid(col, row + 1) || !isLoose(t, col, row) || supportNear(t, col, row)) continue;
         seen++;
         if (Math.abs(col - pc) <= 2 && row < pr) close = true;
@@ -1856,7 +1989,7 @@ export class SeamworksEngine {
       this.say('play.delve.looseOverhead', 'Loose rock overhead: cracked and shedding dust. Dig it out with a support nearby, or it comes down.');
     }
     if (picked < 0 || this.reducedMotion) return;
-    const col = picked % t.cols, row = (picked - col) / t.cols;
+    const col = t.colOf(picked), row = t.rowOf(picked);
     this.debris.chip((col + .2 + Math.random() * .6) * CELL, t.top + (row + 1) * CELL, '#b8a69a', 1);
   }
   /** A lit charge burns down; at zero it goes off, if it is still there. */
@@ -1879,7 +2012,7 @@ export class SeamworksEngine {
   private detonate(index: number): number {
     const t = this.terrain;
     if (!t || index < 0 || index >= t.kind.length || !TERRAIN_NODE_LIST[t.kind[index]].charge) return 0;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
     t.set(col, row, 0); this.placedGen.delete(index); this.recordCell(t, index);
     const power = 1 + Math.max(1, this.tools.staff ?? 0);
@@ -1907,7 +2040,7 @@ export class SeamworksEngine {
   private blastCell(index: number, n: number): boolean {
     const t = this.terrain;
     if (!t) return false;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     const node = TERRAIN_NODE_LIST[t.kind[index]];
     const level = node.minLevel && this.skillLevels ? this.skillLevels[node.discipline] ?? 1 : Infinity;
     if (node.minLevel && level < node.minLevel) return false;
@@ -1942,9 +2075,24 @@ export class SeamworksEngine {
     if (t.inscriptions.has(index)) { this.readInscription(index); return; }
     const use = TERRAIN_NODE_LIST[t.kind[index]].use;
     if (!use) return;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
+    if (use === 'shrine') { this.touchShrine(t, col, row); return; }
     this.report();
-    this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index });
+    this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index) });
+  }
+  /**
+   * A rift shrine: "a passage created by difference". Touched, it shows the
+   * tunnels round it on the map (a sector column either side, as far as the
+   * loaded world reaches) and the host pays its first touch.
+   */
+  private touchShrine(t: Terrain, col: number, row: number): void {
+    const world = this.world;
+    if (world?.revealRect(col - SECTOR, col + SECTOR, 0, t.rows - 1)) world.flushFog();
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#b88cff', this.reducedMotion ? 2 : 10);
+    this.blastFlash = Math.max(this.blastFlash, .6);
+    this.say('play.delve.shrine.touched', 'The shrine shows you the tunnels round it. Open the map (M) to see them.');
+    this.report();
+    this.options.onDiscover?.({ kind: 'shrine', id: `rift:${col},${row}`, biome: t.biomeAt(row).id });
   }
   /** The carved wall, chest or camp the Keeper's body stands against (cell index), or -1. No allocation. */
   private findInteractive(): number {
@@ -1954,7 +2102,7 @@ export class SeamworksEngine {
     const c0 = t.colAt(p.x - DELVE_BOX.halfWidth - INTERACT_REACH), c1 = t.colAt(p.x + DELVE_BOX.halfWidth + INTERACT_REACH);
     const r0 = t.rowAt(p.y - DELVE_BOX.height), r1 = t.rowAt(p.y - .01);
     for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
-      for (let col = Math.max(0, c0); col <= Math.min(t.cols - 1, c1); col++) {
+      for (let col = Math.max(t.colLo, c0); col <= Math.min(t.colHi - 1, c1); col++) {
         const index = t.index(col, row);
         if (this.usable(index)) return index;
       }
@@ -1966,10 +2114,11 @@ export class SeamworksEngine {
     const t = this.terrain;
     const id = t?.inscriptions.get(index);
     if (!t || !id) return;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
     this.debris.chip(cx, cy, '#e8c47a', this.reducedMotion ? 2 : 6);
-    this.say('play.delve.inscriptionTrace', 'You trace the carving with a finger. The words are older than the Seamworks.');
+    if (id.startsWith(FIELD_NOTE_PREFIX)) this.say('play.delve.fieldNoteTrace', 'Someone left a note in the rock for whoever came next.');
+    else this.say('play.delve.inscriptionTrace', 'You trace the carving with a finger. The words are older than the Seamworks.');
     // Reported before the host hears of it, so a message the host shows in reply is not cleared by this one.
     this.report();
     this.options.onDiscover?.({ kind: 'inscription', id, biome: t.biomeAt(row).id });
@@ -2176,6 +2325,8 @@ export class SeamworksEngine {
     const pace = this.terrain ? .72 : 1;
     let velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace;
     if (this.terrain) {
+      // The endless Delve: the loaded ring follows the Keeper (a sector column at a time).
+      this.keepWorld();
       // In water or lava the Keeper wades and swims: slower, sinking slowly, and Jump held swims up.
       this.sense(this.terrain);
       const swim = this.immersed ? SWIM[this.immersed] : null;
@@ -2281,9 +2432,10 @@ export class SeamworksEngine {
     const fog = this.fog;
     if (!fog) return;
     const col = t.colAt(this.player.x), row = t.rowAt(this.player.y - DELVE_BOX.height * .5);
-    const at = row * t.cols + col;
+    const at = col * 64 + row;
     if (at === this.fogAt) return;
     this.fogAt = at;
+    if (this.world && this.world.t === t) { if (this.world.reveal(col, row)) this.world.flushFog(); return; }
     if (!revealAround(t, fog, col, row)) return;
     const layout = this.layouts.get(this.areaDef.id);
     try { if (layout) this.delve?.explored?.(this.areaDef.id, layout, fog); } catch { /* explored for this session */ }
@@ -2296,6 +2448,7 @@ export class SeamworksEngine {
       t, fog,
       keeper: { col: t.colAt(this.player.x), row: t.rowAt(this.player.y - DELVE_BOX.height * .5) },
       shafts: this.stations.filter(station => station.kind === 'passage').map(station => t.colAt(station.x)),
+      ...(this.world && this.world.t === t ? { world: this.world.map() } : {}),
     };
   }
   private report(): void {
@@ -2957,8 +3110,10 @@ export class SeamworksEngine {
   private render(): void {
     const c = this.context; const scale = this.height / 720; const viewport = this.width / scale;
     this.pixelScale = scale * this.pixelRatio;
-    this.camera = Math.max(0, Math.min(this.areaDef.width - viewport, this.player.x - viewport * .38));
     const t = this.terrain;
+    // The endless Delve has no west wall at 0: the camera stays inside the loaded ring (always wider than the view).
+    this.camera = this.world ? Math.max(this.world.left, Math.min(this.world.right - viewport, this.player.x - viewport * .38))
+      : Math.max(0, Math.min(this.areaDef.width - viewport, this.player.x - viewport * .38));
     if (t) {
       // Delves follow the Keeper down; the surface sits low in the frame at the top.
       const target = Math.max(0, Math.min(t.bottom + 40 - 720, this.player.y - 720 * .58));
@@ -2976,7 +3131,13 @@ export class SeamworksEngine {
       c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
       if (bg?.complete && bg.naturalWidth) {
         const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
-        c.globalAlpha = t ? .5 : .94; c.drawImage(bg, -this.camera * .16, -this.cameraY * .6, bgWidth, 720); c.globalAlpha = 1;
+        c.globalAlpha = t ? .5 : .94;
+        if (this.world) {
+          // Endless: the painting repeats, so a sky far east or west of the shaft is never bare.
+          const ox = -((((this.camera * .16) % bgWidth) + bgWidth) % bgWidth);
+          c.drawImage(bg, ox, -this.cameraY * .6, bgWidth, 720); c.drawImage(bg, ox + bgWidth, -this.cameraY * .6, bgWidth, 720);
+        } else c.drawImage(bg, -this.camera * .16, -this.cameraY * .6, bgWidth, 720);
+        c.globalAlpha = 1;
       }
       c.fillStyle = this.sceneShade(c); c.fillRect(0, 0, viewport, 720);
     }
@@ -3192,10 +3353,10 @@ export class SeamworksEngine {
     }
     // A lit fuse throws a flickering light of its own.
     for (const fuse of this.fuses) {
-      const col = fuse.index % t.cols, row = (fuse.index - col) / t.cols;
+      const col = t.colOf(fuse.index), row = t.rowOf(fuse.index);
       pool.add((col + .5) * CELL, t.top + row * CELL + 6, 70 + (this.reducedMotion ? 0 : Math.sin(time * 31) * 10), .75);
     }
-    const c0 = Math.max(0, t.colAt(this.camera)), c1 = Math.min(t.cols - 1, t.colAt(this.camera + viewport));
+    const c0 = Math.max(t.colLo, t.colAt(this.camera)), c1 = Math.min(t.colHi - 1, t.colAt(this.camera + viewport));
     const r0 = Math.max(0, t.rowAt(this.cameraY)), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720));
     const reach = this.lanternRadius * 1.6;
     let haloCount = 0;
@@ -3244,7 +3405,7 @@ export class SeamworksEngine {
     c.save(); c.globalCompositeOperation = this.budget.blendModes ? 'lighter' : 'source-over';
     // Coloured light from exposed glowing cells: glowcaps wash the Grotto blue, embers the Halls red.
     for (let n = 0; n < haloCount; n++) {
-      const index = this.halosAt[n], col = index % t.cols, row = (index - col) / t.cols;
+      const index = this.halosAt[n], col = t.colOf(index), row = t.rowOf(index);
       const glow = TERRAIN_NODE_LIST[t.kind[index]].glow;
       if (!glow) continue;
       const pulse = this.reducedMotion ? 1 : .85 + .15 * Math.sin(time * 1.7 + index * .37);
@@ -3263,7 +3424,7 @@ export class SeamworksEngine {
     this.motes.update(this.frameDt, biome, this.camera, this.cameraY, viewport, 720, this.reducedMotion);
     this.motes.draw(c);
     for (let n = 0; n < this.glintCount; n++) {
-      const index = this.glints[n], col = index % t.cols, row = (index - col) / t.cols;
+      const index = this.glints[n], col = t.colOf(index), row = t.rowOf(index);
       const kind = t.kind[index];
       const node: TerrainNodeDef = TERRAIN_NODE_LIST[kind];
       // On the nugget's brightest art pixel when the tile has one (tile-art.ts), else the cell's centre.
@@ -3335,7 +3496,7 @@ export class SeamworksEngine {
   }
   private drawFusesAndRubble(c: CanvasRenderingContext2D, t: Terrain, time: number): void {
     for (const fuse of this.fuses) {
-      const col = fuse.index % t.cols, row = (fuse.index - col) / t.cols;
+      const col = t.colOf(fuse.index), row = t.rowOf(fuse.index);
       const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
       const burnt = 1 - Math.max(0, fuse.left) / CHARGE_FUSE;
       const blink = this.reducedMotion ? 1 : .6 + .4 * Math.sin(time * (10 + burnt * 30));

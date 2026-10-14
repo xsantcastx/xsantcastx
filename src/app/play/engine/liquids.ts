@@ -111,13 +111,32 @@ export class LiquidSim {
     const t = this.t;
     for (let r = row - 1; r <= row + 1; r++) {
       if (r < 0 || r >= t.rows) continue;
-      for (let c = col - 1; c <= col + 1; c++) if (c >= 0 && c < t.cols) this.wake(r * t.cols + c);
+      for (let c = col - 1; c <= col + 1; c++) if (t.inside(c, r)) this.wake(t.index(c, r));
     }
   }
   /** Wake every cell that holds liquid: after a load, so saved water finds any tunnel dug since it settled. */
   wakeAll(): void {
     const level = this.t.liqLevel;
     for (let i = 0; i < level.length; i++) if (level[i]) this.wake(i);
+  }
+  /**
+   * The endless Delve: world columns [col0, col1) left the ring (or are about
+   * to be reused). Their cells drop out of the flow; nothing about them is
+   * kept here (the world saved their liquid). Then `wakeColumns` for arrivals.
+   */
+  forgetColumns(col0: number, col1: number): void {
+    const t = this.t;
+    for (let c = col0; c < col1; c++) for (let r = 0; r < t.rows; r++) {
+      const i = t.index(c, r);
+      this.listed[i] = 0; this.calm[i] = 0; this.stamp[i] = 0;
+    }
+    this.active = this.active.filter(i => this.listed[i]);
+    this.pending = this.pending.filter(i => this.listed[i]);
+  }
+  /** Wake every liquid cell in world columns [col0, col1) (a column arrived; its edge meets new neighbours). */
+  wakeColumns(col0: number, col1: number): void {
+    const t = this.t;
+    for (let c = col0; c < col1; c++) for (let r = 0; r < t.rows; r++) if (t.inside(c, r)) this.wake(t.index(c, r));
   }
   /** The host saved the liquid as it is now. */
   markSaved(): void { this.dirty = false; this.urgent = false; }
@@ -142,7 +161,9 @@ export class LiquidSim {
     list.sort((a, b) => {
       const ra = (a / cols) | 0, rb = (b / cols) | 0;
       if (ra !== rb) return rb - ra;
-      return dir > 0 ? a - b : b - a;
+      // World column order (a ring's slots wrap): the same water flows the same way wherever the ring sits.
+      const ca = t.colOf(a), cb = t.colOf(b);
+      return dir > 0 ? ca - cb : cb - ca;
     });
     const next: number[] = [];
     let updates = 0;
@@ -177,12 +198,12 @@ export class LiquidSim {
     t.liqType[i] = type; t.liqLevel[i] = level;
     t.liquidRev++;
     this.dirty = true;
-    const col = i % t.cols, row = (i - col) / t.cols;
+    const col = t.colOf(i), row = t.rowOf(i);
     for (let r = row - 1; r <= row + 1; r++) {
       if (r < 0 || r >= t.rows) continue;
       for (let c = col - 1; c <= col + 1; c++) {
-        if (c < 0 || c >= t.cols) continue;
-        const j = r * t.cols + c;
+        if (!t.inside(c, r)) continue;
+        const j = t.index(c, r);
         this.stamp[j] = this.ticks;
         this.wake(j);
       }
@@ -193,7 +214,7 @@ export class LiquidSim {
     const t = this.t, cols = t.cols;
     const type = t.liqType[i];
     let level = t.liqLevel[i];
-    const col = i % cols, row = (i - col) / cols;
+    const col = t.colOf(i), row = t.rowOf(i);
     // 1. Fall.
     if (row + 1 < t.rows) {
       const below = i + cols;
@@ -210,8 +231,9 @@ export class LiquidSim {
     // 2. Spread: this tick's side first.
     for (let s = 0; s < 2 && level > 0; s++) {
       const c = col + (s === 0 ? dir : -dir);
-      if (c < 0 || c >= cols) continue;
-      const j = i - col + c;
+      // Past the loaded span is rock to the flow (a ring's edge: the world beyond is frozen).
+      if (!t.inside(c, row)) continue;
+      const j = t.index(c, row);
       if (!this.open(j, type)) continue;
       const nt = t.liqType[j], nl = t.liqLevel[j];
       if (nl && nt !== type) { this.react(i, j); level = t.liqLevel[i]; continue; }
@@ -234,7 +256,7 @@ export class LiquidSim {
     this.set(other, t.liqType[other], t.liqLevel[other] - small);
     this.set(target, 0, 0);
     if (made) {
-      const col = target % t.cols, row = (target - col) / t.cols;
+      const col = t.colOf(target), row = t.rowOf(target);
       t.set(col, row, OBSIDIAN);
       this.wakeAround(col, row);
     }
@@ -254,16 +276,16 @@ export class LiquidSim {
     const t = this.t;
     const type = t.liqLevel[index] ? t.liqType[index] : 0;
     if (!type) return 0;
-    const cols = t.cols, c0 = index % cols, r0 = (index - c0) / cols;
+    const cols = t.cols, c0 = t.colOf(index), r0 = t.rowOf(index);
     // Breadth-first over joined cells of the same liquid, deterministic order.
     const seen = new Set<number>([index]);
     const order = [index];
     for (let q = 0; q < order.length; q++) {
-      const i = order[q], c = i % cols, r = (i - c) / cols;
+      const i = order[q], c = t.colOf(i), r = t.rowOf(i);
       for (const [dc, dr] of [[0, -1], [-1, 0], [1, 0], [0, 1]] as const) {
         const nc = c + dc, nr = r + dr;
-        if (nc < 0 || nr < 0 || nc >= cols || nr >= t.rows || Math.abs(nc - c0) > 3 || Math.abs(nr - r0) > 3) continue;
-        const j = nr * cols + nc;
+        if (!t.inside(nc, nr) || Math.abs(nc - c0) > 3 || Math.abs(nr - r0) > 3) continue;
+        const j = t.index(nc, nr);
         if (seen.has(j) || !t.liqLevel[j] || t.liqType[j] !== type) continue;
         seen.add(j); order.push(j);
       }
@@ -274,7 +296,7 @@ export class LiquidSim {
     if (dry) return type;
     let need = LIQUID_FULL;
     // Take from the surface down (top rows first), so a scooped pool lowers evenly.
-    const byHeight = [...order].sort((a, b) => ((a / cols) | 0) - ((b / cols) | 0) || a - b);
+    const byHeight = [...order].sort((a, b) => ((a / cols) | 0) - ((b / cols) | 0) || t.colOf(a) - t.colOf(b));
     for (const i of byHeight) {
       if (!need) break;
       const take = Math.min(need, t.liqLevel[i]);
@@ -297,7 +319,7 @@ export class LiquidSim {
     if (type !== LIQUID_WATER && type !== LIQUID_LAVA) return false;
     if (index < 0 || index >= t.kind.length || SOLID[t.kind[index]]) return false;
     if (type === LIQUID_LAVA && WOODEN[t.kind[index]]) return false;
-    const cols = t.cols, col = index % cols, row = (index - col) / cols;
+    const cols = t.cols, col = t.colOf(index), row = t.rowOf(index);
     const above = row > 0 ? index - cols : -1;
     const roomAbove = (liquid: number) => above >= 0 && !SOLID[t.kind[above]] && !(liquid === LIQUID_LAVA && WOODEN[t.kind[above]])
       && (!t.liqLevel[above] || t.liqType[above] === liquid) ? LIQUID_FULL - t.liqLevel[above] : 0;

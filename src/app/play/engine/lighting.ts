@@ -100,7 +100,11 @@ export class LightPool {
 export const LIGHT_STEP = 16;
 
 /** How much of each light reaches a cell (1 = all), per terrain cell, row-major from `top`. */
-export interface LightShade { readonly values: Float32Array; readonly cols: number; readonly rows: number; readonly top: number }
+export interface LightShade {
+  readonly values: Float32Array; readonly cols: number; readonly rows: number; readonly top: number;
+  /** World column of values' first column (an endless Delve's ring starts anywhere). Absent: 0. */
+  readonly col0?: number;
+}
 
 /**
  * Darkness at each sample of a grid, row-major: sample (i, j) sits at
@@ -132,7 +136,7 @@ export function lightGrid(out: Float32Array, gw: number, gh: number, x0: number,
         if (d2 >= r2) continue;
         let lift = intensity * (1 - d2 / r2);
         if (shadeRow >= 0) {
-          const col = Math.floor(sx / cell);
+          const col = Math.floor(sx / cell) - (shade!.col0 ?? 0);
           if (col >= 0 && col < shade!.cols) lift *= shade!.values[shadeRow + col];
         }
         out[j * gw + i] *= 1 - lift;

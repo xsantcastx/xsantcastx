@@ -44,6 +44,7 @@ import { mergeCollectionLedgers } from '../collection/collection.model';
 import { mergeCrafting as mergeCraftingState } from '../crafting/crafting.model';
 import { mergeInfusionLedgers } from '../enchanting/infusion.model';
 import { mergeDelveSaves } from '../delve/delve-save.model';
+import { mergeRegionSlots, REGION_SLOT_KEYS } from '../delve/delve-region.model';
 import { mergeDelveLore } from '../delve/delve-lore.model';
 import { mergeFishingSaves } from '../fishing/fishing-save';
 import { mergeGatherSaves } from '../skills/gather-save.model';
@@ -337,6 +338,15 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // the once-per-player finds. See delve-save.model.ts.
     merge: mergeDelveSaves,
   },
+  // The endless Delve's region slots (save v2): the 16 regions changed most
+  // recently, one document each (`progress/delve-r0..15`, matched by the
+  // existing `progress/{docId}` rule). `{ v, seed, rx, ry, t, sectors }`: the
+  // same region is merged sector by sector (cells unioned, fog OR'd, regrowth
+  // wins over older changes); two different regions in one slot keep the one
+  // changed later. See delve-region.model.ts.
+  ...REGION_SLOT_KEYS.map((key, n): SyncedBlob => ({
+    key, collection: 'progress', doc: `delve-r${n}`, label: `Ember Delve region ${n + 1}`, merge: mergeRegionSlots,
+  })),
   {
     key: 'godforge-delve-lore',
     collection: 'progress',

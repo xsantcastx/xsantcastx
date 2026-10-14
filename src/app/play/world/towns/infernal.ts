@@ -185,6 +185,9 @@ export const EMBER_DELVE: HuntZoneDef = {
       { to: 40, node: 'grotto-stone' }, { to: DELVE_ROWS, node: 'scorched-basalt' },
     ],
     jitter: 1.6,
+    // Phase 7: sectors are generated east and west of this grid, forever (engine/sector-gen.ts).
+    // The grid itself is untouched: no `version` bump.
+    endless: true,
     // Shared across the depths.
     veins: [
       { node: 'ember-rock', from: 6, to: 52, count: 22, size: 3 },
