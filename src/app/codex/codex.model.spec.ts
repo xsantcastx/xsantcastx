@@ -1,22 +1,17 @@
 /**
  * codex.model.spec.ts — the drift guards.
  *
- * These do not test rendering. They test the four ways the Codex can quietly
- * start lying as the registries around it change: an egg renamed out from under
- * its hint, an Arena gate renamed out from under its category, a category that
- * fails to partition, and a locked card that leaks its own answer.
+ * These do not test rendering. They test the ways the Codex can quietly start
+ * lying as the registries around it change: an egg renamed out from under its
+ * hint, a wall that drops or doubles an egg, a locked card that leaks its own
+ * answer, and a secret that can never be found.
  *
- * All four failures are silent in the browser — the page renders, it is just
+ * All of these failures are silent in the browser — the page renders, it is just
  * wrong — which is exactly the kind of failure worth a test.
  */
 import { EASTER_EGGS, PUBLIC_CODEX_EGGS } from '../shared/easter-eggs/easter-egg.service';
 import { EGG_HINTS, orphanedHintIds, unhintedEggIds } from './codex-hints';
-import {
-  ARENA_GATE_EGGS,
-  CODEX_CATEGORIES,
-  buildAchievements,
-  categoryForEgg,
-} from './codex.model';
+import { buildAchievements } from './codex.model';
 import { SECRETS } from './codex-secrets';
 
 describe('Codex data integrity', () => {
@@ -40,30 +35,10 @@ describe('Codex data integrity', () => {
     }
   });
 
-  it('assigns every egg to exactly one category', () => {
-    const known = new Set(CODEX_CATEGORIES.map(c => c.id));
-    const counts = new Map<string, number>();
-
-    for (const egg of EASTER_EGGS) {
-      const id = categoryForEgg(egg);
-      expect(known.has(id)).toBe(true);
-      counts.set(egg.id, (counts.get(egg.id) ?? 0) + 1);
-    }
-
-    // Section totals must sum to the public wall, or the filter chips lie.
-    const wall = buildAchievements();
-    const summed = CODEX_CATEGORIES
-      .map(c => wall.filter(a => a.category.id === c.id).length)
-      .reduce((a, b) => a + b, 0);
-    expect(summed).toBe(PUBLIC_CODEX_EGGS.length);
-    expect(wall.length).toBe(PUBLIC_CODEX_EGGS.length);
-  });
-
-  it('maps every Arena gate egg to an egg that exists', () => {
-    const live = new Set(EASTER_EGGS.map(e => e.id));
-    for (const id of Object.keys(ARENA_GATE_EGGS)) {
-      expect(live.has(id)).toBe(true);
-    }
+  it('puts every public egg on the wall exactly once', () => {
+    const wall = buildAchievements().map(a => a.id);
+    expect(new Set(wall).size).toBe(wall.length);
+    expect([...wall].sort()).toEqual(PUBLIC_CODEX_EGGS.map(e => e.id).sort());
   });
 
   it('gives every secret a way to actually be discovered', () => {

@@ -20,7 +20,6 @@ import {
 } from './play-delve-fixtures';
 import { blastCells } from '../src/app/play/engine/terrain';
 import { decodeCells } from '../src/app/shared/delve/delve-save.model';
-import { inscriptionById } from '../src/app/shared/delve/delve-lore.model';
 
 const panel = (page: Page) => page.locator('section.place');
 
@@ -34,7 +33,8 @@ async function descend(page: Page): Promise<void> {
   await expect(button).toBeVisible();
   await button.click();
   await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
-  await expect(messageLine(page)).toContainText('climb down the ropes to your camp');
+  // Arrival is proven by data-area. The "climb down the ropes" line is transient and a
+  // loose-rock warning can replace it, so it is not asserted.
   // Let the vertical camera settle on the camp and the arrival grace (1.5 s) run out.
   await page.waitForTimeout(1800);
   await focusWorld(page);
@@ -473,11 +473,16 @@ test.describe('Delve extras: the four new inscriptions, played', () => {
       if (id === 'magma-unsigned') f.claimed = ['warden-defeated'];
       await seed(page, { ...f.blobs(), 'godforge-delve-lore': { version: 1, inscriptions: read } });
       await descend(page);
+      await settleBetween(page, colX(camp[0]) - 14, colX(camp[0]) + 14);
       await expect(page.locator('.prompt')).toContainText('Read the inscription');
-      await page.keyboard.press('e');
-      const text = inscriptionById(id)!.text;
-      await expect(messageLine(page)).toContainText(`New inscription. ${text.slice(0, 40)}`);
-      await expect.poll(() => lore(page), { timeout: 6000 }).toContain(id);
+      // The result is read from the save (the lore blob), never from the transient
+      // message line: a loose-rock warning can overwrite that line. A key pressed
+      // before the world has focus is dropped, so press again until the record lands.
+      await expect(async () => {
+        await focusWorld(page);
+        await page.keyboard.press('e');
+        await expect.poll(() => lore(page), { timeout: 1500 }).toContain(id);
+      }).toPass({ timeout: 15000 });
       read = await lore(page);
     }
     expect(read).toHaveLength(12);
