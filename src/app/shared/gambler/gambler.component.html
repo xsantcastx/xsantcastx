@@ -28,8 +28,7 @@
 
         <div journalDetail class="gbj-detail">
           @if (selectedBox; as box) {
-            <app-detail-head [art]="boxArt" [name]="box.name" [rarity]="box.maxRarity"
-                             [line]="t('gambler.openLine', { name: box.name })" />
+            <app-detail-head [art]="boxArt" [name]="box.name" [rarity]="box.maxRarity" />
 
             <!-- The rarity window, before you buy. Never after. -->
             <div class="gbj-odds-box">
