@@ -134,8 +134,8 @@ export const GLIM_MARKS: Readonly<Record<string, readonly MarkTarget[]>> = {
   'verrin-endings-kept-warm': [{ liquid: 'lava', rows: [56, 118] }, { liquid: 'water', rows: [0, 26] }],
   // The Rift Gates: the way down to the Underhearth (the gate is west of its Landing); in the Ink Deeps, its core's own.
   'verrin-ink-1': [{ node: 'hearth-seal' }],
-  'verrin-ink-2': [{ node: 'inkstone-vein' }, { node: 'nightglass-vein' }],
-  'verrin-ink-3': [{ node: 'gloam-brazier' }],
+  'verrin-ink-2': [{ node: 'inkstone-vein' }, { node: 'nightglass-vein' }, { node: 'hearth-seal' }],
+  'verrin-ink-3': [{ node: 'gloam-brazier' }, { node: 'hearth-seal' }],
 };
 /** How long a mark stays on the map. */
 export const GLIM_MARK_MS = 30 * 60_000;
