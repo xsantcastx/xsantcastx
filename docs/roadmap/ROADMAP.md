@@ -44,6 +44,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## Daily review log
 
+- **2026-10-14 (deps)** — Dependency security pass: all critical alerts and every high alert with a fix are cleared (Angular 21.2.25/26 patches, overrides, in-range updates; functions lockfile too). Still open: node-forge, which needs firebase-admin 14 plus firebase-functions 7, an owner call; dev-only lhci/karma packages have no fix yet. See `docs/handoff/dependency-security.md`.
 - **2026-10-14 (evening)** — Owner ideas folded in: Lost Cabinets (scan with the Slate), uncapped Tibia-style levels, Glim bond, a surface with height + parkour, pets, a more alive and mysterious Delve, Tibia inspiration.
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
