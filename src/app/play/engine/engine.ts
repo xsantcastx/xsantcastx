@@ -32,6 +32,7 @@ import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
+import { GlimSprite } from './glim-sprite';
 export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
@@ -69,6 +70,14 @@ interface Flight { active: boolean; t: number; sx: number; sy: number; ex: numbe
 /** Lit ground in the Delve takes on the lantern's and torches' warmth (DarknessLayer.draw `warm`). */
 const WARM_LIGHT = { color: '#ffb066', alpha: .14 };
 const FLIGHT_POOL = 16;
+/**
+ * Frame pacing. A 120 Hz display would otherwise draw twice as often as the
+ * game needs; a town where nothing the player drives has moved for a while
+ * draws at half rate. Heat, not looks: the fixed 60 Hz step is unchanged.
+ */
+const MAX_FPS = 60;
+const QUIET_FPS = 30;
+const QUIET_AFTER_MS = 2500;
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
@@ -157,6 +166,17 @@ export class SeamworksEngine {
   /** Station under the pointer, highlighted in the render. */
   private hovered: string | null = null;
   private frame: number | null = null;
+  /** `start()` ran: a parked loop may be resumed (see `setPaused`). */
+  private started = false;
+  /**
+   * Last time (rAF clock) anything the player drives moved: input, a walk, a
+   * swing, a flight, the Keeper's position. A town with none of that for
+   * QUIET_AFTER_MS draws at QUIET_FPS (townsfolk and motes still move, just
+   * less often); everywhere else, and the moment anything moves, at MAX_FPS.
+   */
+  private activeAt = 0;
+  private lastX = NaN;
+  private lastY = NaN;
   private observer: ResizeObserver;
   private previous = 0;
   private accumulator = 0;
@@ -279,6 +299,8 @@ export class SeamworksEngine {
    * without a save, dug state lives for this engine session.
    */
   private terrain: Terrain | null = null;
+  /** Glim, the Keeper's companion and the Delve's lantern (glim-sprite.ts). Drawn once met. */
+  private readonly glim = new GlimSprite();
   private readonly terrains = new Map<string, Terrain>();
   /** `terrainLayout()` each cached terrain was generated under: the key its diff is saved by. */
   private readonly layouts = new Map<string, string>();
@@ -759,7 +781,8 @@ export class SeamworksEngine {
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
     }
-    this.observer = new ResizeObserver(() => this.resize());
+    // A parked loop (a place covers the world) still repaints once at the new size: resizing clears the canvas.
+    this.observer = new ResizeObserver(() => { this.resize(); if (this.started && this.frame === null && !this.destroyed) this.render(); });
     this.observer.observe(canvas);
     window.addEventListener('keydown', this.keyDown);
     window.addEventListener('keyup', this.keyUp);
@@ -769,6 +792,7 @@ export class SeamworksEngine {
   }
   start(): void {
     if (this.frame === null && !this.destroyed) {
+      this.started = true;
       // The component can start during Angular's view pass, before the first
       // ResizeObserver delivery. Read the laid-out canvas here so the first
       // frame is drawn at the viewport size instead of the 300×150 fallback.
@@ -1137,7 +1161,21 @@ export class SeamworksEngine {
     }
     this.speech = next;
   }
-  setPaused(paused: boolean): void { this.paused = paused; this.input.clear(); this.accumulator = 0; if (paused) this.cancelMove(); this.report(); }
+  /**
+   * Pause the world (an in-world place is open over it). A paused world draws
+   * one more frame and then parks its loop: the place covers the canvas, so
+   * drawing it sixty times a second behind an opaque panel only heats the
+   * device. Unpausing resumes the loop.
+   */
+  setPaused(paused: boolean): void {
+    this.paused = paused; this.input.clear(); this.accumulator = 0; if (paused) this.cancelMove(); this.report();
+    if (!paused && this.started && this.frame === null && !this.destroyed) {
+      this.previous = 0;
+      this.frame = requestAnimationFrame(this.tick);
+    }
+  }
+  /** True while the loop is parked behind a place (for tests and the HUD). */
+  get parked(): boolean { return this.started && this.frame === null && !this.destroyed; }
   /**
    * Walk the Keeper to world x, then call `onArrive` from the fixed-step update.
    * Any left/right press, a pause, a reset or travel cancels it (no callback).
@@ -1167,6 +1205,27 @@ export class SeamworksEngine {
     if (!station || this.paused || this.hp <= 0) return false;
     if (instant) { this.placeAt(station.x); this.interact(); return true; }
     return this.moveTo(station.x, () => this.interact());
+  }
+  /**
+   * Glim (glim-sprite.ts). `shown` once the Keeper has met it; `arrive` flies it
+   * in from above to the shoulder (the Prologue meeting, once).
+   */
+  setGlim(shown: boolean, arrive = false): void {
+    if (shown && arrive) this.glim.arrive(this.player.x - 240, this.player.y - 460);
+    this.glim.shown = shown;
+  }
+  /** Show me: Glim flies ahead to a station (or a floor x) and back. The x it flies to, or null. */
+  glimShowMe(target: { station: string } | { x: number }): number | null {
+    if (!this.glim.shown) return null;
+    const x = 'station' in target ? this.stations.find(row => row.id === target.station)?.x : target.x;
+    if (x === undefined || !Number.isFinite(x)) return null;
+    this.glim.flyTo(x, this.terrain ? this.player.y - 150 : FLOOR - 170);
+    return x;
+  }
+  /** Where Glim is, for the HUD's data attributes and the tell: world x, the Show me target, dimmed. */
+  get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean } {
+    const g = this.glim;
+    return { shown: g.shown, x: Math.round(g.x), targetX: g.targetX, arrived: g.arrived, dimmed: g.dim };
   }
   /** Waystone travel: stand in another town's spawn. Monsters, drops and any walk reset. */
   setTown(town: TownDef): void {
@@ -2048,6 +2107,16 @@ export class SeamworksEngine {
   }
   private readonly tick = (now: number): void => {
     if (this.destroyed) return;
+    // Pacing: skip this callback when it comes sooner than the target rate allows.
+    const player = this.player;
+    if (this.input.size || this.walking || this.hitstop > 0 || this.shake > 0 || this.attackTime > 0 || this.dodgeTime > 0
+      || player.x !== this.lastX || player.y !== this.lastY || !this.isTown || this.flights.some(flight => flight.active)) {
+      this.activeAt = now;
+    }
+    this.lastX = player.x; this.lastY = player.y;
+    const fps = now - this.activeAt > QUIET_AFTER_MS ? QUIET_FPS : MAX_FPS;
+    // 2 ms of slack: rAF stamps jitter, and a 60 Hz display must not drop to 30.
+    if (this.previous && now - this.previous < 1000 / fps - 2) { this.frame = requestAnimationFrame(this.tick); return; }
     const delta = this.previous ? Math.min((now - this.previous) / 1000, .1) : 0;
     this.previous = now;
     // Presence continues to arrive while the local game is paused or unfocused.
@@ -2071,6 +2140,8 @@ export class SeamworksEngine {
     }
     this.render();
     if (now - this.reportAt >= 100) { this.reportAt = now; this.report(); }
+    // Paused: that was the last frame until setPaused(false). The place covers the world.
+    if (this.paused) { this.frame = null; return; }
     this.frame = requestAnimationFrame(this.tick);
   };
   private update(dt: number): void {
@@ -3073,6 +3144,7 @@ export class SeamworksEngine {
       this.drawLine(c, motionTime);
     }
     if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
+    this.drawGlim(c, motionTime);
     if (t) this.drawAim(c, t);
     this.atmosphere.feedback(c, this.reducedMotion);
     c.restore();
@@ -3083,6 +3155,18 @@ export class SeamworksEngine {
       edge.addColorStop(0, '#c0303000'); edge.addColorStop(1, `rgba(192, 48, 48, ${(.42 * this.wound).toFixed(3)})`);
       c.fillStyle = edge; c.fillRect(0, 0, this.width, this.height);
     }
+  }
+  /**
+   * Glim, over everything in the world (in the Delve, over the darkness: it is
+   * the light). It dims beside a living Mirror Substitute, the Atlas moth's
+   * tell for a thing that performs certainty.
+   */
+  private drawGlim(c: CanvasRenderingContext2D, time: number): void {
+    const g = this.glim;
+    if (!g.shown) return;
+    g.update({ dt: this.frameDt, time, reduced: this.reducedMotion, keeperX: this.player.x, keeperY: this.player.y, facing: this.facing, figure: this.figure, delve: !!this.terrain });
+    g.dim = this.monsters.some(m => m.hp > 0 && m.def.creature === 'mirror-substitute' && Math.abs(m.x - this.player.x) < 480);
+    g.draw(c, time, this.reducedMotion, this.budget.glows, this.figure);
   }
   /**
    * Delve light, in world space: debris, then the darkness overlay with the

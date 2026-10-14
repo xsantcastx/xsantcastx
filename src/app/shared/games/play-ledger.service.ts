@@ -15,6 +15,13 @@
  *
  * Steps 4–6 run in one synchronous tick, and the gateway's writes are
  * synchronous, so a reload lands either before the debit or after the payout.
+ *
+ * Steered rounds (Seam Sweeper, Eclipse Ascent) split step 6 in two:
+ * `openRound` draws the WHOLE outcome (every collapse, the crash point), debits
+ * and stores the round `open` with the player's starting state; `updateRound`
+ * stores each move; `closeRound` prices the final state with the game's own
+ * rule and pays it once. A reload resumes the stored round (never re-rolls it),
+ * and a closed round, like a play, can never pay twice.
  * Gold only: there is no path from any purchase, donation or sponsor to here.
  *
  * Browser-only; every method no-ops on the server render.
@@ -47,6 +54,17 @@ export interface ChanceGame<O> {
   winOf(outcome: O): number;
   /** Hand over anything that is not Gold (runes, materials). Called once per play. */
   pay?(outcome: O, mutationId: string): void;
+}
+
+/** A round the player steers after the bet. The outcome is still drawn once, at the bet. */
+export interface RoundGame<O, S> {
+  id: string;
+  /** Pure: the whole outcome from one RNG stream (every hidden thing in the round). */
+  resolve(rng: () => number, bet: number): O;
+  /** The player's state when the round opens. */
+  start(outcome: O): S;
+  /** Gold the round pays if it closes in `state` (0 = lost). */
+  winOf(outcome: O, state: S, bet: number): number;
 }
 
 export type PlayRefusal = 'ssr' | 'bet' | 'funds';
@@ -90,7 +108,7 @@ export class PlayLedgerService {
 
     const known = ledger.plays[mutationId] as PlayRecord<O> | undefined;
     if (known) {
-      if (!known.paid) this.settle(game, mutationId, known);
+      if (!known.paid && !known.open) this.settle(game.id, mutationId, known, o => game.pay?.(o, mutationId));
       return { ok: true, id: mutationId, record: this.ledger.plays[mutationId] as PlayRecord<O>, replay: true };
     }
 
@@ -114,19 +132,97 @@ export class PlayLedgerService {
       totals: { ...ledger.totals, [game.id]: { ...t, plays: t.plays + 1, wagered: t.wagered + bet } },
     };
     this.persist();
-    this.settle(game, mutationId, record);
+    this.settle(game.id, mutationId, record, o => game.pay?.(o, mutationId));
     return { ok: true, id: mutationId, record: this.ledger.plays[mutationId] as PlayRecord<O>, replay: false };
   }
 
-  /** Pay an unpaid play exactly once. */
-  private settle<O>(game: ChanceGame<O>, id: string, record: PlayRecord<O>): void {
-    if (record.win > 0) this.economy.earnGold(record.win, `games:${game.id}`);
-    game.pay?.(record.outcome, id);
-    const t = this.ledger.totals[game.id] ?? { plays: 0, wagered: 0, paid: 0 };
+  // ── Steered rounds ────────────────────────────────────────────────────────
+
+  /**
+   * Place the bet and open a round. The whole outcome is drawn now and stored
+   * with the round; nothing the player does later can re-roll it. A known id
+   * returns the stored round (open or closed) and charges nothing.
+   */
+  openRound<O, S>(game: RoundGame<O, S>, mutationId: string, bet: number): PlayResult<O> {
+    if (!this.isBrowser) return { ok: false, code: 'ssr' };
+    const ledger = this.load();
+    const known = ledger.plays[mutationId] as PlayRecord<O> | undefined;
+    if (known) return { ok: true, id: mutationId, record: known, replay: true };
+
+    if (!betAllowed(bet, this.economy.snapshot.perSecond)) return { ok: false, code: 'bet' };
+    const secret = ledger.secret || newSecret();
+    const seq = ledger.nonce;
+    const seed = playSeed(secret, seq);
+    const outcome = game.resolve(seededRng(seed), bet);
+    if (!this.economy.spendGold(bet, `games:${game.id}`)) return { ok: false, code: 'funds' };
+
+    const record: PlayRecord<O> = {
+      game: game.id, bet, seed, seq, at: new Date().toISOString(), win: 0, outcome, paid: false,
+      open: true, state: game.start(outcome),
+    };
+    const t = ledger.totals[game.id] ?? { plays: 0, wagered: 0, paid: 0 };
+    this.ledger = {
+      ...ledger,
+      secret,
+      nonce: seq + 1,
+      plays: { ...ledger.plays, [mutationId]: record },
+      totals: { ...ledger.totals, [game.id]: { ...t, plays: t.plays + 1, wagered: t.wagered + bet } },
+    };
+    this.persist();
+    return { ok: true, id: mutationId, record, replay: false };
+  }
+
+  /** Store a move in an open round. A closed or unknown round is left alone (null). */
+  updateRound<O, S>(id: string, state: S): PlayRecord<O> | null {
+    if (!this.isBrowser) return null;
+    const known = this.load().plays[id] as PlayRecord<O> | undefined;
+    if (!known?.open) return null;
+    const next: PlayRecord<O> = { ...known, state };
+    this.ledger = { ...this.ledger, plays: { ...this.ledger.plays, [id]: next } };
+    this.persist();
+    return next;
+  }
+
+  /**
+   * Close an open round in `state` (the stored state when omitted) and pay what
+   * the game says that state is worth, once. Closing a closed round pays nothing
+   * and returns it as it was.
+   */
+  closeRound<O, S>(game: RoundGame<O, S>, id: string, state?: S): PlayRecord<O> | null {
+    if (!this.isBrowser) return null;
+    const known = this.load().plays[id] as PlayRecord<O> | undefined;
+    if (!known) return null;
+    if (!known.open) {
+      if (!known.paid) this.settle(game.id, id, known);
+      return this.ledger.plays[id] as PlayRecord<O>;
+    }
+    const final = (state ?? known.state) as S;
+    const win = Math.max(0, Math.floor(game.winOf(known.outcome, final, known.bet)));
+    const closed: PlayRecord<O> = { ...known, state: final, win };
+    delete closed.open;
+    this.ledger = { ...this.ledger, plays: { ...this.ledger.plays, [id]: closed } };
+    this.persist();
+    this.settle(game.id, id, closed);
+    return this.ledger.plays[id] as PlayRecord<O>;
+  }
+
+  /** This game's rounds still open, oldest first (normally zero or one). */
+  openRounds<O>(game: string): (PlayRecord<O> & { id: string })[] {
+    return Object.entries(this.load().plays)
+      .filter(([, p]) => p.game === game && p.open)
+      .sort((a, b) => a[1].seq - b[1].seq)
+      .map(([id, p]) => ({ ...(p as PlayRecord<O>), id }));
+  }
+
+  /** Pay an unpaid, closed play exactly once. */
+  private settle<O>(gameId: string, id: string, record: PlayRecord<O>, pay?: (o: O) => void): void {
+    if (record.win > 0) this.economy.earnGold(record.win, `games:${gameId}`);
+    pay?.(record.outcome);
+    const t = this.ledger.totals[gameId] ?? { plays: 0, wagered: 0, paid: 0 };
     this.ledger = {
       ...this.ledger,
       plays: prunePlays({ ...this.ledger.plays, [id]: { ...record, paid: true } }),
-      totals: { ...this.ledger.totals, [game.id]: { ...t, paid: t.paid + record.win } },
+      totals: { ...this.ledger.totals, [gameId]: { ...t, paid: t.paid + record.win } },
     };
     this.persist();
   }

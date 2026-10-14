@@ -25,7 +25,7 @@ async function travelToExchange(page: Page): Promise<void> {
   await expect(canvas(page)).toHaveAttribute('data-area', 'Nocturne Archive');
   await expect(placePanel(page)).toBeHidden();
   await focusWorld(page);
-  await walkTo(page, 1140, 40);
+  await walkTo(page, 1560, 40);
   await page.keyboard.press('e');
   await expect(page.locator('#place-title')).toHaveText('The Exchange');
   await expect(page.locator('app-station-shell.ge.ge--hydrated')).toBeVisible({ timeout: 15000 });
