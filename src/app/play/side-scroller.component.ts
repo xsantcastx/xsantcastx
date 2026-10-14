@@ -87,6 +87,9 @@ import { HOTBAR_FIXED } from './engine/terrain';
 import { MAP_MARKER_COLORS, POINTER_COLOR, type MapPinView, type MapSource } from './engine/delve-map';
 import { BountyService } from '../shared/bounties/bounty.service';
 import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
+import { HEIGHTS_I18N } from './world/heights.i18n';
+import { HeightsService } from '../shared/heights/heights.service';
+import type { HeightFindEvent } from './engine/engine.model';
 import { COMPASS_ID, FRAGMENT_ID, bountyLine, stratumOfRow, type Bounty, type BountyEvent } from '../shared/bounties/bounty.model';
 import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinId, type MapPin, type PinIcon } from '../shared/delve/map-pins.model';
 import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
@@ -377,6 +380,8 @@ export class SideScrollerComponent implements OnDestroy {
   readonly map = new DelveMapView(() => this.mapSourceV2());
   // ── Map v2 and the Board Herald's bounties (docs/handoff/bounties-map-v2.md) ──
   private readonly bounties = inject(BountyService);
+  private readonly heights = inject(HeightsService);
+  private heightsSub?: Subscription;
   private readonly glim = inject(GlimService);
   /** The Keeper's map pins (DelveSaveService, saved per region), re-read once a second in the Delve. */
   pins: MapPin[] = [];
@@ -470,6 +475,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(GLIM_I18N);
     this.i18n.register(STORY_I18N);
     this.i18n.register(BOUNTIES_I18N);
+    this.i18n.register(HEIGHTS_I18N);
     this.keeperKey = '';
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
@@ -500,6 +506,7 @@ export class SideScrollerComponent implements OnDestroy {
       onBucket: event => this.zone.run(() => this.bucketSwap(event)),
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
+      onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
@@ -528,6 +535,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
+    this.heightsSub?.unsubscribe();
+    this.heightsSub = this.heights.found$.subscribe(found => this.engine?.setHeightsFound(found));
+    this.heights.refresh();
     this.bindPointer(canvas);
     this.engine.start();
     if (this.panel) this.engine.setPaused(true);
@@ -725,7 +735,7 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -1203,6 +1213,12 @@ export class SideScrollerComponent implements OnDestroy {
       if (gather.need) return this.t('play.gather.needs', { name: gather.label, need: gather.need });
       return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
     }
+    const height = this.state?.nearby === 'height' ? this.state.height : undefined;
+    if (height) {
+      if (height.kind === 'cache') return this.t(height.found ? 'play.height.act.cacheOpened' : 'play.height.act.cache');
+      if (height.kind === 'summit') return this.t(height.found ? 'play.height.act.summitDone' : 'play.height.act.summit');
+      return this.t(height.kind === 'carving' ? 'play.height.act.carving' : 'play.height.act.lookout');
+    }
     switch (this.state?.nearby) {
       case 'ore': return this.remaining ? this.t('play.hud.act.seamRecovering', { n: this.remaining }) : this.t('play.hud.act.mine');
       case 'forge': return this.t(this.equipped ? 'play.hud.act.bladeEquipped' : this.edge ? 'play.hud.act.equipEdge' : 'play.hud.act.forgeEdge');
@@ -1218,6 +1234,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   get actionDisabled(): boolean {
     if (this.state?.nearby === 'gather' && (!this.state.gather?.ready || !!this.state.gather?.need)) return true;
+    if (this.state?.nearby === 'height' && this.state.height?.kind === 'cache' && this.state.height.found) return true;
     return !this.state?.nearby || !!this.state.paused || !!this.state.defeated || (this.state.nearby === 'ore' && this.remaining > 0);
   }
   interact(): void { this.engine?.interact(); }
@@ -1226,7 +1243,8 @@ export class SideScrollerComponent implements OnDestroy {
   retry(): void { this.returnToCamp(); }
   input(event: PointerEvent, input: EngineInput, down: boolean): void {
     event.preventDefault();
-    if (down) (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    // Capture keeps the hold when the finger slides off; a pointer the browser no longer tracks cannot be captured, and the press still counts.
+    if (down) try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch { /* not capturable */ }
     this.engine?.setInput(input, down);
   }
   @HostListener('window:keydown', ['$event'])
@@ -2190,6 +2208,20 @@ export class SideScrollerComponent implements OnDestroy {
    * keyed by the kill so a replay never pays twice. SkillActionService plays
    * the Hunting level-up moment when it crosses one.
    */
+  /**
+   * A find on the high ground: the first use pays once (HeightsService writes
+   * the receipt before it pays); later uses only say what it is.
+   */
+  private heightFound(event: HeightFindEvent): void {
+    if (!this.browser || event.found) return;
+    const used = this.heights.use(event.id);
+    if (!used) return;
+    const items = used.materials.map(m => `${m.qty} ${materialDisplay(m.id)?.name ?? titleCase(m.id.replace(/-/g, ' '))}`).join(', ');
+    if (used.kind === 'cache') this.message = this.t('play.height.toast.cache', { gold: used.gold, items });
+    else if (used.kind === 'summit') this.message = this.t('play.height.toast.summit', { gold: used.gold, items, title: this.t(`play.height.title.${used.title}`) });
+    else if (used.kind === 'lookout') this.message = this.t('play.height.toast.lookout');
+    for (const m of used.materials) this.toastLoot(`+${m.qty} ${materialDisplay(m.id)?.name ?? m.id}`);
+  }
   private hunted(event: KillEvent): void {
     if (!this.browser) return;
     const xp = huntingXpFor(event.hp);

@@ -12,6 +12,7 @@
  * Copies the shape of the Infernal town file; the types live in the world model.
  */
 import { FLOOR } from '../../engine/engine.model';
+import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
@@ -54,10 +55,6 @@ const HUNT_WIDTH = 2700;
 const COURT_PLATFORMS: Platform[] = [
   { x: 420, y: 500, width: 200 }, { x: 1320, y: 470, width: 220 }, { x: 1900, y: 420, width: 180 },
 ];
-/** The channels' broken prism shelves the Foragers nest under. */
-const CHANNEL_PLATFORMS: Platform[] = [
-  { x: 820, y: 505, width: 230 }, { x: 1300, y: 430, width: 190 }, { x: 1800, y: 500, width: 220 }, { x: 2250, y: 440, width: 170 },
-];
 
 /**
  * Gathering in the Channels: starlight on the stair foot for anyone, Sunbloom
@@ -78,11 +75,13 @@ export const REFLECTION_CHANNELS: HuntZoneDef = {
   name: 'Reflection Channels',
   background: 'bg-luminous',
   width: HUNT_WIDTH,
-  platforms: [{ x: 0, y: FLOOR, width: HUNT_WIDTH }, ...CHANNEL_PLATFORMS],
+  platforms: [{ x: 0, y: FLOOR, width: HUNT_WIDTH }],
+  // The high ground (world/heights.ts): trees, shelves, ruins and the summit route.
+  heights: HUNT_HEIGHTS['reflection-channels'],
   stations: [
     { id: 'passage', x: 110, label: 'RETURN TO THE COURT', kind: 'passage', to: 'luminous', arriveX: 2320, blurb: 'The stair back up to the Heliograph Court.' },
   ],
-  monsters: [{ creature: 'prism-forager', name: 'Prism Forager', hp: 70, spawnXs: [1150, 1650, 2150] }],
+  monsters: [{ creature: 'prism-forager', name: 'Prism Forager', hp: 70, spawnXs: [1150, 1650, 2150] }, ...HUNT_HEIGHTS['reflection-channels'].perched],
   drops: PRISM_CHANNEL_DROPS,
   nodes: REFLECTION_CHANNEL_NODES,
   spawnX: 240,

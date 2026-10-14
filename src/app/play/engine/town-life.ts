@@ -226,6 +226,12 @@ export class TownLife {
     this.speech(c, f);
   }
 
+  /** A person standing on high ground (world/heights.ts): the same figure, feet at (x, y). */
+  drawAt(c: CanvasRenderingContext2D, f: LifeFrame, art: string, x: number, y: number, facing: number, palette: LifePalette, shape: LifeSilhouette, seed: number, talking: boolean): void {
+    c.save(); c.translate(0, y - FLOOR);
+    this.figure(c, f, art, x, facing, 1, palette, shape, seed, 0, false, 1, 1, talking ? 'talk' : 'idle');
+    c.restore();
+  }
   /** One figure, feet on the floor at x. Painted through the rig when its art resolves; the placeholder otherwise. */
   private figure(c: CanvasRenderingContext2D, f: LifeFrame, art: string, x: number, facing: number, scale: number, palette: LifePalette,
     shape: LifeSilhouette, seed: number, step: number, walking: boolean, look: number, alpha: number, state: 'idle' | 'walk' | 'talk' = 'idle'): void {

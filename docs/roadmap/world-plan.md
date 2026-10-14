@@ -63,6 +63,7 @@ world — and every system visible while it works.
 - [x] Mesh-deformation rig for the Keeper and Rivet Maw (`729dd9e`)
 - [x] Keeper painting solid instead of ghostly (`05e3910`)
 - [x] Character build: worn gear in sockets on the doll (hood, hands), equip fly-in / unequip drop animation, Build archetype card (Vanguard, Treasure Seeker, Forgewright, Bulwark, Lorekeeper, Wanderer) (`b8ced0b`)
+- [x] A surface with height (2026-10-14): the High Roads in all five hunts: ledge-grab, mantle, climbing, wall-jump, once-only caches, summit titles, perched creatures, Hollis Fenn ([`docs/handoff/surface-height.md`](../handoff/surface-height.md))
 
 ---
 

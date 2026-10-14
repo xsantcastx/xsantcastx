@@ -16,6 +16,7 @@
  * safe ground: no monsters, so no `safeX`.
  */
 import { FLOOR } from '../../engine/engine.model';
+import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, TownDef, ZoneDropTable } from '../world.model';
 
@@ -70,15 +71,13 @@ export const UNRECORDED_CORRIDORS: HuntZoneDef = {
   name: 'Unrecorded Corridors',
   background: 'bg-umbral',
   width: HUNT_WIDTH,
-  platforms: [
-    { x: 0, y: FLOOR, width: HUNT_WIDTH },
-    { x: 620, y: 500, width: 200 }, { x: 1020, y: 430, width: 180 },
-    { x: 1460, y: 505, width: 220 }, { x: 1900, y: 430, width: 180 }, { x: 2280, y: 500, width: 200 },
-  ],
+  platforms: [{ x: 0, y: FLOOR, width: HUNT_WIDTH }],
+  // The high ground (world/heights.ts): trees, shelves, ruins and the summit route.
+  heights: HUNT_HEIGHTS['unrecorded-corridors'],
   stations: [
     { id: 'passage', x: 110, label: 'RETURN TO THE ARCHIVE', kind: 'passage', to: 'umbral', arriveX: 2480, blurb: 'The way back to the Nocturne Archive.' },
   ],
-  monsters: [{ creature: 'mirror-substitute', name: 'Mirror Substitute', hp: 75, spawnXs: [1250, 1650, 2050] }],
+  monsters: [{ creature: 'mirror-substitute', name: 'Mirror Substitute', hp: 75, spawnXs: [1250, 1650, 2050] }, ...HUNT_HEIGHTS['unrecorded-corridors'].perched],
   drops: NOCTURNE_DROPS,
   nodes: CORRIDOR_NODES,
   spawnX: 240,
