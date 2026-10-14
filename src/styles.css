@@ -1113,6 +1113,17 @@ body.gf-reveal-open .npc .npc__bubble {
   pointer-events: none;
 }
 
+/* ── 10a-quinquies. …and the loadout wells, which the bubble must not cover ──
+   The Weapon and Off-hand wells sit low on the doll, and the NPC widget is
+   fixed bottom-left, so at 1280x800 Kael's line landed on the Weapon well.
+   While the loadout is mounted (`EquipmentPanelComponent` sets `has-loadout`)
+   the line stays folded: only the portrait shows, and tapping it still opens
+   the card on purpose. Named children, for the same specificity reason as the
+   reveal rule above. */
+body.has-loadout .npc:not(.npc--open) .npc__body {
+  display: none;
+}
+
 /* ── 10a-sexies. …and the achievement drop, which is the fourth ──
    `.ad` is carefully positioned to clear the Forge Flame — its comment does the
    arithmetic in the flame's own geometry so the two stay in step. That is
