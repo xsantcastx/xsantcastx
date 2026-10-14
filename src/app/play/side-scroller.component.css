@@ -1167,6 +1167,73 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .hot-line .hot-place { min-height: 36px; }
 
 
+/*
+ * The Delve map (Terraria-style; play/delve-map-view.ts). Desktop: the
+ * minimap under the satchel, always shown; a click opens the full map (M).
+ * Phones fold it with a toggle (see "Phones"). The full map covers the stage
+ * while the world holds still.
+ */
+.map-mini {
+  position: absolute;
+  z-index: 3;
+  top: 192px;
+  right: 16px;
+  width: 216px;
+  pointer-events: auto;
+  touch-action: auto;
+}
+.map-toggle { display: none; }
+.map-mini-open {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 132px;
+  padding: 4px;
+  background: var(--adventure-hud-panel-solid);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 30.00%, transparent);
+  cursor: zoom-in;
+}
+.map-mini-open canvas, .map-canvas { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.map-mini-open .key-hint { position: absolute; top: 6px; right: 6px; margin: 0; padding: 0 4px; background: var(--adventure-hud-panel-solid); }
+.map-full {
+  position: absolute;
+  z-index: 7;
+  inset: 64px 16px 16px;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: 8px;
+  padding: 12px 14px;
+  pointer-events: auto;
+  touch-action: none;
+  border: 1px solid var(--adventure-hud-shadow);
+  border-left: 2px solid var(--adventure-ember);
+  border-radius: 2px;
+  background: var(--adventure-hud-panel-solid);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 18.04%, transparent), 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
+}
+.map-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
+.map-tools { display: flex; flex-wrap: wrap; gap: 6px; }
+.map-tools button { min-width: 44px; min-height: 44px; padding: 0 12px; }
+.map-tools .map-zoom { font: 600 20px/1 Orbitron, sans-serif; }
+.map-canvas { min-height: 0; cursor: grab; touch-action: none; }
+.map-canvas:active { cursor: grabbing; }
+.map-hint { margin: 0; color: var(--adventure-parchment); font: italic 400 15px var(--font-lore, Georgia, serif); }
+.map-hint span { color: var(--adventure-dialogue); }
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  color: var(--adventure-dialogue);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.map-legend li { display: flex; align-items: center; gap: 6px; }
+.map-legend i { width: 10px; height: 10px; box-shadow: 0 0 0 1px var(--adventure-hud-ink); }
+
 /* A chest placed in the Delve: what is in it, what you carry. Two plain lists. */
 .chest { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .chest h3 {
@@ -1802,4 +1869,46 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .bag-dot { position: absolute; left: 3px; bottom: 3px; margin: 0; }
   .satchel .clasp.is-full .bag-badge { background: var(--adventure-hud-gold); }
+}
+
+/* Phones: the map toggle keeps to the top-right corner of the world and the
+   minimap to the top-left, both under the goal line and above the middle
+   half (never taller than a quarter of the world less the goal line); a tap
+   on the minimap opens the full map, which then covers the screen. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .map-mini {
+    top: calc(var(--hud-top) + var(--guide-h) + 6px);
+    left: 8px;
+    right: 8px;
+    width: auto;
+    height: 0;
+    pointer-events: none;
+  }
+  .map-toggle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    padding: 0;
+    pointer-events: auto;
+  }
+  .map-toggle[aria-pressed="true"] { border-color: var(--adventure-ember); }
+  .map-ico { position: relative; width: 22px; height: 18px; border: 2px solid currentColor; }
+  .map-ico::before, .map-ico::after { content: ''; position: absolute; top: -2px; bottom: -2px; width: 2px; background: currentColor; }
+  .map-ico::before { left: 5px; }
+  .map-ico::after { right: 5px; }
+  .map-mini-open {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: min(120px, calc(25% - 12px));
+    height: min(60px, calc((100dvh - var(--gf-consent-h, 0px) - var(--hud-top) - var(--hud-bottom)) / 4 - var(--guide-h) - 10px));
+    min-height: 44px;
+    pointer-events: auto;
+  }
+  .map-full { inset: calc(var(--hud-safe-t) + 8px) 8px calc(var(--hud-safe-b) + 8px); padding: 10px; }
+  .map-hint { font-size: 14px; }
 }

@@ -15,6 +15,7 @@
  *       'ember-delve': {
  *         layout: '120x56:v2:2894011733',   // terrainLayout(spec, seed)
  *         cells: 'k3.0,k4.0,1a2.0',         // base-36 "index.kind" pairs, sorted by index
+ *         seen: '0,1.ff00ff00ff00ff00,2',   // explored cells (the map's fog of war; optional): see encodeSeen
  *       },
  *     },
  *     claimed: ['godforge-fragment', 'warden-defeated'],  // once-per-player finds and felled guardians
@@ -53,6 +54,8 @@ export interface DelveAreaSave {
   layout: string;
   /** Encoded diff: see encodeCells. */
   cells: string;
+  /** Explored cells (the map's fog of war), under the same layout: see encodeSeen. Absent = nothing explored. */
+  seen?: string;
 }
 
 export interface DelveSave {
@@ -194,6 +197,65 @@ export function decodeCells(encoded: unknown): Map<number, number> {
   return out;
 }
 
+/**
+ * The explored-cells bitset (one bit per cell, cell index i at byte i >> 3,
+ * bit i & 7), as blocks of 64 cells: a block with nothing explored is left
+ * out, a fully explored one is its base-36 number alone, anything else is
+ * "number.hex" (16 hex digits, byte order). An explored cave is mostly whole
+ * blocks, so a well-walked Delve costs a few hundred bytes. Deterministic.
+ */
+export function encodeSeen(bits: Uint8Array): string {
+  const out: string[] = [];
+  for (let block = 0; block * 8 < bits.length; block++) {
+    let any = 0, all = 255, hex = '';
+    for (let b = 0; b < 8; b++) {
+      const v = bits[block * 8 + b] ?? 0;
+      any |= v; all &= v;
+      hex += v.toString(16).padStart(2, '0');
+    }
+    if (!any) continue;
+    out.push(all === 255 ? block.toString(36) : `${block.toString(36)}.${hex}`);
+  }
+  return out.join(',');
+}
+
+/** The inverse of encodeSeen, for a grid of `cells` cells. Malformed or out-of-range blocks are skipped. */
+export function decodeSeen(encoded: unknown, cells: number): Uint8Array {
+  const bits = new Uint8Array((Math.max(0, cells) + 7) >> 3);
+  if (typeof encoded !== 'string' || !encoded) return bits;
+  for (const part of encoded.split(',')) {
+    const dot = part.indexOf('.');
+    const block = parseInt(dot < 0 ? part : part.slice(0, dot), 36);
+    if (!Number.isInteger(block) || block < 0 || block * 8 >= bits.length) continue;
+    const hex = dot < 0 ? 'ff'.repeat(8) : part.slice(dot + 1);
+    if (!/^[0-9a-f]{16}$/.test(hex)) continue;
+    for (let b = 0; b < 8 && block * 8 + b < bits.length; b++) bits[block * 8 + b] |= parseInt(hex.slice(b * 2, b * 2 + 2), 16);
+  }
+  return bits;
+}
+
+/** Two devices' explored cells: what either explored (a union). Encoded in, encoded out. */
+export function mergeSeen(a: string | undefined, b: string | undefined): string | undefined {
+  if (!a) return b;
+  if (!b) return a;
+  const parts = new Map<number, number[]>();
+  for (const encoded of [a, b]) {
+    for (const part of encoded.split(',')) {
+      const dot = part.indexOf('.');
+      const block = parseInt(dot < 0 ? part : part.slice(0, dot), 36);
+      const hex = dot < 0 ? 'ff'.repeat(8) : part.slice(dot + 1);
+      if (!Number.isInteger(block) || block < 0 || !/^[0-9a-f]{16}$/.test(hex)) continue;
+      const bytes = parts.get(block) ?? new Array(8).fill(0);
+      for (let n = 0; n < 8; n++) bytes[n] |= parseInt(hex.slice(n * 2, n * 2 + 2), 16);
+      parts.set(block, bytes);
+    }
+  }
+  const size = (Math.max(-1, ...parts.keys()) + 1) * 8;
+  const bits = new Uint8Array(size);
+  for (const [block, bytes] of parts) bits.set(bytes, block * 8);
+  return encodeSeen(bits) || undefined;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value);
 }
@@ -213,6 +275,7 @@ export function coerceDelveSave(value: unknown): DelveSave | null {
     for (const [id, area] of Object.entries(value['areas'])) {
       if (!isRecord(area) || typeof area['layout'] !== 'string' || typeof area['cells'] !== 'string') continue;
       areas[id] = { layout: area['layout'], cells: area['cells'] };
+      if (typeof area['seen'] === 'string' && area['seen']) areas[id].seen = area['seen'];
     }
   }
   const claimed = Array.isArray(value['claimed'])
@@ -252,7 +315,8 @@ export function claimOnce(save: DelveSave, id: string): boolean {
  * then kept only where they were dug in the same layout; per cell the local
  * dig wins a disagreement (it is the one on screen). A diff dug under the
  * losing seed is dropped: its indices name another Delve's rock.
- * `claimed` is a union: a fragment paid on either device is paid.
+ * `claimed` is a union: a fragment paid on either device is paid. Explored
+ * cells (`seen`) are a union too, under the same layout rule as the diff.
  */
 export function mergeDelveSaves(remote: unknown, local: unknown): unknown {
   const r = coerceDelveSave(remote), l = coerceDelveSave(local);
@@ -267,6 +331,9 @@ export function mergeDelveSaves(remote: unknown, local: unknown): unknown {
       const cells = decodeCells(theirs.cells);
       for (const [index, kind] of decodeCells(mine.cells)) cells.set(index, kind);
       areas[id] = { layout: mine.layout, cells: encodeCells(cells) };
+      // Explored on either device is explored.
+      const seen = mergeSeen(mine.seen, theirs.seen);
+      if (seen) areas[id].seen = seen;
     } else {
       // Prefer the diff dug under the winning seed; otherwise keep whatever exists
       // (a stale one is dropped on load by its layout, so keeping it costs nothing).

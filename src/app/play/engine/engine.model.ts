@@ -179,6 +179,14 @@ export interface DelvePersistence {
   isClaimed?(id: string): boolean;
   /** Set a once-per-player flag, saved at once. Optional: absent = this session only. */
   claim?(id: string): boolean;
+  /**
+   * The map's explored cells for that layout: one bit per cell (`cells` of
+   * them). The engine keeps the array it is handed and edits it in place.
+   * Optional: absent = the map is explored for this session only.
+   */
+  seenCells?(areaId: string, layout: string, cells: number): Uint8Array | null;
+  /** More of the map was explored (`bits` edited in place). Debounce on the host side. */
+  explored?(areaId: string, layout: string, bits: Uint8Array): void;
 }
 export interface PlaceEvent {
   item: PlaceableId;

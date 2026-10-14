@@ -21,8 +21,10 @@ import { Observable, Subject } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import {
-  DELVE_KEY, DelveChest, DelveSave, chestKey, claimOnce, coerceDelveSave, decodeCells, encodeCells, newDelveSave, rollSeed,
+  DELVE_KEY, DelveChest, DelveSave, chestKey, claimOnce, coerceDelveSave, decodeCells, decodeSeen, encodeCells, encodeSeen, newDelveSave, rollSeed,
 } from './delve-save.model';
+
+interface LiveArea { layout: string; cells: Map<number, number>; seen?: string; bits?: Uint8Array }
 
 /** How long dug cells wait in memory before they are written. */
 export const DEBOUNCE_MS = 1500;
@@ -34,8 +36,12 @@ export class DelveSaveService {
   private readonly saves = inject(LocalSaveRegistry);
   private save: DelveSave | null = null;
   private hydrated = false;
-  /** Decoded diffs per area, the live copy `changed()` edits. Encoded on write. */
-  private readonly live = new Map<string, { layout: string; cells: Map<number, number> }>();
+  /**
+   * Decoded diffs per area, the live copy `changed()` edits. Encoded on write.
+   * `seen` is the explored-cells string as loaded; `bits` the decoded copy the
+   * engine holds and edits once it has asked (`seenCells`).
+   */
+  private readonly live = new Map<string, LiveArea>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private readonly reloaded$$ = new Subject<void>();
 
@@ -61,6 +67,22 @@ export class DelveSaveService {
     const area = this.area(areaId, layout);
     if (kind === null) area.cells.delete(index);
     else area.cells.set(index, kind);
+    this.schedule();
+  }
+
+  /** The map's explored cells for that layout: one bit per cell, the array the engine keeps and edits. */
+  seenCells(areaId: string, layout: string, cells: number): Uint8Array | null {
+    if (!this.ensure() || !Number.isInteger(cells) || cells <= 0) return null;
+    const area = this.area(areaId, layout);
+    if (!area.bits || area.bits.length !== (cells + 7) >> 3) area.bits = decodeSeen(area.seen, cells);
+    return area.bits;
+  }
+
+  /** The engine explored more of the map (it edited the bits in place): written on the same debounce as digs. */
+  explored(areaId: string, layout: string, bits: Uint8Array): void {
+    if (!this.ensure()) return;
+    const area = this.area(areaId, layout);
+    area.bits = bits;
     this.schedule();
   }
 
@@ -162,7 +184,7 @@ export class DelveSaveService {
   private load(): void {
     this.save = coerceDelveSave(this.store.read(DELVE_KEY));
     this.live.clear();
-    for (const [id, area] of Object.entries(this.save?.areas ?? {})) this.live.set(id, { layout: area.layout, cells: decodeCells(area.cells) });
+    for (const [id, area] of Object.entries(this.save?.areas ?? {})) this.live.set(id, { layout: area.layout, cells: decodeCells(area.cells), seen: area.seen });
   }
 
   private rehydrate(): void {
@@ -172,7 +194,7 @@ export class DelveSaveService {
   }
 
   /** The live diff for an area; a diff dug under another layout is dropped here. */
-  private area(areaId: string, layout: string): { layout: string; cells: Map<number, number> } {
+  private area(areaId: string, layout: string): LiveArea {
     let area = this.live.get(areaId);
     if (!area || area.layout !== layout) {
       area = { layout, cells: new Map() };
@@ -190,7 +212,10 @@ export class DelveSaveService {
     const save = this.save;
     if (!save) return;
     const areas: DelveSave['areas'] = {};
-    for (const [id, area] of this.live) areas[id] = { layout: area.layout, cells: encodeCells(area.cells) };
+    for (const [id, area] of this.live) {
+      const seen = area.bits ? encodeSeen(area.bits) : area.seen;
+      areas[id] = { layout: area.layout, cells: encodeCells(area.cells), ...(seen ? { seen } : {}) };
+    }
     save.areas = areas;
     this.store.write(DELVE_KEY, save);
   }
