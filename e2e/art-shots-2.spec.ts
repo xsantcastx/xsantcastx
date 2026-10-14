@@ -78,8 +78,15 @@ for (const size of SIZES) {
       await shot(page, 'npc-verrin', size.name);
       await page.goto('/codex?tab=collection', { waitUntil: 'load' });
       await waitLoader(page);
+      // People of the Realms is deferred below the log: scroll until it renders, then to it.
       const people = page.locator('[data-codex="people"]');
+      await page.locator('[data-codex="glim"]').scrollIntoViewIfNeeded({ timeout: 20000 }).catch(() => undefined);
+      for (let i = 0; i < 20 && !(await people.count()); i++) {
+        await page.mouse.wheel(0, 300);
+        await page.waitForTimeout(300);
+      }
       await people.scrollIntoViewIfNeeded({ timeout: 20000 }).catch(() => undefined);
+      await page.waitForTimeout(600);
       await shot(page, 'codex-people', size.name);
     });
 

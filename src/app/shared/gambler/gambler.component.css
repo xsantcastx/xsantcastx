@@ -192,7 +192,7 @@
   object-fit: contain;
   opacity: 0.32;
   z-index: 0;
-  animation: gbSpin 48s linear infinite;
+  /* Pixel art does not turn: a rotated sprite resamples into blur. The sigil stands still and charges. */
 }
 [data-phase='charging'] .gb-altar__sigil,
 [data-phase='cracking'] .gb-altar__sigil {
@@ -508,7 +508,8 @@
   opacity: 0.7;
   z-index: -1;
   filter: drop-shadow(0 0 12px var(--reveal-glow));
-  animation: gbSpin 14s linear infinite;
+  /* Quarter turns only: a pixel ring stays on its grid at 90° and resamples into blur between. */
+  animation: gbSpin 14s steps(4) infinite;
 }
 
 .gb-reveal__art { position: relative; width: 96px; height: 96px; object-fit: contain; }

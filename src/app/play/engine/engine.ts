@@ -54,6 +54,7 @@ import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, 
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
 import { CaveBackdrop } from './cave-backdrop';
 import { ParallaxBackdrop } from './parallax';
+import { PixelParallax } from './pixel-parallax';
 import { GroundStrip } from './ground-strip';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
@@ -411,6 +412,8 @@ export class SeamworksEngine {
   private readonly caveBackdrop = new CaveBackdrop(url => this.urlImage(url));
   /** Imported W8 parallax layers for towns and hunting grounds (none until commissioned). */
   private readonly parallax = new ParallaxBackdrop(url => this.urlImage(url));
+  /** The procedural pixel parallax every town and hunt stands on until its W8 layers are imported. */
+  private readonly pixelBackdrop = new PixelParallax();
   /** The town ground as pixel art, per realm. */
   private readonly ground = new GroundStrip();
   private readonly lightPool = new LightPool(96);
@@ -4192,18 +4195,21 @@ export class SeamworksEngine {
       if (Math.abs(this.cameraY) < .05) this.cameraY = 0;
     } else this.cameraY = 0;
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
-    const bg = this.sceneImage();
     // Looking up a surface with height, the backdrop sinks at 0.6 of the camera (as a delve's does) and sky fills above it.
     const lift = !t && this.cameraY < 0 ? -this.cameraY * .6 : 0;
     if (lift) { c.save(); c.translate(0, lift); }
-    // Imported parallax layers replace the painting once every one of them has loaded (RND-2).
+    // Imported parallax layers replace everything once every one of them has loaded (RND-2);
+    // until then a town or hunt stands on its procedural pixel set (pixel-parallax.ts), and
+    // the painting is only fetched where neither can draw (the Delve's surface, no DOM).
     const layered = !t && this.parallax.draw(c, this.town.realm, this.camera, viewport, FLOOR, this.pixelScale > 1.25);
-    const cached = !t && !layered && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
+    const pixelBack = !t && !layered && this.pixelBackdrop.draw(c, this.town.realm, this.isTown ? 'town' : 'hunt', this.camera, viewport, FLOOR);
+    const bg = layered || pixelBack ? undefined : this.sceneImage();
+    const cached = !t && !layered && !pixelBack && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
     if (lift) c.restore();
     // Below a delve's surface the distant cave fills the frame (it shows through the caverns);
     // the town painting and its shade are drawn only while the surface is in view.
     const underground = !!t && t.top - this.cameraY <= 0;
-    if (!cached && !underground && !layered) {
+    if (!cached && !underground && !layered && !pixelBack) {
       c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
       if (bg?.complete && bg.naturalWidth) {
         const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
