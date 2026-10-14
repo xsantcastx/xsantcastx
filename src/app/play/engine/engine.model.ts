@@ -62,7 +62,7 @@ export interface EngineState {
   riding?: boolean;
   grappling?: 'grow' | 'pull' | 'hang' | null;
   /** The Banked Furnace's fight while it is up: banked or open, vents doused (of 4), seconds open, breathing in. */
-  furnace?: { phase: 'banked' | 'open'; doused: number; open: number; breathing: boolean };
+  furnace?: { phase: 'banked' | 'open'; doused: number; open: number; breathing: boolean; vents: string };
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';

@@ -392,8 +392,9 @@ function setPiece(b: Builder, out: SectorColumnGen, col0: number): void {
   b.put(GANTRY.col - 1, GANTRY.row, K.brick);
   // The furnace: body and legs; the mouth between its legs is open.
   b.rect(F.body.col, F.body.row, F.body.w, F.body.h, K.brick);
-  b.rect(F.body.col, F.mouth.row, 2, F.mouth.h, K.brick);
-  b.rect(F.body.col + F.body.w - 2, F.mouth.row, 2, F.mouth.h, K.brick);
+  // Its legs stop short of the floor: the Keeper walks in under its belly to the mouth (three rows of headroom).
+  b.rect(F.body.col, F.mouth.row, 2, 2, K.brick);
+  b.rect(F.body.col + F.body.w - 2, F.mouth.row, 2, 2, K.brick);
   b.rect(F.mouth.col, F.mouth.row, F.mouth.w, F.mouth.h, AIR);
   b.put(F.col, floorRow - 1, K.hearth, true);
   for (const col of F.vents) b.put(col, floorRow - 1, K.vent, true);

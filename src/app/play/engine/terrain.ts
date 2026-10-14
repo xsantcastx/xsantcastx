@@ -243,7 +243,7 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     guard: { flag: 'underhearth-unsealed', refusal: 'The seal holds. Bring Kael the Godforge Fragment first: he knows what it holds back' } },
   // The Four's forge masonry: the furnace hall's floor and the furnace's own body. Never breaks.
   { id: 'hearth-brick', label: 'Hearth brick', solid: true, hp: Infinity, tools: {}, discipline: 'mining', xp: 0,
-    base: '#57474f', dark: '#2a2027', light: '#7a656e', fleck: '#c4501e' },
+    base: '#4a2a28', dark: '#2a1418', light: '#7a3a2a', fleck: '#c4501e' },
   // The Banked Furnace's four vents (douse them with water) and its hearth stone (summon it there).
   { id: 'furnace-vent', label: 'Furnace vent', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
     base: '#2a2027', dark: '#140a1f', light: '#ffd08a', fleck: '#E8752A', glow: { color: '#ff9b4f', radius: 70 } },
