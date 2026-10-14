@@ -2408,6 +2408,58 @@ test('life: off-camera figures are culled; keepers face the Keeper; chatter is o
   assert.ok(tl.facing[kael] < -.5, 'and turns to face the Keeper on the other side');
 });
 
+test('life (S3): people wear their name with the role title under it; every keeper has 4-8 lines and a People entry', () => {
+  const keeperLinesMod = loadTs(path.resolve(__dirname, '../src/app/play/world/keeper-lines.ts'));
+  const people = loadTs(path.resolve(__dirname, '../src/app/codex/people.i18n.ts')).PEOPLE_I18N;
+  const named = { 'bench-smith': ['Mara Voss', 'Bench Smith'], 'buyback-clerk': ['Edrin Kade', 'Buyback Clerk'], tomas: ['Tomas Rill', 'Lantern Keeper'],
+    ilyra: ['Ilyra Venn', 'Archive Listener'], sera: ['Sera Quill', 'Chief Meridian'], 'chart-clerk': ['Nox Aster', 'Chart Clerk'], rook: ['Rook Sable', 'Veil Cartographer'],
+    broker: ['Amina Thorne', 'Exchange Broker'], 'lodge-warden': ['Kesh Arbo', 'Lodge Warden'], steward: ['Siv Moss', 'Expedition Steward'] };
+  const all = Object.values(life.TOWN_KEEPERS).flat();
+  for (const [id, [name, title]] of Object.entries(named)) {
+    const def = all.find(k => k.id === id);
+    assert.ok(def, `${name} stands in a town`);
+    assert.equal(lifeI18n[def.nameKey].en, name);
+    assert.equal(lifeI18n[def.titleKey].en, title, `${name}'s subtitle is the approved role title`);
+  }
+  for (const def of all) {
+    assert.ok(def.lines.length >= 4 && def.lines.length <= 8, `${def.id}: ${def.lines.length} lines`);
+    assert.deepEqual(def.lines, keeperLinesMod.allKeeperLines(def.id));
+    for (const f of ['where', 'who', 'teaches']) assert.ok(people[`codex.people.${f}.${def.id}`]?.es, `${def.id} has a People entry (${f})`);
+    if (def.titleKey) assert.ok(lifeI18n[def.titleKey]?.es, `${def.titleKey} EN + ES`);
+  }
+  // The town feels connected: lines that name another keeper.
+  const names = all.map(k => lifeI18n[k.nameKey].en.split(' ')[0]).filter(n => !['The', 'Vault', 'Board', 'Arena', 'Trials', 'Croupier', 'Enchanter'].includes(n));
+  const crossRefs = all.flatMap(def => def.lines.filter(key => names.some(n => n !== lifeI18n[def.nameKey].en.split(' ')[0] && lifeI18n[key].en.includes(n))));
+  assert.ok(crossRefs.length >= 5, `${crossRefs.length} lines mention another keeper`);
+});
+
+test('life (S3): a keeper says the newest thing first, never a line for a beat or deed not reached', () => {
+  const town = world.TOWNS.infernal;
+  const tl = new townLifeMod.TownLife();
+  tl.enter(town, town);
+  const mara = tl.keepers.findIndex(p => p.def.id === 'bench-smith');
+  const mx = tl.keepers[mara].x;
+  let t = 0;
+  const step = x => { t += 1 / 60; tl.update(1 / 60, x, t); };
+  const approach = () => { for (let n = 0; n < 60 * 25; n++) step(mx + 2000); step(mx + 60); return tl.speaking; };
+  assert.deepEqual(approach(), { keeper: 'bench-smith', line: 'play.life.line.bench-smith.1' }, 'a fresh save hears the first line');
+  // A first craft: the next approach hears about it, not the next line in turn.
+  tl.setContext({ beats: new Set(), deeds: new Set(['crafted']) });
+  assert.deepEqual(approach(), { keeper: 'bench-smith', line: 'play.life.line.bench-smith.4' });
+  assert.deepEqual(approach(), { keeper: 'bench-smith', line: 'play.life.line.bench-smith.1' }, 'then back round the pool');
+  // A story beat outranks a deed; a later beat outranks an earlier one.
+  tl.setContext({ beats: new Set(['p.edge', 'a1.hammer']), deeds: new Set(['crafted']) });
+  assert.deepEqual(approach(), { keeper: 'bench-smith', line: 'play.life.line.bench-smith.7' });
+  assert.deepEqual(approach(), { keeper: 'bench-smith', line: 'play.life.line.bench-smith.6' });
+  // Nothing about the act break until it happens.
+  const heard = new Set();
+  for (let n = 0; n < 12; n++) heard.add(approach().line);
+  assert.ok(!heard.has('play.life.line.bench-smith.8'), 'the act-break line waits for the act break');
+  // Context survives leaving and re-entering the town.
+  tl.enter(town.hunts[0], town); tl.enter(town, town);
+  assert.deepEqual(approach(), { keeper: 'bench-smith', line: 'play.life.line.bench-smith.7' });
+});
+
 test('life: the engine stands keepers in towns only, and a click on a keeper opens its station', () => {
   const { engine } = fixture();
   assert.ok(engine.life.keepers.length >= 4, 'the Seamworks is staffed');
