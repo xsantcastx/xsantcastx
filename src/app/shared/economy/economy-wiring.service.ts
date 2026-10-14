@@ -36,7 +36,6 @@ import { XpService } from '../gamification/xp.service';
 import { QuestService } from '../quests/quest.service';
 import { EasterEggService } from '../easter-eggs/easter-egg.service';
 import { tierForEgg } from '../rarity/rarity.model';
-import { ProService } from '../pro/pro.service';
 import { InfusionService } from '../enchanting/infusion.service';
 import { PlayerStatsService } from '../rpg/player-stats.service';
 import { InventoryService } from '../rpg/inventory.service';
@@ -48,7 +47,6 @@ export class EconomyWiringService {
   private readonly xp = inject(XpService);
   private readonly quests = inject(QuestService);
   private readonly eggs = inject(EasterEggService);
-  private readonly pro = inject(ProService);
   private readonly stats = inject(PlayerStatsService);
   private readonly inventory = inject(InventoryService);
   private readonly infusions = inject(InfusionService);
@@ -169,23 +167,15 @@ export class EconomyWiringService {
       // at the moment of the award, so the blade keeps pointing at whichever
       // realm the visitor has been neglecting rather than at a fixed one.
       const weaker = ctx.energy === (snap.aether <= snap.nox ? 'aether' : 'nox');
-      // The Pro Pack's permanent 2x composes here rather than in its own call
-      // to `setMultiplierSource`. That method replaces the source instead of
-      // composing with it (see its doc comment), so a second caller would have
-      // silently deleted the enchantments, the Mirrorblade, the Relic and the
-      // Fragment — a bug that only shows up as "my artifacts stopped working"
-      // for the subset of visitors who paid.
-      // Wisdom and equipped `xpBonus` compose here for the same reason the Pro
-      // Pack does, and it is worth restating because this is now the third
-      // system to land in this one expression: `setMultiplierSource` REPLACES
-      // its source. An RPG wiring layer that called it again would have
-      // silently deleted the enchantments, the Mirrorblade, the Relic, the
-      // Fragment and Pro — presenting as "my artifacts stopped working" for
-      // every visitor with a stat point spent.
+      // Wisdom and equipped `xpBonus` compose here rather than in their own
+      // call: `setMultiplierSource` REPLACES its source. An RPG wiring layer
+      // that called it again would have silently deleted the enchantments, the
+      // Mirrorblade, the Relic and the Fragment — presenting as "my artifacts
+      // stopped working" for every visitor with a stat point spent.
       return xpMultiplier(e, Date.now(), {
         questReward: ctx.type === 'quest',
         weakerEnergy: weaker,
-      }) * this.pro.xpMultiplier() * this.rpgXpMultiplier();
+      }) * this.rpgXpMultiplier();
     });
 
     // Repaint whenever a cosmetic is bought or swapped.

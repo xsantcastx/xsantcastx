@@ -237,7 +237,6 @@ export const ART_ITEMS_ARTBIBLE_WEAPONS: Readonly<Record<string, ArtEntry>> = {
 };
 
 export const ART_ITEMS_ARTIFACTS: Readonly<Record<string, ArtEntry>> = {
-  'codex-solarii': { src: 'assets/game/items/artifacts/32-codex-solarii-96.webp', srcset: 'assets/game/items/artifacts/32-codex-solarii-96.webp 96w, assets/game/items/artifacts/32-codex-solarii-256.webp 256w', width: 96, height: 96 },
   'fragment-of-the-first-sun': { src: 'assets/game/items/artifacts/33-fragment-of-the-first-sun-96.webp', srcset: 'assets/game/items/artifacts/33-fragment-of-the-first-sun-96.webp 96w, assets/game/items/artifacts/33-fragment-of-the-first-sun-256.webp 256w', width: 96, height: 96 },
   'mirrorblade-of-kael': { src: 'assets/game/items/artifacts/30-mirrorblade-of-kael-96.webp', srcset: 'assets/game/items/artifacts/30-mirrorblade-of-kael-96.webp 96w, assets/game/items/artifacts/30-mirrorblade-of-kael-256.webp 256w', width: 96, height: 96 },
   'obsidian-heart': { src: 'assets/game/items/artifacts/29-obsidian-heart-96.webp', srcset: 'assets/game/items/artifacts/29-obsidian-heart-96.webp 96w, assets/game/items/artifacts/29-obsidian-heart-256.webp 256w', width: 96, height: 96 },
