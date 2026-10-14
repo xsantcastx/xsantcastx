@@ -64,3 +64,18 @@ export function winTier(win: number, bet: number): WinTier | null {
   if (x >= WIN_TIERS.big) return 'big';
   return null;
 }
+
+/**
+ * Whole Gold from a fractional pay, without bias. A pay of 13.7 Gold is 13
+ * Gold, plus the last one with a 70% chance, settled by `u` — a draw stored
+ * with the play at the bet. On average it pays exactly `value`, so a stated
+ * RTP holds at every bet, even the 10-Gold minimum where plain rounding would
+ * move it by several points.
+ */
+export function wholeGold(value: number, u: number): number {
+  if (!(value > 0)) return 0;
+  // A hair of tolerance so 12.000000000001 (float noise on an exact pay) stays 12.
+  const fl = Math.floor(value + 1e-9);
+  const frac = value - fl;
+  return frac <= 1e-9 ? fl : fl + (u < frac ? 1 : 0);
+}

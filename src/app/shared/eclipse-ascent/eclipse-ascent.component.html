@@ -1,0 +1,69 @@
+<!-- Eclipse Ascent: the sky → bet + auto target → ONE "Launch · N Gold", then
+     ONE "Cash out ×N" while it rises. Odds and rules behind Details. -->
+<app-station-shell class="ea"
+                   [title]="t('ascent.title')"
+                   [purpose]="t('ascent.purpose')"
+                   [showTitle]="!inWorld"
+                   [detailsLabel]="t('stationUi.details')"
+                   [detailsHint]="t('ascent.details')"
+                   [(detailsOpen)]="detailsOpen">
+
+  <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
+
+  <div stationHero class="ea-stage">
+    <div class="ea-cabinet" [attr.data-phase]="phase">
+      <svg class="ea-sky" viewBox="0 0 32 32" shape-rendering="crispEdges" role="img" [attr.aria-label]="t('ascent.sky', { x: fx(x) })">
+        <rect class="ea-night" x="0" y="0" width="32" height="32" />
+        <rect class="ea-star" x="3" y="4" width="1" height="1" />
+        <rect class="ea-star" x="27" y="6" width="1" height="1" />
+        <rect class="ea-star" x="6" y="26" width="1" height="1" />
+        <rect class="ea-star" x="25" y="27" width="1" height="1" />
+        <circle class="ea-corona" cx="16" cy="16" r="12" [style.opacity]="0.15 + 0.85 * progress" />
+        <circle class="ea-sun" cx="16" cy="16" r="9" />
+        <circle class="ea-moon" [attr.cx]="moonX" cy="16" r="9" />
+        @if (phase === 'broke') {
+          <path class="ea-crack" d="M15 7h1v4h1v3h-2v4h1v4h-1v3h1v-3h1v-4h-1v-4h2v-3h-1V7z" />
+        }
+      </svg>
+      <p class="ea-dial" [class.is-cashed]="phase === 'cashed'" [class.is-broke]="phase === 'broke'" aria-hidden="true">{{ fx(x) }}</p>
+      <app-win-celebration [win]="celebrate.win" [bet]="celebrate.bet" [seq]="celebrate.seq" />
+    </div>
+
+    <p class="ea-result" role="status" aria-live="polite">{{ result }}</p>
+
+    <div class="ea-controls">
+      @if (!rising) {
+        <app-game-stepper [label]="t('ascent.auto')" [value]="autoLabel"
+                          [lessLabel]="t('ascent.autoLess')" [moreLabel]="t('ascent.autoMore')"
+                          [canLess]="autoIndex > 0" [canMore]="autoIndex < 9"
+                          (less)="stepAuto(-1)" (more)="stepAuto(1)" />
+        <app-game-stepper [label]="t('games.bet.label')" [value]="fmt(bet)"
+                          [lessLabel]="t('games.bet.less')" [moreLabel]="t('games.bet.more')"
+                          [canLess]="bet > bets[0]" [canMore]="bet < bets[bets.length - 1]"
+                          (less)="stepBet(-1)" (more)="stepBet(1)" />
+      }
+      <app-action-button class="ea-act" [label]="actionLabel" [costs]="costs" chips="currency"
+                         [pending]="!hydrated" (act)="act()" (refused)="result = $event" />
+    </div>
+  </div>
+
+  <div stationDetails class="ea-more">
+    <h3>{{ t('ascent.oddsHead') }}</h3>
+    <ol class="ea-odds">
+      @for (o of odds; track o.x) { <li>{{ o.text }}</li> }
+    </ol>
+    <p>{{ t('ascent.rules') }}</p>
+    <p class="ea-proof">{{ t('ascent.rtp', { rtp: rtp, instant: instant }) }}</p>
+    <p>{{ t('ascent.fraction') }}</p>
+    <p>{{ t('ascent.honest') }}</p>
+    <p>{{ capLine }} {{ t('games.goldOnly') }}</p>
+    <p>{{ record }}</p>
+    @if (history.length) {
+      <h3>{{ t('ascent.history') }}</h3>
+      <ol class="ea-history">
+        @for (h of history; track h.id) { <li [class.is-won]="h.won">{{ h.text }}</li> }
+      </ol>
+    }
+    <p class="ea-lore">{{ t('ascent.lore') }}</p>
+  </div>
+</app-station-shell>

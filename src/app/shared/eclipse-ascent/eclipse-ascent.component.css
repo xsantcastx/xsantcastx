@@ -1,0 +1,86 @@
+/* Eclipse Ascent. A 32×32 pixel sky drawn at a whole multiple (tokens only):
+   the moon slides over the sun as the multiplier climbs, the corona brightens,
+   and the disc cracks where it breaks. Reduced motion drops the pulse only;
+   the number still climbs (it is the game). */
+
+:host { display: block; --ea-sky: 224px; }
+
+@media (min-width: 641px) { :host { --ea-sky: 256px; } }
+@media (max-width: 350px) { :host { --ea-sky: 192px; } }
+
+.ea-stage { display: grid; justify-items: center; gap: var(--space-3); }
+
+.ea-cabinet {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  padding: var(--space-2);
+  background: var(--obsidian-2);
+  border: 4px solid var(--violet-ink);
+  box-shadow:
+    0 0 0 2px var(--obsidian-0),
+    inset 0 4px 0 var(--obsidian-4),
+    inset 0 -4px 0 var(--obsidian-0),
+    0 0 24px var(--realm-umbral-tint);
+}
+
+.ea-cabinet[data-phase='rising'] { border-color: var(--realm-umbral); }
+
+.ea-sky { width: var(--ea-sky); height: var(--ea-sky); image-rendering: pixelated; }
+.ea-night { fill: var(--obsidian-0); }
+.ea-star { fill: var(--ink-2); }
+.ea-corona { fill: none; stroke: var(--gold-bright); stroke-width: 2; }
+.ea-sun { fill: var(--gold); }
+.ea-moon { fill: var(--obsidian-1); stroke: var(--violet-deep); stroke-width: 1; }
+.ea-crack { fill: var(--ink-0); }
+
+.ea-cabinet[data-phase='rising'] .ea-corona { animation: eaPulse 1200ms steps(3) infinite alternate; }
+
+@keyframes eaPulse {
+  from { stroke-width: 2; }
+  to { stroke-width: 3; }
+}
+
+.ea-dial {
+  position: absolute;
+  left: 50%;
+  bottom: var(--space-3);
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0 var(--space-2);
+  background: var(--obsidian-0);
+  color: var(--ink-0);
+  font-size: var(--text-xl, var(--text-lg));
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--violet-ink);
+}
+
+.ea-dial.is-cashed { color: var(--gold-bright); }
+.ea-dial.is-broke { color: var(--feedback-error); }
+
+.ea-result { min-height: 1.5em; margin: 0; text-align: center; color: var(--ink-0); font-size: var(--text-base); }
+
+.ea-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.ea-act { flex: 1 1 200px; max-width: 360px; }
+
+.ea-more { display: grid; gap: var(--space-2); color: var(--ink-1); font-size: var(--text-sm); }
+.ea-more h3 { margin: var(--space-2) 0 0; font-size: var(--text-base); color: var(--gold); }
+.ea-more p { margin: 0; }
+.ea-odds { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 2px var(--space-3); font-variant-numeric: tabular-nums; }
+.ea-proof { color: var(--ink-0); }
+.ea-history { margin: 0; padding-left: var(--space-5); }
+.ea-history .is-won { color: var(--gold); }
+.ea-lore { font-style: italic; color: var(--ink-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .ea-cabinet[data-phase='rising'] .ea-corona { animation: none; }
+}
