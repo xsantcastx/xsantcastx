@@ -194,7 +194,11 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
     // Generated air (a cavern) stays clear: the distant cave shows through.
     // A dug or built-in cell, and a carved slab, sits on the biome's back wall.
     if (TERRAIN_NODE_LIST[t.base[index]].solid || node.id === 'inscription') paintWall(c, t, atlas, t.biomeAt(row), col, row, x, y, h, sheets);
-    if (node.id === 'inscription') paintInscription(c, node.light, node.fleck, x, y, h);
+    if (node.id === 'inscription') {
+      const tally = TALLY_CARVINGS[t.inscriptions.get(index) ?? ''];
+      if (tally) paintTally(c, node.light, tally, x, y);
+      else paintInscription(c, node.light, node.fleck, x, y, h);
+    }
     else if (node.placeable) paintPlaced(c, atlas, kind, x, y);
     return;
   }
@@ -262,6 +266,61 @@ function paintInscription(c: CanvasRenderingContext2D, slab: string, glyph: stri
       if (bits & 2) pixelLine(c, gx - 1, gy, gx + 4, gy);
       if (bits & 4) pixelLine(c, gx + 4, gy - 2, gx + 2, gy + 3);
     }
+  }
+}
+
+/**
+ * The two tally carvings are the story's own marks (shared/story, Act I), so
+ * they are drawn as what they are rather than as generic glyphs:
+ *  - `roots-keepers-tally` (Root Hollows): five marks at Keeper height, four
+ *    struck through, the fifth worn smooth (a soft, wide, pale stroke);
+ *  - `magma-unsigned` (Magma Halls): a single old mark, and a fresh one beside
+ *    it — pale new-cut stone with the notch at the top a Keeper's pick leaves
+ *    where the stroke turns, and a little bright grit under it.
+ * Keyed by inscription id; every other carving keeps its glyphs.
+ */
+interface TallyCarving { marks: number; struck: number; worn: boolean; fresh: boolean }
+const TALLY_CARVINGS: Readonly<Record<string, TallyCarving>> = {
+  'roots-keepers-tally': { marks: 5, struck: 4, worn: true, fresh: false },
+  'magma-unsigned': { marks: 1, struck: 0, worn: false, fresh: true },
+};
+/** Old cuts are dark grooves; fresh-cut stone and its grit are brighter than anything weathered. */
+const OLD_GROOVE = '#2b1a12';
+const FRESH_CUT = '#fff4dc';
+const FRESH_GRIT = '#e8cf9a';
+
+function paintTally(c: CanvasRenderingContext2D, slab: string, tally: TallyCarving, x: number, y: number): void {
+  c.fillStyle = '#140a1f'; c.globalAlpha = .6; c.fillRect(x + ART, y + ART, CELL - ART * 2, CELL - ART * 2);
+  c.fillStyle = slab; c.globalAlpha = .75; c.fillRect(x + ART * 2, y + ART * 2, CELL - ART * 4, CELL - ART * 4); c.globalAlpha = 1;
+  // Strokes are one art pixel wide and seven tall, two art pixels apart, cut a little high (Keeper height).
+  const top = y + ART * 3, tall = ART * 7;
+  const count = tally.marks + (tally.fresh ? 1 : 0);
+  // Two art pixels apart when there is room (the pair), one when there are five.
+  const stride = ART * (count > 3 ? 2 : 3);
+  const left = x + Math.round((CELL - ((count - 1) * stride + ART)) / 2 / ART) * ART;
+  for (let n = 0; n < tally.marks; n++) {
+    const sx = left + n * stride;
+    const worn = tally.worn && n === tally.marks - 1;
+    c.fillStyle = OLD_GROOVE;
+    // Worn smooth: gone over so often the edges have rounded off into the slab.
+    if (worn) { c.globalAlpha = .35; c.fillRect(sx - ART, top + ART, ART * 3, tall - ART * 2); c.globalAlpha = .8; }
+    c.fillRect(sx, top, ART, tall);
+    c.globalAlpha = 1;
+    // Struck through: a short slash across the stroke, from low-left to high-right.
+    if (n < tally.struck) pixelLine(c, sx - ART, top + ART * 5, sx + ART, top + ART * 2);
+  }
+  if (tally.fresh) {
+    const sx = left + tally.marks * stride;
+    // A groove's shadow on its left, then the pale new-cut floor of it.
+    c.fillStyle = OLD_GROOVE;
+    c.fillRect(sx - ART, top, ART, tall);
+    c.fillStyle = FRESH_CUT;
+    c.fillRect(sx, top, ART, tall);
+    // The notch where the stroke turned: the Keeper's own pick leaves it.
+    c.fillRect(sx + ART, top, ART, ART);
+    c.fillStyle = FRESH_GRIT;
+    c.fillRect(sx - ART, top + tall + ART, ART, ART);
+    c.fillRect(sx + ART * 2, top + tall, ART, ART);
   }
 }
 

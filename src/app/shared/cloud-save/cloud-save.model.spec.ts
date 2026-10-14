@@ -627,6 +627,7 @@ describe('the registry', () => {
       'godforge-economy',
       'godforge-exchange',
       'godforge-explorers',
+      'godforge-fishing',
       'godforge-gambler',
       'godforge-games',
       'godforge-gathering',
@@ -639,6 +640,7 @@ describe('the registry', () => {
       'godforge-runes',
       'godforge-scrolls',
       'godforge-stats',
+      'godforge-story',
       'godforge-thralls',
     ]);
   });

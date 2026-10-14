@@ -14,6 +14,8 @@
  * Objectives read ledgers, never count events, exactly like the chains:
  *  - `deliver`      reads the bag's stacks; claiming consumes them.
  *  - `inscriptions` reads DelveLoreService's copied set.
+ *  - `read`         reads whether one named inscription is in that set.
+ *  - `defeat`       reads a once-per-player flag in the Delve save (a felled boss).
  *
  * Pure data and pure functions. No Angular, no browser APIs.
  */
@@ -55,7 +57,11 @@ export interface DeliverItem {
 export type MissionObjective =
   | { kind: 'deliver'; items: readonly DeliverItem[] }
   /** `count: 'all'` resolves to every inscription the Delve has. */
-  | { kind: 'inscriptions'; count: number | 'all' };
+  | { kind: 'inscriptions'; count: number | 'all' }
+  /** One named inscription read (and copied). */
+  | { kind: 'read'; inscription: string; where: string }
+  /** A once-per-player flag set: a felled boss (`MonsterDef.once`). */
+  | { kind: 'defeat'; flag: string; name: string; where: string };
 
 /**
  * Economy v3 reward for a mission authored at `v2Gold`: a floor of v2 × ρ and
@@ -75,6 +81,8 @@ export interface MissionReward {
   goldSeconds?: number;
   /** Delving XP, through the skill pipeline (idempotent per claim). */
   delvingXp?: number;
+  /** Fishing XP, the same way (Phase 6 fishing missions). */
+  fishingXp?: number;
   /** A crafting recipe id this mission unlocks at the bench. */
   recipe?: string;
   /** A rune id banked into the Rune Forge ledger. */
@@ -109,6 +117,8 @@ export interface DelveMission {
 
 /** Glowcaps per standing order. */
 export const GLOWCAP_ORDER_SIZE = 5;
+/** The flag the Drowned Lamp sets when it falls (delve save `claimed`; towns/infernal.ts). */
+export const DROWNED_LAMP_FLAG = 'drowned-lamp-defeated';
 
 export const DELVE_MISSIONS: readonly DelveMission[] = [
   {
@@ -228,6 +238,92 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     unlocks: 'The Fracture rune, and the truth about the crack.',
     requires: ['delve-verrin-shadow', 'delve-kael-seam', 'delve-merchant-glowcaps'],
   },
+  // ── Fishing (Phase 6; delve-and-beyond.md §5.5, §7.1; lore addendum "The Drowned Lamp") ──
+  {
+    id: 'fish-drowned-lamp-1',
+    npcId: 'archivist',
+    title: 'The Drowned Lamp',
+    brief: 'Bring the Archivist 3 Glowcap Minnows from the Grotto Mere.',
+    loreText: 'Bring me one of everything that swims. I am not cataloguing fish. I am cataloguing what the water remembers. Start with the small bright ones.',
+    objective: { kind: 'deliver', items: [{ materialId: 'glowcap-minnow', count: 3, where: 'the Grotto Mere, the lake in the Glowcap Grotto (any rod)' }] },
+    reward: { ...incomeGold(10_000), fishingXp: 60, delvingXp: 40 },
+    unlocks: 'The next page of the Drowned Lamp.',
+  },
+  {
+    id: 'fish-drowned-lamp-2',
+    npcId: 'archivist',
+    title: 'What the Water Keeps',
+    brief: 'Read the carving under the water at the east end of the Glowcap Grotto.',
+    loreText: 'There is a carving down there that someone kept lit for a very long time. The lamp is still burning under the water. Read me what it says. Hold your breath.',
+    objective: { kind: 'read', inscription: 'grotto-drowned-lamp', where: 'the drowned alcove east of the Grotto Mere (a Gill Draught helps)' },
+    reward: { ...incomeGold(20_000), fishingXp: 80, delvingXp: 80 },
+    unlocks: 'Fish the Mere at night with Glowcap bait, and something large answers.',
+    requires: ['fish-drowned-lamp-1'],
+  },
+  {
+    id: 'fish-drowned-lamp-3',
+    npcId: 'archivist',
+    title: 'The Lamp\'s Keeper',
+    brief: 'Fish the Grotto Mere at night with Glowcap bait, and face what circles the lamp.',
+    loreText: 'On the nights when the crack is darkest, something large circles the lamp and dims every other light in the cavern. Light a torch beside it. In the dark it is a rumour; in the light it is a fight.',
+    objective: { kind: 'defeat', flag: DROWNED_LAMP_FLAG, name: 'the Drowned Lamp', where: 'the Grotto Mere, at night (after dark on your clock), with Glowcap bait' },
+    reward: {
+      ...incomeGold(50_000),
+      fishingXp: 300,
+      delvingXp: 200,
+      loreFragment: 'It was not lost. It was put down carefully by someone who expected to come back. The lamp stays where it is: some records are kept by not being moved.',
+    },
+    unlocks: 'The Catalogue of Strange Fish, complete with the Archivist\'s notes, in the Codex.',
+    requires: ['fish-drowned-lamp-2'],
+  },
+  {
+    id: 'fish-verrin-eels',
+    npcId: 'verrin',
+    title: 'Toward the Crack',
+    brief: 'Bring Verrin 5 Rootling Eels from the Delve\'s seeps.',
+    loreText: 'They swim along the roots, toward the crack, like everything else down here. Bring me five. I want to know which way they were facing when you caught them.',
+    objective: { kind: 'deliver', items: [{ materialId: 'rootling-eel', count: 5, where: 'the seep in the Root Hollows alcove or Kael\'s flooded seam' }] },
+    reward: { ...incomeGold(15_000), fishingXp: 120, loreFragment: 'Every eel faced the crack. Verrin wrote it down and did not say what it meant.' },
+  },
+  {
+    id: 'fish-merchant-order',
+    npcId: 'merchant',
+    title: 'Fish Orders',
+    brief: 'Bring the Merchant 5 Mere Perch and 5 Slagjaw Eels.',
+    loreText: 'Ordinary fish, friend, and fish that bite slag. The first sells because nobody believes it came from down there. The second sells because everybody does.',
+    objective: {
+      kind: 'deliver',
+      items: [
+        { materialId: 'mere-perch', count: 5, where: 'the Grotto Mere (rare)' },
+        { materialId: 'slagjaw-eel', count: 5, where: 'the Magma Halls lava pools (a Seam Rod)' },
+      ],
+    },
+    // A floor buyer like the Glowcap order: 180 Gold, or 90 s of income when that is more.
+    // Five and five: the economy sim (--fishing) holds fishing under 10% of the forge's Gold a minute.
+    reward: { gold: itemScaled(3_000), goldSeconds: 90, fishingXp: 40 },
+    unlocks: 'A standing order. Fill it as often as you like.',
+    repeatable: true,
+  },
+  {
+    id: 'fish-merchant-debt',
+    npcId: 'merchant',
+    title: 'The Unpaid Debt',
+    brief: 'Bring the Merchant the fish with the heat seal on its flank.',
+    loreText: 'Stamped with a heat seal, you say. Somebody still owes for that fish. Bring it here and I will settle it: I always settle. Eventually.',
+    objective: { kind: 'deliver', items: [{ materialId: 'the-unpaid-debt', count: 1, where: 'the Magma Halls lava, very rarely (a legendary)' }] },
+    reward: { ...incomeGold(100_000), fishingXp: 250, loreFragment: 'The Merchant paid the debt in full, to nobody, and put the receipt in a drawer that does not open.' },
+  },
+  {
+    id: 'fish-archivist-pages',
+    npcId: 'archivist',
+    title: 'The Waterlogged Ledger',
+    brief: 'Bring the Archivist a Waterlogged Ledger Page from the Delve\'s water.',
+    loreText: 'Kael\'s handwriting, mostly. A column of figures that stops at the waterline. Every page you bring me, I dry and file. Every one stops at the same figure.',
+    objective: { kind: 'deliver', items: [{ materialId: 'waterlogged-ledger-page', count: 1, where: 'any water in the Delve, now and then (junk on the line)' }] },
+    reward: { gold: itemScaled(2_000), goldSeconds: 60, delvingXp: 40 },
+    unlocks: 'A standing order: every page is filed.',
+    repeatable: true,
+  },
 ];
 
 const BY_ID = new Map(DELVE_MISSIONS.map(m => [m.id, m]));
@@ -258,6 +354,12 @@ export function missionXpGrants(mission: Pick<DelveMission, 'id' | 'reward'>, ti
   }));
 }
 
+/** The Fishing XP a claim pays, the same way (keys `npc-mission:<id>:<times>:fxp`). */
+export function missionFishingXpGrants(mission: Pick<DelveMission, 'id' | 'reward'>, times: number): MissionXpGrant[] {
+  const base = `npc-mission:${mission.id}:${times}:fxp`;
+  return xpGrantChunks(mission.reward.fishingXp ?? 0).map((xp, i) => ({ mutationId: i === 0 ? base : `${base}:${i + 1}`, xp }));
+}
+
 /** The missions a character offers, as giver or co-giver, in list order. */
 export function missionsFrom(npcId: NpcId): DelveMission[] {
   return DELVE_MISSIONS.filter(m => m.npcId === npcId || m.alsoFrom === npcId);
@@ -270,6 +372,7 @@ export const MISSION_RECIPES: Readonly<Record<string, string>> = Object.fromEntr
 
 /** The number an objective counts to. */
 export function missionTarget(o: MissionObjective, inscriptionTotal = DELVE_INSCRIPTIONS.length): number {
+  if (o.kind === 'read' || o.kind === 'defeat') return 1;
   if (o.kind === 'inscriptions') {
     return Math.max(1, o.count === 'all' ? inscriptionTotal : o.count);
   }
@@ -281,10 +384,16 @@ export interface MissionReadings {
   stackOf(materialId: string): number;
   inscriptions: number;
   inscriptionTotal: number;
+  /** Whether one inscription has been read. Absent: none. */
+  read?: (id: string) => boolean;
+  /** Whether a once-per-player flag is set. Absent: none. */
+  flagged?: (flag: string) => boolean;
 }
 
 /** Progress toward the target, each delivery line capped at its own count. */
 export function missionObserved(o: MissionObjective, r: MissionReadings): number {
+  if (o.kind === 'read') return r.read?.(o.inscription) ? 1 : 0;
+  if (o.kind === 'defeat') return r.flagged?.(o.flag) ? 1 : 0;
   if (o.kind === 'inscriptions') {
     return Math.min(r.inscriptions, missionTarget(o, r.inscriptionTotal));
   }
@@ -316,6 +425,8 @@ export function missionNextStep(
   }
   if (state.ready) return `Hand it to ${npcName(m.npcId)} and claim your reward.`;
   const o = m.objective;
+  if (o.kind === 'read') return `Read the carving in ${o.where}.`;
+  if (o.kind === 'defeat') return `Face ${o.name} in ${o.where}.`;
   if (o.kind === 'inscriptions') {
     const left = missionTarget(o, r.inscriptionTotal) - Math.min(r.inscriptions, missionTarget(o, r.inscriptionTotal));
     return `Copy ${left} more ${left === 1 ? 'inscription' : 'inscriptions'} in the Ember Delve.`;
@@ -341,6 +452,7 @@ export function missionGold(reward: MissionReward, perSecond: number): number {
 export function missionRewardLine(reward: MissionReward, gold: number, recipeName?: string, runeName?: string): string {
   const parts = [`${gold.toLocaleString('en-US')} Gold`];
   if (reward.delvingXp) parts.push(`${reward.delvingXp} Delving XP`);
+  if (reward.fishingXp) parts.push(`${reward.fishingXp} Fishing XP`);
   if (reward.recipe) parts.push(`${recipeName ?? 'a new'} recipe`);
   if (reward.rune) parts.push(`${runeName ?? reward.rune} rune`);
   if (reward.item) parts.push(`a ${reward.item.rarity} keepsake`);

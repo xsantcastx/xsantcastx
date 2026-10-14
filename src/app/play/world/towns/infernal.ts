@@ -53,6 +53,23 @@ export const SEAM_EATER_DROPS: ZoneDropTable = {
   ],
 };
 
+/**
+ * The Drowned Lamp (Phase 6, delve-and-beyond.md §7.4): "a lampfish the size
+ * of a cart that dims every light in the cavern". It rises from the Grotto
+ * Mere to a night cast with Glowcap bait once the Archivist has read its
+ * carving, falls once per player, and leaves the light it was hoarding.
+ */
+export const DROWNED_LAMP_DROPS: ZoneDropTable = {
+  id: 'delve-drowned-lamp',
+  entries: [
+    { id: 'coins', kind: 'coins', base: 40, spread: 12 },
+    { id: 'oil', kind: 'material', material: 'lampfish-oil', art: 'lampfish-oil', label: 'Lampfish Oil', short: 'oil', qty: 3, rarity: 'uncommon' },
+    { id: 'glowcap', kind: 'material', material: 'glowcap', art: 'glowcap', label: 'Glowcap', short: 'cap', qty: 2 },
+  ],
+};
+/** The flag it sets (the same string as delve-missions.model's DROWNED_LAMP_FLAG; a spec pins them). */
+export const DROWNED_LAMP_FLAG = 'drowned-lamp-defeated';
+
 /** The camp is widened by this much: the town quarter sits between the forge and the Maws. */
 const QUARTER = 900;
 
@@ -149,6 +166,9 @@ export const EMBER_DELVE: HuntZoneDef = {
     // Felled once per player: it never rises again, and its fall unseals the fragment.
     { creature: 'seam-eater', name: 'Seam Eater', hp: 260, spawnXs: [delveCol(100)],
       floorY: delveRow(51), range: [delveCol(92) + 30, delveCol(108) - 30], once: WARDEN_FLAG, drops: SEAM_EATER_DROPS },
+    // The Grotto Mere's keeper: summoned by a night cast, veiled in its own dark.
+    { creature: 'drowned-lamp', name: 'The Drowned Lamp', hp: 180, spawnXs: [delveCol(32)], floorY: delveRow(35),
+      range: [delveCol(20) + 30, delveCol(45) - 30], once: DROWNED_LAMP_FLAG, summoned: true, veiled: true, drops: DROWNED_LAMP_DROPS },
   ],
   drops: SEAMWORKS_DROPS,
   spawnX: 260,
@@ -287,6 +307,24 @@ export const EMBER_DELVE: HuntZoneDef = {
       { id: 'magma-unsigned', col: 102, row: 50 },
     ],
     bedrock: 2,
+    // Lakes and pools (Phase 6.2): liquid laid only into cells the stamps above
+    // already carve to air for every seed, so no cell changes, `version` stays
+    // at 2 and nobody's dig is dropped. Each is at rest as generated (a level
+    // step of 2 or less never spreads), so it sleeps until a dig wakes it.
+    liquidVersion: 1,
+    liquids: [
+      // Root Hollows: a rain-seep puddle in the alcove floor, under the Keepers' tally.
+      { col: 69, row: 10, w: 2, liquid: 'water', level: 4 },
+      // Basalt Caverns: Kael's flooded seam, the sealed pocket's floor (round the cache).
+      { col: 101, row: 23, w: 5, h: 2, liquid: 'water' },
+      // Glowcap Grotto: the Grotto Mere, two cells deep across the glowcap cavern; the caps glow under it.
+      { col: 20, row: 33, w: 25, h: 2, liquid: 'water' },
+      // The drowned lamp's alcove: the carving is under the water now ("the last mark is under the surface").
+      { col: 87, row: 36, w: 2, h: 2, liquid: 'water' },
+      // Magma Halls: two lava pools on the Bailiffs' hall floor, shallow at their rims.
+      { col: 31, row: 48, liquid: 'lava', level: 2 }, { col: 32, row: 48, w: 3, liquid: 'lava', level: 4 }, { col: 35, row: 48, liquid: 'lava', level: 2 },
+      { col: 54, row: 48, liquid: 'lava', level: 2 }, { col: 55, row: 48, w: 3, liquid: 'lava', level: 4 }, { col: 58, row: 48, liquid: 'lava', level: 2 },
+    ],
   },
 };
 

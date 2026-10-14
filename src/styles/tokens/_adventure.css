@@ -8,6 +8,9 @@
   --adventure-control-border: #ffffff30;
   --adventure-muted-separator: #777b85;
   --adventure-ember-glow: #df935799;
+  /* HUD meters for the Delve's liquids: breath under water, the lava ward. */
+  --adventure-hud-water: #86d2e6;
+  --adventure-hud-ember: #ff9b4f;
   --adventure-world-fallback: #252128;
   --adventure-world-border: #f1e6d21c;
   --adventure-scene-clear: #16172100;

@@ -1,5 +1,5 @@
 /**
- * character-hub.component.ts — Loadout / Bank / Skills / Stats / Records.
+ * character-hub.component.ts — Loadout / Bank / Skills / Stats / Story / Records.
  *
  * Shared by /character and the keeper drawer. Equip lives only on Loadout.
  */
@@ -15,6 +15,7 @@ import { CharacterHubService, HUB_TABS, type HubTab } from './character-hub.serv
 import { HubBankComponent } from './hub-bank.component';
 import { HubSkillsComponent } from './hub-skills.component';
 import { HubStatsComponent } from './hub-stats.component';
+import { HubStoryComponent } from '../story/hub-story.component';
 
 @Component({
   selector: 'app-character-hub',
@@ -24,6 +25,7 @@ import { HubStatsComponent } from './hub-stats.component';
     HubBankComponent,
     HubSkillsComponent,
     HubStatsComponent,
+    HubStoryComponent,
   ],
   templateUrl: './character-hub.component.html',
   styleUrls: ['./character-hub.component.css'],

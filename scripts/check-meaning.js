@@ -132,6 +132,7 @@ const { RUNES, RUNEWORDS } = L('shared/rune-forge/rune.model.ts');
 const { STAT_DEFINITIONS } = L('shared/rpg/player-stats.model.ts');
 const { ARTIFACTS: ESSENCE_ARTIFACTS } = L('shared/economy/economy.model.ts');
 const { DELVE_INSCRIPTIONS } = L('shared/delve/delve-lore.model.ts');
+const FISHING = L('shared/fishing/fishing.model.ts');
 
 // Ids in un-exported tables, read as text.
 function objectKeys(file, constName) {
@@ -227,6 +228,18 @@ for (const m of DELVE_MISSIONS) {
   for (const i of items) use(i.materialId, `Delve mission ${m.id}`);
 }
 for (const p of PLACEABLES) use(p.id, `placeable → ${p.node}`);
+// Fishing (Phase 6, src/app/shared/fishing): what the fishing loop grants and spends.
+for (const c of FISHING.CATCHES) src(c.id, c.rarity === 'quest' ? 'fishing: the Ledger Catch, on its day' : `fishing ${c.waters.join('/')}`);
+for (const b of FISHING.BAITS) use(b.id, 'fishing bait');
+for (const r of FISHING.RODS) use(r.id, `fishing rod (tier ${r.tier})`);
+src('worn-rod', 'starter kit: every Keeper is handed one (FishingService.ensureWornRod)');
+for (const id of FISHING.CRATE_IDS) use(id, 'opened in the satchel (FishingService.openCrate)');
+for (const id of FISHING.LEDGER_CATCH_IDS) use(id, 'the Lodge Warden\'s Ledger Catch (FishingService.turnIn)');
+for (const c of FISHING.LODGE_CHARMS) { src(c.id, 'the Lodge Warden\'s Ledger Catch ladder'); use(c.id, `held: ${c.effect}`); }
+for (const [crate, rows] of Object.entries(FISHING.CRATE_CONTENTS)) for (const row of rows) src(row.id, `crate ${crate}`);
+// The Seam Bucket: scoops into a full bucket, which pours back out (engine useBucket).
+use('seam-bucket', 'scoops water or lava (Delve hotbar)');
+for (const id of ['seam-bucket-water', 'seam-bucket-lava']) { src(id, 'a Seam Bucket scooped full'); use(id, 'poured in the Delve (water on lava sets obsidian)'); }
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).sells.add('Exchange'); }
 
@@ -363,6 +376,8 @@ for (const n of TERRAIN_NODE_LIST) {
   const g = node('block', n.id, n.label);
   if (laidOut.has(n.id)) g.sources.add('Delve layout');
   if (placedNodes.has(n.id)) g.sources.add('placed by the Keeper');
+  // Obsidian is made, not laid out: water meets lava (play/engine/liquids.ts `react`, a bucket's `pour`).
+  if (n.id === 'obsidian' && /OBSIDIAN = nodeIndex\('obsidian'\)/.test(read('play/engine/liquids.ts'))) g.sources.add('water meets lava (liquids)');
   if (n.yield) g.uses.add(`yields ${n.yield.materialId}`);
   if (n.block) g.uses.add(`gives ${n.block}`);
   if (n.placeable) g.uses.add(`placeable ${n.placeable}`);

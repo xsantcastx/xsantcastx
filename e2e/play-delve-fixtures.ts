@@ -12,7 +12,7 @@
  * how a player reaches the deep rows without a five-minute scripted dig.
  */
 import {
-  CELL, generateTerrain, isLoose, nodeIndex, terrainDiff, terrainLayout, TERRAIN_NODE_LIST, type Terrain,
+  CELL, generateTerrain, isLoose, liquidDiff, liquidLayout, nodeIndex, terrainDiff, terrainLayout, TERRAIN_NODE_LIST, type Terrain,
 } from '../src/app/play/engine/terrain';
 import { EMBER_DELVE } from '../src/app/play/world/towns/infernal';
 import { encodeCells } from '../src/app/shared/delve/delve-save.model';
@@ -48,6 +48,12 @@ export class DelveFixture {
     for (let col = c0; col <= c1; col++) if (!this.t.solid(col, row)) this.set(col, row, 'bedrock');
     return this;
   }
+  /** Pour a liquid into an open cell (`level` 1-8), as if it had settled there. */
+  liquid(col: number, row: number, type: 'water' | 'lava', level = 8): this {
+    const i = this.t.index(col, row);
+    this.t.liqType[i] = type === 'lava' ? 2 : 1; this.t.liqLevel[i] = level;
+    return this;
+  }
   camp(col: number, row: number): this {
     this.set(col, row, 'camp');
     this.campAt = { col, row };
@@ -62,7 +68,11 @@ export class DelveFixture {
     return {
       'godforge-delve': {
         version: 1, seed: DELVE_SEED, createdAt: 1,
-        areas: { 'ember-delve': { layout: terrainLayout(SPEC, DELVE_SEED), cells: encodeCells(terrainDiff(this.t)) } },
+        areas: { 'ember-delve': {
+          layout: terrainLayout(SPEC, DELVE_SEED), cells: encodeCells(terrainDiff(this.t)),
+          // Settled liquid unlike the generated lakes (only when a fixture moved some).
+          ...(liquidDiff(this.t).size ? { wet: liquidLayout(SPEC, DELVE_SEED), liquids: encodeCells(liquidDiff(this.t)) } : {}),
+        } },
         claimed: this.claimed,
       },
     };

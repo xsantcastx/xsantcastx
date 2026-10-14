@@ -24,6 +24,7 @@ import { materialDisplay } from '../rpg/material-catalog';
 import type { SkillId } from './skill.model';
 import { TOOL_NUMERALS, toolName, type ToolFamily, type ToolTier } from './tool-items';
 import { TOOL_OPENS, TOOL_TIER_LEVEL, lanternRadiusFor } from './tools';
+import { fishingPerks, RODS } from '../fishing/fishing.model';
 
 export type PerkKind = 'yield' | 'speed' | 'quality' | 'loot';
 
@@ -34,7 +35,11 @@ export type SkillUnlock =
   | { level: number; kind: 'perk'; perk: PerkKind; pct: number }
   | { level: number; kind: 'lantern'; radius: number }
   | { level: number; kind: 'depth'; depth: number }
-  | { level: number; kind: 'mastery' };
+  | { level: number; kind: 'mastery' }
+  /** Fishing: a rod works at its own tier from here (fishing.model.ts RODS). */
+  | { level: number; kind: 'rod'; rodId: string; name: string }
+  /** Fishing: a line of the angler's perks (fishingPerks): bite speed, crate chance, double catch, the reel window, lava. */
+  | { level: number; kind: 'fishperk'; perk: 'bite' | 'crate' | 'double' | 'window' | 'lava'; n: number };
 
 const tool = (family: ToolFamily, tier: ToolTier): SkillUnlock =>
   ({ level: TOOL_TIER_LEVEL[tier], kind: 'tool', family, tier });
@@ -98,6 +103,15 @@ export const SKILL_UNLOCKS: Readonly<Record<SkillId, readonly SkillUnlock[]>> = 
   hunting: sorted([
     ...[10, 20, 30, 40, 50, 60, 70, 80, 90].map((level, i) =>
       perk(level, i % 2 === 0 ? 'loot' : 'yield', 5 * (Math.floor(i / 2) + 1))),
+    mastery,
+  ]),
+  fishing: sorted([
+    ...RODS.filter(rod => rod.id !== 'worn-rod').map((rod): SkillUnlock => ({ level: rod.level, kind: 'rod', rodId: rod.id, name: rod.name })),
+    { level: 10, kind: 'fishperk', perk: 'lava', n: 0 },
+    ...[10, 20, 30, 40, 50, 60, 70, 80, 90].map((level): SkillUnlock => ({ level, kind: 'fishperk', perk: 'bite', n: Math.round((fishingPerks(level).bite - 1) * 100) })),
+    ...[20, 40, 60, 80].map((level): SkillUnlock => ({ level, kind: 'fishperk', perk: 'crate', n: Math.round(fishingPerks(level).crate * 1000) / 10 })),
+    ...[25, 50, 75].map((level): SkillUnlock => ({ level, kind: 'fishperk', perk: 'double', n: Math.round(fishingPerks(level).double * 100) })),
+    ...[30, 60, 90].map((level): SkillUnlock => ({ level, kind: 'fishperk', perk: 'window', n: Math.round(fishingPerks(level).window * 100) })),
     mastery,
   ]),
   prospecting: sorted([
@@ -170,5 +184,9 @@ export function describeUnlock(u: SkillUnlock): { key: string; vars: Record<stri
       return { key: 'skills.unlock.depth', vars: { n: u.depth } };
     case 'mastery':
       return { key: 'skills.unlock.mastery', vars: {} };
+    case 'rod':
+      return { key: 'skills.unlock.rod', vars: { name: u.name } };
+    case 'fishperk':
+      return { key: `skills.unlock.fish.${u.perk}`, vars: { n: u.n } };
   }
 }

@@ -222,11 +222,11 @@ Owner brief (2026-10-13): navigation in the Delve (minimap, missions), an infini
 
 The layer cake: Root Hollows → Basalt Caverns → Glowcap Grotto → Magma Halls (shipped) → **the Underhearth** (the Infernal realm's banked furnace; Kael's four) → the Breach → **Starfall Deep** (the sky under the world) → **the Void Shore** (the Void sea and the shattered realm-islands) → **the Unmade** (no bottom; "One More"). The deep places are *Reaches*, never realms. Left and right of the shaft, the Delve is generated without end per player seed, with four realm **Echo regions** that finally spawn the atlas creatures of meaning audit #16.
 
-- [ ] **Phase 6: Water, lava and Fishing v1** (fits today's engine; parallel with Phase 7)
-  - [ ] 6.1 Liquids v1: water + lava, 10 Hz cellular flow with sleeping cells, water + lava → obsidian, lava chars wooden placeables back to the satchel, Seam Bucket, swim/breath/lava damage, Ember Elixir immunity, liquid diff in the save (L)
-  - [ ] 6.2 Lakes in the core: Grotto Mere, Magma lava pools, flooded shafts, placed in already-carved air so no `version` bump (S)
-  - [ ] 6.3 Fishing v1: skill 1–99, Worn/Root/Seam/Glowline rods, bait, catch tables, junk, crates, the Line Tension mini-game (always lands, grade only adds), auto-fish, Lampfish Oil + Gill Draught, Catalogue of Strange Fish, Lodge Warden Ledger Catch, Merchant fish order, the Drowned Lamp chain + mini-boss (L)
-  - [ ] 6.4 `economy-sim.mjs --fishing --check` in CI: fishing ≤ 10% of forge Gold/min, crate EV, rod gates, 60–250 h to 99 (S)
+- [x] **Phase 6: Water, lava and Fishing v1** (fits today's engine; parallel with Phase 7). Built 2026-10-14, handoff [`docs/handoff/liquids-fishing.md`](../handoff/liquids-fishing.md)
+  - [x] 6.1 Liquids v1: water + lava, 10 Hz cellular flow with sleeping cells, water + lava → obsidian, lava chars wooden placeables back to the satchel, Seam Bucket, swim/breath/lava damage, Ember Elixir immunity, liquid diff in the save (L)
+  - [x] 6.2 Lakes in the core: Grotto Mere, Magma lava pools, flooded shafts, placed in already-carved air so no `version` bump (S)
+  - [x] 6.3 Fishing v1: skill 1–99, Worn/Root/Seam/Glowline rods, bait, catch tables, junk, crates, the Line Tension mini-game (always lands, grade only adds), auto-fish, Lampfish Oil + Gill Draught, Catalogue of Strange Fish, Lodge Warden Ledger Catch, Merchant fish order, the Drowned Lamp chain + mini-boss (L)
+  - [x] 6.4 `economy-sim.mjs --fishing --check` in CI: fishing ≤ 10% of forge Gold/min, crate EV, rod gates, 60–250 h to 99 (S)
 - [ ] **Phase 7: The endless Delve** (horizontal first)
   - [ ] 7.1 Sector world: 32×32-cell sectors, sector-local deterministic generator (noise caves, clipped veins, structure lattice), loaded window, per-sector spawns; the core unchanged (XL, split a/b)
   - [ ] 7.2 Save v2: index doc + region docs (8×8 sectors) under `progress/` (no rules deploy), IndexedDB locally, RLE diffs, merge, healing of far unheld tunnels (L) — needs the save-gateway owners' review first
@@ -322,7 +322,7 @@ inspired by Claude), and the ethical daily/weekly/season rhythms. The infinite
 Delve, liquids, fishing and the galactic dimensions are `docs/world/delve-and-beyond.md`.
 
 - [x] S1 Glim, onboarding companion (2026-10-14): met on a new save (flies in to the shoulder, one hello), voices the goal line from a moth button that opens the 3-step hint ladder (nudge → direction → Show me, which flies Glim ahead with a trail), never hints at secrets (allowlist; Karma over every Codex secret id), is the Delve lantern (same radius; the light has a source), says when to stop, dims beside Mirror Substitutes; Codex entry; Delve-mission hints (2 steps; step 3 waits for the Atlas, S4). State `godforge-glim` through the gateway, merge-safe. Handoff: `docs/handoff/glim.md`
-- [ ] S2 Story Act I framing (Prologue + Act I break scenes, Story journal, versioned `story` record)
+- [x] S2 Story Act I framing (2026-10-14): the Prologue wraps the four first goals (a chapter tab on the goal row); reading a first carving ends it with the **Act I card**; Act I rides the shipped Delve missions, each claim answered in the keeper's own voice on Glim's line; the two tally carvings are drawn on the pixel grid (five marks, four struck, one worn; **the fresh mark** with the notch the Keeper's pick leaves, which Glim recognises); the Seam Eater and the act break card *A line someone had already drawn*. **Story tab** in Character (current chapter, one non-spoiling lead, found beats only). State `godforge-story` through the gateway, union merge. Fix: hub tabs no longer close the in-world Character panel. Handoff: `docs/handoff/story-act1.md`
 - [ ] S3 NPC depth pass (personal names on role keepers, act-aware lines)
 - [ ] S4 Glim's Atlas + "The Blank Places" · S5 commissions + bounties (banked, no streaks) · S6 Act II ch. 1 + ch. 3 in-world · S7 reputation · S8 ch. 2/4/5 · S9 Act III + the Long Eclipse
 - Watch: the old progression ledger still settles a daily streak (`app.component.ts`); it must never gate or reset a reward (reframe as "days visited" in S5)
