@@ -6,12 +6,11 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## What's next (in order)
 
-1. **Water, lava, lakes, Fishing v1** — Delve & Beyond slice 1. *(built, awaiting merge: `docs/handoff/liquids-fishing.md`)*
-2. **UX follow-ups** — Material Vendor on the kit, Homestead + six surfaces in Spanish. *(in flight)*
-3. ~~**Story Act I framing**~~ (world & cast S2) — ✅ shipped: Prologue tab on the goals, the Act I card, keeper lines on the missions, the fresh mark, the act break, the Story tab (`docs/handoff/story-act1.md`).
-4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2 *(built, awaiting merge: `docs/handoff/endless-delve.md`)*; map pins + waypoints, the compass and the fragment, Glim's mark, and Pim Larkin's daily bounties (7.4–7.5) *(built, awaiting merge: `docs/handoff/bounties-map-v2.md`)*. Next: Phase 8, the Underhearth.
-5. ~~**NPC depth pass**~~ (world & cast S3) — ✅ built: names with role-title subtitles, four new keepers, act-aware lines, People of the Realms (`docs/handoff/npc-depth.md`).
-6. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
+1. **The Underhearth** (Phase 8) — the layer below the Magma Halls, the Banked Furnace, tool tier V, rope/grapple/rails/cart, Rift Anchors. *(in flight)*
+2. **The Mirror Slate** (owner idea, 2026-10-14) — a carried device of the Archive's moon-mirror glass in Kael's brass. Sold/awarded by Lune Coyne (Croupier) after you've played her tables; Kael upgrades it. Tier I: **play the casino anywhere** (Reels, Rune Drop, Seam Sweeper, Eclipse Ascent — same odds, Gold only) and **manage the Homestead factory** (collect, buy the next building, explorers/expeditions, ready-notifications). Later tiers: map pins and bounty tracking, a Hearth tab. Crafting, Market, Exchange and selling stay in the world — places stay places.
+3. **Starfall Deep** (Phase 9) — low gravity, rising starlight, Aureth's chain.
+4. **Story Act II** — the Five Witnesses (world & cast).
+5. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
 
 ## Milestones
 
@@ -24,7 +23,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 | **M5 Meaning & cleanup** | Everything has a source/use/lore (CI-checked); legacy website removed | ✅ shipped |
 | **M6 Feel & stability** | No phone crash, cool idle, Delve navigation, minimap, Glim | ✅ shipped |
 | **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; liquids + Fishing v1 built |
-| **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 📐 designing |
+| **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 🔨 endless Delve ✅ · Underhearth in flight |
 | **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I ✅ · NPC depth ✅ · Atlas next |
 | **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | ⏳ needs art |
 | **M11 Players** | Player market live (owner deploy), real-device QA, launch | ⏳ owner |
@@ -37,6 +36,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## Daily review log
 
+- **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
   (drawn per player per day, 5–15 min of income, days counted never a streak, `economy-sim --bounties`), map pins
   and a tracked way, the Broken Astral Compass and the Rift Map Fragment as map tools, Glim's hint step 3 (a mark on
