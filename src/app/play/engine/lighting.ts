@@ -110,11 +110,13 @@ export interface LightShade { readonly values: Float32Array; readonly cols: numb
  * radius are visited. Pure apart from `out`.
  */
 export function lightGrid(out: Float32Array, gw: number, gh: number, x0: number, y0: number, step: number,
-  lights: readonly Light[], count: number, ambient: number, shade?: LightShade | null, cell = 32): void {
+  lights: readonly Light[], count: number, ambient: number, shade?: LightShade | null, cell = 32,
+  extra?: readonly Light[], extraCount = 0): void {
   const total = gw * gh;
   out.fill(1, 0, total);
-  for (let n = 0; n < count; n++) {
-    const light = lights[n];
+  // `extra`: emissive cells (a lava surface) lifting the grid like lights, outside the capped slots.
+  for (let n = 0; n < count + extraCount; n++) {
+    const light = n < count ? lights[n] : extra![n - count];
     const intensity = Math.min(1, light.intensity), r = light.radius;
     if (intensity <= 0 || r <= 0) continue;
     const r2 = r * r;
@@ -211,14 +213,14 @@ export class DarknessLayer {
    */
   draw(target: CanvasRenderingContext2D, width: number, height: number, scale: number, cameraX: number, cameraY: number,
     lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK, under?: { color: string; alpha: number }, smooth = true,
-    shade?: LightShade | null, warm?: { color: string; alpha: number }): boolean {
+    shade?: LightShade | null, warm?: { color: string; alpha: number }, extra?: readonly Light[], extraCount = 0): boolean {
     const step = LIGHT_STEP;
     // One sample of margin all round, so the filtered edge never shows.
     const gx0 = Math.floor(cameraX / step) - 1, gy0 = Math.floor(cameraY / step) - 1;
     const gw = Math.ceil(width / scale / step) + 3, gh = Math.ceil(height / scale / step) + 3;
     const grid = this.ensureGrid(gw, gh);
     if (!grid) return false;
-    lightGrid(grid.dark, gw, gh, gx0 * step, gy0 * step, step, lights, count, ambient, shade);
+    lightGrid(grid.dark, gw, gh, gx0 * step, gy0 * step, step, lights, count, ambient, shade, 32, extra, extraCount);
     const [tr, tg, tb] = this.rgb(tint);
     const ua = under && under.alpha > 0 ? Math.min(1, under.alpha) : 0;
     const [ur, ug, ub] = ua > 0 ? this.rgb(under!.color) : [0, 0, 0];

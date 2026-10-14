@@ -50,6 +50,7 @@ import { RUNES, RUNE_TIER_ORDER, runeById } from '../rune-forge/rune.model';
 import { materialDisplay } from '../rpg/material-catalog';
 import { DelveLoreService } from '../delve/delve-lore.service';
 import { DELVE_INSCRIPTIONS } from '../delve/delve-lore.model';
+import { DELVE_KEY } from '../delve/delve-save.model';
 import { NpcId, NPCS } from './npc.model';
 import {
   DELVE_MISSIONS,
@@ -63,6 +64,7 @@ import {
   missionObserved,
   missionTarget,
   missionXpGrants,
+  missionFishingXpGrants,
 } from './delve-missions.model';
 import {
   ALL_NPC_STEPS,
@@ -372,7 +374,8 @@ export class NpcQuestService {
     }
     if (r.artifact) this.economy.grantArtifact(r.artifact);
     const grants = missionXpGrants(mission, times);
-    if (grants.length > 0) {
+    const fishing = missionFishingXpGrants(mission, times);
+    if (grants.length > 0 || fishing.length > 0) {
       // Lazy, so the skill pipeline (and the crafting catalogue behind it)
       // stays out of the shell's initial bundle. Each grant is within the
       // per-action ceiling (P-6) and idempotent on its own mutation id.
@@ -387,6 +390,10 @@ export class NpcQuestService {
           });
           // Never drop XP without a trace: a refused grant is a bug to see.
           if (!result.ok) console.warn(`[missions] ${mission.id}: ${grant.xp} Delving XP refused (${result.code})`);
+        }
+        for (const grant of fishing) {
+          const result = skills.act({ mutationId: grant.mutationId, skill: 'fishing', xp: grant.xp, locationId: 'ember-delve/mission' });
+          if (!result.ok) console.warn(`[missions] ${mission.id}: ${grant.xp} Fishing XP refused (${result.code})`);
         }
       }).catch(err => console.warn(`[missions] ${mission.id}: Delving XP not granted`, err)); // never the claim
     }
@@ -403,6 +410,12 @@ export class NpcQuestService {
       stackOf: id => this.inventory.stackOf(id),
       inscriptions: this.lore.inscriptions().size,
       inscriptionTotal: DELVE_INSCRIPTIONS.length,
+      read: id => this.lore.inscriptions().has(id),
+      // A felled boss is a once-per-player flag in the Delve save; read, never created here.
+      flagged: flag => {
+        const save = this.store.read(DELVE_KEY) as { claimed?: unknown } | null;
+        return Array.isArray(save?.claimed) && save!.claimed.includes(flag);
+      },
     };
   }
 

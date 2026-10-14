@@ -16,6 +16,8 @@
  *         layout: '120x56:v2:2894011733',   // terrainLayout(spec, seed)
  *         cells: 'k3.0,k4.0,1a2.0',         // base-36 "index.kind" pairs, sorted by index
  *         seen: '0,1.ff00ff00ff00ff00,2',   // explored cells (the map's fog of war; optional): see encodeSeen
+ *         wet: '120x56:v2:2894011733:l1',    // liquidLayout(spec, seed): what `liquids` is filed under (optional)
+ *         liquids: 'k3.18,k4.0',            // settled liquid unlike the generated lakes, "index.(type×16+level)" (optional)
  *       },
  *     },
  *     claimed: ['godforge-fragment', 'warden-defeated'],  // once-per-player finds and felled guardians
@@ -56,6 +58,13 @@ export interface DelveAreaSave {
   cells: string;
   /** Explored cells (the map's fog of war), under the same layout: see encodeSeen. Absent = nothing explored. */
   seen?: string;
+  /**
+   * Settled liquid that differs from the generated lakes, as encodeCells pairs
+   * (value = type × 16 + level), filed under `wet` (terrain liquidLayout: the
+   * terrain layout plus the spec's liquid version). Absent = as generated.
+   */
+  liquids?: string;
+  wet?: string;
 }
 
 export interface DelveSave {
@@ -276,6 +285,7 @@ export function coerceDelveSave(value: unknown): DelveSave | null {
       if (!isRecord(area) || typeof area['layout'] !== 'string' || typeof area['cells'] !== 'string') continue;
       areas[id] = { layout: area['layout'], cells: area['cells'] };
       if (typeof area['seen'] === 'string' && area['seen']) areas[id].seen = area['seen'];
+      if (typeof area['wet'] === 'string' && typeof area['liquids'] === 'string') { areas[id].wet = area['wet']; areas[id].liquids = area['liquids']; }
     }
   }
   const claimed = Array.isArray(value['claimed'])
@@ -297,6 +307,27 @@ export function coerceDelveSave(value: unknown): DelveSave | null {
 export function cellsFor(save: DelveSave | null, areaId: string, layout: string): Map<number, number> {
   const area = save?.areas[areaId];
   return area && area.layout === layout ? decodeCells(area.cells) : new Map();
+}
+
+/** The settled liquid diff saved for an area under liquid layout `wet`, or an empty map. */
+export function liquidsFor(save: DelveSave | null, areaId: string, wet: string): Map<number, number> {
+  const area = save?.areas[areaId];
+  return area && area.wet === wet ? decodeCells(area.liquids) : new Map();
+}
+
+/**
+ * Two devices' liquid for one area dug under the same terrain layout: under
+ * the same liquid layout a per-cell union with local winning a disagreement
+ * (as cells do); otherwise the side with liquid saved under it keeps it, local first.
+ */
+function mergeLiquids(mine: DelveAreaSave, theirs: DelveAreaSave): Pick<DelveAreaSave, 'wet' | 'liquids'> {
+  if (mine.wet && theirs.wet && mine.wet === theirs.wet) {
+    const cells = decodeCells(theirs.liquids);
+    for (const [index, value] of decodeCells(mine.liquids)) cells.set(index, value);
+    return { wet: mine.wet, liquids: encodeCells(cells) };
+  }
+  const pick = mine.wet ? mine : theirs.wet ? theirs : null;
+  return pick ? { wet: pick.wet, liquids: pick.liquids ?? '' } : {};
 }
 
 /** Record that a once-per-player find was paid. True the first time only. Mutates `save`. */
@@ -334,6 +365,7 @@ export function mergeDelveSaves(remote: unknown, local: unknown): unknown {
       // Explored on either device is explored.
       const seen = mergeSeen(mine.seen, theirs.seen);
       if (seen) areas[id].seen = seen;
+      Object.assign(areas[id], mergeLiquids(mine, theirs));
     } else {
       // Prefer the diff dug under the winning seed; otherwise keep whatever exists
       // (a stale one is dropped on load by its layout, so keeping it costs nothing).

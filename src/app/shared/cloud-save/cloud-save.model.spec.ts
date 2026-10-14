@@ -627,6 +627,7 @@ describe('the registry', () => {
       'godforge-economy',
       'godforge-exchange',
       'godforge-explorers',
+      'godforge-fishing',
       'godforge-gambler',
       'godforge-games',
       'godforge-gathering',

@@ -95,7 +95,7 @@ export const QUEST_STACKS: ReadonlySet<string> = new Set([
  */
 export const SUPPLY_KEYS: ReadonlySet<string> = new Set([
   'dirt-block', 'basalt-block', 'torch', 'ladder', 'platform', 'chest', 'camp',
-  'timber-support', 'basalt-support', 'blast-charge',
+  'timber-support', 'basalt-support', 'blast-charge', 'obsidian-block',
 ]);
 const BLOCK_KEYS: ReadonlySet<string> = new Set(['dirt-block', 'basalt-block']);
 

@@ -15,10 +15,13 @@ import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
   climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
   blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
+  applyLiquidDiff, LIQUID_FULL, LIQUID_IDS, LIQUID_LAVA, LIQUID_WATER, liquidDiff, liquidLayout, LiquidKind,
 } from './terrain';
+import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
+import { drawLiquids, lavaLights } from './liquid-render';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import { createFog, MapSource, revealAround } from './delve-map';
-import type { DelvePersistence, GatherPersistence } from './engine.model';
+import type { BucketId, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
@@ -29,7 +32,7 @@ import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
-export type { DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
+export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
@@ -95,6 +98,24 @@ const TERMINAL_RUBBLE = 900;
 const RUBBLE_SHARE = .08;
 /** What a blasting charge does to a creature in its round. */
 const CHARGE_DAMAGE = 60;
+/** Breath under water, seconds (a Gill Draught multiplies it), then drowning takes this share of max HP a second. */
+const BREATH = 8;
+const DROWN_SHARE = .06;
+/** Lava: this share of max HP a second while in it, then the after-burn for BURN_TIME seconds at BURN_SHARE. */
+const LAVA_SHARE = .15;
+const BURN_TIME = 2;
+const BURN_SHARE = .05;
+/** A wooden thing lava reaches chars this long, then goes back to the satchel. */
+const CHAR_TIME = 3;
+/** A veiled creature is exposed by a placed light this many cells away. */
+const VEIL_CELLS = 4;
+/** Fishing: how far a cast reaches, in cells; the hook window after the dip; a nibble after a miss. */
+const CAST_CELLS = 6;
+const HOOK_WINDOW = .6;
+/** The buckets, empty and full. */
+const BUCKET_FOR: Readonly<Record<number, BucketId>> = { [LIQUID_WATER]: 'seam-bucket-water', [LIQUID_LAVA]: 'seam-bucket-lava' };
+const BUCKET_LIQUID: Readonly<Record<string, number>> = { 'seam-bucket': 0, 'seam-bucket-water': LIQUID_WATER, 'seam-bucket-lava': LIQUID_LAVA };
+export function isBucket(id: string | null | undefined): id is BucketId { return !!id && id in BUCKET_LIQUID; }
 /** What hitCell did to one cell. */
 const HIT_NONE = 0, HIT_CHIP = 1, HIT_BROKE = 2, HIT_BLOCKED = 3, HIT_REFUSED = 4;
 /** Gathering nodes: the glow of a ready node and the colour of its chips, by kind. */
@@ -276,6 +297,30 @@ export class SeamworksEngine {
   /** The town ground as pixel art, per realm. */
   private readonly ground = new GroundStrip();
   private readonly lightPool = new LightPool(96);
+  /** Lava surfaces in view this frame: extra light-grid sources, never one of the capped slots. */
+  private readonly lavaPool = new LightPool(64);
+  /** Liquids per delve area (with its terrain), and the current one. */
+  private liquid: LiquidSim | null = null;
+  private readonly sims = new Map<string, LiquidSim>();
+  /** `liquidLayout()` each area's liquid diff is saved under. */
+  private readonly liquidLayouts = new Map<string, string>();
+  /** Breath left (s) and its most; lava's after-burn (s); the Ember Elixir's ward (s, game time). */
+  private breath = BREATH;
+  private breathMax = BREATH;
+  private burning = 0;
+  private lavaWard = 0;
+  /** What the Keeper's body is in (LIQUID_*), and whether the head is under. Refreshed each fixed step. */
+  private immersed = 0;
+  private headUnder = false;
+  /** Wooden placed things lava is charring: cell index → seconds left (negative: the host refused, it holds). */
+  private readonly chars = new Map<number, number>();
+  /** Fishing: the rod (setFishing), the line in the water, and Use held (auto-fish). */
+  private rod: { tier: number; liquids: readonly LiquidKind[]; bite: number } = { tier: 0, liquids: [], bite: 1 };
+  private line: { phase: FishingPhase; liquid: number; biome: string; col: number; row: number; timer: number; bobX: number; bobY: number; castId: string } | null = null;
+  private useHeld = false;
+  private castSeq = 0;
+  /** Seconds until an auto-fish recast. */
+  private recast = 0;
   private readonly debris = new Debris();
   /** Glinting cells this frame (indices), drawn over the darkness. */
   private readonly glints = new Int32Array(64);
@@ -361,8 +406,9 @@ export class SeamworksEngine {
   private createMonsters(): Monster[] {
     const monsters: Monster[] = [];
     for (const def of this.areaDef.monsters) {
-      // A guardian this player has already felled stays down.
+      // A guardian this player has already felled stays down; a summoned one waits to be called.
       if (def.once && this.flagged(def.once)) continue;
+      if (def.summoned) continue;
       for (const x of def.spawnXs) {
         monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp, recoil: 0 });
       }
@@ -372,6 +418,9 @@ export class SeamworksEngine {
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
     this.terrain = this.terrainFor(area); this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
+    this.liquid = this.terrain ? this.sims.get(area.id) ?? null : null;
+    this.chars.clear(); this.line = null; this.recast = 0;
+    this.breath = this.breathMax; this.burning = 0; this.immersed = 0; this.headUnder = false;
     this.fog = this.terrain ? this.fogs.get(area.id) ?? null : null; this.fogAt = NaN;
     this.holdMode = null; this.clearAim(); this.dropTime = 0; this.jumpBuffer = 0;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
@@ -435,6 +484,21 @@ export class SeamworksEngine {
     } catch { /* an unreadable diff is fresh rock, not a crash */ }
     this.terrains.set(area.id, terrain);
     this.layouts.set(area.id, layout);
+    // Liquids: the lakes as generated, then the player's settled liquid over them (only where open now).
+    const wet = liquidLayout(spec, seed);
+    try {
+      const liquids = this.delve?.liquids?.(area.id, wet);
+      if (liquids) applyLiquidDiff(terrain, liquids);
+    } catch { /* an unreadable liquid save is the lakes as generated */ }
+    this.liquidLayouts.set(area.id, wet);
+    const sim = new LiquidSim(terrain, {
+      canSet: index => this.terrain !== terrain || !this.bodyIn(terrain, index),
+      reacted: (index, made) => this.reacted(terrain, area.id, index, made),
+      char: index => { if (this.terrain === terrain && !this.chars.has(index)) this.chars.set(index, CHAR_TIME); },
+    });
+    // Anything dug since the liquid last settled: let it find the new space.
+    sim.wakeAll();
+    this.sims.set(area.id, sim);
     let fog: Uint8Array | null = null;
     try { fog = this.delve?.seenCells?.(area.id, layout, terrain.kind.length) ?? null; } catch { /* an unreadable map is unexplored, not a crash */ }
     this.fogs.set(area.id, fog && fog.length === (terrain.kind.length + 7) >> 3 ? fog : createFog(terrain.kind.length));
@@ -447,9 +511,10 @@ export class SeamworksEngine {
    */
   setDelve(delve: DelvePersistence | null): void {
     this.delve = delve;
-    this.terrains.clear(); this.layouts.clear(); this.fogs.clear();
+    this.terrains.clear(); this.layouts.clear(); this.fogs.clear(); this.sims.clear(); this.liquidLayouts.clear();
     if (this.areaDef?.terrain) {
       this.terrain = this.terrainFor(this.areaDef);
+      this.liquid = this.sims.get(this.areaDef.id) ?? null; this.chars.clear(); this.line = null;
       this.fog = this.fogs.get(this.areaDef.id) ?? null; this.fogAt = NaN;
       this.terrainRenderer.attach(this.terrain);
       // A Keeper the new rock now buries is lifted to the surface ledge.
@@ -461,6 +526,9 @@ export class SeamworksEngine {
   }
   /** Tell the save about a cell that changed, as a diff against what was generated. */
   private recordCell(t: Terrain, index: number): void {
+    // Any changed cell lets the liquid round it move (a dug wall, a placed block).
+    const sim = this.terrain === t ? this.liquid : null;
+    if (sim) { const col = index % t.cols; sim.wakeAround(col, (index - col) / t.cols); }
     if (!this.delve) return;
     const layout = this.layouts.get(this.areaDef.id);
     if (!layout) return;
@@ -469,14 +537,14 @@ export class SeamworksEngine {
   // ── Building ─────────────────────────────────────────────────────────────
 
   /** The hotbar's choice: what B (or a long-press) places. */
-  private placing: PlaceableId | null = null;
+  private placing: PlaceableId | BucketId | null = null;
   /** Bumped per placement: makes each placement's mutation id, and a re-dig of a placed cell, unique. */
   private placeSeq = 0;
   /** Cell index → the placement that filled it this session, so its re-dig is a new grant. */
   private readonly placedGen = new Map<number, number>();
   /** Choose what to place (the hotbar). Unknown ids clear it. */
-  setPlaceable(id: PlaceableId | string | null): void { this.placing = placeableById(id)?.id ?? null; }
-  get placeable(): PlaceableId | null { return this.placing; }
+  setPlaceable(id: PlaceableId | BucketId | string | null): void { this.placing = isBucket(id) ? id : placeableById(id)?.id ?? null; }
+  get placeable(): PlaceableId | BucketId | null { return this.placing; }
   /**
    * B: place the chosen thing in front of the Keeper (below, holding Down).
    * See `placeTarget` for which cell. False, with a plain message, when it
@@ -485,6 +553,7 @@ export class SeamworksEngine {
   place(): boolean {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
+    if (isBucket(this.placing)) return this.useBucket(this.placing, this.bucketTarget(t, this.placing === 'seam-bucket'));
     const def = placeableById(this.placing);
     if (!def) { this.say('play.delve.chooseFirst', 'Choose something to place first (keys 1-0, or tap the bar).'); this.report(); return false; }
     const down = this.input.has('down');
@@ -502,6 +571,7 @@ export class SeamworksEngine {
     const point = this.pick(clientX, clientY);
     const col = t.colAt(point.x), row = t.rowAt(point.y);
     if (!t.inside(col, row) || !this.inReach(col, row)) return false;
+    if (isBucket(this.placing)) return this.useBucket(this.placing, t.index(col, row));
     if (isTakeable(t, col, row)) return this.takeItem(t.index(col, row));
     const def = placeableById(this.placing);
     if (!def) { this.say('play.delve.chooseFirst', 'Choose something to place first (keys 1-0, or tap the bar).'); this.report(); return false; }
@@ -519,6 +589,7 @@ export class SeamworksEngine {
     if (!t.inside(col, row) || row < 0) return { key: 'play.delve.outside', en: 'That is outside the Delve.' };
     if (!isAir(t, col, row)) return { key: 'play.delve.occupied', en: 'Something is already there.' };
     if (def?.grounded && !t.solid(col, row + 1) && !isOneWay(t, col, row + 1)) return { key: 'play.delve.needsGround', en: `The ${def.label.toLowerCase()} needs solid ground under it.`, vars: { item: def.id } };
+    if (t.liquidAt(col, row) === LIQUID_LAVA && WOODEN_IDS.includes(node.id)) return { key: 'play.delve.liquid.tooHot', en: 'Too hot: that would char in the lava.' };
     if (def?.single && findNode(t, def.node) >= 0) return { key: 'play.delve.single', en: `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`, vars: { item: def.id } };
     if (!node.solid) return null;
     const x0 = col * CELL, y0 = t.top + row * CELL;
@@ -960,6 +1031,12 @@ export class SeamworksEngine {
     const aim = this.aimCell();
     if (!aim) return;
     this.holdMode = mode;
+    if (mode === 'place' && isBucket(this.placing)) {
+      // A bucket acts once, on the pressed cell: no drag.
+      this.holdMode = null;
+      if (aim.inReach && this.useBucket(this.placing, aim.index)) this.holdActs++;
+      return;
+    }
     if (mode === 'place') {
       if (aim.inReach && isTakeable(t, aim.col, aim.row)) {
         this.holdMode = null;
@@ -1119,8 +1196,12 @@ export class SeamworksEngine {
   setInput(action: EngineInput, pressed: boolean): void {
     if (!pressed) { this.input.delete(action); return; }
     if (this.paused || this.hp <= 0 || this.input.has(action)) return;
+    // Reeling a hooked fish holds the Keeper: the keys belong to the reel (the host's Line Tension bar).
+    if (this.line?.phase === 'hooked') return;
     this.input.add(action);
     if (action === 'left' || action === 'right') this.cancelMove();
+    // Walking, jumping or swinging pulls the line out.
+    if (this.line && action !== 'down' && action !== 'dodge') this.reelIn();
     if (action === 'jump') this.pressJump();
     if (action === 'attack' && this.attackCooldown <= 0) this.attack();
     if (action === 'blast') this.blast();
@@ -1144,8 +1225,10 @@ export class SeamworksEngine {
     this.tryJump();
   }
   private tryJump(): void {
-    if (this.jumpBuffer <= 0 || this.climbing || (!this.player.grounded && this.airTime > COYOTE)) return;
-    this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false;
+    if (this.jumpBuffer <= 0 || this.climbing || (!this.player.grounded && this.airTime > COYOTE && !this.immersed)) return;
+    if (this.line?.phase === 'hooked') return;
+    // Swimming: a softer stroke (holding Jump keeps swimming up, see update).
+    this.player.vy = this.immersed && !this.player.grounded ? -Math.max(-this.player.vy, 300) : this.terrain ? -520 : -680; this.player.grounded = false;
     // One jump per take-off: the coyote window closes with it.
     this.jumpBuffer = 0; this.airTime = COYOTE + 1;
   }
@@ -1182,6 +1265,11 @@ export class SeamworksEngine {
   }
   private hurtMonster(monster: Monster, damage: number): void {
     const floor = monster.def.floorY ?? FLOOR;
+    if (monster.def.veiled && !this.exposed(monster)) {
+      monster.flash = .08;
+      this.clang(monster.x, floor - 60 * this.figure, 'Its light swallows the blow. Light a torch beside it');
+      return;
+    }
     this.atmosphere.burst(monster.x, floor - 85 * this.figure, String(damage));
     monster.hp = Math.max(0, monster.hp - damage);
     monster.flash = .14; monster.recoil = 1;
@@ -1199,6 +1287,36 @@ export class SeamworksEngine {
         this.say('play.hud.eng.fallsForGood', `${monster.def.name} falls, and stays fallen. What it guarded is open now.`, { name: monster.def.name });
       }
     }
+  }
+
+  /** A veiled creature is exposed while a placed light (a torch, a camp) burns within VEIL_CELLS of it. */
+  private exposed(monster: Monster): boolean {
+    const t = this.terrain;
+    if (!t) return true;
+    const col = t.colAt(monster.x), row = t.rowAt((monster.def.floorY ?? FLOOR) - 1);
+    for (let r = row - VEIL_CELLS; r <= row + 1; r++) for (let c = col - VEIL_CELLS; c <= col + VEIL_CELLS; c++) {
+      if (!t.inside(c, r)) continue;
+      const node = TERRAIN_NODE_LIST[t.kind[t.index(c, r)]];
+      if (!node.solid && node.glow && node.placeable) return true;
+    }
+    return false;
+  }
+  /** A veiled creature of this area is up (the lantern dims). */
+  private veiledUp(): boolean { return this.monsters.some(m => m.def.veiled && m.hp > 0); }
+  /**
+   * Call up a summoned creature of this area (the Drowned Lamp, by a night
+   * cast). Near `x`, inside its range. False when it is not this area's, is
+   * already up, or has fallen for good.
+   */
+  summon(creature: string, x: number): boolean {
+    const def = this.areaDef.monsters.find(m => m.creature === creature && m.summoned);
+    if (!def || (def.once && this.flagged(def.once)) || this.monsters.some(m => m.def === def && m.hp > 0)) return false;
+    const [lo, hi] = def.range ?? [0, this.areaDef.width];
+    const at = Math.max(lo, Math.min(hi, x));
+    this.monsters.push({ def, maxHp: def.hp, x: at, spawn: at, hp: def.hp, phase: 'idle', timer: 1.5, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0 });
+    this.say('play.fish.lampRises', `${def.name} rises, and every light in the cavern dims. Light a torch beside it to fight it.`, { name: def.name });
+    this.report();
+    return true;
   }
 
   // -- Delve: tools hitting the world -------------------------------------
@@ -1280,14 +1398,18 @@ export class SeamworksEngine {
     const falls = isLoose(t, col, row) && !supportNear(t, col, row);
     let material: string | undefined;
     let qty = 0;
-    const pays = node.yield;
+    // Only generated cells pay (spec §4.2): a cell the Keeper placed or a reaction made
+    // (obsidian) breaks into its block with no XP and no yield, so no liquid farm mints anything.
+    const generated = t.base[index] === t.kind[index];
+    const xp = generated ? node.xp : 0;
+    const pays = generated ? node.yield : undefined;
     if (pays && (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance)) { material = pays.materialId; qty = pays.qty; }
-    if (node.xp > 0 || pays || node.block) {
+    if (xp > 0 || pays || node.block) {
       // A cell the Keeper placed this session is a new grant each time it is dug.
       const gen = this.placedGen.get(index);
       const accepted = this.options.onWorldAction?.({
         kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: cellKey(col, row),
-        materialId: material, qty: material ? qty : undefined, discipline: node.discipline, xp: node.xp,
+        materialId: material, qty: material ? qty : undefined, discipline: node.discipline, xp,
         mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}${gen ? `:p${gen}` : ''}`,
         ...(node.block ? { block: node.block } : {}),
       });
@@ -1309,6 +1431,286 @@ export class SeamworksEngine {
     }
     if (falls) this.dropRubble(cx, cy, node.base);
     return HIT_BROKE;
+  }
+
+  // -- Delve: liquids (liquids.ts), buckets and fishing ----------------------
+
+  /** True when cell `index` overlaps the Keeper's body (a reaction never sets rock into them). */
+  private bodyIn(t: Terrain, index: number): boolean {
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const x0 = col * CELL, y0 = t.top + row * CELL, p = this.player;
+    return p.x + DELVE_BOX.halfWidth > x0 && p.x - DELVE_BOX.halfWidth < x0 + CELL && p.y > y0 && p.y - DELVE_BOX.height < y0 + CELL;
+  }
+  /** Water met lava: save the obsidian cell (a made cell: its block only, never XP), hiss and say so. */
+  private reacted(t: Terrain, areaId: string, index: number, made: boolean): void {
+    const col = index % t.cols, row = (index - col) / t.cols;
+    if (made && this.terrain === t) {
+      this.placedGen.delete(index);
+      this.recordCell(t, index);
+    } else if (made) {
+      try { const layout = this.layouts.get(areaId); if (layout) this.delve?.changed(areaId, layout, index, t.kind[index] === t.base[index] ? null : t.kind[index]); } catch { /* this session */ }
+    }
+    if (this.terrain !== t) return;
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#d8e8f0', this.reducedMotion ? 2 : 8);
+    if (made) this.say('play.delve.liquid.obsidian', 'Water meets lava with a hiss, and sets into obsidian.');
+    else this.say('play.delve.liquid.steam', 'Water meets lava right where you stand: it all goes up in steam.');
+  }
+  /** Save the liquid as it is now, filed by its liquid layout. */
+  private saveLiquids(t: Terrain, sim: LiquidSim): void {
+    sim.markSaved();
+    const layout = this.liquidLayouts.get(this.areaDef.id);
+    if (!layout || !this.delve?.liquidsChanged) return;
+    try { this.delve.liquidsChanged(this.areaDef.id, layout, liquidDiff(t)); } catch { /* flowing for this session */ }
+  }
+  private wardMax = 0;
+  /**
+   * The Keeper's wards against liquids, from what they carry: `lavaWard`
+   * (seconds of lava immunity an Ember Elixir worn as a charm holds; it
+   * recharges out of lava) and `breath` (a multiplier: a Gill Draught is ×3).
+   */
+  setWards(wards: { lavaWard?: number; breath?: number }): void {
+    const breath = Number.isFinite(wards.breath) && (wards.breath as number) >= 1 ? Math.min(5, wards.breath as number) : 1;
+    const max = BREATH * breath;
+    if (max !== this.breathMax) { this.breath = Math.min(max, this.breath * max / this.breathMax); this.breathMax = max; }
+    const ward = Number.isFinite(wards.lavaWard) && (wards.lavaWard as number) > 0 ? Math.min(60, wards.lavaWard as number) : 0;
+    if (ward !== this.wardMax) { this.wardMax = ward; this.lavaWard = ward; }
+  }
+  /** Where the Keeper's body sits in liquid (refreshed each fixed step). */
+  private sense(t: Terrain): void {
+    const imm = immersion(t, this.player.x, this.player.y, DELVE_BOX.height);
+    this.immersed = imm.body;
+    this.headUnder = !!imm.head;
+  }
+  /** One fixed step of liquids: flow, saving, charring, and what the liquid does to the Keeper. */
+  private updateLiquids(dt: number, t: Terrain): void {
+    const sim = this.liquid;
+    if (sim) {
+      sim.step(dt);
+      if (sim.dirty && (sim.settled || sim.urgent)) this.saveLiquids(t, sim);
+    }
+    for (const [index, left] of this.chars) {
+      if (left < 0) continue;
+      if (left - dt > 0) { this.chars.set(index, left - dt); continue; }
+      this.charCell(t, index);
+    }
+    // Breath: under water it runs down, then drowning hurts; above, it comes back fast.
+    if (this.headUnder && this.immersed === LIQUID_WATER) {
+      if (this.breath === this.breathMax) this.say('play.delve.liquid.breath', 'Holding your breath. Surface before it runs out.');
+      this.breath = Math.max(0, this.breath - dt);
+      if (this.breath <= 0) {
+        if (this.burning >= 0) this.say('play.delve.liquid.drowning', 'Out of breath! Swim up (hold Jump).');
+        this.hurtBy(DROWN_SHARE * dt);
+      }
+    } else this.breath = Math.min(this.breathMax, this.breath + dt * 4);
+    // Lava: burns while in it and for a moment after, unless the Ember Elixir's ward holds.
+    const inLava = this.immersed === LIQUID_LAVA;
+    if (inLava && this.lavaWard > 0) this.lavaWard = Math.max(0, this.lavaWard - dt);
+    else if (!inLava && this.lavaWard < this.wardMax) this.lavaWard = Math.min(this.wardMax, this.lavaWard + dt / 3);
+    if (inLava && this.lavaWard <= 0) {
+      if (this.burning <= 0) this.say('play.delve.liquid.lava', 'Lava! Get out. An Ember Elixir worn as a charm wards it off for a while.');
+      this.burning = BURN_TIME;
+      this.hurtBy(LAVA_SHARE * dt);
+    } else if (this.burning > 0) {
+      this.burning = Math.max(0, this.burning - dt);
+      if (!inLava) this.hurtBy(BURN_SHARE * dt);
+    }
+  }
+  /** A liquid's hurt: a share of max HP, never below 0 (the shipped defeat flow takes over at 0). */
+  private hurtBy(share: number): void {
+    if (this.hp <= 0) return;
+    this.hp = Math.max(0, this.hp - this.maxHp * share);
+    this.wound = Math.max(this.wound, .35);
+    if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
+  }
+  /** Lava has charred a wooden placed thing: back to the satchel (the host's take-back), and the lava flows on. */
+  private charCell(t: Terrain, index: number): void {
+    const node = TERRAIN_NODE_LIST[t.kind[index]];
+    const def = placeableById(node.placeable);
+    if (!def || node.solid) { this.chars.delete(index); return; }
+    const col = index % t.cols, row = (index - col) / t.cols;
+    const accepted = this.options.onTakeBack?.({
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index,
+      mutationId: `delve-char:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
+    });
+    // Refused (a chest with things in it): it holds the lava back.
+    if (accepted === false) { this.chars.set(index, -1); return; }
+    this.chars.delete(index);
+    t.set(col, row, 0);
+    this.placedGen.delete(index);
+    this.recordCell(t, index);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#3a2a22', this.reducedMotion ? 3 : 8);
+    this.say('play.delve.liquid.charred', `The lava charred your ${def.label.toLowerCase()}. It is back in your satchel.`, { item: def.id });
+  }
+
+  // Buckets: a Seam Bucket scoops one full cell of water or lava, and pours it back out.
+
+  /** The cell a bucket acts on without a pointer: liquid in front (or under the feet) to scoop; open space ahead to pour. */
+  private bucketTarget(t: Terrain, scoop: boolean): number {
+    const p = this.player, feetRow = t.rowAt(p.y - .01), own = t.colAt(p.x);
+    const front = this.facing < 0 ? t.colAt(p.x - DELVE_BOX.halfWidth) - 1 : t.colAt(p.x + DELVE_BOX.halfWidth - .01) + 1;
+    if (scoop) {
+      for (const col of [front, own]) for (let row = feetRow - 1; row <= feetRow + 2; row++) if (t.inside(col, row) && t.liqLevel[t.index(col, row)]) return t.index(col, row);
+      return -1;
+    }
+    for (let row = feetRow + 1; row >= feetRow - 1; row--) if (t.inside(front, row) && !t.solid(front, row)) return t.index(front, row);
+    return -1;
+  }
+  /** Scoop or pour with the chosen bucket at a cell. The satchel swaps first (host), then the world changes. */
+  private useBucket(bucket: BucketId, index: number): boolean {
+    const t = this.terrain, sim = this.liquid;
+    const full = BUCKET_LIQUID[bucket];
+    const type = t && index >= 0 ? full || (t.liqLevel[index] ? t.liqType[index] : 0) : 0;
+    if (!t || !sim || !type) { this.say('play.delve.bucket.nothing', 'Nothing here for the bucket: stand at the edge of water or lava.'); this.report(); return false; }
+    const col = index % t.cols, row = (index - col) / t.cols;
+    // The world must take it before the satchel is asked.
+    const ok = full ? sim.pour(index, type, true) : sim.scoop(index, true) === type;
+    if (!ok) {
+      if (full) this.say('play.delve.bucket.noRoom', 'No room to pour there.');
+      else this.say('play.delve.bucket.tooShallow', 'Too shallow: a bucket needs a full cell of it, joined together.');
+      this.report(); return false;
+    }
+    const to: BucketId = full ? 'seam-bucket' : BUCKET_FOR[type];
+    const accepted = this.options.onBucket?.({
+      from: bucket, to, areaId: this.areaDef.id, cellKey: cellKey(col, row), index, liquid: LIQUID_IDS[type] as LiquidKind,
+      mutationId: `delve-bucket:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
+    });
+    if (accepted === false) { this.report(); return false; }
+    if (full) sim.pour(index, type); else sim.scoop(index);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, type === LIQUID_LAVA ? '#ffb066' : '#86d2e6', this.reducedMotion ? 2 : 6);
+    if (full) this.say(type === LIQUID_LAVA ? 'play.delve.bucket.pouredLava' : 'play.delve.bucket.pouredWater', type === LIQUID_LAVA ? 'You pour out the lava.' : 'You pour out the water.');
+    else this.say(type === LIQUID_LAVA ? 'play.delve.bucket.scoopedLava' : 'play.delve.bucket.scoopedWater', type === LIQUID_LAVA ? 'The bucket holds a cell of lava. Mind your hands.' : 'The bucket holds a cell of water.');
+    this.saveLiquids(t, sim);
+    this.report();
+    return true;
+  }
+
+  // Fishing: cast at liquid, wait for the dip, hook it; the host reels (or auto-fish settles it).
+
+  /**
+   * The rod the Keeper carries (the best in the satchel; tier 0 = none), the
+   * liquids it works in, and its bite speed (a multiplier ≥ 1: bait, level,
+   * rod and charms together; the host works it out).
+   */
+  setFishing(rod: { tier: number; liquids: readonly LiquidKind[]; bite?: number }): void {
+    const bite = Number.isFinite(rod.bite) && (rod.bite as number) >= 1 ? Math.min(4, rod.bite as number) : 1;
+    this.rod = { tier: Math.max(0, Math.floor(rod.tier || 0)), liquids: [...rod.liquids], bite };
+  }
+  /** Use held (E, or the touch Use button): a bite is hooked and settled at once, and the line recast (auto-fish). */
+  setUseHeld(held: boolean): void { this.useHeld = held; if (!held) this.recast = 0; }
+  /** The liquid surface a cast would land on (cell index), or -1: in the facing direction, within CAST_CELLS. */
+  private castTarget(t: Terrain): number {
+    if (!this.rod.tier) return -1;
+    const p = this.player, own = t.colAt(p.x), mid = t.rowAt(p.y - DELVE_BOX.height * .5);
+    for (let d = 0; d <= CAST_CELLS; d++) {
+      const col = own + this.facing * d;
+      if (col < 0 || col >= t.cols) break;
+      for (let row = Math.max(0, mid - 1); row <= Math.min(t.rows - 1, mid + CAST_CELLS); row++) {
+        const i = t.index(col, row);
+        if (t.solid(col, row)) { if (row > mid) break; continue; }
+        if (!t.liqLevel[i]) continue;
+        // The top liquid cell of this column is the surface the bob floats on.
+        const kind = LIQUID_IDS[t.liqType[i]];
+        if (kind && this.rod.liquids.includes(kind)) return i;
+        break;
+      }
+    }
+    return -1;
+  }
+  /** Fishable liquid within a cast (the HUD's Fish prompt), or null. */
+  private fishable(t: Terrain): LiquidKind | null {
+    const i = this.castTarget(t);
+    return i >= 0 ? LIQUID_IDS[t.liqType[i]] : null;
+  }
+  /** Cast the line. True when it went in. */
+  cast(): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0 || this.line) return false;
+    if (!this.rod.tier) { this.say('play.fish.noRod', 'You need a rod to fish. The Lodge Warden in the Rootglass Canopy keeps a worn one for you.'); this.report(); return false; }
+    const index = this.castTarget(t);
+    if (index < 0) { this.say('play.fish.noWater', 'Nothing to fish here: face water your rod can work, within six cells.'); this.report(); return false; }
+    const col = index % t.cols, row = (index - col) / t.cols;
+    this.cancelMove();
+    this.line = {
+      phase: 'wait', liquid: t.liqType[index], biome: t.biomeAt(row).id, col, row,
+      timer: this.biteWait(3, 9), bobX: (col + .5) * CELL, bobY: surfaceY(t, row, t.liqLevel[index]), castId: '',
+    };
+    if (Math.abs(this.line.bobX - this.player.x) > 4) this.facing = this.line.bobX > this.player.x ? 1 : -1;
+    this.say('play.fish.cast', 'The line is in. When the bob dips, press E (or tap).');
+    this.report();
+    return true;
+  }
+  /** Seconds to the next bite: lo..hi, shortened by the rod's bite speed. */
+  private biteWait(lo: number, hi: number): number { return (lo + (hi - lo) * this.random()) / this.rod.bite; }
+  /** Pull the line out (moving away, or E with nothing biting). */
+  reelIn(quiet = false): void {
+    if (!this.line || this.line.phase === 'hooked') return;
+    this.line = null;
+    if (!quiet) { this.say('play.fish.reeledIn', 'You reel the line in.'); this.report(); }
+  }
+  /** E (or a tap) during the dip: hooked. The host reels it in (FishEvent): once hooked it is always landed. */
+  hook(auto = false): boolean {
+    const line = this.line;
+    if (!line || !this.terrain || line.phase !== 'bite') return false;
+    line.phase = 'hooked';
+    line.castId = `fish:${this.lootSession}:${++this.castSeq}`;
+    this.report();
+    this.options.onFish?.({ areaId: this.areaDef.id, biome: line.biome, liquid: LIQUID_IDS[line.liquid] as LiquidKind, castId: line.castId, auto, col: line.col, row: line.row });
+    return true;
+  }
+  /** The host landed the fish: the line comes out. With Use still held, it is recast shortly (auto-fish). */
+  landFish(): void {
+    if (!this.line) return;
+    this.line = null;
+    if (this.useHeld) this.recast = .6;
+    this.report();
+  }
+  private updateLine(dt: number, t: Terrain): void {
+    if (this.recast > 0) { this.recast -= dt; if (this.recast <= 0 && this.useHeld && !this.line) this.cast(); }
+    const line = this.line;
+    if (!line) return;
+    const i = t.index(line.col, line.row);
+    // The water it was cast into drained away: the line comes out (a hooked fish is still landed by the host).
+    if (!t.liqLevel[i] || t.liqType[i] !== line.liquid) {
+      if (line.phase !== 'hooked') { this.line = null; this.say('play.fish.waterGone', 'The water went from under your bob.'); }
+      return;
+    }
+    line.bobY = surfaceY(t, line.row, t.liqLevel[i]);
+    if (line.phase === 'hooked') return;
+    line.timer -= dt;
+    if (line.timer > 0) return;
+    if (line.phase === 'wait') {
+      line.phase = 'bite'; line.timer = HOOK_WINDOW;
+      this.say('play.fish.bite', 'A bite! Press E (or tap) now!');
+      // Auto-fish: Use held through the dip hooks at once (the Off grade, no mini-game).
+      if (this.useHeld) this.hook(true);
+      this.report();
+      return;
+    }
+    // Missed the dip: nothing lost, it nibbles again.
+    line.phase = 'wait'; line.timer = this.biteWait(1, 3);
+    this.say('play.fish.missed', 'Missed it. It is still down there: wait for the next dip.');
+  }
+  /** The line, the bob and its dip (world px; before the darkness, so it is lit like the world). */
+  private drawLine(c: CanvasRenderingContext2D, time: number): void {
+    const line = this.line;
+    if (!line) return;
+    const k = this.figure;
+    const hx = this.player.x + this.facing * 34 * k, hy = this.player.y - 150 * k;
+    const dip = line.phase === 'bite' ? ART * 2 : line.phase === 'hooked' ? ART * 3 : 0;
+    const bob = this.reducedMotion || line.phase !== 'wait' ? 0 : Math.round(Math.sin(time * 3) * .5) * ART;
+    const bx = Math.round(line.bobX / ART) * ART, by = Math.round((line.bobY - ART * 2) / ART) * ART + dip + bob;
+    c.save();
+    c.strokeStyle = 'rgba(232, 220, 200, .75)'; c.lineWidth = 1;
+    c.beginPath(); c.moveTo(hx, hy); c.quadraticCurveTo((hx + bx) / 2, Math.max(hy, by) + 20, bx + ART, by); c.stroke();
+    // A pixel bob: red cap, ivory belly, a dark outline.
+    c.fillStyle = '#140a1f'; c.fillRect(bx - ART, by - ART, ART * 4, ART * 4);
+    c.fillStyle = '#e04a3a'; c.fillRect(bx, by, ART * 2, ART);
+    c.fillStyle = '#f4ead6'; c.fillRect(bx, by + ART, ART * 2, ART);
+    if (line.phase === 'bite' && !this.reducedMotion) {
+      c.fillStyle = '#d0f6ff';
+      c.fillRect(bx - ART * 3, by + ART * 2, ART, ART); c.fillRect(bx + ART * 4, by + ART * 2, ART, ART);
+    }
+    c.restore();
   }
 
   // -- Delve: loose rock, supports and blasting charges ---------------------
@@ -1436,7 +1838,8 @@ export class SeamworksEngine {
     if (node.minLevel && level < node.minLevel) return false;
     const placed = t.kind[index] !== t.base[index];
     let material: string | undefined, qty = 0;
-    const pays = node.yield;
+    // A placed or made cell (obsidian) pays its block only, as a dig does.
+    const pays = placed ? undefined : node.yield;
     if (pays && (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance)) { material = pays.materialId; qty = pays.qty; }
     const gen = this.placedGen.get(index);
     const accepted = this.options.onWorldAction?.({
@@ -1561,10 +1964,13 @@ export class SeamworksEngine {
   random: () => number = Math.random;
   interact(): void {
     if (this.paused || this.hp <= 0) return;
+    // A line in the water: E hooks a bite, or reels the line back in.
+    if (this.line) { if (!this.hook()) this.reelIn(); return; }
     const station = this.nearbyStation();
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
     const site = station ? null : this.siteInReach();
     if (site) { if (this.attackCooldown <= 0) this.workSite(site); this.report(); return; }
+    if (!station && this.terrain && this.castTarget(this.terrain) >= 0) { this.cast(); return; }
     if (!station) { this.say('play.hud.eng.moveCloser', 'Move closer to a marked location to interact.'); this.report(); return; }
     const locked = station.requires === 'guardian' ? !this.guardianDefeated : station.requires === 'beacon' ? !this.restored : false;
     if (locked) { if (station.lockedMessage) this.message = station.lockedMessage; else this.say('play.hud.eng.notOpen', 'This way is not open yet.'); }
@@ -1595,7 +2001,7 @@ export class SeamworksEngine {
   }
   // Key/pointer releases can be lost when focus leaves the game. Release held
   // controls without pausing the shared world or discarding an active action.
-  private readonly clearInput = (): void => { this.input.clear(); };
+  private readonly clearInput = (): void => { this.input.clear(); this.useHeld = false; };
   private readonly visibilityChanged = (): void => {
     if (document.hidden) this.clearInput();
   };
@@ -1606,11 +2012,14 @@ export class SeamworksEngine {
     if (event.target instanceof HTMLElement && (event.target.matches('input,textarea,select') || event.target.isContentEditable || event.target.closest('[data-engine-ignore]'))) return;
     const action = this.action(event.code);
     if (action) { event.preventDefault(); if (!event.repeat) this.setInput(action, true); }
-    if (!event.repeat && event.code === 'KeyE') { event.preventDefault(); this.interact(); }
+    if (!event.repeat && event.code === 'KeyE') { event.preventDefault(); this.interact(); this.setUseHeld(true); }
     if (!event.repeat && event.code === 'KeyB' && this.terrain) { event.preventDefault(); this.place(); }
     if (!event.repeat && event.code === 'KeyX' && this.terrain) { event.preventDefault(); this.takeBack(); }
   };
-  private readonly keyUp = (event: KeyboardEvent): void => { const action = this.action(event.code); if (action) this.setInput(action, false); };
+  private readonly keyUp = (event: KeyboardEvent): void => {
+    if (event.code === 'KeyE') this.setUseHeld(false);
+    const action = this.action(event.code); if (action) this.setInput(action, false);
+  };
   private resize(): void {
     const bounds = this.canvas.getBoundingClientRect();
     const parent = this.canvas.parentElement?.getBoundingClientRect();
@@ -1673,14 +2082,23 @@ export class SeamworksEngine {
     const wasGrounded = this.player.grounded;
     // Delves move a half-size Keeper a little slower, through the terrain.
     const pace = this.terrain ? .72 : 1;
-    const velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace;
+    let velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace;
     if (this.terrain) {
+      // In water or lava the Keeper wades and swims: slower, sinking slowly, and Jump held swims up.
+      this.sense(this.terrain);
+      const swim = this.immersed ? SWIM[this.immersed] : null;
+      if (swim) velocityX *= swim.speed;
+      // Reeling a fish in holds the Keeper still.
+      if (this.line?.phase === 'hooked') velocityX = 0;
       // On a ladder Up (jump) climbs and Down descends; anywhere else Down drops through platforms.
       this.climbing = onLadder(this.terrain, this.player.x, this.player.y, DELVE_BOX);
       if (this.climbing) {
         const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
         climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
-      } else stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0);
+      } else {
+        if (swim && this.input.has('jump') && this.line?.phase !== 'hooked') this.player.vy = Math.max(-swim.rise, this.player.vy - 2400 * dt);
+        stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0, swim);
+      }
     } else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
     // Coyote time: the clock since the feet last touched; a buffered press jumps on landing.
     if (this.player.grounded && !this.climbing) this.airTime = 0; else if (!this.climbing) this.airTime += dt;
@@ -1695,6 +2113,8 @@ export class SeamworksEngine {
       this.updateFuses(dt);
       this.updateRubble(dt, this.terrain);
       this.updateLooseDust(this.terrain);
+      this.updateLiquids(dt, this.terrain);
+      this.updateLine(dt, this.terrain);
     } else if (this.sites.length && this.input.has('attack') && this.attackCooldown <= 0 && this.siteInReach()) this.attack();
     const now = this.clock();
     for (const sites of this.siteCache.values()) for (const s of sites) {
@@ -1804,7 +2224,17 @@ export class SeamworksEngine {
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
       facing: this.facing, animation: this.pose(),
-      delve: !!t, depth, biome: t && depth !== undefined ? t.biomeAt(depth).name || undefined : undefined });
+      delve: !!t, depth, biome: t && depth !== undefined ? t.biomeAt(depth).name || undefined : undefined,
+      ...(t ? {
+        liquid: {
+          in: LIQUID_IDS[this.immersed] ?? null,
+          ...(this.headUnder && this.immersed === LIQUID_WATER || this.breath < this.breathMax ? { breath: this.breath / this.breathMax } : {}),
+          ...(this.burning > 0 ? { burning: true } : {}),
+          ...(this.wardMax ? { ward: this.lavaWard / this.wardMax } : {}),
+        },
+        fishing: this.line ? { phase: this.line.phase, liquid: LIQUID_IDS[this.line.liquid] as LiquidKind } : null,
+        canFish: this.line ? null : this.fishable(t),
+      } : {}) });
   }
   /**
    * The living creature the enemy bar should measure: the nearest one the
@@ -2620,6 +3050,13 @@ export class SeamworksEngine {
       c.restore();
     }
     c.restore();
+    if (t) {
+      // Liquids over the figures (a wading Keeper reads as in the water), under the darkness.
+      const c0 = t.colAt(this.camera) - 1, c1 = t.colAt(this.camera + viewport) + 1;
+      const r0 = t.rowAt(this.cameraY) - 1, r1 = t.rowAt(this.cameraY + 720) + 1;
+      drawLiquids(c, t, c0, c1, r0, r1, this.reducedMotion ? 0 : Math.floor(this.elapsed * 2.5) & 1);
+      this.drawLine(c, motionTime);
+    }
     if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
     if (t) this.drawAim(c, t);
     this.atmosphere.feedback(c, this.reducedMotion);
@@ -2641,7 +3078,8 @@ export class SeamworksEngine {
     this.debris.draw(c);
     const pool = this.lightPool; pool.clear(); this.glintCount = 0;
     const flicker = this.reducedMotion ? 1 : 1 + Math.sin(time * 13) * .015 + Math.sin(time * 7.3 + 1) * .02;
-    pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker, 1);
+    // A veiled creature (the Drowned Lamp) dims the lantern while it lives.
+    pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker * (this.veiledUp() ? .55 : 1), 1);
     if (this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);
     if (this.blastFlash > 0) {
       const at = this.blastAt;
@@ -2685,9 +3123,12 @@ export class SeamworksEngine {
     }
     const fold = wash && !this.budget.blendModes ? wash : undefined;
     const count = selectLights(pool.lights, pool.count, LIGHT_CAP, this.player.x, this.player.y);
+    // Lava lights its cavern from its own surface: extra grid sources, outside the capped slots.
+    this.lavaPool.clear();
+    lavaLights(t, c0, c1, r0, r1, this.lavaPool, flicker);
     c.save();
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
-    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT);
+    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambientDarkness(this.cameraY + 360 - t.top), biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT, this.lavaPool.lights, this.lavaPool.count);
     c.restore();
     if (fold && !dark) {
       // No overlay canvas: the tint on its own, as before.
