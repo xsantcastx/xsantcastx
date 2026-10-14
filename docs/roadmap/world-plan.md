@@ -222,11 +222,11 @@ Owner brief (2026-10-13): navigation in the Delve (minimap, missions), an infini
 
 The layer cake: Root Hollows → Basalt Caverns → Glowcap Grotto → Magma Halls (shipped) → **the Underhearth** (the Infernal realm's banked furnace; Kael's four) → the Breach → **Starfall Deep** (the sky under the world) → **the Void Shore** (the Void sea and the shattered realm-islands) → **the Unmade** (no bottom; "One More"). The deep places are *Reaches*, never realms. Left and right of the shaft, the Delve is generated without end per player seed, with four realm **Echo regions** that finally spawn the atlas creatures of meaning audit #16.
 
-- [ ] **Phase 6: Water, lava and Fishing v1** (fits today's engine; parallel with Phase 7)
-  - [ ] 6.1 Liquids v1: water + lava, 10 Hz cellular flow with sleeping cells, water + lava → obsidian, lava chars wooden placeables back to the satchel, Seam Bucket, swim/breath/lava damage, Ember Elixir immunity, liquid diff in the save (L)
-  - [ ] 6.2 Lakes in the core: Grotto Mere, Magma lava pools, flooded shafts, placed in already-carved air so no `version` bump (S)
-  - [ ] 6.3 Fishing v1: skill 1–99, Worn/Root/Seam/Glowline rods, bait, catch tables, junk, crates, the Line Tension mini-game (always lands, grade only adds), auto-fish, Lampfish Oil + Gill Draught, Catalogue of Strange Fish, Lodge Warden Ledger Catch, Merchant fish order, the Drowned Lamp chain + mini-boss (L)
-  - [ ] 6.4 `economy-sim.mjs --fishing --check` in CI: fishing ≤ 10% of forge Gold/min, crate EV, rod gates, 60–250 h to 99 (S)
+- [x] **Phase 6: Water, lava and Fishing v1** (fits today's engine; parallel with Phase 7). Built 2026-10-14, handoff [`docs/handoff/liquids-fishing.md`](../handoff/liquids-fishing.md)
+  - [x] 6.1 Liquids v1: water + lava, 10 Hz cellular flow with sleeping cells, water + lava → obsidian, lava chars wooden placeables back to the satchel, Seam Bucket, swim/breath/lava damage, Ember Elixir immunity, liquid diff in the save (L)
+  - [x] 6.2 Lakes in the core: Grotto Mere, Magma lava pools, flooded shafts, placed in already-carved air so no `version` bump (S)
+  - [x] 6.3 Fishing v1: skill 1–99, Worn/Root/Seam/Glowline rods, bait, catch tables, junk, crates, the Line Tension mini-game (always lands, grade only adds), auto-fish, Lampfish Oil + Gill Draught, Catalogue of Strange Fish, Lodge Warden Ledger Catch, Merchant fish order, the Drowned Lamp chain + mini-boss (L)
+  - [x] 6.4 `economy-sim.mjs --fishing --check` in CI: fishing ≤ 10% of forge Gold/min, crate EV, rod gates, 60–250 h to 99 (S)
 - [ ] **Phase 7: The endless Delve** (horizontal first)
   - [ ] 7.1 Sector world: 32×32-cell sectors, sector-local deterministic generator (noise caves, clipped veins, structure lattice), loaded window, per-sector spawns; the core unchanged (XL, split a/b)
   - [ ] 7.2 Save v2: index doc + region docs (8×8 sectors) under `progress/` (no rules deploy), IndexedDB locally, RLE diffs, merge, healing of far unheld tunnels (L) — needs the save-gateway owners' review first

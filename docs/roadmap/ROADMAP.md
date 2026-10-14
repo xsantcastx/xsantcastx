@@ -11,7 +11,7 @@ Reviewed daily; newest review on top of the log at the bottom.
    drop-through platforms, fast ladders, minimap + full map. *(in flight)*
 3. **Cleanup leftovers** — remove the daily tool pipeline, Pro Pack, Codex Solarii; Karma back to 0 failures. *(in flight)*
 4. **The rest of the casino** on the Reels kit — Rune Drop (Plinko), Seam Sweeper (Mines), Eclipse Ascent (Crash). Gold only. *(built, awaiting merge: `docs/handoff/casino.md`)*
-5. **Delve & Beyond, slice 1** — liquids v1 (water/lava), a lake biome, Fishing v1. *(design in flight: `docs/world/delve-and-beyond.md`)*
+5. **Delve & Beyond, slice 1** — liquids v1 (water/lava), lakes in the core, Fishing v1. *(built, awaiting merge: `docs/handoff/liquids-fishing.md`; next: Phase 7 the endless Delve)*
 6. **World & cast, slice 1** — story Act 1 and the lantern companion as the onboarding guide. *(S1 Glim shipped on its branch, `docs/handoff/glim.md`; S2 Act I framing next)*
 7. **Art test set** — produce the 21 first-test-set files (`docs/art-commissions/00-first-test-set.md`); the importer drops them straight in. *(owner / image generator)*
 
@@ -25,7 +25,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 | **M4 Phone-first & Terraria look** | Terraria-mobile HUD, pixel-art terrain pass 1+2, update prompt, consent bar | ✅ shipped |
 | **M5 Meaning & cleanup** | Everything has a source/use/lore (CI-checked); legacy website removed | ✅ shipped (leftovers in flight) |
 | **M6 Feel & stability** | No phone crash, cool idle, Delve navigation, minimap | 🔨 in progress |
-| **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; Fishing next |
+| **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; liquids + Fishing v1 built |
 | **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 📐 designing |
 | **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 📐 designing |
 | **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | ⏳ needs art |
@@ -39,6 +39,11 @@ Reviewed daily; newest review on top of the log at the bottom.
 - Daily tool-generation workflow's API credit — moot once the pipeline is deleted.
 
 ## Daily review log
+
+- **2026-10-14 (later)** — Phase 6 slice 1 built: water and lava (10 Hz cellular flow, obsidian, buckets,
+  swimming, breath, lava burn), the Grotto Mere and lava pools in the core, Fishing 1–99 (rods, bait,
+  Line Tension, catch tables, crates, junk, legendaries, the Ledger Catch, the Drowned Lamp chain and
+  mini-boss, the Catalogue of Strange Fish), `economy-sim --fishing` in `--check`.
 
 - **2026-10-14** — Roadmap created. Shipped yesterday/today: Vault + stacking, Terraria terrain ×2,
   tool tiers + level scaling, meaning audit, phone HUD, update prompt, legacy site removed.
