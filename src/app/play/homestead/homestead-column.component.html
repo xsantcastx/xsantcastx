@@ -1,10 +1,10 @@
-<aside class="hc" [class.hc--open]="open" aria-label="Homestead buildings">
+<aside class="hc" [class.hc--open]="open" [attr.aria-label]="t('homestead.column.aria')">
   <button type="button" class="hc-toggle" (click)="toggle()" [attr.aria-expanded]="open">
-    <span class="hc-purse">{{ gold(hud.gold) }} Gold</span>
+    <span class="hc-purse">{{ t('homestead.column.gold', { n: gold(hud.gold) }) }}</span>
     <small>{{ perSecond(hud.perSecond).slice(1) }}</small>
   </button>
   @if (open) {
-    <button type="button" class="hc-strike" (click)="strike()">Strike the Forge · +{{ gold(hud.perClick) }} Gold</button>
+    <button type="button" class="hc-strike" (click)="strike()">{{ t('homestead.column.strike', { n: gold(hud.perClick) }) }}</button>
     <!-- Buildings first: the 15-Gold Bellows is a new player's first goal, so it
          sits right under the Strike button, above the million-Gold corner. -->
     <ol class="hc-rows">
@@ -13,7 +13,7 @@
         @if (row.state === 'mystery') {
           <li class="hc-row hc-row--mystery">
             <span class="hc-icon" aria-hidden="true"></span>
-            <span class="hc-text"><b>???</b><small>Unlocks at {{ gold(row.unlockAt) }} Gold earned</small></span>
+            <span class="hc-text"><b>???</b><small>{{ t('homestead.column.unlocksAt', { n: gold(row.unlockAt) }) }}</small></span>
           </li>
         } @else {
           <li class="hc-row" [class.hc-row--ready]="row.affordable" [class.hc-row--bought]="bought === row.id">
@@ -21,14 +21,14 @@
             @else { <span class="hc-icon" aria-hidden="true"></span> }
             <span class="hc-text">
               <b>{{ row.name }} <em>x{{ row.owned }}</em></b>
-              <small>{{ perSecond(row.gain) }} each</small>
+              <small>{{ t('homestead.column.each', { rate: perSecond(row.gain) }) }}</small>
             </span>
             <button type="button" class="hc-buy" [disabled]="!row.affordable" (click)="buy(row)"
-                    [attr.aria-label]="'Buy ' + row.name + ' for ' + gold(row.cost) + ' Gold'">
-              @if (row.maxed) { Maxed }
-              @else if (row.cost <= 0) { Free }
+                    [attr.aria-label]="t('homestead.column.buyAria', { name: row.name, n: gold(row.cost) })">
+              @if (row.maxed) { {{ t('homestead.column.maxed') }} }
+              @else if (row.cost <= 0) { {{ t('homestead.column.free') }} }
               @else { {{ gold(row.cost) }} }
-              @if (!row.affordable && !row.maxed) { <small>Need {{ gold(row.shortfall) }} more</small> }
+              @if (!row.affordable && !row.maxed) { <small>{{ t('homestead.column.need', { n: gold(row.shortfall) }) }}</small> }
             </button>
           </li>
         }

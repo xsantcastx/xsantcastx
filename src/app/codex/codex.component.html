@@ -92,10 +92,10 @@
          Only creatures with an approved master are drawn. Concept sheets are
          not runtime art, so the unpainted ones are a count, not a picture. -->
     <div class="cx-block cx-bestiary">
-      <h3 class="cx-block__title">Bestiary</h3>
+      <h3 class="cx-block__title">{{ t('codex.x.bestiary') }}</h3>
       <p class="cx-block__sub">
-        What has been seen moving in the five realms.
-        {{ bestiaryUnpainted }} more have been sighted and not yet drawn.
+        {{ t('codex.x.bestiarySub') }}
+        {{ t('codex.x.unpainted', { n: bestiaryUnpainted }) }}
       </p>
       <ul class="cx-bestiary__list">
         @for (beast of bestiary; track beast.id) {
@@ -115,7 +115,7 @@
                 {{ beast.haunt }}
               </p>
               <h4 class="cx-bestiary__name">{{ beast.name }}</h4>
-              <p class="cx-bestiary__note">{{ beast.note }}</p>
+              <p class="cx-bestiary__note">{{ t('codex.beast.' + beast.id) }}</p>
             </div>
           </li>
         }
@@ -145,9 +145,9 @@
       </div>
 
       <div class="cx-rank__body">
-        <p class="cx-rank__eyebrow">Level {{ snap.level.level }} of {{ levels.length }}</p>
+        <p class="cx-rank__eyebrow">{{ t('codex.x.levelOf', { n: snap.level.level, total: levels.length }) }}</p>
         <h2 class="cx-rank__title">{{ snap.level.title }}</h2>
-        <p class="cx-rank__xp">{{ snap.xp | number }} XP earned</p>
+        <p class="cx-rank__xp">{{ t('codex.x.xpEarned', { n: (snap.xp | number) ?? 0 }) }}</p>
 
         <div class="cx-rank__bar">
           <span class="cx-rank__track" aria-hidden="true">
@@ -155,10 +155,10 @@
           </span>
           <p class="cx-rank__next">
             @if (snap.next) {
-              Next rank: <strong>{{ snap.next.title }}</strong> —
-              <span class="cx-rank__togo">{{ snap.toNext | number }} XP</span> away
+              {{ t('codex.x.nextRank') }} <strong>{{ snap.next.title }}</strong> —
+              <span class="cx-rank__togo">{{ t('codex.x.xpAway', { n: (snap.toNext | number) ?? 0 }) }}</span> {{ t('codex.x.away') }}
             } @else {
-              The Eclipse is yours. There is nothing above this.
+              {{ t('codex.x.topRank') }}
             }
           </p>
         </div>
@@ -167,8 +167,8 @@
 
     <!-- ── The path ───────────────────────────────────────────────────── -->
     <div class="cx-block">
-      <h3 class="cx-block__title">The Path</h3>
-      <p class="cx-block__sub">Ten ranks. The thresholds widen as you climb.</p>
+      <h3 class="cx-block__title">{{ t('codex.x.path') }}</h3>
+      <p class="cx-block__sub">{{ t('codex.x.pathSub') }}</p>
 
       <ol class="cx-path">
         @for (node of path; track node.level.level) {
@@ -179,11 +179,11 @@
                           : node.state === 'held' ? 'rank-earned' : 'rank-locked'"
                  [src]="rankSigil(node.level.level)" alt="" aria-hidden="true"
                  width="40" height="40" loading="lazy" decoding="async" draggable="false">
-            <span class="cx-path__level">Level {{ node.level.level }}</span>
+            <span class="cx-path__level">{{ t('codex.x.level', { n: node.level.level }) }}</span>
             <span class="cx-path__title">{{ node.level.title }}</span>
             <span class="cx-path__xp">{{ node.level.minXp | number }} XP</span>
             @if (node.state === 'current') {
-              <span class="cx-path__here">← you are here</span>
+              <span class="cx-path__here">{{ t('codex.x.here') }}</span>
             }
           </li>
         }
@@ -192,18 +192,18 @@
 
     <!-- ── Energy balance ─────────────────────────────────────────────── -->
     <div class="cx-block">
-      <h3 class="cx-block__title">Energy Balance</h3>
-      <p class="cx-block__sub">Aether is light and making. Nox is shadow and transformation.</p>
+      <h3 class="cx-block__title">{{ t('codex.x.energy') }}</h3>
+      <p class="cx-block__sub">{{ t('codex.x.energySub') }}</p>
 
       <div class="cx-energy">
         <div class="cx-energy__row">
           <span class="cx-energy__side cx-energy__side--aether">
-            <span class="cx-energy__name">Luminous Affinity</span>
+            <span class="cx-energy__name">{{ t('codex.x.luminous') }}</span>
             <span class="cx-energy__pct">{{ aetherPercent }}%</span>
             <span class="cx-energy__xp">{{ snap.aether | number }} XP</span>
           </span>
           <span class="cx-energy__side cx-energy__side--nox">
-            <span class="cx-energy__name">Umbral Affinity</span>
+            <span class="cx-energy__name">{{ t('codex.x.umbral') }}</span>
             <span class="cx-energy__pct">{{ noxPercent }}%</span>
             <span class="cx-energy__xp">{{ snap.nox | number }} XP</span>
           </span>
@@ -216,7 +216,7 @@
         </span>
 
         @if (isBalanced && snap.xp > 0) {
-          <p class="cx-energy__badge">⚖️ Convergent — True Balance</p>
+          <p class="cx-energy__badge">⚖️ {{ t('codex.x.convergent') }}</p>
         }
         <p class="cx-energy__flavour">{{ affinityFlavour }}</p>
       </div>
@@ -224,56 +224,56 @@
 
     <!-- ── Streak ─────────────────────────────────────────────────────── -->
     <div class="cx-block">
-      <h3 class="cx-block__title">The Streak</h3>
-      <p class="cx-block__sub">Consecutive days in the realm. A missed day costs the run, not the record.</p>
+      <h3 class="cx-block__title">{{ t('codex.x.streak') }}</h3>
+      <p class="cx-block__sub">{{ t('codex.x.streakSub') }}</p>
 
       <div class="cx-streak">
         <div class="cx-streak__stat">
           <span class="cx-streak__num">🔥 {{ snap.streak }}</span>
-          <span class="cx-streak__label">Current streak</span>
+          <span class="cx-streak__label">{{ t('codex.x.streakNow') }}</span>
         </div>
         <div class="cx-streak__stat">
           <span class="cx-streak__num">🔥 {{ snap.bestStreak }}</span>
-          <span class="cx-streak__label">Best streak</span>
+          <span class="cx-streak__label">{{ t('codex.x.streakBest') }}</span>
         </div>
         <div class="cx-streak__stat">
           <span class="cx-streak__num">{{ activeDays }}</span>
-          <span class="cx-streak__label">Active days (30d)</span>
+          <span class="cx-streak__label">{{ t('codex.x.activeDays') }}</span>
         </div>
         <div class="cx-streak__stat">
           <span class="cx-streak__num">{{ calendarXp | number }}</span>
-          <span class="cx-streak__label">XP earned (30d)</span>
+          <span class="cx-streak__label">{{ t('codex.x.xp30') }}</span>
         </div>
       </div>
 
       @if (nextStreakMilestone) {
         <p class="cx-streak__next">
           <strong>{{ streakDaysToGo }}</strong>
-          more {{ streakDaysToGo === 1 ? 'day' : 'days' }} to a {{ nextStreakMilestone }}-day streak.
+          {{ t(streakDaysToGo === 1 ? 'codex.x.streakNextOne' : 'codex.x.streakNextMany', { target: nextStreakMilestone }) }}
         </p>
       }
 
       <div class="cx-cal" role="img"
-           [attr.aria-label]="'Daily XP for the last 30 days. ' + activeDays + ' active days, ' + calendarXp + ' XP total.'">
+           [attr.aria-label]="t('codex.x.calAria', { days: activeDays, xp: calendarXp })">
         @for (day of calendar; track day.date) {
           <span
             class="cx-cal__day"
             [attr.data-heat]="day.heat"
             [class.is-today]="day.isToday"
-            [attr.title]="day.label + ' — ' + day.xp + ' XP'"></span>
+            [attr.title]="t('codex.x.calTitle', { label: day.label, xp: day.xp })"></span>
         } @empty {
-          <p class="cx-cal__empty">The ledger starts the first time you earn something.</p>
+          <p class="cx-cal__empty">{{ t('codex.x.calEmpty') }}</p>
         }
       </div>
 
       <p class="cx-cal__legend">
-        <span>quiet</span>
+        <span>{{ t('codex.x.quiet') }}</span>
         <span class="cx-cal__day" data-heat="0" aria-hidden="true"></span>
         <span class="cx-cal__day" data-heat="1" aria-hidden="true"></span>
         <span class="cx-cal__day" data-heat="2" aria-hidden="true"></span>
         <span class="cx-cal__day" data-heat="3" aria-hidden="true"></span>
         <span class="cx-cal__day" data-heat="4" aria-hidden="true"></span>
-        <span>blazing</span>
+        <span>{{ t('codex.x.blazing') }}</span>
       </p>
     </div>
   </section>
@@ -346,36 +346,30 @@
     [hidden]="activeTab !== 'leaderboard'">
 
     <div class="cx-soon">
-      <p class="cx-soon__eyebrow">Not yet</p>
-      <h2 class="cx-soon__title">Coming when the Eclipse aligns</h2>
+      <p class="cx-soon__eyebrow">{{ t('codex.x.notYet') }}</p>
+      <h2 class="cx-soon__title">{{ t('codex.x.soonTitle') }}</h2>
       <p class="cx-soon__sub">
-        Ranking anyone needs a score worth ranking, and nothing here is scored
-        against anybody else yet. Sign in on
-        <a routerLink="/character">your Character</a> and progress follows you
-        between devices — but it is still your progress, not a position.
+        {{ t('codex.x.soonA') }}<a routerLink="/character">{{ t('codex.x.soonCharacter') }}</a>{{ t('codex.x.soonB') }}
       </p>
       <p class="cx-soon__cta-note">
-        A real ladder is on the
-        <a routerLink="/world">the world</a>.
-        Until it ships, this tab is a mock-up and says so.
+        {{ t('codex.x.soonCtaA') }}<a routerLink="/world">{{ t('codex.x.soonWorld') }}</a>{{ t('codex.x.soonCtaB') }}
       </p>
     </div>
 
     <div class="cx-lb">
-      <p class="cx-lb__label">Preview — illustrative ranks, not real players</p>
+      <p class="cx-lb__label">{{ t('codex.x.lbLabel') }}</p>
 
       <table class="cx-lb__table">
         <caption class="cx-visually-hidden">
-          Illustrative preview of the future leaderboard. These are not real
-          players and no ranking is being computed.
+          {{ t('codex.x.lbCaption') }}
         </caption>
         <thead>
           <tr>
             <th scope="col">#</th>
-            <th scope="col">Rank</th>
+            <th scope="col">{{ t('codex.x.lbRank') }}</th>
             <th scope="col">XP</th>
-            <th scope="col">Fragments</th>
-            <th scope="col">Affinity</th>
+            <th scope="col">{{ t('codex.x.lbFragments') }}</th>
+            <th scope="col">{{ t('codex.x.lbAffinity') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -385,12 +379,12 @@
               <td>{{ row.name }}</td>
               <td>{{ row.xp | number }}</td>
               <td>{{ row.fragments }}</td>
-              <td>{{ row.tag }}</td>
+              <td>{{ tagLabel(row.tag) }}</td>
             </tr>
           }
           <tr class="cx-lb__row cx-lb__row--you">
             <td>—</td>
-            <td>{{ snap.level.title }} <span class="cx-lb__badge">you</span></td>
+            <td>{{ snap.level.title }} <span class="cx-lb__badge">{{ t('codex.x.lbYou') }}</span></td>
             <td>{{ snap.xp | number }}</td>
             <td>{{ foundAchievements }}</td>
             <td>{{ affinityTag }}</td>
@@ -399,9 +393,7 @@
       </table>
 
       <p class="cx-lb__foot">
-        Your row holds real numbers. Where it would land globally is unknown —
-        nothing is being compared yet, and a made-up position would be the one
-        dishonest thing in the whole Codex.
+        {{ t('codex.x.lbFoot') }}
       </p>
     </div>
   </section>
@@ -413,20 +405,18 @@
   <div class="cx-hero">
     @if (!inWorld) {
     <p class="cx-hero__sub">
-      Everything the Godforge is keeping from you, and everything it has already
-      given up. Fragments, ranks, lore and secrets — the whole record, in one
-      place, kept honestly.
+      {{ t('codex.x.heroA') }}
     </p>
-    <p class="cx-tagline">the Godforge remembers every secret you have found — and every one you have not</p>
-    <p class="cx-hero__sub">The record of what you have found. The bag lives on Character. Crafting lives at the Forge.</p>
-    <p class="cx-hero__sub"><a routerLink="/forge/runes">Open the Forge →</a></p>
+    <p class="cx-tagline">{{ t('codex.x.tagline') }}</p>
+    <p class="cx-hero__sub">{{ t('codex.x.heroB') }}</p>
+    <p class="cx-hero__sub"><a routerLink="/forge/runes">{{ t('codex.x.openForge') }}</a></p>
     }
 
     <!-- Headline completion bar -->
     <div class="cx-hero__meter" [style.--tier]="progressRarity.color" [style.--tier-glow]="progressRarity.glow">
       <p class="cx-hero__meter-head">
         <span class="cx-hero__meter-count">{{ foundAchievements }} / {{ totalAchievements }}</span>
-        <span class="cx-hero__meter-label">Fragments Discovered</span>
+        <span class="cx-hero__meter-label">{{ t('codex.x.discovered') }}</span>
       </p>
       <span class="cx-hero__meter-track" aria-hidden="true">
         <span class="cx-hero__meter-fill" [style.width.%]="achievementPercent"></span>
@@ -443,25 +433,25 @@
     <div class="cx-statbar">
       <div class="cx-stat">
         <span class="cx-stat__num">{{ foundAchievements }}</span>
-        <span class="cx-stat__label">Fragments held</span>
+        <span class="cx-stat__label">{{ t('codex.x.held') }}</span>
       </div>
       <div class="cx-stat">
         <span class="cx-stat__num">{{ totalAchievements - foundAchievements }}</span>
-        <span class="cx-stat__label">Still hidden</span>
+        <span class="cx-stat__label">{{ t('codex.x.hidden') }}</span>
       </div>
       <div class="cx-stat">
         <span class="cx-stat__num">{{ earnedXp | number }}</span>
-        <span class="cx-stat__label">XP from discovery</span>
+        <span class="cx-stat__label">{{ t('codex.x.xpDiscovery') }}</span>
       </div>
       <div class="cx-stat">
         @if (rarestFound) {
           <span class="cx-stat__num cx-stat__num--sm" [style.color]="rarestFound.rarity.color">
             {{ rarestFound.name }}
           </span>
-          <span class="cx-stat__label">Rarest find — {{ rarestFound.rarity.label }}</span>
+          <span class="cx-stat__label">{{ t('codex.x.rarestWith', { rarity: rarestFound.rarity.label }) }}</span>
         } @else {
-          <span class="cx-stat__num cx-stat__num--sm cx-stat__num--muted">nothing yet</span>
-          <span class="cx-stat__label">Rarest find</span>
+          <span class="cx-stat__num cx-stat__num--sm cx-stat__num--muted">{{ t('codex.x.nothingYet') }}</span>
+          <span class="cx-stat__label">{{ t('codex.x.rarest') }}</span>
         }
       </div>
     </div>
@@ -470,10 +460,10 @@
     <div class="cx-filters">
 
       <div class="cx-filter-row">
-        <span class="cx-filter-row__label">Rarity</span>
+        <span class="cx-filter-row__label">{{ t('codex.x.rarityLabel') }}</span>
         <div class="cx-chips">
           <button type="button" class="cx-chip" [class.is-on]="rarityFilter === 'all'"
-                  (click)="rarityFilter = 'all'">All</button>
+                  (click)="rarityFilter = 'all'">{{ t('codex.x.all') }}</button>
           @for (tier of rarityOrder; track tier) {
             @if (tierCount(tier).total > 0) {
               <button
@@ -494,38 +484,38 @@
 
       <div class="cx-filter-row cx-filter-row--split">
         <div class="cx-filter-group">
-          <span class="cx-filter-row__label">Status</span>
+          <span class="cx-filter-row__label">{{ t('codex.x.status') }}</span>
           <div class="cx-chips">
             <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'all'"
-                    (click)="statusFilter = 'all'">All</button>
+                    (click)="statusFilter = 'all'">{{ t('codex.x.all') }}</button>
             <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'unlocked'"
-                    (click)="statusFilter = 'unlocked'">Discovered</button>
+                    (click)="statusFilter = 'unlocked'">{{ t('codex.x.statusFound') }}</button>
             <button type="button" class="cx-chip" [class.is-on]="statusFilter === 'locked'"
-                    (click)="statusFilter = 'locked'">Undiscovered</button>
+                    (click)="statusFilter = 'locked'">{{ t('codex.x.statusHidden') }}</button>
           </div>
         </div>
 
         <div class="cx-filter-group">
-          <label class="cx-filter-row__label" for="cx-sort">Sort</label>
+          <label class="cx-filter-row__label" for="cx-sort">{{ t('codex.x.sort') }}</label>
           <select id="cx-sort" class="cx-select" [(ngModel)]="sort">
-            <option value="rarity">{{ sortLabels['rarity'] }}</option>
-            <option value="recent">{{ sortLabels['recent'] }}</option>
-            <option value="alpha">{{ sortLabels['alpha'] }}</option>
+            <option value="rarity">{{ t('codex.x.sort.rarity') }}</option>
+            <option value="recent">{{ t('codex.x.sort.recent') }}</option>
+            <option value="alpha">{{ t('codex.x.sort.alpha') }}</option>
           </select>
         </div>
 
         <div class="cx-filter-group cx-filter-group--grow">
-          <label class="cx-visually-hidden" for="cx-search">Search the wall</label>
+          <label class="cx-visually-hidden" for="cx-search">{{ t('codex.x.searchWall') }}</label>
           <input
             id="cx-search"
             type="search"
             class="cx-search"
-            placeholder="Search names and hints…"
+            [placeholder]="t('codex.x.searchPh')"
             [(ngModel)]="search" />
         </div>
 
         @if (hasActiveFilters) {
-          <button type="button" class="cx-clear" (click)="clearFilters()">Clear</button>
+          <button type="button" class="cx-clear" (click)="clearFilters()">{{ t('codex.x.clear') }}</button>
         }
       </div>
     </div>
@@ -534,33 +524,26 @@
 
     <section class="cx-dpanel" [hidden]="activeTab !== 'scrolls'">
     <div class="cx-secrets__hd">
-      <h2 class="cx-secrets__count">{{ scrollsFound }} of {{ scrollsTotal }} fragments recovered</h2>
+      <h2 class="cx-secrets__count">{{ t('codex.x.scrollsCount', { n: scrollsFound, total: scrollsTotal }) }}</h2>
       <p class="cx-secrets__blurb">
-        The codex is not written; it is dug up. Every fragment here came off the
-        anvil alongside a rune, and the better the rune the likelier the page.
-        One of them has never come up for anything but the Void.
+        {{ t('codex.x.scrollsBlurb') }}
       </p>
     </div>
     <div class="cx-secrets__hd cx-inscriptions__hd">
-      <h2 class="cx-secrets__count">Delve Inscriptions: {{ inscriptionsFound }} of {{ inscriptionsTotal }} copied</h2>
-      <p class="cx-secrets__blurb">Words cut into the rock on the way down the fracture. Find them in the Ember Delve to copy them here.</p>
+      <h2 class="cx-secrets__count">{{ t('codex.x.inscrCount', { n: inscriptionsFound, total: inscriptionsTotal }) }}</h2>
+      <p class="cx-secrets__blurb">{{ t('codex.x.inscrBlurb') }}</p>
     </div>
     </section>
 
     <section class="cx-dpanel" [hidden]="activeTab !== 'secrets'">
     <div class="cx-secrets__hd">
-      <h2 class="cx-secrets__count">{{ foundSecrets }} of {{ totalSecrets }} secrets discovered</h2>
+      <h2 class="cx-secrets__count">{{ t('codex.x.secretsCount', { n: foundSecrets, total: totalSecrets }) }}</h2>
       <p class="cx-secrets__blurb">
-        Not achievements — the machinery underneath. What is written below is a
-        clue, never the answer. The Godforge remembers every secret you have
-        found, and every one you have not.
+        {{ t('codex.x.secretsBlurb') }}
       </p>
     </div>
       <p class="cx-section__blurb">
-        Fifteen sequences nobody wrote down. Fill every well on a weapon or a
-        piece of armour with the right runes in the right order and the piece
-        starts paying something the runes alone do not. Set them at
-        <a routerLink="/forge/enchanting">the Enchanting Table</a>.
+        {{ t('codex.x.wordsA') }}<a routerLink="/forge/enchanting">{{ t('codex.x.enchantTable') }}</a>.
       </p>
     </section>
   </div>
