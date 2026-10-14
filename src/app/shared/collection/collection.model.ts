@@ -220,12 +220,11 @@ const RUNE_HINT: Readonly<Record<ItemRarity, string>> = {
   singular: 'the last rune in the game. Measured in years, not afternoons.',
 };
 
-/** Collection rarity (by what they cost) and realm for the five Essence-shop artifacts. */
+/** Collection rarity (by what they cost) and realm for the four Essence-shop artifacts. */
 const ARTIFACT_ROWS: Readonly<Record<string, { rarity: ItemRarity; style: string }>> = {
   'obsidian-heart': { rarity: 'rare', style: 'infernal' },
   'mirrorblade-kael': { rarity: 'epic', style: 'void' },
   'relic-third-dawn': { rarity: 'epic', style: 'luminous' },
-  'codex-solarii': { rarity: 'legendary', style: 'celestial' },
   'fragment-first-sun': { rarity: 'mythic', style: 'luminous' },
 };
 

@@ -70,24 +70,30 @@ cookie banner, kept.
 | Unused i18n keys | `translation.service.ts` | **REMOVE** behind `check-i18n-keys` | |
 | e2e specs that only covered removed pages | `e2e/` | **REMOVE** | |
 
-## 3. Kept on purpose (owner may still want these gone)
+## 3. Kept on purpose, then decided (follow-up pass, 2026-10-14)
 
-- **Daily tool pipeline** (`pipeline/`, `.github/workflows/daily-pipeline.yml`)
-  — a cron that researches, generates and PRs a new browser tool every day.
-  The world plan leaves "the out-of-credit daily workflow" with the owner, so
-  it is untouched here, but it is the opposite of this pass.
-- **Pro Pack (`ProService`)** — `/pro` already 301s and `activatePro()` has no
-  caller, so nobody can buy it; it still multiplies XP and owns three cosmetic
-  variants. Removing it touches the economy; left for an owner call.
-- **Arena "flavour gate" eggs** (`regex-master`, `json-inception`, `chmod-god`,
-  `hash-meaning`, `css-important`, `uuid-lucky`, `shadow-lord`) — tool-era names
-  still listed as Trials gates in the Codex.
-- **`/api/send-contact` rewrite + `sendContactEmail` function** — the contact
-  page is gone; `functions/` is out of scope for this pass.
-- **`site-stats` Firestore rule** — the visit counter is gone; `firestore.rules`
-  is out of scope.
-- **`shared/npc/delve-missions-board.component.ts`** — imported by nothing, but
-  it is game work in progress, not tools residue.
+The first pass left these for an owner call; the manager decided each one and
+the follow-up pass carried it out (one commit each).
+
+| Leftover | Decision | Done |
+|---|---|---|
+| **Daily tool pipeline** (`pipeline/`, `.github/workflows/daily-pipeline.yml`) — a cron that generated and PR'd a new tool page every day, failing since March | **REMOVED** — the directory, the workflow and the `.gitignore` lines only it used. `ci-cd.yml` untouched | yes |
+| **Pro Pack (`ProService`)** — unbuyable since `/pro` 301s, still doubled XP and granted three cosmetics | **REMOVED** — the service + spec, its cloud-save key `godforge-pro`, `REWARD_SECONDS.proPackS`, and the two variants only it granted (the `pro` title prefix, the `golden` XP bar) with their CSS. The Prismatic frame was an ordinary variant the pack only equipped, so it stays; `grantCosmetic` stays (Collection Log and NPC chains use it) | yes |
+| **Codex Solarii artifact** — its only effect halved tool-lore thresholds (`loreThresholdScale` had no caller) | **REMOVED** — from `ARTIFACTS`, the Collection Log rows, the two Archivist rewards that granted it (`archivist-2`, `delve-archivist-words-3` keep Gold/XP/lore), its card art (manifest entry, two webp files, and `SKIP_FILES` in the importer so a re-import does not restore it); copy now says four artifacts. Zero players, so no refunds | yes |
+| **Achievement Frame** styled `.cx-card`, which the Codex no longer renders | **RETARGETED** to the Collection Log's `.cl-card:not(.cl-card--locked)` — the Codex's only cards now, with the same found/locked split. The Archivist's Runed variant never had a rule; it has one now | yes |
+| **Empty Codex categories** — five realm categories (tool eggs) and Arena (tool-era gate eggs); every public egg was Global | **REMOVED** — the categories, `ARENA_GATE_EGGS`, the Realm filter row, the Category sort, the always-null `gate` / tool fields and three i18n keys. The tool-era flavour-gate eggs themselves were already gone | yes |
+| **4 failing `ActivityProgressionGateway` specs** expecting a full bag to refuse | **REWRITTEN** to the Vault rule: a full satchel routes the grant past the satchel (asserted via `stackPlace`), and the remaining refusal — a bag save that does not stick — returns `persist` and books nothing | yes |
+| **`shared/npc/delve-missions-board.component.ts`** — imported by nothing; the Quest Board's Delve tab replaced it; not in the world plan | **DELETED** | yes |
+| **`/api/send-contact` rewrite** in `firebase.json` | **REMOVED** — no kept code calls it | yes |
+
+### Server-side leftovers (owner; `functions/` and `firestore.rules` untouched)
+
+- `functions/src/contact.ts` → **`sendContactEmail`** (exported from `index.ts`): nothing reaches it now that the rewrite is gone; it still needs `BREVO_API_KEY`.
+- `functions/src/pruneActivity.ts` → **`pruneActivityFeed`** (exported): trims `claude-activity`, the old `/live` feed nothing writes.
+- `functions/src/seedChangelog.ts` and `functions/src/test-functions.ts` (`healthCheck`, `paypalTest`, `stripeTest`): present but **not exported** from `index.ts`, so never deployed — dead files.
+- Kept on purpose: the PayPal / Stripe donation functions (footer donate modals call `stripe-createCheckoutSession`) and `market-*` (player market).
+- `firestore.rules` blocks with no client in `src/app`: `guestbook`, `users/{uid}/catalogs`, `claude-activity`, `live-viewers`, `live-chat`, `bot-chat`, `homepage_subscribers`, `blueprint-suggestions`, `tool-usage`.
+- Still used, keep: **`site-stats`** — `ForgedTodayService` (`shared/social-proof/forged-today.service.ts`) reads and writes it, so the first pass's "visit counter is gone" note does not make the rule dead; `changelog` is read by `/admin`.
 
 ## 4. Results
 
@@ -109,10 +115,3 @@ latest main (after), measured the same way:
 Also found and fixed on the way: the footer's donation modals had no button
 since August, so the kept donation flow was unreachable; it now has a
 "Support the forge" row.
-
-Still to decide (owner): the daily tool-generation pipeline
-(`pipeline/`, `.github/workflows/daily-pipeline.yml`) still exists and, if it
-ever runs with credit, opens a PR adding a new tool page to this game site.
-The Codex Solarii artifact's only effect was tool-lore thresholds, so it now
-does nothing. The Achievement Frame cosmetic styles `.cx-card`, which the Codex
-no longer renders (pre-existing).

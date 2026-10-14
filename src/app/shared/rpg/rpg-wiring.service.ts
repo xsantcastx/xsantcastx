@@ -12,9 +12,8 @@
  * `XpService.setMultiplierSource` replaces its source rather than composing with
  * it — a second caller silently deletes the first — and `EconomyWiringService`
  * is already the one caller, carrying the enchantments, the Mirrorblade, the
- * Relic, the Fragment and the Pro Pack. So the RPG contribution composes inside
- * that existing hook, where the comment on `installHooks` explains the same trap
- * for the Pro Pack.
+ * Relic and the Fragment. So the RPG contribution composes inside that
+ * existing hook, where the comment on `installHooks` explains the trap.
  *
  * That leaves this service with the three pushes the ledger genuinely owns:
  * the flat Gold/sec, the Market price multiplier, and the Enchanting Table's
