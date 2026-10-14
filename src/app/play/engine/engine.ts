@@ -21,8 +21,8 @@ import {
 import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
 import { drawLiquids, lavaLights } from './liquid-render';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
-import { createFog, MapSource, revealAround } from './delve-map';
-import { Column, SectorWorld } from './sector-world';
+import { createFog, findMark, MapSource, MarkTarget, revealAround, terrainReader } from './delve-map';
+import { Column, PlacedStructure, SectorWorld } from './sector-world';
 import { SECTOR } from './sector-gen';
 import { FIELD_NOTE_PREFIX } from '../../shared/delve/field-notes.model';
 import type { BucketId, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
@@ -1604,7 +1604,7 @@ export class SeamworksEngine {
       // A cell the Keeper placed this session is a new grant each time it is dug.
       const gen = this.placedGen.get(index);
       const accepted = this.options.onWorldAction?.({
-        kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: cellKey(col, row),
+        kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: cellKey(col, row), node: node.id,
         materialId: material, qty: material ? qty : undefined, discipline: node.discipline, xp,
         mutationId: `delve:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}${gen ? `:p${gen}` : ''}`,
         ...(node.block ? { block: node.block } : {}),
@@ -2440,6 +2440,58 @@ export class SeamworksEngine {
     const layout = this.layouts.get(this.areaDef.id);
     try { if (layout) this.delve?.explored?.(this.areaDef.id, layout, fog); } catch { /* explored for this session */ }
   }
+  // ── Map v2 (bounties, the compass, the fragment, Glim's mark) ─────────────
+
+  /** The Keeper's world cell in a delve, or null outside one. */
+  keeperCell(): { col: number; row: number } | null {
+    const t = this.terrain;
+    return t ? { col: t.colAt(this.player.x), row: t.rowAt(this.player.y - DELVE_BOX.height * .5) } : null;
+  }
+  /** The generated structure the Keeper stands in (the endless Delve), or null. */
+  structureHere(): PlacedStructure | null {
+    const at = this.keeperCell();
+    return at && this.world && this.world.t === this.terrain ? this.world.structureAt(at.col, at.row) : null;
+  }
+  /**
+   * The Broken Astral Compass: the nearest thing the map has not been told
+   * about, a structure no lantern has touched or a carving in the core not yet
+   * copied (`isRead`), whichever is nearer. Null when there is none near.
+   */
+  compassTarget(isRead: (id: string) => boolean): { col: number; row: number } | null {
+    const at = this.keeperCell();
+    if (!at) return null;
+    const world = this.world && this.world.t === this.terrain ? this.world : null;
+    const s = world?.nearestUnseen(at.col, at.row) ?? null;
+    const carving = findMark(world ? world.coreReader() : terrainReader(this.terrain!), [{ unread: true }], at, isRead);
+    const sAt = s ? { col: s.col + (s.w >> 1), row: s.row + (s.h >> 1) } : null;
+    if (!sAt) return carving;
+    if (!carving) return sAt;
+    const d = (p: { col: number; row: number }) => (p.col - at.col) ** 2 + (p.row - at.row) ** 2;
+    return d(carving) <= d(sAt) ? carving : sAt;
+  }
+  /**
+   * Read a Rift Map Fragment: the nearest structure no lantern has touched
+   * shows on the map, room and surroundings, once `spend` (the host takes the
+   * fragment) says yes. Returns it, or null when there is none within reach of
+   * the reading or the spend was refused (nothing is drawn then).
+   */
+  readRiftMap(spend: (s: PlacedStructure) => boolean): PlacedStructure | null {
+    const at = this.keeperCell();
+    const world = this.world && this.world.t === this.terrain ? this.world : null;
+    if (!at || !world) return null;
+    const s = world.nearestUnseen(at.col, at.row);
+    if (!s || !spend(s)) return null;
+    world.revealArea(s.col - 4, s.col + s.w + 3, s.row - 3, s.row + s.h + 2);
+    return s;
+  }
+  /** Glim's mark: the cell of the first target the core still holds, nearest the Keeper. */
+  findMark(targets: readonly MarkTarget[], isRead: (id: string) => boolean): { col: number; row: number } | null {
+    const at = this.keeperCell();
+    if (!at) return null;
+    const world = this.world && this.world.t === this.terrain ? this.world : null;
+    return findMark(world ? world.coreReader() : terrainReader(this.terrain!), targets, at, isRead);
+  }
+
   /** What the map draws: the delve, its explored cells, the Keeper's cell and the ways out. Null outside a delve. */
   mapSource(): MapSource | null {
     const t = this.terrain, fog = this.fog;

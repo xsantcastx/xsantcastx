@@ -432,6 +432,11 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'rendered from Glowcap Minnows at the Crafting Bench' },
   { id: 'obsidian-block', rarity: 'uncommon', realm: 'infernal',
     hint: 'wherever water meets lava in the Ember Delve' },
+  // Map v2's map tools (shared/delve/map-tools.model.ts).
+  { id: 'broken-astral-compass', rarity: 'rare', realm: 'celestial',
+    hint: 'the Board Herald\'s first bounty, on the Quest Board' },
+  { id: 'rift-map-fragment', rarity: 'uncommon', realm: 'umbral',
+    hint: 'a rift shrine\'s first touch in the Ember Delve, or the Board Herald on every seventh bounty day' },
 ];
 
 /** Consumables, with the same treatment. */
@@ -517,6 +522,10 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'seam-bucket': 'Holds water, lava or starlight. Refuses the Void, which is the most sensible thing a bucket has ever done.',
   'seam-bucket-water': 'A Seam Bucket holding one full cell of water. Pour it where it is wanted, or onto lava.',
   'seam-bucket-lava': 'A Seam Bucket holding one full cell of lava. Heavier than it looks, hotter than it should be.',
+  // Canon (item lore codex): "points toward the nearest fact omitted by the active model".
+  'broken-astral-compass': 'It stopped pointing north the day the Godforge broke. Now it points at whatever the map was never told: the room no lantern has reached, the carving nobody copied.',
+  // Canon: "a partial route that is legible only beside another keeper's incompatible observation".
+  'rift-map-fragment': 'Half a route, drawn by a Keeper who saw the tunnels differently. It only reads beside your own map; read together, one more room appears.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -726,6 +735,8 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'ember-grub': 'Ember Grub',
   'lampfish-oil': 'Lampfish Oil',
   'obsidian-block': 'Obsidian block',
+  'broken-astral-compass': 'Broken Astral Compass',
+  'rift-map-fragment': 'Rift Map Fragment',
 };
 
 function loreFor(id: string): string {

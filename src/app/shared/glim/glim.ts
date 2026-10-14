@@ -23,6 +23,8 @@
  *
  * Copy: the lazy glim i18n table (EN + ES). No Angular, no browser APIs.
  */
+import type { MarkTarget } from '../../play/engine/delve-map';
+
 // ── The hint ladder ─────────────────────────────────────────────────────────
 
 /** 1 nudge, 2 direction, 3 Show me. */
@@ -36,8 +38,8 @@ export interface GlimHintRow {
   /**
    * Step 3. 'walk': Glim flies to the goal's place and the Keeper follows (the
    * goal line's own Show me). 'here': the thing is where the Keeper stands; the
-   * line says so. 'atlas': a pin on Glim's Atlas, which is not drawn yet
-   * (slice S4), so the ladder stops at step 2 for these.
+   * line says so. 'atlas': "I'll mark it": Glim drops a temporary mark on the
+   * Delve map at the mission's target (GLIM_MARKS; map v2).
    */
   show: 'walk' | 'here' | 'atlas';
 }
@@ -86,22 +88,60 @@ export const GLIM_HINTS: Readonly<Record<string, GlimHintRow>> = {
 /** What Glim says to anything off the ladder. */
 export const GLIM_REFUSAL = 'play.glim.hint.yours';
 
-/** How many steps a subject's ladder has: 3, or 2 while its Show me waits for the Atlas. 0 = no ladder. */
-export function ladderTop(subject: string): 0 | 2 | 3 {
-  const row = Object.prototype.hasOwnProperty.call(GLIM_HINTS, subject) ? GLIM_HINTS[subject] : undefined;
-  if (!row) return 0;
-  return row.show === 'atlas' ? 2 : 3;
+/** How many steps a subject's ladder has: 3 (every row has its Show me now). 0 = no ladder. */
+export function ladderTop(subject: string): 0 | 3 {
+  return Object.prototype.hasOwnProperty.call(GLIM_HINTS, subject) ? 3 : 0;
+}
+
+// ── Glim's marks (step 3 of a Delve mission: "I'll mark it") ───────────────
+
+/**
+ * Where each Delve mission's mark goes on the map (engine/delve-map.ts
+ * findMark): the first target the core still holds, nearest the Keeper. Where
+ * to look, never what a carving says: a mark on a carving is a place, the same
+ * kindness as the direction line.
+ */
+export const GLIM_MARKS: Readonly<Record<string, readonly MarkTarget[]>> = {
+  'delve-verrin-shadow': [{ node: 'shadow-root' }],
+  'delve-kael-seam': [{ node: 'kaels-cache' }, { node: 'slag-vein' }],
+  'delve-merchant-glowcaps': [{ node: 'glowcap' }],
+  'delve-archivist-words-1': [{ unread: true }],
+  'delve-archivist-words-2': [{ unread: true }],
+  'delve-archivist-words-3': [{ unread: true }],
+  'delve-fracture': [{ node: 'godforge-fragment' }],
+  'fish-drowned-lamp-1': [{ liquid: 'water', rows: [26, 40] }],
+  'fish-drowned-lamp-2': [{ inscription: 'grotto-drowned-lamp' }],
+  'fish-drowned-lamp-3': [{ liquid: 'water', rows: [26, 40] }],
+  'fish-verrin-eels': [{ liquid: 'water', rows: [0, 26] }],
+  'fish-merchant-order': [{ liquid: 'water', rows: [26, 40] }, { liquid: 'lava', rows: [40, 56] }],
+  'fish-merchant-debt': [{ liquid: 'lava', rows: [40, 56] }],
+  'fish-archivist-pages': [{ liquid: 'water' }],
+};
+/** How long a mark stays on the map. */
+export const GLIM_MARK_MS = 30 * 60_000;
+/** The memory key a mark is stamped under (GlimState.lastAt). */
+export function markKey(missionId: string): string { return `mark.${missionId}`; }
+/** The mission whose mark is still on the map (the latest one, within GLIM_MARK_MS), or null. */
+export function activeMark(lastAt: Readonly<Record<string, number>>, now: number): string | null {
+  let best: string | null = null, at = 0;
+  for (const [key, stamp] of Object.entries(lastAt)) {
+    if (!key.startsWith('mark.') || now - stamp >= GLIM_MARK_MS || now < stamp - 60_000 || stamp <= at) continue;
+    best = key.slice(5); at = stamp;
+  }
+  return best && GLIM_MARKS[best] ? best : null;
 }
 
 export interface GlimHint {
   /** The step shown (0 = refused: no ladder for this subject). */
   step: 0 | GlimStep;
-  /** Steps this ladder has (0, 2 or 3). */
-  top: 0 | 2 | 3;
+  /** Steps this ladder has (0 or 3). */
+  top: 0 | 3;
   /** The line to say. */
   key: string;
   /** Step 3 with a place to go: walk there (Glim flies ahead). */
   walk: boolean;
+  /** Step 3 of a Delve mission: Glim marks the target on the map. */
+  mark?: boolean;
 }
 
 /**
@@ -116,6 +156,7 @@ export function glimHint(subject: string, step: number): GlimHint {
   const s = Math.max(1, Math.min(top, Math.floor(step) || 1)) as GlimStep;
   if (s === 1) return { step: 1, top, key: row.nudge, walk: false };
   if (s === 2) return { step: 2, top, key: row.direction, walk: false };
+  if (row.show === 'atlas') return { step: 3, top, key: 'play.glim.hint.mark', walk: false, mark: true };
   return row.show === 'walk'
     ? { step: 3, top, key: 'play.glim.hint.follow', walk: true }
     : { step: 3, top, key: 'play.glim.hint.here', walk: false };

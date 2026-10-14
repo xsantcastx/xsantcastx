@@ -170,6 +170,24 @@ export interface MapSource {
   shafts: readonly number[];
   /** The endless Delve: the whole explored world, beyond the loaded ring `t` (sector-world.ts). */
   world?: WorldMap;
+  /** Map v2: the Keeper's pins and Glim's mark (drawn over the markers). */
+  pins?: readonly MapPinView[];
+  /** Where the full map's dotted way leads: a tracked pin or Glim's mark. Absent: the camp. */
+  goal?: { col: number; row: number } | null;
+  /** The Broken Astral Compass, held: the nearest thing the map has not been told about. */
+  pointer?: { col: number; row: number } | null;
+}
+
+/** One pin as the map draws it. */
+export interface MapPinView {
+  id: string;
+  col: number;
+  row: number;
+  color: string;
+  /** Glim's temporary mark: a lamplight diamond, not a pin. */
+  glim?: boolean;
+  selected?: boolean;
+  tracked?: boolean;
 }
 
 /** The endless Delve's map, in world columns (map v2: drawn column by column from sector pictures). */
@@ -229,7 +247,7 @@ export function drawDelveMap(c: CanvasRenderingContext2D, source: MapSource, vie
   const markers = mapMarkers(t, fog, source.keeper, source.shafts);
   let length = -1;
   if (view.path) {
-    const camp = markers.find(m => m.kind === 'camp');
+    const camp = source.goal ?? markers.find(m => m.kind === 'camp');
     if (camp) {
       const from = t.index(Math.max(0, Math.min(t.cols - 1, source.keeper.col)), Math.max(0, Math.min(t.rows - 1, source.keeper.row)));
       const path = pathThrough(t, fog, from, t.index(camp.col, camp.row));
@@ -254,6 +272,7 @@ export function drawDelveMap(c: CanvasRenderingContext2D, source: MapSource, vie
     }
   }
   drawMarkers(c, markers, ox, oy, s);
+  drawOverlays(c, source, view, ox, oy, s);
   c.restore();
   return length;
 }
@@ -314,7 +333,7 @@ function drawWorldMap(c: CanvasRenderingContext2D, source: MapSource, world: Wor
   for (const col of source.shafts) markers.push({ kind: 'shaft', col, row: -1 });
   markers.push({ kind: 'keeper', ...source.keeper });
   let length = -1;
-  const camp = world.camp;
+  const camp = source.goal ?? world.camp;
   if (view.path && camp) {
     const dot = Math.max(1, Math.round(s / 3));
     c.fillStyle = '#e8c898';
@@ -336,7 +355,135 @@ function drawWorldMap(c: CanvasRenderingContext2D, source: MapSource, world: Wor
     }
   }
   drawMarkers(c, markers, ox, oy, s);
+  drawOverlays(c, source, view, ox, oy, s);
   c.restore();
   return length;
+}
+
+/**
+ * Map v2 overlays: the Broken Astral Compass's ray, the Keeper's pins and
+ * Glim's mark, and (the minimap) an arrow on the edge toward a goal that is
+ * off it. Pixel glyphs with a dark rim, like the markers.
+ */
+function drawOverlays(c: CanvasRenderingContext2D, source: MapSource, view: MapView, ox: number, oy: number, s: number): void {
+  const k = source.keeper;
+  if (source.pointer) {
+    // The compass points toward, it does not route: a short dotted ray, ten cells long.
+    const dx = source.pointer.col - k.col, dy = source.pointer.row - k.row, d = Math.hypot(dx, dy);
+    if (d > 0) {
+      const dot = Math.max(2, Math.round(s / 2));
+      c.fillStyle = POINTER_COLOR;
+      for (let n = 2; n <= Math.min(10, d); n += 1.5) {
+        const x = Math.round(ox + (k.col + .5 + dx / d * n) * s - dot / 2), y = Math.round(oy + (k.row + .5 + dy / d * n) * s - dot / 2);
+        c.fillRect(x, y, dot, dot);
+      }
+    }
+  }
+  const g = Math.max(4, s + 3);
+  for (const pin of source.pins ?? []) {
+    const x = Math.round(ox + (pin.col + .5) * s), y = Math.round(oy + (pin.row + .5) * s);
+    const half = Math.floor(g / 2);
+    c.fillStyle = '#140a1f';
+    if (pin.glim) {
+      // A lamplight diamond: Glim's mark.
+      for (let r = -half - 1; r <= half + 1; r++) { const w = half + 1 - Math.abs(r); c.fillRect(x - w, y + r, w * 2 + 1, 1); }
+      c.fillStyle = pin.color;
+      for (let r = -half; r <= half; r++) { const w = half - Math.abs(r); c.fillRect(x - w, y + r, w * 2 + 1, 1); }
+      continue;
+    }
+    // A map pin: a head over a stem, its tip on the cell.
+    const top = y - g - half;
+    c.fillRect(x - half - 1, top - 1, g + 2, g + 2);
+    c.fillRect(x - 1, top + g, 3, half + 2);
+    c.fillStyle = pin.color;
+    c.fillRect(x - half, top, g, g);
+    c.fillRect(x, top + g, 1, half + 1);
+    if (pin.selected || pin.tracked) {
+      c.fillStyle = pin.selected ? '#ffffff' : '#140a1f';
+      c.fillRect(x - 1, top + half - 1, 3, 3);
+    }
+  }
+  // The minimap: a goal off its edge gets an arrow on the edge, pointing at it.
+  const goal = source.goal;
+  if (!view.path && goal) {
+    const gx = ox + (goal.col + .5) * s, gy = oy + (goal.row + .5) * s;
+    if (gx < 0 || gy < 0 || gx > view.width || gy > view.height) {
+      const cx = view.width / 2, cy = view.height / 2, dx = gx - cx, dy = gy - cy;
+      const t = Math.min((view.width / 2 - 6) / Math.max(1e-6, Math.abs(dx)), (view.height / 2 - 6) / Math.max(1e-6, Math.abs(dy)));
+      const ax = cx + dx * t, ay = cy + dy * t, a = Math.atan2(dy, dx), size = Math.max(5, s * 2);
+      c.fillStyle = GOAL_COLOR;
+      c.beginPath();
+      c.moveTo(ax + Math.cos(a) * size, ay + Math.sin(a) * size);
+      c.lineTo(ax + Math.cos(a + 2.4) * size, ay + Math.sin(a + 2.4) * size);
+      c.lineTo(ax + Math.cos(a - 2.4) * size, ay + Math.sin(a - 2.4) * size);
+      c.closePath();
+      c.fill();
+    }
+  }
+}
+/** The compass ray: rune violet (the art bible's map palette). */
+export const POINTER_COLOR = '#c9a4ff';
+/** A tracked goal's edge arrow: the dotted way's aged gold. */
+const GOAL_COLOR = '#e8c898';
+
+// ── Finding a mark (Glim's step 3; the compass) ─────────────────────────────
+
+/** What Glim marks for a mission: the first of these that the Delve holds. */
+export interface MarkTarget {
+  /** A terrain node id (the nearest one standing). */
+  node?: string;
+  /** One carved inscription by id. */
+  inscription?: string;
+  /** The nearest carving in the core not yet copied. */
+  unread?: boolean;
+  /** The nearest settled water or lava, optionally between two rows. */
+  liquid?: 'water' | 'lava';
+  rows?: readonly [number, number];
+}
+/** A read-only view of the cells a mark may be found in (the core, wherever the ring is). */
+export interface CellReader {
+  col0: number;
+  col1: number;
+  rows: number;
+  kind(col: number, row: number): number;
+  /** Liquid type (0 none, 1 water, 2 lava) with level > 0, else 0. */
+  liquid(col: number, row: number): number;
+  note(col: number, row: number): string | undefined;
+}
+const NODE_INDEX = new Map(TERRAIN_NODE_LIST.map((node, i) => [node.id, i]));
+/**
+ * The cell a mark points at: the first target in `targets` that resolves, the
+ * nearest such cell to `from`. Null when none does (the thing was dug out).
+ * A scan of the reader's cells: call it on a HUD tick, never per frame.
+ */
+export function findMark(r: CellReader, targets: readonly MarkTarget[], from: { col: number; row: number }, isRead: (id: string) => boolean = () => false): { col: number; row: number } | null {
+  for (const target of targets) {
+    const node = target.node ? NODE_INDEX.get(target.node) : undefined;
+    if (target.node && node === undefined) continue;
+    const liquid = target.liquid === 'water' ? 1 : target.liquid === 'lava' ? 2 : 0;
+    const [r0, r1] = target.rows ?? [0, r.rows];
+    let best: { col: number; row: number } | null = null, bestD = Infinity;
+    for (let col = r.col0; col < r.col1; col++) for (let row = Math.max(0, r0); row < Math.min(r.rows, r1); row++) {
+      let hit = false;
+      if (node !== undefined) hit = r.kind(col, row) === node;
+      else if (target.inscription) hit = r.note(col, row) === target.inscription;
+      else if (target.unread) { const id = r.note(col, row); hit = !!id && !id.startsWith('field:') && !isRead(id); }
+      else if (liquid) hit = r.liquid(col, row) === liquid;
+      if (!hit) continue;
+      const d = (col - from.col) * (col - from.col) + (row - from.row) * (row - from.row);
+      if (d < bestD) { bestD = d; best = { col, row }; }
+    }
+    if (best) return best;
+  }
+  return null;
+}
+/** A reader over a plain grid (the shipped core before the endless Delve; tests). */
+export function terrainReader(t: Terrain): CellReader {
+  return {
+    col0: t.colLo, col1: t.colHi, rows: t.rows,
+    kind: (col, row) => t.kind[t.index(col, row)],
+    liquid: (col, row) => { const i = t.index(col, row); return t.liqLevel[i] > 0 ? t.liqType[i] : 0; },
+    note: (col, row) => t.inscriptions.get(t.index(col, row)),
+  };
 }
 
