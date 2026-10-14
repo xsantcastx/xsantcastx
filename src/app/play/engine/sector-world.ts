@@ -508,28 +508,35 @@ export class SectorWorld {
     return {
       col0, col1, sectors,
       paint: (c0, c1, data) => {
-        const w = c1 - c0;
+        const w = c1 - c0, t = this.t, fog = this.fog;
         for (let sx = Math.floor(c0 / SECTOR); sx * SECTOR < c1; sx++) {
-          const mc = columnFor(sx);
+          // Straight off the arrays (the minimap repaints five times a second): the ring when loaded, else the column.
+          const inRing = this.loaded.has(sx);
+          const column = inRing ? this.columns.get(sx) : columnFor(sx) ? this.columns.get(sx) : undefined;
           for (let lc = 0; lc < SECTOR; lc++) {
             const x = sx * SECTOR + lc - c0;
             if (x < 0 || x >= w) continue;
             for (let row = 0; row < rows; row++) {
               const o = (row * w + x) * 4, i = row * SECTOR + lc;
-              if (!mc) fogPixel(data, o);
-              else mapPixel(mc.kind(i), mc.base(i), mc.seen(i), biomeOfRow[row], walls, mc.healed[row >> 5] > 0, data, o);
+              if (!column) { fogPixel(data, o); continue; }
+              let kind: number, seen: boolean;
+              if (inRing) { const r = t.index(sx * SECTOR + lc, row); kind = t.kind[r]; seen = (fog[r >> 3] & (1 << (r & 7))) !== 0; }
+              else { kind = column.kind[i]; seen = (column.fog[i >> 3] & (1 << (i & 7))) !== 0; }
+              mapPixel(kind, column.gen.kind[i], seen, biomeOfRow[row], walls, column.healed[row >> 5] > 0, data, o);
             }
           }
         }
       },
       markers: (c0, c1) => {
         const out: MapMarker[] = [];
+        const t = this.t, fog = this.fog;
         for (let sx = Math.floor(c0 / SECTOR); sx * SECTOR < c1; sx++) {
-          const mc = this.loaded.has(sx) || this.columns.has(sx) ? this.mapColumn(sx, false) : null;
-          if (!mc) continue;
+          const column = this.columns.get(sx), inRing = this.loaded.has(sx);
+          if (!column) continue;
           for (let i = 0; i < SECTOR * rows; i++) {
-            if (!mc.seen(i)) continue;
-            const k = mc.kind(i), note = mc.gen.notes.has(i) && k === INSCRIPTION;
+            const r = inRing ? t.index(sx * SECTOR + (i % SECTOR), (i / SECTOR) | 0) : i;
+            if (inRing ? !(fog[r >> 3] & (1 << (r & 7))) : !(column.fog[i >> 3] & (1 << (i & 7)))) continue;
+            const k = inRing ? t.kind[r] : column.kind[i], note = column.gen.notes.has(i) && k === INSCRIPTION;
             const kind = k === CAMP ? 'camp' : k === CHEST ? 'chest' : k === TORCH ? 'torch' : k === SHRINE ? 'shrine' : note ? 'inscription' : null;
             if (kind) out.push({ kind, col: sx * SECTOR + (i % SECTOR), row: Math.floor(i / SECTOR) });
           }
