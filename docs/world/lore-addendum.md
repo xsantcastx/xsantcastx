@@ -811,3 +811,52 @@ origin and the Archivist's rule; "Also called: —" (the dash waits for Act III)
   where two of its voices disagree." Builds on: Bible, the Pattern ("replacing
   every alternative with its preferred pattern"); Atlas, "readable
   vulnerability".
+
+### Story Act I in the game (S2, 2026-10-14)
+
+**Shipped — owner reviews in play.** The Prologue and Act I as they now play
+(`src/app/shared/story/`, EN + ES in `story.i18n.ts`). Lines that already stand
+above (the Prologue card, the act break, the Archivist's "dated tomorrow", Glim's
+"the part that fit in the room") ship as written. New here:
+
+- **The Act I card, "The Old Seam"** (shown when the Keeper reads their first
+  carving, which ends the Prologue):
+  > Kael, from the Rune Forge, without looking up: "You read it. Most people step
+  > over it." · The crack under the Seamworks goes further down than anyone has
+  > charted. Someone went down it before you, and kept count. · Verrin, Kael, the
+  > Merchant and the Archivist each have work for you in the Delve. Glim has a
+  > great deal of blank map.
+
+  Builds on: world-and-cast §2, Prologue end; Game, `roots-keepers-tally`.
+- **The fresh mark, and how the Keeper knows it is theirs.** The `magma-unsigned`
+  carving is drawn as what it says: one weathered mark and one pale, fresh-cut
+  mark with a notch at the top where the stroke turned. Glim: "Hold still. The
+  new mark has a notch where the stroke turned. Your pick leaves that notch." ·
+  "Every wall you've cut has it. That mark is yours, and I didn't see you make
+  it." Builds on: Game, `magma-unsigned` ("a fresh one beside it"; Codex: "cut
+  while you were reading the first"); world-and-cast §1 ("The fresh one is you").
+- **The Keepers' tally, drawn.** `roots-keepers-tally` shows five marks at Keeper
+  height, four struck through, the fifth worn smooth. Glim: "Five marks at Keeper
+  height. Four struck through. Somebody has been counting Keepers." Builds on:
+  Game, `roots-keepers-tally`; Game, Kael capstone ("The other four are still in
+  the walls").
+- **Verrin, on The Shadow Beneath:** "There are marks on the wall by the old
+  root. Look at them if you must. Do not count them." Builds on: world-and-cast
+  §2, Act I movement 1.
+- **Kael, on The Old Seam** (the mission consumes the hammer, so it stays with
+  him rather than going back to the Keeper): "I'll keep it under the anvil. I
+  don't want to hold it when it's needed. I want to know where it is." Builds
+  on: world-and-cast §2, Act I movement 2.
+- **The Merchant, on a Glowcap order:** "Those prices in the Grotto? My hand.
+  Inventory, friend. Everybody has a past; mine is itemised." Builds on: Game,
+  `grotto-tally-marks`; world-and-cast §2, Act I movement 3.
+- **Glim, after the act break:** "Five witnesses. I've started five blank pages.
+  They're my favourite kind." Builds on: Glim's voice (§4, "keeps the blank parts
+  of the map on purpose").
+- **The Story tab, "The Keeper's Record":** one short entry per beat found (e.g.
+  *Bolts toward the shaft*: "You felled a Rivet Maw. The Maws hoard joins, and
+  they drag their bolts toward the Delve shaft. Glim marked it.") and one lead
+  toward the next, which says where to look and never what is there. Act II's
+  lead: "Five witnesses, one from each realm. Kael is waiting for their
+  accounts. Act II opens in a later update." Builds on: Bible, "Continue
+  Journey".

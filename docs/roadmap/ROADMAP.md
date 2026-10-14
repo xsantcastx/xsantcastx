@@ -8,7 +8,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 1. **Water, lava, lakes, Fishing v1** — Delve & Beyond slice 1. *(built, awaiting merge: `docs/handoff/liquids-fishing.md`)*
 2. **UX follow-ups** — Material Vendor on the kit, Homestead + six surfaces in Spanish. *(in flight)*
-3. **Story Act I framing** (world & cast S2) — Prologue + Act I scenes, a Story journal. Starts when liquids land (engine overlap).
+3. ~~**Story Act I framing**~~ (world & cast S2) — ✅ shipped: Prologue tab on the goals, the Act I card, keeper lines on the missions, the fresh mark, the act break, the Story tab (`docs/handoff/story-act1.md`).
 4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2, daily bounties.
 5. **NPC depth pass** (world & cast S3) — personal names on keepers, act-aware lines.
 6. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
@@ -25,7 +25,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 | **M6 Feel & stability** | No phone crash, cool idle, Delve navigation, minimap, Glim | ✅ shipped |
 | **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; liquids + Fishing v1 built |
 | **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 📐 designing |
-| **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I next |
+| **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I ✅ · NPC depth next |
 | **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | ⏳ needs art |
 | **M11 Players** | Player market live (owner deploy), real-device QA, launch | ⏳ owner |
 
@@ -37,6 +37,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## Daily review log
 
+- **2026-10-14 (story)** — Shipped: **Act I framing** (Prologue + Act I, the fresh mark, the Story tab, `godforge-story`). Next: NPC depth (S3) reads the beats.
 - **2026-10-14 (later)** — Phase 6 slice 1 built: water and lava (10 Hz cellular flow, obsidian, buckets,
   swimming, breath, lava burn), the Grotto Mere and lava pools in the core, Fishing 1–99 (rods, bait,
   Line Tension, catch tables, crates, junk, legendaries, the Ledger Catch, the Drowned Lamp chain and

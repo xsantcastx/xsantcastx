@@ -49,6 +49,7 @@ import { mergeFishingSaves } from '../fishing/fishing-save';
 import { mergeGatherSaves } from '../skills/gather-save.model';
 import { mergeGamesLedgers } from '../games/play-ledger';
 import { mergeGlim } from '../glim/glim-save.model';
+import { mergeStory } from '../story/story-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -386,6 +387,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // field only grows; the hand-written merge keeps the earlier meeting stamp
     // (the structural rule would keep the later one) and drops junk ids.
     merge: mergeGlim,
+  },
+  {
+    key: 'godforge-story',
+    collection: 'progress',
+    doc: 'story',
+    label: 'The Keeper\'s story',
+    // `{ version, chapter, beats, cards }`: the story beats reached and the
+    // act-boundary cards shown. Beats are monotonic, so the union of both and
+    // the further chapter; hand-written so unknown ids are dropped and the
+    // chapter is never behind its beats. See story-save.model.ts.
+    merge: mergeStory,
   },
 ];
 

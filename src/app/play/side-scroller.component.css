@@ -1437,6 +1437,121 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .glim-say { animation: none; }
 }
 .stage:has(.book) .glim-say { visibility: hidden; }
+
+/*
+ * ── The story (shared/story) ────────────────────────────────────────────────
+ * The chapter the goal line belongs to sits on the row's top border like a
+ * label on a ledger tab: drawn by the row itself, so it never moves the row.
+ */
+.guide[data-chapter]::before {
+  content: attr(data-chapter);
+  position: absolute;
+  top: -9px;
+  left: 10px;
+  padding: 0 6px;
+  border: 1px solid var(--adventure-ember);
+  background: var(--adventure-hud-panel-solid);
+  color: var(--adventure-hud-gold);
+  font: 600 8px/14px Orbitron, sans-serif;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.guide--folded[data-chapter]::before { display: none; }
+/* A keeper's story line rides Glim's line under their own name and monogram. */
+.glim-say__mono {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 2px solid var(--mono);
+  background: color-mix(in srgb, var(--mono) 28.00%, var(--adventure-hud-panel-solid));
+  color: var(--adventure-parchment);
+  font: 700 10px/1 Orbitron, sans-serif;
+  font-style: normal;
+}
+/*
+ * The act-boundary card: a pixel-framed page over a dimmed world, three short
+ * paragraphs at most, one Continue. Chunky corner studs and a stepped double
+ * border on the 2 px art grid; with reduced motion it simply appears.
+ */
+.story-veil {
+  position: absolute;
+  inset: 0;
+  z-index: 8;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--adventure-hud-shadow) 72.00%, transparent);
+  animation: story-veil-in .45s ease-out both;
+}
+.story-card {
+  position: relative;
+  width: min(560px, 100%);
+  max-height: calc(100% - 32px);
+  overflow: auto;
+  padding: 22px 24px 18px;
+  border: 2px solid var(--adventure-hud-brass);
+  border-radius: 0;
+  background: var(--adventure-hud-panel-solid);
+  box-shadow: 0 0 0 2px var(--adventure-hud-ink), 0 0 0 4px var(--adventure-ember), 0 18px 44px color-mix(in srgb, var(--adventure-hud-shadow) 80.00%, transparent);
+  animation: story-card-in .6s cubic-bezier(.22, 1, .36, 1) both;
+}
+.story-card::before {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  pointer-events: none;
+  background:
+    linear-gradient(var(--adventure-hud-gold) 0 0) top left / 8px 8px no-repeat,
+    linear-gradient(var(--adventure-hud-gold) 0 0) top right / 8px 8px no-repeat,
+    linear-gradient(var(--adventure-hud-gold) 0 0) bottom left / 8px 8px no-repeat,
+    linear-gradient(var(--adventure-hud-gold) 0 0) bottom right / 8px 8px no-repeat;
+}
+.story-card__kicker {
+  margin: 0 0 4px;
+  color: var(--adventure-ember);
+  font: 600 10px Orbitron, sans-serif;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+.story-card__title {
+  margin: 0 0 14px;
+  padding-bottom: 10px;
+  border-bottom: 2px dashed color-mix(in srgb, var(--adventure-hud-brass) 55.00%, transparent);
+  color: var(--adventure-beacon-text);
+  font: 600 19px/1.25 Orbitron, sans-serif;
+}
+.story-card__p {
+  margin: 0 0 12px;
+  color: var(--adventure-parchment);
+  font-size: 15px;
+  line-height: 1.55;
+}
+.story-card__go {
+  display: block;
+  min-height: 44px;
+  min-width: 44px;
+  margin: 16px 0 0 auto;
+  padding: 0 22px;
+  color: var(--adventure-parchment);
+  border-color: var(--adventure-ember);
+}
+@keyframes story-veil-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes story-card-in {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .story-veil, .story-card { animation: none; }
+}
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .story-card { padding: 18px 16px 14px; }
+  .story-card__title { font-size: 16px; }
+  .story-card__p { font-size: 14px; line-height: 1.5; }
+}
 @media (min-width: 901px) and (hover: hover), (min-width: 901px) and (pointer: fine), (min-width: 901px) and (pointer: none), (min-width: 901px) and (min-height: 500.02px) {
   .stage--column .glim-say { left: 322px; }
   .stage:not(.hearth-shut) .glim-say { left: 228px; right: 580px; }
