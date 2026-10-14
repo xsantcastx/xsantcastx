@@ -241,6 +241,12 @@ export interface DialogueContext {
   equipped: ReadonlySet<string>;
   /** Ids of NPC quest steps that are accepted and unclaimed. */
   activeQuests: ReadonlySet<string>;
+  /**
+   * Story beats this Keeper has reached (shared/story, `godforge-story`).
+   * Optional: a context without it reaches no beat, so a beat-gated row stays
+   * silent rather than spoiling a moment the Keeper has not lived.
+   */
+  storyBeats?: ReadonlySet<string>;
 }
 
 export interface DialogueConditions {
@@ -253,6 +259,8 @@ export interface DialogueConditions {
   comboCount?: number;
   /** An NPC quest step id that must be accepted and unclaimed. */
   questActive?: string;
+  /** A story beat id (story-save.model.ts) the Keeper must have reached. Act-aware lines (S3). */
+  storyBeat?: string;
 }
 
 export interface DialogueTrigger {
@@ -293,7 +301,17 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
       'Do not rush the making. The Sun took an age and still called itself unfinished.',
       'You are further along than you believe. That is usually true of the ones who ask.',
       'Something in the lattice sang when you arrived. I have not decided what it meant.',
+      'I could tell you the answer. Then it would be mine, and you would only carry it.',
+      'Ilyra hears what the prisms disagree about. I trust her ears over my crystals.',
     ],
+  },
+  // Act-aware rows (world & cast S3): said only once the Keeper has lived the beat.
+  {
+    npcId: 'aureth',
+    page: '*',
+    priority: 50,
+    conditions: { storyBeat: 'a1.break' },
+    lines: ['So the crack was drawn. I suspected it. I did not want to be the one who said so.'],
   },
   {
     npcId: 'aureth',
@@ -343,7 +361,22 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
       'I am not the opposite of Aureth. I am what happens after her.',
       'You keep locking doors. I keep noticing which ones you check twice.',
       'Nothing here will hurt you. That is not the same as nothing here watching.',
+      'Your little lamp leaves the dark parts blank. I like it more than I expected to.',
     ],
+  },
+  {
+    npcId: 'verrin',
+    page: '*',
+    priority: 50,
+    conditions: { storyBeat: 'a1.tally' },
+    lines: ['You counted. Everyone does. It\'s fine. They were made to be counted.'],
+  },
+  {
+    npcId: 'verrin',
+    page: '*',
+    priority: 51,
+    conditions: { storyBeat: 'a1.eater' },
+    lines: ['It sank. It did not end. I would know.'],
   },
   {
     npcId: 'verrin',
@@ -382,7 +415,30 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
       'You want advice? Strike it again. Most problems are one more strike away.',
       'Armour cracks. Keep wearing it. That is what armour is for.',
       'I have rebuilt this forge four times. It gets easier and it never gets easy.',
+      'Don\'t thank me. Thank the ore. It did the hard part.',
+      'Mara is the best student I\'ve had. Tell her and I\'ll deny it.',
     ],
+  },
+  {
+    npcId: 'kael',
+    page: '*',
+    priority: 50,
+    conditions: { storyBeat: 'p.words' },
+    lines: ['Read them all. Then tell me which ones you wish you hadn\'t.'],
+  },
+  {
+    npcId: 'kael',
+    page: '*',
+    priority: 51,
+    conditions: { storyBeat: 'a1.hammer' },
+    lines: ['It\'s still under the anvil. I check on it more often than I\'d admit.'],
+  },
+  {
+    npcId: 'kael',
+    page: '*',
+    priority: 52,
+    conditions: { storyBeat: 'a1.break' },
+    lines: ['Five honest accounts. Liars are cheap; I already have a drawer of them.'],
   },
   {
     npcId: 'kael',
@@ -430,7 +486,16 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
       'Knowledge is a shape, Convergent, and yours is getting interesting.',
       'A hint is a kindness. An answer is a theft. I deal only in kindnesses.',
       'Ask me what is missing. It is a better question than what is here.',
+      'That moth ate a map, you know. It was my map. I\'ve decided to call it a promotion.',
+      'Nox Aster keeps the charts honest next door. It costs them. I notice.',
     ],
+  },
+  {
+    npcId: 'archivist',
+    page: '*',
+    priority: 50,
+    conditions: { storyBeat: 'a1.dated' },
+    lines: ['I have filed the dated one under "pending". Nothing has been pending this long.'],
   },
   {
     npcId: 'archivist',
@@ -476,7 +541,24 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
       'Coin is only frozen effort, friend. Thaw some.',
       'No refunds, no exchanges, no hard feelings, no exceptions, no.',
       'I like you. That is a business position, not a personal one.',
+      'A building of your own! You are, in the technical sense, a customer now.',
+      'I don\'t sell hope, friend. Hope\'s a terrible margin. I sell glowcaps.',
+      'Edrin buys what I won\'t. I buy what Edrin can\'t afford to. It\'s a living.',
     ],
+  },
+  {
+    npcId: 'merchant',
+    page: '*',
+    priority: 50,
+    conditions: { storyBeat: 'a1.prices' },
+    lines: ['Yes, the Grotto prices are mine. No, I won\'t honour them. Inflation, friend.'],
+  },
+  {
+    npcId: 'merchant',
+    page: '*',
+    priority: 51,
+    conditions: { storyBeat: 'a1.break' },
+    lines: ['A world where everything is the same has nothing to trade. Remember who said it.'],
   },
   {
     npcId: 'merchant',
@@ -586,6 +668,7 @@ export function triggerApplies(t: DialogueTrigger, ctx: DialogueContext): boolea
   if (c.hasAchievement !== undefined && !ctx.achievements.has(c.hasAchievement)) return false;
   if (c.hasItem !== undefined && !ctx.equipped.has(c.hasItem)) return false;
   if (c.questActive !== undefined && !ctx.activeQuests.has(c.questActive)) return false;
+  if (c.storyBeat !== undefined && !ctx.storyBeats?.has(c.storyBeat)) return false;
   return true;
 }
 

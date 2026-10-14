@@ -860,3 +860,53 @@ above (the Prologue card, the act break, the Archivist's "dated tomorrow", Glim'
   lead: "Five witnesses, one from each realm. Kael is waiting for their
   accounts. Act II opens in a later update." Builds on: Bible, "Continue
   Journey".
+
+### The people in the towns (S3, 2026-10-14)
+
+**Shipped — owner reviews in play.** The Bible's ten chapter people take the
+stations world-and-cast §3 gives them, by name, with the approved role title
+kept as the subtitle on their tag (`play/world/life.ts`, `life.i18n.ts`, EN +
+ES). Their lines are world-and-cast §3's voice lines, plus new ones written to
+it; which open when is `play/world/keeper-lines.ts`. New here:
+
+- **Placements decided.** Mara Voss (Crafting Bench), Edrin Kade (Material
+  Vendor), Amina Thorne (Exchange), Nox Aster (Leaderboards), Kesh Arbo (Skills
+  Lodge), Siv Moss (Sanctum) take over the role keepers' tags. Four people are
+  new in the world: **Sera Quill** at the Meridian Orrery's Waystone; **Tomas
+  Rill** beside the Heliograph Court's Waystone ("the lanterns that light the
+  Waystone road"; the Court Lanterns station waits for Act II ch. 1);
+  **Ilyra Venn** at the Court's East Stair, where the Reflection Channels'
+  dawn-glass begins (her Witness Prisms wait for ch. 1); **Rook Sable** at the
+  Unrecorded Corridors, on the far side of the mouth from Verrin (the Mirror
+  Map waits for ch. 4). Canon keepers wear their epithet as the subtitle
+  (Kael · the Broken Flame; the Merchant · of the long till).
+- **Still unnamed:** the Vault Clerk (Edrin's cousin), Enchanter (trained in
+  the Archive), Croupier (the Merchant's employee), Board Herald, Arena
+  Gatekeeper (walked the roads with Siv before the knee went) and Trials Warden
+  (keeps Verrin's door). Each has the §3 depth line and two or three more.
+- **Kael's hammer stays under the anvil.** world-and-cast §2 had Kael give it
+  back ("Keep it in the Vault"); the shipped mission consumes it, so his line
+  after *The Old Seam* is "It's still under the anvil. I check on it more often
+  than I'd admit." Mara: "Kael brought his old hammer up from the seam. He
+  won't let me touch it. Good."
+- **Act-aware lines, by beat:** after the first carving, Kael ("Read them all.
+  Then tell me which ones you wish you hadn't.") and Ilyra; after the tally,
+  Verrin ("You counted. Everyone does…") and Rook; after the Merchant's prices,
+  the Merchant ("No, I won't honour them. Inflation, friend.") and Amina; after
+  the Seam Eater, Verrin ("It sank. It did not end. I would know."), Edrin,
+  Siv and the Trials Warden; after the fresh mark, Tomas ("A mark you don't
+  remember making. I know that feeling from the other side."); after *dated
+  tomorrow*, the Archivist and Ilyra; after the act break, Kael ("Five honest
+  accounts. Liars are cheap; I already have a drawer of them."), Aureth ("So
+  the crack was drawn. I suspected it."), the Merchant, Mara, Edrin, Amina,
+  Nox, Sera, Tomas and the Board Herald. None of them names who drew the line.
+- **Station lines:** each keeper notices the Keeper's first use of their
+  station (Mara's "Ugly seam. Honest seam. Keep it.", Edrin's "Yours patched
+  one today.", the Vault Clerk's "Line one.", Kesh's "The lodge rang a little").
+- **The town as a web:** thirty lines name another keeper: Mara and Kael (he
+  won't tell her she's his best student; he tells you, and will deny it), Edrin
+  and Mara, Edrin and the Merchant, the Vault Clerk and Edrin, Ilyra and Tomas,
+  Aureth and Ilyra, Amina and the Merchant, Rook and Amina, Rook and Verrin, Sera
+  and Nox, Sera and Kael ("the variable"), Siv and Kesh, the Gatekeeper and Siv.
+- **People of the Realms** (Codex, Collection tab): one public entry per keeper
+  (where they stand, who they are, what they teach). No beat or secret is in it.
