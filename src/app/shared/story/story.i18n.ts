@@ -62,7 +62,6 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   },
 
   // ── Lines, said once when the beat happens (through Glim's line; a keeper's own voice where it is theirs) ──
-  'story.say.p.words.1': { en: 'You read it. Most people step over it.', es: 'Lo leiste. Casi todos pasan por encima.' },
   'story.say.a1.shadow.1': { en: 'There are marks on the wall by the old root. Look at them if you must. Do not count them.', es: 'Hay marcas en el muro junto a la vieja raiz. Miralas si debes. No las cuentes.' },
   'story.say.a1.tally.1': { en: 'Five marks at Keeper height. Four struck through. Somebody has been counting Keepers.', es: 'Cinco marcas a la altura de un Guardian. Cuatro tachadas. Alguien ha estado contando Guardianes.' },
   'story.say.a1.hammer.1': { en: "I'll keep it under the anvil. I don't want to hold it when it's needed. I want to know where it is.", es: 'Lo guardare bajo el yunque. No quiero tenerlo en la mano cuando haga falta. Quiero saber donde esta.' },

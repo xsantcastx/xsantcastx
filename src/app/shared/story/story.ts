@@ -64,8 +64,9 @@ export const STORY_BEATS: readonly StoryBeat[] = [
   { id: 'p.edge', chapter: 'prologue', reached: f => f.armed, lines: 0, speaker: 'glim' },
   { id: 'p.maw', chapter: 'prologue', reached: f => f.hunted, lines: 0, speaker: 'glim' },
   { id: 'p.dig', chapter: 'prologue', reached: f => f.dug, lines: 0, speaker: 'glim' },
-  // The Prologue ends when the Keeper reads their first carving (any of them).
-  { id: 'p.words', chapter: 'prologue', reached: f => f.inscriptions.size > 0, lines: 1, speaker: 'kael' },
+  // The Prologue ends when the Keeper reads their first carving (any of them). Kael's
+  // words ("You read it. Most people step over it.") open the Act I card, not a line.
+  { id: 'p.words', chapter: 'prologue', reached: f => f.inscriptions.size > 0, lines: 0, speaker: 'kael' },
   // ── Act I — The Old Seam ──
   { id: 'a1.shadow', chapter: 'act1', reached: f => f.missionDone('delve-verrin-shadow'), lines: 1, speaker: 'verrin' },
   { id: 'a1.tally', chapter: 'act1', reached: f => f.inscriptions.has('roots-keepers-tally'), lines: 1, speaker: 'glim' },

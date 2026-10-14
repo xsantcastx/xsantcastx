@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
 import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor } from '../shared/activity/activity.model';
 import { EconomyService } from '../shared/economy/economy.service';
@@ -384,7 +384,10 @@ export class SideScrollerComponent implements OnDestroy {
         this.engine?.setChat(snapshot.messages, snapshot.id);
       }));
       this.mountEngine();
-      this.atSub = this.route.queryParamMap.subscribe(params => this.zone.run(() => this.applyAt(params.get('at'))));
+      // Only a change of `at` moves the world: a hosted page that writes its own query
+      // (the Character hub's ?tab=) must not read as "no place open" and close itself.
+      this.atSub = this.route.queryParamMap.pipe(map(params => params.get('at')), distinctUntilChanged())
+        .subscribe(at => this.zone.run(() => this.applyAt(at)));
       // Cloud save replaced the Delve (another device's dig): rebuild it from the merged save.
       this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
       // Cloud save merged another device's harvests: nodes re-read their regrowth.

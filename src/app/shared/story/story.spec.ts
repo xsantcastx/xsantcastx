@@ -57,12 +57,13 @@ describe('Story: the beats', () => {
     expect(pendingCard(s)).toBeNull();
   });
 
-  it('reading the first carving ends the Prologue: Kael speaks and the Act I card waits', () => {
+  it('reading the first carving ends the Prologue: the Act I card (Kael\'s words) waits', () => {
     const s0 = advanceStory(emptyStory(), facts(PROLOGUE), true).state;
     const r = advanceStory(s0, facts({ ...PROLOGUE, inscriptions: new Set(['roots-inverse-tree']) }), true);
     expect(r.reached).toEqual(['p.words']);
     expect(r.state.chapter).toBe('act1');
-    expect(r.lines).toEqual([{ beat: 'p.words', speaker: 'kael', key: 'story.say.p.words.1' }]);
+    expect(r.lines).toEqual([]);
+    expect(en('story.card.act1.p1')).toContain('Most people step over it');
     expect(pendingCard(r.state)).toBe('act1');
     expect(pendingCard(cardShown(r.state, 'act1'))).toBeNull();
   });
