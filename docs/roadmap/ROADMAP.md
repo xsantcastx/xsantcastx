@@ -8,7 +8,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 1. **Delves in every realm** (owner, 2026-10-14) — Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists), each with its own biomes, creatures, keeper missions and story. **Top item after the weekly budget resets (Mon).**
 2. **The Underhearth** (Phase 8). *(in flight)*
-3. **The Mirror Slate** — casino anywhere + Homestead management. *(in flight)*
+3. **The Mirror Slate** — casino anywhere + Homestead management. *(built 2026-10-14, `docs/handoff/mirror-slate.md`)*
 4. **Uncapped levels, Tibia-style** — skills past 99 on a steepening curve; diminishing tool bonuses; swing floor and reward caps stay; milestone titles. *(in flight)*
 5. **Glim bond** — bond levels unlock Glim's story, conversations and small abilities. *(in flight)*
 6. **A surface with height** — climbable trees, ledges, floating ruins, parkour routes with rewards at the top. *(in flight)*

@@ -437,6 +437,11 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'the Board Herald\'s first bounty, on the Quest Board' },
   { id: 'rift-map-fragment', rarity: 'uncommon', realm: 'umbral',
     hint: 'a rift shrine\'s first touch in the Ember Delve, or the Board Herald on every seventh bounty day' },
+  // The Mirror Slate (shared/slate/slate-items.model.ts).
+  { id: 'mirror-slate', rarity: 'rare', realm: 'umbral',
+    hint: 'Lune Coyne, after ten plays at her tables in the Nocturne Archive (or bought from her)' },
+  { id: 'mirror-slate-ii', rarity: 'epic', realm: 'umbral',
+    hint: 'Kael binds a Mirror Slate\'s second face at the Rune Forge, with Glowcap, slag and obsidian' },
 ];
 
 /** Consumables, with the same treatment. */
@@ -526,6 +531,9 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'broken-astral-compass': 'It stopped pointing north the day the Godforge broke. Now it points at whatever the map was never told: the room no lantern has reached, the carving nobody copied.',
   // Canon: "a partial route that is legible only beside another keeper's incompatible observation".
   'rift-map-fragment': 'Half a route, drawn by a Keeper who saw the tunnels differently. It only reads beside your own map; read together, one more room appears.',
+  // Canon (Umbral: "beneath a fractured moon mirror"); lore-addendum, "The Mirror Slate".
+  'mirror-slate': 'A palm of the Archive\'s moon mirror, cut where it cracked and bound in Kael\'s brass. It shows what it was facing when it broke: the tables, and whatever you left burning at home.',
+  'mirror-slate-ii': 'Kael woke the glass\'s other face with Grotto light and Delve slag. Now it also remembers where you marked the dark, and what Pim read off the board this morning.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -737,6 +745,8 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'obsidian-block': 'Obsidian block',
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',
+  'mirror-slate': 'Mirror Slate',
+  'mirror-slate-ii': 'Mirror Slate II',
 };
 
 function loreFor(id: string): string {
