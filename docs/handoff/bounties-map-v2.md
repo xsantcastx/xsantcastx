@@ -12,7 +12,8 @@ Herald's bounties and the map tools" (shipped — owner reviews in play). Built 
 
 - **Three Delve bounties a day**, on a new **Bounties** tab of the Quest Board (first after Ready), read out by
   Pim Larkin, Board Herald. Same station kit: the journal list, the selected bounty, ONE Claim button with its
-  reward; story, rules and counts behind Details.
+  reward; story, rules and counts behind Details. On this tab the TODAY strip counts the bounties claimed ("1/3 claimed ·
+  three new ones tomorrow").
 - **Drawn for you alone**: a pure function of your Delve's seed, the calendar day, the deepest stratum you have
   reached and the explored frontier east and west of the core (`drawBounties`). Drawn on the first read of the day
   and frozen (a reach target is set against the frontier at the draw). Two players see different boards; one player
@@ -117,6 +118,8 @@ seed lore), Found in lines and sources/uses (`MAP_TOOLS`); `check:meaning` holds
 - `node scripts/economy-sim.mjs --bounties` (in `--check`): tiers inside the daily band, a day ≤ 60 min of income,
   the floor never beats the income after 30 min, a day's XP 4% of a level at Delving 20, 2,400 draws (determinism,
   kinds, strata, reach past the frontier).
+- Gates on this branch: full Karma 2215/2215 (a first run hit the known Spanish-leak flake in four
+  VaultStationComponent specs; the rerun was green), full `e2e/play-*` on chromium 131/131.
 - e2e (chromium): `play-bounties.spec.ts` (1280×800: a torch counts, three claims, the compass, nothing twice after a
   reload; 390×844: 44 px tab and Claim on screen, the seventh-day fragment, Details counts),
   `play-delve-nav.spec.ts` (+1 per size: place, icon, name, track, the way, reload, remove; every pin control 44 px),
