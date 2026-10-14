@@ -419,6 +419,64 @@ const ANCHOR: Shape = [
   '................',
 ];
 
+// The Rift Gates and the Ink Deeps: an ore lump, a realm sigil, the Veil Lantern.
+const LUMP: Shape = [
+  '................',
+  '................',
+  '................',
+  '......oooo......',
+  '....oollbboo....',
+  '...olleebbbbo...',
+  '..olebbbfbbbdo..',
+  '..olbbbbbbbbdo..',
+  '.olbbfbbbbbbbdo.',
+  '.obbbbbbbebbbdo.',
+  '.obbbbbbbbbbddo.',
+  '..odbbbbbbbddo..',
+  '...oddddddddo...',
+  '....oooooooo....',
+  '................',
+  '................',
+];
+
+const SIGIL: Shape = [
+  '................',
+  '.....oooooo.....',
+  '...oollllddoo...',
+  '..olleeeeeeddo..',
+  '.olleooffooeddo.',
+  '.oleoffffffoedo.',
+  'olleoffeeffoeddo',
+  'oleeofeeeefoeedo',
+  'oleeofeeeefoeedo',
+  'olleoffeeffoeddo',
+  '.oleoffffffoedo.',
+  '.olleooffooeddo.',
+  '..oddeeeeeeddo..',
+  '...ooddddddoo...',
+  '.....oooooo.....',
+  '................',
+];
+
+const LANTERN: Shape = [
+  '.......oo.......',
+  '......o..o......',
+  '......o..o......',
+  '....oooooooo....',
+  '....olllbbdo....',
+  '...olfeeeefdo...',
+  '...olfeeeefdo...',
+  '...olfeeeefdo...',
+  '...olfeeeefdo...',
+  '...olfeeeefdo...',
+  '...olffffffdo...',
+  '....obbbbbdo....',
+  '....oooooooo....',
+  '......oddo......',
+  '.......oo.......',
+  '................',
+];
+
 const RUBBINGS: Shape = [
   '................',
   '..oooooooooooo..',
@@ -484,6 +542,12 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   'bark-rope': { shape: ROPE, palette: { b: '#8a6a3a', l: '#c8a060', d: '#5a4020', f: '#7fb04a' } },
   'thornroot-grapple': { shape: GRAPPLE, palette: { b: '#6a4a2c', l: '#a6845a', d: '#3a2614', t: '#7fb04a' } },
   'rift-anchor': { shape: ANCHOR, palette: { b: '#463650', l: '#6a5878', d: '#2e2238', e: '#b88cff', f: '#ffffff' }, glow: '#b88cff' },
+  // The Rift Gates and the Ink Deeps (rift-gates.model.ts): splinters, sigil, the two ores, the Veil Lantern.
+  'rift-splinter': { shape: SHARD, palette: { b: '#33284a', l: '#9a84c4', e: '#e8d8ff', d: '#1a1428', f: '#ffffff' }, glow: '#b88cff' },
+  'umbral-sigil': { shape: SIGIL, palette: { l: '#9a84c4', d: '#33284a', e: '#a48bff', f: '#120a1e' }, glow: '#a48bff' },
+  'inkstone': { shape: LUMP, palette: { b: '#1c1626', l: '#3a2e4c', d: '#0a0812', e: '#8a6cff', f: '#6a4adf' } },
+  'nightglass': { shape: SHARD, palette: { b: '#3a3060', l: '#c8b8ff', e: '#ffffff', d: '#141020', f: '#e8d8ff' }, glow: '#c8b8ff' },
+  'veil-lantern': { shape: LANTERN, palette: { l: '#9a84c4', b: '#33284a', d: '#1a1428', e: '#e8d8ff', f: '#a48bff' }, glow: '#e8d8ff' },
 };
 
 /**

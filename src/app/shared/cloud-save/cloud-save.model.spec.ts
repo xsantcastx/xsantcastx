@@ -639,6 +639,8 @@ describe('the registry', () => {
       'godforge-infusions',
       'godforge-inventory',
       'godforge-pinned',
+      // The realm Delves' region slots, four per realm (rift-gates.model.ts RIFT_SLOT_KEYS).
+      ...['celestial', 'luminous', 'umbral', 'verdant'].flatMap(realm => Array.from({ length: 4 }, (_, n) => `godforge-rift-${realm}-r${n}`)),
       'godforge-roster',
       'godforge-runes',
       'godforge-scrolls',

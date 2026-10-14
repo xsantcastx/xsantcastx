@@ -668,6 +668,23 @@ export const UNDERHEARTH_RECIPES: readonly CraftingRecipe[] = [
     { realm: 'infernal', craftTime: 2, count: 3 }),
 ];
 
+/**
+ * The Rift Gates (shared/delve/rift-gates.model.ts): a Realm Sigil attunes a
+ * realm's gate once (the gate keeps it), and the Ink Deeps' own make. Only the
+ * Umbral's sigil exists: the other three realms' gates are still settling, and
+ * their sigils ship with their Delves (docs/handoff/rift-gates.md).
+ */
+export const RIFT_RECIPES: readonly CraftingRecipe[] = [
+  r('craft-umbral-sigil', 'Umbral Sigil', 'delve', 'epic', 'umbral-sigil',
+    [m('rift-splinter', 4), m('umbral-ink', 2), m('emberheart-ore', 1)],
+    12_000, 50, 'Four rift splinters round an emberheart core, inked with the Umbral\'s own: the key to the Umbral Rift Gate in the Underhearth. Needs Smithing 50.',
+    { stack: true, skill: 'smithing' }),
+  r('craft-veil-lantern', 'Veil Lantern', 'delve', 'rare', 'veil-lantern',
+    [m('inkstone', 6), m('nightglass', 2), m('glowcap', 3)],
+    8_000, 55, 'Carried in the Ink Deeps, your lantern reaches further into the gloom and keeps some light under ink. Needs Smithing 55.',
+    { stack: true, skill: 'smithing' }),
+];
+
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...WEAPON_RECIPES,
   ...ARMOR_RECIPES,
@@ -678,6 +695,7 @@ export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...DELVE_KIT_RECIPES,
   ...FISHING_RECIPES,
   ...UNDERHEARTH_RECIPES,
+  ...RIFT_RECIPES,
 ];
 
 const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));

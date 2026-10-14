@@ -49,10 +49,18 @@ import type { MapPin } from './map-pins.model';
 import { openRegionStore, type RegionStore } from './delve-region-store';
 import type { DelveSectorStore, SectorSave } from '../../play/engine/engine.model';
 import { TERRAIN_NODE_LIST } from '../../play/engine/terrain';
+import { realmOfArea, realmSeed, RIFT_REALMS, riftSlotKeys, type RiftRealm } from './rift-gates.model';
 
 interface LiveArea { layout: string; cells: Map<number, number>; seen?: string; bits?: Uint8Array; wet?: string; liquids?: string }
 interface LiveSector { g: number; t: number; cells: Map<number, number>; liquids: Map<number, number>; fog: Uint8Array | null; receipts: Set<number>; h?: number }
 interface LiveRegion { rx: number; ry: number; t: number; sectors: Map<string, LiveSector>; pins: Map<string, PinRecord>; slot: number; dirty: boolean; slotDirty: boolean; slotAt: number }
+/**
+ * One endless world's regions: the Ember Delve's (`realm` null, its 16 slots),
+ * or a realm Delve's behind a Rift Gate (rift-gates.model.ts: its own seed from
+ * the player's, its own 4 slots `godforge-rift-<realm>-r0..3`). Its core's
+ * cells live in the index under the realm's area id, like the Ember Delve's.
+ */
+interface LiveWorld { realm: RiftRealm | null; regions: Map<string, LiveRegion>; keys: readonly string[]; coreSectors: number; coreCols: number }
 
 /** How long dug cells wait in memory before they are written. */
 export const DEBOUNCE_MS = 1500;
@@ -81,6 +89,21 @@ export class DelveSaveService implements DelveSectorStore {
   private readonly live = new Map<string, LiveArea>();
   /** The endless Delve's regions, by `rx_ry`, under the save's seed. */
   private readonly regions = new Map<string, LiveRegion>();
+  /** Every endless world: the Ember Delve's first, then each realm Delve behind a Rift Gate (realm-gen.ts cores are 64 wide). */
+  private readonly worlds: readonly LiveWorld[] = [
+    { realm: null, regions: this.regions, keys: REGION_SLOT_KEYS, coreSectors: CORE_SECTORS, coreCols: 120 },
+    ...RIFT_REALMS.map((realm): LiveWorld => ({ realm, regions: new Map(), keys: riftSlotKeys(realm), coreSectors: 2, coreCols: 64 })),
+  ];
+  /** The world an area's sectors belong to (any area but a realm Delve's: the Ember Delve's). */
+  private worldOf(areaId: string): LiveWorld {
+    const realm = realmOfArea(areaId);
+    return (realm && this.worlds.find(w => w.realm === realm)) || this.worlds[0];
+  }
+  /** A world's seed: the save's, or (a realm Delve) derived from it. */
+  private seedOf(world: LiveWorld): number {
+    const seed = this.save?.seed ?? 0;
+    return world.realm ? realmSeed(seed, world.realm) : seed;
+  }
   /** This device's copy of every region (null until it opens; SSR: never). */
   private device: RegionStore | null = null;
   private deviceReady = false;
@@ -101,9 +124,11 @@ export class DelveSaveService implements DelveSectorStore {
   // ── DelvePersistence (the engine calls these) ─────────────────────────────
 
   /** The player's seed, rolled and saved on first ask. Undefined on the server: the spec's seed is used. */
-  seed(_areaId: string): number | undefined {
+  seed(areaId: string): number | undefined {
     const save = this.ensure();
-    return save?.seed;
+    if (!save) return undefined;
+    const realm = realmOfArea(areaId);
+    return realm ? realmSeed(save.seed, realm) : save.seed;
   }
 
   cells(areaId: string, layout: string): ReadonlyMap<number, number> | null {
@@ -157,24 +182,24 @@ export class DelveSaveService implements DelveSectorStore {
 
   // ── Sectors (the endless Delve; engine.model DelveSectorStore) ────────────
 
-  sector(_areaId: string, sx: number, sy: number): SectorSave | null {
+  sector(areaId: string, sx: number, sy: number): SectorSave | null {
     if (!this.ensure()) return null;
-    const live = this.regions.get(this.regionKeyOf(sx, sy))?.sectors.get(sectorKey(sx, sy));
+    const live = this.worldOf(areaId).regions.get(this.regionKeyOf(sx, sy))?.sectors.get(sectorKey(sx, sy));
     if (!live) return null;
     return { g: live.g, t: live.t, cells: live.cells, liquids: live.liquids, fog: live.fog, receipts: live.receipts, ...(live.h ? { healed: live.h } : {}) };
   }
 
-  sectorChanged(_areaId: string, sx: number, sy: number, g: number, local: number, kind: number | null, receipt?: boolean): void {
+  sectorChanged(areaId: string, sx: number, sy: number, g: number, local: number, kind: number | null, receipt?: boolean): void {
     if (!this.ensure() || !Number.isInteger(local) || local < 0 || local >= 1024) return;
-    const { region, sector } = this.sectorFor(sx, sy, g, true)!;
+    const { region, sector } = this.sectorFor(this.worldOf(areaId), sx, sy, g, true)!;
     if (kind === null) sector.cells.delete(local); else sector.cells.set(local, kind);
     if (receipt) sector.receipts.add(local);
     this.touched(region, sector);
   }
 
-  sectorLiquids(_areaId: string, sx: number, sy: number, g: number, cells: ReadonlyMap<number, number>): void {
+  sectorLiquids(areaId: string, sx: number, sy: number, g: number, cells: ReadonlyMap<number, number>): void {
     if (!this.ensure()) return;
-    const found = this.sectorFor(sx, sy, g, cells.size > 0);
+    const found = this.sectorFor(this.worldOf(areaId), sx, sy, g, cells.size > 0);
     if (!found) return;
     const { region, sector } = found;
     if (encodeRuns(sector.liquids) === encodeRuns(cells)) return;
@@ -182,9 +207,9 @@ export class DelveSaveService implements DelveSectorStore {
     this.touched(region, sector);
   }
 
-  sectorExplored(_areaId: string, sx: number, sy: number, g: number, fog: Uint8Array): void {
+  sectorExplored(areaId: string, sx: number, sy: number, g: number, fog: Uint8Array): void {
     if (!this.ensure()) return;
-    const { region, sector } = this.sectorFor(sx, sy, g, true)!;
+    const { region, sector } = this.sectorFor(this.worldOf(areaId), sx, sy, g, true)!;
     const next = sector.fog ? sector.fog.slice() : new Uint8Array(8);
     let changed = !sector.fog;
     for (let i = 0; i < 8; i++) { const v = next[i] | (fog[i] ?? 0); if (v !== next[i]) { next[i] = v; changed = true; } }
@@ -195,10 +220,10 @@ export class DelveSaveService implements DelveSectorStore {
     this.schedule();
   }
 
-  sectorKeys(_areaId: string): readonly { sx: number; sy: number }[] {
+  sectorKeys(areaId: string): readonly { sx: number; sy: number }[] {
     if (!this.ensure()) return [];
     const out: { sx: number; sy: number }[] = [];
-    for (const region of this.regions.values()) for (const key of region.sectors.keys()) { const at = parseSectorKey(key); if (at) out.push(at); }
+    for (const region of this.worldOf(areaId).regions.values()) for (const key of region.sectors.keys()) { const at = parseSectorKey(key); if (at) out.push(at); }
     return out;
   }
 
@@ -293,18 +318,25 @@ export class DelveSaveService implements DelveSectorStore {
     for (const [key, region] of this.regions) if (region.slot >= 0) out[region.slot] = key;
     return out;
   }
+  /** A realm Delve's slots, slot by slot ('' = empty). Tests and the handoff. */
+  realmSlotRegions(realm: RiftRealm): string[] {
+    const world = this.worlds.find(w => w.realm === realm)!;
+    const out = new Array<string>(world.keys.length).fill('');
+    for (const [key, region] of world.regions) if (region.slot >= 0) out[region.slot] = key;
+    return out;
+  }
 
   private regionKeyOf(sx: number, sy: number): string { const r = regionOf(sx, sy); return regionKey(r.rx, r.ry); }
 
-  /** The live sector (and its region), made on first need (`create`) under generator `g`. */
-  private sectorFor(sx: number, sy: number, g: number, create: boolean): { region: LiveRegion; sector: LiveSector } | null {
+  /** The live sector (and its region) of a world, made on first need (`create`) under generator `g`. */
+  private sectorFor(world: LiveWorld, sx: number, sy: number, g: number, create: boolean): { region: LiveRegion; sector: LiveSector } | null {
     const key = this.regionKeyOf(sx, sy);
-    let region = this.regions.get(key);
+    let region = world.regions.get(key);
     if (!region) {
       if (!create) return null;
       const r = regionOf(sx, sy);
       region = { rx: r.rx, ry: r.ry, t: 0, sectors: new Map(), pins: new Map(), slot: -1, dirty: false, slotDirty: false, slotAt: 0 };
-      this.regions.set(key, region);
+      world.regions.set(key, region);
     }
     let sector = region.sectors.get(sectorKey(sx, sy));
     if (!sector || sector.g !== g) {
@@ -410,7 +442,7 @@ export class DelveSaveService implements DelveSectorStore {
       this.hydrated = true;
       this.load();
       this.saves.register(DELVE_KEY, { flush: () => this.flush(), rehydrate: () => this.rehydrate() });
-      REGION_SLOT_KEYS.forEach((key, slot) => this.saves.register(key, { flush: () => this.flush(), rehydrate: () => this.rehydrateSlot(slot) }));
+      for (const world of this.worlds) world.keys.forEach((key, slot) => this.saves.register(key, { flush: () => this.flush(), rehydrate: () => this.rehydrateSlot(slot, world) }));
       void this.openDeviceStore();
     }
     if (!this.save) {
@@ -424,22 +456,24 @@ export class DelveSaveService implements DelveSectorStore {
     this.save = coerceDelveSave(this.store.read(DELVE_KEY));
     this.live.clear();
     for (const [id, area] of Object.entries(this.save?.areas ?? {})) this.live.set(id, { layout: area.layout, cells: decodeCells(area.cells), seen: area.seen, wet: area.wet, liquids: area.liquids });
-    this.regions.clear();
-    REGION_SLOT_KEYS.forEach((_, slot) => this.loadSlot(slot));
+    for (const world of this.worlds) {
+      world.regions.clear();
+      world.keys.forEach((_, slot) => this.loadSlot(slot, world));
+    }
   }
 
-  /** Read one slot blob into memory (merged with what is there for its region). */
-  private loadSlot(slot: number): void {
-    const region = coerceRegion(this.store.read(REGION_SLOT_KEYS[slot]));
-    for (const live of this.regions.values()) if (live.slot === slot) live.slot = -1;
-    if (!region || !this.save || region.seed !== this.save.seed) return;
+  /** Read one slot blob of a world into memory (merged with what is there for its region). */
+  private loadSlot(slot: number, world: LiveWorld = this.worlds[0]): void {
+    const region = coerceRegion(this.store.read(world.keys[slot]));
+    for (const live of world.regions.values()) if (live.slot === slot) live.slot = -1;
+    if (!region || !this.save || region.seed !== this.seedOf(world)) return;
     const key = regionKey(region.rx, region.ry);
-    const mine = this.regions.get(key);
-    const merged = mine ? mergeRegion(this.toRegion(key, mine), region) : region;
+    const mine = world.regions.get(key);
+    const merged = mine ? mergeRegion(this.toRegion(key, mine, world), region) : region;
     const live = this.fromRegion(merged);
     live.slot = slot;
     live.dirty = mine?.dirty ?? false; live.slotDirty = mine?.slotDirty ?? false; live.slotAt = mine?.slotAt ?? 0;
-    this.regions.set(key, live);
+    world.regions.set(key, live);
   }
 
   /** The device's regions arrived (IndexedDB is asynchronous): merge them in, regrow what has grown back, rebuild the engine. */
@@ -450,13 +484,15 @@ export class DelveSaveService implements DelveSectorStore {
     const regions = await store.load().catch(() => [] as DelveRegion[]);
     let changed = false;
     for (const region of regions) {
-      if (!this.save || region.seed !== this.save.seed) continue;
-      const key = regionKey(region.rx, region.ry), mine = this.regions.get(key);
+      // Each world keeps its own seed's regions (a realm Delve's seed is derived from the save's).
+      const world = this.save ? this.worlds.find(w => region.seed === this.seedOf(w)) : undefined;
+      if (!world) continue;
+      const key = regionKey(region.rx, region.ry), mine = world.regions.get(key);
       // The device's copy is local; the slot's may hold another device's digs: union, the device winning a cell.
-      const merged = mine ? mergeRegion(region, this.toRegion(key, mine)) : region;
+      const merged = mine ? mergeRegion(region, this.toRegion(key, mine, world)) : region;
       const live = this.fromRegion(merged);
       live.slot = mine?.slot ?? -1; live.dirty = mine?.dirty ?? false; live.slotDirty = mine?.slotDirty ?? false; live.slotAt = mine?.slotAt ?? 0;
-      this.regions.set(key, live);
+      world.regions.set(key, live);
       changed = true;
     }
     if (this.regrowFar()) changed = true;
@@ -470,23 +506,28 @@ export class DelveSaveService implements DelveSectorStore {
    */
   regrowFar(): boolean {
     const now = this.now();
-    const anchors: { sx: number; sy: number }[] = [];
-    for (const area of this.live.values()) for (const [index, kind] of area.cells) if (ANCHOR.has(kind)) anchors.push({ sx: Math.floor((index % 120) / 32), sy: Math.floor(Math.floor(index / 120) / 32) });
-    for (const region of this.regions.values()) for (const [key, sector] of region.sectors) {
-      if (![...sector.cells.values()].some(k => ANCHOR.has(k))) continue;
-      const at = parseSectorKey(key);
-      if (at) anchors.push(at);
-    }
     let any = false;
-    for (const region of this.regions.values()) {
-      for (const [key, sector] of region.sectors) {
+    for (const world of this.worlds) {
+      const anchors: { sx: number; sy: number }[] = [];
+      for (const [id, area] of this.live) {
+        if (this.worldOf(id) !== world) continue;
+        for (const [index, kind] of area.cells) if (ANCHOR.has(kind)) anchors.push({ sx: Math.floor((index % world.coreCols) / 32), sy: Math.floor(Math.floor(index / world.coreCols) / 32) });
+      }
+      for (const region of world.regions.values()) for (const [key, sector] of region.sectors) {
+        if (![...sector.cells.values()].some(k => ANCHOR.has(k))) continue;
         const at = parseSectorKey(key);
-        if (!at) continue;
-        const diff = this.toDiff(sector);
-        if (!shouldRegrow(at.sx, at.sy, diff, now, { coreSectors: CORE_SECTORS, placed: k => !!PLACED[k], anchors })) continue;
-        region.sectors.set(key, this.fromDiff(regrow(diff, now)));
-        region.dirty = true; region.slotDirty = true;
-        any = true;
+        if (at) anchors.push(at);
+      }
+      for (const region of world.regions.values()) {
+        for (const [key, sector] of region.sectors) {
+          const at = parseSectorKey(key);
+          if (!at) continue;
+          const diff = this.toDiff(sector);
+          if (!shouldRegrow(at.sx, at.sy, diff, now, { coreSectors: world.coreSectors, placed: k => !!PLACED[k], anchors })) continue;
+          region.sectors.set(key, this.fromDiff(regrow(diff, now)));
+          region.dirty = true; region.slotDirty = true;
+          any = true;
+        }
       }
     }
     if (any) this.schedule();
@@ -495,17 +536,17 @@ export class DelveSaveService implements DelveSectorStore {
 
   private rehydrate(): void {
     if (this.timer) { clearTimeout(this.timer); this.timer = null; }
-    const regions = new Map(this.regions);
+    const before = this.worlds.map(world => new Map(world.regions));
     this.load();
     // Regions only this device holds (not in a slot) survive a re-read of the index and slots.
-    for (const [key, region] of regions) if (!this.regions.has(key) && region.slot < 0) this.regions.set(key, region);
+    this.worlds.forEach((world, n) => { for (const [key, region] of before[n]) if (!world.regions.has(key) && region.slot < 0) world.regions.set(key, region); });
     this.reloaded$$.next();
   }
 
   /** Cloud save merged a slot: re-read it (the region it holds may now be another device's). */
-  private rehydrateSlot(slot: number): void {
+  private rehydrateSlot(slot: number, world: LiveWorld = this.worlds[0]): void {
     if (!this.hydrated) return;
-    this.loadSlot(slot);
+    this.loadSlot(slot, world);
     this.reloaded$$.next();
   }
 
@@ -541,11 +582,18 @@ export class DelveSaveService implements DelveSectorStore {
 
   /** Every changed region to this device's store. */
   private writeDevice(): void {
-    const dirty = [...this.regions.entries()].filter(([, r]) => r.dirty);
-    if (!dirty.length || !this.device) return;
-    for (const [, r] of dirty) r.dirty = false;
-    const keep = new Set([...this.regions.entries()].filter(([, r]) => r.slot >= 0).map(([key]) => key));
-    void this.device.put(dirty.map(([key, r]) => this.toRegion(key, r)), keep);
+    if (!this.device) return;
+    const out: DelveRegion[] = [];
+    const keep = new Set<string>();
+    for (const world of this.worlds) {
+      for (const [key, r] of world.regions) {
+        if (r.slot >= 0) keep.add(key);
+        if (!r.dirty) continue;
+        r.dirty = false;
+        out.push(this.toRegion(key, r, world));
+      }
+    }
+    if (out.length) void this.device.put(out, keep);
   }
 
   /**
@@ -557,21 +605,23 @@ export class DelveSaveService implements DelveSectorStore {
     if (!this.save) return;
     const at = this.now();
     let next = Infinity;
-    const pending = [...this.regions.entries()].filter(([, r]) => r.slotDirty).sort((a, b) => b[1].t - a[1].t);
-    for (const [key, region] of pending) {
-      if (region.slot < 0) {
-        const used = new Set([...this.regions.values()].map(r => r.slot).filter(s => s >= 0));
-        let slot = [...Array(REGION_SLOTS).keys()].find(s => !used.has(s)) ?? -1;
-        if (slot < 0) {
-          const oldest = [...this.regions.values()].filter(r => r.slot >= 0 && r !== region).sort((a, b) => a.t - b.t)[0];
-          if (!oldest || oldest.t > region.t) continue;
-          slot = oldest.slot; oldest.slot = -1;
+    for (const world of this.worlds) {
+      const pending = [...world.regions.entries()].filter(([, r]) => r.slotDirty).sort((a, b) => b[1].t - a[1].t);
+      for (const [key, region] of pending) {
+        if (region.slot < 0) {
+          const used = new Set([...world.regions.values()].map(r => r.slot).filter(s => s >= 0));
+          let slot = [...Array(world.keys.length).keys()].find(s => !used.has(s)) ?? -1;
+          if (slot < 0) {
+            const oldest = [...world.regions.values()].filter(r => r.slot >= 0 && r !== region).sort((a, b) => a.t - b.t)[0];
+            if (!oldest || oldest.t > region.t) continue;
+            slot = oldest.slot; oldest.slot = -1;
+          }
+          region.slot = slot;
         }
-        region.slot = slot;
+        if (!now && at - region.slotAt < SLOT_WRITE_MS) { next = Math.min(next, region.slotAt + SLOT_WRITE_MS - at); continue; }
+        region.slotDirty = false; region.slotAt = at;
+        this.store.write(world.keys[region.slot], this.toRegion(key, region, world));
       }
-      if (!now && at - region.slotAt < SLOT_WRITE_MS) { next = Math.min(next, region.slotAt + SLOT_WRITE_MS - at); continue; }
-      region.slotDirty = false; region.slotAt = at;
-      this.store.write(REGION_SLOT_KEYS[region.slot], this.toRegion(key, region));
     }
     if (this.slotTimer) { clearTimeout(this.slotTimer); this.slotTimer = null; }
     if (Number.isFinite(next)) this.slotTimer = setTimeout(() => { this.slotTimer = null; this.writeSlots(false); }, Math.max(1000, next));
@@ -591,11 +641,11 @@ export class DelveSaveService implements DelveSectorStore {
   private fromDiff(diff: SectorDiff): LiveSector {
     return { g: diff.g, t: diff.t, cells: decodeRuns(diff.c), liquids: decodeRuns(diff.l), fog: decodeFog(diff.f), receipts: decodeIndexSet(diff.k), ...(diff.h ? { h: diff.h } : {}) };
   }
-  private toRegion(_key: string, region: LiveRegion): DelveRegion {
+  private toRegion(_key: string, region: LiveRegion, world: LiveWorld = this.worlds[0]): DelveRegion {
     const sectors: Record<string, SectorDiff> = {};
     for (const [key, sector] of region.sectors) sectors[key] = this.toDiff(sector);
     const pins = [...region.pins.values()];
-    return { v: 1, seed: this.save?.seed ?? 0, rx: region.rx, ry: region.ry, t: region.t, sectors, ...(pins.length ? { p: pins } : {}) };
+    return { v: 1, seed: this.seedOf(world), rx: region.rx, ry: region.ry, t: region.t, sectors, ...(pins.length ? { p: pins } : {}) };
   }
   private fromRegion(region: DelveRegion): LiveRegion {
     const sectors = new Map<string, LiveSector>();

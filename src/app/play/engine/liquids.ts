@@ -30,12 +30,16 @@
  * support, chest, camp) asks the host to char it back into the satchel; until
  * then the thing holds the lava back. Nothing is ever destroyed.
  */
-import { CELL, LIQUID_FULL, LIQUID_LAVA, LIQUID_WATER, nodeIndex, Terrain, TERRAIN_NODE_LIST } from './terrain';
+import { CELL, LIQUID_FULL, LIQUID_INK, LIQUID_LAVA, LIQUID_WATER, nodeIndex, Terrain, TERRAIN_NODE_LIST } from './terrain';
 
 /** Seconds per liquid tick (10 Hz). */
 export const LIQUID_TICK = .1;
 /** Lava moves on every third tick only. */
 export const LAVA_EVERY = 3;
+/** Ink (the Umbral's underside) moves on every second tick: half water's pace. */
+export const INK_EVERY = 2;
+/** Ink and water never mix: ink is heavier and sinks under it, water rests on it. */
+const UNMIXED = (a: number, b: number) => (a === LIQUID_INK && b === LIQUID_WATER) || (a === LIQUID_WATER && b === LIQUID_INK);
 /** Most cells one tick updates (the phone budget; spec §3.5). */
 export const TICK_BUDGET = 256;
 /** Unchanged ticks before a cell sleeps. */
@@ -154,7 +158,7 @@ export class LiquidSim {
     const t = this.t, cols = t.cols;
     this.ticks++;
     const tick = this.ticks;
-    const lavaTurn = tick % LAVA_EVERY === 0;
+    const lavaTurn = tick % LAVA_EVERY === 0, inkTurn = tick % INK_EVERY === 0;
     const dir = tick & 1 ? 1 : -1;
     // Bottom-up, and along each row in this tick's direction.
     const list = this.active;
@@ -171,7 +175,7 @@ export class LiquidSim {
       const level = t.liqLevel[i];
       if (!level || SOLID[t.kind[i]]) { this.listed[i] = 0; this.calm[i] = 0; if (level) { t.liqLevel[i] = 0; t.liqType[i] = 0; } continue; }
       // Over budget, or lava between its turns: waits, unchanged, for a later tick.
-      if (updates >= TICK_BUDGET || (t.liqType[i] === LIQUID_LAVA && !lavaTurn)) { next.push(i); continue; }
+      if (updates >= TICK_BUDGET || (t.liqType[i] === LIQUID_LAVA && !lavaTurn) || (t.liqType[i] === LIQUID_INK && !inkTurn)) { next.push(i); continue; }
       updates++;
       this.flow(i, dir);
       if (this.stamp[i] === tick) { this.calm[i] = 0; next.push(i); continue; }
@@ -220,7 +224,11 @@ export class LiquidSim {
       const below = i + cols;
       if (this.open(below, type)) {
         const bt = t.liqType[below], bl = t.liqLevel[below];
-        if (bl && bt !== type) { this.react(i, below); level = t.liqLevel[i]; }
+        if (bl && bt !== type && UNMIXED(type, bt)) {
+          // Ink sinks under water (the two trade places); water rests on ink.
+          if (type === LIQUID_INK) { this.set(below, type, level); this.set(i, bt, bl); return; }
+        }
+        else if (bl && bt !== type) { this.react(i, below); level = t.liqLevel[i]; }
         else {
           const move = Math.min(level, LIQUID_FULL - bl);
           if (move > 0) { this.set(below, type, bl + move); level -= move; this.set(i, type, level); }
@@ -236,6 +244,7 @@ export class LiquidSim {
       const j = t.index(c, row);
       if (!this.open(j, type)) continue;
       const nt = t.liqType[j], nl = t.liqLevel[j];
+      if (nl && nt !== type && UNMIXED(type, nt)) continue;
       if (nl && nt !== type) { this.react(i, j); level = t.liqLevel[i]; continue; }
       const move = Math.floor((level - nl) / 3);
       if (move > 0) { this.set(j, type, nl + move); level -= move; this.set(i, type, level); }
@@ -377,4 +386,6 @@ export function immersion(t: Terrain, x: number, feetY: number, height: number):
 export const SWIM: Readonly<Record<number, { speed: number; gravity: number; terminal: number; rise: number }>> = {
   [LIQUID_WATER]: { speed: .6, gravity: .32, terminal: 150, rise: 230 },
   [LIQUID_LAVA]: { speed: .45, gravity: .4, terminal: 120, rise: 170 },
+  // Ink is thick and heavy: slow to wade, slow to rise out of.
+  [LIQUID_INK]: { speed: .5, gravity: .42, terminal: 140, rise: 190 },
 };

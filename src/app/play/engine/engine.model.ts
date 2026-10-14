@@ -63,6 +63,12 @@ export interface EngineState {
   grappling?: 'grow' | 'pull' | 'hang' | null;
   /** The Banked Furnace's fight while it is up: banked or open, vents doused (of 4), seconds open, breathing in. */
   furnace?: { phase: 'banked' | 'open'; doused: number; open: number; breathing: boolean; vents: string };
+  /**
+   * A realm Delve behind a Rift Gate (rift-gates.model.ts, umbral.ts): which realm, the ink tide (its phase,
+   * rows over the pools, seconds to its next change), whether the head is under ink, a mirrored ceiling
+   * overhead, and the drift pockets' last shift epoch.
+   */
+  realm?: { id: string; tide: 'low' | 'rising' | 'high' | 'falling'; tideRows: number; nextTide: number; inkBlind: boolean; mirror: boolean; shift: number };
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
@@ -302,12 +308,14 @@ export interface PlaceEvent {
 }
 export interface UseEvent {
   /** A chest or camp opens; a Rift Anchor offers travel; the Banked Furnace's hearth is where it is summoned. */
-  kind: 'chest' | 'camp' | 'anchor' | 'furnace';
+  kind: 'chest' | 'camp' | 'anchor' | 'furnace' | 'gate' | 'brazier';
   areaId: string;
   cellKey: string;
   index: number;
   /** The cell, as world column and row. */
   col?: number; row?: number;
+  /** A Rift Gate's node (`rift-gate-<realm>`): which realm it opens on. */
+  node?: string;
 }
 export interface WorldActionEvent {
   kind: WorldActionKind;
