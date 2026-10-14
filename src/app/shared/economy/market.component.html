@@ -88,7 +88,7 @@
                           [style.--swatch]="v.color"
                           (click)="equip(cos, v)"
                           [attr.aria-pressed]="isEquipped(cos, v)"
-                          [attr.aria-label]="(isEquipped(cos, v) ? 'Remove ' : 'Wear ') + v.label">
+                          [attr.aria-label]="(isEquipped(cos, v) ? 'Remove ' : 'Equip ') + v.label">
                     <span class="mk__variant-dot" aria-hidden="true"></span>{{ v.label }}
                   </button>
                 }
