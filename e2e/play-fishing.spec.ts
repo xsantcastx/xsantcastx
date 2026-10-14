@@ -42,6 +42,40 @@ async function descend(page: Page): Promise<void> {
   await focusWorld(page);
 }
 
+/** The prompt's label (the place / the line's state) never repeats its button's verb. */
+async function expectNoDuplicateLabel(page: Page): Promise<void> {
+  const { label, button } = await page.evaluate(() => {
+    const norm = (t: string | null | undefined) => (t ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+    const btn = document.querySelector('.prompt .fish-go')!.cloneNode(true) as HTMLElement;
+    btn.querySelectorAll('kbd').forEach(k => k.remove());
+    return { label: norm(document.querySelector('.prompt.armed strong')?.textContent), button: norm(btn.textContent) };
+  });
+  expect(label, 'the prompt has a label').toBeTruthy();
+  expect(button, 'the prompt has a button').toBeTruthy();
+  expect(label, `label "${label}" repeats the button "${button}"`).not.toBe(button);
+}
+
+/** A live catch banner overlaps no other HUD piece (goal line, Glim, message toast, minimap + toggle, prompt, bands). */
+async function expectBannerClear(page: Page): Promise<void> {
+  const rects = await page.evaluate(() => {
+    const sels = ['.loot-toast', '.objective-line', '.glim-say', '.guide', '.map-mini-open', '.map-toggle', '.prompt.armed', '.reel-host', '.satchel', '.hotbar', '.vitals', '.title-block', '.places-toggle', '.touch', '.m-take', '.dock', '.hearth-pill'];
+    const out: { sel: string; left: number; top: number; right: number; bottom: number }[] = [];
+    for (const sel of sels) for (const el of Array.from(document.querySelectorAll(sel))) {
+      let hidden = false;
+      for (let e: Element | null = el; e; e = e.parentElement) { const cs = getComputedStyle(e); if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < .05) hidden = true; }
+      const r = el.getBoundingClientRect();
+      if (!hidden && r.width > 0 && r.height > 0) out.push({ sel, left: r.left, top: r.top, right: r.right, bottom: r.bottom });
+    }
+    return out;
+  });
+  const banners = rects.filter(r => r.sel === '.loot-toast');
+  expect(banners.length, 'the catch banner is on screen').toBeGreaterThan(0);
+  for (const b of banners) for (const o of rects.filter(r => r.sel !== '.loot-toast')) {
+    const meets = b.left < o.right - .5 && o.left < b.right - .5 && b.top < o.bottom - .5 && o.top < b.bottom - .5;
+    expect(meets, `the catch banner ${JSON.stringify(b)} overlaps ${o.sel} ${JSON.stringify(o)}`).toBe(false);
+  }
+}
+
 const NAMES = new Map(CATCHES.map(c => [c.id, c.name]));
 
 /** A finger tap on a button, down and up in one task (it may leave the DOM the moment it is pressed). */
@@ -65,11 +99,13 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await expect(canvas(page)).toHaveAttribute('data-fishing', 'can:water', { timeout: 8000 });
       const fish = page.locator('.prompt .fish-go');
       await expect(fish).toBeVisible();
+      await expectNoDuplicateLabel(page);
       await shot(page, `${label}-shore`);
       // Cast.
       if (!touch) { await focusWorld(page); await page.keyboard.press('KeyE'); }
       else await tap(fish);
       await expect(canvas(page)).toHaveAttribute('data-fishing', 'wait');
+      await expectNoDuplicateLabel(page);
       await expect(messageLine(page)).toContainText('The line is in');
       await shot(page, `${label}-cast`);
       // The dip comes in 3-9 s; hook it inside its 0.6 s window (a miss only nibbles again, and a late tap is forgiven).
@@ -101,6 +137,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       const caught = await canvas(page).getAttribute('data-last-catch');
       expect(caught && NAMES.has(caught), `a catch from the tables (${caught})`).toBeTruthy();
       await expect(page.locator('.loot-toast').filter({ hasText: NAMES.get(caught!)! }).first()).toBeVisible();
+      await expectBannerClear(page);
       // The fishing ledger counts it (the Catalogue reads it), and the satchel holds it.
       await expect.poll(async () => (await blob<{ caught: Record<string, number> }>(page, 'godforge-fishing'))?.caught?.[caught!] ?? 0).toBeGreaterThan(0);
       const fishXp = await page.evaluate(() => {
@@ -118,6 +155,42 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await expect(page.getByText('Catalogue of Strange Fish').first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByRole('button', { name: new RegExp(`${NAMES.get(caught!)!} Catalogue of Strange Fish`) }).first()).toBeVisible();
       await shot(page, `${label}-catalogue`);
+    });
+  });
+}
+
+for (const [label, size, touch] of [
+  ['360×740', { width: 360, height: 740 }, true],
+  ['390×844', { width: 390, height: 844 }, true],
+  ['844×390', { width: 844, height: 390 }, true],
+  ['1280×800', { width: 1280, height: 800 }, false],
+] as const) {
+  test.describe(`Fishing HUD slots (${label})`, () => {
+    test.use({ viewport: size, hasTouch: touch, isMobile: touch });
+
+    test('the prompt label and its button differ, and the catch banner has a slot of its own', async ({ page }) => {
+      test.setTimeout(120_000);
+      await seed(page, { ...mereShore().blobs() });
+      await descend(page);
+      await walk(page, 'd', 18 * CELL + 12, 10000);
+      await expect(canvas(page)).toHaveAttribute('data-fishing', 'can:water', { timeout: 8000 });
+      await expectNoDuplicateLabel(page);
+      const fish = page.locator('.prompt .fish-go');
+      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyE'); } else await tap(fish);
+      await expect(canvas(page)).toHaveAttribute('data-fishing', 'wait');
+      await expectNoDuplicateLabel(page);
+      // The message toast is up ("The line is in"); put the longest catch banner beside it.
+      await page.evaluate(() => {
+        const host = document.querySelector('.loot-toasts');
+        for (const text of ['Blindfin ×1 · +8 Fishing XP', '+1 Ember Grub']) {
+          const chip = document.createElement('span');
+          chip.className = 'loot-toast';
+          chip.style.animation = 'none';
+          chip.textContent = text;
+          host?.appendChild(chip);
+        }
+      });
+      await expectBannerClear(page);
     });
   });
 }
