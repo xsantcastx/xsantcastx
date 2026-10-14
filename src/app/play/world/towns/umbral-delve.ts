@@ -83,7 +83,7 @@ export const UMBRAL_DELVE: HuntZoneDef = {
     bedrock: 2,
     biomes: [
       {
-        id: 'ink-shallows', name: 'The Ink Shallows', to: 31,
+        id: 'ink-shallows', name: 'The Ink Shallows', to: 34,
         // Style guide §5.3 proposal, the Umbral ramps: ink violet-black, a cold violet lift.
         wall: ['#1a1424', '#15101e', '#08060c'], dark: '3,2,8',
         wash: { color: '#6a4adf', alpha: .08 },

@@ -6,7 +6,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## What's next (in order)
 
-1. **Delves in every realm** (owner, 2026-10-14) — Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists), each with its own biomes, creatures, keeper missions and story. **Top item after the weekly budget resets (Mon).**
+1. **Delves in every realm** (owner, 2026-10-14) — *Rift Gates* in the Ember Delve open on each realm's underside, each a step up that breaks one rule. **Gate system + the Umbral Ink Deeps built 2026-10-14** (`docs/handoff/rift-gates.md`); next: Luminous light-mines, Celestial star-wells, Verdant root-depths (content only; spec in the handoff).
 2. **The Underhearth** (Phase 8). *(built 2026-10-14, `docs/handoff/underhearth.md`)*
 3. **The Mirror Slate** — casino anywhere + Homestead management. *(built 2026-10-14, `docs/handoff/mirror-slate.md`)*
 4. **Uncapped levels, Tibia-style** — skills past 99 on a steepening curve; diminishing tool bonuses; swing floor and reward caps stay; milestone titles. *(built 2026-10-14, `docs/handoff/uncapped-levels.md`)*

@@ -2180,8 +2180,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 /* ── Fishing and liquids (Phase 6) ─────────────────────────────────────── */
 .meter.breath i { background: var(--adventure-hud-water); }
-/* The Ink Deeps' tide: rift violet (rift-gates.model.ts colour). */
-.meter.tide i { background: #a48bff; }
+/* The Ink Deeps' tide: violet. */
+.meter.tide i { background: var(--realm-umbral); }
 .meter.ward i { background: var(--adventure-hud-ember); }
 .reel-host {
   position: absolute;
