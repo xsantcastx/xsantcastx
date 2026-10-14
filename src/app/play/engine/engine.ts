@@ -13,10 +13,11 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
-  climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
   blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
 } from './terrain';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
+import { createFog, MapSource, revealAround } from './delve-map';
 import type { DelvePersistence, GatherPersistence } from './engine.model';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
@@ -70,12 +71,20 @@ const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
 /** The Keeper's body in a delve (figure scale 0.5): fits a three-cell tunnel. */
 const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
-/** How far from the Keeper's chest a click can swing at a cell, world px. */
-const DELVE_REACH = CELL * 2.7;
+/** How far from the Keeper's chest a click, a tap or the smart cursor reaches a cell, in cells (Terraria's tile reach). */
+export const REACH_CELLS = 4.5;
+const DELVE_REACH = CELL * REACH_CELLS;
+/** Forgiving jumps: a jump pressed this long before landing still happens, and one pressed this long after walking off a ledge too. */
+const JUMP_BUFFER = .12;
+const COYOTE = .1;
+/** Down + Jump on a platform: one-way floors are ignored this long, so the Keeper drops through. */
+const DROP_THROUGH = .25;
 /** Seconds between swings: combat, and digging/gathering with a starter tool. */
 const BASE_SWING = .52;
 /** No tool pace may beat this (guards a bad setTools value). */
 const MIN_SWING = .25;
+/** Holding to place along a drag: one block per this many seconds, never faster than the fastest swing. */
+const PLACE_PACE = MIN_SWING;
 /** No skill level multiplies a tool's damage past this (level 99 is ×1.5; guards a bad setTools value). */
 const MAX_POWER = 1.5;
 const BLAST_TIME = .3;
@@ -293,6 +302,31 @@ export class SeamworksEngine {
   private skillLevels: Partial<Record<DisciplineId, number>> | null = null;
   /** True while the Keeper is on a ladder (set in the fixed step): Up climbs instead of jumping. */
   private climbing = false;
+  /** Forgiving jumps: seconds a jump press waits for the ground, and seconds since the Keeper last stood on it. */
+  private jumpBuffer = 0;
+  private airTime = 0;
+  /** Down + Jump on a platform: seconds one-way floors are ignored. */
+  private dropTime = 0;
+  /** Explored cells per delve area (the map's fog of war), from the save or fresh, and the live one. */
+  private readonly fogs = new Map<string, Uint8Array>();
+  private fog: Uint8Array | null = null;
+  /** The cell the map was last revealed round: it only grows when the Keeper moves a cell. */
+  private fogAt = NaN;
+  /**
+   * Smart cursor (Terraria): the aimed point as world px from the camera, so it
+   * stays under the pointer while the camera moves. NaN = nothing aimed.
+   */
+  private aimVX = NaN;
+  private aimVY = NaN;
+  private readonly aimScratch = { col: 0, row: 0, index: 0, inReach: false };
+  /** A held press: dig the aimed cell at the tool's pace, or place along the drag. Null = not held. */
+  private holdMode: 'dig' | 'place' | null = null;
+  /** Things the current hold did (a swing, a placement, a take-back). */
+  private holdActs = 0;
+  private placeWait = 0;
+  /** Cells a drag crossed, placed in order, one per PLACE_PACE. */
+  private dragQueue: number[] = [];
+  private dragLast = -1;
   /** Vertical camera, world px. 0 outside delves. */
   private cameraY = 0;
   private blastTime = 0;
@@ -338,6 +372,8 @@ export class SeamworksEngine {
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
     this.terrain = this.terrainFor(area); this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
+    this.fog = this.terrain ? this.fogs.get(area.id) ?? null : null; this.fogAt = NaN;
+    this.holdMode = null; this.clearAim(); this.dropTime = 0; this.jumpBuffer = 0;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.fuses = [];
     for (const r of this.rubble) r.active = false;
@@ -399,6 +435,9 @@ export class SeamworksEngine {
     } catch { /* an unreadable diff is fresh rock, not a crash */ }
     this.terrains.set(area.id, terrain);
     this.layouts.set(area.id, layout);
+    let fog: Uint8Array | null = null;
+    try { fog = this.delve?.seenCells?.(area.id, layout, terrain.kind.length) ?? null; } catch { /* an unreadable map is unexplored, not a crash */ }
+    this.fogs.set(area.id, fog && fog.length === (terrain.kind.length + 7) >> 3 ? fog : createFog(terrain.kind.length));
     return terrain;
   }
   /**
@@ -408,9 +447,10 @@ export class SeamworksEngine {
    */
   setDelve(delve: DelvePersistence | null): void {
     this.delve = delve;
-    this.terrains.clear(); this.layouts.clear();
+    this.terrains.clear(); this.layouts.clear(); this.fogs.clear();
     if (this.areaDef?.terrain) {
       this.terrain = this.terrainFor(this.areaDef);
+      this.fog = this.fogs.get(this.areaDef.id) ?? null; this.fogAt = NaN;
       this.terrainRenderer.attach(this.terrain);
       // A Keeper the new rock now buries is lifted to the surface ledge.
       if (this.terrain && boxHits(this.terrain, this.player.x, this.player.y, DELVE_BOX)) {
@@ -868,14 +908,126 @@ export class SeamworksEngine {
     if (!t.solid(col, row) || !inReach) return false;
     this.cancelMove();
     if (this.attackCooldown > 0) return true;
+    this.swingAtCell(t, col, row);
+    this.report();
+    return true;
+  }
+  /** One tool swing at one cell (reach and cooldown already checked): face it, work it, wait the tool's pace. */
+  private swingAtCell(t: Terrain, col: number, row: number): void {
+    const cx = (col + .5) * CELL;
     if (Math.abs(cx - this.player.x) > 6) this.facing = cx > this.player.x ? 1 : -1;
     this.attackTime = .4; this.attackCooldown = BASE_SWING;
     this.hitScratch[0] = t.index(col, row);
     this.swingTool = null;
     this.hitCells(1, SWING_TOOLS, false);
     this.attackCooldown = this.swingFor(this.swingTool);
-    this.report();
-    return true;
+  }
+
+  // -- Delve: smart cursor and held use (Terraria) ---------------------------
+
+  /** Aim the smart cursor at the cell under a client point (the mouse, or a finger). Delves only. */
+  aimAt(clientX: number, clientY: number): void {
+    if (!this.terrain) return;
+    const point = this.pick(clientX, clientY);
+    this.aimVX = point.x - this.camera; this.aimVY = point.y - this.cameraY;
+    if (this.holdMode === 'place') this.queueDrag();
+  }
+  /** Nothing aimed (the pointer left, a finger lifted): the cursor hides. */
+  clearAim(): void { this.aimVX = NaN; this.aimVY = NaN; }
+  /** The aimed cell and whether it is within reach, or null. One shared object: read it at once. */
+  aimCell(): { col: number; row: number; index: number; inReach: boolean } | null {
+    const t = this.terrain;
+    if (!t || !Number.isFinite(this.aimVX)) return null;
+    const col = t.colAt(this.camera + this.aimVX), row = t.rowAt(this.cameraY + this.aimVY);
+    if (!t.inside(col, row)) return null;
+    const out = this.aimScratch;
+    out.col = col; out.row = row; out.index = t.index(col, row); out.inReach = this.inReach(col, row);
+    return out;
+  }
+  /**
+   * A press held on the world: 'dig' swings at the aimed cell at the tool's
+   * pace while it is held (never faster than a held J); 'place' puts the
+   * hotbar's choice into the pressed cell and every cell the drag then
+   * crosses, one per PLACE_PACE, while there are some left and each is in
+   * reach. A 'place' press on a placed thing takes it back, once. Acts at
+   * once when it can. `useRelease` ends it.
+   */
+  useHold(clientX: number, clientY: number, mode: 'dig' | 'place'): void {
+    this.holdActs = 0; this.dragQueue = []; this.dragLast = -1; this.placeWait = 0; this.holdMode = null;
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0) return;
+    this.aimAt(clientX, clientY);
+    const aim = this.aimCell();
+    if (!aim) return;
+    this.holdMode = mode;
+    if (mode === 'place') {
+      if (aim.inReach && isTakeable(t, aim.col, aim.row)) {
+        this.holdMode = null;
+        if (this.takeItem(aim.index)) this.holdActs++;
+        return;
+      }
+      this.queueDrag();
+    }
+    this.updateHold(0);
+  }
+  /** The press ended. Returns what it did, so the click that follows does not do it again. */
+  useRelease(): number {
+    const acts = this.holdActs;
+    this.holdMode = null; this.holdActs = 0; this.dragQueue = []; this.dragLast = -1;
+    return acts;
+  }
+  /** Queue the cells between the last dragged cell and the aimed one (a line, so a fast drag leaves no gaps). */
+  private queueDrag(): void {
+    const aim = this.aimCell(), t = this.terrain;
+    if (!aim || !t || aim.index === this.dragLast) return;
+    if (this.dragLast < 0) { this.dragQueue.push(aim.index); this.dragLast = aim.index; return; }
+    let col = this.dragLast % t.cols, row = (this.dragLast - col) / t.cols;
+    const dc = Math.abs(aim.col - col), dr = -Math.abs(aim.row - row), sc = col < aim.col ? 1 : -1, sr = row < aim.row ? 1 : -1;
+    let err = dc + dr;
+    while ((col !== aim.col || row !== aim.row) && this.dragQueue.length < 32) {
+      const e2 = 2 * err;
+      if (e2 >= dr) { err += dr; col += sc; }
+      if (e2 <= dc) { err += dc; row += sr; }
+      this.dragQueue.push(t.index(col, row));
+    }
+    this.dragLast = aim.index;
+  }
+  /** One fixed step of a held press. */
+  private updateHold(dt: number): void {
+    const t = this.terrain;
+    if (!t || !this.holdMode || this.paused || this.hp <= 0) return;
+    if (this.holdMode === 'dig') {
+      const aim = this.aimCell();
+      if (!aim || !aim.inReach || !t.solid(aim.col, aim.row) || this.attackCooldown > 0) return;
+      this.cancelMove();
+      this.swingAtCell(t, aim.col, aim.row);
+      this.holdActs++;
+      this.report();
+      return;
+    }
+    this.placeWait -= dt;
+    if (this.placeWait > 0) return;
+    const def = placeableById(this.placing);
+    const node = def ? TERRAIN_NODES[def.node] : undefined;
+    while (this.dragQueue.length) {
+      const index = this.dragQueue.shift()!;
+      const col = index % t.cols, row = (index - col) / t.cols;
+      if (!this.inReach(col, row)) continue;
+      if (!def || !node) {
+        this.say('play.delve.chooseFirst', 'Choose something to place first (keys 1-0, or tap the bar).'); this.report();
+        this.holdMode = null; return;
+      }
+      // Only the pressed cell says why it cannot take the thing; cells a drag merely crosses are skipped quietly.
+      if (this.holdActs > 0 && this.placeProblem(t, col, row, node, def)) continue;
+      if (!this.placeItem(def, index)) {
+        // A refusal from the satchel (none left, the save failed) ends the hold; a bad first cell only skips it.
+        if (this.holdActs > 0 || !this.placeProblem(t, col, row, node, def)) { this.holdMode = null; return; }
+        continue;
+      }
+      this.holdActs++;
+      this.placeWait = PLACE_PACE;
+      return;
+    }
   }
   /** Forget the pointer (pointer left the canvas): hover captions on drops hide. */
   clearPointer(): void { this.pointerX = NaN; this.pointerY = NaN; }
@@ -969,11 +1121,46 @@ export class SeamworksEngine {
     if (this.paused || this.hp <= 0 || this.input.has(action)) return;
     this.input.add(action);
     if (action === 'left' || action === 'right') this.cancelMove();
-    if (action === 'jump' && this.player.grounded && !this.climbing) { this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false; }
+    if (action === 'jump') this.pressJump();
     if (action === 'attack' && this.attackCooldown <= 0) this.attack();
     if (action === 'blast') this.blast();
     if (action === 'dodge' && this.dodgeCooldown <= 0) { this.dodgeTime = .26; this.dodgeCooldown = 1.05; }
     this.report();
+  }
+  /**
+   * Jump pressed. In a delve, Down + Jump on a platform drops through it, and
+   * Up beside a ladder grabs it. Otherwise a jump: from the ground, within
+   * COYOTE of walking off a ledge, or (buffered JUMP_BUFFER) on landing.
+   */
+  private pressJump(): void {
+    const t = this.terrain;
+    if (this.climbing) return;
+    if (t && this.input.has('down') && this.player.grounded && isOneWay(t, t.colAt(this.player.x), t.rowAt(this.player.y + 1))) {
+      this.dropTime = DROP_THROUGH; this.player.grounded = false;
+      return;
+    }
+    if (t && this.grabLadder(t)) return;
+    this.jumpBuffer = JUMP_BUFFER;
+    this.tryJump();
+  }
+  private tryJump(): void {
+    if (this.jumpBuffer <= 0 || this.climbing || (!this.player.grounded && this.airTime > COYOTE)) return;
+    this.player.vy = this.terrain ? -520 : -680; this.player.grounded = false;
+    // One jump per take-off: the coyote window closes with it.
+    this.jumpBuffer = 0; this.airTime = COYOTE + 1;
+  }
+  /** Up at a ladder the body overlaps but is not centred on: step onto it so the climb starts. True when grabbed. */
+  private grabLadder(t: Terrain): boolean {
+    const p = this.player, mid = t.rowAt(p.y - DELVE_BOX.height * .5), feet = t.rowAt(p.y - .01);
+    for (const x of [p.x - DELVE_BOX.halfWidth, p.x + DELVE_BOX.halfWidth - .01]) {
+      const col = t.colAt(x);
+      if (!isClimbable(t, col, mid) && !isClimbable(t, col, feet)) continue;
+      const cx = (col + .5) * CELL;
+      if (boxHits(t, cx, p.y, DELVE_BOX)) continue;
+      p.x = cx; p.vy = 0; this.climbing = true; this.cancelMove();
+      return true;
+    }
+    return false;
   }
   /** Seconds until the next swing after working with `tool` (a forged tool swings faster). */
   private swingFor(tool: ToolKind | null): number { return (tool && this.swing[tool]) || BASE_SWING; }
@@ -1470,6 +1657,7 @@ export class SeamworksEngine {
     this.attackTime = Math.max(0, this.attackTime - dt); this.attackCooldown -= dt;
     this.dodgeTime = Math.max(0, this.dodgeTime - dt); this.dodgeCooldown -= dt; this.hurtTime -= dt;
     this.blastCooldown -= dt; this.blastTime = Math.max(0, this.blastTime - dt); this.blastFlash = Math.max(0, this.blastFlash - dt * 1.5);
+    this.jumpBuffer = Math.max(0, this.jumpBuffer - dt); this.dropTime = Math.max(0, this.dropTime - dt);
     this.debris.update(dt, this.terrain);
     let direction = Number(this.input.has('right')) - Number(this.input.has('left'));
     if (direction) this.cancelMove();
@@ -1492,12 +1680,17 @@ export class SeamworksEngine {
       if (this.climbing) {
         const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
         climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
-      } else stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down'));
+      } else stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0);
     } else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
+    // Coyote time: the clock since the feet last touched; a buffered press jumps on landing.
+    if (this.player.grounded && !this.climbing) this.airTime = 0; else if (!this.climbing) this.airTime += dt;
+    if (this.jumpBuffer > 0 && this.player.grounded) this.tryJump();
     if (this.terrain) {
       // Holding a tool button keeps working the rock: digging is held, not tapped.
       if (this.input.has('attack') && this.attackCooldown <= 0) this.attack();
       if (this.input.has('blast') && this.blastCooldown <= 0) this.blast();
+      this.updateHold(dt);
+      this.revealMap(this.terrain);
       this.interactAt = this.findInteractive();
       this.updateFuses(dt);
       this.updateRubble(dt, this.terrain);
@@ -1571,6 +1764,28 @@ export class SeamworksEngine {
     }
   }
 
+  /** Fill in the map round the Keeper (once per cell moved), and tell the save. */
+  private revealMap(t: Terrain): void {
+    const fog = this.fog;
+    if (!fog) return;
+    const col = t.colAt(this.player.x), row = t.rowAt(this.player.y - DELVE_BOX.height * .5);
+    const at = row * t.cols + col;
+    if (at === this.fogAt) return;
+    this.fogAt = at;
+    if (!revealAround(t, fog, col, row)) return;
+    const layout = this.layouts.get(this.areaDef.id);
+    try { if (layout) this.delve?.explored?.(this.areaDef.id, layout, fog); } catch { /* explored for this session */ }
+  }
+  /** What the map draws: the delve, its explored cells, the Keeper's cell and the ways out. Null outside a delve. */
+  mapSource(): MapSource | null {
+    const t = this.terrain, fog = this.fog;
+    if (!t || !fog) return null;
+    return {
+      t, fog,
+      keeper: { col: t.colAt(this.player.x), row: t.rowAt(this.player.y - DELVE_BOX.height * .5) },
+      shafts: this.stations.filter(station => station.kind === 'passage').map(station => t.colAt(station.x)),
+    };
+  }
   private report(): void {
     const nearest = this.nearestFoe();
     const station = this.nearbyStation();
@@ -2406,6 +2621,7 @@ export class SeamworksEngine {
     }
     c.restore();
     if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
+    if (t) this.drawAim(c, t);
     this.atmosphere.feedback(c, this.reducedMotion);
     c.restore();
     this.drawFlights(c, this.flightDelta);
@@ -2534,6 +2750,43 @@ export class SeamworksEngine {
    * Over the dark: each lit charge's spark and the ring it will clear (filling
    * in as the fuse burns down), and falling rubble.
    */
+  /**
+   * The smart cursor: the cells within reach outlined faintly round the Keeper,
+   * and the aimed cell framed (gold in reach, pale out of it). On the 2 px art
+   * grid: every edge is a whole art pixel.
+   */
+  private drawAim(c: CanvasRenderingContext2D, t: Terrain): void {
+    const aim = this.aimCell();
+    if (!aim || this.paused || this.hp <= 0) return;
+    const { col: ac, row: ar, inReach } = aim;
+    const pc = t.colAt(this.player.x), pr = t.rowAt(this.player.y - DELVE_BOX.height * .5), span = Math.ceil(REACH_CELLS) + 1;
+    const reach = (col: number, row: number) => t.inside(col, row) && this.inReach(col, row);
+    c.fillStyle = 'rgba(232, 200, 152, .28)';
+    for (let row = pr - span; row <= pr + span; row++) {
+      for (let col = pc - span; col <= pc + span; col++) {
+        if (!reach(col, row)) continue;
+        const x = col * CELL, y = t.top + row * CELL;
+        if (!reach(col, row - 1)) c.fillRect(x, y, CELL, ART);
+        if (!reach(col, row + 1)) c.fillRect(x, y + CELL - ART, CELL, ART);
+        if (!reach(col - 1, row)) c.fillRect(x, y, ART, CELL);
+        if (!reach(col + 1, row)) c.fillRect(x + CELL - ART, y, ART, CELL);
+      }
+    }
+    const x = ac * CELL, y = t.top + ar * CELL;
+    // A dark rim inside, then the frame, then corner ticks outside: reads on any rock.
+    c.fillStyle = 'rgba(20, 10, 31, .7)';
+    c.fillRect(x + ART, y + ART, CELL - ART * 2, ART); c.fillRect(x + ART, y + CELL - ART * 2, CELL - ART * 2, ART);
+    c.fillRect(x + ART, y + ART, ART, CELL - ART * 2); c.fillRect(x + CELL - ART * 2, y + ART, ART, CELL - ART * 2);
+    c.fillStyle = inReach ? '#e8c898' : 'rgba(248, 232, 200, .45)';
+    c.fillRect(x, y, CELL, ART); c.fillRect(x, y + CELL - ART, CELL, ART); c.fillRect(x, y, ART, CELL); c.fillRect(x + CELL - ART, y, ART, CELL);
+    if (inReach) {
+      const k = ART * 3;
+      c.fillRect(x - ART, y - ART, k, ART); c.fillRect(x - ART, y - ART, ART, k);
+      c.fillRect(x + CELL - k + ART, y - ART, k, ART); c.fillRect(x + CELL, y - ART, ART, k);
+      c.fillRect(x - ART, y + CELL, k, ART); c.fillRect(x - ART, y + CELL - k + ART, ART, k);
+      c.fillRect(x + CELL - k + ART, y + CELL, k, ART); c.fillRect(x + CELL, y + CELL - k + ART, ART, k);
+    }
+  }
   private drawFusesAndRubble(c: CanvasRenderingContext2D, t: Terrain, time: number): void {
     for (const fuse of this.fuses) {
       const col = fuse.index % t.cols, row = (fuse.index - col) / t.cols;

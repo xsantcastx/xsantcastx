@@ -49,12 +49,12 @@ const SIZES: { width: number; height: number }[] = [
 /** The phone HUD's pieces: none may meet another, none may sit over the middle of the world. */
 const PIECES = [
   '.title-block', '.places-toggle', '.vitals', '.satchel', '.hotbar', '.guide', '.objective-line',
-  '.prompt.armed', '.dock', '.m-take', '.touch-move', '.touch-act',
+  '.prompt.armed', '.dock', '.m-take', '.touch-move', '.touch-act', '.map-toggle', '.map-mini-open',
 ];
 /** Everything that can cover the world, old layout and new (for the before/after numbers). */
 const COVERS = [
   '.topbar', '.vitals', '.satchel', '.hotbar', '.guide', '.objective-line', '.prompt', '.dock', '.m-take',
-  '.touch', '.touch-move', '.touch-act', 'app-homestead-column .hc', '.places', '.keys',
+  '.touch', '.touch-move', '.touch-act', 'app-homestead-column .hc', '.places', '.keys', '.map-toggle', '.map-mini-open',
 ];
 
 interface Rect { sel: string; left: number; top: number; right: number; bottom: number }
@@ -170,13 +170,13 @@ async function check(page: Page, scene: string): Promise<void> {
 
     // Every HUD button a thumb can reach has a name a screen reader can read.
     const nameless = await page.evaluate(() => Array.from(document.querySelectorAll(
-      '.touch .tb, .places-toggle, .satchel .clasp, .guide button, .hearth-pill, .prompt.armed > button, .m-take, .hotbar .hot',
+      '.touch .tb, .places-toggle, .satchel .clasp, .guide button, .hearth-pill, .prompt.armed > button, .m-take, .hotbar .hot, .map-toggle, .map-mini-open',
     )).filter(b => getComputedStyle(b).display !== 'none' && b.getBoundingClientRect().width > 0)
       .filter(b => !(b.getAttribute('aria-label') || (b as HTMLElement).innerText || '').trim())
       .map(b => b.outerHTML.slice(0, 80)));
     expect(nameless, `${label}: HUD buttons without an accessible name`).toEqual([]);
 
-    for (const sel of ['.places-toggle', '.satchel .clasp', '.guide-go', '.hearth-pill', '.prompt.armed > button', '.m-take']) {
+    for (const sel of ['.places-toggle', '.satchel .clasp', '.guide-go', '.hearth-pill', '.prompt.armed > button', '.m-take', '.map-toggle', '.map-mini-open']) {
       const ok = await page.evaluate(s => {
         const el = document.querySelector(s);
         if (!el || getComputedStyle(el).display === 'none') return null;

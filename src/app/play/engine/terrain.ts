@@ -797,8 +797,8 @@ function rowOneWay(t: Terrain, row: number, x: number): boolean {
   return isOneWay(t, t.colAt(x), row);
 }
 
-/** Ladder speed, px/s. */
-export const CLIMB_SPEED = 150;
+/** Ladder speed, px/s: brisk, a little faster than walking in a delve (Terraria-style climbing). */
+export const CLIMB_SPEED = 220;
 
 /**
  * One fixed step on a ladder: no gravity, Up/Down (`climb` -1/1, 0 holds)

@@ -90,4 +90,22 @@ export const DELVE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.delve.chest.noneLeft': { en: 'You have none of that left.', es: 'No te queda nada de eso.' },
   'play.delve.chest.full': { en: 'The chest is full ({{n}} kinds of thing). Take something out first.', es: 'El cofre esta lleno ({{n}} tipos de cosas). Saca algo primero.' },
   'play.delve.chest.bagFull': { en: 'Your satchel is full. Make room first.', es: 'Tu mochila esta llena. Haz sitio primero.' },
+
+  // ── HUD: the map (minimap, and the full map on M) ──
+  'play.map.toggle': { en: 'Show or hide the minimap', es: 'Mostrar u ocultar el minimapa' },
+  'play.map.open': { en: 'Open the map (M)', es: 'Abrir el mapa (M)' },
+  'play.map.title': { en: 'Map', es: 'Mapa' },
+  'play.map.zoomIn': { en: 'Zoom in', es: 'Acercar' },
+  'play.map.zoomOut': { en: 'Zoom out', es: 'Alejar' },
+  'play.map.centre': { en: 'On me', es: 'A mi' },
+  'play.map.drag': { en: 'Drag to look around.', es: 'Arrastra para mirar alrededor.' },
+  'play.map.toCamp': { en: 'Way to camp: {{n}} cells. Follow the gold dots.', es: 'Camino al campamento: {{n}} casillas. Sigue los puntos dorados.' },
+  'play.map.noWay': { en: 'No explored way to your camp yet: dig along the gold line.', es: 'Aun no hay camino explorado a tu campamento: excava siguiendo la linea dorada.' },
+  'play.map.noCamp': { en: 'Place a camp and the map shows the way back to it.', es: 'Coloca un campamento y el mapa te mostrara el camino de vuelta.' },
+  'play.map.legend.keeper': { en: 'You', es: 'Tu' },
+  'play.map.legend.camp': { en: 'Camp', es: 'Campamento' },
+  'play.map.legend.chest': { en: 'Chest', es: 'Cofre' },
+  'play.map.legend.torch': { en: 'Torch', es: 'Antorcha' },
+  'play.map.legend.inscription': { en: 'Inscription', es: 'Inscripcion' },
+  'play.map.legend.shaft': { en: 'Way out', es: 'Salida' },
 };
