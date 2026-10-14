@@ -1235,6 +1235,17 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 .map-legend li { display: flex; align-items: center; gap: 6px; }
 .map-legend i { width: 10px; height: 10px; box-shadow: 0 0 0 1px var(--adventure-hud-ink); }
+.map-canvas.is-pinning { cursor: crosshair; }
+/* Map v2: the pins row (Add pin, a fragment to read, one chip per pin) and the selected pin's editor. */
+.map-pins, .map-pin-edit, .map-pin-icons { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.map-pins button, .map-pin-edit button { min-height: 44px; padding: 0 12px; }
+.map-pin-chip, .map-pin-icon { display: inline-flex; align-items: center; gap: 6px; }
+.map-pin-chip i, .map-pin-icon i { width: 10px; height: 10px; box-shadow: 0 0 0 1px var(--adventure-hud-ink); }
+.map-pin-chip.is-selected, .map-pin-icon[aria-checked="true"], .map-pin-add[aria-pressed="true"] { border-color: var(--adventure-ember); }
+.map-pin-tracked { font: 600 10px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-dialogue); }
+.map-pin-icon { min-width: 44px; }
+.map-pin-name { display: inline-flex; align-items: center; gap: 6px; color: var(--adventure-dialogue); font: 600 11px Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.map-pin-name input { min-height: 44px; width: 14ch; padding: 0 8px; font: 400 15px var(--font-lore, Georgia, serif); text-transform: none; }
 
 /* A chest placed in the Delve: what is in it, what you carry. Two plain lists. */
 .chest { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
@@ -2138,6 +2149,9 @@ input::placeholder { color: var(--adventure-hud-muted); }
   }
   .map-full { inset: calc(var(--hud-safe-t) + 8px) 8px calc(var(--hud-safe-b) + 8px); padding: 10px; }
   .map-hint { font-size: 14px; }
+  /* The icon's word is its label (aria-label); on a phone the row is the swatches. */
+  .map-pin-icon span { display: none; }
+  .map-pin-icon i { width: 16px; height: 16px; }
 }
 
 /* ── Fishing and liquids (Phase 6) ─────────────────────────────────────── */

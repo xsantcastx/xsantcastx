@@ -43,14 +43,16 @@ import {
 import {
   coerceRegion, decodeFog, decodeIndexSet, decodeRuns, encodeFog, encodeIndexSet, encodeRuns, mergeRegion, parseSectorKey, regionKey, regionOf,
   regrow, REGION_SLOT_KEYS, REGION_SLOTS, sectorKey, shouldRegrow, type DelveRegion, type SectorDiff,
+  coercePin, MAX_PINS, pinSector, type PinRecord,
 } from './delve-region.model';
+import type { MapPin } from './map-pins.model';
 import { openRegionStore, type RegionStore } from './delve-region-store';
 import type { DelveSectorStore, SectorSave } from '../../play/engine/engine.model';
 import { TERRAIN_NODE_LIST } from '../../play/engine/terrain';
 
 interface LiveArea { layout: string; cells: Map<number, number>; seen?: string; bits?: Uint8Array; wet?: string; liquids?: string }
 interface LiveSector { g: number; t: number; cells: Map<number, number>; liquids: Map<number, number>; fog: Uint8Array | null; receipts: Set<number>; h?: number }
-interface LiveRegion { rx: number; ry: number; t: number; sectors: Map<string, LiveSector>; slot: number; dirty: boolean; slotDirty: boolean; slotAt: number }
+interface LiveRegion { rx: number; ry: number; t: number; sectors: Map<string, LiveSector>; pins: Map<string, PinRecord>; slot: number; dirty: boolean; slotDirty: boolean; slotAt: number }
 
 /** How long dug cells wait in memory before they are written. */
 export const DEBOUNCE_MS = 1500;
@@ -199,6 +201,87 @@ export class DelveSaveService implements DelveSectorStore {
     return out;
   }
 
+  /**
+   * The Delve's seed and the explored sector columns furthest east (≥ 3, the
+   * core's last) and west (≤ 0), for the Board Herald's bounties. Null before
+   * the first Delve visit: a read only, it never rolls a seed.
+   */
+  exploredSpan(): { seed: number; east: number; west: number } | null {
+    if (!this.isBrowser) return null;
+    if (!this.hydrated && !coerceDelveSave(this.store.read(DELVE_KEY))) return null;
+    const save = this.ensure();
+    if (!save) return null;
+    let east = CORE_SECTORS - 1, west = 0;
+    for (const region of this.regions.values()) for (const [key, sector] of region.sectors) {
+      if (!sector.fog?.some(b => b !== 0)) continue;
+      const at = parseSectorKey(key);
+      if (!at) continue;
+      east = Math.max(east, at.sx); west = Math.min(west, at.sx);
+    }
+    return { seed: save.seed, east, west };
+  }
+
+  // ── Map pins (map v2; saved per region, they ride the region slots) ──────
+
+  /** Every live pin, in placement order. */
+  pins(): MapPin[] {
+    if (!this.ensure()) return [];
+    const out: MapPin[] = [];
+    for (const region of this.regions.values()) for (const pin of region.pins.values()) if (!pin.d) out.push({ id: pin.id, col: pin.c, row: pin.r, icon: pin.i, name: pin.n, t: pin.t });
+    return out.sort((a, b) => a.t - b.t || (a.id < b.id ? -1 : 1));
+  }
+  /**
+   * Place or edit a pin (its region is the cell's). False at the pin cap (a new
+   * one only) or for junk. Written on the usual debounce; its region's slot
+   * goes up with it.
+   */
+  setPin(pin: { id: string; col: number; row: number; icon: string; name: string }): boolean {
+    if (!this.ensure()) return false;
+    const rec = coercePin({ id: pin.id, c: pin.col, r: pin.row, i: pin.icon, n: pin.name, t: this.now() });
+    if (!rec) return false;
+    const existing = this.findPin(pin.id);
+    if (!(existing && !existing.pin.d) && this.pins().length >= MAX_PINS) return false;
+    if (existing && existing.region !== this.pinRegion(rec)) { existing.region.pins.set(pin.id, { ...existing.pin, d: 1, t: rec.t }); this.pinTouched(existing.region); }
+    const region = this.pinRegion(rec);
+    region.pins.set(rec.id, rec);
+    this.pinTouched(region);
+    return true;
+  }
+  /** Remove a pin (a tombstone, so the removal reaches the other devices). */
+  removePin(id: string): boolean {
+    const found = this.ensure() ? this.findPin(id) : null;
+    if (!found || found.pin.d) return false;
+    found.region.pins.set(id, { ...found.pin, d: 1, t: Math.max(this.now(), found.pin.t + 1) });
+    this.pinTouched(found.region);
+    return true;
+  }
+  /** A pin by id: its live record (a pin moved to another region leaves a tombstone behind), else the tombstone. */
+  private findPin(id: string): { region: LiveRegion; pin: PinRecord } | null {
+    let gone: { region: LiveRegion; pin: PinRecord } | null = null;
+    for (const region of this.regions.values()) {
+      const pin = region.pins.get(id);
+      if (pin && !pin.d) return { region, pin };
+      if (pin) gone ??= { region, pin };
+    }
+    return gone;
+  }
+  private pinRegion(pin: PinRecord): LiveRegion {
+    const at = pinSector(pin);
+    const key = this.regionKeyOf(at.sx, at.sy);
+    let region = this.regions.get(key);
+    if (!region) {
+      const r = regionOf(at.sx, at.sy);
+      region = { rx: r.rx, ry: r.ry, t: 0, sectors: new Map(), pins: new Map(), slot: -1, dirty: false, slotDirty: false, slotAt: 0 };
+      this.regions.set(key, region);
+    }
+    return region;
+  }
+  private pinTouched(region: LiveRegion): void {
+    region.t = Math.max(region.t, this.now());
+    region.dirty = true; region.slotDirty = true;
+    this.schedule();
+  }
+
   /** True once this device's region store has answered (or failed): the sectors known are complete. */
   get sectorsReady(): boolean { return this.deviceReady; }
   /** Which store holds this device's regions ('idb', 'local', 'memory'), and whether it had to drop any. */
@@ -219,7 +302,7 @@ export class DelveSaveService implements DelveSectorStore {
     if (!region) {
       if (!create) return null;
       const r = regionOf(sx, sy);
-      region = { rx: r.rx, ry: r.ry, t: 0, sectors: new Map(), slot: -1, dirty: false, slotDirty: false, slotAt: 0 };
+      region = { rx: r.rx, ry: r.ry, t: 0, sectors: new Map(), pins: new Map(), slot: -1, dirty: false, slotDirty: false, slotAt: 0 };
       this.regions.set(key, region);
     }
     let sector = region.sectors.get(sectorKey(sx, sy));
@@ -510,11 +593,12 @@ export class DelveSaveService implements DelveSectorStore {
   private toRegion(_key: string, region: LiveRegion): DelveRegion {
     const sectors: Record<string, SectorDiff> = {};
     for (const [key, sector] of region.sectors) sectors[key] = this.toDiff(sector);
-    return { v: 1, seed: this.save?.seed ?? 0, rx: region.rx, ry: region.ry, t: region.t, sectors };
+    const pins = [...region.pins.values()];
+    return { v: 1, seed: this.save?.seed ?? 0, rx: region.rx, ry: region.ry, t: region.t, sectors, ...(pins.length ? { p: pins } : {}) };
   }
   private fromRegion(region: DelveRegion): LiveRegion {
     const sectors = new Map<string, LiveSector>();
     for (const [key, diff] of Object.entries(region.sectors)) sectors.set(key, this.fromDiff(diff));
-    return { rx: region.rx, ry: region.ry, t: region.t, sectors, slot: -1, dirty: false, slotDirty: false, slotAt: 0 };
+    return { rx: region.rx, ry: region.ry, t: region.t, sectors, pins: new Map((region.p ?? []).map(pin => [pin.id, pin])), slot: -1, dirty: false, slotDirty: false, slotAt: 0 };
   }
 }

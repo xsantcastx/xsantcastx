@@ -12,6 +12,7 @@
  * Both .ts files are import-free and are transpiled here with the repo's own
  * TypeScript. See docs/economy/rebalance-spec.md for the design.
  *
+ *   node scripts/economy-sim.mjs --bounties      # the Board Herald's daily bounties (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
  *                                                # first purchase is > 15 s or
  *                                                # < 20 purchases in 10 min
@@ -499,6 +500,8 @@ function check(E) {
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   // Fishing (Phase 6): Gold share, crate values, rod gates and the 99 band (`--fishing` prints the table).
   fails.push(...fishingScenario({ quiet: true }));
+  // The Board Herald's daily bounties (Phase 7.5): rule I band, the daily envelope, XP, the draw (`--bounties` prints it).
+  fails.push(...bountiesScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -786,6 +789,85 @@ function fishingScenario({ quiet = false } = {}) {
   return fails;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// --bounties: the Board Herald's three daily Delve bounties (delve-and-beyond.md
+// §7.2, Phase 7.5; src/app/shared/bounties/bounty.model.ts). They are a
+// reason to go into the endless Delve, not a Gold strategy:
+//   1. every tier pays inside the daily band of rule I (5-20 min of income);
+//   2. its Gold floor never beats the income seconds after the first half hour
+//      (the floor is only there for a brand-new save);
+//   3. a whole day of bounties (all three at tier 3) is at most an hour of income;
+//   4. a day's Delving XP is a nudge, not a ladder: under a quarter of one level
+//      at Delving 20, and the per-claim XP under the world-action ceiling;
+//   5. the draw: three bounties, three different kinds, a reach every day, only
+//      strata reached, the same board for the same seed and day, and no two days
+//      alike for a seed; gifts: the compass once, a fragment every 7th claim day.
+// ───────────────────────────────────────────────────────────────────────────
+
+const BOUNTY = loadTsTree('src/app/shared/bounties/bounty.model.ts');
+
+function bountiesScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const { log } = simulate(PROPOSED);
+  const band = C.REWARD_SECONDS.daily;
+  const tiers = [1, 2, 3].map(t => BOUNTY.BOUNTY_REWARDS[t]);
+  say('Bounties scenario · v3 curve (PROPOSED)\n');
+  say('  tier  income   floor   Delving XP');
+  tiers.forEach((r, i) => say(`  ${i + 1}     ${String(r.goldSeconds / 60).padStart(3)} min ${String(r.gold).padStart(6)}   ${r.delvingXp}`));
+  for (const [i, r] of tiers.entries()) {
+    if (r.goldSeconds < band.minS || r.goldSeconds > band.maxS) fails.push(`bounty tier ${i + 1} pays ${r.goldSeconds} s of income (rule I daily band ${band.minS}-${band.maxS} s)`);
+    if (r.delvingXp > 500) fails.push(`bounty tier ${i + 1} XP ${r.delvingXp} is over the world-action ceiling`);
+  }
+  const day = 3 * Math.max(...tiers.map(r => r.goldSeconds));
+  if (day > 3600) fails.push(`a day of bounties pays ${day / 60} min of income (must be <= 60)`);
+  say(`\n  stage   Gold/s    tier 1    tier 3    a day (3 × tier 3)   floor wins?`);
+  for (const [t, label] of [[600, '10m'], [1800, '30m'], [3600, '1h'], [3 * 3600, '3h'], [86400, '1d'], [3 * 86400, '3d'], [7 * 86400, '7d']]) {
+    const gps = log.at[t]?.gps;
+    if (!gps) continue;
+    const pay = r => BOUNTY.bountyGold(r, gps);
+    const floorWins = tiers.some(r => r.gold > r.goldSeconds * gps);
+    say(`  ${label.padEnd(6)}${fmtN(gps).padStart(8)}${fmtN(pay(tiers[0])).padStart(10)}${fmtN(pay(tiers[2])).padStart(10)}${fmtN(3 * pay(tiers[2])).padStart(21)}   ${floorWins ? 'yes' : 'no'}`);
+    if (t >= 1800 && floorWins) fails.push(`a bounty's Gold floor beats its income seconds at ${label} (the floor is for a new save only)`);
+  }
+  // 4. XP: a day of bounties against one Delving level at 20 (xpFor is the 1-99 curve).
+  const dayXp = 3 * Math.max(...tiers.map(r => r.delvingXp));
+  const level20 = xpFor(21) - xpFor(20);
+  say(`\n  A day of bounties: ${dayXp} Delving XP; one level at Delving 20 is ${level20} XP (${(dayXp / level20 * 100).toFixed(1)}%).`);
+  if (dayXp > level20 / 4) fails.push(`a day of bounties pays ${dayXp} Delving XP, over a quarter of a level at 20 (${level20})`);
+  // 5. The draw.
+  const kinds = new Set(), boards = new Set();
+  let checked = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    for (let d = 0; d < 60; d++) {
+      const date = new Date(Date.UTC(2026, 9, 1 + d));
+      const dayKey = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`;
+      const deepest = (seed + d) % 4;
+      const ctx = { seed: seed * 7919, day: dayKey, deepest, frontierEast: 3 + (d % 5), frontierWest: -(d % 3) };
+      const board = BOUNTY.drawBounties(ctx);
+      const again = BOUNTY.drawBounties(ctx);
+      checked++;
+      if (JSON.stringify(board) !== JSON.stringify(again)) fails.push(`the draw is not deterministic (seed ${seed}, ${dayKey})`);
+      if (board.list.length !== 3) fails.push(`${board.list.length} bounties on ${dayKey} (seed ${seed})`);
+      if (board.list[0]?.kind !== 'reach') fails.push(`no reach bounty on ${dayKey} (seed ${seed})`);
+      if (new Set(board.list.map(b => b.kind)).size !== board.list.length) fails.push(`two bounties of one kind on ${dayKey} (seed ${seed})`);
+      for (const b of board.list) {
+        kinds.add(b.kind);
+        if (b.stratum > deepest) fails.push(`${b.id} names a stratum not reached (${b.stratum} > ${deepest})`);
+        if (b.kind === 'reach' && !(b.target === 'east' ? b.sx > ctx.frontierEast : b.sx < ctx.frontierWest)) fails.push(`${b.id} is already reached at the draw`);
+      }
+      boards.add(JSON.stringify(board.list.map(b => b.id.slice(11))));
+    }
+  }
+  for (const kind of ['reach', 'dig', 'structure', 'catch', 'torch']) if (!kinds.has(kind)) fails.push(`the draw never asks for a ${kind} bounty`);
+  if (boards.size < checked * .5) fails.push(`only ${boards.size} different boards in ${checked} draws`);
+  say(`\n  The draw: ${checked} boards (40 seeds × 60 days), ${boards.size} different, kinds ${[...kinds].join(', ')}.`);
+  say(`  Gifts: the Broken Astral Compass with the first claim; a Rift Map Fragment every ${BOUNTY.FRAGMENT_EVERY}th claim day (never a streak).`);
+  if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
+  if (quiet) console.log(`economy-sim bounties: ${fails.length ? fails.length + ' fail(s)' : 'rule I band, daily envelope, XP and the draw ok'}`);
+  return fails;
+}
+
 // --plinko / --mines / --crash: the Croupier's other three games (Rune Drop,
 // Seam Sweeper, Eclipse Ascent). Gold only; RTP must sit in 94–96%.
 //   Each is proven EXACTLY (sums over the binomial board; the multiplier ×
@@ -951,6 +1033,10 @@ if (argv.plinko) {
   console.log('  ok');
 } else if (argv.fishing && !argv.check) {
   const fails = fishingScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.bounties && !argv.check) {
+  const fails = bountiesScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.inventory) {

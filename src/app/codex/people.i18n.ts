@@ -70,7 +70,7 @@ export const PEOPLE_I18N: Readonly<Record<string, { en: string; es: string }>> =
   'codex.people.teaches.steward': { en: 'Expeditions: sending explorers out well equipped.', es: 'Expediciones: enviar exploradores bien equipados.' },
   'codex.people.where.herald': { en: 'Quest Board · Rootglass Canopy', es: 'Tablon de misiones · Rootglass Canopy' },
   'codex.people.who.herald': { en: 'Reads every realm\'s orders aloud, neutral by trade, and adds the please. Larkins have read this board for four generations and never posted on it.', es: 'Lee en voz alta las ordenes de cada reino, neutral por oficio, y anade el por favor. Los Larkin leen este tablon desde hace cuatro generaciones y nunca han publicado en el.' },
-  'codex.people.teaches.herald': { en: 'The Quest Board: daily, weekly and Delve orders.', es: 'El tablon de misiones: ordenes diarias, semanales y de la Sima.' },
+  'codex.people.teaches.herald': { en: 'The Quest Board: daily, weekly and Delve orders, and three Delve bounties a day.', es: 'El tablon de misiones: ordenes diarias, semanales y de la Sima, y tres encargos de la Sima al dia.' },
   'codex.people.where.gatekeeper': { en: 'Arena Gate · Rootglass Canopy', es: 'Puerta de la arena · Rootglass Canopy' },
   'codex.people.who.gatekeeper': { en: 'An old ranger who walked the roads with Siv Moss until his knee went. Now he likes watching people try.', es: 'Un viejo guardabosques que recorrio los caminos con Siv Moss hasta que le fallo la rodilla. Ahora le gusta ver a la gente intentarlo.' },
   'codex.people.teaches.gatekeeper': { en: 'The Arena, where losing costs nothing.', es: 'La arena, donde perder no cuesta nada.' },
