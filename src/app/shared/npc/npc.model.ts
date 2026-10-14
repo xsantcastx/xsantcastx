@@ -448,6 +448,8 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
       'Anvil is hot. Gold is yours. Nobody is stopping you.',
       'The Void comes out of this thing about once in two million strikes. I have seen it twice.',
       'Set the runes together and they stop being trinkets. That is the whole trick.',
+      // The Mirror Slate's second face (docs/handoff/mirror-slate.md; lore-addendum "The Mirror Slate").
+      'Lune\'s glass, my brass. Bring Glowcap, slag and obsidian; I\'ll wake its other face.',
     ],
   },
   {

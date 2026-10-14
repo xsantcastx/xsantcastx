@@ -303,6 +303,15 @@ export class HomesteadService implements OnDestroy {
     }
   }
 
+  /** The latest HUD reading (the Mirror Slate reads it once per change). */
+  snapshotHud(): HomesteadHud { return this.hud$$.value; }
+
+  /** Every building's receipt, summed (the Mirror Slate reads it for its badge and its Homestead tab). */
+  pendingAll(): Pending { return this.scene.pendingAll(); }
+
+  /** The Slate's Collect: every receipt handed over at once. Credits nothing (the services already did). */
+  collectAll(): Pending { return this.scene.collectAll(); }
+
   /** The building's "since you were last here" receipt, uncollected. */
   pending(id: HomesteadBuildingId): Pending { return this.scene.pending(id); }
 
