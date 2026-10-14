@@ -26,6 +26,7 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.table.seamSweeper': { en: 'Seam Sweeper', es: 'Barrido de Veta' },
   'slate.table.ascent': { en: 'Eclipse Ascent', es: 'Ascenso del Eclipse' },
   'slate.tables.note': { en: 'Same odds, same bet limits, same ledger as her tables. Gold only.', es: 'Mismas probabilidades, mismos limites, mismo registro que sus mesas. Solo Oro.' },
+  'slate.back': { en: 'Back', es: 'Volver' },
   'slate.loading': { en: 'The glass clears…', es: 'El cristal se aclara…' },
   'slate.loadError': { en: 'The glass stayed dark. Close the Slate and open it again.', es: 'El cristal siguio oscuro. Cierra la Pizarra y abrela otra vez.' },
 
@@ -42,6 +43,7 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.factory.adds': { en: 'Adds {{rate}}.', es: 'Suma {{rate}}.' },
   'slate.factory.allBuilt': { en: 'Every building you can see is fully built.', es: 'Todo edificio a la vista esta al maximo.' },
   'slate.factory.crew': { en: 'Crew', es: 'Equipo' },
+  'slate.factory.more': { en: 'Crew and where things are', es: 'Equipo y donde estan las cosas' },
   'slate.factory.nextHome': { en: 'Next explorer home in {{t}}.', es: 'El proximo explorador vuelve en {{t}}.' },
 
   // Map & bounties (tier II)
