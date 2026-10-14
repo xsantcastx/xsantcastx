@@ -13,6 +13,9 @@ import { TranslationService } from '../../translation.service';
 import { InspectButtonComponent } from '../entity/inspect-button.component';
 import { formatCompact } from '../economy/economy.model';
 import { CharacterHubService } from '../character/character-hub.service';
+import { KeeperLookService } from '../keeper-look/keeper-look.service';
+import { KeeperPainter } from '../keeper-look/keeper-paint';
+import { wornGear } from '../keeper-look/worn-gear';
 import { InventoryService, InventorySnapshot } from './inventory.service';
 import { MagicFindService } from './magic-find.service';
 import {
@@ -122,8 +125,12 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
 
   /** `select` is doll-only. `bank` is bag-only. `full` is both, and may sync the URL. */
 
-  readonly dollSrc = PAPER_DOLL_SRC;
-  readonly dollSrcset = PAPER_DOLL_SRCSET;
+  /** The painted Keeper on the server; in the browser, the player's own pixel Keeper wearing this loadout. */
+  dollSrc = PAPER_DOLL_SRC;
+  dollSrcset: string | null = PAPER_DOLL_SRCSET;
+  /** The look + gear the doll was last painted for. */
+  dollKey = '';
+  private readonly looks = inject(KeeperLookService);
   readonly dollSlots = PAPER_DOLL_SLOTS;
   readonly charmSlots = CHARM_DOLL_SLOTS;
   /** The wells that have somewhere to sit on the figure. */
@@ -153,6 +160,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
       this.trackUnequips(this.snap.equipped, snap.equipped);
       this.snap = snap;
       this.build = deriveBuild(snap.equipped);
+      this.paintDoll();
       if (this.selectedId && !snap.items.some(item => item.id === this.selectedId)) {
         this.selectedId = null;
       }
@@ -168,7 +176,26 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
     // anywhere — this panel's picker, the Bank, a quick-equip toast — so the
     // doll animates whatever put the item on.
     this.sub.add(this.inventory.equipped$.subscribe(item => this.onEquipped(item)));
+    this.sub.add(this.looks.look$.subscribe(() => this.paintDoll()));
     this.ready = this.isBrowser;
+  }
+
+  /**
+   * The doll is the player's own Keeper (Make your Keeper): their look, every
+   * worn slot drawn on the body. Painted once per change into a data URL.
+   */
+  private paintDoll(): void {
+    if (!this.isBrowser) return;
+    const painter = new KeeperPainter(this.looks.look, wornGear(this.snap.equipped));
+    if (painter.key === this.dollKey) return;
+    try {
+      const el = document.createElement('canvas');
+      el.width = el.height = 352;
+      painter.still(el);
+      this.dollSrc = el.toDataURL('image/png');
+      this.dollSrcset = null;
+      this.dollKey = painter.key;
+    } catch { /* no 2D canvas (an old test browser): the painted Keeper stays */ }
   }
 
   ngOnDestroy(): void {
