@@ -63,6 +63,7 @@ import { DelveMapView } from './delve-map-view';
 import { FishingService, type PendingCatch } from '../shared/fishing/fishing.service';
 import { FISHING_I18N } from '../shared/fishing/fishing.i18n';
 import { LineTensionComponent } from '../shared/fishing/line-tension.component';
+import { reelDuration } from '../shared/fishing/fishing-reel';
 import { catchById, CRATE_IDS, fishingPerks, LODGE_CHARMS } from '../shared/fishing/fishing.model';
 import { InfusionService } from '../shared/enchanting/infusion.service';
 import { DROWNED_LAMP_FLAG } from './world/towns/infernal';
@@ -1618,7 +1619,7 @@ export class SideScrollerComponent implements OnDestroy {
       return;
     }
     const pending = this.fishing.hooked({ castId: event.castId, biome: event.biome, liquid: event.liquid });
-    if (event.auto) { this.landCatch(pending, 'off'); return; }
+    if (event.auto) { this.landCatch(pending, 'off', reelDuration(pending.rarity) + .6); return; }
     const lodgeReel = this.inventory.stackOf('lodge-reel') > 0 ? .1 : 0;
     let seed = 0;
     for (const ch of event.castId) seed = (Math.imul(seed, 31) + ch.charCodeAt(0)) >>> 0;
@@ -1633,9 +1634,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.setUseHeld(false);
     this.landCatch(reel.pending, result.grade);
   }
-  private landCatch(pending: PendingCatch, grade: 'perfect' | 'good' | 'off'): void {
+  private landCatch(pending: PendingCatch, grade: 'perfect' | 'good' | 'off', recastIn?: number): void {
     const landed = this.fishing.land(pending, grade);
-    this.engine?.landFish();
+    this.engine?.landFish(recastIn);
     if (!landed) { this.message = this.t('play.fish.ui.saveFailed'); return; }
     this.toastLoot(this.t('play.fish.ui.landed', { name: landed.name, n: landed.qty, xp: landed.xp }));
     this.message = landed.first ? `${this.t('play.fish.ui.grade.' + grade)} ${this.t('play.fish.ui.first')}` : this.t('play.fish.ui.grade.' + grade);

@@ -230,6 +230,33 @@ harness('/play on a throttled phone', () => {
     await page.waitForTimeout(2000);
     await measure(page, cdp, 'delve:magma-halls');
   });
+
+  /** Into the Delve by "Descend to your camp", for the liquid scenes (Phase 6). */
+  async function descendTo(page: Page, f: DelveFixture): Promise<void> {
+    await seed(page, { ...RESTORED, ...f.blobs() });
+    await openPlay(page, '?at=delve');
+    const descend = page.getByRole('button', { name: /Descend to your camp/ });
+    await expect(descend).toBeVisible({ timeout: 60000 });
+    await descend.click();
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
+    await page.waitForTimeout(2000);
+  }
+
+  // Phase 6 (docs/handoff/liquids-fishing.md): the lake and a lava pool on screen.
+  // On a build without liquids the same caves are measured dry, for the before/after.
+  test('delve: Grotto Mere, wading the lake', async ({ page }) => {
+    const cdp = await phone(page);
+    await descendTo(page, new DelveFixture().camp(30, 34));
+    await measure(page, cdp, 'delve:grotto-mere');
+  });
+
+  test('delve: Magma Halls beside a lava pool', async ({ page }) => {
+    const cdp = await phone(page);
+    // A wall between the camp and the pool (cols 31-35): the walk never enters the lava.
+    const f = new DelveFixture().set(36, 47, 'bedrock').set(36, 48, 'bedrock').set(44, 47, 'bedrock').set(44, 48, 'bedrock').camp(39, 48);
+    await descendTo(page, f);
+    await measure(page, cdp, 'delve:lava-pool');
+  });
 });
 
 /**

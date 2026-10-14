@@ -289,16 +289,17 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     id: 'fish-merchant-order',
     npcId: 'merchant',
     title: 'Fish Orders',
-    brief: 'Bring the Merchant 2 Mere Perch and 2 Slagjaw Eels.',
+    brief: 'Bring the Merchant 5 Mere Perch and 5 Slagjaw Eels.',
     loreText: 'Ordinary fish, friend, and fish that bite slag. The first sells because nobody believes it came from down there. The second sells because everybody does.',
     objective: {
       kind: 'deliver',
       items: [
-        { materialId: 'mere-perch', count: 2, where: 'the Grotto Mere (rare)' },
-        { materialId: 'slagjaw-eel', count: 2, where: 'the Magma Halls lava pools (a Seam Rod)' },
+        { materialId: 'mere-perch', count: 5, where: 'the Grotto Mere (rare)' },
+        { materialId: 'slagjaw-eel', count: 5, where: 'the Magma Halls lava pools (a Seam Rod)' },
       ],
     },
     // A floor buyer like the Glowcap order: 180 Gold, or 90 s of income when that is more.
+    // Five and five: the economy sim (--fishing) holds fishing under 10% of the forge's Gold a minute.
     reward: { gold: itemScaled(3_000), goldSeconds: 90, fishingXp: 40 },
     unlocks: 'A standing order. Fill it as often as you like.',
     repeatable: true,

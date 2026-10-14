@@ -1660,11 +1660,15 @@ export class SeamworksEngine {
     this.options.onFish?.({ areaId: this.areaDef.id, biome: line.biome, liquid: LIQUID_IDS[line.liquid] as LiquidKind, castId: line.castId, auto, col: line.col, row: line.row });
     return true;
   }
-  /** The host landed the fish: the line comes out. With Use still held, it is recast shortly (auto-fish). */
-  landFish(): void {
+  /**
+   * The host landed the fish: the line comes out. With Use still held it is
+   * recast after `recastIn` seconds (auto-fish waits out the reel it skipped,
+   * so auto never outpaces playing).
+   */
+  landFish(recastIn = .6): void {
     if (!this.line) return;
     this.line = null;
-    if (this.useHeld) this.recast = .6;
+    if (this.useHeld) this.recast = Math.max(.6, recastIn);
     this.report();
   }
   /** Seconds after a dip passes in which E is a late hook (forgiven), not a reel-in. */
