@@ -41,6 +41,11 @@ export const STORY_BEAT_CHAPTER = {
   'a1.fresh': 'act1',
   'a1.dated': 'act1',
   'a1.break': 'act1',
+  // Act II — Five Witnesses. The Four Who Went Down (Phase 8, the Underhearth): Kael's own record,
+  // walked while the witnesses are gathered (lore-addendum.md, shipped).
+  'a2.under': 'act2',
+  'a2.marks': 'act2',
+  'a2.furnace': 'act2',
 } as const satisfies Record<string, StoryChapterId>;
 export type StoryBeatId = keyof typeof STORY_BEAT_CHAPTER;
 export const STORY_BEAT_IDS = Object.keys(STORY_BEAT_CHAPTER) as StoryBeatId[];

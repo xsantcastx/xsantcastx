@@ -16,6 +16,8 @@
  *  - `inscriptions` reads DelveLoreService's copied set.
  *  - `read`         reads whether one named inscription is in that set.
  *  - `defeat`       reads a once-per-player flag in the Delve save (a felled boss).
+ *  - `reach`        reads a once-per-player flag the engine sets on arriving (the Underhearth).
+ *  - `flags`        counts once-per-player flags (the Four's hammer-marks, one per rubbing).
  *
  * Pure data and pure functions. No Angular, no browser APIs.
  */
@@ -25,6 +27,7 @@ import { DELVE_INSCRIPTIONS, GLOWCAP, GODFORGE_FRAGMENT, SHADOW_ROOT_CUTTING } f
 import type { NpcId } from './npc.model';
 import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { xpGrantChunks } from '../activity/activity.model';
+import { FOUR_HAMMER_MARKS, FURNACE_FLAG, HAMMER_MARK_FLAGS, UNDERHEARTH_REACHED_FLAG } from '../delve/underhearth.model';
 
 /**
  * Kael's lost hammer. A quest material (a stack key), dropped once from a
@@ -45,6 +48,8 @@ export const DELVE_MATERIAL_NAMES: Readonly<Record<string, string>> = {
   [GLOWCAP]: 'Glowcap',
   [GODFORGE_FRAGMENT]: 'Godforge Fragment',
   [KAELS_HAMMER]: "Kael's Hammer",
+  [FOUR_HAMMER_MARKS]: 'The Four Hammer-Marks',
+  'cold-coalfish': 'Cold Coalfish',
 };
 
 export interface DeliverItem {
@@ -61,7 +66,11 @@ export type MissionObjective =
   /** One named inscription read (and copied). */
   | { kind: 'read'; inscription: string; where: string }
   /** A once-per-player flag set: a felled boss (`MonsterDef.once`). */
-  | { kind: 'defeat'; flag: string; name: string; where: string };
+  | { kind: 'defeat'; flag: string; name: string; where: string }
+  /** A once-per-player flag the engine sets on arrival (Phase 8: the Underhearth reached). */
+  | { kind: 'reach'; flag: string; name: string; where: string }
+  /** Once-per-player flags counted (Phase 8: the Four's four hammer-marks, one per rubbing). */
+  | { kind: 'flags'; flags: readonly string[]; name: string; where: string };
 
 /**
  * Economy v3 reward for a mission authored at `v2Gold`: a floor of v2 × ρ and
@@ -85,6 +94,10 @@ export interface MissionReward {
   fishingXp?: number;
   /** A crafting recipe id this mission unlocks at the bench. */
   recipe?: string;
+  /** More recipe ids it unlocks (Phase 8: Kael's rails and cart; Pickaxe V and Axe V). */
+  recipes?: readonly string[];
+  /** Satchel stacks granted on the claim (Phase 8: the Four Hammer-Marks, the Banked Furnace's summon). */
+  materials?: readonly { id: string; qty: number }[];
   /** A rune id banked into the Rune Forge ledger. */
   rune?: string;
   /** An existing equipment definition minted at this rarity. */
@@ -324,6 +337,105 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     unlocks: 'A standing order: every page is filed.',
     repeatable: true,
   },
+  // ── The Underhearth (Phase 8; delve-and-beyond.md §7.1; lore-addendum.md "Flooded Seams",
+  //    "The Four Who Went Down": shipped, owner reviews in play) ──
+  {
+    id: 'kael-flooded-seams',
+    npcId: 'kael',
+    title: 'Flooded Seams',
+    brief: 'Bring Kael 3 Rusted Rivets from the Delve\'s water.',
+    loreText:
+      'When I closed the mines I did not fill them. I let the water have them. The old rails still run along the drowned galleries, and the Maws still pull rivets from them. Bring me three. Then look at which way the rails were laid.',
+    objective: { kind: 'deliver', items: [{ materialId: 'rusted-rivet', count: 3, where: 'any water in the Delve (junk on the line), or a flooded shaft east or west of the shaft' }] },
+    reward: {
+      ...incomeGold(25_000),
+      delvingXp: 120,
+      recipes: ['craft-seam-rail', 'craft-seam-cart'],
+      loreFragment: 'They were laid toward the crack. Kael: "A cart does not care where it is going. I used to think that was a fault."',
+    },
+    unlocks: 'Kael\'s rails: the Seam Rail and Seam Cart recipes at the Crafting Bench. Ride the old rail down in the Underhearth.',
+    requires: ['delve-kael-seam'],
+  },
+  {
+    id: 'kael-four-1',
+    npcId: 'kael',
+    title: 'The Four Who Went Down',
+    brief: 'Break the Banked seal under the fragment chamber and stand in the Underhearth.',
+    loreText:
+      'Five of us worked the Seamworks when the crack reached it. Four went down to bank the fire. I stayed. The seal under the chamber is ours, and you brought up the fragment, so you have earned the door. Take a Pickaxe IV. Go down with someone, if you can.',
+    objective: { kind: 'reach', flag: UNDERHEARTH_REACHED_FLAG, name: 'the Underhearth', where: 'the fragment chamber\'s floor in the Magma Halls: the Banked seal (Pickaxe IV, Delving 15)' },
+    reward: {
+      ...incomeGold(60_000),
+      delvingXp: 400,
+      loreFragment:
+        'The Magma Halls\' floor is the Underhearth\'s ceiling. The Four felled the ironwood pillars that held it and let the roof come down over the furnace, so nobody would open it by accident.',
+    },
+    unlocks: 'The Underhearth, and the Four\'s hammer-marks to find.',
+    requires: ['delve-fracture'],
+  },
+  {
+    id: 'kael-four-2',
+    npcId: 'kael',
+    title: 'Four Hammers',
+    brief: 'Take a rubbing of the four hammer-marks at the Four\'s outposts in the Underhearth.',
+    loreText:
+      'One mark for each of us, where we stood. Two east of the shaft, two west, none of them far. Put your hand on one. That was the height of her shoulder.',
+    objective: {
+      kind: 'flags', flags: HAMMER_MARK_FLAGS, name: 'the Four\'s hammer-marks',
+      where: 'the Four\'s outposts in the Underhearth, two east and two west of the shaft, within six sectors (look for a lit forge corner)',
+    },
+    reward: {
+      ...incomeGold(80_000),
+      delvingXp: 500,
+      materials: [{ id: FOUR_HAMMER_MARKS, qty: 1 }],
+      recipe: 'craft-rift-anchor',
+      loreFragment: 'Kael: "I did not stay because I was braver. I stayed because I was the worst of us at going down."',
+    },
+    unlocks: 'The Four Hammer-Marks (they wake the Banked Furnace at its hearth) and the Rift Anchor recipe: fast travel in the Delve.',
+    requires: ['kael-four-1'],
+  },
+  {
+    id: 'verrin-four-3',
+    npcId: 'verrin',
+    alsoFrom: 'kael',
+    title: 'Let It End',
+    brief: 'Wake the Banked Furnace at its hearth with the Four Hammer-Marks, douse its vents, and put it out.',
+    loreText:
+      'This is the only ending I have never been able to file. Help me file it. Banked is a polite word for postponed. Let it end, Convergent. Ending is not the same as losing. I would know.',
+    objective: { kind: 'defeat', flag: FURNACE_FLAG, name: 'the Banked Furnace', where: 'the Furnace Hall under the core, at the bottom of Kael\'s old rail (water from the Four\'s trough douses its vents)' },
+    reward: {
+      ...incomeGold(200_000),
+      delvingXp: 1000,
+      rune: 'nox',
+      recipes: ['craft-pickaxe-5', 'craft-axe-5'],
+      loreFragment: 'Kael, when it was done: "It is out. I thought I would feel lighter. I feel like the forge just got colder by four."',
+    },
+    unlocks: 'Pickaxe V and Axe V recipes (Smithing 60), and a Nox rune. The furnace can be woken again, once a day, for what it banked.',
+    requires: ['kael-four-2'],
+  },
+  {
+    id: 'verrin-endings-kept-warm',
+    npcId: 'verrin',
+    title: 'Endings Kept Warm',
+    brief: 'Bring Verrin 5 Rootling Eels and 1 Cold Coalfish from the Underhearth\'s lava.',
+    loreText:
+      'Some endings are kept warm on purpose, so they can be finished later. Bring me five things that swam toward the crack, and one that swims in what was banked.',
+    objective: {
+      kind: 'deliver',
+      items: [
+        { materialId: 'rootling-eel', count: 5, where: 'the seep in the Root Hollows alcove or Kael\'s flooded seam' },
+        { materialId: 'cold-coalfish', count: 1, where: 'the Underhearth\'s lava lakes (a rod that works every lava)' },
+      ],
+    },
+    reward: {
+      ...incomeGold(40_000),
+      fishingXp: 300,
+      rune: 'hollow',
+      loreFragment: 'Verrin filed both catches under the same ending. "Postponed," the label says. Then, smaller: "not cancelled."',
+    },
+    unlocks: 'A Hollow rune for the Rune Forge ledger: the useful absence.',
+    requires: ['fish-verrin-eels', 'kael-four-1'],
+  },
 ];
 
 const BY_ID = new Map(DELVE_MISSIONS.map(m => [m.id, m]));
@@ -367,12 +479,13 @@ export function missionsFrom(npcId: NpcId): DelveMission[] {
 
 /** The recipe ids missions gate. A recipe here is locked until its mission is claimed. */
 export const MISSION_RECIPES: Readonly<Record<string, string>> = Object.fromEntries(
-  DELVE_MISSIONS.filter(m => m.reward.recipe).map(m => [m.reward.recipe!, m.id]),
+  DELVE_MISSIONS.flatMap(m => [...(m.reward.recipe ? [m.reward.recipe] : []), ...(m.reward.recipes ?? [])].map(recipe => [recipe, m.id])),
 );
 
 /** The number an objective counts to. */
 export function missionTarget(o: MissionObjective, inscriptionTotal = DELVE_INSCRIPTIONS.length): number {
-  if (o.kind === 'read' || o.kind === 'defeat') return 1;
+  if (o.kind === 'read' || o.kind === 'defeat' || o.kind === 'reach') return 1;
+  if (o.kind === 'flags') return Math.max(1, o.flags.length);
   if (o.kind === 'inscriptions') {
     return Math.max(1, o.count === 'all' ? inscriptionTotal : o.count);
   }
@@ -393,7 +506,8 @@ export interface MissionReadings {
 /** Progress toward the target, each delivery line capped at its own count. */
 export function missionObserved(o: MissionObjective, r: MissionReadings): number {
   if (o.kind === 'read') return r.read?.(o.inscription) ? 1 : 0;
-  if (o.kind === 'defeat') return r.flagged?.(o.flag) ? 1 : 0;
+  if (o.kind === 'defeat' || o.kind === 'reach') return r.flagged?.(o.flag) ? 1 : 0;
+  if (o.kind === 'flags') return o.flags.filter(flag => r.flagged?.(flag)).length;
   if (o.kind === 'inscriptions') {
     return Math.min(r.inscriptions, missionTarget(o, r.inscriptionTotal));
   }
@@ -427,6 +541,11 @@ export function missionNextStep(
   const o = m.objective;
   if (o.kind === 'read') return `Read the carving in ${o.where}.`;
   if (o.kind === 'defeat') return `Face ${o.name} in ${o.where}.`;
+  if (o.kind === 'reach') return `Reach ${o.name} through ${o.where}.`;
+  if (o.kind === 'flags') {
+    const left = o.flags.length - o.flags.filter(flag => r.flagged?.(flag)).length;
+    return `Find ${left} more of ${o.name} in ${o.where}.`;
+  }
   if (o.kind === 'inscriptions') {
     const left = missionTarget(o, r.inscriptionTotal) - Math.min(r.inscriptions, missionTarget(o, r.inscriptionTotal));
     return `Copy ${left} more ${left === 1 ? 'inscription' : 'inscriptions'} in the Ember Delve.`;
@@ -454,6 +573,8 @@ export function missionRewardLine(reward: MissionReward, gold: number, recipeNam
   if (reward.delvingXp) parts.push(`${reward.delvingXp} Delving XP`);
   if (reward.fishingXp) parts.push(`${reward.fishingXp} Fishing XP`);
   if (reward.recipe) parts.push(`${recipeName ?? 'a new'} recipe`);
+  if (reward.recipes?.length) parts.push(`${reward.recipes.length} ${reward.recipes.length === 1 ? 'recipe' : 'recipes'}`);
+  for (const row of reward.materials ?? []) parts.push(`${row.qty} × ${DELVE_MATERIAL_NAMES[row.id] ?? row.id}`);
   if (reward.rune) parts.push(`${runeName ?? reward.rune} rune`);
   if (reward.item) parts.push(`a ${reward.item.rarity} keepsake`);
   if (reward.artifact) parts.push(ARTIFACTS.find(a => a.id === reward.artifact)?.name ?? 'an artifact');

@@ -12,6 +12,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { GLIM_KEY, GLIM_LADDER_TOP, GlimState, coerceGlim, emptyGlim } from './glim-save.model';
+import { BondStage, QuestionId, answersFor, bondStage, questMoments, roomFor } from './glim-bond';
 
 @Injectable({ providedIn: 'root' })
 export class GlimService {
@@ -60,6 +61,57 @@ export class GlimService {
       said: { ...this.current.said, [lineId]: (this.current.said[lineId] ?? 0) + 1 },
       lastAt: { ...this.current.lastAt, [lineId]: at },
     });
+  }
+
+  // ── The bond (glim-bond.ts) ──
+
+  /** The bond's stage now (never below the peak reached). */
+  get stage(): BondStage {
+    const state = this.state;
+    return bondStage(state.moments, state.peak);
+  }
+
+  /**
+   * File shared moments. Only new ones that still count are kept (a moment is
+   * counted once, ever; each kind has a cap), and any step of "The Blank
+   * Places" they complete is filed with them. Returns what was added.
+   */
+  addMoments(ids: Iterable<string>): string[] {
+    this.hydrate();
+    const moments = [...this.current.moments];
+    const added: string[] = [];
+    for (const id of ids) if (roomFor(moments, id)) { moments.push(id); added.push(id); }
+    if (!added.length) return added;
+    // The questline opens at Mapmates: its steps only file once it is open.
+    if (bondStage(moments, this.current.peak).n >= 2) {
+      for (const id of questMoments(moments)) if (roomFor(moments, id)) { moments.push(id); added.push(id); }
+    }
+    this.save({ ...this.current, moments });
+    return added;
+  }
+
+  /** Raise the remembered peak stage (it never goes down). */
+  reachStage(n: number): void {
+    this.hydrate();
+    if (n > this.current.peak) this.save({ ...this.current, peak: Math.min(5, n) });
+  }
+
+  /** What the Keeper told Glim (only a choice the question offers). */
+  answer(q: QuestionId, a: string, at = Date.now()): boolean {
+    this.hydrate();
+    if (!answersFor(q).includes(a)) return false;
+    this.save({ ...this.current, answers: { ...this.current.answers, [q]: { a, at } } });
+    return true;
+  }
+
+  answerTo(q: QuestionId): string | undefined {
+    return this.state.answers[q]?.a;
+  }
+
+  /** Out together now (written at most every few minutes by the caller). */
+  seen(at = Date.now()): void {
+    this.hydrate();
+    if (at > this.current.seenAt) this.save({ ...this.current, seenAt: at });
   }
 
   private save(next: GlimState): void {

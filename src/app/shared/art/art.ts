@@ -59,7 +59,7 @@ export const ART_ALIAS: Readonly<Record<string, string>> = {
   'basalt-edge': 'basalt-edge-portrait',
   // Forged tools (skills/tool-items). Stand-ins until the commission pack
   // paints `pickaxe-1`..`staff-4`; delete each row when its file lands.
-  'pickaxe-1': 'iron-hammer', 'pickaxe-2': 'obsidian-mallet', 'pickaxe-3': 'nox-crusher', 'pickaxe-4': 'eclipse-hammer',
+  'pickaxe-1': 'iron-hammer', 'pickaxe-2': 'obsidian-mallet', 'pickaxe-3': 'nox-crusher', 'pickaxe-4': 'eclipse-hammer', 'pickaxe-5': 'starfall-maul', 'axe-5': 'astral-glaive',
   'axe-1': 'rootbreaker-mace', 'axe-2': 'radiant-halberd', 'axe-3': 'astral-glaive', 'axe-4': 'starfall-maul',
   'sickle-1': 'briarvein-kris', 'sickle-2': 'ashveil-throwing-knives', 'sickle-3': 'hollow-fang', 'sickle-4': 'cindergnaw',
   'starter-pickaxe': 'iron-hammer', 'starter-axe': 'rootbreaker-mace', 'starter-sickle': 'briarvein-kris',

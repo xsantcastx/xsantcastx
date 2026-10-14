@@ -107,9 +107,9 @@ export function wallPalette(biome: Pick<BiomeDef, 'wall'>): string[] {
 export type TilePattern = 'rock' | 'ore' | 'roots' | 'grain' | 'glowcap' | 'fragment' | 'cracked' | 'bedrock' | 'cache' | 'block' | 'placed';
 
 /** The pattern a node is drawn with. Pure. */
-export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & { placeable?: string }): TilePattern {
-  // Placed things, and the rift shrine (walked through like one, never placed).
-  if ((node.placeable || node.id === 'rift-shrine') && PLACED_ART[node.id]) return 'placed';
+export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & { placeable?: string; solid?: boolean }): TilePattern {
+  // Placed things, and the walk-through features drawn like one (the rift shrine, the Underhearth's marks and vents).
+  if (PLACED_ART[node.id] && (node.placeable || node.solid === false)) return 'placed';
   switch (node.id) {
     case 'roots': case 'shadow-root': return 'roots';
     case 'petrified-trunk': return 'grain';
@@ -118,7 +118,7 @@ export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & 
     case 'cracked-wall': return 'cracked';
     case 'bedrock': return 'bedrock';
     case 'cache': case 'kaels-cache': case 'waycache': return 'cache';
-    case 'packed-dirt': case 'basalt-block': return 'block';
+    case 'packed-dirt': case 'basalt-block': case 'hearth-brick': return 'block';
   }
   return node.yield || node.glow ? 'ore' : 'rock';
 }
@@ -309,6 +309,116 @@ export const PLACED_ART: Readonly<Record<string, readonly string[]>> = {
     '..oooooooooooo..',
     '................',
     '................',
+  ],
+  // ── The Underhearth (Phase 8): rope, a Rift Anchor, a hammer-mark, the furnace's vent and hearth. A Seam
+  // Rail is drawn by the engine (it joins its neighbours, level or sloped), so its own tile is clear. ──
+  'seam-rail': [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  'rope': [
+    '.......ol.......',
+    '.......lo.......',
+    '......ofbo......',
+    '.......ol.......',
+    '.......lo.......',
+    '.......ol.......',
+    '......obfo......',
+    '.......lo.......',
+    '.......ol.......',
+    '.......lo.......',
+    '......ofbo......',
+    '.......ol.......',
+    '.......lo.......',
+    '.......ol.......',
+    '......obfo......',
+    '.......lo.......',
+  ],
+  'rift-anchor': [
+    '................',
+    '.......oo.......',
+    '......ofso......',
+    '......osfo......',
+    '..o...ofso...o..',
+    '..lo..osfo..ol..',
+    '...lo.ofso.ol...',
+    '....lofsfsol....',
+    '.....ofssfo.....',
+    '....lofsfsol....',
+    '...lo.ofso.ol...',
+    '..lo..osfo..ol..',
+    '..o..obbbbo..o..',
+    '....obddddbo....',
+    '...obddddddbo...',
+    '..oooooooooooo..',
+  ],
+  'hammer-mark': [
+    '................',
+    '.oooooooooooooo.',
+    '.obbbbbbbbbbbbo.',
+    '.obffffffbbbbbo.',
+    '.obffffffbbbbbo.',
+    '.obbbfbbbbbbbbo.',
+    '.obbbfbbbbbbbbo.',
+    '.obbbfbbbbbbbbo.',
+    '.obbbfbbbbbbbbo.',
+    '.obbbfbbbbllbbo.',
+    '.obbbfbbbbllbbo.',
+    '.obbbbbbbbbbbbo.',
+    '.obddddddddddbo.',
+    '.oooooooooooooo.',
+    '................',
+    '................',
+  ],
+  'furnace-vent': [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '.oooooooooooooo.',
+    '.odfdfdfdfdfdfo.',
+    '.ofdfdfdfdfdfdo.',
+    '.odfdfdfdfdfdfo.',
+    '.obbbbbbbbbbbbo.',
+    'oooooooooooooooo',
+  ],
+  'furnace-hearth': [
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '...oooooooooo...',
+    '..obbbbbbbbbbo..',
+    '.obllfffffflbbo.',
+    '.obfffssssfffbo.',
+    '.obllfffffflbbo.',
+    '.obbbbbbbbbbbbo.',
+    '.obddddddddddbo.',
+    'oooooooooooooooo',
   ],
 };
 const inTile = (x: number, y: number) => x >= 0 && y >= 0 && x < TILE && y < TILE;

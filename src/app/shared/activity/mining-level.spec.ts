@@ -1,4 +1,6 @@
-import { MAX_SKILL_LEVEL, levelProgressPct, miningLevelView, xpForLevel } from './mining-level';
+import { MASTERY_LEVEL, MASTERY_STEP, formatXp, levelProgressPct, miningLevelView, xpForLevel } from './mining-level';
+
+const MAX_SKILL_LEVEL = MASTERY_LEVEL;
 
 describe('skill XP curve', () => {
   it('starts at level 1 with nothing earned', () => {
@@ -44,12 +46,12 @@ describe('skill XP curve', () => {
     expect(levelProgressPct(v)).toBeCloseTo(50, 0);
   });
 
-  it('caps without a next level and reads as full', () => {
+  it('does not cap at 99: a next level is always there, and the bar fills inside it', () => {
     const v = miningLevelView(xpForLevel(MAX_SKILL_LEVEL) + 10_000);
     expect(v.level).toBe(MAX_SKILL_LEVEL);
-    expect(v.next).toBeNull();
-    expect(v.span).toBe(0);
-    expect(levelProgressPct(v)).toBe(100);
+    expect(v.next).toBe(xpForLevel(100));
+    expect(v.span).toBe(xpForLevel(100) - xpForLevel(99));
+    expect(levelProgressPct(v)).toBe(Math.round(10_000 / v.span * 100));
   });
 
   it('treats junk input as zero rather than throwing', () => {
@@ -82,11 +84,38 @@ describe('skill XP curve', () => {
       }
     });
 
-    it('runs to 99 and caps there', () => {
+    it('keeps 99 where it was (mastery), and goes on past it', () => {
       expect(MAX_SKILL_LEVEL).toBe(99);
+      expect(xpForLevel(99)).toBe(Math.floor(100 * Math.pow(98, 2.2)));
       expect(miningLevelView(xpForLevel(99)).level).toBe(99);
-      expect(miningLevelView(xpForLevel(99)).next).toBeNull();
-      expect(xpForLevel(99)).toBeGreaterThan(xpForLevel(98));
+      expect(miningLevelView(xpForLevel(99)).next).toBe(xpForLevel(100));
+    });
+  });
+
+  describe('uncapped, Tibia-style past 99', () => {
+    const step = (l: number) => xpForLevel(l) - xpForLevel(l - 1);
+
+    it('is continuous at 99 -> 100 and steepens with the square of the level', () => {
+      expect(step(99)).toBe(MASTERY_STEP);
+      expect(step(100)).toBeGreaterThan(step(99));
+      expect(step(100) / step(99)).toBeLessThan(1.03);
+      expect(step(198) / step(99)).toBeCloseTo(4, 0);
+    });
+
+    it('is monotonic, exact and overflow-free up to level 1000', () => {
+      for (let l = 100; l <= 1000; l++) {
+        expect(Number.isSafeInteger(xpForLevel(l))).toBeTrue();
+        expect(step(l)).toBeGreaterThanOrEqual(step(l - 1));
+        expect(miningLevelView(xpForLevel(l)).level).toBe(l);
+        expect(miningLevelView(xpForLevel(l) - 1).level).toBe(l - 1);
+      }
+    });
+
+    it('formats big totals for a phone (K/M/B)', () => {
+      expect(formatXp(53_607)).toBe('53,607');
+      expect(formatXp(xpForLevel(99))).toBe('2.4M');
+      expect(formatXp(xpForLevel(300))).toBe('50.1M');
+      expect(formatXp(xpForLevel(1000))).toBe('1.83B');
     });
   });
 });

@@ -1075,3 +1075,125 @@ Archive's roof the fractured moon mirror…").
   or traded through glass: the Bench, the Market, the Exchange and the Vendor
   stay where they stand, and the Slate only says where to walk. It also goes dark
   when the Keeper's hands are busy (a fight, a line in the water, a story told).
+### The Underhearth in the game (Phase 8, shipped — owner reviews in play)
+
+The Delve and beyond's "The Four Who Went Down" and "Flooded Seams" (above),
+now in the world. Everything below is in the build, EN + ES unless marked.
+Builds on the same passages as those stories, plus the shipped Fracture claim
+("It broke along a line someone had already drawn") and Act I's break.
+
+**The door.** The Magma Halls' floor is the Underhearth's fallen ceiling, so
+the one way down is the **Banked seal** cut through the fragment chamber's
+floor, where the Seam Eater stood. It answers to a Pickaxe IV and Delving 15,
+and only once Kael has been brought the fragment: "The seal holds. Bring Kael
+the Godforge Fragment first: he knows what it holds back." Under it the
+**Banked Door**, a landing on the Four's brick, and the field note *For the
+Fifth*. First step down: "Under the Halls. The heat here is heavy, not hot:
+fire pressed so long it became something else."
+
+**What is down there.** Iron-black basalt over banked obsidian; Kael's old
+rails in the galleries (some sections broken, as the Flooded Seams story
+says); lava lakes with obsidian shores "where the seeps met it"; the
+fracture's own violet seam through the rock, unbreakable and lit; cold coal
+that is dark "until struck" and then glows; emberheart, pyrite, the furnace's
+slag (Pickaxe V) and ironwood (two of the four pillars still stand in the
+Furnace Hall; their heartposts take an Axe V). Creatures: **Banked Embers**
+asleep in cold coal until a blow wakes them, **Ironwood Sentinels** whose
+strike shoulders the ceiling ("A support nearby holds it"), Rivet Maws at the
+top. The **Four's outposts**: four ruined forge corners, two east and two west
+of the shaft, each with an anvil, a cache and one **hammer-mark** ("A
+hammer-mark, cut where one of the Four stood. You take a rubbing of it.").
+
+**The Banked Furnace** (the Furnace Hall under the core, at the bottom of
+Kael's rail). Woken at its hearth with the Four Hammer-Marks: "The Banked
+Furnace wakes, and the hall breathes with it." Banked, it swallows blows; its
+four vents are doused with water from **the Four's quench trough** ("Bank, Do
+Not Quench" made into a fight: the Four banked it; the Keeper finally puts it
+out); it breathes in, pulling, and spills Banked Embers; with the vents out its
+core opens; under half it "remembers what it was banked for". Its fall: "The
+Banked Furnace goes dark. The fire the Four banked is out." It can be woken
+again once a day for what it banked; it will not wake twice in a day.
+
+**Missions** (English data, like every mission):
+
+- *Flooded Seams* (Kael): "When I closed the mines I did not fill them. I let
+  the water have them. The old rails still run along the drowned galleries,
+  and the Maws still pull rivets from them. Bring me three. Then look at which
+  way the rails were laid." Claim: "They were laid toward the crack." Opens the
+  Seam Rail and the Seam Cart.
+- *The Four Who Went Down* (Kael): "Five of us worked the Seamworks when the
+  crack reached it. Four went down to bank the fire. I stayed. The seal under
+  the chamber is ours, and you brought up the fragment, so you have earned the
+  door. Take a Pickaxe IV. Go down with someone, if you can." Claim: the
+  fallen-roof line (story above).
+- *Four Hammers* (Kael): "One mark for each of us, where we stood. Two east of
+  the shaft, two west, none of them far. Put your hand on one. That was the
+  height of her shoulder." Claim: "I did not stay because I was braver…" and
+  the Four Hammer-Marks; opens the Rift Anchor.
+- *Let It End* (Verrin, also Kael): Verrin's three lines from the story above,
+  as one plea. Claim: Kael's "It is out. I thought I would feel lighter. I feel
+  like the forge just got colder by four." A Nox rune; Pickaxe V and Axe V.
+- *Endings Kept Warm* (Verrin): "Some endings are kept warm on purpose, so they
+  can be finished later. Bring me five things that swam toward the crack, and
+  one that swims in what was banked." Claim: "Verrin filed both catches under
+  the same ending. 'Postponed,' the label says. Then, smaller: 'not
+  cancelled.'" A Hollow rune.
+
+**Act II's first pages** (the Story tab, `story.i18n.ts`): *The Four Who Went
+Down*, *Four hammers*, *Let it end*, each with Kael speaking on Glim's line
+("The furnace is not angry…", "You found a mark…", "It is out…").
+
+**Glim** (hint ladder, never what is down there): "The deepest room we know
+has a floor that is not quite a floor." · "Four people worked down here.
+People leave corners lit." · "Kael's old rail goes all the way down. So does
+the heat." · "Ride the rail to the Furnace Hall. Bring a bucket: the trough is
+there for a reason."
+
+**Traversal** (item lines above, now carried): the Seam Cart ("In the cart.
+Left and Right push it, Down brakes, Jump leaps out, E steps off." · "Off the
+end of the line! The cart stays; you do not."), Bark Rope ("The rope unrolls
+down… Climb it like a ladder."), the Thornroot Grapple ("The thornroot grows to
+the rock and pulls. Jump to let go."), Rift Anchors ("The anchor holds, and both
+ends agree. You step through."; travel sheet: "A passage that holds only because
+both ends agree to. Choose where to step through."). Each rift shrine's first
+touch now also leaves a **Waystone Shard**, "a splinter from a waystone that
+was never built".
+## Skill titles past mastery (uncapped levels, 2026-10-14) — shipped, owner reviews in play
+
+Past 99 nothing new is gated; the climb pays in standing. A title at 100 and every 25 levels
+(eight per skill, words in `src/app/shared/skills/skill-titles.i18n.ts`, EN + ES), then `+1`, `+2`…
+on the last one every 25 levels from 300. Each name leans on the skill's own places and things:
+Mining (Vein-Reader → Seam-Sage → Ember-Hewer → Heartstone Breaker → Basalt-Born → Orichalcum Hand →
+Seam-Warden → Eclipse Hewer), Delving (Lantern-Bearer → Deepdelver → … → Underhearth Walker → Abyss-Sage →
+Eclipse Delver), Fishing (… Drowned-Lamp Seeker … Ledger-Legend …), and so on. Every ladder ends in an
+"Eclipse" title: the realm's name is the last word a skill can earn. Builds on: the skills' canon
+nodes and sites (Heartstone, Orichalcum, Rootglass, Meridian Orrery, the Drowned Lamp, the Ledger Catch).
+### The bond with Glim (2026-10-14)
+
+**Shipped — owner reviews in play.** Owner: "The more you explore the more
+connection you and me have." Builds on world-and-cast §4 (Glim, its origin, its
+questline "The Blank Places", the first-lamp easter egg) and §5 (no guilt, no
+streaks). All text: `shared/glim/glim-bond.i18n.ts`, EN + ES.
+
+- **Five stages**, in Glim's cartographer's voice: *Stranger with a lantern* →
+  *Mapmates* → *Margin notes* → *Two hands on one chart* → *The blank page and
+  the pen*. The bond grows from shared moments only and never shrinks.
+- **Six talks, Glim's own story:** *What are you?* (the lent pencil; it doesn't
+  remember the Keepers before you), *The Afterimage Moths* (circling the
+  uncertain, going still around performed certainty), *The Archivist's page* (it
+  ate the page; "The Archivist calls it a promotion. I think it was a
+  kindness."), *Why I leave blanks* ("a solid line is a promise … true is worth
+  more than tidy"), *A complete map* (its fear: "A map with no blanks is a map
+  that's stopped looking."), *The first lamp* (someone made the first lamp like
+  Glim, patiently, far from any Godforge; Glim knows the name and will say it at
+  the threshold — the Act III easter egg is hinted, never named).
+- **Three questions Glim remembers**: what you like finding, deep or surface,
+  danger or beauty first. The answers colour its later lines.
+- **Three small abilities**: the way home ("Home is 84 steps west and 30 up.
+  I've kept the way."), brightening near rooms no lantern has touched, noticing
+  rare finds (rift shrines; the Lost Cabinets join the same list later).
+- **The Blank Places**, adapted to today's world: Legend, Scale Bar, Two Maps
+  ("My map and the Archive's disagree in eleven places. I've kept both."), The
+  Needle, Every Town, Leave It Blank (Act III: shown as still being written).
+- **Coming back** after two days or more: "There you are. The map kept; nothing
+  moved while you were away." Never "we missed you".

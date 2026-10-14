@@ -154,6 +154,18 @@ export interface MonsterDef {
    * VEIL_CELLS of it ("relight torches to expose it"), and the lantern dims while it lives.
    */
   veiled?: true;
+  /**
+   * The Underhearth's creatures (Phase 8):
+   *  - 'dormant': cold until struck (the Banked Ember): it ignores the Keeper
+   *    until a hit wakes it, then fights as any creature does;
+   *  - 'shoulder': shoulders the ceiling (the Ironwood Sentinel): its strike
+   *    brings down unsupported loose rock over the Keeper (a cave-in);
+   *  - 'furnace': the Banked Furnace (engine/furnace.ts): never moves, pulls,
+   *    spills Banked Embers, and takes no hit until its four vents are doused.
+   */
+  trait?: 'dormant' | 'shoulder' | 'furnace';
+  /** A summoned guardian that, once felled for good (`once`), may still be summoned again for its drops. */
+  rematch?: true;
 }
 
 /** Anything the Keeper can stand in: a town or one of its hunting grounds. */

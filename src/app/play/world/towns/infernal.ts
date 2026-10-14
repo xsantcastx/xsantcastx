@@ -70,6 +70,41 @@ export const DROWNED_LAMP_DROPS: ZoneDropTable = {
 /** The flag it sets (the same string as delve-missions.model's DROWNED_LAMP_FLAG; a spec pins them). */
 export const DROWNED_LAMP_FLAG = 'drowned-lamp-defeated';
 
+/**
+ * The Underhearth's creatures (Phase 8, delve-and-beyond.md §2.2; lore-addendum.md,
+ * "The Four Who Went Down", bestiary lines):
+ *  - Banked Ember: "Cold until struck. Every blow releases heat it took from
+ *    somewhere else" — the heat it gives up (Ember Residue).
+ *  - Ironwood Sentinel: "One of the four pillars left standing" — its wood.
+ *  - The Banked Furnace: "a promise kept so long it forgot who it was kept
+ *    for" — what it was banking: Emberheart Ore, its slag, ironwood.
+ */
+export const BANKED_EMBER_DROPS: ZoneDropTable = {
+  id: 'delve-banked-ember',
+  entries: [
+    { id: 'coins', kind: 'coins', base: 20, spread: 8 },
+    { id: 'residue', kind: 'material', material: 'ember-residue', art: 'ember-residue', label: 'Ember Residue', short: 'residue', qty: 1, chance: 0.5, rarity: 'uncommon' },
+  ],
+};
+export const IRONWOOD_SENTINEL_DROPS: ZoneDropTable = {
+  id: 'delve-ironwood-sentinel',
+  entries: [
+    { id: 'coins', kind: 'coins', base: 40, spread: 12 },
+    { id: 'ironwood', kind: 'material', material: 'ironwood', art: 'ironwood', label: 'Ironwood', short: 'wood', qty: 2, rarity: 'uncommon' },
+  ],
+};
+export const BANKED_FURNACE_DROPS: ZoneDropTable = {
+  id: 'delve-banked-furnace',
+  entries: [
+    { id: 'coins', kind: 'coins', base: 120, spread: 30 },
+    { id: 'emberheart', kind: 'material', material: 'emberheart-ore', art: 'emberheart-ore', label: 'Emberheart Ore', short: 'ore', qty: 3, rarity: 'rare' },
+    { id: 'ironwood', kind: 'material', material: 'ironwood', art: 'ironwood', label: 'Ironwood', short: 'wood', qty: 2, rarity: 'uncommon' },
+    { id: 'slag', kind: 'material', material: 'godforge-slag', art: 'godforge-slag', label: 'Godforge Slag', short: 'slag', qty: 1, chance: 0.5, rarity: 'legendary' },
+  ],
+};
+/** The flag the Banked Furnace sets on its first fall (the same string as shared/delve/underhearth.model's FURNACE_FLAG; a spec pins them). */
+export const BANKED_FURNACE_FLAG = 'banked-furnace-defeated';
+
 /** The camp is widened by this much: the town quarter sits between the forge and the Maws. */
 const QUARTER = 900;
 
@@ -137,6 +172,8 @@ export const EMBER_QUARRY: HuntZoneDef = {
  */
 const DELVE_COLS = 120;
 const DELVE_ROWS = 56;
+/** The world's rows with the Underhearth (Phase 8): rows 56-117 under every column, bedrock 118-119. */
+const DEEP_ROWS = 120;
 const DELVE_CELL = 32;
 /** Top of terrain row `row`, in world y. */
 const delveRow = (row: number) => FLOOR + row * DELVE_CELL;
@@ -147,8 +184,8 @@ export const EMBER_DELVE: HuntZoneDef = {
   name: 'Ember Delve',
   background: 'bg-basalt-seamworks',
   width: DELVE_COLS * DELVE_CELL,
-  // Under the bedrock: a net that never shows, and the floor every area declares.
-  platforms: [{ x: 0, y: delveRow(DELVE_ROWS), width: DELVE_COLS * DELVE_CELL }],
+  // Under the world's floor (the Underhearth's bedrock): a net that never shows, and the floor every area declares.
+  platforms: [{ x: 0, y: delveRow(DEEP_ROWS), width: DELVE_COLS * DELVE_CELL }],
   stations: [
     { id: 'delve-exit', x: 110, label: 'RETURN TO SEAMWORKS', kind: 'passage', to: 'infernal', arriveX: 590, width: 120, blurb: 'Climb the shaft back to the Seamworks.' },
   ],
@@ -169,6 +206,14 @@ export const EMBER_DELVE: HuntZoneDef = {
     // The Grotto Mere's keeper: summoned by a night cast, veiled in its own dark.
     { creature: 'drowned-lamp', name: 'The Drowned Lamp', hp: 180, spawnXs: [delveCol(32)], floorY: delveRow(35),
       range: [delveCol(20) + 30, delveCol(45) - 30], once: DROWNED_LAMP_FLAG, summoned: true, veiled: true, drops: DROWNED_LAMP_DROPS },
+    // The Underhearth (Phase 8). The two hall creatures spawn only in the halls the
+    // generator lays (engine/underhearth-gen.ts), from these defs: no fixed spawns.
+    { creature: 'banked-ember', name: 'Banked Ember', hp: 140, spawnXs: [], trait: 'dormant', drops: BANKED_EMBER_DROPS },
+    { creature: 'ironwood-sentinel', name: 'Ironwood Sentinel', hp: 320, spawnXs: [], trait: 'shoulder', drops: IRONWOOD_SENTINEL_DROPS },
+    // The Banked Furnace in the Furnace Hall under the core: summoned at its hearth with
+    // the Four Hammer-Marks, felled once for the story, then once a day for its drops.
+    { creature: 'banked-furnace', name: 'The Banked Furnace', hp: 900, spawnXs: [delveCol(68) + 16], floorY: delveRow(110),
+      range: [delveCol(68) + 16, delveCol(68) + 16], once: BANKED_FURNACE_FLAG, summoned: true, rematch: true, trait: 'furnace', drops: BANKED_FURNACE_DROPS },
   ],
   drops: SEAMWORKS_DROPS,
   spawnX: 260,
@@ -188,6 +233,23 @@ export const EMBER_DELVE: HuntZoneDef = {
     // Phase 7: sectors are generated east and west of this grid, forever (engine/sector-gen.ts).
     // The grid itself is untouched: no `version` bump.
     endless: true,
+    // Phase 8: the Underhearth under every column (engine/underhearth-gen.ts), rows 56-117.
+    // The grid above is untouched but for the Banked seal through the fragment chamber's
+    // floor, which only the endless world lays: no `version` bump, nobody's dig is dropped.
+    depth: {
+      rows: DEEP_ROWS,
+      biomes: [{
+        id: 'underhearth', name: 'The Underhearth', to: DEEP_ROWS,
+        // Style guide §5.3, the Underhearth ramps: iron black, obsidian, ember seams.
+        wall: ['#1c1420', '#241a28', '#0e0a12'], dark: '4,2,6',
+        wash: { color: '#c4501e', alpha: .1 },
+        particles: { kind: 'ember', color: '#ffd08a', count: 18 },
+        shimmer: true,
+        // The fallen roof is cracked through: the Ironwood Sentinels bring it down.
+        loose: { node: 'iron-basalt', chance: .18 },
+        veins: [],
+      }],
+    },
     // Shared across the depths.
     veins: [
       { node: 'ember-rock', from: 6, to: 52, count: 22, size: 3 },
