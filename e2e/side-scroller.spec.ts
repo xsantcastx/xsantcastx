@@ -31,13 +31,13 @@ test('fresh Keeper mines, forges and manages the blade in the satchel', async ({
   await openWorld(page);
   const canvas = page.locator('.viewport canvas');
   await expect(canvas).toHaveAttribute('data-player-x', '160');
-  await walk(page, 'd', 390);
-  const interact = page.getByRole('button', { name: 'Interact', exact: true });
+  await walk(page, 'd', 470);
+  const interact = page.getByRole('button', { name: /^Interact/ });
   for (let count = 1; count <= 8; count++) {
     await page.clock.fastForward(3500);
     await expect(interact).toBeEnabled();
     await interact.click();
-    await expect(page.locator('.satchel p').filter({ hasText: 'Cinder ore' }).locator('b')).toHaveText(String(count));
+    await expect(page.locator('.satchel p').filter({ hasText: 'Ore' }).locator('b')).toHaveText(String(count));
   }
   await walk(page, 'd', 840);
   await interact.click();
@@ -46,7 +46,7 @@ test('fresh Keeper mines, forges and manages the blade in the satchel', async ({
   await expect(book).toBeVisible();
   await book.getByRole('button', { name: 'Basalt Edge', exact: true }).click();
   await book.getByRole('button', { name: 'Equip', exact: true }).click();
-  await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Worn');
+  await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Equipped');
   await book.getByRole('button', { name: 'Stow', exact: true }).click();
   await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Satchel');
   await page.reload();
@@ -68,7 +68,7 @@ test('world renders, permits backtracking through portals, and restarts without 
   await openWorld(page);
   const canvas = page.locator('.viewport canvas');
   await expect.poll(() => canvas.evaluate(c => (c as HTMLCanvasElement).getContext('2d')!.getImageData(10, 10, 1, 1).data[3])).toBe(255);
-  await walk(page, 'd', 2500);
+  await walk(page, 'd', 3420);
   await page.keyboard.press('e');
   await expect(canvas).toHaveAttribute('data-area', 'Ember Quarry');
   await walk(page, 'a', 200);

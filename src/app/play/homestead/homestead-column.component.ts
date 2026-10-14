@@ -15,6 +15,7 @@ import { Subscription } from 'rxjs';
 import { artFor } from '../../shared/art/art';
 import { HomeForgeRow, HomesteadHud, HomesteadService, purchaseMessage } from './homestead.service';
 import { TranslationService } from '../../translation.service';
+import { HOMESTEAD_I18N } from './homestead.i18n';
 import { HOME_FORGE_I18N } from '../../shared/minigames/home-forge.i18n';
 import { tierNumeral } from '../../shared/minigames/home-forge.model';
 import { ColumnRow, formatGoldWhole, formatPerSecond } from './homestead.model';
@@ -59,6 +60,7 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
 
   constructor() {
     this.i18n.register(HOME_FORGE_I18N);
+    this.i18n.register(HOMESTEAD_I18N);
   }
 
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
@@ -110,7 +112,7 @@ export class HomesteadColumnComponent implements OnInit, OnDestroy {
     if (row.state !== 'shown' || !row.affordable) return;
     const code = this.homestead.buy(row.id);
     const ok = code === 'ok' || code === 'queued';
-    this.notice = ok ? `${row.name} built!` : purchaseMessage(code);
+    this.notice = ok ? this.t('homestead.built', { name: row.name }) : purchaseMessage(code);
     this.bought = ok ? row.id : null;
     if (this.noticeTimer) clearTimeout(this.noticeTimer);
     this.noticeTimer = setTimeout(() => { this.notice = ''; this.bought = null; this.cdr.markForCheck(); }, 2200);
