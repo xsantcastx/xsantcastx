@@ -1442,6 +1442,30 @@ input::placeholder { color: var(--adventure-hud-muted); }
   transform: rotate(45deg);
 }
 .glim-say__close i::after { transform: rotate(-45deg); }
+/* A bond line's Talk (shared/glim/glim-bond.ts): one plain 44 px button beside the close. */
+.glim-say__talk {
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--adventure-hud-gold);
+  background: color-mix(in srgb, var(--adventure-hud-gold) 14.00%, transparent);
+  color: var(--adventure-parchment);
+  font: 600 11px Orbitron, sans-serif;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  pointer-events: auto;
+}
+.glim-talk-card { display: grid; gap: 12px; }
+.glim-talk-card__close {
+  justify-self: start;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 16px;
+  color: var(--adventure-dialogue);
+  border-color: color-mix(in srgb, var(--adventure-hud-brass) 55.00%, transparent);
+  background: none;
+}
 @keyframes glim-in {
   from { opacity: 0; transform: translateY(-6px); }
   to { opacity: 1; transform: none; }

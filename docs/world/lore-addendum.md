@@ -1044,3 +1044,33 @@ presence").
   diamond on the map for half an hour, at the mission's target: a place, never
   what a carving says (the Archivist's rule stands). Builds on: world-and-cast
   §4 (Glim keeps the maps; "A hint is a kindness. An answer is a theft.").
+
+### The bond with Glim (2026-10-14)
+
+**Shipped — owner reviews in play.** Owner: "The more you explore the more
+connection you and me have." Builds on world-and-cast §4 (Glim, its origin, its
+questline "The Blank Places", the first-lamp easter egg) and §5 (no guilt, no
+streaks). All text: `shared/glim/glim-bond.i18n.ts`, EN + ES.
+
+- **Five stages**, in Glim's cartographer's voice: *Stranger with a lantern* →
+  *Mapmates* → *Margin notes* → *Two hands on one chart* → *The blank page and
+  the pen*. The bond grows from shared moments only and never shrinks.
+- **Six talks, Glim's own story:** *What are you?* (the lent pencil; it doesn't
+  remember the Keepers before you), *The Afterimage Moths* (circling the
+  uncertain, going still around performed certainty), *The Archivist's page* (it
+  ate the page; "The Archivist calls it a promotion. I think it was a
+  kindness."), *Why I leave blanks* ("a solid line is a promise … true is worth
+  more than tidy"), *A complete map* (its fear: "A map with no blanks is a map
+  that's stopped looking."), *The first lamp* (someone made the first lamp like
+  Glim, patiently, far from any Godforge; Glim knows the name and will say it at
+  the threshold — the Act III easter egg is hinted, never named).
+- **Three questions Glim remembers**: what you like finding, deep or surface,
+  danger or beauty first. The answers colour its later lines.
+- **Three small abilities**: the way home ("Home is 84 steps west and 30 up.
+  I've kept the way."), brightening near rooms no lantern has touched, noticing
+  rare finds (rift shrines; the Lost Cabinets join the same list later).
+- **The Blank Places**, adapted to today's world: Legend, Scale Bar, Two Maps
+  ("My map and the Archive's disagree in eleven places. I've kept both."), The
+  Needle, Every Town, Leave It Blank (Act III: shown as still being written).
+- **Coming back** after two days or more: "There you are. The map kept; nothing
+  moved while you were away." Never "we missed you".
