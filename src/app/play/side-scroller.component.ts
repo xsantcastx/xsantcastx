@@ -120,6 +120,7 @@ import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.mode
 import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
 import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
+import { LevelUpService } from '../shared/activity/level-up.service';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
 import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
 import type { PanelEntry } from './world/panel-registry';
@@ -461,6 +462,9 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead has something worth a look: the button wears a badge. */
   slateReady = false;
   private slateSub?: Subscription;
+  /** A level up anywhere this session: the Keeper's face lights up (keeper-paint.ts). */
+  private joySub?: Subscription;
+  private readonly levelUps = inject(LevelUpService);
   /** Where each hooked cast's bob sat (a catch bounty needs the water's column). */
   private readonly hookedAt = new Map<string, { liquid: string; col: number; row: number }>();
 
@@ -521,6 +525,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
       // Cloud save merged another device's harvests: nodes re-read their regrowth.
       this.gatherSub = this.gatherSave.reloaded$.subscribe(() => this.engine?.setGathering(this.gatherSave));
+      this.joySub = this.levelUps.events$.subscribe(() => this.engine?.keeperFeel('happy', 1.4));
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
@@ -812,7 +817,7 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);

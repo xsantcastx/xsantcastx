@@ -1,22 +1,29 @@
 /**
  * keeper-paint.ts — the pixel Keeper: a look (keeper-look.model.ts) and worn
- * gear (keeper-gear.ts) painted as Terraria-style layers.
+ * gear (keeper-gear.ts) painted as Terraria-crisp layers in a chibi,
+ * MapleStory-cute shape.
  *
- * The figure lives in a 48×48 art-pixel cell, feet on the bottom edge at x 24,
- * facing right (the engine mirrors the context to face left). Each animation
- * frame of the BODY — cape, back arm + off-hand, legs, torso + armour, head,
- * face, hair, helm — is painted once into a small canvas, outlined in one dark
- * pass (the readability MapleStory and Terraria both get from an outline) and
- * cached. The FRONT arm and the held weapon are drawn live on top, so a swing is
- * smooth rather than six stiff frames: per frame that is one cached blit, one
- * weapon blit and a handful of rects.
+ * Owner, 2026-10-15: "make the character a bit more tender smaller like very
+ * cute type style of maple story". The figure lives in a 48×48 art-pixel cell,
+ * feet on the bottom edge at x 24, facing right (the engine mirrors the
+ * context to face left), and is about 31 art px tall (three quarters of the
+ * old 42): a big round head (15×14) over a small soft body (15 rows), so head
+ * to body is about 1 : 1.1. Big eyes (2×3, a white highlight), a small mouth,
+ * optional rosy cheeks, tiny hands and feet, oversized weapons.
+ *
+ * Each animation frame of the BODY — cape, back arm + off-hand, legs, torso +
+ * armour, head, face, hair, helm — is painted once into a small canvas,
+ * outlined in one dark pass and cached (a blink and the happy / surprised
+ * faces are cached frames too). The FRONT arm and the held weapon are drawn
+ * live on top, so a swing is smooth: per frame that is one cached blit, one
+ * weapon blit and a handful of rects. A landing squash is a scale on the blit.
  *
  * Draw order, back to front: cape → back arm, off-hand, back hand → back leg →
  * torso / chest armour → front leg, coat skirt, boots → belt, charms, pendant →
- * neck, head, face, hair, head gear → (live) weapon → front arm → front hand.
+ * head, face, hair, head gear → (live) weapon → front arm → front hand.
  *
- * Browser only (canvas). Pure inputs: the same look + gear always paint the
- * same pixels, which is what the specs and the e2e pixel diff rely on.
+ * Browser only (canvas). Pure inputs: the same look + gear + state always paint
+ * the same pixels, which is what the specs and the e2e pixel diff rely on.
  */
 import { EYE_COLORS, HAIR_COLORS, KeeperLook, OUTFIT_COLORS, SKIN_TONES, lookKey } from './keeper-look.model';
 import {
@@ -81,22 +88,42 @@ export function outlined(src: HTMLCanvasElement): HTMLCanvasElement {
   return out;
 }
 
-// ── Body geometry ──
+
+// ── Body geometry (chibi, 2026-10-15) ──
 const BODY = {
-  slight: { sw: 8, hw: 6, leg: 3 },
-  sturdy: { sw: 10, hw: 7, leg: 3 },
-  broad: { sw: 12, hw: 8, leg: 4 },
+  slight: { sw: 8, hw: 9, leg: 2 },
+  sturdy: { sw: 9, hw: 10, leg: 3 },
+  broad: { sw: 11, hw: 12, leg: 3 },
 } as const;
+/** The bottom row of the feet. */
 const FOOT = 47;
-const HIP = 33;
-const SHOULDER = 21;
-const HEAD_TOP = 8;
-const HEAD = 11;
+const HIP = 40;
+const SHOULDER = 33;
+/** The head: 15 wide, 14 tall, its top row at 19. */
+const HEAD_TOP = 19;
+const HW = 15;
+const HH = 14;
 const CX = 24;
+/** Slots per row of a painter's frame sheet. */
+const SHEET_COLS = 8;
+/** Shoulder-to-hand reach of the back arm (the front arm uses ARM_LENGTH from keeper-gear). */
+const ARM = 5;
+/**
+ * How far above the feet, in art px, the figure reaches with its tallest hat or
+ * helm crest. Name tags, the "You" plate and speech bubbles sit above this
+ * (× the world scale), so they follow the head instead of a fixed height.
+ */
+export const FIGURE_TOP = 37;
+/** The default portrait crop: the whole chibi plus a hat and a raised weapon tip. */
+export const STILL_CROP = { x: 5, y: 10, size: 38 } as const;
 
 interface Leg { dx: number; lift: number }
-/** One body frame: whole-figure offsets plus legs and the back arm. */
-export interface BodyFrame { bob: number; lean: number; back: Leg; front: Leg; armB: number; cape: number }
+/**
+ * One body frame: whole-figure offsets plus legs and the back arm. `nod` moves
+ * the head alone (it lags the body's bounce: squash and stretch); `cape` is how
+ * far a mantle trails.
+ */
+export interface BodyFrame { bob: number; lean: number; nod: number; back: Leg; front: Leg; armB: number; cape: number }
 
 export const RUN_FRAMES = 8;
 export const IDLE_FRAMES = 4;
@@ -105,33 +132,39 @@ export const IDLE_FRAMES = 4;
 export function bodyFrame(action: KeeperAction, frame: number): BodyFrame {
   switch (action) {
     case 'run': {
+      // A bouncy trot: high on the passing frames, the head lagging a pixel behind.
       const p = frame / RUN_FRAMES * Math.PI * 2, s = Math.sin(p), k = Math.cos(p);
+      const bob = -Math.round(2 * (1 - Math.abs(s)));
       return {
-        bob: Math.abs(s) > .7 ? 0 : -1, lean: 1,
-        front: { dx: Math.round(3 * s), lift: Math.max(0, Math.round(2.5 * k)) },
-        back: { dx: -Math.round(3 * s), lift: Math.max(0, Math.round(-2.5 * k)) },
-        armB: 1.57 - .7 * s, cape: 3 + (frame & 1),
+        bob, lean: 1, nod: bob === -2 ? 1 : 0,
+        front: { dx: Math.round(2.5 * s), lift: Math.max(0, Math.round(2 * k)) },
+        back: { dx: -Math.round(2.5 * s), lift: Math.max(0, Math.round(-2 * k)) },
+        armB: 1.57 - .8 * s, cape: 3 + (frame & 1),
       };
     }
-    case 'jump': return { bob: -1, lean: 0, front: { dx: 2, lift: 4 }, back: { dx: -1, lift: 2 }, armB: .6, cape: 2 };
-    case 'fall': return { bob: 0, lean: 0, front: { dx: 3, lift: 1 }, back: { dx: -3, lift: 2 }, armB: -.4, cape: -1 };
+    case 'jump': return { bob: -1, lean: 0, nod: 1, front: { dx: 2, lift: 3 }, back: { dx: -1, lift: 2 }, armB: .5, cape: 2 };
+    case 'fall': return { bob: 0, lean: 0, nod: -1, front: { dx: 2, lift: 1 }, back: { dx: -2, lift: 2 }, armB: -.5, cape: -1 };
     case 'attack': return frame === 0
-      ? { bob: 0, lean: -1, front: { dx: 2, lift: 0 }, back: { dx: -2, lift: 0 }, armB: 2.2, cape: 1 }
-      : { bob: 1, lean: 1, front: { dx: 4, lift: 0 }, back: { dx: -3, lift: 0 }, armB: 2.6, cape: 3 };
-    case 'hurt': return { bob: 0, lean: -2, front: { dx: 1, lift: 0 }, back: { dx: -2, lift: 1 }, armB: 2.6, cape: 2 };
-    case 'dodge': return { bob: 4, lean: 3, front: { dx: 4, lift: 0 }, back: { dx: -4, lift: 0 }, armB: 2.4, cape: 4 };
-    case 'rest': return { bob: 5, lean: 0, front: { dx: 5, lift: 2 }, back: { dx: 4, lift: 1 }, armB: 1.2, cape: 0 };
+      ? { bob: 0, lean: -1, nod: 0, front: { dx: 1, lift: 0 }, back: { dx: -2, lift: 0 }, armB: 2.2, cape: 1 }
+      : { bob: 1, lean: 1, nod: 0, front: { dx: 3, lift: 0 }, back: { dx: -2, lift: 0 }, armB: 2.6, cape: 3 };
+    case 'hurt': return { bob: 0, lean: -1, nod: -1, front: { dx: 1, lift: 0 }, back: { dx: -2, lift: 1 }, armB: 2.6, cape: 2 };
+    case 'dodge': return { bob: 3, lean: 2, nod: 0, front: { dx: 3, lift: 0 }, back: { dx: -3, lift: 0 }, armB: 2.4, cape: 4 };
+    case 'rest': return { bob: 4, lean: 0, nod: 0, front: { dx: 3, lift: 1 }, back: { dx: 2, lift: 1 }, armB: 1.2, cape: 0 };
     case 'walk': {
-      // The townsfolk's stroll: the run's cycle at half the stride, upright.
+      // The townsfolk's stroll: a little hop on each step, upright.
       const p = frame / RUN_FRAMES * Math.PI * 2, s = Math.sin(p), k = Math.cos(p);
       return {
-        bob: Math.abs(s) > .7 ? 0 : -1, lean: 0,
-        front: { dx: Math.round(2 * s), lift: Math.max(0, Math.round(1.5 * k)) },
-        back: { dx: -Math.round(2 * s), lift: Math.max(0, Math.round(-1.5 * k)) },
-        armB: 1.6 - .35 * s, cape: 1,
+        bob: Math.abs(s) > .7 ? 0 : -1, lean: 0, nod: 0,
+        front: { dx: Math.round(1.5 * s), lift: Math.max(0, Math.round(1.2 * k)) },
+        back: { dx: -Math.round(1.5 * s), lift: Math.max(0, Math.round(-1.2 * k)) },
+        armB: 1.6 - .4 * s, cape: 1 + ((frame >> 1) & 1),
       };
     }
-    default: return { bob: frame >= 2 ? 1 : 0, lean: 0, front: { dx: 1, lift: 0 }, back: { dx: -1, lift: 0 }, armB: 1.7, cape: 0 };
+    default: {
+      // Idle (and talk): breathing — the body settles a pixel and the cape stirs.
+      const low = frame >= 2 ? 1 : 0;
+      return { bob: low, lean: 0, nod: 0, front: { dx: 1, lift: 0 }, back: { dx: -1, lift: 0 }, armB: 1.7 + low * .12, cape: frame & 1 };
+    }
   }
 }
 
@@ -140,7 +173,7 @@ export function frameIndex(action: KeeperAction, time: number, attackT: number, 
   if (reduced) return 0;
   switch (action) {
     case 'run': return Math.floor((((time * 9) / (Math.PI * 2)) % 1 + 1) % 1 * RUN_FRAMES) % RUN_FRAMES;
-    case 'idle': case 'talk': return Math.floor(time * 1.6) % IDLE_FRAMES;
+    case 'idle': case 'talk': return Math.floor(time * 2.2) % IDLE_FRAMES;
     // `time` is the walker's own stride phase (radians), so feet never slide out of step with the ground.
     case 'walk': return Math.floor(((time / (Math.PI * 2)) % 1 + 1) % 1 * RUN_FRAMES) % RUN_FRAMES;
     case 'attack': return attackT < .3 ? 0 : 1;
@@ -150,11 +183,20 @@ export function frameIndex(action: KeeperAction, time: number, attackT: number, 
 /** The run-cycle phase that matches a run frame (for the live arm). */
 function runPhase(frame: number): number { return frame / RUN_FRAMES * Math.PI * 2; }
 
+/** A blink every ~3.7 s, about a seventh of a second long; `phase` keeps a crowd out of unison. */
+export const BLINK_EVERY = 3.7;
+export function blinking(time: number, phase: number): boolean {
+  return ((time + phase) % BLINK_EVERY + BLINK_EVERY) % BLINK_EVERY < .14;
+}
+
+/** A face the painter can show: open eyes, a blink, or a flash of joy or surprise (level up, loot). */
+export type KeeperFace = 'open' | 'blink' | 'happy' | 'surprised';
+
 /** Palette of one look + gear, resolved once per painter. */
 interface Palette {
-  skin: string; skinLo: string; skinHi: string;
+  skin: string; skinLo: string; skinHi: string; blush: string; mouth: string;
   hair: string; hairLo: string; hairHi: string;
-  eye: string;
+  eye: string; eyeDk: string; eyeHi: string;
   tunic: string; tunicLo: string; tunicHi: string;
   trim: string; trousers: string; trousersLo: string;
 }
@@ -164,10 +206,11 @@ function paletteOf(look: KeeperLook, garb: KeeperGarb | null): Palette {
   const tunic = garb?.tunic ?? OUTFIT_COLORS[look.outfit] ?? OUTFIT_COLORS[0];
   const trim = garb?.trim ?? OUTFIT_COLORS[look.trim] ?? OUTFIT_COLORS[4];
   const trousers = garb?.trousers ?? mix(trim, '#2a2230', .45);
+  const eye = EYE_COLORS[look.eyeColor] ?? EYE_COLORS[0];
   return {
-    skin, skinLo: dark(skin, .22), skinHi: light(skin, .25),
-    hair, hairLo: dark(hair, .3), hairHi: light(hair, .28),
-    eye: EYE_COLORS[look.eyeColor] ?? EYE_COLORS[0],
+    skin, skinLo: dark(skin, .2), skinHi: light(skin, .25), blush: mix(skin, '#ff6f86', .42), mouth: mix(skin, '#5a1e2a', .62),
+    hair, hairLo: dark(hair, .3), hairHi: light(hair, .3),
+    eye, eyeDk: mix(eye, OUTLINE, .58), eyeHi: light(eye, .45),
     tunic, tunicLo: dark(tunic, .3), tunicHi: light(tunic, .22),
     trim, trousers, trousersLo: dark(trousers, .3),
   };
@@ -329,7 +372,7 @@ function paintOffhand(piece: GearPiece, m: Mat): OffhandSprite {
 
 export interface PaintState {
   action: KeeperAction;
-  /** Seconds (drives idle breath and the run cycle). */
+  /** Seconds (drives idle breath, blinks and the run cycle). */
   time: number;
   /** 0..1 through the attack window. */
   attackT: number;
@@ -338,6 +381,10 @@ export interface PaintState {
   reduced?: boolean;
   /** Draw the held weapon (false for other Keepers seen in the world). */
   weapon?: boolean;
+  /** -1..1: a squash on landing (positive: wider and shorter) or a stretch on take-off (negative). */
+  squash?: number;
+  /** A flash of feeling (level up, loot); otherwise the eyes are open and blink now and then. */
+  face?: 'happy' | 'surprised';
 }
 
 /**
@@ -348,13 +395,23 @@ export class KeeperPainter {
   readonly key: string;
   private readonly pal: Palette;
   private readonly body: typeof BODY[keyof typeof BODY];
-  private readonly frames = new Map<string, HTMLCanvasElement>();
+  /**
+   * Every body frame this Keeper has shown, baked into ONE sheet canvas
+   * (SHEET_COLS slots of CELL per row; it grows by whole rows, copying itself,
+   * so a painter always holds one sheet however many poses, blinks and faces
+   * it meets). `slots` maps a frame id to its slot. e2e/play-memory counts
+   * live canvases: a canvas per pose made the crowd's count climb.
+   */
+  private sheet: HTMLCanvasElement | null = null;
+  private readonly slots = new Map<string, number>();
   private readonly weaponKind: WeaponKind | null;
   private weaponSprite: HTMLCanvasElement | null = null;
   private offhand: OffhandSprite | null | undefined;
   private readonly pose: HoldPose = { arm: 0, weapon: 0 };
   private readonly hand = { x: 0, y: 0 };
   private readonly grip: GripTransform = { x: 0, y: 0, rotation: 0, drawX: 0, drawY: 0 };
+  /** Offsets this Keeper's blink so a crowd never blinks in unison. */
+  private readonly blinkPhase: number;
 
   constructor(readonly look: KeeperLook, readonly gear: KeeperGear | null = null, readonly garb: KeeperGarb | null = null) {
     this.key = `${lookKey(look)}#${gearKey(gear)}#${garbKey(garb)}`;
@@ -362,6 +419,9 @@ export class KeeperPainter {
     this.body = BODY[look.body] ?? BODY.sturdy;
     const weapon = gear?.weapon;
     this.weaponKind = weapon && weapon.kind in WEAPON_SPECS ? weapon.kind as WeaponKind : null;
+    let hash = 0;
+    for (let i = 0; i < this.key.length; i++) hash = (hash * 31 + this.key.charCodeAt(i)) >>> 0;
+    this.blinkPhase = (hash % 997) / 997 * BLINK_EVERY;
   }
 
   /**
@@ -375,6 +435,35 @@ export class KeeperPainter {
   get weapon(): WeaponKind | null { return this.weaponKind; }
 
   /**
+   * How far above the feet (art px) this Keeper reaches: the hair dome, plus a
+   * hat, a helm (and its crest), a hood, a crown, a topknot or Aureth's shards.
+   * Name tags, the "You" plate and speech bubbles sit just over it.
+   */
+  get top(): number {
+    const head = this.gear?.head, garb = this.garb, hair = this.look.hair;
+    let rise = 2;
+    if (head?.kind === 'helm') rise = head.rarity === 'common' || head.rarity === 'uncommon' ? 4 : 7;
+    else if (head?.kind === 'hood') rise = 4;
+    else if (head?.kind === 'crown') rise = 5;
+    else if (garb?.hat) rise = garb.hat === 'brim' ? 8 : 5;
+    if (head?.kind !== 'helm' && head?.kind !== 'hood' && !garb?.hat) {
+      if (hair === 'topknot') rise = Math.max(rise, 6);
+      else if (hair === 'mohawk') rise = Math.max(rise, 5);
+      else if (hair === 'curls') rise = Math.max(rise, 4);
+    }
+    if (garb?.shards) rise = Math.max(rise, 10);
+    return Math.min(FIGURE_TOP + 3, PIVOT_Y - HEAD_TOP + rise - (garb?.elder ? 1 : 0));
+  }
+
+  /** The face a moment shows: a flash of feeling first, then a blink now and then. */
+  faceAt(state: PaintState): KeeperFace {
+    if (state.face) return state.face;
+    if (state.reduced) return 'open';
+    const a = state.action;
+    return (a === 'idle' || a === 'talk' || a === 'walk' || a === 'run') && blinking(state.time, this.blinkPhase) ? 'blink' : 'open';
+  }
+
+  /**
    * Draw the Keeper with the context at its feet (already mirrored to face).
    * `scale` is world px per art pixel. Shadow/alpha set by the caller apply to
    * the body blit; the live arm and weapon are drawn without the shadow.
@@ -382,14 +471,17 @@ export class KeeperPainter {
   draw(c: Ctx, scale: number, state: PaintState): void {
     const action = state.action;
     const frame = frameIndex(action, state.time, state.attackT, !!state.reduced);
-    const body = this.frame(action, frame);
+    const slot = this.frame(action, frame, action === 'death' ? 'open' : this.faceAt(state));
     const smoothing = c.imageSmoothingEnabled;
     c.imageSmoothingEnabled = false;
+    const squash = state.reduced ? 0 : Math.max(-1, Math.min(1, state.squash ?? 0));
+    const squashed = Math.abs(squash) > .02;
+    if (squashed) { c.save(); c.scale(1 + squash * .16, 1 - squash * .16); }
     const x = -PIVOT_X * scale, y = -PIVOT_Y * scale, size = CELL * scale;
-    c.drawImage(body, x, y, size, size);
+    this.blit(c, slot, x, y, size);
     if (state.rim && state.rim > .01) {
       c.save(); c.shadowBlur = 0; c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, state.rim) * .45;
-      c.drawImage(body, x + scale * .5, y - scale * .5, size, size);
+      this.blit(c, slot, x + scale * .5, y - scale * .5, size);
       c.restore();
     }
     if (action !== 'death') {
@@ -401,17 +493,24 @@ export class KeeperPainter {
       c.restore();
       c.shadowBlur = blur;
     }
+    if (squashed) c.restore();
     c.imageSmoothingEnabled = smoothing;
   }
 
-  /** A still (idle, weapon in hand) filling `target`, cropped to the figure. For portraits and the paper doll. */
-  still(target: HTMLCanvasElement, crop = { x: 2, y: 3, size: 44 }): void {
+  /**
+   * A still (idle, weapon in hand) filling `target`, cropped to the figure. For
+   * portraits and the paper doll. The scale snaps to whole device pixels per art
+   * pixel when it can (crisp), and the crop is centred in the target.
+   */
+  still(target: HTMLCanvasElement, crop: { x: number; y: number; size: number } = STILL_CROP): void {
     const c = target.getContext('2d');
     if (!c) return;
     c.clearRect(0, 0, target.width, target.height);
-    const scale = target.width / crop.size;
+    const fit = Math.min(target.width, target.height) / crop.size;
+    const scale = fit >= 2 ? Math.floor(fit) : fit;
+    const ox = (target.width - crop.size * scale) / 2, oy = (target.height - crop.size * scale) / 2;
     c.save();
-    c.translate((PIVOT_X - crop.x) * scale, (PIVOT_Y - crop.y) * scale);
+    c.translate(Math.round(ox + (PIVOT_X - crop.x) * scale), Math.round(oy + (PIVOT_Y - crop.y) * scale));
     this.draw(c, scale, { action: 'idle', time: 0, attackT: 0, weapon: true, reduced: true });
     c.restore();
   }
@@ -419,7 +518,7 @@ export class KeeperPainter {
   // ── Live: the front arm and the weapon ──
   private frontArm(c: Ctx, action: KeeperAction, frame: number, state: PaintState): void {
     const f = bodyFrame(action, frame);
-    const sx = CX + 1 + f.lean, sy = SHOULDER + 2 + f.bob;
+    const sx = CX + 2 + f.lean, sy = SHOULDER + 2 + f.bob;
     const kind = state.weapon !== false ? this.weaponKind : null;
     const phase = action === 'run' || action === 'walk' ? runPhase(frame) : action === 'talk' ? state.time * 4 : 0;
     holdPose(kind, action, phase, state.attackT, this.pose);
@@ -442,17 +541,18 @@ export class KeeperPainter {
     const t = this.body.leg;
     limb(c, sx, sy, hand.x, hand.y, t + 2, OUTLINE);
     limb(c, sx, sy, hand.x, hand.y, t, sleeve);
-    const glove = this.gloveColor();
-    px(c, Math.round(hand.x) - 2, Math.round(hand.y) - 2, 5, 5, OUTLINE);
-    px(c, Math.round(hand.x) - 1, Math.round(hand.y) - 1, 3, 3, glove);
+    // A tiny round mitten of a hand.
+    const hx = Math.round(hand.x), hy = Math.round(hand.y);
+    px(c, hx - 1, hy - 2, 3, 5, OUTLINE); px(c, hx - 2, hy - 1, 5, 3, OUTLINE);
+    px(c, hx - 1, hy - 1, 3, 3, this.gloveColor());
+    px(c, hx - 1, hy - 1, 1, 1, light(this.gloveColor(), .2));
     if (kind && state.attackT > .3 && (WEAPON_SPECS[kind].swing === 'cast')) {
       // A cast: the head of the staff or wand flares in the tier's colour.
-      const tip = { x: 0, y: 0 };
       const cos = Math.cos(this.pose.weapon), sin = Math.sin(this.pose.weapon);
       const reach = WEAPON_SPECS[kind].gy;
-      tip.x = Math.round(hand.x + cos * reach); tip.y = Math.round(hand.y + sin * reach);
+      const tx = Math.round(hand.x + cos * reach), ty = Math.round(hand.y + sin * reach);
       c.globalAlpha *= .85;
-      px(c, tip.x - 1, tip.y - 1, 3, 3, light(RARITY_TRIM[this.gear!.weapon!.rarity], .4));
+      px(c, tx - 1, ty - 1, 3, 3, light(RARITY_TRIM[this.gear!.weapon!.rarity], .4));
     }
   }
 
@@ -469,148 +569,170 @@ export class KeeperPainter {
     return hands.kind === 'wrap' ? m.accent : m.base;
   }
 
-  // ── Cached body frames ──
-  private frame(action: KeeperAction, frame: number): HTMLCanvasElement {
-    const id = `${action}:${frame}`;
-    let el = this.frames.get(id);
-    if (!el) {
-      el = action === 'death' ? this.lying() : outlined(this.paintBody(bodyFrame(action, frame), action));
-      this.frames.set(id, el);
+  // ── Cached body frames: one sheet per painter ──
+  /** The sheet slot holding a frame, painting it on first sight. Idle and talk share bodies. */
+  private frame(action: KeeperAction, frame: number, face: KeeperFace): number {
+    const pose = action === 'talk' ? 'idle' : action;
+    const id = `${pose}:${frame}:${face}`;
+    let slot = this.slots.get(id);
+    if (slot === undefined) {
+      const art = pose === 'death' ? this.lying() : outlined(this.paintBody(bodyFrame(pose, frame), pose, face));
+      slot = this.slots.size;
+      const sheet = this.room(slot + 1);
+      sheet.getContext('2d')!.drawImage(art, (slot % SHEET_COLS) * CELL, Math.floor(slot / SHEET_COLS) * CELL);
+      this.slots.set(id, slot);
     }
-    return el;
+    return slot;
+  }
+  /** The sheet, grown (by doubling its rows, copied across) until it holds `count` slots. */
+  private room(count: number): HTMLCanvasElement {
+    const rows = Math.ceil(count / SHEET_COLS);
+    const have = this.sheet ? this.sheet.height / CELL : 0;
+    if (this.sheet && rows <= have) return this.sheet;
+    const next = canvas(SHEET_COLS * CELL, Math.max(2, have * 2, rows) * CELL);
+    if (this.sheet) next.getContext('2d')!.drawImage(this.sheet, 0, 0);
+    this.sheet = next;
+    return next;
+  }
+  private blit(c: Ctx, slot: number, x: number, y: number, size: number): void {
+    c.drawImage(this.sheet!, (slot % SHEET_COLS) * CELL, Math.floor(slot / SHEET_COLS) * CELL, CELL, CELL, x, y, size, size);
   }
   private lying(): HTMLCanvasElement {
-    const stand = this.frame('idle', 0);
+    const stand = this.frame('idle', 0, 'blink');
     const out = canvas(CELL, CELL);
     const c = out.getContext('2d')!;
     c.imageSmoothingEnabled = false;
-    c.translate(44, 41); c.rotate(-Math.PI / 2);
-    c.drawImage(stand, -PIVOT_X, -PIVOT_Y);
+    // Feet to the right, the back on the floor (the figure's back edge lands on the bottom row).
+    c.translate(44, 37); c.rotate(-Math.PI / 2);
+    this.blit(c, stand, -PIVOT_X, -PIVOT_Y, CELL);
     return out;
   }
 
-  private paintBody(f: BodyFrame, action: KeeperAction): HTMLCanvasElement {
+  private paintBody(f: BodyFrame, action: KeeperAction, face: KeeperFace): HTMLCanvasElement {
     const el = canvas(CELL, CELL);
     const c = el.getContext('2d')!;
     const pal = this.pal, b = this.body, gear = this.gear ?? {};
     const ux = f.lean, uy = f.bob; // upper-body offset
     const hip = HIP + uy;
     const cx = CX + ux;
+    const half = Math.floor(b.sw / 2);
 
-    // 1. Cape (a mantle) behind everything.
+    // 1. Cape (a mantle) behind everything, trailing with the motion and scalloped at the hem.
     if (gear.chest?.kind === 'mantle') {
       const m = matOf(gear.chest);
-      const top = SHOULDER - 1 + uy, bottom = FOOT - 4 - (action === 'rest' ? 3 : 0);
+      const top = SHOULDER - 1 + uy, bottom = FOOT - 1 - (action === 'rest' ? 3 : 0);
       for (let y = top; y <= bottom; y++) {
         const u = (y - top) / Math.max(1, bottom - top);
         const back = Math.round(u * f.cape);
-        const left = cx - b.sw / 2 - back - (u > .3 ? 1 : 0);
-        px(c, left, y, b.sw - 1, 1, y === bottom ? m.trim : m.base);
+        const w = b.sw + Math.round(u * 2);
+        const left = cx - half - 1 - back;
+        const hem = y === bottom;
+        px(c, left, y, w, 1, hem ? m.trim : m.base);
         px(c, left, y, 1, 1, m.baseLo);
+        if (hem) for (let i = 1; i < w; i += 3) px(c, left + i, y, 1, 1, m.base); // the scallops
       }
     }
 
     // 1b. A sack or rope coil slung over the back shoulder.
     const garb = this.garb;
     if (garb?.sack) {
-      const sx = cx - Math.floor(b.sw / 2) - 4, sy = SHOULDER - 3 + uy;
-      px(c, sx, sy + 1, 6, 8, garb.sack); px(c, sx + 1, sy, 4, 1, garb.sack);
-      px(c, sx, sy + 1, 1, 7, dark(garb.sack, .3)); px(c, sx + 1, sy + 1, 2, 1, light(garb.sack, .25));
-      px(c, sx + 4, sy + 2, 2, 1, dark(garb.sack, .35)); // the tie
+      const sx = cx - half - 4, sy = SHOULDER - 2 + uy;
+      px(c, sx, sy + 1, 5, 7, garb.sack); px(c, sx + 1, sy, 3, 1, garb.sack); px(c, sx + 1, sy + 8, 3, 1, garb.sack);
+      px(c, sx, sy + 1, 1, 6, dark(garb.sack, .3)); px(c, sx + 1, sy + 1, 2, 1, light(garb.sack, .25));
+      px(c, sx + 3, sy + 2, 2, 1, dark(garb.sack, .35)); // the tie
     }
 
     // 2. Back arm, with the off-hand item and the back hand.
-    const bsx = cx - 1, bsy = SHOULDER + 2 + uy;
-    const bhx = bsx + Math.cos(f.armB) * (ARM - 1), bhy = bsy + Math.sin(f.armB) * (ARM - 1);
+    const bsx = cx - 2, bsy = SHOULDER + 2 + uy;
+    const bhx = bsx + Math.cos(f.armB) * ARM, bhy = bsy + Math.sin(f.armB) * ARM;
     limb(c, bsx, bsy, bhx, bhy, b.leg, dark(this.sleeveColor(), .3));
     const off = gear['off-hand'];
     if (off && !this.frontProp) {
       const sprite = this.offhand === undefined ? (this.offhand = paintOffhand(off, matOf(off))) : this.offhand;
       if (sprite) c.drawImage(sprite.el, Math.round(bhx) - sprite.gx, Math.round(bhy) - sprite.gy);
     }
-    if (!garb?.oneHand) px(c, Math.round(bhx) - 1, Math.round(bhy) - 1, 3, 3, dark(this.gloveColor(), .25));
+    if (!garb?.oneHand) px(c, Math.round(bhx) - 1, Math.round(bhy) - 1, 2, 2, dark(this.gloveColor(), .25));
 
     // 3. Back leg.
-    this.leg(c, cx - 1, hip, f.back, true);
+    this.leg(c, cx - 2, hip, f.back, true);
 
-    // 4. Torso, with the chest piece.
+    // 4. Torso: a small soft bell, rounded at the shoulders, with the chest piece.
     const chest = gear.chest;
     const cm = chest ? matOf(chest) : null;
     const cloth = chest?.kind === 'plate' ? cm!.base : chest?.kind === 'coat' || chest?.kind === 'robe' ? cm!.base : pal.tunic;
     const clothHi = chest && chest.kind !== 'mantle' ? cm!.baseHi : pal.tunicHi;
     const clothLo = chest && chest.kind !== 'mantle' ? cm!.baseLo : pal.tunicLo;
-    for (let y = SHOULDER + uy; y <= hip; y++) {
-      const u = (y - SHOULDER - uy) / (hip - SHOULDER - uy);
-      const w = Math.round(u < .25 ? b.sw : b.sw + (b.hw - b.sw) * (u - .25) / .75);
+    const top = SHOULDER + uy;
+    for (let y = top; y <= hip; y++) {
+      const u = (y - top) / Math.max(1, hip - top);
+      const w = Math.round(b.sw + (b.hw - b.sw) * u) - (y === top ? 2 : 0);
       const left = cx - Math.floor(w / 2);
       px(c, left, y, w, 1, cloth);
       px(c, left, y, 1, 1, clothLo);
-      px(c, left + w - 2, y, 1, 1, clothHi);
+      if (y > top) px(c, left + w - 2, y, 1, 1, clothHi);
     }
     if (chest?.kind === 'plate') {
-      px(c, cx - Math.floor(b.sw / 2) + 1, SHOULDER + 5 + uy, b.sw - 2, 1, cm!.baseLo);
-      px(c, cx - Math.floor(b.sw / 2) + 1, SHOULDER + 8 + uy, b.sw - 2, 1, cm!.baseLo);
-      px(c, cx + 1, SHOULDER + 2 + uy, 2, 2, cm!.trim);
-      // Pauldrons: the far one darker, the near one on top.
-      px(c, cx - Math.floor(b.sw / 2) - 1, SHOULDER - 1 + uy, 4, 3, cm!.baseLo);
+      px(c, cx - half + 1, top + 4, b.sw - 2, 1, cm!.baseLo);
+      px(c, cx + 1, top + 2, 2, 2, cm!.trim);
+      // Pauldrons: little round caps, the far one darker, the near one on top.
+      px(c, cx - half - 1, top - 1, 3, 3, cm!.baseLo); px(c, cx - half, top - 2, 2, 1, cm!.baseLo);
     } else {
       // Collar and a seam in the trim colour.
-      px(c, cx - 1, SHOULDER + uy, 4, 1, chest ? cm!.trim : pal.trim);
-      px(c, cx + 1, SHOULDER + 1 + uy, 1, hip - SHOULDER - 2, chest ? cm!.accent : dark(pal.tunic, .15));
+      px(c, cx - 1, top, 4, 1, chest ? cm!.trim : pal.trim);
+      px(c, cx + 1, top + 1, 1, hip - top - 2, chest ? cm!.accent : dark(pal.tunic, .15));
     }
 
     // 5. Front leg, then the skirt of a coat or robe over the legs.
     this.leg(c, cx + 1, hip, f.front, false);
     if (chest && (chest.kind === 'coat' || chest.kind === 'robe')) {
-      const len = chest.kind === 'robe' ? FOOT - 3 - hip : 6;
+      const len = chest.kind === 'robe' ? FOOT - 2 - hip : 3;
       for (let i = 0; i < len; i++) {
-        const w = b.hw + 1 + Math.floor(i / 3);
-        const left = cx - Math.floor(w / 2) + (action === 'run' ? -Math.floor(i / 4) : 0);
+        const w = b.hw + 1 + Math.floor(i / 2);
+        const left = cx - Math.floor(w / 2) + (action === 'run' ? -Math.floor(i / 3) : 0);
         px(c, left, hip + i, w, 1, i === len - 1 ? cm!.trim : cm!.base);
         px(c, left, hip + i, 1, 1, cm!.baseLo);
       }
     }
-    if (chest?.kind === 'plate') px(c, cx + Math.floor(b.sw / 2) - 3, SHOULDER - 1 + uy, 4, 3, cm!.baseHi);
+    if (chest?.kind === 'plate') { px(c, cx + half - 2, top - 1, 3, 3, cm!.baseHi); px(c, cx + half - 1, top - 2, 2, 1, cm!.baseHi); }
     if (chest?.kind === 'mantle') {
       // The clasp across the shoulders.
-      px(c, cx - Math.floor(b.sw / 2), SHOULDER - 1 + uy, b.sw, 2, matOf(chest).base);
-      px(c, cx + 1, SHOULDER + uy, 2, 2, matOf(chest).trim);
+      px(c, cx - half, top - 1, b.sw, 2, matOf(chest).base);
+      px(c, cx + 1, top, 2, 2, matOf(chest).trim);
     }
 
     // 5b. A work apron (bib to knee) and a sash, over whatever the chest wears.
     if (garb?.apron) {
-      const a = garb.apron, top = SHOULDER + 3 + uy, bottom = hip + 8;
-      for (let y = top; y <= bottom; y++) {
-        const w = y < top + 4 ? b.sw - 4 : b.hw + 1;
+      const a = garb.apron, atop = top + 1, bottom = hip + 4;
+      for (let y = atop; y <= bottom; y++) {
+        const w = y < atop + 3 ? b.sw - 3 : b.hw - 1;
         const left = cx - Math.floor(w / 2) + 1;
         px(c, left, y, w, 1, y === bottom ? dark(a, .3) : a);
         px(c, left, y, 1, 1, light(a, .2));
       }
-      px(c, cx, SHOULDER + uy, 1, 3, dark(a, .2)); // the neck strap
-      px(c, cx - 1, hip + 3, 4, 1, dark(a, .3)); // the pocket
+      px(c, cx, hip + 1, 3, 1, dark(a, .3)); // the pocket
     }
-    if (garb?.sash) limb(c, cx - Math.floor(b.sw / 2) + 1, SHOULDER + 1 + uy, cx + Math.floor(b.sw / 2) - 1, hip - 2, 2, garb.sash);
+    if (garb?.sash) limb(c, cx - half + 1, top + 1, cx + half - 1, hip - 1, 2, garb.sash);
 
     // 6. Belt, charms, pendant.
     const legs = gear.legs;
     const beltColor = legs?.kind === 'belt' ? matOf(legs).accent : BELT;
-    px(c, cx - Math.floor(b.hw / 2) - 1, hip - 1, b.hw + 2, 2, beltColor);
+    const hw = b.hw;
+    px(c, cx - Math.floor(hw / 2), hip - 1, hw, 2, beltColor);
     px(c, cx + 1, hip - 1, 2, 2, legs?.kind === 'belt' ? matOf(legs).trim : '#c9a45a');
     const charms = (['charm1', 'charm2', 'charm3'] as const).map(slot => gear[slot]).filter((p): p is GearPiece => !!p);
     charms.forEach((charm, i) => px(c, cx - 3 + i * 2, hip + 1, 1, 2, RARITY_TRIM[charm.rarity]));
     if (gear.trinket) {
-      px(c, cx + 2, SHOULDER + uy, 1, 2, '#c9a45a');
-      px(c, cx + 2, SHOULDER + 2 + uy, 2, 2, RARITY_TRIM[gear.trinket.rarity]);
+      px(c, cx + 2, top + 1, 1, 1, '#c9a45a');
+      px(c, cx + 2, top + 2, 2, 2, RARITY_TRIM[gear.trinket.rarity]);
     }
 
-    // 7. Neck and head.
+    // 7. The big head (the elder's sits a pixel forward and lower).
     const old = garb?.elder ? 1 : 0;
-    const hx = cx - 5 + old, hy = HEAD_TOP + uy + old;
-    px(c, cx + old, hy + HEAD, 3, 2, pal.skinLo);
-    this.head(c, hx, hy);
+    const hx = cx - 7 + old, hy = HEAD_TOP + uy + f.nod + old;
+    this.head(c, hx, hy, face);
     if (garb?.book) {
-      // An open book that floats at the shoulder, its runes lit.
-      const bx = cx + 8, by = SHOULDER - 7 + uy;
+      // An open book that floats beside the head, its runes lit.
+      const bx = hx + HW + 1, by = hy + 2;
       px(c, bx, by + 1, 8, 4, '#efe4c4'); px(c, bx + 1, by, 3, 1, '#efe4c4'); px(c, bx + 4, by, 3, 1, '#efe4c4');
       px(c, bx + 4, by, 1, 5, '#8c7a58'); px(c, bx, by + 4, 8, 1, '#c9b98f');
       px(c, bx + 1, by + 2, 2, 1, '#5fb6ff'); px(c, bx + 5, by + 2, 2, 1, '#5fb6ff'); px(c, bx + 6, by + 1, 1, 1, '#d8ecff');
@@ -618,123 +740,170 @@ export class KeeperPainter {
     return el;
   }
 
+  /** A short leg and a tiny rounded foot; `ay` is the sole's row. */
   private leg(c: Ctx, x: number, hip: number, leg: Leg, back: boolean): void {
     const pal = this.pal, b = this.body, gear = this.gear ?? {};
     const greaves = gear.legs?.kind === 'greaves' ? matOf(gear.legs) : null;
     const boots = gear.feet ? matOf(gear.feet) : null;
-    const ax = x + leg.dx, ay = FOOT - 2 - leg.lift;
+    const ax = x + leg.dx, ay = FOOT - leg.lift;
     const color = greaves ? greaves.base : pal.trousers;
-    limb(c, x, hip, ax, ay - 1, b.leg, back ? dark(color, .3) : color);
-    if (greaves && !back) px(c, Math.round((x + ax) / 2) + 1, Math.round((hip + ay) / 2), 1, 2, greaves.baseHi);
-    const boot = boots ? boots.base : LEATHER;
-    const tall = boots ? 4 : 3;
-    px(c, ax - 1, ay + 3 - tall, 4, tall, back ? dark(boot, .3) : boot);
-    px(c, ax + 2, ay + 1, 1, 2, back ? dark(boot, .3) : boots ? boots.baseHi : light(LEATHER, .15));
-    if (boots && !back) px(c, ax - 1, ay + 3 - tall, 4, 1, boots.trim);
+    limb(c, x, hip, ax, ay - 2, b.leg, back ? dark(color, .3) : color);
+    if (greaves && !back) px(c, Math.round((x + ax) / 2) + 1, Math.round((hip + ay) / 2) - 1, 1, 2, greaves.baseHi);
+    const boot = back ? dark(boots ? boots.base : LEATHER, .3) : boots ? boots.base : LEATHER;
+    px(c, ax - 1, ay - 1, 4, 2, boot); px(c, ax + 3, ay, 1, 1, boot);
+    if (boots) {
+      px(c, ax - 1, ay - 2, 4, 1, back ? boot : boots.trim);
+      if (!back) px(c, ax + 1, ay - 1, 2, 1, boots.baseHi);
+    } else if (!back) px(c, ax + 1, ay - 1, 2, 1, light(LEATHER, .15));
   }
 
-  private head(c: Ctx, x: number, y: number): void {
+  private head(c: Ctx, x: number, y: number, face: KeeperFace): void {
     const pal = this.pal, look = this.look, gear = this.gear ?? {};
     const head = gear.head;
-    // Long hair and braids hang behind the head.
+    const garb = this.garb;
+    // Long hair and braids hang behind the head, down the back.
     if (look.hair === 'long' && head?.kind !== 'hood') {
-      for (let r = 2; r <= 14; r++) px(c, x - 1, y + r, r > 11 ? 3 : 4, 1, r % 4 === 0 ? pal.hairLo : pal.hair);
+      for (let r = 4; r <= 18; r++) px(c, x - 1, y + r, r > 15 ? 4 : 6, 1, r % 4 === 0 ? pal.hairLo : pal.hair);
     }
     if (look.hair === 'braid' && head?.kind !== 'hood') {
-      for (let r = 5; r <= 17; r += 2) px(c, x - 1 + ((r >> 1) & 1), y + r, 2, 2, (r >> 1) & 1 ? pal.hairLo : pal.hair);
-      px(c, x - 1, y + 18, 2, 1, pal.trim);
+      for (let r = 8; r <= 19; r += 2) px(c, x - 1 + ((r >> 1) & 1), y + r, 2, 2, (r >> 1) & 1 ? pal.hairLo : pal.hair);
+      px(c, x - 1, y + 21, 2, 1, pal.trim);
     }
-    const garb = this.garb;
     if (garb?.shards) {
       // Dawn-glass rising behind the head: four shards, lit on their left edges. Never a halo.
-      for (const [sx, tall] of [[-2, 6], [0, 10], [3, 12], [6, 8]] as const) {
-        // Each shard: two pixels wide, tapering to a single-pixel point.
-        px(c, x + sx, y + 4 - tall, 2, tall - 2, '#ffe7a0'); px(c, x + sx + 1, y + 2 - tall, 1, 2, '#fff1b0');
-        px(c, x + sx, y + 4 - tall, 1, tall - 2, '#fffaf0'); px(c, x + sx + 1, y + 5 - tall + (tall >> 1), 1, 2, '#e0bc52');
+      for (const [sx, tall] of [[-1, 7], [2, 11], [6, 13], [10, 9]] as const) {
+        px(c, x + sx, y + 3 - tall, 2, tall - 2, '#ffe7a0'); px(c, x + sx + 1, y + 1 - tall, 1, 2, '#fff1b0');
+        px(c, x + sx, y + 3 - tall, 1, tall - 2, '#fffaf0'); px(c, x + sx + 1, y + 4 - tall + (tall >> 1), 1, 2, '#e0bc52');
       }
     }
-    // Skull: an 11×11 block, corners rounded, shaded at the back and chin.
-    px(c, x, y + 1, HEAD, HEAD - 2, pal.skin);
-    px(c, x + 1, y, HEAD - 2, HEAD, pal.skin);
-    px(c, x, y + 1, 1, HEAD - 2, pal.skinLo);
-    px(c, x + 1, y + HEAD - 1, HEAD - 2, 1, pal.skinLo);
-    px(c, x + HEAD, y + 6, 1, 1, pal.skin); // the nose
-    px(c, x + 3, y + 5, 2, 2, pal.skinLo); // the ear
-    // Eyes and brow (or, for the Hollow, a mirror where a face would be).
-    const ex = x + 7, ey = y + 5;
+    // The skull: a soft 15×14 round, shaded at the back and under the chin.
+    for (let r = 0; r < HH; r++) {
+      const inset = r === 0 ? 4 : r === 1 ? 2 : r === 2 || r === HH - 2 ? 1 : r === HH - 1 ? 3 : 0;
+      px(c, x + inset, y + r, HW - inset * 2, 1, pal.skin);
+    }
+    px(c, x, y + 3, 1, HH - 6, pal.skinLo);
+    px(c, x + 3, y + HH - 1, HW - 6, 1, pal.skinLo); px(c, x + 1, y + HH - 2, 2, 1, pal.skinLo);
+    px(c, x + 3, y + 7, 2, 3, pal.skinLo); px(c, x + 4, y + 8, 1, 1, pal.skin); // the ear
+    // Eyes and the rest of the face (or, for the Hollow, a mirror where a face would be).
     if (garb?.mirrorFace) {
-      px(c, x + 5, y + 2, 6, 8, '#0e0912'); px(c, x + 6, y + 3, 1, 5, '#8a90b0'); px(c, x + 7, y + 3, 1, 2, '#d8dcf0');
-      px(c, x + 9, y + 7, 1, 1, '#A855F7');
+      px(c, x + 6, y + 3, 8, 10, '#0e0912'); px(c, x + 5, y + 4, 10, 8, '#0e0912');
+      px(c, x + 7, y + 4, 1, 7, '#8a90b0'); px(c, x + 8, y + 4, 1, 3, '#d8dcf0');
+      px(c, x + 12, y + 10, 1, 1, '#A855F7');
       if (head?.kind !== 'hood' && head?.kind !== 'helm') this.hair(c, x, y);
       if (head) this.headGear(c, x, y, head);
       return;
     }
-    if (look.eyes === 'narrow') { px(c, ex, ey + 1, 1, 1, '#f4f0ea'); px(c, ex + 1, ey + 1, 1, 1, pal.eye); }
-    else {
-      px(c, ex, ey, 1, 2, '#f4f0ea'); px(c, ex + 1, ey, 1, 2, pal.eye);
-      if (look.eyes === 'bright') px(c, ex + 1, ey, 1, 1, light(pal.eye, .6));
+    if (look.face === 'scar') for (let i = 0; i < 6; i++) px(c, x + 13 - i, y + 4 + i, 1, 1, mix(pal.skin, '#f2d6d6', .6));
+    const ey = y + 6;
+    this.eye(c, x + 7, ey, face, false);
+    this.eye(c, x + 11, ey, face, true);
+    if (garb?.eyeGlow && face !== 'blink') {
+      // One eye burns (Kael's forge eye): the front eye is the ember, a spark at its corner.
+      px(c, x + 11, ey + 1, 2, 2, garb.eyeGlow); px(c, x + 11, ey + 1, 1, 1, '#ffffff'); px(c, x + 13, ey, 1, 1, garb.eyeGlow);
     }
-    if (garb?.eyeGlow) px(c, ex + 1, look.eyes === 'narrow' ? ey + 1 : ey, 1, look.eyes === 'narrow' ? 1 : 2, garb.eyeGlow);
-    px(c, ex, ey - 1, 2, 1, pal.hairLo);
     if (garb?.loupe) {
       const brass = '#b08a55';
-      px(c, ex - 1, ey - 1, 4, 1, brass); px(c, ex - 1, ey + 2, 4, 1, brass); px(c, ex - 1, ey, 1, 2, brass); px(c, ex + 2, ey, 1, 2, '#e8c47a');
-      px(c, ex + 3, ey + 2, 1, 3, brass); // the chain
+      px(c, x + 10, ey - 1, 4, 1, brass); px(c, x + 10, ey + 3, 4, 1, brass); px(c, x + 10, ey, 1, 3, brass); px(c, x + 13, ey, 1, 3, '#e8c47a');
+      px(c, x + 13, ey + 4, 1, 3, brass); // the chain
     }
-    if (garb?.elder) px(c, x + 7, y + 7, 2, 1, pal.skinLo);
-    px(c, x + 8, y + 8, 2, 1, dark(pal.skin, .35)); // the mouth
+    if (garb?.elder) { px(c, x + 11, ey + 3, 2, 1, pal.skinLo); px(c, x + 7, ey + 3, 2, 1, pal.skinLo); }
+    if (look.face === 'rosy' || look.face === 'freckles') {
+      px(c, x + 5, y + 10, 2, 1, pal.blush); px(c, x + 12, y + 10, 2, 1, pal.blush);
+    }
+    // The mouth: small; open in joy, a round "o" in surprise.
+    if (face === 'happy') { px(c, x + 10, y + 11, 3, 1, pal.mouth); px(c, x + 11, y + 12, 1, 1, '#e86a7a'); }
+    else if (face === 'surprised') px(c, x + 10, y + 11, 2, 2, pal.mouth);
+    else px(c, x + 10, y + 11, 2, 1, pal.mouth);
     switch (look.face) {
-      case 'freckles': px(c, x + 6, y + 7, 1, 1, pal.skinLo); px(c, x + 8, y + 7, 1, 1, pal.skinLo); px(c, x + 9, y + 6, 1, 1, pal.skinLo); break;
-      case 'scar': for (let i = 0; i < 5; i++) px(c, x + 6 + i, y + 3 + i, 1, 1, mix(pal.skin, '#f2d6d6', .6)); break;
-      case 'beard':
-        px(c, x + 3, y + 7, 8, 3, pal.hair); px(c, x + 4, y + 10, 6, 2, pal.hair); px(c, x + 8, y + 8, 2, 1, dark(pal.skin, .35));
-        px(c, x + 3, y + 5, 1, 3, pal.hair); break;
-      case 'warpaint': px(c, x + 6, y + 7, 4, 1, pal.trim); px(c, x + 7, y + 3, 1, 1, pal.trim); break;
+      case 'freckles': px(c, x + 6, y + 9, 1, 1, pal.skinLo); px(c, x + 8, y + 10, 1, 1, pal.skinLo); px(c, x + 13, y + 9, 1, 1, pal.skinLo); break;
+      case 'beard': {
+        const h = pal.hair;
+        px(c, x + 3, y + 9, 12, 3, h); px(c, x + 4, y + 12, 10, 2, h); px(c, x + 6, y + 14, 6, 1, h);
+        px(c, x + 3, y + 6, 2, 3, h); px(c, x + 5, y + 9, 3, 1, pal.hairHi); px(c, x + 3, y + 11, 1, 2, pal.hairLo);
+        px(c, x + 10, y + 10, 2, 1, dark(h, .45)); // the mouth in the beard
+        break;
+      }
+      case 'warpaint': px(c, x + 10, y + 9, 4, 1, pal.trim); px(c, x + 6, y + 9, 2, 1, pal.trim); break;
     }
-    // Hair on top.
+    // Hair on top, unless a hood or helm covers it.
     if (head?.kind !== 'hood' && head?.kind !== 'helm') this.hair(c, x, y);
-    else if (head?.kind === 'helm' && (look.hair === 'long' || look.hair === 'braid')) { /* the drape already shows below the helm */ }
     // Head gear over the hair; a town hat when there is none.
     if (head) this.headGear(c, x, y, head);
     else if (garb?.hat) this.hat(c, x, y, garb.hat, garb.hatColor ?? pal.trim);
   }
 
+  /** One big eye (2×3) at (ex, ey), with a white highlight; `front` is the nearer eye. */
+  private eye(c: Ctx, ex: number, ey: number, face: KeeperFace, front: boolean): void {
+    const pal = this.pal, dk = pal.eyeDk;
+    switch (face) {
+      case 'blink': px(c, ex, ey + 2, 2, 1, dk); return;
+      case 'happy': px(c, ex, ey + 2, 1, 1, dk); px(c, ex + 1, ey + 1, 1, 1, dk); px(c, ex + 2, ey + 2, 1, 1, dk); return;
+      case 'surprised':
+        px(c, ex, ey - 1, 2, 4, dk); px(c, ex + 1, ey + 1, 1, 2, pal.eye); px(c, ex, ey - 1, 1, 1, '#ffffff'); return;
+    }
+    if (this.look.eyes === 'narrow') {
+      // Calm half-lidded eyes: the lid, then the iris under it.
+      px(c, ex, ey + 1, 2, 1, dk); px(c, ex, ey + 2, 2, 1, pal.eye); px(c, ex + 1, ey + 2, 1, 1, pal.eyeHi);
+      return;
+    }
+    px(c, ex, ey, 2, 3, dk);
+    px(c, ex + 1, ey + 1, 1, 2, pal.eye); px(c, ex, ey + 2, 1, 1, pal.eye);
+    px(c, ex, ey, 1, 1, '#ffffff');
+    if (this.look.eyes === 'bright') {
+      px(c, ex + 1, ey + 2, 1, 1, pal.eyeHi);
+      if (front) px(c, ex + 2, ey, 1, 1, dk); // a lash
+    }
+  }
+
   private hat(c: Ctx, x: number, y: number, kind: 'brim' | 'cap', color: string): void {
     if (kind === 'brim') {
-      px(c, x, y - 5, HEAD, 5, color); px(c, x + 1, y - 6, HEAD - 3, 1, color);
-      px(c, x + 1, y - 5, HEAD - 4, 1, light(color, .25)); px(c, x, y - 2, HEAD, 1, this.pal.trim);
-      px(c, x - 3, y - 1, HEAD + 6, 1, color); px(c, x - 3, y, HEAD + 6, 1, dark(color, .3));
+      px(c, x + 1, y - 7, HW - 2, 6, color); px(c, x + 2, y - 8, HW - 5, 1, color);
+      px(c, x + 2, y - 7, HW - 6, 1, light(color, .25)); px(c, x + 1, y - 3, HW - 2, 1, this.pal.trim);
+      px(c, x - 3, y - 2, HW + 6, 1, color); px(c, x - 3, y - 1, HW + 6, 1, dark(color, .3));
     } else {
-      px(c, x, y - 3, HEAD, 4, color); px(c, x + 1, y - 4, HEAD - 3, 1, color);
-      px(c, x + 1, y - 3, HEAD - 5, 1, light(color, .25));
-      px(c, x + HEAD - 2, y, 4, 1, dark(color, .25)); // the bill, forward
+      px(c, x, y - 4, HW, 5, color); px(c, x + 2, y - 5, HW - 5, 1, color);
+      px(c, x + 2, y - 4, HW - 7, 1, light(color, .25)); px(c, x + 6, y - 5, 2, 1, this.pal.trim);
+      px(c, x + HW - 3, y, 6, 1, dark(color, .25)); // the bill, forward
     }
   }
 
   private hair(c: Ctx, x: number, y: number): void {
     const pal = this.pal;
-    const cap = () => {
-      px(c, x, y - 1, HEAD, 3, pal.hair); px(c, x + 1, y - 2, HEAD - 3, 1, pal.hair);
-      px(c, x, y + 2, 4, 5, pal.hair); px(c, x + 4, y + 2, 3, 1, pal.hair);
-      px(c, x + 3, y - 2, 4, 1, pal.hairHi); px(c, x, y + 4, 1, 3, pal.hairLo);
+    /** The base cap: a round dome, a fringe over the brow, a back hang to row `back`. */
+    const cap = (back: number) => {
+      px(c, x + 4, y - 2, HW - 8, 1, pal.hair); px(c, x + 2, y - 1, HW - 4, 1, pal.hair);
+      px(c, x + 1, y, HW - 2, 1, pal.hair); px(c, x, y + 1, HW, 4, pal.hair);
+      px(c, x, y + 5, 5, back - 5, pal.hair);
+      px(c, x + 6, y + 5, 2, 1, pal.hair); px(c, x + 10, y + 5, 1, 1, pal.hair); px(c, x + 13, y + 5, 2, 2, pal.hair);
+      px(c, x + 4, y - 1, 4, 1, pal.hairHi); px(c, x + 2, y, 2, 1, pal.hairHi); px(c, x + 9, y, 2, 1, pal.hairHi);
+      px(c, x, y + 2, 1, back - 2, pal.hairLo);
     };
     switch (this.look.hair) {
-      case 'cropped': cap(); break;
-      case 'swept': cap(); px(c, x + 7, y + 1, 4, 2, pal.hair); px(c, x + 10, y + 3, 1, 1, pal.hair); px(c, x + 4, y - 3, 3, 1, pal.hair); px(c, x + 8, y + 1, 2, 1, pal.hairHi); break;
-      case 'long': cap(); px(c, x + 7, y + 1, 3, 1, pal.hair); break;
-      case 'braid': cap(); break;
-      case 'topknot': cap(); px(c, x + 3, y - 5, 4, 3, pal.hair); px(c, x + 4, y - 5, 2, 1, pal.hairHi); px(c, x + 3, y - 2, 4, 1, pal.trim); break;
+      case 'cropped': cap(8); break;
+      case 'swept':
+        cap(9); px(c, x + 7, y + 5, 5, 1, pal.hair); px(c, x + 12, y - 2, 3, 2, pal.hair); px(c, x + 14, y, 2, 2, pal.hair);
+        px(c, x + 9, y - 2, 3, 1, pal.hairHi);
+        break;
+      case 'long': cap(11); break;
+      case 'braid': cap(9); break;
+      case 'topknot':
+        cap(9); px(c, x + 5, y - 5, 5, 3, pal.hair); px(c, x + 6, y - 6, 3, 1, pal.hair); px(c, x + 6, y - 5, 2, 1, pal.hairHi);
+        px(c, x + 5, y - 2, 5, 1, pal.trim);
+        break;
       case 'curls':
-        px(c, x - 1, y - 2, HEAD + 1, 4, pal.hair); px(c, x - 1, y + 2, 5, 7, pal.hair);
-        for (let i = 0; i < HEAD; i += 2) px(c, x - 1 + i, y - 3, 1, 1, pal.hair);
-        for (let i = 3; i < 9; i += 2) px(c, x - 2, y + i, 1, 1, pal.hair);
-        px(c, x + 2, y - 2, 2, 1, pal.hairHi); px(c, x + 6, y - 1, 2, 1, pal.hairHi); px(c, x + 7, y + 2, 3, 1, pal.hair);
+        px(c, x - 1, y - 2, HW + 2, 6, pal.hair); px(c, x + 1, y - 3, HW - 2, 1, pal.hair);
+        for (let i = 1; i < HW; i += 3) px(c, x + i, y - 4, 2, 1, pal.hair);
+        px(c, x - 1, y + 4, 6, 7, pal.hair);
+        for (let i = 5; i < 11; i += 2) px(c, x - 2, y + i, 1, 1, pal.hair);
+        px(c, x + 6, y + 4, 2, 2, pal.hair); px(c, x + 10, y + 4, 2, 1, pal.hair); px(c, x + 13, y + 4, 2, 3, pal.hair);
+        px(c, x + 2, y - 2, 2, 1, pal.hairHi); px(c, x + 7, y - 3, 2, 1, pal.hairHi); px(c, x + 4, y - 1, 1, 1, pal.hairHi);
+        px(c, x - 1, y + 2, 1, 8, pal.hairLo);
         break;
       case 'mohawk':
-        px(c, x, y, HEAD - 1, 2, mix(pal.skin, pal.hair, .3));
-        px(c, x + 2, y - 3, 6, 3, pal.hair); px(c, x + 3, y - 5, 4, 2, pal.hair); px(c, x + 4, y - 5, 2, 1, pal.hairHi);
+        px(c, x + 1, y, HW - 2, 3, mix(pal.skin, pal.hair, .3));
+        px(c, x + 4, y - 3, 6, 4, pal.hair); px(c, x + 5, y - 5, 4, 2, pal.hair); px(c, x + 6, y - 5, 2, 1, pal.hairHi);
         break;
-      case 'shaved': px(c, x + 1, y, HEAD - 2, 2, mix(pal.skin, pal.hair, .35)); break;
+      case 'shaved': px(c, x + 2, y, HW - 4, 2, mix(pal.skin, pal.hair, .35)); px(c, x + 1, y + 1, 1, 3, mix(pal.skin, pal.hair, .35)); break;
     }
   }
 
@@ -742,33 +911,39 @@ export class KeeperPainter {
     const m = matOf(head);
     switch (head.kind) {
       case 'helm':
-        px(c, x - 1, y - 1, HEAD + 2, 5, m.base); px(c, x, y - 2, HEAD, 1, m.base); px(c, x + 2, y - 3, HEAD - 4, 1, m.base);
-        px(c, x + 2, y - 2, 5, 1, m.baseHi); px(c, x - 1, y + 3, HEAD + 2, 1, m.baseLo);
-        px(c, x - 1, y + 4, 5, 5, m.base); px(c, x - 1, y + 4, 1, 5, m.baseLo); // cheek and neck guard
-        px(c, x + 9, y + 4, 2, 2, m.base); // nose guard
-        px(c, x + 5, y, 1, 1, m.trim); px(c, x + 2, y + 6, 1, 1, m.trim);
+        // A round cap of a helm on the big head: the eyes stay clear under the brim.
+        px(c, x + 3, y - 4, HW - 6, 1, m.base); px(c, x + 1, y - 3, HW - 2, 1, m.base); px(c, x, y - 2, HW, 1, m.base);
+        px(c, x - 1, y - 1, HW + 2, 5, m.base);
+        px(c, x + 3, y - 3, 6, 1, m.baseHi); px(c, x + 1, y - 2, 2, 2, m.baseHi);
+        px(c, x - 1, y + 4, HW + 2, 2, m.baseLo);
+        for (const k of [2, 7, 12]) px(c, x + k, y + 4, 1, 1, m.trim);
+        px(c, x - 1, y + 6, 5, 6, m.base); px(c, x - 1, y + 6, 1, 6, m.baseLo); // the cheek and neck guard
         if (m.bright || head.rarity === 'rare') {
           // A crest in the tier's colour, swept back.
-          px(c, x + 2, y - 5, 5, 2, m.trim); px(c, x, y - 4, 3, 2, m.trim); px(c, x - 2, y - 3, 2, 2, dark(m.trim, .2));
+          px(c, x + 3, y - 7, 7, 3, m.trim); px(c, x + 1, y - 6, 3, 2, m.trim); px(c, x - 1, y - 5, 2, 2, dark(m.trim, .2));
+          px(c, x + 4, y - 7, 4, 1, light(m.trim, .3));
         }
         break;
       case 'hood':
-        px(c, x - 1, y - 2, HEAD + 1, 5, m.base); px(c, x - 1, y + 3, 6, 9, m.base); px(c, x - 2, y + 6, 2, 8, m.baseLo);
-        px(c, x + 1, y - 3, HEAD - 4, 1, m.base); px(c, x + 2, y - 2, 4, 1, m.baseHi);
-        px(c, x + 9, y - 1, 2, 4, m.trim); px(c, x - 1, y + 3, 1, 9, m.baseLo);
+        // A soft pointed hood: crown, a little tip at the back, a drape and a lip round the face.
+        px(c, x + 1, y - 4, HW - 3, 1, m.base); px(c, x - 1, y - 3, HW + 2, 8, m.base);
+        px(c, x - 2, y - 2, 1, 2, m.base); px(c, x - 3, y - 1, 1, 1, m.base);
+        px(c, x - 2, y + 5, 7, 10, m.base); px(c, x - 2, y + 5, 1, 10, m.baseLo);
+        px(c, x + 13, y + 5, 3, 6, m.base); px(c, x + 15, y + 5, 1, 6, m.baseLo);
+        px(c, x + 2, y - 3, 5, 1, m.baseHi);
+        px(c, x + 5, y + 4, 9, 1, m.trim); px(c, x + 12, y + 5, 1, 6, m.trim);
         break;
-      case 'crown':
-        px(c, x, y - 2, HEAD, 2, m.base === STYLE_COLORS.umbral[0] ? m.accent : mix('#e0bc52', m.base, .35));
-        for (const k of [0, 5, 10]) px(c, x + k, y - 4, 1, 2, mix('#e0bc52', m.base, .35));
-        px(c, x + 3, y - 3, 1, 1, mix('#e0bc52', m.base, .35)); px(c, x + 7, y - 3, 1, 1, mix('#e0bc52', m.base, .35));
-        px(c, x + 5, y - 2, 1, 2, m.trim); px(c, x + 1, y - 2, HEAD - 2, 1, light(mix('#e0bc52', m.base, .35), .3));
+      case 'crown': {
+        const gold = mix('#e0bc52', m.base, .35);
+        px(c, x + 1, y - 3, HW - 2, 3, m.base === STYLE_COLORS.umbral[0] ? m.accent : gold);
+        for (const k of [1, 7, 13]) px(c, x + k, y - 5, 1, 2, gold);
+        px(c, x + 4, y - 4, 1, 1, gold); px(c, x + 10, y - 4, 1, 1, gold);
+        px(c, x + 7, y - 2, 1, 2, m.trim); px(c, x + 2, y - 3, HW - 4, 1, light(gold, .3));
         break;
+      }
       case 'circlet':
-        px(c, x, y + 2, HEAD, 1, mix('#d8d0b8', m.base, .3)); px(c, x + 8, y + 1, 2, 2, m.trim); px(c, x + 8, y + 1, 1, 1, '#ffffff');
+        px(c, x, y + 4, HW, 1, mix('#d8d0b8', m.base, .3)); px(c, x + 11, y + 3, 2, 2, m.trim); px(c, x + 11, y + 3, 1, 1, '#ffffff');
         break;
     }
   }
 }
-
-/** Shoulder-to-hand reach of the back arm (the front arm uses ARM_LENGTH from keeper-gear). */
-const ARM = 8;

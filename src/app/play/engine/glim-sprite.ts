@@ -75,9 +75,10 @@ export class GlimSprite {
   /** The anchor: the shoulder in towns, a little ahead at chest height in the Delve. */
   anchor(f: GlimFrameInput): { x: number; y: number } {
     const k = f.figure;
+    // The chibi Keeper (keeper-paint.ts) is ~124 px tall: Glim hovers by the big head, or ahead at its chest.
     return f.delve
-      ? { x: f.keeperX + f.facing * 34 * k, y: f.keeperY - 104 * k }
-      : { x: f.keeperX - f.facing * 26 * k, y: f.keeperY - 150 * k };
+      ? { x: f.keeperX + f.facing * 34 * k, y: f.keeperY - 64 * k }
+      : { x: f.keeperX - f.facing * 30 * k, y: f.keeperY - 118 * k };
   }
 
   update(f: GlimFrameInput): void {

@@ -26,7 +26,7 @@ export type HairStyle = typeof HAIR_STYLES[number];
 export const EYE_STYLES = ['round', 'narrow', 'bright'] as const;
 export type EyeStyle = typeof EYE_STYLES[number];
 
-export const FACE_MARKS = ['none', 'freckles', 'scar', 'beard', 'warpaint'] as const;
+export const FACE_MARKS = ['none', 'freckles', 'scar', 'beard', 'warpaint', 'rosy'] as const;
 export type FaceMark = typeof FACE_MARKS[number];
 
 /** Skin: eight human tones, then the two the realms leave on long-time Keepers (Umbral lilac, Verdant sap). */

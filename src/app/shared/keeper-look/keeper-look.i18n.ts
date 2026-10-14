@@ -45,6 +45,7 @@ export const KEEPER_LOOK_I18N: Readonly<Record<string, { en: string; es: string 
   'look.face.scar': { en: 'Scar', es: 'Cicatriz' },
   'look.face.beard': { en: 'Beard', es: 'Barba' },
   'look.face.warpaint': { en: 'Warpaint', es: 'Pintura' },
+  'look.face.rosy': { en: 'Rosy cheeks', es: 'Mejillas sonrosadas' },
   'look.swatch': { en: 'Shade {{n}} of {{total}}', es: 'Tono {{n}} de {{total}}' },
   // The play view: the Places entry and the one gentle nudge.
   'look.places': { en: 'Glass of Becoming', es: 'Cristal del Devenir' },

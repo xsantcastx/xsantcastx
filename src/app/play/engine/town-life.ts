@@ -305,7 +305,8 @@ export class TownLife {
       if (title) { c.font = TITLE_FONT; w = Math.max(w, c.measureText(title).width); }
       this.tagWidth[i] = Math.min(200, w + 20);
     }
-    const w = this.tagWidth[i], y = FLOOR - 196, h = title ? 35 : 22;
+    // The plate sits just over the chibi head (its own top: hat, hood, shards), else over the painting.
+    const h = title ? 35 : 22, w = this.tagWidth[i], y = tagBottom(this.keeperPainters[i]) - h;
     // Keep the plate inside the visible canvas: a keeper near the edge (or
     // walking off it) keeps a readable tag pinned to that edge instead of a
     // half-cut one. Once the keeper is no longer under its pinned plate at all,
@@ -347,7 +348,9 @@ export class TownLife {
     c.globalAlpha = Math.max(0, fade);
     const h = this.bubble.length * 19 + 10, w = this.bubbleWidth;
     const x = Math.max(f.camera + w / 2 + 8, Math.min(f.camera + f.viewport - w / 2 - 8, p.x));
-    const y = FLOOR - 206 - h;
+    // Over the name plate for a keeper; just over the head for a townsperson (who wears no plate).
+    const y = keeper ? tagBottom(this.keeperPainters[chatter.speaker]) - 35 - 10 - h
+      : tagBottom(this.folkPainters[chatter.speaker]) - 10 - h;
     c.fillStyle = '#fff6ea'; c.beginPath();
     if (typeof c.roundRect === 'function') c.roundRect(x - w / 2, y, w, h, 8); else c.rect(x - w / 2, y, w, h);
     c.fill();
@@ -444,6 +447,15 @@ function placeholder(c: CanvasRenderingContext2D, pose: Float32Array, palette: L
     c.strokeStyle = palette.trim; c.lineWidth = 3; c.beginPath(); c.moveTo(-10, 2); c.quadraticCurveTo(3, 7, 14, 2); c.stroke();
   }
   c.restore();
+}
+
+/**
+ * The bottom of a person's name plate (world y): a few px over the pixel
+ * figure's own top (keeper-paint.ts `top`), or where it sat over the 172 px
+ * painting when there is no pixel figure.
+ */
+function tagBottom(painter: KeeperPainter | null | undefined): number {
+  return painter ? FLOOR - painter.top * FIGURE_PIXEL - 8 : FLOOR - 161;
 }
 
 function canPaint(): boolean {
