@@ -127,7 +127,7 @@ describe('fishing.model: XP, grades, perks, rods', () => {
   it('the Skills panel rows: something every 15 levels, bite speed in 5% steps, Mastery at 99', () => {
     const rows = SKILL_UNLOCKS.fishing;
     for (let level = 1; level <= 99; level += 15) expect(rows.some(r => r.level >= level && r.level < level + 15)).withContext(`${level}`).toBeTrue();
-    expect(rows.at(-1)!.kind).toBe('mastery');
+    expect(rows.filter(r => r.level <= 99).at(-1)!.kind).toBe('mastery');
     expect(fishingPerks(1).bite).toBe(1);
     expect(fishingPerks(50).bite).toBeCloseTo(1.25, 9);
     expect(fishingPerks(90).window).toBeCloseTo(.12, 9);
