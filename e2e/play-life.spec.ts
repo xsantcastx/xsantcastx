@@ -11,6 +11,8 @@
  *     transform) and the canvas width. The tag is pinned inside the viewport,
  *     so near an edge its x is not the keeper's: a tag is paired with the
  *     nearest keeper shadow in the same frame, and that shadow is the keeper's x.
+ *   - subtitles (S3): `fillText` in the 11 px title font under a person's name:
+ *     the approved role title (Mara Voss · Bench Smith) or a canon epithet.
  *   - speech bubbles: `fillText` in the bubble font and ink. The wrapped lines are
  *     joined and matched against the keeper lines in life.i18n.ts.
  *   - figures' floor shadows: `ellipse` at FLOOR + 2 in the 30 : 7 shadow
@@ -28,7 +30,7 @@ import { LIFE_I18N } from '../src/app/play/world/life.i18n';
 
 /** A drawn name tag: text, world x, plate left / right on the canvas (device px), canvas width. */
 type Tag = [string, number, number, number, number];
-interface Frame { tags: Tag[]; bubble: string[]; keepers: number[]; folk: number[] }
+interface Frame { tags: Tag[]; titles: [string, number][]; bubble: string[]; keepers: number[]; folk: number[] }
 
 const REALMS: RealmTownId[] = ['infernal', 'luminous', 'umbral', 'celestial', 'verdant'];
 
@@ -38,12 +40,13 @@ async function instrument(page: Page): Promise<void> {
     W.__life = { on: false, frames: [] };
     const P = CanvasRenderingContext2D.prototype;
     const clear = P.clearRect, fill = P.fillText, ellipse = P.ellipse;
-    let cur: { tags: [string, number, number, number, number][]; bubble: string[]; keepers: number[]; folk: number[] } | null = null;
+    let cur: { tags: [string, number, number, number, number][]; titles: [string, number][]; bubble: string[]; keepers: number[]; folk: number[] } | null = null;
+    let nameWidth = 0;
     const world = (c: CanvasRenderingContext2D) => !!(c.canvas as HTMLCanvasElement).closest?.('.viewport');
     P.clearRect = function (this: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
       if (x === 0 && y === 0 && world(this)) {
         if (cur && W.__life.on && W.__life.frames.length < 20000) W.__life.frames.push(cur);
-        cur = { tags: [], bubble: [], keepers: [], folk: [] };
+        cur = { tags: [], titles: [], bubble: [], keepers: [], folk: [] };
       }
       return clear.call(this, x, y, w, h);
     };
@@ -54,6 +57,16 @@ async function instrument(page: Page): Promise<void> {
           // The plate is min(200, text + 20) wide, centred on x (town-life.ts nameTag).
           const m = this.getTransform(), w = Math.min(200, this.measureText(text).width + 20);
           cur.tags.push([text, x, m.a * (x - w / 2) + m.e, m.a * (x + w / 2) + m.e, this.canvas.width]);
+          nameWidth = this.measureText(text).width;
+        }
+        else if (/\b11px/.test(this.font) && this.fillStyle === '#d9bf98') {
+          cur.titles.push([text, x]);
+          // A subtitle widens its plate to min(200, max(name, title) + 20): re-measure the tag drawn just before it.
+          const tag = cur.tags[cur.tags.length - 1];
+          if (tag && tag[1] === x) {
+            const m = this.getTransform(), w = Math.min(200, Math.max(nameWidth, this.measureText(text).width) + 20);
+            tag[2] = m.a * (x - w / 2) + m.e; tag[3] = m.a * (x + w / 2) + m.e;
+          }
         }
         else if (/\b15px/.test(this.font) && this.fillStyle === '#2a1c16') cur.bubble.push(text);
       }
@@ -126,6 +139,8 @@ function isTownsfolkLine(town: TownDef, text: string, lang: 'en' | 'es'): boolea
 
 function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
   const tagX = new Map<string, number[]>();
+  /** Name → the subtitle drawn on the same plate (same x, same frame). */
+  const titleOf = new Map<string, string>();
   const lines = new Map<string, Set<string>>();
   const unknown = new Set<string>();
   const folk: number[] = [];
@@ -134,13 +149,20 @@ function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
   /** Tags drawn with no keeper figure under them. */
   const orphans: string[] = [];
   for (const f of all) {
+    for (const [title, x] of f.titles) {
+      const tag = f.tags.find(([, tx]) => tx === x);
+      if (tag) titleOf.set(tag[0], title);
+    }
     for (const [text, x, left, right, width] of f.tags) {
       if (left < -12 || right > width + 12) clipped.push(`${text} ${Math.round(left)}..${Math.round(right)} of ${width}`);
       // A plate pinned to an edge (4 world px in, ~4.4 device px) never leaves its keeper:
       // some figure stands within half a plate (≤ 100 px) of it.
       if (!f.keepers.some(k => Math.abs(k - x) <= 100)) { orphans.push(text); continue; }
       // Only an unpinned plate is centred on its keeper: those carry the keeper's x.
-      if (left <= 10 || right >= width - 10) continue;
+      // A plate pinned to an edge sits off its keeper's x; an unpinned one sits exactly on a
+      // keeper's floor shadow (the engine measures the plate once, so edge maths alone can drift
+      // by a few px once the webfont lands and a subtitle widens the plate).
+      if (left <= 10 || right >= width - 10 || !f.keepers.includes(x)) continue;
       if (!tagX.has(text)) tagX.set(text, []);
       tagX.get(text)!.push(x);
     }
@@ -154,7 +176,7 @@ function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
     }
     folk.push(...f.folk);
   }
-  return { tagX, lines, unknown, folk, clipped, orphans };
+  return { tagX, titleOf, lines, unknown, folk, clipped, orphans };
 }
 
 test.describe('Phase 4 Life, walked in every town', () => {
@@ -166,7 +188,7 @@ test.describe('Phase 4 Life, walked in every town', () => {
       const town = await enterTown(page, realm);
       const all = await walkTown(page, town);
       expect(all.length, 'frames drawn while walking').toBeGreaterThan(30);
-      const { tagX, lines, unknown, folk, clipped, orphans } = analyse(town, all, 'en');
+      const { tagX, titleOf, lines, unknown, folk, clipped, orphans } = analyse(town, all, 'en');
       expect([...unknown], 'every bubble is a keeper line').toEqual([]);
       // Name tags stay inside the visible canvas, and always over their keeper.
       expect([...new Set(clipped)], 'name tags cut by the viewport edge').toEqual([]);
@@ -187,6 +209,8 @@ test.describe('Phase 4 Life, walked in every town', () => {
         for (const s of town.stations) expect(onStall(x, KEEPER_HALF, s), `${def.name} at ${x} overlaps ${s.id}`).toBe(false);
         // Greets once on the way past: exactly one of its lines, never the second.
         expect([...(lines.get(def.id) ?? [])], `${def.name} greets exactly once`).toHaveLength(1);
+        // A person's tag carries the role title (or epithet) as a subtitle; a titled role keeper has none.
+        expect(titleOf.get(def.name), `${def.name}'s subtitle`).toBe(def.titleKey ? LIFE_I18N[def.titleKey].en : undefined);
       }
       // Only this town's keepers are drawn.
       expect([...tagX.keys()].sort()).toEqual(TOWN_KEEPERS[realm].map(k => k.name).sort());
@@ -221,11 +245,35 @@ test.describe('Phase 4 Life, walked in every town', () => {
       const town = await enterTown(page, realm, { 'preferred-language': 'es' });
       await expect(page.locator('html')).toHaveAttribute('lang', 'es');
       const all = await walkTown(page, town);
-      const { tagX, lines, unknown } = analyse(town, all, 'es');
+      const { tagX, titleOf, lines, unknown } = analyse(town, all, 'es');
       expect([...tagX.keys()].sort(), `${realm} name tags`).toEqual(
         TOWN_KEEPERS[realm].map(k => LIFE_I18N[k.nameKey].es).sort());
+      for (const k of TOWN_KEEPERS[realm].filter(row => row.titleKey)) {
+        expect(titleOf.get(LIFE_I18N[k.nameKey].es), `${realm}: ${k.id}'s Spanish subtitle`).toBe(LIFE_I18N[k.titleKey!].es);
+      }
       expect([...unknown], `${realm}: every bubble is a Spanish keeper line`).toEqual([]);
       expect(lines.size, `${realm}: keepers spoke Spanish`).toBeGreaterThan(0);
+    }
+  });
+
+  test('act-aware: a Keeper past the act break hears the newest thing first, and a fresh save never hears it', async ({ page }) => {
+    // Every Prologue and Act I beat lived, both cards shown (godforge-story).
+    const beats = ['p.arrival', 'p.homestead', 'p.edge', 'p.maw', 'p.dig', 'p.words', 'a1.shadow', 'a1.tally', 'a1.hammer', 'a1.prices', 'a1.eater', 'a1.fresh', 'a1.dated', 'a1.break'];
+    await instrument(page);
+    const town = await enterTown(page, 'infernal', { 'godforge-story': { version: 1, chapter: 'act2', beats, cards: ['act1', 'act2'] } });
+    const all = await walkTown(page, town);
+    const { lines, unknown } = analyse(town, all, 'en');
+    expect([...unknown]).toEqual([]);
+    // Kael, Mara and Edrin each open with their act-break line.
+    expect([...(lines.get('kael') ?? [])]).toEqual(['play.life.line.kael.7']);
+    expect([...(lines.get('bench-smith') ?? [])]).toEqual(['play.life.line.bench-smith.8']);
+    expect([...(lines.get('buyback-clerk') ?? [])]).toEqual(['play.life.line.buyback-clerk.8']);
+
+    // A fresh save: nobody mentions a beat it has not lived.
+    const fresh = await enterTown(page, 'infernal');
+    const said = analyse(fresh, await walkTown(page, fresh), 'en').lines;
+    for (const [keeper, keys] of said) {
+      for (const key of keys) expect(['play.life.line.' + keeper + '.1'], `${key} on a fresh save`).toContain(key);
     }
   });
 });

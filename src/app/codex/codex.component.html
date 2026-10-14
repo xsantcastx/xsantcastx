@@ -88,6 +88,13 @@
       <dl class="cx-facts"><div><dt>{{ t('play.glim.codex.alsoLabel') }}</dt><dd>{{ t('play.glim.codex.also') }}</dd></div></dl>
     </div>
 
+    <!-- ── People of the Realms: every town keeper (world & cast S3). Its words are a lazy chunk. -->
+    @defer (on viewport) {
+      <app-codex-people />
+    } @placeholder {
+      <div class="cx-block" aria-hidden="true"></div>
+    }
+
     <!-- ── Bestiary ─────────────────────────────────────────────────────
          Only creatures with an approved master are drawn. Concept sheets are
          not runtime art, so the unpainted ones are a count, not a picture. -->
