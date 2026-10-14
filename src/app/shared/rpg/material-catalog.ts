@@ -129,6 +129,9 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'bark-rope': 'Bark Rope',
   'thornroot-grapple': 'Thornroot Grapple',
   'rift-anchor': 'Rift Anchor',
+  // Map v2's two map tools (shared/delve/map-tools.model.ts).
+  'broken-astral-compass': 'Broken Astral Compass',
+  'rift-map-fragment': 'Rift Map Fragment',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

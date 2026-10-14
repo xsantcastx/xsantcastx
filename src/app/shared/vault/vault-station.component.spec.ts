@@ -73,7 +73,8 @@ function station(): VaultStationComponent {
 
 describe('Inventory: routing to the Vault', () => {
   let memory: MemoryGateway;
-  beforeEach(() => { memory = new MemoryGateway(); });
+  // Copy is asserted in English; another spec may have left 'es' in storage (karma-language-leaks-across-specs).
+  beforeEach(() => { localStorage.setItem('preferred-language', 'en'); memory = new MemoryGateway(); });
 
   it('the satchel holds 40; the 41st piece goes to General I and is announced, nothing lost', () => {
     seed(memory, SATCHEL_BASE_SLOTS);
@@ -126,7 +127,8 @@ describe('Inventory: routing to the Vault', () => {
 
 describe('VaultStationComponent', () => {
   let memory: MemoryGateway;
-  beforeEach(() => { memory = new MemoryGateway(); });
+  // Copy is asserted in English; another spec may have left 'es' in storage (karma-language-leaks-across-specs).
+  beforeEach(() => { localStorage.setItem('preferred-language', 'en'); memory = new MemoryGateway(); });
 
   it('opens on the Satchel tab: its one button adds 8 slots for the STORAGE_CURVE price', () => {
     seed(memory, 5);
@@ -244,7 +246,8 @@ function seedTwins(memory: MemoryGateway, extra: Record<string, unknown>[] = [])
 
 describe('VaultStationComponent: identical items as one ×N row', () => {
   let memory: MemoryGateway;
-  beforeEach(() => { memory = new MemoryGateway(); });
+  // Copy is asserted in English; another spec may have left 'es' in storage (karma-language-leaks-across-specs).
+  beforeEach(() => { localStorage.setItem('preferred-language', 'en'); memory = new MemoryGateway(); });
 
   it('shows one ×7 row and the two rolled variants as their own rows, side by side; the seven share one slot', () => {
     seedTwins(memory);
