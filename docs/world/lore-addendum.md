@@ -1044,3 +1044,87 @@ presence").
   diamond on the map for half an hour, at the mission's target: a place, never
   what a carving says (the Archivist's rule stands). Builds on: world-and-cast
   §4 (Glim keeps the maps; "A hint is a kindness. An answer is a theft.").
+
+### The Underhearth in the game (Phase 8, shipped — owner reviews in play)
+
+The Delve and beyond's "The Four Who Went Down" and "Flooded Seams" (above),
+now in the world. Everything below is in the build, EN + ES unless marked.
+Builds on the same passages as those stories, plus the shipped Fracture claim
+("It broke along a line someone had already drawn") and Act I's break.
+
+**The door.** The Magma Halls' floor is the Underhearth's fallen ceiling, so
+the one way down is the **Banked seal** cut through the fragment chamber's
+floor, where the Seam Eater stood. It answers to a Pickaxe IV and Delving 15,
+and only once Kael has been brought the fragment: "The seal holds. Bring Kael
+the Godforge Fragment first: he knows what it holds back." Under it the
+**Banked Door**, a landing on the Four's brick, and the field note *For the
+Fifth*. First step down: "Under the Halls. The heat here is heavy, not hot:
+fire pressed so long it became something else."
+
+**What is down there.** Iron-black basalt over banked obsidian; Kael's old
+rails in the galleries (some sections broken, as the Flooded Seams story
+says); lava lakes with obsidian shores "where the seeps met it"; the
+fracture's own violet seam through the rock, unbreakable and lit; cold coal
+that is dark "until struck" and then glows; emberheart, pyrite, the furnace's
+slag (Pickaxe V) and ironwood (two of the four pillars still stand in the
+Furnace Hall; their heartposts take an Axe V). Creatures: **Banked Embers**
+asleep in cold coal until a blow wakes them, **Ironwood Sentinels** whose
+strike shoulders the ceiling ("A support nearby holds it"), Rivet Maws at the
+top. The **Four's outposts**: four ruined forge corners, two east and two west
+of the shaft, each with an anvil, a cache and one **hammer-mark** ("A
+hammer-mark, cut where one of the Four stood. You take a rubbing of it.").
+
+**The Banked Furnace** (the Furnace Hall under the core, at the bottom of
+Kael's rail). Woken at its hearth with the Four Hammer-Marks: "The Banked
+Furnace wakes, and the hall breathes with it." Banked, it swallows blows; its
+four vents are doused with water from **the Four's quench trough** ("Bank, Do
+Not Quench" made into a fight: the Four banked it; the Keeper finally puts it
+out); it breathes in, pulling, and spills Banked Embers; with the vents out its
+core opens; under half it "remembers what it was banked for". Its fall: "The
+Banked Furnace goes dark. The fire the Four banked is out." It can be woken
+again once a day for what it banked; it will not wake twice in a day.
+
+**Missions** (English data, like every mission):
+
+- *Flooded Seams* (Kael): "When I closed the mines I did not fill them. I let
+  the water have them. The old rails still run along the drowned galleries,
+  and the Maws still pull rivets from them. Bring me three. Then look at which
+  way the rails were laid." Claim: "They were laid toward the crack." Opens the
+  Seam Rail and the Seam Cart.
+- *The Four Who Went Down* (Kael): "Five of us worked the Seamworks when the
+  crack reached it. Four went down to bank the fire. I stayed. The seal under
+  the chamber is ours, and you brought up the fragment, so you have earned the
+  door. Take a Pickaxe IV. Go down with someone, if you can." Claim: the
+  fallen-roof line (story above).
+- *Four Hammers* (Kael): "One mark for each of us, where we stood. Two east of
+  the shaft, two west, none of them far. Put your hand on one. That was the
+  height of her shoulder." Claim: "I did not stay because I was braver…" and
+  the Four Hammer-Marks; opens the Rift Anchor.
+- *Let It End* (Verrin, also Kael): Verrin's three lines from the story above,
+  as one plea. Claim: Kael's "It is out. I thought I would feel lighter. I feel
+  like the forge just got colder by four." A Nox rune; Pickaxe V and Axe V.
+- *Endings Kept Warm* (Verrin): "Some endings are kept warm on purpose, so they
+  can be finished later. Bring me five things that swam toward the crack, and
+  one that swims in what was banked." Claim: "Verrin filed both catches under
+  the same ending. 'Postponed,' the label says. Then, smaller: 'not
+  cancelled.'" A Hollow rune.
+
+**Act II's first pages** (the Story tab, `story.i18n.ts`): *The Four Who Went
+Down*, *Four hammers*, *Let it end*, each with Kael speaking on Glim's line
+("The furnace is not angry…", "You found a mark…", "It is out…").
+
+**Glim** (hint ladder, never what is down there): "The deepest room we know
+has a floor that is not quite a floor." · "Four people worked down here.
+People leave corners lit." · "Kael's old rail goes all the way down. So does
+the heat." · "Ride the rail to the Furnace Hall. Bring a bucket: the trough is
+there for a reason."
+
+**Traversal** (item lines above, now carried): the Seam Cart ("In the cart.
+Left and Right push it, Down brakes, Jump leaps out, E steps off." · "Off the
+end of the line! The cart stays; you do not."), Bark Rope ("The rope unrolls
+down… Climb it like a ladder."), the Thornroot Grapple ("The thornroot grows to
+the rock and pulls. Jump to let go."), Rift Anchors ("The anchor holds, and both
+ends agree. You step through."; travel sheet: "A passage that holds only because
+both ends agree to. Choose where to step through."). Each rift shrine's first
+touch now also leaves a **Waystone Shard**, "a splinter from a waystone that
+was never built".

@@ -9,7 +9,8 @@ Reviewed daily; newest review on top of the log at the bottom.
 1. **Water, lava, lakes, Fishing v1** — Delve & Beyond slice 1. *(built, awaiting merge: `docs/handoff/liquids-fishing.md`)*
 2. **UX follow-ups** — Material Vendor on the kit, Homestead + six surfaces in Spanish. *(in flight)*
 3. ~~**Story Act I framing**~~ (world & cast S2) — ✅ shipped: Prologue tab on the goals, the Act I card, keeper lines on the missions, the fresh mark, the act break, the Story tab (`docs/handoff/story-act1.md`).
-4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2 *(built, awaiting merge: `docs/handoff/endless-delve.md`)*; map pins + waypoints, the compass and the fragment, Glim's mark, and Pim Larkin's daily bounties (7.4–7.5) *(built, awaiting merge: `docs/handoff/bounties-map-v2.md`)*. Next: Phase 8, the Underhearth.
+4. **The endless Delve** (Phase 7) — horizontal sectors, save v2, structures, map v2 *(built, awaiting merge: `docs/handoff/endless-delve.md`)*; map pins + waypoints, the compass and the fragment, Glim's mark, and Pim Larkin's daily bounties (7.4–7.5) *(built, awaiting merge: `docs/handoff/bounties-map-v2.md`)*.
+4b. **The Underhearth** (Phase 8) — the stratum under the Magma Halls behind the Banked seal, the Banked Furnace, Kael's and Verrin's chains ("The Four Who Went Down"), tool tier V, rope, grapple, Kael's rails + the Seam Cart, Rift Anchors *(built, awaiting merge: `docs/handoff/underhearth.md`)*. Next: Phase 9, Starfall Deep.
 5. ~~**NPC depth pass**~~ (world & cast S3) — ✅ built: names with role-title subtitles, four new keepers, act-aware lines, People of the Realms (`docs/handoff/npc-depth.md`).
 6. **Art test set** — 21 files (`docs/art-commissions/00-first-test-set.md`). *(owner / image generator)*
 
@@ -36,6 +37,15 @@ Reviewed daily; newest review on top of the log at the bottom.
 - Review new lore in `docs/world/lore-addendum.md`.
 
 ## Daily review log
+
+- **2026-10-14 (the Underhearth)** — Phase 8 built: rows 56–117 under every column (iron-black basalt over banked
+  obsidian, vertical shafts, lava lakes with obsidian shores, emberheart / pyrite / cold coal / furnace slag,
+  ironwood pillars, fracture seams), the Banked seal in the fragment chamber's floor (Pickaxe IV, Delving 15, The
+  Fracture claimed), the Banked Door and Kael's rail down over the Furnace Hall's trestles, the Banked Furnace
+  (vents, breath, embers, core), the Four's outposts and hammer-marks, Banked Embers and Ironwood Sentinels;
+  Kael's Flooded Seams and The Four Who Went Down, Verrin's Let It End and Endings Kept Warm, Act II's first three
+  beats; Bark Rope, the Thornroot Grapple, Seam Rails + the Seam Cart, Rift Anchors (travel sheet, the shaft's
+  "Descend to an anchor"); Pickaxe V / Axe V; the Underhearth's lava fishing. Next: Phase 9 (Starfall Deep).
 
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
   (drawn per player per day, 5–15 min of income, days counted never a streak, `economy-sim --bounties`), map pins
