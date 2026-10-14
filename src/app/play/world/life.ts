@@ -6,8 +6,9 @@
  *    claims the page (`npc.model.ts` paths). The Bible's people stand at the
  *    stations world-and-cast §3 gives them (S3, the NPC depth pass): their name
  *    tag is the person (Mara Voss) and the approved role title rides under it
- *    as a subtitle (Bench Smith). Keepers the cast has not named yet keep their
- *    role title as their name.
+ *    as a subtitle (Bench Smith). Every role keeper now has a name (the last six
+ *    named 2026-10-14: Orla Stave, Idris Calder, Lune Coyne, Pim Larkin, Corran
+ *    Holt, Hesta Cairn; docs/world/lore-addendum.md).
  *  - Townsfolk: two to four wandering figures per town, on floor segments that
  *    never cover a station or a keeper. Each says one line naming where a
  *    material of this town's hunting grounds is found, read off the hunts'
@@ -137,13 +138,14 @@ function keeper(id: string, station: string, name: string, palette: LifePalette,
  */
 export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> = {
   infernal: [
-    // Edrin Kade's cousin; the cast has not named them yet.
-    keeper('vault-clerk', 'vault', 'Vault Clerk', P.infernal[2], 'coat', -1, 'npc-vault-clerk-figure'),
+    // Orla Stave, Edrin Kade's cousin: a stave is a notched tally stick, and she has her grandmother's.
+    keeper('vault-clerk', 'vault', 'Orla Stave', P.infernal[2], 'coat', -1, 'npc-vault-clerk-figure', undefined, 'Vault Clerk'),
     keeper('buyback-clerk', 'vendor', 'Edrin Kade', P.infernal[1], 'coat', 1, 'npc-material-vendor-figure', undefined, 'Buyback Clerk'),
     keeper('bench-smith', 'crafting', 'Mara Voss', P.infernal[2], 'smith', 1, 'npc-bench-smith-figure', undefined, 'Bench Smith'),
     // Kael's sprite brief stands him at the Rune Forge.
     keeper('kael', 'runes', 'Kael', KAEL, 'smith', 1, 'npc-kael-figure', 'kael', 'the Broken Flame'),
-    keeper('enchanter', 'enchanting', 'Enchanter', P.infernal[0], 'robe', -1, 'npc-enchanter-figure'),
+    // Idris Calder trained in the Archive before the Seamworks; sockets are promises.
+    keeper('enchanter', 'enchanting', 'Idris Calder', P.infernal[0], 'robe', -1, 'npc-enchanter-figure', undefined, 'Enchanter'),
   ],
   luminous: [
     keeper('merchant', 'market', 'The Merchant', MERCHANT, 'coat', 1, 'npc-merchant-figure', 'merchant', 'of the long till'),
@@ -155,8 +157,8 @@ export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> =
     keeper('ilyra', 'passage', 'Ilyra Venn', P.luminous[2], 'robe', -1, 'npc-ilyra-venn-figure', undefined, 'Archive Listener'),
   ],
   umbral: [
-    // The Croupier also runs the games of chance in a row just east of where it waits.
-    { ...keeper('croupier', 'gambler', 'Croupier', P.umbral[0], 'hood', 1, 'npc-croupier-figure'), serves: ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent'] },
+    // Lune Coyne, the Croupier, also runs the games of chance in a row just east of where she waits.
+    { ...keeper('croupier', 'gambler', 'Lune Coyne', P.umbral[0], 'hood', 1, 'npc-croupier-figure', undefined, 'Croupier'), serves: ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent'] },
     keeper('broker', 'exchange', 'Amina Thorne', P.umbral[1], 'coat', 1, 'npc-exchange-broker-figure', undefined, 'Exchange Broker'),
     // Where two reflections disagree, a corridor opens. Verrin watches it.
     keeper('verrin', 'passage', 'Verrin', VERRIN, 'hood', -1, 'npc-verrin-figure', 'verrin', 'the Hollow'),
@@ -171,9 +173,11 @@ export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> =
   ],
   verdant: [
     keeper('steward', 'sanctum', 'Siv Moss', P.verdant[0], 'coat', 1, 'npc-expedition-steward-figure', undefined, 'Expedition Steward'),
-    keeper('herald', 'quests', 'Board Herald', P.verdant[1], 'robe', 1, 'npc-board-herald-figure'),
-    keeper('gatekeeper', 'arena', 'Arena Gatekeeper', P.verdant[2], 'smith', 1, 'npc-arena-gatekeeper-figure'),
-    keeper('trials-warden', 'trials', 'Trials Warden', P.verdant[0], 'hood', -1, 'npc-trials-warden-figure'),
+    // Pim Larkin reads the board aloud, as Larkins have for four generations; Corran Holt walked the roads
+    // with Siv before his knee went; Hesta Cairn keeps the door of the trials for Verrin.
+    keeper('herald', 'quests', 'Pim Larkin', P.verdant[1], 'robe', 1, 'npc-board-herald-figure', undefined, 'Board Herald'),
+    keeper('gatekeeper', 'arena', 'Corran Holt', P.verdant[2], 'smith', 1, 'npc-arena-gatekeeper-figure', undefined, 'Arena Gatekeeper'),
+    keeper('trials-warden', 'trials', 'Hesta Cairn', P.verdant[0], 'hood', -1, 'npc-trials-warden-figure', undefined, 'Trials Warden'),
     keeper('lodge-warden', 'skills', 'Kesh Arbo', P.verdant[1], 'robe', 1, 'npc-lodge-warden-figure', undefined, 'Lodge Warden'),
   ],
 };
