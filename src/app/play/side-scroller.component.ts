@@ -5,7 +5,7 @@ import {
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { Subscription } from 'rxjs';
+import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
 import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor } from '../shared/activity/activity.model';
 import { EconomyService } from '../shared/economy/economy.service';
@@ -36,7 +36,7 @@ import { homeStationOf } from './world/homestead';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { isChestHolder } from '../shared/delve/delve-save.model';
-import { PLACEABLES } from './engine/terrain';
+import { PLACEABLES, WARDEN_FLAG } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolCard, toolCardLines, toolPower, toolTiers } from '../shared/skills/tools';
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
@@ -57,6 +57,11 @@ import { GlimService } from '../shared/glim/glim.service';
 import { GlimVoice } from '../shared/glim/glim-voice';
 import { GlimIconComponent } from '../shared/glim/glim-icon.component';
 import { npcById } from '../shared/npc/npc.model';
+import { NpcQuestService } from '../shared/npc/npc-quest.service';
+import { STORY_I18N } from '../shared/story/story.i18n';
+import { StoryService } from '../shared/story/story.service';
+import { STORY_CARD_PARAGRAPHS } from '../shared/story/story';
+import type { StoryCardId } from '../shared/story/story-save.model';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -65,6 +70,15 @@ import type { DiscoverEvent } from './engine/engine';
 import { WORLD_ACTION_UNPAID } from './engine/engine.model';
 import { restCueDue, settleDelveMine } from './delve-reward';
 import { DelveMapView } from './delve-map-view';
+import { FishingService, type PendingCatch } from '../shared/fishing/fishing.service';
+import { FISHING_I18N } from '../shared/fishing/fishing.i18n';
+import { LineTensionComponent } from '../shared/fishing/line-tension.component';
+import { reelDuration } from '../shared/fishing/fishing-reel';
+import { catchById, CRATE_IDS, fishingPerks, LODGE_CHARMS } from '../shared/fishing/fishing.model';
+import { InfusionService } from '../shared/enchanting/infusion.service';
+import { DROWNED_LAMP_FLAG } from './world/towns/infernal';
+import type { BucketEvent, BucketId, FishEvent } from './engine/engine';
+import { HOTBAR_FIXED } from './engine/terrain';
 import { MAP_MARKER_COLORS } from './engine/delve-map';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
@@ -73,6 +87,12 @@ import { MAP_MARKER_COLORS } from './engine/delve-map';
  * not progress: plain localStorage behind try/catch, never the save gateway.
  */
 const HEARTH_OPEN_KEY = 'eclipse-hearth-open';
+/**
+ * The first moments of a visit only catch the story up with the save: beats
+ * found here are filed without a word and their cards marked shown. Long enough
+ * for every service to hydrate; far shorter than anything a player can do.
+ */
+const STORY_CATCH_UP_MS = 1500;
 /** The one-time Rune Forge hint (world/first-goals.ts runeForgeHint) was followed or dismissed. A UI note, like the Hearth's. */
 const RUNE_HINT_KEY = 'eclipse-rune-hint-seen';
 const ONCE_PER_PLAYER = new Set(['godforge-fragment', 'kaels-hammer']);
@@ -144,7 +164,11 @@ const TOUCH_TIP_MS = 1400;
 
 interface LootToast { key: number; text: string }
 /** One slot of the Delve hotbar: a placeable and how many the satchel holds. */
-interface HotbarSlot { id: PlaceableId; name: string; art: string; count: number; key: string }
+interface HotbarSlot { id: PlaceableId | BucketId; name: string; art: string; count: number; key: string }
+/** Hotbar slots past key 0, shown only while the satchel holds some: the obsidian block and the buckets. */
+const HOTBAR_EXTRA: readonly (PlaceableId | BucketId)[] = ['seam-bucket', 'seam-bucket-water', 'seam-bucket-lava'];
+/** The reel in progress: what is on the line, and the Line Tension seed. */
+interface ReelView { pending: PendingCatch; seed: number; widen: number; biome: string; liquid: 'water' | 'lava'; auto: boolean }
 
 const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -158,7 +182,7 @@ function monogram(name: string): string {
 }
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, GlimIconComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -237,6 +261,13 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly chests = inject(DelveChestService);
   /** When each hunting-ground gathering node was last harvested (regrowth survives a reload). */
   private readonly gatherSave = inject(GatherSaveService);
+  /** Fishing: the catch, the Catalogue, the Lodge's ledger. */
+  private readonly fishing = inject(FishingService);
+  private readonly infusions = inject(InfusionService);
+  /** The Line Tension reel while a fish is on the line; null otherwise. */
+  reel: ReelView | null = null;
+  private fishKey = '';
+  private rodAsked = 0;
   /** The chest panel's contents while one is open. */
   chestView: ChestView | null = null;
   private delveSub?: Subscription;
@@ -258,6 +289,17 @@ export class SideScrollerComponent implements OnDestroy {
   readonly glimNpc = npcById('glim');
   readonly glimVoice = new GlimVoice(inject(GlimService));
   glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean } | null = null;
+  /**
+   * The Keeper's story (shared/story): beats are read off the save each HUD
+   * tick; a beat reached live speaks through Glim's line, and an act boundary
+   * raises its story card. The first moments of a visit only catch up
+   * (STORY_CATCH_UP_MS), so a loaded save is never walked back through it.
+   */
+  private readonly story = inject(StoryService);
+  private readonly quests = inject(NpcQuestService);
+  private readonly openedAt = Date.now();
+  /** The act-boundary card on screen, or null. */
+  storyCard: { id: StoryCardId; paragraphs: string[] } | null = null;
   /** The Homestead's Gold list is unfolded: on phones it takes the HUD plates' place. */
   columnOpen = false;
   private readonly zone = inject(NgZone);
@@ -308,7 +350,7 @@ export class SideScrollerComponent implements OnDestroy {
   hotbar: HotbarSlot[] = [];
   private hotbarKey = '';
   /** The hotbar's choice: what B / a long-press places. */
-  placing: PlaceableId | null = null;
+  placing: PlaceableId | BucketId | null = null;
   /**
    * Phones (Terraria's smart cursor): what a tap on a Delve cell does. 'pick'
    * digs it (the engine's own click-to-strike); 'place' puts the chosen
@@ -350,6 +392,7 @@ export class SideScrollerComponent implements OnDestroy {
     const saved = this.store.read(SAVE_KEY) as { era?: number; resetAt?: string | null; restored?: boolean } | null;
     this.restored = saved?.restored === true && saved.era === INVENTORY_ERA && saved.resetAt === this.store.readRaw(RESET_STAMP_KEY);
     this.economy.init();
+    this.infusions.init();
     // Back where the Keeper last stood. A `?at=` link resolves after this and still wins.
     const play = this.playSave();
     const home = typeof play.town === 'string' ? TOWNS[play.town as RealmTownId] : undefined;
@@ -362,7 +405,10 @@ export class SideScrollerComponent implements OnDestroy {
         this.engine?.setChat(snapshot.messages, snapshot.id);
       }));
       this.mountEngine();
-      this.atSub = this.route.queryParamMap.subscribe(params => this.zone.run(() => this.applyAt(params.get('at'))));
+      // Only a change of `at` moves the world: a hosted page that writes its own query
+      // (the Character hub's ?tab=) must not read as "no place open" and close itself.
+      this.atSub = this.route.queryParamMap.pipe(map(params => params.get('at')), distinctUntilChanged())
+        .subscribe(at => this.zone.run(() => this.applyAt(at)));
       // Cloud save replaced the Delve (another device's dig): rebuild it from the merged save.
       this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
       // Cloud save merged another device's harvests: nodes re-read their regrowth.
@@ -382,7 +428,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(LIFE_I18N);
     this.i18n.register(DELVE_I18N);
     this.i18n.register(FIRST_GOALS_I18N);
+    this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
+    this.i18n.register(STORY_I18N);
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
@@ -402,6 +450,8 @@ export class SideScrollerComponent implements OnDestroy {
       onPlace: event => this.zone.run(() => this.placeFromSatchel(event)),
       onTakeBack: event => this.zone.run(() => this.takeToSatchel(event)),
       onUse: event => this.zone.run(() => this.useCell(event)),
+      onBucket: event => this.zone.run(() => this.bucketSwap(event)),
+      onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
@@ -414,6 +464,12 @@ export class SideScrollerComponent implements OnDestroy {
         if (state.nearby === 'delve' && this.state.nearby !== 'delve') this.campReady = !!this.engine?.hasDelveCamp();
         else if (state.nearby !== 'delve') this.campReady = false;
         this.state = state;
+        // Fishing and liquids on the canvas, for tests and tools (the HUD says it in words).
+        const el = this.canvas?.nativeElement;
+        if (el) {
+          el.setAttribute('data-fishing', state.fishing?.phase ?? (state.canFish ? `can:${state.canFish}` : ''));
+          el.setAttribute('data-liquid', state.liquid?.in ?? '');
+        }
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
@@ -874,12 +930,67 @@ export class SideScrollerComponent implements OnDestroy {
       areaId,
     });
     if (next?.key !== this.guide?.key || next?.n !== this.guide?.n) this.guide = next;
+    this.tickStory({
+      met: this.glimVoice.met,
+      bought: this.boughtBuilding,
+      armed: !!worn && !worn.explorerId,
+      hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
+      dug: this.delve.hasDug('ember-delve'),
+    });
     this.tickGlim(areaId, !goal, (progress.xpByDiscipline['hunting'] ?? 0) > 0, !!worn && !worn.explorerId);
+  }
+  /**
+   * The story's tick: file the beats the save has reached; a live beat's lines
+   * go to Glim's line (in order, after anything on screen), and a crossed act
+   * boundary raises its card once the Keeper is back in the world.
+   */
+  private tickStory(goals: { met: boolean; bought: boolean; armed: boolean; hunted: boolean; dug: boolean }): void {
+    if (!this.browser) return;
+    const live = Date.now() - this.openedAt >= STORY_CATCH_UP_MS;
+    const lines = this.story.advance({
+      ...goals,
+      inscriptions: this.delveLore.inscriptions(),
+      missionDone: id => this.quests.isMissionDone(id),
+      wardenDown: this.delve.isClaimed(WARDEN_FLAG),
+    }, live);
+    if (lines.length) this.glimVoice.story(lines);
+    if (!this.storyCard && !this.panel && !this.map.open && !this.state.defeated) {
+      const card = this.story.pendingCard();
+      if (card) this.openStoryCard(card);
+    }
+  }
+  private openStoryCard(id: StoryCardId): void {
+    this.storyCard = { id, paragraphs: Array.from({ length: STORY_CARD_PARAGRAPHS[id] }, (_, n) => `story.card.${id}.p${n + 1}`) };
+    this.bagOpen = false; this.placesOpen = false;
+    this.glimVoice.dismiss();
+    this.engine?.setHover(null);
+    this.engine?.setPaused(true);
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.story-card__go')?.focus({ preventScroll: true }));
+  }
+  /** Continue (or Escape): the card is filed as shown and the world moves again. */
+  closeStoryCard(): void {
+    const card = this.storyCard;
+    if (!card) return;
+    this.storyCard = null;
+    this.story.cardShown(card.id);
+    if (!this.panel && !this.map.open) this.engine?.setPaused(false);
+    this.focusWorld();
+  }
+  /** Who says the line on screen: Glim (null), or the keeper whose story line it is. */
+  get sayer(): { name: string; monogram: string; color: string } | null {
+    const speaker = this.glimVoice.speech?.story?.speaker;
+    if (!speaker || speaker === 'glim') return null;
+    const npc = npcById(speaker);
+    return npc ? { name: npc.name, monogram: npc.monogram, color: npc.color } : null;
+  }
+  /** The chapter the goal line belongs to (the Prologue wraps the four first goals). */
+  get chapterTag(): string {
+    return this.story.state.chapter === 'prologue' ? this.t('story.chapter.prologue') : '';
   }
   /** Glim's tick: maybe a line (glim.ts nextLine), the sprite shown once met, and where it is. */
   private tickGlim(areaId: string, goalsDone: boolean, hunted: boolean, armed: boolean): void {
     const voice = this.glimVoice;
-    voice.tick({ now: Date.now(), panelOpen: !!this.panel, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
+    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
     if (!this.engine) return;
     this.engine.setGlim(voice.met, voice.justMet);
     voice.justMet = false;
@@ -1039,6 +1150,11 @@ export class SideScrollerComponent implements OnDestroy {
   @HostListener('window:keydown', ['$event'])
   onBagKey(event: KeyboardEvent): void {
     if (!this.browser || event.repeat) return;
+    // A story card owns the keyboard: Escape (or Enter on Continue) closes it.
+    if (this.storyCard) {
+      if (event.key === 'Escape') { event.preventDefault(); this.closeStoryCard(); }
+      return;
+    }
     // An open place owns the keyboard. Escape closes it unless the page inside
     // already used the key (its own dialog, a reveal) — window is the last stop.
     if (this.panel) {
@@ -1063,6 +1179,10 @@ export class SideScrollerComponent implements OnDestroy {
     else if (this.state.delve && /^Digit[0-9]$/.test(event.code)) {
       // Keys 1-9, then 0 for the tenth slot.
       const slot = this.hotbar[(Number(event.code.slice(5)) + 9) % 10];
+      if (slot) { event.preventDefault(); this.choosePlaceable(slot.id); }
+    }
+    else if (this.state.delve && (event.code === 'Minus' || event.code === 'Equal')) {
+      const slot = this.hotbar.find(row => row.key === (event.code === 'Minus' ? '-' : '='));
       if (slot) { event.preventDefault(); this.choosePlaceable(slot.id); }
     }
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
@@ -1277,9 +1397,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (!stack) return null;
     const display = materialDisplay(stackKey);
     const name = display?.name ?? stackKey;
+    // A catch says what it is and what it is for (the Catalogue's lines); a Lodge charm, what it does.
+    const fish = catchById(stackKey), charm = LODGE_CHARMS.find(c => c.id === stackKey);
     return {
       name, art: display?.art ?? '', mark: monogram(name), kicker: this.t('play.hud.slip.material'),
-      note: this.stackNote(stackKey, stack.quantity), stats: [this.t('play.hud.slip.held', { n: stack.quantity })],
+      note: fish ? `${fish.lore} ${fish.use}` : charm ? `${charm.lore} ${charm.effect}` : this.stackNote(stackKey, stack.quantity),
+      stats: [this.t('play.hud.slip.held', { n: stack.quantity })],
       canWear: false, canStow: false, compare: [], compareLabel: '',
     };
   }
@@ -1410,6 +1533,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.canvas?.nativeElement.setAttribute('data-swing-pickaxe', crafted.swing.pickaxe.toFixed(2));
       this.canvas?.nativeElement.setAttribute('data-power-pickaxe', (crafted.pickaxe ? toolPower(crafted.pickaxe) * crafted.power.pickaxe : 0).toFixed(2));
     }
+    this.pushFishing();
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
@@ -1489,13 +1613,17 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Rebuild the hotbar when a count changed. Cheap: one stack read per placeable. */
   private refreshHotbar(): void {
-    const counts = PLACEABLES.map(def => this.inventory.stackOf(def.id));
+    const ids: (PlaceableId | BucketId)[] = [...PLACEABLES.map(def => def.id), ...HOTBAR_EXTRA];
+    const counts = ids.map(id => this.inventory.stackOf(id));
     const key = counts.join(',');
     if (key === this.hotbarKey && this.hotbar.length) return;
     this.hotbarKey = key;
-    this.hotbar = PLACEABLES.map((def, i) => ({
-      id: def.id, name: this.t(`play.place.${def.id}`), art: materialDisplay(def.id)?.art ?? '', count: counts[i], key: String((i + 1) % 10),
-    }));
+    // Keys 1-0 for the fixed ten; past them (the obsidian block, the buckets) only what the satchel holds, on - and =.
+    let extra = 0;
+    this.hotbar = ids.flatMap((id, i) => i < HOTBAR_FIXED || counts[i] > 0 ? [{
+      id, name: this.placeName(id), art: materialDisplay(id)?.art ?? '', count: counts[i],
+      key: i < HOTBAR_FIXED ? String((i + 1) % 10) : ['-', '='][extra++] ?? '',
+    }] : []);
     // Nothing chosen yet: the first thing the satchel holds.
     if (!this.placing) {
       const first = this.hotbar.find(slot => slot.count > 0);
@@ -1504,7 +1632,7 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The chosen slot, for the hint line. */
   get placingSlot(): HotbarSlot | undefined { return this.hotbar.find(slot => slot.id === this.placing); }
-  choosePlaceable(id: PlaceableId, quiet = false): void {
+  choosePlaceable(id: PlaceableId | BucketId, quiet = false): void {
     this.placing = id;
     this.engine?.setPlaceable(id);
     if (!quiet) {
@@ -1554,6 +1682,113 @@ export class SideScrollerComponent implements OnDestroy {
     this.refreshHotbar();
     return true;
   }
+  // ── Liquids and fishing ──────────────────────────────────────────────────
+
+  /** A Seam Bucket scoops or pours: one bucket stack becomes the other, in one idempotent swap. */
+  private bucketSwap(event: BucketEvent): boolean {
+    if (!this.browser) return false;
+    if (this.inventory.stackOf(event.from) < 1) { this.message = this.t('play.delve.noneLeft', { lname: this.placeName(event.from).toLowerCase() }); return false; }
+    const taken = this.inventory.consumeStacks(event.mutationId, [{ id: event.from, count: 1 }]);
+    if (!taken.ok || !this.inventory.grantStack(`${event.mutationId}:to`, event.to, 1)) { this.message = this.t('play.delve.chest.saveFailed'); return false; }
+    this.refreshHotbar();
+    // Keep the hand on the bucket that is now held.
+    if (this.placing === event.from && this.inventory.stackOf(event.from) < 1) this.choosePlaceable(event.to, true);
+    return true;
+  }
+  /**
+   * The rod and the wards for the engine, when they change: the best rod held
+   * (and what it works as at this Fishing level), the bait and charm bite
+   * speed, the Gill Draught's breath and the Ember Elixir worn as a charm.
+   */
+  private pushFishing(): void {
+    if (!this.engine || !this.browser) return;
+    const now = Date.now();
+    if (now - this.rodAsked > 1000) { this.rodAsked = now; this.fishing.ensureWornRod(); }
+    const rod = this.fishing.rod();
+    const breath = this.infusions.multiplierOn('breath');
+    const elixir = Object.values(this.inventory.snapshot.equipped).some(item => item && !item.explorerId && item.definitionId === 'ember-elixir');
+    const key = `${rod?.tier ?? 0}:${rod?.liquids.join('/') ?? ''}:${rod?.bite.toFixed(3) ?? 0}:${breath}:${elixir}`;
+    if (key === this.fishKey) return;
+    this.fishKey = key;
+    this.engine.setFishing({ tier: rod?.tier ?? 0, liquids: rod?.liquids ?? [], bite: rod?.bite ?? 1 });
+    this.engine.setWards({ breath, lavaWard: elixir ? 10 : 0 });
+  }
+  /** A cast name and phase for the prompt, or null when nothing fishing-related is in reach. */
+  get fishPrompt(): string | null {
+    const fishing = this.state.fishing;
+    if (this.reel) return null;
+    if (fishing) return this.t(fishing.phase === 'bite' ? 'play.fish.ui.bite' : 'play.fish.ui.waiting');
+    if (this.state.canFish) return this.t(this.state.canFish === 'lava' ? 'play.fish.ui.fishLava' : 'play.fish.ui.fish');
+    return null;
+  }
+  /** The rod and bait the next cast uses, for the prompt's tooltip and tests. */
+  get fishInfo(): string {
+    const rod = this.fishing.rod();
+    const bait = this.fishing.bait();
+    const rodLine = !rod ? '' : rod.name === rod.works ? this.t('play.fish.ui.rod', { name: rod.name }) : this.t('play.fish.ui.rodWorks', { name: rod.name, works: rod.works });
+    const baitLine = bait ? this.t('play.fish.ui.bait', { name: materialDisplay(bait)?.name ?? bait }) : this.t('play.fish.ui.noBait');
+    return `${rodLine} · ${baitLine} · ${this.t('play.fish.ui.hold')}`;
+  }
+  /** The prompt's button: a press casts or hooks (E); holding it keeps fishing on its own (auto). */
+  fishPress(event: PointerEvent, down: boolean): void {
+    if (down && event.button !== 0 && event.pointerType === 'mouse') return;
+    event.preventDefault();
+    this.engine?.setUseHeld(down);
+    if (down) this.engine?.interact();
+  }
+  /**
+   * A fish is hooked. Night, Glowcap bait, the Mere and the Archivist's second
+   * page raise the Drowned Lamp instead. Auto-fish (Use held) lands at the Off
+   * grade at once; otherwise the Line Tension reel decides the grade.
+   */
+  private fishHooked(event: FishEvent): void {
+    if (!this.browser || !this.engine) return;
+    const npc = this.store.read('eclipse-npc') as { claimed?: unknown } | null;
+    const pageClaimed = Array.isArray(npc?.claimed) && npc!.claimed.includes('fish-drowned-lamp-2');
+    if (this.fishing.lampAnswers({ biome: event.biome, liquid: event.liquid, pageClaimed, fallen: this.delve.isClaimed(DROWNED_LAMP_FLAG) })) {
+      this.engine.landFish();
+      this.engine.summon('drowned-lamp', (event.col + .5) * 32);
+      return;
+    }
+    const pending = this.fishing.hooked({ castId: event.castId, biome: event.biome, liquid: event.liquid });
+    if (event.auto) { this.landCatch(pending, 'off', reelDuration(pending.rarity) + .6); return; }
+    const lodgeReel = this.inventory.stackOf('lodge-reel') > 0 ? .1 : 0;
+    let seed = 0;
+    for (const ch of event.castId) seed = (Math.imul(seed, 31) + ch.charCodeAt(0)) >>> 0;
+    this.reel = { pending, seed, widen: fishingPerks(this.fishing.level()).window + lodgeReel, biome: event.biome, liquid: event.liquid, auto: false };
+  }
+  /** The reel ended: land the catch at its grade. */
+  reelDone(result: { grade: 'perfect' | 'good' | 'off' }): void {
+    const reel = this.reel;
+    this.reel = null;
+    if (!reel) return;
+    // A played reel ends the line; holding Use to reel must not start auto-fishing.
+    this.engine?.setUseHeld(false);
+    this.landCatch(reel.pending, result.grade);
+  }
+  private landCatch(pending: PendingCatch, grade: 'perfect' | 'good' | 'off', recastIn?: number): void {
+    const landed = this.fishing.land(pending, grade);
+    this.engine?.landFish(recastIn);
+    if (!landed) { this.message = this.t('play.fish.ui.saveFailed'); return; }
+    this.toastLoot(this.t('play.fish.ui.landed', { name: landed.name, n: landed.qty, xp: landed.xp }));
+    this.message = landed.first ? `${this.t('play.fish.ui.grade.' + grade)} ${this.t('play.fish.ui.first')}` : this.t('play.fish.ui.grade.' + grade);
+    this.canvas?.nativeElement.setAttribute('data-last-catch', landed.id);
+    this.refreshHotbar();
+  }
+  /** The satchel's Open on a crate: its contents into the satchel, free. */
+  openCrate(): void {
+    const pick = this.pick;
+    if (pick?.kind !== 'stack' || !CRATE_IDS.includes(pick.ref)) return;
+    const got = this.fishing.openCrate(pick.ref);
+    if (!got) { this.message = this.t('play.delve.chest.saveFailed'); return; }
+    const items = got.map(row => `${row.qty} ${materialDisplay(row.id)?.name ?? row.id}`).join(', ');
+    this.message = this.t('play.fish.ui.opened', { items });
+    this.toastLoot(items);
+    if (this.inventory.stackOf(pick.ref) < 1) this.ensurePick();
+  }
+  /** The picked stack is a crate (the slip shows Open). */
+  get pickIsCrate(): boolean { return this.pick?.kind === 'stack' && CRATE_IDS.includes(this.pick.ref); }
+
   /** E beside (or a tap on) a placed chest or camp. */
   private useCell(event: UseEvent): void {
     if (!this.browser) return;
@@ -1657,6 +1892,12 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private worldAction(event: WorldActionEvent): boolean | typeof WORLD_ACTION_UNPAID {
     if (!this.browser) return false;
+    // An Ember Grub in dug dirt (fishing bait, spec §5.2): the block and the grub, no XP, no seam.
+    if (event.materialId === 'ember-grub' && !event.xp) {
+      this.grantBlock(event);
+      if (this.inventory.grantStack(`${event.mutationId}:grub`, 'ember-grub', event.qty ?? 1)) this.toastLoot(`+1 ${materialDisplay('ember-grub')?.name ?? 'Ember Grub'}`);
+      return true;
+    }
     // Plain dirt and placed blocks pay only the block.
     if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
     if (event.kind === 'mine' && event.discipline === 'mining' && !event.site) {

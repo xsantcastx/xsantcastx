@@ -1,7 +1,7 @@
 import type { SpriteEntry } from '../../shared/art/sprite-manifest.generated';
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
-import type { PlaceableId, WorldActionKind } from './terrain';
+import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
 /** `down` aims a delve swing (or blast) below the Keeper; `blast` channels the staff. */
 export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge' | 'down' | 'blast';
 export type InteractionTarget = 'ore' | 'forge' | 'beacon' | 'passage';
@@ -46,8 +46,41 @@ export interface EngineState {
    * Keeper ("Sickle II", "Foraging 6"); `seconds` is the regrowth left.
    */
   gather?: { id: string; label: string; ready: boolean; seconds: number; need?: string; materialId: string };
+  /**
+   * In a liquid (delves): what the body is in, and the breath left 0..1 while
+   * the head is under water (absent above it). `burning`: lava's after-burn.
+   */
+  liquid?: { in: LiquidKind | null; breath?: number; burning?: boolean; ward?: number };
+  /**
+   * Fishing (delves): the line's phase. `bite` is the 0.6 s window to hook
+   * (E, or a tap); `hooked` hands the reel to the host. `canFish`: a rod is
+   * held and fishable liquid is within a cast (the HUD shows "Fish").
+   */
+  fishing?: { phase: FishingPhase; liquid: LiquidKind } | null;
+  canFish?: LiquidKind | null;
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
+export type FishingPhase = 'wait' | 'bite' | 'hooked';
+/** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
+export interface FishEvent {
+  areaId: string;
+  /** Biome id of the water ('glowcap-grotto', …) and the liquid. */
+  biome: string;
+  liquid: LiquidKind;
+  /** Unique per hook this engine session: the catch's grant is keyed by it. */
+  castId: string;
+  /** Use was held through the bite (auto-fish): no mini-game, the Off grade. */
+  auto: boolean;
+  /** Where the bob sat, as a cell. */
+  col: number; row: number;
+}
+/** A bucket swap: one `from` stack becomes one `to` stack (scoop or pour). */
+export interface BucketEvent {
+  from: BucketId; to: BucketId;
+  areaId: string; cellKey: string; index: number; mutationId: string;
+  liquid: LiquidKind;
+}
+export type BucketId = 'seam-bucket' | 'seam-bucket-water' | 'seam-bucket-lava';
 export interface EngineOptions {
   /**
    * Force the render budget (engine/render-budget.ts): true = phone tier, false
@@ -118,6 +151,14 @@ export interface EngineOptions {
   /** A placed chest or camp was used (E beside it, or a tap on it). The host opens it. */
   onUse?: (event: UseEvent) => void;
   /**
+   * A Seam Bucket scoops or pours: swap one `from` for one `to` in the
+   * satchel (idempotent on `mutationId`) and return true; false refuses and
+   * nothing moves in the world. Absent: free (tests).
+   */
+  onBucket?: (event: BucketEvent) => boolean | void;
+  /** The fishing line hooked a fish (see FishEvent). The host answers with `engine.landFish()`. */
+  onFish?: (event: FishEvent) => void;
+  /**
    * A creature fell to the Keeper. Fires once per kill (`id` is unique per
    * kill per engine session, the same prefix its drops are keyed by): the
    * host pays Hunting XP through SkillActionService, keyed by it.
@@ -187,6 +228,13 @@ export interface DelvePersistence {
   seenCells?(areaId: string, layout: string, cells: number): Uint8Array | null;
   /** More of the map was explored (`bits` edited in place). Debounce on the host side. */
   explored?(areaId: string, layout: string, bits: Uint8Array): void;
+  /**
+   * Saved liquid that differs from the generated lakes (cell index → type × 16
+   * + level), under `layout` = liquidLayout(spec, seed). Null: as generated.
+   */
+  liquids?(areaId: string, layout: string): ReadonlyMap<number, number> | null;
+  /** The liquid settled (or a reaction or bucket changed it): the whole diff, replacing the last. Debounce on the host side. */
+  liquidsChanged?(areaId: string, layout: string, cells: ReadonlyMap<number, number>): void;
 }
 export interface PlaceEvent {
   item: PlaceableId;

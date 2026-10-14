@@ -730,7 +730,7 @@ const RECOVERY_BY_DISCIPLINE: Partial<Record<string, (gw: ActivityProgressionGat
 };
 
 const DISCIPLINE_IDS: ReadonlySet<string> = new Set<DisciplineId>([
-  'mining', 'foraging', 'prospecting', 'exploration', 'forge', 'hunting', 'woodcutting', 'enchanting',
+  'mining', 'foraging', 'prospecting', 'exploration', 'forge', 'hunting', 'woodcutting', 'enchanting', 'fishing',
 ]);
 function isDisciplineId(value: unknown): value is DisciplineId {
   return typeof value === 'string' && DISCIPLINE_IDS.has(value);

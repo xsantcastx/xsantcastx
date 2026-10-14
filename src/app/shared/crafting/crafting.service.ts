@@ -112,6 +112,7 @@ export class CraftingService {
   /** Whether the ladder is high enough for this recipe. */
   meetsLevel(recipe: CraftingRecipe): boolean {
     if (recipe.skill === 'smithing') return this.smithingLevel() >= (recipe.requiredLevel ?? 1);
+    if (recipe.skill === 'fishing') return this.fishingLevel() >= (recipe.requiredLevel ?? 1);
     return this.level() >= (recipe.requiredLevel ?? 1);
   }
 
@@ -119,6 +120,11 @@ export class CraftingService {
    * The Smithing skill level: the activity ledger's `forge` XP plus this
    * bench's own XP (the two never overlap — see the skills module's skillXp).
    */
+  fishingLevel(): number {
+    this.activity.init();
+    return skillLevel(this.activity.snapshot.progress, 'fishing');
+  }
+
   smithingLevel(): number {
     this.activity.init();
     return skillLevel(this.activity.snapshot.progress, 'smithing', this.load().xp);

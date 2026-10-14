@@ -9,7 +9,7 @@ import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject } from 'rxjs';
 
-export const HUB_TABS = ['loadout', 'bank', 'skills', 'stats', 'records'] as const;
+export const HUB_TABS = ['loadout', 'bank', 'skills', 'stats', 'story', 'records'] as const;
 export type HubTab = (typeof HUB_TABS)[number];
 
 export const HUB_TAB_KEY = 'godforge-hub-tab';

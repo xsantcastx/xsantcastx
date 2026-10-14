@@ -34,7 +34,7 @@
  */
 
 /** Which multiplier an infusion moves. One channel each — see the header. */
-export type InfusionChannel = 'gold' | 'xp' | 'magicFind';
+export type InfusionChannel = 'gold' | 'xp' | 'magicFind' | 'breath';
 
 export interface InfusionInput {
   /** Stack key, as `InventoryService.stackOf` reads it. */
@@ -126,6 +126,20 @@ export const INFUSIONS: readonly Infusion[] = [
     bonus: 12,
     channel: 'xp',
     minutes: 90,
+  },
+  // Fishing (Phase 6, delve-and-beyond.md §5.4): the Blindfin's use. Breath
+  // under the Delve's water, not a multiplier on income: the one infusion that
+  // works in the world (the play view reads it as the Keeper's breath).
+  {
+    id: 'gill-draught',
+    name: 'Gill Draught',
+    effect: 'Three times the breath under water for 3 minutes',
+    flavour: 'Three breaths for every one. The Blindfin never needed eyes; it is not clear it needed lungs.',
+    icon: '🫧',
+    inputs: [{ materialId: 'blindfin', count: 2 }],
+    bonus: 200,
+    channel: 'breath',
+    minutes: 3,
   },
 ];
 

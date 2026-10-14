@@ -15,7 +15,9 @@ export type DisciplineId =
   | 'hunting'
   /** World skills (chop / enchant), granted through resolveWorldAction. */
   | 'woodcutting'
-  | 'enchanting';
+  | 'enchanting'
+  /** Fishing (Phase 6): the Delve's lakes and lava, landed through resolveWorldAction. */
+  | 'fishing';
 
 export type ActivityLocationId = string;
 

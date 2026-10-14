@@ -356,6 +356,8 @@ export const CREATURE_RIGS: Readonly<Record<string, CreatureRigDef>> = {
   // Give each its own spec when its painting lands.
   'cinder-bailiff': { ...RIVET_MAW_CREATURE, key: 'cinder-bailiff' },
   'seam-eater': { ...MIRROR_SUBSTITUTE_CREATURE, key: 'seam-eater' },
+  // The Drowned Lamp wears the leech's long body until its own sprite lands (art brief fishing-liquids.md).
+  'drowned-lamp': { key: 'drowned-lamp', spec: LEECH_RIG, facesLeft: true, box: { w: 150, h: 130 }, ground: .87, shadow: 58, pose: poseLeech },
   'rootglass-stag': { key: 'rootglass-stag', spec: STAG_RIG, facesLeft: false, box: { w: 165, h: 165 }, ground: .93, shadow: 62, pose: poseStag },
 };
 

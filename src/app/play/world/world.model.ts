@@ -147,6 +147,13 @@ export interface MonsterDef {
    * flag (TerrainNodeDef.guard) open once it is set.
    */
   once?: string;
+  /** Not there until the host summons it (`engine.summon`): the Drowned Lamp rises to a night cast. */
+  summoned?: true;
+  /**
+   * Hides in its own dark: a hit only lands while a placed torch burns within
+   * VEIL_CELLS of it ("relight torches to expose it"), and the lantern dims while it lives.
+   */
+  veiled?: true;
 }
 
 /** Anything the Keeper can stand in: a town or one of its hunting grounds. */

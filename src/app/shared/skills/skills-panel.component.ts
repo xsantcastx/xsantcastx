@@ -25,6 +25,8 @@ import { SKILL_UNLOCKS, describeUnlock, nextUnlock, type SkillUnlock } from './s
 import { foundInPlaces } from '../world/found-in';
 import { foundInWorld } from '../world/found-in.data';
 import { DelveMissionChipComponent } from '../npc/delve-mission-chip.component';
+import { LedgerCatchComponent } from '../fishing/ledger-catch.component';
+import { FISHING_I18N } from '../fishing/fishing.i18n';
 
 /** Skills with a place to train them get one obvious button there. */
 const GO: Partial<Record<SkillId, { href: string; key: string }>> = {
@@ -47,13 +49,15 @@ interface SkillCard {
 @Component({
   selector: 'app-skills-panel',
   standalone: true,
-  imports: [RouterLink, DelveMissionChipComponent],
+  imports: [RouterLink, DelveMissionChipComponent, LedgerCatchComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="sk" aria-labelledby="sk-title">
       <h2 id="sk-title" class="sk__title">{{ t('skills.title') }}</h2>
       <p class="sk__lead">{{ t('skills.lead') }}</p>
       <app-delve-mission-chip class="sk__mission"></app-delve-mission-chip>
+      <!-- The Lodge Warden's daily fish (Fishing, Phase 6). -->
+      <app-ledger-catch class="sk__mission"></app-ledger-catch>
 
       <ul class="sk__grid">
         @for (card of cards; track card.def.id) {
@@ -183,6 +187,8 @@ export class SkillsPanelComponent implements OnInit {
   cards: SkillCard[] = [];
 
   ngOnInit(): void {
+    // Fishing's words (its name, hint and unlock rows) live in its lazy table.
+    this.i18n.register(FISHING_I18N);
     this.activity.init();
     this.crafting.init();
     this.activity.snapshot$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(snap => this.build(snap));

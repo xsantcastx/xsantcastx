@@ -166,9 +166,11 @@ export interface CraftingRecipe {
   /**
    * Which ladder `requiredLevel` is read against. Absent: the bench's own
    * crafting ladder (1-30). 'smithing': the Smithing skill (1-99), which also
-   * counts every bench craft's XP — see the skills module.
+   * counts every bench craft's XP — see the skills module. 'fishing': the
+   * Fishing skill, for the rods (a rod is crafted at the level that wears it,
+   * so no Gold buys past the gate).
    */
-  skill?: 'smithing';
+  skill?: 'smithing' | 'fishing';
   realm?: NarrativeRealmId;
   /** Seconds of anvil before the strike lands. 0 for instant. See the header. */
   craftTime?: number;
@@ -226,7 +228,7 @@ function r(
   goldCost: number,
   requiredLevel: number,
   blurb: string,
-  extra: { realm?: NarrativeRealmId; craftTime?: number; count?: number; skill?: 'smithing'; stack?: true } = {},
+  extra: { realm?: NarrativeRealmId; craftTime?: number; count?: number; skill?: 'smithing' | 'fishing'; stack?: true } = {},
 ): CraftingRecipe {
   return {
     ...(extra.skill ? { skill: extra.skill } : {}),
@@ -449,6 +451,11 @@ const CONSUMABLE_RECIPES: readonly CraftingRecipe[] = [
     [m('ember-residue', 2), m('infernal-heartstone', 1)],
     8_000, 3, 'Brewed from what a hot seam leaves behind.',
     { realm: 'infernal', craftTime: 1 }),
+  // Fishing (Phase 6): the Ember Elixir's second source, from a lava fish.
+  r('craft-ember-elixir-emberling', 'Ember Elixir (Emberling)', 'consumable', 'uncommon', 'ember-elixir',
+    [m('emberling', 1), m('ember-residue', 1)],
+    8_000, 3, 'An Emberling has never been anywhere but lava. Its heat bottles cleanly.',
+    { realm: 'infernal', craftTime: 1 }),
   r('craft-liquid-dawn', 'Flask of Liquid Dawn', 'consumable', 'rare', 'liquid-dawn',
     [m('solar-resin', 3), m('sunbloom', 10), m('luminous-prism', 3)],
     24_000, 5, 'One mouthful of the morning the Luminous Realm keeps in reserve.',
@@ -572,6 +579,48 @@ export const DELVE_KIT_RECIPES: readonly CraftingRecipe[] = [
     { count: 2, stack: true, skill: 'smithing' }),
 ];
 
+/**
+ * Fishing and liquids (Phase 6, docs/world/delve-and-beyond.md §4.4, §5.2,
+ * §5.4): the rods (gated by Fishing, so a rod is crafted at the level that
+ * wears it), the Seam Bucket, and the uses that give every catch a meaning:
+ * minnows render into Lampfish Oil, oil burns in torches, rivets smelt back
+ * into slag. Fees are v3 Gold already (the craft-fee scale, rule S).
+ */
+export const FISHING_RECIPES: readonly CraftingRecipe[] = [
+  r('craft-root-rod', 'Root Rod', 'delve', 'common', 'root-rod',
+    [m('world-root-bark', 3), m('thornroot', 1)],
+    20, 1, 'World-Root bark bent into a rod: fishes water, bites a tenth faster than the Worn Rod.',
+    { stack: true, skill: 'fishing' }),
+  r('craft-seam-rod', 'Seam Rod', 'delve', 'uncommon', 'seam-rod',
+    [m('slag-fragment', 4), m('cinder-ore', 2), m('world-root-bark', 1)],
+    300, 10, 'A slag line that takes heat without taking shape: fishes water and the Magma Halls lava. Needs Fishing 10.',
+    { stack: true, skill: 'fishing' }),
+  r('craft-glowline-rod', 'Glowline Rod', 'delve', 'rare', 'glowline-rod',
+    [m('glowcap', 4), m('infernal-heartstone', 2), m('slag-fragment', 2)],
+    4_000, 25, 'Glowcap fibre in the line: fishes water and every lava, and bites a quarter faster. Needs Fishing 25.',
+    { stack: true, skill: 'fishing' }),
+  r('craft-seam-bucket', 'Seam Bucket', 'delve', 'common', 'seam-bucket',
+    [m('slag-fragment', 2), m('cinder-ore', 1)],
+    40, 5, 'Scoops one full cell of water or lava and pours it back out. Water poured on lava sets into obsidian. Needs Smithing 5.',
+    { stack: true, skill: 'smithing' }),
+  r('craft-lampfish-oil', 'Lampfish Oil', 'delve', 'common', 'lampfish-oil',
+    [m('glowcap-minnow', 3)],
+    10, 1, 'Three Glowcap Minnows rendered into a flask of oil that burns a little morning.',
+    { stack: true }),
+  r('craft-lampfish-oil-morning', 'Lampfish Oil (The Kept Morning)', 'delve', 'rare', 'lampfish-oil',
+    [m('the-kept-morning', 1)],
+    10, 1, 'The Kept Morning, put down at last: five flasks of oil.',
+    { count: 5, stack: true }),
+  r('craft-lamp-torch', 'Lamp torch', 'delve', 'common', 'torch',
+    [m('lampfish-oil', 1), m('world-root-bark', 1)],
+    10, 1, 'Five torches soaked in Lampfish Oil. Placed in the Delve they burn for good.',
+    { count: 5, stack: true }),
+  r('craft-rivet-slag', 'Smelt rivets', 'delve', 'common', 'slag-fragment',
+    [m('rusted-rivet', 3)],
+    5, 1, 'Three Rusted Rivets from the water, smelted back into one Slag Fragment.',
+    { stack: true }),
+];
+
 export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...WEAPON_RECIPES,
   ...ARMOR_RECIPES,
@@ -580,6 +629,7 @@ export const CRAFTING_RECIPES: readonly CraftingRecipe[] = [
   ...TOOL_RECIPES,
   ...MISSION_PATTERN_RECIPES,
   ...DELVE_KIT_RECIPES,
+  ...FISHING_RECIPES,
 ];
 
 const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));

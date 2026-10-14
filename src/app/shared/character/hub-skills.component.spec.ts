@@ -49,9 +49,9 @@ describe('HubSkillsComponent', () => {
   const cards = () => Array.from((fixture.nativeElement as HTMLElement).querySelectorAll<HTMLElement>('.sk__card'));
   const level = (card: HTMLElement) => card.querySelector('.sk__lvl')?.textContent?.trim();
 
-  it('shows all eight skills as real cards', () => {
+  it('shows all nine skills as real cards', () => {
     expect(cards().map(c => c.querySelector('.sk__name')?.textContent?.trim())).toEqual([
-      'Mining', 'Foraging', 'Woodcutting', 'Smithing', 'Delving', 'Enchanting', 'Hunting', 'Prospecting',
+      'Mining', 'Foraging', 'Woodcutting', 'Smithing', 'Delving', 'Enchanting', 'Hunting', 'Prospecting', 'Fishing',
     ]);
   });
 
