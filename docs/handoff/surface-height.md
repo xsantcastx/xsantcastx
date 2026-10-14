@@ -86,9 +86,22 @@ ledges were removed), `side-scroller.*` (grant + toasts, prompt labels, ▼, `da
   reward a catalogue material); cloud-save spec lists the new key.
 - `economy-sim --heights` (in `--check`): caches in the quest band, summits in the daily band, a road
   ≤ 30 min, all five ≤ 150 min (110), floors under 30-minute income.
-- e2e `play-surface.spec.ts` at 1280×800 (keyboard) and 390×844 (touch buttons by pointer events):
+- e2e `play-surface.spec.ts` at 1280×800 (keyboard) and 390×844 (touch buttons by pointer events): a tree climb (all engines, WebKit included) and the full route (Chromium; Playwright WebKit releases a held key or finger when a second is pressed, so the run + Jump steps skip there):
   mantle the shelf + open its cache, climb the tree, the summit route, the cairn, reload → cache stays
   opened, button disabled, Gold unchanged; summit saved.
+
+## Perf (opt-in harness, hunt: Reflection Channels, 390×844 @3, 4× CPU, 30 s, alternated vs main `e1c24d8`)
+
+Machine load average ~40 (other agents), so treat as noise-bound:
+
+| Run | Frames | p50 / p95 ms | Task ms/frame | Alloc KB/frame | Long tasks |
+|---|---|---|---|---|---|
+| this branch #1 | 1058 | 32.5 / 48.1 | 28.3 | 50.9 | 0 |
+| main #1 | 922 | 33.3 / 51.8 | 32.5 | 55.7 | 57 |
+| this branch #2 | 1356 | 17.6 / 34.9 | 22.1 | 49.1 | 0 |
+| main #2 | 1545 | 16.8 / 33.6 | 19.1 | 45.2 | 0 |
+
+No regression beyond run-to-run noise; the high road adds one `drawImage` per visible piece and no gradients.
 
 ## Not done / next
 
