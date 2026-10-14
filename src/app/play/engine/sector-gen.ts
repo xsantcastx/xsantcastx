@@ -82,21 +82,30 @@ export function valueNoise(salt: number, x: number, y: number): number {
  * the same numbers, with the lattice hashed once per lattice row instead of
  * once per cell (a column is generated in well under a millisecond).
  */
-export function noiseColumn(salt: number, x: number, scaleY: number, rows: number, out: Float64Array): Float64Array {
+export function noiseColumn(salt: number, x: number, scaleY: number, rows: number, out: Float64Array, cache?: LatticeCache): Float64Array {
   const ix = Math.floor(x), sx = smooth(x - ix);
-  let last = NaN, top = 0, bottom = 0;
+  const span = Math.floor((rows - 1) / scaleY) + 2;
+  // The lattice values of columns ix and ix + 1, reused while consecutive columns share them.
+  let left: Float64Array, right: Float64Array;
+  if (cache && cache.salt === salt && cache.ix === ix && cache.left.length >= span) { left = cache.left; right = cache.right; }
+  else {
+    left = cache && cache.salt === salt && cache.ix === ix - 1 && cache.right.length >= span ? cache.right : new Float64Array(span);
+    if (left !== cache?.right) for (let iy = 0; iy < span; iy++) left[iy] = lattice(salt, ix, iy);
+    right = new Float64Array(span);
+    for (let iy = 0; iy < span; iy++) right[iy] = lattice(salt, ix + 1, iy);
+    if (cache) { cache.salt = salt; cache.ix = ix; cache.left = left; cache.right = right; }
+  }
   for (let row = 0; row < rows; row++) {
     const y = row / scaleY, iy = Math.floor(y);
-    if (iy !== last) {
-      last = iy;
-      const a = lattice(salt, ix, iy), b = lattice(salt, ix + 1, iy);
-      const c = lattice(salt, ix, iy + 1), d = lattice(salt, ix + 1, iy + 1);
-      top = a + (b - a) * sx; bottom = c + (d - c) * sx;
-    }
+    const a = left[iy], b = right[iy], c = left[iy + 1], d = right[iy + 1];
+    const top = a + (b - a) * sx, bottom = c + (d - c) * sx;
     out[row] = top + (bottom - top) * smooth(y - iy);
   }
   return out;
 }
+/** Two lattice columns kept between calls of `noiseColumn` (one per noise field). */
+export interface LatticeCache { salt: number; ix: number; left: Float64Array; right: Float64Array }
+export function latticeCache(): LatticeCache { return { salt: NaN, ix: NaN, left: new Float64Array(0), right: new Float64Array(0) }; }
 
 /** 1-D value noise in [0, 1). */
 export function valueNoise1(salt: number, x: number): number {
@@ -208,7 +217,7 @@ function bandEdge(ctx: SectorContext, b: number, col: number): number {
  * opens round caverns, the Magma Halls broad low halls. Near the core the
  * rock closes up, so its hand-made walls are not cut open.
  */
-function rockColumn(ctx: SectorContext, col: number, lc: number, out: Uint8Array, nodes: readonly number[], scratch: Float64Array[]): void {
+function rockColumn(ctx: SectorContext, col: number, lc: number, out: Uint8Array, nodes: readonly number[], scratch: Float64Array[], caches: LatticeCache[]): void {
   const spec = ctx.spec, rows = spec.rows, bands = spec.bands, s = ctx.seed;
   const bedrockFrom = rows - spec.bedrock;
   const d = coreDistance(ctx, col);
@@ -216,10 +225,10 @@ function rockColumn(ctx: SectorContext, col: number, lc: number, out: Uint8Array
   // Band edges once per column.
   const edges = scratch[8];
   for (let b = 0; b < bands.length - 1; b++) edges[b] = bands[b].to + Math.round(bandEdge(ctx, b, col));
-  const root = noiseColumn(s ^ 0x1a2b3c4d, col / 11, 4.5, rows, scratch[0]);
-  const basaltA = noiseColumn(s ^ 0x2b3c4d5e, col / 24, 3.2, rows, scratch[1]), basaltB = noiseColumn(s ^ 0x3c4d5e6f, col / 9, 2.4, rows, scratch[2]);
-  const grottoA = noiseColumn(s ^ 0x4d5e6f70, col / 13, 8, rows, scratch[3]), grottoB = noiseColumn(s ^ 0x5e6f7081, col / 6, 4, rows, scratch[4]);
-  const magmaA = noiseColumn(s ^ 0x6f708192, col / 16, 5, rows, scratch[5]), magmaB = noiseColumn(s ^ 0x708192a3, col / 7, 3, rows, scratch[6]);
+  const root = noiseColumn(s ^ 0x1a2b3c4d, col / 11, 4.5, rows, scratch[0], caches[0]);
+  const basaltA = noiseColumn(s ^ 0x2b3c4d5e, col / 24, 3.2, rows, scratch[1], caches[1]), basaltB = noiseColumn(s ^ 0x3c4d5e6f, col / 9, 2.4, rows, scratch[2], caches[2]);
+  const grottoA = noiseColumn(s ^ 0x4d5e6f70, col / 13, 8, rows, scratch[3], caches[3]), grottoB = noiseColumn(s ^ 0x5e6f7081, col / 6, 4, rows, scratch[4], caches[4]);
+  const magmaA = noiseColumn(s ^ 0x6f708192, col / 16, 5, rows, scratch[5], caches[5]), magmaB = noiseColumn(s ^ 0x708192a3, col / 7, 3, rows, scratch[6], caches[6]);
   for (let row = 0; row < rows; row++) {
     const i = row * SECTOR + lc;
     if (row >= bedrockFrom) { out[i] = BEDROCK; continue; }
@@ -310,7 +319,9 @@ export function latticePlans(ctx: SectorContext, cell: number): Plan[] {
     const size = SIZE[kind];
     const w = size.w[0] + Math.floor(r() * (size.w[1] - size.w[0] + 1));
     const h = size.h;
-    const row = size.row[0] + Math.floor(r() * (size.row[1] - size.row[0] + 1));
+    // A kind laid in two strata (the rift shrine) takes its rows from the stratum it was rolled in.
+    const rows = kind === 'rift-shrine' && s === 3 ? MAGMA_SHRINE_ROWS : size.row;
+    const row = rows[0] + Math.floor(r() * (rows[1] - rows[0] + 1));
     // Inside the lattice cell with room for its shell and adit (MARGIN), so it never
     // reaches a neighbouring cell: the sectors of that cell would not stamp it.
     const col = x + MARGIN + Math.floor(r() * Math.max(1, span - 2 * MARGIN - w));
@@ -326,6 +337,8 @@ const STRUCTURE_TABLE: readonly (readonly [StructureKind | null, number][])[] = 
   [['lake', .5], ['rift-shrine', .1]],
   [['lava-basin', .34], ['bailiff-hall', .3], ['rift-shrine', .1]],
 ];
+/** A rift shrine rolled in the Magma Halls sits in their rows. */
+const MAGMA_SHRINE_ROWS: readonly [number, number] = [42, 48];
 /** Interior width range, interior height and the top row range of each kind (rows inside its stratum). */
 const SIZE: Readonly<Record<StructureKind, { w: readonly [number, number]; h: number; row: readonly [number, number] }>> = {
   'ruin': { w: [9, 12], h: 3, row: [4, 7] },
@@ -451,6 +464,7 @@ export function generateSectorColumn(ctx: SectorContext, sx: number): SectorColu
   const bedrockFrom = rows - spec.bedrock;
   const t = ctx.core;
   const scratch = Array.from({ length: 9 }, () => new Float64Array(Math.max(rows, spec.bands.length)));
+  const caches = Array.from({ length: 7 }, latticeCache);
   for (let lc = 0; lc < SECTOR; lc++) {
     const col = col0 + lc;
     if (core(col)) {
@@ -462,7 +476,7 @@ export function generateSectorColumn(ctx: SectorContext, sx: number): SectorColu
       }
       continue;
     }
-    rockColumn(ctx, col, lc, out.kind, bandNodes, scratch);
+    rockColumn(ctx, col, lc, out.kind, bandNodes, scratch, caches);
   }
   // Ore veins, per sector, clipped to it, into rock only.
   for (let sy = 0; sy * SECTOR < rows; sy++) veinsInto(ctx, out, sx, sy);
