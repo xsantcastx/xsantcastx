@@ -2,7 +2,7 @@
 
 Generated from `commissions.csv` (the machine-readable source the importer's `--commissions` check reads). One row per commissioned file, sorted by priority. "Shows today" is the placeholder a player sees until the file lands. Style: **pixel** follows [docs/art/style-guide.md](../art/style-guide.md); **painting** is one of the 16 kept paintings (Codex masters, boss concept sheets, realm key art). ★ = first test set ([00-first-test-set.md](00-first-test-set.md)).
 
-Totals: **233** files: 217 pixel art, 16 paintings.
+Totals: **235** files: 219 pixel art, 16 paintings.
 
 | Layer | Id | Category | Style | Pri | Used in | Shows today | Save as (under `Assets/`) |
 |---|---|---|---|---|---|---|---|
@@ -82,6 +82,8 @@ Totals: **233** files: 217 pixel art, 16 paintings.
 | world-sprite | `parallax-infernal-mid` ★ | parallax | pixel | P0 | Basalt Seamworks (Infernal town and hunting ground) in-world background, `mid` layer, scroll factor 0.4-0.5; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) | the painted bg-basalt-seamworks backdrop | `Sprites/Parallax/03-parallax-infernal-mid.png` |
 | world-sprite | `parallax-infernal-near` ★ | parallax | pixel | P0 | Basalt Seamworks (Infernal town and hunting ground) in-world background, `near` layer, scroll factor 0.65-0.75; replaces the painted bg-basalt-seamworks as soon as all four layers are imported (style guide IMP-2, RND-2) | the painted bg-basalt-seamworks backdrop | `Sprites/Parallax/04-parallax-infernal-near.png` |
 | menu-pixel | `npc-nameless` | npc | pixel | P1 | NPC dialogue widget portrait (80px orb) on any page, once its hidden gate opens | monogram orb "??" in #c9c4d6 | `Characters/npcs/06-npc-nameless.png` |
+| menu-pixel | `npc-glim` | npc | pixel | P1 | Glim's Codex entry and its speech bubble in the /play goal line | the code-drawn 12x10 moth (glim-sprite.ts) | `Characters/npcs/07-npc-glim.png` |
+| world-sprite | `npc-glim` | npc-sprite | pixel | P1 | /play: the Keeper's shoulder in towns, the lantern in the Delve (12x10 art px: idle 4, fly 4, dim 2) | the code-drawn 12x10 moth (glim-sprite.ts) | `Sprites/NPCs/13-npc-glim.png` |
 | menu-pixel | `explorer-ren-sixgate` | explorer | pixel | P1 | Sanctum > The Works map explorer token (works-map.component); roster card once wired | Uncommon rarity orb with level badge | `Characters/explorers/03-explorer-ren-sixgate.png` |
 | menu-pixel | `explorer-callum-drossvane` | explorer | pixel | P1 | Sanctum > The Works map explorer token (works-map.component); roster card once wired | Uncommon rarity orb with level badge | `Characters/explorers/04-explorer-callum-drossvane.png` |
 | menu-pixel | `explorer-ilse-thornwake` | explorer | pixel | P1 | Sanctum > The Works map explorer token (works-map.component); roster card once wired | Uncommon rarity orb with level badge | `Characters/explorers/05-explorer-ilse-thornwake.png` |
