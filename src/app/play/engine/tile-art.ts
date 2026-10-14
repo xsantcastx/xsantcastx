@@ -108,7 +108,8 @@ export type TilePattern = 'rock' | 'ore' | 'roots' | 'grain' | 'glowcap' | 'frag
 
 /** The pattern a node is drawn with. Pure. */
 export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & { placeable?: string }): TilePattern {
-  if (node.placeable && PLACED_ART[node.id]) return 'placed';
+  // Placed things, and the rift shrine (walked through like one, never placed).
+  if ((node.placeable || node.id === 'rift-shrine') && PLACED_ART[node.id]) return 'placed';
   switch (node.id) {
     case 'roots': case 'shadow-root': return 'roots';
     case 'petrified-trunk': return 'grain';
@@ -116,7 +117,7 @@ export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & 
     case 'godforge-fragment': return 'fragment';
     case 'cracked-wall': return 'cracked';
     case 'bedrock': return 'bedrock';
-    case 'cache': case 'kaels-cache': return 'cache';
+    case 'cache': case 'kaels-cache': case 'waycache': return 'cache';
     case 'packed-dirt': case 'basalt-block': return 'block';
   }
   return node.yield || node.glow ? 'ore' : 'rock';
@@ -289,6 +290,25 @@ export const PLACED_ART: Readonly<Record<string, readonly string[]>> = {
     '...offfffffffo..',
     '...olbdlbdlbdo..',
     '...ooooooooooo..',
+  ],
+  // A rift shrine: a standing stone split by a violet seam, light leaking from the crack.
+  'rift-shrine': [
+    '................',
+    '......oooo......',
+    '.....odbbdo.....',
+    '....odbfsbdo....',
+    '....obdsfdbo....',
+    '....odbfsbdo....',
+    '....obdsfdbo....',
+    '....odbfsbdo....',
+    '....obdsfdbo....',
+    '....odbfsbdo....',
+    '...oobdsfdboo...',
+    '..olllbfsblllo..',
+    '..oddddddddddo..',
+    '..oooooooooooo..',
+    '................',
+    '................',
   ],
 };
 const inTile = (x: number, y: number) => x >= 0 && y >= 0 && x < TILE && y < TILE;
@@ -663,17 +683,20 @@ export const ROCK_DEEP2 = .6;
 export class RockShade {
   values = new Float32Array(0);
   cols = 0; rows = 0; top = 0;
+  /** World column of `values`' first column (a ring's loaded span). */
+  col0 = 0;
   private source: unknown = null;
   private revision = -1;
-  update(t: { cols: number; rows: number; top: number; chunkRev: Uint32Array; solid(col: number, row: number): boolean }): this {
+  update(t: { cols: number; rows: number; top: number; chunkRev: Uint32Array; solid(col: number, row: number): boolean; colLo?: number }): this {
     let rev = 0;
     for (let i = 0; i < t.chunkRev.length; i++) rev = (rev + t.chunkRev[i] * (i + 1)) >>> 0;
-    if (t === this.source && rev === this.revision) return this;
-    this.source = t; this.revision = rev;
+    const col0 = t.colLo ?? 0;
+    if (t === this.source && rev === this.revision && col0 === this.col0) return this;
+    this.source = t; this.revision = rev; this.col0 = col0;
     this.cols = t.cols; this.rows = t.rows; this.top = t.top;
     if (this.values.length !== t.cols * t.rows) this.values = new Float32Array(t.cols * t.rows);
     for (let row = 0; row < t.rows; row++) {
-      for (let col = 0; col < t.cols; col++) {
+      for (let col = col0; col < col0 + t.cols; col++) {
         let v = 1;
         if (t.solid(col, row) && t.solid(col - 1, row) && t.solid(col + 1, row) && t.solid(col, row - 1) && t.solid(col, row + 1)) {
           v = ROCK_DEEP2;
@@ -686,7 +709,7 @@ export class RockShade {
             }
           }
         }
-        this.values[row * t.cols + col] = v;
+        this.values[row * t.cols + (col - col0)] = v;
       }
     }
     return this;

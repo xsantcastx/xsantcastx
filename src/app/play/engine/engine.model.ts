@@ -199,8 +199,14 @@ export interface KillEvent {
   hp: number;
 }
 export interface DiscoverEvent {
-  kind: 'inscription';
-  /** Inscription id from the terrain spec (shared/delve/delve-lore.model.ts lists them). */
+  /**
+   * 'inscription': a carved wall was read (a core inscription id, or a field
+   * note carved as `field:<id>`, shared/delve/field-notes.model.ts).
+   * 'shrine': a rift shrine was touched (id `rift:<col>,<row>`); the engine has
+   * already shown the tunnels round it on the map.
+   */
+  kind: 'inscription' | 'shrine';
+  /** Inscription id from the terrain spec (shared/delve/delve-lore.model.ts lists them), a field note, or a shrine. */
   id: string;
   /** Biome id the inscription sits in ('root-hollows', …). */
   biome: string;
@@ -235,6 +241,43 @@ export interface DelvePersistence {
   liquids?(areaId: string, layout: string): ReadonlyMap<number, number> | null;
   /** The liquid settled (or a reaction or bucket changed it): the whole diff, replacing the last. Debounce on the host side. */
   liquidsChanged?(areaId: string, layout: string, cells: ReadonlyMap<number, number>): void;
+  /**
+   * The endless Delve (Phase 7, save v2): the sectors east and west of the
+   * core. Absent: only the core is generated (tests, SSR, an old host).
+   */
+  sectors?: DelveSectorStore | null;
+}
+/**
+ * One saved sector (32 × 32 cells; sy 1 holds rows 32..55): what the player
+ * changed there, against what generator version `g` made. Local index =
+ * (row − sy × 32) × 32 + (col − sx × 32).
+ */
+export interface SectorSave {
+  g: number;
+  /** Last change, epoch ms (the regrowth clock). */
+  t: number;
+  /** Changed cells: local index → node index. */
+  cells: ReadonlyMap<number, number>;
+  /** Settled liquid unlike the generated: local index → type × 16 + level. */
+  liquids: ReadonlyMap<number, number>;
+  /** Explored 4 × 4 blocks (bit b of byte b >> 3: block b, 8 blocks a row), or null. */
+  fog: Uint8Array | null;
+  /** Dug finds kept for good (local indices): regrowth never refills them. */
+  receipts: ReadonlySet<number>;
+  /** When the sector regrew (its far, unheld tunnels healed), epoch ms. */
+  healed?: number;
+}
+/** The engine's view of the sector diffs (shared/delve/delve-save.service.ts implements it). */
+export interface DelveSectorStore {
+  sector(areaId: string, sx: number, sy: number): SectorSave | null;
+  /** A cell changed (`kind` null: back to generated). `receipt`: a dug find, kept through regrowth. Debounce on the host side. */
+  sectorChanged(areaId: string, sx: number, sy: number, g: number, local: number, kind: number | null, receipt?: boolean): void;
+  /** The sector's whole liquid diff, replacing the last. */
+  sectorLiquids(areaId: string, sx: number, sy: number, g: number, cells: ReadonlyMap<number, number>): void;
+  /** The sector's explored blocks (8 bytes), OR'd into what is saved. */
+  sectorExplored(areaId: string, sx: number, sy: number, g: number, fog: Uint8Array): void;
+  /** Every saved sector of the area (the map and the camp search read them). */
+  sectorKeys(areaId: string): readonly { sx: number; sy: number }[];
 }
 export interface PlaceEvent {
   item: PlaceableId;

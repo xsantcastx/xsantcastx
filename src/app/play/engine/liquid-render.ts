@@ -53,8 +53,8 @@ export function drawLiquids(c: CanvasRenderingContext2D, t: Terrain, c0: number,
   const alpha = c.globalAlpha;
   for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
     const bottom = t.top + (row + 1) * CELL;
-    let col = Math.max(0, c0);
-    const end = Math.min(t.cols - 1, c1);
+    let col = Math.max(t.colLo, c0);
+    const end = Math.min(t.colHi - 1, c1);
     while (col <= end) {
       const i = t.index(col, row);
       const l = level[i];
@@ -66,7 +66,7 @@ export function drawLiquids(c: CanvasRenderingContext2D, t: Terrain, c0: number,
       // Extend the run while the next cell looks the same.
       let run = 1;
       while (col + run <= end) {
-        const j = i + run;
+        const j = t.index(col + run, row);
         if (level[j] !== l || kind[j] !== type || depthBand(t, col + run, row, type) !== band) break;
         run++;
       }
@@ -108,7 +108,7 @@ export function drawLiquids(c: CanvasRenderingContext2D, t: Terrain, c0: number,
 export function lavaLights(t: Terrain, c0: number, c1: number, r0: number, r1: number, pool: LightPool, flicker = 1): number {
   let added = 0;
   for (let row = Math.max(0, r0 - 3); row <= Math.min(t.rows - 1, r1 + 3); row++) {
-    for (let col = Math.max(0, c0 - 3); col <= Math.min(t.cols - 1, c1 + 3); col++) {
+    for (let col = Math.max(t.colLo, c0 - 3); col <= Math.min(t.colHi - 1, c1 + 3); col++) {
       const i = t.index(col, row);
       if (!t.liqLevel[i] || t.liqType[i] !== LIQUID_LAVA || (col & 1)) continue;
       if (row > 0 && t.liqLevel[i - t.cols] && t.liqType[i - t.cols] === LIQUID_LAVA) continue;
