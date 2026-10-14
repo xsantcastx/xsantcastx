@@ -9,7 +9,7 @@
              frame whose aspect changes with the viewport. -->
         <div class="ld__stage">
           <div class="ld__figure" [class.ld__figure--pulse]="pulsing">
-            <img class="ld__doll-art" [src]="dollSrc" [attr.srcset]="dollSrcset" sizes="auto, (max-width: 420px) 100vw, 380px"
+            <img class="ld__doll-art" [src]="dollSrc" [attr.srcset]="dollSrcset" [class.ld__doll-art--pixel]="!!dollKey" [attr.data-keeper]="dollKey || null" sizes="auto, (max-width: 420px) 100vw, 380px"
                  [alt]="t('loadout.doll.alt')" width="720" height="720" loading="lazy" decoding="async">
             <!-- Worn gear, on the Keeper: each item's own art in a rarity-lit
                  socket at its slot's anchor. The wells beside the figure are

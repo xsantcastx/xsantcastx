@@ -69,6 +69,12 @@ export class OnboardingService {
    */
   readonly active = signal(false);
 
+  /**
+   * True once the tutorial ended in THIS tab: the visitor is a brand-new
+   * Keeper, so /play opens "Make your Keeper" (the Glass of Becoming) first.
+   */
+  finishedHere = false;
+
   /** 1-indexed, so it reads the same as the "step 2 of 5" it renders. */
   readonly step = signal(1);
 
@@ -110,6 +116,7 @@ export class OnboardingService {
    */
   finish(lastStep: number): void {
     this.active.set(false);
+    this.finishedHere = true;
     if (!this.isBrowser) return;
     const record: OnboardingRecord = {
       done: true,
