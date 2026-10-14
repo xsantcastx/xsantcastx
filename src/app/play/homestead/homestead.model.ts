@@ -13,6 +13,24 @@
  *     through `purchaseListing`; this file only chooses WHICH rung to offer.
  */
 import type { HomesteadBuildingId } from '../world/homestead';
+import { HOMESTEAD_I18N } from './homestead.i18n';
+
+/**
+ * Words for the pure model and the canvas. English straight from the lazy
+ * table until a service registers a real translator, so specs and the server
+ * render still read plainly.
+ */
+export type HomesteadTranslator = (key: string, vars?: Record<string, string | number>) => string;
+const english: HomesteadTranslator = (key, vars) => {
+  let text = HOMESTEAD_I18N[key]?.en ?? key;
+  for (const [name, value] of Object.entries(vars ?? {})) text = text.split(`{{${name}}}`).join(String(value));
+  return text;
+};
+let tr: HomesteadTranslator = english;
+/** HomesteadService hands over TranslationService.translate (language-aware on every call). */
+export function setHomesteadTranslator(fn: HomesteadTranslator | null): void { tr = fn ?? english; }
+/** The current translator, for the canvas renderer (which has no Angular). */
+export function homesteadT(key: string, vars?: Record<string, string | number>): string { return tr(key, vars); }
 
 /** One rung of an existing ladder, as the chooser needs it. */
 export interface RungDef {
@@ -80,16 +98,16 @@ export function formatGoldWhole(n: number): string {
  */
 export function buildingAction(rung: RungDef | null, quote: RungQuote, gold: number, verb: string, gate = ''): BuildingAction {
   if (gate) return { upgradeId: null, label: verb, cost: 0, affordable: false, locked: gate };
-  if (!rung) return { upgradeId: null, label: 'Fully built', cost: 0, affordable: false, locked: 'This building is as big as it gets.' };
+  if (!rung) return { upgradeId: null, label: tr('homestead.action.fullyBuilt'), cost: 0, affordable: false, locked: tr('homestead.action.maxedWhy') };
   const cost = quote.cost(rung.id);
-  const price = cost <= 0 ? 'Free' : `${formatGoldWhole(cost)} Gold`;
+  const price = cost <= 0 ? tr('homestead.action.free') : tr('homestead.action.price', { n: formatGoldWhole(cost) });
   const affordable = gold >= cost;
   return {
     upgradeId: rung.id,
-    label: `${verb}: ${rung.name} · ${price}`,
+    label: tr('homestead.action.line', { verb, rung: rung.name, price }),
     cost,
     affordable,
-    locked: affordable ? '' : `You need ${formatGoldWhole(cost - gold)} more Gold.`,
+    locked: affordable ? '' : tr('homestead.action.needMore', { n: formatGoldWhole(cost - gold) }),
   };
 }
 
@@ -116,10 +134,10 @@ export function hasPending(p: Pending): boolean {
 /** "+1,240 Gold since you were last here" — the line that floats up on collect. */
 export function pendingLine(p: Pending): string {
   const parts: string[] = [];
-  if (p.gold >= 1) parts.push(`+${formatGoldWhole(Math.floor(p.gold))} Gold`);
-  if (p.runes > 0) parts.push(`+${p.runes} ${p.runes === 1 ? 'rune' : 'runes'}`);
-  if (p.returns > 0) parts.push(`${p.returns} ${p.returns === 1 ? 'explorer' : 'explorers'} home`);
-  return parts.length ? `${parts.join(' · ')} since you were last here` : '';
+  if (p.gold >= 1) parts.push(tr('homestead.since.gold', { n: formatGoldWhole(Math.floor(p.gold)) }));
+  if (p.runes > 0) parts.push(tr(p.runes === 1 ? 'homestead.since.rune.one' : 'homestead.since.rune.many', { n: p.runes }));
+  if (p.returns > 0) parts.push(tr(p.returns === 1 ? 'homestead.since.home.one' : 'homestead.since.home.many', { n: p.returns }));
+  return parts.length ? tr('homestead.since.line', { parts: parts.join(' · ') }) : '';
 }
 
 /** How close (world px) the Keeper must pass for a building to hand over its receipt. */
@@ -224,7 +242,7 @@ export function columnRows(
 export function formatPerSecond(n: number): string {
   const abs = Math.abs(n);
   const body = abs >= 1e9 ? `${trim(n / 1e9)}B` : abs >= 1e6 ? `${trim(n / 1e6)}M` : abs >= 1e3 ? `${trim(n / 1e3)}K` : trim(n);
-  return `+${body} Gold/s`;
+  return tr('homestead.rate', { n: body });
 }
 function trim(n: number): string {
   const fixed = Math.abs(n) >= 100 ? n.toFixed(0) : n.toFixed(1);

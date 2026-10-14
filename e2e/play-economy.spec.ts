@@ -49,29 +49,43 @@ async function setQty(page: Page, n: number): Promise<void> {
   for (let i = 1; i < n; i++) await more.click();
 }
 
+
+/** The Vendor on the station kit: pick the Cinder Ore row; its per-unit price is on the row. */
+async function pickCinderOre(page: Page): Promise<number> {
+  const row = page.locator('section.place app-journal-list .jl__row', { hasText: 'Cinder Ore' });
+  await expect(row).toBeVisible();
+  await row.click();
+  const price = Number(/([\d,]+) Gold each/i.exec(await row.innerText())?.[1].replace(/,/g, ''));
+  expect(price).toBeGreaterThan(0);
+  return price;
+}
+/** Set the stepper to exactly n (it opens on a suggested quantity). */
+async function stepTo(page: Page, n: number): Promise<void> {
+  const qty = page.locator('section.place .ab__qty');
+  const steps = page.locator('section.place .ab__stepbtn');
+  for (let guard = 0; guard < 40 && Number(await qty.textContent()) !== n; guard++) {
+    await steps.nth(Number(await qty.textContent()) < n ? 1 : 0).click();
+  }
+  await expect(qty).toHaveText(String(n));
+}
+const VENDOR_GOLD = (page: Page) => page.locator('section.place app-cost-chip[stationwallet] .chip__n');
+
 test.describe('NPC counters, played', () => {
   test('Material Vendor buys Cinder Ore for Gold, below what the Exchange pays', async ({ page }) => {
     test.setTimeout(120000);
     await seed(page, { ...bag({ 'cinder-ore': 20 }), ...purse(10_000) });
     await openPlay(page, '?at=vendor');
     await expect(page.locator('#place-title')).toHaveText('Material Vendor');
-    const card = page.locator('section.place .mv-card[data-material="cinder-ore"]');
-    await expect(card).toBeVisible();
-    await card.click();
-    const label = (await card.getAttribute('aria-label')) ?? '';
-    const vendorPrice = Number(/pays ([\d,]+) Gold each/.exec(label)?.[1].replace(/,/g, ''));
-    expect(vendorPrice).toBeGreaterThan(0);
+    const vendorPrice = await pickCinderOre(page);
     // The Vendor sells nothing: no Buy anywhere on its counter.
     await expect(page.locator('section.place').getByRole('button', { name: /^Buy\b/ })).toHaveCount(0);
-    const before = GOLD(await page.locator('section.place .mv-purse__gold').textContent());
-    // The counter opens on a suggested quantity; type the one we want.
-    const qty = page.locator('#mv-qty-input');
-    await qty.fill('5');
-    await qty.press('Enter');
-    const sellButton = page.locator('section.place .mv-buy__btn');
-    await expect(sellButton).toContainText(`Sell 5 Cinder Ore · ${5 * vendorPrice} Gold`);
+    const before = GOLD(await VENDOR_GOLD(page).textContent());
+    // The counter opens on a suggested quantity; step to the one we want.
+    await stepTo(page, 5);
+    const sellButton = page.locator('section.place .ab__btn');
+    await expect(sellButton).toContainText(`Sell for ${5 * vendorPrice} Gold`);
     await sellButton.click();
-    await expect.poll(async () => GOLD(await page.locator('section.place .mv-purse__gold').textContent()))
+    await expect.poll(async () => GOLD(await VENDOR_GOLD(page).textContent()))
       .toBeGreaterThanOrEqual(before + 5 * vendorPrice);
     await expect.poll(() => stackQty(page, 'cinder-ore')).toBe(15);
     await page.keyboard.press('Escape');

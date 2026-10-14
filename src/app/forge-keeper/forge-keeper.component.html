@@ -43,8 +43,8 @@
       <div hubRecords>
   <!-- ══ 2. Stats grid ══════════════════════════════════════════════════ -->
   <section class="fk-block" aria-labelledby="fk-stats-title">
-    <h2 class="fk-block__title" id="fk-stats-title">The Ledger</h2>
-    <p class="fk-block__note">every number the realm has counted since you arrived</p>
+    <h2 class="fk-block__title" id="fk-stats-title">{{ t('keeperLedger.title') }}</h2>
+    <p class="fk-block__note">{{ t('keeperLedger.note') }}</p>
 
     <ul class="fk-stats">
       @for (stat of stats; track stat.label) {

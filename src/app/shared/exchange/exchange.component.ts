@@ -54,7 +54,6 @@ import {
   type TradeRecord,
 } from './exchange.service';
 import {
-  CATEGORY_LABELS,
   DAY_MS,
   GOOD_CATEGORIES,
   SALE_TAX_RATE,
@@ -68,6 +67,7 @@ import {
   type Trend,
 } from './exchange.model';
 import { RUNE_TIERS, type RuneTier } from '../rune-forge/rune.model';
+import { RARITY_I18N, categoryKey, rarityKey } from '../rune-forge/rarity.i18n';
 import type { ItemRarity } from '../rpg/item.model';
 import { artFor } from '../art/art';
 import {
@@ -130,7 +130,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly i18n = inject(TranslationService);
   // Registered in a field initializer so the tab arrays below can be built from it.
-  private readonly _tables = (this.i18n.register(STATION_UI_I18N), this.i18n.register(EXCHANGE_I18N), true);
+  private readonly _tables = (this.i18n.register(STATION_UI_I18N), this.i18n.register(EXCHANGE_I18N), this.i18n.register(RARITY_I18N), true);
   t(key: string, vars?: Record<string, string | number>): string {
     return this.i18n.translate(key, vars);
   }
@@ -147,7 +147,8 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   protected readonly playerMarket = inject(PLAYER_MARKET_MODE).mode !== 'off';
 
   readonly categories = GOOD_CATEGORIES;
-  readonly categoryLabels = CATEGORY_LABELS;
+  /** The category in the Keeper's language (the model's CATEGORY_LABELS stay English). */
+  categoryLabel(category: GoodCategory): string { return this.t(categoryKey(category)); }
   readonly ranges = RANGES;
   readonly taxPercent = Math.round(SALE_TAX_RATE * 100);
   readonly rarities: readonly ItemRarity[] =
@@ -216,7 +217,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   readonly sideTabs: StationTab[] = [{ id: 'buy', label: this.t('ge.tab.buy') }, { id: 'sell', label: this.t('ge.tab.sell') }];
   readonly categoryTabs: StationTab[] = [
     { id: 'all', label: this.t('ge.cat.all') },
-    ...GOOD_CATEGORIES.map(c => ({ id: c, label: CATEGORY_LABELS[c] })),
+    ...GOOD_CATEGORIES.map(c => ({ id: c, label: this.t(categoryKey(c)) })),
   ];
   readonly stripArt: StationArt | null = artFor('unique-merchants-scale');
   detailsOpen = false;
@@ -649,7 +650,7 @@ export class ExchangeComponent implements OnInit, OnDestroy {
   // Painting
   // ───────────────────────────────────────────────────────────────────────────
 
-  rarityLabel(rarity: ItemRarity): string { return RUNE_TIERS[rarity as RuneTier].label; }
+  rarityLabel(rarity: ItemRarity): string { return this.t(rarityKey(rarity)); }
   rarityColor(rarity: ItemRarity): string { return RUNE_TIERS[rarity as RuneTier].color; }
   rarityGlow(rarity: ItemRarity): string { return RUNE_TIERS[rarity as RuneTier].glow; }
 

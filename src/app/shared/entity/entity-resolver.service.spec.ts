@@ -99,7 +99,7 @@ describe('EntityResolver', () => {
       .find(fact => fact.label === 'Location');
     const held = resolver.resolve({ type: 'item', id: 'held-1' }).presentation?.facts
       .find(fact => fact.label === 'Location');
-    expect(bag?.value).toBe('Bag');
+    expect(bag?.value).toBe('Satchel');
     expect(bag?.exactValue).toBe('bag');
     expect(worn?.value).toBe('Loadout — head');
     expect(worn?.exactValue).toBe('head');

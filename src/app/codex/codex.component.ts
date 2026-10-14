@@ -84,6 +84,7 @@ import { DELVE_INSCRIPTION_LORE } from '../shared/delve/delve-inscription-lore';
 import { TranslationService } from '../translation.service';
 import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationTab } from '../shared/station-ui';
 import { CODEX_I18N } from './codex.i18n';
+import { CODEX_EXTRA_I18N } from './codex-extra.i18n';
 
 /** The three Codex tabs that read as a journal: list | the selected entry. */
 type JournalTabKey = 'achievements' | 'scrolls' | 'secrets';
@@ -674,11 +675,11 @@ export class CodexComponent implements OnInit, OnDestroy {
 
   /** Faction flavour, or the balance badge's subtitle when neither side leads. */
   get affinityFlavour(): string {
-    if (this.snap.xp === 0) return 'Neither realm has heard of you yet. Walk the world and one of them will.';
-    if (this.isBalanced) return 'You walk both realms and answer to neither. That is the rarest allegiance there is.';
+    if (this.snap.xp === 0) return this.t('codex.x.flavour.none');
+    if (this.isBalanced) return this.t('codex.x.flavour.both');
     return this.aetherPercent > 55
-      ? 'The Light burns bright in you, Solari.'
-      : 'The Shadow knows your name, Nocturne.';
+      ? this.t('codex.x.flavour.light')
+      : this.t('codex.x.flavour.shadow');
   }
 
   /** The next streak length worth aiming at, or null past the last milestone. */
@@ -790,8 +791,15 @@ export class CodexComponent implements OnInit, OnDestroy {
 
   /** The affinity tag this visitor would carry on a leaderboard row. */
   get affinityTag(): string {
-    if (this.isBalanced && this.snap.xp > 0) return 'Convergent';
-    return this.aetherPercent > 55 ? 'Solari' : this.aetherPercent < 45 ? 'Nocturne' : 'Unaligned';
+    if (this.isBalanced && this.snap.xp > 0) return this.tagLabel('Convergent');
+    return this.aetherPercent > 55 ? 'Solari' : this.aetherPercent < 45 ? 'Nocturne' : this.tagLabel('Unaligned');
+  }
+
+  /** Faction tags: Solari and Nocturne are names; the other two are words. */
+  tagLabel(tag: string): string {
+    return tag === 'Convergent' ? this.t('codex.x.tag.convergent')
+      : tag === 'Unaligned' ? this.t('codex.x.tag.unaligned')
+      : tag;
   }
 
   // ══ Station frame (shared/station-ui) ═════════════════════════════════════
@@ -808,6 +816,7 @@ export class CodexComponent implements OnInit, OnDestroy {
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(CODEX_I18N);
+    this.i18n.register(CODEX_EXTRA_I18N);
     this.i18n.register(GLIM_I18N);
   }
 

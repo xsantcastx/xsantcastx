@@ -72,6 +72,7 @@ import { ROOTGLASS_CANOPY_HREF } from '../activity/foraging.model';
 import { MERIDIAN_ORRERY_HREF } from '../activity/prospecting.model';
 import { BASALT_SEAMWORKS_HREF } from '../narrative/chapter.model';
 import { TranslationService } from '../../translation.service';
+import { WORKS_MAP_I18N } from './works-map.i18n';
 import {
   ANVIL,
   FORGE,
@@ -174,11 +175,11 @@ const WORK_COPY: Record<string, { label: string; location: string; href: string 
   prospecting: { label: 'work.discipline.prospecting', location: 'work.location.orrery', href: MERIDIAN_ORRERY_HREF },
 };
 
-const PHASE_COPY: Record<JourneyPhase, string> = {
-  out: 'Outbound',
-  site: 'At the site',
-  back: 'Heading home',
-  home: 'Arriving',
+const PHASE_KEY: Record<JourneyPhase, string> = {
+  out: 'works.phase.out',
+  site: 'works.phase.site',
+  back: 'works.phase.back',
+  home: 'works.phase.home',
 };
 
 @Component({
@@ -261,6 +262,18 @@ export class WorksMapComponent implements OnInit, OnDestroy {
   // ───────────────────────────────────────────────────────────────────────────
   // Lifecycle
   // ───────────────────────────────────────────────────────────────────────────
+
+  constructor() {
+    this.i18n.register(WORKS_MAP_I18N);
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
+  }
+
+  statusLabel(status: string): string {
+    return status === 'working' || status === 'resting' ? this.t('works.status.' + status) : status;
+  }
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -415,7 +428,7 @@ export class WorksMapComponent implements OnInit, OnDestroy {
   }
 
   phaseLabel(m: MissionToken): string {
-    return PHASE_COPY[this.phaseOf(m)];
+    return this.t(PHASE_KEY[this.phaseOf(m)]);
   }
 
   percent(m: MissionToken): number {
@@ -467,14 +480,14 @@ export class WorksMapComponent implements OnInit, OnDestroy {
       const place = siteById(e.siteId);
       return {
         id: e.id,
-        name: who?.name ?? 'Explorer',
+        name: who?.name ?? this.t('works.explorerFallback'),
         mono: monogram(who?.name),
         art: painted ? { src: painted.src, srcset: painted.srcset } : null,
         tone: tier.color,
         realmColor: realm?.color ?? tier.color,
         destination: place?.name ?? realm?.name ?? 'the realms',
         realmName: realm?.name ?? '',
-        missionName: missionById(e.mission)?.name ?? 'Expedition',
+        missionName: missionById(e.mission)?.name ?? this.t('works.expeditionFallback'),
         startedAt: e.startedAt,
         duration: e.duration,
         site,
@@ -568,17 +581,17 @@ export class WorksMapComponent implements OnInit, OnDestroy {
 
   private onReturn(r: ExplorerReturn): void {
     const lines: string[] = [];
-    const who = r.explorerName || 'An explorer';
-    lines.push(`${who} is home`);
-    if (r.reward.gold > 0) lines.push(`+${formatCompact(r.reward.gold)} Gold`);
+    const who = r.explorerName || this.t('works.anExplorer');
+    lines.push(this.t('works.isHome', { name: who }));
+    if (r.reward.gold > 0) lines.push(this.t('works.goldPop', { n: formatCompact(r.reward.gold) }));
     const runes = r.reward.runes?.length ?? (r.reward.rune ? 1 : 0);
-    if (runes) lines.push(`${runes} ${runes === 1 ? 'rune' : 'runes'}`);
+    if (runes) lines.push(this.t(runes === 1 ? 'works.rune' : 'works.runes', { n: runes }));
     const items = r.reward.items?.length ?? 0;
-    if (items) lines.push(`${items} ${items === 1 ? 'item' : 'items'}`);
+    if (items) lines.push(this.t(items === 1 ? 'works.item' : 'works.items', { n: items }));
     const mats = Object.values(r.reward.materials ?? {}).reduce((a, b) => a + b, 0);
-    if (mats) lines.push(`${mats} ${mats === 1 ? 'material' : 'materials'}`);
-    if (r.reward.scroll) lines.push('a lore fragment');
-    if (r.found) lines.push(`found ${r.found.name}`);
+    if (mats) lines.push(this.t(mats === 1 ? 'works.material' : 'works.materials', { n: mats }));
+    if (r.reward.scroll) lines.push(this.t('works.loreFragment'));
+    if (r.found) lines.push(this.t('works.found', { name: r.found.name }));
 
     const realm = this.realms.find(x => x.id === r.explorer.realm);
     const tone = realm?.color ?? 'var(--gold)';
