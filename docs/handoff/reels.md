@@ -73,6 +73,10 @@ On the v3 curve: 1 min 100 · 5 min 1,000 · 30 min 200k · 1 h 2M · 1 d 100M �
 
 ## The shared kit — `src/app/shared/games/` (for Rune Drop, Seam Sweeper, Eclipse Ascent)
 
+Those three shipped on it: see `docs/handoff/casino.md`, which also adds steered
+rounds (`openRound` / `updateRound` / `closeRound`), `wholeGold` and
+`<app-game-stepper>` to the kit.
+
 | File | API |
 |---|---|
 | `seeded-rng.ts` | `seededRng(seed): () => number` (cyrb128 → sfc32), `playSeed(secret, nonce)`, `newSecret()`, `pickWeighted(weights, total, rng)`. Pure, node-loadable. |

@@ -41,5 +41,8 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelEntry>> = {
   vendor: { title: 'Material Vendor', kicker: 'Trade', load: () => import('../../shared/vendor/material-vendor.component').then(m => m.MaterialVendorComponent) },
   vault: { title: 'The Vault', kicker: 'Storage', load: () => import('../../shared/vault/vault-station.component').then(m => m.VaultStationComponent) },
   reels: { title: 'The Reels', kicker: 'Chance', load: () => import('../../shared/reels/reels.component').then(m => m.ReelsComponent) },
+  'rune-drop': { title: 'Rune Drop', kicker: 'Chance', load: () => import('../../shared/rune-drop/rune-drop.component').then(m => m.RuneDropComponent) },
+  'seam-sweeper': { title: 'Seam Sweeper', kicker: 'Chance', load: () => import('../../shared/seam-sweeper/seam-sweeper.component').then(m => m.SeamSweeperComponent) },
+  'eclipse-ascent': { title: 'Eclipse Ascent', kicker: 'Chance', load: () => import('../../shared/eclipse-ascent/eclipse-ascent.component').then(m => m.EclipseAscentComponent) },
   homestead: { title: 'Your Homestead', kicker: 'Homestead', load: () => import('../homestead/homestead-panel.component').then(m => m.HomesteadPanelComponent) },
 };
