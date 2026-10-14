@@ -121,6 +121,23 @@ wears it; **99 Fishing in 186 active hours** at the Good grade (221 h on auto, w
 skips). The Ledger Catch is a daily (10 min of income once a day), reported but not in the per-minute share:
 the spec's check names "selling everything plus orders". Assumed levels per stage are in the table.
 
+## Perf (opt-in harness, 390×844 @3, 4× CPU, 30 s, software raster)
+
+`PLAY_PERF=1 PLAY_PERF_SECONDS=30 npx playwright test e2e/perf-play.spec.ts -g delve`, two new scenes: the
+Keeper wading the Grotto Mere (`delve:grotto-mere`) and walking beside a Magma lava pool (`delve:lava-pool`).
+`before` is main (`25a51a4`, no liquids: the same caves dry), alternated with `after`, two rounds each on a
+shared, busy machine. Task / script are ms per frame; alloc KB per frame.
+
+| Scene | before #1 | after #1 | before #2 | after #2 |
+|---|---|---|---|---|
+| Magma Halls gallery (17 torches) | 796 fr · p50/p95 33.8/51.2 · task 37.7 · script 8.2 · alloc 40 | 847 · 33.4/50.2 · 35.4 · 7.8 · 41.5 | 1018 · 33.2/35.1 · 29.5 · 6.4 · 38.6 | 868 · 33.4/50.3 · 34.6 · 7.6 · 43 |
+| Grotto Mere (wading) | 1166 · 31.5/35.1 · 25.7 · 11.7 · 53.5 | 1176 · 31.5/35.1 · 25.5 · 11.6 · 57.2 | 1369 · 17.4/34.5 · 21.9 · 10.0 · 52.7 | 1346 · 17.6/34.9 · 22.3 · 10.1 · 55.4 |
+| Magma lava pool | 629 · 50.0/66.6 · 47.7 · 13.3 · 66.2 | 726 · 35.2/51.7 · 41.3 · 11.6 · 67.7 | 646 · 49.4/68.2 · 46.5 · 12.9 · 69.8 | 678 · 48.6/66.1 · 44.3 · 12.5 · 68 |
+
+Within the run-to-run noise in every scene (the machine was busiest in the gallery's before #2): the liquid
+pass is a few fills per row, the sim sleeps once the lakes settle (0 cell updates a tick), and the lava's
+light rides the existing grid. Allocation is up 2–4 KB a frame in the liquid scenes (the per-frame run scan).
+
 ## Tests
 
 - `scripts/seamworks-engine.test.cjs` (+16): flow determinism across frame chunkings, volume conservation,
