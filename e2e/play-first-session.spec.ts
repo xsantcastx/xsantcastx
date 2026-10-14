@@ -242,6 +242,7 @@ test.describe('First session, played', () => {
     await seed(page, { 'preferred-language': 'es' });
     await openPlay(page);
     await expect(guide(page)).toContainText('Objetivo 1 de 4');
-    await expect(guide(page).getByRole('button')).toHaveText('Llevame');
+    // The goal row also holds Glim's hint button (e2e/play-glim.spec.ts): name Show me by its class.
+    await expect(guide(page).locator('.guide-go')).toHaveText('Llevame');
   });
 });
