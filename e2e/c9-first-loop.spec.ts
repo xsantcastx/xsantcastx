@@ -69,7 +69,7 @@ test.describe('C9 first loop craft and equip', () => {
     const craft = page.getByRole('button', { name: 'Craft' });
     await expect(craft).toBeEnabled();
     await craft.click();
-    await expect(page.getByText('Basalt Edge is in the bag.')).toBeVisible();
+    await expect(page.getByText('Basalt Edge is in the satchel.')).toBeVisible();
     await page.locator('.rf-word__result').getByRole('button', { name: 'Inspect' }).click();
     await expect(page.getByRole('dialog')).toBeVisible();
     await expect(page.getByRole('dialog').getByRole('heading', { name: 'Basalt Edge' })).toBeVisible();
@@ -79,7 +79,7 @@ test.describe('C9 first loop craft and equip', () => {
     mkdirSync(shotDir, { recursive: true });
     await page.locator('.qi').screenshot({ path: resolve(shotDir, 'desktop-inspect-equip.png') });
     await page.keyboard.press('Escape');
-    await page.getByRole('link', { name: 'Open in bag' }).click();
+    await page.getByRole('link', { name: 'Open in satchel' }).click();
     await expect(page).toHaveURL(/\/character/);
     await expect(page.getByText('Basalt Edge').first()).toBeVisible();
     await page.locator('.ch, .ld').first().screenshot({ path: resolve(shotDir, 'desktop-bag.png') });
