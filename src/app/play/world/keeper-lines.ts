@@ -50,6 +50,8 @@ export const KEEPER_DEEDS = [
   'fished',
   /** A Delve order claimed off the Quest Board. */
   'mission',
+  /** One of the Board Herald's daily bounties claimed (shared/bounties). */
+  'bountied',
   /** Enough Gold earned to move on the renown chart (RENOWN_GOLD). */
   'renown',
 ] as const;
@@ -79,6 +81,8 @@ export interface DeedFacts {
   fished: boolean;
   /** Any Delve mission claimed. */
   mission: boolean;
+  /** Any Board Herald bounty claimed. Absent: none. */
+  bountied?: boolean;
   /** Gold earned, ever. */
   goldEarned: number;
 }
@@ -87,7 +91,7 @@ export interface DeedFacts {
 export function keeperDeeds(f: DeedFacts): KeeperDeed[] {
   const done: Record<KeeperDeed, boolean> = {
     crafted: f.forged, sold: f.sold > 0, vaulted: f.inVault > 0, struck: f.strikes > 0, socketed: f.socketed,
-    bought: f.bought, hunted: f.hunted, dug: f.dug, skilled: f.topSkill >= 10, fished: f.fished, mission: f.mission,
+    bought: f.bought, hunted: f.hunted, dug: f.dug, skilled: f.topSkill >= 10, fished: f.fished, mission: f.mission, bountied: !!f.bountied,
     renown: f.goldEarned >= RENOWN_GOLD,
   };
   return KEEPER_DEEDS.filter(deed => done[deed]);
@@ -133,7 +137,7 @@ export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
   sera: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.break' })],
   // ── Verdant: Rootglass Canopy ──
   steward: [L(1), L(2), L(3), L(4), L(5, { deed: 'hunted' }), L(6), L(7, { beat: 'a1.eater' })],
-  herald: [L(1), L(2), L(3), L(4, { deed: 'mission' }), L(5, { beat: 'a1.break' }), L(6), L(7, { beat: 'a1.eater' })],
+  herald: [L(1), L(2), L(3), L(4, { deed: 'mission' }), L(5, { beat: 'a1.break' }), L(6), L(7, { beat: 'a1.eater' }), L(8, { deed: 'bountied' })],
   gatekeeper: [L(1), L(2), L(3), L(4, { deed: 'hunted' }), L(5), L(6)],
   'trials-warden': [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.eater' }), L(6), L(7)],
   'lodge-warden': [L(1), L(2), L(3), L(4), L(5, { deed: 'skilled' }), L(6, { deed: 'fished' }), L(7)],

@@ -50,6 +50,7 @@ import { mergeFishingSaves } from '../fishing/fishing-save';
 import { mergeGatherSaves } from '../skills/gather-save.model';
 import { mergeGamesLedgers } from '../games/play-ledger';
 import { mergeGlim } from '../glim/glim-save.model';
+import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -408,6 +409,18 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // the further chapter; hand-written so unknown ids are dropped and the
     // chapter is never behind its beats. See story-save.model.ts.
     merge: mergeStory,
+  },
+  {
+    key: 'godforge-bounties',
+    collection: 'progress',
+    doc: 'bounties',
+    label: 'The Board Herald\'s bounties',
+    // `{ version, board, progress, claimed, kit, days, claimDays, total, deepest, … }`:
+    // today's drawn board, the tokens that counted, the claim receipts and the
+    // one-off gifts handed over. Receipts and tokens are unioned (never paid or
+    // counted twice), counts take the higher, the later day's board wins.
+    // Hand-written so junk ids are dropped. See bounty-save.model.ts.
+    merge: mergeBounties,
   },
 ];
 

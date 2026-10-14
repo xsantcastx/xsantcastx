@@ -595,3 +595,166 @@ test('regrowth: far, unheld, 14-day-old tunnels grow back; receipts, placed thin
   assert.equal(state().messageKey, 'play.delve.placed', 'said only once');
   engine.destroy();
 });
+
+// ── Map v2 and the Board Herald's bounties (docs/handoff/bounties-map-v2.md) ──
+
+const bountyModel = load('shared/bounties/bounty.model.ts');
+const bountySave = load('shared/bounties/bounty-save.model.ts');
+const mapModel = load('play/engine/delve-map.ts');
+const glimModel = load('shared/glim/glim.ts');
+const curve = load('shared/economy/economy-curve.ts');
+const pinsModel = load('shared/delve/map-pins.model.ts');
+
+test('bounties: the draw is deterministic per player and day, three kinds, a reach first, only strata reached', () => {
+  const ctx = { seed: 424242, day: '2026-10-14', deepest: 1, frontierEast: 6, frontierWest: -2 };
+  const board = bountyModel.drawBounties(ctx);
+  assert.deepEqual(plain(board), plain(bountyModel.drawBounties({ ...ctx })), 'same context, same board');
+  assert.equal(board.list.length, 3);
+  assert.equal(board.list[0].kind, 'reach');
+  assert.equal(new Set(board.list.map(b => b.kind)).size, 3, 'three different kinds');
+  for (const b of board.list) assert.ok(b.stratum <= 1, `${b.id} names only strata reached`);
+  const reach = board.list[0];
+  assert.ok(reach.target === 'east' ? reach.sx > 6 : reach.sx < -2, 'a reach starts past the frontier');
+  assert.notDeepEqual(plain(bountyModel.drawBounties({ ...ctx, day: '2026-10-15' })), plain(board), 'tomorrow is another board');
+  assert.notDeepEqual(plain(bountyModel.drawBounties({ ...ctx, seed: 7 }).list.map(b => b.id)), plain(board.list.map(b => b.id)), 'another player, another board');
+  // A fresh Keeper (Root Hollows only) is never sent deeper, and every id survives the save's check.
+  for (let d = 1; d <= 28; d++) {
+    const fresh = bountyModel.drawBounties({ ...ctx, day: `2026-11-${String(d).padStart(2, '0')}`, deepest: 0 });
+    for (const b of fresh.list) assert.equal(b.stratum, 0, b.id);
+    assert.equal(bountySave.coerceBounties({ board: fresh }).board.list.length, 3, 'the board survives a save round trip');
+  }
+});
+
+test('bounties: rewards sit on rule I (5-20 min of income, a floor for new saves) and progress reads tokens once', () => {
+  for (const tier of [1, 2, 3]) {
+    const r = bountyModel.BOUNTY_REWARDS[tier];
+    assert.ok(r.goldSeconds >= curve.REWARD_SECONDS.daily.minS && r.goldSeconds <= curve.REWARD_SECONDS.daily.maxS, `tier ${tier}`);
+    assert.equal(bountyModel.bountyGold(r, 0), r.gold, 'a broken rate pays the floor');
+    assert.equal(bountyModel.bountyGold(r, 100), Math.max(r.gold, 100 * r.goldSeconds));
+  }
+  const dig = { id: '2026-10-14:1:dig:cinder-vein:6', slot: 1, kind: 'dig', tier: 2, stratum: 1, target: 'cinder-vein', n: 6 };
+  assert.equal(bountyModel.bountyCounts(dig, { kind: 'dig', node: 'cinder-vein', row: 15, token: '9,15' }), true);
+  assert.equal(bountyModel.bountyCounts(dig, { kind: 'dig', node: 'cinder-vein', row: 5, token: '9,5' }), false, 'another stratum');
+  assert.equal(bountyModel.bountyCounts(dig, { kind: 'dig', node: 'slag-vein', row: 15, token: '9,15' }), false, 'another vein');
+  const fish = { id: '2026-10-14:2:catch:water:3', slot: 2, kind: 'catch', tier: 2, stratum: 2, target: 'water', n: 3 };
+  assert.equal(bountyModel.bountyCounts(fish, { kind: 'catch', liquid: 'water', col: 60, row: 30, token: 'c1' }), false, 'the core\'s Mere is not past its walls');
+  assert.equal(bountyModel.bountyCounts(fish, { kind: 'catch', liquid: 'water', col: 200, row: 30, token: 'c2' }), true);
+  assert.equal(bountyModel.bountyObserved(dig, ['a', 'b', 'c', 'd', 'e', 'f', 'g'], { east: 3, west: 0 }), 6, 'capped at the target');
+  const reach = { id: '2026-10-14:0:reach:east:4', slot: 0, kind: 'reach', tier: 2, stratum: 0, target: 'east', n: 4, sx: 7 };
+  assert.equal(bountyModel.bountyObserved(reach, [], { east: 5, west: 0 }), 2);
+  assert.equal(bountyModel.bountyObserved(reach, [], { east: 7, west: 0 }), 4);
+});
+
+test('bounties: the save drops junk and two devices merge without paying or counting twice', () => {
+  assert.deepEqual(plain(bountySave.coerceBounties('junk')), plain(bountySave.emptyBounties()));
+  const board = bountyModel.drawBounties({ seed: 1, day: '2026-10-14', deepest: 3, frontierEast: 3, frontierWest: 0 });
+  const id = board.list[1].id;
+  const a = { version: 1, board, progress: { [id]: ['1,2', '3,4'] }, claimed: [], kit: ['compass'], days: 5, lastDay: '2026-10-14', claimDays: 3, lastClaimDay: '2026-10-13', total: 4, deepest: 2 };
+  const b = { ...a, progress: { [id]: ['3,4', '5,6'], 'not an id': ['x'] }, claimed: [id], kit: [], days: 4, claimDays: 4, lastClaimDay: '2026-10-14', total: 5, deepest: 3 };
+  const ab = bountySave.mergeBounties(a, b), ba = bountySave.mergeBounties(b, a);
+  assert.deepEqual(plain(ab), plain(ba), 'commutative');
+  assert.deepEqual(plain(ab.progress[id]).sort(), ['1,2', '3,4', '5,6'], 'tokens unioned');
+  assert.deepEqual(plain(ab.claimed), [id], 'the receipt survives');
+  assert.deepEqual(plain(ab.kit), ['compass']);
+  assert.equal(ab.days, 5); assert.equal(ab.claimDays, 4); assert.equal(ab.total, 5); assert.equal(ab.deepest, 3);
+  assert.deepEqual(plain(bountySave.mergeBounties(ab, ab)), plain(ab), 'idempotent');
+  const tomorrow = { ...a, board: bountyModel.drawBounties({ seed: 1, day: '2026-10-15', deepest: 3, frontierEast: 3, frontierWest: 0 }) };
+  assert.equal(bountySave.mergeBounties(tomorrow, a).board.day, '2026-10-15', 'the later day\'s board');
+});
+
+test('pins: coerced, merged per id (the later edit, a removal wins a tie), kept in their own region', () => {
+  assert.equal(region.coercePin({ id: 'ab12', c: 10, r: 5, i: 'nope', n: 'x', t: 1 }), null, 'unknown icon');
+  assert.equal(region.coercePin({ id: 'AB', c: 10, r: 5, i: 'star', t: 1 }), null, 'bad id');
+  const pin = region.coercePin({ id: 'ab12cd34', c: 300, r: 20, i: 'fish', n: '  <b>Lake</b>\n here ', t: 5 });
+  assert.equal(pin.n, 'bLake/b here', 'names are printable, trimmed and short');
+  const edited = { ...pin, i: 'star', t: 9 }, removed = { ...pin, d: 1, t: 9 };
+  assert.equal(region.mergePins([pin], [edited])[0].i, 'star', 'the later edit');
+  assert.equal(region.mergePins([edited], [removed])[0].d, 1, 'a removal wins a tie');
+  const r0 = { v: 1, seed: 5, rx: 1, ry: 0, t: 10, sectors: {}, p: [pin, { ...pin, id: 'zz99zz99', c: 10 }] };
+  assert.deepEqual(plain(region.coerceRegion(r0).p.map(p => p.id)), ['ab12cd34'], 'a pin outside the region is dropped');
+  const merged = region.mergeRegionSlots({ ...r0, p: [edited], t: 20 }, { ...r0, p: [pin, { ...pin, id: 'qq11qq11', c: 301 }] });
+  assert.deepEqual(plain(merged.p.map(p => `${p.id}:${p.i}`)).sort(), ['ab12cd34:star', 'qq11qq11:fish']);
+  assert.equal(pinsModel.cleanPinName('x'.repeat(40)).length, pinsModel.PIN_NAME_MAX);
+});
+
+test('map v2: the way to a tracked pin runs through explored cells across sector borders, else a straight line', () => {
+  const delve = memoryDelve(31337);
+  const { engine } = enter(delve);
+  for (let col = 100; col <= 200; col += 2) standAt(engine, col);
+  const t = engine.terrain;
+  // A corridor across the border between sector columns 4 and 5 (cols 159 | 160), all explored.
+  for (let col = 150; col <= 170; col++) { t.set(col, 1, AIR); t.set(col, 2, AIR); }
+  engine.world.revealArea(150, 170, 0, 3);
+  const from = t.index(152, 1), to = t.index(168, 1);
+  const path = mapModel.pathThrough(t, engine.fog, from, to);
+  assert.ok(path && path.length >= 17, `a way of ${path?.length} cells`);
+  assert.ok(path.some(i => t.colOf(i) === 159) && path.some(i => t.colOf(i) === 160), 'it crosses the border');
+  // Unexplored: no way (the map then draws the straight line).
+  const far = t.index(t.colHi - 2, 40);
+  assert.equal(mapModel.pathThrough(t, engine.fog, from, far), null);
+  engine.destroy();
+});
+
+test('map v2: structures, the compass and a Rift Map Fragment read beside your own map', () => {
+  const delve = memoryDelve(424242);
+  const { engine } = enter(delve);
+  standAt(engine, 130);
+  const world = engine.world;
+  const near = world.structuresNear(130, 4);
+  assert.ok(near.length > 0, 'structures are known from the seed alone');
+  for (const s of near) assert.ok(s.col < 0 || s.col >= 120, `${s.id} is outside the core`);
+  const s = near[0];
+  assert.equal(world.structureAt(s.col + 1, s.row + 1)?.id, s.id, 'standing in its room');
+  // The compass points at something no lantern has touched.
+  assert.ok(engine.compassTarget(() => false), 'the compass has a target');
+  // A fragment: a refused spend draws nothing; a spend reveals the nearest unseen structure for good.
+  const first = world.nearestUnseen(130, 1);
+  assert.ok(first && !world.structureSeen(first));
+  assert.equal(engine.readRiftMap(() => false), null, 'nothing drawn without the spend');
+  assert.equal(world.structureSeen(first), false);
+  const spent = [];
+  const read = engine.readRiftMap(found => (spent.push(found.id), true));
+  assert.equal(read.id, first.id);
+  assert.deepEqual(spent, [first.id]);
+  assert.equal(world.structureSeen(first), true, 'the room is on the map');
+  const at = worldMod.SectorWorld.local(first.col, first.row);
+  assert.ok(delve.sectors.sector('ember-delve', at.sx, at.sy)?.fog?.some(b => b), 'and in the save');
+  assert.notEqual(world.nearestUnseen(130, 1)?.id, first.id, 'the next reading finds another');
+  engine.destroy();
+});
+
+test('map v2: Glim\'s marks find each Delve mission\'s target in the core, wherever the ring is', () => {
+  const delve = memoryDelve(424242);
+  const { engine } = enter(delve);
+  standAt(engine, 60);
+  for (const [mission, targets] of Object.entries(glimModel.GLIM_MARKS)) {
+    const at = engine.findMark(targets, () => false);
+    assert.ok(at && at.col >= 0 && at.col < 120, `${mission} marks a core cell`);
+  }
+  assert.deepEqual(plain(engine.findMark(glimModel.GLIM_MARKS['fish-drowned-lamp-2'], () => false)), { col: 87, row: 36 }, 'the drowned carving');
+  // Far east, the ring holds no core column: the core's pinned columns still answer.
+  standAt(engine, 900);
+  assert.ok(!engine.terrain.inside(10, 10));
+  assert.deepEqual(plain(engine.findMark(glimModel.GLIM_MARKS['fish-drowned-lamp-2'], () => false)), { col: 87, row: 36 });
+  // Every carving copied: the Archivist's marks find nothing.
+  assert.equal(engine.findMark([{ unread: true }], () => true), null);
+  // A mark lasts half an hour; the latest one is shown.
+  const now = 10_000_000;
+  assert.equal(glimModel.activeMark({ 'mark.delve-fracture': now - 1000, 'mark.fish-drowned-lamp-1': now - 500, meet: now }, now), 'fish-drowned-lamp-1');
+  assert.equal(glimModel.activeMark({ 'mark.delve-fracture': now - glimModel.GLIM_MARK_MS }, now), null);
+  engine.destroy();
+});
+
+test('map v2: a broken Delve cell names its terrain node (dig bounties)', () => {
+  const actions = [];
+  const delve = memoryDelve(424242);
+  const { engine } = enter(delve, { onWorldAction: e => { actions.push(e); return true; } });
+  engine.setTools({ pickaxe: 3, axe: 3, sickle: 3, blade: 3 });
+  standAt(engine, 300);
+  const t = engine.terrain;
+  t.set(300, 2, nodeIndex('cinder-vein')); t.base[t.index(300, 2)] = nodeIndex('cinder-vein');
+  for (let n = 0; n < 6 && t.nodeAt(300, 2).id !== 'air'; n++) engine.hitCell(300, 2, terrainMod.SWING_TOOLS, true);
+  assert.equal(actions.at(-1).node, 'cinder-vein');
+  assert.equal(actions.at(-1).cellKey, '300,2');
+  engine.destroy();
+});
