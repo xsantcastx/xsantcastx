@@ -7,8 +7,9 @@
  * full cards.
  *
  * Once the Keeper has met Glim, a small moth button asks it for a hint: the
- * mission's ladder opens one step at a time (a nudge, then a direction; the
- * third step, a pin on Glim's Atlas, ships with the Atlas). shared/glim/glim.ts.
+ * mission's ladder opens one step at a time (a nudge, a direction, then
+ * "I'll mark it": Glim's mark on the Delve map at the mission's target, map v2).
+ * shared/glim/glim.ts.
  */
 import { ChangeDetectionStrategy, Component, DestroyRef, OnInit, PLATFORM_ID, inject, signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -93,7 +94,8 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
     .dmc__claim:focus-visible { outline: 2px solid var(--gf-accent-text, #6affe0); outline-offset: 2px; }
     .dmc__glim {
       flex: 0 0 auto; display: grid; place-items: center;
-      width: 44px; height: 44px; padding: 0;
+      /* 46px, not 44: inside a scaled panel 44px can render at 43.99. */
+      width: 46px; height: 46px; padding: 0;
       border: 1px solid var(--gf-edge-strong, rgba(255,255,255,.12)); border-radius: 50%;
       background: transparent; cursor: pointer;
     }
@@ -130,7 +132,10 @@ export class DelveMissionChipComponent implements OnInit {
   /** The next step of this mission's hint ladder (glim.ts; secrets are never on it). */
   askGlim(id: string): void {
     const step = this.glim.advance(`mission.${id}`, ladderTop(id));
-    this.glimLine.set({ mission: id, hint: glimHint(id, step) });
+    const hint = glimHint(id, step);
+    // Step 3 (and every ask after it): the mark goes (back) on the map for the next half hour.
+    if (hint.mark) this.glim.mark(id);
+    this.glimLine.set({ mission: id, hint });
   }
 
   claim(id: string): void { this.npc.claimMission(id); }

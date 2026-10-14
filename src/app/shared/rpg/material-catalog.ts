@@ -116,6 +116,9 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'seam-bucket': 'Seam Bucket',
   'seam-bucket-water': 'Bucket of water',
   'seam-bucket-lava': 'Bucket of lava',
+  // Map v2's two map tools (shared/delve/map-tools.model.ts).
+  'broken-astral-compass': 'Broken Astral Compass',
+  'rift-map-fragment': 'Rift Map Fragment',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

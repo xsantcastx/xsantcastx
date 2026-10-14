@@ -37,7 +37,15 @@
  * holding two different regions keeps the one changed later (the other is
  * still on the device that had it). Regions dug under another seed are never
  * mixed: the seed rule (earliest-rolled wins) lives in the index blob.
+ *
+ * MAP PINS (map v2): `p` is the region's pins, `{ id, c, r, i, n, t, d? }` (a
+ * world cell, an icon, a name, the last edit; `d` a removal kept as a
+ * tombstone so it reaches the other devices). Merged per id: the later edit
+ * wins, a tie goes to the removal.
  */
+import { MAX_PINS, PIN_ICONS, cleanPinName } from './map-pins.model';
+
+export { MAX_PINS } from './map-pins.model';
 
 /** Sectors per region edge. */
 export const REGION_SECTORS = 8;
@@ -71,6 +79,41 @@ export interface DelveRegion {
   ry: number;
   t: number;
   sectors: Record<string, SectorDiff>;
+  /** Map pins whose cell is in this region (and their removals). */
+  p?: PinRecord[];
+}
+
+/** A map pin as stored in its region (map-pins.model.ts MapPin, short keys). */
+export interface PinRecord { id: string; c: number; r: number; i: string; n: string; t: number; d?: 1 }
+/** Pin records (live and removed) one region keeps. */
+const MAX_PIN_RECORDS = MAX_PINS * 4;
+/** The sector a pin's cell is in (32-cell sectors). */
+export function pinSector(pin: Pick<PinRecord, 'c' | 'r'>): { sx: number; sy: number } {
+  return { sx: Math.floor(pin.c / 32), sy: Math.floor(pin.r / 32) };
+}
+/** A pin record as stored, or null for junk. */
+export function coercePin(value: unknown): PinRecord | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const v = value as Record<string, unknown>;
+  const { id, c, r, i, t } = v;
+  if (typeof id !== 'string' || !/^[a-z0-9]{4,12}$/.test(id)) return null;
+  if (!Number.isInteger(c) || Math.abs(c as number) > 32_000_000 || !Number.isInteger(r) || (r as number) < -2 || (r as number) > 4096) return null;
+  if (typeof i !== 'string' || !(PIN_ICONS as readonly string[]).includes(i)) return null;
+  const out: PinRecord = { id, c: c as number, r: r as number, i, n: cleanPinName(v['n']), t: typeof t === 'number' && Number.isFinite(t) && t >= 0 ? Math.floor(t) : 0 };
+  if (v['d'] === 1) out.d = 1;
+  return out;
+}
+/** Two regions' pins, per id: the later edit wins; on a tie, the removal. */
+export function mergePins(a: readonly PinRecord[] = [], b: readonly PinRecord[] = []): PinRecord[] {
+  const out = new Map<string, PinRecord>();
+  for (const pin of [...a, ...b]) {
+    const had = out.get(pin.id);
+    if (!had || pin.t > had.t || (pin.t === had.t && pin.d && !had.d)) out.set(pin.id, pin);
+  }
+  // Keep every live pin; drop the oldest removals past the ceiling.
+  const all = [...out.values()];
+  const live = all.filter(p => !p.d), gone = all.filter(p => p.d).sort((x, y) => y.t - x.t);
+  return [...live, ...gone].slice(0, MAX_PIN_RECORDS);
 }
 
 export function regionOf(sx: number, sy: number): { rx: number; ry: number } {
@@ -216,7 +259,12 @@ export function coerceRegion(value: unknown): DelveRegion | null {
       if (diff && Object.keys(sectors).length < MAX_SECTORS) sectors[key] = diff;
     }
   }
-  return { v: 1, seed: (seed as number) >>> 0, rx: rx as number, ry: ry as number, t: isStamp(value['t']) ? Math.floor(value['t']) : 0, sectors };
+  const pins = Array.isArray(value['p']) ? mergePins(value['p'].map(coercePin).filter((p): p is PinRecord => {
+    if (!p) return false;
+    const at = regionOf(pinSector(p).sx, pinSector(p).sy);
+    return at.rx === rx && at.ry === ry;
+  })) : [];
+  return { v: 1, seed: (seed as number) >>> 0, rx: rx as number, ry: ry as number, t: isStamp(value['t']) ? Math.floor(value['t']) : 0, sectors, ...(pins.length ? { p: pins } : {}) };
 }
 
 /**
@@ -257,7 +305,8 @@ export function mergeRegion(local: DelveRegion, remote: DelveRegion): DelveRegio
     const a = local.sectors[key], b = remote.sectors[key];
     sectors[key] = a && b ? mergeSector(a, b) : { ...(a ?? b)! };
   }
-  return { v: 1, seed: local.seed, rx: local.rx, ry: local.ry, t: Math.max(local.t, remote.t), sectors };
+  const pins = mergePins(local.p, remote.p);
+  return { v: 1, seed: local.seed, rx: local.rx, ry: local.ry, t: Math.max(local.t, remote.t), sectors, ...(pins.length ? { p: pins } : {}) };
 }
 
 /**

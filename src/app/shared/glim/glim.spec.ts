@@ -14,7 +14,7 @@ import { FIRST_GOALS_I18N } from '../../play/world/first-goals.i18n';
 import { firstGoal, FirstGoalFacts, runeForgeHint } from '../../play/world/first-goals';
 import { SYNCED_BLOBS } from '../cloud-save/cloud-save.model';
 import {
-  GLIM_GAP_MS, GLIM_HINTS, GLIM_IDLE_AFTER_MS, GLIM_LINES, GLIM_REFUSAL, GlimFacts, canSay, glimHint, ladderTop, nextLine, pastBeats,
+  GLIM_GAP_MS, GLIM_HINTS, GLIM_IDLE_AFTER_MS, GLIM_LINES, GLIM_MARK_MS, GLIM_MARKS, GLIM_REFUSAL, GlimFacts, activeMark, canSay, glimHint, ladderTop, markKey, nextLine, pastBeats,
 } from './glim';
 import { GLIM_I18N } from './glim.i18n';
 import { GLIM_KEY, GlimState, coerceGlim, emptyGlim, mergeGlim } from './glim-save.model';
@@ -61,11 +61,31 @@ describe('Glim: the hint ladder', () => {
     expect(voice.ask('goal.craft', 'play.goal.craft.back', 0).step).toBe(2);
   });
 
-  it('stops a Delve mission at step 2 until the Atlas exists', () => {
+  it('gives every Delve mission a step 3: Glim marks its target on the map', () => {
     for (const m of DELVE_MISSIONS) {
-      expect(ladderTop(m.id)).withContext(m.id).toBe(2);
-      expect(glimHint(m.id, 9).step).withContext(m.id).toBe(2);
+      expect(ladderTop(m.id)).withContext(m.id).toBe(3);
+      const top = glimHint(m.id, 9);
+      expect(top.step).withContext(m.id).toBe(3);
+      expect(top.mark).withContext(m.id).toBeTrue();
+      expect(top.walk).withContext(m.id).toBeFalse();
+      expect(top.key).toBe('play.glim.hint.mark');
+      expect(GLIM_MARKS[m.id]?.length).withContext(`${m.id} has a mark target`).toBeGreaterThan(0);
+      // A mark is a place, never a carving's words: no mark names a secret.
+      for (const target of GLIM_MARKS[m.id]!) expect(JSON.stringify(target)).not.toMatch(/nameless|void|secret/i);
     }
+    expect(glimHint(DELVE_MISSIONS[0].id, 2).mark).toBeFalsy();
+  });
+
+  it('keeps a mark for half an hour, the latest one on the map, and merges it like any stamp', () => {
+    const now = 50 * GLIM_MARK_MS;
+    expect(activeMark({}, now)).toBeNull();
+    expect(activeMark({ [markKey('delve-fracture')]: now - 1 }, now)).toBe('delve-fracture');
+    expect(activeMark({ [markKey('delve-fracture')]: now - GLIM_MARK_MS }, now)).toBeNull();
+    expect(activeMark({ [markKey('delve-fracture')]: now - 10, [markKey('fish-drowned-lamp-1')]: now - 5 }, now)).toBe('fish-drowned-lamp-1');
+    expect(activeMark({ [markKey('not-a-mission')]: now }, now)).toBeNull();
+    const a = { ...emptyGlim(), lastAt: { [markKey('delve-fracture')]: now - 10 } };
+    const b = { ...emptyGlim(), lastAt: { [markKey('delve-fracture')]: now - 5 } };
+    expect((mergeGlim(a, b) as GlimState).lastAt[markKey('delve-fracture')]).toBe(now - 5);
   });
 
   it('has a ladder for every line the goal line can show', () => {

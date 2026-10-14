@@ -197,6 +197,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.herald.4': { en: 'You claimed a Delve order. The board noticed. The board notices everything.', es: 'Cobraste una orden de la Sima. El tablon se dio cuenta. El tablon se da cuenta de todo.' },
   'play.life.line.herald.5': { en: 'Kael has posted nothing. Kael doesn\'t post. Kael asks you, which is worse.', es: 'Kael no ha publicado nada. Kael no publica. Kael te lo pide a ti, que es peor.' },
   'play.life.line.herald.6': { en: 'Larkins have read this board aloud for four generations. Never posted once. Neutral.', es: 'Los Larkin leen este tablon desde hace cuatro generaciones. Nunca publicamos nada. Neutrales.' },
+  'play.life.line.herald.8': { en: 'The Delve never posts, so I read it for you. Three bounties a day.', es: 'La Sima nunca publica, asi que la leo por ti. Tres encargos al dia.' },
   'play.life.line.herald.7': { en: 'The Seamworks posted thanks when the Seam Eater sank. First thank-you here in years.', es: 'La Seamworks dio las gracias cuando se hundio el Devorador de Costuras. Las primeras en anos.' },
   'play.life.line.gatekeeper.1': { en: 'Past this gate, other Keepers test your might.', es: 'Tras esta puerta, otros Guardianes ponen a prueba tu fuerza.' },
   'play.life.line.gatekeeper.2': { en: 'Guard well. The ring remembers who held their ground.', es: 'Defiendete bien. El ruedo recuerda quien no cedio.' },
