@@ -3,6 +3,7 @@ import { Atmosphere } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import type { KeeperContext } from '../world/keeper-lines';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { CREATURE_ART, CREATURE_PIXEL, creatureFrame, CreaturePainter } from './creature-pixel';
 import { keeperAction, type KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { lookFromSeed, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
@@ -275,6 +276,10 @@ export class SeamworksEngine {
   private keeperPainter: KeeperPainter | null = null;
   /** Other Keepers in the room: a stable look from their id, so nobody looks the same. */
   private readonly peerPainters = new Map<string, KeeperPainter>();
+  /** Pixel creatures (creature-pixel.ts), one painter per creature key; null = keep the sheet / rig. */
+  private readonly creaturePainters = new Map<string, CreaturePainter | null>();
+  /** Where each creature was last drawn, to tell a stride from a breath. */
+  private readonly creatureLastX = new WeakMap<Monster, number>();
   /** The pixel Keeper paints into small canvases; without a DOM (the node harness) Keepers keep the rig. */
   private readonly canPaint = typeof document !== 'undefined' && typeof document.createElement === 'function';
   private readonly urlImages = new Map<string, HTMLImageElement>();
@@ -4240,10 +4245,11 @@ export class SeamworksEngine {
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       const rigDef = this.creatureRig(monster.def.creature).def;
-      // A sprite sheet faces right and stands on its pivot; a painting has its own box and facing.
+      // A sprite sheet faces right and stands on its pivot; so do the pixel creatures; a painting has its own box and facing.
       const sheet = this.readySprite(monster.def.creature);
+      const pixel = sheet ? null : this.pixelCreature(monster.def.creature);
       const floor = monster.def.floorY ?? FLOOR;
-      const crown = floor - ((sheet ? sheet.entry.pivotY : rigDef.box.h) + 20) * k;
+      const crown = floor - ((sheet ? sheet.entry.pivotY : pixel ? pixel.height * CREATURE_PIXEL : rigDef.box.h) + 20) * k;
       if (warning) {
         c.fillStyle = monster.phase === 'strike' ? '#ff765caa' : '#ff765c40';
         c.fillRect(monster.facing < 0 ? monster.x - 170 * k : monster.x, floor - 10, 170 * k, 10);
@@ -4253,10 +4259,19 @@ export class SeamworksEngine {
       if (!t) this.groundShadow(c, monster.x + monster.knock, FLOOR, rigDef.shadow * (.6 + rise * .4));
       // Turn the painting toward its target. Purely a drawing choice.
       const looking = monster.phase === 'idle' ? Math.sign(this.player.x - monster.x) || monster.facing : monster.facing;
-      const mirror = sheet ? looking < 0 : rigDef.facesLeft ? looking > 0 : looking < 0;
-      c.save(); c.translate(monster.x + monster.knock, floor);
+      const mirror = sheet || pixel ? looking < 0 : rigDef.facesLeft ? looking > 0 : looking < 0;
+      c.save(); c.translate(pixel ? Math.round(monster.x + monster.knock) : monster.x + monster.knock, floor);
       c.globalAlpha = rise; c.scale((.6 + rise * .4) * (mirror ? -1 : 1) * k, (.6 + rise * .4) * k);
-      this.creature(c, monster.flash > 0, monster.def.creature, monster);
+      if (pixel) {
+        const last = this.creatureLastX.get(monster) ?? monster.x;
+        this.creatureLastX.set(monster, monster.x);
+        const frame = creatureFrame(monster.phase, monster.recoil, Math.abs(monster.x - last) > .05, this.elapsed + monster.spawn * .013, this.reducedMotion);
+        pixel.draw(c, CREATURE_PIXEL, frame, monster.flash > 0);
+        if (monster.phase === 'strike' && monster.flash <= 0) {
+          c.globalCompositeOperation = 'lighter'; c.globalAlpha *= .3; c.translate(-CREATURE_PIXEL, 0);
+          pixel.draw(c, CREATURE_PIXEL, frame, false);
+        }
+      } else this.creature(c, monster.flash > 0, monster.def.creature, monster);
       c.restore();
       // The chip bar trails the real HP so a hit reads as a chunk taken.
       const full = monster.maxHp || 1, bar = 90 * Math.max(k, .7);
@@ -4285,7 +4300,8 @@ export class SeamworksEngine {
       c.scale(view.facing, 1); this.stepDust(c, shown, motionTime + view.x);
       c.globalAlpha = motion.alpha;
       c.shadowColor = warm ? '#ffc27a' : '#deb8f3'; c.shadowBlur = this.blur(warm ? 12 : 6); c.filter = 'none';
-      this.drawKeeper(c, { x: -70, y: -176, w: 140, h: 176 }, shown, motionTime + view.x, view.motion, view.x, view.y, view.facing,
+      // Same box as the player's: every pixel Keeper on one grid (4 world px per art px).
+      this.drawKeeper(c, { x: -78, y: -196, w: 156, h: 196 }, shown, motionTime + view.x, view.motion, view.x, view.y, view.facing,
         attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion, false, view.clock, false, this.peerPainter(view.peer.id));
       c.restore();
     }
@@ -4853,6 +4869,16 @@ export class SeamworksEngine {
     c.fillStyle = '#ffe2c4'; c.fillRect(mx - bar / 2, crown, Math.max(m.hp, m.shownHp) / full * bar, 8);
     c.fillStyle = open ? '#ffd08a' : '#dd866f'; c.fillRect(mx - bar / 2, crown, m.hp / full * bar, 8);
   }
+  /** The pixel creature for an art key (creature-pixel.ts), or null: no art written, or no DOM. */
+  private pixelCreature(key: string): CreaturePainter | null {
+    let painter = this.creaturePainters.get(key);
+    if (painter === undefined) {
+      const art = this.canPaint && Object.prototype.hasOwnProperty.call(CREATURE_ART, key) ? CREATURE_ART[key] : null;
+      painter = art ? new CreaturePainter(art) : null;
+      this.creaturePainters.set(key, painter);
+    }
+    return painter;
+  }
   /** The rig for a creature art key, built once per key. */
   private creatureRig(key: string): { def: CreatureRigDef; sprite: RigSprite } {
     let entry = this.creatureRigs.get(key);
@@ -4942,16 +4968,26 @@ export class SeamworksEngine {
     c.scale(k, k);
     // A sheet with its own death frames plays them (no squash); everything else flattens as before.
     const sheet = this.readySprite(monster.def.creature);
-    if (sheet && monster.facing < 0) c.scale(-1, 1);
-    if (!this.reducedMotion && !sheet?.entry.actions['death']) c.scale(1 + t * .35, 1 - t * .7);
-    this.creature(c, t < .25, monster.def.creature, sheet ? monster : undefined, sheet ? t : -1);
+    const pixel = sheet ? null : this.pixelCreature(monster.def.creature);
+    if ((sheet || pixel) && monster.facing < 0) c.scale(-1, 1);
+    if (pixel) {
+      // Felled: the hurt frame sinks and fades (flashing white at first), as the painting did.
+      if (!this.reducedMotion) c.scale(1 + t * .2, 1 - t * .6);
+      pixel.draw(c, CREATURE_PIXEL, 'hurt', t < .25);
+    } else {
+      if (!this.reducedMotion && !sheet?.entry.actions['death']) c.scale(1 + t * .35, 1 - t * .7);
+      this.creature(c, t < .25, monster.def.creature, sheet ? monster : undefined, sheet ? t : -1);
+    }
     c.restore();
     if (this.reducedMotion) return;
+    // Embers shed as it goes: whole art pixels, on the figure's grid.
+    const g = CREATURE_PIXEL * k;
     c.save(); c.fillStyle = '#ffb46a';
     for (let n = 0; n < 7; n++) {
       const a = n * 2.4 + monster.spawn;
       c.globalAlpha = (1 - t) * .8;
-      c.beginPath(); c.arc(monster.x + Math.cos(a) * 40 * t * k, floor - (50 + t * 70 + Math.sin(a) * 18) * k, 3 * (1 - t) + 1, 0, Math.PI * 2); c.fill();
+      const x = monster.x + Math.cos(a) * 40 * t * k, y = floor - (50 + t * 70 + Math.sin(a) * 18) * k;
+      c.fillRect(Math.round(x / g) * g, Math.round(y / g) * g, t < .5 ? g : g / 2, t < .5 ? g : g / 2);
     }
     c.restore();
   }
