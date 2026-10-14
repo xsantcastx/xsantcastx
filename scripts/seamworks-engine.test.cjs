@@ -549,7 +549,7 @@ test('every built town has a waystone, and every material a zone drops is catalo
   }
   const umbral = world.TOWNS.umbral;
   assert.ok(umbral, 'the Umbral town is built');
-  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['exchange', 'gambler', 'reels']);
+  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['eclipse-ascent', 'exchange', 'gambler', 'reels', 'rune-drop', 'seam-sweeper']);
   assert.equal(umbral.hunts[0].monsters[0].creature, 'mirror-substitute', 'Umbral hunts its canon creature');
 });
 
@@ -2271,10 +2271,13 @@ test('life: every panel station has a keeper beside it, never on a footprint or 
   assert.equal(at('celestial', 'archivist').station.id, 'codex', 'the Archivist at the Codex');
   assert.ok(at('luminous', 'aureth'), 'Aureth stands in Luminous');
   assert.ok(at('umbral', 'verrin'), 'Verrin stands in Umbral');
-  // The Croupier runs the Gambler and the Reels and stands between the two.
+  // The Croupier runs the Gambler and the four games of chance, which stand in
+  // a row just east of it, and stands between the Gambler and the Reels.
   const croupier = at('umbral', 'croupier');
   const reels = world.TOWNS.umbral.stations.find(s => s.id === 'reels');
-  assert.deepEqual([...croupier.def.serves], ['reels']);
+  assert.deepEqual([...croupier.def.serves], ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent']);
+  const games = croupier.def.serves.map(id => world.TOWNS.umbral.stations.find(s => s.id === id));
+  for (let i = 1; i < games.length; i++) assert.ok(footprintOf(games[i])[0] >= footprintOf(games[i - 1])[1], `${games[i].id} stands east of ${games[i - 1].id}, clear of it`);
   assert.ok(croupier.x < footprintOf(reels)[0] && footprintOf(reels)[0] - croupier.x <= life.KEEPER_HALF + life.KEEPER_GAP + 80, 'the Croupier stands beside the Reels too');
 });
 

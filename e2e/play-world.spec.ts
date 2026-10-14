@@ -87,7 +87,7 @@ test.describe('Waystone travel and ?at= deep links', () => {
     // The panel folds away for 160 ms with the world still paused: wait for it, as a player would.
     await expect(placePanel(page)).toBeHidden();
     await expect.poll(() => focusIsCanvas(page)).toBe(true);
-    await walkTo(page, 1140, 40);
+    await walkTo(page, 1560, 40);
     await page.keyboard.press('e');
     await expect(page.locator('#place-title')).toHaveText('The Exchange');
     await expect(page).toHaveURL(/[?&]at=exchange/);
