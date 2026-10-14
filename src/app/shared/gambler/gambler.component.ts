@@ -51,8 +51,11 @@ import { InventoryService } from '../rpg/inventory.service';
 import { GamblerService, type OpenedBox, type OpenFailure } from './gambler.service';
 import { RollQualityComponent } from '../rpg/roll-quality.component';
 import { PITY_THRESHOLD, boxOdds, rarityRank, type MysteryBox } from './mystery-box';
+import { TranslationService } from '../../translation.service';
+import { GAMBLER_I18N } from './gambler.i18n';
 import {
   STATION_UI,
+  STATION_UI_I18N,
   type JournalRow,
   type StationArt,
   type StationCost,
@@ -238,8 +241,16 @@ export class GamblerComponent implements OnInit, OnDestroy {
   announce = '';
   private noticeTimer: ReturnType<typeof setTimeout> | null = null;
 
+  private readonly i18n = inject(TranslationService);
+
   constructor() {
+    this.i18n.register(STATION_UI_I18N);
+    this.i18n.register(GAMBLER_I18N);
     this.buildJournal();
+  }
+
+  t(key: string, vars?: Record<string, string | number>): string {
+    return this.i18n.translate(key, vars);
   }
 
   ngOnInit(): void {
@@ -288,17 +299,17 @@ export class GamblerComponent implements OnInit, OnDestroy {
       name: box.name,
       art: this.boxArt,
       rarity: box.maxRarity,
-      sub: `${this.compact(box.cost)} Gold`,
+      sub: `${this.compact(box.cost)} ${this.t('stationUi.gold')}`,
       locked: this.hydrated && !this.affordable(box),
       ready: this.hydrated && this.affordable(box),
     }));
 
     const box = this.selectedBox;
     this.selectedOdds = box ? this.oddsFor(box) : [];
-    this.boxCosts = box ? [{ kind: 'gold', label: 'Gold', need: box.cost, have: this.gold }] : [];
-    this.walletGold = { kind: 'gold', label: 'Gold', need: this.gold, have: this.gold };
+    this.boxCosts = box ? [{ kind: 'gold', label: this.t('stationUi.gold'), need: box.cost, have: this.gold }] : [];
+    this.walletGold = { kind: 'gold', label: this.t('stationUi.gold'), need: this.gold, have: this.gold };
     const bagFull = this.hydrated && !this.inventory.canAcceptInstance();
-    this.openBlocked = bagFull ? 'Your bag is full. Sell something first.' : null;
+    this.openBlocked = bagFull ? this.t('gambler.why.satchelFull') : null;
     const many = box && !bagFull ? Math.min(OPEN_MANY_MAX, Math.floor(this.gold / box.cost)) : 0;
     this.openAllCount = many >= 2 ? many : 0;
 
@@ -307,15 +318,15 @@ export class GamblerComponent implements OnInit, OnDestroy {
       const armed = this.guaranteed(box);
       this.luckProgress = armed ? 1 : Math.max(0, Math.min(1, (PITY_THRESHOLD - left) / PITY_THRESHOLD));
       // Bad luck protection as a bar: the full sentence is in Details.
-      this.luckLabel = armed ? 'Next one is better' : `Better luck in ${left}`;
+      this.luckLabel = armed ? this.t('gambler.luck.next') : this.t('gambler.luck.left', { n: left });
     } else {
       this.luckProgress = 0;
       this.luckLabel = '';
     }
 
     this.tabs = [
-      { id: 'boxes', label: 'Boxes' },
-      { id: 'sell', label: 'Sell', badge: this.sellRows.length || null },
+      { id: 'boxes', label: this.t('gambler.tab.boxes') },
+      { id: 'sell', label: this.t('gambler.tab.sell'), badge: this.sellRows.length || null },
     ];
 
     this.sellJournal = this.sellRows.map(row => ({
@@ -323,7 +334,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
       name: row.item.upgradeLevel ? `${row.item.name} +${row.item.upgradeLevel}` : row.item.name,
       art: artFor(row.item.definitionId),
       rarity: row.item.rarity,
-      sub: `${this.qualityText(row.item)} · ${this.compact(row.item.sellValue)} Gold`,
+      sub: `${this.qualityText(row.item)} · ${this.compact(row.item.sellValue)} ${this.t('stationUi.gold')}`,
     }));
     const current = this.selectedSell;
     this.selectedSell = (current && this.sellRows.find(r => r.item.id === current.item.id)) || this.sellRows[0] || null;
@@ -367,7 +378,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     if (!row) return;
     const gold = row.item.sellValue;
     const sold = this.inventory.sellMany([row.item.id]);
-    if (sold > 0) this.say(`Sold ${row.item.name} for ${this.compact(gold)} Gold.`);
+    if (sold > 0) this.say(this.t('gambler.sold.one', { name: row.item.name, n: this.compact(gold) }));
     this.selectedSell = null;
     this.rebuildTill();
     this.buildJournal();
@@ -379,7 +390,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     if (!this.junkIds.length) return;
     if (!this.junkArmed) {
       this.junkArmed = true;
-      this.announce = `Press again to sell ${this.junkIds.length} items.`;
+      this.announce = this.t('gambler.pressAgain', { n: this.junkIds.length });
       this.cdr.markForCheck();
       return;
     }
@@ -387,7 +398,7 @@ export class GamblerComponent implements OnInit, OnDestroy {
     const gold = this.sellRows.filter(r => ids.includes(r.item.id)).reduce((sum, r) => sum + r.item.sellValue, 0);
     const sold = this.inventory.sellMany(ids);
     this.junkArmed = false;
-    if (sold > 0) this.say(`Sold ${sold} items for ${this.compact(gold)} Gold.`);
+    if (sold > 0) this.say(this.t('gambler.sold.many', { n: sold, gold: this.compact(gold) }));
     this.rebuildTill();
     this.buildJournal();
     this.cdr.markForCheck();
@@ -606,14 +617,14 @@ export class GamblerComponent implements OnInit, OnDestroy {
   private failureText(code: OpenFailure, box: MysteryBox): string {
     switch (code) {
       case 'funds':
-        return `Not enough Gold. ${box.name} costs ${this.compact(box.cost)}.`;
+        return this.t('gambler.err.funds', { name: box.name, n: this.compact(box.cost) });
       case 'bag-full':
-        return 'The bag is full. Sell something below before you open another.';
+        return this.t('gambler.err.full');
       case 'catalogue':
       case 'mint':
-        return 'That box came up empty. Nothing was charged.';
+        return this.t('gambler.err.empty');
       default:
-        return 'The shelf is not open right now.';
+        return this.t('gambler.err.closed');
     }
   }
 

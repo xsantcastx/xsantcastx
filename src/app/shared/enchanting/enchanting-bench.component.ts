@@ -149,7 +149,7 @@ export interface InfusionCard {
 
 const SOCKET_COPY: Readonly<Record<SocketReject, string>> = {
   ssr: 'The table is not lit yet. Give it a moment.',
-  missing: 'That piece is not in your bag any more.',
+  missing: 'That piece is not in your satchel any more.',
   'not-socketable': 'Nothing about that piece will hold a rune.',
   'bad-well': 'That well is not on this piece.',
   occupied: 'Something is already set in that well.',

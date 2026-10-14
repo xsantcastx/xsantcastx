@@ -385,19 +385,19 @@
 
   @if (bankOpen) {
   <div class="fk-bank" role="dialog" aria-modal="true" aria-labelledby="fk-inv-title">
-    <button type="button" class="fk-bank__scrim" (click)="closeBank()" [attr.aria-label]="ownedOnly ? 'Close bank' : 'Close catalogue'"></button>
+    <button type="button" class="fk-bank__scrim" (click)="closeBank()" [attr.aria-label]="ownedOnly ? 'Close satchel' : 'Close catalogue'"></button>
     <div class="fk-bank__chest">
       <header class="fk-bank__head">
-        <!-- Two surfaces on this site were both called "Bank": the tab on
+        <!-- two surfaces on this site were both called the bank: the tab on
              /character (hub-bank) and this modal. They are not the same thing —
              this one toggles between your holdings and the market catalogue,
              which is why its overlay id is already 'character-catalogue'. It
              now takes its name from the mode it is in, so "Bank" means the same
              thing everywhere: the things you hold. -->
-        <h2 class="fk-bank__title" id="fk-inv-title">{{ ownedOnly ? 'Bank' : 'Catalogue' }}</h2>
+        <h2 class="fk-bank__title" id="fk-inv-title">{{ ownedOnly ? 'Satchel' : 'Catalogue' }}</h2>
         <p class="fk-bank__count">{{ ownedOnly ? bankHeld + ' held' : bankHeld + ' of these held' }}</p>
         <button type="button" class="fk-bank__mode" (click)="toggleCatalogue()">
-          {{ ownedOnly ? 'Show market catalogue' : 'Show my bank' }}
+          {{ ownedOnly ? 'Show market catalogue' : 'Show my satchel' }}
         </button>
         <button type="button" class="fk-bank__close" (click)="closeBank()">Close</button>
       </header>

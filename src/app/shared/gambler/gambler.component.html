@@ -1,21 +1,21 @@
 <!-- The Gambler on the station kit: Boxes · Sell → list → the selected box.
      The reveal below the shell is unchanged — it is the payoff. -->
 <app-station-shell class="gb"
-                   [title]="'The Gambler'"
+                   [title]="t('gambler.title')"
                    [showTitle]="!inWorld"
-                   [detailsHint]="'Box stories, bad luck protection, the till and reveal speed'"
+                   [detailsHint]="t('gambler.detailsHint')"
                    [(detailsOpen)]="detailsOpen">
 
   <app-cost-chip stationWallet [cost]="walletGold" [quiet]="true" />
 
-  <app-station-tabs stationTabs [tabs]="tabs" [active]="tab" (activeChange)="setTab($event)" [label]="'Gambler'" />
+  <app-station-tabs stationTabs [tabs]="tabs" [active]="tab" (activeChange)="setTab($event)" [label]="t('gambler.tabsLabel')" />
 
   <app-skill-strip stationSkill
     [art]="stage.sigil"
-    [title]="'Luck'"
+    [title]="t('gambler.luck')"
     [progress]="luckProgress"
     [progressLabel]="luckLabel"
-    [hint]="tab === 'sell' ? 'Turn what you do not want back into Gold for the next box.' : 'Pay Gold, open a sealed box, keep what is inside.'" />
+    [hint]="tab === 'sell' ? t('gambler.hint.sell') : t('gambler.hint.boxes')" />
 
   <div stationHero class="gbj-hero">
     @if (error) { <p class="gb__error" role="alert">{{ error }}</p> }
@@ -24,16 +24,16 @@
     @if (tab === 'boxes') {
       <app-station-journal>
         <app-journal-list journalList [rows]="boxRows" [selected]="selectedBox?.id ?? null"
-                          [label]="'Boxes'" (pick)="pickBox($event)" />
+                          [label]="t('gambler.boxes')" (pick)="pickBox($event)" />
 
         <div journalDetail class="gbj-detail">
           @if (selectedBox; as box) {
             <app-detail-head [art]="boxArt" [name]="box.name" [rarity]="box.maxRarity"
-                             [line]="'Open 1 ' + box.name" />
+                             [line]="t('gambler.openLine', { name: box.name })" />
 
             <!-- The rarity window, before you buy. Never after. -->
             <div class="gbj-odds-box">
-              <p class="gbj-odds-title">What can come out</p>
+              <p class="gbj-odds-title">{{ t('gambler.odds') }}</p>
               <ul class="gb__odds gbj-odds">
                 @for (row of selectedOdds; track row.rarity) {
                   <li class="gb__odd" [style.color]="row.color">
@@ -46,12 +46,12 @@
 
             <app-action-button
               class="gb__buy"
-              [label]="'Open'"
+              [label]="t('gambler.open')"
               [costs]="boxCosts"
               [blocked]="openBlocked"
               [pending]="!hydrated"
               [allCount]="openAllCount"
-              [allLabel]="openAllCount ? 'Open' : null"
+              [allLabel]="openAllCount ? t('gambler.open') : null"
               (act)="open(box)"
               (actAll)="openMany(box, $event)"
               (refused)="announce = $event" />
@@ -61,27 +61,27 @@
     } @else {
       <app-station-journal>
         <app-journal-list journalList [rows]="sellJournal" [selected]="selectedSellId"
-                          [label]="'Sellable items'" [empty]="'Nothing in the bag the till will take.'"
+                          [label]="t('gambler.sellable')" [empty]="t('gambler.emptySell')"
                           (pick)="pickSell($event)" />
 
         <div journalDetail class="gbj-detail">
           @if (selectedSell; as row) {
             <app-detail-head [art]="sellArt" [name]="row.item.name" [rarity]="row.item.rarity"
-                             [line]="'Sell for ' + compact(row.item.sellValue) + ' Gold'" />
+                             [line]="t('gambler.sellLine', { n: compact(row.item.sellValue) })" />
             @if (mods(row.item).length) {
               <p class="gbj-mods">{{ mods(row.item).join(' · ') }}</p>
             }
           }
           <app-action-button
-            [label]="'Sell'"
-            [blocked]="selectedSell ? null : 'Pick something to sell.'"
+            [label]="t('gambler.sell')"
+            [blocked]="selectedSell ? null : t('gambler.pickToSell')"
             [pending]="!hydrated"
             [allCount]="junkIds.length"
-            [allLabel]="!junkIds.length ? null : junkArmed ? 'Tap again to sell junk' : 'Sell junk'"
+            [allLabel]="!junkIds.length ? null : junkArmed ? t('gambler.sellJunkAgain') : t('gambler.sellJunk')"
             (act)="sellSelected()"
             (actAll)="sellJunk()"
             (refused)="announce = $event" />
-          @if (junkIds.length) { <p class="gbj-hint">Junk = every graded roll under 50%.</p> }
+          @if (junkIds.length) { <p class="gbj-hint">{{ t('gambler.junkNote') }}</p> }
         </div>
       </app-station-journal>
     }
@@ -100,22 +100,22 @@
         <!-- Bad luck protection, stated as a number rather than a promise. -->
         <p class="gb__pity" [class.gb__pity--armed]="guaranteed(box)">
           @if (guaranteed(box)) {
-            Next one is guaranteed above {{ rarityLabel(box.minRarity) }}.
+            {{ t('gambler.pity.armed', { rarity: rarityLabel(box.minRarity) }) }}
           } @else {
-            {{ pityLeft(box) }} more {{ rarityLabel(box.minRarity) }} in a row and the next is guaranteed better.
+            {{ t('gambler.pity.left', { n: pityLeft(box), rarity: rarityLabel(box.minRarity) }) }}
           }
         </p>
-        @if (openedCount(box)) { <p class="gbj-panel__hint gb__opened">{{ openedCount(box) }} opened</p> }
+        @if (openedCount(box)) { <p class="gbj-panel__hint gb__opened">{{ t('gambler.opened', { n: openedCount(box) }) }}</p> }
       </section>
     }
 
     <section class="gbj-panel">
-      <h2 class="gbj-panel__title">Your table</h2>
+      <h2 class="gbj-panel__title">{{ t('gambler.table') }}</h2>
       <p class="gbj-panel__hint">
-        <b>{{ compact(spent) }}</b> Gold spent here@if (uniquesFound) { · <b>{{ uniquesFound }}</b> named found }
+        <b>{{ compact(spent) }}</b> {{ t('gambler.spentHere') }}@if (uniquesFound) { · <b>{{ uniquesFound }}</b> {{ t('gambler.namedFound') }} }
       </p>
       <button type="button" class="gb__mini gb__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
-        Fast reveal {{ fast ? 'on' : 'off' }}
+        {{ fast ? t('gambler.fastOn') : t('gambler.fastOff') }}
       </button>
     </section>
 
@@ -123,20 +123,19 @@
     <section class="gb__till">
       <button type="button" class="gb__till-toggle" (click)="toggleTill()"
               [attr.aria-expanded]="sellOpen">
-        <span>The Till · pick many</span>
-        <span class="gb__till-count">{{ sellRows.length }} sellable</span>
+        <span>{{ t('gambler.till') }}</span>
+        <span class="gb__till-count">{{ t('gambler.tillCount', { n: sellRows.length }) }}</span>
         <span class="gb__till-caret" aria-hidden="true">{{ sellOpen ? '▴' : '▾' }}</span>
       </button>
 
       <div class="gb__till-body" *ngIf="sellOpen">
         <p class="gb__till-note">
-          A sale pays the sticker price scaled by the roll — half for a dud, one and
-          a half for a maxed one, and three times over for a Perfect.
+          {{ t('gambler.tillNote') }}
         </p>
 
         <div class="gb__till-actions">
-          <button type="button" class="gb__mini" (click)="selectPoor()">Select every roll under 50%</button>
-          <button type="button" class="gb__mini" (click)="clearSelection()" [disabled]="!selectedCount">Clear</button>
+          <button type="button" class="gb__mini" (click)="selectPoor()">{{ t('gambler.selectPoor') }}</button>
+          <button type="button" class="gb__mini" (click)="clearSelection()" [disabled]="!selectedCount">{{ t('gambler.clear') }}</button>
         </div>
 
         <ul class="gb__sell-list" *ngIf="sellRows.length; else nothingToSell">
@@ -155,18 +154,18 @@
           </li>
         </ul>
         <ng-template #nothingToSell>
-          <p class="gb__till-empty">Nothing in the bag the till will take.</p>
+          <p class="gb__till-empty">{{ t('gambler.emptySell') }}</p>
         </ng-template>
 
         <div class="gb__sell-bar" *ngIf="selectedCount">
-          <span>{{ selectedCount }} selected — <b>{{ compact(selectedGold) }} Gold</b></span>
-          <button type="button" class="gb__sell-go" (click)="confirmSell()">Sell them</button>
+          <span>{{ t('gambler.selected', { n: selectedCount }) }} <b>{{ compact(selectedGold) }} {{ t('stationUi.gold') }}</b></span>
+          <button type="button" class="gb__sell-go" (click)="confirmSell()">{{ t('gambler.sellThem') }}</button>
         </div>
       </div>
     </section>
 
     @if (!inWorld) {
-      <p class="gb__back"><a routerLink="/market">← Back to the Market</a></p>
+      <p class="gb__back"><a routerLink="/market">{{ t('gambler.back') }}</a></p>
     }
   </div>
 </app-station-shell>
@@ -187,7 +186,7 @@
      [style.--reveal-glow]="revealGlow"
      [style.--charge]="timing?.intensity ?? 0"
      [style.--phase-ms]="revealPhaseMs"
-     role="dialog" aria-modal="true" aria-label="Mystery box"
+     role="dialog" aria-modal="true" [attr.aria-label]="t('gambler.reveal.aria')"
      (click)="phase === 'revealed' ? dismiss() : skip()">
 
   <div class="gb-reveal__stage" (click)="$event.stopPropagation()">
@@ -234,23 +233,23 @@
     <ng-container *ngIf="phase !== 'revealed'">
       <p class="gb-reveal__waiting" aria-live="polite">
         <span class="gb-reveal__box-name">{{ active?.name }}</span>
-        <span *ngIf="phase === 'wager'">The wager is placed.</span>
-        <span *ngIf="phase === 'charging'">Something stirs under the veil.</span>
-        <span *ngIf="phase === 'cracking'">The veil breaks.</span>
+        <span *ngIf="phase === 'wager'">{{ t('gambler.reveal.wager') }}</span>
+        <span *ngIf="phase === 'charging'">{{ t('gambler.reveal.charge') }}</span>
+        <span *ngIf="phase === 'cracking'">{{ t('gambler.reveal.crack') }}</span>
       </p>
       <div class="gb-reveal__controls">
-        <button type="button" class="gb-reveal__skip" (click)="skip()">Skip</button>
+        <button type="button" class="gb-reveal__skip" (click)="skip()">{{ t('gambler.reveal.skip') }}</button>
         <button type="button" class="gb-reveal__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
-          Fast reveal {{ fast ? 'on' : 'off' }}
+          {{ fast ? t('gambler.fastOn') : t('gambler.fastOff') }}
         </button>
       </div>
     </ng-container>
 
     <ng-container *ngIf="phase === 'revealed' && result as shown">
       <div class="gb-reveal__card">
-        <p class="gb-reveal__pity" *ngIf="shown.pityApplied">Bad luck protection paid out</p>
-        <p class="gb-reveal__named" *ngIf="shown.unique">A named object</p>
-        <p class="gb-reveal__more" *ngIf="extraPulls">The best of {{ extraPulls + 1 }} boxes. The other {{ extraPulls }} are in your bag too.</p>
+        <p class="gb-reveal__pity" *ngIf="shown.pityApplied">{{ t('gambler.reveal.pity') }}</p>
+        <p class="gb-reveal__named" *ngIf="shown.unique">{{ t('gambler.reveal.named') }}</p>
+        <p class="gb-reveal__more" *ngIf="extraPulls">{{ t('gambler.reveal.more', { n: extraPulls + 1, m: extraPulls }) }}</p>
 
         <p class="gb-reveal__rarity" [style.color]="revealColor">{{ revealRarityLabel }}</p>
         <h2 class="gb-reveal__name">{{ shown.item.name }}</h2>
@@ -266,15 +265,15 @@
         <p class="gb-reveal__lore" *ngIf="shown.item.lore">{{ shown.item.lore }}</p>
 
         <div class="gb-reveal__actions">
-          <button type="button" class="gb-reveal__done" (click)="dismiss()">Take</button>
+          <button type="button" class="gb-reveal__done" (click)="dismiss()">{{ t('gambler.reveal.take') }}</button>
           <button type="button" class="gb-reveal__again"
                   [disabled]="!active || gold < active.cost"
                   (click)="again()">
-            Again — {{ compact(active?.cost ?? 0) }} Gold
+            {{ t('gambler.reveal.again', { n: compact(active?.cost ?? 0) }) }}
           </button>
         </div>
         <button type="button" class="gb-reveal__fast" [attr.aria-pressed]="fast" (click)="toggleFast()">
-          Fast reveal {{ fast ? 'on' : 'off' }}
+          {{ fast ? t('gambler.fastOn') : t('gambler.fastOff') }}
         </button>
       </div>
 
@@ -286,7 +285,7 @@
 <!-- The last few pulls, newest first. Session-only: the bag is the record. -->
 <ng-template #pulls>
   <div class="gb-pulls" *ngIf="history.length">
-    <p class="gb-pulls__label">Last pulls</p>
+    <p class="gb-pulls__label">{{ t('gambler.pulls') }}</p>
     <ol class="gb-pulls__strip">
       <li class="gb-pulls__tile" *ngFor="let pull of history; trackBy: trackPull; let first = first"
           [class.gb-pulls__tile--new]="first"

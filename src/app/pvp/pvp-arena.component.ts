@@ -141,7 +141,7 @@ const PURCHASE_COPY: Readonly<Record<PurchaseReject, string>> = {
   wins: 'You have not won enough to be shown that one.',
   owned: 'You already took that off this shelf once.',
   points: 'Not enough arena points.',
-  capacity: 'Your bag has no room for it.',
+  capacity: 'Your satchel has no room for it.',
   deliver: 'The quartermaster fumbled it. Your points are back.',
 };
 
@@ -497,7 +497,7 @@ export class PvpArenaComponent implements OnInit, OnDestroy {
     if (!result.ok) {
       this.message = PURCHASE_COPY[result.code];
     } else if (result.item) {
-      this.message = `${result.item.name} is in your bag.`;
+      this.message = `${result.item.name} is in your satchel.`;
     } else {
       this.message = `${row.stock.name} paid out.`;
     }
