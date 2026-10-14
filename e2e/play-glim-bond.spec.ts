@@ -54,6 +54,7 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x8
     await expect(say(page)).toHaveAttribute('data-glim-bond', 'stage.2', { timeout: 10000 });
     await expect(say(page)).toContainText('Mapmates, I think');
     const talk = page.locator('.glim-say__talk');
+    await say(page).evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(a => a.finished)));
     const box = await talk.boundingBox();
     expect(box!.width).toBeGreaterThanOrEqual(44);
     expect(box!.height).toBeGreaterThanOrEqual(44);
@@ -68,6 +69,8 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x8
     await expect(card.locator('[data-glim-talk="moths"]')).toBeVisible();
     await expect(card).toContainText('I used to be an Afterimage Moth');
     await expect(card).toContainText('what do you like finding most?');
+    // The card scales in from .98: measure once it has landed.
+    await card.evaluate(el => Promise.all(el.getAnimations({ subtree: true }).map(a => a.finished)));
     const choice = card.locator('[data-choice="carvings"]');
     expect((await choice.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     const cardBox = await card.boundingBox();

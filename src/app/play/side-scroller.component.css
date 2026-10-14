@@ -1442,11 +1442,11 @@ input::placeholder { color: var(--adventure-hud-muted); }
   transform: rotate(45deg);
 }
 .glim-say__close i::after { transform: rotate(-45deg); }
-/* A bond line's Talk (shared/glim/glim-bond.ts): one plain 44 px button beside the close. */
+/* A bond line's Talk (shared/glim/glim-bond.ts): one plain button beside the close; 46px tall so a scaled HUD never renders it under 44. */
 .glim-say__talk {
   flex: none;
   min-width: 44px;
-  min-height: 44px;
+  min-height: 46px;
   padding: 0 12px;
   border: 1px solid var(--adventure-hud-gold);
   background: color-mix(in srgb, var(--adventure-hud-gold) 14.00%, transparent);
