@@ -12,6 +12,5 @@ export const RUNE_FORGE_I18N: Readonly<Record<string, { en: string; es: string }
   'forge.strikeN':       { en: 'Strike {{n}} runes', es: 'Golpear {{n}} runas' },
   'forge.skill.title':   { en: 'Runes', es: 'Runas' },
   'forge.found':         { en: '{{n}} of {{total}} runes found', es: '{{n}} de {{total}} runas halladas' },
-  'forge.details.label': { en: 'Your runes & more', es: 'Tus runas y mas' },
-  'forge.details.hint':  { en: 'Rune library, Runewords, equipment', es: 'Biblioteca, palabras, equipo' },
+  'forge.details.hint':  { en: 'Your runes, Runewords and equipment', es: 'Tus runas, palabras runicas y equipo' },
 };
