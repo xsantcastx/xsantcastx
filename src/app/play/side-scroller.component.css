@@ -2498,3 +2498,76 @@ input::placeholder { color: var(--adventure-hud-muted); }
   box-shadow: 0 0 6px var(--adventure-hud-gold);
   pointer-events: none;
 }
+
+/* ── World feel (docs/handoff/world-feel.md): the pickup's picture, the craft's
+   landing line (in the top band, beside where the Satchel lives and clear of a
+   bench's Craft button), Menu → Sound. The craft's flying icon is made in code
+   (flyCrafted) and styled inline: emulated encapsulation skips nodes Angular
+   did not render. */
+.loot-toast img {
+  width: 16px;
+  height: 16px;
+  margin: -4px 6px -4px -4px;
+  vertical-align: middle;
+  image-rendering: pixelated;
+}
+
+.craft-toast {
+  position: absolute;
+  z-index: 7;
+  left: 50%;
+  top: 6px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: calc(100% - 32px);
+  padding: 4px 4px 4px 14px;
+  pointer-events: auto;
+  touch-action: auto;
+  border: 1px solid color-mix(in srgb, var(--adventure-ember) 55%, transparent);
+  border-radius: 2px;
+  background: var(--adventure-hud-panel-solid);
+  color: var(--adventure-beacon-text);
+  font: 600 11px Orbitron, sans-serif;
+  letter-spacing: .08em;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent), 0 0 18px color-mix(in srgb, var(--adventure-ember) 22%, transparent);
+  animation: craft-toast-in .38s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.craft-toast button {
+  min-width: 64px;
+  min-height: 44px;
+  padding: 6px 14px;
+  border: 1px solid var(--adventure-hud-brass);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--adventure-ember) 18%, transparent);
+  color: var(--adventure-parchment);
+  font: inherit;
+  cursor: pointer;
+}
+
+.craft-toast button:hover, .craft-toast button:focus-visible { border-color: var(--adventure-ember); outline: none; }
+
+.sound-host {
+  position: absolute;
+  z-index: 7;
+  top: 64px;
+  right: 16px;
+  pointer-events: auto;
+  touch-action: auto;
+}
+
+@keyframes craft-toast-in {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to { opacity: 1; transform: translateX(-50%); }
+}
+
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .craft-toast { top: 4px; width: max-content; max-width: calc(100% - 16px); font-size: 10px; }
+  .sound-host { top: calc(var(--hud-top, 56px) + 4px); right: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .craft-toast { animation: none; }
+}

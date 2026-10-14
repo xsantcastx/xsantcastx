@@ -1285,3 +1285,18 @@ a Keeper who never looked into it sees "The Glass of Becoming remembers a face y
 never chose." Two of the skin tones are not human ones: the Umbral lilac and the
 Verdant sap the realms leave on Keepers who have walked them long. Other Keepers
 seen at the Hearth each have their own face, read off the glass by their name.
+
+## Glim hums (shipped — owner reviews in play)
+
+World feel (`docs/handoff/world-feel.md`). Each realm keeps a tune of its own, and you hear it in snatches: a few
+notes, then a long quiet. Infernal's is warm, the forge-light in it; Luminous rings like the lamps that never sleep;
+Umbral is low and hushed, as if it does not want to be overheard; Celestial is mostly air; Verdant is wood and
+string. Underground the same tune plays further apart, as the rock remembers it. Near a guardian the third goes
+minor and something low hums under everything.
+
+Glim, the Margin-Light, remembers every tune ever sung in the margins of the realms. Sometimes, when the realm's
+phrase ends, Glim hums the last of it back to you — an octave up, wavering a little, as if it is not quite sure it
+is allowed to. It never hums a tune it has not heard.
+
+The fish of the Delve's waters can be seen now, as shadows under the surface; they gather to a line and dart to
+the bait. The Lodge Warden's word for it: "They were always there. You were looking at the water, not into it."

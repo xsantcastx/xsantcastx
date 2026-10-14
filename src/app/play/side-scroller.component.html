@@ -84,6 +84,7 @@
         }
         <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
+        <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
       </ul>
       <!-- Phones: the rest of the old top bar lives in this menu. -->
       <div class="menu-extra">
@@ -256,8 +257,21 @@
   </aside>
   <!-- Catch / XP / pickup banners: their own slot above the prompt, clear of the goal line, Glim, the toast and the minimap. -->
   <div class="loot-toasts" aria-hidden="true">
-    @for (toast of lootToasts; track toast.key) { <span class="loot-toast">{{ toast.text }}</span> }
+    @for (toast of lootToasts; track toast.key) { <span class="loot-toast">@if (toast.art) {<img [src]="toast.art" alt="" width="16" height="16">}{{ toast.text }}</span> }
   </div>
+
+  <!-- A craft's landing line: where the made thing went, and one Open. In the top band, over a bench's panel too (never over its Craft button). -->
+  @for (toast of craftToast ? [craftToast] : []; track toast.key) {
+    <div class="craft-toast" role="status" data-engine-ignore>
+      <span>{{ t('play.craft.toast', { name: toast.name }) }}</span>
+      <button type="button" (click)="openCrafted()" [attr.aria-label]="t('play.craft.openAria', { name: toast.name })">{{ t('play.craft.open') }}</button>
+    </div>
+  }
+
+  <!-- Menu → Sound: the three sliders and the mute (shared/sound). -->
+  @if (soundOpen) {
+    <div class="sound-host" data-engine-ignore (keydown.escape)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
+  }
 
   @if (bagOpen) {
     <!-- The satchel, Diablo II-style: what the Keeper wears, and the pockets. Nothing else

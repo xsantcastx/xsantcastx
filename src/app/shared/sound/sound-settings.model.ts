@@ -1,0 +1,78 @@
+/**
+ * sound-settings.model.ts — how loud the world is, per player.
+ *
+ * Three channels and a master mute (docs/handoff/world-feel.md):
+ *
+ *   music     the sparse, per-realm score (sound-palette.ts)
+ *   ambience  the beds: wind, birds, cave drips, water, lava, the ink tide
+ *   effects   footsteps, digs, pickups, the craft chime, fishing, UI taps
+ *
+ * Saved through the gateway as `godforge-sound` (synced: progress/sound), so a
+ * player who turns the music down on a phone finds it down on the PC too. One
+ * choice made on one screen: the later edit wins whole, never a mix of both.
+ *
+ * First visit is QUIET (the "reduce sound" default): nobody opens a game to a
+ * wall of noise. The player turns it up if they like it.
+ *
+ * No imports: cloud-save.model.ts is eager and imports this merge.
+ */
+export const SOUND_KEY = 'godforge-sound';
+
+export type SoundChannel = 'music' | 'ambience' | 'effects';
+export const SOUND_CHANNELS: readonly SoundChannel[] = ['music', 'ambience', 'effects'];
+
+export interface SoundSettings {
+  version: 1;
+  music: number;
+  ambience: number;
+  effects: number;
+  muted: boolean;
+  /** When this choice was made (ms); the later one wins a merge. 0 = never touched. */
+  updatedAt: number;
+}
+
+/** The first-visit levels: soft, so the world is felt before it is heard. */
+export const QUIET_LEVELS: Readonly<Record<SoundChannel, number>> = { music: .35, ambience: .4, effects: .5 };
+
+export function defaultSound(): SoundSettings {
+  return { version: 1, ...QUIET_LEVELS, muted: false, updatedAt: 0 };
+}
+
+/** A level is 0..1 on a 5% grid (a slider step), so two devices never disagree by a hair. */
+export function clampLevel(value: unknown, fallback: number): number {
+  const n = typeof value === 'number' && Number.isFinite(value) ? value : fallback;
+  return Math.round(Math.max(0, Math.min(1, n)) * 20) / 20;
+}
+
+export function coerceSound(raw: unknown): SoundSettings {
+  const base = defaultSound();
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return base;
+  const r = raw as Partial<Record<keyof SoundSettings, unknown>>;
+  const at = typeof r.updatedAt === 'number' && Number.isFinite(r.updatedAt) && r.updatedAt > 0 ? Math.floor(r.updatedAt) : 0;
+  return {
+    version: 1,
+    music: clampLevel(r.music, base.music),
+    ambience: clampLevel(r.ambience, base.ambience),
+    effects: clampLevel(r.effects, base.effects),
+    muted: r.muted === true,
+    updatedAt: at,
+  };
+}
+
+/** Two devices: the later choice wins whole (commutative; a tie keeps local). */
+export function mergeSound(remote: unknown, local: unknown): unknown {
+  if (remote == null) return local;
+  if (local == null) return remote;
+  const r = coerceSound(remote), l = coerceSound(local);
+  return r.updatedAt > l.updatedAt ? r : l;
+}
+
+/**
+ * The gain a channel actually plays at: 0 when muted, else the level squared
+ * (a slider feels even to the ear that way; 50% is a quarter of the power).
+ */
+export function channelGain(s: SoundSettings, channel: SoundChannel): number {
+  if (s.muted) return 0;
+  const v = s[channel];
+  return v * v;
+}
