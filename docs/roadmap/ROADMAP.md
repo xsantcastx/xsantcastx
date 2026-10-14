@@ -6,13 +6,14 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## What's next (in order)
 
-1. **Delves in every realm** (owner, 2026-10-14) — Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists), each with its own biomes, creatures, keeper missions and story. **Top item after the weekly budget resets (Mon).**
-2. **The Underhearth** (Phase 8). *(built 2026-10-14, `docs/handoff/underhearth.md`)*
-3. **The Mirror Slate** — casino anywhere + Homestead management. *(built 2026-10-14, `docs/handoff/mirror-slate.md`)*
-4. **Uncapped levels, Tibia-style** — skills past 99 on a steepening curve; diminishing tool bonuses; swing floor and reward caps stay; milestone titles. *(built 2026-10-14, `docs/handoff/uncapped-levels.md`)*
-5. **Glim bond** — bond levels unlock Glim's story, conversations and small abilities. *(built 2026-10-14, `docs/handoff/glim-bond.md`)*
-6. **A surface with height** — climbable trees, ledges, floating ruins, parkour routes with rewards at the top. *(in flight)*
-7. **World feel** (owner, 2026-10-14) — *the sound of the world*: a Web Audio director (sparse per-realm score, ambience beds, block-aware SFX, sliders + mute, first-tap start, no audio files); *catch & craft*: visible fish shadows, "+1 item" pickup popups, crafted items pop above the bench and open the Satchel.
+1. **Clean & perfect what we have** (owner, 2026-10-14, top priority) — the UI feels crowded and not nice. Strip each surface back to its job, Diablo II-style: the inventory is a slot grid plus a worn-items paper doll and nothing else; the Mirror Slate opens straight to a few clear choices instead of a wall; every panel gets one primary action, details behind a tap. Audit every screen on a phone for clutter, overlap and dead chrome.
+2. **Make your Keeper** (owner, 2026-10-14) — a character creator (body, skin, hair, face, colours, name) saved to the account, and **worn gear that reads on the body**: every weapon held in the hand at the right angle and scale, armour/helm/cloak layered on the sprite, so equipping something visibly changes you (MapleStory-level readability as the floor).
+3. **Rift Gates** (owner, 2026-10-14) — portals deep in the Delve to other realms' Delves, each deeper and stranger; first realm: the Umbral ink-caves. *(in flight)*
+4. **Delves in every realm** — Luminous light-mines, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists; Umbral comes with Rift Gates), each with biomes, creatures, keeper missions and story.
+5. **A surface with height** — climbable trees, ledges, floating ruins, parkour routes with rewards at the top. *(built 2026-10-14, merging)*
+6. **World feel** — *the sound of the world*: a Web Audio director (sparse per-realm score, ambience beds, block-aware SFX, sliders + mute, first-tap start, no audio files); *catch & craft*: visible fish shadows, "+1 item" pickup popups, crafted items pop above the bench and open the Satchel.
+
+Shipped 2026-10-14: The Underhearth (`docs/handoff/underhearth.md`) · The Mirror Slate (`docs/handoff/mirror-slate.md`) · Uncapped levels (`docs/handoff/uncapped-levels.md`) · Glim bond (`docs/handoff/glim-bond.md`).
 
 Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
@@ -40,6 +41,7 @@ Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · 
 
 ## Daily review log
 
+- **2026-10-14 (night)** — Shipped the Underhearth, uncapped levels + titles and the Glim bond together (24/24 related e2e green after a CSS merge fix). Owner: the UI feels crowded — cleaning and perfecting what exists is now #1, a custom Keeper with gear that shows on the body is #2; Rift Gates in flight.
 - **2026-10-14 (daily review)** — No app code shipped since the evening entry; docs only (agent brief, SYSTEMS.md, sound + catch & craft added). Trimmed "What's next" to seven (sound and catch & craft merged into World feel; the rest under Later). Risk: five features in flight at once on a shared repo — gate each merge and watch for release-version races.
 - **2026-10-14 (evening)** — Owner ideas folded in: Lost Cabinets (scan with the Slate), uncapped Tibia-style levels, Glim bond, a surface with height + parkour, pets, a more alive and mysterious Delve, Tibia inspiration.
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
