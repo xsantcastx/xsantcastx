@@ -63,6 +63,10 @@ export interface EngineState {
   grappling?: 'grow' | 'pull' | 'hang' | null;
   /** The Banked Furnace's fight while it is up: banked or open, vents doused (of 4), seconds open, breathing in. */
   furnace?: { phase: 'banked' | 'open'; doused: number; open: number; breathing: boolean; vents: string };
+  /** The high-ground find within reach (nearby is then 'height'), and whether this player has used it. */
+  height?: { id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean };
+  /** On a surface with height: free, climb, hang or mantle. */
+  climbing?: 'free' | 'climb' | 'hang' | 'mantle';
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
@@ -169,6 +173,13 @@ export interface EngineOptions {
    * host pays Hunting XP through SkillActionService, keyed by it.
    */
   onKill?: (event: KillEvent) => void;
+  /**
+   * A find on the high ground (world/heights.ts) was used: a courier cache, a
+   * carving, the look-out or a summit cairn. The host books it once per player
+   * (the claim is keyed by `find.id`) and answers with what to show; the engine
+   * marks it found when the host says so (`setHeightsFound`).
+   */
+  onHeightFind?: (event: HeightFindEvent) => void;
   /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
@@ -335,6 +346,8 @@ export interface WorldActionEvent {
    */
   site?: string;
 }
+/** A high-ground find was used (EngineOptions.onHeightFind). */
+export interface HeightFindEvent { areaId: string; id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }
 export interface Platform { x: number; y: number; width: number }
 /** onWorldAction's "break it, pay nothing" answer (see EngineOptions.onWorldAction). */

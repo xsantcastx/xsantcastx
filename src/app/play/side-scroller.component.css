@@ -1680,6 +1680,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
     --tb: clamp(44px, calc((100vw - 28px - (var(--tb-n) - 2) * 4px) / var(--tb-n)), 64px);
   }
   .stage--delve { --ctx-left: 206px; --move-n: 3; --tb-n: 7; }
+  .stage--heights { --move-n: 3; --tb-n: 6; }
   .stage--guide { --guide-h: 54px; }
   .stage:not(.hearth-shut) { --dock-h: 176px; }
 

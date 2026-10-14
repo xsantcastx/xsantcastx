@@ -11,6 +11,9 @@ import {
 import { spriteFor } from '../../shared/art/sprite-manifest.generated';
 import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
+import { SurfaceMover, type SurfaceGeo } from './surface-body';
+import { SurfaceRender } from './surface-render';
+import { FIND_REACH, hollisFolk, hollisRealm, type AreaHeights, type HeightFind, type HeightFolk } from '../world/heights';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
@@ -453,8 +456,22 @@ export class SeamworksEngine {
   /** Cells a drag crossed, placed in order, one per PLACE_PACE. */
   private dragQueue: number[] = [];
   private dragLast = -1;
-  /** Vertical camera, world px. 0 outside delves. */
+  /** Vertical camera, world px. 0 outside delves and flat areas; negative while looking up a surface with height. */
   private cameraY = 0;
+  // ── A surface with height (world/heights.ts, surface-body.ts) ──
+  private heights: AreaHeights | null = null;
+  private geo: SurfaceGeo | null = null;
+  private readonly mover = new SurfaceMover();
+  private readonly surface = new SurfaceRender();
+  /** Finds this player has already used (ids), from the host. */
+  private heightsFound: ReadonlySet<string> = new Set();
+  private folk: HeightFolk[] = [];
+  /** Smoothed vertical look-ahead, world px. */
+  private lookY = 0;
+  /** Which folk line is showing (index into folk), its line and when it started. */
+  private folkSay = { who: -1, line: 0, at: -99, armed: true };
+  /** The day number Hollis's walk is read for (tests set it). */
+  private day = () => Math.floor(Date.now() / 86_400_000);
   private blastTime = 0;
   private blastCooldown = 0;
   /** The blast's afterglow lighting the delve, 1 → 0. */
@@ -514,8 +531,71 @@ export class SeamworksEngine {
     this.fuses = [];
     for (const r of this.rubble) r.active = false;
     this.sites = this.sitesFor(area);
+    this.enterHeights(area);
     this.motes.reset();
     this.life.enter(area, this.town);
+  }
+  /** Build the high ground's collision and its people for an area (nothing for a flat one). */
+  private enterHeights(area: AreaDef): void {
+    const h = area.heights ?? null;
+    this.heights = h; this.mover.reset(); this.lookY = 0; this.folkSay.who = -1; this.folkSay.armed = true;
+    this.geo = h ? { platforms: [...area.platforms, ...h.ledges], solids: h.solids, climbs: h.trees, width: area.width } : null;
+    this.folk = h ? [...h.folk, ...(hollisRealm(this.day()) === h.realm ? [hollisFolk(h)] : [])] : [];
+    this.surface.enter(h);
+  }
+  private static readonly HOLLIS = { robe: '#5a4228', shade: '#3a2a1c', trim: '#c08a3e', skin: '#c4926a', glow: '#7fd5a3' };
+  /** The traveller on the high ground, their name tag and the line they are saying. */
+  private drawFolk(c: CanvasRenderingContext2D, viewport: number, time: number): void {
+    const f = this.lifeFrame, tr = this.options.translate;
+    f.camera = this.camera; f.viewport = viewport; f.time = time; f.reduced = this.reducedMotion; f.playerX = this.player.x; f.pixelScale = this.pixelScale;
+    this.folk.forEach((p, i) => {
+      if (p.x < this.camera - 200 || p.x > this.camera + viewport + 200) return;
+      const talking = this.folkSay.who === i;
+      this.life.drawAt(c, f, `npc-${p.id}-figure`, p.x, p.y, Math.sign(this.player.x - p.x) || 1, SeamworksEngine.HOLLIS, 'coat', 3.1 + i, talking);
+      const name = tr?.(p.nameKey) ?? 'Hollis Fenn', title = tr?.(p.titleKey) ?? '';
+      c.save(); c.textAlign = 'center';
+      c.font = '600 14px "Cormorant Garamond", Georgia, serif';
+      c.fillStyle = '#1a120fe6'; c.fillRect(p.x - 80, p.y - 196, 160, 35);
+      c.fillStyle = SeamworksEngine.HOLLIS.glow; c.fillRect(p.x - 80, p.y - 163, 160, 2);
+      c.fillStyle = '#ffe1b0'; c.fillText(name, p.x, p.y - 180, 150);
+      c.font = 'italic 600 11px "Cormorant Garamond", Georgia, serif'; c.fillStyle = '#d9bf98'; c.fillText(title, p.x, p.y - 166, 150);
+      if (talking && tr) {
+        const text = tr(p.lines[this.folkSay.line % p.lines.length]);
+        c.font = '600 15px "Cormorant Garamond", Georgia, serif';
+        const w = Math.min(320, c.measureText(text).width + 24), lines = w >= 320 ? 2 : 1, h = lines * 19 + 10, y = p.y - 206 - h;
+        c.fillStyle = '#fff6ea'; c.fillRect(p.x - w / 2, y, w, h);
+        c.fillStyle = '#2a1c16';
+        if (lines === 1) c.fillText(text, p.x, y + 19, w - 16);
+        else { const cut = text.lastIndexOf(' ', Math.floor(text.length / 2) + 4); c.fillText(text.slice(0, cut), p.x, y + 19, w - 16); c.fillText(text.slice(cut + 1), p.x, y + 38, w - 16); }
+      }
+      c.restore();
+    });
+  }
+  /** One line at a time as the Keeper comes near on the same height; again after walking away. */
+  private updateFolk(): void {
+    if (!this.folk.length) return;
+    const say = this.folkSay;
+    if (say.who >= 0 && this.elapsed - say.at > 6) say.who = -1;
+    this.folk.forEach((p, i) => {
+      const dx = Math.abs(this.player.x - p.x), dy = Math.abs(this.player.y - p.y);
+      if (dx > 320 || dy > 200) { if (say.who !== i) say.armed = true; return; }
+      if (dx < 170 && dy < 60 && say.armed && say.who < 0) { say.who = i; say.at = this.elapsed; say.line = (say.line + (say.at > 0 ? 1 : 0)) % p.lines.length; say.armed = false; }
+    });
+  }
+  /** The host's record of used finds (ids). The engine never writes it. */
+  setHeightsFound(found: ReadonlySet<string>): void { this.heightsFound = found; }
+  /** The find the Keeper stands at, or null. */
+  private findInReach(): HeightFind | null {
+    const h = this.heights;
+    if (!h) return null;
+    for (const f of h.finds) if (Math.abs(f.x - this.player.x) <= FIND_REACH.x && Math.abs(f.y - this.player.y) <= FIND_REACH.y && this.player.grounded) return f;
+    return null;
+  }
+  private useFind(f: HeightFind): void {
+    const found = this.heightsFound.has(f.id);
+    this.options.onHeightFind?.({ areaId: this.areaDef.id, id: f.id, kind: f.kind, found });
+    if (f.textKey && (found || f.kind === 'carving')) this.say(f.textKey, this.options.translate?.(f.textKey) ?? f.textKey);
+    else if (found) this.say('play.height.opened', this.options.translate?.('play.height.opened') ?? 'Already opened.');
   }
   /** An area's gathering nodes, created on the first visit (harvest times from the save) and kept for the session. */
   private sitesFor(area: AreaDef): GatherSite[] {
@@ -1643,6 +1723,11 @@ export class SeamworksEngine {
     const t = this.terrain;
     if (this.cart) { this.leaveCart(this.cart.dir * this.cart.speed * .9, -560); return; }
     if (this.grapple) { this.releaseGrapple(true); return; }
+    if (this.geo) {
+      const dir = (Number(this.input.has('right')) - Number(this.input.has('left'))) as -1 | 0 | 1;
+      if (this.mover.pressJump(this.player, { dir, jump: true, down: this.input.has('down'), facing: this.facing }, this.geo)) { this.climbing = this.mover.busy; this.cancelMove(); return; }
+      this.climbing = false;
+    }
     if (this.climbing) return;
     if (t && this.input.has('down') && this.player.grounded && isOneWay(t, t.colAt(this.player.x), t.rowAt(this.player.y + 1))) {
       this.dropTime = DROP_THROUGH; this.player.grounded = false;
@@ -2460,6 +2545,8 @@ export class SeamworksEngine {
       this.reelIn(); return;
     }
     const station = this.nearbyStation();
+    const find = station ? null : this.findInReach();
+    if (find) { this.useFind(find); this.report(); return; }
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
     const site = station ? null : this.siteInReach();
     if (site) { if (this.attackCooldown <= 0) this.workSite(site); this.report(); return; }
@@ -2567,6 +2654,7 @@ export class SeamworksEngine {
     this.elapsed += dt;
     this.atmosphere.update(dt);
     this.life.update(dt, this.player.x, this.elapsed);
+    this.updateFolk();
     this.landing = Math.max(0, this.landing - dt);
     this.attackTime = Math.max(0, this.attackTime - dt); this.attackCooldown -= dt;
     this.dodgeTime = Math.max(0, this.dodgeTime - dt); this.dodgeCooldown -= dt; this.hurtTime -= dt;
@@ -2620,6 +2708,10 @@ export class SeamworksEngine {
         }
       }
       this.reachedUnderhearth(this.terrain);
+    } else if (this.geo) {
+      this.mover.step(this.player, { dir: direction as -1 | 0 | 1, jump: this.input.has('jump'), down: this.input.has('down'), facing: this.facing }, velocityX, dt, this.geo);
+      this.climbing = this.mover.busy;
+      if (this.mover.event === 'grab' || this.mover.event === 'walljump') this.cancelMove();
     } else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
     // Coyote time: the clock since the feet last touched; a buffered press jumps on landing.
     if (this.player.grounded && !this.climbing) this.airTime = 0; else if (!this.climbing) this.airTime += dt;
@@ -2682,7 +2774,7 @@ export class SeamworksEngine {
       const safeX = this.areaDef.safeX ?? 0;
       const floor = monster.def.floorY ?? FLOOR, k = this.figure;
       // In a delve a Maw only cares about a Keeper standing in its cavern.
-      const away = !!this.terrain && Math.abs(this.player.y - floor) > 120;
+      const away = (!!this.terrain || !!this.heights) && Math.abs(this.player.y - floor) > 120;
       if ((safeX && this.player.x < safeX) || away) {
         monster.x += Math.sign(monster.spawn - monster.x) * Math.min(Math.abs(monster.spawn - monster.x), 65 * dt);
         monster.phase = 'idle'; monster.timer = .5;
@@ -2951,14 +3043,17 @@ export class SeamworksEngine {
     // A carved wall reads as 'inscription'; a placed chest or camp by its use.
     const use = at >= 0 ? (t!.inscriptions.has(at) ? (t!.inscriptions.get(at)!.startsWith(MARK_PREFIX) ? 'mark' : 'inscription')
       : RAIL_KINDS[t!.kind[at]] === 1 ? 'rail' : TERRAIN_NODE_LIST[t!.kind[at]].use ?? null) : null;
-    const site = !station && !use ? this.siteInReach() : null;
+    const find = !station && !use ? this.findInReach() : null;
+    const site = !station && !use && !find ? this.siteInReach() : null;
     const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
     this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name, enemyId: nearest?.def.creature,
       ...(this.keyed && this.keyed.en === this.message ? { messageKey: this.keyed.key, ...(this.keyed.vars ? { messageVars: this.keyed.vars } : {}) } : {}),
-      nearby: use ?? station?.id ?? (site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
+      nearby: use ?? station?.id ?? (find ? 'height' : site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
+      height: find ? { id: find.id, kind: find.kind, found: this.heightsFound.has(find.id) } : undefined,
+      y: Math.round(this.player.y), climbing: this.heights ? this.mover.mode : undefined,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
-      x: Math.round(this.player.x), y: Math.round(this.player.y), paused: this.paused,
+      x: Math.round(this.player.x), paused: this.paused,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
       facing: this.facing, animation: this.pose(),
@@ -3617,12 +3712,23 @@ export class SeamworksEngine {
       // Delves follow the Keeper down; the surface sits low in the frame at the top.
       const target = Math.max(0, Math.min(t.bottom + 40 - 720, this.player.y - 720 * .58));
       this.cameraY += (target - this.cameraY) * (this.reducedMotion ? 1 : 1 - Math.exp(-7 * this.frameDt));
+    } else if (this.heights) {
+      // A surface with height: follow the Keeper up, with a look-ahead the way they are heading.
+      const look = this.mover.climbing && this.input.has('jump') ? -120 : this.player.vy < -200 ? -80 : this.player.vy > 420 ? 80 : 0;
+      this.lookY += (look - this.lookY) * (this.reducedMotion ? 1 : 1 - Math.exp(-3 * this.frameDt));
+      const target = Math.max(this.heights.top, Math.min(0, this.player.y - 720 * .62 + this.lookY));
+      this.cameraY += (target - this.cameraY) * (this.reducedMotion ? 1 : 1 - Math.exp(-6 * this.frameDt));
+      if (Math.abs(this.cameraY) < .05) this.cameraY = 0;
     } else this.cameraY = 0;
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
     const bg = this.sceneImage();
+    // Looking up a surface with height, the backdrop sinks at 0.6 of the camera (as a delve's does) and sky fills above it.
+    const lift = !t && this.cameraY < 0 ? -this.cameraY * .6 : 0;
+    if (lift) { c.save(); c.translate(0, lift); }
     // Imported parallax layers replace the painting once every one of them has loaded (RND-2).
     const layered = !t && this.parallax.draw(c, this.town.realm, this.camera, viewport, FLOOR, this.pixelScale > 1.25);
     const cached = !t && !layered && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
+    if (lift) c.restore();
     // Below a delve's surface the distant cave fills the frame (it shows through the caverns);
     // the town painting and its shade are drawn only while the surface is in view.
     const underground = !!t && t.top - this.cameraY <= 0;
@@ -3640,6 +3746,7 @@ export class SeamworksEngine {
       }
       c.fillStyle = this.sceneShade(c); c.fillRect(0, 0, viewport, 720);
     }
+    if (lift) this.surface.sky(c, viewport, lift);
     if (t) this.caveBackdrop.draw(c, t, this.camera, this.cameraY, viewport, 720);
     const jolt = this.shake > 0 ? this.shake : 0;
     c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), -this.cameraY + (jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0));
@@ -3657,6 +3764,7 @@ export class SeamworksEngine {
       c.fillStyle = '#f6a668'; c.fillRect(platform.x + 8, platform.y, Math.max(0, platform.width - 16), 1);
       for (let x = platform.x + 18; x < platform.x + platform.width; x += 65) { c.fillStyle = '#3c3039'; c.fillRect(x, platform.y + 12, 32, 7); }
     }
+    if (this.heights) this.surface.draw(c, this.camera, this.cameraY, viewport, this.heightsFound, motionTime);
     if (this.isTown && this.areaDef.scenery === 'seamworks-hub') this.atmosphere.hub(c, motionTime, this.areaDef.safeX || 1120);
     if (t) this.terrainRenderer.draw(c, this.camera, this.cameraY, viewport, 720, this.pixelScale);
     if (t) this.drawRails(c, t, viewport, motionTime);
@@ -3684,6 +3792,7 @@ export class SeamworksEngine {
       f.playerX = this.player.x; f.pixelScale = this.pixelScale;
       this.life.draw(c, f);
     }
+    if (this.folk.length) this.drawFolk(c, viewport, motionTime);
     if (!t) this.debris.draw(c);
     for (const drop of this.drops) this.drawDropBeam(c, drop, motionTime);
     for (const drop of this.drops) {

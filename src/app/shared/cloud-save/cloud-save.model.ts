@@ -52,6 +52,7 @@ import { mergeGamesLedgers } from '../games/play-ledger';
 import { mergeGlim } from '../glim/glim-save.model';
 import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
+import { mergeHeights } from '../heights/heights-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -421,6 +422,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // counted twice), counts take the higher, the later day's board wins.
     // Hand-written so junk ids are dropped. See bounty-save.model.ts.
     merge: mergeBounties,
+  },
+  {
+    key: 'godforge-heights',
+    collection: 'progress',
+    doc: 'heights',
+    label: 'The high roads',
+    // `{ version, found, titles }`: the high-ground finds used (cache receipts
+    // written before any pay) and the summit titles. Both only grow: a union.
+    // See heights-save.model.ts.
+    merge: mergeHeights,
   },
 ];
 

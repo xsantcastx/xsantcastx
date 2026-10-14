@@ -29,6 +29,7 @@ import { LUMINOUS_TOWN } from './towns/luminous';
 import { UMBRAL_TOWN } from './towns/umbral';
 import { VERDANT_TOWN } from './towns/verdant';
 import type { TerrainSpec, ToolTiers } from '../engine/terrain';
+import type { AreaHeights } from './heights';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 
 /** Every built town. A Phase 2 town is a new file in towns/ and one line here. */
@@ -198,6 +199,8 @@ export interface AreaDef {
   figureScale?: number;
   /** Herb patches, trees and ore outcrops to gather here (hunting grounds). */
   nodes?: readonly GatherNodeDef[];
+  /** Height above the floor: trees, shelves, ruins, bridges and what waits up there (world/heights.ts). */
+  heights?: AreaHeights;
 }
 
 export type HuntZoneDef = AreaDef;
