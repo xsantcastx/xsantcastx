@@ -48,10 +48,10 @@ test('fresh Keeper mines, forges and manages the blade in the satchel', async ({
   await book.getByRole('button', { name: 'Equip', exact: true }).click();
   await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Worn');
   await book.getByRole('button', { name: 'Stow', exact: true }).click();
-  await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Bag');
+  await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Satchel');
   await page.reload();
   await page.clock.fastForward(100);
-  await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Bag');
+  await expect(page.locator('.satchel p').filter({ hasText: 'Edge' }).locator('b')).toHaveText('Satchel');
   await page.keyboard.press('i');
   await expect(book).toBeVisible();
   await page.keyboard.press('Escape');

@@ -75,6 +75,6 @@ test.describe('loadout slot picker', () => {
     await open(page);
 
     await page.getByRole('button', { name: /^Weapon,/ }).first().click();
-    await expect(page.locator('.ld__picker')).toContainText(/Nothing in your bag fits/);
+    await expect(page.locator('.ld__picker')).toContainText(/Nothing in your satchel fits/);
   });
 });
