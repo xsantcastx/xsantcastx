@@ -302,7 +302,7 @@
         } @else {
           <div class="pockets">
             @for (pocket of pockets; track pocket.key) {
-              <button type="button" class="pocket" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
+              <button type="button" class="pocket" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
                 @if (pocket.art) {
                   <img [src]="pocket.art" alt="">
                 } @else {

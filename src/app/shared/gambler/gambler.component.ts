@@ -62,6 +62,8 @@ import {
   type StationTab,
 } from '../station-ui';
 import { artFor } from '../art/art';
+import { iconOf } from '../art/item-icons';
+import { altarAura, altarBurst, altarSigil, altarSlab } from '../art/pixel-fx';
 import {
   QUALITY_TAG_LABELS,
   formatQuality,
@@ -105,8 +107,6 @@ const HISTORY_LIMIT = 8;
 /** How many boxes one "Open ×N" press may open. The reveal shows the best one. */
 const OPEN_MANY_MAX = 5;
 
-/** One picture for every box on the shelf: the boxes have no art of their own yet. */
-const BOX_ART_ID = 'chest-overlay';
 
 /**
  * The strip outlives the component on purpose: leaving for the Market and
@@ -117,15 +117,6 @@ let sessionHistory: PullRecord[] = [];
 let sessionFast = false;
 let pullSeq = 0;
 
-/** Stage art, all through the manifest. Missing keys simply render nothing. */
-const STAGE_ART = {
-  sigil: 'eclipse-summoning-sigil',
-  flame: 'violet-forge-flame',
-  portal: 'rift-portal-core',
-  burst: 'crafting-burst',
-  aura: 'enhancement-aura',
-  coin: 'gold',
-} as const;
 
 interface OddsRow {
   rarity: ItemRarity;
@@ -197,13 +188,21 @@ export class GamblerComponent implements OnInit, OnDestroy {
   fast = sessionFast;
   history: PullRecord[] = sessionHistory;
 
+  /**
+   * The altar in pixels (one art style): the turning sigil, the burst and the halo
+   * on the 32 px grid (pixel-fx.ts), the flames, the portal and the wager coin as
+   * 16 px icons (item-icons.ts), all Godforge violet and aged gold. They were the
+   * painted effect renders `eclipse-summoning-sigil`, `violet-forge-flame`,
+   * `rift-portal-core`, `crafting-burst` and `enhancement-aura`.
+   */
   readonly stage = {
-    sigil: artFor(STAGE_ART.sigil),
-    flame: artFor(STAGE_ART.flame),
-    portal: artFor(STAGE_ART.portal),
-    burst: artFor(STAGE_ART.burst),
-    aura: artFor(STAGE_ART.aura),
-    coin: artFor(STAGE_ART.coin),
+    sigil: altarSigil(),
+    flame: iconOf('flame', 'eclipse', 'amethyst'),
+    portal: iconOf('portal', 'obsidian', 'eclipse'),
+    burst: altarBurst(),
+    aura: altarAura(),
+    coin: iconOf('coin', 'gold', 'sungold'),
+    slab: altarSlab(),
   };
 
   /** The till. Rebuilt whenever the bag changes. */
@@ -225,7 +224,8 @@ export class GamblerComponent implements OnInit, OnDestroy {
   luckProgress = 0;
   luckLabel = '';
   walletGold: StationCost = { kind: 'gold', label: 'Gold', need: 0, have: 0 };
-  readonly boxArt: StationArt | null = artFor(BOX_ART_ID);
+  /** One picture for every box on the shelf: a sealed pixel chest in Godforge violet (it was the painted `chest-overlay`). */
+  readonly boxArt: StationArt | null = iconOf('chest', 'obsidian', 'eclipse', 'iron');
   /** How many other boxes an "Open ×N" press opened alongside the one revealed. */
   extraPulls = 0;
 
