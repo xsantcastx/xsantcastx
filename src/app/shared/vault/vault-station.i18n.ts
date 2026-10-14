@@ -64,7 +64,6 @@ export const VAULT_STATION_I18N: Readonly<Record<string, { en: string; es: strin
   'vault.done.takeOutN': { en: '{{n}} × {{name}} are back in your satchel.', es: '{{n}} × {{name}} vuelven a tu mochila.' },
   'vault.done.row': { en: 'Your satchel now holds {{cap}}.', es: 'Tu mochila ahora guarda {{cap}}.' },
   'vault.done.tab': { en: 'The {{tab}} tab is yours.', es: 'La pestaña {{tab}} es tuya.' },
-  'vault.details': { en: 'More storage and how the Vault works', es: 'Mas espacio y como funciona la Bóveda' },
   'vault.details.hint': { en: 'Prices for more room, and where things go when you are full', es: 'Precios de mas espacio, y adonde va todo cuando estas lleno' },
   'vault.details.prices': { en: 'Storage you can buy', es: 'Espacio que puedes comprar' },
   'vault.details.owned': { en: 'Owned', es: 'Tuya' },

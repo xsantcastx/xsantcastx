@@ -135,7 +135,7 @@ const REJECT_COPY: Readonly<Record<CraftReject, string>> = {
   locked: 'A Delve mission teaches this pattern. Find it on the Quest Board.',
   missing: 'The anvil is short of materials.',
   funds: 'Not enough Gold to pay the bench.',
-  capacity: 'Your bag has no room for what this makes.',
+  capacity: 'Your satchel has no room for what this makes.',
   mint: 'The pattern named something the catalogue does not have.',
   persist: 'The strike did not save. Nothing was spent — try again.',
 };
