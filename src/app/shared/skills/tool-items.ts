@@ -1,8 +1,8 @@
 /**
- * tool-items.ts — the sixteen tool definitions (four families, tiers I-IV).
+ * tool-items.ts — the eighteen tool definitions (four families, tiers I-IV; pickaxe and axe go on to V).
  *
  * Generated from one small table rather than written out, because this file
- * sits in the eagerly loaded item catalogue and sixteen hand-written rows of
+ * sits in the eagerly loaded item catalogue and eighteen hand-written rows of
  * lore would cost more bytes than they are worth.
  *
  * Tools are soulbound off-hand pieces with no rolls: what a tool is worth is
@@ -16,11 +16,13 @@
 import type { ItemDefinition, ItemStyle } from '../rpg/item-definition';
 
 export type ToolFamily = 'pickaxe' | 'axe' | 'sickle' | 'staff';
-export type ToolTier = 1 | 2 | 3 | 4;
+export type ToolTier = 1 | 2 | 3 | 4 | 5;
 
 export const TOOL_FAMILIES: readonly ToolFamily[] = ['pickaxe', 'axe', 'sickle', 'staff'];
-export const TOOL_TIER_LIST: readonly ToolTier[] = [1, 2, 3, 4];
-export const TOOL_NUMERALS = ['', 'I', 'II', 'III', 'IV'] as const;
+export const TOOL_TIER_LIST: readonly ToolTier[] = [1, 2, 3, 4, 5];
+/** Tier V exists for the pickaxe and the axe only (the sickle and the staff stop at IV). */
+export const TOOL_MAX_TIER: Readonly<Record<ToolFamily, ToolTier>> = { pickaxe: 5, axe: 5, sickle: 4, staff: 4 };
+export const TOOL_NUMERALS = ['', 'I', 'II', 'III', 'IV', 'V'] as const;
 
 const FAMILY_NAME: Readonly<Record<ToolFamily, string>> = {
   pickaxe: 'Pickaxe', axe: 'Axe', sickle: 'Sickle', staff: 'Staff',
@@ -64,14 +66,14 @@ const STARTER_NAME: Readonly<Record<StarterFamily, string>> = { pickaxe: 'Worn P
  */
 export function parseToolId(id: string | undefined | null): { family: ToolFamily; tier: ToolTier; starter?: true } | null {
   if (!id) return null;
-  const m = /^(pickaxe|axe|sickle|staff)-([1-4])$/.exec(id);
-  if (m) return { family: m[1] as ToolFamily, tier: Number(m[2]) as ToolTier };
+  const m = /^(pickaxe|axe|sickle|staff)-([1-5])$/.exec(id);
+  if (m && Number(m[2]) <= TOOL_MAX_TIER[m[1] as ToolFamily]) return { family: m[1] as ToolFamily, tier: Number(m[2]) as ToolTier };
   const s = /^starter-(pickaxe|axe|sickle)$/.exec(id);
   return s ? { family: s[1] as ToolFamily, tier: 1, starter: true } : null;
 }
 
 export const TOOL_DEFINITIONS: readonly ItemDefinition[] = TOOL_FAMILIES.flatMap(family =>
-  TOOL_TIER_LIST.map((tier): ItemDefinition => ({
+  TOOL_TIER_LIST.filter(tier => tier <= TOOL_MAX_TIER[family]).map((tier): ItemDefinition => ({
     id: toolItemId(family, tier),
     name: toolName(family, tier),
     family: 'equipment',

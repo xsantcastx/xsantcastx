@@ -1,6 +1,6 @@
 <section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -91,7 +91,7 @@
 
   <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard ? '' : null">
     <div class="vital">
-      <label>{{ t('play.hud.keeper') }} <b>{{ state.hp }}</b></label>
+      <label>{{ t('play.hud.keeper') }} <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
     </div>
     @if (state.enemyHp > 0) {
@@ -153,6 +153,23 @@
         <button type="button" class="map-mini-open" (click)="openMap()" [attr.aria-label]="t('play.map.open')"><canvas aria-hidden="true"></canvas><kbd class="key-hint">M</kbd></button>
       }
     </div>
+  }
+  @if (anchorSheet) {
+    <section class="anchor-sheet" role="dialog" aria-modal="true" aria-labelledby="anchor-title" data-engine-ignore (keydown.escape)="closeAnchors()">
+      <header class="map-head">
+        <div>
+          <span class="realm-tag">{{ t('play.delve.yourDelve') }}</span>
+          <h2 id="anchor-title">{{ t('play.uh.travel.title') }}</h2>
+        </div>
+        <button type="button" class="book-close anchor-close" (click)="closeAnchors()">{{ t('play.hud.book.close') }}</button>
+      </header>
+      <p class="anchor-lead">{{ t('play.uh.travel.lead') }}</p>
+      <ul class="anchor-list">
+        @for (row of anchorSheet; track row.key) {
+          <li><button type="button" class="anchor-row" [class.anchor-row--home]="row.home" [attr.data-anchor]="row.key" (click)="travelAnchor(row)">{{ row.label }}</button></li>
+        } @empty { <li class="anchor-empty">{{ t('play.uh.travel.none') }}</li> }
+      </ul>
+    </section>
   }
   @if (map.open && state.delve) {
     <section class="map-full" role="dialog" aria-modal="true" aria-labelledby="map-title" data-engine-ignore>
@@ -330,6 +347,9 @@
       <button type="button" [disabled]="actionDisabled" (click)="interact()">{{ t('play.hud.interact') }} <kbd class="key-hint">E</kbd></button>
       @if (state.nearby === 'delve' && campReady) {
         <button type="button" class="camp-go" (click)="descendToCamp()">{{ t('play.delve.camp.descend') }} <kbd class="key-hint">C</kbd></button>
+      }
+      @if (state.nearby === 'delve' && anchorsReady) {
+        <button type="button" class="camp-go anchor-go" (click)="openAnchors()">{{ t('play.uh.travel.descend') }}</button>
       }
     }
     <button type="button" class="keys-toggle" (click)="showKeys = !showKeys" [attr.aria-expanded]="showKeys">{{ t('play.hud.keys') }}</button>

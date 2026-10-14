@@ -67,6 +67,43 @@ describe('fishing.model: the catch tables', () => {
     expect(waterFor('basalt-caverns', 'water')).toBe('seep');
     expect(waterFor('glowcap-grotto', 'water')).toBe('mere');
     expect(waterFor('magma-halls', 'lava')).toBe('magma');
+    // Phase 8: lava in the Underhearth is its own water; the Magma Halls' lava stays Magma.
+    expect(waterFor('underhearth', 'lava')).toBe('hearth');
+    expect(waterFor('underhearth', 'water')).toBe('mere');
+  });
+
+  it('the Underhearth\'s lava: tier 3, a step above Magma, its own fish, crate and legendary, each with a use', () => {
+    expect(WATERS.hearth.liquid).toBe('lava');
+    expect(WATERS.hearth.tier).toBeGreaterThan(WATERS.magma.tier);
+    expect(WATERS.hearth.xp[0]).toBeGreaterThan(WATERS.magma.xp[0]);
+    expect(WATERS.hearth.crate).toBe('hearth-crate');
+    const ids = (rarity: string) => catchTable({ water: 'hearth', bait: 0 }).filter(r => r.rarity === rarity).map(r => r.id);
+    expect(ids('common')).toEqual(['cold-coalfish']);
+    expect(ids('uncommon')).toEqual(['pressure-pike']);
+    expect(ids('legendary')).toEqual(['the-fifth-ember']);
+    expect(ids('crate')).toEqual(['hearth-crate']);
+    expect(ids('junk')).toEqual(['rusted-rivet']);
+    // Neither the Magma Halls nor the Mere hold them.
+    for (const water of ['seep', 'mere', 'magma'] as const) {
+      expect(catchTable({ water, bait: 0 }).some(r => ['cold-coalfish', 'pressure-pike', 'the-fifth-ember', 'hearth-crate'].includes(r.id))).withContext(water).toBeFalse();
+    }
+    // Every fish the Underhearth gives is an input of a recipe at the Bench.
+    for (const id of ['cold-coalfish', 'pressure-pike', 'the-fifth-ember']) {
+      expect(CRAFTING_RECIPES.some(r => r.ingredients.some(i => i.materialId === id))).withContext(id).toBeTrue();
+    }
+    expect(openCrate('hearth-crate', () => 0).map(r => r.id)).toEqual(['ember-residue', 'pyrite-dust', 'ironwood', 'emberheart-ore']);
+  });
+
+  it('the Underhearth kit: the five recipes, their gates and their outputs', () => {
+    const by = (id: string) => CRAFTING_RECIPES.find(r => r.id === id)!;
+    expect(by('craft-bark-rope').output).toEqual({ itemId: 'bark-rope', count: 8, stack: true });
+    expect(by('craft-seam-rail').output).toEqual({ itemId: 'seam-rail', count: 4, stack: true });
+    expect([by('craft-rift-anchor').skill, by('craft-rift-anchor').requiredLevel]).toEqual(['smithing', 45]);
+    expect(by('craft-seam-cart').output.itemId).toBe('seam-cart');
+    expect([by('craft-thornroot-grapple').skill, by('craft-thornroot-grapple').requiredLevel]).toEqual(['smithing', 20]);
+    for (const id of ['seam-cart', 'seam-rail', 'bark-rope', 'thornroot-grapple', 'rift-anchor', 'ironwood', 'waystone-shard', 'four-hammer-marks']) {
+      expect(materialDisplay(id)).withContext(id).toBeTruthy();
+    }
   });
 
   it('every catch has a name, a lore line, a use line, a display row, and a recipe input catalogued where it is one', () => {
@@ -86,6 +123,8 @@ describe('fishing.model: XP, grades, perks, rods', () => {
     expect(catchXp('mere', 'common', 'off')).toBe(8);
     expect(catchXp('magma', 'common', 'off')).toBe(18);
     expect(catchXp('magma', 'legendary', 'off')).toBe(180);
+    expect(catchXp('hearth', 'common', 'off')).toBe(28);
+    expect(catchXp('hearth', 'legendary', 'off')).toBe(280);
     for (const water of WATER_IDS) for (const rarity of ['common', 'uncommon', 'rare', 'legendary', 'junk', 'crate', 'quest'] as const) {
       expect(catchXp(water, rarity, 'perfect')).toBeGreaterThanOrEqual(catchXp(water, rarity, 'good'));
       expect(catchXp(water, rarity, 'good')).toBeGreaterThanOrEqual(catchXp(water, rarity, 'off'));

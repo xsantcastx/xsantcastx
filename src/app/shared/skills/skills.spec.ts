@@ -2,7 +2,9 @@ import { xpForLevel } from '../activity/mining-level';
 import { materialDisplay } from '../rpg/material-catalog';
 import { SKILLS } from './skill.model';
 import { SKILL_UNLOCKS, nextUnlock, skillPerks, unlocksFor } from './skill-unlocks';
-import { lanternRadiusFor, toolTiers } from './tools';
+import { lanternRadiusFor, maxTierForLevel, toolCard, toolTiers, TOOL_SWING_SECONDS, TOOL_TIER_LEVEL } from './tools';
+import { parseToolId, TOOL_DEFINITIONS } from './tool-items';
+import { CRAFTING_RECIPES } from '../crafting/crafting.model';
 
 describe('skill unlocks', () => {
   it('gives every skill something at least every 15 levels up to 99', () => {
@@ -71,5 +73,41 @@ describe('toolTiers', () => {
   it('lantern grows 7 -> 16 tiles (7 tiles = the engine default reach)', () => {
     expect(lanternRadiusFor(1)).toBe(7);
     expect(lanternRadiusFor(99)).toBe(16);
+  });
+});
+
+describe('tool tier V (pickaxe and axe only)', () => {
+  const bag = (ids: string[]) => ({ items: ids.map(definitionId => ({ definitionId })), equipped: {} });
+  const at = (mining: number) => ({ version: 1 as const, xpByDiscipline: { mining: xpForLevel(mining) } });
+
+  it('exists as a soulbound tier-5 pickaxe and axe, and nothing else', () => {
+    const v = TOOL_DEFINITIONS.filter(d => d.id.endsWith('-5'));
+    expect(v.map(d => d.id).sort()).toEqual(['axe-5', 'pickaxe-5']);
+    expect(v.map(d => d.name).sort()).toEqual(['Axe V', 'Pickaxe V']);
+    expect(v.every(d => d.soulbound)).toBeTrue();
+    expect(TOOL_DEFINITIONS.length).toBe(18);
+    expect(parseToolId('pickaxe-5')).toEqual({ family: 'pickaxe', tier: 5 });
+    expect(parseToolId('sickle-5')).toBeNull();
+    expect(parseToolId('staff-5')).toBeNull();
+  });
+
+  it('needs Smithing 60 to forge and level 60 to wield; a Mining-59 Keeper works it as IV', () => {
+    expect(TOOL_TIER_LEVEL[5]).toBe(60);
+    expect(maxTierForLevel(59)).toBe(4);
+    expect(maxTierForLevel(60)).toBe(5);
+    for (const id of ['craft-pickaxe-5', 'craft-axe-5']) {
+      const r = CRAFTING_RECIPES.find(x => x.id === id)!;
+      expect(r.skill).toBe('smithing');
+      expect(r.requiredLevel).toBe(60);
+    }
+    expect(toolTiers(bag(['pickaxe-5']), at(59)).pickaxe).toBe(4);
+    expect(toolTiers(bag(['pickaxe-5']), at(60)).pickaxe).toBe(5);
+    expect(toolCard('pickaxe-5', at(59))!.worksAs).toBe(4);
+    expect(toolCard('pickaxe-5', at(59))!.capUntil).toBe(60);
+  });
+
+  it('swings at 0.28 s at level 1, above the 0.25 s floor', () => {
+    expect(TOOL_SWING_SECONDS[5]).toBe(0.28);
+    expect(toolTiers(bag(['pickaxe-5'])).swing.pickaxe).toBe(0.28);
   });
 });

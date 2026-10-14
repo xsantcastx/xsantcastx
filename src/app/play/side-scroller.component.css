@@ -2287,4 +2287,42 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .top-actions .slate-btn { display: grid; place-items: center; order: -1; width: 44px; height: 44px; padding: 0; }
   .slate-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .slate-ico { width: 18px; height: 24px; }
+/* ── The Underhearth (Phase 8): the Rift Anchor travel sheet ───────────── */
+.anchor-sheet {
+  position: absolute;
+  z-index: 7;
+  top: 64px;
+  left: 50%;
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100% - 96px);
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 8px;
+  padding: 12px 14px;
+  pointer-events: auto;
+  border: 1px solid var(--adventure-hud-shadow);
+  border-left: 2px solid var(--adventure-ember);
+  border-radius: 2px;
+  background: var(--adventure-hud-panel-solid);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--adventure-hud-brass) 18.04%, transparent), 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
+}
+.anchor-sheet .anchor-close { min-width: 44px; min-height: 44px; }
+.anchor-lead { margin: 0; color: var(--adventure-parchment); font: italic 400 15px var(--font-lore, Georgia, serif); }
+.anchor-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; overflow: auto; }
+.anchor-row {
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 12px;
+  text-align: left;
+  border: 1px solid var(--adventure-hud-shadow);
+  background: var(--adventure-hud-panel-solid);
+  color: var(--adventure-dialogue);
+  font: 600 12px Orbitron, sans-serif;
+  letter-spacing: .06em;
+}
+.anchor-row--home { border-left: 2px solid var(--adventure-hud-brass); }
+.anchor-empty { color: var(--adventure-dialogue); font: italic 400 14px var(--font-lore, Georgia, serif); }
+@media (max-width: 640px) {
+  .anchor-sheet { top: calc(var(--hud-safe-t) + 8px); width: calc(100% - 16px); max-height: calc(100% - var(--hud-safe-t) - var(--hud-safe-b) - 16px); }
 }

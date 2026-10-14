@@ -31,7 +31,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 | **M5 Meaning & cleanup** | Everything has a source/use/lore (CI-checked); legacy website removed | ✅ shipped |
 | **M6 Feel & stability** | No phone crash, cool idle, Delve navigation, minimap, Glim | ✅ shipped |
 | **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; liquids + Fishing v1 built |
-| **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 🔨 endless Delve ✅ · Underhearth in flight |
+| **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 🔨 endless Delve ✅ · Underhearth built (awaiting merge) |
 | **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I ✅ · NPC depth ✅ · Atlas next |
 | **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | ⏳ needs art |
 | **M11 Players** | Player market live (owner deploy), real-device QA, launch | ⏳ owner |
@@ -47,6 +47,14 @@ Reviewed daily; newest review on top of the log at the bottom.
 - **2026-10-14 (Mirror Slate)** — Built item 2: the Mirror Slate (Lune's gift at ten plays or 500k Gold; P anywhere; her four tables embedded on the same ledger; the Homestead at a glance; Kael's tier II adds map pins + Pim's bounties). Handoff `docs/handoff/mirror-slate.md`.
 - **2026-10-14 (evening)** — Owner ideas folded in: Lost Cabinets (scan with the Slate), uncapped Tibia-style levels, Glim bond, a surface with height + parkour, pets, a more alive and mysterious Delve, Tibia inspiration.
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
+- **2026-10-14 (the Underhearth)** — Phase 8 built: rows 56–117 under every column (iron-black basalt over banked
+  obsidian, vertical shafts, lava lakes with obsidian shores, emberheart / pyrite / cold coal / furnace slag,
+  ironwood pillars, fracture seams), the Banked seal in the fragment chamber's floor (Pickaxe IV, Delving 15, The
+  Fracture claimed), the Banked Door and Kael's rail down over the Furnace Hall's trestles, the Banked Furnace
+  (vents, breath, embers, core), the Four's outposts and hammer-marks, Banked Embers and Ironwood Sentinels;
+  Kael's Flooded Seams and The Four Who Went Down, Verrin's Let It End and Endings Kept Warm, Act II's first three
+  beats; Bark Rope, the Thornroot Grapple, Seam Rails + the Seam Cart, Rift Anchors (travel sheet, the shaft's
+  "Descend to an anchor"); Pickaxe V / Axe V; the Underhearth's lava fishing. Next: Phase 9 (Starfall Deep).
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
   (drawn per player per day, 5–15 min of income, days counted never a streak, `economy-sim --bounties`), map pins
   and a tracked way, the Broken Astral Compass and the Rift Map Fragment as map tools, Glim's hint step 3 (a mark on

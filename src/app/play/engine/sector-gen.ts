@@ -33,114 +33,17 @@
  * placed cells are re-applied (tunnels and builds survive, ore may move).
  */
 import { FIELD_NOTE_PREFIX, fieldNotePool, type FieldNoteStratum } from '../../shared/delve/field-notes.model';
-import { generateTerrain, LIQUID_FULL, LIQUID_LAVA, LIQUID_WATER, nodeIndex, seededRandom, Terrain, TerrainSpec, VeinSpec } from './terrain';
+import { generateTerrain, LIQUID_LAVA, LIQUID_WATER, nodeIndex, seededRandom, Terrain, TerrainSpec, VeinSpec } from './terrain';
+import {
+  AIR, BEDROCK, Builder, INSCRIPTION, LATTICE, latticeCache, mix32, noiseColumn, SECTOR, SECTOR_GV, sectorSeed, smooth, valueNoise1,
+  type LatticeCache, type SectorColumnGen, type SectorHall, type SectorStructure, type StructureKind,
+} from './gen-kit';
+import { deepColumn, deepNodes } from './underhearth-gen';
 
-/** Sector edge in cells (§3.1). */
-export const SECTOR = 32;
-/** Generator version: saved with every sector diff. */
-export const SECTOR_GV = 1;
-/** Structures: one lattice cell is this many sector columns wide (64 cells). */
-export const LATTICE = 2;
-
-const AIR = 0;
-const BEDROCK = nodeIndex('bedrock');
-
-// ── Hashing and noise (integers in, deterministic doubles out) ──────────────
-
-/** murmur3's finaliser on int32s (kept in small-integer range: no heap numbers in the hot loop). */
-function mixi(x: number): number {
-  x ^= x >>> 16; x = Math.imul(x, 0x85ebca6b);
-  x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35);
-  return x ^ (x >>> 16);
-}
-/** A well-mixed uint32. */
-export function mix32(x: number): number { return mixi(x | 0) >>> 0; }
-
-/** §3.2: one seed per (sector, generator version). */
-export function sectorSeed(seed: number, sx: number, sy: number, gv = SECTOR_GV): number {
-  return mixi(seed ^ mixi(Math.imul(sx, 0x9E3779B1)) ^ mixi(Math.imul(sy, 0x85EBCA77)) ^ gv) >>> 0;
-}
-
-/** A hashed lattice value in [0, 1) for an integer point under `salt`. */
-function lattice(salt: number, x: number, y: number): number {
-  return (mixi(salt ^ mixi(Math.imul(x, 0x9E3779B1) ^ mixi(Math.imul(y, 0x85EBCA77) + 0x632BE5AB))) >>> 0) * 2.3283064365386963e-10;
-}
-const smooth = (f: number) => f * f * (3 - 2 * f);
-
-/** 2-D value noise in [0, 1): smooth between hashed lattice values. */
-export function valueNoise(salt: number, x: number, y: number): number {
-  const ix = Math.floor(x), iy = Math.floor(y);
-  const sx = smooth(x - ix), sy = smooth(y - iy);
-  const a = lattice(salt, ix, iy), b = lattice(salt, ix + 1, iy);
-  const c = lattice(salt, ix, iy + 1), d = lattice(salt, ix + 1, iy + 1);
-  const top = a + (b - a) * sx, bottom = c + (d - c) * sx;
-  return top + (bottom - top) * sy;
-}
-
-/**
- * `valueNoise(salt, x, row / scaleY)` for every row of one column, into `out`:
- * the same numbers, with the lattice hashed once per lattice row instead of
- * once per cell (a column is generated in well under a millisecond).
- */
-export function noiseColumn(salt: number, x: number, scaleY: number, rows: number, out: Float64Array, cache?: LatticeCache): Float64Array {
-  const ix = Math.floor(x), sx = smooth(x - ix);
-  const span = Math.floor((rows - 1) / scaleY) + 2;
-  // The lattice values of columns ix and ix + 1, reused while consecutive columns share them.
-  let left: Float64Array, right: Float64Array;
-  if (cache && cache.salt === salt && cache.ix === ix && cache.left.length >= span) { left = cache.left; right = cache.right; }
-  else {
-    left = cache && cache.salt === salt && cache.ix === ix - 1 && cache.right.length >= span ? cache.right : new Float64Array(span);
-    if (left !== cache?.right) for (let iy = 0; iy < span; iy++) left[iy] = lattice(salt, ix, iy);
-    right = new Float64Array(span);
-    for (let iy = 0; iy < span; iy++) right[iy] = lattice(salt, ix + 1, iy);
-    if (cache) { cache.salt = salt; cache.ix = ix; cache.left = left; cache.right = right; }
-  }
-  for (let row = 0; row < rows; row++) {
-    const y = row / scaleY, iy = Math.floor(y);
-    const a = left[iy], b = right[iy], c = left[iy + 1], d = right[iy + 1];
-    const top = a + (b - a) * sx, bottom = c + (d - c) * sx;
-    out[row] = top + (bottom - top) * smooth(y - iy);
-  }
-  return out;
-}
-/** Two lattice columns kept between calls of `noiseColumn` (one per noise field). */
-export interface LatticeCache { salt: number; ix: number; left: Float64Array; right: Float64Array }
-export function latticeCache(): LatticeCache { return { salt: NaN, ix: NaN, left: new Float64Array(0), right: new Float64Array(0) }; }
-
-/** 1-D value noise in [0, 1). */
-export function valueNoise1(salt: number, x: number): number {
-  const ix = Math.floor(x), s = smooth(x - ix);
-  const a = lattice(salt, ix, 0), b = lattice(salt, ix + 1, 0);
-  return a + (b - a) * s;
-}
-
-// ── What a sector column holds ──────────────────────────────────────────────
-
-/** A hall's creatures (they live in its flat-floored cavern, like the core's Maws). */
-export interface SectorHall { creature: string; count: number; col0: number; col1: number; floorRow: number }
-export type StructureKind = 'ruin' | 'waycache' | 'flooded-shaft' | 'maw-den' | 'lake' | 'rift-shrine' | 'lava-basin' | 'bailiff-hall';
-/** A structure as the map and the meaning check see it: its kind and its top-left cell. */
-export interface SectorStructure { kind: StructureKind; col: number; row: number; w: number; h: number }
-
-/**
- * One generated sector column: SECTOR cells wide, the core's rows tall.
- * Local index = row × SECTOR + (col − sx × SECTOR).
- */
-export interface SectorColumnGen {
-  sx: number;
-  gv: number;
-  kind: Uint8Array;
-  liqType: Uint8Array;
-  liqLevel: Uint8Array;
-  /** 1 where a blasting charge must leave the cell (caches, the core's protected stamps). */
-  protect: Uint8Array;
-  /** Carved walls: local index → id (`field:<note>` for field notes, the core's own ids in the core). */
-  notes: Map<number, string>;
-  /** Halls whose first column is in this sector column (they spawn creatures when it loads). */
-  halls: SectorHall[];
-  /** Structures that touch this sector column. */
-  structures: SectorStructure[];
-}
+export {
+  LATTICE, latticeCache, mix32, noiseColumn, SECTOR, SECTOR_GV, sectorSeed, valueNoise, valueNoise1,
+  type LatticeCache, type SectorColumnGen, type SectorHall, type SectorStructure, type StructureKind,
+} from './gen-kit';
 
 /** What every sector column of one Delve shares: the spec, the seed, and the core as generated. */
 export interface SectorContext {
@@ -156,8 +59,14 @@ export interface SectorContext {
   bandSalt: number[];
   /** The veins a sector rolls: the spec's shared veins, then each biome's. */
   veins: readonly VeinSpec[];
-  /** Row → stratum index (0 Root Hollows … 3 Magma Halls), from the spec's biomes. */
+  /** Row → stratum index (0 Root Hollows … 3 Magma Halls, 4 the Underhearth), from the spec's biomes. */
   stratumOfRow: Uint8Array;
+  /**
+   * The world's rows: the core's, or (Phase 8) down to the deep strata's floor
+   * (`spec.depth.rows`). Rows at or past `spec.rows` are generated by the deep
+   * strata's own generator (underhearth-gen.ts) under every column, core included.
+   */
+  rows: number;
 }
 
 /** The four shipped strata, top to bottom (biome ids of the core spec). */
@@ -177,17 +86,24 @@ export function sectorContext(spec: TerrainSpec, seed: number, gv = SECTOR_GV): 
   }
   const bandSalt = spec.bands.map((_, b) => mix32((seed ^ Math.imul(b + 1, 0x27d4eb2f) ^ gv) >>> 0));
   const veins = spec.biomes?.length ? [...spec.veins, ...spec.biomes.flatMap(biome => biome.veins)] : spec.veins;
-  const stratumOfRow = new Uint8Array(spec.rows);
-  for (let row = 0; row < spec.rows; row++) {
+  const rows = worldRows(spec);
+  const stratumOfRow = new Uint8Array(rows);
+  for (let row = 0; row < rows; row++) {
+    if (row >= spec.rows) { stratumOfRow[row] = STRATA.length; continue; }
     let s = STRATA.length - 1;
     for (let i = 0; i < (spec.biomes?.length ?? 0); i++) if (row < spec.biomes![i].to) { s = Math.min(STRATA.length - 1, i); break; }
     stratumOfRow[row] = s;
   }
-  return { spec, seed: seed >>> 0, gv, core, coreEdgeWest, coreEdgeEast, bandSalt, veins, stratumOfRow };
+  return { spec, seed: seed >>> 0, gv, core, coreEdgeWest, coreEdgeEast, bandSalt, veins, stratumOfRow, rows };
 }
 
-/** True when world column `col` belongs to the hand-made core. */
+/** The endless world's rows: the core's, or down to the deep strata's floor. */
+export function worldRows(spec: Pick<TerrainSpec, 'rows' | 'depth'>): number { return spec.depth?.rows ?? spec.rows; }
+
+/** True when world column `col` belongs to the hand-made core's columns (its rows are only the core's down to `spec.rows`). */
 export function isCoreCol(ctx: Pick<SectorContext, 'spec'>, col: number): boolean { return col >= 0 && col < ctx.spec.cols; }
+/** True when a world cell is one of the hand-made core's (the deep strata under it are generated like any wing). */
+export function isCoreCell(ctx: Pick<SectorContext, 'spec'>, col: number, row: number): boolean { return col >= 0 && col < ctx.spec.cols && row < ctx.spec.rows; }
 
 /** Sector columns the core overlaps: 0 .. ceil(cols / SECTOR) − 1. */
 export function coreSectorCols(spec: Pick<TerrainSpec, 'cols'>): number { return Math.ceil(spec.cols / SECTOR); }
@@ -250,44 +166,6 @@ function rockColumn(ctx: SectorContext, col: number, lc: number, out: Uint8Array
 
 // ── Structures (§3.6) ───────────────────────────────────────────────────────
 
-/** Writes into one sector column, clipped to it. */
-class Builder {
-  constructor(private readonly out: SectorColumnGen, private readonly col0: number, private readonly rows: number, private readonly core: (col: number) => boolean) {}
-  private at(col: number, row: number): number {
-    if (row < 0 || row >= this.rows || col < this.col0 || col >= this.col0 + SECTOR || this.core(col)) return -1;
-    return row * SECTOR + (col - this.col0);
-  }
-  put(col: number, row: number, node: number, protect = false): void {
-    const i = this.at(col, row);
-    if (i < 0) return;
-    this.out.kind[i] = node; this.out.liqType[i] = 0; this.out.liqLevel[i] = 0;
-    this.out.protect[i] = protect ? 1 : 0;
-    this.out.notes.delete(i);
-  }
-  rect(col: number, row: number, w: number, h: number, node: number): void {
-    for (let r = row; r < row + h; r++) for (let c = col; c < col + w; c++) this.put(c, r, node);
-  }
-  liquid(col: number, row: number, w: number, h: number, type: number): void {
-    for (let r = row; r < row + h; r++) for (let c = col; c < col + w; c++) {
-      const i = this.at(c, r);
-      if (i < 0 || this.out.kind[i] !== AIR) continue;
-      this.out.liqType[i] = type; this.out.liqLevel[i] = LIQUID_FULL;
-    }
-  }
-  note(col: number, row: number, id: string): void {
-    const i = this.at(col, row);
-    if (i < 0) return;
-    this.out.kind[i] = INSCRIPTION; this.out.liqType[i] = 0; this.out.liqLevel[i] = 0;
-    this.out.notes.set(i, id);
-  }
-  /** Solid cells only: dress a wall without filling the room. */
-  dress(col: number, row: number, node: number): void {
-    const i = this.at(col, row);
-    if (i >= 0 && this.out.kind[i] !== AIR && this.out.kind[i] !== INSCRIPTION) this.out.kind[i] = node;
-  }
-}
-
-const INSCRIPTION = nodeIndex('inscription');
 const N = {
   rootLoam: nodeIndex('root-loam'), trunk: nodeIndex('petrified-trunk'), shadowRoot: nodeIndex('shadow-root'), cinder: nodeIndex('cinder-vein'),
   hardRock: nodeIndex('hard-rock'), emberRock: nodeIndex('ember-rock'), waycache: nodeIndex('waycache'), slag: nodeIndex('slag-vein'),
@@ -316,7 +194,7 @@ export function latticePlans(ctx: SectorContext, cell: number): Plan[] {
     };
     const kind = pick(STRUCTURE_TABLE[s]);
     if (!kind) continue;
-    const size = SIZE[kind];
+    const size = SIZE[kind]!;
     const w = size.w[0] + Math.floor(r() * (size.w[1] - size.w[0] + 1));
     const h = size.h;
     // A kind laid in two strata (the rift shrine) takes its rows from the stratum it was rolled in.
@@ -340,7 +218,7 @@ const STRUCTURE_TABLE: readonly (readonly [StructureKind | null, number][])[] = 
 /** A rift shrine rolled in the Magma Halls sits in their rows. */
 const MAGMA_SHRINE_ROWS: readonly [number, number] = [42, 48];
 /** Interior width range, interior height and the top row range of each kind (rows inside its stratum). */
-const SIZE: Readonly<Record<StructureKind, { w: readonly [number, number]; h: number; row: readonly [number, number] }>> = {
+const SIZE: Readonly<Partial<Record<StructureKind, { w: readonly [number, number]; h: number; row: readonly [number, number] }>>> = {
   'ruin': { w: [9, 12], h: 3, row: [4, 7] },
   'waycache': { w: [6, 8], h: 3, row: [13, 21] },
   'flooded-shaft': { w: [3, 3], h: 9, row: [14, 15] },
@@ -453,13 +331,14 @@ function stamp(b: Builder, plan: Plan, out: SectorColumnGen): void {
  * wing generator runs. Same (context, sx) → the same arrays, byte for byte.
  */
 export function generateSectorColumn(ctx: SectorContext, sx: number): SectorColumnGen {
-  const spec = ctx.spec, rows = spec.rows, n = SECTOR * rows, col0 = sx * SECTOR;
+  const spec = ctx.spec, rows = spec.rows, n = SECTOR * ctx.rows, col0 = sx * SECTOR;
   const out: SectorColumnGen = {
     sx, gv: ctx.gv,
     kind: new Uint8Array(n), liqType: new Uint8Array(n), liqLevel: new Uint8Array(n), protect: new Uint8Array(n),
     notes: new Map(), halls: [], structures: [],
   };
   const core = (col: number) => isCoreCol(ctx, col);
+  const coreCell = (col: number, row: number) => isCoreCell(ctx, col, row);
   const bandNodes = spec.bands.map(band => nodeIndex(band.node));
   const bedrockFrom = rows - spec.bedrock;
   const t = ctx.core;
@@ -481,7 +360,7 @@ export function generateSectorColumn(ctx: SectorContext, sx: number): SectorColu
   // Ore veins, per sector, clipped to it, into rock only.
   for (let sy = 0; sy * SECTOR < rows; sy++) veinsInto(ctx, out, sx, sy);
   // Structures from this column's lattice cell (they never leave it).
-  const builder = new Builder(out, col0, rows, core);
+  const builder = new Builder(out, col0, rows, coreCell);
   for (const plan of latticePlans(ctx, Math.floor(sx / LATTICE))) {
     if (plan.col + plan.w + 6 < col0 || plan.col - 6 >= col0 + SECTOR) continue;
     stamp(builder, plan, out);
@@ -494,6 +373,9 @@ export function generateSectorColumn(ctx: SectorContext, sx: number): SectorColu
     if (core(col0 + lc)) continue;
     for (let row = bedrockFrom; row < rows; row++) { const i = row * SECTOR + lc; out.kind[i] = BEDROCK; out.liqType[i] = 0; out.liqLevel[i] = 0; }
   }
+  // The deep strata (Phase 8, the Underhearth): their own rows under every column, the core's included,
+  // and the Banked seal cut into the core's floor. Nothing above `spec.rows` changes but the seal.
+  if (ctx.rows > rows) deepColumn(ctx, out, sx);
   return out;
 }
 
@@ -536,4 +418,4 @@ export function columnHash(gen: Pick<SectorColumnGen, 'kind' | 'liqType' | 'liqL
 
 /** Every node id the generator can lay (the meaning check reads this). */
 export const SECTOR_NODES: readonly string[] = ['root-loam', 'petrified-trunk', 'shadow-root', 'cinder-vein', 'hard-rock', 'ember-rock', 'waycache', 'slag-vein',
-  'grotto-stone', 'glowcap', 'rift-shrine', 'scorched-basalt', 'heartstone-vein', 'bedrock', 'inscription'];
+  'grotto-stone', 'glowcap', 'rift-shrine', 'scorched-basalt', 'heartstone-vein', 'bedrock', 'inscription', ...deepNodes()];

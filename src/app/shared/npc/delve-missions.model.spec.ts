@@ -162,6 +162,61 @@ describe('Delve missions', () => {
     expect(missionGold(order, 1_000)).toBe(90_000);
   });
 
+  // ── The Underhearth (Phase 8) ──
+  it('the Underhearth chains: Kael\'s Flooded Seams and The Four Who Went Down, Verrin\'s Let It End and Endings Kept Warm', () => {
+    const ids = ['kael-flooded-seams', 'kael-four-1', 'kael-four-2', 'verrin-four-3', 'verrin-endings-kept-warm'];
+    for (const id of ids) expect(delveMissionById(id)).withContext(id).toBeDefined();
+    expect(delveMissionById('kael-four-1')!.requires).toEqual(['delve-fracture']);
+    expect(delveMissionById('kael-four-2')!.requires).toEqual(['kael-four-1']);
+    expect(delveMissionById('verrin-four-3')!.requires).toEqual(['kael-four-2']);
+    expect(delveMissionById('verrin-four-3')!.npcId).toBe('verrin');
+    expect(delveMissionById('verrin-four-3')!.alsoFrom).toBe('kael');
+    // Every new reward is on the curve: a v2 floor scaled by ρ and the NPC band's seconds of income (rule I).
+    for (const id of ids) {
+      const r = delveMissionById(id)!.reward;
+      expect(r.gold).withContext(id).toBeGreaterThan(0);
+      expect(r.goldSeconds).withContext(id).toBeGreaterThan(0);
+    }
+  });
+
+  it('the Underhearth\'s recipes are opened by the right claims, and every one exists at the bench', () => {
+    const opens: Record<string, string> = {
+      'craft-seam-rail': 'kael-flooded-seams', 'craft-seam-cart': 'kael-flooded-seams',
+      'craft-rift-anchor': 'kael-four-2', 'craft-pickaxe-5': 'verrin-four-3', 'craft-axe-5': 'verrin-four-3',
+    };
+    for (const [recipe, mission] of Object.entries(opens)) {
+      expect(MISSION_RECIPES[recipe]).withContext(recipe).toBe(mission);
+      expect(craftingRecipeById(recipe)).withContext(recipe).toBeDefined();
+    }
+    // Rope and the grapple are Smithing's, not a mission's.
+    expect(MISSION_RECIPES['craft-bark-rope']).toBeUndefined();
+    expect(MISSION_RECIPES['craft-thornroot-grapple']).toBeUndefined();
+  });
+
+  it('reach and flags objectives read the Delve save\'s flags: the Underhearth reached, the Four\'s marks counted', () => {
+    const flags = new Set<string>();
+    const r: MissionReadings = { stackOf: () => 0, inscriptions: 0, inscriptionTotal: 12, flagged: f => flags.has(f) };
+    const reach = delveMissionById('kael-four-1')!, marks = delveMissionById('kael-four-2')!, furnace = delveMissionById('verrin-four-3')!;
+    expect(missionTarget(reach.objective)).toBe(1);
+    expect(missionTarget(marks.objective)).toBe(4);
+    expect(missionObserved(reach.objective, r)).toBe(0);
+    flags.add('underhearth-reached');
+    expect(missionObserved(reach.objective, r)).toBe(1);
+    flags.add('hammer-mark-1'); flags.add('hammer-mark-3');
+    expect(missionObserved(marks.objective, r)).toBe(2);
+    const name = (id: string) => id, npcName = () => 'Kael';
+    expect(missionNextStep(marks, { locked: false, ready: false, missingFirst: [] }, r, name, npcName)).toMatch(/^Find 2 more of the Four's hammer-marks/);
+    flags.add('hammer-mark-2'); flags.add('hammer-mark-4');
+    expect(missionObserved(marks.objective, r)).toBe(4);
+    expect(missionObserved(furnace.objective, r)).toBe(0);
+    flags.add('banked-furnace-defeated');
+    expect(missionObserved(furnace.objective, r)).toBe(1);
+    // Four Hammers hands over the summon; Let It End a Nox rune that exists.
+    expect(marks.reward.materials).toEqual([{ id: 'four-hammer-marks', qty: 1 }]);
+    expect(runeById(furnace.reward.rune!)).toBeDefined();
+    expect(runeById(delveMissionById('verrin-endings-kept-warm')!.reward.rune!)).toBeDefined();
+  });
+
   it('writes canon text for every inscription the Delve lists', () => {
     for (const ins of DELVE_INSCRIPTIONS) {
       const lore = DELVE_INSCRIPTION_LORE[ins.id];

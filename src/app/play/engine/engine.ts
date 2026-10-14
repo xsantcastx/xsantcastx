@@ -17,7 +17,15 @@ import {
   climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
   blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
   applyLiquidDiff, LIQUID_FULL, LIQUID_IDS, LIQUID_LAVA, LIQUID_WATER, liquidDiff, liquidLayout, LiquidKind,
+  isRail,
 } from './terrain';
+import {
+  cartPoint, mountCart, railUnder, ropeCells, ropeStrand, ropeTie, stepCart, stepGrapple, throwGrapple, grappleTarget, nextRail,
+  type Cart, type Grapple,
+} from './traversal';
+import { douseVent, FURNACE_TUNING, furnaceBreathing, furnaceOpen, furnaceWarning, inMouth, newFurnace, pullAt, stepFurnace, type FurnaceState } from './furnace';
+import { FURNACE, MARK_PREFIX } from './underhearth-gen';
+import { ANCHOR_MAX, GRAPPLE_CELLS, THORNROOT_GRAPPLE, UNDERHEARTH_REACHED_FLAG, UNDERHEARTH_TOP } from '../../shared/delve/underhearth.model';
 import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
 import { drawLiquids, lavaLights } from './liquid-render';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
@@ -53,7 +61,14 @@ interface Monster {
   recoil: number;
   /** The endless Delve: the sector column whose hall it lives in (it leaves with the column). */
   sx?: number;
+  /** A dormant creature (a Banked Ember) has been struck awake. */
+  awake?: boolean;
+  /** Spilled by the Banked Furnace: gone for good once felled (no respawn). */
+  minion?: boolean;
 }
+/** The hand's extra tools (not placed): the Thornroot Grapple. */
+export type HandToolId = typeof THORNROOT_GRAPPLE;
+export function isHandTool(id: string | null | undefined): id is HandToolId { return id === THORNROOT_GRAPPLE; }
 /** Set once the Keeper has been told what regrowth is (the delve save's `claimed`). */
 const REGROWTH_FLAG = 'delve-regrowth-seen';
 /** `ore` is the material quantity (legacy name). `art`/`label`/`short` come from the drop entry. */
@@ -146,7 +161,22 @@ const SKILL_NAME: Partial<Record<DisciplineId, string>> = { forge: 'smithing', e
 /** 'cinder-ore' → 'Cinder Ore'. */
 function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase()); }
 /** The prompt over a usable cell. */
-const USE_LABEL: Readonly<Record<string, string>> = { inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP', shrine: 'RIFT SHRINE' };
+const USE_LABEL: Readonly<Record<string, string>> = {
+  inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP', shrine: 'RIFT SHRINE',
+  mark: 'HAMMER-MARK', anchor: 'RIFT ANCHOR', furnace: 'THE BANKED FURNACE', rail: 'KAEL\'S RAIL',
+};
+/** Node kinds the Underhearth's engine code keys on (looked up once). */
+const ROPE_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'rope');
+const ANCHOR_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'rift-anchor');
+const VENT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'furnace-vent');
+const RAIL_KINDS = Uint8Array.from(TERRAIN_NODE_LIST, node => node.rail ? 1 : 0);
+/** How far a launched or released Keeper's momentum carries, and how fast it bleeds (on the ground / in the air), 1/s. */
+const CARRY_GROUND = 9, CARRY_AIR = .5;
+/**
+ * What the cart's rider must clear: the body above the cart's rim, narrowed (on a slope the Keeper
+ * straddles two columns a row apart, and the cart, not the feet, rides the lower one).
+ */
+const CART_BOX: BodyBox = { halfWidth: 8, height: 64 }, CART_LIFT = 20;
 const KEEPER_ANIMATIONS = new Set<KeeperAnimation>(['idle', 'run', 'jump', 'fall', 'attack', 'dodge', 'hurt']);
 export interface RemoteKeeper { id: string; name: string; x: number; y: number; area: string; facing?: number; animation?: string }
 interface PeerView { peer: RemoteKeeper; x: number; y: number; facing: number; motion: KeeperMotion; clock: SpriteClock }
@@ -322,6 +352,17 @@ export class SeamworksEngine {
   private readonly worlds = new Map<string, SectorWorld>();
   /** The sector column (and sector row) the Keeper last stood in: the regrowth line is said on entering a healed one. */
   private worldAt = '';
+  // ── The Underhearth's traversal (Phase 8, traversal.ts) ──
+  /** Riding Kael's rails in the Seam Cart, or null. */
+  private cart: Cart | null = null;
+  /** The Thornroot Grapple's line, or null. */
+  private grapple: Grapple | null = null;
+  /** Momentum a launch off a rail or a grapple release carries, px/s along x; bleeds away. */
+  private carryX = 0;
+  /** What the Keeper carries that is not placed: a Seam Cart (rides rails), a Thornroot Grapple. */
+  private gear = { cart: false, grapple: false };
+  /** The Banked Furnace's fight while it is up: its state, its vents' cells, its trough's cells. */
+  private furnace: { monster: Monster; state: FurnaceState; vents: number[]; trough: number[] } | null = null;
   private readonly terrainRenderer = new TerrainRenderer();
   private readonly motes = new AmbientMotes();
   private readonly halos = new GlowHalos();
@@ -468,6 +509,7 @@ export class SeamworksEngine {
     this.breath = this.breathMax; this.burning = 0; this.immersed = 0; this.headUnder = false;
     this.fog = this.terrain ? this.fogs.get(area.id) ?? null : null; this.fogAt = NaN;
     this.holdMode = null; this.clearAim(); this.dropTime = 0; this.jumpBuffer = 0;
+    this.cart = null; this.grapple = null; this.carryX = 0; this.furnace = null;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.fuses = [];
     for (const r of this.rubble) r.active = false;
@@ -668,14 +710,14 @@ export class SeamworksEngine {
   // ── Building ─────────────────────────────────────────────────────────────
 
   /** The hotbar's choice: what B (or a long-press) places. */
-  private placing: PlaceableId | BucketId | null = null;
+  private placing: PlaceableId | BucketId | HandToolId | null = null;
   /** Bumped per placement: makes each placement's mutation id, and a re-dig of a placed cell, unique. */
   private placeSeq = 0;
   /** Cell index → the placement that filled it this session, so its re-dig is a new grant. */
   private readonly placedGen = new Map<number, number>();
   /** Choose what to place (the hotbar). Unknown ids clear it. */
-  setPlaceable(id: PlaceableId | BucketId | string | null): void { this.placing = isBucket(id) ? id : placeableById(id)?.id ?? null; }
-  get placeable(): PlaceableId | BucketId | null { return this.placing; }
+  setPlaceable(id: PlaceableId | BucketId | HandToolId | string | null): void { this.placing = isBucket(id) || isHandTool(id) ? id : placeableById(id)?.id ?? null; }
+  get placeable(): PlaceableId | BucketId | HandToolId | null { return this.placing; }
   /**
    * B: place the chosen thing in front of the Keeper (below, holding Down).
    * See `placeTarget` for which cell. False, with a plain message, when it
@@ -685,6 +727,12 @@ export class SeamworksEngine {
     const t = this.terrain;
     if (!t || this.paused || this.hp <= 0) return false;
     if (isBucket(this.placing)) return this.useBucket(this.placing, this.bucketTarget(t, this.placing === 'seam-bucket'));
+    if (isHandTool(this.placing)) {
+      // The grapple: at the aimed cell, else up and ahead at 45 degrees.
+      const aim = this.aimCell();
+      const hand = this.handPoint();
+      return aim ? this.throwAt(aim.col, aim.row) : this.throwAt(t.colAt(hand.x + this.facing * CELL * 6), t.rowAt(hand.y - CELL * 6));
+    }
     const def = placeableById(this.placing);
     if (!def) { this.say('play.delve.chooseFirst', 'Choose something to place first (keys 1-0, or tap the bar).'); this.report(); return false; }
     const down = this.input.has('down');
@@ -701,6 +749,8 @@ export class SeamworksEngine {
     if (!t || this.paused || this.hp <= 0) return false;
     const point = this.pick(clientX, clientY);
     const col = t.colAt(point.x), row = t.rowAt(point.y);
+    // The grapple reaches far past a swing.
+    if (isHandTool(this.placing)) return t.inside(col, row) ? this.throwAt(col, row) : false;
     if (!t.inside(col, row) || !this.inReach(col, row)) return false;
     if (isBucket(this.placing)) return this.useBucket(this.placing, t.index(col, row));
     if (isTakeable(t, col, row)) return this.takeItem(t.index(col, row));
@@ -744,6 +794,12 @@ export class SeamworksEngine {
     if (node!.charge && !(this.tools.staff ?? 0)) {
       this.say('play.delve.needStaff', 'You need a staff to light the fuse (Staff I or better).'); this.report(); return false;
     }
+    // Rift Anchors: at most `max` in the Delve at once.
+    if (def.max && this.findAllPlaced(t, def.node).length >= def.max) {
+      this.say('play.uh.anchor.max', `Eight anchors already hold in your Delve. Take one back first (X beside it).`, { n: def.max }); this.report(); return false;
+    }
+    // Bark Rope: tied at a ledge, it unrolls to the floor, one coil a cell.
+    if (def.spool) return this.spoolRope(def, col, row);
     const gen = ++this.placeSeq;
     const accepted = this.options.onPlace?.({
       item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
@@ -760,6 +816,33 @@ export class SeamworksEngine {
     }
     if (node!.support) this.say('play.delve.supportPlaced', `${def.label} placed. Loose rock within ${node!.support} cells of it holds.`, { item: def.id, n: node!.support });
     else this.say('play.delve.placed', `${def.label} placed.`, { item: def.id });
+    this.report();
+    return true;
+  }
+  /** Every placed `id` in this Delve (the endless world: everywhere the player has been). */
+  private findAllPlaced(t: Terrain, id: string): { col: number; row: number }[] {
+    const world = [...this.worlds.values()].find(w => w.t === t);
+    if (world) return world.findAll(nodeIndex(id));
+    const kind = nodeIndex(id), out: { col: number; row: number }[] = [];
+    for (let i = 0; i < t.kind.length; i++) if (t.kind[i] === kind) out.push({ col: t.colOf(i), row: t.rowOf(i) });
+    return out;
+  }
+  /** Tie a Bark Rope at (col, row) and let it unroll to the floor: the host takes one coil per cell it fills. */
+  private spoolRope(def: PlaceableDef, col: number, row: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    if (!ropeTie(t, col, row)) { this.say('play.uh.rope.noTie', 'Nothing to tie the rope to here. Tie it at a ledge or under rock.'); this.report(); return false; }
+    const cells = ropeCells(t, col, row);
+    const gen = ++this.placeSeq;
+    const accepted = this.options.onPlace?.({
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, t.index(col, row)), count: cells.length,
+      mutationId: `delve-place:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${gen}`,
+    });
+    if (accepted === false || accepted === 0) { this.report(); return false; }
+    const n = typeof accepted === 'number' ? Math.max(1, Math.min(cells.length, Math.floor(accepted))) : cells.length;
+    const node = TERRAIN_NODES[def.node];
+    for (let k = 0; k < n; k++) this.fill(t, t.colOf(cells[k]), t.rowOf(cells[k]), node, gen);
+    this.say('play.uh.rope.spooled', `The rope unrolls ${n} ${n === 1 ? 'cell' : 'cells'} down. Climb it like a ladder.`, { n });
     this.report();
     return true;
   }
@@ -780,6 +863,7 @@ export class SeamworksEngine {
     const node = t.nodeAt(col, row);
     const def = placeableById(node.placeable);
     if (!def || node.solid) return false;
+    if (def.spool) return this.takeRope(def, col, row);
     const accepted = this.options.onTakeBack?.({
       item: def.id, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
       mutationId: `delve-take:${this.lootSession}:${this.areaDef.id}:${cellKey(col, row)}:${++this.placeSeq}`,
@@ -793,6 +877,24 @@ export class SeamworksEngine {
     if (lit) this.fuses = this.fuses.filter(fuse => fuse.index !== index);
     if (lit) this.say('play.delve.fusePinched', 'You pinch the fuse out. The charge is back in the satchel.');
     else this.say('play.delve.takenBack', `${def.label} back in the satchel.`, { item: def.id });
+    this.report();
+    return true;
+  }
+  /** A rope comes back whole: every coil of its strand, in one grant. */
+  private takeRope(def: PlaceableDef, col: number, row: number): boolean {
+    const t = this.terrain;
+    if (!t) return false;
+    const strand = ropeStrand(t, col, row);
+    if (!strand.length) return false;
+    const top = strand[0];
+    const accepted = this.options.onTakeBack?.({
+      item: def.id, areaId: this.areaDef.id, cellKey: cellKey(t.colOf(top), t.rowOf(top)), index: this.cellIdOf(t, top), count: strand.length,
+      mutationId: `delve-take:${this.lootSession}:${this.areaDef.id}:${cellKey(t.colOf(top), t.rowOf(top))}:${++this.placeSeq}`,
+    });
+    if (accepted === false) { this.report(); return false; }
+    for (const index of strand) { t.set(t.colOf(index), t.rowOf(index), 0); this.placedGen.delete(index); this.recordCell(t, index); }
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, TERRAIN_NODE_LIST[ROPE_KIND].fleck, this.reducedMotion ? 2 : 6);
+    this.say('play.uh.rope.taken', `The rope rolls back up: ${strand.length} coils in the satchel.`, { n: strand.length });
     this.report();
     return true;
   }
@@ -848,6 +950,116 @@ export class SeamworksEngine {
     this.report();
     return true;
   }
+  // ── The Underhearth: grapple, cart, anchors (Phase 8) ─────────────────────
+
+  /** Where the grapple leaves the hand (world px). */
+  private handPoint(): { x: number; y: number } { return { x: this.player.x + this.facing * 10, y: this.player.y - DELVE_BOX.height * .6 }; }
+  /** Throw the Thornroot Grapple toward cell (col, row): it bites the first rock on the way, within reach. */
+  private throwAt(col: number, row: number): boolean {
+    const t = this.terrain;
+    if (!t || this.paused || this.hp <= 0 || this.cart) return false;
+    if (!this.gear.grapple) { this.say('play.uh.grapple.none', 'You need a Thornroot Grapple (Crafting Bench, Smithing 20).'); this.report(); return false; }
+    const hand = this.handPoint();
+    const target = grappleTarget(t, hand.x, hand.y, col, row, GRAPPLE_CELLS * CELL);
+    if (!target) { this.say('play.uh.grapple.miss', 'Nothing in reach for the grapple to bite there.'); this.report(); return false; }
+    this.grapple = throwGrapple(hand.x, hand.y, target);
+    this.cancelMove(); this.climbing = false; this.carryX = 0;
+    if (Math.abs(target.x - this.player.x) > 4) this.facing = target.x > this.player.x ? 1 : -1;
+    this.say('play.uh.grapple.thrown', 'The thornroot grows to the rock and pulls. Jump to let go.');
+    this.report();
+    return true;
+  }
+  /** Let go of the grapple, keeping a little of the swing. */
+  private releaseGrapple(jump: boolean): void {
+    if (!this.grapple) return;
+    this.grapple = null;
+    if (jump) { this.player.vy = -520; this.player.grounded = false; this.carryX = this.facing * 160; }
+  }
+  /** Board the Seam Cart on the rail cell `index`. */
+  private boardCart(index: number): void {
+    const t = this.terrain;
+    if (!t) return;
+    if (!this.gear.cart) { this.say('play.uh.cart.none', 'You need a Seam Cart to ride the rails. Kael has the pattern.'); this.report(); return; }
+    const cart = mountCart(t.colOf(index), t.rowOf(index), this.facing);
+    const at = cartPoint(t, cart);
+    if (boxHits(t, at.x, at.y, DELVE_BOX)) { this.say('play.uh.cart.blocked', 'No room to stand in the cart there.'); this.report(); return; }
+    this.cart = cart; this.grapple = null; this.carryX = 0; this.climbing = false;
+    this.cancelMove();
+    this.player.x = at.x; this.player.y = at.y; this.player.vy = 0; this.player.grounded = true;
+    this.say('play.uh.cart.board', 'In the cart. Left and Right push it, Down brakes, Jump leaps out, E steps off.');
+    this.report();
+  }
+  /** Step out of the cart, carrying (vx, vy). */
+  private leaveCart(vx: number, vy: number): void {
+    if (!this.cart) return;
+    this.cart = null;
+    this.carryX = vx;
+    if (vy) { this.player.vy = vy; this.player.grounded = false; }
+  }
+  /** One fixed step riding the rails. */
+  private rideCart(dt: number, t: Terrain): void {
+    const cart = this.cart!;
+    const push = Number(this.input.has('right')) - Number(this.input.has('left'));
+    if (this.input.has('down')) cart.speed = Math.max(0, cart.speed - 1100 * dt);
+    const step = stepCart(t, cart, push, dt, (x, y) => boxHits(t, x, y - CART_LIFT, CART_BOX));
+    const at = cartPoint(t, cart);
+    this.player.x = at.x; this.player.y = at.y; this.player.vy = 0; this.player.grounded = true;
+    this.facing = cart.dir;
+    if (step.launched) {
+      this.leaveCart(step.launched.vx, Math.min(step.launched.vy, 0) - 240);
+      this.say('play.uh.cart.launched', 'Off the end of the line! The cart stays; you do not.');
+      this.impact(.03, 3);
+    }
+  }
+  /** One fixed step on the grapple's line. */
+  private pullGrapple(dt: number, t: Terrain): void {
+    const g = this.grapple!;
+    if (!stepGrapple(g, this.player, DELVE_BOX, t, dt)) { this.grapple = null; this.say('play.uh.grapple.lost', 'The rock it bit is gone. The line drops.'); return; }
+    // Walking off a hang lets go.
+    if (g.phase === 'hang' && (this.input.has('left') || this.input.has('right'))) this.releaseGrapple(false);
+  }
+  /** True while riding the rails (HUD, tests). */
+  get riding(): boolean { return !!this.cart; }
+
+  /**
+   * Every Rift Anchor in this town's Delve (the endless world: everywhere the
+   * player has been), west to east. Generates the Delve once if it has not been.
+   */
+  delveAnchors(): { col: number; row: number }[] {
+    const entrance = this.delveEntrance();
+    const t = entrance ? this.terrainFor(entrance.area) : null;
+    return t ? this.findAllPlaced(t, 'rift-anchor') : [];
+  }
+  /**
+   * Step through a Rift Anchor: from town or anywhere in its Delve, stand
+   * beside the anchor at (col, row). Nothing is simulated in between (a fade).
+   * Unlike the camp from town, it does not heal: it is a door, not a rest.
+   * False (nothing moves) when there is no anchor there or no room beside it.
+   */
+  travelToAnchor(col: number, row: number): boolean {
+    if (this.paused || this.hp <= 0) return false;
+    const entrance = this.delveEntrance();
+    const t = entrance ? this.terrainFor(entrance.area) : null;
+    if (!entrance || !t) return false;
+    this.worlds.get(entrance.area.id)?.center(col);
+    if (!t.inside(col, row) || t.kind[t.index(col, row)] !== ANCHOR_KIND) return false;
+    const x = (col + .5) * CELL, feet = t.top + (row + 1) * CELL;
+    if (boxHits(t, x, feet, DELVE_BOX)) {
+      this.say('play.uh.anchor.blocked', 'Something fills the space round that anchor. Dig it clear from this side first.');
+      this.report();
+      return false;
+    }
+    const fromTown = this.areaDef !== entrance.area;
+    if (fromTown) { this.enter(entrance.area); this.resetPosition(x); }
+    this.cart = null; this.grapple = null; this.carryX = 0; this.climbing = false;
+    this.cancelMove();
+    this.player.x = x; this.player.y = feet; this.player.vy = 0; this.player.grounded = true;
+    this.worldAt = ''; this.fogAt = NaN;
+    this.say('play.uh.anchor.arrive', 'The anchor holds, and both ends agree. You step through.');
+    this.report();
+    return true;
+  }
+
   /** The node id at a cell of an area the engine has loaded, or null (another area, not generated yet). */
   nodeIdAt(areaId: string, index: number): string | null {
     const world = this.worlds.get(areaId);
@@ -1024,6 +1236,16 @@ export class SeamworksEngine {
     if (tools.levels) this.skillLevels = { ...tools.levels };
   }
   /**
+   * What the Keeper carries that the world uses without placing it (Phase 8):
+   * a Seam Cart (E on a rail boards it) and a Thornroot Grapple (chosen on the
+   * hotbar, a press on a cell within GRAPPLE_CELLS throws it).
+   */
+  setGear(gear: { cart?: boolean; grapple?: boolean }): void {
+    this.gear = { cart: !!gear.cart, grapple: !!gear.grapple };
+    if (!this.gear.cart && this.cart) this.leaveCart(0, 0);
+    if (!this.gear.grapple) this.grapple = null;
+  }
+  /**
    * Delves: a click or tap on a solid cell within reach of the Keeper swings
    * at it. Returns false when there was nothing to swing at (the host walks
    * there instead).
@@ -1185,6 +1407,12 @@ export class SeamworksEngine {
     const aim = this.aimCell();
     if (!aim) return;
     this.holdMode = mode;
+    if (mode === 'place' && isHandTool(this.placing)) {
+      // A grapple is thrown once, at the pressed cell: no drag.
+      this.holdMode = null;
+      if (this.throwAt(aim.col, aim.row)) this.holdActs++;
+      return;
+    }
     if (mode === 'place' && isBucket(this.placing)) {
       // A bucket acts once, on the pressed cell: no drag.
       this.holdMode = null;
@@ -1411,6 +1639,8 @@ export class SeamworksEngine {
    */
   private pressJump(): void {
     const t = this.terrain;
+    if (this.cart) { this.leaveCart(this.cart.dir * this.cart.speed * .9, -560); return; }
+    if (this.grapple) { this.releaseGrapple(true); return; }
     if (this.climbing) return;
     if (t && this.input.has('down') && this.player.grounded && isOneWay(t, t.colAt(this.player.x), t.rowAt(this.player.y + 1))) {
       this.dropTime = DROP_THROUGH; this.player.grounded = false;
@@ -1466,11 +1696,26 @@ export class SeamworksEngine {
       this.clang(monster.x, floor - 60 * this.figure, 'Its light swallows the blow. Light a torch beside it');
       return;
     }
+    if (monster.def.trait === 'furnace' && !(this.furnace?.monster === monster && furnaceOpen(this.furnace.state))) {
+      monster.flash = .08;
+      this.clang(monster.x, floor - 140 * this.figure, 'Banked. Douse its four vents with water');
+      return;
+    }
+    if (monster.def.trait === 'dormant' && !monster.awake) {
+      // Struck, it remembers: the heat it took comes out, and so does it.
+      monster.awake = true; monster.timer = .7;
+      this.debris.chip(monster.x, floor - 20 * this.figure, '#ffb066', this.reducedMotion ? 3 : 10);
+    }
     this.atmosphere.burst(monster.x, floor - 85 * this.figure, String(damage));
     monster.hp = Math.max(0, monster.hp - damage);
     monster.flash = .14; monster.recoil = 1;
     this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
     if (!this.reducedMotion) monster.knock = Math.sign(monster.x - this.player.x || this.facing) * 22 * this.figure;
+    if (monster.hp === 0 && monster.minion) {
+      // The furnace's own ember: it gives its heat back. No drop, no tally (nothing to farm).
+      monster.dying = DEATH_FADE; monster.respawn = Infinity; this.spentMinions = true;
+      return;
+    }
     if (monster.hp === 0) {
       monster.dying = DEATH_FADE;
       monster.respawn = 8; this.kills++; this.guardianDefeated = true;
@@ -1506,11 +1751,16 @@ export class SeamworksEngine {
    */
   summon(creature: string, x: number): boolean {
     const def = this.areaDef.monsters.find(m => m.creature === creature && m.summoned);
-    if (!def || (def.once && this.flagged(def.once)) || this.monsters.some(m => m.def === def && m.hp > 0)) return false;
+    if (!def || (def.once && this.flagged(def.once) && !def.rematch) || this.monsters.some(m => m.def === def && m.hp > 0)) return false;
     const [lo, hi] = def.range ?? [this.clampX(-Infinity), this.clampX(Infinity)];
     const at = Math.max(lo, Math.min(hi, x));
-    this.monsters.push({ def, maxHp: def.hp, x: at, spawn: at, hp: def.hp, phase: 'idle', timer: 1.5, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0 });
-    this.say('play.fish.lampRises', `${def.name} rises, and every light in the cavern dims. Light a torch beside it to fight it.`, { name: def.name });
+    const monster: Monster = { def, maxHp: def.hp, x: at, spawn: at, hp: def.hp, phase: 'idle', timer: 1.5, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0 };
+    this.monsters.push(monster);
+    if (def.trait === 'furnace') {
+      this.startFurnace(monster);
+      this.say('play.uh.furnace.wakes', 'The Banked Furnace wakes, and the hall breathes with it. Douse its four vents with water from the trough, then strike its core.');
+    }
+    else this.say('play.fish.lampRises', `${def.name} rises, and every light in the cavern dims. Light a torch beside it to fight it.`, { name: def.name });
     this.report();
     return true;
   }
@@ -1570,15 +1820,16 @@ export class SeamworksEngine {
       if (!quiet) this.clang(cx, cy, check.need ? `Clang! Need ${toolName(check.need.tool, check.need.tier)}` : `${node.label} will not break`);
       return HIT_BLOCKED;
     }
-    if (node.guard && !this.flagged(node.guard.flag)) {
-      this.debris.chip(cx, cy, node.fleck, quiet ? 2 : 6);
-      if (!quiet) this.clang(cx, cy, node.guard.refusal); else this.message = `${node.guard.refusal}.`;
-      return HIT_BLOCKED;
-    }
+    // The skill first, then the story (the Banked seal: Delving 15, then Kael's word).
     const level = node.minLevel && this.skillLevels ? this.skillLevels[node.discipline] ?? 1 : Infinity;
     if (node.minLevel && level < node.minLevel) {
       this.debris.chip(cx, cy, '#ffe2a8', quiet ? 2 : 6);
-      if (!quiet) this.clang(cx, cy, `Clang! Needs ${titleCase(node.discipline)} ${node.minLevel}`);
+      if (!quiet) this.clang(cx, cy, `Clang! Needs ${titleCase(SKILL_NAME[node.discipline] ?? node.discipline)} ${node.minLevel}`);
+      return HIT_BLOCKED;
+    }
+    if (node.guard && !this.flagged(node.guard.flag)) {
+      this.debris.chip(cx, cy, node.fleck, quiet ? 2 : 6);
+      if (!quiet) this.clang(cx, cy, node.guard.refusal); else this.message = `${node.guard.refusal}.`;
       return HIT_BLOCKED;
     }
     const index = t.index(col, row);
@@ -2066,19 +2317,20 @@ export class SeamworksEngine {
   /** True for a cell E acts on: a carved wall, a placed chest or camp. */
   private usable(index: number): boolean {
     const t = this.terrain;
-    return !!t && (t.inscriptions.has(index) || !!TERRAIN_NODE_LIST[t.kind[index]].use);
+    return !!t && (t.inscriptions.has(index) || !!TERRAIN_NODE_LIST[t.kind[index]].use || (this.gear.cart && !this.cart && RAIL_KINDS[t.kind[index]] === 1));
   }
   /** Read a carved wall, or ask the host to open a chest or camp. */
   private useCell(index: number): void {
     const t = this.terrain;
     if (!t) return;
     if (t.inscriptions.has(index)) { this.readInscription(index); return; }
+    if (RAIL_KINDS[t.kind[index]] === 1) { this.boardCart(index); return; }
     const use = TERRAIN_NODE_LIST[t.kind[index]].use;
-    if (!use) return;
+    if (!use || use === 'mark') return;
     const col = t.colOf(index), row = t.rowOf(index);
     if (use === 'shrine') { this.touchShrine(t, col, row); return; }
     this.report();
-    this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index) });
+    this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index), ...(use === 'anchor' || use === 'furnace' ? { col, row } : {}) });
   }
   /**
    * A rift shrine: "a passage created by difference". Touched, it shows the
@@ -2117,6 +2369,14 @@ export class SeamworksEngine {
     const col = t.colOf(index), row = t.rowOf(index);
     const cx = (col + .5) * CELL, cy = t.top + (row + .5) * CELL;
     this.debris.chip(cx, cy, '#e8c47a', this.reducedMotion ? 2 : 6);
+    if (id.startsWith(MARK_PREFIX)) {
+      // A hammer-mark: the Keeper takes a rubbing (the host files it once, for Kael).
+      const n = id.slice(MARK_PREFIX.length);
+      this.say('play.uh.mark.rubbing', 'A hammer-mark, cut where one of the Four stood. You take a rubbing of it.');
+      this.report();
+      this.options.onDiscover?.({ kind: 'mark', id: `hammer-mark-${n}`, biome: t.biomeAt(row).id });
+      return;
+    }
     if (id.startsWith(FIELD_NOTE_PREFIX)) this.say('play.delve.fieldNoteTrace', 'Someone left a note in the rock for whoever came next.');
     else this.say('play.delve.inscriptionTrace', 'You trace the carving with a finger. The words are older than the Seamworks.');
     // Reported before the host hears of it, so a message the host shows in reply is not cleared by this one.
@@ -2188,6 +2448,8 @@ export class SeamworksEngine {
   random: () => number = Math.random;
   interact(): void {
     if (this.paused || this.hp <= 0) return;
+    // In the cart, E steps off where it stands (momentum and all).
+    if (this.cart) { this.leaveCart(this.cart.dir * this.cart.speed * .6, 0); this.say('play.uh.cart.off', 'You step off the cart.'); this.report(); return; }
     // A line in the water: E hooks a bite, or reels the line back in (a tap just
     // after a dip is a late hook, not a reel-in: the fish is still there).
     if (this.line) {
@@ -2330,18 +2592,32 @@ export class SeamworksEngine {
       // In water or lava the Keeper wades and swims: slower, sinking slowly, and Jump held swims up.
       this.sense(this.terrain);
       const swim = this.immersed ? SWIM[this.immersed] : null;
-      if (swim) velocityX *= swim.speed;
-      // Reeling a fish in holds the Keeper still.
-      if (this.line?.phase === 'hooked') velocityX = 0;
-      // On a ladder Up (jump) climbs and Down descends; anywhere else Down drops through platforms.
-      this.climbing = onLadder(this.terrain, this.player.x, this.player.y, DELVE_BOX);
-      if (this.climbing) {
-        const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
-        climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
-      } else {
-        if (swim && this.input.has('jump') && this.line?.phase !== 'hooked') this.player.vy = Math.max(-swim.rise, this.player.vy - 2400 * dt);
-        stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0, swim);
+      if (this.cart) { this.climbing = false; this.rideCart(dt, this.terrain); }
+      else if (this.grapple) { this.climbing = false; this.pullGrapple(dt, this.terrain); }
+      else {
+        if (swim) velocityX *= swim.speed;
+        // Reeling a fish in holds the Keeper still.
+        if (this.line?.phase === 'hooked') velocityX = 0;
+        // On a ladder (or a rope) Up (jump) climbs and Down descends; anywhere else Down drops through platforms.
+        this.climbing = onLadder(this.terrain, this.player.x, this.player.y, DELVE_BOX);
+        if (this.climbing) {
+          this.carryX = 0;
+          const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
+          climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
+        } else {
+          // Momentum a launch off a rail or a grapple release carried, and the Banked Furnace's breath.
+          velocityX += this.carryX + this.furnacePull();
+          if (swim && this.input.has('jump') && this.line?.phase !== 'hooked') this.player.vy = Math.max(-swim.rise, this.player.vy - 2400 * dt);
+          stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0, swim);
+        }
+        if (this.carryX) {
+          // Walking against it, or standing on the ground, bleeds it fast; in the air it carries.
+          const against = direction && Math.sign(direction) !== Math.sign(this.carryX);
+          this.carryX *= Math.exp(-(this.player.grounded || against ? CARRY_GROUND : CARRY_AIR) * dt);
+          if (Math.abs(this.carryX) < 6) this.carryX = 0;
+        }
       }
+      this.reachedUnderhearth(this.terrain);
     } else advanceBody(this.player, velocityX, dt, this.areaDef.platforms, this.areaDef.width);
     // Coyote time: the clock since the feet last touched; a buffered press jumps on landing.
     if (this.player.grounded && !this.climbing) this.airTime = 0; else if (!this.climbing) this.airTime += dt;
@@ -2358,6 +2634,7 @@ export class SeamworksEngine {
       this.updateLooseDust(this.terrain);
       this.updateLiquids(dt, this.terrain);
       this.updateLine(dt, this.terrain);
+      this.updateFurnace(dt, this.terrain);
     } else if (this.sites.length && this.input.has('attack') && this.attackCooldown <= 0 && this.siteInReach()) this.attack();
     const now = this.clock();
     for (const sites of this.siteCache.values()) for (const s of sites) {
@@ -2396,6 +2673,10 @@ export class SeamworksEngine {
         continue;
       }
       monster.timer -= dt;
+      // The Banked Furnace never walks or swings: its fight is its breath (updateFurnace).
+      if (monster.def.trait === 'furnace') continue;
+      // A Banked Ember lies cold until something strikes it.
+      if (monster.def.trait === 'dormant' && !monster.awake) { monster.phase = 'idle'; continue; }
       const safeX = this.areaDef.safeX ?? 0;
       const floor = monster.def.floorY ?? FLOOR, k = this.figure;
       // In a delve a Maw only cares about a Keeper standing in its cavern.
@@ -2416,6 +2697,8 @@ export class SeamworksEngine {
       } else if (monster.timer <= 0) {
         if (monster.phase === 'windup') {
           monster.phase = 'strike'; monster.timer = .2;
+          // An Ironwood Sentinel shoulders the ceiling where it should be: unsupported loose rock comes down.
+          if (monster.def.trait === 'shoulder') this.shoulderCeiling(monster);
           if (Math.abs(distance) < 170 * k && distance * monster.facing > -40 * k && this.player.y > floor - 105 * Math.max(k, .6) && this.player.y < floor + 40 && this.dodgeTime <= 0 && this.hurtTime <= 0) {
             this.hp = Math.max(0, this.hp - 12); this.hurtTime = .8; this.wound = 1;
             this.impact(.07, this.hp === 0 ? 12 : 8);
@@ -2425,6 +2708,145 @@ export class SeamworksEngine {
         else { monster.phase = 'idle'; monster.timer = .35; }
       }
     }
+    // The furnace's spent embers leave once they have faded (they never come back on their own).
+    if (this.spentMinions) {
+      this.spentMinions = false;
+      this.monsters = this.monsters.filter(m => !(m.minion && m.hp <= 0 && m.dying <= 0));
+      if (this.monsters.some(m => m.minion && m.hp <= 0)) this.spentMinions = true;
+    }
+  }
+
+  // ── The Underhearth: the Banked Furnace, the Sentinels, the stratum's door (Phase 8) ──
+
+  /** A spilled ember has been spent this step (the monster list sheds it once it has faded). */
+  private spentMinions = false;
+  /** The Underhearth's arrival line was checked this session. */
+  private reachedSaid = false;
+  /** Times the furnace's breath was announced this fight (the first two only: the vents' flare says it after). */
+  private furnaceWarned = 0;
+
+  /** The first step into the Underhearth: the flag (Kael's first step) and the line, once per player. */
+  private reachedUnderhearth(t: Terrain): void {
+    if (this.reachedSaid || !this.world || this.world.t !== t) return;
+    if (t.rowAt(this.player.y - DELVE_BOX.height * .5) < UNDERHEARTH_TOP) return;
+    this.reachedSaid = true;
+    if (this.flagged(UNDERHEARTH_REACHED_FLAG)) return;
+    this.setFlag(UNDERHEARTH_REACHED_FLAG);
+    this.say('play.uh.reached', 'Under the Halls. The heat here is heavy, not hot: fire pressed so long it became something else.');
+    this.report();
+  }
+  /** The Banked Furnace wakes: its four vents (floor cells round its mouth) and the Four's trough, full. */
+  private startFurnace(monster: Monster): void {
+    const t = this.terrain;
+    if (!t) return;
+    const floorRow = t.rowAt((monster.def.floorY ?? FLOOR) - 1), mouth = t.colAt(monster.x);
+    const vents: number[] = [];
+    for (let col = mouth - 20; col <= mouth + 20; col++) if (t.inside(col, floorRow) && t.kind[t.index(col, floorRow)] === VENT_KIND) vents.push(t.index(col, floorRow));
+    const trough: number[] = [];
+    const T = FURNACE.trough;
+    for (let row = T.row; row < T.row + T.h; row++) for (let col = T.col; col < T.col + T.w; col++) if (t.inside(col, row)) trough.push(t.index(col, row));
+    this.furnace = { monster, state: newFurnace(), vents: vents.slice(0, 4), trough };
+    this.furnaceWarned = 0;
+    this.refillTrough();
+  }
+  /** The trough fills to the brim again (it is fed from above; it never holds more than it was made with). */
+  private refillTrough(): void {
+    const t = this.terrain, f = this.furnace;
+    if (!t || !f) return;
+    let changed = false;
+    for (const i of f.trough) {
+      if (t.solid(t.colOf(i), t.rowOf(i)) || (t.liqLevel[i] === LIQUID_FULL && t.liqType[i] === LIQUID_WATER)) continue;
+      t.liqType[i] = LIQUID_WATER; t.liqLevel[i] = LIQUID_FULL; changed = true;
+      this.liquid?.wakeAround(t.colOf(i), t.rowOf(i));
+    }
+    if (changed) t.liquidRev++;
+  }
+  /** The furnace's breath on the Keeper this step, px/s along x. */
+  private furnacePull(): number {
+    const f = this.furnace;
+    if (!f || f.monster.hp <= 0) return 0;
+    return pullAt(f.state, f.monster.x, f.monster.def.floorY ?? FLOOR, this.player.x, this.player.y);
+  }
+  /** One fixed step of the Banked Furnace's fight (furnace.ts decides; this moves the world). */
+  private updateFurnace(dt: number, t: Terrain): void {
+    const f = this.furnace;
+    if (!f) return;
+    const m = f.monster;
+    if (!this.monsters.includes(m) || m.hp <= 0) {
+      this.furnace = null;
+      if (m.hp <= 0) this.say('play.uh.furnace.out', 'The Banked Furnace goes dark. The fire the Four banked is out.');
+      return;
+    }
+    const floorY = m.def.floorY ?? FLOOR;
+    // Water on a burning vent douses it (the water is spent in steam). Anything else poured there just sits.
+    for (let n = 0; n < f.vents.length; n++) {
+      const i = f.vents[n];
+      if (!t.liqLevel[i]) continue;
+      const water = t.liqType[i] === LIQUID_WATER;
+      if (f.state.doused[n] || !water) continue;
+      t.liqLevel[i] = 0; t.liqType[i] = 0; t.liquidRev++;
+      this.liquid?.wakeAround(t.colOf(i), t.rowOf(i));
+      douseVent(f.state, n);
+      const left = f.state.doused.filter(d => !d).length;
+      this.debris.chip((t.colOf(i) + .5) * CELL, t.top + t.rowOf(i) * CELL, '#d8e8f0', this.reducedMotion ? 3 : 12);
+      if (left) this.say('play.uh.furnace.doused', `Steam! One vent out. ${left} still burn.`, { n: left });
+    }
+    const tick = stepFurnace(f.state, dt, m.hp / m.maxHp);
+    if (tick.warn && this.furnaceWarned < 2) { this.furnaceWarned++; this.say('play.uh.furnace.breath', 'The vents flare: it is about to breathe in. Walk away from the mouth.'); }
+    if (tick.spill) this.spillEmbers(m, tick.spill);
+    if (tick.opened) { this.say('play.uh.furnace.open', 'All four vents out: its core shows. Strike it now!'); this.impact(.05, 6); }
+    if (tick.rebanked) { this.refillTrough(); this.say('play.uh.furnace.rebanked', 'It banks itself again: the vents relight and the trough refills. Douse them again.'); }
+    if (tick.enraged) this.say('play.uh.furnace.remembers', 'It remembers what it was banked for. It breathes harder now.');
+    // The mouth burns while it breathes in.
+    if (inMouth(f.state, m.x, floorY, this.player.x, this.player.y) && this.hurtTime <= 0) {
+      this.hurtBy(FURNACE_TUNING.burnShare * dt);
+      this.wound = Math.max(this.wound, .5);
+    }
+    // Loose drops slide toward the mouth too (they stop at its lip: nothing is eaten).
+    if (furnaceBreathing(f.state)) {
+      for (const drop of this.drops) {
+        const pull = pullAt(f.state, m.x, floorY, drop.x, drop.y);
+        if (pull && Math.abs(drop.x - m.x) > 48) drop.x += pull * dt;
+      }
+    }
+  }
+  /** The furnace spills Banked Embers from its mouth, awake, up to three at once. */
+  private spillEmbers(furnace: Monster, count: number): void {
+    const base = this.areaDef.monsters.find(m => m.creature === 'banked-ember' && !m.summoned);
+    if (!base) return;
+    const out = this.monsters.filter(m => m.minion && m.hp > 0).length;
+    const n = Math.min(count, FURNACE_TUNING.embers - out);
+    const floorY = furnace.def.floorY ?? FLOOR;
+    const t = this.terrain;
+    const hall = t ? [Math.max(t.left + 60, furnace.x - 15 * CELL), Math.min(t.right - 60, furnace.x + 13 * CELL)] as const : [furnace.x - 400, furnace.x + 400] as const;
+    const def: MonsterDef = { ...base, spawnXs: [], floorY, range: hall, drops: { id: 'furnace-ember', entries: [] } };
+    for (let k = 0; k < n; k++) {
+      const x = furnace.x + (k % 2 === 0 ? -1 : 1) * (70 + 20 * k);
+      this.monsters.push({ def, maxHp: Math.round(def.hp * .5), x, spawn: x, hp: Math.round(def.hp * .5), phase: 'idle', timer: 1.2, facing: -1, respawn: Infinity, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: Math.round(def.hp * .5), recoil: 0, awake: true, minion: true });
+    }
+  }
+  /**
+   * An Ironwood Sentinel's strike shoulders the ceiling where it should be:
+   * up to two loose, unsupported rocks over the Keeper come down (the same
+   * rule as digging loose rock out). A support within reach holds them.
+   */
+  private shoulderCeiling(monster: Monster): void {
+    const t = this.terrain;
+    if (!t || Math.abs(this.player.x - monster.x) > 300 * this.figure) return;
+    const pc = t.colAt(this.player.x), head = t.rowAt(this.player.y - DELVE_BOX.height);
+    let dropped = 0;
+    for (let row = head - 1; row >= head - 7 && dropped < 2; row--) {
+      for (const col of [pc, pc - 1, pc + 1]) {
+        if (dropped >= 2 || !t.inside(col, row) || t.solid(col, row + 1) || !isLoose(t, col, row) || supportNear(t, col, row)) continue;
+        const node = t.nodeAt(col, row), index = t.index(col, row);
+        t.set(col, row, 0);
+        this.recordCell(t, index);
+        this.dropRubble((col + .5) * CELL, t.top + (row + .5) * CELL, node.base);
+        dropped++;
+      }
+    }
+    this.impact(.04, 5);
+    if (dropped) this.say('play.uh.sentinel.caveIn', 'The Sentinel shoulders the ceiling and loose rock comes down. A support nearby holds it.');
   }
 
   /** Fill in the map round the Keeper (once per cell moved), and tell the save. */
@@ -2509,7 +2931,8 @@ export class SeamworksEngine {
     const t = this.terrain;
     const at = !station && t && this.interactAt >= 0 ? this.interactAt : -1;
     // A carved wall reads as 'inscription'; a placed chest or camp by its use.
-    const use = at >= 0 ? (t!.inscriptions.has(at) ? 'inscription' : TERRAIN_NODE_LIST[t!.kind[at]].use ?? null) : null;
+    const use = at >= 0 ? (t!.inscriptions.has(at) ? (t!.inscriptions.get(at)!.startsWith(MARK_PREFIX) ? 'mark' : 'inscription')
+      : RAIL_KINDS[t!.kind[at]] === 1 ? 'rail' : TERRAIN_NODE_LIST[t!.kind[at]].use ?? null) : null;
     const site = !station && !use ? this.siteInReach() : null;
     const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
@@ -2531,6 +2954,12 @@ export class SeamworksEngine {
         },
         fishing: this.line ? { phase: this.line.phase, liquid: LIQUID_IDS[this.line.liquid] as LiquidKind } : null,
         canFish: this.line ? null : this.fishable(t),
+        riding: !!this.cart, grappling: this.grapple?.phase ?? null,
+        ...(this.furnace ? { furnace: {
+          phase: this.furnace.state.phase, doused: this.furnace.state.doused.filter(Boolean).length,
+          open: Math.ceil(this.furnace.state.open), breathing: furnaceBreathing(this.furnace.state),
+          vents: this.furnace.state.doused.map(d => (d ? '1' : '0')).join(''),
+        } } : {}),
       } : {}) });
   }
   /**
@@ -3212,6 +3641,8 @@ export class SeamworksEngine {
     }
     if (this.isTown && this.areaDef.scenery === 'seamworks-hub') this.atmosphere.hub(c, motionTime, this.areaDef.safeX || 1120);
     if (t) this.terrainRenderer.draw(c, this.camera, this.cameraY, viewport, 720, this.pixelScale);
+    if (t) this.drawRails(c, t, viewport, motionTime);
+    if (t) this.drawFurnaceFacade(c, t, viewport, motionTime);
     if (this.homestead) {
       const f = this.homesteadFrame;
       f.areaId = this.areaDef.id; f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.playerX = this.player.x; f.reduced = this.reducedMotion;
@@ -3255,6 +3686,8 @@ export class SeamworksEngine {
     for (const monster of this.monsters) {
       if (monster.hp <= 0 && monster.dying <= 0) continue;
       if (monster.x < this.camera - 220 || monster.x > this.camera + viewport + 220) continue;
+      // The Underhearth's creatures are pixel figures of their own (no painting yet).
+      if (monster.def.trait) { this.drawDeepCreature(c, monster, motionTime); continue; }
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       const rigDef = this.creatureRig(monster.def.creature).def;
@@ -3355,6 +3788,8 @@ export class SeamworksEngine {
       c.restore();
     }
     c.restore();
+    if (t && this.cart) this.drawCart(c, motionTime);
+    if (t && this.grapple) this.drawGrappleLine(c);
     if (t) {
       // Liquids over the figures (a wading Keeper reads as in the water), under the darkness.
       const c0 = t.colAt(this.camera) - 1, c1 = t.colAt(this.camera + viewport) + 1;
@@ -3403,6 +3838,15 @@ export class SeamworksEngine {
       const at = this.blastAt;
       pool.add(at.x + at.dx * at.range * .6, at.y + at.dy * at.range * .6, at.range * 1.5 * this.blastFlash, this.blastFlash);
     }
+    // The Banked Furnace's mouth: dull while banked, white-hot when its core is open.
+    if (this.furnace) {
+      const m = this.furnace.monster, open = furnaceOpen(this.furnace.state);
+      pool.add(m.x, (m.def.floorY ?? FLOOR) - 70, open ? 420 : 240, open ? 1 : .7);
+    }
+    // A struck Banked Ember gives off the heat it took.
+    for (const m of this.monsters) {
+      if (m.def.trait === 'dormant' && m.awake && m.hp > 0 && Math.abs(m.x - this.player.x) < 900) pool.add(m.x, (m.def.floorY ?? FLOOR) - 14, 90, .55);
+    }
     // A lit fuse throws a flickering light of its own.
     for (const fuse of this.fuses) {
       const col = t.colOf(fuse.index), row = t.rowOf(fuse.index);
@@ -3416,6 +3860,9 @@ export class SeamworksEngine {
       for (let col = c0; col <= c1; col++) {
         const node = TERRAIN_NODE_LIST[t.kind[t.index(col, row)]];
         if (!node.glow) continue;
+        // Cold coal is dark until struck; a doused furnace vent is out.
+        if (node.struckGlow && t.hp[t.index(col, row)] >= node.hp) continue;
+        if (this.furnace && t.kind[t.index(col, row)] === VENT_KIND && this.ventDoused(t.index(col, row))) continue;
         const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
         // Placed torches always burn; a vein glows once a tunnel exposes it.
         const lift = glowIntensity(node, node.solid && t.exposed(col, row));
@@ -3575,6 +4022,282 @@ export class SeamworksEngine {
       c.fillStyle = r.color; c.fillRect(rx, ry, 18, 14);
       c.fillStyle = '#d8c8bc'; c.fillRect(rx, ry, 18, ART);
     }
+  }
+  // ── The Underhearth's pixel art (Phase 8): rails, the cart, the grapple, its creatures, the furnace ──
+
+  /** Whether a furnace vent cell is doused this banking. */
+  private ventDoused(index: number): boolean {
+    const f = this.furnace;
+    if (!f) return false;
+    const n = f.vents.indexOf(index);
+    return n >= 0 && f.state.doused[n];
+  }
+  /** One art pixel run (world px, snapped to the 2 px grid). */
+  private px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, color: string): void {
+    c.fillStyle = color; c.fillRect(Math.round(x / ART) * ART, Math.round(y / ART) * ART, w * ART, h * ART);
+  }
+  /**
+   * Rails in view: a sleeper under every rail cell, the rail itself joined to
+   * its east neighbour (level or one row up or down, stepped on the art grid),
+   * and timber trestles under rail that runs over open air.
+   */
+  private drawRails(c: CanvasRenderingContext2D, t: Terrain, viewport: number, time: number): void {
+    const c0 = Math.max(t.colLo, t.colAt(this.camera) - 1), c1 = Math.min(t.colHi - 1, t.colAt(this.camera + viewport) + 1);
+    const r0 = Math.max(0, t.rowAt(this.cameraY) - 1), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720) + 1);
+    for (let row = r0; row <= r1; row++) {
+      for (let col = c0; col <= c1; col++) {
+        const i = t.index(col, row);
+        if (RAIL_KINDS[t.kind[i]] !== 1) continue;
+        const node = TERRAIN_NODE_LIST[t.kind[i]];
+        const x = col * CELL, floor = t.top + (row + 1) * CELL;
+        // Trestle: over open air, posts down to the next rock (every other column), braced.
+        if (!t.solid(col, row + 1) && !isRail(t, col, row + 1)) {
+          let depth = 1;
+          while (depth < 24 && !t.solid(col, row + depth) && row + depth < t.rows) depth++;
+          if ((col & 1) === 0) {
+            this.px(c, x + 6, floor, 2, (depth - 1) * TILE, '#2a1c12');
+            this.px(c, x + 8, floor, 1, (depth - 1) * TILE, '#6a5040');
+          }
+          this.px(c, x, floor + 4, TILE, 1, '#3a2a18');
+        }
+        // Sleeper.
+        this.px(c, x + 4, floor - 4, TILE - 4, 2, node.dark);
+        this.px(c, x + 4, floor - 4, TILE - 4, 1, node.base);
+        // The rail to the east neighbour (or a stub when the line ends here).
+        const next = nextRail(t, col, row, 1);
+        const y0 = floor - 6, y1 = next ? t.top + (next.row + 1) * CELL - 6 : y0;
+        const span = next ? TILE : TILE / 2;
+        for (let s = 0; s <= span; s++) {
+          const y = y0 + (y1 - y0) * s / TILE;
+          // A two-pixel iron rail with a bright running edge: it reads against any rock.
+          this.px(c, x + CELL / 2 + s * ART, y - ART, 1, 1, '#d8c8bc');
+          this.px(c, x + CELL / 2 + s * ART, y, 1, 1, node.light);
+          this.px(c, x + CELL / 2 + s * ART, y + ART, 1, 1, node.dark);
+        }
+        if (!nextRail(t, col, row, -1)) for (let s = 0; s <= TILE / 2; s++) {
+          this.px(c, x + s * ART, y0 - ART, 1, 1, '#d8c8bc'); this.px(c, x + s * ART, y0, 1, 1, node.light); this.px(c, x + s * ART, y0 + ART, 1, 1, node.dark);
+        }
+      }
+    }
+  }
+  /** The Seam Cart under the Keeper: iron, Kael's stencil upside down, four wheels turning. */
+  private drawCart(c: CanvasRenderingContext2D, time: number): void {
+    const cart = this.cart;
+    if (!cart) return;
+    const x = this.player.x, y = this.player.y + 6;
+    const spin = this.reducedMotion ? 0 : Math.floor((time * cart.speed) / 12) & 1;
+    this.px(c, x - 18, y - 22, 18, 1, '#140a1f');
+    this.px(c, x - 18, y - 21, 18, 7, '#443540');
+    this.px(c, x - 18, y - 21, 18, 1, '#7a656e');
+    this.px(c, x - 16, y - 18, 3, 1, '#c4501e'); this.px(c, x + 8, y - 18, 3, 1, '#c4501e');
+    this.px(c, x - 18, y - 8, 18, 1, '#171116');
+    for (const wx of [x - 12, x + 8]) {
+      this.px(c, wx - 2, y - 7, 4, 4, '#171116');
+      this.px(c, wx - 1 + spin * 2, y - 6 + spin * 2, 1, 1, '#a49cac');
+    }
+  }
+  /** The grapple's line: thornroot growing out to its mark, thorns on it. */
+  private drawGrappleLine(c: CanvasRenderingContext2D): void {
+    const g = this.grapple;
+    if (!g) return;
+    const hand = this.handPoint();
+    const tx = g.phase === 'grow' ? g.tipX : g.tx, ty = g.phase === 'grow' ? g.tipY : g.ty;
+    const d = Math.hypot(tx - hand.x, ty - hand.y), steps = Math.max(1, Math.floor(d / ART));
+    for (let s = 0; s <= steps; s++) {
+      const x = hand.x + (tx - hand.x) * s / steps, y = hand.y + (ty - hand.y) * s / steps;
+      this.px(c, x, y, 1, 1, s % 3 === 0 ? '#7fb04a' : '#6a4a2c');
+      if (s % 7 === 3) this.px(c, x + ART, y - ART, 1, 1, '#c9a06a');
+    }
+    this.px(c, tx - ART, ty - ART, 2, 2, '#c9a06a');
+    this.px(c, tx, ty - ART * 2, 1, 1, '#7fb04a');
+  }
+  /** A Banked Ember or an Ironwood Sentinel (pixel figures), or the Banked Furnace's mouth and vents. */
+  private drawDeepCreature(c: CanvasRenderingContext2D, m: Monster, time: number): void {
+    const trait = m.def.trait, floor = m.def.floorY ?? FLOOR;
+    if (trait === 'furnace') { this.drawFurnace(c, m, time); return; }
+    const fade = m.hp <= 0 ? Math.max(0, m.dying / DEATH_FADE) : 1;
+    const rise = m.born > 0 ? 1 - m.born / SPAWN_RISE : 1;
+    const looking = m.phase === 'idle' ? Math.sign(this.player.x - m.x) || m.facing : m.facing;
+    const warning = m.phase === 'windup' || m.phase === 'strike';
+    if (warning && m.hp > 0) {
+      c.fillStyle = m.phase === 'strike' ? '#ff765caa' : '#ff765c40';
+      c.fillRect(m.facing < 0 ? m.x - 170 * this.figure : m.x, floor - 10, 170 * this.figure, 10);
+    }
+    c.save();
+    c.globalAlpha = fade * rise;
+    c.translate(Math.round(m.x + m.knock), floor);
+    if (looking < 0) c.scale(-1, 1);
+    const flash = m.flash > 0;
+    const top = trait === 'dormant' ? this.drawEmber(c, m, time, flash) : this.drawSentinel(c, m, time, flash);
+    c.restore();
+    if (m.hp <= 0) return;
+    const full = m.maxHp || 1, bar = 64, crown = floor - top - 12;
+    c.fillStyle = '#302530'; c.fillRect(m.x - bar / 2, crown, bar, 5);
+    c.fillStyle = '#ffe2c4'; c.fillRect(m.x - bar / 2, crown, Math.max(m.hp, m.shownHp) / full * bar, 5);
+    c.fillStyle = '#dd866f'; c.fillRect(m.x - bar / 2, crown, m.hp / full * bar, 5);
+  }
+  /** A Banked Ember: a coal lump, cracks dull while it sleeps, ember-bright awake. Returns its height (world px). */
+  private drawEmber(c: CanvasRenderingContext2D, m: Monster, time: number, flash: boolean): number {
+    const awake = !!m.awake;
+    const bob = awake && !this.reducedMotion ? Math.round(Math.sin(time * 6 + m.spawn) * 1) * ART : 0;
+    const hot = m.phase === 'windup' || m.phase === 'strike';
+    const crack = flash ? '#fff4dc' : !awake ? '#3a2a30' : hot ? '#fff4dc' : (Math.sin(time * 4 + m.spawn) > 0 || this.reducedMotion ? '#ffd08a' : '#ff9b4f');
+    const SHAPE = [
+      '....oooooo....',
+      '..oobbbbbboo..',
+      '.obbcbbbbcbbo.',
+      'obbbbbcbbbbbbo',
+      'obcbbbbbbcbbbo',
+      'obbbbcbbbbbcbo',
+      'obbcbbbbcbbbbo',
+      '.obbbbbcbbbbo.',
+      '..oobbbbbboo..',
+      '....oooooo....',
+    ];
+    const colors: Record<string, string> = { o: '#0e0a12', b: flash ? '#d8c8bc' : awake ? '#2e2238' : '#1c1420', c: crack };
+    const w = SHAPE[0].length, h = SHAPE.length;
+    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+      const ch = SHAPE[y][x];
+      if (ch === '.') continue;
+      c.fillStyle = colors[ch]; c.fillRect((x - w / 2) * ART, (y - h) * ART + bob, ART, ART);
+    }
+    // Eyes when awake.
+    if (awake && !flash) { c.fillStyle = '#fff4dc'; c.fillRect(2 * ART, (3 - h) * ART + bob, ART, ART); c.fillRect(4 * ART, (3 - h) * ART + bob, ART, ART); }
+    return h * ART;
+  }
+  /** An Ironwood Sentinel: a walking pillar, ember in its grain, shoulders raised to strike. Returns its height (world px). */
+  private drawSentinel(c: CanvasRenderingContext2D, m: Monster, time: number, flash: boolean): number {
+    const W = 12, H = 46;
+    const lift = m.phase === 'windup' ? 3 : m.phase === 'strike' ? -1 : 0;
+    const walk = !this.reducedMotion && m.phase === 'idle' ? Math.floor(time * 4 + m.spawn) & 1 : 0;
+    const P = (x: number, y: number, w: number, h: number, color: string) => { c.fillStyle = flash ? '#fff4ea' : color; c.fillRect((x - W / 2) * ART, (y - H) * ART, w * ART, h * ART); };
+    // Feet, stepping.
+    P(1, H - 2 - walk, 4, 2, '#2a2027'); P(7, H - 2 - (1 - walk), 4, 2, '#2a2027');
+    // The pillar: outline, wood, grain, a lit edge, ember seams.
+    P(1, 6, 10, H - 8, '#171116');
+    P(2, 6, 8, H - 8, '#4a3a30');
+    for (let gx = 3; gx < 10; gx += 3) P(gx, 8, 1, H - 12, '#2a2027');
+    P(2, 6, 1, H - 8, '#6e5a48');
+    for (let n = 0; n < 5; n++) P(4 + (n & 1) * 2, 12 + n * 6, 2, 1, '#c4501e');
+    // Shoulders: a beam across the top, raised to bring the ceiling down.
+    P(0, 2 - lift, W, 4, '#171116'); P(1, 3 - lift, W - 2, 2, '#6e5a48');
+    // Eyes in the grain.
+    P(4, 9, 1, 1, '#ffd08a'); P(7, 9, 1, 1, '#ffd08a');
+    return H * ART;
+  }
+  /**
+   * The Banked Furnace's face, drawn over its brick body whether it is awake
+   * or not (it is the hall's set piece): mortar seams that glow with its heat,
+   * a lit pilaster edge, the stack on its crown with smoke, two eye-slits, the
+   * glowing rim of the mouth arch, and the grate over its mouth while banked.
+   * Cold and dim asleep; ember while awake; white-hot when its core is open.
+   */
+  private drawFurnaceFacade(c: CanvasRenderingContext2D, t: Terrain, viewport: number, time: number): void {
+    if (!this.world || this.world.t !== t) return;
+    const B = FURNACE.body, M = FURNACE.mouth;
+    const x0 = B.col * CELL, x1 = (B.col + B.w) * CELL, y0 = t.top + B.row * CELL, floor = t.top + FURNACE.floorRow * CELL;
+    if (x1 < this.camera - 96 || x0 > this.camera + viewport + 96 || !t.inside(B.col, B.row) || !t.inside(B.col + B.w - 1, B.row)) return;
+    const f = this.furnace, awake = !!f && f.monster.hp > 0;
+    const open = awake && furnaceOpen(f!.state), hot = awake && (furnaceBreathing(f!.state) || furnaceWarning(f!.state));
+    const pulse = this.reducedMotion ? .5 : .5 + .5 * Math.sin(time * (open ? 8 : hot ? 6 : 1.6));
+    const seam = open ? '#ffd08a' : awake ? '#E8752A' : '#7a2a12';
+    // Mortar seams across the brick, alternate courses offset.
+    c.save();
+    c.globalAlpha = awake ? .55 + .35 * pulse : .35;
+    for (let r = 1; r < B.h; r++) this.px(c, x0 + 4, y0 + r * CELL - ART, (x1 - x0 - 8) / ART, 1, seam);
+    for (let r = 0; r < B.h; r++) for (let k = (r & 1) ? 1 : 0; k < B.w; k += 2) this.px(c, x0 + k * CELL + CELL / 2, y0 + r * CELL, 1, TILE - 1, seam);
+    c.restore();
+    // A lit edge on its west side, a shadow on its east.
+    this.px(c, x0, y0, 1, B.h * TILE, '#9c6a4a');
+    this.px(c, x1 - ART, y0, 1, B.h * TILE, '#140a1f');
+    // The stack on its crown, and smoke while it is awake.
+    const sx = (B.col + (B.w >> 1) - 1) * CELL;
+    this.px(c, sx - ART, y0 - 3 * CELL, 3 * TILE + 2, 3 * TILE, '#2a1418');
+    this.px(c, sx, y0 - 3 * CELL, 3 * TILE, 1, '#7a3a2a');
+    this.px(c, sx + 2 * ART, y0 - 3 * CELL + ART, 3 * TILE - 4, 2, awake ? seam : '#3a1c18');
+    if (awake && !this.reducedMotion) {
+      for (let w = 0; w < 4; w++) {
+        const u = (time * .35 + w * .25) % 1;
+        c.globalAlpha = .45 * (1 - u);
+        this.px(c, sx + CELL + Math.sin(time + w * 1.7) * 10, y0 - 3 * CELL - u * 120, 4 + Math.floor(u * 4), 3, '#6a5878');
+      }
+      c.globalAlpha = 1;
+    }
+    // Its eyes: two slits that brighten as it breathes in, white when it is open.
+    const eye = open ? '#fff4dc' : hot ? '#ffd08a' : awake ? '#E8752A' : '#3a1c18';
+    const ey = y0 + 2 * CELL;
+    for (const ex of [x0 + 2 * CELL, x1 - 4 * CELL]) {
+      this.px(c, ex, ey, 2 * TILE, 4, '#0e0a12');
+      this.px(c, ex + ART, ey + ART, 2 * TILE - 2, 2, eye);
+    }
+    // The mouth: a glowing rim on the arch, and the grate while it is banked.
+    const mx0 = M.col * CELL, mx1 = (M.col + M.w) * CELL, my0 = t.top + M.row * CELL;
+    this.px(c, mx0, my0, (mx1 - mx0) / ART, 1, open ? '#fff4dc' : seam);
+    if (!open) {
+      for (let bx = mx0 + 6; bx < mx1 - 4; bx += 14) {
+        this.px(c, bx, my0 + ART, 2, (floor - my0) / ART - 1, '#171116');
+        this.px(c, bx, my0 + ART, 1, (floor - my0) / ART - 1, '#57474f');
+      }
+      this.px(c, mx0, my0 + 2 * CELL, (mx1 - mx0) / ART, 1, '#171116');
+    }
+  }
+  /**
+   * The Banked Furnace awake: its core in the mouth (dull behind the grate
+   * while banked, white-hot when open), its breath (embers streaming in along
+   * the floor while it breathes in, a beat after the vents flare), the vents'
+   * flames or steam, and its strength over its crown.
+   */
+  private drawFurnace(c: CanvasRenderingContext2D, m: Monster, time: number): void {
+    const t = this.terrain, f = this.furnace;
+    if (!t) return;
+    const floor = m.def.floorY ?? FLOOR, mx = m.x;
+    const open = !!f && furnaceOpen(f.state), breathing = !!f && furnaceBreathing(f.state), warning = !!f && furnaceWarning(f.state);
+    const fade = m.hp <= 0 ? Math.max(0, m.dying / DEATH_FADE) : 1;
+    const pulse = this.reducedMotion ? .5 : .5 + .5 * Math.sin(time * (open ? 9 : 3));
+    c.save(); c.globalAlpha = fade;
+    // The core: a round heart of ember, rings brightening inward.
+    const cy = floor - 2 * CELL, grow = open ? 1 + .12 * pulse : 1;
+    const rings: readonly [number, string][] = open
+      ? [[30, '#c4501e'], [24, '#ff9b4f'], [17, '#ffd08a'], [9, '#fff4dc']]
+      : warning || breathing ? [[26, '#7a2a12'], [20, '#c4501e'], [12, '#ff9b4f'], [5, '#ffd08a']]
+        : [[24, '#3a1410'], [18, '#7a2a12'], [10, '#c4501e']];
+    for (const [r, color] of rings) {
+      const rr = r * grow;
+      for (let dy = -rr; dy <= rr; dy += ART) {
+        const half = Math.floor(Math.sqrt(Math.max(0, rr * rr - dy * dy)) / ART) * ART;
+        this.px(c, mx - half, cy + dy, (2 * half) / ART, 1, m.flash > 0 ? '#fff4ea' : color);
+      }
+    }
+    // The breath: embers streaming in along the floor from both sides.
+    if (breathing && !this.reducedMotion) {
+      for (let n = 0; n < 18; n++) {
+        const side = n & 1 ? 1 : -1, u = ((time * .9 + n * .137) % 1);
+        const x = mx + side * (1 - u) * 520, y = floor - 10 - ((n * 37) % 80);
+        this.px(c, x, y, 3, 1, n % 3 ? '#ff9b4f' : '#ffd08a');
+      }
+    }
+    c.restore();
+    // The vents: tall flames while they burn (flaring before a breath), steam once doused.
+    if (f) {
+      for (let n = 0; n < f.vents.length; n++) {
+        const i = f.vents[n], vx = (t.colOf(i) + .5) * CELL, vy = t.top + (t.rowOf(i) + 1) * CELL - 2 * ART;
+        if (f.state.doused[n]) {
+          if (this.reducedMotion) { this.px(c, vx - 4, vy - 24, 4, 2, '#b8c0c8'); continue; }
+          for (let w = 0; w < 4; w++) { const u = (time * .7 + w * .25) % 1; c.globalAlpha = .8 * (1 - u); this.px(c, vx - 4 + Math.sin(time * 2 + w) * 5, vy - 12 - u * 56, 3, 2, '#b8c0c8'); }
+          c.globalAlpha = 1;
+          continue;
+        }
+        const tall = (warning || breathing ? 22 : 13) + (this.reducedMotion ? 0 : Math.floor(Math.sin(time * 14 + n * 2) * 2));
+        this.px(c, vx - 8, vy - tall * ART, 8, tall, '#c4501e');
+        this.px(c, vx - 6, vy - (tall - 3) * ART, 6, tall - 3, '#ff9b4f');
+        this.px(c, vx - 3, vy - (tall - 7) * ART, 3, Math.max(1, tall - 7), '#ffd08a');
+      }
+    }
+    if (m.hp <= 0) return;
+    const full = m.maxHp || 1, bar = 220, crown = t.top + (FURNACE.body.row - 4) * CELL;
+    c.fillStyle = '#302530'; c.fillRect(mx - bar / 2, crown, bar, 8);
+    c.fillStyle = '#ffe2c4'; c.fillRect(mx - bar / 2, crown, Math.max(m.hp, m.shownHp) / full * bar, 8);
+    c.fillStyle = open ? '#ffd08a' : '#dd866f'; c.fillRect(mx - bar / 2, crown, m.hp / full * bar, 8);
   }
   /** The rig for a creature art key, built once per key. */
   private creatureRig(key: string): { def: CreatureRigDef; sprite: RigSprite } {

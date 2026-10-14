@@ -212,7 +212,8 @@ describe('Story: the journal', () => {
     expect(v.lead).toBe('story.lead.p.homestead');
     const after = journalView(coerceStory({ version: 1, chapter: 'act2', beats: [...STORY_BEAT_IDS], cards: [] }));
     expect(after.chapters.map(c => c.id)).toEqual(['act2', 'act1', 'prologue']);
-    expect(after.chapters[0]!.total).toBe(0);
+    // Act II's first pages: The Four Who Went Down (the Underhearth, Phase 8).
+    expect(after.chapters[0]!.total).toBe(3);
   });
 
   it('the next lead says where to look, never what is there', () => {
