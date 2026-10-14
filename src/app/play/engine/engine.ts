@@ -1,6 +1,7 @@
 import { coarseDevice, renderBudget, type RenderBudget } from './render-budget';
 import { Atmosphere } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
+import type { KeeperContext } from '../world/keeper-lines';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
 import { resetPose, RigSprite } from './rig';
 import { CREATURE_STRIKE, CREATURE_WINDUP, CreatureRigDef, creatureRigFor, RIVET_MAW_CREATURE } from './creature-rigs';
@@ -1336,6 +1337,11 @@ export class SeamworksEngine {
     if (instant) { this.placeAt(station.x); this.interact(); return true; }
     return this.moveTo(station.x, () => this.interact());
   }
+  /**
+   * The town keepers' lines follow the Keeper's story beats and station deeds
+   * (world/keeper-lines.ts). The host calls this only when either changed.
+   */
+  setKeeperContext(context: KeeperContext): void { this.life.setContext(context); }
   /**
    * Glim (glim-sprite.ts). `shown` once the Keeper has met it; `arrive` flies it
    * in from above to the shoulder (the Prologue meeting, once).

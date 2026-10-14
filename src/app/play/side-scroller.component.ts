@@ -43,7 +43,9 @@ import { TOOLS_I18N } from '../shared/skills/tools.i18n';
 import { CharacterHubService } from '../shared/character/character-hub.service';
 import { STARTER_FAMILIES, starterInstanceId, starterToolId } from '../shared/skills/tool-items';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
-import { skillForDiscipline, skillLevel } from '../shared/skills/skill.model';
+import { SKILLS, skillForDiscipline, skillLevel } from '../shared/skills/skill.model';
+import { keeperDeeds } from './world/keeper-lines';
+import { DELVE_MISSIONS } from '../shared/npc/delve-missions.model';
 import { huntingXpFor } from '../shared/skills/hunting';
 import { TranslationService } from '../translation.service';
 import { LIFE_I18N } from './world/life.i18n';
@@ -434,6 +436,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(STORY_I18N);
+    this.keeperKey = '';
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
@@ -957,10 +960,43 @@ export class SideScrollerComponent implements OnDestroy {
       wardenDown: this.delve.isClaimed(WARDEN_FLAG),
     }, live);
     if (lines.length) this.glimVoice.story(lines);
+    this.tickKeepers(goals);
     if (!this.storyCard && !this.panel && !this.map.open && !this.state.defeated) {
       const card = this.story.pendingCard();
       if (card) this.openStoryCard(card);
     }
+  }
+  /** The last story beats + station deeds handed to the town keepers (world/keeper-lines.ts). */
+  private keeperKey = '';
+  /**
+   * The town keepers speak to where the Keeper is in the story and what they
+   * have done at each station (a first craft, a first sale). Read off the save
+   * on the HUD tick; the engine hears only when something changed.
+   */
+  private tickKeepers(goals: { bought: boolean; hunted: boolean; dug: boolean }): void {
+    if (!this.engine) return;
+    const progress = this.activity.snapshot.progress;
+    const inv = this.inventory.snapshot;
+    const economy = this.economy.snapshot;
+    const deeds = keeperDeeds({
+      forged: this.activity.snapshot.craftedBasaltEdge || (progress.xpByDiscipline['forge'] ?? 0) > 0,
+      sold: inv.sold,
+      inVault: inv.inVault,
+      strikes: economy.totalClicks,
+      socketed: inv.items.some(item => !!item.sockets?.some(Boolean)),
+      bought: goals.bought,
+      hunted: goals.hunted,
+      dug: goals.dug,
+      topSkill: Math.max(0, ...SKILLS.map(skill => skillLevel(progress, skill.id))),
+      fished: (progress.xpByDiscipline['fishing'] ?? 0) > 0,
+      mission: DELVE_MISSIONS.some(mission => this.quests.isMissionDone(mission.id)),
+      goldEarned: economy.totalGoldEarned,
+    });
+    const beats = this.story.state.beats;
+    const key = `${beats.join(',')}|${deeds.join(',')}`;
+    if (key === this.keeperKey) return;
+    this.keeperKey = key;
+    this.engine.setKeeperContext({ beats: new Set(beats), deeds: new Set(deeds) });
   }
   private openStoryCard(id: StoryCardId): void {
     this.storyCard = { id, paragraphs: Array.from({ length: STORY_CARD_PARAGRAPHS[id] }, (_, n) => `story.card.${id}.p${n + 1}`) };

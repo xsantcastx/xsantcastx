@@ -3,9 +3,12 @@
  *
  *  - Keepers: one shopkeeper beside each panel station (plus Aureth and Verrin
  *    in their own realms). Canon cast members stand where the cast already
- *    claims the page (`npc.model.ts` paths); every other station gets a
- *    role-titled keeper. Role keepers have NO personal names: names for the
- *    invented roles are not approved (docs/art-commissions/01-second-wave.md).
+ *    claims the page (`npc.model.ts` paths). The Bible's people stand at the
+ *    stations world-and-cast §3 gives them (S3, the NPC depth pass): their name
+ *    tag is the person (Mara Voss) and the approved role title rides under it
+ *    as a subtitle (Bench Smith). Every role keeper now has a name (the last six
+ *    named 2026-10-14: Orla Stave, Idris Calder, Lune Coyne, Pim Larkin, Corran
+ *    Holt, Hesta Cairn; docs/world/lore-addendum.md).
  *  - Townsfolk: two to four wandering figures per town, on floor segments that
  *    never cover a station or a keeper. Each says one line naming where a
  *    material of this town's hunting grounds is found, read off the hunts'
@@ -18,12 +21,14 @@
  * `artFor()` key and resolved by the host; every key here is unpainted today
  * and the engine draws a robed placeholder in the realm palette instead.
  *
- * Chatter: every line is an i18n key in `life.i18n.ts` (EN + ES). A canon
- * keeper's English lines are taken word for word from the cast's dialogue
+ * Chatter: every line is an i18n key in `life.i18n.ts` (EN + ES); which ones a
+ * keeper says, and when, is keeper-lines.ts (story beats and station deeds). A
+ * canon keeper's English lines are taken word for word from the cast's dialogue
  * table (`DIALOGUE` in npc.model.ts); the harness asserts it, so a keeper can
  * never say something its character does not say elsewhere.
  */
 import type { NpcId } from '../../shared/npc/npc.model';
+import { allKeeperLines } from './keeper-lines';
 import type { RealmTownId, StationDef, TownDef } from './world.model';
 
 /** A figure's colours. Every set is drawn from its realm's sprite palette (docs/art-commissions/world-sprites). */
@@ -89,13 +94,23 @@ export interface KeeperDef {
   name: string;
   /** i18n key of the name tag. */
   nameKey: string;
+  /**
+   * The subtitle under the name: the approved role title for a named person
+   * ("Bench Smith" under "Mara Voss"), the epithet for the canon cast. Absent
+   * for a keeper still called by its title. English fallback; i18n `titleKey`.
+   */
+  title?: string;
+  titleKey?: string;
   /** `artFor()` key of the standing figure. Unpainted today: the placeholder draws. */
   art: string;
   palette: LifePalette;
   silhouette: LifeSilhouette;
   /** Which side of the station to try first (+1 east, -1 west). */
   side: 1 | -1;
-  /** i18n keys, one shown per approach, in turn. */
+  /**
+   * Every line this keeper can say (i18n keys). Which of them it says to this
+   * Keeper, and in what order, is `keeperLines()` (keeper-lines.ts).
+   */
   lines: readonly string[];
 }
 
@@ -107,10 +122,11 @@ const AURETH: LifePalette = { robe: '#f4ead2', shade: '#c9b98f', trim: '#e8d44d'
 const VERRIN: LifePalette = { robe: '#1d1428', shade: '#0d0914', trim: '#a855f7', skin: '#2a2236', glow: '#c9a0ff' };
 const ARCHIVIST: LifePalette = { robe: '#1d3360', shade: '#10203f', trim: '#b8913f', skin: '#c9b29a', glow: '#5fb6ff' };
 
-function keeper(id: string, station: string, name: string, palette: LifePalette, silhouette: LifeSilhouette, side: 1 | -1, art: string, npc?: NpcId): KeeperDef {
+function keeper(id: string, station: string, name: string, palette: LifePalette, silhouette: LifeSilhouette, side: 1 | -1, art: string, npc?: NpcId, title?: string): KeeperDef {
   return {
     id, station, npc, name, nameKey: `play.life.name.${id}`, art, palette, silhouette, side,
-    lines: [`play.life.line.${id}.1`, `play.life.line.${id}.2`],
+    ...(title ? { title, titleKey: `play.life.title.${id}` } : {}),
+    lines: allKeeperLines(id),
   };
 }
 
@@ -122,35 +138,47 @@ function keeper(id: string, station: string, name: string, palette: LifePalette,
  */
 export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> = {
   infernal: [
-    keeper('vault-clerk', 'vault', 'Vault Clerk', P.infernal[2], 'coat', -1, 'npc-vault-clerk-figure'),
-    keeper('buyback-clerk', 'vendor', 'Buyback Clerk', P.infernal[1], 'coat', 1, 'npc-material-vendor-figure'),
-    keeper('bench-smith', 'crafting', 'Bench Smith', P.infernal[2], 'smith', 1, 'npc-bench-smith-figure'),
+    // Orla Stave, Edrin Kade's cousin: a stave is a notched tally stick, and she has her grandmother's.
+    keeper('vault-clerk', 'vault', 'Orla Stave', P.infernal[2], 'coat', -1, 'npc-vault-clerk-figure', undefined, 'Vault Clerk'),
+    keeper('buyback-clerk', 'vendor', 'Edrin Kade', P.infernal[1], 'coat', 1, 'npc-material-vendor-figure', undefined, 'Buyback Clerk'),
+    keeper('bench-smith', 'crafting', 'Mara Voss', P.infernal[2], 'smith', 1, 'npc-bench-smith-figure', undefined, 'Bench Smith'),
     // Kael's sprite brief stands him at the Rune Forge.
-    keeper('kael', 'runes', 'Kael', KAEL, 'smith', 1, 'npc-kael-figure', 'kael'),
-    keeper('enchanter', 'enchanting', 'Enchanter', P.infernal[0], 'robe', -1, 'npc-enchanter-figure'),
+    keeper('kael', 'runes', 'Kael', KAEL, 'smith', 1, 'npc-kael-figure', 'kael', 'the Broken Flame'),
+    // Idris Calder trained in the Archive before the Seamworks; sockets are promises.
+    keeper('enchanter', 'enchanting', 'Idris Calder', P.infernal[0], 'robe', -1, 'npc-enchanter-figure', undefined, 'Enchanter'),
   ],
   luminous: [
-    keeper('merchant', 'market', 'The Merchant', MERCHANT, 'coat', 1, 'npc-merchant-figure', 'merchant'),
+    keeper('merchant', 'market', 'The Merchant', MERCHANT, 'coat', 1, 'npc-merchant-figure', 'merchant', 'of the long till'),
     // The Heliograph Court is hers: she stands by the court's waystone.
-    keeper('aureth', 'waystone', 'Aureth', AURETH, 'robe', -1, 'npc-aureth-figure', 'aureth'),
+    keeper('aureth', 'waystone', 'Aureth', AURETH, 'robe', -1, 'npc-aureth-figure', 'aureth', 'the Radiant'),
+    // Tomas tends the Court's lanterns, the ones that light the Waystone road.
+    keeper('tomas', 'waystone', 'Tomas Rill', P.luminous[1], 'coat', 1, 'npc-tomas-rill-figure', undefined, 'Lantern Keeper'),
+    // Ilyra listens at the East Stair, where the dawn-glass of the Reflection Channels begins.
+    keeper('ilyra', 'passage', 'Ilyra Venn', P.luminous[2], 'robe', -1, 'npc-ilyra-venn-figure', undefined, 'Archive Listener'),
   ],
   umbral: [
-    // The Croupier also runs the games of chance in a row just east of where it waits.
-    { ...keeper('croupier', 'gambler', 'Croupier', P.umbral[0], 'hood', 1, 'npc-croupier-figure'), serves: ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent'] },
-    keeper('broker', 'exchange', 'Exchange Broker', P.umbral[1], 'coat', 1, 'npc-exchange-broker-figure'),
+    // Lune Coyne, the Croupier, also runs the games of chance in a row just east of where she waits.
+    { ...keeper('croupier', 'gambler', 'Lune Coyne', P.umbral[0], 'hood', 1, 'npc-croupier-figure', undefined, 'Croupier'), serves: ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent'] },
+    keeper('broker', 'exchange', 'Amina Thorne', P.umbral[1], 'coat', 1, 'npc-exchange-broker-figure', undefined, 'Exchange Broker'),
     // Where two reflections disagree, a corridor opens. Verrin watches it.
-    keeper('verrin', 'passage', 'Verrin', VERRIN, 'hood', -1, 'npc-verrin-figure', 'verrin'),
+    keeper('verrin', 'passage', 'Verrin', VERRIN, 'hood', -1, 'npc-verrin-figure', 'verrin', 'the Hollow'),
+    // Rook maps the corridor's reflections from its other side: Verrin west of the mouth, Rook east.
+    keeper('rook', 'passage', 'Rook Sable', P.umbral[0], 'hood', 1, 'npc-rook-sable-figure', undefined, 'Veil Cartographer'),
   ],
   celestial: [
-    keeper('archivist', 'codex', 'The Archivist', ARCHIVIST, 'robe', -1, 'npc-archivist-figure', 'archivist'),
-    keeper('chart-clerk', 'leaderboards', 'Chart Clerk', P.celestial[1], 'coat', 1, 'npc-chart-clerk-figure'),
+    keeper('archivist', 'codex', 'The Archivist', ARCHIVIST, 'robe', -1, 'npc-archivist-figure', 'archivist', 'keeper of fragments'),
+    keeper('chart-clerk', 'leaderboards', 'Nox Aster', P.celestial[1], 'coat', 1, 'npc-chart-clerk-figure', undefined, 'Chart Clerk'),
+    // The Waystones are the Meridian Compact's transit apertures; Sera runs the network.
+    keeper('sera', 'waystone', 'Sera Quill', P.celestial[2], 'robe', 1, 'npc-sera-quill-figure', undefined, 'Chief Meridian'),
   ],
   verdant: [
-    keeper('steward', 'sanctum', 'Expedition Steward', P.verdant[0], 'coat', 1, 'npc-expedition-steward-figure'),
-    keeper('herald', 'quests', 'Board Herald', P.verdant[1], 'robe', 1, 'npc-board-herald-figure'),
-    keeper('gatekeeper', 'arena', 'Arena Gatekeeper', P.verdant[2], 'smith', 1, 'npc-arena-gatekeeper-figure'),
-    keeper('trials-warden', 'trials', 'Trials Warden', P.verdant[0], 'hood', -1, 'npc-trials-warden-figure'),
-    keeper('lodge-warden', 'skills', 'Lodge Warden', P.verdant[1], 'robe', 1, 'npc-lodge-warden-figure'),
+    keeper('steward', 'sanctum', 'Siv Moss', P.verdant[0], 'coat', 1, 'npc-expedition-steward-figure', undefined, 'Expedition Steward'),
+    // Pim Larkin reads the board aloud, as Larkins have for four generations; Corran Holt walked the roads
+    // with Siv before his knee went; Hesta Cairn keeps the door of the trials for Verrin.
+    keeper('herald', 'quests', 'Pim Larkin', P.verdant[1], 'robe', 1, 'npc-board-herald-figure', undefined, 'Board Herald'),
+    keeper('gatekeeper', 'arena', 'Corran Holt', P.verdant[2], 'smith', 1, 'npc-arena-gatekeeper-figure', undefined, 'Arena Gatekeeper'),
+    keeper('trials-warden', 'trials', 'Hesta Cairn', P.verdant[0], 'hood', -1, 'npc-trials-warden-figure', undefined, 'Trials Warden'),
+    keeper('lodge-warden', 'skills', 'Kesh Arbo', P.verdant[1], 'robe', 1, 'npc-lodge-warden-figure', undefined, 'Lodge Warden'),
   ],
 };
 
@@ -419,6 +447,8 @@ export class KeeperChatter {
     this.lastAt = new Float64Array(placements.length).fill(-Infinity);
     this.said = new Uint16Array(placements.length);
   }
+  /** A keeper's pool changed: its next greeting starts from the top of the new pool. */
+  restart(i: number): void { if (i >= 0 && i < this.said.length) this.said[i] = 0; }
   /** Returns the index of a keeper that just started speaking, or -1. */
   update(playerX: number, time: number): number {
     if (this.speaker >= 0 && time - this.at > CHATTER_SHOW) this.speaker = -1;
