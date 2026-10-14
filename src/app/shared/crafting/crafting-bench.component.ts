@@ -462,9 +462,9 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     if (code === 'level') {
       const need = recipe.requiredLevel ?? 1;
       // Smithing-gated recipes climb the Smithing skill, not the bench ladder.
-      const smithing = recipe.skill === 'smithing';
-      this.ctaBlocked = this.t(smithing ? 'crafting.why.smithing' : 'crafting.why.level', { n: need });
-      const have = smithing ? this.crafting.smithingLevel() : this.level.level;
+      const smithing = recipe.skill === 'smithing', fishing = recipe.skill === 'fishing';
+      this.ctaBlocked = this.t(smithing ? 'crafting.why.smithing' : fishing ? 'crafting.why.fishing' : 'crafting.why.level', { n: need });
+      const have = smithing ? this.crafting.smithingLevel() : fishing ? this.crafting.fishingLevel() : this.level.level;
       this.ctaProgress = Math.min(1, have / need);
     } else if (code === 'capacity') {
       this.ctaBlocked = this.t('crafting.why.bag');

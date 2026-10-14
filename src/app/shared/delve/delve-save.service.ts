@@ -24,7 +24,7 @@ import {
   DELVE_KEY, DelveChest, DelveSave, chestKey, claimOnce, coerceDelveSave, decodeCells, decodeSeen, encodeCells, encodeSeen, newDelveSave, rollSeed,
 } from './delve-save.model';
 
-interface LiveArea { layout: string; cells: Map<number, number>; seen?: string; bits?: Uint8Array }
+interface LiveArea { layout: string; cells: Map<number, number>; seen?: string; bits?: Uint8Array; wet?: string; liquids?: string }
 
 /** How long dug cells wait in memory before they are written. */
 export const DEBOUNCE_MS = 1500;
@@ -83,6 +83,25 @@ export class DelveSaveService {
     if (!this.ensure()) return;
     const area = this.area(areaId, layout);
     area.bits = bits;
+    this.schedule();
+  }
+
+  /** Settled liquid unlike the generated lakes, under liquid layout `wet`. */
+  liquids(areaId: string, wet: string): ReadonlyMap<number, number> | null {
+    if (!this.ensure()) return null;
+    const area = this.live.get(areaId);
+    if (!area || area.wet !== wet) return null;
+    const cells = decodeCells(area.liquids);
+    return cells.size ? cells : null;
+  }
+
+  /** The liquid settled (or a reaction or a bucket moved it): the whole diff, written on the same debounce as digs. */
+  liquidsChanged(areaId: string, wet: string, cells: ReadonlyMap<number, number>): void {
+    if (!this.ensure()) return;
+    const area = this.live.get(areaId);
+    if (!area) return;
+    area.wet = wet;
+    area.liquids = encodeCells(cells);
     this.schedule();
   }
 
@@ -184,7 +203,7 @@ export class DelveSaveService {
   private load(): void {
     this.save = coerceDelveSave(this.store.read(DELVE_KEY));
     this.live.clear();
-    for (const [id, area] of Object.entries(this.save?.areas ?? {})) this.live.set(id, { layout: area.layout, cells: decodeCells(area.cells), seen: area.seen });
+    for (const [id, area] of Object.entries(this.save?.areas ?? {})) this.live.set(id, { layout: area.layout, cells: decodeCells(area.cells), seen: area.seen, wet: area.wet, liquids: area.liquids });
   }
 
   private rehydrate(): void {
@@ -214,7 +233,7 @@ export class DelveSaveService {
     const areas: DelveSave['areas'] = {};
     for (const [id, area] of this.live) {
       const seen = area.bits ? encodeSeen(area.bits) : area.seen;
-      areas[id] = { layout: area.layout, cells: encodeCells(area.cells), ...(seen ? { seen } : {}) };
+      areas[id] = { layout: area.layout, cells: encodeCells(area.cells), ...(seen ? { seen } : {}), ...(area.wet ? { wet: area.wet, liquids: area.liquids ?? '' } : {}) };
     }
     save.areas = areas;
     this.store.write(DELVE_KEY, save);
