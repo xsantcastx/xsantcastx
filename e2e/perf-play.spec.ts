@@ -24,7 +24,12 @@
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import { bag as bagOf, canvas, ERA, focusWorld, openPlay, seed } from './play-helpers';
-import { DelveFixture, withSectors } from './play-delve-fixtures';
+import { DelveFixture, DELVE_SEED, SPEC, withSectors } from './play-delve-fixtures';
+import { nodeIndex } from '../src/app/play/engine/terrain';
+import { sectorContext } from '../src/app/play/engine/sector-gen';
+import { deepPlans } from '../src/app/play/engine/underhearth-gen';
+import { encodeRuns } from '../src/app/shared/delve/delve-region.model';
+import { RIFT_GATES } from '../src/app/shared/delve/rift-gates.model';
 
 const RUN = !!process.env['PLAY_PERF'];
 const SECONDS = Number(process.env['PLAY_PERF_SECONDS'] ?? 60);
@@ -280,6 +285,43 @@ harness('/play on a throttled phone', () => {
     await page.keyboard.press('e');
     await page.waitForTimeout(500);
     await measure(page, cdp, 'delve:furnace-hall');
+  });
+
+  // The Rift Gates (docs/handoff/rift-gates.md): the same Keeper beside the Umbral gate in the Underhearth,
+  // then through it, walking the Ink Deeps' Gate Hollow (ink-blind lighting, the ink basin and its tide,
+  // the mirrored hall below): the realm Delve against the main Delve, on the same phone.
+  async function atUmbralGate(page: Page): Promise<number> {
+    const plan = deepPlans(sectorContext(SPEC, DELVE_SEED), RIFT_GATES.umbral.place.cell).find(p => p.kind === 'rift-gate')!;
+    const camp = { col: plan.col + 7, row: plan.row + 4 }, sx = Math.floor(camp.col / 32), sy = Math.floor(camp.row / 32);
+    const f = new DelveFixture();
+    f.claimed = ['warden-defeated', 'underhearth-unsealed', 'underhearth-reached', 'rift-attuned:umbral', 'rift-seen:umbral'];
+    const now = Date.now();
+    await seed(page, { ...RESTORED, ...f.blobs(), 'godforge-delve-r0': { v: 1, seed: DELVE_SEED, rx: Math.floor(sx / 8), ry: Math.floor(sy / 8), t: now,
+      sectors: { [`${sx},${sy}`]: { g: 1, t: now, c: encodeRuns(new Map([[(camp.row - sy * 32) * 32 + (camp.col - sx * 32), nodeIndex('camp')]])) } } } });
+    await openPlay(page, '?at=delve');
+    const descend = page.getByRole('button', { name: /Descend to your camp/ });
+    await expect(descend).toBeVisible({ timeout: 60000 });
+    await descend.click();
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
+    await page.waitForTimeout(1500);
+    return plan.col;
+  }
+  test('delve: the Underhearth beside the Umbral Rift Gate', async ({ page }) => {
+    const cdp = await phone(page);
+    await atUmbralGate(page);
+    await measure(page, cdp, 'delve:umbral-gate');
+  });
+  test('realm: the Ink Deeps, the Gate Hollow (Umbral underside)', async ({ page }) => {
+    const cdp = await phone(page);
+    await atUmbralGate(page);
+    await focusWorld(page);
+    await expect(async () => {
+      await page.keyboard.down('a'); await page.waitForTimeout(250); await page.keyboard.up('a');
+      await page.keyboard.press('e');
+      await expect(canvas(page)).toHaveAttribute('data-area', 'The Ink Deeps', { timeout: 1500 });
+    }).toPass({ timeout: 20000 });
+    await page.waitForTimeout(1500);
+    await measure(page, cdp, 'realm:ink-deeps');
   });
 
   test('delve: Magma Halls beside a lava pool', async ({ page }) => {

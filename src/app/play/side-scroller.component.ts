@@ -1592,7 +1592,8 @@ export class SideScrollerComponent implements OnDestroy {
     const now = Date.now();
     if (now - this.delveTickAt < 1000) return;
     this.delveTickAt = now;
-    this.pins = this.delve.pins();
+    // Map pins belong to the Ember Delve's regions; a realm Delve shows none (and takes none, below).
+    this.pins = this.engine.realm ? [] : this.delve.pins();
     if (this.selectedPinId && !this.selectedPin) this.selectedPinId = null;
     const read = this.delveLore.inscriptions();
     this.glimMarkMission = activeMark(this.glim.state.lastAt, now);
@@ -1636,6 +1637,7 @@ export class SideScrollerComponent implements OnDestroy {
       .sort((a, b) => Math.abs(a.col - col) + Math.abs(a.row - row) - Math.abs(b.col - col) - Math.abs(b.row - row))[0];
     if (hit && !this.pinning) { this.selectPin(hit.id); return; }
     if (!this.pinning) return;
+    if (this.engine?.realm) { this.pinning = false; return; }
     const rows = this.engine?.mapSource()?.t.rows ?? 56;
     const pin = { id: newPinId(), col, row: Math.max(0, Math.min(rows - 1, row)), icon: 'star', name: '' };
     this.pinning = false;
@@ -2515,7 +2517,11 @@ export class SideScrollerComponent implements OnDestroy {
     }
     // Plain dirt and placed blocks pay only the block.
     if (!event.xp && !(event.materialId && event.qty)) { this.grantBlock(event); return true; }
-    if (event.kind === 'mine' && event.discipline === 'mining' && !event.site) {
+    // The seam's own ores (and plain rock) go through the Seamworks seam's gate. Any other ore (the
+    // Underhearth's emberheart and pyrite, the Ink Deeps' inkstone and nightglass) pays itself below:
+    // resolveMine only knows MINING_TIERS and would book it as Cinder Ore.
+    const seamOre = !event.materialId || !!miningTierFor(event.materialId);
+    if (event.kind === 'mine' && event.discipline === 'mining' && !event.site && seamOre) {
       const now = Date.now();
       const settled = settleDelveMine({
         // The selected Current Work's breath, read before switching to it; with
