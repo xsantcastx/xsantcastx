@@ -68,6 +68,7 @@ export class CraftingService {
 
   private state: CraftingState = emptyCraftingState();
   private loaded = false;
+  private initialised = false;
 
   private readonly snapshot$$ = new BehaviorSubject<CraftingSnapshot>(snapshotOf(emptyCraftingState()));
   private readonly progress$$ = new Subject<CraftingProgress>();
@@ -78,8 +79,17 @@ export class CraftingService {
 
   get snapshot(): CraftingSnapshot { return this.snapshot$$.value; }
 
+  /**
+   * Idempotent: publishes once. It used to publish on every call, and
+   * `CraftingGateway.blocker()` calls it — so the Crafting Bench's
+   * `snapshot$` subscriber (refresh → buildCta → blocker → init → publish →
+   * refresh …) recursed until the stack overflowed, every time the bench
+   * opened. On a phone that froze and then killed the tab. Later changes reach
+   * `snapshot$` through the writes that make them (and `rehydrate`).
+   */
   init(): void {
-    if (!this.isBrowser) return;
+    if (!this.isBrowser || this.initialised) return;
+    this.initialised = true;
     this.load();
     this.publish();
   }
