@@ -66,6 +66,8 @@ export const RETURN_GATE = { col: 31, row: 28, w: 2, h: 3 } as const;
 /** The Gloam Warden's hall, under the hollow: a mirrored ceiling, three braziers, an unbreakable floor. */
 export const WARDEN_HALL = { col: 6, row: 44, w: 52, h: 10 } as const;
 export const WARDEN_BRAZIERS: readonly number[] = [12, 32, 52];
+/** The inkstone outcrop in the Gate Hollow, east of the arrival: three cells, floor to head height (the first swing finds ore). */
+export const INK_SEAM = { col: 39, row: 28, h: 3 } as const;
 /** The drift pocket the Gate Hollow's east tunnel runs through (the first one a Keeper meets). */
 const CORE_POCKET = { col: 50, row: 28, w: 8, h: 3 } as const;
 
@@ -190,6 +192,8 @@ function stamp(b: Builder, plan: RealmPlan, out: SectorColumnGen, deep: boolean)
       b.liquid(18, 31, 8, 2, LIQUID_INK);
       b.put(21, G.row - 1, U.seep); b.put(28, G.row - 1, U.seep);
       b.dress(G.col + G.w, G.row + 2, U.inkstone); b.dress(G.col + G.w, G.row + 3, U.inkstone);
+      // The first swing finds ore: an inkstone outcrop standing in the hollow, east of the arrival.
+      for (let r = INK_SEAM.row; r < INK_SEAM.row + INK_SEAM.h; r++) b.put(INK_SEAM.col, r, U.inkstone);
       b.note(41, 29, `${FIELD_NOTE_PREFIX}umbral-rooks-chalk`);
       break;
     }
