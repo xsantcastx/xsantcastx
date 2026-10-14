@@ -113,6 +113,13 @@ import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 import { SlateService } from '../shared/slate/slate.service';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
+// Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
+import { KeeperLookService } from '../shared/keeper-look/keeper-look.service';
+import { KEEPER_LOOK_I18N } from '../shared/keeper-look/keeper-look.i18n';
+import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.model';
+import { gearKey } from '../shared/keeper-look/keeper-gear';
+import { wornGear } from '../shared/keeper-look/worn-gear';
+import { OnboardingService } from '../shared/onboarding/onboarding.service';
 import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
 import type { PanelEntry } from './world/panel-registry';
 
@@ -431,6 +438,21 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly toldReady = new Set<string>();
   // ── The Mirror Slate (docs/handoff/mirror-slate.md) ──
   private readonly slate = inject(SlateService);
+  // ── Make your Keeper ──
+  private readonly looks = inject(KeeperLookService);
+  private readonly onboarding = inject(OnboardingService);
+  /** The look + gear last sent to the engine. */
+  private lookPushKey = '';
+  /** "Make your Keeper" opened itself once for a brand-new Keeper (this tab). */
+  private makerOffered = false;
+  /** HUD ticks since the world mounted, before the Glass is offered. */
+  private makerWait = 0;
+  /** The one gentle nudge: a lit dot on the Places button until the list is opened (existing saves). */
+  lookNudge = false;
+  /** The open Places list carries the nudge line this once. */
+  lookNudgeShown = false;
+  /** The Keeper's chosen name (the vitals label), or '' for "Keeper". */
+  keeperName = '';
   /** The pane the Keeper holds (0: none, no button). Re-read on the HUD tick. */
   slateTier: SlateTier = 0;
   /** The Homestead has something worth a look: the button wears a badge. */
@@ -449,6 +471,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
     this.i18n.register(SLATE_I18N);
+    this.i18n.register(KEEPER_LOOK_I18N);
     this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
     try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
   }
@@ -580,7 +603,7 @@ export class SideScrollerComponent implements OnDestroy {
     });
     this.engine.setHomesteadView(this.homestead.scene);
     this.statsKey = '';
-    this.loadoutKey = '';
+    this.loadoutKey = ''; this.lookPushKey = '';
     this.toolKey = '';
     this.engine.setPlaceable(this.placing);
     this.sync();
@@ -849,7 +872,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.loadPanel(entry, this.panelInjector);
   }
   /** Build a hosted page into the open panel (a slow import never lands in a newer or closed one). */
-  private loadPanel(entry: Pick<PanelEntry, 'load'>, injector: Injector): void {
+  private loadPanel(entry: Pick<PanelEntry, 'load'>, injector: Injector, created?: (ref: ComponentRef<unknown>) => void): void {
     const seq = this.panelSeq;
     this.panelLoading = true;
     entry.load().then(type => {
@@ -857,6 +880,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.panelHost.clear();
       this.panelRef = this.panelHost.createComponent(type, { injector });
       this.panelLoading = false;
+      created?.(this.panelRef);
     }).catch(() => {
       if (seq !== this.panelSeq) return;
       this.panelLoading = false;
@@ -998,6 +1022,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   togglePlaces(): void {
     this.placesOpen = !this.placesOpen;
+    // The nudge is a one-time thing: seen once the list is open (the entry stays).
+    this.lookNudgeShown = this.placesOpen && this.lookNudge;
+    if (this.placesOpen && this.lookNudge) { this.looks.markPrompted(); this.lookNudge = false; }
     if (this.placesOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#places-list button')?.focus());
   }
   /** Walk to the place and interact on arrival; with reduced motion, go there and open it at once. */
@@ -2066,11 +2093,52 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private pushLoadout(): void {
     if (!this.engine) return;
+    this.pushKeeper();
     const loadout = this.loadout();
     const key = `${loadout.weapon?.art}:${loadout.weapon?.rarity}|${loadout.offhand?.art}:${loadout.offhand?.rarity}|${loadout.auraRarity}`;
     if (key === this.loadoutKey) return;
     this.loadoutKey = key;
     this.engine.setLoadout(loadout);
+  }
+  /**
+   * The player's pixel Keeper: the look chosen at the Glass of Becoming wearing
+   * what is equipped now (every worn slot is a layer). Sent when either changes;
+   * the canvas carries both keys for tests. A brand-new Keeper (the tutorial
+   * ended in this tab) is offered "Make your Keeper" once; an existing save gets
+   * the nudge dot on Places instead.
+   */
+  private pushKeeper(): void {
+    const look = this.looks.look;
+    const gear = wornGear(this.inventory.snapshot.equipped);
+    const key = `${lookKey(look)}#${gearKey(gear)}`;
+    this.keeperName = look.made ? look.name : '';
+    this.lookNudge = !look.made && !look.prompted;
+    if (key !== this.lookPushKey) {
+      this.lookPushKey = key;
+      this.engine?.setKeeperLook(look, gear);
+      const el = this.canvas?.nativeElement;
+      el?.setAttribute('data-keeper-look', lookKey(look));
+      el?.setAttribute('data-keeper-gear', gearKey(gear));
+    }
+    // Offered once the arrival has settled (the route's first query emissions close any open place).
+    if (!look.made && !this.makerOffered && this.onboarding.finishedHere && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.glimTalk) {
+      this.makerOffered = true;
+      this.openKeeperMaker();
+    }
+  }
+  /** The Glass of Becoming: "Make your Keeper" as a place (the world pauses). */
+  openKeeperMaker(): void {
+    if (!this.browser) return;
+    this.looks.markPrompted();
+    this.lookNudge = false;
+    this.showPanel({ kind: 'page', stationId: 'glass', title: this.t('look.title'), kicker: this.t('look.kicker'), own: true });
+    this.loadPanel({ load: () => import('../shared/keeper-look/keeper-maker.component').then(m => m.KeeperMakerComponent) }, this.panelInjector, ref => {
+      (ref.instance as { done?: { subscribe(fn: (look: KeeperLook) => void): unknown } }).done?.subscribe(() => this.zone.run(() => {
+        this.pushKeeper();
+        this.closePanel();
+        this.message = this.t('look.saved');
+      }));
+    });
   }
   private loadout(): KeeperLoadout {
     const equipped = this.inventory.snapshot.equipped;

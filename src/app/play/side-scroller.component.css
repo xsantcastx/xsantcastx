@@ -2455,3 +2455,18 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (max-width: 640px) {
   .anchor-sheet { top: calc(var(--hud-safe-t) + 8px); width: calc(100% - 16px); max-height: calc(100% - var(--hud-safe-t) - var(--hud-safe-b) - 16px); }
 }
+
+/* Make your Keeper: the one gentle nudge, a lit dot on Places until the list is opened. */
+.places-toggle { position: relative; }
+.look-nudge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 9px;
+  height: 9px;
+  border: 1px solid var(--adventure-hud-shadow);
+  border-radius: 50%;
+  background: var(--adventure-hud-gold);
+  box-shadow: 0 0 6px var(--adventure-hud-gold);
+  pointer-events: none;
+}

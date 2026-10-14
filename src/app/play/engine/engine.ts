@@ -2,6 +2,9 @@ import { coarseDevice, renderBudget, type RenderBudget } from './render-budget';
 import { Atmosphere } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import type { KeeperContext } from '../world/keeper-lines';
+import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { keeperAction, type KeeperGear } from '../../shared/keeper-look/keeper-gear';
+import { lookFromSeed, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
 import { resetPose, RigSprite } from './rig';
 import { CREATURE_STRIKE, CREATURE_WINDUP, CreatureRigDef, creatureRigFor, RIVET_MAW_CREATURE } from './creature-rigs';
@@ -268,6 +271,12 @@ export class SeamworksEngine {
   }
   /** Worn gear drawn on the Keeper (see setLoadout). Images by URL, cached. */
   private loadout: KeeperLoadout = {};
+  /** The player's own pixel Keeper (setKeeperLook): their chosen look wearing their gear. */
+  private keeperPainter: KeeperPainter | null = null;
+  /** Other Keepers in the room: a stable look from their id, so nobody looks the same. */
+  private readonly peerPainters = new Map<string, KeeperPainter>();
+  /** The pixel Keeper paints into small canvases; without a DOM (the node harness) Keepers keep the rig. */
+  private readonly canPaint = typeof document !== 'undefined' && typeof document.createElement === 'function';
   private readonly urlImages = new Map<string, HTMLImageElement>();
   private readonly held = createHeldTransform();
   private readonly backHand = { x: 0, y: 0, angle: 0 };
@@ -1292,6 +1301,28 @@ export class SeamworksEngine {
    * With no weapon, the quest Basalt Edge still shows once `setProgress` says
    * it is equipped. Visual only: damage and HP come from `setStats`.
    */
+  /**
+   * The player's Keeper as chosen at the Glass of Becoming, wearing `gear`
+   * (keeper-gear.ts layers: helm, chest, cloak, gloves, greaves, boots, the held
+   * weapon at its grip). Cheap to call repeatedly: the painter (and its cached
+   * frames) is rebuilt only when the look or the gear changes. null → the
+   * painted rig Keeper.
+   */
+  setKeeperLook(look: KeeperLook | null, gear: KeeperGear | null = null): void {
+    if (!look || !this.canPaint) { this.keeperPainter = null; return; }
+    const next = new KeeperPainter(look, gear);
+    if (next.key !== this.keeperPainter?.key) this.keeperPainter = next;
+  }
+  private peerPainter(id: string): KeeperPainter | null {
+    if (!this.canPaint) return null;
+    let painter = this.peerPainters.get(id);
+    if (!painter) {
+      if (this.peerPainters.size > 32) this.peerPainters.clear();
+      painter = new KeeperPainter(lookFromSeed(id));
+      this.peerPainters.set(id, painter);
+    }
+    return painter;
+  }
   setLoadout(loadout: KeeperLoadout | null): void {
     this.loadout = loadout ? { weapon: loadout.weapon ?? null, offhand: loadout.offhand ?? null, auraRarity: loadout.auraRarity ?? null } : {};
     this.heldImage(this.loadout.weapon); this.heldImage(this.loadout.offhand);
@@ -3551,9 +3582,18 @@ export class SeamworksEngine {
     shown: string | undefined, time: number, motion: KeeperMotion, worldX: number, worldY: number, facing: number,
     attackT: number, swing: number, armed: boolean, feel: { landing: number; recoil: number; rim: number },
     fallback: { bob: number; tilt: number; sx: number; sy: number; sway: number },
-    gear = false, clock?: SpriteClock, fallen = false,
+    gear = false, clock?: SpriteClock, fallen = false, painter: KeeperPainter | null = null,
   ): void {
     trackKeeper(motion, worldX, worldY, this.frameDt);
+    if (painter) {
+      // The pixel Keeper (keeper-paint.ts): its own frames, gear as layers, the weapon at its grip.
+      const aura = gear ? this.loadout.auraRarity : null;
+      if (aura) this.drawAura(c, aura, time);
+      painter.draw(c, box.h / 49, {
+        action: keeperAction(shown, fallen), time, attackT, rim: feel.rim, reduced: this.reducedMotion, weapon: gear,
+      });
+      return;
+    }
     const sheet = clock ? this.readySprite('keeper') : null;
     if (sheet && clock) {
       this.drawKeeperSprite(c, sheet, this.readyImage!, box.h / 196, fallen ? 'death' : shown, clock, motion.vx * facing, attackT, swing, armed, feel.rim, gear, time);
@@ -4246,7 +4286,7 @@ export class SeamworksEngine {
       c.globalAlpha = motion.alpha;
       c.shadowColor = warm ? '#ffc27a' : '#deb8f3'; c.shadowBlur = this.blur(warm ? 12 : 6); c.filter = 'none';
       this.drawKeeper(c, { x: -70, y: -176, w: 140, h: 176 }, shown, motionTime + view.x, view.motion, view.x, view.y, view.facing,
-        attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion, false, view.clock);
+        attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion, false, view.clock, false, this.peerPainter(view.peer.id));
       c.restore();
     }
     // Keep the player readable against the dark realm art at narrow viewport sizes.
@@ -4284,7 +4324,7 @@ export class SeamworksEngine {
         landing: this.landing > 0 ? this.landing / .18 : 0,
         recoil: this.hp <= 0 ? 1 : Math.max(0, Math.min(1, this.hurtTime / .8)),
         rim: Math.max(strikeGlow, this.wound * .9),
-      }, motion, true, this.playerClock, this.hp <= 0);
+      }, motion, true, this.playerClock, this.hp <= 0, this.keeperPainter);
     c.filter = 'none'; c.shadowBlur = 0; c.globalAlpha = 1;
     if (attackT > .3) {
       const u = (attackT - .3) / .7;
