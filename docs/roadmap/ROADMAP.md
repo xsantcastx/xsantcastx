@@ -6,17 +6,15 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 ## What's next (in order)
 
-0. **Delves in every realm** (owner, 2026-10-14 — "we are in Eclipse Realms") — each of the five realms gets its own Delve: Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists). Own biomes, creatures, keeper missions, story. **Top item after the weekly budget resets (Mon).**
-1. **The Underhearth** (Phase 8). *(in flight)*
-2. **The Mirror Slate** — casino anywhere + Homestead management. *(in flight)*
-3. **Uncapped levels, Tibia-style** (owner, 2026-10-14) — skills past 99 forever on a steepening curve; tool bonuses keep growing with diminishing returns; swing floor and reward rate caps stay; titles at milestone levels. *(paused until the weekly reset — branch kept)*
-4. **Glim bond** (owner) — the more you explore with Glim the closer you get: bond levels unlock Glim's story, conversations and small abilities (sensing hidden rooms, remembering routes). *(paused until the weekly reset — branch kept)*
-5. **A surface with height** (owner) — ✅ built (`docs/handoff/surface-height.md`): every hunting ground has a high road (shelf, tree, ruin + rope bridge, mesa, snag, ruin block, spire), ledge-grab + mantle, tree climbing, wall-jump, a floatier jump arc, courier caches, carvings, a look-out, a summit cairn per realm with a title and a Codex entry (once per player), perched creatures and Hollis Fenn. Next: town outskirts, vine walls, painted props.
-6. **Lost Cabinets** (owner) — rare unique slot machines hidden in the Delve; scan one with the Mirror Slate (scan animation) to download its game; collectible. Needs the Slate.
-7. **A living, mysterious Delve** (owner) — per-biome/region backgrounds and assets, hidden rooms, environmental storytelling, ambient life, events (ambushes, rift storms, cave-in chases), more creatures.
-8. **Pets** (owner) — rare befriendable creatures that follow you, each with a trait and lore.
-9. **Tibia-inspired loops** — research pass: hunting grounds, rare drops, open quests, houses → ideas that fit the world.
-10. **Starfall Deep** (Phase 9) · **Story Act II** · **Art test set** *(owner)*.
+1. **Delves in every realm** (owner, 2026-10-14) — Luminous light-mines, Umbral ink-caves, Celestial star-wells, Verdant root-depths (Infernal's Ember Delve exists), each with its own biomes, creatures, keeper missions and story. **Top item after the weekly budget resets (Mon).**
+2. **The Underhearth** (Phase 8). *(in flight)*
+3. **The Mirror Slate** — casino anywhere + Homestead management. *(in flight)*
+4. **Uncapped levels, Tibia-style** — skills past 99 on a steepening curve; diminishing tool bonuses; swing floor and reward caps stay; milestone titles. *(in flight)*
+5. **Glim bond** — bond levels unlock Glim's story, conversations and small abilities. *(in flight)*
+6. **A surface with height** — ✅ built (`docs/handoff/surface-height.md`): the High Roads in all five hunts (ledge-grab, mantle, climbing, wall-jump; once-only caches, carvings, a look-out, a summit cairn + Ridgewalker title per realm; perched creatures, Hollis Fenn). Next: town outskirts, vine walls, painted props.
+7. **World feel** (owner, 2026-10-14) — *the sound of the world*: a Web Audio director (sparse per-realm score, ambience beds, block-aware SFX, sliders + mute, first-tap start, no audio files); *catch & craft*: visible fish shadows, "+1 item" pickup popups, crafted items pop above the bench and open the Satchel.
+
+Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
 ## Milestones
 
@@ -43,6 +41,7 @@ Reviewed daily; newest review on top of the log at the bottom.
 ## Daily review log
 
 - **2026-10-14 (night)** — Built: **a surface with height** (the High Roads): parkour routes in all five hunts with once-only caches and summit titles, ledge-grab, climbing, wall-jump; Hollis Fenn walks the high roads.
+- **2026-10-14 (daily review)** — No app code shipped since the evening entry; docs only (agent brief, SYSTEMS.md, sound + catch & craft added). Trimmed "What's next" to seven (sound and catch & craft merged into World feel; the rest under Later). Risk: five features in flight at once on a shared repo — gate each merge and watch for release-version races.
 - **2026-10-14 (evening)** — Owner ideas folded in: Lost Cabinets (scan with the Slate), uncapped Tibia-style levels, Glim bond, a surface with height + parkour, pets, a more alive and mysterious Delve, Tibia inspiration.
 - **2026-10-14 (afternoon)** — Shipped: fishing polish, NPC depth + six names, the endless Delve, daily bounties + map pins. Owner loved the casino and asked for a carried device → the Mirror Slate is #2.
 - **2026-10-14 (bounties + map v2)** — Phase 7 finished: Pim Larkin's three daily Delve bounties at the Quest Board
