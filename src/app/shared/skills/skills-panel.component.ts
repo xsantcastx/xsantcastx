@@ -13,7 +13,7 @@ import { RouterLink } from '@angular/router';
 
 import { TranslationService } from '../../translation.service';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
-import { levelProgressPct, miningLevelView, type MiningLevelView } from '../activity/mining-level';
+import { formatXp, levelProgressPct, miningLevelView, type MiningLevelView } from '../activity/mining-level';
 import { CraftingService } from '../crafting/crafting.service';
 import { artFor } from '../art/art';
 import type { ActivityLedger } from '../activity/activity.model';
@@ -21,7 +21,9 @@ import { BASALT_SEAMWORKS_HREF } from '../narrative/chapter.model';
 import { ROOTGLASS_CANOPY_HREF } from '../activity/foraging.model';
 import { MERIDIAN_ORRERY_HREF } from '../activity/prospecting.model';
 import { SKILLS, skillXp, type SkillDef, type SkillId } from './skill.model';
-import { SKILL_UNLOCKS, describeUnlock, nextUnlock, type SkillUnlock } from './skill-unlocks';
+import { SKILL_UNLOCKS, nextUnlock, unlockText, type SkillUnlock } from './skill-unlocks';
+import { titleFor, titleText } from './skill-titles';
+import { SKILL_TITLES_I18N } from './skill-titles.i18n';
 import { foundInPlaces } from '../world/found-in';
 import { foundInWorld } from '../world/found-in.data';
 import { DelveMissionChipComponent } from '../npc/delve-mission-chip.component';
@@ -39,6 +41,10 @@ interface SkillCard {
   def: SkillDef;
   view: MiningLevelView;
   pct: number;
+  /** "1.2M / 1.3M XP to level 101", K/M-formatted so a card past 99 stays one line. */
+  toNext: string | null;
+  /** The skill's title past 99 ("Seam-Sage"), or null below 100. */
+  title: string | null;
   /** Translated "what's next" line, or null at the end of the table. */
   next: string | null;
   /** `where` is the "Found in" line for a gathering row, derived from world data. */
@@ -67,7 +73,10 @@ interface SkillCard {
                 <img class="sk__mark" [src]="a.src" [attr.srcset]="a.srcset" sizes="40px"
                      alt="" width="40" height="40" loading="lazy" decoding="async">
               }
-              <h3 class="sk__name">{{ t(card.def.labelKey) }}</h3>
+              <div class="sk__named">
+                <h3 class="sk__name">{{ t(card.def.labelKey) }}</h3>
+                @if (card.title; as title) { <span class="sk__epithet">{{ title }}</span> }
+              </div>
               <span class="sk__lvl" [attr.aria-label]="t('skills.levelLabel', { n: card.view.level })">{{ card.view.level }}</span>
             </div>
 
@@ -76,6 +85,7 @@ interface SkillCard {
                  [attr.aria-label]="t('hub.skills.barLabel', { name: t(card.def.labelKey) })">
               <span class="sk__fill" [style.width.%]="card.pct"></span>
             </div>
+            @if (card.toNext; as toNext) { <p class="sk__tonext">{{ toNext }}</p> }
 
             <p class="sk__next">
               @if (card.next; as next) { {{ next }} } @else { {{ t('skills.allDone') }} }
@@ -87,7 +97,7 @@ interface SkillCard {
 
             <details class="sk__details">
               <summary>{{ t('skills.details') }}</summary>
-              <p class="sk__xp">{{ t('skills.xpTotal', { xp: card.view.xp }) }}</p>
+              <p class="sk__xp">{{ t('skills.xpTotal', { xp: xp(card.view.xp) }) }}</p>
               <ol class="sk__table">
                 @for (row of card.rows; track $index) {
                   <li class="sk__row" [class.sk__row--earned]="row.earned">
@@ -131,6 +141,9 @@ interface SkillCard {
       letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--gf-ink);
     }
+    .sk__named { min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+    .sk__epithet { color: var(--gf-accent-text); font-size: 0.74rem; line-height: 1.2; overflow-wrap: anywhere; }
+    .sk__tonext { margin: -2px 0 0; color: var(--gf-faint); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
     .sk__lvl {
       font: 700 30px/1 'Orbitron', system-ui, sans-serif;
       color: var(--gf-accent-text);
@@ -189,6 +202,8 @@ export class SkillsPanelComponent implements OnInit {
   ngOnInit(): void {
     // Fishing's words (its name, hint and unlock rows) live in its lazy table.
     this.i18n.register(FISHING_I18N);
+    // The titles past 99 and the "XP to level" line (skill-titles.i18n.ts).
+    this.i18n.register(SKILL_TITLES_I18N);
     this.activity.init();
     this.crafting.init();
     this.activity.snapshot$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(snap => this.build(snap));
@@ -201,6 +216,8 @@ export class SkillsPanelComponent implements OnInit {
 
   art(id: string) { return artFor(id); }
 
+  xp(n: number): string { return formatXp(n); }
+
   private build(snap: ActivityLedger): void {
     const bench = this.crafting.snapshot.xp;
     this.cards = SKILLS.map(def => {
@@ -211,6 +228,8 @@ export class SkillsPanelComponent implements OnInit {
         def,
         view,
         pct: levelProgressPct(view),
+        toNext: view.next == null ? null : this.t('skills.toNext', { into: formatXp(view.into), span: formatXp(view.span), level: view.level + 1 }),
+        title: this.titleOf(def.id, view.level),
         next: upcoming ? this.t('skills.next', { what: this.text(upcoming.unlocks[0]), level: upcoming.level }) : null,
         rows: SKILL_UNLOCKS[def.id].map(u => ({
           level: u.level,
@@ -224,8 +243,12 @@ export class SkillsPanelComponent implements OnInit {
     this.cdr.markForCheck();
   }
 
+  private titleOf(id: SkillId, level: number): string | null {
+    const title = titleFor(id, level);
+    return title ? titleText(title, (key, vars) => this.t(key, vars)) : null;
+  }
+
   private text(u: SkillUnlock): string {
-    const { key, vars } = describeUnlock(u);
-    return this.t(key, vars);
+    return unlockText(u, (key, vars) => this.t(key, vars));
   }
 }

@@ -32,6 +32,7 @@ import { Subscription } from 'rxjs';
 import { LevelUpService, type LevelUpEvent } from './level-up.service';
 import { LevelUpAudioService } from './level-up-audio.service';
 import { TranslationService } from '../../translation.service';
+import { wordsText } from '../skills/skill-unlocks';
 
 const DWELL_MS = 3200;
 const MILESTONE_DWELL_MS = 5200;
@@ -57,8 +58,11 @@ const MILESTONE_DWELL_MS = 5200;
         <span class="lu__body">
           <span class="lu__eyebrow">{{ t(event.milestone ? 'levelUp.milestone' : 'levelUp.eyebrow') }}</span>
           <span class="lu__title">{{ t('levelUp.title', { skill: t(event.skillLabelKey), level: event.level }) }}</span>
-          @if (event.unlocks.length) {
-            <span class="lu__unlock">{{ t('levelUp.unlocked') }} {{ unlockLine(event) }}</span>
+          @if (event.title && titleWords) {
+            <span class="lu__unlock lu__title-earned">{{ t('skills.title.earned', { name: titleName(event.title) }) }}</span>
+          }
+          @if (unlockLine(event); as line) {
+            <span class="lu__unlock">{{ t('levelUp.unlocked') }} {{ line }}</span>
           }
           @if (event.tool && toolWords) {
             <span class="lu__unlock lu__tool">{{ t(event.tool.swing ? 'toolStat.levelUp' : 'toolStat.levelUpPower', { skill: t(event.skillLabelKey), level: event.level, swing: event.tool.swing ?? '', power: event.tool.power }) }}</span>
@@ -154,6 +158,8 @@ export class LevelUpBannerComponent implements OnInit, OnDestroy {
   visible = false;
   /** The tools words (skills/tools.i18n.ts) are fetched on the first tool line, so the app shell never carries the table. */
   toolWords = false;
+  /** The titles' words (skills/skill-titles.i18n.ts), fetched on the first title, the same way. */
+  titleWords = false;
 
   ngOnInit(): void {
     if (!this.isBrowser) return;
@@ -171,7 +177,14 @@ export class LevelUpBannerComponent implements OnInit, OnDestroy {
 
   /** Every row the crossing opened, translated, one line. */
   unlockLine(event: LevelUpEvent): string {
-    return event.unlocks.map(u => this.t(u.key, u.vars)).join(' · ');
+    // A title row is named on its own line above; the rest read as before.
+    return event.unlocks.filter(u => !u.nameKey).map(u => wordsText(u, (k, v) => this.t(k, v))).join(' · ');
+  }
+
+  /** "Seam-Sage", or "Eclipse Hewer +2" from 300. */
+  titleName(title: { key: string; stars: number }): string {
+    const name = this.t(title.key);
+    return title.stars ? this.t('skills.title.starred', { title: name, n: title.stars }) : name;
   }
 
   dismiss(): void {
@@ -193,6 +206,13 @@ export class LevelUpBannerComponent implements OnInit, OnDestroy {
     if (event.skillLabelKey === 'skills.name.fishing') {
       // Fishing's words are in its lazy table (shared/fishing): fetched on its first level.
       void import('../fishing/fishing.i18n').then(m => { this.i18n.register(m.FISHING_I18N); this.cdr.markForCheck(); }).catch(() => { /* the banner still shows */ });
+    }
+    if (event.title && !this.titleWords) {
+      void import('../skills/skill-titles.i18n').then(m => {
+        this.i18n.register(m.SKILL_TITLES_I18N);
+        this.titleWords = true;
+        this.cdr.markForCheck();
+      }).catch(() => { /* the banner still names the level */ });
     }
     if (event.tool && !this.toolWords) {
       void import('../skills/tools.i18n').then(m => {

@@ -1158,3 +1158,13 @@ ends agree. You step through."; travel sheet: "A passage that holds only because
 both ends agree to. Choose where to step through."). Each rift shrine's first
 touch now also leaves a **Waystone Shard**, "a splinter from a waystone that
 was never built".
+## Skill titles past mastery (uncapped levels, 2026-10-14) — shipped, owner reviews in play
+
+Past 99 nothing new is gated; the climb pays in standing. A title at 100 and every 25 levels
+(eight per skill, words in `src/app/shared/skills/skill-titles.i18n.ts`, EN + ES), then `+1`, `+2`…
+on the last one every 25 levels from 300. Each name leans on the skill's own places and things:
+Mining (Vein-Reader → Seam-Sage → Ember-Hewer → Heartstone Breaker → Basalt-Born → Orichalcum Hand →
+Seam-Warden → Eclipse Hewer), Delving (Lantern-Bearer → Deepdelver → … → Underhearth Walker → Abyss-Sage →
+Eclipse Delver), Fishing (… Drowned-Lamp Seeker … Ledger-Legend …), and so on. Every ladder ends in an
+"Eclipse" title: the realm's name is the last word a skill can earn. Builds on: the skills' canon
+nodes and sites (Heartstone, Orichalcum, Rootglass, Meridian Orrery, the Drowned Lamp, the Ledger Catch).

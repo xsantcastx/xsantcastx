@@ -41,7 +41,7 @@ export interface ToolTiers {
   swing: Record<ToolFamily, number>;
   /** Per family, the tier's own pace before the level (what the cards call "tool"). */
   toolSwing: Record<ToolFamily, number>;
-  /** Per family, the wielding skill's power multiplier (1 at level 1, 1.5 at 99). The engine multiplies the tier's damage by it. */
+  /** Per family, the wielding skill's power multiplier (1 at level 1, 1.5 at 99, toward 2.0 past it). The engine multiplies the tier's damage by it. */
   power: Record<ToolFamily, number>;
 }
 
