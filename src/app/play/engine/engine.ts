@@ -2906,6 +2906,7 @@ export class SeamworksEngine {
         ...(this.furnace ? { furnace: {
           phase: this.furnace.state.phase, doused: this.furnace.state.doused.filter(Boolean).length,
           open: Math.ceil(this.furnace.state.open), breathing: furnaceBreathing(this.furnace.state),
+          vents: this.furnace.state.doused.map(d => (d ? '1' : '0')).join(''),
         } } : {}),
       } : {}) });
   }
@@ -3589,6 +3590,7 @@ export class SeamworksEngine {
     if (this.isTown && this.areaDef.scenery === 'seamworks-hub') this.atmosphere.hub(c, motionTime, this.areaDef.safeX || 1120);
     if (t) this.terrainRenderer.draw(c, this.camera, this.cameraY, viewport, 720, this.pixelScale);
     if (t) this.drawRails(c, t, viewport, motionTime);
+    if (t) this.drawFurnaceFacade(c, t, viewport, motionTime);
     if (this.homestead) {
       const f = this.homesteadFrame;
       f.areaId = this.areaDef.id; f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.playerX = this.player.x; f.reduced = this.reducedMotion;
@@ -4015,11 +4017,13 @@ export class SeamworksEngine {
         const span = next ? TILE : TILE / 2;
         for (let s = 0; s <= span; s++) {
           const y = y0 + (y1 - y0) * s / TILE;
+          // A two-pixel iron rail with a bright running edge: it reads against any rock.
+          this.px(c, x + CELL / 2 + s * ART, y - ART, 1, 1, '#d8c8bc');
           this.px(c, x + CELL / 2 + s * ART, y, 1, 1, node.light);
           this.px(c, x + CELL / 2 + s * ART, y + ART, 1, 1, node.dark);
         }
         if (!nextRail(t, col, row, -1)) for (let s = 0; s <= TILE / 2; s++) {
-          this.px(c, x + s * ART, y0, 1, 1, node.light); this.px(c, x + s * ART, y0 + ART, 1, 1, node.dark);
+          this.px(c, x + s * ART, y0 - ART, 1, 1, '#d8c8bc'); this.px(c, x + s * ART, y0, 1, 1, node.light); this.px(c, x + s * ART, y0 + ART, 1, 1, node.dark);
         }
       }
     }
@@ -4130,10 +4134,66 @@ export class SeamworksEngine {
     return H * ART;
   }
   /**
-   * The Banked Furnace: the brick body is terrain; this is its mouth (a grate
-   * over a dull core while banked, a white-hot core when open), its breath
-   * (embers streaming into the mouth, a beat after the vents flare), the
-   * vents' flames or steam, and its strength over the body.
+   * The Banked Furnace's face, drawn over its brick body whether it is awake
+   * or not (it is the hall's set piece): mortar seams that glow with its heat,
+   * a lit pilaster edge, the stack on its crown with smoke, two eye-slits, the
+   * glowing rim of the mouth arch, and the grate over its mouth while banked.
+   * Cold and dim asleep; ember while awake; white-hot when its core is open.
+   */
+  private drawFurnaceFacade(c: CanvasRenderingContext2D, t: Terrain, viewport: number, time: number): void {
+    if (!this.world || this.world.t !== t) return;
+    const B = FURNACE.body, M = FURNACE.mouth;
+    const x0 = B.col * CELL, x1 = (B.col + B.w) * CELL, y0 = t.top + B.row * CELL, floor = t.top + FURNACE.floorRow * CELL;
+    if (x1 < this.camera - 96 || x0 > this.camera + viewport + 96 || !t.inside(B.col, B.row) || !t.inside(B.col + B.w - 1, B.row)) return;
+    const f = this.furnace, awake = !!f && f.monster.hp > 0;
+    const open = awake && furnaceOpen(f!.state), hot = awake && (furnaceBreathing(f!.state) || furnaceWarning(f!.state));
+    const pulse = this.reducedMotion ? .5 : .5 + .5 * Math.sin(time * (open ? 8 : hot ? 6 : 1.6));
+    const seam = open ? '#ffd08a' : awake ? '#E8752A' : '#7a2a12';
+    // Mortar seams across the brick, alternate courses offset.
+    c.save();
+    c.globalAlpha = awake ? .55 + .35 * pulse : .35;
+    for (let r = 1; r < B.h; r++) this.px(c, x0 + 4, y0 + r * CELL - ART, (x1 - x0 - 8) / ART, 1, seam);
+    for (let r = 0; r < B.h; r++) for (let k = (r & 1) ? 1 : 0; k < B.w; k += 2) this.px(c, x0 + k * CELL + CELL / 2, y0 + r * CELL, 1, TILE - 1, seam);
+    c.restore();
+    // A lit edge on its west side, a shadow on its east.
+    this.px(c, x0, y0, 1, B.h * TILE, '#9c6a4a');
+    this.px(c, x1 - ART, y0, 1, B.h * TILE, '#140a1f');
+    // The stack on its crown, and smoke while it is awake.
+    const sx = (B.col + (B.w >> 1) - 1) * CELL;
+    this.px(c, sx - ART, y0 - 3 * CELL, 3 * TILE + 2, 3 * TILE, '#2a1418');
+    this.px(c, sx, y0 - 3 * CELL, 3 * TILE, 1, '#7a3a2a');
+    this.px(c, sx + 2 * ART, y0 - 3 * CELL + ART, 3 * TILE - 4, 2, awake ? seam : '#3a1c18');
+    if (awake && !this.reducedMotion) {
+      for (let w = 0; w < 4; w++) {
+        const u = (time * .35 + w * .25) % 1;
+        c.globalAlpha = .45 * (1 - u);
+        this.px(c, sx + CELL + Math.sin(time + w * 1.7) * 10, y0 - 3 * CELL - u * 120, 4 + Math.floor(u * 4), 3, '#6a5878');
+      }
+      c.globalAlpha = 1;
+    }
+    // Its eyes: two slits that brighten as it breathes in, white when it is open.
+    const eye = open ? '#fff4dc' : hot ? '#ffd08a' : awake ? '#E8752A' : '#3a1c18';
+    const ey = y0 + 2 * CELL;
+    for (const ex of [x0 + 2 * CELL, x1 - 4 * CELL]) {
+      this.px(c, ex, ey, 2 * TILE, 4, '#0e0a12');
+      this.px(c, ex + ART, ey + ART, 2 * TILE - 2, 2, eye);
+    }
+    // The mouth: a glowing rim on the arch, and the grate while it is banked.
+    const mx0 = M.col * CELL, mx1 = (M.col + M.w) * CELL, my0 = t.top + M.row * CELL;
+    this.px(c, mx0, my0, (mx1 - mx0) / ART, 1, open ? '#fff4dc' : seam);
+    if (!open) {
+      for (let bx = mx0 + 6; bx < mx1 - 4; bx += 14) {
+        this.px(c, bx, my0 + ART, 2, (floor - my0) / ART - 1, '#171116');
+        this.px(c, bx, my0 + ART, 1, (floor - my0) / ART - 1, '#57474f');
+      }
+      this.px(c, mx0, my0 + 2 * CELL, (mx1 - mx0) / ART, 1, '#171116');
+    }
+  }
+  /**
+   * The Banked Furnace awake: its core in the mouth (dull behind the grate
+   * while banked, white-hot when open), its breath (embers streaming in along
+   * the floor while it breathes in, a beat after the vents flare), the vents'
+   * flames or steam, and its strength over its crown.
    */
   private drawFurnace(c: CanvasRenderingContext2D, m: Monster, time: number): void {
     const t = this.terrain, f = this.furnace;
@@ -4143,42 +4203,46 @@ export class SeamworksEngine {
     const fade = m.hp <= 0 ? Math.max(0, m.dying / DEATH_FADE) : 1;
     const pulse = this.reducedMotion ? .5 : .5 + .5 * Math.sin(time * (open ? 9 : 3));
     c.save(); c.globalAlpha = fade;
-    // The core, behind a grate of brick bars while banked.
-    const coreW = 5 * CELL, coreH = 4 * CELL, cx = mx - coreW / 2, cy = floor - coreH;
-    this.px(c, cx, cy, coreW / ART, coreH / ART, '#0e0a12');
-    const core = open ? (pulse > .5 ? '#fff4dc' : '#ffd08a') : m.flash > 0 ? '#ffb066' : '#7a2a12';
-    this.px(c, mx - 24, floor - 64 - (open ? 8 : 0), 24, 28, core);
-    this.px(c, mx - 16, floor - 56 - (open ? 8 : 0), 16, 18, open ? '#fff4dc' : '#c4501e');
-    if (!open) for (let bx = cx + 6; bx < cx + coreW - 4; bx += 14) this.px(c, bx, cy + 8, 3, coreH / ART - 4, '#57474f');
-    // Its eyes: two slits in the body that brighten as it breathes.
-    const slit = breathing || warning ? '#ffd08a' : '#c4501e';
-    this.px(c, mx - 40, floor - 6 * CELL - 4, 8, 2, slit); this.px(c, mx + 24, floor - 6 * CELL - 4, 8, 2, slit);
+    // The core: a round heart of ember, rings brightening inward.
+    const cy = floor - 2 * CELL, grow = open ? 1 + .12 * pulse : 1;
+    const rings: readonly [number, string][] = open
+      ? [[30, '#c4501e'], [24, '#ff9b4f'], [17, '#ffd08a'], [9, '#fff4dc']]
+      : warning || breathing ? [[26, '#7a2a12'], [20, '#c4501e'], [12, '#ff9b4f'], [5, '#ffd08a']]
+        : [[24, '#3a1410'], [18, '#7a2a12'], [10, '#c4501e']];
+    for (const [r, color] of rings) {
+      const rr = r * grow;
+      for (let dy = -rr; dy <= rr; dy += ART) {
+        const half = Math.floor(Math.sqrt(Math.max(0, rr * rr - dy * dy)) / ART) * ART;
+        this.px(c, mx - half, cy + dy, (2 * half) / ART, 1, m.flash > 0 ? '#fff4ea' : color);
+      }
+    }
     // The breath: embers streaming in along the floor from both sides.
     if (breathing && !this.reducedMotion) {
-      for (let n = 0; n < 14; n++) {
+      for (let n = 0; n < 18; n++) {
         const side = n & 1 ? 1 : -1, u = ((time * .9 + n * .137) % 1);
-        const x = mx + side * (1 - u) * 520, y = floor - 10 - ((n * 37) % 70);
-        this.px(c, x, y, 2, 1, n % 3 ? '#ff9b4f' : '#ffd08a');
+        const x = mx + side * (1 - u) * 520, y = floor - 10 - ((n * 37) % 80);
+        this.px(c, x, y, 3, 1, n % 3 ? '#ff9b4f' : '#ffd08a');
       }
     }
     c.restore();
-    // The vents: flames while they burn (flaring before a breath), steam once doused.
+    // The vents: tall flames while they burn (flaring before a breath), steam once doused.
     if (f) {
       for (let n = 0; n < f.vents.length; n++) {
-        const i = f.vents[n], vx = (t.colOf(i) + .5) * CELL, vy = t.top + (t.rowOf(i) + 1) * CELL;
+        const i = f.vents[n], vx = (t.colOf(i) + .5) * CELL, vy = t.top + (t.rowOf(i) + 1) * CELL - 2 * ART;
         if (f.state.doused[n]) {
-          if (this.reducedMotion) { this.px(c, vx - 4, vy - 20, 4, 2, '#b8c0c8'); continue; }
-          for (let w = 0; w < 3; w++) { const u = (time * .7 + w * .33) % 1; this.px(c, vx - 4 + Math.sin(time * 2 + w) * 4, vy - 12 - u * 40, 3, 2, '#b8c0c8'); }
+          if (this.reducedMotion) { this.px(c, vx - 4, vy - 24, 4, 2, '#b8c0c8'); continue; }
+          for (let w = 0; w < 4; w++) { const u = (time * .7 + w * .25) % 1; c.globalAlpha = .8 * (1 - u); this.px(c, vx - 4 + Math.sin(time * 2 + w) * 5, vy - 12 - u * 56, 3, 2, '#b8c0c8'); }
+          c.globalAlpha = 1;
           continue;
         }
-        const tall = (warning || breathing ? 14 : 8) + (this.reducedMotion ? 0 : Math.floor(Math.sin(time * 14 + n * 2) * 2));
-        this.px(c, vx - 6, vy - tall * ART, 6, tall, '#c4501e');
-        this.px(c, vx - 4, vy - (tall - 2) * ART, 4, tall - 2, '#ff9b4f');
-        this.px(c, vx - 2, vy - (tall - 5) * ART, 2, Math.max(1, tall - 5), '#ffd08a');
+        const tall = (warning || breathing ? 22 : 13) + (this.reducedMotion ? 0 : Math.floor(Math.sin(time * 14 + n * 2) * 2));
+        this.px(c, vx - 8, vy - tall * ART, 8, tall, '#c4501e');
+        this.px(c, vx - 6, vy - (tall - 3) * ART, 6, tall - 3, '#ff9b4f');
+        this.px(c, vx - 3, vy - (tall - 7) * ART, 3, Math.max(1, tall - 7), '#ffd08a');
       }
     }
     if (m.hp <= 0) return;
-    const full = m.maxHp || 1, bar = 200, crown = floor - 10 * CELL;
+    const full = m.maxHp || 1, bar = 220, crown = t.top + (FURNACE.body.row - 4) * CELL;
     c.fillStyle = '#302530'; c.fillRect(mx - bar / 2, crown, bar, 8);
     c.fillStyle = '#ffe2c4'; c.fillRect(mx - bar / 2, crown, Math.max(m.hp, m.shownHp) / full * bar, 8);
     c.fillStyle = open ? '#ffd08a' : '#dd866f'; c.fillRect(mx - bar / 2, crown, m.hp / full * bar, 8);

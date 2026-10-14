@@ -30,7 +30,7 @@ export const FURNACE_TUNING = {
   /** How far the pull reaches (px either side of the mouth), and how close the mouth burns. */
   reach: 560, burn: 60,
   /** Share of max HP a second the mouth takes while it breathes in. */
-  burnShare: .12,
+  burnShare: .08,
   /** Seconds the core stays open once all four vents are out. */
   openFor: 12,
   /** Most Banked Embers it keeps out at once. */

@@ -483,6 +483,12 @@ export class SideScrollerComponent implements OnDestroy {
         if (el) {
           el.setAttribute('data-fishing', state.fishing?.phase ?? (state.canFish ? `can:${state.canFish}` : ''));
           el.setAttribute('data-liquid', state.liquid?.in ?? '');
+          // The Underhearth (Phase 8): depth, the cart, the grapple, the furnace's fight.
+          el.setAttribute('data-depth', state.depth === undefined ? '' : String(state.depth));
+          el.setAttribute('data-biome', state.biome ?? '');
+          el.setAttribute('data-riding', state.riding ? 'true' : 'false');
+          el.setAttribute('data-grapple', state.grappling ?? '');
+          el.setAttribute('data-furnace', state.furnace ? `${state.furnace.phase}:${state.furnace.vents}:${state.furnace.breathing ? 1 : 0}` : '');
         }
         this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
@@ -1139,6 +1145,8 @@ export class SideScrollerComponent implements OnDestroy {
     try { if (await this.room?.chat(text)) { if (input.value.trim() === text) input.value = ''; } } finally { this.sending = false; }
   }
   art(id: string): string { return artFor(id)?.src ?? ''; }
+  /** The Keeper's HP as the bar prints it: whole (lava, breath and the furnace's mouth take fractions a step). */
+  get hpShown(): number { return Math.ceil(this.state.hp); }
   get ore(): number { return this.inventory.stackOf(CINDER_ORE_ID); }
   get ember(): number { return this.inventory.stackOf(EMBER_RESIDUE_ID); }
   get edge() {
