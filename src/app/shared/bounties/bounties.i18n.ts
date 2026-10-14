@@ -11,6 +11,7 @@ export const BOUNTIES_I18N: Readonly<Record<string, { en: string; es: string }>>
   'bounty.reward': { en: '{{gold}} Gold · {{xp}} Delving XP', es: '{{gold}} Oro · {{xp}} XP de Exploracion' },
   'bounty.giftCompass': { en: 'Pim adds the Broken Astral Compass: "The last Herald left it on the board. It points at what the board forgot to post."', es: 'Pim anade la Brujula Astral Rota: "El ultimo Heraldo la dejo en el tablon. Senala lo que el tablon olvido publicar."' },
   'bounty.giftFragment': { en: 'Seventh bounty day: Pim adds a Rift Map Fragment.', es: 'Septimo dia de encargos: Pim anade un Fragmento de Mapa de Grieta.' },
+  'bounty.todayLabel': { en: '{{n}}/{{total}} claimed · three new ones tomorrow', es: '{{n}}/{{total}} reclamados · tres nuevos manana' },
   'bounty.toast': { en: 'Bounty done', es: 'Encargo hecho' },
   'bounty.ready': { en: 'Bounty done: {{name}}. Claim it at the Quest Board.', es: 'Encargo hecho: {{name}}. Reclamalo en el tablon de misiones.' },
   'bounty.details.counts': { en: 'Days visited: {{days}} · Bounties claimed: {{total}}', es: 'Dias de visita: {{days}} · Encargos reclamados: {{total}}' },

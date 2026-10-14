@@ -125,6 +125,8 @@ export class QuestsComponent implements OnInit, OnDestroy {
 
   todayDone = 0;
   todayLabel = '';
+  /** The TODAY strip's bar: the daily quests, or (Bounties tab) today's bounties claimed. */
+  todayProgress = 0;
   reward: StationReward | null = null;
   private rewardSeq = 0;
   announce = '';
@@ -281,6 +283,13 @@ export class QuestsComponent implements OnInit, OnDestroy {
 
     this.todayDone = this.board.daily.filter(q => q.status === 'completed' || q.claimed).length;
     this.todayLabel = this.t('quests.todayLabel', { n: this.todayDone, total: this.board.daily.length, t: this.dailyCountdown });
+    this.todayProgress = this.board.daily.length ? this.todayDone / this.board.daily.length : 0;
+    if (this.tab === 'bounties' && this.bounties.length) {
+      // Pim's three turn over at the local midnight, on their own clock.
+      const claimed = this.bounties.filter(v => v.claimed).length;
+      this.todayLabel = this.t('bounty.todayLabel', { n: claimed, total: this.bounties.length });
+      this.todayProgress = claimed / this.bounties.length;
+    }
   }
 
   private fromQuest(q: Quest): BoardEntry {
