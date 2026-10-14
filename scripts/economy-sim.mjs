@@ -496,6 +496,13 @@ function check(E) {
   if (!(first <= 15)) fails.push(`first purchase at ${fmtT(first)} (must be <= 15 s)`);
   if (inTen < 20) fails.push(`${inTen} purchases in the first 10 min (must be >= 20)`);
   console.log(`economy-sim --check (${E.name}): first purchase ${fmtT(first)}, ${inTen} purchases in 10 min`);
+  // The Mirror Slate (Lune Coyne's shortcut price, rule S): 1-10 minutes of income at the half-hour stage.
+  {
+    const gps = log.at[1800]?.gps ?? 0;
+    const minutes = gps > 0 ? C.MIRROR_SLATE.price / gps / 60 : Infinity;
+    console.log(`  Mirror Slate: ${fmtN(C.MIRROR_SLATE.price)} Gold = ${minutes.toFixed(1)} min of income at 30m; earned free after ${C.MIRROR_SLATE.awardPlays} plays`);
+    if (!(minutes >= 1 && minutes <= 10)) fails.push(`Mirror Slate price is ${minutes.toFixed(1)} min of income at 30m (must be 1-10)`);
+  }
   // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   // Fishing (Phase 6): Gold share, crate values, rod gates and the 99 band (`--fishing` prints the table).

@@ -367,6 +367,17 @@ export function gamesBetCap(goldPerSecond: number): number {
   return cap;
 }
 
+/**
+ * The Mirror Slate (docs/handoff/mirror-slate.md): Lune Coyne hands it over
+ * after `awardPlays` plays across her four tables (the Reels, Rune Drop, Seam
+ * Sweeper, Eclipse Ascent), or sells it for `price` Gold. Rule S: about five
+ * minutes of income at the half-hour stage, where a Keeper first walks into the
+ * Nocturne Archive; `economy-sim --check` holds it inside 1-10 minutes there.
+ * Ten plays at the 10-Gold minimum cost ~5 Gold on average (the tables return
+ * ~95%), so earning it is always the cheap road and buying is the shortcut.
+ */
+export const MIRROR_SLATE = { price: 500_000, awardPlays: 10 } as const;
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Save migration (v2 → v3)
 // ─────────────────────────────────────────────────────────────────────────────

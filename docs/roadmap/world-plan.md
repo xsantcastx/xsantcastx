@@ -241,6 +241,15 @@ The layer cake: Root Hollows → Basalt Caverns → Glowcap Grotto → Magma Hal
 - Art briefs per slice are listed in the bible §9 (W7L liquid sheets are a new spec class for the style guide in 6.1)
 - **Owner:** (1) may the Nameless appear as a figure in the Unmade; (2) Firestore cost of one region doc per explored 256×256-cell area
 
+## The Mirror Slate (owner idea, 2026-10-14) `[x]`
+
+Built 2026-10-14, handoff [`docs/handoff/mirror-slate.md`](../handoff/mirror-slate.md). A carried pane of the Archive's
+moon mirror in Kael's brass: Lune Coyne gives it after ten plays at her four tables (or sells it, 500k Gold, rule S);
+P / the HUD button opens it anywhere (busy rule: never mid-fight, fallen or mid-game; the world pauses). Tabs: Tables
+(the stalls' own panels embedded, same ledger), Homestead (receipt + Collect, next building, crew, "walk to" pointers);
+Kael binds tier II (Glowcap, slag, obsidian) → Map & bounties (read only). Badge when the Homestead has something
+ready. Follow-ups: art (brief `13-mirror-slate.md`), a Hearth tab.
+
 ---
 
 ## ✅ Checkpoint merged (2026-10-12, `102bc57`)

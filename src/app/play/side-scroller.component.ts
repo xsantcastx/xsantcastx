@@ -90,6 +90,12 @@ import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
 import { COMPASS_ID, FRAGMENT_ID, bountyLine, stratumOfRow, type Bounty, type BountyEvent } from '../shared/bounties/bounty.model';
 import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinId, type MapPin, type PinIcon } from '../shared/delve/map-pins.model';
 import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
+// The Mirror Slate (docs/handoff/mirror-slate.md): the HUD button, P, the busy rule, Lune's and Kael's counters.
+import { SlateService } from '../shared/slate/slate.service';
+import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
+import { SLATE_I18N } from '../shared/slate/slate.i18n';
+import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTier } from '../shared/slate/slate.model';
+import type { PanelEntry } from './world/panel-registry';
 
 /** Finds a player is paid once, ever (delve-save `claimed`). */
 /**
@@ -157,7 +163,7 @@ interface BagSlip {
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
 interface OpenPlace {
-  kind: 'page' | 'waystone' | 'chest'; stationId: string; title: string; kicker: string; route?: string;
+  kind: 'page' | 'waystone' | 'chest' | 'slate'; stationId: string; title: string; kicker: string; route?: string;
   chest?: { areaId: string; index: number };
   /** A place in the player's own Delve (a chest, a camp): no ?at= deep link. */
   own?: true;
@@ -195,7 +201,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -396,6 +402,13 @@ export class SideScrollerComponent implements OnDestroy {
   private lastStructure = '';
   /** Bounties already announced as done this session. */
   private readonly toldReady = new Set<string>();
+  // ── The Mirror Slate (docs/handoff/mirror-slate.md) ──
+  private readonly slate = inject(SlateService);
+  /** The pane the Keeper holds (0: none, no button). Re-read on the HUD tick. */
+  slateTier: SlateTier = 0;
+  /** The Homestead has something worth a look: the button wears a badge. */
+  slateReady = false;
+  private slateSub?: Subscription;
   /** Where each hooked cast's bob sat (a catch bounty needs the water's column). */
   private readonly hookedAt = new Map<string, { liquid: string; col: number; row: number }>();
 
@@ -408,6 +421,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(HUD_I18N);
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
+    this.i18n.register(SLATE_I18N);
     this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
     try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
   }
@@ -427,6 +441,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.inventory.init();
     this.activity.init();
     this.homestead.start();
+    // Lune watches her tables from here on: the tenth play hands the Slate over, wherever it was played.
+    this.slate.init();
+    this.slateSub = this.slate.awarded$.subscribe(() => { this.tickSlate(); this.message = this.t('slate.awarded'); });
     const saved = this.store.read(SAVE_KEY) as { era?: number; resetAt?: string | null; restored?: boolean } | null;
     this.restored = saved?.restored === true && saved.era === INVENTORY_ERA && saved.resetAt === this.store.readRaw(RESET_STAMP_KEY);
     this.economy.init();
@@ -454,7 +471,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -725,7 +742,7 @@ export class SideScrollerComponent implements OnDestroy {
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.routedSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -788,7 +805,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.loadPanel(entry, this.panelInjector);
   }
   /** Build a hosted page into the open panel (a slow import never lands in a newer or closed one). */
-  private loadPanel(entry: (typeof PANEL_REGISTRY)[keyof typeof PANEL_REGISTRY], injector: Injector): void {
+  private loadPanel(entry: Pick<PanelEntry, 'load'>, injector: Injector): void {
     const seq = this.panelSeq;
     this.panelLoading = true;
     entry.load().then(type => {
@@ -1032,6 +1049,7 @@ export class SideScrollerComponent implements OnDestroy {
       fished: (progress.xpByDiscipline['fishing'] ?? 0) > 0,
       mission: DELVE_MISSIONS.some(mission => this.quests.isMissionDone(mission.id)),
       bountied: this.bounties.state.total > 0,
+      slated: this.slateTier > 0,
       goldEarned: economy.totalGoldEarned,
     });
     const beats = this.story.state.beats;
@@ -1241,8 +1259,12 @@ export class SideScrollerComponent implements OnDestroy {
     // already used the key (its own dialog, a reveal) — window is the last stop.
     if (this.panel) {
       if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); this.closePanel(); }
+      // P folds the Slate away again (never while a field inside it has the keyboard).
+      else if (event.code === 'KeyP' && this.panel.kind === 'slate' && !event.defaultPrevented && !this.typing(event)) { event.preventDefault(); this.closePanel(); }
       return;
     }
+    // The Slate (P) opens over the map too: the map folds first.
+    if (event.code === 'KeyP' && this.slateTier > 0 && !this.typing(event)) { event.preventDefault(); this.openSlate(); return; }
     // The full map owns the keyboard while it is open: M or Escape folds it.
     if (this.map.open) {
       if (event.key === 'Escape' || event.code === 'KeyM') { event.preventDefault(); this.closeMap(); }
@@ -1269,6 +1291,51 @@ export class SideScrollerComponent implements OnDestroy {
     }
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
   }
+  // ── The Mirror Slate ──
+  /** The HUD tick: which pane is held, and whether the Homestead has something worth a look. */
+  private tickSlate(): void {
+    this.slateTier = this.slate.tier();
+    this.slateReady = this.slateTier > 0 && slateBadge(this.homestead.pendingAll(), this.economy.snapshot.perSecond);
+  }
+  /** A key typed into a field is the field's, not the world's. */
+  private typing(event: KeyboardEvent): boolean {
+    const target = event.target;
+    return target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable);
+  }
+  /** The HUD button: open the Slate, or fold it when it is the place on screen. */
+  toggleSlate(): void {
+    if (this.panel?.kind === 'slate') { this.closePanel(); return; }
+    this.openSlate();
+  }
+  /**
+   * Open the Slate as a place: the world pauses (showPanel), focus moves into it,
+   * Escape or P folds it. Never mid-fight, never on a fallen Keeper, never during
+   * a mini-game (slate.model slateRefusal); the reason goes to the message line.
+   */
+  openSlate(): void {
+    if (!this.browser || this.panel || this.storyCard) return;
+    this.tickSlate();
+    const refusal = slateRefusal({
+      tier: this.slateTier, defeated: !!this.state.defeated, enemyHp: this.state.enemyHp,
+      fishing: !!this.state.fishing, reeling: !!this.reel, storyCard: !!this.storyCard,
+    });
+    if (refusal) {
+      if (refusal !== 'unowned') this.message = this.t(`slate.refuse.${refusal}`);
+      return;
+    }
+    if (this.map.open) this.closeMap();
+    this.placesOpen = false;
+    this.showPanel({ kind: 'slate', stationId: 'slate', title: this.t('slate.title'), kicker: this.t(this.slateTier >= 2 ? 'slate.kicker2' : 'slate.kicker'), own: true });
+    this.loadPanel({ load: () => import('../shared/slate/slate.component').then(m => m.SlateComponent) }, this.panelInjector);
+  }
+  /** Lune's counter rides her own panels; Kael's rides the Rune Forge (the stations themselves are untouched). */
+  get slateCounter(): 'croupier' | 'kael' | null {
+    const id = this.panel?.kind === 'page' ? this.panel.stationId : null;
+    if (!id) return null;
+    if (CROUPIER_STATIONS.includes(id)) return 'croupier';
+    return id === KAEL_STATION ? 'kael' : null;
+  }
+
   // ── The Delve map ──
   /** The full map: the world holds still while it is open (nothing can reach the Keeper). */
   openMap(): void {

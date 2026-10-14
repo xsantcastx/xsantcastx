@@ -52,6 +52,8 @@ export const KEEPER_DEEDS = [
   'mission',
   /** One of the Board Herald's daily bounties claimed (shared/bounties). */
   'bountied',
+  /** The Mirror Slate carried (shared/slate): Lune handed it over or sold it. */
+  'slated',
   /** Enough Gold earned to move on the renown chart (RENOWN_GOLD). */
   'renown',
 ] as const;
@@ -83,6 +85,8 @@ export interface DeedFacts {
   mission: boolean;
   /** Any Board Herald bounty claimed. Absent: none. */
   bountied?: boolean;
+  /** The Mirror Slate held (either tier). Absent: none. */
+  slated?: boolean;
   /** Gold earned, ever. */
   goldEarned: number;
 }
@@ -91,7 +95,7 @@ export interface DeedFacts {
 export function keeperDeeds(f: DeedFacts): KeeperDeed[] {
   const done: Record<KeeperDeed, boolean> = {
     crafted: f.forged, sold: f.sold > 0, vaulted: f.inVault > 0, struck: f.strikes > 0, socketed: f.socketed,
-    bought: f.bought, hunted: f.hunted, dug: f.dug, skilled: f.topSkill >= 10, fished: f.fished, mission: f.mission, bountied: !!f.bountied,
+    bought: f.bought, hunted: f.hunted, dug: f.dug, skilled: f.topSkill >= 10, fished: f.fished, mission: f.mission, bountied: !!f.bountied, slated: !!f.slated,
     renown: f.goldEarned >= RENOWN_GOLD,
   };
   return KEEPER_DEEDS.filter(deed => done[deed]);
@@ -119,7 +123,7 @@ export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
   'vault-clerk': [L(1), L(2), L(3), L(4, { deed: 'vaulted' }), L(5), L(6, { beat: 'a1.tally' }), L(7)],
   'buyback-clerk': [L(1), L(2), L(3), L(4, { deed: 'sold' }), L(5), L(6, { deed: 'hunted' }), L(7, { beat: 'a1.eater' }), L(8, { beat: 'a1.break' })],
   'bench-smith': [L(1), L(2), L(3), L(4, { deed: 'crafted' }), L(5), L(6, { beat: 'p.edge' }), L(7, { beat: 'a1.hammer' }), L(8, { beat: 'a1.break' })],
-  kael: [L(1), L(2), L(3), L(4, { deed: 'struck' }), L(5, { beat: 'p.words' }), L(6, { beat: 'a1.hammer' }), L(7, { beat: 'a1.break' }), L(8)],
+  kael: [L(1), L(2), L(3, { deed: 'slated' }), L(4, { deed: 'struck' }), L(5, { beat: 'p.words' }), L(6, { beat: 'a1.hammer' }), L(7, { beat: 'a1.break' }), L(8)],
   enchanter: [L(1), L(2), L(3), L(4, { deed: 'socketed' }), L(5), L(6), L(7, { beat: 'p.words' })],
   // ── Luminous: Heliograph Court ──
   merchant: [L(1), L(2), L(3), L(4, { deed: 'bought' }), L(5), L(6, { beat: 'a1.prices' }), L(7, { beat: 'a1.break' }), L(8)],
@@ -127,7 +131,7 @@ export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
   tomas: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.fresh' }), L(6, { beat: 'a1.break' })],
   ilyra: [L(1), L(2), L(3), L(4), L(5, { beat: 'p.words' }), L(6, { beat: 'a1.dated' }), L(7)],
   // ── Umbral: Nocturne Archive ──
-  croupier: [L(1), L(2), L(3), L(4, { deed: 'sold' }), L(5), L(6), L(7), L(8)],
+  croupier: [L(1), L(2), L(3), L(4, { deed: 'sold' }), L(5), L(6), L(7), L(8, { deed: 'slated' })],
   broker: [L(1), L(2), L(3), L(4), L(5), L(6, { deed: 'sold' }), L(7, { beat: 'a1.prices' }), L(8, { beat: 'a1.break' })],
   verrin: [L(1), L(2), L(3), L(4, { beat: 'a1.tally' }), L(5), L(6, { beat: 'a1.eater' }), L(7)],
   rook: [L(1), L(2), L(3), L(4, { deed: 'dug' }), L(5, { beat: 'a1.tally' }), L(6)],
