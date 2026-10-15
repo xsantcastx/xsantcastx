@@ -25,7 +25,7 @@ export const EPOCH_HOURS: WorldHourSource = {
 let source: WorldHourSource = EPOCH_HOURS;
 let pinned: number | null | undefined;
 
-/** Point the hour at another clock (the world-clock service, when it lands). */
+/** Point the hour at another clock: the world clock (shared/world-clock/world-clock.service.ts) does, on construction. */
 export function setWorldHourSource(next: WorldHourSource): void { source = next; }
 
 /** The in-game hour, 0 ≤ h < 24. */

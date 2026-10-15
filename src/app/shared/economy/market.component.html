@@ -56,7 +56,7 @@
         <div class="mk__error-actions">
           <button type="button" class="mk__empty-clear" (click)="retryCatalogue()">{{ t('market.retry') }}</button>
           @if (!inWorld) {
-          <a class="mk__empty-clear" routerLink="/world">{{ t('market.returnWorld') }}</a>
+          <a class="mk__empty-clear" routerLink="/play">{{ t('market.returnWorld') }}</a>
           }
         </div>
       </div>
@@ -364,7 +364,7 @@
       <p class="mk__patron-sub">{{ t('market.patron.sub') }}</p>
       <p class="mk__patron-lore">{{ t('market.patron.lore') }}</p>
       @if (!inWorld) {
-      <a class="mk__patron-cta" routerLink="/world">{{ t('market.returnWorld') }}</a>
+      <a class="mk__patron-cta" routerLink="/play">{{ t('market.returnWorld') }}</a>
       }
     </section>
 
@@ -386,5 +386,4 @@
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
 @if (!inWorld) {
-<app-related-pages here="/market"></app-related-pages>
 }

@@ -75,7 +75,6 @@ import {
   opponentsForTier,
 } from '../shared/arena/arena.model';
 
-import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 import { ARENA_RANKS } from '../shared/arena/arena.model';
 import {
@@ -160,7 +159,7 @@ const BEAT_ROUND = 700;
 @Component({
   selector: 'app-pvp-arena',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterModule, ...STATION_UI],
+  imports: [CommonModule, RouterModule, ...STATION_UI],
   templateUrl: './pvp-arena.component.html',
   styleUrls: ['./pvp-arena.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

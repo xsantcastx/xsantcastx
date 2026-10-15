@@ -8,8 +8,6 @@
 import type { InfernalSeamChoice } from './chapter.model';
 import { BASALT_SEAMWORKS_HREF } from './chapter.model';
 
-export type InfernalChapterStep = 'enter' | 'meet' | 'inspect' | 'choose' | 'consequence';
-
 export interface InfernalEvidence {
   id: string;
   titleKey: string;
@@ -22,27 +20,6 @@ export interface InfernalChoiceDef {
   bodyKey: string;
   consequenceKey: string;
 }
-
-export const INFERNAL_CHAPTER_ID = 'infernal';
-export const INFERNAL_WITNESS_RUNE = 'Ash';
-
-export const INFERNAL_EVIDENCE: readonly InfernalEvidence[] = [
-  {
-    id: 'fracture',
-    titleKey: 'infernal.evidence.fracture.title',
-    bodyKey: 'infernal.evidence.fracture.body',
-  },
-  {
-    id: 'ledger',
-    titleKey: 'infernal.evidence.ledger.title',
-    bodyKey: 'infernal.evidence.ledger.body',
-  },
-  {
-    id: 'brace',
-    titleKey: 'infernal.evidence.brace.title',
-    bodyKey: 'infernal.evidence.brace.body',
-  },
-];
 
 export const INFERNAL_CHOICES: readonly InfernalChoiceDef[] = [
   {
@@ -61,8 +38,4 @@ export const INFERNAL_CHOICES: readonly InfernalChoiceDef[] = [
 
 export function infernalChoiceById(id: string | null | undefined): InfernalChoiceDef | null {
   return INFERNAL_CHOICES.find(row => row.id === id) ?? null;
-}
-
-export function infernalNextHref(): string {
-  return BASALT_SEAMWORKS_HREF;
 }

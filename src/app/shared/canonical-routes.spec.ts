@@ -6,11 +6,11 @@ import {
 
 describe('canonicalizePlayerPath', () => {
   it('collapses the World hub onto one path', () => {
-    expect(canonicalizePlayerPath('/')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/home')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/world')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/home?lang=es')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/home')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/world')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/home?lang=es')).toBe(CANONICAL.play);
   });
 
   it('aliases remounted halls', () => {
@@ -28,26 +28,26 @@ describe('canonicalizePlayerPath', () => {
   });
 
   it('collapses retired product paths onto World', () => {
-    expect(canonicalizePlayerPath('/tools')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/tools/box-shadow-generator')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/tools?realm=luminous')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/mission-control')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/blueprint')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/skills')).toBe(CANONICAL.world);
-    expect(canonicalizePlayerPath('/projects')).toBe(CANONICAL.world);
+    expect(canonicalizePlayerPath('/tools')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/tools/box-shadow-generator')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/tools?realm=luminous')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/mission-control')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/blueprint')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/skills')).toBe(CANONICAL.play);
+    expect(canonicalizePlayerPath('/projects')).toBe(CANONICAL.play);
   });
 });
 
 describe('rewriteCanonicalPageSet', () => {
   it('does not grow when a save already has /home and the visit is /world', () => {
     const next = rewriteCanonicalPageSet(['/home', '/codex']);
-    expect(next).toEqual([CANONICAL.world, '/codex']);
+    expect(next).toEqual([CANONICAL.play, '/codex']);
     expect(rewriteCanonicalPageSet([...next, '/world'])).toEqual(next);
   });
 
   it('drops a legacy member when the canonical is already present', () => {
     expect(rewriteCanonicalPageSet(['/world', '/home', '/arena', '/world/trials']))
-      .toEqual([CANONICAL.world, CANONICAL.trials]);
+      .toEqual([CANONICAL.play, CANONICAL.trials]);
   });
 
   it('leaves arena games alone', () => {

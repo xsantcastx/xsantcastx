@@ -159,7 +159,9 @@ export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> =
   umbral: [
     // Lune Coyne, the Croupier, also runs the games of chance in a row just east of where she waits.
     { ...keeper('croupier', 'gambler', 'Lune Coyne', P.umbral[0], 'hood', 1, 'npc-croupier-figure', undefined, 'Croupier'), serves: ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent'] },
-    keeper('broker', 'exchange', 'Amina Thorne', P.umbral[1], 'coat', 1, 'npc-exchange-broker-figure', undefined, 'Exchange Broker'),
+    // The Exchange hall closed with the game-only shell (docs/handoff/page-audit.md); Amina keeps her ledgers
+    // beside Lune's tables until a world-native trade hall is built.
+    keeper('broker', 'gambler', 'Amina Thorne', P.umbral[1], 'coat', 1, 'npc-exchange-broker-figure', undefined, 'Exchange Broker'),
     // Where two reflections disagree, a corridor opens. Verrin watches it.
     keeper('verrin', 'passage', 'Verrin', VERRIN, 'hood', -1, 'npc-verrin-figure', 'verrin', 'the Hollow'),
     // Rook maps the corridor's reflections from its other side: Verrin west of the mouth, Rook east.
@@ -167,7 +169,9 @@ export const TOWN_KEEPERS: Readonly<Record<RealmTownId, readonly KeeperDef[]>> =
   ],
   celestial: [
     keeper('archivist', 'codex', 'The Archivist', ARCHIVIST, 'robe', -1, 'npc-archivist-figure', 'archivist', 'keeper of fragments'),
-    keeper('chart-clerk', 'leaderboards', 'Nox Aster', P.celestial[1], 'coat', 1, 'npc-chart-clerk-figure', undefined, 'Chart Clerk'),
+    // The Leaderboards station closed with the game-only shell; Nox charts renown beside the Archivist until
+    // the ladders are rebuilt in the world.
+    keeper('chart-clerk', 'codex', 'Nox Aster', P.celestial[1], 'coat', 1, 'npc-chart-clerk-figure', undefined, 'Chart Clerk'),
     // The Waystones are the Meridian Compact's transit apertures; Sera runs the network.
     keeper('sera', 'waystone', 'Sera Quill', P.celestial[2], 'robe', 1, 'npc-sera-quill-figure', undefined, 'Chief Meridian'),
   ],

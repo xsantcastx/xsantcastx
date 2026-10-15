@@ -143,7 +143,6 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.slip.againstEmpty': { en: 'Against an empty {{place}}', es: 'Frente a un hueco vacio: {{place}}' },
 
   // ── Place panel ──
-  'play.hud.panel.full': { en: 'Open full page', es: 'Abrir pagina completa' },
   'play.hud.panel.opening': { en: 'Opening {{title}}…', es: 'Abriendo {{title}}...' },
   'play.hud.panel.error': { en: 'This place could not be reached. Check your connection and try again.', es: 'No se pudo llegar a este lugar. Revisa tu conexion y vuelve a intentarlo.' },
   'play.hud.way.note': { en: 'The stone hums with five roads. Only the charted ones will carry you.', es: 'La piedra zumba con cinco caminos. Solo los trazados te llevaran.' },

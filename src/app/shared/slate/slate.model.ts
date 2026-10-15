@@ -129,7 +129,6 @@ export function slateBadge(pending: { gold: number; runes: number; returns: numb
 export const SLATE_WORLD_POINTERS: readonly { key: string }[] = [
   { key: 'slate.walk.crafting' },
   { key: 'slate.walk.market' },
-  { key: 'slate.walk.exchange' },
   { key: 'slate.walk.vendor' },
   { key: 'slate.walk.sanctum' },
 ];

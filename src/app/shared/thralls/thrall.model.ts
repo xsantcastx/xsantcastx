@@ -558,11 +558,6 @@ export interface ThrallOffer {
   price: number;
 }
 
-/** What a pull costs, written for a shop row. */
-export function rollCostLabel(): number {
-  return THRALL_ROLL_COST;
-}
-
 /**
  * The five recruitment rows, derived from the tier table.
  *
@@ -582,10 +577,6 @@ export const THRALL_OFFERS: ThrallOffer[] = THRALL_RARITY_ORDER.map(rarity => {
     price: tier.price,
   };
 });
-
-export function offerFor(rarity: ThrallRarity): ThrallOffer | undefined {
-  return THRALL_OFFERS.find(o => o.rarity === rarity);
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The activity log

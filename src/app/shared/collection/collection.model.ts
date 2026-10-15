@@ -147,10 +147,6 @@ export const COLLECTION_CATEGORY_ORDER: readonly CollectionCategory[] =
 
 const CATEGORY_BY_ID = new Map(COLLECTION_CATEGORIES.map(c => [c.id, c]));
 
-export function collectionCategory(id: CollectionCategory): CollectionCategoryDefinition {
-  return CATEGORY_BY_ID.get(id) ?? COLLECTION_CATEGORIES[0];
-}
-
 /** One catalogue row: a thing that exists, whether or not it has been found. */
 export interface CollectionEntry {
   /**
@@ -935,11 +931,6 @@ export function collectionEntryById(id: string): CollectionEntry | undefined {
   return ENTRY_BY_ID.get(id);
 }
 
-/** True when `id` is something the log tracks. Cheaper than a catalogue scan. */
-export function isCollectable(id: string | undefined | null): boolean {
-  return !!id && ENTRY_BY_ID.has(id);
-}
-
 /** Entries that count toward completion: obtainable, and not a reward for it. */
 export const COUNTED_CATALOG: readonly CollectionEntry[] =
   COLLECTION_CATALOG.filter(e => e.obtainable && !e.reward);
@@ -1184,8 +1175,6 @@ export interface CollectionReward {
   titleVariant: string;
   /** An `ItemDefinition` id minted into the bag, when the tier carries one. */
   item?: string;
-  /** A `cursor-trail` variant, when the tier carries one. */
-  trailVariant?: string;
   blurb: string;
 }
 
@@ -1222,16 +1211,11 @@ export const COLLECTION_REWARDS: readonly CollectionReward[] = [
     title: 'Eclipse Archivist',
     gold: 1_000_000,
     titleVariant: 'eclipse-archivist',
-    trailVariant: 'archivist',
     blurb: 'Everything. There is nothing left in the world you have not held.',
   },
 ];
 
 const REWARD_BY_ID = new Map(COLLECTION_REWARDS.map(r => [r.id, r]));
-
-export function collectionRewardById(id: string): CollectionReward | undefined {
-  return REWARD_BY_ID.get(id);
-}
 
 /** Rewards a given completion has earned but the ledger has not yet paid. */
 export function unpaidRewards(
@@ -1321,10 +1305,6 @@ export interface CollectionFilter {
   realm: NarrativeRealmId | 'all' | 'unaligned';
   query: string;
 }
-
-export const EMPTY_FILTER: CollectionFilter = {
-  category: 'all', rarity: 'all', status: 'all', realm: 'all', query: '',
-};
 
 export function filterCards(
   cards: readonly CollectionCard[],

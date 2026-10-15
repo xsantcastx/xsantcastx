@@ -268,10 +268,6 @@ export const SOCKET_WORDS: readonly SocketWord[] = [
 
 const WORD_BY_ID = new Map(SOCKET_WORDS.map(w => [w.id, w]));
 
-export function socketWordById(id: string): SocketWord | undefined {
-  return WORD_BY_ID.get(id);
-}
-
 /** True when this word will seat in that frame. */
 export function wordFitsFrame(word: SocketWord, frame: SocketFrame): boolean {
   if (frame === 'none') return false;

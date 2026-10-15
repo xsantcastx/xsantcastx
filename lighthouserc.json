@@ -2,7 +2,7 @@
   "ci": {
     "collect": {
       "url": [
-        "http://localhost:4173/world"
+        "http://localhost:4173/play"
       ],
       "startServerCommand": "node scripts/serve-preview.js dist/xsantcastx/browser 4173",
       "startServerReadyPattern": "Accepting connections",

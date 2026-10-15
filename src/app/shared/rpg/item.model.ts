@@ -285,9 +285,6 @@ export const EQUIPMENT_SLOTS: SlotDefinition[] = [
 /** The eight gear wells, without the charm row. What the paper doll draws. */
 export const GEAR_SLOTS: SlotDefinition[] = EQUIPMENT_SLOTS.filter(s => !isCharmSlot(s.id));
 
-/** The three charm wells, in draw order. */
-export const CHARM_SLOTS: SlotDefinition[] = EQUIPMENT_SLOTS.filter(s => isCharmSlot(s.id));
-
 export const SLOT_IDS: SlotId[] = EQUIPMENT_SLOTS.map(s => s.id);
 export const LEGACY_SLOT_IDS: readonly LegacySlotId[] = ['offhand'];
 export const PARSE_SLOT_IDS: readonly string[] = [...SLOT_IDS, ...LEGACY_SLOT_IDS];
@@ -742,13 +739,4 @@ export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
   // headline number within a dozen items. Round once, here.
   total.goldPerSec = Math.round(total.goldPerSec * 10) / 10;
   return total;
-}
-
-/** "+5 Gold/sec", "+12% Magic Find" — one stat line, formatted. */
-export function formatStat(key: keyof ItemStats, value: number): string {
-  const sign = value < 0 ? '−' : '+';
-  const n = Math.abs(value);
-  const shown = Number.isInteger(n) ? String(n) : n.toFixed(1);
-  const pct = ITEM_STAT_IS_PERCENT[key] ? '%' : '';
-  return `${sign}${shown}${pct} ${ITEM_STAT_LABELS[key]}`;
 }

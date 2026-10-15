@@ -79,7 +79,6 @@ import { ForgeCraftGateway } from '../rpg/forge-craft.gateway';
 import { InventoryService } from '../rpg/inventory.service';
 import type { GameItem } from '../rpg/item.model';
 
-import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
 import { floorGold, floorThing, type ForgeFloorEvent, type ForgeStation, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
 /** A rune as the inventory grid needs it. */
@@ -119,7 +118,7 @@ interface RecipeRow {
 @Component({
   selector: 'app-rune-forge',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent, ...STATION_UI],
+  imports: [ForgeFloorComponent, CommonModule, RouterLink, InspectButtonComponent, CelebrationSoundToggleComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './rune-forge.component.html',
   styleUrls: ['./rune-forge.component.css'],

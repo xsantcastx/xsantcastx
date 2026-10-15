@@ -120,11 +120,10 @@ test.describe('Anvil mini-game, played', () => {
     expect((items?.records ?? []).filter(r => r.definitionId === 'briarvein-kris')).toHaveLength(1);
   });
 
-  test('at 390 px the NPC bubble yields and Skip is the element under its own centre', async ({ page }) => {
+  test('at 390 px Skip is the element under its own centre', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await openBench(page);
     await startCraft(page);
-    await expect(page.locator('app-npc-dialogue .npc')).toHaveCount(0);
     const skip = panel(page).locator('app-anvil-game .mg__skip');
     await skip.scrollIntoViewIfNeeded();
     const hit = await skip.evaluate(el => {
@@ -138,20 +137,17 @@ test.describe('Anvil mini-game, played', () => {
   });
 });
 
-test('routed /forge/crafting at 390 px: Kael yields while the anvil is open, Skip is hit-testable, and he returns', async ({ page }) => {
+test('the old /forge/crafting URL opens the bench in the world; at phone widths Skip is hit-testable', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await seed(page, { ...bag(KRIS_BAG), ...purse(3_000_000) });
   await page.goto('/forge/crafting');
-  const npc = page.locator('app-npc-dialogue .npc');
-  await expect(npc).toBeVisible({ timeout: 20000 });
-  await expect(page.locator('.cb-hero .dh__name')).toHaveText(KRIS, { timeout: 15000 });
-  await page.locator('.cb-hero .ab__btn').click();
-  const skip = page.locator('app-anvil-game .mg__skip');
+  await expect(page).toHaveURL(/\/play\?at=crafting/);
+  await expect(panel(page).locator('.cb-hero .dh__name')).toHaveText(KRIS, { timeout: 20000 });
+  // Game-only shell: no NPC portrait or corner flame exists to yield any more.
+  await expect(page.locator('app-npc-dialogue, app-forge-flame')).toHaveCount(0);
+  await panel(page).locator('.cb-hero .ab__btn').click();
+  const skip = panel(page).locator('app-anvil-game .mg__skip');
   await expect(skip).toBeVisible();
-  await expect(npc).toHaveCount(0);
-  // The corner Forge Flame steps aside too: on a phone it is centred at the
-  // bottom and its mode switch sat right where a scrolled-to Skip lands.
-  await expect(page.locator('app-forge-flame .ff')).toBeHidden();
   // Every phone width the layout claims, not just the one the test opened at.
   for (const width of [390, 360, 430]) {
     await page.setViewportSize({ width, height: 844 });
@@ -164,9 +160,7 @@ test('routed /forge/crafting at 390 px: Kael yields while the anvil is open, Ski
     expect(hit, `Skip is the element under its own centre at ${width} px`).toBe(true);
   }
   await skip.click();
-  await expect(page.locator('app-anvil-game')).toHaveCount(0);
-  await expect(npc).toBeVisible();
-  await expect(page.locator('app-forge-flame .ff')).toBeVisible();
+  await expect(panel(page).locator('app-anvil-game')).toHaveCount(0);
 });
 
 test.describe('In-world panel focus', () => {

@@ -1,19 +1,26 @@
 #!/usr/bin/env node
 /**
- * nav-audit.js — proves three things about the public game:
- *   1. No dead links: every routerLink in a template resolves to a real route.
- *   2. No orphans: every route with a page on the end of it is reachable —
- *      either the navbar links it (header bar, tome, tab bar: the nav
- *      manifest, which is World only: Play + Character), or a station in a
- *      built realm town hosts its panel, so it can be walked to, picked from
- *      the in-game Places list, or reached through the Waystone. The in-world
- *      set is DERIVED: the towns in world.model.ts and the routes in
- *      panel-registry.ts, read through the same placeForRoute() helper the
- *      page banner uses. There is no hand list, and the footer does not count
- *      (it is a crawl aid, not navigation).
- *   3. No player-facing leftover of the deleted tool product: Character,
- *      Codex, SEO, and other public templates must not send a player to
- *      /tools/* or tell them to open, search, or master tools.
+ * audit-nav.js — proves the game-only shell holds (docs/handoff/game-only-shell.md).
+ *
+ * The game at /play is the whole site. Every other page is an in-game panel
+ * (play/world/panel-registry.ts) or gone, and its old URL is a router redirect
+ * into the world (shared/canonical-routes.ts). This audit checks, from source:
+ *
+ *   1. Only the game is routed. APP_ROUTES may declare `play`, the owner's
+ *      `admin`, the redirect table and the `**` catch-all — no page beside
+ *      the game.
+ *   2. No link leaves the game. Every routerLink / navigate / navigateByUrl /
+ *      `route:` / `href:` target in the app is `/play` (with or without a
+ *      query), or a retired URL the router redirects INTO /play. A `?at=` must
+ *      name a real station or panel. `/admin` is allowed only from admin/.
+ *   3. Every panel is reachable in-game, derived rather than listed:
+ *        (a) a station in a built town hosts it (walk there, Places, Waystone);
+ *        (b) the ☰ menu opens it (side-scroller.component.html `data-open`);
+ *        (c) a reachable panel links its old URL (the side-scroller opens that
+ *            panel in place) — followed through each panel component's own
+ *            relative imports, to a fixpoint.
+ *      There are no per-route exemptions: an unreachable panel fails.
+ *   4. No player-facing leftover of the deleted tool product (unchanged).
  *
  * Run from the repo root: node scripts/audit-nav.js
  */
@@ -22,33 +29,8 @@ const path = require('path');
 
 const ROOT = process.argv[2] || process.cwd();
 const SRC = path.join(ROOT, 'src');
+const APP = path.join(SRC, 'app');
 
-// ── Collect declared routes ────────────────────────────────────────────────
-const routingFiles = [
-  'app/app-routing.module.ts',
-  'app/shared/canonical-routes.ts',
-].map(p => path.join(SRC, p));
-const declared = new Set();
-const redirects = new Map();
-
-for (const file of routingFiles) {
-  const routingSrc = fs.readFileSync(file, 'utf8');
-  // Top-level `path: 'x'` entries
-  for (const m of routingSrc.matchAll(/path:\s*'([^']*)'/g)) declared.add('/' + m[1]);
-  // redirectTo pairs
-  for (const m of routingSrc.matchAll(/path:\s*'([^']+)',\s*redirectTo:\s*'([^']+)'/g)) {
-    redirects.set('/' + m[1], '/' + m[2].replace(/^\//, ''));
-  }
-}
-
-// Arena game routes live in their own file
-const arenaSrc = fs.readFileSync(path.join(SRC, 'app/arena/games/arena-game.routes.ts'), 'utf8');
-for (const m of arenaSrc.matchAll(/path:\s*'([^']+)'/g)) declared.add('/' + m[1]);
-
-// Retired /tools and /embed pages redirect; they are not live routes.
-const toolPaths = new Set();
-
-// ── Collect every routerLink used in templates ─────────────────────────────
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
@@ -57,66 +39,11 @@ function walk(dir, out = []) {
   }
   return out;
 }
-const files = walk(path.join(SRC, 'app'));
+const files = walk(APP).filter(f => !/ \d\.(ts|html)$/.test(f));
+const rel = f => path.relative(ROOT, f).replace(/\\/g, '/');
 
-const canonMap = {};
-const canonSrc = fs.readFileSync(path.join(SRC, 'app/shared/canonical-routes.ts'), 'utf8');
-for (const m of canonSrc.matchAll(/^\s*(\w+):\s*'(\/[^']+)'/gm)) {
-  canonMap[m[1]] = m[2];
-}
-
-const links = new Map(); // route -> Set(files)
-for (const f of files) {
-  const txt = fs.readFileSync(f, 'utf8');
-  // routerLink="/x" and [routerLink]="'/x'" and navigate(['/x']) / navigateByUrl('/x')
-  const pats = [
-    /routerLink="(\/[^"{]*)"/g,
-    /\[routerLink\]="'(\/[^']*)'"/g,
-    /navigateByUrl\('(\/[^']*)'\)/g,
-    /navigate\(\['(\/[^']*)'/g,
-    /route:\s*'(\/[^']*)'/g,
-  ];
-  for (const pat of pats) {
-    for (const m of txt.matchAll(pat)) {
-      const r = m[1].split('?')[0].split('#')[0].replace(/\/$/, '') || '/';
-      if (!links.has(r)) links.set(r, new Set());
-      links.get(r).add(path.relative(ROOT, f));
-    }
-  }
-  for (const m of txt.matchAll(/route:\s*CANONICAL\.(\w+)/g)) {
-    const r = canonMap[m[1]];
-    if (!r) continue;
-    if (!links.has(r)) links.set(r, new Set());
-    links.get(r).add(path.relative(ROOT, f));
-  }
-}
-
-// ── 1. Dead links ──────────────────────────────────────────────────────────
-const dead = [];
-for (const [route, where] of links) {
-  if (route === '/') continue;
-  if (declared.has(route) || toolPaths.has(route)) continue;
-  // /tools/<slug> from the registry is resolved dynamically — accept the prefix
-  if (route.startsWith('/tools/') || route.startsWith('/embed/')) continue; // retired, redirect to /world
-  dead.push({ route, where: [...where] });
-}
-
-// ── 2. Orphan routes ───────────────────────────────────────────────────────
-// Routes that render a real page (not a redirect, not the wildcard, not embeds)
-const CHROME = ['app/header/header.component.html', 'app/header/header.component.ts',
-                'app/shared/nav/nav.manifest.ts'];
-const chromeLinks = new Set();
-for (const [route, where] of links) {
-  if ([...where].some(w => CHROME.includes(w.replace(/^src\//, '')))) chromeLinks.add(route);
-}
-
-const EXEMPT = new Set([
-  '/admin', '/embed', '/tools', '/world', '/**', '/',
-]);
-// In-world places: every registry route a station in a built town hosts.
-// Loaded from the TypeScript source itself (transpiled in memory, the way
-// scripts/seamworks-engine.test.cjs loads the world), so the audit and the game
-// cannot disagree about where a page stands.
+// TypeScript source loaded in memory (the way the engine tests load the world),
+// so the audit reads the same tables the game does.
 function loadTs(file, cache = new Map()) {
   if (cache.has(file)) return cache.get(file).exports;
   const ts = require('typescript');
@@ -131,26 +58,148 @@ function loadTs(file, cache = new Map()) {
   new Function('require', 'module', 'exports', code)(req, mod, mod.exports);
   return mod.exports;
 }
-const placeHelper = loadTs(path.join(SRC, 'app/shared/world/place-for-route.ts'));
-const worldPlaces = placeHelper.worldPlaces();
-const worldReachable = new Map(worldPlaces.map(p => [p.route, p]));
 
-// The world is only a path if the navbar opens it.
-const worldEntranceMissing = !chromeLinks.has('/play');
-// A station that names a route the router does not serve is a dead place.
-const deadPlaces = worldPlaces.filter(p => !declared.has(p.route) || redirects.has(p.route));
+// ── 1. Only the game is routed ─────────────────────────────────────────────
+const routingSrc = fs.readFileSync(path.join(APP, 'app-routing.module.ts'), 'utf8');
+const ALLOWED_PATHS = new Set(['play', 'admin', '**']);
+const extraRoutes = [...routingSrc.matchAll(/\bpath:\s*'([^']*)'/g)].map(m => m[1]).filter(p => !ALLOWED_PATHS.has(p));
+if (!/\.\.\.CANONICAL_REDIRECTS/.test(routingSrc)) extraRoutes.push('(CANONICAL_REDIRECTS is not spread into APP_ROUTES)');
+const { CANONICAL_REDIRECTS, INTO_PLAY, intoPlay } = loadTs(path.join(APP, 'shared/canonical-routes.ts'));
+const redirects = new Map(); // '/old' -> '/play?at=x'
+for (const [from, at] of Object.entries(INTO_PLAY)) redirects.set('/' + from, intoPlay(at));
+for (const r of CANONICAL_REDIRECTS) {
+  if (typeof r.redirectTo === 'string') redirects.set('/' + r.path, r.redirectTo.startsWith('/') ? r.redirectTo : '/' + r.redirectTo);
+  else if (!(r.path in INTO_PLAY)) redirects.set('/' + r.path, '(a redirect function the audit cannot read)');
+}
+const leaky = [...redirects].filter(([, to]) => !/^\/play(\?|$)/.test(to));
 
-const orphans = [];
-for (const r of declared) {
-  if (EXEMPT.has(r) || redirects.has(r) || r.startsWith('/arena/')) continue;
-  if (r.startsWith('/world/realms') || r === '/world/fivefold-lock') continue;
-  if (r === '/' || r === '/**') continue;
-  if (chromeLinks.has(r)) continue;
-  if (!worldEntranceMissing && worldReachable.has(r)) continue;
-  orphans.push(r);
+// ── World tables: towns, stations, panels ──────────────────────────────────
+const world = loadTs(path.join(APP, 'play/world/world.model.ts'));
+const registryPath = path.join(APP, 'play/world/panel-registry.ts');
+const registrySrc = fs.readFileSync(registryPath, 'utf8');
+const panelIds = [...world.PANEL_IDS];
+const panelRoute = new Map(); // id -> legacy route
+const panelFile = new Map(); // id -> component .ts
+for (const m of registrySrc.matchAll(/^\s*'?([\w-]+)'?:\s*\{([^\n]*)\},?$/gm)) {
+  const id = m[1];
+  if (!panelIds.includes(id)) continue;
+  const r = m[2].match(/route:\s*'([^']+)'/);
+  if (r) panelRoute.set(id, r[1]);
+  const imp = m[2].match(/import\('([^']+)'\)/);
+  if (imp) panelFile.set(id, path.resolve(path.dirname(registryPath), imp[1] + '.ts'));
+}
+const stationIds = new Set();
+const hostedByStation = new Map(); // panel -> 'town/station'
+for (const town of Object.values(world.TOWNS)) {
+  if (!town) continue;
+  for (const st of town.stations || []) {
+    stationIds.add(st.id);
+    if (st.kind === 'panel' && st.panel && !hostedByStation.has(st.panel)) hostedByStation.set(st.panel, `${town.id}/${st.id}`);
+  }
+}
+// The Homestead is an area of its own, not a town: its buildings are stations too.
+const homestead = loadTs(path.join(APP, 'play/world/homestead.ts'));
+for (const st of homestead.HOMESTEAD_BUILDINGS || []) {
+  stationIds.add(st.id);
+  if (st.kind === 'panel' && st.panel && !hostedByStation.has(st.panel)) hostedByStation.set(st.panel, `homestead/${st.id}`);
+}
+const atTargets = new Set([...stationIds, ...panelIds]);
+const badAt = [...redirects].filter(([, to]) => {
+  const at = (to.split('?')[1] || '').match(/(?:^|&)at=([^&]+)/);
+  return at && !atTargets.has(at[1]);
+});
+
+// ── 2. No link leaves the game ─────────────────────────────────────────────
+const LINK_PATS = [
+  /routerLink="(\/[^"{]*)"/g,
+  /\[routerLink\]="'(\/[^']*)'"/g,
+  /navigateByUrl\('(\/[^']*)'\)/g,
+  /navigate\(\['(\/[^']*)'/g,
+  /\broute:\s*'(\/[^']*)'/g,
+  /\bhref:\s*'(\/[^']*)'/g,
+];
+// `export const FOO_HREF = '/x'`: a URL held in a constant and bound with
+// [routerLink] elsewhere. Checked for leaving the game like any link; for
+// reachability it only counts where a file in the same panel uses FOO_HREF
+// AND binds a [routerLink] (see reachability below).
+const HREF_CONST = /export const (\w+_HREF)\s*=\s*'(\/[^']*)'/g;
+const hrefConsts = new Map(); // file -> [[name, url]]
+const linksIn = new Map(); // file -> [targets]
+for (const f of files) {
+  if (f.endsWith('.spec.ts')) continue;
+  const txt = fs.readFileSync(f, 'utf8');
+  const out = [];
+  for (const pat of LINK_PATS) for (const m of txt.matchAll(pat)) out.push(m[1]);
+  const consts = [...txt.matchAll(HREF_CONST)].map(m => [m[1], m[2]]);
+  if (consts.length) hrefConsts.set(f, consts);
+  for (const [, url] of consts) out.push(url);
+  if (out.length) linksIn.set(f, out);
+}
+// Files that are data, not navigation: the router tables, the panel table, history prose.
+const NOT_NAV = new Set(['app-routing.module.ts', 'shared/canonical-routes.ts', 'play/world/panel-registry.ts', 'version-history.ts', 'version.ts']);
+const outward = [];
+for (const [f, targets] of linksIn) {
+  const r = path.relative(APP, f).replace(/\\/g, '/');
+  if (NOT_NAV.has(r)) continue;
+  for (const t of targets) {
+    const p = t.split(/[?#]/)[0].replace(/\/$/, '') || '/';
+    if (p === '/play') continue;
+    if (p === '/admin' && r.startsWith('admin/')) continue;
+    if (redirects.has(p)) continue;
+    if (/^\/(tools|embed)\//.test(p)) continue; // retired slugs: '/tools/:slug' redirects into /play
+    outward.push(`${t}  ←  ${rel(f)}`);
+  }
 }
 
-// ── 3. Player-facing leftover of the deleted tool product ──────────────────
+// ── 3. Every panel is reachable in-game ────────────────────────────────────
+const menuHtml = fs.readFileSync(path.join(APP, 'play/side-scroller.component.html'), 'utf8');
+const menuBlock = (menuHtml.match(/<nav id="places-list"[\s\S]*?<\/nav>/) || [''])[0];
+const menuOpens = new Set([...menuBlock.matchAll(/data-open="([\w-]+)"/g)].map(m => m[1]));
+const reach = new Map(); // panel -> how
+for (const [id, where] of hostedByStation) reach.set(id, `station ${where}`);
+for (const id of panelIds) if (!reach.has(id) && menuOpens.has(id)) reach.set(id, '☰ menu');
+
+function importClosure(entry) {
+  const seen = new Set(); const stack = [entry];
+  while (stack.length) {
+    const f = stack.pop();
+    if (seen.has(f) || !fs.existsSync(f)) continue;
+    seen.add(f);
+    const txt = fs.readFileSync(f, 'utf8');
+    const tpl = txt.match(/templateUrl:\s*'([^']+)'/);
+    if (tpl) seen.add(path.resolve(path.dirname(f), tpl[1]));
+    for (const m of txt.matchAll(/from\s+'(\.[^']+)'/g)) stack.push(path.resolve(path.dirname(f), m[1] + '.ts'));
+  }
+  return seen;
+}
+const byRoute = new Map([...panelRoute].map(([id, r]) => [r, id]));
+let grew = true;
+while (grew) {
+  grew = false;
+  for (const [id, how] of [...reach]) {
+    const entry = panelFile.get(id);
+    if (!entry) continue;
+    const closure = importClosure(entry);
+    const texts = [...closure].filter(f => fs.existsSync(f)).map(f => fs.readFileSync(f, 'utf8'));
+    for (const f of closure) {
+      const constUrls = new Set((hrefConsts.get(f) || [])
+        .filter(([name]) => texts.some(t => t.includes(name) && /\[routerLink\]=/.test(t) && !t.includes(`export const ${name}`)))
+        .map(([, url]) => url));
+      const literal = (linksIn.get(f) || []).filter(t => !(hrefConsts.get(f) || []).some(([, url]) => url === t));
+      for (const t of [...literal, ...constUrls]) {
+        const target = byRoute.get(t.split(/[?#]/)[0]) || (redirects.get(t.split(/[?#]/)[0]) || '').match(/at=([\w-]+)/)?.[1];
+        if (target && panelIds.includes(target) && !reach.has(target)) {
+          reach.set(target, `linked from the ${id} panel (${rel(f)})`);
+          grew = true;
+        }
+      }
+    }
+  }
+}
+const unreachable = panelIds.filter(id => !reach.has(id));
+const loaderless = panelIds.filter(id => !panelFile.has(id));
+
+// ── 4. Player-facing leftover of the deleted tool product ──────────────────
 // Templates and SEO are what a player reads. Infrastructure (historical
 // changelog, the legacy egg records) is out of scope.
 const PLAYER_FACING = files.filter(f => {
@@ -206,7 +255,7 @@ for (const f of PLAYER_FACING) {
   });
 }
 
-// ── 4. Data sources rendered by public templates ───────────────────────────
+// ── 4b. Data sources rendered by public templates ───────────────────────────
 // The Achievement Wall, Secrets tab, Arena unlock lines and SEO all render
 // strings from these files. A template-only scan misses them.
 const DATA_BANNED = [
@@ -291,26 +340,19 @@ for (const block of parseObjectRecords(playableSrc, 'ARENA_PLAYABLE')) {
 }
 
 // ── Report ─────────────────────────────────────────────────────────────────
-console.log('ROUTES DECLARED :', [...declared].filter(r => !redirects.has(r) && r !== '/**' && r !== '/').sort().join(' '));
-console.log('REDIRECTS       :', [...redirects].map(([a, b]) => `${a}→${b}`).join(' '));
-console.log('TOOL ROUTES     :', toolPaths.size);
+const ok = (cond, good, bad, rows) => {
+  console.log(cond ? `✅ ${good}` : `❌ ${bad}`);
+  if (!cond) for (const r of rows) console.log(`   ${r}`);
+};
+ok(!extraRoutes.length, 'ONLY THE GAME IS ROUTED (play, admin, redirects, **)', 'ROUTES BESIDE THE GAME:', extraRoutes);
+ok(!leaky.length, `EVERY RETIRED URL REDIRECTS INTO /play (${redirects.size})`, 'REDIRECTS THAT LEAVE THE GAME:', leaky.map(([a, b]) => `${a} → ${b}`));
+ok(!badAt.length, 'EVERY ?at= NAMES A REAL STATION OR PANEL', '?at= TARGETS THAT DO NOT EXIST:', badAt.map(([a, b]) => `${a} → ${b}`));
+ok(!outward.length, 'NO LINK LEAVES THE GAME', 'LINKS TO PAGES OUTSIDE /play:', outward);
+ok(!loaderless.length, 'EVERY PANEL HAS A LOADER', 'PANELS WITH NO LOADER IN panel-registry.ts:', loaderless);
+ok(!unreachable.length, `EVERY PANEL IS REACHABLE IN-GAME (${panelIds.length})`, 'PANELS NO PLAYER CAN REACH (no station, not in ☰, not linked from a reachable panel):', unreachable);
+ok(!leftover.length, 'NO PLAYER-FACING TOOL PRODUCT', 'PLAYER-FACING TOOL PRODUCT:', leftover.map(h => `${h.file}:${h.line}  ${h.why}  —  ${h.text}`));
 console.log('');
-console.log(dead.length ? '❌ DEAD LINKS:' : '✅ NO DEAD LINKS');
-for (const d of dead) console.log(`   ${d.route}  ←  ${d.where.join(', ')}`);
-console.log('');
-console.log(worldEntranceMissing ? '❌ THE NAVBAR DOES NOT LINK /play — in-world places are unreachable' : '✅ NAVBAR OPENS THE WORLD (/play)');
-console.log(deadPlaces.length ? '❌ STATIONS FOR ROUTES THE ROUTER DOES NOT SERVE:' : '✅ EVERY IN-WORLD PLACE IS A LIVE ROUTE');
-for (const p of deadPlaces) console.log(`   ${p.route}  ←  ${p.townId}/${p.stationId}`);
-console.log('');
-console.log(orphans.length ? '❌ ORPHANED ROUTES (neither in the navbar nor standing in a built town):' : '✅ NO ORPHANED ROUTES');
-for (const o of orphans.sort()) console.log(`   ${o}`);
-console.log('');
-console.log(leftover.length ? '❌ PLAYER-FACING TOOL PRODUCT:' : '✅ NO PLAYER-FACING TOOL PRODUCT');
-for (const hit of leftover) console.log(`   ${hit.file}:${hit.line}  ${hit.why}  —  ${hit.text}`);
-console.log('');
-console.log('CHROME LINKS    :', [...chromeLinks].sort().join(' '));
-console.log('IN-WORLD PLACES :', [...worldReachable.values()]
-  .sort((a, b) => a.route.localeCompare(b.route))
-  .map(p => `${p.route}@${p.townId}/${p.stationId}`).join(' '));
+console.log('☰ MENU OPENS   :', [...menuOpens].sort().join(' '));
+for (const id of panelIds) console.log(`  ${id.padEnd(15)} ${reach.get(id) || '—'}`);
 
-process.exit(dead.length || orphans.length || leftover.length || worldEntranceMissing || deadPlaces.length ? 1 : 0);
+process.exit(extraRoutes.length || leaky.length || badAt.length || outward.length || loaderless.length || unreachable.length || leftover.length ? 1 : 0);

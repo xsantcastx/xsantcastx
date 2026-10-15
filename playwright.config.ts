@@ -61,7 +61,7 @@ export default defineConfig({
   },
   webServer: {
     command: `node scripts/serve-preview.js dist/xsantcastx/browser ${PORT}`,
-    url: `${BASE}/world`,
+    url: `${BASE}/play`,
     reuseExistingServer: !process.env['CI'],
     timeout: 30000,
   },

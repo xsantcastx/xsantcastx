@@ -26,5 +26,5 @@ export const APP_VERSION = {
   /** Each major release gets a codename */
   codename: 'The Doorway',
   /** Where the full story of this release lives */
-  changelog: '/world'
+  changelog: '/play'
 } as const;
