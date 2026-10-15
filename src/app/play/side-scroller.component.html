@@ -437,7 +437,10 @@
       }
     } @else if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
-      <button type="button" [disabled]="actionDisabled" (click)="interact()">{{ t('play.hud.interact') }} <kbd class="key-hint">E</kbd></button>
+      <!-- One World: at the mine head the way down is the camp or an anchor (Interact only says the Delve is underfoot); the bar keeps room for them on a sideways phone. -->
+      @if (!(oneWorld && state.nearby === 'delve' && (campReady || anchorsReady))) {
+        <button type="button" [disabled]="actionDisabled" (click)="interact()">{{ t('play.hud.interact') }} <kbd class="key-hint">E</kbd></button>
+      }
       @if (state.nearby === 'delve' && campReady) {
         <button type="button" class="camp-go" (click)="descendToCamp()">{{ t('play.delve.camp.descend') }} <kbd class="key-hint">C</kbd></button>
       }

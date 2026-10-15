@@ -29,7 +29,7 @@
  * from the Seamworks stone's Travel map.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, focusWorld, openPlay, playerX, seed, walk, type Blobs } from './play-helpers';
+import { canvas, focusWorld, loginAt, openPlay, playerX, seed, walk, type Blobs } from './play-helpers';
 import { TOWNS } from '../src/app/play/world/world.model';
 import type { RealmTownId, StationDef, TownDef } from '../src/app/play/world/world.model';
 import { KEEPER_HALF, TOWN_KEEPERS, TOWNSFOLK_LINE } from '../src/app/play/world/life';
@@ -106,7 +106,8 @@ async function frames(page: Page): Promise<Frame[]> {
 /** Into a town by the Waystone, then a fresh load of /play there (the town is restored; chatter starts unarmed-fresh). */
 async function enterTown(page: Page, realm: RealmTownId, blobs: Blobs = {}): Promise<TownDef> {
   const town = TOWNS[realm]!;
-  await seed(page, blobs);
+  // One World: the Seamworks' walk starts at the street's west end (the resume point), so no keeper is passed before it.
+  await seed(page, realm === 'infernal' ? { ...loginAt(6), ...blobs } : blobs);
   if (realm !== 'infernal') {
     await openPlay(page, '?at=waystone');
     await page.locator(`[data-row="${WORLD_OF[realm]}:town"]`).click();
