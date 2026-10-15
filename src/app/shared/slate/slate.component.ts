@@ -285,7 +285,7 @@ export class SlateComponent implements OnInit, OnDestroy {
 
   /** The grid: Lune's four tables, the Homestead, the map (tier II), the Scan, the Pets, the Codex, the eclipse. */
   private buildApps(): SlateApp[] {
-    const games: SlateApp[] = this.tables.map(t => ({ id: t.game, key: t.titleKey, icon: 'tables', game: t.game }));
+    const games: SlateApp[] = this.tables.map(t => ({ id: t.game, key: t.titleKey, icon: t.game, game: t.game }));
     const faces: SlateApp[] = [
       { id: 'factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
       ...(this.tabs.includes('map') ? [{ id: 'map', key: 'slate.tab.map', icon: 'map', face: 'map' as const }] : []),
@@ -348,7 +348,8 @@ export class SlateComponent implements OnInit, OnDestroy {
     const w = this.clock.nextEclipse(ms);
     this.eclipseOn = sky.eclipseOn;
     const span = worldSpan(ms, this.eclipseOn ? w.endMs : w.startMs);
-    this.eclipseLeft = this.t('clock.eclipse.nextShort', span);
+    // In in-game days past a day ("3d 14h 59m"): the eclipse comes every fifth day.
+    this.eclipseLeft = span.h >= 24 ? this.t('clock.eclipse.days', { d: Math.floor(span.h / 24), h: span.h % 24, m: span.m }) : this.t('clock.eclipse.nextShort', span);
     const startDay = Math.floor(w.id);
     this.eclipseWhen = this.t('clock.eclipse.when', {
       day: this.t(`clock.day.${WEEK_DAYS[((startDay % 7) + 7) % 7]}`),
