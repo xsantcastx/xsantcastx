@@ -21,6 +21,8 @@ describe('FishingService', () => {
     inventory.init();
     activity.init();
     fishing.now = () => new Date(2026, 9, 14, 12, 0, 0);
+    // The world clock's hour is pinned too (shared/world-clock): day, so no dark-only fish bite.
+    fishing.dark = () => false;
   });
   afterEach(() => { for (const key of KEYS) localStorage.removeItem(key); });
 

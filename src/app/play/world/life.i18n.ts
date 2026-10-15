@@ -123,6 +123,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.tomas.4': { en: 'Your lantern talks? Of course it does. Tell it I said it burns beautifully.', es: 'Tu farol habla? Claro que si. Dile que digo que arde precioso.' },
   'play.life.line.tomas.5': { en: 'A mark you don\'t remember making. I know that feeling from the other side.', es: 'Una marca que no recuerdas haber hecho. Conozco esa sensacion desde el otro lado.' },
   'play.life.line.tomas.6': { en: 'Five witnesses, one from each realm. When you come for the Court\'s, I\'ll light the way.', es: 'Cinco testigos, uno por reino. Cuando vengas por el de la Corte, te alumbrare el camino.' },
+  'play.life.line.tomas.7': { en: 'Night. Every lantern in the Court is mine now. Walk slowly; they like to be admired.', es: 'Noche. Todos los faroles de la Corte son mios ahora. Camina despacio; les gusta que los admiren.' },
+  'play.life.line.tomas.8': { en: 'An eclipse at noon, and suddenly everyone wants a lantern. I said it would come back.', es: 'Un eclipse a mediodia, y de pronto todos quieren un farol. Ya dije que volveria.' },
   'play.life.line.ilyra.1': { en: 'Three people saw it. Three different mornings. I don\'t need one of them to be wrong.', es: 'Tres personas lo vieron. Tres mananas distintas. No necesito que una este equivocada.' },
   'play.life.line.ilyra.2': { en: 'Repeat a memory and it gets easier. That\'s not the same as it getting truer.', es: 'Repite un recuerdo y se vuelve facil. No es lo mismo que volverse mas cierto.' },
   'play.life.line.ilyra.3': { en: 'The prisms don\'t lie. They just don\'t know which of you is asking.', es: 'Los prismas no mienten. Solo no saben cual de vosotros pregunta.' },
@@ -161,6 +163,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.rook.4': { en: 'You dig. Then listen: a cracked wall sounds hollow before it looks it.', es: 'Cavas. Entonces escucha: un muro agrietado suena hueco antes de parecerlo.' },
   'play.life.line.rook.5': { en: 'You counted the marks. Now decide who else needs to know the number.', es: 'Contaste las marcas. Ahora decide quien mas necesita saber el numero.' },
   'play.life.line.rook.6': { en: 'Amina wants every name on the record. Some names are safer off it. We argue.', es: 'Amina quiere cada nombre en el registro. Algunos estan mas seguros fuera. Discutimos.' },
+  'play.life.line.rook.7': { en: 'Night maps best. Anything that moves in the dark is a road somebody uses.', es: 'De noche se cartografia mejor. Lo que se mueve a oscuras es un camino que alguien usa.' },
 
   // ── Celestial: Meridian Orrery ──
   'play.life.line.archivist.1': { en: 'Each fragment tells a piece of the truth.', es: 'Cada fragmento cuenta una parte de la verdad.' },
@@ -177,11 +180,14 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.chart-clerk.5': { en: 'Your star moved. Not far. Honestly charted, that\'s further than most.', es: 'Tu estrella se movio. No mucho. Trazado con honradez, es mas que la mayoria.' },
   'play.life.line.chart-clerk.6': { en: 'Sera Quill runs every Waystone you touch. She also ran me. Out.', es: 'Sera Quill dirige cada Waystone que tocas. Tambien me dirigio a mi. Fuera.' },
   'play.life.line.chart-clerk.7': { en: 'A line drawn before the break. Someone charted it. Charts outlive their makers.', es: 'Una linea trazada antes de la rotura. Alguien la cartografio. Las cartas sobreviven a quien las hace.' },
+  'play.life.line.chart-clerk.8': { en: 'Sera called this eclipse to the minute. I hate that it\'s beautiful.', es: 'Sera predijo este eclipse al minuto. Odio que sea precioso.' },
   'play.life.line.sera.1': { en: 'Every Waystone you\'ve touched is mine. You\'re welcome. Please stop leaning on them.', es: 'Cada Waystone que has tocado es mio. De nada. Deja de apoyarte en ellos, por favor.' },
   'play.life.line.sera.2': { en: 'I don\'t deal in faith. I deal in error bars. Mine are small.', es: 'No trato con la fe. Trato con margenes de error. Los mios son pequenos.' },
   'play.life.line.sera.3': { en: 'Kael? I call him the variable. He has never once been where my model put him.', es: 'Kael? Lo llamo la variable. Nunca ha estado donde mi modelo lo puso.' },
   'play.life.line.sera.4': { en: 'Nox is next door, charting renown. I put them there. I\'d rather not discuss it.', es: 'Nox esta aqui al lado, trazando renombre. Yo lo puse ahi. Prefiero no hablarlo.' },
   'play.life.line.sera.5': { en: 'A line drawn under the Godforge. So my model has an input I didn\'t choose. Noted.', es: 'Una linea trazada bajo la Godforge. Asi que mi modelo tiene una entrada que no elegi. Anotado.' },
+  'play.life.line.sera.6': { en: 'Each eclipse is an observation. Be in the world for it and I write you down.', es: 'Cada eclipse es una observacion. Estate en el mundo y te anoto.' },
+  'play.life.line.sera.7': { en: 'Night. My error bars are smallest in the dark. Don\'t tell Nox.', es: 'Noche. Mis margenes de error son minimos a oscuras. No se lo digas a Nox.' },
 
   // ── Verdant: Rootglass Canopy ──
   'play.life.line.steward.1': { en: 'Explorers set out from here. Send them well equipped.', es: 'Los exploradores parten de aqui. Envialos bien equipados.' },
@@ -191,6 +197,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.steward.5': { en: 'You\'ve drawn blood on the roads. Good. My explorers walk them after you.', es: 'Has hecho sangre en los caminos. Bien. Mis exploradores los recorren despues de ti.' },
   'play.life.line.steward.6': { en: 'Kael thinks I\'m soft on the canopy. I think he\'s soft on fire. We\'re both right.', es: 'Kael cree que soy blanda con el dosel. Yo creo que el es blando con el fuego. Ambos acertamos.' },
   'play.life.line.steward.7': { en: 'A thing that rises out of failed repairs. We have one up here too. Ours grows.', es: 'Algo que surge de reparaciones fallidas. Aqui arriba tambien tenemos uno. El nuestro crece.' },
+  'play.life.line.steward.8': { en: 'Dawn. Best hour for a hunt: the Stags are slow, and the light is honest.', es: 'Amanece. La mejor hora para cazar: los Ciervos van lentos y la luz es honesta.' },
   'play.life.line.herald.1': { en: 'New orders on the board. The realms are asking.', es: 'Nuevas ordenes en el tablon. Los reinos piden.' },
   'play.life.line.herald.2': { en: 'Daily, weekly, epic. The board keeps them all.', es: 'Diarias, semanales, epicas. El tablon las guarda todas.' },
   'play.life.line.herald.3': { en: 'Five realms asking. None of them say please. I add it for them.', es: 'Cinco reinos pidiendo. Ninguno dice por favor. Yo lo anado por ellos.' },
@@ -219,6 +226,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.lodge-warden.5': { en: 'Ten in a skill. The lodge rang a little. You didn\'t hear it. I did.', es: 'Diez en un oficio. El refugio sono un poco. Tu no lo oiste. Yo si.' },
   'play.life.line.lodge-warden.6': { en: 'You fish now? Patience is a skill too. The lodge counts it.', es: 'Ahora pescas? La paciencia tambien es un oficio. El refugio la cuenta.' },
   'play.life.line.lodge-warden.7': { en: 'Siv and I grew up at the same nursery. She learned to prune. I learned to graft.', es: 'Siv y yo crecimos en el mismo vivero. Ella aprendio a podar. Yo aprendi a injertar.' },
+  'play.life.line.lodge-warden.8': { en: 'The Mirrorfin are up. Moonwake on the hook, and cast where the water is still.', es: 'Los Espejaletas estan arriba. Velaluna en el anzuelo, y lanza donde el agua esta quieta.' },
 
   // ── Creatures: the enemy bar, keyed by MonsterDef `creature` (engine `enemyId`) ──
   // English must match the MonsterDef `name` in world/towns/*.ts.
@@ -230,6 +238,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.creature.rootglass-stag': { en: 'Rootglass Stag', es: 'Ciervo de Raizvidrio' },
   'play.creature.seam-eater': { en: 'Seam Eater', es: 'Devorador de Costuras' },
   'play.creature.drowned-lamp': { en: 'The Drowned Lamp', es: 'La Lampara Ahogada' },
+  'play.creature.ink-lantern': { en: 'Ink Lantern', es: 'Linterna de Tinta' },
+  'play.creature.afterimage-moth': { en: 'Afterimage Moth', es: 'Polilla de Posimagen' },
   // The Underhearth (Phase 8).
   'play.creature.banked-ember': { en: 'Banked Ember', es: 'Brasa Cubierta' },
   'play.creature.ironwood-sentinel': { en: 'Ironwood Sentinel', es: 'Centinela de Hierroleno' },
