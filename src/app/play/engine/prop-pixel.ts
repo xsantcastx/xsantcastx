@@ -13,8 +13,8 @@
  * whole pixels (`crisp`), so no soft edge survives.
  *
  * Colours are the ones these props already used (and the art bible's ramps).
- * The station's own icon on the plaque and the material over a node are still
- * the painted icons (item art is its own pass: docs/handoff/one-art-style.md).
+ * The station's icon on the plaque and the material over a node are pixel icons
+ * too (item-icons.ts), drawn by the engine at the same 4 px grid.
  *
  * Browser only (canvas).
  */
@@ -26,7 +26,7 @@ export const PROP_PIXEL = 4;
 type Ctx = CanvasRenderingContext2D;
 
 /** Snap every pixel to fully on or fully off (a path's anti-aliased rim → a pixel edge). */
-function crisp(el: HTMLCanvasElement): HTMLCanvasElement {
+export function crisp(el: HTMLCanvasElement): HTMLCanvasElement {
   const c = el.getContext('2d');
   const image = c?.getImageData(0, 0, el.width, el.height);
   const d = image?.data;
@@ -86,7 +86,8 @@ export class PropPainter {
       p(0, 32, W, 2, '#a67858'); p(1, 32, W - 2, 1, '#f6a668'); p(1, 34, W - 2, H - 34, '#4a3238'); p(1, 34, W - 2, 1, '#2a1d22');
       for (let k = 6; k < W - 4; k += 8) p(k, 36, 1, H - 38, '#3a2630');
       // The plaque: a dark disc in a brass (or lit) ring; the station's icon sits on it.
-      disc(s, W / 2, 21, 9, hot ? '#ffe0a8' : '#a68456'); disc(s, W / 2, 21, 8, '#1d1418');
+      // Wide enough for a 16 art px pixel icon at the figures' scale (item-icons.ts).
+      disc(s, W / 2, 21, 10.5, hot ? '#ffe0a8' : '#a68456'); disc(s, W / 2, 21, 9.5, '#1d1418');
     }));
     this.put(c, el, x, floor);
   }
