@@ -71,7 +71,14 @@ export class HomesteadPixels {
    */
   automaton(c: Ctx, rung: number, x: number, floor: number, struck: boolean): void {
     const a = AUTOMATON[Math.max(0, Math.min(2, rung))];
-    const el = this.get(`auto:${rung}:${struck ? 1 : 0}`, () => sprite(a.w + 6, a.h + 4, s => {
+    if (!this.cache.has(`auto:${rung}:0`)) this.automatonSprite(rung, true);
+    const el = this.automatonSprite(rung, struck);
+    blit(c, el, x - (a.w / 2) * HP, floor - el.height * HP + HP * 2);
+  }
+
+  private automatonSprite(rung: number, struck: boolean): HTMLCanvasElement {
+    const a = AUTOMATON[Math.max(0, Math.min(2, rung))];
+    return this.get(`auto:${rung}:${struck ? 1 : 0}`, () => sprite(a.w + 6, a.h + 4, s => {
       const p = (x0: number, y0: number, w: number, h: number, col: string) => px(s, x0, y0, w, h, col);
       const top = 4, cx = Math.floor(a.w / 2);
       // Legs, body (lit top-left, shaded right), head, eyes.
@@ -90,7 +97,6 @@ export class HomesteadPixels {
         p(a.w - 1, top + 5, 2, 2, a.body); p(a.w + 1, top + 1, 1, 5, '#5a3d2e'); p(a.w - 1, top - 2, 5, 3, '#9aa0a8'); p(a.w - 1, top - 2, 5, 1, '#c0c4cc');
       }
     }));
-    blit(c, el, x - (a.w / 2) * HP, floor - el.height * HP + HP * 2);
   }
 
   /**
@@ -99,7 +105,14 @@ export class HomesteadPixels {
    */
   thrall(c: Ctx, color: string, x: number, floor: number, phase: number, idle: boolean, facing: number): void {
     const frame = idle ? 'idle' : phase < .34 ? 'up' : phase < .67 ? 'mid' : 'down';
-    const el = this.get(`thrall:${color}:${frame}`, () => sprite(THRALL.w + 5, THRALL.h + 4, s => {
+    // A tier's four poses are made together, so no sprite appears later as a slow cycle reaches it.
+    if (!this.cache.has(`thrall:${color}:idle`)) for (const pose of ['idle', 'up', 'mid', 'down'] as const) this.thrallSprite(color, pose);
+    this.blitThrall(c, this.thrallSprite(color, frame), x, floor, facing);
+  }
+
+  private thrallSprite(color: string, frame: 'idle' | 'up' | 'mid' | 'down'): HTMLCanvasElement {
+    const idle = frame === 'idle';
+    return this.get(`thrall:${color}:${frame}`, () => sprite(THRALL.w + 5, THRALL.h + 4, s => {
       const p = (x0: number, y0: number, w: number, h: number, col: string) => px(s, x0, y0, w, h, col);
       const cloth = '#3a2a30', clothHi = '#5a4448', top = idle ? 6 : 4;
       const h = idle ? THRALL.h - 2 : THRALL.h;
@@ -114,6 +127,9 @@ export class HomesteadPixels {
       p(8, top + 5, 2, 1, cloth);
       p(hammer[0], hammer[1] + 2, 1, 4, '#5a3d2e'); p(hammer[0] - 1, hammer[1], 3, 2, '#9aa0a8'); p(hammer[0] - 1, hammer[1], 3, 1, '#c0c4cc');
     }));
+  }
+
+  private blitThrall(c: Ctx, el: HTMLCanvasElement, x: number, floor: number, facing: number): void {
     c.save();
     c.translate(Math.round(x), floor); c.scale(facing < 0 ? -1 : 1, 1);
     blit(c, el, -(THRALL.w / 2) * HP, -el.height * HP + HP * 2);
@@ -138,14 +154,18 @@ export class HomesteadPixels {
 
   /** A small pixel fire, 5 art px wide; `flicker` 0..1 lifts its tongues a pixel. */
   fire(c: Ctx, x: number, floor: number, flicker: number): void {
-    const f = flicker > .5 ? 1 : 0;
-    const el = this.get(`fire:${f}`, () => sprite(7, 9, s => {
+    if (!this.cache.has('fire:0')) this.fireSprite(1);
+    const el = this.fireSprite(flicker > .5 ? 1 : 0);
+    blit(c, el, x - 3.5 * HP, floor - el.height * HP + HP);
+  }
+
+  private fireSprite(f: number): HTMLCanvasElement {
+    return this.get(`fire:${f}`, () => sprite(7, 9, s => {
       px(s, 0, 7, 7, 2, '#5a3d2e'); px(s, 1, 7, 5, 1, '#7a5440');
       const rows = [[3, 1], [2, 3], [1, 5], [1, 5], [2, 3]] as const;
       rows.forEach(([x0, w], i) => px(s, x0, 2 + i - f, w, 1, i < 2 ? '#ffd08a' : '#E8752A'));
       px(s, 3, 4 - f, 1, 2, '#fff1b0');
     }));
-    blit(c, el, x - 3.5 * HP, floor - el.height * HP + HP);
   }
 
   /**
@@ -155,7 +175,16 @@ export class HomesteadPixels {
    */
   forgeFire(c: Ctx, x: number, base: number, time: number): void {
     const f = time > 0 && Math.sin(time * 9) > 0 ? 1 : 0;
-    const el = this.get(`forge-fire:${f}`, () => {
+    if (!this.cache.has('forge-fire:0')) this.forgeFireSprite(1);
+    const el = this.forgeFireSprite(f);
+    const smoothing = c.imageSmoothingEnabled;
+    c.imageSmoothingEnabled = false;
+    c.drawImage(el, Math.round(x - 8 * HP), Math.round(base - 22 * HP), 16 * HP, 22 * HP);
+    c.imageSmoothingEnabled = smoothing;
+  }
+
+  private forgeFireSprite(f: number): HTMLCanvasElement {
+    return this.get(`forge-fire:${f}`, () => {
       const raw = canvas(16, 22), s = raw.getContext('2d')!;
       // Column heights per tongue, swapped between the frames.
       const heights = f ? [6, 11, 15, 19, 21, 17, 13, 18, 20, 16, 12, 9, 7, 5, 4, 3] : [4, 8, 13, 17, 19, 21, 16, 12, 16, 19, 15, 11, 8, 6, 4, 3];
@@ -168,9 +197,5 @@ export class HomesteadPixels {
       px(s, 6, 15, 4, 5, '#fff1b0'); px(s, 7, 12, 2, 3, '#d9b8ff');
       return raw;
     });
-    const smoothing = c.imageSmoothingEnabled;
-    c.imageSmoothingEnabled = false;
-    c.drawImage(el, Math.round(x - 8 * HP), Math.round(base - 22 * HP), 16 * HP, 22 * HP);
-    c.imageSmoothingEnabled = smoothing;
   }
 }
