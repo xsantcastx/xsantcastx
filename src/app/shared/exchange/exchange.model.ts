@@ -48,7 +48,7 @@
 import { RUNE_TIERS, type RuneTier } from '../rune-forge/rune.model';
 import { ITEM_DEFINITIONS, stickerPrice } from '../rpg/item-definition';
 import { isUnique } from '../rpg/unique-items';
-import { materialDisplay } from '../rpg/material-catalog';
+import { itemArt, materialDisplay } from '../rpg/material-catalog';
 import type { ItemRarity } from '../rpg/item.model';
 import { itemScaled } from '../economy/economy-curve';
 
@@ -769,6 +769,8 @@ function buildCatalogue(): ExchangeGood[] {
         basePrice: Math.max(itemScaled(500), Math.round(stickerPrice(def, rarity))),
         liquidity: EQUIPMENT_LIQUIDITY[rarity] ?? 10,
         seed: seedFor(id),
+        // Its pixel icon, so the board never shows a row as initials.
+        art: itemArt({ id: def.id, definitionId: def.id, name: def.name })?.src,
       });
     }
   }
