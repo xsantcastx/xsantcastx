@@ -879,7 +879,11 @@ function underhearthScenario({ quiet = false } = {}) {
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
   const missions = readFileSync(resolve(here, '../src/app/shared/npc/delve-missions.model.ts'), 'utf8');
-  const ids = ['kael-flooded-seams', 'kael-four-1', 'kael-four-2', 'verrin-four-3', 'verrin-endings-kept-warm'];
+  const ids = ['kael-flooded-seams', 'kael-four-1', 'kael-four-2', 'verrin-four-3', 'verrin-endings-kept-warm',
+    // The realm Delves behind the Rift Gates (docs/handoff/rift-gates.md, realm-delves.md): the same rule I, a step up each.
+    'verrin-ink-1', 'verrin-ink-2', 'verrin-ink-3',
+    'kesh-roots-1', 'siv-roots-2', 'kesh-roots-3',
+    'aureth-prism-1', 'lune-prism-2', 'aureth-prism-3'];
   const { log } = simulate(PROPOSED);
   const gpsAt = t => log.at[t]?.gps ?? 0;
   // The stratum opens at Mining 45 / Smithing 45 / Delving 15: a week into the curve at the earliest.

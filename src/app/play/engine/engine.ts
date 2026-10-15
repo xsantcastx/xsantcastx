@@ -40,6 +40,9 @@ import {
   type CellRect, type TidePhase,
 } from './umbral';
 import { enteredFlag, REALM_ARRIVAL, realmOfArea, realmOfGateNode, RIFT_GATES, ruleFlag, type RiftRealm } from '../../shared/delve/rift-gates.model';
+import { cellKey as rootKey, GRAFT_CALL, GRAFT_HEAL, GRAFT_SHARE, heldOpen, isAlive, reaching, regrowProgress, REGROW_DELAY, regrowsAs, SPORE_STING, type Regrowth } from './verdant';
+import { applyLight, BEAM_MAX, FLARE_CELLS, FLARE_HIT, isLightMade, K as LUM, LIGHT_TICK, LIT_PANE, lightPanes, PRISM_FLARE, traceBeams, turned, unlit, type LightWindow } from './luminous';
+import { CORE_HALL } from './realm-kit';
 import { ANCHOR_MAX, GRAPPLE_CELLS, THORNROOT_GRAPPLE, UNDERHEARTH_REACHED_FLAG, UNDERHEARTH_TOP } from '../../shared/delve/underhearth.model';
 import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
 import { drawLiquids, lavaLights } from './liquid-render';
@@ -82,7 +85,7 @@ interface Monster {
   awake?: boolean;
   /** Spilled by the Banked Furnace: gone for good once felled (no respawn). */
   minion?: boolean;
-  /** A shade (the Ink Deeps) standing in strong light: it cannot move or strike (umbral.ts). */
+  /** A shade (the Ink Deeps) standing in strong light, or the Hollow Sun caught in a beam: it cannot move or strike. */
   frozen?: boolean;
 }
 /** The hand's extra tools (not placed): the Thornroot Grapple. */
@@ -185,7 +188,7 @@ function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\
 const USE_LABEL: Readonly<Record<string, string>> = {
   inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP', shrine: 'RIFT SHRINE',
   mark: 'HAMMER-MARK', anchor: 'RIFT ANCHOR', furnace: 'THE BANKED FURNACE', rail: 'KAEL\'S RAIL',
-  gate: 'RIFT GATE', brazier: 'GLOAM BRAZIER',
+  gate: 'RIFT GATE', brazier: 'GLOAM BRAZIER', mirror: 'PRISM MIRROR',
 };
 /** Node kinds the Underhearth's engine code keys on (looked up once). */
 const ROPE_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'rope');
@@ -195,6 +198,10 @@ const VENT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'furnace-vent'
 const BRAZIER_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'gloam-brazier');
 const BRAZIER_LIT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'gloam-brazier-lit');
 const DRIFT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'drift-shale');
+/** The Root Deeps' node kinds the engine keys on (verdant-gen.ts, verdant.ts). */
+const SPORE_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'spore-pod');
+const VINE_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'living-vine');
+const HEART_ROOT_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'heart-root');
 const RAIL_KINDS = Uint8Array.from(TERRAIN_NODE_LIST, node => node.rail ? 1 : 0);
 /** How far a launched or released Keeper's momentum carries, and how fast it bleeds (on the ground / in the air), 1/s. */
 const CARRY_GROUND = 9, CARRY_AIR = .5;
@@ -411,7 +418,7 @@ export class SeamworksEngine {
   /** Momentum a launch off a rail or a grapple release carries, px/s along x; bleeds away. */
   private carryX = 0;
   /** What the Keeper carries that is not placed: a Seam Cart (rides rails), a Thornroot Grapple. */
-  private gear = { cart: false, grapple: false, veil: false };
+  private gear = { cart: false, grapple: false, veil: false, shears: false, lens: false };
   /** The Banked Furnace's fight while it is up: its state, its vents' cells, its trough's cells. */
   private furnace: { monster: Monster; state: FurnaceState; vents: number[]; trough: number[] } | null = null;
   private readonly terrainRenderer = new TerrainRenderer();
@@ -578,6 +585,7 @@ export class SeamworksEngine {
     this.holdMode = null; this.clearAim(); this.dropTime = 0; this.jumpBuffer = 0;
     this.cart = null; this.grapple = null; this.carryX = 0; this.furnace = null;
     this.braziers.clear(); this.inkBlind = false; this.mirror = null; this.mirrorTrail.length = 0; this.wardenCall = WARDEN_CALL;
+    this.regrowth.clear(); this.heartRoots = -1; this.graftCall = GRAFT_CALL; this.lightClock = 0; this.litCells.clear(); this.flareIn = PRISM_FLARE;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.fuses = [];
     for (const r of this.rubble) r.active = false;
@@ -769,6 +777,13 @@ export class SeamworksEngine {
   private columnLeaving(world: SectorWorld, column: Column, sim: LiquidSim | null): void {
     const t = world.t, col0 = column.sx * SECTOR, col1 = col0 + SECTOR;
     sim?.forgetColumns(col0, col1);
+    // The Prism Mines: a column leaving keeps none of the light (luminous.ts); it is laid again when it comes back.
+    if (world.spec.realm === 'luminous') {
+      for (let row = 0; row < t.rows; row++) for (let col = col0; col < col1; col++) {
+        const k = t.kind[t.index(col, row)];
+        if (isLightMade(k)) t.set(col, row, unlit(k));
+      }
+    }
     if (this.world === world) {
       this.monsters = this.monsters.filter(m => m.sx !== column.sx);
       const gone = (index: number) => { const col = t.colOf(index); return col >= col0 && col < col1; };
@@ -832,6 +847,8 @@ export class SeamworksEngine {
     // Any changed cell lets the liquid round it move (a dug wall, a placed block).
     const sim = this.terrain === t ? this.liquid : null;
     if (sim) sim.wakeAround(t.colOf(index), t.rowOf(index));
+    // The Root Deeps: a hole in living wood grows back (verdant.ts); the root's living parts are never saved as gone.
+    if (this.terrain === t && this.areaDef.terrain?.realm === 'verdant' && this.rootDug(t, index)) return;
     if (this.world && this.world.t === t) { this.world.record(index); return; }
     if (!this.delve) return;
     const layout = this.layouts.get(this.areaDef.id);
@@ -1403,9 +1420,10 @@ export class SeamworksEngine {
    * a Seam Cart (E on a rail boards it) and a Thornroot Grapple (chosen on the
    * hotbar, a press on a cell within GRAPPLE_CELLS throws it).
    */
-  setGear(gear: { cart?: boolean; grapple?: boolean; veil?: boolean }): void {
+  setGear(gear: { cart?: boolean; grapple?: boolean; veil?: boolean; shears?: boolean; lens?: boolean }): void {
     // The Veil Lantern (the Ink Deeps): carried, it lets the lantern reach further in the gloom and keep some light under ink.
-    this.gear = { cart: !!gear.cart, grapple: !!gear.grapple, veil: !!gear.veil };
+    // The Rootsever Billhook (the Root Deeps): what you dig is cut at the root. The Dawn Lens (the Prism Mines): your lantern lights shadow glass.
+    this.gear = { cart: !!gear.cart, grapple: !!gear.grapple, veil: !!gear.veil, shears: !!gear.shears, lens: !!gear.lens };
     if (!this.gear.cart && this.cart) this.leaveCart(0, 0);
     if (!this.gear.grapple) this.grapple = null;
   }
@@ -1876,6 +1894,16 @@ export class SeamworksEngine {
       monster.flash = .08;
       this.clang(monster.x, floor - 120 * this.figure, 'It is not there while it is dark. Light a brazier and hold it in the light');
       return;
+    }
+    if (monster.def.trait === 'prism' && !monster.frozen) {
+      monster.flash = .08;
+      this.clang(monster.x, floor - 120 * this.figure, 'The blow passes through light. Turn the mirror and catch it in the beam');
+      return;
+    }
+    // The Graftmother, held by a heart-root: a blow does a quarter (verdant.ts).
+    if (monster.def.trait === 'graft' && this.heartRoots > 0) {
+      damage = Math.max(1, Math.round(damage * GRAFT_SHARE));
+      this.clang(monster.x, floor - 120 * this.figure, 'Her roots drink the blow. Cut the heart-roots');
     }
     if (monster.def.trait === 'dormant' && !monster.awake) {
       // Struck, it remembers: the heat it took comes out, and so does it.
@@ -2600,6 +2628,7 @@ export class SeamworksEngine {
     if (!use || use === 'mark') return;
     const col = t.colOf(index), row = t.rowOf(index);
     if (use === 'shrine') { this.touchShrine(t, col, row); return; }
+    if (use === 'mirror') { this.turnMirror(t, col, row); return; }
     this.report();
     this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
       ...(use === 'anchor' || use === 'furnace' || use === 'gate' || use === 'brazier' ? { col, row } : {}),
@@ -2630,6 +2659,13 @@ export class SeamworksEngine {
       for (let col = Math.max(t.colLo, c0); col <= Math.min(t.colHi - 1, c1); col++) {
         const index = t.index(col, row);
         if (this.usable(index)) return index;
+      }
+    }
+    // A prism mirror set in the floor (the Prism Mines' sunwells): the one usable thing under the feet.
+    if (this.areaDef.terrain?.realm === 'luminous' && r1 + 1 < t.rows) {
+      for (let col = Math.max(t.colLo, c0); col <= Math.min(t.colHi - 1, c1); col++) {
+        const index = t.index(col, r1 + 1);
+        if (t.kind[index] === LUM.mirrorA || t.kind[index] === LUM.mirrorB) return index;
       }
     }
     return -1;
@@ -2963,6 +2999,8 @@ export class SeamworksEngine {
       if (monster.def.trait === 'dormant' && !monster.awake) { monster.phase = 'idle'; continue; }
       // The Ink Deeps' shades: frozen in light, fast in the dark (umbral.ts).
       if (monster.def.trait === 'shade' || monster.def.trait === 'warden') { this.stepShade(monster, dt); continue; }
+      // The Hollow Sun caught in a beam cannot move or strike (luminous.ts).
+      if (monster.def.trait === 'prism' && monster.frozen) { monster.phase = 'idle'; monster.timer = Math.max(monster.timer, .3); continue; }
       const safeX = this.areaDef.safeX ?? 0;
       const floor = monster.def.floorY ?? FLOOR, k = this.figure;
       // In a delve a Maw only cares about a Keeper standing in its cavern.
@@ -3042,7 +3080,16 @@ export class SeamworksEngine {
     this.worldAt = ''; this.fogAt = NaN;
     this.realmTime = 0; this.tide = tideAt(0); this.shiftEpoch = 0;
     this.setFlag(enteredFlag(realm));
-    if (!this.tell('dark', 'play.rift.rule.dark', 'Glim: Ink-blind down here. My light barely reaches past your hands. Torches push the dark back; set them as you go.')) {
+    if (realm === 'verdant') {
+      if (!this.tell('roots', 'play.rift.rule.roots', 'Glim: The walls are wood here, and the wood is awake. Listen: it creaks when nobody is digging.')) {
+        this.say('play.rift.arrive.verdant', 'You step out into the Root Deeps. The gate behind you holds.');
+      }
+    } else if (realm === 'luminous') {
+      this.lightClock = 0;
+      if (!this.tell('light', 'play.rift.rule.light', 'Glim: The light here is heavy. Where a beam crosses open air, you can stand on it. Where it falls down, you can climb it.')) {
+        this.say('play.rift.arrive.luminous', 'You step out into the Prism Mines. The gate behind you holds.');
+      }
+    } else if (!this.tell('dark', 'play.rift.rule.dark', 'Glim: Ink-blind down here. My light barely reaches past your hands. Torches push the dark back; set them as you go.')) {
       this.say('play.rift.arrive', 'You step out into the Ink Deeps. The gate behind you holds.');
     }
     this.report();
@@ -3067,7 +3114,9 @@ export class SeamworksEngine {
     this.cancelMove(); this.climbing = false;
     this.player.x = (east + 2.5) * CELL; this.player.y = t.top + (floor + 1) * CELL; this.player.vy = 0; this.player.grounded = true;
     this.worldAt = ''; this.fogAt = NaN;
-    this.say('play.rift.back', 'Back through the gate. The Underhearth\'s heat feels like a welcome after that.');
+    if (realm === 'verdant') this.say('play.rift.back.verdant', 'Back through the gate. The Root Hollows\' roots lie still, the way roots should.');
+    else if (realm === 'luminous') this.say('play.rift.back.luminous', 'Back through the gate. The Grotto\'s glowcaps seem very dim after that.');
+    else this.say('play.rift.back', 'Back through the gate. The Underhearth\'s heat feels like a welcome after that.');
     this.report();
     return true;
   }
@@ -3130,6 +3179,10 @@ export class SeamworksEngine {
   }
   /** One fixed step of the Ink Deeps' rule: the tide, ink-blindness, braziers, drift pockets, the mirror, the Warden. */
   private updateRealm(dt: number, t: Terrain): void {
+    // The Root Deeps and the Prism Mines break their own rules (verdant.ts, luminous.ts).
+    const realm = this.realm;
+    if (realm === 'verdant') { this.updateVerdant(dt, t); return; }
+    if (realm === 'luminous') { this.updateLuminous(dt, t); return; }
     this.realmTime += dt;
     const was = this.tide.phase;
     this.tide = tideAt(this.realmTime);
@@ -3341,6 +3394,228 @@ export class SeamworksEngine {
       0, 0, this.equipped, { landing: 0, recoil: 0, rim: 0 }, this.keeperMotion(shown, this.elapsed), true);
     c.restore();
     void t;
+  }
+
+  // ── The Root Deeps: dug rock grows back (verdant.ts, verdant-gen.ts) ──
+
+  /** Holes in living wood waiting to fill, by world cell (verdant.ts cellKey). Session only. */
+  private readonly regrowth = new Map<number, Regrowth>();
+  /** Holes grown back this session (the HUD's hint, the e2e's evidence). */
+  private regrown = 0;
+  /** Heart-roots standing in the Graftmother's hall (-1: not counted yet). */
+  private heartRoots = -1;
+  private heartClock = 0;
+  private graftCall = GRAFT_CALL;
+  /**
+   * A cell of the Root Deeps changed: if it was dug out of living wood, it waits
+   * to grow back (unless the Rootsever Billhook cut it clean). True when the
+   * change is the root's living part (a heart-root, a spore pod): never saved.
+   */
+  private rootDug(t: Terrain, index: number): boolean {
+    if (t.kind[index] !== 0) return false;
+    const as = regrowsAs(t.base[index]);
+    if (as < 0) return false;
+    const col = t.colOf(index), row = t.rowOf(index), alive = isAlive(t.base[index]);
+    // A clean cut (the billhook) leaves wood dead; a living part always comes back.
+    if (this.gear.shears && !alive) {
+      this.tell('cut', 'play.rift.rule.cut', 'Glim: The billhook cuts the root clean. That one stays open.');
+      return false;
+    }
+    this.regrowth.set(rootKey(col, row), { col, row, at: this.realmTime, kind: as });
+    if (this.tell('regrow', 'play.rift.rule.regrow', 'Glim: Did you see the wood flinch? What you dig here grows back. Burn it with a torch, prop it with a support, or cut it clean, or it closes behind you.')) this.report();
+    return alive;
+  }
+  /** True when the Keeper's body or a living creature stands in a cell (the roots wait for them to move). */
+  private bodyInCell(t: Terrain, col: number, row: number): boolean {
+    const p = this.player;
+    if (col >= t.colAt(p.x - DELVE_BOX.halfWidth) && col <= t.colAt(p.x + DELVE_BOX.halfWidth - .01)
+      && row >= t.rowAt(p.y - DELVE_BOX.height) && row <= t.rowAt(p.y - .01)) return true;
+    const x = (col + .5) * CELL, y = t.top + (row + .5) * CELL;
+    return this.monsters.some(m => m.hp > 0 && Math.abs(m.x - x) < CELL && y < (m.def.floorY ?? FLOOR) && y > (m.def.floorY ?? FLOOR) - 3 * CELL);
+  }
+  /** One fixed step of the Root Deeps' rule: holes grow back, spore pods burst, the Graftmother's roots hold her. */
+  private updateVerdant(dt: number, t: Terrain): void {
+    this.realmTime += dt;
+    for (const [key, g] of this.regrowth) {
+      if (!t.inside(g.col, g.row) || t.kind[t.index(g.col, g.row)] !== 0) { this.regrowth.delete(key); continue; }
+      if (this.realmTime - g.at < REGROW_DELAY) continue;
+      const why = heldOpen(t, g.col, g.row);
+      if (why) {
+        this.regrowth.delete(key);
+        if (why === 'burnt') this.tell('burn', 'play.rift.rule.burn', 'Glim: The roots pulled back from the torch. Fire holds a tunnel open here.');
+        else this.tell('held', 'play.rift.rule.held', 'Glim: The support held it. The roots went round.');
+        continue;
+      }
+      // Never on top of anyone: it waits for them to step out.
+      if (this.bodyInCell(t, g.col, g.row)) { g.at = this.realmTime - REGROW_DELAY + .5; continue; }
+      const index = t.index(g.col, g.row);
+      t.set(g.col, g.row, g.kind);
+      this.recordCell(t, index);
+      this.regrowth.delete(key);
+      this.regrown++;
+      this.debris.chip((g.col + .5) * CELL, t.top + (g.row + .5) * CELL, '#7fb85a', this.reducedMotion ? 2 : 6);
+    }
+    // Spore pods burst under the feet or against the head (struck from the side with a sickle, they give their sap).
+    const p = this.player;
+    const c0 = t.colAt(p.x - DELVE_BOX.halfWidth), c1 = t.colAt(p.x + DELVE_BOX.halfWidth - .01);
+    for (const row of [t.rowAt(p.y + 1), t.rowAt(p.y - DELVE_BOX.height - 1)]) {
+      for (let col = c0; col <= c1; col++) {
+        if (!t.inside(col, row) || t.kind[t.index(col, row)] !== SPORE_KIND) continue;
+        const index = t.index(col, row);
+        t.set(col, row, 0);
+        this.recordCell(t, index);
+        this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#c8e86a', this.reducedMotion ? 3 : 14);
+        if (this.hurtTime <= 0 && this.dodgeTime <= 0 && this.hp > 0) {
+          this.hp = Math.max(0, this.hp - SPORE_STING); this.hurtTime = .8; this.wound = 1;
+          this.impact(.05, 4);
+          if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
+        }
+        if (!this.tell('spore', 'play.rift.rule.spore', 'Glim: A spore pod. They burst if you tread on them. Strike one from the side with a sickle and it gives its sap instead.')) {
+          this.say('play.rift.spore', 'A spore pod bursts.');
+        }
+        this.report();
+      }
+    }
+    // A vine within reach: said once.
+    const hand = { col: t.colAt(p.x), row: Math.max(0, t.rowAt(p.y - 1)) };
+    if (this.climbing && t.inside(hand.col, hand.row) && t.kind[t.index(hand.col, hand.row)] === VINE_KIND) {
+      this.tell('vine', 'play.rift.rule.vine', 'Glim: The vines are alive, and they hold. Climb them like a ladder: Up and Down.');
+    }
+    // The Graftmother: held while any heart-root in her hall stands (verdant.ts).
+    const boss = this.monsters.find(m => m.def.trait === 'graft' && m.hp > 0);
+    if (!boss) { this.heartRoots = -1; return; }
+    if ((this.heartClock -= dt) <= 0 || this.heartRoots < 0) {
+      this.heartClock = .25;
+      let n = 0;
+      const H = CORE_HALL;
+      for (let row = H.row; row < H.row + H.h; row++) for (let col = H.col; col < H.col + H.w; col++) if (t.inside(col, row) && t.kind[t.index(col, row)] === HEART_ROOT_KIND) n++;
+      if (this.heartRoots > 0 && n === 0) { this.say('play.rift.graft.unrooted', 'The last heart-root is cut. The Graftmother staggers: nothing holds her now.'); this.report(); }
+      this.heartRoots = n;
+    }
+    const near = Math.abs(boss.x - p.x) < 14 * CELL && Math.abs((boss.def.floorY ?? FLOOR) - p.y) < 4 * CELL;
+    if (near && this.tell('graft', 'play.rift.rule.graft', 'Glim: The Graftmother. Those red roots on the floor hold her: while one stands, she heals and shrugs off your blows. Cut them, and burn the stumps.')) this.report();
+    if (this.heartRoots > 0) {
+      boss.hp = Math.min(boss.maxHp, boss.hp + GRAFT_HEAL * dt);
+      if (near && (this.graftCall -= dt) <= 0) {
+        this.graftCall = GRAFT_CALL;
+        const base = this.areaDef.monsters.find(def => def.creature === 'graftling');
+        if (base) for (const dx of [-110, 110]) {
+          const x = boss.x + dx, def: MonsterDef = { ...base, spawnXs: [x], floorY: boss.def.floorY, range: boss.def.range };
+          this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1.2, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0, minion: true });
+        }
+        this.say('play.rift.graft.calls', 'The Graftmother grows two graftlings out of the wall.');
+      }
+    }
+  }
+  /** Roots reaching into holes about to fill (verdant.ts): drawn over the terrain, so it is never a surprise. */
+  private drawRegrowth(c: CanvasRenderingContext2D, t: Terrain): void {
+    if (!this.regrowth.size) return;
+    const time = this.realmTime;
+    for (const g of this.regrowth.values()) {
+      if (!reaching(g, time) || !t.inside(g.col, g.row)) continue;
+      const k = regrowProgress(g, time), x = g.col * CELL, y = t.top + g.row * CELL;
+      const reach = Math.round(k * 8) * ART, node = TERRAIN_NODE_LIST[g.kind];
+      c.fillStyle = node.base;
+      // Tendrils from each side, growing in on the 2 px grid.
+      for (let n = 0; n < 4; n++) {
+        const along = (3 + n * 4) * ART;
+        c.fillRect(x, y + along, reach, ART); c.fillRect(x + CELL - reach, y + along + ART * 2, reach, ART);
+        c.fillRect(x + along, y, ART, reach); c.fillRect(x + along + ART, y + CELL - reach, ART, reach);
+      }
+      c.fillStyle = node.fleck;
+      c.fillRect(x + reach - ART, y + 6 * ART, ART, ART); c.fillRect(x + CELL - reach, y + 10 * ART, ART, ART);
+    }
+  }
+
+  // ── The Prism Mines: light is solid (luminous.ts, luminous-gen.ts) ──
+
+  /** Seconds until the light is worked out again. */
+  private lightClock = 0;
+  /** The last light worked out: cell index → LIT_BRIDGE / LIT_SHAFT / LIT_PANE (reused). */
+  private readonly litCells = new Map<number, number>();
+  private beams = 0;
+  private bridges = 0;
+  private flareIn = PRISM_FLARE;
+  /** Work the light out round the Keeper: beams from every sun-prism, shadow glass under placed light (and the Dawn Lens). */
+  private relight(t: Terrain): void {
+    const col = t.colAt(this.player.x), reach = 40;
+    const near: LightWindow = { c0: col - reach, c1: col + reach, r0: 0, r1: t.rows - 1 };
+    const wide: LightWindow = { c0: near.c0 - BEAM_MAX, c1: near.c1 + BEAM_MAX, r0: 0, r1: t.rows - 1 };
+    const lit = this.litCells;
+    lit.clear();
+    this.beams = traceBeams(t, wide, lit);
+    lightPanes(t, near, this.gear.lens ? { col, row: t.rowAt(this.player.y + 1) } : null, lit);
+    const sim = this.liquid;
+    applyLight(t, near, lit, sim ? (c, r) => sim.wakeAround(c, r) : undefined);
+    let n = 0;
+    for (const v of lit.values()) if (v !== LIT_PANE) n++;
+    this.bridges = n;
+  }
+  /** E at a prism mirror: it turns, and the beam with it. Saved like a dig (it stays turned). */
+  private turnMirror(t: Terrain, col: number, row: number): void {
+    const index = t.index(col, row);
+    t.set(col, row, turned(t.kind[index]));
+    this.recordCell(t, index);
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#fff1b0', this.reducedMotion ? 2 : 8);
+    this.lightClock = LIGHT_TICK;
+    this.relight(t);
+    if (!this.tell('mirror', 'play.rift.rule.mirror.turn', 'Glim: The mirror turned the beam. Look: where it crosses the dark, it is a floor now.')) {
+      this.say('play.rift.mirror.turned', 'The mirror turns. The beam turns with it.');
+    }
+    this.report();
+  }
+  /** One fixed step of the Prism Mines' rule: the light, the bridges it lays, shadow glass, the Hollow Sun. */
+  private updateLuminous(dt: number, t: Terrain): void {
+    this.realmTime += dt;
+    if ((this.lightClock -= dt) <= 0) { this.lightClock = LIGHT_TICK; this.relight(t); }
+    const p = this.player, col = t.colAt(p.x), feet = t.rowAt(p.y + 1);
+    const under = t.inside(col, feet) ? t.kind[t.index(col, feet)] : 0;
+    if (p.grounded && (under === LUM.bridge || under === LUM.shaft)) this.tell('bridge', 'play.rift.rule.bridge', 'Glim: You are standing on the light. It holds as long as the beam does.');
+    if (p.grounded && under === LUM.lit) this.tell('glass', 'play.rift.rule.glass', 'Glim: That black glass is a floor while the light is on it. In the dark it is a hole. Bring a torch.');
+    if (!p.grounded && p.vy > 200 && t.inside(col, feet - 3) && t.kind[t.index(col, feet - 3)] === LUM.pane) {
+      this.tell('fall', 'play.rift.rule.fall', 'Glim: Shadow glass. No light on it, so nothing under you. You will land; there is always a way back up.');
+    }
+    if (this.interactAt >= 0 && (t.kind[this.interactAt] === LUM.mirrorA || t.kind[this.interactAt] === LUM.mirrorB)) {
+      this.tell('mirrors', 'play.rift.rule.mirrors', 'Glim: A prism mirror. Press E and it turns the beam a corner.');
+    }
+    // The Hollow Sun: caught while a beam crosses it; it flares free every PRISM_FLARE seconds.
+    const boss = this.monsters.find(m => m.def.trait === 'prism' && m.hp > 0);
+    if (!boss) return;
+    const floor = boss.def.floorY ?? FLOOR;
+    let caught = false;
+    for (let r = t.rowAt(floor - 3 * CELL); r <= t.rowAt(floor - 1) && !caught; r++) {
+      for (let c = t.colAt(boss.x - 24); c <= t.colAt(boss.x + 24) && !caught; c++) {
+        if (!t.inside(c, r)) continue;
+        const v = this.litCells.get(t.index(c, r));
+        if (v !== undefined && v !== LIT_PANE) caught = true;
+      }
+    }
+    if (caught !== !!boss.frozen) {
+      boss.frozen = caught;
+      if (caught) { this.debris.chip(boss.x, floor - 40, '#fff1b0', this.reducedMotion ? 2 : 10); this.say('play.rift.prism.caught', 'Caught in the beam: the Hollow Sun cannot move. Strike now.'); this.report(); }
+    }
+    const near = Math.abs(boss.x - p.x) < 16 * CELL && Math.abs(floor - p.y) < 4 * CELL;
+    if (near && this.tell('prism', 'play.rift.rule.prism', 'Glim: The Hollow Sun. Blows pass through it while it is free. Turn the mirror by the shaft and catch it in the beam; then it cannot move.')) this.report();
+    if (!near) return;
+    if ((this.flareIn -= dt) > 0) return;
+    this.flareIn = PRISM_FLARE;
+    // The flare: every mirror in its hall turns the wrong way, and anyone close is burnt.
+    const H = CORE_HALL;
+    for (let row = H.row; row < H.row + H.h; row++) for (let c = H.col; c < H.col + H.w; c++) {
+      if (!t.inside(c, row)) continue;
+      const index = t.index(c, row), k = t.kind[index];
+      if (k !== LUM.mirrorA && k !== LUM.mirrorB) continue;
+      t.set(c, row, turned(k)); this.recordCell(t, index);
+    }
+    this.lightClock = 0;
+    this.blastFlash = Math.max(this.blastFlash, .8);
+    if (Math.abs(boss.x - p.x) < FLARE_CELLS * CELL && this.dodgeTime <= 0 && this.hurtTime <= 0) {
+      this.hp = Math.max(0, this.hp - FLARE_HIT); this.hurtTime = .8; this.wound = 1;
+      this.impact(.07, this.hp === 0 ? 12 : 8);
+      if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
+    }
+    this.say('play.rift.prism.flare', 'The Hollow Sun flares, and the mirrors turn away. Turn them back.');
+    this.report();
   }
 
   // ── The Underhearth: the Banked Furnace, the Sentinels, the stratum's door (Phase 8) ──
@@ -3603,9 +3878,13 @@ export class SeamworksEngine {
         canFish: this.line ? null : this.fishable(t),
         near: this.liquidsNear(t), fishShadows: this.fishCount,
         riding: !!this.cart, grappling: this.grapple?.phase ?? null,
-        ...(this.areaDef.terrain?.realm ? { realm: {
+        ...(this.areaDef.terrain?.realm === 'umbral' ? { realm: {
           id: realmOfArea(this.areaDef.id) ?? '', tide: this.tide.phase, tideRows: Math.round(this.tide.rows * 10) / 10, nextTide: Math.ceil(this.tide.next),
           inkBlind: this.inkBlind, mirror: !!this.mirror, shift: this.shiftEpoch,
+        } } : this.areaDef.terrain?.realm ? { realm: {
+          id: realmOfArea(this.areaDef.id) ?? '',
+          ...(this.areaDef.terrain.realm === 'verdant' ? { regrowing: this.regrowth.size, regrown: this.regrown, heartRoots: Math.max(0, this.heartRoots) }
+            : { beams: this.beams, bridges: this.bridges }),
         } } : {}),
         ...(this.furnace ? { furnace: {
           phase: this.furnace.state.phase, doused: this.furnace.state.doused.filter(Boolean).length,
@@ -4456,7 +4735,7 @@ export class SeamworksEngine {
       // Its body stands on the floor; 720 world px above it covers the tallest figure, the Banked Furnace.
       if (t) { const floor = monster.def.floorY ?? FLOOR; if (floor < this.cameraY - 60 || floor - 720 > this.cameraY + 720) continue; }
       // The Underhearth's creatures are pixel figures of their own (no painting yet).
-      if (monster.def.trait) { this.drawDeepCreature(c, monster, motionTime); continue; }
+      if (monster.def.trait && monster.def.trait !== 'graft' && monster.def.trait !== 'prism') { this.drawDeepCreature(c, monster, motionTime); continue; }
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       const rigDef = this.creatureRig(monster.def.creature).def;
@@ -4580,12 +4859,13 @@ export class SeamworksEngine {
       const r0 = t.rowAt(this.cameraY) - 1, r1 = t.rowAt(this.cameraY + 720) + 1;
       drawLiquids(c, t, c0, c1, r0, r1, this.reducedMotion ? 0 : Math.floor(this.elapsed * 2.5) & 1);
       this.drawFish(c, t, c0, c1, r0, r1, this.elapsed);
-      if (this.areaDef.terrain?.realm) this.drawTide(c, t, c0, c1, r0, r1);
+      if (this.areaDef.terrain?.realm === 'umbral') this.drawTide(c, t, c0, c1, r0, r1);
+      else if (this.areaDef.terrain?.realm === 'verdant') this.drawRegrowth(c, t);
       this.drawLine(c, motionTime);
       this.drawCatchFx(c, this.flightDelta);
     }
     if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
-    if (t && this.areaDef.terrain?.realm) this.drawShadeEyes(c, motionTime, viewport);
+    if (t && this.areaDef.terrain?.realm === 'umbral') this.drawShadeEyes(c, motionTime, viewport);
     this.drawGlim(c, motionTime);
     if (t) this.drawAim(c, t);
     this.atmosphere.feedback(c, this.reducedMotion);

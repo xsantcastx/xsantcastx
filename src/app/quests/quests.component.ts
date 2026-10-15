@@ -349,7 +349,8 @@ export class QuestsComponent implements OnInit, OnDestroy {
 
   private fromMission(m: DelveMissionState): BoardEntry {
     const name = (id: NpcId) => NPCS.find(n => n.id === id)?.name ?? id;
-    const giver = m.mission.alsoFrom ? `${name(m.mission.npcId)} & ${name(m.mission.alsoFrom)}` : name(m.mission.npcId);
+    // A keeper's own ask filed by another (Kesh and Siv through the Archivist, Lune through Aureth) shows the keeper.
+    const giver = m.mission.giver ?? (m.mission.alsoFrom ? `${name(m.mission.npcId)} & ${name(m.mission.alsoFrom)}` : name(m.mission.npcId));
     const r = m.mission.reward;
     const reward = missionRewardLine(
       r, m.gold,

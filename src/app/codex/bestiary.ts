@@ -142,6 +142,36 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     haunt: 'The Ink Deeps',
     note: 'Keeps the dark that was left when the light went somewhere else. It asks only to be lit; in the light it cannot move, and cannot refuse an ending.',
   },
+  // The Root Deeps and the Prism Mines, behind the Verdant and Luminous Rift Gates (lore-addendum.md). Pixel figures
+  // (engine/realm-creatures.ts) until their masters are painted.
+  {
+    id: 'graftling',
+    name: 'Graftling',
+    realm: 'verdant',
+    haunt: 'The Root Deeps',
+    note: 'A cutting that took. It still has the shape of whatever it was cut from, roughly, and it would like to be joined back on.',
+  },
+  {
+    id: 'graftmother',
+    name: 'The Graftmother',
+    realm: 'verdant',
+    haunt: 'The Root Deeps',
+    note: 'Joins everything that is cut. Her heart-roots hold her to the hall; cut them and burn the stumps, and she can at last be let go.',
+  },
+  {
+    id: 'prismling',
+    name: 'Prismling',
+    realm: 'luminous',
+    haunt: 'The Prism Mines',
+    note: 'A little light that set before it could go anywhere. It hops toward warmth and does not mean the sting.',
+  },
+  {
+    id: 'hollow-sun',
+    name: 'The Hollow Sun',
+    realm: 'luminous',
+    haunt: 'The Prism Mines',
+    note: 'The light that was promised and never arrived. Blows pass through it while it is free; caught in a beam, it stands still long enough to be ended.',
+  },
   {
     id: 'ink-lantern',
     name: 'Ink Lantern',
