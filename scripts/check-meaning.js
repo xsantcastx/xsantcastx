@@ -139,6 +139,8 @@ const FISHING = L('shared/fishing/fishing.model.ts');
 const { MAP_TOOLS } = L('shared/delve/map-tools.model.ts');
 // The Mirror Slate's two panes and what Kael binds tier II from.
 const { SLATE_ITEMS, SLATE_UPGRADE_INPUTS, MIRROR_SLATE_II_ID } = L('shared/slate/slate-items.model.ts');
+// The Lost Cabinets: sixteen curios, the honeycomb, the hatbox and the loupe; the cabinets themselves.
+const CABINETS_MODEL = L('shared/cabinets/cabinets.model.ts');
 
 // Ids in un-exported tables, read as text.
 function objectKeys(file, constName) {
@@ -155,6 +157,8 @@ const I18N_KEYS = new Set(SOURCES.filter(s => /i18n\.ts$|translation\.service\.t
   .flatMap(s => [...s.text.matchAll(/^\s*'([a-zA-Z][\w.-]*)':\s*\{/gm)].map(m => m[1])));
 const PROSPECT_DISCOVERY = /'clarity-elixir'/.test(read('shared/activity/activity.model.ts')) ? 'clarity-elixir' : null;
 
+/** Checks that run before `flag` exists push here; flushed with the violations. */
+const violationsLater = [];
 // ── The graph ──────────────────────────────────────────────────────────────
 /** key `${cat}:${id}` → node */
 const graph = new Map();
@@ -274,6 +278,24 @@ for (const item of SLATE_ITEMS) {
   for (const u of item.uses) use(item.id, u);
 }
 for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR_SLATE_II_ID} (SlateService.upgrade)`);
+// The Lost Cabinets (shared/cabinets/cabinets.model.ts): each curio's cabinet, its set use, its lore.
+{
+  const WORDS = read('shared/cabinets/cabinets.i18n.ts');
+  for (const item of CABINETS_MODEL.CABINET_ITEMS) {
+    const n = thing(item.id);
+    for (const s of item.sources) src(item.id, s);
+    for (const u of item.uses) use(item.id, u);
+    // Lore on the definition and in the Codex (EN + ES).
+    n.lore = !!(item.lore && item.lore.trim()) && WORDS.includes(`'cabinet.lore.${item.id}'`);
+  }
+  // Every cabinet stands somewhere real and holds a real thing; a clue names a real cabinet.
+  const ids = new Set(CABINETS_MODEL.CABINET_IDS);
+  for (const c of CABINETS_MODEL.CABINETS) {
+    if (!CABINETS_MODEL.CABINET_ITEMS.some(i => i.id === c.curio)) violationsLater.push(['material', 'unknown-curio', c.id, `holds ${c.curio}, which is not a curio`]);
+    for (const x of [c.clueFor, c.needs]) if (x && !ids.has(x)) violationsLater.push(['material', 'unknown-cabinet', c.id, `names ${x}`]);
+    if (!WORDS.includes(`'cabinet.place.${c.id}'`)) violationsLater.push(['material', 'not-visible', c.id, 'no cabinet.place name']);
+  }
+}
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).sells.add('Exchange'); }
 
@@ -328,6 +350,7 @@ for (const n of graph.values()) {
 // ── Violations ─────────────────────────────────────────────────────────────
 const violations = [];
 const flag = (cat, kind, id, detail) => violations.push({ cat, kind, id, detail });
+for (const [cat, kind, id, detail] of violationsLater) flag(cat, kind, id, detail);
 
 for (const n of graph.values()) {
   if (n.cat !== 'item' && n.cat !== 'material') continue;

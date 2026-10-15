@@ -183,21 +183,29 @@ export function dayKey(at: Date): string {
 
 export const isHatched = (r: PetRecord | undefined): boolean => !!r && r.hatched > 0;
 export const knowsTrick = (r: PetRecord | undefined): boolean => !!r && r.love >= TRICK_AT;
-export const hasHat = (r: PetRecord | undefined): boolean => !!r && r.love >= HAT_AT;
+/** Its hat: love unlocks it, or the Hatbox of Small Crowns (a Lost Cabinet's) lets any hatched pet wear it now. */
+export const hasHat = (r: PetRecord | undefined, hatbox = false): boolean => !!r && (r.love >= HAT_AT || (hatbox && isHatched(r)));
+
+/**
+ * The Courier's Honeycomb (a Lost Cabinet's treat, shared/cabinets): every pet
+ * eats it like its favourite. Copied so this file stays a leaf; cabinets.spec
+ * pins it to cabinets.model PET_TREAT_ID.
+ */
+export const PET_TREAT = 'courier-honeycomb';
 
 /** Meals left today (FEEDS_PER_DAY on a new day). */
-export function mealsLeft(r: PetRecord, day: string): number {
-  return Math.max(0, FEEDS_PER_DAY - (r.feedDay === day ? r.feeds : 0));
+export function mealsLeft(r: PetRecord, day: string, extra = 0): number {
+  return Math.max(0, FEEDS_PER_DAY + Math.max(0, extra) - (r.feedDay === day ? r.feeds : 0));
 }
 
 export type FeedRefusal = 'unknown' | 'egg' | 'food' | 'full';
 /** What one meal of `food` does to a pet today: the affection gained, or why it is refused. */
-export function feedResult(def: PetDef, r: PetRecord | undefined, food: string, day: string): { ok: true; gain: number; favourite: boolean } | { ok: false; code: FeedRefusal } {
+export function feedResult(def: PetDef, r: PetRecord | undefined, food: string, day: string, extraMeals = 0): { ok: true; gain: number; favourite: boolean } | { ok: false; code: FeedRefusal } {
   if (!r) return { ok: false, code: 'unknown' };
   if (!isHatched(r)) return { ok: false, code: 'egg' };
-  const favourite = food === def.favourite;
+  const favourite = food === def.favourite || food === PET_TREAT;
   if (!favourite && !def.likes.includes(food)) return { ok: false, code: 'food' };
-  if (mealsLeft(r, day) <= 0) return { ok: false, code: 'full' };
+  if (mealsLeft(r, day, extraMeals) <= 0) return { ok: false, code: 'full' };
   return { ok: true, gain: favourite ? 2 : 1, favourite };
 }
 

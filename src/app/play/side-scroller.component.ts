@@ -133,6 +133,11 @@ import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
 import { PetSheetComponent } from '../shared/pets/pet-sheet.component';
 import { PetsService } from '../shared/pets/pets.service';
 import { PETS_I18N } from '../shared/pets/pets.i18n';
+// The Lost Cabinets (docs/handoff/lost-cabinets.md): the Slate's Scan pulsing while you walk, the cabinets in the world.
+import { CabinetsService } from '../shared/cabinets/cabinets.service';
+import { CABINETS_I18N } from '../shared/cabinets/cabinets.i18n';
+import { CABINETS, PULSE, SCAN, eyeDirection, scanReading, warmthAt, type ScanReading, type Warmth } from '../shared/cabinets/cabinets.model';
+import type { CabinetEvent, CabinetMark } from './engine/engine.model';
 import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
 import { eggPortrait, petPortrait } from '../shared/pets/pet-art';
 import { SOUND_I18N } from '../shared/sound/sound.i18n';
@@ -503,6 +508,24 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead has something worth a look: the button wears a badge. */
   slateReady = false;
   private slateSub?: Subscription;
+  // ── The Lost Cabinets (docs/handoff/lost-cabinets.md) ──
+  private readonly cabinets = inject(CabinetsService);
+  private cabinetSub?: Subscription;
+  /** The Slate's glass is held up (the HUD button pulses with its warmth). */
+  scanning = false;
+  /** What the glass reads now. */
+  scanWarmth: Warmth = 'none';
+  /** The pulse's period (s) for the HUD's CSS, 0 when quiet. */
+  scanPeriod = 0;
+  private scanPulseAt = 0;
+  /** Cabinets the glass has shown this session (they stay drawn until the page goes). */
+  private readonly shownCabinets = new Set<string>();
+  /** Cabinets Glim has already said something about this session. */
+  private readonly glimToldCabinet = new Set<string>();
+  private cabinetMarksKey = '';
+  /** Glim brightens for the bond's sense, or for a warm glass; one call carries both. */
+  private bondBright = false;
+  private cabinetBright = false;
   /** A level up anywhere this session: the Keeper's face lights up (keeper-paint.ts). */
   private joySub?: Subscription;
   private readonly levelUps = inject(LevelUpService);
@@ -521,6 +544,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(SLATE_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
+    this.i18n.register(CABINETS_I18N);
     this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
     try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
   }
@@ -543,6 +567,9 @@ export class SideScrollerComponent implements OnDestroy {
     // Lune watches her tables from here on: the tenth play hands the Slate over, wherever it was played.
     this.slate.init();
     this.slateSub = this.slate.awarded$.subscribe(() => { this.tickSlate(); this.message = this.t('slate.awarded'); });
+    // The Slate's Scan: holding the glass up folds the Slate so you can walk with it.
+    this.cabinets.refresh();
+    this.cabinetSub = this.cabinets.scanning$.subscribe(on => this.zone.run(() => this.scanChanged(on)));
     const saved = this.store.read(SAVE_KEY) as { era?: number; resetAt?: string | null; restored?: boolean } | null;
     this.restored = saved?.restored === true && saved.era === INVENTORY_ERA && saved.resetAt === this.store.readRaw(RESET_STAMP_KEY);
     this.economy.init();
@@ -572,7 +599,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -624,6 +651,7 @@ export class SideScrollerComponent implements OnDestroy {
       onFish: event => this.zone.run(() => this.fishHooked(event)),
       onKill: event => this.zone.run(() => this.hunted(event)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
+      onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
       // The world's sounds: never through the zone (no change detection for a footstep).
       onSfx: cue => this.engineSfx(cue),
       // Each player digs their own Delve: seed and dug cells from the save.
@@ -666,6 +694,7 @@ export class SideScrollerComponent implements OnDestroy {
     });
     this.engine.setHomesteadView(this.homestead.scene);
     this.statsKey = '';
+    this.cabinetMarksKey = ''; this.cabinetBright = false;
     this.loadoutKey = ''; this.lookPushKey = '';
     this.toolKey = '';
     this.engine.setPlaceable(this.placing);
@@ -1020,7 +1049,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
     this.unbindFeel();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -1461,7 +1490,8 @@ export class SideScrollerComponent implements OnDestroy {
         }
       }
     }
-    this.engine.setGlimBright(bright);
+    this.bondBright = bright;
+    this.engine.setGlimBright(bright || this.cabinetBright);
     if (!at) return;
     if (hasAbility(stage, 'notice')) {
       const rare = this.engine.rareNear(GLIM_RARE_KINDS, NOTICE_CELLS);
@@ -1715,6 +1745,7 @@ export class SideScrollerComponent implements OnDestroy {
       if (gather.need) return this.t('play.gather.needs', { name: gather.label, need: gather.need });
       return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
     }
+    if (this.state?.nearby === 'cabinet') return this.t(this.state.cabinet?.open ? 'cabinet.act.empty' : 'cabinet.act.open');
     const height = this.state?.nearby === 'height' ? this.state.height : undefined;
     if (height) {
       if (height.kind === 'cache') return this.t(height.found ? 'play.height.act.cacheOpened' : 'play.height.act.cache');
@@ -1843,7 +1874,109 @@ export class SideScrollerComponent implements OnDestroy {
     this.showPanel({ kind: 'slate', stationId: 'slate', title: this.t('slate.title'), kicker: this.t(this.slateTier >= 2 ? 'slate.kicker2' : 'slate.kicker'), own: true });
     this.loadPanel({ load: () => import('../shared/slate/slate.component').then(m => m.SlateComponent) }, this.panelInjector);
   }
+  // ── The Lost Cabinets: the Slate's Scan (docs/handoff/lost-cabinets.md) ──
+  /** The glass went up or down (the Slate's Scan face, or the Slate lost). */
+  private scanChanged(on: boolean): void {
+    const was = this.scanning;
+    this.scanning = on;
+    if (on && !was) {
+      if (this.panel?.kind === 'slate') this.closePanel();
+      this.message = this.t('cabinet.hud.up');
+      this.scanPulseAt = 0;
+      this.curatorsEye();
+    } else if (!on && was) {
+      this.message = this.t('cabinet.hud.awayLine');
+      this.scanWarmth = 'none'; this.scanPeriod = 0;
+    }
+    this.tickScan();
+  }
+  /** The Curator's Eye (twelve curios): Glim says which way the nearest cabinet the glass can hear lies. */
+  private curatorsEye(): void {
+    if (!this.cabinets.bonus('curators-eye') || !this.glimVoice.met) return;
+    const dir = eyeDirection(this.state.areaId ?? '', { x: this.state.x, y: this.state.y }, this.cabinets.openedSet());
+    this.glimVoice.bond({ id: 'cabinet.eye', key: dir ? 'cabinet.glim.eye' : 'cabinet.glim.eyeNone', ...(dir ? { vars: { dir: this.t(`cabinet.dir.${dir}`) } } : {}) });
+  }
+  /**
+   * The Scan's tick (5 a second, on the HUD timer): read the glass at the
+   * Keeper's feet, show a cabinet once it is close, ping as it warms, brighten
+   * Glim on a warm glass, and hand the engine what to draw.
+   */
+  private tickScan(): void {
+    if (!this.browser || !this.engine) return;
+    if (this.scanning && this.slateTier <= 0) { this.cabinets.setScanning(false); return; }
+    const opened = this.cabinets.openedSet();
+    let reading: ScanReading = { warmth: 'none', id: null, distance: Infinity };
+    if (this.scanning) {
+      const at = { x: this.state.x, y: this.state.y };
+      reading = scanReading(this.state.areaId ?? '', at, opened, this.cabinets.bonus('warm-glass'));
+      // The Curator's Loupe: rift shrines no lantern has touched warm the glass too (never past hot: a shrine is not a cabinet).
+      if (this.state.delve && this.cabinets.loupe()) {
+        const shrine = this.engine.rareNear(['rift-shrine'], 64), keeper = this.engine.keeperCell();
+        if (shrine && keeper) {
+          const d = Math.abs(shrine.col + shrine.w / 2 - keeper.col) * 32;
+          if (d < reading.distance) {
+            const w = warmthAt(d, SCAN.delveRange, 0);
+            reading = { warmth: w === 'burning' ? 'hot' : w, id: null, distance: d };
+          }
+        }
+      }
+      if (reading.warmth === 'burning' && reading.id && !this.shownCabinets.has(reading.id)) {
+        this.shownCabinets.add(reading.id);
+        this.message = this.t('cabinet.hud.shown');
+      }
+      this.cabinets.setReading(reading);
+      const pulse = PULSE[reading.warmth], now = Date.now();
+      if (pulse.period && !this.state.paused && now - this.scanPulseAt >= pulse.period * 1000) {
+        this.scanPulseAt = now;
+        this.sound.sfx('scan', { pitch: pulse.pitch });
+      }
+      // Glim's rare-find hook: on a warm glass Glim brightens; once it can notice rare finds, it says so (once a cabinet).
+      if (reading.id && (reading.warmth === 'warm' || reading.warmth === 'hot') && this.glimVoice.met && hasAbility(this.glim.stage, 'notice') && !this.glimToldCabinet.has(reading.id)) {
+        this.glimToldCabinet.add(reading.id);
+        this.glimVoice.bond({ id: `cabinet.${reading.id}`, key: 'cabinet.glim.warm' });
+      }
+    }
+    this.scanWarmth = reading.warmth;
+    this.scanPeriod = PULSE[reading.warmth].period;
+    const bright = this.scanning && (reading.warmth === 'warm' || reading.warmth === 'hot' || reading.warmth === 'burning');
+    if (bright !== this.cabinetBright) { this.cabinetBright = bright; this.engine.setGlimBright(this.bondBright || bright); }
+    this.pushCabinets(opened);
+  }
+  /** What the engine draws and reaches: the cabinets the glass has shown, and every one already open. */
+  private pushCabinets(opened: ReadonlySet<string>): void {
+    if (!this.engine) return;
+    const marks: CabinetMark[] = CABINETS.filter(c => opened.has(c.id) || this.shownCabinets.has(c.id))
+      .map(c => ({ id: c.id, area: c.area, x: c.x, y: c.y, open: opened.has(c.id), delve: c.delve }));
+    const key = marks.map(m => `${m.id}${m.open ? '!' : ''}`).join(',');
+    if (key === this.cabinetMarksKey) return;
+    this.cabinetMarksKey = key;
+    this.engine.setCabinets(marks);
+  }
+  /**
+   * E at a shown cabinet: the first open grants once (CabinetsService writes
+   * the receipt first); an open one only says it is empty.
+   */
+  private cabinetUsed(event: CabinetEvent): void {
+    if (!this.browser) return;
+    if (event.open) { this.message = this.t('cabinet.empty'); return; }
+    const got = this.cabinets.open(event.id);
+    if (!got) return;
+    const name = this.t(`cabinet.item.${got.curio}`);
+    const lines = [this.t('cabinet.toast.open', { curio: name, gold: got.gold.toLocaleString('en-US') })];
+    if (got.extras.length) lines.push(this.t('cabinet.toast.extras', { items: got.extras.map(e => `${e.qty} ${this.t(`cabinet.item.${e.id}`)}`).join(', ') }));
+    if (got.clueFor) lines.push(this.t('cabinet.toast.clue', { place: this.t(`cabinet.place.${got.clueFor}`) }));
+    if (got.bonus) lines.push(this.t('cabinet.toast.bonus', { n: got.opened, total: CABINETS.length, name: this.t(`cabinet.bonus.${got.bonus}`) }));
+    if (got.final) lines.push(this.t('cabinet.toast.final', { gold: got.final.gold.toLocaleString('en-US') }));
+    this.message = lines.join(' ');
+    this.sound.sfx('cabinet');
+    this.engine?.keeperFeel('happy', 1.4);
+    this.gotItem(1, name, got.curio);
+    for (const e of got.extras) this.gotItem(e.qty, this.t(`cabinet.item.${e.id}`), e.id);
+    if (got.final) this.gotItem(1, this.t(`cabinet.item.${got.final.item}`), got.final.item);
+    this.pushCabinets(this.cabinets.openedSet());
+  }
   /** Lune's counter rides her own panels; Kael's rides the Rune Forge (the stations themselves are untouched). */
+
   get slateCounter(): 'croupier' | 'kael' | null {
     const id = this.panel?.kind === 'page' ? this.panel.stationId : null;
     if (!id) return null;
@@ -1929,7 +2062,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private tickDelveV2(): void {
     if (!this.browser || !this.engine) return;
-    if (!this.state.delve) { this.pinning = false; this.lastStructure = ''; this.engine.setGlimBright(false); return; }
+    if (!this.state.delve) { this.pinning = false; this.lastStructure = ''; this.bondBright = false; this.engine.setGlimBright(this.cabinetBright); return; }
     const at = this.engine.keeperCell();
     if (at) this.bounties.reached(stratumOfRow(at.row));
     const here = this.engine.structureHere();

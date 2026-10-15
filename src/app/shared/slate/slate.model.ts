@@ -36,11 +36,16 @@ export const CROUPIER_STATIONS: readonly string[] = ['gambler', ...SLATE_TABLE_G
 /** Kael's station: the Rune Forge in the Basalt Seamworks. */
 export const KAEL_STATION = 'runes';
 
-/** The Slate's tabs at a tier. Tier II adds the map and the bounties. */
-export type SlateTab = 'tables' | 'factory' | 'map';
+/**
+ * The Slate's tabs at a tier. Tier II adds the map and the bounties. The Scan
+ * (the Lost Cabinets, shared/cabinets) is on the FIRST face: it is the Archive's
+ * moon-mirror glass that knows the cabinets' latches, not Kael's brass, so every
+ * Slate can hold it up.
+ */
+export type SlateTab = 'tables' | 'factory' | 'map' | 'scan';
 export function slateTabs(tier: SlateTier): SlateTab[] {
   if (tier <= 0) return [];
-  return tier >= 2 ? ['tables', 'factory', 'map'] : ['tables', 'factory'];
+  return tier >= 2 ? ['tables', 'factory', 'map', 'scan'] : ['tables', 'factory', 'scan'];
 }
 
 /** Which pane the Keeper holds. `qty` reads a stack total (satchel or Vault: the Keeper owns it either way). */

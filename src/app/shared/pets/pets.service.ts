@@ -97,10 +97,10 @@ export class PetsService {
   }
 
   /** Put the hat on or take it off (only once love has unlocked it). */
-  wearHat(id: string, on: boolean, at = Date.now()): boolean {
+  wearHat(id: string, on: boolean, at = Date.now(), hatbox = false): boolean {
     this.hydrate();
     const r = this.current.pets[id];
-    if (!r || !hasHat(r)) return false;
+    if (!r || !hasHat(r, hatbox)) return false;
     this.save({ ...this.current, pets: { ...this.current.pets, [id]: { ...r, hat: on, hatAt: at } } });
     return true;
   }
@@ -109,13 +109,13 @@ export class PetsService {
    * Feed a pet one of `food` from the satchel. The stack is spent first (keyed
    * by the meal, so a retry never takes two); the meter fills only after.
    */
-  feed(id: string, food: string, now = new Date()): FeedOutcome {
+  feed(id: string, food: string, now = new Date(), extraMeals = 0): FeedOutcome {
     this.hydrate();
     const def = petDef(id);
     const r = this.current.pets[id];
     if (!def) return { ok: false, code: 'unknown' };
     const day = dayKey(now);
-    const verdict = feedResult(def, r, food, day);
+    const verdict = feedResult(def, r, food, day, extraMeals);
     if (!verdict.ok) return verdict;
     if (this.inventory.stackOf(food) < 1) return { ok: false, code: 'none' };
     const meals = r!.feedDay === day ? r!.feeds : 0;
