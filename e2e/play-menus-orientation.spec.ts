@@ -129,6 +129,9 @@ async function measure(page: Page, menu: Menu): Promise<Omit<Report, 'menu' | 's
   return page.evaluate(({ root, close, primary }) => {
     const vw = innerWidth, vh = innerHeight;
     const shown = (el: Element): boolean => {
+      // A closed <details> keeps reporting its body's rects in Chrome; that body is not on screen.
+      const fold = el.closest('details:not([open])');
+      if (fold && !el.closest('summary')) return false;
       for (let e: Element | null = el; e; e = e.parentElement) {
         const cs = getComputedStyle(e);
         if (cs.display === 'none' || cs.visibility === 'hidden' || Number(cs.opacity) < .05) return false;
