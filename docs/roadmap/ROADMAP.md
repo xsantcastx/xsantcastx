@@ -22,7 +22,12 @@ Built 2026-10-15: **Lost Cabinets** (`docs/handoff/lost-cabinets.md`): the Mirro
 
 Built 2026-10-15: **Story Act II · Five Witnesses** (`docs/handoff/story-act-2.md`): the Underhearth, the four Rift Gate Delves, the Lost Cabinets and Glim tied into one arc — seven scenes with chibi pixel portraits, each unlocked by progress you already make and paying one reward (three titles, Waystone Shards, Courier's Honeycomb, the Codex's Witness Accounts); keepers react afterwards; the act ends on the light coming up the shaft (Act III · The Fivefold Lock, Starfall Deep).
 
+- **Next up (owner, 2026-10-15, inspired by PokéSurvivor):** (a) *phone combat feel* — drag-anywhere floating joystick replacing the fixed arrow buttons, ground-telegraphed enemy attacks (circles/lines that fill before they land); (b) *Eclipse Hordes* — during an eclipse a rift tears open for a short survivor-style run (waves, auto-firing skills, pick 1 of 3 upgrade cards per level; Glim powers and pet boosts as cards; rewards carry home), with enemy roles (healers, shielders, summoners, exploders) and 1-in-4096 shiny creatures/pets. Later: realm weather that changes combat, achievements with medals, profiles and leaderboards, co-op for 4, install as app.
+
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act III · Art test set *(owner)*.
+Built 2026-10-15: **Touch & tools** (`docs/handoff/touch-and-tools.md`): holding a button or the world on a phone selects no text and opens no menu anywhere in /play (typed fields stay selectable); the Keeper takes the right tool in hand for the work — the rod for a cast, the pickaxe for a dig, the axe or sickle at a node — and the weapon comes back when a foe is near, on an attack, or when the work stops.
+
+Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
 ## Milestones
 
