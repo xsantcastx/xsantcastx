@@ -338,7 +338,7 @@
             <!-- The bag's tabs (MapleStory's inventory): only the ones with something in them. -->
             <div class="bag-tabs" role="group" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
               @for (tab of bagTabs; track tab.id) {
-                <button type="button" class="bag-tab" [class.is-on]="tab.id === shownTab" [attr.aria-pressed]="tab.id === shownTab" [attr.data-bag-tab]="tab.id" (click)="bagTab = tab.id">{{ t('play.hud.book.tab.' + tab.id) }} <b>{{ tab.n }}</b></button>
+                <button type="button" class="bag-tab" [class.is-on]="tab.id === shownTab" [attr.aria-pressed]="tab.id === shownTab" [attr.data-bag-tab]="tab.id" (click)="bagTab = tab.id">{{ t(tab.key) }} <b>{{ tab.n }}</b></button>
               }
             </div>
           }
