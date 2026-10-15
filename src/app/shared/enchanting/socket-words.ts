@@ -35,6 +35,7 @@
  */
 import { ITEM_STAT_KEYS, type GameItem, type ItemStats } from '../rpg/item.model';
 import { runeById, type RuneTier } from '../rune-forge/rune.model';
+import type { AuraId } from '../loot/auras';
 import {
   socketCountFor,
   socketFrameOf,
@@ -72,6 +73,12 @@ export interface SocketWord {
    * same contract the Codex's Secrets wall already keeps.
    */
   clue: string;
+  /**
+   * A D2-style aura the word grants while the item is worn (loot/auras.ts). Its
+   * level comes from the word's rarest rune (loot/aura-sources.ts). One aura
+   * runs at a time: the strongest worn, or the one picked on the Loot & Combat sheet.
+   */
+  aura?: AuraId;
 }
 
 /**
@@ -185,9 +192,10 @@ export const SOCKET_WORDS: readonly SocketWord[] = [
     frame: 'weapon',
     stats: { strikePower: 4 },
     multiplier: 1.15,
-    effect: '+4 Strike, and +15% to everything else on the item',
+    effect: '+4 Strike, +15% to everything else on the item, and the Holy Fire aura',
     lore: 'Fire that stayed, and fire that did not. Held together they burn steadily, which is not what either does alone.',
     clue: 'Two kinds of burning, in an edge, patient one first.',
+    aura: 'holy-fire',
   },
   {
     id: 'wayfarer',
@@ -215,9 +223,10 @@ export const SOCKET_WORDS: readonly SocketWord[] = [
     runes: ['aether', 'glint'],
     frame: 'armor',
     stats: { xpBonus: 22, goldPerSec: 140 },
-    effect: '+22% XP and +140 Gold/sec',
+    effect: '+22% XP, +140 Gold/sec, and the Prayer aura',
     lore: 'Light crystallised, with one ordinary glint set behind it so the wearer remembers what light used to be for.',
     clue: 'Crystallised light, backed by the cheap kind.',
+    aura: 'prayer',
   },
   {
     id: 'codex-of-the-unmade',
@@ -239,9 +248,10 @@ export const SOCKET_WORDS: readonly SocketWord[] = [
     frame: 'weapon',
     stats: { magicFind: 14, goldPerSec: 110 },
     multiplier: 1.2,
-    effect: '+14% Magic Find, +110 Gold/sec, and +20% to everything else',
+    effect: '+14% Magic Find, +110 Gold/sec, +20% to everything else, and the Vigor aura',
     lore: 'A hole, a knot, and the shape left behind. Set in that order they make a door; set in any other they make a mess.',
     clue: 'A carried hole, a knot of every thread, and what remains after. Three wells.',
+    aura: 'vigor',
   },
   {
     id: 'eclipse-blade',
@@ -249,9 +259,10 @@ export const SOCKET_WORDS: readonly SocketWord[] = [
     runes: ['eclipse', 'nox', 'fracture'],
     frame: 'weapon',
     multiplier: 1.5,
-    effect: '+50% to every stat on the item',
+    effect: '+50% to every stat on the item, and the Conviction aura',
     lore: 'The moment the light went, the shadow that replaced it, and the line the whole thing broke along. Three wells and no flat bonus at all — the blade does not add to what you have, it multiplies it.',
     clue: 'The moment the light went, what came after, and the line it all broke along.',
+    aura: 'conviction',
   },
   {
     id: 'godforge-seal',
@@ -260,9 +271,80 @@ export const SOCKET_WORDS: readonly SocketWord[] = [
     frame: 'weapon',
     stats: { strikePower: 12, goldPerSec: 700 },
     multiplier: 2,
-    effect: '+12 Strike, +700 Gold/sec, and ×2 to everything else',
+    effect: '+12 Strike, +700 Gold/sec, ×2 to everything else, and the Fanaticism aura',
     lore: 'A piece of the First Sun, both realms fused at the seam, and the heat that made them, in a weapon that can hold all three. The Godforge was never sealed. This is what sealing it would have looked like.',
     clue: 'A piece of the Sun, the seam of both realms, and the heat that made them. Three wells, and nothing cheap in any of them.',
+    aura: 'fanaticism',
+  },
+
+  // ── Aura words (docs/design/loot-and-combat.md §7) ───────────────────────
+  // D2's runeword auras, in the realms' runes. Each is a sequence the Codex
+  // clues and nobody lists; worn, the Keeper walks with its ring.
+  {
+    id: 'brandoath',
+    name: 'Brandoath',
+    runes: ['thorn', 'scorch'],
+    frame: 'weapon',
+    stats: { strikePower: 2 },
+    effect: '+2 Strike, and the Might aura: every blow lands harder',
+    lore: 'The oath the Seamworks smiths swear on a fresh edge: that it will bite before it bends. The aura is the oath kept.',
+    clue: 'A barb and a short fire, edge-set, the barb first.',
+    aura: 'might',
+  },
+  {
+    id: 'rimeveil',
+    name: 'Rimeveil',
+    runes: ['veil', 'shade'],
+    frame: 'armor',
+    stats: { ward: 2 },
+    effect: '+2 Ward, and the Holy Freeze aura: the cold slows and bites everything near',
+    lore: 'Nocturne winter, worn. What comes close to the wearer moves as if through the Archive at night.',
+    clue: 'Two Nocturne darks worn close, the curtain before the shadow.',
+    aura: 'holy-freeze',
+  },
+  {
+    id: 'stormglass',
+    name: 'Stormglass',
+    runes: ['glint', 'pulse'],
+    frame: 'weapon',
+    stats: { strikePower: 1, magicFind: 3 },
+    effect: '+1 Strike, +3% Magic Find, and the Holy Shock aura: sparks jump to everything near',
+    lore: 'A flash and the Verge\'s heartbeat, held in one edge. The Heliograph Court calls it a lightning rod that answers back.',
+    clue: 'A gleam, then a heartbeat, edge-set.',
+    aura: 'holy-shock',
+  },
+  {
+    id: 'mercyroot',
+    name: 'Mercyroot',
+    runes: ['thorn', 'veil'],
+    frame: 'armor',
+    stats: { ward: 3 },
+    effect: '+3 Ward, and the Redemption aura: the fallen near you mend you',
+    lore: 'The Root Deeps waste nothing. A creature that falls by the wearer feeds them, as a fallen tree feeds the canopy.',
+    clue: 'A barb behind a curtain, worn rather than swung.',
+    aura: 'redemption',
+  },
+  {
+    id: 'vigil',
+    name: 'Vigil',
+    runes: ['shade', 'ash'],
+    frame: 'armor',
+    stats: { ward: 1, xpBonus: 2 },
+    effect: '+1 Ward, +2% XP, and the Prayer aura: wounds close on their own',
+    lore: 'Kept by the night watch in the Seamworks: a shadow, and what the First Sun left. They say the watch has never lost a Keeper to the cold.',
+    clue: 'The dark first, then the floor of the world, worn close.',
+    aura: 'prayer',
+  },
+  {
+    id: 'verdict',
+    name: 'Verdict',
+    runes: ['hollow', 'sigil'],
+    frame: 'weapon',
+    stats: { strikePower: 3 },
+    effect: '+3 Strike, and the Conviction aura: everything near loses its resistances',
+    lore: 'The Archivum\'s ruling, written into an edge: what stands before it is found wanting, whatever it was made to withstand.',
+    clue: 'An emptiness and a mark of record, edge-set.',
+    aura: 'conviction',
   },
 ];
 

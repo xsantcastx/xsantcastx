@@ -14,6 +14,8 @@
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
         <span>{{ t('play.hud.fall.safe') }}</span>
+        <!-- The corpse run (shared/loot): a share of the purse lies where the Keeper fell; nothing else is lost. -->
+        <span data-fall-gold>{{ fallGold > 0 ? t('play.loot.fall.purse', { n: fallGold }) : t('play.loot.fall.none') }}</span>
         <button type="button" (click)="retry()">{{ t('play.hud.returnCamp') }}</button>
       </div>
     }
@@ -123,6 +125,7 @@
         <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
         <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+        <li><button type="button" data-open="loot" (click)="openLoot()" aria-describedby="place-blurb-loot"><strong>{{ t('loot.menu') }}</strong><small id="place-blurb-loot">{{ t('loot.menuBlurb') }}</small></button></li>
         <li><button type="button" data-open="account" (click)="placesOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
         <!-- One World (preview): this device only; a flip reloads the world. -->
         <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
@@ -315,6 +318,11 @@
     <div class="sound-host win-host" data-engine-ignore (keydown.escape)="soundOpen = false" appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
   }
 
+  <!-- Menu → Loot & Combat: the loot filter, the aura, the difficulty, the resists (shared/loot). -->
+  @if (lootOpen) {
+    <div class="sound-host win-host" data-engine-ignore (keydown.escape)="lootOpen = false" appSheetDrag (sheetDismiss)="lootOpen = false"><app-loot-sheet (done)="lootOpen = false" /></div>
+  }
+
   <!-- The Satchel's pet well, opened (shared/pets): your pets, one card, one primary action. -->
   @if (petsOpen) {
     <div class="pet-host win-host" data-engine-ignore (keydown.escape)="closePets()" appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" (commanded)="petCommanded()" /></div>
@@ -339,7 +347,7 @@
           @if (bookStats) {
             <!-- The doll's other face: the live stat sheet and where the rest of your things are. -->
             <div id="satchel-stats" class="book-detail">
-              <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" />
+              <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" [huntingLevel]="huntingLevel" />
               @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
             </div>
           } @else {

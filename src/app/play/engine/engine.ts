@@ -16,7 +16,13 @@ import {
   CREATURE_SPRITE_FALLBACKS, createSpriteAnchor, createSpriteClock, frameAt, frameAtProgress, KEEPER_SPRITE_FALLBACKS, SpriteClock, SpriteDraw, SpriteRenderer, tickClock,
 } from './sprite';
 import { spriteFor } from '../../shared/art/sprite-manifest.generated';
-import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
+import { beamColor, beamHeight, edgePip, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint, sparkleAt } from './loot-fx';
+import { LOOT_TIER_FX, shownUnderFilter, tierRank, type LootFilter } from '../../shared/loot/loot-tiers';
+import { AURAS, AURA_PULSE, AURA_RADIUS, auraEffect, type AuraEffect, type AuraId } from '../../shared/loot/auras';
+import { DAMAGE_COLORS, ELEMENTS, hitOnKeeper, isImmune, keeperResist, mitigate, type DamageType, type Resists } from '../../shared/loot/damage.model';
+import { CURSE_RESIST, CURSE_SECONDS, MOD_DEFS, packStats, packWindup, rollPack, STAFF_BURN_SECONDS, type ChampionMod, type MonsterRank } from '../../shared/loot/champions';
+import { creatureBlow, creatureHits, creatureProfile, creatureResists, depthHpScale, monsterLevel } from '../../shared/loot/creature-families';
+import { DIFFICULTIES, type DifficultyTier } from '../../shared/loot/difficulty.model';
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { SurfaceMover, type SurfaceGeo } from './surface-body';
 import { SurfaceRender } from './surface-render';
@@ -113,6 +119,20 @@ interface Monster {
   frozen?: boolean;
   /** Drawn this far above its floor (the Fallen Ephemeris in orbit on its hall's ceiling). */
   lift?: number;
+  /**
+   * Loot & combat (shared/loot), set by `arm` once combat rules are on: its
+   * level, rank and mods, resists, blow and its type, speed. Absent = the
+   * legacy fight (no rules: the node tests' fixed numbers).
+   */
+  armed?: { lvl: number; rank: MonsterRank; mods: ChampionMod[]; title: string | null; resists: Resists; hits: DamageType; blow: number; speed: number };
+  /** Respawns so far: part of its pack key, so a respawn is a new roll. */
+  gen?: number;
+  /** A Living World pack's area level (SectorHall.level): its HP already carries packScale. */
+  hallLevel?: number;
+  /** Inside the Keeper's aura (Conviction / Holy *): the debuff pip and tint. */
+  marked?: boolean;
+  /** Holy Freeze's slow on it, 0..0.6. */
+  chill?: number;
   /** A pet's bite or howl: seconds it cannot move or strike (pet-brain.ts). */
   stun?: number;
   /** A pet's chomp cracked its armour: every blow does `crackShare` more while `crack` lasts. */
@@ -131,6 +151,12 @@ interface Drop {
   id: string; x: number; y: number; coins: number; ore: number; material?: string; art?: string; label?: string; short?: string; age: number; spin: number;
   /** Presentation, fixed at spill time so the render allocates nothing: beam colour/height, hover caption and its measured width. */
   rarity?: LootRarity; color: string; beam: number; caption: string; captionW: number;
+  /** A gear or rune drop (shared/loot/drop-tables.ts): minted / granted by the host at pickup. */
+  item?: { definitionId: string; rarity: LootRarity; unique: boolean }; rune?: string;
+  /** The corpse run's purse (setFallenPurse): walking over it asks the host (onPurse). */
+  purse?: boolean;
+  /** The label plate, world px, written each frame it is drawn (the tap target). w = 0: not drawn. */
+  lx: number; ly: number; lw: number;
 }
 /**
  * A gathering node's live state. `at` is the last harvest (epoch ms, null =
@@ -156,8 +182,6 @@ const FLIGHT_POOL = 16;
 const MAX_FPS = 60;
 const QUIET_FPS = 30;
 const QUIET_AFTER_MS = 2500;
-/** Loot rarities in order, for Glim's gasp at an epic beam or better. */
-const RARE_GASP: readonly LootRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'];
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
@@ -432,6 +456,25 @@ export class SeamworksEngine {
   private monsters: Monster[] = [];
   private drops: Drop[] = [];
   private readonly lootSession = crypto.randomUUID();
+  /**
+   * Loot & combat (shared/loot): the difficulty, the aura running, the
+   * Keeper's resists, the loot filter. Null = the legacy fight: no levels, no
+   * packs, no rolled gear, every blow 12 (the fixed-step tests run that way).
+   */
+  private rules: { tier: DifficultyTier; seed: number; aura: { id: AuraId; level: number } | null; resists: Resists; filter: LootFilter } | null = null;
+  /** The running aura's numbers (auraEffect), null when none. */
+  private auraFx: AuraEffect | null = null;
+  /** Seconds to the next aura pulse; and the last pulse's flash 1 → 0. */
+  private auraClock = AURA_PULSE;
+  private auraFlash = 0;
+  /** A Cursed blow's hold on the Keeper's resists, seconds left. */
+  private cursed = 0;
+  /** Creatures the aura marks this step (for the HUD/tests). */
+  private marked = 0;
+  /** The corpse run's purse in this world, if any (area, where, Gold). */
+  private fallenPurse: { area: string; x: number; y: number; gold: number } | null = null;
+  private readonly pipAt = { x: 0, y: 0, visible: false };
+  private readonly sparkAt = { x: 0, y: 0, a: 0 };
   private coins = 0;
   private kills = 0;
   private guardianDefeated = false;
@@ -686,7 +729,7 @@ export class SeamworksEngine {
     return monsters;
   }
   private enter(area: AreaDef): void {
-    this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = []; this.pendingHalls = []; this.wild.clear();
+    this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = []; this.placePurse(); this.pendingHalls = []; this.wild.clear();
     // Glim comes along: at the shoulder in the new place, not flying in from where it hovered in the old one.
     this.glim.reset(); this.glimTrail = null;
     const fresh = !this.worlds.has(area.id);
@@ -971,7 +1014,7 @@ export class SeamworksEngine {
     const xs = Array.from({ length: hall.count }, (_, n) => Math.round(x0 + (x1 - x0) * (n + .5) / hall.count));
     const hp = Math.max(1, Math.round(base.hp * (hall.scale ?? 1)));
     const def: MonsterDef = { ...base, hp, spawnXs: xs, floorY: (t?.top ?? FLOOR) + hall.floorRow * CELL, range: [x0, x1] };
-    for (const x of xs) this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: hall.near ? SPAWN_RISE : 0, shownHp: def.hp, recoil: 0, sx });
+    for (const x of xs) this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: hall.near ? SPAWN_RISE : 0, shownHp: def.hp, recoil: 0, sx, ...(hall.level !== undefined ? { hallLevel: hall.level } : {}) });
   }
   /** Living World halls waiting for the Keeper to come near (their column is loaded). */
   private pendingHalls: { hall: SectorHall; sx: number }[] = [];
@@ -1546,7 +1589,7 @@ export class SeamworksEngine {
     this.resetPosition(this.town.spawnX); this.say('play.hud.eng.backAtCamp', 'Back at camp. Your equipment and collected loot are safe.'); this.report();
   }
   restartHunt(): void {
-    this.monsters = this.createMonsters(); this.drops = []; this.pendingHalls = []; this.resetPosition(this.areaDef.spawnX);
+    this.monsters = this.createMonsters(); this.drops = []; this.placePurse(); this.pendingHalls = []; this.resetPosition(this.areaDef.spawnX);
     if (this.world) for (const column of this.world.loadedColumns()) this.spawnHalls(this.areaDef, column);
     this.say('play.hud.eng.freshHunt', 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.'); this.report();
   }
@@ -1606,6 +1649,70 @@ export class SeamworksEngine {
    * A max-HP change keeps the Keeper's *share* of health, so equipping mid-fight
    * neither heals nor wounds; a fallen Keeper stays fallen.
    */
+  /**
+   * Loot & combat rules from the host (LootService.combatRules): the
+   * difficulty, the aura worn, the Keeper's resists, the loot filter. Null
+   * switches back to the legacy fight. Creatures already standing are re-armed
+   * (a tier change takes effect at once, never mid-swing).
+   */
+  setCombatRules(rules: { tier: DifficultyTier; seed: number; aura: { id: AuraId; level: number } | null; resists: Resists; filter: LootFilter } | null): void {
+    const tierChanged = (rules?.tier ?? null) !== (this.rules?.tier ?? null);
+    this.rules = rules;
+    this.auraFx = rules?.aura ? auraEffect(rules.aura.id, rules.aura.level) : null;
+    if (!rules) for (const m of this.monsters) { if (m.armed && m.hp > 0) { m.hp = Math.min(m.def.hp, Math.round(m.hp / m.maxHp * m.def.hp)); m.maxHp = m.def.hp; m.shownHp = m.hp; } m.armed = undefined; m.marked = false; m.chill = 0; }
+    else if (tierChanged) for (const m of this.monsters) { if (m.armed) { m.armed = undefined; this.arm(m); } }
+    this.report();
+  }
+  /** The corpse run (LootService.fall): the purse lies at (area, x, y) until walked over; null clears it. */
+  setFallenPurse(purse: { area: string; x: number; y: number; gold: number } | null): void {
+    this.fallenPurse = purse;
+    this.placePurse();
+  }
+  /** Put the purse on the ground when it lies in this area (once). */
+  private placePurse(): void {
+    this.drops = this.drops.filter(d => !d.purse);
+    const p = this.fallenPurse;
+    if (!p || p.area !== this.areaDef.id) return;
+    const label = this.options.translate?.('play.loot.purse') || 'Your fallen purse';
+    const caption = `${label}: ${p.gold}`;
+    this.drops.push({ id: `purse:${p.area}:${p.x}`, x: p.x, y: p.y, coins: 0, ore: 0, age: 1, spin: 1, purse: true,
+      rarity: 'legendary', color: '#ffd36d', beam: beamHeight('epic', false), caption, captionW: 0, lx: 0, ly: 0, lw: 0 });
+  }
+  /**
+   * Give a creature its place in the fight (shared/loot): level from its haunt
+   * and depth, a champion/unique pack (rolled from the player's seed per spawn),
+   * resists, blow and speed. HP scales by depth, pack and tier. Once per life.
+   */
+  private arm(m: Monster): void {
+    const rules = this.rules;
+    if (!rules || m.armed) return;
+    const t = this.terrain;
+    const floor = m.def.floorY ?? FLOOR;
+    const profile = creatureProfile(m.def.creature);
+    // A guardian (`once`) or a scripted foe (a trait, a minion) is never a pack, and its authored HP and level
+    // already price its hall in: depth lifts only the generic creatures of a Delve's halls.
+    const boss = !!profile.boss || !!m.def.once;
+    const plain = boss || !!m.def.trait || !!m.minion;
+    const depthRows = t && !plain && m.hallLevel === undefined ? Math.max(0, Math.floor((floor - t.top) / CELL)) : 0;
+    const tier = rules.tier, diff = DIFFICULTIES[tier];
+    // A Living World pack carries its area level (its HP already scaled by packScale, the same curve).
+    const lvl = m.hallLevel !== undefined ? profile.level + m.hallLevel + diff.level : monsterLevel(m.def.creature, depthRows, tier);
+    const pack = plain ? { rank: (boss ? 'boss' : 'normal') as MonsterRank, mods: [] as ChampionMod[], title: null }
+      : rollPack(m.def.creature, lvl, false, tier, `${rules.seed}|${this.areaDef.id}|${Math.round(m.spawn)}|${m.gen ?? 0}`);
+    const ps = packStats(pack, creatureHits(m.def.creature));
+    const resists: Resists = { ...creatureResists(m.def.creature, tier) };
+    for (const mod of pack.mods) for (const [k, v] of Object.entries(MOD_DEFS[mod].resist ?? {}) as [DamageType, number][]) resists[k] = (resists[k] ?? 0) + v;
+    const extra = m.hallLevel !== undefined ? 0 : lvl - diff.level - profile.level;
+    const hp = Math.max(1, Math.round(m.def.hp * depthHpScale(extra) * ps.hp * diff.hp));
+    // A scripted fight (a guardian, a trait creature, a minion) is tuned around its mechanic and the legacy 12 blow:
+    // on Normal it keeps it; Nightmare and Hell multiply it like everything else.
+    const blow = Math.round((plain ? creatureBlow(1) : creatureBlow(lvl - diff.level)) * ps.damage * diff.damage);
+    m.armed = { lvl, rank: pack.rank, mods: pack.mods, title: pack.title, resists, hits: ps.hits, blow, speed: ps.speed };
+    if (hp !== m.maxHp) {
+      const share = m.maxHp ? m.hp / m.maxHp : 1;
+      m.maxHp = hp; m.hp = Math.max(m.hp > 0 ? 1 : 0, Math.round(hp * share)); m.shownHp = m.hp;
+    }
+  }
   setStats(stats: { damage: number; maxHp: number }): void {
     if (Number.isFinite(stats.damage)) this.damage = Math.max(1, Math.round(stats.damage));
     const maxHp = Math.round(stats.maxHp);
@@ -2563,7 +2670,7 @@ export class SeamworksEngine {
   }
   private petHit(m: Monster, damage: number): { landed: boolean; killed: boolean } {
     if (m.hp <= 0 || !this.petMayHit(m)) return { landed: false, killed: false };
-    this.hurtMonster(m, damage, true);
+    this.hurtMonster(m, damage, 'physical', true);
     return { landed: true, killed: m.hp <= 0 };
   }
   /** The hedgehog works a ready node beside the Keeper: the same harvest, booked as the pet's (no XP for the Keeper). */
@@ -2596,7 +2703,7 @@ export class SeamworksEngine {
   private petSpill(x: number, coins: number): void {
     const id = `${this.lootSession}:pet-find:${++this.petFindN}`;
     const y = this.terrain ? this.player.y : FLOOR;
-    this.drops.push({ id, x, y, coins, ore: 0, age: 0, spin: 1, rarity: 'uncommon', color: beamColor('uncommon', true), beam: beamHeight('uncommon', true), caption: `${coins} coins`, captionW: 0 });
+    this.drops.push({ id, x, y, coins, ore: 0, age: 0, spin: 1, rarity: 'uncommon', color: beamColor('uncommon', true), beam: beamHeight('uncommon', true), caption: `${coins} coins`, captionW: 0, lx: 0, ly: 0, lw: 0 });
     for (let n = 0; n < (this.reducedMotion ? 3 : 8); n++) this.debris.chip(x + (n - 4) * 4, y - 6, '#8a6a42', 1);
   }
   /** A pet event for the host (pet XP, finds, Glim); a yip on a hit, a chirp on a find. Never throws into the step. */
@@ -2719,9 +2826,11 @@ export class SeamworksEngine {
     const k = this.figure;
     for (const monster of this.monsters) {
       if (monster.hp <= 0 || !meleeHits(this.player, monster.x, this.facing, monster.def.floorY ?? FLOOR, k)) continue;
-      this.hurtMonster(monster, this.damage ?? (this.equipped ? 20 : 10));
+      this.hurtMonster(monster, Math.round((this.damage ?? (this.equipped ? 20 : 10)) * (this.auraFx?.damage ?? 1)));
       struck = true;
     }
+    // Fanaticism: the next swing comes sooner.
+    if (struck && this.auraFx && this.auraFx.attackSpeed > 1) this.attackCooldown = BASE_SWING / this.auraFx.attackSpeed;
     // The Living World: a swing at a beetle or a moth catches it (the host pays its drop, once a day each).
     if (!struck && this.world) {
       const caught = this.wild.catchAt(this.player.x, this.player.y, this.facing);
@@ -2740,10 +2849,25 @@ export class SeamworksEngine {
       if (this.swingTool) this.toolBit(); else this.putToolAway();
     } else if (!struck) { const site = this.siteInReach(); if (site) this.workSite(site); else this.putToolAway(); }
   }
-  private hurtMonster(monster: Monster, damage: number, byPet = false): void {
+  /** `type`: the blow's damage type (shared/loot, resists apply). `byPet`: dealt by the Keeper's pet (pet-brain.ts); it goes through resists and Conviction too. */
+  private hurtMonster(monster: Monster, damage: number, type: DamageType = 'physical', byPet = false): void {
     const floor = monster.def.floorY ?? FLOOR;
     // A pet's chomp cracked its armour: every blow does a little more while it lasts.
     if ((monster.crack ?? 0) > 0) damage = Math.round(damage * (1 + (monster.crackShare ?? 0)));
+    if (this.rules) {
+      this.arm(monster);
+      const a = monster.armed;
+      if (a) {
+        // Conviction lowers what it resists while it stands in the Keeper's aura.
+        const lower = monster.marked && this.auraFx ? this.auraFx.resistLower : 0;
+        if (isImmune(a.resists[type], lower)) {
+          monster.flash = .08;
+          this.atmosphere.burst(monster.x, floor - 85 * this.figure, this.options.translate?.('play.loot.immune') || 'Immune');
+          return;
+        }
+        damage = mitigate(damage, a.resists[type], lower);
+      }
+    }
     if (monster.def.veiled && !this.exposed(monster)) {
       monster.flash = .08;
       this.clang(monster.x, floor - 60 * this.figure, 'Its light swallows the blow. Light a torch beside it');
@@ -2793,6 +2917,11 @@ export class SeamworksEngine {
     if (monster.hp === 0) {
       monster.dying = DEATH_FADE;
       monster.respawn = 8; this.kills++; this.guardianDefeated = true;
+      // Redemption: a creature that falls inside the aura mends the Keeper.
+      if (this.auraFx?.healPerCorpse && this.hp > 0 && this.inAura(monster)) {
+        this.hp = Math.min(this.maxHp, this.hp + this.auraFx.healPerCorpse);
+        this.atmosphere.burst(this.player.x, this.player.y - 140 * this.figure, `+${this.auraFx.healPerCorpse}`);
+      }
       this.spill(monster);
       this.options.onKill?.({ id: `${this.lootSession}:${this.kills}`, areaId: this.areaDef.id, creature: monster.def.creature, name: monster.def.name, hp: monster.maxHp });
       if (monster.def.once) {
@@ -3607,16 +3736,31 @@ export class SeamworksEngine {
       if (monster.hp <= 0) continue;
       const vx = monster.x - at.x, vy = (monster.def.floorY ?? FLOOR) - 40 * this.figure - at.y;
       const d = Math.hypot(vx, vy);
-      if (d <= at.range && d > 0 && (vx * dx + vy * dy) / d >= Math.cos(.6)) this.hurtMonster(monster, Math.round((this.damage ?? 12) * 1.2));
+      if (d <= at.range && d > 0 && (vx * dx + vy * dy) / d >= Math.cos(.6)) this.hurtMonster(monster, Math.round((this.damage ?? 12) * 1.2 * (this.auraFx?.damage ?? 1)), 'arcane');
     }
     for (let n = 0; n < 6; n++) this.debris.chip(at.x + dx * at.range * n / 6, at.y + dy * at.range * n / 6, '#d9c2ff', 2);
     this.impact(.05, 4);
     this.say('play.hud.eng.staffAnswers', 'The staff answers: a lance of light.');
   }
-  /** Roll the monster's drop table (or its area's) and spill the results around the body. */
+  /**
+   * Roll the monster's drop table (or its area's) and spill the results around
+   * the body; with combat rules on, the host's rolled gear and runes join them
+   * (shared/loot/drop-tables.ts), each announced by its rung: beam, sparkles, sound.
+   */
   private spill(monster: Monster): void {
-    const entries = (monster.def.drops ?? this.areaDef.drops).entries;
+    const table: readonly DropEntry[] = (monster.def.drops ?? this.areaDef.drops).entries;
+    let entries = table;
+    if (this.rules && this.options.rollLoot && monster.armed) {
+      let rolled: readonly DropEntry[] = [];
+      try {
+        rolled = this.options.rollLoot({ creature: monster.def.creature, level: monster.armed.lvl, rank: monster.armed.rank, killKey: `${this.areaDef.id}:${this.kills}` })
+          .map((row, i) => ({ ...row, id: `loot${i}` }) as DropEntry);
+      } catch { rolled = []; }
+      if (rolled.length) entries = [...table, ...rolled];
+    }
     const names: string[] = [];
+    let loudest: LootRarity | undefined, loudName = '', unique = false;
+    const floor = monster.def.floorY ?? FLOOR;
     for (let i = 0; i < entries.length; i++) {
       const entry: DropEntry = entries[i];
       if (entry.chance !== undefined && entry.chance < 1 && this.random() >= entry.chance) continue;
@@ -3624,29 +3768,118 @@ export class SeamworksEngine {
       const id = `${this.lootSession}:${this.kills}:${entry.id}`;
       const spin = offset < 0 ? -1 : 1;
       const rarity = entry.rarity;
+      const base = { id, x: monster.x + offset, y: floor, age: 0, spin, captionW: 0, lx: 0, ly: 0, lw: 0 };
       if (entry.kind === 'coins') {
         const coins = entry.base + (entry.spread ? this.kills % entry.spread : 0);
-        this.drops.push({ id, x: monster.x + offset, y: monster.def.floorY ?? FLOOR, coins, ore: 0, age: 0, spin,
-          rarity, color: beamColor(rarity, true), beam: beamHeight(rarity, true), caption: `${coins} coins`, captionW: 0 });
+        this.drops.push({ ...base, coins, ore: 0, rarity, color: beamColor(rarity, true), beam: beamHeight(rarity, true), caption: `${coins} coins` });
         names.push('coins');
-      } else {
-        this.drops.push({ id, x: monster.x + offset, y: monster.def.floorY ?? FLOOR, coins: 0, ore: entry.qty, material: entry.material, art: entry.art, label: entry.label, short: entry.short, age: 0, spin,
-          rarity, color: beamColor(rarity, false), beam: beamHeight(rarity, false), caption: entry.qty > 1 ? `${entry.qty} x ${entry.label}` : entry.label, captionW: 0 });
+      } else if (entry.kind === 'material') {
+        this.drops.push({ ...base, coins: 0, ore: entry.qty, material: entry.material, art: entry.art, label: entry.label, short: entry.short,
+          rarity, color: beamColor(rarity, false), beam: beamHeight(rarity, false), caption: entry.qty > 1 ? `${entry.qty} x ${entry.label}` : entry.label });
         names.push(entry.label);
+      } else {
+        const gear = entry.kind === 'item';
+        this.drops.push({ ...base, coins: 0, ore: 0, art: gear ? entry.definitionId : `rune-${entry.rune}`, label: entry.label, short: entry.label,
+          ...(gear ? { item: { definitionId: entry.definitionId, rarity: entry.rarity, unique: !!entry.unique } } : { rune: entry.rune }),
+          rarity: entry.rarity, color: beamColor(entry.rarity, false), beam: beamHeight(entry.rarity, false), caption: entry.label });
+        names.push(entry.label);
+        if (gear && entry.unique && !unique) { unique = true; loudest = entry.rarity; loudName = entry.label; continue; }
+      }
+      if (rarity && !unique && tierRank(rarity) > tierRank(loudest)) { loudest = rarity; loudName = names[names.length - 1]; }
+    }
+    // The loudest rung that fell is heard (when the filter shows it); epic and up makes Glim gasp (glim-react.ts);
+    // rare and up is named.
+    if (loudest) {
+      const fx = LOOT_TIER_FX[loudest];
+      const shown = !this.rules || shownUnderFilter(loudest, this.rules.filter);
+      if (fx.sfx && shown) this.sfx(fx.sfx);
+      if (shown && tierRank(loudest) >= tierRank('epic')) this.glimCue({ kind: 'rare', rarity: loudest });
+      if (this.rules && tierRank(loudest) >= 2) {
+        if (unique) this.say('play.loot.unique', `A named thing: ${loudName}! Tap its name, or press E beside it, to pick it up.`, { name: loudName });
+        else this.say('play.loot.dropped', `${loudName} dropped! Tap its name, or press E beside it, to pick it up.`, { name: loudName });
+        return;
       }
     }
-    // A rare beam goes up: Glim gasps (glim-react.ts), the rarest wins.
-    let rarest: LootRarity | undefined;
-    for (const entry of entries) if (entry.rarity && RARE_GASP.indexOf(entry.rarity) > RARE_GASP.indexOf(rarest ?? 'common')) rarest = entry.rarity;
-    if (rarest && RARE_GASP.indexOf(rarest) >= RARE_GASP.indexOf('epic') && this.drops.some(d => d.rarity === rarest && d.age === 0)) this.glimCue({ kind: 'rare', rarity: rarest });
     // `items` is joined in English; the HUD re-joins it in the player's language (hud.i18n.ts).
     if (names.length) this.say('play.hud.eng.defeatedDrops', `${monster.def.name} defeated! Walk over the ${names.join(' and ')} to collect them.`, { name: monster.def.name, items: names.join(' and ') });
     else this.say('play.hud.eng.defeated', `${monster.def.name} defeated!`, { name: monster.def.name });
+  }
+  /**
+   * Take a drop: coins and materials as ever; gear and runes through the host
+   * (minted / granted there; a false answer leaves it lying); the purse home.
+   * True when it left the ground.
+   */
+  private collect(drop: Drop): boolean {
+    if (drop.age < 0) return false;
+    if (drop.purse) {
+      this.options.onPurse?.();
+      this.fallenPurse = null; drop.age = -1;
+      this.launchFlight(drop); this.keeperFeel('happy', .8);
+      return true;
+    }
+    const answer = this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore, material: drop.material,
+      ...(drop.item ? { item: drop.item } : {}), ...(drop.rune ? { rune: drop.rune } : {}) });
+    if (answer === false) {
+      // A full satchel: say so once a few seconds, and leave it shining.
+      if ((drop.item || drop.rune) && drop.age - Math.floor(drop.age / 4) * 4 < .02) this.say('play.loot.full', `No room for ${drop.label}. Make space in the Satchel.`, { name: drop.label ?? '' });
+      return false;
+    }
+    const gear = !!(drop.item || drop.rune);
+    this.atmosphere.burst(drop.x, drop.y - 45, drop.coins ? `+${drop.coins} coins` : gear ? drop.caption : `+${drop.ore} ${drop.short ?? 'ore'}`);
+    this.coins += drop.coins; drop.age = -1;
+    this.keeperFeel('happy', .8);
+    if (this.pet.id) this.pet.feel('happy', .6);
+    this.launchFlight(drop);
+    if (drop.coins) this.say('play.hud.eng.collectedCoins', `Collected ${drop.coins} coins.`, { n: drop.coins });
+    else if (gear) this.say('play.loot.picked', `Picked up ${drop.label}.`, { name: drop.label ?? '' });
+    else this.say('play.hud.eng.collected', `Collected ${drop.label ?? 'Cinder Ore'}.`, { name: drop.label ?? 'Cinder Ore' });
+    return true;
+  }
+  /** The nearest gear or rune drop within a short reach of the Keeper, taken. True when one was. */
+  private takeNearestGear(): boolean {
+    let best: Drop | null = null, bestD = 110 * Math.max(this.figure, .6);
+    for (const d of this.drops) {
+      if (d.age < .3 || (!d.item && !d.rune) || Math.abs(d.y - this.player.y) > 100) continue;
+      const dist = Math.abs(d.x - this.player.x);
+      if (dist < bestD) { best = d; bestD = dist; }
+    }
+    return !!best && this.collect(best);
+  }
+  /** Reach for a tapped label: in reach, take it; else walk to it (and take it on arrival). */
+  static readonly TAP_REACH = 260;
+  /**
+   * A tap or click on a drop's label plate (or the drop itself): phones pick up
+   * by touch. True when it hit one (the host does nothing else with the tap).
+   */
+  pickDrop(clientX: number, clientY: number): boolean {
+    if (this.paused || this.hp <= 0) return false;
+    const at = this.pick(clientX, clientY);
+    let best: Drop | null = null, bestD = Infinity;
+    for (const d of this.drops) {
+      if (d.age < .3) continue;
+      const onLabel = d.lw > 0 && at.x >= d.lx - 8 && at.x <= d.lx + d.lw + 8 && at.y >= d.ly - 10 && at.y <= d.ly + 32;
+      const onDrop = Math.abs(at.x - d.x) < 34 && at.y > d.y - 70 && at.y < d.y + 14;
+      if (!onLabel && !onDrop) continue;
+      const dist = Math.abs(at.x - d.x) + Math.abs(at.y - d.y) * .5;
+      if (dist < bestD) { best = d; bestD = dist; }
+    }
+    if (!best) return false;
+    const drop = best;
+    if (Math.abs(drop.x - this.player.x) <= SeamworksEngine.TAP_REACH * Math.max(this.figure, .6) && Math.abs(drop.y - this.player.y) < 160) {
+      this.collect(drop);
+    } else {
+      this.say('play.loot.tooFar', 'Too far to reach. Walking over to it.');
+      this.moveTo(drop.x, () => { if (this.drops.includes(drop)) this.collect(drop); });
+    }
+    this.report();
+    return true;
   }
   /** RNG for drop chances. Replaceable in tests; a table of certain drops never calls it. */
   random: () => number = Math.random;
   interact(): void {
     if (this.paused || this.hp <= 0) return;
+    // E beside a piece of gear or a rune on the ground: take the nearest (the keyboard's tap on its plate).
+    if (this.takeNearestGear()) { this.report(); return; }
     // In the cart, E steps off where it stands (momentum and all).
     if (this.cart) { this.leaveCart(this.cart.dir * this.cart.speed * .6, 0); this.say('play.uh.cart.off', 'You step off the cart.'); this.report(); return; }
     // A line in the water: E hooks a bite, or reels the line back in (a tap just
@@ -3786,6 +4019,57 @@ export class SeamworksEngine {
     if (this.paused) { this.frame = null; return; }
     this.frame = requestAnimationFrame(this.tick);
   };
+  /**
+   * What a creature's blow takes off the Keeper: 12 in the legacy fight; with
+   * rules, its armed blow through the Keeper's resist to its type (the tier's
+   * penalty and a Cursed hold included), plus its mods' after-effects.
+   */
+  private blowOn(monster: Monster): number {
+    const a = this.rules ? monster.armed : undefined;
+    if (!a || !this.rules) return 12;
+    const penalty = DIFFICULTIES[this.rules.tier].resistPenalty;
+    const resist = a.hits === 'physical' ? 0 : keeperResist(this.rules.resists[a.hits], penalty, this.cursed > 0 ? CURSE_RESIST : 0);
+    const hit = hitOnKeeper(a.blow, a.hits, resist);
+    if (a.mods.includes('cursed')) this.cursed = CURSE_SECONDS;
+    if (a.mods.includes('staff-burn')) this.blastCooldown = Math.max(this.blastCooldown, 0) + STAFF_BURN_SECONDS;
+    this.atmosphere.burst(this.player.x, this.player.y - 150 * this.figure, `-${hit}`);
+    return hit;
+  }
+  /** Inside the Keeper's aura: within AURA_RADIUS (figure-scaled) and about the Keeper's floor. */
+  private inAura(m: Monster): boolean {
+    const k = this.figure;
+    return Math.abs(m.x - this.player.x) <= AURA_RADIUS * k && Math.abs((m.def.floorY ?? FLOOR) - this.player.y) <= 160 * Math.max(k, .6);
+  }
+  /**
+   * The aura's step: mark the creatures inside it (Conviction, the Holy
+   * pulses), pulse damage every AURA_PULSE seconds, Holy Freeze's chill,
+   * Prayer's regeneration. Nothing runs while the Keeper is down or paused.
+   */
+  private updateAura(dt: number): void {
+    this.cursed = Math.max(0, this.cursed - dt);
+    this.auraFlash = Math.max(0, this.auraFlash - dt * 2);
+    const fx = this.auraFx, aura = this.rules?.aura;
+    this.marked = 0;
+    if (!fx || !aura || this.hp <= 0) { for (const m of this.monsters) { m.marked = false; m.chill = 0; } return; }
+    const debuffs = AURAS[aura.id].debuffs;
+    for (const m of this.monsters) {
+      const inside = m.hp > 0 && this.inAura(m);
+      m.marked = inside && debuffs;
+      m.chill = inside ? fx.slow : 0;
+      if (m.marked) this.marked++;
+    }
+    if (fx.regen > 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + fx.regen * dt);
+    if (fx.pulseDamage > 0) {
+      this.auraClock -= dt;
+      if (this.auraClock <= 0) {
+        this.auraClock += AURA_PULSE;
+        let hit = false;
+        const type = AURAS[aura.id].element ?? 'physical';
+        for (const m of this.monsters) if (m.marked && m.hp > 0) { this.hurtMonster(m, fx.pulseDamage, type); hit = true; }
+        if (hit) this.auraFlash = 1;
+      }
+    }
+  }
   private update(dt: number): void {
     this.elapsed += dt;
     this.atmosphere.update(dt);
@@ -3818,7 +4102,7 @@ export class SeamworksEngine {
     const wasGrounded = this.player.grounded;
     // Delves move a half-size Keeper a little slower, through the terrain.
     const pace = this.terrain ? .72 : 1;
-    let velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace;
+    let velocityX = (this.dodgeTime > 0 ? this.facing * 620 : direction * 265) * pace * (this.auraFx?.moveSpeed ?? 1);
     if (this.terrain) {
       // The endless Delve: the loaded ring follows the Keeper (a sector column at a time).
       this.keepWorld();
@@ -3900,22 +4184,15 @@ export class SeamworksEngine {
     }
     for (const drop of this.drops) {
       drop.age += dt;
-      if (drop.age > .3 && Math.abs(drop.x - this.player.x) < 65 && Math.abs(this.player.y - drop.y) < 80) {
-        if (this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore, material: drop.material }) === false) continue;
-        this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
-        this.coins += drop.coins; drop.age = -1;
-        this.keeperFeel('happy', .8);
-        if (this.pet.id) this.pet.feel('happy', .6);
-        this.launchFlight(drop);
-        if (drop.coins) this.say('play.hud.eng.collectedCoins', `Collected ${drop.coins} coins.`, { n: drop.coins });
-        else this.say('play.hud.eng.collected', `Collected ${drop.label ?? 'Cinder Ore'}.`, { name: drop.label ?? 'Cinder Ore' });
-      }
+      // Gold, materials and the purse come to the Keeper's feet; gear and runes wait to be taken (a tap on the plate, or E), D2's way.
+      if (drop.age > .3 && !drop.item && !drop.rune && Math.abs(drop.x - this.player.x) < 65 && Math.abs(this.player.y - drop.y) < 80) this.collect(drop);
     }
     // In place: this runs every fixed step, and drops are few and rarely leave.
     let kept = 0;
-    for (const drop of this.drops) if (drop.age >= 0 && drop.age < 120) this.drops[kept++] = drop;
+    for (const drop of this.drops) if (drop.age >= 0 && (drop.age < 120 || drop.purse)) this.drops[kept++] = drop;
     this.drops.length = kept;
     this.updatePet(dt);
+    if (this.rules) this.updateAura(dt);
     this.updateGlimPowers(dt);
     for (const monster of this.monsters) {
       monster.flash = Math.max(0, monster.flash - dt);
@@ -3928,10 +4205,16 @@ export class SeamworksEngine {
         // A clock-keeping creature felled after its hour has passed stays down until the hour comes back.
         if (monster.def.when && !this.hourOpen(monster.def.when)) { monster.respawn = Math.max(monster.respawn, 1); continue; }
         monster.respawn -= dt;
-        if (monster.respawn <= 0) { monster.hp = monster.maxHp; monster.shownHp = monster.maxHp; monster.x = monster.spawn; monster.phase = 'idle'; monster.timer = 1; monster.born = SPAWN_RISE; }
+        if (monster.respawn <= 0) {
+          monster.hp = monster.maxHp; monster.shownHp = monster.maxHp; monster.x = monster.spawn; monster.phase = 'idle'; monster.timer = 1; monster.born = SPAWN_RISE;
+          // A respawn is a new creature: a new pack roll, back at its authored HP.
+          if (monster.armed) { monster.gen = (monster.gen ?? 0) + 1; monster.armed = undefined; monster.maxHp = monster.def.hp; monster.hp = monster.def.hp; monster.shownHp = monster.hp; }
+        }
         continue;
       }
-      monster.timer -= dt;
+      if (this.rules && !monster.armed) this.arm(monster);
+      // Holy Freeze slows what it touches: its clock runs slow.
+      monster.timer -= dt * (1 - (monster.chill ?? 0));
       if (monster.crack) monster.crack = Math.max(0, monster.crack - dt);
       // Stunned by a pet (a bite, a howl, a flare): it cannot move or strike.
       if ((monster.stun ?? 0) > 0) { monster.stun = Math.max(0, monster.stun! - dt); if (monster.phase !== 'recover') monster.phase = 'idle'; monster.timer = Math.max(monster.timer, .2); continue; }
@@ -3956,11 +4239,12 @@ export class SeamworksEngine {
       }
       const distance = this.player.x - monster.x;
       if (monster.phase === 'idle') {
-        if (Math.abs(distance) < 380 * k && Math.abs(distance) > 95 * k) monster.x = Math.max(safeX || 30, monster.x + Math.sign(distance) * 65 * dt);
+        const stride = 65 * (monster.armed?.speed ?? 1) * (1 - (monster.chill ?? 0));
+        if (Math.abs(distance) < 380 * k && Math.abs(distance) > 95 * k) monster.x = Math.max(safeX || 30, monster.x + Math.sign(distance) * stride * dt);
         const range = monster.def.range;
         if (range) monster.x = Math.max(range[0], Math.min(range[1], monster.x));
         if (Math.abs(distance) < 170 * k && monster.timer <= 0) {
-          monster.phase = 'windup'; monster.timer = .85; monster.facing = Math.sign(distance) || -1;
+          monster.phase = 'windup'; monster.timer = monster.armed ? packWindup(.85, monster.armed.speed) : .85; monster.facing = Math.sign(distance) || -1;
         }
       } else if (monster.timer <= 0) {
         if (monster.phase === 'windup') {
@@ -3977,7 +4261,7 @@ export class SeamworksEngine {
             if (drawn) this.petBrain.blow(this.petWorld(0));
             this.debris.chip(this.pet.x, floor - 20 * k, '#fff4e0', this.reducedMotion ? 2 : 6);
           } else if (reaches) {
-            this.hp = Math.max(0, this.hp - 12); this.hurtTime = .8; this.wound = 1;
+            this.hp = Math.max(0, this.hp - this.blowOn(monster)); this.hurtTime = .8; this.wound = 1;
             this.impact(.07, this.hp === 0 ? 12 : 8);
             if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
           }
@@ -5051,6 +5335,7 @@ export class SeamworksEngine {
       boss: !!nearest?.def.once,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: region?.name ?? this.areaDef.name, areaId: this.areaDef.id,
+      ...(this.rules ? { loot: this.lootReport(nearest) } : {}),
       facing: this.facing, animation: this.pose(),
       delve: !!t, depth, biome: t && depth !== undefined && !surfaceNow ? t.biomeAt(depth).name || undefined : undefined,
       ...(t ? {
@@ -5079,6 +5364,28 @@ export class SeamworksEngine {
           vents: this.furnace.state.doused.map(d => (d ? '1' : '0')).join(''),
         } } : {}),
       } : {}) });
+  }
+  /** Loot & combat for tests and tools (EngineState.loot). Small strings, built at report rate. */
+  private lootReport(nearest: Monster | null): NonNullable<EngineState['loot']> {
+    const filter = this.rules?.filter ?? 'all';
+    const parts: string[] = [];
+    for (const d of this.drops) {
+      if (d.age < 0) continue;
+      parts.push(`${d.purse ? 'purse' : d.item?.unique ? 'unique' : d.rarity ?? (d.coins ? 'coins' : 'common')}:${this.dropShown(d, filter) ? 1 : 0}`);
+    }
+    const a = nearest?.armed;
+    // The name plates drawn last frame, centre in canvas CSS px: what a tap would hit (the e2e taps it).
+    const scale = this.height / 720, labels: string[] = [];
+    for (const d of this.drops) if (d.lw > 0 && d.age >= 0) labels.push(`${d.color}@${Math.round((d.lx + d.lw / 2 - this.camera) * scale)},${Math.round((d.ly + 11 - this.cameraY) * scale)}`);
+    return {
+      drops: parts.join(','),
+      labels: labels.join(' '),
+      aura: this.rules?.aura ? `${this.rules.aura.id}:${this.rules.aura.level}` : '',
+      debuffed: this.marked,
+      foe: a ? [a.rank, ...a.mods].join(':') : '',
+      purse: this.drops.some(d => d.purse && d.age >= 0),
+      tier: this.rules?.tier ?? 'normal',
+    };
   }
   /**
    * The living creature the enemy bar should measure: the nearest one the
@@ -5444,15 +5751,156 @@ export class SeamworksEngine {
       this.beamGradients.set(drop.color, gradient);
     }
     const pulse = this.reducedMotion ? .85 : .75 + Math.sin(time * 3 + drop.x * .05) * .25;
+    // Louder rungs: a wider halo, a brighter column, a white-hot core and a bigger ground flare (LOOT_TIER_FX).
+    const rank = Math.max(0, tierRank(drop.rarity)), strength = drop.rarity ? Math.max(.3, LOOT_TIER_FX[drop.rarity].alpha) : .3;
+    const halo = 26 + rank * 5, flare = 26 + rank * 7;
     c.save();
     c.globalCompositeOperation = 'lighter';
-    c.fillStyle = drop.color; c.globalAlpha = .3 * pulse * grow;
-    c.beginPath(); c.ellipse(drop.x, drop.y + 1, 26, 6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = drop.color; c.globalAlpha = (.25 + strength * .45) * pulse * grow;
+    c.beginPath(); c.ellipse(drop.x, drop.y + 1, flare, 6 + rank, 0, 0, Math.PI * 2); c.fill();
     c.translate(drop.x, drop.y); c.scale(1, drop.beam * grow);
     c.fillStyle = gradient;
-    c.globalAlpha = .45 * pulse; c.fillRect(-13, -1, 26, 1);
-    c.globalAlpha = pulse; c.fillRect(-3.5, -1, 7, 1);
+    c.globalAlpha = (.3 + strength * .6) * pulse; c.fillRect(-halo / 2, -1, halo, 1);
+    c.globalAlpha = Math.min(1, .6 + strength) * pulse; c.fillRect(-4, -1, 8, 1);
+    c.globalAlpha *= strength; c.fillRect(-4, -1, 8, 1);
+    if (rank >= 2) { c.fillStyle = '#ffffff'; c.globalAlpha = .55 * pulse * strength; c.fillRect(-1, -.85, 2, .85); }
     c.restore();
+  }
+  /** Whether the loot filter shows a drop (coins, gear, runes and the purse always do; see loot-tiers.ts). */
+  private dropShown(drop: Drop, filter: LootFilter): boolean {
+    if (drop.purse || drop.item || drop.rune) return true;
+    return shownUnderFilter(drop.rarity, filter, drop.coins > 0);
+  }
+  /**
+   * Pixel sparkles orbiting a rare-or-better drop (LOOT_TIER_FX.sparkles), and
+   * a crown of four over a named unique. Squares on the art grid; reduced motion
+   * freezes them in a ring.
+   */
+  private drawSparkles(c: CanvasRenderingContext2D, drop: Drop, y: number, time: number): void {
+    const n = drop.rarity ? LOOT_TIER_FX[drop.rarity].sparkles : 0;
+    if (!n && !drop.item?.unique) return;
+    const tt = this.reducedMotion ? 0 : time;
+    const at = this.sparkAt;
+    c.save(); c.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < n; i++) {
+      sparkleAt(i, n, tt + drop.x * .01, drop.beam, at);
+      c.globalAlpha = this.reducedMotion ? .7 : at.a;
+      c.fillStyle = i % 3 === 0 ? '#ffffff' : drop.color;
+      const px = i % 2 ? 4 : 2;
+      c.fillRect(Math.round(drop.x + at.x) - px / 2, Math.round(drop.y + at.y) - px / 2, px, px);
+    }
+    if (drop.item?.unique) {
+      // The crown: four bright points over a named thing.
+      c.globalAlpha = .95; c.fillStyle = '#fff1b0';
+      for (let i = 0; i < 4; i++) c.fillRect(Math.round(drop.x - 12 + i * 8), Math.round(y - 30 - (i === 1 || i === 2 ? 6 : 0)), 4, 4);
+    }
+    c.restore();
+  }
+  /**
+   * A drop's name plate, Diablo style: dark, its name in its rung's colour, a
+   * rule under it. Always shown for uncommon and up, gear, runes and the purse,
+   * so a phone can tap it (pickDrop reads the rect written here). Labels near
+   * each other step up a row so they never stack.
+   */
+  private drawDropLabel(c: CanvasRenderingContext2D, drop: Drop, y: number, index: number): void {
+    c.font = '700 13px system-ui'; c.textAlign = 'center';
+    if (!drop.captionW) drop.captionW = Math.min(220, c.measureText(drop.caption).width + 18);
+    const w = drop.captionW, top = y - 50 - (index % 2) * 24;
+    const left = drop.x - w / 2;
+    drop.lx = left; drop.ly = top; drop.lw = w;
+    c.fillStyle = '#120c14e6'; c.fillRect(left, top, w, 22);
+    c.fillStyle = drop.color; c.fillRect(left, top + 21, w, 1);
+    if (drop.item?.unique || drop.purse) { c.fillRect(left, top, w, 1); }
+    c.fillStyle = drop.color; c.fillText(drop.caption, drop.x, top + 15, w - 8);
+  }
+  /** Rare-or-better drops off the screen: a pip on the frame's edge in the rung's colour, pointing at it. */
+  private drawEdgePips(c: CanvasRenderingContext2D, scale: number, filter: LootFilter): void {
+    if (!this.rules) return;
+    const pip = this.pipAt;
+    for (const drop of this.drops) {
+      if (drop.age < .3 || !(drop.purse || (drop.rarity && LOOT_TIER_FX[drop.rarity].pip))) continue;
+      if (!this.dropShown(drop, filter)) continue;
+      edgePip((drop.x - this.camera) * scale, (drop.y - 30 - this.cameraY) * scale, this.width, this.height, 18, pip);
+      if (!pip.visible) continue;
+      const pulse = this.reducedMotion ? 1 : .75 + .25 * Math.sin(this.elapsed * 5);
+      c.save();
+      c.fillStyle = '#120c14'; c.fillRect(Math.round(pip.x) - 8, Math.round(pip.y) - 8, 16, 16);
+      c.globalAlpha = pulse; c.fillStyle = drop.color; c.fillRect(Math.round(pip.x) - 6, Math.round(pip.y) - 6, 12, 12);
+      c.fillStyle = '#ffffff'; c.fillRect(Math.round(pip.x) - 2, Math.round(pip.y) - 2, 4, 4);
+      c.restore();
+    }
+  }
+  /**
+   * Under the Keeper, the running aura: a pixel ring of the aura's colour at
+   * its reach, a slow sigil of eight marks turning on it, and motes rising; the
+   * pulse auras flash on each pulse. Pixel squares on the art grid, no canvas.
+   */
+  private drawAuraRing(c: CanvasRenderingContext2D, id: AuraId, time: number, k: number): void {
+    const def = AURAS[id];
+    const r = AURA_RADIUS * k, ry = Math.max(14, 22 * k);
+    const tt = this.reducedMotion ? 0 : time;
+    const px = Math.max(2, Math.round(4 * k));
+    c.save();
+    c.translate(this.player.x, this.player.y);
+    c.globalCompositeOperation = 'lighter';
+    c.fillStyle = def.color;
+    // The sigil disc under the feet: a soft wash, then a solid pixel ring.
+    const sr = 78 * k, sry = 18 * k;
+    c.globalAlpha = .18 + this.auraFlash * .2;
+    c.beginPath(); c.ellipse(0, 0, sr, sry, 0, 0, Math.PI * 2); c.fill();
+    c.globalAlpha = .75;
+    for (let i = 0; i < 72; i++) {
+      const a = i / 72 * Math.PI * 2;
+      c.fillRect(Math.round(Math.cos(a) * sr) - px / 2, Math.round(Math.sin(a) * sry) - px / 2, px, px);
+    }
+    // Its eight glyph marks, turning slowly, alternating bright.
+    for (let i = 0; i < 8; i++) {
+      const a = i / 8 * Math.PI * 2 + tt * .6;
+      c.globalAlpha = i % 2 ? .55 : .95;
+      c.fillRect(Math.round(Math.cos(a) * sr * .66) - px, Math.round(Math.sin(a) * sry * .66) - px / 2, px * 2, px);
+    }
+    // The reach: dashed pixel marks on an ellipse at the aura's radius; a pulse aura flashes it.
+    c.globalAlpha = .42 + this.auraFlash * .45;
+    for (let i = 0; i < 64; i++) {
+      if (i % 4 === 3) continue;
+      const a = i / 64 * Math.PI * 2 + tt * .05;
+      c.fillRect(Math.round(Math.cos(a) * r) - px / 2, Math.round(Math.sin(a) * ry) - px / 2, px, px);
+    }
+    // Motes rising inside the ring.
+    if (!this.reducedMotion) {
+      for (let i = 0; i < 10; i++) {
+        const u = (tt * .4 + i / 10) % 1;
+        c.globalAlpha = Math.sin(u * Math.PI) * .85;
+        c.fillRect(Math.round(Math.cos(i * 2.4) * sr * 1.1), -Math.round(u * 150 * k), px, px);
+      }
+    }
+    c.restore();
+  }
+  /**
+   * Over a champion or unique: its name in blue or gold, its mods as coloured
+   * pips; over a creature the aura marks, a small debuff sigil in the aura's
+   * colour (Conviction purple, the Holy auras their element).
+   */
+  private drawRankMarks(c: CanvasRenderingContext2D, monster: Monster, crown: number, bar: number, time: number): void {
+    const a = monster.armed!;
+    if (a.rank === 'champion' || a.rank === 'unique') {
+      const name = a.rank === 'unique' && a.title ? `${a.title} ${monster.def.name}` : monster.def.name;
+      c.font = '700 12px system-ui'; c.textAlign = 'center';
+      c.fillStyle = '#120c14cc'; c.fillRect(monster.x - 70, crown - 36, 140, 16);
+      c.fillStyle = a.rank === 'unique' ? '#e8c898' : '#00d4ff';
+      c.fillText(name, monster.x, crown - 24, 134);
+      for (let i = 0; i < a.mods.length; i++) {
+        c.fillStyle = MOD_DEFS[a.mods[i]].color;
+        c.fillRect(monster.x - bar / 2 + i * 10, crown - 14, 7, 7);
+      }
+    }
+    if (monster.marked && this.rules?.aura) {
+      const color = AURAS[this.rules.aura.id].color;
+      const bob = this.reducedMotion ? 0 : Math.round(Math.sin(time * 4 + monster.x) * 2);
+      c.fillStyle = '#120c14'; c.fillRect(monster.x + bar / 2 + 4, crown - 10 + bob, 12, 12);
+      c.fillStyle = color; c.fillRect(monster.x + bar / 2 + 6, crown - 8 + bob, 8, 8);
+      c.fillStyle = '#120c14'; c.fillRect(monster.x + bar / 2 + 9, crown - 5 + bob, 2, 2);
+    }
   }
   /** The drop's name, shown while the Keeper stands near it or the pointer is over it. */
   private drawDropCaption(c: CanvasRenderingContext2D, drop: Drop, y: number): void {
@@ -5979,8 +6427,12 @@ export class SeamworksEngine {
     }
     if (this.folk.length) this.drawFolk(c, viewport, motionTime);
     if (!t) this.debris.draw(c);
-    for (const drop of this.drops) this.drawDropBeam(c, drop, motionTime);
+    const filter = this.rules?.filter ?? 'all';
+    for (const drop of this.drops) if (this.dropShown(drop, filter)) this.drawDropBeam(c, drop, motionTime);
+    let labelled = 0;
     for (const drop of this.drops) {
+      drop.lw = 0;
+      if (!this.dropShown(drop, filter)) continue;
       // Spilled from the body: an arc out and a short bounce, then the idle bob.
       const t = Math.min(1, drop.age / .5);
       const arc = this.reducedMotion ? 0 : t < .7 ? Math.sin(t / .7 * Math.PI) * 70 : Math.sin((t - .7) / .3 * Math.PI) * 12;
@@ -5995,7 +6447,11 @@ export class SeamworksEngine {
         c.fillStyle = '#9e602c'; c.font = 'bold 14px system-ui'; c.textAlign = 'center'; c.fillText('$', drop.x, y + 5);
       } else if (!this.art(drop.art, drop.x - 15, y - 15, 30, 30) && !this.art('ore', drop.x - 15, y - 15, 30, 30)) { c.fillStyle = '#ed9069'; c.fillRect(drop.x - 8, y - 8, 16, 16); }
       c.shadowBlur = 0; c.restore();
-      if (t >= 1) this.drawDropCaption(c, drop, y);
+      if (t >= 1) {
+        this.drawSparkles(c, drop, y, motionTime);
+        if (drop.item || drop.rune || drop.purse || tierRank(drop.rarity) >= 1) this.drawDropLabel(c, drop, y, labelled++);
+        else this.drawDropCaption(c, drop, y);
+      }
     }
     for (const monster of this.monsters) {
       if (monster.hp <= 0 && monster.dying <= 0) continue;
@@ -6042,6 +6498,7 @@ export class SeamworksEngine {
       c.fillStyle = '#302530'; c.fillRect(monster.x - bar / 2, crown, bar, 6);
       c.fillStyle = '#ffe2c4'; c.fillRect(monster.x - bar / 2, crown, Math.max(monster.hp, monster.shownHp) / full * bar, 6);
       c.fillStyle = '#dd866f'; c.fillRect(monster.x - bar / 2, crown, monster.hp / full * bar, 6);
+      if (monster.armed) this.drawRankMarks(c, monster, crown, bar, motionTime);
     }
     for (const view of this.peers.values()) {
       // One World: peers share the WORLD (the presence zone is its id), wherever in it they stand.
@@ -6076,6 +6533,7 @@ export class SeamworksEngine {
     // Keep the player readable against the dark realm art at narrow viewport sizes.
     const byFire = this.isTown && this.areaDef.scenery === 'seamworks-hub' && Math.abs(this.player.x - 245) < 220;
     if (!t) this.groundShadow(c, this.player.x, this.player.y, 44);
+    if (this.rules?.aura && this.hp > 0) this.drawAuraRing(c, this.rules.aura.id, motionTime, k);
     // Falling up (the Orrery Wells): the ring sits where the feet meet the ceiling, the plate hangs under the head.
     const hanging = this.down < 0;
     c.save(); c.translate(this.player.x, hanging ? this.player.y - DELVE_BOX.height : this.player.y); if (k !== 1) c.scale(k, k);
@@ -6172,6 +6630,7 @@ export class SeamworksEngine {
     this.atmosphere.feedback(c, this.reducedMotion);
     c.restore();
     this.drawFlights(c, this.flightDelta);
+    this.drawEdgePips(c, scale, filter);
     if (this.wound > 0) {
       // A wound reddens the edges of the screen, not the Keeper: the eye stays on the fight.
       const edge = c.createRadialGradient(this.width / 2, this.height / 2, Math.min(this.width, this.height) * .35, this.width / 2, this.height / 2, Math.max(this.width, this.height) * .75);

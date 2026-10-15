@@ -20,7 +20,7 @@ import { iconOf } from '../shared/art/item-icons';
 import type { IconKind } from '../shared/art/item-icon-shapes';
 import { SheetDragDirective } from './sheet-drag.directive';
 import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
-import { areaOf, findStation, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
+import { areaOf, findStation, LootRarity, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY, panelForRoute } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { clusterBy, familyOf, groupItems, slotsForGroup } from '../shared/rpg/item-groups';
@@ -164,6 +164,12 @@ import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTi
 import type { PanelEntry } from './world/panel-registry';
 import { SoundService } from '../shared/sound/sound.service';
 import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
+// Loot & combat (docs/design/loot-and-combat.md): drops, auras, difficulty, the corpse run.
+import { LootService } from '../shared/loot/loot.service';
+import { LootSheetComponent } from '../shared/loot/loot-sheet.component';
+import { LOOT_I18N } from '../shared/loot/loot.i18n';
+import { lootEntry } from '../shared/loot/drop-tables';
+import { itemAuras } from '../shared/loot/aura-sources';
 import { PetSheetComponent } from '../shared/pets/pet-sheet.component';
 import { PetsService } from '../shared/pets/pets.service';
 import { PETS_I18N } from '../shared/pets/pets.i18n';
@@ -305,7 +311,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -371,6 +377,8 @@ export class SideScrollerComponent implements OnDestroy {
   private soundSub?: Subscription;
   /** Menu → Sound is open. */
   soundOpen = false;
+  /** Menu → Loot & Combat (shared/loot/loot-sheet.component.ts). */
+  lootOpen = false;
   /** The Satchel's pet well, opened (shared/pets/pet-sheet.component.ts). */
   petsOpen = false;
   /** "Crafted X — in your Satchel" with its Open, after a craft; null when none. */
@@ -396,6 +404,11 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
   private readonly economy = inject(EconomyService);
+  /** Loot & combat: drops, the aura, the difficulty, the corpse run (shared/loot). */
+  private readonly loot = inject(LootService);
+  private rulesKey = '';
+  /** Gold the last fall left behind (the fall card says it). */
+  fallGold = 0;
   /** Coins picked up across sessions (PLAY_KEY), shown in the satchel. */
   coinsKept = 0;
   /** Drops already credited this page (the engine reports an accepted drop once; this makes sure). */
@@ -748,6 +761,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(BOUNTIES_I18N);
     this.i18n.register(HEIGHTS_I18N);
     this.i18n.register(SOUND_I18N);
+    this.i18n.register(LOOT_I18N);
     this.i18n.register(ONE_WORLD_I18N);
     this.i18n.register(TRAVEL_MAP_I18N);
     this.keeperKey = ''; this.marksKey = '';
@@ -763,8 +777,16 @@ export class SideScrollerComponent implements OnDestroy {
       satchelTarget: () => this.satchelPoint(),
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
       onStation: station => this.zone.run(() => this.openStation(station)),
-      onLoot: loot => this.zone.run(() => (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
-        && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore))),
+      onLoot: loot => this.zone.run(() => (loot.item || loot.rune ? this.collectGear(loot.id, loot)
+        : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
+        && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)))),
+      // What a kill drops on top of its area's table (shared/loot/drop-tables.ts). Outside the zone: pure rolls.
+      rollLoot: kill => this.loot.rollLoot(kill).map((drop, i) => lootEntry(drop, `loot${i}`)),
+      // The corpse run's purse, walked over: its Gold comes home.
+      onPurse: () => this.zone.run(() => {
+        const gold = this.loot.recover();
+        if (gold > 0) { this.message = this.t('play.loot.recovered', { n: gold }); this.sound.sfx('coin'); this.bump('.coin-count'); }
+      }),
       onWorldAction: event => this.zone.run(() => {
         const result = this.worldAction(event);
         // A generated Delve cell broke (it paid XP, or would have): the Board Herald's dig bounties count it.
@@ -800,6 +822,8 @@ export class SideScrollerComponent implements OnDestroy {
       gathering: this.gatherSave,
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
+        // The Keeper fell: the corpse run (shared/loot). A share of the purse lies where they fell.
+        if (state.defeated && !this.state.defeated) this.fallen(state);
         if (state.delve && !this.state.delve) this.refundOrphanChests();
         // At the shaft: is there a camp below to descend to? Asked once per arrival, not per frame.
         if (state.nearby === 'delve' && this.state.nearby !== 'delve') { this.campReady = !!this.engine?.hasDelveCamp(); this.anchorsReady = (this.engine?.delveAnchors().length ?? 0) > 0; }
@@ -812,6 +836,15 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-liquid', state.liquid?.in ?? '');
           // The fish under the water in view (fish-shadows.ts): "where are the fish?" — there.
           el.setAttribute('data-fish-shadows', String(state.fishShadows ?? 0));
+          // Loot & combat (shared/loot): drops on the ground by rung, the aura, the marked creatures, the foe's pack.
+          el.setAttribute('data-loot-drops', state.loot?.drops ?? '');
+          el.setAttribute('data-loot-labels', state.loot?.labels ?? '');
+          el.setAttribute('data-aura', state.loot?.aura ?? '');
+          el.setAttribute('data-aura-debuffed', String(state.loot?.debuffed ?? 0));
+          el.setAttribute('data-foe-pack', state.loot?.foe ?? '');
+          el.setAttribute('data-purse', state.loot?.purse ? 'true' : 'false');
+          el.setAttribute('data-tier', state.loot?.tier ?? '');
+          el.setAttribute('data-kills', String(state.kills ?? 0));
           // The Underhearth (Phase 8): depth, the cart, the grapple, the furnace's fight.
           el.setAttribute('data-depth', state.depth === undefined ? '' : String(state.depth));
           el.setAttribute('data-biome', state.biome ?? '');
@@ -938,6 +971,8 @@ export class SideScrollerComponent implements OnDestroy {
           this.engine.moveTo(this.engine.pick(event.clientX, event.clientY).x);
           return;
         }
+        // A drop's name plate (or the drop) under the tap: pick it up, or walk to it (shared/loot).
+        if (this.zone.run(() => this.engine?.pickDrop(event.clientX, event.clientY))) return;
         if (this.engine.strikeAt(event.clientX, event.clientY)) return;
         const hit = this.engine.pick(event.clientX, event.clientY);
         // The Homestead Forge strikes where it is clicked, without walking there.
@@ -1040,6 +1075,39 @@ export class SideScrollerComponent implements OnDestroy {
     this.bump('.coin-count');
     this.sound.sfx('coin');
     return true;
+  }
+  /**
+   * A gear or rune drop reached the Keeper: LootService mints it (the roll is
+   * frozen then) or grants the rune. False leaves it shining on the ground.
+   */
+  private collectGear(dropId: string, loot: { item?: { definitionId: string; rarity: LootRarity; unique: boolean }; rune?: string }): boolean {
+    const got = this.loot.grantDrop(dropId, loot);
+    if (!got) return false;
+    this.sound.sfx('pickup');
+    this.pulseSatchel();
+    return true;
+  }
+  /** The Keeper fell: the tier's share of the purse lies where they fell (the corpse run). */
+  private fallen(state: EngineState): void {
+    if (!this.browser) return;
+    this.fallGold = this.loot.fall(state.areaId ?? this.town.id, state.x ?? 0, state.y ?? 0);
+    this.pushPurse();
+  }
+  /** Hand the engine the purse (it lies only in the area it fell in). */
+  private pushPurse(): void {
+    const p = this.loot.state.purse;
+    this.engine?.setFallenPurse(p ? { area: p.area, x: p.x, y: p.y, gold: p.gold } : null);
+  }
+  /** Loot & combat rules (aura, resists, difficulty, filter) to the engine when they change. */
+  private pushRules(): void {
+    if (!this.engine || !this.browser) return;
+    const rules = this.loot.combatRules();
+    const key = JSON.stringify(rules);
+    if (key === this.rulesKey) return;
+    const first = !this.rulesKey;
+    this.rulesKey = key;
+    this.engine.setCombatRules({ tier: rules.tier, seed: rules.seed, aura: rules.aura, resists: rules.resists, filter: rules.filter });
+    if (first) this.pushPurse();
   }
   private playSave(): { town?: unknown; coins?: unknown } {
     const raw = this.store.read(PLAY_KEY);
@@ -1220,6 +1288,8 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Menu → Sound. */
   openSound(): void { this.placesOpen = false; this.soundOpen = true; }
+  /** Menu → Loot & Combat. */
+  openLoot(): void { this.placesOpen = false; this.lootOpen = true; }
   ngOnDestroy(): void {
     this.companions.flush();
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
@@ -2021,7 +2091,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   get equipped(): boolean { return !!this.edge?.equipped; }
   /** What the worn loadout buys in a fight. Strike drives damage, Ward max HP. */
-  get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals); }
+  /** The worn loadout's fight numbers, with the Hunting level on top (the Keeper's character level; keeper-combat.ts). */
+  get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals, this.huntingLevel); }
+  get huntingLevel(): number { return skillLevel(this.activity.snapshot.progress, 'hunting'); }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
     if (this.state.areaId === 'homestead') return this.t('play.hud.obj.homestead');
@@ -2997,7 +3069,8 @@ export class SideScrollerComponent implements OnDestroy {
       kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
       tone: rarityColor(item.rarity),
       note: item.lore || def?.lore || this.t(worn ? 'play.hud.slip.wornBy' : 'play.hud.slip.inSatchel'),
-      stats,
+      // A D2-style aura the piece carries (its Socket Word or its name; shared/loot/aura-sources.ts).
+      stats: [...stats, ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level }))],
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
       canStow: worn,
       canSend: !worn,
@@ -3109,6 +3182,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.pushFishing();
     this.pushHeldTools(snapshot.items.filter(item => !isChestHolder(item.explorerId)).map(item => item.definitionId), progress);
     this.pushUnderhearth();
+    this.pushRules();
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
@@ -3806,6 +3880,9 @@ export class SideScrollerComponent implements OnDestroy {
     if ((event.areaId === 'reflection-channels' && event.creature === 'prism-forager') || (event.areaId === 'unrecorded-corridors' && event.creature === 'mirror-substitute')) {
       this.pets.count(`kill:${event.areaId}`);
     }
+    // A gate boss on this tier opens the next one (shared/loot/difficulty.model.ts).
+    const opened = this.loot.killed(event.creature);
+    if (opened) this.message = this.t('play.loot.unlocked', { tier: this.t('loot.tier.' + opened) });
     const base = huntingXpFor(event.hp);
     const xp = base + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
     const result = this.skillActions.act({ mutationId: `hunt:${event.id}`, skill: 'hunting', xp, locationId: this.worldLocation(event.areaId) });
