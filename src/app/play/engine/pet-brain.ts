@@ -141,8 +141,8 @@ export class PetBrain {
     if (this.pose === 'attack') return 'fight';
     if (this.pose === 'guide') return 'guide';
     if (Number.isFinite(this.spotX)) return 'scout';
-    if (this.goalX !== null) return 'work';
     if (this.mote) return 'play';
+    if (this.goalX !== null) return 'work';
     return 'follow';
   }
 
@@ -216,12 +216,12 @@ export class PetBrain {
 
   /** Close on a foe near the Keeper and use its move. True while it is in a fight. */
   private fight(w: PetWorld, petX: number): boolean {
-    if (!fights(this.role, this.command) || !w.foes.length) { if (this.pose === 'attack' && this.poseFor <= 0) this.pose = 'none'; return false; }
     const k = w.figure;
     const range = (this.command === 'fight' ? PET_ACT.engageFight : PET_ACT.engage) * k;
+    // The Sunling: its pulse is for the Keeper, not the foe (a hurt Keeper, foes or none).
+    if (this.move === 'pulse' && fights(this.role, this.command)) return this.pulse(w, petX, range);
+    if (!fights(this.role, this.command) || !w.foes.length) { if (this.pose === 'attack' && this.poseFor <= 0) this.pose = 'none'; return false; }
     if (w.safeX && w.keeperX < w.safeX) return false;
-    // The Sunling: its pulse is for the Keeper, not the foe.
-    if (this.move === 'pulse') return this.pulse(w, petX, range);
     let foe: PetFoe | null = null, best = range;
     for (const f of w.foes) {
       const d = Math.abs(f.x - w.keeperX);
@@ -263,8 +263,8 @@ export class PetBrain {
       const r = w.hit(foe.ref, damage);
       this.lunge = Math.sign(foe.x - petX) * 26 * k;
       if (r.landed) {
-        if (this.move === 'bite') w.stun(foe.ref, PET_ACT.stun);
-        if (this.move === 'chomp') w.crack(foe.ref, PET_ACT.crack, PET_ACT.crackFor);
+        if (this.move === 'bite' && !nip && (this.hits + 1) % PET_ACT.stunEvery === 0) w.stun(foe.ref, PET_ACT.stun);
+        if (this.move === 'chomp' && !nip) w.crack(foe.ref, PET_ACT.crack, PET_ACT.crackFor);
         this.landed(w, foe, r.killed);
       }
     }

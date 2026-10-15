@@ -75,6 +75,11 @@ import { GlimService } from '../shared/glim/glim.service';
 import { GlimVoice } from '../shared/glim/glim-voice';
 import { GlimIconComponent } from '../shared/glim/glim-icon.component';
 import { GlimTalkComponent } from '../shared/glim/glim-talk.component';
+import { GlimChatComponent } from '../shared/glim/glim-chat.component';
+import { GLIM_ALIVE_I18N } from '../shared/glim/glim-alive.i18n';
+import { CompanionHost } from './companion-host';
+import { PET_ACT, PET_ROLES, works } from '../shared/pets/pet-roles';
+import type { TipContext } from '../shared/glim/glim-react';
 import { GLIM_BOND_I18N } from '../shared/glim/glim-bond.i18n';
 import {
   BACK_AFTER_MS, GLIM_RARE_KINDS, NOTICE_CELLS, SENSE_CELLS, WAY_FAR_CELLS,
@@ -276,7 +281,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -404,7 +409,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   readonly glimNpc = npcById('glim');
   readonly glimVoice = new GlimVoice(inject(GlimService));
-  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } | null = null;
+  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean; mood: string; trail: number | null; lamp: number } | null = null;
   /**
    * The Keeper's story (shared/story): beats are read off the save each HUD
    * tick; a beat reached live speaks through Glim's line, and an act boundary
@@ -673,7 +678,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
       // Cloud save merged another device's harvests: nodes re-read their regrowth.
       this.gatherSub = this.gatherSave.reloaded$.subscribe(() => this.engine?.setGathering(this.gatherSave));
-      this.joySub = this.levelUps.events$.subscribe(() => this.engine?.keeperFeel('happy', 1.4));
+      this.joySub = this.levelUps.events$.subscribe(() => { this.engine?.keeperFeel('happy', 1.4); this.companions.levelUp(); });
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
@@ -694,6 +699,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
+    this.i18n.register(GLIM_ALIVE_I18N);
     this.i18n.register(STORY_I18N);
     this.i18n.register(BOUNTIES_I18N);
     this.i18n.register(HEIGHTS_I18N);
@@ -738,6 +744,10 @@ export class SideScrollerComponent implements OnDestroy {
       onSfx: cue => this.engineSfx(cue),
       // The tool in hand changed (held-tool.ts): a soft cue and the canvas key for tests. No change detection.
       onHeldTool: tool => this.heldToolSwapped(tool),
+      // The pet did something (pet-brain.ts): XP, finds, toasts, Glim's word (companion-host.ts).
+      onPet: event => this.zone.run(() => this.companions.onPet(event)),
+      // A moment Glim reacts to (a dodge, a rare beam, a drop left lying).
+      onGlimCue: cue => this.zone.run(() => this.companions.onGlimCue(cue)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
@@ -1159,6 +1169,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Menu → Sound. */
   openSound(): void { this.placesOpen = false; this.soundOpen = true; }
   ngOnDestroy(): void {
+    this.companions.flush();
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); this.placePanel?.nativeElement.removeEventListener('click', this.panelLinkClick, true); }
@@ -1486,6 +1497,41 @@ export class SideScrollerComponent implements OnDestroy {
 
   // ── Pets (shared/pets; docs/handoff/pets.md) ──
 
+  /**
+   * The pets' roles and Glim being alive (companion-host.ts; docs/handoff/pets-and-glim-alive.md):
+   * pet XP and finds, Glim's reactions, the chat card, catch-the-light.
+   */
+  readonly companions = new CompanionHost({
+    engine: () => this.engine ?? null,
+    pets: this.pets,
+    glim: this.glim,
+    voice: this.glimVoice,
+    t: (key, vars) => this.t(key, vars),
+    sfx: cue => this.sound.sfx(cue),
+    toast: text => { this.message = text; this.toastLoot(text); },
+    grant: (grantId, item, qty) => this.inventory.grantStack(grantId, item, qty),
+    itemName: id => materialDisplay(id)?.name ?? titleCase(id.replace(/-/g, ' ')),
+    busy: () => !!this.panel || !!this.storyCard || !!this.storyScene || !!this.glimTalk || this.map.open || this.petsOpen,
+    tipContext: () => this.tipContext(),
+    repushPet: () => { this.petKey = ''; this.pushPet(); },
+  });
+  /** Where the Keeper is, for one of Glim's tips. */
+  private tipContext(): TipContext {
+    if (this.state.fishing || this.state.canFish) return 'fishing';
+    if (this.state.delve) return 'delve';
+    if (followingPet(this.pets.state) && Math.random() < .35) return 'pets';
+    return (this.state.enemyHp ?? 0) > 0 || this.town.hunts.some(h => h.id === this.state.areaId) ? 'hunt' : 'town';
+  }
+  /** Tap Glim: the chat card. */
+  openGlimChat(): void {
+    if (this.glimTalk) return;
+    this.glimVoice.dismiss();
+    this.companions.openChat();
+  }
+  closeGlimChat(): void { this.companions.closeChat(); this.focusWorld(); }
+  /** "Quiet Glim" is on (the chat card shows the switch). */
+  get glimQuiet(): boolean { return this.browser && this.glim.quiet; }
+
   private petsAt = 0;
   private petKey = '';
   /** The Star Owlet's ore cells (the maps mark them), re-read once a second in the Delve. */
@@ -1546,25 +1592,34 @@ export class SideScrollerComponent implements OnDestroy {
     const state = this.pets.state;
     const def: PetDef | null = followingPet(state);
     const rec = def ? state.pets[def.id] : undefined;
-    const key = def && rec ? `${def.id}|${rec.name}|${rec.hat}` : '';
+    const command = this.pets.command;
+    const grown = def ? this.companions.petLevel(def.id) : { level: 1, second: false };
+    const key = def && rec ? `${def.id}|${rec.name}|${rec.hat}|${command}|${grown.level}` : '';
     if (key === this.petKey) return;
     this.petKey = key;
-    this.engine.setPet(def && rec ? { id: def.id, name: rec.name, hat: rec.hat, ability: def.ability } : null);
+    const role = def ? PET_ROLES[def.id] : null;
+    this.engine.setPet(def && rec && role ? {
+      id: def.id, name: rec.name, hat: rec.hat, ability: def.ability,
+      role: role.role, move: role.move, second: grown.second ? role.second : null, level: grown.level, command,
+    } : null);
     this.fishKey = '';
     this.pushFishing();
   }
   /** Where the pet is (the canvas's data-pet-* for the e2e). */
-  get petAt(): { id: string; x: number; state: string; fetching: boolean; glow: boolean } | null { return this.engine?.petView ?? null; }
+  get petAt(): { id: string; x: number; state: string; fetching: boolean; glow: boolean; act: string; hits: number; gathers: number; finds: number; heals: number; command: string; level: number } | null { return this.engine?.petView ?? null; }
   /** The helper of the pet following, or null. */
   private get petAbility(): PetDef['ability'] | null { return this.browser ? followingPet(this.pets.state)?.ability ?? null : null; }
   openPets(): void { this.placesOpen = false; this.petsOpen = true; this.sound.sfx('open'); }
   closePets(): void { this.petsOpen = false; this.pushPet(); }
   /** The pet sheet asked the pet in the world to react (a meal, its trick, a hatch). */
-  petFelt(event: { id: string; kind: 'happy' | 'trick' | 'hatch' }): void {
+  petFelt(event: { id: string; kind: 'happy' | 'love' | 'trick' | 'hatch' }): void {
     this.pushPet();
     if (event.kind === 'hatch') { this.sound.sfx('hatch'); this.petsAt = 0; this.tickPets(); }
-    this.engine?.petFeel(event.kind === 'trick' ? 'trick' : 'happy');
+    if (event.kind === 'trick') this.companions.petTrick();
+    this.engine?.petFeel(event.kind === 'trick' ? 'trick' : event.kind === 'love' ? 'love' : 'happy');
   }
+  /** A command from the pet card (Follow / Stay / Fight / Gather / Play). */
+  petCommanded(): void { this.petKey = ''; this.pushPet(); }
 
   // ── The bond with Glim (shared/glim/glim-bond.ts) ──
 
@@ -1804,7 +1859,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setGlim(voice.met, voice.justMet);
     voice.justMet = false;
     const at = this.engine.glimView;
-    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed, bright: at.bright } : null;
+    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed, bright: at.bright, mood: at.mood, trail: at.trail, lamp: at.lamp } : null;
+    this.companions.tick(this.state, this.pushed.maxHp);
   }
   /** The goal row's Glim button: the next step of this goal's hint ladder; step 3 is Show me. */
   askGlim(): void {
@@ -2016,6 +2072,8 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape') { event.preventDefault(); this.closeGlimTalk(); }
       return;
     }
+    // Glim's chat card: Escape closes it (the world keeps running underneath).
+    if (this.companions.chatOpen && event.key === 'Escape') { event.preventDefault(); this.closeGlimChat(); return; }
     // An open place owns the keyboard. Escape closes it unless the page inside
     // already used the key (its own dialog, a reveal) — window is the last stop.
     if (this.panel) {
@@ -3155,7 +3213,10 @@ export class SideScrollerComponent implements OnDestroy {
     const breath = this.infusions.multiplierOn('breath');
     const elixir = Object.values(this.inventory.snapshot.equipped).some(item => item && !item.explorerId && item.definitionId === 'ember-elixir');
     // The Shade-kit watches the water: a bite comes sooner (the engine caps the speed at 4).
-    const watch = this.petAbility === 'fish' ? PET_TUNING.biteBoost : 1;
+    // The Prism Moth-kit guides the cast (its move, when it is working): it hovers over the bob, a little sooner still.
+    const moth = this.browser ? followingPet(this.pets.state) : null;
+    const guide = moth && PET_ROLES[moth.id].move === 'guide' && works(PET_ROLES[moth.id].role, this.pets.command) ? PET_ACT.guideBoost : 1;
+    const watch = (this.petAbility === 'fish' ? PET_TUNING.biteBoost : 1) * guide;
     const key = `${rod?.tier ?? 0}:${rod?.liquids.join('/') ?? ''}:${rod?.bite.toFixed(3) ?? 0}:${breath}:${elixir}:${watch}`;
     if (key === this.fishKey) return;
     this.fishKey = key;

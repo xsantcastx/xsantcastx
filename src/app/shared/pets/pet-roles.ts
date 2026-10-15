@@ -104,8 +104,8 @@ export const PET_ACT = {
   nipDamage: 2,
   /** Seconds between a pet's blows. */
   biteRest: 1.6, dashRest: 3.4, chompRest: 2,
-  /** The bite's stun (s), the dash's line (px), the chomp's crack: a foe takes this much more from every blow, this long. */
-  stun: .7, dashSpan: 260, crack: .2, crackFor: 5,
+  /** The bite's stun (s, every `stunEvery`-th bite), the dash's line (px), the chomp's crack: a foe takes this much more from every blow, this long. */
+  stun: .7, stunEvery: 3, dashSpan: 260, crack: .1, crackFor: 5,
   /** The Sunling's pulse: once the Keeper is below this share of max HP, this share back, this often (s). */
   pulseBelow: .7, pulseShare: .04, pulseRest: 7,
   /** Second moves: howl / flare stun every foe within this (px) for this long (s), this often (s). */
