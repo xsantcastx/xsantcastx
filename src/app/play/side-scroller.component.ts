@@ -85,7 +85,8 @@ import { NpcQuestService } from '../shared/npc/npc-quest.service';
 import { STORY_I18N } from '../shared/story/story.i18n';
 import { StoryService } from '../shared/story/story.service';
 import { STORY_CARD_PARAGRAPHS } from '../shared/story/story';
-import type { StoryCardId } from '../shared/story/story-save.model';
+import type { StoryCardId, StorySceneId } from '../shared/story/story-save.model';
+import { StorySceneComponent } from '../shared/story/story-scene.component';
 import { DelveSaveService } from '../shared/delve/delve-save.service';
 import { DelveLoreService } from '../shared/delve/delve-lore.service';
 import { GatherSaveService } from '../shared/skills/gather-save.service';
@@ -272,7 +273,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent, PetSheetComponent, SheetDragDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -412,6 +413,16 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly openedAt = Date.now();
   /** The act-boundary card on screen, or null. */
   storyCard: { id: StoryCardId; paragraphs: string[] } | null = null;
+  /**
+   * An Act II scene on screen (shared/story/story-scene.component.ts), or null.
+   * A scene whose beat is reached live opens as soon as the Keeper is free; of
+   * the scenes a loaded save already owes (reached on another visit or device),
+   * one opens per visit and the rest wait in the Story tab, so nobody comes
+   * back to a queue of cards.
+   */
+  storyScene: StorySceneId | null = null;
+  private readonly scenesLive = new Set<StorySceneId>();
+  private sceneOwedShown = false;
   /** The Homestead's Gold list is unfolded: on phones it takes the HUD plates' place. */
   columnOpen = false;
   private readonly zone = inject(NgZone);
@@ -1541,7 +1552,7 @@ export class SideScrollerComponent implements OnDestroy {
   closeGlimTalk(): void {
     if (!this.glimTalk) return;
     this.glimTalk = null;
-    if (!this.panel && !this.map.open && !this.storyCard) this.engine?.setPaused(false);
+    if (!this.panel && !this.map.open && !this.storyCard && !this.storyScene) this.engine?.setPaused(false);
     this.focusWorld();
   }
   /**
@@ -1552,17 +1563,23 @@ export class SideScrollerComponent implements OnDestroy {
   private tickStory(goals: { met: boolean; bought: boolean; armed: boolean; hunted: boolean; dug: boolean }): void {
     if (!this.browser) return;
     const live = Date.now() - this.openedAt >= STORY_CATCH_UP_MS;
+    const before = new Set(this.story.state.beats);
     const lines = this.story.advance({
       ...goals,
       inscriptions: this.delveLore.inscriptions(),
       missionDone: id => this.quests.isMissionDone(id),
       wardenDown: this.delve.isClaimed(WARDEN_FLAG),
+      cabinets: this.cabinets.count(),
     }, live);
+    if (live) for (const beat of this.story.state.beats) if (!before.has(beat)) this.scenesLive.add(beat as StorySceneId);
     if (lines.length) this.glimVoice.story(lines);
     this.tickKeepers(goals);
-    if (!this.storyCard && !this.panel && !this.map.open && !this.state.defeated) {
-      const card = this.story.pendingCard();
-      if (card) this.openStoryCard(card);
+    if (!this.storyCard && !this.storyScene && !this.glimTalk && !this.panel && !this.map.open && !this.state.defeated) {
+      // A scene first (the act's last scene comes before the card that ends the act), then a card.
+      const scene = live ? this.story.pendingScenes().find(id => this.scenesLive.has(id) || !this.sceneOwedShown) : undefined;
+      const card = scene ? null : this.story.pendingCard();
+      if (scene) this.openStoryScene(scene);
+      else if (card) this.openStoryCard(card);
     }
   }
   /** The last story beats + station deeds handed to the town keepers (world/keeper-lines.ts). */
@@ -1607,6 +1624,25 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.setPaused(true);
     setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.story-card__go')?.focus({ preventScroll: true }));
   }
+  private openStoryScene(id: StorySceneId): void {
+    if (!this.scenesLive.has(id)) this.sceneOwedShown = true;
+    this.storyScene = id;
+    this.bagOpen = false; this.placesOpen = false;
+    this.glimVoice.dismiss();
+    this.engine?.setHover(null);
+    this.engine?.setPaused(true);
+    setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.story-scene-card .ss__go')?.focus({ preventScroll: true }));
+  }
+  /** Take it (or Escape, which still files it: a reward is never lost to a skip). The world moves again. */
+  closeStoryScene(): void {
+    const id = this.storyScene;
+    if (!id) return;
+    this.storyScene = null;
+    this.scenesLive.delete(id);
+    this.story.playScene(id);
+    if (!this.panel && !this.map.open) this.engine?.setPaused(false);
+    this.focusWorld();
+  }
   /** Continue (or Escape): the card is filed as shown and the world moves again. */
   closeStoryCard(): void {
     const card = this.storyCard;
@@ -1631,7 +1667,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Glim's tick: maybe a line (glim.ts nextLine), the sprite shown once met, and where it is. */
   private tickGlim(areaId: string, goalsDone: boolean, hunted: boolean, armed: boolean): void {
     const voice = this.glimVoice;
-    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard || !!this.glimTalk, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
+    voice.tick({ now: Date.now(), panelOpen: !!this.panel || !!this.storyCard || !!this.storyScene || !!this.glimTalk, areaId, armed, hunted, goalsDone, dimmed: !!this.glimAt?.dimmed });
     if (!this.engine) return;
     this.engine.setGlim(voice.met, voice.justMet);
     voice.justMet = false;
@@ -1816,6 +1852,11 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape') { event.preventDefault(); this.closeStoryCard(); }
       return;
     }
+    // So does a scene.
+    if (this.storyScene) {
+      if (event.key === 'Escape') { event.preventDefault(); this.closeStoryScene(); }
+      return;
+    }
     // So does a talk with Glim.
     if (this.glimTalk) {
       if (event.key === 'Escape') { event.preventDefault(); this.closeGlimTalk(); }
@@ -1879,11 +1920,11 @@ export class SideScrollerComponent implements OnDestroy {
    * a mini-game (slate.model slateRefusal); the reason goes to the message line.
    */
   openSlate(): void {
-    if (!this.browser || this.panel || this.storyCard) return;
+    if (!this.browser || this.panel || this.storyCard || this.storyScene) return;
     this.tickSlate();
     const refusal = slateRefusal({
       tier: this.slateTier, defeated: !!this.state.defeated, enemyHp: this.state.enemyHp,
-      fishing: !!this.state.fishing, reeling: !!this.reel, storyCard: !!this.storyCard,
+      fishing: !!this.state.fishing, reeling: !!this.reel, storyCard: !!this.storyCard || !!this.storyScene,
     });
     if (refusal) {
       if (refusal !== 'unowned') this.message = this.t(`slate.refuse.${refusal}`);
@@ -2604,7 +2645,7 @@ export class SideScrollerComponent implements OnDestroy {
       el?.setAttribute('data-keeper-gear', gearKey(gear));
     }
     // Offered once the arrival has settled (the route's first query emissions close any open place).
-    if (!look.made && !this.makerOffered && this.onboarding.finishedHere && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.glimTalk) {
+    if (!look.made && !this.makerOffered && this.onboarding.finishedHere && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.storyScene && !this.glimTalk) {
       this.makerOffered = true;
       this.openKeeperMaker();
     }

@@ -7,7 +7,7 @@
  * lazy story table (EN + ES); the hub loads this tab with @defer, so none of it
  * rides the shell's initial bundle.
  */
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, OnDestroy, OnInit, inject } from '@angular/core';
 import { Subscription } from 'rxjs';
 import { TranslationService } from '../../translation.service';
 import { StoryService } from './story.service';
@@ -15,17 +15,25 @@ import { JournalView, journalView } from './story';
 import { STORY_I18N } from './story.i18n';
 import { GlimService } from '../glim/glim.service';
 import { HubGlimBondComponent } from '../glim/hub-glim-bond.component';
+import { StorySceneComponent } from './story-scene.component';
+import type { StorySceneId } from './story-save.model';
 
 @Component({
   selector: 'app-hub-story',
   standalone: true,
-  imports: [HubGlimBondComponent],
+  imports: [HubGlimBondComponent, StorySceneComponent],
   template: `
     <section class="hs" [attr.data-story-chapter]="view.chapter" aria-labelledby="hs-title">
       <header class="hs__head">
         <p class="hs__kicker">{{ t('story.journal.kicker') }}</p>
         <h3 id="hs-title" class="hs__title">{{ t(view.title) }}</h3>
       </header>
+      <!-- An Act II scene, played here: one owed (its reward lands at the end), or one seen again (it pays nothing twice). -->
+      @if (playing) {
+        <div class="hs__scene">
+          <app-story-scene [sceneId]="playing" (done)="playing = null" />
+        </div>
+      }
       <div class="hs__lead" role="note">
         <b>{{ t('story.journal.lead') }}</b>
         <p data-story-lead>{{ t(view.lead) }}</p>
@@ -41,7 +49,14 @@ import { HubGlimBondComponent } from '../glim/hub-glim-bond.component';
           @if (chapter.beats.length) {
             <ol class="hs__beats">
               @for (beat of chapter.beats; track beat.id) {
-                <li [attr.data-beat]="beat.id"><b>{{ t(beat.title) }}</b><span>{{ t(beat.text) }}</span></li>
+                <li [attr.data-beat]="beat.id" [attr.data-scene]="beat.scene">
+                  <b>{{ t(beat.title) }}</b><span>{{ t(beat.text) }}</span>
+                  @if (beat.scene) {
+                    <button type="button" class="hs__play" [class.hs__play--new]="beat.scene === 'new'" [attr.data-play-scene]="beat.id" (click)="play(beat.id)">
+                      {{ t(beat.scene === 'new' ? 'story.scene.play' : 'story.scene.replay') }}@if (beat.scene === 'new') { <small> · {{ t('story.scene.new') }}</small> }
+                    </button>
+                  }
+                </li>
               }
             </ol>
           }
@@ -68,14 +83,25 @@ import { HubGlimBondComponent } from '../glim/hub-glim-bond.component';
     .hs__beats li { display: grid; gap: 2px; padding-left: 12px; border-left: 2px solid var(--adventure-ember); }
     .hs__beats b { color: var(--adventure-parchment); }
     .hs__beats span { color: var(--adventure-dialogue); line-height: 1.45; }
+    .hs__play {
+      justify-self: start; min-height: 44px; margin-top: 4px; padding: 0 14px; border: 1px solid var(--adventure-hud-brass);
+      background: transparent; color: var(--adventure-parchment); font: 600 11px Orbitron, sans-serif; letter-spacing: .08em; cursor: pointer;
+    }
+    .hs__play--new { border-color: var(--adventure-ember); background: color-mix(in srgb, var(--adventure-ember) 14.00%, transparent); }
+    .hs__play small { color: var(--adventure-hud-gold); font: inherit; }
+    .hs__play:hover, .hs__play:focus-visible { border-color: var(--adventure-hud-gold); outline: none; }
+    .hs__scene { padding: 14px; border: 2px solid var(--adventure-hud-brass); background: var(--adventure-hud-panel-solid); box-shadow: 0 0 0 2px var(--adventure-hud-ink), 0 0 0 4px var(--adventure-ember); }
   `],
 })
 export class HubStoryComponent implements OnInit, OnDestroy {
   private readonly story = inject(StoryService);
   private readonly i18n = inject(TranslationService);
   private readonly glim = inject(GlimService);
+  private readonly host = inject(ElementRef<HTMLElement>);
   private sub?: Subscription;
   view: JournalView = journalView(this.story.state);
+  /** The scene playing inline, or null. */
+  playing: StorySceneId | null = null;
 
   constructor() {
     this.i18n.register(STORY_I18N);
@@ -87,6 +113,15 @@ export class HubStoryComponent implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.sub?.unsubscribe();
+  }
+
+  play(id: string): void {
+    this.playing = id as StorySceneId;
+    setTimeout(() => {
+      const box = (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('.hs__scene');
+      box?.scrollIntoView?.({ block: 'nearest' });
+      box?.querySelector<HTMLElement>('.ss__go')?.focus({ preventScroll: true });
+    });
   }
 
   get glimMet(): boolean { return this.glim.state.met; }
