@@ -669,6 +669,8 @@ export class SeamworksEngine {
   }
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
+    // Glim comes along: at the shoulder in the new place, not flying in from where it hovered in the old one.
+    this.glim.reset(); this.glimTrail = null;
     const fresh = !this.worlds.has(area.id);
     this.terrain = this.terrainFor(area); this.world = this.terrain ? this.worlds.get(area.id) ?? null : null;
     // A world already loaded keeps its ring: its halls' creatures come back with the area.
@@ -6022,13 +6024,13 @@ export class SeamworksEngine {
     const p = this.player, k = this.figure;
     const x0 = p.x, y0 = p.y - 60 * k;
     const len = Math.hypot(tr.x - x0, tr.y - y0);
-    const n = Math.min(60, Math.max(4, Math.floor(len / (22 * Math.max(.5, k)))));
+    const n = Math.min(60, Math.max(4, Math.floor(len / (18 * Math.max(.5, k)))));
     const fade = Math.min(1, tr.t / 1.2);
-    const s = Math.max(2, Math.round(3 * Math.max(.7, k)));
+    const s = Math.max(4, Math.round(6 * Math.max(.6, k)));
     const run = this.reducedMotion ? 0 : (time * 6) % 1;
     for (let i = 0; i <= n; i++) {
       const u = (i + run) / (n + 1);
-      c.globalAlpha = .75 * fade * (.35 + .65 * u);
+      c.globalAlpha = fade * (.5 + .5 * u);
       c.fillStyle = i % 3 ? '#ffd98a' : '#c9a6ff';
       c.fillRect(Math.round(x0 + (tr.x - x0) * u) - s / 2, Math.round(y0 + (tr.y - y0) * u) - s / 2, s, s);
     }
