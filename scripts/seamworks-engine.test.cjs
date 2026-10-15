@@ -5036,3 +5036,168 @@ test('tool in hand: without the tool the weapon stays, and the hint is said once
   assert.notEqual(state().messageKey, 'play.hud.tool.missing.axe', 'said once');
   engine.destroy();
 });
+
+// ── Pets with roles, and Glim alive (pet-brain.ts, pet-roles.ts; docs/handoff/pets-and-glim-alive.md) ──
+const petRoles = loadTs(path.resolve(__dirname, '../src/app/shared/pets/pet-roles.ts'));
+function setPetOn(engine, id, ability, command = 'follow', level = 1) {
+  const r = petRoles.PET_ROLES[id];
+  engine.setPet({ id, name: 'Pip', hat: false, ability, role: r.role, move: r.move, second: level >= petRoles.SECOND_AT ? r.second : null, level, command });
+}
+function run(engine, seconds) { for (let n = 0; n < seconds * 60; n++) engine.update(1 / 60); }
+
+test('pets: a combat pet (the Ink Pup) closes on a foe near the Keeper, bites it and stuns it, through hurtMonster', () => {
+  const events = [];
+  const { engine } = fixture(() => true, { onPet: e => { events.push(e); return true; } });
+  setPetOn(engine, 'ink-pup', 'warn');
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 150; engine.player.y = 610;
+  const before = foe.hp;
+  run(engine, 3);
+  assert.ok(foe.hp < before, `the pup bit it (${before} → ${foe.hp})`);
+  assert.ok(engine.petView.hits >= 1);
+  assert.ok(events.some(e => e.kind === 'hit' && e.move === 'bite'));
+  assert.equal(petRoles.moveDamage('bite', 1), petRoles.PET_ACT.biteDamage);
+  engine.destroy();
+});
+
+test('pets: a skilling pet does not fight under Follow; Fight brings it in, Stay keeps it put', () => {
+  const { engine } = fixture(() => true, { onPet: () => true });
+  setPetOn(engine, 'moss-hedgehog', 'gather', 'follow');
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 150; engine.player.y = 610;
+  const before = foe.hp;
+  run(engine, 2);
+  assert.equal(foe.hp, before, 'a hedgehog on Follow leaves the fight to you');
+  setPetOn(engine, 'moss-hedgehog', 'gather', 'fight');
+  run(engine, 3);
+  assert.ok(foe.hp < before, 'told to Fight, it nips too');
+  // Stay: the Keeper walks off; the pet keeps its spot.
+  setPetOn(engine, 'moss-hedgehog', 'gather', 'stay');
+  engine.player.x = foe.x - 900;
+  run(engine, .5);
+  const spot = engine.petView.x;
+  engine.setInput('left', true); run(engine, 1); engine.setInput('left', false);
+  run(engine, 1);
+  assert.equal(engine.petView.act, 'stay');
+  assert.ok(Math.abs(engine.petView.x - spot) < 4, `it stays where it was told (${spot} → ${engine.petView.x})`);
+  engine.destroy();
+});
+
+test('pets: a blow drawn to the pet tires it out (never dead), it rests, then comes back full', () => {
+  const events = [];
+  const { engine } = fixture(() => true, { onPet: e => { events.push(e); } });
+  setPetOn(engine, 'ink-pup', 'warn');
+  const brain = engine.petBrain;
+  for (let n = 0; n < 3; n++) brain.blow({ event: e => events.push(e) });
+  assert.equal(engine.petBrain.act, 'tired');
+  assert.ok(events.some(e => e.kind === 'tired'));
+  run(engine, petRoles.PET_ACT.restFor + .5);
+  assert.notEqual(engine.petBrain.act, 'tired');
+  assert.equal(brain.stamina, petRoles.PET_ACT.stamina);
+  engine.destroy();
+});
+
+test('pets: the Moss Hedgehog works a ready node beside the Keeper (booked as pet-forage, no XP), the node rests', () => {
+  const { engine, calls } = enterThicket({ onPet: () => true });
+  clearFoes(engine);
+  engine.setTools({ sickle: 1, axe: 1, pickaxe: 1 });
+  setPetOn(engine, 'moss-hedgehog', 'gather');
+  standAt(engine, nodeX(engine, 'starlight-clump') + 60);
+  run(engine, 6);
+  const booked = calls.filter(c => c.mutationId.startsWith('pet-forage:'));
+  assert.ok(booked.length >= 1, 'the hedgehog gathered');
+  assert.equal(booked[0].xp, 0, 'the Keeper\'s XP is the Keeper\'s own');
+  assert.ok(engine.petView.gathers >= 1);
+  const site = engine.sites.find(s => s.def.id === booked[0].site);
+  assert.equal(site.ready, false, 'the node rests like any harvest');
+  engine.destroy();
+});
+
+test('pets: the Star Owlet scouts a spot ahead, digs it when the Keeper comes, coins spill; the host can say no', () => {
+  let allow = true;
+  const { engine, state } = fixture(() => true, { onPet: e => (e.kind === 'find' ? allow : undefined) });
+  clearFoes(engine);
+  setPetOn(engine, 'star-owlet', 'scent');
+  engine.player.x = engine.areaDef.spawnX; engine.facing = 1;
+  run(engine, 7);
+  const spot = engine.petMarks.spotX;
+  assert.ok(Number.isFinite(spot), 'a scouted spot');
+  const coins = state().coins;
+  engine.resetPosition(spot);
+  run(engine, 2.5);
+  assert.ok(engine.petView.finds >= 1, 'dug up');
+  assert.ok(state().coins > coins, 'coins spilled and were picked up');
+  allow = false;
+  engine.petBrain.scoutRest = 0;
+  run(engine, 1);
+  assert.ok(!Number.isFinite(engine.petMarks.spotX), 'the day\'s finds spent: no new spot');
+  engine.destroy();
+});
+
+test('pets: the Ember Newt warms an ore vein in the Delve and the warmed vein takes the boost', () => {
+  const { engine } = enterDelve(() => true);
+  engine.options.onPet = () => true;
+  setPetOn(engine, 'ember-newt', 'glow');
+  const t = engine.terrain;
+  const col = t.colAt(engine.player.x) + 2, row = Math.max(0, t.rowAt(engine.player.y + 10));
+  t.set(col, row, terrainMod.nodeIndex('cinder-vein'));
+  run(engine, 2.5);
+  assert.ok(engine.petMarks.warm.length >= 1, 'a vein warmed');
+  // The warmed vein breaks in one strike (3 hp, a starter pickaxe chips 1 a hit).
+  engine.setTools({ pickaxe: 1 }); engine.attackCooldown = 0; engine.facing = 1;
+  assert.equal(engine.strikeCell((col + .5) * 32, t.top + (row + .5) * 32), true);
+  assert.equal(t.kind[t.index(col, row)] === terrainMod.nodeIndex('cinder-vein'), false, 'gone in one strike');
+  assert.ok(petRoles.PET_ACT.kindleBoost > 1);
+  engine.destroy();
+});
+
+test('pets: the Sunling pulses light on a hurt Keeper even mid-fight', () => {
+  const { engine } = fixture(() => true, { onPet: () => true });
+  setPetOn(engine, 'sunling', 'mend');
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 200; engine.player.y = 610;
+  engine.hp = engine.maxHp * .4;
+  const before = engine.hp;
+  engine.update(1 / 60);
+  assert.ok(engine.hp > before, 'the pulse healed');
+  assert.equal(engine.petView.heals, 1);
+  engine.destroy();
+});
+
+test('glim: show me something lays a trail to the nearest find; its powers fly to a missed drop; moods and the high five', () => {
+  const cues = [];
+  const { engine } = fixture(() => false, { onGlimCue: c => cues.push(c) });
+  engine.setGlim(true);
+  killFirst(engine);
+  engine.player.x = engine.monsters[0].x - 600;
+  run(engine, 1.2);
+  const find = engine.glimFind();
+  assert.ok(find, 'something to show');
+  assert.equal(find.kind, 'drop');
+  assert.equal(engine.glimView.trail, find.x);
+  run(engine, 7);
+  assert.equal(engine.glimView.trail, null, 'the trail fades');
+  engine.setGlimPowers({ lamp: true, missed: true });
+  run(engine, 1);
+  assert.ok(cues.some(c => c.kind === 'missed'), 'Glim flew over the drop left lying');
+  engine.glimMood('gasp', 1);
+  assert.equal(engine.glimView.mood, 'gasp');
+  engine.glimHighFive();
+  assert.equal(engine.glimView.mood, 'happy');
+  engine.destroy();
+});
+
+test('glim: a dodge with a foe winding up is a cue; a dodge at nothing is not', () => {
+  const cues = [];
+  const { engine } = fixture(() => true, { onGlimCue: c => cues.push(c) });
+  engine.setGlim(true);
+  engine.player.x = 160;
+  engine.setInput('dodge', true); engine.setInput('dodge', false);
+  assert.equal(cues.length, 0);
+  run(engine, 1.2);
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 120; foe.phase = 'windup'; foe.timer = 1;
+  engine.setInput('dodge', true); engine.setInput('dodge', false);
+  assert.ok(cues.some(c => c.kind === 'dodge'));
+  engine.destroy();
+});
