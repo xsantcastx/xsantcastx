@@ -95,7 +95,6 @@ import {
   type CraftingRecipe,
 } from './crafting.model';
 
-import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { ForgeFloorComponent } from '../forge-floor/forge-floor.component';
 import { AnvilGameComponent } from '../minigames/anvil-game.component';
 import { anvilRng } from '../minigames/anvil.model';
@@ -147,7 +146,7 @@ const DIAL_R = 46;
 @Component({
   selector: 'app-crafting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, AnvilGameComponent, CommonModule, FormsModule, ...STATION_UI],
+  imports: [ForgeFloorComponent, AnvilGameComponent, CommonModule, FormsModule, ...STATION_UI],
   templateUrl: './crafting-bench.component.html',
   styleUrls: ['./crafting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

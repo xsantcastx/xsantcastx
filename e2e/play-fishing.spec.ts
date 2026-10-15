@@ -150,7 +150,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await shot(page, `${label}-landed`);
 
       // The Codex: the Catalogue of Strange Fish names it.
-      await page.goto('/codex');
+      await openPlay(page, '?at=codex');
       await page.locator('.tabs .tab', { hasText: 'Lore' }).first().click();
       await expect(page.getByText('Catalogue of Strange Fish').first()).toBeVisible({ timeout: 10000 });
       await expect(page.getByRole('button', { name: new RegExp(`${NAMES.get(caught!)!} Catalogue of Strange Fish`) }).first()).toBeVisible();

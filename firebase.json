@@ -44,10 +44,10 @@
           },
           {
             "//csp-script-src": "The 'sha256-…' pins the one remaining inline <script> (the pre-paint boot cut in index.html, which cannot be externalised without a render-blocking round-trip). Note that a hash and 'unsafe-inline' are mutually exclusive: per CSP3 a browser that understands hashes IGNORES 'unsafe-inline' whenever any hash or nonce is present, so adding it here would weaken nothing and fix nothing — it would just be dead text. Everything else inline was moved to assets/js/ and is covered by 'self'. scripts/verify-csp-hashes.js fails the build if this hash drifts from the HTML, which is how the previous one went stale and silently killed both inline blocks in production. www.googletagmanager.com is gtag.js, loaded lazily by AnalyticsService after cookie consent; apis.google.com is the gapi shim signInWithPopup needs.",
-            "//csp-connect-src": "*.google-analytics.com and *.analytics.google.com are the GA4 measurement beacons — without them gtag loads and then every event silently fails to send. *.googleapis.com already covers firestore.googleapis.com and identitytoolkit.googleapis.com; wss://*.firestore.googleapis.com covers the WebChannel transport Firestore falls back to. us-central1-xsantcastx-1694b.cloudfunctions.net is where httpsCallable() posts (the player market callables and the Stripe checkout callable); without it every callable is blocked before it leaves the browser.",
+            "//csp-connect-src": "*.google-analytics.com and *.analytics.google.com are the GA4 measurement beacons — without them gtag loads and then every event silently fails to send. *.googleapis.com already covers firestore.googleapis.com and identitytoolkit.googleapis.com; wss://*.firestore.googleapis.com covers the WebChannel transport Firestore falls back to. us-central1-xsantcastx-1694b.cloudfunctions.net is where httpsCallable() posts (the Stripe checkout callable); without it every callable is blocked before it leaves the browser.",
             "//csp-img-src": "Left as the broad `https:` rather than enumerating *.googleusercontent.com (auth avatars) and the GA pixel hosts — `https:` already covers both, and narrowing it would be a behaviour change, not a hardening win, while user-supplied avatar hosts vary.",
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self' 'sha256-OTdoLVltqU7gqB7lqeUpJIvnaJ+hSaPw9rG48HV1NNM=' 'unsafe-hashes' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc=' https://apis.google.com https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://apis.google.com wss://*.firestore.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://xsantcastx-1694b.firebaseapp.com https://cloudflare-dns.com https://api.github.com https://us-central1-xsantcastx-1694b.cloudfunctions.net https://api.stripe.com https://*.paypal.com https://*.braintree-api.com; frame-src 'self' https://apis.google.com https://www.google.com https://js.stripe.com https://hooks.stripe.com https://*.paypal.com https://xsantcastx-1694b.firebaseapp.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
+            "value": "default-src 'self'; script-src 'self' 'unsafe-hashes' 'sha256-MhtPZXr7+LpJUY5qtMutB+qWfQtMaPccfe7QXtCcEYc=' https://apis.google.com https://www.googletagmanager.com https://www.google.com https://www.gstatic.com https://js.stripe.com https://www.paypal.com https://www.paypalobjects.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self' https://*.firebaseio.com wss://*.firebaseio.com https://*.googleapis.com https://apis.google.com wss://*.firestore.googleapis.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://xsantcastx-1694b.firebaseapp.com https://cloudflare-dns.com https://api.github.com https://us-central1-xsantcastx-1694b.cloudfunctions.net https://api.stripe.com https://*.paypal.com https://*.braintree-api.com; frame-src 'self' https://apis.google.com https://www.google.com https://js.stripe.com https://hooks.stripe.com https://*.paypal.com https://xsantcastx-1694b.firebaseapp.com https://accounts.google.com; worker-src 'self'; manifest-src 'self'; frame-ancestors 'self'; object-src 'none'; base-uri 'self'",
             "//csp-unsafe-hashes": "'unsafe-hashes' + 'sha256-MhtPZ…' allows exactly one inline event handler: this.media='all'. It is emitted by Angular itself, not by us — `optimization.styles.inlineCritical: true` inlines the above-the-fold CSS and defers the rest as <link media=\"print\" onload=\"this.media='all'\">. Inline handlers need script-src permission, and the policy had none, so in production that onload was refused and the main stylesheet never flipped from media=\"print\" to \"all\": the whole site was rendering on the inlined critical CSS alone. 'unsafe-hashes' is the narrow fix — it permits only handler bodies whose hash is listed, which here is one 16-character string, rather than 'unsafe-inline' which would permit every inline script on the site and silently disable the sha256 pin above it. Supported in Chrome 85+/Firefox 86+/Safari 15.4+; older engines still block the handler and fall back to critical-CSS-only, which is the behaviour they already had. If this hash ever needs regenerating, it is sha256 of the attribute value, and scripts/verify-csp-hashes.js prints the expected value on failure."
           }
         ]
@@ -137,153 +137,290 @@
     "redirects": [
       {
         "source": "/",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
-        "//": "/home is now /world. Same reasoning as /games: the Angular redirectTo only covers in-app navigation, so this entry is what stops indexed /home URLs from hitting the SPA fallback.",
+        "//": "/home is now /play (it was /world until the game-only shell). Same reasoning as /games: the Angular redirectTo only covers in-app navigation, so this entry is what stops indexed /home URLs from hitting the SPA fallback.",
         "source": "/home",
-        "destination": "/world",
+        "destination": "/play",
+        "type": 301
+      },
+      {
+        "//": "Game-only shell: the /world marketing landing is gone and the game is the front door. Exact path only - /world/realms/*, /world/quests, /world/trials and /world/arena are live pages. Nothing is prerendered at /world any more, but the redirect would win over a stale file anyway.",
+        "source": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "//": "/forge-keeper is now /character.",
         "source": "/forge-keeper",
-        "destination": "/character",
+        "destination": "/play?at=character",
         "type": 301
       },
       {
         "//": "/rune-forge is now /forge/runes.",
         "source": "/rune-forge",
-        "destination": "/forge/runes",
+        "destination": "/play?at=runes",
         "type": 301
       },
       {
         "//": "Exact /forge only — do not use /forge/** or /forge/runes would loop.",
         "source": "/forge",
-        "destination": "/forge/runes",
+        "destination": "/play?at=runes",
         "type": 301
       },
       {
         "//": "/quests is now /world/quests.",
         "source": "/quests",
-        "destination": "/world/quests",
+        "destination": "/play?at=quests",
         "type": 301
       },
       {
         "//": "/arena index is now /world/trials. Exact path only — do not use /arena/** or the playable gates would 301 as well.",
         "source": "/arena",
-        "destination": "/world/trials",
+        "destination": "/play?at=trials",
         "type": 301
       },
       {
         "//": "/games became /arena, then the index moved to /world/trials. Land on the canonical URL in one hop.",
         "source": "/games",
-        "destination": "/world/trials",
+        "destination": "/play?at=trials",
         "type": 301
       },
       {
         "//": "/live became /sanctum in 2.53.0, when the page stopped being a rate readout and became the room where explorers are hired and kitted. Same reasoning as /games above: the Angular redirectTo only covers in-app navigation, so this entry is what stops every footer link shared before today, and every indexed /live URL, from hitting the SPA fallback as a 404. /live was in prerender-routes.txt for two releases, so it IS indexed.",
         "source": "/live",
-        "destination": "/sanctum",
+        "destination": "/play?at=sanctum",
         "type": 301
       },
       {
         "//": "/forge-view was the alias for /live and has the same problem.",
         "source": "/forge-view",
-        "destination": "/sanctum",
+        "destination": "/play?at=sanctum",
         "type": 301
       },
       {
-        "//": "The portfolio pages deleted in the full migration, plus the retired public product surfaces. Each 301 lands on /world — Eclipse Realms is the only public product.",
+        "//": "The portfolio pages deleted in the full migration, plus the retired public product surfaces. Each 301 lands on /play — the game is the only public product.",
         "source": "/skills",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/services",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/projects",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/contact",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/about",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/guestbook",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/tools",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/tools/**",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/embed",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/embed/**",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/mission-control",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/mcp",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/blueprint",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/changelog",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/sponsors",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/donate",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "source": "/pro",
-        "destination": "/world",
+        "destination": "/play",
         "type": 301
       },
       {
         "//": "The Seamworks storyboard was an art-direction prototype of the opening; the real opening is /play.",
         "source": "/play/storyboard",
         "destination": "/play",
+        "type": 301
+      },
+      {
+        "//": "Game-only shell (docs/handoff/game-only-shell.md): every page that stood beside the game is now a panel in it or gone, so its URL 301s into /play — at the panel it became, the same table as shared/canonical-routes.ts INTO_PLAY. /world/realms/** comes after the three activity-site entries above it is listed with, and Hosting matches redirects in order.",
+        "source": "/character",
+        "destination": "/play?at=character",
+        "type": 301
+      },
+      {
+        "source": "/forge/runes",
+        "destination": "/play?at=runes",
+        "type": 301
+      },
+      {
+        "source": "/forge/crafting",
+        "destination": "/play?at=crafting",
+        "type": 301
+      },
+      {
+        "source": "/forge/enchanting",
+        "destination": "/play?at=enchanting",
+        "type": 301
+      },
+      {
+        "source": "/market",
+        "destination": "/play?at=market",
+        "type": 301
+      },
+      {
+        "source": "/gambler",
+        "destination": "/play?at=gambler",
+        "type": 301
+      },
+      {
+        "source": "/sanctum",
+        "destination": "/play?at=sanctum",
+        "type": 301
+      },
+      {
+        "source": "/codex",
+        "destination": "/play?at=codex",
+        "type": 301
+      },
+      {
+        "source": "/world/quests",
+        "destination": "/play?at=quests",
+        "type": 301
+      },
+      {
+        "source": "/world/trials",
+        "destination": "/play?at=trials",
+        "type": 301
+      },
+      {
+        "source": "/arena/color-memory",
+        "destination": "/play?at=trials",
+        "type": 301
+      },
+      {
+        "source": "/arena/realm-rush",
+        "destination": "/play?at=trials",
+        "type": 301
+      },
+      {
+        "source": "/arena/shadow-cipher",
+        "destination": "/play?at=trials",
+        "type": 301
+      },
+      {
+        "source": "/arena/forge-strike",
+        "destination": "/play?at=trials",
+        "type": 301
+      },
+      {
+        "source": "/arena/convergents-path",
+        "destination": "/play?at=trials",
+        "type": 301
+      },
+      {
+        "source": "/world/arena",
+        "destination": "/play?at=arena",
+        "type": 301
+      },
+      {
+        "source": "/world/realms/infernal/basalt-seamworks",
+        "destination": "/play?at=seamworks",
+        "type": 301
+      },
+      {
+        "source": "/world/realms/verdant/rootglass-canopy",
+        "destination": "/play?at=canopy",
+        "type": 301
+      },
+      {
+        "source": "/world/realms/celestial/meridian-orrery",
+        "destination": "/play?at=orrery",
+        "type": 301
+      },
+      {
+        "source": "/exchange",
+        "destination": "/play",
+        "type": 301
+      },
+      {
+        "source": "/grand-exchange",
+        "destination": "/play",
+        "type": 301
+      },
+      {
+        "source": "/leaderboards",
+        "destination": "/play",
+        "type": 301
+      },
+      {
+        "source": "/404",
+        "destination": "/play",
+        "type": 301
+      },
+      {
+        "source": "/world/fivefold-lock",
+        "destination": "/play",
+        "type": 301
+      },
+      {
+        "source": "/world/realms/**",
+        "destination": "/play",
+        "type": 301
+      },
+      {
+        "source": "/arena/**",
+        "destination": "/play?at=trials",
         "type": 301
       }
     ],

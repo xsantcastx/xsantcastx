@@ -64,7 +64,7 @@ import { injectInWorldPanel } from '../../shared/in-world-panel';
           <h2 class="ag-gate__title">This gate is chained</h2>
           <p class="ag-gate__hint">{{ unlockHint }}</p>
           @if (!inWorld) {
-            <a routerLink="/world" class="ag-btn ag-btn--primary">Go find the secret &rarr;</a>
+            <a routerLink="/play" class="ag-btn ag-btn--primary">Go find the secret &rarr;</a>
             <a routerLink="/world/trials" class="ag-gate__alt">or look over the other gates</a>
           }
         </section>

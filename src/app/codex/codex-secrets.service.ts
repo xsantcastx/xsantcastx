@@ -21,18 +21,16 @@
  * the Codex, so a secret found on any page is recorded when it happens rather
  * than being invisible until someone opens /codex.
  */
-import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
+import { Injectable, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { NavigationEnd, Router } from '@angular/router';
 import { BehaviorSubject, Observable } from 'rxjs';
-import { filter } from 'rxjs/operators';
 import { GameStateGateway } from '../shared/save/game-state.gateway';
 import { SECRETS } from './codex-secrets';
 
 export const SECRETS_KEY = 'codex-secrets';
 
 /** How a secret came to be recorded. Shown on the card once found. */
-export type SecretSource = 'ritual' | 'palette' | 'route' | 'egg';
+export type SecretSource = 'route' | 'egg';
 
 export interface SecretRecord {
   at: string;
@@ -43,8 +41,6 @@ type SecretLedger = Record<string, SecretRecord>;
 
 /** Human phrasing for `SecretRecord.how`. */
 export const SECRET_SOURCE_LABEL: Record<SecretSource, string> = {
-  ritual: 'the veil parted',
-  palette: 'summoned by keystroke',
   route: 'walked into it',
   egg: 'found in a tool',
 };
@@ -52,8 +48,6 @@ export const SECRET_SOURCE_LABEL: Record<SecretSource, string> = {
 @Injectable({ providedIn: 'root' })
 export class CodexSecretsService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
-  private readonly router = inject(Router);
-  private readonly zone = inject(NgZone);
   /**
    * Storage goes through the gateway like every other blob. This key is in
    * `SYNCED_BLOBS` as of the perf/cleanup pass: it was device-local on the
@@ -66,8 +60,6 @@ export class CodexSecretsService {
 
   private started = false;
   private ledger: SecretLedger = {};
-  private observer?: MutationObserver;
-  private keyHandler?: (e: KeyboardEvent) => void;
 
   private readonly changed$$ = new BehaviorSubject<number>(0);
   /** Emits the found-count whenever the ledger grows. */
@@ -83,9 +75,6 @@ export class CodexSecretsService {
     this.started = true;
 
     this.load();
-    this.watchRitual();
-    this.watchPalette();
-    this.watchRoutes();
   }
 
   isFound(id: string): boolean {
@@ -116,56 +105,17 @@ export class CodexSecretsService {
   // ── Detectors ─────────────────────────────────────────────────────────────
 
   /**
-   * Ritual mode. Checked once up front because the class may already be on the
-   * body — the seal's inline onclick runs before Angular boots — and then
-   * watched, because it can be opened at any time from three different places.
+   * A place opened in the world, by the URL it once had (the side-scroller's
+   * noteVisit). The only runtime detector left: the ritual, the console
+   * handles and the palette went with the site pages.
    */
-  private watchRitual(): void {
-    const check = () => {
-      if (!document.body.classList.contains('ritual-open')) return;
-      this.mark('ritual-veil', 'ritual');
-      this.mark('console-reveal', 'ritual');
-      this.mark('console-audio', 'ritual');
-      this.mark('console-banner', 'ritual');
-    };
-
-    check();
-
-    // Outside the zone: a class flip on <body> is not something any template
-    // binds to, and running change detection on it would be pure cost.
-    this.zone.runOutsideAngular(() => {
-      this.observer = new MutationObserver(check);
-      this.observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
-    });
+  visit(url: string): void {
+    const path = url.split('?')[0].split('#')[0];
+    if (!this.watchedRoutes.has(path)) return;
+    for (const secret of SECRETS) {
+      if (secret.route === path) this.mark(secret.id, 'route');
+    }
   }
-
-  private watchPalette(): void {
-    this.keyHandler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        this.mark('command-palette', 'palette');
-      }
-    };
-    this.zone.runOutsideAngular(() => {
-      window.addEventListener('keydown', this.keyHandler!, { passive: true });
-    });
-  }
-
-  private watchRoutes(): void {
-    const settle = (url: string) => {
-      const path = url.split('?')[0].split('#')[0];
-      if (!this.watchedRoutes.has(path)) return;
-      for (const secret of SECRETS) {
-        if (secret.route === path) this.mark(secret.id, 'route');
-      }
-    };
-
-    this.router.events
-      .pipe(filter((e): e is NavigationEnd => e instanceof NavigationEnd))
-      .subscribe(e => settle(e.urlAfterRedirects));
-    settle(this.router.url);
-  }
-
-  // ── Storage ───────────────────────────────────────────────────────────────
 
   private load(): void {
     try {

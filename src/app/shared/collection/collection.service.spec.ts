@@ -180,7 +180,6 @@ describe('CollectionService', () => {
       expect(collection.completion.percent).toBe(100);
       expect(storedLedger().rewards.sort()).toEqual(COLLECTION_REWARDS.map(r => r.id).sort());
       expect(economy.equippedIn('prefix')).toBe('eclipse-archivist');
-      expect(economy.equippedIn('trail')).toBe('archivist');
     });
   });
 

@@ -40,13 +40,9 @@
      on. They now READ the tokens; the values are unchanged, and reduced motion reaches
      this file for free because tokens/motion.css already zeroes them.
      --gf-ease: Material standard, the owner's pick, used for every duration here.
-     --gf-spring: overshoots once, settles. For things that enter, not things that hover. */
-  --gf-ease: var(--ease-standard);
-  --gf-spring: var(--ease-spring);
 
   --gf-dur: var(--dur-base);
   --gf-dur-press: var(--dur-press);
-  --gf-dur-enter: var(--dur-enter);
 
   --gf-lift: var(--lift-hover);
   --gf-press: var(--press-scale);

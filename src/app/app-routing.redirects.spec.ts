@@ -4,7 +4,7 @@ import { Routes, provideRouter, Router } from '@angular/router';
 import { provideLocationMocks } from '@angular/common/testing';
 
 import { APP_ROUTES } from './app-routing.module';
-import { CANONICAL_REDIRECTS } from './shared/canonical-routes';
+import { CANONICAL_REDIRECTS, INTO_PLAY, intoPlay } from './shared/canonical-routes';
 
 @Component({ standalone: true, template: '' })
 class RouteStubComponent {}
@@ -41,66 +41,36 @@ describe('canonical player routing', () => {
     router = TestBed.inject(Router);
   });
 
-  function redirectSource(path: string | undefined): string {
-    return path ? '/' + path : '/';
-  }
-
-  function redirectDest(to: string): string {
-    return to.startsWith('/') ? to : '/' + to;
-  }
-
-  for (const redirect of CANONICAL_REDIRECTS) {
-    const from = redirectSource(redirect.path);
-    const to = redirectDest(redirect.redirectTo as string);
+  // Game-only shell: every retired page URL lands in the game, at the panel it
+  // became when there is one, and carries its own query along.
+  for (const [path, at] of Object.entries(INTO_PLAY)) {
+    if (path.includes(':')) continue;
+    const from = '/' + path;
+    const to = intoPlay(at);
     it(`redirects ${from} → ${to}`, async () => {
       await router.navigateByUrl(from);
       expect(router.url).toBe(to);
+      expect(leafPath(router)).toBe('play');
     });
   }
 
-  it('keeps /arena/color-memory on the game route', async () => {
-    await router.navigateByUrl('/arena/color-memory');
-    expect(router.url).toBe('/arena/color-memory');
-    expect(leafPath(router)).toBe('arena/color-memory');
-    expect(leafPath(router)).not.toBe('world/trials');
+  it('carries the old page query into the game (/codex?tab=collection)', async () => {
+    await router.navigateByUrl('/codex?tab=collection');
+    expect(router.url).toBe('/play?at=codex&tab=collection');
   });
 
-  it('redirects /tools → /world', async () => {
-    await router.navigateByUrl('/tools');
-    expect(router.url).toBe('/world');
-  });
-
-  it('redirects /tools/box-shadow-generator → /world', async () => {
-    await router.navigateByUrl('/tools/box-shadow-generator');
-    expect(router.url).toBe('/world');
-  });
-
-  it('redirects /tools?realm=luminous → /world', async () => {
-    await router.navigateByUrl('/tools?realm=luminous');
-    expect(router.url.split('?')[0]).toBe('/world');
-  });
-
-  it('redirects /mission-control → /world', async () => {
-    await router.navigateByUrl('/mission-control');
-    expect(router.url).toBe('/world');
-  });
-
-  it('redirects retired product pages to /world', async () => {
-    for (const from of ['/mcp', '/blueprint', '/sponsors', '/donate', '/pro', '/embed', '/embed/json-formatter']) {
-      await router.navigateByUrl(from);
-      expect(router.url).toBe('/world');
+  it('sends a realm page, a retired tool and an unknown URL to the game', async () => {
+    for (const url of ['/world/realms/luminous', '/tools/box-shadow-generator', '/no-such-place']) {
+      await router.navigateByUrl(url);
+      expect(router.url.split('?')[0]).withContext(url).toBe('/play');
+      expect(leafPath(router)).withContext(url).toBe('play');
     }
   });
 
-  const pages = ['/character', '/world', '/world/realms/luminous', '/world/realms/infernal/basalt-seamworks', '/world/realms/verdant/rootglass-canopy', '/world/realms/celestial/meridian-orrery', '/world/fivefold-lock', '/forge/runes', '/world/trials', '/world/quests', '/sanctum', '/market', '/codex'] as const;
-
-  for (const url of pages) {
-    it(`resolves ${url} (not 404)`, async () => {
-      await router.navigateByUrl(url);
-      expect(router.url).toBe(url);
-      expect(leafPath(router)).not.toBe('**');
-    });
-  }
+  it('routes nothing beside the game but the owner dashboard', () => {
+    const paths = APP_ROUTES.filter(r => !r.redirectTo).map(r => r.path);
+    expect(paths).toEqual(['play', 'admin']);
+  });
 
   it('APP_ROUTES consumes the shared redirect table', () => {
     for (const redirect of CANONICAL_REDIRECTS) {

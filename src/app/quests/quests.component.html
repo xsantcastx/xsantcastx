@@ -134,7 +134,7 @@
       </section>
 
       @if (!inWorld) {
-        <a routerLink="/world" class="quests-cta">{{ t('quests.details.walk') }}</a>
+        <a routerLink="/play" class="quests-cta">{{ t('quests.details.walk') }}</a>
       }
     </div>
   </app-station-shell>
@@ -145,5 +145,4 @@
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
 @if (!inWorld) {
-<app-related-pages here="/world/quests"></app-related-pages>
 }

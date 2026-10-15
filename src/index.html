@@ -37,10 +37,10 @@
   <meta property="og:site_name"   content="Eclipse Realms">
   <meta property="og:title"       content="Eclipse Realms — Free Idle RPG in Your Browser">
   <meta property="og:description" content="Free idle RPG in your browser. Strike the forge for Gold, gamble it on runes, craft gear with rolled stats, and send explorers into five realms. Diablo-style loot. No sign-up, no install.">
-  <!-- /world, not the apex: `/` is a 301 to /world, and an og:url that
+  <!-- /play, not the apex: `/` is a 301 to /play, and an og:url that
        redirects makes a scraper resolve one extra hop to find the page it is
        already looking at. SeoService overwrites this per route. -->
-  <meta property="og:url"         content="https://xsantcastx.com/world">
+  <meta property="og:url"         content="https://xsantcastx.com/play">
   <!-- One raster image, no SVG. The previous pair advertised an SVG first with a
        JPEG fallback, but og:image is not a fallback list — Facebook, LinkedIn,
        Discord and iMessage all reject image/svg+xml outright, and the crawlers
@@ -133,7 +133,7 @@
 
 
   <!-- Global JSON-LD — the site and its author. The game itself (VideoGame)
-       is described on /world, which carries the full graph. -->
+       is described on /play, which carries the full graph. -->
   <script type="application/ld+json">
   {
     "@context": "https://schema.org",
@@ -163,13 +163,6 @@
        route, has no ?render= param so App Check can't use it anyway, and
        nothing in the app touches window.grecaptcha directly. -->
 
-  <!-- ░▒▓█ GODFORGE BOOT — first-visit vs. returning-visit cut █▓▒░
-       Inline, synchronous, and in <head> on purpose. The boot sequence is
-       driven entirely by CSS on the prerendered <app-godforge-loader>, so the
-       full-vs-short decision has to be on the element before the first frame —
-       Angular has not booted yet, and localStorage does not exist during
-       prerender, so neither can make this call. First visit gets all 2.9s;
-       every visit after starts at stage 5 and runs 1.3s. -->
   <!-- ░▒▓█ BOOT RECOVERY █▓▒░ — must stay in <head> and ahead of the module
        scripts the build injects into <body>: it is the only error handler that
        still exists when main.js's own module graph is what failed to link. A
@@ -178,41 +171,9 @@
        account of what poisons a client and why only this can reach it. -->
   <script src="/assets/js/boot-recovery.js" defer></script>
 
-  <script>
-    (function () {
-      try {
-        var k = 'godforge-boot-seen';
-        if (localStorage.getItem(k)) {
-          document.documentElement.classList.add('gf-boot-short');
-        }
-        localStorage.setItem(k, '1');
-      } catch (e) {
-        /* Private mode or storage disabled — fall through to the full cut. */
-      }
-    })();
-  </script>
 </head>
 <body>
-  <!--
-       ░▒▓█ x s a n t c a s t x █▓▒░
-       They say if you enter the sigil in sequence
-       ↑ ↑ ↓ ↓ ← → ← →  the veil lifts.
-       Or click the seal. The curious are always rewarded.
-  -->
   <app-root></app-root>
-  <button
-    type="button"
-    class="arcane-seal"
-    aria-label="Arcane seal — click to peek behind the veil"
-    title="whispers…"
-  ></button>
-  <!-- ░▒▓█ EASTER EGGS — console banner, Konami code, arcane seal, FA swap █▓▒░
-       External rather than inline: see the header comment in the file for why
-       a CSP hash on an inline block is a silent-breakage hazard. -->
-  <script src="/assets/js/easter-eggs.js" defer></script>
-
-  <!-- ░▒▓█ SITE ENGINE — cursor trail (a Market cosmetic) and the ritual drone (a Codex secret) █▓▒░ -->
-  <script src="/assets/js/cosmic-engine.js" defer></script>
 </body>
 </html>
 

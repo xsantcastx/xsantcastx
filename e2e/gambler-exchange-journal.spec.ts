@@ -3,7 +3,7 @@ import { mkdirSync } from 'fs';
 import { resolve } from 'path';
 
 /**
- * The Gambler and the Grand Exchange on the station kit: tabs → list → the
+ * The Gambler on the station kit (the old /gambler URL opens it in the world): tabs → list → the
  * selected thing → ONE action row. Everything else is in Details.
  */
 async function open(page: Page, url: string): Promise<void> {
@@ -95,40 +95,4 @@ test.describe('Gambler journal', () => {
   });
 });
 
-test.describe('Exchange journal', () => {
-  test('Buy/Sell tabs, a list, the selected line with a stepper and one Buy', async ({ page }) => {
-    await page.setViewportSize({ width: 375, height: 812 });
-    await open(page, '/exchange');
-    await expect(page.locator('app-station-shell.ge')).toBeVisible();
-    await expect(page.getByRole('button', { name: 'Buy', exact: true }).first()).toBeVisible();
-    await expect(page.locator('app-journal-list .jl__row').first()).toBeVisible();
-    await expect(page.locator('.gej-detail app-detail-head')).toBeVisible();
-    await expect(page.locator('.ge__confirm .ab__btn')).toHaveCount(1);
-    await expect(page.locator('.ge__confirm .ab__step')).toBeVisible();
-    mkdirSync(shotDir, { recursive: true });
-    await page.screenshot({ path: resolve(shotDir, 'exchange-mobile.png') });
-  });
-
-  test('Buy ×3 pops the goods and the Sell tab then lists them', async ({ page }) => {
-    await page.setViewportSize({ width: 1280, height: 900 });
-    await seedGold(page, 1_000_000);
-    await open(page, '/exchange');
-    await closeNpc(page);
-    await page.locator('app-journal-list .jl__row', { hasText: 'Cinder Ore' }).first().click();
-    await expect(page.locator('.gej-detail app-detail-head')).toContainText('Cinder Ore');
-    const more = page.locator('.ge__confirm .ab__stepbtn').nth(1);
-    await more.click();
-    await more.click();
-    await expect(page.locator('.gej-detail app-detail-head')).toContainText('Buy 3 Cinder Ore');
-    await page.locator('.ge__confirm .ab__btn').click();
-    await expect(page.locator('app-reward-pop .rp')).toContainText('3 × Cinder Ore');
-    await page.getByRole('button', { name: 'Sell', exact: true }).first().click();
-    await expect(page.locator('app-journal-list .jl__row', { hasText: 'Cinder Ore' })).toContainText('You hold 3');
-  });
-
-  test('the chart lives in Details', async ({ page }) => {
-    await open(page, '/exchange');
-    await page.locator('app-station-shell.ge details summary').first().click();
-    await expect(page.locator('.ge__chartbox')).toBeVisible();
-  });
-});
+// The Exchange journal tests left with the Exchange (game-only shell, docs/handoff/page-audit.md).

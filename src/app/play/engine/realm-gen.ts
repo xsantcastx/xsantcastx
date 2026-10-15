@@ -128,14 +128,6 @@ export function realmPlans(ctx: RealmContext, cell: number): RealmPlan[] {
   return out;
 }
 
-/**
- * A drift pocket's two states: 0, the passage is there (as generated); 1, the
- * drift-shale has filled it. The engine (umbral.ts) moves a pocket only while
- * no light reaches it and the Keeper cannot see it; a torch inside pins it.
- */
-export type PocketPhase = 0 | 1;
-export const POCKET_ROWS = 3;
-
 function stamp(b: Builder, plan: RealmPlan, out: SectorColumnGen, deep: boolean): void {
   const { col: x, row: y, w, h } = plan;
   const r = seededRandom(plan.salt);

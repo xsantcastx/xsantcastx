@@ -328,7 +328,9 @@ test.describe('rune celebration', () => {
     const toggle = page.locator('.gf-sound');
     await expect(toggle).toBeVisible();
     await expect(toggle).toHaveAttribute('aria-pressed', 'false');
-    // 44px is the site's own floor for a standalone control.
+    // 44px is the site's own floor for a standalone control. Measured once the place panel
+    // that hosts the Forge has finished opening (its entrance is a short scale).
+    await page.waitForTimeout(400);
     expect((await toggle.boundingBox())!.height).toBeGreaterThanOrEqual(44);
 
     await toggle.click();

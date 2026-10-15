@@ -1,188 +1,45 @@
 <a href="#main-content" class="skip-to-main">Skip to main content</a>
 
-<!-- Godforge Awakens boot sequence. First element in the shell, and a sibling
-     of everything else for the same reason the flame and the quest drawer are:
-     routeFadeIn leaves a transform on every routed host, and a position:fixed
-     full-viewport curtain inside one would be pinned to the page instead of the
-     viewport. -->
-@if (!isPlayMode) {
-  <app-godforge-loader></app-godforge-loader>
-}
-
-<!-- The WebGL forge. A sibling of <main> for the same reason the flame and the
-     quest drawer are: routeFadeIn leaves a transform on every routed host,
-     which makes it a containing block, and a position:fixed full-viewport
-     canvas inside one would be pinned to the page rather than the viewport.
-
-     The CSS `.particle-layer` below it is the fallback, not a companion — the
-     scene hides it via `html.forge-scene-on` once a GL context exists, so a
-     visitor with no WebGL, with Reduce Effects on, or reading the prerendered
-     HTML still gets the starfield that was always there. -->
-@if (!isPlayMode) {
-  <app-forge-scene></app-forge-scene>
-}
-
-@if (!isPlayMode) {
-  <div class="particle-layer"></div>
-}
-@if (!isPlayMode) {
-  <app-header></app-header>
-}
-
+<!-- Game-only shell (docs/handoff/game-only-shell.md). The game at /play is the
+     whole site: no site header, footer, tab bar, command palette, boot curtain,
+     WebGL backdrop, corner Forge Flame, NPC portrait or "forged today" counter.
+     Every navigation the header and footer used to offer lives in the game's
+     menu (Character, Sound, Account & settings), every old page URL is a router
+     redirect into the world, and an unknown URL lands in the game too. The only
+     route left outside /play is the owner's /admin, which links back to it. -->
 <main id="main-content" [class.play-mode]="isPlayMode">
-  <!-- World only: a standalone place page (/market, /codex, …) offers a way
-       into the world at its station. Not on /play. -->
-  @if (!isPlayMode) {
-    <app-place-banner-outlet></app-place-banner-outlet>
-  }
   <router-outlet></router-outlet>
 </main>
 
-@if (!isPlayMode) {
-  <app-footer></app-footer>
-}
-
 <!-- GDPR Cookie Banner. On /play it is the compact in-world bar, docked under
-     the game frame (the frame shrinks by its height) rather than over it. -->
+     the game frame (the frame shrinks by its height) rather than over it. The
+     choice can be changed later from the game menu (Account & settings). -->
 <app-cookie-banner [world]="isPlayMode"></app-cookie-banner>
 
-
-<!-- Achievement drop — rarity-tiered replacement for the flat egg toast -->
-
-<!-- Collection Log reveal — centred, and deliberately *below* the achievement
-     drop's z-index band: a Singular egg cinematic must never be covered by a
-     Cinder Ore. It stages over the page rather than veiling it, so nothing
-     behind it stops being clickable. -->
-
-<!-- Quest board. Deliberately a sibling of <app-header>, not a child of it:
-     inside .navbar it would join a z-index:1000 stacking context and paint over
-     the logo and the language toggle. -->
-
-<!-- Quest claims and lore unlocks -->
-
-<!-- Skill level-ups -->
-
-<!-- Site-wide Cmd+K / Ctrl+K command palette -->
-@if (!isPlayMode) {
-  <app-command-palette></app-command-palette>
-}
-
-
-<!-- The 3D item inspector. An outlet rather than the component itself: it opens
-     over Quick Inspect and pulls three (730 kB) through a dynamic import the
-     first time an item is turned over, so a visitor who never opens it never
-     downloads it. -->
-@if (!isPlayMode) {
-  <app-inspect-3d-outlet></app-inspect-3d-outlet>
-}
-
-<!-- "Install The Godforge" banner. Bottom-LEFT: every other corner is already
-     claimed (flame and achievement drop bottom-right, quest toast bottom-centre,
-     cookie banner full-width along the bottom, quest drawer top-right). It also
-     waits for the cookie decision before rendering so it and the cookie banner
-     are never on screen together — see the component for the full reasoning. -->
-@if (!isPlayMode) {
-  <app-pwa-outlet kind="offer"></app-pwa-outlet>
-}
-
 <!-- Installed-app chrome: the offline/back-online pill, the desktop title-bar
-     strip, and the game route's gesture class. Rendered on /play too — the
-     game is the app's start page, and "offline, progress will sync" matters
-     most there. The pill is pointer-events: none, so it cannot take a tap. -->
+     strip, and the game route's gesture class. The pill is pointer-events:
+     none, so it cannot take a tap. -->
 <app-pwa-outlet kind="chrome"></app-pwa-outlet>
 
-
-<!-- "A new version is ready — Reload". Top-centre on every route, /play
-     included (an installed app or a long-open tab never navigates, so it would
-     otherwise run an old bundle for days). Hidden while a panel, modal or fight
-     is up; never reloads without a tap. See shared/pwa/app-update.service.ts. -->
+<!-- "A new version is ready — Reload". Top-centre (an installed app or a
+     long-open tab never navigates, so it would otherwise run an old bundle for
+     days). Hidden while a panel, modal or fight is up; never reloads without a
+     tap. See shared/pwa/app-update.service.ts. -->
 <app-pwa-outlet kind="update"></app-pwa-outlet>
-
-
-<!-- The Forge Flame. A sibling of <main>, not a child of any routed component:
-     routeFadeIn leaves a transform on every routed host, which makes it a
-     containing block, and a position:fixed flame inside one would be pinned to
-     the page rather than the viewport and would scroll away.
-
-     Hidden while the Forge View has the flame mounted inside its own layout —
-     see InlineFlameService. -->
 
 <!-- "Which save wins" — opens when signing in finds two saves that each hold
      something the other does not. Mounted here rather than next to the sign-in
-     button for the same reason as the flame above: the button lives inside
-     /forge-keeper, and a fixed full-viewport dialog inside a routed host would
-     be pinned to the page. It renders nothing until a conflict exists. -->
+     button (the game menu: Account & settings, or the Character panel) because it is a
+     fixed full-viewport dialog, and inside the game's place panel it would be
+     clipped to the panel. It renders nothing until a conflict exists. -->
 <app-cloud-save-merge-dialog></app-cloud-save-merge-dialog>
 
-
-<!-- "Another device is active" — the write lease. Mounted out here for the same
-     reason as the dialog above: it is position:fixed, and every routed host
-     carries a transform during the route fade that would pin it to the page.
-     Renders nothing unless this device is passive. -->
+<!-- "Another device is active" — the write lease. Renders nothing unless this
+     device is passive. -->
 <app-device-lease-banner></app-device-lease-banner>
 
-
-<!-- "You have been banned" and the site-wide announcement strip. A sibling of
-     <main> for the same reason as everything else out here: routeFadeIn leaves
-     a transform on every routed host, and the ban curtain is position:fixed and
-     full-viewport, so inside one it would be pinned to the page instead of the
-     viewport and would scroll away from the person it is addressed to.
-
-     An outlet rather than the component itself, for the same reason the
-     tutorial and the offline summary are: it renders nothing on the
-     overwhelming majority of page loads — nobody banned, nothing announced —
-     so its markup and stylesheet arrive through a dynamic import on the rare
-     load that needs them. -->
+<!-- "You have been banned" and the site-wide announcement strip. An outlet: it
+     renders nothing on the overwhelming majority of loads, so its markup and
+     stylesheet arrive through a dynamic import on the rare load that needs
+     them. -->
 <app-site-notice-outlet></app-site-notice-outlet>
-
-
-
-<!-- "N Keepers forged today". Bottom-LEFT, and the fourth tenant of that corner:
-     it publishes its own measured height as --forged-lift and the install
-     banner adds it, the same one-way contract the NPC portrait already uses for
-     --npc-lift. The corner registry lives in install-prompt.component.ts. Out
-     here rather than inside a routed host because routeFadeIn's transform would
-     pin a position:fixed widget to the page instead of the viewport. -->
-
-<!-- The first-run tutorial. An outlet rather than the component itself: the
-     tutorial is shown to a browser exactly once, ever, so its five screens and
-     their stylesheet arrive through a dynamic import the first time a visitor
-     with no save turns up, and never load at all for anybody else. See
-     onboarding-outlet.component.ts.
-
-     It renders nothing during prerender either — see the header of
-     onboarding.component.ts for why "is this a new visitor" cannot be asked on
-     the server. Last in the shell so it covers everything above it, and a
-     sibling of <main> for the same reason every other full-viewport overlay
-     here is. -->
-@if (!isPlayMode) {
-  <app-onboarding-outlet></app-onboarding-outlet>
-}
-
-<!-- "While you were away". An outlet rather than the component itself, for the
-     same reason the tutorial is one: it is shown on a minority of page loads —
-     an absence of five minutes or more that actually earned something — and its
-     markup and stylesheet arrive through a dynamic import when that happens.
-
-     Below the tutorial in the shell deliberately. The two can never both be up
-     (a browser with no save has no absence to report, and OfflineService
-     returns early when there is no stamp at all), but if that ever stopped being
-     true the first-run screen is the one that must win.
-
-     A sibling of <main> for the same reason every other full-viewport overlay
-     here is: routeFadeIn leaves a transform on every routed host, and a
-     position:fixed curtain inside one is pinned to the page, not the viewport. -->
-@if (!isPlayMode) {
-  <app-offline-outlet></app-offline-outlet>
-}
-
-<!-- The six who speak. A sibling of <main> for the same reason as the flame:
-     routeFadeIn leaves a transform on every routed host, and a position:fixed
-     portrait inside one would be pinned to the page rather than the viewport. -->
-
-<!-- Idle overlays (toasts, drawers, the flame, the NPC portrait, Quick Inspect):
-     one deferred block so their tables stay out of the initial bundle. See
-     shared/shell/deferred-overlays.component.ts. -->
-@if (!isPlayMode) {
-  <app-deferred-overlays [showCornerFlame]="showCornerFlame"></app-deferred-overlays>
-}

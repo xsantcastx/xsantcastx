@@ -146,7 +146,6 @@ const CATCH_BY_ID = new Map(CATCHES.map(c => [c.id, c]));
 export function catchById(id: string): CatchDef | undefined { return CATCH_BY_ID.get(id); }
 export const LEDGER_CATCH_IDS: readonly string[] = QUEST.map(q => q.id);
 export const CRATE_IDS: readonly string[] = CRATES.map(c => c.id);
-export const LEGENDARY_IDS: readonly string[] = FISH.filter(f => f.rarity === 'legendary').map(f => f.id);
 
 // ── Bait, rods and the Lodge's charms ────────────────────────────────────────
 
@@ -162,8 +161,6 @@ export const BAITS: readonly BaitDef[] = [
 export function bestBait(stackOf: (id: string) => number): BaitDef | null {
   return BAITS.find(b => stackOf(b.id) > 0) ?? null;
 }
-/** Chance per dirt or root-loam cell dug that an Ember Grub turns up (spec §5.2). */
-export const EMBER_GRUB_CHANCE = .05;
 
 export interface RodDef {
   id: string; name: string; tier: number;

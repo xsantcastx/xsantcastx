@@ -123,10 +123,6 @@ export const CRAFTING_CATEGORIES: readonly CraftingCategoryDefinition[] = [
 
 const CATEGORY_BY_ID = new Map(CRAFTING_CATEGORIES.map(c => [c.id, c]));
 
-export function craftingCategory(id: CraftingCategory): CraftingCategoryDefinition {
-  return CATEGORY_BY_ID.get(id) ?? CRAFTING_CATEGORIES[0];
-}
-
 export interface CraftingIngredient {
   /**
    * A material definition id. Must be something the game can actually grant.
@@ -728,10 +724,6 @@ const RECIPE_BY_ID = new Map(CRAFTING_RECIPES.map(row => [row.id, row]));
 
 export function craftingRecipeById(id: string): CraftingRecipe | undefined {
   return RECIPE_BY_ID.get(id);
-}
-
-export function recipesInCategory(category: CraftingCategory): readonly CraftingRecipe[] {
-  return CRAFTING_RECIPES.filter(row => row.category === category);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

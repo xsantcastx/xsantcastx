@@ -81,7 +81,6 @@ import { ArtSceneComponent } from '../shared/art-scene/art-scene.component';
 import { OverlayStackService } from '../shared/overlay/overlay-stack.service';
 import { KeeperPanelService } from '../shared/keeper/keeper-panel.service';
 
-import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { TranslationService } from '../translation.service';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 import { STATION_UI, STATION_UI_I18N, type StationCost } from '../shared/station-ui';
@@ -299,8 +298,7 @@ function tierForEssence(cost: number): EclipseRarity {
 @Component({
   selector: 'app-forge-keeper',
   standalone: true,
-  imports: [RelatedPagesComponent, 
-    CommonModule,
+  imports: [CommonModule,
     RouterLink,
     CloudSaveButtonComponent,
     ArtSceneComponent,
