@@ -94,7 +94,18 @@ export function valueNoise1(salt: number, x: number): number {
 // ── What a sector column holds ──────────────────────────────────────────────
 
 /** A hall's creatures (they live in its flat-floored cavern, like the core's Maws). */
-export interface SectorHall { creature: string; count: number; col0: number; col1: number; floorRow: number }
+export interface SectorHall {
+  creature: string; count: number; col0: number; col1: number; floorRow: number;
+  /**
+   * The Living World (living-world.ts): the creature that walks here by night instead
+   * (`creature` is the day's), the HP multiplier of its area level (`packScale`), and
+   * `near`: spawned only once the Keeper comes within a screen or so (the spawn budget),
+   * not when the column loads.
+   */
+  night?: string; scale?: number; near?: true;
+}
+/** A Living World find (living-world.ts): a guaranteed something every few sectors of digging. */
+export interface SectorFind { kind: string; col: number; row: number; w: number; h: number }
 export type StructureKind = 'ruin' | 'waycache' | 'flooded-shaft' | 'maw-den' | 'lake' | 'rift-shrine' | 'lava-basin' | 'bailiff-hall'
   // The Underhearth (Phase 8).
   | 'outpost' | 'hearth-lake' | 'sentinel-hall' | 'ember-den' | 'rail-gallery' | 'banked-door' | 'furnace-hall'
@@ -125,6 +136,8 @@ export interface SectorColumnGen {
   halls: SectorHall[];
   /** Structures that touch this sector column. */
   structures: SectorStructure[];
+  /** Living World finds whose room is in this sector column (the shipped strata only). */
+  finds?: SectorFind[];
 }
 
 /** Writes into one sector column, clipped to it (and kept off the cells `skip` names: the core). */

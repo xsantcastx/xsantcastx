@@ -415,6 +415,38 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // The ladder to a keeper's room upstairs.
   { id: 'town-ladder', label: 'Fixed ladder', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
     base: '#7a5a36', dark: '#3a2a18', light: '#b08a55', fleck: '#5a4026' },
+  // ── The Living World (docs/handoff/living-world.md): the wilds' trees and finds, laid by
+  // surface-gen.ts (the sky band) and sector-gen.ts (`findsInto`). Lore: lore-addendum.md, "The Living World". ──
+  // An ashwood: the one tree that grows in ash. Its trunk is climbed like a rope (MapleStory), never a wall.
+  { id: 'ashwood-trunk', label: 'Ashwood trunk', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
+    base: '#6a4a2c', dark: '#3a2617', light: '#a6784a', fleck: '#d4a86c' },
+  // Its crown: a floor of ember-red leaves, stood on from below like a platform. Finches roost in it.
+  { id: 'ashwood-crown', label: 'Ashwood crown', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true,
+    base: '#b8432e', dark: '#7a2a22', light: '#e8753a', fleck: '#ffc25c' },
+  // The burl at its foot, flush with the ground: the axe's work, World-Root bark ("the Root reaches up here too").
+  { id: 'ashwood-burl', label: 'Ashwood burl', solid: true, hp: 3, tools: { axe: 1 }, discipline: 'woodcutting', xp: 4,
+    yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, base: '#70492a', dark: '#4a2f18', light: '#a6784a', fleck: '#d4a86c' },
+  // An ashberry bush: ember grubs nest in its roots (bait, and every newt's favourite).
+  { id: 'ashberry-bush', label: 'Ashberry bush', solid: true, hp: 1, tools: { sickle: 1, blade: 1 }, discipline: 'foraging', xp: 2,
+    yield: { materialId: 'ember-grub', qty: 1, chance: .5 }, base: '#7a2a22', dark: '#4a1814', light: '#b8432e', fleck: '#ffd36d' },
+  // A wayside signpost: someone's words for whoever walks by (E reads it, like a field note).
+  { id: 'wild-signpost', label: 'Signpost', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#8a6a40', dark: '#3a2a18', light: '#c9a06a', fleck: '#ffe1b0', glow: { color: '#ffd9a0', radius: 34 } },
+  // The stones of the old Keepers' waystations: a pick takes them down to a basalt block.
+  { id: 'ruin-stone', label: 'Ruin stone', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 1, block: 'basalt-block',
+    base: '#5c5359', dark: '#3a3339', light: '#877c84', fleck: '#7fb04a' },
+  // A fossil bed in the root-loam: the first Maws, rivets and all ("a Maw put this somewhere safe").
+  { id: 'fossil-bone', label: 'Fossil bed', solid: true, hp: 3, tools: { pickaxe: 1 }, discipline: 'mining', xp: 3,
+    yield: { materialId: 'rusted-rivet', qty: 1, chance: .5 }, base: '#6e5a44', dark: '#48301e', light: '#a08a6a', fleck: '#fff4d0' },
+  // A Keeper's strongbox, left in a cellar or a sealed room: a Root Crate, once (the dug cell is the receipt).
+  { id: 'old-strongbox', label: 'Old strongbox', solid: true, hp: 2, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 10,
+    yield: { materialId: 'root-crate', qty: 1 }, receipt: true, base: '#5e4630', dark: '#30221a', light: '#d3a873', fleck: '#ffd36d', glow: { color: '#ffd36d', radius: 56 } },
+  // The Bailiffs' strongbox in the Magma Halls: a Seam Crate, once.
+  { id: 'ember-strongbox', label: 'Bailiff\'s strongbox', solid: true, hp: 3, tools: { pickaxe: 1, axe: 1, sickle: 1, blade: 1 }, discipline: 'exploration', xp: 14,
+    yield: { materialId: 'seam-crate', qty: 1 }, receipt: true, base: '#6e2a1e', dark: '#3a1410', light: '#c9603a', fleck: '#ffd36d', glow: { color: '#ff9b4f', radius: 60 } },
+  // A seam-engine: machinery older than the Seamworks, still ticking. Read it (E) like a carving.
+  { id: 'seam-engine', label: 'Seam-engine', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#8a6a3a', dark: '#4a3a1e', light: '#e8c47a', fleck: '#fff1b0', glow: { color: '#ffb066', radius: 64 } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
