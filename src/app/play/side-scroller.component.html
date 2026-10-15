@@ -1,4 +1,4 @@
-<section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.stage--menu]="bagOpen || placesOpen || soundOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -73,7 +73,12 @@
   }
 
   @if (placesOpen) {
-    <nav id="places-list" class="places" [attr.aria-label]="t('play.hud.placesIn', { area: state.area || town.name })" data-engine-ignore>
+    <nav id="places-list" class="places win" [attr.aria-label]="t('play.hud.placesIn', { area: state.area || town.name })" data-engine-ignore appSheetDrag (sheetDismiss)="placesOpen = false">
+      <header class="win-head">
+        <h2>{{ t('play.hud.places.title') }}</h2>
+        <button type="button" class="win-x places-close" (click)="placesOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
+      </header>
+      <div class="win-body">
       <p class="places-hint">{{ t('play.hud.placesHint') }}</p>
       <ul>
         @for (place of places; track place.id) {
@@ -93,6 +98,7 @@
         <button type="button" (click)="placesOpen = false; returnToCamp()">{{ t('play.hud.returnCamp') }}</button>
         <button type="button" (click)="placesOpen = false; restartHunt()">{{ t('play.hud.restartHunt') }}</button>
         <button type="button" (click)="placesOpen = false; showKeys = !showKeys" [attr.aria-expanded]="showKeys">{{ t('play.hud.keys') }}</button>
+      </div>
       </div>
     </nav>
   }
@@ -170,13 +176,13 @@
     </div>
   }
   @if (anchorSheet) {
-    <section class="anchor-sheet" role="dialog" aria-modal="true" aria-labelledby="anchor-title" data-engine-ignore (keydown.escape)="closeAnchors()">
-      <header class="map-head">
+    <section class="anchor-sheet win" role="dialog" aria-modal="true" aria-labelledby="anchor-title" data-engine-ignore (keydown.escape)="closeAnchors()" appSheetDrag (sheetDismiss)="closeAnchors()">
+      <header class="map-head win-head">
         <div>
           <span class="realm-tag">{{ t('play.delve.yourDelve') }}</span>
           <h2 id="anchor-title">{{ t('play.uh.travel.title') }}</h2>
         </div>
-        <button type="button" class="book-close anchor-close" (click)="closeAnchors()">{{ t('play.hud.book.close') }}</button>
+        <button type="button" class="win-x anchor-close" (click)="closeAnchors()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
       </header>
       <p class="anchor-lead">{{ t('play.uh.travel.lead') }}</p>
       <ul class="anchor-list">
@@ -272,62 +278,76 @@
 
   <!-- Menu → Sound: the three sliders and the mute (shared/sound). -->
   @if (soundOpen) {
-    <div class="sound-host" data-engine-ignore (keydown.escape)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
+    <div class="sound-host win-host" data-engine-ignore (keydown.escape)="soundOpen = false" appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
   }
 
   <!-- The Satchel's pet well, opened (shared/pets): your pets, one card, one primary action. -->
   @if (petsOpen) {
-    <div class="pet-host" data-engine-ignore (keydown.escape)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" /></div>
+    <div class="pet-host win-host" data-engine-ignore (keydown.escape)="closePets()" appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" /></div>
   }
 
   @if (bagOpen) {
     <!-- The satchel, Diablo II-style: what the Keeper wears, and the pockets. Nothing else
          until you tap something — then one card with one primary action. -->
-    <section id="satchel-book" class="book" [class.book--card]="!!slip" aria-labelledby="satchel-title">
-      <header class="book-head">
+    <section id="satchel-book" class="book win" [class.book--card]="!!slip" aria-labelledby="satchel-title" appSheetDrag (sheetDismiss)="closeBag()">
+      <!-- The window's title bar: the name, the doll's two faces (Worn | Stats), one × close. -->
+      <header class="book-head win-head">
         <h2 id="satchel-title">{{ t('play.hud.satchel') }}</h2>
-        <p class="capacity" [class.full]="bagFull">
-          <span>{{ t('play.hud.book.slots', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) }}</span>
-          <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
-        </p>
-        <button type="button" class="book-more" (click)="bookStats = !bookStats" [attr.aria-expanded]="bookStats" aria-controls="satchel-stats" [attr.aria-label]="t('play.hud.book.stats')">{{ t('play.hud.book.statsShort') }}</button>
-        <button type="button" class="book-close" (click)="closeBag()">{{ t('play.hud.book.close') }}</button>
+        <div class="book-faces" role="group" [attr.aria-label]="t('play.hud.book.worn')">
+          <button type="button" class="book-face" [class.is-on]="!bookStats" [attr.aria-pressed]="!bookStats" (click)="bookStats = false">{{ t('play.hud.book.wornShort') }}</button>
+          <button type="button" class="book-face book-more" [class.is-on]="bookStats" [attr.aria-pressed]="bookStats" aria-controls="satchel-stats" [attr.aria-label]="t('play.hud.book.stats')" (click)="bookStats = true">{{ t('play.hud.book.statsShort') }}</button>
+        </div>
+        <button type="button" class="book-close win-x" (click)="closeBag()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
       </header>
-      @if (bookStats) {
-        <!-- The one "details" affordance: the live stat sheet and where the rest of your things are. -->
-        <div id="satchel-stats" class="book-detail">
-          <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" />
-          @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
-        </div>
-      }
-      <div class="belt" role="group" [attr.aria-label]="t('play.hud.book.worn')">
-        <div class="wells">
-          <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
-          <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
-          @for (well of wells; track well.id) {
-            <button type="button" class="well" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label">
-              @if (well.filled && well.art) {
-                <img [src]="well.art" alt="">
-              } @else if (well.filled) {
-                <em>{{ well.mark }}</em>
-              } @else {
-                <em>{{ well.name }}</em>
+      <!-- One scroller. Portrait: the doll, then the bag. Landscape: the doll on the left (it stays), the bag on the right. -->
+      <div class="book-body">
+        <div class="book-doll">
+          @if (bookStats) {
+            <!-- The doll's other face: the live stat sheet and where the rest of your things are. -->
+            <div id="satchel-stats" class="book-detail">
+              <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" />
+              @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
+            </div>
+          } @else {
+          <div class="belt" role="group" [attr.aria-label]="t('play.hud.book.worn')">
+            <div class="wells">
+              <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
+              <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
+              @for (well of wells; track well.id) {
+                <button type="button" class="well" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
+                  @if (well.filled && well.art) {
+                    <img [src]="well.art" alt="">
+                  } @else if (well.filled) {
+                    <em>{{ well.mark }}</em>
+                  } @else {
+                    <img class="well-ghost" [src]="well.ghost" alt="">
+                  }
+                </button>
               }
-            </button>
+              <!-- The pet well: one small well in the doll's empty corner; the pets open on tap. -->
+              <button type="button" class="well pet-well" data-slot="pet" [class.filled]="!!petWellArt" [class.is-new]="petWellNew" (click)="openPets()"
+                      [attr.aria-label]="t(petWellNew ? 'play.pet.wellNew' : 'play.pet.well')" [title]="t('play.pet.well')">
+                @if (petWellArt) { <img [src]="petWellArt" alt=""> } @else { <img class="well-ghost" [src]="petGhost" alt=""> }
+              </button>
+            </div>
+          </div>
           }
-          <!-- The pet well: one small well in the doll's empty corner; the pets open on tap. -->
-          <button type="button" class="well pet-well" data-slot="pet" [class.filled]="!!petWellArt" [class.is-new]="petWellNew" (click)="openPets()"
-                  [attr.aria-label]="t(petWellNew ? 'play.pet.wellNew' : 'play.pet.well')">
-            @if (petWellArt) { <img [src]="petWellArt" alt=""> } @else { <em>{{ t('play.pet.well') }}</em> }
-          </button>
         </div>
-      </div>
+        <div class="book-bag">
+          @if (bagTabs.length > 2) {
+            <!-- The bag's tabs (MapleStory's inventory): only the ones with something in them. -->
+            <div class="bag-tabs" role="group" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
+              @for (tab of bagTabs; track tab.id) {
+                <button type="button" class="bag-tab" [class.is-on]="tab.id === shownTab" [attr.aria-pressed]="tab.id === shownTab" [attr.data-bag-tab]="tab.id" (click)="bagTab = tab.id">{{ t(tab.key) }} <b>{{ tab.n }}</b></button>
+              }
+            </div>
+          }
       <div class="lining" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
         @if (!pockets.length) {
           <p class="bare">{{ t('play.hud.book.empty') }}</p>
         } @else {
           <div class="pockets">
-            @for (pocket of pockets; track pocket.key) {
+            @for (pocket of shownPockets; track pocket.key) {
               <button type="button" class="pocket" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
                 @if (pocket.art) {
                   <img [src]="pocket.art" alt="">
@@ -340,6 +360,16 @@
             @for (cell of emptyCells; track cell) { <span class="cell-empty" aria-hidden="true"></span> }
           </div>
         }
+      </div>
+          <!-- The purse and how full the satchel is: the bag's bottom row. -->
+          <footer class="book-purse">
+            <span class="purse-gold" [attr.aria-label]="t('play.hud.book.gold', { n: purseGold })"><i class="purse-coin" aria-hidden="true"></i>{{ purseGold }}</span>
+            <p class="capacity" [class.full]="bagFull">
+              <span>{{ t('play.hud.book.slots', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) }}</span>
+              <i aria-hidden="true"><em [style.width.%]="pocketFill"></em></i>
+            </p>
+          </footer>
+        </div>
       </div>
       @if (slip; as row) {
         <!-- The item card: name in its rarity colour, the few stats, one primary action. -->
@@ -523,15 +553,15 @@
   <!-- The station under the pointer (or the finger): name and what it is for. Positioned from code. -->
   <div #stationTip class="station-tip" hidden aria-hidden="true"><b></b><small></small></div>
 
-  <section #placePanel class="place" [class.place--closing]="closing" [class.place--slate]="panel?.kind === 'slate'" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)">
-    <header class="place-head">
+  <section #placePanel class="place" [class.place--closing]="closing" [class.place--slate]="panel?.kind === 'slate'" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)" appSheetDrag (sheetDismiss)="closePanel()">
+    <header class="place-head win-head">
       <div>
         <span class="realm-tag">{{ panel?.kicker }}</span>
         <h2 id="place-title">{{ panel?.title }}</h2>
       </div>
       <div class="place-actions">
         @if (panel?.route; as route) { <a class="place-full" [routerLink]="route">{{ t('play.hud.panel.full') }}</a> }
-        <button type="button" class="book-close place-close" (click)="closePanel()">{{ t('play.hud.book.close') }} <kbd>Esc</kbd></button>
+        <button type="button" class="book-close place-close win-x" (click)="closePanel()" [attr.aria-label]="t('play.hud.book.close')" aria-keyshortcuts="Escape" title="Esc"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
       </div>
     </header>
     <div class="place-body">
