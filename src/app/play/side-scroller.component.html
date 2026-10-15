@@ -55,8 +55,8 @@
   @for (say of glimVoice.speech ? [glimVoice.speech] : []; track say.seq) {
     <div class="glim-say" [class.glim-say--hint]="!!say.hint" role="status" aria-live="polite" data-engine-ignore [attr.inert]="panel || storyCard || glimTalk ? '' : null"
          [attr.data-glim-line]="say.line ?? null" [attr.data-glim-step]="say.hint ? say.hint.step : null" [attr.data-story-beat]="say.story?.beat ?? null" [attr.data-glim-bond]="say.bond?.id ?? null">
-      <!-- A story line rides Glim's line; a keeper's own line carries their name and monogram. -->
-      @if (sayer; as who) { <i class="glim-say__mono" [style.--mono]="who.color" aria-hidden="true">{{ who.monogram }}</i> }
+      <!-- A story line rides Glim's line; a keeper's own line carries their name and pixel face (monogram if faceless). -->
+      @if (sayer; as who) { <i class="glim-say__mono" [class.glim-say__mono--face]="!!who.portrait" [style.--mono]="who.color" aria-hidden="true">@if (who.portrait) {<img [src]="who.portrait" alt="" width="30" height="30" />} @else { {{ who.monogram }} }</i> }
       @else { <app-glim-icon class="glim-say__icon" /> }
       <p class="glim-say__text">
         <b>{{ sayer?.name ?? glimNpc?.name }}</b>@if (say.hint && say.hint.top) {<small> · {{ t('play.glim.step', { n: say.hint.step, total: say.hint.top }) }}</small>}
@@ -316,7 +316,7 @@
         } @else {
           <div class="pockets">
             @for (pocket of pockets; track pocket.key) {
-              <button type="button" class="pocket" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
+              <button type="button" class="pocket" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
                 @if (pocket.art) {
                   <img [src]="pocket.art" alt="">
                 } @else {

@@ -31,14 +31,17 @@
       <!-- ── 1. Welcome ──────────────────────────────────────────────── -->
       @if (step() === 1) {
         <div class="ob__screen">
-          <!-- Kael's portrait is not painted yet, so this is the same
-               placeholder orb the NPC widget renders: his monogram on his
-               accent. See the component header. -->
+          <!-- Kael's pixel Keeper face on his accent orb, the same portrait
+               the NPC widget shows; his monogram until it is painted. -->
           <div class="ob__orb"
                [style.--npc-accent]="kael.color"
                [style.--npc-glow]="kael.glow"
                aria-hidden="true">
-            <span class="ob__orb-mono">{{ kael.monogram }}</span>
+            @if (kaelFace) {
+              <img class="ob__orb-face" [src]="kaelFace" alt="" width="84" height="84" />
+            } @else {
+              <span class="ob__orb-mono">{{ kael.monogram }}</span>
+            }
           </div>
 
           <p class="ob__eyebrow">{{ kael.name }}, {{ kael.epithet }}</p>

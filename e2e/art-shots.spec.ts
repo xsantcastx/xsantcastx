@@ -15,7 +15,7 @@ import { TOWNS, type RealmTownId } from '../src/app/play/world/world.model';
 import { TOWN_KEEPERS } from '../src/app/play/world/life';
 
 const PREFIX = process.env['ART_SHOTS'] ?? '';
-const DIR = 'docs/handoff/one-art-style';
+const DIR = process.env['ART_DIR'] ?? 'docs/handoff/one-art-style';
 const RESTORED = { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } };
 const REALMS: RealmTownId[] = ['infernal', 'luminous', 'umbral', 'celestial', 'verdant'];
 const HUNT_LINK: Record<RealmTownId, RegExp> = {

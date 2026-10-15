@@ -1,5 +1,11 @@
+import { HubPixel, lanternSprite } from './hub-pixel';
+
 /** The five realms, each with its own ambient layer (structurally the same union as world.model's RealmTownId). */
 export type AmbientRealm = 'infernal' | 'luminous' | 'umbral' | 'celestial' | 'verdant';
+/** A canvas can be made (a browser; not SSR or the node harness, whose document is a stub). */
+const canPaint = typeof document !== 'undefined' && typeof document.createElement === 'function';
+/** World px per art px: the figures' grid in towns and hunts (docs/art/style-guide.md §2). */
+const GRID = 4;
 /** Particle cap per layer. Every particle is computed from its index and the clock: nothing is stored or allocated. */
 export const AMBIENT_CAP = 40;
 
@@ -27,6 +33,8 @@ function hash01(i: number, salt: number): number {
 export function ambientLayer(c: CanvasRenderingContext2D, realm: AmbientRealm, time: number, camera: number, width: number): void {
   const span = width + 120;
   const left = camera - 60;
+  // One art style: every mote is a square of whole art pixels on the figures' 4 px grid.
+  const q = (v: number) => Math.round(v / GRID) * GRID;
   c.save();
   switch (realm) {
     case 'infernal':
@@ -35,17 +43,20 @@ export function ambientLayer(c: CanvasRenderingContext2D, realm: AmbientRealm, t
         const y = 600 - wrapInto(hash01(i, 2) * 520 + time * (22 + (i % 5) * 7), 520);
         c.globalAlpha = .35 + .4 * hash01(i, 3) * (.6 + .4 * Math.sin(time * 6 + i));
         c.fillStyle = i % 3 ? '#ff9b4f' : '#ffd08a';
-        c.fillRect(x, y, 2 + (i % 2), 2 + (i % 2));
+        c.fillRect(q(x), q(y), GRID, GRID);
       }
       c.fillStyle = '#8a7468';
       for (let i = 0; i < 14; i++) {
         const x = left + wrapInto(hash01(i, 4) * span + time * 9 - camera * .05, span);
         const y = 60 + wrapInto(hash01(i, 5) * 540 + time * (10 + i % 4 * 3), 540);
         c.globalAlpha = .28;
-        c.beginPath(); c.ellipse(x, y, 2.6, 1.4, time * .7 + i, 0, Math.PI * 2); c.fill();
+        // Ash flakes: two pixels, turning between flat and edge-on.
+        const flat = Math.sin(time * .7 + i) > 0;
+        c.fillRect(q(x), q(y), flat ? GRID * 2 : GRID, flat ? GRID : GRID * 2);
       }
       break;
     case 'luminous':
+      // The shafts are light, not sprites: soft and slanted, as the engine's other light.
       c.fillStyle = '#fff1b0';
       for (let i = 0; i < 4; i++) {
         // Shafts slide a little with the camera so they read as far away.
@@ -61,29 +72,32 @@ export function ambientLayer(c: CanvasRenderingContext2D, realm: AmbientRealm, t
         const x = left + wrapInto(hash01(i, 6) * span + Math.sin(time * .3 + i * 1.7) * 30, span);
         const y = 80 + wrapInto(hash01(i, 7) * 500 + Math.cos(time * .25 + i) * 24 - time * 3, 500);
         c.globalAlpha = .25 + .35 * (.5 + .5 * Math.sin(time * 1.2 + i * 2.3));
-        c.beginPath(); c.arc(x, y, 1.2 + (i % 3) * .5, 0, Math.PI * 2); c.fill();
+        c.fillRect(q(x), q(y), GRID, GRID);
       }
       break;
     case 'umbral':
       for (let i = 0; i < 22; i++) {
         const x = left + wrapInto(hash01(i, 8) * span + time * (6 + i % 4 * 3) * (i % 2 ? 1 : -1), span);
         const y = 120 + hash01(i, 9) * 440 + Math.sin(time * .5 + i) * 18;
-        const r = 3 + hash01(i, 10) * 5;
+        const n = 1 + (hash01(i, 10) > .5 ? 1 : 0);
         c.globalAlpha = .32; c.fillStyle = '#160f22';
-        c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+        c.fillRect(q(x) - GRID, q(y) - GRID, (n + 1) * GRID, (n + 1) * GRID);
+        // The amethyst core sits on the lit (upper-left) pixel.
         c.globalAlpha = .18 + .14 * Math.sin(time * .9 + i); c.fillStyle = '#a855f7';
-        c.beginPath(); c.arc(x - r * .2, y - r * .2, r * .4, 0, Math.PI * 2); c.fill();
+        c.fillRect(q(x) - GRID, q(y) - GRID, GRID, GRID);
       }
       break;
     case 'celestial':
-      c.strokeStyle = '#d8ecff'; c.lineWidth = 1;
+      c.fillStyle = '#d8ecff';
       for (let i = 0; i < 34; i++) {
-        const x = left + wrapInto(hash01(i, 11) * span - camera * .08, span);
-        const y = 30 + hash01(i, 12) * 330;
+        const x = q(left + wrapInto(hash01(i, 11) * span - camera * .08, span));
+        const y = q(30 + hash01(i, 12) * 330);
         const tw = .5 + .5 * Math.sin(time * (1.4 + hash01(i, 13) * 2) + i * 3.1);
-        const r = 1.5 + tw * (i % 4 === 0 ? 5 : 2.5);
+        // A pixel plus: arms of 0–2 art px as the star twinkles.
+        const arm = Math.round(tw * (i % 4 === 0 ? 2 : 1)) * GRID;
         c.globalAlpha = .25 + .6 * tw;
-        c.beginPath(); c.moveTo(x - r, y); c.lineTo(x + r, y); c.moveTo(x, y - r); c.lineTo(x, y + r); c.stroke();
+        c.fillRect(x - arm, y, GRID + arm * 2, GRID);
+        c.fillRect(x, y - arm, GRID, GRID + arm * 2);
       }
       break;
     case 'verdant':
@@ -91,14 +105,16 @@ export function ambientLayer(c: CanvasRenderingContext2D, realm: AmbientRealm, t
         const x = left + wrapInto(hash01(i, 14) * span + Math.sin(time * .8 + i * 1.3) * 26 + time * 6, span);
         const y = wrapInto(hash01(i, 15) * 620 + time * (18 + i % 4 * 5), 620);
         c.globalAlpha = .55; c.fillStyle = i % 3 === 0 ? '#c08a3e' : i % 3 === 1 ? '#7fb85a' : '#4a7a3a';
-        c.beginPath(); c.ellipse(x, y, 4.5, 2, Math.sin(time * 1.6 + i) * 1.2, 0, Math.PI * 2); c.fill();
+        // A leaf: two pixels, tumbling between lying flat and on edge.
+        const flat = Math.sin(time * 1.6 + i) > -.2;
+        c.fillRect(q(x), q(y), flat ? GRID * 2 : GRID, flat ? GRID : GRID * 2);
       }
       c.fillStyle = '#d8f2a0';
       for (let i = 0; i < 14; i++) {
         const x = left + wrapInto(hash01(i, 16) * span + Math.sin(time * .4 + i) * 20, span);
         const y = 600 - wrapInto(hash01(i, 17) * 480 + time * (6 + i % 3 * 2), 480);
         c.globalAlpha = .2 + .25 * (.5 + .5 * Math.sin(time * 1.1 + i));
-        c.beginPath(); c.arc(x, y, 1.6, 0, Math.PI * 2); c.fill();
+        c.fillRect(q(x), q(y), GRID, GRID);
       }
       break;
   }
@@ -165,8 +181,18 @@ export class Atmosphere {
     }
     motes.length = kept;
   }
+  /** The Hearth's dressing in pixels (hub-pixel.ts), built on first sight in a browser. */
+  private hubPixel: HubPixel | null = null;
+  private lantern: HTMLCanvasElement | null = null;
   /** Hand-painted camp furnishings sit behind Keepers and never obstruct movement. */
   hub(c: CanvasRenderingContext2D, time: number, boardsTo = 1120): void {
+    if (canPaint) {
+      this.hubPixel ??= new HubPixel();
+      this.hearthGlow(c, time);
+      this.hubPixel.draw(c, time, boardsTo);
+      return;
+    }
+    // Without a DOM (the node harness) the vector dressing stands in.
     c.save();
     // Overhead festival bunting, with a restrained sway between timber posts.
     c.strokeStyle = '#bd9971'; c.lineWidth = 2;
@@ -269,6 +295,13 @@ export class Atmosphere {
     c.fillStyle = '#f0d0a0'; c.font = '600 11px system-ui'; c.fillText('HUNTING TRAIL →', 1060, 533);
     c.restore();
   }
+  /** The hearth's glow: light, not a sprite — the cached unit gradient scaled to this frame's pulse. */
+  private hearthGlow(c: CanvasRenderingContext2D, time: number): void {
+    const pulse = 168 + Math.sin(time * 3) * 16;
+    c.save(); c.fillStyle = this.gradients(c).hearth;
+    c.translate(245, 560); c.scale(pulse, pulse); c.fillRect(-175 / pulse, -175 / pulse, 350 / pulse, 225 / pulse);
+    c.restore();
+  }
   /**
    * Hanging lanterns, then the area's ambient layer: the realm's own particles
    * when `realm` is given (towns and their hunting grounds), else the warm
@@ -281,12 +314,21 @@ export class Atmosphere {
     for (let x = 180; x < 2700; x += 360) {
       if (x < camera - 150 || x > camera + width + 150) continue;
       const y = 270 + Math.sin(x) * 45;
-      c.strokeStyle = '#776454'; c.lineWidth = 2;
-      c.beginPath(); c.moveTo(x, 0); c.lineTo(x, y); c.stroke();
+      c.fillStyle = '#776454'; c.fillRect(Math.round(x / GRID) * GRID - GRID / 2, 0, GRID, Math.round(y / GRID) * GRID - 8);
       // Its warm pool: the cached unit gradient at the lantern, 150 px out (the box is y-140..y+160).
       c.save(); c.fillStyle = this.gradients(c).lantern;
       c.translate(x, y + 14); c.scale(150, 150); c.fillRect(-1, -154 / 150, 2, 2);
       c.restore();
+      if (canPaint) {
+        // The pixel lantern (hub-pixel.ts), on the grid, its cord one art pixel wide.
+        this.lantern ??= lanternSprite();
+        const lx = Math.round(x / GRID) * GRID, ly = Math.round(y / GRID) * GRID;
+        const smoothing = c.imageSmoothingEnabled;
+        c.imageSmoothingEnabled = false;
+        c.drawImage(this.lantern, lx - 16 - GRID, ly - 8 - GRID, this.lantern.width * GRID, this.lantern.height * GRID);
+        c.imageSmoothingEnabled = smoothing;
+        continue;
+      }
       c.fillStyle = '#564333'; c.fillRect(x - 13, y - 5, 26, 36);
       c.fillStyle = '#ffdca0'; c.fillRect(x - 8, y, 16, 23);
       c.fillStyle = '#fff0c4'; c.fillRect(x - 3, y + 4, 6, 15);
@@ -296,7 +338,7 @@ export class Atmosphere {
       const x = (i * 79 + time * (5 + i % 3)) % 2700;
       const y = 570 - (i * 43 + time * (12 + i % 5)) % 480;
       c.globalAlpha = .25 + .25 * Math.sin(time * 1.4 + i);
-      c.fillStyle = '#ffe0a5'; c.beginPath(); c.arc(x, y, 1.5 + i % 2, 0, Math.PI * 2); c.fill();
+      c.fillStyle = '#ffe0a5'; c.fillRect(Math.round(x / GRID) * GRID, Math.round(y / GRID) * GRID, GRID, GRID);
     }
     c.restore();
   }
