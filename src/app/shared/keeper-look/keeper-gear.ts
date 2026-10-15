@@ -23,7 +23,9 @@ export const GEAR_SLOTS: readonly GearSlot[] = ['head', 'chest', 'hands', 'legs'
 
 export type WeaponKind =
   | 'sword' | 'greatsword' | 'dagger' | 'axe' | 'pickaxe' | 'hammer' | 'mace'
-  | 'staff' | 'wand' | 'bow' | 'crossbow' | 'spear' | 'halberd' | 'sickle' | 'tongs';
+  | 'staff' | 'wand' | 'bow' | 'crossbow' | 'spear' | 'halberd' | 'sickle' | 'tongs'
+  /** A fishing rod: never read from an item name (a "Rod" weapon is a staff), only put in hand by held-tool.ts. */
+  | 'rod';
 export type OffhandKind = 'shield' | 'tome' | 'orb' | 'lantern' | 'scroll' | 'cards' | 'scales' | WeaponKind;
 export type HeadKind = 'helm' | 'hood' | 'crown' | 'circlet';
 export type ChestKind = 'plate' | 'coat' | 'robe' | 'mantle';
@@ -180,6 +182,8 @@ export const WEAPON_SPECS: Readonly<Record<WeaponKind, WeaponSpec>> = {
   halberd: { w: 9, h: 29, gx: 4, gy: 19, idle: -1.35, idleArm: .9, swing: 'slash' },
   sickle: { w: 8, h: 13, gx: 1, gy: 11, idle: -.9, idleArm: 1.15, swing: 'slash' },
   tongs: { w: 6, h: 15, gx: 2, gy: 13, idle: -.8, idleArm: 1.15, swing: 'slash' },
+  // Held out over the water, tip forward and up, so the line falls from it.
+  rod: { w: 5, h: 28, gx: 1, gy: 23, idle: -.62, idleArm: .75, swing: 'cast' },
 };
 
 /** How far the hand sits from the shoulder (pixels). */
