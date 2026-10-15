@@ -3477,8 +3477,8 @@ test('tool level: the card and stats lines show the split above level 1, the pla
   const en = (key, vars) => TOOLS_I18N[key].en.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars?.[k]));
   assert.deepEqual(skillTools.toolPaceLines(at42, en), ['Power ×1.81 (tool ×1.5 · Mining 42 +21%)', 'Swing 0.36 s (tool 0.40 · Mining 42 −10%)']);
   assert.deepEqual({ ...toolLevel.levelGain(41, 42) }, { swing: '0.3', power: '0.5' });
-  assert.equal(en('toolStat.levelUp', { skill: 'Mining', level: 42, ...toolLevel.levelGain(41, 42) }), 'Mining 42: swings 0.3% faster, hits 0.5% harder');
-  for (const key of ['toolStat.powerSplit', 'toolStat.swingSplit', 'toolStat.levelUp', 'toolStat.levelUpPower']) assert.ok(TOOLS_I18N[key].es, `${key} ES`);
+  // (The level-up line that read levelGain lived on the site's level-up banner, deleted with the game-only shell.)
+  for (const key of ['toolStat.powerSplit', 'toolStat.swingSplit']) assert.ok(TOOLS_I18N[key].es, `${key} ES`);
 });
 
 // ── Uncapped levels, Tibia-style (docs/handoff/uncapped-levels.md) ──
