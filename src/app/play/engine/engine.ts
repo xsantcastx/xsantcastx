@@ -21,7 +21,7 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { SurfaceMover, type SurfaceGeo } from './surface-body';
 import { SurfaceRender } from './surface-render';
 import { FIND_REACH, hollisFolk, hollisRealm, type AreaHeights, type HeightFind, type HeightFolk } from '../world/heights';
-import { advanceBody, Body, EngineInput, EngineOptions, EngineSfx, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
+import { advanceBody, Body, EngineInput, EngineOptions, EngineSfx, EngineState, FLOOR, GlimCue, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
   climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, stepTerrainBodyUp, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
@@ -74,7 +74,10 @@ import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, M
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
 import { GlimSprite } from './glim-sprite';
+import type { GlimMood } from '../../shared/glim/glim-art';
 import { PetSprite } from './pet-sprite';
+import { PetBrain, type PetEvent, type PetFoe, type PetSite, type PetWorld } from './pet-brain';
+import { PET_ACT, type PetCommand, type PetMove, type PetRole, type PetSecond } from '../../shared/pets/pet-roles';
 import { SettlementLife } from './settlement-life';
 import { SettlementDressing, type DressingFrame, type StoneView } from './settlement-render';
 import { regionAt, stonesIn, wildStoneAt, type SurfaceSpec } from './surface-gen';
@@ -110,6 +113,13 @@ interface Monster {
   frozen?: boolean;
   /** Drawn this far above its floor (the Fallen Ephemeris in orbit on its hall's ceiling). */
   lift?: number;
+  /** A pet's bite or howl: seconds it cannot move or strike (pet-brain.ts). */
+  stun?: number;
+  /** A pet's chomp cracked its armour: every blow does `crackShare` more while `crack` lasts. */
+  crack?: number;
+  crackShare?: number;
+  /** Its next wind-up is meant for the pet (a pet took its aggro). */
+  aggro?: boolean;
 }
 /** The hand's extra tools (not placed): the Thornroot Grapple. */
 export type HandToolId = typeof THORNROOT_GRAPPLE;
@@ -146,6 +156,8 @@ const FLIGHT_POOL = 16;
 const MAX_FPS = 60;
 const QUIET_FPS = 30;
 const QUIET_AFTER_MS = 2500;
+/** Loot rarities in order, for Glim's gasp at an epic beam or better. */
+const RARE_GASP: readonly LootRarity[] = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'];
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
@@ -462,6 +474,13 @@ export class SeamworksEngine {
   private terrain: Terrain | null = null;
   /** Glim, the Keeper's companion and the Delve's lantern (glim-sprite.ts). Drawn once met. */
   private readonly glim = new GlimSprite();
+  /** Glim's powers in the world (setGlimPowers), its lamp 0..1 when the Keeper holds still, and a "show me" trail. */
+  private glimPowers = { lamp: false, missed: false };
+  private glimLamp = 0;
+  private glimStill = 0;
+  private glimTrail: { x: number; y: number; t: number } | null = null;
+  private glimMissedAt = -99;
+  private glimLastDrop = '';
   /** The pet following the Keeper (pet-sprite.ts), and its helper (pets.model.ts PetAbility). */
   private readonly pet = new PetSprite();
   private petAbility: PetAbility | null = null;
@@ -469,6 +488,14 @@ export class SeamworksEngine {
   private petFetch: Drop | null = null;
   private petBarkAt = -99;
   private petLastX = NaN;
+  /** What the pet decides to do (pet-brain.ts): fight, work, dig, play, stay. */
+  private readonly petBrain = new PetBrain();
+  private petAreaId = '';
+  /** Scratch lists for the pet's view of the world (no allocation per step). */
+  private readonly petFoes: PetFoe[] = [];
+  private readonly petSites: PetSite[] = [];
+  private petWorldView: PetWorld | null = null;
+  private petFindN = 0;
   private readonly terrains = new Map<string, Terrain>();
   /** `terrainLayout()` each cached terrain was generated under: the key its diff is saved by. */
   private readonly layouts = new Map<string, string>();
@@ -660,6 +687,8 @@ export class SeamworksEngine {
   }
   private enter(area: AreaDef): void {
     this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = []; this.pendingHalls = []; this.wild.clear();
+    // Glim comes along: at the shoulder in the new place, not flying in from where it hovered in the old one.
+    this.glim.reset(); this.glimTrail = null;
     const fresh = !this.worlds.has(area.id);
     this.terrain = this.terrainFor(area); this.world = this.terrain ? this.worlds.get(area.id) ?? null : null;
     // A world already loaded keeps its ring: its halls' creatures come back with the area.
@@ -1835,16 +1864,26 @@ export class SeamworksEngine {
       this.impact(.025, 1.6);
       return;
     }
+    this.harvestSite(site, check.tool, 'gather', def.xp);
+  }
+  /**
+   * A node gives way: the host books the harvest (`prefix` keys the grant: the
+   * Keeper's own `gather`, or a pet's `pet-forage`), the node rests for its
+   * respawn, and the yield floats up. False when the host refused it.
+   */
+  private harvestSite(site: GatherSite, tool: ToolKind, prefix: string, xp: number): boolean {
+    const def = site.def;
+    const top = FLOOR - (def.kind === 'wood' ? 120 : 50);
     let material: string | undefined;
     // The aligned realm's hunting ground gives two Eclipse Glass a cut while the eclipse lasts.
     const pays = def.when === 'eclipse' && this.worldSky.alignedHunt === this.areaDef.id ? { ...def.yield, qty: def.yield.qty * ALIGNED_GLASS } : def.yield;
     if (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance) material = pays.materialId;
     const accepted = this.options.onWorldAction?.({
-      kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: def.id, site: def.id,
-      materialId: material, qty: material ? pays.qty : undefined, discipline: def.discipline, xp: def.xp,
-      mutationId: `gather:${this.lootSession}:${this.areaDef.id}:${def.id}:${site.gen}`,
+      kind: TOOL_ACTION[tool], areaId: this.areaDef.id, cellKey: def.id, site: def.id,
+      materialId: material, qty: material ? pays.qty : undefined, discipline: def.discipline, xp,
+      mutationId: `${prefix}:${this.lootSession}:${this.areaDef.id}:${def.id}:${site.gen}`,
     });
-    if (accepted === false) { site.hp = Math.min(site.hp, 1e-3); this.debris.chip(def.x, top, SITE_FLECK[def.kind], 3); return; }
+    if (accepted === false) { site.hp = Math.min(site.hp, 1e-3); this.debris.chip(def.x, top, SITE_FLECK[def.kind], 3); return false; }
     site.at = this.clock(); site.ready = false; site.timer = def.respawn; site.gen++; site.hp = def.hp;
     try { this.gathering?.harvested(this.areaDef.id, def.id, site.at); } catch { /* still resting for this session */ }
     for (let n = 0; n < (this.reducedMotion ? 4 : 10); n++) this.debris.chip(def.x + (n - 5) * 4, top, SITE_FLECK[def.kind], 1);
@@ -1853,6 +1892,7 @@ export class SeamworksEngine {
       this.atmosphere.burst(def.x, top - 16, `+${pays.qty} ${titleCase(material)}`);
       this.say('play.hud.eng.siteGathered', `${titleCase(material)} gathered from the ${def.label.toLowerCase()}. It grows back in ${def.respawn}s.`, { name: titleCase(material), lsite: def.label.toLowerCase(), n: def.respawn });
     } else this.say('play.hud.eng.siteNothing', `Nothing worth keeping on the ${def.label.toLowerCase()} this time. It grows back in ${def.respawn}s.`, { lsite: def.label.toLowerCase(), n: def.respawn });
+    return true;
   }
   /** Swing at the cell under a world point, if it is solid and in reach. */
   strikeCell(x: number, y: number): boolean {
@@ -2296,26 +2336,99 @@ export class SeamworksEngine {
   }
   /** The bond's sense: Glim glows brighter (the host decides when; a Mirror Substitute's dim still wins). */
   setGlimBright(bright: boolean): void { this.glim.bright = bright; }
+  /**
+   * The bond's powers that live in the world (glim-react.ts glimPowers): `lamp`
+   * lights the tunnel when the Keeper holds still; `missed` flies to a drop
+   * left lying. The host turns them on as the bond grows.
+   */
+  setGlimPowers(powers: { lamp: boolean; missed: boolean }): void { this.glimPowers = powers; }
+  /** Glim's face for a while (glim-art.ts GlimMood): a gasp, a grin, a worry, sleepy. */
+  glimMood(mood: GlimMood, seconds = 2.5): void { this.glim.feel(mood, seconds); }
+  /** A high five on a level up: Glim darts to the Keeper's hand, a burst of motes, a grin. */
+  glimHighFive(): void {
+    if (!this.glim.shown) return;
+    const k = this.figure;
+    this.glim.highFive(this.player.x + this.facing * 40 * k, this.player.y - 80 * k);
+    if (!this.reducedMotion) for (let n = 0; n < 8; n++) this.debris.chip(this.player.x + this.facing * 40 * k + (n - 4) * 3, this.player.y - 80 * k, n % 2 ? '#ffd98a' : '#c9a6ff', 1);
+  }
+  /**
+   * "Show me something": the nearest thing worth finding (a room no lantern has
+   * touched, a shown cabinet still shut, an ore vein, a ready node, a drop left
+   * lying), Glim flies to it, and a trail of light runs from the Keeper to it for
+   * a few seconds. Null when there is nothing near.
+   */
+  glimFind(point = true): { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; dir: number; cells: number } | null {
+    if (!this.glim.shown) return null;
+    const p = this.player, k = this.figure;
+    let best: { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; d: number } | null = null;
+    const offer = (kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop', x: number, y: number, weight = 1): void => {
+      const d = Math.hypot(x - p.x, y - p.y) * weight;
+      if (d > 40 * k && (!best || d < best.d)) best = { kind, x, y, d };
+    };
+    for (const cab of this.cabinets) if (cab.area === this.areaDef.id && !cab.open) offer('cabinet', cab.x, cab.y, .6);
+    const t = this.terrain;
+    if (t) {
+      const at = this.keeperCell();
+      const world = this.world && this.world.t === t ? this.world : null;
+      if (at && world) for (const s of world.structuresNear(at.col, 2)) {
+        if (world.structureSeen(s)) continue;
+        offer('room', (s.col + s.w / 2) * CELL, t.top + (s.row + s.h / 2) * CELL, .8);
+      }
+      const vein = this.petVein(p.x, p.y, 12, new Set());
+      if (vein) offer('ore', vein.x, vein.y);
+    } else {
+      for (const site of this.sites) if (site.ready) offer('node', site.def.x, FLOOR - 40);
+    }
+    for (const drop of this.drops) if (drop.age > 1) offer('drop', drop.x, drop.y - 20, .5);
+    const found = best as { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; d: number } | null;
+    if (!found) return null;
+    if (point) {
+      this.glim.flyTo(found.x, found.y - 30 * k, 3);
+      this.glimTrail = { x: found.x, y: found.y, t: 6 };
+    }
+    return { kind: found.kind, x: Math.round(found.x), y: Math.round(found.y), dir: Math.sign(found.x - p.x) || 1, cells: Math.max(1, Math.round(Math.abs(found.x - p.x) / CELL)) };
+  }
+  /** Glim's tap target, in canvas CSS px (the host floats a button over it). */
+  glimScreen(): { x: number; y: number } | null {
+    const g = this.glim;
+    if (!g.shown || !Number.isFinite(g.x)) return null;
+    const scale = this.height / 720;
+    return { x: (g.x - this.camera) * scale, y: (g.y - this.cameraY) * scale };
+  }
+  /** Glim's catch-the-light game: motes drift up around the Keeper (the host draws the buttons; this only sparkles). */
+  glimSparkle(x: number, y: number): void {
+    if (!this.reducedMotion) for (let n = 0; n < 6; n++) this.debris.chip(x + (n - 3) * 4, y, n % 2 ? '#ffd98a' : '#c9a6ff', 1);
+  }
 
   // ── The pet (shared/pets; pet-sprite.ts draws and moves it) ──
 
   /** The pet following the Keeper, or null (none, or it rests at home). */
-  setPet(pet: { id: PetId; name: string; hat: boolean; ability: PetAbility } | null): void {
+  setPet(pet: { id: PetId; name: string; hat: boolean; ability: PetAbility; role?: PetRole; move?: PetMove; second?: PetSecond | null; level?: number; command?: PetCommand } | null): void {
+    if ((pet?.id ?? null) !== this.pet.id) this.petBrain.reset();
     this.pet.set(pet?.id ?? null, pet?.name ?? '', pet?.hat ?? false);
     this.petAbility = pet?.ability ?? null;
     if (!pet) this.petFetch = null;
+    if (pet?.role && pet.move) this.petBrain.setup({ role: pet.role, move: pet.move, second: pet.second ?? null, level: pet.level ?? 1, command: pet.command ?? 'follow' });
   }
-  /** A feeling for the pet: a meal (happy), its trick, or a hatch's first hop. */
-  petFeel(kind: 'happy' | 'trick'): void {
+  /** A feeling for the pet: a meal (hearts), a pat (happy), its trick, a hatch's first hop, or a start (the eclipse). */
+  petFeel(kind: 'happy' | 'love' | 'trick' | 'alert'): void {
     if (!this.pet.id) return;
     this.pet.feel(kind, 1.2);
-    this.sfx('chirp');
+    this.sfx(kind === 'alert' ? 'bark' : 'chirp');
   }
   /** Where the pet is and what it is doing (the HUD's data-pet-* for the e2e). */
-  get petView(): { id: string; x: number; state: string; fetching: boolean; glow: boolean } | null {
+  get petView(): { id: string; x: number; state: string; fetching: boolean; glow: boolean; act: string; hits: number; gathers: number; finds: number; heals: number; command: string; level: number } | null {
     if (!this.pet.id || !Number.isFinite(this.pet.x)) return null;
-    return { id: this.pet.id, x: Math.round(this.pet.x), state: this.pet.state, fetching: !!this.petFetch, glow: this.petAbility === 'glow' && !!this.terrain };
+    const b = this.petBrain;
+    return {
+      id: this.pet.id, x: Math.round(this.pet.x), state: this.pet.state, fetching: !!this.petFetch, glow: this.petAbility === 'glow' && !!this.terrain,
+      act: b.act, hits: b.hits, gathers: b.gathers, finds: b.finds, heals: b.heals, command: b.command, level: b.level,
+    };
   }
+  /** The pet's scouted spot (world x) and the veins it has warmed (cell indexes), for the draw and tests. */
+  get petMarks(): { spotX: number; warm: number[] } { return { spotX: this.petBrain.spotX, warm: [...this.petBrain.warmCells.keys()] }; }
+  /** The moth-kit hovers over the bob (its guide): the host folds a bite boost into the rod. */
+  get petGuiding(): boolean { return this.petBrain.pose === 'guide'; }
   /**
    * The Star Owlet's scent: ore cells within `cells` of the Keeper (the map
    * marks them), nearest first, at most PET_TUNING.scentMax. Empty off the Delve.
@@ -2348,7 +2461,11 @@ export class SeamworksEngine {
     const moving = Number.isFinite(this.petLastX) && Math.abs(p.x - this.petLastX) > .5;
     this.petLastX = p.x;
     let goalX: number | null = null;
-    if (this.petAbility === 'fetch') {
+    // The brain first (pet-brain.ts): a fight, a job, a dig, play, or stay. A new place forgets the old one.
+    if (this.areaDef.id !== this.petAreaId) { this.petAreaId = this.areaDef.id; this.petBrain.reset(); }
+    if (this.hp > 0) this.petBrain.step(this.petWorld(dt), this.pet.x);
+    const brainGoal = this.petBrain.goalX;
+    if (brainGoal === null && this.petAbility === 'fetch' && this.petBrain.command !== 'stay') {
       const carried = this.petFetch;
       if (carried && (carried.age < 0 || !this.drops.includes(carried))) this.petFetch = null;
       if (!this.petFetch) {
@@ -2392,12 +2509,112 @@ export class SeamworksEngine {
     // Falling up (the Orrery Wells): the pet stands where the Keeper does, on the ceiling, and hangs the same way.
     const hanging = this.down < 0;
     this.pet.hang = hanging;
-    this.pet.update({ dt, time: this.elapsed, reduced: this.reducedMotion, keeperX: p.x, keeperY: hanging ? p.y - DELVE_BOX.height : p.y, facing: this.facing, figure: k, moving, goalX });
+    const b = this.petBrain;
+    this.pet.update({
+      dt, time: this.elapsed, reduced: this.reducedMotion, keeperX: p.x, keeperY: hanging ? p.y - DELVE_BOX.height : p.y, facing: this.facing, figure: k, moving,
+      goalX: brainGoal ?? goalX, goalY: hanging ? null : b.goalY, pose: b.pose, lunge: b.lunge,
+      // Night above ground: it naps sooner (by the fire).
+      sleepAfter: nightShare(this.worldHour) > .5 && !this.terrain ? 6 : undefined,
+    });
+  }
+  /**
+   * The pet's view of the world this step (pet-brain.ts PetWorld): the foes it
+   * may touch, the nodes the Keeper could work, the bob, and the verbs. Every
+   * verb runs the engine's own paths: hurtMonster, the node's harvest, a drop.
+   */
+  private petWorld(dt: number): PetWorld {
+    const p = this.player, k = this.figure;
+    const foes = this.petFoes; foes.length = 0;
+    for (const m of this.monsters) {
+      if (m.hp <= 0 || m.dying > 0 || !this.petMayHit(m)) continue;
+      foes.push({ ref: m, x: m.x, floor: m.def.floorY ?? FLOOR, windup: m.phase === 'windup' });
+    }
+    const sites = this.petSites; sites.length = 0;
+    if (this.sites.length && p.y >= FLOOR - 120) for (const site of this.sites) if (site.ready && !this.siteNeed(site.def) && toolFor(site.def, this.tools, SWING_TOOLS, this.power).ok) sites.push({ ref: site, x: site.def.x });
+    const w = this.petWorldView ?? (this.petWorldView = {
+      dt: 0, time: 0, figure: 1, reduced: false, keeperX: 0, keeperY: 0, facing: 1, hp: 0, maxHp: 1, minX: 0, maxX: 0, safeX: 0, night: false,
+      foes, sites, bob: null,
+      vein: (x, y, cells, skip) => this.petVein(x, y, cells, skip),
+      hit: (foe, damage) => this.petHit(foe as Monster, damage),
+      stun: (foe, seconds) => { const m = foe as Monster; m.stun = Math.max(m.stun ?? 0, seconds); if (m.phase === 'windup') { m.phase = 'idle'; m.timer = seconds; } },
+      crack: (foe, share, seconds) => { const m = foe as Monster; m.crack = seconds; m.crackShare = share; },
+      draw: foe => { (foe as Monster).aggro = true; },
+      heal: amount => { if (this.hp > 0) this.hp = Math.min(this.maxHp, this.hp + amount); },
+      harvest: site => this.petHarvest(site as GatherSite),
+      warm: () => { /* the brain keeps the set; the draw and hitCell read it */ },
+      spill: (x, coins) => this.petSpill(x, coins),
+      event: e => this.petEvent(e),
+    });
+    w.dt = dt; w.time = this.elapsed; w.figure = k; w.reduced = this.reducedMotion;
+    w.keeperX = p.x; w.keeperY = p.y; w.facing = this.facing; w.hp = this.hp; w.maxHp = this.maxHp;
+    w.minX = this.clampX(-Infinity); w.maxX = this.clampX(Infinity); w.safeX = this.areaDef.safeX ?? 0;
+    w.night = nightShare(this.worldHour) > .5 && !this.terrain;
+    w.bob = this.line ? { x: this.line.bobX, y: this.line.bobY } : null;
+    return w;
+  }
+  /** A foe a pet can actually hurt: no guardian whose rule a blow must meet first (those clang for the Keeper too). */
+  private petMayHit(m: Monster): boolean {
+    if (m.def.veiled || m.minion) return false;
+    const trait = m.def.trait;
+    if (!trait || trait === 'shoulder') return true;
+    if (trait === 'shade') return !!m.frozen;
+    if (trait === 'dormant') return !!m.awake;
+    return false;
+  }
+  private petHit(m: Monster, damage: number): { landed: boolean; killed: boolean } {
+    if (m.hp <= 0 || !this.petMayHit(m)) return { landed: false, killed: false };
+    this.hurtMonster(m, damage, true);
+    return { landed: true, killed: m.hp <= 0 };
+  }
+  /** The hedgehog works a ready node beside the Keeper: the same harvest, booked as the pet's (no XP for the Keeper). */
+  private petHarvest(site: GatherSite): boolean {
+    if (!site.ready || this.siteNeed(site.def)) return false;
+    const check = toolFor(site.def, this.tools, SWING_TOOLS, this.power);
+    if (!check.ok) return false;
+    site.shake = 1;
+    return this.harvestSite(site, check.tool, 'pet-forage', 0);
+  }
+  /** The nearest ore vein within `cells` of a world point (the newt's kindle), skipping cells already warm. */
+  private petVein(x: number, y: number, cells: number, skip: ReadonlySet<number>): { index: number; x: number; y: number } | null {
+    const t = this.terrain;
+    if (!t) return null;
+    const col0 = t.colAt(x), row0 = t.rowAt(y - 40);
+    let best: { index: number; x: number; y: number } | null = null, bestD = Infinity;
+    for (let row = Math.max(0, row0 - cells); row <= Math.min(t.rows - 1, row0 + cells); row++) {
+      for (let col = Math.max(t.colLo, col0 - cells); col <= Math.min(t.colHi - 1, col0 + cells); col++) {
+        const index = t.index(col, row);
+        if (skip.has(index)) continue;
+        const node = TERRAIN_NODE_LIST[t.kind[index]];
+        if (!node?.yield || node.discipline !== 'mining' || !node.solid || node.yield.materialId === 'ember-grub') continue;
+        const d = Math.hypot(col - col0, row - row0);
+        if (d <= cells && d < bestD) { bestD = d; best = { index, x: (col + .5) * CELL, y: t.top + (row + .5) * CELL }; }
+      }
+    }
+    return best;
+  }
+  /** A scouted spot dug up: coins spill where it was, and the usual pickup takes them. */
+  private petSpill(x: number, coins: number): void {
+    const id = `${this.lootSession}:pet-find:${++this.petFindN}`;
+    const y = this.terrain ? this.player.y : FLOOR;
+    this.drops.push({ id, x, y, coins, ore: 0, age: 0, spin: 1, rarity: 'uncommon', color: beamColor('uncommon', true), beam: beamHeight('uncommon', true), caption: `${coins} coins`, captionW: 0 });
+    for (let n = 0; n < (this.reducedMotion ? 3 : 8); n++) this.debris.chip(x + (n - 4) * 4, y - 6, '#8a6a42', 1);
+  }
+  /** A pet event for the host (pet XP, finds, Glim); a yip on a hit, a chirp on a find. Never throws into the step. */
+  private petEvent(e: PetEvent): boolean | void {
+    if (e.kind === 'hit') this.sfx('bark');
+    else if (e.kind === 'found' || e.kind === 'gather' || e.kind === 'heal') this.sfx('chirp');
+    if (e.kind === 'found') this.pet.feel('love', 1);
+    const on = this.options.onPet;
+    if (!on) return e.kind === 'find' ? false : undefined;
+    try { return on(e); } catch { return e.kind === 'find' ? false : undefined; }
   }
   /** Where Glim is, for the HUD's data attributes and the tell: world x, the Show me target, dimmed, brightened. */
-  get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } {
+  get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean; mood: string; trail: number | null; lamp: number } {
     const g = this.glim;
-    return { shown: g.shown, x: Math.round(g.x), targetX: g.targetX, arrived: g.arrived, dimmed: g.dim, bright: g.bright && !g.dim };
+    return {
+      shown: g.shown, x: Math.round(g.x), targetX: g.targetX, arrived: g.arrived, dimmed: g.dim, bright: g.bright && !g.dim,
+      mood: g.mood, trail: this.glimTrail ? Math.round(this.glimTrail.x) : null, lamp: Math.round(this.glimLamp * 100) / 100,
+    };
   }
   /** Waystone travel: stand in another town's spawn. Monsters, drops and any walk reset. */
   setTown(town: TownDef): void {
@@ -2442,7 +2659,11 @@ export class SeamworksEngine {
     if (action === 'jump') this.pressJump();
     if (action === 'attack' && this.attackCooldown <= 0) this.attack();
     if (action === 'blast') this.blast();
-    if (action === 'dodge' && this.dodgeCooldown <= 0) { this.dodgeTime = .26; this.dodgeCooldown = 1.05; }
+    if (action === 'dodge' && this.dodgeCooldown <= 0) {
+      this.dodgeTime = .26; this.dodgeCooldown = 1.05;
+      // Glim notices a dodge only when something was there to dodge.
+      if (this.monsters.some(m => m.hp > 0 && (m.phase === 'windup' || m.phase === 'strike') && Math.abs(m.x - this.player.x) < 240 * this.figure)) this.glimCue({ kind: 'dodge' });
+    }
     this.report();
   }
   /**
@@ -2519,8 +2740,10 @@ export class SeamworksEngine {
       if (this.swingTool) this.toolBit(); else this.putToolAway();
     } else if (!struck) { const site = this.siteInReach(); if (site) this.workSite(site); else this.putToolAway(); }
   }
-  private hurtMonster(monster: Monster, damage: number): void {
+  private hurtMonster(monster: Monster, damage: number, byPet = false): void {
     const floor = monster.def.floorY ?? FLOOR;
+    // A pet's chomp cracked its armour: every blow does a little more while it lasts.
+    if ((monster.crack ?? 0) > 0) damage = Math.round(damage * (1 + (monster.crackShare ?? 0)));
     if (monster.def.veiled && !this.exposed(monster)) {
       monster.flash = .08;
       this.clang(monster.x, floor - 60 * this.figure, 'Its light swallows the blow. Light a torch beside it');
@@ -2558,9 +2781,10 @@ export class SeamworksEngine {
     }
     this.atmosphere.burst(monster.x, floor - 85 * this.figure, String(damage));
     monster.hp = Math.max(0, monster.hp - damage);
-    monster.flash = .14; monster.recoil = 1;
-    this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
-    if (!this.reducedMotion) monster.knock = Math.sign(monster.x - this.player.x || this.facing) * 22 * this.figure;
+    monster.flash = .14; monster.recoil = byPet ? .5 : 1;
+    // A pet's nip never shakes the screen; only the kill does.
+    if (!byPet || monster.hp === 0) this.impact(monster.hp === 0 ? .09 : .055, monster.hp === 0 ? 7 : 3);
+    if (!this.reducedMotion) monster.knock = Math.sign(monster.x - (byPet ? this.pet.x : this.player.x) || this.facing) * (byPet ? 10 : 22) * this.figure;
     if (monster.hp === 0 && monster.minion) {
       // The furnace's own ember: it gives its heat back. No drop, no tally (nothing to farm).
       monster.dying = DEATH_FADE; monster.respawn = Infinity; this.spentMinions = true;
@@ -2687,7 +2911,8 @@ export class SeamworksEngine {
     const index = t.index(col, row);
     // The pace of a swing is the tool that actually bit.
     if (!this.swingTool || (this.swing[check.tool] ?? BASE_SWING) < (this.swing[this.swingTool] ?? BASE_SWING)) this.swingTool = check.tool;
-    const left = t.hp[index] - check.damage;
+    // A vein the Ember Newt warmed gives way at once (pet-roles.ts kindle).
+    const left = t.hp[index] - check.damage * (this.petBrain.warmCells.has(index) ? PET_ACT.kindleBoost : 1);
     if (left > 1e-3) {
       t.setHp(col, row, left);
       this.debris.chip(cx, cy, node.fleck, this.reducedMotion ? 2 : 4);
@@ -3410,6 +3635,10 @@ export class SeamworksEngine {
         names.push(entry.label);
       }
     }
+    // A rare beam goes up: Glim gasps (glim-react.ts), the rarest wins.
+    let rarest: LootRarity | undefined;
+    for (const entry of entries) if (entry.rarity && RARE_GASP.indexOf(entry.rarity) > RARE_GASP.indexOf(rarest ?? 'common')) rarest = entry.rarity;
+    if (rarest && RARE_GASP.indexOf(rarest) >= RARE_GASP.indexOf('epic') && this.drops.some(d => d.rarity === rarest && d.age === 0)) this.glimCue({ kind: 'rare', rarity: rarest });
     // `items` is joined in English; the HUD re-joins it in the player's language (hud.i18n.ts).
     if (names.length) this.say('play.hud.eng.defeatedDrops', `${monster.def.name} defeated! Walk over the ${names.join(' and ')} to collect them.`, { name: monster.def.name, items: names.join(' and ') });
     else this.say('play.hud.eng.defeated', `${monster.def.name} defeated!`, { name: monster.def.name });
@@ -3687,6 +3916,7 @@ export class SeamworksEngine {
     for (const drop of this.drops) if (drop.age >= 0 && drop.age < 120) this.drops[kept++] = drop;
     this.drops.length = kept;
     this.updatePet(dt);
+    this.updateGlimPowers(dt);
     for (const monster of this.monsters) {
       monster.flash = Math.max(0, monster.flash - dt);
       monster.recoil = Math.max(0, monster.recoil - dt * 3);
@@ -3702,6 +3932,9 @@ export class SeamworksEngine {
         continue;
       }
       monster.timer -= dt;
+      if (monster.crack) monster.crack = Math.max(0, monster.crack - dt);
+      // Stunned by a pet (a bite, a howl, a flare): it cannot move or strike.
+      if ((monster.stun ?? 0) > 0) { monster.stun = Math.max(0, monster.stun! - dt); if (monster.phase !== 'recover') monster.phase = 'idle'; monster.timer = Math.max(monster.timer, .2); continue; }
       // The Banked Furnace never walks or swings: its fight is its breath (updateFurnace).
       if (monster.def.trait === 'furnace') continue;
       // A Banked Ember lies cold until something strikes it.
@@ -3734,7 +3967,16 @@ export class SeamworksEngine {
           monster.phase = 'strike'; monster.timer = .2;
           // An Ironwood Sentinel shoulders the ceiling where it should be: unsupported loose rock comes down.
           if (monster.def.trait === 'shoulder') this.shoulderCeiling(monster);
-          if (Math.abs(distance) < 170 * k && distance * monster.facing > -40 * k && this.player.y > floor - 105 * Math.max(k, .6) && this.player.y < floor + 40 && this.dodgeTime <= 0 && this.hurtTime <= 0) {
+          // A pet drew this swing (it took aggro), or the Rivet hatchling guards the Keeper: the pet takes it, never the Keeper.
+          const reaches = Math.abs(distance) < 170 * k && distance * monster.facing > -40 * k && this.player.y > floor - 105 * Math.max(k, .6) && this.player.y < floor + 40 && this.dodgeTime <= 0 && this.hurtTime <= 0;
+          const petHere = !!this.pet.id && Number.isFinite(this.pet.x);
+          const drawn = petHere && !!monster.aggro && Math.abs(this.pet.x - monster.x) < 200 * k;
+          const guarded = !drawn && petHere && reaches && this.petBrain.guard(this.petWorld(0), this.pet.x, monster.x, k);
+          monster.aggro = false;
+          if (drawn || guarded) {
+            if (drawn) this.petBrain.blow(this.petWorld(0));
+            this.debris.chip(this.pet.x, floor - 20 * k, '#fff4e0', this.reducedMotion ? 2 : 6);
+          } else if (reaches) {
             this.hp = Math.max(0, this.hp - 12); this.hurtTime = .8; this.wound = 1;
             this.impact(.07, this.hp === 0 ? 12 : 8);
             if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
@@ -5829,6 +6071,7 @@ export class SeamworksEngine {
         attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion, false, view.clock, false, this.peerPainter(view.peer.id));
       c.restore();
     }
+    this.drawPetWorld(c, motionTime, k);
     this.pet.draw(c, motionTime, this.reducedMotion, k);
     // Keep the player readable against the dark realm art at narrow viewport sizes.
     const byFire = this.isTown && this.areaDef.scenery === 'seamworks-hub' && Math.abs(this.player.x - 245) < 220;
@@ -5944,9 +6187,108 @@ export class SeamworksEngine {
   private drawGlim(c: CanvasRenderingContext2D, time: number): void {
     const g = this.glim;
     if (!g.shown) return;
-    g.update({ dt: this.frameDt, time, reduced: this.reducedMotion, keeperX: this.player.x, keeperY: this.player.y, facing: this.facing, figure: this.figure, delve: !!this.terrain });
+    // The pet curled up asleep: Glim comes to rest on its head (perch), until something moves.
+    const pet = this.pet;
+    const perch = pet.id && Number.isFinite(pet.x) && pet.asleep && !pet.hang ? { x: pet.x, y: pet.y - pet.top(this.figure) - 6 * this.figure } : null;
+    g.update({ dt: this.frameDt, time, reduced: this.reducedMotion, keeperX: this.player.x, keeperY: this.player.y, facing: this.facing, figure: this.figure, delve: !!this.terrain, perch });
     g.dim = this.monsters.some(m => m.hp > 0 && m.def.creature === 'mirror-substitute' && Math.abs(m.x - this.player.x) < 480);
+    if (this.glimTrail) this.drawGlimTrail(c, time);
     g.draw(c, time, this.reducedMotion, this.budget.glows, this.figure);
+  }
+  /**
+   * What the pet's brain has put in the world: the mote it chases, its scouted
+   * spot (a little X of light on the ground), the veins it warmed (an ember
+   * glow on the cell), and stars over a foe it stunned. Squares only.
+   */
+  private drawPetWorld(c: CanvasRenderingContext2D, time: number, k: number): void {
+    const b = this.petBrain, reduced = this.reducedMotion;
+    if (!this.pet.id) return;
+    const px = Math.max(2, Math.round(2 * Math.max(.5, k)));
+    if (b.mote && !reduced) {
+      c.fillStyle = '#fff2b0'; c.globalAlpha = .9;
+      const wing = Math.floor(time * 10) % 2 ? px : 0;
+      c.fillRect(Math.round(b.mote.x) - px - wing, Math.round(b.mote.y) - px, px, px);
+      c.fillRect(Math.round(b.mote.x) + px + wing - px, Math.round(b.mote.y) - px, px, px);
+      c.fillStyle = '#ffd98a'; c.fillRect(Math.round(b.mote.x) - px / 2, Math.round(b.mote.y) - px, px, px * 2);
+      c.globalAlpha = 1;
+    }
+    if (Number.isFinite(b.spotX)) {
+      const y = this.terrain ? this.player.y : FLOOR;
+      const glow = reduced ? .8 : .55 + Math.sin(time * 5) * .35;
+      c.globalAlpha = glow; c.fillStyle = '#ffe9a0';
+      for (let n = -3; n <= 3; n++) { c.fillRect(Math.round(b.spotX + n * px) , Math.round(y - 4 + n * px * .5), px, px); c.fillRect(Math.round(b.spotX - n * px), Math.round(y - 4 + n * px * .5), px, px); }
+      c.globalAlpha = 1;
+    }
+    const t = this.terrain;
+    if (t && b.warmCells.size) {
+      c.fillStyle = '#ff9a4a';
+      for (const index of b.warmCells.keys()) {
+        const x = t.colOf(index) * CELL, y = t.top + t.rowOf(index) * CELL;
+        c.globalAlpha = reduced ? .3 : .22 + Math.sin(time * 4 + index) * .1;
+        c.fillRect(x + 2, y + 2, CELL - 4, CELL - 4);
+      }
+      c.globalAlpha = 1;
+    }
+    for (const m of this.monsters) {
+      if (!(m.stun ?? 0) || m.hp <= 0) continue;
+      // Three little stars circling over a stunned foe's head.
+      const top = (m.def.floorY ?? FLOOR) - (m.lift ?? 0) - 120 * k;
+      c.fillStyle = '#ffe36a';
+      for (let n = 0; n < 3; n++) {
+        const a = (reduced ? 0 : time * 5) + n * 2.1;
+        c.fillRect(Math.round(m.x + Math.cos(a) * 18 * k), Math.round(top + Math.sin(a) * 5 * k), px, px);
+      }
+      if ((m.crack ?? 0) > 0) { c.fillStyle = '#c9c2b8'; c.fillRect(Math.round(m.x - 8 * k), Math.round(top + 16 * k), px * 3, px); }
+    }
+  }
+  /** The "show me" trail: a dotted line of light motes from the Keeper to the find, fading. Squares only. */
+  private drawGlimTrail(c: CanvasRenderingContext2D, time: number): void {
+    const tr = this.glimTrail!;
+    const p = this.player, k = this.figure;
+    const x0 = p.x, y0 = p.y - 60 * k;
+    const len = Math.hypot(tr.x - x0, tr.y - y0);
+    const n = Math.min(60, Math.max(4, Math.floor(len / (18 * Math.max(.5, k)))));
+    const fade = Math.min(1, tr.t / 1.2);
+    const s = Math.max(4, Math.round(6 * Math.max(.6, k)));
+    const run = this.reducedMotion ? 0 : (time * 6) % 1;
+    for (let i = 0; i <= n; i++) {
+      const u = (i + run) / (n + 1);
+      c.globalAlpha = fade * (.5 + .5 * u);
+      c.fillStyle = i % 3 ? '#ffd98a' : '#c9a6ff';
+      c.fillRect(Math.round(x0 + (tr.x - x0) * u) - s / 2, Math.round(y0 + (tr.y - y0) * u) - s / 2, s, s);
+    }
+    // The find itself: a small pulsing frame of light.
+    const r = Math.round((14 + (this.reducedMotion ? 0 : Math.sin(time * 6) * 3)) * Math.max(.7, k));
+    c.globalAlpha = .9 * fade; c.fillStyle = '#ffe9a0';
+    c.fillRect(tr.x - r, tr.y - r, 2 * r, s); c.fillRect(tr.x - r, tr.y + r, 2 * r, s);
+    c.fillRect(tr.x - r, tr.y - r, s, 2 * r); c.fillRect(tr.x + r, tr.y - r, s, 2 * r);
+    c.globalAlpha = 1;
+  }
+  /** Glim's step (fixed rate): the lamp when the Keeper holds still in the dark, the trail's clock, a drop left lying. */
+  private updateGlimPowers(dt: number): void {
+    const g = this.glim;
+    if (this.glimTrail && (this.glimTrail.t -= dt) <= 0) this.glimTrail = null;
+    if (!g.shown) { this.glimLamp = 0; return; }
+    const still = !this.input.has('left') && !this.input.has('right') && !this.input.has('jump') && this.player.grounded;
+    this.glimStill = still ? this.glimStill + dt : 0;
+    const want = this.glimPowers.lamp && this.terrain && this.glimStill > 1.5 ? 1 : 0;
+    this.glimLamp += (want - this.glimLamp) * Math.min(1, dt * (want ? 1.2 : 3));
+    if (this.glimLamp < .01) this.glimLamp = 0;
+    // A drop left lying a while, out of the Keeper's reach: Glim flies over it and hovers (once per drop, a rest between).
+    if (this.glimPowers.missed && !this.glimTrail && this.elapsed - this.glimMissedAt > 25) {
+      for (const drop of this.drops) {
+        if (drop.age < 7 || drop.id === this.glimLastDrop || drop === this.petFetch || Math.abs(drop.x - this.player.x) < 160 * this.figure) continue;
+        this.glimMissedAt = this.elapsed; this.glimLastDrop = drop.id;
+        g.flyTo(drop.x, drop.y - 50 * this.figure, 2.5);
+        this.glimCue({ kind: 'missed' });
+        break;
+      }
+    }
+  }
+  private glimCue(cue: GlimCue): void {
+    const on = this.options.onGlimCue;
+    if (!on || !this.glim.shown) return;
+    try { on(cue); } catch { /* a reaction is never worth a frame */ }
   }
   /** Per-frame inputs of drawHeat, refilled each frame (no closure per frame). */
   private readonly heatFrame = { t: null as Terrain | null, biome: null as BiomeDef | null, time: 0, viewport: 0, count: 0, scale: 1, folded: false };
@@ -5996,6 +6338,10 @@ export class SeamworksEngine {
     if (this.petAbility === 'glow' && this.pet.id && Number.isFinite(this.pet.x)) pool.add(this.pet.x, this.pet.y - 30 * this.figure, PET_TUNING.glowRadius * flicker, PET_TUNING.glowLight);
     // The Living World: glowworms and the day's wisps carry small lights of their own.
     if (this.world) this.wild.lights((x, y, r, k) => pool.add(x, y, r, k), this.camera, viewport, time);
+    // The moth-kit's shimmer (its second move): a small lantern of its own.
+    if (this.petBrain.second === 'shimmer' && this.pet.id && Number.isFinite(this.pet.x)) pool.add(this.pet.x, this.pet.y - 30 * this.figure, PET_ACT.shimmerRadius * flicker, PET_ACT.shimmerLight);
+    // Glim lights the dark when the Keeper holds still (the bond's lamp).
+    if (this.glimLamp > 0 && this.glim.shown && Number.isFinite(this.glim.x)) pool.add(this.glim.x, this.glim.y, this.lanternRadius * .9 * this.glimLamp * flicker, .9 * this.glimLamp);
     // The Delve's surface strip of light; a world has a real sky instead (skylight, below).
     const ws = this.worldSurface;
     if (!ws && this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);
