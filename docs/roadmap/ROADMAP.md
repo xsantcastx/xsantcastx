@@ -22,6 +22,8 @@ Built 2026-10-15: **Lost Cabinets** (`docs/handoff/lost-cabinets.md`): the Mirro
 
 Built 2026-10-15: **Story Act II · Five Witnesses** (`docs/handoff/story-act-2.md`): the Underhearth, the four Rift Gate Delves, the Lost Cabinets and Glim tied into one arc — seven scenes with chibi pixel portraits, each unlocked by progress you already make and paying one reward (three titles, Waystone Shards, Courier's Honeycomb, the Codex's Witness Accounts); keepers react afterwards; the act ends on the light coming up the shaft (Act III · The Fivefold Lock, Starfall Deep).
 
+Fixed 2026-10-15: **Storage quota** (`docs/handoff/storage-quota.md`): the owner's "That pickup could not be saved" — the economy op log filled the phone's 5 MB localStorage (~260 KB/hour, never folded on an unsynced device). Credits now coalesce, a never-synced log folds itself, a full disk no longer refuses play, and the HUD says when space runs low.
+
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act III · Art test set *(owner)*.
 
 ## Milestones
