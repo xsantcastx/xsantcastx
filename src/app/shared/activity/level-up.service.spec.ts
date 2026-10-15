@@ -1,6 +1,7 @@
 import { TestBed } from '@angular/core/testing';
 import { LevelUpService, type LevelUpEvent } from './level-up.service';
 import { xpForLevel } from './mining-level';
+import { artFor } from '../art/art';
 
 describe('LevelUpService', () => {
   let service: LevelUpService;
@@ -78,7 +79,8 @@ describe('LevelUpService', () => {
     const at = xpForLevel(2);
     service.checkMining(at - 1, at);
     expect(events[0].skillLabelKey).toBe('work.discipline.mining');
-    expect(events[0].art?.src).toContain('cinder-ore');
+    // Item art is the pixel icon now (a data URI), so compare against what the item itself shows.
+    expect(events[0].art?.src).toBe(artFor('cinder-ore')!.src);
   });
 
   /*
@@ -105,7 +107,8 @@ describe('LevelUpService', () => {
     expect(events.length).toBe(1);
     expect(events[0].level).toBe(2);
     expect(events[0].skillLabelKey).toBe('work.discipline.foraging');
-    expect(events[0].art?.src).toContain('starlight-herb');
+    // Item art is the pixel icon now (a data URI), so compare against what the item itself shows.
+    expect(events[0].art?.src).toBe(artFor('starlight-herb')!.src);
     expect(events[0].milestone).toBe(false);
   });
 
@@ -133,7 +136,8 @@ describe('LevelUpService', () => {
     expect(events.length).toBe(1);
     expect(events[0].level).toBe(2);
     expect(events[0].skillLabelKey).toBe('work.discipline.prospecting');
-    expect(events[0].art?.src).toContain('celestial-alloy');
+    // Item art is the pixel icon now (a data URI), so compare against what the item itself shows.
+    expect(events[0].art?.src).toBe(artFor('celestial-alloy')!.src);
     expect(events[0].milestone).toBe(false);
   });
 
