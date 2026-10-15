@@ -56,6 +56,7 @@ import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
 import { mergeHeights } from '../heights/heights-save.model';
 import { mergeCabinets } from '../cabinets/cabinets-save.model';
+import { mergeEclipse } from '../world-clock/eclipse-save.model';
 import { mergeSound } from '../sound/sound-settings.model';
 import { mergePets } from '../pets/pets-save.model';
 
@@ -488,6 +489,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // receipt, written before anything is granted) and the set's final reward.
     // Both only grow: a union. See cabinets-save.model.ts.
     merge: mergeCabinets,
+  },
+  {
+    key: 'godforge-eclipse',
+    collection: 'progress',
+    doc: 'eclipse',
+    label: 'Sera Quill\'s Eclipse Ledger',
+    // `{ version, seen, older, marks }`: the eclipses witnessed (each id, the
+    // eclipse's in-game day, is the receipt, written before anything is paid)
+    // and the ledger marks paid. Only grows: a union. See eclipse-save.model.ts.
+    merge: mergeEclipse,
   },
 ];
 

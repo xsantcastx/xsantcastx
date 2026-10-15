@@ -504,6 +504,13 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'Lune Coyne, after ten plays at her tables in the Nocturne Archive (or bought from her)' },
   { id: 'mirror-slate-ii', rarity: 'epic', realm: 'umbral',
     hint: 'Kael binds a Mirror Slate\'s second face at the Rune Forge, with Glowcap, slag and obsidian' },
+  // The world clock (shared/world-clock/eclipse.model.ts): the dark's herb and fish, the eclipse's glass.
+  { id: 'moonwake-bloom', rarity: 'uncommon', realm: 'umbral',
+    hint: 'a bud in four hunting grounds that opens only at night, or under an eclipse' },
+  { id: 'mirrorfin', rarity: 'rare', realm: 'celestial',
+    hint: 'fished from the seeps or the Grotto Mere at night, or under an eclipse' },
+  { id: 'eclipse-glass', rarity: 'rare', realm: 'celestial',
+    hint: 'the hunting grounds while an eclipse is on, and the Afterimage Moths it raises' },
 ];
 
 /** Consumables, with the same treatment. */
@@ -629,6 +636,9 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   // Canon (Umbral: "beneath a fractured moon mirror"); lore-addendum, "The Mirror Slate".
   'mirror-slate': 'A palm of the Archive\'s moon mirror, cut where it cracked and bound in Kael\'s brass. It shows what it was facing when it broke: the tables, and whatever you left burning at home.',
   'mirror-slate-ii': 'Kael woke the glass\'s other face with Grotto light and Delve slag. Now it also remembers where you marked the dark, and what Pim read off the board this morning.',
+  'moonwake-bloom': 'It shuts the moment anyone looks straight at the sun. The Archive keeps one in a drawer, to prove the night happened.',
+  'mirrorfin': 'Its scales are slivers of the moon mirror, and it swims up to see itself. By day it remembers it is a fish and goes back down.',
+  'eclipse-glass': 'The moon mirror\'s flare, caught in the rock as it passed. It is warm on the side that faced the sun and cold on the side that faced the Archive.',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -871,6 +881,9 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'rift-map-fragment': 'Rift Map Fragment',
   'mirror-slate': 'Mirror Slate',
   'mirror-slate-ii': 'Mirror Slate II',
+  'moonwake-bloom': 'Moonwake Bloom',
+  'mirrorfin': 'Mirrorfin',
+  'eclipse-glass': 'Eclipse Glass',
 };
 
 function loreFor(id: string): string {

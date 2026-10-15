@@ -27,6 +27,7 @@ import {
   ledgerCatch, ledgerGift, LEDGER_REWARD, ledgerXp, LODGE_CHARMS, openCrate, rodFor, rollCatch, WaterId, waterFor, WORN_ROD_GRANT,
   type CatchRarity, type ReelGrade,
 } from './fishing.model';
+import { WorldClockService } from '../world-clock/world-clock.service';
 
 /** Where Fishing is booked in the activity ledger. */
 export const FISHING_LOCATION = 'ember-delve/fishing';
@@ -75,6 +76,9 @@ export class FishingService {
   random: () => number = Math.random;
   /** The wall clock. Replaceable in tests. */
   now: () => Date = () => new Date();
+  private readonly clock = inject(WorldClockService);
+  /** Night, or the night at noon an eclipse makes, on the world clock (shared/world-clock). Replaceable in tests. */
+  dark: () => boolean = () => this.clock.dark();
 
   /** The fishing ledger, published on every change (the Codex and the Lodge listen). */
   readonly save$: Observable<FishingSave> = this.save$$.asObservable();
@@ -110,11 +114,15 @@ export class FishingService {
     this.inventory.grantStack(WORN_ROD_GRANT, 'worn-rod', 1);
   }
 
-  /** Local night (20:00–05:59): Glowcap bait draws the rare ones, and the Drowned Lamp answers. */
-  isNight(at = this.now()): boolean { const h = at.getHours(); return h >= 20 || h < 6; }
+  /**
+   * Night on the world clock (or an eclipse's night at noon): Glowcap bait draws
+   * the rare ones, the Mirrorfin bites, and the Drowned Lamp answers. The world's
+   * hour, not the player's: every device agrees (shared/world-clock).
+   */
+  isNight(): boolean { return this.dark(); }
 
-  /** The bait the next landed catch uses (the strongest held), or null. */
-  bait(): string | null { return bestBait(id => this.inventory.stackOf(id))?.id ?? null; }
+  /** The bait the next landed catch uses (the strongest held; in the dark a Moonwake Bloom first), or null. */
+  bait(): string | null { return bestBait(id => this.inventory.stackOf(id), this.isNight())?.id ?? null; }
 
   /**
    * A fish is hooked: roll what is on the line now (the reel's length and
@@ -123,11 +131,14 @@ export class FishingService {
   hooked(input: { castId: string; biome: string; liquid: 'water' | 'lava' }): PendingCatch {
     this.hydrate();
     const water = waterFor(input.biome, input.liquid);
-    const bait = bestBait(id => this.inventory.stackOf(id));
+    const night = this.isNight();
+    const bait = bestBait(id => this.inventory.stackOf(id), night);
     const quest = this.ledgerToday();
     const rolled = rollCatch({
       water, bait: bait?.power ?? 0,
-      nightGlow: bait?.id === 'glowcap' && this.isNight(),
+      nightGlow: bait?.id === 'glowcap' && night,
+      dark: night,
+      moonBait: bait?.id === 'moonwake-bloom',
       caught: id => this.caught(id),
       quest: quest.done || quest.held ? null : { id: quest.id, water: quest.water },
       cratePerk: fishingPerks(this.level()).crate,

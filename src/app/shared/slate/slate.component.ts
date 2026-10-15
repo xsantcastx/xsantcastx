@@ -3,9 +3,13 @@
  * (docs/handoff/mirror-slate.md). Lazy: the play view imports it on the first
  * open, so none of it is in the initial bundle.
  *
- *  - Home: it opens on a few big choices — her four tables, the Homestead, and
- *    (tier II) the map & bounties — never on a wall. Each is one tap, with a
- *    Back to the glass.
+ *  - Home: an in-game phone (docs/handoff/world-clock.md). A status bar, the
+ *    world clock big (time, day, month, the sky's icon), two widgets (the next
+ *    eclipse counting down; now playing: the realm's theme, skip and mute), the
+ *    app grid (her four tables, the Homestead, the map, the Scan, the Pets, the
+ *    Codex, the eclipse), page dots (page 2: the calendar and Sera's ledger) and
+ *    a dock. One tap opens an app; Back returns home. Pets and the Codex are
+ *    places of their own: the Slate asks the play view to open them.
  *  - Tables: Lune Coyne's four games, EMBEDDED, not copied: the same panel
  *    components her stalls host (PANEL_REGISTRY's own loaders), so the odds,
  *    the bet ladder and caps and the replay-safe play ledger are the same code.
@@ -19,7 +23,7 @@
  */
 import {
   ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentRef, OnDestroy, OnInit, PLATFORM_ID, Type,
-  ViewChild, ViewContainerRef, inject,
+  NgZone, ViewChild, ViewContainerRef, inject,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Subscription, merge } from 'rxjs';
@@ -45,10 +49,34 @@ import { CabinetsService } from '../cabinets/cabinets.service';
 import { CABINETS_I18N } from '../cabinets/cabinets.i18n';
 import { CABINETS, SET_BONUSES, hasBonus, openClues, type SetBonusId, type Warmth } from '../cabinets/cabinets.model';
 import { SlateService } from './slate.service';
+import { slateIcon } from './slate-app-icons';
+import { WorldClockService } from '../world-clock/world-clock.service';
+import { EclipseService } from '../world-clock/eclipse.service';
+import { WORLD_CLOCK_I18N } from '../world-clock/world-clock.i18n';
+import { ECLIPSE_EFFECTS, LEDGER_MARKS, nextMark } from '../world-clock/eclipse.model';
+import {
+  MONTHS, MONTH_DAYS, WEEK_DAYS, clockText, isEclipseDay, worldSpan, type SkyPhase,
+} from '../world-clock/world-clock.model';
+import { SoundService } from '../sound/sound.service';
+import { sceneMode } from '../sound/sound-palette';
 import { SLATE_TABLES, SLATE_WORLD_POINTERS, slateTabs, type SlateTab, type SlateTableGame, type SlateTier } from './slate.model';
 
-/** Which face of the glass is up: the home choices, or one of the Slate's screens. */
-export type SlateFace = 'home' | SlateTab;
+/** Which face of the glass is up: the home screen, one of the Slate's screens, or the eclipse (every Slate). */
+export type SlateFace = 'home' | SlateTab | 'eclipse';
+
+/** One app on the phone's grid: a Slate face, one of Lune's tables, or a place the play view opens. */
+export interface SlateApp {
+  id: string;
+  /** The label key. */
+  key: string;
+  icon: string;
+  face?: SlateFace;
+  game?: SlateTableGame;
+  launch?: 'pets' | 'codex';
+}
+
+/** A day on the calendar page: its number, today, an eclipse on it, already gone. */
+interface CalendarDay { n: number; today: boolean; eclipse: boolean; past: boolean }
 
 interface PinRow { id: string; name: string; at: string }
 interface BountyRow { id: string; line: string; progress: string; state: 'open' | 'ready' | 'claimed' }
@@ -89,6 +117,12 @@ export class SlateComponent implements OnInit, OnDestroy {
   private readonly bounties = inject(BountyService);
   private readonly delve = inject(DelveSaveService);
   private readonly cabinets = inject(CabinetsService);
+  private readonly clock = inject(WorldClockService);
+  private readonly eclipses = inject(EclipseService);
+  private readonly sound = inject(SoundService);
+  private readonly zone = inject(NgZone);
+  private clockTimer: ReturnType<typeof setInterval> | null = null;
+  private clockSecond = -1;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
 
@@ -131,11 +165,53 @@ export class SlateComponent implements OnInit, OnDestroy {
   bonuses: { id: SetBonusId; at: number; reached: boolean }[] = [];
   loupe = false;
 
+  // The phone face (docs/handoff/world-clock.md)
+  readonly icon = slateIcon;
+  /** The app grid (built per tier) and the dock. */
+  apps: SlateApp[] = [];
+  readonly dock: readonly SlateApp[] = [
+    { id: 'dock-factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
+    { id: 'dock-scan', key: 'slate.app.scan', icon: 'scan', face: 'scan' },
+    { id: 'dock-eclipse', key: 'slate.app.eclipse', icon: 'eclipse', face: 'eclipse' },
+    { id: 'dock-codex', key: 'slate.app.codex', icon: 'codex', launch: 'codex' },
+  ];
+  /** 0: home (clock, widgets, apps); 1: the calendar and Sera's ledger. */
+  page = 0;
+  readonly pages = [0, 1];
+  time = '00:00';
+  dateLine = '';
+  yearLine = '';
+  sky: SkyPhase = 'day';
+  realmKey = 'clock.realm.infernal';
+  underground = false;
+  eclipseOn = false;
+  /** "3h 12m" until the next eclipse, or left of this one. */
+  eclipseLeft = '';
+  eclipseWhen = '';
+  alignedRealm = '';
+  readonly effects = ECLIPSE_EFFECTS;
+  // Now playing
+  musicTitleKey = 'clock.music.infernal';
+  musicModeKey = 'clock.music.mode.town';
+  muted = false;
+  skipped = false;
+  // Calendar + ledger
+  monthKey = 'clock.month.emberwane';
+  weekKeys = WEEK_DAYS.map(d => `clock.day.${d}`);
+  calendar: CalendarDay[] = [];
+  ledgerCount = 0;
+  ledgerNext: { at: number; glass: number } | null = null;
+  readonly marks = LEDGER_MARKS;
+  marksPaid: ReadonlySet<string> = new Set();
+  thisOneSeen = false;
+  private swipeX: number | null = null;
+
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(SLATE_I18N);
     this.i18n.register(BOUNTIES_I18N);
     this.i18n.register(CABINETS_I18N);
+    this.i18n.register(WORLD_CLOCK_I18N);
   }
 
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
@@ -144,15 +220,21 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.slate.init();
     this.tier = this.slate.tier();
     this.tabs = slateTabs(this.tier);
+    this.apps = this.buildApps();
     // Opened while the glass is held up: straight onto the Scan face (its reading and Put away).
     if (this.cabinets.scanning && this.tabs.includes('scan')) this.face = 'scan';
     this.subs.add(merge(this.economy.snapshot$, this.inventory.snapshot$, this.homestead.hud$, this.explorers.state$).subscribe(() => this.read()));
     this.subs.add(merge(this.cabinets.opened$, this.cabinets.scanning$, this.cabinets.reading$).subscribe(() => this.readScan()));
     this.cabinets.refresh();
+    this.subs.add(this.eclipses.count$.subscribe(() => this.readLedger()));
     this.read();
+    this.readClock();
+    // The clock face ticks with the world (one in-game minute a real second), outside Angular; it redraws only when it moved.
+    if (this.browser) this.zone.runOutsideAngular(() => { this.clockTimer = setInterval(() => this.tickClock(), 1000); });
   }
 
   ngOnDestroy(): void {
+    if (this.clockTimer) clearInterval(this.clockTimer);
     this.subs.unsubscribe();
     this.gameSeq++;
     this.gameRef?.destroy();
@@ -160,8 +242,16 @@ export class SlateComponent implements OnInit, OnDestroy {
 
   // ── Faces ──
 
+  /** One tap on an app (grid or dock): its face, its table, or the place the play view opens. */
+  openApp(app: SlateApp): void {
+    if (app.launch) { this.slate.launch(app.launch); return; }
+    if (app.game) { this.openGame(app.game); return; }
+    if (app.face && app.face !== 'home') this.open(app.face);
+  }
+
   /** Open one of the Slate's screens from the home face. */
-  open(face: SlateTab): void {
+  open(face: SlateTab | 'eclipse'): void {
+    if (face === 'eclipse') { this.face = 'eclipse'; this.notice = ''; this.readClock(); this.readLedger(); this.cdr.markForCheck(); return; }
     if (!this.tabs.includes(face)) return;
     this.face = face;
     this.notice = '';
@@ -189,6 +279,101 @@ export class SlateComponent implements OnInit, OnDestroy {
 
   get gameTitleKey(): string {
     return this.tables.find(t => t.game === this.game)?.titleKey ?? 'slate.tab.tables';
+  }
+
+  // ── The phone face: pages, the clock, the widgets (docs/handoff/world-clock.md) ──
+
+  /** The grid: Lune's four tables, the Homestead, the map (tier II), the Scan, the Pets, the Codex, the eclipse. */
+  private buildApps(): SlateApp[] {
+    const games: SlateApp[] = this.tables.map(t => ({ id: t.game, key: t.titleKey, icon: 'tables', game: t.game }));
+    const faces: SlateApp[] = [
+      { id: 'factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
+      ...(this.tabs.includes('map') ? [{ id: 'map', key: 'slate.tab.map', icon: 'map', face: 'map' as const }] : []),
+      ...(this.tabs.includes('scan') ? [{ id: 'scan', key: 'slate.app.scan', icon: 'scan', face: 'scan' as const }] : []),
+      { id: 'pets', key: 'slate.app.pets', icon: 'pets', launch: 'pets' },
+      { id: 'codex', key: 'slate.app.codex', icon: 'codex', launch: 'codex' },
+      { id: 'eclipse', key: 'slate.app.eclipse', icon: 'eclipse', face: 'eclipse' },
+    ];
+    return [...games, ...faces];
+  }
+
+  /** A notification dot: the Homestead's receipt, a bounty to claim, a warm glass, the eclipse on now. */
+  dot(app: SlateApp): boolean {
+    switch (app.face) {
+      case 'factory': return !!this.waiting;
+      case 'map': return this.bountyRows.some(b => b.state === 'ready');
+      case 'scan': return this.scanning && this.warmth !== 'none' && this.warmth !== 'cold';
+      case 'eclipse': return this.eclipseOn && !this.thisOneSeen;
+      default: return false;
+    }
+  }
+
+  setPage(n: number): void { this.page = Math.max(0, Math.min(this.pages.length - 1, n)); if (this.page === 1) this.readLedger(); this.cdr.markForCheck(); }
+  swipeStart(event: PointerEvent): void { this.swipeX = event.clientX; }
+  swipeCancel(): void { this.swipeX = null; }
+  swipeEnd(event: PointerEvent): void {
+    if (this.swipeX === null) return;
+    const dx = event.clientX - this.swipeX;
+    this.swipeX = null;
+    if (Math.abs(dx) > 48) this.setPage(this.page + (dx < 0 ? 1 : -1));
+  }
+
+  /** Now playing: the next phrase now. */
+  skip(): void { this.sound.skip(); this.skipped = true; this.cdr.markForCheck(); }
+  toggleMute(): void { this.muted = this.sound.toggleMuted(); this.cdr.markForCheck(); }
+
+  private tickClock(): void {
+    const second = Math.floor(this.clock.now() / 1000);
+    if (second === this.clockSecond) return;
+    this.zone.run(() => this.readClock());
+  }
+
+  /** The lock-screen clock, the sky, the eclipse widget and now playing, from the world clock and the sound. */
+  private readClock(): void {
+    const ms = this.clock.now();
+    this.clockSecond = Math.floor(ms / 1000);
+    const t = this.clock.time(ms);
+    const sky = this.clock.sky(ms);
+    this.time = clockText(t.minute);
+    const day = this.t(`clock.day.${WEEK_DAYS[t.weekday]}`);
+    this.monthKey = `clock.month.${MONTHS[t.month].id}`;
+    this.dateLine = this.t('clock.date', { day, n: t.dayOfMonth, month: this.t(this.monthKey) });
+    this.yearLine = this.t('clock.year', { n: t.year });
+    this.sky = sky.phase;
+    const scene = this.sound.nowScene;
+    const realm = scene?.realm ?? 'infernal';
+    this.realmKey = `clock.realm.${realm}`;
+    this.underground = !!scene?.delve;
+    // The eclipse widget: counting down to the next, or what is left of this one.
+    const w = this.clock.nextEclipse(ms);
+    this.eclipseOn = sky.eclipseOn;
+    const span = worldSpan(ms, this.eclipseOn ? w.endMs : w.startMs);
+    this.eclipseLeft = this.t('clock.eclipse.nextShort', span);
+    const startDay = Math.floor(w.id);
+    this.eclipseWhen = this.t('clock.eclipse.when', {
+      day: this.t(`clock.day.${WEEK_DAYS[((startDay % 7) + 7) % 7]}`),
+      time: clockText(10 * 60), realm: this.t(`clock.realm.${w.realm}`),
+    });
+    this.alignedRealm = this.t(`clock.realm.${w.realm}`);
+    this.thisOneSeen = this.eclipseOn && this.eclipses.seen(w.id);
+    // Now playing: the realm's theme, and how the score is hearing the world right now.
+    this.musicTitleKey = `clock.music.${realm}`;
+    const mode = scene ? sceneMode(scene) : 'town';
+    this.musicModeKey = `clock.music.mode.${mode !== 'town' ? mode : scene?.eclipse ? 'eclipse' : sky.night ? 'night' : 'town'}`;
+    this.muted = this.sound.settings.muted;
+    // The calendar page: this month, two weeks of it, today and the eclipse days marked.
+    const first = t.day - (t.dayOfMonth - 1);
+    this.calendar = Array.from({ length: MONTH_DAYS }, (_, i) => ({ n: i + 1, today: i + 1 === t.dayOfMonth, eclipse: isEclipseDay(first + i), past: i + 1 < t.dayOfMonth }));
+    this.cdr.markForCheck();
+  }
+
+  /** Sera Quill's ledger: observations, the next mark, the marks paid. */
+  private readLedger(): void {
+    this.ledgerCount = this.eclipses.count();
+    const next = nextMark(this.ledgerCount);
+    this.ledgerNext = next ? { at: next.at, glass: next.glass } : null;
+    this.marksPaid = new Set(this.eclipses.state.marks);
+    this.cdr.markForCheck();
   }
 
   // ── Tables: the stalls' own components ──

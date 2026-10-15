@@ -19,6 +19,7 @@ import { FLOOR } from '../../engine/engine.model';
 import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, TownDef, ZoneDropTable } from '../world.model';
+import { INK_LANTERN, eclipseGlassNode, moonwakeNode } from '../clock-nodes';
 
 /**
  * What a Mirror Substitute leaves behind. Tuned against the Infernal hunt
@@ -64,6 +65,9 @@ export const CORRIDOR_NODES: readonly GatherNodeDef[] = [
     yield: { materialId: 'nightbloom', qty: 1 }, respawn: 40 },
   { id: 'shadowbark', x: 880, kind: 'wood', label: 'Shadowbark tree', tools: { axe: 4 }, hp: 6, discipline: 'woodcutting', xp: 20, minLevel: 45,
     yield: { materialId: 'shadowthread-silk', qty: 1, chance: .5 }, respawn: 75 },
+  // The world clock's: the Moonwake opens in the dark, the glass rises under an eclipse (world/clock-nodes.ts).
+  moonwakeNode(710),
+  eclipseGlassNode(1060),
 ];
 
 export const UNRECORDED_CORRIDORS: HuntZoneDef = {
@@ -77,7 +81,7 @@ export const UNRECORDED_CORRIDORS: HuntZoneDef = {
   stations: [
     { id: 'passage', x: 110, label: 'RETURN TO THE ARCHIVE', kind: 'passage', to: 'umbral', arriveX: 2480, blurb: 'The way back to the Nocturne Archive.' },
   ],
-  monsters: [{ creature: 'mirror-substitute', name: 'Mirror Substitute', hp: 75, spawnXs: [1250, 1650, 2050] }, ...HUNT_HEIGHTS['unrecorded-corridors'].perched],
+  monsters: [{ creature: 'mirror-substitute', name: 'Mirror Substitute', hp: 75, spawnXs: [1250, 1650, 2050] }, ...HUNT_HEIGHTS['unrecorded-corridors'].perched, INK_LANTERN],
   drops: NOCTURNE_DROPS,
   nodes: CORRIDOR_NODES,
   spawnX: 240,
