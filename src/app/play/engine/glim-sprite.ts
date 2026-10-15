@@ -18,7 +18,7 @@
  * (render budget `glows` off): the same sprite, a pre-baked halo, half the trail.
  */
 
-import { GLIM_H, GLIM_PALETTE, GLIM_PALETTE_DIM, GLIM_W, glimRows, type GlimFrameName } from '../../shared/glim/glim-art';
+import { GLIM_FACE_PALETTE, GLIM_H, GLIM_PALETTE, GLIM_PALETTE_DIM, GLIM_W, glimFace, glimRows, type GlimFrameName, type GlimMood } from '../../shared/glim/glim-art';
 
 /** Frames in play order: idle and fly share the cycle (fly runs it faster). */
 const CYCLE: readonly GlimFrameName[] = ['up', 'mid', 'down', 'mid'];
@@ -37,6 +37,8 @@ export interface GlimFrameInput {
   /** The Keeper's figure scale (k). */
   figure: number;
   delve: boolean;
+  /** Somewhere to rest instead of the shoulder (the sleeping pet's head), or null. */
+  perch?: { x: number; y: number } | null;
 }
 
 export class GlimSprite {
@@ -55,6 +57,27 @@ export class GlimSprite {
   private trailClock = 0;
   private frames: Record<string, HTMLCanvasElement> = {};
   private halo: HTMLCanvasElement | null = null;
+  /** Its face now (glim-art.ts GlimMood), and how long a felt mood lasts. */
+  mood: GlimMood = 'calm';
+  private moodFor = 0;
+  /** A loop-de-loop of joy (s left), and a high five's dart (s left). */
+  private loop = 0;
+  private five = 0;
+  /** Seconds the Keeper (and Glim) have been calm: it gets sleepy at rest. */
+  private calm = 0;
+
+  /** A feeling for a while: a grin loops once, a gasp jolts. */
+  feel(mood: GlimMood, seconds = 2.5): void {
+    this.mood = mood; this.moodFor = seconds; this.calm = 0;
+    if (mood === 'happy') this.loop = Math.max(this.loop, 1);
+  }
+  /** A high five: dart to the Keeper's hand, a grin, then home. */
+  highFive(x: number, y: number): void {
+    this.flight = { x, y, phase: 'out', hold: .35 };
+    this.targetX = x; this.arrived = false; this.trail.length = 0;
+    this.five = 1.2;
+    this.feel('happy', 2.2);
+  }
 
   /** Fly in from above the Keeper (the Prologue landing on the shoulder). */
   arrive(fromX: number, fromY: number): void {
@@ -64,9 +87,9 @@ export class GlimSprite {
     this.trail.length = 0;
   }
 
-  /** Show me: fly ahead to world (x, y), wait, come back. */
-  flyTo(x: number, y: number): void {
-    this.flight = { x, y, phase: 'out', hold: .8 };
+  /** Show me: fly ahead to world (x, y), wait (`hold` s), come back. */
+  flyTo(x: number, y: number, hold = .8): void {
+    this.flight = { x, y, phase: 'out', hold };
     this.targetX = x;
     this.arrived = false;
     this.trail.length = 0;
@@ -82,7 +105,13 @@ export class GlimSprite {
   }
 
   update(f: GlimFrameInput): void {
-    const home = this.anchor(f);
+    this.moodFor = Math.max(0, this.moodFor - f.dt);
+    this.loop = Math.max(0, this.loop - f.dt);
+    this.five = Math.max(0, this.five - f.dt);
+    // Resting on the pet's head, or long calm: sleepy eyes (any felt mood wins).
+    this.calm = f.perch ? this.calm + f.dt : 0;
+    if (this.moodFor <= 0) this.mood = this.calm > 2 ? 'sleepy' : 'calm';
+    const home = f.perch && !this.flight ? f.perch : this.anchor(f);
     if (!Number.isFinite(this.x) || !Number.isFinite(this.y) || f.reduced) {
       this.x = home.x; this.y = home.y;
       if (f.reduced && this.flight) { this.arrived = true; this.flight = null; }
@@ -122,8 +151,11 @@ export class GlimSprite {
   draw(c: CanvasRenderingContext2D, time: number, reduced: boolean, glows: boolean, figure: number): void {
     if (!this.shown || !Number.isFinite(this.x)) return;
     const k = Math.max(.7, figure);
-    const bob = reduced ? 0 : Math.sin(time * 2.2) * 3;
-    const x = Math.round(this.x), y = Math.round(this.y + bob);
+    const bob = reduced || this.mood === 'sleepy' ? 0 : Math.sin(time * 2.2) * 3;
+    // A loop-de-loop of joy: one small circle (never under reduced motion).
+    const lp = reduced ? 0 : this.loop;
+    const loopX = lp ? Math.sin((1 - lp) * Math.PI * 2) * 14 * k : 0, loopY = lp ? (Math.cos((1 - lp) * Math.PI * 2) - 1) * 12 * k : 0;
+    const x = Math.round(this.x + loopX), y = Math.round(this.y + bob + loopY);
     const light = this.dim ? .25 : 1;
     // The trail: small square motes, the oldest faintest (half of them on a phone).
     for (let i = glows ? 0 : 1; i < this.trail.length; i += glows ? 1 : 2) {
@@ -141,19 +173,29 @@ export class GlimSprite {
       c.drawImage(halo, x - r, y - r, r * 2, r * 2);
       c.globalAlpha = 1;
     }
-    const frameName = this.dim ? 'dim' : CYCLE[reduced ? 1 : Math.floor(time * (this.flight ? 14 : 7)) % CYCLE.length]!;
-    const art = this.frame(frameName);
+    const frameName = this.dim ? 'dim' : CYCLE[reduced || this.mood === 'sleepy' ? 1 : Math.floor(time * (this.flight || this.five ? 14 : 7)) % CYCLE.length]!;
+    const art = this.frame(frameName, this.dim ? 'calm' : this.mood);
     if (!art) return;
     const w = GLIM_W * 2 * k, h = GLIM_H * 2 * k;
     const smooth = c.imageSmoothingEnabled;
     c.imageSmoothingEnabled = false;
     c.drawImage(art, Math.round(x - w / 2), Math.round(y - h / 2), w, h);
     c.imageSmoothingEnabled = smooth;
+    if (this.mood === 'sleepy' && !reduced) {
+      // A tiny drifting z over a resting Glim.
+      const u = (time * .5) % 1;
+      c.globalAlpha = .7 * (1 - u); c.fillStyle = '#d8dcf0';
+      const s = Math.max(2, Math.round(2 * k));
+      const zx = Math.round(x + 10 * k + u * 8 * k), zy = Math.round(y - 12 * k - u * 16 * k);
+      c.fillRect(zx, zy, s * 3, s); c.fillRect(zx + s, zy + s, s, s); c.fillRect(zx, zy + 2 * s, s * 3, s);
+      c.globalAlpha = 1;
+    }
   }
 
-  /** Each frame baked once into a 12×10 canvas (one drawImage per frame after that). */
-  private frame(name: GlimFrameName | 'dim'): HTMLCanvasElement | null {
-    if (this.frames[name]) return this.frames[name]!;
+  /** Each frame × face baked once into a 12×10 canvas (one drawImage per frame after that). */
+  private frame(name: GlimFrameName | 'dim', mood: GlimMood = 'calm'): HTMLCanvasElement | null {
+    const key = `${name}:${mood}`;
+    if (this.frames[key]) return this.frames[key]!;
     if (typeof document === 'undefined') return null;
     const canvas = document.createElement('canvas');
     canvas.width = GLIM_W; canvas.height = GLIM_H;
@@ -166,7 +208,11 @@ export class GlimSprite {
         if (color) { g.fillStyle = color; g.fillRect(x, y, 1, 1); }
       }
     });
-    return (this.frames[name] = canvas);
+    for (const [x, y, key] of glimFace(mood)) {
+      g.fillStyle = GLIM_FACE_PALETTE[key] ?? palette[key] ?? '#fff';
+      g.fillRect(x, y, 1, 1);
+    }
+    return (this.frames[key] = canvas);
   }
 
   /** The warm halo, baked once: a phone pays one drawImage, not a gradient or a shadowBlur. */
