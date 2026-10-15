@@ -1355,6 +1355,8 @@ export class SeamworksEngine {
     this.gathering = options.gathering ?? null;
     if (options.now) this.clock = options.now;
     this.enter(this.homeArea);
+    // One World: a fresh Keeper stands beside the town stone (the world's spawn), not at a flat town's x.
+    if (this.homeArea !== this.town) this.player.x = this.homeArea.spawnX;
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
     }
@@ -1948,6 +1950,17 @@ export class SeamworksEngine {
   }
   /** The home world's town stone (the trunk line), or null outside a One World town. */
   get townStone(): string | null { return this.homeArea.terrain?.surface?.stones.find(s => s.kind === 'town')?.id ?? null; }
+  /** The lit stone the Keeper stands at (the Travel map's "You are here"), or null. */
+  get stoneHere(): string | null { const s = this.worldSurface ? this.stoneInReach() : null; return s?.lit ? s.id : null; }
+  /**
+   * A stone was lit: the map's fog clears `sectors` sector columns either side
+   * of it, on the sky band and the ground's surface only (never the underground).
+   */
+  revealAroundStone(col: number, sectors: number): void {
+    const world = this.world, s = this.worldSurface;
+    if (!world || !s) return;
+    world.revealArea(col - sectors * SECTOR, col + sectors * SECTOR, world.rowLo, s.ground + 1);
+  }
   /**
    * Stand at a station of the current area (a deep link, a Places pick with
    * reduced motion): its x, on its own floor; the world's ring comes with it.

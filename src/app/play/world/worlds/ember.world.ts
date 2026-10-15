@@ -148,6 +148,8 @@ export const EMBER_SPAWN_X = colX(EMBER_SQUARE.stone) + 72;
  * They stand in their stretch of road (`range`), on the street.
  */
 const ROAD_MAWS: MonsterDef = { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [4260, 4560, 4860], floorY: FLOOR, range: [4140, 5080] };
+/** Where Glim's "Show me" walks for the first hunt: just short of the first Maw on the road. */
+export const ROAD_MAW_APPROACH_X = 4080;
 
 /** The Ember world: the Delve, its surface, the Seamworks on it. Area id stays the Delve's (its save, its missions). */
 export const EMBER_WORLD: HuntZoneDef = {

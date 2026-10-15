@@ -323,3 +323,169 @@ test('waystones: the trunk line is lit, wild stones by hand; travel only between
   assert.deepEqual(plain(merged.lit), ['ember:quarry-head', 'ember:ws:12']);
   assert.deepEqual(plain(waystones.mergeWaystones(merged, merged)), plain(merged));
 });
+
+// ── The engine in the world ─────────────────────────────────────────────────
+
+/** A DelvePersistence with a sector store in memory (the way the save keeps it, minus the encoding). */
+function memoryWorld(seed = 4242) {
+  const sectors = new Map(), claimed = new Set(), core = new Map();
+  return {
+    seed: () => seed,
+    cells: () => (core.size ? core : null),
+    changed(_a, _l, index, kind) { if (kind === null) core.delete(index); else core.set(index, kind); },
+    isClaimed: id => claimed.has(id),
+    claim: id => (claimed.has(id) ? false : (claimed.add(id), true)),
+    sectors: {
+      sector: (_a, sx, sy) => sectors.get(`${sx},${sy}`) ?? null,
+      sectorChanged(_a, sx, sy, g, local, kind) {
+        const key = `${sx},${sy}`, d = sectors.get(key) ?? { g, t: 1, cells: new Map(), liquids: new Map(), fog: null, receipts: new Set() };
+        if (kind === null) d.cells.delete(local); else d.cells.set(local, kind);
+        sectors.set(key, d);
+      },
+      sectorLiquids() {}, sectorExplored() {}, sectorKeys: () => [...sectors.keys()].map(k => { const [sx, sy] = k.split(',').map(Number); return { sx, sy }; }),
+    },
+  };
+}
+function worldEngine(extra = {}) {
+  let state;
+  const events = { stations: [], stones: [], interact: [] };
+  const engine = new Engine({
+    getContext: () => ({ setTransform() {} }),
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 1200, height: 720 }),
+    parentElement: { clientWidth: 1200, clientHeight: 720, getBoundingClientRect: () => ({ width: 1200, height: 720 }) },
+  }, {
+    assets: {}, town: ember.INFERNAL_WORLD_TOWN, delve: memoryWorld(),
+    onInteract: id => events.interact.push(id), onStation: s => events.stations.push(s.id), onStone: e => events.stones.push(e),
+    onLoot: () => true, onWorldAction: () => true, onState: value => { state = value; }, ...extra,
+  });
+  return { engine, events, state: () => { engine.report(); return state; } };
+}
+function steps(engine, seconds) { for (let n = 0; n < Math.round(seconds * 60); n++) engine.update(1 / 60); }
+
+test('engine: a Keeper spawns in the Seamworks on the Ember surface (the settlement is the town)', () => {
+  const { engine, state } = worldEngine();
+  steps(engine, .2);
+  const s = state();
+  assert.equal(s.areaId, 'ember-delve');
+  assert.equal(s.world, 'ember');
+  assert.equal(s.region, 'basalt-seamworks');
+  assert.equal(s.area, 'Basalt Seamworks', 'data-area keeps the town\'s name');
+  assert.ok(Math.abs(s.x - ember.EMBER_SPAWN_X) < 4 && s.y === FLOOR, `spawned at ${s.x},${s.y}`);
+  assert.ok(s.delve, 'the world is diggable');
+  assert.equal(s.biome, undefined, 'no Delve biome on the street');
+  assert.ok(engine.inTown);
+  // The keepers stand at their counters at noon.
+  engine.setWorldHour(12); steps(engine, .1);
+  const kael = engine.settlementKeepers.find(k => k.id === 'kael');
+  const runes = ember.EMBER_WORLD_STATIONS.find(st => st.id === 'runes');
+  assert.ok(kael && Math.abs(kael.x - runes.x) < 2 && !kael.upstairs);
+});
+
+test('engine: walking the street reaches each counter; E opens its panel (the vault, the vendor, the bench)', () => {
+  for (const id of ['vault', 'vendor', 'crafting']) {
+    const { engine, events, state } = worldEngine();
+    const station = ember.EMBER_WORLD_STATIONS.find(st => st.id === id);
+    engine.player.x = ember.EMBER_SPAWN_X; engine.player.y = FLOOR;
+    assert.ok(engine.moveTo(station.x));
+    for (let n = 0; n < 60 * 30 && engine.moving; n++) engine.update(1 / 60);
+    assert.ok(Math.abs(engine.player.x - station.x) < 12, `${id}: arrived at ${engine.player.x} (counter ${station.x})`);
+    assert.equal(engine.player.y, FLOOR, `${id}: on the street`);
+    assert.equal(state().nearby, id);
+    engine.interact();
+    assert.deepEqual(plain(events.stations), [id]);
+  }
+});
+
+test('engine: a dark stone is seen, lit by holding E, travelled to and back, and the town stone recalls', () => {
+  const { engine, events, state } = worldEngine();
+  steps(engine, .1);
+  // The Quarry Head stone, the first one lit by hand: travel needs it lit, so walk there (teleport for the test).
+  const at = engine.stonePoint('ember:quarry-head');
+  assert.ok(at && at.col === ember.QUARRY_HEAD_COL);
+  engine.placeAtPoint(at.x + 20, at.y);
+  steps(engine, .2);
+  assert.ok(events.stones.some(e => e.id === 'ember:quarry-head' && e.action === 'seen'), 'discovered when it comes into view');
+  assert.equal(state().nearby, 'stone');
+  assert.equal(state().stone.lit, false);
+  engine.interact();
+  engine.setUseHeld(true);
+  steps(engine, .6);
+  assert.ok(state().stone.charge > .3 && state().stone.charge < 1, 'the seams climb while E is held');
+  steps(engine, .8);
+  engine.setUseHeld(false);
+  assert.ok(events.stones.some(e => e.id === 'ember:quarry-head' && e.action === 'light'), 'lit after LIGHT_HOLD');
+  engine.setStoneState(new Set(['ember:quarry-head']), new Set(['ember:quarry-head']));
+  assert.equal(state().stone.lit, true);
+  engine.interact();
+  assert.ok(events.stones.some(e => e.action === 'open'), 'E at a lit stone opens the Travel map');
+  // Travel to the town stone, then back to the Quarry Head.
+  assert.ok(engine.travelToStone('ember:town'));
+  assert.equal(state().region, 'basalt-seamworks');
+  assert.ok(Math.abs(engine.player.x - (ember.EMBER_SQUARE.stone * CELL + 16)) < 60);
+  assert.ok(engine.travelToStone('ember:quarry-head'));
+  assert.equal(state().region, 'quarry-road');
+  // Far into the wilds, a wild stone's point comes from its id alone.
+  const wild = engine.stonePoint('ember:ws:12');
+  assert.ok(wild && wild.col >= 12 * 32 && wild.col < 13 * 32);
+  assert.ok(engine.travelToStone('ember:ws:12'));
+  assert.equal(state().region, 'ember-wilds');
+  assert.equal(engine.stonePoint('ember:ws:13'), null, 'no stone in sector 13');
+  // Recall: the town stone, from anywhere.
+  assert.ok(engine.travelToStone(engine.townStone));
+  assert.equal(state().region, 'basalt-seamworks');
+});
+
+test('engine: the keepers keep the clock (fire at evening, upstairs at night); the station still opens (the bell)', () => {
+  const { engine, events, state } = worldEngine();
+  steps(engine, .1);
+  const vault = ember.EMBER_WORLD_STATIONS.find(st => st.id === 'vault');
+  engine.setWorldHour(21); steps(engine, .1);
+  const clerk = () => engine.settlementKeepers.find(k => k.id === 'vault-clerk');
+  assert.ok(Math.abs(clerk().x - (ember.EMBER_SQUARE.hearth * CELL + 16)) < 2, 'at the Hearth');
+  engine.setWorldHour(2); steps(engine, .1);
+  assert.ok(clerk().upstairs && clerk().y < FLOOR - 90, 'upstairs in the room over the shop');
+  engine.placeAtStation('vault');
+  steps(engine, .05);
+  assert.equal(state().keeperAway, 'bell');
+  engine.interact();
+  assert.deepEqual(plain(events.stations), ['vault'], 'never closed by time');
+});
+
+test('engine: the arches lead to the old Quarry and the Homestead and back to the arches', () => {
+  const { engine, state } = worldEngine();
+  steps(engine, .1);
+  engine.placeAtStation('homestead');
+  engine.interact();
+  assert.equal(state().areaId, 'homestead');
+  const back = engine.places.find(s => s.kind === 'passage');
+  engine.player.x = back.x; engine.player.y = FLOOR; engine.interact();
+  steps(engine, .2);
+  assert.equal(state().areaId, 'ember-delve');
+  assert.ok(Math.abs(engine.player.x - ember.WEST_ARCH_X) < 4);
+  // The east arch is shut until the beacon is rekindled (the onboarding beat).
+  engine.placeAtStation('passage');
+  engine.interact();
+  assert.equal(state().areaId, 'ember-delve');
+  engine.setProgress({ equipped: true, restored: true });
+  engine.interact();
+  assert.equal(state().areaId, 'ember-quarry');
+});
+
+test('engine: the town\'s walls refuse a swing and a placed block; the street\'s dirt digs', () => {
+  const { engine, state } = worldEngine();
+  steps(engine, .1);
+  const vault = ember.EMBER_BUILDINGS.find(b => b.station === 'vault');
+  const t = engine.terrain;
+  engine.setTools({ pickaxe: 3, axe: 3 });
+  engine.player.x = (vault.col + .5) * CELL; engine.player.y = FLOOR;
+  engine.hitCell(vault.col, -4, ['pickaxe', 'axe'], false);
+  assert.equal(TERRAIN_NODE_LIST[t.kind[t.index(vault.col, -4)]].id, 'town-beam', 'the beam stands');
+  assert.match(engine.message, /The town keeps its walls/);
+  assert.equal(engine.placeCell(vault.col + 3, -1, 'packed-dirt'), false, 'no block inside a shop');
+  // The street itself is the Delve's dirt: it digs (the world is diggable).
+  const col = 18;
+  engine.player.x = (col + .5) * CELL;
+  engine.hitCell(col, 0, ['pickaxe'], false); engine.hitCell(col, 0, ['pickaxe'], false); engine.hitCell(col, 0, ['pickaxe'], false);
+  assert.equal(t.kind[t.index(col, 0)], 0);
+  assert.equal(state().areaId, 'ember-delve');
+});
