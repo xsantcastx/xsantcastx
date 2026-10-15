@@ -1880,7 +1880,10 @@ export class SeamworksEngine {
     if (this.petAbility === 'mend' && this.hp > 0 && this.hp < this.maxHp && this.hurtTime <= -PET_TUNING.mendAfter) {
       this.hp = Math.min(this.maxHp, this.hp + this.maxHp * PET_TUNING.mendShare * dt);
     }
-    this.pet.update({ dt, time: this.elapsed, reduced: this.reducedMotion, keeperX: p.x, keeperY: p.y, facing: this.facing, figure: k, moving, goalX });
+    // Falling up (the Orrery Wells): the pet stands where the Keeper does, on the ceiling, and hangs the same way.
+    const hanging = this.down < 0;
+    this.pet.hang = hanging;
+    this.pet.update({ dt, time: this.elapsed, reduced: this.reducedMotion, keeperX: p.x, keeperY: hanging ? p.y - DELVE_BOX.height : p.y, facing: this.facing, figure: k, moving, goalX });
   }
   /** Where Glim is, for the HUD's data attributes and the tell: world x, the Show me target, dimmed, brightened. */
   get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } {

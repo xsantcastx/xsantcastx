@@ -40,6 +40,11 @@ export class PetSprite {
   hat = false;
   x = NaN;
   y = NaN;
+  /**
+   * Hanging (the Orrery Wells, engine/celestial.ts): the Keeper's down is up, so `y` is the ceiling the pet
+   * stands on and it is drawn upside down beneath it, like the Keeper. Set by the engine every step.
+   */
+  hang = false;
   face = 1;
   /** Seconds the Keeper (and pet) have been still. */
   still = 0;
@@ -124,6 +129,8 @@ export class PetSprite {
     // The spin: it turns round twice in the air.
     const face = this.trick > 0 && !reduced ? (Math.floor((1.1 - this.trick) / .14) % 2 ? -this.face : this.face) : this.face;
     const land = !reduced && !this.walking && this.hop > .05 && this.trick <= 0 ? .08 * this.hop : 0;
+    // Hanging from a ceiling: everything but the name plate mirrored about the line it stands on.
+    if (this.hang) { c.save(); c.translate(0, 2 * this.y); c.scale(1, -1); }
     // A soft shadow on the floor (smaller as it hops).
     c.fillStyle = 'rgba(10, 6, 16, 0.32)';
     const sw = (26 - Math.min(10, lift / s)) * figure * 2;
@@ -145,14 +152,16 @@ export class PetSprite {
       }
       c.globalAlpha = 1;
     }
+    if (this.hang) c.restore();
     if (this.name) {
-      // The name plate under its feet, MapleStory style.
+      // The name plate under its feet, MapleStory style (over them, hanging: the plate stays readable).
       c.font = '600 12px "Cormorant Garamond", Georgia, serif'; c.textAlign = 'center';
       const w = Math.min(130, c.measureText(this.name).width + 12);
+      const py = this.hang ? this.y - 20 : this.y + 4;
       c.fillStyle = '#1a120fd0';
-      c.fillRect(Math.round(this.x - w / 2), Math.round(this.y + 4), Math.round(w), 16);
+      c.fillRect(Math.round(this.x - w / 2), Math.round(py), Math.round(w), 16);
       c.fillStyle = '#ffe1b0';
-      c.fillText(this.name, this.x, this.y + 16, 120);
+      c.fillText(this.name, this.x, py + 12, 120);
     }
   }
 }

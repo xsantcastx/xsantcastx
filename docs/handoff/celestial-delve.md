@@ -42,9 +42,11 @@ Keeper and swipes one on the ceiling (14); no blow lands ("in orbit"). Turn any 
 pulses (16 within 3 cells) and grows two Anchor Wardens. Glim says each rule once (`play.rift.rule.*`: orrery,
 field, well, ring, turn, chain, ephemeris). Sound: `REALM_DELVE_BEDS.celestial` (thin air, far brass, few drips).
 
-**For the pets agent**: `EngineState.gravity` (1 | -1), `engine.keeperGravity`, canvas `data-gravity`
-(`down|up`). The Keeper's `x/y` keep their meaning (y = bottom of the box); when gravity is -1 the Keeper's
-contact is `y - 90` (DELVE_BOX height) and it is drawn hanging — a follower should hang from that line.
+**Followers (pets)**: `EngineState.gravity` (1 | -1), `engine.keeperGravity`, canvas `data-gravity`
+(`down|up`). The Keeper's `x/y` keep their meaning (y = bottom of the box); when gravity is -1 its contact is
+`y - 90` (DELVE_BOX height) and it is drawn hanging. Wired after merging Pets (fde8dce6): `updatePet` hands the
+pet the ceiling line and sets `PetSprite.hang`, which draws it mirrored under the ceiling (name plate kept
+readable); the node test pins that it hangs beside the Keeper and lands back on its feet with it.
 
 ## Code map
 
