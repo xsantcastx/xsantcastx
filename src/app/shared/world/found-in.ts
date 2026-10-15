@@ -16,7 +16,7 @@
 
 /** A drop table as the world model writes it; only material lines matter here. */
 export interface DropTableLike {
-  entries: readonly ({ kind: 'coins' } | { kind: 'material'; material: string })[];
+  entries: readonly ({ kind: 'coins' | 'item' | 'rune' } | { kind: 'material'; material: string })[];
 }
 
 export interface AreaLike {

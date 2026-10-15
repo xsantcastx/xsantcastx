@@ -45,6 +45,7 @@
  */
 import type { ItemDefinition, ItemStatKey, ItemStyle } from './item-definition';
 import type { ItemRarity, ItemStats, SlotId } from './item.model';
+import type { AuraId } from '../loot/auras';
 
 /**
  * The machine-readable half of a passive.
@@ -86,6 +87,12 @@ export interface UniqueItem {
   charm?: boolean;
   /** Named and unsellable. Reserved for the two the Archivum would not price. */
   soulbound?: boolean;
+  /**
+   * A D2-style aura the object carries while worn (loot/auras.ts), at a level
+   * from its rarity (loot/aura-sources.ts). Rules text, not a stat: it shows on
+   * the item card and the Keeper walks with its ring.
+   */
+  aura?: AuraId;
 }
 
 /**
@@ -136,6 +143,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['goldPerSec', 'strikePower'], base: { goldPerSec: 0.7, strikePower: 1.3 },
     passive: { effect: 'gold-surge', text: 'The furnace runs hotter for a moment after every find.' },
     lore: 'The edge cooled crooked and nobody straightened it, because crooked is how it caught the seam in the first place.',
+    aura: 'holy-fire',
   },
   {
     id: 'unique-stillglass-cowl', name: 'Stillglass Cowl', rarity: 'rare', slot: 'head', style: 'celestial',
@@ -206,6 +214,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['ward', 'magicFind'], base: { ward: 5.5, magicFind: 6 },
     passive: { effect: 'temper-mercy', text: 'A failed temper costs it less than it costs anything else.' },
     lore: 'The shield of the guard who stayed at the Verge gate after the order to hold it had been formally withdrawn.',
+    aura: 'redemption',
   },
   {
     id: 'unique-goldmouth', name: 'Goldmouth', rarity: 'legendary', slot: 'weapon', style: 'infernal',
@@ -232,6 +241,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['ward', 'goldPerSec', 'xpBonus'], base: { ward: 9, goldPerSec: 5, xpBonus: 10 },
     passive: { effect: 'idle-drift', text: 'It grows toward whichever realm you have neglected longest.' },
     lore: 'Cut from the one tree that was standing on both sides of the Shattering and did not appear to notice.',
+    aura: 'prayer',
   },
   {
     id: 'unique-mirror-of-small-mercies', name: 'Mirror of Small Mercies', rarity: 'mythic', slot: 'off-hand', style: 'umbral',
@@ -369,6 +379,7 @@ export const UNIQUE_ITEMS: readonly UniqueItem[] = [
     rollKeys: ['strikePower', 'goldPerSec', 'magicFind'], base: { strikePower: 8.4, goldPerSec: 3.36, magicFind: 10.08 },
     passive: { effect: 'strike-double', text: 'The axe that made five realms out of one, and has not been put down since.' },
     lore: 'The Nameless used Worldsplitter to perform the Eclipse — the act that divided one world into five realms.',
+    aura: 'might',
     soulbound: true,
   },
   {

@@ -1,4 +1,5 @@
 import type { LootRarity } from '../world/world.model';
+import { LOOT_TIER_FX } from '../../shared/loot/loot-tiers';
 
 /**
  * Loot readability, pure math only: rarity beam colours, the satchel target
@@ -28,9 +29,45 @@ export function beamColor(rarity: LootRarity | undefined, coins: boolean): strin
   if (rarity && RARITY_COLORS[rarity]) return RARITY_COLORS[rarity];
   return coins ? COIN_BEAM_COLOR : RARITY_COLORS.common;
 }
-/** Rarer drops throw taller beams, so a legendary reads across the screen. World px. */
+/** The base column a Rare throws (LOOT_TIER_FX scales it per rung). World px. */
+export const BEAM_BASE = 150;
+/** A common material keeps a low glint; plain coins a short gold one. */
+export const GLINT_BEAM = 24;
+export const COIN_BEAM = 46;
+/**
+ * Rarer drops throw taller beams, so a legendary reads across the screen
+ * (shared/loot/loot-tiers.ts LOOT_TIER_FX: common a glint, singular 2.6x a Rare). World px.
+ */
 export function beamHeight(rarity: LootRarity | undefined, coins: boolean): number {
-  return 70 + Math.max(0, rarityRank(rarity)) * 26 + (coins && !rarity ? -10 : 0);
+  if (!rarity) return coins ? COIN_BEAM : GLINT_BEAM;
+  return Math.max(GLINT_BEAM, Math.round(BEAM_BASE * LOOT_TIER_FX[rarity].beam));
+}
+
+/**
+ * Sparkle `i` of `n` around a drop at time `t` (seconds): a slow orbit with a
+ * rise-and-fall, offsets in world px from the drop's foot, plus a 0..1 twinkle.
+ * Pure, so the node tests can pin it; reduced motion passes t = 0 (a still ring).
+ */
+export function sparkleAt(i: number, n: number, t: number, height: number, out: { x: number; y: number; a: number }): void {
+  const phase = (i / Math.max(1, n)) * Math.PI * 2;
+  const turn = phase + t * 1.3;
+  const rise = ((t * .35 + i / Math.max(1, n)) % 1);
+  out.x = Math.round(Math.cos(turn) * 22);
+  out.y = -Math.round(10 + rise * height * .7);
+  out.a = Math.max(0, Math.sin(rise * Math.PI)) * (.6 + .4 * Math.abs(Math.sin(t * 6 + i)));
+}
+
+/**
+ * Where an off-screen drop's edge pip sits, in screen px: the screen point
+ * pulled onto the frame `inset` px inside the edge, along the line from the
+ * centre. `visible` is false when the drop is on screen (no pip).
+ */
+export function edgePip(sx: number, sy: number, w: number, h: number, inset: number, out: { x: number; y: number; visible: boolean }): void {
+  out.visible = sx < 0 || sx > w || sy < 0 || sy > h;
+  const cx = w / 2, cy = h / 2, dx = sx - cx, dy = sy - cy;
+  const kx = dx ? (cx - inset) / Math.abs(dx) : Infinity, ky = dy ? (cy - inset) / Math.abs(dy) : Infinity;
+  const k = Math.min(1, kx, ky);
+  out.x = cx + dx * k; out.y = cy + dy * k;
 }
 
 /** Margin of the default satchel target from the canvas's top-right corner, CSS px. */

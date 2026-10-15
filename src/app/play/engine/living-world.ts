@@ -27,6 +27,7 @@
  */
 import { AIR, Builder, mix32, SECTOR, type SectorColumnGen, type SectorFind, type SectorHall } from './gen-kit';
 import { LIQUID_WATER, nodeIndex, seededRandom, TERRAIN_NODE_LIST } from './terrain';
+import { depthHpScale } from '../../shared/loot/creature-families';
 
 // ── The rules ───────────────────────────────────────────────────────────────
 
@@ -54,8 +55,12 @@ const hash = (salt: number, a: number, b = 0): number => mix32(salt ^ mix32(Math
 export function areaLevel(sectorsFromTown: number, stratum = -1): number {
   return Math.max(0, Math.floor(Math.abs(sectorsFromTown) / 2)) + (stratum >= 0 ? 4 + stratum * 4 : 0);
 }
-/** HP multiplier of a creature at an area level (capped, so a far pack is a fight, not a wall). */
-export function packScale(level: number): number { return Math.min(3, 1 + Math.max(0, level) * .06); }
+/**
+ * HP multiplier of a creature at an area level: the loot-and-combat curve's own
+ * (shared/loot/creature-families.ts depthHpScale, capped at 3). The engine also
+ * gets the level itself (`SectorHall.level`) for blows, drops and packs.
+ */
+export function packScale(level: number): number { return depthHpScale(level); }
 /** Creatures in one pack at an area level: 2 near town, up to 4 far out. */
 export function packCount(level: number, roll: number): number { return Math.min(4, 2 + (level >= 6 ? 1 : 0) + (roll % 3 === 0 ? 1 : 0)); }
 
@@ -280,7 +285,7 @@ export function packFor(salt: number, sx: number, level: number, ground: (col: n
   }
   if (best[1] - best[0] < 6) return null;
   return {
-    creature: 'rivet-maw', night: 'cinder-bailiff', count: packCount(level, h >>> 8), scale: packScale(level), near: true,
+    creature: 'rivet-maw', night: 'cinder-bailiff', count: packCount(level, h >>> 8), scale: packScale(level), level, near: true,
     col0: col0 + best[0], col1: col0 + best[1], floorRow: ground(col0 + best[0]),
   };
 }
@@ -399,7 +404,7 @@ function stampFind(b: Builder, f: SectorFind, r: () => number, s: number, out: S
       b.rect(x - 1, y + h, w + 2, 1, floor);
       for (let n = 0; n < 3; n++) b.dress(x + Math.floor(r() * w), y - 1, U.emberRock);
       const creature = s === 3 ? 'cinder-bailiff' : 'rivet-maw';
-      out.halls.push({ creature, count: packCount(level, Math.floor(r() * 9)) - 1, col0: x, col1: x + w, floorRow: y + h, scale: packScale(level), near: true });
+      out.halls.push({ creature, count: packCount(level, Math.floor(r() * 9)) - 1, col0: x, col1: x + w, floorRow: y + h, scale: packScale(level), level, near: true });
       break;
     }
     case 'elder':
@@ -408,7 +413,7 @@ function stampFind(b: Builder, f: SectorFind, r: () => number, s: number, out: S
       b.rect(x - 1, y + h, w + 2, 1, U.scorched);
       b.rect(x + 2, y - 2, 3, 2, U.heartstone);
       b.put(x + w - 2, y + h - 1, U.emberBox, true);
-      out.halls.push({ creature: 'cinder-bailiff', count: 1, col0: x, col1: x + w - 3, floorRow: y + h, scale: packScale(level) * 2.2, near: true });
+      out.halls.push({ creature: 'cinder-bailiff', count: 1, col0: x, col1: x + w - 3, floorRow: y + h, scale: packScale(level) * 2.2, level: level + 3, near: true });
       break;
     case 'machine':
       // A seam-engine: brass older than the Seamworks, on a length of old rail, still ticking.

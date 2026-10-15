@@ -103,6 +103,8 @@ export interface SectorHall {
    * not when the column loads.
    */
   night?: string; scale?: number; near?: true;
+  /** Its area level (living-world.ts areaLevel): the loot-and-combat curve reads it for blows, packs and drops. */
+  level?: number;
 }
 /** A Living World find (living-world.ts): a guaranteed something every few sectors of digging. */
 export interface SectorFind { kind: string; col: number; row: number; w: number; h: number }
