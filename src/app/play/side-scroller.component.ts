@@ -165,6 +165,8 @@ import { PETS_I18N } from '../shared/pets/pets.i18n';
 // The Lost Cabinets (docs/handoff/lost-cabinets.md): the Slate's Scan pulsing while you walk, the cabinets in the world.
 import { CabinetsService } from '../shared/cabinets/cabinets.service';
 import { CABINETS_I18N } from '../shared/cabinets/cabinets.i18n';
+import { LIVING_I18N } from './world/living-world.i18n';
+import { CRITTERS, hermitOfNote, LIVING_NOTE_XP, MYSTERY_REWARD, type CritterId, type MysteryKind } from './engine/living-world';
 import { CABINETS, PULSE, SCAN, eyeDirection, scanReading, warmthAt, type ScanReading, type Warmth } from '../shared/cabinets/cabinets.model';
 import type { CabinetEvent, CabinetMark } from './engine/engine.model';
 import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
@@ -641,6 +643,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);
+    this.i18n.register(LIVING_I18N);
     this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
     try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
   }
@@ -773,6 +776,8 @@ export class SideScrollerComponent implements OnDestroy {
       onKill: event => this.zone.run(() => this.hunted(event)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
+      // The Living World: a beetle or a moth caught with a swing (its drop, once a day per creature).
+      onCatch: event => this.zone.run(() => this.critterCaught(event)),
       // One World: a Waystone seen, lit, or used (waystones.service.ts writes; the engine draws).
       onStone: event => this.zone.run(() => this.stoneEvent(event)),
       // The world's sounds: never through the zone (no change detection for a footstep).
@@ -3776,6 +3781,9 @@ export class SideScrollerComponent implements OnDestroy {
       this.message = this.t(fresh ? 'play.uh.mark.filed' : 'play.uh.mark.again', { n });
       return;
     }
+    if (event.kind === 'mystery') { this.mysteryFound(event.id); return; }
+    // The Living World's words (signposts, ruins, cellars, seam-engines, a hermit's door): EN + ES, a field note's XP once.
+    if (event.id.startsWith('living:')) { this.livingNote(event.id.slice('living:'.length)); return; }
     const note = fieldNoteFor(event.id);
     if (note) {
       const result = this.skillActions.act({ mutationId: `delve-fieldnote:${note.id}`, skill: 'delving', xp: FIELD_NOTE_XP, locationId: EMBER_DELVE_LOCATION });
@@ -3793,6 +3801,60 @@ export class SideScrollerComponent implements OnDestroy {
       if (result.ok) this.toastLoot(`+${INSCRIPTION_XP} Delving XP`);
     }
     this.message = `${fresh ? this.t('play.hud.msg.newInscription') : ''}${text}`;
+  }
+  // ── The Living World (docs/handoff/living-world.md) ──
+  /** A Living World note read: its words, a little Delving XP the first time, and a hermit's gift once ever. */
+  private livingNote(id: string): void {
+    const key = `play.living.note.${id}`;
+    if (!LIVING_I18N[key]) { this.message = this.t('play.hud.msg.unreadable'); return; }
+    const result = this.skillActions.act({ mutationId: `living-note:${id}`, skill: 'delving', xp: LIVING_NOTE_XP, locationId: EMBER_DELVE_LOCATION });
+    const fresh = result.ok && !result.replayed;
+    if (fresh) this.toastLoot(`+${LIVING_NOTE_XP} Delving XP`);
+    this.message = `${fresh ? this.t('play.living.note.new') : ''}${this.t(key)}`;
+    const hermit = hermitOfNote(id);
+    if (!hermit) return;
+    const had = this.inventory.stackOf(hermit.gift.materialId);
+    if (this.inventory.grantStack(`living-hermit:${hermit.id}`, hermit.gift.materialId, hermit.gift.qty) && this.inventory.stackOf(hermit.gift.materialId) > had) {
+      const item = materialDisplay(hermit.gift.materialId)?.name ?? hermit.gift.materialId;
+      this.gotItem(hermit.gift.qty, item, hermit.gift.materialId);
+      this.message = `${this.message} ${this.t('play.living.hermit.gift', { name: this.t(`play.living.hermit.${hermit.id}.name`), qty: hermit.gift.qty, item })}`;
+    }
+  }
+  /** Today's mysteries already paid (this page; the ledger keeps the rest). */
+  private readonly mysteriesPaid = new Set<string>();
+  /** One of the day's mysteries: Delving XP and a small find, once a day each (the ledger key is its id); Glim answers. */
+  private mysteryFound(id: string): void {
+    const kind = id.split(':')[2] as MysteryKind;
+    const reward = MYSTERY_REWARD[kind];
+    if (!reward) return;
+    if (kind === 'whisper') this.message = this.t('play.living.mystery.whisper');
+    const result = this.skillActions.act({ mutationId: `living-mystery:${id}`, skill: 'delving', xp: reward.xp, locationId: EMBER_DELVE_LOCATION });
+    const fresh = result.ok && !result.replayed;
+    this.mysteriesPaid.add(id);
+    this.engine?.setMysteriesFound(this.mysteriesPaid);
+    if (!fresh) { if (kind !== 'whisper') this.message = this.t('play.living.mystery.again'); return; }
+    this.toastLoot(this.t('play.living.mystery.reward', { xp: reward.xp }));
+    if (reward.item) {
+      const had = this.inventory.stackOf(reward.item.materialId);
+      if (this.inventory.grantStack(`living-mystery:${id}:item`, reward.item.materialId, reward.item.qty) && this.inventory.stackOf(reward.item.materialId) > had) {
+        this.gotItem(reward.item.qty, materialDisplay(reward.item.materialId)?.name ?? reward.item.materialId, reward.item.materialId);
+      }
+    }
+    // Glim has an opinion (a bond line; at most one a few minutes, and only once Glim is met).
+    if (this.glimVoice.met) this.bondLine(`mystery.${kind}`, `play.living.glim.${kind}`, 3 * 60_000);
+  }
+  /** A critter caught with a swing: its drop, once a day per creature (keyed by its spawn id and the day). */
+  private critterCaught(event: { id: string; critter: string }): void {
+    const def = CRITTERS[event.critter as CritterId];
+    if (!def?.drop) return;
+    const name = this.t(`play.living.critter.${def.id}`);
+    const day = Math.floor(Date.now() / 86_400_000);
+    const had = this.inventory.stackOf(def.drop.materialId);
+    const granted = this.inventory.grantStack(`living-catch:${day}:${event.id}`, def.drop.materialId, def.drop.qty) && this.inventory.stackOf(def.drop.materialId) > had;
+    if (!granted) { this.message = this.t('play.living.catch.again', { critter: name }); return; }
+    const item = materialDisplay(def.drop.materialId)?.name ?? def.drop.materialId;
+    this.gotItem(def.drop.qty, item, def.drop.materialId);
+    this.message = this.t('play.living.catch', { critter: name, qty: def.drop.qty, item });
   }
   private act(target: InteractionTarget): void {
     if (!this.browser || this.state?.paused || this.state?.defeated) return;
