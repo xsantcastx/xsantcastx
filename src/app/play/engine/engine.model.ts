@@ -3,6 +3,8 @@ import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
 import type { HeldToolKind } from '../../shared/skills/held-tool';
+import type { LootRarity } from '../world/world.model';
+import type { MonsterRank } from '../../shared/loot/champions';
 /** `down` aims a delve swing (or blast) below the Keeper; `blast` channels the staff. */
 export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge' | 'down' | 'blast';
 export type InteractionTarget = 'ore' | 'forge' | 'beacon' | 'passage';
@@ -108,11 +110,22 @@ export interface EngineState {
   near?: { water: boolean; lava: boolean; ink: boolean };
   /** Fish shadows drawn last frame (fish-shadows.ts), for tests and tools. */
   fishShadows?: number;
+  /**
+   * Loot & combat, for tests and tools (the world shows it in light): the drops
+   * on the ground as `rarity:shown` tokens ("rare:1,common:0"), the aura running
+   * ("conviction:8"), how many creatures it marks, the nearest foe's rank and
+   * mods ("champion:extra-fast"), and whether a fallen purse lies in this area.
+   */
+  loot?: { drops: string; aura: string; debuffed: number; foe: string; purse: boolean; tier: string };
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
+/** A rolled gear / rune drop, as rollLoot hands it over (world.model DropEntry 'item' | 'rune', minus the id). */
+export type LootRow =
+  | { kind: 'item'; definitionId: string; rarity: LootRarity; label: string; unique?: boolean }
+  | { kind: 'rune'; rune: string; rarity: LootRarity; label: string };
 /** A world sound (EngineOptions.onSfx). */
-export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp'; node?: string }
+export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp' | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'; node?: string }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;
@@ -158,8 +171,21 @@ export interface EngineOptions {
   translate?: (key: string) => string;
   /** The town to stand in. Defaults to the Infernal town. */
   town?: TownDef;
-  /** `ore` is the material quantity (legacy name); `material` is its stack id. */
-  onLoot?: (loot: { id: string; coins: number; ore: number; material?: string }) => boolean | void;
+  /**
+   * `ore` is the material quantity (legacy name); `material` is its stack id.
+   * `item` / `rune`: a gear or rune drop (docs/design/loot-and-combat.md): the
+   * host mints the item (its roll frozen at mint) or grants the rune. False
+   * leaves the drop on the ground (a full satchel).
+   */
+  onLoot?: (loot: { id: string; coins: number; ore: number; material?: string; item?: { definitionId: string; rarity: LootRarity; unique: boolean }; rune?: string }) => boolean | void;
+  /**
+   * What a kill drops on top of its area's table (shared/loot/drop-tables.ts
+   * via LootService.rollLoot). Only asked while combat rules are set. Rows are
+   * 'item' / 'rune' DropEntry lines; the engine spills and presents them.
+   */
+  rollLoot?: (kill: { creature: string; level: number; rank: MonsterRank; killKey: string }) => readonly LootRow[];
+  /** The corpse run's purse was walked over (setFallenPurse). The host returns its Gold. */
+  onPurse?: () => void;
   onInteract: (target: InteractionTarget) => void;
   /** A panel or waystone station was interacted with. The host opens its panel. */
   onStation?: (station: StationDef) => void;

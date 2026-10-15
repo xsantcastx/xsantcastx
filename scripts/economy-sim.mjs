@@ -17,6 +17,8 @@
  *   node scripts/economy-sim.mjs --heights       # the high roads' caches and summits (in --check too)
  *   node scripts/economy-sim.mjs --pets          # the pets' helpers: the hedgehog's extra harvest, XP, bite (in --check too)
  *   node scripts/economy-sim.mjs --cabinets      # the Lost Cabinets' Gold, once each, and the set's final reward (in --check too)
+ *   node scripts/economy-sim.mjs --loot          # drops per hour by rung, per difficulty (in --check too)
+ *   node scripts/economy-sim.mjs --combat        # time to kill / time to die per creature, tier and Keeper stage (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
  *                                                # first purchase is > 15 s or
  *                                                # < 20 purchases in 10 min
@@ -37,7 +39,7 @@
  */
 
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -523,6 +525,9 @@ function check(E) {
   fails.push(...petsScenario({ quiet: true }));
   // The Lost Cabinets (shared/cabinets): once-only Gold on the rule I bands (`--cabinets` prints it).
   fails.push(...cabinetsScenario({ quiet: true }));
+  // Loot & combat (shared/loot): drops by rung and the difficulty curve (`--loot`, `--combat` print the tables).
+  fails.push(...lootScenario({ quiet: true }));
+  fails.push(...combatScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -1290,7 +1295,233 @@ function runGame(fn, opts) {
   console.log('  ok');
 }
 
-if (argv.plinko) {
+// ── Loot & combat (docs/design/loot-and-combat.md): drops per hour by rung, and time-to-kill / time-to-die ──
+const LOOT_TREE = new Map();
+const LOOT = loadTsTree('src/app/shared/loot/drop-tables.ts', LOOT_TREE);
+const FAM = loadTsTree('src/app/shared/loot/creature-families.ts', LOOT_TREE);
+const DIFF = loadTsTree('src/app/shared/loot/difficulty.model.ts', LOOT_TREE);
+const DMG = loadTsTree('src/app/shared/loot/damage.model.ts', LOOT_TREE);
+const AURA = loadTsTree('src/app/shared/loot/auras.ts', LOOT_TREE);
+const PACK = loadTsTree('src/app/shared/loot/champions.ts', LOOT_TREE);
+const KC = loadTsTree('src/app/shared/rpg/keeper-combat.ts', LOOT_TREE);
+const TIERS6 = ['common', 'uncommon', 'rare', 'epic', 'legendary', 'mythic', 'singular'];
+
+/**
+ * --loot: expected drops per hour by rung for a farming loop (trash at its
+ * kill rate, a champion share, a boss an hour), per difficulty. Checks the
+ * shape: rare is a moment on the first hunt, legendary is an event, the top
+ * rungs need depth or a harder tier, Magic Find has diminishing returns, the
+ * rune ceiling holds, and the seeded roller agrees with the analytic table.
+ */
+function lootScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const KPH = 150; // trash kills an hour on a steady hunt (TTK ~10-20 s with walking and pickup)
+  const rows = [
+    { label: 'Rivet Maw (Seamworks)', creature: 'rivet-maw', depth: 0 },
+    { label: 'Cinder Bailiff (Delve)', creature: 'cinder-bailiff', depth: 80 },
+    { label: 'Shadeling (Ink Deeps)', creature: 'shadeling', depth: 0 },
+    { label: 'Anchor Warden (Orrery)', creature: 'anchor-warden', depth: 0 },
+  ];
+  say('Loot scenario · expected drops per hour (items + runes), trash at ' + KPH + '/h, 0% MF\n');
+  say('  ' + 'creature'.padEnd(26) + 'tier'.padEnd(11) + 'lvl'.padEnd(5) + TIERS6.map(t => t.slice(0, 6).padStart(9)).join(''));
+  const rarePlus = {};
+  for (const row of rows) for (const tier of DIFF.DIFFICULTY_TIERS) {
+    const level = FAM.monsterLevel(row.creature, row.depth, tier);
+    const per = LOOT.expectedDropsPerHour({ creature: row.creature, level, tier, magicFind: 0, rank: 'normal' }, KPH);
+    say('  ' + row.label.padEnd(26) + tier.padEnd(11) + String(level).padEnd(5) + TIERS6.map(t => per[t].toFixed(per[t] < .1 ? 3 : 2).padStart(9)).join(''));
+    rarePlus[`${row.creature}:${tier}`] = TIERS6.slice(2).reduce((s, t) => s + per[t], 0);
+    if (tier === 'normal' && row.creature === 'rivet-maw') {
+      // The first hunt: a blue now and then (between one an hour and one every few minutes), never a gold.
+      const rare = per.rare + per.epic;
+      if (!(rare >= 0.5 && rare <= 20)) fails.push(`loot: the first hunt drops ${rare.toFixed(2)} rare+/h (band 0.5-20)`);
+      if (per.legendary + per.mythic + per.singular > 0) fails.push('loot: a level-1 Maw can drop legendary or better');
+    }
+    if (tier === 'normal' && per.singular > 0 && level < 25) fails.push(`loot: ${row.creature} drops Singular below level 25 on Normal`);
+    if (tier === 'normal') {
+      const legendary = per.legendary + per.mythic + per.singular;
+      if (legendary > 1.5) fails.push(`loot: ${row.creature} on Normal drops ${legendary.toFixed(2)} legendary+/h (an event, not a stream: <= 1.5)`);
+    }
+  }
+  for (const row of rows) {
+    const n = rarePlus[`${row.creature}:normal`], nm = rarePlus[`${row.creature}:nightmare`], h = rarePlus[`${row.creature}:hell`];
+    if (!(n < nm && nm < h)) fails.push(`loot: ${row.creature} rare+/h does not climb Normal < Nightmare < Hell (${n.toFixed(2)}, ${nm.toFixed(2)}, ${h.toFixed(2)})`);
+  }
+  // Gold: selling every Hell drop an hour is pocket change next to the forge (rule: gear is for wearing, not a Gold farm).
+  {
+    const SCRAP = loadTsTree('src/app/shared/rpg/item-definition.ts', LOOT_TREE).EQUIPMENT_SCRAP;
+    const per = LOOT.expectedDropsPerHour({ creature: 'anchor-warden', level: FAM.monsterLevel('anchor-warden', 0, 'hell'), tier: 'hell', magicFind: 0, rank: 'normal' }, KPH);
+    const gold = TIERS6.reduce((s, t) => s + per[t] * SCRAP[t], 0);
+    const { log } = simulate(PROPOSED);
+    const gps = log.at[1800]?.gps ?? 0;
+    const minutes = gps > 0 ? gold / gps / 60 : 0;
+    say(`  Selling an hour of Hell drops: ${fmtN(gold)} Gold = ${minutes.toFixed(1)} min of income at 30m`);
+    if (minutes > 30) fails.push(`loot: an hour of Hell drops sells for ${minutes.toFixed(1)} min of income (must be <= 30)`);
+  }
+  // A boss an hour, and a champion pack every few minutes, at the Orrery's depth on each tier.
+  say('\n  Bosses (one an hour) and champions (12 an hour): rare+ per hour');
+  for (const tier of DIFF.DIFFICULTY_TIERS) {
+    const lvl = FAM.monsterLevel('fallen-ephemeris', 0, tier);
+    const boss = LOOT.expectedDropsPerHour({ creature: 'fallen-ephemeris', level: lvl, tier, magicFind: 0, rank: 'boss' }, 1);
+    const champ = LOOT.expectedDropsPerHour({ creature: 'shadeling', level: FAM.monsterLevel('shadeling', 0, tier), tier, magicFind: 0, rank: 'champion' }, 12);
+    const sum = o => TIERS6.slice(2).reduce((s, t) => s + o[t], 0);
+    say(`    ${tier.padEnd(10)} boss ${sum(boss).toFixed(2)}  champions ${sum(champ).toFixed(2)}  (boss legendary+ ${(boss.legendary + boss.mythic + boss.singular).toFixed(3)})`);
+    if (!(sum(boss) >= 1)) fails.push(`loot: the gate boss on ${tier} pays ${sum(boss).toFixed(2)} rare+ (must be >= 1)`);
+  }
+  // Magic Find: diminishing returns on the top rungs.
+  const at = mf => LOOT.rarityOdds(20, mf, 0);
+  const lift = (mf, t) => at(mf)[t] / at(0)[t];
+  say(`\n  Magic Find at level 20: rare x${lift(100, 'rare').toFixed(2)} / x${lift(300, 'rare').toFixed(2)}, legendary x${lift(100, 'legendary').toFixed(2)} / x${lift(300, 'legendary').toFixed(2)} (100% / 300% MF)`);
+  if (!(lift(300, 'legendary') < 2.6)) fails.push(`loot: 300% MF multiplies legendary by ${lift(300, 'legendary').toFixed(2)} (diminishing returns: < 2.6)`);
+  if (!(lift(100, 'rare') > 1.3)) fails.push('loot: 100% MF barely moves rare');
+  // Rune ceilings.
+  for (const tier of DIFF.DIFFICULTY_TIERS) {
+    const top = LOOT.runeCeiling(200, tier);
+    if (top !== DIFF.DIFFICULTIES[tier].runeCap) fails.push(`loot: the rune ceiling on ${tier} is ${top}, not ${DIFF.DIFFICULTIES[tier].runeCap}`);
+  }
+  // The seeded roller agrees with the analytic table (Normal, Cinder Bailiff, 60k kills).
+  {
+    const level = FAM.monsterLevel('cinder-bailiff', 80, 'normal');
+    const ctx = { creature: 'cinder-bailiff', level, tier: 'normal', magicFind: 0, rank: 'normal' };
+    const rng = PACK.seededRandom(20261015);
+    const n = 60000, seen = Object.fromEntries(TIERS6.map(t => [t, 0]));
+    let uniqueWrong = 0;
+    for (let i = 0; i < n; i++) for (const d of LOOT.rollCreatureLoot(ctx, rng)) {
+      seen[d.rarity]++;
+      if (d.kind === 'item' && d.unique && LOOT.uniquesAt(d.rarity).every(u => u.id !== d.definitionId)) uniqueWrong++;
+    }
+    const want = LOOT.expectedDropsPerHour(ctx, n);
+    for (const t of ['common', 'uncommon', 'rare']) {
+      const diff = Math.abs(seen[t] - want[t]) / Math.max(1, want[t]);
+      if (diff > .08) fails.push(`loot: sampled ${t} ${seen[t]} vs expected ${want[t].toFixed(0)} (off by ${(diff * 100).toFixed(1)}%)`);
+    }
+    if (uniqueWrong) fails.push(`loot: ${uniqueWrong} uniques dropped off their authored rarity`);
+    say(`\n  Sampled 60k Bailiff kills: ${TIERS6.map(t => `${t} ${seen[t]}`).join(', ')}`);
+  }
+  if (quiet) console.log(`economy-sim loot: ${fails.length ? fails.length + ' fail(s)' : 'first-hunt rares, tier climb, MF curve, rune ceilings, sampler ok'}`);
+  else for (const x of fails) console.error(`  FAIL ${x}`);
+  return fails;
+}
+
+/**
+ * --combat: time to kill (TTK) and time to die (TTD) per creature, per tier,
+ * per Keeper stage. A creature strikes every ~2.5 s (wind-up .85, strike .2,
+ * recover 1.1, idle .35) and the wind-up is a tell: the sim assumes half the
+ * blows are dodged on a phone. The Keeper swings every .52 s.
+ *
+ * The bands (fairness on phones, D2 hardness): the first hunt is safe; Normal's
+ * bosses fall to good gear; Nightmare's creatures need a seasoned Keeper;
+ * Hell kills a Keeper without resists and is beatable with 75 resists, a high
+ * Hunting level and an aura.
+ */
+const AUTHORED_HP = {
+  'rivet-maw': 60, 'rootglass-stag': 50, 'prism-forager': 70, 'ephemeris-leech': 70, 'mirror-substitute': 75,
+  'cinder-bailiff': 110, 'seam-eater': 260, 'drowned-lamp': 180, 'banked-ember': 140, 'ironwood-sentinel': 320, 'banked-furnace': 900,
+  'graftling': 260, 'graftmother': 1300, 'prismling': 250, 'hollow-sun': 1200, 'shadeling': 240, 'gloam-warden': 1100,
+  'anchor-warden': 280, 'fallen-ephemeris': 1400,
+};
+/** The sim's HP table must match the towns' MonsterDefs (read as text: the town files are not pure). */
+function authoredHpDrift() {
+  const out = [];
+  const dir = resolve(here, '..', 'src/app/play/world/towns');
+  for (const f of readdirSync(dir).filter(f => f.endsWith('.ts') && !f.endsWith('.spec.ts'))) {
+    const text = readFileSync(resolve(dir, f), 'utf8');
+    for (const m of text.matchAll(/creature: '([a-z0-9-]+)'[^}]*?hp: (\d+)/g)) {
+      if (AUTHORED_HP[m[1]] !== undefined && AUTHORED_HP[m[1]] !== Number(m[2])) out.push(`combat: ${m[1]} is ${m[2]} HP in ${f}, the sim says ${AUTHORED_HP[m[1]]}`);
+    }
+  }
+  return out;
+}
+function combatScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const SWING = .52, CYCLE = .85 + .2 + 1.1 + .35, DODGE = .5;
+  const stage = (name, strike, ward, hunt, resist, aura) => ({ name, ...KC.keeperCombatStats({ strikePower: strike, ward }, hunt), resist, aura });
+  const STAGES = [
+    stage('starter', 1, 0, 1, 0, null),
+    // Gear resists before the tier's penalty: Hell's -100 needs 175 from armour runes to sit at the 75 cap.
+    stage('seasoned', 3, 7, 40, 60, { id: 'might', level: 5 }),
+    stage('endgame', 6, 15, 99, 175, { id: 'conviction', level: 9 }),
+    stage('endgame-bare', 6, 15, 99, 0, null),
+  ];
+  const fight = (creature, tier, k) => {
+    const d = DIFF.DIFFICULTIES[tier];
+    const p = FAM.creatureProfile(creature);
+    const lvl = FAM.monsterLevel(creature, 0, tier);
+    const hp = Math.round(defHp[creature] * d.hp);
+    const resists = FAM.creatureResists(creature, tier);
+    const fx = k.aura ? AURA.auraEffect(k.aura.id, k.aura.level) : null;
+    const hitDmg = DMG.mitigate(Math.round(k.damage * (fx ? fx.damage : 1)), resists.physical, fx ? fx.resistLower : 0);
+    const ttk = hitDmg > 0 ? Math.ceil(hp / hitDmg) * SWING / (fx ? fx.attackSpeed : 1) : Infinity;
+    const type = FAM.creatureHits(creature);
+    const blow = Math.round(FAM.creatureBlow(lvl - d.level) * d.damage);
+    const res = type === 'physical' ? 0 : DMG.keeperResist(k.resist, d.resistPenalty);
+    const taken = DMG.hitOnKeeper(blow, type, res);
+    const regen = fx ? fx.regen : 0;
+    const ttd = Math.ceil(k.maxHp / taken) * CYCLE / (1 - DODGE) + (regen ? (regen * 10) : 0);
+    return { lvl, hp, ttk, ttd, taken, boss: !!p.boss };
+  };
+  // Authored HP (MonsterDef.hp in play/world/towns/*.ts, scripts/combat-hp check below keeps it honest).
+  const defHp = { ...AUTHORED_HP };
+  for (const p of FAM.CREATURE_PROFILES) if (defHp[p.creature] === undefined) defHp[p.creature] = 60 + p.level * 15;
+  say('Combat scenario · time to kill / time to die (s), half the blows dodged\n');
+  for (const tier of DIFF.DIFFICULTY_TIERS) {
+    say(`  ${tier}`);
+    say('    ' + 'creature'.padEnd(20) + 'lvl'.padEnd(5) + 'hp'.padEnd(7) + STAGES.map(s => s.name.padStart(18)).join(''));
+    for (const p of FAM.CREATURE_PROFILES) {
+      const cells = STAGES.map(k => { const f = fight(p.creature, tier, k); return `${f.ttk.toFixed(1)}/${f.ttd.toFixed(0)}`.padStart(18); });
+      const f0 = fight(p.creature, tier, STAGES[0]);
+      say('    ' + p.creature.padEnd(20) + String(f0.lvl).padEnd(5) + String(f0.hp).padEnd(7) + cells.join(''));
+    }
+  }
+  // Bands.
+  fails.push(...authoredHpDrift());
+  const tutorial = fight('rivet-maw', 'normal', STAGES[0]);
+  if (tutorial.taken !== 12 || tutorial.hp !== 60) fails.push(`combat: the tutorial Maw changed (hp ${tutorial.hp}, blow ${tutorial.taken}; must stay 60 / 12)`);
+  for (const p of FAM.CREATURE_PROFILES) {
+    if (p.level <= 3) {
+      const f = fight(p.creature, 'normal', STAGES[0]);
+      if (!(f.ttd >= 2 * f.ttk)) fails.push(`combat: a starter Keeper is not safe against ${p.creature} on Normal (TTK ${f.ttk.toFixed(1)} s, TTD ${f.ttd.toFixed(1)} s)`);
+    }
+    if (p.boss) {
+      const f = fight(p.creature, 'normal', STAGES[1]);
+      if (!(f.ttd > f.ttk)) fails.push(`combat: a seasoned Keeper cannot beat ${p.creature} on Normal (TTK ${f.ttk.toFixed(1)}, TTD ${f.ttd.toFixed(1)})`);
+    }
+    if (!p.boss) {
+      const nm = fight(p.creature, 'nightmare', STAGES[1]);
+      if (!(nm.ttd >= nm.ttk)) fails.push(`combat: a seasoned Keeper loses to ${p.creature} on Nightmare (TTK ${nm.ttk.toFixed(1)}, TTD ${nm.ttd.toFixed(1)})`);
+      const hell = fight(p.creature, 'hell', STAGES[2]);
+      if (!(hell.ttd >= hell.ttk)) fails.push(`combat: an endgame Keeper loses to ${p.creature} in Hell (TTK ${hell.ttk.toFixed(1)}, TTD ${hell.ttd.toFixed(1)})`);
+    }
+  }
+  // Resistances matter: in Hell an elemental hitter kills a bare endgame Keeper at least three times as fast
+  // as one at the resist cap, and some of them out-kill the bare Keeper outright.
+  const elemental = FAM.CREATURE_PROFILES.filter(p => FAM.creatureHits(p.creature) !== 'physical');
+  const deadly = elemental.filter(p => { const f = fight(p.creature, 'hell', STAGES[3]); return f.ttd < f.ttk; });
+  const soft = elemental.filter(p => fight(p.creature, 'hell', STAGES[3]).ttd * 3 > fight(p.creature, 'hell', STAGES[2]).ttd);
+  say(`\n  Hell without resists: ${deadly.length}/${elemental.length} elemental creatures out-kill a bare endgame Keeper (${deadly.map(p => p.creature).join(', ')})`);
+  if (soft.length) fails.push(`combat: resists barely matter in Hell against ${soft.map(p => p.creature).join(', ')}`);
+  if (!deadly.length) fails.push('combat: nothing in Hell punishes a Keeper without resists');
+  // Hell is hard: a seasoned (mid-game) Keeper loses to at least a third of it.
+  const beaten = FAM.CREATURE_PROFILES.filter(p => { const f = fight(p.creature, 'hell', STAGES[1]); return f.ttd < f.ttk; });
+  say(`  Hell vs a seasoned Keeper: ${beaten.length}/${FAM.CREATURE_PROFILES.length} creatures win`);
+  if (beaten.length * 3 < FAM.CREATURE_PROFILES.length) fails.push(`combat: Hell is soft (a seasoned Keeper beats ${FAM.CREATURE_PROFILES.length - beaten.length}/${FAM.CREATURE_PROFILES.length})`);
+  // Phones: every pack keeps a readable wind-up.
+  if (PACK.packWindup(.85, 1.6 * 1.6) < PACK.MIN_WINDUP) fails.push('combat: a pack wind-up drops under MIN_WINDUP');
+  if (quiet) console.log(`economy-sim combat: ${fails.length ? fails.length + ' fail(s)' : 'first hunt safe, bosses beatable, Hell needs resists, tells readable'}`);
+  else for (const x of fails) console.error(`  FAIL ${x}`);
+  return fails;
+}
+
+if (argv.loot && !argv.check) {
+  const fails = lootScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.combat && !argv.check) {
+  const fails = combatScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.plinko) {
   runGame(plinkoScenario, { plays: Number(argv.plays ?? 1_000_000), quiet: false });
 } else if (argv.mines) {
   runGame(minesScenario, { rounds: Number(argv.rounds ?? 2_000_000), quiet: false });

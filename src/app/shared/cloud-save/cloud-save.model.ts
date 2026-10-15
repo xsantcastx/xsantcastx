@@ -59,6 +59,7 @@ import { mergeCabinets } from '../cabinets/cabinets-save.model';
 import { mergeWorldRegionSlots, mergeWorldSaves, WORLD_KEY, WORLD_SLOT_KEYS } from '../delve/world-save.model';
 import { mergeWaystones, WAYSTONES_KEY } from '../waystones/waystones.model';
 import { mergeSound } from '../sound/sound-settings.model';
+import { mergeLoot } from '../loot/loot-save.model';
 import { mergePets } from '../pets/pets-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -493,6 +494,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // the PC too. Unlike `godforge-forge-hum` (a per-device toggle), this is
     // the player's ear, and it travels with them.
     merge: mergeSound,
+  },
+  {
+    key: 'godforge-loot',
+    collection: 'progress',
+    doc: 'loot',
+    label: 'Loot & combat',
+    // `{ version, filter, aura, tier, unlocked, seed, purse, updatedAt, purseAt }`:
+    // the loot filter, the picked aura, the difficulty and the tiers opened, the
+    // loot seed, and the corpse run's purse (loot-save.model.ts). The later
+    // choice wins whole; tiers are a union; the later purse event wins.
+    merge: mergeLoot,
   },
   {
     key: 'godforge-pets',

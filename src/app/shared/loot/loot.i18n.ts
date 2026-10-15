@@ -1,0 +1,106 @@
+/**
+ * Loot & combat words (the Loot & Combat sheet, drops, auras, difficulty, the
+ * corpse run, the Codex's Loot entry), EN + ES. Lazy: registered by the play
+ * view and the Codex, never by the app shell's eager table.
+ */
+export const LOOT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
+  // ── The sheet (Menu → Loot & Combat) ──
+  'loot.menu': { en: 'Loot & Combat', es: 'Botin y combate' },
+  'loot.menuBlurb': { en: 'Loot filter, aura, difficulty', es: 'Filtro de botin, aura, dificultad' },
+  'loot.title': { en: 'Loot & Combat', es: 'Botin y combate' },
+  'loot.lead': { en: 'What the world drops, how loud it shines, and how hard it fights back.', es: 'Lo que suelta el mundo, cuanto brilla y cuanto se defiende.' },
+  'loot.close': { en: 'Done', es: 'Listo' },
+  'loot.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
+
+  'loot.filter.title': { en: 'Loot filter', es: 'Filtro de botin' },
+  'loot.filter.all': { en: 'Show all', es: 'Mostrar todo' },
+  'loot.filter.hide-common': { en: 'Hide commons', es: 'Ocultar comunes' },
+  'loot.filter.rare-plus': { en: 'Rare and better', es: 'Raro o mejor' },
+  'loot.filter.note': { en: 'Hidden drops still land when you walk over them. Coins always show.', es: 'Lo oculto se recoge igual al pasar por encima. Las monedas siempre se ven.' },
+
+  'loot.aura.title': { en: 'Aura', es: 'Aura' },
+  'loot.aura.none': { en: 'Nothing you wear carries an aura. Socket Words and a few named things do.', es: 'Nada de lo que llevas tiene aura. Las Palabras de Engaste y algunos objetos con nombre si.' },
+  'loot.aura.auto': { en: 'Strongest', es: 'La mas fuerte' },
+  'loot.aura.from': { en: '{{aura}} {{level}} — from {{name}}', es: '{{aura}} {{level}} — de {{name}}' },
+  'loot.aura.active': { en: 'Running: {{aura}} {{level}}', es: 'Activa: {{aura}} {{level}}' },
+  'loot.aura.carries': { en: 'Aura: {{aura}} {{level}}', es: 'Aura: {{aura}} {{level}}' },
+  'loot.aura.might': { en: 'Might', es: 'Poderio' },
+  'loot.aura.conviction': { en: 'Conviction', es: 'Conviccion' },
+  'loot.aura.redemption': { en: 'Redemption', es: 'Redencion' },
+  'loot.aura.holy-fire': { en: 'Holy Fire', es: 'Fuego Sagrado' },
+  'loot.aura.holy-freeze': { en: 'Holy Freeze', es: 'Escarcha Sagrada' },
+  'loot.aura.holy-shock': { en: 'Holy Shock', es: 'Descarga Sagrada' },
+  'loot.aura.fanaticism': { en: 'Fanaticism', es: 'Fanatismo' },
+  'loot.aura.prayer': { en: 'Prayer', es: 'Plegaria' },
+  'loot.aura.vigor': { en: 'Vigor', es: 'Vigor' },
+  'loot.auraFx.might': { en: 'Your blows deal +{{n}}% damage.', es: 'Tus golpes hacen +{{n}}% de dano.' },
+  'loot.auraFx.conviction': { en: 'Creatures near you lose {{n}} points of every resistance.', es: 'Las criaturas cercanas pierden {{n}} puntos de cada resistencia.' },
+  'loot.auraFx.redemption': { en: 'Each creature that falls near you heals you {{n}} HP.', es: 'Cada criatura que cae cerca te cura {{n}} PV.' },
+  'loot.auraFx.holy-fire': { en: 'Burns everything near you for {{n}} fire damage every 1.5 s.', es: 'Quema todo lo cercano con {{n}} de dano de fuego cada 1,5 s.' },
+  'loot.auraFx.holy-freeze': { en: 'Chills everything near you for {{n}} cold damage and slows it.', es: 'Hiela todo lo cercano con {{n}} de dano de frio y lo ralentiza.' },
+  'loot.auraFx.holy-shock': { en: 'Shocks everything near you for {{n}} lightning damage every 1.5 s.', es: 'Electrocuta todo lo cercano con {{n}} de dano de rayo cada 1,5 s.' },
+  'loot.auraFx.fanaticism': { en: 'You swing {{n}}% faster.', es: 'Golpeas un {{n}}% mas rapido.' },
+  'loot.auraFx.prayer': { en: 'You heal {{n}} HP every second.', es: 'Te curas {{n}} PV cada segundo.' },
+  'loot.auraFx.vigor': { en: 'You move {{n}}% faster.', es: 'Te mueves un {{n}}% mas rapido.' },
+
+  'loot.tier.title': { en: 'Difficulty', es: 'Dificultad' },
+  'loot.tier.normal': { en: 'Normal', es: 'Normal' },
+  'loot.tier.nightmare': { en: 'Nightmare', es: 'Pesadilla' },
+  'loot.tier.hell': { en: 'Hell', es: 'Infierno' },
+  'loot.tierBlurb.normal': { en: 'The world as it is. Runes up to Rare.', es: 'El mundo tal cual. Runas hasta Raras.' },
+  'loot.tierBlurb.nightmare': { en: 'Creatures twice as tough and hitting harder; your resistances -40. More and better drops, runes up to Legendary.', es: 'Criaturas el doble de duras y golpean mas fuerte; tus resistencias -40. Mas y mejor botin, runas hasta Legendarias.' },
+  'loot.tierBlurb.hell': { en: 'Three times as tough and hitting over twice as hard; your resistances -100. The best drops, and every rune.', es: 'Tres veces mas duras y golpean mas del doble; tus resistencias -100. El mejor botin y todas las runas.' },
+  'loot.tier.locked': { en: 'Fell the Fallen Ephemeris on {{tier}} to open it.', es: 'Derrota a la Efemeride Caida en {{tier}} para abrirla.' },
+  'loot.tier.falls': { en: 'A fall leaves {{n}}% of your purse where you fell.', es: 'Una caida deja el {{n}}% de tu bolsa donde caiste.' },
+
+  'loot.resist.title': { en: 'Resistances', es: 'Resistencias' },
+  'loot.resist.note': { en: 'Runes set in armour ward against their realm\'s element. Capped at 75.', es: 'Las runas engastadas en armadura protegen del elemento de su reino. Maximo 75.' },
+  'loot.resist.physical': { en: 'Physical', es: 'Fisico' },
+  'loot.resist.fire': { en: 'Fire', es: 'Fuego' },
+  'loot.resist.cold': { en: 'Cold', es: 'Frio' },
+  'loot.resist.lightning': { en: 'Lightning', es: 'Rayo' },
+  'loot.resist.arcane': { en: 'Arcane', es: 'Arcano' },
+
+  // ── Ranks and champion modifiers (the name over a creature) ──
+  'loot.rank.champion': { en: 'Champion {{name}}', es: '{{name}} campeon' },
+  'loot.rank.unique': { en: '{{title}} the {{name}}', es: '{{title}}, {{name}}' },
+  'loot.mod.extra-fast': { en: 'Extra Fast', es: 'Muy rapido' },
+  'loot.mod.extra-strong': { en: 'Extra Strong', es: 'Muy fuerte' },
+  'loot.mod.stone-skin': { en: 'Stone Skin', es: 'Piel de piedra' },
+  'loot.mod.fire-enchanted': { en: 'Fire Enchanted', es: 'Encantado de fuego' },
+  'loot.mod.cold-enchanted': { en: 'Cold Enchanted', es: 'Encantado de frio' },
+  'loot.mod.lightning-enchanted': { en: 'Lightning Enchanted', es: 'Encantado de rayo' },
+  'loot.mod.cursed': { en: 'Cursed', es: 'Maldito' },
+  'loot.mod.staff-burn': { en: 'Staff Burn', es: 'Quemabaculos' },
+
+  // ── The ladder, read the Diablo way (Codex) ──
+  'loot.rarity.common': { en: 'Common — no beam', es: 'Comun — sin haz' },
+  'loot.rarity.uncommon': { en: 'Uncommon — a short sage beam', es: 'Poco comun — un haz salvia corto' },
+  'loot.rarity.rare': { en: 'Rare — a blue beam and a chime', es: 'Raro — un haz azul y un repique' },
+  'loot.rarity.epic': { en: 'Epic — a purple beam and a horn', es: 'Epico — un haz purpura y un cuerno' },
+  'loot.rarity.legendary': { en: 'Legendary — a gold column and the legendary chime', es: 'Legendario — una columna dorada y el repique legendario' },
+  'loot.rarity.mythic': { en: 'Mythic — a white-gold column', es: 'Mitico — una columna blanca y dorada' },
+  'loot.rarity.singular': { en: 'Singular — the void-pink column', es: 'Singular — la columna rosa del vacio' },
+
+  // ── In the world (engine lines, play.loot.*) ──
+  'play.loot.dropped': { en: '{{name}} dropped!', es: '¡Cayo {{name}}!' },
+  'play.loot.unique': { en: 'A named thing: {{name}}!', es: 'Un objeto con nombre: {{name}}!' },
+  'play.loot.picked': { en: 'Picked up {{name}}.', es: 'Recogiste {{name}}.' },
+  'play.loot.tooFar': { en: 'Too far to reach. Walking over to it.', es: 'Demasiado lejos. Vas hacia alla.' },
+  'play.loot.full': { en: 'No room for {{name}}. Make space in the Satchel.', es: 'No cabe {{name}}. Haz espacio en la Mochila.' },
+  'play.loot.purse': { en: 'Your fallen purse', es: 'Tu bolsa caida' },
+  'play.loot.fall.purse': { en: 'You dropped {{n}} Gold where you fell. Walk back to take it.', es: 'Dejaste {{n}} de Oro donde caiste. Vuelve a buscarlo.' },
+  'play.loot.fall.none': { en: 'Nothing is lost but the walk back.', es: 'No pierdes nada salvo el camino de vuelta.' },
+  'play.loot.recovered': { en: 'Recovered your purse: {{n}} Gold.', es: 'Recuperaste tu bolsa: {{n}} de Oro.' },
+  'play.loot.unlocked': { en: '{{tier}} is open. The world will fight harder, and pay better.', es: '{{tier}} esta abierta. El mundo luchara mas, y pagara mejor.' },
+  'play.loot.immune': { en: 'Immune', es: 'Inmune' },
+
+  // ── The Codex entry ──
+  'loot.codex.title': { en: 'Loot, auras and the three passes', es: 'Botin, auras y las tres pasadas' },
+  'loot.codex.sub': { en: 'How a drop announces itself, what a worn aura does, and how hard each pass fights.', es: 'Como se anuncia un botin, que hace un aura y cuanto se defiende cada pasada.' },
+  'loot.codex.ladder': { en: 'The ladder on the ground', es: 'La escala en el suelo' },
+  'loot.codex.auras': { en: 'Auras, and where they come from', es: 'Auras, y de donde vienen' },
+  'loot.codex.unknown': { en: 'A Socket Word not yet found', es: 'Una Palabra de Engaste aun no hallada' },
+  'loot.codex.tiers': { en: 'The three passes', es: 'Las tres pasadas' },
+  'loot.codex.current': { en: 'You are playing {{tier}}.', es: 'Juegas en {{tier}}.' },
+};
