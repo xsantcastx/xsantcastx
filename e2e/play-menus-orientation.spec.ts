@@ -143,8 +143,14 @@ async function measure(page: Page, menu: Menu): Promise<Omit<Report, 'menu' | 's
       if (!sel || !rootEl) return null;
       const el = Array.from(document.querySelectorAll(sel)).find(shown) as HTMLElement | undefined;
       if (!el) return null;
-      const r = el.getBoundingClientRect();
-      const at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      let r = el.getBoundingClientRect();
+      let at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      // Below the fold of a scrolling body: scroll it into view the way a thumb would, then it must answer.
+      if (!(at && (at === el || el.contains(at)))) {
+        el.scrollIntoView({ block: 'nearest', behavior: 'instant' as ScrollBehavior });
+        r = el.getBoundingClientRect();
+        at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      }
       return { box: box(r), hit: !!at && (at === el || el.contains(at)) };
     };
     const outside: { sel: string; box: { x: number; y: number; w: number; h: number } }[] = [];

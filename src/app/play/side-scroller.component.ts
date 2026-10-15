@@ -205,6 +205,10 @@ interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: st
 /** The satchel's tabs (MapleStory's inventory): everything, worn things, charms, materials. */
 type BagCat = 'gear' | 'charm' | 'mats';
 type BagTab = 'all' | BagCat;
+/** Spelt out, so the HUD key checks (scripts/seamworks-engine.test.cjs) can read them. */
+const BAG_TAB_KEYS: Record<BagTab, string> = {
+  all: 'play.hud.book.tab.all', gear: 'play.hud.book.tab.gear', charm: 'play.hud.book.tab.charm', mats: 'play.hud.book.tab.mats',
+};
 /** An empty well shows a faint picture of what goes there, never a word that spills out of its box. */
 const WELL_GHOST: Record<string, IconKind> = {
   weapon: 'sword', 'off-hand': 'shield', head: 'helm', chest: 'cuirass', hands: 'gauntlet', legs: 'greaves', feet: 'boots',
@@ -2319,12 +2323,12 @@ export class SideScrollerComponent implements OnDestroy {
     return [...materials, ...gear];
   }
   /** The tabs that have something in them (All always). */
-  get bagTabs(): { id: BagTab; n: number }[] {
+  get bagTabs(): { id: BagTab; n: number; key: string }[] {
     const all = this.pockets;
-    const tabs: { id: BagTab; n: number }[] = [{ id: 'all', n: all.length }];
+    const tabs: { id: BagTab; n: number; key: string }[] = [{ id: 'all', n: all.length, key: BAG_TAB_KEYS.all }];
     for (const cat of ['gear', 'charm', 'mats'] as const) {
       const n = all.filter(p => p.cat === cat).length;
-      if (n) tabs.push({ id: cat, n });
+      if (n) tabs.push({ id: cat, n, key: BAG_TAB_KEYS[cat] });
     }
     return tabs;
   }
