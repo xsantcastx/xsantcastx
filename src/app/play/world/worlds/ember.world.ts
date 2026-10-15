@@ -106,10 +106,14 @@ export const EMBER_SURFACE: SurfaceSpec = {
   liquids: [{ col: -59, row: -1, w: 4, liquid: 'water' }],
   stones: EMBER_STONES,
   regions: [
-    { id: 'homestead', name: 'Your Homestead', sx0: -4, sx1: -1 },
+    // The Homestead and the Quarry grow the wilds' ashwoods and bushes (living-world.ts), clear of the plot's
+    // buildings, the High Roads and the stones; the critters come with them.
+    { id: 'homestead', name: 'Your Homestead', sx0: -4, sx1: -1,
+      flora: { trees: [{ col: -70, height: 5, crown: 5 }, { col: -64, height: 3, crown: 3 }, { col: -5, height: 4, crown: 3 }], bushes: [-67, -52] } },
     { id: 'basalt-seamworks', name: 'Basalt Seamworks', sx0: 0, sx1: 3 },
     { id: 'quarry-road', name: 'Quarry Road', sx0: 4, sx1: 4 },
-    { id: 'ember-quarry', name: 'Ember Quarry', sx0: 5, sx1: 7 },
+    { id: 'ember-quarry', name: 'Ember Quarry', sx0: 5, sx1: 7,
+      flora: { trees: [{ col: 197, height: 4, crown: 3 }, { col: 226, height: 4, crown: 5 }], bushes: [199, 213] } },
   ],
   wilds: { id: 'ember-wilds', name: 'The Ember Wilds' },
   underground: { id: 'ember-delve', name: 'Ember Delve' },

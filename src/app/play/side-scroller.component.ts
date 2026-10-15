@@ -104,7 +104,7 @@ import type { DiscoverEvent } from './engine/engine';
 import { WORLD_ACTION_UNPAID } from './engine/engine.model';
 // One World (docs/design/one-world.md), Phase 1: behind the per-device preview gate.
 import { OneWorldFlag } from './one-world/one-world-flag';
-import { EMBER_STONES, INFERNAL_WORLD_TOWN, ROAD_MAW_APPROACH_X } from './world/worlds/ember.world';
+import { EMBER_STONES, INFERNAL_WORLD_TOWN, placeOfRegion, PLOT_SCALE, PLOT_X, ROAD_MAW_APPROACH_X } from './world/worlds/ember.world';
 import { ONE_WORLD_I18N } from './world/one-world.i18n';
 import { TRAVEL_MAP_I18N } from './world-travel/world-travel.i18n';
 import type { TravelMapComponent } from './world-travel/travel-map.component';
@@ -831,6 +831,8 @@ export class SideScrollerComponent implements OnDestroy {
       }),
     });
     this.engine.setHomesteadView(this.homestead.scene);
+    // One World: the plot stands in the Ember world, west of the Seamworks, at the world's scale (ember.world.ts).
+    this.homestead.scene.setWorldPlacement(this.oneWorld ? { area: INFERNAL_WORLD_TOWN.home!, x: PLOT_X, scale: PLOT_SCALE } : null);
     this.statsKey = '';
     this.cabinetMarksKey = ''; this.cabinetBright = false;
     this.loadoutKey = ''; this.lookPushKey = '';
@@ -1499,10 +1501,7 @@ export class SideScrollerComponent implements OnDestroy {
   private refreshGuide(): void {
     const progress = this.activity.snapshot.progress;
     const worn = this.inventory.snapshot.equipped['weapon'];
-    // One World: the settlement's street is the town ('infernal'); under it, the Delve; elsewhere the region.
-    const areaId = this.state.world
-      ? this.state.region === 'basalt-seamworks' ? this.town.id : this.state.region === 'ember-delve' ? 'ember-delve' : this.state.region ?? this.town.id
-      : this.state.areaId ?? this.town.id;
+    const areaId = this.placeId;
     const goal = firstGoal({
       ...(this.state.world ? { world: { mawX: ROAD_MAW_APPROACH_X } } : {}),
       bought: this.boughtBuilding,
@@ -1967,8 +1966,17 @@ export class SideScrollerComponent implements OnDestroy {
   /** What the worn loadout buys in a fight. Strike drives damage, Ward max HP. */
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals); }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
+  /**
+   * Where the Keeper is, as the places the game already knew: One World's
+   * settlement street (and the Quarry Road) is the town ('infernal'), under it
+   * the Delve, the Homestead and the Ember Quarry by their old area ids, the
+   * wilds by theirs. Outside a world, the engine's area.
+   */
+  get placeId(): string {
+    return this.state.world ? placeOfRegion(this.state.region, this.town.id) : this.state.areaId ?? this.town.id;
+  }
   get objective(): string {
-    if (this.state.areaId === 'homestead') return this.t('play.hud.obj.homestead');
+    if (this.placeId === 'homestead') return this.t('play.hud.obj.homestead');
     if (this.state.delve) return this.t('play.delve.objective');
     if (this.state.area === 'Ember Quarry') return this.t('play.hud.obj.quarry');
     if (this.restored) return this.t('play.hud.obj.passage');

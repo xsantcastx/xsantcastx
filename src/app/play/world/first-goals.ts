@@ -96,6 +96,16 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
   const view = (key: string, target: FirstGoalTarget | null): FirstGoalView =>
     ({ id, n: FIRST_GOALS.indexOf(id) + 1, total: FIRST_GOALS.length, key, target });
 
+  // One World (P2): the Homestead and the Ember Quarry are regions of the world the town stands in, so
+  // there is no "head back": every goal is a walk along the same street (only the buy and the hunt are local).
+  if (facts.world && facts.areaId === HOMESTEAD_ID) {
+    if (id === 'buy') return view('play.goal.buy.home', { station: HOMESTEAD_FORGE_STATION });
+    return firstGoal({ ...facts, areaId: HOME_TOWN });
+  }
+  if (facts.world && facts.areaId === QUARRY) {
+    if (id === 'hunt') return view('play.goal.hunt.here', null);
+    return firstGoal({ ...facts, areaId: HOME_TOWN });
+  }
   // Off the beaten path: point back to the Seamworks, where every first goal is.
   if (facts.areaId === HOMESTEAD_ID) {
     return id === 'buy'
@@ -112,7 +122,8 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
   if (facts.areaId !== HOME_TOWN) return view('play.goal.away', { station: 'waystone' });
 
   switch (id) {
-    case 'buy': return view('play.goal.buy.town', { station: HOMESTEAD_GATE_ID });
+    // One World: the plot is west along the street; walk to its Forge.
+    case 'buy': return view('play.goal.buy.town', { station: facts.world ? HOMESTEAD_FORGE_STATION : HOMESTEAD_GATE_ID });
     case 'craft':
       // Forged but not worn: the Seamworks Forge equips it on the next use.
       if (facts.edge && !facts.armed) return view('play.goal.craft.equip', { station: 'forge' });

@@ -136,7 +136,9 @@ test('the sky band: golden hashes pin surface-gen (the settlement and the wilds)
 // Bump these only with a surface change that is meant (a building moved, a blueprint redrawn): the sky band's saved
 // diffs (sy < 0) are filed against the cells they were dug in, as the Delve's are.
 // The wilds' columns (−13, 12, 20) moved for the Living World's trees and points of interest (living-world.ts).
-const SKY_GOLDEN = { '-13': 'e0a386fa', '-4': '68e4adc5', '-2': '4e5012fd', 0: 'bf8a8c6', 1: '69e3fb1', 2: '33372215', 3: '2ead61c7', 4: '68e4adc5', 7: '68e4adc5', 12: 'd39e0fd8', 20: 'd10f9b5d' };
+// P2: the pond moved west into the Homestead (−2) with its trees; the arch at col 120 went (3); the Quarry's
+// High Roads, its trees and bushes stand in sector 7.
+const SKY_GOLDEN = { '-13': 'e0a386fa', '-4': '68e4adc5', '-2': '83a65694', 0: 'bf8a8c6', 1: '69e3fb1', 2: '33372215', 3: '91244b1d', 4: '68e4adc5', 7: 'bc21b1ff', 12: 'd39e0fd8', 20: 'd10f9b5d' };
 
 test('the sky band: generation is fast (≤ 0.6 ms a column)', () => {
   const t0 = performance.now();
@@ -200,9 +202,9 @@ test('settlement: the mine head stands over the core\'s entry ledge, its ladder 
 });
 
 test('settlement: the basin holds still water between its rims', () => {
-  const w = worldAt(-40), t = w.t;
-  for (let c = -43; c <= -40; c++) { assert.equal(t.liquidAt(c, -1), terrainMod.LIQUID_WATER); assert.equal(t.levelAt(c, -1), terrainMod.LIQUID_FULL); }
-  assert.ok(t.solid(-44, -1) && t.solid(-39, -1));
+  const w = worldAt(-56), t = w.t;
+  for (let c = -59; c <= -56; c++) { assert.equal(t.liquidAt(c, -1), terrainMod.LIQUID_WATER); assert.equal(t.levelAt(c, -1), terrainMod.LIQUID_FULL); }
+  assert.ok(t.solid(-60, -1) && t.solid(-55, -1));
 });
 
 // ── Wilds, stones, regions ──────────────────────────────────────────────────
@@ -231,7 +233,10 @@ test('wilds: hills rise only above the ground line; wild stones every eight sect
 test('regionAt: the settlement, the road, the plot, the wilds and the Delve under them all', () => {
   assert.equal(surface.regionAt(SKY, 40, -2).name, 'Basalt Seamworks');
   assert.equal(surface.regionAt(SKY, 150, -2).id, 'quarry-road');
-  assert.equal(surface.regionAt(SKY, -40, -2).id, 'the-plot');
+  assert.equal(surface.regionAt(SKY, -40, -2).id, 'homestead');
+  assert.equal(surface.regionAt(SKY, -40, -2).name, 'Your Homestead');
+  assert.equal(surface.regionAt(SKY, 200, -2).id, 'ember-quarry');
+  assert.equal(surface.regionAt(SKY, 200, -2).name, 'Ember Quarry');
   assert.equal(surface.regionAt(SKY, 900, -2).id, 'ember-wilds');
   assert.equal(surface.regionAt(SKY, -900, -2).id, 'ember-wilds');
   assert.equal(surface.regionAt(SKY, 40, 5).name, 'Ember Delve');
@@ -425,7 +430,7 @@ test('engine: a dark stone is seen, lit by holding E, travelled to and back, and
   assert.equal(state().region, 'basalt-seamworks');
   assert.ok(Math.abs(engine.player.x - (ember.EMBER_SQUARE.stone * CELL + 16)) < 60);
   assert.ok(engine.travelToStone('ember:quarry-head'));
-  assert.equal(state().region, 'quarry-road');
+  assert.equal(state().region, 'ember-quarry');
   // Far into the wilds, a wild stone's point comes from its id alone.
   const wild = engine.stonePoint('ember:ws:12');
   assert.ok(wild && wild.col >= 12 * 32 && wild.col < 13 * 32);
@@ -453,24 +458,182 @@ test('engine: the keepers keep the clock (fire at evening, upstairs at night); t
   assert.deepEqual(plain(events.stations), ['vault'], 'never closed by time');
 });
 
-test('engine: the arches lead to the old Quarry and the Homestead and back to the arches', () => {
+test('engine: no arches (P2): the Homestead is west along the street, the Quarry Gate east opens on the beacon', () => {
+  const { engine, state, events } = worldEngine();
+  steps(engine, .1);
+  // The Homestead's stations stand in the world, in its region, at the world's scale.
+  assert.deepEqual(plain(ember.EMBER_WORLD_STATIONS.filter(s => s.kind === 'passage').map(s => s.id)), ['delve'], 'no passage left but the mine head over the Delve');
+  const forge = ember.EMBER_WORLD_STATIONS.find(s => s.id === 'hs-forge');
+  assert.equal(forge.x, ember.plotX(720));
+  engine.placeAtStation('hs-anvil');
+  steps(engine, .1);
+  assert.equal(state().areaId, 'ember-delve');
+  assert.equal(state().region, 'homestead');
+  assert.equal(state().area, 'Your Homestead');
+  engine.interact();
+  assert.deepEqual(plain(events.stations), ['hs-anvil'], 'the home anvil opens its panel');
+  // The Quarry Gate: barred (a swing gets its refusal), then lifted by the beacon.
+  const t = engine.terrain, bars = ember.QUARRY_GATE_BARS;
+  const gx = (ember.QUARRY_GATE_COL - 1) * CELL;
+  engine.placeAtPoint(gx, FLOOR); steps(engine, .2);
+  for (const b of bars) assert.equal(TERRAIN_NODE_LIST[t.kind[t.index(b.col, b.row)]].id, 'gate-bar');
+  engine.setTools({ pickaxe: 3 });
+  engine.hitCell(bars[0].col, bars[0].row, ['pickaxe'], false);
+  assert.match(engine.message, /Barred/);
+  act(engine, [[['right'], 1.5]]);
+  assert.ok(engine.player.x < ember.QUARRY_GATE_COL * CELL, 'the bars stop the Keeper');
+  engine.setProgress({ equipped: true, restored: true });
+  steps(engine, .1);
+  for (const b of bars) assert.equal(t.kind[t.index(b.col, b.row)], 0, 'lifted');
+  act(engine, [[['right'], 3]]);
+  assert.ok(engine.player.x > (ember.QUARRY_GATE_COL + 6) * CELL, `through the gate (${engine.player.x})`);
+  assert.equal(state().region, 'ember-quarry');
+  assert.equal(state().area, 'Ember Quarry');
+});
+
+test('the Quarry and the Homestead grow the Living World\'s ashwoods; its nodes stand on the Quarry\'s street', () => {
+  const t = worldAt(200).t;
+  assert.equal(TERRAIN_NODE_LIST[t.kind[t.index(197, -1)]].id, 'ashwood-trunk');
+  assert.equal(TERRAIN_NODE_LIST[t.kind[t.index(197, -5)]].id, 'ashwood-crown');
+  const home = worldAt(-60).t;
+  assert.equal(TERRAIN_NODE_LIST[home.kind[home.index(-70, -1)]].id, 'ashwood-trunk');
+  for (const n of ember.EMBER_QUARRY_WORLD_NODES) {
+    const col = Math.floor(n.x / CELL);
+    assert.ok(col >= ember.QUARRY_GATE_COL + 5 && col < ember.HIGH_ROADS_COL, `${n.id} between the gate and the High Roads`);
+    assert.ok(standable(t, col), `${n.id} on the street`);
+  }
+});
+
+// ── The High Roads in cells, and parkour (terrain-moves.ts) ────────────────
+
+const moves = load('play/engine/terrain-moves.ts');
+const BOX = { halfWidth: 13, height: 90 };
+
+test('terrain-moves: a lip within the hands\' reach is caught, mantled, let go of; a wall-jump kicks off', () => {
+  // A block of rock from row 5 down, cols 6+ of a small grid, open to the west.
+  const t = new Terrain(12, 12, 0);
+  for (let c = 6; c < 12; c++) for (let r = 5; r < 12; r++) t.set(c, r, nodeIndex('rock'));
+  const face = 6 * CELL;
+  // Feet 70 px under the lip (row 5's top = 160), pushing east, falling: caught.
+  const b = { x: face - BOX.halfWidth, y: 160 + 70, vy: 50, grounded: false };
+  const m = new moves.TerrainMover();
+  m.after(t, b, BOX, { dir: 1, jump: false, down: false }, 1 / 60);
+  assert.equal(m.mode, 'hang');
+  assert.equal(b.y, 160 + moves.HANG_DROP);
+  // Jump mantles onto the top.
+  assert.ok(m.pressJump(t, b, BOX, { dir: 0, jump: true, down: false }, false));
+  for (let n = 0; n < 30; n++) m.hold(b, BOX, { dir: 0, jump: false, down: false }, 1 / 60);
+  assert.equal(m.mode, 'free'); assert.equal(b.y, 160); assert.ok(b.x > face && b.grounded);
+  // Too far under the lip: no grab. Down held: no grab.
+  const low = { x: face - BOX.halfWidth, y: 160 + 140, vy: 50, grounded: false };
+  const m2 = new moves.TerrainMover(); m2.after(t, low, BOX, { dir: 1, jump: false, down: false }, 1 / 60);
+  assert.equal(m2.mode, 'free');
+  const m3 = new moves.TerrainMover(); m3.after(t, { x: face - BOX.halfWidth, y: 230, vy: 50, grounded: false }, BOX, { dir: 1, jump: false, down: true }, 1 / 60);
+  assert.equal(m3.mode, 'free');
+  // Down lets go of a hang.
+  const h = { x: face - BOX.halfWidth, y: 230, vy: 50, grounded: false }, m4 = new moves.TerrainMover();
+  m4.after(t, h, BOX, { dir: 1, jump: false, down: false }, 1 / 60);
+  m4.hold(h, BOX, { dir: 0, jump: false, down: true }, 1 / 60);
+  assert.equal(m4.mode, 'free');
+  // A wall touched in the air, Jump away: a wall-jump west.
+  const w = { x: face - BOX.halfWidth, y: 330, vy: 100, grounded: false }, m5 = new moves.TerrainMover();
+  m5.after(t, w, BOX, { dir: 1, jump: false, down: true }, 1 / 60);
+  assert.ok(m5.pressJump(t, w, BOX, { dir: -1, jump: true, down: false }, false));
+  assert.equal(m5.event, 'walljump'); assert.equal(w.vy, -moves.WALL_JUMP);
+  assert.ok(m5.velocity(0, 1 / 60) < 0, 'kicked west');
+});
+
+/** After a jump at a lip: let go of everything; a hang is mantled with a fresh Jump (an already-mantled body just stands). */
+function settle(engine) {
+  act(engine, [[[], .05]]);
+  if (engine.moves.mode === 'hang') act(engine, [[['jump'], .1]]);
+  act(engine, [[[], .5]]);
+}
+/** Hold right until the Keeper's x passes `x` (a few seconds at most). */
+function walkRight(engine, x) {
+  engine.setInput('right', true);
+  for (let n = 0; n < 600 && engine.player.x < x; n++) engine.update(1 / 60);
+  engine.setInput('right', false);
+}
+/** Run an engine with held inputs: [inputs, seconds] steps. */
+function act(engine, plan) {
+  for (const [inputs, seconds] of plan) {
+    for (const a of ['left', 'right', 'jump', 'down']) engine.setInput(a, inputs.includes(a));
+    steps(engine, seconds);
+  }
+  for (const a of ['left', 'right', 'jump', 'down']) engine.setInput(a, false);
+}
+
+test('the High Roads: every piece of the route is climbed on cells, and each find stands on its top', () => {
   const { engine, state } = worldEngine();
   steps(engine, .1);
-  engine.placeAtStation('homestead');
-  engine.interact();
-  assert.equal(state().areaId, 'homestead');
-  const back = engine.places.find(s => s.kind === 'passage');
-  engine.player.x = back.x; engine.player.y = FLOOR; engine.interact();
-  steps(engine, .2);
-  assert.equal(state().areaId, 'ember-delve');
-  assert.ok(Math.abs(engine.player.x - ember.WEST_ARCH_X) < 4);
-  // The east arch is shut until the beacon is rekindled (the onboarding beat).
-  engine.placeAtStation('passage');
-  engine.interact();
-  assert.equal(state().areaId, 'ember-delve');
   engine.setProgress({ equipped: true, restored: true });
-  engine.interact();
-  assert.equal(state().areaId, 'ember-quarry');
+  const R = blueprints.HIGH_ROADS, C = ember.HIGH_ROADS_COL;
+  const top = up => FLOOR - up * CELL;
+  const at = (col, feet) => { engine.placeAtPoint(col * CELL, feet); steps(engine, .1); };
+  // 1. The shelf: from the street, run at its west face and jump: the hands catch, Jump mantles.
+  at(C + R.shelf.dx - 1.5, FLOOR);
+  act(engine, [[['right', 'jump'], .45]]); settle(engine);
+  assert.equal(engine.player.y, top(R.shelf.top), `on the shelf (${engine.player.x},${engine.player.y})`);
+  // 2. The tree: Up at the trunk climbs to the canopy.
+  at(C + R.tree.dx + .5, FLOOR);
+  act(engine, [[['jump'], 3.5], [[], .3]]);
+  assert.equal(engine.player.y, top(R.tree.top), `in the canopy (${engine.player.x},${engine.player.y})`);
+  // The canopy, the ruin, the bridge and the mesa are one walk.
+  act(engine, [[['right'], 2.6]]);
+  assert.equal(engine.player.y, top(R.mesa.top), `walked onto the mesa (${engine.player.x},${engine.player.y})`);
+  // 3. The snag: climb it, kick east off it, the hands catch the block's lip, then mantle.
+  at(C + R.snag.dx + .5, FLOOR);
+  act(engine, [[['jump'], 4.5]]);
+  act(engine, [[['right', 'jump'], .05], [['right'], .5]]); settle(engine);
+  assert.equal(engine.player.y, top(R.block.top), `on the block (${engine.player.x},${engine.player.y})`);
+  // 4. The slab, then the spire: walk to the edge, jump into the face, catch, mantle.
+  walkRight(engine, (C + R.block.dx + R.block.w) * CELL - 4);
+  act(engine, [[['right', 'jump'], .4]]); settle(engine);
+  assert.equal(engine.player.y, top(R.slab.top), `on the slab (${engine.player.x},${engine.player.y})`);
+  walkRight(engine, (C + R.slab.dx + R.slab.w) * CELL - 4);
+  act(engine, [[['right', 'jump'], .3]]); settle(engine);
+  assert.equal(engine.player.y, top(R.spire.top), `on the spire (${engine.player.x},${engine.player.y})`);
+  assert.ok(R.spire.top >= 22, 'the summit is about 22 rows up');
+  // Every find stands on a solid or one-way top, never inside a cell.
+  const t = engine.terrain;
+  for (const f of ember.EMBER_HIGH_ROADS.finds) {
+    const col = Math.floor(f.x / CELL), row = t.rowAt(f.y);
+    assert.ok(t.solid(col, row) || terrainMod.isOneWay(t, col, row), `${f.id} stands on something`);
+    assert.ok(!t.solid(col, row - 1), `${f.id} is open above`);
+  }
+  // The summit find is in reach on the spire top.
+  const summit = ember.EMBER_HIGH_ROADS.finds.find(f => f.kind === 'summit');
+  engine.placeAtPoint(summit.x, summit.y); steps(engine, .1);
+  assert.equal(state().height?.id, 'ember-quarry:summit');
+});
+
+test('parkour in the Delve: a pit four cells deep is climbed out with a grab and a mantle', () => {
+  const { engine } = worldEngine();
+  steps(engine, .1);
+  const t = engine.terrain;
+  // A pit two wide, four rows deep, at cols 20-21 (rows 0..3), a rock floor under it.
+  for (let r = 0; r <= 3; r++) for (const c of [20, 21]) t.set(c, r, 0);
+  t.set(20, 4, nodeIndex('rock')); t.set(21, 4, nodeIndex('rock'));
+  for (let r = 0; r <= 4; r++) { t.set(19, r, nodeIndex('rock')); t.set(22, r, nodeIndex('rock')); }
+  engine.placeAtPoint(20.5 * CELL, FLOOR + 4 * CELL); steps(engine, .2);
+  assert.equal(engine.player.y, FLOOR + 4 * CELL);
+  act(engine, [[['left', 'jump'], .45]]); settle(engine);
+  assert.ok(engine.player.y <= FLOOR, `out of the pit (${engine.player.x},${engine.player.y})`);
+});
+
+test('parkour never leaves the Keeper inside a solid cell (4000 random frames on the High Roads)', () => {
+  const { engine } = worldEngine();
+  steps(engine, .1);
+  engine.setProgress({ equipped: true, restored: true });
+  engine.placeAtPoint((ember.HIGH_ROADS_COL + 20) * CELL, FLOOR); steps(engine, .1);
+  let seed = 12345; const rnd = () => (seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32;
+  const t = engine.terrain;
+  for (let n = 0; n < 4000; n++) {
+    if (n % 12 === 0) for (const a of ['left', 'right', 'jump', 'down']) engine.setInput(a, rnd() < (a === 'down' ? .1 : .4));
+    engine.update(1 / 60);
+    assert.ok(!terrainMod.boxHits(t, engine.player.x, engine.player.y, BOX), `inside a solid at frame ${n} (${engine.player.x}, ${engine.player.y})`);
+  }
 });
 
 test('engine: the town\'s walls refuse a swing and a placed block; the street\'s dirt digs', () => {
