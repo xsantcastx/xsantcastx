@@ -1369,8 +1369,8 @@ with a staff and a wide hat.
 
 ## Pets (shipped — owner reviews in play)
 
-Pets (`docs/handoff/pets.md`, `shared/pets/pets.model.ts`). Seven small companions, one per realm and two from the
-deep places. None is bought and none is given away: each is found where it lives.
+Pets (`docs/handoff/pets.md`, `shared/pets/pets.model.ts`). Small companions, one per realm and three from the
+deep places (eight in all). None is bought and none is given away: each is found where it lives.
 
 - **Ember Newt** (Infernal). Seam newts lay their eggs where the Delve keeps its heat; a crate left long in warm
   water is the warmest place they know, so the first Seam Crate you fish up and open holds one. Its tail is a
@@ -1389,7 +1389,9 @@ deep places. None is bought and none is given away: each is found where it lives
   banked with its embers, as if it knew something would need carrying after it fell. It fetches your drops.
 - **Shade-kit** (the Ink Deeps, rare). Shades are what a light leaves behind; a shade-kit is what a shade leaves
   behind. The Gloam Warden guarded its egg. Small, curious, very fond of fish: with it watching, a bite comes sooner.
+- **Sunling** (the Luminous Prism Mines, rare). The Hollow Sun was hollow because it was keeping something warm.
+  What hatches when it falls is a very small sun that has decided you are its sky; in its light, wounds close slowly.
 
 A pet is never hungry and never leaves. Feeding it what it likes only makes it fonder: at four it learns a trick,
 at ten it gets a hat (a forge cap, a sunbloom crown, an amethyst bow, a star hat, an acorn cap, a miner's helmet,
-a crescent circlet). Glim says one thing about each, the first time it meets them.
+a crescent circlet, a dawn-glass visor). Glim says one thing about each, the first time it meets them.

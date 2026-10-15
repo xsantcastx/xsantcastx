@@ -224,6 +224,26 @@ const LOOKS: Readonly<Record<PetId, PetLook>> = {
       p(hx - 4, top + 2, 9, 1, '#8a90b0'); p(hx - 1, top, 3, 2, '#d8dcf0'); p(hx, top, 1, 1, '#ffffff'); p(hx + 1, top + 1, 1, 1, '#8a90b0');
     },
   },
+  // The Prism Mines: a little round sun, gold with a hollow warm heart and a crown of rays.
+  'sunling': {
+    dark: '#b8901e', mid: '#E8D44D', light: '#fff1b0', belly: '#fff4dc', cheek: '#ff9b8a', iris: WHITE, pupil: PUPIL,
+    head: [6, 5], body: [5, 3],
+    back(p, _l, q, bx, by) {
+      // Two little ray-wings that lift on a hop.
+      p(bx - 7, by - 3 - q.flap, 3, 2, '#ffd08a'); p(bx + 5, by - 3 - q.flap, 3, 2, '#ffd08a');
+    },
+    marks(p, _l, q, hx, hy, bx, by) {
+      // A crown of short rays round the big head (they twinkle on the breath).
+      const t = q.flap ? 1 : 0;
+      p(hx - 1, hy - 8 - t, 2, 2, '#ffd08a'); p(hx - 6, hy - 6, 2, 2, '#ffd08a'); p(hx + 5, hy - 6, 2, 2, '#ffd08a');
+      p(hx - 8, hy - 1, 2, 1, '#ffd08a'); p(hx + 7, hy - 1, 2, 1, '#ffd08a');
+      // The hollow, warm heart on its chest.
+      p(bx - 1, by - 1, 3, 2, '#E8752A'); p(bx, by - 1, 1, 1, '#fff4dc');
+    },
+    hat(p, hx, top) { // a dawn-glass visor
+      p(hx - 5, top + 2, 11, 1, '#8a90b0'); p(hx - 4, top + 1, 9, 1, '#d8ecff'); p(hx - 3, top + 1, 2, 1, '#ffffff');
+    },
+  },
 };
 
 /** Paint one frame of a pet (feet on row PET_H − 1, facing right) through a pixel callback. */

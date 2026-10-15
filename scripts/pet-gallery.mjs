@@ -55,10 +55,10 @@ for (const pet of PETS) {
 }
 const scene = document.getElementById('scene')!;
 const keeper = new KeeperPainter({ ...defaultLook(), made: true, face: 'rosy' } as any, null);
-card(scene, 'Keeper and the seven, world scale (4 px per art px)', 1400, 260, c => {
+card(scene, 'Keeper and the eight, world scale (4 px per art px)', 1400, 260, c => {
   c.fillStyle = '#2a2236'; c.fillRect(0, 230, 1400, 30);
   c.save(); c.translate(110, 232); keeper.draw(c, S, { action: 'idle', time: 0, attackT: 0, weapon: false } as any); c.restore();
-  PETS.forEach((pet, i) => drawPet(c, pet.id, i % 2 ? 'idle1' : 'idle0', i === 3, 250 + i * 160, 232, S, i === 6 ? -1 : 1));
+  PETS.forEach((pet, i) => drawPet(c, pet.id, i % 2 ? 'idle1' : 'idle0', i === 3, 240 + i * 145, 232, S, i === 7 ? -1 : 1));
 });
 (window as any).done = true;
 `);

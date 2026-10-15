@@ -16,12 +16,13 @@ scale; regenerate with `node scripts/pet-gallery.mjs docs/handoff/pets gallery`)
 | Moss Hedgehog | Verdant | **rescued** after 8 harvests in the Rootglass Thicket | **gather**: a Verdant hunting-ground harvest yields +1 one time in four |
 | Rivet Maw hatchling (rare) | Underhearth | an egg when the **Banked Furnace** first falls | **fetch**: trots to loose drops up to 520 px away and carries them back |
 | Shade-kit (rare) | Ink Deeps | an egg when the **Gloam Warden** falls | **fish**: bites come 1.25× sooner (under the engine's cap of 4) |
+| Sunling (rare) | Luminous Prism Mines | an egg when the **Hollow Sun** falls | **mend**: 6 s unhurt, then 1 % of max HP back per second |
 
 - **Visible**: the pet follows the Keeper in towns, hunts and the Delve (a bouncy hop behind you, turns when you
   turn, catches up, curls up asleep with drifting z's after 14 s still, a happy face on a pickup or a meal, a
   spinning trick, a "!" on the bark), its name on a small plate under its feet. Satchel → the doll's empty
   bottom-right corner is the **pet well** (44 px+, amber when something new waits); tap it for the pets sheet.
-  Codex → Collection → **Pets**: all seven (silhouettes until met), Found in / Helps with, lore once met,
+  Codex → Collection → **Pets**: all eight (silhouettes until met), Found in / Helps with, lore once met,
   "so far: 3 of 6" for the counted sources. Glim says one line about each pet, once ever. Sounds: a chirp (found,
   meal, trick), a yip (bark), a crack + chime (hatch).
 - **Bond**: hatch an egg (one tap), name it (≤ 16 chars, rename any time), **Feed** with real satchel stacks
@@ -53,14 +54,14 @@ scale; regenerate with `node scripts/pet-gallery.mjs docs/handoff/pets gallery`)
 and hat (`hatAt`), max love, the later feed day (same day: more meals); max per tally key; the later follower
 (an egg cannot follow). Commutative and idempotent (spec).
 
-**Hook for the realm Delves** (Verdant Root Deeps, Luminous Prism Mines, being built in parallel): a new pet
-from there is one `PETS` row with `source: { kind: 'hunt' | 'gather', tally: '<kind>:<area-id>', need }`, a
-`this.pets.count('<kind>:<area-id>')` where that Delve books a kill or a harvest, its art in `LOOKS`
-(`pet-art.ts`) and its `play.pet.*` words. No file of theirs was edited.
+**The realm Delves** (merged from main 27063d36): the Sunling is the Luminous Prism Mines' pet, found through
+the Hollow Sun's once-flag (`hollow-sun-defeated`; the spec pins the copy against `towns/luminous-delve.ts`). No
+realm-Delve file was edited. The Verdant Root Deeps has no pet of its own (the Verdant already has the
+hedgehog); a Graftmother pet would be one `PETS` row on `graftmother-defeated` plus its `LOOKS` art and words.
 
 ## Tests
 
-- Karma `shared/pets/pets.spec.ts` (23): the table means something (7 pets, every realm, 2 rare, distinct helpers,
+- Karma `shared/pets/pets.spec.ts` (24): the table means something (8 pets, every realm, 3 rare, guardian flags pinned, distinct helpers,
   real foods, EN + ES, Glim lines ≤ 120, no guilt copy); every source finds only its pet, never twice; feeding
   rules (egg, food, favourite ×2, full, next day); helpers small and the gather roll stable; coerce/name cleaning;
   merge both orders, idempotent, nothing lost; art inside its cell, every frame distinct; the service through the
@@ -73,7 +74,7 @@ from there is one `PETS` row with `source: { kind: 'hunt' | 'gather', tally: '<k
 
 ## Not done / next
 
-- Glow, warn, fetch, xp, gather and fish are wired and rule-tested but not driven in e2e (only scent is).
+- Glow, warn, fetch, xp, gather, fish and mend are wired and rule-tested but not driven in e2e (only scent is).
 - Pets do not collide with Delve terrain: they float along with the Keeper's height (a cosmetic shortcut).
 - No pet in the Homestead yet (a "rest at home" pet could sleep by the hearth there).
 - Peers' pets are not broadcast (presence carries no pet).
