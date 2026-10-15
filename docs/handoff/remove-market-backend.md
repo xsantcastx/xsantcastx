@@ -10,10 +10,10 @@ Owner-approved. The player market's server half is gone.
 - `docs/handoff/player-market/firestore.rules.proposed` and `firestore.indexes.json.proposed` (never applied).
 
 ## firestore.rules and indexes: nothing to remove
-The market rules and indexes were only ever *proposed* (files above). `firestore.rules`, `firestore.indexes.json` and `firebase.json` have no market blocks and are byte-identical to main (empty diff). CI's automatic rules/indexes deploy on push to main therefore changes nothing for the market: there were no market rules in production to disappear. The server wrote through the Admin SDK, which bypasses rules.
+The market rules and indexes were only ever *proposed* (files above). `firestore.rules` and `firestore.indexes.json` have no market blocks and are byte-identical to main (empty diff). `firebase.json` differs only in a `//csp-connect-src` comment (market callables no longer mentioned); the CSP value is unchanged. CI's automatic rules/indexes deploy on push to main therefore changes nothing for the market: there were no market rules in production to disappear. The server wrote through the Admin SDK, which bypasses rules.
 
-## Not removed (deliberately)
-On `main` the client still has `src/app/shared/market/*` and `shared/exchange/player-exchange*` (the screens are only deleted on `game-only-shell`). They are dormant (client flag off) and would call the removed callables only if enabled. Delete them with or after the game-only-shell merge. `exchange.model.ts` stays (NPC vendor / meaning check use it). `INVENTORY_BAG_CAP` stays exported.
+## Client
+After merging the game-only shell, the client market code is already gone from main. `exchange.model.ts` stays (NPC vendor / meaning check use it). `INVENTORY_BAG_CAP` stays exported.
 
 ## Owner follow-up
 - Cloud Functions are NOT removed by CI. They go away only when you run `firebase deploy --only functions` (it prompts to delete functions no longer in source). Functions that will be deleted, if they were ever deployed:
