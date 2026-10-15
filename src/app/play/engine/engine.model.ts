@@ -262,6 +262,11 @@ export interface EngineOptions {
    */
   onCabinet?: (event: CabinetEvent) => void;
   /**
+   * The Living World: a swing caught a critter (living-world.ts CRITTERS with a `drop`). `id` is
+   * the critter's spawn id (`<sx>:<n>:<critter>`); the host grants its drop once a day per id.
+   */
+  onCatch?: (event: { id: string; critter: string }) => void;
+  /**
    * One World: a Waystone. 'seen': it came into view for the first time this
    * session (the host keeps the save's `seen`); 'light': E was held at an
    * unlit one for LIGHT_HOLD seconds (the host writes the receipt, then grants);
@@ -321,8 +326,10 @@ export interface DiscoverEvent {
    * 'shrine': a rift shrine was touched (id `rift:<col>,<row>`); the engine has
    * already shown the tunnels round it on the map.
    * 'mark': one of the Four's hammer-marks in the Underhearth (id `hammer-mark-<n>`): the Keeper took a rubbing.
+   * 'mystery': one of the day's Living World mysteries (id `<day>:<sx>:<kind>`, living-world.ts): a wisp
+   * touched, a door opened (E), or a whisper walked into. The host pays it once a day (its ledger key).
    */
-  kind: 'inscription' | 'shrine' | 'mark';
+  kind: 'inscription' | 'shrine' | 'mark' | 'mystery';
   /** A shrine first touched while an eclipse is on (it showed twice as far; the host pays the eclipse's share). */
   eclipse?: boolean;
   /** Inscription id from the terrain spec (shared/delve/delve-lore.model.ts lists them), a field note, or a shrine. */

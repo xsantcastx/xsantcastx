@@ -257,6 +257,8 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
     return drew;
   }
   const pattern = PATTERNS[kind];
+  // A solid prop (the Living World's ashberry bush): its pixel map over what is behind it, nothing more.
+  if (pattern === 'placed') { paintPlaced(c, atlas, kind, x, y); return true; }
   const mask = tileMask(solid, col, row);
   const sheet = sheets?.(node.id);
   if (sheet?.entry.autotile) {

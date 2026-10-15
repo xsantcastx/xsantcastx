@@ -174,6 +174,11 @@ rollPack(key, level, isBoss, tier, spawnKey) → { rank, mods, title }
 engine: setCombatRules(rules|null), setFallenPurse(p|null), pickDrop(clientX, clientY), options.rollLoot, onLoot{item,rune}, onPurse
 ```
 A new creature: add a `CREATURE_PROFILES` row (the meaning check flags a spawn without one).
+The Living World (`play/engine/living-world.ts`): `packScale(level)` IS this curve's `depthHpScale` (+8% HP per area
+level, capped ×3), and every pack/den/elder hall carries `SectorHall.level`; the engine levels the creature from it
+(blow, packs, drops) instead of from depth, and does not scale its HP twice. Scripted fights (guardians, trait
+creatures, minions) keep their authored HP and the legacy 12 blow on Normal; Nightmare and Hell multiply them.
+`hurtMonster(monster, damage, type = 'physical', byPet = false)`: pets pass `byPet` (pets-and-glim-alive).
 
 ## 12. Gaps (owned, next)
 

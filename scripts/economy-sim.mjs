@@ -19,6 +19,7 @@
  *   node scripts/economy-sim.mjs --cabinets      # the Lost Cabinets' Gold, once each, and the set's final reward (in --check too)
  *   node scripts/economy-sim.mjs --loot          # drops per hour by rung, per difficulty (in --check too)
  *   node scripts/economy-sim.mjs --combat        # time to kill / time to die per creature, tier and Keeper stage (in --check too)
+ *   node scripts/economy-sim.mjs --living        # the Living World: mysteries, critter catches, strongboxes (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
  *                                                # first purchase is > 15 s or
  *                                                # < 20 purchases in 10 min
@@ -528,6 +529,8 @@ function check(E) {
   // Loot & combat (shared/loot): drops by rung and the difficulty curve (`--loot`, `--combat` print the tables).
   fails.push(...lootScenario({ quiet: true }));
   fails.push(...combatScenario({ quiet: true }));
+  // The Living World (play/engine/living-world.ts): finds, catches and the day's mysteries stay a side line (`--living`).
+  fails.push(...livingScenario({ quiet: true }));
   // Sera Quill's Eclipse Ledger (shared/world-clock): per-eclipse tips and once-only marks (`--eclipse` prints it).
   fails.push(...eclipseScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
@@ -1088,6 +1091,59 @@ function cabinetsScenario({ quiet = false } = {}) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// --living: the Living World (src/app/play/engine/living-world.ts; docs/handoff/living-world.md).
+// Something to find every few sectors, never an income line. Upper bounds, a Keeper doing only that for an hour:
+//   1. walking the wilds (a sector every 5.4 s): every surface mystery touched and every catchable
+//      critter caught, sold back, is <= 25 % of the forge's income at every stage from 30 min on;
+//   2. digging sideways through a stratum (a column a second): every strongbox crate and fossil
+//      rivet, sold back, is <= 25 % of the forge's income from 30 min on;
+//   3. a hermit's gift is once ever and small (<= 2 min of income at 30 min).
+// ───────────────────────────────────────────────────────────────────────────
+
+const LIVING = loadTsTree('src/app/play/engine/living-world.ts');
+const TERRAIN = loadTsTree('src/app/play/engine/terrain.ts');
+
+function livingScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const { log } = simulate(PROPOSED);
+  const value = id => FISH.WATERS && Object.values(FISH.WATERS).some(w => w.crate === id)
+    ? FISH.crateExpectedAnchor(id, anchorOf) * C.ITEM_ECONOMY_SCALE * C.VENDOR_BUYBACK_FRACTION : buyback(anchorOf(id));
+  const node = id => TERRAIN.TERRAIN_NODE_LIST.find(n => n.id === id);
+  // Walking: sectors an hour, mysteries one column in four (all of them on the surface: an upper bound), one catch a sector.
+  const sectorsH = 3600 / (32 * 32 / 191);
+  const R = LIVING.MYSTERY_REWARD, kinds = Object.keys(R);
+  const mysteryEach = kinds.reduce((g, k) => g + (R[k].item ? value(R[k].item.materialId) * R[k].item.qty : 0), 0) / kinds.length;
+  const catchEach = Object.values(LIVING.CRITTERS).filter(c => c.drop).reduce((g, c) => Math.max(g, value(c.drop.materialId) * c.drop.qty), 0);
+  const walkH = sectorsH / 4 * mysteryEach + sectorsH * 1 * catchEach;
+  // Digging: 3600 columns an hour = 112 sector columns of one stratum; a find in ~80 % of them, the best stratum's strongbox share.
+  const cols = 3600 / 32;
+  const box = Math.max(value(node('old-strongbox').yield.materialId), value(node('ember-strongbox').yield.materialId));
+  const fossil = node('fossil-bone').yield;
+  const digH = cols * .8 * (.35 * box + .4 * 20 * fossil.qty * (fossil.chance ?? 1) * value(fossil.materialId));
+  say('Living World scenario · v3 curve (PROPOSED)\n');
+  say(`  walking: ${fmtN(sectorsH)} sectors/h, a mystery ${fmtN(mysteryEach)} Gold, a catch ${fmtN(catchEach)} Gold -> ${fmtN(walkH)} Gold/h at most`);
+  say(`  digging: ${fmtN(cols)} sector columns/h of one stratum, a strongbox ${fmtN(box)} Gold -> ${fmtN(digH)} Gold/h at most\n`);
+  say('  stage   forge Gold/h   walking   digging');
+  for (const [t, label] of [[1800, '30m'], [3600, '1h'], [3 * 3600, '3h'], [86400, '1d'], [7 * 86400, '7d']]) {
+    const gps = log.at[t]?.gps;
+    if (!gps) continue;
+    const forge = gps * 3600;
+    say(`  ${label.padEnd(6)}${fmtN(forge).padStart(14)}   ${(walkH / forge * 100).toFixed(1).padStart(6)}%   ${(digH / forge * 100).toFixed(1).padStart(6)}%`);
+    if (walkH > .25 * forge) fails.push(`walking the wilds pays ${(walkH / forge * 100).toFixed(1)} % of the forge's income at ${label} (must be <= 25 %)`);
+    if (digH > .25 * forge) fails.push(`the Living World's finds pay ${(digH / forge * 100).toFixed(1)} % of the forge's income at ${label} (must be <= 25 %)`);
+  }
+  const gps30 = log.at[1800]?.gps ?? 0;
+  for (const h of LIVING.HERMITS) {
+    const g = value(h.gift.materialId) * h.gift.qty;
+    if (gps30 && g > 120 * gps30) fails.push(`${h.id}'s gift is worth ${fmtN(g)} Gold, over 2 min of income at 30 min`);
+  }
+  if (quiet) console.log(`economy-sim living: ${fails.length ? fails.length + ' fail(s)' : 'finds, catches and mysteries a side line'}`);
+  else for (const f of fails) console.error(`  FAIL ${f}`);
+  return fails;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // --pets: the pets' helpers (src/app/shared/pets/pets.model.ts; docs/handoff/pets.md).
 // One small helper each, so a pet is a companion, never an income line:
 //   1. the knobs stay small: gather <= 25 %, XP <= 10 %, bite <= x1.25;
@@ -1597,6 +1653,10 @@ if (argv.loot && !argv.check) {
   console.log('  ok');
 } else if (argv.pets && !argv.check) {
   const fails = petsScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.living && !argv.check) {
+  const fails = livingScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.eclipse && !argv.check) {

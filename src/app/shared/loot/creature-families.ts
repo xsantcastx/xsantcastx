@@ -147,6 +147,8 @@ export function creatureBlow(level: number): number {
  * authored HP already prices the base level in.
  */
 export const HP_PER_EXTRA_LEVEL = 0.08;
+/** Never more than this from area/depth levels alone: a far pack is a fight, not a wall (difficulty multiplies on top). */
+export const MAX_AREA_HP_SCALE = 3;
 export function depthHpScale(extraLevels: number): number {
-  return 1 + HP_PER_EXTRA_LEVEL * Math.max(0, extraLevels);
+  return Math.min(MAX_AREA_HP_SCALE, 1 + HP_PER_EXTRA_LEVEL * Math.max(0, extraLevels));
 }
