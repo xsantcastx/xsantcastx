@@ -641,6 +641,7 @@ describe('the registry', () => {
       'godforge-infusions',
       'godforge-inventory',
       'godforge-keeper-look',
+      'godforge-loot',
       'godforge-pets',
       'godforge-pinned',
       // The realm Delves' region slots, four per realm (rift-gates.model.ts RIFT_SLOT_KEYS).

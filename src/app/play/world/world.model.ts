@@ -124,7 +124,15 @@ export interface StationDef {
  */
 export type DropEntry =
   | { id: string; kind: 'coins'; base: number; spread?: number; chance?: number; rarity?: LootRarity }
-  | { id: string; kind: 'material'; material: string; art: string; label: string; short: string; qty: number; chance?: number; rarity?: LootRarity };
+  | { id: string; kind: 'material'; material: string; art: string; label: string; short: string; qty: number; chance?: number; rarity?: LootRarity }
+  /**
+   * Gear and runes (docs/design/loot-and-combat.md §9). Rolled per kill by the
+   * host's `rollLoot` (shared/loot/drop-tables.ts), never authored in a zone
+   * table; the item is minted at pickup (its roll grade frozen then), the rune
+   * goes to the Forge ledger. `rarity` is required: it is the whole point.
+   */
+  | { id: string; kind: 'item'; definitionId: string; rarity: LootRarity; label: string; unique?: boolean; chance?: number }
+  | { id: string; kind: 'rune'; rune: string; rarity: LootRarity; label: string; chance?: number };
 
 /**
  * Optional, presentation only: the colour of a drop's light beam on the ground
