@@ -143,13 +143,14 @@ export const GLIM_MARKS: Readonly<Record<string, readonly MarkTarget[]>> = {
   'verrin-ink-1': [{ node: 'hearth-seal' }],
   'verrin-ink-2': [{ node: 'inkstone-vein' }, { node: 'nightglass-vein' }, { node: 'hearth-seal' }],
   'verrin-ink-3': [{ node: 'gloam-brazier' }, { node: 'hearth-seal' }],
-  // The Root Deeps and the Prism Mines: their gates (and the splinters round them), then each core's own.
-  'kesh-roots-1': [{ node: 'rift-gate-verdant' }, { node: 'rift-splinter' }],
-  'siv-roots-2': [{ node: 'rootglass-vein' }, { node: 'heart-amber-vein' }, { node: 'rift-gate-verdant' }],
-  'kesh-roots-3': [{ node: 'heart-root' }, { node: 'rift-gate-verdant' }],
-  'aureth-prism-1': [{ node: 'rift-gate-luminous' }, { node: 'rift-splinter' }],
-  'lune-prism-2': [{ node: 'prismite-vein' }, { node: 'dawnglass-vein' }, { node: 'rift-gate-luminous' }],
-  'aureth-prism-3': [{ node: 'sun-prism' }, { node: 'rift-gate-luminous' }],
+  // The Root Deeps and the Prism Mines: their gates (and the splinters round them), then each core's own; in the
+  // Ember Delve's core, the stratum each gate stands in (shadow-root: the Root Hollows; glowcap: the Grotto).
+  'kesh-roots-1': [{ node: 'rift-gate-verdant' }, { node: 'rift-splinter' }, { node: 'shadow-root' }],
+  'siv-roots-2': [{ node: 'rootglass-vein' }, { node: 'heart-amber-vein' }, { node: 'rift-gate-verdant' }, { node: 'shadow-root' }],
+  'kesh-roots-3': [{ node: 'heart-root' }, { node: 'rift-gate-verdant' }, { node: 'shadow-root' }],
+  'aureth-prism-1': [{ node: 'rift-gate-luminous' }, { node: 'rift-splinter' }, { node: 'glowcap' }],
+  'lune-prism-2': [{ node: 'prismite-vein' }, { node: 'dawnglass-vein' }, { node: 'rift-gate-luminous' }, { node: 'glowcap' }],
+  'aureth-prism-3': [{ node: 'sun-prism' }, { node: 'rift-gate-luminous' }, { node: 'glowcap' }],
 };
 /** How long a mark stays on the map. */
 export const GLIM_MARK_MS = 30 * 60_000;
