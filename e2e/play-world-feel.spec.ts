@@ -80,8 +80,8 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
     test('the Grotto Mere shows fish under its surface', async ({ page }) => {
       test.setTimeout(120_000);
       await seed(page, { ...mereShore().blobs() });
-      await openPlay(page);
-      await walkTo(page, SHAFT_X, 30);
+      // One World: `?at=delve` stands the Keeper at the mine head (a reload resumes wherever they last stood, maybe underground).
+      await openPlay(page, '?at=delve');
       const button = page.getByRole('button', { name: /Descend to your camp/ });
       await expect(button).toBeVisible();
       await button.click();

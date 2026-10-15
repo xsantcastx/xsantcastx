@@ -26,8 +26,8 @@ const panel = (page: Page) => page.locator('section.place');
 
 /** From town: walk to the shaft and take "Descend to your camp". */
 async function descend(page: Page): Promise<void> {
-  await openPlay(page);
-  await walkTo(page, SHAFT_X, 30);
+  // One World: `?at=delve` stands the Keeper at the mine head (a reload resumes wherever they last stood, maybe underground).
+  await openPlay(page, '?at=delve');
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   await expect(button).toBeVisible();
   await button.click();

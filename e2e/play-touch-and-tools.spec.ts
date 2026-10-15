@@ -67,8 +67,8 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       // A hard basalt block just west of the camp: four swings to break, so it is still there to hit.
       shore.set(14, 34, 'hard-rock');
       await seed(page, { ...shore.blobs(), 'godforge-inventory': INVENTORY, [REALM_ERA_KEY]: String(INVENTORY_ERA), 'preferred-language': 'en' });
-      await openPlay(page);
-      await walkTo(page, SHAFT_X, 30);
+      // One World: `?at=delve` stands the Keeper at the mine head (a reload resumes wherever they last stood, maybe underground).
+      await openPlay(page, '?at=delve');
       const descend = page.getByRole('button', { name: /Descend to your camp/ });
       await expect(descend).toBeVisible();
       await descend.click();
