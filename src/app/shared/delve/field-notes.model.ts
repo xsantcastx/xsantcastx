@@ -22,7 +22,9 @@ export type FieldNoteStratum = 'root-hollows' | 'basalt-caverns' | 'glowcap-grot
   // The Rift Gates (rift-gates.model.ts): notes at the gates, and in the Umbral's underside (realm-gen.ts).
   | 'rift' | 'umbral'
   // The Verdant's underside, the Root Deeps (verdant-gen.ts), and the Luminous's, the Prism Mines (luminous-gen.ts).
-  | 'verdant' | 'luminous';
+  | 'verdant' | 'luminous'
+  // The Celestial's underside, the Orrery Wells (celestial-gen.ts).
+  | 'celestial';
 
 export interface FieldNoteDef {
   id: string;
@@ -109,6 +111,19 @@ export const FIELD_NOTES: readonly FieldNoteDef[] = [
     text: 'A tally of bets in a croupier\'s neat columns: which beam would hold, which would not. Every line is settled, and every one was right. L.C.' },
   { id: 'luminous-hollow-sun', stratum: 'luminous',
     text: '"I am the light that was promised and never arrived. Catch me in a beam and I will stand still long enough to be ended."' },
+  // The Orrery Wells, the Celestial's underside: Sera's survey marks, the Compact's rule, the Ephemeris's own table.
+  { id: 'celestial-sera-survey', stratum: 'celestial',
+    text: 'A surveyor\'s mark in brass, error bars and all: "Down measured here: twice. Both readings correct. S.Q." Underneath, smaller: "That is the problem."' },
+  { id: 'celestial-turn-the-ring', stratum: 'celestial',
+    text: 'Scratched by the tunnel: "Fell in? Turn the ring by your feet. You will fall up. Walk the roof. It is allowed."' },
+  { id: 'celestial-chain-rule', stratum: 'celestial',
+    text: 'A Compact rule, stamped into a plate: "Every well a chain. Every field a ring within reach of both its floors. No exceptions, no apologies."' },
+  { id: 'celestial-nox-margin', stratum: 'celestial',
+    text: 'In the margin of a star-table, in another hand: "This column was never measured. It was assumed. N.A." Someone has tried to scratch it out and failed.' },
+  { id: 'celestial-counterweight', stratum: 'celestial',
+    text: 'A brass counterweight the size of a cart, hung from nothing. Its tag reads: "Holding the floor down. Do not remove."' },
+  { id: 'celestial-ephemeris', stratum: 'celestial',
+    text: '"I am the table of where every star should be. I fell when the sky stopped agreeing with me. Pull my floor out from under me and I will finally be where I am."' },
 ];
 
 const BY_ID = new Map(FIELD_NOTES.map(note => [note.id, note]));

@@ -258,6 +258,9 @@ use('verdant-sigil', 'spent once at the Verdant Rift Gate: attunes it (the way i
 use('luminous-sigil', 'spent once at the Luminous Rift Gate: attunes it (the way into the Prism Mines)');
 use('rootsever-billhook', 'carried: what you dig in the Root Deeps is cut at the root and does not grow back (engine setGear)');
 use('dawn-lens', 'carried: your lantern lights the Prism Mines\' shadow glass under and round you (engine setGear)');
+// The Orrery Wells: its sigil is spent at its gate; the key is carried gear.
+use('celestial-sigil', 'spent once at the Celestial Rift Gate: attunes it (the way into the Orrery Wells)');
+use('orrery-key', 'carried: E turns the orrery field you stand in from anywhere in it, and Down sinks you out of a star-well (engine setGear)');
 // Map v2 (shared/delve/map-tools.model.ts): the Broken Astral Compass and the Rift Map Fragment.
 for (const tool of MAP_TOOLS) {
   thing(tool.id);
@@ -424,7 +427,7 @@ const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall
   'rift-frame': 'a Rift Gate\'s frame: holds the gate (world boundary); its splinters frame the Realm Sigils',
   'rift-gate-umbral': 'the Umbral Rift Gate: attuned with an Umbral Sigil, the way into the Ink Deeps (and back out)',
   'rift-gate-luminous': 'the Luminous Rift Gate: attuned with a Luminous Sigil, the way into the Prism Mines (and back out)',
-  'rift-gate-celestial': 'the Celestial Rift Gate: still settling (its Delve is a follow-up); Glim marks it, its first sighting pays',
+  'rift-gate-celestial': 'the Celestial Rift Gate: attuned with a Celestial Sigil, the way into the Orrery Wells (and back out)',
   'rift-gate-verdant': 'the Verdant Rift Gate: attuned with a Verdant Sigil, the way into the Root Deeps (and back out)',
   'drift-shale': 'the Ink Deeps\' broken rule: a passage that fills while nobody looks (a torch pins it open)',
   'ink-mirror': 'a mirrored ceiling in the Ink Deeps: the Keeper\'s reflection walks on it',
@@ -439,7 +442,13 @@ const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall
   'light-bridge': 'solid light: a beam across open air is a floor (gone when the beam goes)',
   'light-shaft': 'solid light: a beam going down is a ladder (gone when the beam goes)',
   'umbra-pane': 'shadow glass: a hole until light falls on it (a torch, a beam, the Dawn Lens)',
-  'lit-pane': 'lit shadow glass: a floor while light is on it' };
+  'lit-pane': 'lit shadow glass: a floor while light is on it',
+  // The Orrery Wells (celestial-gen.ts, celestial.ts).
+  'orrery-field': 'the Orrery Wells\' broken rule: open air whose down its rings decide (stand on the ceiling when it falls up)',
+  'star-well': 'a star-well: open air that always falls up, to a pocket of ore; its star-chain is the way back down',
+  'orrery-ring-a': 'an orrery ring, brass (E turns it): its whole field falls up',
+  'orrery-ring-b': 'an orrery ring, blue (E turns it): its whole field falls down',
+  'star-chain': 'a star-chain: climbed like a ladder whatever down is doing (the way down to the Fallen Ephemeris, and out of every star-well)' };
 const laidOut = new Set();
 for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) {
   const t = a.terrain; if (!t) continue;

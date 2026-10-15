@@ -28,13 +28,15 @@ import type { NpcId } from './npc.model';
 import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { xpGrantChunks } from '../activity/activity.model';
 import { FOUR_HAMMER_MARKS, FURNACE_FLAG, HAMMER_MARK_FLAGS, UNDERHEARTH_REACHED_FLAG } from '../delve/underhearth.model';
-import { DAWNGLASS, enteredFlag, HEART_AMBER, INKSTONE, NIGHTGLASS, PRISMITE, ROOTGLASS } from '../delve/rift-gates.model';
+import { DAWNGLASS, enteredFlag, HEART_AMBER, INKSTONE, MERIDIAN_GLASS, NIGHTGLASS, PRISMITE, ROOTGLASS, STARSTEEL } from '../delve/rift-gates.model';
 
 /** The flag the Gloam Warden sets when it falls (the same string as play/world/towns/umbral-delve.ts GLOAM_WARDEN_FLAG; a spec pins them). */
 export const GLOAM_WARDEN_FLAG = 'gloam-warden-defeated';
 /** The Graftmother's and the Hollow Sun's flags (the same strings as towns/verdant-delve.ts and towns/luminous-delve.ts; a spec pins them). */
 export const GRAFTMOTHER_FLAG = 'graftmother-defeated';
 export const HOLLOW_SUN_FLAG = 'hollow-sun-defeated';
+/** The Fallen Ephemeris's flag (the same string as towns/celestial-delve.ts EPHEMERIS_FLAG; a spec pins them). */
+export const EPHEMERIS_FLAG = 'fallen-ephemeris-defeated';
 
 /**
  * Kael's lost hammer. A quest material (a stack key), dropped once from a
@@ -644,6 +646,73 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     },
     unlocks: 'A Forge rune, and the Hollow Sun\'s hall is dark at last. The Prism Mines go on, east and west, shining.',
     requires: ['lune-prism-2'],
+  },
+  // ── The Rift Gates: the Orrery Wells, the Celestial's underside (rift-gates.model.ts; lore-addendum.md "The
+  //    Orrery Wells": shipped, owner reviews in play). Sera Quill asks; the Archivist files it. ──
+  {
+    id: 'sera-wells-1',
+    npcId: 'archivist',
+    giver: 'Sera Quill',
+    title: 'The Measure Underneath',
+    brief: 'Attune the Celestial Rift Gate in the Magma Halls and stand in the Orrery Wells.',
+    loreText:
+      'Every Waystone you have touched is mine, Keeper, and every one of them agrees on which way is down. Under the Magma Halls there is a frame where they stop agreeing. The Compact measured the sky from underneath once, and left the instruments running. Make the gate a sigil. Go and read me a down. I will want the error bars.',
+    objective: {
+      kind: 'reach', flag: enteredFlag('celestial'), name: 'the Orrery Wells',
+      where: 'the Celestial Rift Gate in the Magma Halls (Delving 36, a Celestial Sigil from the Crafting Bench)',
+    },
+    reward: {
+      ...incomeGold(100_000),
+      delvingXp: 560,
+      rune: 'pulse',
+      recipe: 'craft-orrery-key',
+      loreFragment: 'Sera, reading your account twice: "Down measured, and found negotiable. Fine. I have built worse things on smaller errors. Here: the Compact\'s key. Do not lean on the rings either."',
+    },
+    unlocks: 'The Orrery Key recipe (turn a field from anywhere in it; sink out of a star-well) and a Pulse rune.',
+    requires: ['kael-four-1'],
+  },
+  {
+    id: 'sera-wells-2',
+    npcId: 'archivist',
+    giver: 'Sera Quill',
+    title: 'Error Bars',
+    brief: 'Bring Sera 10 Starsteel and 4 Meridian Glass from the Orrery Wells.',
+    loreText:
+      'The Waystones were calibrated against the Orrery\'s meridian. If the meridian down there was wrong, every stone I own is wrong by the same amount, which is the only kind of wrong I can live with. Bring me starsteel and meridian glass. The steel is in the roofs. You will have to stand on the roofs. I am told that is allowed.',
+    objective: {
+      kind: 'deliver',
+      items: [
+        { materialId: STARSTEEL, count: 10, where: 'starsteel veins in the Brass Galleries and the roofs of orrery vaults (Pickaxe IV, Mining 50)' },
+        { materialId: MERIDIAN_GLASS, count: 4, where: 'the Nadir Deep and the pockets up the star-wells (Pickaxe IV, Mining 58)' },
+      ],
+    },
+    reward: {
+      ...incomeGold(145_000),
+      delvingXp: 750,
+      rune: 'hollow',
+      materials: [{ id: 'waystone-shard', qty: 2 }],
+      loreFragment: 'Sera held the meridian glass to her own Waystone and watched the line inside it bend. "Off by a hair," she said, "for three hundred years. Nox told me. I filed it under insolence." She did not say what she would file it under now.',
+    },
+    unlocks: 'Two Waystone Shards (Rift Anchors work in the Orrery Wells too) and a Hollow rune.',
+    requires: ['sera-wells-1'],
+  },
+  {
+    id: 'sera-wells-3',
+    npcId: 'archivist',
+    giver: 'Sera Quill',
+    title: 'The Fallen Ephemeris',
+    brief: 'Find the Fallen Ephemeris\'s hall under the Gate Hollow, turn its field to drop it into its own well, and put it down.',
+    loreText:
+      'The Ephemeris is the table of where every star should be. It fell when the sky stopped agreeing with it, and it has been riding its hall\'s ceiling ever since, insisting. Climb down the chain from the west tunnel. While its hall falls up, nothing you do will land. Turn a ring, pull its floor out from under it, and strike while it is where it actually is.',
+    objective: { kind: 'defeat', flag: EPHEMERIS_FLAG, name: 'the Fallen Ephemeris', where: 'its hall under the Gate Hollow in the Orrery Wells (climb down the chain in the west tunnel; turn a ring to drop it into its well)' },
+    reward: {
+      ...incomeGold(330_000),
+      delvingXp: 1500,
+      rune: 'eclipse',
+      loreFragment: 'The Archivist, filing Sera\'s last report beside Nox\'s first: "She has written \'the model was wrong\' in her own hand, and signed it. I have waited a long time to file that sentence."',
+    },
+    unlocks: 'An Eclipse rune, and the Orrery Well is still. The Orrery Wells go on, east and west, turning. Every Rift Gate is open.',
+    requires: ['sera-wells-2'],
   },
 ];
 

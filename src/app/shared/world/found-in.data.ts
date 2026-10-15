@@ -63,7 +63,9 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
     // The Rift Gates: the Umbral Sigil, and the Veil Lantern (Verrin's "What the Light Leaves").
     'umbral-sigil', 'veil-lantern',
     // The Root Deeps' and the Prism Mines' sigils and gear (Kesh's and Aureth's first missions open the gear).
-    'verdant-sigil', 'rootsever-billhook', 'luminous-sigil', 'dawn-lens'] });
+    'verdant-sigil', 'rootsever-billhook', 'luminous-sigil', 'dawn-lens',
+    // The Orrery Wells' sigil and key (Sera Quill's first mission opens the key).
+    'celestial-sigil', 'orrery-key'] });
   rows.push({ place: 'Your first rod, in the satchel from the start', materialIds: ['worn-rod'] });
   rows.push({ place: `${DELVE_AREA}: a Seam Bucket filled at water or lava`, materialIds: ['seam-bucket-water', 'seam-bucket-lava'] });
   rows.push({ place: 'Rootglass Canopy: the Lodge Warden\'s gifts for Ledger Catches', materialIds: LODGE_CHARMS.map(c => c.id) });
@@ -141,6 +143,7 @@ export function buildFoundInIndex(): FoundInIndex {
       { place: 'The Ink Deeps: veins round the ink pools and in the Gloam Deep, behind the Umbral Rift Gate', materialIds: ['inkstone', 'nightglass', 'umbral-ink'] },
       { place: 'The Root Deeps: veins in the living wood, spore pods and graftling warrens, behind the Verdant Rift Gate', materialIds: ['rootglass', 'heart-amber', 'verdant-sap'] },
       { place: 'The Prism Mines: veins in the prism-stone, prism blooms and prism galleries, behind the Luminous Rift Gate', materialIds: ['prismite', 'dawnglass', 'luminous-prism'] },
+      { place: 'The Orrery Wells: veins in the astral stone, orrery scrap, vault roofs and star-well pockets, behind the Celestial Rift Gate', materialIds: ['starsteel', 'meridian-glass', 'celestial-alloy'] },
     ],
     areas,
     nodeYields: Object.fromEntries(TERRAIN_NODE_LIST.map(n => [n.id, n.yield?.materialId])),

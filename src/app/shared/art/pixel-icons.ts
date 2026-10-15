@@ -516,6 +516,26 @@ const LENS: Shape = [
   '................',
 ];
 
+// The Orrery Wells' key.
+const KEY: Shape = [
+  '................',
+  '....oooooo......',
+  '...obllllbo.....',
+  '..oblooooldo....',
+  '..olo....odo....',
+  '..olo....odo....',
+  '..obdooooddo....',
+  '...obddddbo.....',
+  '....ooffoo......',
+  '......ofo.......',
+  '......ofo.......',
+  '......ofooo.....',
+  '......offfeo....',
+  '......ofooo.....',
+  '......ofeeo.....',
+  '.......ooo......',
+];
+
 const RUBBINGS: Shape = [
   '................',
   '..oooooooooooo..',
@@ -596,6 +616,11 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   'prismite': { shape: SHARD, palette: { b: '#c9b88e', l: '#fff1b0', e: '#a8e8ff', d: '#4a4030', f: '#fffaf0' }, glow: '#ffe9a8' },
   'dawnglass': { shape: LUMP, palette: { b: '#e8d8a0', l: '#fffaf0', d: '#8a7a58', e: '#ffffff', f: '#ffc04a' }, glow: '#fff1b0' },
   'dawn-lens': { shape: LENS, palette: { l: '#fffaf0', b: '#c9b88e', d: '#4a4030', e: '#fff1b0', f: '#a8e8ff' }, glow: '#fff1b0' },
+  // The Orrery Wells (celestial-gen.ts): the sigil, the ores and the key. The Celestial ramps: midnight, star silver, orbit blue, brass.
+  'celestial-sigil': { shape: SIGIL, palette: { l: '#e8c47a', d: '#14284a', e: '#5fb6ff', f: '#0a1428' }, glow: '#5fb6ff' },
+  'starsteel': { shape: LUMP, palette: { b: '#6a7890', l: '#d8ecff', d: '#24406e', e: '#ffffff', f: '#a8b8cc' }, glow: '#d8ecff' },
+  'meridian-glass': { shape: SHARD, palette: { b: '#24406e', l: '#5fb6ff', e: '#d8ecff', d: '#0a1428', f: '#ffffff' }, glow: '#5fb6ff' },
+  'orrery-key': { shape: KEY, palette: { b: '#8a6a3a', l: '#e8c47a', d: '#4a3a1e', f: '#a8b8cc', e: '#5fb6ff' }, glow: '#e8c47a' },
 };
 
 /**

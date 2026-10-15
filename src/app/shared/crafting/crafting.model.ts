@@ -671,8 +671,8 @@ export const UNDERHEARTH_RECIPES: readonly CraftingRecipe[] = [
 /**
  * The Rift Gates (shared/delve/rift-gates.model.ts): a Realm Sigil attunes a
  * realm's gate once (the gate keeps it), and each realm Delve's own make: the
- * Umbral's, the Verdant's and the Luminous's (docs/handoff/rift-gates.md,
- * realm-delves.md). The Celestial gate is still settling; its sigil ships with it.
+ * Umbral's, the Verdant's, the Luminous's and the Celestial's (docs/handoff/
+ * rift-gates.md, realm-delves.md, celestial-delve.md).
  */
 export const RIFT_RECIPES: readonly CraftingRecipe[] = [
   r('craft-umbral-sigil', 'Umbral Sigil', 'delve', 'epic', 'umbral-sigil',
@@ -699,6 +699,15 @@ export const RIFT_RECIPES: readonly CraftingRecipe[] = [
   r('craft-dawn-lens', 'Dawn Lens', 'delve', 'rare', 'dawn-lens',
     [m('prismite', 8), m('dawnglass', 2), m('glowcap', 3)],
     9_500, 56, 'Carried in the Prism Mines, your own lantern lights the shadow glass under and round you: a floor you carry. Needs Smithing 56.',
+    { stack: true, skill: 'smithing' }),
+  // The Orrery Wells (the Celestial gate, Magma Halls).
+  r('craft-celestial-sigil', 'Celestial Sigil', 'delve', 'epic', 'celestial-sigil',
+    [m('rift-splinter', 4), m('celestial-alloy', 2), m('emberheart-ore', 2)],
+    18_000, 58, 'Four rift splinters round two emberheart cores, ringed in Celestial alloy: the key to the Celestial Rift Gate in the Magma Halls. Needs Smithing 58.',
+    { stack: true, skill: 'smithing' }),
+  r('craft-orrery-key', 'Orrery Key', 'delve', 'rare', 'orrery-key',
+    [m('starsteel', 8), m('meridian-glass', 2), m('celestial-alloy', 1)],
+    11_000, 60, 'Carried in the Orrery Wells, E turns the field you stand in from anywhere in it, and Down sinks you out of a star-well. Needs Smithing 60.',
     { stack: true, skill: 'smithing' }),
 ];
 

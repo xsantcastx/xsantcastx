@@ -79,7 +79,8 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     id: 'anchor-warden',
     name: 'Anchor Warden',
     realm: 'celestial',
-    haunt: 'Meridian Orrery',
+    // It walks the warden galleries of the Orrery Wells (celestial-gen.ts), and rises with the Fallen Ephemeris.
+    haunt: 'The Orrery Wells',
     note: 'Repeats the last trajectory it was given, long after the order behind it has lapsed.',
   },
   {
@@ -171,6 +172,14 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     realm: 'luminous',
     haunt: 'The Prism Mines',
     note: 'The light that was promised and never arrived. Blows pass through it while it is free; caught in a beam, it stands still long enough to be ended.',
+  },
+  // The Orrery Wells, behind the Celestial Rift Gate (lore-addendum.md). A pixel figure (engine/realm-creatures.ts).
+  {
+    id: 'fallen-ephemeris',
+    name: 'The Fallen Ephemeris',
+    realm: 'celestial',
+    haunt: 'The Orrery Wells',
+    note: 'The table of where every star should be, fallen when the sky stopped agreeing with it. It rides its hall\'s ceiling, insisting; pull its floor out from under it and it lands where it actually is.',
   },
   {
     id: 'ink-lantern',

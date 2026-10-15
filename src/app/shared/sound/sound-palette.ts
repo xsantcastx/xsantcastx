@@ -196,12 +196,15 @@ const TOWN_BEDS: Readonly<Record<RealmId, Partial<Record<Bed, number>>>> = {
  * overridden per realm. The Ember Delve is the Infernal realm's own and keeps the
  * plain Delve. The Root Deeps creak and rustle (living wood, leaves in the dark);
  * the Prism Mines ring faintly (light chiming in crystal) and drip less; the Ink
- * Deeps keep their hush (their swell is the ink bed, near ink).
+ * Deeps keep their hush (their swell is the ink bed, near ink); the Orrery Wells
+ * hum with thin air and far brass, and hardly drip.
  */
 export const REALM_DELVE_BEDS: Readonly<Partial<Record<RealmId, Partial<Record<Bed, number>>>>> = {
   umbral: { drips: .4 },
   verdant: { drips: .45, leaves: .3, murmur: .2 },
   luminous: { drips: .3, chimes: .35, wind: .12 },
+  // The Orrery Wells: brass rings turning far off (chimes, low), a high thin air, almost no drip (nothing falls the same way twice).
+  celestial: { drips: .15, chimes: .22, wind: .3, murmur: .12 },
 };
 
 /** The ambience beds for a scene, each 0..1 (the slider scales the lot). */
