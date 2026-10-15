@@ -32,14 +32,14 @@
           <app-detail-head [art]="card.art" [name]="card.recipe.name" [rarity]="card.recipe.rarity"
                            [line]="craftLine()" [count]="card.recipe.output.count" [working]="striking" />
 
-          @if (toolLines(card.recipe); as lines) {
+          @if (!inWorld && toolLines(card.recipe); as lines) {
             @if (lines.length) {
               <ul class="cb-tool">
                 @for (line of lines; track $index) { <li>{{ line }}</li> }
               </ul>
             }
           }
-          <app-requirement-grid [title]="t('stationUi.requiredTools')" [costs]="tools" [showCount]="false" />
+          @if (!inWorld) { <app-requirement-grid [title]="t('stationUi.requiredTools')" [costs]="tools" [showCount]="false" /> }
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="4" [pending]="!hydrated" />
 
           @if (anvilRecipe) {
@@ -76,7 +76,7 @@
   </div>
 
   <!-- The forge floor: watch the strike happen. Decorative; results are announced. -->
-  <app-forge-floor class="cb-floor" [active]="'anvil'" [working]="striking" [event]="floorEvent" [stock]="floorStock"></app-forge-floor>
+  @if (!inWorld) { <app-forge-floor class="cb-floor" [active]="'anvil'" [working]="striking" [event]="floorEvent" [stock]="floorStock"></app-forge-floor> }
 
   <p class="cb-sr" aria-live="polite">{{ announce }}</p>
 

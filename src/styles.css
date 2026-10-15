@@ -1271,3 +1271,26 @@ app-side-scroller :where(button, a, [role="button"], label, summary) {
   :root main { margin-top: var(--gf-titlebar-h); }
   :root main.play-mode.play-mode { height: calc(100dvh - var(--gf-titlebar-h)); }
 }
+
+/* ── Pixel menu controls (docs/handoff/frameless-menus.md) ───────────────────────────────────────
+   A pixel x (7 x 7 on a 3px grid, no glyph) and a pixel "?" help button: 44px targets, crisp edges, existing tokens. */
+.px-x { position: relative; display: block; flex: none; width: 44px; height: 44px; padding: 0; border: 0; background: none; color: var(--adventure-parchment, currentColor); cursor: pointer; }
+.px-x > i { display: none; }
+.px-x::before { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; translate: -1.5px -1.5px; background: currentColor;
+  box-shadow: -9px -9px 0 0 currentColor, -9px 9px 0 0 currentColor, -6px -6px 0 0 currentColor, -6px 6px 0 0 currentColor, -3px -3px 0 0 currentColor, -3px 3px 0 0 currentColor, 0px 0px 0 0 currentColor, 3px 3px 0 0 currentColor, 3px -3px 0 0 currentColor, 6px 6px 0 0 currentColor, 6px -6px 0 0 currentColor, 9px 9px 0 0 currentColor, 9px -9px 0 0 currentColor, 2px 2px 0 0 var(--obsidian-0); }
+.px-x:hover, .px-x:focus-visible { color: var(--gold-bright); }
+.px-x:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -2px; }
+.px-help { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--adventure-parchment, currentColor); font: 700 14px/1 Orbitron, sans-serif; }
+.px-help > i { display: grid; place-items: center; width: 24px; height: 24px; font-style: normal; background: var(--obsidian-2);
+  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
+.px-help:hover > i, .px-help[aria-expanded="true"] > i { background: var(--gold-deep); }
+.px-help:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -4px; }
+
+/* A pixel page arrow (a triangle on a 44px target). */
+.px-arrow { position: relative; flex: none; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; }
+.px-arrow::before { content: ""; position: absolute; left: 50%; top: 50%; width: 0; height: 0; translate: -50% -50%; border-top: 9px solid transparent; border-bottom: 9px solid transparent; }
+.px-arrow--prev::before { border-right: 12px solid var(--gold-bright); }
+.px-arrow--next::before { border-left: 12px solid var(--gold-bright); }
+.px-arrow:disabled { opacity: .3; cursor: default; }
+.px-arrow:not(:disabled):active { translate: 0 2px; }
+.px-arrow:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -4px; }

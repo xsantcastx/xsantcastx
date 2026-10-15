@@ -19,7 +19,10 @@
  * `showTitle=false` inside the /play in-world panel (the panel already names
  * the place) keeps an off-screen heading so the section stays labelled.
  */
-import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
+import { ChangeDetectionStrategy, Component, inject, input, model } from '@angular/core';
+
+import { TranslationService } from '../../translation.service';
+import { STATION_UI_I18N } from './station-ui.i18n';
 
 import { DetailsDrawerComponent } from './details-drawer.component';
 
@@ -43,6 +46,9 @@ let nextId = 0;
           @if (purpose() && showTitle()) { <p class="ss__purpose">{{ purpose() }}</p> }
         </div>
         <div class="ss__wallet"><ng-content select="[stationWallet]" /></div>
+        @if (!showTitle()) {
+          <button type="button" class="px-help ss__help" [attr.aria-expanded]="detailsOpen()" [attr.aria-label]="t('stationUi.help')" (click)="detailsOpen.set(!detailsOpen())"><i aria-hidden="true">?</i></button>
+        }
       </header>
 
       <ng-content select="[stationTabs]" />
@@ -52,10 +58,16 @@ let nextId = 0;
 
       <ng-content />
 
-      <app-details-drawer class="ss__details" [label]="detailsLabel()" [hint]="detailsHint()" [(open)]="detailsOpen">
-        @if (purpose() && !showTitle()) { <p class="ss__purpose ss__purpose--details">{{ purpose() }}</p> }
-        <ng-content select="[stationDetails]" />
-      </app-details-drawer>
+      <!-- On a full page: a Details drawer. In the world: the same words in a help card the "?" opens. -->
+      <div class="ss__more" [class.ss__more--help]="!showTitle()" [hidden]="!showTitle() && !detailsOpen()">
+        @if (!showTitle()) {
+          <div class="ss__helpbar"><button type="button" class="px-x ss__helpx" (click)="detailsOpen.set(false)" [attr.aria-label]="t('stationUi.helpClose')"><i aria-hidden="true">&times;</i></button></div>
+        }
+        <app-details-drawer class="ss__details" [label]="detailsLabel()" [hint]="detailsHint()" [(open)]="detailsOpen">
+          @if (purpose() && !showTitle()) { <p class="ss__purpose ss__purpose--details">{{ purpose() }}</p> }
+          <ng-content select="[stationDetails]" />
+        </app-details-drawer>
+      </div>
     </section>
   `,
   styleUrls: ['./station-tokens.css', './station-shell.component.css'],
@@ -71,4 +83,7 @@ export class StationShellComponent {
   readonly detailsOpen = model(false);
 
   readonly titleId = `st-title-${++nextId}`;
+  private readonly i18n = inject(TranslationService);
+  constructor() { this.i18n.register(STATION_UI_I18N); }
+  t(key: string): string { return this.i18n.translate(key); }
 }

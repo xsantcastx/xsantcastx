@@ -29,6 +29,7 @@ const MEASURE_ONLY = !!process.env['MENUS_MEASURE'];
 const OUT = process.env['MENUS_OUT'];
 const SHOTS = process.env['MENUS_SHOTS'];
 const ONLY = process.env['MENUS_ONLY']?.split(',');
+const SIZES = process.env['MENUS_SIZES']?.split(',');
 
 interface Size { tag: string; width: number; height: number; touch: boolean; mobile: boolean }
 const ALL_SIZES: Size[] = [
@@ -50,6 +51,12 @@ interface Menu {
   root: string;
   close: string;
   primary?: string;
+  /** Clicks of `close` that put it away (an app inside the Slate needs one to go home, one to leave). */
+  closeClicks?: number;
+  /** A modal veil (the Slate): it is allowed over the move stick. */
+  modal?: boolean;
+  /** The primary action must be in plain view the moment the menu opens: no scrolling to reach it (owner rule). */
+  noScroll?: boolean;
 }
 
 /**
@@ -100,13 +107,15 @@ const MENUS: Menu[] = [
   { id: 'sound', open: placesItem('sound'), root: '.sound-host .ss', close: '.sound-host .ss__done' },
   { id: 'glass', open: placesItem('glass'), root: '.place', close: '.place-close' },
   { id: 'character', open: placesItem('character'), root: '.place', close: '.place-close' },
-  station('crafting'), station('runes'), station('enchanting'), station('vault', ''), station('vendor'), station('gambler'),
+  { ...station('crafting'), noScroll: true }, { ...station('runes'), noScroll: true }, { ...station('enchanting'), noScroll: true }, station('vault', ''),
+  { ...station('vendor'), noScroll: true }, { ...station('gambler'), noScroll: true },
   // The Exchange left the world with the game-only shell's deep clean (no station, no ?at=exchange).
   station('market', ''), station('quests', ''), station('codex', ''), station('skills', ''),
   station('waystone', ''), station('reels', '.place .rl-spin, .place .ab__btn'),
-  { id: 'slate', open: openSlate, root: '.place', close: '.place-close' },
-  { id: 'slate-homestead', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-face="factory"]').click(); }, root: '.place', close: '.place-close' },
-  { id: 'slate-reels', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-game="reels"]').click(); }, root: '.place', close: '.place-close' },
+  { id: 'slate', open: openSlate, root: '[data-slate-phone]', close: '[data-slate-home]', modal: true },
+  { id: 'slate-homestead', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-face="factory"]').click(); }, root: '[data-slate-phone]', close: '[data-slate-home]', closeClicks: 2, modal: true },
+  { id: 'slate-reels', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-game="reels"]').click(); }, root: '[data-slate-phone]', close: '[data-slate-home]', closeClicks: 2, modal: true },
+  { id: 'slate-pets', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-app="pets"]').click(); }, root: '[data-slate-phone]', close: '[data-slate-home]', closeClicks: 2, modal: true },
 ];
 
 interface Box { x: number; y: number; w: number; h: number }
@@ -114,8 +123,8 @@ interface Report {
   menu: string; size: string; opened: boolean;
   root: Box | null; hscroll: boolean;
   outside: { sel: string; box: Box }[];
-  close: { box: Box; hit: boolean } | null;
-  primary: { box: Box; hit: boolean } | null;
+  close: { box: Box; hit: boolean; noScroll?: boolean } | null;
+  primary: { box: Box; hit: boolean; noScroll?: boolean } | null;
   small: string[];
   /** Controls an overflow:hidden box cuts (nothing can scroll them into view). */
   clipped: string[];
@@ -149,13 +158,14 @@ async function measure(page: Page, menu: Menu): Promise<Omit<Report, 'menu' | 's
       if (!el) return null;
       let r = el.getBoundingClientRect();
       let at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const noScroll = !!at && (at === el || el.contains(at)) && r.top >= 0 && r.left >= 0 && r.bottom <= vh && r.right <= vw;
       // Below the fold of a scrolling body: scroll it into view the way a thumb would, then it must answer.
       if (!(at && (at === el || el.contains(at)))) {
         el.scrollIntoView({ block: 'nearest', behavior: 'instant' as ScrollBehavior });
         r = el.getBoundingClientRect();
         at = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       }
-      return { box: box(r), hit: !!at && (at === el || el.contains(at)) };
+      return { box: box(r), hit: !!at && (at === el || el.contains(at)), noScroll };
     };
     const outside: { sel: string; box: { x: number; y: number; w: number; h: number } }[] = [];
     const small: string[] = [];
@@ -242,7 +252,7 @@ async function openMenu(page: Page, menu: Menu): Promise<boolean> {
 }
 
 if (MEASURE_ONLY) {
-  for (const size of ALL_SIZES) {
+  for (const size of ALL_SIZES.filter(s => !SIZES || SIZES.includes(s.tag))) {
     test.describe(`measure ${size.tag}`, () => {
       test.use({ viewport: { width: size.width, height: size.height }, hasTouch: size.touch, isMobile: size.mobile });
       test.describe.configure({ timeout: 600_000 });
@@ -296,9 +306,18 @@ if (MEASURE_ONLY) {
           }
           if (m.clipped.length) failures.push(`${menu.id}: cut off: ${m.clipped.join('; ')}`);
           if (m.blocked.length) failures.push(`${menu.id}: covered: ${m.blocked.join('; ')}`);
-          if (landscape && m.coversMove) failures.push(`${menu.id}: covers the move stick`);
+          if (landscape && !menu.modal && m.coversMove) failures.push(`${menu.id}: covers the move stick`);
+          // The owner's rule: the primary action is in plain view the moment the menu opens (no scrolling to reach it).
+          if (menu.noScroll) {
+            // Two taps at most (open it, press the action), and no scrolling: the action is in view at scrollTop 0.
+            if (!m.primary) failures.push(`${menu.id}: no primary action`);
+            else if (!m.primary.noScroll) failures.push(`${menu.id}: the primary action needs scrolling to reach`);
+            const top = await page.evaluate(() => document.querySelector('.place-body')?.scrollTop ?? 0);
+            if (top > 0) failures.push(`${menu.id}: the body was scrolled (${top}px) when it opened`);
+          }
           // And it closes from its close button.
-          const closed = await page.locator(menu.close).first().click({ timeout: 5000 }).then(() => true, () => false);
+          let closed = true;
+          for (let n = 0; n < (menu.closeClicks ?? 1) && closed; n++) closed = await page.locator(menu.close).first().click({ timeout: 5000 }).then(() => true, () => false);
           if (!closed) { failures.push(`${menu.id}: its close could not be clicked`); continue; }
           await expect(page.locator(menu.root).first()).toBeHidden({ timeout: 4000 }).catch(() => failures.push(`${menu.id}: close did not close it`));
         }

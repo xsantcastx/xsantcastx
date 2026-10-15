@@ -21,9 +21,16 @@ import { SOUND_I18N } from './sound.i18n';
     <section class="ss" role="dialog" aria-modal="false" aria-labelledby="ss-title" data-engine-ignore [attr.data-sound-status]="status">
       <header class="ss__head">
         <h2 id="ss-title">{{ t('play.sound.title') }}</h2>
-        <button type="button" class="ss__done" (click)="done.emit()" [attr.aria-label]="t('play.sound.close')"><i aria-hidden="true">&times;</i></button>
+        <button type="button" class="px-help ss__help" [attr.aria-expanded]="help" [attr.aria-label]="t('play.sound.help')" (click)="help = !help"><i aria-hidden="true">?</i></button>
+        <button type="button" class="px-x ss__done" (click)="done.emit()" [attr.aria-label]="t('play.sound.close')"><i aria-hidden="true">&times;</i></button>
       </header>
-      <p class="ss__lead">{{ t('play.sound.lead') }}</p>
+      @if (help) {
+        <div class="ss__helpcard" role="note">
+          <p class="ss__lead">{{ t('play.sound.lead') }}</p>
+          <p class="ss__note" role="status">{{ statusLine }}</p>
+          <p class="ss__saved">{{ t('play.sound.saved') }}</p>
+        </div>
+      }
       @for (ch of channels; track ch) {
         <label class="ss__row" [class.ss__row--off]="s.muted">
           <span class="ss__name">{{ t('play.sound.' + ch) }}</span>
@@ -36,19 +43,17 @@ import { SOUND_I18N } from './sound.i18n';
         <input type="checkbox" [checked]="s.muted" (change)="mute($event)" data-sound-mute>
         <span>{{ t('play.sound.mute') }}</span>
       </label>
-      <p class="ss__note" role="status">{{ statusLine }}</p>
-      <p class="ss__saved">{{ t('play.sound.saved') }}</p>
     </section>
   `,
   styles: [`
     :host { display: block; }
     .ss {
       display: grid; align-content: start; gap: 10px; width: 100%; box-sizing: border-box; min-height: 100%;
-      padding: 14px 16px calc(12px + var(--sheet-pad-b, 0px));
-      border: 1px solid var(--adventure-hud-shadow); border-left: 2px solid var(--adventure-ember); border-radius: 2px;
-      background: var(--adventure-hud-panel-solid); color: var(--adventure-parchment);
-      box-shadow: 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53%, transparent);
+      padding: 8px 16px calc(12px + var(--sheet-pad-b, 0px));
+      border: 0; background: none; color: var(--adventure-parchment);
     }
+    .ss__head h2 { flex: 1; text-transform: uppercase; text-shadow: 2px 2px 0 var(--obsidian-0); }
+    .ss__helpcard { display: grid; gap: 6px; padding: 10px 12px; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
     .ss__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
     .ss__head h2 { margin: 0; font: 600 16px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-beacon-text); }
     .ss__lead, .ss__note, .ss__saved { margin: 0; font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
@@ -60,14 +65,6 @@ import { SOUND_I18N } from './sound.i18n';
     .ss__row input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--adventure-ember); cursor: pointer; }
     .ss__mute { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
     .ss__mute input { width: 22px; height: 22px; accent-color: var(--adventure-ember); }
-    /* The window's one close (the same × as every in-world menu, side-scroller .win-x). */
-    .ss__done {
-      display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 2px; cursor: pointer;
-      border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 26%, transparent); background: none;
-      color: var(--adventure-dialogue); font: 400 30px/1 var(--font-lore, Georgia, serif);
-    }
-    .ss__done i { font-style: normal; translate: 0 -2px; }
-    .ss__done:hover, .ss__done:focus-visible { border-color: var(--adventure-hud-gold); outline: none; }
   `],
 })
 export class SoundSheetComponent implements OnDestroy {
@@ -79,6 +76,8 @@ export class SoundSheetComponent implements OnDestroy {
   readonly channels = SOUND_CHANNELS;
   s: SoundSettings = this.sound.settings;
   status = this.sound.status;
+  /** The question mark: the sentences that used to sit on screen. */
+  help = false;
 
   constructor() {
     this.i18n.register(SOUND_I18N);

@@ -512,6 +512,9 @@ export class SideScrollerComponent implements OnDestroy {
   bookStats = false;
   /** The satchel's open tab; All by default (and when the tab it was on empties). */
   bagTab: BagTab = 'all';
+  /** The bag's page (ten-finger rule: pages with arrows, never a scrolling column). */
+  bagPage = 0;
+  readonly bagPerPage = 15;
   /** The empty pet well's faint picture. */
   readonly petGhost = ghostOf('pet');
   pick: BagPick | null = null;
@@ -2717,7 +2720,9 @@ export class SideScrollerComponent implements OnDestroy {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
     if (!Number.isFinite(cap) || this.shownTab !== 'all') return [];
     const free = Math.max(0, Math.min(60, cap) - Math.max(used, this.pockets.length));
-    return Array.from({ length: free }, (_, i) => i);
+    // Only what fits on this page: the empty cells fill the last page out to a full grid.
+    const room = Math.max(0, this.bagPerPage - this.shownPockets.length + this.page() * this.bagPerPage);
+    return Array.from({ length: Math.min(free, room) }, (_, i) => i);
   }
   get bagFull(): boolean {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
@@ -2818,10 +2823,19 @@ export class SideScrollerComponent implements OnDestroy {
   /** The open tab's pockets; a tab that emptied falls back to All. */
   get shownPockets(): BagPocket[] {
     const all = this.pockets;
-    if (this.bagTab === 'all') return all;
-    const some = all.filter(p => p.cat === this.bagTab);
-    return some.length ? some : all;
+    const some = this.bagTab === 'all' ? all : all.filter(p => p.cat === this.bagTab);
+    const list = this.bagTab === 'all' || some.length ? some : all;
+    return list.slice(this.page() * this.bagPerPage, (this.page() + 1) * this.bagPerPage);
   }
+  /** How many pages the open tab has. */
+  get bagPages(): number {
+    const all = this.pockets;
+    const some = this.bagTab === 'all' ? all : all.filter(p => p.cat === this.bagTab);
+    return Math.max(1, Math.ceil((this.bagTab === 'all' || some.length ? some : all).length / this.bagPerPage));
+  }
+  /** The page in range (a tab that emptied, or items sold, never leave it past the end). */
+  page(): number { return Math.min(this.bagPage, this.bagPages - 1); }
+  turnBag(by: number): void { this.bagPage = Math.max(0, Math.min(this.bagPages - 1, this.page() + by)); }
   get shownTab(): BagTab {
     return this.bagTab !== 'all' && this.pockets.some(p => p.cat === this.bagTab) ? this.bagTab : 'all';
   }
@@ -3507,6 +3521,17 @@ export class SideScrollerComponent implements OnDestroy {
     return rows;
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
+  /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
+  get menuOpen(): boolean { return this.bagOpen || this.placesOpen || this.soundOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
+  dismissMenu(): void {
+    if (this.petsOpen) this.closePets();
+    else if (this.soundOpen) this.soundOpen = false;
+    else if (this.anchorSheet) this.closeAnchors();
+    else if (this.panel) this.closePanel();
+    else if (this.placesOpen) this.placesOpen = false;
+    else if (this.bagOpen) this.toggleBag();
+  }
   openAnchors(): void {
     if (!this.engine) return;
     this.anchorSheet = this.anchorRows();

@@ -18,6 +18,19 @@ Lore is pre-approved: write it, ship it, log it in `docs/world/lore-addendum.md`
 New player text goes in LAZY i18n tables, EN + ES. Saved state only through the save gateway, merge-safe.
 Never push, deploy, or touch `firestore.rules`, `functions/`, or market flags.
 
+## Menus (owner rule, 2026-10-15 — every menu, new or old)
+**Frameless, pixel, simple, no scrolling.** No window box around a menu: no corner brackets, dashed rules, framed title bar or
+outer panel; the world dims softly (`.menu-scrim`) and the content floats on it (a fade behind it for contrast, a 2px pixel text
+shadow). Keep: a plain title, one pixel × (`.px-x`, global in styles.css), 44px targets, and the placement from menus-orientation
+(portrait sheet, landscape side panel, desktop window). Controls are pixel-styled on existing tokens: square corners (the radius
+tokens are 0 inside menus), 2px stepped edges (`box-shadow: 0 -2px … 2px 0 …`, no soft blur), crisp art. Fewer words: one obvious
+primary action; explanations live behind a pixel **?** (`.px-help`) that opens a short card, never on the main screen. MapleStory
+crafting is the template: a paged icon grid with category tabs, ONE result card (icon + rarity-coloured name, ingredient icons with
+have/need green/red), ONE big button. Locked = greyed icon + pixel padlock. **Never a scrolling column for the main task:** the
+primary action is in plain view the moment the menu opens at 390x844 and 844x390 (≤2 taps); long lists page with pixel ◀ ▶
+(`.px-arrow`) or tabs. Kit: `shared/station-ui` does all of this itself when it sits inside `.place` (the in-world panel); a new
+station that uses the kit gets it free. Test: `e2e/play-menus-orientation.spec.ts` (`noScroll: true` on a menu).
+
 ## Art (style rule, owner 2026-10-15)
 Pixel art, Terraria-crisp: one grid (4 world px per art px; 2 in the Delve), one 1-px outline (`keeper-paint.ts OUTLINE`),
 light from the upper left, colours only from the art-bible ramps. Proportions and feel are **chibi, MapleStory-cute**:
