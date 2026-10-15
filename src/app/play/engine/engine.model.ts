@@ -83,7 +83,7 @@ export interface EngineState {
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
 /** A world sound (EngineOptions.onSfx). */
-export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch'; node?: string }
+export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp'; node?: string }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;

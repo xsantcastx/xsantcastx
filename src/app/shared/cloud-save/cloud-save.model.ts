@@ -56,6 +56,7 @@ import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
 import { mergeHeights } from '../heights/heights-save.model';
 import { mergeSound } from '../sound/sound-settings.model';
+import { mergePets } from '../pets/pets-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -464,6 +465,18 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // the PC too. Unlike `godforge-forge-hum` (a per-device toggle), this is
     // the player's ear, and it travels with them.
     merge: mergeSound,
+  },
+  {
+    key: 'godforge-pets',
+    collection: 'progress',
+    doc: 'pets',
+    label: 'Your pets',
+    // `{ version, pets: { id: { got, hatched, name, nameAt, love, feedDay, feeds, hat, hatAt } }, active, activeAt, tally }`:
+    // every pet ever found, its name and its affection, and the small tallies
+    // that find them. A pet is never lost (the union), the earlier find and
+    // hatch, the later name / hat / follower, the higher love and tally.
+    // See pets-save.model.ts.
+    merge: mergePets,
   },
 ];
 

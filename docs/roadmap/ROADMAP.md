@@ -16,7 +16,9 @@ Reviewed daily; newest review on top of the log at the bottom.
 
 Shipped 2026-10-14: The Underhearth (`docs/handoff/underhearth.md`) · The Mirror Slate (`docs/handoff/mirror-slate.md`) · Uncapped levels (`docs/handoff/uncapped-levels.md`) · Glim bond (`docs/handoff/glim-bond.md`).
 
-Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Pets · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
+Built 2026-10-15: **Pets** (`docs/handoff/pets.md`): seven chibi pets found in play, one helper each, names, feeding, a trick and a hat.
+
+Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
 ## Milestones
 
