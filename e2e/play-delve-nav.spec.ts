@@ -157,7 +157,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       expect(await playerX(page)).toBeLessThan(18 * CELL);
 
       // ── 4. The map: open it, see the explored tunnel, close it; it survives a reload. ──
-      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); }
+      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); await page.getByRole('button', { name: 'Full map' }).click(); }
       else await page.locator('.map-mini-open').tap();
       await expect(page.locator('.map-full')).toBeVisible();
       await expect(page.locator('.map-hint')).toContainText('Way to camp');
@@ -174,7 +174,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
 
       // A fresh page load (descend opens /play again), then back down to the camp.
       await descend(page);
-      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); }
+      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); await page.getByRole('button', { name: 'Full map' }).click(); }
       else await page.locator('.map-mini-open').tap();
       await expect(page.locator('.map-full')).toBeVisible();
       await page.waitForTimeout(500);
@@ -188,7 +188,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await seed(page, f.blobs());
       await descend(page);
       const openMap = async () => {
-        if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); }
+        if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); await page.getByRole('button', { name: 'Full map' }).click(); }
         else await page.locator('.map-mini-open').tap();
         await expect(page.locator('.map-full')).toBeVisible();
         await page.waitForTimeout(500);

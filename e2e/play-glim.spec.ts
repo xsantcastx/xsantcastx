@@ -246,7 +246,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await expect(canvas(page)).toHaveAttribute('data-glim-mark', /^\d+,\d+$/, { timeout: 10000 });
       const [col, row] = (await canvas(page).getAttribute('data-glim-mark'))!.split(',').map(Number);
       expect(f.kindAt(col, row)).toBe('shadow-root');
-      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); }
+      if (!touch) { await focusWorld(page); await page.keyboard.press('KeyM'); await page.getByRole('button', { name: 'Full map' }).click(); }
       else await page.locator('.map-mini-open').tap();
       await expect(page.locator('.map-full')).toBeVisible();
       await expect(page.locator('.map-hint')).toContainText('Glim\'s mark');

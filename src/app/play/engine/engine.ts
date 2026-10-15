@@ -2076,7 +2076,9 @@ export class SeamworksEngine {
   moveTo(x: number, onArrive?: () => void): boolean {
     if (this.paused || this.hp <= 0 || !Number.isFinite(x)) return false;
     this.walking = true;
-    this.walkX = this.clampX(x);
+    // An endless world's ring follows the Keeper as they walk: a target past its edge is still reached (One World:
+    // the Homestead's Forge is west of the ring the town loads). Only a bounded area clamps the target.
+    this.walkX = this.world ? x : this.clampX(x);
     this.onArrive = onArrive ?? null;
     return true;
   }
