@@ -61,7 +61,9 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
     // Phase 8: the Underhearth's kit (some of it opened by Kael's missions).
     'seam-cart', 'seam-rail', 'bark-rope', 'thornroot-grapple', 'rift-anchor',
     // The Rift Gates: the Umbral Sigil, and the Veil Lantern (Verrin's "What the Light Leaves").
-    'umbral-sigil', 'veil-lantern'] });
+    'umbral-sigil', 'veil-lantern',
+    // The Root Deeps' and the Prism Mines' sigils and gear (Kesh's and Aureth's first missions open the gear).
+    'verdant-sigil', 'rootsever-billhook', 'luminous-sigil', 'dawn-lens'] });
   rows.push({ place: 'Your first rod, in the satchel from the start', materialIds: ['worn-rod'] });
   rows.push({ place: `${DELVE_AREA}: a Seam Bucket filled at water or lava`, materialIds: ['seam-bucket-water', 'seam-bucket-lava'] });
   rows.push({ place: 'Rootglass Canopy: the Lodge Warden\'s gifts for Ledger Catches', materialIds: LODGE_CHARMS.map(c => c.id) });
@@ -137,6 +139,8 @@ export function buildFoundInIndex(): FoundInIndex {
       // The Rift Gates (rift-gates.model.ts): splinters in every gate's frame; the Ink Deeps behind the Umbral one.
       { place: `${DELVE_AREA}: the frames of the Rift Gates (Pickaxe IV)`, materialIds: ['rift-splinter'] },
       { place: 'The Ink Deeps: veins round the ink pools and in the Gloam Deep, behind the Umbral Rift Gate', materialIds: ['inkstone', 'nightglass', 'umbral-ink'] },
+      { place: 'The Root Deeps: veins in the living wood, spore pods and graftling warrens, behind the Verdant Rift Gate', materialIds: ['rootglass', 'heart-amber', 'verdant-sap'] },
+      { place: 'The Prism Mines: veins in the prism-stone, prism blooms and prism galleries, behind the Luminous Rift Gate', materialIds: ['prismite', 'dawnglass', 'luminous-prism'] },
     ],
     areas,
     nodeYields: Object.fromEntries(TERRAIN_NODE_LIST.map(n => [n.id, n.yield?.materialId])),

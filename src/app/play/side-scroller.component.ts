@@ -53,9 +53,11 @@ import { DELVE_I18N } from './world/delve.i18n';
 import { UNDERHEARTH_I18N } from './world/underhearth.i18n';
 import { RIFT_I18N } from './world/rift.i18n';
 import {
-  attunedFlag, attuneCheck, enteredFlag, GATE_ENTER_XP, GATE_SEEN_XP, realmOfArea, realmOfGateNode, RIFT_GATES, seenFlag, VEIL_LANTERN,
+  attunedFlag, attuneCheck, DAWN_LENS, enteredFlag, GATE_ENTER_XP, GATE_SEEN_XP, realmOfArea, realmOfGateNode, RIFT_GATES, ROOTSEVER_BILLHOOK, seenFlag, VEIL_LANTERN,
 } from '../shared/delve/rift-gates.model';
 import { UMBRAL_DELVE } from './world/towns/umbral-delve';
+import { VERDANT_DELVE } from './world/towns/verdant-delve';
+import { LUMINOUS_DELVE } from './world/towns/luminous-delve';
 import {
   FOUR_HAMMER_MARKS, FURNACE_FLAG, furnaceDayFlag, HAMMER_MARK_FLAGS, HAMMER_MARK_XP, SEAM_CART, THORNROOT_GRAPPLE, UNSEALED_FLAG, WAYSTONE_SHARD,
 } from '../shared/delve/underhearth.model';
@@ -648,7 +650,9 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-grapple', state.grappling ?? '');
           el.setAttribute('data-furnace', state.furnace ? `${state.furnace.phase}:${state.furnace.vents}:${state.furnace.breathing ? 1 : 0}` : '');
           // The realm Delves behind the Rift Gates: which realm, the ink tide, ink-blind, under a mirror.
-          el.setAttribute('data-realm', state.realm ? `${state.realm.id}:${state.realm.tide}` : '');
+          el.setAttribute('data-realm', state.realm ? `${state.realm.id}:${state.realm.tide ?? 'open'}` : '');
+          // The Root Deeps: holes waiting/grown back; the Prism Mines: beams and cells of solid light.
+          el.setAttribute('data-realm-rule', !state.realm ? '' : state.realm.regrowing !== undefined ? `${state.realm.regrowing}/${state.realm.regrown ?? 0}` : state.realm.beams !== undefined ? `${state.realm.beams}/${state.realm.bridges ?? 0}` : '');
           el.setAttribute('data-ink-blind', state.realm?.inkBlind ? 'true' : 'false');
         }
         this.soundScene(state);
@@ -1726,6 +1730,7 @@ export class SideScrollerComponent implements OnDestroy {
       case 'rail': return this.t('play.uh.action.rail');
       case 'gate': return this.t('play.rift.action.gate');
       case 'brazier': return this.t('play.rift.action.brazier');
+      case 'mirror': return this.t('play.rift.action.mirror');
       case 'delve': return this.campReady ? this.t('play.delve.action.enterTop') : this.t('play.delve.action.enter');
       case 'passage': return this.t(this.state.area === 'Ember Quarry' ? 'play.hud.act.returnSeamworks' : 'play.hud.act.enterQuarry');
       default: return this.t('play.hud.act.walkCloser');
@@ -2320,10 +2325,11 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private pushUnderhearth(): void {
     if (!this.engine || !this.browser) return;
-    const gear = `${this.inventory.stackOf(SEAM_CART) > 0}:${this.inventory.stackOf(THORNROOT_GRAPPLE) > 0}:${this.inventory.stackOf(VEIL_LANTERN) > 0}`;
+    const has = (id: string) => this.inventory.stackOf(id) > 0;
+    const gear = `${has(SEAM_CART)}:${has(THORNROOT_GRAPPLE)}:${has(VEIL_LANTERN)}:${has(ROOTSEVER_BILLHOOK)}:${has(DAWN_LENS)}`;
     if (gear !== this.gearKey) {
       this.gearKey = gear;
-      this.engine.setGear({ cart: this.inventory.stackOf(SEAM_CART) > 0, grapple: this.inventory.stackOf(THORNROOT_GRAPPLE) > 0, veil: this.inventory.stackOf(VEIL_LANTERN) > 0 });
+      this.engine.setGear({ cart: has(SEAM_CART), grapple: has(THORNROOT_GRAPPLE), veil: has(VEIL_LANTERN), shears: has(ROOTSEVER_BILLHOOK), lens: has(DAWN_LENS) });
     }
     if (!this.delve.isClaimed(UNSEALED_FLAG) && this.quests.isMissionDone('delve-fracture')) this.delve.claim(UNSEALED_FLAG);
   }
@@ -2793,7 +2799,8 @@ export class SideScrollerComponent implements OnDestroy {
   private anchorRows(): AnchorRow[] {
     // In a realm Delve its own anchors, and the way back out is the gate you came in by.
     const inRealm = !!this.engine?.realm;
-    const spec = inRealm ? UMBRAL_DELVE.terrain : EMBER_DELVE.terrain;
+    const realm = this.engine?.realm;
+    const spec = (realm === 'verdant' ? VERDANT_DELVE : realm === 'luminous' ? LUMINOUS_DELVE : inRealm ? UMBRAL_DELVE : EMBER_DELVE).terrain;
     const biomes = [...(spec?.biomes ?? []), ...(spec?.depth?.biomes ?? [])];
     const rows: AnchorRow[] = (this.engine?.delveAnchors() ?? []).map((a, n) => ({
       key: `${a.col},${a.row}`, col: a.col, row: a.row,

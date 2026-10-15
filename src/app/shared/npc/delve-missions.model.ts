@@ -28,10 +28,13 @@ import type { NpcId } from './npc.model';
 import { REWARD_SECONDS, itemScaled, steppedRewardSeconds } from '../economy/economy-curve';
 import { xpGrantChunks } from '../activity/activity.model';
 import { FOUR_HAMMER_MARKS, FURNACE_FLAG, HAMMER_MARK_FLAGS, UNDERHEARTH_REACHED_FLAG } from '../delve/underhearth.model';
-import { enteredFlag, INKSTONE, NIGHTGLASS } from '../delve/rift-gates.model';
+import { DAWNGLASS, enteredFlag, HEART_AMBER, INKSTONE, NIGHTGLASS, PRISMITE, ROOTGLASS } from '../delve/rift-gates.model';
 
 /** The flag the Gloam Warden sets when it falls (the same string as play/world/towns/umbral-delve.ts GLOAM_WARDEN_FLAG; a spec pins them). */
 export const GLOAM_WARDEN_FLAG = 'gloam-warden-defeated';
+/** The Graftmother's and the Hollow Sun's flags (the same strings as towns/verdant-delve.ts and towns/luminous-delve.ts; a spec pins them). */
+export const GRAFTMOTHER_FLAG = 'graftmother-defeated';
+export const HOLLOW_SUN_FLAG = 'hollow-sun-defeated';
 
 /**
  * Kael's lost hammer. A quest material (a stack key), dropped once from a
@@ -117,6 +120,11 @@ export interface DelveMission {
   npcId: NpcId;
   /** A second giver who also offers it (The Fracture: Kael + the Archivist). */
   alsoFrom?: NpcId;
+  /**
+   * The keeper whose ask it is, when that is not the NPC who files it (Kesh Arbo and Siv Moss keep no
+   * ledger of their own; the Archivist files theirs; Lune Coyne's goes through Aureth). Shown as the giver.
+   */
+  giver?: string;
   title: string;
   /** One plain sentence: what to do. */
   brief: string;
@@ -505,6 +513,138 @@ export const DELVE_MISSIONS: readonly DelveMission[] = [
     unlocks: 'An Eclipse rune, and the Warden\'s hall is quiet. The Ink Deeps go on, east and west, forever.',
     requires: ['verrin-ink-2'],
   },
+  // ── The Rift Gates: the Root Deeps, the Verdant's underside (rift-gates.model.ts; lore-addendum.md "The Root
+  //    Deeps": shipped, owner reviews in play). Kesh Arbo and Siv Moss ask; the Archivist files it. ──
+  {
+    id: 'kesh-roots-1',
+    npcId: 'archivist',
+    giver: 'Kesh Arbo',
+    title: 'The Wood That Remembers',
+    brief: 'Attune the Verdant Rift Gate in the Root Hollows and stand in the Root Deeps.',
+    loreText:
+      'Under the Hollows there is a frame older than the root, and behind it the root itself: the World-Root\'s lower half, still growing. Everything I graft up here, it grafts down there, faster, without asking. Make the gate a sigil and go and look. Then tell me if I am a gardener or a rumour.',
+    objective: {
+      kind: 'reach', flag: enteredFlag('verdant'), name: 'the Root Deeps',
+      where: 'the Verdant Rift Gate in the Root Hollows, west of the shaft (Delving 32, a Verdant Sigil from the Crafting Bench)',
+    },
+    reward: {
+      ...incomeGold(90_000),
+      delvingXp: 520,
+      rune: 'thorn',
+      recipe: 'craft-rootsever-billhook',
+      loreFragment: 'Kesh, when you came back with sawdust in your hair that was already putting out shoots: "It grew back? Of course it did. That is what I have been trying to tell Siv for twenty years."',
+    },
+    unlocks: 'The Rootsever Billhook recipe (what you dig in the Root Deeps stays dug) and a Thorn rune.',
+    requires: ['kael-four-1'],
+  },
+  {
+    id: 'siv-roots-2',
+    npcId: 'archivist',
+    giver: 'Siv Moss',
+    title: 'What Grows Back',
+    brief: 'Bring Siv 10 Rootglass and 4 Heart-amber from the Root Deeps.',
+    loreText:
+      'Kesh calls it learning tissue. I call it a tunnel that eats the people in it. Bring me rootglass and heart-amber and I will show the outposts what the root does when it is cut, and how long it takes to forget. Torch your way in. Do not trust a hole you did not burn.',
+    objective: {
+      kind: 'deliver',
+      items: [
+        { materialId: ROOTGLASS, count: 10, where: 'rootglass veins in the Root Deeps\' living wood (Pickaxe IV, Mining 50)' },
+        { materialId: HEART_AMBER, count: 4, where: 'the Heartwood Deep and the roofs of graftling warrens (Pickaxe IV, Mining 58)' },
+      ],
+    },
+    reward: {
+      ...incomeGold(130_000),
+      delvingXp: 700,
+      rune: 'nexus',
+      materials: [{ id: 'waystone-shard', qty: 2 }],
+      loreFragment: 'Siv held the heart-amber to the light and found a beetle in it, alive. "Twenty years," she said. "It has been waiting twenty years for somebody to cut it out." She did not say whether she meant the beetle.',
+    },
+    unlocks: 'Two Waystone Shards (Rift Anchors work in the Root Deeps too) and a Nexus rune.',
+    requires: ['kesh-roots-1'],
+  },
+  {
+    id: 'kesh-roots-3',
+    npcId: 'archivist',
+    giver: 'Kesh Arbo & Siv Moss',
+    title: 'The Graftmother',
+    brief: 'Find the Graftmother\'s hall under the Gate Hollow, cut and burn her heart-roots, and put her down.',
+    loreText:
+      'Siv wants her burnt. I want her understood. We agree on this much: she joins everything that is cut, and she has started joining the tunnels to the people in them. Climb down the vine from the west tunnel. Cut her roots, and put a torch by every stump, or they will be back before you are.',
+    objective: { kind: 'defeat', flag: GRAFTMOTHER_FLAG, name: 'the Graftmother', where: 'her hall under the Gate Hollow in the Root Deeps (climb down the vine in the west tunnel; cut the three heart-roots and burn the stumps)' },
+    reward: {
+      ...incomeGold(300_000),
+      delvingXp: 1400,
+      rune: 'fracture',
+      loreFragment: 'The Archivist, filing Kesh\'s notes and Siv\'s in the same folder for the first time: "They disagree about everything except the ending. That is usually how you know it was the right one."',
+    },
+    unlocks: 'A Fracture rune, and the Graftmother\'s hall is still. The Root Deeps go on, east and west, growing.',
+    requires: ['siv-roots-2'],
+  },
+  // ── The Rift Gates: the Prism Mines, the Luminous's underside (rift-gates.model.ts; lore-addendum.md "The Prism
+  //    Mines": shipped, owner reviews in play). Aureth asks; Lune Coyne takes the odds. ──
+  {
+    id: 'aureth-prism-1',
+    npcId: 'aureth',
+    title: 'Where the Sun Goes Down',
+    brief: 'Attune the Luminous Rift Gate in the Glowcap Grotto and stand in the Prism Mines.',
+    loreText:
+      'Our sun goes down every evening, Convergent, and everyone assumes it goes nowhere. It goes under. In the Grotto there is a frame that opens on where it lands: mines where the light is so heavy you can stand on it. Make the gate a sigil. Bring me back an honest account of what the light holds up.',
+    objective: {
+      kind: 'reach', flag: enteredFlag('luminous'), name: 'the Prism Mines',
+      where: 'the Luminous Rift Gate in the Glowcap Grotto (Delving 28, a Luminous Sigil from the Crafting Bench)',
+    },
+    reward: {
+      ...incomeGold(80_000),
+      delvingXp: 480,
+      rune: 'glint',
+      recipe: 'craft-dawn-lens',
+      loreFragment: 'Aureth, writing down your account word for word: "A bridge of light over a pit, and you walked it. Good. Now you know what a promise is made of."',
+    },
+    unlocks: 'The Dawn Lens recipe (your lantern lights shadow glass: a floor you carry) and a Glint rune.',
+    requires: ['kael-four-1'],
+  },
+  {
+    id: 'lune-prism-2',
+    npcId: 'aureth',
+    giver: 'Lune Coyne',
+    title: 'Odds on the Light',
+    brief: 'Bring Lune 10 Prismite and 4 Dawnglass from the Prism Mines.',
+    loreText:
+      'Aureth will not bet, so Aureth sends me the people who will. The miners down there wagered on which beams would hold. They kept the books in prismite and paid in dawnglass. Bring me enough of both and I will settle their last table. The house always pays what it owes. Eventually.',
+    objective: {
+      kind: 'deliver',
+      items: [
+        { materialId: PRISMITE, count: 10, where: 'prismite veins in the Prism Mines\' prism-stone (Pickaxe IV, Mining 50)' },
+        { materialId: DAWNGLASS, count: 4, where: 'the Dawnglass Deep and the roofs of prism galleries (Pickaxe IV, Mining 58)' },
+      ],
+    },
+    reward: {
+      ...incomeGold(115_000),
+      delvingXp: 650,
+      rune: 'sigil',
+      materials: [{ id: 'waystone-shard', qty: 2 }],
+      loreFragment: 'Lune laid the prismite out like chips and read the light off each. "Every one of their bets was right," she said. "Nobody down there ever lost. That is how I know they never came back up."',
+    },
+    unlocks: 'Two Waystone Shards (Rift Anchors work in the Prism Mines too) and a Sigil rune.',
+    requires: ['aureth-prism-1'],
+  },
+  {
+    id: 'aureth-prism-3',
+    npcId: 'aureth',
+    title: 'The Hollow Sun',
+    brief: 'Find the Hollow Sun\'s hall under the Gate Hollow, catch it in the beam, and put it down.',
+    loreText:
+      'There is a light down there that was promised to someone and never arrived. It has been waiting so long it has forgotten whom for. Climb down the sun\'s own beam from the west tunnel. Turn the mirror and hold it in the light: a promise that cannot move can at last be kept, or ended.',
+    objective: { kind: 'defeat', flag: HOLLOW_SUN_FLAG, name: 'the Hollow Sun', where: 'its hall under the Gate Hollow in the Prism Mines (climb down the beam in the west tunnel; turn the hall\'s mirror to catch it)' },
+    reward: {
+      ...incomeGold(270_000),
+      delvingXp: 1300,
+      rune: 'forge',
+      loreFragment: 'Aureth, closing the account: "It asked to be held still long enough to end. Most promises ask for less, and get it."',
+    },
+    unlocks: 'A Forge rune, and the Hollow Sun\'s hall is dark at last. The Prism Mines go on, east and west, shining.',
+    requires: ['lune-prism-2'],
+  },
 ];
 
 const BY_ID = new Map(DELVE_MISSIONS.map(m => [m.id, m]));
@@ -606,7 +746,7 @@ export function missionNextStep(
     const before = first ? delveMissionById(first)?.title : null;
     return before ? `Finish "${before}" first.` : 'Not yet.';
   }
-  if (state.ready) return `Hand it to ${npcName(m.npcId)} and claim your reward.`;
+  if (state.ready) return `Hand it to ${m.giver ?? npcName(m.npcId)} and claim your reward.`;
   const o = m.objective;
   if (o.kind === 'read') return `Read the carving in ${o.where}.`;
   if (o.kind === 'defeat') return `Face ${o.name} in ${o.where}.`;
@@ -623,7 +763,7 @@ export function missionNextStep(
     const left = row.count - Math.min(Math.max(0, r.stackOf(row.materialId)), row.count);
     if (left > 0) return `Find ${left} more ${name(row.materialId)} in ${row.where}.`;
   }
-  return `Hand it to ${npcName(m.npcId)} and claim your reward.`;
+  return `Hand it to ${m.giver ?? npcName(m.npcId)} and claim your reward.`;
 }
 
 /**

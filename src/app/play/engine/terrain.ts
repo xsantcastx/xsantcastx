@@ -81,7 +81,7 @@ export interface TerrainNodeDef {
    * contents, a camp's crafting). A rift shrine is the engine's own: it shows
    * the tunnels round it on the map, and the host pays its first touch.
    */
-  use?: 'chest' | 'camp' | 'shrine' | 'anchor' | 'mark' | 'furnace' | 'gate' | 'brazier';
+  use?: 'chest' | 'camp' | 'shrine' | 'anchor' | 'mark' | 'furnace' | 'gate' | 'brazier' | 'mirror';
   /**
    * A rail the Seam Cart rides (Phase 8, traversal.ts): Kael's old lines
    * (generated) and the Keeper's own (placed). Consecutive rail cells join
@@ -310,6 +310,62 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     base: '#2a2030', dark: '#120c18', light: '#6a5a7a', fleck: '#8a7a9a' },
   { id: 'gloam-brazier-lit', label: 'Lit gloam brazier', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
     base: '#2a2030', dark: '#120c18', light: '#ffd08a', fleck: '#fff4dc', glow: { color: '#ffd8a0', radius: 170 } },
+  // ── The Verdant Delve, the Root Deeps (play/engine/verdant-gen.ts; the Verdant's underside; verdant.ts). ──
+  // Rootwood: the Root Tangle's rock is the World-Root's own living wood. Pickaxe III. Dug, it grows back.
+  { id: 'rootwood', label: 'Rootwood', solid: true, hp: 5, tools: { pickaxe: 3 }, discipline: 'mining', xp: 3, block: 'dirt-block',
+    base: '#3a2a1c', dark: '#24190f', light: '#7a5a36', fleck: '#7fb85a' },
+  // Heartwood: older, pressed wood under the tangle. Pickaxe IV. It grows back too, slower to look at, as fast.
+  { id: 'heartwood', label: 'Heartwood', solid: true, hp: 6, tools: { pickaxe: 4 }, discipline: 'mining', xp: 4, block: 'dirt-block',
+    base: '#4a2e1c', dark: '#2a180e', light: '#8a5a32', fleck: '#c08a3e' },
+  // Rootglass: sap that set into glass along the root's veins. Pickaxe IV, Mining 50.
+  { id: 'rootglass-vein', label: 'Rootglass vein', solid: true, hp: 7, tools: { pickaxe: 4 }, discipline: 'mining', xp: 22, minLevel: 50,
+    yield: { materialId: 'rootglass', qty: 1 }, base: '#2a2a1a', dark: '#14160c', light: '#4a7a3a', fleck: '#c4ffe0', glow: { color: '#7fd5a3', radius: 44 } },
+  // Heart-amber: what the root bleeds where it was cut long ago. Pickaxe IV, Mining 58.
+  { id: 'heart-amber-vein', label: 'Heart-amber vein', solid: true, hp: 8, tools: { pickaxe: 4 }, discipline: 'mining', xp: 30, minLevel: 58,
+    yield: { materialId: 'heart-amber', qty: 1 }, base: '#3a2414', dark: '#1e1208', light: '#6a4010', fleck: '#ffc04a', glow: { color: '#e0b060', radius: 54 } },
+  // A living vine: hangs from the tangle's roofs; climb it (Up/Down), stand on its top.
+  { id: 'living-vine', label: 'Living vine', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
+    base: '#3a5a2a', dark: '#1e2a14', light: '#7fb85a', fleck: '#c4ffe0' },
+  // A spore pod: touch one and it bursts (it stings). Struck with a sickle, it gives its sap. It grows back.
+  { id: 'spore-pod', label: 'Spore pod', solid: true, hp: 2, tools: { sickle: 3, blade: 3 }, discipline: 'foraging', xp: 10, minLevel: 30,
+    yield: { materialId: 'verdant-sap', qty: 1, chance: .45 }, base: '#4a5a1e', dark: '#24300e', light: '#a6c84a', fleck: '#f0ff9a', glow: { color: '#c8e86a', radius: 34 } },
+  // A heart-root: the Graftmother's anchor in her hall's roof. Cut it (axe or pick); it grows back unless burnt or cut clean.
+  { id: 'heart-root', label: 'Heart-root', solid: true, hp: 8, tools: { axe: 3, pickaxe: 4 }, discipline: 'woodcutting', xp: 20,
+    base: '#5a2418', dark: '#30120a', light: '#9a4a2a', fleck: '#ff9a7a', glow: { color: '#ff6a4a', radius: 50 } },
+  // ── The Luminous Delve, the Prism Mines (play/engine/luminous-gen.ts; the Luminous's underside; luminous.ts). ──
+  // Prism-stone: the Galleries' pale rock, faceted. Pickaxe III.
+  { id: 'prism-stone', label: 'Prism-stone', solid: true, hp: 5, tools: { pickaxe: 3 }, discipline: 'mining', xp: 3, block: 'basalt-block',
+    base: '#5a5040', dark: '#3a3226', light: '#8a7a58', fleck: '#ffe7a0' },
+  // Dawnstone: the deep's rock, where the light pressed longest. Pickaxe IV.
+  { id: 'dawnstone', label: 'Dawnstone', solid: true, hp: 6, tools: { pickaxe: 4 }, discipline: 'mining', xp: 4, block: 'basalt-block',
+    base: '#4a4232', dark: '#2a241a', light: '#7a6a48', fleck: '#fff1b0' },
+  // Prismite: the crystal ore; light goes in one colour and comes out arguing. Pickaxe IV, Mining 50.
+  { id: 'prismite-vein', label: 'Prismite vein', solid: true, hp: 7, tools: { pickaxe: 4 }, discipline: 'mining', xp: 22, minLevel: 50,
+    yield: { materialId: 'prismite', qty: 1 }, base: '#4a4232', dark: '#2a241a', light: '#c9b88e', fleck: '#ffe9a8', glow: { color: '#ffe9a8', radius: 46 } },
+  // Dawnglass: light that stood still so long it set. Pickaxe IV, Mining 58.
+  { id: 'dawnglass-vein', label: 'Dawnglass vein', solid: true, hp: 8, tools: { pickaxe: 4 }, discipline: 'mining', xp: 30, minLevel: 58,
+    yield: { materialId: 'dawnglass', qty: 1 }, base: '#3a3426', dark: '#1e1a12', light: '#e8d8a0', fleck: '#fffaf0', glow: { color: '#fff1b0', radius: 58 } },
+  // A prism bloom: a crystal flower. Sickle III: a Luminous Prism, now and then.
+  { id: 'prism-bloom', label: 'Prism bloom', solid: true, hp: 2, tools: { sickle: 3 }, discipline: 'foraging', xp: 10, minLevel: 30,
+    yield: { materialId: 'luminous-prism', qty: 1, chance: .4 }, base: '#5a5040', dark: '#3a3226', light: '#fff1b0', fleck: '#a8e8ff', glow: { color: '#ffe7a0', radius: 36 } },
+  // A sun-prism: the realm's sun, seen from underneath, caught in a crystal. It shines straight down, always.
+  { id: 'sun-prism', label: 'Sun-prism', solid: true, hp: Infinity, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#8a7a58', dark: '#4a4030', light: '#fffaf0', fleck: '#fff1b0', glow: { color: '#fff1b0', radius: 110 } },
+  // A prism mirror, two ways ('/' and '\'): E turns it. Stand on it. A beam that meets it turns a corner.
+  { id: 'prism-mirror-a', label: 'Prism mirror', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, use: 'mirror',
+    base: '#8a7a58', dark: '#4a4030', light: '#efe4c8', fleck: '#ffe9a8', glow: { color: '#ffe9a8', radius: 40 } },
+  { id: 'prism-mirror-b', label: 'Prism mirror', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, use: 'mirror',
+    base: '#8a7a58', dark: '#4a4030', light: '#efe4c8', fleck: '#ffe9a8', glow: { color: '#ffe9a8', radius: 40 } },
+  // Solid light: where a beam crosses open air it is a floor (across) or a ladder (down). It goes when the beam does.
+  { id: 'light-bridge', label: 'Light bridge', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true,
+    base: '#c9b88e', dark: '#8a7a58', light: '#fffaf0', fleck: '#fff1b0', glow: { color: '#fff1b0', radius: 40 } },
+  { id: 'light-shaft', label: 'Light shaft', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
+    base: '#c9b88e', dark: '#8a7a58', light: '#fffaf0', fleck: '#fff1b0', glow: { color: '#fff1b0', radius: 40 } },
+  // Shadow glass: a floor only while light is on it. Unlit, it is a hole that looks like a floor.
+  { id: 'umbra-pane', label: 'Shadow glass', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#1a1610', dark: '#0e0c08', light: '#3a3426', fleck: '#5a5040' },
+  { id: 'lit-pane', label: 'Lit glass', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true,
+    base: '#8a7a58', dark: '#5a5040', light: '#fff1b0', fleck: '#fffaf0' },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -477,7 +533,7 @@ export interface TerrainSpec {
    * A realm Delve behind a Rift Gate (rift-gates.model.ts): its wings come from
    * that realm's own generator (realm-gen.ts), not the Infernal strata's.
    */
-  realm?: 'umbral';
+  realm?: 'umbral' | 'verdant' | 'luminous';
   liquidVersion?: number;
   /**
    * The core of an endless Delve (Phase 7): sector-world.ts generates sectors
