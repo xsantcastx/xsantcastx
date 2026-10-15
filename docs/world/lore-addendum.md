@@ -1606,3 +1606,16 @@ brighter than the sky. I don't like it, and I love it.") and at dawn.
 **The music.** At night the realm's tune drops an octave and leaves longer silences; under the eclipse its third goes
 minor over a soft drone, "like a guardian the size of the sky". The Slate names each realm's theme: *Hymn of the Held
 Seam*, *Noon over the Court*, *Margins of the Archive*, *The Orrery Turns*, *Rootwake*.
+
+
+## Loot & combat (shipped — owner reviews in play)
+
+**Aura words.** Six new Socket Words carry the old auras: *Brandoath* (the oath the Seamworks smiths swear on a fresh
+edge: that it will bite before it bends), *Rimeveil* (Nocturne winter, worn), *Stormglass* (the Heliograph Court's
+lightning rod that answers back), *Mercyroot* (the Root Deeps waste nothing: a creature that falls by the wearer feeds
+them), *Vigil* (kept by the Seamworks night watch) and *Verdict* (the Archivum's ruling, written into an edge). Five
+older words and four uniques (Cinderwake, Lastwarden, Heartwood of the Verge, Worldsplitter) gained an aura too.
+**Unique creatures** carry names from the Seamworks' tally-books: Sootjaw, Rivetgrin, Ashmantle, Gloamtooth,
+Cinderwake, Hollowhymn, Brassveil, Rootgnaw, Glasshowl, Inkfang, Embermourn, Starbiter. **The three passes**: Normal,
+Nightmare and Hell — the world fights harder once the Fallen Ephemeris has fallen. **The fallen purse**: what a Keeper
+drops where they fall, waiting for them to walk back.
