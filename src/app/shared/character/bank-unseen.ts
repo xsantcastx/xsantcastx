@@ -36,7 +36,15 @@ export function loadSeen(
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (!Array.isArray(parsed)) return new Set();
-    return new Set(parsed.filter((id): id is string => typeof id === 'string'));
+    // An item instance's id only means something while it is held: the list
+    // used to keep every gear row ever opened, forever, in a device's 5 MB of
+    // localStorage. Prune those on load. Stack rows are a fixed catalogue and
+    // stay, so a stack spent to zero and found again is not NEW a second time.
+    const held = new Set(heldIds);
+    const ids = parsed.filter((id): id is string => typeof id === 'string');
+    const kept = ids.filter(id => held.has(id) || id.startsWith('stack:'));
+    if (kept.length < ids.length) persistSeen(store, kept);
+    return new Set(kept);
   } catch {
     return new Set();
   }

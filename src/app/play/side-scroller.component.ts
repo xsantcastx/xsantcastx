@@ -12,6 +12,7 @@ import { EconomyService } from '../shared/economy/economy.service';
 import { InventoryService, type VaultRouted } from '../shared/rpg/inventory.service';
 import { VAULT_STATION_I18N } from '../shared/vault/vault-station.i18n';
 import { GameStateGateway } from '../shared/save/game-state.gateway';
+import { StorageHealthService } from '../shared/save/storage-health.service';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
@@ -522,6 +523,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead has something worth a look: the button wears a badge. */
   slateReady = false;
   private slateSub?: Subscription;
+  private storageSub?: Subscription;
+  private readonly storageHealth = inject(StorageHealthService);
   // ── The Lost Cabinets (docs/handoff/lost-cabinets.md) ──
   private readonly cabinets = inject(CabinetsService);
   private cabinetSub?: Subscription;
@@ -581,6 +584,18 @@ export class SideScrollerComponent implements OnDestroy {
     // Lune watches her tables from here on: the tenth play hands the Slate over, wherever it was played.
     this.slate.init();
     this.slateSub = this.slate.awarded$.subscribe(() => { this.tickSlate(); this.message = this.t('slate.awarded'); });
+    // A full device used to refuse pickups; now the save keeps going in memory
+    // and the cloud, and the player is told once, gently (storage-health.service.ts).
+    this.storageHealth.start();
+    let toldStorage: string | null = null;
+    this.storageSub = this.storageHealth.state$.subscribe(state => {
+      if (state === 'ok' || state === toldStorage) return;
+      toldStorage = state;
+      const key = state === 'full'
+        ? (this.store.attached ? 'play.hud.msg.storageFullCloud' : 'play.hud.msg.storageFull')
+        : 'play.hud.msg.storageNearlyFull';
+      this.zone.run(() => { this.message = this.t(key); });
+    });
     // The Slate's Scan: holding the glass up folds the Slate so you can walk with it.
     this.cabinets.refresh();
     this.cabinetSub = this.cabinets.scanning$.subscribe(on => this.zone.run(() => this.scanChanged(on)));
@@ -1066,7 +1081,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
     this.unbindFeel();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
