@@ -252,7 +252,7 @@ export class SoundDirector {
 
   /** One note of the score in its voice. `vel` 0..1. */
   private voice(kind: VoiceKind, midi: number, t: number, dur: number, vel: number): void {
-    const f = midiToHz(midi), v = vel * .2;
+    const f = midiToHz(midi), v = vel * .24;
     switch (kind) {
       case 'piano': {
         const decay = Math.min(4.5, dur + 1.8);
