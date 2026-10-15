@@ -23,6 +23,9 @@ import {
 import { EMPTY_KEEPER_CONTEXT, KeeperContext, keeperLines } from '../world/keeper-lines';
 import { materialDisplay } from '../../shared/rpg/material-catalog';
 import type { AreaDef, StationDef, TownDef } from '../world/world.model';
+import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { NPC_LOOKS, townsfolkLook } from '../../shared/keeper-look/npc-looks';
+import type { KeeperAction } from '../../shared/keeper-look/keeper-gear';
 
 /** Humanoid bones for a standing NPC painting that faces right (the commission's three-quarter view). */
 export const NPC = { ROOT: 0, HIPS: 1, CHEST: 2, HEAD: 3, ARM_F: 4, ARM_B: 5 } as const;
@@ -90,6 +93,8 @@ export interface LifeFrame {
 
 /** Draw box of a keeper's painting, feet at the origin. Townsfolk use the same box scaled down. */
 const BOX = { x: -64, y: -172, w: 128, h: 172 };
+/** World px per art pixel for a town figure: the Keeper's own (keeper-paint.ts, docs/art/style-guide.md §2). */
+export const FIGURE_PIXEL = 4;
 const OUTLINE = '#1a1020';
 const TAG_FONT = '600 14px "Cormorant Garamond", Georgia, serif';
 /** The subtitle under a person's name: their role title (or a canon epithet). */
@@ -133,6 +138,15 @@ export class TownLife {
   private readonly scratch = createPose(NPC_RIG.bones.length);
   private readonly rigs = new Map<string, RigSprite>();
   private realmArt = '';
+  /**
+   * The pixel figures (one art style, npc-looks.ts): index-aligned with the
+   * placements and the crowd. Built on entry; their frames are painted on first
+   * draw and cached. Empty without a DOM (SSR, the node harness), where the
+   * sheet / rig / placeholder paths below still draw.
+   */
+  private keeperPainters: (KeeperPainter | null)[] = [];
+  private folkPainters: (KeeperPainter | null)[] = [];
+  private readonly heightPainters = new Map<string, KeeperPainter | null>();
 
   /** Keepers in the current area (empty outside towns). Read by tests and the host. */
   get keepers(): readonly KeeperPlacement[] { return this.placements; }
@@ -164,6 +178,10 @@ export class TownLife {
     this.tagWidth = new Float32Array(this.placements.length);
     this.bubbleFor = -1;
     this.realmArt = townsfolkArt(town.realm);
+    this.keeperPainters = this.placements.map(p => painterFor(p.def.id));
+    this.folkPainters = this.crowd.folk.map((p, i) => canPaint()
+      ? (({ look, gear, garb }) => new KeeperPainter(look, gear, garb))(townsfolkLook(`${town.id}:${i}`, p.palette, p.silhouette))
+      : null);
   }
 
   /**
@@ -206,10 +224,11 @@ export class TownLife {
   draw(c: CanvasRenderingContext2D, f: LifeFrame): void {
     const crowd = this.crowd;
     if (crowd) {
-      for (const p of crowd.folk) {
+      for (let n = 0; n < crowd.folk.length; n++) {
+        const p = crowd.folk[n];
         if (!onScreen(p.x, f.camera, f.viewport)) continue;
         const walking = p.pause <= 0;
-        this.figure(c, f, this.realmArt, p.x, p.facing, p.build * .86, p.palette, p.silhouette, p.seed, p.step, walking, 0, .92, walking ? 'walk' : 'idle');
+        this.figure(c, f, this.realmArt, p.x, p.facing, p.build * .86, p.palette, p.silhouette, p.seed, p.step, walking, 0, .92, walking ? 'walk' : 'idle', this.folkPainters[n] ?? null);
       }
     }
     for (let i = 0; i < this.placements.length; i++) {
@@ -220,7 +239,7 @@ export class TownLife {
       // Turning reads as a narrowing through edge-on: scale x by the smoothed facing, never below a sliver.
       const sx = Math.sign(face || 1) * Math.max(.18, Math.abs(face));
       const talking = this.chatter?.speaker === i;
-      this.figure(c, f, p.def.art, p.x, sx, 1, p.def.palette, p.def.silhouette, i * 1.7, 0, false, look, 1, talking ? 'talk' : 'idle');
+      this.figure(c, f, p.def.art, p.x, sx, 1, p.def.palette, p.def.silhouette, i * 1.7, 0, false, look, 1, talking ? 'talk' : 'idle', this.keeperPainters[i]);
       this.nameTag(c, f, i, p);
     }
     this.speech(c, f);
@@ -229,16 +248,27 @@ export class TownLife {
   /** A person standing on high ground (world/heights.ts): the same figure, feet at (x, y). */
   drawAt(c: CanvasRenderingContext2D, f: LifeFrame, art: string, x: number, y: number, facing: number, palette: LifePalette, shape: LifeSilhouette, seed: number, talking: boolean): void {
     c.save(); c.translate(0, y - FLOOR);
-    this.figure(c, f, art, x, facing, 1, palette, shape, seed, 0, false, 1, 1, talking ? 'talk' : 'idle');
+    const id = art.replace(/^npc-/, '').replace(/-figure$/, '');
+    if (!this.heightPainters.has(id)) this.heightPainters.set(id, painterFor(id));
+    this.figure(c, f, art, x, facing, 1, palette, shape, seed, 0, false, 1, 1, talking ? 'talk' : 'idle', this.heightPainters.get(id) ?? null);
     c.restore();
   }
   /** One figure, feet on the floor at x. Painted through the rig when its art resolves; the placeholder otherwise. */
   private figure(c: CanvasRenderingContext2D, f: LifeFrame, art: string, x: number, facing: number, scale: number, palette: LifePalette,
-    shape: LifeSilhouette, seed: number, step: number, walking: boolean, look: number, alpha: number, state: 'idle' | 'walk' | 'talk' = 'idle'): void {
+    shape: LifeSilhouette, seed: number, step: number, walking: boolean, look: number, alpha: number, state: 'idle' | 'walk' | 'talk' = 'idle',
+    painter: KeeperPainter | null = null): void {
     c.save();
     c.globalAlpha = .28 * alpha; c.fillStyle = '#000';
     c.beginPath(); c.ellipse(x, FLOOR + 2, 30 * scale, 7 * scale, 0, 0, Math.PI * 2); c.fill();
     c.globalAlpha = alpha;
+    if (painter) {
+      // The pixel figure: the Keeper's own scale and outline, whole pixels, flipped (never squeezed) to turn.
+      c.translate(Math.round(x), FLOOR); c.scale(facing < 0 ? -1 : 1, 1);
+      const action: KeeperAction = state === 'walk' && !f.reduced ? 'walk' : state === 'talk' && !f.reduced ? 'talk' : 'idle';
+      painter.draw(c, FIGURE_PIXEL, { action, time: action === 'walk' ? step * 1.6 : f.time + seed, attackT: 0, reduced: f.reduced, weapon: true });
+      c.restore();
+      return;
+    }
     c.translate(x, FLOOR); c.scale(facing * scale, scale);
     // A sprite sheet (W3: idle/talk, optional walk) faces right like the painting; frames replace the rig.
     const sheet = f.sprite?.(figureSpriteId(art)) ?? null;
@@ -414,4 +444,13 @@ function placeholder(c: CanvasRenderingContext2D, pose: Float32Array, palette: L
     c.strokeStyle = palette.trim; c.lineWidth = 3; c.beginPath(); c.moveTo(-10, 2); c.quadraticCurveTo(3, 7, 14, 2); c.stroke();
   }
   c.restore();
+}
+
+function canPaint(): boolean {
+  return typeof document !== 'undefined' && typeof document.createElement === 'function';
+}
+/** A named person's pixel figure (npc-looks.ts), or null (no look written, or no DOM). */
+function painterFor(id: string): KeeperPainter | null {
+  const npc = NPC_LOOKS[id];
+  return npc && canPaint() ? new KeeperPainter(npc.look, npc.gear, npc.garb) : null;
 }
