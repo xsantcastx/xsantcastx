@@ -48,8 +48,9 @@ night and the eclipse" (shipped — owner reviews in play). Screenshots: `docs/h
   Glass. Nothing expires; a missed eclipse is never a loss: the next one counts the same.
 - **Uses.** Moonwake: bait (the Mirrorfin's), three press into Lampfish Oil, the Star Owlet eats it. Mirrorfin: two
   Lampfish Oil, the Ink Pup and the Shade-kit eat it. Eclipse Glass + bark: eight Eclipse torches.
-- **People notice the hour** (lines said first while it is that hour): Tomas at night and under the eclipse, Sera at
-  night and under it (the ledger), Nox under it, Rook at night, Siv at dawn, Kesh at night (the Mirrorfin). Glim at
+- **People notice the hour** (lines said first while it is that hour): Tomas at night, Sera under the eclipse (the
+  ledger), Rook at night, the Arena gatekeeper at dawn, the Trials Warden under the eclipse (merged around Act II's
+  new lines: every keeper stays within 4–8 lines). Glim at
   nightfall, the eclipse and dawn (once Glim is met).
 - **The Slate is a phone** (the Archive's moon-mirror glass): a status bar (realm, time, sky); the lock clock big
   (time, "Lightday, 2 Emberwane", the sky's pixel icon and name; "underground: the sky goes on above" in a Delve); a

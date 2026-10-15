@@ -897,6 +897,11 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'goldmouth',            label: 'Goldmouth',            color: '#f8e8c8' },
       { id: 'the-counted',          label: 'The Counted',          color: '#c9c4d6' },
       { id: 'nameless',             label: 'Nameless',             color: '#8f8a9c' },
+      // Story exclusives — paid by Act II's scenes (shared/story/story.ts STORY_SCENES), never sold:
+      // the Root Deeps' account (Siv Moss), the Prism Mines' (Aureth) and the act's end (Kael).
+      { id: 'the-ungrafted',        label: 'The Ungrafted',        color: '#7fd5a3' },
+      { id: 'dawn-witness',         label: 'Dawn-Witness',         color: '#E8D44D' },
+      { id: 'witness-keeper',       label: 'Witness-Keeper',       color: '#ff9a5a' },
     ],
   },
   {

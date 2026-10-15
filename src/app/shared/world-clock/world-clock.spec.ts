@@ -173,11 +173,11 @@ describe('World clock: what it puts in the world', () => {
 describe('World clock: who notices the hour', () => {
   const ctx = (hour?: 'dawn' | 'day' | 'dusk' | 'night' | 'eclipse') => ({ beats: new Set<string>(), deeds: new Set<string>(), hour });
   it('a keeper says the hour\'s line first, and only at that hour', () => {
-    expect(keeperLines('tomas', ctx('night'))[0]).toBe('play.life.line.tomas.7');
-    expect(keeperLines('tomas', ctx('eclipse'))[0]).toBe('play.life.line.tomas.8');
-    expect(keeperLines('tomas', ctx('day'))).not.toContain('play.life.line.tomas.7');
-    expect(keeperLines('sera', ctx())).not.toContain('play.life.line.sera.6');
-    expect(keeperLines('steward', ctx('dawn'))[0]).toBe('play.life.line.steward.8');
+    expect(keeperLines('tomas', ctx('night'))[0]).toBe('play.life.line.tomas.8');
+    expect(keeperLines('sera', ctx('eclipse'))[0]).toBe('play.life.line.sera.8');
+    expect(keeperLines('tomas', ctx('day'))).not.toContain('play.life.line.tomas.8');
+    expect(keeperLines('sera', ctx())).not.toContain('play.life.line.sera.8');
+    expect(keeperLines('gatekeeper', ctx('dawn'))[0]).toBe('play.life.line.gatekeeper.7');
   });
   it('the score drops at night and goes minor under the eclipse; the birds stop', () => {
     const scene: SoundScene = { realm: 'verdant', delve: false, boss: false, hour: 12, water: false, lava: false, ink: false, glim: false };
