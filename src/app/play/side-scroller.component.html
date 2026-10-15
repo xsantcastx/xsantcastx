@@ -1,6 +1,6 @@
 <section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -273,6 +273,11 @@
     <div class="sound-host" data-engine-ignore (keydown.escape)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
   }
 
+  <!-- The Satchel's pet well, opened (shared/pets): your pets, one card, one primary action. -->
+  @if (petsOpen) {
+    <div class="pet-host" data-engine-ignore (keydown.escape)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" /></div>
+  }
+
   @if (bagOpen) {
     <!-- The satchel, Diablo II-style: what the Keeper wears, and the pockets. Nothing else
          until you tap something — then one card with one primary action. -->
@@ -308,6 +313,11 @@
               }
             </button>
           }
+          <!-- The pet well: one small well in the doll's empty corner; the pets open on tap. -->
+          <button type="button" class="well pet-well" data-slot="pet" [class.filled]="!!petWellArt" [class.is-new]="petWellNew" (click)="openPets()"
+                  [attr.aria-label]="t(petWellNew ? 'play.pet.wellNew' : 'play.pet.well')">
+            @if (petWellArt) { <img [src]="petWellArt" alt=""> } @else { <em>{{ t('play.pet.well') }}</em> }
+          </button>
         </div>
       </div>
       <div class="lining" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
