@@ -21,7 +21,7 @@ import { SOUND_I18N } from './sound.i18n';
     <section class="ss" role="dialog" aria-modal="false" aria-labelledby="ss-title" data-engine-ignore [attr.data-sound-status]="status">
       <header class="ss__head">
         <h2 id="ss-title">{{ t('play.sound.title') }}</h2>
-        <button type="button" class="ss__done" (click)="done.emit()">{{ t('play.sound.close') }}</button>
+        <button type="button" class="ss__done" (click)="done.emit()" [attr.aria-label]="t('play.sound.close')"><i aria-hidden="true">&times;</i></button>
       </header>
       <p class="ss__lead">{{ t('play.sound.lead') }}</p>
       @for (ch of channels; track ch) {
@@ -43,7 +43,8 @@ import { SOUND_I18N } from './sound.i18n';
   styles: [`
     :host { display: block; }
     .ss {
-      display: grid; gap: 10px; width: min(380px, calc(100vw - 32px)); padding: 14px 16px 12px;
+      display: grid; align-content: start; gap: 10px; width: 100%; box-sizing: border-box; min-height: 100%;
+      padding: 14px 16px calc(12px + var(--sheet-pad-b, 0px));
       border: 1px solid var(--adventure-hud-shadow); border-left: 2px solid var(--adventure-ember); border-radius: 2px;
       background: var(--adventure-hud-panel-solid); color: var(--adventure-parchment);
       box-shadow: 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53%, transparent);
@@ -59,11 +60,13 @@ import { SOUND_I18N } from './sound.i18n';
     .ss__row input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--adventure-ember); cursor: pointer; }
     .ss__mute { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
     .ss__mute input { width: 22px; height: 22px; accent-color: var(--adventure-ember); }
+    /* The window's one close (the same × as every in-world menu, side-scroller .win-x). */
     .ss__done {
-      min-height: 44px; min-width: 64px; padding: 6px 12px; border: 1px solid var(--adventure-hud-brass); border-radius: 2px;
-      background: color-mix(in srgb, var(--adventure-hud-brass) 12%, transparent); color: var(--adventure-parchment);
-      font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; cursor: pointer;
+      display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border-radius: 2px; cursor: pointer;
+      border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 26%, transparent); background: none;
+      color: var(--adventure-dialogue); font: 400 30px/1 var(--font-lore, Georgia, serif);
     }
+    .ss__done i { font-style: normal; translate: 0 -2px; }
     .ss__done:hover, .ss__done:focus-visible { border-color: var(--adventure-hud-gold); outline: none; }
   `],
 })

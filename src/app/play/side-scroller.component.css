@@ -2611,3 +2611,297 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (prefers-reduced-motion: reduce) {
   .craft-toast { animation: none; }
 }
+
+/* ══ Menus: one window system (docs/handoff/menus-orientation.md) ═════════════
+   Every in-world menu is the same window: a title bar with the name and one
+   44px × close in the top-right, a body that scrolls, at most one primary
+   action. Where it sits follows how the phone is held:
+     - portrait phone  → a bottom sheet (≤ 85% tall, a grip to pull it down,
+                         clear of the home indicator); the bottom controls
+                         step aside while it is up;
+     - landscape phone → a side panel on the right, full height, so the world
+                         and the move stick on the left stay in view;
+     - desktop         → a window, where each one always stood.
+   It is all CSS: turning the phone re-flows the same elements, so the scroll
+   position and what is picked survive the turn. Frames: .book (the Satchel),
+   .places (the menu), .place (every station, the Slate, the Glass, Character),
+   .anchor-sheet (the Rift Anchors) and .win-host (Sound, Pets). Every frame
+   sits over the HUD bands (z 7), so no control ever lies on top of a menu. */
+
+.book, .places, .place, .anchor-sheet, .win-host { z-index: 7; }
+/* Sound and Pets open over the menu or the Satchel they were opened from. */
+.win-host { z-index: 8; }
+
+/* The title bar. */
+.win-head {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+}
+.win-head h2 { min-width: 0; margin: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.place-head.win-head { align-items: center; }
+.place-head.win-head > div:first-child { min-width: 0; }
+.places .win-head h2, .anchor-sheet .win-head h2 { flex: 1 1 auto; font-size: 20px; }
+
+/* The one close: a 44px ×, top-right, the same in every window. */
+.win-x,
+.book .win-x,
+.place .place-close.win-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
+  min-height: 44px;
+  margin-left: auto;
+  padding: 0;
+  font: 400 30px/1 var(--font-lore, Georgia, serif);
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--adventure-dialogue);
+  background: none;
+  box-shadow: none;
+  border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 26%, transparent);
+}
+.win-x i { font-style: normal; translate: 0 -2px; }
+.win-x:hover, .win-x:focus-visible { color: var(--adventure-beacon-text); border-color: var(--adventure-ember); outline: none; }
+.win-x__label {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Places: the title bar stays, the list scrolls. */
+.places { display: flex; flex-direction: column; overflow: hidden; }
+.places .win-head { padding-bottom: 6px; margin-bottom: 8px; border-bottom: 1px dashed color-mix(in srgb, var(--adventure-hud-brass) 16.86%, transparent); }
+.win-body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; }
+
+/* Sound and Pets: the host is the frame's box; the sheet inside fills it. */
+.win-host { display: flex; flex-direction: column; max-height: calc(100% - 80px); overflow: auto; overscroll-behavior: contain; }
+.sound-host { width: min(380px, calc(100% - 32px)); }
+.pet-host { width: min(440px, calc(100% - 32px)); }
+.win-host > * { flex: 1 0 auto; }
+
+/* ── The Satchel: title bar (Worn | Stats | ×), one scroller, the purse at the bottom ── */
+.book-head { flex-wrap: nowrap; }
+.book-faces { display: flex; gap: 4px; margin-left: auto; }
+.book-face,
+.bag-tab {
+  flex: none;
+  min-height: 44px;
+  padding: 0 10px;
+  font-size: 9px;
+  letter-spacing: .1em;
+  background: none;
+  box-shadow: none;
+  border-color: color-mix(in srgb, var(--adventure-hud-brass) 24%, transparent);
+  color: var(--adventure-dialogue);
+}
+.book-face.is-on,
+.bag-tab.is-on {
+  border-color: var(--adventure-ember);
+  color: var(--adventure-beacon-text);
+  background: color-mix(in srgb, var(--adventure-ember) 12%, transparent);
+}
+.book-head .win-x { margin-left: 0; }
+.book-body {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: var(--adventure-ember) transparent;
+}
+.book-doll { display: grid; justify-items: center; min-width: 0; }
+.book-doll .belt { width: 100%; }
+.book-doll .book-detail { width: 100%; max-height: none; overflow: visible; }
+.book-bag { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+/* The pockets are not a second scroller: the body scrolls them. */
+.book .lining { flex: none; min-height: 0; overflow: visible; }
+/* The tabs share the row (never a sideways scroll): a long name ellipses before it hides. */
+.bag-tabs { display: flex; gap: 4px; }
+.bag-tabs .bag-tab { flex: 1 1 0; min-width: 0; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; letter-spacing: .04em; }
+.bag-tab b { margin-left: 4px; font-weight: 600; color: var(--adventure-smoke); }
+/* A narrow phone: the names alone, so "Materials" never ellipses (the count is on the purse row and in each cell). */
+@media (max-width: 420px), (max-height: 500px) { .bag-tab b { display: none; } }
+.book-purse {
+  position: sticky;
+  bottom: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--adventure-hud-panel-solid);
+  border-top: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 20%, transparent);
+}
+.purse-gold {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 600 12px Orbitron, sans-serif;
+  letter-spacing: .04em;
+  color: var(--adventure-hud-gold);
+}
+.purse-coin {
+  display: block;
+  width: 12px;
+  height: 12px;
+  background: radial-gradient(circle at 35% 35%, var(--adventure-hud-cream), var(--adventure-hud-gold) 55%, var(--adventure-hud-rust));
+  box-shadow: inset 0 0 0 1px var(--adventure-hud-shadow);
+}
+.book-purse .capacity { flex: 1 1 auto; }
+/* An empty well: a faint picture of what goes there (never a word that spills out of the box). */
+.book .well .well-ghost { width: 72%; height: 72%; opacity: .55; filter: none; }
+/* The item card: it never leaves the window; long copy scrolls inside it, its action stays in view. */
+.book .slip { flex: none; max-height: min(48%, 300px); overflow: auto; overscroll-behavior: contain; }
+.slip-actions {
+  position: sticky;
+  bottom: -8px;
+  z-index: 1;
+  padding: 6px 0 2px;
+  background: var(--adventure-hud-panel-deep);
+}
+.slip-actions .wear, .slip-actions .to-vault { min-height: 44px; }
+
+/* Stations: the one primary action sticks to the bottom of the panel while its card is in view. */
+.place-body {
+  --ab-stick: sticky;
+  --ab-stick-pad: 6px;
+  --ab-stick-bg: var(--adventure-hud-panel-solid);
+  /* A soft edge above it, so it reads as a bar the card slides under, not a cut. */
+  --ab-stick-shadow: 0 -14px 14px -6px var(--adventure-hud-panel-solid);
+}
+
+/* The story card and Glim's talk: clear of the notch and the home bar. */
+.story-veil {
+  padding: calc(16px + env(safe-area-inset-top, 0px)) calc(16px + env(safe-area-inset-right, 0px))
+    calc(16px + env(safe-area-inset-bottom, 0px)) calc(16px + env(safe-area-inset-left, 0px));
+}
+.glim-talk-card__close { min-height: 44px; min-width: 44px; }
+
+/* ── Portrait phone: bottom sheets ── */
+@media (max-width: 900px) and (orientation: portrait) {
+  .book, .places, .place, .anchor-sheet, .win-host {
+    top: auto;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    width: auto;
+    max-width: 640px;
+    max-height: 85%;
+    margin-inline: auto;
+    transform: none;
+    padding: 20px calc(12px + env(safe-area-inset-right, 0px)) calc(10px + env(safe-area-inset-bottom, 0px)) calc(12px + env(safe-area-inset-left, 0px));
+    border: 1px solid var(--adventure-hud-shadow);
+    border-top: 2px solid var(--adventure-ember);
+    border-radius: 12px 12px 0 0;
+    box-shadow: 0 -12px 32px color-mix(in srgb, var(--adventure-hud-shadow) 60%, transparent);
+    animation: sheet-up .26s cubic-bezier(.22, 1, .36, 1);
+    transition: translate .2s ease;
+  }
+  /* The tall ones are a fixed 85%, so nothing jumps as their content changes. */
+  .book, .place { height: 85%; }
+  /* Sound and Pets carry their own plate: the host is only the sheet's box. */
+  .win-host { padding: 0; border: 0; background: none; box-shadow: none; overflow: auto; --sheet-pad-b: env(safe-area-inset-bottom, 0px); }
+  /* The grip: pull the title bar down to put the sheet away. */
+  .win-head { touch-action: none; }
+  .win-head::before, .win-host::before {
+    content: "";
+    position: absolute;
+    top: -14px;
+    left: 50%;
+    width: 40px;
+    height: 4px;
+    translate: -50% 0;
+    border-radius: 2px;
+    background: color-mix(in srgb, var(--adventure-hud-brass) 50%, transparent);
+    pointer-events: none;
+  }
+  .win-host::before { top: 6px; z-index: 2; }
+  /* While a sheet is up, the bottom controls step aside (nothing peeks out under it). */
+  .stage--menu .touch, .stage--menu .dock, .stage--menu .prompt, .stage--menu .m-take, .stage--menu .keys { visibility: hidden; }
+  .place-head h2 { font-size: 22px; }
+  /* The Slate keeps its brass bezel as a sheet. */
+  .place--slate { border: 4px solid var(--gold-deep); border-bottom-width: 0; }
+}
+
+/* ── Landscape phone: a side panel on the right, the left thumb zone stays clear ── */
+@media (max-width: 900px) and (orientation: landscape), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .book, .places, .place, .anchor-sheet, .win-host {
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    width: min(60%, 560px);
+    height: auto;
+    max-height: none;
+    margin: 0;
+    transform: none;
+    padding: calc(6px + env(safe-area-inset-top, 0px)) calc(10px + env(safe-area-inset-right, 0px)) calc(6px + env(safe-area-inset-bottom, 0px)) 12px;
+    border: 1px solid var(--adventure-hud-shadow);
+    border-left: 2px solid var(--adventure-ember);
+    border-radius: 0;
+    animation: side-in .24s cubic-bezier(.22, 1, .36, 1);
+  }
+  .book { width: min(66%, 620px); gap: 6px; }
+  .places, .anchor-sheet, .win-host { width: min(48%, 400px); }
+  .win-host { padding: 0; border: 0; background: none; box-shadow: none; --sheet-pad-b: env(safe-area-inset-bottom, 0px); }
+  .place { gap: 6px; }
+  .place-head { padding-bottom: 4px; }
+  .place-head h2 { font-size: 18px; }
+  .place-head .realm-tag { display: none; }
+  /* The Slate keeps its brass bezel as a side panel. */
+  .place--slate { border: 4px solid var(--gold-deep); border-right-width: 0; }
+  /* The Satchel, two columns: the doll on the left (it stays while the bag scrolls), the bag on the right. */
+  .book-body { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px; }
+  .book-doll { position: sticky; top: 0; align-self: start; }
+  .book { --cell: clamp(40px, calc((100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 96px) / 5.3), 50px); }
+  .book .wells { --cell: inherit; gap: 4px; padding: 0; }
+  /* The item card rides over the bag's column, so the doll (and what the card compares against) stays in view. */
+  .book .slip {
+    position: absolute;
+    left: calc(12px + var(--cell) * 4 + 12px + 10px);
+    right: calc(10px + env(safe-area-inset-right, 0px));
+    bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    z-index: 2;
+    max-height: 58%;
+    box-shadow: 0 -10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 70%, transparent);
+  }
+  /* And the bag can scroll every pocket up above the card. */
+  .book--card .book-body { padding-bottom: 58dvh; }
+  .book--card .book-purse { position: static; }
+  .book .pockets { grid-template-columns: repeat(auto-fill, minmax(50px, 1fr)); gap: 4px; }
+  .book h2 { font-size: 18px; }
+  .book .slip { max-height: 46%; grid-template-columns: 44px minmax(0, 1fr); }
+  .book .slip-copy p { -webkit-line-clamp: 1; line-clamp: 1; }
+  .book .slip-art { width: 44px; height: 44px; }
+  .book-doll .book-detail { width: 240px; }
+}
+
+@keyframes sheet-up { from { translate: 0 40px; opacity: 0; } to { translate: none; opacity: 1; } }
+@keyframes side-in { from { translate: 40px 0; opacity: 0; } to { translate: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .book, .places, .place, .anchor-sheet, .win-host { animation: none; transition: none; }
+}
+
+/* Story cards and scenes on a phone held sideways: the whole height, the card scrolls inside itself. */
+@media (max-height: 500px) {
+  .story-veil { padding-top: calc(6px + env(safe-area-inset-top, 0px)); padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .story-card { max-height: 100%; padding: 12px 16px; }
+}

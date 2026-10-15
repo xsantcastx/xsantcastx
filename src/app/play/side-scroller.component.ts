@@ -16,6 +16,9 @@ import { StorageHealthService } from '../shared/save/storage-health.service';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
+import { iconOf } from '../shared/art/item-icons';
+import type { IconKind } from '../shared/art/item-icon-shapes';
+import { SheetDragDirective } from './sheet-drag.directive';
 import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
 import { areaOf, findStation, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY } from './world/panel-registry';
@@ -207,8 +210,21 @@ const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 
 
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
 /** A satchel cell: a stack, or a group of identical items (`ids`, item-groups) shown once with its count. */
-interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; }
-interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
+interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; /** Its satchel tab. */ cat: BagCat; }
+/** The satchel's tabs (MapleStory's inventory): everything, worn things, charms, materials. */
+type BagCat = 'gear' | 'charm' | 'mats';
+type BagTab = 'all' | BagCat;
+/** Spelt out, so the HUD key checks (scripts/seamworks-engine.test.cjs) can read them. */
+const BAG_TAB_KEYS: Record<BagTab, string> = {
+  all: 'play.hud.book.tab.all', gear: 'play.hud.book.tab.gear', charm: 'play.hud.book.tab.charm', mats: 'play.hud.book.tab.mats',
+};
+/** An empty well shows a faint picture of what goes there, never a word that spills out of its box. */
+const WELL_GHOST: Record<string, IconKind> = {
+  weapon: 'sword', 'off-hand': 'shield', head: 'helm', chest: 'cuirass', hands: 'gauntlet', legs: 'greaves', feet: 'boots',
+  trinket: 'ring', charm1: 'coin', charm2: 'coin', charm3: 'coin', pet: 'heart',
+};
+const ghostOf = (slot: string): string => iconOf(WELL_GHOST[slot] ?? 'orb', 'grey').src;
+interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The faint picture an empty well shows. */ ghost: string; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
 interface BagSlip {
   name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
   /** Rarity colour for the card's name and frame; null for materials. */
@@ -265,7 +281,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -455,6 +471,10 @@ export class SideScrollerComponent implements OnDestroy {
   bagOpen = false;
   /** The satchel's one details fold: the Keeper's stat sheet and the Vault count. */
   bookStats = false;
+  /** The satchel's open tab; All by default (and when the tab it was on empties). */
+  bagTab: BagTab = 'all';
+  /** The empty pet well's faint picture. */
+  readonly petGhost = ghostOf('pet');
   pick: BagPick | null = null;
   showKeys = false;
   now = Date.now();
@@ -1328,7 +1348,7 @@ export class SideScrollerComponent implements OnDestroy {
     // The nudge is a one-time thing: seen once the list is open (the entry stays).
     this.lookNudgeShown = this.placesOpen && this.lookNudge;
     if (this.placesOpen && this.lookNudge) { this.looks.markPrompted(); this.lookNudge = false; }
-    if (this.placesOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#places-list button')?.focus());
+    if (this.placesOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#places-list li button')?.focus());
   }
   /** Walk to the place and interact on arrival; with reduced motion, go there and open it at once. */
   choosePlace(place: PlaceRow): void {
@@ -2396,7 +2416,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   get emptyCells(): number[] {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
-    if (!Number.isFinite(cap)) return [];
+    if (!Number.isFinite(cap) || this.shownTab !== 'all') return [];
     const free = Math.max(0, Math.min(60, cap) - Math.max(used, this.pockets.length));
     return Array.from({ length: free }, (_, i) => i);
   }
@@ -2460,6 +2480,7 @@ export class SideScrollerComponent implements OnDestroy {
         mark: monogram(item?.name ?? name),
         label: item?.name ?? 'Empty',
         filled: !!item,
+        ghost: ghostOf(id),
         tone: item ? rarityColor(item.rarity) : null,
       };
     });
@@ -2476,14 +2497,37 @@ export class SideScrollerComponent implements OnDestroy {
     const materials: BagPocket[] = stacks.map(stack => {
       const display = materialDisplay(stack.stackKey);
       const name = display?.name ?? stack.stackKey;
-      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name), ids: [] };
+      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name), ids: [], cat: 'mats' };
     });
     const gear: BagPocket[] = clusterBy(groupItems(snap.bag), group => familyOf(group.first)).map(({ first: item, ids }) => ({
       key: `item:${item.id}`, kind: 'item', ref: item.id, name: item.name,
       art: itemArt(item)?.src ?? '', qty: ids.length, pip: rarityColor(item.rarity), mark: monogram(item.name), ids,
+      cat: item.type === 'charm' ? 'charm' : 'gear',
     }));
     return [...materials, ...gear];
   }
+  /** The tabs that have something in them (All always). */
+  get bagTabs(): { id: BagTab; n: number; key: string }[] {
+    const all = this.pockets;
+    const tabs: { id: BagTab; n: number; key: string }[] = [{ id: 'all', n: all.length, key: BAG_TAB_KEYS.all }];
+    for (const cat of ['gear', 'charm', 'mats'] as const) {
+      const n = all.filter(p => p.cat === cat).length;
+      if (n) tabs.push({ id: cat, n, key: BAG_TAB_KEYS[cat] });
+    }
+    return tabs;
+  }
+  /** The open tab's pockets; a tab that emptied falls back to All. */
+  get shownPockets(): BagPocket[] {
+    const all = this.pockets;
+    if (this.bagTab === 'all') return all;
+    const some = all.filter(p => p.cat === this.bagTab);
+    return some.length ? some : all;
+  }
+  get shownTab(): BagTab {
+    return this.bagTab !== 'all' && this.pockets.some(p => p.cat === this.bagTab) ? this.bagTab : 'all';
+  }
+  /** The purse, on the satchel's bottom row. */
+  get purseGold(): string { return Math.floor(this.economy.snapshot.gold).toLocaleString('en-US'); }
   get slip(): BagSlip | null {
     const pick = this.pick;
     if (!pick) return null;

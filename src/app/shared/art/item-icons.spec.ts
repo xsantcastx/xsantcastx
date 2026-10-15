@@ -3,6 +3,8 @@
  * Pure data; no DOM.
  */
 import { ITEM_DEFINITIONS } from '../rpg/item-definition';
+import { ALL_CHARMS, mintCharm } from '../rpg/item.model';
+import { itemArt } from '../rpg/material-catalog';
 import { RUNES, RUNEWORDS } from '../rune-forge/rune.model';
 import * as MANIFEST from './art-manifest.generated';
 import { artFor } from './art';
@@ -15,6 +17,20 @@ describe('item icons (pixel)', () => {
   it('gives every authored item definition its pixel icon through artFor', () => {
     const painted = ITEM_DEFINITIONS.filter(def => !SVG.test(artFor(def.id)?.src ?? '')).map(def => def.id);
     expect(painted).toEqual([]);
+  });
+
+  it('gives every charm its pixel icon, minted ids included (no initials in the satchel)', () => {
+    const missing = ALL_CHARMS.filter(seed => !SVG.test(itemArt(mintCharm(seed, '2026-10-15T00:00:00.000Z', () => .5))?.src ?? '')).map(seed => seed.id);
+    expect(missing).toEqual([]);
+    for (const seed of ALL_CHARMS) {
+      expect(itemArt({ id: seed.id })?.src).withContext(seed.id).toMatch(SVG);
+      // As the satchel ledger stores it: a minted id and a `type:name` definition.
+      expect(itemArt({ id: `${seed.id}-mf3k2x1a-1z`, definitionId: `charm:${seed.name}`, name: seed.name })?.src).withContext(seed.name).toMatch(SVG);
+      expect(itemArt({ id: 'e2e-1', definitionId: `charm:${seed.name}`, name: seed.name })?.src).withContext(seed.name).toMatch(SVG);
+    }
+    // Every satchel item resolves through itemArt, by definition id or minted id.
+    const loose = ITEM_DEFINITIONS.filter(def => !SVG.test(itemArt({ id: `e2e-${def.id}`, name: def.name, definitionId: `artifact:${def.name}` })?.src ?? '')).map(def => def.id);
+    expect(loose).toEqual([]);
   });
 
   it('covers every painted item, currency and forge good in the library', () => {

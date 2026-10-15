@@ -14,6 +14,8 @@
 import { itemIcon } from '../art/item-icons';
 import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { artFor, type ArtEntry } from '../art/art';
+import { ITEM_DEFINITIONS } from './item-definition';
+import { ALL_CHARMS } from './item.model';
 
 export interface MaterialDisplay {
   id: string;
@@ -238,5 +240,27 @@ export function materialDisplay(id: string): MaterialDisplay | undefined {
  */
 export function itemArt(item: { name?: string; id?: string; definitionId?: string }): ArtEntry | null {
   if (isBasaltEdge(item)) return artFor('basalt-edge');
-  return artFor(item.definitionId ?? item.id);
+  for (const key of [item.definitionId, item.id]) {
+    if (!key) continue;
+    const own = artFor(key);
+    if (own) return own;
+    // A minted item (a charm: `${seed.id}-${time}-${n}`) carries its seed id as a prefix.
+    const minted = /^(.+)-[0-9a-z]{6,}-[0-9a-z]{1,4}$/.exec(key)?.[1];
+    const seeded = minted ? artFor(minted) : null;
+    if (seeded) return seeded;
+  }
+  // A ledger record's definition is often `${type}:${name}` (inventory-ops): resolve the name.
+  const id = item.name ? idByName().get(item.name) : undefined;
+  return id ? artFor(id) : null;
+}
+
+let NAME_TO_ID: Map<string, string> | null = null;
+/** Every authored item and charm by its display name (built once, on first ask). */
+function idByName(): Map<string, string> {
+  if (!NAME_TO_ID) {
+    NAME_TO_ID = new Map();
+    for (const def of ITEM_DEFINITIONS) NAME_TO_ID.set(def.name, def.id);
+    for (const seed of ALL_CHARMS) NAME_TO_ID.set(seed.name, seed.id);
+  }
+  return NAME_TO_ID;
 }
