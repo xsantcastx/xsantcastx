@@ -91,7 +91,8 @@ async function intoRealm(page: Page, realm: Realm, touch: boolean, label: string
     ...activity({ mining: xpForLevel(60), exploration: xpForLevel(g.delving) }),
     'preferred-language': 'en',
   });
-  await openPlay(page);
+  // One World: `?at=delve` stands the Keeper at the mine head (a reload resumes where they last stood).
+  await openPlay(page, '?at=delve');
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   await expect(async () => {
     await walkTo(page, SHAFT_X, 12);

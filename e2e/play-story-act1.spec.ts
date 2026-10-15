@@ -50,8 +50,8 @@ async function descendToFreshMark(page: Page, keep: Record<string, unknown>): Pr
   const f = new DelveFixture().camp(FRESH_CAMP[0], FRESH_CAMP[1]);
   f.claimed = ['warden-defeated'];
   await seed(page, { ...f.blobs(), ...keep });
-  await openPlay(page);
-  await walkTo(page, SHAFT_X, 30);
+  // One World: `?at=delve` stands the Keeper at the mine head (a reload resumes wherever they last stood, maybe underground).
+  await openPlay(page, '?at=delve');
   await page.getByRole('button', { name: /Descend to your camp/ }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
   await page.waitForTimeout(1800);

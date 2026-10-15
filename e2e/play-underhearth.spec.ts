@@ -51,7 +51,8 @@ const PICK_IV = gear('e2e-pick-4', 'pickaxe-4', 'Pickaxe IV', 1);
 const BLADE = gear('e2e-blade', 'eclipse-longblade', 'Eclipse Longblade', 2, { category: 'equipment', tags: ['equipment', 'weapon'], type: 'artifact', soulbound: false, stats: { strikePower: 5, ward: 15 }, location: { kind: 'equipped', slotId: 'weapon' } });
 
 async function descend(page: Page): Promise<void> {
-  await openPlay(page);
+  // One World: `?at=delve` stands the Keeper at the mine head (a reload resumes where they last stood).
+  await openPlay(page, '?at=delve');
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   // The Keeper can settle by the Material Vendor next door: step back onto the shaft until it offers the camp.
   await expect(async () => {
