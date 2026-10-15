@@ -21,17 +21,10 @@ import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
 import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
 import { XpBarComponent } from './shared/gamification/xp-bar.component';
-import { AchievementDropComponent } from './shared/rarity/achievement-drop.component';
-import { DiscoveryToastComponent } from './shared/collection/discovery-toast.component';
-import { QuestDrawerComponent } from './shared/quests/quest-drawer.component';
 import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
-import { QuestToastComponent } from './shared/quests/quest-toast.component';
-import { LevelUpBannerComponent } from './shared/activity/level-up-banner.component';
-import { ForgeFlameComponent } from './shared/economy/forge-flame.component';
 import { CloudSaveMergeDialogComponent } from './shared/cloud-save/cloud-save-merge-dialog.component';
 import { DeviceLeaseBannerComponent } from './shared/save/device-lease-banner.component';
 import { SiteNoticeOutletComponent } from './shared/notice/site-notice-outlet.component';
-import { KeeperPanelComponent } from './shared/keeper/keeper-panel.component';
 import { CloudSaveChipComponent } from './shared/cloud-save/cloud-save-chip.component';
 import { CloudSaveButtonComponent } from './shared/cloud-save/cloud-save-button.component';
 import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
@@ -39,17 +32,15 @@ import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.compon
 import { ForgeSceneComponent } from './shared/forge-scene/forge-scene.component';
 import { ForgeEffectsToggleComponent } from './shared/forge-scene/forge-effects-toggle.component';
 import { PwaOutletComponent } from './shared/pwa/pwa-outlet.component';
-import { NpcDialogueComponent } from './shared/npc/npc-dialogue.component';
 import { OnboardingOutletComponent } from './shared/onboarding/onboarding-outlet.component';
 import { OfflineOutletComponent } from './shared/offline/offline-outlet.component';
-import { ForgedTodayComponent } from './shared/social-proof/forged-today.component';
-import { InspectComponent } from './shared/entity/inspect.component';
 import { Inspect3dOutletComponent } from './shared/inspect-3d/inspect-3d-outlet.component';
 import { CurrentWorkTileComponent } from './shared/activity/current-work-tile.component';
 import { PlaceBannerOutletComponent } from './shared/nav/place-banner-outlet.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
 import { ErrorHandler, APP_INITIALIZER } from '@angular/core';
 import { PwaService } from './shared/pwa.service';
+import { DeferredOverlaysComponent } from './shared/shell/deferred-overlays.component';
 
 
 @NgModule({
@@ -73,17 +64,10 @@ import { PwaService } from './shared/pwa.service';
     // Standalone — imported here so the (non-standalone) HeaderComponent and
     // AppComponent templates can use them without the module graph moving.
     XpBarComponent,
-    AchievementDropComponent,
-    DiscoveryToastComponent,
-    QuestDrawerComponent,
     QuestTriggerComponent,
-    QuestToastComponent,
-    LevelUpBannerComponent,
-    ForgeFlameComponent,
     CloudSaveMergeDialogComponent,
     DeviceLeaseBannerComponent,
     SiteNoticeOutletComponent,
-    KeeperPanelComponent,
     CloudSaveChipComponent,
     CloudSaveButtonComponent,
     GoldTickerComponent,
@@ -91,15 +75,13 @@ import { PwaService } from './shared/pwa.service';
     ForgeSceneComponent,
     ForgeEffectsToggleComponent,
     PwaOutletComponent,
-    InspectComponent,
     Inspect3dOutletComponent,
-    NpcDialogueComponent,
     CurrentWorkTileComponent,
     PlaceBannerOutletComponent,
     // Standalone, imported here because AppComponent's template is not.
+    DeferredOverlaysComponent,
     OnboardingOutletComponent,
-    OfflineOutletComponent,
-    ForgedTodayComponent
+    OfflineOutletComponent
 ],
   providers: [
     provideFirebaseApp(() => getApps().length ? getApp() : initializeApp(environment.firebase)),

@@ -65,8 +65,9 @@ describe('AppComponent', () => {
       'app-offline-outlet',
       'app-cloud-save-merge-dialog',
       'app-command-palette',
-      'app-npc-dialogue',
-      'app-forge-flame',
+      // npc-dialogue, forge-flame and the other idle overlays mount on idle
+      // inside this host (bundle-diet), so the host is what must sit outside <main>.
+      'app-deferred-overlays',
       'app-site-notice-outlet',
     ];
     const main = el.querySelector('main#main-content')!;
