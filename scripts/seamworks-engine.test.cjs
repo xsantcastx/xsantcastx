@@ -2993,8 +2993,8 @@ test('render budget: a phone bakes the town backdrop once and blits it; desktop 
   const painting = { complete: true, naturalWidth: 1536, naturalHeight: 864 };
   const baked = [];
   browserDocument.createElement = () => {
-    const canvas = { width: 0, height: 0, ops: [] };
-    canvas.getContext = () => new Proxy({}, { get: (_, k) => (...args) => { canvas.ops.push(k); return { addColorStop() {} }; }, set: () => true });
+    const canvas = { width: 0, height: 0, ops: [], images: [] };
+    canvas.getContext = () => new Proxy({}, { get: (_, k) => (...args) => { canvas.ops.push(k); if (k === 'drawImage') canvas.images.push(args[0]); return { addColorStop() {} }; }, set: () => true });
     baked.push(canvas);
     return canvas;
   };
@@ -3011,7 +3011,8 @@ test('render budget: a phone bakes the town backdrop once and blits it; desktop 
       });
       engine.frameDt = 1 / 60;
       for (let n = 0; n < 30; n++) { engine.setInput('right', n < 20); engine.update(1 / 60); engine.render(); }
-      const caches = baked.filter(c => c.ops.includes('drawImage'));
+      // The backdrop cache is the canvas the painting is drawn into (the pixel props and figures bake their own small sprites).
+      const caches = baked.filter(c => c.images.includes(painting));
       if (lite) {
         assert.equal(caches.length, 1, 'one backdrop canvas, built once, walking or not');
         assert.deepEqual(caches[0].ops.filter(op => op === 'drawImage').length, 1, 'the painting was drawn into it once');
