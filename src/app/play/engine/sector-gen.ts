@@ -41,6 +41,7 @@ import {
 import { deepColumn, deepNodes } from './underhearth-gen';
 import { GATE_ROOM, realmColumn, realmNodes, stampGate } from './realm-gen';
 import { gateAt, RIFT_GATES, RIFT_REALMS } from '../../shared/delve/rift-gates.model';
+import { findsInto, LIVING_NODES } from './living-world';
 
 export {
   LATTICE, latticeCache, mix32, noiseColumn, SECTOR, SECTOR_GV, sectorSeed, valueNoise, valueNoise1,
@@ -389,6 +390,9 @@ export function generateSectorColumn(ctx: SectorContext, sx: number): SectorColu
     stamp(builder, plan, out);
     out.structures.push({ kind: plan.kind, col: plan.col, row: plan.row, w: plan.w, h: plan.h });
   }
+  // The Living World (living-world.ts): a find in every stratum at least every other column, clear of the
+  // structures above and never in the core. Its own salt: nothing else the generator lays moves.
+  if (!core(col0) && !core(col0 + SECTOR - 1)) findsInto(ctx.seed, out, sx, builder, sx >= coreSectorCols(spec) ? sx - coreSectorCols(spec) + 1 : -sx, core);
   // A hall belongs to the column holding its first cell (it spawns once, not twice).
   out.halls = out.halls.filter(hall => hall.col0 >= col0 && hall.col0 < col0 + SECTOR);
   // The bedrock floor is the world's: nothing stamped above it ever reaches it, but say so.
@@ -443,4 +447,6 @@ export function columnHash(gen: Pick<SectorColumnGen, 'kind' | 'liqType' | 'liqL
 export const SECTOR_NODES: readonly string[] = ['root-loam', 'petrified-trunk', 'shadow-root', 'cinder-vein', 'hard-rock', 'ember-rock', 'waycache', 'slag-vein',
   'grotto-stone', 'glowcap', 'rift-shrine', 'scorched-basalt', 'heartstone-vein', 'bedrock', 'inscription', ...deepNodes(),
   // The Rift Gates and the realm Delves behind them.
-  'rift-frame', 'rift-splinter', ...RIFT_REALMS.map(realm => RIFT_GATES[realm].node), ...realmNodes()].filter((id, i, all) => all.indexOf(id) === i);
+  'rift-frame', 'rift-splinter', ...RIFT_REALMS.map(realm => RIFT_GATES[realm].node), ...realmNodes(),
+  // The Living World's finds and the wilds' trees (living-world.ts).
+  ...LIVING_NODES].filter((id, i, all) => all.indexOf(id) === i);
