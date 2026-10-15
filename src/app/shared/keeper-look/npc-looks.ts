@@ -211,7 +211,7 @@ export function townsfolkLook(seed: string, colors: FolkColors, shape: 'robe' | 
     hair: pick(HAIR_STYLES.filter(h => h !== 'mohawk')),
     hairColor: Math.floor(r() * 8),
     eyes: pick(['round', 'narrow'] as const),
-    face: pick(['none', 'none', 'freckles', 'beard'] as const),
+    face: pick(['none', 'rosy', 'freckles', 'beard'] as const),
     skin: Math.floor(r() * 8) % SKIN_TONES.length,
   });
   const garb: KeeperGarb = { tunic: colors.robe, trim: colors.trim, trousers: colors.shade };

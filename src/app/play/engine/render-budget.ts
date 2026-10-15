@@ -49,10 +49,17 @@ export interface RenderBudget {
    * largest single cost left in the Delve (docs/handoff/play-perf.md).
    */
   readonly smoothDarkness: boolean;
+  /**
+   * Whether the Delve's distant cave (cave-backdrop.ts) is pattern-filled only where it can show: the rows
+   * of generated air in view, one cell of margin round them. Under solid rock the opaque tiles hide it, so
+   * there it is a flat fill of the far layer's colour (two full-frame pattern fills were ~10 ms of a 4×
+   * throttled phone frame). Same pixels wherever terrain is drawn over it (docs/handoff/delve-perf.md).
+   */
+  readonly maskBackdrop: boolean;
 }
 
-export const FULL_BUDGET: RenderBudget = { tier: 'full', maxPixelRatio: 2, glows: true, blendModes: true, cacheBackdrop: false, smoothDarkness: true };
-export const LITE_BUDGET: RenderBudget = { tier: 'lite', maxPixelRatio: 1.5, glows: false, blendModes: false, cacheBackdrop: true, smoothDarkness: false };
+export const FULL_BUDGET: RenderBudget = { tier: 'full', maxPixelRatio: 2, glows: true, blendModes: true, cacheBackdrop: false, smoothDarkness: true, maskBackdrop: false };
+export const LITE_BUDGET: RenderBudget = { tier: 'lite', maxPixelRatio: 1.5, glows: false, blendModes: false, cacheBackdrop: true, smoothDarkness: false, maskBackdrop: true };
 
 /**
  * The budget for a device. `coarse`: the primary pointer is a finger and

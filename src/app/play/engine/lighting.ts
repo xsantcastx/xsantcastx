@@ -214,10 +214,13 @@ export class DarknessLayer {
    * a sample lifted from the ambient dark is tinted by `alpha` × how far it was
    * lifted, folded into the same blend (tint, then warmth, then dark):
    *   colour = U·u·(1−w)(1−d) + W·w·(1−d) + T·d,  alpha = 1 − (1−u)(1−w)(1−d).
+   * `over` (phone tier only): called with the overlay context after the dark is in it, to lay source-over
+   * light on top (the halos and heat columns); `k` is overlay px per CSS px. Not called when smooth.
    */
   draw(target: CanvasRenderingContext2D, width: number, height: number, scale: number, cameraX: number, cameraY: number,
     lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK, under?: { color: string; alpha: number }, smooth = true,
-    shade?: LightShade | null, warm?: { color: string; alpha: number }, extra?: readonly Light[], extraCount = 0): boolean {
+    shade?: LightShade | null, warm?: { color: string; alpha: number }, extra?: readonly Light[], extraCount = 0,
+    over?: (overlay: CanvasRenderingContext2D, k: number) => void): boolean {
     const step = LIGHT_STEP;
     // One sample of margin all round, so the filtered edge never shows.
     const gx0 = Math.floor(cameraX / step) - 1, gy0 = Math.floor(cameraY / step) - 1;
@@ -261,6 +264,11 @@ export class DarknessLayer {
       c.clearRect(0, 0, this.canvas.width, this.canvas.height);
       c.imageSmoothingEnabled = true;
       c.drawImage(grid.canvas, 0, 0, gw, gh, left * k, top * k, gw * span * k, gh * span * k);
+      if (over) {
+        // Source-over light the caller lays over the dark (halos, heat): drawn into the overlay instead of the
+        // frame. Associative, so the same pixels at the overlay's resolution. Left at source-over, alpha 1.
+        c.save(); over(c, k); c.restore();
+      }
       target.imageSmoothingEnabled = false;
       target.drawImage(this.canvas, 0, 0, width, height);
     }

@@ -2,7 +2,7 @@ import { coarseDevice, renderBudget, type RenderBudget } from './render-budget';
 import { Atmosphere } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import type { KeeperContext } from '../world/keeper-lines';
-import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { FIGURE_TOP, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { CREATURE_ART, CREATURE_PIXEL, creatureFrame, CreaturePainter } from './creature-pixel';
 import { PropPainter } from './prop-pixel';
 import { itemIcon, plaqueIcon } from '../../shared/art/item-icons';
@@ -26,7 +26,7 @@ import {
   climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
   blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
   applyLiquidDiff, LIQUID_FULL, LIQUID_IDS, LIQUID_INK, LIQUID_LAVA, LIQUID_WATER, liquidDiff, liquidLayout, LiquidKind,
-  isRail,
+  isRail, BiomeDef,
 } from './terrain';
 import {
   cartPoint, mountCart, railUnder, ropeCells, ropeStrand, ropeTie, stepCart, stepGrapple, throwGrapple, grappleTarget, nextRail,
@@ -128,6 +128,8 @@ const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
 /** How far from the Keeper's chest a click, a tap or the smart cursor reaches a cell, in cells (Terraria's tile reach). */
 export const REACH_CELLS = 4.5;
 const DELVE_REACH = CELL * REACH_CELLS;
+/** World px per art px of a pixel Keeper at figure scale 1 (the 196 box / 49; keeper-paint.ts). */
+const KEEPER_ART_PX = 4;
 /** Forgiving jumps: a jump pressed this long before landing still happens, and one pressed this long after walking off a ledge too. */
 const JUMP_BUFFER = .12;
 const COYOTE = .1;
@@ -328,6 +330,9 @@ export class SeamworksEngine {
   /** A shadowBlur radius under the render budget: as given on desktop, 0 on a phone. */
   private blur(radius: number): number { return this.budget.glows ? radius : 0; }
   private landing = 0;
+  /** A flash of feeling on the Keeper's face (loot, a level up) and when it ends (engine seconds). */
+  private feelFace: 'happy' | 'surprised' | null = null;
+  private feelUntil = 0;
   private stepCount = 0;
   private stepAt = 0;
   private reportAt = 0;
@@ -1334,6 +1339,10 @@ export class SeamworksEngine {
     const next = new KeeperPainter(look, gear);
     if (next.key !== this.keeperPainter?.key) this.keeperPainter = next;
   }
+  /** Light up the pixel Keeper's face for a moment: joy on a level up, surprise on a rare find. Visual only. */
+  keeperFeel(face: 'happy' | 'surprised', seconds = 1): void {
+    this.feelFace = face; this.feelUntil = this.elapsed + seconds;
+  }
   private peerPainter(id: string): KeeperPainter | null {
     if (!this.canPaint) return null;
     let painter = this.peerPainters.get(id);
@@ -1738,7 +1747,7 @@ export class SeamworksEngine {
     if (!this.glim.shown) return null;
     const x = 'station' in target ? this.stations.find(row => row.id === target.station)?.x : target.x;
     if (x === undefined || !Number.isFinite(x)) return null;
-    this.glim.flyTo(x, this.terrain ? this.player.y - 150 : FLOOR - 170);
+    this.glim.flyTo(x, this.terrain ? this.player.y - 110 : FLOOR - 130);
     return x;
   }
   /** The bond's sense: Glim glows brighter (the host decides when; a Mirror Substitute's dim still wins). */
@@ -2925,6 +2934,7 @@ export class SeamworksEngine {
         if (this.options.onLoot?.({ id: drop.id, coins: drop.coins, ore: drop.ore, material: drop.material }) === false) continue;
         this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
         this.coins += drop.coins; drop.age = -1;
+        this.keeperFeel('happy', .8);
         this.launchFlight(drop);
         if (drop.coins) this.say('play.hud.eng.collectedCoins', `Collected ${drop.coins} coins.`, { n: drop.coins });
         else this.say('play.hud.eng.collected', `Collected ${drop.label ?? 'Cinder Ore'}.`, { name: drop.label ?? 'Cinder Ore' });
@@ -3705,8 +3715,11 @@ export class SeamworksEngine {
       // The pixel Keeper (keeper-paint.ts): its own frames, gear as layers, the weapon at its grip.
       const aura = gear ? this.loadout.auraRarity : null;
       if (aura) this.drawAura(c, aura, time);
+      // The player's own Keeper (gear) shows the landing squash and a flash of feeling; peers stay plain.
+      const face = gear && this.feelFace && this.elapsed < this.feelUntil ? this.feelFace : undefined;
       painter.draw(c, box.h / 49, {
         action: keeperAction(shown, fallen), time, attackT, rim: feel.rim, reduced: this.reducedMotion, weapon: gear,
+        squash: feel.landing, ...(face ? { face } : {}),
       });
       return;
     }
@@ -4269,6 +4282,48 @@ export class SeamworksEngine {
     }
     return true;
   }
+  /**
+   * Phones only (render-budget.ts `cacheBackdrop`): the Delve's sky while its surface is in view — the floor
+   * colour, the painting at 50% and the dusk shade, as the live path draws them, but from two baked canvases:
+   * the painting pre-scaled to device pixels (laid at the parallax offset snapped to a whole device pixel, so
+   * the blit is a copy, not a resample) and the shade, which is screen-fixed, baked at the frame's size (a
+   * copy instead of a gradient shaded per pixel). Rebuilt when the painting, view or pixel scale changes.
+   * The two were ~4 ms of an unthrottled software-raster phone frame on the wide traverse.
+   */
+  private delveSky: { paint: HTMLCanvasElement; shade: HTMLCanvasElement; image: HTMLImageElement; width: number; view: number; scale: number } | null = null;
+  private delveSkyFailed = false;
+  private drawDelveSky(c: CanvasRenderingContext2D, bg: HTMLImageElement, viewport: number): boolean {
+    if (this.delveSkyFailed) return false;
+    const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
+    const ps = this.pixelScale;
+    let sky = this.delveSky;
+    if (!sky || sky.image !== bg || sky.width !== bgWidth || sky.view !== viewport || sky.scale !== ps) {
+      const make = () => typeof document !== 'undefined' && typeof document.createElement === 'function' ? document.createElement('canvas') : null;
+      const paint = sky?.paint ?? make(), shade = sky?.shade ?? make();
+      const p = paint?.getContext('2d'), s = shade?.getContext('2d');
+      if (!paint || !shade || !p || !s) { this.delveSkyFailed = true; return false; }
+      paint.width = Math.ceil(bgWidth * ps); paint.height = Math.ceil(720 * ps);
+      p.setTransform(ps, 0, 0, ps, 0, 0); p.clearRect(0, 0, bgWidth, 720);
+      p.globalAlpha = .5; p.drawImage(bg, 0, 0, bgWidth, 720); p.globalAlpha = 1;
+      shade.width = Math.ceil(viewport * ps); shade.height = Math.ceil(720 * ps);
+      s.setTransform(ps, 0, 0, ps, 0, 0); s.clearRect(0, 0, viewport, 720);
+      s.fillStyle = this.sceneShade(s); s.fillRect(0, 0, viewport, 720);
+      sky = this.delveSky = { paint, shade, image: bg, width: bgWidth, view: viewport, scale: ps };
+    }
+    const snap = (v: number) => Math.round(v * ps) / ps;
+    const w = sky.paint.width / ps, h = sky.paint.height / ps;
+    c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
+    const oy = snap(-this.cameraY * .6);
+    if (this.world) {
+      // Endless: the painting repeats, so a sky far east or west of the shaft is never bare.
+      // The two copies abut on a whole device pixel: each lays exactly round(bgWidth · ps) columns.
+      const ox = snap(-((((this.camera * .16) % bgWidth) + bgWidth) % bgWidth)), sw = Math.min(sky.paint.width, Math.round(bgWidth * ps));
+      c.drawImage(sky.paint, 0, 0, sw, sky.paint.height, ox, oy, sw / ps, h);
+      c.drawImage(sky.paint, 0, 0, sw, sky.paint.height, ox + sw / ps, oy, sw / ps, h);
+    } else c.drawImage(sky.paint, snap(-this.camera * .16), oy, w, h);
+    c.drawImage(sky.shade, 0, 0, sky.shade.width / ps, sky.shade.height / ps);
+    return true;
+  }
   /** The warm-to-dusk wash over every scene. Built once per context rather than every frame. */
   private readonly shades = new WeakMap<CanvasRenderingContext2D, CanvasGradient>();
   private sceneShade(c: CanvasRenderingContext2D): CanvasGradient {
@@ -4313,7 +4368,8 @@ export class SeamworksEngine {
     // Below a delve's surface the distant cave fills the frame (it shows through the caverns);
     // the town painting and its shade are drawn only while the surface is in view.
     const underground = !!t && t.top - this.cameraY <= 0;
-    if (!cached && !underground && !layered && !pixelBack) {
+    const baked = !cached && !underground && !!t && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawDelveSky(c, bg, viewport);
+    if (!cached && !underground && !layered && !pixelBack && !baked) {
       c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
       if (bg?.complete && bg.naturalWidth) {
         const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
@@ -4328,7 +4384,7 @@ export class SeamworksEngine {
       c.fillStyle = this.sceneShade(c); c.fillRect(0, 0, viewport, 720);
     }
     if (lift) this.surface.sky(c, viewport, lift);
-    if (t) this.caveBackdrop.draw(c, t, this.camera, this.cameraY, viewport, 720);
+    if (t) this.caveBackdrop.draw(c, t, this.camera, this.cameraY, viewport, 720, this.budget.maskBackdrop ? this.pixelScale : 0);
     const jolt = this.shake > 0 ? this.shake : 0;
     c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), -this.cameraY + (jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0));
     const motionTime = this.reducedMotion ? 0 : this.elapsed;
@@ -4396,6 +4452,9 @@ export class SeamworksEngine {
     for (const monster of this.monsters) {
       if (monster.hp <= 0 && monster.dying <= 0) continue;
       if (monster.x < this.camera - 220 || monster.x > this.camera + viewport + 220) continue;
+      // A delve stacks halls: a creature on a floor above or below the view is not drawn (nor its rig deformed).
+      // Its body stands on the floor; 720 world px above it covers the tallest figure, the Banked Furnace.
+      if (t) { const floor = monster.def.floorY ?? FLOOR; if (floor < this.cameraY - 60 || floor - 720 > this.cameraY + 720) continue; }
       // The Underhearth's creatures are pixel figures of their own (no painting yet).
       if (monster.def.trait) { this.drawDeepCreature(c, monster, motionTime); continue; }
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
@@ -4445,9 +4504,10 @@ export class SeamworksEngine {
       c.beginPath(); c.ellipse(0, 0, 32, 8, 0, 0, Math.PI * 2); c.fill(); c.stroke();
       c.font = '600 16px "Cormorant Garamond", Georgia, serif'; c.textAlign = 'center';
       const labelWidth = Math.min(240, c.measureText(view.peer.name).width + 22);
-      c.fillStyle = '#1a120fe6'; c.fillRect(-labelWidth / 2, -208, labelWidth, 24);
-      c.fillStyle = '#ffe1b0'; c.fillText(view.peer.name, 0, -190, 220);
-      this.speechBubble(c, view.peer.id, -214);
+      const peerTop = -((this.peerPainter(view.peer.id)?.top ?? FIGURE_TOP + 6) * KEEPER_ART_PX + 12);
+      c.fillStyle = '#1a120fe6'; c.fillRect(-labelWidth / 2, peerTop - 24, labelWidth, 24);
+      c.fillStyle = '#ffe1b0'; c.fillText(view.peer.name, 0, peerTop - 6, 220);
+      this.speechBubble(c, view.peer.id, peerTop - 30);
       const shown = this.present(view.peer.animation, view.peer.x, view.y);
       const motion = this.keeperMotion(shown, motionTime + view.x);
       const warm = shown === 'rest';
@@ -4469,12 +4529,14 @@ export class SeamworksEngine {
     c.beginPath(); c.ellipse(0, 0, 46, 10, 0, 0, Math.PI * 2); c.fill(); c.stroke();
     c.font = '600 15px "Cormorant Garamond", Georgia, serif';
     const youWidth = Math.min(120, c.measureText('You').width + 20);
+    // The plate rides just over the head: the chibi Keeper's own top (hair, hat, helm crest), else the painting's.
+    const tip = -(this.keeperPainter ? this.keeperPainter.top * KEEPER_ART_PX + 8 : 174);
     c.fillStyle = '#1a120fe6'; c.textAlign = 'center';
-    c.fillRect(-youWidth / 2, -204, youWidth, 22);
-    c.beginPath(); c.moveTo(-6, -182); c.lineTo(6, -182); c.lineTo(0, -174); c.closePath(); c.fill();
+    c.fillRect(-youWidth / 2, tip - 30, youWidth, 22);
+    c.beginPath(); c.moveTo(-6, tip - 8); c.lineTo(6, tip - 8); c.lineTo(0, tip); c.closePath(); c.fill();
     c.fillStyle = '#ffe1b0';
-    c.fillText('You', 0, -188);
-    this.speechBubble(c, this.selfId, -234);
+    c.fillText('You', 0, tip - 14);
+    this.speechBubble(c, this.selfId, tip - 60);
     c.restore();
     c.save(); c.translate(this.player.x, this.player.y); c.scale(this.facing * k, k);
     const shown = this.present(this.pose(), this.player.x, this.player.y);
@@ -4547,6 +4609,39 @@ export class SeamworksEngine {
     g.update({ dt: this.frameDt, time, reduced: this.reducedMotion, keeperX: this.player.x, keeperY: this.player.y, facing: this.facing, figure: this.figure, delve: !!this.terrain });
     g.dim = this.monsters.some(m => m.hp > 0 && m.def.creature === 'mirror-substitute' && Math.abs(m.x - this.player.x) < 480);
     g.draw(c, time, this.reducedMotion, this.budget.glows, this.figure);
+  }
+  /** Per-frame inputs of drawHeat, refilled each frame (no closure per frame). */
+  private readonly heatFrame = { t: null as Terrain | null, biome: null as BiomeDef | null, time: 0, viewport: 0, count: 0, scale: 1, folded: false };
+  /** DarknessLayer's `over` hook: the heat drawn into the phone overlay, in its pixels (`k` overlay px per CSS px). */
+  private readonly heatInOverlay = (o: CanvasRenderingContext2D, k: number): void => {
+    const f = this.heatFrame, s = f.scale * k;
+    o.setTransform(s, 0, 0, s, -this.camera * s, -this.cameraY * s);
+    this.drawHeat(o);
+    f.folded = true;
+  };
+  /**
+   * Coloured light from exposed glowing cells (glowcaps wash the Grotto blue, embers the Halls red) and the
+   * heat columns, in world coordinates on `c` (the frame, or the phone's darkness overlay).
+   */
+  private drawHeat(c: CanvasRenderingContext2D): void {
+    const f = this.heatFrame, t = f.t!, biome = f.biome!, time = f.time, viewport = f.viewport;
+    for (let n = 0; n < f.count; n++) {
+      const index = this.halosAt[n], col = t.colOf(index), row = t.rowOf(index);
+      const glow = TERRAIN_NODE_LIST[t.kind[index]].glow;
+      if (!glow) continue;
+      const pulse = this.reducedMotion ? 1 : .85 + .15 * Math.sin(time * 1.7 + index * .37);
+      // Placed lights (torches, the camp fire) throw a stronger warm pool than a glowing vein.
+      const placed = !TERRAIN_NODE_LIST[t.kind[index]].solid;
+      this.halos.halo(c, (col + .5) * CELL, t.top + (row + .5) * CELL, glow.radius * (placed ? 1.2 : 1.4), glow.color, (placed ? .3 : .2) * pulse, !this.budget.blendModes);
+    }
+    if (biome.shimmer) {
+      // Heat rising: slow columns of warm air. Still under reduced motion.
+      for (let n = 0; n < 4; n++) {
+        const drift = this.reducedMotion ? 0 : Math.sin(time * .6 + n * 1.9) * 40;
+        const x = this.camera + (n + .5) * viewport / 4 - 70 + drift;
+        this.halos.band(c, x, this.cameraY, 140, 720, biome.wash.color, .05 + (this.reducedMotion ? 0 : .02 * Math.sin(time * 1.3 + n)));
+      }
+    }
   }
   /**
    * Delve light, in world space: debris, then the darkness overlay with the
@@ -4621,7 +4716,14 @@ export class SeamworksEngine {
     c.setTransform(this.pixelRatio, 0, 0, this.pixelRatio, 0, 0);
     // Ink-blind (BiomeDef.gloom): the unlit dark is deeper than any stratum's.
     const ambient = biome.gloom ? Math.max(.92, ambientDarkness(this.cameraY + 360 - t.top)) : ambientDarkness(this.cameraY + 360 - t.top);
-    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambient, biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT, this.lavaPool.lights, this.lavaPool.count);
+    // Phone: the coloured halos and heat columns are plain source-over, so they ride inside the darkness
+    // overlay after its dark (source-over is associative: the same pixels at the overlay's resolution, on a
+    // ninth of the pixels). Desktop keeps them additive on the frame.
+    const heat = this.heatFrame;
+    heat.t = t; heat.biome = biome; heat.time = time; heat.viewport = viewport; heat.count = haloCount;
+    heat.scale = scale; heat.folded = false;
+    const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambient, biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT, this.lavaPool.lights, this.lavaPool.count,
+      this.budget.blendModes ? undefined : this.heatInOverlay);
     c.restore();
     if (fold && !dark) {
       // No overlay canvas: the tint on its own, as before.
@@ -4629,25 +4731,9 @@ export class SeamworksEngine {
       c.fillStyle = fold.color; c.fillRect(this.camera, this.cameraY, viewport, 720);
       c.restore();
     }
+    // Restored at the end: the motes and glints below draw under the same composite as the heat.
     c.save(); c.globalCompositeOperation = this.budget.blendModes ? 'lighter' : 'source-over';
-    // Coloured light from exposed glowing cells: glowcaps wash the Grotto blue, embers the Halls red.
-    for (let n = 0; n < haloCount; n++) {
-      const index = this.halosAt[n], col = t.colOf(index), row = t.rowOf(index);
-      const glow = TERRAIN_NODE_LIST[t.kind[index]].glow;
-      if (!glow) continue;
-      const pulse = this.reducedMotion ? 1 : .85 + .15 * Math.sin(time * 1.7 + index * .37);
-      // Placed lights (torches, the camp fire) throw a stronger warm pool than a glowing vein.
-      const placed = !TERRAIN_NODE_LIST[t.kind[index]].solid;
-      this.halos.halo(c, (col + .5) * CELL, t.top + (row + .5) * CELL, glow.radius * (placed ? 1.2 : 1.4), glow.color, (placed ? .3 : .2) * pulse, !this.budget.blendModes);
-    }
-    if (biome.shimmer) {
-      // Heat rising: slow columns of warm air. Still under reduced motion.
-      for (let n = 0; n < 4; n++) {
-        const drift = this.reducedMotion ? 0 : Math.sin(time * .6 + n * 1.9) * 40;
-        const x = this.camera + (n + .5) * viewport / 4 - 70 + drift;
-        this.halos.band(c, x, this.cameraY, 140, 720, biome.wash.color, .05 + (this.reducedMotion ? 0 : .02 * Math.sin(time * 1.3 + n)));
-      }
-    }
+    if (!heat.folded) this.drawHeat(c);
     this.motes.update(this.frameDt, biome, this.camera, this.cameraY, viewport, 720, this.reducedMotion);
     this.motes.draw(c);
     for (let n = 0; n < this.glintCount; n++) {

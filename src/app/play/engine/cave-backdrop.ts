@@ -104,26 +104,99 @@ export class CaveBackdrop {
    * `c` is in view world px (scaled, no camera translate). Returns true when
    * the terrain fills the whole view (nothing of the surface shows).
    */
-  draw(c: CanvasRenderingContext2D, t: Terrain, camera: number, cameraY: number, viewport: number, height: number): boolean {
+  draw(c: CanvasRenderingContext2D, t: Terrain, camera: number, cameraY: number, viewport: number, height: number, masked = 0): boolean {
     const top = t.top - cameraY;
     if (top >= height) return false;
     const smoothing = c.imageSmoothingEnabled;
     c.imageSmoothingEnabled = false;
+    if (masked > 0) this.openRuns(t, camera, cameraY, viewport, height, masked);
     let from = 0;
     for (const biome of t.biomes) {
       const to = Math.min(t.rows, biome.to);
       const y0 = Math.max(0, top + from * CELL), y1 = Math.min(height, top + to * CELL);
       from = to;
       if (y1 <= y0) continue;
-      this.fill(c, biome, 'far', camera, cameraY, viewport, y0, y1);
-      this.fill(c, biome, 'near', camera, cameraY, viewport, y0, y1);
+      if (masked > 0) {
+        // Under solid rock the opaque tiles hide the cave: a flat fill of the far layer's colour there,
+        // the two pattern layers only on the runs that can show (render-budget.ts `maskBackdrop`).
+        c.fillStyle = this.flat(biome); c.fillRect(0, y0, viewport, y1 - y0);
+        this.fill(c, biome, 'far', camera, cameraY, viewport, y0, y1, true);
+        this.fill(c, biome, 'near', camera, cameraY, viewport, y0, y1, true);
+      } else {
+        this.fill(c, biome, 'far', camera, cameraY, viewport, y0, y1);
+        this.fill(c, biome, 'near', camera, cameraY, viewport, y0, y1);
+      }
       if (from >= t.rows) break;
     }
     c.imageSmoothingEnabled = smoothing;
     return top <= 0;
   }
 
-  private fill(c: CanvasRenderingContext2D, biome: BiomeDef, layer: 'far' | 'near', camera: number, cameraY: number, viewport: number, y0: number, y1: number): void {
+  /** Runs to pattern-fill this frame: screen-world x, y, w, h, snapped to device pixels. */
+  private runs = new Float32Array(4 * 128);
+  private runCount = 0;
+  /** Per view cell: 1 when the cell or a neighbour is open (the cave can show there). Reused. */
+  private near = new Uint8Array(0);
+  private readonly flats = new Map<string, string>();
+
+  /**
+   * The cells in view where the distant cave can show, as horizontal runs per cell row: any cell that is not
+   * solid rock (generated air shows it; a dug wall or a placed thing may have see-through pixels), with one
+   * cell of margin, since a tile's edge piece may be rounded. Columns outside the loaded span are filled too
+   * (nothing is drawn over them), without margin.
+   * `pixelScale`: device px per world px, so every run edge lands on a device pixel (no seam between runs).
+   */
+  private openRuns(t: Terrain, camera: number, cameraY: number, viewport: number, height: number, pixelScale: number): void {
+    const c0 = Math.floor(camera / CELL), c1 = Math.floor((camera + viewport) / CELL);
+    const r0 = Math.max(0, Math.floor((cameraY - t.top) / CELL)), r1 = Math.min(t.rows - 1, Math.floor((cameraY + height - t.top) / CELL));
+    this.runCount = 0;
+    if (r1 < r0) return;
+    // Open cells over the view plus a ring of one, then dilated into `near`.
+    const w = c1 - c0 + 3, h = r1 - r0 + 3;
+    if (this.near.length < w * h * 2) this.near = new Uint8Array(w * h * 2);
+    const open = this.near, near = this.near, o = w * h;
+    for (let j = 0; j < h; j++) {
+      const row = r0 - 1 + j;
+      for (let i = 0; i < w; i++) {
+        const col = c0 - 1 + i;
+        // 1: open and in the loaded span (its neighbours' tiles may have see-through edges); 2: outside the span,
+        // where nothing is drawn over the cave, but a tile beside it is drawn as interior rock (solid() is true there).
+        open[j * w + i] = row < 0 || row >= t.rows ? 0 : !t.inside(col, row) ? 2 : !t.solid(col, row) ? 1 : 0;
+      }
+    }
+    for (let j = 1; j < h - 1; j++) {
+      for (let i = 1; i < w - 1; i++) {
+        const k = j * w + i;
+        near[o + k] = open[k] || (open[k - w - 1] | open[k - w] | open[k - w + 1] | open[k - 1] | open[k + 1] | open[k + w - 1] | open[k + w] | open[k + w + 1]) & 1 ? 1 : 0;
+      }
+    }
+    const snap = (v: number) => Math.round(v * pixelScale) / pixelScale;
+    for (let j = 1; j < h - 1; j++) {
+      const row = r0 - 1 + j;
+      const y0 = snap(t.top + row * CELL - cameraY), y1 = snap(t.top + (row + 1) * CELL - cameraY);
+      let i = 1;
+      while (i < w - 1) {
+        if (!near[o + j * w + i]) { i++; continue; }
+        let end = i + 1;
+        while (end < w - 1 && near[o + j * w + end]) end++;
+        const x0 = snap(Math.max(0, (c0 - 1 + i) * CELL - camera)), x1 = snap(Math.min(viewport, (c0 - 1 + end) * CELL - camera));
+        if (this.runCount * 4 + 4 > this.runs.length) { const grown = new Float32Array(this.runs.length * 2); grown.set(this.runs); this.runs = grown; }
+        const r = this.runCount++ * 4;
+        this.runs[r] = x0; this.runs[r + 1] = y0; this.runs[r + 2] = x1 - x0; this.runs[r + 3] = y1 - y0;
+        i = end;
+      }
+    }
+  }
+
+  /** The far layer's back colour for a biome: what the masked rock rows are filled with. */
+  private flat(biome: BiomeDef): string {
+    let color = this.flats.get(biome.id);
+    if (!color) { color = layerColors(biome, 'far')[3]!; this.flats.set(biome.id, color); }
+    return color;
+  }
+
+  /** Fill the band y0..y1 with one layer; `runs`: only the open runs (openRuns) inside the band. */
+  private fill(c: CanvasRenderingContext2D, biome: BiomeDef, layer: 'far' | 'near', camera: number, cameraY: number, viewport: number, y0: number, y1: number, runs = false): void {
     const spec = layer === 'far' ? FAR : NEAR;
     const art = this.importedPattern(c, biome, layer);
     if (art) {
@@ -133,13 +206,17 @@ export class CaveBackdrop {
       c.save();
       c.translate(ox, oy); c.scale(.5, .5);
       c.fillStyle = art.pattern;
-      c.fillRect(-ox * 2, (y0 - oy) * 2, viewport * 2, (y1 - y0) * 2);
+      if (runs) this.fillRuns(c, y0, y1, ox, oy, 2);
+      else c.fillRect(-ox * 2, (y0 - oy) * 2, viewport * 2, (y1 - y0) * 2);
       c.restore();
       return;
     }
     const pattern = this.pattern(c, biome, layer);
     if (!pattern) {
-      if (layer === 'far') { c.fillStyle = biome.wall[2]; c.fillRect(0, y0, viewport, y1 - y0); }
+      if (layer === 'far') {
+        c.fillStyle = biome.wall[2];
+        if (runs) this.fillRuns(c, y0, y1, 0, 0, 1); else c.fillRect(0, y0, viewport, y1 - y0);
+      }
       return;
     }
     const tw = spec.w * ART, th = spec.h * ART;
@@ -148,8 +225,19 @@ export class CaveBackdrop {
     c.save();
     c.translate(ox, oy); c.scale(ART, ART);
     c.fillStyle = pattern;
-    c.fillRect(-ox / ART, (y0 - oy) / ART, viewport / ART, (y1 - y0) / ART);
+    if (runs) this.fillRuns(c, y0, y1, ox, oy, 1 / ART);
+    else c.fillRect(-ox / ART, (y0 - oy) / ART, viewport / ART, (y1 - y0) / ART);
     c.restore();
+  }
+
+  /** The open runs clipped to y0..y1, in a frame translated by (ox, oy) and scaled by 1/k. */
+  private fillRuns(c: CanvasRenderingContext2D, y0: number, y1: number, ox: number, oy: number, k: number): void {
+    const r = this.runs;
+    for (let n = 0; n < this.runCount; n++) {
+      const x = r[n * 4], y = Math.max(y0, r[n * 4 + 1]), w = r[n * 4 + 2], bottom = Math.min(y1, r[n * 4 + 1] + r[n * 4 + 3]);
+      if (bottom <= y) continue;
+      c.fillRect((x - ox) * k, (y - oy) * k, w * k, (bottom - y) * k);
+    }
   }
 
   /** The imported layer's pattern once its image has loaded, else null. */
