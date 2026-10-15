@@ -223,10 +223,12 @@ async function measure(page: Page, menu: Menu): Promise<Omit<Report, 'menu' | 's
 
 /** Opens a menu at the current size; returns false when the menu did not appear. */
 async function openMenu(page: Page, menu: Menu): Promise<boolean> {
+  // A covered control must fail the menu fast, not wait out the whole test.
+  page.setDefaultTimeout(10_000);
   const needsSlate = menu.id.startsWith('slate');
   await seed(page, needsSlate ? { ...STASH, ...satchel({ 'cinder-ore': 24, 'mirror-slate-ii': 1 }) } : STASH);
   await openPlay(page, menu.query ?? '');
-  if (menu.open) await menu.open(page);
+  if (menu.open) { try { await menu.open(page); } catch { return false; } }
   const root = page.locator(menu.root).first();
   try { await expect(root).toBeVisible({ timeout: 8000 }); } catch { return false; }
   // Settle: every open animation finished, so we measure the end state.
@@ -292,7 +294,8 @@ if (MEASURE_ONLY) {
           if (m.blocked.length) failures.push(`${menu.id}: covered: ${m.blocked.join('; ')}`);
           if (landscape && m.coversMove) failures.push(`${menu.id}: covers the move stick`);
           // And it closes from its close button.
-          await page.locator(menu.close).first().click();
+          const closed = await page.locator(menu.close).first().click({ timeout: 5000 }).then(() => true, () => false);
+          if (!closed) { failures.push(`${menu.id}: its close could not be clicked`); continue; }
           await expect(page.locator(menu.root).first()).toBeHidden({ timeout: 4000 }).catch(() => failures.push(`${menu.id}: close did not close it`));
         }
         expect(failures, failures.join('\n')).toEqual([]);
