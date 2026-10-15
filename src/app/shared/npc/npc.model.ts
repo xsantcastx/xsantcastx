@@ -313,6 +313,14 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
     conditions: { storyBeat: 'a1.break' },
     lines: ['So the crack was drawn. I suspected it. I did not want to be the one who said so.'],
   },
+  // Act II (docs/handoff/story-act-2.md): after the Prism Mines' account.
+  {
+    npcId: 'aureth',
+    page: '*',
+    priority: 53,
+    conditions: { storyBeat: 'a2.prism' },
+    lines: ['You held it still long enough to end. The Court has more dawn in it this week.'],
+  },
   {
     npcId: 'aureth',
     page: '*',
@@ -378,6 +386,14 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
     conditions: { storyBeat: 'a1.eater' },
     lines: ['It sank. It did not end. I would know.'],
   },
+  // Act II: after the Ink Deeps' account.
+  {
+    npcId: 'verrin',
+    page: '*',
+    priority: 53,
+    conditions: { storyBeat: 'a2.ink' },
+    lines: ['The Warden\'s hall is only dark now. Dark is not the same as kept. You did that.'],
+  },
   {
     npcId: 'verrin',
     page: '*',
@@ -440,6 +456,21 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
     conditions: { storyBeat: 'a1.break' },
     lines: ['Five honest accounts. Liars are cheap; I already have a drawer of them.'],
   },
+  // Act II: the first account, and the act's end (the dialogue orb only; his town pool is full).
+  {
+    npcId: 'kael',
+    page: '*',
+    priority: 53,
+    conditions: { storyBeat: 'a2.furnace' },
+    lines: ['Four hammers under the anvil now, beside mine. It has never rung truer.'],
+  },
+  {
+    npcId: 'kael',
+    page: '*',
+    priority: 54,
+    conditions: { storyBeat: 'a2.lamp' },
+    lines: ['Not today. When the anvil rings on its own, come. You will know the sound.'],
+  },
   {
     npcId: 'kael',
     page: '/forge',
@@ -498,6 +529,14 @@ export const DIALOGUE: readonly DialogueTrigger[] = [
     priority: 50,
     conditions: { storyBeat: 'a1.dated' },
     lines: ['I have filed the dated one under "pending". Nothing has been pending this long.'],
+  },
+  // Act II: the Lost Cabinets' docket.
+  {
+    npcId: 'archivist',
+    page: '*',
+    priority: 53,
+    conditions: { storyBeat: 'a2.cabinets' },
+    lines: ['The docket has its first tick under \'Collected\'. In your hand. I may frame it.'],
   },
   {
     npcId: 'archivist',

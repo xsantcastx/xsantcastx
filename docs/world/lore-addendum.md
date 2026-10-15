@@ -1482,6 +1482,66 @@ them down*, *The Last Page*: the docket is full, and she sends her own *Curator'
 down. Keep looking; it suits you." Glim, once its notice is open: "Your glass is warm. Something rare is near. I
 can feel the latch from here."
 
+## Story Act II in the game: Five Witnesses (2026-10-15) — shipped, owner reviews in play
+
+Handoff: `docs/handoff/story-act-2.md`; every word in `shared/story/story.i18n.ts` (EN + ES), keeper lines in
+`play/world/life.i18n.ts`. Builds on: Act I's break (Kael: "Five witnesses. One from each realm. Bring me five
+honest accounts of what this crack did to them, and I'll tell you who drew the line."), the Underhearth's
+"Act II's first pages", the Rift Gates and the four realm Delves, the Lost Cabinets, Glim's bond and its
+first-lamp talk, Starfall Deep ("Below the Underhearth the rock gives out, and there is sky").
+
+**The reading.** The five witnesses are the five realms' undersides. Each account is given when that
+underside's keeper of the dark is ended and its chain closes: the **Furnace's** (Infernal, the Four), the
+**Ink Deeps'** (Umbral), the **Root Deeps'** (Verdant), the **Prism Mines'** (Luminous) and the **Orrery
+Wells'** (Celestial). All five say the same thing in their own realm's words: the line was drawn from below,
+on purpose, and it keeps going down. The Codex keeps them as *The Witness Accounts*.
+
+**The scenes** (the people of that realm, then Glim):
+
+- *Let it end* — Kael: "Four went down to bank it. I stayed up top and called it duty. You put it out, and now
+  I can call it what it was." Verrin files their ending "finished", a word never written on anything of
+  Verrin's. Kael: "That is one account… Four more realms owe me theirs." Glim draws the Furnace Hall in solid
+  line, "like closing a door gently".
+- *The account in the dark* — Verrin: the dark "was left behind. Nobody chose it. The Warden only kept it."
+  Rook Sable's chalk is right for once ("this way, if it is still this way"); two shards, "a door holds where
+  both ends agree". Glim draws the Deeps dashed: "Dashed is honest."
+- *The first cut* — Kesh: everything cut down there wants to be joined back on; "The crack was the first cut."
+  Siv: "And somebody made that cut on purpose. Kesh and I agree on that. Write it down before we stop
+  agreeing." Title **The Ungrafted** ("You came back the shape you went in. Down there, that is a title.").
+- *A promise held still* — Aureth: the light that sets under the Luminous was promised to someone and forgot
+  whom. Lune: every miner's bet on the light was right, "Odd thing to be sad about." Title **Dawn-Witness**.
+- *The assumed down* — Sera: the Compact assumed which way was down; "The line was in the assumption." The
+  Archivist refiles Nox's three-hundred-year-old margin note from insolence to evidence. Two shards "cut true
+  against the new down".
+- *Every column but one* (four Lost Cabinets, after the Fracture) — the Archivist's docket; Hollis Fenn
+  remembers the couriers' honeycomb ("no courier walked without it"); the Archivist: "The crack is the one
+  thing in the realms I never had a cabinet for." Glim: "Something rare is always nearer than the map says."
+- *The light coming up* (all five accounts) — Kael: "Fire, dark, root, light and measure. Every one says the
+  line goes down, further than the Furnace." The Archivist: the Orrery's last chart has one more line than it
+  ever drew, in the Archivist's own hand, not yet written. Kael keeps his promise for later ("Not today"), and
+  names the Keeper **Witness-Keeper**. Glim: "Someone patient left a lamp lit down there. I'd like to meet
+  them." (The first lamp: hinted, never named.)
+
+**The cliffhanger** (the end-of-act card): the fragment turns over on Kael's anvil by itself, warm side down;
+far under the Seamworks the rock gives out and there is sky, and a light is coming up through it, "not lava,
+and not Glim". Kael: "Starfall. I never wanted to say it aloud… Five witnesses, and a sixth mark at Keeper
+height. Sleep. The lock comes next." Sets up Act III · The Fivefold Lock and Starfall Deep (the sixth mark
+answers Act I's five tallies and Glim's Act III line "Six. Good. I was getting tired of five.").
+
+**The towns afterwards.** Orla Stave: "Gran's ledger has four crates never collected, marked 'banked'. I
+understand it now." · Verrin: "The Warden's hall is only dark now. Dark is not the same as kept. You did
+that." · Rook: "Your route through the Ink Deeps matched mine. I'll have to make mine wrong again." · Kesh:
+"Siv and I agreed about the Root Deeps. Do not tell her I said it was nice." · Siv: "Kesh wrote in the account
+that I was right. Then crossed out 'right', wrote 'early'." · Aureth: "You held it still long enough to end.
+The Court has more dawn in it this week." · Ilyra: "The prisms agree on one thing now, which they never do:
+the light comes from below." · Sera: "Nine Waystones recalibrated to the new down. Nox won't stop smiling.
+Unbearable." and, at the act's end, "Something is rising up the shaft at a constant rate. I'd prefer it were
+not constant." · Nox: "She signed it: 'the model was wrong'. I have read it eleven times. Every one a joy." ·
+the Archivist: "The docket has its first tick under 'Collected'. In your hand. I may frame it." · Tomas:
+"Every lantern in the Court leans toward the Seamworks tonight, like glowcaps at dawn." · Kael (dialogue):
+"Four hammers under the anvil now, beside mine. It has never rung truer." / "Not today. When the anvil rings
+on its own, come. You will know the sound."
+
 ## Day, night and the eclipse (2026-10-15) — shipped, owner reviews in play
 
 Builds on Canon ("the Eclipse is a recurring cosmic pressure"; Umbral: the Nocturne Archive "beneath a fractured moon
@@ -1513,10 +1573,8 @@ drifts the Unrecorded Corridors by dark; the **Afterimage Moth** rises in the Re
 eclipse — what the sun leaves behind when the moon crosses it.
 
 **Who notices the hour.** Tomas Rill at night ("Every lantern in the Court is mine now. Walk slowly; they like to be
-admired.") and under the eclipse ("suddenly everyone wants a lantern. I said it would come back."); Sera Quill at night
-("My error bars are smallest in the dark. Don't tell Nox.") and under it; Nox Aster under it ("Sera called this eclipse
-to the minute. I hate that it's beautiful."); Rook Sable at night; Siv Moss at dawn; Kesh Arbo at night (the
-Mirrorfin). Glim at nightfall ("I can draw the Moonwake now; it only holds still at night"), at the eclipse ("I am
+admired."); Sera Quill under the eclipse (the ledger); Rook Sable at night; the Arena's gatekeeper at dawn; the Trials
+Warden under the eclipse ("The gates go quiet under an eclipse. Even they stop to look up."). Glim at nightfall ("I can draw the Moonwake now; it only holds still at night"), at the eclipse ("I am
 brighter than the sky. I don't like it, and I love it.") and at dawn.
 
 **The music.** At night the realm's tune drops an octave and leaves longer silences; under the eclipse its third goes
