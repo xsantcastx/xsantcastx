@@ -102,3 +102,39 @@ JS heap at the start of the town window 19.5–19.8 → 17.2 MB. The town gain i
 - Firebase 301 destinations carry `?at=`; whether Hosting also appends the request's own query was not
   verified (the router's redirect does carry it).
 - Backend leftovers (owner only): see `page-audit.md`.
+
+## Deep clean (second pass, after the One World integration)
+
+- **Retired:** the Cursor Trail, XP Bar Skin and Theme Variant cosmetics (nothing draws them any more:
+  the trail engine, the XP bar and the site tint are gone). Their NPC-chain rewards now pay Achievement
+  Frames instead (Aureth → Prismatic, Verrin → Obsidian, the Merchant → Golden, Kael → a new **Molten**
+  frame); the Collection Log's 100% tier keeps its Eclipse Archivist title. The Title Prefix stays: the
+  Character sheet shows it and story/NPC/collection titles are paid in it.
+- **Secrets:** the ritual mode, console banner/handles and command-palette secrets are gone (their
+  triggers were `easter-eggs.js`, `cosmic-engine.js` and the palette). The Konami secret stays (the
+  sequence is still watched in-app). The Arena secret and the speed-demon egg now count panels opened
+  in the world (`noteVisit` → `CodexSecretsService.visit`, `GlobalEggTriggersService.noteHall`).
+- **WebGL forge scene** deleted (`shared/forge-scene/`: nothing mounted it), with its hooks in the
+  celebration service and the flame; `three`, `@types/three` and the unused `@angular/animations`
+  dropped from package.json (lockfile regenerated with `--package-lock-only`; a clean `npm ci` in a
+  scratch copy installs 898 packages, exit 0).
+- **Dead code:** 75 exported declarations no file used (AST-removed, tsc/build/Karma verified), the
+  quest drawer (its countdown moved to `shared/quests/quest-countdown.ts`), dead global CSS custom
+  properties, the infernal-evidence lore copy only the deleted chapter page showed (6 keys pruned).
+- **Assets:** the landing hero, the fractured-realms atlas, the war-table scene, the tab-bar icons, the
+  market SVG icons and the brand logo (unreferenced, not pipeline-managed; the scene-art script no
+  longer rebuilds the war table). Manifest-managed art for retired cosmetics (`cursor-trail`,
+  `xp-bar-skin`, `theme-variant`) is left for the importer (`scripts/import-assets.py`) to drop.
+- **Scripts:** `add-changelog-entry.js`, `seed-changelog.js`, `live-status.js` (Firestore feeds for the
+  deleted landing/live pages) and two tracked sync duplicates. `live-hook.js` stays: `.claude/settings.json`
+  runs it as a hook.
+- **e2e:** c4-character/c5-equipment, c6-forge and collection-log deleted (they drove the header pills,
+  Quick Inspect, the standalone Codex and URL-driven page state); the URL/Inspect tests dropped from
+  market-presentation, c9-first-loop and game-only-cutover; loadout-slot-picker opens the Character
+  panel in the world. Every remaining non-play spec passes.
+- **Left on purpose:** spec-only helpers (~50 exports pinned by unit tests), unused design-system
+  tokens in `src/styles/tokens/` (the DS is cherry-picked, see SYSTEMS), the PWA install prompt
+  (no longer mounted; kept with the PWA), `npcForPage` + `NPCS[].paths` and the atmosphere service.
+- **Backend leftovers (owner only, untouched):** `functions/src/market/*` + its test,
+  `scripts/generate-market-reference.mjs`, the market callables' CSP entries, the Firestore
+  `changelog` collection (nothing writes or reads it from the client now).

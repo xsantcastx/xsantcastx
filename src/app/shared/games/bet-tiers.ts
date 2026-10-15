@@ -8,8 +8,6 @@ import { GAMES_BET, gamesBetCap, gamesBetLadder } from '../economy/economy-curve
 
 const LADDER = gamesBetLadder();
 
-export const MIN_BET = GAMES_BET.min;
-
 /** Every bet open at this income, lowest first. Never empty. */
 export function betsOpen(goldPerSecond: number): number[] {
   const cap = gamesBetCap(goldPerSecond);

@@ -11,11 +11,7 @@
 
 /** The Delve's world rows with the Underhearth: the Magma Halls end at 55, the Underhearth runs 56..117, bedrock 118..119. */
 export const UNDERHEARTH_TOP = 56;
-export const UNDERHEARTH_BOTTOM = 117;
 export const DEEP_ROWS = 120;
-
-/** The Delving level the Breach seal holds for (the Skills panel's "Delve to depth 2": Delving 15). */
-export const UNDERHEARTH_DELVING = 15;
 
 /**
  * Once-per-player flags (the Delve save's `claimed`):
@@ -36,17 +32,11 @@ export function furnaceDayFlag(epochMs: number): string {
   const pad = (n: number) => String(n).padStart(2, '0');
   return `${FURNACE_DAY_PREFIX}${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
 }
-
-/** Satchel stacks. */
-export const IRONWOOD = 'ironwood';
 export const WAYSTONE_SHARD = 'waystone-shard';
 /** The summon: rubbings of the four marks, kept after the first fight. */
 export const FOUR_HAMMER_MARKS = 'four-hammer-marks';
 export const SEAM_CART = 'seam-cart';
 export const THORNROOT_GRAPPLE = 'thornroot-grapple';
-export const BARK_ROPE = 'bark-rope';
-export const SEAM_RAIL = 'seam-rail';
-export const RIFT_ANCHOR = 'rift-anchor';
 
 /** Rift Anchors a Delve holds at once. */
 export const ANCHOR_MAX = 8;

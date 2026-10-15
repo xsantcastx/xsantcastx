@@ -78,19 +78,8 @@
 :root {
   --primary-color: var(--violet);          /* DS: shared system energy */
   --secondary-color: #7b61ff;
-  --highlight-color: #ff00ff;
-  --surface-color: rgba(16, 22, 43, 0.72);
-  --surface-strong: rgba(18, 26, 52, 0.88);
-  --surface-hover: rgba(32, 45, 80, 0.88);
-  --glass-border: rgba(255, 255, 255, 0.08);
-  --glass-border-strong: rgba(139, 92, 246, 0.25);
-  --shadow-soft: 0 18px 45px -24px rgba(6, 9, 20, 0.8);
-  --shadow-strong: 0 26px 80px -30px rgba(0, 0, 0, 0.85);
   --text-color: #f6fbff;
   /* --text-muted now comes from tokens/semantic.css (var(--ink-2)). */
-  --page-max-width: 1120px;
-  --page-gutter: clamp(1.5rem, 5vw, 5rem);
-  --section-gap: clamp(3.5rem, 8vw, 6.5rem);
   /* --radius-md / --radius-lg now come from tokens/radius-borders.css (8px / 12px).
      Eclipse Realms surfaces are carved, not soft. */
   --success-color: var(--status-good);
@@ -100,9 +89,6 @@
      an archaeology project. Also gives future light-theme support a single
      place to override. --info-color aliases --secondary-color because the
      tool files already treat the brand purple as the "info" state. */
-  --error-color: var(--status-danger);
-  --warning-color: var(--status-caution);
-  --info-color: var(--status-info);        /* DS: info is cyan, not brand purple */
   --font-heading: 'Orbitron', sans-serif;
   --font-body: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
   /* Lore voice — the Godforge title and the realm quotes. Deliberately a
@@ -141,8 +127,6 @@
      dialog that caused it. */
   --z-base: var(--z-content);
   /* --z-sticky now comes from tokens/layers.css (100). Still below --z-drawer. */
-  --z-scene-veil: 30;
-  --z-drawer: 900;
   --z-header: 1000;
   --z-modal: 1200;
   --z-toast: 1300;
@@ -176,13 +160,9 @@
                    design, and only one may be on screen at a time.
      --z-skip      the skip-to-main link. Outranks everything when focused,
                    because a keyboard user must always be able to reach it. */
-  --z-inspect-3d: 1340;
-  --z-veil: 1360;
   --z-consent: 1450;
   --z-spectacle: 1500;
-  --z-cursor: 1550;
   --z-skip: 1600;
-  --z-boot: 1700;
 
   /* ===== Game surface =====
      One panel language for every Eclipse Realms surface. The Market and the
@@ -209,11 +189,9 @@
   --gf-accent-text: var(--forge-gold-text);
   --gf-interactive: var(--violet);
   --gf-interactive-lit: var(--violet-bright);
-  --gf-violet: #a78bff;
 
   --gf-radius-sm: 8px;
   --gf-radius: 12px;
-  --gf-radius-lg: 18px;
 }
 
 /* ===== Accessibility helpers =====
@@ -688,20 +666,6 @@ a.cta-button {
    attribute is present, no selector matches, and the site renders byte-for-byte
    as it did before the economy existed.
    ═══════════════════════════════════════════════════════════════════════════ */
-/* ─── Theme Variant ──────────────────────────────────────────────────────────
-   Repoints the two brand variables the whole site already draws from, rather
-   than adding a tint layer. Zero new composited surfaces — which matters, since
-   the mobile pass in 2.1.0 exists specifically because this site had eight
-   fixed full-viewport layers on a phone.
-
-   Umbral is lightened from its realm colour (#8B2252) because that value is a
-   background on the realm rail, and as a foreground on a near-black page it
-   does not clear 4.5:1. */
-html[data-cos-theme="luminous"] { --primary-color: var(--status-caution); --secondary-color: var(--gold-core); }
-html[data-cos-theme="umbral"]   { --primary-color: #d4547f; --secondary-color: #8B2252; }
-html[data-cos-theme="verge"]    { --primary-color: var(--status-info); --secondary-color: #5fb6ff; }
-html[data-cos-theme="nexus"]    { --primary-color: var(--status-good); --secondary-color: #34d399; }
-
 /* ─── Achievement Frame ──────────────────────────────────────────────────────
    The Codex's cards are the Collection Log's (`.cl-card`, inside
    <app-collection-log> on the Collection tab); the achievement wall is a
@@ -728,6 +692,11 @@ html[data-cos-frame="prismatic"] .cl-card:not(.cl-card--locked) {
 }
 /* Runed — the Archivist's, granted at step four. It had no rule, so wearing it
    painted nothing. */
+html[data-cos-frame="molten"] .cl-card:not(.cl-card--locked) {
+  border-color: var(--ember);
+  box-shadow: 0 0 14px -4px rgba(232, 117, 42, .7);
+}
+
 html[data-cos-frame="runed"] .cl-card:not(.cl-card--locked) {
   border-color: #5fb6ff;
   box-shadow: 0 0 0 1px rgba(95, 182, 255, .3), 0 0 22px -10px rgba(95, 182, 255, .9);
@@ -749,9 +718,6 @@ html[data-cos-frame="runed"] .cl-card:not(.cl-card--locked) {
    ═══════════════════════════════════════════════════════════════════════ */
 
 :root {
-  --gf-void: 10, 10, 15;
-  --gf-gold: var(--gold-core);
-  --gf-gold-text: var(--gold-core);
   --gf-ink: #f0f0f0;
   --gf-dim: rgba(240, 240, 240, 0.6);
   --gf-ease: cubic-bezier(0.22, 1, 0.36, 1);

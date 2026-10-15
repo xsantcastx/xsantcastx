@@ -165,10 +165,9 @@ export class AppComponent implements OnInit, OnDestroy {
     // Visibility API, so a backgrounded tab earns nothing.
     this.idle.init();
 
-    // Codex: passively note the secrets that are not easter eggs — ritual mode,
-    // the command palette, the unlinked routes. Global rather than page-local so
-    // a secret found on /home is recorded on /home, not the next time /codex is
-    // opened.
+    // Codex: load the secrets that are not easter eggs (the places with no
+    // sign; the side-scroller reports each one opened). Loaded here so a find
+    // is recorded the moment it happens, not the next time the Codex opens.
     this.codexSecrets.init();
 
     // ── Acquisition funnel and the first-run tutorial ────────────────────

@@ -754,7 +754,7 @@ export class CodexComponent implements OnInit, OnDestroy {
         found = this.hydrated && this.eggs.isFound(def.eggId);
         const at = found ? this.eggs.foundAt(def.eggId) : null;
         record = at ? { at, how: 'egg' } : null;
-      } else if (def.detector || def.route) {
+      } else if (def.route) {
         record = this.hydrated ? this.secretsService.record(def.id) : null;
         found = !!record;
       }

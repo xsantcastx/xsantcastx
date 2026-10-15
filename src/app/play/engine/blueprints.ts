@@ -27,8 +27,6 @@ export interface BlueprintCell { node: string | null; back: number }
 
 /** Back-wall ids per cell (Terrain.back). 0 = none: the sky shows through. */
 export const BACK_NONE = 0, BACK_BRICK = 1, BACK_TIMBER = 2, BACK_WINDOW = 3, BACK_DOOR = 4, BACK_STONE = 5;
-/** How many back-wall kinds there are (the renderer's palette table is this long). */
-export const BACK_KINDS = 6;
 
 /** A realm's materials: which nodes its walls, roofs and beams are, and its back-wall look. */
 export interface RealmPalette {
