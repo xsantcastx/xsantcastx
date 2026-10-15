@@ -451,6 +451,65 @@ export function compactOps(
 }
 
 /**
+ * Ops a never-synced device keeps before folding its own log locally.
+ * See {@link compactLocalLedger}.
+ */
+export const LOCAL_COMPACT_AFTER = 128;
+
+/**
+ * True when this ledger has never been through a cloud commit and holds only
+ * this device's history: no checkpoint, no acks, no other device seen, every
+ * op and every watermark this device's own. Only then can it fold locally —
+ * no copy of any of its ops exists anywhere else, so no other lineage can
+ * hold a fold of them.
+ */
+export function neverSynced(ledger: LocalLedgerLike, deviceId: string): boolean {
+  if (!deviceId || (ledger.checkpointId ?? 0) !== 0) return false;
+  if (Object.keys(ledger.acks ?? {}).length > 0) return false;
+  if (Object.keys(ledger.seenAt ?? {}).some(id => id !== deviceId)) return false;
+  const foreign = (applied: Record<string, number> | undefined) =>
+    Object.entries(applied ?? {}).some(([id, seq]) => id !== deviceId && seq > 0);
+  if (foreign(ledger.applied) || foreign(ledger.origin?.applied)) return false;
+  return (ledger.ops ?? []).every(op => op.deviceId === deviceId);
+}
+
+/** The fields the local fold reads: an EconomyLedger, or the service's looser PlayerEconomy. */
+export interface LocalLedgerLike {
+  ops?: EconomyOp[];
+  origin?: EconomyLedger | null;
+  applied?: Record<string, number>;
+  checkpointId?: number;
+  acks?: Record<string, number>;
+  seenAt?: Record<string, number>;
+}
+
+/**
+ * Fold a never-synced device's own log into its origin once it passes
+ * {@link LOCAL_COMPACT_AFTER}, keeping {@link COMPACT_KEEP}. Returns the same
+ * object when there is nothing to fold.
+ *
+ * The cloud commit is the only folder for anything that has been synced
+ * (`acknowledgeAndMaybeCompact`). A device that is never signed in had no
+ * folder at all, so its log grew one op per credit and per spend for as long
+ * as it was played — ~260 KB of localStorage an hour, until the 5 MB quota
+ * was full and every save on the device failed. When it does sign in later,
+ * `pickOrigin` meets two disjoint watermarks and merges the origins
+ * conservatively, keeping both, so nothing replays twice.
+ */
+export function compactLocalLedger<T extends LocalLedgerLike>(
+  ledger: T,
+  deviceId: string,
+  after = LOCAL_COMPACT_AFTER,
+  keep = COMPACT_KEEP,
+): T {
+  const ops = ledger.ops ?? [];
+  if (ops.length < after || !ledger.origin) return ledger;
+  if (!neverSynced(ledger, deviceId)) return ledger;
+  const folded = compactOps(ledger.origin, ops, keep);
+  return { ...ledger, origin: folded.origin, ops: folded.ops, applied: { ...folded.origin.applied } };
+}
+
+/**
  * Two ledgers into one. Commutative: merge(a, b) and merge(b, a) agree on
  * every field that the conflict policy can decide.
  */
@@ -632,7 +691,21 @@ function pickOrigin(a: EconomyLedger, b: EconomyLedger): EconomyLedger {
   const aN = appliedCount(a.applied);
   const bN = appliedCount(b.applied);
   if (aN === 0 && bN === 0) return conservativeMerge(a, b);
+  // Two lineages that folded different devices' ops (a never-synced device
+  // folded its own log locally — compactLocalLedger — and meets an account
+  // the cloud checkpointed): neither origin contains the other, so taking one
+  // whole would drop the other's folded history. Merge them like two legacy
+  // saves (higher of every number, union of every set) and keep both
+  // watermarks, so neither side's folded ops replay a second time.
+  if (aN > 0 && bN > 0 && disjointDevices(a.applied, b.applied)) {
+    return { ...conservativeMerge(a, b), applied: maxRecord(a.applied, b.applied) };
+  }
   return aN >= bN ? snapshotOf(a) : snapshotOf(b);
+}
+
+function disjointDevices(a: Record<string, number>, b: Record<string, number>): boolean {
+  for (const id of Object.keys(a)) if ((a[id] ?? 0) > 0 && (b[id] ?? 0) > 0) return false;
+  return true;
 }
 
 function asImport(blob: EconomyLedger): { origin: EconomyLedger; ops: EconomyOp[] } {
