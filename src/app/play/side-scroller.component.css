@@ -574,8 +574,12 @@ button:disabled { opacity: .4; cursor: default; }
   width: 100%;
   height: 100%;
   object-fit: contain;
-  filter: drop-shadow(0 6px 6px color-mix(in srgb, var(--adventure-hud-shadow) 80.00%, transparent));
+  /* Pixel icons (item-icons.ts): crisp, with a hard contact shadow rather than a soft blur. */
+  image-rendering: pixelated;
+  filter: drop-shadow(0 3px 0 color-mix(in srgb, var(--adventure-hud-shadow) 70.00%, transparent));
 }
+/* Rarity is the slot's inner rim (art bible §9), never baked into the icon. Materials carry none. */
+.book .pocket { box-shadow: inset 0 0 0 1px var(--adventure-hud-shadow), inset 0 0 0 2px color-mix(in srgb, var(--rim, transparent) 70%, transparent); }
 
 .book .well.prime { border-color: color-mix(in srgb, var(--adventure-ember) 40.00%, transparent); }
 .book .well.filled em, .book .pocket em, .slip-art em {
@@ -1636,6 +1640,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
   font: 700 10px/1 Orbitron, sans-serif;
   font-style: normal;
 }
+.glim-say__mono--face { overflow: hidden; }
+.glim-say__mono--face img { width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; object-position: 50% 100%; }
 /*
  * The act-boundary card: a pixel-framed page over a dimmed world, three short
  * paragraphs at most, one Continue. Chunky corner studs and a stepped double

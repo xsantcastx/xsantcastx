@@ -11,7 +11,7 @@
  * Names still live here rather than in the manifest: the importer knows about
  * files, not about what a thing is called in either language.
  */
-import { ART_ITEMS_PORTRAITS } from '../art/art-manifest.generated';
+import { itemIcon } from '../art/item-icons';
 import { ARTBIBLE_DEFINITIONS } from './artbible-items';
 import { artFor, type ArtEntry } from '../art/art';
 
@@ -178,7 +178,8 @@ for (const def of ARTBIBLE_DEFINITIONS) {
 export const CINDER_ORE_DISPLAY = BY_ID['cinder-ore'];
 export const EMBER_RESIDUE_DISPLAY = BY_ID['ember-residue'];
 
-export const BASALT_EDGE_PORTRAIT = ART_ITEMS_PORTRAITS['basalt-edge-portrait']?.src ?? '';
+/** The Basalt Edge as its pixel icon (one art style); the painted portrait stays in the library. */
+export const BASALT_EDGE_PORTRAIT = itemIcon('basalt-edge')?.src ?? '';
 export const BASALT_EDGE_NAME = 'Basalt Edge';
 
 export function isBasaltEdge(item: { name?: string; id?: string }): boolean {

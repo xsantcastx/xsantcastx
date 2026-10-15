@@ -192,7 +192,7 @@
   object-fit: contain;
   opacity: 0.32;
   z-index: 0;
-  animation: gbSpin 48s linear infinite;
+  /* Pixel art does not turn: a rotated sprite resamples into blur. The sigil stands still and charges. */
 }
 [data-phase='charging'] .gb-altar__sigil,
 [data-phase='cracking'] .gb-altar__sigil {
@@ -230,20 +230,18 @@
   animation: gbPortalOut 520ms ease-out forwards;
 }
 
+/* The pixel slab (pixel-fx.ts altarSlab): 32 × 6 art px, its glow under it the rolled rarity's. */
 .gb-altar__slab {
   position: absolute;
-  left: 18%;
-  right: 18%;
-  bottom: 10%;
-  height: 13%;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  background:
-    radial-gradient(ellipse 60% 70% at 50% 40%, color-mix(in srgb, var(--reveal-color) 22%, transparent), transparent 70%),
-    radial-gradient(ellipse at 50% 50%, var(--violet-ink), var(--obsidian-0) 80%);
-  box-shadow: 0 10px 30px -8px rgba(0, 0, 0, 0.8);
+  left: 14%;
+  width: 72%;
+  bottom: 8%;
+  height: auto;
   z-index: 1;
+  filter: drop-shadow(0 6px 0 color-mix(in srgb, var(--reveal-color) 30%, transparent));
 }
+/* Every picture on the altar is pixel art: keep its pixels square. */
+.gb-altar img, .gb-reveal__item img { image-rendering: pixelated; }
 
 .gb-altar__coin {
   position: absolute;
@@ -510,7 +508,8 @@
   opacity: 0.7;
   z-index: -1;
   filter: drop-shadow(0 0 12px var(--reveal-glow));
-  animation: gbSpin 14s linear infinite;
+  /* Quarter turns only: a pixel ring stays on its grid at 90° and resamples into blur between. */
+  animation: gbSpin 14s steps(4) infinite;
 }
 
 .gb-reveal__art { position: relative; width: 96px; height: 96px; object-fit: contain; }

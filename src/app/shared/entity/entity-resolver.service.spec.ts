@@ -1,3 +1,4 @@
+import { itemIcon } from '../art/item-icons';
 import { TestBed } from '@angular/core/testing';
 
 import { TranslationService } from '../../translation.service';
@@ -80,8 +81,8 @@ describe('EntityResolver', () => {
     const recipe = resolver.resolve({ type: 'recipe', id: 'basalt-edge' });
     expect(recipe.state).toBe('ready');
     expect(recipe.presentation?.name).toBe('Basalt Edge');
-    expect(recipe.presentation?.art?.src).toContain('04-basalt-edge-portrait');
-    expect(recipe.presentation?.art?.src).toContain('assets/game/');
+    // The Basalt Edge's pixel icon (item-icons.ts), the same one the satchel shows.
+    expect(recipe.presentation?.art?.src).toBe(itemIcon('basalt-edge')!.src);
     expect(recipe.presentation?.facts.some(fact => fact.exactValue?.includes('Cinder Ore'))).toBeTrue();
     expect(recipe.presentation?.facts.some(fact => fact.value.includes('Ready to craft'))).toBeTrue();
     expect(recipe.actions.some(action => action.id === 'craft')).toBeFalse();
