@@ -42,11 +42,11 @@ export class LocalRegionStore implements RegionStore {
   readonly kind: 'local' | 'memory';
   degraded = false;
   private memory = new Map<string, DelveRegion>();
-  constructor(private readonly raw: RawStore | null) { this.kind = raw ? 'local' : 'memory'; }
+  constructor(private readonly raw: RawStore | null, private readonly farKey: string = DELVE_FAR_KEY) { this.kind = raw ? 'local' : 'memory'; }
   load(): Promise<DelveRegion[]> {
     if (this.raw) {
       try {
-        const text = this.raw.readRaw(DELVE_FAR_KEY);
+        const text = this.raw.readRaw(this.farKey);
         const parsed: unknown = text ? JSON.parse(text) : null;
         if (parsed && typeof parsed === 'object') {
           for (const value of Object.values(parsed as Record<string, unknown>)) {
@@ -70,7 +70,7 @@ export class LocalRegionStore implements RegionStore {
       this.degraded = true;
       text = JSON.stringify(Object.fromEntries(this.memory));
     }
-    try { this.raw.writeRaw(DELVE_FAR_KEY, text); } catch { this.degraded = true; }
+    try { this.raw.writeRaw(this.farKey, text); } catch { this.degraded = true; }
     return Promise.resolve();
   }
 }
@@ -81,14 +81,14 @@ export class IdbRegionStore implements RegionStore {
   readonly degraded = false;
   private constructor(private readonly db: IDBDatabase) {}
   /** Open the database, or null when IndexedDB is missing or refuses (the caller falls back). */
-  static open(factory: IDBFactory | undefined | null, timeoutMs = 3000): Promise<IdbRegionStore | null> {
+  static open(factory: IDBFactory | undefined | null, timeoutMs = 3000, name: string = DB_NAME): Promise<IdbRegionStore | null> {
     return new Promise(resolve => {
       if (!factory) { resolve(null); return; }
       let done = false;
       const finish = (value: IdbRegionStore | null) => { if (!done) { done = true; resolve(value); } };
       const timer = setTimeout(() => finish(null), timeoutMs);
       try {
-        const request = factory.open(DB_NAME, 1);
+        const request = factory.open(name, 1);
         request.onupgradeneeded = () => { if (!request.result.objectStoreNames.contains(STORE)) request.result.createObjectStore(STORE); };
         request.onsuccess = () => { clearTimeout(timer); finish(new IdbRegionStore(request.result)); };
         request.onerror = () => { clearTimeout(timer); finish(null); };
@@ -119,8 +119,12 @@ export class IdbRegionStore implements RegionStore {
   }
 }
 
+/** Where a device keeps its far regions: the database, and the fallback key. (One World's save v3 has its own.) */
+export interface RegionStoreNames { db: string; far: string }
+export const DELVE_STORE_NAMES: RegionStoreNames = { db: 'eclipse-delve', far: DELVE_FAR_KEY };
+
 /** IndexedDB if it opens, else the localStorage fallback (or memory, with no gateway). */
-export async function openRegionStore(raw: RawStore | null, factory: IDBFactory | undefined | null = globalThis.indexedDB): Promise<RegionStore> {
-  const idb = await IdbRegionStore.open(factory);
-  return idb ?? new LocalRegionStore(raw);
+export async function openRegionStore(raw: RawStore | null, factory: IDBFactory | undefined | null = globalThis.indexedDB, names: RegionStoreNames = DELVE_STORE_NAMES): Promise<RegionStore> {
+  const idb = await IdbRegionStore.open(factory, 3000, names.db);
+  return idb ?? new LocalRegionStore(raw, names.far);
 }

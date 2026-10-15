@@ -25,6 +25,7 @@
  * `onWorldAction`); a refusal leaves the cell standing.
  */
 import type { DisciplineId } from '../../shared/activity/activity.model';
+import type { SurfaceSpec } from './surface-gen';
 
 /** Cell edge in world px. The Keeper is drawn at half size in delves: three cells tall. */
 export const CELL = 32;
@@ -107,6 +108,8 @@ export interface TerrainNodeDef {
 
 /** The flag the Seam Eater sets when it falls (delve save `claimed`). */
 export const WARDEN_FLAG = 'warden-defeated';
+/** Never set: a settlement's walls answer every swing with their refusal (One World). */
+export const TOWN_WALLS_FLAG = 'town-walls';
 
 const ROCK = { base: '#5c5359', dark: '#3a3339', light: '#877c84', fleck: '#a0949b' };
 
@@ -396,6 +399,22 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // A star-chain: a brass chain the old surveyors hung; climbed like a ladder, whatever down is doing.
   { id: 'star-chain', label: 'Star-chain', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
     base: '#8a6a3a', dark: '#4a3a1e', light: '#e8c47a', fleck: '#fff1b0' },
+  // ── One World (docs/design/one-world.md §2.3): a settlement's buildings, made of cells. ──
+  // Laid by surface-gen.ts from blueprints.ts, never placed and never saved as dug: the town keeps its
+  // walls (a swing gets the refusal; a charge never clears them, `protect`), so no keeper's counter is
+  // ever dug out from under them. Palette: the Infernal art-bible ramps (basalt, ember seams, timber).
+  { id: 'seam-brick', label: 'Seamworks masonry', solid: true, hp: 6, tools: { pickaxe: 1, axe: 1 }, discipline: 'mining', xp: 0,
+    base: '#4a3a40', dark: '#2a2027', light: '#7a656e', fleck: '#c4501e', guard: { flag: TOWN_WALLS_FLAG, refusal: 'The town keeps its walls' } },
+  { id: 'town-roof', label: 'Slate roof', solid: true, hp: 6, tools: { pickaxe: 1, axe: 1 }, discipline: 'mining', xp: 0,
+    base: '#3a2b2d', dark: '#241a1c', light: '#5a4440', fleck: '#e8752a', guard: { flag: TOWN_WALLS_FLAG, refusal: 'The town keeps its walls' } },
+  { id: 'town-beam', label: 'Timber beam', solid: true, hp: 6, tools: { pickaxe: 1, axe: 1 }, discipline: 'woodcutting', xp: 0,
+    base: '#6a4a2c', dark: '#3a2617', light: '#a6784a', fleck: '#d4a86c', guard: { flag: TOWN_WALLS_FLAG, refusal: 'The town keeps its walls' } },
+  // A shop's upper floor and shelves: stood on from above, dropped through holding Down.
+  { id: 'town-plank', label: 'Floorboards', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true,
+    base: '#8a6a40', dark: '#3a2a18', light: '#c9a06a', fleck: '#5a4026' },
+  // The ladder to a keeper's room upstairs.
+  { id: 'town-ladder', label: 'Fixed ladder', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
+    base: '#7a5a36', dark: '#3a2a18', light: '#b08a55', fleck: '#5a4026' },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -578,6 +597,13 @@ export interface TerrainSpec {
    * (appended after `biomes`). The core's own `rows` and grid never change.
    */
   depth?: { rows: number; biomes: readonly BiomeDef[] };
+  /**
+   * One World (docs/design/one-world.md): the world's surface, the sky band
+   * rows `surface.rowLo`…−1 above row 0 (surface-gen.ts). Only the endless
+   * world (sector-world.ts) builds it; every row ≥ 0 is generated exactly as
+   * without it. Absent: the Delve as it always was, nothing above row 0.
+   */
+  surface?: SurfaceSpec;
 }
 
 /** The look a terrain without biomes gets: today's basalt dark. */
@@ -660,34 +686,62 @@ export class Terrain {
   /** World columns loaded: [colLo, colHi). The plain grid is [0, cols). */
   colLo = 0;
   colHi: number;
-  constructor(readonly cols: number, readonly rows: number, readonly top: number, ring = false) {
+  /**
+   * One World (docs/design/one-world.md §0.2): the first row the grid holds.
+   * Row 0 stays the ground line (the Delve's surface) and rows go negative
+   * upward into the sky band, so every authored row ≥ 0 keeps its meaning.
+   * 0 (the default) is the grid as it always was: no row above the surface.
+   * Cell indices start at `rowLo`: index = (row − rowLo) × cols + slot, so a
+   * cell's neighbour below is still `index + cols`. A multiple of CHUNK.
+   */
+  readonly rowLo: number;
+  /** The first chunk row (rowLo / CHUNK, ≤ 0): chunk rows run [chunkRowLo, chunkRows). */
+  readonly chunkRowLo: number;
+  /** Biome of the rows above the ground (the sky band); null: the first biome's look, as before. */
+  skyBiome: BiomeDef | null = null;
+  /**
+   * The back wall behind a sky-band cell (One World: a building's wall, a
+   * window), one byte per cell, 0 = none. Generated, never saved (P1); drawn
+   * baked into the chunk under the terrain pass. Null without a sky band.
+   */
+  back: Uint8Array | null = null;
+  /** The back walls' colours per back id ([body, light, shadow]; blueprints.ts RealmPalette.backs), or null. */
+  backLook: readonly (readonly [string, string, string])[] | null = null;
+  constructor(readonly cols: number, readonly rows: number, readonly top: number, ring = false, rowLo = 0) {
     if (ring && (cols < CHUNK || (cols & (cols - 1)))) throw new Error('A ring terrain needs a power-of-two width');
+    if (rowLo > 0 || rowLo % CHUNK) throw new Error('rowLo must be 0 or a negative multiple of CHUNK');
     this.ring = ring;
     this.mask = cols - 1;
     this.colHi = cols;
-    this.kind = new Uint8Array(cols * rows);
-    this.liqType = new Uint8Array(cols * rows);
-    this.liqLevel = new Uint8Array(cols * rows);
+    this.rowLo = rowLo;
+    const cells = cols * (rows - rowLo);
+    this.kind = new Uint8Array(cells);
+    this.liqType = new Uint8Array(cells);
+    this.liqLevel = new Uint8Array(cells);
     this.baseLiqType = this.liqType;
     this.baseLiqLevel = this.liqLevel;
-    this.protect = new Uint8Array(cols * rows);
+    this.protect = new Uint8Array(cells);
+    if (rowLo < 0) this.back = new Uint8Array(cells);
     this.base = this.kind;
     this.biomeOfRow = new Uint8Array(rows);
-    this.hp = new Float32Array(cols * rows);
+    this.hp = new Float32Array(cells);
     this.chunkCols = Math.ceil(cols / CHUNK);
     this.chunkRows = Math.ceil(rows / CHUNK);
-    this.chunkRev = new Uint32Array(this.chunkCols * this.chunkRows);
+    this.chunkRowLo = rowLo / CHUNK;
+    this.chunkRev = new Uint32Array(this.chunkCols * (this.chunkRows - this.chunkRowLo));
     this.bottom = top + rows * CELL;
     this.width = cols * CELL;
   }
-  index(col: number, row: number): number { return row * this.cols + (this.ring ? col & this.mask : col); }
-  inside(col: number, row: number): boolean { return col >= this.colLo && row >= 0 && col < this.colHi && row < this.rows; }
+  index(col: number, row: number): number { return (row - this.rowLo) * this.cols + (this.ring ? col & this.mask : col); }
+  inside(col: number, row: number): boolean { return col >= this.colLo && row >= this.rowLo && col < this.colHi && row < this.rows; }
   /** The world column of a cell index (the ring maps its slot back into the loaded span). */
   colOf(index: number): number {
     const slot = index % this.cols;
     return this.ring ? this.colLo + ((slot - this.colLo) & this.mask) : slot;
   }
-  rowOf(index: number): number { return (index / this.cols) | 0; }
+  rowOf(index: number): number { return ((index / this.cols) | 0) + this.rowLo; }
+  /** World y of the sky band's top edge (the grid's top row); `top` without a sky band. */
+  get skyTop(): number { return this.top + this.rowLo * CELL; }
   /** World x of the loaded span's edges. */
   get left(): number { return this.colLo * CELL; }
   get right(): number { return this.colHi * CELL; }
@@ -697,27 +751,29 @@ export class Terrain {
   }
   /** The chunkRev slot of a chunk (world chunk column `cc`, row `cr`), or -1 outside the loaded span. */
   chunkKey(cc: number, cr: number): number {
-    if (cr < 0 || cr >= this.chunkRows) return -1;
+    if (cr < this.chunkRowLo || cr >= this.chunkRows) return -1;
+    const r = cr - this.chunkRowLo;
     if (this.ring) {
       if (cc * CHUNK < this.colLo || cc * CHUNK >= this.colHi) return -1;
-      return cr * this.chunkCols + (cc & (this.chunkCols - 1));
+      return r * this.chunkCols + (cc & (this.chunkCols - 1));
     }
-    return cc < 0 || cc >= this.chunkCols ? -1 : cr * this.chunkCols + cc;
+    return cc < 0 || cc >= this.chunkCols ? -1 : r * this.chunkCols + cc;
   }
   colAt(x: number): number { return Math.floor(x / CELL); }
   rowAt(y: number): number { return Math.floor((y - this.top) / CELL); }
   /** The biome a row lies in (rows above the grid read as the first). */
   biomeAt(row: number): BiomeDef {
+    if (row < 0 && this.skyBiome) return this.skyBiome;
     return this.biomes[this.biomeOfRow[Math.max(0, Math.min(this.rows - 1, row))]] ?? DEFAULT_BIOME;
   }
-  /** Node at a cell. Above the surface is air; the sides and below the grid are bedrock. */
+  /** Node at a cell. Above the grid is air; the sides and below the grid are bedrock. */
   nodeAt(col: number, row: number): TerrainNodeDef {
-    if (row < 0) return TERRAIN_NODE_LIST[AIR];
+    if (row < this.rowLo) return TERRAIN_NODE_LIST[AIR];
     if (!this.inside(col, row)) return TERRAIN_NODE_LIST[BEDROCK];
     return TERRAIN_NODE_LIST[this.kind[this.index(col, row)]];
   }
   solid(col: number, row: number): boolean {
-    if (row < 0) return false;
+    if (row < this.rowLo) return false;
     if (!this.inside(col, row)) return true;
     return SOLID_KIND[this.kind[this.index(col, row)]] === 1;
   }
@@ -746,13 +802,13 @@ export class Terrain {
   }
   /** Liquid type at a cell (LIQUID_*), 0 outside the grid. */
   liquidAt(col: number, row: number): number {
-    if (row < 0 || !this.inside(col, row)) return 0;
+    if (!this.inside(col, row)) return 0;
     const i = this.index(col, row);
     return this.liqLevel[i] ? this.liqType[i] : 0;
   }
   /** Liquid level at a cell, 0..LIQUID_FULL. */
   levelAt(col: number, row: number): number {
-    return row < 0 || !this.inside(col, row) ? 0 : this.liqLevel[this.index(col, row)];
+    return !this.inside(col, row) ? 0 : this.liqLevel[this.index(col, row)];
   }
   /** Set remaining HP; marks the chunk only when the visible crack stage changes. */
   setHp(col: number, row: number, hp: number): void {
@@ -780,7 +836,7 @@ export class Terrain {
   }
   /** Every chunk of world columns [col0, col1) is drawn afresh (a column arrived in its ring slots). */
   touchColumns(col0: number, col1: number): void {
-    for (let cc = Math.floor(col0 / CHUNK); cc * CHUNK < col1; cc++) for (let cr = 0; cr < this.chunkRows; cr++) this.bump(cc, cr);
+    for (let cc = Math.floor(col0 / CHUNK); cc * CHUNK < col1; cc++) for (let cr = this.chunkRowLo; cr < this.chunkRows; cr++) this.bump(cc, cr);
   }
 }
 
@@ -853,7 +909,7 @@ export function placeableById(id: string | null | undefined): PlaceableDef | und
 
 /** Open air: the only cell anything is placed into. */
 export function isAir(t: Terrain, col: number, row: number): boolean {
-  return row >= 0 && t.inside(col, row) && t.kind[t.index(col, row)] === AIR && !t.inscriptions.has(t.index(col, row));
+  return t.inside(col, row) && t.kind[t.index(col, row)] === AIR && !t.inscriptions.has(t.index(col, row));
 }
 
 /**
@@ -890,15 +946,15 @@ export function findNode(t: Terrain, id: string): number {
 
 /** True when the cell is a one-way floor (a platform or a ladder). */
 export function isOneWay(t: Terrain, col: number, row: number): boolean {
-  return row >= 0 && t.inside(col, row) && ONEWAY_KIND[t.kind[t.index(col, row)]] === 1;
+  return t.inside(col, row) && ONEWAY_KIND[t.kind[t.index(col, row)]] === 1;
 }
 /** True when the cell is a rail (Kael's old line or a placed Seam Rail). */
 export function isRail(t: Terrain, col: number, row: number): boolean {
-  return row >= 0 && t.inside(col, row) && RAIL_KIND[t.kind[t.index(col, row)]] === 1;
+  return t.inside(col, row) && RAIL_KIND[t.kind[t.index(col, row)]] === 1;
 }
 /** True when the cell is climbable. */
 export function isClimbable(t: Terrain, col: number, row: number): boolean {
-  return row >= 0 && t.inside(col, row) && CLIMB_KIND[t.kind[t.index(col, row)]] === 1;
+  return t.inside(col, row) && CLIMB_KIND[t.kind[t.index(col, row)]] === 1;
 }
 /** On a ladder: the cell at the feet or mid-body (centre column) is climbable. Standing on a ladder's top is not. Pure. */
 export function onLadder(t: Terrain, x: number, feetY: number, box: BodyBox): boolean {
@@ -913,7 +969,7 @@ function frontCol(t: Terrain, x: number, facing: number, box: BodyBox): number {
 
 /** True when the cell holds a placed thing that is taken back whole. */
 export function isTakeable(t: Terrain, col: number, row: number): boolean {
-  return row >= 0 && t.inside(col, row) && TAKEABLE_KIND[t.kind[t.index(col, row)]] === 1;
+  return t.inside(col, row) && TAKEABLE_KIND[t.kind[t.index(col, row)]] === 1;
 }
 
 /** How far E (and X) reach past either side of the Keeper's body, in px: half a cell. */
@@ -973,7 +1029,7 @@ const SUPPORT_RANGE = Uint8Array.from(TERRAIN_NODE_LIST, node => node.support ??
 
 /** True when a placed support holds the cell: within its reach in both directions (Chebyshev). Pure. */
 export function supportNear(t: Terrain, col: number, row: number): boolean {
-  for (let r = Math.max(0, row - SUPPORT_REACH); r <= Math.min(t.rows - 1, row + SUPPORT_REACH); r++) {
+  for (let r = Math.max(t.rowLo, row - SUPPORT_REACH); r <= Math.min(t.rows - 1, row + SUPPORT_REACH); r++) {
     for (let c = Math.max(t.colLo, col - SUPPORT_REACH); c <= Math.min(t.colHi - 1, col + SUPPORT_REACH); c++) {
       const reach = SUPPORT_RANGE[t.kind[t.index(c, r)]];
       if (reach && Math.max(Math.abs(c - col), Math.abs(r - row)) <= reach) return true;
@@ -997,7 +1053,7 @@ export const CHARGE_FUSE = 1.6;
  * solid (torches, chests…) are never touched. Pure.
  */
 export function blastable(t: Terrain, col: number, row: number, power: number, open: (flag: string) => boolean): boolean {
-  if (row < 0 || !t.inside(col, row)) return false;
+  if (!t.inside(col, row)) return false;
   const i = t.index(col, row);
   const node = TERRAIN_NODE_LIST[t.kind[i]];
   if (!node.solid || !Number.isFinite(node.hp) || t.protect[i]) return false;
@@ -1165,7 +1221,7 @@ export function applyTerrainDiff(t: Terrain, cells: ReadonlyMap<number, number>)
     if (!Number.isInteger(kind) || kind < 0 || kind >= TERRAIN_NODE_LIST.length) continue;
     if (t.inscriptions.has(index) || TERRAIN_NODE_LIST[kind].id === 'inscription') continue;
     if (t.kind[index] === kind) continue;
-    const col = index % t.cols, row = (index - col) / t.cols;
+    const col = t.colOf(index), row = t.rowOf(index);
     t.set(col, row, kind);
     applied++;
   }
@@ -1337,7 +1393,7 @@ export function stepTerrainBodyUp(body: TerrainBody, velocityX: number, dt: numb
 export function coneCells(t: Terrain, ox: number, oy: number, dx: number, dy: number, range: number, halfAngle: number, out: Int32Array): number {
   const cos = Math.cos(halfAngle);
   const c0 = Math.max(t.colLo, t.colAt(ox - range)), c1 = Math.min(t.colHi - 1, t.colAt(ox + range));
-  const r0 = Math.max(0, t.rowAt(oy - range)), r1 = Math.min(t.rows - 1, t.rowAt(oy + range));
+  const r0 = Math.max(t.rowLo, t.rowAt(oy - range)), r1 = Math.min(t.rows - 1, t.rowAt(oy + range));
   let n = 0;
   for (let r = r0; r <= r1; r++) {
     for (let c = c0; c <= c1; c++) {

@@ -1,6 +1,6 @@
 <section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -87,6 +87,8 @@
         <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
         <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+        <!-- One World (preview): this device only; a flip reloads the world. -->
+        <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
       </ul>
       <!-- Phones: the rest of the old top bar lives in this menu. -->
       <div class="menu-extra">
@@ -386,7 +388,16 @@
       <button type="button" class="fish-go" [title]="fishInfo"
         (pointerdown)="fishPress($event, true)" (pointerup)="fishPress($event, false)" (pointercancel)="fishPress($event, false)" (lostpointercapture)="fishPress($event, false)">{{ state.fishing?.phase === 'bite' ? t('play.fish.ui.hook') : state.fishing ? t('play.fish.ui.reelIn') : t('play.fish.ui.fish') }} <kbd class="key-hint">E</kbd></button>
     }
-    @if (state.nearby) {
+    @if (state.nearby === 'stone' && state.stone; as stone) {
+      <!-- One World: a Waystone. Dark: hold the button (or E) to light it. Lit: one press opens the Travel map. -->
+      <strong>{{ actionLabel }}</strong>
+      @if (stone.lit) {
+        <button type="button" class="stone-go" data-act="stone" (click)="interact()">{{ t('play.world.stone.travel') }} <kbd class="key-hint">E</kbd></button>
+      } @else {
+        <button type="button" class="stone-go stone-go--light" data-act="stone" [style.--charge]="stone.charge"
+          (pointerdown)="stonePress($event, true)" (pointerup)="stonePress($event, false)" (pointercancel)="stonePress($event, false)" (lostpointercapture)="stonePress($event, false)">{{ t('play.world.stone.light') }} <kbd class="key-hint">E</kbd></button>
+      }
+    } @else if (state.nearby) {
       <strong>{{ actionLabel }}</strong>
       <button type="button" [disabled]="actionDisabled" (click)="interact()">{{ t('play.hud.interact') }} <kbd class="key-hint">E</kbd></button>
       @if (state.nearby === 'delve' && campReady) {
