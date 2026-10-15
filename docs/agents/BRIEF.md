@@ -18,6 +18,15 @@ Lore is pre-approved: write it, ship it, log it in `docs/world/lore-addendum.md`
 New player text goes in LAZY i18n tables, EN + ES. Saved state only through the save gateway, merge-safe.
 Never push, deploy, or touch `firestore.rules`, `functions/`, or market flags.
 
+## Art (style rule, owner 2026-10-15)
+Pixel art, Terraria-crisp: one grid (4 world px per art px; 2 in the Delve), one 1-px outline (`keeper-paint.ts OUTLINE`),
+light from the upper left, colours only from the art-bible ramps. Proportions and feel are **chibi, MapleStory-cute**:
+people ~31 art px tall, head 15×14 to body ~15 rows (1 : 1–1.3), eyes 2×3 with a white highlight, small mouth, optional
+rosy cheeks, tiny hands/feet, soft rounded silhouettes, oversized weapons, hats/helms on the big head. Alive: idle breath,
+blinks, bouncy steps, landing squash, a face flash on joy. Creatures: round bodies, big eyes that glare on the wind-up,
+still clear threats. Every figure is cached (one frame sheet per KeeperPainter); tags/bubbles anchor on `painter.top`.
+Galleries: `node scripts/keeper-gallery.mjs <dir> <prefix>`. Details: `docs/handoff/chibi-keepers.md`.
+
 ## The gate (run ONCE at the end, long steps in the background — the disk is slow)
 ```
 npm run -s check:meaning

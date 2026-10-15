@@ -452,7 +452,8 @@ export class KeeperPainter {
       else if (hair === 'curls') rise = Math.max(rise, 4);
     }
     if (garb?.shards) rise = Math.max(rise, 10);
-    return Math.min(FIGURE_TOP + 3, PIVOT_Y - HEAD_TOP + rise - (garb?.elder ? 1 : 0));
+    // +1: the outline row above the topmost painted pixel.
+    return Math.min(FIGURE_TOP + 4, PIVOT_Y - HEAD_TOP + rise + 1 - (garb?.elder ? 1 : 0));
   }
 
   /** The face a moment shows: a flash of feeling first, then a blink now and then. */
