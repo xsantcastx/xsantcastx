@@ -176,13 +176,13 @@ export const EMBER_SPAWN_X = colX(EMBER_SQUARE.stone) + 72;
  * keep to their stretch of road (`range`), west of the gate.
  */
 const ROAD_MAWS: MonsterDef = { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [4260, 4560, 4860], floorY: FLOOR, range: [4140, 5080] };
-/** Where Glim's "Show me" walks for the first hunt: just short of the first Maw on the road. */
-export const ROAD_MAW_APPROACH_X = 4080;
+/** Where Glim's "Show me" walks for the first hunt: on the road the Maws keep to (their `range`), short of the first one. */
+export const ROAD_MAW_APPROACH_X = 4180;
 
 // ── The Ember Quarry (§2.2 "the hunt region", P2) ──
 
 /** The Quarry's own Maws, under the High Roads (the old area's three, east of the gate). */
-const QUARRY_MAWS: MonsterDef = { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [6560, 6960, 7360], floorY: FLOOR, range: [6420, 7480] };
+const QUARRY_MAWS: MonsterDef = { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [6560, 6900, 7200], floorY: FLOOR, range: [6420, 7300] };
 
 /** The Quarry's nodes at world columns 166…176 (the same ids: the harvest save and the found-in lines). */
 const QUARRY_NODE_COLS: Readonly<Record<string, number>> = {

@@ -162,7 +162,8 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
 
       // 2. The tree: walk off the shelf to the trunk and hold Jump; it climbs into the canopy.
       await c.walkTo(TREE_X, 10);
-      await untilY(page, STREET);
+      // Falling past a trunk, the hands take it (a ladder): Down climbs to the street.
+      await c.down('down'); await untilY(page, STREET); await c.up('down');
       await c.toTrunk(TREE_X);
       await c.down('jump');
       await untilY(page, CANOPY);
@@ -170,7 +171,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
 
       // 3. The summit route: up the snag, kick east off its top, the hands catch the ruin block's lip.
       await c.walkTo(SNAG_X, 10);
-      await untilY(page, STREET);
+      await c.down('down'); await untilY(page, STREET); await c.up('down');
       await c.toTrunk(SNAG_X);
       await c.down('jump');
       await untilY(page, SNAG_TOP);

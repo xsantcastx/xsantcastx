@@ -102,7 +102,8 @@ async function intoRealm(page: Page, realm: Realm, touch: boolean, label: string
   await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
   await page.waitForTimeout(1200);
   await expect(canvas(page)).toHaveAttribute('data-gate', new RegExp(`^${realm}:`), { timeout: 10_000 });
-  await expect(messageLine(page)).toContainText(new RegExp(g.name), { timeout: 6000 });
+  // Glim notices it (a Pim bounty for reaching the sector can take the line in the same second: One World counts the sector too).
+  await expect(messageLine(page)).toContainText(new RegExp(`${g.name}|Bounty done`), { timeout: 6000 });
   await shot(page, `${label}-${realm}-gate-found`);
   await standAt(page, gatePlan(realm).col + 4);
   await use(page, touch);

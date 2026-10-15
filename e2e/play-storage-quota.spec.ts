@@ -22,7 +22,9 @@ const FRESH_DELVE = { 'godforge-delve': { version: 1, seed: SEED, createdAt: 1, 
 const DEVICE = 'e2e-phone';
 
 async function enterDelve(page: Page): Promise<void> {
-  await digIntoDelve(page);
+  // One World: the Delve is under the street; stand where the old shaft dropped the Keeper (the digging is the test's).
+  await focusWorld(page);
+  await walkTo(page, 260, 8);
   await page.waitForTimeout(400);
   await focusWorld(page);
 }

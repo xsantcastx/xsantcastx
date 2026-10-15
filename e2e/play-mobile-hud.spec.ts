@@ -30,7 +30,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { bag, canvas, ERA, focusWorld, hotbarCount, openPlay, seed, walkTo, SHAFT_X, digIntoDelve } from './play-helpers';
+import { bag, canvas, ERA, focusWorld, hotbarCount, openPlay, seed, walkTo, SHAFT_X, digIntoDelve, loginAt, WORLD_COL } from './play-helpers';
 
 const MEASURE_ONLY = !!process.env['MOBILE_HUD_MEASURE'];
 const OUT = process.env['MOBILE_HUD_OUT'];
@@ -231,11 +231,10 @@ test.describe('the /play HUD on phones', () => {
   });
 
   test('on a hunt (Ember Quarry)', async ({ page }) => {
-    await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } });
+    // One World: the Quarry is a region east of the Quarry Gate; the Keeper logs in there (the resume point).
+    await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null }, ...loginAt(WORLD_COL.quarry) });
     await openPlay(page);
-    await page.locator('.places-toggle').click();
-    await page.locator('#places-list button', { hasText: 'East Passage' }).click();
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 20000 });
     await check(page, 'hunt');
   });
 
