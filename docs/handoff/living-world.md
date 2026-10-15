@@ -102,7 +102,10 @@ homestead, home-forge, delve-endless (237/238 run concurrently with a build: the
 load; alone it passes, and the finds cost ~0.1 ms of the ~2.0 ms column, sky band 0.13 ms ≪ 0.6), living-world (11),
 one-world, underhearth, rift-gates, realm-delves, celestial-delve, lost-cabinets (all green serially) · ds-adherence ·
 i18n · audit-nav · economy-sim --check (living: walking ≈ 1.2 k Gold/h, digging ≈ 1.5 k Gold/h at most: < 0.1 % of the
-forge at 30 min) · build (initial 1.23 MB) · CSP hashes · perf guards and the e2e play suite: see the report.
+forge at 30 min) · build (initial 1.23 MB) · CSP hashes · perf guards (below) · e2e play suite on the merged build
+(origin/main 881d3b72): 199/203 passed; the 4 `play-vault` specs failed in the full run and pass alone (6/6) · node
+suite re-run serially at a normal machine load: 274/274, the generation-time tests included. Wild packs and critters
+follow the world clock's dark (`setSky`: night or an eclipse), falling back to the One World hour.
 
 ## Perf (PLAY_PERF=1, 390×844 @3, 4× CPU, 20 s, chromium)
 
