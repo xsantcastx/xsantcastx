@@ -129,6 +129,11 @@ import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTi
 import type { PanelEntry } from './world/panel-registry';
 import { SoundService } from '../shared/sound/sound.service';
 import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
+import { PetSheetComponent } from '../shared/pets/pet-sheet.component';
+import { PetsService } from '../shared/pets/pets.service';
+import { PETS_I18N } from '../shared/pets/pets.i18n';
+import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
+import { eggPortrait, petPortrait } from '../shared/pets/pet-art';
 import { SOUND_I18N } from '../shared/sound/sound.i18n';
 import { WorldFeelBus, type CraftedFeel } from '../shared/sound/world-feel.bus';
 import { materialOf, REALM_IDS, TOWN_GROUND, type RealmId } from '../shared/sound/sound-palette';
@@ -245,7 +250,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent, PetSheetComponent],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -311,6 +316,8 @@ export class SideScrollerComponent implements OnDestroy {
   private soundSub?: Subscription;
   /** Menu → Sound is open. */
   soundOpen = false;
+  /** The Satchel's pet well, opened (shared/pets/pet-sheet.component.ts). */
+  petsOpen = false;
   /** "Crafted X — in your Satchel" with its Open, after a craft; null when none. */
   craftToast: { key: number; name: string } | null = null;
   private craftToastTimer?: ReturnType<typeof setTimeout>;
@@ -452,6 +459,7 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly heights = inject(HeightsService);
   private heightsSub?: Subscription;
   private readonly glim = inject(GlimService);
+  private readonly pets = inject(PetsService);
   /** The Keeper's map pins (DelveSaveService, saved per region), re-read once a second in the Delve. */
   pins: MapPin[] = [];
   /** The pin open in the editor under the full map, or null. */
@@ -511,6 +519,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(VAULT_STATION_I18N);
     this.i18n.register(SLATE_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
+    this.i18n.register(PETS_I18N);
     this.map.onTap = (col, row) => this.zone.run(() => this.mapTap(col, row));
     try { this.trackedPinId = localStorage.getItem(TRACK_KEY) || null; } catch { /* nothing tracked */ }
   }
@@ -1275,6 +1284,89 @@ export class SideScrollerComponent implements OnDestroy {
     });
     this.tickGlim(areaId, !goal, (progress.xpByDiscipline['hunting'] ?? 0) > 0, !!worn && !worn.explorerId);
     this.tickBond(areaId);
+    this.tickPets();
+  }
+
+  // ── Pets (shared/pets; docs/handoff/pets.md) ──
+
+  private petsAt = 0;
+  private petKey = '';
+  /** The Star Owlet's ore cells (the maps mark them), re-read once a second in the Delve. */
+  petScentCells: { col: number; row: number }[] = [];
+  /** Something new waits in the pet well (an egg, or a rescue to name). */
+  get petWellNew(): boolean {
+    const state = this.browser ? this.pets.state : null;
+    return !!state && Object.values(state.pets).some(r => !isHatched(r) || !r.name);
+  }
+  /** The pet well's picture: the pet following, else the first egg or pet, else empty. */
+  get petWellArt(): string {
+    if (!this.browser) return '';
+    const state = this.pets.state;
+    const id = state.active || Object.keys(state.pets)[0];
+    const rec = id ? state.pets[id] : undefined;
+    const def = id ? petDef(id) : undefined;
+    if (!rec || !def) return '';
+    return isHatched(rec) ? petPortrait(def.id, 'idle0', rec.hat, 2) : eggPortrait(def.id, 0, 2);
+  }
+  /**
+   * The pets' tick (once a second): find any pet the ledgers have earned (a
+   * crate opened, a corridor cleared, the Herald's third day, a guardian's
+   * fall), say so, let Glim greet each one once, and hand the follower to the
+   * engine.
+   */
+  private tickPets(): void {
+    if (!this.browser || !this.engine) return;
+    const now = Date.now();
+    if (now - this.petsAt < 1000) return;
+    this.petsAt = now;
+    const found = this.pets.find({
+      tally: this.pets.state.tally,
+      claimDays: this.bounties.state.claimDays,
+      flag: id => this.delve.isClaimed(id),
+    }, now);
+    for (const def of found) {
+      const name = this.t('play.pet.name.' + def.id);
+      this.toastLoot(this.t(def.arrival === 'egg' ? 'play.pet.toast.egg' : 'play.pet.toast.rescue', { name }), def.arrival === 'egg' ? eggPortrait(def.id, 0, 2) : petPortrait(def.id, 'happy', false, 2));
+      this.message = this.t(def.arrival === 'egg' ? 'play.pet.toast.egg' : 'play.pet.toast.rescue', { name });
+      this.pulseSatchel();
+      this.sound.sfx('chirp');
+    }
+    this.pushPet();
+    // Glim's first word about each pet, once ever (stamped in Glim's own memory).
+    if (this.glimVoice.met) {
+      for (const [id, rec] of Object.entries(this.pets.state.pets)) {
+        const stamp = `pet.${id}`;
+        if (isHatched(rec) && !this.glim.state.said[stamp]) {
+          this.glim.said(stamp);
+          this.glimVoice.bond({ id: stamp, key: `play.pet.glim.${id}` });
+        }
+      }
+    }
+  }
+  /** The follower, its name and hat, to the engine (only when they change). */
+  private pushPet(): void {
+    if (!this.engine) return;
+    const state = this.pets.state;
+    const def: PetDef | null = followingPet(state);
+    const rec = def ? state.pets[def.id] : undefined;
+    const key = def && rec ? `${def.id}|${rec.name}|${rec.hat}` : '';
+    if (key === this.petKey) return;
+    this.petKey = key;
+    this.engine.setPet(def && rec ? { id: def.id, name: rec.name, hat: rec.hat, ability: def.ability } : null);
+    this.fishKey = '';
+    this.pushFishing();
+  }
+  /** Where the pet is (the canvas's data-pet-* for the e2e). */
+  get petAt(): { id: string; x: number; state: string; fetching: boolean; glow: boolean } | null { return this.engine?.petView ?? null; }
+  /** The helper of the pet following, or null. */
+  private get petAbility(): PetDef['ability'] | null { return this.browser ? followingPet(this.pets.state)?.ability ?? null : null; }
+  openPets(): void { this.placesOpen = false; this.petsOpen = true; this.sound.sfx('open'); }
+  closePets(): void { this.petsOpen = false; this.pushPet(); }
+  /** The pet sheet asked the pet in the world to react (a meal, its trick, a hatch). */
+  petFelt(event: { id: string; kind: 'happy' | 'trick' | 'hatch' }): void {
+    this.pushPet();
+    if (event.kind === 'hatch') { this.sound.sfx('hatch'); this.petsAt = 0; this.tickPets(); }
+    this.engine?.petFeel(event.kind === 'trick' ? 'trick' : 'happy');
   }
 
   // ── The bond with Glim (shared/glim/glim-bond.ts) ──
@@ -1808,7 +1900,7 @@ export class SideScrollerComponent implements OnDestroy {
     }));
     if (this.glimMark) pins.push({ id: 'glim', ...this.glimMark, color: GLIM_MARK_COLOR, glim: true });
     const tracked = this.trackedPin;
-    return { ...source, pins, goal: tracked ? { col: tracked.col, row: tracked.row } : this.glimMark, pointer: this.compassAt };
+    return { ...source, pins, goal: tracked ? { col: tracked.col, row: tracked.row } : this.glimMark, pointer: this.compassAt, scent: this.petScentCells };
   }
   get trackedPin(): MapPin | null { return this.pins.find(pin => pin.id === this.trackedPinId) ?? null; }
   get selectedPin(): MapPin | null { return this.pins.find(pin => pin.id === this.selectedPinId) ?? null; }
@@ -1851,12 +1943,14 @@ export class SideScrollerComponent implements OnDestroy {
     this.glimMarkMission = activeMark(this.glim.state.lastAt, now);
     this.glimMark = this.glimMarkMission ? this.engine.findMark(GLIM_MARKS[this.glimMarkMission] ?? [], id => read.has(id)) : null;
     this.compassAt = this.compassHeld ? this.engine.compassTarget(id => read.has(id)) : null;
+    this.petScentCells = this.engine.petScent();
     this.tickBondAbilities(read);
     this.tickGates();
     const canvas = this.canvas?.nativeElement;
     if (canvas) {
       canvas.setAttribute('data-glim-mark', this.glimMark ? `${this.glimMark.col},${this.glimMark.row}` : '');
       canvas.setAttribute('data-compass', this.compassAt ? `${this.compassAt.col},${this.compassAt.row}` : '');
+      canvas.setAttribute('data-pet-scent', String(this.petScentCells.length));
     }
     // A reach bounty finishes by walking: no event names it, the frontier does.
     for (const view of this.bounties.refresh()) if (view.ready) this.bountyDone(view.bounty);
@@ -2513,10 +2607,12 @@ export class SideScrollerComponent implements OnDestroy {
     const rod = this.fishing.rod();
     const breath = this.infusions.multiplierOn('breath');
     const elixir = Object.values(this.inventory.snapshot.equipped).some(item => item && !item.explorerId && item.definitionId === 'ember-elixir');
-    const key = `${rod?.tier ?? 0}:${rod?.liquids.join('/') ?? ''}:${rod?.bite.toFixed(3) ?? 0}:${breath}:${elixir}`;
+    // The Shade-kit watches the water: a bite comes sooner (the engine caps the speed at 4).
+    const watch = this.petAbility === 'fish' ? PET_TUNING.biteBoost : 1;
+    const key = `${rod?.tier ?? 0}:${rod?.liquids.join('/') ?? ''}:${rod?.bite.toFixed(3) ?? 0}:${breath}:${elixir}:${watch}`;
     if (key === this.fishKey) return;
     this.fishKey = key;
-    this.engine.setFishing({ tier: rod?.tier ?? 0, liquids: rod?.liquids ?? [], bite: rod?.bite ?? 1 });
+    this.engine.setFishing({ tier: rod?.tier ?? 0, liquids: rod?.liquids ?? [], bite: (rod?.bite ?? 1) * watch });
     this.engine.setWards({ breath, lavaWard: elixir ? 10 : 0 });
   }
   /** The prompt's label: the place (water / lava) or the line's state; the button beside it holds the verb, or null when nothing fishing-related is in reach. */
@@ -2593,6 +2689,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (pick?.kind !== 'stack' || !CRATE_IDS.includes(pick.ref)) return;
     const got = this.fishing.openCrate(pick.ref);
     if (!got) { this.message = this.t('play.delve.chest.saveFailed'); return; }
+    // A Seam Crate is where the Ember Newt lays its egg (pets.model.ts).
+    if (pick.ref === 'seam-crate') { this.pets.count('crate:seam-crate'); this.petsAt = 0; this.tickPets(); }
     const items = got.map(row => `${row.qty} ${materialDisplay(row.id)?.name ?? row.id}`).join(', ');
     this.message = this.t('play.fish.ui.opened', { items });
     this.toastLoot(items);
@@ -2882,9 +2980,11 @@ export class SideScrollerComponent implements OnDestroy {
       this.message = this.t('play.hud.msg.echo', { name: materialDisplay(once)?.name ?? once });
       return true;
     }
+    // The Prism Moth-kit hums while you work: a little more XP in the Luminous (pets.model.ts xpBonus).
+    const petXp = this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(event.xp) : 0;
     const result = this.skillActions.act({
       // A hunting-ground node is booked where it stands; a Delve cell in the Delve.
-      mutationId: event.mutationId, skill: skill.id, xp: event.xp, locationId: event.site ? this.worldLocation(event.areaId) : this.delveLocation(event.areaId),
+      mutationId: event.mutationId, skill: skill.id, xp: event.xp + petXp, locationId: event.site ? this.worldLocation(event.areaId) : this.delveLocation(event.areaId),
       ...(event.materialId && event.qty ? { materialId: event.materialId, qty: event.qty } : {}),
     });
     if (!result.ok) {
@@ -2893,8 +2993,23 @@ export class SideScrollerComponent implements OnDestroy {
     }
     if (once) this.delve.claim(once);
     if (event.materialId && event.qty) this.gotItem(event.qty, materialDisplay(event.materialId)?.name ?? event.materialId, event.materialId);
+    if (event.site) this.petHarvest(event.areaId, event.mutationId, event.materialId);
     this.grantBlock(event);
     return true;
+  }
+  /**
+   * A hunting-ground harvest, for the pets: the Rootglass Thicket counts toward
+   * the Moss Hedgehog, and the hedgehog itself sometimes noses out one more of
+   * a Verdant harvest (one idempotent grant keyed by the harvest).
+   */
+  private petHarvest(areaId: string, mutationId: string, materialId?: string): void {
+    if (areaId === 'rootglass-thicket') this.pets.count('gather:rootglass-thicket');
+    if (!materialId || this.petAbility !== 'gather' || this.town.realm !== 'verdant' || !gatherBonus(mutationId)) return;
+    if (!this.inventory.grantStack(`pet-gather:${mutationId}`, materialId, 1)) return;
+    const item = materialDisplay(materialId)?.name ?? materialId;
+    this.gotItem(1, item, materialId);
+    this.message = this.t('play.pet.gather', { name: this.pets.record(this.pets.state.active)?.name || this.t('play.pet.name.moss-hedgehog'), item });
+    this.engine?.petFeel('happy');
   }
   /** Where a world action is booked in the activity ledger: `<town>/<area>` ('verdant/rootglass-thicket'). */
   private worldLocation(areaId: string): string {
@@ -2923,7 +3038,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser) return;
     // The Banked Furnace banks itself again for a day after every fall.
     if (event.creature === 'banked-furnace') this.delve.claim(furnaceDayFlag(Date.now()));
-    const xp = huntingXpFor(event.hp);
+    // The two rescues a hunt can earn (pets.model.ts): six Foragers, six Substitutes.
+    if ((event.areaId === 'reflection-channels' && event.creature === 'prism-forager') || (event.areaId === 'unrecorded-corridors' && event.creature === 'mirror-substitute')) {
+      this.pets.count(`kill:${event.areaId}`);
+    }
+    const base = huntingXpFor(event.hp);
+    const xp = base + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
     const result = this.skillActions.act({ mutationId: `hunt:${event.id}`, skill: 'hunting', xp, locationId: this.worldLocation(event.areaId) });
     if (result.ok && !result.replayed) this.toastLoot(this.t('play.hunt.xp', { n: xp }));
   }
