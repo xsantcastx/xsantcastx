@@ -1,0 +1,26 @@
+/**
+ * The world-feel words (sound sheet, craft and catch lines), EN + ES. Lazy:
+ * registered by the play view, never by the app shell's eager table.
+ */
+export const SOUND_I18N: Readonly<Record<string, { en: string; es: string }>> = {
+  // ── The sound sheet (Menu → Sound) ──
+  'play.sound.menu': { en: 'Sound', es: 'Sonido' },
+  'play.sound.menuBlurb': { en: 'Music, ambience and effects', es: 'Musica, ambiente y efectos' },
+  'play.sound.title': { en: 'The sound of the world', es: 'El sonido del mundo' },
+  'play.sound.lead': { en: 'Every realm keeps its own quiet tune. Glim hums it back to you, now and then.', es: 'Cada reino guarda su propia melodia tranquila. Glim te la tararea de vuelta, de vez en cuando.' },
+  'play.sound.music': { en: 'Music', es: 'Musica' },
+  'play.sound.ambience': { en: 'Ambience', es: 'Ambiente' },
+  'play.sound.effects': { en: 'Effects', es: 'Efectos' },
+  'play.sound.mute': { en: 'Mute all', es: 'Silenciar todo' },
+  'play.sound.muted': { en: 'Muted', es: 'Silenciado' },
+  'play.sound.waiting': { en: 'The sound starts with your first tap in the world.', es: 'El sonido empieza con tu primer toque en el mundo.' },
+  'play.sound.live': { en: 'Playing. It starts quiet; turn it up if you like it.', es: 'Sonando. Empieza bajito; subelo si te gusta.' },
+  'play.sound.unsupported': { en: 'This browser cannot play the world\'s sound.', es: 'Este navegador no puede reproducir el sonido del mundo.' },
+  'play.sound.close': { en: 'Done', es: 'Listo' },
+  'play.sound.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
+
+  // ── Catch & craft ──
+  'play.craft.toast': { en: 'Crafted {{name}} — in your Satchel', es: '{{name}} forjado — en tu Mochila' },
+  'play.craft.open': { en: 'Open', es: 'Abrir' },
+  'play.craft.openAria': { en: 'Open the Satchel to see {{name}}', es: 'Abre la Mochila para ver {{name}}' },
+};
