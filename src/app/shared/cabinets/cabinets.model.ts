@@ -82,13 +82,15 @@ export const CURATOR_LOUPE_ID = 'curators-loupe';
  */
 export const CABINETS: readonly CabinetDef[] = [
   // ── The five towns (the Seamworks' up on the camp's high ledge, over the Vendor and the Forge) ──
-  { id: 'cab-seamworks', area: 'infernal', realm: 'infernal', place: 'town', ...ground(790, 410), curio: 'curio-unstruck-bell', extras: [], ...SURFACE },
+  // One World (P2): the Seamworks' up in the Material Vendor's loft (col 23, its upstairs floor 4 rows over the street).
+  { id: 'cab-seamworks', area: 'ember-delve', realm: 'infernal', place: 'town', ...ground(23 * CELL + CELL / 2, FLOOR - 4 * CELL), curio: 'curio-unstruck-bell', extras: [], ...SURFACE },
   { id: 'cab-court', area: 'luminous', realm: 'luminous', place: 'town', ...ground(1250), curio: 'curio-jar-of-noon', extras: [], ...SURFACE },
   { id: 'cab-archive', area: 'umbral', realm: 'umbral', place: 'town', ...ground(2100), curio: 'curio-blank-page', extras: [], ...SURFACE, clueFor: 'cab-ink-deeps' },
   { id: 'cab-orrery', area: 'celestial', realm: 'celestial', place: 'town', ...ground(1550), curio: 'curio-lost-moon', extras: [], ...SURFACE },
   { id: 'cab-canopy', area: 'verdant', realm: 'verdant', place: 'town', ...ground(1495), curio: 'curio-stubborn-seed', extras: [], ...SURFACE },
   // ── The hunting grounds (two of them up on the High Roads) ──
-  { id: 'cab-quarry', area: 'ember-quarry', realm: 'infernal', place: 'hunt', ...ground(1180), curio: 'curio-tally-stick', extras: [{ id: PET_TREAT_ID, qty: 3 }], ...SURFACE },
+  // One World (P2): the Ember Quarry is a region of the Ember world; the cabinet stands under the Couriers' rope bridge (col 192).
+  { id: 'cab-quarry', area: 'ember-delve', realm: 'infernal', place: 'hunt', ...ground(192 * CELL + CELL / 2), curio: 'curio-tally-stick', extras: [{ id: PET_TREAT_ID, qty: 3 }], ...SURFACE },
   { id: 'cab-prism-road', area: 'reflection-channels', realm: 'luminous', place: 'heights', ...ground(2345, -270), curio: 'curio-blinking-mirror', extras: [], ...SURFACE, clueFor: 'cab-prism-mines' },
   { id: 'cab-corridors', area: 'unrecorded-corridors', realm: 'umbral', place: 'hunt', ...ground(2650), curio: 'curio-unsigned-letter', extras: [{ id: PET_HATBOX_ID, qty: 1 }], ...SURFACE },
   { id: 'cab-orrery-road', area: 'orrery-rings', realm: 'celestial', place: 'heights', ...ground(940, FLOOR - 320), curio: 'curio-pressed-rose', extras: [], ...SURFACE, clueFor: 'cab-orrery-wells' },

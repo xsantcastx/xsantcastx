@@ -43,6 +43,8 @@ const rift = load('shared/delve/rift-gates.model.ts');
 const world = load('play/world/world.model.ts');
 const heights = load('play/world/heights.ts');
 const cab = load('shared/cabinets/cabinets.model.ts');
+const ember = load('play/world/worlds/ember.world.ts');
+const worldMod = load('play/engine/sector-world.ts');
 const { CELL, TERRAIN_NODE_LIST } = terrainMod;
 const FLOOR = 610;
 const SEEDS = [1, 424242, 0x5eedde1e, 0xdeadbeef, 77];
@@ -98,6 +100,17 @@ test('placement: sixteen cabinets, one curio each, every area real, every surfac
   assert.equal(new Set(cab.CABINETS.map(c => c.curio)).size, 16, 'a curio per cabinet');
   const all = areas();
   for (const c of cab.CABINETS) {
+    // One World (P2): the Seamworks' and the Quarry's stand on the Ember world's surface (its cells).
+    if (c.area === 'ember-delve' && !c.delve) {
+      const w = new worldMod.SectorWorld(ember.EMBER_WORLD.terrain, 424242, 'ember-delve', null);
+      const col = Math.floor(c.x / CELL), row = Math.round((c.y - FLOOR) / CELL);
+      w.center(col);
+      const t = w.t;
+      assert.ok(t.solid(col, row) || terrainMod.isOneWay(t, col, row), `${c.id}: stands on a floor (${col},${row})`);
+      for (let r = row - 3; r < row; r++) assert.ok(!t.solid(col, r), `${c.id}: room to stand (${col},${r})`);
+      for (const s of ember.EMBER_WORLD_STATIONS) assert.ok(Math.abs(s.x - c.x) > world.STATION_REACH || Math.abs((s.y ?? FLOOR) - c.y) > 60, `${c.id}: clear of station ${s.id}`);
+      continue;
+    }
     const area = all.get(c.area);
     assert.ok(area, `${c.id}: area ${c.area} exists`);
     assert.ok(c.x > 0 && c.x < area.width, `${c.id}: x ${c.x} inside ${c.area} (${area.width})`);
@@ -149,7 +162,8 @@ test('placement: every Delve cabinet is set into a cell a pickaxe can open, insi
 
 test('engine: a shown cabinet is reached, reported and opened with E; a hidden one is nothing', () => {
   const f = fixture(memoryDelve(1));
-  const c = cab.CABINETS.find(x => x.id === 'cab-seamworks');
+  // The mechanics, on the old town's camp ledge (a mark is wherever the host says it is).
+  const c = { id: 'cab-seamworks', area: 'infernal', x: 790, y: 410 };
   assert.equal(f.state().areaId, 'infernal');
   // Stand beside it on its ledge, hidden: nothing to reach.
   f.engine.player.x = c.x; f.engine.player.y = c.y; f.engine.player.grounded = true;
@@ -182,12 +196,12 @@ test('engine: a shown cabinet is reached, reported and opened with E; a hidden o
 test('scan: walking toward a cabinet the glass warms band by band, and shows it only up close', () => {
   const c = cab.CABINETS.find(x => x.id === 'cab-seamworks');
   const seen = [];
-  // Along the floor from the east, then up onto its ledge: the glass only burns up there.
+  // Along the Seamworks' street from the east (under the Vendor's loft it already burns), then up in the loft.
   for (let x = 3500; x >= c.x; x -= 20) {
-    const r = cab.scanReading('infernal', { x, y: FLOOR }, new Set());
+    const r = cab.scanReading('ember-delve', { x, y: FLOOR }, new Set());
     if (seen[seen.length - 1] !== r.warmth) seen.push(r.warmth);
   }
-  seen.push(cab.scanReading('infernal', { x: c.x, y: c.y }, new Set()).warmth);
+  assert.equal(cab.scanReading('ember-delve', { x: c.x, y: c.y }, new Set()).warmth, 'burning', 'up in the loft');
   assert.deepEqual(seen, ['cold', 'cool', 'warm', 'hot', 'burning']);
-  assert.equal(cab.scanReading('infernal', { x: c.x, y: c.y }, new Set([c.id])).warmth, 'none', 'opened: the glass is quiet');
+  assert.equal(cab.scanReading('ember-delve', { x: c.x, y: c.y }, new Set([c.id])).id, 'cab-forge-mines', 'opened: the glass turns to the next one here');
 });

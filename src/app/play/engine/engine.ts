@@ -996,7 +996,8 @@ export class SeamworksEngine {
     let spawns: ReturnType<typeof crittersFor> = [];
     try {
       spawns = crittersFor({ sx, hour: this.wildDark ? 0 : 12, seed: world.seed, rowLo: world.rowLo, rows: world.spec.rows, kind: column.kind, liqLevel: column.liqLevel,
-        ground: spec ? ground : null, wild, plan, finds: column.gen.finds ?? [] });
+        // One World P2: a region with the wilds' trees (the Quarry, the Homestead) has their critters too.
+        ground: spec ? ground : null, wild: wild || !!plan, plan, finds: column.gen.finds ?? [] });
     } catch { spawns = []; }
     let hermit: { def: (typeof HERMITS)[number]; col: number; row: number } | null = null;
     const poi = plan?.poi;
@@ -5750,7 +5751,7 @@ export class SeamworksEngine {
     if (t) this.drawFurnaceFacade(c, t, viewport, motionTime);
     if (this.homestead) {
       const f = this.homesteadFrame;
-      f.areaId = this.areaDef.id; f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.playerX = this.player.x; f.reduced = this.reducedMotion;
+      f.areaId = this.areaDef.id; f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.playerX = this.player.x; f.playerY = this.player.y; f.reduced = this.reducedMotion;
       this.homestead.draw(c, f);
     }
     const nearId = this.nearby();

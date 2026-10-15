@@ -491,6 +491,13 @@ const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall
   'town-beam': 'a settlement\'s timber frames: the floor beams the upper rooms stand on',
   'town-plank': 'a shop\'s upper floor: the keeper\'s room above the counter (one-way: stood on, dropped through)',
   'town-ladder': 'the ladder from the shop floor to the keeper\'s room (climbed like any ladder)',
+  // One World P2 (docs/handoff/one-world-p2.md): the High Roads over the Ember Quarry and the Quarry Gate, in cells.
+  'ridge-rock': 'the High Roads\' shelves and mesa: caught by the hands and mantled to the Couriers\' caches (one-world P2)',
+  'courier-ruin': 'the High Roads\' floating ruins: the carving, the look-out and the summit cairn stand on them',
+  'ridge-trunk': 'a ridge tree or snag on the High Roads: climbed like a ladder, kicked off (the wall-jump to the ruin block)',
+  'ridge-canopy': 'a ridge tree\'s canopy: the High Roads\' way from the tree onto the ruin and the rope bridge',
+  'rope-bridge': 'the Couriers\' rope bridge between the ruin and the mesa (one-way: stood on, dropped through)',
+  'gate-bar': 'the Quarry Gate\'s portcullis: shut until the Eclipse Beacon is rekindled, then lifted (the onboarding beat)',
   // The Living World (living-world.ts): the wilds' trees, signposts and the seam-engines underground.
   'ashwood-trunk': 'an ashwood\'s trunk: climbed like a rope to its crown (its burl, at the foot, is the axe\'s)',
   'ashwood-crown': 'an ashwood\'s crown: stood on from below like a platform; cinder finches roost in it',

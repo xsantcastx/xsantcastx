@@ -13,6 +13,7 @@
 export const ONE_WORLD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Engine ──
   'play.world.townWalls': { en: 'The town keeps its walls.', es: 'El pueblo conserva sus muros.' },
+  'play.world.gateLifts': { en: 'The Quarry Gate lifts: the beacon\'s light reached it. The Ember Quarry is open.', es: 'La Puerta de la Cantera se alza: la luz de la baliza la alcanzo. La Cantera de Brasas esta abierta.' },
   'play.world.mineHead': { en: 'The Delve is under your feet: dig down beside the headframe. A camp or an anchor below is a way down from here.', es: 'La Sima esta bajo tus pies: excava junto al castillete. Un campamento o un ancla abajo son un camino desde aqui.' },
   'play.world.stone.hold': { en: 'A dark Waystone. Hold E (or hold the button) to light it.', es: 'Una Piedra de Paso apagada. Manten E (o manten el boton) para encenderla.' },
 

@@ -54,7 +54,15 @@ export interface StoneDef {
 }
 
 /** A named stretch of a world's surface, by sector columns [sx0, sx1]. */
-export interface SurfaceRegion { id: string; name: string; sx0: number; sx1: number }
+export interface SurfaceRegion {
+  id: string; name: string; sx0: number; sx1: number;
+  /**
+   * One World P2: the region's own trees and bushes, laid by the Living World's
+   * stamper (living-world.ts `stampSurface`) at authored columns, so a region
+   * grows the wilds' ashwoods and their critters (finches, hares, moths) too.
+   */
+  flora?: { trees: readonly { col: number; height: number; crown: number }[]; bushes: readonly number[] };
+}
 
 export interface SurfaceSpec {
   world: WorldId;
@@ -179,7 +187,7 @@ export function surfaceColumn(spec: SurfaceSpec, sx: number): SurfaceColumn {
     }
   }
   // The Living World (living-world.ts): the wilds' trees, bushes and point of interest.
-  const plan = out.plan = livingPlan(spec, sx, ground);
+  const plan = out.plan = livingPlan(spec, sx, ground) ?? regionPlan(spec, sx);
   if (plan) {
     stampSurface(spec, sx, plan, ground, out);
     if (plan.poi) out.pois.push(plan.poi);
@@ -222,6 +230,19 @@ export function livingPlan(spec: SurfaceSpec, sx: number, ground: (col: number) 
   let poi = poiAt(spec, sx, k => !!wildStoneAt(spec, k));
   if (!poi && !stone && !packFor(spec.salt, sx, areaLevel(wildDepth(spec, sx)), ground, false)) poi = true;
   return surfacePlan(spec, sx, ground, stone?.col ?? null, poi);
+}
+
+/** A region's authored flora in one sector column, as a Living World plan (no point of interest), or null. Pure. */
+export function regionPlan(spec: SurfaceSpec, sx: number): SurfacePlan | null {
+  const c0 = sx * SECTOR, c1 = c0 + SECTOR;
+  let plan: SurfacePlan | null = null;
+  for (const region of spec.regions) {
+    if (!region.flora || sx < region.sx0 || sx > region.sx1) continue;
+    plan ??= { trees: [], bushes: [], poi: null };
+    for (const t of region.flora.trees) if (t.col >= c0 && t.col < c1) plan.trees.push({ ...t });
+    for (const b of region.flora.bushes) if (b >= c0 && b < c1) plan.bushes.push(b);
+  }
+  return plan && (plan.trees.length || plan.bushes.length) ? plan : null;
 }
 
 /** `groundAt` for one sector column and a few cells either side, each column computed once. */

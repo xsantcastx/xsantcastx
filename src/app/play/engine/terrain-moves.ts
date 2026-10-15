@@ -60,9 +60,10 @@ export interface Lip { col: number; row: number; x: number; y: number; into: -1 
  */
 export function findLip(t: Terrain, b: TerrainBody, box: BodyBox, into: -1 | 1): Lip | null {
   const side = b.x + into * box.halfWidth;
-  const col = into > 0 ? t.colAt(side + 1) : t.colAt(side - 1);
+  // A body stops up to a step short of a wall (a blocked step is not taken in part): look a few px past its side.
+  const col = into > 0 ? t.colAt(side + 4.5) : t.colAt(side - 4.5);
   const face = into > 0 ? col * CELL : (col + 1) * CELL;
-  if (Math.abs(side - face) > 4) return null;
+  if (Math.abs(side - face) > 4.5) return null;
   const yHi = b.y - GRAB_HI, yLo = b.y - GRAB_LO;
   for (let row = t.rowAt(yHi); row <= t.rowAt(yLo); row++) {
     const top = t.top + row * CELL;
@@ -78,7 +79,7 @@ export function findLip(t: Terrain, b: TerrainBody, box: BodyBox, into: -1 | 1):
 
 /** The body would be pressed against a wall on side `dir` (a solid cell just past its side). Pure. */
 export function touchingWall(t: Terrain, b: TerrainBody, box: BodyBox, dir: -1 | 1): boolean {
-  return boxHits(t, b.x + dir * 1.5, b.y - 4, box) && !boxHits(t, b.x, b.y - 4, box);
+  return boxHits(t, b.x + dir * 4.5, b.y - 4, box) && !boxHits(t, b.x, b.y - 4, box);
 }
 
 export class TerrainMover {
@@ -135,8 +136,9 @@ export class TerrainMover {
     if (this.mode === 'mantle') {
       this.t += dt;
       const u = Math.min(1, this.t / MANTLE_TIME);
-      // Up first, then over the lip: the hands pull, then the feet step in.
-      const up = Math.min(1, u / .6), over = Math.max(0, (u - .4) / .6);
+      // Up first, then over the lip: the hands pull the feet level with the lip, and only then do they step in
+      // (on cells the corner is solid: stepping in any sooner would put the body inside it).
+      const up = Math.min(1, u / .6), over = Math.max(0, (u - .6) / .4);
       b.y = this.fromY + (this.lipY - this.fromY) * (1 - (1 - up) * (1 - up));
       b.x = this.fromX + (this.lipX + this.into * (box.halfWidth + STEP_IN) - this.fromX) * over;
       b.vy = 0; b.grounded = u >= 1;
