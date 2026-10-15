@@ -72,7 +72,8 @@ const BESTIARY_ALL: readonly BestiaryEntry[] = [
     id: 'afterimage-moth',
     name: 'Afterimage Moth',
     realm: 'luminous',
-    haunt: 'Heliograph Court',
+    // It rises in the Reflection Channels only under an eclipse (play/world/clock-nodes.ts).
+    haunt: 'Reflection Channels',
     note: 'Circles anyone who admits they are unsure, and goes still for anyone performing certainty.',
   },
   {

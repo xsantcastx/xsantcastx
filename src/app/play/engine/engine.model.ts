@@ -46,7 +46,13 @@ export interface EngineState {
    * no station is: `nearby` is then 'gather'. `need` is what still stops the
    * Keeper ("Sickle II", "Foraging 6"); `seconds` is the regrowth left.
    */
-  gather?: { id: string; label: string; ready: boolean; seconds: number; need?: string; materialId: string };
+  gather?: { id: string; label: string; ready: boolean; seconds: number; need?: string; materialId: string; shut?: boolean };
+  /**
+   * The world clock's nodes and creatures out in this area now (ids, comma-joined:
+   * "moonwake,eclipse-glass,ink-lantern"); '' when none is. A shut Moonwake
+   * Bloom (day) is not in it. The canvas carries it as data-timed.
+   */
+  timed?: string;
   /**
    * In a liquid (delves): what the body is in, and the breath left 0..1 while
    * the head is under water (absent above it). `burning`: lava's after-burn.
@@ -298,6 +304,8 @@ export interface DiscoverEvent {
    * touched, a door opened (E), or a whisper walked into. The host pays it once a day (its ledger key).
    */
   kind: 'inscription' | 'shrine' | 'mark' | 'mystery';
+  /** A shrine first touched while an eclipse is on (it showed twice as far; the host pays the eclipse's share). */
+  eclipse?: boolean;
   /** Inscription id from the terrain spec (shared/delve/delve-lore.model.ts lists them), a field note, or a shrine. */
   id: string;
   /** Biome id the inscription sits in ('root-hollows', …). */

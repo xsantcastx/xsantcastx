@@ -90,7 +90,7 @@ export const PETS: readonly PetDef[] = [
   {
     id: 'ink-pup', realm: 'umbral', arrival: 'rescue', rare: false, ability: 'warn',
     source: { kind: 'hunt', tally: 'kill:unrecorded-corridors', need: 6 },
-    favourite: 'blindfin', likes: ['mere-perch', 'glowcap-minnow'],
+    favourite: 'blindfin', likes: ['mere-perch', 'glowcap-minnow', 'mirrorfin'],
     name: 'Ink Pup',
     foundIn: 'Unrecorded Corridors: herded by the Mirror Substitutes, free once six of them fall',
     usedFor: 'it barks when something winds up behind you, or a shade is near',
@@ -99,7 +99,7 @@ export const PETS: readonly PetDef[] = [
   {
     id: 'star-owlet', realm: 'celestial', arrival: 'egg', rare: false, ability: 'scent',
     source: { kind: 'bounty', claimDays: 3, need: 3 },
-    favourite: 'starlight-herb', likes: ['moonpetal-herb', 'glowcap-minnow'],
+    favourite: 'starlight-herb', likes: ['moonpetal-herb', 'glowcap-minnow', 'moonwake-bloom'],
     name: 'Star Owlet',
     foundIn: 'Rootglass Canopy: the Board Herald hands you the egg on your third day of bounties',
     usedFor: 'it hoots at ore: veins within a few cells show on the Delve map',
@@ -126,7 +126,7 @@ export const PETS: readonly PetDef[] = [
   {
     id: 'shade-kit', realm: 'umbral', arrival: 'egg', rare: true, ability: 'fish',
     source: { kind: 'guardian', flag: PET_WARDEN_FLAG, need: 1 },
-    favourite: 'umbral-ink', likes: ['blindfin', 'inkstone'],
+    favourite: 'umbral-ink', likes: ['blindfin', 'inkstone', 'mirrorfin'],
     name: 'Shade-kit',
     foundIn: 'The Ink Deeps: the egg the Gloam Warden guarded, yours once it falls',
     usedFor: 'it watches the water: a bite comes sooner when you fish',
