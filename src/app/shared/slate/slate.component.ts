@@ -22,7 +22,7 @@
  *    read only, each pointing at where it is acted on.
  */
 import {
-  ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentRef, OnDestroy, OnInit, PLATFORM_ID, Type,
+  ChangeDetectionStrategy, ChangeDetectorRef, Component, ComponentRef, ElementRef, OnDestroy, OnInit, PLATFORM_ID, Type,
   NgZone, ViewChild, ViewContainerRef, inject,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
@@ -49,6 +49,7 @@ import { CabinetsService } from '../cabinets/cabinets.service';
 import { CABINETS_I18N } from '../cabinets/cabinets.i18n';
 import { CABINETS, SET_BONUSES, hasBonus, openClues, type SetBonusId, type Warmth } from '../cabinets/cabinets.model';
 import { SlateService } from './slate.service';
+import { PetSheetComponent } from '../pets/pet-sheet.component';
 import { slateIcon } from './slate-app-icons';
 import { WorldClockService } from '../world-clock/world-clock.service';
 import { EclipseService } from '../world-clock/eclipse.service';
@@ -62,7 +63,7 @@ import { sceneMode } from '../sound/sound-palette';
 import { SLATE_TABLES, SLATE_WORLD_POINTERS, slateTabs, type SlateTab, type SlateTableGame, type SlateTier } from './slate.model';
 
 /** Which face of the glass is up: the home screen, one of the Slate's screens, or the eclipse (every Slate). */
-export type SlateFace = 'home' | SlateTab | 'eclipse';
+export type SlateFace = 'home' | SlateTab | 'eclipse' | 'pets' | 'codex' | 'about';
 
 /** One app on the phone's grid: a Slate face, one of Lune's tables, or a place the play view opens. */
 export interface SlateApp {
@@ -72,7 +73,6 @@ export interface SlateApp {
   icon: string;
   face?: SlateFace;
   game?: SlateTableGame;
-  launch?: 'pets' | 'codex';
 }
 
 /** A day on the calendar page: its number, today, an eclipse on it, already gone. */
@@ -101,7 +101,7 @@ export function shortDuration(ms: number): string {
 @Component({
   selector: 'app-slate',
   standalone: true,
-  imports: [ActionButtonComponent],
+  imports: [ActionButtonComponent, PetSheetComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './slate.component.html',
   styleUrls: ['./slate.component.css'],
@@ -123,11 +123,18 @@ export class SlateComponent implements OnInit, OnDestroy {
   private readonly zone = inject(NgZone);
   private clockTimer: ReturnType<typeof setInterval> | null = null;
   private clockSecond = -1;
+  private fitTimer: ReturnType<typeof setInterval> | null = null;
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
 
   /** Always in the DOM (hidden off the Tables face), so it resolves before any game is asked for. */
   @ViewChild('gameHost', { read: ViewContainerRef, static: true }) private gameHost!: ViewContainerRef;
+  @ViewChild('codexHost', { read: ViewContainerRef, static: true }) private codexHost!: ViewContainerRef;
+  @ViewChild('phone', { static: true }) private phone!: ElementRef<HTMLElement>;
+  private codexRef: ComponentRef<unknown> | null = null;
+  private codexSeq = 0;
+  codexLoading = false;
+  codexError = false;
   private gameRef: ComponentRef<unknown> | null = null;
   private gameSeq = 0;
 
@@ -173,7 +180,7 @@ export class SlateComponent implements OnInit, OnDestroy {
     { id: 'dock-factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
     { id: 'dock-scan', key: 'slate.app.scan', icon: 'scan', face: 'scan' },
     { id: 'dock-eclipse', key: 'slate.app.eclipse', icon: 'eclipse', face: 'eclipse' },
-    { id: 'dock-codex', key: 'slate.app.codex', icon: 'codex', launch: 'codex' },
+    { id: 'dock-codex', key: 'slate.app.codex', icon: 'codex', face: 'codex' },
   ];
   /** 0: home (clock, widgets, apps); 1: the calendar and Sera's ledger. */
   page = 0;
@@ -229,28 +236,35 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.subs.add(this.eclipses.count$.subscribe(() => this.readLedger()));
     this.read();
     this.readClock();
+    if (this.browser) setTimeout(() => this.phone.nativeElement.focus({ preventScroll: true }));
     // The clock face ticks with the world (one in-game minute a real second), outside Angular; it redraws only when it moved.
-    if (this.browser) this.zone.runOutsideAngular(() => { this.clockTimer = setInterval(() => this.tickClock(), 1000); });
+    if (this.browser) this.zone.runOutsideAngular(() => {
+      this.clockTimer = setInterval(() => this.tickClock(), 1000);
+      this.fitTimer = setInterval(() => this.fit(), 300);
+    });
   }
 
   ngOnDestroy(): void {
     if (this.clockTimer) clearInterval(this.clockTimer);
+    if (this.fitTimer) clearInterval(this.fitTimer);
     this.subs.unsubscribe();
     this.gameSeq++;
     this.gameRef?.destroy();
+    this.dropCodex();
   }
 
   // ── Faces ──
 
   /** One tap on an app (grid or dock): its face, its table, or the place the play view opens. */
   openApp(app: SlateApp): void {
-    if (app.launch) { this.slate.launch(app.launch); return; }
     if (app.game) { this.openGame(app.game); return; }
     if (app.face && app.face !== 'home') this.open(app.face);
   }
 
   /** Open one of the Slate's screens from the home face. */
-  open(face: SlateTab | 'eclipse'): void {
+  open(face: SlateTab | 'eclipse' | 'pets' | 'codex' | 'about'): void {
+    if (face === 'pets' || face === 'about') { this.face = face; this.notice = ''; this.cdr.markForCheck(); return; }
+    if (face === 'codex') { this.face = 'codex'; this.notice = ''; this.showCodex(); return; }
     if (face === 'eclipse') { this.face = 'eclipse'; this.notice = ''; this.readClock(); this.readLedger(); this.cdr.markForCheck(); return; }
     if (!this.tabs.includes(face)) return;
     this.face = face;
@@ -272,6 +286,7 @@ export class SlateComponent implements OnInit, OnDestroy {
 
   /** Back to the home face. The table keeps its state while the Slate stays open. */
   back(): void {
+    if (this.face === 'codex') this.dropCodex();
     this.face = 'home';
     this.notice = '';
     this.read();
@@ -290,9 +305,10 @@ export class SlateComponent implements OnInit, OnDestroy {
       { id: 'factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
       ...(this.tabs.includes('map') ? [{ id: 'map', key: 'slate.tab.map', icon: 'map', face: 'map' as const }] : []),
       ...(this.tabs.includes('scan') ? [{ id: 'scan', key: 'slate.app.scan', icon: 'scan', face: 'scan' as const }] : []),
-      { id: 'pets', key: 'slate.app.pets', icon: 'pets', launch: 'pets' },
-      { id: 'codex', key: 'slate.app.codex', icon: 'codex', launch: 'codex' },
+      { id: 'pets', key: 'slate.app.pets', icon: 'pets', face: 'pets' },
+      { id: 'codex', key: 'slate.app.codex', icon: 'codex', face: 'codex' },
       { id: 'eclipse', key: 'slate.app.eclipse', icon: 'eclipse', face: 'eclipse' },
+      { id: 'about', key: 'slate.app.about', icon: 'about', face: 'about' },
     ];
     return [...games, ...faces];
   }
@@ -375,6 +391,74 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.ledgerNext = next ? { at: next.at, glass: next.glass } : null;
     this.marksPaid = new Set(this.eclipses.state.marks);
     this.cdr.markForCheck();
+  }
+
+  /**
+   * Scale to fit: a hosted app (one of Lune's tables, the Codex) lays itself out by the viewport's width, which on a desktop
+   * is wider than the phone's screen. Measure its natural width and, if it is wider than the screen, zoom it down so it fits.
+   * The phone never grows to suit it.
+   */
+  private fit(): void {
+    if (this.face !== 'tables' && this.face !== 'codex') return;
+    const root = this.phone.nativeElement;
+    const pane = root.querySelector<HTMLElement>(this.face === 'tables' ? '.sl-tables' : '.sl-codex');
+    const scroll = pane?.parentElement;
+    if (!pane || !scroll) return;
+    pane.style.zoom = '';
+    const avail = scroll.clientWidth - 2;
+    const natural = pane.scrollWidth;
+    const k = natural > avail + 1 ? Math.max(0.55, avail / natural) : 1;
+    pane.style.zoom = k < 1 ? String(Math.round(k * 1000) / 1000) : '';
+  }
+
+  // ── The home bar, and pulling the phone down ──
+
+  /** The phone's one physical button: out of an app to the home screen, and from home it is put away. */
+  homeButton(): void {
+    if (this.dragged) { this.dragged = false; return; }
+    if (this.face === 'home') this.slate.close(); else this.back();
+  }
+  private dragY: number | null = null;
+  private dragged = false;
+  dragStart(event: PointerEvent): void { this.dragY = event.clientY; this.dragged = false; }
+  dragMove(event: PointerEvent): void { if (this.dragY !== null && event.clientY - this.dragY > 60) this.dragged = true; }
+  /** A pull down on the bezel (the status bar or the home bar) puts the phone away. */
+  dragEnd(event: PointerEvent): void {
+    if (this.dragY === null) return;
+    const dy = event.clientY - this.dragY;
+    this.dragY = null;
+    if (dy > 60) { this.dragged = true; this.slate.close(); }
+  }
+  dragCancel(): void { this.dragY = null; }
+  petFelt(event: { id: string; kind: 'happy' | 'trick' | 'hatch' }): void { this.slate.petFelt(event); }
+
+  // ── The Codex, built into the screen ──
+
+  private showCodex(): void {
+    if (!this.browser) return;
+    if (this.codexRef) { this.cdr.markForCheck(); return; }
+    const seq = ++this.codexSeq;
+    this.codexLoading = true;
+    this.codexError = false;
+    this.cdr.markForCheck();
+    PANEL_REGISTRY.codex.load().then((type: Type<unknown>) => {
+      if (seq !== this.codexSeq) return;
+      this.codexRef = this.codexHost.createComponent(type);
+      this.codexLoading = false;
+      this.cdr.markForCheck();
+    }).catch(() => {
+      if (seq !== this.codexSeq) return;
+      this.codexLoading = false;
+      this.codexError = true;
+      this.cdr.markForCheck();
+    });
+  }
+  private dropCodex(): void {
+    this.codexSeq++;
+    this.codexRef?.destroy();
+    this.codexRef = null;
+    this.codexHost?.clear();
+    this.codexLoading = false;
   }
 
   // ── Tables: the stalls' own components ──

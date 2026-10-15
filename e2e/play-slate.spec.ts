@@ -126,9 +126,10 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect(spin(page)).toBeVisible({ timeout: 15000 });
       await expect(reels(page).locator('.rl-result')).toContainText('Last spin');
       if (phone) {
-        // A full-screen sheet; Back at least 44px.
-        const box = (await placePanel(page).boundingBox())!;
-        expect(box.width).toBeGreaterThanOrEqual(size.width - 1);
+        // The phone alone (no window around it) fits the viewport; Back at least 44px.
+        const box = (await placePanel(page).locator('[data-slate-phone]').boundingBox())!;
+        expect(box.width).toBeLessThanOrEqual(size.width);
+        expect(box.height).toBeLessThanOrEqual(size.height);
         const back = (await placePanel(page).locator('.sl-back').boundingBox())!;
         expect(Math.min(back.width, back.height)).toBeGreaterThanOrEqual(44);
       }
@@ -156,7 +157,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await page.screenshot({ path: resolve(SHOTS, `${size.width}-5-built.png`) });
 
       // P (desktop) or Close folds it; the world moves again.
-      if (phone) await placePanel(page).locator('.place-close').click();
+      if (phone) await page.keyboard.press('Escape');
       else await page.keyboard.press('p');
       await expect(placePanel(page)).toBeHidden();
 

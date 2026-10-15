@@ -574,7 +574,7 @@
   <!-- The station under the pointer (or the finger): name and what it is for. Positioned from code. -->
   <div #stationTip class="station-tip" hidden aria-hidden="true"><b></b><small></small></div>
 
-  <section #placePanel class="place" [class.place--closing]="closing" [class.place--slate]="panel?.kind === 'slate'" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)" appSheetDrag (sheetDismiss)="closePanel()">
+  <section #placePanel class="place" [class.place--closing]="closing" [class.place--slate]="panel?.kind === 'slate'" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)" (click)="placeClick($event)" appSheetDrag (sheetDismiss)="closePanel()">
     <header class="place-head win-head">
       <div>
         <span class="realm-tag">{{ panel?.kicker }}</span>

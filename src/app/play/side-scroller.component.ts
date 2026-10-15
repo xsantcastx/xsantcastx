@@ -136,7 +136,7 @@ import { COMPASS_ID, FRAGMENT_ID, bountyLine, stratumOfRow, type Bounty, type Bo
 import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinId, type MapPin, type PinIcon } from '../shared/delve/map-pins.model';
 import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 // The Mirror Slate (docs/handoff/mirror-slate.md): the HUD button, P, the busy rule, Lune's and Kael's counters.
-import { SlateService, type SlateLaunch } from '../shared/slate/slate.service';
+import { SlateService } from '../shared/slate/slate.service';
 // The world clock (docs/handoff/world-clock.md): the sky, the hour the world keeps, the eclipse and Sera Quill's ledger.
 import { WorldClockService } from '../shared/world-clock/world-clock.service';
 import { EclipseService } from '../shared/world-clock/eclipse.service';
@@ -678,7 +678,9 @@ export class SideScrollerComponent implements OnDestroy {
       this.zone.run(() => { this.message = this.t(key); });
     });
     // The Slate's phone apps that are places of their own (the Pets well, the Codex): fold the Slate, open the place.
-    this.launchSub = this.slate.launch$.subscribe(app => this.zone.run(() => this.slateLaunch(app)));
+    this.launchSub = new Subscription();
+    this.launchSub.add(this.slate.close$.subscribe(() => this.zone.run(() => { if (this.panel?.kind === 'slate') this.closePanel(); })));
+    this.launchSub.add(this.slate.petFelt$.subscribe(e => this.zone.run(() => this.petFelt(e))));
     // The Slate's Scan: holding the glass up folds the Slate so you can walk with it.
     this.cabinets.refresh();
     this.cabinetSub = this.cabinets.scanning$.subscribe(on => this.zone.run(() => this.scanChanged(on)));
@@ -1369,10 +1371,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = undefined; }
     this.closing = false;
     if (!this.panel) return;
+    const wasSlate = this.panel.kind === 'slate';
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panel = null; this.panelLoading = false; this.panelError = '';
     this.chestView = null;
+    if (wasSlate) this.pushPet();
     this.engine?.setPaused(false);
     this.sound.sfx('close');
     // Something crafted went into the Satchel under the panel: now it is in view, it pulses.
@@ -1417,6 +1421,10 @@ export class SideScrollerComponent implements OnDestroy {
     void this.router.navigate([], { relativeTo: this.route, queryParams: { at }, queryParamsHandling: 'merge', replaceUrl: true });
   }
   /** Keep Tab inside the open dialog. The rest of the stage is also `inert` while it is up. */
+  /** A tap on the dim around the Slate (the veil itself, nothing inside it) puts the phone away. */
+  placeClick(event: MouseEvent): void {
+    if (this.panel?.kind === 'slate' && event.target === this.placePanel.nativeElement) this.closePanel();
+  }
   trapFocus(event: KeyboardEvent): void {
     if (event.key !== 'Tab' || !this.panel) return;
     const root = this.placePanel.nativeElement;
@@ -2172,15 +2180,6 @@ export class SideScrollerComponent implements OnDestroy {
     }
     this.message = line;
   }
-  /** The Slate's phone asked for a place of its own: the Pets well, or the Codex. */
-  private slateLaunch(app: SlateLaunch): void {
-    if (this.panel?.kind === 'slate') this.finishClose(false);
-    if (app === 'pets') { this.openPets(); return; }
-    const entry = PANEL_REGISTRY.codex;
-    this.showPanel({ kind: 'page', stationId: 'codex', title: entry.title, kicker: entry.kicker, own: true });
-    this.loadPanel(entry, this.panelInjector);
-  }
-
   // ── The Mirror Slate ──
   /** The HUD tick: which pane is held, and whether the Homestead has something worth a look. */
   private tickSlate(): void {

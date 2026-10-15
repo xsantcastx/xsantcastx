@@ -975,6 +975,25 @@
   .cx-path__sigil { width: 32px; height: 32px; }
 }
 
+/* The Codex inside the Slate (shared/slate): the phone's screen is a narrow column whatever the viewport is, so it
+   always gets the small-screen layout (not in a landscape phone, whose screen is wide). */
+@media not ((orientation: landscape) and (max-height: 520px)) {
+  :host-context(.sl-codex) .cx-tabs { flex-wrap: nowrap; justify-content: flex-start; overflow-x: auto; scrollbar-width: none; margin-inline: 0; padding-inline: 0; }
+  :host-context(.sl-codex) .cx-tabs::-webkit-scrollbar { display: none; }
+  :host-context(.sl-codex) .cx-tab { flex: none; }
+  :host-context(.sl-codex) .cx-grid,
+  :host-context(.sl-codex) .cx-grid--beast,
+  :host-context(.sl-codex) .cx-grid--secrets { grid-template-columns: 1fr; }
+  :host-context(.sl-codex) .cx-filter-row--split { flex-direction: column; align-items: stretch; }
+  :host-context(.sl-codex) .cx-clear { width: 100%; }
+  :host-context(.sl-codex) .cx-energy__row { flex-direction: column; gap: 0.8rem; }
+  :host-context(.sl-codex) .cx-energy__side--nox { text-align: left; }
+  :host-context(.sl-codex) .cx-cal { grid-template-columns: repeat(15, 1fr); }
+  :host-context(.sl-codex) .cx-lb { overflow-x: auto; }
+  :host-context(.sl-codex) .cx-rank { flex-direction: column; text-align: center; }
+  :host-context(.sl-codex) .cx-rank__body { text-align: center; }
+}
+
 /* ═══ Reduced motion ════════════════════════════════════════════════════ */
 
 @media (prefers-reduced-motion: reduce) {
