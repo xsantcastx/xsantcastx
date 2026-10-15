@@ -11,6 +11,7 @@
  */
 import { ART_ALL, type ArtEntry } from './art-manifest.generated';
 import { pixelIcon } from './pixel-icons';
+import { artIcon } from './item-icons';
 import { NPCS } from '../npc/npc.model';
 import { EXPLORER_ARCHETYPES } from '../rpg/explorer-archetypes';
 
@@ -184,6 +185,9 @@ export const ART_PENDING: ReadonlySet<string> = new Set(
 /**
  * Painted art for a catalogue id, or null when nothing has been painted.
  *
+ * An item's pixel icon (item-icons.ts) wins over any painting: the game is one
+ * pixel style now, and the paintings are kept for the surfaces that stay painted.
+ *
  * The id's own painting wins over its alias: an alias is a stand-in, so the
  * import that lands `seam-eater` (or `pickaxe-1`) takes over at once, with no
  * code change, and the alias row becomes housekeeping. No aliased id had art
@@ -191,8 +195,10 @@ export const ART_PENDING: ReadonlySet<string> = new Set(
  */
 export function artFor(id: string | undefined | null): ArtEntry | null {
   if (!id) return null;
-  // Then a procedural pixel icon (Fishing and Liquids items) until their I1 art is painted.
-  return ART_ALL[id] ?? ART_ALL[ART_ALIAS[id] ?? ''] ?? pixelIcon(id);
+  // One art style (2026-10-14): every item is its pixel icon first (item-icons.ts), the
+  // painting only where no icon exists yet (UI chrome, crests, creatures' Codex splash);
+  // the Fishing and Liquids pixel icons last.
+  return artIcon(id) ?? ART_ALL[id] ?? ART_ALL[ART_ALIAS[id] ?? ''] ?? pixelIcon(id);
 }
 
 /** True when `id` has art. Cheaper to read than `!!artFor(id)` at a call site. */

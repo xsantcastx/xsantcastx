@@ -62,6 +62,7 @@ import { LEVELS, rankSigil } from '../gamification/gamification.model';
 import { QuestService } from '../quests/quest.service';
 import type { Quest } from '../quests/quest.model';
 import { npcById } from '../npc/npc.model';
+import { npcPortrait } from '../keeper-look/npc-portrait';
 import { AnalyticsService } from '../../analytics.service';
 import { TranslationService } from '../../translation.service';
 import { ONBOARDING_I18N } from './onboarding.i18n';
@@ -129,14 +130,11 @@ export class OnboardingComponent implements OnInit, OnDestroy {
   /**
    * Kael, read from the cast rather than restated here.
    *
-   * His portrait has not been painted — `artId: 'npc-kael'` is registered in
-   * ART_PENDING and resolves to null — so this renders the same placeholder orb
-   * the NPC dialogue widget does, from his monogram and accent colour. Writing
-   * an `assets/` path for a painting that does not exist is how this repo has
-   * shipped broken images before; when the portrait lands it will arrive
-   * through the asset manifest and this will pick it up with the rest.
+   * His face is his pixel Keeper (npc-portrait.ts), the same figure that works
+   * the Seamworks anvil, on his accent orb; the monogram stays under SSR.
    */
   readonly kael = npcById('kael')!;
+  readonly kaelFace = npcPortrait('kael');
 
   /** Gold earned by the tutorial's own strike. 0 until they hit it. */
   readonly struck = signal(0);

@@ -12,6 +12,7 @@
  */
 import { RUNES, RUNEWORDS } from './rune.model';
 import { ARTIFACTS } from '../economy/economy.model';
+import { ART_ITEMS_ARTIFACTS, ART_ITEMS_RUNEWORDS } from '../art/art-manifest.generated';
 import {
   ARTIFACT_CARDS,
   RUNEWORD_CARDS,
@@ -58,9 +59,9 @@ describe('rune-cards', () => {
       expect(Object.keys(RUNEWORD_CARDS).filter(id => !ids.has(id))).toEqual([]);
     });
 
-    it('keeps the catalogue stem for The Convergent’s Will', () => {
-      expect(runewordCard('convergents-will')!.src)
-        .toContain('26-convergents-will');
+    it('keeps the catalogue stem for The Convergent’s Will (the painting stays in the library)', () => {
+      expect(ART_ITEMS_RUNEWORDS['convergents-will'].src).toContain('26-convergents-will');
+      expect(runewordCard('convergents-will')!.src).toMatch(/^data:image\/svg\+xml,/);
     });
   });
 
@@ -75,9 +76,9 @@ describe('rune-cards', () => {
       expect(Object.keys(ARTIFACT_CARDS).filter(id => !ids.has(id))).toEqual([]);
     });
 
-    it('keeps the catalogue name for the Mirrorblade', () => {
-      expect(artifactCard('mirrorblade-kael')!.src)
-        .toContain('30-mirrorblade-of-kael');
+    it('keeps the catalogue name for the Mirrorblade (the painting stays in the library)', () => {
+      expect(ART_ITEMS_ARTIFACTS['mirrorblade-of-kael'].src).toContain('30-mirrorblade-of-kael');
+      expect(artifactCard('mirrorblade-kael')!.src).toMatch(/^data:image\/svg\+xml,/);
     });
   });
 
@@ -88,17 +89,12 @@ describe('rune-cards', () => {
       ...Object.values(ARTIFACT_CARDS),
     ];
 
-    it('points at a generated WebP under the game asset folders', () => {
+    /* One art style: every card is its pixel tablet or icon (item-icons.ts), an
+       inline SVG — no file to fetch, so no srcset ladder is needed. */
+    it('is a pixel icon, inline', () => {
       for (const c of all) {
-        expect(c.src).toMatch(/^assets\/game\/items\/(runes|runewords|artifacts)\/[a-z0-9-]+-\d+\.webp$/);
-      }
-    });
-
-    /* The ladder is what stops a ~90px card fetching the widest variant. */
-    it('carries a width-descriptor srcset', () => {
-      for (const c of all) {
-        expect(c.srcset).toContain('96w');
-        expect(c.srcset.split(',').length).toBeGreaterThan(1);
+        expect(c.src).toMatch(/^data:image\/svg\+xml,/);
+        expect(c.srcset).toBe('');
       }
     });
 

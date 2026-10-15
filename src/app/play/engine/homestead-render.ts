@@ -21,6 +21,15 @@ import {
 } from '../world/homestead';
 import type { HomeStationId } from '../../shared/minigames/home-forge.model';
 import { collectable, emptyLedger, hasPending, homesteadT, Pending, PendingLedger, pendingLine } from '../homestead/homestead.model';
+import { blit, HomesteadPixels, HP } from './homestead-pixel';
+import { paintWorld } from './hub-pixel';
+import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { townsfolkLook } from '../../shared/keeper-look/npc-looks';
+
+/** A canvas can be made (a browser; not SSR or the node harness). The pixel figures and props need one. */
+const canPaint = typeof document !== 'undefined' && typeof document.createElement === 'function';
+/** Snap a height above the floor to the figures' 4 px grid (the floor line is the grid's origin). */
+const up = (h: number) => Math.round(h / 4) * 4;
 
 const FLOOR = 610;
 
@@ -103,20 +112,21 @@ export function circleLook(tier: number): { bright: number; runes: number } {
   return { bright: 0.25 + (t - 1) * 0.25, runes: 2 + t * 2 };
 }
 
-/** Most figures drawn per building; the panel says the true count. */
-export const MAX_FIGURES = 12;
+/** Most figures drawn per building; the panel says the true count. Ten pixel automatons fit round one anvil. */
+export const MAX_FIGURES = 10;
 
 /** Automaton figure slots: two rows around the anvil, centred on `cx`. */
 export function automatonSlots(count: number, cx: number): { x: number; y: number; row: number }[] {
   const n = Math.max(0, Math.min(MAX_FIGURES, Math.floor(count)));
   const out: { x: number; y: number; row: number }[] = [];
-  const perRow = 6;
+  const perRow = 5;
   for (let i = 0; i < n; i++) {
     const row = i < perRow ? 0 : 1;
     const inRow = row === 0 ? Math.min(n, perRow) : n - perRow;
     const k = row === 0 ? i : i - perRow;
-    const spacing = 34;
-    out.push({ x: cx + (k - (inRow - 1) / 2) * spacing, y: FLOOR - row * 14, row });
+    // A pixel automaton is 10–14 art px (40–56 px) wide: 48 px apart, the back row a step up.
+    const spacing = 48;
+    out.push({ x: cx + (k - (inRow - 1) / 2) * spacing + row * 24, y: FLOOR - row * 16, row });
   }
   return out;
 }
@@ -124,7 +134,8 @@ export function automatonSlots(count: number, cx: number): { x: number; y: numbe
 /** Tent x positions for `n` slots around the camp centre. */
 export function tentSlots(n: number, cx: number): number[] {
   const count = Math.max(1, Math.min(6, Math.floor(n)));
-  return Array.from({ length: count }, (_, i) => cx + (i - (count - 1) / 2) * 52);
+  // A pixel tent is 18 art px (72 px) wide; the row sits east of the camp's centre, the fire west of it.
+  return Array.from({ length: count }, (_, i) => cx + 60 + (i - (count - 1) / 2) * 76);
 }
 
 /** How far an explorer walks off before they are "at the site" (world px). */
@@ -193,6 +204,10 @@ export class HomesteadScene implements HomesteadView {
   private vaultBump = -Infinity;
   private reduced = false;
   private readonly buildings = HOMESTEAD_BUILDINGS.map(s => ({ id: buildingOfStation(s.id)!, x: s.x }));
+  /** The pixel figures and props (homestead-pixel.ts); null without a DOM, where the vector placeholders draw. */
+  private readonly pixels = canPaint ? new HomesteadPixels() : null;
+  /** Explorers are Keepers: one painter per look, kept. */
+  private readonly explorerPainters = new Map<string, KeeperPainter>();
 
   /** Called when the Keeper strikes the Forge (click, tap or E). The host does the economy. */
   onStrike: (() => void) | null = null;
@@ -413,29 +428,45 @@ export class HomesteadScene implements HomesteadView {
   private drawFence(c: CanvasRenderingContext2D, f: HomesteadFrame): void {
     c.fillStyle = '#4b332c';
     const start = Math.max(220, Math.floor((f.camera - 40) / 60) * 60), end = Math.min(FENCE_END, f.camera + f.viewport + 40);
-    for (let x = start; x < end; x += 60) c.fillRect(x, FLOOR - 34, 6, 34);
-    c.fillRect(Math.max(220, f.camera - 40), FLOOR - 26, Math.min(FENCE_END, f.camera + f.viewport + 40) - Math.max(220, f.camera - 40), 4);
+    for (let x = start; x < end; x += 60) c.fillRect(x, FLOOR - 36, 8, 36);
+    c.fillRect(Math.max(220, f.camera - 40), FLOOR - 28, Math.min(FENCE_END, f.camera + f.viewport + 40) - Math.max(220, f.camera - 40), 4);
+    c.fillStyle = '#6a4a3c';
+    for (let x = start; x < end; x += 60) c.fillRect(x, FLOOR - 36, 4, 36);
   }
 
   private drawTreasury(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
     const x = X.treasury, m = this.model;
     this.flashGlow(c, 'treasury', now, 110);
+    const banners = Math.min(4, m.multipliers), piles = vaultPiles(m.gold);
+    if (this.pixels) {
+      const el = this.pixels.world(`treasury:${banners}:${piles}`, () => paintWorld(192, 176, x - 96, FLOOR - 176, b => this.treasuryBody(b, x, banners, piles)));
+      blit(c, el, x - 96, FLOOR - 176);
+    } else this.treasuryBody(c, x, banners, piles);
+    this.treasuryPurse(c, f, now);
+  }
+
+  /** The Treasury's house, banners and coin piles (world px; painted once per look in a browser). */
+  private treasuryBody(c: CanvasRenderingContext2D, x: number, banners: number, piles: number): void {
     c.fillStyle = '#3d3446'; c.fillRect(x - 80, FLOOR - 120, 160, 120);
     c.fillStyle = '#524660'; c.beginPath(); c.moveTo(x - 92, FLOOR - 120); c.lineTo(x, FLOOR - 170); c.lineTo(x + 92, FLOOR - 120); c.closePath(); c.fill();
     c.fillStyle = '#1d1418'; c.fillRect(x - 34, FLOOR - 80, 68, 80);
-    c.strokeStyle = '#c2a26a'; c.lineWidth = 3; c.beginPath(); c.arc(x, FLOOR - 40, 18, 0, Math.PI * 2); c.stroke();
+    c.strokeStyle = '#c2a26a'; c.lineWidth = 4; c.beginPath(); c.arc(x, FLOOR - 40, 18, 0, Math.PI * 2); c.stroke();
     // One banner per Treasury multiplier held.
-    for (let i = 0; i < Math.min(4, m.multipliers); i++) {
+    for (let i = 0; i < banners; i++) {
       const bx = x - 60 + i * 40;
       c.fillStyle = '#8d3f36'; c.fillRect(bx, FLOOR - 112, 16, 26);
       c.fillStyle = GOLD; c.fillRect(bx + 6, FLOOR - 104, 4, 4);
     }
     // Coin piles: one per order of magnitude held.
-    const piles = vaultPiles(m.gold);
     for (let i = 0; i < piles; i++) {
-      const px = x - 70 + (i % 5) * 35 + (i >= 5 ? 17 : 0), py = FLOOR - (i >= 5 ? 10 : 0);
+      const px = x - 70 + (i % 5) * 35 + (i >= 5 ? 17 : 0), py = FLOOR - 4 - (i >= 5 ? 10 : 0);
       for (let k = 0; k < 3; k++) { c.fillStyle = k % 2 ? '#e8b94e' : GOLD; c.beginPath(); c.ellipse(px, py - k * 6, 12, 4, 0, 0, Math.PI * 2); c.fill(); }
     }
+  }
+
+  /** The purse over the Treasury: real text, bumping when Gold lands. */
+  private treasuryPurse(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
+    const x = X.treasury, m = this.model;
     const bump = (now - this.vaultBump) / 300;
     const s = bump >= 0 && bump < 1 && !f.reduced ? 1 + Math.sin(bump * Math.PI) * .18 : 1;
     c.save(); c.translate(x, FLOOR - 206); c.scale(s, s);
@@ -456,16 +487,18 @@ export class HomesteadScene implements HomesteadView {
     const golden = (now - this.goldenAt) / 1500;
     if (golden >= 0 && golden < 1) { c.save(); c.globalAlpha = (1 - golden) * .6; c.fillStyle = GOLD; c.beginPath(); c.arc(x, FLOOR - 170, 80 + golden * 140, 0, Math.PI * 2); c.fill(); c.restore(); }
     c.save(); c.translate(x, FLOOR); c.scale(1 + (1 - squash) * .6, squash);
-    // Stone hearth and the anvil.
-    c.fillStyle = '#423846'; c.beginPath(); c.moveTo(-100, 0); c.lineTo(-80, -150); c.lineTo(80, -150); c.lineTo(100, 0); c.closePath(); c.fill();
-    c.fillStyle = '#1d1418'; c.beginPath(); c.arc(0, -82, 52, Math.PI, 0); c.lineTo(52, -40); c.lineTo(-52, -40); c.closePath(); c.fill();
-    c.shadowColor = EMBER; c.shadowBlur = 30 * glow;
-    if (!f.art('violet-forge-flame', -52, -150, 104, 104)) {
+    if (this.pixels) {
+      // The pixel hearth (painted once), its violet fire (two frames) and the anvil in front.
+      blit(c, this.pixels.world('forge', () => paintWorld(200, 152, -100, -152, b => this.forgeHearth(b))), -100, -152);
+      this.pixels.forgeFire(c, 0, -40, f.reduced ? 0 : f.time);
+      blit(c, this.pixels.world('forge-anvil', () => paintWorld(120, 36, -60, -36, b => this.forgeAnvil(b))), -60, -36);
+    } else {
+      this.forgeHearth(c);
+      c.shadowColor = EMBER; c.shadowBlur = 30 * glow;
       c.fillStyle = EMBER; c.beginPath(); c.moveTo(-26, -44); c.quadraticCurveTo(0, -150, 26, -44); c.closePath(); c.fill();
+      c.shadowBlur = 0;
+      this.forgeAnvil(c);
     }
-    c.shadowBlur = 0;
-    c.fillStyle = '#2a2430'; c.fillRect(-60, -34, 120, 18); c.fillRect(-22, -16, 44, 16);
-    c.fillStyle = '#6d6474'; c.fillRect(-60, -34, 120, 4);
     c.restore();
     // The call to action floats over the forge until it has been struck a few times.
     if (this.strikes < 5) {
@@ -477,28 +510,47 @@ export class HomesteadScene implements HomesteadView {
     }
   }
 
+  /** The Forge's stone hearth and its arch (origin at its foot). */
+  private forgeHearth(c: CanvasRenderingContext2D): void {
+    c.fillStyle = '#423846'; c.beginPath(); c.moveTo(-100, 0); c.lineTo(-80, -148); c.lineTo(80, -148); c.lineTo(100, 0); c.closePath(); c.fill();
+    c.fillStyle = '#5a4e60'; c.fillRect(-80, -148, 160, 8);
+    c.fillStyle = '#1d1418'; c.beginPath(); c.arc(0, -82, 52, Math.PI, 0); c.lineTo(52, -40); c.lineTo(-52, -40); c.closePath(); c.fill();
+  }
+  /** The anvil before the Forge's mouth. */
+  private forgeAnvil(c: CanvasRenderingContext2D): void {
+    c.fillStyle = '#2a2430'; c.fillRect(-60, -36, 120, 20); c.fillRect(-24, -16, 48, 16);
+    c.fillStyle = '#6d6474'; c.fillRect(-60, -36, 120, 4);
+  }
+
   private drawFurnace(c: CanvasRenderingContext2D, f: HomesteadFrame, now: number): void {
     const x = X.furnace, levels = this.model.furnace.reduce((a, b) => a + b, 0);
     if (levels <= 0) { this.drawSign(c, x, this.model.signs.furnace ?? homesteadT('homestead.sign.furnace')); return; }
     this.flashGlow(c, 'furnace', now, 100);
+    // The body grows with levels in whole art pixels, so each size is one cached sprite.
     const s = furnaceScale(levels);
-    const w = 60 * s, h = 90 * s;
-    c.fillStyle = '#4a3238'; c.fillRect(x - w, FLOOR - h, w * 2, h);
-    c.fillStyle = '#a67858'; c.fillRect(x - w - 6, FLOOR - h - 6, w * 2 + 12, 8);
+    const w = up(60 * s), h = up(90 * s);
+    const rungs = this.model.furnace.map((lv, i) => ({ lv, i })).filter(r => r.lv > 0);
+    const chimneyX = (k: number) => up(x - w + 10 + (k + .5) * ((w * 2 - 20) / rungs.length) - x) + x;
+    const body = (b: CanvasRenderingContext2D) => {
+      b.fillStyle = '#4a3238'; b.fillRect(x - w, FLOOR - h, w * 2, h);
+      b.fillStyle = '#a67858'; b.fillRect(x - w - 8, FLOOR - h - 8, w * 2 + 16, 8);
+      b.fillStyle = '#2a1d22'; b.fillRect(up(x - w * .45 - x) + x - 4, FLOOR - up(h * .5) - 4, up(w * .9) + 8, up(h * .4) + 8);
+      // One chimney per distinct rung held: each Market purchase of a new rung adds one.
+      rungs.forEach((r, k) => { b.fillStyle = '#3b3034'; b.fillRect(chimneyX(k) - 8, FLOOR - h - 8 - up(30 + r.i * 6), 16, up(30 + r.i * 6)); });
+    };
+    const top = FLOOR - h - 8 - up(30 + Math.max(0, ...rungs.map(r => r.i)) * 6);
+    if (this.pixels) {
+      const el = this.pixels.world(`furnace:${w}:${h}:${rungs.map(r => r.i).join('.')}`, () => paintWorld(w * 2 + 24, FLOOR - top + 4, x - w - 12, top - 4, body));
+      blit(c, el, x - w - 12, top - 4);
+    } else body(c);
     const fire = f.reduced ? .7 : .7 + Math.sin(f.time * 5 + 1) * .3;
     c.save(); c.shadowColor = EMBER; c.shadowBlur = 20 * fire; c.fillStyle = `rgba(255, 140, 70, ${(.55 + fire * .4).toFixed(2)})`;
-    c.fillRect(x - w * .45, FLOOR - h * .5, w * .9, h * .4); c.restore();
-    // One chimney per distinct rung held: each Market purchase of a new rung adds one.
-    const rungs = this.model.furnace.map((lv, i) => ({ lv, i })).filter(r => r.lv > 0);
-    rungs.forEach((r, k) => {
-      const cx = x - w + 10 + (k + .5) * ((w * 2 - 20) / rungs.length);
-      const ch = 30 + r.i * 6;
-      c.fillStyle = '#3b3034'; c.fillRect(cx - 6, FLOOR - h - 6 - ch, 12, ch);
-      if (!f.reduced) {
-        const puff = (f.time * .6 + k * .37) % 1;
-        c.save(); c.globalAlpha = (1 - puff) * .35; c.fillStyle = '#c9bdc8';
-        c.beginPath(); c.arc(cx + puff * 10, FLOOR - h - 6 - ch - puff * 60, 6 + puff * 12, 0, Math.PI * 2); c.fill(); c.restore();
-      }
+    c.fillRect(up(x - w * .45 - x) + x, FLOOR - up(h * .5), up(w * .9), up(h * .4)); c.restore();
+    if (!f.reduced) rungs.forEach((r, k) => {
+      // Smoke: square puffs that grow a pixel at a time.
+      const puff = (f.time * .6 + k * .37) % 1, n = puff < .4 ? 2 : puff < .75 ? 3 : 4;
+      c.save(); c.globalAlpha = (1 - puff) * .35; c.fillStyle = '#c9bdc8';
+      c.fillRect(chimneyX(k) - n * 2 + up(puff * 10), FLOOR - h - 8 - up(30 + r.i * 6) - up(puff * 60) - n * HP, n * HP, n * HP); c.restore();
     });
     this.label(c, homesteadT(levels === 1 ? 'homestead.canvas.part.one' : 'homestead.canvas.part.many', { n: levels }), x, FLOOR - h - 70, '#e7d3b4', 12);
   }
@@ -511,8 +563,24 @@ export class HomesteadScene implements HomesteadView {
     const total = this.model.automatons.reduce((a, b) => a + b, 0);
     if (total <= 0) { this.drawSign(c, x, this.model.signs.automatons ?? homesteadT('homestead.sign.automatons')); return; }
     this.flashGlow(c, 'automatons', now, 130);
-    c.fillStyle = '#2a2430'; c.fillRect(x - 40, FLOOR - 40, 80, 16); c.fillRect(x - 14, FLOOR - 24, 28, 24);
     const beat = Math.max(0, 1 - (now - this.autoBeatAt) / 250);
+    if (this.pixels) {
+      blit(c, this.pixels.world('auto-anvil', () => paintWorld(88, 40, x - 44, FLOOR - 40, b => {
+        b.fillStyle = '#2a2430'; b.fillRect(x - 40, FLOOR - 40, 80, 16); b.fillRect(x - 16, FLOOR - 24, 32, 24);
+        b.fillStyle = '#6d6474'; b.fillRect(x - 40, FLOOR - 40, 80, 4);
+      })), x - 44, FLOOR - 40);
+      // Back row first, so the front row stands in front of it.
+      const slots = automatonSlots(kinds.length, x);
+      for (const row of [1, 0]) slots.forEach((slot, i) => {
+        if (slot.row !== row) return;
+        const swing = f.reduced ? 0 : Math.sin(f.time * 7 + i * 1.3);
+        this.pixels!.automaton(c, kinds[i], slot.x, slot.y, swing > 0);
+        if (beat > 0 && !f.reduced) { c.fillStyle = `rgba(255, 211, 109, ${beat.toFixed(2)})`; c.fillRect(slot.x + 28, slot.y - 48, HP, HP); }
+      });
+      if (total > MAX_FIGURES) this.label(c, `x${total}`, x + 150, FLOOR - 60, GOLD, 14, 700);
+      return;
+    }
+    c.fillStyle = '#2a2430'; c.fillRect(x - 40, FLOOR - 40, 80, 16); c.fillRect(x - 14, FLOOR - 24, 28, 24);
     automatonSlots(kinds.length, x).forEach((slot, i) => {
       const rung = kinds[i];
       const size = rung === 0 ? 1 : rung === 1 ? 1.35 : 1.2;
@@ -532,6 +600,7 @@ export class HomesteadScene implements HomesteadView {
   }
 
   private drawCamp(c: CanvasRenderingContext2D, f: HomesteadFrame, wall: number): void {
+    if (this.pixels) { this.drawCampPixel(c, f, wall); return; }
     const x = X.camp, e = this.model.explorers;
     const tents = tentSlots(e.slots, x);
     tents.forEach((tx, i) => {
@@ -562,9 +631,76 @@ export class HomesteadScene implements HomesteadView {
     });
   }
 
+  /**
+   * The camp in pixels: tents in a row behind a small fire, whoever is home sitting
+   * by it (Keepers, in their realm's cloth), the ones out walking the road.
+   */
+  private drawCampPixel(c: CanvasRenderingContext2D, f: HomesteadFrame, wall: number): void {
+    const x = X.camp, e = this.model.explorers, px = this.pixels!;
+    const tents = tentSlots(e.slots, x);
+    tents.forEach((tx, i) => {
+      const away = i < e.out.length;
+      px.tent(c, tx, FLOOR, away, away ? '#5a4a3e' : '#8d6a4a');
+      if (away) {
+        // The mission's real progress, as a bar over its tent.
+        const run = e.out[i];
+        const p = progressAt(run.startedAt, run.duration, wall);
+        c.fillStyle = '#302530'; c.fillRect(tx - 20, FLOOR - 68, 40, 4);
+        c.fillStyle = run.color; c.fillRect(tx - 20, FLOOR - 68, up(40 * p), 4);
+      }
+    });
+    // The fire burns in front of the tents' west end, clear of every tent's door.
+    const fx = tents[0] - 76;
+    const fire = f.reduced ? 0 : Math.sin(f.time * 6) * .5 + .5;
+    c.save(); c.shadowColor = EMBER; c.shadowBlur = 14;
+    px.fire(c, fx, FLOOR, fire);
+    c.restore();
+    // Up to two who are home sit either side of the fire, facing it.
+    for (let i = 0; i < Math.min(2, e.idle); i++) {
+      const sx = fx + (i ? 56 : -56);
+      this.explorer(c, `home:${i}`, i ? '#8d4f58' : '#4a6a8a', sx, FLOOR, i ? -1 : 1, 'rest', 0, 1);
+    }
+    // Explorers on the road, placed from their own start + duration.
+    e.out.forEach((run, i) => {
+      const at = explorerWalk(run.startedAt, run.duration, wall, x);
+      if (!at || f.reduced) return;
+      this.explorer(c, `out:${i}:${run.color}`, run.color, at.x, FLOOR, at.facing, 'walk', at.x / 18, at.alpha);
+    });
+  }
+
+  /** An explorer: a Keeper in cloth of `color` (their realm), painted by the player's own painter. */
+  private explorer(c: CanvasRenderingContext2D, seed: string, color: string, x: number, floor: number, facing: number, action: 'rest' | 'walk', phase: number, alpha: number): void {
+    let painter = this.explorerPainters.get(seed);
+    if (!painter) {
+      const npc = townsfolkLook(seed, { robe: color, shade: '#3a2a30', trim: '#c2a26a', skin: '#d9a07a' }, 'coat');
+      painter = new KeeperPainter(npc.look, npc.gear, npc.garb);
+      this.explorerPainters.set(seed, painter);
+    }
+    c.save(); c.globalAlpha *= alpha; c.translate(Math.round(x), floor); if (facing < 0) c.scale(-1, 1);
+    painter.draw(c, HP, { action, time: phase, attackT: 0, weapon: false, reduced: action === 'rest' });
+    c.restore();
+  }
+
   private drawWorkshop(c: CanvasRenderingContext2D, f: HomesteadFrame, wall: number): void {
     const x = X.workshop, list = this.model.thralls;
     if (!list.length) { this.drawSign(c, x, this.model.signs.workshop ?? homesteadT('homestead.sign.thrall')); return; }
+    if (this.pixels) {
+      blit(c, this.pixels.world('workshop', () => paintWorld(208, 132, x - 104, FLOOR - 132, b => {
+        b.fillStyle = '#3b3034'; b.fillRect(x - 100, FLOOR - 128, 200, 12);
+        b.fillStyle = '#4b332c'; b.fillRect(x - 100, FLOOR - 128, 8, 128); b.fillRect(x + 92, FLOOR - 128, 8, 128);
+        b.fillStyle = '#2a2430'; b.fillRect(x - 32, FLOOR - 36, 64, 16); b.fillRect(x - 12, FLOOR - 20, 24, 20);
+        b.fillStyle = '#6d6474'; b.fillRect(x - 32, FLOOR - 36, 64, 4);
+      })), x - 104, FLOOR - 132);
+      const shown = list.slice(0, 6);
+      shown.forEach((t, i) => {
+        const tx = x - 85 + i * 34;
+        // The hammer's angle IS the time to the Thrall's next real pull.
+        const cyc = f.reduced ? 0 : cycleAt(t.lastRollAt, t.rollInterval, wall);
+        this.pixels!.thrall(c, t.color, tx, FLOOR, cyc, !t.working, tx < x ? 1 : -1);
+      });
+      if (list.length > shown.length) this.label(c, `x${list.length}`, x, FLOOR - 146, VIOLET, 14, 700);
+      return;
+    }
     c.fillStyle = '#3b3034'; c.fillRect(x - 100, FLOOR - 130, 200, 10);
     c.fillStyle = '#4b332c'; c.fillRect(x - 100, FLOOR - 130, 8, 130); c.fillRect(x + 92, FLOOR - 130, 8, 130);
     c.fillStyle = '#2a2430'; c.fillRect(x - 30, FLOOR - 36, 60, 14); c.fillRect(x - 10, FLOOR - 22, 20, 22);
@@ -604,32 +740,50 @@ export class HomesteadScene implements HomesteadView {
       c.save(); c.globalAlpha = look.glow * pulse * .6; c.fillStyle = EMBER;
       c.beginPath(); c.ellipse(x, FLOOR - 58 * look.scale, 90 * look.scale, 50 * look.scale, 0, 0, Math.PI * 2); c.fill(); c.restore();
     }
-    c.save(); c.translate(x, FLOOR); c.scale(look.scale, look.scale);
-    // Stone block.
-    c.fillStyle = '#4b332c'; c.fillRect(-34, -40, 68, 40);
-    c.fillStyle = '#5a3d2e'; c.fillRect(-38, -44, 76, 6);
-    // Anvil: waist, body, horn.
-    c.fillStyle = '#2a2430'; c.fillRect(-14, -62, 28, 18);
-    if (look.glow > 0) { c.shadowColor = EMBER; c.shadowBlur = 10 + look.glow * 22; }
-    c.fillStyle = '#3e3846'; c.fillRect(-46, -84, 92, 22);
-    c.beginPath(); c.moveTo(-46, -84); c.lineTo(-74, -78); c.lineTo(-46, -66); c.closePath(); c.fill();
-    c.shadowBlur = 0;
-    // The face, hotter per tier.
-    c.fillStyle = look.glow > 0 ? `rgba(255, 170, 90, ${(0.45 + look.glow * 0.5).toFixed(2)})` : '#6d6474';
-    c.fillRect(-46, -84, 92, 4);
-    // A hammer resting on it.
-    c.fillStyle = '#5a3d2e'; c.fillRect(10, -98, 30, 4);
-    c.fillStyle = '#9aa0a8'; c.fillRect(36, -104, 10, 16);
-    c.restore();
+    if (this.pixels) {
+      // The anvil painted once per tier at its grown size; the glowing face is light, drawn live.
+      const el = this.pixels.world(`home-anvil:${tier}`, () => paintWorld(170, 120, x - 90, FLOOR - 120, b => {
+        b.translate(x, FLOOR); b.scale(look.scale, look.scale); this.homeAnvilBody(b, false);
+      }));
+      blit(c, el, x - 90, FLOOR - 120);
+      if (look.glow > 0) {
+        c.save(); c.shadowColor = EMBER; c.shadowBlur = 10 + look.glow * 22;
+        c.fillStyle = `rgba(255, 170, 90, ${(0.45 + look.glow * 0.5).toFixed(2)})`;
+        c.fillRect(x - up(46 * look.scale), FLOOR - up(84 * look.scale), up(92 * look.scale), HP);
+        c.restore();
+      }
+    } else {
+      c.save(); c.translate(x, FLOOR); c.scale(look.scale, look.scale);
+      this.homeAnvilBody(c, look.glow > 0);
+      if (look.glow > 0) { c.fillStyle = `rgba(255, 170, 90, ${(0.45 + look.glow * 0.5).toFixed(2)})`; c.fillRect(-46, -84, 92, 4); }
+      c.restore();
+    }
     // Sparks drifting off an upgraded anvil: one more per tier.
     if (look.glow > 0 && !f.reduced) {
       for (let i = 0; i < tier; i++) {
         const u = (f.time * .7 + i * .31) % 1;
         c.save(); c.globalAlpha = (1 - u) * .8; c.fillStyle = i % 2 ? GOLD : EMBER;
-        c.beginPath(); c.arc(x - 20 + i * 14 + Math.sin(u * 6 + i) * 6, FLOOR - 90 * look.scale - u * 70, 2.2, 0, Math.PI * 2); c.fill(); c.restore();
+        c.fillRect(up(x - 20 + i * 14 + Math.sin(u * 6 + i) * 6 - x) + x, FLOOR - up(90 * look.scale + u * 70), HP, HP); c.restore();
       }
     }
     this.tierPlaque(c, x, tier, GOLD);
+  }
+
+  /** The home anvil's stone block, anvil and resting hammer (origin at its foot, before the tier's scale). */
+  private homeAnvilBody(c: CanvasRenderingContext2D, glow: boolean): void {
+    // Stone block.
+    c.fillStyle = '#4b332c'; c.fillRect(-34, -40, 68, 40);
+    c.fillStyle = '#5a3d2e'; c.fillRect(-38, -44, 76, 6);
+    // Anvil: waist, body, horn.
+    c.fillStyle = '#2a2430'; c.fillRect(-14, -62, 28, 18);
+    if (glow) { c.shadowColor = EMBER; c.shadowBlur = 16; }
+    c.fillStyle = '#3e3846'; c.fillRect(-46, -84, 92, 22);
+    c.beginPath(); c.moveTo(-46, -84); c.lineTo(-74, -78); c.lineTo(-46, -66); c.closePath(); c.fill();
+    c.shadowBlur = 0;
+    c.fillStyle = '#6d6474'; c.fillRect(-46, -84, 92, 4);
+    // A hammer resting on it.
+    c.fillStyle = '#5a3d2e'; c.fillRect(10, -98, 30, 4);
+    c.fillStyle = '#9aa0a8'; c.fillRect(36, -104, 10, 16);
   }
 
   /** The player's own enchanting circle: a ring on the ground whose runes brighten per tier. */
@@ -642,10 +796,15 @@ export class HomesteadScene implements HomesteadView {
     // The ring, seen from the side: an ellipse on the floor.
     c.globalAlpha = .25 + look.bright * .35 * breathe; c.fillStyle = VIOLET;
     c.beginPath(); c.ellipse(x, FLOOR - 8, 110, 26, 0, 0, Math.PI * 2); c.fill();
-    c.globalAlpha = 1; c.strokeStyle = '#c2a26a'; c.lineWidth = 3;
-    c.beginPath(); c.ellipse(x, FLOOR - 8, 110, 26, 0, 0, Math.PI * 2); c.stroke();
-    c.strokeStyle = VIOLET; c.lineWidth = 2; c.globalAlpha = .5 + look.bright * .5;
-    c.beginPath(); c.ellipse(x, FLOOR - 8, 80, 18, 0, 0, Math.PI * 2); c.stroke();
+    c.globalAlpha = 1;
+    const rings = (b: CanvasRenderingContext2D) => {
+      b.strokeStyle = '#c2a26a'; b.lineWidth = 4;
+      b.beginPath(); b.ellipse(x, FLOOR - 8, 110, 26, 0, 0, Math.PI * 2); b.stroke();
+      b.strokeStyle = VIOLET; b.lineWidth = 4;
+      b.beginPath(); b.ellipse(x, FLOOR - 8, 80, 18, 0, 0, Math.PI * 2); b.stroke();
+    };
+    if (this.pixels) blit(c, this.pixels.world('circle', () => paintWorld(236, 68, x - 118, FLOOR - 42, rings, false)), x - 118, FLOOR - 42);
+    else { c.globalAlpha = .5 + look.bright * .5; rings(c); c.globalAlpha = 1; }
     // Ten standing runes around it: more are lit, and they burn brighter, per tier.
     const total = 10, spin = f.reduced ? 0 : f.time * .25;
     for (let i = 0; i < total; i++) {
@@ -655,8 +814,10 @@ export class HomesteadScene implements HomesteadView {
       c.globalAlpha = lit ? Math.min(1, look.bright * breathe + .1) : .25;
       c.shadowColor = VIOLET; c.shadowBlur = lit ? 6 + look.bright * 16 : 0;
       c.fillStyle = lit ? '#e6d4ff' : '#5b4a72';
-      c.fillRect(rx - 3, ry - 22, 6, 18);
-      c.fillRect(rx - 6, ry - 16, 12, 3);
+      // A standing rune on the grid: a 2 px stem and a 3 px bar.
+      const gx = up(rx - x) + x, gy = FLOOR - up(FLOOR - ry);
+      c.fillRect(gx - HP, gy - 20, HP * 2, 16);
+      c.fillRect(gx - HP * 2 + 2, gy - 16, HP * 3, HP);
     }
     c.shadowBlur = 0;
     // From tier III a rune hovers over the centre.
@@ -664,7 +825,9 @@ export class HomesteadScene implements HomesteadView {
       const bob = f.reduced ? 0 : Math.sin(f.time * 2) * 6;
       c.globalAlpha = look.bright; c.shadowColor = VIOLET; c.shadowBlur = 20;
       c.fillStyle = '#e6d4ff';
-      c.beginPath(); c.moveTo(x, FLOOR - 120 + bob); c.lineTo(x + 14, FLOOR - 96 + bob); c.lineTo(x, FLOOR - 72 + bob); c.lineTo(x - 14, FLOOR - 96 + bob); c.closePath(); c.fill();
+      // A pixel diamond, bobbing a whole pixel at a time.
+      const top = FLOOR - 120 + up(bob);
+      for (let k = 0; k < 6; k++) { const half = (k < 3 ? k + 1 : 6 - k) * HP; c.fillRect(x - half, top + k * HP * 2, half * 2, HP * 2); }
       c.shadowBlur = 0;
     }
     c.restore();
@@ -704,7 +867,8 @@ export class HomesteadScene implements HomesteadView {
         const u = Math.max(0, Math.min(1, t - k * .08));
         const x = a.fromX + (a.toX - a.fromX) * u;
         const y = FLOOR - 140 - Math.sin(u * Math.PI) * 140 + u * 60;
-        c.fillStyle = GOLD; c.beginPath(); c.ellipse(x, y, 6, 6, 0, 0, Math.PI * 2); c.fill();
+        c.fillStyle = GOLD; c.fillRect(up(x) - HP, up(y) - HP, HP * 3, HP * 3);
+        c.fillStyle = '#fff1b0'; c.fillRect(up(x) - HP, up(y) - HP, HP, HP);
       }
       if (t > .9) this.vaultBump = Math.max(this.vaultBump, a.born + a.life * .9);
     }
@@ -722,7 +886,8 @@ export class HomesteadScene implements HomesteadView {
         c.fillStyle = p.color; c.fillText(p.text, p.x, p.y + p.vy * age);
       } else {
         c.fillStyle = p.color;
-        c.beginPath(); c.arc(p.x + p.vx * age, p.y + p.vy * age + 600 * age * age, p.size, 0, Math.PI * 2); c.fill();
+        const n = p.size < 3.5 ? HP : HP * 2;
+        c.fillRect(up(p.x + p.vx * age), up(p.y + p.vy * age + 600 * age * age), n, n);
       }
     }
     c.globalAlpha = 1;
