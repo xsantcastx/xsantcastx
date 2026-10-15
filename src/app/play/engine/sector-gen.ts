@@ -39,7 +39,7 @@ import {
   type LatticeCache, type SectorColumnGen, type SectorHall, type SectorStructure, type StructureKind,
 } from './gen-kit';
 import { deepColumn, deepNodes } from './underhearth-gen';
-import { GATE_ROOM, realmColumn, stampGate, umbralNodes } from './realm-gen';
+import { GATE_ROOM, realmColumn, realmNodes, stampGate } from './realm-gen';
 import { gateAt, RIFT_GATES, RIFT_REALMS } from '../../shared/delve/rift-gates.model';
 
 export {
@@ -443,4 +443,4 @@ export function columnHash(gen: Pick<SectorColumnGen, 'kind' | 'liqType' | 'liqL
 export const SECTOR_NODES: readonly string[] = ['root-loam', 'petrified-trunk', 'shadow-root', 'cinder-vein', 'hard-rock', 'ember-rock', 'waycache', 'slag-vein',
   'grotto-stone', 'glowcap', 'rift-shrine', 'scorched-basalt', 'heartstone-vein', 'bedrock', 'inscription', ...deepNodes(),
   // The Rift Gates and the realm Delves behind them.
-  'rift-frame', 'rift-splinter', ...RIFT_REALMS.map(realm => RIFT_GATES[realm].node), ...umbralNodes()].filter((id, i, all) => all.indexOf(id) === i);
+  'rift-frame', 'rift-splinter', ...RIFT_REALMS.map(realm => RIFT_GATES[realm].node), ...realmNodes()].filter((id, i, all) => all.indexOf(id) === i);
