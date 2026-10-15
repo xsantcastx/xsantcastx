@@ -7,7 +7,7 @@ import { DELVE_KEY } from './delve-save.model';
 import { DelveSaveService } from './delve-save.service';
 import { planV2Migration, WorldMigrationService } from './delve-migration-v3';
 import { InventoryService } from '../rpg/inventory.service';
-import { ONE_WORLD_KEY, OneWorldFlag } from '../../play/one-world/one-world-flag';
+import { ONE_WORLD_ESCAPE_KEY, ONE_WORLD_KEY, OneWorldFlag } from '../../play/one-world/one-world-flag';
 import { SYNCED_BLOBS } from '../cloud-save/cloud-save.model';
 import { mergeWaystones, coerceWaystones, isLit, surveyCount, surveyMarks, WAYSTONES_KEY } from '../waystones/waystones.model';
 
@@ -89,14 +89,14 @@ describe('save v3 (One World): v2 → v3 migration', () => {
   beforeEach(() => {
     grants = [];
     for (const key of KEYS) localStorage.removeItem(key);
-    localStorage.setItem(ONE_WORLD_KEY, '1');
+    sessionStorage.removeItem(ONE_WORLD_ESCAPE_KEY);
     localStorage.setItem(DELVE_KEY, JSON.stringify({
       version: 2, seed: 5, createdAt: 1, areas: { 'ember-delve': { layout: '120x56:v2:5', cells: 'k3.0' } },
       claimed: ['warden-defeated', 'rift-attuned:umbral'],
       chests: { 'ember-delve:1a': { layout: '120x56:v2:5', born: 42, n: 2, slots: { 'cinder-ore': 12, glowcap: 3 } } },
     }));
   });
-  afterEach(() => { for (const key of KEYS) localStorage.removeItem(key); OneWorldFlag.reset(); });
+  afterEach(() => { for (const key of KEYS) localStorage.removeItem(key); sessionStorage.removeItem(ONE_WORLD_ESCAPE_KEY); OneWorldFlag.reset(); });
 
   it('plans the claims and each chest\'s stacks under keyed op ids', () => {
     const plan = planV2Migration(JSON.parse(localStorage.getItem(DELVE_KEY)!));
@@ -125,8 +125,15 @@ describe('save v3 (One World): v2 → v3 migration', () => {
     expect(grants.length).toBe(2);
   });
 
-  it('with the gate off nothing runs and no v3 key is written', () => {
+  it('is on by default (the flip), and a stale P1 "off" preview key is ignored and removed', () => {
     localStorage.setItem(ONE_WORLD_KEY, '0');
+    const { delve } = boot();
+    expect(delve.oneWorld).toBeTrue();
+    expect(localStorage.getItem(ONE_WORLD_KEY)).toBeNull();
+  });
+
+  it('with the dev escape hatch (?oneworld=0, this tab) nothing runs and no v3 key is written', () => {
+    sessionStorage.setItem(ONE_WORLD_ESCAPE_KEY, '0');
     const { delve, migration } = boot();
     expect(delve.oneWorld).toBeFalse();
     expect(migration.run()).toBeNull();

@@ -102,8 +102,6 @@
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
         <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
         <li><button type="button" data-open="account" (click)="placesOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
-        <!-- One World (preview): this device only; a flip reloads the world. -->
-        <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
       </ul>
       <!-- Phones: the rest of the old top bar lives in this menu. -->
       <div class="menu-extra">

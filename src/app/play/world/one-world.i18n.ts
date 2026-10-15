@@ -38,7 +38,4 @@ export const ONE_WORLD_I18N: Readonly<Record<string, { en: string; es: string }>
   'play.world.migrated': { en: 'Your Delve moved under the town. What you had earned came with you; what your chests held is back in your Satchel and Vault.', es: 'Tu Sima se movio bajo el pueblo. Lo que habias ganado vino contigo; lo que guardaban tus cofres esta de vuelta en tu Mochila y tu Boveda.' },
 
   // ── Menu → One World (preview) ──
-  'play.world.menu': { en: 'One World (preview)', es: 'Un Solo Mundo (vista previa)' },
-  'play.world.menuOn': { en: 'On: the Seamworks stands on the Delve. Tap to go back to the towns as they were.', es: 'Activo: las Costuras estan sobre la Sima. Toca para volver a los pueblos como eran.' },
-  'play.world.menuOff': { en: 'Try the coming world: the town on the Delve\'s surface, Waystones to light. Your old save stays as it is.', es: 'Prueba el mundo que viene: el pueblo sobre la Sima, Piedras de Paso que encender. Tu partida antigua queda como esta.' },
 };

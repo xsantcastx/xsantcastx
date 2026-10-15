@@ -82,6 +82,8 @@ export class SurfaceRender {
   private pieces: Baked[] = [];
   private finds: { def: HeightFind; open: HTMLCanvasElement | null; shut: HTMLCanvasElement | null }[] = [];
   private realm = 'infernal';
+  /** World px per art px of the finds (One World: 2). */
+  private fa = A;
   private lookout = '';
   private readonly skies = new WeakMap<CanvasRenderingContext2D, Map<string, CanvasGradient>>();
   /** Pieces baked for the current area (tests read it). */
@@ -89,6 +91,8 @@ export class SurfaceRender {
 
   enter(h: AreaHeights | null): void {
     this.pieces = []; this.finds = [];
+    // One World: a world's finds stand at its scale (2 world px per art px); a flat area's at the town's.
+    this.fa = h?.artPx ?? A;
     if (!h) return;
     this.realm = h.realm;
     this.lookout = h.finds.find(f => f.kind === 'lookout')?.id ?? '';
@@ -226,17 +230,18 @@ export class SurfaceRender {
     }
     // After the look-out: every find still waiting on this high road stands under a pale beam, seen from anywhere.
     const lit = this.lookout !== '' && found.has(this.lookout);
+    const F = this.fa;
     for (const f of this.finds) {
       const art = found.has(f.def.id) ? f.open : f.shut;
       if (!art || f.def.x < camera - 80 || f.def.x > camera + viewport + 80) continue;
-      const w = art.width * A, h = art.height * A;
-      c.drawImage(art, Math.round((f.def.x - w / 2) / A) * A, f.def.y - h, w, h);
+      const w = art.width * F, h = art.height * F;
+      c.drawImage(art, Math.round((f.def.x - w / 2) / F) * F, f.def.y - h, w, h);
       // An unclaimed find winks: one bright art pixel above it (still under reduced motion: time is 0 there).
       if (!found.has(f.def.id)) {
-        if (lit) { c.globalAlpha = .16; c.fillStyle = '#fff1b0'; c.fillRect(Math.round(f.def.x / A) * A - A, f.def.y - h - 520, 2 * A, 520 - 4 * A); c.globalAlpha = 1; }
+        if (lit) { c.globalAlpha = .16; c.fillStyle = '#fff1b0'; c.fillRect(Math.round(f.def.x / F) * F - F, f.def.y - h - 520, 2 * F, 520 - 4 * F); c.globalAlpha = 1; }
         const on = Math.sin(time * 3 + f.def.x) > -.2;
         c.fillStyle = on ? '#fff1b0' : '#e8c89880';
-        c.fillRect(Math.round(f.def.x / A) * A - A / 2, f.def.y - h - 3 * A, A, A);
+        c.fillRect(Math.round(f.def.x / F) * F - F / 2, f.def.y - h - 3 * F, F, F);
       }
     }
     c.imageSmoothingEnabled = smooth;
