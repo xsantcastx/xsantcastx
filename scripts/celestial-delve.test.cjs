@@ -371,11 +371,20 @@ test('engine: through the Celestial gate; walk into the Turning Room and fall in
   assert.ok(engine.player.grounded, 'standing on the ceiling');
   assert.equal(headRow(engine), 28, 'the head under the tunnel roof');
   assert.ok(delve.isClaimed(rift.ruleFlag('celestial', 'field')));
+  // A pet follows the Keeper onto the ceiling and hangs the same way (never left floating or flung off-screen).
+  engine.setPet({ id: 'sunling', name: 'Sunny', hat: false, ability: 'mend' });
+  run(engine, 1.2);
+  assert.equal(engine.pet.hang, true);
+  assert.ok(Math.abs(engine.pet.y - (engine.player.y - BODY.height)) < 4, `the pet stands on the ceiling line (${engine.pet.y})`);
+  assert.ok(Math.abs(engine.pet.x - engine.player.x) < 200, 'and stays beside the Keeper');
   // Walk the ceiling east out of the field: the ordinary down comes back, onto the tunnel floor beyond.
   walk(engine, 'right', () => engine.terrain.colAt(engine.player.x) >= T.field.col + T.field.w + 1);
   run(engine, .6);
   assert.equal(engine.keeperGravity, 1);
   assert.equal(feetRow(engine), 30, 'on the tunnel floor past the pit');
+  run(engine, 1);
+  assert.equal(engine.pet.hang, false, 'the pet is back on its feet with the Keeper');
+  assert.ok(Math.abs(engine.pet.y - engine.player.y) < 4);
   assert.ok(engine.terrain.colAt(engine.player.x) > T.pit.col + T.pit.w, 'across');
   assert.ok(engine.hp > 0, 'nothing hurt');
   // And back: the field is still brass; walk west along its ceiling and out the other side.
