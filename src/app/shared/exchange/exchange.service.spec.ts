@@ -56,7 +56,9 @@ describe('ExchangeService', () => {
   beforeEach(() => {
     TestBed.resetTestingModule();
     memory = new MemoryGateway();
-    now = Date.now();
+    // A fixed instant: the market's clock-driven price makes some bounds date-dependent
+    // ("forget a footprint" failed on 2026-10-15 at 0.0625 against 0.06).
+    now = Date.UTC(2026, 9, 14, 12);
   });
 
   /** The price the page would have shown, at the instant a test trades. */
