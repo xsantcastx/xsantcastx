@@ -76,7 +76,7 @@ export const adminGuard: CanActivateFn = () => {
       // Not signed in yet — let the component show its sign-in card.
       if (!user) return true;
       // Signed in as someone else — this is the case worth bouncing.
-      return isAdminEmail(user.email) ? true : router.parseUrl('/world');
+      return isAdminEmail(user.email) ? true : router.parseUrl('/play');
     })
   );
 };

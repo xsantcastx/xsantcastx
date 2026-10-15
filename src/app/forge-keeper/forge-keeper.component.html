@@ -345,7 +345,7 @@
       <span class="fk-link__name">The Arena</span>
       <span class="fk-link__note">gates that fight back</span>
     </a>
-    <a routerLink="/world" class="fk-link">
+    <a routerLink="/play" class="fk-link">
       <span class="fk-link__icon" aria-hidden="true">🗺️</span>
       <span class="fk-link__name">The World</span>
       <span class="fk-link__note">the five realms</span>
@@ -371,7 +371,7 @@
       </div>
       <div class="fk-stage__acts">
         @if (!inWorld) {
-          <a routerLink="/world" class="fk-stage__play">{{ t('character.play') }}</a>
+          <a routerLink="/play" class="fk-stage__play">{{ t('character.play') }}</a>
         }
         <button type="button" class="fk-catalogue-open" (click)="openCatalogue()">
           {{ t('character.catalogue') }}
@@ -602,5 +602,4 @@
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
 @if (!inWorld) {
-<app-related-pages here="/character"></app-related-pages>
 }

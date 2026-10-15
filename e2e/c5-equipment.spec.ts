@@ -82,6 +82,9 @@ async function openPanel(page: Page, tab: 'character' | 'bank'): Promise<void> {
 }
 
 test.describe('C5 equipment actions', () => {
+  // Game-only shell (docs/handoff/game-only-shell.md): the header's bag/rank pills and the keeper
+  // panel these steps drive were deleted. Retarget to ☰ → Character in the world before re-enabling.
+  test.fixme(true, 'drives the deleted header pills / keeper panel');
   test('migrates off-hand, wears a charm, and equips from an armed tile', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await open(page);

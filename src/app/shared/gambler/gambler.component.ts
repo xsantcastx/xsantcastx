@@ -86,7 +86,6 @@ import { SpotlightService } from '../collection/spotlight.service';
 import { RARITY_I18N, rarityKey } from '../rune-forge/rarity.i18n';
 import { revealTiming, type RevealSpeed, type RevealTiming } from './reveal-timing';
 
-import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { injectInWorldPanel } from '../in-world-panel';
 type RevealPhase = 'idle' | 'wager' | 'charging' | 'cracking' | 'revealed';
 
@@ -135,7 +134,7 @@ interface SellRow {
 @Component({
   selector: 'app-gambler',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterLink, RollQualityComponent, ...STATION_UI],
+  imports: [CommonModule, RouterLink, RollQualityComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './gambler.component.html',
   styleUrls: ['./gambler.component.css'],

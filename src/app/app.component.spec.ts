@@ -53,6 +53,15 @@ describe('AppComponent', () => {
     expect(skip!.getAttribute('href')).toBe('#main-content');
   });
 
+  it('carries no site chrome: the game is the whole page (game-only shell)', () => {
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    const el = fixture.nativeElement as HTMLElement;
+    for (const tag of ['app-header', 'app-footer', 'app-command-palette', 'app-deferred-overlays', 'app-place-banner-outlet', 'app-godforge-loader', 'app-forge-scene']) {
+      expect(el.querySelector(tag)).withContext(`${tag} is site chrome`).toBeNull();
+    }
+  });
+
   it('keeps every full-viewport overlay a sibling of <main>, not a child', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
@@ -61,14 +70,10 @@ describe('AppComponent', () => {
     // Each of these is position: fixed and full-viewport. Inside <main> the
     // route fade's transform would trap it against the page.
     const overlays = [
-      'app-onboarding-outlet',
-      'app-offline-outlet',
       'app-cloud-save-merge-dialog',
-      'app-command-palette',
-      // npc-dialogue, forge-flame and the other idle overlays mount on idle
-      // inside this host (bundle-diet), so the host is what must sit outside <main>.
-      'app-deferred-overlays',
+      'app-device-lease-banner',
       'app-site-notice-outlet',
+      'app-cookie-banner',
     ];
     const main = el.querySelector('main#main-content')!;
     for (const tag of overlays) {

@@ -1,8 +1,7 @@
-import { Component, OnInit, OnDestroy, PLATFORM_ID, NgZone, inject } from '@angular/core';
+import { Component, OnInit, OnDestroy, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
-import { Router, NavigationEnd } from '@angular/router';
+import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
-import { filter } from 'rxjs/operators';
 import { SeoService } from './seo.service';
 import { GlobalEggTriggersService } from './shared/easter-eggs/global-egg-triggers.service';
 import { XpWiringService } from './shared/gamification/xp-wiring.service';
@@ -14,7 +13,6 @@ import { RpgWiringService } from './shared/rpg/rpg-wiring.service';
 import { CollectionWiringService } from './shared/collection/collection-wiring.service';
 import { IdleService } from './shared/idle/idle.service';
 import { CodexSecretsService } from './codex/codex-secrets.service';
-import { InlineFlameService } from './shared/economy/inline-flame.service';
 import { scheduleAppCheck } from './app-check.bootstrap';
 import { GameStateGateway } from './shared/save/game-state.gateway';
 import { applyRealmEra } from './shared/save/realm-era';
@@ -33,7 +31,6 @@ export class AppComponent implements OnInit, OnDestroy {
   title = 'xsantcastx';
   private platformId = inject(PLATFORM_ID);
   private router = inject(Router);
-  private ngZone = inject(NgZone);
   private eggTriggers = inject(GlobalEggTriggersService);
   private xpWiring = inject(XpWiringService);
   private atmosphere = inject(PageAtmosphereService);
@@ -44,7 +41,6 @@ export class AppComponent implements OnInit, OnDestroy {
   private collectionWiring = inject(CollectionWiringService);
   private idle = inject(IdleService);
   private codexSecrets = inject(CodexSecretsService);
-  private inlineFlame = inject(InlineFlameService);
   private readonly saves = inject(GameStateGateway);
   /*
    * Injected as a field, and that placement is load-bearing.
@@ -74,16 +70,6 @@ export class AppComponent implements OnInit, OnDestroy {
   /** Funnel subscriptions, torn down with the shell. */
   private readonly funnelSubs = new Subscription();
 
-  // Perf Phase 2: retain a handle to the glitch poll so it can be cancelled
-  // and so subsequent hydrations don't stack parallel intervals. Previously
-  // this was a fire-and-forget setInterval that never got cleared, which on
-  // hot reload in dev (and on any future re-init of AppComponent) would leave
-  // orphan DOM queries running on the main thread every 3.5s forever.
-  private glitchPollId: ReturnType<typeof setInterval> | null = null;
-
-  /** Watches whether a page has mounted its own flame. See showCornerFlame. */
-  private inlineFlameSub: Subscription | null = null;
-
   constructor(private seo: SeoService) {}
 
   /**
@@ -108,50 +94,12 @@ export class AppComponent implements OnInit, OnDestroy {
     return this.playModeValue;
   }
 
-  /**
-   * The corner flame stands down while a page mounts its own.
-   *
-   * Only the Forge View does, and only because the flame is that page's focal
-   * point rather than a widget beside it — two clickable flames paying into one
-   * ledger is a thing the visitor would have to work out for themselves.
-   *
-   * Held as a field fed by a subscription rather than read straight off the
-   * service in a getter: the inline flame claims during its own `ngOnInit`,
-   * which runs inside the change-detection pass that would then re-read this
-   * binding, and dev mode reports that as ExpressionChangedAfterItHasBeenChecked.
-   * A subscription lands the change on its own pass instead.
-   */
-  showCornerFlame = true;
-
   ngOnInit() {
     this.seo.init();
 
     if (!isPlatformBrowser(this.platformId)) return;
 
     applyRealmEra(this.saves);
-
-    this.inlineFlameSub = this.inlineFlame.active$.subscribe(active => {
-      // Deferred by a microtask, and not for style.
-      //
-      // `claim()` is called from the inline flame's own lifecycle hook, which
-      // Angular runs while it is refreshing a child of this component's view —
-      // i.e. after `@if (showCornerFlame)` in this template was already checked
-      // for this pass. Assigning synchronously therefore changed a binding that
-      // had been read a moment earlier, and dev mode reported it on every load
-      // of /sanctum as `NG0100 ... Previous value: '21'. Current value: '-1'`,
-      // which is the `@if`'s branch index going from "the flame" to "nothing".
-      // The site's own error reporter picked it up, so it was also the only
-      // console error on the route.
-      //
-      // A microtask runs after the synchronous change-detection pass has
-      // finished and before zone.js reports the queue empty, so the flag moves
-      // between passes and the next one renders it without complaint.
-      // Deliberately not `requestAnimationFrame`: frames do not run in a
-      // background tab, and the corner flame would stay wrong there.
-      queueMicrotask(() => {
-        this.showCornerFlame = !active;
-      });
-    });
 
     // Queue Firebase App Check for the first idle window. Initializing it at
     // bootstrap dragged ~333 kB of reCAPTCHA into the critical path of every
@@ -244,34 +192,6 @@ export class AppComponent implements OnInit, OnDestroy {
     // case, and the page must not wait on a screen about rewards that are
     // already banked. Its own failures are contained — see the service.
     void this.offline.settle();
-
-    let glitchPending = false;
-    const triggerRandomGlitch = () => {
-      if (glitchPending) return;
-      glitchPending = true;
-      const keywords = Array.from(document.querySelectorAll('.keyword'));
-      const candidates = keywords.filter(() => Math.random() < 0.08);
-      candidates.forEach((el, i) => {
-        setTimeout(() => {
-          el.classList.add('glitch');
-          setTimeout(() => el.classList.remove('glitch'), 800);
-        }, i * 120);
-      });
-      setTimeout(() => { glitchPending = false; }, candidates.length * 120 + 800);
-    };
-
-    // Perf Phase 2: run the glitch poll OUTSIDE the Angular zone. Previously
-    // zone-patched setInterval triggered a full change-detection pass every
-    // 3.5s even when the early-return short-circuited — on a 114-tool app
-    // that's a lot of wasted CD work for a purely cosmetic effect. Also cache
-    // the interval id so ngOnDestroy can clear it.
-    this.ngZone.runOutsideAngular(() => {
-      this.glitchPollId = setInterval(() => {
-        if (document.body.classList.contains('glitch-out')) {
-          triggerRandomGlitch();
-        }
-      }, 3500);
-    });
   }
 
   /**
@@ -316,12 +236,6 @@ export class AppComponent implements OnInit, OnDestroy {
   private returnLogged = false;
 
   ngOnDestroy(): void {
-    if (this.glitchPollId !== null) {
-      clearInterval(this.glitchPollId);
-      this.glitchPollId = null;
-    }
-    this.inlineFlameSub?.unsubscribe();
-    this.inlineFlameSub = null;
     this.funnelSubs.unsubscribe();
   }
 }

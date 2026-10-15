@@ -47,7 +47,6 @@ import { BountyService, BountyView } from '../shared/bounties/bounty.service';
 import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
 import { FRAGMENT_EVERY, bountyLine } from '../shared/bounties/bounty.model';
 
-import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 
 /** History rows are grouped under a day heading. */
@@ -88,7 +87,7 @@ interface BoardEntry {
 @Component({
   selector: 'app-quests',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterLink, ChallengePanelComponent, InspectButtonComponent, ...STATION_UI],
+  imports: [CommonModule, RouterLink, ChallengePanelComponent, InspectButtonComponent, ...STATION_UI],
   templateUrl: './quests.component.html',
   styleUrls: ['./quests.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,

@@ -78,6 +78,9 @@ async function openCharacter(page: Page, url = '/character'): Promise<void> {
 const shotDir = resolve('test-results/c4-character');
 
 test.describe('C4 Character presentation', () => {
+  // Game-only shell (docs/handoff/game-only-shell.md): the header's bag/rank pills and the keeper
+  // panel these steps drive were deleted. Retarget to ☰ → Character in the world before re-enabling.
+  test.fixme(true, 'drives the deleted header pills / keeper panel');
   test('renders the paper doll and bag tiles without equipping on slot click', async ({ page }) => {
     await page.setViewportSize({ width: 1440, height: 900 });
     await openCharacter(page);

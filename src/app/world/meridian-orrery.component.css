@@ -15,23 +15,6 @@
   color: var(--ink-0);
 }
 
-.mo__crumb {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.85rem;
-  color: rgba(232, 236, 241, 0.62);
-  margin-bottom: 1.4rem;
-}
-
-.mo__crumb a, .mo__back {
-  color: inherit;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
 .mo__eyebrow {
   margin: 0 0 0.45rem;
   font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
@@ -248,8 +231,6 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   font-size: 0.85rem;
   color: rgba(232, 236, 241, 0.7);
 }
-
-.mo__back { margin-top: 1.4rem; }
 
 .mo a:focus-visible,
 .mo__gather:focus-visible,
