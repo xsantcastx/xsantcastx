@@ -34,7 +34,8 @@ import type { DelvePersistence, DelveSectorStore } from './engine.model';
 import { deepPlans } from './underhearth-gen';
 import { realmPlans } from './realm-gen';
 import { fogPixel, mapPixel, mapWalls, REVEAL_CELLS, skyPixel, type CellReader, type MapMarker, type WorldMap } from './delve-map';
-import { surfaceColumn } from './surface-gen';
+import { groundAt, surfaceColumn } from './surface-gen';
+import { areaLevel, packFor, wildDepth, wildSector, type SurfacePlan } from './living-world';
 
 /** A generated structure with a stable id (`<kind>@<col>,<row>`, its room's top-left). */
 export interface PlacedStructure extends SectorStructure { id: string }
@@ -67,6 +68,8 @@ const MAP_BUILDS = 4;
 export interface WorldColumnGen extends SectorColumnGen {
   /** The back wall per local cell (sky band only; 0 below the ground). Null without a sky band. */
   back: Uint8Array | null;
+  /** The Living World's surface plan of a wild column (its trees, its point of interest), or null. */
+  living?: SurfacePlan | null;
 }
 
 /** One sector column with its live state (only authoritative while it is NOT in the ring). */
@@ -160,16 +163,32 @@ export class SectorWorld {
   private generate(sx: number): WorldColumnGen {
     const gen = generateSectorColumn(this.ctx, sx);
     const surface = this.spec.surface;
-    if (!surface || this.rowLo >= 0) return { ...gen, back: null };
+    if (!surface || this.rowLo >= 0) {
+      // The plain endless Delve: its surface ledge (row 0) is a road too; the wilds past the core get their packs.
+      const pack = this.spec.endless && !this.spec.realm ? this.ledgePack(sx) : null;
+      return { ...gen, halls: pack ? [...gen.halls, pack] : gen.halls, back: null, living: null };
+    }
     const sky = surfaceColumn(surface, sx), off = sky.kind.length, n = off + gen.kind.length;
     const join = (top: Uint8Array, below: Uint8Array) => { const out = new Uint8Array(n); out.set(top, 0); out.set(below, off); return out; };
     const notes = new Map<number, string>();
+    for (const [i, id] of sky.notes) notes.set(i, id);
     for (const [i, id] of gen.notes) notes.set(i + off, id);
     const back = new Uint8Array(n); back.set(sky.back, 0);
+    // The Living World: the wilds' pack (none at a hermit's door or a shrine: those are safe ground).
+    const living = sky.plan;
+    const safe = !living || living.poi?.kind === 'hermit' || living.poi?.kind === 'shrine';
+    const pack = wildSector(surface, sx) ? packFor(surface.salt, sx, areaLevel(wildDepth(surface, sx)), col => groundAt(surface, col), safe) : null;
     return {
-      ...gen, notes, back,
+      ...gen, notes, back, living, halls: pack ? [...gen.halls, pack] : gen.halls,
       kind: join(sky.kind, gen.kind), liqType: join(sky.liqType, gen.liqType), liqLevel: join(sky.liqLevel, gen.liqLevel), protect: join(sky.protect, gen.protect),
     };
+  }
+  /** A pack on the plain Delve's surface ledge, past the core and a sector of breathing room either side. */
+  private ledgePack(sx: number): SectorHall | null {
+    const core = coreSectorCols(this.spec);
+    if (sx > -2 && sx < core + 1) return null;
+    const depth = sx >= core ? sx - core : -sx - 1;
+    return packFor(this.ctx.seed, sx, areaLevel(depth), () => 0, false);
   }
 
   /** A column from the seed, with the save laid over it. */
