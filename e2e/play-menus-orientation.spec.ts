@@ -101,7 +101,8 @@ const MENUS: Menu[] = [
   { id: 'glass', open: placesItem('glass'), root: '.place', close: '.place-close' },
   { id: 'character', open: placesItem('character'), root: '.place', close: '.place-close' },
   station('crafting'), station('runes'), station('enchanting'), station('vault', ''), station('vendor'), station('gambler'),
-  station('exchange', ''), station('market', ''), station('quests', ''), station('codex', ''), station('skills', ''),
+  // The Exchange left the world with the game-only shell's deep clean (no station, no ?at=exchange).
+  station('market', ''), station('quests', ''), station('codex', ''), station('skills', ''),
   station('waystone', ''), station('reels', '.place .rl-spin, .place .ab__btn'),
   { id: 'slate', open: openSlate, root: '.place', close: '.place-close' },
   { id: 'slate-homestead', open: async page => { await openSlate(page); await page.locator('.sl-tile[data-face="factory"]').click(); }, root: '.place', close: '.place-close' },
