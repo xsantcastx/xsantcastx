@@ -18,9 +18,24 @@ window only, software raster (SwiftShader, the worst case), the Keeper walking i
 New in the harness: `PLAY_PERF_TRACE=<dir>` writes a 6 s Chrome trace per scene. The CPU profile lumps
 canvas raster into "(program)"; the trace names it (`Canvas2DResourceProviderSharedImage::ProduceCanvasResource`).
 
+## Before / after on main `7eb8c13e` (latest: pixel creatures, icons and town backdrops), medians of 3 alternating runs
+
+4× CPU, 390×844 @3, 30 s. Base = `origin/main` 7eb8c13e; after = this branch merged onto it (fb33360e).
+
+| Scene | p50 ms before → after | p95 ms before → after | Frames in 30 s | Task ms/frame | Long tasks | Alloc KB/frame |
+|---|---|---|---|---|---|---|
+| Underhearth, beside the Umbral gate | 35.0 → **16.7** | 51.6 → **18.4** | 737 → 1798 | 40.7 → 13.8 | 19 → 0 | 42.3 → 22.7 |
+| Furnace Hall, Banked Furnace awake | 35.3 [49.4, 33.3, 35.3] → **17.0** | 51.8 → **34.8** | 730 → 1428 | 41.1 → 19.8 | 72 → 0 | 35.4 → 23.6 |
+| Ink Deeps, Gate Hollow | 16.8 → **16.7** | 33.6 → **18.4** | 1539 → 1798 | 18.9 → 11.4 | 0 → 0 | 28.3 → 27.0 |
+| Wide traverse east (surface) | 33.1 → **16.7** | 49.5 → **18.4** | 991 → 1802 | 30.2 → 9.9 | 0 → 0 | 27.7 → 20.4 |
+| Magma Halls gallery, 17 torches | 33.1 → **16.7** | 49.1 → **18.4** | 979 → 1792 | 30.6 → 11.5 | 0 → 0 | 27.6 → 18.4 |
+
+The machine was less loaded for this round than for the two below, so its base is faster too. Compare
+within a table, not across tables.
+
 ## Before / after on main `eb4cb8b6` (pixel creatures + NPCs with cached sheets), medians of 3 alternating runs
 
-4× CPU, 390×844 @3, 30 s. Base = `origin/main` eb4cb8b6; after = this branch merged onto it.
+4× CPU, 390×844 @3, 30 s. Base = `origin/main` eb4cb8b6; after = this branch merged onto it (c5447612).
 
 | Scene | p50 ms before → after | p95 ms before → after | Frames in 30 s | Task ms/frame | Long tasks | Alloc KB/frame |
 |---|---|---|---|---|---|---|
