@@ -432,8 +432,17 @@ const profiled = new Set(CREATURE_PROFILES.map(p => p.creature));
 // Pets (shared/pets/pets.model.ts): a source in play, one helper, lore, a Codex row; real foods.
 {
   const { PETS } = L('shared/pets/pets.model.ts');
+  const { PET_ROLES } = L('shared/pets/pet-roles.ts');
   const PET_WORDS = read('shared/pets/pets.i18n.ts');
+  const ENGINE_BRAIN = read('play/engine/pet-brain.ts') + read('play/engine/engine.ts');
   for (const pet of PETS) {
+    // Its role (pet-roles.ts): a move the brain runs, a second move, both on the pet card (EN + ES).
+    const role = PET_ROLES[pet.id];
+    if (!role) flag('pet', 'no-role', pet.id, 'no role, move or second move (pet-roles.ts)');
+    else {
+      if (!PET_WORDS.includes(`'play.pet.move.${role.move}'`) || !PET_WORDS.includes(`'play.pet.second.${role.second}'`)) flag('pet', 'role-not-visible', pet.id, 'its move or second move has no words on the card');
+      if (!ENGINE_BRAIN.includes(`'${role.move}'`) || !ENGINE_BRAIN.includes(`'${role.second}'`)) flag('pet', 'role-not-wired', pet.id, `the brain never runs ${role.move} / ${role.second}`);
+    }
     const n = node('pet', pet.id, pet.name);
     const s = pet.source || {};
     if (s.tally || s.flag || s.claimDays) n.sources.add(pet.foundIn); else flag('pet', 'no-source', pet.id, 'no tally, flag or bounty day finds it');

@@ -34,6 +34,8 @@ export interface GlimSpeech {
   bond?: { id: string; talk?: string };
   /** Values for the line ({{dir}}, {{cols}} …). */
   vars?: Record<string, string | number>;
+  /** A reaction (glim-react.ts) or a chat answer: short, unasked-for or asked-for, never a hint. */
+  react?: 'moment' | 'chat';
   /** Bumped per line, so the view re-creates the bubble (and restarts its fade). */
   seq: number;
   until: number;
@@ -137,6 +139,22 @@ export class GlimVoice {
 
   /** Story lines still waiting. */
   get storyWaiting(): number { return this.storyQueue.length; }
+
+  /**
+   * A reaction to a moment (glim-react.ts decided it may speak): only when
+   * nothing else is on screen; it does not touch the unsolicited gap of the
+   * Prologue lines. True when it was shown.
+   */
+  react(key: string, now: number, ms: number, vars?: Record<string, string | number>): boolean {
+    if (this.speech && now < this.speech.until) return false;
+    this.speech = { key, react: 'moment', ...(vars ? { vars } : {}), seq: ++this.seq, until: now + ms };
+    return true;
+  }
+
+  /** A chat answer (the Keeper asked): replaces whatever is showing. */
+  answer(key: string, now: number, ms: number, vars?: Record<string, string | number>): void {
+    this.speech = { key, react: 'chat', ...(vars ? { vars } : {}), seq: ++this.seq, until: now + ms };
+  }
 
   dismiss(): void { this.speech = null; }
 }

@@ -36,7 +36,9 @@ export type SfxCue =
   // The tool in hand changes (shared/skills/held-tool.ts): the rod out for a cast, the pickaxe for a dig, the weapon back.
   | 'swap'
   // A drop lands (shared/loot/loot-tiers.ts): one voice per rung, the legendary chime the biggest.
-  | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic';
+  | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'
+  // Glim speaks up (shared/glim/glim-react.ts): a soft glassy two-note hum; a high five's bright clap.
+  | 'glim' | 'five';
 
 export interface SfxOptions {
   material?: Material;
@@ -50,7 +52,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -218,6 +220,10 @@ export class SoundDirector {
       case 'drop-legendary': this.tone(t, 'sine', 130.8, .14, 1.2, .01); this.tone(t, 'triangle', 261.6, .07, .9, .01); return this.arpeggio(t + .08, [72, 76, 79, 84, 88], 'bell', .09, .32, true);
       case 'drop-mythic': this.tone(t, 'sine', 98, .16, 1.6, .01); this.whoosh(t, 300, 2400, .5, .08); return this.arpeggio(t + .12, [74, 79, 83, 86, 91, 95], 'bell', .1, .32, true);
       case 'swap': this.whoosh(t, 900, 400, .08, .06); return this.tone(t + .05, 'triangle', 660, .05, .06, .002);
+      // Glim's hum: two soft glass notes a fifth apart, the second a breath later.
+      case 'glim': this.tone(t, 'sine', 1174.7, .035, .22, .01); return this.tone(t + .12, 'sine', 1760, .028, .26, .01);
+      // A high five: a tiny clap and a bright bell.
+      case 'five': this.whoosh(t, 2400, 1800, .05, .08); return this.arpeggio(t + .04, [84, 91], 'bell', .07, .22, false);
     }
   }
 

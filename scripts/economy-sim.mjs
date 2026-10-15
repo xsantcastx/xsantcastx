@@ -1151,9 +1151,19 @@ function livingScenario({ quiet = false } = {}) {
 //      as fast as they regrow and selling it all back, is <= 5 % of the forge's
 //      income at every stage from 30 min on (it is a few herbs, not a mine);
 //   3. a pet costs nothing and is found once: no source pays Gold.
+// The roles (pet-roles.ts, docs/handoff/pets-and-glim-alive.md), on the same curve:
+//   4. a combat pet at its top level adds <= 22 % to the Keeper's own damage
+//      (a starter blow: 20 every .52 s), chomp's armour crack counted in;
+//   5. a stun never holds a foe more than 20 % of the time (bite, howl, flare);
+//   6. the Sunling's pulse heals no faster than the old mend (1 % a second);
+//   7. what pets dig up (the Star Owlet's spots at its best, plus trinkets) is
+//      <= 2 % of an hour of forge income at the 30-minute stage, every day;
+//   8. the Ember Newt's kindle saves <= 8 % of a miner's swings; the moth's guide
+//      stays under the Shade-kit's bite boost.
 // ───────────────────────────────────────────────────────────────────────────
 
 const PETS = loadTsTree('src/app/shared/pets/pets.model.ts');
+const ROLES = loadTsTree('src/app/shared/pets/pet-roles.ts');
 const VERDANT = loadTsTree('src/app/play/world/towns/verdant.ts');
 
 function petsScenario({ quiet = false } = {}) {
@@ -1179,7 +1189,36 @@ function petsScenario({ quiet = false } = {}) {
     if (share > .05) fails.push(`the hedgehog's extra harvest is ${(share * 100).toFixed(1)} % of the forge's income at ${label} (must be <= 5 %)`);
   }
   for (const pet of PETS.PETS) if (!pet.source || (!pet.source.tally && !pet.source.flag && !pet.source.claimDays)) fails.push(`${pet.id} has no source in play`);
-  if (quiet) console.log(`economy-sim pets: ${fails.length ? fails.length + ' fail(s)' : 'helpers small, the hedgehog no farm'}`);
+  // The roles: combat next to the Keeper's own blow, stuns, the pulse, the finds.
+  const A = ROLES.PET_ACT, top = ROLES.PET_LEVEL_MAX;
+  const keeperDps = 20 / .52;
+  say('\n  roles (pet-roles.ts) at level ' + top + ' · the Keeper\'s starter blow ' + keeperDps.toFixed(1) + '/s');
+  for (const [id, r] of Object.entries(ROLES.PET_ROLES)) {
+    if (r.role !== 'combat') continue;
+    let dps = ROLES.moveDps(r.move, top);
+    // The chomp's crack: every blow of the Keeper's lands `crack` harder while it holds (refreshed each chomp).
+    if (r.move === 'chomp') dps += keeperDps * A.crack * Math.min(1, A.crackFor / A.chompRest);
+    const share = dps / keeperDps;
+    say(`  ${id.padEnd(16)} ${r.move.padEnd(6)} +${dps.toFixed(1)}/s (${(share * 100).toFixed(1)}% of the Keeper's)`);
+    if (share > .22) fails.push(`${id}'s ${r.move} adds ${(share * 100).toFixed(1)} % to the Keeper's damage (must be <= 22 %)`);
+  }
+  const stuns = { bite: A.stun / (A.biteRest * A.stunEvery), howl: A.howlStun / A.howlRest, flare: A.flareStun / A.flareRest };
+  for (const [k, v] of Object.entries(stuns)) if (v > .2) fails.push(`the ${k} holds a foe ${(v * 100).toFixed(0)} % of the time (must be <= 20 %)`);
+  say(`  stun uptime: bite ${(stuns.bite * 100).toFixed(0)}% · howl ${(stuns.howl * 100).toFixed(0)}% · flare ${(stuns.flare * 100).toFixed(0)}%`);
+  const pulse = A.pulseShare / A.pulseRest;
+  if (pulse > T.mendShare) fails.push(`the Sunling's pulse heals ${(pulse * 100).toFixed(2)} %/s, faster than the mend`);
+  const scoutDay = ROLES.FINDS_PER_DAY.scout * ROLES.scoutCoins(top, true);
+  const hour30 = (log.at[1800]?.gps ?? 0) * 3600;
+  const digShare = hour30 ? scoutDay / hour30 : 1;
+  say(`  digs a day: ${ROLES.FINDS_PER_DAY.scout} spots (${scoutDay} Gold at best) + ${ROLES.FINDS_PER_DAY.trinket} trinkets · ${(digShare * 100).toFixed(2)}% of an hour's forge income at 30m`);
+  if (digShare > .02) fails.push(`what pets dig up a day is ${(digShare * 100).toFixed(1)} % of an hour of forge income at 30m (must be <= 2 %)`);
+  if (ROLES.FINDS_PER_DAY.trinket > 2) fails.push('more than two trinkets a day');
+  // Kindle: a warm vein (3 hp, a starter pick chips 1) breaks in 1 swing instead of 3, one vein per rest.
+  const saved = (3 - Math.ceil(3 / A.kindleBoost)) * .52 / A.kindleRest;
+  say(`  kindle saves ${(saved * 100).toFixed(1)}% of a miner's swing time · guide x${A.guideBoost}`);
+  if (saved > .08) fails.push(`the newt's kindle saves ${(saved * 100).toFixed(1)} % of swings (must be <= 8 %)`);
+  if (A.guideBoost > T.biteBoost) fails.push('the moth\'s guide beats the Shade-kit\'s bite boost');
+  if (quiet) console.log(`economy-sim pets: ${fails.length ? fails.length + ' fail(s)' : 'helpers small, the hedgehog no farm, roles on the curve'}`);
   else for (const f of fails) console.error(`  FAIL ${f}`);
   return fails;
 }
