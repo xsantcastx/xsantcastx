@@ -18,7 +18,22 @@ window only, software raster (SwiftShader, the worst case), the Keeper walking i
 New in the harness: `PLAY_PERF_TRACE=<dir>` writes a 6 s Chrome trace per scene. The CPU profile lumps
 canvas raster into "(program)"; the trace names it (`Canvas2DResourceProviderSharedImage::ProduceCanvasResource`).
 
-## Before / after (4× CPU, 390×844 @3, 30 s, medians of 3 alternating runs)
+## Before / after on main `eb4cb8b6` (pixel creatures + NPCs with cached sheets), medians of 3 alternating runs
+
+4× CPU, 390×844 @3, 30 s. Base = `origin/main` eb4cb8b6; after = this branch merged onto it.
+
+| Scene | p50 ms before → after | p95 ms before → after | Frames in 30 s | Task ms/frame | Long tasks | Alloc KB/frame |
+|---|---|---|---|---|---|---|
+| Underhearth, beside the Umbral gate | 49.1 [49.1, 50, 34.1] → **16.7** | 65.0 → **33.2** | 688 → 1670 | 43.7 → 17.0 | 86 → 0 | 46.2 → 24.0 |
+| Furnace Hall, Banked Furnace awake | 50.1 [35.3, 50.1, 50.6] → **18.6** [17.3, 31.8, 18.6] | 68.1 → **48.2** | 565 → 1160 | 53.1 → 25.6 | 350 → 0 | 40.7 → 25.9 |
+| Ink Deeps, Gate Hollow | 16.8 → **16.7** | 33.7 → **18.6** | 1533 → 1729 | 19.0 → 16.7 | 0 → 0 | 29.4 → 27.4 |
+| Wide traverse east (surface) | 33.4 → **16.7** | 50.1 → **18.5** | 844 → 1802 | 35.5 → 11.1 | 1 → 0 | 33.3 → 20.7 |
+| Magma Halls gallery, 17 torches | 49.9 → **16.7** | 51.7 → **18.5** | 668 → 1798 | 45.0 → 13.9 | 35 → 0 | 33.5 → 18.3 |
+
+Pixel sheets on main had already cut script time (13.5 → ~3.3 ms/frame in the Underhearth). The raster
+passes below were untouched by them, and they remained the bottleneck.
+
+## Before / after on af398f36 (before the pixel creatures), medians of 3 alternating runs
 
 | Scene | p50 ms before → after | p95 ms before → after | Frames in 30 s | Task ms/frame | Long tasks | Alloc KB/frame |
 |---|---|---|---|---|---|---|
@@ -28,8 +43,8 @@ canvas raster into "(program)"; the trace names it (`Canvas2DResourceProviderSha
 | Wide traverse east (surface) | 33.3 → **16.7** | 50.0 → **17.6** | 945 → 1784 | 31.7 → 12.3 | 10 → 0 | 41.5 → 29.9 |
 | Magma Halls gallery, 17 torches | 33.9 → **16.7** | 51.7 → **18.6** | 783 → 1762 | 38.3 → 15.0 | 18 → 0 | 31.1 → 18.5 |
 
-Target was ≤ 33 p50 / ≤ 50 p95 in every deep scene: met. The Furnace Hall is the one with the least slack
-(~28 ms of a 33 ms budget); it is the scene the new guard watches. Standalone runs of it on this build
+The target was ≤ 33 p50 / ≤ 50 p95 in every deep scene, and it is met on both bases. The Furnace Hall has
+the least slack (~26–28 ms of a 33 ms budget), so it is the scene the new guard watches. Standalone runs of it on this build
 gave 17.0 / 34.1 (guard) and 16.8 / 33.7 (trace run): the walk path decides how much of the open hall
 is in view. Script ms/frame fell 13.5 → 5.3 in both Underhearth scenes.
 
