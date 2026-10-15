@@ -14,19 +14,15 @@
  *     pickups are on disk without anything else being cleared.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, seed, stackQty, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, seed, stackQty, walkTo, SHAFT_X, digIntoDelve } from './play-helpers';
 import { applyOp, emptyLedger, snapshotOf, type EconomyLedger, type EconomyOp } from '../src/app/shared/economy/economy-ops';
 
 const SEED = 424242;
 const FRESH_DELVE = { 'godforge-delve': { version: 1, seed: SEED, createdAt: 1, areas: {}, claimed: [] } };
-const ARRIVE_X = 260;
 const DEVICE = 'e2e-phone';
 
 async function enterDelve(page: Page): Promise<void> {
-  await walkTo(page, 590, 30);
-  await page.keyboard.press('e');
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
-  await expect.poll(() => canvas(page).getAttribute('data-player-x').then(Number)).toBe(ARRIVE_X);
+  await digIntoDelve(page);
   await page.waitForTimeout(400);
   await focusWorld(page);
 }

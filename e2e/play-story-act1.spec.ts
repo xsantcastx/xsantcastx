@@ -17,7 +17,7 @@
  * the carving (play-delve-fixtures), the shaft's "Descend to your camp".
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { blob, canvas, focusWorld, openPlay, seed, settleBetween, walkTo } from './play-helpers';
+import { blob, canvas, focusWorld, openPlay, seed, settleBetween, walkTo, SHAFT_X } from './play-helpers';
 import { DelveFixture, colX } from './play-delve-fixtures';
 
 /** The fresh mark's camp: the Keeper's body reaches the carving at (102, 50). */
@@ -51,7 +51,7 @@ async function descendToFreshMark(page: Page, keep: Record<string, unknown>): Pr
   f.claimed = ['warden-defeated'];
   await seed(page, { ...f.blobs(), ...keep });
   await openPlay(page);
-  await walkTo(page, 590, 30);
+  await walkTo(page, SHAFT_X, 30);
   await page.getByRole('button', { name: /Descend to your camp/ }).click();
   await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
   await page.waitForTimeout(1800);

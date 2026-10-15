@@ -13,7 +13,7 @@
  * output/delve-nav/ when DELVE_NAV_SHOTS is set (not committed).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, playerX, seed, walk, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, playerX, seed, walk, walkTo, SHAFT_X, delveSave } from './play-helpers';
 import { CELL, DelveFixture, nodeIndex, SPEC } from './play-delve-fixtures';
 import { decodeCells } from '../src/app/shared/delve/delve-save.model';
 
@@ -42,7 +42,7 @@ async function shot(page: Page, name: string): Promise<void> {
 /** From town: walk to the shaft and take "Descend to your camp". */
 async function descend(page: Page): Promise<void> {
   await openPlay(page);
-  await walkTo(page, 590, 30);
+  await walkTo(page, SHAFT_X, 30);
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   await expect(button).toBeVisible();
   await button.click();
@@ -72,7 +72,7 @@ async function finger(page: Page, type: 'pointerdown' | 'pointermove' | 'pointer
 }
 
 async function kindAt(page: Page, col: number, row: number): Promise<number | undefined> {
-  const save = await blob<{ areas?: Record<string, { cells: string }> }>(page, 'godforge-delve');
+  const save = await delveSave<{ areas?: Record<string, { cells: string }> }>(page);
   return decodeCells(save?.areas?.['ember-delve']?.cells ?? '').get(idx(col, row));
 }
 
@@ -168,7 +168,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       if (!touch) await page.keyboard.press('Escape'); else await page.locator('.map-close').tap();
       await expect(page.locator('.map-full')).toBeHidden();
       await page.waitForTimeout(2500); // the explored cells ride the Delve's 1.5 s debounced write
-      const seen = (await blob<{ areas: Record<string, { seen?: string }> }>(page, 'godforge-delve'))?.areas['ember-delve']?.seen ?? '';
+      const seen = (await delveSave<{ areas: Record<string, { seen?: string }> }>(page))?.areas['ember-delve']?.seen ?? '';
       expect(seen.length).toBeGreaterThan(0);
       await shot(page, `${label}-minimap`);
 

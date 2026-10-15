@@ -20,6 +20,13 @@
  *     (scale ≤ 0.86): its x is where the figure stands.
  * Station hit boxes come from the town data the engine itself reads
  * (`stationAt`: |x − station.x| ≤ width / 2).
+ *
+ * One World (the P2 flip): the Infernal keepers live in the Seamworks on the
+ * Ember world's surface (settlement-life.ts), at the world's scale, at their
+ * counters by day. Their tags (11 px) and bubbles (13 px) are recorded the same
+ * way, and where they stand is read off the canvas's `data-keepers` /
+ * `data-stations`. The other four towns are their own scenes until P3, reached
+ * from the Seamworks stone's Travel map.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { canvas, focusWorld, openPlay, playerX, seed, walk, type Blobs } from './play-helpers';
@@ -30,9 +37,13 @@ import { LIFE_I18N } from '../src/app/play/world/life.i18n';
 
 /** A drawn name tag: text, world x, plate left / right on the canvas (device px), canvas width. */
 type Tag = [string, number, number, number, number];
-interface Frame { tags: Tag[]; titles: [string, number][]; bubble: string[]; keepers: number[]; folk: number[] }
+interface Frame { tags: Tag[]; titles: [string, number][]; bubble: string[]; keepers: number[]; folk: number[]; wtags: string[]; wbubble: string[] }
 
 const REALMS: RealmTownId[] = ['infernal', 'luminous', 'umbral', 'celestial', 'verdant'];
+/** The four towns still in their own scenes (One World P3 builds their worlds). */
+const SCENE_REALMS: RealmTownId[] = ['luminous', 'umbral', 'celestial', 'verdant'];
+/** A town's Travel map row: its world's town stone. */
+const WORLD_OF: Record<RealmTownId, string> = { infernal: 'ember', luminous: 'prism', umbral: 'ink', celestial: 'orrery', verdant: 'root' };
 
 async function instrument(page: Page): Promise<void> {
   await page.addInitScript(() => {
@@ -40,13 +51,13 @@ async function instrument(page: Page): Promise<void> {
     W.__life = { on: false, frames: [] };
     const P = CanvasRenderingContext2D.prototype;
     const clear = P.clearRect, fill = P.fillText, ellipse = P.ellipse;
-    let cur: { tags: [string, number, number, number, number][]; titles: [string, number][]; bubble: string[]; keepers: number[]; folk: number[] } | null = null;
+    let cur: { tags: [string, number, number, number, number][]; titles: [string, number][]; bubble: string[]; keepers: number[]; folk: number[]; wtags: string[]; wbubble: string[] } | null = null;
     let nameWidth = 0;
     const world = (c: CanvasRenderingContext2D) => !!(c.canvas as HTMLCanvasElement).closest?.('.viewport');
     P.clearRect = function (this: CanvasRenderingContext2D, x: number, y: number, w: number, h: number) {
       if (x === 0 && y === 0 && world(this)) {
         if (cur && W.__life.on && W.__life.frames.length < 20000) W.__life.frames.push(cur);
-        cur = { tags: [], titles: [], bubble: [], keepers: [], folk: [] };
+        cur = { tags: [], titles: [], bubble: [], keepers: [], folk: [], wtags: [], wbubble: [] };
       }
       return clear.call(this, x, y, w, h);
     };
@@ -72,6 +83,9 @@ async function instrument(page: Page): Promise<void> {
           }
         }
         else if (/\b15px/.test(this.font) && this.fillStyle === '#2a1c16') cur.bubble.push(text);
+        // One World's settlement (settlement-life.ts): the tag in 11 px, the bubble in 13 px.
+        else if (/^600 11px/.test(this.font) && this.fillStyle === '#ffe1b0') cur.wtags.push(text);
+        else if (/\b13px/.test(this.font) && this.fillStyle === '#2a1c16') cur.wbubble.push(text);
       }
       return max === undefined ? fill.call(this, text, x, y) : fill.call(this, text, x, y, max);
     };
@@ -95,13 +109,52 @@ async function enterTown(page: Page, realm: RealmTownId, blobs: Blobs = {}): Pro
   await seed(page, blobs);
   if (realm !== 'infernal') {
     await openPlay(page, '?at=waystone');
-    await page.locator('.waystone-road', { hasText: town.name }).click();
-    await expect(canvas(page)).toHaveAttribute('data-area', town.name);
+    await page.locator(`[data-row="${WORLD_OF[realm]}:town"]`).click();
+    await page.locator('[data-act="travel"]').click();
+    await expect(canvas(page)).toHaveAttribute('data-area', town.name, { timeout: 10000 });
     await expect.poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('eclipse-play-world-v1') || '{}').town), { timeout: 8000 }).toBe(realm);
   }
-  await openPlay(page);
+  // The Seamworks at noon: the keepers at their counters.
+  await openPlay(page, realm === 'infernal' ? '?hour=12' : '');
   await expect(canvas(page)).toHaveAttribute('data-area', town.name);
   return town;
+}
+
+/** One World: where the Seamworks' keepers and stations stand now (the canvas's data attributes). */
+async function worldPlaces(page: Page): Promise<{ keepers: Map<string, number>; stations: Map<string, number> }> {
+  const read = async (attr: string) => new Map(((await canvas(page).getAttribute(attr)) ?? '').split(';').filter(Boolean).map(row => {
+    const [id, rest] = row.split('@');
+    return [id, Number(rest.split(',')[0])] as [string, number];
+  }));
+  await expect(canvas(page)).toHaveAttribute('data-keepers', /@/);
+  return { keepers: await read('data-keepers'), stations: await read('data-stations') };
+}
+
+/** One World: walk the Seamworks' street west, then east past every counter, recording what is drawn. */
+async function walkStreet(page: Page): Promise<Frame[]> {
+  await focusWorld(page);
+  await walk(page, 'a', 200, 60000);
+  await page.waitForTimeout(300);
+  await record(page, true);
+  await walk(page, 'd', 3150, 60000);
+  await page.waitForTimeout(6000);
+  await record(page, false);
+  return frames(page);
+}
+
+/** The world's bubbles by keeper (keeper → the line keys said), and any bubble that is no keeper line. */
+function worldLines(all: Frame[], lang: 'en' | 'es'): { lines: Map<string, Set<string>>; unknown: Set<string>; tags: Set<string> } {
+  const lines = new Map<string, Set<string>>(), unknown = new Set<string>(), tags = new Set<string>();
+  for (const f of all) {
+    for (const t of f.wtags) tags.add(t);
+    if (!f.wbubble.length) continue;
+    const text = f.wbubble.join(' ');
+    const who = lineKeeper(text, lang);
+    if (!who) { unknown.add(text); continue; }
+    if (!lines.has(who.keeper)) lines.set(who.keeper, new Set());
+    lines.get(who.keeper)!.add(who.key);
+  }
+  return { lines, unknown, tags };
 }
 
 const half = (s: StationDef) => (s.width ?? 120) / 2;
@@ -185,7 +238,25 @@ function analyse(town: TownDef, all: Frame[], lang: 'en' | 'es') {
 test.describe('Phase 4 Life, walked in every town', () => {
   test.describe.configure({ timeout: 120000 });
 
-  for (const realm of REALMS) {
+  test('infernal (One World): the keepers stand at their counters by day, greet once, their tags drawn over them', async ({ page }) => {
+    await instrument(page);
+    await enterTown(page, 'infernal');
+    const { keepers, stations } = await worldPlaces(page);
+    for (const def of TOWN_KEEPERS.infernal) {
+      expect(keepers.get(def.id), `${def.name} is in the Seamworks`).toBeDefined();
+      expect(Math.abs(keepers.get(def.id)! - stations.get(def.station)!), `${def.name} at the ${def.station} counter`).toBeLessThanOrEqual(2);
+    }
+    const all = await walkStreet(page);
+    expect(all.length, 'frames drawn while walking').toBeGreaterThan(30);
+    const { lines, unknown, tags } = worldLines(all, 'en');
+    expect([...unknown], 'every bubble is a keeper line').toEqual([]);
+    for (const def of TOWN_KEEPERS.infernal) expect(tags, `${def.name}'s name tag is drawn`).toContain(def.name);
+    // Greets once on the way past: never two of one keeper's lines on one walk.
+    for (const [keeper, keys] of lines) expect([...keys], `${keeper} greets once`).toHaveLength(1);
+    expect(lines.size, 'keepers spoke on the walk').toBeGreaterThan(1);
+  });
+
+  for (const realm of SCENE_REALMS) {
     test(`${realm}: keepers stand beside their stalls, greet once, and townsfolk keep off the stalls`, async ({ page }) => {
       await instrument(page);
       const town = await enterTown(page, realm);
@@ -225,9 +296,12 @@ test.describe('Phase 4 Life, walked in every town', () => {
 
   test('a keeper greets once: standing beside it, or stepping away and back, does not re-greet', async ({ page }) => {
     await instrument(page);
-    const town = await enterTown(page, 'infernal');
-    const kael = 1619; // read from the tag below; the walk target only
+    await enterTown(page, 'infernal');
+    const kael = (await worldPlaces(page)).keepers.get('kael')!;
     await focusWorld(page);
+    // From west of his counter (the walk starts out of his reach).
+    await walk(page, 'a', kael - 500);
+    await page.waitForTimeout(500);
     await record(page, true);
     await walk(page, 'd', kael - 40);
     await page.waitForTimeout(7000); // the bubble (5.5 s) ends; Kael stays silent
@@ -235,8 +309,8 @@ test.describe('Phase 4 Life, walked in every town', () => {
     await walk(page, 'd', kael - 40);
     await page.waitForTimeout(1500);
     await record(page, false);
-    const { tagX, lines } = analyse(town, await frames(page), 'en');
-    expect(tagX.get('Kael')?.[0]).toBe(kael);
+    const { lines, tags } = worldLines(await frames(page), 'en');
+    expect(tags).toContain('Kael');
     expect([...(lines.get('kael') ?? [])]).toEqual(['play.life.line.kael.1']);
     expect(Math.abs((await playerX(page)) - kael)).toBeLessThan(170);
   });
@@ -247,6 +321,14 @@ test.describe('Phase 4 Life, walked in every town', () => {
     for (const realm of REALMS) {
       const town = await enterTown(page, realm, { 'preferred-language': 'es' });
       await expect(page.locator('html')).toHaveAttribute('lang', 'es');
+      if (realm === 'infernal') {
+        // One World: the Seamworks' keepers, their Spanish tags and lines.
+        const w = worldLines(await walkStreet(page), 'es');
+        for (const k of TOWN_KEEPERS.infernal) expect(w.tags, `infernal: ${k.id}'s Spanish name tag`).toContain(LIFE_I18N[k.nameKey].es);
+        expect([...w.unknown], 'infernal: every bubble is a Spanish keeper line').toEqual([]);
+        expect(w.lines.size, 'infernal: keepers spoke Spanish').toBeGreaterThan(0);
+        continue;
+      }
       const all = await walkTown(page, town);
       const { tagX, titleOf, lines, unknown } = analyse(town, all, 'es');
       expect([...tagX.keys()].sort(), `${realm} name tags`).toEqual(
@@ -263,9 +345,8 @@ test.describe('Phase 4 Life, walked in every town', () => {
     // Every Prologue and Act I beat lived, both cards shown (godforge-story).
     const beats = ['p.arrival', 'p.homestead', 'p.edge', 'p.maw', 'p.dig', 'p.words', 'a1.shadow', 'a1.tally', 'a1.hammer', 'a1.prices', 'a1.eater', 'a1.fresh', 'a1.dated', 'a1.break'];
     await instrument(page);
-    const town = await enterTown(page, 'infernal', { 'godforge-story': { version: 1, chapter: 'act2', beats, cards: ['act1', 'act2'] } });
-    const all = await walkTown(page, town);
-    const { lines, unknown } = analyse(town, all, 'en');
+    await enterTown(page, 'infernal', { 'godforge-story': { version: 1, chapter: 'act2', beats, cards: ['act1', 'act2'] } });
+    const { lines, unknown } = worldLines(await walkStreet(page), 'en');
     expect([...unknown]).toEqual([]);
     // Kael, Mara and Edrin each open with their act-break line.
     expect([...(lines.get('kael') ?? [])]).toEqual(['play.life.line.kael.7']);
@@ -273,8 +354,8 @@ test.describe('Phase 4 Life, walked in every town', () => {
     expect([...(lines.get('buyback-clerk') ?? [])]).toEqual(['play.life.line.buyback-clerk.8']);
 
     // A fresh save: nobody mentions a beat it has not lived.
-    const fresh = await enterTown(page, 'infernal');
-    const said = analyse(fresh, await walkTown(page, fresh), 'en').lines;
+    await enterTown(page, 'infernal');
+    const said = worldLines(await walkStreet(page), 'en').lines;
     for (const [keeper, keys] of said) {
       for (const key of keys) expect(['play.life.line.' + keeper + '.1'], `${key} on a fresh save`).toContain(key);
     }

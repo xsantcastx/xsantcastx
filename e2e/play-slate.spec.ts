@@ -14,7 +14,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'fs';
 import { resolve } from 'path';
-import { bag, blob, canvas, focusWorld, openPlay, placePanel, purse, seed, stackQty, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, openPlay, placePanel, purse, seed, stackQty, walkTo, SHAFT_X, travelToTown, digIntoDelve } from './play-helpers';
 import { playReels } from '../src/app/shared/reels/reels.model';
 import { seededRng } from '../src/app/shared/games/seeded-rng';
 
@@ -98,13 +98,11 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
 
       // ── Into the Ember Delve: Waystone to the Seamworks, walk to the shaft ──
       await openPlay(page, '?at=waystone');
-      await page.locator('.waystone-road', { hasText: 'Infernal' }).click();
-      await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
+      await travelToTown(page, 'Infernal');
+      await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks', { timeout: 10000 });
       await expect(placePanel(page)).toBeHidden();
       await focusWorld(page);
-      await walkTo(page, 590, 30);
-      await page.keyboard.press('e');
-      await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 15000 });
+      await digIntoDelve(page);
       await page.waitForTimeout(600);
 
       // ── Open it in the Delve: the world waits, the Reels are on the glass ──

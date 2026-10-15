@@ -13,8 +13,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import {
-  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, purse, seed, settleBetween, stackQty, walkTo,
-} from './play-helpers';
+  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, purse, seed, settleBetween, stackQty, walkTo, SHAFT_X, delveSave, travelToTown } from './play-helpers';
 import {
   activity, CELL, colX, DelveFixture, isLoose, SPEC, TERRAIN_NODE_LIST, xpForLevel,
 } from './play-delve-fixtures';
@@ -28,7 +27,7 @@ const panel = (page: Page) => page.locator('section.place');
 /** From town: walk to the shaft and take "Descend to your camp". */
 async function descend(page: Page): Promise<void> {
   await openPlay(page);
-  await walkTo(page, 590, 30);
+  await walkTo(page, SHAFT_X, 30);
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   await expect(button).toBeVisible();
   await button.click();
@@ -45,7 +44,7 @@ async function keeperHp(page: Page): Promise<number> {
 }
 
 async function delveDiff(page: Page): Promise<Map<number, number>> {
-  const save = await blob<{ areas?: Record<string, { cells: string }> }>(page, 'godforge-delve');
+  const save = await delveSave<{ areas?: Record<string, { cells: string }> }>(page);
   return decodeCells(save?.areas?.['ember-delve']?.cells ?? '');
 }
 
@@ -397,10 +396,10 @@ test.describe('Delve extras: blasting charges, played', () => {
     const diff = await delveDiff(page);
     expect(diff.get(f.t.index(charge.col, charge.row))).toBe(0);
     for (const [c, r] of protectedCells) expect(diff.has(f.t.index(c, r)), `protected ${c},${r} untouched`).toBe(false);
-    const encoded = (await blob<{ areas: Record<string, { cells: string }> }>(page, 'godforge-delve'))!.areas['ember-delve'].cells;
+    const encoded = (await delveSave<{ areas: Record<string, { cells: string }> }>(page))!.areas['ember-delve'].cells;
     // Reload: the round stays open, and nothing is paid again, even after going back down.
     await saveAndReload(page);
-    expect((await blob<{ areas: Record<string, { cells: string }> }>(page, 'godforge-delve'))!.areas['ember-delve'].cells).toBe(encoded);
+    expect((await delveSave<{ areas: Record<string, { cells: string }> }>(page))!.areas['ember-delve'].cells).toBe(encoded);
     const mining1 = await xp(page, 'mining');
     expect(mining1).toBe(mining0 + pay.mining);
     await descend(page);
@@ -454,8 +453,8 @@ async function lore(page: Page): Promise<string[]> {
 
 async function openQuestBoard(page: Page): Promise<void> {
   await openPlay(page, '?at=waystone');
-  await page.locator('.waystone-road', { hasText: 'Verdant' }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Rootglass Canopy');
+  await travelToTown(page, 'Verdant');
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Rootglass Canopy', { timeout: 10000 });
   await expect(placePanel(page)).toBeHidden();
   await focusWorld(page);
   await walkTo(page, 1030, 40);
@@ -574,7 +573,7 @@ test.describe('Delve extras: gear in chests, played', () => {
     await expect(page.locator('.prompt')).toContainText('Open the chest');
     // Reload: the chest record and the stored weapon are both still there.
     await saveAndReload(page);
-    expect(Object.keys((await blob<{ chests?: object }>(page, 'godforge-delve'))?.chests ?? {})).toHaveLength(1);
+    expect(Object.keys((await delveSave<{ chests?: object }>(page))?.chests ?? {})).toHaveLength(1);
     expect((await krisLocation(page))?.explorerId ?? '').toMatch(/^delve-chest:/);
     await descend(page);
     await walkTo(page, colX(chestCol), 6);

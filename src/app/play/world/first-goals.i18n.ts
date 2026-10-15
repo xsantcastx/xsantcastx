@@ -24,6 +24,7 @@ export const FIRST_GOALS_I18N: Readonly<Record<string, { en: string; es: string 
   'play.goal.craft.back': { en: 'Forge your first blade. Head back to the Seamworks and mine the Cinder Ore seam.', es: 'Forja tu primera hoja. Vuelve a Basalt Seamworks y pica la veta de Cinder Ore.' },
 
   'play.goal.delve.town': { en: 'Dig in the Ember Delve. Walk into the mine shaft.', es: 'Excava en la Sima de Brasas. Entra por el pozo de la mina.' },
+  'play.goal.delve.world': { en: 'Dig in the Ember Delve: it is under the street. Beside the mine head, hold Down (S) and attack (J).', es: 'Excava en la Sima de Brasas: esta bajo la calle. Junto a la boca de la mina, manten Abajo (S) y ataca (J).' },
   'play.goal.delve.dig': { en: 'Hold Down (S) and attack (J) to dig your first block.', es: 'Manten Abajo (S) y ataca (J) para excavar tu primer bloque.' },
   'play.goal.delve.back': { en: 'Dig in the Ember Delve. Head back to the Seamworks and enter the mine shaft.', es: 'Excava en la Sima de Brasas. Vuelve a Basalt Seamworks y entra por el pozo.' },
 

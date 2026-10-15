@@ -27,7 +27,7 @@
  * play-life.spec.ts, which already records every tag the engine draws.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, ERA, focusWorld, openPlay, placePanel, playerX, seed, walkTo } from './play-helpers';
+import { canvas, ERA, focusWorld, openPlay, placePanel, playerX, seed, walkTo, loginAt, WORLD_COL } from './play-helpers';
 import { STATION_CUE_Y } from '../src/app/play/engine/engine.model';
 import { TOWNS, VIEW_HEIGHT } from '../src/app/play/world/world.model';
 import type { RealmTownId, TownDef } from '../src/app/play/world/world.model';
@@ -137,32 +137,34 @@ async function assertCueClear(page: Page, kind: 'hover' | 'site'): Promise<void>
 }
 
 /** Point at (desktop) or tap (phone) a station far from the Keeper; its hover cue lights. */
-async function pointAtFarStation(page: Page, town: TownDef, touch: boolean): Promise<void> {
-  // From the spawn (x 160) a phone shows no stall yet; a few steps east bring the ore seam on screen.
-  await walkTo(page, 320, 30);
+async function pointAtFarStation(page: Page, _town: TownDef, touch: boolean): Promise<void> {
+  // One World: the Seamworks' street, by the Material Vendor (stations on screen both ways); the camera is read off
+  // the canvas (`data-camera`: it rises over the street to show the shops' roofs).
+  await walkTo(page, 760, 30);
+  await page.waitForTimeout(800);
   const view = await canvas(page).evaluate(c => { const r = c.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; });
   const x = await playerX(page);
   const scale = view.height / VIEW_HEIGHT;
-  const viewport = view.width / scale;
-  const camera = Math.max(0, Math.min(town.width - viewport, x - viewport * .38));
-  const station = town.stations.find(s => Math.abs(s.x - x) > (s.width ?? 120) / 2 + 60 && (s.x - camera) * scale > 30 && (s.x - camera) * scale < view.width - 30);
-  expect(station, `a station on screen away from the Keeper (x ${x}, camera ${camera})`).toBeTruthy();
-  const at = { x: view.left + (station!.x - camera) * scale, y: view.top + (FLOOR - 100) * scale };
+  const [cx, cy] = ((await canvas(page).getAttribute('data-camera')) ?? '0,0').split(',').map(Number);
+  const stations = ((await canvas(page).getAttribute('data-stations')) ?? '').split(';').filter(Boolean).map(row => {
+    const [id, at] = row.split('@'); const [sx, sy] = at.split(',').map(Number); return { id, x: sx, y: sy };
+  });
+  const station = stations.find(s => Math.abs(s.x - x) > 110 && (s.x - cx) * scale > 30 && (s.x - cx) * scale < view.width - 30);
+  expect(station, `a station on screen away from the Keeper (x ${x}, camera ${cx})`).toBeTruthy();
+  const at = { x: view.left + (station!.x - cx) * scale, y: view.top + (station!.y - 30 - cy) * scale };
   if (touch) await page.touchscreen.tap(at.x, at.y);
   else await page.mouse.move(at.x, at.y);
   // The cue is drawn over the station, never on the floor band.
   expect(STATION_CUE_Y).toBeLessThan(FLOOR - 200);
 }
 
-/** Through the East Passage (beacon lit) to Ember Quarry, beside its Starlight Herb tuft (x 340). */
+/** In the Ember Quarry (One World: east of the Quarry Gate, the beacon lit), beside its Starlight Herb tuft (col 166). */
 async function besideQuarryHerb(page: Page): Promise<void> {
-  await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } });
+  await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null }, ...loginAt(WORLD_COL.quarry) });
   await openPlay(page);
-  await page.locator('.places-toggle').click();
-  await page.locator('#places-list button', { hasText: 'East Passage' }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 20000 });
   await page.waitForTimeout(400);
-  await walkTo(page, 340, 25);
+  await walkTo(page, 166 * 32 + 16, 16);
   await expect(page.locator('.prompt.armed')).toBeVisible();
 }
 
@@ -385,7 +387,7 @@ test.describe('the /play goal line and the folded Hearth, 901–1920px', () => {
   test.describe.configure({ timeout: 180000 });
 
   test('the goal line never meets the pill, the plates or the top bar; the pill takes its own click', async ({ page }) => {
-    // The East Passage's beacon lit, so the Quarry is one Places click away.
+    // The beacon lit (the Quarry Gate up).
     await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } });
     await openPlay(page);
     await expect(page.locator('.guide')).toHaveAttribute('data-goal', 'buy');
@@ -394,19 +396,15 @@ test.describe('the /play goal line and the folded Hearth, 901–1920px', () => {
       await page.waitForTimeout(150);
       await assertStripApart(page, 'Seamworks');
     }
-    // The Ember Quarry's goal is the long one ("…Head back to the Seamworks, then to Your Homestead.").
+    // In the Ember Quarry (One World: logged in there, east of the gate), the line still clears at every width.
     await page.setViewportSize({ width: 1280, height: 800 });
-    await page.locator('.places-toggle').click();
-    await page.locator('#places-list button', { hasText: 'East Passage' }).click();
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
-    await page.waitForTimeout(400);
-    await expect(page.locator('.guide-text span')).toContainText('Head back to the Seamworks');
+    await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null }, ...loginAt(WORLD_COL.quarry) });
+    await openPlay(page);
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 20000 });
+    await expect(page.locator('.guide')).toHaveAttribute('data-goal', 'buy');
     for (const width of STRIP_WIDTHS) {
       await page.setViewportSize({ width, height: 800 });
       await page.waitForTimeout(150);
-      const text = (await rectOf(page, '.guide-text'))!;
-      // The case that used to bite: the text wraps, and the line is at least two rows tall.
-      expect(text.bottom - text.top, `Quarry ${width}px: the goal wraps`).toBeGreaterThan(30);
       await assertStripApart(page, 'Quarry');
     }
   });

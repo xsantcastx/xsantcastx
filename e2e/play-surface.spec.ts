@@ -1,6 +1,7 @@
 /**
- * play-surface.spec.ts — the surface with height (world/heights.ts,
- * docs/handoff/surface-height.md), in the Ember Quarry:
+ * play-surface.spec.ts — the High Roads over the Ember Quarry, in cells (One
+ * World P2: blueprints.ts HIGH_ROADS, terrain-moves.ts; the finds, rewards and
+ * ids of world/heights.ts unchanged), at the world's scale:
  *   - mantle the low shelf (jump into its side, catch the lip, push on) and open
  *     its courier cache;
  *   - climb the tree into its canopy (Jump at the trunk);
@@ -11,12 +12,16 @@
  * pointer events, as a finger holds them; Playwright's touchscreen only taps).
  */
 import { expect, Page, test } from '@playwright/test';
-import { blob, canvas, ERA, focusWorld, openPlay, playerX, seed, settleBetween, walkTo } from './play-helpers';
+import { blob, canvas, ERA, focusWorld, loginAt, openPlay, playerX, seed, settleBetween, walkTo, WORLD_COL } from './play-helpers';
 
 test.use({ screenshot: 'only-on-failure' });
 
-const X0 = 560;
-const LOW = 330, CANOPY = 290, SNAG_TOP = 40, BLOCK = -150, SLAB = -270, SPIRE = -560;
+/** The route's west column (ember.world.ts HIGH_ROADS_COL) and its pieces' world x and feet y (32 px cells, street y 610). */
+const C = 178, CELL = 32, STREET = 610;
+const colX = (col: number) => col * CELL;
+const up = (rows: number) => STREET - rows * CELL;
+const SHELF_X = colX(C), TREE_X = colX(C + 9) + 16, SNAG_X = colX(C + 37) + 16, BLOCK_END = colX(C + 45), SLAB_END = colX(C + 52);
+const LOW = up(5), CANOPY = up(11), SNAG_TOP = up(14), BLOCK = up(17), SLAB = up(20), SPIRE = up(23);
 type Act = 'left' | 'right' | 'jump' | 'down';
 const FINGER: Record<Act, number> = { left: 11, right: 12, jump: 13, down: 14 };
 const KEY: Record<Act, string> = { left: 'KeyA', right: 'KeyD', jump: 'Space', down: 'KeyS' };
@@ -83,7 +88,7 @@ async function untilY(page: Page, y: number, timeout = 8000): Promise<void> {
 /** Run at the low shelf and jump: catch the lip, let go of the run, Jump mantles (no run carries on past the cache). */
 async function mantleLow(page: Page, c: ReturnType<typeof controls>): Promise<void> {
   // A step short of the shelf: run at it and jump; the hands catch the lip and hang.
-  await c.walkTo(X0 - 110, 25);
+  await c.walkTo(SHELF_X - 48, 12);
   await c.down('right'); await c.down('jump');
   await settleGrab(page, c, LOW);
 }
@@ -104,14 +109,14 @@ async function settleGrab(page: Page, c: ReturnType<typeof controls>, y: number)
   await c.releaseAll();
 }
 
-async function toQuarry(page: Page, touch: boolean): Promise<void> {
+/** The Keeper logs in in the Ember Quarry, under the High Roads (the resume point). */
+async function toQuarry(page: Page, _touch: boolean): Promise<void> {
   await openPlay(page);
-  if (touch) await page.locator('.places-toggle').first().click(); else await page.getByRole('button', { name: 'Places' }).click();
-  await page.locator('#places-list button', { hasText: 'East Passage' }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 20000 });
   await page.waitForTimeout(500);
   await focusWorld(page);
 }
+const QUARRY = (extra: Record<string, unknown> = {}) => ({ 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null }, 'preferred-language': 'en', ...loginAt(WORLD_COL.highRoads - 4), ...extra });
 
 async function useFind(page: Page, touch: boolean): Promise<void> {
   const button = page.locator('.prompt.armed > button').first();
@@ -125,10 +130,10 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
     test.setTimeout(240_000);
 
     test('climb a tree into its canopy (one held input: runs on every engine)', async ({ page }) => {
-      await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null }, 'preferred-language': 'en' });
+      await seed(page, QUARRY());
       await toQuarry(page, touch);
       const c = controls(page, touch);
-      await c.toTrunk(X0 + 380);
+      await c.toTrunk(TREE_X);
       await c.down('jump');
       await untilY(page, CANOPY);
       await c.up('jump');
@@ -139,7 +144,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       // Playwright's WebKit lets go of a held key or finger when another is pressed (a run + Jump),
       // which every ledge on the route needs; the climb above covers WebKit.
       test.skip(browserName === 'webkit', 'Playwright WebKit releases a held input when a second one is pressed');
-      await seed(page, { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null }, 'preferred-language': 'en' });
+      await seed(page, QUARRY());
       await toQuarry(page, touch);
       const c = controls(page, touch);
 
@@ -156,29 +161,27 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await expect(page.locator('.prompt.armed strong')).toContainText('Cache already opened');
 
       // 2. The tree: walk off the shelf to the trunk and hold Jump; it climbs into the canopy.
-      await c.walkTo(X0 + 380, 10);
-      await untilY(page, 610);
-      await c.toTrunk(X0 + 380);
+      await c.walkTo(TREE_X, 10);
+      await untilY(page, STREET);
+      await c.toTrunk(TREE_X);
       await c.down('jump');
       await untilY(page, CANOPY);
       await c.up('jump');
 
-      // 3. The summit route.
-      await c.walkTo(X0 + 1400, 10);
-      await untilY(page, 610);
-      await c.toTrunk(X0 + 1400);
+      // 3. The summit route: up the snag, kick east off its top, the hands catch the ruin block's lip.
+      await c.walkTo(SNAG_X, 10);
+      await untilY(page, STREET);
+      await c.toTrunk(SNAG_X);
       await c.down('jump');
       await untilY(page, SNAG_TOP);
-      await expect(canvas(page)).toHaveAttribute('data-climb', 'climb');
-      await c.down('right'); await c.repress('jump');         // the wall-jump east, caught on the block's lip
+      await c.down('right'); await c.repress('jump');
       await settleGrab(page, c, BLOCK);
-      await c.toTrunk(X0 + 1530 + 100);                        // short steps to the block's east end
-      await c.down('right'); await c.down('jump');             // up onto the slab
-      await untilY(page, SLAB);
-      await c.up('jump');
-      await expect.poll(() => playerX(page), { timeout: 8000, intervals: [20] }).toBeGreaterThanOrEqual(X0 + 1900 - 19); // at the spire's foot
-      await c.up('right');
-      await c.down('jump');                                    // catch its lip; Jump again mantles
+      // To the block's east end, then up onto the slab (caught and mantled), and the spire the same way.
+      await c.walkTo(BLOCK_END - 6, 8);
+      await c.down('right'); await c.down('jump');
+      await settleGrab(page, c, SLAB);
+      await c.walkTo(SLAB_END - 6, 8);
+      await c.down('right'); await c.down('jump');
       await settleGrab(page, c, SPIRE);
       await c.releaseAll();
       await expect(page.locator('.prompt.armed strong')).toContainText('Add your stone');

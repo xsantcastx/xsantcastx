@@ -10,7 +10,7 @@
  * Screenshots go to output/world-feel/ when FEEL_SHOTS is set (not committed).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, openPlay, placePanel, purse, seed, walk, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, openPlay, placePanel, purse, seed, walk, walkTo, SHAFT_X } from './play-helpers';
 import { CELL, DelveFixture } from './play-delve-fixtures';
 
 const SHOTS = process.env['FEEL_SHOTS'];
@@ -81,7 +81,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       test.setTimeout(120_000);
       await seed(page, { ...mereShore().blobs() });
       await openPlay(page);
-      await walkTo(page, 590, 30);
+      await walkTo(page, SHAFT_X, 30);
       const button = page.getByRole('button', { name: /Descend to your camp/ });
       await expect(button).toBeVisible();
       await button.click();

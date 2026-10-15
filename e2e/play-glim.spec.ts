@@ -17,7 +17,7 @@
  * pinned in Karma (shared/glim/glim.spec.ts), over every Codex secret id.
  */
 import { expect, test, type Locator, type Page } from '@playwright/test';
-import { blob, canvas, focusWorld, openPlay, playerX, seed, walk } from './play-helpers';
+import { blob, canvas, focusWorld, openPlay, playerX, seed, walk, walkTo } from './play-helpers';
 import { DelveFixture } from './play-delve-fixtures';
 
 const say = (page: Page) => page.locator('.glim-say');
@@ -25,6 +25,8 @@ const ask = (page: Page) => page.locator('.guide .guide-glim');
 const viewport = (page: Page) => page.locator('.viewport');
 
 /** Glim already met, so a spec can watch a later beat without the hello. */
+/** One World: the Homestead's Forge in the Ember world (plot x 720 at the world's half scale from x −1700). */
+const HOME_FORGE_X = -1700 + 720 / 2;
 const MET = { 'godforge-glim': { version: 1, met: true, metAt: '2026-10-14T00:00:00.000Z', ladder: {}, said: { meet: 1 }, lastAt: { meet: 1 } } };
 
 interface Box { left: number; top: number; right: number; bottom: number }
@@ -95,14 +97,14 @@ test.describe('Glim, the Margin-Light', () => {
     // Step 2: a direction, in plain words.
     await ask(page).click();
     await expect(say(page)).toHaveAttribute('data-glim-step', '2');
-    await expect(say(page)).toContainText("Your Homestead's gate is between the Seamworks Forge and the Crafting Bench");
+    await expect(say(page)).toContainText('Your Homestead is west along the street');
     expect(await playerX(page)).toBe(x0);
 
-    // Step 3: Show me. Glim flies ahead to the gate (its trail ends there) and the Keeper follows.
+    // Step 3: Show me. Glim flies ahead to the plot's Forge (its trail ends there) and the Keeper follows (One World: west along the street).
     await ask(page).click();
     await expect(say(page)).toHaveAttribute('data-glim-step', '3');
     await expect(say(page)).toContainText('Follow me');
-    await expect(viewport(page)).toHaveAttribute('data-glim-target', '1075');
+    await expect(viewport(page)).toHaveAttribute('data-glim-target', String(HOME_FORGE_X));
     await expect(viewport(page)).toHaveAttribute('data-glim-arrived', 'true', { timeout: 10000 });
     await expect(canvas(page)).toHaveAttribute('data-area', 'Your Homestead', { timeout: 20000 });
 
@@ -125,7 +127,7 @@ test.describe('Glim, the Margin-Light', () => {
     await seed(page, MET);
     await openPlay(page);
     await page.locator('.guide-go').click();
-    await expect(viewport(page)).toHaveAttribute('data-glim-target', '1075');
+    await expect(viewport(page)).toHaveAttribute('data-glim-target', String(HOME_FORGE_X));
     await expect(canvas(page)).toHaveAttribute('data-area', 'Your Homestead', { timeout: 20000 });
     await expect(page.locator('.guide')).toHaveAttribute('data-goal', 'buy');
   });
@@ -133,10 +135,13 @@ test.describe('Glim, the Margin-Light', () => {
   test('in the Delve Glim is the lantern, and it says so once', async ({ page }) => {
     await page.setViewportSize({ width: 1280, height: 800 });
     await seed(page, MET);
+    // One World: the Delve is under the street. Beside the mine head, dig down until the Keeper is in the rock.
     await openPlay(page, '?at=delve');
     await focusWorld(page);
-    await page.keyboard.press('e');
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 15000 });
+    await walkTo(page, 260, 10);
+    await page.keyboard.down('s'); await page.keyboard.down('j');
+    try { await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 20000 }); }
+    finally { await page.keyboard.up('j'); await page.keyboard.up('s'); }
     await expect(say(page)).toHaveAttribute('data-glim-line', 'delve', { timeout: 5000 });
     // It rides at the Keeper's chest, a little ahead: the light has a source.
     await expect.poll(async () => Math.abs(Number(await viewport(page).getAttribute('data-glim-x')) - await playerX(page)), { timeout: 5000 }).toBeLessThan(60);

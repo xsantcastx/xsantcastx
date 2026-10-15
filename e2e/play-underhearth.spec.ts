@@ -20,7 +20,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { activity, DelveFixture, withSectors, xpForLevel } from './play-delve-fixtures';
-import { canvas, ERA, focusWorld, ledger, messageLine, openPlay, playerX, seed, stackQty as stackQtyOf, walkTo, type Blobs } from './play-helpers';
+import { canvas, ERA, focusWorld, ledger, messageLine, openPlay, playerX, seed, stackQty as stackQtyOf, walkTo, type Blobs, SHAFT_X } from './play-helpers';
 import { WARDEN_FLAG } from '../src/app/play/engine/terrain';
 import { FURNACE, GANTRY, LANDING } from '../src/app/play/engine/underhearth-gen';
 import { FURNACE_FLAG, UNSEALED_FLAG } from '../src/app/shared/delve/underhearth.model';
@@ -55,7 +55,7 @@ async function descend(page: Page): Promise<void> {
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   // The Keeper can settle by the Material Vendor next door: step back onto the shaft until it offers the camp.
   await expect(async () => {
-    await walkTo(page, 590, 12);
+    await walkTo(page, SHAFT_X, 12);
     await expect(button).toBeVisible({ timeout: 4000 });
   }).toPass({ timeout: 40_000 });
   await button.click();
@@ -157,7 +157,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await shot(page, `${label}-anchor-sheet`);
       await sheet.locator('.anchor-row--home').click();
       await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
-      await walkTo(page, 590, 30);
+      await walkTo(page, SHAFT_X, 30);
       const down = page.getByRole('button', { name: /Descend to an anchor/ });
       await expect(down).toBeVisible();
       await down.click();
@@ -233,7 +233,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       // What it banked spills out where it stood (picked up on the way past), and the fall is saved for good.
       await walkTo(page, mouth + 110, 20); await walkTo(page, mouth - 110, 20);
       await expect.poll(async () => (await stackQtyOf(page, 'emberheart-ore')), { timeout: 8000 }).toBeGreaterThan(0);
-      await expect.poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('godforge-delve') ?? '{}'))).claimed ?? [], { timeout: 5000 }).toContain(FURNACE_FLAG);
+      await expect.poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('godforge-world') ?? '{}'))).claimed ?? [], { timeout: 5000 }).toContain(FURNACE_FLAG);
       await shot(page, `${label}-furnace-out`);
     });
   });

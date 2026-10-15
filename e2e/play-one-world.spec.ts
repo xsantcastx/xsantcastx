@@ -11,7 +11,8 @@
 import { expect, test, type Page } from '@playwright/test';
 import { blob, canvas, focusWorld, openPlay, placePanel, seed } from './play-helpers';
 
-const GATE = { 'eclipse-oneworld': '1', 'preferred-language': 'en' };
+// One World is the default since the P2 flip: no gate to set (the old preview key is ignored and removed).
+const GATE = { 'preferred-language': 'en' };
 /** The Quarry Head stone stands in column 240 (x 7696); a resume point one column west is beside it. */
 const BESIDE_QUARRY_HEAD = { 'godforge-world': { version: 3, seed: 424242, createdAt: 1, worlds: {}, claimed: [], migrated: 'v2', at: { world: 'ember', col: 239, row: 0, t: 1 } } };
 
@@ -71,8 +72,8 @@ test.describe('One World (preview): the Seamworks on the Ember surface — deskt
     test.setTimeout(120000);
     await seed(page, { ...GATE, ...BESIDE_QUARRY_HEAD });
     await openPlay(page);
-    // The resume point: the Keeper logs in where they last stood, on the Quarry Road.
-    await expect(canvas(page)).toHaveAttribute('data-region', 'quarry-road');
+    // The resume point: the Keeper logs in where they last stood, in the Ember Quarry, beside its stone.
+    await expect(canvas(page)).toHaveAttribute('data-region', 'ember-quarry');
     await expect(canvas(page)).toHaveAttribute('data-stone', /^ember:quarry-head:dark/);
     await expect.poll(async () => ((await blob<{ seen?: string[] }>(page, 'godforge-waystones'))?.seen ?? []).includes('ember:quarry-head')).toBe(true);
     // Hold E: the seams climb, then the stone is lit (the receipt is saved before the XP).
@@ -98,7 +99,7 @@ test.describe('One World (preview): the Seamworks on the Ember surface — deskt
     await expect(placePanel(page)).toBeVisible();
     await page.locator('[data-row="ember:quarry-head"]').click();
     await page.locator('[data-act="travel"]').click();
-    await expect(canvas(page)).toHaveAttribute('data-region', 'quarry-road', { timeout: 8000 });
+    await expect(canvas(page)).toHaveAttribute('data-region', 'ember-quarry', { timeout: 8000 });
     // Recall: the town stone, free, from anywhere (a longer channel).
     await focusWorld(page);
     await page.keyboard.press('m');
@@ -126,7 +127,7 @@ test.describe('One World (preview) — phone, touch', () => {
     test.setTimeout(120000);
     await seed(page, { ...GATE, ...BESIDE_QUARRY_HEAD });
     await openPlay(page);
-    await expect(canvas(page)).toHaveAttribute('data-region', 'quarry-road');
+    await expect(canvas(page)).toHaveAttribute('data-region', 'ember-quarry');
     const light = page.locator('[data-act="stone"]');
     await expect(light).toBeVisible();
     const box = (await light.boundingBox())!;

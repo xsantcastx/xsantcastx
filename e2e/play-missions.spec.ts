@@ -7,7 +7,7 @@
  * the recipe it opens are played.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, openPlay, placePanel, seed, stackQty, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, openPlay, placePanel, seed, stackQty, walkTo, travelToTown } from './play-helpers';
 
 const NULLTHORN_LOCK = 'A Delve mission teaches this pattern';
 
@@ -21,8 +21,8 @@ async function delvingXp(page: Page): Promise<number> {
 
 async function openQuestBoard(page: Page): Promise<void> {
   await openPlay(page, '?at=waystone');
-  await page.locator('.waystone-road', { hasText: 'Verdant' }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Rootglass Canopy');
+  await travelToTown(page, 'Verdant');
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Rootglass Canopy', { timeout: 10000 });
   await expect(placePanel(page)).toBeHidden();
   await focusWorld(page);
   await walkTo(page, 1030, 40);

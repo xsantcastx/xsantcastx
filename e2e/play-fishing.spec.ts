@@ -12,7 +12,7 @@
  * when FISH_SHOTS is set (not committed).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { blob, canvas, focusWorld, messageLine, openPlay, seed, walk, walkTo } from './play-helpers';
+import { blob, canvas, focusWorld, messageLine, openPlay, seed, walk, walkTo, SHAFT_X } from './play-helpers';
 import { CELL, DelveFixture } from './play-delve-fixtures';
 import { CATCHES } from '../src/app/shared/fishing/fishing.model';
 
@@ -33,7 +33,7 @@ export function mereShore(): DelveFixture {
 
 async function descend(page: Page): Promise<void> {
   await openPlay(page);
-  await walkTo(page, 590, 30);
+  await walkTo(page, SHAFT_X, 30);
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   await expect(button).toBeVisible();
   await button.click();

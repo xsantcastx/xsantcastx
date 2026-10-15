@@ -9,7 +9,7 @@
  * nothing is paid twice. At 1280×800 and 390×844 (44 px targets).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, messageLine, openPlay, placePanel, playerX, seed, stackQty, walk, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, messageLine, openPlay, placePanel, playerX, seed, stackQty, walk, walkTo, travelToTown } from './play-helpers';
 
 /** The Seamworks cabinet stands on the camp's high ledge (670-850, y 410), over the Vendor and the Forge. */
 const CABINET_X = 790;
@@ -144,8 +144,8 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false },
     const paid = await gold(page);
     // Reading the Codex took the Keeper to its station in Meridian Orrery: the Waystone road home.
     await openPlay(page, '?at=waystone');
-    await page.locator('.waystone-road', { hasText: 'Infernal' }).click();
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
+    await travelToTown(page, 'Infernal');
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks', { timeout: 10000 });
     await expect(placePanel(page)).toBeHidden();
     await openPlay(page);
     await climbToLedge(page);

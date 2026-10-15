@@ -2,13 +2,19 @@
  * play-homestead.spec.ts — play the Homestead and the first minutes of the v3
  * economy in a real browser: strike the Forge with E, watch Gold rise, buy the
  * first building from the column, and upgrade the home Anvil.
+ *
+ * One World (P2): the Homestead is a region of the Ember world, west along the
+ * Seamworks' street, drawn at the world's scale: a plot x stands at
+ * PLOT_X + x / 2 (ember.world.ts plotX).
  */
 import { expect, test, type Page } from '@playwright/test';
 import { canvas, focusWorld, openPlay, purse, seed, walkTo } from './play-helpers';
 
+const plotX = (x: number) => -1700 + x / 2;
+
 async function enterHomestead(page: Page): Promise<void> {
-  await walkTo(page, 1075, 40);
-  await page.keyboard.press('e');
+  await focusWorld(page);
+  await walkTo(page, plotX(400), 40);
   await expect(canvas(page)).toHaveAttribute('data-area', 'Your Homestead');
 }
 
@@ -40,8 +46,8 @@ test.describe('Homestead, played', () => {
     await openPlay(page);
     await enterHomestead(page);
     await openColumn(page);
-    // The Forge stands at x 720; strike it with E like a player at a human 5/s.
-    await walkTo(page, 720, 60);
+    // The Forge stands at plot x 720; strike it with E like a player at a human 5/s.
+    await walkTo(page, plotX(720), 30);
     const bellows = page.locator('.hc-row', { hasText: 'Forge Bellows' }).locator('.hc-buy');
     await expect(bellows).toBeVisible();
     const start = Date.now();
@@ -69,7 +75,7 @@ test.describe('Homestead, played', () => {
     await openPlay(page);
     await enterHomestead(page);
     await openColumn(page);
-    await walkTo(page, 720, 60);
+    await walkTo(page, plotX(720), 30);
     const before = await purseGold(page);
     // Find the Forge the way a mouse player does: hover until the station card names it.
     const box = (await canvas(page).boundingBox())!;
