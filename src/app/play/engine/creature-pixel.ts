@@ -19,6 +19,7 @@
  * engine); these are the in-house frames until then. Browser only (canvas).
  */
 import { canvas, limb, outlined, px } from '../../shared/keeper-look/keeper-paint';
+import { REALM_CREATURE_ART } from './realm-creatures';
 
 export type CreatureFrame = 'idle0' | 'idle1' | 'move0' | 'move1' | 'windup' | 'strike' | 'hurt';
 export const CREATURE_FRAMES: readonly CreatureFrame[] = ['idle0', 'idle1', 'move0', 'move1', 'windup', 'strike', 'hurt'];
@@ -338,6 +339,8 @@ export const CREATURE_ART: Readonly<Record<string, CreatureArt>> = {
   'cinder-bailiff': CINDER_BAILIFF,
   'seam-eater': SEAM_EATER,
   'drowned-lamp': DROWNED_LAMP,
+  // The Root Deeps' and the Prism Mines' (realm-creatures.ts).
+  ...REALM_CREATURE_ART,
 };
 
 /** World px per art px at figureScale 1 (the Keeper's, keeper-paint.ts; 2 in the Delve at 0.5). */

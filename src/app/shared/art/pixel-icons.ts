@@ -477,6 +477,45 @@ const LANTERN: Shape = [
   '................',
 ];
 
+// The Root Deeps' billhook and the Prism Mines' lens.
+const BILLHOOK: Shape = [
+  '................',
+  '.....oooo.......',
+  '....obbllo......',
+  '...obooolbo.....',
+  '...oo....obo....',
+  '..........obo...',
+  '..........obo...',
+  '.........obbo...',
+  '........obdo....',
+  '.......ohko.....',
+  '......ohko......',
+  '.....ohko.......',
+  '....ohko........',
+  '...ohko.........',
+  '...oko..........',
+  '....o...........',
+];
+
+const LENS: Shape = [
+  '................',
+  '.....oooooo.....',
+  '...oobbbbbboo...',
+  '..obbllllllddo..',
+  '.oblleeeeeefdo..',
+  '.obleeeeeeeefdo.',
+  'obleeeeffeeeefdo',
+  'obleeeffffeeefdo',
+  'obleeeffffeeefdo',
+  'obleeeeffeeeefdo',
+  '.obleeeeeeeefdo.',
+  '..obeeeeeeefdo..',
+  '..obbddddddddo..',
+  '...oobbbbbboo...',
+  '.....oooooo.....',
+  '................',
+];
+
 const RUBBINGS: Shape = [
   '................',
   '..oooooooooooo..',
@@ -548,6 +587,15 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   'inkstone': { shape: LUMP, palette: { b: '#1c1626', l: '#3a2e4c', d: '#0a0812', e: '#8a6cff', f: '#6a4adf' } },
   'nightglass': { shape: SHARD, palette: { b: '#3a3060', l: '#c8b8ff', e: '#ffffff', d: '#141020', f: '#e8d8ff' }, glow: '#c8b8ff' },
   'veil-lantern': { shape: LANTERN, palette: { l: '#9a84c4', b: '#33284a', d: '#1a1428', e: '#e8d8ff', f: '#a48bff' }, glow: '#e8d8ff' },
+  // The Root Deeps and the Prism Mines (verdant-gen.ts, luminous-gen.ts): sigils, ores, the billhook and the lens.
+  'verdant-sigil': { shape: SIGIL, palette: { l: '#7fb85a', d: '#24190f', e: '#7fd5a3', f: '#0e1a0c' }, glow: '#7fd5a3' },
+  'rootglass': { shape: SHARD, palette: { b: '#2a4a2a', l: '#7fd5a3', e: '#c4ffe0', d: '#14160c', f: '#e8fff0' }, glow: '#7fd5a3' },
+  'heart-amber': { shape: LUMP, palette: { b: '#c08a3e', l: '#e0b060', d: '#6a4010', e: '#ffe7a0', f: '#7a2a12' }, glow: '#e0b060' },
+  'rootsever-billhook': { shape: BILLHOOK, palette: { b: '#7fd5a3', l: '#c4ffe0', d: '#2a4a2a', h: '#c08a3e', k: '#6a4010' }, glow: '#7fd5a3' },
+  'luminous-sigil': { shape: SIGIL, palette: { l: '#e8c47a', d: '#4a4030', e: '#ffe9a8', f: '#1e1a12' }, glow: '#ffe9a8' },
+  'prismite': { shape: SHARD, palette: { b: '#c9b88e', l: '#fff1b0', e: '#a8e8ff', d: '#4a4030', f: '#fffaf0' }, glow: '#ffe9a8' },
+  'dawnglass': { shape: LUMP, palette: { b: '#e8d8a0', l: '#fffaf0', d: '#8a7a58', e: '#ffffff', f: '#ffc04a' }, glow: '#fff1b0' },
+  'dawn-lens': { shape: LENS, palette: { l: '#fffaf0', b: '#c9b88e', d: '#4a4030', e: '#fff1b0', f: '#a8e8ff' }, glow: '#fff1b0' },
 };
 
 /**

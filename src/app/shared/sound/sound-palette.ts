@@ -191,6 +191,19 @@ const TOWN_BEDS: Readonly<Record<RealmId, Partial<Record<Bed, number>>>> = {
   verdant: { wind: .4, murmur: .35, birds: .85, leaves: .55, crickets: .7 },
 };
 
+/**
+ * The realm Delves behind the Rift Gates (rift-gates.model.ts): the Delve's beds,
+ * overridden per realm. The Ember Delve is the Infernal realm's own and keeps the
+ * plain Delve. The Root Deeps creak and rustle (living wood, leaves in the dark);
+ * the Prism Mines ring faintly (light chiming in crystal) and drip less; the Ink
+ * Deeps keep their hush (their swell is the ink bed, near ink).
+ */
+export const REALM_DELVE_BEDS: Readonly<Partial<Record<RealmId, Partial<Record<Bed, number>>>>> = {
+  umbral: { drips: .4 },
+  verdant: { drips: .45, leaves: .3, murmur: .2 },
+  luminous: { drips: .3, chimes: .35, wind: .12 },
+};
+
 /** The ambience beds for a scene, each 0..1 (the slider scales the lot). */
 export function ambienceFor(s: SoundScene): Record<Bed, number> {
   const out = Object.fromEntries(BEDS.map(b => [b, 0])) as Record<Bed, number>;
@@ -204,6 +217,9 @@ export function ambienceFor(s: SoundScene): Record<Bed, number> {
     out.drips = s.realm === 'umbral' ? .4 : .6;
     out.rumble = s.boss ? .7 : .4;
     out.wind = .08;
+    // A realm Delve behind a Rift Gate sounds like its realm, underneath (REALM_DELVE_BEDS).
+    const own = REALM_DELVE_BEDS[s.realm];
+    if (own) for (const b of BEDS) if (own[b] !== undefined) out[b] = own[b]!;
   }
   if (s.water) out.water = .7;
   if (s.lava) out.lava = .7;
@@ -219,10 +235,10 @@ export type Material = 'stone' | 'earth' | 'wood' | 'ore' | 'crystal' | 'metal' 
 export function materialOf(id: string | null | undefined): Material {
   const s = (id ?? '').toLowerCase();
   if (!s) return 'stone';
-  if (s === 'grass' || s.includes('moss') || s.includes('leaf')) return 'grass';
+  if (s === 'grass' || s.includes('moss') || s.includes('leaf') || s.includes('vine') || s.includes('spore')) return 'grass';
   if (/(rail|iron-|anchor|charge)/.test(s) && !s.includes('basalt')) return 'metal';
   if (/(vein|seam|pyrite|fragment|splinter|heartstone)/.test(s)) return 'ore';
-  if (/(glowcap|glass|mirror|crystal|obsidian)/.test(s)) return 'crystal';
+  if (/(glowcap|glass|mirror|crystal|obsidian|prism|dawn|light-|pane)/.test(s)) return 'crystal';
   if (s === 'water' || s === 'ink' || s === 'ink-seep') return 'water';
   if (/(wood|timber|ladder|platform|trunk|rope|chest|camp|torch|bark|plank|cache)/.test(s)) return 'wood';
   if (/(dirt|loam|root|soil|mud)/.test(s)) return 'earth';

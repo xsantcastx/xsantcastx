@@ -322,7 +322,7 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     yield: { materialId: 'rootglass', qty: 1 }, base: '#2a2a1a', dark: '#14160c', light: '#4a7a3a', fleck: '#c4ffe0', glow: { color: '#7fd5a3', radius: 44 } },
   // Heart-amber: what the root bleeds where it was cut long ago. Pickaxe IV, Mining 58.
   { id: 'heart-amber-vein', label: 'Heart-amber vein', solid: true, hp: 8, tools: { pickaxe: 4 }, discipline: 'mining', xp: 30, minLevel: 58,
-    yield: { materialId: 'heart-amber', qty: 1 }, base: '#3a2414', dark: '#1e1208', light: '#6a4010', fleck: '#ffc669', glow: { color: '#e0b060', radius: 54 } },
+    yield: { materialId: 'heart-amber', qty: 1 }, base: '#3a2414', dark: '#1e1208', light: '#6a4010', fleck: '#ffc04a', glow: { color: '#e0b060', radius: 54 } },
   // A living vine: hangs from the tangle's roofs; climb it (Up/Down), stand on its top.
   { id: 'living-vine', label: 'Living vine', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
     base: '#3a5a2a', dark: '#1e2a14', light: '#7fb85a', fleck: '#c4ffe0' },
