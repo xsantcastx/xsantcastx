@@ -57,6 +57,8 @@ import { mergeStory } from '../story/story-save.model';
 import { mergeHeights } from '../heights/heights-save.model';
 import { mergeCabinets } from '../cabinets/cabinets-save.model';
 import { mergeEclipse } from '../world-clock/eclipse-save.model';
+import { mergeWorldRegionSlots, mergeWorldSaves, WORLD_KEY, WORLD_SLOT_KEYS } from '../delve/world-save.model';
+import { mergeWaystones, WAYSTONES_KEY } from '../waystones/waystones.model';
 import { mergeSound } from '../sound/sound-settings.model';
 import { mergePets } from '../pets/pets-save.model';
 
@@ -362,6 +364,31 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
   ...RIFT_SLOT_KEYS.map((key): SyncedBlob => ({
     key, collection: 'progress', doc: key.replace('godforge-', ''), label: `Realm Delve region (${key.replace('godforge-rift-', '')})`, merge: mergeRegionSlots,
   })),
+  // One World (docs/design/one-world.md §4, save v3; written only while the preview gate is on).
+  // `godforge-world`: the seed, each world's core diff, the claims, the chests and the resume
+  // point; the earlier seed wins, claims and chests union, the later resume point wins. Its 24
+  // region slots are every world's (each names its world); the same region merges sector by
+  // sector, two different ones keep the later. `progress/world`, `progress/world-r0..23`: the
+  // generic `progress/{docId}` rule. See world-save.model.ts.
+  {
+    key: WORLD_KEY,
+    collection: 'progress',
+    doc: 'world',
+    label: 'One World',
+    merge: mergeWorldSaves,
+  },
+  ...WORLD_SLOT_KEYS.map((key, n): SyncedBlob => ({
+    key, collection: 'progress', doc: `world-r${n}`, label: `One World region ${n + 1}`, merge: mergeWorldRegionSlots,
+  })),
+  {
+    key: WAYSTONES_KEY,
+    collection: 'progress',
+    doc: 'waystones',
+    label: 'Waystones',
+    // `{ version, lit, seen, marks }`: stones lit by hand (the receipt, written before the XP),
+    // stones seen, the Meridian Survey's marks. All only grow: a union. See waystones.model.ts.
+    merge: mergeWaystones,
+  },
   {
     key: 'godforge-delve-lore',
     collection: 'progress',

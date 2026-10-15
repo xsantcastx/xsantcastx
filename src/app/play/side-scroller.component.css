@@ -2905,3 +2905,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .story-veil { padding-top: calc(6px + env(safe-area-inset-top, 0px)); padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
   .story-card { max-height: 100%; padding: 12px 16px; }
 }
+
+/* One World: the Waystone button. Dark: hold it (the seams climb: the gold fills from the left). Never under 44 px. */
+.prompt.armed > button.stone-go { min-height: 44px; height: 44px; touch-action: none; user-select: none; -webkit-user-select: none; }
+.prompt.armed > button.stone-go--light { box-shadow: inset calc(var(--charge, 0) * 140px) 0 0 color-mix(in srgb, var(--gold) 38%, transparent); }

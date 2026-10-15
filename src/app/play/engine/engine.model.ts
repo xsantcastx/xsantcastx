@@ -74,6 +74,17 @@ export interface EngineState {
   height?: { id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean };
   /** The Lost Cabinet within reach (nearby is then 'cabinet'), and whether it is open. */
   cabinet?: { id: string; open: boolean };
+  /**
+   * One World (docs/design/one-world.md): the world the Keeper stands in
+   * ('ember'), the region under them (its id: 'basalt-seamworks',
+   * 'quarry-road', 'ember-delve'…; `area` carries its name), and the Waystone
+   * within reach with how far a lighting has got (0..1).
+   */
+  world?: string;
+  region?: string;
+  stone?: { id: string; lit: boolean; charge: number; kind: string };
+  /** One World: the keeper at the station in reach is at the fire (evening) or asleep upstairs (ring the bell). */
+  keeperAway?: 'hearth' | 'bell';
   /** On a surface with height: free, climb, hang or mantle. */
   climbing?: 'free' | 'climb' | 'hang' | 'mantle';
   /**
@@ -224,6 +235,13 @@ export interface EngineOptions {
    * re-sending the marks (`setCabinets`) with it open.
    */
   onCabinet?: (event: CabinetEvent) => void;
+  /**
+   * One World: a Waystone. 'seen': it came into view for the first time this
+   * session (the host keeps the save's `seen`); 'light': E was held at an
+   * unlit one for LIGHT_HOLD seconds (the host writes the receipt, then grants);
+   * 'open': E at a lit one (the host opens the Travel map).
+   */
+  onStone?: (event: StoneEvent) => void;
   /**
    * A sound the world made (shared/sound): a footstep, a dig, a splash, the
    * cast and the bite. `node` is the terrain node id it came from (the host
@@ -410,6 +428,8 @@ export interface WorldActionEvent {
 export interface CabinetMark { id: string; area: string; x: number; y: number; open: boolean; delve: boolean }
 /** A Lost Cabinet was used (EngineOptions.onCabinet). */
 export interface CabinetEvent { areaId: string; id: string; open: boolean }
+/** A Waystone was seen, lit or used (EngineOptions.onStone). */
+export interface StoneEvent { id: string; action: 'seen' | 'light' | 'open'; world: string }
 /** A high-ground find was used (EngineOptions.onHeightFind). */
 export interface HeightFindEvent { areaId: string; id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }

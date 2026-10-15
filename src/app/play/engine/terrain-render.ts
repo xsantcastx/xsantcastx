@@ -25,7 +25,7 @@ export { cellHash } from './tile-art';
 const CHUNK_CAP = 36;
 const SIZE = CELL * CHUNK;
 
-interface ChunkCanvas { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; key: number; rev: number; used: number; res: number; epoch: number }
+interface ChunkCanvas { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; key: number; rev: number; used: number; res: number; epoch: number; empty: boolean }
 
 /** An imported tile sheet (`tileFor`), its image, and its cell edge in image px once loaded. */
 interface Sheet { entry: TileEntry; image: HTMLImageElement; cell: number; ready: boolean }
@@ -42,6 +42,8 @@ export class TerrainRenderer {
   private readonly free: ChunkCanvas[] = [];
   private frame = 0;
   private offscreen = true;
+  /** Chunks in view that were all air and drew nothing (perf, tests): counted, never reset. */
+  skipped = 0;
   /** The baked tile textures, shared by every chunk. */
   readonly atlas = new TileAtlas();
   /** Imported sheets by id (null: none imported). */
@@ -96,7 +98,8 @@ export class TerrainRenderer {
     const scale = Math.max(1, Math.min(2, Math.round(res * 2) / 2));
     // World chunk columns in view, inside the loaded span (a ring's span moves; the plain grid's is 0..cols).
     const cc0 = Math.max(Math.floor(t.colLo / CHUNK), Math.floor(left / SIZE)), cc1 = Math.min(Math.ceil(t.colHi / CHUNK) - 1, Math.floor((left + width) / SIZE));
-    const cr0 = Math.max(0, Math.floor((top - t.top) / SIZE)), cr1 = Math.min(t.chunkRows - 1, Math.floor((top + height - t.top) / SIZE));
+    // One World: chunk rows start above the ground (the sky band, rows < 0).
+    const cr0 = Math.max(t.chunkRowLo, Math.floor((top - t.top) / SIZE)), cr1 = Math.min(t.chunkRows - 1, Math.floor((top + height - t.top) / SIZE));
     const smoothing = c.imageSmoothingEnabled;
     c.imageSmoothingEnabled = false;
     for (let cr = cr0; cr <= cr1; cr++) {
@@ -115,9 +118,11 @@ export class TerrainRenderer {
           p.setTransform(1, 0, 0, 1, 0, 0); p.clearRect(0, 0, chunk.canvas.width, chunk.canvas.height);
           p.setTransform(scale, 0, 0, scale, -x * scale, -y * scale);
           p.imageSmoothingEnabled = false;
-          paintCells(p, t, cc * CHUNK, cr * CHUNK, x, y, this.atlas, this.sheet);
+          chunk.empty = !paintCells(p, t, cc * CHUNK, cr * CHUNK, x, y, this.atlas, this.sheet);
           chunk.rev = t.chunkRev[key]; chunk.res = scale; chunk.epoch = this.epoch;
         }
+        // An all-air chunk (the open sky band) paints nothing: no blit at all (One World §2.8).
+        if (chunk.empty) { this.skipped++; continue; }
         c.drawImage(chunk.canvas, x, y, SIZE, SIZE);
       }
     }
@@ -143,7 +148,7 @@ export class TerrainRenderer {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) { this.offscreen = false; return null; }
-    return { canvas, context, key: -1, rev: -1, used: 0, res: 0, epoch: -1 };
+    return { canvas, context, key: -1, rev: -1, used: 0, res: 0, epoch: -1, empty: false };
   }
   /** Reuse the chunk drawn longest ago that is not on screen this frame. */
   private evict(): ChunkCanvas | null {
@@ -154,15 +159,56 @@ export class TerrainRenderer {
   }
 }
 
-/** Paint one chunk's cells (world px; the caller's transform maps them). */
-function paintCells(c: CanvasRenderingContext2D, t: Terrain, col0: number, row0: number, x0: number, y0: number, atlas: TileAtlas | null, sheets: SheetLookup | null): void {
+/** Paint one chunk's cells (world px; the caller's transform maps them). False when every cell was clear air. */
+function paintCells(c: CanvasRenderingContext2D, t: Terrain, col0: number, row0: number, x0: number, y0: number, atlas: TileAtlas | null, sheets: SheetLookup | null): boolean {
   const solid = (col: number, row: number) => t.solid(col, row);
+  let drew = false;
   for (let row = row0; row < Math.min(t.rows, row0 + CHUNK); row++) {
     for (let col = col0; col < Math.min(t.colHi, col0 + CHUNK); col++) {
-      paintCell(c, t, col, row, x0 + (col - col0) * CELL, y0 + (row - row0) * CELL, atlas, solid, sheets);
+      if (paintCell(c, t, col, row, x0 + (col - col0) * CELL, y0 + (row - row0) * CELL, atlas, solid, sheets)) drew = true;
     }
   }
+  return drew;
 }
+
+/** The back-wall biomes (One World): a pseudo-biome per back id, so the atlas bakes them like any tunnel wall. */
+const BACK_LOOKS = new WeakMap<object, BiomeDef[]>();
+function backBiome(t: Terrain, id: number): BiomeDef | null {
+  const looks = t.backLook;
+  if (!looks || !looks[id]) return null;
+  let made = BACK_LOOKS.get(looks);
+  if (!made) {
+    made = looks.map((wall, n) => ({ id: `back-${n}`, name: '', to: 0, wall, dark: '5,3,9', wash: { color: '#000000', alpha: 0 }, particles: { kind: 'ash' as const, color: '#000', count: 0 }, veins: [] }));
+    BACK_LOOKS.set(looks, made);
+  }
+  return made[id] ?? null;
+}
+
+/**
+ * A building's back wall behind an open cell (Terrain.back): masonry or
+ * timber from the atlas, a window (frame, mullion, dark glass: the engine
+ * lights it at night), or a doorway's frame. On the 2 px art grid.
+ */
+function paintBack(c: CanvasRenderingContext2D, t: Terrain, atlas: TileAtlas | null, id: number, col: number, row: number, x: number, y: number, h: number): void {
+  const biome = backBiome(t, id === BACK_WINDOW_ID ? BACK_BRICK_ID : id === BACK_DOOR_ID ? BACK_TIMBER_ID : id);
+  if (!biome) return;
+  blitTile(c, atlas, atlas ? atlas.wall(biome) : -1, tileVariant(col, row), x, y, (h & 3) === 0 ? biome.wall[0] : biome.wall[1]);
+  if (id === BACK_WINDOW_ID) {
+    // A four-pane window: a timber frame, a cross mullion, glass that holds the dusk.
+    c.fillStyle = '#2a1c12'; c.fillRect(x + ART * 2, y + ART * 2, CELL - ART * 4, CELL - ART * 4);
+    c.fillStyle = '#1c2434'; c.fillRect(x + ART * 3, y + ART * 3, CELL - ART * 6, CELL - ART * 6);
+    c.fillStyle = '#3a4a64'; c.fillRect(x + ART * 3, y + ART * 3, ART * 2, ART);
+    c.fillStyle = '#2a1c12'; c.fillRect(x + CELL / 2 - ART / 2, y + ART * 3, ART, CELL - ART * 6); c.fillRect(x + ART * 3, y + CELL / 2 - ART / 2, CELL - ART * 6, ART);
+  } else if (id === BACK_DOOR_ID) {
+    // A doorway: the frame's posts either side, the opening a shade darker.
+    c.fillStyle = '#1a1210'; c.globalAlpha = .35; c.fillRect(x + ART, y, CELL - ART * 2, CELL); c.globalAlpha = 1;
+    c.fillStyle = '#5a4030'; c.fillRect(x, y, ART, CELL); c.fillRect(x + CELL - ART, y, ART, CELL);
+  }
+  // The shade under the roof or a floor above, as a tunnel wall gets under rock.
+  if (t.solid(col, row - 1)) { c.fillStyle = biome.wall[2]; c.globalAlpha = .6; c.fillRect(x, y, CELL, ART * 2); c.globalAlpha = 1; }
+}
+/** Back ids the renderer draws specially (blueprints.ts BACK_*). */
+const BACK_BRICK_ID = 1, BACK_TIMBER_ID = 2, BACK_WINDOW_ID = 3, BACK_DOOR_ID = 4;
 
 /** One baked texture into a cell, or the flat colour where there is no atlas. */
 function blitTile(c: CanvasRenderingContext2D, atlas: TileAtlas | null, row: number, variant: number, x: number, y: number, flat: string): void {
@@ -187,22 +233,28 @@ function drawSheetCell(c: CanvasRenderingContext2D, sheet: Sheet, row: number, c
   c.drawImage(sheet.image, col * sheet.cell, row * sheet.cell, sheet.cell, sheet.cell, x, y, CELL, CELL);
 }
 
-function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: number, x: number, y: number, atlas: TileAtlas | null, solid: (col: number, row: number) => boolean, sheets: SheetLookup | null): void {
+/** Paint one cell. True when anything was drawn (an all-air chunk is never blitted). */
+function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: number, x: number, y: number, atlas: TileAtlas | null, solid: (col: number, row: number) => boolean, sheets: SheetLookup | null): boolean {
   const index = t.index(col, row);
   const kind = t.kind[index];
   const node = TERRAIN_NODE_LIST[kind];
   const h = cellHash(col, row);
   if (!node.solid) {
+    let drew = false;
+    // One World: a building's back wall behind its open cells (windows, doorways, the shop floor).
+    const back = t.back ? t.back[index] : 0;
+    if (back && !TERRAIN_NODE_LIST[t.base[index]].solid) { paintBack(c, t, atlas, back, col, row, x, y, h); drew = true; }
     // Generated air (a cavern) stays clear: the distant cave shows through.
     // A dug or built-in cell, and a carved slab, sits on the biome's back wall.
-    if (TERRAIN_NODE_LIST[t.base[index]].solid || node.id === 'inscription') paintWall(c, t, atlas, t.biomeAt(row), col, row, x, y, h, sheets);
+    else if (TERRAIN_NODE_LIST[t.base[index]].solid || node.id === 'inscription') { paintWall(c, t, atlas, t.biomeAt(row), col, row, x, y, h, sheets); drew = true; }
     if (node.id === 'inscription') {
       const tally = TALLY_CARVINGS[t.inscriptions.get(index) ?? ''];
       if (tally) paintTally(c, node.light, tally, x, y);
       else paintInscription(c, node.light, node.fleck, x, y, h);
+      drew = true;
     }
-    else if (node.placeable || node.use === 'shrine' || PLACED_ART[node.id]) paintPlaced(c, atlas, kind, x, y);
-    return;
+    else if (node.placeable || node.use === 'shrine' || PLACED_ART[node.id]) { paintPlaced(c, atlas, kind, x, y); drew = true; }
+    return drew;
   }
   const pattern = PATTERNS[kind];
   const mask = tileMask(solid, col, row);
@@ -223,6 +275,7 @@ function paintCell(c: CanvasRenderingContext2D, t: Terrain, col: number, row: nu
   }
   paintCracks(c, t, col, row, x, y, h);
   if (isLoose(t, col, row)) paintLoose(c, x, y, h);
+  return true;
 }
 
 /**

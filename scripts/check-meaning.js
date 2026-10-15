@@ -483,7 +483,19 @@ const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall
   'star-well': 'a star-well: open air that always falls up, to a pocket of ore; its star-chain is the way back down',
   'orrery-ring-a': 'an orrery ring, brass (E turns it): its whole field falls up',
   'orrery-ring-b': 'an orrery ring, blue (E turns it): its whole field falls down',
-  'star-chain': 'a star-chain: climbed like a ladder whatever down is doing (the way down to the Fallen Ephemeris, and out of every star-well)' };
+  'star-chain': 'a star-chain: climbed like a ladder whatever down is doing (the way down to the Fallen Ephemeris, and out of every star-well)',
+  // One World (docs/design/one-world.md §2.3): a settlement's buildings are made of these cells (blueprints.ts).
+  'seam-brick': 'a settlement\'s walls: the shops the keepers keep (the town keeps its walls)',
+  'town-roof': 'a settlement\'s roofs: shelter over the shops and the keepers\' rooms',
+  'town-beam': 'a settlement\'s timber frames: the floor beams the upper rooms stand on',
+  'town-plank': 'a shop\'s upper floor: the keeper\'s room above the counter (one-way: stood on, dropped through)',
+  'town-ladder': 'the ladder from the shop floor to the keeper\'s room (climbed like any ladder)' };
+// One World: the nodes a settlement's blueprints lay (surface-gen.ts stamps them over the Delve's surface).
+const townNodes = new Set();
+{
+  const { BLUEPRINTS, blueprintCell, INFERNAL_PALETTE } = L('play/engine/blueprints.ts');
+  for (const rows of Object.values(BLUEPRINTS)) for (const row of rows) for (const g of row) { const cell = blueprintCell(g, INFERNAL_PALETTE); if (cell && cell.node) townNodes.add(cell.node); }
+}
 const laidOut = new Set();
 for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) {
   const t = a.terrain; if (!t) continue;
@@ -498,6 +510,7 @@ for (const n of TERRAIN_NODE_LIST) {
   const g = node('block', n.id, n.label);
   if (laidOut.has(n.id)) g.sources.add('Delve layout');
   if (placedNodes.has(n.id)) g.sources.add('placed by the Keeper');
+  if (townNodes.has(n.id)) g.sources.add('a settlement\'s buildings (One World blueprints)');
   // Obsidian is made, not laid out: water meets lava (play/engine/liquids.ts `react`, a bucket's `pour`).
   if (n.id === 'obsidian' && /OBSIDIAN = nodeIndex\('obsidian'\)/.test(read('play/engine/liquids.ts'))) g.sources.add('water meets lava (liquids)');
   // A lit brazier is an unlit one with a torch in it (play/engine/engine.ts lightBrazier).

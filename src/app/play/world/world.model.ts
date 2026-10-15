@@ -88,6 +88,12 @@ export interface StationDef {
   /** Unique within its area. For panel stations, also the `?at=` place id. */
   id: string;
   x: number;
+  /**
+   * One World: the feet y of the floor the station stands on (a counter on an
+   * upper floor, a stone on a hill). Absent: the area's floor (FLOOR), so every
+   * flat town keeps working unchanged. Reach checks y only when it is set.
+   */
+  y?: number;
   label: string;
   kind: StationKind;
   panel?: PanelId;
@@ -214,6 +220,12 @@ export interface AreaDef {
   nodes?: readonly GatherNodeDef[];
   /** Height above the floor: trees, shelves, ruins, bridges and what waits up there (world/heights.ts). */
   heights?: AreaHeights;
+  /**
+   * One World (docs/design/one-world.md): the world this area is, when it is
+   * one ('ember', …). Its surface (terrain.surface) names the regions under the
+   * Keeper; the presence zone is this id, so peers meet anywhere in the world.
+   */
+  world?: string;
 }
 
 export type HuntZoneDef = AreaDef;
@@ -268,6 +280,12 @@ export interface TownDef extends AreaDef {
   id: RealmTownId;
   realm: RealmTownId;
   hunts: readonly HuntZoneDef[];
+  /**
+   * One World: the hunt id that IS this town (its world, with the settlement on
+   * its surface). Entering the town enters it instead; absent, the town is its
+   * own flat area, as before.
+   */
+  home?: string;
 }
 
 /** An area of a town by id: the town itself or one of its hunts. */
@@ -294,12 +312,16 @@ export function findStation(stationId: string | null | undefined, prefer?: Realm
 
 /** Interaction radius in world px around a station's x. */
 export const STATION_REACH = 110;
+/** One World: how far above or below a station's own floor the Keeper's feet may be (a little over a cell). */
+export const STATION_REACH_Y = 40;
 
 /** The station whose centre is nearest `x` within reach, or null. */
-export function nearestStation(stations: readonly StationDef[], x: number): StationDef | null {
+export function nearestStation(stations: readonly StationDef[], x: number, y?: number): StationDef | null {
   let best: StationDef | null = null;
   let bestDistance = STATION_REACH;
   for (const station of stations) {
+    // One World: a station with a floor of its own is in reach only from that floor.
+    if (station.y !== undefined && y !== undefined && Math.abs(station.y - y) > STATION_REACH_Y) continue;
     const distance = Math.abs(station.x - x);
     if (distance < bestDistance) { best = station; bestDistance = distance; }
   }

@@ -653,7 +653,11 @@ describe('the registry', () => {
       'godforge-stats',
       'godforge-story',
       'godforge-thralls',
-    ]);
+      // One World (save v3, behind the preview gate): the index, its 24 shared region slots, the Waystones.
+      'godforge-waystones',
+      'godforge-world',
+      ...Array.from({ length: 24 }, (_, n) => `godforge-world-r${n}`),
+    ].sort());
   });
 
   /**

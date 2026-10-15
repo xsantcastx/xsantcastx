@@ -60,7 +60,7 @@ import { FIELD_NOTE_PREFIX } from '../../shared/delve/field-notes.model';
 import type { BucketId, CabinetMark, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
 import { drawCabinet } from './cabinet-art';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
-import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
+import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, NIGHT_DARK, nightShare, selectLights } from './lighting';
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
 import { CaveBackdrop } from './cave-backdrop';
 import { ParallaxBackdrop } from './parallax';
@@ -72,12 +72,18 @@ import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
 import { GlimSprite } from './glim-sprite';
 import { PetSprite } from './pet-sprite';
+import { SettlementLife } from './settlement-life';
+import { SettlementDressing, type DressingFrame, type StoneView } from './settlement-render';
+import { regionAt, stonesIn, wildStoneAt, type SurfaceSpec } from './surface-gen';
+import { BACK_WINDOW } from './blueprints';
+import { stationPrompt, windowsLit } from '../world/routines';
+import { LIGHT_HOLD } from '../../shared/waystones/waystones.model';
 import { PET_TUNING, type PetAbility, type PetId } from '../../shared/pets/pets.model';
 // The world clock (docs/handoff/world-clock.md): day, night and the eclipse on the backdrops; the things that keep an hour.
 import { DAY_SKY, SkyLight, type EngineSky } from './sky-light';
 import { ALIGNED_GLASS, ECLIPSE_SHRINE } from '../../shared/world-clock/eclipse.model';
 import type { WorldHour } from '../world/world.model';
-export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineSfx, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
+export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineSfx, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, StoneEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
@@ -287,6 +293,25 @@ export class SeamworksEngine {
     sprite: id => this.readySprite(id),
     spriteImage: () => this.readyImage,
   };
+  // ── One World (docs/design/one-world.md): the settlement's people, its dressing, its Waystones ──
+  /** The keepers at their counters (and their routines), and townsfolk on the square. Visual only. */
+  private readonly settlement = new SettlementLife();
+  private readonly dressing = new SettlementDressing();
+  private readonly dressingFrame: DressingFrame = {
+    spec: null as unknown as SurfaceSpec, groundY: FLOOR, camera: 0, viewport: 0, time: 0, reduced: false, lit: false, stations: [],
+    icon: (key, cx, cy, size) => this.plaque(this.context, key, cx, cy, size, size), near: null, hearth: 0, benches: [],
+  };
+  private readonly settlementFrame = { camera: 0, viewport: 0, time: 0, reduced: false, translate: (key: string) => this.options.translate?.(key) ?? key };
+  /** The world clock's hour (0–24), from the host (shared/world/world-hour.ts); noon until told. */
+  private worldHour = 12;
+  /** Waystones lit and seen (the host's save), and the ones seen this session (each reported once). */
+  private stonesLit: ReadonlySet<string> = new Set();
+  private stonesSeen = new Set<string>();
+  /** The stones of the loaded ring (authored and wild), rebuilt when the ring moves. */
+  private stones: StoneView[] = [];
+  private stonesKey = '';
+  /** Lighting a stone: which, and for how long E has been held (LIGHT_HOLD). */
+  private stoneCharge: { id: string; t: number } | null = null;
   /** Mesh rigs bending the single Keeper and Maw paintings. Render-only. */
   private readonly keeperRig = new RigSprite(KEEPER_RIG);
   /** One rig per creature art key, built on first sight and shared by every monster using that painting. */
@@ -527,7 +552,7 @@ export class SeamworksEngine {
   private areaSites: GatherSite[] = [];
   /** The world clock's sky (setSky), and its renderer (sky-light.ts). */
   private readonly skyLight = new SkyLight();
-  private sky: EngineSky = DAY_SKY;
+  private worldSky: EngineSky = DAY_SKY;
   /** The ids of the clock-keeping nodes and creatures out in this area now ("moonwake,ink-lantern"), reported for the HUD and the specs. */
   private timedOut = '';
   /** Saved harvest times (null: session only), and the wall clock regrowth is measured against. */
@@ -595,7 +620,14 @@ export class SeamworksEngine {
   private get stations(): readonly StationDef[] { return this.areaDef.stations; }
   /** Draw scale of figures in this area (delves draw the Keeper at half size). */
   private get figure(): number { return this.areaDef.figureScale ?? 1; }
-  private get isTown(): boolean { return this.areaDef === this.town; }
+  private get isTown(): boolean { return this.areaDef === this.homeArea; }
+  /**
+   * Where the town is: the town's own flat area, or (One World, TownDef.home)
+   * the world its settlement stands in. Entering the town enters this.
+   */
+  private get homeArea(): AreaDef { return this.town.home ? areaOf(this.town, this.town.home) ?? this.town : this.town; }
+  /** The world the Keeper stands in (One World: an area with a surface), or null. */
+  private get worldSurface(): SurfaceSpec | null { return this.areaDef?.terrain?.surface ?? null; }
   /** Once-per-player flags set this session (a felled guardian); the save holds them across sessions. */
   private readonly flags = new Set<string>();
   /** True when a once-per-player flag is set, this session or in the player's save. */
@@ -649,6 +681,9 @@ export class SeamworksEngine {
     this.enterHeights(area);
     this.motes.reset();
     this.life.enter(area, this.town);
+    // One World: the settlement's keepers at their counters, the stones of the world.
+    this.settlement.enter(area, this.town.realm, area.terrain?.surface?.square?.hearth ?? 0);
+    this.stones = []; this.stonesKey = ''; this.stoneCharge = null;
   }
   /** Build the high ground's collision and its people for an area (nothing for a flat one). */
   private enterHeights(area: AreaDef): void {
@@ -709,8 +744,8 @@ export class SeamworksEngine {
    * opens or shuts the clock-keeping nodes and raises or fades their creatures.
    */
   setSky(sky: EngineSky): void {
-    const was = this.sky;
-    this.sky = sky;
+    const was = this.worldSky;
+    this.worldSky = sky;
     this.skyLight.set(sky, this.town.realm);
     if (was.dark === sky.dark && was.eclipseOn === sky.eclipseOn && was.alignedHunt === sky.alignedHunt) return;
     this.sites = this.openSites();
@@ -730,10 +765,10 @@ export class SeamworksEngine {
     this.report();
   }
   /** Whether an hour of the world clock is now: 'dark' is night or an eclipse, 'eclipse' only an eclipse. */
-  private hourOpen(when: WorldHour): boolean { return when === 'eclipse' ? this.sky.eclipseOn : this.sky.dark; }
+  private hourOpen(when: WorldHour): boolean { return when === 'eclipse' ? this.worldSky.eclipseOn : this.worldSky.dark; }
   /** The area's nodes out now: an eclipse-only one is not there at all outside an eclipse (a dark-keeping one stands shut). */
   private openSites(): GatherSite[] {
-    return this.areaSites.filter(site => site.def.when !== 'eclipse' || this.sky.eclipseOn);
+    return this.areaSites.filter(site => site.def.when !== 'eclipse' || this.worldSky.eclipseOn);
   }
   /** A dark-keeping node by day: it stands as a shut bud and cannot be worked. */
   private siteShut(def: GatherNodeDef): boolean { return !!def.when && !this.hourOpen(def.when); }
@@ -925,7 +960,7 @@ export class SeamworksEngine {
     const t = world.t, col = t.colAt(this.player.x);
     if (col < t.colLo + 8 || col >= t.colHi - 8) world.center(col);
     else world.follow(col);
-    const row = Math.max(0, Math.min(t.rows - 1, t.rowAt(this.player.y - DELVE_BOX.height * .5)));
+    const row = Math.max(t.rowLo, Math.min(t.rows - 1, t.rowAt(this.player.y - DELVE_BOX.height * .5)));
     const sx = Math.floor(col / SECTOR), sy = Math.floor(row / SECTOR), at = `${sx},${sy}`;
     if (at === this.worldAt) return;
     this.worldAt = at;
@@ -1035,8 +1070,10 @@ export class SeamworksEngine {
   }
   /** Why `node` cannot go into a cell right now, or null. */
   private placeProblem(t: Terrain, col: number, row: number, node: TerrainNodeDef, def?: PlaceableDef): PlaceProblem | null {
-    if (!t.inside(col, row) || row < 0) return { key: 'play.delve.outside', en: 'That is outside the Delve.' };
+    if (!t.inside(col, row)) return { key: 'play.delve.outside', en: 'That is outside the Delve.' };
     if (!isAir(t, col, row)) return { key: 'play.delve.occupied', en: 'Something is already there.' };
+    // One World: a settlement's buildings are the town's (a door filled in would shut a keeper's counter).
+    if (row < 0 && t.protect[t.index(col, row)]) return { key: 'play.world.townWalls', en: 'The town keeps its walls.' };
     if (def?.grounded && !t.solid(col, row + 1) && !isOneWay(t, col, row + 1)) return { key: 'play.delve.needsGround', en: `The ${def.label.toLowerCase()} needs solid ground under it.`, vars: { item: def.id } };
     if (t.liquidAt(col, row) === LIQUID_LAVA && WOODEN_IDS.includes(node.id)) return { key: 'play.delve.liquid.tooHot', en: 'Too hot: that would char in the lava.' };
     if (def?.single && this.findPlaced(t, def.node)) return { key: 'play.delve.single', en: `You already have a ${def.label.toLowerCase()} in the Delve. Take it back first (X beside it).`, vars: { item: def.id } };
@@ -1167,10 +1204,13 @@ export class SeamworksEngine {
     return true;
   }
   /** The town's way into its delve (a passage station to an area with terrain), or null. */
-  private delveEntrance(): { station: StationDef; area: AreaDef } | null {
+  private delveEntrance(): { area: AreaDef } | null {
+    // One World: the town's world IS its Delve (the settlement stands on its surface).
+    const home = this.homeArea;
+    if (home !== this.town && home.terrain) return { area: home };
     for (const station of this.town.stations) {
       const area = station.kind === 'passage' && station.to ? areaOf(this.town, station.to) : undefined;
-      if (area?.terrain) return { station, area };
+      if (area?.terrain) return { area };
     }
     return null;
   }
@@ -1211,9 +1251,11 @@ export class SeamworksEngine {
       this.report();
       return false;
     }
-    this.enter(entrance.area);
+    // One World: the camp is in the world the Keeper already stands in (no area to enter).
+    if (entrance.area !== this.areaDef) this.enter(entrance.area);
     this.resetPosition(x);
     this.player.y = feet;
+    this.worldAt = ''; this.fogAt = NaN;
     this.say('play.delve.campArrive', 'You climb down the ropes to your camp. The fire is still warm.');
     this.report();
     return true;
@@ -1374,7 +1416,7 @@ export class SeamworksEngine {
     this.dodgeTime = 0; this.dodgeCooldown = 0; this.complete = false; this.setPaused(false);
   }
   returnToCamp(): void {
-    this.enter(this.town);
+    this.enter(this.homeArea);
     this.resetPosition(this.town.spawnX); this.say('play.hud.eng.backAtCamp', 'Back at camp. Your equipment and collected loot are safe.'); this.report();
   }
   restartHunt(): void {
@@ -1392,7 +1434,9 @@ export class SeamworksEngine {
     this.delve = options.delve ?? null;
     this.gathering = options.gathering ?? null;
     if (options.now) this.clock = options.now;
-    this.enter(this.town);
+    this.enter(this.homeArea);
+    // One World: a fresh Keeper stands beside the town stone (the world's spawn), not at a flat town's x.
+    if (this.homeArea !== this.town) this.player.x = this.homeArea.spawnX;
     for (const [key, url] of Object.entries(options.assets)) {
       const image = new Image(); image.src = url; this.images[key] = image;
     }
@@ -1696,7 +1740,7 @@ export class SeamworksEngine {
     }
     let material: string | undefined;
     // The aligned realm's hunting ground gives two Eclipse Glass a cut while the eclipse lasts.
-    const pays = def.when === 'eclipse' && this.sky.alignedHunt === this.areaDef.id ? { ...def.yield, qty: def.yield.qty * ALIGNED_GLASS } : def.yield;
+    const pays = def.when === 'eclipse' && this.worldSky.alignedHunt === this.areaDef.id ? { ...def.yield, qty: def.yield.qty * ALIGNED_GLASS } : def.yield;
     if (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance) material = pays.materialId;
     const accepted = this.options.onWorldAction?.({
       kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: def.id, site: def.id,
@@ -1876,7 +1920,10 @@ export class SeamworksEngine {
       const facing = peer.facing === -1 ? -1 : 1;
       const snapshot = {
         ...peer, facing, animation: KEEPER_ANIMATIONS.has(peer.animation as KeeperAnimation) ? peer.animation : 'idle',
-        name: peer.name.slice(0, 24), x: Math.max(30, Math.min(this.areaDef.width - 30, peer.x)), y: Math.max(-300, Math.min(FLOOR, peer.y)),
+        name: peer.name.slice(0, 24),
+        // One World: a world is endless both ways and deep; a peer may stand anywhere in it.
+        ...(this.areaDef.world ? { x: peer.x, y: Math.max(-2000, Math.min(this.terrain?.bottom ?? 8000, peer.y)) }
+          : { x: Math.max(30, Math.min(this.areaDef.width - 30, peer.x)), y: Math.max(-300, Math.min(FLOOR, peer.y)) }),
       };
       if (previous && previous.peer.area === peer.area) previous.peer = snapshot;
       else this.peers.set(peer.id, { peer: snapshot, x: snapshot.x, y: snapshot.y, facing, motion: createKeeperMotion(), clock: createSpriteClock() });
@@ -1946,7 +1993,194 @@ export class SeamworksEngine {
    * The town keepers' lines follow the Keeper's story beats and station deeds
    * (world/keeper-lines.ts). The host calls this only when either changed.
    */
-  setKeeperContext(context: KeeperContext): void { this.life.setContext(context); }
+  setKeeperContext(context: KeeperContext): void { this.life.setContext(context); this.settlement.setContext(context); }
+
+  // ── One World: the clock, the keepers' marks, the Waystones, travel ───────
+
+  /** The world clock's in-game hour (0–24): keeper routines, lit windows, the night's dark. */
+  setWorldHour(hour: number): void {
+    if (!Number.isFinite(hour)) return;
+    this.worldHour = ((hour % 24) + 24) % 24;
+    this.settlement.setHour(this.worldHour);
+  }
+  get hour(): number { return this.worldHour; }
+  /** MapleStory head marks over the settlement's keepers, by keeper id ('!' an offer, '?' a hand-in). */
+  setKeeperMarks(marks: Readonly<Record<string, '!' | '?'>>): void { this.settlement.setMarks(marks); }
+  /** The keepers placed in the settlement, where they are now (tests, the host). */
+  get settlementKeepers(): readonly { id: string; x: number; y: number; upstairs: boolean; mark: '!' | '?' | null }[] {
+    return this.settlement.placed.map(k => ({ id: k.def.id, x: Math.round(k.x), y: Math.round(k.y), upstairs: k.upstairs, mark: this.settlement.markOf(k.def.id) }));
+  }
+  /** The host's record of the Waystones: lit (by hand) and seen. The engine never writes it. */
+  setStoneState(lit: ReadonlySet<string>, seen: ReadonlySet<string>): void {
+    this.stonesLit = lit;
+    for (const id of seen) this.stonesSeen.add(id);
+    for (const s of this.stones) { s.lit = !!s.trunk || lit.has(s.id); s.seen = this.stonesSeen.has(s.id); }
+  }
+  /** The Waystones of the loaded ring (the Travel map's pins near the Keeper; tests). */
+  get worldStones(): readonly StoneView[] { return this.stones; }
+  /** The world the Keeper stands in, and the region under them (null outside a world). */
+  regionHere(): { world: string; id: string; name: string } | null {
+    const s = this.worldSurface, t = this.terrain;
+    if (!s || !t) return null;
+    const r = regionAt(s, t.colAt(this.player.x), t.rowAt(this.player.y - DELVE_BOX.height * .5));
+    return { world: s.world, ...r };
+  }
+  /**
+   * Where a stone of the home world stands (authored or wild, from its id
+   * alone): its column, the row its foot stands on, and that world point.
+   */
+  stonePoint(id: string): { col: number; row: number; x: number; y: number } | null {
+    const spec = this.homeArea.terrain?.surface;
+    if (!spec || !id.startsWith(`${spec.world}:`)) return null;
+    let at = spec.stones.find(s => s.id === id) ?? null;
+    if (!at) {
+      const m = /:ws:(-?\d+)$/.exec(id);
+      const wild = m ? wildStoneAt(spec, Number(m[1])) : null;
+      at = wild && wild.id === id ? stonesIn(spec, Number(m![1]), Number(m![1])).find(s => s.id === id) ?? null : null;
+    }
+    if (!at) return null;
+    const top = this.homeArea.terrain!.top;
+    return { col: at.col, row: at.row, x: at.col * CELL + CELL / 2, y: top + at.row * CELL };
+  }
+  /** Generate a column ahead of a travel (the channel hides the cold start). */
+  prefetchAt(col: number): void {
+    const world = this.worlds.get(this.homeArea.id);
+    world?.prefetch(Math.floor(col / SECTOR));
+  }
+  /**
+   * Step to a stone of the home world: from anywhere in it, or from one of the
+   * town's other areas (the arches' old Quarry, the Homestead). Nothing between
+   * is simulated (the host's channel and fade); it does not heal (a door, not a
+   * rest). False (nothing moves) when there is no such stone or no room beside it.
+   */
+  travelToStone(id: string): boolean {
+    if (this.paused || this.hp <= 0) return false;
+    const at = this.stonePoint(id);
+    const home = this.homeArea;
+    if (!at || !home.terrain?.surface) return false;
+    if (this.areaDef !== home) { this.enter(home); this.resetPosition(at.x); }
+    const t = this.terrain;
+    this.worlds.get(home.id)?.center(at.col);
+    if (!t) return false;
+    // Beside the stone, east of it, on its plinth's level.
+    const x = at.x + 40, feet = at.y;
+    if (boxHits(t, x, feet, DELVE_BOX)) return false;
+    this.cart = null; this.grapple = null; this.carryX = 0; this.climbing = false;
+    this.cancelMove();
+    this.player.x = x; this.player.y = feet; this.player.vy = 0; this.player.grounded = true; this.facing = -1;
+    this.worldAt = ''; this.fogAt = NaN; this.stonesKey = '';
+    this.report();
+    return true;
+  }
+  /**
+   * The settlement streams with the view (§2.5): its people are updated and
+   * drawn only while its columns are within a sector of the camera. Out of
+   * range it costs nothing at all.
+   */
+  private get settlementNear(): boolean {
+    if (!this.settlement.active) return false;
+    const [a, b] = this.settlement.span, sector = SECTOR * CELL;
+    return this.camera + (this.width / Math.max(.01, this.height / 720)) > a - sector && this.camera < b + sector && this.cameraY < (this.terrain?.top ?? FLOOR) + 400;
+  }
+  /** Per view column, the world y where open sky ends (reused; One World's skylight). */
+  private readonly sky = { line: new Float32Array(96), col0: 0, ambient: 0 };
+  /**
+   * One World's skylight (§2.7): each column in view, from the sky band's top
+   * down to its first solid cell, is open sky; over it the dark is the night's
+   * share (NIGHT_DARK at full night, none at noon). A dug hole lets the sky down it.
+   */
+  private skylight(t: Terrain, viewport: number): { line: Float32Array; col0: number; ambient: number } {
+    const sky = this.sky, c0 = t.colAt(this.camera) - 2, c1 = t.colAt(this.camera + viewport) + 2;
+    if (sky.line.length < c1 - c0 + 1) sky.line = new Float32Array(c1 - c0 + 8);
+    sky.col0 = c0;
+    const deepest = Math.min(t.rows - 1, 24);
+    for (let col = c0; col <= c1; col++) {
+      let row = t.rowLo;
+      while (row <= deepest && !t.solid(col, row)) row++;
+      sky.line[col - c0] = t.top + row * CELL;
+    }
+    sky.ambient = nightShare(this.worldHour) * NIGHT_DARK;
+    return sky;
+  }
+  /** The home world's town stone (the trunk line), or null outside a One World town. */
+  get townStone(): string | null { return this.homeArea.terrain?.surface?.stones.find(s => s.kind === 'town')?.id ?? null; }
+  /** The lit stone the Keeper stands at (the Travel map's "You are here"), or null. */
+  get stoneHere(): string | null { const s = this.worldSurface ? this.stoneInReach() : null; return s?.lit ? s.id : null; }
+  /**
+   * A stone was lit: the map's fog clears `sectors` sector columns either side
+   * of it, on the sky band and the ground's surface only (never the underground).
+   */
+  revealAroundStone(col: number, sectors: number): void {
+    const world = this.world, s = this.worldSurface;
+    if (!world || !s) return;
+    world.revealArea(col - sectors * SECTOR, col + sectors * SECTOR, world.rowLo, s.ground + 1);
+  }
+  /**
+   * Stand at a station of the current area (a deep link, a Places pick with
+   * reduced motion): its x, on its own floor; the world's ring comes with it.
+   * Returns the station, or null when the area has no such station.
+   */
+  placeAtStation(id: string): StationDef | null {
+    const station = this.stations.find(row => row.id === id);
+    if (!station) return null;
+    this.placeAtPoint(station.x, station.y ?? FLOOR);
+    return station;
+  }
+  /** Stand the Keeper at a world point (a resume, a station): the ring re-centres there first. */
+  placeAtPoint(x: number, y: number): void {
+    this.cancelMove();
+    if (this.world) this.world.center(this.world.t.colAt(x));
+    this.player.x = this.clampX(x);
+    this.player.y = y; this.player.vy = 0; this.player.grounded = true;
+    this.worldAt = ''; this.fogAt = NaN; this.stonesKey = '';
+    // A point the rock has since filled (a dig from another device): the street at the area's spawn.
+    if (this.terrain && boxHits(this.terrain, this.player.x, this.player.y, DELVE_BOX)) { this.player.x = this.areaDef.spawnX; this.player.y = FLOOR; if (this.world) this.world.center(this.world.t.colAt(this.player.x)); }
+    this.report();
+  }
+  /** Whether the Keeper is somewhere a resume point may be taken (grounded, dry, nothing near, no cart or grapple). */
+  get safeSpot(): boolean {
+    if (!this.player.grounded || this.immersed || this.cart || this.grapple || this.hp <= 0 || this.climbing) return false;
+    return !this.monsters.some(m => m.hp > 0 && Math.abs(m.x - this.player.x) < 400 && Math.abs((m.def.floorY ?? FLOOR) - this.player.y) < 160);
+  }
+  /** The stones of the ring, rebuilt when the ring has moved; the ones coming into view are reported once. */
+  private keepStones(): void {
+    const s = this.worldSurface, t = this.terrain;
+    if (!s || !t) { if (this.stones.length) this.stones = []; return; }
+    const key = `${t.colLo}`;
+    if (key !== this.stonesKey) {
+      this.stonesKey = key;
+      this.stones = stonesIn(s, Math.floor(t.colLo / SECTOR), Math.floor((t.colHi - 1) / SECTOR)).map(def => ({
+        ...def, x: def.col * CELL + CELL / 2, y: t.top + def.row * CELL, lit: !!def.trunk || this.stonesLit.has(def.id), seen: this.stonesSeen.has(def.id),
+      }));
+    }
+    for (const stone of this.stones) {
+      if (stone.seen || Math.abs(stone.x - this.player.x) > 760 || Math.abs(stone.y - this.player.y) > 520) continue;
+      stone.seen = true;
+      this.stonesSeen.add(stone.id);
+      this.options.onStone?.({ id: stone.id, action: 'seen', world: s.world });
+    }
+  }
+  /** The stone the Keeper's feet are at, or null. */
+  private stoneInReach(): StoneView | null {
+    for (const s of this.stones) if (Math.abs(s.x - this.player.x) <= 52 && Math.abs(s.y - this.player.y) <= 40) return s;
+    return null;
+  }
+  /** E held at an unlit stone: the ritual's charge climbs; at LIGHT_HOLD the host lights it. */
+  private chargeStone(dt: number): void {
+    const near = this.stoneInReach();
+    if (!near || near.lit || !this.useHeld || this.paused) {
+      if (this.stoneCharge && (!near || near.id !== this.stoneCharge.id || !this.useHeld)) this.stoneCharge = null;
+      return;
+    }
+    if (!this.stoneCharge || this.stoneCharge.id !== near.id) this.stoneCharge = { id: near.id, t: 0 };
+    this.stoneCharge.t += dt;
+    if (this.stoneCharge.t < LIGHT_HOLD) return;
+    this.stoneCharge = null;
+    // Optimistic: the seams burn gold now; the host writes the receipt and grants, and re-sends the lit set.
+    near.lit = true;
+    this.keeperFeel('happy', 1.2);
+    this.options.onStone?.({ id: near.id, action: 'light', world: this.worldSurface?.world ?? '' });
+  }
   /**
    * Glim (glim-sprite.ts). `shown` once the Keeper has met it; `arrive` flies it
    * in from above to the shoulder (the Prologue meeting, once).
@@ -2070,7 +2304,7 @@ export class SeamworksEngine {
   }
   /** Waystone travel: stand in another town's spawn. Monsters, drops and any walk reset. */
   setTown(town: TownDef): void {
-    this.town = town; this.enter(town); this.resetPosition(town.spawnX);
+    this.town = town; this.enter(this.homeArea); this.resetPosition(town.spawnX);
     this.message = town.arrival ?? town.name; this.report();
   }
   /** Stand the Keeper on the floor at x in the current area. No interaction. */
@@ -2089,6 +2323,11 @@ export class SeamworksEngine {
     });
     this.pointerX = point.x; this.pointerY = point.y;
     // A click on a keeper opens the station it keeps.
+    // One World: a station's hit box stands on its own floor; a click on a keeper at the counter opens it too.
+    if (this.worldSurface) {
+      const near = this.stations.filter(s => Math.abs((s.y ?? FLOOR) - point.y) < 130);
+      return { x: point.x, y: point.y, station: stationAt(near, point.x, point.y, point.y < FLOOR + 40 ? Math.max(point.y, FLOOR - 40) : FLOOR) ?? this.settlement.stationAt(point.x, point.y) };
+    }
     return { x: point.x, y: point.y, station: stationAt(this.stations, point.x, point.y, FLOOR) ?? this.life.stationAt(point.x, point.y) };
   }
   /** Highlight a station (pointer hover). Render-only. */
@@ -2950,13 +3189,13 @@ export class SeamworksEngine {
   private touchShrine(t: Terrain, col: number, row: number): void {
     const world = this.world;
     // Under an eclipse a shrine drinks the dark and shows twice as far (shared/world-clock ECLIPSE_SHRINE).
-    const reach = SECTOR * (this.sky.eclipseOn ? ECLIPSE_SHRINE.reveal : 1);
+    const reach = SECTOR * (this.worldSky.eclipseOn ? ECLIPSE_SHRINE.reveal : 1);
     if (world?.revealRect(col - reach, col + reach, 0, t.rows - 1)) world.flushFog();
     this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#b88cff', this.reducedMotion ? 2 : 10);
     this.blastFlash = Math.max(this.blastFlash, .6);
     this.say('play.delve.shrine.touched', 'The shrine shows you the tunnels round it. Open the map (M) to see them.');
     this.report();
-    this.options.onDiscover?.({ kind: 'shrine', id: `rift:${col},${row}`, biome: t.biomeAt(row).id, ...(this.sky.eclipseOn ? { eclipse: true } : {}) });
+    this.options.onDiscover?.({ kind: 'shrine', id: `rift:${col},${row}`, biome: t.biomeAt(row).id, ...(this.worldSky.eclipseOn ? { eclipse: true } : {}) });
   }
   /** The carved wall, chest or camp the Keeper's body stands against (cell index), or -1. No allocation. */
   private findInteractive(): number {
@@ -2965,7 +3204,7 @@ export class SeamworksEngine {
     const p = this.player;
     const c0 = t.colAt(p.x - DELVE_BOX.halfWidth - INTERACT_REACH), c1 = t.colAt(p.x + DELVE_BOX.halfWidth + INTERACT_REACH);
     const r0 = t.rowAt(p.y - DELVE_BOX.height), r1 = t.rowAt(p.y - .01);
-    for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
+    for (let row = Math.max(t.rowLo, r0); row <= Math.min(t.rows - 1, r1); row++) {
       for (let col = Math.max(t.colLo, c0); col <= Math.min(t.colHi - 1, c1); col++) {
         const index = t.index(col, row);
         if (this.usable(index)) return index;
@@ -3088,6 +3327,13 @@ export class SeamworksEngine {
     if (cabinet) { this.options.onCabinet?.({ areaId: this.areaDef.id, id: cabinet.id, open: cabinet.open }); this.report(); return; }
     const find = station ? null : this.findInReach();
     if (find) { this.useFind(find); this.report(); return; }
+    // One World: a Waystone. Lit, E opens the Travel map; unlit, holding E lights it (chargeStone).
+    const stone = station ? null : this.stoneInReach();
+    if (stone) {
+      if (stone.lit) this.options.onStone?.({ id: stone.id, action: 'open', world: this.worldSurface?.world ?? '' });
+      else this.say('play.world.stone.hold', 'A dark Waystone. Hold E (or hold the button) to light it.');
+      this.report(); return;
+    }
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
     const site = station ? null : this.siteInReach();
     if (site) { if (this.attackCooldown <= 0) this.workSite(site); this.report(); return; }
@@ -3098,7 +3344,9 @@ export class SeamworksEngine {
     else if (this.homestead?.interact(this.areaDef.id, station.id)) { /* handled by the Homestead view */ }
     else if (station.kind === 'passage') {
       const area = station.to ? areaOf(this.town, station.to) : undefined;
-      if (area) {
+      // One World: the mine head stands over the Delve the Keeper already stands in. Nothing to enter.
+      if (area && area === this.areaDef) this.say('play.world.mineHead', 'The Delve is under your feet: dig down beside the headframe. A camp or an anchor below is a way down from here.');
+      else if (area) {
         this.enter(area);
         this.resetPosition(station.arriveX ?? area.spawnX);
         this.message = area.arrival ?? area.name;
@@ -3114,6 +3362,8 @@ export class SeamworksEngine {
     this.shake = Math.max(this.shake, kick);
   }
   private nearbyStation(): StationDef | null {
+    // One World: every station stands on its own floor (StationDef.y); reach reads it.
+    if (this.worldSurface) return nearestStation(this.stations, this.player.x, this.player.y);
     return this.player.y > 475 && this.player.y <= FLOOR + 40 ? nearestStation(this.stations, this.player.x) : null;
   }
   private nearby(): string | null { return this.nearbyStation()?.id ?? null; }
@@ -3196,6 +3446,12 @@ export class SeamworksEngine {
     this.atmosphere.update(dt);
     this.life.update(dt, this.player.x, this.elapsed);
     this.updateFolk();
+    // One World: the world's stones (seen, lit by a held E) and, while its columns are near, the settlement's people.
+    if (this.worldSurface) {
+      this.keepStones();
+      this.chargeStone(dt);
+      if (this.settlementNear) this.settlement.update(dt, this.player.x, this.player.y, this.elapsed);
+    }
     this.landing = Math.max(0, this.landing - dt);
     this.attackTime = Math.max(0, this.attackTime - dt); this.attackCooldown -= dt;
     this.dodgeTime = Math.max(0, this.dodgeTime - dt); this.dodgeCooldown -= dt; this.hurtTime -= dt;
@@ -4143,7 +4399,7 @@ export class SeamworksEngine {
   private drawFields(c: CanvasRenderingContext2D, t: Terrain, c0: number, c1: number, r0: number, r1: number, time: number): void {
     const drift = this.reducedMotion ? 0 : Math.floor(time * 4) % 4;
     c.globalAlpha = .6; c.fillStyle = '#d8ecff';
-    for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
+    for (let row = Math.max(t.rowLo, r0); row <= Math.min(t.rows - 1, r1); row++) {
       for (let col = Math.max(t.colLo, c0); col <= Math.min(t.colHi - 1, c1); col++) {
         if (((col + row) & 1) !== 0) continue;
         const k = t.kind[t.index(col, row)];
@@ -4407,9 +4663,17 @@ export class SeamworksEngine {
     const site = !station && !use && !find && !cabinet ? this.siteInReach() : null;
     const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
+    // One World: the region under the Keeper names the place ("Basalt Seamworks"); a stone in reach; a keeper away.
+    const region = this.regionHere();
+    const surfaceNow = !!region && region.id !== this.worldSurface!.underground.id;
+    const stone = !station && !use && !cabinet && !find && !site && this.worldSurface ? this.stoneInReach() : null;
+    const away = station && this.worldSurface && this.settlement.placed.some(k => k.station.id === station.id) ? stationPrompt(this.worldHour) : 'counter';
     this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name, enemyId: nearest?.def.creature,
       ...(this.keyed && this.keyed.en === this.message ? { messageKey: this.keyed.key, ...(this.keyed.vars ? { messageVars: this.keyed.vars } : {}) } : {}),
-      nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : find ? 'height' : site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
+      ...(region ? { world: region.world, region: region.id } : {}),
+      ...(stone ? { stone: { id: stone.id, lit: stone.lit, charge: this.stoneCharge?.id === stone.id ? Math.min(1, this.stoneCharge.t / LIGHT_HOLD) : 0, kind: stone.kind } } : {}),
+      ...(away !== 'counter' ? { keeperAway: away } : {}),
+      nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : find ? 'height' : site ? 'gather' : stone ? 'stone' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase() ?? (stone ? 'WAYSTONE' : undefined), nearbyKind: station?.kind,
       height: find ? { id: find.id, kind: find.kind, found: this.heightsFound.has(find.id) } : undefined,
       cabinet: cabinet ? { id: cabinet.id, open: cabinet.open } : undefined,
       y: Math.round(this.player.y), climbing: this.heights ? this.mover.mode : undefined,
@@ -4420,9 +4684,9 @@ export class SeamworksEngine {
       gravity: this.down,
       boss: !!nearest?.def.once,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
-      coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
+      coins: this.coins, kills: this.kills, area: region?.name ?? this.areaDef.name, areaId: this.areaDef.id,
       facing: this.facing, animation: this.pose(),
-      delve: !!t, depth, biome: t && depth !== undefined ? t.biomeAt(depth).name || undefined : undefined,
+      delve: !!t, depth, biome: t && depth !== undefined && !surfaceNow ? t.biomeAt(depth).name || undefined : undefined,
       ...(t ? {
         liquid: {
           in: LIQUID_IDS[this.immersed] ?? null,
@@ -4960,6 +5224,44 @@ export class SeamworksEngine {
     if (hovered && !near) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, STATION_CUE_Y); }
   }
   /**
+   * One World: a station in a settlement. The shops are cells with their own
+   * dressing (settlement-render.ts) and the stones draw themselves; what is
+   * left is the seam's ore, the beacon's lamp on its tower and the forge's
+   * anvil, drawn as the towns draw them but at the world's scale (an exact
+   * half: 2 world px per art px), then the label on a plate under the street.
+   */
+  private drawWorldStation(c: CanvasRenderingContext2D, station: StationDef, near: boolean, hovered: boolean, _time: number): void {
+    const x = station.x, floor = station.y ?? FLOOR, hot = near || hovered;
+    if (hot) {
+      c.save(); c.globalAlpha = near ? .38 : .24; c.fillStyle = '#ffb46a';
+      c.beginPath(); c.ellipse(x, floor + 1, (station.width ?? 96) * .5, 6, 0, 0, Math.PI * 2); c.fill(); c.restore();
+    }
+    const half = (draw: (y: number) => void, y = floor) => { c.save(); c.translate(x, y); c.scale(.5, .5); c.translate(-x, -FLOOR); draw(FLOOR); c.restore(); };
+    if (station.kind === 'resource') half(() => { if (!this.art(station.art, x - 58, FLOOR - 92, 116, 92)) this.art('ore', x - 58, FLOOR - 92, 116, 92); });
+    else if (station.id === 'beacon') {
+      // The lamp crowns its tower (blueprints.ts `beacon-tower`, seven rows).
+      half(() => {
+        c.shadowColor = this.restored ? '#b8e6ec' : '#f29b68'; c.shadowBlur = this.blur(24);
+        if (this.props) this.props.beacon(c, x, FLOOR, this.restored);
+        c.shadowBlur = 0;
+      }, floor - 7 * CELL + 6);
+    } else if (station.kind === 'quest') {
+      // The forge's anvil beside its counter, the blade it makes floating over it.
+      half(() => {
+        if (this.props) this.props.pedestal(c, x, FLOOR);
+        if (!this.art(station.art, x - 35, FLOOR - 160, 70, 95)) this.art('blade', x - 35, FLOOR - 160, 70, 95);
+      });
+    }
+    if (station.kind === 'waystone') return;
+    c.save();
+    c.font = '600 10px system-ui'; c.textAlign = 'center';
+    const w = Math.min(150, c.measureText(station.label).width + 12);
+    c.fillStyle = '#1a120fcc'; c.fillRect(x - w / 2, floor + 6, w, 14);
+    c.fillStyle = hot ? '#fff1c9' : '#c9bdc8'; c.fillText(station.label, x, floor + 16);
+    if (hovered && !near) { c.fillStyle = '#e7d3b4'; c.fillText('CLICK TO WALK HERE', x, floor - 150); }
+    c.restore();
+  }
+  /**
    * A gathering node, drawn in code: a herb patch, a tree or an outcrop. Ready,
    * it carries its material's art and a soft glow that breathes (held still
    * under reduced motion); harvested, it is a dim stump with a ring filling
@@ -5187,7 +5489,10 @@ export class SeamworksEngine {
       : Math.max(0, Math.min(this.areaDef.width - viewport, this.player.x - viewport * .38));
     if (t) {
       // Delves follow the Keeper down; the surface sits low in the frame at the top.
-      const target = Math.max(0, Math.min(t.bottom + 40 - 720, this.player.y - 720 * .58));
+      // One World: the camera may rise into the sky band (rows < 0) over the settlement's roofs and the hills.
+      // On a world's surface the street sits lower in the frame (.7), so the shops' roofs and signs are in view.
+      const frame = t.rowLo < 0 && this.player.y <= t.top + CELL * 2 ? .7 : .58;
+      const target = Math.max(t.rowLo < 0 ? t.skyTop : 0, Math.min(t.bottom + 40 - 720, this.player.y - 720 * frame));
       this.cameraY += (target - this.cameraY) * (this.reducedMotion ? 1 : 1 - Math.exp(-7 * this.frameDt));
     } else if (this.heights) {
       // A surface with height: follow the Keeper up, with a look-ahead the way they are heading.
@@ -5212,8 +5517,10 @@ export class SeamworksEngine {
     // Below a delve's surface the distant cave fills the frame (it shows through the caverns);
     // the town painting and its shade are drawn only while the surface is in view.
     const underground = !!t && t.top - this.cameraY <= 0;
-    const baked = !cached && !underground && !!t && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawDelveSky(c, bg, viewport);
-    if (!cached && !underground && !layered && !pixelBack && !baked) {
+    // One World: the surface stands under the realm's pixel sky (pixel-parallax.ts), never the Delve's painting (§2.7).
+    const worldSky = !!t && t.rowLo < 0 && !underground && this.pixelBackdrop.draw(c, this.town.realm, 'town', this.camera, viewport, t.top - this.cameraY);
+    const baked = !worldSky && !cached && !underground && !!t && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawDelveSky(c, bg, viewport);
+    if (!worldSky && !cached && !underground && !layered && !pixelBack && !baked) {
       c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
       if (bg?.complete && bg.naturalWidth) {
         const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
@@ -5260,10 +5567,22 @@ export class SeamworksEngine {
       this.homestead.draw(c, f);
     }
     const nearId = this.nearby();
+    // One World: the settlement's dressing behind the people (awnings, signs, displays, smoke, lit windows).
+    const settled = !!t && !!this.worldSurface && this.settlementNear;
+    if (settled) {
+      const d = this.dressingFrame;
+      d.spec = this.worldSurface!; d.groundY = t!.top + this.worldSurface!.ground * CELL; d.camera = this.camera; d.viewport = viewport;
+      d.time = motionTime; d.reduced = this.reducedMotion; d.lit = windowsLit(this.worldHour); d.stations = this.stations; d.near = nearId;
+      d.hearth = this.worldSurface!.square?.hearth ?? 0; d.benches = this.worldSurface!.square?.benches ?? [];
+      this.dressing.drawBack(c, d);
+    }
     for (const station of this.stations) {
       if (station.x < this.camera - 200 || station.x > this.camera + viewport + 200) continue;
-      this.drawStation(c, station, station.id === nearId, station.id === this.hovered, motionTime);
+      if (this.worldSurface) this.drawWorldStation(c, station, station.id === nearId, station.id === this.hovered, motionTime);
+      else this.drawStation(c, station, station.id === nearId, station.id === this.hovered, motionTime);
     }
+    if (this.stones.length) this.dressing.drawStones(c, this.stones, { camera: this.camera, viewport, time: motionTime, reduced: this.reducedMotion },
+      this.stoneCharge?.id ?? null, this.stoneCharge ? Math.min(1, this.stoneCharge.t / LIGHT_HOLD) : 0);
     if (this.sites.length) {
       const near = this.nearbyStation() ? null : this.siteInReach();
       for (const site of this.sites) {
@@ -5278,6 +5597,13 @@ export class SeamworksEngine {
       f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.reduced = this.reducedMotion;
       f.playerX = this.player.x; f.pixelScale = this.pixelScale;
       this.life.draw(c, f);
+    }
+    if (settled) {
+      const f = this.settlementFrame;
+      f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.reduced = this.reducedMotion;
+      this.settlement.draw(c, f);
+      // The counters stand in front of the keepers behind them.
+      this.dressing.drawFront(c, this.dressingFrame);
     }
     if (this.folk.length) this.drawFolk(c, viewport, motionTime);
     if (!t) this.debris.draw(c);
@@ -5346,7 +5672,8 @@ export class SeamworksEngine {
       c.fillStyle = '#dd866f'; c.fillRect(monster.x - bar / 2, crown, monster.hp / full * bar, 6);
     }
     for (const view of this.peers.values()) {
-      if (view.peer.area !== this.areaDef.name || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
+      // One World: peers share the WORLD (the presence zone is its id), wherever in it they stand.
+      if (view.peer.area !== (this.areaDef.world ?? this.areaDef.name) || view.x < this.camera - 160 || view.x > this.camera + viewport + 160) continue;
       // Spawn puts every Keeper on the same tile. Spread guests so names and sprites stay readable.
       const spread = (([...view.peer.id].reduce((hash, char) => (hash * 33 + char.charCodeAt(0)) >>> 0, 0) % 5) - 2) * 46;
       if (!t) this.groundShadow(c, view.x + spread, view.y, 40);
@@ -5537,7 +5864,12 @@ export class SeamworksEngine {
     pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker * (this.veiledUp() ? .55 : 1) * this.lanternShare(t), 1);
     // The Ember Newt's tail: a small warm light of its own, wherever it trots.
     if (this.petAbility === 'glow' && this.pet.id && Number.isFinite(this.pet.x)) pool.add(this.pet.x, this.pet.y - 30 * this.figure, PET_TUNING.glowRadius * flicker, PET_TUNING.glowLight);
-    if (this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);
+    // The Delve's surface strip of light; a world has a real sky instead (skylight, below).
+    const ws = this.worldSurface;
+    if (!ws && this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);
+    // One World: the square's Hearth fire burns all day and all night.
+    if (ws?.square && this.settlementNear) pool.add(ws.square.hearth * CELL + CELL / 2, t.top + ws.ground * CELL - 40, 300, .95 * flicker);
+    const litWindows = !!ws && windowsLit(this.worldHour) && !!t.back;
     if (this.blastFlash > 0) {
       const at = this.blastAt;
       pool.add(at.x + at.dx * at.range * .6, at.y + at.dy * at.range * .6, at.range * 1.5 * this.blastFlash, this.blastFlash);
@@ -5557,11 +5889,13 @@ export class SeamworksEngine {
       pool.add((col + .5) * CELL, t.top + row * CELL + 6, 70 + (this.reducedMotion ? 0 : Math.sin(time * 31) * 10), .75);
     }
     const c0 = Math.max(t.colLo, t.colAt(this.camera)), c1 = Math.min(t.colHi - 1, t.colAt(this.camera + viewport));
-    const r0 = Math.max(0, t.rowAt(this.cameraY)), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720));
+    const r0 = Math.max(t.rowLo, t.rowAt(this.cameraY)), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720));
     const reach = this.lanternRadius * 1.6;
     let haloCount = 0;
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
+        // One World: a lit window throws a warm pool into the street at night.
+        if (litWindows && row < 0 && t.back![t.index(col, row)] === BACK_WINDOW) pool.add((col + .5) * CELL, t.top + (row + .5) * CELL, 140, .7);
         const node = TERRAIN_NODE_LIST[t.kind[t.index(col, row)]];
         if (!node.glow) continue;
         // Cold coal is dark until struck; a doused furnace vent is out.
@@ -5606,7 +5940,7 @@ export class SeamworksEngine {
     heat.t = t; heat.biome = biome; heat.time = time; heat.viewport = viewport; heat.count = haloCount;
     heat.scale = scale; heat.folded = false;
     const dark = this.darkness.draw(c, this.width, this.height, scale, this.camera, this.cameraY, pool.lights, count, ambient, biome.dark, fold, this.budget.smoothDarkness, this.rockShade.update(t), WARM_LIGHT, this.lavaPool.lights, this.lavaPool.count,
-      this.budget.blendModes ? undefined : this.heatInOverlay);
+      this.budget.blendModes ? undefined : this.heatInOverlay, ws ? this.skylight(t, viewport) : null);
     c.restore();
     if (fold && !dark) {
       // No overlay canvas: the tint on its own, as before.
@@ -5740,7 +6074,7 @@ export class SeamworksEngine {
    */
   private drawRails(c: CanvasRenderingContext2D, t: Terrain, viewport: number, time: number): void {
     const c0 = Math.max(t.colLo, t.colAt(this.camera) - 1), c1 = Math.min(t.colHi - 1, t.colAt(this.camera + viewport) + 1);
-    const r0 = Math.max(0, t.rowAt(this.cameraY) - 1), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720) + 1);
+    const r0 = Math.max(t.rowLo, t.rowAt(this.cameraY) - 1), r1 = Math.min(t.rows - 1, t.rowAt(this.cameraY + 720) + 1);
     for (let row = r0; row <= r1; row++) {
       for (let col = c0; col <= c1; col++) {
         const i = t.index(col, row);
