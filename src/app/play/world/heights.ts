@@ -146,8 +146,6 @@ export function hollisFolk(heights: AreaHeights): HeightFolk {
 
 /** Reach round a find, world px: the Keeper's feet within this box of its foot point. */
 export const FIND_REACH = { x: 80, y: 60 };
-/** Every find id a summit's Codex entry can name, for checks. */
-export function summitId(area: string): string { return `${area}:summit`; }
 
 /** Every route starts here: east of the stair foot, the gathering nodes and the safe line's first steps. */
 const X0 = 560;

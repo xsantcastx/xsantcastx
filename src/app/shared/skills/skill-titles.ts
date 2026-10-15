@@ -21,8 +21,6 @@ export const TITLE_STEP = 25;
 export const TITLE_RANKS = 8;
 /** The level of the first title: the first level past mastery (100). */
 export const FIRST_TITLE_LEVEL = MASTERY_LEVEL + 1;
-/** The level of the last authored title (275). */
-export const LAST_TITLE_LEVEL = FIRST_TITLE_LEVEL + (TITLE_RANKS - 1) * TITLE_STEP;
 
 export interface SkillTitle {
   skill: SkillId;

@@ -15,23 +15,19 @@ import { TestBed } from '@angular/core/testing';
 
 import { CelebrationService } from './celebration.service';
 import { CelebrationAudioService } from './celebration-audio.service';
-import { ForgeSceneService } from '../forge-scene/forge-scene.service';
 import { TIER_FX } from './celebration.model';
 
 describe('CelebrationService', () => {
   let svc: CelebrationService;
-  let scene: jasmine.SpyObj<Pick<ForgeSceneService, 'celebrate' | 'shake'>>;
   let audio: jasmine.SpyObj<Pick<CelebrationAudioService, 'play'>>;
 
   const layer = () => document.querySelector('.gf-fx');
   const root = () => document.documentElement;
 
   beforeEach(() => {
-    scene = jasmine.createSpyObj('ForgeSceneService', ['celebrate', 'shake']);
     audio = jasmine.createSpyObj('CelebrationAudioService', ['play']);
     TestBed.configureTestingModule({
       providers: [
-        { provide: ForgeSceneService, useValue: scene },
         { provide: CelebrationAudioService, useValue: audio },
       ],
     });
@@ -46,7 +42,6 @@ describe('CelebrationService', () => {
     svc.celebrate('common');
     expect(layer()).toBeNull();
     expect(audio.play).not.toHaveBeenCalled();
-    expect(scene.celebrate).not.toHaveBeenCalled();
   });
 
   it('puts a layer on the page for a Rare', () => {
@@ -90,7 +85,7 @@ describe('CelebrationService', () => {
     // A transform on <html> or <body> makes it the containing block for every
     // position:fixed descendant, which re-anchors the reveal dialog against the
     // document and throws the card off the screen mid-shake. The shake is spent
-    // on the scene's camera and on elements with nothing fixed inside them.
+    // on elements with nothing fixed inside them.
     svc.celebrate('singular');
     expect(getComputedStyle(root()).transform).toBe('none');
     expect(getComputedStyle(document.body).transform).toBe('none');
@@ -98,16 +93,14 @@ describe('CelebrationService', () => {
     expect(document.body.classList.contains('gf-jolt')).toBe(false);
   });
 
-  it('shakes the scene and the card it was handed', () => {
+  it('shakes the card it was handed', () => {
     const el = document.createElement('div');
     document.body.appendChild(el);
     try {
       svc.celebrate('epic', el);
       // Amplitude is asserted as a range, not a literal: scaleFx trims it on a
-      // narrow viewport and Karma's runner iframe is one. Duration is never
-      // scaled, so that one is exact.
-      const [amplitude, duration] = scene.shake.calls.mostRecent().args;
-      expect(duration).toBe(TIER_FX.epic.shake!.duration);
+      // narrow viewport and Karma's runner iframe is one.
+      const amplitude = parseFloat(el.style.getPropertyValue('--gf-shake'));
       expect(amplitude).toBeGreaterThan(0);
       expect(amplitude).toBeLessThanOrEqual(TIER_FX.epic.shake!.amplitude);
       expect(el.classList.contains('gf-jolt')).toBe(true);
@@ -126,7 +119,6 @@ describe('CelebrationService', () => {
     document.body.appendChild(el);
     try {
       svc.celebrate('rare', el);
-      expect(scene.shake).not.toHaveBeenCalled();
       expect(el.classList.contains('gf-jolt')).toBe(false);
     } finally {
       el.remove();
@@ -161,19 +153,9 @@ describe('CelebrationService', () => {
     });
   });
 
-  it('plays the tier profile and hands the reaction to the scene', () => {
+  it('plays the tier profile', () => {
     svc.celebrate('epic');
     expect(audio.play).toHaveBeenCalledWith(TIER_FX.epic.sound);
-    expect(scene.celebrate).toHaveBeenCalled();
-    expect(scene.celebrate.calls.mostRecent().args[0]).toBe(TIER_FX.epic.scene);
-  });
-
-  it('delays the scene reaction past a blackout', () => {
-    // The field should not be doing anything visible behind a black curtain.
-    svc.celebrate('legendary');
-    const delay = scene.celebrate.calls.mostRecent().args[3];
-    const { fade, hold } = TIER_FX.legendary.blackout!;
-    expect(delay).toBe(fade + hold);
   });
 
   it('radiates from the element it was handed', () => {

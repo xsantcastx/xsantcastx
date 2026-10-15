@@ -19,9 +19,6 @@ export interface MapPoint {
   x: number;
   y: number;
 }
-
-/** Board size, in map units. The stage keeps this aspect ratio. */
-export const MAP_W = 1000;
 export const MAP_H = 420;
 
 /** The Treasury — where every journey starts and every haul lands. */

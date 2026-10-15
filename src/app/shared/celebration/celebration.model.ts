@@ -45,20 +45,6 @@ export type SoundProfile =
   | 'crescendo'
   | 'void';
 
-/** How the WebGL particle field reacts, if it is running at all. */
-export type SceneReaction =
-  | 'none'
-  /** Shove outward from the card. */
-  | 'burst'
-  /** Shove outward, then rush back in. */
-  | 'burst-return'
-  /** Burst plus a colour flash across the whole field. */
-  | 'burst-flash'
-  /** The field goes white and settles back. */
-  | 'whiteout'
-  /** Spiral inward to the card, then explode outward. */
-  | 'spiral';
-
 export interface ShakeFx { amplitude: number; duration: number }
 export interface FlashFx { duration: number; opacity: number }
 export interface WaveFx { rings: number; duration: number }
@@ -105,7 +91,6 @@ export interface TierFx {
    */
   timeScale: number;
   sound: SoundProfile;
-  scene: SceneReaction;
   /** Reveal the rune's name one letter at a time rather than all at once. */
   letters: boolean;
 }
@@ -125,7 +110,7 @@ export const TIER_FX: Record<RuneTier, TierFx> = {
     shake: null, flash: null, wave: null, particles: null, shower: null,
     lightning: null, beams: null, blackout: null,
     crack: false, distort: false, timeScale: 1,
-    sound: 'none', scene: 'none', letters: false,
+    sound: 'none', letters: false,
   },
 
   /* Uncommon — one ring and a breath of colour at the edges. No sound. */
@@ -136,7 +121,7 @@ export const TIER_FX: Record<RuneTier, TierFx> = {
     wave: { rings: 1, duration: 800 },
     particles: null, shower: null, lightning: null, beams: null, blackout: null,
     crack: false, distort: false, timeScale: 1,
-    sound: 'ping', scene: 'none', letters: false,
+    sound: 'ping', letters: false,
   },
 
   /* Rare — the first hit of dopamine. Ring, edge flash, particles, a chime,
@@ -149,7 +134,7 @@ export const TIER_FX: Record<RuneTier, TierFx> = {
     particles: { count: 26, spread: 260, duration: 1200 },
     shower: null, lightning: null, beams: null, blackout: null,
     crack: false, distort: false, timeScale: 1,
-    sound: 'chime', scene: 'burst', letters: true,
+    sound: 'chime', letters: true,
   },
 
   /* Epic — the viewport moves for the first time. */
@@ -163,7 +148,7 @@ export const TIER_FX: Record<RuneTier, TierFx> = {
     beams: { count: 6, duration: 1400, prismatic: false },
     blackout: null,
     crack: false, distort: false, timeScale: 1,
-    sound: 'chime-bass', scene: 'burst-return', letters: true,
+    sound: 'chime-bass', letters: true,
   },
 
   /* Legendary — dark, then gold. The first rung that takes the screen away
@@ -179,7 +164,7 @@ export const TIER_FX: Record<RuneTier, TierFx> = {
     beams: { count: 8, duration: 2000, prismatic: false },
     blackout: { fade: 90, hold: 110 },
     crack: false, distort: false, timeScale: 1,
-    sound: 'thunder-horn', scene: 'burst-flash', letters: true,
+    sound: 'thunder-horn', letters: true,
   },
 
   /* Mythic — prismatic, and the card reveal itself slows to half speed. */
@@ -194,7 +179,7 @@ export const TIER_FX: Record<RuneTier, TierFx> = {
     beams: { count: 9, duration: 2800, prismatic: true },
     blackout: { fade: 110, hold: 140 },
     crack: false, distort: true, timeScale: 2,
-    sound: 'crescendo', scene: 'whiteout', letters: true,
+    sound: 'crescendo', letters: true,
   },
 
   /* Singular — the Void. Black and silent, then the screen breaks.
@@ -212,7 +197,7 @@ export const TIER_FX: Record<RuneTier, TierFx> = {
        whole trick: every other rung gives you something immediately. */
     blackout: { fade: 160, hold: 500 },
     crack: true, distort: true, timeScale: 2,
-    sound: 'void', scene: 'spiral', letters: true,
+    sound: 'void', letters: true,
   },
 };
 
@@ -260,7 +245,7 @@ export function scaleFx(fx: TierFx, budget: FxBudget): TierFx {
       shake: null, wave: null, particles: null, shower: null,
       lightning: null, beams: null, blackout: null,
       crack: false, distort: false, timeScale: 1,
-      scene: 'none',
+     
       letters: false,
       // The wash stays, held rather than pulsed, and short.
       flash: fx.flash ? { duration: Math.min(fx.flash.duration, 700), opacity: fx.flash.opacity * 0.6 } : null,

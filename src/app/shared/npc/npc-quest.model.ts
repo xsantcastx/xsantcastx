@@ -184,7 +184,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
         gold: 100_000,
         xp: 1_200,
         energy: 'aether',
-        cosmetic: { id: 'cursor-trail', variant: 'aether' },
+        cosmetic: { id: 'achievement-frame', variant: 'prismatic' },
       },
     },
     {
@@ -258,7 +258,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
         gold: 100_000,
         xp: 1_200,
         energy: 'nox',
-        cosmetic: { id: 'cursor-trail', variant: 'nox' },
+        cosmetic: { id: 'achievement-frame', variant: 'obsidian' },
       },
     },
     {
@@ -323,7 +323,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
       reward: {
         gold: 100_000,
         xp: 1_200,
-        cosmetic: { id: 'xp-bar-skin', variant: 'molten' },
+        cosmetic: { id: 'achievement-frame', variant: 'molten' },
       },
     },
     {
@@ -450,7 +450,7 @@ export const NPC_CHAINS: Readonly<Record<NpcId, readonly NpcQuestStep[]>> = {
       reward: {
         gold: 100_000,
         xp: 1_200,
-        cosmetic: { id: 'cursor-trail', variant: 'eclipse' },
+        cosmetic: { id: 'achievement-frame', variant: 'golden' },
       },
     },
     {

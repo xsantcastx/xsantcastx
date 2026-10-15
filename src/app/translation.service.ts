@@ -302,12 +302,6 @@ export class TranslationService {
     'work.verb.foraging': { en: 'gather', es: 'recolectar' },
     'work.verb.prospecting': { en: 'survey', es: 'sondear' },
 
-    'infernal.evidence.fracture.title': { en: 'Fracture pattern', es: 'Patron de fractura' },
-    'infernal.evidence.fracture.body': { en: 'The shard will hold if it is bound now. Delay lets the Seam Eater reach the join.', es: 'El fragmento aguantara si se ata ahora. Retrasar deja que el Devorador de Costuras alcance la junta.' },
-    'infernal.evidence.ledger.title': { en: 'District heat ledger', es: 'Libro de calor del distrito' },
-    'infernal.evidence.ledger.body': { en: 'A central brace redirects the surge through Edrin\'s district. The names on the ledger are specific, not abstract.', es: 'Un refuerzo central desvia la oleada por el distrito de Edrin. Los nombres del libro son concretos, no abstractos.' },
-    'infernal.evidence.brace.title': { en: 'Unfinished oathsteel brace', es: 'Refuerzo de oathsteel inacabado' },
-    'infernal.evidence.brace.body': { en: 'A slower distributed brace keeps heat in the works. It risks losing the shard and leaves visible damage across the landmark.', es: 'Un refuerzo distribuido mas lento deja el calor en las obras. Arriesga el fragmento y deja dano visible en el hito.' },
     'infernal.choice.central.title': { en: 'Emergency central brace', es: 'Refuerzo central de emergencia' },
     'infernal.choice.central.body': { en: 'Save the works now. Mark Edrin\'s district for heat rationing.', es: 'Salva las obras ahora. Marca el distrito de Edrin para racion de calor.' },
     'infernal.choice.central.consequence': { en: 'The works hold. Heat rationing is already posted on Edrin\'s street. The cost has a name.', es: 'Las obras aguantan. La racion de calor ya esta publicada en la calle de Edrin. El costo tiene nombre.' },

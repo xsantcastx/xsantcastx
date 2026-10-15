@@ -83,6 +83,8 @@ import {
 import { npcById } from '../shared/npc/npc.model';
 import { NpcQuestService } from '../shared/npc/npc-quest.service';
 import { QuestService } from '../shared/quests/quest.service';
+import { GlobalEggTriggersService } from '../shared/easter-eggs/global-egg-triggers.service';
+import { CodexSecretsService } from '../codex/codex-secrets.service';
 import { STORY_I18N } from '../shared/story/story.i18n';
 import { StoryService } from '../shared/story/story.service';
 import { STORY_CARD_PARAGRAPHS } from '../shared/story/story';
@@ -413,6 +415,9 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly quests = inject(NpcQuestService);
   /** The quest board's visit ledger: panels and realm towns count as the halls they replaced. */
   private readonly questBoard = inject(QuestService);
+  /** The same visit, for the speed-demon egg and the Codex's route secrets (both keyed on old URLs). */
+  private readonly hallEggs = inject(GlobalEggTriggersService);
+  private readonly secrets = inject(CodexSecretsService);
   private readonly openedAt = Date.now();
   /** The act-boundary card on screen, or null. */
   storyCard: { id: StoryCardId; paragraphs: string[] } | null = null;
@@ -996,7 +1001,10 @@ export class SideScrollerComponent implements OnDestroy {
    * records that realm's hall, through the same ledger NavigationEnd fed.
    */
   private noteVisit(path: string | undefined): void {
-    if (path) this.questBoard.addToSet('pages', path);
+    if (!path) return;
+    this.questBoard.addToSet('pages', path);
+    this.hallEggs.noteHall(path);
+    this.secrets.visit(path);
   }
   private toastLoot(text: string, art?: string): void {
     const key = ++this.toastKey;

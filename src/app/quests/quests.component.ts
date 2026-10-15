@@ -27,7 +27,7 @@ import { Subscription } from 'rxjs';
 import { QuestBoard, QuestLogEntry, QuestService } from '../shared/quests/quest.service';
 import type { Quest } from '../shared/quests/quest.model';
 import { ChallengePanelComponent } from '../shared/challenges/challenge-panel.component';
-import { countdownTo } from '../shared/quests/quest-drawer.component';
+import { countdownTo } from '../shared/quests/quest-countdown';
 import { InspectButtonComponent } from '../shared/entity/inspect-button.component';
 import { DelveMissionState, NpcQuestService } from '../shared/npc/npc-quest.service';
 import { NPCS, type NpcId } from '../shared/npc/npc.model';
