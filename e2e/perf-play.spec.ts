@@ -36,8 +36,13 @@ const SECONDS = Number(process.env['PLAY_PERF_SECONDS'] ?? 60);
 const OUT = process.env['PLAY_PERF_OUT'];
 /** A directory: when set, each scene also saves a .cpuprofile, a .heapprofile (open in DevTools) and a screenshot there. */
 const PROFILE_DIR = process.env['PLAY_PERF_PROFILE'];
+/** A directory: when set, each scene also saves a 6 s Chrome trace there. */
+const TRACE_DIR = process.env['PLAY_PERF_TRACE'];
 /** The guard's ceiling: generous on purpose. A 4× throttled headless p95 above this is a real regression. */
 const GUARD_P95_MS = Number(process.env['PLAY_PERF_P95_CEILING'] ?? 70);
+/** The deep Delve guard's ceilings (Furnace Hall). Measured ~33 / ~50 after docs/handoff/delve-perf.md; 51+ / 100 before. */
+const GUARD_DELVE_P95_MS = Number(process.env['PLAY_PERF_DELVE_P95_CEILING'] ?? 70);
+const GUARD_DELVE_P50_MS = Number(process.env['PLAY_PERF_DELVE_P50_CEILING'] ?? 45);
 
 /**
  * PLAY_PERF_GPU=1 launches Chromium with the Metal GPU (macOS): canvas 2D is
@@ -132,13 +137,25 @@ async function measure(page: Page, cdp: CDPSession, scene: string, walk: boolean
   const busyStart = await mainThread(cdp);
   const end = Date.now() + SECONDS * 1000;
   let dir: 'd' | 'a' = 'd';
+  let tracing = false;
+  if (TRACE_DIR) {
+    // A Chrome trace of the first 6 s of the window (open in DevTools → Performance): splits the native time
+    // the CPU profile lumps into "(program)" into raster, paint, style, layout and GC.
+    await page.context().browser()!.startTracing(page, {
+      path: `${TRACE_DIR}/${scene.replace(/[^a-z0-9-]+/gi, '_')}.trace.json`,
+      categories: ['devtools.timeline', 'disabled-by-default-devtools.timeline', 'blink', 'cc', 'gpu', 'v8', 'toplevel'],
+    });
+    tracing = true;
+  }
   while (Date.now() < end) {
+    if (tracing && Date.now() > end - SECONDS * 1000 + 6000) { await page.context().browser()!.stopTracing(); tracing = false; }
     const slice = Math.min(3000, end - Date.now());
     if (walk) await page.keyboard.down(dir);
     await page.waitForTimeout(slice);
     if (walk) await page.keyboard.up(dir);
     if (walk !== 'east') dir = dir === 'd' ? 'a' : 'd';
   }
+  if (tracing) await page.context().browser()!.stopTracing();
   const busyEnd = await mainThread(cdp);
   const { profile } = await cdp.send('HeapProfiler.stopSampling') as unknown as { profile: { head: ProfileNode } };
   if (PROFILE_DIR) await page.screenshot({ path: `${PROFILE_DIR}/${scene.replace(/[^a-z0-9-]+/gi, '_')}.png` });
@@ -192,6 +209,27 @@ async function travelByPlaces(page: Page, label: RegExp, area: string): Promise<
  * Deliberately skipped unless asked for (not a left-over isolation): the
  * harness takes ~8 minutes, and frame timing on shared CI runners means nothing.
  */
+/**
+ * The Furnace Hall with the Banked Furnace awake (its face, core, breath and vents, the trough, embers
+ * spilling): walk to the hearth, wake it (E). The rows below the Magma Halls exist only on a build with the
+ * Underhearth. Shared by the harness and the Delve guard.
+ */
+async function atFurnaceHall(page: Page): Promise<void> {
+  const f = new DelveFixture();
+  f.claimed = ['warden-defeated', 'underhearth-unsealed', 'underhearth-reached'];
+  await seed(page, { ...RESTORED, ...withSectors(f, [{ col: 60, row: 109, id: 'camp' }]), ...bagOf({ 'four-hammer-marks': 1 }) });
+  await openPlay(page, '?at=delve');
+  const descend = page.getByRole('button', { name: /Descend to your camp/ });
+  await expect(descend).toBeVisible({ timeout: 60000 });
+  await descend.click();
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
+  await page.waitForTimeout(1500);
+  await focusWorld(page);
+  await page.keyboard.down('d'); await page.waitForTimeout(1300); await page.keyboard.up('d');
+  await page.keyboard.press('e');
+  await page.waitForTimeout(500);
+}
+
 const harness = RUN ? test.describe : test.describe.skip;
 const guard = RUN && !process.env['CI'] ? test.describe : test.describe.skip;
 
@@ -270,20 +308,7 @@ harness('/play on a throttled phone', () => {
   // Halls only exist on a build with the Underhearth: on one without, the camp is not found (no "before").
   test('delve: the Furnace Hall, the Banked Furnace awake', async ({ page }) => {
     const cdp = await phone(page);
-    const f = new DelveFixture();
-    f.claimed = ['warden-defeated', 'underhearth-unsealed', 'underhearth-reached'];
-    await seed(page, { ...RESTORED, ...withSectors(f, [{ col: 60, row: 109, id: 'camp' }]), ...bagOf({ 'four-hammer-marks': 1 }) });
-    await openPlay(page, '?at=delve');
-    const descend = page.getByRole('button', { name: /Descend to your camp/ });
-    await expect(descend).toBeVisible({ timeout: 60000 });
-    await descend.click();
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
-    await page.waitForTimeout(1500);
-    // Walk to the hearth and wake it (E), then measure walking the hall either side of it.
-    await focusWorld(page);
-    await page.keyboard.down('d'); await page.waitForTimeout(1300); await page.keyboard.up('d');
-    await page.keyboard.press('e');
-    await page.waitForTimeout(500);
+    await atFurnaceHall(page);
     await measure(page, cdp, 'delve:furnace-hall');
   });
 
@@ -345,5 +370,17 @@ guard('/play perf guard', () => {
     await openPlay(page);
     const r = await measure(page, cdp, 'guard:infernal');
     expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_P95_MS);
+  });
+
+  // The deep Delve (docs/handoff/delve-perf.md): the Furnace Hall was the heaviest scene left after the
+  // Underhearth's fixes (before them: p50 51-118 ms, p95 100-116 ms; after: ~33 / ~50). A p95 above the
+  // ceiling means a full-frame pass came back (a pattern, gradient or rig drawn where it cannot be seen).
+  test('Delve Furnace Hall p95 frame time at 4× CPU throttle stays under the ceiling', async ({ page }) => {
+    test.setTimeout(150000);
+    const cdp = await phone(page);
+    await atFurnaceHall(page);
+    const r = await measure(page, cdp, 'guard:furnace-hall');
+    expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_DELVE_P95_MS);
+    expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_DELVE_P50_MS);
   });
 });
