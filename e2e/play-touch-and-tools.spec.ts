@@ -13,7 +13,7 @@
  * 'rod', 'pickaxe', …) next to `data-keeper-gear` (what is worn).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { blob, canvas, focusWorld, openPlay, seed, walk, walkTo } from './play-helpers';
+import { blob, canvas, focusWorld, openPlay, seed, walk, walkTo, SHAFT_X } from './play-helpers';
 import { CELL, DelveFixture } from './play-delve-fixtures';
 import { INVENTORY_ERA } from '../src/app/shared/rpg/inventory.model';
 import { REALM_ERA_KEY } from '../src/app/shared/save/realm-era';
@@ -68,7 +68,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       shore.set(14, 34, 'hard-rock');
       await seed(page, { ...shore.blobs(), 'godforge-inventory': INVENTORY, [REALM_ERA_KEY]: String(INVENTORY_ERA), 'preferred-language': 'en' });
       await openPlay(page);
-      await walkTo(page, 590, 30);
+      await walkTo(page, SHAFT_X, 30);
       const descend = page.getByRole('button', { name: /Descend to your camp/ });
       await expect(descend).toBeVisible();
       await descend.click();

@@ -73,6 +73,8 @@ const DELVE = 'ember-delve';
 const QUARRY = 'ember-quarry';
 /** Just east of the Waystone, short of the first Rivet Maw (they guard from x 2250). */
 const MAW_APPROACH_X = 2120;
+/** One World: where the first dig goal walks to: beside the mine head, past its bedrock ledge (col 8). */
+const WORLD_DIG_X = 260;
 /** What the Seamworks Forge asks for the Basalt Edge. */
 const BLADE_ORE = 6;
 const BLADE_EMBER = 1;
@@ -119,7 +121,8 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
   if (facts.areaId === QUARRY) {
     return id === 'hunt' ? view('play.goal.hunt.here', null) : view(`play.goal.${id}.back`, { station: 'passage' });
   }
-  if (facts.areaId !== HOME_TOWN) return view('play.goal.away', { station: 'waystone' });
+  // One World: the wilds east and west are the same world as the town; the goals are a walk away, not a Waystone.
+  if (facts.areaId !== HOME_TOWN && !facts.world) return view('play.goal.away', { station: 'waystone' });
 
   switch (id) {
     // One World: the plot is west along the street; walk to its Forge.
@@ -131,7 +134,8 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
         ? view('play.goal.craft.forge', { station: 'forge' })
         : view('play.goal.craft.mine', { station: 'ore' });
     case 'hunt': return view('play.goal.hunt.town', { x: facts.world?.mawX ?? MAW_APPROACH_X });
-    case 'delve': return view('play.goal.delve.town', { station: 'delve' });
+    // One World: the Delve is under the street; dig beside the headframe (its ledge is bedrock), where the old shaft dropped you.
+    case 'delve': return facts.world ? view('play.goal.delve.world', { x: WORLD_DIG_X }) : view('play.goal.delve.town', { station: 'delve' });
   }
 }
 

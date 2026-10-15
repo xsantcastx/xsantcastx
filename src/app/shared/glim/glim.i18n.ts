@@ -38,12 +38,12 @@ export const GLIM_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.glim.hint.back.2': { en: 'Take the way back marked on the goal line; Show me walks it the short way.', es: 'Toma el camino de vuelta que marca el objetivo; Llevame lo recorre por el atajo.' },
 
   'play.glim.hint.buy.town.1': { en: 'Gold here comes from work. You have a plot with a Forge that pays you to strike it.', es: 'Aqui el oro sale del trabajo. Tienes una parcela con una Forja que te paga por golpearla.' },
-  'play.glim.hint.buy.town.2': { en: 'Your Homestead\'s gate is between the Seamworks Forge and the Crafting Bench. Walk in.', es: 'La puerta de Tu Hacienda esta entre la Seamworks Forge y el Crafting Bench. Entra.' },
+  'play.glim.hint.buy.town.2': { en: 'Your Homestead is west along the street, past the mine head. Walk in; the Forge is the big one.', es: 'Tu Hacienda esta al oeste por la calle, pasada la boca de la mina. Entra; la Forja es la grande.' },
   'play.glim.hint.buy.home.1': { en: 'Every strike on the Forge is a coin. Fifteen of them buy something that strikes for you.', es: 'Cada golpe a la Forja es una moneda. Quince compran algo que golpea por ti.' },
   'play.glim.hint.buy.home.2': { en: 'Stand at the Forge and Interact (E) to 15 Gold, then press Buy on Forge Bellows.', es: 'Ponte en la Forja e interactua (E) hasta 15 de oro, luego pulsa Comprar en Forge Bellows.' },
 
   'play.glim.hint.craft.mine.1': { en: 'A blade starts as rock. There\'s a seam on this floor that glows where the ore is.', es: 'Una hoja empieza siendo roca. En este suelo hay una veta que brilla donde esta el mineral.' },
-  'play.glim.hint.craft.mine.2': { en: 'The Cinder Ore seam is west of the Forge, by the shaft. Mine it (E); an ember turns up by your 8th ore.', es: 'La veta de Cinder Ore esta al oeste de la Forja, junto al pozo. Picala (E); una brasa aparece antes del 8.o mineral.' },
+  'play.glim.hint.craft.mine.2': { en: 'The Cinder Ore seam is west of the Forge, by the mine head. Mine it (E); an ember turns up by your 8th ore.', es: 'La veta de Cinder Ore esta al oeste de la Forja, junto al pozo. Picala (E); una brasa aparece antes del 8.o mineral.' },
   'play.glim.hint.craft.forge.1': { en: 'You\'re carrying a blade\'s worth of ore. It only needs heat.', es: 'Llevas mineral para una hoja. Solo le falta calor.' },
   'play.glim.hint.craft.forge.2': { en: 'The Seamworks Forge is the anvil by the fire. Use it (E) to make the Basalt Edge.', es: 'La Seamworks Forge es el yunque junto al fuego. Usala (E) para hacer la Basalt Edge.' },
   'play.glim.hint.craft.equip.1': { en: 'A blade in a bag protects nobody.', es: 'Una hoja en la bolsa no protege a nadie.' },
@@ -56,6 +56,8 @@ export const GLIM_I18N: Readonly<Record<string, { en: string; es: string }>> = {
 
   'play.glim.hint.delve.town.1': { en: 'The way down is a shaft in this very floor. I can smell the cold coming up it.', es: 'El camino hacia abajo es un pozo en este mismo suelo. Huelo el frio que sube por el.' },
   'play.glim.hint.delve.town.2': { en: 'The Ember Delve shaft is just east of the ore seam. Walk onto it and Interact (E).', es: 'El pozo de la Sima de Brasas esta al este de la veta. Ponte encima e interactua (E).' },
+  'play.glim.hint.delve.world.1': { en: 'The Delve is not somewhere else. It is the rock under this street.', es: 'La Sima no esta en otra parte. Es la roca bajo esta calle.' },
+  'play.glim.hint.delve.world.2': { en: 'Beside the mine head, west end of the street: hold Down (S) and attack (J). Its own ledge is bedrock.', es: 'Junto a la boca de la mina, al oeste de la calle: manten Abajo (S) y ataca (J). Su propio saliente es roca madre.' },
   'play.glim.hint.delve.dig.1': { en: 'The rock gives to a pick. Any block next to you will do.', es: 'La roca cede ante el pico. Cualquier bloque a tu lado sirve.' },
   'play.glim.hint.delve.dig.2': { en: 'Hold Down (S) and attack (J). On a phone, tap a block beside you.', es: 'Manten Abajo (S) y ataca (J). En el movil, toca un bloque a tu lado.' },
 

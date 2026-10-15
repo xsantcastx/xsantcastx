@@ -97,9 +97,8 @@ test.describe('First session, played', () => {
     // ── Goal 2: forge the Basalt Edge, then equip it. No fighting needed. ──
     await expect.poll(() => goal(page)).toBe('craft');
     await expect(guide(page)).toContainText('Goal 2 of 4');
-    await showMe(page); // back to the Seamworks
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks', { timeout: 30000 });
-    await expect(guide(page)).toContainText('Mine the Cinder Ore seam'); // the town line, not the Homestead's way back
+    // One World: the plot is on the same street; the line names the seam straight away (no "head back").
+    await expect(guide(page)).toContainText('Mine the Cinder Ore seam');
     await showMe(page); // walks to the Cinder Ore seam and mines once
     await expect(page.locator('.prompt')).toContainText(/Cinder Ore|Seam recovering/i, { timeout: 20000 });
     // The seam recovers between strikes; an ember turns up by the 8th ore.
@@ -146,9 +145,10 @@ test.describe('First session, played', () => {
     // ── Goal 4: dig in the Ember Delve. ──
     await expect.poll(() => goal(page), { timeout: 10000 }).toBe('delve');
     await expect(guide(page)).toContainText('Goal 4 of 4');
-    await showMe(page); // walks into the shaft
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 30000 });
-    await expect(guide(page)).toContainText('dig your first block');
+    // One World: the Delve is under the street; Show me walks to the old shaft's spot beside the mine head.
+    await expect(guide(page)).toContainText('under the street');
+    await showMe(page);
+    await expect.poll(async () => Number(await canvas(page).getAttribute('data-player-x')), { timeout: 40000 }).toBeLessThan(300);
     await page.waitForTimeout(400);
     await focusWorld(page);
     await page.keyboard.down('s');

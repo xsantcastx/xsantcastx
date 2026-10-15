@@ -11,7 +11,7 @@
  * output/liquids-fishing/ when FISH_SHOTS is set (not committed).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, playerX, seed, walkTo } from './play-helpers';
+import { bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, playerX, seed, walkTo, SHAFT_X, delveSave } from './play-helpers';
 import { CELL, DelveFixture, nodeIndex, SPEC } from './play-delve-fixtures';
 import { decodeCells } from '../src/app/shared/delve/delve-save.model';
 
@@ -35,7 +35,7 @@ function shoreWithLava(): DelveFixture {
 
 async function descend(page: Page): Promise<void> {
   await openPlay(page);
-  await walkTo(page, 590, 30);
+  await walkTo(page, SHAFT_X, 30);
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   await expect(button).toBeVisible();
   await button.click();
@@ -73,7 +73,7 @@ async function press(page: Page, touch: boolean, at: { x: number; y: number }): 
 }
 
 async function kindAt(page: Page, col: number, row: number): Promise<number | undefined> {
-  const save = await blob<{ areas?: Record<string, { cells: string }> }>(page, 'godforge-delve');
+  const save = await delveSave<{ areas?: Record<string, { cells: string }> }>(page);
   return decodeCells(save?.areas?.['ember-delve']?.cells ?? '').get(idx(col, row));
 }
 
@@ -104,12 +104,12 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       expect(await hotbarCount(page, 'Seam Bucket')).toBe(1);
       await shot(page, `${label}-obsidian`);
       await page.waitForTimeout(2000); // the 1.5 s debounced write carries the liquid too
-      const save = await blob<{ areas: Record<string, { wet?: string; liquids?: string }> }>(page, 'godforge-delve');
+      const save = await delveSave<{ areas: Record<string, { wet?: string; liquids?: string }> }>(page);
       expect(save?.areas['ember-delve']?.wet, 'the settled liquid is filed under its liquid layout').toContain(':l');
       // Reload: the obsidian is a saved cell; the other lava cell is still lava.
       await descend(page);
       expect(await kindAt(page, 14, 35)).toBe(nodeIndex('obsidian'));
-      const liquids = decodeCells((await blob<{ areas: Record<string, { liquids?: string }> }>(page, 'godforge-delve'))?.areas['ember-delve']?.liquids ?? '');
+      const liquids = decodeCells((await delveSave<{ areas: Record<string, { liquids?: string }> }>(page))?.areas['ember-delve']?.liquids ?? '');
       expect(liquids.get(idx(13, 35)), 'lava at 13,35 (type 2 × 16 + level 8)').toBe(2 * 16 + 8);
       await shot(page, `${label}-reloaded`);
     });

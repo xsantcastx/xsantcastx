@@ -9,7 +9,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'fs';
 import { resolve } from 'path';
-import { blob, focusWorld, openPlay, placePanel, purse, seed, walkTo, canvas } from './play-helpers';
+import { blob, focusWorld, openPlay, placePanel, purse, seed, walkTo, canvas, travelToTown } from './play-helpers';
 import { playReels } from '../src/app/shared/reels/reels.model';
 import { seededRng } from '../src/app/shared/games/seeded-rng';
 
@@ -51,8 +51,8 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       } else {
         // Travel to Umbral by the Waystone, then walk to the Reels beside the Croupier.
         await openPlay(page, '?at=waystone');
-        await page.locator('.waystone-road', { hasText: 'Umbral' }).click();
-        await expect(canvas(page)).toHaveAttribute('data-area', 'Nocturne Archive');
+        await travelToTown(page, 'Umbral');
+        await expect(canvas(page)).toHaveAttribute('data-area', 'Nocturne Archive', { timeout: 10000 });
         await expect(placePanel(page)).toBeHidden();
         await focusWorld(page);
         await walkTo(page, 975, 40);

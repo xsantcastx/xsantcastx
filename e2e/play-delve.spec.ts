@@ -9,25 +9,28 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import {
-  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, seed, settleBetween, stackQty, walkTo,
-} from './play-helpers';
+  bag, blob, canvas, focusWorld, hotbarCount, messageLine, openPlay, placePanel, playerX, seed, settleBetween, stackQty, walkTo, SHAFT_X, delveSave } from './play-helpers';
 
 const SEED = 424242;
 const FRESH_DELVE = { 'godforge-delve': { version: 1, seed: SEED, createdAt: 1, areas: {}, claimed: [] } };
-/** Where the shaft drops the Keeper: x 260, columns 7 and 8 under the feet. */
+/**
+ * One World: the Delve is under the Seamworks' street (rows ≥ 0 are the old
+ * Delve's, byte for byte). x 260 is where the old shaft dropped the Keeper:
+ * columns 7 and 8 under the feet, the same rock.
+ */
 const ARRIVE_X = 260;
 
 interface DelveBlob { areas?: Record<string, { layout: string; cells: string }>; chests?: Record<string, unknown> }
 
 async function delveCells(page: Page): Promise<string> {
-  return (await blob<DelveBlob>(page, 'godforge-delve'))?.areas?.['ember-delve']?.cells ?? '';
+  return (await delveSave<DelveBlob>(page))?.areas?.['ember-delve']?.cells ?? '';
 }
 
 async function enterDelve(page: Page): Promise<void> {
-  await walkTo(page, 590, 30);
-  await page.keyboard.press('e');
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
-  await expect.poll(() => playerX(page)).toBe(ARRIVE_X);
+  // One World: walk the street to the old shaft's spot, west of the Vault: the Delve's rock is under the feet.
+  await expect(canvas(page)).toHaveAttribute('data-world', 'ember');
+  await focusWorld(page);
+  await walkTo(page, ARRIVE_X, 8);
   await page.waitForTimeout(400);
   await focusWorld(page);
 }
@@ -117,11 +120,11 @@ test.describe('Ember Delve, played', () => {
     // arrival columns and the reloaded Keeper lands on rock beside it. Stand in
     // 246..266 instead: the 26 px body then spans exactly columns 7 and 8.
     await settleBetween(page, ARRIVE_X - 14, ARRIVE_X + 6);
-    await digDown(page, 12); // six rows of two columns
+    await digDown(page, 14); // seven rows of two columns (six a parkour mantle climbs out of)
     // The dig is written 1.5 s after the last swing.
-    await expect.poll(async () => (await delveCells(page)).split(',').length, { timeout: 8000 }).toBeGreaterThanOrEqual(12);
+    await expect.poll(async () => (await delveCells(page)).split(',').length, { timeout: 8000 }).toBeGreaterThanOrEqual(14);
     const cells = await delveCells(page);
-    // Six rows down a jump cannot clear the wall.
+    // Seven rows down neither a jump nor the hands on the lip clear the wall.
     expect(await tryEscape(page)).toBeLessThan(40);
     await saveAndReload(page);
     expect(await delveCells(page)).toBe(cells);
@@ -228,7 +231,7 @@ test.describe('Ember Delve, played', () => {
     await page.keyboard.press('Escape');
     await expect(placePanel(page)).toBeHidden();
     await saveAndReload(page);
-    expect(Object.keys((await blob<DelveBlob>(page, 'godforge-delve'))?.chests ?? {})).toHaveLength(1);
+    expect(Object.keys((await delveSave<DelveBlob>(page))?.chests ?? {})).toHaveLength(1);
     await enterDelve(page);
     await walkUntilBlocked(page);
     await expect(page.locator('.prompt')).toContainText('Open the chest');
@@ -259,7 +262,7 @@ test.describe('Ember Delve, played', () => {
     await page.getByRole('button', { name: 'Return to camp', exact: true }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
     await focusWorld(page);
-    await walkTo(page, 590, 30);
+    await walkTo(page, SHAFT_X, 30);
     const descend = page.getByRole('button', { name: /Descend to your camp/ });
     await expect(descend).toBeVisible();
     await descend.click();

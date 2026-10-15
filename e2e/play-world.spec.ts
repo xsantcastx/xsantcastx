@@ -1,18 +1,22 @@
 /**
- * play-world.spec.ts — travel the five realm towns through the Waystone the way
- * a player does, and check the `?at=` deep links: the right panel opens, Escape
- * closes it, and keyboard focus is back on the game canvas.
+ * play-world.spec.ts — travel the five realm towns the way a player does, and
+ * check the `?at=` deep links: the right panel opens, Escape closes it, and
+ * keyboard focus is back on the game canvas.
+ *
+ * One World (the P2 flip): every Waystone opens the Travel map. The Seamworks'
+ * town stone is Sera's trunk line: the four other realms' towns (their scenes
+ * as they are until P3) are rows on it, and each of their stones lists the
+ * Seamworks stone to come home by.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { canvas, openPlay, placePanel, seed, walkTo } from './play-helpers';
 
-/** Each built town: its Waystone x, its name (the canvas data-area) and one panel station. */
+/** Each other built town: its world (the Travel map row `<world>:town`), its Waystone x, its name (the canvas data-area). */
 const TOWNS = [
-  { realm: 'Luminous', name: 'Heliograph Court', waystone: 1620, station: 'market', title: 'The Market' },
-  { realm: 'Umbral', name: 'Nocturne Archive', waystone: 360, station: 'gambler', title: 'The Gambler' },
-  { realm: 'Celestial', name: 'Meridian Orrery', waystone: 1220, station: 'codex', title: 'The Codex' },
-  { realm: 'Verdant', name: 'Rootglass Canopy', waystone: 380, station: 'quests', title: 'Quest Board' },
-  { realm: 'Infernal', name: 'Basalt Seamworks', waystone: 2010, station: 'crafting', title: 'Crafting Bench' },
+  { world: 'prism', name: 'Heliograph Court', waystone: 1620 },
+  { world: 'ink', name: 'Nocturne Archive', waystone: 360 },
+  { world: 'orrery', name: 'Meridian Orrery', waystone: 1220 },
+  { world: 'root', name: 'Rootglass Canopy', waystone: 380 },
 ] as const;
 
 async function focusIsCanvas(page: Page): Promise<boolean> {
@@ -25,38 +29,43 @@ async function closeWithEscape(page: Page): Promise<void> {
   await expect.poll(() => focusIsCanvas(page), { message: 'focus did not return to the canvas' }).toBe(true);
 }
 
+/** On the open Travel map: pick a row and travel (the channel, then the step). */
+async function travel(page: Page, row: string): Promise<void> {
+  await page.locator(`[data-row="${row}"]`).click();
+  await page.locator('[data-act="travel"]').click();
+  await expect(placePanel(page)).toBeHidden({ timeout: 10000 });
+}
+
 test.describe('Waystone travel and ?at= deep links', () => {
-  test('walk to the Waystone, travel to every built town and back', async ({ page }) => {
+  test('from the Seamworks stone to every other town, each town\'s stone, and home again', async ({ page }) => {
     test.setTimeout(240000);
-    await seed(page);
-    await openPlay(page);
-    let here: number = TOWNS[TOWNS.length - 1].waystone;
-    await walkTo(page, here, 40);
+    await seed(page, { 'preferred-language': 'en' });
     for (const town of TOWNS) {
-      await page.keyboard.press('e');
+      await openPlay(page, '?at=waystone');
       await expect(placePanel(page)).toBeVisible();
-      await expect(page.locator('#place-title')).toHaveText('The Waystone');
+      await expect(page.locator('#place-title')).toHaveText('Travel');
       await expect(page).toHaveURL(/[?&]at=waystone/);
-      const road = page.locator('.waystone-road', { hasText: town.realm });
-      await expect(road).toBeEnabled();
-      await road.click();
-      await expect(placePanel(page)).toBeHidden();
+      await travel(page, `${town.world}:town`);
       await expect(canvas(page)).toHaveAttribute('data-area', town.name);
       await expect(page.locator('#game-title')).toHaveText(town.name);
       await expect.poll(() => focusIsCanvas(page)).toBe(true);
-      // Walk to this town's own Waystone with the keyboard, ready for the next leg.
-      here = town.waystone;
-      await walkTo(page, here, 40);
+      // That town's own Waystone, walked to with the keyboard: the same Travel map, the Seamworks stone on it.
+      await walkTo(page, town.waystone, 40);
       await expect(page.locator('.prompt')).toContainText(/Waystone/i);
+      await page.keyboard.press('e');
+      await expect(page.locator('#place-title')).toHaveText('Travel');
+      await travel(page, 'ember:town');
+      await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
+      await expect(canvas(page)).toHaveAttribute('data-world', 'ember');
     }
   });
 
-  test('?at=waystone opens the stone; Escape closes it and focus returns to the canvas', async ({ page }) => {
-    await seed(page);
+  test('?at=waystone opens the town stone\'s Travel map; Escape closes it and focus returns to the canvas', async ({ page }) => {
+    await seed(page, { 'preferred-language': 'en' });
     await openPlay(page, '?at=waystone');
     await expect(placePanel(page)).toBeVisible();
-    await expect(page.locator('#place-title')).toHaveText('The Waystone');
-    await expect(page.locator('.waystone-road.here')).toContainText('Infernal');
+    await expect(page.locator('#place-title')).toHaveText('Travel');
+    await expect(page.locator('[data-row="ember:town"]')).toContainText('You are here');
     await closeWithEscape(page);
     await expect(page).not.toHaveURL(/[?&]at=/);
   });
@@ -80,12 +89,10 @@ test.describe('Waystone travel and ?at= deep links', () => {
   // Was playtest-findings.md P-2: the town the Keeper travelled to is now saved
   // (`eclipse-play-world-v1`) and restored on load; a `?at=` link still wins.
   test('a deep link copied in another town reopens that place after a reload', async ({ page }) => {
-    await seed(page);
+    await seed(page, { 'preferred-language': 'en' });
     await openPlay(page, '?at=waystone');
-    await page.locator('.waystone-road', { hasText: 'Umbral' }).click();
+    await travel(page, 'ink:town');
     await expect(canvas(page)).toHaveAttribute('data-area', 'Nocturne Archive');
-    // The panel folds away for 160 ms with the world still paused: wait for it, as a player would.
-    await expect(placePanel(page)).toBeHidden();
     await expect.poll(() => focusIsCanvas(page)).toBe(true);
     await walkTo(page, 1235, 40);
     await page.keyboard.press('e');

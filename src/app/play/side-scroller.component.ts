@@ -2361,6 +2361,8 @@ export class SideScrollerComponent implements OnDestroy {
       if (el.getAttribute('data-stations') !== stations) el.setAttribute('data-stations', stations);
       const keepers = this.engine.settlementKeepers.map(k => `${k.id}@${k.x},${k.y}${k.upstairs ? ':up' : ''}${k.mark ? `:${k.mark}` : ''}`).join(';');
       if (el.getAttribute('data-keepers') !== keepers) el.setAttribute('data-keepers', keepers);
+      const cam = this.engine.cameraAt, camera = `${cam.x},${cam.y}`;
+      if (el.getAttribute('data-camera') !== camera) el.setAttribute('data-camera', camera);
     }
     if (this.state.world && this.now - this.resumeAt >= 10_000 && this.engine.safeSpot && !this.state.paused) {
       this.resumeAt = this.now;

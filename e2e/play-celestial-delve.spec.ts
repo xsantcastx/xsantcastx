@@ -16,7 +16,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { activity, DelveFixture, DELVE_SEED, SPEC, xpForLevel } from './play-delve-fixtures';
-import { canvas, ERA, focusWorld, ledger, messageLine, openPlay, playerX, seed, stackQty, walkTo, type Blobs } from './play-helpers';
+import { canvas, ERA, focusWorld, ledger, messageLine, openPlay, playerX, seed, stackQty, walkTo, type Blobs, SHAFT_X } from './play-helpers';
 import { WARDEN_FLAG, nodeIndex } from '../src/app/play/engine/terrain';
 import { latticePlans, sectorContext } from '../src/app/play/engine/sector-gen';
 import { CORE_GATE, CORE_SEAM } from '../src/app/play/engine/realm-kit';
@@ -94,7 +94,7 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await openPlay(page);
       const button = page.getByRole('button', { name: /Descend to your camp/ });
       await expect(async () => {
-        await walkTo(page, 590, 12);
+        await walkTo(page, SHAFT_X, 12);
         await expect(button).toBeVisible({ timeout: 4000 });
       }).toPass({ timeout: 40_000 });
       await button.click();
@@ -102,7 +102,8 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await page.waitForTimeout(1200);
       // Find the gate: Glim notices it.
       await expect(canvas(page)).toHaveAttribute('data-gate', /^celestial:/, { timeout: 10_000 });
-      await expect(messageLine(page)).toContainText(/Celestial/, { timeout: 6000 });
+      // Glim notices it (a Pim bounty for reaching the sector can take the line in the same second: One World counts the sector too).
+      await expect(messageLine(page)).toContainText(/Celestial|Bounty done/, { timeout: 6000 });
       await shot(page, `${label}-gate-found`);
       // Attune with the sigil, and step through.
       await standAt(page, gatePlan().col + 4);

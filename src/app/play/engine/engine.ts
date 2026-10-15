@@ -1363,6 +1363,8 @@ export class SeamworksEngine {
     if (entrance.area !== this.areaDef) this.enter(entrance.area);
     this.resetPosition(x);
     this.player.y = feet;
+    // Down the ropes facing into the Delve (east): One World's walk to the mine head runs west.
+    this.facing = 1;
     this.worldAt = ''; this.fogAt = NaN;
     this.say('play.delve.campArrive', 'You climb down the ropes to your camp. The fire is still warm.');
     this.report();
@@ -2125,6 +2127,8 @@ export class SeamworksEngine {
     for (const id of seen) this.stonesSeen.add(id);
     for (const s of this.stones) { s.lit = !!s.trunk || lit.has(s.id); s.seen = this.stonesSeen.has(s.id); }
   }
+  /** The camera's top-left in world px (One World: it rises into the sky band; the e2e's screen maths read it). */
+  get cameraAt(): { x: number; y: number } { return { x: Math.round(this.camera), y: Math.round(this.cameraY) }; }
   /** The Waystones of the loaded ring (the Travel map's pins near the Keeper; tests). */
   get worldStones(): readonly StoneView[] { return this.stones; }
   /** The world the Keeper stands in, and the region under them (null outside a world). */

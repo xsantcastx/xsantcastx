@@ -18,7 +18,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import { activity, DelveFixture, DELVE_SEED, SPEC, xpForLevel } from './play-delve-fixtures';
-import { canvas, ERA, focusWorld, ledger, messageLine, openPlay, playerX, seed, stackQty, walkTo, type Blobs } from './play-helpers';
+import { canvas, ERA, focusWorld, ledger, messageLine, openPlay, playerX, seed, stackQty, walkTo, type Blobs, SHAFT_X } from './play-helpers';
 import { WARDEN_FLAG, nodeIndex } from '../src/app/play/engine/terrain';
 import { latticePlans, sectorContext } from '../src/app/play/engine/sector-gen';
 import { CORE_GATE, CORE_SEAM } from '../src/app/play/engine/realm-kit';
@@ -94,7 +94,7 @@ async function intoRealm(page: Page, realm: Realm, touch: boolean, label: string
   await openPlay(page);
   const button = page.getByRole('button', { name: /Descend to your camp/ });
   await expect(async () => {
-    await walkTo(page, 590, 12);
+    await walkTo(page, SHAFT_X, 12);
     await expect(button).toBeVisible({ timeout: 4000 });
   }).toPass({ timeout: 40_000 });
   await button.click();

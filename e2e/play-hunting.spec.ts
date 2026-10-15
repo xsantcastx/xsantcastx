@@ -1,11 +1,13 @@
 /**
- * play-hunting.spec.ts — hunt a Rivet Maw in Ember Quarry with J and the arrow
- * keys, walk over its drops, and check what the kill paid.
+ * play-hunting.spec.ts — hunt a Rivet Maw in the Ember Quarry with J and the
+ * arrow keys, walk over its drops, and check what the kill paid. One World
+ * (P2): the Quarry is a region of the Ember world, east of the Quarry Gate;
+ * the Keeper logs in there (the resume point) with the beacon already lit.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { canvas, ERA, focusWorld, openPlay, playerX, seed, stackQty, walkTo } from './play-helpers';
+import { canvas, ERA, focusWorld, loginAt, openPlay, playerX, seed, stackQty, walkTo, WORLD_COL } from './play-helpers';
 
-/** The beacon is already lit, so the East Passage is open. */
+/** The beacon is already lit, so the Quarry Gate is up. */
 const BEACON_LIT = { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } };
 
 async function tally(page: Page): Promise<string> {
@@ -29,12 +31,9 @@ async function xp(page: Page, discipline: string): Promise<number> {
 }
 
 async function toQuarry(page: Page): Promise<void> {
-  await seed(page, BEACON_LIT);
+  await seed(page, { ...BEACON_LIT, ...loginAt(WORLD_COL.quarry) });
   await openPlay(page);
-  // The Places list walks the Keeper to the passage and through it.
-  await page.getByRole('button', { name: 'Places' }).click();
-  await page.locator('#places-list button', { hasText: 'East Passage' }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 20000 });
   await page.waitForTimeout(500);
   await focusWorld(page);
 }
@@ -53,7 +52,8 @@ async function toQuarry(page: Page): Promise<void> {
  */
 async function huntOne(page: Page): Promise<number> {
   const start = await kills(page);
-  await walkTo(page, 1100, 40);
+  // The Quarry's own Maws roam under the High Roads (x 6420…7480).
+  await walkTo(page, WORLD_COL.quarryMaws * 32, 40);
   let last = await enemyHp(page), stale = 0, moves = 0;
   let dir: 'd' | 'a' = 'd';
   for (let i = 0; i < 200 && (await kills(page)) === start; i++) {

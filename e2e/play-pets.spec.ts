@@ -9,7 +9,7 @@
  * few cells marked for the map). A reload keeps it all.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { blob, canvas, openPlay, playerX, seed, walk, bag } from './play-helpers';
+import { blob, canvas, openPlay, playerX, seed, walk, bag, digIntoDelve } from './play-helpers';
 
 interface Pets { pets: Record<string, { hatched: number; name: string; love: number }>; active: string }
 
@@ -88,9 +88,8 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x8
     await shot(page, `${size.tag}-3-follows`);
 
     // ── A reload keeps it; in the Delve the owlet hoots at ore (the map marks it). ──
-    await openPlay(page, '?at=delve');
-    await page.keyboard.press('e');
-    await expect(world).toHaveAttribute('data-area', 'Ember Delve', { timeout: 10000 });
+    await openPlay(page);
+    await digIntoDelve(page);
     await expect(world).toHaveAttribute('data-pet', 'star-owlet', { timeout: 10000 });
     await expect.poll(async () => Number(await world.getAttribute('data-pet-scent') ?? 0), { timeout: 15000 }).toBeGreaterThan(0);
     await shot(page, `${size.tag}-4-delve-scent`);

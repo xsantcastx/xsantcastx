@@ -11,7 +11,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'fs';
 import { resolve } from 'path';
-import { blob, canvas, focusWorld, openPlay, placePanel, purse, seed, walkTo } from './play-helpers';
+import { blob, canvas, focusWorld, openPlay, placePanel, purse, seed, walkTo, travelToTown } from './play-helpers';
 import { seededRng } from '../src/app/shared/games/seeded-rng';
 import { playRuneDrop } from '../src/app/shared/rune-drop/rune-drop.model';
 import { drawSeam, seamMultiplier } from '../src/app/shared/seam-sweeper/seam-sweeper.model';
@@ -65,8 +65,8 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
         await openPlay(page, '?at=rune-drop');
       } else {
         await openPlay(page, '?at=waystone');
-        await page.locator('.waystone-road', { hasText: 'Umbral' }).click();
-        await expect(canvas(page)).toHaveAttribute('data-area', 'Nocturne Archive');
+        await travelToTown(page, 'Umbral');
+        await expect(canvas(page)).toHaveAttribute('data-area', 'Nocturne Archive', { timeout: 10000 });
         await expect(placePanel(page)).toBeHidden();
         await focusWorld(page);
         await walkTo(page, 1105, 40);

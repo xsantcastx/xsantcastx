@@ -63,6 +63,7 @@ export const GLIM_HINTS: Readonly<Record<string, GlimHintRow>> = {
   'play.goal.hunt.here': { nudge: 'play.glim.hint.hunt.here.1', direction: 'play.glim.hint.hunt.here.2', show: 'here' },
   'play.goal.hunt.back': BACK,
   'play.goal.delve.town': { nudge: 'play.glim.hint.delve.town.1', direction: 'play.glim.hint.delve.town.2', show: 'walk' },
+  'play.goal.delve.world': { nudge: 'play.glim.hint.delve.world.1', direction: 'play.glim.hint.delve.world.2', show: 'walk' },
   'play.goal.delve.dig': { nudge: 'play.glim.hint.delve.dig.1', direction: 'play.glim.hint.delve.dig.2', show: 'here' },
   'play.goal.delve.back': BACK,
   'play.goal.away': BACK,

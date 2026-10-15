@@ -30,7 +30,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import * as fs from 'fs';
 import * as path from 'path';
-import { bag, canvas, ERA, focusWorld, hotbarCount, openPlay, seed, walkTo } from './play-helpers';
+import { bag, canvas, ERA, focusWorld, hotbarCount, openPlay, seed, walkTo, SHAFT_X, digIntoDelve } from './play-helpers';
 
 const MEASURE_ONLY = !!process.env['MOBILE_HUD_MEASURE'];
 const OUT = process.env['MOBILE_HUD_OUT'];
@@ -242,9 +242,7 @@ test.describe('the /play HUD on phones', () => {
   test('in the Ember Delve (hotbar up)', async ({ page }) => {
     await seed(page, bag({ torch: 6, 'dirt-block': 9, ladder: 4 }));
     await openPlay(page);
-    await walkTo(page, 590, 30);
-    await page.keyboard.press('e');
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 30000 });
+    await digIntoDelve(page);
     await focusWorld(page);
     await check(page, 'delve');
   });
@@ -269,9 +267,7 @@ test.describe('the /play HUD on phones', () => {
     await page.locator('.guide-fold').click();
     await expect(page.locator('.guide-go')).toBeVisible();
     // The Delve: the pick is chosen; a torch slot makes the Use button Place, the pick makes it Attack again.
-    await walkTo(page, 590, 30);
-    await page.keyboard.press('e');
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 30000 });
+    await digIntoDelve(page);
     await expect(page.locator('.hot--pick')).toHaveAttribute('aria-pressed', 'true');
     await page.locator('.hotbar .hot[title="Torch"]').click();
     await expect(page.locator('.touch-act .tb--use:visible')).toHaveAttribute('aria-label', /^Place: Torch/);
@@ -285,9 +281,7 @@ test.describe('the /play HUD on phones', () => {
     // A pinned Delve seed, so the rock beside the shaft is the same every run.
     await seed(page, { ...bag({ 'dirt-block': 9 }), 'godforge-delve': { version: 1, seed: 424242, createdAt: 1, areas: {}, claimed: [] } });
     await openPlay(page);
-    await walkTo(page, 590, 30);
-    await page.keyboard.press('e');
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 30000 });
+    await digIntoDelve(page);
     await page.waitForTimeout(800);
     const before = await hotbarCount(page, 'Dirt block');
     // The Keeper lands at about x 140 with his feet near y 428 on this phone: tap the ground beside them.
@@ -312,9 +306,7 @@ test.describe('the /play HUD on phones', () => {
     await seed(page, { 'preferred-language': 'es', ...bag({ torch: 2 }) });
     await page.setViewportSize({ width: 360, height: 740 });
     await openPlay(page);
-    await walkTo(page, 590, 30);
-    await page.keyboard.press('e');
-    await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve', { timeout: 30000 });
+    await digIntoDelve(page);
     await expect(page.locator('.touch-act .tb--dodge')).toHaveAttribute('aria-label', 'Esquivar');
     await expect(page.locator('.touch-act .tb--jump')).toHaveAttribute('aria-label', 'Saltar');
     const tight = await page.evaluate(() => Array.from(document.querySelectorAll('.touch .tb'))
