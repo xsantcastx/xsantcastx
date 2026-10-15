@@ -37,8 +37,8 @@ export const SLATE_AWARD_ID = 'slate:award';
 /** The one craft id Kael's binding ever uses. */
 export const SLATE_UPGRADE_ID = 'slate:tier2';
 
-/** The phone apps the play view opens for the Slate (they are places of their own). */
-export type SlateLaunch = 'pets' | 'codex';
+/** A pet reacted to something the Slate's Pets app did (the play view lights up the pet in the world). */
+export interface SlatePetFelt { id: string; kind: 'happy' | 'trick' | 'hatch' }
 
 export type SlateBuyCode = 'ok' | 'replayed' | 'owned' | 'funds' | 'failed' | 'ssr';
 export type SlateUpgradeCode = 'ok' | 'replayed' | 'no-slate' | 'done' | 'missing' | 'failed' | 'ssr';
@@ -52,13 +52,14 @@ export class SlateService {
   private readonly awarded$$ = new Subject<void>();
   /** Fires the moment Lune hands the Slate over (the play view says so). */
   readonly awarded$: Observable<void> = this.awarded$$.asObservable();
-  private readonly launch$$ = new Subject<SlateLaunch>();
-  /**
-   * The phone face's app icons that live outside the glass (the Pets well, the
-   * Codex): the Slate asks, the play view folds it and opens the place.
-   */
-  readonly launch$: Observable<SlateLaunch> = this.launch$$.asObservable();
-  launch(app: SlateLaunch): void { this.launch$$.next(app); }
+  private readonly close$$ = new Subject<void>();
+  /** The phone asked to be put away (its home bar, a pull down): the play view folds it. */
+  readonly close$: Observable<void> = this.close$$.asObservable();
+  close(): void { this.close$$.next(); }
+  private readonly petFelt$$ = new Subject<SlatePetFelt>();
+  /** The Pets app (inside the phone) fed, hatched or showed a trick. */
+  readonly petFelt$: Observable<SlatePetFelt> = this.petFelt$$.asObservable();
+  petFelt(event: SlatePetFelt): void { this.petFelt$$.next(event); }
   private watching = false;
 
   /** Start watching the tables (idempotent). The play view calls it once. */
