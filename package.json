@@ -48,7 +48,6 @@
     }
   },
   "dependencies": {
-    "@angular/animations": "^21.2.25",
     "@angular/common": "^21.2.25",
     "@angular/compiler": "^21.2.25",
     "@angular/core": "^21.2.25",
@@ -61,7 +60,6 @@
     "@angular/ssr": "^21.2.26",
     "firebase": "^12.4.0",
     "rxjs": "~7.8.0",
-    "three": "^0.185.1",
     "tslib": "^2.3.0",
     "zone.js": "~0.15.1"
   },
@@ -72,7 +70,6 @@
     "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.60.0",
     "@types/jasmine": "~4.3.0",
-    "@types/three": "^0.185.0",
     "husky": "^9.1.7",
     "jasmine-core": "~4.6.0",
     "karma": "~6.4.0",

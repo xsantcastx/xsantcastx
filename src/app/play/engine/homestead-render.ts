@@ -85,14 +85,10 @@ export function emptyModel(): HomesteadModel {
 const X: Record<HomesteadBuildingId, number> = Object.fromEntries(
   HOMESTEAD_BUILDINGS.map(s => [buildingOfStation(s.id)!, s.x]),
 ) as Record<HomesteadBuildingId, number>;
-/** World x of a building. */
-export function buildingX(id: HomesteadBuildingId): number { return X[id]; }
 
 const HOME_X: Record<HomeStationId, number> = Object.fromEntries(
   HOME_FORGE_STATIONS.map(s => [homeStationOf(s.id)!, s.x]),
 ) as Record<HomeStationId, number>;
-/** World x of the player's own Anvil / Enchanting Circle. */
-export function homeStationX(id: HomeStationId): number { return HOME_X[id]; }
 
 /** Where the plot's fence ends: just past the last station. */
 export const FENCE_END = Math.max(...[...HOMESTEAD_BUILDINGS, ...HOME_FORGE_STATIONS].map(s => s.x)) + 160;

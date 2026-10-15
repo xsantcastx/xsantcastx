@@ -131,7 +131,6 @@ import {
   sortMarketListings,
 } from './market-query';
 
-import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { injectInWorldPanel } from '../in-world-panel';
 import {
   STATION_UI,
@@ -356,7 +355,7 @@ const CATALOGUE_PICKS = [
 @Component({
   selector: 'app-market',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, RouterLink, ArtSceneComponent, InspectButtonComponent, ...STATION_UI],
+  imports: [CommonModule, RouterLink, ArtSceneComponent, InspectButtonComponent, ...STATION_UI],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './market.component.html',
   styleUrls: ['./market.component.css'],

@@ -40,8 +40,8 @@ const HEARTH_KEY = 'eclipse-hearth-open';
 const STANDS: Record<RealmTownId, string> = {
   infernal: 'enchanting',
   luminous: 'market',
-  umbral: 'exchange',
-  celestial: 'leaderboards',
+  umbral: 'gambler',
+  celestial: 'codex',
   verdant: 'quests',
 };
 

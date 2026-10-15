@@ -299,7 +299,6 @@ export class CollectionService {
           'collection',
         );
         this.economy.grantCosmetic('title-prefix', reward.titleVariant);
-        if (reward.trailVariant) this.economy.grantCosmetic('cursor-trail', reward.trailVariant);
         if (reward.item) {
           const minted = mintEquipment(reward.item, 'mythic');
           if (minted) this.inventory.add(minted);

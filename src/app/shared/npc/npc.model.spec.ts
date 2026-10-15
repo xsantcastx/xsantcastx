@@ -130,7 +130,7 @@ describe('who stands where', () => {
     expect(on('/exchange')).toBe('merchant');
     expect(on('/forge/runes')).toBe('kael');
     expect(on('/character')).toBe('kael');
-    expect(on('/world')).toBe('kael');
+    expect(on('/play')).toBe('kael');
   });
 
   /*

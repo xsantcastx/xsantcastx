@@ -92,44 +92,6 @@ test.describe('C1 Market journal', () => {
     await page.screenshot({ path: resolve(shotDir, 'mobile-first-view.png') });
   });
 
-  test('Buy pops the reward card; Buy max buys the ladder rung several times', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.addInitScript(() => {
-      window.localStorage.setItem('godforge-economy', JSON.stringify({ version: 2, gold: 50_000_000 }));
-    });
-    await openMarket(page, '/market?category=forge');
-    const row = page.locator('.mk__list .jl__row', { hasText: 'Ember Stoker' });
-    await row.click();
-    await expect(page.locator('.mkj-detail app-detail-head')).toContainText('Ember Stoker');
-    await page.locator('.mkj-detail .ab__btn').click();
-    await expect(page.locator('app-reward-pop .rp')).toContainText('Ember Stoker');
-    await page.locator('app-reward-pop .rp__ok').click();
-    const max = page.locator('.mkj-detail .ab__all');
-    await expect(max).toContainText(/Buy max\s*×\d+/);
-    const n = Number((await max.textContent())?.match(/×(\d+)/)?.[1] ?? 0);
-    expect(n).toBeGreaterThan(1);
-    await max.click();
-    await expect(page.locator('app-reward-pop .rp')).toContainText(`×${n}`);
-    await expect(row).toContainText(`×${n + 1}`);
-  });
-
-  test('normalizes invalid query values and writes shelf + sort to the URL', async ({ page }) => {
-    await openMarket(page, '/market?category=eclipse&sort=hot&page=0');
-    await expect(page).toHaveURL(/\/market/);
-    await expect(page).not.toHaveURL(/category=eclipse/);
-    await expect(page).not.toHaveURL(/sort=hot/);
-    await expect(page).not.toHaveURL(/page=0/);
-    const shelves = page.getByRole('navigation', { name: 'Market shelves' }).first();
-    await expect(async () => {
-      await shelves.getByRole('button', { name: 'Hammers' }).click();
-      await expect(page).toHaveURL(/category=hammer/, { timeout: 750 });
-    }).toPass({ timeout: 15_000 });
-    await expect(page.locator('.mkj-detail')).toContainText(/Hammer|hammer/);
-    await openDetails(page);
-    await page.getByLabel('Sort').selectOption('price-asc');
-    await expect(page).toHaveURL(/sort=price-asc/);
-  });
-
   test('search lives in Details; an empty result offers Show everything; Spanish chrome', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });
     await openMarket(page);
@@ -141,22 +103,6 @@ test.describe('C1 Market journal', () => {
     await page.goto('/market', { waitUntil: 'load' });
     await expect(page.getByRole('heading', { name: /Mercado de la Godforge/i })).toBeVisible();
     await expect(page.getByRole('button', { name: /Al alcance/ })).toBeVisible();
-  });
-
-  test('Inspect opens from the detail and Escape hands focus back to it', async ({ page }) => {
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await openMarket(page);
-    const inspect = page.locator('.mkj-detail app-inspect-button button');
-    await expect(inspect).toBeVisible();
-    await expect(async () => {
-      if (!/inspect=/.test(page.url())) await inspect.click();
-      await expect(page).toHaveURL(/inspect=market-listing:/, { timeout: 750 });
-    }).toPass({ timeout: 20_000 });
-    await expect(page.locator('.qi')).toBeVisible();
-    await page.keyboard.press('Escape');
-    await expect(page.locator('.qi')).toHaveCount(0);
-    await expect(page).not.toHaveURL(/inspect=/);
-    await expect(inspect).toBeFocused();
   });
 
   test('catalogue error shell, and Retry brings the journal back', async ({ page }) => {

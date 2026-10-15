@@ -2,16 +2,17 @@
  * codex-secrets.ts — the hidden content that is not an easter egg.
  *
  * The Achievement Wall covers everything the egg registry knows about. This
- * covers what it does not: the ritual mode behind the seal, the command
- * palette, the console handles, the routes with no link pointing at them, and
- * the combinations that only make sense once you have seen both halves.
+ * covers what it does not: places with no sign pointing at them, and the
+ * combinations that only make sense once you have seen both halves. (The ritual
+ * mode, the console handles and the command palette left with the site pages —
+ * docs/handoff/game-only-shell.md.)
  *
  * Two kinds of entry, and the difference is load-bearing:
  *
  *   `eggId`    — discovery is proven by the egg registry. Nothing extra to
  *                track; the state already exists and is already persisted.
- *   `detector` — discovery is observed by SecretsService at runtime and written
- *                to its own key.
+ *   `route`    — discovery is observed when the place opens in the world and
+ *                written to its own key.
  *
  * A secret with neither is not listed. The Codex claims to know when you found
  * something and how, and an entry that cannot actually tell would be a lie in a
@@ -21,8 +22,7 @@
 export type SecretGroupId =
   | 'easter-eggs'
   | 'konami'
-  | 'hidden-pages'
-  | 'console';
+  | 'hidden-pages';
 
 export interface SecretGroup {
   id: SecretGroupId;
@@ -54,20 +54,7 @@ export const SECRET_GROUPS: SecretGroup[] = [
     color: '#a48bff',
     blurb: 'Rooms with no door on the map. They are all real addresses.',
   },
-  {
-    id: 'console',
-    label: 'Console Commands',
-    icon: '💻',
-    color: '#5fb6ff',
-    blurb: 'Open the developer console. The realm left handles there on purpose.',
-  },
 ];
-
-/** Ids of the runtime-observed secrets. Kept narrow so a typo cannot compile. */
-export type DetectedSecretId =
-  | 'ritual-veil'
-  | 'command-palette'
-  | 'console-banner';
 
 export interface SecretDefinition {
   id: string;
@@ -84,9 +71,7 @@ export interface SecretDefinition {
   tier: 'mortal' | 'eclipsed' | 'sacred' | 'anomalous' | 'mythic' | 'singular';
   /** Discovery proven by this egg being found. */
   eggId?: string;
-  /** Discovery observed by SecretsService under this id. */
-  detector?: DetectedSecretId;
-  /** Discovery proven by having navigated to this route at least once. */
+  /** Discovery proven by having opened the place that once stood at this URL (the panel's old route). */
   route?: string;
 }
 
@@ -96,21 +81,12 @@ export const SECRETS: SecretDefinition[] = [
     id: 'konami-ritual',
     group: 'konami',
     name: 'The Old Sequence',
-    reveal: 'The Konami code opens ritual mode anywhere on the site.',
+    reveal: 'The Konami code still works here. The realm remembers who knows it.',
     clue: 'Up. Up. Down. Down. You already know the rest — it has not changed since 1986.',
     tier: 'eclipsed',
     eggId: 'konami',
   },
   // ── Easter eggs (ambient game records, not retired tool triggers) ─────────
-  {
-    id: 'ritual-veil',
-    group: 'easter-eggs',
-    name: 'The Veil Parts',
-    reveal: 'Ritual mode. The seal in the corner, the old sequence, or the console handle all open it — and the ambient drone starts with it.',
-    clue: 'There is a mark in one corner of every page that does not belong to any component. It is waiting to be pressed.',
-    tier: 'sacred',
-    detector: 'ritual-veil',
-  },
   {
     id: 'night-owl',
     group: 'easter-eggs',
@@ -143,49 +119,9 @@ export const SECRETS: SecretDefinition[] = [
     id: 'arena-gate',
     group: 'hidden-pages',
     name: 'The Arena',
-    reveal: 'The proving ground. Five gates, each a trial of a different realm.',
+    reveal: 'The proving ground in Rootglass Canopy. Five gates, each a trial of a different realm.',
     clue: 'There is a room where Convergents prove their worth. Its doors are held by things you find somewhere else entirely.',
     tier: 'eclipsed',
     route: '/world/trials',
   },
-  // ── Console ───────────────────────────────────────────────────────────────
-  {
-    id: 'console-banner',
-    group: 'console',
-    name: 'The Greeting',
-    reveal: 'Opening the developer console prints a banner, and the banner tells you what to type next.',
-    clue: 'Developers look in one place nobody else does. Something is already written there, waiting.',
-    tier: 'eclipsed',
-    detector: 'console-banner',
-  },
-  {
-    id: 'console-reveal',
-    group: 'console',
-    name: 'reveal()',
-    reveal: 'A global handle that toggles ritual mode from the console. The banner names it.',
-    clue: 'The realm answers to its own name, if you call it correctly and add empty parentheses.',
-    tier: 'sacred',
-    detector: 'ritual-veil',
-  },
-  {
-    id: 'console-audio',
-    group: 'console',
-    name: 'The Drone',
-    reveal: 'A five-oscillator ambient pad you can start and stop by hand. It also comes on with ritual mode.',
-    clue: 'The same handle that reveals things has a sibling. That one is not visual.',
-    lore: 'Nothing about the realm was ever silent. You were just not listening on the right channel.',
-    tier: 'anomalous',
-    detector: 'ritual-veil',
-  },
-  {
-    id: 'command-palette',
-    group: 'console',
-    name: 'The Summoning',
-    reveal: 'A command palette that reaches every hall without touching the navigation.',
-    clue: 'Two keys, pressed together, anywhere. Every editor you have ever used has taught you which two.',
-    tier: 'eclipsed',
-    detector: 'command-palette',
-  },
 ];
-
-export const TOTAL_SECRETS = SECRETS.length;

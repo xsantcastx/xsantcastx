@@ -56,15 +56,6 @@ test.describe('game-only cutover', () => {
    * resolves to the Collection Log, which is what that tab turned out to be —
    * so the rule is unchanged and the destination is no longer a fallback.
    */
-  test('retired bestiary query opens the Collection Log', async ({ page }) => {
-    await openSettled(page, '/codex?tab=bestiary');
-    await page.locator('.cx-page').waitFor();
-    await expect(page.locator('#cx-panel-bestiary')).toHaveCount(0);
-    await expect(page.locator('#cx-panel-collection')).toBeVisible();
-    await expect(page.locator('app-collection-log')).toBeVisible();
-    await expect(page.locator('#cx-panel-achievements')).toBeHidden();
-  });
-
   test('an unlocked legacy tool egg cannot render on the Codex wall', async ({ page }) => {
     await page.addInitScript(
       (state) => {

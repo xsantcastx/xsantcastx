@@ -187,11 +187,3 @@ export const INFERNAL_WORLD_TOWN: TownDef = {
   safeX: 0,
   hunts: [EMBER_WORLD, QUARRY_BY_ARCH, HOMESTEAD_BY_ARCH, UMBRAL_DELVE, VERDANT_DELVE, LUMINOUS_DELVE, CELESTIAL_DELVE],
 };
-
-/** The Cinder seam's art key (the `ore` station's prop). */
-export const EMBER_ORE_ART = CINDER_ORE;
-
-/** True for the area that is a world (it has a surface). */
-export function isWorldArea(area: Pick<AreaDef, 'terrain'> | null | undefined): boolean {
-  return !!area?.terrain?.surface;
-}

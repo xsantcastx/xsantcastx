@@ -1,3 +1,12 @@
+<!-- The game-only shell's whole crawlable page: /play is prerendered, and this is what a crawler or a
+     browser without JavaScript reads (docs/handoff/game-only-shell.md). The game itself starts in the browser. -->
+<noscript>
+  <section class="noscript-intro">
+    <h1>Eclipse Realms</h1>
+    <p>A free pixel-art RPG you play in the browser, with no download and no sign-up. Mine, forge and craft in five realms, dig the endless Delve, build a Homestead, and meet the people of the Seamworks.</p>
+    <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
+  </section>
+</noscript>
 <section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
@@ -11,7 +20,7 @@
   </div>
 
   <header class="topbar" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
-    <a routerLink="/world" class="wordmark">Eclipse</a>
+    <a routerLink="/play" class="wordmark">Eclipse</a>
     <div class="title-block">
       <span class="realm-tag">{{ realmLabel }}@if (state.delve && state.biome) { · {{ state.biome }} }</span>
       <h1 id="game-title">{{ areaTitle }}</h1>
@@ -87,6 +96,7 @@
         <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
         <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+        <li><button type="button" data-open="account" (click)="placesOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
         <!-- One World (preview): this device only; a flip reloads the world. -->
         <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
       </ul>
@@ -541,7 +551,6 @@
         <h2 id="place-title">{{ panel?.title }}</h2>
       </div>
       <div class="place-actions">
-        @if (panel?.route; as route) { <a class="place-full" [routerLink]="route">{{ t('play.hud.panel.full') }}</a> }
         <button type="button" class="book-close place-close" (click)="closePanel()">{{ t('play.hud.book.close') }} <kbd>Esc</kbd></button>
       </div>
     </header>

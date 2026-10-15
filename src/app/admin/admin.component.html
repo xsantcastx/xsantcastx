@@ -21,7 +21,7 @@
           Sign in with Google
         </button>
         <p class="adm-gate__err" *ngIf="signInError">{{ signInError }}</p>
-        <a class="adm-gate__back" routerLink="/world">← Back to the site</a>
+        <a class="adm-gate__back" routerLink="/play">← Back to the site</a>
       </ng-container>
 
       <ng-container *ngIf="gate === 'denied'">
@@ -34,7 +34,7 @@
         <button type="button" class="adm-gate__btn adm-gate__btn--ghost" (click)="signOutNow()">
           Sign out
         </button>
-        <a class="adm-gate__back" routerLink="/world">← Back to the site</a>
+        <a class="adm-gate__back" routerLink="/play">← Back to the site</a>
       </ng-container>
 
     </div>
@@ -413,7 +413,7 @@
 
     <footer class="adm-foot">
       <span>The Godforge control room · v{{ version.version }}</span>
-      <a class="adm-link" routerLink="/world">← Back to the site</a>
+      <a class="adm-link" routerLink="/play">← Back to the site</a>
     </footer>
 
   </ng-container>

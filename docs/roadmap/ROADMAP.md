@@ -32,6 +32,10 @@ Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall D
 
 Built 2026-10-15: **One World, Phase 1** (`docs/handoff/one-world-p1.md`, design `docs/design/one-world.md`), behind the per-device preview gate (Menu → One World (preview), or `?oneworld=1`; off by default): the Basalt Seamworks stands on the Ember Delve's surface as buildings made of cells (awnings, signs, window displays, counters, chimney smoke, lit windows), keepers keep the clock (counter / the Hearth / upstairs) with `!`/`?` marks, Waystones to find and light (the trunk line's five town stones always lit), the Travel map (travel, recall), log in where you stood, save v3 keys. Next: P2 (the Quarry as a region, the High Roads in cells, the Plot), then P3 (the four realm worlds) and the flip.
 
+Built 2026-10-15: **Game-only shell** (`docs/handoff/game-only-shell.md`, audit `docs/handoff/page-audit.md`): `/` opens the game; no site header, footer, tab bar or floating widgets anywhere; every old page URL opens its place in the world; ☰ → Account & settings (sign-in, EN/ES, cookies); the Exchange, Leaderboards, realm/Fivefold pages, landing and 404 deleted (initial bundle 1.57 → 1.23 MB, styles.css 104 → 59 kB, /play town p95 ~34 → 19 ms).
+
+**Later — rebuild world-native (from the page audit):** a trade hall (the Exchange / player market) · a Slate *Journal* (achievements, secrets, realm lore — replaces the Codex's site-era tabs) · leaderboards in a town · a Refinery station (C1 Refining) · in-world prospecting nodes and canopy foraging (the three activity sites are station-less panels until then) · slimmer in-world hosts for the Market, Sanctum and Codex panels.
+
 ## Milestones
 
 | Milestone | Player gets | Status |

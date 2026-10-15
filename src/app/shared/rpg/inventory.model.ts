@@ -34,7 +34,6 @@ import type { GameItem, ItemRarity, ItemStats, ItemType, SlotId } from './item.m
 export const INVENTORY_SCHEMA_VERSION = 2 as const;
 /** Bump wipes bag, stacks, and worn pieces. Cloud copies without this era empty too. */
 export const INVENTORY_ERA = 55 as const;
-export const INVENTORY_LEGACY_VERSION = 1 as const;
 /** Same window as ledger ACK_STALE_MS: tombstones survive this long after delete. */
 export const INVENTORY_TOMBSTONE_RETAIN_MS = 30 * 24 * 60 * 60 * 1000;
 /** 512 since the eviction was removed (inventory spec §2.8: ~56 KB). */

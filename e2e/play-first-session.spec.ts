@@ -59,7 +59,7 @@ async function strikeForBellows(page: Page, strike: () => Promise<void>): Promis
 }
 
 test.describe('First session, played', () => {
-  test('a first visit: tutorial → world → the goal line walks buy, forge + equip, hunt, Delve; then a Ready-now craft', async ({ page }) => {
+  test('a first visit: / is the world → the goal line walks buy, forge + equip, hunt, Delve; then a Ready-now craft', async ({ page }) => {
     test.setTimeout(300000);
     await page.setViewportSize({ width: 1280, height: 800 });
     await seed(page);
@@ -67,21 +67,11 @@ test.describe('First session, played', () => {
     const t0 = Date.now();
     const mark = (what: string) => test.info().annotations.push({ type: 'timing', description: `${what}: ${((Date.now() - t0) / 1000).toFixed(1)} s` });
 
-    // ── The entry route raises the tutorial; its first door is the world. ──
+    // ── The entry route IS the world (game-only shell): no landing, no site tutorial. ──
     await page.goto('/');
-    await expect(page).toHaveURL(/\/world$/);
-    const ob = page.locator('.ob');
-    await expect(ob).toBeVisible({ timeout: 20000 });
-    await ob.locator('.ob__go').click();
-    await ob.locator('.ob__anvil').click();
-    await ob.locator('.ob__go').click();
-    await ob.locator('.ob__go').click();
-    const first = ob.locator('.ob__door--first');
-    await expect(first).toContainText('Enter the world');
-    await first.locator('.ob__door-go').click();
     await expect(page).toHaveURL(/\/play$/);
     await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/, { timeout: 20000 });
-    await expect(ob).toBeHidden();
+    await expect(page.locator('.ob')).toHaveCount(0);
     // A brand-new Keeper is offered "Make your Keeper" once (docs/handoff/make-your-keeper.md): keep the look.
     const glass = page.locator('section.place .km');
     await expect(glass).toBeVisible({ timeout: 20000 });

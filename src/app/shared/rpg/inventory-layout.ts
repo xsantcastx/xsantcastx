@@ -23,9 +23,6 @@ import { compareRevision, nextRevision, recordToItem, stackQuantityOf, tombstone
 import { IDENTICAL_PER_SLOT, identityKeyOf } from './item-groups';
 import type { InventoryLedger, ItemLocation, OwnedItemInstance } from './inventory.model';
 
-/** Names the rule set. Placement is recomputed, so bumping it converts nothing on disk. */
-export const INVENTORY_LAYOUT = 1;
-
 /**
  * Instance records one save may hold, every location counted (spec §2.8):
  * ~580 KB of a 1 MiB Firestore document. Gold purchases that mint an instance

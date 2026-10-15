@@ -19,7 +19,6 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Title } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../translation.service';
@@ -60,7 +59,7 @@ interface Floater {
 @Component({
   selector: 'app-rootglass-canopy',
   standalone: true,
-  imports: [RouterLink, ArtSceneComponent, CurrentWorkTileComponent],
+  imports: [ArtSceneComponent, CurrentWorkTileComponent],
   templateUrl: './rootglass-canopy.component.html',
   styleUrls: ['./rootglass-canopy.component.css'],
 })
@@ -77,7 +76,6 @@ export class RootglassCanopyComponent implements OnInit, OnDestroy {
   private clock?: ReturnType<typeof setInterval>;
 
   readonly locationId = ROOTGLASS_CANOPY_ID;
-  readonly verdantHref = '/world/realms/verdant';
   readonly tiers = FORAGING_TIERS;
 
   /** Which growth is armed right now. Starlight Herb is always open, so it's the default. */

@@ -71,7 +71,6 @@ import { InventoryService } from '../shared/rpg/inventory.service';
 import { SOCKET_WORDS, matchSocketWord, wordTier } from '../shared/enchanting/socket-words';
 import { RUNE_TIERS, runeById } from '../shared/rune-forge/rune.model';
 
-import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { REALM_ART, artFor } from '../shared/art/art';
 import { BESTIARY, BESTIARY_UNPAINTED } from './bestiary';
 import { GLIM_I18N } from '../shared/glim/glim.i18n';
@@ -228,7 +227,7 @@ const SCROLL_TIER_TO_RARITY: Record<RuneTier, EclipseRarity> = {
 @Component({
   selector: 'app-codex',
   standalone: true,
-  imports: [RelatedPagesComponent, CommonModule, FormsModule, RouterLink, CollectionLogComponent, GlimIconComponent, CodexPeopleComponent, CodexBountiesComponent, CodexHeightsComponent, CodexPetsComponent, CodexCabinetsComponent, CodexAccountsComponent, ...STATION_UI],
+  imports: [CommonModule, FormsModule, RouterLink, CollectionLogComponent, GlimIconComponent, CodexPeopleComponent, CodexBountiesComponent, CodexHeightsComponent, CodexPetsComponent, CodexCabinetsComponent, CodexAccountsComponent, ...STATION_UI],
   templateUrl: './codex.component.html',
   styleUrls: ['./codex.component.css'],
 })
@@ -755,7 +754,7 @@ export class CodexComponent implements OnInit, OnDestroy {
         found = this.hydrated && this.eggs.isFound(def.eggId);
         const at = found ? this.eggs.foundAt(def.eggId) : null;
         record = at ? { at, how: 'egg' } : null;
-      } else if (def.detector || def.route) {
+      } else if (def.route) {
         record = this.hydrated ? this.secretsService.record(def.id) : null;
         found = !!record;
       }

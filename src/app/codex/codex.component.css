@@ -13,7 +13,6 @@
  */
 
 .cx-page {
-  --cx-bg: var(--obsidian-0);
   --cx-panel: rgba(10, 6, 26, 0.55);
   --cx-line: rgba(255, 255, 255, 0.06);
   --cx-text: #e6f1ee;

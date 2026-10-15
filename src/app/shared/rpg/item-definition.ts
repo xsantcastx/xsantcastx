@@ -459,10 +459,6 @@ export function definitionFor(item: Pick<GameItem, 'definitionId' | 'name' | 'ty
   return BY_NAME.get(item.name);
 }
 
-export function primaryRollKey(def: ItemDefinition): ItemStatKey | null {
-  return def.rollKeys[0] ?? null;
-}
-
 export function isTemperableItem(item: Pick<GameItem, 'definitionId' | 'name' | 'type'>): boolean {
   const def = definitionFor(item);
   if (def) return def.temperable && def.family !== 'rune' && def.family !== 'material' && def.family !== 'quest';

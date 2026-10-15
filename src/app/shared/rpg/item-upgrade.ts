@@ -111,10 +111,6 @@ export function isTemperableKind(item: Pick<GameItem, 'definitionId' | 'name' | 
   return isTemperableItem(item);
 }
 
-export function maxTemperOf(item: GameItem): number {
-  return definitionFor(item)?.maxTemper ?? MAX_UPGRADE_LEVEL;
-}
-
 export function failPolicyFor(level: number): UpgradeFailPolicy {
   return UPGRADE_FAIL_POLICY[level] ?? UPGRADE_FAIL_POLICY[UPGRADE_FAIL_POLICY.length - 1];
 }
@@ -261,25 +257,4 @@ export function applyTemperBonus(
     next[key] = value;
   }
   return next;
-}
-
-/** @deprecated use applyTemperBonus — kept for the one reverse path if flags turn on */
-export function applyUpgradeBonus(
-  stats: ItemStats,
-  rarity: ItemRarity,
-  direction: 1 | -1 = 1,
-): ItemStats {
-  const dummy: GameItem = {
-    id: 'tmp',
-    name: 'tmp',
-    type: 'artifact',
-    rarity,
-    stats,
-    sellValue: 0,
-    equipped: false,
-    foundAt: '',
-    soulbound: false,
-  };
-  if (direction < 0) return stats;
-  return applyTemperBonus(dummy, () => 0);
 }
