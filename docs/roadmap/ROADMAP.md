@@ -20,7 +20,9 @@ Built 2026-10-15: **Pets** (`docs/handoff/pets.md`): eight chibi pets found in p
 
 Built 2026-10-15: **Lost Cabinets** (`docs/handoff/lost-cabinets.md`): the Mirror Slate's Scan face (tier I) — hold the glass up and follow the warmth to the Archivist's sixteen hidden curio cabinets (towns, hunts, High Roads, the Delve, the Underhearth, the four realm Delves); clues, pet treats and a hatbox inside; the Codex's Cabinet of Curios set with four small bonuses and a short story.
 
-Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
+Built 2026-10-15: **Story Act II · Five Witnesses** (`docs/handoff/story-act-2.md`): the Underhearth, the four Rift Gate Delves, the Lost Cabinets and Glim tied into one arc — seven scenes with chibi pixel portraits, each unlocked by progress you already make and paying one reward (three titles, Waystone Shards, Courier's Honeycomb, the Codex's Witness Accounts); keepers react afterwards; the act ends on the light coming up the shaft (Act III · The Fivefold Lock, Starfall Deep).
+
+Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act III · Art test set *(owner)*.
 
 ## Milestones
 
@@ -34,7 +36,7 @@ Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall D
 | **M6 Feel & stability** | No phone crash, cool idle, Delve navigation, minimap, Glim | ✅ shipped |
 | **M7 Fun loops** | Casino (Reels + 3 games), Fishing, liquids & lakes | 🔨 Reels + Rune Drop / Seam Sweeper / Eclipse Ascent built; liquids + Fishing v1 built |
 | **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 🔨 endless Delve ✅ · Underhearth in flight |
-| **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I ✅ · NPC depth ✅ · Atlas next |
+| **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I ✅ · NPC depth ✅ · Act II ✅ · Atlas next |
 | **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | 🔨 in-house pixel pass built 2026-10-14: Keeper, every NPC + townsfolk, all 8 painted creatures, stalls/props/nodes/coins (`docs/handoff/one-art-style.md`); backdrops, item icons, portraits, Homestead figures remain |
 | **M11 Players** | Player market live (owner deploy), real-device QA, launch | ⏳ owner |
 
@@ -46,6 +48,7 @@ Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall D
 
 ## Daily review log
 
+- **2026-10-15 (story Act II)** — Built Act II, Five Witnesses: Kael's five accounts (the Banked Furnace and the Ink Deeps, Root Deeps, Prism Mines and Orrery Wells guardians), the Archivist's docket (four Lost Cabinets) and the light coming up, as seven scenes in the Story tab and over the world — chibi portraits, 4 lines each, Glim's last word, one reward each, paid once through the save gateway; 12 keeper lines + 5 canon dialogue rows follow the act; the act ends on a cliffhanger card (Starfall, a sixth mark, the first lamp hinted). `docs/handoff/story-act-2.md`.
 - **2026-10-15 (lost cabinets)** — Built the owner's Lost Cabinets: the Slate's Scan face (tier I: it is the Archive's moon-mirror glass that knows the latches) pulses hot/cold on the HUD button with a soft ping and brightens Glim; sixteen cabinets left by the Archivist and hidden by the Ridge Couriers, one curio each (key items with lore), five deep ones tuned by clues; Courier's Honeycomb (every pet's favourite) and the Hatbox of Small Crowns; the Codex's Cabinet of Curios with bonuses at 4/8/12/16 (warmer glass, one more pet meal, Glim points the way, the Curator's Loupe) and a four-page arc. `economy-sim --cabinets` in `--check` (93 min of income once, ever).
 - **2026-10-15 (chibi Keepers)** — Owner: "more tender, smaller, very cute, MapleStory". Built: every person (player, Glass preview, paper doll, all NPCs) is a chibi pixel Keeper — big head, small body, ~74% of the old height, big eyes, blinks, bouncy steps, landing squash, a happy face on loot and level up; creatures are round with big glaring eyes; tags, bubbles and Glim follow the new head. `docs/handoff/chibi-keepers.md`.
 - **2026-10-15 (orrery wells)** — Built the last Rift Gate realm: the Orrery Wells (Celestial gate, Magma Halls). Down is negotiable: orrery rings turn whole fields over (walk the ceiling), star-wells fall up with a chain beside each, never a softlock (tested over generated wings); starsteel + meridian glass, Anchor Wardens finally spawn, the Fallen Ephemeris dropped into its own well; Sera Quill's chain; the Orrery Key. The Rift Gates set is complete. Engine exposes the Keeper's gravity for followers (pets).

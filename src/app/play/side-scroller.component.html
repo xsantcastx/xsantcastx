@@ -1,5 +1,5 @@
 <section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
-  <div class="viewport" [attr.inert]="panel || storyCard || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
+  <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
@@ -10,7 +10,7 @@
     }
   </div>
 
-  <header class="topbar" [attr.inert]="panel || storyCard || glimTalk ? '' : null">
+  <header class="topbar" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <a routerLink="/world" class="wordmark">Eclipse</a>
     <div class="title-block">
       <span class="realm-tag">{{ realmLabel }}@if (state.delve && state.biome) { · {{ state.biome }} }</span>
@@ -36,7 +36,7 @@
 
   <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
   @if (guide; as goal) {
-    <div class="guide" [class.guide--folded]="guideFolded" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || glimTalk ? '' : null" data-engine-ignore>
+    <div class="guide" [class.guide--folded]="guideFolded" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
       <!-- Phones: the goal folds to its "Goal n of 4" chip and back. -->
       <button type="button" class="guide-fold" (click)="guideFolded = !guideFolded" [attr.aria-expanded]="!guideFolded" [attr.aria-label]="t(guideFolded ? 'play.hud.goalUnfold' : 'play.hud.goalFold')"><i aria-hidden="true"></i></button>
       <!-- Glim voices the goal; a press opens its hint ladder one step at a time (shared/glim/glim.ts). -->
@@ -55,7 +55,7 @@
 
   <!-- Glim's one line: under the goal line on desktop, in the toast band on phones; never over the middle of the world. -->
   @for (say of glimVoice.speech ? [glimVoice.speech] : []; track say.seq) {
-    <div class="glim-say" [class.glim-say--hint]="!!say.hint" role="status" aria-live="polite" data-engine-ignore [attr.inert]="panel || storyCard || glimTalk ? '' : null"
+    <div class="glim-say" [class.glim-say--hint]="!!say.hint" role="status" aria-live="polite" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null"
          [attr.data-glim-line]="say.line ?? null" [attr.data-glim-step]="say.hint ? say.hint.step : null" [attr.data-story-beat]="say.story?.beat ?? null" [attr.data-glim-bond]="say.bond?.id ?? null">
       <!-- A story line rides Glim's line; a keeper's own line carries their name and pixel face (monogram if faceless). -->
       @if (sayer; as who) { <i class="glim-say__mono" [class.glim-say__mono--face]="!!who.portrait" [style.--mono]="who.color" aria-hidden="true">@if (who.portrait) {<img [src]="who.portrait" alt="" width="30" height="30" />} @else { {{ who.monogram }} }</i> }
@@ -97,7 +97,7 @@
     </nav>
   }
 
-  <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || glimTalk ? '' : null">
+  <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <div class="vital">
       <label>{{ keeperName || t('play.hud.keeper') }} <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
@@ -134,7 +134,7 @@
 
   @if (state.delve) {
     <!-- The Delve hotbar: what you can place, and how many. Pick one, then B (or hold a tap where it goes). -->
-    <nav class="hotbar" [class.tool-pick]="touchTool === 'pick'" [attr.aria-label]="t('play.hotbar.label')" [attr.inert]="panel || storyCard || glimTalk ? '' : null">
+    <nav class="hotbar" [class.tool-pick]="touchTool === 'pick'" [attr.aria-label]="t('play.hotbar.label')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
       <ul>
         <!-- Phones: the pick is the first slot. With it chosen a tap on a block digs it; with a placeable chosen a tap places it. -->
         <li class="hot-pick-slot">
@@ -162,7 +162,7 @@
   @if (state.delve) {
     <!-- The minimap (Terraria): explored cells round the Keeper; a click or tap opens the full map (M).
          Phones fold it with the toggle; it keeps to the top corners, clear of the middle of the world. -->
-    <div class="map-mini" [class.map-mini--shown]="map.miniShown" [attr.inert]="panel || storyCard || glimTalk ? '' : null" data-engine-ignore>
+    <div class="map-mini" [class.map-mini--shown]="map.miniShown" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
       <button type="button" class="map-toggle" (click)="map.toggleMini()" [attr.aria-pressed]="map.miniShown" [attr.aria-label]="t('play.map.toggle')"><i class="map-ico" aria-hidden="true"></i></button>
       @if (map.miniShown) {
         <button type="button" class="map-mini-open" (click)="openMap()" [attr.aria-label]="t('play.map.open')"><canvas aria-hidden="true"></canvas><kbd class="key-hint">M</kbd></button>
@@ -234,7 +234,7 @@
     </section>
   }
 
-  <aside class="satchel" [attr.aria-label]="t('play.hud.satchel')" (click)="openBag()" [attr.inert]="panel || storyCard || glimTalk ? '' : null">
+  <aside class="satchel" [attr.aria-label]="t('play.hud.satchel')" (click)="openBag()" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <button type="button" class="clasp" [class.is-full]="bagFull" (click)="$event.stopPropagation(); toggleBag()" [attr.aria-expanded]="bagOpen" aria-controls="satchel-book"
             [attr.aria-label]="t('play.hud.satchelCount', { used: inventory.snapshot.usedRows, cap: inventory.snapshot.satchelCap }) + (inventory.snapshot.overflow ? '. ' + t('play.hud.book.overflow', { n: inventory.snapshot.overflow }) : '')">
       <span>{{ t('play.hud.satchel') }}</span>
@@ -380,7 +380,7 @@
     </section>
   }
 
-  <div class="prompt" [class.armed]="!!state.nearby || !!fishPrompt" [attr.inert]="panel || storyCard || glimTalk ? '' : null">
+  <div class="prompt" [class.armed]="!!state.nearby || !!fishPrompt" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     @if (!state.nearby && fishPrompt; as fish) {
       <strong>{{ fish }}</strong>
       <button type="button" class="fish-go" [title]="fishInfo"
@@ -406,7 +406,7 @@
   }
   @if (state.delve) {
     <!-- Phones: the hotbar's Take, in the band over the touch row (Place is the Use button). -->
-    <button type="button" class="m-take" (click)="takeBack()" [attr.inert]="panel || storyCard || glimTalk ? '' : null" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }}</button>
+    <button type="button" class="m-take" (click)="takeBack()" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }}</button>
   }
   @if (showKeys) {
     <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>M</kbd> {{ t('play.hud.key.map') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
@@ -415,7 +415,7 @@
   <!-- The Hearth chat. Folded it is one pill clear of the stalls and the action
        bar; open, the panel. The body stays in the DOM (hidden) so the pill's
        aria-controls always resolves and the room keeps whatever was typed. -->
-  <section class="dock" [class.collapsed]="!hearthOpen" [attr.aria-labelledby]="hearthOpen ? 'hearth-title' : null" [attr.aria-label]="hearthOpen ? null : t('play.hearth.name')" [attr.inert]="panel || storyCard || glimTalk ? '' : null" data-engine-ignore>
+  <section class="dock" [class.collapsed]="!hearthOpen" [attr.aria-labelledby]="hearthOpen ? 'hearth-title' : null" [attr.aria-label]="hearthOpen ? null : t('play.hearth.name')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
     @if (!hearthOpen) {
       <button type="button" class="hearth-pill" (click)="toggleHearth()" aria-expanded="false" aria-controls="hearth-body" [attr.aria-label]="t('play.hearth.open') + ' (' + hearthPill + ')'">
         <span class="hearth-ember" aria-hidden="true"></span>{{ hearthPill }}
@@ -464,7 +464,7 @@
        Phones: movement on the left, actions on the right, one row, in a band
        under the world (the clusters are display: contents on desktop). On
        phones each button is an icon (.ts / .tri); its name is its aria-label. -->
-  <div class="touch" role="group" [attr.aria-label]="t('play.hud.touch.label')" [attr.inert]="panel || storyCard || glimTalk ? '' : null">
+  <div class="touch" role="group" [attr.aria-label]="t('play.hud.touch.label')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <div class="touch-move">
       <button type="button" class="tb tb--left" [attr.aria-label]="t('play.hud.touch.left')" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)"><span class="tl">{{ t('play.hud.touch.left') }}</span><i class="tri" aria-hidden="true"></i></button>
       <button type="button" class="tb tb--right" [attr.aria-label]="t('play.hud.touch.right')" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)"><span class="tl">{{ t('play.hud.touch.right') }}</span><i class="tri" aria-hidden="true"></i></button>
@@ -494,6 +494,15 @@
         <h2 id="story-card-title" class="story-card__title">{{ t('story.card.' + card.id + '.title') }}</h2>
         @for (line of card.paragraphs; track line) { <p class="story-card__p">{{ t(line) }}</p> }
         <button type="button" class="story-card__go" (click)="closeStoryCard()">{{ t('story.card.continue') }}</button>
+      </section>
+    </div>
+  }
+
+  <!-- An Act II scene (shared/story/story-scene.component.ts): portraits, a few lines, Glim's, one reward. The world waits; Esc files it. -->
+  @if (storyScene) {
+    <div class="story-veil" data-engine-ignore>
+      <section class="story-card story-scene-card" role="dialog" aria-modal="true" [attr.aria-label]="t('story.scene.kicker')">
+        <app-story-scene [sceneId]="storyScene" (done)="closeStoryScene()" />
       </section>
     </div>
   }
