@@ -19,6 +19,7 @@ import { spriteFor } from '../../shared/art/sprite-manifest.generated';
 import { beamColor, beamHeight, FLIGHT_TIME, flightPoint, RARITY_COLORS, satchelPoint } from './loot-fx';
 import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEEPER_BACK_HAND, KeeperLoadout, OFFHAND_DEFAULTS, WEAPON_DEFAULTS } from './loadout';
 import { SurfaceMover, type SurfaceGeo } from './surface-body';
+import { TerrainMover } from './terrain-moves';
 import { SurfaceRender } from './surface-render';
 import { FIND_REACH, hollisFolk, hollisRealm, type AreaHeights, type HeightFind, type HeightFolk } from '../world/heights';
 import { advanceBody, Body, EngineInput, EngineOptions, EngineSfx, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
@@ -148,6 +149,8 @@ const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
 /** The Keeper's body in a delve (figure scale 0.5): fits a three-cell tunnel. */
 const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
+/** The Quarry Gate's bars (One World P2): the node the beacon lifts. */
+const GATE_BAR = nodeIndex('gate-bar');
 /** How far from the Keeper's chest a click, a tap or the smart cursor reaches a cell, in cells (Terraria's tile reach). */
 export const REACH_CELLS = 4.5;
 const DELVE_REACH = CELL * REACH_CELLS;
@@ -593,6 +596,8 @@ export class SeamworksEngine {
   private heights: AreaHeights | null = null;
   private geo: SurfaceGeo | null = null;
   private readonly mover = new SurfaceMover();
+  /** Parkour on cells (terrain-moves.ts): the ledge-grab, the mantle and the wall-jump, everywhere on terrain. */
+  private readonly moves = new TerrainMover();
   private readonly surface = new SurfaceRender();
   /** Finds this player has already used (ids), from the host. */
   private heightsFound: ReadonlySet<string> = new Set();
@@ -688,8 +693,9 @@ export class SeamworksEngine {
   /** Build the high ground's collision and its people for an area (nothing for a flat one). */
   private enterHeights(area: AreaDef): void {
     const h = area.heights ?? null;
-    this.heights = h; this.mover.reset(); this.lookY = 0; this.folkSay.who = -1; this.folkSay.armed = true;
-    this.geo = h ? { platforms: [...area.platforms, ...h.ledges], solids: h.solids, climbs: h.trees, width: area.width } : null;
+    this.heights = h; this.mover.reset(); this.moves.reset(); this.lookY = 0; this.folkSay.who = -1; this.folkSay.armed = true;
+    // One World: a world's High Roads are its cells (terrain-moves.ts moves the body); only a flat area has a geometric route.
+    this.geo = h && !area.terrain ? { platforms: [...area.platforms, ...h.ledges], solids: h.solids, climbs: h.trees, width: area.width } : null;
     this.folk = h ? [...h.folk, ...(hollisRealm(this.day()) === h.realm ? [hollisFolk(h)] : [])] : [];
     this.surface.enter(h);
   }
@@ -701,9 +707,13 @@ export class SeamworksEngine {
     this.folk.forEach((p, i) => {
       if (p.x < this.camera - 200 || p.x > this.camera + viewport + 200) return;
       const talking = this.folkSay.who === i;
+      // One World: the world's figures stand at half the town's size (2 world px per art px); the tag rides on the head.
+      const k = this.terrain ? .5 : 1, lift = 196 * (1 - k);
+      if (k !== 1) { c.save(); c.translate(p.x, p.y); c.scale(k, k); c.translate(-p.x, -p.y); }
       this.life.drawAt(c, f, `npc-${p.id}-figure`, p.x, p.y, Math.sign(this.player.x - p.x) || 1, SeamworksEngine.HOLLIS, 'coat', 3.1 + i, talking);
+      if (k !== 1) c.restore();
       const name = tr?.(p.nameKey) ?? 'Hollis Fenn', title = tr?.(p.titleKey) ?? '';
-      c.save(); c.textAlign = 'center';
+      c.save(); c.textAlign = 'center'; c.translate(0, lift);
       c.font = '600 14px "Cormorant Garamond", Georgia, serif';
       c.fillStyle = '#1a120fe6'; c.fillRect(p.x - 80, p.y - 196, 160, 35);
       c.fillStyle = SeamworksEngine.HOLLIS.glow; c.fillRect(p.x - 80, p.y - 163, 160, 2);
@@ -1682,7 +1692,8 @@ export class SeamworksEngine {
   }
   /** The gathering node the Keeper stands at (nearest within reach, on the floor), or null. */
   private siteInReach(): GatherSite | null {
-    if (!this.sites.length || this.player.y < FLOOR - 120) return null;
+    // One World: only from the street the node stands on (not from the Delve under it, nor the High Roads over it).
+    if (!this.sites.length || this.player.y < FLOOR - 120 || (this.terrain && Math.abs(this.player.y - FLOOR) > 8)) return null;
     let best: GatherSite | null = null, bestDistance = NODE_REACH;
     for (const site of this.sites) {
       const d = Math.abs(site.def.x - this.player.x);
@@ -1740,7 +1751,7 @@ export class SeamworksEngine {
     }
     let material: string | undefined;
     // The aligned realm's hunting ground gives two Eclipse Glass a cut while the eclipse lasts.
-    const pays = def.when === 'eclipse' && this.worldSky.alignedHunt === this.areaDef.id ? { ...def.yield, qty: def.yield.qty * ALIGNED_GLASS } : def.yield;
+    const pays = def.when === 'eclipse' && this.worldSky.alignedHunt === (this.worldSurface ? this.regionHere()?.id : this.areaDef.id) ? { ...def.yield, qty: def.yield.qty * ALIGNED_GLASS } : def.yield;
     if (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance) material = pays.materialId;
     const accepted = this.options.onWorldAction?.({
       kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: def.id, site: def.id,
@@ -2362,6 +2373,13 @@ export class SeamworksEngine {
       if (this.mover.pressJump(this.player, { dir, jump: true, down: this.input.has('down'), facing: this.facing }, this.geo)) { this.climbing = this.mover.busy; this.cancelMove(); return; }
       this.climbing = false;
     }
+    if (t && this.parkour()) {
+      const dir = (Number(this.input.has('right')) - Number(this.input.has('left'))) as -1 | 0 | 1;
+      if (this.moves.pressJump(t, this.player, DELVE_BOX, { dir, jump: true, down: this.input.has('down') }, this.climbing)) {
+        if (this.moves.event === 'walljump') { this.climbing = false; this.jumpBuffer = 0; this.airTime = COYOTE + 1; }
+        this.cancelMove(); return;
+      }
+    }
     if (this.climbing) return;
     if (t && this.input.has('down') && this.player.grounded && isOneWay(t, t.colAt(this.player.x), t.rowAt(this.player.y + 1))) {
       this.dropTime = DROP_THROUGH; this.player.grounded = false;
@@ -2406,7 +2424,10 @@ export class SeamworksEngine {
     }
     // A blow on a foe is combat: the weapon is in hand for it.
     if (struck) this.putToolAway();
-    if (!struck && this.terrain) {
+    // One World: a gathering node in reach is worked before the ground under it is dug.
+    const site = !struck && this.terrain && this.sites.length ? this.siteInReach() : null;
+    if (site) this.workSite(site);
+    else if (!struck && this.terrain) {
       this.swingTool = null;
       this.hitCells(this.swingTargets(), SWING_TOOLS, false);
       this.attackCooldown = this.swingFor(this.swingTool);
@@ -3486,9 +3507,16 @@ export class SeamworksEngine {
         if (swim) velocityX *= swim.speed;
         // Reeling a fish in holds the Keeper still.
         if (this.line?.phase === 'hooked') velocityX = 0;
+        // Parkour (terrain-moves.ts): hanging from a lip or mantling onto it, the move owns the body this step.
+        const parkour = !swim && this.parkour();
+        const moveInput = { dir: direction as -1 | 0 | 1, jump: this.input.has('jump'), down: this.input.has('down') };
+        if (parkour && this.moves.busy) {
+          this.climbing = false;
+          this.moves.hold(this.player, DELVE_BOX, moveInput, dt);
+          if (this.moves.event === 'mantle') this.cancelMove();
+        } else
         // On a ladder (or a rope) Up (jump) climbs and Down descends; anywhere else Down drops through platforms.
-        this.climbing = onLadder(this.terrain, this.player.x, this.player.y, DELVE_BOX);
-        if (this.climbing) {
+        if ((this.climbing = !this.moves.kicking && onLadder(this.terrain, this.player.x, this.player.y, DELVE_BOX))) {
           this.carryX = 0;
           const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
           climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
@@ -3501,7 +3529,9 @@ export class SeamworksEngine {
           const down = swim ? 1 : this.keeperDown(this.terrain);
           if (down < 0) stepTerrainBodyUp(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.width);
           else {
+            if (parkour) velocityX = this.moves.velocity(velocityX, dt);
             stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0, swim);
+            if (parkour) { this.moves.after(this.terrain, this.player, DELVE_BOX, moveInput, dt); if (this.moves.event === 'grab') this.cancelMove(); }
             // The Orrery Key in a star-well, Down held: sink out against its pull, gently.
             if (this.sinking && this.player.vy > KEY_SINK) this.player.vy = KEY_SINK;
           }
@@ -3514,6 +3544,7 @@ export class SeamworksEngine {
         }
       }
       this.reachedUnderhearth(this.terrain);
+      this.liftGate(this.terrain);
     } else if (this.geo) {
       this.mover.step(this.player, { dir: direction as -1 | 0 | 1, jump: this.input.has('jump'), down: this.input.has('down'), facing: this.facing }, velocityX, dt, this.geo);
       this.climbing = this.mover.busy;
@@ -4236,6 +4267,33 @@ export class SeamworksEngine {
    * Glim) read it to hang the right way; it is also EngineState.gravity.
    */
   get keeperGravity(): Down { return this.down; }
+  /**
+   * One World P2 (§2.4): the Quarry Gate's portcullis. Barred until the beacon
+   * burns again (the same `restored` the old east passage read); then its
+   * cells are air, every frame they are loaded (a ring that regenerates them
+   * finds them lifted again). Nothing is simulated and nothing new is saved.
+   */
+  private liftGate(t: Terrain): void {
+    const cells = this.worldSurface?.gate;
+    if (!cells || !this.restored) return;
+    let lifted = 0, x = 0;
+    for (const g of cells) {
+      if (!t.inside(g.col, g.row) || t.kind[t.index(g.col, g.row)] !== GATE_BAR) continue;
+      t.set(g.col, g.row, 0); lifted++; x = g.col * CELL + CELL / 2;
+    }
+    if (lifted && Math.abs(x - this.player.x) < 1600) {
+      this.say('play.world.gateLifts', 'The Quarry Gate lifts: the beacon\'s light reached it. The Ember Quarry is open.');
+      this.atmosphere.burst(x, (this.terrain?.top ?? FLOOR) - CELL);
+    }
+  }
+  /**
+   * Parkour on cells (terrain-moves.ts) is on: any terrain, down the ordinary
+   * way, not riding a cart or a grapple, no line in the water.
+   */
+  private parkour(): boolean {
+    if (!this.terrain || this.cart || this.grapple || this.down < 0 || this.line?.phase === 'hooked') { if (this.moves.busy) this.moves.reset(); return false; }
+    return true;
+  }
 
   /** Work out the Keeper's down from the field at the middle of its body (celestial.ts downAt), and tell what changed. */
   private keeperDown(t: Terrain): Down {
@@ -4676,7 +4734,7 @@ export class SeamworksEngine {
       nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : find ? 'height' : site ? 'gather' : stone ? 'stone' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase() ?? (stone ? 'WAYSTONE' : undefined), nearbyKind: station?.kind,
       height: find ? { id: find.id, kind: find.kind, found: this.heightsFound.has(find.id) } : undefined,
       cabinet: cabinet ? { id: cabinet.id, open: cabinet.open } : undefined,
-      y: Math.round(this.player.y), climbing: this.heights ? this.mover.mode : undefined,
+      y: Math.round(this.player.y), climbing: this.terrain ? (this.worldSurface ? (this.climbing ? 'climb' : this.moves.mode) : this.moves.busy ? this.moves.mode : undefined) : this.heights ? this.mover.mode : undefined,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}), ...(this.siteShut(site.def) ? { shut: true } : {}) } : undefined,
       timed: this.timedOut,
       x: Math.round(this.player.x), paused: this.paused,
@@ -5272,7 +5330,10 @@ export class SeamworksEngine {
     // A dark-keeping node by day (the Moonwake Bloom): a shut bud, no glow, no regrowth ring.
     const shut = this.siteShut(def);
     const ready = site.ready && !shut, glow = SITE_GLOW[def.kind];
+    // One World: a node in the world stands at its scale (half the town's); its labels stay readable.
+    const k = this.worldSurface ? .5 : 1;
     c.save();
+    if (k !== 1) { c.translate(x, FLOOR); c.scale(k, k); c.translate(-x, -FLOOR); }
     if (ready) {
       c.globalAlpha = (near ? .5 : .28) * (this.reducedMotion ? 1 : .8 + Math.sin(time * 2.4 + def.x) * .2);
       c.fillStyle = glow;
@@ -5325,13 +5386,15 @@ export class SeamworksEngine {
       c.strokeStyle = '#3a3040'; c.beginPath(); c.arc(x, iconY + 15, 12, 0, Math.PI * 2); c.stroke();
       c.strokeStyle = glow; c.beginPath(); c.arc(x, iconY + 15, 12, -Math.PI / 2, -Math.PI / 2 + share * Math.PI * 2); c.stroke();
     }
+    if (k !== 1) { c.restore(); c.save(); }
     if (near) {
+      const cueY = FLOOR - (FLOOR - iconY) * k;
       c.font = '600 12px system-ui'; c.textAlign = 'center'; c.fillStyle = '#fff1c9';
-      c.fillText(def.label.toUpperCase(), x, FLOOR + 35);
+      c.fillText(def.label.toUpperCase(), x, FLOOR + 35 * k + 6 * (1 - k));
       const need = ready ? this.siteNeed(def) : null;
       c.fillStyle = need ? '#ffb39a' : '#fff0cb';
       // Over the node's icon, not under its label: the floor band is the action bar's (SITE_CUE_RISE).
-      c.fillText(shut ? 'OPENS AT NIGHT' : !ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, iconY - SITE_CUE_RISE);
+      c.fillText(shut ? 'OPENS AT NIGHT' : !ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, cueY - SITE_CUE_RISE * k);
     }
     c.restore();
   }

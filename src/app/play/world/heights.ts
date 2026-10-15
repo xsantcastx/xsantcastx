@@ -70,6 +70,13 @@ export interface AreaHeights {
   /** Creatures perched on the high ground (added to the area's monsters). */
   perched: readonly MonsterDef[];
   realm: RealmTownId;
+  /**
+   * One World (P2): where Hollis Fenn stands, when the route is laid in cells
+   * (the mesa's top) rather than as `solids`. Absent: the mesa solid's.
+   */
+  hollis?: { x: number; y: number };
+  /** One World (P2): the art scale of the finds, world px per art px (2 in a world; 4 by default). */
+  artPx?: number;
 }
 
 /** The pieces of the route, relative to its west end `x0` (exported for the tests). */
@@ -139,8 +146,8 @@ export function climbRoute(spec: RouteSpec): AreaHeights {
 export const HOLLIS_REALMS: readonly RealmTownId[] = ['infernal', 'luminous', 'umbral', 'celestial', 'verdant'];
 export function hollisRealm(day: number): RealmTownId { return HOLLIS_REALMS[((day % 5) + 5) % 5]; }
 export function hollisFolk(heights: AreaHeights): HeightFolk {
-  const mesa = heights.solids[1];
-  return { id: 'hollis-fenn', x: mesa.x + 70, y: mesa.y, nameKey: 'play.height.folk.hollis', titleKey: 'play.height.folk.hollisTitle',
+  const at = heights.hollis ?? { x: heights.solids[1].x + 70, y: heights.solids[1].y };
+  return { id: 'hollis-fenn', x: at.x, y: at.y, nameKey: 'play.height.folk.hollis', titleKey: 'play.height.folk.hollisTitle',
     lines: ['play.height.hollis.1', `play.height.hollis.${heights.realm}`, 'play.height.hollis.2'] };
 }
 

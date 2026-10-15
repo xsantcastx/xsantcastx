@@ -1,40 +1,48 @@
 /**
- * one-world-flag.ts — the One World preview gate (docs/design/one-world.md §5).
+ * one-world-flag.ts — the One World gate (docs/design/one-world.md §5).
  *
- * A per-device preview, set three ways: Menu → "One World (preview)", the
- * query `?oneworld=1` / `?oneworld=0`, or this flag directly. It defaults OFF
- * until the flip at the end of P3, and is deleted in P4. With the gate off,
- * nothing in v3 runs and no v3 key is written: the old game, intact.
+ * FLIPPED (P2, 2026-10-15): One World is the game for everyone, new saves and
+ * old. The only way back to the legacy town scenes is a developer's escape
+ * hatch, `?oneworld=0`, which holds for that browser tab only (sessionStorage:
+ * reloads keep it, a new tab does not); `?oneworld=1` clears it. It is not in
+ * the menu. The old per-device preview key (`eclipse-oneworld` in
+ * localStorage) is ignored and removed, so a device that once turned the
+ * preview off is not stranded in the old game. P4 deletes the gate.
  *
- * Tiny and eager on purpose: no imports. It is a device preference (like the
- * minimap's fold), not game state, so it lives in its own localStorage key and
- * never rides the cloud save.
+ * Tiny and eager on purpose: no imports. A device/tab preference, never game
+ * state: it never rides the cloud save.
  */
+/** The retired per-device preview key (P1). Read only to remove it. */
 export const ONE_WORLD_KEY = 'eclipse-oneworld';
+/** The tab's escape hatch (`?oneworld=0`): '0' while this tab plays the legacy scenes. */
+export const ONE_WORLD_ESCAPE_KEY = 'eclipse-oneworld-off';
 
-/** Read once per page (a flip reloads): a query parameter wins, and is remembered. */
+/** Read once per page (a change reloads). */
 let cached: boolean | null = null;
 
 export const OneWorldFlag = {
-  /** True when this device previews One World. False on the server. */
+  /** True unless this tab took the escape hatch. False on the server (the engine never runs there). */
   get on(): boolean {
     if (cached !== null) return cached;
     if (typeof window === 'undefined') return false;
-    let on = false;
+    let on = true;
     try {
+      window.localStorage?.removeItem(ONE_WORLD_KEY);
       const query = new URLSearchParams(window.location?.search ?? '').get('oneworld');
-      if (query === '1' || query === '0') {
-        on = query === '1';
-        window.localStorage?.setItem(ONE_WORLD_KEY, on ? '1' : '0');
-      } else on = window.localStorage?.getItem(ONE_WORLD_KEY) === '1';
-    } catch { on = false; }
+      if (query === '0') window.sessionStorage?.setItem(ONE_WORLD_ESCAPE_KEY, '0');
+      else if (query === '1') window.sessionStorage?.removeItem(ONE_WORLD_ESCAPE_KEY);
+      on = window.sessionStorage?.getItem(ONE_WORLD_ESCAPE_KEY) !== '0';
+    } catch { on = true; }
     cached = on;
     return on;
   },
-  /** Turn the preview on or off for this device. The caller reloads: the world is built once per page. */
+  /** Tests and the dev hatch: set this tab's gate. The caller reloads: the world is built once per page. */
   set(on: boolean): void {
     cached = on;
-    try { window.localStorage?.setItem(ONE_WORLD_KEY, on ? '1' : '0'); } catch { /* this page only */ }
+    try {
+      if (on) window.sessionStorage?.removeItem(ONE_WORLD_ESCAPE_KEY);
+      else window.sessionStorage?.setItem(ONE_WORLD_ESCAPE_KEY, '0');
+    } catch { /* this page only */ }
   },
   /** Tests: forget the cached reading. */
   reset(): void { cached = null; },

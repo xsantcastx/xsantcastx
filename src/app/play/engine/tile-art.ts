@@ -125,6 +125,9 @@ export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & 
     case 'seam-brick': return 'block';
     case 'town-roof': return 'shingle';
     case 'town-beam': return 'grain';
+    // One World P2: the High Roads' ruins are dressed stone; the Quarry Gate's bars are drawn whole.
+    case 'courier-ruin': return 'block';
+    case 'gate-bar': return 'placed';
   }
   return node.yield || node.glow ? 'ore' : 'rock';
 }
@@ -673,6 +676,79 @@ export const PLACED_ART: Readonly<Record<string, readonly string[]>> = {
     '.....oooooo.....',
   ],
   // The Orrery Wells (celestial-gen.ts, celestial.ts): star-chain.
+  // One World P2 (blueprints.ts): the High Roads' tree, its canopy, the Couriers' rope bridge, the Quarry Gate's bars.
+  'ridge-trunk': [
+    '.....obbldo.....',
+    '.....oblldo.....',
+    '.....obbldo.....',
+    '.....odbldo.....',
+    '.....obbldo.....',
+    '.....oblldo.....',
+    '.....obdldo.....',
+    '.....obbldo.....',
+    '.....obbldo.....',
+    '.....oblldo.....',
+    '.....obbldo.....',
+    '.....odbldo.....',
+    '.....obbldo.....',
+    '.....oblldo.....',
+    '.....obdldo.....',
+    '.....obbldo.....',
+  ],
+  'ridge-canopy': [
+    '..oo..ooo...oo..',
+    '.ollooolloooldo.',
+    'ollhllllhlllllbo',
+    'olllblllllbllldo',
+    'obllllfllllllbdo',
+    'obbllbbllblllbdo',
+    'odbbbbbbbbbbbddo',
+    '.oddbddddbdddoo.',
+    '..oodoo.odo.oo..',
+    '....o.....o.....',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  'rope-bridge': [
+    'o..............o',
+    'od............do',
+    'odo..........odo',
+    'od.oo......oo.do',
+    'od...oooooo...do',
+    'hhhhhhhhhhhhhhhh',
+    'llflllllllflllll',
+    'bbbbbbfbbbbbbbbb',
+    'dodddoddddoddddo',
+    'oooooooooooooooo',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  'gate-bar': [
+    'oddddddddddddddo',
+    'ohlllllllllllldo',
+    'oddddddddddddddo',
+    '.olo..olo..olo..',
+    '.olo..olo..olo..',
+    '.olo..olo..olo..',
+    '.ohdddohdddohdo.',
+    '.olo..olo..olo..',
+    '.olo..olo..olo..',
+    '.olo..olo..olo..',
+    '.olo..olo..olo..',
+    '.ohdddohdddohdo.',
+    '.olo..olo..olo..',
+    '.olo..olo..olo..',
+    '.ofo..ofo..ofo..',
+    '..o....o....o...',
+  ],
   'star-chain': [
     '.......oo.......',
     '......obbo......',

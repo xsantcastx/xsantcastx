@@ -110,6 +110,10 @@ export interface TerrainNodeDef {
 export const WARDEN_FLAG = 'warden-defeated';
 /** Never set: a settlement's walls answer every swing with their refusal (One World). */
 export const TOWN_WALLS_FLAG = 'town-walls';
+/** Never set: the High Roads' rock and ruins answer every swing with their refusal (One World P2). */
+export const HIGH_ROADS_FLAG = 'high-roads';
+/** Never set: the Quarry Gate's bars refuse a swing; the beacon lifts them (the engine clears the cells). */
+export const QUARRY_GATE_FLAG = 'quarry-gate';
 
 const ROCK = { base: '#5c5359', dark: '#3a3339', light: '#877c84', fleck: '#a0949b' };
 
@@ -415,6 +419,25 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
   // The ladder to a keeper's room upstairs.
   { id: 'town-ladder', label: 'Fixed ladder', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
     base: '#7a5a36', dark: '#3a2a18', light: '#b08a55', fleck: '#5a4026' },
+  // ── One World P2 (docs/design/one-world.md §2.4, §2.6): the High Roads and the Quarry Gate, in cells. ──
+  // The Ridge Couriers' road over the Ember Quarry: laid by surface-gen.ts from blueprints.ts, protected, never
+  // dug (a swing gets the road's refusal), so every route a player learns stays climbable for everyone.
+  { id: 'ridge-rock', label: 'Ridge rock', solid: true, hp: 6, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0,
+    base: '#5a4a4c', dark: '#362a2e', light: '#8a7472', fleck: '#c4501e', guard: { flag: HIGH_ROADS_FLAG, refusal: 'The Couriers\' road holds' } },
+  { id: 'courier-ruin', label: 'Courier ruin', solid: true, hp: 6, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0,
+    base: '#6a5a6e', dark: '#3a3044', light: '#9a8aa0', fleck: '#e8c47a', guard: { flag: HIGH_ROADS_FLAG, refusal: 'The Couriers\' road holds' } },
+  // A ridge tree's trunk: climbed like a ladder (Up/Down); a direction + Jump kicks off it (terrain-moves.ts).
+  { id: 'ridge-trunk', label: 'Ridge tree', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
+    base: '#5a3c26', dark: '#2e1e12', light: '#8a6440', fleck: '#3a2a18' },
+  // Its canopy: stood on from above, dropped through holding Down.
+  { id: 'ridge-canopy', label: 'Ridge canopy', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true,
+    base: '#4a5a2a', dark: '#2a3418', light: '#7a8a3e', fleck: '#c4501e' },
+  // The Couriers' rope bridge between the ruins: stood on, dropped through holding Down.
+  { id: 'rope-bridge', label: 'Rope bridge', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true,
+    base: '#8a6a40', dark: '#3a2a18', light: '#c9a06a', fleck: '#5a4026' },
+  // The Quarry Gate's portcullis bars: barred until the Eclipse Beacon burns again, then the engine lifts them (air).
+  { id: 'gate-bar', label: 'Portcullis', solid: true, hp: 6, tools: { pickaxe: 1 }, discipline: 'mining', xp: 0,
+    base: '#3e3640', dark: '#1e1a22', light: '#6e6470', fleck: '#ffa040', guard: { flag: QUARRY_GATE_FLAG, refusal: 'Barred. The Eclipse Beacon lifts the Quarry Gate' } },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);

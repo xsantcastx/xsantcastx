@@ -14,8 +14,14 @@
  *   C  counter: the station's anchor (open)    S  the hanging sign (open; dressing)
  *   c  chimney (masonry; smoke rises from its top)
  *   l  a leg or post in the back wall (timber; walked past)
- *   p  a stone post in the back wall (an arch's; walked past)
+ *   p  a stone post in the back wall (walked past)
  *   (space) sky: nothing at all
+ *
+ * One World P2 (the High Roads and the Quarry Gate, §2.4 and §2.6):
+ *
+ *   R  ridge rock (the Couriers' shelves and mesas)   U  courier ruin (dressed stone, floating)
+ *   |  a ridge tree's trunk (climbed; a kick-off)       ^  its canopy (one-way)
+ *   ~  the Couriers' rope bridge (one-way)              B  the Quarry Gate's bars (lifted by the beacon)
  *
  * Side walls stand above the doorways only, so the street runs through every
  * building at Keeper height: the Keeper walks in one door, past the counter,
@@ -56,7 +62,62 @@ export const INFERNAL_PALETTE: RealmPalette = {
 };
 
 /** Every building kind the settlements are made of. */
-export type BlueprintKind = 'shop' | 'shop-wide' | 'forge' | 'mine-head' | 'beacon-tower' | 'arch' | 'basin';
+export type BlueprintKind = 'shop' | 'shop-wide' | 'forge' | 'mine-head' | 'beacon-tower' | 'basin' | 'quarry-gate' | 'high-roads';
+
+/**
+ * The High Roads (§2.6), in cells over a hunting region, west → east, all from
+ * the ground line (rows are counted UP from it: `top` 5 is the cell row five
+ * above the street). The Keeper jumps about 2.5 cells; a lip up to ~3.5 cells
+ * over the feet is caught by the hands and mantled (terrain-moves.ts):
+ *
+ *   1. shelf   a floating ledge of ridge rock: jump at its side, catch the lip, mantle.   → cache
+ *   2. tree    climb the trunk (Up), stand in its canopy.
+ *   3. ruin    a floating ruin slab from the canopy, then the rope bridge east.            → carving
+ *   4. mesa    a floating rock table; a creature is perched on it (and, one day in five, Hollis Fenn). → cache
+ *   5. snag    a dead trunk, no canopy: climb to its top.
+ *   6. block   a floating ruin block: from the snag, a direction + Jump kicks off, the hands catch it. → look-out
+ *   7. slab    a ruin slab one step up, caught and mantled.
+ *   8. spire   the spire's lip, caught and mantled: the summit, 23 rows over the street.  → summit cairn
+ *
+ * Every piece floats or is a trunk, so the street under it runs clear (a Keeper
+ * walking to the far stone never has to climb). `dx` and `w` are columns from
+ * the route's west end; `top` and `h` are rows up from the ground.
+ */
+export const HIGH_ROADS = {
+  shelf: { dx: 0, w: 5, top: 5, h: 2 },
+  tree: { dx: 9, top: 11, canopy: 5 },
+  ruin: { dx: 12, w: 5, top: 11, h: 1 },
+  bridge: { dx: 17, w: 8, top: 11 },
+  mesa: { dx: 25, w: 9, top: 11, h: 3 },
+  snag: { dx: 37, top: 14 },
+  block: { dx: 41, w: 4, top: 17, h: 2 },
+  slab: { dx: 46, w: 6, top: 20, h: 1 },
+  spire: { dx: 53, w: 4, top: 23, h: 3 },
+} as const;
+/** The route's width in columns and height in rows. */
+export const HIGH_ROADS_SIZE = { w: 57, h: 23 } as const;
+
+/** The High Roads as a blueprint grid (top row first; its last row stands on the ground). Pure. */
+export function highRoadsGrid(): string[] {
+  const R = HIGH_ROADS, { w, h } = HIGH_ROADS_SIZE;
+  const grid = Array.from({ length: h }, () => Array.from({ length: w }, () => ' '));
+  // Rows up from the ground → grid y (the last grid row is one row up).
+  const put = (dx: number, up: number, g: string) => { grid[h - up][dx] = g; };
+  const block = (dx: number, width: number, top: number, rows: number, g: string) => {
+    for (let x = dx; x < dx + width; x++) for (let up = top; up > top - rows; up--) put(x, up, g);
+  };
+  block(R.shelf.dx, R.shelf.w, R.shelf.top, R.shelf.h, 'R');
+  for (let x = R.tree.dx - 2; x <= R.tree.dx + 2; x++) put(x, R.tree.top, '^');
+  for (let up = 1; up <= R.tree.top; up++) put(R.tree.dx, up, '|');
+  block(R.ruin.dx, R.ruin.w, R.ruin.top, R.ruin.h, 'U');
+  for (let x = R.bridge.dx; x < R.bridge.dx + R.bridge.w; x++) put(x, R.bridge.top, '~');
+  block(R.mesa.dx, R.mesa.w, R.mesa.top, R.mesa.h, 'R');
+  for (let up = 1; up <= R.snag.top; up++) put(R.snag.dx, up, '|');
+  block(R.block.dx, R.block.w, R.block.top, R.block.h, 'U');
+  block(R.slab.dx, R.slab.w, R.slab.top, R.slab.h, 'U');
+  block(R.spire.dx, R.spire.w, R.spire.top, R.spire.h, 'U');
+  return grid.map(row => row.join(''));
+}
 
 /**
  * The grids. Rows run top to bottom; every row of one blueprint is as wide as
@@ -125,13 +186,19 @@ export const BLUEPRINTS: Readonly<Record<BlueprintKind, readonly string[]>> = {
     'D...D',
     'D...D',
   ],
-  // A temporary arch (P1): stone posts and a lintel, open under it.
-  arch: [
+  // The Quarry Gate (P2, §2.4): a gatehouse wall too tall to climb, its portcullis across the street.
+  // The beacon lifts the bars (the engine turns them to air); the stone back wall stays: a gate passage.
+  'quarry-gate': [
+    '# # #',
     '#####',
-    'p   p',
-    'p   p',
-    'p   p',
+    '#####',
+    '#####',
+    'BBBBB',
+    'BBBBB',
+    'BBBBB',
   ],
+  // The High Roads over the Ember Quarry (P2, §2.6): built from HIGH_ROADS below.
+  'high-roads': highRoadsGrid(),
   // The square's raised basin (the settlement's pond): a stone rim, water laid between.
   basin: [
     '#    #',
@@ -190,8 +257,15 @@ export function blueprintCell(glyph: string, palette: RealmPalette): BlueprintCe
     case 'D': return { node: null, back: BACK_DOOR };
     // A leg or post seen behind the street: timber in the back wall, walked past.
     case 'l': return { node: null, back: BACK_TIMBER };
-    // A stone post seen behind the street (an arch's): walked past.
+    // A stone post seen behind the street: walked past.
     case 'p': return { node: null, back: BACK_STONE };
+    // One World P2: the High Roads (open sky behind them) and the Quarry Gate's bars (a stone passage behind).
+    case 'R': return { node: 'ridge-rock', back: BACK_NONE };
+    case 'U': return { node: 'courier-ruin', back: BACK_NONE };
+    case '|': return { node: 'ridge-trunk', back: BACK_NONE };
+    case '^': return { node: 'ridge-canopy', back: BACK_NONE };
+    case '~': return { node: 'rope-bridge', back: BACK_NONE };
+    case 'B': return { node: 'gate-bar', back: BACK_STONE };
     case ' ': return null;
   }
   throw new Error(`Unknown blueprint glyph '${glyph}'`);

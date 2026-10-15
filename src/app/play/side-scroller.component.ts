@@ -2478,16 +2478,6 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine?.setUseHeld(down);
     if (down) this.engine?.interact();
   }
-  /** Menu → One World (preview): flip this device's gate and reload (the world is built once per page). */
-  toggleOneWorld(): void {
-    if (!this.browser) return;
-    OneWorldFlag.set(!this.oneWorld);
-    this.delve.flush();
-    const url = new URL(window.location.href);
-    url.searchParams.delete('oneworld');
-    window.location.assign(url.toString());
-  }
-
   // ── The Delve map ──
   /** The full map: the world holds still while it is open (nothing can reach the Keeper). */
   openMap(): void {

@@ -42,6 +42,8 @@ export interface HomesteadFrame {
   /** Motion clock in seconds; 0 under reduced motion. */
   time: number;
   playerX: number;
+  /** The Keeper's feet y (One World: walking past a building collects only on the street, not from the Delve under it). */
+  playerY?: number;
   reduced: boolean;
   /** Draws an `artFor()` key; false until the image has loaded. */
   art: (key: string | undefined, x: number, y: number, width: number, height: number) => boolean;
@@ -199,6 +201,17 @@ export class HomesteadScene implements HomesteadView {
   private goldenAt = -Infinity;
   private vaultBump = -Infinity;
   private reduced = false;
+  /**
+   * One World P2 (docs/design/one-world.md §2.2): the plot stands in a world
+   * area at the world's scale; a plot x is drawn at `x + plotX * scale`. Null:
+   * the old Homestead area (HOMESTEAD_ID) at the town's scale.
+   */
+  private world: { area: string; x: number; scale: number } | null = null;
+  private readonly local: HomesteadFrame = { areaId: HOMESTEAD_ID, camera: 0, viewport: 0, time: 0, playerX: 0, reduced: false, art: () => false };
+  /** Stand the plot in a world area (its stations are already at their world x; see ember.world.ts plotX). */
+  setWorldPlacement(place: { area: string; x: number; scale: number } | null): void { this.world = place; }
+  /** The area the plot's buildings stand in now. */
+  private isHome(areaId: string): boolean { return this.world ? areaId === this.world.area : areaId === HOMESTEAD_ID; }
   private readonly buildings = HOMESTEAD_BUILDINGS.map(s => ({ id: buildingOfStation(s.id)!, x: s.x }));
   /** The pixel figures and props (homestead-pixel.ts); null without a DOM, where the vector placeholders draw. */
   private readonly pixels = canPaint ? new HomesteadPixels() : null;
@@ -330,12 +343,12 @@ export class HomesteadScene implements HomesteadView {
   // ── HomesteadView ──
 
   paints(areaId: string, stationId: string): boolean {
-    if (areaId === HOMESTEAD_ID) return buildingOfStation(stationId) !== null || homeStationOf(stationId) !== null;
-    return stationId === HOMESTEAD_GATE_ID && areaId !== HOMESTEAD_ID && this.gateArea(areaId);
+    if (this.isHome(areaId)) return buildingOfStation(stationId) !== null || homeStationOf(stationId) !== null;
+    return !this.world && stationId === HOMESTEAD_GATE_ID && areaId !== HOMESTEAD_ID && this.gateArea(areaId);
   }
 
   interact(areaId: string, stationId: string): boolean {
-    if (areaId !== HOMESTEAD_ID) return false;
+    if (!this.isHome(areaId)) return false;
     if (stationId === HOMESTEAD_FORGE_STATION) { this.onStrike?.(); return true; }
     const id = buildingOfStation(stationId);
     return id ? (this.onBuilding?.(id) ?? false) : false;
@@ -345,8 +358,27 @@ export class HomesteadScene implements HomesteadView {
 
   draw(c: CanvasRenderingContext2D, frame: HomesteadFrame): void {
     this.reduced = frame.reduced;
+    const w = this.world;
+    if (w) {
+      // One World: the plot in its world, drawn in plot space through one transform (world x = w.x + plot x * scale).
+      if (frame.areaId !== w.area) return;
+      const l = this.local, k = w.scale;
+      l.areaId = HOMESTEAD_ID; l.camera = (frame.camera - w.x) / k; l.viewport = frame.viewport / k; l.time = frame.time;
+      l.reduced = frame.reduced; l.art = frame.art;
+      // Walking past collects only on the plot's street (not from the Delve under it, nor the sky over it).
+      l.playerX = frame.playerY === undefined || Math.abs(frame.playerY - FLOOR) < 100 ? (frame.playerX - w.x) / k : -1e9;
+      if (l.camera > FENCE_END + 300 || l.camera + l.viewport < -300) return;
+      c.save(); c.translate(w.x, FLOOR); c.scale(k, k); c.translate(0, -FLOOR);
+      this.drawPlot(c, l);
+      c.restore();
+      return;
+    }
     if (this.gateArea(frame.areaId)) { this.drawGate(c, frame); return; }
     if (frame.areaId !== HOMESTEAD_ID) return;
+    this.drawPlot(c, frame);
+  }
+
+  private drawPlot(c: CanvasRenderingContext2D, frame: HomesteadFrame): void {
     const now = this.clock();
     const wall = Date.now();
     // Walking past a building hands over its receipt.

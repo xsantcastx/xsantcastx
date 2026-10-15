@@ -80,6 +80,8 @@ export interface SurfaceSpec {
   biome: BiomeDef;
   /** The settlement's square (cols): its town stone, the Hearth fire the keepers gather at, the benches. */
   square?: { stone: number; hearth: number; benches: readonly number[] };
+  /** One World P2: the gate's portcullis cells (`gate-bar`), lifted by the engine once the realm's beacon burns. */
+  gate?: readonly { col: number; row: number }[];
 }
 
 /** One sector column's sky band: SECTOR × (−rowLo) cells, row-major from `rowLo` (local index (row − rowLo) × 32 + lc). */
