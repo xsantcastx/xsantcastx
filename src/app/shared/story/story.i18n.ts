@@ -1,5 +1,5 @@
 /**
- * story.i18n.ts: the Keeper's story, the Prologue and Act I (shared/story/story.ts).
+ * story.i18n.ts: the Keeper's story: the Prologue, Act I, and Act II with its scenes (shared/story/story.ts).
  * Lazy: registered by the side-scroller (play chunk: the lines, the cards, the
  * chapter tag) and by the Story tab (the journal), checked by
  * scripts/check-i18n-keys.js.
@@ -25,6 +25,7 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.chapter.prologue': { en: 'Prologue · The Fresh Mark', es: 'Prologo · La marca fresca' },
   'story.chapter.act1': { en: 'Act I · The Old Seam', es: 'Acto I · La vieja veta' },
   'story.chapter.act2': { en: 'Act II · Five Witnesses', es: 'Acto II · Cinco testigos' },
+  'story.chapter.act3': { en: 'Act III · The Fivefold Lock', es: 'Acto III · La cerradura quintuple' },
 
   // ── Cards: one at each act boundary, three short paragraphs at most ──
   'story.card.continue': { en: 'Continue', es: 'Continuar' },
@@ -59,6 +60,21 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.card.act2.p3': {
     en: 'Then, to you: "Five witnesses. One from each realm. Bring me five honest accounts of what this crack did to them, and I\'ll tell you who drew the line."',
     es: 'Luego, a ti: "Cinco testigos. Uno de cada reino. Traeme cinco relatos honestos de lo que esta grieta les hizo, y te dire quien trazo la linea."',
+  },
+
+  'story.card.act3.kicker': { en: 'End of Act II', es: 'Fin del Acto II' },
+  'story.card.act3.title': { en: 'The light coming up', es: 'La luz que sube' },
+  'story.card.act3.p1': {
+    en: 'That night the fragment on Kael\'s anvil turns over on its own, warm side down, as if something below had called it by name.',
+    es: 'Esa noche el fragmento del yunque de Kael se da la vuelta solo, con el lado tibio hacia abajo, como si algo de abajo lo hubiera llamado por su nombre.',
+  },
+  'story.card.act3.p2': {
+    en: 'Far under the Seamworks, under the Halls, under the Furnace you put out, the rock gives out and there is sky. A light is coming up through it. It is not lava, and it is not Glim.',
+    es: 'Muy por debajo de Basalt Seamworks, bajo las Salas, bajo el Horno que apagaste, la roca se acaba y hay cielo. Una luz sube a traves de el. No es lava, y no es Glim.',
+  },
+  'story.card.act3.p3': {
+    en: 'Kael, his hand flat on the anvil: "Starfall. I never wanted to say it aloud." Then, to you: "Five witnesses, and a sixth mark at Keeper height. Sleep. The lock comes next."',
+    es: 'Kael, con la mano plana sobre el yunque: "Starfall. Nunca quise decirlo en voz alta." Luego, a ti: "Cinco testigos, y una sexta marca a la altura de un Guardian. Duerme. Despues viene la cerradura."',
   },
 
   // ── Lines, said once when the beat happens (through Glim's line; a keeper's own voice where it is theirs) ──
@@ -111,6 +127,102 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.beat.a2.furnace.title': { en: 'Let it end', es: 'Dejalo terminar' },
   'story.beat.a2.furnace.text': { en: 'Verrin asked you to file the one ending they never could. The Banked Furnace is out, and the Seamworks is four people colder.', es: 'Verrin te pidio archivar el unico final que nunca pudo. El Horno Cubierto se apago, y las Costuras estan cuatro personas mas frias.' },
 
+  'story.beat.a2.ink.title': { en: 'The account in the dark', es: 'El relato en la oscuridad' },
+  'story.beat.a2.ink.text': { en: 'The Gloam Warden kept the dark the light left behind. You lit it and ended it. Verrin gave the Umbral\'s account: the line runs under that realm too, drawn from below.', es: 'El Gloam Warden guardaba la oscuridad que dejo la luz. La encendiste y le pusiste fin. Verrin dio el relato del Umbral: la linea pasa tambien bajo ese reino, trazada desde abajo.' },
+  'story.beat.a2.root.title': { en: 'The first cut', es: 'El primer corte' },
+  'story.beat.a2.root.text': { en: 'The Graftmother joined everything that was cut. Kesh Arbo and Siv Moss agreed, for once: the crack was the first cut, and somebody made it on purpose.', es: 'La Graftmother unia todo lo que se cortaba. Kesh Arbo y Siv Moss estuvieron de acuerdo, por una vez: la grieta fue el primer corte, y alguien lo hizo a proposito.' },
+  'story.beat.a2.prism.title': { en: 'A promise held still', es: 'Una promesa quieta' },
+  'story.beat.a2.prism.text': { en: 'The Hollow Sun was light promised to someone and never delivered. You held it in the beam until it could end. Aureth wrote the Luminous account in full.', es: 'El Hollow Sun era luz prometida a alguien y nunca entregada. La sostuviste en el haz hasta que pudo terminar. Aureth escribio entero el relato Luminoso.' },
+  'story.beat.a2.orrery.title': { en: 'The assumed down', es: 'El abajo supuesto' },
+  'story.beat.a2.orrery.text': { en: 'The Fallen Ephemeris rode a ceiling because the Compact assumed which way was down. Sera Quill signed "the model was wrong". The Archivist refiled Nox\'s note under evidence.', es: 'La Fallen Ephemeris iba por un techo porque el Compact supuso hacia donde era abajo. Sera Quill firmo "el modelo estaba mal". El Archivista volvio a archivar la nota de Nox como prueba.' },
+  'story.beat.a2.cabinets.title': { en: 'Every column but one', es: 'Todas las columnas menos una' },
+  'story.beat.a2.cabinets.text': { en: 'You opened the Archivist\'s lost cabinets with the Slate. The docket ticks every column but "Collected". Hollis Fenn remembers the couriers who carried them.', es: 'Abriste los gabinetes perdidos del Archivista con la Pizarra. El registro marca todas las columnas menos "Recogido". Hollis Fenn recuerda a los mensajeros que los llevaron.' },
+  'story.beat.a2.lamp.title': { en: 'The light coming up', es: 'La luz que sube' },
+  'story.beat.a2.lamp.text': { en: 'Five accounts on Kael\'s anvil, and all five say the line goes down. The Archivist\'s last chart has a line not yet written. Something is coming up the shaft.', es: 'Cinco relatos en el yunque de Kael, y los cinco dicen que la linea baja. La ultima carta del Archivista tiene una linea aun sin escribir. Algo sube por el pozo.' },
+
+  // ── Scenes (Act II): who is in it, what they say (the last word is Glim's), and the one reward ──
+  'story.scene.kicker': { en: 'Act II · A witness speaks', es: 'Acto II · Habla un testigo' },
+  'story.scene.next': { en: 'Next', es: 'Siguiente' },
+  'story.scene.skip': { en: 'Skip', es: 'Saltar' },
+  'story.scene.take': { en: 'Take it', es: 'Tomarlo' },
+  'story.scene.step': { en: '{{n}} of {{total}}', es: '{{n}} de {{total}}' },
+  'story.scene.gives': { en: 'For you', es: 'Para ti' },
+  'story.scene.kept': { en: 'Already yours', es: 'Ya es tuyo' },
+  'story.scene.play': { en: 'Play the scene', es: 'Ver la escena' },
+  'story.scene.new': { en: 'New scene', es: 'Escena nueva' },
+  'story.scene.replay': { en: 'See it again', es: 'Verla otra vez' },
+  'story.who.glim': { en: 'Glim', es: 'Glim' },
+  'story.who.kael': { en: 'Kael', es: 'Kael' },
+  'story.who.verrin': { en: 'Verrin', es: 'Verrin' },
+  'story.who.merchant': { en: 'The Merchant', es: 'El Mercader' },
+  'story.who.archivist': { en: 'The Archivist', es: 'El Archivista' },
+  'story.who.aureth': { en: 'Aureth', es: 'Aureth' },
+  'story.who.rook': { en: 'Rook Sable', es: 'Rook Sable' },
+  'story.who.kesh': { en: 'Kesh Arbo', es: 'Kesh Arbo' },
+  'story.who.siv': { en: 'Siv Moss', es: 'Siv Moss' },
+  'story.who.lune': { en: 'Lune Coyne', es: 'Lune Coyne' },
+  'story.who.sera': { en: 'Sera Quill', es: 'Sera Quill' },
+  'story.who.hollis': { en: 'Hollis Fenn', es: 'Hollis Fenn' },
+
+  'story.scene.a2.furnace.1': { en: 'Four went down to bank it. I stayed up top and called it duty. You put it out, and now I can call it what it was.', es: 'Cuatro bajaron a cubrirlo. Yo me quede arriba y lo llame deber. Tu lo apagaste, y ahora puedo llamarlo por su nombre.' },
+  'story.scene.a2.furnace.2': { en: 'I have filed their ending. The label says "finished". I have never written that word on anything of mine.', es: 'He archivado su final. La etiqueta dice "terminado". Nunca he escrito esa palabra en nada mio.' },
+  'story.scene.a2.furnace.3': { en: 'That is one account: the Seamworks\'. The crack asked us for four people, and we paid. Four more realms owe me theirs.', es: 'Ese es un relato: el de Basalt Seamworks. La grieta nos pidio cuatro personas, y pagamos. Otros cuatro reinos me deben el suyo.' },
+  'story.scene.a2.furnace.4': { en: 'I drew the Furnace Hall in solid line. The first solid line I\'ve drawn down there. It felt like closing a door gently.', es: 'Dibuje la Sala del Horno con linea continua. La primera que trazo alli abajo. Fue como cerrar una puerta con cuidado.' },
+  'story.scene.a2.ink.1': { en: 'The Umbral\'s account: the dark down there was left behind. Nobody chose it. The Warden only kept it.', es: 'El relato del Umbral: la oscuridad de abajo quedo atras. Nadie la eligio. El Warden solo la guardaba.' },
+  'story.scene.a2.ink.2': { en: 'My chalk says "this way, if it is still this way". It is still that way. Take two shards: a door holds where both ends agree.', es: 'Mi tiza dice "por aqui, si sigue siendo por aqui". Sigue siendolo. Toma dos fragmentos: una puerta aguanta donde ambos extremos coinciden.' },
+  'story.scene.a2.ink.3': { en: 'Two accounts. The line runs under my realm too, and it was drawn from below, not above.', es: 'Dos relatos. La linea pasa tambien bajo mi reino, y se trazo desde abajo, no desde arriba.' },
+  'story.scene.a2.ink.4': { en: 'Ink-blind, and you still came back with the map right. I\'ve drawn the Deeps dashed. Dashed is honest.', es: 'Ciego de tinta, y aun asi volviste con el mapa bien. He dibujado las Profundidades a trazos. A trazos es honesto.' },
+  'story.scene.a2.root.1': { en: 'The root\'s account: everything cut down there wants to be joined back on. The crack was the first cut.', es: 'El relato de la raiz: todo lo cortado alli abajo quiere volver a unirse. La grieta fue el primer corte.' },
+  'story.scene.a2.root.2': { en: 'And somebody made that cut on purpose. Kesh and I agree on that. Write it down before we stop agreeing.', es: 'Y alguien hizo ese corte a proposito. Kesh y yo estamos de acuerdo. Escribelo antes de que dejemos de estarlo.' },
+  'story.scene.a2.root.3': { en: 'You came back the shape you went in. Down there, that is a title. Wear it.', es: 'Volviste con la misma forma con la que bajaste. Alli abajo, eso es un titulo. Llevalo.' },
+  'story.scene.a2.root.4': { en: 'The Root Deeps grew over my map twice. I let them. Some blanks fill themselves in.', es: 'Las Root Deeps crecieron sobre mi mapa dos veces. Las deje. Algunos huecos se llenan solos.' },
+  'story.scene.a2.prism.1': { en: 'The Luminous account: the light that sets under us was promised to someone. It waited so long it forgot whom.', es: 'El relato Luminoso: la luz que se pone bajo nosotros estaba prometida a alguien. Espero tanto que olvido a quien.' },
+  'story.scene.a2.prism.2': { en: 'Every bet the miners made on the light was right. Nobody down there ever lost. Odd thing to be sad about.', es: 'Todas las apuestas de los mineros sobre la luz acertaron. Alli abajo nadie perdio nunca. Que cosa tan rara para estar triste.' },
+  'story.scene.a2.prism.3': { en: 'You held a promise still long enough to end it. In the Court that has a name. Wear it, Dawn-Witness.', es: 'Sostuviste quieta una promesa lo bastante para terminarla. En la Corte eso tiene nombre. Llevalo, Dawn-Witness.' },
+  'story.scene.a2.prism.4': { en: 'Light you can stand on. I\'m drawing the bridges in pencil. Light changes its mind.', es: 'Luz sobre la que se puede pisar. Dibujo los puentes a lapiz. La luz cambia de opinion.' },
+  'story.scene.a2.orrery.1': { en: 'The Celestial account: the Compact assumed which way was down and measured everything against it. The line was in the assumption.', es: 'El relato Celestial: el Compact supuso hacia donde era abajo y midio todo contra eso. La linea estaba en la suposicion.' },
+  'story.scene.a2.orrery.2': { en: 'Nox wrote as much in a margin three hundred years ago. I filed it under insolence. I have refiled it under evidence.', es: 'Nox lo escribio en un margen hace trescientos anos. Lo archive como insolencia. Lo he vuelto a archivar como prueba.' },
+  'story.scene.a2.orrery.3': { en: 'Here: two shards, cut true against the new down. My Waystones are off by a hair. These are not.', es: 'Toma: dos fragmentos, cortados a escuadra con el nuevo abajo. Mis Waystones fallan por un pelo. Estos no.' },
+  'story.scene.a2.orrery.4': { en: 'Down was negotiable, and you negotiated well. I\'ve drawn an arrow on the map that points both ways.', es: 'Abajo era negociable, y negociaste bien. He dibujado en el mapa una flecha que apunta a los dos lados.' },
+  'story.scene.a2.cabinets.1': { en: 'The docket. Sixteen curios, every column ticked but "Collected". You have started collecting.', es: 'El registro. Dieciseis curiosidades, todas las columnas marcadas menos "Recogido". Has empezado a recoger.' },
+  'story.scene.a2.cabinets.2': { en: 'I carried letters, not cabinets. Too young, she said. But I remember the honeycomb: no courier walked without it. Take some.', es: 'Yo llevaba cartas, no gabinetes. Demasiado joven, dijo ella. Pero recuerdo el panal: ningun mensajero caminaba sin el. Toma un poco.' },
+  'story.scene.a2.cabinets.3': { en: 'Each was put down where it was true. The crack is the one thing in the realms I never had a cabinet for.', es: 'Cada uno se dejo donde era verdad. La grieta es lo unico de los reinos para lo que nunca tuve un gabinete.' },
+  'story.scene.a2.cabinets.4': { en: 'Your glass gets warm near a latch, and so do I. Something rare is always nearer than the map says.', es: 'Tu cristal se calienta cerca de un pestillo, y yo tambien. Algo raro siempre esta mas cerca de lo que dice el mapa.' },
+  'story.scene.a2.lamp.1': { en: 'Five accounts. Fire, dark, root, light and measure. Every one says the line goes down, further than the Furnace.', es: 'Cinco relatos. Fuego, oscuridad, raiz, luz y medida. Todos dicen que la linea baja, mas alla del Horno.' },
+  'story.scene.a2.lamp.2': { en: 'The Orrery\'s last chart has one more line than it ever drew. It is in my hand. I have not written it yet.', es: 'La ultima carta del Orrery tiene una linea mas de las que trazo nunca. Es de mi puno y letra. Aun no la he escrito.' },
+  'story.scene.a2.lamp.3': { en: 'I promised to tell you who drew the line. I will. Not today. You kept all five witnesses; that is a title in this forge.', es: 'Prometi decirte quien trazo la linea. Lo hare. Hoy no. Guardaste a los cinco testigos; en esta forja eso es un titulo.' },
+  'story.scene.a2.lamp.4': { en: 'There\'s a light coming up the shaft that isn\'t on any map. Someone patient left a lamp lit down there. I\'d like to meet them.', es: 'Sube por el pozo una luz que no esta en ningun mapa. Alguien paciente dejo una lampara encendida alli abajo. Me gustaria conocerle.' },
+
+  // The reward, named, and what it is for (every reward has a use the player can see).
+  'story.reward.title': { en: 'Title: {{name}}', es: 'Titulo: {{name}}' },
+  'story.reward.title.use': { en: 'Worn in front of your rank, everywhere it is shown. Switch titles any time under the Market\'s Title Prefix.', es: 'Se lleva delante de tu rango, donde se muestre. Cambia de titulo cuando quieras en Title Prefix del Mercado.' },
+  'story.reward.stack': { en: '{{qty}} × {{name}}', es: '{{qty}} × {{name}}' },
+  'story.reward.codex': { en: 'A Codex page: The Witness Accounts', es: 'Una pagina del Codex: Los relatos de los testigos' },
+  'story.reward.codex.use': { en: 'The Codex keeps every account you bring in (Codex, Collection).', es: 'El Codex guarda cada relato que traes (Codex, Coleccion).' },
+  'story.reward.name.the-ungrafted': { en: 'The Ungrafted', es: 'The Ungrafted' },
+  'story.reward.name.dawn-witness': { en: 'Dawn-Witness', es: 'Dawn-Witness' },
+  'story.reward.name.witness-keeper': { en: 'Witness-Keeper', es: 'Witness-Keeper' },
+  'story.reward.name.waystone-shard': { en: 'Waystone Shard', es: 'Waystone Shard' },
+  'story.reward.name.courier-honeycomb': { en: 'Courier\'s Honeycomb', es: 'Courier\'s Honeycomb' },
+  'story.reward.use.waystone-shard': { en: 'A Rift Anchor at the Crafting Bench takes one: a door that holds where both ends agree.', es: 'Un Rift Anchor en el Crafting Bench lleva uno: una puerta que aguanta donde ambos extremos coinciden.' },
+  'story.reward.use.courier-honeycomb': { en: 'Every pet eats it like its favourite. Feed it from the pet sheet.', es: 'Cada mascota lo come como su favorito. Daselo desde la ficha de mascota.' },
+
+  // ── The Codex page: The Witness Accounts (codex-accounts.component.ts) ──
+  'story.accounts.title': { en: 'The Witness Accounts', es: 'Los relatos de los testigos' },
+  'story.accounts.sub': { en: '{{n}} of 5 accounts on Kael\'s anvil', es: '{{n}} de 5 relatos en el yunque de Kael' },
+  'story.accounts.blank': { en: 'A blank page. Kael keeps the first account, and has not opened it to you yet.', es: 'Una pagina en blanco. Kael guarda el primer relato, y aun no te lo ha abierto.' },
+  'story.accounts.waiting': { en: 'Still to be told.', es: 'Aun por contar.' },
+  'story.account.a2.furnace.realm': { en: 'Infernal · the Banked Furnace', es: 'Infernal · el Horno Cubierto' },
+  'story.account.a2.furnace.text': { en: 'Four Keepers went down to bank the fire the crack woke, and stayed with it. Kael stayed up top. The fire is out; the forge is four people colder.', es: 'Cuatro Guardianes bajaron a cubrir el fuego que desperto la grieta, y se quedaron con el. Kael se quedo arriba. El fuego se apago; la forja esta cuatro personas mas fria.' },
+  'story.account.a2.ink.realm': { en: 'Umbral · the Ink Deeps', es: 'Umbral · las Ink Deeps' },
+  'story.account.a2.ink.text': { en: 'The dark under the Umbral was left behind when the light went somewhere else. The line runs beneath it too, drawn from below.', es: 'La oscuridad bajo el Umbral quedo atras cuando la luz se fue a otra parte. La linea pasa tambien por debajo, trazada desde abajo.' },
+  'story.account.a2.root.realm': { en: 'Verdant · the Root Deeps', es: 'Verdant · las Root Deeps' },
+  'story.account.a2.root.text': { en: 'Everything cut under the Verdant wants to be joined back on. The crack was the first cut, and somebody made it on purpose.', es: 'Todo lo cortado bajo el Verdant quiere volver a unirse. La grieta fue el primer corte, y alguien lo hizo a proposito.' },
+  'story.account.a2.prism.realm': { en: 'Luminous · the Prism Mines', es: 'Luminous · las Prism Mines' },
+  'story.account.a2.prism.text': { en: 'The sun that sets under the Luminous was promised to someone and never arrived. It waited until it forgot whom for.', es: 'El sol que se pone bajo el Luminous estaba prometido a alguien y nunca llego. Espero hasta olvidar para quien.' },
+  'story.account.a2.orrery.realm': { en: 'Celestial · the Orrery Wells', es: 'Celestial · los Orrery Wells' },
+  'story.account.a2.orrery.text': { en: 'The Compact assumed which way was down and measured the sky against it. The line was in the assumption. Sera signed that the model was wrong.', es: 'El Compact supuso hacia donde era abajo y midio el cielo contra eso. La linea estaba en la suposicion. Sera firmo que el modelo estaba mal.' },
+
   // ── Leads: where to look next, never what is there ──
   'story.lead.p.arrival': { en: 'Step into the world at the Seamworks Waystone.', es: 'Entra en el mundo por el Waystone de Basalt Seamworks.' },
   'story.lead.p.homestead': { en: 'Buy your first building on Your Homestead.', es: 'Compra tu primer edificio en Tu Hacienda.' },
@@ -129,7 +241,14 @@ export const STORY_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'story.lead.a2.under': { en: 'Kael has something to say about the floor of the fragment chamber. Ask him at the Rune Forge.', es: 'Kael tiene algo que decir sobre el suelo de la camara del fragmento. Preguntale en la Rune Forge.' },
   'story.lead.a2.marks': { en: 'Four Keepers worked in the Underhearth. Kael wants to know where they stood.', es: 'Cuatro Guardianes trabajaron en el Bajohogar. Kael quiere saber donde estuvieron.' },
   'story.lead.a2.furnace': { en: 'Verrin has an ending to file, at the bottom of Kael\'s old rail.', es: 'Verrin tiene un final que archivar, al fondo del viejo rail de Kael.' },
+  'story.lead.a2.ink': { en: 'Verrin\'s realm has an underside. Its Rift Gate stands in the Underhearth, west of the Landing: ask Verrin.', es: 'El reino de Verrin tiene un reverso. Su Rift Gate esta en el Bajohogar, al oeste del Rellano: pregunta a Verrin.' },
+  'story.lead.a2.root': { en: 'Kesh Arbo and Siv Moss want an account of the Root Deeps. The Archivist files their orders.', es: 'Kesh Arbo y Siv Moss quieren un relato de las Root Deeps. El Archivista archiva sus encargos.' },
+  'story.lead.a2.prism': { en: 'Aureth wants an honest account of where the Luminous sun goes down. Ask her in the Heliograph Court.', es: 'Aureth quiere un relato honesto de adonde se pone el sol Luminoso. Preguntale en la Heliograph Court.' },
+  'story.lead.a2.orrery': { en: 'Sera Quill wants a down measured under the Magma Halls. The Archivist files her orders.', es: 'Sera Quill quiere que midas un abajo bajo Magma Halls. El Archivista archiva sus encargos.' },
+  'story.lead.a2.cabinets': { en: 'The Archivist once put sixteen small true things down across the realms. A Mirror Slate held up grows warm near them.', es: 'El Archivista dejo una vez dieciseis pequenas cosas ciertas por los reinos. Una Mirror Slate en alto se calienta cerca de ellas.' },
+  'story.lead.a2.lamp': { en: 'Kael is waiting for all five accounts: the Furnace\'s, and the four realms\' beyond the Rift Gates.', es: 'Kael espera los cinco relatos: el del Horno, y los de los cuatro reinos tras las Rift Gates.' },
   'story.lead.chapter.prologue': { en: 'Read a carving in the Delve.', es: 'Lee un grabado en la Sima.' },
   'story.lead.chapter.act1': { en: 'Bring Kael the Godforge Fragment from the Magma Halls.', es: 'Llevale a Kael el Godforge Fragment de Magma Halls.' },
-  'story.lead.chapter.act2': { en: 'Five witnesses, one from each realm. Kael is waiting for their accounts. Act II opens in a later update.', es: 'Cinco testigos, uno de cada reino. Kael espera sus relatos. El Acto II llega en una actualizacion futura.' },
+  'story.lead.chapter.act2': { en: 'Five witnesses, one from each realm. Kael is waiting for their accounts.', es: 'Cinco testigos, uno de cada reino. Kael espera sus relatos.' },
+  'story.lead.chapter.act3': { en: 'Something is coming up the shaft from under the Underhearth. Act III opens in a later update.', es: 'Algo sube por el pozo desde debajo del Bajohogar. El Acto III llega en una actualizacion futura.' },
 };
