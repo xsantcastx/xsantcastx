@@ -3,7 +3,7 @@
  *
  * Overlay assets are the approved transparent slot copies, shown only when
  * that slot is filled. hands/legs/trinket are live without overlays yet.
- * feet stays locked. Never use concept crops. Basalt Edge swaps the
+ * Never use concept crops. Basalt Edge swaps the
  * weapon overlay when that instance is worn.
  */
 import type { SlotId } from './item.model';
@@ -119,7 +119,7 @@ export const PAPER_DOLL_SLOTS: readonly PaperDollSlotManifest[] = [
   { slotId: 'trinket', liveSlot: 'trinket', labelKey: 'loadout.slot.trinket', glyph: DOLL_SLOT_GLYPH.trinket, control: { x: 89, y: 26 }, anchor: { x: 50, y: 43 } },
   { slotId: 'legs', liveSlot: 'legs', labelKey: 'loadout.slot.legs', glyph: DOLL_SLOT_GLYPH.legs, control: { x: 89, y: 50 }, anchor: { x: 50, y: 66 } },
   { slotId: 'off-hand', liveSlot: 'off-hand', labelKey: 'loadout.slot.offhand', glyph: DOLL_SLOT_GLYPH['off-hand'], control: { x: 89, y: 74 }, anchor: { x: 73, y: 57, z: 2 } },
-  { slotId: 'feet', labelKey: 'loadout.slot.feet', glyph: DOLL_SLOT_GLYPH.feet, control: { x: 50, y: 93 }, anchor: { x: 50, y: 90 } },
+  { slotId: 'feet', liveSlot: 'feet', labelKey: 'loadout.slot.feet', glyph: DOLL_SLOT_GLYPH.feet, control: { x: 50, y: 93 }, anchor: { x: 50, y: 90 } },
 ];
 
 /**
