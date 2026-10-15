@@ -21,6 +21,7 @@ import { HAT_AT, LOVE_MAX, PETS, PET_TREAT, TRICK_AT, dayKey, hasHat, isHatched,
 import { CabinetsService } from '../cabinets/cabinets.service';
 import type { PetRecord } from './pets-save.model';
 import { eggPortrait, petPortrait } from './pet-art';
+import { PET_COMMANDS, SECOND_AT, levelProgress, petRole, type PetCommand, type PetRoleDef } from './pet-roles';
 
 interface WellRow { def: PetDef; rec: PetRecord; art: string; label: string }
 interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
@@ -91,6 +92,29 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
               </div>
               @if (!knowsTrick(c.rec)) { <p class="ps__small">{{ t('play.pet.trickAt', { n: trickAt }) }}</p> }
               @else if (!hatOk(c.rec)) { <p class="ps__small">{{ t('play.pet.hatAt', { n: hatAt }) }}</p> }
+              <!-- What it does (pet-roles.ts): its role, its move, its level, the second move. -->
+              @if (roleOf(c.def.id); as r) {
+                <div class="ps__role" [attr.data-pet-role]="r.role" [attr.data-pet-level]="level(c.rec.xp).level">
+                  <p class="ps__love">
+                    <span>{{ t('play.pet.role.' + r.role) }} · {{ level(c.rec.xp).span ? t('play.pet.levelBar', { n: level(c.rec.xp).level, into: level(c.rec.xp).into, span: level(c.rec.xp).span }) : t('play.pet.levelTop', { n: level(c.rec.xp).level }) }}</span>
+                    <i aria-hidden="true"><em class="ps__xp" [style.width.%]="level(c.rec.xp).span ? level(c.rec.xp).into / level(c.rec.xp).span * 100 : 100"></em></i>
+                  </p>
+                  <p class="ps__small">{{ t('play.pet.move.' + r.move) }}</p>
+                  <p class="ps__small">{{ level(c.rec.xp).level >= secondAt ? t('play.pet.secondHas', { what: t('play.pet.second.' + r.second) }) : t('play.pet.secondAt', { n: secondAt, what: t('play.pet.second.' + r.second) }) }}</p>
+                  @if (level(c.rec.xp).level < secondAt) { <p class="ps__small">{{ t('play.pet.levelHow') }}</p> }
+                </div>
+              }
+              @if (active === c.def.id) {
+                <div class="ps__cmd" role="group" [attr.aria-label]="t('play.pet.command.title')" [attr.data-pet-command]="command">
+                  <span class="ps__label">{{ t('play.pet.command.title') }}</span>
+                  <div class="ps__row">
+                    @for (cmd of commands; track cmd) {
+                      <button type="button" class="ps__btn ps__btn--cmd" [class.is-on]="cmd === command" [attr.aria-pressed]="cmd === command" [attr.data-pet-cmd]="cmd" (click)="tell(cmd)">{{ t('play.pet.command.' + cmd) }}</button>
+                    }
+                  </div>
+                  <p class="ps__small">{{ t('play.pet.command.note.' + command) }}</p>
+                </div>
+              }
             }
             @if (status) { <p class="ps__status" role="status" data-pet-status>{{ status }}</p> }
             <dl class="ps__meaning">
@@ -148,6 +172,10 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
     .ps__primary[disabled] { opacity: .5; cursor: default; }
     .ps__btn { border: 1px solid var(--adventure-hud-brass); background: color-mix(in srgb, var(--adventure-hud-brass) 12%, transparent); color: var(--adventure-parchment); }
     .ps__btn--quiet { opacity: .8; }
+    .ps__btn--cmd { min-width: 52px; padding: 6px 8px; }
+    .ps__btn--cmd.is-on { border-color: var(--adventure-hud-gold); box-shadow: inset 0 0 0 1px var(--adventure-hud-gold); }
+    .ps__role, .ps__cmd { display: grid; gap: 4px; }
+    .ps__love em.ps__xp { background: var(--adventure-hud-gold); }
     .ps__primary:focus-visible, .ps__btn:focus-visible, .ps__well:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
     .ps__meaning { display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; margin: 0; font-size: 12px; line-height: 1.4; }
     .ps__meaning dt { font-weight: 600; color: var(--adventure-beacon-text); }
@@ -168,7 +196,19 @@ export class PetSheetComponent implements OnInit, OnDestroy {
   @Input() start: string | null = null;
   @Output() readonly done = new EventEmitter<void>();
   /** The pet in the world should react: a meal, its trick, a hatch. */
-  @Output() readonly feel = new EventEmitter<{ id: string; kind: 'happy' | 'trick' | 'hatch'; text?: string }>();
+  @Output() readonly feel = new EventEmitter<{ id: string; kind: 'happy' | 'love' | 'trick' | 'hatch'; text?: string }>();
+  /** A command from the card (Follow / Stay / Fight / Gather / Play): the world re-reads it. */
+  @Output() readonly commanded = new EventEmitter<PetCommand>();
+  readonly commands = PET_COMMANDS;
+  readonly secondAt = SECOND_AT;
+  command: PetCommand = 'follow';
+  roleOf(id: string): PetRoleDef | undefined { return petRole(id); }
+  level(xp: number): { level: number; into: number; span: number } { return levelProgress(xp); }
+  tell(cmd: PetCommand): void {
+    if (!this.pets.setCommand(cmd)) return;
+    this.command = cmd;
+    this.commanded.emit(cmd);
+  }
   readonly loveMax = LOVE_MAX;
   readonly trickAt = TRICK_AT;
   readonly hatAt = HAT_AT;
@@ -225,7 +265,7 @@ export class PetSheetComponent implements OnInit, OnDestroy {
     if (out.trick) lines.push(this.t('play.pet.trickUnlocked', { name }));
     if (out.hat) lines.push(this.t('play.pet.hatUnlocked', { name, hat: this.t('play.pet.hat.' + id) }));
     this.status = lines.join(' ');
-    this.feel.emit({ id, kind: out.trick ? 'trick' : 'happy' });
+    this.feel.emit({ id, kind: out.trick ? 'trick' : 'love' });
   }
 
   petName(id: string): string { return this.t('play.pet.name.' + id); }
@@ -237,6 +277,7 @@ export class PetSheetComponent implements OnInit, OnDestroy {
   private refresh(): void {
     const state = this.pets.state;
     this.active = state.active;
+    this.command = this.pets.command;
     this.wells = PETS.filter(def => state.pets[def.id]).map(def => {
       const rec = state.pets[def.id]!;
       const art = isHatched(rec) ? petPortrait(def.id as PetId, 'idle0', rec.hat && this.hatOk(rec), 2) : eggPortrait(def.id as PetId, 0, 2);

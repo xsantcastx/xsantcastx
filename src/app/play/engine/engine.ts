@@ -2197,7 +2197,7 @@ export class SeamworksEngine {
    * lying), Glim flies to it, and a trail of light runs from the Keeper to it for
    * a few seconds. Null when there is nothing near.
    */
-  glimFind(): { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; dir: number; cells: number } | null {
+  glimFind(point = true): { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; dir: number; cells: number } | null {
     if (!this.glim.shown) return null;
     const p = this.player, k = this.figure;
     let best: { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; d: number } | null = null;
@@ -2222,8 +2222,10 @@ export class SeamworksEngine {
     for (const drop of this.drops) if (drop.age > 1) offer('drop', drop.x, drop.y - 20, .5);
     const found = best as { kind: 'room' | 'cabinet' | 'ore' | 'node' | 'drop'; x: number; y: number; d: number } | null;
     if (!found) return null;
-    this.glim.flyTo(found.x, found.y - 30 * k, 3);
-    this.glimTrail = { x: found.x, y: found.y, t: this.reducedMotion ? 6 : 6 };
+    if (point) {
+      this.glim.flyTo(found.x, found.y - 30 * k, 3);
+      this.glimTrail = { x: found.x, y: found.y, t: 6 };
+    }
     return { kind: found.kind, x: Math.round(found.x), y: Math.round(found.y), dir: Math.sign(found.x - p.x) || 1, cells: Math.max(1, Math.round(Math.abs(found.x - p.x) / CELL)) };
   }
   /** Glim's tap target, in canvas CSS px (the host floats a button over it). */
