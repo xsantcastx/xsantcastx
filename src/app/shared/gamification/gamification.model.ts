@@ -79,10 +79,6 @@ const NOX_CATEGORIES = new Set([
   'Reference',
 ]);
 
-export function energyForCategory(category: string | undefined): EnergyType {
-  return category && NOX_CATEGORIES.has(category) ? 'nox' : 'aether';
-}
-
 /**
  * The rank sigil for a level, under assets/icons/ranks. Derived rather than
  * stored on each row: the sigil sheet is ten cells in rank order, so a

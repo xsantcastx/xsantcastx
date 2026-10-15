@@ -205,11 +205,6 @@ export function glimHint(subject: string, step: number): GlimHint {
     : { step: 3, top, key: 'play.glim.hint.here', walk: false };
 }
 
-/** Which ladder a first goal's progress is filed under: the goal, not the area variant of its line. */
-export function ladderSubject(goal: { id: string } | null): string | null {
-  return goal ? `goal.${goal.id}` : null;
-}
-
 // ── Lines ───────────────────────────────────────────────────────────────────
 
 export type GlimLineId =

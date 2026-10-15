@@ -25,7 +25,6 @@
 import { wholeGold } from '../games/rtp-sim';
 
 export const SEAM_CELLS = 25;
-export const SEAM_SIDE = 5;
 export const SEAM_COLLAPSES = { min: 1, max: 24, start: 3 } as const;
 export const SEAM_RTP = 0.95;
 /** Highest multiplier a dig may reach. */

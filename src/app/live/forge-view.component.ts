@@ -139,7 +139,6 @@ import { archetypeById } from '../shared/rpg/explorer-archetypes';
 import { RosterExplorer, explorerTier } from '../shared/rpg/explorer-roster.model';
 import { RARITIES } from '../shared/rarity/rarity.model';
 
-import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { injectInWorldPanel } from '../shared/in-world-panel';
 import { TranslationService } from '../translation.service';
 import {
@@ -581,8 +580,7 @@ const HUM_KEY = 'godforge-forge-hum';
 @Component({
   selector: 'app-forge-view',
   standalone: true,
-  imports: [RelatedPagesComponent, 
-    CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent,
+  imports: [CommonModule, RouterLink, ForgeFlameComponent, ExplorerRosterPanelComponent,
     ChallengePanelComponent, ThrallPanelComponent, ArtSceneComponent, WorksMapComponent,
     ...STATION_UI,
   ],

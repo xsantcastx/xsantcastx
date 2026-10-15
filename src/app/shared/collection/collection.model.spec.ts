@@ -180,15 +180,11 @@ describe('collection catalogue', () => {
 describe('collection rewards', () => {
   it('climbs, and every title it grants is a real cosmetic variant', () => {
     const prefix = COSMETICS.find(c => c.slot === 'prefix')!;
-    const trail = COSMETICS.find(c => c.slot === 'trail')!;
     let last = 0;
     for (const reward of COLLECTION_REWARDS) {
       expect(reward.at).toBeGreaterThan(last);
       last = reward.at;
       expect(prefix.variants.map(v => v.id)).withContext(reward.id).toContain(reward.titleVariant);
-      if (reward.trailVariant) {
-        expect(trail.variants.map(v => v.id)).toContain(reward.trailVariant);
-      }
       if (reward.item) {
         expect(ITEM_DEFINITIONS.map(d => d.id)).withContext(reward.id).toContain(reward.item);
       }

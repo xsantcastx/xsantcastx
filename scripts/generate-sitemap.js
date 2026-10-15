@@ -34,7 +34,7 @@
  *      this does NOT need repeating on every deploy even though the
  *      file is rewritten on every build.
  *
- *   3. URL Inspection → paste `https://xsantcastx.com/world` →
+ *   3. URL Inspection → paste `https://xsantcastx.com/play` →
  *      Request Indexing. Seeds the crawl for the one page that has to
  *      rank rather than waiting for the sitemap to be processed.
  *
@@ -68,7 +68,7 @@ const OUT_DIST = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'sitemap.xml')
 // which pages to re-fetch first when the crawler has a limited budget.
 //
 // The tiers:
-//   1.0  /world              the front door and the page that has to rank
+//   1.0  /play               the game: the front door and the page that has to rank
 //   0.8  the playable rooms  forge, bench, market, gambler, exchange, arena…
 //                            these are the pages that carry the game's search
 //                            terms — crafting, loot boxes, trading, PvP — and
@@ -80,7 +80,7 @@ const OUT_DIST = path.join(ROOT, 'dist', 'xsantcastx', 'browser', 'sitemap.xml')
 // changefreq follows what actually changes: the rooms whose numbers move every
 // session are weekly, static lore is monthly.
 function metaFor(route) {
-  if (route === '/world')        return { changefreq: 'daily',   priority: '1.0' };
+  if (route === '/play')         return { changefreq: 'daily',   priority: '1.0' };
 
   // The playable rooms — the game's real keyword surface.
   const ROOMS = new Set([

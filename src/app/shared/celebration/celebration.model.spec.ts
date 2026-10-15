@@ -29,7 +29,6 @@ function channels(tier: RuneTier): number {
   ].filter(Boolean).length
     + (fx.crack ? 1 : 0)
     + (fx.distort ? 1 : 0)
-    + (fx.scene !== 'none' ? 1 : 0)
     + (fx.sound !== 'none' ? 1 : 0);
 }
 
@@ -111,7 +110,6 @@ describe('celebration model', () => {
         expect(fx.crack).withContext(tier).toBe(false);
         expect(fx.distort).withContext(tier).toBe(false);
         expect(fx.timeScale).withContext(tier).toBe(1);
-        expect(fx.scene).withContext(tier).toBe('none');
         expect(fx.letters).withContext(tier).toBe(false);
       }
     });
@@ -144,7 +142,6 @@ describe('celebration model', () => {
       // drop a player may only ever see on the device in their hand.
       const small = scaleFx(TIER_FX.singular, PHONE);
       expect(small.crack).toBe(true);
-      expect(small.scene).toBe('spiral');
       expect(small.sound).toBe('void');
       expect(small.duration).toBe(TIER_FX.singular.duration);
     });

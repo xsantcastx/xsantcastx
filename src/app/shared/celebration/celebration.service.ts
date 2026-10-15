@@ -44,7 +44,6 @@ import { Injectable, NgZone, PLATFORM_ID, inject } from '@angular/core';
 import { DOCUMENT, isPlatformBrowser } from '@angular/common';
 
 import { RUNE_TIERS, type RuneTier } from '../rune-forge/rune.model';
-import { ForgeSceneService } from '../forge-scene/forge-scene.service';
 import { CelebrationAudioService } from './celebration-audio.service';
 import {
   celebrates,
@@ -62,7 +61,6 @@ export class CelebrationService {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
   private readonly doc = inject(DOCUMENT);
   private readonly zone = inject(NgZone);
-  private readonly scene = inject(ForgeSceneService);
   private readonly audio = inject(CelebrationAudioService);
 
   /** The one fixed layer every effect is built inside. Null between runs. */
@@ -97,7 +95,6 @@ export class CelebrationService {
     // Sound is not motion and does not need the frame, so it goes first — a
     // cue that waits for a rAF lands audibly late against its own flash.
     this.audio.play(fx.sound);
-    this.reactScene(fx, origin);
 
     // The whole of the DOM work runs outside Angular. None of it is bound to
     // anything and all of it is removed again; letting it schedule change
@@ -475,7 +472,6 @@ export class CelebrationService {
    */
   private shake(fx: TierFx, origin?: Element | null): void {
     const { amplitude, duration } = fx.shake!;
-    this.scene.shake(amplitude, duration);
 
     for (const el of [this.layer, origin]) {
       if (!(el instanceof HTMLElement)) continue;
@@ -531,14 +527,6 @@ export class CelebrationService {
    */
   private payoffAt(fx: TierFx): number {
     return fx.blackout ? fx.blackout.fade + fx.blackout.hold : 0;
-  }
-
-  /** Hand the tier to the WebGL field. A no-op when there is no GL context,
-   *  which is what lets every caller call it without asking. */
-  private reactScene(fx: TierFx, origin?: Element | null): void {
-    if (fx.scene === 'none') return;
-    const at = this.originOf(origin);
-    this.scene.celebrate(fx.scene, at.x, at.y, this.payoffAt(fx));
   }
 
   /**

@@ -103,7 +103,6 @@ export const CELESTIAL_TOWN: TownDef = {
   platforms: [{ x: 0, y: FLOOR, width: TOWN_WIDTH }, ...TERRACE_PLATFORMS],
   stations: [
     { id: 'codex', x: 620, label: 'THE CODEX', kind: 'panel', panel: 'codex', art: 'lens-of-the-archivist', width: 180, blurb: 'The observatory record: fragments, lore, secrets and the collection.' },
-    { id: 'leaderboards', x: 920, label: 'LEADERBOARDS', kind: 'panel', panel: 'leaderboards', art: 'celestial-crest', width: 170, blurb: 'The ranked ladders, charted like stars.' },
     { id: 'waystone', x: 1220, label: 'WAYSTONE', kind: 'waystone', art: 'rift-portal-core', width: 130, blurb: 'Travel between the realm towns.' },
     { id: 'passage', x: 1860, label: 'EAST PASSAGE', kind: 'passage', to: 'orrery-rings', arriveX: 240, width: 120, blurb: 'The ring walk east to the Orrery Rings, where the Leeches feed.' },
   ],

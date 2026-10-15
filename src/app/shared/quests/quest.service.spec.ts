@@ -62,9 +62,9 @@ describe('QuestService page identity', () => {
   it('rewrites /home to /world on load so a visit to /world does not grow the set', () => {
     seedPages(['/home', '/codex']);
     quests.init();
-    expect(lifePages()).toEqual([CANONICAL.world, '/codex']);
-    quests.addToSet('pages', CANONICAL.world);
-    expect(lifePages()).toEqual([CANONICAL.world, '/codex']);
+    expect(lifePages()).toEqual([CANONICAL.play, '/codex']);
+    quests.addToSet('pages', CANONICAL.play);
+    expect(lifePages()).toEqual([CANONICAL.play, '/codex']);
   });
 
   it('does not collapse /arena/color-memory onto /world/trials', () => {

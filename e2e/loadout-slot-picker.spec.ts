@@ -43,7 +43,9 @@ async function open(page: Page): Promise<void> {
     window.localStorage.setItem('godforge-realm-era', '55');
     window.localStorage.setItem('godforge-inventory', JSON.stringify(ledger));
   }, LEDGER);
-  await page.goto('/character', { waitUntil: 'load' });
+  // The Character sheet is a panel in the world (game-only shell); its loadout is the first tab.
+  await page.goto('/play?at=character', { waitUntil: 'load' });
+  await page.locator('section.place').getByRole('tab', { name: /loadout/i }).first().click().catch(() => undefined);
   await page.locator('.ld__slot').first().waitFor();
 }
 

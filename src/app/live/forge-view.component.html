@@ -857,7 +857,7 @@
         <a routerLink="/world/quests" class="fv__link">{{ t('sanctum.links.quests') }}</a>
         <a routerLink="/forge/runes" class="fv__link">{{ t('sanctum.links.runeForge') }}</a>
         <a routerLink="/codex" class="fv__link">{{ t('sanctum.links.codex') }}</a>
-        <a routerLink="/world" class="fv__link">{{ t('sanctum.links.world') }}</a>
+        <a routerLink="/play" class="fv__link">{{ t('sanctum.links.world') }}</a>
       </nav>
       }
     </div>
@@ -869,5 +869,4 @@
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
 @if (!inWorld) {
-<app-related-pages here="/sanctum"></app-related-pages>
 }

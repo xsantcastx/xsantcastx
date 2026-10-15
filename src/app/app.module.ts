@@ -7,40 +7,21 @@ const isBrowserEnv = typeof window !== 'undefined';
 import { TitleStrategy } from '@angular/router';
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { HeaderComponent } from './header/header.component';
-import { FooterComponent } from './footer/footer.component';
-import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, provideHttpClient, withInterceptorsFromDi } from '@angular/common/http';
 import { provideFirebaseApp, initializeApp, getApp, getApps } from '@angular/fire/app';
 import { providePerformance, getPerformance } from '@angular/fire/performance';
 import { environment } from '../environments/environment';
 import { CookieBannerComponent } from './cookie-banner/cookie-banner.component';
-import { FocusTrapDirective } from './shared/focus-trap.directive';
 import { CommonModule } from '@angular/common';
 import { AppCheckInterceptor } from './app-check.interceptor';
 import { AppTitleStrategy } from './shared/title-strategy.service';
-import { CommandPaletteComponent } from './shared/command-palette/command-palette.component';
-import { XpBarComponent } from './shared/gamification/xp-bar.component';
-import { QuestTriggerComponent } from './shared/quests/quest-trigger.component';
 import { CloudSaveMergeDialogComponent } from './shared/cloud-save/cloud-save-merge-dialog.component';
 import { DeviceLeaseBannerComponent } from './shared/save/device-lease-banner.component';
 import { SiteNoticeOutletComponent } from './shared/notice/site-notice-outlet.component';
-import { CloudSaveChipComponent } from './shared/cloud-save/cloud-save-chip.component';
-import { CloudSaveButtonComponent } from './shared/cloud-save/cloud-save-button.component';
-import { GoldTickerComponent } from './shared/economy/gold-ticker.component';
-import { GodforgeLoaderComponent } from './shared/loading/godforge-loader.component';
-import { ForgeSceneComponent } from './shared/forge-scene/forge-scene.component';
-import { ForgeEffectsToggleComponent } from './shared/forge-scene/forge-effects-toggle.component';
 import { PwaOutletComponent } from './shared/pwa/pwa-outlet.component';
-import { OnboardingOutletComponent } from './shared/onboarding/onboarding-outlet.component';
-import { OfflineOutletComponent } from './shared/offline/offline-outlet.component';
-import { Inspect3dOutletComponent } from './shared/inspect-3d/inspect-3d-outlet.component';
-import { CurrentWorkTileComponent } from './shared/activity/current-work-tile.component';
-import { PlaceBannerOutletComponent } from './shared/nav/place-banner-outlet.component';
 import { ErrorTrackingService, GodforgeErrorHandler } from './shared/error-tracking.service';
 import { ErrorHandler, APP_INITIALIZER } from '@angular/core';
 import { PwaService } from './shared/pwa.service';
-import { DeferredOverlaysComponent } from './shared/shell/deferred-overlays.component';
 
 
 @NgModule({
@@ -49,39 +30,20 @@ import { DeferredOverlaysComponent } from './shared/shell/deferred-overlays.comp
   // every route.
   declarations: [
     AppComponent,
-    HeaderComponent,
-    FooterComponent,
     CookieBannerComponent,
-    FocusTrapDirective,
-    CommandPaletteComponent
   ],
   bootstrap: [AppComponent],
   imports: [
     BrowserModule,
     AppRoutingModule,
-    FormsModule,
     CommonModule,
     // Standalone — imported here so the (non-standalone) HeaderComponent and
     // AppComponent templates can use them without the module graph moving.
-    XpBarComponent,
-    QuestTriggerComponent,
     CloudSaveMergeDialogComponent,
     DeviceLeaseBannerComponent,
     SiteNoticeOutletComponent,
-    CloudSaveChipComponent,
-    CloudSaveButtonComponent,
-    GoldTickerComponent,
-    GodforgeLoaderComponent,
-    ForgeSceneComponent,
-    ForgeEffectsToggleComponent,
     PwaOutletComponent,
-    Inspect3dOutletComponent,
-    CurrentWorkTileComponent,
-    PlaceBannerOutletComponent,
     // Standalone, imported here because AppComponent's template is not.
-    DeferredOverlaysComponent,
-    OnboardingOutletComponent,
-    OfflineOutletComponent
 ],
   providers: [
     provideFirebaseApp(() => getApps().length ? getApp() : initializeApp(environment.firebase)),

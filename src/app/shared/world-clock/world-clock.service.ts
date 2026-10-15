@@ -39,7 +39,7 @@ export class WorldClockService {
   constructor() {
     // One World's settlements (keeper routines, lit windows) read the hour through world-hour.ts: point it here,
     // so there is one clock (the caller passes the real time; the test skew is added the same way as now()).
-    setWorldHourSource({ hour: now => worldTime(now + this.skewMs).minute / 60 });
+    setWorldHourSource({ hour: (now: number) => worldTime(now + this.skewMs).minute / 60 });
     if (!this.browser) return;
     const automated = typeof navigator !== 'undefined' && !!(navigator as Navigator & { webdriver?: boolean }).webdriver;
     if (!automated && !isDevMode()) return;

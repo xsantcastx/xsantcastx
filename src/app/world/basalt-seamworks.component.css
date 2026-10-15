@@ -8,23 +8,6 @@
   color: var(--ink-0);
 }
 
-.sw__crumb {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.85rem;
-  color: rgba(232, 236, 241, 0.62);
-  margin-bottom: 1.4rem;
-}
-
-.sw__crumb a, .sw__back {
-  color: inherit;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
 .sw__eyebrow {
   margin: 0 0 0.45rem;
   font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
@@ -245,8 +228,6 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   font-size: 0.85rem;
   color: rgba(232, 236, 241, 0.7);
 }
-
-.sw__back { margin-top: 1.4rem; }
 
 /* ── C1 Refining ────────────────────────────────────────────────────────────
    One row per ladder step: source figure, "3 → 1", target figure, then the

@@ -82,7 +82,7 @@ describe('IdleService', () => {
         { provide: XpService, useValue: xp },
         { provide: QuestService, useValue: new FakeQuests() },
         { provide: EasterEggService, useValue: eggs },
-        { provide: Router, useValue: { url: CANONICAL.world, events: routerEvents = new BehaviorSubject<NavigationEnd | null>(null) } },
+        { provide: Router, useValue: { url: CANONICAL.play, events: routerEvents = new BehaviorSubject<NavigationEnd | null>(null) } },
       ],
     });
 
@@ -281,7 +281,7 @@ describe('IdleService', () => {
   });
 
   it('stays elsewhere on /world', () => {
-    routerEvents.next(new NavigationEnd(1, CANONICAL.world, CANONICAL.world));
+    routerEvents.next(new NavigationEnd(1, CANONICAL.play, CANONICAL.play));
     expect(idle.snapshot.location).toBe('elsewhere');
   });
 

@@ -402,9 +402,3 @@ export function siteBlock(
   }
   return null;
 }
-
-export function siteBlockLabel(block: SiteBlock): string {
-  return block.code === 'keeper-level'
-    ? `Keeper rank ${block.need}`
-    : `Explorer level ${block.need}`;
-}

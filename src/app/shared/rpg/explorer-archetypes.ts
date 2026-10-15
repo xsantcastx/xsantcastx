@@ -508,8 +508,5 @@ export function masteryArchetypeFor(realm: RealmId): ExplorerArchetype | undefin
   return EXPLORER_ARCHETYPES.find(a => a.source === 'realm-mastery' && a.affinity === realm);
 }
 
-/** Everyone who can be bought rather than found. */
-export const MARKET_ARCHETYPES = EXPLORER_ARCHETYPES.filter(a => a.source === 'market');
-
 /** The one who is only ever earned by finishing the Collection Log. */
 export const CAPSTONE_ARCHETYPE = EXPLORER_ARCHETYPES.find(a => a.source === 'capstone')!;

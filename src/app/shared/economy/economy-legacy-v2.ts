@@ -52,9 +52,6 @@ export const V2_AUTOMATONS: readonly (readonly [string, number, number])[] = [
   ['forge-golem', 5_000_000, 5],
   ['eclipse-automaton', 50_000_000, 20],
 ];
-
-export const V2_EXPLORER_SLOT_COST = 250_000;
-export const V2_THRALL_SLOT_COST = 2_000_000;
 export const V2_PRESTIGE_GOLD_THRESHOLD = 1_000_000_000;
 
 /** v2 shards: floor(sqrt(allTime / 1e5)). */

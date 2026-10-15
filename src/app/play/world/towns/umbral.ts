@@ -107,7 +107,6 @@ export const UMBRAL_TOWN: TownDef = {
     { id: 'rune-drop', x: 1105, label: 'RUNE DROP', kind: 'panel', panel: 'rune-drop', art: 'rune-of-hollow', width: 110, blurb: 'Drop a rune through the pins; the bin it lands in pays.' },
     { id: 'seam-sweeper', x: 1235, label: 'SEAM SWEEPER', kind: 'panel', panel: 'seam-sweeper', art: 'cinder-ore', width: 110, blurb: 'Dig a Delve seam for ore and cash out before a collapse.' },
     { id: 'eclipse-ascent', x: 1365, label: 'ECLIPSE ASCENT', kind: 'panel', panel: 'eclipse-ascent', art: 'eclipse-fragment-capsule', width: 110, blurb: 'Ride the growing eclipse and cash out before it breaks.' },
-    { id: 'exchange', x: 1560, label: 'THE EXCHANGE', kind: 'panel', panel: 'exchange', art: 'gold', width: 170, blurb: 'Trade what you carry with the merchant houses.' },
     { id: 'passage', x: 2640, label: 'UNRECORDED CORRIDORS', kind: 'passage', to: 'unrecorded-corridors', arriveX: 240, width: 120, blurb: 'Where two reflections disagree, a corridor opens.' },
   ],
   monsters: [],

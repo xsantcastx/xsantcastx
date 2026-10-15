@@ -83,7 +83,6 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.walk.title': { en: 'In the world', es: 'En el mundo' },
   'slate.walk.crafting': { en: 'Crafting: walk to the Crafting Bench, Basalt Seamworks.', es: 'Fabricar: ve al Banco de Forja, Talleres de Basalto.' },
   'slate.walk.market': { en: 'Upgrades: walk to the Market, Heliograph Court.', es: 'Mejoras: ve al Mercado, Corte Heliografo.' },
-  'slate.walk.exchange': { en: 'Trading: walk to the Exchange, Nocturne Archive.', es: 'Comerciar: ve a la Lonja, Archivo Nocturno.' },
   'slate.walk.vendor': { en: 'Selling materials: walk to the Material Vendor, Basalt Seamworks.', es: 'Vender materiales: ve al Vendedor, Talleres de Basalto.' },
   'slate.walk.sanctum': { en: 'Sending explorers: walk to the Sanctum, Rootglass Canopy.', es: 'Enviar exploradores: ve al Santuario, Dosel de Raizcristal.' },
   'slate.details': { en: 'What the Slate is', es: 'Que es la Pizarra' },
