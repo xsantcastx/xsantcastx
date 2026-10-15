@@ -28,7 +28,9 @@ export type SfxCue =
   | 'step' | 'land' | 'dig' | 'break' | 'clang'
   | 'pickup' | 'coin' | 'craft' | 'equip' | 'levelup'
   | 'cast' | 'bite' | 'reel' | 'splash' | 'catch'
-  | 'portal' | 'tap' | 'open' | 'close';
+  | 'portal' | 'tap' | 'open' | 'close'
+  // The pets (shared/pets): a happy squeak, the Ink Pup's yip, an egg cracking open.
+  | 'chirp' | 'bark' | 'hatch';
 
 export interface SfxOptions {
   material?: Material;
@@ -42,7 +44,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -194,6 +196,9 @@ export class SoundDirector {
       case 'tap': return this.tone(t, 'sine', 1250, .045, .05, .002);
       case 'open': return this.whoosh(t, 500, 1600, .16, .12);
       case 'close': return this.whoosh(t, 1400, 500, .14, .1);
+      case 'chirp': this.blip(t, 1568 * up, 2349 * up, .09); return this.blip(t + .09, 1760 * up, 2637 * up, .07);
+      case 'bark': this.tone(t, 'triangle', 520, .12, .07, .003); return this.tone(t + .1, 'triangle', 600, .1, .06, .003);
+      case 'hatch': this.clang(t); return this.arpeggio(t + .15, [72, 79, 84], 'bell', .1, .26, true);
     }
   }
 

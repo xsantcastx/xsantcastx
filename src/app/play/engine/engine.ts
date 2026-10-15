@@ -69,6 +69,8 @@ import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, M
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
 import { GlimSprite } from './glim-sprite';
+import { PetSprite } from './pet-sprite';
+import { PET_TUNING, type PetAbility, type PetId } from '../../shared/pets/pets.model';
 export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineSfx, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
@@ -403,6 +405,13 @@ export class SeamworksEngine {
   private terrain: Terrain | null = null;
   /** Glim, the Keeper's companion and the Delve's lantern (glim-sprite.ts). Drawn once met. */
   private readonly glim = new GlimSprite();
+  /** The pet following the Keeper (pet-sprite.ts), and its helper (pets.model.ts PetAbility). */
+  private readonly pet = new PetSprite();
+  private petAbility: PetAbility | null = null;
+  /** The drop the pet is fetching (ability `fetch`), and when it last barked (`warn`). */
+  private petFetch: Drop | null = null;
+  private petBarkAt = -99;
+  private petLastX = NaN;
   private readonly terrains = new Map<string, Terrain>();
   /** `terrainLayout()` each cached terrain was generated under: the key its diff is saved by. */
   private readonly layouts = new Map<string, string>();
@@ -1778,6 +1787,101 @@ export class SeamworksEngine {
   }
   /** The bond's sense: Glim glows brighter (the host decides when; a Mirror Substitute's dim still wins). */
   setGlimBright(bright: boolean): void { this.glim.bright = bright; }
+
+  // ── The pet (shared/pets; pet-sprite.ts draws and moves it) ──
+
+  /** The pet following the Keeper, or null (none, or it rests at home). */
+  setPet(pet: { id: PetId; name: string; hat: boolean; ability: PetAbility } | null): void {
+    this.pet.set(pet?.id ?? null, pet?.name ?? '', pet?.hat ?? false);
+    this.petAbility = pet?.ability ?? null;
+    if (!pet) this.petFetch = null;
+  }
+  /** A feeling for the pet: a meal (happy), its trick, or a hatch's first hop. */
+  petFeel(kind: 'happy' | 'trick'): void {
+    if (!this.pet.id) return;
+    this.pet.feel(kind, 1.2);
+    this.sfx('chirp');
+  }
+  /** Where the pet is and what it is doing (the HUD's data-pet-* for the e2e). */
+  get petView(): { id: string; x: number; state: string; fetching: boolean; glow: boolean } | null {
+    if (!this.pet.id || !Number.isFinite(this.pet.x)) return null;
+    return { id: this.pet.id, x: Math.round(this.pet.x), state: this.pet.state, fetching: !!this.petFetch, glow: this.petAbility === 'glow' && !!this.terrain };
+  }
+  /**
+   * The Star Owlet's scent: ore cells within `cells` of the Keeper (the map
+   * marks them), nearest first, at most PET_TUNING.scentMax. Empty off the Delve.
+   */
+  petScent(cells: number = PET_TUNING.scentCells): { col: number; row: number }[] {
+    const t = this.terrain;
+    if (!t || this.petAbility !== 'scent' || !this.pet.id) return [];
+    const at = this.keeperCell();
+    if (!at) return [];
+    const out: { col: number; row: number; d: number }[] = [];
+    for (let row = Math.max(0, at.row - cells); row <= Math.min(t.rows - 1, at.row + cells); row++) {
+      for (let col = Math.max(t.colLo, at.col - cells); col <= Math.min(t.colHi - 1, at.col + cells); col++) {
+        const node = TERRAIN_NODE_LIST[t.kind[t.index(col, row)]];
+        // Ore: a mining yield that is not just dirt (dirt and loam give grubs).
+        if (!node?.yield || node.discipline !== 'mining' || !node.solid || node.yield.materialId === 'ember-grub') continue;
+        const d = Math.hypot(col - at.col, row - at.row);
+        if (d <= cells) out.push({ col, row, d });
+      }
+    }
+    return out.sort((a, b) => a.d - b.d).slice(0, PET_TUNING.scentMax).map(({ col, row }) => ({ col, row }));
+  }
+  /**
+   * The pet's step (fixed rate): it follows, the Rivet hatchling fetches a
+   * loose drop back toward the Keeper, the Ink Pup barks at a creature winding
+   * up behind the Keeper or a shade in reach.
+   */
+  private updatePet(dt: number): void {
+    if (!this.pet.id) return;
+    const k = this.figure, p = this.player;
+    const moving = Number.isFinite(this.petLastX) && Math.abs(p.x - this.petLastX) > .5;
+    this.petLastX = p.x;
+    let goalX: number | null = null;
+    if (this.petAbility === 'fetch') {
+      const carried = this.petFetch;
+      if (carried && (carried.age < 0 || !this.drops.includes(carried))) this.petFetch = null;
+      if (!this.petFetch) {
+        let best: Drop | null = null, bestD: number = PET_TUNING.fetchReach;
+        for (const drop of this.drops) {
+          const d = Math.abs(drop.x - p.x);
+          if (drop.age > .6 && d > 70 && d < bestD && Math.abs(drop.y - p.y) < 240) { best = drop; bestD = d; }
+        }
+        this.petFetch = best;
+      }
+      const drop = this.petFetch;
+      if (drop) {
+        if (Math.abs(this.pet.x - drop.x) < 26 * Math.max(.5, k)) {
+          // Got it: carried back toward the Keeper, where the usual pickup takes it.
+          const dir = Math.sign(p.x - drop.x);
+          drop.x += dir * Math.min(Math.abs(p.x - drop.x), PET_TUNING.fetchSpeed * dt);
+          drop.y += (p.y - drop.y) * Math.min(1, dt * 6);
+        }
+        goalX = drop.x;
+      }
+    }
+    if (this.petAbility === 'warn' && this.elapsed - this.petBarkAt > PET_TUNING.warnRest) {
+      for (const m of this.monsters) {
+        if (m.hp <= 0) continue;
+        const dx = m.x - p.x;
+        if (Math.abs(dx) > PET_TUNING.warnRange || Math.abs((m.def.floorY ?? FLOOR) - p.y) > 300) continue;
+        const behind = m.phase === 'windup' && Math.sign(dx) !== this.facing;
+        const shade = m.def.trait === 'shade' || m.def.trait === 'warden';
+        if (!behind && !shade) continue;
+        this.petBarkAt = this.elapsed;
+        this.pet.feel('alert', 1.1);
+        this.sfx('bark');
+        this.say(behind ? 'play.pet.warn.behind' : 'play.pet.warn.shade', behind ? 'Your pet barks: something is winding up behind you!' : 'Your pet barks at the dark: a shade is near.', { name: this.pet.name || 'Your pet' });
+        break;
+      }
+    }
+    // The Sunling shines on the Keeper: wounds close slowly after a few quiet seconds (never mid-fight).
+    if (this.petAbility === 'mend' && this.hp > 0 && this.hp < this.maxHp && this.hurtTime <= -PET_TUNING.mendAfter) {
+      this.hp = Math.min(this.maxHp, this.hp + this.maxHp * PET_TUNING.mendShare * dt);
+    }
+    this.pet.update({ dt, time: this.elapsed, reduced: this.reducedMotion, keeperX: p.x, keeperY: p.y, facing: this.facing, figure: k, moving, goalX });
+  }
   /** Where Glim is, for the HUD's data attributes and the tell: world x, the Show me target, dimmed, brightened. */
   get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } {
     const g = this.glim;
@@ -2998,6 +3102,7 @@ export class SeamworksEngine {
         this.atmosphere.burst(drop.x, FLOOR - 45, drop.coins ? `+${drop.coins} coins` : `+${drop.ore} ${drop.short ?? 'ore'}`);
         this.coins += drop.coins; drop.age = -1;
         this.keeperFeel('happy', .8);
+        if (this.pet.id) this.pet.feel('happy', .6);
         this.launchFlight(drop);
         if (drop.coins) this.say('play.hud.eng.collectedCoins', `Collected ${drop.coins} coins.`, { n: drop.coins });
         else this.say('play.hud.eng.collected', `Collected ${drop.label ?? 'Cinder Ore'}.`, { name: drop.label ?? 'Cinder Ore' });
@@ -3007,6 +3112,7 @@ export class SeamworksEngine {
     let kept = 0;
     for (const drop of this.drops) if (drop.age >= 0 && drop.age < 120) this.drops[kept++] = drop;
     this.drops.length = kept;
+    this.updatePet(dt);
     for (const monster of this.monsters) {
       monster.flash = Math.max(0, monster.flash - dt);
       monster.recoil = Math.max(0, monster.recoil - dt * 3);
@@ -5048,6 +5154,7 @@ export class SeamworksEngine {
         attackT, swing, false, { landing: 0, recoil: shown === 'hurt' ? .6 : 0, rim: 0 }, motion, false, view.clock, false, this.peerPainter(view.peer.id));
       c.restore();
     }
+    this.pet.draw(c, motionTime, this.reducedMotion, k);
     // Keep the player readable against the dark realm art at narrow viewport sizes.
     const byFire = this.isTown && this.areaDef.scenery === 'seamworks-hub' && Math.abs(this.player.x - 245) < 220;
     if (!t) this.groundShadow(c, this.player.x, this.player.y, 44);
@@ -5195,6 +5302,8 @@ export class SeamworksEngine {
     const flicker = this.reducedMotion ? 1 : 1 + Math.sin(time * 13) * .015 + Math.sin(time * 7.3 + 1) * .02;
     // A veiled creature (the Drowned Lamp) dims the lantern while it lives.
     pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker * (this.veiledUp() ? .55 : 1) * this.lanternShare(t), 1);
+    // The Ember Newt's tail: a small warm light of its own, wherever it trots.
+    if (this.petAbility === 'glow' && this.pet.id && Number.isFinite(this.pet.x)) pool.add(this.pet.x, this.pet.y - 30 * this.figure, PET_TUNING.glowRadius * flicker, PET_TUNING.glowLight);
     if (this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);
     if (this.blastFlash > 0) {
       const at = this.blastAt;
