@@ -2899,3 +2899,9 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (prefers-reduced-motion: reduce) {
   .book, .places, .place, .anchor-sheet, .win-host { animation: none; transition: none; }
 }
+
+/* Story cards and scenes on a phone held sideways: the whole height, the card scrolls inside itself. */
+@media (max-height: 500px) {
+  .story-veil { padding-top: calc(6px + env(safe-area-inset-top, 0px)); padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px)); }
+  .story-card { max-height: 100%; padding: 12px 16px; }
+}
