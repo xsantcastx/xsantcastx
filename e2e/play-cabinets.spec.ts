@@ -117,7 +117,10 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false },
     await shot(page, `${size.tag}-4-opened`);
 
     // ── The Codex's Cabinet of Curios lists it, with its lore and where. ──
-    await page.goto('/codex?tab=collection', { waitUntil: 'load' });
+    // The Codex stands in the world (game-only shell): open it there, on its Collection tab.
+    await openPlay(page, '?at=codex');
+    await expect(placePanel(page)).toBeVisible({ timeout: 15000 });
+    await placePanel(page).getByRole('button', { name: 'Collection', exact: true }).click();
     const block = page.locator('[data-codex="cabinets"]');
     // The block is deferred on viewport, under the long Collection Log: walk the deferred blocks into view, one by one.
     await page.locator('[data-codex="glim"]').scrollIntoViewIfNeeded({ timeout: 20000 });
@@ -137,6 +140,11 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false },
 
     // ── A reload keeps it: open and empty, nothing paid twice. ──
     const paid = await gold(page);
+    // Reading the Codex took the Keeper to its station in Meridian Orrery: the Waystone road home.
+    await openPlay(page, '?at=waystone');
+    await page.locator('.waystone-road', { hasText: 'Infernal' }).click();
+    await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
+    await expect(placePanel(page)).toBeHidden();
     await openPlay(page);
     await climbToLedge(page);
     await expect(world).toHaveAttribute('data-cabinet', 'cab-seamworks:open', { timeout: 5000 });

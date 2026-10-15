@@ -46,7 +46,11 @@ The per-route verdicts are in `docs/handoff/page-audit.md` (committed first).
   `/play` must prerender an `<h1>`, `generate-sitemap` checks it). The "Open full page" link is gone.
 - `shared/account/`: the Account & settings panel + its lazy i18n table.
 - SEO: `/play` is the only sitemap URL and the only prerendered page (redirect stubs for old URLs
-  are still emitted by route discovery; Hosting's 301s answer first in production).
+  are no longer emitted: `angular.json` prerender `discoverRoutes: false`, so old URLs reach the
+  router through `index.csr.html` locally and Hosting's 301s in production).
+- A brand-new browser is offered "Make your Keeper" on its first arrival in /play (it used to follow
+  the deleted site tutorial); the offer writes the onboarding record so it happens once. `e2e/play-helpers`
+  `seed()` writes that record so seeded specs are not interrupted.
 
 ## Gates
 
@@ -68,11 +72,19 @@ The per-route verdicts are in `docs/handoff/page-audit.md` (committed first).
 | Initial bundle (raw / transfer) | 1.57 MB / 414.87 kB | 1.23 MB / 330.85 kB |
 | Built global CSS | 54.29 kB | 38.56 kB |
 | `src/styles.css` source | 104,278 B | 58,541 B |
-| `dist/.../browser` total | 48.5 MB | 37.9 MB |
-| Prerendered pages with content | 29 | 1 (`/play`) |
+| `dist/.../browser` total | 48.5 MB | 37.7 MB |
+| Prerendered pages | 58 (29 pages + redirect stubs) | 2 (`/play` + the `/` stub; `discoverRoutes: false`) |
 
-/play perf guards (PLAY_PERF=1, 20 s windows, 4× CPU, 390×844 DPR 3): see the final report — the
-before run is in this handoff's commit message.
+/play perf guards (PLAY_PERF=1, 20 s windows, 4× CPU, 390×844 DPR 3; two base runs, they bracket the noise):
+
+| scene | before p50 / p95, long tasks | after p50 / p95, long tasks |
+|---|---|---|
+| town (Infernal) | 16.8–17.3 / 33.8–34.7 ms, 3–4 | 16.7 / 18.7 ms, 3 |
+| Delve Furnace Hall | 33.1–47.9 / 50.3–67.7 ms, 17–142 | 17.4 / 35.0 ms, 0 |
+| Prism Mines / Orrery Wells | ~17–18 / ~34–35 ms, 0 | 16.7–16.9 / 33–34 ms, 0 |
+
+JS heap at the start of the town window 19.5–19.8 → 17.2 MB. The town gain is mostly the deleted
+`cosmic-engine.js` (its cursor trail ran over /play on desktop) and the body's six-layer background.
 
 ## Not done / for the next lanes
 
