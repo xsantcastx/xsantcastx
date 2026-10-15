@@ -149,7 +149,11 @@ export class HubPixel {
     c.save(); c.globalAlpha = .72;
     c.drawImage(this.boards, -P, 608 - P, this.boards.width * P, this.boards.height * P);
     c.restore();
-    this.still ??= paintWorld(WIDTH, BOTTOM - TOP, 0, TOP, stillDressing);
+    if (!this.still) {
+      this.still = paintWorld(WIDTH, BOTTOM - TOP, 0, TOP, stillDressing);
+      // Every pennant pose up front: nine tiny canvases now, none appearing later as the sway finds them.
+      for (let color = 0; color < FLAG_COLORS.length; color++) for (const sway of [-1, 0, 1]) this.flag(color, sway);
+    }
     c.drawImage(this.still, -P, TOP - P, this.still.width * P, this.still.height * P);
     // Pennants on the cord: each sways a whole art pixel, never a fraction.
     for (let i = 0; i < 15; i++) {
