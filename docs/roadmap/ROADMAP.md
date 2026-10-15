@@ -54,11 +54,11 @@ Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall D
 | **M8 The deep** | Infinite chunked Delve; the first galactic dimension; Delve events & bosses | 🔨 endless Delve ✅ · Underhearth in flight |
 | **M9 Story & cast** | Act 1, the lantern companion, NPC depth, quest chains, reputation | 🔨 Glim ✅ · Act I ✅ · NPC depth ✅ · Act II ✅ · Atlas next |
 | **M10 The art pass** | Pixel sprites for Keeper, creatures, NPCs; parallax towns; pixel icons | 🔨 in-house pixel pass built 2026-10-14: Keeper, every NPC + townsfolk, all 8 painted creatures, stalls/props/nodes/coins (`docs/handoff/one-art-style.md`); backdrops, item icons, portraits, Homestead figures remain |
-| **M11 Players** | Player market live (owner deploy), real-device QA, launch | ⏳ owner |
+| **M11 Players** | Real-device QA, launch (player market backend removed 2026-10-15) | ⏳ owner |
 
 ## Waiting on the owner
 
-- Player market deploy (Java for the emulator → rules/indexes → functions → flags).
+- `firebase deploy --only functions` to delete the removed market functions (see `docs/handoff/remove-market-backend.md`).
 - The art test set (21 files).
 - Review new lore in `docs/world/lore-addendum.md`.
 
