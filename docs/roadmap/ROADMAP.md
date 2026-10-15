@@ -29,7 +29,7 @@ Built 2026-10-15: **Touch & tools** (`docs/handoff/touch-and-tools.md`): holding
 
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
-Built 2026-10-15: **Game-only shell** (`docs/handoff/game-only-shell.md`, audit `docs/handoff/page-audit.md`): `/` opens the game; no site header, footer, tab bar or floating widgets anywhere; every old page URL opens its place in the world; ☰ → Account & settings (sign-in, EN/ES, cookies); the Exchange, Leaderboards, realm/Fivefold pages, landing and 404 deleted (initial bundle 1.57 → 1.2 MB, styles.css 104 → 59 kB).
+Built 2026-10-15: **Game-only shell** (`docs/handoff/game-only-shell.md`, audit `docs/handoff/page-audit.md`): `/` opens the game; no site header, footer, tab bar or floating widgets anywhere; every old page URL opens its place in the world; ☰ → Account & settings (sign-in, EN/ES, cookies); the Exchange, Leaderboards, realm/Fivefold pages, landing and 404 deleted (initial bundle 1.57 → 1.23 MB, styles.css 104 → 59 kB, /play town p95 ~34 → 19 ms).
 
 **Later — rebuild world-native (from the page audit):** a trade hall (the Exchange / player market) · a Slate *Journal* (achievements, secrets, realm lore — replaces the Codex's site-era tabs) · leaderboards in a town · a Refinery station (C1 Refining) · in-world prospecting nodes and canopy foraging (the three activity sites are station-less panels until then) · slimmer in-world hosts for the Market, Sanctum and Codex panels.
 

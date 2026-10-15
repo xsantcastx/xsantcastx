@@ -2706,8 +2706,13 @@ export class SideScrollerComponent implements OnDestroy {
       el?.setAttribute('data-keeper-gear', gearKey(gear));
     }
     // Offered once the arrival has settled (the route's first query emissions close any open place).
-    if (!look.made && !this.makerOffered && this.onboarding.finishedHere && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.storyScene && !this.glimTalk) {
+    // A brand-new browser is offered it too: since the game-only shell there is no site tutorial in front
+    // of the world, so the first arrival here IS the first visit. Recording it (lastStep 0: welcomed by the
+    // Glass, no tutorial) keeps the offer to once, made or not.
+    const fresh = this.onboarding.finishedHere || this.onboarding.shouldOnboard();
+    if (!look.made && !this.makerOffered && fresh && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.storyScene && !this.glimTalk) {
       this.makerOffered = true;
+      if (!this.onboarding.finishedHere) this.onboarding.finish(0);
       this.openKeeperMaker();
     }
   }
