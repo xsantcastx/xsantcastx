@@ -76,6 +76,7 @@ import {
   EconomyOpKind,
   applyOps,
   coerceLedger,
+  compactLocalLedger,
   maxSeqFor,
   nextHlc,
   snapshotOf,
@@ -133,6 +134,15 @@ const MAX_OFFLINE_SECONDS = CURVE.MAX_OFFLINE_SECONDS;
  * away — flushes immediately instead.
  */
 const PERSIST_INTERVAL_MS = 5_000;
+/**
+ * The same throttle while signed in. Every write is pushed, and every push
+ * seals the credit op it carried (a sent op is never edited), so the persist
+ * rate is the op rate: 5 s was ~720 ops an hour, faster than the cloud fold can
+ * keep up with while a second device has not acknowledged the last checkpoint.
+ * 30 s is 120. Purchases still flush at once; idle Gold re-settles from
+ * `lastIdleAt` on the next load, so a dropped write repeats work, never loses it.
+ */
+const PERSIST_INTERVAL_SYNCED_MS = 30_000;
 
 /**
  * Minimum ms between two paying strikes of the Forge Flame. 125 ms (8/s) since
@@ -274,6 +284,12 @@ export class EconomyService implements OnDestroy {
   /** Epoch ms of the last strike that paid, for the strike cooldown. */
   private deviceId = '';
   private opSeq = 0;
+  /**
+   * The newest credit op per kind that has not left this device yet, and the
+   * gateway's send count when it was written. While both still hold, the next
+   * credit grows that op instead of appending another (see emitPendingCredits).
+   */
+  private creditTail: Partial<Record<'credit-gold' | 'credit-essence', { id: string; sends: number }>> = {};
   private readonly buying = new Set<string>();
   private pendingGold = 0;
   private pendingEssence = 0;
@@ -412,6 +428,8 @@ export class EconomyService implements OnDestroy {
     this.state = this.load();
     this.pendingGold = 0;
     this.pendingEssence = 0;
+    // The merged blob may hold the tail op from elsewhere: never grow it again.
+    this.creditTail = {};
     this.bindDevice();
     this.recoverCommerce();
     if (!this.state.lastIdleAt) this.state.lastIdleAt = Date.now();
@@ -1547,6 +1565,16 @@ export class EconomyService implements OnDestroy {
     }
     this.lastPersistAt = Date.now();
     this.emitPendingCredits();
+    // A device that has never synced has no cloud commit to fold its log, so
+    // it folds its own (economy-ops compactLocalLedger) — or the log grows
+    // ~260 KB an hour until localStorage is full.
+    if (!this.store.attached) {
+      const folded = compactLocalLedger(this.state, this.deviceId);
+      if (folded !== this.state) {
+        this.state = folded;
+        this.creditTail = {};
+      }
+    }
     this.store.write(ECONOMY_KEY, this.state);
   }
 
@@ -1571,19 +1599,51 @@ export class EconomyService implements OnDestroy {
     if (this.pendingGold > 0) {
       const n = this.pendingGold;
       this.pendingGold = 0;
-      this.appendOp('credit-gold', { amount: n });
+      this.creditOp('credit-gold', n);
     }
     if (this.pendingEssence > 0) {
       const n = this.pendingEssence;
       this.pendingEssence = 0;
-      this.appendOp('credit-essence', { amount: n });
+      this.creditOp('credit-essence', n);
     }
+  }
+
+  /**
+   * Record a credit: grow the newest credit op of that kind when it has never
+   * left this device, else append a new one.
+   *
+   * Growing in place is safe exactly while no other copy of the op exists: its
+   * id is the idempotency key, and a second copy with a different amount would
+   * be a same-id conflict. The gateway's send count proves that — every push
+   * and every sign-in pull bumps it before reading the blob — and any other op
+   * appended after the credit seals it, so the order of credits and spends is
+   * never changed. Before this every five-second persist appended an op
+   * (~720 an hour), which is what filled phones' localStorage.
+   */
+  private creditOp(kind: 'credit-gold' | 'credit-essence', amount: number): void {
+    const tail = this.creditTail[kind];
+    if (tail && tail.sends === this.store.sendCount) {
+      const ops = this.state.ops ?? [];
+      const at = ops.findIndex(op => op.id === tail.id);
+      if (at >= 0 && ops[at].deviceId === this.deviceId && ops[at].kind === kind) {
+        const next = ops.slice();
+        next[at] = { ...ops[at], amount: (ops[at].amount ?? 0) + amount };
+        this.state.ops = next;
+        return;
+      }
+    }
+    this.appendOp(kind, { amount });
+    const op = this.state.ops?.[this.state.ops.length - 1];
+    if (op) this.creditTail[kind] = { id: op.id, sends: this.store.sendCount };
   }
 
   private appendOp(
     kind: EconomyOpKind,
     fields: Pick<EconomyOp, 'amount' | 'itemId' | 'slot' | 'extra'> = {},
   ): void {
+    // Anything but a credit seals the credits before it: a credit grown after
+    // a spend would move Gold ahead of that spend in the replay order.
+    if (kind !== 'credit-gold' && kind !== 'credit-essence') this.creditTail = {};
     this.ensureOrigin();
     this.opSeq += 1;
     const wall = Date.now();
@@ -1658,7 +1718,8 @@ export class EconomyService implements OnDestroy {
   private persistSoon(): void {
     if (!this.isBrowser || this.persistHandle !== null) return;
 
-    const due = this.lastPersistAt + PERSIST_INTERVAL_MS - Date.now();
+    const interval = this.store.attached ? PERSIST_INTERVAL_SYNCED_MS : PERSIST_INTERVAL_MS;
+    const due = this.lastPersistAt + interval - Date.now();
     if (due <= 0) {
       this.flush();
       return;

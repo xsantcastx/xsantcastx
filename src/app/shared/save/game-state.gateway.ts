@@ -262,6 +262,9 @@ const RETRY_MAX_MS = 60_000;
  */
 const REPULL_INTERVAL_MS = 60_000;
 
+/** Floor between two retries of the values a full disk refused (see `spilled`). */
+const SPILL_RETRY_MS = 5_000;
+
 /** Where the save currently lives, for the sync chip and the HUD. */
 export type CloudLink =
   /** Signed out. localStorage is the whole story, which is a fine way to live. */
@@ -336,6 +339,91 @@ export class GameStateGateway {
   /** How many writes are waiting to go up. Rendered by the sync chip. */
   get pending(): number { return this.dirty.size; }
 
+  /**
+   * Bumped every time local blobs are about to be read to leave this device (a
+   * push, or a sign-in pull's merge). An owner that edits an op in place
+   * (EconomyService's credit coalescing) may do so only while this has not
+   * moved since the op was written: after it moves, a copy may be in the cloud.
+   */
+  get sendCount(): number { return this.sends; }
+  private sends = 0;
+
+  /**
+   * Values whose localStorage write failed — the disk is full (or private
+   * mode) — held here so the game keeps them. `readRaw` answers from this
+   * first, the cloud queue sends them, and `retrySpilled` puts them on disk as
+   * soon as there is room. Before this, a full disk made every write a silent
+   * no-op, the inventory's read-back check failed, and every pickup was
+   * refused ("That pickup could not be saved").
+   */
+  private readonly spilled = new Map<string, string>();
+  private lastSpillRetryAt = 0;
+  private readonly spilled$$ = new BehaviorSubject<number>(0);
+  /** How many keys are held in memory only, because the disk is full. 0 = all saved on this device. */
+  readonly spilled$: Observable<number> = this.spilled$$.asObservable();
+
+  /**
+   * Put `raw` on disk; on a full disk, reclaim and retry once, and failing
+   * that hold it in memory. Returns true when it is on disk.
+   */
+  private persist(key: string, raw: string): boolean {
+    if (this.trySet(key, raw)) {
+      this.unspill(key);
+      if (this.spilled.size > 0) this.retrySpilled();
+      return true;
+    }
+    this.reclaim();
+    if (this.trySet(key, raw)) {
+      this.unspill(key);
+      return true;
+    }
+    this.spilled.set(key, raw);
+    this.spilled$$.next(this.spilled.size);
+    return false;
+  }
+
+  private trySet(key: string, raw: string): boolean {
+    try {
+      localStorage.setItem(key, raw);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private unspill(key: string): void {
+    if (this.spilled.delete(key)) this.spilled$$.next(this.spilled.size);
+  }
+
+  /**
+   * Free what is safe to free: the merge backup (a courtesy, see
+   * snapshotBeforeMerge) and the Firestore read cache (`fs-cache:*`, refetched
+   * on demand). Never progress: everything else may be the only copy.
+   */
+  private reclaim(): void {
+    try {
+      localStorage.removeItem(SAVE_BACKUP_KEY);
+      const caches: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key?.startsWith('fs-cache:')) caches.push(key);
+      }
+      for (const key of caches) localStorage.removeItem(key);
+    } catch { /* private mode */ }
+  }
+
+  /** Try the held values again (at most every few seconds: they can be large). */
+  retrySpilled(force = false): void {
+    if (this.spilled.size === 0) return;
+    const now = Date.now();
+    if (!force && now - this.lastSpillRetryAt < SPILL_RETRY_MS) return;
+    this.lastSpillRetryAt = now;
+    for (const [key, raw] of [...this.spilled]) {
+      if (this.trySet(key, raw)) this.spilled.delete(key);
+    }
+    this.spilled$$.next(this.spilled.size);
+  }
+
   // ───────────────────────────────────────────────────────────────────────────
   // The synchronous surface every service uses
   // ───────────────────────────────────────────────────────────────────────────
@@ -360,6 +448,11 @@ export class GameStateGateway {
 
   readRaw(key: string): string | null {
     if (!this.isBrowser) return null;
+    // A value whose disk write failed is still the state: the game keeps it in
+    // memory (see writeRaw) and every read must see it, or a grant that
+    // verifies itself by reading back would roll itself back.
+    const held = this.spilled.get(key);
+    if (held !== undefined) return held;
     try {
       return localStorage.getItem(key);
     } catch {
@@ -390,13 +483,10 @@ export class GameStateGateway {
   /** As {@link write}, for a caller that already has the serialised form. */
   writeRaw(key: string, raw: string): void {
     if (!this.isBrowser) return;
-    try {
-      localStorage.setItem(key, raw);
-    } catch {
-      // Quota or private mode. Fall through: the cloud write below is now the
-      // only copy that will survive, which makes queueing it more important
-      // rather than less.
-    }
+    // Quota or private mode: the value is held in memory instead (reads see
+    // it, the cloud queue below sends it), so play is never refused because
+    // the disk is full. See persist() for what is tried before that.
+    this.persist(key, raw);
     // Writing a key the visitor deleted is them starting it again. The queued
     // deletion has to go, or the next attach would delete what was just written.
     this.clearPendingDelete(key);
@@ -412,6 +502,7 @@ export class GameStateGateway {
    */
   remove(key: string): void {
     if (!this.isBrowser) return;
+    this.unspill(key);
     try {
       localStorage.removeItem(key);
     } catch { /* private mode */ }
@@ -566,6 +657,7 @@ export class GameStateGateway {
     await this.publishReset(at);
 
     for (const entry of STATE_ENTRIES) {
+      this.unspill(entry.key);
       try {
         localStorage.removeItem(entry.key);
       } catch { /* private mode */ }
@@ -667,6 +759,7 @@ export class GameStateGateway {
         this.dirty.clear();
         this.lastRemote.clear();
         for (const entry of STATE_ENTRIES) {
+          this.unspill(entry.key);
           try {
             localStorage.removeItem(entry.key);
           } catch { /* private mode */ }
@@ -771,13 +864,12 @@ export class GameStateGateway {
     // while still holding its own queue.
     await this.leases.begin(uid, fs);
 
-    // Before anything of the cloud's lands on this device, keep the before
-    // picture — see snapshotBeforeMerge.
-    this.snapshotBeforeMerge(uid);
-
     const adopted: string[] = [];
     const toWrite: StateEntry[] = [];
+    /** Merged payloads the cloud moved, with this device's copy from before. */
+    const moves: { key: string; raw: string; before: string | null }[] = [];
 
+    this.sends += 1;
     for (const entry of STATE_ENTRIES) {
       const localRaw = this.readRaw(entry.key);
       const local = localRaw === null ? null : safeParse(localRaw);
@@ -793,14 +885,24 @@ export class GameStateGateway {
       const settled = stable(entry, resolved);
 
       if (settled !== stable(entry, local)) {
-        // Cloud state this device did not have. Cache it and hand it to its
-        // owner in the same tick — see the note above.
-        this.adopt(entry.key, resolvedRaw);
-        adopted.push(entry.key);
+        moves.push({ key: entry.key, raw: resolvedRaw, before: localRaw });
       }
       if (cloud === null || settled !== stable(entry, cloud)) {
         toWrite.push(entry);
       }
+    }
+
+    // Before anything of the cloud's lands on this device, keep the before
+    // picture — see snapshotBeforeMerge. Only of the blobs the merge moves: a
+    // copy of every blob on every attach (and every tab refocus) doubled the
+    // save on disk and filled phones' localStorage.
+    if (moves.length > 0) this.snapshotBeforeMerge(uid, moves);
+
+    // Cloud state this device did not have. Cache it and hand it to its owner
+    // in the same tick — see the note above.
+    for (const move of moves) {
+      this.adopt(move.key, move.raw);
+      adopted.push(move.key);
     }
 
     const seeded = remote.size === 0;
@@ -842,13 +944,10 @@ export class GameStateGateway {
    * Device-local and deliberately not synced: it is this browser's before
    * picture, and pushing it would make it the account's.
    */
-  private snapshotBeforeMerge(uid: string): void {
+  private snapshotBeforeMerge(uid: string, moves: readonly { key: string; before: string | null }[]): void {
     try {
       const blobs: Record<string, string> = {};
-      for (const entry of STATE_ENTRIES) {
-        const raw = this.readRaw(entry.key);
-        if (raw !== null) blobs[entry.key] = raw;
-      }
+      for (const move of moves) if (move.before !== null) blobs[move.key] = move.before;
       if (Object.keys(blobs).length === 0) return;
       localStorage.setItem(SAVE_BACKUP_KEY, JSON.stringify({
         at: new Date().toISOString(),
@@ -1171,6 +1270,7 @@ export class GameStateGateway {
         const entry = BY_KEY.get(key);
         if (!entry) continue;
 
+        this.sends += 1;
         const localRaw = this.readRaw(key);
         if (localRaw === null) continue;
         const local = safeParse(localRaw);
@@ -1382,14 +1482,9 @@ export class GameStateGateway {
 
   /** Cache a resolved payload and push it into the service that owns it. */
   private adopt(key: string, raw: string): void {
-    try {
-      localStorage.setItem(key, raw);
-    } catch {
-      // Quota or private mode. Rehydrating from a blob that was not written
-      // would hand the owner back what it already has, so there is nothing to
-      // do but leave it alone.
-      return;
-    }
+    // Quota or private mode: held in memory (persist), so the owner still
+    // rehydrates from the merged copy rather than keeping its stale one.
+    this.persist(key, raw);
     // In the zone: rehydration republishes a BehaviorSubject from a promise
     // chain, and without a change-detection pass the new Gold would be correct
     // in memory and stale on screen — which reads as the same bug.
