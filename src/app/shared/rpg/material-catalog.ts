@@ -153,6 +153,10 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',
   // The Mirror Slate's two panes (shared/slate/slate-items.model.ts).
+  // The world clock (shared/world-clock/eclipse.model.ts CLOCK_ITEMS): the dark's herb and fish, the eclipse's glass.
+  'moonwake-bloom': 'Moonwake Bloom',
+  'mirrorfin': 'Mirrorfin',
+  'eclipse-glass': 'Eclipse Glass',
   'mirror-slate': 'Mirror Slate',
   'mirror-slate-ii': 'Mirror Slate II',
   // The Lost Cabinets (shared/cabinets/cabinets.model.ts CABINET_ITEMS; cabinets.spec pins the names together).

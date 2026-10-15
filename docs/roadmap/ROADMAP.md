@@ -30,6 +30,10 @@ Built 2026-10-15: **Touch & tools** (`docs/handoff/touch-and-tools.md`): holding
 
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
+Built 2026-10-15: **World clock** (`docs/handoff/world-clock.md`): one in-game clock for every device (a day is 24 real minutes; a week of seven named days, five realm months); day, dusk and night on every surface (tints, stars, the moon mirror, lit lanterns; the Delve stays the same underground), night-only Moonwake Bloom, Mirrorfin and Ink Lanterns; an eclipse every fifth day (sky dark at noon, Eclipse Glass, Afterimage Moths, boosted shrines) with Sera Quill's no-FOMO ledger; the Mirror Slate as an in-game phone (lock clock, eclipse countdown, now playing, app grid, calendar, dock).
+
+Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
+
 ## Milestones
 
 | Milestone | Player gets | Status |
@@ -55,6 +59,9 @@ Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall D
 ## Daily review log
 
 - **2026-10-15 (story Act II)** — Built Act II, Five Witnesses: Kael's five accounts (the Banked Furnace and the Ink Deeps, Root Deeps, Prism Mines and Orrery Wells guardians), the Archivist's docket (four Lost Cabinets) and the light coming up, as seven scenes in the Story tab and over the world — chibi portraits, 4 lines each, Glim's last word, one reward each, paid once through the save gateway; 12 keeper lines + 5 canon dialogue rows follow the act; the act ends on a cliffhanger card (Starfall, a sixth mark, the first lamp hinted). `docs/handoff/story-act-2.md`.
+
+- **2026-10-15 (world clock)** — Owner: "the mirror slate could use some UI like if it was the phone, show the in-game time, we should have day and night as well, or eclipse events." Built: one deterministic world clock (24 real min a day, epoch-ms only, so time-zone/DST proof; real-day resets unchanged); sky tint + stars + moon + lanterns per phase on every surface (only the sky strip above a Delve); the Moonwake Bloom, Mirrorfin and Ink Lantern keep the dark, Eclipse Glass and the Afterimage Moth the eclipse; an eclipse every fifth in-game day (2 real h), announced ahead, with Sera Quill's ledger (`economy-sim --eclipse` in `--check`); ambience + score by the hour; keeper and Glim lines that notice it; the Slate's phone face. Clears the meaning baseline (the two never-spawning creatures now spawn).
+
 - **2026-10-15 (lost cabinets)** — Built the owner's Lost Cabinets: the Slate's Scan face (tier I: it is the Archive's moon-mirror glass that knows the latches) pulses hot/cold on the HUD button with a soft ping and brightens Glim; sixteen cabinets left by the Archivist and hidden by the Ridge Couriers, one curio each (key items with lore), five deep ones tuned by clues; Courier's Honeycomb (every pet's favourite) and the Hatbox of Small Crowns; the Codex's Cabinet of Curios with bonuses at 4/8/12/16 (warmer glass, one more pet meal, Glim points the way, the Curator's Loupe) and a four-page arc. `economy-sim --cabinets` in `--check` (93 min of income once, ever).
 - **2026-10-15 (chibi Keepers)** — Owner: "more tender, smaller, very cute, MapleStory". Built: every person (player, Glass preview, paper doll, all NPCs) is a chibi pixel Keeper — big head, small body, ~74% of the old height, big eyes, blinks, bouncy steps, landing squash, a happy face on loot and level up; creatures are round with big glaring eyes; tags, bubbles and Glim follow the new head. `docs/handoff/chibi-keepers.md`.
 - **2026-10-15 (orrery wells)** — Built the last Rift Gate realm: the Orrery Wells (Celestial gate, Magma Halls). Down is negotiable: orrery rings turn whole fields over (walk the ceiling), star-wells fall up with a chain beside each, never a softlock (tested over generated wings); starsteel + meridian glass, Anchor Wardens finally spawn, the Fallen Ephemeris dropped into its own well; Sera Quill's chain; the Orrery Key. The Rift Gates set is complete. Engine exposes the Keeper's gravity for followers (pets).

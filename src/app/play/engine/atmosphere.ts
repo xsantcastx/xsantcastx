@@ -9,6 +9,10 @@ const GRID = 4;
 /** Particle cap per layer. Every particle is computed from its index and the clock: nothing is stored or allocated. */
 export const AMBIENT_CAP = 40;
 
+/** The hanging lanterns of every town and hunt: one every `step` world px from `from`, at lanternY(x) (the night lights them: sky-light.ts). */
+export const LANTERNS = { from: 180, to: 2700, step: 360 } as const;
+export function lanternY(x: number): number { return 270 + Math.sin(x) * 45; }
+
 /** Wraps `value` into [0, span). */
 function wrapInto(value: number, span: number): number { return ((value % span) + span) % span; }
 /** A stable 0..1 per index. */
@@ -311,9 +315,9 @@ export class Atmosphere {
   scenery(c: CanvasRenderingContext2D, time: number, camera: number, width: number, realm?: AmbientRealm): void {
     c.save();
     // Hanging lights repeat in world space; the warm pools remain when motion is reduced.
-    for (let x = 180; x < 2700; x += 360) {
+    for (let x: number = LANTERNS.from; x < LANTERNS.to; x += LANTERNS.step) {
       if (x < camera - 150 || x > camera + width + 150) continue;
-      const y = 270 + Math.sin(x) * 45;
+      const y = lanternY(x);
       c.fillStyle = '#776454'; c.fillRect(Math.round(x / GRID) * GRID - GRID / 2, 0, GRID, Math.round(y / GRID) * GRID - 8);
       // Its warm pool: the cached unit gradient at the lantern, 150 px out (the box is y-140..y+160).
       c.save(); c.fillStyle = this.gradients(c).lantern;
