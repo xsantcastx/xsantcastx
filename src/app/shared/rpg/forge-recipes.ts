@@ -27,7 +27,7 @@ export interface ForgeEquipmentRecipe {
   craftable: boolean;
 }
 
-import { ART_ITEMS_PORTRAITS } from '../art/art-manifest.generated';
+import { itemIcon } from '../art/item-icons';
 
 export const BASALT_EDGE_RECIPE_ID = 'basalt-edge';
 
@@ -38,7 +38,8 @@ export const FORGE_EQUIPMENT_RECIPES: readonly ForgeEquipmentRecipe[] = [
     slotId: 'weapon',
     summary: 'A basic weapon. Six Cinder Ore and one Ember Residue.',
     lore: 'The first edge the Seamworks will admit. Six Cinder Ore and one Ember Residue, struck once into a unique weapon.',
-    portrait: ART_ITEMS_PORTRAITS['basalt-edge-portrait']?.src,
+    // Its pixel icon (one art style); the painted portrait stays in the library.
+    portrait: itemIcon('basalt-edge')?.src,
     inputs: [
       { id: 'cinder-ore', name: 'Cinder Ore', quantity: 6 },
       { id: 'ember-residue', name: 'Ember Residue', quantity: 1 },
