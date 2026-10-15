@@ -3027,6 +3027,126 @@ test('render budget: a phone bakes the town backdrop once and blits it; desktop 
   } finally { delete browserDocument.createElement; }
 });
 
+// ── Deep Delve on a phone (docs/handoff/delve-perf.md) ──────────────────────
+test('delve perf: a phone lays the heat columns and halos inside the darkness overlay; desktop keeps them additive on the frame', () => {
+  const made = [];
+  browserDocument.createElement = () => {
+    const canvas = { width: 0, height: 0, ops: [] };
+    const ctx = {
+      globalCompositeOperation: 'source-over', globalAlpha: 1, imageSmoothingEnabled: true, fillStyle: '#000',
+      createImageData: (w, h) => ({ width: w, height: h, data: new Uint8ClampedArray(w * h * 4) }),
+      createLinearGradient: () => ({ addColorStop() {} }), createRadialGradient: () => ({ addColorStop() {} }),
+      fillRect: () => canvas.ops.push(['fillRect', typeof ctx.fillStyle]),
+      drawImage: (src) => canvas.ops.push(['drawImage', src]),
+      putImageData: () => canvas.ops.push(['putImageData']),
+    };
+    canvas.getContext = () => new Proxy(ctx, { get: (t, k) => k in t ? t[k] : () => {}, set: (t, k, v) => { t[k] = v; return true; } });
+    made.push(canvas);
+    return canvas;
+  };
+  try {
+    for (const lite of [true, false]) {
+      made.length = 0;
+      const { engine } = fixture(() => true, { lite });
+      const { ctx } = budgetContext();
+      const onFrame = { bands: 0, ops: [] };
+      engine.context = new Proxy(ctx, {
+        get: (t, k) => k === 'fillRect' ? () => { if (typeof t.fillStyle !== 'string') onFrame.bands++; } : t[k],
+        set: (t, k, v) => { t[k] = v; return true; },
+      });
+      engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+      // Stand the view in the biome with heat shimmer (the Magma Halls), as in the perf scene.
+      const t = engine.terrain, row = [...Array(t.rows).keys()].find(r => t.biomeAt(r).shimmer);
+      assert.ok(row !== undefined, 'a delve biome shimmers');
+      const frames = 3;
+      engine.reducedMotion = true;
+      for (let n = 0; n < frames; n++) { engine.player.y = t.top + row * 32 + 220; engine.cameraY = engine.player.y - 720 * .58; engine.frameDt = 1 / 60; engine.render(); }
+      assert.ok(t.biomeAt(t.rowAt(engine.cameraY + 360)).shimmer, 'the view is in the shimmering biome');
+      const grid = made.find(c => c.ops.some(op => op[0] === 'putImageData'));
+      const overlay = made.find(c => c !== grid && c.ops.some(op => op[0] === 'drawImage' && op[1] === grid));
+      const overlayGradients = overlay ? overlay.ops.filter(op => op[0] === 'fillRect' && op[1] !== 'string').length : 0;
+      if (lite) {
+        assert.equal(onFrame.bands, 0, 'no gradient fill reaches the phone frame');
+        assert.ok(overlayGradients >= 4 * frames, 'the four heat columns are drawn into the overlay every frame');
+      } else {
+        assert.ok(onFrame.bands >= 4 * frames, 'desktop draws the heat columns on the frame, as before');
+        assert.equal(overlay, undefined, 'and needs no overlay');
+      }
+      engine.destroy();
+    }
+  } finally { delete browserDocument.createElement; }
+});
+
+test('delve perf: a creature on a floor above or below the view is neither drawn nor posed', () => {
+  const { engine } = fixture();
+  engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+  const { ctx } = budgetContext();
+  engine.context = ctx;
+  const t = engine.terrain;
+  engine.cameraY = t.top + 20 * 32;
+  const base = engine.monsters[0] ?? { def: { creature: 'rivet-maw', hp: 10 }, hp: 10, maxHp: 10, phase: 'idle', timer: 1, facing: -1, flash: 0, knock: 0, dying: 0, born: 0, shownHp: 10, recoil: 0, spawn: 0 };
+  let drawn = 0;
+  engine.creature = () => { drawn++; };
+  engine.drawDeepCreature = () => { drawn++; };
+  const at = floorY => ({ ...base, x: engine.player.x, hp: 10, maxHp: 10, dying: 0, born: 0, def: { ...base.def, floorY } });
+  for (const [floorY, shown] of [[engine.cameraY + 400, true], [engine.cameraY - 400, false], [engine.cameraY + 720 + 800, false], [engine.cameraY + 720 + 300, true]]) {
+    drawn = 0;
+    engine.monsters = [at(floorY)];
+    // render() recomputes the camera from the Keeper: stand the Keeper where the view should be.
+    engine.player.y = engine.cameraY + 720 * .58;
+    engine.frameDt = 1 / 60; engine.render();
+    assert.equal(drawn > 0, shown, `floor at ${Math.round(floorY - engine.cameraY)} px from the view's top`);
+  }
+  engine.destroy();
+});
+
+test('delve perf: a phone bakes the Delve sky (painting and shade) once and copies it; desktop draws it live as before', () => {
+  const painting = { complete: true, naturalWidth: 1536, naturalHeight: 1024 };
+  const baked = [];
+  browserDocument.createElement = () => {
+    const canvas = { width: 0, height: 0, ops: [] };
+    canvas.getContext = () => new Proxy({}, { get: (_, k) => (...args) => { canvas.ops.push(k); return { addColorStop() {} }; }, set: () => true });
+    baked.push(canvas);
+    return canvas;
+  };
+  try {
+    for (const lite of [true, false]) {
+      baked.length = 0;
+      const { engine } = fixture(() => true, { lite });
+      engine.player.x = stationX(engine, 'delve'); engine.player.y = 610; engine.interact();
+      assert.ok(engine.terrain, 'in the Delve');
+      engine.lazyImages.set(engine.sceneKey, painting);
+      const drawn = [];
+      let shades = 0;
+      const { ctx } = budgetContext();
+      engine.context = new Proxy(ctx, {
+        get: (t, k) => k === 'drawImage' ? (...args) => drawn.push(args[0]) : k === 'fillRect' ? () => { if (typeof t.fillStyle !== 'string') shades++; } : t[k],
+        set: (t, k, v) => { t[k] = v; return true; },
+      });
+      const frames = 20;
+      let built = null;
+      for (let n = 0; n < frames; n++) {
+        engine.cameraY = 0; engine.setInput('right', true); engine.update(1 / 60); engine.frameDt = 1 / 60; engine.render();
+        if (n === 0) built = new Map(baked.map(c => [c, c.ops.length]));
+      }
+      // The sky canvases: baked ones laid on the frame every frame.
+      const sky = baked.filter(c => drawn.filter(d => d === c).length >= frames);
+      if (lite) {
+        assert.equal(drawn.filter(d => d === painting).length, 0, 'the painting is never scaled onto the frame');
+        assert.equal(shades, 0, 'the shade is never shaded per pixel on the frame');
+        assert.ok(sky.length >= 2, 'painting and shade are copied every frame');
+        assert.ok(sky.some(c => c.ops.includes('drawImage')), 'the painting is pre-scaled into one');
+        for (const c of sky) assert.equal(c.ops.length, built.get(c), 'built on the first frame, never repainted while walking');
+      } else {
+        assert.equal(engine.delveSky, null, 'desktop bakes no sky');
+        assert.ok(drawn.filter(d => d === painting).length >= frames, 'desktop draws the painting live every frame, as before');
+        assert.ok(shades >= frames, 'and shades it live');
+      }
+      engine.destroy();
+    }
+  } finally { delete browserDocument.createElement; }
+});
+
 test('hot draw path: after the first frames, a town, a hunt and the Delve render without building a gradient', () => {
   const { engine } = fixture();
   const { ctx, seen } = budgetContext();
@@ -3696,6 +3816,34 @@ test('cave backdrop: both parallax layers tile seamlessly, the far one is opaque
     for (let x = 0; x < w - 1; x++) steepest = Math.max(steepest, Math.abs(depth(x + 1) - depth(x)));
     assert.ok(Math.abs(depth(0) - depth(w - 1)) <= steepest + 2, `${layer}: wraps in x`);
   }
+});
+
+test('cave backdrop (phone, maskBackdrop): pattern only round the open cells, one flat fill under solid rock', () => {
+  const T = terrainMod, CELL = T.CELL;
+  const t = new T.Terrain(32, 40, 0);
+  t.kind.fill(T.nodeIndex('rock'));
+  const rects = [];
+  const ctx = new Proxy({ fillStyle: '' }, {
+    get: (o, k) => k === 'fillRect' ? (...a) => rects.push(a) : k in o ? o[k] : () => {},
+    set: (o, k, v) => { o[k] = v; return true; },
+  });
+  const cave = new caveMod.CaveBackdrop();
+  rects.length = 0; cave.draw(ctx, t, 0, 0, 10 * CELL, 20 * CELL, 1);
+  assert.equal(rects.length, 1, 'all rock: only the flat fill');
+  rects.length = 0; cave.draw(ctx, t, 0, 0, 10 * CELL, 20 * CELL, 0);
+  assert.equal(rects.length, 1, 'unmasked (desktop): one full fill, as before');
+  t.kind[t.index(5, 10)] = T.nodeIndex('air');
+  rects.length = 0; cave.draw(ctx, t, 0, 0, 10 * CELL, 20 * CELL, 1);
+  const runs = rects.slice(1);
+  assert.equal(runs.length, 3, 'the open cell and a cell of margin round it: three row runs');
+  for (const [x, y, w, h] of runs) {
+    assert.equal(x, 4 * CELL); assert.equal(w, 3 * CELL); assert.equal(h, CELL);
+    assert.ok(y >= 9 * CELL && y <= 11 * CELL);
+  }
+  // Columns outside the loaded span show the cave (nothing is drawn over them).
+  t.colLo = 3;
+  rects.length = 0; cave.draw(ctx, t, 0, 0, 10 * CELL, 20 * CELL, 1);
+  assert.ok(rects.slice(1).some(([x, , w]) => x === 0 && w >= 3 * CELL), 'unloaded columns stay filled');
 });
 
 // ── Terrain pass 2: brightness, pixel placeables, imported sheets and parallax ──
