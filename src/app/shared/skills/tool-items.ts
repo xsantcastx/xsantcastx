@@ -28,7 +28,7 @@ const FAMILY_NAME: Readonly<Record<ToolFamily, string>> = {
   pickaxe: 'Pickaxe', axe: 'Axe', sickle: 'Sickle', staff: 'Staff',
 };
 
-const FAMILY_STYLE: Readonly<Record<ToolFamily, ItemStyle>> = {
+export const FAMILY_STYLE: Readonly<Record<ToolFamily, ItemStyle>> = {
   pickaxe: 'infernal', axe: 'verdant', sickle: 'verdant', staff: 'celestial',
 };
 

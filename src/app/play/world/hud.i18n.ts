@@ -182,6 +182,10 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Engine messages (engine.ts `say()`; English must match the engine's) ──
   'play.hud.eng.backAtCamp': { en: 'Back at camp. Your equipment and collected loot are safe.', es: 'De vuelta en el campamento. Tu equipo y el botin recogido estan a salvo.' },
   'play.hud.eng.freshHunt': { en: 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.', es: 'Empieza una nueva caceria. Los monstruos reaparecen tras caer; recoge su botin.' },
+  'play.hud.tool.missing.pickaxe': { en: 'No pickaxe in your satchel: the Crafting Bench forges one.', es: 'No llevas pico en la mochila: el Banco de trabajo forja uno.' },
+  'play.hud.tool.missing.axe': { en: 'No axe in your satchel: the Crafting Bench forges one.', es: 'No llevas hacha en la mochila: el Banco de trabajo forja una.' },
+  'play.hud.tool.missing.sickle': { en: 'No sickle in your satchel: the Crafting Bench forges one.', es: 'No llevas hoz en la mochila: el Banco de trabajo forja una.' },
+  'play.hud.tool.missing.rod': { en: 'No rod in your satchel: the Crafting Bench makes one.', es: 'No llevas cana en la mochila: el Banco de trabajo hace una.' },
   'play.hud.eng.growingBack': { en: 'The {{lname}} is growing back ({{n}}s).', es: 'Esta volviendo a crecer: {{lname}} ({{n}} s).' },
   'play.hud.eng.siteGathered': { en: '{{name}} gathered from the {{lsite}}. It grows back in {{n}}s.', es: 'Recogido: {{name}} ({{lsite}}). Vuelve a crecer en {{n}} s.' },
   'play.hud.eng.siteNothing': { en: 'Nothing worth keeping on the {{lsite}} this time. It grows back in {{n}}s.', es: 'Esta vez no hay nada que valga la pena ({{lsite}}). Vuelve a crecer en {{n}} s.' },
