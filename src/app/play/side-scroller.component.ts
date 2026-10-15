@@ -7,11 +7,12 @@ import { isPlatformBrowser } from '@angular/common';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
-import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor } from '../shared/activity/activity.model';
+import { BASALT_SEAMWORKS_ID, CINDER_ORE_ID, EMBER_RESIDUE_ID, miningTierFor, type DisciplineProgress } from '../shared/activity/activity.model';
 import { EconomyService } from '../shared/economy/economy.service';
 import { InventoryService, type VaultRouted } from '../shared/rpg/inventory.service';
 import { VAULT_STATION_I18N } from '../shared/vault/vault-station.i18n';
 import { GameStateGateway } from '../shared/save/game-state.gateway';
+import { StorageHealthService } from '../shared/save/storage-health.service';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
@@ -39,6 +40,7 @@ import { isChestHolder } from '../shared/delve/delve-save.model';
 import { PLACEABLES, WARDEN_FLAG } from './engine/terrain';
 import { miningLevelView } from '../shared/activity/mining-level';
 import { toolCard, toolCardLines, toolPower, toolTiers } from '../shared/skills/tools';
+import { heldToolPieces, heldToolsKey, type HeldToolKind } from '../shared/skills/held-tool';
 import { TOOLS_I18N } from '../shared/skills/tools.i18n';
 import { CharacterHubService } from '../shared/character/character-hub.service';
 import { STARTER_FAMILIES, starterInstanceId, starterToolId } from '../shared/skills/tool-items';
@@ -485,6 +487,8 @@ export class SideScrollerComponent implements OnDestroy {
   pushed: KeeperCombatStats = { damage: 10, maxHp: 100 };
   private statsKey = '';
   private toolKey = '';
+  /** The held-tool layers last pushed (heldToolsKey), so they are sent only when they change. */
+  private heldToolsKey = '';
   /** The Delve hotbar, rebuilt on the HUD tick when a count changes. */
   hotbar: HotbarSlot[] = [];
   private hotbarKey = '';
@@ -549,6 +553,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** The Homestead has something worth a look: the button wears a badge. */
   slateReady = false;
   private slateSub?: Subscription;
+  private storageSub?: Subscription;
+  private readonly storageHealth = inject(StorageHealthService);
   // ── The Lost Cabinets (docs/handoff/lost-cabinets.md) ──
   private readonly cabinets = inject(CabinetsService);
   private cabinetSub?: Subscription;
@@ -608,6 +614,18 @@ export class SideScrollerComponent implements OnDestroy {
     // Lune watches her tables from here on: the tenth play hands the Slate over, wherever it was played.
     this.slate.init();
     this.slateSub = this.slate.awarded$.subscribe(() => { this.tickSlate(); this.message = this.t('slate.awarded'); });
+    // A full device used to refuse pickups; now the save keeps going in memory
+    // and the cloud, and the player is told once, gently (storage-health.service.ts).
+    this.storageHealth.start();
+    let toldStorage: string | null = null;
+    this.storageSub = this.storageHealth.state$.subscribe(state => {
+      if (state === 'ok' || state === toldStorage) return;
+      toldStorage = state;
+      const key = state === 'full'
+        ? (this.store.attached ? 'play.hud.msg.storageFullCloud' : 'play.hud.msg.storageFull')
+        : 'play.hud.msg.storageNearlyFull';
+      this.zone.run(() => { this.message = this.t(key); });
+    });
     // The Slate's Scan: holding the glass up folds the Slate so you can walk with it.
     this.cabinets.refresh();
     this.cabinetSub = this.cabinets.scanning$.subscribe(on => this.zone.run(() => this.scanChanged(on)));
@@ -704,6 +722,8 @@ export class SideScrollerComponent implements OnDestroy {
       onStone: event => this.zone.run(() => this.stoneEvent(event)),
       // The world's sounds: never through the zone (no change detection for a footstep).
       onSfx: cue => this.engineSfx(cue),
+      // The tool in hand changed (held-tool.ts): a soft cue and the canvas key for tests. No change detection.
+      onHeldTool: tool => this.heldToolSwapped(tool),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
@@ -752,7 +772,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.statsKey = '';
     this.cabinetMarksKey = ''; this.cabinetBright = false;
     this.loadoutKey = ''; this.lookPushKey = '';
-    this.toolKey = '';
+    this.toolKey = ''; this.heldToolsKey = '';
+    this.canvas?.nativeElement.setAttribute('data-keeper-held', '');
     this.engine.setPlaceable(this.placing);
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
@@ -1114,7 +1135,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
     this.unbindFeel();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -1894,6 +1915,21 @@ export class SideScrollerComponent implements OnDestroy {
     // Capture keeps the hold when the finger slides off; a pointer the browser no longer tracks cannot be captured, and the press still counts.
     if (down) try { (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId); } catch { /* not capturable */ }
     this.engine?.setInput(input, down);
+  }
+  /**
+   * A long press on the world or a control is a game gesture (owner,
+   * 2026-10-15): no context menu, no text selection, anywhere in the game.
+   * Typed fields and the Hearth's chat log keep both (styles.css exempts the
+   * same set from user-select).
+   */
+  @HostListener('contextmenu', ['$event'])
+  @HostListener('selectstart', ['$event'])
+  onHoldGesture(event: Event): void {
+    // selectstart can target a text node: ask its element.
+    const node = event.target as Node | null;
+    const target = node && node.nodeType === 1 ? node as Element : node?.parentElement ?? null;
+    if (target?.closest('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [data-selectable]')) return;
+    event.preventDefault();
   }
   @HostListener('window:keydown', ['$event'])
   onBagKey(event: KeyboardEvent): void {
@@ -2790,6 +2826,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.canvas?.nativeElement.setAttribute('data-power-pickaxe', (crafted.pickaxe ? toolPower(crafted.pickaxe) * crafted.power.pickaxe : 0).toFixed(2));
     }
     this.pushFishing();
+    this.pushHeldTools(snapshot.items.filter(item => !isChestHolder(item.explorerId)).map(item => item.definitionId), progress);
     this.pushUnderhearth();
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
@@ -2797,6 +2834,31 @@ export class SideScrollerComponent implements OnDestroy {
     this.statsKey = key;
     this.pushed = stats;
     this.engine.setStats(stats);
+  }
+  /**
+   * Per activity, the tool the Keeper takes in hand (held-tool.ts): the best
+   * pickaxe, axe, sickle and rod held, each capped by its skill. The engine
+   * shows it while the work lasts; the equipped weapon never leaves its slot.
+   */
+  private pushHeldTools(definitionIds: readonly (string | undefined)[], progress: DisciplineProgress): void {
+    if (!this.engine || !this.browser) return;
+    const pieces = heldToolPieces({
+      definitionIds,
+      levels: {
+        mining: skillLevel(progress, 'mining'), woodcutting: skillLevel(progress, 'woodcutting'),
+        foraging: skillLevel(progress, 'foraging'), fishing: this.fishing.level(),
+      },
+      hasRod: id => this.inventory.stackOf(id) > 0,
+    });
+    const key = heldToolsKey(pieces);
+    if (key === this.heldToolsKey) return;
+    this.heldToolsKey = key;
+    this.engine.setHeldTools(pieces);
+  }
+  /** The engine took a tool in hand or put it away: a soft swap cue, and the canvas says which (tests). */
+  private heldToolSwapped(tool: HeldToolKind | null): void {
+    this.canvas?.nativeElement.setAttribute('data-keeper-held', tool ?? '');
+    this.sound.sfx('swap');
   }
   /**
    * What the Keeper wears, for the engine to draw: the weapon and off-hand art
