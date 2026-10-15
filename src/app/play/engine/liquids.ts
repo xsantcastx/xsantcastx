@@ -114,7 +114,7 @@ export class LiquidSim {
   wakeAround(col: number, row: number): void {
     const t = this.t;
     for (let r = row - 1; r <= row + 1; r++) {
-      if (r < 0 || r >= t.rows) continue;
+      if (r < t.rowLo || r >= t.rows) continue;
       for (let c = col - 1; c <= col + 1; c++) if (t.inside(c, r)) this.wake(t.index(c, r));
     }
   }
@@ -130,7 +130,7 @@ export class LiquidSim {
    */
   forgetColumns(col0: number, col1: number): void {
     const t = this.t;
-    for (let c = col0; c < col1; c++) for (let r = 0; r < t.rows; r++) {
+    for (let c = col0; c < col1; c++) for (let r = t.rowLo; r < t.rows; r++) {
       const i = t.index(c, r);
       this.listed[i] = 0; this.calm[i] = 0; this.stamp[i] = 0;
     }
@@ -140,7 +140,7 @@ export class LiquidSim {
   /** Wake every liquid cell in world columns [col0, col1) (a column arrived; its edge meets new neighbours). */
   wakeColumns(col0: number, col1: number): void {
     const t = this.t;
-    for (let c = col0; c < col1; c++) for (let r = 0; r < t.rows; r++) if (t.inside(c, r)) this.wake(t.index(c, r));
+    for (let c = col0; c < col1; c++) for (let r = t.rowLo; r < t.rows; r++) if (t.inside(c, r)) this.wake(t.index(c, r));
   }
   /** The host saved the liquid as it is now. */
   markSaved(): void { this.dirty = false; this.urgent = false; }
@@ -204,7 +204,7 @@ export class LiquidSim {
     this.dirty = true;
     const col = t.colOf(i), row = t.rowOf(i);
     for (let r = row - 1; r <= row + 1; r++) {
-      if (r < 0 || r >= t.rows) continue;
+      if (r < t.rowLo || r >= t.rows) continue;
       for (let c = col - 1; c <= col + 1; c++) {
         if (!t.inside(c, r)) continue;
         const j = t.index(c, r);
@@ -329,7 +329,7 @@ export class LiquidSim {
     if (index < 0 || index >= t.kind.length || SOLID[t.kind[index]]) return false;
     if (type === LIQUID_LAVA && WOODEN[t.kind[index]]) return false;
     const cols = t.cols, col = t.colOf(index), row = t.rowOf(index);
-    const above = row > 0 ? index - cols : -1;
+    const above = row > t.rowLo ? index - cols : -1;
     const roomAbove = (liquid: number) => above >= 0 && !SOLID[t.kind[above]] && !(liquid === LIQUID_LAVA && WOODEN[t.kind[above]])
       && (!t.liqLevel[above] || t.liqType[above] === liquid) ? LIQUID_FULL - t.liqLevel[above] : 0;
     const here = t.liqLevel[index], hereType = t.liqType[index];
@@ -365,7 +365,7 @@ export function surfaceY(t: Terrain, row: number, level: number): number {
 /** The liquid type at a world point (under the surface of its cell), or 0. Pure. */
 export function liquidAtPoint(t: Terrain, x: number, y: number): number {
   const col = t.colAt(x), row = t.rowAt(y);
-  if (row < 0 || !t.inside(col, row)) return 0;
+  if (!t.inside(col, row)) return 0;
   const i = t.index(col, row), level = t.liqLevel[i];
   return level && y >= surfaceY(t, row, level) ? t.liqType[i] : 0;
 }
