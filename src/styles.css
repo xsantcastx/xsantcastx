@@ -2343,6 +2343,31 @@ html.gf-play-route main.play-mode canvas {
   touch-action: none;
 }
 
+/* Holding a button or the world on a phone is a game gesture, not a text
+   selection (owner, 2026-10-15): in /play nothing selects on a long press, iOS
+   shows no callout or magnifier, and a tap draws no grey flash. Typed fields
+   (the Keeper's name, the Hearth chat, a map pin) and the Hearth's chat log
+   stay selectable and copyable. Long-form reading pages outside /play (the
+   Codex, the lore books) are untouched: there, selecting a passage is the point.
+   Focus outlines are not affected. docs/handoff/touch-and-tools.md */
+html.gf-play-route body,
+app-side-scroller {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+}
+html.gf-play-route :is(input, textarea, select, [contenteditable]:not([contenteditable="false"]), [data-selectable]),
+app-side-scroller :is(input, textarea, select, [contenteditable]:not([contenteditable="false"]), [data-selectable]) {
+  -webkit-user-select: text;
+  user-select: text;
+  -webkit-touch-callout: default;
+}
+/* No double-tap zoom on a control; a component's own touch-action (the joystick's none) still wins. */
+app-side-scroller :where(button, a, [role="button"], label, summary) {
+  touch-action: manipulation;
+}
+
 /* Desktop window-controls-overlay: the title bar is folded away and the page
    runs up under the minimise/close buttons. The chrome component draws a
    draggable strip there; everything fixed to the top moves below it.

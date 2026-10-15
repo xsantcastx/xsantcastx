@@ -4871,3 +4871,98 @@ test('heights: a jump first and a push into the shelf after still catches its li
   assert.ok(stepUntil(engine, () => engine.player.grounded && engine.player.y === HR.low.y, 60), 'mantled');
   engine.destroy();
 });
+
+// ── The tool in hand (shared/skills/held-tool.ts, docs/handoff/touch-and-tools.md) ──
+const heldPiece = kind => ({ slot: 'weapon', kind, style: 'neutral', rarity: 'common' });
+const ALL_TOOLS = { pickaxe: heldPiece('pickaxe'), axe: heldPiece('axe'), sickle: heldPiece('sickle'), rod: heldPiece('rod') };
+/** Every monster of the area far off (a foe near keeps the weapon in hand). */
+function clearFoes(engine) { for (const m of engine.monsters) { m.x = 1e6; m.spawn = 1e6; m.def = { ...m.def, range: [1e6, 1e6] }; } }
+function idle(engine, seconds) { engine.setInput('attack', false); for (let n = 0; n < seconds * 60; n++) engine.update(1 / 60); }
+
+test('tool in hand: a node puts its tool in hand, the weapon comes back 3 s after the work stops, and on a swing at air', () => {
+  const swaps = [];
+  const { engine } = enterThicket({ onHeldTool: tool => swaps.push(tool) });
+  clearFoes(engine);
+  engine.setTools({ sickle: 1, axe: 1, pickaxe: 1 });
+  engine.setHeldTools(ALL_TOOLS);
+  assert.equal(engine.heldTool, null, 'the weapon to start with');
+  standAt(engine, nodeX(engine, 'starlight-clump') + 30);
+  strike(engine);
+  assert.equal(engine.heldTool, 'sickle', 'cutting starlight: the sickle');
+  idle(engine, 2.5);
+  assert.equal(engine.heldTool, 'sickle', 'still in hand just after the work');
+  idle(engine, 1);
+  assert.equal(engine.heldTool, null, 'the work stopped: the weapon is back');
+  assert.deepEqual(swaps, ['sickle', null], 'one swap each way');
+  // The sapling: the axe; then a swing at nothing is combat — the weapon at once.
+  standAt(engine, nodeX(engine, 'world-root-sapling'));
+  strike(engine);
+  assert.equal(engine.heldTool, 'axe');
+  let x = nodeX(engine, 'world-root-sapling');
+  for (const dx of [400, -400, 700, -700]) { standAt(engine, x + dx); if (!engine.siteInReach()) break; }
+  assert.equal(engine.siteInReach(), null, 'away from every node');
+  strike(engine);
+  assert.equal(engine.heldTool, null, 'a swing at the air: the weapon');
+  engine.destroy();
+});
+
+test('tool in hand: a foe near puts the tool away and keeps it away', () => {
+  const { engine } = enterThicket();
+  clearFoes(engine);
+  engine.setTools({ sickle: 1, axe: 1, pickaxe: 1 });
+  engine.setHeldTools(ALL_TOOLS);
+  standAt(engine, nodeX(engine, 'world-root-sapling'));
+  strike(engine);
+  assert.equal(engine.heldTool, 'axe');
+  const foe = engine.monsters.find(m => m.hp > 0);
+  assert.ok(foe, 'the thicket has a creature');
+  foe.x = engine.player.x + 150; foe.spawn = foe.x; foe.def = { ...foe.def, range: [foe.x, foe.x] };
+  engine.update(1 / 60);
+  assert.equal(engine.heldTool, null, 'a foe near: the weapon');
+  engine.attackCooldown = 0; engine.workSite(engine.siteInReach());
+  assert.equal(engine.heldTool, null, 'working a node with a foe near keeps the weapon out');
+  engine.destroy();
+});
+
+test('tool in hand: digging takes the pickaxe, a cast the rod (held while the line is out), and a new place the weapon', () => {
+  const swaps = [];
+  const { engine, state } = atTheMere({ onHeldTool: tool => swaps.push(tool) });
+  clearFoes(engine);
+  engine.setTools({ pickaxe: 1 });
+  engine.setHeldTools(ALL_TOOLS);
+  engine.setFishing({ tier: 1, liquids: ['water'] });
+  const t = engine.terrain;
+  t.set(15, 33, terrainMod.nodeIndex('hard-rock'));
+  engine.facing = -1; engine.attackCooldown = 0;
+  assert.equal(engine.strikeCell(15 * 32 + 16, t.top + 33 * 32 + 16), true);
+  assert.equal(engine.heldTool, 'pickaxe', 'digging: the pickaxe');
+  engine.facing = 1;
+  assert.equal(engine.cast(), true);
+  assert.equal(engine.heldTool, 'rod', 'a cast: the rod');
+  engine.random = () => .99; // a slow bite: the line stays in
+  idle(engine, 4);
+  assert.ok(state().fishing, 'the line is still out');
+  assert.equal(engine.heldTool, 'rod', 'the rod stays in hand while the line is out');
+  engine.reelIn(true);
+  idle(engine, 1.6 + 3.1);
+  assert.equal(engine.heldTool, null, 'line in, work over: the weapon');
+  engine.facing = 1; assert.equal(engine.cast(), true);
+  assert.equal(engine.heldTool, 'rod');
+  engine.enter(engine.areaDef);
+  assert.equal(engine.heldTool, null, 'a new place: the weapon in hand');
+  assert.deepEqual(swaps, ['pickaxe', 'rod', null, 'rod', null]);
+  engine.destroy();
+});
+
+test('tool in hand: without the tool the weapon stays, and the hint is said once', () => {
+  const { engine, state } = enterThicket();
+  clearFoes(engine);
+  engine.setHeldTools({ sickle: ALL_TOOLS.sickle });
+  standAt(engine, nodeX(engine, 'world-root-sapling'));
+  strike(engine);
+  assert.equal(engine.heldTool, null);
+  assert.equal(state().messageKey, 'play.hud.tool.missing.axe');
+  strike(engine);
+  assert.notEqual(state().messageKey, 'play.hud.tool.missing.axe', 'said once');
+  engine.destroy();
+});
