@@ -478,7 +478,12 @@ const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall
   'town-roof': 'a settlement\'s roofs: shelter over the shops and the keepers\' rooms',
   'town-beam': 'a settlement\'s timber frames: the floor beams the upper rooms stand on',
   'town-plank': 'a shop\'s upper floor: the keeper\'s room above the counter (one-way: stood on, dropped through)',
-  'town-ladder': 'the ladder from the shop floor to the keeper\'s room (climbed like any ladder)' };
+  'town-ladder': 'the ladder from the shop floor to the keeper\'s room (climbed like any ladder)',
+  // The Living World (living-world.ts): the wilds' trees, signposts and the seam-engines underground.
+  'ashwood-trunk': 'an ashwood\'s trunk: climbed like a rope to its crown (its burl, at the foot, is the axe\'s)',
+  'ashwood-crown': 'an ashwood\'s crown: stood on from below like a platform; cinder finches roost in it',
+  'wild-signpost': 'carved words for whoever walks by (E reads them: Delving XP the first time; a hermit\'s door gives a gift once)',
+  'seam-engine': 'machinery older than the Seamworks: E reads its carved words (Delving XP the first time)' };
 // One World: the nodes a settlement's blueprints lay (surface-gen.ts stamps them over the Delve's surface).
 const townNodes = new Set();
 {
@@ -494,6 +499,8 @@ for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) 
   if (DELVE_INSCRIPTIONS.length) laidOut.add('inscription');
 }
 for (const id of SECTOR_NODES || []) laidOut.add(id);
+// The Living World's surface plan lays its nodes in the wilds' sky band (living-world.ts, surface-gen.ts).
+for (const id of L('play/engine/living-world.ts').LIVING_NODES || []) laidOut.add(id);
 const placedNodes = new Set(PLACEABLES.map(p => p.node));
 for (const n of TERRAIN_NODE_LIST) {
   const g = node('block', n.id, n.label);
@@ -512,6 +519,40 @@ for (const n of TERRAIN_NODE_LIST) {
   if (STRUCTURAL[n.id]) g.uses.add(STRUCTURAL[n.id]);
   if (!g.sources.size) flag('block', 'never-generated', n.id, 'not in any Delve layout and not placeable');
   if (!g.uses.size) flag('block', 'no-yield-or-purpose', n.id, `breaking it gives nothing${n.xp ? ` but ${n.xp} XP` : ''}`);
+}
+
+// The Living World (play/engine/living-world.ts): critters, hermits, carved words, the day's mysteries.
+{
+  const LW = L('play/engine/living-world.ts');
+  const WORDS = read('play/world/living-world.i18n.ts');
+  const has = key => WORDS.includes(`'${key}'`);
+  for (const c of Object.values(LW.CRITTERS)) {
+    const n = node('critter', c.id, c.id);
+    n.sources.add(`spawns in the ${c.habitat === 'both' ? 'wilds and the caves' : c.habitat} (${c.time})`);
+    if (c.role) n.uses.add(c.role); else flag('critter', 'no-use', c.id, 'no role');
+    if (c.drop) {
+      if (!materialDisplay(c.drop.materialId)) flag('critter', 'unknown-drop', c.id, `drops ${c.drop.materialId}, which the satchel cannot paint`);
+      else src(c.drop.materialId, `caught ${c.id}`);
+    }
+    if (!has(`play.living.critter.${c.id}`)) flag('critter', 'not-visible', c.id, 'no play.living.critter name');
+    if (!/critter-art/.test(read('play/engine/wild-life.ts')) || !read('play/engine/critter-art.ts').includes(`'${c.id}'`)) flag('critter', 'not-visible', c.id, 'no pixel art');
+  }
+  for (const h of LW.HERMITS) {
+    const n = node('npc', h.id, h.id);
+    n.sources.add('a hermit\'s lean-to in the wilds (living-world.ts)');
+    if (h.gift && materialDisplay(h.gift.materialId)) { n.uses.add(`gives ${h.gift.qty} ${h.gift.materialId} once`); src(h.gift.materialId, `hermit ${h.id}`); }
+    else flag('npc', 'no-role', h.id, 'no gift');
+    if (!has(`play.living.note.${h.note}`)) flag('npc', 'no-lines', h.id, 'no words on the door');
+    if (!has(`play.living.hermit.${h.id}.name`)) flag('npc', 'not-visible', h.id, 'no name tag');
+  }
+  for (const id of LW.LIVING_NOTE_IDS) if (!has(`play.living.note.${id}`)) flag('lore', 'no-lore', id, 'a carved Living World note with no words');
+  for (const [kind, r] of Object.entries(LW.MYSTERY_REWARD)) {
+    const n = node('mystery', kind, kind);
+    n.sources.add('the day\'s mysteries (one sector column in four, per UTC day)');
+    n.uses.add(`pays ${r.xp} Delving XP${r.item ? ` and ${r.item.qty} ${r.item.materialId}` : ''} once a day`);
+    if (r.item) src(r.item.materialId, `a ${kind}`);
+    if (!has(`play.living.glim.${kind}`)) flag('mystery', 'not-visible', kind, 'Glim says nothing');
+  }
 }
 
 // Creatures ─────────────────────────────────────────────────────────────────
