@@ -93,6 +93,19 @@ import { FIELD_NOTE_XP, fieldNoteFor } from '../shared/delve/field-notes.model';
 const SHRINE_XP = 15;
 import type { DiscoverEvent } from './engine/engine';
 import { WORLD_ACTION_UNPAID } from './engine/engine.model';
+// One World (docs/design/one-world.md), Phase 1: behind the per-device preview gate.
+import { OneWorldFlag } from './one-world/one-world-flag';
+import { EMBER_STONES, INFERNAL_WORLD_TOWN, ROAD_MAW_APPROACH_X } from './world/worlds/ember.world';
+import { ONE_WORLD_I18N } from './world/one-world.i18n';
+import { TRAVEL_MAP_I18N } from './world-travel/world-travel.i18n';
+import type { TravelMapComponent } from './world-travel/travel-map.component';
+import { headMark } from './world/routines';
+import { TOWN_KEEPERS } from './world/life';
+import { WaystoneService, type WaystoneHost, type WaystonePin } from '../shared/waystones/waystones.service';
+import { revealSectors, travelRefusal } from '../shared/waystones/waystones.model';
+import { WorldMigrationService } from '../shared/delve/delve-migration-v3';
+import { worldHour } from '../shared/world/world-hour';
+import type { StoneEvent } from './engine/engine.model';
 import { restCueDue, settleDelveMine } from './delve-reward';
 import { DelveMapView } from './delve-map-view';
 import { FishingService, type PendingCatch } from '../shared/fishing/fishing.service';
@@ -295,7 +308,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** A `?at=` that arrived before the engine existed. Applied once it mounts. */
   private pendingAt: string | null = null;
   private unbindPointer: (() => void) | null = null;
-  town: TownDef = TOWNS.infernal!;
+  town: TownDef = OneWorldFlag.on ? INFERNAL_WORLD_TOWN : TOWNS.infernal!;
   panel: OpenPlace | null = null;
   panelLoading = false;
   panelError = '';
@@ -414,6 +427,23 @@ export class SideScrollerComponent implements OnDestroy {
   /** A translated string (EN / ES). The hotbar, the gathering prompt and the Hunting toast use it. */
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
   readonly browser = isPlatformBrowser(inject(PLATFORM_ID));
+  // ── One World (docs/design/one-world.md), Phase 1: the preview gate ──
+  /** This device previews One World: the Seamworks stands on the Ember Delve's surface (OneWorldFlag). */
+  readonly oneWorld = this.browser && OneWorldFlag.on;
+  private readonly waystones = inject(WaystoneService);
+  private readonly worldMigration = inject(WorldMigrationService);
+  /** Last resume point taken (ms), and whether a saved one was used on this mount. */
+  private resumeAt = 0;
+  private resumed = false;
+  /** The world clock's hour handed to the engine (the HUD tick), and the keepers' head marks' signature. */
+  hour = 12;
+  private marksKey = '';
+  /** The first dark stone's line has been said (Glim, once per session). */
+  private toldStone = false;
+  /** The realm towns' worlds (the trunk line's stones are `<world>:town`). */
+  private static readonly WORLD_OF_TOWN: Readonly<Record<RealmTownId, string>> = { infernal: 'ember', umbral: 'ink', verdant: 'root', luminous: 'prism', celestial: 'orrery' };
+  /** A realm town by id: under One World the Infernal town is the Ember world's settlement. */
+  private townFor(id: RealmTownId): TownDef | undefined { return id === 'infernal' && this.oneWorld ? INFERNAL_WORLD_TOWN : TOWNS[id]; }
   private engine?: SeamworksEngine;
   private boundCanvas: HTMLCanvasElement | null = null;
   private room?: SocialRoom;
@@ -587,8 +617,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.infusions.init();
     // Back where the Keeper last stood. A `?at=` link resolves after this and still wins.
     const play = this.playSave();
-    const home = typeof play.town === 'string' ? TOWNS[play.town as RealmTownId] : undefined;
+    const home = typeof play.town === 'string' && (REALM_TOWN_IDS as readonly string[]).includes(play.town) ? this.townFor(play.town as RealmTownId) : undefined;
     if (home) this.town = home;
+    // One World: v2's claims and chests come across once (the grants are keyed; the marker makes it once).
+    if (this.oneWorld) {
+      const moved = this.worldMigration.run();
+      if (moved && (moved.claims || moved.stacks || moved.gear)) setTimeout(() => this.zone.run(() => { this.message = this.t('play.world.migrated'); }), 600);
+    }
     this.coinsKept = Number.isInteger(play.coins) && (play.coins as number) > 0 ? play.coins as number : 0;
     this.zone.runOutsideAngular(() => {
       this.room = new SocialRoom(snapshot => this.zone.run(() => {
@@ -610,7 +645,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -631,7 +666,9 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(BOUNTIES_I18N);
     this.i18n.register(HEIGHTS_I18N);
     this.i18n.register(SOUND_I18N);
-    this.keeperKey = '';
+    this.i18n.register(ONE_WORLD_I18N);
+    this.i18n.register(TRAVEL_MAP_I18N);
+    this.keeperKey = ''; this.marksKey = '';
     this.engine = new SeamworksEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
@@ -663,6 +700,8 @@ export class SideScrollerComponent implements OnDestroy {
       onKill: event => this.zone.run(() => this.hunted(event)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
+      // One World: a Waystone seen, lit, or used (waystones.service.ts writes; the engine draws).
+      onStone: event => this.zone.run(() => this.stoneEvent(event)),
       // The world's sounds: never through the zone (no change detection for a footstep).
       onSfx: cue => this.engineSfx(cue),
       // Each player digs their own Delve: seed and dug cells from the save.
@@ -698,9 +737,15 @@ export class SideScrollerComponent implements OnDestroy {
           // Which way the Keeper falls (pets and any follower hang from it; engine/celestial.ts).
           el.setAttribute('data-gravity', state.gravity === -1 ? 'up' : 'down');
           el.setAttribute('data-ink-blind', state.realm?.inkBlind ? 'true' : 'false');
+          // One World: the world, the region under the Keeper, the stone in reach (id:lit:charge), the hour.
+          el.setAttribute('data-world', state.world ?? '');
+          el.setAttribute('data-region', state.region ?? '');
+          el.setAttribute('data-stone', state.stone ? `${state.stone.id}:${state.stone.lit ? 'lit' : 'dark'}:${state.stone.charge.toFixed(2)}` : '');
+          el.setAttribute('data-hour', this.oneWorld ? this.hour.toFixed(1) : '');
         }
         this.soundScene(state);
-        this.room?.update(state.x, state.y, state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
+        // Presence: in a world the zone is the WORLD (peers meet anywhere in it); elsewhere the area's name.
+        this.room?.update(state.x, state.y, state.world || state.area || 'Basalt Seamworks', state.facing === -1 ? -1 : 1, state.animation ?? 'idle');
       }),
     });
     this.engine.setHomesteadView(this.homestead.scene);
@@ -718,6 +763,13 @@ export class SideScrollerComponent implements OnDestroy {
     this.bindPointer(canvas);
     this.engine.start();
     if (this.panel) this.engine.setPaused(true);
+    if (this.oneWorld) {
+      // The Waystones read the world through this view; the Keeper logs in where they last stood (a deep link wins).
+      this.waystones.attach(this.waystoneHost);
+      this.engine.setStoneState(this.waystones.litSet(), this.waystones.seenSet());
+      this.tickWorld();
+      if (!this.resumed) this.resume();
+    }
     if (this.pendingAt) { const at = this.pendingAt; this.pendingAt = null; this.applyAt(at); }
   }
   /**
@@ -960,7 +1012,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser) return;
     this.sound.setScene({
       realm: this.soundRealm(state),
-      delve: !!state.delve,
+      // One World: the beds go by band (§1.2): the surface plays the town's, the underground the Delve's.
+      delve: !!state.delve && !(state.world && state.region !== 'ember-delve'),
       boss: !!state.boss && state.enemyHp > 0,
       hour: new Date().getHours(),
       water: !!state.near?.water || state.liquid?.in === 'water',
@@ -1058,6 +1111,7 @@ export class SideScrollerComponent implements OnDestroy {
   openSound(): void { this.placesOpen = false; this.soundOpen = true; }
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
+    if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
     this.unbindFeel();
     this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
@@ -1084,15 +1138,21 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.engine) { this.pendingAt = at; return; }
     const found = findStation(at, this.town.id);
     if (!found) return;
-    const town = TOWNS[found.townId];
+    const town = this.townFor(found.townId);
     if (!town) return;
     if (town.id !== this.town.id || !this.engine.inTown) { this.town = town; this.engine.setTown(town); this.writePlay({ town: town.id as RealmTownId }); }
-    const station = found.station;
-    this.engine.placeAt(station.x);
+    let station = found.station;
+    // One World: the station stands at its counter in the world (its own x and floor), not the old town's x.
+    if (town.home) station = this.engine.placeAtStation(at) ?? station;
+    else this.engine.placeAt(station.x);
     if (station.kind === 'panel' || station.kind === 'waystone') this.openStation(station);
   }
   private openStation(station: StationDef): void {
     if (!this.browser) return;
+    // One World: a town's stone opens the Travel map (lit stones, the trunk line, the recall).
+    if (station.kind === 'waystone' && this.oneWorld) { this.openTravelMap(station.id); return; }
+    // One World at night: the keeper is upstairs; the bell rings, the window lights, the counter opens as always.
+    if (this.oneWorld && this.state.keeperAway === 'bell') setTimeout(() => this.zone.run(() => { this.message = this.t('play.world.keeper.bellLine'); }));
     if (station.kind === 'waystone') {
       this.showPanel({ kind: 'waystone', stationId: station.id, title: 'The Waystone', kicker: 'Travel' });
       return;
@@ -1257,7 +1317,7 @@ export class SideScrollerComponent implements OnDestroy {
     return this.state.enemyName || this.t('play.creature.unknown');
   }
   travel(id: RealmTownId): void {
-    const town = TOWNS[id];
+    const town = this.townFor(id);
     if (!town || town.id === this.town.id) { this.closePanel(); return; }
     this.sound.sfx('portal');
     this.town = town;
@@ -1299,8 +1359,12 @@ export class SideScrollerComponent implements OnDestroy {
   private refreshGuide(): void {
     const progress = this.activity.snapshot.progress;
     const worn = this.inventory.snapshot.equipped['weapon'];
-    const areaId = this.state.areaId ?? this.town.id;
+    // One World: the settlement's street is the town ('infernal'); under it, the Delve; elsewhere the region.
+    const areaId = this.state.world
+      ? this.state.region === 'basalt-seamworks' ? this.town.id : this.state.region === 'ember-delve' ? 'ember-delve' : this.state.region ?? this.town.id
+      : this.state.areaId ?? this.town.id;
     const goal = firstGoal({
+      ...(this.state.world ? { world: { mawX: ROAD_MAW_APPROACH_X } } : {}),
       bought: this.boughtBuilding,
       hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
       crafted: this.activity.snapshot.craftedBasaltEdge || !!this.edge || (progress.xpByDiscipline['forge'] ?? 0) > 0,
@@ -1773,6 +1837,13 @@ export class SideScrollerComponent implements OnDestroy {
     return this.t('play.hud.obj.mine');
   }
   get actionLabel(): string {
+    // One World: a Waystone (hold to light, or travel); a keeper at the fire or asleep (the station still opens).
+    if (this.state?.nearby === 'stone' && this.state.stone) return this.t(this.state.stone.lit ? 'play.world.stone.travel' : this.state.stone.charge > 0 ? 'play.world.stone.lighting' : 'play.world.stone.light');
+    if (this.state?.keeperAway === 'bell') return this.t('play.world.keeper.bell');
+    if (this.state?.keeperAway === 'hearth' && this.state.nearbyKind === 'panel') {
+      const keeper = (TOWN_KEEPERS[this.town.realm] ?? []).find(k => k.station === this.state.nearby);
+      if (keeper) { const named = this.t(keeper.nameKey); return this.t('play.world.keeper.hearth', { name: named === keeper.nameKey ? keeper.name : named }); }
+    }
     if (this.state?.nearby === 'hs-forge') return this.t('play.hud.act.strikeForge');
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
     const gather = this.state?.nearby === 'gather' ? this.state.gather : undefined;
@@ -1866,6 +1937,8 @@ export class SideScrollerComponent implements OnDestroy {
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
+    // One World: M is the Travel map (the world's map with its stones); it opens the full map from there.
+    else if (event.code === 'KeyM' && this.oneWorld && this.state.world) { event.preventDefault(); this.openTravelMap(null); }
     else if (event.code === 'KeyM' && this.state.delve) { event.preventDefault(); this.openMap(); }
     else if (this.state.delve && /^Digit[0-9]$/.test(event.code)) {
       // Keys 1-9, then 0 for the tenth slot.
@@ -2023,6 +2096,166 @@ export class SideScrollerComponent implements OnDestroy {
     if (!id) return null;
     if (CROUPIER_STATIONS.includes(id)) return 'croupier';
     return id === KAEL_STATION ? 'kael' : null;
+  }
+
+  // ── One World, Phase 1 (docs/design/one-world.md): the clock, the stones, travel, the resume point ──
+
+  /**
+   * The HUD tick (5 a second) with the gate on: the world clock's hour to the
+   * engine (keeper routines, lit windows, the night), the keepers' head marks,
+   * the Waystones' view, and a resume point every 10 s while the spot is safe.
+   */
+  private tickWorld(): void {
+    if (!this.oneWorld || !this.engine) return;
+    this.hour = worldHour(this.now);
+    this.engine.setWorldHour(this.hour);
+    this.tickMarks();
+    this.waystones.refresh();
+    const el = this.canvas?.nativeElement;
+    if (el) {
+      // Where each station of this area stands (x,y): the e2e's stationPoint(page, id) reads it.
+      const stations = this.engine.places.map(s => `${s.id}@${Math.round(s.x)},${Math.round(s.y ?? 610)}`).join(';');
+      if (el.getAttribute('data-stations') !== stations) el.setAttribute('data-stations', stations);
+      const keepers = this.engine.settlementKeepers.map(k => `${k.id}@${k.x},${k.y}${k.upstairs ? ':up' : ''}${k.mark ? `:${k.mark}` : ''}`).join(';');
+      if (el.getAttribute('data-keepers') !== keepers) el.setAttribute('data-keepers', keepers);
+    }
+    if (this.state.world && this.now - this.resumeAt >= 10_000 && this.engine.safeSpot && !this.state.paused) {
+      this.resumeAt = this.now;
+      this.delve.setResume({ world: this.state.world as 'ember', col: Math.floor(this.state.x / 32), row: Math.floor((this.state.y - 610) / 32), t: this.now });
+    }
+  }
+  /** Log in where the Keeper last stood somewhere safe (One World §3.3), once per mount. */
+  private resume(): void {
+    this.resumed = true;
+    if (this.route.snapshot.queryParamMap.get('at') || this.town !== INFERNAL_WORLD_TOWN) return;
+    const at = this.delve.resumePoint();
+    if (!at || at.world !== 'ember' || !this.engine) return;
+    this.engine.placeAtPoint(at.col * 32 + 16, 610 + at.row * 32);
+  }
+  /** MapleStory head marks over the settlement's keepers: `!` an offer, `?` a hand-in (the Quest Board's states). */
+  private tickMarks(): void {
+    if (!this.engine) return;
+    const marks: Record<string, '!' | '?'> = {};
+    for (const keeper of TOWN_KEEPERS[this.town.realm] ?? []) {
+      if (!keeper.npc) continue;
+      const mark = headMark(this.quests.chains[keeper.npc], this.quests.missionsFor(keeper.npc));
+      if (mark) marks[keeper.id] = mark;
+    }
+    const key = JSON.stringify(marks);
+    if (key === this.marksKey) return;
+    this.marksKey = key;
+    this.engine.setKeeperMarks(marks);
+  }
+
+  /** What the Waystones read through this view (WaystoneService's host). */
+  private readonly waystoneHost: WaystoneHost = {
+    world: () => this.state.world ?? SideScrollerComponent.WORLD_OF_TOWN[this.town.id as RealmTownId] ?? null,
+    stones: () => this.stoneList(),
+    here: () => this.engine?.stoneHere ?? (this.state.nearby === 'waystone' ? `${SideScrollerComponent.WORLD_OF_TOWN[this.town.id as RealmTownId]}:town` : null),
+    anchors: () => this.engine?.delveAnchors() ?? [],
+    refusal: () => {
+      const why = travelRefusal({
+        defeated: !!this.state.defeated, fighting: (this.state.enemyHp ?? 0) > 0, fishing: !!this.state.fishing || !!this.reel,
+        story: !!this.storyCard || !!this.storyScene,
+      });
+      return why ? `travelmap.refuse.${why}` : null;
+    },
+    prefetch: id => { const p = this.engine?.stonePoint(id); if (p) this.engine?.prefetchAt(p.col); },
+    travelTo: id => this.stepToStone(id),
+    recall: () => this.stepToStone('ember:town'),
+  };
+  /** Every stone the Travel map may list: the Ember world's own, the wild ones seen, and the trunk line's towns. */
+  private stoneList(): Omit<WaystonePin, 'lit' | 'seen'>[] {
+    const out: Omit<WaystonePin, 'lit' | 'seen'>[] = EMBER_STONES.map(s => ({ id: s.id, col: s.col, row: s.row, kind: s.kind, world: 'ember' }));
+    const known = new Set([...this.waystones.state.seen, ...this.waystones.state.lit]);
+    for (const id of known) {
+      if (!id.startsWith('ember:ws:')) continue;
+      const at = this.engine?.stonePoint(id);
+      if (at) out.push({ id, col: at.col, row: at.row, kind: 'wild', world: 'ember' });
+    }
+    for (const realm of REALM_TOWN_IDS) {
+      const world = SideScrollerComponent.WORLD_OF_TOWN[realm];
+      if (realm !== 'infernal' && TOWNS[realm]) out.push({ id: `${world}:town`, col: 0, row: 0, kind: 'town', world });
+    }
+    return out;
+  }
+  /**
+   * The step itself (after the channel): another realm's town stone travels the
+   * trunk line to that town as it is today; an Ember stone steps into the
+   * Ember world there (from a legacy area too). The panel closes at once.
+   */
+  private stepToStone(id: string): boolean {
+    if (!this.engine) return false;
+    if (this.panel) this.finishClose(true);
+    const [world] = id.split(':');
+    if (world !== 'ember') {
+      const realm = (Object.keys(SideScrollerComponent.WORLD_OF_TOWN) as RealmTownId[]).find(r => SideScrollerComponent.WORLD_OF_TOWN[r] === world);
+      if (!realm || !TOWNS[realm]) return false;
+      this.travel(realm);
+      return true;
+    }
+    if (this.town !== INFERNAL_WORLD_TOWN) { this.town = INFERNAL_WORLD_TOWN; this.engine.setTown(INFERNAL_WORLD_TOWN); this.writePlay({ town: 'infernal' }); }
+    const ok = this.engine.travelToStone(id);
+    if (ok) this.sound.sfx('portal');
+    else this.message = this.t('travelmap.failed');
+    return ok;
+  }
+  /** A Waystone seen (the save remembers), lit (receipt, then XP), or used (the Travel map). */
+  private stoneEvent(event: StoneEvent): void {
+    if (!this.oneWorld || !this.engine) return;
+    if (event.action === 'seen') {
+      const first = this.waystones.markSeen(event.id);
+      // The first dark stone a Keeper meets: Glim says what it is, once.
+      if (first && !this.toldStone && !this.waystones.litSet().has(event.id) && !event.id.endsWith(':town') && this.waystones.state.lit.length === 0) {
+        this.toldStone = true;
+        this.message = this.t('play.world.glim.firstStone');
+      }
+      this.engine.setStoneState(this.waystones.litSet(), this.waystones.seenSet());
+      return;
+    }
+    if (event.action === 'light') {
+      const lit = this.waystones.light(event.id, EMBER_DELVE_LOCATION);
+      this.engine.setStoneState(this.waystones.litSet(), this.waystones.seenSet());
+      this.sound.sfx('portal');
+      if (!lit) return;
+      const at = this.engine.stonePoint(event.id);
+      if (at) this.engine.revealAroundStone(at.col, revealSectors(this.waystones.marks()));
+      const lines = [lit.xp ? this.t('play.world.stone.lit', { n: lit.xp }) : this.t('play.world.stone.litAgain')];
+      if (lit.mark) lines.push(this.t('play.world.stone.mark', { name: this.t(`travelmap.mark.${lit.mark}`) }));
+      this.message = lines.join(' ');
+      if (lit.xp) this.toastLoot(`+${lit.xp} XP`);
+      return;
+    }
+    this.openTravelMap(null);
+  }
+  /** Open the Travel map (lazy) in the place panel. `stationId`: the town stone's deep link (`?at=waystone`). */
+  openTravelMap(stationId: string | null): void {
+    if (!this.browser || !this.oneWorld || this.storyCard || this.storyScene) return;
+    if (this.map.open) this.closeMap();
+    this.waystones.attach(this.waystoneHost);
+    this.showPanel({ kind: 'page', stationId: stationId ?? 'travel', title: this.t('travelmap.title'), kicker: this.t('travelmap.kicker'), ...(stationId ? {} : { own: true as const }) });
+    this.loadPanel({ load: () => import('./world-travel/travel-map.component').then(m => m.TravelMapComponent) }, this.panelInjector, ref => {
+      const map = ref.instance as TravelMapComponent;
+      map.source = () => this.engine?.mapSource() ?? null;
+      map.closed.subscribe(() => { if (this.panel) this.closePanel(); });
+      map.fullMap.subscribe(() => { this.finishClose(true); setTimeout(() => this.openMap()); });
+    });
+  }
+  /** The prompt's stone button: a press starts lighting (hold), a release stops; a lit stone opens the map. */
+  stonePress(event: PointerEvent, down: boolean): void {
+    if (down && event.button !== 0 && event.pointerType === 'mouse') return;
+    event.preventDefault();
+    this.engine?.setUseHeld(down);
+    if (down) this.engine?.interact();
+  }
+  /** Menu → One World (preview): flip this device's gate and reload (the world is built once per page). */
+  toggleOneWorld(): void {
+    if (!this.browser) return;
+    OneWorldFlag.set(!this.oneWorld);
+    this.delve.flush();
+    const url = new URL(window.location.href);
+    url.searchParams.delete('oneworld');
+    window.location.assign(url.toString());
   }
 
   // ── The Delve map ──
