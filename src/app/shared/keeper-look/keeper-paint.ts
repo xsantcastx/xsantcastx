@@ -28,7 +28,7 @@
 import { EYE_COLORS, HAIR_COLORS, KeeperLook, OUTFIT_COLORS, SKIN_TONES, lookKey } from './keeper-look.model';
 import {
   GearPiece, GripTransform, HoldPose, KeeperAction, KeeperGear, RARITY_TRIM, STYLE_COLORS, WEAPON_SPECS, WeaponKind,
-  gearKey, gripTransform, handAt, holdPose,
+  gearKey, gripPoint, gripTransform, handAt, holdPose,
 } from './keeper-gear';
 import { KeeperGarb, garbKey } from './npc-looks';
 
@@ -315,6 +315,12 @@ export function paintWeapon(kind: WeaponKind, m: Mat): HTMLCanvasElement {
       p(1, 0, 1, 10, m.base); p(4, 0, 1, 10, m.base); p(1, 0, 1, 2, m.baseHi); p(4, 0, 1, 2, m.baseHi);
       p(2, 9, 2, 2, m.trim); p(2, 11, 1, 4, m.baseLo); p(3, 11, 1, 4, m.base);
       break;
+    case 'rod':
+      // A cork-wrapped butt, a reel at the hand, a pole thinning to a pale tip, one line guide.
+      p(1, 17, 2, 11, m.wood); p(1, 17, 1, 11, m.woodLo); p(1, 27, 2, 1, m.trim); p(1, 16, 2, 1, m.trim);
+      p(2, 2, 1, 14, m.wood); p(2, 0, 1, 2, m.bladeHi); p(3, 9, 1, 1, m.accent);
+      p(3, 20, 2, 2, m.base); p(3, 20, 1, 1, m.baseHi);
+      break;
   }
   if (m.bright) {
     // Epic and above: the tip catches the realm's light.
@@ -410,6 +416,9 @@ export class KeeperPainter {
   private readonly pose: HoldPose = { arm: 0, weapon: 0 };
   private readonly hand = { x: 0, y: 0 };
   private readonly grip: GripTransform = { x: 0, y: 0, rotation: 0, drawX: 0, drawY: 0 };
+  /** Where the held weapon's tip was last drawn, in art px from the feet pivot (null: nothing held, or not drawn yet). */
+  private readonly tipAt = { x: 0, y: 0 };
+  private tipDrawn = false;
   /** Offsets this Keeper's blink so a crowd never blinks in unison. */
   private readonly blinkPhase: number;
 
@@ -430,6 +439,13 @@ export class KeeperPainter {
    * it would hang hidden behind the body. Players keep the off-hand behind.
    */
   private get frontProp(): boolean { return !!this.garb && !this.weaponKind && !!this.gear?.['off-hand']; }
+
+  /**
+   * The held weapon's tip in the last drawn frame, in art px from the feet
+   * pivot (multiply by the draw scale; x points the way the Keeper faces), or
+   * null. The engine hangs the fishing line from the rod's tip with it.
+   */
+  weaponTip(): { x: number; y: number } | null { return this.tipDrawn ? this.tipAt : null; }
 
   /** The held weapon's kind, or null (bare hand). */
   get weapon(): WeaponKind | null { return this.weaponKind; }
@@ -532,7 +548,10 @@ export class KeeperPainter {
       c.translate(this.grip.x, this.grip.y); c.rotate(this.grip.rotation);
       c.drawImage(sprite, this.grip.drawX - 1, this.grip.drawY - 1);
       c.restore();
-    }
+      gripPoint(this.grip, spec.gx, 0, this.tipAt);
+      this.tipAt.x -= PIVOT_X; this.tipAt.y -= PIVOT_Y;
+      this.tipDrawn = true;
+    } else this.tipDrawn = false;
     if (this.frontProp) {
       const off = this.gear!['off-hand']!;
       const prop = this.offhand === undefined ? (this.offhand = paintOffhand(off, matOf(off))) : this.offhand;

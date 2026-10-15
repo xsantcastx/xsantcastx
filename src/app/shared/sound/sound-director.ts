@@ -32,7 +32,9 @@ export type SfxCue =
   // The pets (shared/pets): a happy squeak, the Ink Pup's yip, an egg cracking open.
   | 'chirp' | 'bark' | 'hatch'
   // The Lost Cabinets (shared/cabinets): the Slate's Scan pinging (pitch rises as it warms), a cabinet opening.
-  | 'scan' | 'cabinet';
+  | 'scan' | 'cabinet'
+  // The tool in hand changes (shared/skills/held-tool.ts): the rod out for a cast, the pickaxe for a dig, the weapon back.
+  | 'swap';
 
 export interface SfxOptions {
   material?: Material;
@@ -46,7 +48,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -205,6 +207,8 @@ export class SoundDirector {
       case 'scan': this.tone(t, 'sine', 880 * up, .045, .2, .004); return this.tone(t, 'triangle', 1760 * up, .012, .12, .002);
       // A wooden knock, then a little bell run: a door that has waited a long time.
       case 'cabinet': this.tone(t, 'triangle', 196, .09, .09, .002); return this.arpeggio(t + .1, [72, 76, 79, 83, 88], 'bell', .08, .28, true);
+      // A soft leather-and-metal shuffle: a strap loosed, a haft settling in the hand.
+      case 'swap': this.whoosh(t, 900, 400, .08, .06); return this.tone(t + .05, 'triangle', 660, .05, .06, .002);
     }
   }
 
