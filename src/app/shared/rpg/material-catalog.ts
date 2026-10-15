@@ -144,6 +144,11 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'prismite': 'Prismite',
   'dawnglass': 'Dawnglass',
   'dawn-lens': 'Dawn Lens',
+  // The Orrery Wells (rift-gates.model.ts; art/pixel-icons.ts paints them).
+  'celestial-sigil': 'Celestial Sigil',
+  'starsteel': 'Starsteel',
+  'meridian-glass': 'Meridian Glass',
+  'orrery-key': 'Orrery Key',
   // Map v2's two map tools (shared/delve/map-tools.model.ts).
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',

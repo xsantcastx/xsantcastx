@@ -485,6 +485,15 @@ const MATERIAL_SEEDS: readonly MaterialSeed[] = [
     hint: 'veins in the Dawnglass Deep and the roofs of prism galleries, in the Prism Mines' },
   { id: 'dawn-lens', rarity: 'rare', realm: 'luminous',
     hint: 'made at the Crafting Bench from prismite, dawnglass and glowcaps' },
+  // The Orrery Wells (the Celestial's underside), behind its Rift Gate.
+  { id: 'celestial-sigil', rarity: 'epic', realm: 'celestial',
+    hint: 'made at the Crafting Bench from rift splinters, Celestial Alloy and emberheart cores' },
+  { id: 'starsteel', rarity: 'uncommon', realm: 'celestial',
+    hint: 'veins in the Orrery Wells, behind the Celestial Rift Gate in the Magma Halls; the roofs of orrery vaults' },
+  { id: 'meridian-glass', rarity: 'rare', realm: 'celestial',
+    hint: 'veins in the Nadir Deep and the pockets up the star-wells, in the Orrery Wells' },
+  { id: 'orrery-key', rarity: 'rare', realm: 'celestial',
+    hint: 'made at the Crafting Bench from starsteel, meridian glass and Celestial Alloy' },
   // Map v2's map tools (shared/delve/map-tools.model.ts).
   { id: 'broken-astral-compass', rarity: 'rare', realm: 'celestial',
     hint: 'the Board Herald\'s first bounty, on the Quest Board' },
@@ -608,6 +617,11 @@ const SEED_LORE: Readonly<Record<string, string>> = {
   'prismite': 'Light goes into it one colour and comes out as an argument about what colour it was. Miners settle it with a hammer.',
   'dawnglass': 'Light that stood still so long it set. It is warm in the hand, like a morning that never happened.',
   'dawn-lens': 'A lens of dawnglass in a prismite ring. Your own light, through it, is heavy enough to stand on.',
+  // The Orrery Wells (lore-addendum.md: shipped, owner reviews in play).
+  'celestial-sigil': 'A seal the Celestial side will check twice and then accept: frame, alloy poured in a ring, and two cores that remember where down used to be. The gate keeps it, and turns it once, politely.',
+  'starsteel': 'Iron that fell a very long way and kept its shine out of stubbornness. It is always slightly heavier on the side facing the floor, whichever side that is today.',
+  'meridian-glass': 'The line the Orrery measured the sky by, set into glass. Hold it level and the line inside it stays level. Hold it wrong and it tells you so.',
+  'orrery-key': 'The Compact\'s own key: a starsteel bit, a meridian-glass bow. Turned in the air of a field, the field answers. Sera says not to lean on it either.',
   // Canon (item lore codex): "points toward the nearest fact omitted by the active model".
   'broken-astral-compass': 'It stopped pointing north the day the Godforge broke. Now it points at whatever the map was never told: the room no lantern has reached, the carving nobody copied.',
   // Canon: "a partial route that is legible only beside another keeper's incompatible observation".
@@ -849,6 +863,10 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'prismite': 'Prismite',
   'dawnglass': 'Dawnglass',
   'dawn-lens': 'Dawn Lens',
+  'celestial-sigil': 'Celestial Sigil',
+  'starsteel': 'Starsteel',
+  'meridian-glass': 'Meridian Glass',
+  'orrery-key': 'Orrery Key',
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',
   'mirror-slate': 'Mirror Slate',

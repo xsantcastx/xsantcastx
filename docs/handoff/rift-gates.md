@@ -64,6 +64,8 @@ pay themselves through `skillActions.act`.
 
 ## Spec for the three settling realms (content only — no plumbing needed)
 
+**All three shipped**: Verdant + Luminous (`realm-delves.md`), Celestial (`celestial-delve.md`). The specs below are history.
+
 For each: set `open: true` + `area`, add `<realm>-delve.ts` hunt (spec `realm: '<realm>'`), a branch in
 `realmColumn` (or a sibling generator), its sigil recipe (4 splinters + its realm material + a deep core),
 a 3-mission chain, a rule module like `umbral.ts`, i18n, bestiary, art brief.

@@ -1,5 +1,5 @@
 /**
- * rift.i18n.ts: the Rift Gates', the Ink Deeps', the Root Deeps' and the Prism Mines' player-facing lines
+ * rift.i18n.ts: the Rift Gates', the Ink Deeps', the Root Deeps', the Prism Mines' and the Orrery Wells' player-facing lines
  * (shared/delve/rift-gates.model.ts, engine/umbral.ts; lore-addendum.md "The
  * Rift Gates"). Lazy: registered by the side-scroller (play chunk), checked by
  * scripts/check-i18n-keys.js.
@@ -89,4 +89,22 @@ export const RIFT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.rift.mirror.turned': { en: 'The mirror turns. The beam turns with it.', es: 'El espejo gira. El rayo gira con el.' },
   'play.rift.prism.caught': { en: 'Caught in the beam: the Hollow Sun cannot move. Strike now.', es: 'Atrapado en el rayo: el Sol Hueco no puede moverse. Golpea ahora.' },
   'play.rift.prism.flare': { en: 'The Hollow Sun flares, and the mirrors turn away. Turn them back.', es: 'El Sol Hueco destella y los espejos se apartan. Vuelve a girarlos.' },
+
+  // ── The Orrery Wells (the Celestial's underside; engine/celestial.ts) ──
+  'play.rift.action.ring': { en: 'Turn ring', es: 'Girar anillo' },
+  'play.rift.arrive.celestial': { en: 'You step out into the Orrery Wells. The gate behind you holds.', es: 'Sales a los Pozos del Orrery. El portal detras de ti aguanta.' },
+  'play.rift.back.celestial': { en: 'Back through the gate. The Magma Halls\' floor is exactly where you left it.', es: 'De vuelta por el portal. El suelo de las Salas de Magma esta justo donde lo dejaste.' },
+  'play.rift.rule.orrery': { en: 'Glim: Feel that? Down is only a suggestion here. The brass rings decide it, field by field.', es: 'Glim: Lo notas? Aqui abajo es solo una sugerencia. Los anillos de laton lo deciden, campo por campo.' },
+  'play.rift.rule.field': { en: 'Glim: We are falling up. Stand on the ceiling, walk out of the field, and the ordinary down comes back. Nothing here lets you fall hard.', es: 'Glim: Estamos cayendo hacia arriba. Pisa el techo, sal del campo y vuelve el abajo de siempre. Aqui nada te deja caer fuerte.' },
+  'play.rift.rule.well': { en: 'Glim: A star-well. It falls up, always. The brass chain beside it is the way back down.', es: 'Glim: Un pozo estelar. Siempre cae hacia arriba. La cadena de laton de al lado es el camino de vuelta.' },
+  'play.rift.rule.ring': { en: 'Glim: An orrery ring. Press E and its whole field turns over: up becomes down, down becomes up.', es: 'Glim: Un anillo del orrery. Pulsa E y todo su campo se da la vuelta: arriba es abajo, abajo es arriba.' },
+  'play.rift.rule.turn': { en: 'Glim: The whole field turned over. Everything in it falls the other way now, us included. Turn it again and it turns back.', es: 'Glim: Todo el campo se dio la vuelta. Ahora todo cae al reves, nosotros tambien. Giralo otra vez y vuelve.' },
+  'play.rift.rule.chain': { en: 'Glim: A star-chain. Climb it like a ladder, whatever down is doing up here.', es: 'Glim: Una cadena estelar. Trepala como una escalera, haga lo que haga el abajo por aqui.' },
+  'play.rift.rule.ephemeris': { en: 'Glim: The Fallen Ephemeris. While its hall falls up it rides the ceiling and nothing lands. Turn a ring and drop it into its own well, then strike.', es: 'Glim: La Efemeride Caida. Mientras su sala cae hacia arriba, recorre el techo y ningun golpe entra. Gira un anillo, dejala caer en su propio pozo y golpea.' },
+  'play.rift.ring.up': { en: 'The ring turns brass. Its field falls up.', es: 'El anillo se vuelve de laton. Su campo cae hacia arriba.' },
+  'play.rift.ring.down': { en: 'The ring turns blue. Its field falls down again.', es: 'El anillo se vuelve azul. Su campo vuelve a caer hacia abajo.' },
+  'play.rift.ephemeris.fallen': { en: 'The Fallen Ephemeris drops into its own well. Strike now, before it gathers itself.', es: 'La Efemeride Caida se desploma en su propio pozo. Golpea ahora, antes de que se recomponga.' },
+  'play.rift.ephemeris.gather': { en: 'The Ephemeris gathers itself. The rings are about to turn: the hall will fall up.', es: 'La Efemeride se recompone. Los anillos van a girar: la sala caera hacia arriba.' },
+  'play.rift.ephemeris.rises': { en: 'The Ephemeris rises, and its hall falls up again. Turn a ring to bring it down.', es: 'La Efemeride se eleva y su sala vuelve a caer hacia arriba. Gira un anillo para bajarla.' },
+  'play.rift.hud.down.up': { en: 'Falling up', es: 'Cayendo hacia arriba' },
 };

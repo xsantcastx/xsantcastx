@@ -1,5 +1,5 @@
 /**
- * realm-creatures.ts — the Root Deeps' and the Prism Mines' creatures as pixel
+ * realm-creatures.ts — the Root Deeps', the Prism Mines' and the Orrery Wells' creatures as pixel
  * sprites (creature-pixel.ts draws, caches and outlines them; one art style,
  * docs/handoff/one-art-style.md). Chibi proportions, like the Keepers are
  * becoming: big heads, big eyes, small bodies, so a monster reads as a
@@ -145,10 +145,86 @@ const HOLLOW_SUN: CreatureArt = {
   },
 };
 
+// ── The Orrery Wells (the Celestial ramps, delve-and-beyond.md: midnight, star silver, orbit blue, brass) ──
+const MIDNIGHT = ['#0a1428', '#14284a', '#24406e', '#3a5a8a'];
+const SILVER = ['#6a7890', '#a8b8cc', '#d8ecff'];
+const ORBIT = '#5fb6ff';
+const BRASS = ['#4a3a1e', '#8a6a3a', '#e8c47a'];
+
+/** The Anchor Warden: a round brass survey-bot on stubby legs, a glass visor of two big eyes, a ring orbiting its middle. */
+const ANCHOR_WARDEN: CreatureArt = {
+  w: 26, h: 24,
+  paint(p, l, q) {
+    const { X, Y } = shift(q);
+    // Stubby legs that tick like a clock.
+    const up = q.step ? 1 : 0;
+    p(8 + X, 20, 3, 4 - (q.step > 0 ? up : 0), BRASS[0]); p(15 + X, 20, 3, 4 - (q.step < 0 ? up : 0), BRASS[0]);
+    p(7 + X, 23, 4, 1, BRASS[1]); p(15 + X, 23, 4, 1, BRASS[1]);
+    // The body: a brass ball, lit from the upper left, a seam round its belly.
+    const top = 5 + Y;
+    for (let row = 0; row < 16; row++) {
+      const half = row < 4 ? 4 + row * 2 : row > 12 ? 10 - (row - 12) * 2 : 10;
+      p(13 - half + X, top + row, half * 2, 1, row < 5 ? BRASS[2] : row < 11 ? BRASS[1] : BRASS[0]);
+    }
+    p(5 + X, top + 4, 2, 6, BRASS[2]);
+    p(4 + X, top + 11, 18, 1, BRASS[0]);
+    // The visor: two big glass eyes; they glare blue on the wind-up.
+    eyes(p, 7 + X, top + 4, 7, 4, q.hurt, q.coil ? ORBIT : MIDNIGHT[1]);
+    if (q.open > .5) p(11 + X, top + 10, 4, 1, MIDNIGHT[0]);
+    // The ring it was told to keep turning: tilted, round its middle, swinging further on the strike.
+    const swing = Math.round(q.lunge * 3);
+    l(0 + X - swing, top + 14 + q.bob, 26 + X + swing, top + 11 - q.bob, 1, SILVER[1]);
+    p(0 + X - swing, top + 13 + q.bob, 2, 2, SILVER[2]); p(24 + X + swing, top + 10 - q.bob, 2, 2, ORBIT);
+    // The antenna with its little star.
+    p(12 + X, top - 4, 1, 4, BRASS[1]); p(11 + X, top - 6, 3, 2, SILVER[2]);
+  },
+};
+
+/** The Fallen Ephemeris: a great brass astrolabe face with a kind, stubborn pair of eyes, a crown of little orbits, a star-chart cloak. */
+const FALLEN_EPHEMERIS: CreatureArt = {
+  w: 56, h: 52,
+  paint(p, l, q) {
+    const { X, Y } = shift(q);
+    const cx = 28 + X, cy = 20 + Y;
+    // The star-chart cloak: midnight, silver stars on it, hemmed in brass. It floats; there are no feet.
+    for (let row = 0; row < 18; row++) {
+      const half = 10 + Math.floor(row * .7);
+      p(cx - half, 32 + Y + row, half * 2, 1, row < 3 ? MIDNIGHT[3] : row < 10 ? MIDNIGHT[2] : MIDNIGHT[1]);
+    }
+    p(cx - 22, 49 + Y, 44, 1, BRASS[1]);
+    for (const [sx, sy] of [[-12, 37], [6, 40], [-4, 45], [14, 46], [-17, 44], [10, 35]] as const) p(cx + sx, sy + Y, 1, 1, SILVER[2]);
+    // Arms: two brass dividers (the surveyor's compass), opening on the strike.
+    const open = Math.round(q.lunge * 6 - q.coil * 2);
+    l(cx - 10, 34 + Y, cx - 20 - open, 44 + Y, 2, BRASS[1]); l(cx + 10, 34 + Y, cx + 20 + open, 44 + Y, 2, BRASS[1]);
+    p(cx - 21 - open, 44 + Y, 2, 3, SILVER[1]); p(cx + 19 + open, 44 + Y, 2, 3, SILVER[1]);
+    // The astrolabe face: a brass rim, a midnight dial, lit from the upper left.
+    for (let y = -15; y <= 15; y++) for (let x = -15; x <= 15; x++) {
+      const d = x * x + y * y;
+      if (d > 225) continue;
+      p(cx + x, cy + y, 1, 1, d > 169 ? (x + y < -6 ? BRASS[2] : BRASS[1]) : d > 144 ? BRASS[0] : (x + y < -10 ? MIDNIGHT[3] : MIDNIGHT[2]));
+    }
+    // The dial's meridian, and its hand pointing at a star that is not there.
+    p(cx, cy - 12, 1, 24, SILVER[0]);
+    l(cx, cy, cx + 8, cy - 8 + q.bob, 1, SILVER[1]);
+    // Big eyes, stubborn and kind; they glare orbit-blue on the wind-up.
+    eyes(p, cx - 9, cy - 3, 12, 5, q.hurt, q.coil ? ORBIT : MIDNIGHT[0]);
+    if (q.open > .5) p(cx - 3, cy + 6, 6, 2, MIDNIGHT[0]); else p(cx - 2, cy + 7, 4, 1, BRASS[0]);
+    p(cx - 12, cy + 4, 2, 1, '#ff9a7a'); p(cx + 10, cy + 4, 2, 1, '#ff9a7a');
+    // The crown: three little orbits, each with its planet, ticking round with the breath.
+    for (let k = 0; k < 3; k++) {
+      const ox = cx - 12 + k * 12, oy = cy - 19 - (k === 1 ? 3 : 0);
+      l(ox - 4, oy, ox + 4, oy, 1, BRASS[1]);
+      p(ox + (q.bob ? 3 : -3) - 1, oy - 1, 3, 3, k === 1 ? ORBIT : SILVER[2]);
+    }
+  },
+};
+
 /** The realm Delves' creature art, keyed like CREATURE_ART (MonsterDef.creature). */
 export const REALM_CREATURE_ART: Readonly<Record<string, CreatureArt>> = {
   'graftling': GRAFTLING,
   'graftmother': GRAFTMOTHER,
   'prismling': PRISMLING,
   'hollow-sun': HOLLOW_SUN,
+  'anchor-warden': ANCHOR_WARDEN,
+  'fallen-ephemeris': FALLEN_EPHEMERIS,
 };

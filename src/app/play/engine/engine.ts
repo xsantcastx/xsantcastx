@@ -23,7 +23,7 @@ import { FIND_REACH, hollisFolk, hollisRealm, type AreaHeights, type HeightFind,
 import { advanceBody, Body, EngineInput, EngineOptions, EngineSfx, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
-  climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
+  climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, stepTerrainBodyUp, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
   blastCells, CHARGE_FUSE, CHARGE_RADIUS, isLoose, supportNear,
   applyLiquidDiff, LIQUID_FULL, LIQUID_IDS, LIQUID_INK, LIQUID_LAVA, LIQUID_WATER, liquidDiff, liquidLayout, LiquidKind,
   isRail, BiomeDef,
@@ -43,6 +43,10 @@ import { enteredFlag, REALM_ARRIVAL, realmOfArea, realmOfGateNode, RIFT_GATES, r
 import { cellKey as rootKey, GRAFT_CALL, GRAFT_HEAL, GRAFT_SHARE, heldOpen, isAlive, reaching, regrowProgress, REGROW_DELAY, regrowsAs, SPORE_STING, type Regrowth } from './verdant';
 import { applyLight, BEAM_MAX, FLARE_CELLS, FLARE_HIT, isLightMade, K as LUM, LIGHT_TICK, LIT_PANE, lightPanes, PRISM_FLARE, traceBeams, turned, unlit, type LightWindow } from './luminous';
 import { CORE_HALL } from './realm-kit';
+import {
+  C as CEL, downAt, FALLEN_TIME, fieldAt, fieldDown, GATHER_TELL, inField, isRing, KEY_SINK, ORBIT_SPEED, PULSE_CELLS, PULSE_HIT,
+  SWIPE_CELLS, SWIPE_HIT, turnField, cellKey as celKey, type Down, type Field,
+} from './celestial';
 import { ANCHOR_MAX, GRAPPLE_CELLS, THORNROOT_GRAPPLE, UNDERHEARTH_REACHED_FLAG, UNDERHEARTH_TOP } from '../../shared/delve/underhearth.model';
 import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
 import { drawLiquids, lavaLights } from './liquid-render';
@@ -87,6 +91,8 @@ interface Monster {
   minion?: boolean;
   /** A shade (the Ink Deeps) standing in strong light, or the Hollow Sun caught in a beam: it cannot move or strike. */
   frozen?: boolean;
+  /** Drawn this far above its floor (the Fallen Ephemeris in orbit on its hall's ceiling). */
+  lift?: number;
 }
 /** The hand's extra tools (not placed): the Thornroot Grapple. */
 export type HandToolId = typeof THORNROOT_GRAPPLE;
@@ -188,7 +194,7 @@ function titleCase(id: string): string { return id.replace(/-/g, ' ').replace(/\
 const USE_LABEL: Readonly<Record<string, string>> = {
   inscription: 'CARVED INSCRIPTION', chest: 'CHEST', camp: 'YOUR CAMP', shrine: 'RIFT SHRINE',
   mark: 'HAMMER-MARK', anchor: 'RIFT ANCHOR', furnace: 'THE BANKED FURNACE', rail: 'KAEL\'S RAIL',
-  gate: 'RIFT GATE', brazier: 'GLOAM BRAZIER', mirror: 'PRISM MIRROR',
+  gate: 'RIFT GATE', brazier: 'GLOAM BRAZIER', mirror: 'PRISM MIRROR', ring: 'ORRERY RING',
 };
 /** Node kinds the Underhearth's engine code keys on (looked up once). */
 const ROPE_KIND = TERRAIN_NODE_LIST.findIndex(node => node.id === 'rope');
@@ -418,7 +424,7 @@ export class SeamworksEngine {
   /** Momentum a launch off a rail or a grapple release carries, px/s along x; bleeds away. */
   private carryX = 0;
   /** What the Keeper carries that is not placed: a Seam Cart (rides rails), a Thornroot Grapple. */
-  private gear = { cart: false, grapple: false, veil: false, shears: false, lens: false };
+  private gear = { cart: false, grapple: false, veil: false, shears: false, lens: false, key: false };
   /** The Banked Furnace's fight while it is up: its state, its vents' cells, its trough's cells. */
   private furnace: { monster: Monster; state: FurnaceState; vents: number[]; trough: number[] } | null = null;
   private readonly terrainRenderer = new TerrainRenderer();
@@ -586,6 +592,7 @@ export class SeamworksEngine {
     this.cart = null; this.grapple = null; this.carryX = 0; this.furnace = null;
     this.braziers.clear(); this.inkBlind = false; this.mirror = null; this.mirrorTrail.length = 0; this.wardenCall = WARDEN_CALL;
     this.regrowth.clear(); this.heartRoots = -1; this.graftCall = GRAFT_CALL; this.lightClock = 0; this.litCells.clear(); this.flareIn = PRISM_FLARE;
+    this.down = 1; this.field = null; this.ephemeris = null; this.fieldCache.clear(); this.flips = 0; this.sinking = false;
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.fuses = [];
     for (const r of this.rubble) r.active = false;
@@ -1420,10 +1427,11 @@ export class SeamworksEngine {
    * a Seam Cart (E on a rail boards it) and a Thornroot Grapple (chosen on the
    * hotbar, a press on a cell within GRAPPLE_CELLS throws it).
    */
-  setGear(gear: { cart?: boolean; grapple?: boolean; veil?: boolean; shears?: boolean; lens?: boolean }): void {
+  setGear(gear: { cart?: boolean; grapple?: boolean; veil?: boolean; shears?: boolean; lens?: boolean; key?: boolean }): void {
     // The Veil Lantern (the Ink Deeps): carried, it lets the lantern reach further in the gloom and keep some light under ink.
     // The Rootsever Billhook (the Root Deeps): what you dig is cut at the root. The Dawn Lens (the Prism Mines): your lantern lights shadow glass.
-    this.gear = { cart: !!gear.cart, grapple: !!gear.grapple, veil: !!gear.veil, shears: !!gear.shears, lens: !!gear.lens };
+    // The Orrery Key (the Orrery Wells): E turns the field you stand in from anywhere; Down sinks you out of a star-well.
+    this.gear = { cart: !!gear.cart, grapple: !!gear.grapple, veil: !!gear.veil, shears: !!gear.shears, lens: !!gear.lens, key: !!gear.key };
     if (!this.gear.cart && this.cart) this.leaveCart(0, 0);
     if (!this.gear.grapple) this.grapple = null;
   }
@@ -1843,7 +1851,7 @@ export class SeamworksEngine {
     if (this.jumpBuffer <= 0 || this.climbing || (!this.player.grounded && this.airTime > COYOTE && !this.immersed)) return;
     if (this.line?.phase === 'hooked') return;
     // Swimming: a softer stroke (holding Jump keeps swimming up, see update).
-    this.player.vy = this.immersed && !this.player.grounded ? -Math.max(-this.player.vy, 300) : this.terrain ? -520 : -680; this.player.grounded = false;
+    this.player.vy = this.immersed && !this.player.grounded ? -Math.max(-this.player.vy, 300) : this.terrain ? -520 * this.down : -680; this.player.grounded = false;
     // One jump per take-off: the coyote window closes with it.
     this.jumpBuffer = 0; this.airTime = COYOTE + 1;
   }
@@ -1893,6 +1901,11 @@ export class SeamworksEngine {
     if (monster.def.trait === 'warden' && !monster.frozen) {
       monster.flash = .08;
       this.clang(monster.x, floor - 120 * this.figure, 'It is not there while it is dark. Light a brazier and hold it in the light');
+      return;
+    }
+    if (monster.def.trait === 'orrery' && this.ephemeris?.state !== 'fallen') {
+      monster.flash = .08;
+      this.clang(monster.x, floor - (monster.lift ?? 0) - 100 * this.figure, 'In orbit: the blow slides off. Turn the hall\'s ring and bring it down');
       return;
     }
     if (monster.def.trait === 'prism' && !monster.frozen) {
@@ -2629,6 +2642,7 @@ export class SeamworksEngine {
     const col = t.colOf(index), row = t.rowOf(index);
     if (use === 'shrine') { this.touchShrine(t, col, row); return; }
     if (use === 'mirror') { this.turnMirror(t, col, row); return; }
+    if (use === 'ring') { this.turnRing(t, col, row); return; }
     this.report();
     this.options.onUse?.({ kind: use, areaId: this.areaDef.id, cellKey: cellKey(col, row), index: this.cellIdOf(t, index),
       ...(use === 'anchor' || use === 'furnace' || use === 'gate' || use === 'brazier' ? { col, row } : {}),
@@ -2660,6 +2674,11 @@ export class SeamworksEngine {
         const index = t.index(col, row);
         if (this.usable(index)) return index;
       }
+    }
+    // The Orrery Key: standing in an orrery field, its ring answers from anywhere in it.
+    if (this.gear.key && this.field && this.field.rings.length && this.areaDef.terrain?.realm === 'celestial') {
+      const ring = this.field.rings[0];
+      if (t.inside(ring.col, ring.row) && isRing(t.kind[t.index(ring.col, ring.row)])) return t.index(ring.col, ring.row);
     }
     // A prism mirror set in the floor (the Prism Mines' sunwells): the one usable thing under the feet.
     if (this.areaDef.terrain?.realm === 'luminous' && r1 + 1 < t.rows) {
@@ -2916,11 +2935,19 @@ export class SeamworksEngine {
           this.carryX = 0;
           const climb = this.input.has('down') ? 1 : this.input.has('jump') ? -1 : 0;
           climbTerrainBody(this.player, velocityX, climb, dt, this.terrain, DELVE_BOX, this.areaDef.width);
+          this.keeperDown(this.terrain);
         } else {
           // Momentum a launch off a rail or a grapple release carried, and the Banked Furnace's breath.
           velocityX += this.carryX + this.furnacePull();
           if (swim && this.input.has('jump') && this.line?.phase !== 'hooked') this.player.vy = Math.max(-swim.rise, this.player.vy - 2400 * dt);
-          stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0, swim);
+          // The Orrery Wells: the Keeper's down is the field at the middle of its body (celestial.ts); in a liquid, down is down.
+          const down = swim ? 1 : this.keeperDown(this.terrain);
+          if (down < 0) stepTerrainBodyUp(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.width);
+          else {
+            stepTerrainBody(this.player, velocityX, dt, this.terrain, DELVE_BOX, this.areaDef.platforms, this.areaDef.width, this.input.has('down') || this.dropTime > 0, swim);
+            // The Orrery Key in a star-well, Down held: sink out against its pull, gently.
+            if (this.sinking && this.player.vy > KEY_SINK) this.player.vy = KEY_SINK;
+          }
         }
         if (this.carryX) {
           // Walking against it, or standing on the ground, bleeds it fast; in the air it carries.
@@ -2999,6 +3026,8 @@ export class SeamworksEngine {
       if (monster.def.trait === 'dormant' && !monster.awake) { monster.phase = 'idle'; continue; }
       // The Ink Deeps' shades: frozen in light, fast in the dark (umbral.ts).
       if (monster.def.trait === 'shade' || monster.def.trait === 'warden') { this.stepShade(monster, dt); continue; }
+      // The Fallen Ephemeris keeps its own orbit (celestial.ts).
+      if (monster.def.trait === 'orrery') { this.stepEphemeris(monster, dt); continue; }
       // The Hollow Sun caught in a beam cannot move or strike (luminous.ts).
       if (monster.def.trait === 'prism' && monster.frozen) { monster.phase = 'idle'; monster.timer = Math.max(monster.timer, .3); continue; }
       const safeX = this.areaDef.safeX ?? 0;
@@ -3084,6 +3113,11 @@ export class SeamworksEngine {
       if (!this.tell('roots', 'play.rift.rule.roots', 'Glim: The walls are wood here, and the wood is awake. Listen: it creaks when nobody is digging.')) {
         this.say('play.rift.arrive.verdant', 'You step out into the Root Deeps. The gate behind you holds.');
       }
+    } else if (realm === 'celestial') {
+      this.down = 1; this.field = null;
+      if (!this.tell('orrery', 'play.rift.rule.orrery', 'Glim: Feel that? Down is only a suggestion here. The brass rings decide it, field by field.')) {
+        this.say('play.rift.arrive.celestial', 'You step out into the Orrery Wells. The gate behind you holds.');
+      }
     } else if (realm === 'luminous') {
       this.lightClock = 0;
       if (!this.tell('light', 'play.rift.rule.light', 'Glim: The light here is heavy. Where a beam crosses open air, you can stand on it. Where it falls down, you can climb it.')) {
@@ -3116,6 +3150,7 @@ export class SeamworksEngine {
     this.worldAt = ''; this.fogAt = NaN;
     if (realm === 'verdant') this.say('play.rift.back.verdant', 'Back through the gate. The Root Hollows\' roots lie still, the way roots should.');
     else if (realm === 'luminous') this.say('play.rift.back.luminous', 'Back through the gate. The Grotto\'s glowcaps seem very dim after that.');
+    else if (realm === 'celestial') this.say('play.rift.back.celestial', 'Back through the gate. The Magma Halls\' floor is exactly where you left it.');
     else this.say('play.rift.back', 'Back through the gate. The Underhearth\'s heat feels like a welcome after that.');
     this.report();
     return true;
@@ -3183,6 +3218,7 @@ export class SeamworksEngine {
     const realm = this.realm;
     if (realm === 'verdant') { this.updateVerdant(dt, t); return; }
     if (realm === 'luminous') { this.updateLuminous(dt, t); return; }
+    if (realm === 'celestial') { this.updateCelestial(dt, t); return; }
     this.realmTime += dt;
     const was = this.tide.phase;
     this.tide = tideAt(this.realmTime);
@@ -3618,6 +3654,214 @@ export class SeamworksEngine {
     this.report();
   }
 
+  // ── The Orrery Wells: down is negotiable (celestial.ts, celestial-gen.ts) ──
+
+  /** The Keeper's down: 1 the ordinary one, -1 up (the field at the middle of its body; celestial.ts). */
+  private down: Down = 1;
+  /** The orrery field the Keeper stands in (a cache: a field never changes shape, only its rings turn). */
+  private field: Field | null = null;
+  /** Fields seen this visit, by world cell (the chevrons' cache; cleared on entering an area). */
+  private readonly fieldCache = new Map<number, Field>();
+  /** In a star-well with the Orrery Key and Down held: sinking out against its pull. */
+  private sinking = false;
+  /** Times the Keeper's down turned over this visit (the e2e's evidence). */
+  private flips = 0;
+  /** The Fallen Ephemeris's fight while it is up: in orbit, falling, fallen in its well, gathering itself, rising. */
+  private ephemeris: { state: 'orbit' | 'falling' | 'fallen' | 'gather' | 'rising'; timer: number; hall: Field | null } | null = null;
+
+  /**
+   * The Keeper's down right now: 1 the ordinary one, -1 up (standing on a
+   * ceiling in an orrery field or falling up a star-well). Followers (pets,
+   * Glim) read it to hang the right way; it is also EngineState.gravity.
+   */
+  get keeperGravity(): Down { return this.down; }
+
+  /** Work out the Keeper's down from the field at the middle of its body (celestial.ts downAt), and tell what changed. */
+  private keeperDown(t: Terrain): Down {
+    this.sinking = false;
+    if (this.areaDef.terrain?.realm !== 'celestial') return this.setDown(1, 0);
+    const col = t.colAt(this.player.x), row = t.rowAt(this.player.y - DELVE_BOX.height * .5);
+    if (!t.inside(col, row)) return this.setDown(1, 0);
+    const k = t.kind[t.index(col, row)];
+    if (inField(k)) { if (!this.field || !this.field.cells.has(celKey(col, row))) this.field = this.fieldOf(t, col, row); }
+    else this.field = null;
+    let down = downAt(t, col, row, this.field);
+    if (down < 0 && k === CEL.well && this.gear.key && this.input.has('down')) { down = 1; this.sinking = true; }
+    return this.setDown(down, k);
+  }
+  /** A field by one of its cells, flooded once and kept for the visit. */
+  private fieldOf(t: Terrain, col: number, row: number): Field | null {
+    const key = celKey(col, row);
+    const known = this.fieldCache.get(key);
+    if (known) return known;
+    const field = fieldAt(t, col, row);
+    if (!field) return null;
+    if (this.fieldCache.size < 20_000) for (const cell of field.cells) this.fieldCache.set(cell, field);
+    return field;
+  }
+  private setDown(down: Down, kind: number): Down {
+    if (down === this.down) return down;
+    this.down = down; this.flips++;
+    // Never a surprise: the body lets go of whatever it stood on and falls the new way, no faster than any fall.
+    this.player.grounded = false; this.airTime = COYOTE + 1;
+    if (down < 0) {
+      if (kind === CEL.well) this.tell('well', 'play.rift.rule.well', 'Glim: A star-well. It falls up, always. The brass chain beside it is the way back down.');
+      else this.tell('field', 'play.rift.rule.field', 'Glim: We are falling up. Stand on the ceiling, walk out of the field, and the ordinary down comes back. Nothing here lets you fall hard.');
+    }
+    this.report();
+    return down;
+  }
+  /** E at an orrery ring: every ring of its field turns, and the field's down with it. Saved like a dig (it stays turned). */
+  private turnRing(t: Terrain, col: number, row: number): void {
+    const field = this.fieldOf(t, col, row);
+    if (!field) return;
+    const changed = turnField(t, field);
+    for (const cell of changed) this.recordCell(t, t.index(cell.col, cell.row));
+    this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#e8c47a', this.reducedMotion ? 2 : 10);
+    this.blastFlash = Math.max(this.blastFlash, .35);
+    const up = fieldDown(t, field) < 0;
+    if (!this.tell('turn', 'play.rift.rule.turn', 'Glim: The whole field turned over. Everything in it falls the other way now, us included. Turn it again and it turns back.')) {
+      if (up) this.say('play.rift.ring.up', 'The ring turns brass. Its field falls up.');
+      else this.say('play.rift.ring.down', 'The ring turns blue. Its field falls down again.');
+    }
+    this.report();
+  }
+  /** One fixed step of the Orrery Wells' rule: the telegraphs said once, and the Fallen Ephemeris's hall. */
+  private updateCelestial(dt: number, t: Terrain): void {
+    this.realmTime += dt;
+    if (this.interactAt >= 0 && isRing(t.kind[this.interactAt])) {
+      this.tell('ring', 'play.rift.rule.ring', 'Glim: An orrery ring. Press E and its whole field turns over: up becomes down, down becomes up.');
+    }
+    if (this.climbing) {
+      const col = t.colAt(this.player.x), row = Math.max(0, t.rowAt(this.player.y - 1));
+      if (t.inside(col, row) && t.kind[t.index(col, row)] === CEL.chain) this.tell('chain', 'play.rift.rule.chain', 'Glim: A star-chain. Climb it like a ladder, whatever down is doing up here.');
+    }
+    const boss = this.monsters.find(m => m.def.trait === 'orrery' && m.hp > 0);
+    if (!boss) return;
+    const floor = boss.def.floorY ?? FLOOR, p = this.player, H = CORE_HALL;
+    const inHall = p.x > H.col * CELL && p.x < (H.col + H.w) * CELL && p.y > floor - (H.h + 1) * CELL && p.y <= floor + 4;
+    if (inHall && this.tell('ephemeris', 'play.rift.rule.ephemeris', 'Glim: The Fallen Ephemeris. While its hall falls up it rides the ceiling and nothing lands. Turn a ring and drop it into its own well, then strike.')) this.report();
+  }
+  /** How tall the Fallen Ephemeris stands (world px), so in orbit its crown touches the hall's ceiling. */
+  private ephemerisTall(m: Monster): number {
+    const pixel = this.pixelCreature(m.def.creature);
+    return (pixel ? pixel.height * CREATURE_PIXEL : 52 * CREATURE_PIXEL) * this.figure;
+  }
+  /** The Fallen Ephemeris (celestial.ts): orbit while its hall falls up, drop when it falls down, rise and turn it back. */
+  private stepEphemeris(m: Monster, dt: number): void {
+    const t = this.terrain;
+    if (!t) return;
+    const H = CORE_HALL, floor = m.def.floorY ?? FLOOR, p = this.player;
+    const e = this.ephemeris ??= { state: 'orbit', timer: 0, hall: null };
+    if (!e.hall || !e.hall.rings.length) e.hall = t.inside(H.col + 2, H.row + 4) ? fieldAt(t, H.col + 2, H.row + 4) : null;
+    const hallUp = !!e.hall && fieldDown(t, e.hall) < 0;
+    const top = Math.max(0, H.h * CELL - this.ephemerisTall(m) - 4);
+    m.lift ??= hallUp ? top : 0;
+    m.frozen = e.state === 'fallen' || e.state === 'gather';
+    const inHall = p.x > H.col * CELL && p.x < (H.col + H.w) * CELL && p.y > floor - (H.h + 1) * CELL && p.y <= floor + 4;
+    switch (e.state) {
+      case 'orbit': {
+        if (!hallUp) { e.state = 'falling'; m.phase = 'idle'; break; }
+        m.lift = top;
+        // It drifts toward the Keeper along its orbit, and swipes at one standing on its ceiling.
+        const dx = p.x - m.x, onCeiling = this.down < 0 && Math.abs(p.y - DELVE_BOX.height - (floor - H.h * CELL)) < CELL;
+        if (m.phase === 'idle') {
+          if (inHall && Math.abs(dx) > 40) m.x += Math.sign(dx) * Math.min(Math.abs(dx), ORBIT_SPEED * dt);
+          const range = m.def.range;
+          if (range) m.x = Math.max(range[0], Math.min(range[1], m.x));
+          if (onCeiling && Math.abs(dx) < SWIPE_CELLS * CELL && m.timer <= 0) { m.phase = 'windup'; m.timer = .85; m.facing = Math.sign(dx) || -1; }
+        } else if (m.timer <= 0) {
+          if (m.phase === 'windup') {
+            m.phase = 'strike'; m.timer = .2;
+            if (onCeiling && Math.abs(dx) < SWIPE_CELLS * CELL && this.dodgeTime <= 0 && this.hurtTime <= 0) this.hurtKeeper(SWIPE_HIT);
+          } else if (m.phase === 'strike') { m.phase = 'recover'; m.timer = 1.1; } else { m.phase = 'idle'; m.timer = .5; }
+        }
+        break;
+      }
+      case 'falling': {
+        m.phase = 'idle';
+        m.lift = Math.max(0, m.lift - 900 * dt);
+        if (m.lift > 0) break;
+        e.state = 'fallen'; e.timer = FALLEN_TIME;
+        this.impact(.06, 6);
+        this.debris.chip(m.x, floor - 10, '#d8ecff', this.reducedMotion ? 3 : 14);
+        this.say('play.rift.ephemeris.fallen', 'The Fallen Ephemeris drops into its own well. Strike now, before it gathers itself.');
+        this.report();
+        break;
+      }
+      case 'fallen': case 'gather': {
+        m.phase = 'idle'; m.lift = 0;
+        // Turned back up by the Keeper: it rises at once.
+        if (hallUp) { e.state = 'rising'; break; }
+        e.timer -= dt;
+        if (e.state === 'fallen' && e.timer <= GATHER_TELL) {
+          e.state = 'gather';
+          this.say('play.rift.ephemeris.gather', 'The Ephemeris gathers itself. The rings are about to turn: the hall will fall up.');
+          this.report();
+        }
+        if (e.timer > 0) break;
+        // It rises: the hall's rings turn brass, and anyone close is struck by the pulse.
+        if (e.hall) for (const cell of turnField(t, e.hall)) this.recordCell(t, t.index(cell.col, cell.row));
+        this.blastFlash = Math.max(this.blastFlash, .7);
+        if (inHall && Math.abs(p.x - m.x) < PULSE_CELLS * CELL && this.dodgeTime <= 0 && this.hurtTime <= 0) this.hurtKeeper(PULSE_HIT);
+        const base = this.areaDef.monsters.find(def => def.creature === 'anchor-warden');
+        if (base && inHall) for (const dx of [-140, 140]) {
+          const x = Math.max(m.def.range?.[0] ?? 0, Math.min(m.def.range?.[1] ?? 1e9, m.x + dx));
+          const def: MonsterDef = { ...base, spawnXs: [x], floorY: floor, range: m.def.range };
+          this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1.2, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0, minion: true });
+        }
+        this.say('play.rift.ephemeris.rises', 'The Ephemeris rises, and its hall falls up again. Turn a ring to bring it down.');
+        e.state = 'rising';
+        this.report();
+        break;
+      }
+      case 'rising': {
+        m.phase = 'idle';
+        if (!hallUp) { e.state = 'falling'; break; }
+        m.lift = Math.min(top, m.lift + 600 * dt);
+        if (m.lift >= top) e.state = 'orbit';
+        break;
+      }
+    }
+  }
+  /** A blow that is not a creature's swing (a pulse, a swipe from orbit): the same hurt, the same falls. */
+  private hurtKeeper(damage: number): void {
+    this.hp = Math.max(0, this.hp - damage); this.hurtTime = .8; this.wound = 1;
+    this.impact(.07, this.hp === 0 ? 12 : 8);
+    if (this.hp === 0) this.say('play.hud.eng.keeperFalls', 'The Keeper falls. Restart the hunt or return to camp.');
+  }
+  /**
+   * The orrery fields' telegraph, drawn over the terrain: chevrons in every
+   * field and star-well point its down (silver, walking that way), and the
+   * Ephemeris's rings flash while it gathers itself. A grid walk of the view.
+   */
+  private drawFields(c: CanvasRenderingContext2D, t: Terrain, c0: number, c1: number, r0: number, r1: number, time: number): void {
+    const drift = this.reducedMotion ? 0 : Math.floor(time * 4) % 4;
+    c.globalAlpha = .6; c.fillStyle = '#d8ecff';
+    for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
+      for (let col = Math.max(t.colLo, c0); col <= Math.min(t.colHi - 1, c1); col++) {
+        if (((col + row) & 1) !== 0) continue;
+        const k = t.kind[t.index(col, row)];
+        if (k !== CEL.field && k !== CEL.well) continue;
+        const field = k === CEL.well ? null : this.fieldOf(t, col, row);
+        const down = k === CEL.well ? -1 : field ? fieldDown(t, field) : 1;
+        // A chevron 5 art px wide, pointing its down, walking that way on the 2 px grid.
+        const x = col * CELL + 11, y0 = t.top + row * CELL + 14 + down * (drift - 2) * ART;
+        for (let n = 0; n < 3; n++) {
+          const y = y0 + (down > 0 ? n : -n) * ART;
+          c.fillRect(x + n * ART, y, ART, ART); c.fillRect(x + (4 - n) * ART, y, ART, ART);
+        }
+      }
+    }
+    c.globalAlpha = 1;
+    const e = this.ephemeris;
+    if (e?.state === 'gather' && e.hall && (this.reducedMotion || Math.floor(time * 8) % 2 === 0)) {
+      c.fillStyle = '#ffe9a8'; c.globalAlpha = .55;
+      for (const ring of e.hall.rings) c.fillRect(ring.col * CELL - ART * 2, t.top + ring.row * CELL - ART * 2, CELL + ART * 4, CELL + ART * 4);
+      c.globalAlpha = 1;
+    }
+  }
+
   // ── The Underhearth: the Banked Furnace, the Sentinels, the stratum's door (Phase 8) ──
 
   /** A spilled ember has been spent this step (the monster list sheds it once it has faded). */
@@ -3862,6 +4106,8 @@ export class SeamworksEngine {
       y: Math.round(this.player.y), climbing: this.heights ? this.mover.mode : undefined,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
       x: Math.round(this.player.x), paused: this.paused,
+      // Which way the Keeper falls (the Orrery Wells turn it): followers hang from this (celestial.ts).
+      gravity: this.down,
       boss: !!nearest?.def.once,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
@@ -3884,6 +4130,7 @@ export class SeamworksEngine {
         } } : this.areaDef.terrain?.realm ? { realm: {
           id: realmOfArea(this.areaDef.id) ?? '',
           ...(this.areaDef.terrain.realm === 'verdant' ? { regrowing: this.regrowth.size, regrown: this.regrown, heartRoots: Math.max(0, this.heartRoots) }
+            : this.areaDef.terrain.realm === 'celestial' ? { down: this.down, flips: this.flips, ...(this.ephemeris ? { ephemeris: this.ephemeris.state } : {}) }
             : { beams: this.beams, bridges: this.bridges }),
         } } : {}),
         ...(this.furnace ? { furnace: {
@@ -4735,14 +4982,15 @@ export class SeamworksEngine {
       // Its body stands on the floor; 720 world px above it covers the tallest figure, the Banked Furnace.
       if (t) { const floor = monster.def.floorY ?? FLOOR; if (floor < this.cameraY - 60 || floor - 720 > this.cameraY + 720) continue; }
       // The Underhearth's creatures are pixel figures of their own (no painting yet).
-      if (monster.def.trait && monster.def.trait !== 'graft' && monster.def.trait !== 'prism') { this.drawDeepCreature(c, monster, motionTime); continue; }
+      if (monster.def.trait && monster.def.trait !== 'graft' && monster.def.trait !== 'prism' && monster.def.trait !== 'orrery') { this.drawDeepCreature(c, monster, motionTime); continue; }
       if (monster.hp <= 0) { this.dissolve(c, monster); continue; }
       const warning = monster.phase === 'windup' || monster.phase === 'strike';
       const rigDef = this.creatureRig(monster.def.creature).def;
       // A sprite sheet faces right and stands on its pivot; so do the pixel creatures; a painting has its own box and facing.
       const sheet = this.readySprite(monster.def.creature);
       const pixel = sheet ? null : this.pixelCreature(monster.def.creature);
-      const floor = monster.def.floorY ?? FLOOR;
+      // The Fallen Ephemeris in orbit stands on nothing, near its hall's ceiling (lift).
+      const floor = (monster.def.floorY ?? FLOOR) - (monster.lift ?? 0);
       const crown = floor - ((sheet ? sheet.entry.pivotY : pixel ? pixel.height * CREATURE_PIXEL : rigDef.box.h) + 20) * k;
       if (warning) {
         c.fillStyle = monster.phase === 'strike' ? '#ff765caa' : '#ff765c40';
@@ -4803,7 +5051,9 @@ export class SeamworksEngine {
     // Keep the player readable against the dark realm art at narrow viewport sizes.
     const byFire = this.isTown && this.areaDef.scenery === 'seamworks-hub' && Math.abs(this.player.x - 245) < 220;
     if (!t) this.groundShadow(c, this.player.x, this.player.y, 44);
-    c.save(); c.translate(this.player.x, this.player.y); if (k !== 1) c.scale(k, k);
+    // Falling up (the Orrery Wells): the ring sits where the feet meet the ceiling, the plate hangs under the head.
+    const hanging = this.down < 0;
+    c.save(); c.translate(this.player.x, hanging ? this.player.y - DELVE_BOX.height : this.player.y); if (k !== 1) c.scale(k, k);
     c.strokeStyle = byFire ? '#ffc27a' : '#b8e6ec'; c.fillStyle = byFire ? '#ffc27a30' : '#b8e6ec30'; c.lineWidth = 3;
     c.beginPath(); c.ellipse(0, 0, 46, 10, 0, 0, Math.PI * 2); c.fill(); c.stroke();
     c.font = '600 15px "Cormorant Garamond", Georgia, serif';
@@ -4811,13 +5061,23 @@ export class SeamworksEngine {
     // The plate rides just over the head: the chibi Keeper's own top (hair, hat, helm crest), else the painting's.
     const tip = -(this.keeperPainter ? this.keeperPainter.top * KEEPER_ART_PX + 8 : 174);
     c.fillStyle = '#1a120fe6'; c.textAlign = 'center';
-    c.fillRect(-youWidth / 2, tip - 30, youWidth, 22);
-    c.beginPath(); c.moveTo(-6, tip - 8); c.lineTo(6, tip - 8); c.lineTo(0, tip); c.closePath(); c.fill();
-    c.fillStyle = '#ffe1b0';
-    c.fillText('You', 0, tip - 14);
-    this.speechBubble(c, this.selfId, tip - 60);
+    if (hanging) {
+      c.fillRect(-youWidth / 2, -tip + 8, youWidth, 22);
+      c.beginPath(); c.moveTo(-6, -tip + 8); c.lineTo(6, -tip + 8); c.lineTo(0, -tip); c.closePath(); c.fill();
+      c.fillStyle = '#ffe1b0';
+      c.fillText('You', 0, -tip + 24);
+      this.speechBubble(c, this.selfId, -30);
+    } else {
+      c.fillRect(-youWidth / 2, tip - 30, youWidth, 22);
+      c.beginPath(); c.moveTo(-6, tip - 8); c.lineTo(6, tip - 8); c.lineTo(0, tip); c.closePath(); c.fill();
+      c.fillStyle = '#ffe1b0';
+      c.fillText('You', 0, tip - 14);
+      this.speechBubble(c, this.selfId, tip - 60);
+    }
     c.restore();
-    c.save(); c.translate(this.player.x, this.player.y); c.scale(this.facing * k, k);
+    // Falling up (the Orrery Wells): the same box, the feet on its top edge, the Keeper hanging the other way.
+    if (this.down < 0) { c.save(); c.translate(this.player.x, this.player.y - DELVE_BOX.height); c.scale(this.facing * k, -k); }
+    else { c.save(); c.translate(this.player.x, this.player.y); c.scale(this.facing * k, k); }
     const shown = this.present(this.pose(), this.player.x, this.player.y);
     const motion = this.keeperMotion(shown, this.elapsed);
     if (this.landing > 0 && !this.reducedMotion) {
@@ -4861,6 +5121,7 @@ export class SeamworksEngine {
       this.drawFish(c, t, c0, c1, r0, r1, this.elapsed);
       if (this.areaDef.terrain?.realm === 'umbral') this.drawTide(c, t, c0, c1, r0, r1);
       else if (this.areaDef.terrain?.realm === 'verdant') this.drawRegrowth(c, t);
+      else if (this.areaDef.terrain?.realm === 'celestial') this.drawFields(c, t, c0, c1, r0, r1, motionTime);
       this.drawLine(c, motionTime);
       this.drawCatchFx(c, this.flightDelta);
     }

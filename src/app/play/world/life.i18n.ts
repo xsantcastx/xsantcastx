@@ -242,5 +242,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.creature.graftmother': { en: 'The Graftmother', es: 'La Madre Injerto' },
   'play.creature.prismling': { en: 'Prismling', es: 'Prismita' },
   'play.creature.hollow-sun': { en: 'The Hollow Sun', es: 'El Sol Hueco' },
+  // The Orrery Wells (the Celestial's underside).
+  'play.creature.anchor-warden': { en: 'Anchor Warden', es: 'Guardian del Ancla' },
+  'play.creature.fallen-ephemeris': { en: 'The Fallen Ephemeris', es: 'La Efemeride Caida' },
   'play.creature.unknown': { en: 'Enemy', es: 'Enemigo' },
 };

@@ -12,8 +12,8 @@
  * distance. The gates stand where an Echo's colour will begin, one per realm,
  * in a fixed lattice cell of the endless Delve, so every seed has all four.
  *
- * Open today: the Umbral (the Ink Deeps), the Verdant (the Root Deeps) and the
- * Luminous (the Prism Mines); the Celestial gate is still settling.
+ * All four are open: the Umbral (the Ink Deeps), the Verdant (the Root Deeps),
+ * the Luminous (the Prism Mines) and the Celestial (the Orrery Wells).
  *
  * Every realm Delve is a STEP UP, not a side room: its gate sits deeper than
  * the strata a Keeper reaches before it (the Umbral gate is in the Underhearth
@@ -81,10 +81,10 @@ export const RIFT_GATES: Readonly<Record<RiftRealm, RiftGateDef>> = {
     brokenRule: 'Light is solid: a beam across open air is a bridge, a beam down is a ladder, mirrors turn them, and shadow glass is a hole until light falls on it.',
   },
   celestial: {
-    realm: 'celestial', name: 'Celestial', world: 'the Star-Wells', open: false,
-    node: 'rift-gate-celestial', sigil: 'celestial-sigil', realmMaterial: 'celestial-alloy', area: null,
+    realm: 'celestial', name: 'Celestial', world: 'the Orrery Wells', open: true,
+    node: 'rift-gate-celestial', sigil: 'celestial-sigil', realmMaterial: 'celestial-alloy', area: 'celestial-delve',
     delving: 36, place: { cell: 6, stratum: 3 }, color: '#5fb6ff',
-    brokenRule: 'Down is negotiable: gravity turns with the hour, and every well has its own.',
+    brokenRule: 'Down is negotiable: orrery rings turn whole fields over (walk the ceiling), star-wells fall up, and a star-chain is always the way back.',
   },
   verdant: {
     realm: 'verdant', name: 'Verdant', world: 'the Root Deeps', open: true,
@@ -197,3 +197,9 @@ export const PRISMITE = 'prismite';
 export const DAWNGLASS = 'dawnglass';
 /** The Dawn Lens: carried in the Prism Mines, your own lantern lights shadow glass under and round you (a floor you carry). */
 export const DAWN_LENS = 'dawn-lens';
+/** The Celestial Sigil and the Orrery Wells' ores: Starsteel and Meridian Glass. */
+export const CELESTIAL_SIGIL = 'celestial-sigil';
+export const STARSTEEL = 'starsteel';
+export const MERIDIAN_GLASS = 'meridian-glass';
+/** The Orrery Key: carried in the Orrery Wells, E turns the field you stand in from anywhere, and Down sinks you out of a star-well. */
+export const ORRERY_KEY = 'orrery-key';
