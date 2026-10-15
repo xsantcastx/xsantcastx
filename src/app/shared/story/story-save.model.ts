@@ -9,6 +9,7 @@
  *   beats    the story moments this Keeper has reached (ids, sorted)
  *   cards    the act-boundary story cards already shown (ids, sorted)
  *   chapter  the furthest chapter reached
+ *   scenes   the Act II scenes played, i.e. whose reward was paid (ids, sorted)
  *
  * Saved through the gateway as `godforge-story` (synced: progress/story).
  * Beats are monotonic (a moment, once lived, cannot be un-lived), so two
@@ -20,7 +21,7 @@
  */
 export const STORY_KEY = 'godforge-story';
 
-export const STORY_CHAPTERS = ['prologue', 'act1', 'act2'] as const;
+export const STORY_CHAPTERS = ['prologue', 'act1', 'act2', 'act3'] as const;
 export type StoryChapterId = (typeof STORY_CHAPTERS)[number];
 
 /** Every beat, in the order the story tells them, with the chapter it belongs to. */
@@ -46,6 +47,15 @@ export const STORY_BEAT_CHAPTER = {
   'a2.under': 'act2',
   'a2.marks': 'act2',
   'a2.furnace': 'act2',
+  // Act II — Five Witnesses: the four realm Delves behind the Rift Gates, each one realm's account
+  // (its guardian ended, its chain closed), the Archivist's Lost Cabinets, and the light coming up
+  // (docs/handoff/story-act-2.md; lore-addendum.md "Story Act II", shipped).
+  'a2.ink': 'act2',
+  'a2.root': 'act2',
+  'a2.prism': 'act2',
+  'a2.orrery': 'act2',
+  'a2.cabinets': 'act2',
+  'a2.lamp': 'act2',
 } as const satisfies Record<string, StoryChapterId>;
 export type StoryBeatId = keyof typeof STORY_BEAT_CHAPTER;
 export const STORY_BEAT_IDS = Object.keys(STORY_BEAT_CHAPTER) as StoryBeatId[];
@@ -58,23 +68,36 @@ export const STORY_BEAT_IDS = Object.keys(STORY_BEAT_CHAPTER) as StoryBeatId[];
 export const STORY_BOUNDARY: Readonly<Partial<Record<StoryBeatId, StoryChapterId>>> = {
   'p.words': 'act1',
   'a1.break': 'act2',
+  'a2.lamp': 'act3',
 };
-export const STORY_CARD_IDS = ['act1', 'act2'] as const;
+export const STORY_CARD_IDS = ['act1', 'act2', 'act3'] as const;
 export type StoryCardId = (typeof STORY_CARD_IDS)[number];
+
+/**
+ * The beats that play a scene (Act II): a few lines from the people in it,
+ * Glim's line, and one reward. A scene id is its beat id. `scenes` in the
+ * record lists the scenes played: the receipt for the reward, written before
+ * anything is granted (story.service.ts playScene).
+ */
+export const STORY_SCENE_IDS = ['a2.furnace', 'a2.ink', 'a2.root', 'a2.prism', 'a2.orrery', 'a2.cabinets', 'a2.lamp'] as const satisfies readonly StoryBeatId[];
+export type StorySceneId = (typeof STORY_SCENE_IDS)[number];
 
 export interface StoryState {
   version: 1;
   chapter: StoryChapterId;
   beats: StoryBeatId[];
   cards: StoryCardId[];
+  /** Scenes played (their rewards paid). Absent in records from before Act II's scenes. */
+  scenes: StorySceneId[];
 }
 
 export function emptyStory(): StoryState {
-  return { version: 1, chapter: 'prologue', beats: [], cards: [] };
+  return { version: 1, chapter: 'prologue', beats: [], cards: [], scenes: [] };
 }
 
 const isBeat = (id: unknown): id is StoryBeatId => typeof id === 'string' && Object.prototype.hasOwnProperty.call(STORY_BEAT_CHAPTER, id);
 const isCard = (id: unknown): id is StoryCardId => typeof id === 'string' && (STORY_CARD_IDS as readonly string[]).includes(id);
+const isScene = (id: unknown): id is StorySceneId => typeof id === 'string' && (STORY_SCENE_IDS as readonly string[]).includes(id);
 const rank = (c: StoryChapterId) => STORY_CHAPTERS.indexOf(c);
 
 /** The furthest of two chapters. */
@@ -104,11 +127,13 @@ export function coerceStory(raw: unknown): StoryState {
   const r = raw as Partial<Record<keyof StoryState, unknown>>;
   const beats = ids(r.beats, isBeat, STORY_BEAT_IDS);
   const cards = ids(r.cards, isCard, STORY_CARD_IDS);
+  // A scene is only ever played for a beat reached; a stray id cannot pay a reward the story never offered.
+  const scenes = ids(r.scenes, isScene, STORY_SCENE_IDS).filter(id => beats.includes(id));
   const stored = typeof r.chapter === 'string' && (STORY_CHAPTERS as readonly string[]).includes(r.chapter) ? r.chapter as StoryChapterId : 'prologue';
-  return { version: 1, chapter: furtherChapter(stored, chapterOf(beats)), beats, cards };
+  return { version: 1, chapter: furtherChapter(stored, chapterOf(beats)), beats, cards, scenes };
 }
 
-/** Two devices' story into one: the union of beats and cards, the further chapter. */
+/** Two devices' story into one: the union of beats, cards and played scenes, the further chapter. */
 export function mergeStory(remote: unknown, local: unknown): unknown {
   if (remote == null) return local;
   if (local == null) return remote;
@@ -118,5 +143,6 @@ export function mergeStory(remote: unknown, local: unknown): unknown {
     chapter: furtherChapter(r.chapter, l.chapter),
     beats: [...l.beats, ...r.beats],
     cards: [...l.cards, ...r.cards],
+    scenes: [...l.scenes, ...r.scenes],
   }) satisfies StoryState;
 }
