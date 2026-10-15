@@ -170,17 +170,4 @@ test.describe('new version ready', () => {
     await page.waitForTimeout(1500);
     await expect(toast(page)).toHaveCount(0); // same build: stays dismissed
   });
-
-  test('off /play it shows below the site nav too (closed footer modals are not "busy")', async ({ page }) => {
-    test.setTimeout(60000);
-    await seed(page);
-    await page.goto('/world');
-    await updatesWatching(page);
-    await deploy(page);
-    await nudge(page);
-    await expect(toast(page)).toBeVisible({ timeout: 5000 });
-    const report = await toastReport(page);
-    expect(report.covered).toEqual([]);
-    expect(report.bottom).toBeLessThanOrEqual(report.height * 0.4);
-  });
 });

@@ -297,7 +297,8 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
   }
 }
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
-for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).sells.add('Exchange'); }
+// The Exchange no longer stands in the world (game-only shell, docs/handoff/page-audit.md): it is not a
+// sell outlet. Its catalogue still marks what a future world-native trade hall would carry (above).
 
 // Which item stats change a number in play when the KEEPER wears them.
 const defFiles = /^(shared\/rpg\/(item\.model|item-definition|artbible-items|unique-items|item-reforge|item-upgrade|build-identity|stat-delta)|shared\/enchanting\/socket|translation\.service|version-history)|component\.ts$|i18n\.ts$/;
@@ -572,9 +573,21 @@ for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) 
   if (!s.blurb) flag('station', 'not-visible', id, 'no blurb for the Places list');
   if (a === town && s.kind === 'panel' && a.id !== 'homestead' && !keeperStations.has(`${town.id}/${s.id}`)) flag('station', 'no-keeper', id, 'panel station with nobody behind it');
 }
-// Panels a HUD control opens rather than a station: 'character' is the
-// Places/☰ menu's "Character & stats" (SideScrollerComponent.openCharacter).
-for (const p of ['character']) placedPanels.add(p);
+// Panels a HUD control opens rather than a station. Derived, not listed:
+//  - the ☰ menu's `data-open` buttons (Character & stats, Account & settings);
+//  - the activity sites (Seamworks, Canopy, Orrery) the Skills panel's Go
+//    buttons open — their old URLs live in `*_HREF` constants the panel binds,
+//    and the side-scroller opens the panel whose `route` is that URL.
+const menuBlock = (read('play/side-scroller.component.html').match(/<nav id="places-list"[\s\S]*?<\/nav>/) || [''])[0];
+for (const m of menuBlock.matchAll(/data-open="([\w-]+)"/g)) if (PANEL_IDS.includes(m[1])) placedPanels.add(m[1]);
+const skillsPanel = read('shared/skills/skills-panel.component.ts');
+for (const p of PANEL_IDS) {
+  const route = PANEL_REGISTRY[p] && PANEL_REGISTRY[p].route;
+  if (!route) continue;
+  const held = SOURCES.some(f => [...f.text.matchAll(/export const (\w+_HREF)\s*=\s*'([^']+)'/g)]
+    .some(m => m[2] === route && skillsPanel.includes(m[1])));
+  if (held && /\[routerLink\]=/.test(skillsPanel)) placedPanels.add(p);
+}
 for (const p of PANEL_IDS) if (!placedPanels.has(p)) { node('station', `panel:${p}`); flag('station', 'never-placed', `panel:${p}`, 'a panel no station opens'); }
 
 // ── Canon (informational) ──────────────────────────────────────────────────

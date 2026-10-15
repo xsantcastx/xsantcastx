@@ -12,7 +12,6 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Title } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../translation.service';
@@ -85,7 +84,7 @@ const REFINE_ARM_MS = 6000;
 @Component({
   selector: 'app-basalt-seamworks',
   standalone: true,
-  imports: [RouterLink, ArtSceneComponent, CurrentWorkTileComponent],
+  imports: [ArtSceneComponent, CurrentWorkTileComponent],
   templateUrl: './basalt-seamworks.component.html',
   styleUrls: ['./basalt-seamworks.component.css'],
 })
@@ -103,7 +102,6 @@ export class BasaltSeamworksComponent implements OnInit, OnDestroy {
   private clock?: ReturnType<typeof setInterval>;
 
   readonly locationId = BASALT_SEAMWORKS_ID;
-  readonly infernalHref = '/world/realms/infernal';
   readonly tiers = MINING_TIERS;
   readonly ember = EMBER_RESIDUE_DISPLAY;
   readonly chance = Number((EMBER_DISCOVERY_CHANCE * 100).toPrecision(2));

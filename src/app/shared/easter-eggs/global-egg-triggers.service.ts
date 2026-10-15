@@ -22,7 +22,7 @@ export class GlobalEggTriggersService implements OnDestroy {
   private hallVisits: number[] = [];
   private visitedHalls = new Set<string>();
   private static readonly HALLS = new Set<string>([
-    CANONICAL.world,
+    CANONICAL.play,
     CANONICAL.character,
     CANONICAL.forge,
     CANONICAL.quests,

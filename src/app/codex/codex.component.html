@@ -394,7 +394,7 @@
         {{ t('codex.x.soonA') }}<a routerLink="/character">{{ t('codex.x.soonCharacter') }}</a>{{ t('codex.x.soonB') }}
       </p>
       <p class="cx-soon__cta-note">
-        {{ t('codex.x.soonCtaA') }}<a routerLink="/world">{{ t('codex.x.soonWorld') }}</a>{{ t('codex.x.soonCtaB') }}
+        {{ t('codex.x.soonCtaA') }}<a routerLink="/play">{{ t('codex.x.soonWorld') }}</a>{{ t('codex.x.soonCtaB') }}
       </p>
     </div>
 
@@ -597,5 +597,4 @@
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
 @if (!inWorld) {
-<app-related-pages here="/codex"></app-related-pages>
 }

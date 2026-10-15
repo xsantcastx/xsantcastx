@@ -156,12 +156,11 @@ test.describe('Rune Forge reveal', () => {
     // clickable children, and .rf-focus cannot out-rank it because the routed
     // host's transform traps it.
     const report = await page.evaluate(() => {
-      const tabs = document.querySelector('.gftabs')?.getBoundingClientRect();
       return [...document.querySelectorAll('.rf-acts__btn, .rf-acts .rf-pick__done')].map(node => {
         const r = node.getBoundingClientRect();
         const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
         const label = (node.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 16);
-        if (r.bottom > (tabs?.top ?? window.innerHeight)) return `${label}: behind the tab bar`;
+        if (r.bottom > window.innerHeight) return `${label}: below the screen`;
         if (!hit?.closest('.rf-acts')) return `${label}: covered by ${hit?.tagName}.${(hit as HTMLElement)?.className}`;
         return `${label}: ok`;
       });
@@ -169,35 +168,6 @@ test.describe('Rune Forge reveal', () => {
     expect(report.every(line => line.endsWith(': ok')), report.join(' | ')).toBe(true);
     expect(report.length).toBeGreaterThanOrEqual(6);
   });
-
-  // The footer is position:relative and later in the DOM than the routed host,
-  // whose leftover routeFadeIn transform traps .rf-focus in a z-index-0 layer —
-  // so once the page is scrolled the footer's link rows painted over the reveal
-  // and took the roll buttons' clicks (styles.css 10a-septies). Scrolled to the
-  // very bottom is the worst case at every size.
-  for (const [width, height] of [[1280, 800], [1440, 900], [390, 844]] as const) {
-    test(`the footer never covers the roll buttons (${width}x${height}, page scrolled)`, async ({ page }) => {
-      await page.setViewportSize({ width, height });
-      await openForge(page);
-      await page.getByRole('button', { name: /^Strike the forge/ }).click();
-      await expect(page.locator('.rf-acts__btn--again')).toBeVisible({ timeout: 30000 });
-      await page.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
-      await page.waitForTimeout(300);
-      const report = await page.evaluate(() =>
-        [...document.querySelectorAll('.rf-acts__btn')].map(node => {
-          const r = node.getBoundingClientRect();
-          const hit = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2);
-          const label = (node.textContent ?? '').replace(/\s+/g, ' ').trim().slice(0, 16);
-          if (hit?.closest('app-footer')) return `${label}: covered by the footer (${hit.tagName}.${(hit as HTMLElement).className})`;
-          return `${label}: ok`;
-        }));
-      expect(report.every(line => line.endsWith(': ok')), report.join(' | ')).toBe(true);
-      expect(report.length).toBeGreaterThanOrEqual(5);
-      // And a real click lands, with no force.
-      await page.locator('.rf-acts__btn--again').click({ timeout: 5000 });
-      await expect(page.locator('.rf-acts__btn--again')).toBeVisible({ timeout: 30000 });
-    });
-  }
 
   test('reduced motion lands the same card without animating it', async ({ page }) => {
     await page.setViewportSize({ width: 375, height: 812 });

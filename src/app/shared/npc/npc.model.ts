@@ -147,7 +147,7 @@ export const NPCS: readonly NpcDefinition[] = [
     // The world door and both forge surfaces. `/character` is here because the
     // Keeper *is* the character sheet's subject — anywhere else it would read
     // as a stranger standing in somebody's own room.
-    paths: ['/world', '/forge', '/character', '/sanctum', '/world/realms/infernal'],
+    paths: ['/play', '/forge', '/character', '/sanctum', '/world/realms/infernal'],
     priority: 10,
   },
   {

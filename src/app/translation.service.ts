@@ -26,7 +26,6 @@ export class TranslationService {
     // Realm *names* are deliberately absent: they come from REALMS in
     // realm.model.ts and are proper nouns in the lore, untranslated in both
     // languages exactly as the tools page already renders them.
-    'gfnav.brand':        { en: 'Eclipse Realms', es: 'Eclipse Realms' },
 
     /* appinstall.* / netstatus.* — the installable app. Namespaced away from
        `pwa` on purpose: the key check reads any dotted backticked word as a key,
@@ -48,52 +47,6 @@ export class TranslationService {
        Longer than the gfnav.* labels beside them on purpose: these are body
        links, and the words inside a link describe what is on the other end of
        it. "Bench" is a fine tab label and a wasted anchor. */
-    'related.heading':              { en: 'Continue in Eclipse Realms',  es: 'Continua en Eclipse Realms' },
-    'related.world.anchor':         { en: 'Eclipse Realms',   es: 'Eclipse Realms' },
-    'related.world.blurb':          { en: 'The free browser RPG — start here, no download and no sign-up.', es: 'El RPG de navegador gratuito: empieza aqui, sin descargas ni registro.' },
-    'related.runes.anchor':         { en: 'Rune Forge',       es: 'Forja de runas' },
-    'related.runes.blurb':          { en: 'Gamble Gold for rare runes across seven rarity tiers.', es: 'Apuesta oro por runas raras en siete niveles de rareza.' },
-    'related.crafting.anchor':      { en: 'Crafting Bench',   es: 'Banco de fabricacion' },
-    'related.crafting.blurb':       { en: 'Forge weapons and armour with Diablo-style rolled stats.', es: 'Forja armas y armaduras con estadisticas variables al estilo Diablo.' },
-    'related.enchanting.anchor':    { en: 'Enchanting Table', es: 'Mesa de encantamiento' },
-    'related.enchanting.blurb':     { en: 'Socket runes into your gear and hunt the fifteen Socket Words.', es: 'Engarza runas en tu equipo y busca las quince Palabras de Engarce.' },
-    'related.market.anchor':        { en: 'The Market',       es: 'El mercado' },
-    'related.market.blurb':         { en: 'Buy upgrades, artifacts and cosmetics with Gold and Essence.', es: 'Compra mejoras, artefactos y cosmeticos con oro y esencia.' },
-    'related.gambler.anchor':       { en: 'The Gambler',      es: 'El apostador' },
-    'related.gambler.blurb':        { en: 'Open mystery boxes with published odds and bad luck protection.', es: 'Abre cajas misteriosas con probabilidades publicadas y proteccion contra la mala suerte.' },
-    'related.exchange.anchor':      { en: 'Grand Exchange',   es: 'Gran lonja' },
-    'related.exchange.blurb':       { en: 'Trade items and materials on a board priced by the clock.', es: 'Intercambia objetos y materiales en un tablero cuyos precios marca el reloj.' },
-    'related.sanctum.anchor':       { en: 'The Sanctum',      es: 'El santuario' },
-    'related.sanctum.blurb':        { en: 'Manage explorers and send expeditions into the five realms.', es: 'Gestiona exploradores y envia expediciones a los cinco reinos.' },
-    'related.character.anchor':     { en: 'Your Character',   es: 'Tu personaje' },
-    'related.character.blurb':      { en: 'Equipment, stats, rank and every item you own.', es: 'Equipo, estadisticas, rango y cada objeto que posees.' },
-    'related.leaderboards.anchor':  { en: 'Leaderboards',     es: 'Clasificaciones' },
-    'related.leaderboards.blurb':   { en: 'Seven global ladders, with your own place marked in gold.', es: 'Siete escalas globales, con tu propio puesto marcado en oro.' },
-    'related.arena.anchor':         { en: 'The Coliseum',     es: 'El coliseo' },
-    'related.arena.blurb':          { en: 'PvP arena combat settled on the gear you are standing in.', es: 'Combate PvP resuelto segun el equipo que llevas puesto.' },
-    'related.codex.anchor':         { en: 'The Codex',        es: 'El codice' },
-    'related.codex.blurb':          { en: 'Achievements, ten ranks, and the collection log.', es: 'Logros, diez rangos y el registro de coleccion.' },
-    'related.quests.anchor':        { en: 'Daily Quests',     es: 'Misiones diarias' },
-    'related.quests.blurb':         { en: 'Three dailies, two weeklies and five epics that never expire.', es: 'Tres diarias, dos semanales y cinco epicas que nunca caducan.' },
-    'related.trials.anchor':        { en: 'The Trials',       es: 'Las pruebas' },
-    'related.trials.blurb':         { en: 'Five free browser mini games hidden inside the world.', es: 'Cinco minijuegos gratuitos de navegador escondidos en el mundo.' },
-    'gfnav.brandLabel':   { en: 'Eclipse Realms — World', es: 'Eclipse Realms — Mundo' },
-    'gfnav.play':         { en: 'Play',          es: 'Jugar' },
-    'gfnav.hint.play':    { en: 'Walk the realm towns', es: 'Recorre las ciudades de los reinos' },
-    'gfnav.section.places': { en: 'Places',      es: 'Lugares' },
-    'gfnav.place.region': { en: 'Where this place stands in the world', es: 'Donde esta este lugar en el mundo' },
-    'gfnav.place.in':     { en: 'This place is in {{town}}', es: 'Este lugar esta en {{town}}' },
-    'gfnav.place.realm':  { en: '{{realm}} realm', es: 'Reino {{realm}}' },
-    'gfnav.place.enter':  { en: 'Enter the world', es: 'Entrar al mundo' },
-    'gfnav.place.enterLabel': { en: 'Enter the world at {{place}}, in {{town}}', es: 'Entrar al mundo en {{place}}, en {{town}}' },
-    'gfnav.character':    { en: 'Character',     es: 'Personaje' },
-    'gfnav.market':       { en: 'Market',        es: 'Mercado' },
-    'gfnav.exchange':     { en: 'Exchange',      es: 'Lonja' },
-    'gfnav.gambler':      { en: 'Gambler',       es: 'Apostador' },
-    'gfnav.forge':        { en: 'Forge',         es: 'Forja' },
-    'gfnav.codex':        { en: 'Codex',         es: 'Codice' },
-    'gfnav.trials':       { en: 'Trials',        es: 'Pruebas' },
-    'gfnav.quests':       { en: 'Quests',        es: 'Misiones' },
     // Left untranslated in both languages on purpose — "Pro" is the product
     // name, and it is what the badge, the title prefix and the receipt all say.
     // The page at this key has been the AI feed, then the Forge View, and is now
@@ -104,16 +57,9 @@ export class TranslationService {
     // The bar's label for the same page. "The Inner Sanctum" is the name, and
     // it is what the footer and the page itself say; a hall is a slot roughly
     // one word wide, and "El santuario interior" is 175px of it in Spanish.
-    'gfnav.sanctum':      { en: 'Sanctum',       es: 'Santuario' },
 
     'forge.benchLink':    { en: 'The runes are struck here. Kit is forged at the bench \u2192', es: 'Las runas se golpean aqui. El equipo se forja en el banco \u2192' },
     'forge.tableLink':    { en: 'Runes go in sockets too. The Table is through here \u2192', es: 'Las runas tambien van en engarces. La Mesa esta por aqui \u2192' },
-    'gfnav.crafting':     { en: 'Bench',         es: 'Banco' },
-    'gfnav.hint.crafting': { en: 'Turn materials into kit', es: 'Convierte materiales en equipo' },
-    'gfnav.coliseum':     { en: 'Coliseum',       es: 'Coliseo' },
-    'gfnav.hint.coliseum': { en: 'Five rings, twenty-five challengers', es: 'Cinco anillos, veinticinco retadores' },
-    'gfnav.leaderboards': { en: 'Standings',      es: 'Clasificaciones' },
-    'gfnav.hint.leaderboards': { en: 'Seven ladders, your place on each', es: 'Siete escalas, tu lugar en cada una' },
 
     // ── The Coliseum ───────────────────────────────────────
     // Opponent names, taunts and ring flavour are deliberately absent: they are
@@ -163,16 +109,7 @@ export class TranslationService {
     // Board names and blurbs live in LEADERBOARD_CATEGORIES, alongside their
     // summits and curves; splitting the copy from the number it describes would
     // have put a board's honesty in two files.
-    'leaderboards.title': { en: 'The Standings',  es: 'Las Clasificaciones' },
-    'leaderboards.honesty': { en: 'The other names on these ladders are a generated field, not other players \u2014 the world keeps no public table of anyone\u2019s save. What is real is your own number, and how far it still is to the next rung.', es: 'Los demas nombres de estas escalas son un campo generado, no otros jugadores: el mundo no guarda ninguna tabla publica de la partida de nadie. Lo real es tu propio numero, y cuanto falta para el siguiente escalon.' },
-    'leaderboards.tabsLabel': { en: 'Choose a ladder', es: 'Elige una escala' },
-    'leaderboards.doorsLabel': { en: 'Where to climb', es: 'Donde escalar' },
-    'leaderboards.door.arena': { en: 'Fight in the Coliseum \u2192', es: 'Pelea en el Coliseo \u2192' },
-    'leaderboards.door.character': { en: 'Your character \u2192', es: 'Tu personaje \u2192' },
-    'leaderboards.door.codex': { en: 'The Codex \u2192', es: 'El Codice \u2192' },
 
-    'gfnav.enchanting':   { en: 'Table',         es: 'Mesa' },
-    'gfnav.hint.enchanting': { en: 'Set runes, burn materials', es: 'Engarza runas, quema materiales' },
 
     // ── The Enchanting Table ──────────────────────────────────────────────
     'enchant.dismiss':    { en: 'Dismiss',        es: 'Descartar' },
@@ -229,29 +166,13 @@ export class TranslationService {
     'crafting.mastery.done':     { en: 'Mastered \u2014 every roll on this recipe is 10% better, forever.', es: 'Dominada: cada tirada de esta receta es un 10% mejor, para siempre.' },
     'crafting.result.note':      { en: 'It is in your satchel. Equip it on Character, or list it on the Exchange.', es: 'Esta en tu mochila. Equipalo en Personaje, o listalo en la Lonja.' },
 
-    'gfnav.section.main':      { en: 'Main',      es: 'Principal' },
 
-    'gfnav.welcomeBack':  { en: 'Welcome back',  es: 'Bienvenido' },
-    'gfnav.keeperLabel':  { en: 'Your Forge — rank, satchel and achievements', es: 'Tu forja: rango, mochila y logros' },
-    'gfnav.menuLabel':    { en: 'Open the tome',  es: 'Abrir el tomo' },
-    'gfnav.closeLabel':   { en: 'Close the tome', es: 'Cerrar el tomo' },
-    'gfnav.tabsLabel':    { en: 'Primary',        es: 'Principal' },
-    'gfnav.tomeArtTitle': { en: 'Eclipse Realms', es: 'Eclipse Realms' },
-    'gfnav.tomeArtSub':   { en: 'A persistent world', es: 'Un mundo persistente' },
 
     // ── Cloud save ───────────────────────────────────────────────────────
     // The chip in the command bar. "Sign In" rather than "Save Progress" on
     // purpose: the control opens a Google account chooser, and a label that
     // does not say so makes the popup read as something the page did rather
     // than something it asked for.
-    'cloud.signIn':      { en: 'Sign In', es: 'Entrar' },
-    'cloud.signInLabel': {
-      en: 'Sign in with Google so your progress follows you between devices',
-      es: 'Entra con Google para que tu progreso te siga entre dispositivos',
-    },
-    'cloud.synced':      { en: 'Synced',      es: 'Sincronizado' },
-    'cloud.syncing':     { en: 'Syncing',     es: 'Sincronizando' },
-    'cloud.syncFailed':  { en: 'Sync failed', es: 'Fallo la sincronizacion' },
 
     // ── Device lease ────────────────────────────────────────────────────────
     // Written to be read at a glance and then ignored. A passive device is
@@ -269,69 +190,23 @@ export class TranslationService {
       es: 'Haz que este sea el dispositivo activo para tu progreso guardado',
     },
 
-    'gfnav.hint.arena':     { en: 'Games forged in the eclipse',     es: 'Juegos forjados en el eclipse' },
-    'gfnav.hint.codex':     { en: 'Fragments of a broken sun',       es: 'Fragmentos de un sol roto' },
-    'gfnav.hint.market':    { en: 'Spend gold, sharpen the forge',   es: 'Gasta oro, afila la forja' },
-    'gfnav.hint.exchange':  { en: 'Trade at the merchant houses',   es: 'Comercia en las casas mercantes' },
-    'gfnav.hint.gambler':   { en: 'Sealed boxes, odds published',    es: 'Cajas selladas, probabilidades publicadas' },
-    'gfnav.hint.runeForge': { en: 'Craft runes, words, and later weapons', es: 'Forja runas, palabras y mas adelante armas' },
-    'gfnav.hint.quests':    { en: 'Daily, weekly and epic trials',   es: 'Pruebas diarias, semanales y epicas' },
-    'gfnav.hint.keeper':    { en: 'Your rank and everything you own', es: 'Tu rango y todo lo que posees' },
-    'gfnav.hint.sanctum':   { en: 'Your explorers, your expeditions', es: 'Tus exploradores, tus expediciones' },
 
-    'gffoot.forgedBy':    { en: 'Forged by xsantcastx',            es: 'Forjado por xsantcastx' },
-    'gffoot.forge':       { en: 'Forge',        es: 'Forja' },
-    'gffoot.play':        { en: 'Play',         es: 'Juega' },
-    'gffoot.build':       { en: 'Build',        es: 'Construye' },
-    'gffoot.together':    { en: 'Together',     es: 'Juntos' },
-    'gffoot.nextThing':   { en: 'The next thing is yours', es: 'Lo siguiente es tuyo' },
-    'gffoot.support':     { en: 'Support the forge', es: 'Apoya la forja' },
-    'gffoot.support.card': { en: 'Card',        es: 'Tarjeta' },
 
     // The WebGL forge's escape hatch. One key: the switch's own state says
     // whether it is on, so a second "effects reduced" string would be a label
     // arguing with the control beside it.
-    'gfx.reduce':         { en: 'Reduce effects',  es: 'Reducir efectos' },
 
     // The 3D item inspector. `label` is the button face and stays short — it
     // sits over the artwork in the Quick Inspect hero — while `open` carries
     // the full sentence for assistive technology.
-    'inspect.3d.label':   { en: '3D',  es: '3D' },
-    'inspect.3d.open':    { en: 'Inspect in 3D',  es: 'Inspeccionar en 3D' },
-    'inspect.3d.stats':   { en: 'Stats',          es: 'Estadisticas' },
-    'inspect.3d.hint':    { en: 'Drag to turn — Esc to close', es: 'Arrastra para girar — Esc para cerrar' },
 
     // ── The entrance ─────────────────────────────────────────────────────
-    'godforge.status.name':         { en: 'Eclipse Realms', es: 'Eclipse Realms' },
-    'godforge.status.online':       { en: 'Status: Online', es: 'Estado: en linea' },
-    'godforge.status.codexEntries': { en: 'Codex Entries',  es: 'Entradas del codice' },
-    'godforge.status.forgeLevel':   { en: 'Forge Level',    es: 'Nivel de forja' },
-    'godforge.status.viewFull':     { en: 'View full stats', es: 'Ver estadisticas' },
 
-    'godforge.welcome.hd':    { en: 'Welcome',  es: 'Bienvenido' },
-    'godforge.welcome.level': { en: 'Level',    es: 'Nivel' },
-    'godforge.hero.descend':  { en: 'Scroll to descend', es: 'Desplaza para descender' },
 
     // Footer
     // These two were referenced but never defined. `translate()` falls back to
     // returning the key, which is truthy — so the `|| 'Address copied'` idiom
     // at the call site never fired and the toast literally read "footer.copied".
-    'footer.copied': { en: 'Address copied to clipboard', es: 'Direccion copiada al portapapeles' },
-    'footer.copy.error': { en: 'Could not copy the address', es: 'No se pudo copiar la direccion' },
-    'footer.paypal.title': { en: 'PayPal portal', es: 'Portal PayPal' },
-    'footer.paypal.desc': { en: 'Send fuel through PayPal — a secure, instant signal.', es: 'Envia combustible por PayPal — senal segura e instantanea.' },
-    'footer.paypal.note': { en: 'Every drop of fuel keeps the forge burning and the realms growing.', es: 'Cada gota de combustible mantiene la forja ardiendo y los reinos creciendo.' },
-    'footer.stripe.title': { en: 'Card portal', es: 'Portal de Tarjeta' },
-    'footer.stripe.desc': { en: 'Send fuel by card — a secure, instant signal.', es: 'Envia combustible con tarjeta — senal segura e instantanea.' },
-    'footer.stripe.note': { en: 'Encrypted by Stripe — your card never crosses my orbit.', es: 'Cifrado por Stripe — tu tarjeta nunca cruza mi orbita.' },
-    'footer.donation': { en: 'Donation', es: 'Donacion' },
-    'footer.amount': { en: 'Amount', es: 'Cantidad' },
-    'footer.custom.amount': { en: 'Custom Amount', es: 'Cantidad Personalizada' },
-    'footer.custom.placeholder': { en: 'Enter amount (min $1)', es: 'Ingresa una cantidad (minimo $1)' },
-    'footer.custom.invalid': { en: 'Please enter a valid amount (minimum $1)', es: 'Ingresa una cantidad valida (minimo $1)' },
-    'footer.processing': { en: 'Processing...', es: 'Procesando...' },
-    'footer.success': { en: 'Thank you for your support!', es: 'Gracias por tu apoyo!' },
-    'footer.error': { en: 'Payment failed. Please try again.', es: 'El pago fallo. Intenta de nuevo.' },
 
     // Cookie Banner / GDPR Consent
     'cookies.banner.title': { en: 'Cookie preferences', es: 'Preferencias de cookies' },
@@ -353,205 +228,44 @@ export class TranslationService {
     // immediately. The Gold on screen two is banked in the real ledger, the
     // rank on screen three is LEVELS[0], and the quest on screen five is the
     // live board's own first open daily. Nothing on these screens is a mock.
-    'onboarding.aria.tutorial': { en: 'Welcome to Eclipse Realms', es: 'Bienvenido a Eclipse Realms' },
-    'onboarding.aria.progress': { en: 'Tutorial progress',         es: 'Progreso del tutorial' },
-    'onboarding.skip':          { en: 'Skip',                      es: 'Saltar' },
 
-    'onboarding.welcome.title': { en: 'The Godforge',
-                                  es: 'La Forja de los Dioses' },
-    'onboarding.welcome.say':   { en: 'Strike the anvil, Wanderer.',
-                                  es: 'Golpea el yunque, Errante.' },
-    'onboarding.welcome.body':  { en: 'A free idle RPG in your browser. Strike the forge for Gold, gamble it on runes, craft gear with rolled stats, and send explorers into five realms. No sign-up, no install.',
-                                  es: 'Un RPG idle gratis en tu navegador. Golpea la forja por Oro, apuestalo en runas, fabrica equipo con estadisticas variables y envia exploradores a cinco reinos. Sin registro, sin instalar.' },
-    'onboarding.welcome.cta':   { en: 'Begin', es: 'Comenzar' },
 
-    'onboarding.strike.title':  { en: 'Strike the forge',      es: 'Golpea la forja' },
-    'onboarding.strike.body':   { en: 'Everything here starts with one hit.',
-                                  es: 'Todo aqui empieza con un golpe.' },
-    'onboarding.strike.aria':   { en: 'Strike the forge flame', es: 'Golpea la llama de la forja' },
-    'onboarding.strike.hint':   { en: 'Tap the flame',          es: 'Toca la llama' },
-    'onboarding.strike.gold':   { en: 'Gold',                   es: 'Oro' },
-    'onboarding.strike.after':  { en: 'Yours, and already banked. The flame sits in the corner of every page — strike it any time, anywhere on the site.',
-                                  es: 'Tuyo, y ya guardado. La llama esta en la esquina de cada pagina — golpeala cuando quieras, donde quieras.' },
-    'onboarding.strike.cta':    { en: 'Good', es: 'Bien' },
 
-    'onboarding.rank.title':    { en: 'You are a Wanderer', es: 'Eres un Errante' },
-    'onboarding.rank.you':      { en: 'You are here',       es: 'Estas aqui' },
-    'onboarding.rank.xp':       { en: 'XP',                 es: 'XP' },
-    'onboarding.rank.body':     { en: 'Ten ranks stand between here and Eclipse Lord. Everything you do in the realms earns the XP that closes the gap.',
-                                  es: 'Diez rangos separan este punto del Senor del Eclipse. Todo lo que hagas en los reinos gana la XP que cierra la distancia.' },
-    'onboarding.rank.cta':      { en: 'Where do I go?',     es: 'A donde voy?' },
 
-    'onboarding.doors.title':   { en: 'What you do here', es: 'Que se hace aqui' },
-    'onboarding.doors.body':    { en: 'Start at the top — it is free and it pays for the rest.',
-                                  es: 'Empieza arriba — es gratis y paga todo lo demas.' },
-    'onboarding.doors.enter':   { en: 'Go',               es: 'Ir' },
-    'onboarding.doors.first':   { en: 'Do this first',    es: 'Haz esto primero' },
-    'onboarding.doors.cta':     { en: 'One more thing',   es: 'Una cosa mas' },
 
-    'onboarding.door.scout.title':  { en: 'Send a Scout',
-                                      es: 'Envia un explorador' },
-    'onboarding.door.scout.body':   { en: 'You already have two explorers. A Scout is free, takes two minutes, and comes back with a minute of your forge\'s income (at least 90 Gold).',
-                                      es: 'Ya tienes dos exploradores. Un reconocimiento es gratis, dura dos minutos y vuelve con un minuto de lo que gana tu forja (al menos 90 de Oro).' },
-    'onboarding.door.bench.title':  { en: 'The Bench',
-                                      es: 'El Banco' },
-    'onboarding.door.bench.body':   { en: 'Fifty-two recipes. Mine and forage the realms, then strike the materials into gear with rolled stats.',
-                                      es: 'Cincuenta y dos recetas. Mina y recolecta en los reinos, y forja los materiales en equipo con estadisticas variables.' },
-    'onboarding.door.market.title': { en: 'The Market',
-                                      es: 'El Mercado' },
-    'onboarding.door.market.body':  { en: 'Upgrades from 15 Gold that earn for you on their own, plus enchantments and permanent artifacts.',
-                                      es: 'Mejoras desde 15 de Oro que ganan por si solas, mas encantamientos y artefactos permanentes.' },
 
-    'onboarding.return.title':    { en: 'Come back tomorrow', es: 'Vuelve manana' },
-    'onboarding.return.body':     { en: 'Three quests are drawn fresh every day, and a return streak pays more for each day you keep it — up to twelve days.',
-                                    es: 'Tres misiones nuevas cada dia, y una racha de regreso paga mas por cada dia que la mantengas — hasta doce dias.' },
-    'onboarding.return.tomorrow': { en: 'On the board now',   es: 'En el tablero ahora' },
-    'onboarding.return.cta':      { en: 'Enter the Godforge', es: 'Entra en la Forja' },
 
     // ─── While you were away ───────────────────────────────────────────────
     // The absence summary. Spanish here is deliberately plain: the screen is
     // read once, at a glance, by somebody who has just come back and wants the
     // numbers — flourish belongs in the lore panels, not on a receipt.
-    'away.eyebrow':        { en: 'While you were away', es: 'Mientras no estabas' },
-    'away.title':          { en: 'The forge kept working', es: 'La forja siguio trabajando' },
-    'away.gold':           { en: 'Gold earned',       es: 'Oro ganado' },
-    'away.xp':             { en: 'Idle XP',           es: 'XP pasiva' },
-    'away.thralls':        { en: 'Thrall finds',      es: 'Hallazgos de siervos' },
-    'away.expeditions':    { en: 'Expeditions home',  es: 'Expediciones de vuelta' },
-    'away.quests':         { en: 'Daily quests',      es: 'Misiones diarias' },
-    'away.questsReady':    { en: 'A fresh board is waiting', es: 'Un tablero nuevo te espera' },
-    'away.contracts':      { en: 'Contract Board',    es: 'Tablon de contratos' },
-    'away.contractsReady': { en: 'New contracts posted', es: 'Nuevos contratos publicados' },
-    'away.pulls':          { en: '{{count}} pulls settled', es: '{{count}} tiradas liquidadas' },
-    'away.pullsCapped':    { en: 'first {{count}} pulls settled', es: 'primeras {{count}} tiradas liquidadas' },
-    'away.capped':         { en: 'Eight hours is the most one return pays for.',
-                             es: 'Ocho horas es lo maximo que paga un regreso.' },
-    'away.claim':          { en: 'Claim and continue', es: 'Reclamar y continuar' },
-    'away.close':          { en: 'Close the summary',  es: 'Cerrar el resumen' },
-    'away.banked':         { en: 'Already banked — nothing here can be lost.',
-                             es: 'Ya esta en tu cuenta: aqui no se pierde nada.' },
 
     // ─── Social proof ──────────────────────────────────────────────────────
     // Singular and plural are separate keys rather than "Keeper(s)": this
     // widget has to be believable at a count of one, and copy visibly written
     // for a larger number is the first thing that undermines it.
-    'social.forged.one':  { en: 'Keeper forged today',  es: 'Guardian forjado hoy' },
-    'social.forged.many': { en: 'Keepers forged today', es: 'Guardianes forjados hoy' },
 
     // ─── The Godforge — homepage ───────────────────────────────────────────
     // The Eclipse Realms layer over the home page. Lore vocabulary, but every
     // number under it is real: artifacts are registry tools, paths are the
     // prerendered routes, fragments are registered easter eggs.
-    'godforge.hero.eyebrow':   { en: 'The Engine of Creation',                     es: 'El motor de la creacion' },
-    'godforge.hero.title':     { en: 'Eclipse Realms',                             es: 'Eclipse Realms' },
     // Names the genre in the first six words. The line before this one read
     // "A persistent world of five Eclipse Realms — wander, collect, and forge
     // your legend", which is the right sentence for somebody who already knows
     // what this is and tells a stranger from a link nothing: not that it is a
     // game, not that it is free, not that it needs no account. Lore is the
     // eyebrow above it; this line is the pitch.
-    'godforge.hero.sub':       { en: 'A free idle RPG in your browser. Strike the forge, gamble runes, craft gear with rolled stats, and send explorers into five realms. No sign-up, no install.', es: 'Un RPG idle gratis en tu navegador. Golpea la forja, apuesta runas, fabrica equipo con estadisticas variables y envia exploradores a cinco reinos. Sin registro, sin instalar.' },
-    'godforge.hero.toNext':    { en: 'XP to',                                      es: 'XP para' },
-    'godforge.hero.maxRank':   { en: 'the Eclipse is yours',                       es: 'el Eclipse es tuyo' },
-    'godforge.hero.playAdventure': { en: 'Play the adventure', es: 'Jugar la aventura' },
-    'godforge.hero.ctaLive':   { en: 'Open your Character',                        es: 'Abre tu personaje' },
 
-    'godforge.pulse.fragments': { en: 'Fragments Hidden',   es: 'Fragmentos ocultos' },
-    'godforge.pulse.realms':    { en: 'Realms to Explore',  es: 'Reinos por explorar' },
 
-    'godforge.forges.eyebrow':   { en: 'The Five Places', es: 'Los cinco lugares' },
-    'godforge.forges.title':     { en: 'The Five Realms', es: 'Los cinco reinos' },
-    'godforge.forges.tagline':   { en: 'five places, five incomplete answers — inspect a landmark, a hazard, and an unresolved conflict', es: 'cinco lugares, cinco respuestas incompletas — inspecciona un hito, un peligro y un conflicto sin resolver' },
 
     // ── The Rune Forge band on /home ─────────────────────────────────────
     // The lede names the odds rather than promising a feeling. "One in two
     // thousand" is the Void's real rate, and a number a visitor can check is
     // worth more here than an adjective they cannot.
-    'godforge.anvil.eyebrow':         { en: 'The Rune Forge',           es: 'La Forja de Runas' },
-    'godforge.anvil.title':           { en: 'Strike the Anvil',         es: 'Golpea el yunque' },
-    'godforge.anvil.lede':            { en: 'Twenty-five runes, seven tiers, and a Void that falls once in two thousand strikes. Set them into Runewords for permanent bonuses — and every strike may turn up a page of the codex as well.',
-                                        es: 'Veinticinco runas, siete rangos, y un Vacio que cae una vez cada dos mil golpes. Combinalas en Palabras de Runa para bonificaciones permanentes, y cada golpe puede sacar tambien una pagina del codice.' },
-    'godforge.anvil.runes':           { en: 'runes',                    es: 'runas' },
-    'godforge.anvil.scrolls':         { en: 'scrolls',                  es: 'pergaminos' },
-    'godforge.anvil.words':           { en: 'runewords',                es: 'palabras' },
-    'godforge.anvil.cta':             { en: 'Strike the Forge →',       es: 'Golpea la forja →' },
-    'godforge.anvil.cost':            { en: '600 Gold a strike',        es: '600 de oro por golpe' },
 
-    'godforge.journey.eyebrow':       { en: 'Begin Your Journey',       es: 'Comienza tu viaje' },
-    'godforge.journey.title':         { en: 'The Eclipse is a pressure, not a prize', es: 'El Eclipse es una presion, no un premio' },
-    'godforge.journey.creed':         { en: 'Five realms hold five incomplete answers. Inspect them before anyone claims to have fixed the fracture.', es: 'Cinco reinos guardan cinco respuestas incompletas. Inspeccionalos antes de que alguien pretenda haber reparado la fractura.' },
-    'godforge.journey.continue':      { en: 'Continue Journey',         es: 'Continua el viaje' },
-    'godforge.journey.startWith':     { en: 'Or open',                 es: 'O abre' },
-    'godforge.journey.arenaLabel':    { en: 'Prove yourself in',       es: 'Demuestra tu valia en' },
-    'godforge.journey.arena':         { en: 'The Arena',               es: 'La arena' },
-    'godforge.journey.arenaHint':     { en: 'fragments buried across the realms', es: 'fragmentos enterrados por los reinos' },
 
     // ─── Realm dossier and Fivefold Lock chrome (lore stays in narrative data) ─
-    'world.crumb.label':        { en: 'Breadcrumb', es: 'Migas de navegacion' },
-    'world.crumb.world':        { en: 'World', es: 'Mundo' },
-    'world.realm.status':       { en: 'Place open. Opening chapter not yet playable.', es: 'Lugar abierto. El capitulo de apertura aun no se puede jugar.' },
-    'world.realm.statusPlayable': { en: 'Place open. The Price of a Seam is playable.', es: 'Lugar abierto. El Precio de una Costura se puede jugar.' },
-    'world.realm.witnessRuneLive': { en: 'Witness Rune from this chapter:', es: 'Runa Testigo de este capitulo:' },
-    'world.realm.facts':        { en: 'Place and pressure', es: 'Lugar y presion' },
-    'world.realm.landmark':     { en: 'Landmark', es: 'Hito' },
-    'world.realm.hazard':       { en: 'Hazard', es: 'Peligro' },
-    'world.realm.resource':     { en: 'Resource', es: 'Recurso' },
-    'world.realm.threat':       { en: 'Threat', es: 'Amenaza' },
-    'world.realm.conflict':     { en: 'Unresolved conflict', es: 'Conflicto sin resolver' },
-    'world.realm.people':       { en: 'Who waits here', es: 'Quien espera aqui' },
-    'world.realm.peopleNote':   { en: 'Inspection only. No standing or choice is recorded yet.', es: 'Solo inspeccion. Todavia no se registra afinidad ni eleccion.' },
-    'world.realm.peopleNotePlayable': { en: 'Meet them, then record one brace. Standing is not scored.', es: 'Conocelos y registra un refuerzo. No se puntua afinidad.' },
-    'world.realm.wants':        { en: 'Wants', es: 'Desea' },
-    'world.realm.bond':         { en: 'Bond', es: 'Vinculo' },
-    'world.realm.witnessRune':  { en: 'Witness Rune when the chapter ships:', es: 'Runa Testigo cuando el capitulo se publique:' },
-    'world.realm.continue':     { en: 'Continue Journey', es: 'Continua el viaje' },
-    'world.realm.enter':        { en: 'Enter {{name}}', es: 'Entra en {{name}}' },
-    'world.realm.continueTo':   { en: 'Continue to {{name}}', es: 'Continua hacia {{name}}' },
-    'world.realm.notPlayableHere': { en: '{{chapter}} is not yet playable. The {{landmark}} can be inspected.', es: '{{chapter}} aun no se puede jugar. Se puede inspeccionar {{landmark}}.' },
-    'world.realm.notPlayableNext': { en: '{{chapter}} is not yet playable. Inspect the {{landmark}} next.', es: '{{chapter}} aun no se puede jugar. Inspecciona {{landmark}} a continuacion.' },
     // A2 Foraging — the Verdant landing's site link
-    'world.realm.statusVerdant': { en: 'Place open. The Rootglass Canopy is open for Foraging; the opening chapter is not yet playable.', es: 'Lugar abierto. El Rootglass Canopy esta abierto para recolectar; el capitulo de apertura aun no se puede jugar.' },
-    'world.realm.siteLabel': { en: 'Work here', es: 'Trabaja aqui' },
-    'world.realm.statusCelestial': { en: 'Place open. The Meridian Orrery is open for Prospecting; the opening chapter is not yet playable.', es: 'Lugar abierto. El Meridian Orrery esta abierto para prospeccion; el capitulo de apertura aun no se puede jugar.' },
-    'world.realm.orreryNote': { en: 'Survey the rings for alloy, prism and shard. Prospecting is the only rewarded action there.', es: 'Sondea los anillos por aleacion, prisma y esquirla. La prospeccion es la unica accion recompensada alli.' },
-    'world.realm.canopyNote': { en: 'Gather herbs under the rootglass. Foraging is the only rewarded action there.', es: 'Recolecta hierbas bajo el rootglass. Recolectar es la unica accion recompensada alli.' },
-    'world.realm.playableNext': { en: '{{chapter}} is playable. Choose at the {{landmark}}.', es: '{{chapter}} se puede jugar. Elige en {{landmark}}.' },
-    'world.realm.unknownTitle': { en: 'This place is not on the map', es: 'Este lugar no esta en el mapa' },
-    'world.realm.unknownBody':  { en: 'No realm named {{id}} is part of the five. The World still holds Celestial, Infernal, Luminous, Umbral, and Verdant.', es: 'Ningun reino llamado {{id}} forma parte de los cinco. El Mundo sigue teniendo Celestial, Infernal, Luminous, Umbral y Verdant.' },
-    'world.realm.return':       { en: 'Return to the World', es: 'Volver al Mundo' },
-    'world.realm.titlePage':    { en: '{{name}} — Eclipse Realms', es: '{{name}} — Eclipse Realms' },
-    'world.realm.titleUnknown': { en: 'Unknown place — Eclipse Realms', es: 'Lugar desconocido — Eclipse Realms' },
-    'world.lock.answers':       { en: 'Five incomplete answers', es: 'Cinco respuestas incompletas' },
-    'world.lock.remedy':        { en: '{{faction}} wants a necessary but incomplete remedy.', es: '{{faction}} quiere un remedio necesario pero incompleto.' },
-    'world.atlas.region':       { en: 'Fractured Realms atlas', es: 'Atlas de los Reinos Fracturados' },
-    'world.atlas.hint':         { en: 'Choose a realm to inspect its dossier.', es: 'Elige un reino para inspeccionar su expediente.' },
-    'world.atlas.list':         { en: 'Realm list', es: 'Lista de reinos' },
-    'world.atlas.open':         { en: 'Open the {{name}} dossier', es: 'Abre el expediente de {{name}}' },
-    'world.atlas.label.celestial': { en: 'Celestial Realm', es: 'Reino Celestial' },
-    'world.atlas.label.luminous':  { en: 'Luminous Realm', es: 'Reino Luminous' },
-    'world.atlas.label.infernal':  { en: 'Infernal Realm', es: 'Reino Infernal' },
-    'world.atlas.label.umbral':    { en: 'Umbral Realm', es: 'Reino Umbral' },
-    'world.atlas.label.verdant':   { en: 'Verdant Realm', es: 'Reino Verdant' },
-    'world.atlas.desc.celestial': {
-      en: 'Celestial Realm — observatory plateaus, star paths, and orbital structures',
-      es: 'Reino Celestial — mesetas observatorio, caminos de estrellas y estructuras orbitales',
-    },
-    'world.atlas.desc.luminous': {
-      en: 'Luminous Realm — dawn-lit terraces, prism spires, and crystal light',
-      es: 'Reino Luminous — terrazas del amanecer, agujas de prisma y luz de cristal',
-    },
-    'world.atlas.desc.infernal': {
-      en: 'Infernal Realm — basalt calderas, forge channels, and ember fissures',
-      es: 'Reino Infernal — calderas de basalto, canales de forja y fisuras de brasa',
-    },
-    'world.atlas.desc.umbral': {
-      en: 'Umbral Realm — mirrored ravines, moonlit glass, and hidden rifts',
-      es: 'Reino Umbral — barrancos espejo, cristal de luna y grietas ocultas',
-    },
-    'world.atlas.desc.verdant': {
-      en: 'Verdant Realm — living rootwood, bioluminescent groves, and renewal',
-      es: 'Reino Verdant — madera raiz viva, arboledas bioluminiscentes y renovacion',
-    },
 
     // ─── C8 Infernal chapter, Current Work, Seamworks ─────────────────────
     'work.tile.label': { en: 'Current Work', es: 'Trabajo actual' },
@@ -571,9 +285,6 @@ export class TranslationService {
     'work.tile.state.recovering': { en: 'Recovering', es: 'Recuperando' },
     'work.tile.state.away': { en: 'Elsewhere', es: 'En otro lugar' },
     'work.discipline.mining': { en: 'Mining', es: 'Mineria' },
-    'levelUp.eyebrow': { en: 'Level up', es: 'Subida de nivel' },
-    'levelUp.milestone': { en: 'Milestone reached', es: 'Hito alcanzado' },
-    'levelUp.title': { en: '{{skill}} — Level {{level}}', es: '{{skill}} — Nivel {{level}}' },
     'work.location.seamworks': { en: 'Basalt Seamworks', es: 'Basalt Seamworks' },
     // A2 Foraging — the tile's foraging variants
     'work.discipline.foraging': { en: 'Foraging', es: 'Recoleccion' },
@@ -591,40 +302,18 @@ export class TranslationService {
     'work.verb.foraging': { en: 'gather', es: 'recolectar' },
     'work.verb.prospecting': { en: 'survey', es: 'sondear' },
 
-    'infernal.eyebrow': { en: 'Opening chapter', es: 'Capitulo de apertura' },
-    'infernal.title': { en: 'The Price of a Seam', es: 'El precio de una costura' },
-    'infernal.lede': { en: 'A slag tide has cut the works. The calibration shard will not wait, and neither option is free.', es: 'Una marea de escoria ha cortado las obras. El fragmento de calibracion no espera, y ninguna opcion es gratis.' },
-    'infernal.steps.label': { en: 'Chapter steps', es: 'Pasos del capitulo' },
-    'infernal.step.enter': { en: 'Enter', es: 'Entrar' },
-    'infernal.step.meet': { en: 'Meet', es: 'Conocer' },
-    'infernal.step.inspect': { en: 'Inspect', es: 'Inspeccionar' },
-    'infernal.step.choose': { en: 'Choose', es: 'Elegir' },
-    'infernal.step.consequence': { en: 'Consequence', es: 'Consecuencia' },
-    'infernal.enter.body': { en: 'The Keeper arrives at a bridge just as a slag tide cuts the Seamworks into isolated platforms.', es: 'El Guardian llega a un puente justo cuando una marea de escoria corta Seamworks en plataformas aisladas.' },
-    'infernal.enter.continue': { en: 'Meet who waits here', es: 'Conoce a quien espera' },
-    'infernal.meet.body': { en: 'Mara asks for the shard. Edrin asks you to inspect the heat line beneath the workers homes before agreeing.', es: 'Mara pide el fragmento. Edrin pide que inspecciones la linea de calor bajo las casas de los obreros antes de aceptar.' },
-    'infernal.meet.continue': { en: 'Inspect the evidence', es: 'Inspecciona la evidencia' },
-    'infernal.inspect.body': { en: 'The emergency solution works, but its harm is specific and predictable.', es: 'La solucion de emergencia funciona, pero su dano es especifico y predecible.' },
-    'infernal.inspect.continue': { en: 'Choose a brace', es: 'Elige un refuerzo' },
     'infernal.evidence.fracture.title': { en: 'Fracture pattern', es: 'Patron de fractura' },
     'infernal.evidence.fracture.body': { en: 'The shard will hold if it is bound now. Delay lets the Seam Eater reach the join.', es: 'El fragmento aguantara si se ata ahora. Retrasar deja que el Devorador de Costuras alcance la junta.' },
     'infernal.evidence.ledger.title': { en: 'District heat ledger', es: 'Libro de calor del distrito' },
     'infernal.evidence.ledger.body': { en: 'A central brace redirects the surge through Edrin\'s district. The names on the ledger are specific, not abstract.', es: 'Un refuerzo central desvia la oleada por el distrito de Edrin. Los nombres del libro son concretos, no abstractos.' },
     'infernal.evidence.brace.title': { en: 'Unfinished oathsteel brace', es: 'Refuerzo de oathsteel inacabado' },
     'infernal.evidence.brace.body': { en: 'A slower distributed brace keeps heat in the works. It risks losing the shard and leaves visible damage across the landmark.', es: 'Un refuerzo distribuido mas lento deja el calor en las obras. Arriesga el fragmento y deja dano visible en el hito.' },
-    'infernal.choose.body': { en: 'Authorize the emergency central brace, or commit the shard to the distributed brace and hold the line against the Seam Eater.', es: 'Autoriza el refuerzo central de emergencia, o entrega el fragmento al refuerzo distribuido y aguanta la linea contra el Devorador de Costuras.' },
     'infernal.choice.central.title': { en: 'Emergency central brace', es: 'Refuerzo central de emergencia' },
     'infernal.choice.central.body': { en: 'Save the works now. Mark Edrin\'s district for heat rationing.', es: 'Salva las obras ahora. Marca el distrito de Edrin para racion de calor.' },
     'infernal.choice.central.consequence': { en: 'The works hold. Heat rationing is already posted on Edrin\'s street. The cost has a name.', es: 'Las obras aguantan. La racion de calor ya esta publicada en la calle de Edrin. El costo tiene nombre.' },
     'infernal.choice.distributed.title': { en: 'Distributed brace', es: 'Refuerzo distribuido' },
     'infernal.choice.distributed.body': { en: 'Protect the district. Accept lost output and visible damage across the Seamworks.', es: 'Protege el distrito. Acepta menos produccion y dano visible en Seamworks.' },
     'infernal.choice.distributed.consequence': { en: 'The district stays livable. Output falls, and unfinished joins show across the landmark.', es: 'El distrito sigue habitable. La produccion cae, y las juntas inacabadas se ven en el hito.' },
-    'infernal.consequence.kicker': { en: 'Immediate consequence', es: 'Consecuencia inmediata' },
-    'infernal.rune': { en: 'You receive Witness Rune: {{rune}}. It is a record, not a currency.', es: 'Recibes la Runa Testigo: {{rune}}. Es un registro, no una moneda.' },
-    'infernal.later': { en: 'Umbral can inspect this heat-shadow later. Mining starts at Basalt Seamworks now.', es: 'Umbral podra inspeccionar esta sombra de calor despues. La mineria empieza ahora en Basalt Seamworks.' },
-    'infernal.next': { en: 'Go to Basalt Seamworks', es: 'Ir a Basalt Seamworks' },
-    'infernal.persist': { en: 'The choice did not save. Last confirmed state is unchanged.', es: 'La eleccion no se guardo. El ultimo estado confirmado no cambio.' },
-    'infernal.retry': { en: 'Retry', es: 'Reintentar' },
 
     'seamworks.titlePage': { en: 'Basalt Seamworks — Eclipse Realms', es: 'Basalt Seamworks — Eclipse Realms' },
     'seamworks.eyebrow': { en: 'Infernal landmark', es: 'Hito infernal' },
@@ -665,7 +354,6 @@ export class TranslationService {
     'seamworks.result.ember': { en: 'NEW Ember Residue +{{gain}} · held ×{{held}}', es: 'NUEVO Ember Residue +{{gain}} · tienes ×{{held}}' },
     'seamworks.result.xp': { en: 'Mining +{{amount}} XP.', es: 'Mineria +{{amount}} XP.' },
     'seamworks.note': { en: 'Leaving this place awards nothing. There is no background trickle.', es: 'Salir de este lugar no otorga nada. No hay goteo en segundo plano.' },
-    'seamworks.back': { en: 'Return to Infernal', es: 'Volver a Infernal' },
     'seamworks.refine.title': { en: 'Refining', es: 'Refinado' },
     'seamworks.refine.lede': { en: 'Three of a lower ore become one of the next. No XP and no level needed — surplus turns into progress.', es: 'Tres minerales de un grado se vuelven uno del siguiente. Sin XP y sin nivel — el excedente se convierte en progreso.' },
     'seamworks.refine.rule': { en: '{{n}} {{from}} → 1 {{to}}', es: '{{n}} {{from}} → 1 {{to}}' },
@@ -710,7 +398,6 @@ export class TranslationService {
     'canopy.result.herb': { en: '{{herb}} +{{gain}} · held ×{{held}}', es: '{{herb}} +{{gain}} · tienes ×{{held}}' },
     'canopy.result.xp': { en: 'Foraging +{{amount}} XP.', es: 'Recoleccion +{{amount}} XP.' },
     'canopy.note': { en: 'Leaving this place awards nothing. There is no background trickle.', es: 'Salir de este lugar no otorga nada. No hay goteo en segundo plano.' },
-    'canopy.back': { en: 'Return to Verdant', es: 'Volver a Verdant' },
 
     // ── B1 Prospecting · Meridian Orrery ────────────────────────────────────
     // Mirrors canopy.* key-for-key. The eight wording-neutral seamworks.* keys
@@ -745,7 +432,6 @@ export class TranslationService {
     'orrery.result.elixir': { en: 'NEW Clarity Elixir +{{gain}} · held ×{{held}}', es: 'NUEVO Clarity Elixir +{{gain}} · tienes ×{{held}}' },
     'orrery.result.xp': { en: 'Prospecting +{{amount}} XP.', es: 'Prospeccion +{{amount}} XP.' },
     'orrery.note': { en: 'Leaving this place awards nothing. There is no background trickle.', es: 'Salir de este lugar no otorga nada. No hay goteo en segundo plano.' },
-    'orrery.back': { en: 'Return to Celestial', es: 'Volver a Celestial' },
 
     // ─── Character hub ────────────────────────────────────────────────────
     'hub.tabs': { en: 'Character sections', es: 'Secciones del personaje' },
@@ -837,7 +523,6 @@ export class TranslationService {
     'play.gather.needs': { en: '{{name}}: needs {{need}}', es: '{{name}}: necesita {{need}}' },
     'play.gather.regrowing': { en: '{{name}} grows back ({{n}}s)', es: '{{name}} vuelve a crecer ({{n}} s)' },
     'play.hunt.xp': { en: '+{{n}} Hunting XP', es: '+{{n}} XP de Caza' },
-    'levelUp.unlocked': { en: 'Unlocked:', es: 'Desbloqueado:' },
     'hub.stats.title': { en: 'Stats', es: 'Datos' },
     'hub.stats.rank': { en: 'Rank', es: 'Rango' },
     'hub.stats.xp': { en: 'XP', es: 'XP' },
@@ -914,14 +599,8 @@ export class TranslationService {
     'loadout.drop.confirmNo': { en: 'Keep it', es: 'Guardarlo' },
 
     // ─── Quick Inspect chrome (PR4a, read-only) ────────────────────────────
-    'inspect.title':            { en: 'Inspect', es: 'Inspeccionar' },
     'inspect.action':           { en: 'Inspect', es: 'Inspeccionar' },
-    'inspect.close':            { en: 'Close', es: 'Cerrar' },
-    'inspect.retry':            { en: 'Retry', es: 'Reintentar' },
-    'inspect.loading':          { en: 'Loading record', es: 'Cargando registro' },
-    'inspect.missingTitle':     { en: 'Record unavailable', es: 'Registro no disponible' },
     'inspect.missing':          { en: 'The record {{name}} is unavailable.', es: 'El registro {{name}} no esta disponible.' },
-    'inspect.errorTitle':       { en: 'Could not load', es: 'No se pudo cargar' },
     'inspect.error':            { en: 'This record could not be loaded.', es: 'Este registro no se pudo cargar.' },
     'inspect.kind.item':        { en: 'Item', es: 'Objeto' },
     'inspect.kind.market-listing': { en: 'Market listing', es: 'Oferta del mercado' },
@@ -956,39 +635,7 @@ export class TranslationService {
     'inspect.action.equipped':  { en: 'Already equipped', es: 'Ya equipado' },
     'inspect.fact.temper':      { en: 'Temper', es: 'Temple' },
     'inspect.fact.temperValue': { en: '+{{n}}', es: '+{{n}}' },
-    'inspect.temper.level':     { en: 'Temper {{n}} / {{max}}', es: 'Temple {{n}} / {{max}}' },
-    'inspect.temper.cost':      { en: '{{gold}} · {{mats}} · {{chance}}% chance', es: '{{gold}} · {{mats}} · {{chance}}% de exito' },
-    'inspect.temper.act':       { en: 'Temper', es: 'Templar' },
-    'inspect.temper.okDelta':   { en: 'It held. Temper {{n}} — here is what changed:', es: 'Aguanto. Temple {{n}}: esto es lo que cambio:' },
-    'inspect.temper.max':       { en: 'Fully tempered — {{n}} / {{max}}. Nothing more to add.', es: 'Temple completo: {{n}} / {{max}}. No hay mas que anadir.' },
-    'inspect.temper.fail':      { en: 'No change — the piece is intact. The Gold and materials listed above were spent.', es: 'Sin cambios: la pieza esta intacta. El oro y los materiales indicados arriba se gastaron.' },
-    'inspect.temper.blocked':   { en: 'Need more Gold or materials.', es: 'Falta oro o materiales.' },
-    'inspect.temper.ward':      { en: 'Your ward turns {{pct}}% of failures aside.', es: 'Tu guarda desvia el {{pct}}% de los fallos.' },
     // ── Reforge: the stat reroll (item-reforge.ts) ──────────────────────────
-    'inspect.reforge.lede':     { en: 'Reforge rerolls every stat from {{gold}}.', es: 'Reforjar vuelve a tirar todas las estadisticas desde {{gold}}.' },
-    'inspect.reforge.act':      { en: 'Reforge', es: 'Reforjar' },
-    'inspect.reforge.warn':     { en: 'This rerolls every stat inside this rarity. It can come out worse. Rarity and temper level are untouched.', es: 'Esto vuelve a tirar todas las estadisticas dentro de esta rareza. Puede salir peor. La rareza y el nivel de temple no cambian.' },
-    'inspect.reforge.lock':     { en: 'Lock', es: 'Fijar' },
-    'inspect.reforge.locked':   { en: 'Locked', es: 'Fijada' },
-    'inspect.reforge.lockOne':  { en: 'Lock {{stat}} and reroll the rest', es: 'Fija {{stat}} y vuelve a tirar el resto' },
-    'inspect.reforge.lockCost': { en: '{{stat}} held — double price.', es: '{{stat}} fijada: precio doble.' },
-    'inspect.reforge.cost':     { en: 'Cost: {{gold}}', es: 'Coste: {{gold}}' },
-    'inspect.reforge.confirm':  { en: 'Strike the anvil', es: 'Golpea el yunque' },
-    'inspect.reforge.cancel':   { en: 'Keep this roll', es: 'Conservar esta tirada' },
-    'inspect.reforge.rolling':  { en: 'The anvil rings. The stats are still settling.', es: 'El yunque suena. Las estadisticas aun se asientan.' },
-    'inspect.reforge.again':    { en: 'Done', es: 'Listo' },
-    'inspect.reforge.held':     { en: 'held', es: 'fijada' },
-    'inspect.reforge.heldTag':  { en: 'locked', es: 'fijada' },
-    'inspect.reforge.same':     { en: 'no change', es: 'sin cambios' },
-    'inspect.reforge.result.better': { en: 'The reroll came out ahead.', es: 'La tirada salio mejor.' },
-    'inspect.reforge.result.worse':  { en: 'The reroll came out behind. The Gold was spent.', es: 'La tirada salio peor. El oro se gasto.' },
-    'inspect.reforge.result.even':   { en: 'The reroll came out level.', es: 'La tirada salio igual.' },
-    'inspect.reforge.error.funds':   { en: 'Not enough Gold for this reforge.', es: 'No hay oro suficiente para esta reforja.' },
-    'inspect.reforge.error.kind':    { en: 'This piece has no rolled stats to reforge.', es: 'Esta pieza no tiene estadisticas tiradas que reforjar.' },
-    'inspect.reforge.error.missing': { en: 'That piece is no longer in the satchel.', es: 'Esa pieza ya no esta en la mochila.' },
-    'inspect.reforge.error.persist': { en: 'The reforge did not save. Nothing was spent — try again.', es: 'La reforja no se guardo. No se gasto nada: intentalo de nuevo.' },
-    'inspect.reforge.error.clock':   { en: 'The reforge could not start. Try again.', es: 'La reforja no pudo empezar. Intentalo de nuevo.' },
-    'inspect.reforge.error.ssr':     { en: 'Reforge is not available on this view.', es: 'Reforjar no esta disponible en esta vista.' },
     'inspect.stat.strikePower': { en: '+{{pct}}% anvil yield', es: '+{{pct}}% de rendimiento en el yunque' },
     'inspect.stat.strikePower.mining': { en: 'seam recovers {{pct}}% faster', es: 'la veta se recupera un {{pct}}% mas rapido' },
     'inspect.stat.ward':        { en: 'turns {{pct}}% of temper failures aside', es: 'desvia el {{pct}}% de los fallos de temple' },
@@ -1197,7 +844,6 @@ export class TranslationService {
     'market.link.forge':        { en: 'The Forge', es: 'La Forja' },
 
     // ─── Payment fallback copy ─────────────────────────────────────────────
-    'footer.stripe.notReady':       { en: '✦ The card portal is still tuning in. Try Crypto or PayPal — or refresh in a few seconds to retry.', es: '✦ El portal de tarjetas aun se esta sintonizando. Prueba Crypto o PayPal — o recarga en unos segundos.' },
 
 };
 

@@ -16,8 +16,8 @@ import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
 import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
-import { areaOf, findStation, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
-import { PANEL_REGISTRY } from './world/panel-registry';
+import { areaOf, findStation, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
+import { PANEL_REGISTRY, panelForRoute } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { clusterBy, familyOf, groupItems, slotsForGroup } from '../shared/rpg/item-groups';
 import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
@@ -67,6 +67,7 @@ import { EMBER_DELVE } from './world/towns/infernal';
 import { HEARTH_I18N } from './world/hearth.i18n';
 import { FIRST_GOALS_I18N } from './world/first-goals.i18n';
 import { HUD_I18N } from './world/hud.i18n';
+import { ACCOUNT_I18N } from '../shared/account/account.i18n';
 import { firstGoal, FirstGoalView, runeForgeHint } from './world/first-goals';
 import { GLIM_I18N } from '../shared/glim/glim.i18n';
 import { GlimService } from '../shared/glim/glim.service';
@@ -80,6 +81,7 @@ import {
 } from '../shared/glim/glim-bond';
 import { npcById } from '../shared/npc/npc.model';
 import { NpcQuestService } from '../shared/npc/npc-quest.service';
+import { QuestService } from '../shared/quests/quest.service';
 import { STORY_I18N } from '../shared/story/story.i18n';
 import { StoryService } from '../shared/story/story.service';
 import { STORY_CARD_PARAGRAPHS } from '../shared/story/story';
@@ -218,7 +220,7 @@ interface BagSlip {
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
 interface OpenPlace {
-  kind: 'page' | 'waystone' | 'chest' | 'slate'; stationId: string; title: string; kicker: string; route?: string;
+  kind: 'page' | 'waystone' | 'chest' | 'slate'; stationId: string; title: string; kicker: string;
   chest?: { areaId: string; index: number };
   /** A place in the player's own Delve (a chest, a camp): no ?at= deep link. */
   own?: true;
@@ -395,6 +397,8 @@ export class SideScrollerComponent implements OnDestroy {
    */
   private readonly story = inject(StoryService);
   private readonly quests = inject(NpcQuestService);
+  /** The quest board's visit ledger: panels and realm towns count as the halls they replaced. */
+  private readonly questBoard = inject(QuestService);
   private readonly openedAt = Date.now();
   /** The act-boundary card on screen, or null. */
   storyCard: { id: StoryCardId; paragraphs: string[] } | null = null;
@@ -553,6 +557,7 @@ export class SideScrollerComponent implements OnDestroy {
     // The hearth pill renders on the server too: its strings must exist before the engine does.
     this.i18n.register(HEARTH_I18N);
     this.i18n.register(HUD_I18N);
+    this.i18n.register(ACCOUNT_I18N);
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
     this.i18n.register(SLATE_I18N);
@@ -575,6 +580,8 @@ export class SideScrollerComponent implements OnDestroy {
     // The game is the screen: the site-wide backdrop (starfield canvas, pulsar,
     // sigil, runes) hides under this class and cosmic-engine.js parks its loops.
     document.body.classList.add(WORLD_ROUTE_CLASS);
+    // Links inside a hosted page stay in the game (see panelLinkClick).
+    this.placePanel.nativeElement.addEventListener('click', this.panelLinkClick, true);
     this.inventory.init();
     this.activity.init();
     this.homestead.start();
@@ -600,6 +607,8 @@ export class SideScrollerComponent implements OnDestroy {
         this.engine?.setChat(snapshot.messages, snapshot.id);
       }));
       this.mountEngine();
+      // The realm the Keeper wakes in counts as its old hall (see noteVisit).
+      if (REALM_TOWN_IDS.includes(this.town.id as RealmTownId)) this.noteVisit(`/world/realms/${this.town.id}`);
       this.bindFeel();
       // Only a change of `at` moves the world: a hosted page that writes its own query
       // (the Character hub's ?tab=) must not read as "no place open" and close itself.
@@ -908,8 +917,18 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser) return;
     const before = this.playSave();
     const next = { ...before, ...patch };
+    if (patch.town && patch.town !== before.town) this.noteVisit(`/world/realms/${patch.town}`);
     if (next.town === before.town && next.coins === before.coins) return;
     this.store.write(PLAY_KEY, next);
+  }
+  /**
+   * Page-visit quests ("open the Codex", "walk the five realm halls") were
+   * written when those were pages. In the game-only shell they are panels and
+   * towns, so opening a panel records its old URL and reaching a realm town
+   * records that realm's hall, through the same ledger NavigationEnd fed.
+   */
+  private noteVisit(path: string | undefined): void {
+    if (path) this.questBoard.addToSet('pages', path);
   }
   private toastLoot(text: string, art?: string): void {
     const key = ++this.toastKey;
@@ -1064,7 +1083,7 @@ export class SideScrollerComponent implements OnDestroy {
   openSound(): void { this.placesOpen = false; this.soundOpen = true; }
   ngOnDestroy(): void {
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
-    if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); }
+    if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); this.placePanel?.nativeElement.removeEventListener('click', this.panelLinkClick, true); }
     this.unbindFeel();
     this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
@@ -1089,7 +1108,11 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.panel?.stationId === at) return;
     if (!this.engine) { this.pendingAt = at; return; }
     const found = findStation(at, this.town.id);
-    if (!found) return;
+    if (!found) {
+      // `?at=character` and the other station-less panels (old page URLs redirect here).
+      if (at in PANEL_REGISTRY) this.openPanelHere(at as PanelId);
+      return;
+    }
     const town = TOWNS[found.townId];
     if (!town) return;
     if (town.id !== this.town.id || !this.engine.inTown) { this.town = town; this.engine.setTown(town); this.writePlay({ town: town.id as RealmTownId }); }
@@ -1114,7 +1137,8 @@ export class SideScrollerComponent implements OnDestroy {
       this.loadPanel(entry, this.homeInjector);
       return;
     }
-    this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker, route: entry.route });
+    this.showPanel({ kind: 'page', stationId: station.id, title: entry.title, kicker: entry.kicker });
+    this.noteVisit(entry.route);
     this.loadPanel(entry, this.panelInjector);
   }
   /**
@@ -1125,8 +1149,42 @@ export class SideScrollerComponent implements OnDestroy {
     if (!this.browser) return;
     this.hub.setTab('stats');
     const entry = PANEL_REGISTRY.character;
-    this.showPanel({ kind: 'page', stationId: 'character', title: entry.title, kicker: entry.kicker, route: entry.route, own: true });
+    this.showPanel({ kind: 'page', stationId: 'character', title: entry.title, kicker: entry.kicker, own: true });
+    this.noteVisit(entry.route);
     this.loadPanel(entry, this.panelInjector);
+  }
+  /**
+   * Nothing in the game navigates away from /play (game-only shell). A hosted
+   * page (the Rune Forge, the Character hub, …) was written as a standalone
+   * page and still links to its neighbours by their old URLs. Caught in the
+   * capture phase, before RouterLink sees the click: a link naming a page that
+   * now stands in the world opens that page here, in the panel, without moving
+   * the Keeper; a `/play?at=…` link is left to the router (it stays in the
+   * game); anything else on this origin is refused. The route guard on /play
+   * (stay-in-game.guard.ts) is the backstop for programmatic navigation.
+   */
+  private readonly panelLinkClick = (event: MouseEvent): void => {
+    const link = (event.target as Element | null)?.closest?.('a[href]') as HTMLAnchorElement | null;
+    if (!link || link.target === '_blank') return;
+    const url = new URL(link.href, location.href);
+    if (url.origin !== location.origin || url.pathname === '/play') return;
+    event.preventDefault();
+    event.stopPropagation();
+    const id = panelForRoute(url.pathname);
+    if (id) this.zone.run(() => this.openPanelHere(id));
+  };
+  /** A hosted page opened in place: from the ☰ menu or from a link inside another panel. */
+  private openPanelHere(id: PanelId): void {
+    if (id === 'character') { this.openCharacter(); return; }
+    const entry = PANEL_REGISTRY[id];
+    this.showPanel({ kind: 'page', stationId: id, title: entry.title, kicker: entry.kicker, own: true });
+    this.noteVisit(entry.route);
+    this.loadPanel(entry, this.panelInjector);
+  }
+  /** ☰ → Account & settings: sign-in / cloud save, language, cookies (no station; the header used to hold these). */
+  openAccount(): void {
+    if (!this.browser) return;
+    this.openPanelHere('account');
   }
   /** Build a hosted page into the open panel (a slow import never lands in a newer or closed one). */
   private loadPanel(entry: Pick<PanelEntry, 'load'>, injector: Injector, created?: (ref: ComponentRef<unknown>) => void): void {

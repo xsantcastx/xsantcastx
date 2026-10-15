@@ -63,7 +63,7 @@ function resolveFile(urlPath) {
   if (asIndex) return asIndex;
 
   if (ext && ext !== '.html') return null;
-  // Root index.html is the prerendered `/` redirect to /world. The CSR
+  // Root index.html is the prerendered `/` redirect to /play. The CSR
   // shell is what unknown Angular routes need to boot the router.
   return existingFile(path.join(root, 'index.csr.html'))
     || existingFile(path.join(root, 'index.html'));

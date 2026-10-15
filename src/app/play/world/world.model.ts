@@ -56,17 +56,19 @@ export const REALM_TOWN_IDS: readonly RealmTownId[] = ['infernal', 'luminous', '
  * STATION id, which for panel stations is the same string as its panel.
  */
 export type PanelId =
-  | 'market' | 'gambler' | 'exchange'
+  | 'market' | 'gambler'
   | 'crafting' | 'enchanting' | 'runes'
-  | 'sanctum' | 'codex' | 'leaderboards'
+  | 'sanctum' | 'codex'
   | 'quests' | 'arena' | 'trials' | 'character'
   | 'vendor' | 'homestead' | 'skills' | 'vault' | 'reels'
-  | 'rune-drop' | 'seam-sweeper' | 'eclipse-ascent';
+  | 'rune-drop' | 'seam-sweeper' | 'eclipse-ascent' | 'account'
+  | 'seamworks' | 'canopy' | 'orrery';
 export const PANEL_IDS: readonly PanelId[] = [
-  'market', 'gambler', 'exchange', 'crafting', 'enchanting', 'runes',
-  'sanctum', 'codex', 'leaderboards', 'quests', 'arena', 'trials', 'character',
+  'market', 'gambler', 'crafting', 'enchanting', 'runes',
+  'sanctum', 'codex', 'quests', 'arena', 'trials', 'character',
   'vendor', 'homestead', 'skills', 'vault', 'reels',
-  'rune-drop', 'seam-sweeper', 'eclipse-ascent',
+  'rune-drop', 'seam-sweeper', 'eclipse-ascent', 'account',
+  'seamworks', 'canopy', 'orrery',
 ];
 
 export interface Platform { x: number; y: number; width: number }

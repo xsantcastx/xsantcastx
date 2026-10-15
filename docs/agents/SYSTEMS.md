@@ -6,7 +6,7 @@ Tip: each system keeps its player text in a sibling `*.i18n.ts` (lazy table, EN 
 
 | System | Key source | Handoff | Main e2e | Gotcha |
 |---|---|---|---|---|
-| World, towns, stations | `play/world/{world.model,panel-registry,life}.ts`, `play/world/towns/*.ts`, `world/realm.routes.ts`, `shared/nav/{nav.manifest,place-directory}.ts` | world-only-nav, station-ui-kit | world | Every new place needs a nav manifest entry or `audit-nav.js` fails CI before the build. |
+| World, towns, stations | `play/world/{world.model,panel-registry,life}.ts`, `play/world/towns/*.ts`, `shared/canonical-routes.ts` (old URLs → `/play?at=`), `play/stay-in-game.guard.ts` | game-only-shell, page-audit, station-ui-kit | world, game-only-shell | /play is the only page. A new panel needs a station, a ☰ `data-open` entry, or a link from a reachable panel, or `audit-nav.js` fails CI before the build; never add a route beside `play`. |
 | Play engine (loop, entities, HUD host) | `play/side-scroller.component.{ts,html}`, `play/engine/{engine,engine.model,loadout,render-budget}.ts` | sprite-renderer, play-perf, mobile-hud | hud, mobile-hud | Component is huge; grep a symbol, don't read it whole. Mind `render-budget.ts`. |
 | Terrain, tile art, lighting | `play/engine/{terrain,terrain-render,tile-art,lighting,atmosphere,parallax,cave-backdrop}.ts`, `shared/art/tile-manifest.generated.ts` | terraria-terrain | delve | Never hand-write an `assets/` path; go through `artFor()` and the manifest. |
 | Liquids | `play/engine/{liquids,liquid-render}.ts` | liquids-fishing | liquids | Sim is cell-based and budgeted; changes to terrain cells must notify it. |
