@@ -1,3 +1,4 @@
+import { itemIcon } from '../art/item-icons';
 import { BASALT_EDGE_RECIPE_ID, FORGE_EQUIPMENT_RECIPES, forgeRecipeById } from './forge-recipes';
 
 describe('C6 forge equipment recipes', () => {
@@ -9,8 +10,8 @@ describe('C6 forge equipment recipes', () => {
       '6:cinder-ore',
       '1:ember-residue',
     ]);
-    expect(recipe?.portrait).toContain('04-basalt-edge-portrait');
-    expect(recipe?.portrait).toContain('assets/game/');
+    // The Basalt Edge's pixel icon (item-icons.ts), the same one the satchel shows.
+    expect(recipe?.portrait).toBe(itemIcon('basalt-edge')!.src);
     expect(FORGE_EQUIPMENT_RECIPES.every(row => row.craftable === true)).toBe(true);
   });
 });

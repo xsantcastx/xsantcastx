@@ -79,7 +79,9 @@ export const TYPE_CPS = 30;
           [attr.aria-label]="portraitLabel(p)"
           (click)="toggle()"
         >
-          @if (art(); as a) {
+          @if (portrait(); as src) {
+            <img class="npc__art npc__art--pixel" [src]="src" alt="" width="80" height="80" />
+          } @else if (art(); as a) {
             <img class="npc__art" [src]="a.src" [srcset]="a.srcset" alt="" width="80" height="80" />
           } @else {
             <span class="npc__monogram" aria-hidden="true">{{ p.npc.monogram }}</span>
@@ -220,6 +222,12 @@ export const TYPE_CPS = 30;
       width: 100%; height: 100%;
       border-radius: 50%;
       object-fit: cover;
+    }
+    /* The pixel Keeper (npc-portrait.ts): head and shoulders, crisp, sat on the orb's floor. */
+    .npc__art--pixel {
+      object-fit: contain;
+      object-position: 50% 100%;
+      image-rendering: pixelated;
     }
     .npc__monogram {
       font: 700 20px/1 'Orbitron', system-ui, sans-serif;
@@ -406,6 +414,8 @@ export class NpcDialogueComponent implements OnInit {
   readonly typing = computed(() => this.revealed() < (this.presence()?.line.length ?? 0));
 
   readonly art = computed(() => artFor(this.presence()?.npc.artId));
+  /** The speaker as their pixel Keeper (npc-portrait.ts), painted lazily in the browser; null keeps the orb. */
+  readonly portrait = signal<string | null>(null);
 
   /** `!` when a step is on offer, `?` when one is ready to turn in, else null. */
   readonly indicator = computed<'!' | '?' | null>(() => {
@@ -477,6 +487,7 @@ export class NpcDialogueComponent implements OnInit {
           this.open.set(false);
           this.startTyping(p.line);
         }
+        this.paintPortrait(p.npc.id);
       });
 
     this.destroyRef.onDestroy(() => {
@@ -556,6 +567,20 @@ export class NpcDialogueComponent implements OnInit {
       }, 1000 / TYPE_CPS);
     });
   }
+
+  /**
+   * The painter is imported on demand: this widget sits in the eager shell, and
+   * the Keeper painter must not join the initial bundle for an orb.
+   */
+  private paintPortrait(id: string): void {
+    if (this.portraitFor === id) return;
+    this.portraitFor = id;
+    this.portrait.set(null);
+    import('../keeper-look/npc-portrait')
+      .then(m => { if (this.portraitFor === id) this.portrait.set(m.npcPortrait(id)); })
+      .catch(() => undefined);
+  }
+  private portraitFor: string | null = null;
 
   private stopTyping(): void {
     if (this.timer !== null) {

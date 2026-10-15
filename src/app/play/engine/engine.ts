@@ -5,6 +5,7 @@ import type { KeeperContext } from '../world/keeper-lines';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { CREATURE_ART, CREATURE_PIXEL, creatureFrame, CreaturePainter } from './creature-pixel';
 import { PropPainter } from './prop-pixel';
+import { itemIcon, plaqueIcon } from '../../shared/art/item-icons';
 import { keeperAction, type KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { lookFromSeed, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
@@ -53,6 +54,7 @@ import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, 
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
 import { CaveBackdrop } from './cave-backdrop';
 import { ParallaxBackdrop } from './parallax';
+import { PixelParallax } from './pixel-parallax';
 import { GroundStrip } from './ground-strip';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, MonsterDef, NODE_REACH, nearestStation, StationDef, stationAt, TownDef } from '../world/world.model';
@@ -410,6 +412,8 @@ export class SeamworksEngine {
   private readonly caveBackdrop = new CaveBackdrop(url => this.urlImage(url));
   /** Imported W8 parallax layers for towns and hunting grounds (none until commissioned). */
   private readonly parallax = new ParallaxBackdrop(url => this.urlImage(url));
+  /** The procedural pixel parallax every town and hunt stands on until its W8 layers are imported. */
+  private readonly pixelBackdrop = new PixelParallax();
   /** The town ground as pixel art, per realm. */
   private readonly ground = new GroundStrip();
   private readonly lightPool = new LightPool(96);
@@ -3744,6 +3748,24 @@ export class SeamworksEngine {
       c.restore();
     }
   }
+  /**
+   * A pixel icon (item-icons.ts) centred on (cx, cy), `size` world px square, unsmoothed:
+   * 64 is the figures' 4 px grid in towns, 32 the Delve's 2 px. One cached image, one blit.
+   */
+  private pixelIcon(c: CanvasRenderingContext2D, src: string | undefined, cx: number, cy: number, size: number): boolean {
+    const image = this.urlImage(src);
+    if (!image?.complete || !image.naturalWidth) return false;
+    const smoothing = c.imageSmoothingEnabled;
+    c.imageSmoothingEnabled = false;
+    c.drawImage(image, Math.round(cx - size / 2), Math.round(cy - size / 2), size, size);
+    c.imageSmoothingEnabled = smoothing;
+    return true;
+  }
+  /** A station's plaque or crown: its pixel icon when it has one, else the painted art in a `box`-px square. */
+  private plaque(c: CanvasRenderingContext2D, key: string | undefined, cx: number, cy: number, size: number, box: number): boolean {
+    const icon = plaqueIcon(key);
+    return icon ? this.pixelIcon(c, icon.src, cx, cy, size) : this.art(key, cx - box / 2, cy + box / 2 - box, box, box);
+  }
   /** An image by URL (or an `artFor()` key when it is not URL-shaped), loaded once and cached. */
   private urlImage(art: string | undefined): HTMLImageElement | undefined {
     if (!art) return undefined;
@@ -4029,7 +4051,9 @@ export class SeamworksEngine {
     const iconY = FLOOR - (def.kind === 'wood' ? 228 : 104);
     if (ready) {
       c.shadowColor = glow; c.shadowBlur = this.blur(near ? 18 : 10);
-      if (!this.art(def.yield.materialId, x - 15, iconY, 30, 30)) { c.fillStyle = glow; c.beginPath(); c.arc(x, iconY + 15, 8, 0, Math.PI * 2); c.fill(); }
+      const pin = itemIcon(def.yield.materialId);
+      const shown = pin ? this.pixelIcon(c, pin.src, x, iconY + 15, 32) : this.art(def.yield.materialId, x - 15, iconY, 30, 30);
+      if (!shown) { c.fillStyle = glow; c.beginPath(); c.arc(x, iconY + 15, 8, 0, Math.PI * 2); c.fill(); }
       c.shadowBlur = 0;
     } else {
       // Regrowth: a ring filling clockwise as the node comes back.
@@ -4055,7 +4079,7 @@ export class SeamworksEngine {
     c.save();
     if (this.props) {
       this.props.stall(c, x, FLOOR, half * 2, hot);
-      if (!this.art(station.art, x - 27, FLOOR - 135, 54, 54)) { c.fillStyle = '#c2a26a'; c.fillRect(x - 8, FLOOR - 116, 16, 16); }
+      if (!this.plaque(c, station.art, x, FLOOR - 108, 64, 54)) { c.fillStyle = '#c2a26a'; c.fillRect(x - 8, FLOOR - 116, 16, 16); }
       if (hot) { c.strokeStyle = '#ffe0a8'; c.lineWidth = 4; c.strokeRect(x - half - 6, FLOOR - 198, half * 2 + 12, 198); }
       c.restore();
       return;
@@ -4080,7 +4104,7 @@ export class SeamworksEngine {
     c.fillStyle = '#1d1418'; c.beginPath(); c.arc(x, FLOOR - 108, 34, 0, Math.PI * 2); c.fill();
     c.shadowBlur = 0;
     c.strokeStyle = hot ? '#ffe0a8' : '#a68456'; c.lineWidth = hot ? 3 : 2; c.stroke();
-    if (!this.art(station.art, x - 27, FLOOR - 135, 54, 54)) { c.fillStyle = '#c2a26a'; c.fillRect(x - 8, FLOOR - 116, 16, 16); }
+    if (!this.plaque(c, station.art, x, FLOOR - 108, 64, 54)) { c.fillStyle = '#c2a26a'; c.fillRect(x - 8, FLOOR - 116, 16, 16); }
     if (hot) { c.strokeStyle = '#ffe0a8'; c.lineWidth = 2; c.strokeRect(x - half - 6, FLOOR - 192, half * 2 + 12, 192); }
     c.restore();
   }
@@ -4099,7 +4123,7 @@ export class SeamworksEngine {
     }
     const pulse = this.reducedMotion ? .5 : .5 + Math.sin(time * 2) * .5;
     c.shadowColor = '#c9a0ff'; c.shadowBlur = this.blur(18 + pulse * 18 + (hot ? 12 : 0));
-    if (!this.art(station.art, x - 34, FLOOR - 252, 68, 68)) { c.fillStyle = '#c9a0ff'; c.beginPath(); c.arc(x, FLOOR - 214, 16, 0, Math.PI * 2); c.fill(); }
+    if (!this.plaque(c, station.art, x, FLOOR - 218, 64, 68)) { c.fillStyle = '#c9a0ff'; c.beginPath(); c.arc(x, FLOOR - 214, 16, 0, Math.PI * 2); c.fill(); }
     c.restore();
   }
   /**
@@ -4213,19 +4237,22 @@ export class SeamworksEngine {
       if (Math.abs(this.cameraY) < .05) this.cameraY = 0;
     } else this.cameraY = 0;
     c.clearRect(0, 0, this.width, this.height); c.save(); c.scale(scale, scale);
-    const bg = this.sceneImage();
     // Looking up a surface with height, the backdrop sinks at 0.6 of the camera (as a delve's does) and sky fills above it.
     const lift = !t && this.cameraY < 0 ? -this.cameraY * .6 : 0;
     if (lift) { c.save(); c.translate(0, lift); }
-    // Imported parallax layers replace the painting once every one of them has loaded (RND-2).
+    // Imported parallax layers replace everything once every one of them has loaded (RND-2);
+    // until then a town or hunt stands on its procedural pixel set (pixel-parallax.ts), and
+    // the painting is only fetched where neither can draw (the Delve's surface, no DOM).
     const layered = !t && this.parallax.draw(c, this.town.realm, this.camera, viewport, FLOOR, this.pixelScale > 1.25);
-    const cached = !t && !layered && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
+    const pixelBack = !t && !layered && this.pixelBackdrop.draw(c, this.town.realm, this.isTown ? 'town' : 'hunt', this.camera, viewport, FLOOR);
+    const bg = layered || pixelBack ? undefined : this.sceneImage();
+    const cached = !t && !layered && !pixelBack && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawCachedBackdrop(c, bg, viewport);
     if (lift) c.restore();
     // Below a delve's surface the distant cave fills the frame (it shows through the caverns);
     // the town painting and its shade are drawn only while the surface is in view.
     const underground = !!t && t.top - this.cameraY <= 0;
     const baked = !cached && !underground && !!t && !!bg?.complete && !!bg.naturalWidth && this.budget.cacheBackdrop && this.drawDelveSky(c, bg, viewport);
-    if (!cached && !underground && !layered && !baked) {
+    if (!cached && !underground && !layered && !pixelBack && !baked) {
       c.fillStyle = '#11101a'; c.fillRect(0, 0, viewport, 720);
       if (bg?.complete && bg.naturalWidth) {
         const bgWidth = Math.max(viewport + 500, 720 * bg.naturalWidth / bg.naturalHeight);
