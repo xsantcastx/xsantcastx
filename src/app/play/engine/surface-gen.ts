@@ -25,6 +25,7 @@
 import { LIQUID_FULL, LIQUID_LAVA, LIQUID_WATER, nodeIndex, type BiomeDef, type LiquidStamp } from './terrain';
 import { lattice, mix32, SECTOR, smooth } from './gen-kit';
 import { blueprintCell, blueprintMarks, BLUEPRINTS, BACK_NONE, type BlueprintKind, type BlueprintMarks, type RealmPalette } from './blueprints';
+import { areaLevel, packFor, poiAt, stampSurface, surfacePlan, wildDepth, wildSector, type SurfacePlan, type SurfacePoi } from './living-world';
 
 /** The five worlds (docs/design/one-world.md, the table at the top). */
 export type WorldId = 'ember' | 'ink' | 'root' | 'prism' | 'orrery';
@@ -89,6 +90,12 @@ export interface SurfaceColumn {
   protect: Uint8Array;
   liqType: Uint8Array;
   liqLevel: Uint8Array;
+  /** Carved words (signposts, a hermit's door): local index → `living:<id>` (the Living World). */
+  notes: Map<number, string>;
+  /** The wilds' point of interest in this column, if any (the Living World). */
+  pois: SurfacePoi[];
+  /** The Living World's plan of this column (null in the authored span). */
+  plan: SurfacePlan | null;
 }
 
 const DIRT = nodeIndex('dirt'), ROCK = nodeIndex('rock');
@@ -155,17 +162,25 @@ export function surfaceColumn(spec: SurfaceSpec, sx: number): SurfaceColumn {
   const sky = -spec.rowLo, n = SECTOR * sky, col0 = sx * SECTOR;
   const out: SurfaceColumn = {
     kind: new Uint8Array(n), back: new Uint8Array(n), protect: new Uint8Array(n), liqType: new Uint8Array(n), liqLevel: new Uint8Array(n),
+    notes: new Map(), pois: [], plan: null,
   };
   const at = (row: number, lc: number) => (row - spec.rowLo) * SECTOR + lc;
+  const ground = groundMemo(spec, sx);
   // The ground: hills of dirt from the ground line up (never into the Delve's rows).
   for (let lc = 0; lc < SECTOR; lc++) {
-    const col = col0 + lc, g = groundAt(spec, col);
+    const col = col0 + lc, g = ground(col);
     for (let row = Math.max(spec.rowLo, g); row < Math.min(0, spec.ground); row++) out.kind[at(row, lc)] = DIRT;
     // The realm worlds (P3): their ground sits at −8, topsoil to the seal. Ember's ground is row 0 itself.
     if (boulderAt(spec, col) && g - 1 >= spec.rowLo) {
       out.kind[at(g - 1, lc)] = ROCK;
       if (mix32(spec.salt ^ col) % 3 === 0 && g - 2 >= spec.rowLo) out.kind[at(g - 2, lc)] = ROCK;
     }
+  }
+  // The Living World (living-world.ts): the wilds' trees, bushes and point of interest.
+  const plan = out.plan = livingPlan(spec, sx, ground);
+  if (plan) {
+    stampSurface(spec, sx, plan, ground, out);
+    if (plan.poi) out.pois.push(plan.poi);
   }
   // The buildings, stamped last (they win), protected: the town keeps its walls.
   for (const b of spec.buildings) {
@@ -195,6 +210,27 @@ export function surfaceColumn(spec: SurfaceSpec, sx: number): SurfaceColumn {
     }
   }
   return out;
+}
+
+/** The Living World's plan of a wild sector column (trees, bushes, its point of interest), or null in the authored span. Pure. */
+export function livingPlan(spec: SurfaceSpec, sx: number, ground: (col: number) => number = groundMemo(spec, sx)): SurfacePlan | null {
+  if (!wildSector(spec, sx)) return null;
+  const stone = wildStoneAt(spec, sx);
+  // The rule: every wild column holds a stone, a point of interest or a pack. No pack here: then a point of interest.
+  let poi = poiAt(spec, sx, k => !!wildStoneAt(spec, k));
+  if (!poi && !stone && !packFor(spec.salt, sx, areaLevel(wildDepth(spec, sx)), ground, false)) poi = true;
+  return surfacePlan(spec, sx, ground, stone?.col ?? null, poi);
+}
+
+/** `groundAt` for one sector column and a few cells either side, each column computed once. */
+export function groundMemo(spec: SurfaceSpec, sx: number): (col: number) => number {
+  const lo = sx * SECTOR - 8, cache = new Int16Array(SECTOR + 16).fill(-32768);
+  return col => {
+    const k = col - lo;
+    if (k < 0 || k >= cache.length) return groundAt(spec, col);
+    if (cache[k] === -32768) cache[k] = groundAt(spec, col);
+    return cache[k];
+  };
 }
 
 /** A building's footprint and dressing marks in world cells. */
