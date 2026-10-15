@@ -166,9 +166,13 @@ export interface MonsterDef {
    *  - 'shade' (the Ink Deeps, engine/umbral.ts): frozen where light falls on it,
    *    fast where none does; it lunges out of the dark;
    *  - 'warden': the Gloam Warden, a shade that takes no hit unless it is lit
-   *    (the hall's braziers), and calls shadelings out of the dark.
+   *    (the hall's braziers), and calls shadelings out of the dark;
+   *  - 'graft' (the Root Deeps, engine/verdant.ts): the Graftmother, held by the
+   *    heart-roots in her hall: while one stands she heals and a blow does a quarter;
+   *  - 'prism' (the Prism Mines, engine/luminous.ts): the Hollow Sun, struck only
+   *    while a beam crosses it (caught, it cannot move); it flares the mirrors wrong.
    */
-  trait?: 'dormant' | 'shoulder' | 'furnace' | 'shade' | 'warden';
+  trait?: 'dormant' | 'shoulder' | 'furnace' | 'shade' | 'warden' | 'graft' | 'prism';
   /** A summoned guardian that, once felled for good (`once`), may still be summoned again for its drops. */
   rematch?: true;
 }
