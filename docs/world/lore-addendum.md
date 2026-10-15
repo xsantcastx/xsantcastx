@@ -1568,6 +1568,29 @@ never shut: at night E rings the bell — "A window lights upstairs, a yawn, the
 **The move.** "Your Delve moved under the town. What you had earned came with you; what your chests held is
 back in your Satchel and Vault." (v2's claims carry over; tunnels dug in v2 do not: the world moved.)
 
+## One World, Phase 2 — the Quarry, the High Roads and the Homestead in the world (2026-10-15) — shipped, owner reviews in play
+
+One World is now the game (the flip). Working names, each renamed in one i18n table: **the Quarry Gate**
+(the gatehouse between the Quarry Road and the Ember Quarry).
+
+**The Quarry Gate.** The Seamworks walled its road east when the Maws came up out of the old seam: a
+gatehouse too tall to climb and a portcullis that only the Eclipse Beacon's light lifts (the old wardens'
+rule: "the gate opens when the beacon says the road is watched"). Barred, a swing gets "Barred. The Eclipse
+Beacon lifts the Quarry Gate"; rekindled, "The Quarry Gate lifts: the beacon's light reached it. The Ember
+Quarry is open." The Maws roam the Quarry Road just outside the town, so the first beat is unchanged: a Maw
+falls, the beacon burns, the gate lifts.
+
+**The High Roads in cells.** The Ridge Couriers' road over the Ember Quarry is ridge rock and courier ruins
+(their dressed stone, floating where the fracture left it), ridge trees and snags, and their rope bridge. The
+Couriers kept their road: a pick only gets "The Couriers' road holds". Same caches, carving, look-out and
+summit cairn as before, now 23 rows over the street; Hollis Fenn still walks its mesa one day in five.
+
+**Your Homestead, in the world.** The plot is west along the Seamworks' street, past the mine head, with its
+pond and two ashwoods at the far end; nobody gates it any more ("Somebody left you a plot" — Glim).
+
+**Parkour.** A Keeper's hands catch any lip a little over the crown and mantle onto it; on a wall or off a
+ladder or a ridge trunk, a direction and a jump kick off it — on the surface and down in the Delve alike.
+
 ## The Living World (2026-10-15) — shipped, owner reviews in play
 
 Handoff: `docs/handoff/living-world.md`. Words: `src/app/play/world/living-world.i18n.ts` (EN + ES).

@@ -160,12 +160,15 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
 
       // ── 2. Dig either side of the border, build a block back into the east one. ──
       const before = await hotbarCount(page, 'Dirt block');
+      expect((await sectorCells(page, '7,0', 'slot')).get(local(EAST, ROW)), 'the fixture laid dirt in the east cell').toBe(nodeIndex('dirt'));
       await dig(page, touch, WEST, ROW);
       await dig(page, touch, EAST, ROW);
       await expect.poll(async () => (await sectorCells(page, '6,0')).get(local(WEST, ROW)), { timeout: 10_000, intervals: [300] }).toBe(0);
       // The first change of a region goes up to its cloud slot at once (later ones at most every 30 s).
       await expect.poll(async () => (await sectorCells(page, '6,0', 'slot')).get(local(WEST, ROW)), { timeout: 10_000, intervals: [300] }).toBe(0);
-      await expect.poll(async () => (await sectorCells(page, '7,0')).get(local(EAST, ROW)), { timeout: 10_000, intervals: [300] }).toBe(0);
+      // The east cell is open air in the generated rock (a cave): the fixture laid dirt there, and digging it
+      // back to air drops its diff from the sector (the save keeps only what differs from the generator).
+      await expect.poll(async () => (await sectorCells(page, '7,0')).get(local(EAST, ROW)) ?? 0, { timeout: 10_000, intervals: [300] }).toBe(0);
       expect(await hotbarCount(page, 'Dirt block')).toBe(before + 2);
       await place(page, touch, EAST, ROW);
       await expect.poll(async () => (await sectorCells(page, '7,0')).get(local(EAST, ROW)), { timeout: 10_000, intervals: [300] }).toBe(nodeIndex('packed-dirt'));

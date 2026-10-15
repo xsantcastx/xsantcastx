@@ -3,17 +3,18 @@
  *
  * A Keeper carrying a Mirror Slate (tier I) in the Basalt Seamworks: open the
  * Slate, its Scan face, hold the glass up (the Slate folds away); walk east and
- * the glass warms band by band (cool → warm → hot → burning) until the Lost
- * Cabinet shows itself; E opens it once (a curio, Gold, the receipt saved); the
+ * it cools, back west it warms band by band (warm → hot → burning) until the
+ * Lost Cabinet shows itself up in the Material Vendor's loft (One World: the
+ * Seamworks' street; climb the shop's ladder); E opens it once (a curio, Gold, the receipt saved); the
  * Codex's Cabinet of Curios lists it; a reload keeps it open and empty, and
  * nothing is paid twice. At 1280×800 and 390×844 (44 px targets).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, messageLine, openPlay, placePanel, playerX, seed, stackQty, walk, walkTo, travelToTown } from './play-helpers';
+import { bag, blob, canvas, focusWorld, messageLine, openPlay, placePanel, seed, stackQty, walk, walkTo, travelToTown } from './play-helpers';
 
-/** The Seamworks cabinet stands on the camp's high ledge (670-850, y 410), over the Vendor and the Forge. */
-const CABINET_X = 790;
-const LOW = { x: 470, y: 500 }, HIGH = { x: 736, y: 410 };
+/** One World: the Seamworks cabinet stands in the Material Vendor's loft (col 23, its floor 4 rows over the street). */
+const LADDER_X = 29 * 32 + 16;
+const HIGH = { x: 760, y: 610 - 4 * 32 };
 const SEEDED = {
   'preferred-language': 'en',
   ...bag({ 'mirror-slate': 1 }),
@@ -40,21 +41,16 @@ async function atLeast44(page: Page, selector: string): Promise<void> {
 async function playerY(page: Page): Promise<number> {
   return Number(await canvas(page).getAttribute('data-player-y'));
 }
-/** Up the camp's two ledges: jump onto the low one, then a running jump east onto the high one. */
+/** Up the Material Vendor's ladder (Up holds the climb to its top) and west across the loft's floorboards to the cabinet. */
 async function climbToLedge(page: Page): Promise<void> {
   if (await playerY(page) === HIGH.y) { await walkTo(page, HIGH.x, 30); return; }
-  await walkTo(page, LOW.x, 20);
+  await walkTo(page, LADDER_X, 10);
   await focusWorld(page);
-  await page.keyboard.down('Space');
-  try { await expect.poll(() => playerY(page), { timeout: 4000, intervals: [30] }).toBe(LOW.y); } finally { await page.keyboard.up('Space'); }
-  await walkTo(page, 540, 15);
-  await page.keyboard.down('KeyD'); await page.keyboard.down('Space');
-  try {
-    await expect.poll(async () => (await playerY(page)) === HIGH.y && (await playerX(page)) >= 690, { timeout: 4000, intervals: [30] }).toBe(true);
-  } finally { await page.keyboard.up('Space'); await page.keyboard.up('KeyD'); }
-  await page.waitForTimeout(250);
+  await page.keyboard.down('KeyW'); await page.waitForTimeout(1500); await page.keyboard.up('KeyW');
+  await walk(page, 'a', HIGH.x + 10);
+  await page.waitForTimeout(300);
   await walkTo(page, HIGH.x, 12);
-  expect(await playerY(page), 'on the high ledge').toBe(HIGH.y);
+  await expect.poll(() => playerY(page), { timeout: 4000 }).toBe(HIGH.y);
 }
 async function interact(page: Page, phone: boolean): Promise<void> {
   const button = page.locator('.prompt.armed > button').first();
@@ -94,10 +90,10 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false },
     await expect(world).toHaveAttribute('data-scan', 'warm', { timeout: 5000 });
     await expect(page.locator('.objective')).toContainText('glass');
 
-    // ── Hot and cold: east it cools, back west it heats; it only burns up on the camp's high ledge. ──
+    // ── Hot and cold: east it cools, back west it heats; up in the Vendor's loft the cabinet shows. ──
     await walk(page, 'd', 2000);
     await expect(world).toHaveAttribute('data-scan', 'cool', { timeout: 5000 });
-    await walk(page, 'a', 1100);
+    await walk(page, 'a', 1150);
     await expect(world).toHaveAttribute('data-scan', 'hot', { timeout: 5000 });
     await shot(page, `${size.tag}-2-hot`);
     await climbToLedge(page);

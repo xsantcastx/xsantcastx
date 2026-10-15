@@ -23,7 +23,7 @@
  */
 import { expect, test, type CDPSession, type Page } from '@playwright/test';
 import * as fs from 'fs';
-import { bag as bagOf, canvas, ERA, focusWorld, openPlay, seed } from './play-helpers';
+import { bag as bagOf, canvas, ERA, focusWorld, loginAt, openPlay, seed, WORLD_COL } from './play-helpers';
 import { DelveFixture, DELVE_SEED, SPEC, withSectors } from './play-delve-fixtures';
 import { nodeIndex } from '../src/app/play/engine/terrain';
 import { latticePlans, sectorContext } from '../src/app/play/engine/sector-gen';
@@ -442,16 +442,17 @@ guard('/play perf guard', () => {
     });
   }
 
-  // One World, Phase 1 (docs/design/one-world.md §2.8): the Seamworks on the Ember surface with the preview
-  // gate on, walking the square with the keepers in view, at midday and at night (the darkness overlay and
-  // the lit windows). The Settlement guard: p95 < 50, p50 < 34 at 4× (tighter than the old town's 70).
-  for (const [scene, hour] of [['midday', 12], ['night', 22]] as const) {
+  // One World (docs/design/one-world.md §2.8; the default since the P2 flip): the Seamworks on the Ember surface,
+  // walking the square with the keepers in view, at midday and at night (the darkness overlay and the lit
+  // windows); and (P2) the Ember Quarry under the High Roads (route cells, ashwoods, critters, the Maws).
+  // The Settlement guard: p95 < 50, p50 < 34 at 4× (tighter than the old town's 70).
+  for (const [scene, hour, region, col] of [['midday', 12, 'basalt-seamworks', null], ['night', 22, 'basalt-seamworks', null], ['quarry', 12, 'ember-quarry', WORLD_COL.highRoads + 10]] as const) {
     test(`Settlement (${scene}) p95/p50 frame time at 4× CPU throttle stays under the ceiling`, async ({ page }) => {
       test.setTimeout(150000);
       const cdp = await phone(page);
-      await seed(page, { ...RESTORED, 'eclipse-oneworld': '1' });
+      await seed(page, { ...RESTORED, ...(col !== null ? loginAt(col) : {}) });
       await openPlay(page, `?hour=${hour}`);
-      await expect(canvas(page)).toHaveAttribute('data-region', 'basalt-seamworks');
+      await expect(canvas(page)).toHaveAttribute('data-region', region);
       const r = await measure(page, cdp, `guard:settlement-${scene}`);
       expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_SETTLEMENT_P95_MS);
       expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_SETTLEMENT_P50_MS);

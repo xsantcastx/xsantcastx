@@ -89,7 +89,8 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect(clasp(page)).toContainText('40/40');
 
       // Mine the seam with a full satchel: the ore goes to the Vault, and the line says so.
-      await walkTo(page, 480);
+      // One World: the Cinder seam stands at col 18 of the Seamworks' street (x 592).
+      await walkTo(page, 592);
       await expect.poll(async () => {
         if (/sent to the Vault/.test(await messageLine(page).textContent() ?? '')) return true;
         await focusWorld(page);
