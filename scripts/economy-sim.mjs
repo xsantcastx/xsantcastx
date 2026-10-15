@@ -16,6 +16,7 @@
  *   node scripts/economy-sim.mjs --levels        # uncapped levels: time to 100/150/200/300 per skill (in --check too)
  *   node scripts/economy-sim.mjs --heights       # the high roads' caches and summits (in --check too)
  *   node scripts/economy-sim.mjs --pets          # the pets' helpers: the hedgehog's extra harvest, XP, bite (in --check too)
+ *   node scripts/economy-sim.mjs --cabinets      # the Lost Cabinets' Gold, once each, and the set's final reward (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
  *                                                # first purchase is > 15 s or
  *                                                # < 20 purchases in 10 min
@@ -520,6 +521,8 @@ function check(E) {
   fails.push(...heightsScenario({ quiet: true }));
   // The pets (shared/pets): small helpers, never a Gold strategy (`--pets` prints it).
   fails.push(...petsScenario({ quiet: true }));
+  // The Lost Cabinets (shared/cabinets): once-only Gold on the rule I bands (`--cabinets` prints it).
+  fails.push(...cabinetsScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -988,6 +991,49 @@ function heightsScenario({ quiet = false } = {}) {
 }
 
 // ───────────────────────────────────────────────────────────────────────────
+// --cabinets: the Lost Cabinets (src/app/shared/cabinets/cabinets.model.ts; docs/handoff/lost-cabinets.md).
+// Sixteen once-only cabinets found with the Slate's Scan, so a treasure hunt, never a Gold strategy:
+//   1. each cabinet pays inside the quest band of rule I (2-10 min of income);
+//      the set's final reward inside the daily band (5-20 min);
+//   2. all sixteen and the final reward together are at most 2 h of income, paid once, ever;
+//   3. no floor beats its income seconds after the first half hour;
+//   4. ids unique (each is its own receipt); every deep cabinet pays at least a surface one.
+// ───────────────────────────────────────────────────────────────────────────
+
+const CABINETS_MODEL = loadTsTree('src/app/shared/cabinets/cabinets.model.ts');
+
+function cabinetsScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const { log } = simulate(PROPOSED);
+  const quest = C.REWARD_SECONDS.quest, daily = C.REWARD_SECONDS.daily;
+  const gps30 = log.at[1800]?.gps ?? 0;
+  say('Lost Cabinets scenario · v3 curve (PROPOSED)\n');
+  say('  cabinet              place        pays (s)   floor');
+  const ids = new Set();
+  let all = 0, surfaceMax = 0, deepMin = Infinity;
+  for (const c of CABINETS_MODEL.CABINETS) {
+    if (ids.has(c.id)) fails.push(`${c.id} is listed twice`);
+    ids.add(c.id);
+    all += c.goldSeconds;
+    if (c.needs) deepMin = Math.min(deepMin, c.goldSeconds); else surfaceMax = Math.max(surfaceMax, c.goldSeconds);
+    if (c.goldSeconds < quest.minS || c.goldSeconds > quest.maxS) fails.push(`${c.id} pays ${c.goldSeconds} s of income (band ${quest.minS}-${quest.maxS} s)`);
+    if (gps30 && c.gold > c.goldSeconds * gps30) fails.push(`${c.id}: its floor ${c.gold} still beats ${c.goldSeconds} s of income at 30 min`);
+    say(`  ${c.id.padEnd(20)} ${c.place.padEnd(12)} ${String(c.goldSeconds).padEnd(10)} ${c.gold}`);
+  }
+  const f = CABINETS_MODEL.FINAL_REWARD;
+  if (f.goldSeconds < daily.minS || f.goldSeconds > daily.maxS) fails.push(`the final reward pays ${f.goldSeconds} s (band ${daily.minS}-${daily.maxS} s)`);
+  if (gps30 && f.gold > f.goldSeconds * gps30) fails.push(`the final reward's floor ${f.gold} still beats ${f.goldSeconds} s of income at 30 min`);
+  all += f.goldSeconds;
+  if (deepMin < surfaceMax) fails.push(`a deep cabinet pays ${deepMin} s, less than a surface one (${surfaceMax} s)`);
+  say(`\n  The set's final reward: ${f.goldSeconds} s. All of it, once: ${(all / 60).toFixed(0)} min of income.`);
+  if (all > 120 * 60) fails.push(`the Lost Cabinets pay ${(all / 60).toFixed(0)} min of income (must be <= 120)`);
+  if (quiet) console.log(`economy-sim cabinets: ${fails.length ? fails.length + ' fail(s)' : 'rule I bands, envelope and floors ok'}`);
+  else for (const x of fails) console.error(`  FAIL ${x}`);
+  return fails;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
 // --pets: the pets' helpers (src/app/shared/pets/pets.model.ts; docs/handoff/pets.md).
 // One small helper each, so a pet is a companion, never an income line:
 //   1. the knobs stay small: gather <= 25 %, XP <= 10 %, bite <= x1.25;
@@ -1270,6 +1316,10 @@ if (argv.plinko) {
   console.log('  ok');
 } else if (argv.pets && !argv.check) {
   const fails = petsScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.cabinets && !argv.check) {
+  const fails = cabinetsScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.heights && !argv.check) {

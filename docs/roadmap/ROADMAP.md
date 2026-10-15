@@ -18,7 +18,9 @@ Shipped 2026-10-14: The Underhearth (`docs/handoff/underhearth.md`) · The Mirro
 
 Built 2026-10-15: **Pets** (`docs/handoff/pets.md`): eight chibi pets found in play, one helper each, names, feeding, a trick and a hat.
 
-Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
+Built 2026-10-15: **Lost Cabinets** (`docs/handoff/lost-cabinets.md`): the Mirror Slate's Scan face (tier I) — hold the glass up and follow the warmth to the Archivist's sixteen hidden curio cabinets (towns, hunts, High Roads, the Delve, the Underhearth, the four realm Delves); clues, pet treats and a hatbox inside; the Codex's Cabinet of Curios set with four small bonuses and a short story.
+
+Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
 ## Milestones
 
@@ -44,6 +46,7 @@ Later: Lost Cabinets (needs the Slate) · a living, mysterious Delve · Tibia-in
 
 ## Daily review log
 
+- **2026-10-15 (lost cabinets)** — Built the owner's Lost Cabinets: the Slate's Scan face (tier I: it is the Archive's moon-mirror glass that knows the latches) pulses hot/cold on the HUD button with a soft ping and brightens Glim; sixteen cabinets left by the Archivist and hidden by the Ridge Couriers, one curio each (key items with lore), five deep ones tuned by clues; Courier's Honeycomb (every pet's favourite) and the Hatbox of Small Crowns; the Codex's Cabinet of Curios with bonuses at 4/8/12/16 (warmer glass, one more pet meal, Glim points the way, the Curator's Loupe) and a four-page arc. `economy-sim --cabinets` in `--check` (93 min of income once, ever).
 - **2026-10-15 (chibi Keepers)** — Owner: "more tender, smaller, very cute, MapleStory". Built: every person (player, Glass preview, paper doll, all NPCs) is a chibi pixel Keeper — big head, small body, ~74% of the old height, big eyes, blinks, bouncy steps, landing squash, a happy face on loot and level up; creatures are round with big glaring eyes; tags, bubbles and Glim follow the new head. `docs/handoff/chibi-keepers.md`.
 - **2026-10-15 (orrery wells)** — Built the last Rift Gate realm: the Orrery Wells (Celestial gate, Magma Halls). Down is negotiable: orrery rings turn whole fields over (walk the ceiling), star-wells fall up with a chain beside each, never a softlock (tested over generated wings); starsteel + meridian glass, Anchor Wardens finally spawn, the Fallen Ephemeris dropped into its own well; Sera Quill's chain; the Orrery Key. The Rift Gates set is complete. Engine exposes the Keeper's gravity for followers (pets).
 - **2026-10-15 (realm delves)** — Built two more Rift Gate realms. The Root Deeps (Verdant gate, Root Hollows): dug wood grows back unless burnt, propped or cut with the Rootsever Billhook; living vines, spore pods, rootglass + heart-amber, graftlings, the Graftmother held by heart-roots; Kesh and Siv's chain. The Prism Mines (Luminous gate, Grotto): sun-prism beams are ladders and bridges, mirrors turn them, shadow glass is a hole until lit; prismite + dawnglass, prismlings, the Hollow Sun caught in a beam; Aureth and Lune's chain; the Dawn Lens. Celestial still settling.

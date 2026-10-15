@@ -17,7 +17,8 @@ import { InventoryService } from '../rpg/inventory.service';
 import { materialDisplay } from '../rpg/material-catalog';
 import { PetsService } from './pets.service';
 import { PETS_I18N } from './pets.i18n';
-import { HAT_AT, LOVE_MAX, PETS, TRICK_AT, dayKey, hasHat, isHatched, knowsTrick, mealsLeft, type PetDef, type PetId } from './pets.model';
+import { HAT_AT, LOVE_MAX, PETS, PET_TREAT, TRICK_AT, dayKey, hasHat, isHatched, knowsTrick, mealsLeft, type PetDef, type PetId } from './pets.model';
+import { CabinetsService } from '../cabinets/cabinets.service';
 import type { PetRecord } from './pets-save.model';
 import { eggPortrait, petPortrait } from './pet-art';
 
@@ -83,13 +84,13 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
                 @if (knowsTrick(c.rec)) {
                   <button type="button" class="ps__btn" data-pet-trick (click)="trick(c.def.id)">{{ t('play.pet.trick') }}</button>
                 }
-                @if (hasHat(c.rec)) {
+                @if (hatOk(c.rec)) {
                   <button type="button" class="ps__btn" data-pet-hat (click)="hat(c.def.id, !c.rec.hat)">{{ c.rec.hat ? t('play.pet.hatOff') : t('play.pet.wearHat', { hat: t('play.pet.hat.' + c.def.id) }) }}</button>
                 }
                 <button type="button" class="ps__btn ps__btn--quiet" (click)="renaming = true">{{ t('play.pet.rename') }}</button>
               </div>
               @if (!knowsTrick(c.rec)) { <p class="ps__small">{{ t('play.pet.trickAt', { n: trickAt }) }}</p> }
-              @else if (!hasHat(c.rec)) { <p class="ps__small">{{ t('play.pet.hatAt', { n: hatAt }) }}</p> }
+              @else if (!hatOk(c.rec)) { <p class="ps__small">{{ t('play.pet.hatAt', { n: hatAt }) }}</p> }
             }
             @if (status) { <p class="ps__status" role="status" data-pet-status>{{ status }}</p> }
             <dl class="ps__meaning">
@@ -160,6 +161,7 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
 export class PetSheetComponent implements OnInit, OnDestroy {
   private readonly pets = inject(PetsService);
   private readonly inventory = inject(InventoryService);
+  private readonly cabinets = inject(CabinetsService);
   private readonly i18n = inject(TranslationService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly sub = new Subscription();
@@ -172,7 +174,8 @@ export class PetSheetComponent implements OnInit, OnDestroy {
   readonly hatAt = HAT_AT;
   readonly isHatched = isHatched;
   readonly knowsTrick = knowsTrick;
-  readonly hasHat = hasHat;
+  /** The hat is open: love, or the Hatbox of Small Crowns (a Lost Cabinet's). */
+  hatOk(rec: Parameters<typeof hasHat>[0]): boolean { return hasHat(rec, this.cabinets.hatbox()); }
   wells: WellRow[] = [];
   picked: string | null = null;
   active = '';
@@ -212,10 +215,10 @@ export class PetSheetComponent implements OnInit, OnDestroy {
 
   trick(id: string): void { this.feel.emit({ id, kind: 'trick' }); }
 
-  hat(id: string, on: boolean): void { this.pets.wearHat(id, on); }
+  hat(id: string, on: boolean): void { this.pets.wearHat(id, on, Date.now(), this.cabinets.hatbox()); }
 
   feed(id: string, food: string): void {
-    const out = this.pets.feed(id, food);
+    const out = this.pets.feed(id, food, new Date(), this.cabinets.extraMeals());
     const name = this.pets.record(id)?.name || this.petName(id);
     if (!out.ok) { this.status = out.code === 'full' ? this.t('play.pet.full', { name }) : this.t('play.pet.noFood'); return; }
     const lines = [this.t(out.favourite ? 'play.pet.fedFavourite' : 'play.pet.fed', { name, n: out.gain })];
@@ -236,19 +239,20 @@ export class PetSheetComponent implements OnInit, OnDestroy {
     this.active = state.active;
     this.wells = PETS.filter(def => state.pets[def.id]).map(def => {
       const rec = state.pets[def.id]!;
-      const art = isHatched(rec) ? petPortrait(def.id as PetId, 'idle0', rec.hat && hasHat(rec), 2) : eggPortrait(def.id as PetId, 0, 2);
+      const art = isHatched(rec) ? petPortrait(def.id as PetId, 'idle0', rec.hat && this.hatOk(rec), 2) : eggPortrait(def.id as PetId, 0, 2);
       return { def, rec, art, label: isHatched(rec) ? rec.name || this.petName(def.id) : this.t('play.pet.egg', { name: this.petName(def.id) }) };
     });
     if (!this.picked || !state.pets[this.picked]) this.picked = this.wells[0]?.def.id ?? null;
     const card = this.card;
     if (card) {
       // The big portrait: the same frame, larger.
-      card.art = isHatched(card.rec) ? petPortrait(card.def.id as PetId, 'idle0', card.rec.hat && hasHat(card.rec), 4) : eggPortrait(card.def.id as PetId, 1, 4);
-      const foods = [card.def.favourite, ...card.def.likes]
-        .map((id, i) => ({ id, name: materialDisplay(id)?.name ?? id, qty: this.inventory.stackOf(id), favourite: i === 0 }))
+      card.art = isHatched(card.rec) ? petPortrait(card.def.id as PetId, 'idle0', card.rec.hat && this.hatOk(card.rec), 4) : eggPortrait(card.def.id as PetId, 1, 4);
+      // Its favourite first, then the Courier's Honeycomb (every pet's treat), then what else it likes.
+      const foods = [card.def.favourite, PET_TREAT, ...card.def.likes]
+        .map((id, i) => ({ id, name: materialDisplay(id)?.name ?? id, qty: this.inventory.stackOf(id), favourite: i <= 1 }))
         .filter(f => f.qty > 0);
       this.food = foods[0] ?? null;
-      this.meals = isHatched(card.rec) ? mealsLeft(card.rec, dayKey(new Date())) : 0;
+      this.meals = isHatched(card.rec) ? mealsLeft(card.rec, dayKey(new Date()), this.cabinets.extraMeals()) : 0;
     }
   }
 

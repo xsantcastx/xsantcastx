@@ -1,0 +1,149 @@
+/**
+ * play-cabinets.spec.ts — the Lost Cabinets, played (docs/handoff/lost-cabinets.md).
+ *
+ * A Keeper carrying a Mirror Slate (tier I) in the Basalt Seamworks: open the
+ * Slate, its Scan face, hold the glass up (the Slate folds away); walk east and
+ * the glass warms band by band (cool → warm → hot → burning) until the Lost
+ * Cabinet shows itself; E opens it once (a curio, Gold, the receipt saved); the
+ * Codex's Cabinet of Curios lists it; a reload keeps it open and empty, and
+ * nothing is paid twice. At 1280×800 and 390×844 (44 px targets).
+ */
+import { expect, test, type Page } from '@playwright/test';
+import { bag, blob, canvas, focusWorld, messageLine, openPlay, placePanel, playerX, seed, stackQty, walk, walkTo } from './play-helpers';
+
+/** The Seamworks cabinet stands on the camp's high ledge (670-850, y 410), over the Vendor and the Forge. */
+const CABINET_X = 790;
+const LOW = { x: 470, y: 500 }, HIGH = { x: 736, y: 410 };
+const SEEDED = {
+  'preferred-language': 'en',
+  ...bag({ 'mirror-slate': 1 }),
+};
+
+const shot = (page: Page, name: string) => page.screenshot({ path: `output/lost-cabinets/${name}.png` });
+
+async function gold(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const raw = JSON.parse(localStorage.getItem('godforge-economy') || '{}');
+    return Number((raw && 'v' in raw ? raw.v : raw)?.gold ?? 0);
+  });
+}
+async function opened(page: Page): Promise<string[]> {
+  const raw = await blob<{ v?: { opened?: string[] }; opened?: string[] }>(page, 'godforge-cabinets');
+  return raw?.v?.opened ?? raw?.opened ?? [];
+}
+async function atLeast44(page: Page, selector: string): Promise<void> {
+  const box = await page.locator(selector).first().boundingBox();
+  expect(box, selector).not.toBeNull();
+  expect(box!.width, `${selector} width`).toBeGreaterThanOrEqual(44);
+  expect(box!.height, `${selector} height`).toBeGreaterThanOrEqual(44);
+}
+async function playerY(page: Page): Promise<number> {
+  return Number(await canvas(page).getAttribute('data-player-y'));
+}
+/** Up the camp's two ledges: jump onto the low one, then a running jump east onto the high one. */
+async function climbToLedge(page: Page): Promise<void> {
+  if (await playerY(page) === HIGH.y) { await walkTo(page, HIGH.x, 30); return; }
+  await walkTo(page, LOW.x, 20);
+  await focusWorld(page);
+  await page.keyboard.down('Space');
+  try { await expect.poll(() => playerY(page), { timeout: 4000, intervals: [30] }).toBe(LOW.y); } finally { await page.keyboard.up('Space'); }
+  await walkTo(page, 540, 15);
+  await page.keyboard.down('KeyD'); await page.keyboard.down('Space');
+  try {
+    await expect.poll(async () => (await playerY(page)) === HIGH.y && (await playerX(page)) >= 690, { timeout: 4000, intervals: [30] }).toBe(true);
+  } finally { await page.keyboard.up('Space'); await page.keyboard.up('KeyD'); }
+  await page.waitForTimeout(250);
+  await walkTo(page, HIGH.x, 12);
+  expect(await playerY(page), 'on the high ledge').toBe(HIGH.y);
+}
+async function interact(page: Page, phone: boolean): Promise<void> {
+  const button = page.locator('.prompt.armed > button').first();
+  await expect(button).toBeEnabled();
+  if (phone) await button.click(); else { await focusWorld(page); await page.keyboard.press('KeyE'); }
+}
+
+for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false }, { tag: '390x844', width: 390, height: 844, phone: true }]) {
+  test(`${size.tag}: the Slate's Scan → follow the warmth → open a Lost Cabinet → the Codex lists it → a reload keeps it`, async ({ page }) => {
+    test.setTimeout(180000);
+    await page.setViewportSize({ width: size.width, height: size.height });
+    await seed(page, SEEDED);
+    await openPlay(page);
+    const world = canvas(page);
+
+    // ── The Slate's Scan face, one tap from its home face. ──
+    const slate = page.locator('.slate-btn');
+    await expect(slate).toBeVisible();
+    // Phones: every target 44 px (desktop keeps its slimmer top bar).
+    if (size.phone) await atLeast44(page, '.slate-btn');
+    await slate.click();
+    const tile = page.locator('.sl-tile[data-face="scan"]');
+    await expect(tile).toBeVisible();
+    await atLeast44(page, '.sl-tile[data-face="scan"]');
+    await expect(tile).toContainText('0 of 16 cabinets');
+    await tile.click();
+    await expect(page.locator('.sl-scan')).toBeVisible();
+    await shot(page, `${size.tag}-1-scan-face`);
+    await atLeast44(page, '[data-scan-hold]');
+    await page.locator('[data-scan-hold]').click();
+
+    // ── Holding the glass up folds the Slate; the HUD button is the reading now. ──
+    await expect(placePanel(page)).toBeHidden({ timeout: 5000 });
+    await expect(slate).toHaveClass(/slate-btn--scan/);
+    await expect(world).toHaveAttribute('data-scan', 'warm', { timeout: 5000 });
+    await expect(page.locator('.objective')).toContainText('glass');
+
+    // ── Hot and cold: east it cools, back west it heats; it only burns up on the camp's high ledge. ──
+    await walk(page, 'd', 2000);
+    await expect(world).toHaveAttribute('data-scan', 'cool', { timeout: 5000 });
+    await walk(page, 'a', 1100);
+    await expect(world).toHaveAttribute('data-scan', 'hot', { timeout: 5000 });
+    await shot(page, `${size.tag}-2-hot`);
+    await climbToLedge(page);
+    await expect(world).toHaveAttribute('data-scan', 'burning', { timeout: 5000 });
+    await expect(world).toHaveAttribute('data-cabinet', 'cab-seamworks:shut', { timeout: 5000 });
+    await expect(page.locator('.prompt.armed strong')).toContainText('Open the Lost Cabinet');
+    await shot(page, `${size.tag}-3-shown`);
+
+    // ── Open it: the curio, Gold, the receipt. ──
+    const before = await gold(page);
+    await interact(page, size.phone);
+    await expect(world).toHaveAttribute('data-cabinet', 'cab-seamworks:open', { timeout: 5000 });
+    await expect(messageLine(page)).toContainText('The Unstruck Bell', { timeout: 5000 });
+    await expect.poll(() => stackQty(page, 'curio-unstruck-bell'), { timeout: 5000 }).toBe(1);
+    await expect.poll(() => opened(page), { timeout: 5000 }).toEqual(['cab-seamworks']);
+    await expect.poll(() => gold(page), { timeout: 5000 }).toBeGreaterThan(before);
+    // Nothing else here for the glass to hear.
+    await expect(world).toHaveAttribute('data-scan', 'none', { timeout: 5000 });
+    await shot(page, `${size.tag}-4-opened`);
+
+    // ── The Codex's Cabinet of Curios lists it, with its lore and where. ──
+    await page.goto('/codex?tab=collection', { waitUntil: 'load' });
+    const block = page.locator('[data-codex="cabinets"]');
+    // The block is deferred on viewport, under the long Collection Log: walk the deferred blocks into view, one by one.
+    await page.locator('[data-codex="glim"]').scrollIntoViewIfNeeded({ timeout: 20000 });
+    for (let i = 0; i < 80 && !(await block.count()); i++) {
+      await page.mouse.wheel(0, 300);
+      await page.waitForTimeout(250);
+    }
+    await block.scrollIntoViewIfNeeded({ timeout: 20000 });
+    const row = block.locator('[data-codex-cabinet="cab-seamworks"]');
+    await expect(row).toHaveAttribute('data-open', 'true');
+    await expect(row).toContainText('The Unstruck Bell');
+    await expect(row).toContainText('the Basalt Seamworks');
+    await expect(block).toContainText('1 of 16 open');
+    await expect(block.locator('[data-codex-cabinet="cab-ink-deeps"]')).toContainText('open the cabinet that holds its clue first');
+    await row.scrollIntoViewIfNeeded();
+    await shot(page, `${size.tag}-5-codex`);
+
+    // ── A reload keeps it: open and empty, nothing paid twice. ──
+    const paid = await gold(page);
+    await openPlay(page);
+    await climbToLedge(page);
+    await expect(world).toHaveAttribute('data-cabinet', 'cab-seamworks:open', { timeout: 5000 });
+    await interact(page, size.phone);
+    await expect(messageLine(page)).toContainText('open and empty');
+    expect(await stackQty(page, 'curio-unstruck-bell')).toBe(1);
+    expect(await opened(page)).toEqual(['cab-seamworks']);
+    expect(await gold(page)).toBeLessThanOrEqual(paid + 50);
+  });
+}

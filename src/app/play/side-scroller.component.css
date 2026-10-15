@@ -2427,6 +2427,21 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 @keyframes slate-badge { 50% { opacity: .55; } }
 
+/* The Lost Cabinets' Scan: the glass held up. The button glows with the warmth (cold blue to burning red,
+   from the token ramps) and pulses at the glass's own pace; reduced motion keeps the colour, still. */
+.slate-btn--scan { --warm: var(--ink-3); border-color: var(--warm); }
+.slate-btn--scan[data-warmth="cold"] { --warm: var(--status-info); }
+.slate-btn--scan[data-warmth="cool"] { --warm: var(--violet-bright); }
+.slate-btn--scan[data-warmth="warm"] { --warm: var(--gold); }
+.slate-btn--scan[data-warmth="hot"] { --warm: var(--ember); }
+.slate-btn--scan[data-warmth="burning"] { --warm: var(--status-danger); }
+.slate-btn--scan .slate-ico { border-color: var(--warm); box-shadow: inset 0 0 0 1px var(--warm), 0 0 10px var(--warm); }
+@media (prefers-reduced-motion: no-preference) {
+  .slate-btn--scan .slate-ico { animation: slate-scan var(--pulse, 2.6s) ease-out infinite; }
+  .slate-btn--scan[data-warmth="none"] .slate-ico { animation: none; }
+}
+@keyframes slate-scan { 0% { box-shadow: inset 0 0 0 1px var(--warm), 0 0 2px var(--warm); } 30% { box-shadow: inset 0 0 0 1px var(--warm), 0 0 16px 3px var(--warm); } 100% { box-shadow: inset 0 0 0 1px var(--warm), 0 0 2px var(--warm); } }
+
 /* The open Slate: a centred pane in a thick brass bezel on desktop. */
 .place--slate {
   left: max(16px, calc(50% - 400px));
