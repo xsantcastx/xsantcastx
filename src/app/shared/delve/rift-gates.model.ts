@@ -12,6 +12,9 @@
  * distance. The gates stand where an Echo's colour will begin, one per realm,
  * in a fixed lattice cell of the endless Delve, so every seed has all four.
  *
+ * Open today: the Umbral (the Ink Deeps), the Verdant (the Root Deeps) and the
+ * Luminous (the Prism Mines); the Celestial gate is still settling.
+ *
  * Every realm Delve is a STEP UP, not a side room: its gate sits deeper than
  * the strata a Keeper reaches before it (the Umbral gate is in the Underhearth
  * and its sigil needs Pickaxe IV), its creatures are tougher and its rewards
@@ -72,10 +75,10 @@ export const RIFT_GATES: Readonly<Record<RiftRealm, RiftGateDef>> = {
     brokenRule: 'The dark is unreliable: unlit passages shift when you look away, the ink tide rises and falls, shades move only where no light is.',
   },
   luminous: {
-    realm: 'luminous', name: 'Luminous', world: 'the Light-Mines', open: false,
-    node: 'rift-gate-luminous', sigil: 'luminous-sigil', realmMaterial: 'luminous-prism', area: null,
+    realm: 'luminous', name: 'Luminous', world: 'the Prism Mines', open: true,
+    node: 'rift-gate-luminous', sigil: 'luminous-sigil', realmMaterial: 'luminous-prism', area: 'luminous-delve',
     delving: 28, place: { cell: 4, stratum: 2 }, color: '#ffe9a8',
-    brokenRule: 'Light is solid: lit air can be stood on, and the dark is where you fall.',
+    brokenRule: 'Light is solid: a beam across open air is a bridge, a beam down is a ladder, mirrors turn them, and shadow glass is a hole until light falls on it.',
   },
   celestial: {
     realm: 'celestial', name: 'Celestial', world: 'the Star-Wells', open: false,
@@ -84,10 +87,10 @@ export const RIFT_GATES: Readonly<Record<RiftRealm, RiftGateDef>> = {
     brokenRule: 'Down is negotiable: gravity turns with the hour, and every well has its own.',
   },
   verdant: {
-    realm: 'verdant', name: 'Verdant', world: 'the Root-Depths', open: false,
-    node: 'rift-gate-verdant', sigil: 'verdant-sigil', realmMaterial: 'verdant-sap', area: null,
+    realm: 'verdant', name: 'Verdant', world: 'the Root Deeps', open: true,
+    node: 'rift-gate-verdant', sigil: 'verdant-sigil', realmMaterial: 'verdant-sap', area: 'verdant-delve',
     delving: 32, place: { cell: -2, stratum: 0 }, color: '#7fd5a3',
-    brokenRule: 'Dug rock grows back while you watch: tunnels close behind you unless something living holds them.',
+    brokenRule: 'Dug rock grows back while you watch: tunnels close behind you unless fire burns the roots, a billhook cuts them clean, or a support holds them.',
   },
 };
 
@@ -182,3 +185,15 @@ export const INKSTONE = 'inkstone';
 export const NIGHTGLASS = 'nightglass';
 /** The Veil Lantern: carried, the lantern reaches further in the Ink Deeps' gloom and keeps some light under ink. */
 export const VEIL_LANTERN = 'veil-lantern';
+/** The Verdant Sigil and the Root Deeps' ores: Rootglass and Heart-amber. */
+export const VERDANT_SIGIL = 'verdant-sigil';
+export const ROOTGLASS = 'rootglass';
+export const HEART_AMBER = 'heart-amber';
+/** The Rootsever Billhook: carried in the Root Deeps, what you dig is cut at the root and does not grow back. */
+export const ROOTSEVER_BILLHOOK = 'rootsever-billhook';
+/** The Luminous Sigil and the Prism Mines' ores: Prismite and Dawnglass. */
+export const LUMINOUS_SIGIL = 'luminous-sigil';
+export const PRISMITE = 'prismite';
+export const DAWNGLASS = 'dawnglass';
+/** The Dawn Lens: carried in the Prism Mines, your own lantern lights shadow glass under and round you (a floor you carry). */
+export const DAWN_LENS = 'dawn-lens';

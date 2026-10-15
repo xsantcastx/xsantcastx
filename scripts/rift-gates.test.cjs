@@ -157,7 +157,8 @@ test('gates: every seed has all four, each in its own lattice cell and stratum, 
 
 test('gates: the realm table, flags and the attune rule', () => {
   assert.equal(rift.RIFT_GATES.umbral.open, true);
-  for (const realm of ['luminous', 'celestial', 'verdant']) {
+  // The Verdant and Luminous Delves shipped after (scripts/realm-delves.test.cjs); the Celestial is still settling.
+  for (const realm of ['celestial']) {
     assert.equal(rift.RIFT_GATES[realm].open, false);
     assert.deepEqual(plain(rift.attuneCheck(realm, { delving: 99, sigils: 9, attuned: false })), { ok: false, why: 'settling' });
   }

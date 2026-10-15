@@ -1,7 +1,8 @@
 /**
  * realm-gen.ts — the realm Delves behind the Rift Gates (shared/delve/
- * rift-gates.model.ts). Pure: no DOM, no Angular. Today: the Umbral's
- * underside, the Ink Deeps (lore-addendum.md, "The Rift Gates": shipped —
+ * rift-gates.model.ts). Pure: no DOM, no Angular. Here: the Umbral's
+ * underside, the Ink Deeps (the Verdant's and the Luminous's dispatch to
+ * verdant-gen.ts and luminous-gen.ts, sharing realm-kit.ts) (lore-addendum.md, "The Rift Gates": shipped —
  * owner reviews in play).
  *
  * The same rules as the Ember Delve's wings (sector-gen.ts): integer hashing
@@ -28,19 +29,16 @@
  */
 import { FIELD_NOTE_PREFIX, fieldNotePool } from '../../shared/delve/field-notes.model';
 import { REALM_ARRIVAL } from '../../shared/delve/rift-gates.model';
-import { LIQUID_INK, nodeIndex, seededRandom, type TerrainSpec } from './terrain';
+import { LIQUID_INK, nodeIndex, seededRandom } from './terrain';
 import {
   AIR, BEDROCK, Builder, LATTICE, latticeCache, mix32, noiseColumn, SECTOR, sectorSeed, valueNoise1,
   type LatticeCache, type SectorColumnGen, type StructureKind,
 } from './gen-kit';
+import type { RealmContext } from './realm-kit';
+import { verdantColumn, verdantNodes, verdantPlans } from './verdant-gen';
+import { luminousColumn, luminousNodes, luminousPlans } from './luminous-gen';
 
-/** What the realm generator reads of a Delve's sector context. */
-export interface RealmContext {
-  spec: Pick<TerrainSpec, 'cols' | 'rows' | 'realm'>;
-  seed: number;
-  gv: number;
-  rows: number;
-}
+export type { RealmContext } from './realm-kit';
 
 const U = {
   slate: nodeIndex('ink-slate'), gloam: nodeIndex('gloam-slate'), inkstone: nodeIndex('inkstone-vein'), nightglass: nodeIndex('nightglass-vein'),
@@ -51,6 +49,10 @@ const U = {
 /** Every node the Umbral generator lays (the meaning check reads it through SECTOR_NODES). */
 export function umbralNodes(): string[] {
   return ['ink-slate', 'gloam-slate', 'inkstone-vein', 'nightglass-vein', 'ink-seep', 'drift-shale', 'ink-mirror', 'gloam-brazier', 'rift-frame', 'rift-gate-umbral'];
+}
+/** Every node any realm generator lays (the Umbral's, the Verdant's, the Luminous's). */
+export function realmNodes(): string[] {
+  return [...umbralNodes(), ...verdantNodes(), ...luminousNodes()];
 }
 
 /** The Ink Shallows end and the Gloam Deep begins about here (the edge wanders ±3). */
@@ -94,6 +96,9 @@ const MARGIN = 6;
  * else one per band at most, from the cell's own seed. Pure.
  */
 export function realmPlans(ctx: RealmContext, cell: number): RealmPlan[] {
+  // The Verdant's and the Luminous's undersides have their own generators (verdant-gen.ts, luminous-gen.ts).
+  if (ctx.spec.realm === 'verdant') return verdantPlans(ctx, cell);
+  if (ctx.spec.realm === 'luminous') return luminousPlans(ctx, cell);
   const span = LATTICE * SECTOR, x = cell * span;
   if (x < ctx.spec.cols && x + span > 0) {
     return [
@@ -226,6 +231,8 @@ const VEINS: readonly { node: number; from: number; to: number; count: number; s
 
 /** Generate sector column `sx` of a realm Delve (all rows). Same (context, sx) → the same arrays. */
 export function realmColumn(ctx: RealmContext, sx: number): SectorColumnGen {
+  if (ctx.spec.realm === 'verdant') return verdantColumn(ctx, sx);
+  if (ctx.spec.realm === 'luminous') return luminousColumn(ctx, sx);
   const rows = ctx.rows, n = SECTOR * rows, col0 = sx * SECTOR, s = ctx.seed;
   const out: SectorColumnGen = {
     sx, gv: ctx.gv,
