@@ -74,6 +74,8 @@ export interface EngineState {
   height?: { id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean };
   /** The Lost Cabinet within reach (nearby is then 'cabinet'), and whether it is open. */
   cabinet?: { id: string; open: boolean };
+  /** A realm machine within reach (nearby is then 'machine'; shared/cascade/realm-machines.model.ts). */
+  machine?: { id: string; found: boolean };
   /**
    * One World (docs/design/one-world.md): the world the Keeper stands in
    * ('ember'), the region under them (its id: 'basalt-seamworks',
@@ -235,6 +237,12 @@ export interface EngineOptions {
    * re-sending the marks (`setCabinets`) with it open.
    */
   onCabinet?: (event: CabinetEvent) => void;
+  /**
+   * A realm machine (shared/cascade/realm-machines.model.ts, e.g. the Orrery
+   * Tumbler) was used (E within reach). The host notes it found, once, and
+   * opens the machine in the place panel.
+   */
+  onMachine?: (event: MachineEvent) => void;
   /**
    * The Living World: a swing caught a critter (living-world.ts CRITTERS with a `drop`). `id` is
    * the critter's spawn id (`<sx>:<n>:<critter>`); the host grants its drop once a day per id.
@@ -435,6 +443,10 @@ export interface WorldActionEvent {
 export interface CabinetMark { id: string; area: string; x: number; y: number; open: boolean; delve: boolean }
 /** A Lost Cabinet was used (EngineOptions.onCabinet). */
 export interface CabinetEvent { areaId: string; id: string; open: boolean }
+/** A realm machine the engine draws and reaches (the host pushes them, `setMachines`). World point = its feet. */
+export interface MachineMark { id: string; area: string; x: number; y: number; found: boolean }
+/** A realm machine was used (EngineOptions.onMachine). */
+export interface MachineEvent { areaId: string; id: string; found: boolean }
 /** A Waystone was seen, lit or used (EngineOptions.onStone). */
 export interface StoneEvent { id: string; action: 'seen' | 'light' | 'open'; world: string }
 /** A high-ground find was used (EngineOptions.onHeightFind). */

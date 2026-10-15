@@ -250,6 +250,17 @@
 
 .rl-spin { flex: 1 1 200px; max-width: 360px; }
 
+/* Quick bets and auto spin, one row under the spin. */
+.rl-quick {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+.rl-auto { flex: 0 1 140px; }
+
 .rl-skip {
   min-height: var(--tap-min);
   min-width: var(--tap-min);
