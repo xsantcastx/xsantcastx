@@ -30,26 +30,4 @@ module.exports = {
     "import/no-unresolved": 0,
     "indent": ["error", 2],
   },
-  overrides: [
-    {
-      // The player market documents its modules with prose blocks rather than
-      // per-function @param/@return tags, and its refusal messages are full
-      // sentences a player reads, so those two google rules are relaxed here.
-      files: ["src/market/**/*.ts", "test/**/*.ts"],
-      rules: {
-        "require-jsdoc": "off",
-        "valid-jsdoc": "off",
-        "max-len": ["error", {
-          code: 120,
-          ignoreStrings: true,
-          ignoreTemplateLiterals: true,
-          ignoreComments: true,
-        }],
-      },
-    },
-    {
-      files: ["test/**/*.ts"],
-      rules: {"@typescript-eslint/no-non-null-assertion": "off"},
-    },
-  ],
 };

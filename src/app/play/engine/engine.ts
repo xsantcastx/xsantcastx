@@ -1,5 +1,5 @@
 import { coarseDevice, renderBudget, type RenderBudget } from './render-budget';
-import { Atmosphere } from './atmosphere';
+import { Atmosphere, LANTERNS, lanternY } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import type { KeeperContext } from '../world/keeper-lines';
 import { FIGURE_TOP, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
@@ -85,6 +85,10 @@ import { BACK_WINDOW } from './blueprints';
 import { stationPrompt, windowsLit } from '../world/routines';
 import { LIGHT_HOLD } from '../../shared/waystones/waystones.model';
 import { PET_TUNING, type PetAbility, type PetId } from '../../shared/pets/pets.model';
+// The world clock (docs/handoff/world-clock.md): day, night and the eclipse on the backdrops; the things that keep an hour.
+import { DAY_SKY, SkyLight, type EngineSky } from './sky-light';
+import { ALIGNED_GLASS, ECLIPSE_SHRINE } from '../../shared/world-clock/eclipse.model';
+import type { WorldHour } from '../world/world.model';
 export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineSfx, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, StoneEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
@@ -587,6 +591,13 @@ export class SeamworksEngine {
   /** The current area's gathering nodes, and every visited area's (regrowth timers keep running per session). */
   private sites: GatherSite[] = [];
   private readonly siteCache = new Map<string, GatherSite[]>();
+  /** Every gathering node of this area (the world clock's included); `sites` is the ones out at this hour. */
+  private areaSites: GatherSite[] = [];
+  /** The world clock's sky (setSky), and its renderer (sky-light.ts). */
+  private readonly skyLight = new SkyLight();
+  private worldSky: EngineSky = DAY_SKY;
+  /** The ids of the clock-keeping nodes and creatures out in this area now ("moonwake,ink-lantern"), reported for the HUD and the specs. */
+  private timedOut = '';
   /** Saved harvest times (null: session only), and the wall clock regrowth is measured against. */
   private gathering: GatherPersistence | null = null;
   private clock: () => number = () => Date.now();
@@ -677,6 +688,8 @@ export class SeamworksEngine {
       // A guardian this player has already felled stays down; a summoned one waits to be called.
       if (def.once && this.flagged(def.once)) continue;
       if (def.summoned) continue;
+      // The world clock's creatures rise only at their hour (setSky raises them when it comes).
+      if (def.when && !this.hourOpen(def.when)) continue;
       for (const x of def.spawnXs) {
         monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp, recoil: 0 });
       }
@@ -705,7 +718,9 @@ export class SeamworksEngine {
     this.blastTime = 0; this.blastFlash = 0; this.interactAt = -1;
     this.fuses = [];
     for (const r of this.rubble) r.active = false;
-    this.sites = this.sitesFor(area);
+    this.areaSites = this.sitesFor(area);
+    this.sites = this.openSites();
+    this.timedOut = this.timedList();
     this.enterHeights(area);
     this.motes.reset();
     this.life.enter(area, this.town);
@@ -766,6 +781,47 @@ export class SeamworksEngine {
   private cabinets: readonly CabinetMark[] = [];
   /** The cabinets to draw: those the Scan has shown, and those already open (any area; filtered here). */
   setCabinets(marks: readonly CabinetMark[]): void { this.cabinets = marks; }
+  /**
+   * The world clock's sky (shared/world-clock; the host reads it about once a
+   * second). Tints the backdrops, lights the lamps, and when the hour turns:
+   * opens or shuts the clock-keeping nodes and raises or fades their creatures.
+   */
+  setSky(sky: EngineSky): void {
+    const was = this.worldSky;
+    this.worldSky = sky;
+    this.skyLight.set(sky, this.town.realm);
+    if (was.dark === sky.dark && was.eclipseOn === sky.eclipseOn && was.alignedHunt === sky.alignedHunt) return;
+    this.sites = this.openSites();
+    // Creatures keep their hour: the ones whose hour came rise; the idle ones whose hour went fade.
+    let kept = 0;
+    for (const m of this.monsters) {
+      const shut = m.def.when && !this.hourOpen(m.def.when);
+      if (shut && (m.hp <= 0 || m.phase === 'idle')) continue;
+      this.monsters[kept++] = m;
+    }
+    this.monsters.length = kept;
+    for (const def of this.areaDef.monsters) {
+      if (!def.when || !this.hourOpen(def.when) || this.monsters.some(m => m.def === def)) continue;
+      for (const x of def.spawnXs) this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1.5, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: SPAWN_RISE, shownHp: def.hp, recoil: 0 });
+    }
+    this.timedOut = this.timedList();
+    this.report();
+  }
+  /** Whether an hour of the world clock is now: 'dark' is night or an eclipse, 'eclipse' only an eclipse. */
+  private hourOpen(when: WorldHour): boolean { return when === 'eclipse' ? this.worldSky.eclipseOn : this.worldSky.dark; }
+  /** The area's nodes out now: an eclipse-only one is not there at all outside an eclipse (a dark-keeping one stands shut). */
+  private openSites(): GatherSite[] {
+    return this.areaSites.filter(site => site.def.when !== 'eclipse' || this.worldSky.eclipseOn);
+  }
+  /** A dark-keeping node by day: it stands as a shut bud and cannot be worked. */
+  private siteShut(def: GatherNodeDef): boolean { return !!def.when && !this.hourOpen(def.when); }
+  /** The clock-keeping nodes and creatures open in this area now, as a short id list. */
+  private timedList(): string {
+    const ids: string[] = [];
+    for (const site of this.areaSites) if (site.def.when && this.hourOpen(site.def.when)) ids.push(site.def.id);
+    for (const def of this.areaDef.monsters) if (def.when && this.hourOpen(def.when)) ids.push(def.creature);
+    return ids.join(',');
+  }
   /** The cabinet the Keeper's feet are within reach of, in this area, or null. */
   private cabinetInReach(): CabinetMark | null {
     for (const m of this.cabinets) {
@@ -1756,6 +1812,10 @@ export class SeamworksEngine {
     this.attackTime = .4; this.attackCooldown = BASE_SWING;
     if (Math.abs(def.x - this.player.x) > 6) this.facing = def.x > this.player.x ? 1 : -1;
     const top = FLOOR - (def.kind === 'wood' ? 120 : 50);
+    if (this.siteShut(def)) {
+      this.say('clock.gather.shut', `The ${def.label.toLowerCase()} is shut tight. It opens at night.`, { name: def.label });
+      return;
+    }
     if (!site.ready) {
       this.say('play.hud.eng.growingBack', `The ${def.label.toLowerCase()} is growing back (${Math.ceil(site.timer)}s).`, { lname: def.label.toLowerCase(), n: Math.ceil(site.timer) });
       return;
@@ -1782,7 +1842,8 @@ export class SeamworksEngine {
       return;
     }
     let material: string | undefined;
-    const pays = def.yield;
+    // The aligned realm's hunting ground gives two Eclipse Glass a cut while the eclipse lasts.
+    const pays = def.when === 'eclipse' && this.worldSky.alignedHunt === this.areaDef.id ? { ...def.yield, qty: def.yield.qty * ALIGNED_GLASS } : def.yield;
     if (pays.chance === undefined || pays.chance >= 1 || this.random() < pays.chance) material = pays.materialId;
     const accepted = this.options.onWorldAction?.({
       kind: TOOL_ACTION[check.tool], areaId: this.areaDef.id, cellKey: def.id, site: def.id,
@@ -3251,12 +3312,14 @@ export class SeamworksEngine {
    */
   private touchShrine(t: Terrain, col: number, row: number): void {
     const world = this.world;
-    if (world?.revealRect(col - SECTOR, col + SECTOR, 0, t.rows - 1)) world.flushFog();
+    // Under an eclipse a shrine drinks the dark and shows twice as far (shared/world-clock ECLIPSE_SHRINE).
+    const reach = SECTOR * (this.worldSky.eclipseOn ? ECLIPSE_SHRINE.reveal : 1);
+    if (world?.revealRect(col - reach, col + reach, 0, t.rows - 1)) world.flushFog();
     this.debris.chip((col + .5) * CELL, t.top + (row + .5) * CELL, '#b88cff', this.reducedMotion ? 2 : 10);
     this.blastFlash = Math.max(this.blastFlash, .6);
     this.say('play.delve.shrine.touched', 'The shrine shows you the tunnels round it. Open the map (M) to see them.');
     this.report();
-    this.options.onDiscover?.({ kind: 'shrine', id: `rift:${col},${row}`, biome: t.biomeAt(row).id });
+    this.options.onDiscover?.({ kind: 'shrine', id: `rift:${col},${row}`, biome: t.biomeAt(row).id, ...(this.worldSky.eclipseOn ? { eclipse: true } : {}) });
   }
   /** The carved wall, chest or camp the Keeper's body stands against (cell index), or -1. No allocation. */
   private findInteractive(): number {
@@ -3784,6 +3847,8 @@ export class SeamworksEngine {
       monster.born = Math.max(0, monster.born - dt);
       monster.shownHp += (monster.hp - monster.shownHp) * (1 - Math.exp(-6 * dt));
       if (monster.hp <= 0) {
+        // A clock-keeping creature felled after its hour has passed stays down until the hour comes back.
+        if (monster.def.when && !this.hourOpen(monster.def.when)) { monster.respawn = Math.max(monster.respawn, 1); continue; }
         monster.respawn -= dt;
         if (monster.respawn <= 0) {
           monster.hp = monster.maxHp; monster.shownHp = monster.maxHp; monster.x = monster.spawn; monster.phase = 'idle'; monster.timer = 1; monster.born = SPAWN_RISE;
@@ -4892,7 +4957,8 @@ export class SeamworksEngine {
       height: find ? { id: find.id, kind: find.kind, found: this.heightsFound.has(find.id) } : undefined,
       cabinet: cabinet ? { id: cabinet.id, open: cabinet.open } : undefined,
       y: Math.round(this.player.y), climbing: this.heights ? this.mover.mode : undefined,
-      gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
+      gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}), ...(this.siteShut(site.def) ? { shut: true } : {}) } : undefined,
+      timed: this.timedOut,
       x: Math.round(this.player.x), paused: this.paused,
       // Which way the Keeper falls (the Orrery Wells turn it): followers hang from this (celestial.ts).
       gravity: this.down,
@@ -5647,7 +5713,9 @@ export class SeamworksEngine {
    */
   private drawSite(c: CanvasRenderingContext2D, site: GatherSite, near: boolean, time: number): void {
     const def = site.def, x = def.x + (this.reducedMotion ? 0 : Math.sin(time * 60) * site.shake * 2.5);
-    const ready = site.ready, glow = SITE_GLOW[def.kind];
+    // A dark-keeping node by day (the Moonwake Bloom): a shut bud, no glow, no regrowth ring.
+    const shut = this.siteShut(def);
+    const ready = site.ready && !shut, glow = SITE_GLOW[def.kind];
     c.save();
     if (ready) {
       c.globalAlpha = (near ? .5 : .28) * (this.reducedMotion ? 1 : .8 + Math.sin(time * 2.4 + def.x) * .2);
@@ -5688,6 +5756,12 @@ export class SeamworksEngine {
       const shown = pin ? this.pixelIcon(c, pin.src, x, iconY + 15, 32) : this.art(def.yield.materialId, x - 15, iconY, 30, 30);
       if (!shown) { c.fillStyle = glow; c.beginPath(); c.arc(x, iconY + 15, 8, 0, Math.PI * 2); c.fill(); }
       c.shadowBlur = 0;
+    } else if (shut) {
+      // The shut bud: a closed violet head on the stems, a small moon over it saying when.
+      c.fillStyle = '#4a3260'; c.fillRect(x - 6, FLOOR - 28, 12, 12);
+      c.fillStyle = '#7b4fc0'; c.fillRect(x - 6, FLOOR - 28, 4, 4);
+      c.fillStyle = '#d8dcf0'; c.fillRect(x - 6, iconY + 9, 12, 12);
+      c.fillStyle = '#33263a'; c.fillRect(x - 2, iconY + 9, 8, 8);
     } else {
       // Regrowth: a ring filling clockwise as the node comes back.
       const share = 1 - site.timer / Math.max(1, def.respawn);
@@ -5701,7 +5775,7 @@ export class SeamworksEngine {
       const need = ready ? this.siteNeed(def) : null;
       c.fillStyle = need ? '#ffb39a' : '#fff0cb';
       // Over the node's icon, not under its label: the floor band is the action bar's (SITE_CUE_RISE).
-      c.fillText(!ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, iconY - SITE_CUE_RISE);
+      c.fillText(shut ? 'OPENS AT NIGHT' : !ready ? `GROWING BACK ${Math.ceil(site.timer)}s` : need ? `NEEDS ${need.toUpperCase()}` : '[ J / E ] GATHER', x, iconY - SITE_CUE_RISE);
     }
     c.restore();
   }
@@ -5905,6 +5979,10 @@ export class SeamworksEngine {
       c.fillStyle = this.sceneShade(c); c.fillRect(0, 0, viewport, 720);
     }
     if (lift) this.surface.sky(c, viewport, lift);
+    // The world clock's sky over the backdrop (sky-light.ts): a town or hunt whole, a Delve only the strip of
+    // sky above its surface (the shafts look up at it); underground the world is the same at every hour.
+    if (!t) this.skyLight.drawSky(c, viewport, 720, this.reducedMotion ? 0 : this.elapsed, this.reducedMotion);
+    else if (!underground) this.skyLight.drawSky(c, viewport, t.top - this.cameraY, this.reducedMotion ? 0 : this.elapsed, this.reducedMotion);
     if (t) this.caveBackdrop.draw(c, t, this.camera, this.cameraY, viewport, 720, this.budget.maskBackdrop ? this.pixelScale : 0);
     const jolt = this.shake > 0 ? this.shake : 0;
     c.translate(-this.camera + (jolt ? (Math.random() * 2 - 1) * jolt : 0), -this.cameraY + (jolt ? (Math.random() * 2 - 1) * jolt * .6 : 0));
@@ -6138,6 +6216,21 @@ export class SeamworksEngine {
       c.restore();
     }
     c.restore();
+    // Night on the surface: the people and the stalls sit in the dark too, and the lamps come on (sky-light.ts).
+    if (!t && this.skyLight.shaded) this.skyLight.drawShade(c, this.camera - 60, this.cameraY - 60, viewport + 120, 840);
+    if (!t && this.skyLight.lit) {
+      const blend = this.budget.blendModes;
+      for (const station of this.stations) {
+        if (station.x < this.camera - 160 || station.x > this.camera + viewport + 160) continue;
+        this.skyLight.drawLamp(c, station.x, FLOOR - 150 * k, 120 * k, blend);
+      }
+      // The hanging lanterns light up (atmosphere.ts draws them; the night just turns them on).
+      for (let x: number = LANTERNS.from; x < LANTERNS.to; x += LANTERNS.step) {
+        if (x < this.camera - 150 || x > this.camera + viewport + 150) continue;
+        this.skyLight.drawLamp(c, x, lanternY(x) + 14, 80, blend);
+      }
+      this.skyLight.drawLamp(c, this.player.x, this.player.y - 90 * k, 150 * k, blend, .8);
+    }
     if (t && this.mirror) this.drawReflection(c, t, k);
     if (t && this.cart) this.drawCart(c, motionTime);
     if (t && this.grapple) this.drawGrappleLine(c);

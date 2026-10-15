@@ -28,7 +28,7 @@ interface ResistRow { id: Element; value: number }
     <section class="ls" role="dialog" aria-modal="false" aria-labelledby="ls-title" data-engine-ignore [attr.data-loot-filter]="s.filter" [attr.data-loot-tier]="s.tier">
       <header class="ls__head">
         <h2 id="ls-title">{{ t('loot.title') }}</h2>
-        <button type="button" class="ls__done" (click)="done.emit()">{{ t('loot.close') }}</button>
+        <button type="button" class="ls__done" (click)="done.emit()" [attr.aria-label]="t('loot.close')"><i aria-hidden="true">&times;</i></button>
       </header>
       <p class="ls__lead">{{ t('loot.lead') }}</p>
 
@@ -81,7 +81,8 @@ interface ResistRow { id: Element; value: number }
   styles: [`
     :host { display: block; }
     .ls {
-      display: grid; gap: 8px; width: min(400px, calc(100vw - 32px)); max-height: calc(100dvh - 120px); overflow-y: auto; padding: 14px 16px 12px;
+      display: grid; align-content: start; gap: 8px; width: 100%; box-sizing: border-box; min-height: 100%;
+      padding: 14px 16px calc(12px + var(--sheet-pad-b, 0px));
       border: 1px solid var(--adventure-hud-shadow); border-left: 2px solid var(--adventure-ember); border-radius: 2px;
       background: var(--adventure-hud-panel-solid); color: var(--adventure-parchment);
       box-shadow: 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53%, transparent);
@@ -98,6 +99,8 @@ interface ResistRow { id: Element; value: number }
       background: color-mix(in srgb, var(--adventure-hud-brass) 10%, transparent); color: var(--adventure-parchment);
       font: 600 12px Orbitron, sans-serif; letter-spacing: .04em; cursor: pointer; text-align: left;
     }
+    .ls__done { min-width: 44px; text-align: center; font-size: 18px; }
+    .ls__done i { font-style: normal; }
     .ls__pick--on { border-color: var(--adventure-hud-gold); background: color-mix(in srgb, var(--adventure-hud-gold) 22%, transparent); }
     .ls__tiers { display: grid; gap: 6px; }
     .ls__tier { display: grid; gap: 2px; }

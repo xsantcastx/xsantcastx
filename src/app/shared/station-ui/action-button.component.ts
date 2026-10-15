@@ -44,6 +44,8 @@ const STEP_MAX = 99;
 
 @Component({
   selector: 'app-action-button',
+  // In the world's panel the primary action sticks to the panel's bottom edge (--ab-stick, side-scroller.component.css).
+  host: { '[class.ab-host--primary]': "variant() !== 'secondary'" },
   standalone: true,
   imports: [CostChipComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
