@@ -222,6 +222,24 @@ const ITEM_ICONS_BY_ID: Readonly<Record<string, IconSpec>> = {
   'unique-merchants-scale': I('scale', 'gold', 'sungold'),
   'unique-eclipse-manifest': I('sun', 'obsidian', 'eclipse'),
 
+  // ── Charms (rpg/item.model.ts ALL_CHARMS; minted ids carry the seed id as a prefix, see charmSeedId) ──
+  // Find: luck, worn smooth. Fortune: coins and marks. Insight: thread, ink and glass.
+  'charm-fortune': I('coin', 'copper', 'moss', 'leather'),
+  'charm-seeker': I('pendant', 'silver', 'orbit', 'leather'),
+  'charm-eclipse-eye': I('orb', 'obsidian', 'eclipse', 'gold'),
+  'charm-rabbits-foot': I('drop', 'ivory', 'rose', 'leather'),
+  'charm-void-fragment': I('shard', 'umbral', 'void'),
+  'charm-copper-knot': I('spool', 'copper', 'copper', 'leather'),
+  'charm-tollkeepers-mark': I('crest', 'brass', 'ember'),
+  'charm-counting-stone': I('lump', 'stone', 'gold'),
+  'charm-first-coin': I('coin', 'sungold', 'gold'),
+  'charm-unspent-hoard': I('purse', 'gold', 'sungold'),
+  'charm-students-thread': I('spool', 'paper', 'ember', 'wood'),
+  'charm-margin-note': I('page', 'paper', 'umbral'),
+  'charm-copyists-lens': I('lens', 'copper', 'glass', 'leather'),
+  'charm-verge-compass': I('compass', 'rootwood', 'moss', 'paper'),
+  'charm-whole-account': I('book', 'ivory', 'eclipse', 'gold'),
+
   // ── Consumables ──
   'clarity-elixir': I('potion', 'glass', 'orbit'),
   'ember-elixir': I('potion', 'glass', 'ember'),

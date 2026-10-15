@@ -20,7 +20,7 @@
  */
 import {
   BEDS, ambienceFor, composePhrase, midiToHz, paletteFor, sceneMode,
-  type Bed, type Material, type MusicPalette, type SoundScene, type VoiceKind,
+  type Bed, type Material, type MusicPalette, type SoundScene, type VoiceKind, scoreHour,
 } from './sound-palette';
 import { channelGain, type SoundSettings } from './sound-settings.model';
 
@@ -159,8 +159,9 @@ export class SoundDirector {
     const prev = this.scene;
     this.scene = scene;
     const mode = sceneMode(scene);
-    if (!prev || prev.realm !== scene.realm || sceneMode(prev) !== mode) {
-      this.palette = paletteFor(scene.realm, mode);
+    const hour = scoreHour(scene);
+    if (!prev || prev.realm !== scene.realm || sceneMode(prev) !== mode || scoreHour(prev) !== hour) {
+      this.palette = paletteFor(scene.realm, mode, hour);
       const now = this.ctx.currentTime;
       this.musicTone.frequency.setTargetAtTime(this.palette.bright, now, 2);
       this.musicSend.gain.setTargetAtTime(this.palette.space, now, 2);
@@ -219,6 +220,9 @@ export class SoundDirector {
   }
 
   // ── The score ─────────────────────────────────────────────────────────────
+
+  /** The Slate's skip: the next phrase now instead of after the silence. */
+  skip(): void { if (this.running) this.queuePhrase(.3); }
 
   private queuePhrase(seconds: number): void {
     if (this.musicTimer) clearTimeout(this.musicTimer);

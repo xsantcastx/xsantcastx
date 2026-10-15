@@ -236,3 +236,201 @@
   .sl-tile__name { font-size: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { .sl-tile { transition: none; } }
+
+/* ── The phone face (docs/handoff/world-clock.md) ──────────────────────────
+   The Archive's moon-mirror glass as an in-game phone: a status bar, the world
+   clock big, two widgets, the app grid, page dots, a dock. Pixel style: square
+   corners, crisp icons (image-rendering: pixelated), light from the upper left.
+   Portrait by default (a phone in the hand, centred on desktop); a landscape
+   phone gets two columns. Every target at least 44px. Tokens only. */
+.ph {
+  --glass: var(--violet-ink);
+  position: relative;
+  display: grid;
+  gap: 12px;
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  padding: 10px 12px 12px;
+  border: 2px solid var(--obsidian-0);
+  border-radius: 4px;
+  background:
+    linear-gradient(135deg, transparent 38%, color-mix(in srgb, var(--gold-bright) 6%, transparent) 38% 50%, transparent 50%),
+    radial-gradient(110% 55% at 50% 0%, var(--ph-sky, color-mix(in srgb, var(--violet) 30%, transparent)), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--glass) 92%, var(--obsidian-0)), var(--obsidian-0));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold-deep) 50%, transparent);
+  overflow: hidden;
+}
+.ph[data-sky="dawn"] { --ph-sky: color-mix(in srgb, var(--gold) 34%, transparent); }
+.ph[data-sky="day"] { --ph-sky: color-mix(in srgb, var(--realm-celestial) 38%, transparent); }
+.ph[data-sky="dusk"] { --ph-sky: color-mix(in srgb, var(--ember) 40%, transparent); }
+.ph[data-sky="night"] { --ph-sky: color-mix(in srgb, var(--violet-deep) 45%, transparent); }
+.ph[data-sky="eclipse"] { --ph-sky: color-mix(in srgb, var(--gold-core) 22%, transparent); }
+.ph img { image-rendering: pixelated; }
+
+.ph-status {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 8px;
+  font: 600 10px/1 Orbitron, sans-serif;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--adventure-dialogue);
+}
+.ph-status__time { font-variant-numeric: tabular-nums; color: var(--gold-bright); }
+.ph-status__sky { width: 16px; height: 16px; }
+
+.ph-pages { display: grid; gap: 12px; touch-action: pan-y; min-width: 0; }
+
+/* The lock screen's clock. */
+.ph-lock { display: grid; justify-items: center; gap: 2px; padding: 6px 0 2px; text-align: center; }
+.ph-time {
+  margin: 0;
+  font: 700 64px/1 Orbitron, sans-serif;
+  letter-spacing: .04em;
+  font-variant-numeric: tabular-nums;
+  color: var(--gold-bright);
+  text-shadow: 3px 3px 0 var(--obsidian-0);
+}
+.ph-date { margin: 0; font: 600 12px Orbitron, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--adventure-parchment); }
+.ph-sky { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: var(--adventure-dialogue); font-size: 14px; }
+.ph-sky img { width: 32px; height: 32px; }
+.ph-sky small { opacity: .85; }
+
+/* The widgets: the eclipse counting down, and now playing. */
+.ph-widgets { display: grid; gap: 8px; }
+.ph-widget {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+  min-height: 64px;
+  padding: 10px 12px;
+  border: 2px solid var(--obsidian-0);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--obsidian-0) 72%, transparent);
+  box-shadow: inset 2px 2px 0 color-mix(in srgb, var(--gold-bright) 10%, transparent);
+  color: var(--adventure-parchment);
+  text-align: left;
+}
+button.ph-widget { cursor: pointer; font: inherit; }
+button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, .ph-dock__app:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+.ph-widget > img { width: 40px; height: 40px; }
+.ph-widget__body { display: grid; gap: 2px; min-width: 0; }
+.ph-widget__kicker { font: 600 9px Orbitron, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-dialogue); }
+.ph-widget__big { font: 700 14px/1.2 Orbitron, sans-serif; color: var(--gold-bright); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-widget__small { font-size: 12px; color: var(--adventure-dialogue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-eclipse[data-eclipse-on="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold-deep), 0 0 14px color-mix(in srgb, var(--gold) 45%, transparent); }
+.ph-music__ctl { display: flex; gap: 6px; }
+.ph-round {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border: 2px solid var(--obsidian-0);
+  border-radius: 2px;
+  background: var(--obsidian-2);
+  cursor: pointer;
+}
+.ph-round:disabled { opacity: .45; cursor: default; }
+/* Pixel glyphs: skip (two triangles and a bar), a speaker (struck through when muted). */
+.ph-round::before, .ph-round::after { content: ""; position: absolute; }
+.ph-round[data-music-skip]::before {
+  left: 8px; top: 12px; width: 0; height: 0;
+  border-top: 8px solid transparent; border-bottom: 8px solid transparent; border-left: 9px solid var(--gold-bright);
+  filter: drop-shadow(9px 0 0 var(--gold-bright));
+}
+.ph-round[data-music-skip]::after { left: 28px; top: 12px; width: 3px; height: 16px; background: var(--gold-bright); }
+.ph-round[data-music-mute]::before { left: 8px; top: 15px; width: 7px; height: 10px; background: var(--gold-bright); box-shadow: 5px 0 0 0 var(--gold-bright), 9px -3px 0 0 var(--gold-bright), 9px 3px 0 0 var(--gold-bright); }
+.ph-round[data-music-mute]::after { left: 27px; top: 12px; width: 4px; height: 16px; border-right: 3px solid var(--gold); border-radius: 0 8px 8px 0; }
+.ph-round[aria-pressed="true"]::after { left: 26px; top: 10px; width: 3px; height: 20px; border: 0; border-radius: 0; background: var(--status-danger); transform: rotate(45deg); }
+
+/* The app grid: four across, icon over label, a dot when something waits. */
+.ph-apps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px 6px; }
+.ph-app.sl-tile {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  justify-items: center;
+  align-content: start;
+  row-gap: 6px;
+  min-height: 84px;
+  padding: 6px 2px;
+  border: 0;
+  background: none;
+  text-align: center;
+}
+.ph-app.sl-tile:hover .ph-app__icon { border-color: var(--gold); }
+.ph-app__icon {
+  width: 52px;
+  height: 52px;
+  padding: 2px;
+  border: 2px solid var(--obsidian-0);
+  border-radius: 6px;
+  background: linear-gradient(160deg, var(--obsidian-3), var(--obsidian-1));
+  box-shadow: inset 2px 2px 0 color-mix(in srgb, var(--gold-bright) 14%, transparent), 2px 2px 0 var(--obsidian-0);
+}
+.ph-app.sl-tile--game .ph-app__icon { background: linear-gradient(160deg, color-mix(in srgb, var(--realm-umbral) 55%, var(--obsidian-2)), var(--obsidian-1)); }
+.ph-app .sl-tile__name { grid-row: auto; font: 600 9px/1.2 Orbitron, sans-serif; letter-spacing: .04em; color: var(--adventure-parchment); max-width: 100%; overflow-wrap: anywhere; }
+.ph-app .sl-dot { top: 2px; right: calc(50% - 30px); }
+
+/* Page dots: small marks, 44px targets. */
+.ph-dots { display: flex; justify-content: center; }
+.ph-dot { display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; }
+.ph-dot i { display: block; width: 8px; height: 8px; background: var(--ink-3); box-shadow: 1px 1px 0 var(--obsidian-0); }
+.ph-dot[aria-selected="true"] i { background: var(--gold-bright); }
+
+/* The dock. */
+.ph-dock {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  padding: 6px;
+  border: 2px solid var(--obsidian-0);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--obsidian-0) 60%, transparent);
+}
+.ph-dock__app { position: relative; display: grid; place-items: center; min-height: 52px; padding: 4px; border: 0; background: none; cursor: pointer; }
+.ph-dock__app img { width: 40px; height: 40px; }
+.ph-dock__app .sl-dot { top: 2px; right: calc(50% - 26px); }
+
+/* Page 2: the calendar (a month is two weeks) and Sera's ledger. */
+.ph-cal { display: grid; gap: 8px; padding: 10px 12px; border: 2px solid var(--obsidian-0); background: color-mix(in srgb, var(--obsidian-0) 72%, transparent); }
+.ph-cal__month { margin: 0; font: 700 14px Orbitron, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-bright); }
+.ph-cal__month small { display: block; font: 400 12px var(--font-lore, Georgia, serif); letter-spacing: 0; text-transform: none; color: var(--adventure-dialogue); }
+.ph-cal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
+.ph-cal__dow { font: 600 9px Orbitron, sans-serif; color: var(--adventure-dialogue); text-transform: uppercase; }
+.ph-cal__day { position: relative; padding: 6px 0; font: 600 13px Orbitron, sans-serif; color: var(--adventure-parchment); background: var(--obsidian-1); font-variant-numeric: tabular-nums; }
+.ph-cal__day.is-past { opacity: .5; }
+.ph-cal__day.is-today { background: var(--gold-deep); color: var(--obsidian-0); }
+.ph-cal__day.is-eclipse::after, .ph-cal__mark { content: ""; position: absolute; right: 2px; top: 2px; width: 6px; height: 6px; background: var(--gold-bright); box-shadow: 0 0 0 1px var(--obsidian-0); }
+.ph-cal__key { position: relative; margin: 0; padding-left: 14px; font-size: 12px; color: var(--adventure-dialogue); }
+.ph-cal__key .ph-cal__mark { left: 0; right: auto; top: 4px; }
+.ph-ledger p { margin: 0; }
+
+/* A face's bar carries the time too (the phone's status bar on every screen). */
+.sl-bar__time { margin-left: auto; font: 600 11px Orbitron, sans-serif; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+
+/* The eclipse app. */
+.sl-eclipse__head { grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 12px; }
+.sl-eclipse__head img { width: 56px; height: 56px; image-rendering: pixelated; }
+.sl-eclipse__big { font: 700 16px Orbitron, sans-serif; color: var(--gold-bright) !important; font-variant-numeric: tabular-nums; }
+.sl-eclipse[data-eclipse-on="true"] .sl-eclipse__head { border-color: var(--gold); box-shadow: 0 0 16px color-mix(in srgb, var(--gold) 40%, transparent); }
+
+@media (max-width: 380px) {
+  .ph-time { font-size: 52px; }
+  .ph-app__icon { width: 46px; height: 46px; }
+}
+/* A landscape phone (short and wide): the clock and widgets on the left, the apps and the dock on the right. */
+@media (orientation: landscape) and (max-height: 560px) {
+  .ph { max-width: none; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); column-gap: 16px; }
+  .ph-status { grid-column: 1 / -1; }
+  .ph-pages { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); column-gap: 16px; align-items: start; }
+  .ph-pages > .ph-lock, .ph-pages > .ph-widgets, .ph-pages > .ph-cal { grid-column: 1; }
+  .ph-pages > .ph-apps { grid-column: 2; grid-row: 1 / span 2; }
+  .ph-pages > .ph-ledger { grid-column: 2; grid-row: 1; }
+  .ph-time { font-size: 44px; }
+  .ph-dots { grid-column: 1; }
+  .ph-dock { grid-column: 2; }
+}

@@ -1,3 +1,5 @@
+> **REMOVED 2026-10-15** — the server backend, its proposed rules/indexes and the reference generator were deleted. See `remove-market-backend.md`. Kept as history.
+
 # Player market (Grand Exchange): handoff
 
 Owner decision: **players run the economy**. The Grand Exchange becomes a shared

@@ -23,6 +23,15 @@
 }
 
 :host { display: block; }
+/* Inside the world's panel (which sets --ab-stick: sticky) the one primary action stays at the bottom edge while its card scrolls. */
+:host(.ab-host--primary) {
+  position: var(--ab-stick, static);
+  bottom: 0;
+  z-index: 2;
+  padding-block: var(--ab-stick-pad, 0);
+  background: var(--ab-stick-bg, transparent);
+  box-shadow: var(--ab-stick-shadow, none);
+}
 
 .ab { display: grid; gap: var(--space-2); }
 

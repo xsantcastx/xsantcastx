@@ -131,7 +131,9 @@ test.describe('A long press is a game gesture (phone)', () => {
     await openPlay(page);
     const cdp = await page.context().newCDPSession(page);
 
-    const targets = ['.viewport canvas', '.places-toggle', '.vitals', '.hotbar', '.touch-act button', '.touch-move button', '.title-block'];
+    // The Places toggle goes last: a press that lifts is still a tap on it, and the open Places sheet
+    // (one sheet system for every menu) folds the touch controls away while it is up.
+    const targets = ['.viewport canvas', '.vitals', '.hotbar', '.touch-act button', '.touch-move button', '.title-block', '.places-toggle'];
     let pressed = 0;
     for (const sel of targets) {
       const el = page.locator(sel).first();
@@ -156,6 +158,8 @@ test.describe('A long press is a game gesture (phone)', () => {
       expect(facts.userSelect, `${sel} is selectable`).toBe('none');
     }
     expect(pressed, 'at least the canvas and four controls were held').toBeGreaterThanOrEqual(5);
+    // Fold the Places sheet the last press opened.
+    if (await page.locator('.stage--menu').count()) { await page.keyboard.press('Escape'); await expect(page.locator('.stage--menu')).toHaveCount(0); }
 
     // A drag across HUD text selects nothing either.
     const title = (await page.locator('.title-block').boundingBox())!;
