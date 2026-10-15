@@ -26,6 +26,8 @@ import {
 import { KeeperGarb, garbKey } from './npc-looks';
 
 export const CELL = 48;
+/** Body-frame sheet: 8 x 5 slots of CELL: idle 4, talk 4, run 8, walk 8, attack 2, and one each for jump, fall, hurt, dodge, rest and death (32), with a spare row. */
+const SHEET_COLS = 8, SHEET_ROWS = 5;
 /** The feet: bottom edge, centre column. */
 export const PIVOT_X = 24;
 export const PIVOT_Y = 48;
@@ -348,7 +350,13 @@ export class KeeperPainter {
   readonly key: string;
   private readonly pal: Palette;
   private readonly body: typeof BODY[keyof typeof BODY];
-  private readonly frames = new Map<string, HTMLCanvasElement>();
+  /**
+   * Every baked body frame lives in ONE sheet canvas per painter (slot per
+   * action:frame), never a canvas per frame: a town of walking, talking people
+   * otherwise mints canvases for minutes as new poses come up (play-memory).
+   */
+  private sheet: HTMLCanvasElement | null = null;
+  private readonly slots = new Map<string, number>();
   private readonly weaponKind: WeaponKind | null;
   private weaponSprite: HTMLCanvasElement | null = null;
   private offhand: OffhandSprite | null | undefined;
@@ -382,14 +390,15 @@ export class KeeperPainter {
   draw(c: Ctx, scale: number, state: PaintState): void {
     const action = state.action;
     const frame = frameIndex(action, state.time, state.attackT, !!state.reduced);
-    const body = this.frame(action, frame);
+    const slot = this.frame(action, frame);
+    const sheet = this.sheet!, sx = (slot % SHEET_COLS) * CELL, sy = Math.floor(slot / SHEET_COLS) * CELL;
     const smoothing = c.imageSmoothingEnabled;
     c.imageSmoothingEnabled = false;
     const x = -PIVOT_X * scale, y = -PIVOT_Y * scale, size = CELL * scale;
-    c.drawImage(body, x, y, size, size);
+    c.drawImage(sheet, sx, sy, CELL, CELL, x, y, size, size);
     if (state.rim && state.rim > .01) {
       c.save(); c.shadowBlur = 0; c.globalCompositeOperation = 'lighter'; c.globalAlpha *= Math.min(1, state.rim) * .45;
-      c.drawImage(body, x + scale * .5, y - scale * .5, size, size);
+      c.drawImage(sheet, sx, sy, CELL, CELL, x + scale * .5, y - scale * .5, size, size);
       c.restore();
     }
     if (action !== 'death') {
@@ -470,23 +479,28 @@ export class KeeperPainter {
   }
 
   // ── Cached body frames ──
-  private frame(action: KeeperAction, frame: number): HTMLCanvasElement {
+  /** The sheet slot holding this body frame, baking it on first use. */
+  private frame(action: KeeperAction, frame: number): number {
     const id = `${action}:${frame}`;
-    let el = this.frames.get(id);
-    if (!el) {
-      el = action === 'death' ? this.lying() : outlined(this.paintBody(bodyFrame(action, frame), action));
-      this.frames.set(id, el);
+    let slot = this.slots.get(id);
+    if (slot === undefined) {
+      slot = this.slots.size % (SHEET_COLS * SHEET_ROWS);
+      this.sheet ??= canvas(SHEET_COLS * CELL, SHEET_ROWS * CELL);
+      const c = this.sheet.getContext('2d')!;
+      const sx = (slot % SHEET_COLS) * CELL, sy = Math.floor(slot / SHEET_COLS) * CELL;
+      c.imageSmoothingEnabled = false;
+      c.clearRect(sx, sy, CELL, CELL);
+      if (action === 'death') {
+        const stand = this.frame('idle', 0);
+        c.save();
+        c.beginPath(); c.rect(sx, sy, CELL, CELL); c.clip();
+        c.translate(sx + 44, sy + 41); c.rotate(-Math.PI / 2);
+        c.drawImage(this.sheet, (stand % SHEET_COLS) * CELL, Math.floor(stand / SHEET_COLS) * CELL, CELL, CELL, -PIVOT_X, -PIVOT_Y, CELL, CELL);
+        c.restore();
+      } else c.drawImage(outlined(this.paintBody(bodyFrame(action, frame), action)), sx, sy);
+      this.slots.set(id, slot);
     }
-    return el;
-  }
-  private lying(): HTMLCanvasElement {
-    const stand = this.frame('idle', 0);
-    const out = canvas(CELL, CELL);
-    const c = out.getContext('2d')!;
-    c.imageSmoothingEnabled = false;
-    c.translate(44, 41); c.rotate(-Math.PI / 2);
-    c.drawImage(stand, -PIVOT_X, -PIVOT_Y);
-    return out;
+    return slot;
   }
 
   private paintBody(f: BodyFrame, action: KeeperAction): HTMLCanvasElement {
