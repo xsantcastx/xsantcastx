@@ -3,6 +3,7 @@ import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
 import type { HeldToolKind } from '../../shared/skills/held-tool';
+import type { PetEvent } from './pet-brain';
 /** `down` aims a delve swing (or blast) below the Keeper; `blast` channels the staff. */
 export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge' | 'down' | 'blast';
 export type InteractionTarget = 'ore' | 'forge' | 'beacon' | 'passage';
@@ -112,6 +113,8 @@ export interface EngineState {
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
 /** A world sound (EngineOptions.onSfx). */
+/** A moment Glim notices in the world (EngineOptions.onGlimCue). */
+export type GlimCue = { kind: 'dodge' } | { kind: 'rare'; rarity: string } | { kind: 'missed' };
 export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch' | 'bark' | 'chirp'; node?: string }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
@@ -248,6 +251,17 @@ export interface EngineOptions {
    * comes back (a foe near, a blow on one, or the work stopped). Visual only.
    */
   onHeldTool?: (tool: HeldToolKind | null) => void;
+  /**
+   * The pet following did something (pet-brain.ts PetEvent): a blow landed, a
+   * node gathered, a find dug up, a heal. `find` asks first: return false and
+   * it digs nothing (the day's cap is spent). The host books pet XP and finds.
+   */
+  onPet?: (event: PetEvent) => boolean | void;
+  /**
+   * A moment Glim reacts to (shared/glim/glim-react.ts): the Keeper dodged, a
+   * rare drop's beam went up, Glim flew to a drop left lying. No change detection needed.
+   */
+  onGlimCue?: (cue: GlimCue) => void;
   /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug

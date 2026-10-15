@@ -275,7 +275,7 @@ describe('CabinetsService (through the gateway)', () => {
 });
 
 describe('Lost Cabinets: what the pets get', () => {
-  const rec = (over: Partial<PetRecord> = {}): PetRecord => ({ got: 1, hatched: 1, name: 'Hoot', nameAt: 1, love: 0, feedDay: '', feeds: 0, hat: false, hatAt: 0, ...over });
+  const rec = (over: Partial<PetRecord> = {}): PetRecord => ({ got: 1, hatched: 1, name: 'Hoot', nameAt: 1, love: 0, feedDay: '', feeds: 0, hat: false, hatAt: 0, xp: 0, findDay: '', scouts: 0, trinkets: 0, ...over });
   it('every pet eats the Courier\'s Honeycomb like its favourite', () => {
     for (const def of PETS) {
       const r = feedResult(def, rec(), PET_TREAT, '2026-10-15');
