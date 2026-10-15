@@ -1825,6 +1825,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
   }
   .stage--delve { --ctx-left: 206px; --move-n: 3; --tb-n: 7; }
   .stage--heights { --move-n: 3; --tb-n: 6; }
+  /* One World: a world reports its climb state on every cell, and its act cluster is the Delve's (blast, use): seven. */
+  .stage--delve.stage--heights { --tb-n: 7; }
   .stage--guide { --guide-h: 54px; }
   .stage:not(.hearth-shut) { --dock-h: 176px; }
 
@@ -2905,3 +2907,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 /* Without JavaScript (and to a crawler) /play is this one intro; see the template header. */
 .noscript-intro { position: relative; z-index: 1; max-width: 40rem; margin: 2rem auto; padding: 0 16px; color: var(--adventure-hud-text); line-height: 1.5; }
+
+/* One World (P2): in the Homestead the Gold list stands where the build hotbar does; while the list is unfolded the
+   hotbar steps aside (fold the list to build on the plot). */
+.stage--column .hotbar { display: none; }

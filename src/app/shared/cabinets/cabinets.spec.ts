@@ -53,7 +53,8 @@ describe('Lost Cabinets: the table', () => {
   it('spread across towns, hunts, the High Roads, the Delve, the Underhearth and the four realm Delves', () => {
     const places = new Set(CABINETS.map(c => c.place));
     for (const p of ['town', 'hunt', 'heights', 'delve', 'underhearth', 'rift'] as const) expect(places.has(p)).withContext(p).toBeTrue();
-    for (const area of ['infernal', 'luminous', 'umbral', 'celestial', 'verdant', 'ember-delve', 'umbral-delve', 'verdant-delve', 'luminous-delve', 'celestial-delve']) {
+    // One World (P2): the Seamworks' and the Quarry's stand in the Ember world (area ember-delve), on its surface.
+    for (const area of ['luminous', 'umbral', 'celestial', 'verdant', 'ember-delve', 'umbral-delve', 'verdant-delve', 'luminous-delve', 'celestial-delve']) {
       expect(cabinetsIn(area).length).withContext(area).toBeGreaterThan(0);
     }
     // The five deep ones wait on a clue; nothing on the surface does.
@@ -123,13 +124,15 @@ describe('Lost Cabinets: the Scan', () => {
   });
 
   it('reads the nearest cabinet in this area only; quiet where nothing can be heard', () => {
+    // One World (P2): the Seamworks cabinet is up in the Material Vendor's loft, in the Ember world's area.
     const c = cabinetDef('cab-seamworks')!;
-    // Up on its ledge it burns; on the floor under it only hot.
-    expect(scanReading('infernal', at(c.x, c.y), new Set()).warmth).toBe('burning');
-    expect(scanReading('infernal', at(c.x), new Set()).warmth).toBe('hot');
-    expect(scanReading('infernal', at(c.x, c.y), new Set()).id).toBe(c.id);
-    expect(scanReading('infernal', at(c.x - 3000), new Set()).warmth).toBe('cold');
-    expect(scanReading('infernal', at(c.x), new Set([c.id])).warmth).toBe('none');
+    expect(c.area).toBe('ember-delve');
+    expect(scanReading('ember-delve', at(c.x, c.y), new Set()).warmth).toBe('burning');
+    expect(scanReading('ember-delve', at(c.x + 400), new Set()).warmth).toBe('hot');
+    expect(scanReading('ember-delve', at(c.x, c.y), new Set()).id).toBe(c.id);
+    expect(scanReading('ember-delve', at(c.x - 3000), new Set()).warmth).toBe('cold');
+    // Opened, the glass turns to the next cabinet it can hear here (the forge-mines, deep under the street).
+    expect(scanReading('ember-delve', at(c.x), new Set([c.id])).id).toBe('cab-forge-mines');
     expect(scanReading('homestead', at(500), new Set()).warmth).toBe('none');
     // Height counts: the Orrery's tree cabinet reads hotter as you climb under it.
     const tree = cabinetDef('cab-orrery-road')!;
@@ -163,9 +166,9 @@ describe('Lost Cabinets: the Scan', () => {
 
   it('the Curator\'s Eye points the way', () => {
     const c = cabinetDef('cab-seamworks')!;
-    expect(eyeDirection('infernal', at(c.x - 500), new Set())).toBe('east');
-    expect(eyeDirection('infernal', at(c.x + 500), new Set())).toBe('west');
-    expect(eyeDirection('infernal', at(c.x), new Set([c.id]))).toBeNull();
+    expect(eyeDirection('ember-delve', at(c.x - 500), new Set())).toBe('east');
+    expect(eyeDirection('ember-delve', at(c.x + 500), new Set())).toBe('west');
+    expect(eyeDirection('luminous', at(500), new Set(CABINETS.map(k => k.id)))).toBeNull();
     expect(eyeDirection('orrery-rings', at(940, FLOOR), new Set())).toBe('up');
   });
 

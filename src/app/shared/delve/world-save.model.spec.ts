@@ -125,6 +125,24 @@ describe('save v3 (One World): v2 → v3 migration', () => {
     expect(grants.length).toBe(2);
   });
 
+  it('migrates a heavy save (the flip moves every old save): 60 claims, 40 chests, 120 stacks, once', () => {
+    const chests: Record<string, unknown> = {};
+    for (let n = 0; n < 40; n++) chests[`ember-delve:${n.toString(36)}`] = { layout: '120x56:v2:5', born: 1000 + n, n: 3, slots: { 'cinder-ore': 20 + n, glowcap: 3, 'ember-residue': 1 } };
+    const claimed = Array.from({ length: 60 }, (_, n) => `claim-${n}`);
+    localStorage.setItem(DELVE_KEY, JSON.stringify({ version: 2, seed: 5, createdAt: 1, areas: { 'ember-delve': { layout: '120x56:v2:5', cells: 'k3.0,k4.0' } }, claimed, chests }));
+    const { delve, migration } = boot();
+    const result = migration.run()!;
+    expect(result.claims).toBe(60);
+    expect(grants.length).toBe(120);
+    expect(result.stacks).toBe(40 * 24 + (39 * 40) / 2);
+    for (const id of claimed) expect(delve.isClaimed(id)).toBeTrue();
+    expect(new Set(grants.map(g => g.id)).size).toBe(120);
+    // A reload pays nothing again.
+    const again = boot();
+    expect(again.migration.run()).toBeNull();
+    expect(grants.length).toBe(120);
+  });
+
   it('is on by default (the flip), and a stale P1 "off" preview key is ignored and removed', () => {
     localStorage.setItem(ONE_WORLD_KEY, '0');
     const { delve } = boot();

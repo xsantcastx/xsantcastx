@@ -135,3 +135,28 @@ describe('the guaranteed first bench craft', () => {
     expect(torch.skill).toBeUndefined();
   });
 });
+
+describe('first-session goals in One World (P2: the Homestead and the Quarry are regions of the Ember world)', () => {
+  const WORLD: FirstGoalFacts = { ...FRESH, world: { mawX: 4080 } };
+  it('walks to the plot\'s Forge for the first building, from the street or inside the plot', () => {
+    expect(firstGoal(WORLD)?.target).toEqual({ station: 'hs-forge' });
+    const home = firstGoal({ ...WORLD, areaId: 'homestead' })!;
+    expect(home.key).toBe('play.goal.buy.home');
+    expect(home.target).toEqual({ station: 'hs-forge' });
+  });
+  it('never says "head back" from the plot or the Quarry: the next goal is a walk along the same street', () => {
+    const craft = firstGoal({ ...WORLD, bought: true, areaId: 'homestead' })!;
+    expect(craft.key).toBe('play.goal.craft.mine');
+    expect(craft.target).toEqual({ station: 'ore' });
+    expect(firstGoal({ ...WORLD, bought: true, ...ARMED, areaId: 'ember-quarry' })!.key).toBe('play.goal.hunt.here');
+    expect(firstGoal({ ...WORLD, bought: true, ...ARMED, hunted: true, areaId: 'ember-quarry' })!.key).toBe('play.goal.delve.world');
+    expect(firstGoal({ ...WORLD, bought: true, ...ARMED, areaId: 'ember-wilds' })!.key).toBe('play.goal.hunt.town');
+  });
+  it('sends the first dig beside the mine head (its ledge is bedrock), and digs once underground', () => {
+    const dig = firstGoal({ ...WORLD, bought: true, ...ARMED, hunted: true })!;
+    expect(dig.key).toBe('play.goal.delve.world');
+    expect(dig.target).toEqual({ x: 260 });
+    expect(firstGoal({ ...WORLD, bought: true, ...ARMED, hunted: true, areaId: 'ember-delve' })!.key).toBe('play.goal.delve.dig');
+    expect(FIRST_GOALS_I18N['play.goal.delve.world'].es).toBeTruthy();
+  });
+});
