@@ -24,7 +24,7 @@ export const GEAR_SLOTS: readonly GearSlot[] = ['head', 'chest', 'hands', 'legs'
 export type WeaponKind =
   | 'sword' | 'greatsword' | 'dagger' | 'axe' | 'pickaxe' | 'hammer' | 'mace'
   | 'staff' | 'wand' | 'bow' | 'crossbow' | 'spear' | 'halberd' | 'sickle' | 'tongs';
-export type OffhandKind = 'shield' | 'tome' | 'orb' | 'lantern' | 'scroll' | WeaponKind;
+export type OffhandKind = 'shield' | 'tome' | 'orb' | 'lantern' | 'scroll' | 'cards' | 'scales' | WeaponKind;
 export type HeadKind = 'helm' | 'hood' | 'crown' | 'circlet';
 export type ChestKind = 'plate' | 'coat' | 'robe' | 'mantle';
 export type HandsKind = 'gauntlet' | 'wrap';
@@ -42,6 +42,13 @@ export interface GearPiece {
   kind: GearKind;
   style: GearStyle;
   rarity: GearRarity;
+  /**
+   * A fixed cloth/metal colour instead of the realm style's (town NPCs wear
+   * their own coats: npc-looks.ts). Always a hex from the realm ramps in
+   * docs/art/style-guide.md §5. Players' worn items never set it.
+   */
+  color?: string;
+  accent?: string;
 }
 export type KeeperGear = Partial<Record<GearSlot, GearPiece>>;
 
@@ -141,7 +148,7 @@ export function gearPiece(slot: GearSlot, text: string, style: unknown, rarity: 
 /** A stable key for a gear set (the painter rebuilds its layers when it changes). */
 export function gearKey(gear: KeeperGear | null | undefined): string {
   if (!gear) return '';
-  return GEAR_SLOTS.map(slot => { const p = gear[slot]; return p ? `${slot}:${p.kind}:${p.style}:${p.rarity}` : ''; }).filter(Boolean).join('|');
+  return GEAR_SLOTS.map(slot => { const p = gear[slot]; return p ? `${slot}:${p.kind}:${p.style}:${p.rarity}${p.color ? `:${p.color}${p.accent ?? ''}` : ''}` : ''; }).filter(Boolean).join('|');
 }
 
 // ── Held weapons: sprite size, grip and swing ──────────────────────────────
@@ -180,7 +187,8 @@ export const ARM_LENGTH = 8;
 /** The arm's angle with no weapon in hand (hanging, a touch forward). */
 export const EMPTY_ARM = 1.45;
 
-export type KeeperAction = 'idle' | 'run' | 'jump' | 'fall' | 'attack' | 'hurt' | 'dodge' | 'rest' | 'death';
+/** `walk` and `talk` are the town folk's (npc-looks.ts); the engine's own Keeper never shows them. */
+export type KeeperAction = 'idle' | 'run' | 'jump' | 'fall' | 'attack' | 'hurt' | 'dodge' | 'rest' | 'death' | 'walk' | 'talk';
 export function keeperAction(shown: string | undefined, fallen = false): KeeperAction {
   if (fallen) return 'death';
   switch (shown) {
@@ -212,6 +220,15 @@ export function holdPose(kind: WeaponKind | null, action: KeeperAction, phase: n
     case 'run': {
       const s = Math.sin(phase);
       out.arm = idleArm + .4 * s; out.weapon = idle + .25 * s; break;
+    }
+    case 'walk': {
+      const s = Math.sin(phase);
+      out.arm = idleArm + .22 * s; out.weapon = idle + .12 * s; break;
+    }
+    case 'talk': {
+      // A speaking hand: raised a little and turning with the words (`phase` is time).
+      const s = Math.sin(phase);
+      out.arm = idleArm - .55 + .22 * s; out.weapon = idle - .2 + .1 * s; break;
     }
     case 'jump': out.arm = idleArm - 1.1; out.weapon = idle - .3; break;
     case 'fall': out.arm = idleArm - 1.6; out.weapon = idle - .45; break;

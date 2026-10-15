@@ -1285,3 +1285,16 @@ a Keeper who never looked into it sees "The Glass of Becoming remembers a face y
 never chose." Two of the skin tones are not human ones: the Umbral lilac and the
 Verdant sap the realms leave on Keepers who have walked them long. Other Keepers
 seen at the Hearth each have their own face, read off the glass by their name.
+
+## How the towns' people look (shipped — owner reviews in play)
+
+One art style (`docs/handoff/one-art-style.md`, `shared/keeper-look/npc-looks.ts`). The looks follow the cast's
+sprite briefs (`docs/art-commissions/world-sprites/03-npcs.md`) and add only what their own lines already say:
+Kael wears cracked iron plate under a leather forge apron, his beard grey, one eye still burning and his left
+hand gone; Orla Stave keeps her grandmother's tally ledger under her arm and a clerk's sash; Edrin Kade carries a
+sack of scrap over his shoulder and brass weighing tongs (Orla got the stave, Edrin got the scales); Mara Voss
+works in an apron with her braid tied back; Aureth stands with dawn-glass shards rising behind her head, never a
+halo; Verrin's hood holds a mirror where a face should be; the Archivist wears a brass loupe and a book that stays
+open beside him; Lune Coyne shuffles violet cards; Tomas Rill carries a Court lantern; Sera Quill holds a brass
+Meridian staff; Corran Holt is grey now and leans on his halberd for the knee; Hollis Fenn walks the high roads
+with a staff and a wide hat.
