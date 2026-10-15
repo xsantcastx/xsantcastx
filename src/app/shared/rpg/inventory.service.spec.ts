@@ -192,7 +192,7 @@ describe('InventoryService C3 adapter', () => {
     expect(loaded.snapshot.equipped['charm1']?.id).toBe('tagged');
   });
 
-  it('refuses explorer-held items and the still-empty feet slot', () => {
+  it('refuses explorer-held items, and boots go to the feet well while a helm does not', () => {
     const loaned = {
       id: 'loaned', name: 'Loaned', type: 'artifact' as const, rarity: 'rare' as const,
       stats: { goldPerSec: 1 }, sellValue: 9, equipped: false, explorerId: 'scout-1',
@@ -201,7 +201,18 @@ describe('InventoryService C3 adapter', () => {
     expect(inventory.add(loaned)?.id).toBe('loaned');
     expect(inventory.equip('loaned', 'chest')).toBe(false);
     expect(inventory.itemById('loaned')?.explorerId).toBe('scout-1');
-    expect(inventory.equip('seed-helm', 'feet')).toBe(false);
+    const striders = {
+      id: 'striders', name: 'Astral Striders', definitionId: 'astral-striders',
+      type: 'artifact' as const, rarity: 'rare' as const,
+      stats: { magicFind: 1 }, sellValue: 20, equipped: false,
+      foundAt: '2026-08-05T00:00:00.000Z', soulbound: false,
+    };
+    const crown = { ...striders, id: 'crown', name: 'Astral Helm', definitionId: 'astral-helm' };
+    expect(inventory.add(striders)?.id).toBe('striders');
+    expect(inventory.add(crown)?.id).toBe('crown');
+    expect(inventory.equip('crown', 'feet')).toBe(false);
+    expect(inventory.equip('striders', 'feet')).toBe(true);
+    expect(inventory.snapshot.equipped['feet']?.id).toBe('striders');
     expect(inventory.equip('seed-helm', 'hands')).toBe(true);
     expect(inventory.snapshot.equipped['hands']?.id).toBe('seed-helm');
   });
