@@ -47,7 +47,10 @@ test.describe('rune finds stack instead of filling the satchel', () => {
     // No Sigil anything; the only instances are the helm and any charm a find turned up.
     expect(ledger.records.filter(r => r.type === 'rune')).toHaveLength(0);
     expect(ledger.records.some(r => r.name === 'Ashen Helm')).toBe(true);
-    expect(ledger.records.filter(r => r.kind === 'instance').length).toBeLessThanOrEqual(4);
+    // The Rune Forge stands in the world now (game-only shell), and the world hands a Keeper the starter tool kit.
+    const STARTER = /^Worn (Pickaxe|Axe|Sickle)$/;
+    const instances = ledger.records.filter(r => r.kind === 'instance' && !STARTER.test(r.name ?? ''));
+    expect(instances.length, JSON.stringify(instances.map(r => r.name))).toBeLessThanOrEqual(4);
     // What was found is in the Forge ledger, which the Forge's library reads.
     type Runes = { runes: Record<string, number> };
     const held = Object.values((await blob<Runes>(page, 'godforge-runes'))!.runes).reduce((a, b) => a + b, 0);

@@ -41,9 +41,6 @@ import {
 import { itemDefinitionById } from '../rpg/item-definition';
 import { runeById, type RuneTier } from '../rune-forge/rune.model';
 
-/** What a socketed item carries. `null` is an empty well. */
-export type SocketContents = readonly (string | null)[];
-
 /** Which ladder an item's socket count is read off. */
 export type SocketFrame = 'weapon' | 'armor' | 'none';
 

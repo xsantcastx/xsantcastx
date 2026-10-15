@@ -8,13 +8,6 @@ declare global {
   }
 }
 
-export interface ConsentSettings {
-  ad_storage: 'granted' | 'denied';
-  analytics_storage: 'granted' | 'denied';
-  functionality_storage: 'granted' | 'denied';
-  security_storage: 'granted' | 'denied';
-}
-
 @Injectable({
   providedIn: 'root'
 })

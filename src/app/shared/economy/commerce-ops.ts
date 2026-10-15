@@ -296,10 +296,6 @@ export function commitCommerceOp(
   };
 }
 
-export function rejectCommerceOp(op: CommerceOperation, economicOpId: string | null): CommerceOperation {
-  return { ...op, status: 'rejected', economicOpId, grantId: null };
-}
-
 export function rollbackCommerceOp(op: CommerceOperation): CommerceOperation {
   return { ...op, status: 'rolled-back', economicOpId: null, grantId: null };
 }

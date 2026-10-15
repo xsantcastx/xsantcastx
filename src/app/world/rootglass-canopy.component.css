@@ -17,23 +17,6 @@
   color: var(--ink-0);
 }
 
-.rc__crumb {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
-  font-size: 0.85rem;
-  color: rgba(232, 236, 241, 0.62);
-  margin-bottom: 1.4rem;
-}
-
-.rc__crumb a, .rc__back {
-  color: inherit;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-}
-
 .rc__eyebrow {
   margin: 0 0 0.45rem;
   font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
@@ -246,8 +229,6 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   font-size: 0.85rem;
   color: rgba(232, 236, 241, 0.7);
 }
-
-.rc__back { margin-top: 1.4rem; }
 
 .rc a:focus-visible,
 .rc__gather:focus-visible,

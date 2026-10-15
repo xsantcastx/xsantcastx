@@ -313,19 +313,3 @@ export function mintFromArchetype(
     timeDeployed: 0,
   };
 }
-
-/**
- * The explorer every visitor starts with.
- *
- * Common, because the roster ladder has to have a bottom the player can feel
- * themselves climbing off. A starter Rare would make the first three drops feel
- * like downgrades.
- */
-export function starterExplorer(rng: () => number = Math.random): RosterExplorer {
-  return mintExplorer('common', rng, new Date().toISOString());
-}
-
-/** How many equipment slots this explorer's tier grants, before their level. */
-export function baseEquipSlots(rarity: ExplorerRarity): number {
-  return explorerTier(rarity).maxEquipSlots;
-}

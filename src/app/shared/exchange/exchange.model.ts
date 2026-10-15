@@ -313,10 +313,6 @@ export const MARKET_EVENTS: readonly MarketEventDefinition[] = [
 
 const EVENTS_BY_ID = new Map(MARKET_EVENTS.map(e => [e.id, e]));
 
-export function eventById(id: string): MarketEventDefinition | undefined {
-  return EVENTS_BY_ID.get(id);
-}
-
 /** True when this event touches this good. */
 export function eventTouches(event: MarketEventDefinition, good: ExchangeGood): boolean {
   const s = event.scope;
@@ -787,9 +783,6 @@ const GOODS_BY_ID = new Map(EXCHANGE_CATALOGUE.map(g => [g.id, g]));
 export function goodById(id: string): ExchangeGood | undefined {
   return GOODS_BY_ID.get(id);
 }
-
-export const GOOD_CATEGORIES: readonly GoodCategory[] =
-  ['ore', 'reagent', 'essence', 'weapon', 'armour', 'trinket'];
 
 export const CATEGORY_LABELS: Readonly<Record<GoodCategory, string>> = {
   ore: 'Ore', reagent: 'Reagents', essence: 'Essence',

@@ -11,8 +11,6 @@ export const TOOLS_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'toolStat.swing':           { en: '{{s}} s per swing', es: '{{s}} s por golpe' },
   'toolStat.powerSplit':      { en: 'Power ×{{n}} (tool ×{{tool}} · {{skill}} {{level}} +{{pct}}%)', es: 'Poder ×{{n}} (herramienta ×{{tool}} · {{skill}} {{level}} +{{pct}}%)' },
   'toolStat.swingSplit':      { en: 'Swing {{s}} s (tool {{tool}} · {{skill}} {{level}} −{{pct}}%)', es: 'Golpe {{s}} s (herramienta {{tool}} · {{skill}} {{level}} −{{pct}}%)' },
-  'toolStat.levelUp':         { en: '{{skill}} {{level}}: swings {{swing}}% faster, hits {{power}}% harder', es: '{{skill}} {{level}}: golpes {{swing}}% mas rapidos, {{power}}% mas fuertes' },
-  'toolStat.levelUpPower':    { en: '{{skill}} {{level}}: your staff hits {{power}}% harder', es: '{{skill}} {{level}}: tu baculo golpea {{power}}% mas fuerte' },
   'toolStat.swingStarter':    { en: '{{s}} s per swing (slowest)', es: '{{s}} s por golpe (el mas lento)' },
   'toolStat.worksAs':         { en: 'Works as tier {{tier}} until {{skill}} {{level}}', es: 'Funciona como nivel {{tier}} hasta {{skill}} {{level}}' },
   'toolStat.row':             { en: '{{name}} · tier {{tier}}', es: '{{name}} · nivel {{tier}}' },

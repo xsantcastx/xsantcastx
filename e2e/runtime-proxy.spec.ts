@@ -15,15 +15,6 @@ test.describe('runtime proxy / 375px', () => {
     reducedMotion: 'no-preference',
   });
 
-  // Tool-card stagger lived on the retired /tools catalogue. World now lists
-  // realm stations without tool cards, so this asserts the five realms render.
-  test('world lists the five realm stations', async ({ page }) => {
-    await page.goto('/world');
-    await page.waitForSelector('.gf-station', { timeout: 10000 });
-    const count = await page.locator('.gf-station').count();
-    expect(count).toBe(5);
-  });
-
   // (b) The CSS planet's animation checks used to live here — two tests on
   // `.cosmic-planet` and its surface/cloud/sphere layers.
   //
@@ -49,7 +40,7 @@ test.describe('runtime proxy / 375px', () => {
     // synchronisation point for a font assertion, and it resolves only once
     // every pending font load has settled. networkidle was never what made this
     // test correct.
-    await page.goto('/world', { waitUntil: 'load' });
+    await page.goto('/play', { waitUntil: 'load' });
 
     const orbitronReady = await page.evaluate(async () => {
       await document.fonts.ready;

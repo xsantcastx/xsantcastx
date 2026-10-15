@@ -21,7 +21,9 @@ export async function seed(page: Page, blobs: Blobs = {}): Promise<void> {
     const keepOnboarding = localStorage.getItem('eclipse-onboarding');
     localStorage.clear();
     sessionStorage.clear();
-    if (keepOnboarding) localStorage.setItem('eclipse-onboarding', keepOnboarding);
+    // A seeded tester has been here before: without a record a fresh browser is offered "Make your
+    // Keeper" on arrival (game-only shell), which would open over the spec. play-first-session removes it.
+    localStorage.setItem('eclipse-onboarding', keepOnboarding ?? JSON.stringify({ done: true, lastStep: 5, at: '2026-01-01T00:00:00.000Z' }));
     localStorage.setItem('xsantcastx_consent', 'denied');
     sessionStorage.setItem('visit-counted', '1');
     for (const [key, value] of Object.entries(entries)) {

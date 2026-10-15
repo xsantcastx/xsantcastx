@@ -42,11 +42,11 @@ describe('Codex data integrity', () => {
   });
 
   it('gives every secret a way to actually be discovered', () => {
-    // A secret with no eggId, no detector and no route can never flip to found.
+    // A secret with no eggId and no route can never flip to found.
     // It would sit on the page as a permanent tease that is not tracking
     // anything — the one thing the Secrets tab promises it does not do.
     for (const secret of SECRETS) {
-      expect(!!(secret.eggId || secret.detector || secret.route))
+      expect(!!(secret.eggId || secret.route))
         .withContext(`secret "${secret.id}" is untrackable`)
         .toBe(true);
     }

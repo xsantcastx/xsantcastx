@@ -674,6 +674,3 @@ export function pixelIcon(id: string): ArtEntry | null {
   cache.set(id, entry);
   return entry;
 }
-
-/** Every id that has a procedural icon (tests and the art brief read it). */
-export const PIXEL_ICON_IDS: readonly string[] = [...Object.keys(ICONS), ...Object.keys(LEDGER)];

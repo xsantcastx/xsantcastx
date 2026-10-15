@@ -549,7 +549,7 @@ test('every built town has a waystone, and every material a zone drops is catalo
   }
   const umbral = world.TOWNS.umbral;
   assert.ok(umbral, 'the Umbral town is built');
-  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['eclipse-ascent', 'exchange', 'gambler', 'reels', 'rune-drop', 'seam-sweeper']);
+  assert.deepEqual(umbral.stations.filter(s => s.kind === 'panel').map(s => s.panel).sort(), ['eclipse-ascent', 'gambler', 'reels', 'rune-drop', 'seam-sweeper']);
   assert.equal(umbral.hunts[0].monsters[0].creature, 'mirror-substitute', 'Umbral hunts its canon creature');
 });
 
@@ -653,14 +653,14 @@ test('drop tables are data: chances roll on the engine RNG and materials carry t
   engine.destroy();
 });
 
-test('the Celestial town: Codex and Leaderboards stand in Meridian Orrery, and the Rings drop real Celestial materials', () => {
+test('the Celestial town: the Codex stands in Meridian Orrery, and the Rings drop real Celestial materials', () => {
   const town = world.TOWNS.celestial;
   assert.ok(town, 'Meridian Orrery is built');
   assert.equal(town.name, 'Meridian Orrery');
   assert.equal(town.background, 'bg-celestial');
   const byId = Object.fromEntries(town.stations.map(station => [station.id, station]));
   assert.equal(byId.codex.panel, 'codex');
-  assert.equal(byId.leaderboards.panel, 'leaderboards');
+  assert.equal(byId.leaderboards, undefined, 'the Leaderboards station closed with the game-only shell (docs/handoff/page-audit.md)');
   assert.equal(byId.waystone.kind, 'waystone');
   assert.equal(town.monsters.length, 0, 'the terrace is quiet ground');
   const rings = world.areaOf(town, byId.passage.to);
@@ -3477,8 +3477,8 @@ test('tool level: the card and stats lines show the split above level 1, the pla
   const en = (key, vars) => TOOLS_I18N[key].en.replace(/\{\{(\w+)\}\}/g, (_, k) => String(vars?.[k]));
   assert.deepEqual(skillTools.toolPaceLines(at42, en), ['Power ×1.81 (tool ×1.5 · Mining 42 +21%)', 'Swing 0.36 s (tool 0.40 · Mining 42 −10%)']);
   assert.deepEqual({ ...toolLevel.levelGain(41, 42) }, { swing: '0.3', power: '0.5' });
-  assert.equal(en('toolStat.levelUp', { skill: 'Mining', level: 42, ...toolLevel.levelGain(41, 42) }), 'Mining 42: swings 0.3% faster, hits 0.5% harder');
-  for (const key of ['toolStat.powerSplit', 'toolStat.swingSplit', 'toolStat.levelUp', 'toolStat.levelUpPower']) assert.ok(TOOLS_I18N[key].es, `${key} ES`);
+  // (The level-up line that read levelGain lived on the site's level-up banner, deleted with the game-only shell.)
+  for (const key of ['toolStat.powerSplit', 'toolStat.swingSplit']) assert.ok(TOOLS_I18N[key].es, `${key} ES`);
 });
 
 // ── Uncapped levels, Tibia-style (docs/handoff/uncapped-levels.md) ──

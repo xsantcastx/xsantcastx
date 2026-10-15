@@ -142,8 +142,6 @@ export const PETS: readonly PetDef[] = [
     lore: 'The Hollow Sun was hollow because it was keeping something warm. What hatches is a very small sun that has decided you are its sky.',
   },
 ];
-
-export const PET_IDS: readonly PetId[] = PETS.map(p => p.id);
 export const petDef = (id: string): PetDef | undefined => PETS.find(p => p.id === id);
 
 // ── The bond ────────────────────────────────────────────────────────────────

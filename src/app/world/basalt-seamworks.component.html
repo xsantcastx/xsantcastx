@@ -1,14 +1,6 @@
 <app-art-scene art="bg-basalt-seamworks" focus="center 58%" />
 
 <article class="sw" [attr.data-state]="panelState()">
-  <nav class="sw__crumb" [attr.aria-label]="t('world.crumb.label')">
-    <a routerLink="/world">{{ t('world.crumb.world') }}</a>
-    <span aria-hidden="true">/</span>
-    <a [routerLink]="infernalHref">{{ t('world.atlas.label.infernal') }}</a>
-    <span aria-hidden="true">/</span>
-    <span aria-current="page">{{ t('work.location.seamworks') }}</span>
-  </nav>
-
   <header class="sw__hero">
     <p class="sw__eyebrow">{{ t('seamworks.eyebrow') }}</p>
     <h1>{{ t('work.location.seamworks') }}</h1>
@@ -223,5 +215,4 @@
   </section>
 
   <p class="sw__note">{{ t('seamworks.note') }}</p>
-  <a class="sw__back" [routerLink]="infernalHref">{{ t('seamworks.back') }}</a>
 </article>

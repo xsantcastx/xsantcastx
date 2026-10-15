@@ -41,7 +41,8 @@ async function firstVisit(page: Page): Promise<void> {
     const keepOnboarding = localStorage.getItem('eclipse-onboarding');
     localStorage.clear();
     sessionStorage.clear();
-    if (keepOnboarding) localStorage.setItem('eclipse-onboarding', keepOnboarding);
+    // The tutorial stays seen, so the first-arrival "Make your Keeper" offer does not open over the bar.
+    localStorage.setItem('eclipse-onboarding', keepOnboarding ?? JSON.stringify({ done: true, lastStep: 5, at: '2026-01-01T00:00:00.000Z' }));
     sessionStorage.setItem('visit-counted', '1');
   });
 }

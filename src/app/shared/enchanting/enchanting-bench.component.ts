@@ -89,7 +89,6 @@ import {
   unsocketCost,
 } from './socket.model';
 
-import { RelatedPagesComponent } from '../seo/related-pages.component';
 import { RuneRitualComponent } from '../minigames/rune-ritual.component';
 import { MINIGAMES_I18N } from '../minigames/minigames.i18n';
 import { circleTierRules } from '../minigames/home-forge.model';
@@ -172,7 +171,7 @@ const BREW_COPY: Readonly<Record<BrewReject, string>> = {
 @Component({
   selector: 'app-enchanting-bench',
   standalone: true,
-  imports: [RelatedPagesComponent, ForgeFloorComponent, RuneRitualComponent, CommonModule, RouterLink, ...STATION_UI],
+  imports: [ForgeFloorComponent, RuneRitualComponent, CommonModule, RouterLink, ...STATION_UI],
   templateUrl: './enchanting-bench.component.html',
   styleUrls: ['./enchanting-bench.component.css'],
   changeDetection: ChangeDetectionStrategy.OnPush,
