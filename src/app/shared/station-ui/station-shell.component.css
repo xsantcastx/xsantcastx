@@ -73,3 +73,25 @@
   .ss { padding: var(--space-2) var(--space-2) var(--space-6); gap: var(--space-2); }
   .ss__hero { padding: var(--space-2); gap: var(--space-2); }
 }
+
+/* ── In the world (docs/handoff/frameless-menus.md): no box, one slim row, the sentence behind "?" ───── */
+:host-context(.place) .ss { padding: 0; gap: var(--space-2); max-width: none; }
+:host-context(.place) .ss__head { align-items: center; justify-content: flex-end; min-height: 0; }
+:host-context(.place) .ss__copy { display: none; }
+:host-context(.place) .ss__hero { padding: 0; gap: var(--space-2); border: 0; background: none; box-shadow: none; }
+:host-context(.place) .ss__purpose { display: none; }
+/* The help card: a dim over the menu, the words on a plain card with a pixel edge (contained in .place). */
+:host-context(.place) .ss__more--help { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 12px; background: color-mix(in srgb, var(--obsidian-0) 78%, transparent); }
+:host-context(.place) .ss__more--help[hidden] { display: none; }
+:host-context(.place) .ss__more--help > * { width: min(460px, 100%); }
+:host-context(.place) .ss__helpbar { display: flex; justify-content: flex-end; }
+:host-context(.place) .ss__more--help .ss__details { max-height: calc(100% - 56px); overflow: auto; background: var(--obsidian-2);
+  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
+:host-context(.place) .ss__more--help ::ng-deep .dd { border: 0; background: none; }
+:host-context(.place) .ss__more--help ::ng-deep .dd__sum { display: none; }
+:host-context(.place) .ss__more--help ::ng-deep .dd__body { padding: 12px; }
+
+/* A phone held sideways: the wallet and the "?" ride the title bar (top-right, left of the x); the rest keeps the height. */
+@media (max-height: 520px) and (orientation: landscape) {
+  :host-context(.place) .ss__head { position: absolute; top: 0; right: 56px; z-index: 2; gap: 4px; height: 44px; }
+}

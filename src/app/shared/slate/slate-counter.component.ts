@@ -35,7 +35,7 @@ import { slateUpgradeReady, type SlateOffer } from './slate.model';
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (shown) {
-      <section class="sc" [attr.data-slate-counter]="who()" [attr.aria-label]="t(who() === 'kael' ? 'slate.kael.title' : 'slate.offer.title')">
+      <section class="sc" [attr.data-slate-counter]="who()" [attr.aria-label]="t(who() === 'kael' ? 'slate.kael.title' : 'slate.offer.title')" [attr.title]="who() === 'kael' ? t('slate.kael.line') : t('slate.offer.line', { n: offer.toGo })">
         <i class="sc__pane" [class.sc__pane--ii]="who() === 'kael'" aria-hidden="true"></i>
         <div class="sc__body">
           @if (who() === 'croupier' && offer.tier === 0) {
