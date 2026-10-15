@@ -72,6 +72,8 @@ readable); the node test pins that it hangs beside the Keeper and lands back on 
   Shots: `output/celestial-delve/` (`REALM_SHOTS=1`).
 - Perf (`e2e/perf-play.spec.ts`): harness scenes `realm:prism-mines`, `realm:orrery-wells`; guards for both
   under the Delve ceilings (p95 70 / p50 45 at 4× CPU).
+  Measured 2026-10-15 (390×844 DPR 3, 4× CPU, 30 s, SwiftShader): Prism Mines p50 16.7 / p95 18.4 ms,
+  Orrery Wells 16.7 / 18.5 ms, Furnace Hall guard 16.7 / 18.6 ms; no long tasks.
 
 ## Not done / next
 
