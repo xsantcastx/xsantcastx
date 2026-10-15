@@ -135,6 +135,15 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   'inkstone': 'Inkstone',
   'nightglass': 'Nightglass',
   'veil-lantern': 'Veil Lantern',
+  // The Root Deeps and the Prism Mines (rift-gates.model.ts; art/pixel-icons.ts paints them).
+  'verdant-sigil': 'Verdant Sigil',
+  'rootglass': 'Rootglass',
+  'heart-amber': 'Heart-amber',
+  'rootsever-billhook': 'Rootsever Billhook',
+  'luminous-sigil': 'Luminous Sigil',
+  'prismite': 'Prismite',
+  'dawnglass': 'Dawnglass',
+  'dawn-lens': 'Dawn Lens',
   // Map v2's two map tools (shared/delve/map-tools.model.ts).
   'broken-astral-compass': 'Broken Astral Compass',
   'rift-map-fragment': 'Rift Map Fragment',

@@ -237,5 +237,10 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // The Ink Deeps (the Umbral's underside, behind its Rift Gate).
   'play.creature.shadeling': { en: 'Shadeling', es: 'Sombrecilla' },
   'play.creature.gloam-warden': { en: 'The Gloam Warden', es: 'El Guardian de la Penumbra' },
+  // The Root Deeps and the Prism Mines (the Verdant's and the Luminous's undersides).
+  'play.creature.graftling': { en: 'Graftling', es: 'Injertito' },
+  'play.creature.graftmother': { en: 'The Graftmother', es: 'La Madre Injerto' },
+  'play.creature.prismling': { en: 'Prismling', es: 'Prismita' },
+  'play.creature.hollow-sun': { en: 'The Hollow Sun', es: 'El Sol Hueco' },
   'play.creature.unknown': { en: 'Enemy', es: 'Enemigo' },
 };
