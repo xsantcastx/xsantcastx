@@ -726,7 +726,8 @@ test('the Heliograph Court: Market stall, waystone, and a Forager hunt that feed
   const hunt = world.areaOf(town, passage.to);
   assert.ok(hunt && hunt !== town, 'the east stair leads to a hunting ground');
   assert.ok(hunt.stations.some(station => station.kind === 'passage' && station.to === town.id), 'and back');
-  assert.deepEqual([...new Set(hunt.monsters.map(monster => monster.creature))], ['prism-forager']);
+  // The world clock's Afterimage Moth keeps its hour (only under an eclipse): the hunt's own creature is the Forager.
+  assert.deepEqual([...new Set(hunt.monsters.filter(monster => !monster.when).map(monster => monster.creature))], ['prism-forager']);
   // The pendant's inputs come from the Forager table alone, in about ten kills or fewer.
   const pendant = craftingModel.CRAFTING_RECIPES.find(recipe => recipe.id === 'craft-aurumleaf-pendant');
   const kills = pendant.ingredients.map(({ materialId, count }) => {
@@ -2002,6 +2003,73 @@ test('gathering: the starter sickle cuts starlight in one swing, books it once, 
   engine.destroy();
 });
 
+// ── The world clock (docs/handoff/world-clock.md): the things that keep an hour ──
+const worldClock = loadTs(path.resolve(__dirname, '../src/app/shared/world-clock/world-clock.model.ts'));
+const skyOf = (day, minute, alignedHunt = null) => ({ ...worldClock.skyAt(worldClock.msAt(day, minute)), alignedHunt });
+
+test('world clock: the Moonwake opens only in the dark, the Eclipse Glass only under an eclipse, the aligned realm gives two', () => {
+  const { engine, state, calls } = enterThicket();
+  engine.setTools({ sickle: 1, axe: 1, pickaxe: 1 });
+  engine.setSky(skyOf(1, 12 * 60));
+  // By day: a shut bud that says when, and refuses the sickle; the eclipse's outcrop is not there at all.
+  standAt(engine, nodeX(engine, 'moonwake'));
+  assert.equal(state().nearby, 'gather');
+  assert.equal(state().gather.id, 'moonwake');
+  assert.equal(state().gather.shut, true);
+  strike(engine);
+  assert.equal(calls.length, 0);
+  assert.match(state().message, /shut tight/);
+  assert.equal(state().timed, '');
+  standAt(engine, nodeX(engine, 'eclipse-glass'));
+  assert.notEqual(state().gather?.id, 'eclipse-glass');
+  // Night: it opens and cuts like any herb.
+  engine.setSky(skyOf(1, 23 * 60));
+  assert.equal(state().timed, 'moonwake');
+  standAt(engine, nodeX(engine, 'moonwake'));
+  assert.equal(state().gather.shut, undefined);
+  strike(engine);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].materialId, 'moonwake-bloom');
+  // An eclipse aligned with the Verdant: the outcrop rises, the Moonwake opens at noon too, and the glass comes two a cut.
+  assert.equal(worldClock.isEclipseDay(22), true);
+  engine.setSky(skyOf(22, 14 * 60, 'rootglass-thicket'));
+  assert.equal(state().timed, 'moonwake,eclipse-glass');
+  standAt(engine, nodeX(engine, 'eclipse-glass'));
+  assert.equal(state().gather.id, 'eclipse-glass');
+  for (let n = 0; n < 6 && calls.length < 2; n++) strike(engine);
+  assert.equal(calls.length, 2);
+  assert.equal(calls[1].materialId, 'eclipse-glass');
+  assert.equal(calls[1].qty, 2, 'the aligned realm\'s glass comes two a cut');
+  // The eclipse passes: the outcrop is gone again.
+  engine.setSky(skyOf(23, 12 * 60));
+  standAt(engine, nodeX(engine, 'eclipse-glass'));
+  assert.notEqual(state().gather?.id, 'eclipse-glass');
+  engine.destroy();
+});
+
+test('world clock: the Ink Lantern rises in the Corridors when the dark comes and fades when it goes; the Moth only under an eclipse', () => {
+  const { engine } = fixture(() => true, { town: world.TOWNS.umbral });
+  engine.enter(world.TOWNS.umbral.hunts[0]);
+  engine.setSky(skyOf(1, 12 * 60));
+  const lanterns = () => engine.monsters.filter(m => m.def.creature === 'ink-lantern').length;
+  assert.equal(lanterns(), 0, 'not by day');
+  engine.setSky(skyOf(1, 23 * 60));
+  assert.equal(lanterns(), 2, 'out at night');
+  assert.ok(engine.monsters.filter(m => m.def.creature === 'ink-lantern').every(m => m.born > 0), 'they rise');
+  engine.setSky(skyOf(2, 7 * 60 + 30));
+  assert.equal(lanterns(), 0, 'gone with the dawn (idle ones fade)');
+  engine.setSky(skyOf(2, 14 * 60));
+  assert.equal(lanterns(), 2, 'the eclipse is a night at noon');
+  engine.destroy();
+  const channels = fixture(() => true, { town: world.TOWNS.luminous });
+  channels.engine.enter(world.TOWNS.luminous.hunts[0]);
+  channels.engine.setSky(skyOf(1, 23 * 60));
+  assert.equal(channels.engine.monsters.filter(m => m.def.creature === 'afterimage-moth').length, 0, 'the Moth is not a night thing');
+  channels.engine.setSky(skyOf(7, 12 * 60));
+  assert.equal(channels.engine.monsters.filter(m => m.def.creature === 'afterimage-moth').length, 1, 'it rises under the eclipse');
+  channels.engine.destroy();
+});
+
 test('gathering: tiers matter — no tool clangs, a low tier names the tier, a low skill names the level', () => {
   const { engine, state, calls } = enterThicket();
   standAt(engine, nodeX(engine, 'sap-tree'));
@@ -2691,10 +2759,11 @@ test('canvas cues sit above their station or node, never on the floor band under
   engine.setProgress({ equipped: true, restored: true });
   engine.player.x = stationX(engine, 'passage'); engine.player.y = FLOOR; engine.interact();
   assert.equal(engine.areaDef.id === 'ember-quarry' || engine.areaDef.name === 'Ember Quarry', true);
-  for (const node of engine.areaDef.nodes) {
+  // The world clock's nodes keep an hour (an eclipse-only one is not drawn by day); the cue rule is the same for them.
+  for (const node of engine.areaDef.nodes.filter(n => n.when !== 'eclipse')) {
     engine.player.x = node.x; texts.length = 0;
     engine.render();
-    const cue = texts.find(([text]) => /GATHER|^NEEDS |^GROWING BACK/.test(text));
+    const cue = texts.find(([text]) => /GATHER|^NEEDS |^GROWING BACK|^OPENS AT NIGHT/.test(text));
     assert.ok(cue, `${node.id}: a cue is drawn`);
     assert.ok(cue[1] < FLOOR - 100, `${node.id}: cue at ${cue[1]} sits above the node`);
     assert.ok(!texts.some(([, y]) => y > FLOOR + 40), `${node.id}: nothing drawn below the label line`);
