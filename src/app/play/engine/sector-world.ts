@@ -20,13 +20,21 @@
  * The save: the core's cells, liquid and map keep their v1 shapes (core cell
  * indices, the same layout keys: nothing the core held moves), and every cell
  * outside it goes to its sector's diff through `DelvePersistence.sectors`.
+ *
+ * One World (docs/design/one-world.md §2.1): a spec with a `surface` adds the
+ * sky band, rows `rowLo`…−1, above every column (surface-gen.ts). Rows ≥ 0 are
+ * generated exactly as without it; the sky band's sectors (sy < 0) save their
+ * diffs like any wing sector's. A column's arrays hold its rows from `rowLo`
+ * down: local index = (row − rowLo) × SECTOR + lc (`local()`), so row 0's cells
+ * sit where they always did when there is no sky band.
  */
 import { CELL, LIQUID_FULL, liquidLayout, nodeIndex, packLiquid, Terrain, TERRAIN_NODE_LIST, terrainLayout, type TerrainSpec } from './terrain';
 import { coreSectorCols, generateSectorColumn, isCoreCell, isCoreCol, LATTICE, latticePlans, SECTOR, SECTOR_GV, sectorContext, type SectorColumnGen, type SectorContext, type SectorHall, type SectorStructure } from './sector-gen';
 import type { DelvePersistence, DelveSectorStore } from './engine.model';
 import { deepPlans } from './underhearth-gen';
 import { realmPlans } from './realm-gen';
-import { fogPixel, mapPixel, mapWalls, REVEAL_CELLS, type CellReader, type MapMarker, type WorldMap } from './delve-map';
+import { fogPixel, mapPixel, mapWalls, REVEAL_CELLS, skyPixel, type CellReader, type MapMarker, type WorldMap } from './delve-map';
+import { surfaceColumn } from './surface-gen';
 
 /** A generated structure with a stable id (`<kind>@<col>,<row>`, its room's top-left). */
 export interface PlacedStructure extends SectorStructure { id: string }
@@ -55,10 +63,16 @@ const GATE = Uint8Array.from(TERRAIN_NODE_LIST, node => node.use === 'gate' ? 1 
 /** Columns the map may generate per paint (the rest show as fog until a later HUD tick). */
 const MAP_BUILDS = 4;
 
+/** A column as generated: sector-gen's rows, and (One World) the sky band over them, with its back walls. */
+export interface WorldColumnGen extends SectorColumnGen {
+  /** The back wall per local cell (sky band only; 0 below the ground). Null without a sky band. */
+  back: Uint8Array | null;
+}
+
 /** One sector column with its live state (only authoritative while it is NOT in the ring). */
 export interface Column {
   sx: number;
-  gen: SectorColumnGen;
+  gen: WorldColumnGen;
   kind: Uint8Array;
   hp: Float32Array;
   liqType: Uint8Array;
@@ -83,6 +97,8 @@ export class SectorWorld {
   readonly fog: Uint8Array;
   readonly layout: string;
   readonly wet: string;
+  /** The first row: 0, or (One World) the sky band's top row. */
+  readonly rowLo: number;
   private readonly columns = new Map<number, Column>();
   private readonly loaded = new Set<number>();
   private readonly coreSeen: Uint8Array;
@@ -100,10 +116,13 @@ export class SectorWorld {
     this.layout = terrainLayout(spec, seed);
     this.wet = liquidLayout(spec, seed);
     this.coreCols = coreSectorCols(spec);
-    const t = this.t = new Terrain(RING_COLS, this.ctx.rows, spec.top, true);
+    this.rowLo = spec.surface?.rowLo ?? 0;
+    const t = this.t = new Terrain(RING_COLS, this.ctx.rows, spec.top, true, this.rowLo);
     t.base = new Uint8Array(t.kind.length);
     t.baseLiqType = new Uint8Array(t.kind.length);
     t.baseLiqLevel = new Uint8Array(t.kind.length);
+    t.skyBiome = spec.surface?.biome ?? null;
+    t.backLook = spec.surface?.palette.backs ?? null;
     if (spec.biomes?.length) {
       // The deep strata's biomes follow the core's (Phase 8: the Underhearth is biome 4).
       t.biomes = [...spec.biomes, ...(spec.depth?.biomes ?? [])];
@@ -126,12 +145,37 @@ export class SectorWorld {
 
   private get sectors(): DelveSectorStore | null { return this.persist?.sectors ?? null; }
 
+  /** A column's local index of (row, local column): its rows from `rowLo` down. */
+  private local(row: number, lc: number): number { return (row - this.rowLo) * SECTOR + lc; }
+  /** The world row of a column's local index. */
+  private rowOfLocal(i: number): number { return Math.floor(i / SECTOR) + this.rowLo; }
+  /** One of the hand-made core's cells (never the sky band over it). */
+  private core(col: number, row: number): boolean { return row >= 0 && isCoreCell(this.ctx, col, row); }
+  /** The first sector row (−1 with a 32-row sky band). */
+  private get syLo(): number { return Math.floor(this.rowLo / SECTOR); }
+
   // ── Columns ───────────────────────────────────────────────────────────────
+
+  /** A column as generated: sector-gen's rows, and the sky band over them (One World). */
+  private generate(sx: number): WorldColumnGen {
+    const gen = generateSectorColumn(this.ctx, sx);
+    const surface = this.spec.surface;
+    if (!surface || this.rowLo >= 0) return { ...gen, back: null };
+    const sky = surfaceColumn(surface, sx), off = sky.kind.length, n = off + gen.kind.length;
+    const join = (top: Uint8Array, below: Uint8Array) => { const out = new Uint8Array(n); out.set(top, 0); out.set(below, off); return out; };
+    const notes = new Map<number, string>();
+    for (const [i, id] of gen.notes) notes.set(i + off, id);
+    const back = new Uint8Array(n); back.set(sky.back, 0);
+    return {
+      ...gen, notes, back,
+      kind: join(sky.kind, gen.kind), liqType: join(sky.liqType, gen.liqType), liqLevel: join(sky.liqLevel, gen.liqLevel), protect: join(sky.protect, gen.protect),
+    };
+  }
 
   /** A column from the seed, with the save laid over it. */
   private build(sx: number, coreCells?: ReadonlyMap<number, number> | null, coreLiquids?: ReadonlyMap<number, number> | null): Column {
-    const gen = generateSectorColumn(this.ctx, sx);
-    const rows = this.ctx.rows, n = SECTOR * rows;
+    const gen = this.generate(sx);
+    const rows = this.ctx.rows, n = gen.kind.length;
     const column: Column = {
       sx, gen, kind: gen.kind.slice(), hp: new Float32Array(n), liqType: gen.liqType.slice(), liqLevel: gen.liqLevel.slice(),
       fog: new Uint8Array((n + 7) >> 3), healed: new Array(Math.ceil(rows / SECTOR)).fill(0), used: ++this.clock,
@@ -150,7 +194,7 @@ export class SectorWorld {
       const col = sx * SECTOR + lc;
       if (!isCoreCol(this.ctx, col)) continue;
       for (let row = 0; row < this.spec.rows; row++) {
-        const ci = row * this.spec.cols + col, i = row * SECTOR + lc;
+        const ci = row * this.spec.cols + col, i = this.local(row, lc);
         const kind = coreCells?.get(ci);
         if (kind !== undefined) set(i, kind);
         const packed = coreLiquids?.get(ci);
@@ -159,14 +203,14 @@ export class SectorWorld {
       }
     }
     const store = this.sectors;
-    for (let sy = 0; store && sy * SECTOR < rows; sy++) {
+    for (let sy = this.syLo; store && sy * SECTOR < rows; sy++) {
       let save = null;
       try { save = store.sector(this.areaId, sx, sy); } catch { /* fresh rock */ }
       if (!save) continue;
       const same = save.g === this.ctx.gv;
       const toCell = (local: number) => {
         const row = sy * SECTOR + (local >> 5), lc = local & 31;
-        return row < rows && !isCoreCell(this.ctx, sx * SECTOR + lc, row) && local >= 0 && local < SECTOR * SECTOR ? row * SECTOR + lc : -1;
+        return row >= this.rowLo && row < rows && !this.core(sx * SECTOR + lc, row) && local >= 0 && local < SECTOR * SECTOR ? this.local(row, lc) : -1;
       };
       for (const [local, kind] of save.cells) {
         const i = toCell(local);
@@ -177,10 +221,10 @@ export class SectorWorld {
         for (let b = 0; b < 64; b++) {
           if (!(save.fog[b >> 3] & (1 << (b & 7)))) continue;
           const r0 = sy * SECTOR + (b >> 3) * 4, c0 = (b & 7) * 4;
-          for (let r = r0; r < Math.min(rows, r0 + 4); r++) for (let c = c0; c < c0 + 4; c++) { const i = r * SECTOR + c; column.fog[i >> 3] |= 1 << (i & 7); }
+          for (let r = Math.max(this.rowLo, r0); r < Math.min(rows, r0 + 4); r++) for (let c = c0; c < c0 + 4; c++) { const i = this.local(r, c); column.fog[i >> 3] |= 1 << (i & 7); }
         }
       }
-      if (save.healed) column.healed[sy] = save.healed;
+      if (save.healed && sy >= 0) column.healed[sy] = save.healed;
     }
     for (let i = 0; i < n; i++) column.hp[i] = TERRAIN_NODE_LIST[column.kind[i]].hp;
     return column;
@@ -211,13 +255,14 @@ export class SectorWorld {
 
   /** Copy a column into its ring slots. */
   private copyIn(column: Column): void {
-    const t = this.t, rows = this.ctx.rows, gen = column.gen, col0 = column.sx * SECTOR;
-    for (let row = 0; row < rows; row++) for (let lc = 0; lc < SECTOR; lc++) {
-      const i = row * SECTOR + lc, r = t.index(col0 + lc, row);
+    const t = this.t, rows = this.ctx.rows, gen = column.gen, col0 = column.sx * SECTOR, back = t.back;
+    for (let row = this.rowLo; row < rows; row++) for (let lc = 0; lc < SECTOR; lc++) {
+      const i = this.local(row, lc), r = t.index(col0 + lc, row);
       t.kind[r] = column.kind[i]; t.base[r] = gen.kind[i]; t.hp[r] = column.hp[i];
       t.liqType[r] = column.liqType[i]; t.liqLevel[r] = column.liqLevel[i];
       t.baseLiqType[r] = gen.liqType[i]; t.baseLiqLevel[r] = gen.liqLevel[i];
       t.protect[r] = gen.protect[i];
+      if (back) back[r] = gen.back ? gen.back[i] : 0;
       if (column.fog[i >> 3] & (1 << (i & 7))) this.fog[r >> 3] |= 1 << (r & 7); else this.fog[r >> 3] &= ~(1 << (r & 7));
       const note = gen.notes.get(i);
       if (note) t.inscriptions.set(r, note); else t.inscriptions.delete(r);
@@ -227,8 +272,8 @@ export class SectorWorld {
   /** Copy a column's live state out of the ring (it is leaving). */
   private copyOut(column: Column): void {
     const t = this.t, rows = this.ctx.rows, col0 = column.sx * SECTOR;
-    for (let row = 0; row < rows; row++) for (let lc = 0; lc < SECTOR; lc++) {
-      const i = row * SECTOR + lc, r = t.index(col0 + lc, row);
+    for (let row = this.rowLo; row < rows; row++) for (let lc = 0; lc < SECTOR; lc++) {
+      const i = this.local(row, lc), r = t.index(col0 + lc, row);
       column.kind[i] = t.kind[r]; column.hp[i] = t.hp[r];
       column.liqType[i] = t.liqType[r]; column.liqLevel[i] = t.liqLevel[r];
       if (this.fog[r >> 3] & (1 << (r & 7))) column.fog[i >> 3] |= 1 << (i & 7);
@@ -281,7 +326,8 @@ export class SectorWorld {
     else if (t.colHi - col <= EDGE_MARGIN + 16) this.prefetch(this.loSector + RING_COLS / SECTOR);
     return false;
   }
-  private prefetch(sx: number): void { if (!this.columns.has(sx)) { this.columns.set(sx, this.build(sx)); this.trim(); } }
+  /** Build a column ahead of need (a travel's channel hides the cold start; One World §3.3). */
+  prefetch(sx: number): void { if (!this.columns.has(sx)) { this.columns.set(sx, this.build(sx)); this.trim(); } }
 
   private shift(dir: number): void {
     const t = this.t, lo = this.loSector, count = RING_COLS / SECTOR;
@@ -306,7 +352,7 @@ export class SectorWorld {
     const t = this.t, col = t.colOf(index), row = t.rowOf(index), kind = t.kind[index], base = t.base[index];
     const now = kind === base ? null : kind;
     try {
-      if (isCoreCell(this.ctx, col, row)) { this.persist?.changed(this.areaId, this.layout, row * this.spec.cols + col, now); return; }
+      if (this.core(col, row)) { this.persist?.changed(this.areaId, this.layout, row * this.spec.cols + col, now); return; }
       const { sx, sy, local } = SectorWorld.local(col, row);
       const receipt = !!TERRAIN_NODE_LIST[base].receipt && kind === AIR;
       this.sectors?.sectorChanged(this.areaId, sx, sy, this.ctx.gv, local, now, receipt || undefined);
@@ -324,7 +370,7 @@ export class SectorWorld {
         const col = sx * SECTOR + lc;
         if (!isCoreCol(this.ctx, col)) continue;
         for (let row = 0; row < rows; row++) {
-          const i = row * SECTOR + lc, r = t.index(col, row);
+          const i = this.local(row, lc), r = t.index(col, row);
           const type = inRing ? t.liqType[r] : column.liqType[i], level = inRing ? t.liqLevel[r] : column.liqLevel[i];
           const now = packLiquid(type, level), was = packLiquid(column.gen.liqType[i], column.gen.liqLevel[i]);
           if (now !== was) core.set(row * this.spec.cols + col, now);
@@ -338,14 +384,14 @@ export class SectorWorld {
     const store = this.sectors;
     if (!store) return;
     const t = this.t, rows = this.ctx.rows, inRing = this.loaded.has(column.sx);
-    for (let sy = 0; sy * SECTOR < rows; sy++) {
+    for (let sy = this.syLo; sy * SECTOR < rows; sy++) {
       const cells = new Map<number, number>();
       let wing = false;
       for (let r0 = 0; r0 < SECTOR && sy * SECTOR + r0 < rows; r0++) for (let lc = 0; lc < SECTOR; lc++) {
         const col = column.sx * SECTOR + lc, row = sy * SECTOR + r0;
-        if (isCoreCell(this.ctx, col, row)) continue;
+        if (row < this.rowLo || this.core(col, row)) continue;
         wing = true;
-        const i = row * SECTOR + lc, r = t.index(col, row);
+        const i = this.local(row, lc), r = t.index(col, row);
         const type = inRing ? t.liqType[r] : column.liqType[i], level = inRing ? t.liqLevel[r] : column.liqLevel[i];
         const now = packLiquid(type, level), was = packLiquid(column.gen.liqType[i], column.gen.liqLevel[i]);
         if (now !== was) cells.set(r0 * SECTOR + lc, now);
@@ -359,7 +405,7 @@ export class SectorWorld {
   reveal(col: number, row: number, radius = REVEAL_CELLS): boolean {
     const t = this.t, span = Math.ceil(radius), r2 = radius * radius;
     let changed = false;
-    for (let r = Math.max(0, row - span); r <= Math.min(t.rows - 1, row + span); r++) {
+    for (let r = Math.max(this.rowLo, row - span); r <= Math.min(t.rows - 1, row + span); r++) {
       for (let c = Math.max(t.colLo, col - span); c <= Math.min(t.colHi - 1, col + span); c++) {
         if ((c - col) * (c - col) + (r - row) * (r - row) > r2) continue;
         if (this.mark(c, r)) changed = true;
@@ -371,14 +417,14 @@ export class SectorWorld {
   revealRect(col0: number, col1: number, row0: number, row1: number): boolean {
     const t = this.t;
     let changed = false;
-    for (let r = Math.max(0, row0); r <= Math.min(t.rows - 1, row1); r++) for (let c = Math.max(t.colLo, col0); c <= Math.min(t.colHi - 1, col1); c++) if (this.mark(c, r)) changed = true;
+    for (let r = Math.max(this.rowLo, row0); r <= Math.min(t.rows - 1, row1); r++) for (let c = Math.max(t.colLo, col0); c <= Math.min(t.colHi - 1, col1); c++) if (this.mark(c, r)) changed = true;
     return changed;
   }
   private mark(c: number, r: number): boolean {
     const i = this.t.index(c, r), bit = 1 << (i & 7);
     if (this.fog[i >> 3] & bit) return false;
     this.fog[i >> 3] |= bit;
-    if (isCoreCell(this.ctx, c, r)) { const ci = r * this.spec.cols + c; this.coreSeen[ci >> 3] |= 1 << (ci & 7); this.coreFogDirty = true; }
+    if (this.core(c, r)) { const ci = r * this.spec.cols + c; this.coreSeen[ci >> 3] |= 1 << (ci & 7); this.coreFogDirty = true; }
     else { const { sx, sy } = SectorWorld.local(c, r); this.fogDirty.add(`${sx},${sy}`); }
     return true;
   }
@@ -402,11 +448,11 @@ export class SectorWorld {
     for (let b = 0; b < 64; b++) {
       const r0 = sy * SECTOR + (b >> 3) * 4, c0 = (b & 7) * 4;
       let any = false;
-      for (let r = r0; r < Math.min(rows, r0 + 4) && !any; r++) for (let c = c0; c < c0 + 4 && !any; c++) {
+      for (let r = Math.max(this.rowLo, r0); r < Math.min(rows, r0 + 4) && !any; r++) for (let c = c0; c < c0 + 4 && !any; c++) {
         const col = sx * SECTOR + c;
-        if (isCoreCell(this.ctx, col, r)) continue;
+        if (this.core(col, r)) continue;
         if (inRing) { const i = t.index(col, r); any = !!(this.fog[i >> 3] & (1 << (i & 7))); }
-        else if (column) { const i = r * SECTOR + c; any = !!(column.fog[i >> 3] & (1 << (i & 7))); }
+        else if (column) { const i = this.local(r, c); any = !!(column.fog[i >> 3] & (1 << (i & 7))); }
       }
       if (any) out[b >> 3] |= 1 << (b & 7);
     }
@@ -417,26 +463,32 @@ export class SectorWorld {
 
   /** A stable number for a world cell: the core keeps its v1 index (chests are filed by it); wings get their own range. */
   cellId(col: number, row: number): number {
-    if (isCoreCell(this.ctx, col, row)) return row * this.spec.cols + col;
-    // Rows 0-63 keep the Phase 7 ids; each deeper band of 64 rows has its own range (Phase 8).
+    if (this.core(col, row)) return row * this.spec.cols + col;
     const zig = col >= 0 ? col * 2 : -col * 2 - 1;
+    // One World's sky band (rows −64…−1): its own range, past every band below.
+    if (row < 0) return SKY_ID + zig * 64 + (row + 64);
+    // Rows 0-63 keep the Phase 7 ids; each deeper band of 64 rows has its own range (Phase 8).
     return WING_ID + (row >> 6) * DEEP_SPAN + zig * 64 + (row & 63);
   }
   /** The world cell of a stable id, or null. */
   cellOf(id: number): { col: number; row: number } | null {
     if (!Number.isInteger(id) || id < 0) return null;
     if (id < WING_ID) { const col = id % this.spec.cols, row = (id - col) / this.spec.cols; return row < this.spec.rows ? { col, row } : null; }
+    const zigOf = (zig: number) => (zig % 2 === 0 ? zig / 2 : -(zig + 1) / 2);
+    if (id >= SKY_ID) {
+      const rest = id - SKY_ID, zig = Math.floor(rest / 64), row = rest % 64 - 64;
+      return row >= this.rowLo ? { col: zigOf(zig), row } : null;
+    }
     const band = Math.floor((id - WING_ID) / DEEP_SPAN), rest = (id - WING_ID) % DEEP_SPAN;
     const zig = Math.floor(rest / 64), row = band * 64 + rest % 64;
-    const col = zig % 2 === 0 ? zig / 2 : -(zig + 1) / 2;
-    return row < this.ctx.rows ? { col, row } : null;
+    return row < this.ctx.rows ? { col: zigOf(zig), row } : null;
   }
   /** The node at a world cell, from the ring or a cached column; null when neither holds it. */
   kindAt(col: number, row: number): number | null {
-    if (row < 0 || row >= this.ctx.rows) return null;
+    if (row < this.rowLo || row >= this.ctx.rows) return null;
     if (this.t.inside(col, row)) return this.t.kind[this.t.index(col, row)];
     const column = this.columns.get(Math.floor(col / SECTOR));
-    return column ? column.kind[row * SECTOR + (col - column.sx * SECTOR)] : null;
+    return column ? column.kind[this.local(row, col - column.sx * SECTOR)] : null;
   }
 
   /** The first cell holding `kind` anywhere the player has been (ring, cache, then the saved sectors). */
@@ -446,7 +498,7 @@ export class SectorWorld {
     for (const column of this.columns.values()) {
       if (this.loaded.has(column.sx)) continue;
       const i = column.kind.indexOf(kind);
-      if (i >= 0) return { col: column.sx * SECTOR + (i % SECTOR), row: Math.floor(i / SECTOR) };
+      if (i >= 0) return { col: column.sx * SECTOR + (i % SECTOR), row: this.rowOfLocal(i) };
     }
     const store = this.sectors;
     if (!store) return null;
@@ -473,7 +525,7 @@ export class SectorWorld {
     for (let i = 0; i < t.kind.length; i++) if (t.kind[i] === kind) add(t.colOf(i), t.rowOf(i));
     for (const column of this.columns.values()) {
       if (this.loaded.has(column.sx)) continue;
-      for (let i = 0; i < column.kind.length; i++) if (column.kind[i] === kind) add(column.sx * SECTOR + (i % SECTOR), Math.floor(i / SECTOR));
+      for (let i = 0; i < column.kind.length; i++) if (column.kind[i] === kind) add(column.sx * SECTOR + (i % SECTOR), this.rowOfLocal(i));
     }
     const store = this.sectors;
     try {
@@ -501,23 +553,23 @@ export class SectorWorld {
   }
   private ringColumnSeen(sx: number): boolean {
     const t = this.t;
-    for (let row = 0; row < this.ctx.rows; row++) for (let lc = 0; lc < SECTOR; lc++) { const i = t.index(sx * SECTOR + lc, row); if (this.fog[i >> 3] & (1 << (i & 7))) return true; }
+    for (let row = this.rowLo; row < this.ctx.rows; row++) for (let lc = 0; lc < SECTOR; lc++) { const i = t.index(sx * SECTOR + lc, row); if (this.fog[i >> 3] & (1 << (i & 7))) return true; }
     return false;
   }
 
   /**
    * Read one map cell: its kind, its generated kind, and whether it is explored
    * and regrown. From the ring when loaded, else the column (built if `build`).
-   * Returns false when the column is not available.
+   * Returns false when the column is not available. `i` is the column's local index.
    */
   mapColumn(sx: number, build: boolean): MapColumn | null {
     const t = this.t;
     if (this.loaded.has(sx)) {
       const column = this.columns.get(sx)!;
       return {
-        kind: (i: number) => t.kind[t.index(sx * SECTOR + (i % SECTOR), (i / SECTOR) | 0)],
+        kind: (i: number) => t.kind[t.index(sx * SECTOR + (i % SECTOR), this.rowOfLocal(i))],
         base: (i: number) => column.gen.kind[i],
-        seen: (i: number) => { const r = t.index(sx * SECTOR + (i % SECTOR), (i / SECTOR) | 0); return !!(this.fog[r >> 3] & (1 << (r & 7))); },
+        seen: (i: number) => { const r = t.index(sx * SECTOR + (i % SECTOR), this.rowOfLocal(i)); return !!(this.fog[r >> 3] & (1 << (r & 7))); },
         healed: column.healed, gen: column.gen,
       };
     }
@@ -532,13 +584,14 @@ export class SectorWorld {
   /**
    * The map v2 source: the explored world in columns. Painting builds at most
    * MAP_BUILDS missing columns per call (a long-explored Delve fills in over a
-   * few HUD ticks instead of stalling one).
+   * few HUD ticks instead of stalling one). One World: the sky band too, its
+   * open air a flat sky colour (rows from `row0`).
    */
   map(): WorldMap {
     const sectors = this.explored();
     const col0 = Math.min(0, sectors.length ? sectors[0] * SECTOR : 0);
     const col1 = Math.max(this.spec.cols, sectors.length ? (sectors[sectors.length - 1] + 1) * SECTOR : 0);
-    const known = new Set(sectors), walls = mapWalls(this.t.biomes), rows = this.ctx.rows, biomeOfRow = this.t.biomeOfRow;
+    const known = new Set(sectors), walls = mapWalls(this.t.biomes), rows = this.ctx.rows, biomeOfRow = this.t.biomeOfRow, rowLo = this.rowLo;
     let builds = MAP_BUILDS;
     const columnFor = (sx: number): MapColumn | null => {
       const have = this.loaded.has(sx) || this.columns.has(sx);
@@ -547,7 +600,7 @@ export class SectorWorld {
       return this.mapColumn(sx, true);
     };
     return {
-      col0, col1, sectors,
+      col0, col1, sectors, row0: rowLo,
       paint: (c0, c1, data) => {
         const w = c1 - c0, t = this.t, fog = this.fog;
         for (let sx = Math.floor(c0 / SECTOR); sx * SECTOR < c1; sx++) {
@@ -557,13 +610,15 @@ export class SectorWorld {
           for (let lc = 0; lc < SECTOR; lc++) {
             const x = sx * SECTOR + lc - c0;
             if (x < 0 || x >= w) continue;
-            for (let row = 0; row < rows; row++) {
-              const o = (row * w + x) * 4, i = row * SECTOR + lc;
+            for (let row = rowLo; row < rows; row++) {
+              const o = ((row - rowLo) * w + x) * 4, i = this.local(row, lc);
               if (!column) { fogPixel(data, o); continue; }
               let kind: number, seen: boolean;
               if (inRing) { const r = t.index(sx * SECTOR + lc, row); kind = t.kind[r]; seen = (fog[r >> 3] & (1 << (r & 7))) !== 0; }
               else { kind = column.kind[i]; seen = (column.fog[i >> 3] & (1 << (i & 7))) !== 0; }
-              mapPixel(kind, column.gen.kind[i], seen, biomeOfRow[row], walls, column.healed[row >> 5] > 0, data, o);
+              // The sky band's open air is sky; a building's cells and a hill's dirt draw as cells.
+              if (row < 0 && kind === 0 && column.gen.kind[i] === 0) { if (seen) skyPixel(data, o, column.gen.back?.[i] ?? 0); else fogPixel(data, o); continue; }
+              mapPixel(kind, column.gen.kind[i], seen, biomeOfRow[Math.max(0, row)], walls, row >= 0 && column.healed[row >> 5] > 0, data, o);
             }
           }
         }
@@ -574,14 +629,14 @@ export class SectorWorld {
         for (let sx = Math.floor(c0 / SECTOR); sx * SECTOR < c1; sx++) {
           const column = this.columns.get(sx), inRing = this.loaded.has(sx);
           if (!column) continue;
-          for (let i = 0; i < SECTOR * rows; i++) {
-            const r = inRing ? t.index(sx * SECTOR + (i % SECTOR), (i / SECTOR) | 0) : i;
+          for (let i = 0; i < column.kind.length; i++) {
+            const row = this.rowOfLocal(i), r = inRing ? t.index(sx * SECTOR + (i % SECTOR), row) : i;
             if (inRing ? !(fog[r >> 3] & (1 << (r & 7))) : !(column.fog[i >> 3] & (1 << (i & 7)))) continue;
             const k = inRing ? t.kind[r] : column.kind[i], note = column.gen.notes.has(i) && k === INSCRIPTION;
             const kind = k === CAMP ? 'camp' : k === CHEST ? 'chest' : k === TORCH ? 'torch' : k === SHRINE ? 'shrine' : note ? 'inscription'
               : k === ANCHOR ? 'anchor' : k === MARK ? 'mark' : k === FURNACE_HEARTH ? 'furnace'
               : GATE[k] && !(i % SECTOR > 0 && GATE[inRing ? t.kind[r - 1] : column.kind[i - 1]]) && !(i >= SECTOR && GATE[inRing ? t.kind[r - t.cols] : column.kind[i - SECTOR]]) ? 'gate' : null;
-            if (kind) out.push({ kind, col: sx * SECTOR + (i % SECTOR), row: Math.floor(i / SECTOR) });
+            if (kind) out.push({ kind, col: sx * SECTOR + (i % SECTOR), row });
           }
         }
         return out;
@@ -614,10 +669,10 @@ export class SectorWorld {
   }
   /** Whether a world cell is explored: the ring, a cached column, or the saved sector's 4 × 4 blocks. */
   seenAt(col: number, row: number): boolean {
-    if (row < 0 || row >= this.ctx.rows) return false;
+    if (row < this.rowLo || row >= this.ctx.rows) return false;
     if (this.t.inside(col, row)) { const i = this.t.index(col, row); return !!(this.fog[i >> 3] & (1 << (i & 7))); }
     const column = this.columns.get(Math.floor(col / SECTOR));
-    if (column) { const i = row * SECTOR + (col - column.sx * SECTOR); return !!(column.fog[i >> 3] & (1 << (i & 7))); }
+    if (column) { const i = this.local(row, col - column.sx * SECTOR); return !!(column.fog[i >> 3] & (1 << (i & 7))); }
     const { sx, sy } = SectorWorld.local(col, row);
     let fog: Uint8Array | null = null;
     try { fog = this.sectors?.sector(this.areaId, sx, sy)?.fog ?? null; } catch { /* unexplored */ }
@@ -640,20 +695,20 @@ export class SectorWorld {
     return best;
   }
   /**
-   * Explore a rectangle anywhere (a Rift Map Fragment read): ring cells as the
-   * lantern would, unloaded columns in their own fog (built from the seed and
-   * the save if they are not cached), then hand it all to the save.
+   * Explore a rectangle anywhere (a Rift Map Fragment read, a Waystone lit):
+   * ring cells as the lantern would, unloaded columns in their own fog (built
+   * from the seed and the save if they are not cached), then hand it all to the save.
    */
   revealArea(col0: number, col1: number, row0: number, row1: number): boolean {
     let changed = false;
-    for (let col = col0; col <= col1; col++) for (let row = Math.max(0, row0); row <= Math.min(this.ctx.rows - 1, row1); row++) {
+    for (let col = col0; col <= col1; col++) for (let row = Math.max(this.rowLo, row0); row <= Math.min(this.ctx.rows - 1, row1); row++) {
       if (this.t.inside(col, row)) { if (this.mark(col, row)) changed = true; continue; }
       const column = this.column(Math.floor(col / SECTOR));
-      const i = row * SECTOR + (col - column.sx * SECTOR), bit = 1 << (i & 7);
+      const i = this.local(row, col - column.sx * SECTOR), bit = 1 << (i & 7);
       if (column.fog[i >> 3] & bit) continue;
       column.fog[i >> 3] |= bit;
       changed = true;
-      if (isCoreCell(this.ctx, col, row)) { const ci = row * this.spec.cols + col; this.coreSeen[ci >> 3] |= 1 << (ci & 7); this.coreFogDirty = true; }
+      if (this.core(col, row)) { const ci = row * this.spec.cols + col; this.coreSeen[ci >> 3] |= 1 << (ci & 7); this.coreFogDirty = true; }
       else { const at = SectorWorld.local(col, row); this.fogDirty.add(`${at.sx},${at.sy}`); }
     }
     if (changed) this.flushFog();
@@ -665,7 +720,7 @@ export class SectorWorld {
     const at = (col: number, row: number) => {
       if (t.inside(col, row)) return { ring: t.index(col, row), column: null as Column | null, i: 0 };
       const column = this.columns.get(Math.floor(col / SECTOR))!;
-      return { ring: -1, column, i: row * SECTOR + (col - column.sx * SECTOR) };
+      return { ring: -1, column, i: this.local(row, col - column.sx * SECTOR) };
     };
     return {
       col0: 0, col1: this.spec.cols, rows,
@@ -675,7 +730,7 @@ export class SectorWorld {
         const type = a.ring >= 0 ? t.liqType[a.ring] : a.column!.liqType[a.i], level = a.ring >= 0 ? t.liqLevel[a.ring] : a.column!.liqLevel[a.i];
         return level > 0 ? type : 0;
       },
-      note: (col, row) => this.columns.get(Math.floor(col / SECTOR))?.gen.notes.get(row * SECTOR + (col - Math.floor(col / SECTOR) * SECTOR)),
+      note: (col, row) => { const sx = Math.floor(col / SECTOR); return this.columns.get(sx)?.gen.notes.get(this.local(row, col - sx * SECTOR)); },
     };
   }
 
@@ -690,6 +745,8 @@ export class SectorWorld {
 export const WING_ID = 0x1000000;
 /** Each band of 64 rows below the first has its own id range this wide (Phase 8, the deep strata). */
 export const DEEP_SPAN = 0x1000000;
+/** First stable id of a sky-band cell (One World), past the deepest band's range. */
+export const SKY_ID = 0x10000000;
 
 /** Index of the deep biome holding `row` (rows at or past `spec.rows`), or -1. */
 function deepBiomeAt(spec: TerrainSpec, row: number): number {
@@ -703,7 +760,7 @@ export interface MapColumn {
   base(i: number): number;
   seen(i: number): boolean;
   healed: number[];
-  gen: SectorColumnGen;
+  gen: WorldColumnGen;
 }
 
 export { SECTOR, SECTOR_GV };

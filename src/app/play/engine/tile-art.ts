@@ -32,7 +32,7 @@ export const TILE = CELL / ART;
 /** Baked looks per node kind; a cell picks one by hash. */
 export const VARIANTS = 3;
 /** Wall atlas slots (one per biome); more biomes than this fall back to a flat wall. */
-const WALL_SLOTS = 8;
+const WALL_SLOTS = 12;
 
 // Palette slots a texture's pixels index.
 export const P_BASE = 0, P_DARK = 1, P_LIGHT = 2, P_FLECK = 3, P_DEEP = 4, P_SHINE = 5, P_HI = 6;
@@ -104,7 +104,7 @@ export function wallPalette(biome: Pick<BiomeDef, 'wall'>): string[] {
 
 // ── Pixel patterns (pure: 16×16 palette indices) ───────────────────────────
 
-export type TilePattern = 'rock' | 'ore' | 'roots' | 'grain' | 'glowcap' | 'fragment' | 'cracked' | 'bedrock' | 'cache' | 'block' | 'placed';
+export type TilePattern = 'rock' | 'ore' | 'roots' | 'grain' | 'glowcap' | 'fragment' | 'cracked' | 'bedrock' | 'cache' | 'block' | 'placed' | 'shingle';
 
 /** The pattern a node is drawn with. Pure. */
 export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & { placeable?: string; solid?: boolean }): TilePattern {
@@ -121,13 +121,17 @@ export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & 
     case 'bedrock': return 'bedrock';
     case 'cache': case 'kaels-cache': case 'waycache': return 'cache';
     case 'packed-dirt': case 'basalt-block': case 'hearth-brick': return 'block';
+    // One World: a settlement's masonry, its roofs and its timber frames (blueprints.ts).
+    case 'seam-brick': return 'block';
+    case 'town-roof': return 'shingle';
+    case 'town-beam': return 'grain';
   }
   return node.yield || node.glow ? 'ore' : 'rock';
 }
 
 /** Whether a node wears its biome's top face where open to the air above. */
 export function takesTopFace(pattern: TilePattern): boolean {
-  return pattern !== 'cache' && pattern !== 'fragment' && pattern !== 'glowcap' && pattern !== 'block' && pattern !== 'placed';
+  return pattern !== 'cache' && pattern !== 'fragment' && pattern !== 'glowcap' && pattern !== 'block' && pattern !== 'placed' && pattern !== 'shingle';
 }
 
 export interface TilePixels {
@@ -181,6 +185,43 @@ export const PLACED_ART: Readonly<Record<string, readonly string[]>> = {
     '..old......old..',
     '..ohhhhhhhhhhd..',
     '..oddddddddddd..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+  ],
+  // One World: a shop's floorboards and the ladder to the room upstairs (never placed, never taken).
+  'town-plank': [
+    'hhhhhhhhhhhhhhhh',
+    'llllllllflllllll',
+    'bbbbfbbbbbbbbbbb',
+    'dddddddddddddddd',
+    'oooooooooooooooo',
+    '.od..........do.',
+    '.od..........do.',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+    '................',
+  ],
+  'town-ladder': [
+    '..ohd......ohd..',
+    '..old......old..',
+    '..ohhhhhhhhhhd..',
+    '..oddddddddddd..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..old......old..',
+    '..ohhhhhhhhhhd..',
+    '..oddddddddddd..',
+    '..old......old..',
     '..old......old..',
     '..old......old..',
     '..old......old..',
@@ -774,6 +815,14 @@ export function patternPixels(pattern: TilePattern, seedKey: string, variant: nu
       const rows = PLACED_ART[seedKey];
       px.fill(P_CLEAR);
       if (rows) for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) px[at(x, y)] = PLACED_KEY[rows[y][x]] ?? P_CLEAR;
+      break;
+    }
+    case 'shingle': {
+      // Slate shingles: rows of round-bottomed tiles, each row offset half a tile, lit along their top edge.
+      for (let y = 0; y < TILE; y++) for (let x = 0; x < TILE; x++) {
+        const course = y >> 2, bx = (x + (course & 1) * 2) & 3, by = y & 3;
+        px[at(x, y)] = by === 3 && (bx === 0 || bx === 3) ? P_DEEP : by === 3 ? P_DARK : by === 0 ? P_LIGHT : bx === 3 ? P_DARK : r() < .1 ? P_FLECK : P_BASE;
+      }
       break;
     }
     case 'block': {

@@ -23,7 +23,7 @@ export function isSeen(fog: Uint8Array, index: number): boolean {
 export function revealAround(t: Terrain, fog: Uint8Array, col: number, row: number, radius = REVEAL_CELLS): boolean {
   let changed = false;
   const span = Math.ceil(radius), r2 = radius * radius;
-  for (let r = Math.max(0, row - span); r <= Math.min(t.rows - 1, row + span); r++) {
+  for (let r = Math.max(t.rowLo, row - span); r <= Math.min(t.rows - 1, row + span); r++) {
     for (let c = Math.max(t.colLo, col - span); c <= Math.min(t.colHi - 1, col + span); c++) {
       if ((c - col) * (c - col) + (r - row) * (r - row) > r2) continue;
       const i = t.index(c, r), bit = 1 << (i & 7);
@@ -68,7 +68,7 @@ export function paintMap(t: Terrain, fog: Uint8Array, data: Uint8ClampedArray): 
     let color: readonly number[];
     if (!isSeen(fog, i)) color = FOG_RGB;
     else if (t.kind[i] !== 0) color = NODE_RGB[t.kind[i]];
-    else if (t.base[i] !== 0) color = walls[t.biomeOfRow[(i / t.cols) | 0]] ?? CAVE_RGB;
+    else if (t.base[i] !== 0) color = walls[t.biomeOfRow[Math.max(0, t.rowOf(i))]] ?? CAVE_RGB;
     else color = CAVE_RGB;
     data[o] = color[0]; data[o + 1] = color[1]; data[o + 2] = color[2]; data[o + 3] = 255;
   }
@@ -96,6 +96,13 @@ export function mapPixel(kind: number, base: number, seen: boolean, biome: numbe
 }
 /** Fog, for columns the map has no picture of. */
 export function fogPixel(data: Uint8ClampedArray, o: number): void { data[o] = FOG_RGB[0]; data[o + 1] = FOG_RGB[1]; data[o + 2] = FOG_RGB[2]; data[o + 3] = 255; }
+/** One World's sky band: open air is a flat dusk sky (§1.2 "the sky is a flat colour"); a building's back wall reads warm. */
+const SKY_RGB = [44, 58, 78] as const;
+const BACK_RGB = [70, 52, 58] as const;
+export function skyPixel(data: Uint8ClampedArray, o: number, back = 0): void {
+  const c = back ? BACK_RGB : SKY_RGB;
+  data[o] = c[0]; data[o + 1] = c[1]; data[o + 2] = c[2]; data[o + 3] = 255;
+}
 
 export type MapMarkerKind = 'keeper' | 'camp' | 'chest' | 'torch' | 'inscription' | 'shaft' | 'shrine'
   // The Underhearth (Phase 8): Rift Anchors, the Four's hammer-marks, the Banked Furnace.
@@ -203,7 +210,9 @@ export interface WorldMap {
   col1: number;
   /** Sector columns with anything explored, west to east. */
   sectors: readonly number[];
-  /** Paint world columns [c0, c1), every row, into `data` (row stride (c1 − c0) × 4). Unknown columns paint as fog. */
+  /** The first row painted: 0, or (One World) the sky band's top row. Row r is picture row r − row0. */
+  row0?: number;
+  /** Paint world columns [c0, c1), rows [row0, rows), into `data` (row stride (c1 − c0) × 4). Unknown columns paint as fog. */
   paint(c0: number, c1: number, data: Uint8ClampedArray): void;
   /** The explored markers in [c0, c1). */
   markers(c0: number, c1: number): MapMarker[];
@@ -264,7 +273,7 @@ export function drawDelveMap(c: CanvasRenderingContext2D, source: MapSource, vie
         length = path.length - 1;
         // Every other cell: a dotted trail, Terraria-style.
         for (let n = 1; n < path.length - 1; n += 2) {
-          const col = path[n] % t.cols, row = (path[n] - col) / t.cols;
+          const col = t.colOf(path[n]), row = t.rowOf(path[n]);
           c.fillRect(ox + col * s + (s - dot) / 2 | 0, oy + row * s + (s - dot) / 2 | 0, dot, dot);
         }
       } else {
@@ -320,21 +329,22 @@ function drawWorldMap(c: CanvasRenderingContext2D, source: MapSource, world: Wor
   c.imageSmoothingEnabled = false;
   c.fillStyle = `rgb(${FOG_RGB.join(',')})`;
   c.fillRect(0, 0, view.width, view.height);
-  c.fillStyle = '#2c3a4e';
-  c.fillRect(ox + world.col0 * s, oy - s * 2, (world.col1 - world.col0) * s, s * 2);
+  const row0 = world.row0 ?? 0, tall = t.rows - row0;
+  // The sky strip over the surface row (a world with a sky band paints its own sky).
+  if (!row0) { c.fillStyle = '#2c3a4e'; c.fillRect(ox + world.col0 * s, oy - s * 2, (world.col1 - world.col0) * s, s * 2); }
   const w = c1 - c0;
   if (w > 0) {
-    if (!worldPicture || worldPicture.image.width !== w || worldPicture.canvas.height !== t.rows) {
+    if (!worldPicture || worldPicture.image.width !== w || worldPicture.image.height !== tall) {
       // Sized to the columns in view; reused while the view keeps its width (no allocation per HUD tick).
       const canvas = worldPicture?.canvas ?? document.createElement('canvas');
-      canvas.width = Math.max(w, canvas.width); canvas.height = t.rows;
+      canvas.width = Math.max(w, canvas.width); canvas.height = tall;
       const ctx = canvas.getContext('2d');
       if (!ctx) { c.restore(); return -1; }
-      worldPicture = { canvas, image: ctx.createImageData(w, t.rows) };
+      worldPicture = { canvas, image: ctx.createImageData(w, tall) };
     }
     world.paint(c0, c1, worldPicture.image.data);
     worldPicture.canvas.getContext('2d')!.putImageData(worldPicture.image, 0, 0);
-    c.drawImage(worldPicture.canvas, 0, 0, w, t.rows, ox + c0 * s, oy, w * s, t.rows * s);
+    c.drawImage(worldPicture.canvas, 0, 0, w, tall, ox + c0 * s, oy + row0 * s, w * s, tall * s);
   }
   const markers = world.markers(c0, c1);
   for (const col of source.shafts) markers.push({ kind: 'shaft', col, row: -1 });
@@ -344,8 +354,8 @@ function drawWorldMap(c: CanvasRenderingContext2D, source: MapSource, world: Wor
   if (view.path && camp) {
     const dot = Math.max(1, Math.round(s / 3));
     c.fillStyle = '#e8c898';
-    const inRing = t.inside(camp.col, camp.row) && t.inside(source.keeper.col, Math.max(0, Math.min(t.rows - 1, source.keeper.row)));
-    const path = inRing ? pathThrough(t, fog, t.index(source.keeper.col, Math.max(0, Math.min(t.rows - 1, source.keeper.row))), t.index(camp.col, camp.row)) : null;
+    const inRing = t.inside(camp.col, camp.row) && t.inside(source.keeper.col, Math.max(t.rowLo, Math.min(t.rows - 1, source.keeper.row)));
+    const path = inRing ? pathThrough(t, fog, t.index(source.keeper.col, Math.max(t.rowLo, Math.min(t.rows - 1, source.keeper.row))), t.index(camp.col, camp.row)) : null;
     if (path) {
       length = path.length - 1;
       for (let n = 1; n < path.length - 1; n += 2) {

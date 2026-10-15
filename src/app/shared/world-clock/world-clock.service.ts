@@ -17,6 +17,7 @@
  */
 import { Injectable, PLATFORM_ID, inject, isDevMode } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { setWorldHourSource } from '../world/world-hour';
 import { ECLIPSE, msAt, nextEclipse, skyAt, worldTime, type Sky, type WorldTime, type EclipseWindow, eclipseAt } from './world-clock.model';
 
 /** sessionStorage key of the test skew (ms). Not a save blob. */
@@ -36,6 +37,9 @@ export class WorldClockService {
   private skewMs = 0;
 
   constructor() {
+    // One World's settlements (keeper routines, lit windows) read the hour through world-hour.ts: point it here,
+    // so there is one clock (the caller passes the real time; the test skew is added the same way as now()).
+    setWorldHourSource({ hour: now => worldTime(now + this.skewMs).minute / 60 });
     if (!this.browser) return;
     const automated = typeof navigator !== 'undefined' && !!(navigator as Navigator & { webdriver?: boolean }).webdriver;
     if (!automated && !isDevMode()) return;

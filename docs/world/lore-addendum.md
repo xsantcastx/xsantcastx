@@ -1542,6 +1542,32 @@ the Archivist: "The docket has its first tick under 'Collected'. In your hand. I
 "Four hammers under the anvil now, beside mine. It has never rung truer." / "Not today. When the anvil rings
 on its own, come. You will know the sound."
 
+## One World, Phase 1 — the Seamworks on the Ember surface, the Waystones (shipped behind the preview gate — owner reviews in play)
+
+Working names (owner decision 2026-10-15: they ship as working names; each renames in one i18n table):
+**the Quarry Road** (the surface east of the Seamworks, sectors 4–7, where the Rivet Maws roam until P2 makes it
+the Quarry), **the Plot** (west of the Seamworks, sectors −4…−1: the pond, the arch to the Homestead), **the Ember
+Wilds** (the endless surface beyond), **the Quarry Head stone** (the first stone lit by hand), the other region
+stones (Corridor Head, Thicket Head, Channel Head, Ring Head), the realm towns' stones (the Archive, Canopy,
+Court and Orrery stones), and the **Meridian Survey** with its marks: Sera's Chart (4), Quick Hands (8),
+Couriers' Memory (12), Meridian Surveyor (15).
+
+**The Waystones.** Every Waystone is a Meridian transit aperture of Sera Quill's Compact. When the fracture
+moved "down", the wild apertures went dark; Sera recalibrated nine to the new down (Act II), the rest wait
+for a Keeper's mark at Keeper height. A lit stone agrees with every other lit stone (as a Rift Anchor's two
+ends agree). The Ridge Couriers walked before the stones: lighting one is walking their road once, so nobody
+has to again. The five town stones are Sera's trunk line, always lit. Glim, at the first dark stone: "A
+Waystone gone dark. When the fracture moved 'down', the wild ones stopped agreeing. Light it, and it will
+agree with the town stone again." The Waystone Shard's old line ("a splinter from a waystone that was never
+built") now has stones to be a splinter of.
+
+**The keepers' day.** Counter from six to seven; at dusk they walk to the Hearth fire in the square and spend
+the evening there; from eleven they sleep upstairs over their shops (a window lit, then dark). A station is
+never shut: at night E rings the bell — "A window lights upstairs, a yawn, the bolt. 'Coming, coming.'"
+
+**The move.** "Your Delve moved under the town. What you had earned came with you; what your chests held is
+back in your Satchel and Vault." (v2's claims carry over; tunnels dug in v2 do not: the world moved.)
+
 ## Day, night and the eclipse (2026-10-15) — shipped, owner reviews in play
 
 Builds on Canon ("the Eclipse is a recurring cosmic pressure"; Umbral: the Nocturne Archive "beneath a fractured moon
