@@ -87,6 +87,11 @@ export class GlimSprite {
     this.trail.length = 0;
   }
 
+  /** A new place: Glim is simply at the Keeper's shoulder (no flight across the old area's coordinates). */
+  reset(): void {
+    this.x = NaN; this.y = NaN; this.flight = null; this.trail.length = 0;
+  }
+
   /** Show me: fly ahead to world (x, y), wait (`hold` s), come back. */
   flyTo(x: number, y: number, hold = .8): void {
     this.flight = { x, y, phase: 'out', hold };

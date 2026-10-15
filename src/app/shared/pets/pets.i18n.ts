@@ -104,7 +104,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   // ── Roles, moves, levels and commands (pet-roles.ts) ──
   'play.pet.role.combat': { en: 'Fights beside you', es: 'Pelea a tu lado' },
   'play.pet.role.skilling': { en: 'Works beside you', es: 'Trabaja a tu lado' },
-  'play.pet.move.bite': { en: 'Bite: nips a foe near you and stuns it a moment.', es: 'Mordisco: muerde a un enemigo cercano y lo aturde un momento.' },
+  'play.pet.move.bite': { en: 'Bite: nips a foe near you; every third bite stuns it a moment.', es: 'Mordisco: muerde a un enemigo cercano; cada tercer mordisco lo aturde un momento.' },
   'play.pet.move.dash': { en: 'Dash: darts through every foe in its path.', es: 'Embestida: atraviesa a todos los enemigos de su camino.' },
   'play.pet.move.chomp': { en: 'Chomp: cracks a foe\'s armour, so every blow lands harder for a while.', es: 'Dentellada: agrieta la armadura del enemigo; cada golpe pega mas un rato.' },
   'play.pet.move.pulse': { en: 'Pulse: a ring of warm light closes your wounds, even mid-fight.', es: 'Pulso: un anillo de luz calida cierra tus heridas, incluso en combate.' },
