@@ -99,7 +99,9 @@ export type StructureKind = 'ruin' | 'waycache' | 'flooded-shaft' | 'maw-den' | 
   // The Underhearth (Phase 8).
   | 'outpost' | 'hearth-lake' | 'sentinel-hall' | 'ember-den' | 'rail-gallery' | 'banked-door' | 'furnace-hall'
   // The Rift Gates (rift-gates.model.ts), and the Umbral's underside (realm-gen.ts).
-  | 'rift-gate' | 'gate-hollow' | 'warden-hall' | 'ink-pool' | 'drift-pocket' | 'mirror-cavern' | 'shade-den';
+  | 'rift-gate' | 'gate-hollow' | 'warden-hall' | 'ink-pool' | 'drift-pocket' | 'mirror-cavern' | 'shade-den'
+  // The Verdant's underside, the Root Deeps (verdant-gen.ts), and the Luminous's, the Prism Mines (luminous-gen.ts).
+  | 'graft-hall' | 'spore-hollow' | 'vine-shaft' | 'graft-warren' | 'prism-hall' | 'sunwell' | 'shadow-hall' | 'prism-gallery';
 /** A structure as the map and the meaning check see it: its kind and its top-left cell. */
 export interface SectorStructure { kind: StructureKind; col: number; row: number; w: number; h: number }
 

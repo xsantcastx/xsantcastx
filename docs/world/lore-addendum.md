@@ -1245,7 +1245,7 @@ A **Realm Sigil** (splinters, the realm's own material, a core that remembers he
 "someone the shadows already know" (Verrin, Game, level-15 line: a door in the Umbral that opens only for
 such a someone) — the gate keeps the sigil and stays open for that Keeper.
 
-**Three gates are still settling** (Luminous, Celestial, Verdant): they hum, they glow their realm's colour,
+**Three gates were still settling** at first (Luminous, Celestial, Verdant; the Luminous and Verdant opened 2026-10-15, below): they hum, they glow their realm's colour,
 Glim feels the other side but cannot see it. "One day."
 
 **The Ink Deeps** — the Umbral's underside. "The dark the light left behind when it went somewhere else"
@@ -1274,6 +1274,59 @@ braziers, end it honestly; the Archivist: "Most things that guard a dark are ask
 never bring a torch.").
 
 Glim's telegraph lines (said once each) are in `play/world/rift.i18n.ts` (`play.rift.rule.*`).
+
+## The Root Deeps and the Prism Mines (2026-10-15) — shipped, owner reviews in play
+
+Owner: the realms are "like deeper delves or crazy". Two more gates opened (the Celestial still settles).
+Code: `play/engine/verdant-gen.ts` + `verdant.ts`, `play/engine/luminous-gen.ts` + `luminous.ts`, shared
+`realm-kit.ts`; creatures `play/engine/realm-creatures.ts`. Handoff: `docs/handoff/realm-delves.md`.
+
+**The Root Deeps** — the Verdant's underside: the World-Root's lower half, still growing (world-and-cast ch. 5,
+"the root path to the threshold"). Its gate stands in the Root Hollows, west of the shaft, where the roots grow
+round a frame instead of through it. The rule it breaks: *dug rock grows back*. The walls are living wood;
+what you dig, it takes back, roots creeping into the hole before it closes. Fire burns them back (a torch
+beside the hole), a support holds them, and the Rootsever Billhook cuts them clean. Living vines hang from
+the roofs and hold a Keeper's weight; spore pods burst underfoot and sting, but give their sap to a sickle.
+- *Kesh Arbo* (Lodge Warden, Graftkeeper) and *Siv Moss* (Thornbound Ranger) — same nursery, opposed now —
+  ask together for once. Kesh: "Everything I graft up here, it grafts down there, faster, without asking."
+  Siv: "Do not trust a hole you did not burn." Their field notes: grafting wax "It took. It always takes.
+  That is the problem." / "Burn it, cut it, or prop it, or it closes behind you. S.M."
+- *Graftling*: a cutting that took; it would like to be joined back on. *The Graftmother*: joins everything
+  that is cut, and has begun joining the tunnels to the people in them. Her heart-roots hold her to her hall:
+  while one stands she heals and shrugs off blows. Her oath is grown, not carved: "Cut my roots, and I will
+  let you go."
+- Items: Rootglass (sap set into glass; the light inside still moves toward the surface), Heart-amber (what the
+  root bleeds where it was cut long ago; something is always caught in it, never quite dead), the Verdant
+  Sigil (the frame puts out a leaf when it takes it), the Rootsever Billhook (Kesh says cruel; Siv says it
+  ends arguments).
+- The chain (the Archivist files it; Kesh and Siv keep no ledger): *The Wood That Remembers* · *What Grows
+  Back* (10 Rootglass, 4 Heart-amber; the beetle in the amber, alive, twenty years) · *The Graftmother* (the
+  Archivist files their notes in one folder for the first time: "They disagree about everything except the
+  ending. That is usually how you know it was the right one.").
+
+**The Prism Mines** — the Luminous's underside: where its sun lands when it goes down every evening (Aureth:
+"everyone assumes it goes nowhere. It goes under."). Its gate stands in the Glowcap Grotto; the glowcaps lean
+toward it as if it were morning. The rule it breaks: *light is solid*. A sun-prism (the realm's sun seen from
+underneath, set in a roof) shines straight down; where the beam falls it is a ladder of light, where it runs
+across open air it is a bridge. Prism mirrors turn it a corner. Shadow glass is a floor only while light is on
+it; in the dark it is a hole that looks like a floor (there is always a way back up). The Dawn Lens makes your
+own light heavy enough to stand on.
+- *Aureth* asks, and wants "an honest account of what the light holds up". *Lune Coyne* (the Croupier) takes
+  the odds: the old miners bet on which beams would hold, kept the books in prismite and paid in dawnglass;
+  "Nobody down there ever lost. That is how I know they never came back up." Field notes: Aureth's gold
+  chalk ("Stand where the light is"), the miners' rule ("No bridge? Turn the glass."), a warning about black
+  glass ("Bring a light." Underneath, smaller: "I did not."), Lune's settled tally.
+- *Prismling*: a little light that set before it could go anywhere. *The Hollow Sun*: the light that was
+  promised and never arrived, waiting so long it has forgotten for whom. Blows pass through it while it is free;
+  caught in a beam it stands still "long enough to be ended". It flares, and the mirrors turn away.
+- Items: Prismite (light goes in one colour and comes out as an argument), Dawnglass (light that stood still so
+  long it set; warm like a morning that never happened), the Luminous Sigil, the Dawn Lens.
+- The chain: *Where the Sun Goes Down* · *Odds on the Light* (10 Prismite, 4 Dawnglass) · *The Hollow Sun*
+  (Aureth, closing the account: "It asked to be held still long enough to end. Most promises ask for less, and
+  get it.").
+
+Glim's telegraph lines for both rules (said once each) are in `play/world/rift.i18n.ts`; Glim's hints for the
+two chains in `shared/glim/glim.i18n.ts` (`play.glim.hint.v.*`, `play.glim.hint.l.*`).
 
 ## The Glass of Becoming (shipped — owner reviews in play)
 

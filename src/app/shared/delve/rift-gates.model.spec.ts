@@ -8,8 +8,13 @@ import { DELVE_KEY } from './delve-save.model';
 import { coerceRegion, mergeRegionSlots, REGION_SLOT_KEYS, type DelveRegion } from './delve-region.model';
 import { DELVE_FAR_KEY, type RegionStore } from './delve-region-store';
 import { SYNCED_BLOBS } from '../cloud-save/cloud-save.model';
-import { GLOAM_WARDEN_FLAG } from '../npc/delve-missions.model';
+import { delveMissionById, GLOAM_WARDEN_FLAG, GRAFTMOTHER_FLAG, HOLLOW_SUN_FLAG } from '../npc/delve-missions.model';
 import { GLOAM_WARDEN_FLAG as AREA_WARDEN_FLAG } from '../../play/world/towns/umbral-delve';
+import { GRAFTMOTHER_FLAG as AREA_GRAFT_FLAG, VERDANT_DELVE } from '../../play/world/towns/verdant-delve';
+import { HOLLOW_SUN_FLAG as AREA_SUN_FLAG, LUMINOUS_DELVE } from '../../play/world/towns/luminous-delve';
+import { INFERNAL_TOWN } from '../../play/world/towns/infernal';
+import { craftingRecipeById } from '../crafting/crafting.model';
+import { ambienceFor } from '../sound/sound-palette';
 import { TERRAIN_NODES } from '../../play/engine/terrain';
 
 class MemoryStore implements RegionStore {
@@ -27,9 +32,9 @@ class MemoryStore implements RegionStore {
 }
 
 describe('Rift Gates: the model', () => {
-  it('has four gates, one open (the Umbral), each with its own node, sigil, realm material and colour', () => {
+  it('has four gates, three open (the Umbral, the Luminous, the Verdant), each with its own node, sigil, realm material and colour', () => {
     expect(RIFT_REALMS.length).toBe(4);
-    expect(RIFT_REALMS.filter(r => RIFT_GATES[r].open)).toEqual(['umbral']);
+    expect(RIFT_REALMS.filter(r => RIFT_GATES[r].open)).toEqual(['umbral', 'luminous', 'verdant']);
     for (const realm of RIFT_REALMS) {
       const gate = RIFT_GATES[realm];
       expect(TERRAIN_NODES[gate.node]?.use).toBe('gate');
@@ -43,7 +48,7 @@ describe('Rift Gates: the model', () => {
   });
 
   it('attunes only an open gate, at its Delving level, with its sigil; once attuned it stays open', () => {
-    expect(attuneCheck('luminous', { delving: 99, sigils: 5, attuned: false })).toEqual({ ok: false, why: 'settling' });
+    expect(attuneCheck('celestial', { delving: 99, sigils: 5, attuned: false })).toEqual({ ok: false, why: 'settling' });
     expect(attuneCheck('umbral', { delving: 19, sigils: 1, attuned: false })).toEqual({ ok: false, why: 'delving', need: 20 });
     expect(attuneCheck('umbral', { delving: 25, sigils: 0, attuned: false })).toEqual({ ok: false, why: 'sigil', sigil: 'umbral-sigil' });
     expect(attuneCheck('umbral', { delving: 25, sigils: 1, attuned: false })).toEqual({ ok: true, attune: true });
@@ -70,6 +75,37 @@ describe('Rift Gates: the model', () => {
       expect(blob.merge).toBe(mergeRegionSlots);
     }
     expect(GLOAM_WARDEN_FLAG).toBe(AREA_WARDEN_FLAG);
+  });
+
+  it('opens the Root Deeps and the Prism Mines: an area of the Infernal town each, a sigil recipe each, guardians pinned to their missions', () => {
+    for (const [realm, area] of [['verdant', VERDANT_DELVE], ['luminous', LUMINOUS_DELVE]] as const) {
+      const gate = RIFT_GATES[realm];
+      expect(gate.area).toBe(area.id);
+      expect(realmOfArea(area.id)).toBe(realm);
+      expect(area.terrain?.realm).toBe(realm);
+      expect(area.terrain?.rows).withContext('the phone budget: 64 rows, like the Ink Deeps').toBe(64);
+      expect(INFERNAL_TOWN.hunts.some(h => h.id === area.id)).toBeTrue();
+      expect(craftingRecipeById(`craft-${realm}-sigil`)?.output.itemId).toBe(gate.sigil);
+    }
+    expect(GRAFTMOTHER_FLAG).toBe(AREA_GRAFT_FLAG);
+    expect(HOLLOW_SUN_FLAG).toBe(AREA_SUN_FLAG);
+    expect(delveMissionById('kesh-roots-1')?.objective).toEqual(jasmine.objectContaining({ kind: 'reach', flag: enteredFlag('verdant') }));
+    expect(delveMissionById('kesh-roots-3')?.objective).toEqual(jasmine.objectContaining({ kind: 'defeat', flag: GRAFTMOTHER_FLAG }));
+    expect(delveMissionById('aureth-prism-1')?.objective).toEqual(jasmine.objectContaining({ kind: 'reach', flag: enteredFlag('luminous') }));
+    expect(delveMissionById('aureth-prism-3')?.objective).toEqual(jasmine.objectContaining({ kind: 'defeat', flag: HOLLOW_SUN_FLAG }));
+    expect(delveMissionById('kesh-roots-1')?.reward.recipe).toBe('craft-rootsever-billhook');
+    expect(delveMissionById('aureth-prism-1')?.reward.recipe).toBe('craft-dawn-lens');
+    expect(delveMissionById('siv-roots-2')?.giver).toBe('Siv Moss');
+  });
+
+  it('gives each realm Delve its own sound underneath (sound-palette REALM_DELVE_BEDS)', () => {
+    const scene = { delve: true, boss: false, hour: 12, water: false, lava: false, ink: false, glim: false };
+    const ember = ambienceFor({ ...scene, realm: 'infernal' });
+    expect(ember.leaves).toBe(0);
+    expect(ambienceFor({ ...scene, realm: 'verdant' }).leaves).toBeGreaterThan(0);
+    expect(ambienceFor({ ...scene, realm: 'luminous' }).chimes).toBeGreaterThan(0);
+    // A guardian near still rumbles the same, whatever the realm.
+    expect(ambienceFor({ ...scene, realm: 'verdant', boss: true }).rumble).toBe(ambienceFor({ ...scene, realm: 'infernal', boss: true }).rumble);
   });
 });
 
@@ -125,6 +161,27 @@ describe('Rift Gates: a realm Delve saves as its own world (DelveSaveService)', 
     expect(again.sector('ember-delve', -3, 0)).toBeNull();
     expect(again.sectorKeys('umbral-delve').length).toBe(1);
     expect(again.sectorKeys('ember-delve').length).toBe(0);
+    tick(SLOT_WRITE_MS);
+    flush();
+  }));
+
+  it('keeps the open realms\' worlds apart: the Root Deeps\' and the Prism Mines\' sectors in their own slots', fakeAsync(() => {
+    const service = boot();
+    const seed = service.seed('ember-delve')!;
+    flush();
+    expect(service.seed('verdant-delve')).toBe(realmSeed(seed, 'verdant'));
+    expect(service.seed('luminous-delve')).toBe(realmSeed(seed, 'luminous'));
+    service.sectorChanged('verdant-delve', 2, 0, 1, 11, 0);
+    service.sectorChanged('luminous-delve', 2, 0, 1, 12, 0);
+    tick(DEBOUNCE_MS);
+    service.flush();
+    expect(service.sector('verdant-delve', 2, 0)!.cells.get(11)).toBe(0);
+    expect(service.sector('verdant-delve', 2, 0)!.cells.has(12)).toBeFalse();
+    expect(service.sector('luminous-delve', 2, 0)!.cells.get(12)).toBe(0);
+    expect(service.sector('umbral-delve', 2, 0)).toBeNull();
+    expect(coerceRegion(JSON.parse(localStorage.getItem('godforge-rift-verdant-r0')!))!.seed).toBe(realmSeed(seed, 'verdant'));
+    expect(coerceRegion(JSON.parse(localStorage.getItem('godforge-rift-luminous-r0')!))!.seed).toBe(realmSeed(seed, 'luminous'));
+    expect(service.realmSlotRegions('verdant')[0]).toBe('0_0');
     tick(SLOT_WRITE_MS);
     flush();
   }));

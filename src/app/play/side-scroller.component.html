@@ -114,10 +114,10 @@
       </div>
     }
     <!-- The Ink Deeps: the ink tide, always shown there (umbral.ts: telegraphed, never sudden). -->
-    @if (state.realm; as realm) {
-      <div class="vital vital--tide" [attr.data-tide]="realm.tide" [attr.aria-label]="t('play.rift.hud.tide.aria', { phase: t('play.rift.hud.tide.' + realm.tide), n: realm.nextTide })">
+    @if (state.realm?.tide ? state.realm : null; as realm) {
+      <div class="vital vital--tide" [attr.data-tide]="realm.tide" [attr.aria-label]="t('play.rift.hud.tide.aria', { phase: t('play.rift.hud.tide.' + realm.tide), n: realm.nextTide ?? 0 })">
         <label>{{ t('play.rift.hud.tide.' + realm.tide) }} <b>{{ realm.nextTide }}s</b></label>
-        <div class="meter tide"><i [style.--fill]="realm.tideRows / 2"></i></div>
+        <div class="meter tide"><i [style.--fill]="(realm.tideRows ?? 0) / 2"></i></div>
       </div>
     }
     @if (state.liquid?.in === 'lava' && state.liquid?.ward != null) {
