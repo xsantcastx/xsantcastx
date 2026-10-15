@@ -54,8 +54,9 @@ async function instrument(page: Page): Promise<void> {
       if (cur && world(this) && /Cormorant/.test(this.font)) {
         // Tag: '#ffe1b0' on the plate; bubble: '#2a1c16' ink (the Keeper's own "You" label shares the font).
         // The plate rides on each figure's own top (keeper-paint.ts `top`: hair, hat, hood, shards), so its
-        // height varies by person: the text sits 16 px under a plate top between FLOOR - 200 and FLOOR - 120.
-        if (/\b14px/.test(this.font) && y >= 610 - 200 + 16 && y <= 610 - 120 + 16 && this.fillStyle === '#ffe1b0') {
+        // height varies by person: the text sits 16 px under a plate top between FLOOR - 212 (Aureth's shards
+        // under a titled plate) and FLOOR - 120.
+        if (/\b14px/.test(this.font) && y >= 610 - 212 + 16 && y <= 610 - 120 + 16 && this.fillStyle === '#ffe1b0') {
           // The plate is min(200, text + 20) wide, centred on x (town-life.ts nameTag).
           const m = this.getTransform(), w = Math.min(200, this.measureText(text).width + 20);
           cur.tags.push([text, x, m.a * (x - w / 2) + m.e, m.a * (x + w / 2) + m.e, this.canvas.width]);
