@@ -308,6 +308,28 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
     n.lore = !!(item.lore && item.lore.trim()) && WORDS.includes("'clock.lore." + item.id + "'");
   }
 }
+// The machines (shared/cascade): the Eclipse Cascade on the Slate, and the realm machines found in their Delves
+// (realm-machines.model.ts). A built one stands in a real area, says where it is found, has a use, its lore in
+// the model AND in the machine's words (EN + ES), a name the play view can say, and a Slate app; a spec'd one
+// names a real area and a twist, so the next one is ready to build.
+{
+  const RM = L('shared/cascade/realm-machines.model.ts');
+  const MACHINE_WORDS = read('shared/cascade/cascade.i18n.ts');
+  const WORLD_WORDS = read('shared/cascade/realm-machines.i18n.ts');
+  const SLATE_MODEL = read('shared/slate/slate.model.ts');
+  const areas = new Set();
+  for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) areas.add(a.id);
+  for (const m of RM.REALM_MACHINES) {
+    if (!areas.has(m.area)) violationsLater.push(['station', 'unknown-area', m.id, `stands in ${m.area}, which is not an area`]);
+    if (!m.twist || !m.lore || !m.foundIn) violationsLater.push(['station', 'no-lore', m.id, 'no twist, lore or Found in']);
+    if (m.status !== 'built') continue;
+    if (!m.use) violationsLater.push(['station', 'no-use', m.id, 'no use']);
+    if (!MACHINE_WORDS.includes(`'cascade.lore.${m.id}'`) || !MACHINE_WORDS.includes(`'cascade.title.${m.id}'`)) violationsLater.push(['station', 'no-lore', m.id, 'no cascade.lore / cascade.title words']);
+    if (!WORLD_WORDS.includes(`'machine.title.${m.id}'`) || !WORLD_WORDS.includes(`'machine.found.${m.id}'`)) violationsLater.push(['station', 'not-visible', m.id, 'no machine.title / machine.found words']);
+    if (!SLATE_MODEL.includes(`game: '${m.id}'`)) violationsLater.push(['station', 'no-use', m.id, 'found, but no Slate app (slate.model SLATE_MACHINES)']);
+  }
+  if (!MACHINE_WORDS.includes("'cascade.lore.eclipse-cascade'") || !SLATE_MODEL.includes("game: 'eclipse-cascade'")) violationsLater.push(['station', 'not-visible', 'eclipse-cascade', 'no lore or no Slate app']);
+}
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
 // The Exchange no longer stands in the world (game-only shell, docs/handoff/page-audit.md): it is not a
 // sell outlet. Its catalogue still marks what a future world-native trade hall would carry (above).

@@ -34,7 +34,9 @@ export type SfxCue =
   // The Lost Cabinets (shared/cabinets): the Slate's Scan pinging (pitch rises as it warms), a cabinet opening.
   | 'scan' | 'cabinet'
   // The tool in hand changes (shared/skills/held-tool.ts): the rod out for a cast, the pickaxe for a dig, the weapon back.
-  | 'swap';
+  | 'swap'
+  // The cascade machines (shared/cascade): runes landing, a cluster bursting (pitch climbs each tumble), a big win.
+  | 'tumble' | 'cluster' | 'bigwin';
 
 export interface SfxOptions {
   material?: Material;
@@ -48,7 +50,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { tumble: .06, cluster: .08, bigwin: 1, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -210,6 +212,12 @@ export class SoundDirector {
       case 'cabinet': this.tone(t, 'triangle', 196, .09, .09, .002); return this.arpeggio(t + .1, [72, 76, 79, 83, 88], 'bell', .08, .28, true);
       // A soft leather-and-metal shuffle: a strap loosed, a haft settling in the hand.
       case 'swap': this.whoosh(t, 900, 400, .08, .06); return this.tone(t + .05, 'triangle', 660, .05, .06, .002);
+      // Stone on stone, small: a column of runes settling.
+      case 'tumble': this.tone(t, 'triangle', 220 * up, .05, .07, .002); return this.tone(t + .03, 'sine', 330 * up, .03, .06, .002);
+      // A bright three-note chime; each tumble of a chain climbs a step.
+      case 'cluster': return this.arpeggio(t, [76, 79, 84].map(n => n + (opts.pitch ?? 0)), 'bell', .05, .22, true);
+      // A rising fanfare of bells, then the top note again: a Big, Mega or Epic win.
+      case 'bigwin': this.arpeggio(t, [60, 64, 67, 72, 76, 79, 84, 88], 'bell', .07, .3, true); return this.arpeggio(t + .62, [84, 91], 'bell', .12, .32, true);
     }
   }
 

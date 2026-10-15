@@ -98,6 +98,24 @@ export class PlayLedgerService {
     return recentPlays<O>(this.load(), game, n);
   }
 
+  /** True once this machine has been found in the world (the realm machines). */
+  found(machine: string): boolean {
+    return !!this.load().found?.[machine];
+  }
+
+  /**
+   * Note a machine found in the world, once (the first time wins; a merge keeps
+   * the earlier). Returns true only the first time, so the caller says so once.
+   */
+  markFound(machine: string, at = new Date()): boolean {
+    if (!this.isBrowser) return false;
+    const ledger = this.load();
+    if (ledger.found?.[machine]) return false;
+    this.ledger = { ...ledger, found: { ...(ledger.found ?? {}), [machine]: at.toISOString() } };
+    this.persist();
+    return true;
+  }
+
   record<O>(id: string): PlayRecord<O> | null {
     return (this.load().plays[id] as PlayRecord<O> | undefined) ?? null;
   }
@@ -112,7 +130,7 @@ export class PlayLedgerService {
       return { ok: true, id: mutationId, record: this.ledger.plays[mutationId] as PlayRecord<O>, replay: true };
     }
 
-    if (!betAllowed(bet, this.economy.snapshot.perSecond)) return { ok: false, code: 'bet' };
+    if (!betAllowed(bet, this.economy.snapshot.perSecond, this.economy.snapshot.gold)) return { ok: false, code: 'bet' };
 
     const secret = ledger.secret || newSecret();
     const seq = ledger.nonce;
@@ -149,7 +167,7 @@ export class PlayLedgerService {
     const known = ledger.plays[mutationId] as PlayRecord<O> | undefined;
     if (known) return { ok: true, id: mutationId, record: known, replay: true };
 
-    if (!betAllowed(bet, this.economy.snapshot.perSecond)) return { ok: false, code: 'bet' };
+    if (!betAllowed(bet, this.economy.snapshot.perSecond, this.economy.snapshot.gold)) return { ok: false, code: 'bet' };
     const secret = ledger.secret || newSecret();
     const seq = ledger.nonce;
     const seed = playSeed(secret, seq);
