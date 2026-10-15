@@ -3769,7 +3769,8 @@ test('tile textures: every node kind has a pattern; pixels are deterministic, va
     const a = patternPixels(pattern, node.id, 0), b = patternPixels(pattern, node.id, 0);
     assert.equal(a.px.length, TILE * TILE);
     assert.deepEqual(a.px, b.px, `${node.id}: same pixels every time`);
-    if (pattern !== 'cache') for (let v = 1; v < VARIANTS; v++) assert.notDeepEqual(patternPixels(pattern, node.id, v).px, a.px, `${node.id}: variant ${v} differs`);
+    // A cache and a solid prop (the Living World's ashberry bush) are one pixel map each.
+    if (pattern !== 'cache' && pattern !== 'placed') for (let v = 1; v < VARIANTS; v++) assert.notDeepEqual(patternPixels(pattern, node.id, v).px, a.px, `${node.id}: variant ${v} differs`);
   }
   for (const id of ['cinder-vein', 'slag-vein', 'heartstone-vein', 'ember-rock']) {
     const node = terrainMod.TERRAIN_NODES[id];

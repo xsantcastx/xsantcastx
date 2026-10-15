@@ -1568,6 +1568,37 @@ never shut: at night E rings the bell — "A window lights upstairs, a yawn, the
 **The move.** "Your Delve moved under the town. What you had earned came with you; what your chests held is
 back in your Satchel and Vault." (v2's claims carry over; tunnels dug in v2 do not: the world moved.)
 
+## The Living World (2026-10-15) — shipped, owner reviews in play
+
+Handoff: `docs/handoff/living-world.md`. Words: `src/app/play/world/living-world.i18n.ts` (EN + ES).
+
+**The Ember Wilds are not empty: they were left.** Before the fracture moved "down", the old Keepers kept
+waystations along the surface between the towns. The fracture took the roads; the ruins, camps and cellars stayed.
+People still live out there who would rather not live in a town.
+
+- **Ashwoods.** The one tree that grows in ash ("the ash here is old fire; plant in it and it remembers being
+  warm"). Ember-red crowns you can stand in; trunks you climb like a rope; a burl at the foot that gives World-Root
+  bark ("the Root reaches up here too"). **Ashberry bushes**: ember grubs nest in their roots.
+- **Waystations and camps.** Ruins of the old Keepers' waystations (one wall, a lintel: "WELCOME" on the road side,
+  "COME BACK" on the inside), camps left in a hurry with a bundle of torches nobody took ("Take three, leave a word"),
+  wayside shrines (a rift standing on a plinth), wells sunk into the hills, signposts with words for whoever walks by.
+- **The hermits.** **Orla, surveyor** ("I measured the Wilds once. They grew while I was measuring.") gives torches;
+  **Tobb, ex-smith** of the Seamworks forge, keeps ashberries instead of fires and gives grubs ("they bite better
+  than any bait Kael sells"); **Mira, well-fisher** ("the fish leap where the water is kind") gives glowcaps. Each
+  gives once, ever.
+- **Underground finds.** Fossil beds of the first Maws, rivets and all; hidden cellars ("for the winter the Delve has
+  instead of winter", the key still in the strongbox); geodes of the stratum's own crystal; sealed vaults with a riddle
+  ("No pick has opened me and none will. Breathe on me the way the staff breathes."); Maw and Bailiff dens; a
+  **Bailiff elder** keeping a strongbox; **seam-engines**, brass older than the Seamworks, still ticking ("every tick,
+  a seam somewhere far off closes by a hair"; no maker's mark, only a hand-cut "Sorry"; someone still oils one).
+- **Critters.** Cinder finches (they nest where people slept: a flock means somebody lived there), ash hares (they
+  burrow over cellars and vaults), ember beetles (catch one: an Ember Grub), dusk moths (they drink from glowcaps;
+  catch one: a Glowcap), glowworms (living light on cave ceilings), leaping fish (where the water holds bites).
+- **The day's mysteries** (seeded per UTC day; nobody knows who sends them): a wisp of pale-gold light that drifts
+  ahead of whoever follows and settles when they stop; a whisper in no voice you know ("Not this way. That way. No,
+  this way."); a door in the rock that was not there yesterday and opens on nothing but the rock behind it, and a
+  little something left on the step. Glim: "That door was not there yesterday. I would remember. I remember doors."
+
 ## Day, night and the eclipse (2026-10-15) — shipped, owner reviews in play
 
 Builds on Canon ("the Eclipse is a recurring cosmic pressure"; Umbral: the Nocturne Archive "beneath a fractured moon
