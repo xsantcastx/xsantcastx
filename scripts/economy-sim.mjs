@@ -1503,7 +1503,8 @@ function combatScenario({ quiet = false } = {}) {
     const hitDmg = DMG.mitigate(Math.round(k.damage * (fx ? fx.damage : 1)), resists.physical, fx ? fx.resistLower : 0);
     const ttk = hitDmg > 0 ? Math.ceil(hp / hitDmg) * SWING / (fx ? fx.attackSpeed : 1) : Infinity;
     const type = FAM.creatureHits(creature);
-    const blow = Math.round(FAM.creatureBlow(lvl - d.level) * d.damage);
+    // Scripted fights (bosses) keep the legacy blow; their threat is their mechanic (engine arm()).
+    const blow = Math.round(FAM.creatureBlow(p.boss ? 1 : lvl - d.level) * d.damage);
     const res = type === 'physical' ? 0 : DMG.keeperResist(k.resist, d.resistPenalty);
     const taken = DMG.hitOnKeeper(blow, type, res);
     const regen = fx ? fx.regen : 0;

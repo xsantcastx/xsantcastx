@@ -1562,13 +1562,14 @@ export class SeamworksEngine {
     if (!rules || m.armed) return;
     const t = this.terrain;
     const floor = m.def.floorY ?? FLOOR;
-    const depthRows = t ? Math.max(0, Math.floor((floor - t.top) / CELL)) : 0;
-    const tier = rules.tier, diff = DIFFICULTIES[tier];
-    const lvl = monsterLevel(m.def.creature, depthRows, tier);
     const profile = creatureProfile(m.def.creature);
-    // A guardian (`once`) or a scripted foe (a trait, a minion) is never a pack.
+    // A guardian (`once`) or a scripted foe (a trait, a minion) is never a pack, and its authored HP and level
+    // already price its hall in: depth lifts only the generic creatures of a Delve's halls.
     const boss = !!profile.boss || !!m.def.once;
     const plain = boss || !!m.def.trait || !!m.minion;
+    const depthRows = t && !plain ? Math.max(0, Math.floor((floor - t.top) / CELL)) : 0;
+    const tier = rules.tier, diff = DIFFICULTIES[tier];
+    const lvl = monsterLevel(m.def.creature, depthRows, tier);
     const pack = plain ? { rank: (boss ? 'boss' : 'normal') as MonsterRank, mods: [] as ChampionMod[], title: null }
       : rollPack(m.def.creature, lvl, false, tier, `${rules.seed}|${this.areaDef.id}|${Math.round(m.spawn)}|${m.gen ?? 0}`);
     const ps = packStats(pack, creatureHits(m.def.creature));
@@ -1576,7 +1577,9 @@ export class SeamworksEngine {
     for (const mod of pack.mods) for (const [k, v] of Object.entries(MOD_DEFS[mod].resist ?? {}) as [DamageType, number][]) resists[k] = (resists[k] ?? 0) + v;
     const extra = lvl - diff.level - profile.level;
     const hp = Math.max(1, Math.round(m.def.hp * depthHpScale(extra) * ps.hp * diff.hp));
-    const blow = Math.round(creatureBlow(lvl - diff.level) * ps.damage * diff.damage);
+    // A scripted fight (a guardian, a trait creature, a minion) is tuned around its mechanic and the legacy 12 blow:
+    // on Normal it keeps it; Nightmare and Hell multiply it like everything else.
+    const blow = Math.round((plain ? creatureBlow(1) : creatureBlow(lvl - diff.level)) * ps.damage * diff.damage);
     m.armed = { lvl, rank: pack.rank, mods: pack.mods, title: pack.title, resists, hits: ps.hits, blow, speed: ps.speed };
     if (hp !== m.maxHp) {
       const share = m.maxHp ? m.hp / m.maxHp : 1;
