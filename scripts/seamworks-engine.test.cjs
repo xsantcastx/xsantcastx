@@ -5002,8 +5002,10 @@ test('loot & combat: a rolled rare drop spills with a tall beam, is heard, repor
   assert.ok(sounds.includes('drop-rare'), 'the rare is heard');
   assert.equal(state().messageKey, 'play.loot.dropped');
   assert.match(state().loot.drops, /rare:1/);
-  engine.player.x = monster.x;
+  engine.player.x = rare.x;
   for (let n = 0; n < 90; n++) engine.update(1 / 60);
+  assert.ok(!got.some(l => l.item), 'gear waits on the ground: walking over it does not take it (D2)');
+  engine.interact(); engine.update(1 / 60);
   const picked = got.find(l => l.item);
   assert.ok(picked, 'the host is asked to mint it');
   assert.equal(JSON.stringify(picked.item), JSON.stringify({ definitionId: 'astral-helm', rarity: 'rare', unique: false }));
@@ -5024,9 +5026,11 @@ test('loot & combat: a full satchel leaves gear shining; the filter hides common
   for (const x of engine.drops.map(d => d.x)) { engine.player.x = x; for (let n = 0; n < 30; n++) engine.update(1 / 60); }
   assert.ok(monster.hp === 0);
   assert.equal(engine.drops.filter(d => d.material).length, 0, 'a hidden drop walked over is still collected');
+  const epic = engine.drops.find(d => d.item);
+  engine.player.x = epic.x; engine.interact();
   assert.equal(engine.drops.filter(d => d.item).length, 1, 'no room: the epic stays');
   room = true;
-  engine.update(1 / 60);
+  engine.interact(); engine.update(1 / 60);
   assert.equal(engine.drops.filter(d => d.item).length, 0);
   engine.destroy();
 });

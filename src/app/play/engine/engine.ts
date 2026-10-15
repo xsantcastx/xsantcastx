@@ -3392,8 +3392,8 @@ export class SeamworksEngine {
       const fx = LOOT_TIER_FX[loudest];
       if (fx.sfx && (!this.rules || shownUnderFilter(loudest, this.rules.filter))) this.sfx(fx.sfx);
       if (this.rules && tierRank(loudest) >= 2) {
-        if (unique) this.say('play.loot.unique', `A named thing: ${loudName}!`, { name: loudName });
-        else this.say('play.loot.dropped', `${loudName} dropped!`, { name: loudName });
+        if (unique) this.say('play.loot.unique', `A named thing: ${loudName}! Tap its name, or press E beside it, to pick it up.`, { name: loudName });
+        else this.say('play.loot.dropped', `${loudName} dropped! Tap its name, or press E beside it, to pick it up.`, { name: loudName });
         return;
       }
     }
@@ -3432,6 +3432,16 @@ export class SeamworksEngine {
     else this.say('play.hud.eng.collected', `Collected ${drop.label ?? 'Cinder Ore'}.`, { name: drop.label ?? 'Cinder Ore' });
     return true;
   }
+  /** The nearest gear or rune drop within a short reach of the Keeper, taken. True when one was. */
+  private takeNearestGear(): boolean {
+    let best: Drop | null = null, bestD = 110 * Math.max(this.figure, .6);
+    for (const d of this.drops) {
+      if (d.age < .3 || (!d.item && !d.rune) || Math.abs(d.y - this.player.y) > 100) continue;
+      const dist = Math.abs(d.x - this.player.x);
+      if (dist < bestD) { best = d; bestD = dist; }
+    }
+    return !!best && this.collect(best);
+  }
   /** Reach for a tapped label: in reach, take it; else walk to it (and take it on arrival). */
   static readonly TAP_REACH = 260;
   /**
@@ -3465,6 +3475,8 @@ export class SeamworksEngine {
   random: () => number = Math.random;
   interact(): void {
     if (this.paused || this.hp <= 0) return;
+    // E beside a piece of gear or a rune on the ground: take the nearest (the keyboard's tap on its plate).
+    if (this.takeNearestGear()) { this.report(); return; }
     // In the cart, E steps off where it stands (momentum and all).
     if (this.cart) { this.leaveCart(this.cart.dir * this.cart.speed * .6, 0); this.say('play.uh.cart.off', 'You step off the cart.'); this.report(); return; }
     // A line in the water: E hooks a bite, or reels the line back in (a tap just
@@ -3755,7 +3767,8 @@ export class SeamworksEngine {
     }
     for (const drop of this.drops) {
       drop.age += dt;
-      if (drop.age > .3 && Math.abs(drop.x - this.player.x) < 65 && Math.abs(this.player.y - drop.y) < 80) this.collect(drop);
+      // Gold, materials and the purse come to the Keeper's feet; gear and runes wait to be taken (a tap on the plate, or E), D2's way.
+      if (drop.age > .3 && !drop.item && !drop.rune && Math.abs(drop.x - this.player.x) < 65 && Math.abs(this.player.y - drop.y) < 80) this.collect(drop);
     }
     // In place: this runs every fixed step, and drops are few and rarely leave.
     let kept = 0;
@@ -4925,8 +4938,12 @@ export class SeamworksEngine {
       parts.push(`${d.purse ? 'purse' : d.item?.unique ? 'unique' : d.rarity ?? (d.coins ? 'coins' : 'common')}:${this.dropShown(d, filter) ? 1 : 0}`);
     }
     const a = nearest?.armed;
+    // The name plates drawn last frame, centre in canvas CSS px: what a tap would hit (the e2e taps it).
+    const scale = this.height / 720, labels: string[] = [];
+    for (const d of this.drops) if (d.lw > 0 && d.age >= 0) labels.push(`${d.color}@${Math.round((d.lx + d.lw / 2 - this.camera) * scale)},${Math.round((d.ly + 11 - this.cameraY) * scale)}`);
     return {
       drops: parts.join(','),
+      labels: labels.join(' '),
       aura: this.rules?.aura ? `${this.rules.aura.id}:${this.rules.aura.level}` : '',
       debuffed: this.marked,
       foe: a ? [a.rank, ...a.mods].join(':') : '',
@@ -5298,14 +5315,19 @@ export class SeamworksEngine {
       this.beamGradients.set(drop.color, gradient);
     }
     const pulse = this.reducedMotion ? .85 : .75 + Math.sin(time * 3 + drop.x * .05) * .25;
+    // Louder rungs: a wider halo, a brighter column, a white-hot core and a bigger ground flare (LOOT_TIER_FX).
+    const rank = Math.max(0, tierRank(drop.rarity)), strength = drop.rarity ? Math.max(.3, LOOT_TIER_FX[drop.rarity].alpha) : .3;
+    const halo = 26 + rank * 5, flare = 26 + rank * 7;
     c.save();
     c.globalCompositeOperation = 'lighter';
-    c.fillStyle = drop.color; c.globalAlpha = .3 * pulse * grow;
-    c.beginPath(); c.ellipse(drop.x, drop.y + 1, 26, 6, 0, 0, Math.PI * 2); c.fill();
+    c.fillStyle = drop.color; c.globalAlpha = (.25 + strength * .45) * pulse * grow;
+    c.beginPath(); c.ellipse(drop.x, drop.y + 1, flare, 6 + rank, 0, 0, Math.PI * 2); c.fill();
     c.translate(drop.x, drop.y); c.scale(1, drop.beam * grow);
     c.fillStyle = gradient;
-    c.globalAlpha = .45 * pulse; c.fillRect(-13, -1, 26, 1);
-    c.globalAlpha = pulse; c.fillRect(-3.5, -1, 7, 1);
+    c.globalAlpha = (.3 + strength * .6) * pulse; c.fillRect(-halo / 2, -1, halo, 1);
+    c.globalAlpha = Math.min(1, .6 + strength) * pulse; c.fillRect(-4, -1, 8, 1);
+    c.globalAlpha *= strength; c.fillRect(-4, -1, 8, 1);
+    if (rank >= 2) { c.fillStyle = '#ffffff'; c.globalAlpha = .55 * pulse * strength; c.fillRect(-1, -.85, 2, .85); }
     c.restore();
   }
   /** Whether the loot filter shows a drop (coins, gear, runes and the purse always do; see loot-tiers.ts). */
@@ -5385,25 +5407,35 @@ export class SeamworksEngine {
     c.save();
     c.translate(this.player.x, this.player.y);
     c.globalCompositeOperation = 'lighter';
-    // The ring: 48 pixel marks on an ellipse at the aura's reach.
     c.fillStyle = def.color;
-    c.globalAlpha = .28 + this.auraFlash * .4;
-    for (let i = 0; i < 48; i++) {
-      const a = i / 48 * Math.PI * 2;
-      c.fillRect(Math.round(Math.cos(a) * r) - px / 2, Math.round(Math.sin(a) * ry) - px / 2, px, px);
+    // The sigil disc under the feet: a soft wash, then a solid pixel ring.
+    const sr = 78 * k, sry = 18 * k;
+    c.globalAlpha = .18 + this.auraFlash * .2;
+    c.beginPath(); c.ellipse(0, 0, sr, sry, 0, 0, Math.PI * 2); c.fill();
+    c.globalAlpha = .75;
+    for (let i = 0; i < 72; i++) {
+      const a = i / 72 * Math.PI * 2;
+      c.fillRect(Math.round(Math.cos(a) * sr) - px / 2, Math.round(Math.sin(a) * sry) - px / 2, px, px);
     }
-    // The sigil under the feet: eight marks turning, alternating bright.
+    // Its eight glyph marks, turning slowly, alternating bright.
     for (let i = 0; i < 8; i++) {
       const a = i / 8 * Math.PI * 2 + tt * .6;
-      c.globalAlpha = i % 2 ? .45 : .8;
-      c.fillRect(Math.round(Math.cos(a) * 54 * k) - px, Math.round(Math.sin(a) * 12 * k) - px / 2, px * 2, px);
+      c.globalAlpha = i % 2 ? .55 : .95;
+      c.fillRect(Math.round(Math.cos(a) * sr * .66) - px, Math.round(Math.sin(a) * sry * .66) - px / 2, px * 2, px);
+    }
+    // The reach: dashed pixel marks on an ellipse at the aura's radius; a pulse aura flashes it.
+    c.globalAlpha = .42 + this.auraFlash * .45;
+    for (let i = 0; i < 64; i++) {
+      if (i % 4 === 3) continue;
+      const a = i / 64 * Math.PI * 2 + tt * .05;
+      c.fillRect(Math.round(Math.cos(a) * r) - px / 2, Math.round(Math.sin(a) * ry) - px / 2, px, px);
     }
     // Motes rising inside the ring.
     if (!this.reducedMotion) {
       for (let i = 0; i < 10; i++) {
         const u = (tt * .4 + i / 10) % 1;
-        c.globalAlpha = Math.sin(u * Math.PI) * .7;
-        c.fillRect(Math.round(Math.cos(i * 2.4) * r * .8), -Math.round(u * 140 * k), px, px);
+        c.globalAlpha = Math.sin(u * Math.PI) * .85;
+        c.fillRect(Math.round(Math.cos(i * 2.4) * sr * 1.1), -Math.round(u * 150 * k), px, px);
       }
     }
     c.restore();

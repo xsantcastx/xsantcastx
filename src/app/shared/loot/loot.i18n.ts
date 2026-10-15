@@ -83,8 +83,8 @@ export const LOOT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'loot.rarity.singular': { en: 'Singular — the void-pink column', es: 'Singular — la columna rosa del vacio' },
 
   // ── In the world (engine lines, play.loot.*) ──
-  'play.loot.dropped': { en: '{{name}} dropped!', es: '¡Cayo {{name}}!' },
-  'play.loot.unique': { en: 'A named thing: {{name}}!', es: 'Un objeto con nombre: {{name}}!' },
+  'play.loot.dropped': { en: '{{name}} dropped! Tap its name, or press E beside it, to pick it up.', es: '¡Cayo {{name}}! Toca su nombre, o pulsa E a su lado, para recogerlo.' },
+  'play.loot.unique': { en: 'A named thing: {{name}}! Tap its name, or press E beside it, to pick it up.', es: '¡Un objeto con nombre: {{name}}! Toca su nombre, o pulsa E a su lado, para recogerlo.' },
   'play.loot.picked': { en: 'Picked up {{name}}.', es: 'Recogiste {{name}}.' },
   'play.loot.tooFar': { en: 'Too far to reach. Walking over to it.', es: 'Demasiado lejos. Vas hacia alla.' },
   'play.loot.full': { en: 'No room for {{name}}. Make space in the Satchel.', es: 'No cabe {{name}}. Haz espacio en la Mochila.' },
