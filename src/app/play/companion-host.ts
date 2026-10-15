@@ -70,6 +70,7 @@ export class CompanionHost {
   private xpFlushAt = 0;
   private lastPlace = '';
   private lastNight: boolean | null = null;
+  private lastEclipse: boolean | null = null;
   private lowHp = false;
   private gameRounds = 0;
   private powersKey = '';
@@ -177,7 +178,7 @@ export class CompanionHost {
    * The HUD tick (5 Hz): low health, a new place, night and dawn, Glim's
    * powers by the bond, its tap target, the light game's clock, pet XP.
    */
-  tick(state: EngineState, maxHp: number): void {
+  tick(state: EngineState, maxHp: number, sky: { night: boolean; eclipseOn: boolean } | null = null): void {
     const engine = this.d.engine();
     const now = Date.now();
     this.flushXp(now);
@@ -196,11 +197,15 @@ export class CompanionHost {
     const place = `${state.areaId ?? ''}|${state.biome ?? ''}`;
     if (this.lastPlace && place !== this.lastPlace) this.moment('place');
     this.lastPlace = place;
-    // Nightfall and dawn (the world's hour, above ground).
-    if (!state.delve) {
-      const h = engine.hour, night = h >= 20 || h < 6;
-      if (this.lastNight !== null && night !== this.lastNight) this.moment(night ? 'night' : 'dawn');
-      this.lastNight = night;
+    // Nightfall, dawn and the eclipse (the world clock, above ground). The clock already gives Glim its
+    // nightfall and eclipse words (side-scroller tickClock), so those are a face and the pet's reaction only.
+    if (sky && !state.delve) {
+      if (this.lastNight !== null && sky.night !== this.lastNight) {
+        if (sky.night) { engine.glimMood('sleepy', 4); engine.petFeel('love'); } else this.moment('dawn');
+      }
+      if (this.lastEclipse !== null && sky.eclipseOn && !this.lastEclipse) { engine.glimMood('gasp', 5); engine.petFeel('alert'); }
+      this.lastNight = sky.night;
+      this.lastEclipse = sky.eclipseOn;
     }
     if (this.game && now >= this.game.until) this.endGame();
   }

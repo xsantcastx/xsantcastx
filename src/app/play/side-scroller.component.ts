@@ -16,6 +16,9 @@ import { StorageHealthService } from '../shared/save/storage-health.service';
 import { INVENTORY_ERA } from '../shared/rpg/inventory.model';
 import { RESET_STAMP_KEY } from '../shared/save/save-reset';
 import { artFor, REALM_ART } from '../shared/art/art';
+import { iconOf } from '../shared/art/item-icons';
+import type { IconKind } from '../shared/art/item-icon-shapes';
+import { SheetDragDirective } from './sheet-drag.directive';
 import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
 import { areaOf, findStation, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY, panelForRoute } from './world/panel-registry';
@@ -138,7 +141,13 @@ import { COMPASS_ID, FRAGMENT_ID, bountyLine, stratumOfRow, type Bounty, type Bo
 import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinId, type MapPin, type PinIcon } from '../shared/delve/map-pins.model';
 import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 // The Mirror Slate (docs/handoff/mirror-slate.md): the HUD button, P, the busy rule, Lune's and Kael's counters.
-import { SlateService } from '../shared/slate/slate.service';
+import { SlateService, type SlateLaunch } from '../shared/slate/slate.service';
+// The world clock (docs/handoff/world-clock.md): the sky, the hour the world keeps, the eclipse and Sera Quill's ledger.
+import { WorldClockService } from '../shared/world-clock/world-clock.service';
+import { EclipseService } from '../shared/world-clock/eclipse.service';
+import { WORLD_CLOCK_I18N } from '../shared/world-clock/world-clock.i18n';
+import { ECLIPSE_GLASS_ID, ECLIPSE_SHRINE, REALM_HUNT } from '../shared/world-clock/eclipse.model';
+import { clockText, worldSpan, type Sky, type SkyPhase } from '../shared/world-clock/world-clock.model';
 import { SlateCounterComponent } from '../shared/slate/slate-counter.component';
 import { SLATE_I18N } from '../shared/slate/slate.i18n';
 // Make your Keeper (docs/handoff/make-your-keeper.md): the chosen look, worn gear as layers, the Glass of Becoming.
@@ -223,8 +232,21 @@ const BELT: SlotId[] = ['weapon', 'off-hand', 'head', 'chest', 'hands', 'legs', 
 
 interface BagPick { kind: 'stack' | 'item' | 'slot'; ref: string; }
 /** A satchel cell: a stack, or a group of identical items (`ids`, item-groups) shown once with its count. */
-interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; }
-interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
+interface BagPocket { key: string; kind: 'stack' | 'item'; ref: string; name: string; art: string; qty: number; pip: string; mark: string; ids: string[]; /** Its satchel tab. */ cat: BagCat; }
+/** The satchel's tabs (MapleStory's inventory): everything, worn things, charms, materials. */
+type BagCat = 'gear' | 'charm' | 'mats';
+type BagTab = 'all' | BagCat;
+/** Spelt out, so the HUD key checks (scripts/seamworks-engine.test.cjs) can read them. */
+const BAG_TAB_KEYS: Record<BagTab, string> = {
+  all: 'play.hud.book.tab.all', gear: 'play.hud.book.tab.gear', charm: 'play.hud.book.tab.charm', mats: 'play.hud.book.tab.mats',
+};
+/** An empty well shows a faint picture of what goes there, never a word that spills out of its box. */
+const WELL_GHOST: Record<string, IconKind> = {
+  weapon: 'sword', 'off-hand': 'shield', head: 'helm', chest: 'cuirass', hands: 'gauntlet', legs: 'greaves', feet: 'boots',
+  trinket: 'ring', charm1: 'coin', charm2: 'coin', charm3: 'coin', pet: 'heart',
+};
+const ghostOf = (slot: string): string => iconOf(WELL_GHOST[slot] ?? 'orb', 'grey').src;
+interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The faint picture an empty well shows. */ ghost: string; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
 interface BagSlip {
   name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
   /** Rarity colour for the card's name and frame; null for materials. */
@@ -281,7 +303,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -493,6 +515,10 @@ export class SideScrollerComponent implements OnDestroy {
   bagOpen = false;
   /** The satchel's one details fold: the Keeper's stat sheet and the Vault count. */
   bookStats = false;
+  /** The satchel's open tab; All by default (and when the tab it was on empties). */
+  bagTab: BagTab = 'all';
+  /** The empty pet well's faint picture. */
+  readonly petGhost = ghostOf('pet');
   pick: BagPick | null = null;
   showKeys = false;
   now = Date.now();
@@ -545,6 +571,18 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly toldReady = new Set<string>();
   // ── The Mirror Slate (docs/handoff/mirror-slate.md) ──
   private readonly slate = inject(SlateService);
+  private launchSub?: Subscription;
+  // ── The world clock (docs/handoff/world-clock.md) ──
+  private readonly clock = inject(WorldClockService);
+  private readonly eclipses = inject(EclipseService);
+  /** The world second last read (the clock is read once a world minute = one real second). */
+  private clockSecond = -1;
+  /** The sky last handed to the engine. */
+  skyNow: Sky | null = null;
+  /** The sky's phase ('dawn' … 'eclipse'), for the canvas, the keepers and the sound. */
+  skyPhase: SkyPhase = 'day';
+  /** Announcements already made this session (an eclipse's "soon", "near", "start"; a night's fall). */
+  private readonly clockTold = new Set<string>();
   // ── Make your Keeper ──
   private readonly looks = inject(KeeperLookService);
   private readonly onboarding = inject(OnboardingService);
@@ -604,6 +642,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
     this.i18n.register(SLATE_I18N);
+    this.i18n.register(WORLD_CLOCK_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
     this.i18n.register(CABINETS_I18N);
@@ -643,6 +682,8 @@ export class SideScrollerComponent implements OnDestroy {
         : 'play.hud.msg.storageNearlyFull';
       this.zone.run(() => { this.message = this.t(key); });
     });
+    // The Slate's phone apps that are places of their own (the Pets well, the Codex): fold the Slate, open the place.
+    this.launchSub = this.slate.launch$.subscribe(app => this.zone.run(() => this.slateLaunch(app)));
     // The Slate's Scan: holding the glass up folds the Slate so you can walk with it.
     this.cabinets.refresh();
     this.cabinetSub = this.cabinets.scanning$.subscribe(on => this.zone.run(() => this.scanChanged(on)));
@@ -682,7 +723,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -781,6 +822,8 @@ export class SideScrollerComponent implements OnDestroy {
           // Which way the Keeper falls (pets and any follower hang from it; engine/celestial.ts).
           el.setAttribute('data-gravity', state.gravity === -1 ? 'up' : 'down');
           el.setAttribute('data-ink-blind', state.realm?.inkBlind ? 'true' : 'false');
+          // The world clock's nodes and creatures out here now ("moonwake,eclipse-glass,ink-lantern").
+          el.setAttribute('data-timed', state.timed ?? '');
           // One World: the world, the region under the Keeper, the stone in reach (id:lit:charge), the hour.
           el.setAttribute('data-world', state.world ?? '');
           el.setAttribute('data-region', state.region ?? '');
@@ -799,6 +842,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.toolKey = ''; this.heldToolsKey = '';
     this.canvas?.nativeElement.setAttribute('data-keeper-held', '');
     this.engine.setPlaceable(this.placing);
+    // A fresh engine gets the sky at once (not on the next world second).
+    this.clockSecond = -1; this.tickClock();
     this.sync();
     this.engine.setPeers(this.social.players.filter(p => p.id !== this.social.id).map(p => ({ ...p, area: p.zone, facing: p.facing, animation: p.animation })));
     this.engine.setChat(this.social.messages, this.social.id);
@@ -1074,7 +1119,9 @@ export class SideScrollerComponent implements OnDestroy {
       // One World: the beds go by band (§1.2): the surface plays the town's, the underground the Delve's.
       delve: !!state.delve && !(state.world && state.region !== 'ember-delve'),
       boss: !!state.boss && state.enemyHp > 0,
-      hour: new Date().getHours(),
+      // The world clock's hour, not the device's: every player hears the same night (shared/world-clock).
+      hour: this.clock.time().hour,
+      eclipse: !!this.skyNow?.eclipseOn && !state.delve,
       water: !!state.near?.water || state.liquid?.in === 'water',
       lava: !!state.near?.lava || state.liquid?.in === 'lava',
       ink: !!state.near?.ink,
@@ -1174,7 +1221,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); this.placePanel?.nativeElement.removeEventListener('click', this.panelLinkClick, true); }
     this.unbindFeel();
-    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
+    this.atSub?.unsubscribe(); this.delveSub?.unsubscribe(); this.gatherSub?.unsubscribe(); this.homeSub?.unsubscribe(); this.slateSub?.unsubscribe(); this.storageSub?.unsubscribe(); this.launchSub?.unsubscribe(); this.cabinetSub?.unsubscribe(); this.joySub?.unsubscribe(); this.routedSub?.unsubscribe(); this.heightsSub?.unsubscribe(); this.unbindPointer?.(); this.panelHost?.clear();
     if (this.browser) this.delve.flush();
     if (this.closeTimer) clearTimeout(this.closeTimer);
     if (this.tipTimer) clearTimeout(this.tipTimer);
@@ -1439,7 +1486,7 @@ export class SideScrollerComponent implements OnDestroy {
     // The nudge is a one-time thing: seen once the list is open (the entry stays).
     this.lookNudgeShown = this.placesOpen && this.lookNudge;
     if (this.placesOpen && this.lookNudge) { this.looks.markPrompted(); this.lookNudge = false; }
-    if (this.placesOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#places-list button')?.focus());
+    if (this.placesOpen) setTimeout(() => (this.host.nativeElement as HTMLElement).querySelector<HTMLElement>('#places-list li button')?.focus());
   }
   /** Walk to the place and interact on arrival; with reduced motion, go there and open it at once. */
   choosePlace(place: PlaceRow): void {
@@ -1798,10 +1845,12 @@ export class SideScrollerComponent implements OnDestroy {
       goldEarned: economy.totalGoldEarned,
     });
     const beats = this.story.state.beats;
-    const key = `${beats.join(',')}|${deeds.join(',')}`;
+    // The hour the keepers notice (world/keeper-lines.ts KeeperHour): the world clock's sky.
+    const hour = this.skyPhase;
+    const key = `${beats.join(',')}|${deeds.join(',')}|${hour}`;
     if (key === this.keeperKey) return;
     this.keeperKey = key;
-    this.engine.setKeeperContext({ beats: new Set(beats), deeds: new Set(deeds) });
+    this.engine.setKeeperContext({ beats: new Set(beats), deeds: new Set(deeds), hour });
   }
   private openStoryCard(id: StoryCardId): void {
     this.storyCard = { id, paragraphs: Array.from({ length: STORY_CARD_PARAGRAPHS[id] }, (_, n) => `story.card.${id}.p${n + 1}`) };
@@ -1860,7 +1909,7 @@ export class SideScrollerComponent implements OnDestroy {
     voice.justMet = false;
     const at = this.engine.glimView;
     this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed, bright: at.bright, mood: at.mood, trail: at.trail, lamp: at.lamp } : null;
-    this.companions.tick(this.state, this.pushed.maxHp);
+    this.companions.tick(this.state, this.pushed.maxHp, this.skyNow ?? null);
   }
   /** The goal row's Glim button: the next step of this goal's hint ladder; step 3 is Show me. */
   askGlim(): void {
@@ -1992,6 +2041,7 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.state?.nearbyKind === 'panel' || this.state?.nearbyKind === 'waystone') return this.t('play.hud.act.enter', { name: titleCase(this.state.nearbyLabel ?? 'place') });
     const gather = this.state?.nearby === 'gather' ? this.state.gather : undefined;
     if (gather) {
+      if (gather.shut) return this.t('clock.gather.shutAct', { name: gather.label });
       if (!gather.ready) return this.t('play.gather.regrowing', { name: gather.label, n: gather.seconds });
       if (gather.need) return this.t('play.gather.needs', { name: gather.label, need: gather.need });
       return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
@@ -2025,7 +2075,7 @@ export class SideScrollerComponent implements OnDestroy {
     }
   }
   get actionDisabled(): boolean {
-    if (this.state?.nearby === 'gather' && (!this.state.gather?.ready || !!this.state.gather?.need)) return true;
+    if (this.state?.nearby === 'gather' && (!this.state.gather?.ready || !!this.state.gather?.need || !!this.state.gather?.shut)) return true;
     if (this.state?.nearby === 'height' && this.state.height?.kind === 'cache' && this.state.height.found) return true;
     return !this.state?.nearby || !!this.state.paused || !!this.state.defeated || (this.state.nearby === 'ore' && this.remaining > 0);
   }
@@ -2112,6 +2162,83 @@ export class SideScrollerComponent implements OnDestroy {
     }
     else if (event.code === 'Escape' && this.bagOpen) { event.preventDefault(); this.closeBag(); }
   }
+  // ── The world clock (docs/handoff/world-clock.md) ──
+
+  /**
+   * Once a world minute (one real second): read the world clock, hand the sky to
+   * the engine (it rebuilds its tint only when the light visibly moved), mark the
+   * canvas, and say what the hour brings: night falling, dawn, an eclipse coming,
+   * starting and ending. While an eclipse is on and the world is open, Sera
+   * Quill's ledger writes it down (once per eclipse; receipt first).
+   */
+  private tickClock(): void {
+    if (!this.browser) return;
+    const ms = this.clock.now();
+    const second = Math.floor(ms / 1000);
+    if (second === this.clockSecond) return;
+    const first = this.clockSecond < 0;
+    this.clockSecond = second;
+    const time = this.clock.time(ms);
+    const sky = this.clock.sky(ms);
+    const eclipse = this.clock.eclipse(ms);
+    const was = this.skyNow;
+    this.skyNow = sky;
+    this.skyPhase = sky.phase;
+    this.engine?.setSky({ ...sky, alignedHunt: eclipse ? REALM_HUNT[eclipse.realm] ?? null : null });
+    const el = this.canvas?.nativeElement;
+    if (el) {
+      el.setAttribute('data-sky', sky.phase);
+      el.setAttribute('data-world-time', clockText(time.minute));
+      el.setAttribute('data-world-day', String(time.day));
+    }
+    if (first || !this.engine) return;
+    // Announcements: on the message line, once each (a reload does not re-announce a sky already up).
+    const say = (id: string, key: string, vars?: Record<string, string | number>) => {
+      if (this.clockTold.has(id)) return;
+      this.clockTold.add(id);
+      this.message = this.t(key, vars);
+    };
+    if (eclipse) {
+      if (!was?.eclipseOn) {
+        say(`eclipse:${eclipse.id}:start`, 'clock.announce.start');
+        if (this.glimVoice.met) this.glimVoice.bond({ id: `clock.eclipse.${eclipse.id}`, key: 'clock.glim.eclipse' });
+      }
+      this.witnessEclipse(eclipse.id);
+    } else {
+      if (was?.eclipseOn) say(`eclipse:${time.day}:end`, 'clock.announce.end');
+      const next = this.clock.nextEclipse(ms);
+      const hours = worldSpan(ms, next.startMs).h;
+      const realm = this.t(`clock.realm.${next.realm}`);
+      if (hours < 1) say(`eclipse:${next.id}:near`, 'clock.announce.near');
+      else if (hours < 12) say(`eclipse:${next.id}:soon`, 'clock.announce.soon', { h: hours + 1, realm });
+      if (was && !was.night && sky.night) {
+        say(`night:${time.day}`, 'clock.announce.night');
+        if (this.glimVoice.met) this.glimVoice.bond({ id: `clock.night.${time.day}`, key: 'clock.glim.night' });
+      }
+      if (was && was.phase === 'night' && sky.phase === 'dawn') say(`dawn:${time.day}`, 'clock.announce.dawn');
+    }
+  }
+  /** Sera Quill's ledger: this eclipse, written down once while the world is open (the service keeps the receipt). */
+  private witnessEclipse(id: number): void {
+    if (this.eclipses.seen(id)) return;
+    const got = this.eclipses.witness({ id });
+    if (!got) return;
+    let line = this.t('clock.announce.witnessed', { n: got.count, gold: got.gold.toLocaleString('en-US') });
+    for (const mark of got.marks) {
+      line += ` ${this.t('clock.announce.mark', { at: mark.at, gold: mark.gold.toLocaleString('en-US'), glass: mark.glass })}`;
+      if (mark.glass) this.gotItem(mark.glass, materialDisplay(ECLIPSE_GLASS_ID)?.name ?? 'Eclipse Glass', ECLIPSE_GLASS_ID);
+    }
+    this.message = line;
+  }
+  /** The Slate's phone asked for a place of its own: the Pets well, or the Codex. */
+  private slateLaunch(app: SlateLaunch): void {
+    if (this.panel?.kind === 'slate') this.finishClose(false);
+    if (app === 'pets') { this.openPets(); return; }
+    const entry = PANEL_REGISTRY.codex;
+    this.showPanel({ kind: 'page', stationId: 'codex', title: entry.title, kicker: entry.kicker, own: true });
+    this.loadPanel(entry, this.panelInjector);
+  }
+
   // ── The Mirror Slate ──
   /** The HUD tick: which pane is held, and whether the Homestead has something worth a look. */
   private tickSlate(): void {
@@ -2647,7 +2774,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   get emptyCells(): number[] {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
-    if (!Number.isFinite(cap)) return [];
+    if (!Number.isFinite(cap) || this.shownTab !== 'all') return [];
     const free = Math.max(0, Math.min(60, cap) - Math.max(used, this.pockets.length));
     return Array.from({ length: free }, (_, i) => i);
   }
@@ -2711,6 +2838,7 @@ export class SideScrollerComponent implements OnDestroy {
         mark: monogram(item?.name ?? name),
         label: item?.name ?? 'Empty',
         filled: !!item,
+        ghost: ghostOf(id),
         tone: item ? rarityColor(item.rarity) : null,
       };
     });
@@ -2727,14 +2855,37 @@ export class SideScrollerComponent implements OnDestroy {
     const materials: BagPocket[] = stacks.map(stack => {
       const display = materialDisplay(stack.stackKey);
       const name = display?.name ?? stack.stackKey;
-      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name), ids: [] };
+      return { key: `stack:${stack.stackKey}`, kind: 'stack', ref: stack.stackKey, name, art: display?.art ?? '', qty: stack.quantity, pip: '#df9357', mark: monogram(name), ids: [], cat: 'mats' };
     });
     const gear: BagPocket[] = clusterBy(groupItems(snap.bag), group => familyOf(group.first)).map(({ first: item, ids }) => ({
       key: `item:${item.id}`, kind: 'item', ref: item.id, name: item.name,
       art: itemArt(item)?.src ?? '', qty: ids.length, pip: rarityColor(item.rarity), mark: monogram(item.name), ids,
+      cat: item.type === 'charm' ? 'charm' : 'gear',
     }));
     return [...materials, ...gear];
   }
+  /** The tabs that have something in them (All always). */
+  get bagTabs(): { id: BagTab; n: number; key: string }[] {
+    const all = this.pockets;
+    const tabs: { id: BagTab; n: number; key: string }[] = [{ id: 'all', n: all.length, key: BAG_TAB_KEYS.all }];
+    for (const cat of ['gear', 'charm', 'mats'] as const) {
+      const n = all.filter(p => p.cat === cat).length;
+      if (n) tabs.push({ id: cat, n, key: BAG_TAB_KEYS[cat] });
+    }
+    return tabs;
+  }
+  /** The open tab's pockets; a tab that emptied falls back to All. */
+  get shownPockets(): BagPocket[] {
+    const all = this.pockets;
+    if (this.bagTab === 'all') return all;
+    const some = all.filter(p => p.cat === this.bagTab);
+    return some.length ? some : all;
+  }
+  get shownTab(): BagTab {
+    return this.bagTab !== 'all' && this.pockets.some(p => p.cat === this.bagTab) ? this.bagTab : 'all';
+  }
+  /** The purse, on the satchel's bottom row. */
+  get purseGold(): string { return Math.floor(this.economy.snapshot.gold).toLocaleString('en-US'); }
   get slip(): BagSlip | null {
     const pick = this.pick;
     if (!pick) return null;
@@ -3665,9 +3816,15 @@ export class SideScrollerComponent implements OnDestroy {
     // The endless Delve (Phase 7): a rift shrine's first touch, and field-note walls.
     // Each pays a little Delving XP once, keyed by its id (the ledger's replay check is the record).
     if (event.kind === 'shrine') {
-      const result = this.skillActions.act({ mutationId: `delve-shrine:${event.id}`, skill: 'delving', xp: SHRINE_XP, locationId: EMBER_DELVE_LOCATION });
+      // Under an eclipse a first touch pays double and leaves a sliver of Eclipse Glass (shared/world-clock ECLIPSE_SHRINE).
+      const xp = SHRINE_XP * (event.eclipse ? ECLIPSE_SHRINE.xp : 1);
+      const result = this.skillActions.act({ mutationId: `delve-shrine:${event.id}`, skill: 'delving', xp, locationId: EMBER_DELVE_LOCATION });
       if (result.ok && !result.replayed) {
-        this.message = this.t('play.delve.shrine.first', { n: SHRINE_XP });
+        this.message = this.t('play.delve.shrine.first', { n: xp });
+        if (event.eclipse && this.inventory.grantStack(`delve-shrine:${event.id}:eclipse-glass`, ECLIPSE_GLASS_ID, ECLIPSE_SHRINE.glass)) {
+          this.gotItem(ECLIPSE_SHRINE.glass, materialDisplay(ECLIPSE_GLASS_ID)?.name ?? 'Eclipse Glass', ECLIPSE_GLASS_ID);
+          this.message = `${this.message} ${this.t('clock.announce.shrine')}`;
+        }
         // "A splinter from a waystone that was never built": one per shrine, the first time (Rift Anchors, Phase 8).
         if (this.inventory.grantStack(`delve-shrine-shard:${event.id}`, WAYSTONE_SHARD, 1)) this.toastLoot(this.t('play.uh.shrine.shard'));
       }

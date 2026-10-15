@@ -34,7 +34,7 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
     <section class="ps" role="dialog" aria-modal="false" aria-labelledby="ps-title" data-engine-ignore data-pet-sheet>
       <header class="ps__head">
         <h2 id="ps-title">{{ t('play.pet.title') }}</h2>
-        <button type="button" class="ps__btn" (click)="done.emit()">{{ t('play.pet.close') }}</button>
+        <button type="button" class="ps__btn ps__x" (click)="done.emit()" [attr.aria-label]="t('play.pet.close')"><i aria-hidden="true">&times;</i></button>
       </header>
       @if (!wells.length) {
         <p class="ps__note">{{ t('play.pet.empty') }}</p>
@@ -130,7 +130,8 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
   styles: [`
     :host { display: block; }
     .ps {
-      display: grid; gap: 10px; width: min(440px, calc(100vw - 16px)); max-height: min(78vh, 640px); overflow: auto; padding: 14px 16px 12px;
+      display: grid; align-content: start; gap: 10px; width: 100%; box-sizing: border-box; min-height: 100%;
+      padding: 14px 16px calc(12px + var(--sheet-pad-b, 0px));
       border: 1px solid var(--adventure-hud-shadow); border-left: 2px solid var(--adventure-ember); border-radius: 2px;
       background: var(--adventure-hud-panel-solid); color: var(--adventure-parchment);
       box-shadow: 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53%, transparent);
@@ -172,6 +173,13 @@ interface FoodRow { id: string; name: string; qty: number; favourite: boolean }
     .ps__primary[disabled] { opacity: .5; cursor: default; }
     .ps__btn { border: 1px solid var(--adventure-hud-brass); background: color-mix(in srgb, var(--adventure-hud-brass) 12%, transparent); color: var(--adventure-parchment); }
     .ps__btn--quiet { opacity: .8; }
+    /* The window's one close (the same × as every in-world menu, side-scroller .win-x). */
+    .ps__x {
+      display: grid; place-items: center; width: 44px; height: 44px; min-width: 44px; padding: 0;
+      border-color: color-mix(in srgb, var(--adventure-hud-brass) 26%, transparent); background: none;
+      color: var(--adventure-dialogue); font: 400 30px/1 var(--font-lore, Georgia, serif); letter-spacing: 0;
+    }
+    .ps__x i { font-style: normal; translate: 0 -2px; }
     .ps__btn--cmd { min-width: 52px; padding: 6px 8px; }
     .ps__btn--cmd.is-on { border-color: var(--adventure-hud-gold); box-shadow: inset 0 0 0 1px var(--adventure-hud-gold); }
     .ps__role, .ps__cmd { display: grid; gap: 4px; }

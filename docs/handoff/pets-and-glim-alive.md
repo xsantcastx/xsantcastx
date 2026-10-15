@@ -97,8 +97,12 @@ design doc (`docs/design/loot-and-combat.md`) did not exist on its branch when t
 
 ## Not done / next
 
-- No weather or eclipse exists in the engine yet, so pets and Glim react to day/night only; a weather system can
-  call `companions.moment(...)` with a new `GlimMoment` row.
+- Night and the eclipse come from the world clock (`WorldClockService`, merged from main 881d3b72): the clock
+  already gives Glim its nightfall/eclipse words, so here they are a face (sleepy / gasp) and the pet's reaction
+  (hearts at nightfall, a start and a yip at the eclipse); dawn is a Glim line. No weather exists yet; a weather
+  system can call `companions.moment(...)` with a new `GlimMoment` row.
+- The chat card uses the shared window chrome (`.win-host` + `appSheetDrag`, the 44 px ×): a bottom sheet on a
+  portrait phone, a side panel in landscape, a small window under the goal line on a desktop.
 - "Play with other pets at the Hearth": peers' pets are still not broadcast (presence carries no pet).
 - Pets still float with the Keeper's height in the Delve (no terrain collision); the owlet's spot is on the
   Keeper's floor.

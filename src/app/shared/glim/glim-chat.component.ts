@@ -24,7 +24,7 @@ import type { GlimMood } from './glim-art';
       <header class="gc__head">
         <app-glim-icon class="gc__face" [mood]="mood" />
         <h2 id="gc-title">{{ t('glim.chat.title') }}</h2>
-        <button type="button" class="gc__close" (click)="done.emit()" [attr.aria-label]="t('glim.chat.close')">{{ t('glim.chat.close') }}</button>
+        <button type="button" class="gc__close" (click)="done.emit()" [attr.aria-label]="t('glim.chat.close')"><i aria-hidden="true">&times;</i></button>
       </header>
       @if (reply) { <p class="gc__reply" role="status" aria-live="polite" data-glim-reply>{{ reply }}</p> }
       <div class="gc__choices" role="group" [attr.aria-label]="t('glim.chat.tap')">
@@ -44,7 +44,7 @@ import type { GlimMood } from './glim-art';
   styles: [`
     :host { display: block; }
     .gc {
-      display: grid; gap: 8px; width: min(330px, calc(100vw - 16px)); padding: 10px 12px;
+      display: grid; gap: 8px; width: 100%; box-sizing: border-box; padding: 10px 12px;
       border: 1px solid var(--adventure-hud-shadow); border-left: 2px solid var(--adventure-hud-gold); border-radius: 2px;
       background: var(--adventure-hud-panel-solid); color: var(--adventure-parchment);
       box-shadow: 0 10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 53%, transparent);
@@ -60,7 +60,13 @@ import type { GlimMood } from './glim-art';
       border: 1px solid var(--adventure-hud-brass); background: color-mix(in srgb, var(--adventure-hud-brass) 12%, transparent);
     }
     .gc__choice { border-color: color-mix(in srgb, var(--adventure-hud-gold) 60%, transparent); }
-    .gc__close { min-width: 44px; text-align: center; }
+    /* The window's one close (the same 44 px × as every in-world menu, side-scroller .win-x). */
+    .gc__close {
+      display: grid; place-items: center; width: 44px; min-width: 44px; padding: 0; text-align: center;
+      border-color: color-mix(in srgb, var(--adventure-hud-brass) 26%, transparent); background: none;
+      color: var(--adventure-dialogue); font: 400 30px/1 var(--font-lore, Georgia, serif); letter-spacing: 0;
+    }
+    .gc__close i { font-style: normal; translate: 0 -2px; }
     .gc__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .gc__small { margin: 0; font-size: 12px; line-height: 1.4; color: var(--adventure-dialogue); opacity: .85; }
     .gc__choice:focus-visible, .gc__close:focus-visible, .gc__quiet:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }

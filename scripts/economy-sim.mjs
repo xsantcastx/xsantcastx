@@ -523,6 +523,8 @@ function check(E) {
   fails.push(...petsScenario({ quiet: true }));
   // The Lost Cabinets (shared/cabinets): once-only Gold on the rule I bands (`--cabinets` prints it).
   fails.push(...cabinetsScenario({ quiet: true }));
+  // Sera Quill's Eclipse Ledger (shared/world-clock): per-eclipse tips and once-only marks (`--eclipse` prints it).
+  fails.push(...eclipseScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -1002,6 +1004,53 @@ function heightsScenario({ quiet = false } = {}) {
 
 const CABINETS_MODEL = loadTsTree('src/app/shared/cabinets/cabinets.model.ts');
 
+// ───────────────────────────────────────────────────────────────────────────
+// --eclipse: Sera Quill's Eclipse Ledger (src/app/shared/world-clock/eclipse.model.ts; docs/handoff/world-clock.md).
+// Every eclipse a Keeper is in the world for pays a small observation; the ledger's marks pay once each:
+//   1. a real day of eclipses, every one witnessed, pays at most the daily band's top (20 min of income):
+//      an eclipse is a world event to enjoy, never a Gold strategy to camp;
+//   2. each mark inside the daily band of rule I (5-20 min), the marks together at most 90 min, once, ever;
+//   3. no floor beats its income seconds after the first half hour; marks ascend and their glass is small.
+// ───────────────────────────────────────────────────────────────────────────
+
+const ECLIPSE_MODEL = loadTsTree('src/app/shared/world-clock/eclipse.model.ts');
+const CLOCK_MODEL = loadTsTree('src/app/shared/world-clock/world-clock.model.ts');
+
+function eclipseScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const { log } = simulate(PROPOSED);
+  const daily = C.REWARD_SECONDS.daily;
+  const gps30 = log.at[1800]?.gps ?? 0;
+  const o = ECLIPSE_MODEL.OBSERVATION;
+  const realDayMs = 24 * 3600 * 1000;
+  const perDay = Math.ceil(realDayMs / (CLOCK_MODEL.ECLIPSE.every * CLOCK_MODEL.WORLD_DAY_MS));
+  say("Sera Quill's Eclipse Ledger · v3 curve (PROPOSED)\n");
+  say(`  one eclipse every ${(CLOCK_MODEL.ECLIPSE.every * CLOCK_MODEL.WORLD_DAY_MS / 60000).toFixed(0)} real min: at most ${perDay} a real day`);
+  say(`  an observation pays ${o.goldSeconds} s of income (floor ${o.gold}); all of a real day's: ${(perDay * o.goldSeconds / 60).toFixed(0)} min`);
+  if (perDay * o.goldSeconds > daily.maxS) fails.push(`a real day of eclipses pays ${perDay * o.goldSeconds} s (must be <= ${daily.maxS})`);
+  if (gps30 && o.gold > o.goldSeconds * gps30) fails.push(`the observation's floor ${o.gold} still beats ${o.goldSeconds} s of income at 30 min`);
+  let all = 0, last = 0;
+  const ids = new Set();
+  say('\n  mark  at  pays (s)  glass  floor');
+  for (const m of ECLIPSE_MODEL.LEDGER_MARKS) {
+    if (ids.has(m.id)) fails.push(`${m.id} is listed twice`);
+    ids.add(m.id);
+    all += m.goldSeconds;
+    if (m.at <= last) fails.push(`${m.id}: marks must ascend`);
+    last = m.at;
+    if (m.goldSeconds < daily.minS || m.goldSeconds > daily.maxS) fails.push(`${m.id} pays ${m.goldSeconds} s (band ${daily.minS}-${daily.maxS} s)`);
+    if (gps30 && m.gold > m.goldSeconds * gps30) fails.push(`${m.id}: its floor ${m.gold} still beats ${m.goldSeconds} s of income at 30 min`);
+    if (m.glass > 10) fails.push(`${m.id} hands over ${m.glass} Eclipse Glass (keep it small: <= 10)`);
+    say(`  ${m.id.padEnd(16)} ${String(m.at).padEnd(4)} ${String(m.goldSeconds).padEnd(9)} ${String(m.glass).padEnd(6)} ${m.gold}`);
+  }
+  say(`\n  The marks, once: ${(all / 60).toFixed(0)} min of income.`);
+  if (all > 90 * 60) fails.push(`the ledger marks pay ${(all / 60).toFixed(0)} min of income (must be <= 90)`);
+  if (quiet) console.log(`economy-sim eclipse: ${fails.length ? fails.length + ' fail(s)' : 'daily envelope, rule I bands and floors ok'}`);
+  else for (const x of fails) console.error(`  FAIL ${x}`);
+  return fails;
+}
+
 function cabinetsScenario({ quiet = false } = {}) {
   const fails = [];
   const say = (...a) => { if (!quiet) console.log(...a); };
@@ -1355,6 +1404,10 @@ if (argv.plinko) {
   console.log('  ok');
 } else if (argv.pets && !argv.check) {
   const fails = petsScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.eclipse && !argv.check) {
+  const fails = eclipseScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.cabinets && !argv.check) {

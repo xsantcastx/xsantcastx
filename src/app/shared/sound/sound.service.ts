@@ -47,6 +47,10 @@ export class SoundService {
   readonly status$: Observable<SoundStatus> = this.status$$.asObservable();
   /** Phrases of the score played this session (0 before the first tap). */
   get phrases(): number { return this.director?.phrases ?? 0; }
+  /** The world as the score last heard it (the Slate's "now playing"), or null before the world. */
+  get nowScene(): SoundScene | null { return this.scene; }
+  /** The Slate's skip: the next phrase now (nothing before the first tap). */
+  skip(): void { if (this.director) this.zone.runOutsideAngular(() => this.director?.skip()); }
 
   /** Move a slider (0..1). */
   setLevel(channel: SoundChannel, value: number, at = Date.now()): void {
@@ -107,7 +111,7 @@ export class SoundService {
 
   /** What the world around the Keeper is like; a repeat of the same scene is free. */
   setScene(scene: SoundScene): void {
-    const key = `${scene.realm}|${+scene.delve}${+scene.boss}${+scene.water}${+scene.lava}${+scene.ink}${+scene.glim}|${scene.hour}`;
+    const key = `${scene.realm}|${+scene.delve}${+scene.boss}${+scene.water}${+scene.lava}${+scene.ink}${+scene.glim}${+!!scene.eclipse}|${scene.hour}`;
     if (key === this.sceneKey) return;
     this.sceneKey = key;
     this.scene = scene;

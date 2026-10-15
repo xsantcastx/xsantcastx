@@ -60,10 +60,28 @@ const BASE: Readonly<Record<RealmId, Omit<MusicPalette, 'realm' | 'mode' | 'dron
   verdant: { root: 55, scale: [0, 2, 4, 5, 7, 9, 11], lead: 'marimba', under: 'pluck', beat: .45, notes: [4, 8], rest: [6, 13], span: 9, bright: 3400, space: .28, level: .85, chord: .4 },
 };
 
-/** The score for a realm and a moment (town, Delve, a guardian near). */
-export function paletteFor(realm: RealmId, mode: SceneMode = 'town'): MusicPalette {
+/** The world clock's hour, as the score hears it (shared/world-clock): day, night, or the eclipse. */
+export type ScoreHour = 'day' | 'night' | 'eclipse';
+
+/** The score for a realm and a moment (town, Delve, a guardian near) and, on the surface, the hour. */
+export function paletteFor(realm: RealmId, mode: SceneMode = 'town', hour: ScoreHour = 'day'): MusicPalette {
   const b = BASE[realm] ?? BASE.infernal;
   const p: MusicPalette = { ...b, realm: BASE[realm] ? realm : 'infernal', mode, drone: false };
+  if (mode === 'town' && hour === 'night') {
+    // Night: the lead drops an octave (when there is room), the phrases come further apart, the air closes in.
+    p.root = b.root - 12 >= 40 ? b.root - 12 : b.root;
+    p.rest = [Math.round(b.rest[0] * 1.3), Math.round(b.rest[1] * 1.3)];
+    p.bright = Math.round(b.bright * .75);
+    p.space = Math.min(.8, b.space + .1);
+    p.level = b.level * .85;
+  }
+  if (mode === 'town' && hour === 'eclipse') {
+    // The eclipse: the third goes minor and a soft drone sits under it, like a guardian the size of the sky.
+    p.scale = b.scale.map(s => s === 4 ? 3 : s === 11 ? 10 : s);
+    p.space = Math.min(.85, b.space + .2);
+    p.level = b.level * .8;
+    p.drone = true;
+  }
   if (mode === 'delve' || mode === 'boss') {
     // Underground: an octave's worth lower in feel, quieter, further apart, more cave.
     p.root = b.root - 12 < 36 ? b.root : b.root - 12;
@@ -165,7 +183,7 @@ export interface SoundScene {
   delve: boolean;
   /** A guardian is near and awake. */
   boss: boolean;
-  /** Local hour 0..23: birds by day, crickets by night. */
+  /** The world clock's hour 0..23 (shared/world-clock, the same on every device): birds by day, crickets by night. */
   hour: number;
   /** Liquids within a few cells. */
   water: boolean;
@@ -173,6 +191,13 @@ export interface SoundScene {
   ink: boolean;
   /** Glim travels with the Keeper (it hums the realm's tune back, now and then). */
   glim: boolean;
+  /** An eclipse is on (the world clock): the birds fall silent, the chimes ring, the score goes minor. */
+  eclipse?: boolean;
+}
+
+/** The score's hour for a scene: an eclipse, else night by the hour (only the surface hears it). */
+export function scoreHour(s: Pick<SoundScene, 'hour' | 'eclipse'>): ScoreHour {
+  return s.eclipse ? 'eclipse' : isNight(s.hour) ? 'night' : 'day';
 }
 
 export function sceneMode(s: Pick<SoundScene, 'delve' | 'boss'>): SceneMode {
@@ -216,6 +241,8 @@ export function ambienceFor(s: SoundScene): Record<Bed, number> {
     for (const b of BEDS) out[b] = t[b] ?? 0;
     // Birds sing by day, crickets by night; the town quietens after dark.
     if (night) { out.birds = 0; out.murmur *= .5; } else out.crickets = 0;
+    // The eclipse: the birds stop as if it were night, the town holds its breath, the chimes answer the moon mirror.
+    if (s.eclipse) { out.birds = 0; out.crickets *= .4; out.murmur *= .3; out.chimes = Math.max(out.chimes, .45); }
   } else {
     out.drips = s.realm === 'umbral' ? .4 : .6;
     out.rumble = s.boss ? .7 : .4;
