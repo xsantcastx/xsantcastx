@@ -617,6 +617,19 @@ export const FISHING_RECIPES: readonly CraftingRecipe[] = [
     [m('rusted-rivet', 3)],
     5, 1, 'Three Rusted Rivets from the water, smelted back into one Slag Fragment.',
     { stack: true }),
+  // The world clock (shared/world-clock/eclipse.model.ts): what the dark and the eclipse give, put to work.
+  r('craft-lampfish-oil-moonwake', 'Lampfish Oil (Moonwake)', 'delve', 'common', 'lampfish-oil',
+    [m('moonwake-bloom', 3)],
+    10, 1, 'Three Moonwake Blooms pressed into a flask of oil that burns pale, like the night it was picked in.',
+    { stack: true }),
+  r('craft-lampfish-oil-mirrorfin', 'Lampfish Oil (Mirrorfin)', 'delve', 'uncommon', 'lampfish-oil',
+    [m('mirrorfin', 1)],
+    10, 1, 'One Mirrorfin rendered into two flasks of oil. It burns with a little of the moon in it.',
+    { count: 2, stack: true }),
+  r('craft-eclipse-torch', 'Eclipse torch', 'delve', 'uncommon', 'torch',
+    [m('eclipse-glass', 1), m('world-root-bark', 1)],
+    10, 1, 'Eight torches with Eclipse Glass ground into the pitch. Placed in the Delve they burn for good.',
+    { count: 8, stack: true }),
 ];
 
 /**

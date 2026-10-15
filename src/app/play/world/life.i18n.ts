@@ -126,6 +126,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.tomas.5': { en: 'A mark you don\'t remember making. I know that feeling from the other side.', es: 'Una marca que no recuerdas haber hecho. Conozco esa sensacion desde el otro lado.' },
   'play.life.line.tomas.6': { en: 'Five witnesses, one from each realm. When you come for the Court\'s, I\'ll light the way.', es: 'Cinco testigos, uno por reino. Cuando vengas por el de la Corte, te alumbrare el camino.' },
   'play.life.line.tomas.7': { en: 'Every lantern in the Court leans toward the Seamworks tonight, like glowcaps at dawn.', es: 'Todas las linternas de la Corte se inclinan hacia Basalt Seamworks esta noche, como glowcaps al alba.' },
+  'play.life.line.tomas.8': { en: 'Night. Every lantern in the Court is mine now. Walk slowly; they like to be admired.', es: 'Noche. Todos los faroles de la Corte son mios ahora. Camina despacio; les gusta que los admiren.' },
   'play.life.line.ilyra.1': { en: 'Three people saw it. Three different mornings. I don\'t need one of them to be wrong.', es: 'Tres personas lo vieron. Tres mananas distintas. No necesito que una este equivocada.' },
   'play.life.line.ilyra.2': { en: 'Repeat a memory and it gets easier. That\'s not the same as it getting truer.', es: 'Repite un recuerdo y se vuelve facil. No es lo mismo que volverse mas cierto.' },
   'play.life.line.ilyra.3': { en: 'The prisms don\'t lie. They just don\'t know which of you is asking.', es: 'Los prismas no mienten. Solo no saben cual de vosotros pregunta.' },
@@ -167,6 +168,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.rook.5': { en: 'You counted the marks. Now decide who else needs to know the number.', es: 'Contaste las marcas. Ahora decide quien mas necesita saber el numero.' },
   'play.life.line.rook.6': { en: 'Amina wants every name on the record. Some names are safer off it. We argue.', es: 'Amina quiere cada nombre en el registro. Algunos estan mas seguros fuera. Discutimos.' },
   'play.life.line.rook.7': { en: 'Your route through the Ink Deeps matched mine. I\'ll have to make mine wrong again.', es: 'Tu ruta por las Ink Deeps coincidio con la mia. Tendre que volver a equivocar la mia.' },
+  'play.life.line.rook.8': { en: 'Night maps best. Anything that moves in the dark is a road somebody uses.', es: 'De noche se cartografia mejor. Lo que se mueve a oscuras es un camino que alguien usa.' },
 
   // ── Celestial: Meridian Orrery ──
   'play.life.line.archivist.1': { en: 'Each fragment tells a piece of the truth.', es: 'Cada fragmento cuenta una parte de la verdad.' },
@@ -192,6 +194,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.sera.5': { en: 'A line drawn under the Godforge. So my model has an input I didn\'t choose. Noted.', es: 'Una linea trazada bajo la Godforge. Asi que mi modelo tiene una entrada que no elegi. Anotado.' },
   'play.life.line.sera.6': { en: 'Nine Waystones recalibrated to the new down. Nox won\'t stop smiling. Unbearable.', es: 'Nueve Waystones recalibrados con el nuevo abajo. Nox no deja de sonreir. Insoportable.' },
   'play.life.line.sera.7': { en: 'Something is rising up the shaft at a constant rate. I\'d prefer it were not constant.', es: 'Algo sube por el pozo a ritmo constante. Preferiria que no fuera constante.' },
+  'play.life.line.sera.8': { en: 'Each eclipse is an observation. Be in the world for it and I write you down.', es: 'Cada eclipse es una observacion. Estate en el mundo y te anoto.' },
 
   // ── Verdant: Rootglass Canopy ──
   'play.life.line.steward.1': { en: 'Explorers set out from here. Send them well equipped.', es: 'Los exploradores parten de aqui. Envialos bien equipados.' },
@@ -216,6 +219,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.gatekeeper.4': { en: 'You\'ve been out on the roads. I walked them with Siv Moss, before the knee went.', es: 'Has estado en los caminos. Yo los recorri con Siv Moss, antes de lo de la rodilla.' },
   'play.life.line.gatekeeper.5': { en: 'Siv took the long patrols, I took the ones with a fight. The knee chose who stayed out.', es: 'Siv hacia las patrullas largas; yo, las de pelea. La rodilla eligio quien seguia fuera.' },
   'play.life.line.gatekeeper.6': { en: 'Nobody watches a fight like someone who can\'t have one. Go on. Give me something to watch.', es: 'Nadie mira una pelea como quien ya no puede tenerla. Venga. Dame algo que mirar.' },
+  'play.life.line.gatekeeper.7': { en: 'Dawn. Best hour for a hunt: the Stags are slow, and the light is honest.', es: 'Amanece. La mejor hora para cazar: los Ciervos van lentos y la luz es honesta.' },
   'play.life.line.trials-warden.1': { en: 'The trials open to those who find the secrets.', es: 'Las pruebas se abren a quien encuentra los secretos.' },
   'play.life.line.trials-warden.2': { en: 'A gate, a test, an ending. Step through when you are ready.', es: 'Una puerta, una prueba, un final. Cruza cuando estes listo.' },
   'play.life.line.trials-warden.3': { en: 'Every trial ends. I\'m only here to make sure it ends honestly.', es: 'Toda prueba termina. Solo estoy aqui para que termine con honradez.' },
@@ -223,6 +227,7 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.life.line.trials-warden.5': { en: 'Something below didn\'t end when you beat it. That isn\'t a trial. That\'s a warning.', es: 'Algo de abajo no termino cuando lo venciste. Eso no es una prueba. Es un aviso.' },
   'play.life.line.trials-warden.6': { en: 'A cairn marks where a path ends, so the next walker knows. My name, and my whole job.', es: 'Un hito de piedras marca donde acaba un camino, para el siguiente. Mi nombre y mi oficio.' },
   'play.life.line.trials-warden.7': { en: 'Verrin never comes to the door. The count reaches Verrin before I\'ve shut it.', es: 'Verrin nunca viene a la puerta. La cuenta le llega antes de que yo la cierre.' },
+  'play.life.line.trials-warden.8': { en: 'The gates go quiet under an eclipse. Even they stop to look up.', es: 'Las puertas callan bajo un eclipse. Hasta ellas se paran a mirar arriba.' },
   'play.life.line.lodge-warden.1': { en: 'Every swing of a tool teaches a skill. The lodge keeps count.', es: 'Cada golpe de herramienta ensena un oficio. El refugio lleva la cuenta.' },
   'play.life.line.lodge-warden.2': { en: 'A better tool opens harder ground. Level the skill to match.', es: 'Una herramienta mejor abre terreno mas duro. Sube el oficio a la par.' },
   'play.life.line.lodge-warden.3': { en: 'You don\'t get stronger. You get adapted. It\'s better. It\'s also slower.', es: 'No te vuelves mas fuerte. Te adaptas. Es mejor. Tambien es mas lento.' },
@@ -242,6 +247,8 @@ export const LIFE_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.creature.rootglass-stag': { en: 'Rootglass Stag', es: 'Ciervo de Raizvidrio' },
   'play.creature.seam-eater': { en: 'Seam Eater', es: 'Devorador de Costuras' },
   'play.creature.drowned-lamp': { en: 'The Drowned Lamp', es: 'La Lampara Ahogada' },
+  'play.creature.ink-lantern': { en: 'Ink Lantern', es: 'Linterna de Tinta' },
+  'play.creature.afterimage-moth': { en: 'Afterimage Moth', es: 'Polilla de Posimagen' },
   // The Underhearth (Phase 8).
   'play.creature.banked-ember': { en: 'Banked Ember', es: 'Brasa Cubierta' },
   'play.creature.ironwood-sentinel': { en: 'Ironwood Sentinel', es: 'Centinela de Hierroleno' },
