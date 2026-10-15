@@ -40,7 +40,7 @@ describe('XpWiringService path identity', () => {
     const wiring = TestBed.inject(XpWiringService);
     wiring.init();
     await Promise.resolve();
-    events.next(new NavigationEnd(1, CANONICAL.world, CANONICAL.world));
+    events.next(new NavigationEnd(1, CANONICAL.play, CANONICAL.play));
     expect(awards.filter(t => t === 'page-visit').length).toBe(1);
   });
 
@@ -48,7 +48,7 @@ describe('XpWiringService path identity', () => {
     const wiring = TestBed.inject(XpWiringService);
     wiring.init();
     await Promise.resolve();
-    events.next(new NavigationEnd(1, '/tools/regex-builder', CANONICAL.world));
+    events.next(new NavigationEnd(1, '/tools/regex-builder', CANONICAL.play));
     expect(awards).toEqual(['page-visit']);
     expect(awards).not.toContain('tool-use');
   });

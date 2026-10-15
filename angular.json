@@ -42,7 +42,8 @@
             "browser": "src/main.ts",
             "server": "src/main.server.ts",
             "prerender": {
-              "routesFile": "prerender-routes.txt"
+              "routesFile": "prerender-routes.txt",
+              "discoverRoutes": false
             },
             "allowedCommonJsDependencies": [
               "@firebase/firestore",

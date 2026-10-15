@@ -217,8 +217,6 @@ export function hasArt(id: string | undefined | null): boolean {
 /** The five realms the Keeper variants, crests and tokens are painted for. */
 export type ArtRealm = 'celestial' | 'infernal' | 'luminous' | 'umbral' | 'verdant';
 
-export const ART_REALMS: readonly ArtRealm[] = ['celestial', 'infernal', 'luminous', 'umbral', 'verdant'];
-
 /**
  * Per-realm art keys. The avatar is the same masked Keeper in that realm's trim
  * (the Keeper identity roadmap: realm variants change light and mantle, never
@@ -240,19 +238,8 @@ export const REALM_ART: Readonly<Record<ArtRealm, { avatar: string; crest: strin
  * `keeperAvatarArt` instead of reaching for these.
  */
 export const KEEPER_AVATAR = 'neutral-keeper-avatar';
-export const KEEPER_PORTRAIT = 'neutral-keeper-portrait';
 
 /** Avatar art for a realm, or the neutral Keeper when no realm is given. */
 export function keeperAvatarArt(realm?: ArtRealm | null): ArtEntry | null {
   return artFor(realm ? REALM_ART[realm].avatar : KEEPER_AVATAR);
 }
-
-/**
- * Guild rank marks, lowest first, and the three banners. There is no Guild
- * surface in the game yet, so nothing renders these; they are named here so
- * the first one does not have to rediscover the filenames. The composition
- * spec governs use: one rank mark beside the name, never over the avatar; a
- * banner only as a shallow header texture.
- */
-export const GUILD_RANK_ART = ['initiate', 'warden', 'keeper', 'archon', 'master', 'founder'] as const;
-export const GUILD_BANNER_ART = ['obsidian-pennant', 'gold-standard', 'eclipse-banner'] as const;

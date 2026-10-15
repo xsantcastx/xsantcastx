@@ -1,11 +1,10 @@
 /**
  * panel-registry.ts — every page that can stand in the world as a place.
  *
- * `PanelId` → a lazy loader of the EXISTING standalone page component, the same
- * import its route uses, so embedding a page never pulls it into the /play
- * chunk. `Record<PanelId, …>` makes the compiler refuse a PanelId without a
- * loader. The routes in app-routing.module.ts stay the canonical standalone
- * pages; this table only re-hosts them inside the side-scroller's panel.
+ * `PanelId` → a lazy loader of the page component it hosts, so embedding a page
+ * never pulls it into the /play chunk. `Record<PanelId, …>` makes the compiler
+ * refuse a PanelId without a loader. Since the game-only shell these are the
+ * ONLY way to reach those components: they have no routes of their own.
  *
  * The node harness loads this file too (to check every panel station resolves),
  * so keep it free of value imports: the `import()` calls only run when invoked.
@@ -18,7 +17,12 @@ export interface PanelEntry {
   title: string;
   /** Small kicker above the heading. */
   kicker: string;
-  /** The standalone route, offered as "Open full page". Omitted for a place that exists only in the world (the vendor). */
+  /**
+   * The retired page URL this panel replaced. The router redirects it into the
+   * world (shared/canonical-routes.ts), the side-scroller keeps a hosted page's
+   * old links to it inside the game (panelForRoute), and opening the panel
+   * records it for the page-visit quests. Omitted for a world-only place.
+   */
   route?: string;
   load: () => Promise<Type<unknown>>;
 }
@@ -26,13 +30,11 @@ export interface PanelEntry {
 export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelEntry>> = {
   market: { title: 'The Market', kicker: 'Trade', route: '/market', load: () => import('../../shared/economy/market.component').then(m => m.MarketComponent) },
   gambler: { title: 'The Gambler', kicker: 'Chance', route: '/gambler', load: () => import('../../shared/gambler/gambler.component').then(m => m.GamblerComponent) },
-  exchange: { title: 'The Exchange', kicker: 'Trade', route: '/exchange', load: () => import('../../shared/exchange/exchange.component').then(m => m.ExchangeComponent) },
   crafting: { title: 'Crafting Bench', kicker: 'The Forge', route: '/forge/crafting', load: () => import('../../shared/crafting/crafting-bench.component').then(m => m.CraftingBenchComponent) },
   enchanting: { title: 'Enchanting Table', kicker: 'The Forge', route: '/forge/enchanting', load: () => import('../../shared/enchanting/enchanting-bench.component').then(m => m.EnchantingBenchComponent) },
   runes: { title: 'Rune Forge', kicker: 'The Forge', route: '/forge/runes', load: () => import('../../shared/rune-forge/rune-forge.component').then(m => m.RuneForgeComponent) },
   sanctum: { title: 'The Sanctum', kicker: 'Keeper', route: '/sanctum', load: () => import('../../live/forge-view.component').then(m => m.ForgeViewComponent) },
   codex: { title: 'The Codex', kicker: 'Lore', route: '/codex', load: () => import('../../codex/codex.component').then(m => m.CodexComponent) },
-  leaderboards: { title: 'Leaderboards', kicker: 'Renown', route: '/leaderboards', load: () => import('../../leaderboards/leaderboards.component').then(m => m.LeaderboardsComponent) },
   quests: { title: 'Quest Board', kicker: 'World', route: '/world/quests', load: () => import('../../quests/quests.component').then(m => m.QuestsComponent) },
   arena: { title: 'The Arena', kicker: 'World', route: '/world/arena', load: () => import('../../pvp/pvp-arena.component').then(m => m.PvpArenaComponent) },
   trials: { title: 'The Trials', kicker: 'World', route: '/world/trials', load: () => import('../../arena/arena.component').then(m => m.ArenaComponent) },
@@ -44,5 +46,26 @@ export const PANEL_REGISTRY: Readonly<Record<PanelId, PanelEntry>> = {
   'rune-drop': { title: 'Rune Drop', kicker: 'Chance', load: () => import('../../shared/rune-drop/rune-drop.component').then(m => m.RuneDropComponent) },
   'seam-sweeper': { title: 'Seam Sweeper', kicker: 'Chance', load: () => import('../../shared/seam-sweeper/seam-sweeper.component').then(m => m.SeamSweeperComponent) },
   'eclipse-ascent': { title: 'Eclipse Ascent', kicker: 'Chance', load: () => import('../../shared/eclipse-ascent/eclipse-ascent.component').then(m => m.EclipseAscentComponent) },
+  // No station (yet): the three activity sites that were pages under /world/realms. Opened from the
+  // Skills panel's Go buttons (their old URLs, caught by the side-scroller). Rebuild-later as stations.
+  seamworks: { title: 'Basalt Seamworks', kicker: 'Mining', route: '/world/realms/infernal/basalt-seamworks', load: () => import('../../world/basalt-seamworks.component').then(m => m.BasaltSeamworksComponent) },
+  canopy: { title: 'Rootglass Canopy', kicker: 'Foraging', route: '/world/realms/verdant/rootglass-canopy', load: () => import('../../world/rootglass-canopy.component').then(m => m.RootglassCanopyComponent) },
+  orrery: { title: 'Meridian Orrery', kicker: 'Prospecting', route: '/world/realms/celestial/meridian-orrery', load: () => import('../../world/meridian-orrery.component').then(m => m.MeridianOrreryComponent) },
+  // No station: opened from the ☰ menu (sign-in / cloud save, language, cookies).
+  account: { title: 'Account & settings', kicker: 'Keeper', load: () => import('../../shared/account/account-panel.component').then(m => m.AccountPanelComponent) },
   homestead: { title: 'Your Homestead', kicker: 'Homestead', load: () => import('../homestead/homestead-panel.component').then(m => m.HomesteadPanelComponent) },
 };
+
+/**
+ * The panel that replaced a retired page URL (`/forge/crafting` → 'crafting'),
+ * or null. The side-scroller uses it to keep a hosted page's old links inside
+ * the game; the router redirects the same URLs into the world
+ * (shared/canonical-routes.ts).
+ */
+export function panelForRoute(path: string): PanelId | null {
+  const clean = (path || '').split(/[?#]/)[0].replace(/\/+$/, '');
+  for (const id of Object.keys(PANEL_REGISTRY) as PanelId[]) {
+    if (PANEL_REGISTRY[id].route === clean) return id;
+  }
+  return null;
+}

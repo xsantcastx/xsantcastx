@@ -22,7 +22,7 @@ export class GlobalEggTriggersService implements OnDestroy {
   private hallVisits: number[] = [];
   private visitedHalls = new Set<string>();
   private static readonly HALLS = new Set<string>([
-    CANONICAL.world,
+    CANONICAL.play,
     CANONICAL.character,
     CANONICAL.forge,
     CANONICAL.quests,
@@ -60,17 +60,24 @@ export class GlobalEggTriggersService implements OnDestroy {
     // ── Speed Demon: five live halls in under 60s ──
     this.routerSub = this.router.events.pipe(
       filter((e): e is NavigationEnd => e instanceof NavigationEnd)
-    ).subscribe(e => {
-      const path = canonicalizePlayerPath(e.urlAfterRedirects);
-      if (!GlobalEggTriggersService.HALLS.has(path) || this.visitedHalls.has(path)) return;
-      this.visitedHalls.add(path);
-      this.hallVisits.push(Date.now());
-      const cutoff = Date.now() - 60_000;
-      this.hallVisits = this.hallVisits.filter(t => t > cutoff);
-      if (this.visitedHalls.size >= 5 && this.hallVisits.length >= 5) {
-        this.eggService.trigger('speed-demon');
-      }
-    });
+    ).subscribe(e => this.noteHall(e.urlAfterRedirects));
+  }
+
+  /**
+   * A hall reached. Since the game-only shell the halls are places in the
+   * world, so the side-scroller reports each panel opened by the URL it once
+   * had (noteVisit); the router only ever sees /play now.
+   */
+  noteHall(url: string): void {
+    const path = canonicalizePlayerPath(url);
+    if (!GlobalEggTriggersService.HALLS.has(path) || this.visitedHalls.has(path)) return;
+    this.visitedHalls.add(path);
+    this.hallVisits.push(Date.now());
+    const cutoff = Date.now() - 60_000;
+    this.hallVisits = this.hallVisits.filter(t => t > cutoff);
+    if (this.visitedHalls.size >= 5 && this.hallVisits.length >= 5) {
+      this.eggService.trigger('speed-demon');
+    }
   }
 
   ngOnDestroy(): void {

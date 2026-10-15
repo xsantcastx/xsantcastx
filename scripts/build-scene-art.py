@@ -58,7 +58,6 @@ OUT_DIR = os.path.join(os.path.dirname(__file__), '..', 'src', 'assets', 'images
 SCENES = {
     'the-arena': 'bg-arena',
     'market': 'bg-market',
-    'war-table': 'bg-war-table',
     'profile': 'bg-profile',
     'umbral': 'bg-umbral',
     'luminous': 'bg-luminous',

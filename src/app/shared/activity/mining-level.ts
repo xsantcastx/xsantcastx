@@ -138,7 +138,3 @@ export function formatXp(n: number): string {
   if (v >= 1e5) return short(v / 1e3, 'K');
   return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
-
-/** The skill-agnostic names. The `mining*` ones stay for existing callers. */
-export type SkillLevelView = MiningLevelView;
-export const skillLevelView = miningLevelView;

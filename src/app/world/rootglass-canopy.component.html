@@ -1,14 +1,6 @@
 <app-art-scene art="bg-verdant" focus="center 55%" />
 
 <article class="rc" [attr.data-state]="panelState()">
-  <nav class="rc__crumb" [attr.aria-label]="t('world.crumb.label')">
-    <a routerLink="/world">{{ t('world.crumb.world') }}</a>
-    <span aria-hidden="true">/</span>
-    <a [routerLink]="verdantHref">{{ t('world.atlas.label.verdant') }}</a>
-    <span aria-hidden="true">/</span>
-    <span aria-current="page">{{ t('work.location.canopy') }}</span>
-  </nav>
-
   <header class="rc__hero">
     <p class="rc__eyebrow">{{ t('canopy.eyebrow') }}</p>
     <h1>{{ t('work.location.canopy') }}</h1>
@@ -108,5 +100,4 @@
   </section>
 
   <p class="rc__note">{{ t('canopy.note') }}</p>
-  <a class="rc__back" [routerLink]="verdantHref">{{ t('canopy.back') }}</a>
 </article>

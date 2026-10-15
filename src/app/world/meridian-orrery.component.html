@@ -1,14 +1,6 @@
 <app-art-scene art="bg-celestial" focus="center 50%" />
 
 <article class="mo" [attr.data-state]="panelState()">
-  <nav class="mo__crumb" [attr.aria-label]="t('world.crumb.label')">
-    <a routerLink="/world">{{ t('world.crumb.world') }}</a>
-    <span aria-hidden="true">/</span>
-    <a [routerLink]="celestialHref">{{ t('world.atlas.label.celestial') }}</a>
-    <span aria-hidden="true">/</span>
-    <span aria-current="page">{{ t('work.location.orrery') }}</span>
-  </nav>
-
   <header class="mo__hero">
     <p class="mo__eyebrow">{{ t('orrery.eyebrow') }}</p>
     <h1>{{ t('work.location.orrery') }}</h1>
@@ -127,5 +119,4 @@
   </section>
 
   <p class="mo__note">{{ t('orrery.note') }}</p>
-  <a class="mo__back" [routerLink]="celestialHref">{{ t('orrery.back') }}</a>
 </article>

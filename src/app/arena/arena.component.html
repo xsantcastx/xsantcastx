@@ -100,7 +100,7 @@
       <div class="gp-how-step">
         <span class="gp-how-step__num">01</span>
         <h2>Walk a realm</h2>
-        <p>Head to @if (inWorld) {the world} @else {<a routerLink="/world">the world</a>} and explore. Secrets are buried across the five realms.</p>
+        <p>Head to @if (inWorld) {the world} @else {<a routerLink="/play">the world</a>} and explore. Secrets are buried across the five realms.</p>
       </div>
       <div class="gp-how-step__arrow">→</div>
       <div class="gp-how-step">
@@ -123,7 +123,7 @@
     <div class="gp-cta__inner">
       <h2>Go find a secret</h2>
       <p>{{ playableCount }} gates stand in this hall. The Arena remembers every run you finish.</p>
-      <a routerLink="/world" class="cta-button">Walk the realms &rarr;</a>
+      <a routerLink="/play" class="cta-button">Walk the realms &rarr;</a>
     </div>
   </section>
   }
@@ -137,7 +137,6 @@
      shared/seo/related-pages.component.ts for why these exist alongside
      the global nav rather than instead of it. -->
 @if (!inWorld) {
-<app-related-pages here="/world/trials"></app-related-pages>
 }
 
 <!-- The in-world game overlay. Only ever rendered inside the Trials gate on

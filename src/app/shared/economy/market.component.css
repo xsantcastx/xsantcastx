@@ -25,11 +25,8 @@
 
   /* The accent the floor is currently wearing. */
   --mk-accent: var(--mk-gold);
-  --mk-accent-soft: var(--mk-gold-soft);
 
   /* Surfaces. One glass recipe, three depths. */
-  --mk-pane: rgba(15, 10, 30, 0.8);
-  --mk-pane-2: rgba(20, 14, 38, 0.72);
   --mk-line: rgba(255, 255, 255, 0.07);
   --mk-ink: var(--ink-0);
   --mk-dim: rgba(232, 236, 241, 0.58);

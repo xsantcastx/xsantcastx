@@ -28,7 +28,6 @@ import { blueprintCell, blueprintMarks, BLUEPRINTS, BACK_NONE, type BlueprintKin
 
 /** The five worlds (docs/design/one-world.md, the table at the top). */
 export type WorldId = 'ember' | 'ink' | 'root' | 'prism' | 'orrery';
-export const WORLD_IDS: readonly WorldId[] = ['ember', 'ink', 'root', 'prism', 'orrery'];
 
 /** A building placed on a world's surface: its blueprint, its left column, and the station it houses. */
 export interface SurfaceBuilding {
@@ -219,11 +218,6 @@ export function regionAt(spec: SurfaceSpec, col: number, row: number): { id: str
   const sx = Math.floor(col / SECTOR);
   for (const region of spec.regions) if (sx >= region.sx0 && sx <= region.sx1) return { id: region.id, name: region.name };
   return spec.wilds;
-}
-
-/** True when a sector column holds anything authored (the settlement, a region's stamps). */
-export function authoredSector(spec: Pick<SurfaceSpec, 'flat'>, sx: number): boolean {
-  return (sx + 1) * SECTOR > spec.flat[0] && sx * SECTOR < spec.flat[1];
 }
 
 export { BACK_NONE };

@@ -297,9 +297,6 @@ export function rollRune(random: () => number = Math.random): Rune {
   return RUNES[0];
 }
 
-/** The first tier Magic Find is allowed to touch. Below this, MF does nothing. */
-export const MF_FLOOR_TIER: RuneTier = 'rare';
-
 const MF_BOOSTED = new Set<RuneTier>(['rare', 'epic', 'legendary', 'mythic', 'singular']);
 
 /** Combined weight of every tier Magic Find lifts. Computed, never hardcoded. */

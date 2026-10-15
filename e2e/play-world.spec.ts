@@ -9,7 +9,7 @@ import { canvas, openPlay, placePanel, seed, walkTo } from './play-helpers';
 /** Each built town: its Waystone x, its name (the canvas data-area) and one panel station. */
 const TOWNS = [
   { realm: 'Luminous', name: 'Heliograph Court', waystone: 1620, station: 'market', title: 'The Market' },
-  { realm: 'Umbral', name: 'Nocturne Archive', waystone: 360, station: 'exchange', title: 'The Exchange' },
+  { realm: 'Umbral', name: 'Nocturne Archive', waystone: 360, station: 'gambler', title: 'The Gambler' },
   { realm: 'Celestial', name: 'Meridian Orrery', waystone: 1220, station: 'codex', title: 'The Codex' },
   { realm: 'Verdant', name: 'Rootglass Canopy', waystone: 380, station: 'quests', title: 'Quest Board' },
   { realm: 'Infernal', name: 'Basalt Seamworks', waystone: 2010, station: 'crafting', title: 'Crafting Bench' },
@@ -87,14 +87,14 @@ test.describe('Waystone travel and ?at= deep links', () => {
     // The panel folds away for 160 ms with the world still paused: wait for it, as a player would.
     await expect(placePanel(page)).toBeHidden();
     await expect.poll(() => focusIsCanvas(page)).toBe(true);
-    await walkTo(page, 1560, 40);
+    await walkTo(page, 1235, 40);
     await page.keyboard.press('e');
-    await expect(page.locator('#place-title')).toHaveText('The Exchange');
-    await expect(page).toHaveURL(/[?&]at=exchange/);
-    // The URL now reads ?at=exchange: a player bookmarks it, or simply reloads.
+    await expect(page.locator('#place-title')).toHaveText('Seam Sweeper');
+    await expect(page).toHaveURL(/[?&]at=seam-sweeper/);
+    // The URL now reads ?at=seam-sweeper: a player bookmarks it, or simply reloads.
     await page.reload();
     await expect(canvas(page)).toHaveAttribute('data-player-x', /\d/);
     await expect(placePanel(page)).toBeVisible({ timeout: 10000 });
-    await expect(page.locator('#place-title')).toHaveText('The Exchange');
+    await expect(page.locator('#place-title')).toHaveText('Seam Sweeper');
   });
 });

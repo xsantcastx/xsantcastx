@@ -16,7 +16,6 @@ import { injectInWorldPanel } from '../shared/in-world-panel';
 import { ARENA_GAME_EXIT } from './games/arena-game.base';
 import { ARENA_GAME_ROUTES } from './games/arena-game.routes';
 
-import { RelatedPagesComponent } from '../shared/seo/related-pages.component';
 import { TranslationService } from '../translation.service';
 import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationTab } from '../shared/station-ui';
 import { TRIALS_I18N } from './trials.i18n';
@@ -56,7 +55,7 @@ type GameSeed = Omit<ArenaGame, 'locked' | 'tier' | 'rarity' | 'route' | 'bestLa
   templateUrl: './arena.component.html',
   styleUrls: ['./arena.component.css'],
   standalone: true,
-  imports: [RelatedPagesComponent, RouterModule, ArtSceneComponent, NgComponentOutlet, ...STATION_UI]
+  imports: [RouterModule, ArtSceneComponent, NgComponentOutlet, ...STATION_UI]
 })
 export class ArenaComponent implements OnInit {
   private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));

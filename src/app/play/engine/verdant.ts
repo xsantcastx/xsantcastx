@@ -34,8 +34,6 @@ export const GRAFT_HEAL = 14;
 export const GRAFT_SHARE = .25;
 /** Seconds between the Graftmother calling two graftlings out of the walls. */
 export const GRAFT_CALL = 18;
-/** A spore pod bursts when the Keeper's body comes this close (cells), and stings for this much. */
-export const SPORE_REACH = 1;
 export const SPORE_STING = 8;
 
 /** The realm's living wood: what grows back, and what it grows back as (an ore grows back as the wood round it). */

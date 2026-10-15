@@ -254,8 +254,6 @@ export function emptyEconomy(): PlayerEconomy {
 export const BASE_IDLE_PER_SECOND = CURVE.BASE_IDLE_PER_SECOND;
 /** Gold per strike of the Forge Flame, before hammers. */
 export const BASE_GOLD_PER_CLICK = CURVE.BASE_GOLD_PER_CLICK;
-/** Floor Gold for one interaction beat on a tool page (it pays max(this, 5 s of income)). */
-export const GOLD_PER_TOOL_ACTION = 5;
 /** The 100th strike pays this many strikes' worth. */
 export const CENTURY_STRIKE_MULTIPLIER = CURVE.CENTURY_STRIKE_MULTIPLIER;
 
@@ -842,24 +840,6 @@ export interface Cosmetic {
 
 export const COSMETICS: Cosmetic[] = [
   {
-    id: 'cursor-trail',
-    name: 'Cursor Trail',
-    effect: 'Recolours the trail behind your cursor.',
-    flavour: 'Everyone leaves something. Choose what.',
-    icon: '✨',
-    cost: 50_000,
-    slot: 'trail',
-    variants: [
-      { id: 'aether', label: 'Aether sparkles', color: '#A78BFA' },
-      { id: 'nox', label: 'Nox shadows', color: '#7b61ff' },
-      { id: 'eclipse', label: 'Eclipse fire', color: '#E8752A' },
-      // Collection Log exclusive — granted by CollectionService at 100%, and
-      // not purchasable with Gold. The catalogue has to know the id or
-      // `grantCosmetic` rejects it.
-      { id: 'archivist', label: 'Archivist light', color: '#e6dcff' },
-    ],
-  },
-  {
     id: 'title-prefix',
     name: 'Title Prefix',
     effect: 'A word before your rank, everywhere it is shown.',
@@ -905,35 +885,6 @@ export const COSMETICS: Cosmetic[] = [
     ],
   },
   {
-    id: 'theme-variant',
-    name: 'Theme Variant',
-    effect: 'Tints the whole site toward one realm.',
-    flavour: 'You have been standing in someone else\'s light this entire time.',
-    icon: '🎨',
-    cost: 200_000,
-    slot: 'theme',
-    variants: [
-      { id: 'luminous', label: 'Luminous', color: '#E8D44D' },
-      { id: 'umbral', label: 'Umbral', color: '#8B2252' },
-      { id: 'verge', label: 'Verge', color: '#00d4ff' },
-      { id: 'nexus', label: 'Nexus', color: '#10B981' },
-    ],
-  },
-  {
-    id: 'xp-bar-skin',
-    name: 'XP Bar Skin',
-    effect: 'Reworks the progression bar in the header.',
-    flavour: 'The measure of you, in a frame you picked.',
-    icon: '📊',
-    cost: 500_000,
-    slot: 'xpbar',
-    variants: [
-      { id: 'ornate', label: 'Ornate', color: '#c89868' },
-      { id: 'molten', label: 'Molten', color: '#E8752A' },
-      { id: 'void', label: 'Void', color: '#7b61ff' },
-    ],
-  },
-  {
     id: 'achievement-frame',
     name: 'Achievement Frame',
     effect: 'Borders every found card in the Codex\'s Collection Log.',
@@ -947,6 +898,8 @@ export const COSMETICS: Cosmetic[] = [
       { id: 'prismatic', label: 'Prismatic', color: '#ff6dd7' },
       // NPC chain exclusive — the Archivist's, granted at step four.
       { id: 'runed', label: 'Runed', color: '#5fb6ff' },
+      // NPC chain exclusive — Kael's, at step four (it replaced the retired XP-bar skin of the same name).
+      { id: 'molten', label: 'Molten', color: '#E8752A' },
     ],
   },
 ];
@@ -1145,11 +1098,6 @@ export function goldBreakdown(e: PlayerEconomy): GoldBreakdown {
 /** Gold per second, everything applied. The headline number. */
 export function goldPerSecond(e: PlayerEconomy): number {
   return goldBreakdown(e).total;
-}
-
-/** The same rate per minute, for anything that still speaks in minutes. */
-export function goldPerMinute(e: PlayerEconomy): number {
-  return goldPerSecond(e) * 60;
 }
 
 /**

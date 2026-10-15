@@ -248,7 +248,7 @@ describe('NpcQuestService', () => {
     w.goldEarned = 500_000_000_000;
     settle();
     expect(svc.claim('merchant-4')).toBe(true);
-    expect(paid.cosmetics).toEqual(['cursor-trail/eclipse']);
+    expect(paid.cosmetics).toEqual(['achievement-frame/golden']);
 
     w.rarities.add('mythic');
     settle();

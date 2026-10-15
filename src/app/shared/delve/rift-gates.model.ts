@@ -93,10 +93,6 @@ export const RIFT_GATES: Readonly<Record<RiftRealm, RiftGateDef>> = {
     brokenRule: 'Dug rock grows back while you watch: tunnels close behind you unless fire burns the roots, a billhook cuts them clean, or a support holds them.',
   },
 };
-
-export function riftGate(realm: string): RiftGateDef | null {
-  return (RIFT_GATES as Record<string, RiftGateDef | undefined>)[realm] ?? null;
-}
 /** The realm a gate node opens on (`rift-gate-umbral` → umbral), or null. */
 export function realmOfGateNode(nodeId: string): RiftRealm | null {
   const realm = nodeId.startsWith(GATE_NODE_PREFIX) ? nodeId.slice(GATE_NODE_PREFIX.length) : '';
@@ -173,13 +169,6 @@ export const RIFT_SLOT_KEYS: readonly string[] = RIFT_REALMS.flatMap(realm => ri
 
 /** Where the Keeper steps out on the realm side: the return gate in the realm Delve's core (realm-gen.ts lays it). */
 export const REALM_ARRIVAL = { col: 35, row: 30 } as const;
-
-// ── Satchel stacks (never rename: they are in players' saves) ──────────────
-
-/** Rift splinters: cut from a gate's frame (Pickaxe IV); every Realm Sigil is framed with them. */
-export const RIFT_SPLINTER = 'rift-splinter';
-/** The Umbral Sigil: four rift splinters, Umbral Ink and an emberheart core. Spent once, at the Umbral gate. */
-export const UMBRAL_SIGIL = 'umbral-sigil';
 /** The Ink Deeps' two ores: Inkstone (the ink ore) and Nightglass. */
 export const INKSTONE = 'inkstone';
 export const NIGHTGLASS = 'nightglass';

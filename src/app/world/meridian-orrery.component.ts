@@ -21,7 +21,6 @@
 import { ChangeDetectorRef, Component, OnDestroy, OnInit, PLATFORM_ID, inject } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { Title } from '@angular/platform-browser';
-import { RouterLink } from '@angular/router';
 import { Subscription } from 'rxjs';
 
 import { TranslationService } from '../translation.service';
@@ -68,7 +67,7 @@ interface Floater {
 @Component({
   selector: 'app-meridian-orrery',
   standalone: true,
-  imports: [RouterLink, ArtSceneComponent, CurrentWorkTileComponent],
+  imports: [ArtSceneComponent, CurrentWorkTileComponent],
   templateUrl: './meridian-orrery.component.html',
   styleUrls: ['./meridian-orrery.component.css'],
 })
@@ -85,7 +84,6 @@ export class MeridianOrreryComponent implements OnInit, OnDestroy {
   private clock?: ReturnType<typeof setInterval>;
 
   readonly locationId = MERIDIAN_ORRERY_ID;
-  readonly celestialHref = '/world/realms/celestial';
   readonly tiers = PROSPECTING_TIERS;
   /** The rare find. Named + painted via material-catalog so the bank and this page agree. */
   readonly elixir: MaterialDisplay = materialDisplay(CLARITY_ELIXIR_ID)!;
