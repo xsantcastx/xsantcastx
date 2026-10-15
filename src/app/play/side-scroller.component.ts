@@ -782,11 +782,13 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-fish-shadows', String(state.fishShadows ?? 0));
           // Loot & combat (shared/loot): drops on the ground by rung, the aura, the marked creatures, the foe's pack.
           el.setAttribute('data-loot-drops', state.loot?.drops ?? '');
+          el.setAttribute('data-loot-labels', state.loot?.labels ?? '');
           el.setAttribute('data-aura', state.loot?.aura ?? '');
           el.setAttribute('data-aura-debuffed', String(state.loot?.debuffed ?? 0));
           el.setAttribute('data-foe-pack', state.loot?.foe ?? '');
           el.setAttribute('data-purse', state.loot?.purse ? 'true' : 'false');
           el.setAttribute('data-tier', state.loot?.tier ?? '');
+          el.setAttribute('data-kills', String(state.kills ?? 0));
           // The Underhearth (Phase 8): depth, the cart, the grapple, the furnace's fight.
           el.setAttribute('data-depth', state.depth === undefined ? '' : String(state.depth));
           el.setAttribute('data-biome', state.biome ?? '');

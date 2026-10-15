@@ -30,7 +30,7 @@ export function beamColor(rarity: LootRarity | undefined, coins: boolean): strin
   return coins ? COIN_BEAM_COLOR : RARITY_COLORS.common;
 }
 /** The base column a Rare throws (LOOT_TIER_FX scales it per rung). World px. */
-export const BEAM_BASE = 120;
+export const BEAM_BASE = 150;
 /** A common material keeps a low glint; plain coins a short gold one. */
 export const GLINT_BEAM = 24;
 export const COIN_BEAM = 46;

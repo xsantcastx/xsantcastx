@@ -113,10 +113,10 @@ export interface EngineState {
   /**
    * Loot & combat, for tests and tools (the world shows it in light): the drops
    * on the ground as `rarity:shown` tokens ("rare:1,common:0"), the aura running
-   * ("conviction:8"), how many creatures it marks, the nearest foe's rank and
+   * ("conviction:8"), the drawn name plates ("#00d4ff@412,388", canvas CSS px), how many creatures it marks, the nearest foe's rank and
    * mods ("champion:extra-fast"), and whether a fallen purse lies in this area.
    */
-  loot?: { drops: string; aura: string; debuffed: number; foe: string; purse: boolean; tier: string };
+  loot?: { drops: string; labels: string; aura: string; debuffed: number; foe: string; purse: boolean; tier: string };
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
