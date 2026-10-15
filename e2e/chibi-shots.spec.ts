@@ -87,6 +87,13 @@ for (const size of SIZES) {
       await seed(page, { ...RESTORED, 'preferred-language': 'en' });
       await page.goto('/character', { waitUntil: 'load' });
       await expect(page.locator('.ld__doll-art').first()).toBeVisible({ timeout: 30000 });
+      // The boot curtain (.gf-loader) paints over everything until it lifts.
+      await page.waitForFunction(() => {
+        const loader = document.querySelector('.gf-loader');
+        return !loader || loader.classList.contains('gf-loader--hidden') || getComputedStyle(loader).visibility === 'hidden'
+          || getComputedStyle(loader).opacity === '0' || getComputedStyle(loader).display === 'none';
+      }, null, { timeout: 30000 });
+      await page.waitForTimeout(1200);
       await page.locator('.ld__doll').first().scrollIntoViewIfNeeded();
       await shot(page, 'paper-doll', size.name);
     });

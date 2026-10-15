@@ -2,7 +2,7 @@ import {
   ARM_LENGTH, EMPTY_ARM, GripTransform, HoldPose, KeeperGear, WEAPON_SPECS, WeaponKind,
   gearKey, gearKindOf, gearPiece, gripPoint, gripTransform, handAt, holdPose, keeperAction, weaponKindOf,
 } from './keeper-gear';
-import { KeeperPainter, bodyFrame, frameIndex, RUN_FRAMES } from './keeper-paint';
+import { FIGURE_TOP, KeeperPainter, PaintState, bodyFrame, frameIndex, RUN_FRAMES } from './keeper-paint';
 import { defaultLook } from './keeper-look.model';
 import { ITEM_DEFINITIONS } from '../rpg/item-definition';
 
@@ -168,5 +168,68 @@ describe('keeper-paint: equipping changes the pixels', () => {
       expect(() => painter.draw(c, 4, { action, time: .3, attackT: .5, rim: .5 })).not.toThrow();
       c.restore();
     }
+  });
+});
+
+describe('keeper-paint: chibi proportions and feel (2026-10-15)', () => {
+  /** Rows of the 48-cell body (no weapon) that hold any opaque pixel, drawn at 1 px per art px. */
+  function rows(painter: KeeperPainter, state: Partial<PaintState> = {}): number[] {
+    const el = document.createElement('canvas'); el.width = el.height = 48;
+    const c = el.getContext('2d')!;
+    c.translate(24, 48);
+    painter.draw(c, 1, { action: 'idle', time: 0, attackT: 0, reduced: true, weapon: false, ...state });
+    const data = c.getImageData(0, 0, 48, 48).data;
+    const out: number[] = [];
+    for (let y = 0; y < 48; y++) for (let x = 0; x < 48; x++) if (data[(y * 48 + x) * 4 + 3] > 0) { out.push(y); break; }
+    return out;
+  }
+  function png(painter: KeeperPainter, state: Partial<PaintState>): string {
+    const el = document.createElement('canvas'); el.width = el.height = 96;
+    const c = el.getContext('2d')!;
+    c.translate(48, 96);
+    painter.draw(c, 2, { action: 'idle', time: 0, attackT: 0, weapon: false, ...state });
+    return el.toDataURL();
+  }
+
+  it('is about three quarters of the old 42 art px, with a big head', () => {
+    const lit = rows(new KeeperPainter(defaultLook()));
+    const tall = lit[lit.length - 1] - lit[0] + 1;
+    expect(tall).toBeGreaterThanOrEqual(29);
+    expect(tall).toBeLessThanOrEqual(34);
+    // Head (hair top to chin) against body (shoulders to soles): about 1 : 1 to 1 : 1.3.
+    const head = 33 - lit[0], body = 48 - 33;
+    expect(body / head).toBeGreaterThanOrEqual(.85);
+    expect(body / head).toBeLessThanOrEqual(1.3);
+  });
+
+  it('blinks now and then, and lights up on a level up', () => {
+    const painter = new KeeperPainter(defaultLook());
+    const times = Array.from({ length: 80 }, (_, i) => i * .05);
+    const shown = new Set(times.map(t => painter.faceAt({ action: 'idle', time: t, attackT: 0 })));
+    expect(shown.has('blink')).toBeTrue();
+    expect(shown.has('open')).toBeTrue();
+    expect(painter.faceAt({ action: 'idle', time: 0, attackT: 0, reduced: true })).toBe('open');
+    expect(painter.faceAt({ action: 'attack', time: 0, attackT: .5, face: 'happy' })).toBe('happy');
+    const open = png(painter, { reduced: true });
+    expect(png(painter, { reduced: true, face: 'happy' })).not.toBe(open);
+    expect(png(painter, { reduced: true, face: 'surprised' })).not.toBe(open);
+  });
+
+  it('squashes on landing and keeps the feet on the floor', () => {
+    const painter = new KeeperPainter(defaultLook());
+    expect(png(painter, { squash: 1 })).not.toBe(png(painter, {}));
+    const squashed = rows(painter, { squash: 1, reduced: false });
+    expect(squashed[squashed.length - 1]).toBe(47);
+  });
+
+  it('name plates ride on each figure\'s own top', () => {
+    const bare = new KeeperPainter({ ...defaultLook(), hair: 'cropped' });
+    const hatted = new KeeperPainter(defaultLook(), null, { hat: 'brim' });
+    const crested = new KeeperPainter(defaultLook(), { head: gearPiece('head', 'Cometfall Helm', 'celestial', 'epic') });
+    expect(bare.top).toBeLessThan(hatted.top);
+    expect(bare.top).toBeLessThan(crested.top);
+    expect(hatted.top).toBeLessThanOrEqual(FIGURE_TOP + 4);
+    const lit = rows(bare);
+    expect(48 - lit[0]).toBeLessThanOrEqual(bare.top);
   });
 });
