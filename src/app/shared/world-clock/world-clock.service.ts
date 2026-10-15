@@ -43,11 +43,21 @@ export class WorldClockService {
     if (!this.browser) return;
     const automated = typeof navigator !== 'undefined' && !!(navigator as Navigator & { webdriver?: boolean }).webdriver;
     if (!automated && !isDevMode()) return;
-    try { this.skewMs = Number(sessionStorage.getItem(CLOCK_SKEW_KEY)) || 0; } catch { this.skewMs = 0; }
+    let stored: string | null = null;
+    try { stored = sessionStorage.getItem(CLOCK_SKEW_KEY); } catch { /* private mode */ }
+    this.skewMs = Number(stored) || 0;
     const set = (ms: number) => {
       this.skewMs = Math.round(ms) || 0;
       try { sessionStorage.setItem(CLOCK_SKEW_KEY, String(this.skewMs)); } catch { /* this tab only */ }
     };
+    // A spec that never asked for an eclipse must not meet a real one: the Eclipse Ledger pays income the
+    // moment one is on, so every Gold-exact spec failed whenever the suite ran inside the real 8-minute window.
+    // Under automation only, with no skew chosen yet: if an eclipse is on or under an hour away, start just
+    // after it ends (the next is then ~2 real hours off, longer than any suite). toEclipse() still reaches one.
+    if (automated && stored === null) {
+      const w = nextEclipse(Date.now());
+      if (w.startMs - Date.now() < 60 * 60 * 1000) set(w.endMs + 60 * 1000 - Date.now());
+    }
     const hook: ClockHook = {
       skew: ms => set(ms),
       to: (day, minute) => set(msAt(day, minute) - Date.now()),
