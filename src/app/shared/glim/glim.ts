@@ -100,6 +100,10 @@ export const GLIM_HINTS: Readonly<Record<string, GlimHintRow>> = {
   'aureth-prism-1': { nudge: 'play.glim.hint.l.gate.1', direction: 'play.glim.hint.l.gate.2', show: 'atlas' },
   'lune-prism-2': { nudge: 'play.glim.hint.l.glass.1', direction: 'play.glim.hint.l.glass.2', show: 'atlas' },
   'aureth-prism-3': { nudge: 'play.glim.hint.l.sun.1', direction: 'play.glim.hint.l.sun.2', show: 'atlas' },
+  // The Orrery Wells (Sera Quill's chain).
+  'sera-wells-1': { nudge: 'play.glim.hint.c.gate.1', direction: 'play.glim.hint.c.gate.2', show: 'atlas' },
+  'sera-wells-2': { nudge: 'play.glim.hint.c.steel.1', direction: 'play.glim.hint.c.steel.2', show: 'atlas' },
+  'sera-wells-3': { nudge: 'play.glim.hint.c.ephemeris.1', direction: 'play.glim.hint.c.ephemeris.2', show: 'atlas' },
 };
 
 /** What Glim says to anything off the ladder. */
@@ -151,6 +155,10 @@ export const GLIM_MARKS: Readonly<Record<string, readonly MarkTarget[]>> = {
   'aureth-prism-1': [{ node: 'rift-gate-luminous' }, { node: 'rift-splinter' }, { node: 'glowcap' }],
   'lune-prism-2': [{ node: 'prismite-vein' }, { node: 'dawnglass-vein' }, { node: 'rift-gate-luminous' }, { node: 'glowcap' }],
   'aureth-prism-3': [{ node: 'sun-prism' }, { node: 'rift-gate-luminous' }, { node: 'glowcap' }],
+  // The Orrery Wells: its gate, then its own nodes; in the Ember Delve's core, the Magma Halls' rock (scorched basalt).
+  'sera-wells-1': [{ node: 'rift-gate-celestial' }, { node: 'rift-splinter' }, { node: 'scorched-basalt' }],
+  'sera-wells-2': [{ node: 'starsteel-vein' }, { node: 'meridian-glass-vein' }, { node: 'rift-gate-celestial' }, { node: 'scorched-basalt' }],
+  'sera-wells-3': [{ node: 'orrery-ring-a' }, { node: 'orrery-ring-b' }, { node: 'rift-gate-celestial' }, { node: 'scorched-basalt' }],
 };
 /** How long a mark stays on the map. */
 export const GLIM_MARK_MS = 30 * 60_000;

@@ -26,7 +26,7 @@ import * as fs from 'fs';
 import { bag as bagOf, canvas, ERA, focusWorld, openPlay, seed } from './play-helpers';
 import { DelveFixture, DELVE_SEED, SPEC, withSectors } from './play-delve-fixtures';
 import { nodeIndex } from '../src/app/play/engine/terrain';
-import { sectorContext } from '../src/app/play/engine/sector-gen';
+import { latticePlans, sectorContext } from '../src/app/play/engine/sector-gen';
 import { deepPlans } from '../src/app/play/engine/underhearth-gen';
 import { encodeRuns } from '../src/app/shared/delve/delve-region.model';
 import { RIFT_GATES } from '../src/app/shared/delve/rift-gates.model';
@@ -38,6 +38,35 @@ const OUT = process.env['PLAY_PERF_OUT'];
 const PROFILE_DIR = process.env['PLAY_PERF_PROFILE'];
 /** A directory: when set, each scene also saves a 6 s Chrome trace there. */
 const TRACE_DIR = process.env['PLAY_PERF_TRACE'];
+/**
+ * A realm Delve behind a stratum's Rift Gate (docs/handoff/realm-delves.md, celestial-delve.md): a camp beside the
+ * gate (already attuned), descend, step through. The Prism Mines' sun shafts and bridges, the Orrery Wells'
+ * fields (their chevrons) and the Turning Room: the realm Delves' own passes, on the same phone. Shared by the
+ * harness and the realm guards.
+ */
+async function intoRealmDelve(page: Page, realm: 'luminous' | 'celestial', area: string): Promise<void> {
+  const plan = latticePlans(sectorContext(SPEC, DELVE_SEED), RIFT_GATES[realm].place.cell).find(p => p.kind === 'rift-gate')!;
+  const camp = { col: plan.col + 7, row: plan.row + 4 }, sx = Math.floor(camp.col / 32), sy = Math.floor(camp.row / 32);
+  const f = new DelveFixture();
+  f.claimed = ['warden-defeated', 'underhearth-unsealed', 'underhearth-reached', `rift-attuned:${realm}`, `rift-seen:${realm}`];
+  const now = Date.now();
+  await seed(page, { ...RESTORED, ...f.blobs(), 'godforge-delve-r0': { v: 1, seed: DELVE_SEED, rx: Math.floor(sx / 8), ry: Math.floor(sy / 8), t: now,
+    sectors: { [`${sx},${sy}`]: { g: 1, t: now, c: encodeRuns(new Map([[(camp.row - sy * 32) * 32 + (camp.col - sx * 32), nodeIndex('camp')]])) } } } });
+  await openPlay(page, '?at=delve');
+  const descend = page.getByRole('button', { name: /Descend to your camp/ });
+  await expect(descend).toBeVisible({ timeout: 60000 });
+  await descend.click();
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Delve');
+  await page.waitForTimeout(1500);
+  await focusWorld(page);
+  await expect(async () => {
+    await page.keyboard.down('a'); await page.waitForTimeout(250); await page.keyboard.up('a');
+    await page.keyboard.press('e');
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 1500 });
+  }).toPass({ timeout: 30000 });
+  await page.waitForTimeout(1500);
+}
+
 /** The guard's ceiling: generous on purpose. A 4× throttled headless p95 above this is a real regression. */
 const GUARD_P95_MS = Number(process.env['PLAY_PERF_P95_CEILING'] ?? 70);
 /** The deep Delve guard's ceilings (Furnace Hall). Measured ~33 / ~50 after docs/handoff/delve-perf.md; 51+ / 100 before. */
@@ -349,6 +378,19 @@ harness('/play on a throttled phone', () => {
     await measure(page, cdp, 'realm:ink-deeps');
   });
 
+  // The realm Delves (docs/handoff/realm-delves.md, celestial-delve.md): the walk takes the Keeper east from the
+  // arrival into the Prism Mines' Sunwell Crossing (beams laid every 0.15 s) / the Orrery Wells' Turning Room.
+  test('realm: the Prism Mines, the Gate Hollow and the Sunwell Crossing (Luminous underside)', async ({ page }) => {
+    const cdp = await phone(page);
+    await intoRealmDelve(page, 'luminous', 'The Prism Mines');
+    await measure(page, cdp, 'realm:prism-mines');
+  });
+  test('realm: the Orrery Wells, the Gate Hollow and the Turning Room (Celestial underside)', async ({ page }) => {
+    const cdp = await phone(page);
+    await intoRealmDelve(page, 'celestial', 'The Orrery Wells');
+    await measure(page, cdp, 'realm:orrery-wells');
+  });
+
   test('delve: Magma Halls beside a lava pool', async ({ page }) => {
     const cdp = await phone(page);
     // A wall between the camp and the pool (cols 31-35): the walk never enters the lava.
@@ -383,4 +425,17 @@ guard('/play perf guard', () => {
     expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_DELVE_P95_MS);
     expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_DELVE_P50_MS);
   });
+
+  // The realm Delves (docs/handoff/celestial-delve.md): their own per-frame passes (the Prism Mines' light,
+  // re-laid every 0.15 s; the Orrery Wells' field chevrons, a walk of the view's cells) under the Delve's ceilings.
+  for (const [realm, area] of [['luminous', 'The Prism Mines'], ['celestial', 'The Orrery Wells']] as const) {
+    test(`realm Delve ${area} p95 frame time at 4× CPU throttle stays under the ceiling`, async ({ page }) => {
+      test.setTimeout(180000);
+      const cdp = await phone(page);
+      await intoRealmDelve(page, realm, area);
+      const r = await measure(page, cdp, `guard:${realm}-delve`);
+      expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_DELVE_P95_MS);
+      expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_DELVE_P50_MS);
+    });
+  }
 });

@@ -154,7 +154,8 @@ test('model: the Verdant and Luminous gates are open, each with its area, sigil 
     assert.deepEqual(plain(rift.attuneCheck(realm, { delving: g.delving, sigils: 0, attuned: false })), { ok: false, why: 'sigil', sigil: g.sigil });
     assert.deepEqual(plain(rift.attuneCheck(realm, { delving: g.delving, sigils: 1, attuned: false })), { ok: true, attune: true });
   }
-  assert.deepEqual(plain(rift.attuneCheck('celestial', { delving: 99, sigils: 9, attuned: false })), { ok: false, why: 'settling' });
+  // The Celestial opened last (scripts/celestial-delve.test.cjs).
+  assert.equal(rift.RIFT_GATES.celestial.open, true);
   assert.equal(rift.RIFT_GATES.verdant.sigil, rift.VERDANT_SIGIL);
   assert.equal(rift.RIFT_GATES.luminous.sigil, rift.LUMINOUS_SIGIL);
 });

@@ -81,7 +81,7 @@ export interface TerrainNodeDef {
    * contents, a camp's crafting). A rift shrine is the engine's own: it shows
    * the tunnels round it on the map, and the host pays its first touch.
    */
-  use?: 'chest' | 'camp' | 'shrine' | 'anchor' | 'mark' | 'furnace' | 'gate' | 'brazier' | 'mirror';
+  use?: 'chest' | 'camp' | 'shrine' | 'anchor' | 'mark' | 'furnace' | 'gate' | 'brazier' | 'mirror' | 'ring';
   /**
    * A rail the Seam Cart rides (Phase 8, traversal.ts): Kael's old lines
    * (generated) and the Keeper's own (placed). Consecutive rail cells join
@@ -366,6 +366,36 @@ export const TERRAIN_NODE_LIST: readonly TerrainNodeDef[] = [
     base: '#1a1610', dark: '#0e0c08', light: '#3a3426', fleck: '#5a5040' },
   { id: 'lit-pane', label: 'Lit glass', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true,
     base: '#8a7a58', dark: '#5a5040', light: '#fff1b0', fleck: '#fffaf0' },
+  // ── The Celestial Delve, the Orrery Wells (play/engine/celestial-gen.ts; the Celestial's underside; celestial.ts). ──
+  // Astral stone: the Orrery Rings' blue-grey rock, flecked with star silver. Pickaxe III.
+  { id: 'astral-stone', label: 'Astral stone', solid: true, hp: 5, tools: { pickaxe: 3 }, discipline: 'mining', xp: 3, block: 'basalt-block',
+    base: '#24406e', dark: '#14284a', light: '#3a5a8a', fleck: '#a8b8cc' },
+  // Nadir stone: the deep's rock, the lowest point of every orbit. Pickaxe IV.
+  { id: 'nadir-stone', label: 'Nadir stone', solid: true, hp: 6, tools: { pickaxe: 4 }, discipline: 'mining', xp: 4, block: 'basalt-block',
+    base: '#14284a', dark: '#0a1428', light: '#24406e', fleck: '#6a7890' },
+  // Starsteel: iron that fell a long way and kept its shine. Pickaxe IV, Mining 50.
+  { id: 'starsteel-vein', label: 'Starsteel vein', solid: true, hp: 7, tools: { pickaxe: 4 }, discipline: 'mining', xp: 22, minLevel: 50,
+    yield: { materialId: 'starsteel', qty: 1 }, base: '#24406e', dark: '#14284a', light: '#a8b8cc', fleck: '#d8ecff', glow: { color: '#d8ecff', radius: 46 } },
+  // Meridian glass: the line the Orrery measured by, set into glass. Pickaxe IV, Mining 58.
+  { id: 'meridian-glass-vein', label: 'Meridian glass vein', solid: true, hp: 8, tools: { pickaxe: 4 }, discipline: 'mining', xp: 30, minLevel: 58,
+    yield: { materialId: 'meridian-glass', qty: 1 }, base: '#14284a', dark: '#0a1428', light: '#5fb6ff', fleck: '#d8ecff', glow: { color: '#5fb6ff', radius: 56 } },
+  // Orrery scrap: brass from the old rings, wedged in the rock. Pickaxe IV: Celestial Alloy, now and then.
+  { id: 'orrery-scrap', label: 'Orrery scrap', solid: true, hp: 4, tools: { pickaxe: 4 }, discipline: 'mining', xp: 12, minLevel: 30,
+    yield: { materialId: 'celestial-alloy', qty: 1, chance: .4 }, base: '#8a6a3a', dark: '#4a3a1e', light: '#e8c47a', fleck: '#fff1b0', glow: { color: '#e8c47a', radius: 34 } },
+  // An orrery field: open air whose down is its ring's to decide (celestial.ts). Readable: it glitters, and chevrons point its down.
+  { id: 'orrery-field', label: 'Orrery field', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#14284a', dark: '#0a1428', light: '#3a5a8a', fleck: '#d8ecff' },
+  // A star-well: open air that always falls up. A star-chain beside it is the way back down.
+  { id: 'star-well', label: 'Star-well', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0,
+    base: '#24406e', dark: '#14284a', light: '#5fb6ff', fleck: '#d8ecff', glow: { color: '#5fb6ff', radius: 38 } },
+  // An orrery ring, two ways: brass (its field falls up) and blue (its field falls down). E turns it, and its whole field with it.
+  { id: 'orrery-ring-a', label: 'Orrery ring', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'ring',
+    base: '#8a6a3a', dark: '#4a3a1e', light: '#e8c47a', fleck: '#d8ecff', glow: { color: '#e8c47a', radius: 64 } },
+  { id: 'orrery-ring-b', label: 'Orrery ring', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, use: 'ring',
+    base: '#24406e', dark: '#14284a', light: '#5fb6ff', fleck: '#d8ecff', glow: { color: '#5fb6ff', radius: 64 } },
+  // A star-chain: a brass chain the old surveyors hung; climbed like a ladder, whatever down is doing.
+  { id: 'star-chain', label: 'Star-chain', solid: false, hp: 0, tools: {}, discipline: 'exploration', xp: 0, oneWay: true, climb: true,
+    base: '#8a6a3a', dark: '#4a3a1e', light: '#e8c47a', fleck: '#fff1b0' },
 ];
 /** 1 where the node at that index is solid. Read per collision test, so a lookup, not a property walk. */
 const SOLID_KIND = Uint8Array.from(TERRAIN_NODE_LIST, node => node.solid ? 1 : 0);
@@ -533,7 +563,7 @@ export interface TerrainSpec {
    * A realm Delve behind a Rift Gate (rift-gates.model.ts): its wings come from
    * that realm's own generator (realm-gen.ts), not the Infernal strata's.
    */
-  realm?: 'umbral' | 'verdant' | 'luminous';
+  realm?: 'umbral' | 'verdant' | 'luminous' | 'celestial';
   liquidVersion?: number;
   /**
    * The core of an endless Delve (Phase 7): sector-world.ts generates sectors
@@ -1250,6 +1280,48 @@ export function stepTerrainBody(body: TerrainBody, velocityX: number, dt: number
     const row = t.rowAt(head);
     if (rowBlocked(t, row, body.x, box) && t.rowAt(previousY - box.height) !== row) {
       ny = t.top + (row + 1) * CELL + box.height; body.vy = 0;
+    }
+  }
+  body.y = ny;
+}
+
+/**
+ * One fixed step of a body whose down is UP (the Orrery Wells' fields,
+ * celestial.ts): stepTerrainBody mirrored top for bottom. The box is where it
+ * always is (feet at `y`, `height` above), so everything that reads the body
+ * still works; only its contact flips: gravity pulls it up, a ceiling catches
+ * it on the box's top edge (grounded, standing on the ceiling), a floor bumps
+ * its feet, and a one-cell step is walked "down" along the ceiling. One-way
+ * floors and the area's safety floor do not catch a body falling up. No fall
+ * is ever harder than TERMINAL_FALL, and nothing here hurts. Pure apart from `body`.
+ */
+export function stepTerrainBodyUp(body: TerrainBody, velocityX: number, dt: number, t: Terrain, box: BodyBox, width: number): void {
+  if (velocityX) {
+    const nx = t.clampX(body.x + velocityX * dt, width);
+    if (!boxHits(t, nx, body.y, box)) body.x = nx;
+    else if (body.grounded && !boxHits(t, nx, body.y + CELL, box) && !boxHits(t, body.x, body.y + CELL, box)) {
+      body.x = nx; body.y += CELL;
+    }
+  }
+  const previousY = body.y;
+  body.vy = Math.max(-TERMINAL_FALL, body.vy - GRAVITY * dt);
+  let ny = body.y + body.vy * dt;
+  body.grounded = false;
+  if (body.vy <= 0) {
+    // The first row boundary the head crosses going up with a solid cell over it: stand on the ceiling.
+    const head0 = previousY - box.height, head1 = ny - box.height;
+    const from = t.rowAt(head0 + EPS) - 1, to = t.rowAt(head1);
+    for (let row = from; row >= to; row--) {
+      const edge = t.top + (row + 1) * CELL;
+      if (edge <= head0 + EPS && edge >= head1 && rowBlocked(t, row, body.x, box)) {
+        ny = edge + box.height; body.vy = 0; body.grounded = true; break;
+      }
+    }
+  } else {
+    // A jump away from the ceiling: the feet bump a floor.
+    const row = t.rowAt(ny - EPS);
+    if (rowBlocked(t, row, body.x, box) && t.rowAt(previousY - EPS) !== row) {
+      ny = t.top + row * CELL; body.vy = 0;
     }
   }
   body.y = ny;
