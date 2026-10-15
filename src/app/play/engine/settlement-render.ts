@@ -75,9 +75,12 @@ export class SettlementDressing {
       const topY = f.groundY - rows.length * CELL;
       // Lit windows: a warm wash over the glass (the engine adds their light to the dark).
       if (f.lit) for (const w of m.windows) {
-        c.fillStyle = '#ffb066'; c.globalAlpha = .55;
-        c.fillRect(x0 + w.x * CELL + P * 3, topY + w.y * CELL + P * 3, CELL - P * 6, CELL - P * 6);
-        c.globalAlpha = 1;
+        // Lamplight behind the glass: a warm pane, brighter at its foot, the mullion cross still dark across it.
+        const wx = x0 + w.x * CELL + P * 3, wy = topY + w.y * CELL + P * 3, ws = CELL - P * 6;
+        px(c, wx, wy, ws, ws, '#e8752a');
+        px(c, wx, wy + ws / 2, ws, ws / 2, '#ffc45c');
+        px(c, wx + P, wy + P, P * 2, P, '#fff1b0');
+        px(c, wx + ws / 2 - P / 2, wy, P, ws, '#2a1c12'); px(c, wx, wy + ws / 2 - P / 2, ws, P, '#2a1c12');
       }
       if (m.chimney) this.smoke(c, x0 + m.chimney.x * CELL + CELL, topY + m.chimney.y * CELL, f);
       if (b.kind === 'mine-head') this.winch(c, x0 + 2.5 * CELL, topY + CELL * .5, f);

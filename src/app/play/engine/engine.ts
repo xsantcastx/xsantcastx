@@ -5416,7 +5416,9 @@ export class SeamworksEngine {
     if (t) {
       // Delves follow the Keeper down; the surface sits low in the frame at the top.
       // One World: the camera may rise into the sky band (rows < 0) over the settlement's roofs and the hills.
-      const target = Math.max(t.rowLo < 0 ? t.skyTop : 0, Math.min(t.bottom + 40 - 720, this.player.y - 720 * .58));
+      // On a world's surface the street sits lower in the frame (.7), so the shops' roofs and signs are in view.
+      const frame = t.rowLo < 0 && this.player.y <= t.top + CELL * 2 ? .7 : .58;
+      const target = Math.max(t.rowLo < 0 ? t.skyTop : 0, Math.min(t.bottom + 40 - 720, this.player.y - 720 * frame));
       this.cameraY += (target - this.cameraY) * (this.reducedMotion ? 1 : 1 - Math.exp(-7 * this.frameDt));
     } else if (this.heights) {
       // A surface with height: follow the Keeper up, with a look-ahead the way they are heading.
