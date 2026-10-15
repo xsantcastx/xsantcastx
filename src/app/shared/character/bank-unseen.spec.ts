@@ -29,6 +29,14 @@ describe('bank unseen', () => {
     expect(seen.has('stack:ember-residue')).toBe(false);
   });
 
+  it('forgets gear ids no longer held, keeps stacks (bounded on disk)', () => {
+    const store = new Memory();
+    persistSeen(store, ['stack:cinder-ore', 'item-sold-long-ago', 'item-held']);
+    const seen = loadSeen(store, ['item-held']);
+    expect([...seen].sort()).toEqual(['item-held', 'stack:cinder-ore']);
+    expect(JSON.parse(store.readRaw(BANK_SEEN_KEY)!)).not.toContain('item-sold-long-ago');
+  });
+
   it('treats Ember Residue and rare+ items as special', () => {
     expect(isRareStack('ember-residue')).toBe(true);
     expect(isRareStack('cinder-ore')).toBe(false);
