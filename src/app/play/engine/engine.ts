@@ -56,7 +56,10 @@ import { drawFishShadows, placeFish, type FishShadow } from './fish-shadows';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import { createFog, findMark, MapSource, MarkTarget, revealAround, terrainReader } from './delve-map';
 import { Column, PlacedStructure, SectorWorld } from './sector-world';
-import { SECTOR } from './sector-gen';
+import { coreSectorCols, SECTOR, type SectorHall } from './sector-gen';
+import { crittersFor, HERMITS, isNight, mysteryAt, utcDay, wildSector, WILD_BUDGET, WILD_NEAR } from './living-world';
+import { WildLife, type PlacedMystery, type WildFrame } from './wild-life';
+import { groundAt as surfaceGround } from './surface-gen';
 import { FIELD_NOTE_PREFIX } from '../../shared/delve/field-notes.model';
 import type { BucketId, CabinetMark, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
 import { drawCabinet } from './cabinet-art';
@@ -147,6 +150,8 @@ const QUIET_AFTER_MS = 2500;
 /** Seconds a felled Maw takes to dissolve, and a respawn takes to rise. */
 const DEATH_FADE = .45;
 const SPAWN_RISE = .4;
+/** World px of the view's height the wild layer culls against (the camera is at most this tall in world px). */
+const WILD_VIEW_H = 900;
 /** The Keeper's body in a delve (figure scale 0.5): fits a three-cell tunnel. */
 const DELVE_BOX: BodyBox = { halfWidth: 13, height: 90 };
 /** The Quarry Gate's bars (One World P2): the node the beacon lifts. */
@@ -659,11 +664,11 @@ export class SeamworksEngine {
     return monsters;
   }
   private enter(area: AreaDef): void {
-    this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = [];
+    this.areaDef = area; this.sceneKey = `scene:${area.background}`; this.monsters = this.createMonsters(); this.drops = []; this.pendingHalls = []; this.wild.clear();
     const fresh = !this.worlds.has(area.id);
     this.terrain = this.terrainFor(area); this.world = this.terrain ? this.worlds.get(area.id) ?? null : null;
     // A world already loaded keeps its ring: its halls' creatures come back with the area.
-    if (this.world && !fresh) for (const column of this.world.loadedColumns()) this.spawnHalls(area, column);
+    if (this.world && !fresh) for (const column of this.world.loadedColumns()) { this.spawnHalls(area, column); this.loadWild(area, this.world, column); }
     this.worldAt = '';
     this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
     this.liquid = this.terrain ? this.sims.get(area.id) ?? null : null;
@@ -755,7 +760,7 @@ export class SeamworksEngine {
    */
   setSky(sky: EngineSky): void {
     const was = this.worldSky;
-    this.worldSky = sky;
+    this.worldSky = sky; this.skySent = true;
     this.skyLight.set(sky, this.town.realm);
     if (was.dark === sky.dark && was.eclipseOn === sky.eclipseOn && was.alignedHunt === sky.alignedHunt) return;
     this.sites = this.openSites();
@@ -906,9 +911,9 @@ export class SeamworksEngine {
     const world = new SectorWorld(spec, seed, area.id, this.delve, {
       loaded: column => {
         sim?.wakeColumns(column.sx * SECTOR - 1, (column.sx + 1) * SECTOR + 1);
-        if (this.areaDef === area) this.spawnHalls(area, column);
+        if (this.areaDef === area) { this.spawnHalls(area, column); this.loadWild(area, world, column); }
       },
-      unloading: column => this.columnLeaving(world, column, sim),
+      unloading: column => { if (this.world === world) this.wild.unload(column.sx); this.columnLeaving(world, column, sim); },
     });
     const t = world.t;
     world.center(t.colAt(area.spawnX));
@@ -926,17 +931,108 @@ export class SeamworksEngine {
     this.fogs.set(area.id, world.fog);
     return t;
   }
-  /** A column's hall creatures, from the area's own creature of that kind (its HP and drops), in the hall. */
+  /**
+   * A column's hall creatures, from the area's own creature of that kind (its HP and drops), in the hall.
+   * The Living World's packs and dens (`near`) wait until the Keeper is within a screen or so, and then
+   * only while the wild spawn budget allows (living-world.ts); by night a pack is its `night` creature.
+   */
   private spawnHalls(area: AreaDef, column: Column): void {
-    const t = this.terrain;
     for (const hall of column.gen.halls) {
-      const base = area.monsters.find(m => m.creature === hall.creature && !m.once && !m.summoned);
-      if (!base) continue;
-      const x0 = hall.col0 * CELL + 40, x1 = hall.col1 * CELL - 40;
-      const xs = Array.from({ length: hall.count }, (_, n) => Math.round(x0 + (x1 - x0) * (n + .5) / hall.count));
-      const def: MonsterDef = { ...base, spawnXs: xs, floorY: (t?.top ?? FLOOR) + hall.floorRow * CELL, range: [x0, x1] };
-      for (const x of xs) this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: 0, shownHp: def.hp, recoil: 0, sx: column.sx });
+      if (hall.near) this.pendingHalls.push({ hall, sx: column.sx });
+      else this.spawnHall(area, hall, column.sx);
     }
+  }
+  private spawnHall(area: AreaDef, hall: SectorHall, sx: number): void {
+    const t = this.terrain;
+    // The world clock's sky (shared/world-clock): the night's creature by night and under an eclipse.
+    const creature = hall.night && this.wildDark ? hall.night : hall.creature;
+    const base = area.monsters.find(m => m.creature === creature && !m.once && !m.summoned);
+    if (!base || hall.count <= 0) return;
+    const x0 = hall.col0 * CELL + 40, x1 = Math.max(x0, hall.col1 * CELL - 40);
+    const xs = Array.from({ length: hall.count }, (_, n) => Math.round(x0 + (x1 - x0) * (n + .5) / hall.count));
+    const hp = Math.max(1, Math.round(base.hp * (hall.scale ?? 1)));
+    const def: MonsterDef = { ...base, hp, spawnXs: xs, floorY: (t?.top ?? FLOOR) + hall.floorRow * CELL, range: [x0, x1] };
+    for (const x of xs) this.monsters.push({ def, maxHp: def.hp, x, spawn: x, hp: def.hp, phase: 'idle', timer: 1, facing: -1, respawn: 0, flash: 0, knock: 0, dying: 0, born: hall.near ? SPAWN_RISE : 0, shownHp: def.hp, recoil: 0, sx });
+  }
+  /** Living World halls waiting for the Keeper to come near (their column is loaded). */
+  private pendingHalls: { hall: SectorHall; sx: number }[] = [];
+  private pendingAt = 0;
+  /** Spawn the waiting packs and dens within reach, while the wild budget allows (a few times a second). */
+  private wakeHalls(): void {
+    if (!this.pendingHalls.length || this.elapsed - this.pendingAt < .25) return;
+    this.pendingAt = this.elapsed;
+    const t = this.terrain;
+    let alive = this.monsters.filter(m => m.sx !== undefined && m.hp > 0).length;
+    this.pendingHalls = this.pendingHalls.filter(({ hall, sx }) => {
+      const x = (hall.col0 + hall.col1) * CELL / 2, y = (t?.top ?? FLOOR) + hall.floorRow * CELL;
+      if (Math.abs(x - this.player.x) > WILD_NEAR.x || Math.abs(y - this.player.y) > WILD_NEAR.y) return true;
+      if (alive + hall.count > WILD_BUDGET) return true;
+      alive += hall.count;
+      this.spawnHall(this.areaDef, hall, sx);
+      return false;
+    });
+  }
+  // ── The Living World (living-world.ts, wild-life.ts): critters, hermits, the day's mysteries ──
+  private readonly wild = new WildLife();
+  /** Night for the wilds: the world clock's dark (night or an eclipse), or the One World hour when no sky was sent. */
+  private get wildDark(): boolean { return this.skySent ? this.worldSky.dark : isNight(this.worldHour); }
+  private readonly wildFrame: WildFrame = { camera: 0, cameraY: 0, viewport: 0, viewH: 0, time: 0, reduced: false, keeperX: 0, keeperY: 0 };
+  /** The day's mysteries already found (the host's ledger, re-sent on load). */
+  private mysteriesFound: ReadonlySet<string> = new Set();
+  private skySent = false;
+  /** Found on this page (a column that leaves and comes back keeps its door open). */
+  private readonly mysteriesHere = new Set<string>();
+  setMysteriesFound(ids: ReadonlySet<string>): void { this.mysteriesFound = ids; }
+  /** What lives round the Keeper now (tests, the perf notes). */
+  wildCounts(): { critters: number; hermits: number; mysteries: number } { return this.wild.counts(); }
+  /** A loaded column's critters, its hermit and its mystery (the plain Delve's ledge has no trees or people). */
+  private loadWild(area: AreaDef, world: SectorWorld, column: Column): void {
+    if (world.spec.realm) return;
+    const spec = area.terrain?.surface ?? null, sx = column.sx, top = world.t.top;
+    const core = coreSectorCols(world.spec);
+    const wild = spec ? wildSector(spec, sx) : sx < -1 || sx > core;
+    const ground = spec ? (col: number) => surfaceGround(spec, col) : () => 0;
+    const plan = column.gen.living ?? null;
+    let spawns: ReturnType<typeof crittersFor> = [];
+    try {
+      spawns = crittersFor({ sx, hour: this.wildDark ? 0 : 12, seed: world.seed, rowLo: world.rowLo, rows: world.spec.rows, kind: column.kind, liqLevel: column.liqLevel,
+        ground: spec ? ground : null, wild, plan, finds: column.gen.finds ?? [] });
+    } catch { spawns = []; }
+    let hermit: { def: (typeof HERMITS)[number]; col: number; row: number } | null = null;
+    const poi = plan?.poi;
+    if (poi?.npc && poi.npcCol !== undefined) {
+      const def = HERMITS.find(h => h.id === poi.npc);
+      let base = 0;
+      for (let k = 0; k < poi.w; k++) base = Math.min(base, ground(poi.col + k));
+      if (def) hermit = { def, col: poi.npcCol, row: base - 1 };
+    }
+    this.wild.load(sx, top, spawns, hermit, this.placeMystery(world, column, ground, wild), id => this.mysteriesFound.has(id) || this.mysteriesHere.has(id));
+  }
+  /** Today's mystery in a column, set where it can stand (a wisp over the ground, a door on a cave floor), or null. */
+  private placeMystery(world: SectorWorld, column: Column, ground: (col: number) => number, wild: boolean): PlacedMystery | null {
+    const m = mysteryAt(world.seed, utcDay(this.clock()), column.sx, coreSectorCols(world.spec));
+    if (!m) return null;
+    const top = world.t.top, col0 = column.sx * SECTOR;
+    if (!m.underground) {
+      if (!wild) return null;
+      const g = ground(m.col), x = (m.col + .5) * CELL, y = top + g * CELL - (m.kind === 'wisp' ? 56 : 8);
+      return { m, sx: column.sx, x, y, homeX: x, homeY: y, found: false, spoke: false, settle: 0 };
+    }
+    // Underground: the nearest cave floor two cells tall to its mark, in this column.
+    const inside = (col: number, row: number) => col >= col0 && col < col0 + SECTOR && row >= Math.max(0, world.rowLo) && row < world.spec.rows;
+    const open = (col: number, row: number) => {
+      if (!inside(col, row)) return false;
+      const i = (row - world.rowLo) * SECTOR + (col - col0);
+      return !TERRAIN_NODE_LIST[column.kind[i]].solid && !column.liqLevel[i];
+    };
+    const solidAt = (col: number, row: number) => inside(col, row) && !open(col, row);
+    for (let d = 0; d < 14; d++) for (const dr of d ? [d, -d] : [0]) for (let dc = -10; dc <= 10; dc++) {
+      const col = m.col + dc, row = m.row + dr;
+      if (!open(col, row) || !open(col, row - 1) || !solidAt(col, row + 1)) continue;
+      const x = (col + .5) * CELL, y = top + (row + 1) * CELL - (m.kind === 'wisp' ? 40 : 0);
+      return { m: { ...m, col, row }, sx: column.sx, x, y, homeX: x, homeY: y, found: false, spoke: false, settle: 0 };
+    }
+    return null;
   }
   /** A column is leaving the ring: its creatures go, and nothing here holds its cells any more. */
   private columnLeaving(world: SectorWorld, column: Column, sim: LiquidSim | null): void {
@@ -951,6 +1047,7 @@ export class SeamworksEngine {
     }
     if (this.world === world) {
       this.monsters = this.monsters.filter(m => m.sx !== column.sx);
+      this.pendingHalls = this.pendingHalls.filter(p => p.sx !== column.sx);
       const gone = (index: number) => { const col = t.colOf(index); return col >= col0 && col < col1; };
       for (const index of [...this.chars.keys()]) if (gone(index)) this.chars.delete(index);
       for (const index of [...this.placedGen.keys()]) if (gone(index)) this.placedGen.delete(index);
@@ -992,7 +1089,7 @@ export class SeamworksEngine {
     this.delve = delve;
     this.terrains.clear(); this.layouts.clear(); this.fogs.clear(); this.sims.clear(); this.liquidLayouts.clear(); this.worlds.clear();
     if (this.areaDef?.terrain) {
-      this.monsters = this.monsters.filter(m => m.sx === undefined);
+      this.monsters = this.monsters.filter(m => m.sx === undefined); this.pendingHalls = []; this.wild.clear();
       this.terrain = this.terrainFor(this.areaDef);
       this.world = this.worlds.get(this.areaDef.id) ?? null;
       // The rebuilt ring stands where the Keeper is, not at the spawn.
@@ -1430,7 +1527,7 @@ export class SeamworksEngine {
     this.resetPosition(this.town.spawnX); this.say('play.hud.eng.backAtCamp', 'Back at camp. Your equipment and collected loot are safe.'); this.report();
   }
   restartHunt(): void {
-    this.monsters = this.createMonsters(); this.drops = []; this.resetPosition(this.areaDef.spawnX);
+    this.monsters = this.createMonsters(); this.drops = []; this.pendingHalls = []; this.resetPosition(this.areaDef.spawnX);
     if (this.world) for (const column of this.world.loadedColumns()) this.spawnHalls(this.areaDef, column);
     this.say('play.hud.eng.freshHunt', 'A fresh hunt begins. Monsters respawn after defeat; collect their drops.'); this.report();
   }
@@ -2422,6 +2519,14 @@ export class SeamworksEngine {
       this.hurtMonster(monster, this.damage ?? (this.equipped ? 20 : 10));
       struck = true;
     }
+    // The Living World: a swing at a beetle or a moth catches it (the host pays its drop, once a day each).
+    if (!struck && this.world) {
+      const caught = this.wild.catchAt(this.player.x, this.player.y, this.facing);
+      if (caught) {
+        this.debris.chip(caught.x, caught.y - 8, '#ffe2a8', this.reducedMotion ? 2 : 6);
+        this.options.onCatch?.({ id: caught.id, critter: caught.critter });
+      }
+    }
     // A blow on a foe is combat: the weapon is in hand for it.
     if (struck) this.putToolAway();
     // One World: a gathering node in reach is worked before the ground under it is dug.
@@ -3261,6 +3366,8 @@ export class SeamworksEngine {
       this.options.onDiscover?.({ kind: 'mark', id: `hammer-mark-${n}`, biome: t.biomeAt(row).id });
       return;
     }
+    // The Living World's words (a signpost, a hermit's door, a seam-engine): the host shows them, in the Keeper's language.
+    if (id.startsWith('living:')) { this.report(); this.options.onDiscover?.({ kind: 'inscription', id, biome: t.biomeAt(Math.max(0, row)).id }); return; }
     if (id.startsWith(FIELD_NOTE_PREFIX)) this.say('play.delve.fieldNoteTrace', 'Someone left a note in the rock for whoever came next.');
     else this.say('play.delve.inscriptionTrace', 'You trace the carving with a finger. The words are older than the Seamworks.');
     // Reported before the host hears of it, so a message the host shows in reply is not cleared by this one.
@@ -3354,6 +3461,15 @@ export class SeamworksEngine {
       if (stone.lit) this.options.onStone?.({ id: stone.id, action: 'open', world: this.worldSurface?.world ?? '' });
       else this.say('play.world.stone.hold', 'A dark Waystone. Hold E (or hold the button) to light it.');
       this.report(); return;
+    }
+    // The Living World: one of the day's mysteries (a wisp settled, a door that was not there yesterday).
+    const mystery = station || !this.world ? null : this.wild.mysteryInReach(this.player.x, this.player.y);
+    if (mystery) {
+      mystery.found = true; this.mysteriesHere.add(mystery.m.id);
+      this.say(`play.living.mystery.${mystery.m.kind}.found`, mystery.m.kind === 'door' ? 'The door opens on nothing but the rock behind it, and a little something left on the step.' : 'The light settles into your hands, and goes out. Something is left in them.');
+      this.report();
+      this.options.onDiscover?.({ kind: 'mystery', id: mystery.m.id, biome: this.terrain && mystery.m.underground ? this.terrain.biomeAt(mystery.m.row).id : 'surface' });
+      return;
     }
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
     const site = station ? null : this.siteInReach();
@@ -3498,6 +3614,11 @@ export class SeamworksEngine {
     if (this.terrain) {
       // The endless Delve: the loaded ring follows the Keeper (a sector column at a time).
       this.keepWorld();
+      this.wakeHalls();
+      if (this.world) {
+        const whisper = this.wild.update(dt, this.player.x, this.player.y, this.reducedMotion);
+        if (whisper) this.options.onDiscover?.({ kind: 'mystery', id: whisper.m.id, biome: whisper.m.underground ? this.terrain.biomeAt(whisper.m.row).id : 'surface' });
+      }
       // In water or lava the Keeper wades and swims: slower, sinking slowly, and Jump held swims up.
       this.sense(this.terrain);
       const swim = this.immersed ? SWIM[this.immersed] : null;
@@ -4726,12 +4847,15 @@ export class SeamworksEngine {
     const surfaceNow = !!region && region.id !== this.worldSurface!.underground.id;
     const stone = !station && !use && !cabinet && !find && !site && this.worldSurface ? this.stoneInReach() : null;
     const away = station && this.worldSurface && this.settlement.placed.some(k => k.station.id === station.id) ? stationPrompt(this.worldHour) : 'counter';
+    // The Living World: a wisp or a door of the day's within E's reach.
+    const mystery = !station && !use && !cabinet && this.world ? this.wild.mysteryInReach(this.player.x, this.player.y) : null;
     this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name, enemyId: nearest?.def.creature,
       ...(this.keyed && this.keyed.en === this.message ? { messageKey: this.keyed.key, ...(this.keyed.vars ? { messageVars: this.keyed.vars } : {}) } : {}),
       ...(region ? { world: region.world, region: region.id } : {}),
       ...(stone ? { stone: { id: stone.id, lit: stone.lit, charge: this.stoneCharge?.id === stone.id ? Math.min(1, this.stoneCharge.t / LIGHT_HOLD) : 0, kind: stone.kind } } : {}),
       ...(away !== 'counter' ? { keeperAway: away } : {}),
-      nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : find ? 'height' : site ? 'gather' : stone ? 'stone' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase() ?? (stone ? 'WAYSTONE' : undefined), nearbyKind: station?.kind,
+      nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : find ? 'height' : site ? 'gather' : stone ? 'stone' : mystery ? 'mystery' : null),
+      nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase() ?? (stone ? 'WAYSTONE' : mystery ? (mystery.m.kind === 'door' ? 'OPEN THE DOOR' : 'TOUCH THE LIGHT') : undefined), nearbyKind: station?.kind,
       height: find ? { id: find.id, kind: find.kind, found: this.heightsFound.has(find.id) } : undefined,
       cabinet: cabinet ? { id: cabinet.id, open: cabinet.open } : undefined,
       y: Math.round(this.player.y), climbing: this.terrain ? (this.worldSurface ? (this.climbing ? 'climb' : this.moves.mode) : this.moves.busy ? this.moves.mode : undefined) : this.heights ? this.mover.mode : undefined,
@@ -5655,6 +5779,12 @@ export class SeamworksEngine {
     }
     // The Lost Cabinets stand in front of the stalls, behind the people.
     if (this.cabinets.length) this.drawCabinets(c, viewport, motionTime);
+    if (this.world) {
+      const w = this.wildFrame;
+      w.camera = this.camera; w.cameraY = this.cameraY; w.viewport = viewport; w.viewH = WILD_VIEW_H; w.time = motionTime; w.reduced = this.reducedMotion;
+      w.keeperX = this.player.x; w.keeperY = this.player.y; w.translate = this.options.translate;
+      this.wild.draw(c, w);
+    }
     if (this.isTown) {
       const f = this.lifeFrame;
       f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.reduced = this.reducedMotion;
@@ -5927,6 +6057,8 @@ export class SeamworksEngine {
     pool.add(this.player.x, this.player.y - 50, this.lanternRadius * flicker * (this.veiledUp() ? .55 : 1) * this.lanternShare(t), 1);
     // The Ember Newt's tail: a small warm light of its own, wherever it trots.
     if (this.petAbility === 'glow' && this.pet.id && Number.isFinite(this.pet.x)) pool.add(this.pet.x, this.pet.y - 30 * this.figure, PET_TUNING.glowRadius * flicker, PET_TUNING.glowLight);
+    // The Living World: glowworms and the day's wisps carry small lights of their own.
+    if (this.world) this.wild.lights((x, y, r, k) => pool.add(x, y, r, k), this.camera, viewport, time);
     // The Delve's surface strip of light; a world has a real sky instead (skylight, below).
     const ws = this.worldSurface;
     if (!ws && this.cameraY < t.top) for (let x = 0; x < viewport + 400; x += 360) pool.add(this.camera - 200 + x, t.top - 160, 460, .85);

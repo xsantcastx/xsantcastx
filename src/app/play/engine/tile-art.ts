@@ -109,7 +109,7 @@ export type TilePattern = 'rock' | 'ore' | 'roots' | 'grain' | 'glowcap' | 'frag
 /** The pattern a node is drawn with. Pure. */
 export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & { placeable?: string; solid?: boolean }): TilePattern {
   // Placed things, and the walk-through features drawn like one (the rift shrine, the Underhearth's marks and vents).
-  if (PLACED_ART[node.id] && (node.placeable || node.solid === false)) return 'placed';
+  if (PLACED_ART[node.id] && (node.placeable || node.solid === false || SOLID_PROPS.has(node.id))) return 'placed';
   switch (node.id) {
     case 'roots': case 'shadow-root': return 'roots';
     case 'petrified-trunk': case 'heartwood': return 'grain';
@@ -125,12 +125,19 @@ export function patternOf(node: Pick<TerrainNodeDef, 'id' | 'yield' | 'glow'> & 
     case 'seam-brick': return 'block';
     case 'town-roof': return 'shingle';
     case 'town-beam': return 'grain';
+    // The Living World: an ashwood's burl, the old waystations' stones, the strongboxes.
+    case 'ashwood-burl': return 'grain';
+    case 'ruin-stone': return 'block';
+    case 'old-strongbox': case 'ember-strongbox': return 'cache';
     // One World P2: the High Roads' ruins are dressed stone; the Quarry Gate's bars are drawn whole.
     case 'courier-ruin': return 'block';
     case 'gate-bar': return 'placed';
   }
   return node.yield || node.glow ? 'ore' : 'rock';
 }
+
+/** Solid cells drawn as a placed-style prop over the sky or the wall (the ashberry bush): no edges, no top face. */
+export const SOLID_PROPS: ReadonlySet<string> = new Set(['ashberry-bush']);
 
 /** Whether a node wears its biome's top face where open to the air above. */
 export function takesTopFace(pattern: TilePattern): boolean {
@@ -318,6 +325,98 @@ export const PLACED_ART: Readonly<Record<string, readonly string[]>> = {
     '.....oolbdoo....',
     '....ohhbbbddo...',
     '....oooooooooo..',
+  ],
+  // The Living World (living-world.ts): an ashwood's trunk (climbed like a rope) and its crown, an ashberry
+  // bush (solid: a sickle's), a wayside signpost and a seam-engine (both read with E).
+  'ashwood-trunk': [
+    '....odblbbbdo...',
+    '....odblbfbdo...',
+    '....odbbbbbdo...',
+    '....odlbbbddo...',
+    '....odlbdbbdo...',
+    '....odbbddbdo...',
+    '....odblbbbdo...',
+    '....odblbbfdo...',
+    '....odbbbbbdo...',
+    '....odblbbbdo...',
+    '....odbfbbbdo...',
+    '....odblbbddo...',
+    '....odlbbdbdo...',
+    '....odlbbbbdo...',
+    '....odbbfbbdo...',
+    '....odblbbbdo...',
+  ],
+  'ashwood-crown': [
+    '.lhl.llhll.lhl..',
+    'lbbblbbbblllbbl.',
+    'lbfbbbbdbbbfbbbl',
+    'bbbbdbbbbbbbbdbb',
+    'bdbbbbfbbdbbbbbb',
+    'bbbbbbbbbbbfbbdb',
+    'dbbfbdbbbbbbbbbb',
+    'bbbbbbbbdbbbfbbd',
+    'bbdbbbbbbbbbbbbb',
+    'bfbbbbdbbfbbbdbb',
+    'bbbbbbbbbbbbbbbb',
+    'dbbbdbbbbbdbbbbd',
+    'bbbbbbfbbbbbbbbb',
+    'dbdbbbbbdbbbdbbd',
+    '.ddbdbddbdbbddd.',
+    '..dd.dd..dd.dd..',
+  ],
+  'ashberry-bush': [
+    '................',
+    '................',
+    '................',
+    '.....ollhlo.....',
+    '...oollbbbloo...',
+    '..olbbfbbbbhlo..',
+    '.olbbbbbbfbbbbo.',
+    '.obbfbbdbbbbfbo.',
+    'olbbbbbbbbdbbbbo',
+    'obbdbbfbbbbbbfdo',
+    'obbbbbbbbbbdbbbo',
+    'odbbbdbbfbbbbddo',
+    '.odbbbbbbbbbbdo.',
+    '..oddbdddbddddo.',
+    '...oo.od.do.oo..',
+    '......od.do.....',
+  ],
+  'wild-signpost': [
+    '................',
+    '..oooooooooooo..',
+    '.ohhhhhhhhhhhho.',
+    '.olbbbfbbfbbbdo.',
+    '.olbfbbbfbbfbdo.',
+    '.olbbbbbbbbbbdo.',
+    '.oddddddddddddo.',
+    '..oooooodoooo...',
+    '......obdo......',
+    '......olbo......',
+    '......obdo......',
+    '......olbo......',
+    '......obdo......',
+    '.....oobdoo.....',
+    '....oddbdddo....',
+    '....oooooooo....',
+  ],
+  'seam-engine': [
+    '................',
+    '.....oooooo.....',
+    '....ohhllhho....',
+    '...ohllsslllo...',
+    '...olbbffbbdo...',
+    'oooolbfoofbdoooo',
+    'ohhlbbfoofbbddho',
+    'olbbbbbffbbbbddo',
+    'olbfbbbbbbbbfbdo',
+    'odbbbdddddbbbbdo',
+    'odbbdohhhodbbbdo',
+    'odbbdolsslodbbdo',
+    'odbbdohhhodbbbdo',
+    'oddddddddddddddo',
+    'oooooooooooooooo',
+    '.od..........do.',
   ],
   'blast-charge': [
     '................',

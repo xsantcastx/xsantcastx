@@ -115,7 +115,8 @@ test('rows ≥ 0 are byte-identical with the sky band on, five seeds', () => {
       const a = bare.column(sx).gen, b = sky.column(sx).gen;
       assert.equal(hash(b.kind.subarray(off), b.liqType.subarray(off), b.liqLevel.subarray(off), b.protect.subarray(off)),
         hash(a.kind, a.liqType, a.liqLevel, a.protect), `seed ${seed} sx ${sx}`);
-      assert.deepEqual(plain([...b.notes].map(([i, id]) => [i - off, id])), plain([...a.notes]));
+      // Rows ≥ 0 only: the sky band carries its own words (the Living World's signposts).
+      assert.deepEqual(plain([...b.notes].filter(([i]) => i >= off).map(([i, id]) => [i - off, id])), plain([...a.notes]));
     }
     // And through the ring, where the engine reads it.
     bare.center(60); sky.center(60);
@@ -134,7 +135,8 @@ test('the sky band: golden hashes pin surface-gen (the settlement and the wilds)
 });
 // Bump these only with a surface change that is meant (a building moved, a blueprint redrawn): the sky band's saved
 // diffs (sy < 0) are filed against the cells they were dug in, as the Delve's are.
-const SKY_GOLDEN = { '-13': '451c278c', '-4': '68e4adc5', '-2': '4e5012fd', 0: 'bf8a8c6', 1: '69e3fb1', 2: '33372215', 3: '2ead61c7', 4: '68e4adc5', 7: '68e4adc5', 12: '3e45a8da', 20: 'cdb5566' };
+// The wilds' columns (−13, 12, 20) moved for the Living World's trees and points of interest (living-world.ts).
+const SKY_GOLDEN = { '-13': 'e0a386fa', '-4': '68e4adc5', '-2': '4e5012fd', 0: 'bf8a8c6', 1: '69e3fb1', 2: '33372215', 3: '2ead61c7', 4: '68e4adc5', 7: '68e4adc5', 12: 'd39e0fd8', 20: 'd10f9b5d' };
 
 test('the sky band: generation is fast (≤ 0.6 ms a column)', () => {
   const t0 = performance.now();
