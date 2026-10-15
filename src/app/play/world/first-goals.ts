@@ -45,6 +45,12 @@ export interface FirstGoalFacts {
   /** Cinder Ore and Ember Residue held: which half of the blade goal is next. */
   ore: number;
   ember: number;
+  /**
+   * One World (docs/design/one-world.md): the town stands on the Delve, so the
+   * play view hands 'infernal' on the settlement's street and 'ember-delve'
+   * below it. `mawX` is where the Rivet Maws roam (the Quarry Road).
+   */
+  world?: { mawX: number };
 }
 
 /** Where "Show me" walks: a station (walk there and use it) or a spot on the floor. */
@@ -97,7 +103,8 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
       : view(`play.goal.${id}.back`, { station: 'passage' });
   }
   if (facts.areaId === DELVE) {
-    return id === 'delve' ? view('play.goal.delve.dig', null) : view(`play.goal.${id}.back`, { station: 'delve-exit' });
+    // One World: under the town there is no exit to walk to; the way up is the way you dug (or the Travel map's recall).
+    return id === 'delve' ? view('play.goal.delve.dig', null) : view(`play.goal.${id}.back`, facts.world ? null : { station: 'delve-exit' });
   }
   if (facts.areaId === QUARRY) {
     return id === 'hunt' ? view('play.goal.hunt.here', null) : view(`play.goal.${id}.back`, { station: 'passage' });
@@ -112,7 +119,7 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
       return facts.ore >= BLADE_ORE && facts.ember >= BLADE_EMBER
         ? view('play.goal.craft.forge', { station: 'forge' })
         : view('play.goal.craft.mine', { station: 'ore' });
-    case 'hunt': return view('play.goal.hunt.town', { x: MAW_APPROACH_X });
+    case 'hunt': return view('play.goal.hunt.town', { x: facts.world?.mawX ?? MAW_APPROACH_X });
     case 'delve': return view('play.goal.delve.town', { station: 'delve' });
   }
 }

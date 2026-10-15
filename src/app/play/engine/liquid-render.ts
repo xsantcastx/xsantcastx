@@ -38,7 +38,7 @@ function hash(col: number, row: number): number {
 /** How deep under its column's surface a liquid cell sits: 0 = the surface cell, capped at 2. */
 function depthBand(t: Terrain, col: number, row: number, type: number): number {
   let d = 0;
-  while (d < 2 && row - d - 1 >= 0) {
+  while (d < 2 && row - d - 1 >= t.rowLo) {
     const above = t.index(col, row - d - 1);
     if (!t.liqLevel[above] || t.liqType[above] !== type) break;
     d++;
@@ -53,7 +53,7 @@ function depthBand(t: Terrain, col: number, row: number, type: number): number {
 export function drawLiquids(c: CanvasRenderingContext2D, t: Terrain, c0: number, c1: number, r0: number, r1: number, frame: number): void {
   const level = t.liqLevel, kind = t.liqType;
   const alpha = c.globalAlpha;
-  for (let row = Math.max(0, r0); row <= Math.min(t.rows - 1, r1); row++) {
+  for (let row = Math.max(t.rowLo, r0); row <= Math.min(t.rows - 1, r1); row++) {
     const bottom = t.top + (row + 1) * CELL;
     let col = Math.max(t.colLo, c0);
     const end = Math.min(t.colHi - 1, c1);
@@ -109,11 +109,11 @@ export function drawLiquids(c: CanvasRenderingContext2D, t: Terrain, c0: number,
  */
 export function lavaLights(t: Terrain, c0: number, c1: number, r0: number, r1: number, pool: LightPool, flicker = 1): number {
   let added = 0;
-  for (let row = Math.max(0, r0 - 3); row <= Math.min(t.rows - 1, r1 + 3); row++) {
+  for (let row = Math.max(t.rowLo, r0 - 3); row <= Math.min(t.rows - 1, r1 + 3); row++) {
     for (let col = Math.max(t.colLo, c0 - 3); col <= Math.min(t.colHi - 1, c1 + 3); col++) {
       const i = t.index(col, row);
       if (!t.liqLevel[i] || t.liqType[i] !== LIQUID_LAVA || (col & 1)) continue;
-      if (row > 0 && t.liqLevel[i - t.cols] && t.liqType[i - t.cols] === LIQUID_LAVA) continue;
+      if (row > t.rowLo && t.liqLevel[i - t.cols] && t.liqType[i - t.cols] === LIQUID_LAVA) continue;
       const y = t.top + (row + 1) * CELL - t.liqLevel[i] * LEVEL_PX;
       pool.add(col * CELL + CELL, y, CELL * 3.6 * flicker, .6);
       added++;

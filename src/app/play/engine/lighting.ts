@@ -115,7 +115,7 @@ export interface LightShade {
  */
 export function lightGrid(out: Float32Array, gw: number, gh: number, x0: number, y0: number, step: number,
   lights: readonly Light[], count: number, ambient: number, shade?: LightShade | null, cell = 32,
-  extra?: readonly Light[], extraCount = 0): void {
+  extra?: readonly Light[], extraCount = 0, sky?: Skylight | null, ambOut?: Float32Array): void {
   const total = gw * gh;
   out.fill(1, 0, total);
   // `extra`: emissive cells (a lava surface) lifting the grid like lights, outside the capped slots.
@@ -143,10 +143,38 @@ export function lightGrid(out: Float32Array, gw: number, gh: number, x0: number,
       }
     }
   }
-  for (let k = 0; k < total; k++) out[k] *= ambient;
+  if (!sky) { for (let k = 0; k < total; k++) out[k] *= ambient; return; }
+  // One World's skylight (§2.7): over a column's skyline (its first solid cell from the top) the dark is the
+  // sky's (the night's share); below it the cave's, eased over SKY_EASE px so a hole's mouth glows.
+  for (let i = 0; i < gw; i++) {
+    const col = Math.floor((x0 + (i + .5) * step) / cell) - sky.col0;
+    const line = col >= 0 && col < sky.line.length ? sky.line[col] : -Infinity;
+    for (let j = 0; j < gh; j++) {
+      const sy = y0 + (j + .5) * step;
+      const a = sy <= line ? sky.ambient : sy >= line + SKY_EASE ? ambient : sky.ambient + (ambient - sky.ambient) * (sy - line) / SKY_EASE;
+      out[j * gw + i] *= a;
+      if (ambOut) ambOut[j * gw + i] = a;
+    }
+  }
 }
 
-interface Grid { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; image: ImageData; dark: Float32Array; w: number; h: number }
+/** Skylight for the darkness grid: per world column (from `col0`), the world y where open sky ends; the sky's dark. */
+export interface Skylight { line: Float32Array; col0: number; ambient: number }
+/** Px under a skyline over which the sky's dark eases into the cave's. */
+export const SKY_EASE = 72;
+
+/** How much of the night is in the sky at `hour` (0 by day, 1 at night, eased through dusk and dawn). Pure. */
+export function nightShare(hour: number): number {
+  const h = ((hour % 24) + 24) % 24;
+  if (h >= 7 && h < 18) return 0;
+  if (h >= 21 || h < 4) return 1;
+  const t = h >= 18 ? (h - 18) / 3 : 1 - (h - 4) / 3;
+  return t * t * (3 - 2 * t);
+}
+/** The darkness over open sky at night: the darkness overlay's surface alpha is night × this (§2.7). */
+export const NIGHT_DARK = .55;
+
+interface Grid { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D; image: ImageData; dark: Float32Array; amb: Float32Array; w: number; h: number }
 
 /** The darkness overlay. Owns a tiny grid canvas (and, for phones, a half-res overlay); draws nothing where a canvas cannot be made. */
 export class DarknessLayer {
@@ -173,7 +201,7 @@ export class DarknessLayer {
     made.canvas.width = w; made.canvas.height = h;
     const image = typeof made.context.createImageData === 'function' ? made.context.createImageData(w, h) : null;
     if (!image?.data || image.data.length < w * h * 4) { this.failed = true; return null; }
-    this.grid = { canvas: made.canvas, context: made.context, image, dark: new Float32Array(w * h), w, h };
+    this.grid = { canvas: made.canvas, context: made.context, image, dark: new Float32Array(w * h), amb: new Float32Array(w * h), w, h };
     return this.grid;
   }
   private ensureOverlay(width: number, height: number): CanvasRenderingContext2D | null {
@@ -220,14 +248,14 @@ export class DarknessLayer {
   draw(target: CanvasRenderingContext2D, width: number, height: number, scale: number, cameraX: number, cameraY: number,
     lights: readonly Light[], count: number, ambient: number, tint = DEFAULT_DARK, under?: { color: string; alpha: number }, smooth = true,
     shade?: LightShade | null, warm?: { color: string; alpha: number }, extra?: readonly Light[], extraCount = 0,
-    over?: (overlay: CanvasRenderingContext2D, k: number) => void): boolean {
+    over?: (overlay: CanvasRenderingContext2D, k: number) => void, sky?: Skylight | null): boolean {
     const step = LIGHT_STEP;
     // One sample of margin all round, so the filtered edge never shows.
     const gx0 = Math.floor(cameraX / step) - 1, gy0 = Math.floor(cameraY / step) - 1;
     const gw = Math.ceil(width / scale / step) + 3, gh = Math.ceil(height / scale / step) + 3;
     const grid = this.ensureGrid(gw, gh);
     if (!grid) return false;
-    lightGrid(grid.dark, gw, gh, gx0 * step, gy0 * step, step, lights, count, ambient, shade, 32, extra, extraCount);
+    lightGrid(grid.dark, gw, gh, gx0 * step, gy0 * step, step, lights, count, ambient, shade, 32, extra, extraCount, sky, sky ? grid.amb : undefined);
     const [tr, tg, tb] = this.rgb(tint);
     const ua = under && under.alpha > 0 ? Math.min(1, under.alpha) : 0;
     const [ur, ug, ub] = ua > 0 ? this.rgb(under!.color) : [0, 0, 0];
@@ -237,7 +265,7 @@ export class DarknessLayer {
     for (let k = 0, p = 0; k < gw * gh; k++, p += 4) {
       const d = dark[k];
       if (wa > 0) {
-        const lw = wa * Math.max(0, 1 - d / ambient), open = 1 - d;
+        const base = sky ? grid.amb[k] : ambient, lw = base > 0 ? wa * Math.max(0, 1 - d / base) : 0, open = 1 - d;
         const a = 1 - (1 - ua) * (1 - lw) * open, inv = a > 0 ? 1 / a : 0;
         const tu = ua * (1 - lw) * open, tw = lw * open;
         data[p] = (ur * tu + wr * tw + tr * d) * inv; data[p + 1] = (ug * tu + wg * tw + tg * d) * inv; data[p + 2] = (ub * tu + wb * tw + tb * d) * inv;

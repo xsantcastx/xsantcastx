@@ -72,6 +72,9 @@ const GUARD_P95_MS = Number(process.env['PLAY_PERF_P95_CEILING'] ?? 70);
 /** The deep Delve guard's ceilings (Furnace Hall). Measured ~33 / ~50 after docs/handoff/delve-perf.md; 51+ / 100 before. */
 const GUARD_DELVE_P95_MS = Number(process.env['PLAY_PERF_DELVE_P95_CEILING'] ?? 70);
 const GUARD_DELVE_P50_MS = Number(process.env['PLAY_PERF_DELVE_P50_CEILING'] ?? 45);
+/** One World's Settlement guard (docs/design/one-world.md §2.8). */
+const GUARD_SETTLEMENT_P95_MS = Number(process.env['PLAY_PERF_SETTLEMENT_P95_CEILING'] ?? 50);
+const GUARD_SETTLEMENT_P50_MS = Number(process.env['PLAY_PERF_SETTLEMENT_P50_CEILING'] ?? 34);
 
 /**
  * PLAY_PERF_GPU=1 launches Chromium with the Metal GPU (macOS): canvas 2D is
@@ -436,6 +439,22 @@ guard('/play perf guard', () => {
       const r = await measure(page, cdp, `guard:${realm}-delve`);
       expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_DELVE_P95_MS);
       expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_DELVE_P50_MS);
+    });
+  }
+
+  // One World, Phase 1 (docs/design/one-world.md §2.8): the Seamworks on the Ember surface with the preview
+  // gate on, walking the square with the keepers in view, at midday and at night (the darkness overlay and
+  // the lit windows). The Settlement guard: p95 < 50, p50 < 34 at 4× (tighter than the old town's 70).
+  for (const [scene, hour] of [['midday', 12], ['night', 22]] as const) {
+    test(`Settlement (${scene}) p95/p50 frame time at 4× CPU throttle stays under the ceiling`, async ({ page }) => {
+      test.setTimeout(150000);
+      const cdp = await phone(page);
+      await seed(page, { ...RESTORED, 'eclipse-oneworld': '1' });
+      await openPlay(page, `?hour=${hour}`);
+      await expect(canvas(page)).toHaveAttribute('data-region', 'basalt-seamworks');
+      const r = await measure(page, cdp, `guard:settlement-${scene}`);
+      expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_SETTLEMENT_P95_MS);
+      expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_SETTLEMENT_P50_MS);
     });
   }
 });
