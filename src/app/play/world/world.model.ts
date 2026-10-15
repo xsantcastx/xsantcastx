@@ -170,9 +170,12 @@ export interface MonsterDef {
    *  - 'graft' (the Root Deeps, engine/verdant.ts): the Graftmother, held by the
    *    heart-roots in her hall: while one stands she heals and a blow does a quarter;
    *  - 'prism' (the Prism Mines, engine/luminous.ts): the Hollow Sun, struck only
-   *    while a beam crosses it (caught, it cannot move); it flares the mirrors wrong.
+   *    while a beam crosses it (caught, it cannot move); it flares the mirrors wrong;
+   *  - 'orrery' (the Orrery Wells, engine/celestial.ts): the Fallen Ephemeris, in orbit on its
+   *    hall's ceiling while the hall's field falls up (no blow lands); turn the field down and
+   *    it drops into its own well, stunned, until it gathers itself and turns the field back.
    */
-  trait?: 'dormant' | 'shoulder' | 'furnace' | 'shade' | 'warden' | 'graft' | 'prism';
+  trait?: 'dormant' | 'shoulder' | 'furnace' | 'shade' | 'warden' | 'graft' | 'prism' | 'orrery';
   /** A summoned guardian that, once felled for good (`once`), may still be summoned again for its drops. */
   rematch?: true;
 }

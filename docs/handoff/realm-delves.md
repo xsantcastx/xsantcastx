@@ -80,4 +80,4 @@ Saves: unchanged plumbing — each realm's core under its area id, wings in `god
 - Afterimage Moths / uncopied carvings (Luminous spec) not built. No new audio synthesis (beds reuse leaves/chimes).
 - No perf scene added for these realms in `e2e/perf-play.spec.ts`; both are 64 rows like the Ink Deeps and the light
   pass is bounded (one Map, ≤ 176×64 reads per 0.15 s).
-- The Celestial Star-Wells: spec in `rift-gates.md`; `realm-kit.ts` makes it a generator + a rule module.
+- The Celestial gate shipped after: the Orrery Wells, `celestial-delve.md` (with perf scenes for the Prism Mines too).

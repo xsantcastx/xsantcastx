@@ -79,7 +79,15 @@ export interface EngineState {
     regrowing?: number; regrown?: number; heartRoots?: number;
     /** The Prism Mines (luminous.ts): sun-prism beams in reach, and cells of solid light they lay. */
     beams?: number; bridges?: number;
+    /** The Orrery Wells (celestial.ts): the Keeper's down (1 down, -1 up), times it turned this visit, the Fallen Ephemeris's state. */
+    down?: 1 | -1; flips?: number; ephemeris?: 'orbit' | 'falling' | 'fallen' | 'gather' | 'rising';
   };
+  /**
+   * Which way the Keeper falls: 1 down (everywhere but the Orrery Wells), -1 up (standing on a ceiling in
+   * an orrery field, or rising in a star-well; engine/celestial.ts). The Keeper's box is unchanged (feet at
+   * `y`); only its contact flips, so a follower that hangs from the Keeper flips with this.
+   */
+  gravity?: 1 | -1;
   /** A guardian (a `once` creature) is the nearest foe: the score turns tense (shared/sound). */
   boss?: boolean;
   /** Liquids within a few cells of the Keeper (delves): the ambience beds near water, lava and ink. */

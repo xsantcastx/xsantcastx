@@ -13,6 +13,7 @@ import { HOMESTEAD, HOMESTEAD_GATE } from '../homestead';
 import { UMBRAL_DELVE } from './umbral-delve';
 import { VERDANT_DELVE } from './verdant-delve';
 import { LUMINOUS_DELVE } from './luminous-delve';
+import { CELESTIAL_DELVE } from './celestial-delve';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
 
@@ -433,6 +434,7 @@ export const INFERNAL_TOWN: TownDef = {
   scenery: 'seamworks-hub',
   arrival: 'Returned to Seamworks. Explore freely or head out for another hunt.',
   // The realm Delves behind the Rift Gates (no passage from town): the Ink Deeps (the Umbral Rift Gate in the
-  // Underhearth), the Root Deeps (the Verdant gate in the Root Hollows), the Prism Mines (the Luminous gate in the Grotto).
-  hunts: [EMBER_QUARRY, HOMESTEAD, EMBER_DELVE, UMBRAL_DELVE, VERDANT_DELVE, LUMINOUS_DELVE],
+  // Underhearth), the Root Deeps (the Verdant gate in the Root Hollows), the Prism Mines (the Luminous gate in the Grotto),
+  // the Orrery Wells (the Celestial gate in the Magma Halls).
+  hunts: [EMBER_QUARRY, HOMESTEAD, EMBER_DELVE, UMBRAL_DELVE, VERDANT_DELVE, LUMINOUS_DELVE, CELESTIAL_DELVE],
 };

@@ -37,6 +37,7 @@ import {
 import type { RealmContext } from './realm-kit';
 import { verdantColumn, verdantNodes, verdantPlans } from './verdant-gen';
 import { luminousColumn, luminousNodes, luminousPlans } from './luminous-gen';
+import { celestialColumn, celestialNodes, celestialPlans } from './celestial-gen';
 
 export type { RealmContext } from './realm-kit';
 
@@ -50,9 +51,9 @@ const U = {
 export function umbralNodes(): string[] {
   return ['ink-slate', 'gloam-slate', 'inkstone-vein', 'nightglass-vein', 'ink-seep', 'drift-shale', 'ink-mirror', 'gloam-brazier', 'rift-frame', 'rift-gate-umbral'];
 }
-/** Every node any realm generator lays (the Umbral's, the Verdant's, the Luminous's). */
+/** Every node any realm generator lays (the Umbral's, the Verdant's, the Luminous's, the Celestial's). */
 export function realmNodes(): string[] {
-  return [...umbralNodes(), ...verdantNodes(), ...luminousNodes()];
+  return [...umbralNodes(), ...verdantNodes(), ...luminousNodes(), ...celestialNodes()];
 }
 
 /** The Ink Shallows end and the Gloam Deep begins about here (the edge wanders ±3). */
@@ -99,6 +100,7 @@ export function realmPlans(ctx: RealmContext, cell: number): RealmPlan[] {
   // The Verdant's and the Luminous's undersides have their own generators (verdant-gen.ts, luminous-gen.ts).
   if (ctx.spec.realm === 'verdant') return verdantPlans(ctx, cell);
   if (ctx.spec.realm === 'luminous') return luminousPlans(ctx, cell);
+  if (ctx.spec.realm === 'celestial') return celestialPlans(ctx, cell);
   const span = LATTICE * SECTOR, x = cell * span;
   if (x < ctx.spec.cols && x + span > 0) {
     return [
@@ -233,6 +235,7 @@ const VEINS: readonly { node: number; from: number; to: number; count: number; s
 export function realmColumn(ctx: RealmContext, sx: number): SectorColumnGen {
   if (ctx.spec.realm === 'verdant') return verdantColumn(ctx, sx);
   if (ctx.spec.realm === 'luminous') return luminousColumn(ctx, sx);
+  if (ctx.spec.realm === 'celestial') return celestialColumn(ctx, sx);
   const rows = ctx.rows, n = SECTOR * rows, col0 = sx * SECTOR, s = ctx.seed;
   const out: SectorColumnGen = {
     sx, gv: ctx.gv,

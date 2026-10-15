@@ -1277,7 +1277,7 @@ Glim's telegraph lines (said once each) are in `play/world/rift.i18n.ts` (`play.
 
 ## The Root Deeps and the Prism Mines (2026-10-15) — shipped, owner reviews in play
 
-Owner: the realms are "like deeper delves or crazy". Two more gates opened (the Celestial still settles).
+Owner: the realms are "like deeper delves or crazy". Two more gates opened (the Celestial followed: "The Orrery Wells").
 Code: `play/engine/verdant-gen.ts` + `verdant.ts`, `play/engine/luminous-gen.ts` + `luminous.ts`, shared
 `realm-kit.ts`; creatures `play/engine/realm-creatures.ts`. Handoff: `docs/handoff/realm-delves.md`.
 
@@ -1327,6 +1327,49 @@ own light heavy enough to stand on.
 
 Glim's telegraph lines for both rules (said once each) are in `play/world/rift.i18n.ts`; Glim's hints for the
 two chains in `shared/glim/glim.i18n.ts` (`play.glim.hint.v.*`, `play.glim.hint.l.*`).
+
+## The Orrery Wells (2026-10-15) — shipped, owner reviews in play
+
+The last Rift Gate opens: with it every realm's underside is reachable. Code: `play/engine/celestial-gen.ts` +
+`celestial.ts` (on `realm-kit.ts`), creatures in `play/engine/realm-creatures.ts`. Handoff:
+`docs/handoff/celestial-delve.md`.
+
+**The Orrery Wells** — the Celestial's underside: the rock under the Celestial towns, where the Meridian
+Compact once measured the sky *from underneath* and left its instruments running (world-and-cast ch. 2, *The
+Measure That Lied*). Its gate stands in the Magma Halls, in a frame the heat will not touch, where things
+cannot agree which way is down. The rule it breaks: *down is negotiable*. Open air there can be an *orrery
+field*: it glitters, and its chevrons point its down. Its *orrery rings* decide it — brass and the field falls
+up (a Keeper stands on its ceiling and walks it), blue and it falls down — and turning one ring turns the whole
+field. *Star-wells* always fall up, to a pocket of ore under a roof; the Compact hung a brass *star-chain* beside
+every one, "every well a chain, every field a ring within reach of both its floors, no exceptions, no
+apologies". Nothing there lets a Keeper fall hard.
+- *Sera Quill* (Chief Meridian; she runs the Waystones) asks, and the Archivist files it. "Every Waystone you
+  have touched is mine, and every one of them agrees on which way is down. Under the Magma Halls there is a
+  frame where they stop agreeing." She wants a down measured, with error bars. *Nox Aster* is present only as a
+  margin note no one has managed to scratch out: "This column was never measured. It was assumed. N.A."
+- Field notes: Sera's survey mark ("Down measured here: twice. Both readings correct." Underneath, smaller:
+  "That is the problem."), a hint scratched by the Turning Room ("Fell in? Turn the ring by your feet. You will
+  fall up. Walk the roof. It is allowed."), the Compact's rule plate, a counterweight "holding the floor down —
+  do not remove", the Ephemeris's own words.
+- *Anchor Warden* (Atlas: "repeats the last trajectory it was given, long after the order behind it has
+  lapsed") finally spawns: a round brass survey-bot walking the warden galleries, its ring still turning.
+  *The Fallen Ephemeris*: the table of where every star should be, fallen when the sky stopped agreeing with it.
+  It rides its hall's ceiling, insisting; while its hall falls up no blow lands. Turn a ring and pull its floor
+  out from under it: it drops into its own well and is, briefly, where it actually is. Then it gathers itself
+  (the rings flash first) and turns the hall back up, and two Anchor Wardens come out with it. "Pull my floor
+  out from under me and I will finally be where I am."
+- Items: Starsteel (iron that fell a long way and kept its shine out of stubbornness; always heavier on the
+  side facing the floor, whichever side that is today), Meridian Glass (the line the Orrery measured by, set in
+  glass; hold it wrong and it tells you so), the Celestial Sigil (the gate turns it once, politely), the Orrery
+  Key (the Compact's own: turned in the air of a field, the field answers; "do not lean on it either"). Orrery
+  scrap in the rock gives back Celestial Alloy — a world source at last.
+- The chain: *The Measure Underneath* (reach; the Orrery Key) · *Error Bars* (10 Starsteel, 4 Meridian Glass;
+  the Waystones off by a hair for three hundred years: "Nox told me. I filed it under insolence.") · *The
+  Fallen Ephemeris* (the Archivist files Sera's last report beside Nox's first: "She has written 'the model was
+  wrong' in her own hand, and signed it. I have waited a long time to file that sentence.").
+
+Glim's telegraph lines (said once each: orrery, field, well, ring, turn, chain, ephemeris) are in
+`play/world/rift.i18n.ts`; the chain's hints in `shared/glim/glim.i18n.ts` (`play.glim.hint.c.*`).
 
 ## The Glass of Becoming (shipped — owner reviews in play)
 
