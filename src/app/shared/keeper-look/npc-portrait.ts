@@ -21,8 +21,12 @@ import { KeeperPainter } from './keeper-paint';
 import { NPC_LOOKS } from './npc-looks';
 import { GLIM_H, GLIM_PALETTE, GLIM_W, glimRows } from '../glim/glim-art';
 
-/** Head and shoulders, in art px of the 48×48 Keeper cell (hats and Aureth's shards fit). */
-export const PORTRAIT_CROP = { x: 9, y: 1, size: 30 } as const;
+/**
+ * Head and shoulders, in art px of the 48×48 Keeper cell, for the chibi Keeper
+ * (keeper-paint.ts: head rows 19–32, shoulders 33–38; hats reach row 11 and
+ * Aureth's shards row 9).
+ */
+export const PORTRAIT_CROP = { x: 9, y: 9, size: 30 } as const;
 /** World px per art px: the Keeper's town scale, so a portrait shares the street's pixel. */
 export const PORTRAIT_SCALE = 4;
 

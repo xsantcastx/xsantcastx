@@ -129,7 +129,8 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
       reduced: this.reduced, weapon: true,
     };
     c.clearRect(0, 0, el.width, el.height);
-    const scale = el.width / 48;
+    // The chibi Keeper is ~31 art px tall: frame 40 art px (6 px each on the 240 canvas) so it fills the glass.
+    const scale = Math.max(1, Math.floor(el.width / 40));
     c.save();
     c.translate(el.width / 2, el.height - scale * 2);
     this.painter.draw(c, scale, state);
