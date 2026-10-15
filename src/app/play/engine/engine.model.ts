@@ -2,6 +2,7 @@ import type { SpriteEntry } from '../../shared/art/sprite-manifest.generated';
 import type { StationDef, StationKind, TownDef } from '../world/world.model';
 import type { DisciplineId } from '../../shared/activity/activity.model';
 import type { LiquidKind, PlaceableId, WorldActionKind } from './terrain';
+import type { HeldToolKind } from '../../shared/skills/held-tool';
 /** `down` aims a delve swing (or blast) below the Keeper; `blast` channels the staff. */
 export type EngineInput = 'left' | 'right' | 'jump' | 'attack' | 'dodge' | 'down' | 'blast';
 export type InteractionTarget = 'ore' | 'forge' | 'beacon' | 'passage';
@@ -241,6 +242,12 @@ export interface EngineOptions {
    * turns it into a material); absent on a town street. Visual code never waits on it.
    */
   onSfx?: (cue: EngineSfx) => void;
+  /**
+   * The tool in hand changed (shared/skills/held-tool.ts): the rod for a cast,
+   * the pickaxe for a dig, the axe or sickle at a node; null when the weapon
+   * comes back (a foe near, a blow on one, or the work stopped). Visual only.
+   */
+  onHeldTool?: (tool: HeldToolKind | null) => void;
   /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug

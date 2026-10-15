@@ -457,7 +457,7 @@
         <button type="button" class="leave" (click)="leaveRoom()">{{ t('play.hearth.leave') }}</button>
       </div>
     }
-    <div class="chat-log" role="log" [attr.aria-label]="t('play.hearth.log')" aria-live="polite">
+    <div class="chat-log" data-selectable role="log" [attr.aria-label]="t('play.hearth.log')" aria-live="polite">
       @for (entry of social.messages.slice().reverse(); track entry.id) {
         <p><strong>{{ entry.name }}</strong> {{ entry.text }}</p>
       }
