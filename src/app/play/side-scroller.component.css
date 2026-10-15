@@ -478,8 +478,26 @@ button:disabled { opacity: .4; cursor: default; }
     ".      head   trinket"
     "weapon figure off-hand"
     "chest  figure hands"
-    "legs   feet   ."
+    "legs   feet   pet"
     "charm1 charm2 charm3";
+}
+/* The pet well sits in the doll's empty bottom-right corner (shared/pets). */
+.wells { grid-template-areas:
+    ".      head   trinket"
+    "weapon figure off-hand"
+    "chest  figure hands"
+    "legs   feet   pet"; }
+.wells [data-slot="pet"] { grid-area: pet; }
+.book .pet-well img { image-rendering: pixelated; }
+.book .pet-well em { font-size: 10px; }
+.book .pet-well.is-new { border-color: var(--adventure-ember); box-shadow: inset 0 0 0 1px var(--adventure-ember); }
+.pet-host {
+  position: absolute;
+  z-index: 7;
+  top: 64px;
+  right: 16px;
+  pointer-events: auto;
+  touch-action: auto;
 }
 .doll-figure {
   grid-area: figure;
@@ -2572,6 +2590,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .craft-toast { top: 4px; width: max-content; max-width: calc(100% - 16px); font-size: 10px; }
   .sound-host { top: calc(var(--hud-top, 56px) + 4px); right: 8px; }
+  .pet-host { top: calc(var(--hud-top, 56px) + 4px); right: 8px; left: 8px; display: grid; justify-items: end; }
 }
 
 @media (prefers-reduced-motion: reduce) {

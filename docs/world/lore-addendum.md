@@ -1409,3 +1409,32 @@ halo; Verrin's hood holds a mirror where a face should be; the Archivist wears a
 open beside him; Lune Coyne shuffles violet cards; Tomas Rill carries a Court lantern; Sera Quill holds a brass
 Meridian staff; Corran Holt is grey now and leans on his halberd for the knee; Hollis Fenn walks the high roads
 with a staff and a wide hat.
+
+## Pets (shipped — owner reviews in play)
+
+Pets (`docs/handoff/pets.md`, `shared/pets/pets.model.ts`). Small companions, one per realm and three from the
+deep places (eight in all). None is bought and none is given away: each is found where it lives.
+
+- **Ember Newt** (Infernal). Seam newts lay their eggs where the Delve keeps its heat; a crate left long in warm
+  water is the warmest place they know, so the first Seam Crate you fish up and open holds one. Its tail is a
+  small flame: in the Delve it is a lamp of its own.
+- **Prism Moth-kit** (Luminous). Prism Foragers swallow light, and sometimes the small things that follow it. Free
+  one from a Forager's crystal ribs (six Foragers felled in the Reflection Channels) and it keeps humming the note
+  it was caught on; while it hums, work in the Luminous teaches a little more. Glim calls it distant family.
+- **Ink Pup** (Umbral). The Mirror Substitutes keep an Ink Pup as they keep everything, as proof. It has never once
+  agreed with its reflection, and barks at anything that winds up behind you, or at a shade in the dark.
+- **Star Owlet** (Celestial). Orrery owls nest where the old star charts were kept. The Board Herald found this
+  egg wrapped in a chart, "filed under eggs", and hands it over on your third day of bounties. It hoots at ore.
+- **Moss Hedgehog** (Verdant). Its quills are moss that decided to stay. It sleeps under whatever regrows fastest
+  in the Rootglass Thicket, and wakes to whoever keeps it growing (eight harvests there). It noses out an extra
+  herb now and then.
+- **Rivet Maw hatchling** (the Underhearth, rare). Rivet Maws carry what falls. The Banked Furnace kept one egg
+  banked with its embers, as if it knew something would need carrying after it fell. It fetches your drops.
+- **Shade-kit** (the Ink Deeps, rare). Shades are what a light leaves behind; a shade-kit is what a shade leaves
+  behind. The Gloam Warden guarded its egg. Small, curious, very fond of fish: with it watching, a bite comes sooner.
+- **Sunling** (the Luminous Prism Mines, rare). The Hollow Sun was hollow because it was keeping something warm.
+  What hatches when it falls is a very small sun that has decided you are its sky; in its light, wounds close slowly.
+
+A pet is never hungry and never leaves. Feeding it what it likes only makes it fonder: at four it learns a trick,
+at ten it gets a hat (a forge cap, a sunbloom crown, an amethyst bow, a star hat, an acorn cap, a miner's helmet,
+a crescent circlet, a dawn-glass visor). Glim says one thing about each, the first time it meets them.

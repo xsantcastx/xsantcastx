@@ -180,6 +180,8 @@ export interface MapSource {
   goal?: { col: number; row: number } | null;
   /** The Broken Astral Compass, held: the nearest thing the map has not been told about. */
   pointer?: { col: number; row: number } | null;
+  /** The Star Owlet's scent (shared/pets): ore cells near the Keeper, marked with a small gold spark. */
+  scent?: readonly { col: number; row: number }[];
 }
 
 /** One pin as the map draws it. */
@@ -384,6 +386,15 @@ function drawOverlays(c: CanvasRenderingContext2D, source: MapSource, view: MapV
       }
     }
   }
+  if (source.scent?.length) {
+    // A gold four-point spark on each ore cell the owlet hoots at.
+    const r = Math.max(1, Math.round(s / 2));
+    for (const cell of source.scent) {
+      const x = Math.round(ox + (cell.col + .5) * s), y = Math.round(oy + (cell.row + .5) * s);
+      c.fillStyle = '#140a1f'; c.fillRect(x - r - 1, y - 1, r * 2 + 3, 3); c.fillRect(x - 1, y - r - 1, 3, r * 2 + 3);
+      c.fillStyle = SCENT_COLOR; c.fillRect(x - r, y, r * 2 + 1, 1); c.fillRect(x, y - r, 1, r * 2 + 1);
+    }
+  }
   const g = Math.max(4, s + 3);
   for (const pin of source.pins ?? []) {
     const x = Math.round(ox + (pin.col + .5) * s), y = Math.round(oy + (pin.row + .5) * s);
@@ -426,6 +437,8 @@ function drawOverlays(c: CanvasRenderingContext2D, source: MapSource, view: MapV
     }
   }
 }
+/** The Star Owlet's ore sparks: Celestial gold (the art bible's map palette). */
+export const SCENT_COLOR = '#E8D44D';
 /** The compass ray: rune violet (the art bible's map palette). */
 export const POINTER_COLOR = '#c9a4ff';
 /** A tracked goal's edge arrow: the dotted way's aged gold. */

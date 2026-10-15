@@ -109,6 +109,13 @@
       <div class="cx-block" aria-hidden="true"></div>
     }
 
+    <!-- ── The pets: seven companions, where each is found and what it helps with. Its words are a lazy chunk. -->
+    @defer (on viewport) {
+      <app-codex-pets />
+    } @placeholder {
+      <div class="cx-block" aria-hidden="true"></div>
+    }
+
     <!-- ── Bestiary ─────────────────────────────────────────────────────
          Only creatures with an approved master are drawn. Concept sheets are
          not runtime art, so the unpainted ones are a count, not a picture. -->

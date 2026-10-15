@@ -15,6 +15,7 @@
  *   node scripts/economy-sim.mjs --bounties      # the Board Herald's daily bounties (in --check too)
  *   node scripts/economy-sim.mjs --levels        # uncapped levels: time to 100/150/200/300 per skill (in --check too)
  *   node scripts/economy-sim.mjs --heights       # the high roads' caches and summits (in --check too)
+ *   node scripts/economy-sim.mjs --pets          # the pets' helpers: the hedgehog's extra harvest, XP, bite (in --check too)
  *   node scripts/economy-sim.mjs --check         # CI smoke: exit 1 when the
  *                                                # first purchase is > 15 s or
  *                                                # < 20 purchases in 10 min
@@ -517,6 +518,8 @@ function check(E) {
   fails.push(...levelsScenario({ quiet: true }));
   // The high roads (surface height): once-only caches and summits on the rule I bands (`--heights` prints them).
   fails.push(...heightsScenario({ quiet: true }));
+  // The pets (shared/pets): small helpers, never a Gold strategy (`--pets` prints it).
+  fails.push(...petsScenario({ quiet: true }));
   // Rune Drop, Seam Sweeper, Eclipse Ascent: exact proofs + a quick simulation each.
   fails.push(...plinkoScenario({ plays: 200_000, quiet: true }));
   fails.push(...minesScenario({ rounds: 400_000, quiet: true }));
@@ -984,6 +987,47 @@ function heightsScenario({ quiet = false } = {}) {
   return fails;
 }
 
+// ───────────────────────────────────────────────────────────────────────────
+// --pets: the pets' helpers (src/app/shared/pets/pets.model.ts; docs/handoff/pets.md).
+// One small helper each, so a pet is a companion, never an income line:
+//   1. the knobs stay small: gather <= 25 %, XP <= 10 %, bite <= x1.25;
+//   2. the Moss Hedgehog's extra harvest, farming the Rootglass Thicket's nodes
+//      as fast as they regrow and selling it all back, is <= 5 % of the forge's
+//      income at every stage from 30 min on (it is a few herbs, not a mine);
+//   3. a pet costs nothing and is found once: no source pays Gold.
+// ───────────────────────────────────────────────────────────────────────────
+
+const PETS = loadTsTree('src/app/shared/pets/pets.model.ts');
+const VERDANT = loadTsTree('src/app/play/world/towns/verdant.ts');
+
+function petsScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const T = PETS.PET_TUNING;
+  if (T.gatherChance > .25) fails.push(`the hedgehog's gather chance ${T.gatherChance} is over 25 %`);
+  if (T.xpShare > .1) fails.push(`the moth-kit's XP share ${T.xpShare} is over 10 %`);
+  if (T.biteBoost > 1.25) fails.push(`the shade-kit's bite boost ${T.biteBoost} is over x1.25`);
+  const { log } = simulate(PROPOSED);
+  const nodes = VERDANT.ROOTGLASS_THICKET.nodes ?? [];
+  // Every node harvested the moment it regrows, an hour long: the hedgehog's share of it, sold back.
+  const perHour = nodes.reduce((g, n) => g + 3600 / n.respawn * n.yield.qty * (n.yield.chance ?? 1) * T.gatherChance * buyback(anchorOf(n.yield.materialId)), 0);
+  say('Pets scenario · v3 curve (PROPOSED)\n');
+  say(`  helpers: gather ${T.gatherChance * 100}% · XP +${T.xpShare * 100}% · bite x${T.biteBoost} · glow ${T.glowRadius}px · fetch ${T.fetchReach}px · scent ${T.scentCells} cells`);
+  say(`  the hedgehog's extra Thicket harvest, sold back: ${fmtN(perHour)} Gold/h (${nodes.length} nodes, all regrown at once)\n`);
+  say('  stage   forge Gold/h   hedgehog share');
+  for (const [t, label] of [[1800, '30m'], [3600, '1h'], [3 * 3600, '3h'], [86400, '1d'], [7 * 86400, '7d']]) {
+    const gps = log.at[t]?.gps;
+    if (!gps) continue;
+    const share = perHour / (gps * 3600);
+    say(`  ${label.padEnd(6)}${fmtN(gps * 3600).padStart(14)}   ${(share * 100).toFixed(2)}%`);
+    if (share > .05) fails.push(`the hedgehog's extra harvest is ${(share * 100).toFixed(1)} % of the forge's income at ${label} (must be <= 5 %)`);
+  }
+  for (const pet of PETS.PETS) if (!pet.source || (!pet.source.tally && !pet.source.flag && !pet.source.claimDays)) fails.push(`${pet.id} has no source in play`);
+  if (quiet) console.log(`economy-sim pets: ${fails.length ? fails.length + ' fail(s)' : 'helpers small, the hedgehog no farm'}`);
+  else for (const f of fails) console.error(`  FAIL ${f}`);
+  return fails;
+}
+
 const BOUNTY = loadTsTree('src/app/shared/bounties/bounty.model.ts');
 
 function bountiesScenario({ quiet = false } = {}) {
@@ -1222,6 +1266,10 @@ if (argv.plinko) {
 } else if (argv.levels && !argv.check) {
   const fails = levelsScenario({ quiet: false });
   for (const f of fails) console.error(`  FAIL ${f}`);
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv.pets && !argv.check) {
+  const fails = petsScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.heights && !argv.check) {

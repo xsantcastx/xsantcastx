@@ -368,6 +368,24 @@ for (const r of RUNES) {
   if (!n.lore) flag('rune', 'no-lore', r.id, 'no lore line');
 }
 
+// Pets (shared/pets/pets.model.ts): a source in play, one helper, lore, a Codex row; real foods.
+{
+  const { PETS } = L('shared/pets/pets.model.ts');
+  const PET_WORDS = read('shared/pets/pets.i18n.ts');
+  for (const pet of PETS) {
+    const n = node('pet', pet.id, pet.name);
+    const s = pet.source || {};
+    if (s.tally || s.flag || s.claimDays) n.sources.add(pet.foundIn); else flag('pet', 'no-source', pet.id, 'no tally, flag or bounty day finds it');
+    if (pet.ability && pet.usedFor) n.uses.add(pet.usedFor); else flag('pet', 'no-use', pet.id, 'no helper');
+    if (!pet.lore || !PET_WORDS.includes(`'play.pet.lore.${pet.id}'`)) flag('pet', 'no-lore', pet.id, 'no lore line (model + Codex)');
+    if (!PET_WORDS.includes(`'play.pet.name.${pet.id}'`) || !PET_WORDS.includes(`'play.pet.found.${pet.id}'`)) flag('pet', 'not-visible', pet.id, 'no name or "Found in" in the Codex');
+    for (const food of [pet.favourite, ...pet.likes]) {
+      if (!materialDisplay(food)) flag('pet', 'unknown-food', pet.id, `eats ${food}, which the satchel cannot paint`);
+      else use(food, `pet food (${pet.name})`);
+    }
+  }
+}
+
 // Item stats ────────────────────────────────────────────────────────────────
 for (const key of ITEM_STAT_KEYS) {
   node('stat', key, ITEM_STAT_LABELS[key]);
