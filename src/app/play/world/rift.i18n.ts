@@ -1,5 +1,5 @@
 /**
- * rift.i18n.ts: the Rift Gates' and the Ink Deeps' player-facing lines
+ * rift.i18n.ts: the Rift Gates', the Ink Deeps', the Root Deeps' and the Prism Mines' player-facing lines
  * (shared/delve/rift-gates.model.ts, engine/umbral.ts; lore-addendum.md "The
  * Rift Gates"). Lazy: registered by the side-scroller (play chunk), checked by
  * scripts/check-i18n-keys.js.
@@ -59,4 +59,34 @@ export const RIFT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.rift.hud.tide.high': { en: 'Ink tide: high', es: 'Marea de tinta: alta' },
   'play.rift.hud.tide.falling': { en: 'Ink tide: falling', es: 'Marea de tinta: bajando' },
   'play.rift.hud.tide.aria': { en: 'Ink tide {{phase}}, changes in {{n}} seconds', es: 'Marea de tinta {{phase}}, cambia en {{n}} segundos' },
+
+  // ── The Root Deeps (the Verdant's underside; engine/verdant.ts) ──
+  'play.rift.arrive.verdant': { en: 'You step out into the Root Deeps. The gate behind you holds.', es: 'Sales a las Raices Hondas. El portal detras de ti aguanta.' },
+  'play.rift.back.verdant': { en: 'Back through the gate. The Root Hollows\' roots lie still, the way roots should.', es: 'De vuelta por el portal. Las raices de las Oquedades se quedan quietas, como deben.' },
+  'play.rift.rule.roots': { en: 'Glim: The walls are wood here, and the wood is awake. Listen: it creaks when nobody is digging.', es: 'Glim: Aqui las paredes son madera, y la madera esta despierta. Escucha: cruje aunque nadie cave.' },
+  'play.rift.rule.regrow': { en: 'Glim: Did you see the wood flinch? What you dig here grows back. Burn it with a torch, prop it with a support, or cut it clean, or it closes behind you.', es: 'Glim: Viste como se encogio la madera? Lo que cavas aqui vuelve a crecer. Quemalo con una antorcha, apuntalalo o cortalo limpio, o se cierra detras de ti.' },
+  'play.rift.rule.cut': { en: 'Glim: The billhook cuts the root clean. That one stays open.', es: 'Glim: La podadera corta la raiz limpia. Ese hueco se queda abierto.' },
+  'play.rift.rule.burn': { en: 'Glim: The roots pulled back from the torch. Fire holds a tunnel open here.', es: 'Glim: Las raices se apartaron de la antorcha. Aqui el fuego mantiene abierto un tunel.' },
+  'play.rift.rule.held': { en: 'Glim: The support held it. The roots went round.', es: 'Glim: El puntal lo sostuvo. Las raices lo rodearon.' },
+  'play.rift.rule.spore': { en: 'Glim: A spore pod. They burst if you tread on them. Strike one from the side with a sickle and it gives its sap instead.', es: 'Glim: Una vaina de esporas. Revientan si las pisas. Golpeala de lado con una hoz y te da su savia.' },
+  'play.rift.rule.vine': { en: 'Glim: The vines are alive, and they hold. Climb them like a ladder: Up and Down.', es: 'Glim: Las enredaderas estan vivas y aguantan. Trepalas como una escalera: Arriba y Abajo.' },
+  'play.rift.rule.graft': { en: 'Glim: The Graftmother. Those red roots on the floor hold her: while one stands, she heals and shrugs off your blows. Cut them, and burn the stumps.', es: 'Glim: La Madre Injerto. Esas raices rojas del suelo la sostienen: mientras quede una, se cura y aguanta tus golpes. Cortalas y quema los tocones.' },
+  'play.rift.spore': { en: 'A spore pod bursts.', es: 'Revienta una vaina de esporas.' },
+  'play.rift.graft.unrooted': { en: 'The last heart-root is cut. The Graftmother staggers: nothing holds her now.', es: 'La ultima raiz corazon esta cortada. La Madre Injerto se tambalea: ya nada la sostiene.' },
+  'play.rift.graft.calls': { en: 'The Graftmother grows two graftlings out of the wall.', es: 'La Madre Injerto hace brotar dos injertitos de la pared.' },
+
+  // ── The Prism Mines (the Luminous's underside; engine/luminous.ts) ──
+  'play.rift.action.mirror': { en: 'Turn mirror', es: 'Girar espejo' },
+  'play.rift.arrive.luminous': { en: 'You step out into the Prism Mines. The gate behind you holds.', es: 'Sales a las Minas de Prisma. El portal detras de ti aguanta.' },
+  'play.rift.back.luminous': { en: 'Back through the gate. The Grotto\'s glowcaps seem very dim after that.', es: 'De vuelta por el portal. Las setas de la Gruta parecen muy apagadas despues de eso.' },
+  'play.rift.rule.light': { en: 'Glim: The light here is heavy. Where a beam crosses open air, you can stand on it. Where it falls down, you can climb it.', es: 'Glim: Aqui la luz pesa. Donde un rayo cruza el aire, puedes pisarlo. Donde cae, puedes trepar por el.' },
+  'play.rift.rule.bridge': { en: 'Glim: You are standing on the light. It holds as long as the beam does.', es: 'Glim: Estas de pie sobre la luz. Aguanta mientras aguante el rayo.' },
+  'play.rift.rule.glass': { en: 'Glim: That black glass is a floor while the light is on it. In the dark it is a hole. Bring a torch.', es: 'Glim: Ese cristal negro es suelo mientras le da la luz. A oscuras es un agujero. Trae una antorcha.' },
+  'play.rift.rule.fall': { en: 'Glim: Shadow glass. No light on it, so nothing under you. You will land; there is always a way back up.', es: 'Glim: Cristal de sombra. Sin luz encima, no hay nada bajo tus pies. Aterrizaras; siempre hay un camino de vuelta.' },
+  'play.rift.rule.mirrors': { en: 'Glim: A prism mirror. Press E and it turns the beam a corner.', es: 'Glim: Un espejo de prisma. Pulsa E y el rayo dobla la esquina.' },
+  'play.rift.rule.mirror.turn': { en: 'Glim: The mirror turned the beam. Look: where it crosses the dark, it is a floor now.', es: 'Glim: El espejo giro el rayo. Mira: donde cruza la oscuridad, ahora hay suelo.' },
+  'play.rift.rule.prism': { en: 'Glim: The Hollow Sun. Blows pass through it while it is free. Turn the mirror by the shaft and catch it in the beam; then it cannot move.', es: 'Glim: El Sol Hueco. Los golpes lo atraviesan mientras esta libre. Gira el espejo junto al pozo y atrapalo en el rayo; entonces no puede moverse.' },
+  'play.rift.mirror.turned': { en: 'The mirror turns. The beam turns with it.', es: 'El espejo gira. El rayo gira con el.' },
+  'play.rift.prism.caught': { en: 'Caught in the beam: the Hollow Sun cannot move. Strike now.', es: 'Atrapado en el rayo: el Sol Hueco no puede moverse. Golpea ahora.' },
+  'play.rift.prism.flare': { en: 'The Hollow Sun flares, and the mirrors turn away. Turn them back.', es: 'El Sol Hueco destella y los espejos se apartan. Vuelve a girarlos.' },
 };

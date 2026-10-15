@@ -68,11 +68,18 @@ export interface EngineState {
   /** On a surface with height: free, climb, hang or mantle. */
   climbing?: 'free' | 'climb' | 'hang' | 'mantle';
   /**
-   * A realm Delve behind a Rift Gate (rift-gates.model.ts, umbral.ts): which realm, the ink tide (its phase,
+   * A realm Delve behind a Rift Gate (rift-gates.model.ts, umbral.ts): which realm; in the Ink Deeps the ink tide (its phase,
    * rows over the pools, seconds to its next change), whether the head is under ink, a mirrored ceiling
    * overhead, and the drift pockets' last shift epoch.
    */
-  realm?: { id: string; tide: 'low' | 'rising' | 'high' | 'falling'; tideRows: number; nextTide: number; inkBlind: boolean; mirror: boolean; shift: number };
+  realm?: {
+    id: string;
+    tide?: 'low' | 'rising' | 'high' | 'falling'; tideRows?: number; nextTide?: number; inkBlind?: boolean; mirror?: boolean; shift?: number;
+    /** The Root Deeps (verdant.ts): holes waiting to grow back, holes grown back this session, heart-roots standing in the Graftmother's hall. */
+    regrowing?: number; regrown?: number; heartRoots?: number;
+    /** The Prism Mines (luminous.ts): sun-prism beams in reach, and cells of solid light they lay. */
+    beams?: number; bridges?: number;
+  };
   /** A guardian (a `once` creature) is the nearest foe: the score turns tense (shared/sound). */
   boss?: boolean;
   /** Liquids within a few cells of the Keeper (delves): the ambience beds near water, lava and ink. */

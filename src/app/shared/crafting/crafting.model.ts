@@ -670,9 +670,9 @@ export const UNDERHEARTH_RECIPES: readonly CraftingRecipe[] = [
 
 /**
  * The Rift Gates (shared/delve/rift-gates.model.ts): a Realm Sigil attunes a
- * realm's gate once (the gate keeps it), and the Ink Deeps' own make. Only the
- * Umbral's sigil exists: the other three realms' gates are still settling, and
- * their sigils ship with their Delves (docs/handoff/rift-gates.md).
+ * realm's gate once (the gate keeps it), and each realm Delve's own make: the
+ * Umbral's, the Verdant's and the Luminous's (docs/handoff/rift-gates.md,
+ * realm-delves.md). The Celestial gate is still settling; its sigil ships with it.
  */
 export const RIFT_RECIPES: readonly CraftingRecipe[] = [
   r('craft-umbral-sigil', 'Umbral Sigil', 'delve', 'epic', 'umbral-sigil',
@@ -682,6 +682,23 @@ export const RIFT_RECIPES: readonly CraftingRecipe[] = [
   r('craft-veil-lantern', 'Veil Lantern', 'delve', 'rare', 'veil-lantern',
     [m('inkstone', 6), m('nightglass', 2), m('glowcap', 3)],
     8_000, 55, 'Carried in the Ink Deeps, your lantern reaches further into the gloom and keeps some light under ink. Needs Smithing 55.',
+    { stack: true, skill: 'smithing' }),
+  // The Root Deeps (the Verdant gate, Root Hollows) and the Prism Mines (the Luminous gate, Glowcap Grotto).
+  r('craft-verdant-sigil', 'Verdant Sigil', 'delve', 'epic', 'verdant-sigil',
+    [m('rift-splinter', 4), m('verdant-sap', 2), m('infernal-heartstone', 1)],
+    16_000, 55, 'Four rift splinters round a heartstone, bound in living sap: the key to the Verdant Rift Gate in the Root Hollows. Needs Smithing 55.',
+    { stack: true, skill: 'smithing' }),
+  r('craft-luminous-sigil', 'Luminous Sigil', 'delve', 'epic', 'luminous-sigil',
+    [m('rift-splinter', 4), m('luminous-prism', 2), m('emberheart-ore', 1)],
+    14_000, 52, 'Four rift splinters round an emberheart core, set with Luminous prisms: the key to the Luminous Rift Gate in the Glowcap Grotto. Needs Smithing 52.',
+    { stack: true, skill: 'smithing' }),
+  r('craft-rootsever-billhook', 'Rootsever Billhook', 'delve', 'rare', 'rootsever-billhook',
+    [m('rootglass', 8), m('heart-amber', 2), m('world-root-bark', 4)],
+    10_000, 58, 'Carried in the Root Deeps, what you dig is cut at the root and does not grow back. Needs Smithing 58.',
+    { stack: true, skill: 'smithing' }),
+  r('craft-dawn-lens', 'Dawn Lens', 'delve', 'rare', 'dawn-lens',
+    [m('prismite', 8), m('dawnglass', 2), m('glowcap', 3)],
+    9_500, 56, 'Carried in the Prism Mines, your own lantern lights the shadow glass under and round you: a floor you carry. Needs Smithing 56.',
     { stack: true, skill: 'smithing' }),
 ];
 

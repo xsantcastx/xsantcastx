@@ -20,7 +20,9 @@
 
 export type FieldNoteStratum = 'root-hollows' | 'basalt-caverns' | 'glowcap-grotto' | 'magma-halls' | 'underhearth'
   // The Rift Gates (rift-gates.model.ts): notes at the gates, and in the Umbral's underside (realm-gen.ts).
-  | 'rift' | 'umbral';
+  | 'rift' | 'umbral'
+  // The Verdant's underside, the Root Deeps (verdant-gen.ts), and the Luminous's, the Prism Mines (luminous-gen.ts).
+  | 'verdant' | 'luminous';
 
 export interface FieldNoteDef {
   id: string;
@@ -85,6 +87,28 @@ export const FIELD_NOTES: readonly FieldNoteDef[] = [
     text: 'Two hands pressed into the slate, one over the other. One of them is not quite the same size.' },
   { id: 'umbral-warden-oath', stratum: 'umbral',
     text: '"I keep the dark that was left when the light went somewhere else. Light me, and I stand still. That is all I ask of anyone."' },
+  // The Root Deeps, the Verdant's underside: Kesh's graft notes, Siv's warnings, the Graftmother's own words.
+  { id: 'verdant-kesh-graft', stratum: 'verdant',
+    text: 'Grafting wax pressed into a crack, and in it, with a thorn: "K.A. It took. It always takes. That is the problem."' },
+  { id: 'verdant-siv-warning', stratum: 'verdant',
+    text: 'Carved deep, in a ranger\'s hand: "The tunnel you dug is not yours. Burn it, cut it, or prop it, or it closes behind you. S.M."' },
+  { id: 'verdant-ring-count', stratum: 'verdant',
+    text: 'Someone counted the rings in a cut root and gave up at four hundred. The cut has healed over the count.' },
+  { id: 'verdant-two-saplings', stratum: 'verdant',
+    text: 'Two names cut into the wood as children cut them, side by side. The root grew between them, and pushed them apart.' },
+  { id: 'verdant-graft-oath', stratum: 'verdant',
+    text: '"Everything that is cut, I join. Everything that leaves, I keep. Cut my roots, and I will let you go." The words are grown, not carved.' },
+  // The Prism Mines, the Luminous's underside: Aureth's chalk, the miners' rule, the Hollow Sun's.
+  { id: 'luminous-aureth-chalk', stratum: 'luminous',
+    text: 'Gold chalk, a careful hand: "A. Stand where the light is. It holds you up here, the way the truth is meant to."' },
+  { id: 'luminous-turn-the-glass', stratum: 'luminous',
+    text: 'A miner\'s rule scratched by the lip: "No bridge? Turn the glass. The sun does the rest."' },
+  { id: 'luminous-dark-glass', stratum: 'luminous',
+    text: '"The black glass is a floor if you bring a light. It is a well if you do not. Bring a light." Underneath, smaller: "I did not."' },
+  { id: 'luminous-odds', stratum: 'luminous',
+    text: 'A tally of bets in a croupier\'s neat columns: which beam would hold, which would not. Every line is settled, and every one was right. L.C.' },
+  { id: 'luminous-hollow-sun', stratum: 'luminous',
+    text: '"I am the light that was promised and never arrived. Catch me in a beam and I will stand still long enough to be ended."' },
 ];
 
 const BY_ID = new Map(FIELD_NOTES.map(note => [note.id, note]));

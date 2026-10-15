@@ -253,6 +253,11 @@ use('four-hammer-marks', 'kept: summons the Banked Furnace at its hearth in the 
 // The Rift Gates: a sigil is spent at its gate (side-scroller useGate); the Veil Lantern is carried gear (engine setGear).
 use('umbral-sigil', 'spent once at the Umbral Rift Gate: attunes it (the way into the Ink Deeps)');
 use('veil-lantern', 'carried: the lantern reaches further in the Ink Deeps and keeps some light under ink (engine setGear)');
+// The Root Deeps and the Prism Mines: their sigils are spent at their gates; the billhook and the lens are carried gear.
+use('verdant-sigil', 'spent once at the Verdant Rift Gate: attunes it (the way into the Root Deeps)');
+use('luminous-sigil', 'spent once at the Luminous Rift Gate: attunes it (the way into the Prism Mines)');
+use('rootsever-billhook', 'carried: what you dig in the Root Deeps is cut at the root and does not grow back (engine setGear)');
+use('dawn-lens', 'carried: your lantern lights the Prism Mines\' shadow glass under and round you (engine setGear)');
 // Map v2 (shared/delve/map-tools.model.ts): the Broken Astral Compass and the Rift Map Fragment.
 for (const tool of MAP_TOOLS) {
   thing(tool.id);
@@ -418,13 +423,23 @@ const STRUCTURAL = { air: 'open space', bedrock: 'world boundary', 'cracked-wall
   // The Rift Gates (shared/delve/rift-gates.model.ts) and the Ink Deeps behind the Umbral one (realm-gen.ts, umbral.ts).
   'rift-frame': 'a Rift Gate\'s frame: holds the gate (world boundary); its splinters frame the Realm Sigils',
   'rift-gate-umbral': 'the Umbral Rift Gate: attuned with an Umbral Sigil, the way into the Ink Deeps (and back out)',
-  'rift-gate-luminous': 'the Luminous Rift Gate: still settling (its Delve is a follow-up); Glim marks it, its first sighting pays',
+  'rift-gate-luminous': 'the Luminous Rift Gate: attuned with a Luminous Sigil, the way into the Prism Mines (and back out)',
   'rift-gate-celestial': 'the Celestial Rift Gate: still settling (its Delve is a follow-up); Glim marks it, its first sighting pays',
-  'rift-gate-verdant': 'the Verdant Rift Gate: still settling (its Delve is a follow-up); Glim marks it, its first sighting pays',
+  'rift-gate-verdant': 'the Verdant Rift Gate: attuned with a Verdant Sigil, the way into the Root Deeps (and back out)',
   'drift-shale': 'the Ink Deeps\' broken rule: a passage that fills while nobody looks (a torch pins it open)',
   'ink-mirror': 'a mirrored ceiling in the Ink Deeps: the Keeper\'s reflection walks on it',
   'gloam-brazier': 'the Gloam Warden\'s braziers: a torch lights one, and the Warden can be struck only in that light',
-  'gloam-brazier-lit': 'a lit gloam brazier: freezes shades in its light until it gutters or the tide puts it out' };
+  'gloam-brazier-lit': 'a lit gloam brazier: freezes shades in its light until it gutters or the tide puts it out',
+  // The Root Deeps (verdant-gen.ts, verdant.ts) and the Prism Mines (luminous-gen.ts, luminous.ts).
+  'heart-root': 'the Graftmother\'s anchors: while one stands she heals and shrugs off blows; cut and burnt, she can fall',
+  'living-vine': 'a living vine: climbed like a ladder in the Root Deeps (the way down to the Graftmother)',
+  'sun-prism': 'the Prism Mines\' sun, set in a roof: its beam is a ladder going down and a bridge going across',
+  'prism-mirror-a': 'a prism mirror (E turns it): turns a beam a corner, so the light lays a bridge where you need one',
+  'prism-mirror-b': 'a prism mirror turned the other way (E turns it back)',
+  'light-bridge': 'solid light: a beam across open air is a floor (gone when the beam goes)',
+  'light-shaft': 'solid light: a beam going down is a ladder (gone when the beam goes)',
+  'umbra-pane': 'shadow glass: a hole until light falls on it (a torch, a beam, the Dawn Lens)',
+  'lit-pane': 'lit shadow glass: a floor while light is on it' };
 const laidOut = new Set();
 for (const town of Object.values(TOWNS)) for (const a of [town, ...town.hunts]) {
   const t = a.terrain; if (!t) continue;
@@ -443,6 +458,8 @@ for (const n of TERRAIN_NODE_LIST) {
   if (n.id === 'obsidian' && /OBSIDIAN = nodeIndex\('obsidian'\)/.test(read('play/engine/liquids.ts'))) g.sources.add('water meets lava (liquids)');
   // A lit brazier is an unlit one with a torch in it (play/engine/engine.ts lightBrazier).
   if (n.id === 'gloam-brazier-lit' && /BRAZIER_LIT_KIND/.test(read('play/engine/engine.ts'))) g.sources.add('a gloam brazier lit with a torch');
+  // Solid light is made by a beam (play/engine/luminous.ts applyLight), never laid out or placed.
+  if ((n.id === 'light-bridge' || n.id === 'light-shaft' || n.id === 'lit-pane') && /applyLight/.test(read('play/engine/luminous.ts'))) g.sources.add('a sun-prism\'s beam or a light on shadow glass (luminous.ts)');
   if (n.yield) g.uses.add(`yields ${n.yield.materialId}`);
   if (n.block) g.uses.add(`gives ${n.block}`);
   if (n.placeable) g.uses.add(`placeable ${n.placeable}`);
