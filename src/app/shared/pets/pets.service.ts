@@ -16,7 +16,8 @@ import { BehaviorSubject } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { InventoryService } from '../rpg/inventory.service';
-import { PETS_KEY, cleanPetName, coercePets, emptyPets, type PetRecord, type PetsState } from './pets-save.model';
+import { PETS_KEY, cleanPetName, coercePets, emptyPets, newPetRecord, type PetRecord, type PetsState } from './pets-save.model';
+import { FINDS_PER_DAY, PET_XP, findsLeft, isPetCommand, petLevel, type PetCommand, type PetXpKind } from './pet-roles';
 import { HAT_AT, LOVE_MAX, TRICK_AT, dayKey, earnedPets, feedResult, hasHat, isHatched, petDef, type FeedRefusal, type PetDef, type PetLedger } from './pets.model';
 
 export type FeedOutcome = { ok: true; gain: number; favourite: boolean; love: number; trick: boolean; hat: boolean } | { ok: false; code: FeedRefusal | 'none' };
@@ -56,7 +57,7 @@ export class PetsService {
     if (!found.length) return found;
     const pets = { ...this.current.pets };
     for (const def of found) {
-      pets[def.id] = { got: at, hatched: def.arrival === 'rescue' ? at : 0, name: '', nameAt: 0, love: 0, feedDay: '', feeds: 0, hat: false, hatAt: 0 };
+      pets[def.id] = newPetRecord(at, def.arrival === 'rescue' ? at : 0);
     }
     this.save({ ...this.current, pets });
     return found;
@@ -125,6 +126,47 @@ export class PetsService {
     const love = Math.min(LOVE_MAX, before + verdict.gain);
     this.save({ ...this.current, pets: { ...this.current.pets, [id]: { ...r!, love, feedDay: day, feeds: meals + 1 } } });
     return { ok: true, gain: love - before, favourite: verdict.favourite, love, trick: before < TRICK_AT && love >= TRICK_AT, hat: before < HAT_AT && love >= HAT_AT };
+  }
+
+  /** What the Keeper told the pets from the card (one command for whoever follows). */
+  get command(): PetCommand {
+    const c = this.state.command;
+    return isPetCommand(c) ? c : 'follow';
+  }
+  setCommand(command: PetCommand, at = Date.now()): boolean {
+    this.hydrate();
+    if (!isPetCommand(command)) return false;
+    if (command === this.current.command) return true;
+    this.save({ ...this.current, command, commandAt: at });
+    return true;
+  }
+
+  /**
+   * Grow a pet by use (pet-roles.ts PET_XP): `n` uses of `kind`. Returns the
+   * level it reached when this crossed into a new one, else 0.
+   */
+  train(id: string, kind: PetXpKind, n = 1): number {
+    this.hydrate();
+    const r = this.current.pets[id];
+    if (!r || !isHatched(r) || n <= 0) return 0;
+    const before = petLevel(r.xp);
+    const xp = Math.min(100_000, r.xp + PET_XP[kind] * Math.floor(n));
+    this.save({ ...this.current, pets: { ...this.current.pets, [id]: { ...r, xp } } });
+    const after = petLevel(xp);
+    return after > before ? after : 0;
+  }
+
+  /** A find dug up today (scout spot or trinket), within the daily cap. True if it may happen (and is counted). */
+  takeFind(id: string, kind: keyof typeof FINDS_PER_DAY, now = new Date()): boolean {
+    this.hydrate();
+    const r = this.current.pets[id];
+    if (!r || !isHatched(r)) return false;
+    const day = dayKey(now);
+    if (findsLeft(kind, day, r) <= 0) return false;
+    const same = r.findDay === day;
+    const next: PetRecord = { ...r, findDay: day, scouts: (same ? r.scouts : 0) + (kind === 'scout' ? 1 : 0), trinkets: (same ? r.trinkets : 0) + (kind === 'trinket' ? 1 : 0) };
+    this.save({ ...this.current, pets: { ...this.current.pets, [id]: next } });
+    return true;
   }
 
   private save(next: PetsState): void {

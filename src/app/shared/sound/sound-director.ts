@@ -34,7 +34,9 @@ export type SfxCue =
   // The Lost Cabinets (shared/cabinets): the Slate's Scan pinging (pitch rises as it warms), a cabinet opening.
   | 'scan' | 'cabinet'
   // The tool in hand changes (shared/skills/held-tool.ts): the rod out for a cast, the pickaxe for a dig, the weapon back.
-  | 'swap';
+  | 'swap'
+  // Glim speaks up (shared/glim/glim-react.ts): a soft glassy two-note hum; a high five's bright clap.
+  | 'glim' | 'five';
 
 export interface SfxOptions {
   material?: Material;
@@ -48,7 +50,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { glim: 1.5, five: .5, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -210,6 +212,10 @@ export class SoundDirector {
       case 'cabinet': this.tone(t, 'triangle', 196, .09, .09, .002); return this.arpeggio(t + .1, [72, 76, 79, 83, 88], 'bell', .08, .28, true);
       // A soft leather-and-metal shuffle: a strap loosed, a haft settling in the hand.
       case 'swap': this.whoosh(t, 900, 400, .08, .06); return this.tone(t + .05, 'triangle', 660, .05, .06, .002);
+      // Glim's hum: two soft glass notes a fifth apart, the second a breath later.
+      case 'glim': this.tone(t, 'sine', 1174.7, .035, .22, .01); return this.tone(t + .12, 'sine', 1760, .028, .26, .01);
+      // A high five: a tiny clap and a bright bell.
+      case 'five': this.whoosh(t, 2400, 1800, .05, .08); return this.arpeggio(t + .04, [84, 91], 'bell', .07, .22, false);
     }
   }
 
