@@ -1,5 +1,5 @@
 import { coarseDevice, renderBudget, type RenderBudget } from './render-budget';
-import { Atmosphere } from './atmosphere';
+import { Atmosphere, LANTERNS, lanternY } from './atmosphere';
 import { LifeFrame, TownLife } from './town-life';
 import type { KeeperContext } from '../world/keeper-lines';
 import { FIGURE_TOP, KeeperPainter } from '../../shared/keeper-look/keeper-paint';
@@ -5339,6 +5339,11 @@ export class SeamworksEngine {
       for (const station of this.stations) {
         if (station.x < this.camera - 160 || station.x > this.camera + viewport + 160) continue;
         this.skyLight.drawLamp(c, station.x, FLOOR - 150 * k, 120 * k, blend);
+      }
+      // The hanging lanterns light up (atmosphere.ts draws them; the night just turns them on).
+      for (let x: number = LANTERNS.from; x < LANTERNS.to; x += LANTERNS.step) {
+        if (x < this.camera - 150 || x > this.camera + viewport + 150) continue;
+        this.skyLight.drawLamp(c, x, lanternY(x) + 14, 80, blend);
       }
       this.skyLight.drawLamp(c, this.player.x, this.player.y - 90 * k, 150 * k, blend, .8);
     }

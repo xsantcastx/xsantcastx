@@ -36,6 +36,7 @@ export const WORLD_CLOCK_I18N: Readonly<Record<string, { en: string; es: string 
   // The eclipse
   'clock.eclipse.next': { en: 'Next eclipse in {{h}}h {{m}}m', es: 'Proximo eclipse en {{h}}h {{m}}m' },
   'clock.eclipse.nextShort': { en: '{{h}}h {{m}}m', es: '{{h}}h {{m}}m' },
+  'clock.eclipse.days': { en: '{{d}}d {{h}}h {{m}}m', es: '{{d}}d {{h}}h {{m}}m' },
   'clock.eclipse.now': { en: 'Eclipse now · {{h}}h {{m}}m left', es: 'Eclipse ahora · quedan {{h}}h {{m}}m' },
   'clock.eclipse.title': { en: 'The eclipse', es: 'El eclipse' },
   'clock.eclipse.when': { en: '{{day}}, {{time}} · aligned with the {{realm}} realm', es: '{{day}}, {{time}} · alineado con el reino {{realm}}' },

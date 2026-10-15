@@ -30,6 +30,66 @@ const TABLES: Shape = [
   '................',
 ];
 
+/** Rune Drop: a rune falling through a field of pins into a lit bin. */
+const RUNE_DROP: Shape = [
+  '................',
+  '.......oo.......',
+  '......oeeo......',
+  '.....oeffeo.....',
+  '......oeeo......',
+  '.......oo.......',
+  '..l...l...l...l.',
+  '................',
+  '....l...l...l...',
+  '................',
+  '..l...l...l...l.',
+  '................',
+  '.oooooooooooooo.',
+  '.obbodddobbbodo.',
+  '.oooooooooooooo.',
+  '................',
+];
+
+/** Seam Sweeper: a seam of cells, one opened on ore, one flagged. */
+const SWEEPER: Shape = [
+  '................',
+  '.oooooooooooooo.',
+  '.olldolldolldo..',
+  '.olddoldd.oddo..',
+  '.oooooooooooooo.',
+  '.oeeeoffdolldo..',
+  '.oefeoffdoddoo..',
+  '.oooooooooooooo.',
+  '.olldobbboeedo..',
+  '.oddoobbboedd...',
+  '.oooooooooooooo.',
+  '................',
+  '................',
+  '................',
+  '................',
+  '................',
+];
+
+/** Eclipse Ascent: a chevron climbing past the eclipse. */
+const ASCENT: Shape = [
+  '..........ffff..',
+  '.........fooodf.',
+  '.........fodbof.',
+  '.........foodof.',
+  '..........ffff..',
+  '.......oo.......',
+  '......olloo.....',
+  '.....olleelo....',
+  '....olle..elo...',
+  '...olle....elo..',
+  '..olle......elo.',
+  '..ooo........oo.',
+  '................',
+  '..eeeeeeeeeeee..',
+  '................',
+  '................',
+];
+
 /** The Homestead: a round-roofed little house with a lit window and a chimney. */
 const HOME: Shape = [
   '................',
@@ -231,7 +291,10 @@ const MOON: Shape = [
 ];
 
 const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette }>> = {
-  tables: { shape: TABLES, palette: { d: '#8a6a3a', l: '#fff4dc', e: '#E8752A', f: '#a855f7', b: '#E8D44D' } },
+  reels: { shape: TABLES, palette: { d: '#8a6a3a', l: '#fff4dc', e: '#E8752A', f: '#a855f7', b: '#E8D44D' } },
+  'rune-drop': { shape: RUNE_DROP, palette: { e: '#a855f7', f: '#c9a0ff', l: '#d8dcf0', b: '#E8D44D', d: '#5a2f8a' } },
+  'seam-sweeper': { shape: SWEEPER, palette: { l: '#8a7a58', d: '#4a4030', e: '#c4501e', f: '#E8D44D', b: '#5ff0d8' } },
+  'eclipse-ascent': { shape: ASCENT, palette: { l: '#fff4dc', e: '#E8752A', f: '#E8D44D', d: '#33263a', b: '#0e0912' } },
   factory: { shape: HOME, palette: { l: '#c4501e', d: '#7a2a12', b: '#b08a55', e: '#ffd08a', f: '#5a3f2a' } },
   map: { shape: MAP, palette: { l: '#efe4c8', d: '#c9b88e', f: '#8a7a58', e: '#c4501e' } },
   scan: { shape: SCAN, palette: { l: '#ffffff', e: '#33263a', d: '#a5793a', f: '#8a90b0' } },

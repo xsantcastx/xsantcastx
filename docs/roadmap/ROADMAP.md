@@ -20,6 +20,8 @@ Built 2026-10-15: **Pets** (`docs/handoff/pets.md`): eight chibi pets found in p
 
 Built 2026-10-15: **Lost Cabinets** (`docs/handoff/lost-cabinets.md`): the Mirror Slate's Scan face (tier I) — hold the glass up and follow the warmth to the Archivist's sixteen hidden curio cabinets (towns, hunts, High Roads, the Delve, the Underhearth, the four realm Delves); clues, pet treats and a hatbox inside; the Codex's Cabinet of Curios set with four small bonuses and a short story.
 
+Built 2026-10-15: **World clock** (`docs/handoff/world-clock.md`): one in-game clock for every device (a day is 24 real minutes; a week of seven named days, five realm months); day, dusk and night on every surface (tints, stars, the moon mirror, lit lanterns; the Delve stays the same underground), night-only Moonwake Bloom, Mirrorfin and Ink Lanterns; an eclipse every fifth day (sky dark at noon, Eclipse Glass, Afterimage Moths, boosted shrines) with Sera Quill's no-FOMO ledger; the Mirror Slate as an in-game phone (lock clock, eclipse countdown, now playing, app grid, calendar, dock).
+
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
 ## Milestones
@@ -45,6 +47,8 @@ Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall D
 - Review new lore in `docs/world/lore-addendum.md`.
 
 ## Daily review log
+
+- **2026-10-15 (world clock)** — Owner: "the mirror slate could use some UI like if it was the phone, show the in-game time, we should have day and night as well, or eclipse events." Built: one deterministic world clock (24 real min a day, epoch-ms only, so time-zone/DST proof; real-day resets unchanged); sky tint + stars + moon + lanterns per phase on every surface (only the sky strip above a Delve); the Moonwake Bloom, Mirrorfin and Ink Lantern keep the dark, Eclipse Glass and the Afterimage Moth the eclipse; an eclipse every fifth in-game day (2 real h), announced ahead, with Sera Quill's ledger (`economy-sim --eclipse` in `--check`); ambience + score by the hour; keeper and Glim lines that notice it; the Slate's phone face. Clears the meaning baseline (the two never-spawning creatures now spawn).
 
 - **2026-10-15 (lost cabinets)** — Built the owner's Lost Cabinets: the Slate's Scan face (tier I: it is the Archive's moon-mirror glass that knows the latches) pulses hot/cold on the HUD button with a soft ping and brightens Glim; sixteen cabinets left by the Archivist and hidden by the Ridge Couriers, one curio each (key items with lore), five deep ones tuned by clues; Courier's Honeycomb (every pet's favourite) and the Hatbox of Small Crowns; the Codex's Cabinet of Curios with bonuses at 4/8/12/16 (warmer glass, one more pet meal, Glim points the way, the Curator's Loupe) and a four-page arc. `economy-sim --cabinets` in `--check` (93 min of income once, ever).
 - **2026-10-15 (chibi Keepers)** — Owner: "more tender, smaller, very cute, MapleStory". Built: every person (player, Glass preview, paper doll, all NPCs) is a chibi pixel Keeper — big head, small body, ~74% of the old height, big eyes, blinks, bouncy steps, landing squash, a happy face on loot and level up; creatures are round with big glaring eyes; tags, bubbles and Glim follow the new head. `docs/handoff/chibi-keepers.md`.

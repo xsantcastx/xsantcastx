@@ -139,7 +139,7 @@ export class SkyLight {
     if (sky.eclipse > 0) {
       // The eclipse: the moon mirror in front of the sun, its flare breathing round the rim.
       const disc = this.disc ??= paintEclipse();
-      const size = 34 * GRID, x = Math.round(viewport * .7 - size / 2), y = 54;
+      const size = 34 * GRID, x = Math.round(viewport * .6 - size / 2), y = 54;
       if (y < height) {
         c.globalAlpha = Math.min(1, sky.eclipse * 1.2);
         c.drawImage(disc, x, y, size, size);
@@ -152,7 +152,7 @@ export class SkyLight {
     } else if (this.stars > 0) {
       // The moon mirror, cracked where it broke.
       const moon = this.moon ??= paintMoon();
-      const size = 20 * GRID, x = Math.round(viewport * .78 - size / 2), y = 60;
+      const size = 20 * GRID, x = Math.round(viewport * .62 - size / 2), y = 70;
       if (y < height) { c.globalAlpha = this.stars; c.drawImage(moon, x, y, size, size); c.globalAlpha = 1; }
     }
     c.imageSmoothingEnabled = prev;
