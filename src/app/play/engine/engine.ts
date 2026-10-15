@@ -20,7 +20,7 @@ import { aimFromBladeRotation, createHeldTransform, HeldItem, heldTransform, KEE
 import { SurfaceMover, type SurfaceGeo } from './surface-body';
 import { SurfaceRender } from './surface-render';
 import { FIND_REACH, hollisFolk, hollisRealm, type AreaHeights, type HeightFind, type HeightFolk } from '../world/heights';
-import { advanceBody, Body, EngineInput, EngineOptions, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
+import { advanceBody, Body, EngineInput, EngineOptions, EngineSfx, EngineState, FLOOR, InteractionTarget, KeeperAnimation, meleeHits, SITE_CUE_RISE, STATION_CUE_Y, walkDirection, WORLD_ACTION_UNPAID } from './engine.model';
 import {
   applyTerrainDiff, BLAST_TOOLS, BodyBox, boxHits, CELL, cellKey, coneCells, generateTerrain, isAir, nodeIndex, PlaceableDef, PlaceableId, placeableById,
   climbTerrainBody, findNode, glowIntensity, INTERACT_REACH, isClimbable, isOneWay, isTakeable, onLadder, placeTarget, stepTerrainBody, SWING_TOOLS, takeTarget, Terrain, TERRAIN_NODE_LIST, TERRAIN_NODES, TerrainNodeDef, terrainLayout, TOOL_ACTION, ToolKind, toolFor, toolName, ToolTiers,
@@ -43,6 +43,7 @@ import { enteredFlag, REALM_ARRIVAL, realmOfArea, realmOfGateNode, RIFT_GATES, r
 import { ANCHOR_MAX, GRAPPLE_CELLS, THORNROOT_GRAPPLE, UNDERHEARTH_REACHED_FLAG, UNDERHEARTH_TOP } from '../../shared/delve/underhearth.model';
 import { immersion, LiquidSim, SWIM, surfaceY, WOODEN_IDS } from './liquids';
 import { drawLiquids, lavaLights } from './liquid-render';
+import { drawFishShadows, placeFish, type FishShadow } from './fish-shadows';
 import { AmbientMotes, Debris, GlowHalos, TerrainRenderer } from './terrain-render';
 import { createFog, findMark, MapSource, MarkTarget, revealAround, terrainReader } from './delve-map';
 import { Column, PlacedStructure, SectorWorld } from './sector-world';
@@ -61,7 +62,7 @@ import { AreaDef, areaOf, clientToWorld, DropEntry, GatherNodeDef, LootRarity, M
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import type { HomesteadFrame, HomesteadView } from './homestead-render';
 import { GlimSprite } from './glim-sprite';
-export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
+export type { BucketEvent, BucketId, DelvePersistence, DiscoverEvent, EngineInput, EngineOptions, EngineSfx, EngineState, FishEvent, InteractionTarget, KeeperAnimation, KillEvent, PlaceEvent, UseEvent, WorldActionEvent } from './engine.model';
 export type { PlaceableId, ToolTiers } from './terrain';
 export type { HeldItem, KeeperLoadout } from './loadout';
 
@@ -314,6 +315,13 @@ export class SeamworksEngine {
   private frameDt = 0;
   /** Real seconds since the last drawn frame, hitstop included: flights keep flying through a freeze. */
   private flightDelta = 0;
+  /** Fish under the water this frame (fish-shadows.ts), reused slots; and the last count, for the HUD's data attribute. */
+  private readonly fish: FishShadow[] = [];
+  private fishCount = 0;
+  /** A landed fish arcing out of the water into the Keeper (world px), 0..1 progress; null when none. */
+  private catchArc: { sx: number; sy: number; t: number; label: string } | null = null;
+  /** Ripples on the water at the bob (a bite), world px, 0..1 age each. */
+  private ripples: { x: number; y: number; t: number }[] = [];
   private pixelRatio = 1;
   private pixelScale = 1;
   private readonly reducedMotion = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -325,6 +333,7 @@ export class SeamworksEngine {
   /** A flash of feeling on the Keeper's face (loot, a level up) and when it ends (engine seconds). */
   private feelFace: 'happy' | 'surprised' | null = null;
   private feelUntil = 0;
+  private stepCount = 0;
   private stepAt = 0;
   private reportAt = 0;
   private width = 1100;
@@ -1960,16 +1969,18 @@ export class SeamworksEngine {
   private hitCells(count: number, allowed: readonly ToolKind[], quiet: boolean): void {
     const t = this.terrain;
     if (!t || !count) return;
-    let broke = 0, chipped = 0, blocked = 0, rich = false;
+    let broke = 0, chipped = 0, blocked = 0, rich = false, sound = '';
     for (let n = 0; n < count; n++) {
       const index = this.hitScratch[n];
       const col = t.colOf(index), row = t.rowOf(index);
       const node = t.nodeAt(col, row);
       const result = this.hitCell(col, row, allowed, quiet || blocked > 0);
-      if (result === HIT_BROKE) { broke++; rich ||= !!node.yield; }
-      else if (result === HIT_CHIP || result === HIT_REFUSED) chipped++;
+      if (result === HIT_BROKE) { broke++; rich ||= !!node.yield; sound ||= node.id; }
+      else if (result === HIT_CHIP || result === HIT_REFUSED) { chipped++; sound ||= node.id; }
       else if (result === HIT_BLOCKED) blocked++;
     }
+    // One sound for the whole swing: the cell that gave, else the cell that chipped, else a clang.
+    if (broke) this.sfx('break', sound); else if (chipped) this.sfx('dig', sound); else if (blocked && !quiet) this.sfx('clang');
     if (broke) this.impact(rich ? .07 : .04, rich ? 5 : 3);
     else if (chipped) this.impact(.025, 1.6);
     else if (blocked && !quiet) this.impact(.02, 1);
@@ -2095,6 +2106,7 @@ export class SeamworksEngine {
   /** Where the Keeper's body sits in liquid (refreshed each fixed step). */
   private sense(t: Terrain): void {
     const imm = immersion(t, this.player.x, this.player.y, DELVE_BOX.height);
+    if (!this.immersed && imm.body) this.sfx('splash', LIQUID_IDS[imm.body] ?? undefined);
     this.immersed = imm.body;
     this.headUnder = !!imm.head;
   }
@@ -2259,6 +2271,7 @@ export class SeamworksEngine {
     };
     if (Math.abs(this.line.bobX - this.player.x) > 4) this.facing = this.line.bobX > this.player.x ? 1 : -1;
     this.say('play.fish.cast', 'The line is in. When the bob dips, press E (or tap).');
+    this.sfx('cast');
     this.report();
     return true;
   }
@@ -2285,8 +2298,14 @@ export class SeamworksEngine {
    * recast after `recastIn` seconds (auto-fish waits out the reel it skipped,
    * so auto never outpaces playing).
    */
-  landFish(recastIn = .6): void {
+  landFish(recastIn = .6, label?: string): void {
     if (!this.line) return;
+    // With a label ("+1 Blindfin") the fish leaves the water and arcs into the Keeper's
+    // hands, and the label rises where it lands (visual only; the catch is already the host's).
+    if (label !== undefined) {
+      if (this.reducedMotion) { this.atmosphere.burst(this.player.x, this.player.y - 130 * this.figure, label); this.sfx('catch'); }
+      else this.catchArc = { sx: this.line.bobX, sy: this.line.bobY, t: 0, label };
+    }
     this.line = null;
     if (this.useHeld) this.recast = Math.max(.6, recastIn);
     this.report();
@@ -2311,6 +2330,9 @@ export class SeamworksEngine {
     if (line.phase === 'wait') {
       line.phase = 'bite'; line.timer = HOOK_WINDOW;
       this.say('play.fish.bite', 'A bite! Press E (or tap) now!');
+      this.sfx('bite');
+      // Rings on the water where the fish took it.
+      if (!this.reducedMotion) { this.ripples.push({ x: line.bobX, y: line.bobY, t: 0 }, { x: line.bobX, y: line.bobY, t: -.25 }); if (this.ripples.length > 6) this.ripples.splice(0, this.ripples.length - 6); }
       // Auto-fish: Use held through the dip hooks at once (the Off grade, no mini-game).
       if (this.useHeld) this.hook(true);
       this.report();
@@ -2319,6 +2341,84 @@ export class SeamworksEngine {
     // Missed the dip: nothing lost, it nibbles again (and a tap in the next moment is a late hook, not a reel-in).
     line.phase = 'wait'; line.timer = this.biteWait(1, 3); this.lateHook = LATE_HOOK;
     this.say('play.fish.missed', 'Missed it. It is still down there: wait for the next dip.');
+  }
+  // -- World feel: sounds out, fish, ripples and the catch's arc (shared/sound, fish-shadows.ts) --
+
+  /** Hand a world sound to the host. Never throws into the step. */
+  private sfx(kind: EngineSfx['kind'], node?: string): void {
+    const on = this.options.onSfx;
+    if (!on) return;
+    try { on(node ? { kind, node } : { kind }); } catch { /* sound is never worth a frame */ }
+  }
+  /** The terrain node under the Keeper's feet (undefined on a town street or in the air). */
+  private groundNode(): string | undefined {
+    const t = this.terrain;
+    if (!t) return undefined;
+    const col = t.colAt(this.player.x), row = t.rowAt(this.player.y + 1);
+    return t.inside(col, row) && t.solid(col, row) ? t.nodeAt(col, row).id : undefined;
+  }
+  /** Water, lava or ink within a few cells (the ambience beds). Sparse sampling, at report rate. */
+  private liquidsNear(t: Terrain): { water: boolean; lava: boolean; ink: boolean } {
+    let water = false, lava = false, ink = false;
+    const c0 = t.colAt(this.player.x), r0 = t.rowAt(this.player.y - CELL);
+    for (let dr = -4; dr <= 4; dr += 2) for (let dc = -8; dc <= 8; dc += 2) {
+      const col = c0 + dc, row = r0 + dr;
+      if (!t.inside(col, row)) continue;
+      const i = t.index(col, row);
+      if (!t.liqLevel[i]) continue;
+      const k = t.liqType[i];
+      if (k === LIQUID_WATER) water = true; else if (k === LIQUID_LAVA) lava = true; else if (k === LIQUID_INK) ink = true;
+    }
+    return { water, lava, ink };
+  }
+  /** The Keeper's head in canvas CSS px (0,0 = the canvas's top-left), for popups the host floats over it. */
+  keeperScreen(): { x: number; y: number } {
+    const scale = this.height / 720;
+    return { x: (this.player.x - this.camera) * scale, y: (this.player.y - 160 * this.figure - this.cameraY) * scale };
+  }
+  /** The fish under the water in view (over the water's body, as shadows seen through it). */
+  private drawFish(c: CanvasRenderingContext2D, t: Terrain, c0: number, c1: number, r0: number, r1: number, time: number): void {
+    const line = this.line && this.line.liquid === LIQUID_WATER ? { col: this.line.col, row: this.line.row, phase: this.line.phase, bobX: this.line.bobX } : null;
+    this.fishCount = placeFish(t, c0, c1, r0, r1, this.reducedMotion ? 0 : time, line, this.fish, this.budget.tier === 'lite' ? 10 : 24);
+    drawFishShadows(c, this.fish, this.fishCount);
+  }
+  /** Bite ripples (pixel rings on the surface) and the landed fish's arc into the Keeper. World px. */
+  private drawCatchFx(c: CanvasRenderingContext2D, delta: number): void {
+    if (this.ripples.length) {
+      c.save(); c.fillStyle = '#d0f6ff';
+      for (const r of this.ripples) {
+        r.t += delta / .9;
+        if (r.t <= 0 || r.t >= 1) continue;
+        const w = Math.round((4 + r.t * 18) / ART) * ART, y = Math.round(r.y / ART) * ART;
+        c.globalAlpha = .7 * (1 - r.t);
+        c.fillRect(r.x - w, y, ART * 2, ART); c.fillRect(r.x + w - ART, y, ART * 2, ART);
+        c.fillRect(r.x - w * .6, y - ART, ART, ART); c.fillRect(r.x + w * .6, y - ART, ART, ART);
+      }
+      c.restore();
+      this.ripples = this.ripples.filter(r => r.t < 1);
+    }
+    const arc = this.catchArc;
+    if (!arc) return;
+    arc.t += delta / .7;
+    if (arc.t >= 1) {
+      this.catchArc = null;
+      this.atmosphere.burst(this.player.x, this.player.y - 130 * this.figure, arc.label);
+      this.sfx('catch');
+      return;
+    }
+    const ex = this.player.x, ey = this.player.y - 120 * this.figure;
+    const u = arc.t, x = arc.sx + (ex - arc.sx) * u, y = arc.sy + (ey - arc.sy) * u - Math.sin(u * Math.PI) * 90;
+    const d = ex >= arc.sx ? 1 : -1, px = Math.round(x / ART) * ART, py = Math.round(y / ART) * ART;
+    c.save();
+    // Droplets off the tail, then the fish: silver, a dark eye, flipping as it flies.
+    c.fillStyle = '#d0f6ff'; c.globalAlpha = .8 * (1 - u);
+    c.fillRect(px - d * ART * 7, py + ART * 2, ART, ART); c.fillRect(px - d * ART * 9, py - ART, ART, ART);
+    c.globalAlpha = 1;
+    const flip = Math.floor(u * 6) & 1 ? 1 : -1;
+    c.fillStyle = '#cfe3ea'; c.fillRect(px - ART * 3, py - ART, ART * 6, ART * 2);
+    c.fillStyle = '#8fb3c2'; c.fillRect(px - d * ART * 5 - (d > 0 ? 0 : ART), py - ART * (flip > 0 ? 2 : 0), ART * 2, ART * 2);
+    c.fillStyle = '#140a1f'; c.fillRect(px + d * ART * 2 - (d < 0 ? ART : 0), py - ART, ART, ART);
+    c.restore();
   }
   /** The line, the bob and its dip (world px; before the darkness, so it is lit like the world). */
   private drawLine(c: CanvasRenderingContext2D, time: number): void {
@@ -2822,9 +2922,11 @@ export class SeamworksEngine {
       s.shake = Math.max(0, s.shake - dt * 5);
       if (!s.ready) this.refreshSite(s, now);
     }
-    if (!wasGrounded && this.player.grounded && !this.climbing) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); }
+    if (!wasGrounded && this.player.grounded && !this.climbing) { this.landing = .18; this.atmosphere.burst(this.player.x, this.player.y - 4); this.sfx('land', this.groundNode()); }
     if (direction && this.player.grounded && this.elapsed - this.stepAt > .2) {
       this.stepAt = this.elapsed; if (!this.reducedMotion) this.atmosphere.burst(this.player.x - direction * 16, this.player.y - 3);
+      // A footstep every other dust puff: about the pace of a walk.
+      if ((this.stepCount = (this.stepCount + 1) & 1) === 0) this.sfx('step', this.groundNode());
     }
     for (const drop of this.drops) {
       drop.age += dt;
@@ -3485,6 +3587,7 @@ export class SeamworksEngine {
       y: Math.round(this.player.y), climbing: this.heights ? this.mover.mode : undefined,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
       x: Math.round(this.player.x), paused: this.paused,
+      boss: !!nearest?.def.once,
       defeated: this.hp <= 0, enemyDefeated: this.guardianDefeated, complete: false, message: this.message,
       coins: this.coins, kills: this.kills, area: this.areaDef.name, areaId: this.areaDef.id,
       facing: this.facing, animation: this.pose(),
@@ -3498,6 +3601,7 @@ export class SeamworksEngine {
         },
         fishing: this.line ? { phase: this.line.phase, liquid: LIQUID_IDS[this.line.liquid] as LiquidKind } : null,
         canFish: this.line ? null : this.fishable(t),
+        near: this.liquidsNear(t), fishShadows: this.fishCount,
         riding: !!this.cart, grappling: this.grapple?.phase ?? null,
         ...(this.areaDef.terrain?.realm ? { realm: {
           id: realmOfArea(this.areaDef.id) ?? '', tide: this.tide.phase, tideRows: Math.round(this.tide.rows * 10) / 10, nextTide: Math.ceil(this.tide.next),
@@ -4429,8 +4533,10 @@ export class SeamworksEngine {
       const c0 = t.colAt(this.camera) - 1, c1 = t.colAt(this.camera + viewport) + 1;
       const r0 = t.rowAt(this.cameraY) - 1, r1 = t.rowAt(this.cameraY + 720) + 1;
       drawLiquids(c, t, c0, c1, r0, r1, this.reducedMotion ? 0 : Math.floor(this.elapsed * 2.5) & 1);
+      this.drawFish(c, t, c0, c1, r0, r1, this.elapsed);
       if (this.areaDef.terrain?.realm) this.drawTide(c, t, c0, c1, r0, r1);
       this.drawLine(c, motionTime);
+      this.drawCatchFx(c, this.flightDelta);
     }
     if (t) this.drawDelveLight(c, t, scale, viewport, motionTime);
     if (t && this.areaDef.terrain?.realm) this.drawShadeEyes(c, motionTime, viewport);

@@ -646,6 +646,7 @@ describe('the registry', () => {
       'godforge-roster',
       'godforge-runes',
       'godforge-scrolls',
+      'godforge-sound',
       'godforge-stats',
       'godforge-story',
       'godforge-thralls',

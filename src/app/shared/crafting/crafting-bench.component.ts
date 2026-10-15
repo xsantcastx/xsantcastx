@@ -105,6 +105,7 @@ import { toolCard, toolCardLines } from '../skills/tools';
 import { TOOLS_I18N } from '../skills/tools.i18n';
 import { ActivityProgressionGateway } from '../activity/activity-progression.gateway';
 import { floorThing, type ForgeFloorEvent, type ForgeFloorThing } from '../forge-floor/forge-floor.model';
+import { WorldFeelBus } from '../sound/world-feel.bus';
 /** One ingredient, as the anvil renders it. */
 export interface SlotView {
   materialId: string;
@@ -165,6 +166,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
   private readonly runes = inject(RuneForgeService);
   private readonly economy = inject(EconomyService);
   private readonly celebration = inject(CelebrationService);
+  /** Tells the world view (when there is one) what was made, so it can fly it to the Satchel. */
+  private readonly feel = inject(WorldFeelBus);
   private readonly skills = inject(SkillActionService);
   private readonly i18n = inject(TranslationService);
   private readonly activity = inject(ActivityProgressionGateway);
@@ -693,6 +696,8 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
       ].filter(Boolean).join(' · ') || undefined,
     };
     this.celebration.celebrate(result.recipe.rarity);
+    // The world (when it is around the bench) flies the made thing into the Satchel.
+    if (!result.replayed) this.feel.crafted({ itemId: result.recipe.output.itemId, name, qty: made, art: this.reward.art?.src || undefined, rarity: result.recipe.rarity });
     // A timed craft already fed the floor when it started; an instant one feeds
     // and finishes in a single event.
     const first = result.items[0];
