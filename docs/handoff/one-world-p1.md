@@ -85,7 +85,7 @@ gear stowed in the Vault, **digs not migrated**; marker `migrated: 'v2'`; v2 key
   nothing written with the gate off).
 - e2e `play-one-world.spec.ts` (desktop keys + 390×844 touch, chromium + webkit): spawn in the settlement,
   walk to counters, resume beside the Quarry Head, see + light it, travel, M, recall, the night bell.
-- Perf guard (`PLAY_PERF=1`): Settlement midday / night, 390×844 @3, 4× CPU: **p50 16.7 / p95 17.6 ms**
+- Perf guard (`PLAY_PERF=1`): Settlement midday / night, 390×844 @3, 4× CPU: **p50 16.7 / p95 17.6–33.3 ms** (two runs)
   (guard p95 < 50, p50 < 34).
 
 ## Screenshots
