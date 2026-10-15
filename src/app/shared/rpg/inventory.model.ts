@@ -52,8 +52,8 @@ export const INVENTORY_STACK_OPS_MAX = 64;
 export const INVENTORY_FOLD_ID_MEMORY = 2048;
 /**
  * The retired 250-record ceiling. Nothing on the client enforces it any more;
- * kept only because the (undeployed) market server reads it via
- * scripts/generate-market-reference.mjs — inventory spec §4.4 / slice S7.
+ * kept for the inventory spec §4.4 / slice S7 (the player market server that
+ * read it was removed).
  */
 export const INVENTORY_BAG_CAP = 250;
 
