@@ -16,7 +16,7 @@
  */
 import { PET_LOVE_CEILING, type PetRecord, type PetsState } from './pets-save.model';
 
-export type PetId = 'ember-newt' | 'prism-mothkit' | 'ink-pup' | 'star-owlet' | 'moss-hedgehog' | 'rivet-hatchling' | 'shade-kit';
+export type PetId = 'ember-newt' | 'prism-mothkit' | 'ink-pup' | 'star-owlet' | 'moss-hedgehog' | 'rivet-hatchling' | 'shade-kit' | 'sunling';
 export type PetRealm = 'infernal' | 'luminous' | 'umbral' | 'celestial' | 'verdant';
 /**
  * The helpers, one per pet:
@@ -27,8 +27,9 @@ export type PetRealm = 'infernal' | 'luminous' | 'umbral' | 'celestial' | 'verda
  *   gather  a hunting-ground harvest in its realm sometimes yields one more
  *   fetch   carries loose drops back to you
  *   fish    a bite comes sooner
+ *   mend    the Keeper's wounds close slowly after a few quiet seconds
  */
-export type PetAbility = 'glow' | 'xp' | 'warn' | 'scent' | 'gather' | 'fetch' | 'fish';
+export type PetAbility = 'glow' | 'xp' | 'warn' | 'scent' | 'gather' | 'fetch' | 'fish' | 'mend';
 /** How it is found: an egg to hatch, or a pet you rescue (it comes to you awake). */
 export type PetArrival = 'egg' | 'rescue';
 /** Where its source sits in play (the e2e and the Codex read it). */
@@ -62,9 +63,10 @@ export interface PetDef {
   lore: string;
 }
 
-/** The two guardians' once-flags (towns/infernal.ts and towns/umbral-delve.ts), copied so this file stays a leaf. */
+/** The guardians' once-flags (towns/infernal.ts, towns/umbral-delve.ts, towns/luminous-delve.ts), copied so this file stays a leaf; the spec pins them. */
 export const PET_FURNACE_FLAG = 'banked-furnace-defeated';
 export const PET_WARDEN_FLAG = 'gloam-warden-defeated';
+export const PET_HOLLOW_SUN_FLAG = 'hollow-sun-defeated';
 
 export const PETS: readonly PetDef[] = [
   {
@@ -130,6 +132,15 @@ export const PETS: readonly PetDef[] = [
     usedFor: 'it watches the water: a bite comes sooner when you fish',
     lore: 'Shades are what a light leaves behind. A shade-kit is what a shade leaves behind: small, curious, and very fond of fish.',
   },
+  {
+    id: 'sunling', realm: 'luminous', arrival: 'egg', rare: true, ability: 'mend',
+    source: { kind: 'guardian', flag: PET_HOLLOW_SUN_FLAG, need: 1 },
+    favourite: 'solar-resin', likes: ['luminous-prism', 'starlight-herb'],
+    name: 'Sunling',
+    foundIn: 'The Luminous Prism Mines: the warm egg at the Hollow Sun\'s heart, yours once it falls',
+    usedFor: 'it shines on you: after a few quiet seconds your wounds close slowly',
+    lore: 'The Hollow Sun was hollow because it was keeping something warm. What hatches is a very small sun that has decided you are its sky.',
+  },
 ];
 
 export const PET_IDS: readonly PetId[] = PETS.map(p => p.id);
@@ -160,6 +171,8 @@ export const PET_TUNING = {
   fetchReach: 520, fetchSpeed: 300,
   /** fish: the bite speed multiplier (stacks under the engine's cap of 4). */
   biteBoost: 1.25,
+  /** mend: seconds unhurt before it starts, and the share of max HP restored per second (never in a fight). */
+  mendAfter: 6, mendShare: .01,
 } as const;
 
 /** Local calendar day (the appetite resets at midnight, never a streak). */

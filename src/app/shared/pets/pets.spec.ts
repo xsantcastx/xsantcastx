@@ -10,10 +10,13 @@ import { InventoryService } from '../rpg/inventory.service';
 import { materialDisplay } from '../rpg/material-catalog';
 import { PETS_KEY, PET_LOVE_CEILING, cleanPetName, coercePets, emptyPets, mergePets, type PetRecord, type PetsState } from './pets-save.model';
 import {
-  FEEDS_PER_DAY, HAT_AT, LOVE_MAX, PETS, PET_TUNING, TRICK_AT, activeAbility, dayKey, earnedPets, feedResult, followingPet,
+  FEEDS_PER_DAY, HAT_AT, PET_FURNACE_FLAG, PET_HOLLOW_SUN_FLAG, PET_WARDEN_FLAG, LOVE_MAX, PETS, PET_TUNING, TRICK_AT, activeAbility, dayKey, earnedPets, feedResult, followingPet,
   gatherBonus, mealsLeft, petDef, sourceProgress, xpBonus, type PetLedger,
 } from './pets.model';
 import { PETS_I18N } from './pets.i18n';
+import { BANKED_FURNACE_FLAG } from '../../play/world/towns/infernal';
+import { GLOAM_WARDEN_FLAG } from '../../play/world/towns/umbral-delve';
+import { HOLLOW_SUN_FLAG } from '../../play/world/towns/luminous-delve';
 import { PetsService } from './pets.service';
 import { PET_FRAMES, PET_H, PET_W, paintPetFrame } from './pet-art';
 
@@ -21,10 +24,10 @@ const NONE: PetLedger = { tally: {}, claimDays: 0, flag: () => false };
 const rec = (over: Partial<PetRecord> = {}): PetRecord => ({ got: 100, hatched: 100, name: 'Pip', nameAt: 100, love: 0, feedDay: '', feeds: 0, hat: false, hatAt: 0, ...over });
 
 describe('Pets: the table', () => {
-  it('has 7 pets, one per realm at least, two rare ones, each with its own helper', () => {
-    expect(PETS.length).toBe(7);
+  it('has 8 pets, one per realm at least, three rare ones, each with its own helper', () => {
+    expect(PETS.length).toBe(8);
     for (const realm of ['infernal', 'luminous', 'umbral', 'celestial', 'verdant']) expect(PETS.some(p => p.realm === realm)).withContext(realm).toBeTrue();
-    expect(PETS.filter(p => p.rare).length).toBe(2);
+    expect(PETS.filter(p => p.rare).length).toBe(3);
     expect(new Set(PETS.map(p => p.ability)).size).toBe(PETS.length);
   });
   it('every pet has a real source, real foods the satchel can paint, and lore', () => {
@@ -49,6 +52,11 @@ describe('Pets: the table', () => {
     const all = Object.values(PETS_I18N).map(r => r.en.toLowerCase()).join(' ');
     for (const word of ['starv', 'missed you', 'streak', 'run away', 'ran away', 'neglect', 'dies', 'died']) expect(all).not.toContain(word);
   });
+  it('the guardian flags are the towns\' own', () => {
+    expect(PET_FURNACE_FLAG).toBe(BANKED_FURNACE_FLAG);
+    expect(PET_WARDEN_FLAG).toBe(GLOAM_WARDEN_FLAG);
+    expect(PET_HOLLOW_SUN_FLAG).toBe(HOLLOW_SUN_FLAG);
+  });
   it('the save ceiling mirrors the model', () => { expect(PET_LOVE_CEILING).toBe(LOVE_MAX); expect(TRICK_AT).toBeLessThan(HAT_AT); expect(HAT_AT).toBeLessThanOrEqual(LOVE_MAX); });
 });
 
@@ -64,6 +72,7 @@ describe('Pets: finding them', () => {
     expect(ids({ tally: { 'gather:rootglass-thicket': 8 } })).toEqual(['moss-hedgehog']);
     expect(ids({ flag: f => f === 'banked-furnace-defeated' })).toEqual(['rivet-hatchling']);
     expect(ids({ flag: f => f === 'gloam-warden-defeated' })).toEqual(['shade-kit']);
+    expect(ids({ flag: f => f === 'hollow-sun-defeated' })).toEqual(['sunling']);
   });
   it('a pet already had is never found twice', () => {
     const state: PetsState = { ...emptyPets(), pets: { 'star-owlet': rec({ hatched: 0 }) } };

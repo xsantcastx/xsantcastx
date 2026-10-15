@@ -12,6 +12,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.name.moss-hedgehog': { en: 'Moss Hedgehog', es: 'Erizo de Musgo' },
   'play.pet.name.rivet-hatchling': { en: 'Rivet Maw hatchling', es: 'Cria de Fauce Remachada' },
   'play.pet.name.shade-kit': { en: 'Shade-kit', es: 'Zorrito de Sombra' },
+  'play.pet.name.sunling': { en: 'Sunling', es: 'Solecillo' },
   // ── Found in ──
   'play.pet.found.ember-newt': { en: 'Ember Delve: in the first Seam Crate you fish up and open.', es: 'Sima de Brasa: en la primera Caja de Veta que pesques y abras.' },
   'play.pet.found.prism-mothkit': { en: 'Reflection Channels: caught in a Prism Forager\'s ribs. Free it by felling six Foragers.', es: 'Canales del Reflejo: atrapada en las costillas de un Forrajeador. Liberala derribando seis.' },
@@ -19,6 +20,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.found.star-owlet': { en: 'Rootglass Canopy: the Board Herald gives you the egg on your third day of bounties.', es: 'Dosel de Raizvidrio: el Heraldo del Tablon te da el huevo en tu tercer dia de encargos.' },
   'play.pet.found.moss-hedgehog': { en: 'Rootglass Thicket: asleep under the patches. Harvest there eight times.', es: 'Matorral de Raizvidrio: duerme bajo las matas. Cosecha alli ocho veces.' },
   'play.pet.found.rivet-hatchling': { en: 'The Underhearth: kept warm in the Banked Furnace. Yours when it first falls.', es: 'El Bajohogar: guardado al calor del Horno Cubierto. Tuyo cuando caiga por primera vez.' },
+  'play.pet.found.sunling': { en: 'The Luminous Prism Mines: the warm egg at the Hollow Sun\'s heart. Yours when it falls.', es: 'Las Minas de Prisma Luminosas: el huevo tibio en el corazon del Sol Hueco. Tuyo cuando caiga.' },
   'play.pet.found.shade-kit': { en: 'The Ink Deeps: the egg the Gloam Warden guarded. Yours when it falls.', es: 'Las Honduras de Tinta: el huevo que guardaba el Guardian del Ocaso. Tuyo cuando caiga.' },
   // ── Helps with ──
   'play.pet.use.ember-newt': { en: 'Its tail is a little lamp: a warm light of its own in the Delve.', es: 'Su cola es una lamparita: una luz calida propia en la Sima.' },
@@ -27,6 +29,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.use.star-owlet': { en: 'It hoots at ore: veins within 16 cells show on the Delve map.', es: 'Ulula al mineral: las vetas a 16 casillas o menos salen en el mapa de la Sima.' },
   'play.pet.use.moss-hedgehog': { en: 'It noses through what you cut: a Verdant harvest sometimes yields one more.', es: 'Husmea lo que cortas: una cosecha del Verdante a veces da uno mas.' },
   'play.pet.use.rivet-hatchling': { en: 'It scavenges: loose drops are carried back to you.', es: 'Carronea: te trae los botines sueltos.' },
+  'play.pet.use.sunling': { en: 'It shines on you: after a few quiet seconds your wounds close slowly.', es: 'Brilla sobre ti: tras unos segundos tranquilos tus heridas se cierran despacio.' },
   'play.pet.use.shade-kit': { en: 'It watches the water: a bite comes sooner when you fish.', es: 'Vigila el agua: cuando pescas, pican antes.' },
   // ── Lore (the Codex) ──
   'play.pet.lore.ember-newt': { en: 'Seam newts lay their eggs where the Delve keeps its heat. A crate left long in warm water is the warmest place they know.', es: 'Los tritones de veta ponen sus huevos donde la Sima guarda el calor. Una caja olvidada en agua tibia es lo mas calido que conocen.' },
@@ -35,6 +38,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.lore.star-owlet': { en: 'Orrery owls nest where the old star charts were kept. The Herald found this egg wrapped in a chart, "filed under eggs".', es: 'Los buhos del Orrery anidan donde se guardaban las cartas estelares. El Heraldo hallo este huevo envuelto en una, "archivado en huevos".' },
   'play.pet.lore.moss-hedgehog': { en: 'Its quills are moss that decided to stay. It sleeps under whatever regrows fastest, and wakes to whoever keeps it growing.', es: 'Sus puas son musgo que decidio quedarse. Duerme bajo lo que antes rebrota, y despierta para quien lo hace crecer.' },
   'play.pet.lore.rivet-hatchling': { en: 'Rivet Maws carry what falls. The Furnace kept one egg banked with its embers, as if it knew something would need carrying.', es: 'Las Fauces Remachadas cargan lo que cae. El Horno guardo un huevo entre sus brasas, como si supiera que algo habria que cargar.' },
+  'play.pet.lore.sunling': { en: 'The Hollow Sun was hollow because it was keeping something warm. What hatches is a very small sun that has decided you are its sky.', es: 'El Sol Hueco estaba hueco porque guardaba algo al calor. Lo que nace es un sol muy pequeno que ha decidido que tu eres su cielo.' },
   'play.pet.lore.shade-kit': { en: 'Shades are what a light leaves behind. A shade-kit is what a shade leaves behind: small, curious, and very fond of fish.', es: 'Las sombras son lo que deja una luz. Un zorrito de sombra es lo que deja una sombra: pequeno, curioso y muy amigo del pescado.' },
   // ── Glim, the first time it meets each ──
   'play.pet.glim.ember-newt': { en: 'A seam newt! Keep it near the lantern. Or, well, it is the lantern now.', es: 'Un triton de veta! Tenlo cerca del farol. O bueno, ahora el farol es el.' },
@@ -43,6 +47,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.glim.star-owlet': { en: 'An owlet from the Orrery. It has already corrected two of my map notes.', es: 'Un buhito del Orrery. Ya me ha corregido dos notas del mapa.' },
   'play.pet.glim.moss-hedgehog': { en: 'Careful, it is mostly moss and opinions. Mostly moss.', es: 'Cuidado, es casi todo musgo y opiniones. Casi todo musgo.' },
   'play.pet.glim.rivet-hatchling': { en: 'A Rivet Maw that wants to carry things for you. The Furnace knew what it was doing.', es: 'Una Fauce Remachada que quiere cargar cosas por ti. El Horno sabia lo que hacia.' },
+  'play.pet.glim.sunling': { en: 'A sun small enough to follow you. Do not tell the Luminous; they will want it back.', es: 'Un sol tan pequeno que te sigue. No se lo digas al Luminoso; lo querran de vuelta.' },
   'play.pet.glim.shade-kit': { en: 'A shade that left its dark behind to follow a light. I know the feeling.', es: 'Una sombra que dejo su oscuridad para seguir una luz. Conozco la sensacion.' },
   // ── Hats ──
   'play.pet.hat.ember-newt': { en: 'Tiny forge cap', es: 'Gorrita de forja' },
@@ -51,6 +56,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.hat.star-owlet': { en: 'Star hat', es: 'Sombrero estelar' },
   'play.pet.hat.moss-hedgehog': { en: 'Acorn cap', es: 'Caperuza de bellota' },
   'play.pet.hat.rivet-hatchling': { en: 'Miner\'s helmet', es: 'Casco de minero' },
+  'play.pet.hat.sunling': { en: 'Dawn-glass visor', es: 'Visera de vidrio del alba' },
   'play.pet.hat.shade-kit': { en: 'Crescent circlet', es: 'Diadema creciente' },
   // ── The pet well and the sheet ──
   'play.pet.well': { en: 'Pets', es: 'Mascotas' },
@@ -97,7 +103,7 @@ export const PETS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.pet.gather': { en: '{{name}} found one more {{item}}.', es: '{{name}} encontro un {{item}} mas.' },
   // ── The Codex ──
   'play.pet.codex.title': { en: 'Pets', es: 'Mascotas' },
-  'play.pet.codex.sub': { en: 'Seven small companions, one helper each. Found in play, never bought; fed, never hungry.', es: 'Siete pequenos companeros, una ayuda cada uno. Se encuentran jugando, nunca se compran; se alimentan, nunca pasan hambre.' },
+  'play.pet.codex.sub': { en: 'Eight small companions, one helper each. Found in play, never bought; fed, never hungry.', es: 'Ocho pequenos companeros, una ayuda cada uno. Se encuentran jugando, nunca se compran; se alimentan, nunca pasan hambre.' },
   'play.pet.codex.unknown': { en: 'Not yet met.', es: 'Aun sin conocer.' },
   'play.pet.codex.progress': { en: 'So far: {{have}} of {{need}}', es: 'Por ahora: {{have}} de {{need}}' },
   'play.pet.codex.yours': { en: 'Yours: {{name}}', es: 'Tuyo: {{name}}' },
