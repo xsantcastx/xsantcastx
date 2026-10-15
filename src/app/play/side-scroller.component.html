@@ -1,6 +1,6 @@
 <section class="stage" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -23,9 +23,11 @@
       <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span>@if (lookNudge) {<i class="look-nudge" aria-hidden="true"></i>}</button>
       <!-- The Mirror Slate (P): only once the Keeper carries one. The badge: the Homestead has something worth a look. -->
       @if (slateTier > 0) {
-        <button type="button" class="quiet slate-btn" [class.slate-btn--ready]="slateReady" (click)="toggleSlate()"
-                [attr.aria-label]="t(slateReady ? 'slate.hud.ready' : 'slate.hud.open')" [attr.data-slate-tier]="slateTier"
-                aria-keyshortcuts="P"><i class="slate-ico" aria-hidden="true"></i><span class="slate-label">{{ t('slate.hud.label') }}</span><kbd class="key-hint">P</kbd>@if (slateReady) {<i class="slate-badge" aria-hidden="true"></i>}</button>
+        <!-- While the glass is held up (the Lost Cabinets' Scan) the button IS the reading: it glows and pulses with the warmth. -->
+        <button type="button" class="quiet slate-btn" [class.slate-btn--ready]="slateReady" [class.slate-btn--scan]="scanning" (click)="toggleSlate()"
+                [attr.aria-label]="scanning ? t('cabinet.hud.scanning', { warmth: t('cabinet.warmthShort.' + scanWarmth) }) : t(slateReady ? 'slate.hud.ready' : 'slate.hud.open')" [attr.data-slate-tier]="slateTier"
+                [attr.data-warmth]="scanning ? scanWarmth : null" [style.--pulse]="scanPeriod ? scanPeriod + 's' : null"
+                aria-keyshortcuts="P"><i class="slate-ico" aria-hidden="true"></i><span class="slate-label">{{ scanning ? t('cabinet.hud.label', { warmth: t('cabinet.warmthShort.' + scanWarmth) }) : t('slate.hud.label') }}</span><kbd class="key-hint">P</kbd>@if (slateReady && !scanning) {<i class="slate-badge" aria-hidden="true"></i>}</button>
       }
       <button type="button" class="quiet" (click)="returnToCamp()">{{ t('play.hud.returnCamp') }}</button>
       <button type="button" class="quiet" (click)="restartHunt()">{{ t('play.hud.restartHunt') }}</button>

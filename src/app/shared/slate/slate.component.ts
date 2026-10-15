@@ -41,6 +41,9 @@ import { PANEL_REGISTRY } from '../../play/world/panel-registry';
 import { HomesteadService, purchaseMessage } from '../../play/homestead/homestead.service';
 import { formatPerSecond, pendingLine, type ColumnRow } from '../../play/homestead/homestead.model';
 import { SLATE_I18N } from './slate.i18n';
+import { CabinetsService } from '../cabinets/cabinets.service';
+import { CABINETS_I18N } from '../cabinets/cabinets.i18n';
+import { CABINETS, SET_BONUSES, hasBonus, openClues, type SetBonusId, type Warmth } from '../cabinets/cabinets.model';
 import { SlateService } from './slate.service';
 import { SLATE_TABLES, SLATE_WORLD_POINTERS, slateTabs, type SlateTab, type SlateTableGame, type SlateTier } from './slate.model';
 
@@ -85,6 +88,7 @@ export class SlateComponent implements OnInit, OnDestroy {
   private readonly explorers = inject(ExplorerService);
   private readonly bounties = inject(BountyService);
   private readonly delve = inject(DelveSaveService);
+  private readonly cabinets = inject(CabinetsService);
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
 
@@ -118,10 +122,20 @@ export class SlateComponent implements OnInit, OnDestroy {
   pins: PinRow[] = [];
   bountyRows: BountyRow[] = [];
 
+  // Scan (the Lost Cabinets)
+  readonly cabinetTotal = CABINETS.length;
+  found = 0;
+  scanning = false;
+  warmth: Warmth = 'none';
+  clues: string[] = [];
+  bonuses: { id: SetBonusId; at: number; reached: boolean }[] = [];
+  loupe = false;
+
   constructor() {
     this.i18n.register(STATION_UI_I18N);
     this.i18n.register(SLATE_I18N);
     this.i18n.register(BOUNTIES_I18N);
+    this.i18n.register(CABINETS_I18N);
   }
 
   t(key: string, vars?: Record<string, string | number>): string { return this.i18n.translate(key, vars); }
@@ -130,7 +144,11 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.slate.init();
     this.tier = this.slate.tier();
     this.tabs = slateTabs(this.tier);
+    // Opened while the glass is held up: straight onto the Scan face (its reading and Put away).
+    if (this.cabinets.scanning && this.tabs.includes('scan')) this.face = 'scan';
     this.subs.add(merge(this.economy.snapshot$, this.inventory.snapshot$, this.homestead.hud$, this.explorers.state$).subscribe(() => this.read()));
+    this.subs.add(merge(this.cabinets.opened$, this.cabinets.scanning$, this.cabinets.reading$).subscribe(() => this.readScan()));
+    this.cabinets.refresh();
     this.read();
   }
 
@@ -230,6 +248,23 @@ export class SlateComponent implements OnInit, OnDestroy {
     const out = this.explorers.snapshot.active;
     const soonest = out.length ? Math.min(...out.map(e => e.startedAt + e.duration)) : 0;
     this.nextHome = soonest ? this.t('slate.factory.nextHome', { t: shortDuration(soonest - Date.now()) }) : '';
+    this.cdr.markForCheck();
+  }
+
+  // ── Scan (the Lost Cabinets, shared/cabinets) ──
+
+  /** Hold the glass up: the play view folds the Slate and pulses the glass while you walk. */
+  holdUp(): void { this.cabinets.setScanning(true); }
+  putAway(): void { this.cabinets.setScanning(false); this.readScan(); }
+
+  private readScan(): void {
+    const opened = this.cabinets.openedSet();
+    this.found = this.cabinets.count();
+    this.scanning = this.cabinets.scanning;
+    this.warmth = this.cabinets.reading.warmth;
+    this.clues = openClues(opened).map(def => this.t('cabinet.scan.clue', { place: this.t(`cabinet.place.${def.id}`) }));
+    this.bonuses = SET_BONUSES.map(b => ({ ...b, reached: hasBonus(this.found, b.id) }));
+    this.loupe = this.cabinets.loupe();
     this.cdr.markForCheck();
   }
 

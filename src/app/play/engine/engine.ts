@@ -56,7 +56,8 @@ import { createFog, findMark, MapSource, MarkTarget, revealAround, terrainReader
 import { Column, PlacedStructure, SectorWorld } from './sector-world';
 import { SECTOR } from './sector-gen';
 import { FIELD_NOTE_PREFIX } from '../../shared/delve/field-notes.model';
-import type { BucketId, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
+import type { BucketId, CabinetMark, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
+import { drawCabinet } from './cabinet-art';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, selectLights } from './lighting';
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
@@ -659,6 +660,29 @@ export class SeamworksEngine {
   }
   /** The host's record of used finds (ids). The engine never writes it. */
   setHeightsFound(found: ReadonlySet<string>): void { this.heightsFound = found; }
+  // ── The Lost Cabinets (shared/cabinets): the host decides what shows; the engine draws and reaches ──
+  private cabinets: readonly CabinetMark[] = [];
+  /** The cabinets to draw: those the Scan has shown, and those already open (any area; filtered here). */
+  setCabinets(marks: readonly CabinetMark[]): void { this.cabinets = marks; }
+  /** The cabinet the Keeper's feet are within reach of, in this area, or null. */
+  private cabinetInReach(): CabinetMark | null {
+    for (const m of this.cabinets) {
+      if (m.area !== this.areaDef.id) continue;
+      const rx = m.delve ? 56 : 72, ry = m.delve ? 64 : 80;
+      if (Math.abs(m.x - this.player.x) <= rx && Math.abs(m.y - this.player.y) <= ry) return m;
+    }
+    return null;
+  }
+  private drawCabinets(c: CanvasRenderingContext2D, viewport: number, time: number): void {
+    const scale = this.terrain ? 2 : 4;
+    for (const m of this.cabinets) {
+      if (m.area !== this.areaDef.id || m.x < this.camera - 80 || m.x > this.camera + viewport + 80) continue;
+      if (m.y < this.cameraY - 40 || m.y - 80 > this.cameraY + 720) continue;
+      // Shut and shown: the moon latch glints now and then (always, still, under reduced motion).
+      const frame = m.open ? 2 : this.reducedMotion || Math.floor(time * 2.5) % 3 === 0 ? 1 : 0;
+      drawCabinet(c, m.x, m.y, frame, scale);
+    }
+  }
   /** The find the Keeper stands at, or null. */
   private findInReach(): HeightFind | null {
     const h = this.heights;
@@ -2892,7 +2916,11 @@ export class SeamworksEngine {
       if (this.lateHook > 0) { this.say('play.fish.missed', 'Missed it. It is still down there: wait for the next dip.'); this.report(); return; }
       this.reelIn(); return;
     }
-    const station = this.nearbyStation();
+    // A shut Lost Cabinet the Scan has shown wins over a station beside it (a rare, deliberate find); an open one never does.
+    const shut = this.cabinetInReach();
+    const station = shut && !shut.open ? null : this.nearbyStation();
+    const cabinet = station ? null : shut;
+    if (cabinet) { this.options.onCabinet?.({ areaId: this.areaDef.id, id: cabinet.id, open: cabinet.open }); this.report(); return; }
     const find = station ? null : this.findInReach();
     if (find) { this.useFind(find); this.report(); return; }
     if (!station && this.interactAt >= 0) { this.useCell(this.interactAt); this.report(); return; }
@@ -4198,20 +4226,24 @@ export class SeamworksEngine {
   }
   private report(): void {
     const nearest = this.nearestFoe();
-    const station = this.nearbyStation();
+    // As in interact(): a shut, shown Lost Cabinet in reach wins over a station beside it.
+    const shut = this.cabinetInReach();
+    const station = shut && !shut.open ? null : this.nearbyStation();
     const t = this.terrain;
-    const at = !station && t && this.interactAt >= 0 ? this.interactAt : -1;
+    const at = !station && !shut && t && this.interactAt >= 0 ? this.interactAt : -1;
     // A carved wall reads as 'inscription'; a placed chest or camp by its use.
     const use = at >= 0 ? (t!.inscriptions.has(at) ? (t!.inscriptions.get(at)!.startsWith(MARK_PREFIX) ? 'mark' : 'inscription')
       : RAIL_KINDS[t!.kind[at]] === 1 ? 'rail' : TERRAIN_NODE_LIST[t!.kind[at]].use ?? null) : null;
-    const find = !station && !use ? this.findInReach() : null;
-    const site = !station && !use && !find ? this.siteInReach() : null;
+    const cabinet = !station && !use ? shut : null;
+    const find = !station && !use && !cabinet ? this.findInReach() : null;
+    const site = !station && !use && !find && !cabinet ? this.siteInReach() : null;
     const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
     this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name, enemyId: nearest?.def.creature,
       ...(this.keyed && this.keyed.en === this.message ? { messageKey: this.keyed.key, ...(this.keyed.vars ? { messageVars: this.keyed.vars } : {}) } : {}),
-      nearby: use ?? station?.id ?? (find ? 'height' : site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
+      nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : find ? 'height' : site ? 'gather' : null), nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase(), nearbyKind: station?.kind,
       height: find ? { id: find.id, kind: find.kind, found: this.heightsFound.has(find.id) } : undefined,
+      cabinet: cabinet ? { id: cabinet.id, open: cabinet.open } : undefined,
       y: Math.round(this.player.y), climbing: this.heights ? this.mover.mode : undefined,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}) } : undefined,
       x: Math.round(this.player.x), paused: this.paused,
@@ -5058,6 +5090,8 @@ export class SeamworksEngine {
         this.drawSite(c, site, site === near, motionTime);
       }
     }
+    // The Lost Cabinets stand in front of the stalls, behind the people.
+    if (this.cabinets.length) this.drawCabinets(c, viewport, motionTime);
     if (this.isTown) {
       const f = this.lifeFrame;
       f.camera = this.camera; f.viewport = viewport; f.time = motionTime; f.reduced = this.reducedMotion;

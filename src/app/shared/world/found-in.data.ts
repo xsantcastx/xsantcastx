@@ -33,6 +33,7 @@ import { deepNodes } from '../../play/engine/underhearth-gen';
 import { foundIn, type AreaLike, type FoundInIndex, type FoundInPlace } from './found-in';
 import { MAP_TOOLS } from '../delve/map-tools.model';
 import { SLATE_ITEMS } from '../slate/slate-items.model';
+import { CABINET_ITEMS } from '../cabinets/cabinets.model';
 import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
 const DELVE_AREA = 'Ember Delve';
@@ -73,6 +74,8 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
   for (const tool of MAP_TOOLS) for (const place of tool.foundIn) rows.push({ place, materialIds: [tool.id] });
   // The Mirror Slate's two panes (shared/slate/slate-items.model.ts).
   for (const item of SLATE_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
+  // The Lost Cabinets' curios and extras (shared/cabinets/cabinets.model.ts).
+  for (const item of CABINET_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
   void CRATE_IDS;
   return rows;
 }

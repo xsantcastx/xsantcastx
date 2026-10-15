@@ -620,6 +620,7 @@ describe('the registry', () => {
       'eclipse-realm-rush-board',
       'godforge-activity',
       'godforge-bounties',
+      'godforge-cabinets',
       'godforge-chapter',
       'godforge-collection',
       'godforge-crafting',
