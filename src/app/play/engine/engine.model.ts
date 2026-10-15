@@ -73,9 +73,17 @@ export interface EngineState {
    * overhead, and the drift pockets' last shift epoch.
    */
   realm?: { id: string; tide: 'low' | 'rising' | 'high' | 'falling'; tideRows: number; nextTide: number; inkBlind: boolean; mirror: boolean; shift: number };
+  /** A guardian (a `once` creature) is the nearest foe: the score turns tense (shared/sound). */
+  boss?: boolean;
+  /** Liquids within a few cells of the Keeper (delves): the ambience beds near water, lava and ink. */
+  near?: { water: boolean; lava: boolean; ink: boolean };
+  /** Fish shadows drawn last frame (fish-shadows.ts), for tests and tools. */
+  fishShadows?: number;
   paused: boolean; defeated: boolean; enemyDefeated: boolean; complete: boolean; message: string;
 }
 export type FishingPhase = 'wait' | 'bite' | 'hooked';
+/** A world sound (EngineOptions.onSfx). */
+export interface EngineSfx { kind: 'step' | 'land' | 'dig' | 'break' | 'clang' | 'splash' | 'cast' | 'bite' | 'catch'; node?: string }
 /** The fishing line hooked something: the host rolls the catch and runs the reel (or settles it at once when `auto`). */
 export interface FishEvent {
   areaId: string;
@@ -186,6 +194,12 @@ export interface EngineOptions {
    * marks it found when the host says so (`setHeightsFound`).
    */
   onHeightFind?: (event: HeightFindEvent) => void;
+  /**
+   * A sound the world made (shared/sound): a footstep, a dig, a splash, the
+   * cast and the bite. `node` is the terrain node id it came from (the host
+   * turns it into a material); absent on a town street. Visual code never waits on it.
+   */
+  onSfx?: (cue: EngineSfx) => void;
   /**
    * Per-player delves: where a delve area's seed comes from and where its dug
    * and placed cells go. Absent (SSR, tests): the spec's fixed seed, and dug
