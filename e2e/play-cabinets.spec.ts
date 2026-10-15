@@ -10,7 +10,7 @@
  * nothing is paid twice. At 1280×800 and 390×844 (44 px targets).
  */
 import { expect, test, type Page } from '@playwright/test';
-import { bag, blob, canvas, focusWorld, messageLine, openPlay, placePanel, seed, stackQty, walk, walkTo, travelToTown } from './play-helpers';
+import { bag, blob, canvas, focusWorld, messageLine, openPlay, placePanel, seed, settleBetween, stackQty, walk, walkTo, travelToTown } from './play-helpers';
 
 /** One World: the Seamworks cabinet stands in the Material Vendor's loft (col 23, its floor 4 rows over the street). */
 const LADDER_X = 29 * 32 + 16;
@@ -45,8 +45,11 @@ async function playerY(page: Page): Promise<number> {
 async function climbToLedge(page: Page): Promise<void> {
   if (await playerY(page) === HIGH.y) { await walkTo(page, HIGH.x, 30); return; }
   await walkTo(page, LADDER_X, 10);
+  await settleBetween(page, LADDER_X - 12, LADDER_X + 12);
   await focusWorld(page);
-  await page.keyboard.down('KeyW'); await page.waitForTimeout(1500); await page.keyboard.up('KeyW');
+  await page.keyboard.down('KeyW');
+  try { await expect.poll(() => playerY(page), { timeout: 6000, intervals: [50] }).toBeLessThan(HIGH.y); }
+  finally { await page.keyboard.up('KeyW'); }
   await walk(page, 'a', HIGH.x + 10);
   await page.waitForTimeout(300);
   await walkTo(page, HIGH.x, 12);
@@ -110,8 +113,8 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false },
     await expect.poll(() => stackQty(page, 'curio-unstruck-bell'), { timeout: 5000 }).toBe(1);
     await expect.poll(() => opened(page), { timeout: 5000 }).toEqual(['cab-seamworks']);
     await expect.poll(() => gold(page), { timeout: 5000 }).toBeGreaterThan(before);
-    // Nothing else here for the glass to hear.
-    await expect(world).toHaveAttribute('data-scan', 'none', { timeout: 5000 });
+    // One World: the glass turns to the next cabinet it can hear in the Ember world (the forge-mines, deep under the street).
+    await expect(world).toHaveAttribute('data-scan', /cold|cool/, { timeout: 5000 });
     await shot(page, `${size.tag}-4-opened`);
 
     // ── The Codex's Cabinet of Curios lists it, with its lore and where. ──

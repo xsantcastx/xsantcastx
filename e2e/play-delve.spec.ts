@@ -261,8 +261,9 @@ test.describe('Ember Delve, played', () => {
     await expect(placePanel(page)).toBeHidden();
     await page.getByRole('button', { name: 'Return to camp', exact: true }).first().click();
     await expect(canvas(page)).toHaveAttribute('data-area', 'Basalt Seamworks');
-    await focusWorld(page);
-    await walkTo(page, SHAFT_X, 30);
+    // One World: the trench just dug lies between the town and the mine head; stand at the mine head by its link.
+    await page.waitForTimeout(1500);
+    await openPlay(page, '?at=delve');
     const descend = page.getByRole('button', { name: /Descend to your camp/ });
     await expect(descend).toBeVisible();
     await descend.click();
