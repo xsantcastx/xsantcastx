@@ -30,6 +30,8 @@ Built 2026-10-15: **Touch & tools** (`docs/handoff/touch-and-tools.md`): holding
 
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
+Built 2026-10-15: **One World, Phase 1** (`docs/handoff/one-world-p1.md`, design `docs/design/one-world.md`), behind the per-device preview gate (Menu → One World (preview), or `?oneworld=1`; off by default): the Basalt Seamworks stands on the Ember Delve's surface as buildings made of cells (awnings, signs, window displays, counters, chimney smoke, lit windows), keepers keep the clock (counter / the Hearth / upstairs) with `!`/`?` marks, Waystones to find and light (the trunk line's five town stones always lit), the Travel map (travel, recall), log in where you stood, save v3 keys. Next: P2 (the Quarry as a region, the High Roads in cells, the Plot), then P3 (the four realm worlds) and the flip.
+
 ## Milestones
 
 | Milestone | Player gets | Status |
