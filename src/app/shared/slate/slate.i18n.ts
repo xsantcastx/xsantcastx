@@ -30,6 +30,28 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.loading': { en: 'The glass clears…', es: 'El cristal se aclara…' },
   'slate.loadError': { en: 'The glass stayed dark. Close the Slate and open it again.', es: 'El cristal siguio oscuro. Cierra la Pizarra y abrela otra vez.' },
 
+  // The phone face (docs/handoff/world-clock.md)
+  'slate.phone.clock': { en: 'The world clock', es: 'El reloj del mundo' },
+  'slate.phone.nowPlaying': { en: 'Now playing', es: 'Sonando' },
+  'slate.phone.skip': { en: 'Next phrase', es: 'Siguiente frase' },
+  'slate.phone.skipped': { en: 'next phrase coming', es: 'llega la siguiente frase' },
+  'slate.phone.mute': { en: 'Mute all sound', es: 'Silenciar todo' },
+  'slate.phone.unmute': { en: 'Turn the sound back on', es: 'Volver a activar el sonido' },
+  'slate.phone.muted': { en: 'Muted', es: 'Silenciado' },
+  'slate.phone.eclipseIn': { en: 'Next eclipse in', es: 'Proximo eclipse en' },
+  'slate.phone.eclipseNow': { en: 'Eclipse now · ends in', es: 'Eclipse ahora · acaba en' },
+  'slate.phone.aligned': { en: 'Aligned with the {{realm}} realm. Gather its glass!', es: 'Alineado con el reino {{realm}}. Recoge su cristal!' },
+  'slate.phone.calendar': { en: 'This month', es: 'Este mes' },
+  'slate.phone.eclipseDay': { en: 'An eclipse day', es: 'Un dia de eclipse' },
+  'slate.phone.pages': { en: 'Slate pages', es: 'Paginas de la Pizarra' },
+  'slate.phone.page': { en: 'Page {{n}} of {{total}}', es: 'Pagina {{n}} de {{total}}' },
+  'slate.phone.dock': { en: 'Favourites', es: 'Favoritos' },
+  'slate.phone.mark': { en: 'Mark {{at}}: +{{glass}} Eclipse Glass and income', es: 'Marca {{at}}: +{{glass}} Cristal de Eclipse e ingresos' },
+  'slate.app.scan': { en: 'Scan', es: 'Escaner' },
+  'slate.app.pets': { en: 'Pets', es: 'Mascotas' },
+  'slate.app.codex': { en: 'Codex', es: 'Codice' },
+  'slate.app.eclipse': { en: 'Eclipse', es: 'Eclipse' },
+
   // Factory (the Homestead at a glance)
   'slate.factory.purse': { en: 'Purse', es: 'Bolsa' },
   'slate.factory.making': { en: 'Making', es: 'Produce' },

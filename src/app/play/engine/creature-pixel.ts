@@ -337,6 +337,67 @@ const DROWNED_LAMP: CreatureArt = {
   },
 };
 
+/**
+ * The Ink Lantern (world clock: out in the Unrecorded Corridors by dark): a round
+ * paper lantern of ink that drifts a little above the floor, an amethyst flame
+ * inside, a big pair of eyes on the paper, and an ink drip under it. It dims
+ * (its flame shrinks) when it is hit; it flares on the strike.
+ */
+const INK_LANTERN: CreatureArt = {
+  w: 26, h: 34,
+  paint(p, l, q) {
+    const X = shift(q, 3, 2), Y = q.bob - q.coil;
+    // The hanging cord and the cap.
+    l(13 + X, 0, 13 + X, 4 + Y, 1, NIGHT[3]);
+    p(9 + X, 4 + Y, 9, 2, NIGHT[2]); p(10 + X, 4 + Y, 7, 1, NIGHT[3]);
+    // The paper body: a round ink orb with ribs.
+    orb(p, 13 + X, 15 + Y, 9, 9, NIGHT[0], NIGHT[1], NIGHT[3]);
+    for (const rx of [7, 13, 19]) p(rx + X, 8 + Y, 1, 15, NIGHT[0]);
+    // The flame inside, seen through the paper: small when hurt, tall on the strike.
+    const flame = q.hurt ? 1 : q.lunge ? 4 : 2;
+    blob(p, 13 + X, 18 + Y, 3, flame, AMETHYST[1]);
+    blob(p, 13 + X, 18 + Y, 1, Math.max(1, flame - 1), AMETHYST[3]);
+    eye(p, 8 + X, 11 + Y, q, AMETHYST[3]); eye(p, 15 + X, 11 + Y, q, AMETHYST[3]);
+    // The base cap and the ink drip (it lengthens on the wind-up).
+    p(9 + X, 24 + Y, 9, 2, NIGHT[2]);
+    const drip = 3 + Math.round(q.coil * 3);
+    p(13 + X, 26 + Y, 1, drip, NIGHT[0]); p(12 + X, 26 + Y + drip, 3, 2, NIGHT[1]);
+  },
+};
+
+/**
+ * The Afterimage Moth (world clock: rises in the Reflection Channels under an
+ * eclipse): a round moth of pale noon light, each wing carrying the eclipse's
+ * dark disc with a gold ring, big dark eyes, feathered feelers. The wings beat
+ * with the stride and spread wide on the strike.
+ */
+const AFTERIMAGE_MOTH: CreatureArt = {
+  w: 34, h: 30,
+  paint(p, l, q) {
+    const X = shift(q, 3, 2), Y = q.bob + q.coil;
+    const beat = q.step ? (q.step > 0 ? -2 : 1) : 0, spread = q.lunge ? 2 : q.coil ? -1 : 0;
+    // The far wing, then the near one: pale discs with the eclipse on them.
+    for (const [cx, cy, far] of [[9, 9, true], [24, 9, false]] as const) {
+      const wy = cy + Y + beat;
+      blob(p, cx + X + (far ? -spread : spread), wy, 7 + spread, 7, far ? DAWN[0] : DAWN[1]);
+      blob(p, cx + X + (far ? -spread : spread), wy, 3, 3, GOLD[1]);
+      blob(p, cx + X + (far ? -spread : spread), wy, 2, 2, NIGHT[1]);
+      p(cx + X - 5, wy - 5, 2, 1, DAWN[2]);
+    }
+    // The body: a soft round thorax and a ringed abdomen.
+    orb(p, 17 + X, 20 + Y, 5, 6, STONE[1], DAWN[0], DAWN[2]);
+    for (const ry of [22, 24]) p(13 + X, ry + Y, 9, 1, STONE[1]);
+    // The legs, tucked.
+    for (const lx of [14, 18]) l(lx + X, 25 + Y, lx + X - 1, 29, 1, STONE[1]);
+    // The head and the feathered feelers.
+    const hx = 22 + X + q.lunge, hy = 14 + Y;
+    l(hx, hy - 3, hx + 3, hy - 8, 1, GOLD[1]); l(hx - 2, hy - 3, hx - 4, hy - 8, 1, GOLD[1]);
+    p(hx + 3, hy - 9, 2, 2, GOLD[2]); p(hx - 5, hy - 9, 2, 2, GOLD[2]);
+    orb(p, hx, hy, 4, 4, STONE[1], DAWN[1], DAWN[2]);
+    eye(p, hx - 3, hy - 2, q, GOLD[2]); eye(p, hx + 1, hy - 2, q, GOLD[2]);
+  },
+};
+
 /** The art for each creature key (MonsterDef.creature). Unknown keys keep the engine's own drawing. */
 export const CREATURE_ART: Readonly<Record<string, CreatureArt>> = {
   'rivet-maw': RIVET_MAW,
@@ -347,6 +408,9 @@ export const CREATURE_ART: Readonly<Record<string, CreatureArt>> = {
   'cinder-bailiff': CINDER_BAILIFF,
   'seam-eater': SEAM_EATER,
   'drowned-lamp': DROWNED_LAMP,
+  // The world clock's (play/world/clock-nodes.ts): out by dark, and under an eclipse.
+  'ink-lantern': INK_LANTERN,
+  'afterimage-moth': AFTERIMAGE_MOTH,
   // The Root Deeps' and the Prism Mines' (realm-creatures.ts).
   ...REALM_CREATURE_ART,
 };

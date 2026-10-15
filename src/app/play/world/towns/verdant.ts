@@ -14,6 +14,7 @@ import { FLOOR } from '../../engine/engine.model';
 import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import { eclipseGlassNode, moonwakeNode } from '../clock-nodes';
 
 /**
  * What a Rootglass Stag drops. Every material is a real stack id the Crafting
@@ -70,6 +71,9 @@ export const THICKET_NODES: readonly GatherNodeDef[] = [
     yield: { materialId: 'verdant-sap', qty: 1 }, respawn: 40 },
   { id: 'thornroot-bramble', x: 1050, kind: 'herb', label: 'Thornroot bramble', tools: { sickle: 3 }, hp: 2, discipline: 'foraging', xp: 15, minLevel: 25,
     yield: { materialId: 'thornroot', qty: 1 }, respawn: 45 },
+  // The world clock's: the Moonwake opens in the dark, the glass rises under an eclipse (world/clock-nodes.ts).
+  moonwakeNode(880),
+  eclipseGlassNode(620),
 ];
 
 export const ROOTGLASS_THICKET: HuntZoneDef = {

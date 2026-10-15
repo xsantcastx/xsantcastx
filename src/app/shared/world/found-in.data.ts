@@ -34,6 +34,7 @@ import { foundIn, type AreaLike, type FoundInIndex, type FoundInPlace } from './
 import { MAP_TOOLS } from '../delve/map-tools.model';
 import { SLATE_ITEMS } from '../slate/slate-items.model';
 import { CABINET_ITEMS } from '../cabinets/cabinets.model';
+import { CLOCK_ITEMS } from '../world-clock/eclipse.model';
 import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
 const DELVE_AREA = 'Ember Delve';
@@ -54,7 +55,7 @@ const DELVE_MATERIALS: FoundInIndex['delve'] = {
 function fishingRows(): { place: string; materialIds: string[] }[] {
   const rows: { place: string; materialIds: string[] }[] = (Object.keys(WATERS) as WaterId[]).map(water => ({
     place: `${DELVE_AREA}: fishing ${WATERS[water].name}`,
-    materialIds: CATCHES.filter(c => c.rarity !== 'quest' && c.rarity !== 'crate' && c.waters.includes(water)).map(c => c.id)
+    materialIds: CATCHES.filter(c => c.rarity !== 'quest' && c.rarity !== 'crate' && !c.when && c.waters.includes(water)).map(c => c.id)
       .concat(CATCHES.filter(c => c.rarity === 'crate' && c.waters.includes(water)).map(c => c.id)),
   }));
   rows.push({ place: `${DELVE_AREA}: the Lodge Warden's Ledger Catch, on its day`, materialIds: [...LEDGER_CATCH_IDS] });
@@ -76,6 +77,8 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
   for (const item of SLATE_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
   // The Lost Cabinets' curios and extras (shared/cabinets/cabinets.model.ts).
   for (const item of CABINET_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
+  // The world clock's: the Moonwake, the Mirrorfin and the Eclipse Glass, each at its hour (shared/world-clock/eclipse.model.ts).
+  for (const item of CLOCK_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
   void CRATE_IDS;
   return rows;
 }
@@ -107,7 +110,8 @@ function terrainNodes(spec: TerrainSpec | undefined): string[] {
 function areaLike(area: AreaDef): AreaLike {
   return {
     name: area.name, drops: area.drops, monsters: area.monsters, terrainNodes: terrainNodes(area.terrain),
-    gatherMaterials: (area.nodes ?? []).map(node => node.yield.materialId),
+    // A node that keeps an hour (night, an eclipse) says so in its own Found in line (CLOCK_ITEMS).
+    gatherMaterials: (area.nodes ?? []).filter(node => !node.when).map(node => node.yield.materialId),
   };
 }
 

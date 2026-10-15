@@ -1567,3 +1567,42 @@ never shut: at night E rings the bell — "A window lights upstairs, a yawn, the
 
 **The move.** "Your Delve moved under the town. What you had earned came with you; what your chests held is
 back in your Satchel and Vault." (v2's claims carry over; tunnels dug in v2 do not: the world moved.)
+
+## Day, night and the eclipse (2026-10-15) — shipped, owner reviews in play
+
+Builds on Canon ("the Eclipse is a recurring cosmic pressure"; Umbral: the Nocturne Archive "beneath a fractured moon
+mirror"), Sera Quill (Chief Meridian: "designed the eclipse model; wants it proved sound before panic weaponises every
+estimate") and the Mirror Slate (a palm of that same mirror). Code: `src/app/shared/world-clock/`.
+
+**The world's clock.** The realms keep one hour between them, the Meridian's: a day of twenty-four hours, a week of
+seven days, a year of five months, one for each realm. The days are *Forgeday, Lightday, Inkday, Starday, Rootday,
+Hearthday* and *Moonday*; the months *Emberwane* (Infernal), *Brightmere* (Luminous), *Inkfall* (Umbral), *Starturn*
+(Celestial) and *Rootwake* (Verdant), fourteen days each. The years are counted from the morning the seam was held:
+"Year N of the Held Seam". The Slate shows the hour because the moon mirror has always known it: every shard of it
+still faces the sky it broke under.
+
+**The eclipse.** Every fifth day the moon mirror crosses the sun for eight hours. The sky goes dark at noon, the
+mirror throws the sun back in four spikes, and its flare is caught in the rock as **Eclipse Glass** ("warm on the side
+that faced the sun and cold on the side that faced the Archive"). Each eclipse leans on one realm in turn (Infernal,
+Luminous, Umbral, Celestial, Verdant): that realm's hunting ground gives the glass two to a cut. Under it the night
+wakes at noon: the Moonwake opens, the Mirrorfin bites, the Ink Lanterns drift. Rift shrines touched under it drink
+the dark and show twice as far. Sera's line about it: "Every eclipse is an observation."
+
+**Sera Quill's Eclipse Ledger.** Sera wants every eclipse watched by someone who will write down what they saw, so she
+keeps a ledger and pays for each observation, more at its marks (1, 3, 5, 8). Her rule, and the owner's: *a missed
+eclipse is a gap in the data, not a mistake; the next one counts the same.*
+
+**The dark's things.** *Moonwake Bloom*: "It shuts the moment anyone looks straight at the sun. The Archive keeps one
+in a drawer, to prove the night happened." *Mirrorfin*: "Its scales are slivers of the moon mirror, and it swims up to
+see itself. By day it remembers it is a fish and goes back down." The **Ink Lantern** (Bestiary, at last in the world)
+drifts the Unrecorded Corridors by dark; the **Afterimage Moth** rises in the Reflection Channels only under an
+eclipse — what the sun leaves behind when the moon crosses it.
+
+**Who notices the hour.** Tomas Rill at night ("Every lantern in the Court is mine now. Walk slowly; they like to be
+admired."); Sera Quill under the eclipse (the ledger); Rook Sable at night; the Arena's gatekeeper at dawn; the Trials
+Warden under the eclipse ("The gates go quiet under an eclipse. Even they stop to look up."). Glim at nightfall ("I can draw the Moonwake now; it only holds still at night"), at the eclipse ("I am
+brighter than the sky. I don't like it, and I love it.") and at dawn.
+
+**The music.** At night the realm's tune drops an octave and leaves longer silences; under the eclipse its third goes
+minor over a soft drone, "like a guardian the size of the sky". The Slate names each realm's theme: *Hymn of the Held
+Seam*, *Noon over the Court*, *Margins of the Archive*, *The Orrery Turns*, *Rootwake*.
