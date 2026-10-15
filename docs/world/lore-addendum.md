@@ -1438,3 +1438,46 @@ deep places (eight in all). None is bought and none is given away: each is found
 A pet is never hungry and never leaves. Feeding it what it likes only makes it fonder: at four it learns a trick,
 at ten it gets a hat (a forge cap, a sunbloom crown, an amethyst bow, a star hat, an acorn cap, a miner's helmet,
 a crescent circlet, a dawn-glass visor). Glim says one thing about each, the first time it meets them.
+
+## The Lost Cabinets (2026-10-15) — shipped, owner reviews in play
+
+The Lost Cabinets (`docs/handoff/lost-cabinets.md`, `shared/cabinets/cabinets.model.ts`, every word in
+`shared/cabinets/cabinets.i18n.ts`, EN + ES). Owner idea: scan for them with the Mirror Slate.
+
+**The maker: the Archivist, carried by the Ridge Couriers.** Before the Waystones the Archivist kept a Cabinet of
+Curios: sixteen small true things the Archive could not file (a bell nobody rang, a seed that said no, a page left
+blank on purpose). "A record that cannot hold a thing should not pretend to," she wrote, and sent each one home with
+a Ridge Courier (the High Roads' couriers, above), to be kept where it was true. Every cabinet was latched with a
+sliver of the Archive's moon mirror, so only the Archive's own glass could find it again. Then the Waystones came,
+the Couriers stopped walking, and nobody wrote down where. Builds on: the Ridge Couriers and their caches (surface
+height), the Mirror Slate ("a palm of the Archive's moon mirror"), the Archivist "putting things down" (the kept
+morning), Hollis Fenn, the last Ridge Courier.
+
+**Why the Scan is the Slate's first face.** The Slate is a palm of that same moon mirror: held up, it warms near
+its own latches. It is Lune's glass that knows them, not Kael's brass, so a tier I Slate can scan.
+
+**The sixteen** (catalogue order; place → curio): the Basalt Seamworks (up on the camp's high ledge) → *The Unstruck Bell*; the Luminous Court →
+*A Jar of Noon*; the Nocturne Archive → *A Page Left Blank on Purpose* (its margin points under the Umbral gate); the
+Celestial Orrery → *The Orrery's Lost Moon*; the Rootglass Canopy → *A Seed That Would Not*; Ember Quarry → *A
+Courier's Tally Stick* (the last notch half cut: the Waystones opened that morning); the Reflection Channels' High
+Road → *A Mirror That Blinked* (a beam's path into the Prism Mines); the Unrecorded Corridors → *The Unsigned
+Letter* (the Corridors could not copy it: nobody to substitute), with the *Hatbox of Small Crowns*; the Orrery
+Rings' High Road → *A Compass Rose Pressed Flat* (its north twitches toward the wells); the Rootglass Thicket →
+*Moss in a Locket* (it grows toward the roots below the gate); the Ember Delve's Basalt Caverns → *The Forge-Mine
+Lamp Wick* ("Deeper. The warm one waits under the halls."); the Underhearth → *A Coal That Kept Its Word*; the Ink
+Deeps → *A Bottle of Clean Ink*; the Root Deeps → *The Ring Count* (dated "tomorrow", filed under patience); the
+Prism Mines → *A Shadow, Folded*; the Orrery Wells → *The Last Star Chart* (its last line in the Archivist's hand).
+
+**Clues.** Five curios carry a courier's note that tunes the glass to a deeper cabinet (Archive → Ink Deeps,
+Thicket → Root Deeps, Prism road → Prism Mines, Orrery road → Orrery Wells, forge-mines → Underhearth); until then
+the deep cabinet is silent to the glass.
+
+**Treats and hats.** *Courier's Honeycomb*: couriers carried it on the high roads; it never spoils, and every
+animal on the way would forgive you for anything (every pet eats it like its favourite). The *Hatbox of Small
+Crowns*: one tiny hat for every kind of small creature the Archive ever met; they all fit; nobody knows how.
+
+**The story arc** (one page per four cabinets): *The Archivist's docket* (every column ticked but "Collected"),
+*What Hollis remembers* (he drew no lot: "Too young, she said. Carry letters. Letters come back."), *Why she put
+them down*, *The Last Page*: the docket is full, and she sends her own *Curator's Loupe*: "You found what I put
+down. Keep looking; it suits you." Glim, once its notice is open: "Your glass is warm. Something rare is near. I
+can feel the latch from here."

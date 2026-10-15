@@ -227,9 +227,12 @@ export const SENSE_CELLS = 14;
 /** Notice: rare finds within this many cells (sector columns are 64 wide). */
 export const NOTICE_CELLS = 64;
 /**
- * The rare things Glim notices. Today the rift shrine (one per few sectors);
- * the Lost Cabinets (ROADMAP #6) join this list when they exist — the hook is
- * the structure kind, nothing else changes.
+ * The rare things Glim notices in the Delve's generated structures: the rift
+ * shrine (one per few sectors) and the gates. The Lost Cabinets are not
+ * structures (they stand at fixed points, surface and Delve alike), so they
+ * join the notice through the Mirror Slate's Scan instead: on a warm glass
+ * Glim brightens, and at this stage says so once a cabinet
+ * (side-scroller tickScan; docs/handoff/lost-cabinets.md).
  */
 export const GLIM_RARE_KINDS: readonly string[] = ['rift-shrine', 'rift-gate'];
 /** The way home: said unasked when the shaft is this many cells away (walk + climb). */

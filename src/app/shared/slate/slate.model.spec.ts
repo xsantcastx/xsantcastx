@@ -51,8 +51,8 @@ describe('Mirror Slate rules', () => {
 
   it('adds the map tab at tier II and nothing at all without a pane', () => {
     expect(slateTabs(0)).toEqual([]);
-    expect(slateTabs(1)).toEqual(['tables', 'factory']);
-    expect(slateTabs(2)).toEqual(['tables', 'factory', 'map']);
+    expect(slateTabs(1)).toEqual(['tables', 'factory', 'scan']);
+    expect(slateTabs(2)).toEqual(['tables', 'factory', 'map', 'scan']);
   });
 
   describe('the busy rule', () => {

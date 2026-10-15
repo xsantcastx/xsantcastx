@@ -27,6 +27,13 @@
             <span class="sl-tile__name">{{ t('slate.tab.map') }}</span>
           </button>
         }
+        @if (tabs.includes('scan')) {
+          <button type="button" class="sl-tile sl-tile--wide" data-face="scan" (click)="open('scan')">
+            <i class="sl-ico" data-ico="scan" [attr.data-warmth]="warmth" aria-hidden="true"></i>
+            <span class="sl-tile__name">{{ t('cabinet.scan.tile') }}</span>
+            <span class="sl-tile__sub">{{ t('cabinet.scan.tileSub', { n: found, total: cabinetTotal }) }}</span>
+          </button>
+        }
       </div>
     </nav>
 
@@ -40,7 +47,7 @@
   } @else {
     <div class="sl-bar">
       <button type="button" class="sl-back" (click)="back()">{{ t('slate.back') }}</button>
-      <h3 class="sl-face-title">{{ face === 'tables' ? t(gameTitleKey) : t('slate.tab.' + face) }}</h3>
+      <h3 class="sl-face-title">{{ face === 'tables' ? t(gameTitleKey) : face === 'scan' ? t('cabinet.scan.title') : t('slate.tab.' + face) }}</h3>
     </div>
   }
 
@@ -118,6 +125,48 @@
           <p class="sl-note">{{ t('slate.map.pinsNone') }}</p>
         }
       </div>
+    </section>
+  }
+
+  @if (face === 'scan') {
+    <!-- The Scan (the Lost Cabinets): what the glass reads, ONE primary action, the set and the clues. -->
+    <section class="sl-pane sl-scan" [attr.aria-label]="t('cabinet.scan.title')" [attr.data-scanning]="scanning" [attr.data-warmth]="warmth">
+      <div class="sl-card sl-scan__read">
+        <i class="sl-glass" [attr.data-warmth]="scanning ? warmth : 'none'" aria-hidden="true"></i>
+        <p class="sl-scan__line" role="status">{{ scanning ? t('cabinet.warmth.' + warmth) : t('cabinet.scan.idle') }}</p>
+      </div>
+      @if (scanning) {
+        <button type="button" class="sl-collect sl-scan__go" data-scan-away (click)="putAway()">{{ t('cabinet.scan.away') }}</button>
+      } @else {
+        <button type="button" class="sl-collect sl-scan__go" data-scan-hold (click)="holdUp()">{{ t('cabinet.scan.hold') }}</button>
+      }
+      <p class="sl-note">{{ t('cabinet.scan.how') }}</p>
+      <div class="sl-card">
+        <h3>{{ t('cabinet.scan.found', { n: found, total: cabinetTotal }) }}</h3>
+        <ul class="sl-list sl-bonus">
+          @for (b of bonuses; track b.id) {
+            <li [attr.data-bonus]="b.id" [attr.data-reached]="b.reached">
+              <span class="sl-list__name">{{ t('cabinet.bonus.' + b.id) }}</span>
+              <span class="sl-list__meta">{{ b.reached ? t('cabinet.scan.reached') : t('cabinet.scan.at', { n: b.at }) }}</span>
+              <small>{{ t('cabinet.bonus.' + b.id + '.text') }}</small>
+            </li>
+          }
+        </ul>
+      </div>
+      @if (clues.length) {
+        <div class="sl-card">
+          <h3>{{ t('cabinet.scan.clues') }}</h3>
+          <ul class="sl-list">
+            @for (c of clues; track c) { <li><span class="sl-list__name">{{ c }}</span></li> }
+          </ul>
+        </div>
+      }
+      <details class="sl-details">
+        <summary>{{ t('cabinet.scan.details') }}</summary>
+        <p class="sl-lore">{{ t('cabinet.scan.lore') }}</p>
+        <p>{{ t('cabinet.scan.deep') }}</p>
+        @if (loupe) { <p>{{ t('cabinet.scan.loupe') }}</p> }
+      </details>
     </section>
   }
 </div>

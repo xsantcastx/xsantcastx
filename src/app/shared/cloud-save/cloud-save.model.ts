@@ -55,6 +55,7 @@ import { mergeKeeperLook } from '../keeper-look/keeper-look.model';
 import { mergeBounties } from '../bounties/bounty-save.model';
 import { mergeStory } from '../story/story-save.model';
 import { mergeHeights } from '../heights/heights-save.model';
+import { mergeCabinets } from '../cabinets/cabinets-save.model';
 import { mergeSound } from '../sound/sound-settings.model';
 import { mergePets } from '../pets/pets-save.model';
 
@@ -477,6 +478,16 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // hatch, the later name / hat / follower, the higher love and tally.
     // See pets-save.model.ts.
     merge: mergePets,
+  },
+  {
+    key: 'godforge-cabinets',
+    collection: 'progress',
+    doc: 'cabinets',
+    label: 'The Lost Cabinets',
+    // `{ version, opened, rewards }`: the Lost Cabinets opened (each id is the
+    // receipt, written before anything is granted) and the set's final reward.
+    // Both only grow: a union. See cabinets-save.model.ts.
+    merge: mergeCabinets,
   },
 ];
 

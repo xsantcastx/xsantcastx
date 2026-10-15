@@ -92,6 +92,10 @@ export const QUEST_STACKS: ReadonlySet<string> = new Set([
   'mirror-slate', 'mirror-slate-ii',
   // The Underhearth (Phase 8): the Four Hammer-Marks, kept after the first fight (they wake the furnace).
   'four-hammer-marks',
+  // The Lost Cabinets (shared/cabinets): the sixteen curios, the hatbox and the loupe are kept, never a slot.
+  'curio-unstruck-bell', 'curio-jar-of-noon', 'curio-blank-page', 'curio-lost-moon', 'curio-stubborn-seed', 'curio-tally-stick',
+  'curio-blinking-mirror', 'curio-unsigned-letter', 'curio-pressed-rose', 'curio-moss-locket', 'curio-lamp-wick', 'curio-kept-coal',
+  'curio-clean-ink', 'curio-backward-rings', 'curio-folded-shadow', 'curio-last-chart', 'hatbox-of-small-crowns', 'curators-loupe',
 ]);
 
 /**

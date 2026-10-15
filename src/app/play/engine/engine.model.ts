@@ -65,6 +65,8 @@ export interface EngineState {
   furnace?: { phase: 'banked' | 'open'; doused: number; open: number; breathing: boolean; vents: string };
   /** The high-ground find within reach (nearby is then 'height'), and whether this player has used it. */
   height?: { id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean };
+  /** The Lost Cabinet within reach (nearby is then 'cabinet'), and whether it is open. */
+  cabinet?: { id: string; open: boolean };
   /** On a surface with height: free, climb, hang or mantle. */
   climbing?: 'free' | 'climb' | 'hang' | 'mantle';
   /**
@@ -209,6 +211,12 @@ export interface EngineOptions {
    * marks it found when the host says so (`setHeightsFound`).
    */
   onHeightFind?: (event: HeightFindEvent) => void;
+  /**
+   * A Lost Cabinet (shared/cabinets) shown by the Mirror Slate's Scan was
+   * opened (E within reach). The host books it once per player and answers by
+   * re-sending the marks (`setCabinets`) with it open.
+   */
+  onCabinet?: (event: CabinetEvent) => void;
   /**
    * A sound the world made (shared/sound): a footstep, a dig, a splash, the
    * cast and the bite. `node` is the terrain node id it came from (the host
@@ -383,6 +391,10 @@ export interface WorldActionEvent {
    */
   site?: string;
 }
+/** A Lost Cabinet the engine draws: shown by the Scan, or already open. World point = its feet. */
+export interface CabinetMark { id: string; area: string; x: number; y: number; open: boolean; delve: boolean }
+/** A Lost Cabinet was used (EngineOptions.onCabinet). */
+export interface CabinetEvent { areaId: string; id: string; open: boolean }
 /** A high-ground find was used (EngineOptions.onHeightFind). */
 export interface HeightFindEvent { areaId: string; id: string; kind: 'cache' | 'carving' | 'lookout' | 'summit'; found: boolean }
 export interface Body { x: number; y: number; vy: number; grounded: boolean }

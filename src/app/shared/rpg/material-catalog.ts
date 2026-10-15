@@ -155,6 +155,26 @@ const MATERIAL_NAMES: Readonly<Record<string, string>> = {
   // The Mirror Slate's two panes (shared/slate/slate-items.model.ts).
   'mirror-slate': 'Mirror Slate',
   'mirror-slate-ii': 'Mirror Slate II',
+  // The Lost Cabinets (shared/cabinets/cabinets.model.ts CABINET_ITEMS; cabinets.spec pins the names together).
+  'curio-unstruck-bell': 'The Unstruck Bell',
+  'curio-jar-of-noon': 'A Jar of Noon',
+  'curio-blank-page': 'A Page Left Blank on Purpose',
+  'curio-lost-moon': 'The Orrery\'s Lost Moon',
+  'curio-stubborn-seed': 'A Seed That Would Not',
+  'curio-tally-stick': 'A Courier\'s Tally Stick',
+  'curio-blinking-mirror': 'A Mirror That Blinked',
+  'curio-unsigned-letter': 'The Unsigned Letter',
+  'curio-pressed-rose': 'A Compass Rose Pressed Flat',
+  'curio-moss-locket': 'Moss in a Locket',
+  'curio-lamp-wick': 'The Forge-Mine Lamp Wick',
+  'curio-kept-coal': 'A Coal That Kept Its Word',
+  'curio-clean-ink': 'A Bottle of Clean Ink',
+  'curio-backward-rings': 'The Ring Count',
+  'curio-folded-shadow': 'A Shadow, Folded',
+  'curio-last-chart': 'The Last Star Chart',
+  'courier-honeycomb': 'Courier\'s Honeycomb',
+  'hatbox-of-small-crowns': 'Hatbox of Small Crowns',
+  'curators-loupe': 'Curator\'s Loupe',
 };
 
 function displayFor(id: string, name: string, entry: ArtEntry | null | undefined): MaterialDisplay | undefined {

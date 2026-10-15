@@ -11,6 +11,7 @@
  * so the importer's real file takes over the moment it lands. Pure.
  */
 import type { ArtEntry } from './art-manifest.generated';
+import { CURIO_ICONS } from '../cabinets/curio-icons';
 
 /** A shape: 16 rows of 16 chars. '.' is clear; every other char is a palette slot. */
 type Shape = readonly string[];
@@ -621,6 +622,8 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette; glow?: st
   'starsteel': { shape: LUMP, palette: { b: '#6a7890', l: '#d8ecff', d: '#24406e', e: '#ffffff', f: '#a8b8cc' }, glow: '#d8ecff' },
   'meridian-glass': { shape: SHARD, palette: { b: '#24406e', l: '#5fb6ff', e: '#d8ecff', d: '#0a1428', f: '#ffffff' }, glow: '#5fb6ff' },
   'orrery-key': { shape: KEY, palette: { b: '#8a6a3a', l: '#e8c47a', d: '#4a3a1e', f: '#a8b8cc', e: '#5fb6ff' }, glow: '#e8c47a' },
+  // The Lost Cabinets' curios, the honeycomb, the hatbox and the loupe (shared/cabinets/curio-icons.ts).
+  ...CURIO_ICONS,
 };
 
 /**
