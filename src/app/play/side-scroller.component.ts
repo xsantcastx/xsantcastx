@@ -435,7 +435,7 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly waystones = inject(WaystoneService);
   private readonly worldMigration = inject(WorldMigrationService);
   /** Last resume point taken (ms), and whether a saved one was used on this mount. */
-  private resumeAt = 0;
+  private resumeAt = Date.now();
   private resumed = false;
   /** The world clock's hour handed to the engine (the HUD tick), and the keepers' head marks' signature. */
   hour = 12;
@@ -789,7 +789,8 @@ export class SideScrollerComponent implements OnDestroy {
       this.waystones.attach(this.waystoneHost);
       this.engine.setStoneState(this.waystones.litSet(), this.waystones.seenSet());
       this.tickWorld();
-      if (!this.resumed) this.resume();
+      // Hydration can swap the canvas (and the engine) once: every mount in the first seconds of the visit resumes.
+      if (!this.resumed || Date.now() - this.openedAt < 8000) this.resume();
     }
     if (this.pendingAt) { const at = this.pendingAt; this.pendingAt = null; this.applyAt(at); }
   }

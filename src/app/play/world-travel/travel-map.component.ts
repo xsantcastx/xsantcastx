@@ -88,7 +88,7 @@ interface PinSpot { stone: WaystonePin; x: number; y: number }
     .travel-lead { margin: 0; color: var(--ink-2); font: 500 0.92rem/1.35 var(--font-ui); }
     .travel-map { position: relative; height: clamp(180px, 34vh, 300px); border: var(--border-hairline); border-radius: var(--radius-md); overflow: hidden; background: var(--obsidian-1); }
     .travel-map canvas { width: 100%; height: 100%; display: block; image-rendering: pixelated; }
-    .pin { position: absolute; width: 44px; height: 44px; margin: -40px 0 0 -22px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: end center; }
+    .pin { position: absolute; width: 48px; height: 48px; margin: -44px 0 0 -24px; padding: 0; border: 0; background: none; cursor: pointer; display: grid; place-items: end center; }
     .pin i { width: 14px; height: 26px; border-radius: 3px 3px 1px 1px; background: var(--obsidian-4); box-shadow: 0 0 0 2px var(--obsidian-0); }
     .pin--lit i { background: var(--gold); box-shadow: 0 0 0 2px var(--obsidian-0), 0 0 12px var(--gold); }
     .pin--here i { outline: 2px solid var(--ink-0); outline-offset: 2px; }
@@ -96,7 +96,7 @@ interface PinSpot { stone: WaystonePin; x: number; y: number }
     .pin:focus-visible { outline: var(--focus-ring); outline-offset: 2px; }
     .travel-head { margin: 4px 0 0; color: var(--gold); font: 600 0.78rem/1.2 var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase; }
     .travel-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
-    .row { width: 100%; min-height: 44px; display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px; padding: 8px 12px; text-align: left;
+    .row { width: 100%; min-height: 48px; display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px; padding: 8px 12px; text-align: left;
       border: var(--border-hairline); border-radius: var(--radius-md); background: var(--obsidian-2); color: var(--ink-1); font: 500 0.95rem/1.25 var(--font-ui); cursor: pointer; }
     .row small { color: var(--ink-3); font-size: 0.78rem; }
     .row .dot { width: 10px; height: 16px; border-radius: 2px; background: var(--obsidian-4); }
