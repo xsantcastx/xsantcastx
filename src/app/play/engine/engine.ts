@@ -6,7 +6,8 @@ import { FIGURE_TOP, KeeperPainter } from '../../shared/keeper-look/keeper-paint
 import { CREATURE_ART, CREATURE_PIXEL, creatureFrame, CreaturePainter } from './creature-pixel';
 import { PropPainter } from './prop-pixel';
 import { itemIcon, plaqueIcon } from '../../shared/art/item-icons';
-import { keeperAction, type KeeperGear } from '../../shared/keeper-look/keeper-gear';
+import { keeperAction, type GearPiece, type KeeperGear } from '../../shared/keeper-look/keeper-gear';
+import type { HeldToolKind } from '../../shared/skills/held-tool';
 import { lookFromSeed, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import { createKeeperMotion, KEEPER, KEEPER_HAND, KEEPER_RIG, KeeperMotion, poseKeeper, trackKeeper } from './rig-poses';
 import { resetPose, RigSprite } from './rig';
@@ -149,6 +150,17 @@ const COYOTE = .1;
 const DROP_THROUGH = .25;
 /** Seconds between swings: combat, and digging/gathering with a starter tool. */
 const BASE_SWING = .52;
+/** Seconds a tool stays in hand after its last use (the work has stopped: the weapon comes back). */
+const TOOL_HOLD_SECONDS = 3;
+/** A live foe this near (world px at figure 1) puts the tool away and the weapon in hand. Melee reach is 145. */
+const FOE_NEAR = 260;
+/** The once-a-session hint when an activity wants a tool the Keeper does not hold (keys in hud.i18n.ts). */
+const NO_TOOL_EN: Readonly<Record<HeldToolKind, string>> = {
+  pickaxe: 'No pickaxe in your satchel: the Crafting Bench forges one.',
+  axe: 'No axe in your satchel: the Crafting Bench forges one.',
+  sickle: 'No sickle in your satchel: the Crafting Bench forges one.',
+  rod: 'No rod in your satchel: the Crafting Bench makes one.',
+};
 /** No tool pace may beat this (guards a bad setTools value). */
 const MIN_SWING = .25;
 /** Holding to place along a drag: one block per this many seconds, never faster than the fastest swing. */
@@ -298,6 +310,16 @@ export class SeamworksEngine {
   private keeperPainter: KeeperPainter | null = null;
   /** Other Keepers in the room: a stable look from their id, so nobody looks the same. */
   private readonly peerPainters = new Map<string, KeeperPainter>();
+  /**
+   * The tool in hand (shared/skills/held-tool.ts): per activity, the layer the
+   * host found in the satchel (setHeldTools); the one in hand now, or null for
+   * the equipped weapon. Visual only: no item moves between slots.
+   */
+  private heldPieces: Partial<Record<HeldToolKind, GearPiece>> = {};
+  private toolInHand: HeldToolKind | null = null;
+  private toolHandUntil = 0;
+  private readonly toolPainters = new Map<string, KeeperPainter>();
+  private readonly toolHinted = new Set<HeldToolKind>();
   /** Pixel creatures (creature-pixel.ts), one painter per creature key; null = keep the sheet / rig. */
   private readonly creaturePainters = new Map<string, CreaturePainter | null>();
   /** Pixel props (prop-pixel.ts): stalls, waystone, arches, nodes, coins. Null without a DOM: the vector fallbacks draw. */
@@ -596,6 +618,8 @@ export class SeamworksEngine {
     this.terrainRenderer.attach(this.terrain); this.cameraY = 0;
     this.liquid = this.terrain ? this.sims.get(area.id) ?? null : null;
     this.chars.clear(); this.line = null; this.recast = 0;
+    // A new place: the weapon is in hand (the tool comes out again with the first swing or cast).
+    this.putToolAway();
     this.breath = this.breathMax; this.burning = 0; this.immersed = 0; this.headUnder = false;
     this.fog = this.terrain ? this.fogs.get(area.id) ?? null : null; this.fogAt = NaN;
     this.holdMode = null; this.clearAim(); this.dropTime = 0; this.jumpBuffer = 0;
@@ -1396,6 +1420,64 @@ export class SeamworksEngine {
     const next = new KeeperPainter(look, gear);
     if (next.key !== this.keeperPainter?.key) this.keeperPainter = next;
   }
+  /**
+   * What each activity puts in hand (held-tool.ts `heldToolPieces`): the best
+   * pickaxe, axe, sickle and rod the Keeper holds. A kind left out means none
+   * is held (the activity keeps the weapon and hints once).
+   */
+  setHeldTools(pieces: Partial<Record<HeldToolKind, GearPiece>>): void {
+    this.heldPieces = { ...pieces };
+    if (this.toolInHand && !pieces[this.toolInHand]) this.putToolAway();
+  }
+  /** The tool in hand now, or null (the equipped weapon is shown). */
+  get heldTool(): HeldToolKind | null { return this.toolInHand; }
+  /** An activity started or went on: take its tool in hand (unless a foe is near). */
+  private takeTool(kind: HeldToolKind): void {
+    if (!this.heldPieces[kind]) {
+      if (!this.toolHinted.has(kind)) { this.toolHinted.add(kind); this.say(`play.hud.tool.missing.${kind}`, NO_TOOL_EN[kind]); }
+      return;
+    }
+    if (this.foeNear()) return;
+    this.toolHandUntil = this.elapsed + TOOL_HOLD_SECONDS;
+    if (this.toolInHand === kind) return;
+    this.toolInHand = kind;
+    this.toolSwapped();
+  }
+  private putToolAway(): void {
+    if (!this.toolInHand) return;
+    this.toolInHand = null;
+    this.toolSwapped();
+  }
+  private toolSwapped(): void {
+    try { this.options.onHeldTool?.(this.toolInHand); } catch { /* the swap is only a look */ }
+  }
+  /** Each step: a foe near, or the work stopped, and the weapon comes back. The rod stays while a line is out. */
+  private updateToolInHand(): void {
+    if (!this.toolInHand) return;
+    if (this.foeNear() || this.hp <= 0) { this.putToolAway(); return; }
+    if (this.toolInHand === 'rod' && (this.line || this.recast > 0)) { this.toolHandUntil = Math.max(this.toolHandUntil, this.elapsed + 1.5); return; }
+    if (this.elapsed > this.toolHandUntil) this.putToolAway();
+  }
+  private foeNear(): boolean {
+    const reach = FOE_NEAR * this.figure;
+    for (const monster of this.monsters) if (monster.hp > 0 && Math.abs(monster.x - this.player.x) < reach) return true;
+    return false;
+  }
+  /** The painter to draw the player with: their own, or the same Keeper with the tool in hand. */
+  private handPainter(): KeeperPainter | null {
+    const base = this.keeperPainter;
+    const piece = this.toolInHand ? this.heldPieces[this.toolInHand] : null;
+    if (!base || !piece) return base;
+    const key = `${base.key}>${piece.kind}:${piece.style}:${piece.rarity}`;
+    let painter = this.toolPainters.get(key);
+    if (!painter) {
+      // One painter per tool look (each holds one frame sheet); a new Keeper look clears the old ones.
+      if (this.toolPainters.size >= 6) this.toolPainters.clear();
+      painter = new KeeperPainter(base.look, { ...(base.gear ?? {}), weapon: piece });
+      this.toolPainters.set(key, painter);
+    }
+    return painter;
+  }
   /** Light up the pixel Keeper's face for a moment: joy on a level up, surprise on a rare find. Visual only. */
   keeperFeel(face: 'happy' | 'surprised', seconds = 1): void {
     this.feelFace = face; this.feelUntil = this.elapsed + seconds;
@@ -1536,9 +1618,14 @@ export class SeamworksEngine {
     if (!check.ok || need) {
       this.debris.chip(def.x, top, '#ffe2a8', 6);
       this.clang(def.x, top, check.ok ? `Clang! Needs ${need}` : `Clang! Need ${need}`);
+      // None of that tool held at all, and any one would do (tier I): once a session, the line says where one
+      // comes from. A higher tier keeps the clang's own line ("Need Axe II"), which already names it.
+      const want = check.ok || check.need?.tier !== 1 ? null : check.need.tool;
+      if ((want === 'pickaxe' || want === 'axe' || want === 'sickle') && !this.heldPieces[want]) this.takeTool(want);
       return;
     }
     this.attackCooldown = this.swingFor(check.tool);
+    if (check.tool === 'pickaxe' || check.tool === 'axe' || check.tool === 'sickle') this.takeTool(check.tool);
     site.shake = 1;
     const left = site.hp - check.damage;
     if (left > 1e-3) {
@@ -1591,6 +1678,12 @@ export class SeamworksEngine {
     this.swingTool = null;
     this.hitCells(1, SWING_TOOLS, false);
     this.attackCooldown = this.swingFor(this.swingTool);
+    this.toolBit();
+  }
+  /** After a swing at the rock: the tool that bit goes in hand (pickaxe, axe, sickle). */
+  private toolBit(): void {
+    const tool = this.swingTool;
+    if (tool === 'pickaxe' || tool === 'axe' || tool === 'sickle') this.takeTool(tool);
   }
 
   // -- Delve: smart cursor and held use (Terraria) ---------------------------
@@ -2011,11 +2104,15 @@ export class SeamworksEngine {
       this.hurtMonster(monster, this.damage ?? (this.equipped ? 20 : 10));
       struck = true;
     }
+    // A blow on a foe is combat: the weapon is in hand for it.
+    if (struck) this.putToolAway();
     if (!struck && this.terrain) {
       this.swingTool = null;
       this.hitCells(this.swingTargets(), SWING_TOOLS, false);
       this.attackCooldown = this.swingFor(this.swingTool);
-    } else if (!struck) { const site = this.siteInReach(); if (site) this.workSite(site); }
+      // A swing that worked rock keeps its tool in hand; one that bit nothing is a swing at the air.
+      if (this.swingTool) this.toolBit(); else this.putToolAway();
+    } else if (!struck) { const site = this.siteInReach(); if (site) this.workSite(site); else this.putToolAway(); }
   }
   private hurtMonster(monster: Monster, damage: number): void {
     const floor = monster.def.floorY ?? FLOOR;
@@ -2443,6 +2540,7 @@ export class SeamworksEngine {
     };
     if (Math.abs(this.line.bobX - this.player.x) > 4) this.facing = this.line.bobX > this.player.x ? 1 : -1;
     this.say('play.fish.cast', 'The line is in. When the bob dips, press E (or tap).');
+    this.takeTool('rod');
     this.sfx('cast');
     this.report();
     return true;
@@ -2597,7 +2695,11 @@ export class SeamworksEngine {
     const line = this.line;
     if (!line) return;
     const k = this.figure;
-    const hx = this.player.x + this.facing * 34 * k, hy = this.player.y - 150 * k;
+    // From the rod's tip when the rod is drawn in hand (the painter keeps where it drew it), else over the shoulder.
+    const tip = this.toolInHand === 'rod' && this.down >= 0 ? this.handPainter()?.weaponTip() : null;
+    const art = KEEPER_ART_PX * k;
+    const hx = tip ? this.player.x + this.facing * tip.x * art : this.player.x + this.facing * 34 * k;
+    const hy = tip ? this.player.y + tip.y * art : this.player.y - 150 * k;
     const dip = line.phase === 'bite' ? ART * 2 : line.phase === 'hooked' ? ART * 3 : 0;
     const bob = this.reducedMotion || line.phase !== 'wait' ? 0 : Math.round(Math.sin(time * 3) * .5) * ART;
     const bx = Math.round(line.bobX / ART) * ART, by = Math.round((line.bobY - ART * 2) / ART) * ART + dip + bob;
@@ -3037,6 +3139,7 @@ export class SeamworksEngine {
     this.blastCooldown -= dt; this.blastTime = Math.max(0, this.blastTime - dt); this.blastFlash = Math.max(0, this.blastFlash - dt * 1.5);
     this.jumpBuffer = Math.max(0, this.jumpBuffer - dt); this.dropTime = Math.max(0, this.dropTime - dt);
     this.debris.update(dt, this.terrain);
+    this.updateToolInHand();
     let direction = Number(this.input.has('right')) - Number(this.input.has('left'));
     if (direction) this.cancelMove();
     else if (this.walking) {
@@ -5241,7 +5344,7 @@ export class SeamworksEngine {
         landing: this.landing > 0 ? this.landing / .18 : 0,
         recoil: this.hp <= 0 ? 1 : Math.max(0, Math.min(1, this.hurtTime / .8)),
         rim: Math.max(strikeGlow, this.wound * .9),
-      }, motion, true, this.playerClock, this.hp <= 0, this.keeperPainter);
+      }, motion, true, this.playerClock, this.hp <= 0, this.handPainter());
     c.filter = 'none'; c.shadowBlur = 0; c.globalAlpha = 1;
     if (attackT > .3) {
       const u = (attackT - .3) / .7;

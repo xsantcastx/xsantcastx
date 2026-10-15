@@ -20,6 +20,8 @@ Built 2026-10-15: **Pets** (`docs/handoff/pets.md`): eight chibi pets found in p
 
 Built 2026-10-15: **Lost Cabinets** (`docs/handoff/lost-cabinets.md`): the Mirror Slate's Scan face (tier I) — hold the glass up and follow the warmth to the Archivist's sixteen hidden curio cabinets (towns, hunts, High Roads, the Delve, the Underhearth, the four realm Delves); clues, pet treats and a hatbox inside; the Codex's Cabinet of Curios set with four small bonuses and a short story.
 
+Built 2026-10-15: **Touch & tools** (`docs/handoff/touch-and-tools.md`): holding a button or the world on a phone selects no text and opens no menu anywhere in /play (typed fields stay selectable); the Keeper takes the right tool in hand for the work — the rod for a cast, the pickaxe for a dig, the axe or sickle at a node — and the weapon comes back when a foe is near, on an attack, or when the work stops.
+
 Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall Deep (Phase 9) · Story Act II · Art test set *(owner)*.
 
 ## Milestones
