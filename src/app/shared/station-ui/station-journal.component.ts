@@ -33,6 +33,8 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     .sj--single .sj__list { display: none; }
     .sj__detail { min-width: 0; display: grid; gap: var(--space-3); }
     @media (max-width: 640px) { .sj { grid-template-columns: minmax(0, 1fr); } }
+    /* By the station's own width too: a sideways phone shows it in a half-screen side panel. */
+    @container station (max-width: 640px) { .sj { grid-template-columns: minmax(0, 1fr); } }
   `],
 })
 export class StationJournalComponent {
