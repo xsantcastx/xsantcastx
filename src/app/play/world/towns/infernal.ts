@@ -16,6 +16,7 @@ import { LUMINOUS_DELVE } from './luminous-delve';
 import { CELESTIAL_DELVE } from './celestial-delve';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import { eclipseGlassNode, moonwakeNode } from '../clock-nodes';
 
 /** Inventory stack id of Cinder Ore (mirrors CINDER_ORE_ID in activity.model). */
 export const CINDER_ORE = 'cinder-ore';
@@ -136,6 +137,9 @@ export const EMBER_QUARRY_NODES: readonly GatherNodeDef[] = [
     yield: { materialId: 'world-root-bark', qty: 1, chance: .6 }, respawn: 35 },
   { id: 'slag-outcrop', x: 920, kind: 'ore', label: 'Slag outcrop', tools: { pickaxe: 2 }, hp: 4, discipline: 'mining', xp: 5, minLevel: 8,
     yield: { materialId: 'slag-fragment', qty: 1 }, respawn: 45 },
+  // The world clock's: the Moonwake opens in the dark, the glass rises under an eclipse (world/clock-nodes.ts).
+  moonwakeNode(1080),
+  eclipseGlassNode(820),
 ];
 
 export const EMBER_QUARRY: HuntZoneDef = {

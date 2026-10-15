@@ -79,9 +79,11 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false },
     const tile = page.locator('.sl-tile[data-face="scan"]');
     await expect(tile).toBeVisible();
     await atLeast44(page, '.sl-tile[data-face="scan"]');
-    await expect(tile).toContainText('0 of 16 cabinets');
+    // The phone face's app icon is just "Scan"; the count lives on the Scan face (docs/handoff/world-clock.md).
+    await expect(tile).toContainText('Scan');
     await tile.click();
     await expect(page.locator('.sl-scan')).toBeVisible();
+    await expect(page.locator('.sl-scan')).toContainText('0 of 16');
     await shot(page, `${size.tag}-1-scan-face`);
     await atLeast44(page, '[data-scan-hold]');
     await page.locator('[data-scan-hold]').click();

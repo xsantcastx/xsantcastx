@@ -296,6 +296,18 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
     if (!WORDS.includes(`'cabinet.place.${c.id}'`)) violationsLater.push(['material', 'not-visible', c.id, 'no cabinet.place name']);
   }
 }
+// The world clock (shared/world-clock/eclipse.model.ts): the dark's herb and fish, the eclipse's glass.
+{
+  const CLOCK = L('shared/world-clock/eclipse.model.ts');
+  const WORDS = read('shared/world-clock/world-clock.i18n.ts');
+  for (const item of CLOCK.CLOCK_ITEMS) {
+    const n = thing(item.id);
+    for (const s of item.sources) src(item.id, s);
+    for (const u of item.uses) use(item.id, u);
+    // Lore on the definition and in the Codex words (EN + ES).
+    n.lore = !!(item.lore && item.lore.trim()) && WORDS.includes("'clock.lore." + item.id + "'");
+  }
+}
 for (const row of VENDOR_SHELF) thing(row.materialId).sells.add('vendor buyback');
 for (const g of EXCHANGE_CATALOGUE) { const id = exchangeId(g); if (id) thing(id).sells.add('Exchange'); }
 

@@ -64,6 +64,8 @@ export interface CatchDef {
   use: string;
   /** v2 price anchor: the Buyback floor pays 8% of anchor × 0.06 (rebalance rule R). */
   anchor: number;
+  /** Bites only in the dark (night, or under an eclipse: shared/world-clock). Unset: any hour. */
+  when?: 'dark';
 }
 
 const FISH: readonly CatchDef[] = [
@@ -90,6 +92,10 @@ const FISH: readonly CatchDef[] = [
     lore: 'Stamped on the flank with a heat seal. Somebody, somewhere, still owes for this fish.', use: 'The Merchant settles the debt, once.' },
   { id: 'the-fifth-ember', name: 'The Fifth Ember', rarity: 'legendary', waters: ['hearth'], anchor: 140_000,
     lore: 'It swims with four others that are not there.', use: 'Banked into three Embervials at the Crafting Bench.' },
+  // The world clock (shared/world-clock/eclipse.model.ts): it only rises in the dark.
+  { id: 'mirrorfin', name: 'Mirrorfin', rarity: 'rare', waters: ['seep', 'mere'], anchor: 3_200, when: 'dark',
+    lore: 'Its scales are slivers of the moon mirror, and it swims up to see itself. By day it remembers it is a fish and goes back down.',
+    use: 'Renders into two Lampfish Oil at the Crafting Bench; the Ink Pup and the Shade-kit love it.' },
 ];
 
 const JUNK: readonly CatchDef[] = [
@@ -154,12 +160,14 @@ export interface BaitDef { id: string; name: string; power: number; source: stri
 /** Strongest first: a cast uses the strongest bait held, one per landed catch. */
 export const BAITS: readonly BaitDef[] = [
   { id: 'shadow-root-cutting', name: 'Shadow-Root Cutting', power: .35, source: 'Root Hollows', note: 'Eels and the Ledger Catch favour it.' },
+  { id: 'moonwake-bloom', name: 'Moonwake Bloom', power: .3, source: 'hunting grounds, at night', note: 'In the dark the Mirrorfin rises to it.' },
   { id: 'blindfin', name: 'Blindfin', power: .25, source: 'seeps', note: 'Live bait.' },
   { id: 'glowcap', name: 'Glowcap', power: .20, source: 'Glowcap Grotto', note: 'At night it draws the rare ones.' },
   { id: 'ember-grub', name: 'Ember Grub', power: .10, source: 'digging dirt and root-loam', note: 'Gives dirt a second meaning.' },
 ];
-/** The bait a cast uses from what is held (stack id → count), or null. */
-export function bestBait(stackOf: (id: string) => number): BaitDef | null {
+/** The bait a cast uses from what is held (stack id → count), or null. In the dark a held Moonwake Bloom goes on first. */
+export function bestBait(stackOf: (id: string) => number, dark = false): BaitDef | null {
+  if (dark && stackOf('moonwake-bloom') > 0) return BAITS.find(b => b.id === 'moonwake-bloom') ?? null;
   return BAITS.find(b => stackOf(b.id) > 0) ?? null;
 }
 /** Chance per dirt or root-loam cell dug that an Ember Grub turns up (spec §5.2). */
@@ -232,6 +240,10 @@ export interface CatchContext {
   bait: number;
   /** Glowcap bait at night: rare fish come more often. */
   nightGlow?: boolean;
+  /** Night, or under an eclipse (shared/world-clock): the dark-keeping fish bite. */
+  dark?: boolean;
+  /** The bait is a Moonwake Bloom: in the dark the Mirrorfin rises to it far more often. */
+  moonBait?: boolean;
   /** Legendaries already caught: each is rarer after the first (0.1% → 0.02%). */
   caught?: (id: string) => number;
   /** The day's Ledger Catch, while it is still owed: it swims in this water. */
@@ -241,7 +253,7 @@ export interface CatchContext {
 }
 
 /** The spec's ladder: common 70, uncommon 22, rare 6, junk 1.5, crate 0.4–2, legendary 0.1 (0.02 once caught). */
-export const LADDER = { uncommon: .22, rare: .06, junk: .015, crateBase: .004, crateMax: .02, legendary: .001, legendaryAgain: .0002, quest: .12 } as const;
+export const LADDER = { uncommon: .22, rare: .06, junk: .015, crateBase: .004, crateMax: .02, legendary: .001, legendaryAgain: .0002, quest: .12, dark: .06, darkBait: .14 } as const;
 
 /**
  * The full table for one cast: every catch with its chance, summing to 1.
@@ -250,7 +262,10 @@ export const LADDER = { uncommon: .22, rare: .06, junk: .015, crateBase: .004, c
  */
 export function catchTable(ctx: CatchContext): { id: string; rarity: CatchRarity; p: number }[] {
   const water = ctx.water;
-  const inWater = (r: CatchRarity) => FISH.filter(f => f.rarity === r && f.waters.includes(water));
+  const inWater = (r: CatchRarity) => FISH.filter(f => f.rarity === r && !f.when && f.waters.includes(water));
+  // The dark-keeping fish (the Mirrorfin): their own share, only in the dark, larger on Moonwake bait.
+  const darkFish = ctx.dark ? FISH.filter(f => f.when === 'dark' && f.waters.includes(water)) : [];
+  const dark = darkFish.length ? LADDER.dark + (ctx.moonBait ? LADDER.darkBait : 0) : 0;
   const crate = Math.min(LADDER.crateMax, LADDER.crateBase + Math.max(0, ctx.bait) * .03 + (ctx.cratePerk ?? 0));
   const legendaries = inWater('legendary');
   const legendary = legendaries.reduce((p, f) => p + ((ctx.caught?.(f.id) ?? 0) > 0 ? LADDER.legendaryAgain : LADDER.legendary), 0);
@@ -260,12 +275,13 @@ export function catchTable(ctx: CatchContext): { id: string; rarity: CatchRarity
   const junk = LADDER.junk;
   if (!inWater('rare').length) { uncommon += rare; rare = 0; }
   if (!inWater('uncommon').length) uncommon = 0;
-  const common = 1 - uncommon - rare - junk - crate - legendary - quest;
+  const common = 1 - uncommon - rare - junk - crate - legendary - quest - dark;
   const rows: { id: string; rarity: CatchRarity; p: number }[] = [];
   const spread = (list: readonly CatchDef[], p: number) => { for (const f of list) rows.push({ id: f.id, rarity: f.rarity, p: p / list.length }); };
   spread(inWater('common'), common);
   spread(inWater('uncommon'), uncommon);
   spread(inWater('rare'), rare);
+  spread(darkFish, dark);
   for (const f of legendaries) rows.push({ id: f.id, rarity: 'legendary', p: (ctx.caught?.(f.id) ?? 0) > 0 ? LADDER.legendaryAgain : LADDER.legendary });
   spread(JUNK.filter(j => j.waters.includes(water)), junk);
   rows.push({ id: WATERS[water].crate, rarity: 'crate', p: crate });

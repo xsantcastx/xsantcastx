@@ -150,6 +150,8 @@ export interface MonsterDef {
   once?: string;
   /** Not there until the host summons it (`engine.summon`): the Drowned Lamp rises to a night cast. */
   summoned?: true;
+  /** Out only at this hour of the world clock (the Ink Lantern by dark, the Afterimage Moth under an eclipse); it rises when the hour comes and fades when it goes. */
+  when?: WorldHour;
   /**
    * Hides in its own dark: a hit only lands while a placed torch burns within
    * VEIL_CELLS of it ("relight torches to expose it"), and the lantern dims while it lives.
@@ -248,7 +250,16 @@ export interface GatherNodeDef {
   yield: { materialId: string; qty: number; chance?: number };
   /** Seconds it takes to grow back after a harvest. */
   respawn: number;
+  /**
+   * Keeps an hour of the world clock (shared/world-clock): 'dark' opens only at
+   * night or under an eclipse (shut, it shows as a closed bud); 'eclipse' is only
+   * there while an eclipse is on (otherwise not drawn at all). Unset: always.
+   */
+  when?: WorldHour;
 }
+
+/** An hour of the world clock a node or creature keeps (shared/world-clock/world-clock.model.ts Sky). */
+export type WorldHour = 'dark' | 'eclipse';
 
 /** Interaction reach around a gathering node's x, world px (tighter than a station's). */
 export const NODE_REACH = 90;

@@ -16,6 +16,7 @@ import { FLOOR } from '../../engine/engine.model';
 import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import { eclipseGlassNode, moonwakeNode } from '../clock-nodes';
 
 /**
  * What an Ephemeris Leech drops in the Orrery Rings.
@@ -69,6 +70,9 @@ export const ORRERY_RING_NODES: readonly GatherNodeDef[] = [
     yield: { materialId: 'celestial-alloy', qty: 1 }, respawn: 45 },
   { id: 'moonpetal', x: 900, kind: 'herb', label: 'Moonpetal', tools: { sickle: 3 }, hp: 3, discipline: 'foraging', xp: 14, minLevel: 40,
     yield: { materialId: 'moonpetal-herb', qty: 1 }, respawn: 50 },
+  // The world clock's: the Moonwake opens in the dark, the glass rises under an eclipse (world/clock-nodes.ts).
+  moonwakeNode(730),
+  eclipseGlassNode(1060),
 ];
 
 export const ORRERY_RINGS: HuntZoneDef = {

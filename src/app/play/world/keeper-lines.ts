@@ -101,10 +101,19 @@ export function keeperDeeds(f: DeedFacts): KeeperDeed[] {
   return KEEPER_DEEDS.filter(deed => done[deed]);
 }
 
+/**
+ * The hour of the world clock a line notices (shared/world-clock): the sky's
+ * phase. A line gated on an hour is only said while it is that hour, and it is
+ * said first: the hour is the newest thing there is.
+ */
+export type KeeperHour = 'dawn' | 'day' | 'dusk' | 'night' | 'eclipse';
+
 /** What a keeper's pool is filtered by. */
 export interface KeeperContext {
   beats: ReadonlySet<string>;
   deeds: ReadonlySet<string>;
+  /** The sky's phase now (world-clock.model SkyPhase); unset: no hour lines. */
+  hour?: KeeperHour;
 }
 export const EMPTY_KEEPER_CONTEXT: KeeperContext = { beats: new Set(), deeds: new Set() };
 
@@ -113,9 +122,10 @@ export interface KeeperLine {
   n: number;
   beat?: StoryBeatId;
   deed?: KeeperDeed;
+  hour?: KeeperHour;
 }
 
-const L = (n: number, open: { beat?: StoryBeatId; deed?: KeeperDeed } = {}): KeeperLine => ({ n, ...open });
+const L = (n: number, open: { beat?: StoryBeatId; deed?: KeeperDeed; hour?: KeeperHour } = {}): KeeperLine => ({ n, ...open });
 
 /** Every keeper's pool, in the order it is said when nothing new has happened. */
 export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
@@ -128,22 +138,22 @@ export const KEEPER_LINES: Readonly<Record<string, readonly KeeperLine[]>> = {
   // ── Luminous: Heliograph Court ──
   merchant: [L(1), L(2), L(3), L(4, { deed: 'bought' }), L(5), L(6, { beat: 'a1.prices' }), L(7, { beat: 'a1.break' }), L(8)],
   aureth: [L(1), L(2), L(3), L(4, { deed: 'bought' }), L(5), L(6), L(7, { beat: 'a1.break' }), L(8, { beat: 'a2.prism' })],
-  tomas: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.fresh' }), L(6, { beat: 'a1.break' }), L(7, { beat: 'a2.lamp' })],
+  tomas: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.fresh' }), L(6, { beat: 'a1.break' }), L(7, { beat: 'a2.lamp' }), L(8, { hour: 'night' })],
   ilyra: [L(1), L(2), L(3), L(4), L(5, { beat: 'p.words' }), L(6, { beat: 'a1.dated' }), L(7), L(8, { beat: 'a2.prism' })],
   // ── Umbral: Nocturne Archive ──
   croupier: [L(1), L(2), L(3), L(4, { deed: 'sold' }), L(5), L(6), L(7), L(8, { deed: 'slated' })],
   broker: [L(1), L(2), L(3), L(4), L(5), L(6, { deed: 'sold' }), L(7, { beat: 'a1.prices' }), L(8, { beat: 'a1.break' })],
   verrin: [L(1), L(2), L(3), L(4, { beat: 'a1.tally' }), L(5), L(6, { beat: 'a1.eater' }), L(7), L(8, { beat: 'a2.ink' })],
-  rook: [L(1), L(2), L(3), L(4, { deed: 'dug' }), L(5, { beat: 'a1.tally' }), L(6), L(7, { beat: 'a2.ink' })],
+  rook: [L(1), L(2), L(3), L(4, { deed: 'dug' }), L(5, { beat: 'a1.tally' }), L(6), L(7, { beat: 'a2.ink' }), L(8, { hour: 'night' })],
   // ── Celestial: Meridian Orrery ──
   archivist: [L(1), L(2), L(3), L(4, { beat: 'p.words' }), L(5), L(6, { beat: 'a1.dated' }), L(7), L(8, { beat: 'a2.cabinets' })],
   'chart-clerk': [L(1), L(2), L(3), L(4), L(5, { deed: 'renown' }), L(6), L(7, { beat: 'a1.break' }), L(8, { beat: 'a2.orrery' })],
-  sera: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.break' }), L(6, { beat: 'a2.orrery' }), L(7, { beat: 'a2.lamp' })],
+  sera: [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.break' }), L(6, { beat: 'a2.orrery' }), L(7, { beat: 'a2.lamp' }), L(8, { hour: 'eclipse' })],
   // ── Verdant: Rootglass Canopy ──
   steward: [L(1), L(2), L(3), L(4), L(5, { deed: 'hunted' }), L(6), L(7, { beat: 'a1.eater' }), L(8, { beat: 'a2.root' })],
   herald: [L(1), L(2), L(3), L(4, { deed: 'mission' }), L(5, { beat: 'a1.break' }), L(6), L(7, { beat: 'a1.eater' }), L(8, { deed: 'bountied' })],
-  gatekeeper: [L(1), L(2), L(3), L(4, { deed: 'hunted' }), L(5), L(6)],
-  'trials-warden': [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.eater' }), L(6), L(7)],
+  gatekeeper: [L(1), L(2), L(3), L(4, { deed: 'hunted' }), L(5), L(6), L(7, { hour: 'dawn' })],
+  'trials-warden': [L(1), L(2), L(3), L(4), L(5, { beat: 'a1.eater' }), L(6), L(7), L(8, { hour: 'eclipse' })],
   'lodge-warden': [L(1), L(2), L(3), L(4), L(5, { deed: 'skilled' }), L(6, { deed: 'fished' }), L(7), L(8, { beat: 'a2.root' })],
 };
 
@@ -155,11 +165,12 @@ export function allKeeperLines(keeper: string): string[] {
 }
 
 export function lineOpen(line: KeeperLine, ctx: KeeperContext): boolean {
-  return (!line.beat || ctx.beats.has(line.beat)) && (!line.deed || ctx.deeds.has(line.deed));
+  return (!line.beat || ctx.beats.has(line.beat)) && (!line.deed || ctx.deeds.has(line.deed)) && (!line.hour || ctx.hour === line.hour);
 }
 
-/** How recent a line's trigger is: a later story beat beats an earlier one, any beat beats a deed, a deed beats nothing. */
+/** How recent a line's trigger is: the hour beats everything, a later story beat beats an earlier one, any beat beats a deed, a deed beats nothing. */
 function recency(line: KeeperLine): number {
+  if (line.hour) return 1000;
   if (line.beat) return 100 + STORY_BEAT_IDS.indexOf(line.beat);
   return line.deed ? 1 : 0;
 }

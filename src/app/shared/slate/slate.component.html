@@ -4,38 +4,92 @@
 <div class="sl" [class.sl--ii]="tier >= 2" [attr.data-slate-tier]="tier" [attr.data-face]="face">
 
   @if (face === 'home') {
-    <nav class="sl-home" [attr.aria-label]="t('slate.tabs')">
-      <p class="sl-group">{{ t('slate.games') }}</p>
-      <div class="sl-tiles sl-tiles--games">
-        @for (table of tables; track table.game) {
-          <button type="button" class="sl-tile sl-tile--game" [attr.data-game]="table.game" (click)="openGame(table.game)">
-            <i class="sl-ico" [attr.data-ico]="table.game" aria-hidden="true"></i>
-            <span class="sl-tile__name">{{ t(table.titleKey) }}</span>
-          </button>
+    <!-- The phone face (docs/handoff/world-clock.md): status bar, the world clock, two widgets,
+         the app grid, page dots, the dock. Page 2 is the calendar and Sera Quill's ledger. -->
+    <div class="ph" [attr.data-sky]="sky" [attr.data-page]="page">
+      <div class="ph-status" aria-hidden="true">
+        <span class="ph-status__realm">{{ t(realmKey) }}</span>
+        <span class="ph-status__time">{{ time }}</span>
+        <img class="ph-status__sky" [src]="icon('sky-' + sky)" alt="" width="16" height="16">
+      </div>
+
+      <div class="ph-pages" (pointerdown)="swipeStart($event)" (pointerup)="swipeEnd($event)" (pointercancel)="swipeCancel()">
+        @if (page === 0) {
+          <section class="ph-lock" data-slate-clock [attr.aria-label]="t('slate.phone.clock')">
+            <p class="ph-time" data-world-time>{{ time }}</p>
+            <p class="ph-date">{{ dateLine }}</p>
+            <p class="ph-sky">
+              <img [src]="icon('sky-' + sky)" alt="" width="32" height="32">
+              <span data-sky-label>{{ t('clock.phase.' + sky) }}</span>
+              @if (underground) { <small>· {{ t('clock.phase.underground') }}</small> }
+            </p>
+          </section>
+
+          <div class="ph-widgets">
+            <button type="button" class="ph-widget ph-eclipse" data-eclipse-widget [attr.data-eclipse-on]="eclipseOn" (click)="open('eclipse')">
+              <img [src]="icon('eclipse')" alt="" width="40" height="40">
+              <span class="ph-widget__body">
+                <span class="ph-widget__kicker">{{ t('clock.eclipse.title') }}</span>
+                <span class="ph-widget__big" data-eclipse-countdown>{{ eclipseOn ? t('slate.phone.eclipseNow') : t('slate.phone.eclipseIn') }} {{ eclipseLeft }}</span>
+                <span class="ph-widget__small">{{ eclipseOn ? t('slate.phone.aligned', { realm: alignedRealm }) : eclipseWhen }}</span>
+              </span>
+            </button>
+            <div class="ph-widget ph-music" data-now-playing>
+              <img [src]="icon('music')" alt="" width="40" height="40">
+              <span class="ph-widget__body">
+                <span class="ph-widget__kicker">{{ t('slate.phone.nowPlaying') }}</span>
+                <span class="ph-widget__big">{{ t(musicTitleKey) }}</span>
+                <span class="ph-widget__small">{{ muted ? t('slate.phone.muted') : t(musicModeKey) }}{{ skipped && !muted ? ' · ' + t('slate.phone.skipped') : '' }}</span>
+              </span>
+              <span class="ph-music__ctl">
+                <button type="button" class="ph-round" data-music-skip (click)="skip()" [disabled]="muted" [attr.aria-label]="t('slate.phone.skip')"></button>
+                <button type="button" class="ph-round" data-music-mute (click)="toggleMute()" [attr.aria-pressed]="muted" [attr.aria-label]="t(muted ? 'slate.phone.unmute' : 'slate.phone.mute')"></button>
+              </span>
+            </div>
+          </div>
+
+          <nav class="ph-apps" [attr.aria-label]="t('slate.tabs')">
+            @for (app of apps; track app.id) {
+              <button type="button" class="sl-tile ph-app" [class.sl-tile--game]="!!app.game"
+                      [attr.data-game]="app.game ?? null" [attr.data-face]="app.face ?? null" [attr.data-app]="app.launch ?? app.id"
+                      (click)="openApp(app)"><img class="ph-app__icon" [src]="icon(app.icon)" alt="" width="48" height="48"><span class="sl-tile__name">{{ t(app.key) }}</span>@if (dot(app)) {<i class="sl-dot" aria-hidden="true"></i>}</button>
+            }
+          </nav>
+        } @else {
+          <section class="ph-cal" data-slate-calendar [attr.aria-label]="t('slate.phone.calendar')">
+            <h3 class="ph-cal__month">{{ t(monthKey) }} <small>{{ yearLine }}</small></h3>
+            <div class="ph-cal__grid">
+              @for (k of weekKeys; track k) { <span class="ph-cal__dow">{{ t(k).slice(0, 2) }}</span> }
+              @for (d of calendar; track d.n) {
+                <span class="ph-cal__day" [class.is-today]="d.today" [class.is-past]="d.past" [class.is-eclipse]="d.eclipse"
+                      [attr.title]="d.eclipse ? t('slate.phone.eclipseDay') : null">{{ d.n }}</span>
+              }
+            </div>
+            <p class="ph-cal__key"><i class="ph-cal__mark" aria-hidden="true"></i> {{ t('slate.phone.eclipseDay') }}</p>
+          </section>
+          <section class="sl-card ph-ledger" data-slate-ledger>
+            <h3>{{ t('clock.ledger.title') }}</h3>
+            <p data-ledger-count>{{ t('clock.ledger.count', { n: ledgerCount }) }}</p>
+            <p class="sl-note">{{ ledgerNext ? t('clock.ledger.next', { at: ledgerNext.at, glass: ledgerNext.glass }) : t('clock.ledger.full') }}</p>
+          </section>
         }
       </div>
-      <div class="sl-tiles">
-        <button type="button" class="sl-tile sl-tile--wide" data-face="factory" (click)="open('factory')">
-          <i class="sl-ico" data-ico="factory" aria-hidden="true"></i>
-          <span class="sl-tile__name">{{ t('slate.tab.factory') }}</span>
-          <span class="sl-tile__sub">{{ rate }}</span>
-          @if (waiting) { <i class="sl-dot" aria-hidden="true"></i> }
-        </button>
-        @if (tabs.includes('map')) {
-          <button type="button" class="sl-tile sl-tile--wide" data-face="map" (click)="open('map')">
-            <i class="sl-ico" data-ico="map" aria-hidden="true"></i>
-            <span class="sl-tile__name">{{ t('slate.tab.map') }}</span>
-          </button>
-        }
-        @if (tabs.includes('scan')) {
-          <button type="button" class="sl-tile sl-tile--wide" data-face="scan" (click)="open('scan')">
-            <i class="sl-ico" data-ico="scan" [attr.data-warmth]="warmth" aria-hidden="true"></i>
-            <span class="sl-tile__name">{{ t('cabinet.scan.tile') }}</span>
-            <span class="sl-tile__sub">{{ t('cabinet.scan.tileSub', { n: found, total: cabinetTotal }) }}</span>
-          </button>
+
+      <div class="ph-dots" role="tablist" [attr.aria-label]="t('slate.phone.pages')">
+        @for (n of pages; track n) {
+          <button type="button" class="ph-dot" role="tab" [attr.aria-selected]="page === n" [attr.data-page-dot]="n"
+                  [attr.aria-label]="t('slate.phone.page', { n: n + 1, total: pages.length })" (click)="setPage(n)"><i></i></button>
         }
       </div>
-    </nav>
+
+      <nav class="ph-dock" [attr.aria-label]="t('slate.phone.dock')">
+        @for (app of dock; track app.id) {
+          <button type="button" class="ph-dock__app" [attr.data-dock]="app.face ?? app.launch" (click)="openApp(app)" [attr.aria-label]="t(app.key)">
+            <img [src]="icon(app.icon)" alt="" width="40" height="40">@if (dot(app)) {<i class="sl-dot" aria-hidden="true"></i>}
+          </button>
+        }
+      </nav>
+    </div>
 
     <details class="sl-details">
       <summary>{{ t('slate.details') }}</summary>
@@ -47,8 +101,43 @@
   } @else {
     <div class="sl-bar">
       <button type="button" class="sl-back" (click)="back()">{{ t('slate.back') }}</button>
-      <h3 class="sl-face-title">{{ face === 'tables' ? t(gameTitleKey) : face === 'scan' ? t('cabinet.scan.title') : t('slate.tab.' + face) }}</h3>
+      <h3 class="sl-face-title">{{ face === 'tables' ? t(gameTitleKey) : face === 'scan' ? t('cabinet.scan.title') : face === 'eclipse' ? t('clock.eclipse.title') : t('slate.tab.' + face) }}</h3>
+      <span class="sl-bar__time" aria-hidden="true">{{ time }}</span>
     </div>
+  }
+
+  @if (face === 'eclipse') {
+    <!-- The eclipse app: the countdown, what it does where you are, and Sera Quill's ledger. -->
+    <section class="sl-pane sl-eclipse" [attr.aria-label]="t('clock.eclipse.title')" [attr.data-eclipse-on]="eclipseOn">
+      <div class="sl-card sl-eclipse__head">
+        <img [src]="icon('eclipse')" alt="" width="56" height="56">
+        <div>
+          <p class="sl-eclipse__big" data-eclipse-countdown>{{ eclipseOn ? t('slate.phone.eclipseNow') : t('slate.phone.eclipseIn') }} {{ eclipseLeft }}</p>
+          <p class="sl-note">{{ eclipseOn ? t('slate.phone.aligned', { realm: alignedRealm }) : eclipseWhen }}</p>
+        </div>
+      </div>
+      <p class="sl-note">{{ t('clock.eclipse.what') }}</p>
+      <div class="sl-card">
+        <h3>{{ t('clock.eclipse.effects') }}</h3>
+        <ul class="sl-list">
+          @for (e of effects; track e) { <li [attr.data-effect]="e"><span class="sl-list__name">{{ t('clock.effect.' + e, { realm: alignedRealm }) }}</span></li> }
+        </ul>
+      </div>
+      <div class="sl-card" data-slate-ledger>
+        <h3>{{ t('clock.ledger.title') }}</h3>
+        <p data-ledger-count>{{ t('clock.ledger.count', { n: ledgerCount }) }}</p>
+        @if (thisOneSeen) { <p class="sl-notice" role="status">{{ t('clock.ledger.thisOne') }}</p> }
+        <ul class="sl-list sl-bonus">
+          @for (m of marks; track m.id) {
+            <li [attr.data-reached]="marksPaid.has(m.id)">
+              <span class="sl-list__name">{{ t('slate.phone.mark', { at: m.at, glass: m.glass }) }}</span>
+              <span class="sl-list__meta">{{ marksPaid.has(m.id) ? t('cabinet.scan.reached') : t('cabinet.scan.at', { n: m.at }) }}</span>
+            </li>
+          }
+        </ul>
+        <p class="sl-note">{{ t('clock.ledger.how') }}</p>
+      </div>
+    </section>
   }
 
   <!-- Tables: always in the DOM, so the host resolves before a game is asked for. -->

@@ -15,6 +15,7 @@ import { FLOOR } from '../../engine/engine.model';
 import { HUNT_HEIGHTS } from '../heights';
 // Types only: world.model imports this file for TOWNS, so a value import back would be a cycle.
 import type { GatherNodeDef, HuntZoneDef, Platform, TownDef, ZoneDropTable } from '../world.model';
+import { AFTERIMAGE_MOTH, eclipseGlassNode } from '../clock-nodes';
 
 /**
  * What a Prism Forager spills. Every material is a real inventory stack in the
@@ -68,6 +69,8 @@ export const REFLECTION_CHANNEL_NODES: readonly GatherNodeDef[] = [
     yield: { materialId: 'sunbloom', qty: 1 }, respawn: 30 },
   { id: 'golden-oak', x: 1000, kind: 'wood', label: 'Golden Oak', tools: { axe: 3 }, hp: 5, discipline: 'woodcutting', xp: 12, minLevel: 25,
     yield: { materialId: 'solar-resin', qty: 1, chance: .5 }, respawn: 60 },
+  // The world clock's: the glass rises under an eclipse (world/clock-nodes.ts).
+  eclipseGlassNode(720),
 ];
 
 export const REFLECTION_CHANNELS: HuntZoneDef = {
@@ -81,7 +84,7 @@ export const REFLECTION_CHANNELS: HuntZoneDef = {
   stations: [
     { id: 'passage', x: 110, label: 'RETURN TO THE COURT', kind: 'passage', to: 'luminous', arriveX: 2320, blurb: 'The stair back up to the Heliograph Court.' },
   ],
-  monsters: [{ creature: 'prism-forager', name: 'Prism Forager', hp: 70, spawnXs: [1150, 1650, 2150] }, ...HUNT_HEIGHTS['reflection-channels'].perched],
+  monsters: [{ creature: 'prism-forager', name: 'Prism Forager', hp: 70, spawnXs: [1150, 1650, 2150] }, ...HUNT_HEIGHTS['reflection-channels'].perched, AFTERIMAGE_MOTH],
   drops: PRISM_CHANNEL_DROPS,
   nodes: REFLECTION_CHANNEL_NODES,
   spawnX: 240,
