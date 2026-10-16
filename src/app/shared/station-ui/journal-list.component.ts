@@ -42,12 +42,12 @@ export interface JournalRow {
             <li>
               <button type="button" class="jg__slot jl__row" [class.is-on]="selected() === row.id" [class.is-locked]="row.locked"
                       [attr.data-rarity]="row.rarity || null" [attr.aria-pressed]="selected() === row.id"
-                      [attr.aria-label]="row.name + (row.sub ? ', ' + row.sub : '')" [attr.title]="row.name + (row.sub ? ' · ' + row.sub : '')"
+                      [attr.title]="row.name + (row.sub ? ' · ' + row.sub : '')"
                       (click)="pick.emit(row.id)">
                 @if (row.art; as a) {
                   <img [src]="a.src" [attr.srcset]="a.srcset || null" sizes="40px" alt="" width="40" height="40" decoding="async">
                 } @else {
-                  <span class="jg__glyph">{{ row.name.slice(0, 1) }}</span>
+                  <span class="jg__glyph" aria-hidden="true">{{ row.name.slice(0, 1) }}</span>
                 }
                 @if (row.ready) { <span class="jg__dot" aria-hidden="true"></span> }
                 @if (count(row); as n) { <b class="jg__qty" aria-hidden="true">{{ n }}</b> }

@@ -200,6 +200,6 @@
 .jg__slot.jl__row { width: 52px; min-height: 0; height: 52px; padding: 0; gap: 0; display: grid; border: 0; border-radius: 0; flex-direction: unset; transform: none; background: var(--obsidian-1); }
 .jg__slot.jl__row:hover { background: var(--obsidian-3); }
 .jg__slot.jl__row.is-on { background: color-mix(in srgb, var(--gold) 26%, var(--obsidian-1)); }
-.jg__sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.jg__sr { position: absolute; inset: 0; overflow: hidden; opacity: 0; white-space: nowrap; font-size: 10px; }
 @media (max-height: 520px) and (orientation: landscape) { .jg__slot.jl__row { width: 46px; height: 46px; } }
 .jg__qty { position: absolute; left: 3px; bottom: 2px; font: 700 10px/1 var(--font-ui); color: var(--st-text); text-shadow: 1px 1px 0 var(--obsidian-0), -1px -1px 0 var(--obsidian-0), 1px -1px 0 var(--obsidian-0), -1px 1px 0 var(--obsidian-0); }
