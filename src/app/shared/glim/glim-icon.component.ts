@@ -4,7 +4,7 @@
  * canvas), decorative (the control around it carries the name).
  */
 import { ChangeDetectionStrategy, Component, input, computed } from '@angular/core';
-import { GLIM_H, GLIM_PALETTE, GLIM_PALETTE_DIM, GLIM_W, glimRows } from './glim-art';
+import { GLIM_FACE_PALETTE, GLIM_H, GLIM_PALETTE, GLIM_PALETTE_DIM, GLIM_W, glimFace, glimRows, type GlimMood } from './glim-art';
 
 interface Run { x: number; y: number; w: number; fill: string }
 
@@ -24,6 +24,16 @@ function runs(dim: boolean): Run[] {
 }
 const BRIGHT = runs(false);
 const DIM = runs(true);
+/** Each mood's face painted over the bright moth, built once on first use. */
+const FACES = new Map<GlimMood, Run[]>();
+function withFace(mood: GlimMood): Run[] {
+  let out = FACES.get(mood);
+  if (!out) {
+    out = [...BRIGHT, ...glimFace(mood).map(([x, y, key]) => ({ x, y, w: 1, fill: GLIM_FACE_PALETTE[key] ?? GLIM_PALETTE[key] ?? '#fff' }))];
+    FACES.set(mood, out);
+  }
+  return out;
+}
 
 @Component({
   selector: 'app-glim-icon',
@@ -41,7 +51,9 @@ const DIM = runs(true);
 })
 export class GlimIconComponent {
   readonly dim = input(false);
+  /** Its face (glim-art.ts GlimMood); calm by default. */
+  readonly mood = input<GlimMood>('calm');
   readonly w = GLIM_W;
   readonly h = GLIM_H;
-  readonly pixels = computed(() => (this.dim() ? DIM : BRIGHT));
+  readonly pixels = computed(() => (this.dim() ? DIM : this.mood() === 'calm' ? BRIGHT : withFace(this.mood())));
 }

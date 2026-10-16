@@ -1637,3 +1637,44 @@ brighter than the sky. I don't like it, and I love it.") and at dawn.
 **The music.** At night the realm's tune drops an octave and leaves longer silences; under the eclipse its third goes
 minor over a soft drone, "like a guardian the size of the sky". The Slate names each realm's theme: *Hymn of the Held
 Seam*, *Noon over the Court*, *Margins of the Archive*, *The Orrery Turns*, *Rootwake*.
+
+
+## Loot & combat (shipped — owner reviews in play)
+
+**Aura words.** Six new Socket Words carry the old auras: *Brandoath* (the oath the Seamworks smiths swear on a fresh
+edge: that it will bite before it bends), *Rimeveil* (Nocturne winter, worn), *Stormglass* (the Heliograph Court's
+lightning rod that answers back), *Mercyroot* (the Root Deeps waste nothing: a creature that falls by the wearer feeds
+them), *Vigil* (kept by the Seamworks night watch) and *Verdict* (the Archivum's ruling, written into an edge). Five
+older words and four uniques (Cinderwake, Lastwarden, Heartwood of the Verge, Worldsplitter) gained an aura too.
+**Unique creatures** carry names from the Seamworks' tally-books: Sootjaw, Rivetgrin, Ashmantle, Gloamtooth,
+Cinderwake, Hollowhymn, Brassveil, Rootgnaw, Glasshowl, Inkfang, Embermourn, Starbiter. **The three passes**: Normal,
+Nightmare and Hell — the world fights harder once the Fallen Ephemeris has fallen. **The fallen purse**: what a Keeper
+drops where they fall, waiting for them to walk back.
+
+## Pets that work, and Glim's margin tales (shipped — owner reviews in play)
+
+2026-10-15, `docs/handoff/pets-and-glim-alive.md`.
+
+**What the pets do.** A pet that follows you does what it was before you found it. The Ink Pup was herded by
+the Mirror Substitutes and learned to bite the thing that winds up; the Shade-kit is what a shade leaves behind
+and goes through foes like a shadow through a door; the Rivet Maw hatchling chews armour the way its kind chews
+bolts, and will take a blow meant for you (the Furnace kept it to carry things, and a blow is a thing); the
+Sunling is a small sun that decided you are its sky, and a sky is worth keeping warm. The Moss Hedgehog sleeps
+under whatever regrows fastest, so it knows when a node is ready; the Star Owlet's kin kept the old star charts,
+and it still finds what was buried and marked; the Ember Newt warms a vein the way it warms its egg crate, and
+warmed rock gives; the Prism Moth-kit hums the note it was caught on and the fish come to it. Pets never die:
+a tired pet rests behind you and comes back. They grow by doing, and at the third level each learns one more
+thing. Now and then any pet digs up a little of what it likes to eat.
+
+**Glim, out loud.** Glim notices: a dodge ("I flinched. You didn't."), a rare beam ("Purple light. My favourite
+kind of loot."), low health, new ground, nightfall and dawn, a pet's trick or find, a level up (a high five).
+It never nags: each kind of moment has its own rest, unasked lines keep a gap, and the Keeper can ask for
+quiet. Tap Glim and it listens: what is around, the nearest find (a trail of light), a tip, a tale, or a game of
+catch-the-light (its motes; one round a day is a shared moment). Its two bright points change with its mood: a
+gasp, a grin, worry, sleepy on a sleeping pet's head.
+
+**Glim's margin tales** (told least-heard first): the sea drawn so well ships tried to sail it ("this is
+paper"); the first Keeper's lamp, and the map begun where it went out; the Afterimage Moth that chased a comet
+all night and found a lamp; the Archive's blank page in every book "for what we got wrong"; the Rivet Maw that
+carried one bolt across the whole Delve and left; the stars as margin notes of a bigger map someone is still
+writing. None names the first lamp's keeper; the egg waits for the finale.

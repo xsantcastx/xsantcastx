@@ -109,6 +109,13 @@
       <div class="cx-block" aria-hidden="true"></div>
     }
 
+    <!-- ── Loot, auras and the three passes (shared/loot). Its words are a lazy chunk. -->
+    @defer (on viewport) {
+      <app-codex-loot />
+    } @placeholder {
+      <div class="cx-block" aria-hidden="true"></div>
+    }
+
     <!-- ── The pets: seven companions, where each is found and what it helps with. Its words are a lazy chunk. -->
     @defer (on viewport) {
       <app-codex-pets />
