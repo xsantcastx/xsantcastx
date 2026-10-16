@@ -2907,11 +2907,24 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .noscript-intro { position: relative; z-index: 1; max-width: 40rem; margin: 2rem auto; padding: 0 16px; color: var(--adventure-hud-text); line-height: 1.5; }
 
 /* ── Glim, alive (companion-host.ts): the tap target over Glim, its chat card, catch-the-light ── */
-.glim-tap {
-  position: absolute; z-index: 6; width: 52px; height: 52px; margin: -26px 0 0 -26px; padding: 0;
-  border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+.glim-hud {
+  position: relative; display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; margin-left: auto;
+  border-radius: 6px; background: var(--adventure-hud-stage); border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 40%, transparent);
 }
-.glim-tap:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
+.glim-hud + .top-actions { margin-left: 8px; }
+.glim-hud app-glim-icon { width: 30px; height: 25px; }
+.glim-hud:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
+.glim-hud__dot { display: none; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--adventure-hud-gold); box-shadow: 0 0 6px var(--adventure-hud-gold); }
+.glim-hud--says .glim-hud__dot { display: block; }
+/* Phones: the free stretch of the top band between the satchel chip (left) and the area name, never over the world. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .glim-hud { position: absolute; top: calc(var(--hud-safe-t) + 6px); left: 60px; margin: 0; pointer-events: auto; }
+  .glim-hud + .top-actions { margin: 0; }
+}
+/* Held sideways the goal strip fills the band beside the satchel chip: Glim sits under the chip instead. */
+@media (max-height: 500px) and (hover: none) and (pointer: coarse), (max-width: 900px) and (max-height: 500px) {
+  .glim-hud { left: 8px; top: calc(var(--hud-safe-t) + 58px); }
+}
 .glim-chat-host { position: absolute; pointer-events: auto; touch-action: auto; }
 /* A window like Sound and Pets (.win-host); on a desktop it sits under the goal line, beside Glim. */
 @media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {

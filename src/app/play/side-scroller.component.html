@@ -30,6 +30,12 @@
     <!-- One line. Desktop: always there. Phones: a toast that fades after each
          change (the span is re-created per line, which restarts its fade). -->
     <p class="objective" aria-live="polite">@for (line of [message || engineMessage || objective]; track line) {<span class="objective-line">{{ line }}</span>}</p>
+    <!-- Glim's HUD icon: the one way into Glim's chat card (companion-host.ts), in a fixed slot of the top band, in every scene.
+         Nothing floats over the world any more: a hit target riding beside the Keeper swallowed digs, torches and chests. -->
+    @if (glimVoice.met) {
+      <button type="button" class="glim-hud" data-glim-tap [class.glim-hud--says]="!!glimVoice.speech" (click)="openGlimChat()"
+              [attr.aria-label]="t('glim.chat.tap')" [title]="t('glim.chat.tap')"><app-glim-icon [mood]="glimIconMood" /><i class="glim-hud__dot" aria-hidden="true"></i></button>
+    }
     <div class="top-actions">
       <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span>@if (lookNudge) {<i class="look-nudge" aria-hidden="true"></i>}</button>
       <!-- The Mirror Slate (P): only once the Keeper carries one. The badge: the Homestead has something worth a look. -->
@@ -64,13 +70,6 @@
     </div>
   }
 
-  <!-- Tap Glim (companion-host.ts): a 52 px target that rides over Glim in the world and opens its chat card.
-       Not in a Delve: there every click on a cell digs or places, Glim hovers beside the Keeper (right where a
-       chest or torch goes), and the target would swallow those clicks and taps. -->
-  @if (glimVoice.met && companions.tapAt && !state.delve && !panel && !storyCard && !storyScene && !glimTalk) {
-    <button type="button" class="glim-tap" data-engine-ignore data-glim-tap [style.left.px]="companions.tapAt.x" [style.top.px]="companions.tapAt.y"
-            [attr.aria-label]="t('glim.chat.tap')" [title]="t('glim.chat.tap')" (click)="openGlimChat()"></button>
-  }
   @if (companions.chatOpen) {
     <div class="glim-chat-host win-host" data-engine-ignore (keydown.escape)="closeGlimChat()" appSheetDrag (sheetDismiss)="closeGlimChat()">
       <app-glim-chat [topics]="companions.topics" [reply]="companions.chatReply" [quiet]="glimQuiet" [mood]="companions.chatMood"
