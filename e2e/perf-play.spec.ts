@@ -30,6 +30,7 @@ import { latticePlans, sectorContext } from '../src/app/play/engine/sector-gen';
 import { deepPlans } from '../src/app/play/engine/underhearth-gen';
 import { encodeRuns } from '../src/app/shared/delve/delve-region.model';
 import { RIFT_GATES } from '../src/app/shared/delve/rift-gates.model';
+import { isEclipseDay, msAt, worldTime } from '../src/app/shared/world-clock/world-clock.model';
 
 const RUN = !!process.env['PLAY_PERF'];
 const SECONDS = Number(process.env['PLAY_PERF_SECONDS'] ?? 60);
@@ -75,6 +76,13 @@ const GUARD_DELVE_P50_MS = Number(process.env['PLAY_PERF_DELVE_P50_CEILING'] ?? 
 /** One World's Settlement guard (docs/design/one-world.md §2.8). */
 const GUARD_SETTLEMENT_P95_MS = Number(process.env['PLAY_PERF_SETTLEMENT_P95_CEILING'] ?? 50);
 const GUARD_SETTLEMENT_P50_MS = Number(process.env['PLAY_PERF_SETTLEMENT_P50_CEILING'] ?? 34);
+/**
+ * PLAY_PERF_HOUR=<0-23> pins the world clock (docs/handoff/world-clock.md) to that hour of a day without an
+ * eclipse, through the clock's test skew (sessionStorage), so builds measured back to back see the same sky: a
+ * town at noon and at 22:00 are different frames. Unset, the clock runs at the real time (the guards then measure
+ * whatever hour the run starts at). A build without the clock ignores the key.
+ */
+const PIN_HOUR = process.env['PLAY_PERF_HOUR'];
 
 /**
  * PLAY_PERF_GPU=1 launches Chromium with the Metal GPU (macOS): canvas 2D is
@@ -92,6 +100,9 @@ const PHONE = {
 test.use(PHONE);
 
 const RESTORED = { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } };
+const ONE_WORLD = { 'eclipse-oneworld': '1' };
+/** A resume point beside the Quarry Head stone (column 240), 16 columns short of the wilds (play-one-world.spec.ts). */
+const BESIDE_QUARRY_HEAD = { 'godforge-world': { version: 3, seed: 424242, createdAt: 1, worlds: {}, claimed: [], migrated: 'v2', at: { world: 'ember', col: 239, row: 0, t: 1 } } };
 const inTown = (town: string) => ({ ...RESTORED, 'eclipse-play-world-v1': { town } });
 
 export interface SceneResult {
@@ -113,7 +124,16 @@ async function phone(page: Page): Promise<CDPSession> {
   await cdp.send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 3, mobile: true });
   await cdp.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 5 });
   await page.setViewportSize({ width: 390, height: 844 });
+  if (PIN_HOUR !== undefined) await pinHour(page, Number(PIN_HOUR));
   return cdp;
+}
+
+/** The world clock at `hour` of today's in-game day (the next day when today has an eclipse). */
+async function pinHour(page: Page, hour: number): Promise<void> {
+  let day = worldTime(Date.now()).day;
+  if (isEclipseDay(day)) day++;
+  const target = msAt(day, Math.round(hour * 60));
+  await page.addInitScript(t => { try { sessionStorage.setItem('eclipse-clock-skew', String(t - Date.now())); } catch { /* no storage */ } }, target);
 }
 
 function percentile(sorted: number[], p: number): number {
@@ -392,6 +412,27 @@ harness('/play on a throttled phone', () => {
     const cdp = await phone(page);
     await intoRealmDelve(page, 'celestial', 'The Orrery Wells');
     await measure(page, cdp, 'realm:orrery-wells');
+  });
+
+  // One World (docs/design/one-world.md) with the gate on: the Basalt Seamworks, and the Living World
+  // (docs/handoff/living-world.md): logging in beside the Quarry Head stone (column 239) and walking east for the
+  // whole window, past the authored span's edge (column 256) into the wilds: ashwoods, points of interest,
+  // critters, packs waking on the budget, sector columns streaming in.
+  test('settlement: the Basalt Seamworks', async ({ page }) => {
+    const cdp = await phone(page);
+    await seed(page, { ...RESTORED, ...ONE_WORLD });
+    await openPlay(page);
+    await expect(canvas(page)).toHaveAttribute('data-region', 'basalt-seamworks', { timeout: 60000 });
+    await page.waitForTimeout(1500);
+    await measure(page, cdp, 'settlement:seamworks');
+  });
+  test('wilds: east from the Quarry Head into the Living World', async ({ page }) => {
+    const cdp = await phone(page);
+    await seed(page, { ...RESTORED, ...ONE_WORLD, ...BESIDE_QUARRY_HEAD });
+    await openPlay(page);
+    await expect(canvas(page)).toHaveAttribute('data-region', 'quarry-road', { timeout: 60000 });
+    await page.waitForTimeout(1500);
+    await measure(page, cdp, 'wilds:east', 'east');
   });
 
   test('delve: Magma Halls beside a lava pool', async ({ page }) => {
