@@ -14,7 +14,7 @@
  */
 import { expect, test, type Page } from '@playwright/test';
 import * as fs from 'fs';
-import { blob, canvas, ERA, focusWorld, openPlay, playerX, seed, walkTo } from './play-helpers';
+import { blob, canvas, ERA, focusWorld, loginAt, openPlay, playerX, seed, walkTo, WORLD_COL } from './play-helpers';
 import { INVENTORY_ERA } from '../src/app/shared/rpg/inventory.model';
 import { rollCreatureLoot, type LootDrop } from '../src/app/shared/loot/drop-tables';
 import { hashSeed, seededRandom } from '../src/app/shared/loot/champions';
@@ -61,11 +61,10 @@ function wornGear(pieces: { id: string; definitionId: string; name: string; rari
 }
 
 async function toQuarry(page: Page, blobs: Record<string, unknown>): Promise<void> {
-  await seed(page, { ...BEACON_LIT, ...blobs });
+  // One World: the Ember Quarry is a region east of the Quarry Gate; the Keeper logs in there (the resume point).
+  await seed(page, { ...BEACON_LIT, ...loginAt(WORLD_COL.quarry), ...blobs });
   await openPlay(page);
-  await page.getByRole('button', { name: 'Places' }).first().click();
-  await page.locator('#places-list button', { hasText: 'East Passage' }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 20000 });
   await page.waitForTimeout(500);
   await focusWorld(page);
 }
@@ -77,7 +76,7 @@ async function kills(page: Page): Promise<number> {
 
 /** Swing until the first Maw falls (stepping when the swings stop landing). */
 async function huntOne(page: Page): Promise<void> {
-  await walkTo(page, 1100, 40);
+  await walkTo(page, WORLD_COL.quarryMaws * 32, 40);
   let dir: 'd' | 'a' = 'd', moves = 0;
   for (let i = 0; i < 260 && (await kills(page)) === 0; i++) {
     await page.keyboard.press('j');
@@ -132,7 +131,7 @@ for (const size of ['desktop', 'phone'] as const) {
         ...wornGear([{ id: 'verdict-blade', definitionId: 'eclipse-longblade', name: 'Eclipse Longblade', rarity: 'rare', slotId: 'weapon', stats: { strikePower: 1 }, sockets: ['hollow', 'sigil'] }]),
       });
       await expect(canvas(page)).toHaveAttribute('data-aura', 'conviction:3', { timeout: 15000 });
-      await walkTo(page, 1100, 40);
+      await walkTo(page, WORLD_COL.quarryMaws * 32, 40);
       await expect.poll(async () => Number(await canvas(page).getAttribute('data-aura-debuffed')), { timeout: 20000 }).toBeGreaterThanOrEqual(1);
       await shot(page, `aura-conviction-${size}`);
     });
