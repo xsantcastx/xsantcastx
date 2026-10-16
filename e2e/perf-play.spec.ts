@@ -498,4 +498,17 @@ guard('/play perf guard', () => {
       expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_SETTLEMENT_P50_MS);
     });
   }
+
+  // The Living World (docs/handoff/living-world.md): walking east from the Quarry Head into the wilds, the
+  // sector columns streaming in with their ashwoods, critters and packs. The Settlement's ceilings.
+  test('wilds p95/p50 frame time at 4× CPU throttle stays under the ceiling', async ({ page }) => {
+    test.setTimeout(150000);
+    const cdp = await phone(page);
+    await seed(page, { ...RESTORED, ...ONE_WORLD, ...BESIDE_QUARRY_HEAD });
+    await openPlay(page);
+    await expect(canvas(page)).toHaveAttribute('data-region', 'quarry-road', { timeout: 60000 });
+    const r = await measure(page, cdp, 'guard:wilds', 'east');
+    expect(r.p95, `p95 ${r.p95} ms`).toBeLessThan(GUARD_SETTLEMENT_P95_MS);
+    expect(r.p50, `p50 ${r.p50} ms`).toBeLessThan(GUARD_SETTLEMENT_P50_MS);
+  });
 });
