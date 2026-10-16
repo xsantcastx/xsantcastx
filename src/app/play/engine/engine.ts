@@ -2807,7 +2807,9 @@ export class SeamworksEngine {
     }
     if (t && this.parkour()) {
       const dir = (Number(this.input.has('right')) - Number(this.input.has('left'))) as -1 | 0 | 1;
-      if (this.moves.pressJump(t, this.player, DELVE_BOX, { dir, jump: true, down: this.input.has('down') }, this.climbing)) {
+      // On a ladder or trunk, or standing on its top (a snag's crown): a direction + Jump kicks off it.
+      const onClimb = this.climbing || (this.player.grounded && isClimbable(t, t.colAt(this.player.x), t.rowAt(this.player.y + 1)));
+      if (this.moves.pressJump(t, this.player, DELVE_BOX, { dir, jump: true, down: this.input.has('down') }, onClimb)) {
         if (this.moves.event === 'walljump') { this.climbing = false; this.jumpBuffer = 0; this.airTime = COYOTE + 1; }
         this.cancelMove(); return;
       }
