@@ -185,6 +185,20 @@ test.describe('the Super Bonus', () => {
   });
 });
 
+test.describe('a phone held sideways', () => {
+  test.use({ viewport: { width: 844, height: 390 }, hasTouch: true });
+  test('the board, Spin and Auto all fit at 844×390', async ({ page }) => {
+    test.setTimeout(90000);
+    mkdirSync(SHOTS, { recursive: true });
+    await seed(page, slateSave(SPOT));
+    await openPlay(page);
+    await openApp(page, true, ECLIPSE_CASCADE.id);
+    await shot(page, 'cascade-844-landscape');
+    await onScreen(page, { width: 844, height: 390 });
+    await atLeast44(page, '.cz [data-spin], .cz .gs__btn');
+  });
+});
+
 test.describe('auto spin at the Reels', () => {
   test.use({ viewport: { width: 1280, height: 800 } });
   test('quick bets and ×10 auto spin at the Croupier\'s Reels', async ({ page }) => {
@@ -269,9 +283,11 @@ for (const size of [{ width: 1280, height: 800, phone: false }, { width: 390, he
       await page.waitForTimeout(800);
 
       // West through the Gate Hollow to the surveyors' machine; E finds it and opens it.
+      await walkTo(page, (tumbler.col + 2.5) * CELL, 10);
+      await page.waitForTimeout(300);
+      await shot(page, `tumbler-${size.width}-machine`);
       await walkTo(page, (tumbler.col + 0.5) * CELL, 10);
       await expect(canvas(page)).toHaveAttribute('data-machine', 'orrery-tumbler:new', { timeout: 5000 });
-      await shot(page, `tumbler-${size.width}-machine`);
       await act(page, size.phone);
       await expect(messageLine(page)).toContainText('You found the Orrery Tumbler');
       await expect(machine(page, ORRERY_TUMBLER.id)).toBeVisible({ timeout: 15000 });

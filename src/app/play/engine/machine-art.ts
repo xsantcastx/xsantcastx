@@ -10,6 +10,9 @@
  */
 import { OUTLINE } from '../../shared/keeper-look/keeper-paint';
 
+/** The plate under each realm machine (shared/cascade/realm-machines.model.ts); world plates are English, as the stations'. */
+export const MACHINE_LABELS: Readonly<Record<string, string>> = { 'orrery-tumbler': 'ORRERY TUMBLER' };
+
 export const MACHINE_W = 16;
 export const MACHINE_H = 26;
 export type MachineFrame = 0 | 1;

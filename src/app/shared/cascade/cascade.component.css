@@ -168,19 +168,25 @@
 .cz-lore { color: var(--ink-2); font-style: italic; }
 .cz-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
-/* A phone held sideways: the board on the left, the controls beside it. */
+/* A phone held sideways: the board on the left, the controls stacked beside it (bet, then Spin, then quick bets + Auto). */
 @media (orientation: landscape) and (max-height: 560px) {
   .cz {
     grid-template-columns: auto minmax(0, 1fr);
     grid-template-areas: 'stage top' 'stage result' 'stage controls' 'stage quick';
     align-items: center;
+    align-content: start;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1);
     max-width: none;
   }
   .cz-top { grid-area: top; }
   .cz-stage { grid-area: stage; width: auto; }
-  .cz-result { grid-area: result; }
-  .cz-controls { grid-area: controls; flex-wrap: wrap; }
-  .cz-quick { grid-area: quick; flex-wrap: wrap; }
+  .cz-result { grid-area: result; min-height: 0; font-size: var(--text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .cz-controls { grid-area: controls; flex-wrap: wrap; gap: var(--space-1); }
+  .cz-spin { flex: 1 1 100%; min-height: 48px; max-width: none; font-size: var(--text-base); }
+  .cz-quick { grid-area: quick; flex-wrap: nowrap; gap: var(--space-1); }
+  .cz-auto { flex: 1 1 64px; }
+  .cz-purse, .cz-win { font-size: var(--text-sm); }
 }
 
 @media (prefers-reduced-motion: reduce) {

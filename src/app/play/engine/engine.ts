@@ -62,7 +62,7 @@ import { groundAt as surfaceGround } from './surface-gen';
 import { FIELD_NOTE_PREFIX } from '../../shared/delve/field-notes.model';
 import type { BucketId, CabinetMark, DelvePersistence, FishingPhase, GatherPersistence, MachineMark } from './engine.model';
 import { drawCabinet } from './cabinet-art';
-import { drawMachine } from './machine-art';
+import { MACHINE_LABELS, drawMachine } from './machine-art';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, NIGHT_DARK, nightShare, selectLights } from './lighting';
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
@@ -811,7 +811,16 @@ export class SeamworksEngine {
     for (const m of this.machines) {
       if (m.area !== this.areaDef.id || m.x < this.camera - 80 || m.x > this.camera + viewport + 80) continue;
       if (m.y < this.cameraY - 40 || m.y - 120 > this.cameraY + 720) continue;
+      // A soft star-blue pool on the floor and a name plate, so the machine reads at a glance (no gradient per frame).
+      c.save(); c.globalAlpha = .22; c.fillStyle = '#5fb6ff';
+      c.beginPath(); c.ellipse(m.x, m.y + 1, 30, 5, 0, 0, Math.PI * 2); c.fill(); c.restore();
       drawMachine(c, m.x, m.y, this.reducedMotion ? 0 : Math.floor(time * 1.6) % 2 === 0 ? 0 : 1, scale);
+      c.save(); c.font = '600 10px system-ui'; c.textAlign = 'center';
+      const label = MACHINE_LABELS[m.id] ?? '';
+      const w = Math.min(150, c.measureText(label).width + 10);
+      c.fillStyle = '#1a120fcc'; c.fillRect(m.x - w / 2, m.y + 4, w, 13);
+      c.fillStyle = m.found ? '#fff1c9' : '#c9e4ff'; c.fillText(label, m.x, m.y + 14);
+      c.restore();
     }
   }
   private drawCabinets(c: CanvasRenderingContext2D, viewport: number, time: number): void {
