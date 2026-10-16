@@ -16,6 +16,7 @@ export const SOUND_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'play.sound.waiting': { en: 'The sound starts with your first tap in the world.', es: 'El sonido empieza con tu primer toque en el mundo.' },
   'play.sound.live': { en: 'Playing. It starts quiet; turn it up if you like it.', es: 'Sonando. Empieza bajito; subelo si te gusta.' },
   'play.sound.unsupported': { en: 'This browser cannot play the world\'s sound.', es: 'Este navegador no puede reproducir el sonido del mundo.' },
+  'play.sound.help': { en: 'Help', es: 'Ayuda' },
   'play.sound.close': { en: 'Done', es: 'Listo' },
   'play.sound.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
 

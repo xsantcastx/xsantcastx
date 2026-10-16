@@ -9,7 +9,7 @@
 </noscript>
 <section class="stage" [class.stage--menu]="bagOpen || placesOpen || soundOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && placeId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
@@ -30,6 +30,12 @@
     <!-- One line. Desktop: always there. Phones: a toast that fades after each
          change (the span is re-created per line, which restarts its fade). -->
     <p class="objective" aria-live="polite">@for (line of [message || engineMessage || objective]; track line) {<span class="objective-line">{{ line }}</span>}</p>
+    <!-- Glim's HUD icon: the one way into Glim's chat card (companion-host.ts), in a fixed slot of the top band, in every scene.
+         Nothing floats over the world any more: a hit target riding beside the Keeper swallowed digs, torches and chests. -->
+    @if (glimVoice.met) {
+      <button type="button" class="glim-hud" data-glim-tap [class.glim-hud--says]="!!glimVoice.speech" (click)="openGlimChat()"
+              [attr.aria-label]="t('glim.chat.tap')" [title]="t('glim.chat.tap')"><app-glim-icon [mood]="glimIconMood" /><i class="glim-hud__dot" aria-hidden="true"></i></button>
+    }
     <div class="top-actions">
       <button type="button" class="places-toggle" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" aria-controls="places-list"><i class="menu-ico" aria-hidden="true"></i><span class="places-label">{{ t('play.hud.places') }}</span>@if (lookNudge) {<i class="look-nudge" aria-hidden="true"></i>}</button>
       <!-- The Mirror Slate (P): only once the Keeper carries one. The badge: the Homestead has something worth a look. -->
@@ -64,11 +70,6 @@
     </div>
   }
 
-  <!-- Tap Glim (companion-host.ts): a 52 px target that rides over Glim in the world and opens its chat card. -->
-  @if (glimVoice.met && companions.tapAt && !panel && !storyCard && !storyScene && !glimTalk) {
-    <button type="button" class="glim-tap" data-engine-ignore data-glim-tap [style.left.px]="companions.tapAt.x" [style.top.px]="companions.tapAt.y"
-            [attr.aria-label]="t('glim.chat.tap')" [title]="t('glim.chat.tap')" (click)="openGlimChat()"></button>
-  }
   @if (companions.chatOpen) {
     <div class="glim-chat-host win-host" data-engine-ignore (keydown.escape)="closeGlimChat()" appSheetDrag (sheetDismiss)="closeGlimChat()">
       <app-glim-chat [topics]="companions.topics" [reply]="companions.chatReply" [quiet]="glimQuiet" [mood]="companions.chatMood"
@@ -378,7 +379,7 @@
             <!-- The bag's tabs (MapleStory's inventory): only the ones with something in them. -->
             <div class="bag-tabs" role="group" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
               @for (tab of bagTabs; track tab.id) {
-                <button type="button" class="bag-tab" [class.is-on]="tab.id === shownTab" [attr.aria-pressed]="tab.id === shownTab" [attr.data-bag-tab]="tab.id" (click)="bagTab = tab.id">{{ t(tab.key) }} <b>{{ tab.n }}</b></button>
+                <button type="button" class="bag-tab" [class.is-on]="tab.id === shownTab" [attr.aria-pressed]="tab.id === shownTab" [attr.data-bag-tab]="tab.id" (click)="bagTab = tab.id; bagPage = 0">{{ t(tab.key) }} <b>{{ tab.n }}</b></button>
               }
             </div>
           }
@@ -399,6 +400,13 @@
             }
             @for (cell of emptyCells; track cell) { <span class="cell-empty" aria-hidden="true"></span> }
           </div>
+          @if (bagPages > 1) {
+            <div class="bag-pager" role="group" [attr.aria-label]="t('play.hud.book.pocketsLabel')">
+              <button type="button" class="px-arrow px-arrow--prev" [disabled]="page() === 0" (click)="turnBag(-1)" [attr.aria-label]="t('play.hud.book.prevPage')"></button>
+              <span class="bag-pager__n" aria-live="polite">{{ page() + 1 }} / {{ bagPages }}</span>
+              <button type="button" class="px-arrow px-arrow--next" [disabled]="page() >= bagPages - 1" (click)="turnBag(1)" [attr.aria-label]="t('play.hud.book.nextPage')"></button>
+            </div>
+          }
         }
       </div>
           <!-- The purse and how full the satchel is: the bag's bottom row. -->
@@ -599,13 +607,16 @@
     </div>
   }
 
+  <!-- The dim behind every menu (no window frames: the content floats over a soft dim of the world). A tap on it puts the menu away. -->
+  @if (menuOpen) { <div class="menu-scrim" [class.menu-scrim--bag]="bagOpen && !placesOpen && !soundOpen && !petsOpen && !panel && !anchorSheet" (click)="dismissMenu()" aria-hidden="true" data-engine-ignore></div> }
+
   <!-- The open place. Always in the DOM (hidden when closed) so #panelHost
        resolves statically; see the component for why it is not in an @if.
        data-engine-ignore keeps the world's key handlers off anything typed here. -->
   <!-- The station under the pointer (or the finger): name and what it is for. Positioned from code. -->
   <div #stationTip class="station-tip" hidden aria-hidden="true"><b></b><small></small></div>
 
-  <section #placePanel class="place" [class.place--closing]="closing" [class.place--slate]="panel?.kind === 'slate'" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)" appSheetDrag (sheetDismiss)="closePanel()">
+  <section #placePanel class="place" [class.place--closing]="closing" [class.place--slate]="panel?.kind === 'slate'" [hidden]="!panel" role="dialog" aria-modal="true" aria-labelledby="place-title" data-engine-ignore (keydown)="trapFocus($event)" (click)="placeClick($event)" appSheetDrag (sheetDismiss)="closePanel()">
     <header class="place-head win-head">
       <div>
         <span class="realm-tag">{{ panel?.kicker }}</span>

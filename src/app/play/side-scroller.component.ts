@@ -83,6 +83,7 @@ import { GLIM_ALIVE_I18N } from '../shared/glim/glim-alive.i18n';
 import { CompanionHost } from './companion-host';
 import { PET_ACT, PET_ROLES, works } from '../shared/pets/pet-roles';
 import type { TipContext } from '../shared/glim/glim-react';
+import type { GlimMood } from '../shared/glim/glim-art';
 import { GLIM_BOND_I18N } from '../shared/glim/glim-bond.i18n';
 import {
   BACK_AFTER_MS, GLIM_RARE_KINDS, NOTICE_CELLS, SENSE_CELLS, WAY_FAR_CELLS,
@@ -141,7 +142,7 @@ import { COMPASS_ID, FRAGMENT_ID, bountyLine, stratumOfRow, type Bounty, type Bo
 import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinId, type MapPin, type PinIcon } from '../shared/delve/map-pins.model';
 import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 // The Mirror Slate (docs/handoff/mirror-slate.md): the HUD button, P, the busy rule, Lune's and Kael's counters.
-import { SlateService, type SlateLaunch } from '../shared/slate/slate.service';
+import { SlateService } from '../shared/slate/slate.service';
 // The world clock (docs/handoff/world-clock.md): the sky, the hour the world keeps, the eclipse and Sera Quill's ledger.
 import { WorldClockService } from '../shared/world-clock/world-clock.service';
 import { EclipseService } from '../shared/world-clock/eclipse.service';
@@ -180,6 +181,10 @@ import { LIVING_I18N } from './world/living-world.i18n';
 import { CRITTERS, hermitOfNote, LIVING_NOTE_XP, MYSTERY_REWARD, type CritterId, type MysteryKind } from './engine/living-world';
 import { CABINETS, PULSE, SCAN, eyeDirection, scanReading, warmthAt, type ScanReading, type Warmth } from '../shared/cabinets/cabinets.model';
 import type { CabinetEvent, CabinetMark } from './engine/engine.model';
+import { FLOOR, type MachineEvent, type MachineMark } from './engine/engine.model';
+import { BUILT_REALM_MACHINES, machinePoint } from '../shared/cascade/realm-machines.model';
+import { REALM_MACHINES_I18N } from '../shared/cascade/realm-machines.i18n';
+import { PlayLedgerService } from '../shared/games/play-ledger.service';
 import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
 import { eggPortrait, petPortrait } from '../shared/pets/pet-art';
 import { SOUND_I18N } from '../shared/sound/sound.i18n';
@@ -532,6 +537,9 @@ export class SideScrollerComponent implements OnDestroy {
   bookStats = false;
   /** The satchel's open tab; All by default (and when the tab it was on empties). */
   bagTab: BagTab = 'all';
+  /** The bag's page (ten-finger rule: pages with arrows, never a scrolling column). */
+  bagPage = 0;
+  readonly bagPerPage = 15;
   /** The empty pet well's faint picture. */
   readonly petGhost = ghostOf('pet');
   pick: BagPick | null = null;
@@ -637,6 +645,9 @@ export class SideScrollerComponent implements OnDestroy {
   /** Cabinets Glim has already said something about this session. */
   private readonly glimToldCabinet = new Set<string>();
   private cabinetMarksKey = '';
+  /** The realm machines pushed to this engine, keyed by which are found (shared/cascade/realm-machines.model.ts). */
+  private machineMarksKey = '';
+  private readonly gamesLedger = inject(PlayLedgerService);
   /** Glim brightens for the bond's sense, or for a warm glass; one call carries both. */
   private bondBright = false;
   private cabinetBright = false;
@@ -657,6 +668,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
     this.i18n.register(SLATE_I18N);
+    this.i18n.register(REALM_MACHINES_I18N);
     this.i18n.register(WORLD_CLOCK_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
@@ -699,7 +711,9 @@ export class SideScrollerComponent implements OnDestroy {
       this.zone.run(() => { this.message = this.t(key); });
     });
     // The Slate's phone apps that are places of their own (the Pets well, the Codex): fold the Slate, open the place.
-    this.launchSub = this.slate.launch$.subscribe(app => this.zone.run(() => this.slateLaunch(app)));
+    this.launchSub = new Subscription();
+    this.launchSub.add(this.slate.close$.subscribe(() => this.zone.run(() => { if (this.panel?.kind === 'slate') this.closePanel(); })));
+    this.launchSub.add(this.slate.petFelt$.subscribe(e => this.zone.run(() => this.petFelt(e))));
     // The Slate's Scan: holding the glass up folds the Slate so you can walk with it.
     this.cabinets.refresh();
     this.cabinetSub = this.cabinets.scanning$.subscribe(on => this.zone.run(() => this.scanChanged(on)));
@@ -804,6 +818,8 @@ export class SideScrollerComponent implements OnDestroy {
       onKill: event => this.zone.run(() => this.hunted(event)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
+      // A realm machine (the Orrery Tumbler): found once, then played in the place panel.
+      onMachine: event => this.zone.run(() => this.machineUsed(event)),
       // The Living World: a beetle or a moth caught with a swing (its drop, once a day per creature).
       onCatch: event => this.zone.run(() => this.critterCaught(event)),
       // One World: a Waystone seen, lit, or used (waystones.service.ts writes; the engine draws).
@@ -877,7 +893,7 @@ export class SideScrollerComponent implements OnDestroy {
     // One World: the plot stands in the Ember world, west of the Seamworks, at the world's scale (ember.world.ts).
     this.homestead.scene.setWorldPlacement(this.oneWorld ? { area: INFERNAL_WORLD_TOWN.home!, x: PLOT_X, scale: PLOT_SCALE } : null);
     this.statsKey = '';
-    this.cabinetMarksKey = ''; this.cabinetBright = false;
+    this.cabinetMarksKey = ''; this.cabinetBright = false; this.machineMarksKey = '';
     this.loadoutKey = ''; this.lookPushKey = '';
     this.toolKey = ''; this.heldToolsKey = '';
     this.canvas?.nativeElement.setAttribute('data-keeper-held', '');
@@ -1457,10 +1473,12 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.closeTimer) { clearTimeout(this.closeTimer); this.closeTimer = undefined; }
     this.closing = false;
     if (!this.panel) return;
+    const wasSlate = this.panel.kind === 'slate';
     this.panelSeq++;
     this.panelHost.clear(); this.panelRef = null;
     this.panel = null; this.panelLoading = false; this.panelError = '';
     this.chestView = null;
+    if (wasSlate) this.pushPet();
     this.engine?.setPaused(false);
     this.sound.sfx('close');
     // Something crafted went into the Satchel under the panel: now it is in view, it pulses.
@@ -1505,6 +1523,10 @@ export class SideScrollerComponent implements OnDestroy {
     void this.router.navigate([], { relativeTo: this.route, queryParams: { at }, queryParamsHandling: 'merge', replaceUrl: true });
   }
   /** Keep Tab inside the open dialog. The rest of the stage is also `inert` while it is up. */
+  /** A tap on the dim around the Slate (the veil itself, nothing inside it) puts the phone away. */
+  placeClick(event: MouseEvent): void {
+    if (this.panel?.kind === 'slate' && event.target === this.placePanel.nativeElement) this.closePanel();
+  }
   trapFocus(event: KeyboardEvent): void {
     if (event.key !== 'Tab' || !this.panel) return;
     const root = this.placePanel.nativeElement;
@@ -1644,6 +1666,8 @@ export class SideScrollerComponent implements OnDestroy {
     return (this.state.enemyHp ?? 0) > 0 || this.town.hunts.some(h => h.id === this.state.areaId) ? 'hunt' : 'town';
   }
   /** Tap Glim: the chat card. */
+  /** The HUD icon's face: Glim's current mood in the world. */
+  get glimIconMood(): GlimMood { return (this.glimAt?.mood as GlimMood | undefined) ?? 'calm'; }
   openGlimChat(): void {
     if (this.glimTalk) return;
     this.glimVoice.dismiss();
@@ -2132,6 +2156,7 @@ export class SideScrollerComponent implements OnDestroy {
       return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
     }
     if (this.state?.nearby === 'cabinet') return this.t(this.state.cabinet?.open ? 'cabinet.act.empty' : 'cabinet.act.open');
+    if (this.state?.nearby === 'machine' && this.state.machine) return this.t('machine.act', { name: this.t(`machine.title.${this.state.machine.id}`) });
     const height = this.state?.nearby === 'height' ? this.state.height : undefined;
     if (height) {
       if (height.kind === 'cache') return this.t(height.found ? 'play.height.act.cacheOpened' : 'play.height.act.cache');
@@ -2315,20 +2340,40 @@ export class SideScrollerComponent implements OnDestroy {
     }
     this.message = line;
   }
-  /** The Slate's phone asked for a place of its own: the Pets well, or the Codex. */
-  private slateLaunch(app: SlateLaunch): void {
-    if (this.panel?.kind === 'slate') this.finishClose(false);
-    if (app === 'pets') { this.openPets(); return; }
-    const entry = PANEL_REGISTRY.codex;
-    this.showPanel({ kind: 'page', stationId: 'codex', title: entry.title, kicker: entry.kicker, own: true });
-    this.loadPanel(entry, this.panelInjector);
-  }
-
   // ── The Mirror Slate ──
   /** The HUD tick: which pane is held, and whether the Homestead has something worth a look. */
   private tickSlate(): void {
     this.slateTier = this.slate.tier();
     this.slateReady = this.slateTier > 0 && slateBadge(this.homestead.pendingAll(), this.economy.snapshot.perSecond);
+    this.pushMachines();
+  }
+  // ── The realm machines (docs/handoff/eclipse-cascade.md): always standing; the ledger says which are found ──
+  private pushMachines(): void {
+    if (!this.engine) return;
+    const marks: MachineMark[] = BUILT_REALM_MACHINES.map(m => ({ id: m.id, area: m.area, ...machinePoint(m, FLOOR), found: this.gamesLedger.found(m.id) }));
+    const key = marks.map(m => `${m.id}${m.found ? '!' : ''}`).join(',');
+    if (key === this.machineMarksKey) return;
+    this.machineMarksKey = key;
+    this.engine.setMachines(marks);
+  }
+  /**
+   * E at a realm machine: the first time the games ledger notes it found (once,
+   * merge-safe) and it installs as a Mirror Slate app; every time, it opens in
+   * the place panel (playable with or without a Slate).
+   */
+  private machineUsed(event: MachineEvent): void {
+    if (!this.browser || this.panel) return;
+    this.gamesLedger.init();
+    if (this.gamesLedger.markFound(event.id)) {
+      this.message = `${this.t(`machine.found.${event.id}`)} ${this.t(this.slateTier > 0 ? 'machine.found.slate' : 'machine.found.noSlate')}`;
+      this.sound.sfx('cabinet');
+      this.engine?.keeperFeel('happy', 1.4);
+      this.pushMachines();
+    }
+    const machine = event.id;
+    this.showPanel({ kind: 'page', stationId: machine, title: this.t(`machine.title.${machine}`), kicker: this.t('machine.kicker'), own: true });
+    this.loadPanel({ load: () => import('../shared/cascade/cascade.component').then(m => m.CascadeComponent) }, this.panelInjector,
+      ref => ref.setInput('machine', machine));
   }
   /** A key typed into a field is the field's, not the world's. */
   private typing(event: KeyboardEvent): boolean {
@@ -2853,7 +2898,9 @@ export class SideScrollerComponent implements OnDestroy {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
     if (!Number.isFinite(cap) || this.shownTab !== 'all') return [];
     const free = Math.max(0, Math.min(60, cap) - Math.max(used, this.pockets.length));
-    return Array.from({ length: free }, (_, i) => i);
+    // Only what fits on this page: the empty cells fill the last page out to a full grid.
+    const room = Math.max(0, this.bagPerPage - this.shownPockets.length + this.page() * this.bagPerPage);
+    return Array.from({ length: Math.min(free, room) }, (_, i) => i);
   }
   get bagFull(): boolean {
     const { usedRows: used, satchelCap: cap } = this.inventory.snapshot;
@@ -2954,10 +3001,19 @@ export class SideScrollerComponent implements OnDestroy {
   /** The open tab's pockets; a tab that emptied falls back to All. */
   get shownPockets(): BagPocket[] {
     const all = this.pockets;
-    if (this.bagTab === 'all') return all;
-    const some = all.filter(p => p.cat === this.bagTab);
-    return some.length ? some : all;
+    const some = this.bagTab === 'all' ? all : all.filter(p => p.cat === this.bagTab);
+    const list = this.bagTab === 'all' || some.length ? some : all;
+    return list.slice(this.page() * this.bagPerPage, (this.page() + 1) * this.bagPerPage);
   }
+  /** How many pages the open tab has. */
+  get bagPages(): number {
+    const all = this.pockets;
+    const some = this.bagTab === 'all' ? all : all.filter(p => p.cat === this.bagTab);
+    return Math.max(1, Math.ceil((this.bagTab === 'all' || some.length ? some : all).length / this.bagPerPage));
+  }
+  /** The page in range (a tab that emptied, or items sold, never leave it past the end). */
+  page(): number { return Math.min(this.bagPage, this.bagPages - 1); }
+  turnBag(by: number): void { this.bagPage = Math.max(0, Math.min(this.bagPages - 1, this.page() + by)); }
   get shownTab(): BagTab {
     return this.bagTab !== 'all' && this.pockets.some(p => p.cat === this.bagTab) ? this.bagTab : 'all';
   }
@@ -3648,6 +3704,17 @@ export class SideScrollerComponent implements OnDestroy {
     return rows;
   }
   /** Open the travel sheet (E at an anchor, or the shaft's button). */
+  /** Any menu up over the world (the Slate has its own veil): the soft dim behind it, and what a tap on the dim closes. */
+  get menuOpen(): boolean { return this.bagOpen || this.placesOpen || this.soundOpen || this.petsOpen || (!!this.panel && this.panel.kind !== 'slate') || !!this.anchorSheet; }
+  /** A tap on the dim around a menu puts the top one away (Escape does the same through each menu's own handler). */
+  dismissMenu(): void {
+    if (this.petsOpen) this.closePets();
+    else if (this.soundOpen) this.soundOpen = false;
+    else if (this.anchorSheet) this.closeAnchors();
+    else if (this.panel) this.closePanel();
+    else if (this.placesOpen) this.placesOpen = false;
+    else if (this.bagOpen) this.toggleBag();
+  }
   openAnchors(): void {
     if (!this.engine) return;
     this.anchorSheet = this.anchorRows();

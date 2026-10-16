@@ -149,6 +149,8 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       // Stacks lead (the ore), then gear A→Z: Ashen Helm first, Worn Sickle last.
       await expect(vault(page).locator('.jl__row').first()).toContainText('Cinder Ore');
       await expect(vault(page).locator('.jl__row').nth(1)).toContainText('Ashen Helm');
+      // The grid pages (15 a page): Worn Sickle is the last row of the last page.
+      while (await vault(page).locator('.jg__arrow--next:not([disabled])').count()) await vault(page).locator('.jg__arrow--next').click();
       await expect(vault(page).locator('.jl__row').last()).toContainText('Worn Sickle');
       await vault(page).locator('.vs-search').fill('comet');
       await expect(vault(page).locator('.jl__row')).toHaveCount(1);

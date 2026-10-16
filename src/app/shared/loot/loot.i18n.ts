@@ -9,6 +9,7 @@ export const LOOT_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'loot.menuBlurb': { en: 'Loot filter, aura, difficulty', es: 'Filtro de botin, aura, dificultad' },
   'loot.title': { en: 'Loot & Combat', es: 'Botin y combate' },
   'loot.lead': { en: 'What the world drops, how loud it shines, and how hard it fights back.', es: 'Lo que suelta el mundo, cuanto brilla y cuanto se defiende.' },
+  'loot.help': { en: 'Help', es: 'Ayuda' },
   'loot.close': { en: 'Done', es: 'Listo' },
   'loot.saved': { en: 'Saved with your Keeper, on every device.', es: 'Guardado con tu Guardian, en todos tus dispositivos.' },
 

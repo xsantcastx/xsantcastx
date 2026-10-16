@@ -10,6 +10,26 @@ type Shape = readonly string[];
 type Palette = Readonly<Record<string, string>>;
 const OUTLINE = '#140a1f';
 
+/** About: a round "i" on the glass. */
+const ABOUT: Shape = [
+  '................',
+  '....oooooooo....',
+  '...ollllllllo...',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllllllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '...ollllllllo...',
+  '....oooooooo....',
+  '................',
+  '................',
+  '................',
+];
+
 /** Lune's tables: a reel window with three symbols and a lever. */
 const TABLES: Shape = [
   '................',
@@ -290,7 +310,49 @@ const MOON: Shape = [
   '................',
 ];
 
+/** The Eclipse Cascade: a grid of runes, one cell burst and falling. */
+const CASCADE: Shape = [
+  '................',
+  '.ooooooooooooo..',
+  '.oaaaobbboaaao..',
+  '.oaaaobbboaaao..',
+  '.oaaaobbboaaao..',
+  '.ooooooooooooo..',
+  '.obbbo...offfo..',
+  '.obbbo.e.offfo..',
+  '.obbbo...offfo..',
+  '.ooooooooooooo..',
+  '.offfoaaaobbbo..',
+  '.offfoaaaobbbo..',
+  '.offfoaaaobbbo..',
+  '.ooooooooooooo..',
+  '..e..e....e.....',
+  '................',
+];
+
+/** The Orrery Tumbler: a brass ring round a blue world, on its stand. */
+const TUMBLER: Shape = [
+  '................',
+  '......oooo......',
+  '....oobbbboo....',
+  '...obboooobbo...',
+  '..obo.oeeo.obo..',
+  '..obo.oeeo.obo..',
+  '...obboooobbo...',
+  '....oobbbboo....',
+  '......oooo......',
+  '.......ob.......',
+  '......obbo......',
+  '.....obddbo.....',
+  '....obddddbo....',
+  '....oooooooo....',
+  '................',
+  '................',
+];
+
 const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette }>> = {
+  'eclipse-cascade': { shape: CASCADE, palette: { a: '#a855f7', b: '#E8D44D', f: '#5ff0d8', e: '#E8752A' } },
+  'orrery-tumbler': { shape: TUMBLER, palette: { b: '#c9a04a', d: '#7a5a22', e: '#5fb6ff' } },
   reels: { shape: TABLES, palette: { d: '#8a6a3a', l: '#fff4dc', e: '#E8752A', f: '#a855f7', b: '#E8D44D' } },
   'rune-drop': { shape: RUNE_DROP, palette: { e: '#a855f7', f: '#c9a0ff', l: '#d8dcf0', b: '#E8D44D', d: '#5a2f8a' } },
   'seam-sweeper': { shape: SWEEPER, palette: { l: '#8a7a58', d: '#4a4030', e: '#c4501e', f: '#E8D44D', b: '#5ff0d8' } },
@@ -301,6 +363,7 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette }>> = {
   pets: { shape: PETS, palette: { l: '#ffe7a0', b: '#e0b060', d: '#c08a3e' } },
   codex: { shape: CODEX, palette: { l: '#c9a0ff', b: '#5a2f8a', e: '#d8dcf0', f: '#E8D44D', d: '#33263a' } },
   eclipse: { shape: ECLIPSE, palette: { b: '#0e0912', d: '#33263a', f: '#E8D44D', e: '#fff4dc' } },
+  about: { shape: ABOUT, palette: { l: '#d8dcf0', b: '#5a2f8a' } },
   music: { shape: MUSIC, palette: { l: '#d8dcf0', d: '#8a90b0', b: '#a855f7' } },
   'sky-day': { shape: SUN, palette: { l: '#fff4dc', b: '#ffd08a', d: '#E8752A', e: '#E8D44D' } },
   'sky-dawn': { shape: HORIZON, palette: { l: '#fff4dc', b: '#ffd08a', e: '#ffe7a0', d: '#7b4fc0', f: '#4a3260' } },

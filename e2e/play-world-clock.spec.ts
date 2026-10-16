@@ -83,7 +83,7 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800, phone: false },
     await expect(panel.locator('[data-sky-label]')).toHaveText('Day');
     await expect(panel.locator('[data-eclipse-countdown]')).toContainText('Next eclipse in');
     await expect(panel.locator('[data-now-playing]')).toContainText('Now playing');
-    await expect(panel.locator('.sl-tile--game')).toHaveText(['Reels', 'Rune Drop', 'Seam Sweeper', 'Eclipse Ascent']);
+    await expect(panel.locator('.sl-tile--game')).toHaveText(['Reels', 'Rune Drop', 'Seam Sweeper', 'Eclipse Ascent', 'Cascade']);
     await expect(panel.locator('.sl-tile[data-face="factory"]')).toBeVisible();
     await expect(panel.locator('.sl-tile[data-app="pets"]')).toBeVisible();
     await expect(panel.locator('.sl-tile[data-app="codex"]')).toBeVisible();
