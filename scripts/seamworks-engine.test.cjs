@@ -5036,3 +5036,342 @@ test('tool in hand: without the tool the weapon stays, and the hint is said once
   assert.notEqual(state().messageKey, 'play.hud.tool.missing.axe', 'said once');
   engine.destroy();
 });
+
+// ── Loot & combat (shared/loot, docs/design/loot-and-combat.md) ──────────────
+const RULES = (extra = {}) => ({ tier: 'normal', seed: 7, aura: null, resists: {}, filter: 'all', ...extra });
+
+test('loot & combat: without rules the fight is the legacy one; with Normal rules the tutorial Maw is unchanged', () => {
+  const { engine } = fixture();
+  const monster = engine.monsters[0];
+  engine.setCombatRules(RULES());
+  engine.update(1 / 60);
+  assert.equal(monster.maxHp, 60, 'a level-1 Maw on Normal keeps its 60 HP');
+  assert.equal(monster.armed.rank, 'normal', 'the tutorial Maw is never a champion');
+  assert.equal(monster.armed.blow, 12, 'and still hits for 12');
+  engine.setCombatRules(RULES({ tier: 'hell' }));
+  assert.equal(monster.maxHp, 240, 'Hell: four times the HP');
+  assert.equal(monster.armed.blow, 36, 'Hell: three times the blow');
+  engine.setCombatRules(null);
+  assert.equal(monster.maxHp, 60); assert.equal(monster.armed, undefined);
+  engine.destroy();
+});
+
+test('loot & combat: a rolled rare drop spills with a tall beam, is heard, reported, and handed to the host at pickup', () => {
+  const got = [], sounds = [];
+  const { engine, state } = fixture(loot => { got.push(loot); return true; }, {
+    rollLoot: () => [{ kind: 'item', definitionId: 'astral-helm', rarity: 'rare', label: 'Astral Helm' }],
+    onSfx: cue => sounds.push(cue.kind),
+  });
+  engine.setCombatRules(RULES());
+  const monster = killFirst(engine);
+  const rare = engine.drops.find(d => d.item);
+  assert.ok(rare, 'the rolled item lies on the ground');
+  assert.equal(rare.rarity, 'rare');
+  const ore = engine.drops.find(d => d.material);
+  assert.ok(rare.beam > ore.beam, 'a rare throws a taller beam than a common material');
+  assert.ok(sounds.includes('drop-rare'), 'the rare is heard');
+  assert.equal(state().messageKey, 'play.loot.dropped');
+  assert.match(state().loot.drops, /rare:1/);
+  engine.player.x = rare.x;
+  for (let n = 0; n < 90; n++) engine.update(1 / 60);
+  assert.ok(!got.some(l => l.item), 'gear waits on the ground: walking over it does not take it (D2)');
+  engine.interact(); engine.update(1 / 60);
+  const picked = got.find(l => l.item);
+  assert.ok(picked, 'the host is asked to mint it');
+  assert.equal(JSON.stringify(picked.item), JSON.stringify({ definitionId: 'astral-helm', rarity: 'rare', unique: false }));
+  assert.equal(engine.drops.filter(d => d.item).length, 0, 'gone from the ground once taken');
+  engine.destroy();
+});
+
+test('loot & combat: a full satchel leaves gear shining; the filter hides commons but still collects them', () => {
+  let room = false;
+  const { engine, state } = fixture(loot => (loot.item ? room : true), {
+    rollLoot: () => [{ kind: 'rune', rune: 'glint', rarity: 'uncommon', label: 'Glint Rune' }, { kind: 'item', definitionId: 'astral-helm', rarity: 'epic', label: 'Astral Helm' }],
+  });
+  engine.setCombatRules(RULES({ filter: 'hide-common' }));
+  const monster = killFirst(engine);
+  assert.match(state().loot.drops, /common:0/, 'the plain Cinder Ore is hidden');
+  assert.match(state().loot.drops, /coins:1/, 'coins always show');
+  assert.match(state().loot.drops, /epic:1/);
+  for (const x of engine.drops.map(d => d.x)) { engine.player.x = x; for (let n = 0; n < 30; n++) engine.update(1 / 60); }
+  assert.ok(monster.hp === 0);
+  assert.equal(engine.drops.filter(d => d.material).length, 0, 'a hidden drop walked over is still collected');
+  const epic = engine.drops.find(d => d.item);
+  engine.player.x = epic.x; engine.interact();
+  assert.equal(engine.drops.filter(d => d.item).length, 1, 'no room: the epic stays');
+  room = true;
+  engine.interact(); engine.update(1 / 60);
+  assert.equal(engine.drops.filter(d => d.item).length, 0);
+  engine.destroy();
+});
+
+test('loot & combat: Holy Fire pulses fire damage through a creature\'s resist; Conviction marks it and lowers the resist', () => {
+  const { engine, state } = fixture();
+  const monster = engine.monsters[0];
+  engine.player.x = monster.x - 60;
+  engine.setCombatRules(RULES({ aura: { id: 'holy-fire', level: 5 } }));
+  for (let n = 0; n < 100; n++) engine.update(1 / 60); // 1.67 s: one pulse
+  // Holy Fire 5 = 17 fire; a Maw resists fire 25 → 13.
+  assert.equal(monster.maxHp - monster.hp, 13, 'one pulse, through the fire resist');
+  assert.equal(state().loot.aura, 'holy-fire:5');
+  assert.ok(state().loot.debuffed >= 1, 'the creature in reach is marked');
+  engine.setCombatRules(RULES({ aura: { id: 'conviction', level: 9 } }));
+  monster.hp = monster.maxHp;
+  engine.update(1 / 60);
+  assert.ok(monster.marked, 'Conviction marks what stands in it');
+  engine.setStats({ damage: 20, maxHp: 100 });
+  engine.facing = 1; engine.player.x = monster.x - 50;
+  const before = monster.hp;
+  strike(engine);
+  // Conviction 9 takes 52 off every resist: a Maw's physical 0 becomes -52, so 20 lands as 30.
+  assert.equal(before - monster.hp, 30);
+  engine.destroy();
+});
+
+test('loot & combat: Prayer heals over time, Redemption heals per corpse, Might and Fanaticism', () => {
+  const { engine } = fixture();
+  engine.setStats({ damage: 20, maxHp: 100 });
+  engine.setCombatRules(RULES({ aura: { id: 'prayer', level: 1 } }));
+  engine.hp = 50; engine.player.x = 160;
+  for (let n = 0; n < 120; n++) engine.update(1 / 60);
+  assert.ok(Math.abs(engine.hp - 53) < .2, `Prayer 1 heals 1.5 HP/s (hp ${engine.hp})`);
+  engine.setCombatRules(RULES({ aura: { id: 'redemption', level: 1 } }));
+  engine.hp = 50;
+  const monster = killFirst(engine);
+  assert.equal(monster.hp, 0);
+  assert.equal(engine.hp, 58, 'Redemption 1: a corpse in reach mends 8');
+  engine.setCombatRules(RULES({ aura: { id: 'might', level: 1 } }));
+  const next = engine.monsters[1];
+  engine.player.x = next.x - 50; engine.facing = 1;
+  strike(engine);
+  assert.equal(next.maxHp - next.hp, 23, 'Might 1: +15% damage');
+  engine.setCombatRules(RULES({ aura: { id: 'fanaticism', level: 1 } }));
+  strike(engine);
+  assert.ok(Math.abs(engine.attackCooldown - .52 / 1.15) < 1e-9, 'Fanaticism 1: swings 15% sooner');
+  engine.destroy();
+});
+
+test('loot & combat: the corpse run purse lies in its area, is reported, and comes home when walked over', () => {
+  let recovered = 0;
+  const { engine, state } = fixture(() => true, { onPurse: () => { recovered++; } });
+  engine.setCombatRules(RULES());
+  engine.setFallenPurse({ area: engine.areaDef.id, x: 900, y: 610, gold: 50 });
+  assert.equal(state().loot.purse, true);
+  engine.setFallenPurse({ area: 'somewhere-else', x: 900, y: 610, gold: 50 });
+  assert.equal(state().loot.purse, false, 'a purse in another area is not here');
+  engine.setFallenPurse({ area: engine.areaDef.id, x: 900, y: 610, gold: 50 });
+  engine.player.x = 900;
+  engine.update(1 / 60);
+  assert.equal(recovered, 1);
+  assert.equal(state().loot.purse, false);
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.equal(recovered, 1, 'once');
+  engine.destroy();
+});
+
+test('loot & combat: resists — the cap, Hell\'s penalty, immunities and Conviction at a fifth', () => {
+  const dmg = loadTs(path.resolve(__dirname, '../src/app/shared/loot/damage.model.ts'));
+  assert.equal(dmg.keeperResist(75, 0), 75);
+  assert.equal(dmg.keeperResist(75, 100), -25, 'Hell: 75 from gear sits at -25');
+  assert.equal(dmg.keeperResist(175, 100), 75, 'capped at 75');
+  assert.equal(dmg.hitOnKeeper(40, 'fire', -25), 50);
+  assert.equal(dmg.hitOnKeeper(40, 'physical', -100), 40, 'physical is never resisted (Ward is health)');
+  assert.equal(dmg.mitigate(100, 120, 0), 0, 'immune');
+  assert.equal(dmg.mitigate(100, 120, 85), 0, 'Conviction at a fifth against an immunity: 120 - 17 = 103, still immune');
+  assert.equal(dmg.mitigate(100, 110, 85), 7, 'a weaker immunity breaks: 110 - 17 = 93% resist, 7 lands');
+});
+
+test('loot & combat: edge pips sit on the frame for an off-screen drop; sparkles are deterministic', () => {
+  const pip = { x: 0, y: 0, visible: false };
+  lootFx.edgePip(1600, 360, 1200, 720, 18, pip);
+  assert.equal(pip.visible, true); assert.equal(Math.round(pip.x), 1182); assert.equal(Math.round(pip.y), 360);
+  lootFx.edgePip(600, 300, 1200, 720, 18, pip);
+  assert.equal(pip.visible, false);
+  const a = { x: 0, y: 0, a: 0 }, b = { x: 0, y: 0, a: 0 };
+  lootFx.sparkleAt(0, 4, 0, 120, a); lootFx.sparkleAt(0, 4, 0, 120, b);
+  assert.deepEqual(a, b, 'deterministic');
+  assert.ok(a.y < 0, 'above the drop');
+  assert.ok(lootFx.beamHeight('legendary', false) > lootFx.beamHeight('epic', false));
+  assert.ok(lootFx.beamHeight('singular', false) > lootFx.beamHeight('mythic', false));
+});
+
+// ── Pets with roles, and Glim alive (pet-brain.ts, pet-roles.ts; docs/handoff/pets-and-glim-alive.md) ──
+const petRoles = loadTs(path.resolve(__dirname, '../src/app/shared/pets/pet-roles.ts'));
+function setPetOn(engine, id, ability, command = 'follow', level = 1) {
+  const r = petRoles.PET_ROLES[id];
+  engine.setPet({ id, name: 'Pip', hat: false, ability, role: r.role, move: r.move, second: level >= petRoles.SECOND_AT ? r.second : null, level, command });
+}
+function run(engine, seconds) { for (let n = 0; n < seconds * 60; n++) engine.update(1 / 60); }
+
+test('pets: a combat pet (the Ink Pup) closes on a foe near the Keeper, bites it and stuns it, through hurtMonster', () => {
+  const events = [];
+  const { engine } = fixture(() => true, { onPet: e => { events.push(e); return true; } });
+  setPetOn(engine, 'ink-pup', 'warn');
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 150; engine.player.y = 610;
+  const before = foe.hp;
+  run(engine, 3);
+  assert.ok(foe.hp < before, `the pup bit it (${before} → ${foe.hp})`);
+  assert.ok(engine.petView.hits >= 1);
+  assert.ok(events.some(e => e.kind === 'hit' && e.move === 'bite'));
+  assert.equal(petRoles.moveDamage('bite', 1), petRoles.PET_ACT.biteDamage);
+  engine.destroy();
+});
+
+test('pets: a skilling pet does not fight under Follow; Fight brings it in, Stay keeps it put', () => {
+  const { engine } = fixture(() => true, { onPet: () => true });
+  setPetOn(engine, 'moss-hedgehog', 'gather', 'follow');
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 150; engine.player.y = 610;
+  const before = foe.hp;
+  run(engine, 2);
+  assert.equal(foe.hp, before, 'a hedgehog on Follow leaves the fight to you');
+  setPetOn(engine, 'moss-hedgehog', 'gather', 'fight');
+  run(engine, 3);
+  assert.ok(foe.hp < before, 'told to Fight, it nips too');
+  // Stay: the Keeper walks off; the pet keeps its spot.
+  setPetOn(engine, 'moss-hedgehog', 'gather', 'stay');
+  engine.player.x = foe.x - 900;
+  run(engine, .5);
+  const spot = engine.petView.x;
+  engine.setInput('left', true); run(engine, 1); engine.setInput('left', false);
+  run(engine, 1);
+  assert.equal(engine.petView.act, 'stay');
+  assert.ok(Math.abs(engine.petView.x - spot) < 4, `it stays where it was told (${spot} → ${engine.petView.x})`);
+  engine.destroy();
+});
+
+test('pets: a blow drawn to the pet tires it out (never dead), it rests, then comes back full', () => {
+  const events = [];
+  const { engine } = fixture(() => true, { onPet: e => { events.push(e); } });
+  setPetOn(engine, 'ink-pup', 'warn');
+  const brain = engine.petBrain;
+  for (let n = 0; n < 3; n++) brain.blow({ event: e => events.push(e) });
+  assert.equal(engine.petBrain.act, 'tired');
+  assert.ok(events.some(e => e.kind === 'tired'));
+  run(engine, petRoles.PET_ACT.restFor + .5);
+  assert.notEqual(engine.petBrain.act, 'tired');
+  assert.equal(brain.stamina, petRoles.PET_ACT.stamina);
+  engine.destroy();
+});
+
+test('pets: the Moss Hedgehog works a ready node beside the Keeper (booked as pet-forage, no XP), the node rests', () => {
+  const { engine, calls } = enterThicket({ onPet: () => true });
+  clearFoes(engine);
+  engine.setTools({ sickle: 1, axe: 1, pickaxe: 1 });
+  setPetOn(engine, 'moss-hedgehog', 'gather');
+  standAt(engine, nodeX(engine, 'starlight-clump') + 60);
+  run(engine, 6);
+  const booked = calls.filter(c => c.mutationId.startsWith('pet-forage:'));
+  assert.ok(booked.length >= 1, 'the hedgehog gathered');
+  assert.equal(booked[0].xp, 0, 'the Keeper\'s XP is the Keeper\'s own');
+  assert.ok(engine.petView.gathers >= 1);
+  const site = engine.sites.find(s => s.def.id === booked[0].site);
+  assert.equal(site.ready, false, 'the node rests like any harvest');
+  engine.destroy();
+});
+
+test('pets: the Star Owlet scouts a spot ahead, digs it when the Keeper comes, coins spill; the host can say no', () => {
+  let allow = true;
+  const { engine, state } = fixture(() => true, { onPet: e => (e.kind === 'find' ? allow : undefined) });
+  clearFoes(engine);
+  setPetOn(engine, 'star-owlet', 'scent');
+  engine.player.x = engine.areaDef.spawnX; engine.facing = 1;
+  run(engine, 7);
+  const spot = engine.petMarks.spotX;
+  assert.ok(Number.isFinite(spot), 'a scouted spot');
+  const coins = state().coins;
+  engine.resetPosition(spot);
+  run(engine, 2.5);
+  assert.ok(engine.petView.finds >= 1, 'dug up');
+  assert.ok(state().coins > coins, 'coins spilled and were picked up');
+  allow = false;
+  engine.petBrain.scoutRest = 0;
+  run(engine, 1);
+  assert.ok(!Number.isFinite(engine.petMarks.spotX), 'the day\'s finds spent: no new spot');
+  engine.destroy();
+});
+
+test('pets: the Ember Newt warms an ore vein in the Delve and the warmed vein takes the boost', () => {
+  const { engine } = enterDelve(() => true);
+  engine.options.onPet = () => true;
+  setPetOn(engine, 'ember-newt', 'glow');
+  const t = engine.terrain;
+  const col = t.colAt(engine.player.x) + 2, row = Math.max(0, t.rowAt(engine.player.y + 10));
+  t.set(col, row, terrainMod.nodeIndex('cinder-vein'));
+  run(engine, 2.5);
+  assert.ok(engine.petMarks.warm.length >= 1, 'a vein warmed');
+  // The warmed vein breaks in one strike (3 hp, a starter pickaxe chips 1 a hit).
+  engine.setTools({ pickaxe: 1 }); engine.attackCooldown = 0; engine.facing = 1;
+  assert.equal(engine.strikeCell((col + .5) * 32, t.top + (row + .5) * 32), true);
+  assert.equal(t.kind[t.index(col, row)] === terrainMod.nodeIndex('cinder-vein'), false, 'gone in one strike');
+  assert.ok(petRoles.PET_ACT.kindleBoost > 1);
+  engine.destroy();
+});
+
+test('pets: the Sunling pulses light on a hurt Keeper even mid-fight', () => {
+  const { engine } = fixture(() => true, { onPet: () => true });
+  setPetOn(engine, 'sunling', 'mend');
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 200; engine.player.y = 610;
+  engine.hp = engine.maxHp * .4;
+  const before = engine.hp;
+  engine.update(1 / 60);
+  assert.ok(engine.hp > before, 'the pulse healed');
+  assert.equal(engine.petView.heals, 1);
+  engine.destroy();
+});
+
+test('glim: show me something lays a trail to the nearest find; its powers fly to a missed drop; moods and the high five', () => {
+  const cues = [];
+  const { engine } = fixture(() => false, { onGlimCue: c => cues.push(c) });
+  engine.setGlim(true);
+  killFirst(engine);
+  engine.player.x = engine.monsters[0].x - 600;
+  run(engine, 1.2);
+  const find = engine.glimFind();
+  assert.ok(find, 'something to show');
+  assert.equal(find.kind, 'drop');
+  assert.equal(engine.glimView.trail, find.x);
+  run(engine, 7);
+  assert.equal(engine.glimView.trail, null, 'the trail fades');
+  engine.setGlimPowers({ lamp: true, missed: true });
+  run(engine, 1);
+  assert.ok(cues.some(c => c.kind === 'missed'), 'Glim flew over the drop left lying');
+  engine.glimMood('gasp', 1);
+  assert.equal(engine.glimView.mood, 'gasp');
+  engine.glimHighFive();
+  assert.equal(engine.glimView.mood, 'happy');
+  engine.destroy();
+});
+
+test('glim: a dodge with a foe winding up is a cue; a dodge at nothing is not', () => {
+  const cues = [];
+  const { engine } = fixture(() => true, { onGlimCue: c => cues.push(c) });
+  engine.setGlim(true);
+  engine.player.x = 160;
+  engine.setInput('dodge', true); engine.setInput('dodge', false);
+  assert.equal(cues.length, 0);
+  run(engine, 1.2);
+  const foe = engine.monsters[0];
+  engine.player.x = foe.x - 120; foe.phase = 'windup'; foe.timer = 1;
+  engine.setInput('dodge', true); engine.setInput('dodge', false);
+  assert.ok(cues.some(c => c.kind === 'dodge'));
+  engine.destroy();
+});
+
+test('loot & combat: a pet\'s blow goes through resists; a stunned, chilled creature holds still', () => {
+  const { engine } = fixture();
+  const monster = engine.monsters[0];
+  engine.setCombatRules({ tier: 'normal', seed: 7, aura: null, resists: {}, filter: 'all' });
+  engine.update(1 / 60);
+  monster.armed.resists.physical = 50;
+  engine.petHit(monster, 20);
+  assert.equal(monster.maxHp - monster.hp, 10, 'half through a 50 physical resist');
+  monster.stun = 1; monster.chill = .4;
+  const x = monster.x;
+  engine.player.x = monster.x - 120;
+  for (let n = 0; n < 30; n++) engine.update(1 / 60);
+  assert.ok(monster.stun > 0 && Math.abs(monster.x - x) < 1, 'stunned: it does not move');
+  engine.destroy();
+});

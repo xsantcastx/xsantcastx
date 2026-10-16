@@ -12,8 +12,14 @@
  *   feedDay  the local day of its last meal, with `feeds` that day (the daily
  *            appetite: a full pet waits for tomorrow, it is never hungry or hurt)
  *   hat      the hat worn (once love has unlocked it), with `hatAt`; later wins
+ *   xp       pet experience, grown by use (pet-roles.ts levels); max wins
+ *   findDay  the local day of its last find, with `scouts` and `trinkets` that
+ *            day (the daily cap on what it digs up); the later day wins, same
+ *            day: the larger counts
  *
  * `active` (with `activeAt`) is the one pet following the Keeper; later wins.
+ * `command` (with `commandAt`) is what the Keeper told it from the pet card
+ * (pet-roles.ts PetCommand: follow / stay / fight / gather / play); later wins.
  * `tally` counts what finds a pet (max per key: each device counted its own
  * visits, and the larger is the truer).
  *
@@ -44,7 +50,15 @@ export interface PetRecord {
   feeds: number;
   hat: boolean;
   hatAt: number;
+  xp: number;
+  findDay: string;
+  scouts: number;
+  trinkets: number;
 }
+
+/** What the Keeper told the pet (pet-roles.ts PET_COMMANDS; copied so this file stays import-free). */
+const COMMANDS = ['follow', 'stay', 'fight', 'gather', 'play'];
+const PET_XP_CEILING = 100_000;
 
 export interface PetsState {
   version: 1;
@@ -52,10 +66,17 @@ export interface PetsState {
   active: string;
   activeAt: number;
   tally: Record<string, number>;
+  command: string;
+  commandAt: number;
 }
 
 export function emptyPets(): PetsState {
-  return { version: 1, pets: {}, active: '', activeAt: 0, tally: {} };
+  return { version: 1, pets: {}, active: '', activeAt: 0, tally: {}, command: 'follow', commandAt: 0 };
+}
+
+/** A pet just found: nothing grown yet. */
+export function newPetRecord(at: number, hatched: number): PetRecord {
+  return { got: at, hatched, name: '', nameAt: 0, love: 0, feedDay: '', feeds: 0, hat: false, hatAt: 0, xp: 0, findDay: '', scouts: 0, trinkets: 0 };
 }
 
 const stamp = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) && v > 0 ? Math.floor(v) : 0);
@@ -75,6 +96,7 @@ function record(raw: unknown): PetRecord | null {
   if (!got) return null;
   const hatched = stamp(r['hatched']);
   const feedDay = typeof r['feedDay'] === 'string' && DAY.test(r['feedDay']) ? r['feedDay'] : '';
+  const findDay = typeof r['findDay'] === 'string' && DAY.test(r['findDay']) ? r['findDay'] : '';
   return {
     got,
     hatched: hatched ? Math.max(hatched, got) : 0,
@@ -85,6 +107,10 @@ function record(raw: unknown): PetRecord | null {
     feeds: feedDay ? count(r['feeds'], 99) : 0,
     hat: r['hat'] === true,
     hatAt: stamp(r['hatAt']),
+    xp: count(r['xp'], PET_XP_CEILING),
+    findDay,
+    scouts: findDay ? count(r['scouts'], 99) : 0,
+    trinkets: findDay ? count(r['trinkets'], 99) : 0,
   };
 }
 
@@ -111,7 +137,8 @@ export function coercePets(raw: unknown): PetsState {
     }
   }
   const active = typeof r['active'] === 'string' && pets[r['active']]?.hatched ? r['active'] : '';
-  return { version: 1, pets, active, activeAt: active ? stamp(r['activeAt']) : 0, tally };
+  const command = typeof r['command'] === 'string' && COMMANDS.includes(r['command']) ? r['command'] : 'follow';
+  return { version: 1, pets, active, activeAt: active ? stamp(r['activeAt']) : 0, tally, command, commandAt: stamp(r['commandAt']) };
 }
 
 const earlier = (a: number, b: number): number => (!a ? b : !b ? a : Math.min(a, b));
@@ -121,6 +148,7 @@ function mergeRecord(a: PetRecord, b: PetRecord): PetRecord {
   const named = b.nameAt > a.nameAt || (b.nameAt === a.nameAt && b.name > a.name) ? b : a;
   const fed = b.feedDay > a.feedDay ? b : a.feedDay > b.feedDay ? a : null;
   const hat = b.hatAt > a.hatAt || (b.hatAt === a.hatAt && b.hat && !a.hat) ? b : a;
+  const found = b.findDay > a.findDay ? b : a.findDay > b.findDay ? a : null;
   const got = earlier(a.got, b.got);
   const hatched = earlier(a.hatched, b.hatched);
   return {
@@ -133,6 +161,10 @@ function mergeRecord(a: PetRecord, b: PetRecord): PetRecord {
     feeds: fed ? fed.feeds : Math.max(a.feeds, b.feeds),
     hat: hat.hat,
     hatAt: hat.hatAt,
+    xp: Math.max(a.xp, b.xp),
+    findDay: found ? found.findDay : a.findDay,
+    scouts: found ? found.scouts : Math.max(a.scouts, b.scouts),
+    trinkets: found ? found.trinkets : Math.max(a.trinkets, b.trinkets),
   };
 }
 
@@ -149,5 +181,6 @@ export function mergePets(remote: unknown, local: unknown): unknown {
   const tally: Record<string, number> = { ...l.tally };
   for (const [k, v] of Object.entries(r.tally)) tally[k] = Math.max(tally[k] ?? 0, v);
   const pick = r.activeAt > l.activeAt || (r.activeAt === l.activeAt && r.active > l.active) ? r : l;
-  return coercePets({ version: 1, pets, active: pick.active, activeAt: pick.activeAt, tally } satisfies PetsState);
+  const told = r.commandAt > l.commandAt || (r.commandAt === l.commandAt && r.command > l.command) ? r : l;
+  return coercePets({ version: 1, pets, active: pick.active, activeAt: pick.activeAt, tally, command: told.command, commandAt: told.commandAt } satisfies PetsState);
 }

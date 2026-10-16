@@ -8,12 +8,14 @@
   </section>
 </noscript>
 <section class="stage" [class.stage--menu]="bagOpen || placesOpen || soundOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
-  <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null">
-    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
+  <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
+    <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
       <div class="fall-card">
         <strong>{{ t('play.hud.fall.title') }}</strong>
         <span>{{ t('play.hud.fall.safe') }}</span>
+        <!-- The corpse run (shared/loot): a share of the purse lies where the Keeper fell; nothing else is lost. -->
+        <span data-fall-gold>{{ fallGold > 0 ? t('play.loot.fall.purse', { n: fallGold }) : t('play.loot.fall.none') }}</span>
         <button type="button" (click)="retry()">{{ t('play.hud.returnCamp') }}</button>
       </div>
     }
@@ -62,6 +64,28 @@
     </div>
   }
 
+  <!-- Tap Glim (companion-host.ts): a 52 px target that rides over Glim in the world and opens its chat card. -->
+  @if (glimVoice.met && companions.tapAt && !panel && !storyCard && !storyScene && !glimTalk) {
+    <button type="button" class="glim-tap" data-engine-ignore data-glim-tap [style.left.px]="companions.tapAt.x" [style.top.px]="companions.tapAt.y"
+            [attr.aria-label]="t('glim.chat.tap')" [title]="t('glim.chat.tap')" (click)="openGlimChat()"></button>
+  }
+  @if (companions.chatOpen) {
+    <div class="glim-chat-host win-host" data-engine-ignore (keydown.escape)="closeGlimChat()" appSheetDrag (sheetDismiss)="closeGlimChat()">
+      <app-glim-chat [topics]="companions.topics" [reply]="companions.chatReply" [quiet]="glimQuiet" [mood]="companions.chatMood"
+                     (ask)="companions.ask($event)" (setQuiet)="companions.setQuiet($event)" (done)="closeGlimChat()" />
+    </div>
+  }
+  <!-- Catch the light (Glim's game): five motes in the outer band, never over the middle of the world. -->
+  @if (companions.game; as game) {
+    <div class="glim-game" data-engine-ignore data-glim-game>
+      @for (m of game.motes; track $index) {
+        @if (!m.caught) {
+          <button type="button" class="glim-mote" [style.left.%]="m.x * 100" [style.top.%]="m.y * 100" [attr.data-glim-mote]="$index"
+                  [attr.aria-label]="t('glim.play.mote')" (click)="companions.catchMote($index)"><i aria-hidden="true"></i></button>
+        }
+      }
+    </div>
+  }
   <!-- Glim's one line: under the goal line on desktop, in the toast band on phones; never over the middle of the world. -->
   @for (say of glimVoice.speech ? [glimVoice.speech] : []; track say.seq) {
     <div class="glim-say" [class.glim-say--hint]="!!say.hint" role="status" aria-live="polite" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null"
@@ -101,6 +125,7 @@
         <li><button type="button" data-open="glass" (click)="placesOpen = false; openKeeperMaker()" aria-describedby="place-blurb-glass"><strong>{{ t('look.places') }}</strong><small id="place-blurb-glass">{{ lookNudgeShown ? t('look.nudge') : t('look.placesBlurb') }}</small></button></li>
         <li><button type="button" data-open="character" (click)="placesOpen = false; openCharacter()" aria-describedby="place-blurb-character"><strong>{{ t('play.hud.character') }}</strong><small id="place-blurb-character">{{ t('play.hud.characterBlurb') }}</small></button></li>
         <li><button type="button" data-open="sound" (click)="openSound()" aria-describedby="place-blurb-sound"><strong>{{ t('play.sound.menu') }}</strong><small id="place-blurb-sound">{{ t('play.sound.menuBlurb') }}</small></button></li>
+        <li><button type="button" data-open="loot" (click)="openLoot()" aria-describedby="place-blurb-loot"><strong>{{ t('loot.menu') }}</strong><small id="place-blurb-loot">{{ t('loot.menuBlurb') }}</small></button></li>
         <li><button type="button" data-open="account" (click)="placesOpen = false; openAccount()" aria-describedby="place-blurb-account"><strong>{{ t('account.menu') }}</strong><small id="place-blurb-account">{{ t('account.menuBlurb') }}</small></button></li>
         <!-- One World (preview): this device only; a flip reloads the world. -->
         <li><button type="button" data-open="oneworld" [attr.aria-pressed]="oneWorld" (click)="toggleOneWorld()" aria-describedby="place-blurb-oneworld"><strong>{{ t('play.world.menu') }}</strong><small id="place-blurb-oneworld">{{ t(oneWorld ? 'play.world.menuOn' : 'play.world.menuOff') }}</small></button></li>
@@ -293,9 +318,14 @@
     <div class="sound-host win-host" data-engine-ignore (keydown.escape)="soundOpen = false" appSheetDrag (sheetDismiss)="soundOpen = false"><app-sound-sheet (done)="soundOpen = false" /></div>
   }
 
+  <!-- Menu → Loot & Combat: the loot filter, the aura, the difficulty, the resists (shared/loot). -->
+  @if (lootOpen) {
+    <div class="sound-host win-host" data-engine-ignore (keydown.escape)="lootOpen = false" appSheetDrag (sheetDismiss)="lootOpen = false"><app-loot-sheet (done)="lootOpen = false" /></div>
+  }
+
   <!-- The Satchel's pet well, opened (shared/pets): your pets, one card, one primary action. -->
   @if (petsOpen) {
-    <div class="pet-host win-host" data-engine-ignore (keydown.escape)="closePets()" appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" /></div>
+    <div class="pet-host win-host" data-engine-ignore (keydown.escape)="closePets()" appSheetDrag (sheetDismiss)="closePets()"><app-pet-sheet (done)="closePets()" (feel)="petFelt($event)" (commanded)="petCommanded()" /></div>
   }
 
   @if (bagOpen) {
@@ -317,7 +347,7 @@
           @if (bookStats) {
             <!-- The doll's other face: the live stat sheet and where the rest of your things are. -->
             <div id="satchel-stats" class="book-detail">
-              <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" />
+              <app-keeper-stat-sheet class="book-stats" [heading]="t('play.hud.book.stats')" [compact]="true" [combat]="true" [hideZero]="true" [huntingLevel]="huntingLevel" />
               @if (inventory.snapshot.inVault) { <p class="vault-note">{{ t('play.hud.book.inVault', { n: inventory.snapshot.inVault }) }}</p> }
             </div>
           } @else {

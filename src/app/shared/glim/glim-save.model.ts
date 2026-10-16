@@ -38,7 +38,7 @@ export const MOMENT_ID = /^[a-z]+:[a-z0-9@,.-]{1,60}$/;
 const MOMENT = MOMENT_ID;
 const MAX_MOMENTS = 240;
 
-export type MomentKind = 'area' | 'insc' | 'site' | 'kind' | 'mission' | 'catch' | 'depth' | 'talk' | 'back' | 'quest' | 'compass';
+export type MomentKind = 'area' | 'insc' | 'site' | 'kind' | 'mission' | 'catch' | 'depth' | 'talk' | 'back' | 'quest' | 'compass' | 'play';
 
 /**
  * How much each kind of bond moment is worth, and how many of it ever count
@@ -56,6 +56,7 @@ export const MOMENT_RULES: Readonly<Record<MomentKind, { weight: number; cap: nu
   back: { weight: 2, cap: 3 },       // came back after a while (a hello, not a reward loop)
   quest: { weight: 8, cap: 6 },      // a step of "The Blank Places"
   compass: { weight: 4, cap: 1 },    // the Broken Astral Compass, in hand
+  play: { weight: 1, cap: 5 },       // a round of catch-the-light, one a day (glim-react.ts), five ever
 };
 
 /** Each kind trimmed to its cap (kinds this build does not know are dropped). */
