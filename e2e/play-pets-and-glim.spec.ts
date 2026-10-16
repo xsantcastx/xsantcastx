@@ -29,7 +29,7 @@ const withPet = (id: string, name: string) => ({
   'preferred-language': 'en',
   ...BEACON_LIT,
   // One World: the Ember Quarry is a region east of the Quarry Gate; the Keeper logs in there (the resume point).
-  ...loginAt(WORLD_COL.quarry),
+  ...loginAt(WORLD_COL.quarry - 3),
   'godforge-glim': GLIM_MET,
   'godforge-pets': { version: 1, pets: { [id]: pet(id, name) }, active: id, activeAt: 1, tally: {}, command: 'follow', commandAt: 0 },
 });
@@ -101,7 +101,8 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x8
       await expect(world).toHaveAttribute('data-pet', 'moss-hedgehog', { timeout: 10000 });
       // A fresh satchel holds no Starlight Herb. Stand by the tuft (col 166); the hedgehog works it
       // (it may already have, from the arrival beside it: the tuft is within its reach).
-      await walkTo(page, 166 * 32 + 96, 40);
+      // West of it: the Quarry's next node (the scorched trunk) stands three columns east.
+      await walkTo(page, 166 * 32 + 16 - 64, 24);
       await expect.poll(async () => Number(await world.getAttribute('data-pet-gathers') ?? 0), { timeout: 30000 }).toBeGreaterThan(0);
       await expect.poll(() => stackQty(page, 'starlight-herb'), { timeout: 10000 }).toBeGreaterThan(0);
       await shot(page, `${size.tag}-3-hedgehog-gathers`);

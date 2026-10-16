@@ -225,8 +225,11 @@ test.describe('Ember Delve, played', () => {
     await page.keyboard.press('e');
     await expect(placePanel(page)).toBeVisible();
     await expect(page.locator('#place-title')).toHaveText('Chest');
+    // Five carried, plus any the tunnel cut from the Root Hollows' cinder seam on the way.
+    const ore = await stackQty(page, 'cinder-ore');
+    expect(ore).toBeGreaterThanOrEqual(5);
     await page.locator('.chest section[aria-labelledby="chest-bag"] li', { hasText: 'Cinder Ore' }).getByRole('button', { name: 'Put in' }).click();
-    await expect(page.locator('.chest section[aria-labelledby="chest-in"] li', { hasText: 'Cinder Ore' })).toContainText('5');
+    await expect(page.locator('.chest section[aria-labelledby="chest-in"] li', { hasText: 'Cinder Ore' })).toContainText(String(ore));
     await expect.poll(() => stackQty(page, 'cinder-ore')).toBe(0);
     await page.keyboard.press('Escape');
     await expect(placePanel(page)).toBeHidden();
@@ -238,9 +241,9 @@ test.describe('Ember Delve, played', () => {
     await page.keyboard.press('e');
     await expect(page.locator('#place-title')).toHaveText('Chest');
     const row = page.locator('.chest section[aria-labelledby="chest-in"] li', { hasText: 'Cinder Ore' });
-    await expect(row).toContainText('5');
+    await expect(row).toContainText(String(ore));
     await row.getByRole('button', { name: 'Take all' }).click();
-    await expect.poll(() => stackQty(page, 'cinder-ore')).toBe(5);
+    await expect.poll(() => stackQty(page, 'cinder-ore')).toBe(ore);
   });
 
   test('camp: place it, go home, "Descend to your camp" lands beside it', async ({ page }) => {
