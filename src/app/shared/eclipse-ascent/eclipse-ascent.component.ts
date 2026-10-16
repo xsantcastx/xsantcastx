@@ -162,7 +162,7 @@ export class EclipseAscentComponent implements OnInit, OnDestroy {
 
   stepBet(dir: 1 | -1): void {
     if (this.rising) return;
-    this.bet = stepBet(this.bet, dir, this.gps);
+    this.bet = stepBet(this.bet, dir, this.gps, this.gold);
     this.refresh();
   }
 
@@ -244,8 +244,8 @@ export class EclipseAscentComponent implements OnInit, OnDestroy {
   }
 
   private refresh(): void {
-    this.bets = betsOpen(this.gps);
-    this.bet = clampBet(this.bet, this.gps);
+    this.bets = betsOpen(this.gps, this.gold);
+    this.bet = clampBet(this.bet, this.gps, this.gold);
     const shown = this.gold;
     this.walletGold = { kind: 'gold', label: this.t('stationUi.gold'), need: shown, have: shown };
     if (this.rising) {
@@ -255,7 +255,7 @@ export class EclipseAscentComponent implements OnInit, OnDestroy {
       this.actionLabel = this.t('ascent.launch');
       this.costs = [{ kind: 'gold', label: this.t('stationUi.gold'), need: this.bet, have: this.gold }];
     }
-    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps)) });
+    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps, this.gold)) });
   }
 
   private buildHistory(): void {

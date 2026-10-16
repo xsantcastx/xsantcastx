@@ -38,7 +38,10 @@ import { injectInWorldPanel } from '../in-world-panel';
 import { STATION_UI, STATION_UI_I18N, type StationCost } from '../station-ui';
 import { GAMES_I18N } from '../games/games.i18n';
 import { WinCelebrationComponent } from '../games/win-celebration.component';
-import { betsOpen, clampBet, stepBet } from '../games/bet-tiers';
+import { BetChipsComponent } from '../games/bet-chips.component';
+import { AutoSpinComponent, type AutoBegin } from '../games/auto-spin.component';
+import { AUTO_GAP_MS, autoAfter, autoCanSpin, startAuto, type AutoRun, type AutoStopReason } from '../games/autoplay';
+import { betAllowed, betsOpen, clampBet, stepBet } from '../games/bet-tiers';
 import { gamesBetCap } from '../economy/economy-curve';
 import { newPlayId, type PlayRecord } from '../games/play-ledger';
 import { PlayLedgerService } from '../games/play-ledger.service';
@@ -80,7 +83,7 @@ const BEAT = { stop: [520, 820, 1120], anticipation: 420, free: [300, 450, 600],
 @Component({
   selector: 'app-reels',
   standalone: true,
-  imports: [...STATION_UI, WinCelebrationComponent],
+  imports: [...STATION_UI, WinCelebrationComponent, BetChipsComponent, AutoSpinComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './reels.component.html',
   styleUrls: ['./reels.component.css'],
@@ -143,6 +146,10 @@ export class ReelsComponent implements OnInit, OnDestroy {
   readonly eclipseLayers = spriteLayers('eclipse');
 
   private outcome: ReelsOutcome | null = null;
+  /** Auto spin (games/autoplay.ts): the run in progress, or null. */
+  auto: AutoRun | null = null;
+  private autoTimer: ReturnType<typeof setTimeout> | null = null;
+  private readonly onVisibility = (): void => this.visibilityChanged();
 
   constructor() {
     this.i18n.register(STATION_UI_I18N);
@@ -172,6 +179,7 @@ export class ReelsComponent implements OnInit, OnDestroy {
       this.buildHistory();
       this.cdr.markForCheck();
     }));
+    document.addEventListener('visibilitychange', this.onVisibility);
     const last = this.ledger.recent<ReelsOutcome>(REELS_GAME_ID, 1)[0];
     if (last) {
       this.cells = [...last.outcome.base.cells];
@@ -182,6 +190,10 @@ export class ReelsComponent implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    // The machine closed (the panel or the Slate folded): an auto run ends with it.
+    this.auto = null;
+    if (this.autoTimer) clearTimeout(this.autoTimer);
+    if (this.isBrowser) document.removeEventListener('visibilitychange', this.onVisibility);
     this.clearTimers();
     this.subs.unsubscribe();
   }
@@ -191,19 +203,27 @@ export class ReelsComponent implements OnInit, OnDestroy {
   get busy(): boolean { return this.phase !== 'idle'; }
 
   stepBet(dir: 1 | -1): void {
-    if (this.busy) return;
-    this.bet = stepBet(this.bet, dir, this.gps);
+    if (this.busy || this.auto) return;
+    this.bet = stepBet(this.bet, dir, this.gps, this.gold);
+    this.refresh();
+  }
+
+  /** A quick-pick chip (Min · ½ · ×2 · Max): always an open rung. */
+  setBet(bet: number): void {
+    if (this.busy || this.auto) return;
+    this.bet = clampBet(bet, this.gps, this.gold);
     this.refresh();
   }
 
   private refresh(): void {
-    this.bets = betsOpen(this.gps);
-    this.bet = clampBet(this.bet, this.gps);
+    this.bets = betsOpen(this.gps, this.gold);
+    // A running auto spin keeps its bet (the next play is refused, and the run stops, if it closes).
+    if (!this.auto) this.bet = clampBet(this.bet, this.gps, this.gold);
     this.costs = [{ kind: 'gold', label: this.t('stationUi.gold'), need: this.bet, have: this.gold }];
     const shown = this.heldGold ?? this.gold;
     this.walletGold = { kind: 'gold', label: this.t('stationUi.gold'), need: shown, have: shown };
     this.blocked = this.busy ? this.t('reels.spinning') : null;
-    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps)) });
+    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps, this.gold)) });
   }
 
   // ── Spin ──────────────────────────────────────────────────────────────────
@@ -214,10 +234,76 @@ export class ReelsComponent implements OnInit, OnDestroy {
     const res = this.reels.spin(newPlayId(REELS_GAME_ID), this.bet);
     if (!res.ok) {
       this.result = this.t(res.code === 'funds' ? 'reels.funds' : 'reels.badBet');
+      if (this.auto) this.endAuto(res.code === 'funds' ? 'funds' : 'bet');
       this.cdr.markForCheck();
       return;
     }
     this.play(res.record, before);
+  }
+
+  /** The Spin button and the lever: a tap does nothing while an auto run is going (Stop is the control then). */
+  tapSpin(): void {
+    if (this.auto) return;
+    this.spin();
+  }
+
+  // ── Auto spin (games/autoplay.ts) ─────────────────────────────────────────
+
+  startAuto(begin: AutoBegin): void {
+    if (this.busy || this.auto || !this.hydrated) return;
+    this.auto = startAuto(begin.count, begin.stops, this.gold);
+    this.autoNext();
+  }
+
+  stopAuto(): void { this.endAuto('user'); }
+
+  resumeAuto(): void {
+    if (!this.auto?.paused) return;
+    this.auto = { ...this.auto, paused: false };
+    if (!this.busy) this.autoNext();
+    this.cdr.markForCheck();
+  }
+
+  private autoNext(): void {
+    this.autoTimer = null;
+    const run = this.auto;
+    if (!run || run.paused || this.busy) return;
+    const stop = autoCanSpin(run, this.gold, this.bet, betAllowed(this.bet, this.gps, this.gold));
+    if (stop) { this.endAuto(stop); return; }
+    this.spin();
+  }
+
+  /** After each settled spin: count it, then the next one or the end. */
+  private autoSettled(o: ReelsOutcome): void {
+    if (!this.auto) return;
+    const { run, stop } = autoAfter(this.auto, { bet: o.bet, win: o.win, bonus: !!o.bonus });
+    this.auto = run;
+    if (stop) { this.endAuto(stop); return; }
+    // A big win's banner gets a moment before the next spin clears it.
+    const gap = o.win >= o.bet * 10 ? AUTO_GAP_MS * 5 : AUTO_GAP_MS;
+    this.autoTimer = setTimeout(() => this.autoNext(), gap);
+  }
+
+  private endAuto(reason: AutoStopReason): void {
+    const run = this.auto;
+    if (!run) return;
+    if (this.autoTimer) clearTimeout(this.autoTimer);
+    this.autoTimer = null;
+    this.auto = null;
+    this.result = reason === 'count'
+      ? this.t('games.auto.ended.count', { n: run.done, net: (run.net >= 0 ? '+' : '') + this.fmt(run.net) })
+      : `${this.result} ${this.t(`games.auto.ended.${reason}`)}`.trim();
+    this.cdr.markForCheck();
+  }
+
+  /** The tab hid: an auto run pauses (it never plays out of sight); Resume carries on. */
+  private visibilityChanged(): void {
+    if (!this.auto || document.visibilityState !== 'hidden') return;
+    if (this.autoTimer) clearTimeout(this.autoTimer);
+    this.autoTimer = null;
+    this.auto = { ...this.auto, paused: true };
+    this.result = this.t('games.auto.paused');
+    this.cdr.markForCheck();
   }
 
   private play(record: PlayRecord<ReelsOutcome>, before: number): void {
@@ -329,6 +415,7 @@ export class ReelsComponent implements OnInit, OnDestroy {
     }
     this.outcome = null;
     this.refresh();
+    this.autoSettled(o);
     this.cdr.markForCheck();
   }
 

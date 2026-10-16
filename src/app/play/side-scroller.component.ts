@@ -180,6 +180,10 @@ import { LIVING_I18N } from './world/living-world.i18n';
 import { CRITTERS, hermitOfNote, LIVING_NOTE_XP, MYSTERY_REWARD, type CritterId, type MysteryKind } from './engine/living-world';
 import { CABINETS, PULSE, SCAN, eyeDirection, scanReading, warmthAt, type ScanReading, type Warmth } from '../shared/cabinets/cabinets.model';
 import type { CabinetEvent, CabinetMark } from './engine/engine.model';
+import { FLOOR, type MachineEvent, type MachineMark } from './engine/engine.model';
+import { BUILT_REALM_MACHINES, machinePoint } from '../shared/cascade/realm-machines.model';
+import { REALM_MACHINES_I18N } from '../shared/cascade/realm-machines.i18n';
+import { PlayLedgerService } from '../shared/games/play-ledger.service';
 import { PET_TUNING, followingPet, gatherBonus, isHatched, petDef, xpBonus, type PetDef } from '../shared/pets/pets.model';
 import { eggPortrait, petPortrait } from '../shared/pets/pet-art';
 import { SOUND_I18N } from '../shared/sound/sound.i18n';
@@ -637,6 +641,9 @@ export class SideScrollerComponent implements OnDestroy {
   /** Cabinets Glim has already said something about this session. */
   private readonly glimToldCabinet = new Set<string>();
   private cabinetMarksKey = '';
+  /** The realm machines pushed to this engine, keyed by which are found (shared/cascade/realm-machines.model.ts). */
+  private machineMarksKey = '';
+  private readonly gamesLedger = inject(PlayLedgerService);
   /** Glim brightens for the bond's sense, or for a warm glass; one call carries both. */
   private bondBright = false;
   private cabinetBright = false;
@@ -657,6 +664,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(TOOLS_I18N);
     this.i18n.register(VAULT_STATION_I18N);
     this.i18n.register(SLATE_I18N);
+    this.i18n.register(REALM_MACHINES_I18N);
     this.i18n.register(WORLD_CLOCK_I18N);
     this.i18n.register(KEEPER_LOOK_I18N);
     this.i18n.register(PETS_I18N);
@@ -804,6 +812,8 @@ export class SideScrollerComponent implements OnDestroy {
       onKill: event => this.zone.run(() => this.hunted(event)),
       onHeightFind: event => this.zone.run(() => this.heightFound(event)),
       onCabinet: event => this.zone.run(() => this.cabinetUsed(event)),
+      // A realm machine (the Orrery Tumbler): found once, then played in the place panel.
+      onMachine: event => this.zone.run(() => this.machineUsed(event)),
       // The Living World: a beetle or a moth caught with a swing (its drop, once a day per creature).
       onCatch: event => this.zone.run(() => this.critterCaught(event)),
       // One World: a Waystone seen, lit, or used (waystones.service.ts writes; the engine draws).
@@ -875,7 +885,7 @@ export class SideScrollerComponent implements OnDestroy {
     });
     this.engine.setHomesteadView(this.homestead.scene);
     this.statsKey = '';
-    this.cabinetMarksKey = ''; this.cabinetBright = false;
+    this.cabinetMarksKey = ''; this.cabinetBright = false; this.machineMarksKey = '';
     this.loadoutKey = ''; this.lookPushKey = '';
     this.toolKey = ''; this.heldToolsKey = '';
     this.canvas?.nativeElement.setAttribute('data-keeper-held', '');
@@ -2124,6 +2134,7 @@ export class SideScrollerComponent implements OnDestroy {
       return this.t('play.gather.work', { name: materialDisplay(gather.materialId)?.name ?? gather.label });
     }
     if (this.state?.nearby === 'cabinet') return this.t(this.state.cabinet?.open ? 'cabinet.act.empty' : 'cabinet.act.open');
+    if (this.state?.nearby === 'machine' && this.state.machine) return this.t('machine.act', { name: this.t(`machine.title.${this.state.machine.id}`) });
     const height = this.state?.nearby === 'height' ? this.state.height : undefined;
     if (height) {
       if (height.kind === 'cache') return this.t(height.found ? 'play.height.act.cacheOpened' : 'play.height.act.cache');
@@ -2321,6 +2332,35 @@ export class SideScrollerComponent implements OnDestroy {
   private tickSlate(): void {
     this.slateTier = this.slate.tier();
     this.slateReady = this.slateTier > 0 && slateBadge(this.homestead.pendingAll(), this.economy.snapshot.perSecond);
+    this.pushMachines();
+  }
+  // ── The realm machines (docs/handoff/eclipse-cascade.md): always standing; the ledger says which are found ──
+  private pushMachines(): void {
+    if (!this.engine) return;
+    const marks: MachineMark[] = BUILT_REALM_MACHINES.map(m => ({ id: m.id, area: m.area, ...machinePoint(m, FLOOR), found: this.gamesLedger.found(m.id) }));
+    const key = marks.map(m => `${m.id}${m.found ? '!' : ''}`).join(',');
+    if (key === this.machineMarksKey) return;
+    this.machineMarksKey = key;
+    this.engine.setMachines(marks);
+  }
+  /**
+   * E at a realm machine: the first time the games ledger notes it found (once,
+   * merge-safe) and it installs as a Mirror Slate app; every time, it opens in
+   * the place panel (playable with or without a Slate).
+   */
+  private machineUsed(event: MachineEvent): void {
+    if (!this.browser || this.panel) return;
+    this.gamesLedger.init();
+    if (this.gamesLedger.markFound(event.id)) {
+      this.message = `${this.t(`machine.found.${event.id}`)} ${this.t(this.slateTier > 0 ? 'machine.found.slate' : 'machine.found.noSlate')}`;
+      this.sound.sfx('cabinet');
+      this.engine?.keeperFeel('happy', 1.4);
+      this.pushMachines();
+    }
+    const machine = event.id;
+    this.showPanel({ kind: 'page', stationId: machine, title: this.t(`machine.title.${machine}`), kicker: this.t('machine.kicker'), own: true });
+    this.loadPanel({ load: () => import('../shared/cascade/cascade.component').then(m => m.CascadeComponent) }, this.panelInjector,
+      ref => ref.setInput('machine', machine));
   }
   /** A key typed into a field is the field's, not the world's. */
   private typing(event: KeyboardEvent): boolean {

@@ -7,6 +7,9 @@
  *   nonce   plays so far; the next play's seed is `secret:nonce`
  *   plays   recent plays by mutation id, outcome stored with them
  *   totals  per game: plays, Gold wagered, Gold paid (lifetime, for Details)
+ *   found   machines found in the world (the realm machines, e.g. the Orrery
+ *           Tumbler): machine id → when it was first found. Finding one
+ *           installs it as a Mirror Slate app (docs/handoff/eclipse-cascade.md)
  *
  * A play is idempotent on its mutation id: the outcome is drawn once, stored
  * with the id, and paid once. Asking again with the same id returns the stored
@@ -48,10 +51,19 @@ export interface GamesLedger {
   nonce: number;
   plays: Record<string, PlayRecord>;
   totals: Record<string, GameTotals>;
+  /** Machines found in the world: id → ISO time first found. Optional (older saves have none). */
+  found?: Record<string, string>;
 }
 
 export function emptyGamesLedger(): GamesLedger {
   return { version: GAMES_VERSION, secret: '', nonce: 0, plays: {}, totals: {} };
+}
+
+function parseFound(raw: unknown): Record<string, string> | undefined {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const out: Record<string, string> = {};
+  for (const [id, at] of Object.entries(raw as Record<string, unknown>)) if (typeof at === 'string' && at) out[id] = at;
+  return Object.keys(out).length ? out : undefined;
 }
 
 const whole = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.floor(v)) : 0);
@@ -73,12 +85,14 @@ export function parseGamesLedger(raw: unknown): GamesLedger {
     if (!t || typeof t !== 'object') continue;
     totals[id] = { plays: whole(t.plays), wagered: whole(t.wagered), paid: whole(t.paid) };
   }
+  const found = parseFound(r.found);
   return {
     version: GAMES_VERSION,
     secret: typeof r.secret === 'string' ? r.secret : '',
     nonce: whole(r.nonce),
     plays,
     totals,
+    ...(found ? { found } : {}),
   };
 }
 
@@ -101,6 +115,7 @@ export function prunePlays(plays: Record<string, PlayRecord>, keep = PLAYS_KEPT)
  *   secret  the local one when set (seeds already drawn stay derivable either way:
  *           every play stores its own seed)
  *   totals  the higher of each counter
+ *   found   union; the earlier time wins (a machine once found stays found)
  */
 export function mergeGamesLedgers(remote: unknown, local: unknown): GamesLedger {
   const r = parseGamesLedger(remote);
@@ -115,12 +130,15 @@ export function mergeGamesLedgers(remote: unknown, local: unknown): GamesLedger 
     const o = totals[id];
     totals[id] = o ? { plays: Math.max(o.plays, t.plays), wagered: Math.max(o.wagered, t.wagered), paid: Math.max(o.paid, t.paid) } : t;
   }
+  const found: Record<string, string> = { ...(r.found ?? {}) };
+  for (const [id, at] of Object.entries(l.found ?? {})) if (!found[id] || at < found[id]) found[id] = at;
   return {
     version: GAMES_VERSION,
     secret: l.secret || r.secret,
     nonce: Math.max(r.nonce, l.nonce),
     plays: prunePlays(plays),
     totals,
+    ...(Object.keys(found).length ? { found } : {}),
   };
 }
 
