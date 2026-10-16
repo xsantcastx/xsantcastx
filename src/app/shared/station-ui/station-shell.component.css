@@ -87,11 +87,18 @@
 :host-context(.place) .ss__helpbar { display: flex; justify-content: flex-end; }
 :host-context(.place) .ss__more--help .ss__details { max-height: calc(100% - 56px); overflow: auto; background: var(--obsidian-2);
   box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
-:host-context(.place) .ss__more--help ::ng-deep .dd { border: 0; background: none; }
-:host-context(.place) .ss__more--help ::ng-deep .dd__sum { display: none; }
-:host-context(.place) .ss__more--help ::ng-deep .dd__body { padding: 12px; }
 
-/* A phone held sideways: the wallet and the "?" ride the title bar (top-right, left of the x); the rest keeps the height. */
+/* A phone held sideways: the station's title, its wallet and the "?" share ONE row (the panel's own title bar steps aside
+   and its x floats over the row's end), so the height goes to the grid and the card. */
 @media (max-height: 520px) and (orientation: landscape) {
-  :host-context(.place) .ss__head { position: absolute; top: 0; right: 56px; z-index: 2; gap: 4px; height: 44px; }
+  :host-context(.place) .ss__head { justify-content: space-between; min-height: 44px; padding-right: 48px; gap: 4px; }
+  :host-context(.place) .ss__copy { display: block; }
+  :host-context(.place) h2.ss__sr {
+    position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: visible; white-space: normal;
+    font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-beacon-text); text-shadow: 2px 2px 0 var(--obsidian-0);
+  }
 }
+/* The ? button's accessible name ("Details") covers the button, invisible, so the button is exactly one 44px target for a thumb, a reader and a test. */
+.ss__help { position: relative; }
+.ss__help .ss__sr { inset: 0; width: auto; height: auto; clip: auto; clip-path: none; opacity: 0; font-size: 12px; }
+:host-context(.place) .ss__helpbody { padding: 12px; display: grid; gap: var(--space-6); }

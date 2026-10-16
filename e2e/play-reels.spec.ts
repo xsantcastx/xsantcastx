@@ -83,7 +83,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       }
 
       // Details: the pay table and the odds, with the stated return.
-      await reels(page).locator('app-details-drawer summary').click();
+      await reels(page).locator('.ss__help, app-details-drawer summary').first().click();
       await expect(reels(page).locator('.rl-pay li')).toHaveCount(6);
       await expect(reels(page).locator('.rl-proof')).toContainText('92.8%');
 

@@ -40,7 +40,7 @@ export interface JournalRow {
         <ul class="jg__grid" [attr.aria-label]="label() || null" [style.--jg-cols]="cols()">
           @for (row of pageRows(); track row.id) {
             <li>
-              <button type="button" class="jg__slot" [class.is-on]="selected() === row.id" [class.is-locked]="row.locked"
+              <button type="button" class="jg__slot jl__row" [class.is-on]="selected() === row.id" [class.is-locked]="row.locked"
                       [attr.data-rarity]="row.rarity || null" [attr.aria-pressed]="selected() === row.id"
                       [attr.aria-label]="row.name + (row.sub ? ', ' + row.sub : '')" [attr.title]="row.name + (row.sub ? ' · ' + row.sub : '')"
                       (click)="pick.emit(row.id)">
@@ -50,7 +50,10 @@ export interface JournalRow {
                   <span class="jg__glyph">{{ row.name.slice(0, 1) }}</span>
                 }
                 @if (row.ready) { <span class="jg__dot" aria-hidden="true"></span> }
+                @if (count(row); as n) { <b class="jg__qty" aria-hidden="true">{{ n }}</b> }
                 @if (row.locked) { <span class="jg__lock" aria-hidden="true"></span> }
+                <!-- The name and its one line stay in the DOM for screen readers and tests; the card shows them. -->
+                <span class="jg__sr jl__text"><span class="jl__name">{{ row.name }}</span>@if (row.sub) { <span class="jl__sub"> {{ row.sub }}</span> }</span>
               </button>
             </li>
           } @empty {
@@ -137,6 +140,11 @@ export class JournalListComponent {
         else if (this.page() > last) this.page.set(last);
       });
     });
+  }
+  /** A stack count in the row's one line ("×7 · 1 slot", "24 held") drawn on the icon, MapleStory-style. */
+  count(row: JournalRow): string {
+    const m = /^[×x]\s?(\d[\d,.]*[KMB]?)/.exec(row.sub ?? '') ?? /^(\d[\d,.]*[KMB]?)\s+held/i.exec(row.sub ?? '');
+    return m ? m[1] : '';
   }
   private pageTouched = false;
   turn(by: number): void { this.pageTouched = true; this.page.set(Math.max(0, Math.min(this.pages() - 1, this.page() + by))); }
