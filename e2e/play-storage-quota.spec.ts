@@ -82,9 +82,12 @@ test.describe('a full localStorage', () => {
     await enterDelve(page);
 
     expect(await fillDisk(page)).toBeGreaterThan(0);
-    await digDown(page, 2);
-    await expect(messageLine(page)).not.toContainText('could not be saved');
-    await expect(page.getByText('out of save space').first()).toBeVisible({ timeout: 10000 });
+    // Dig until the line says why (a lucky Ember Grub from the dirt can take the line in the same second).
+    await expect(async () => {
+      await digDown(page, (await hotbarCount(page, 'Dirt block')) + 1);
+      await expect(messageLine(page)).not.toContainText('could not be saved');
+      await expect(page.getByText('out of save space').first()).toBeVisible({ timeout: 3000 });
+    }).toPass({ timeout: 40000 });
     const held = await hotbarCount(page, 'Dirt block');
     expect(held).toBeGreaterThanOrEqual(2);
     // The disk still holds the bag from before the dig: the satchel is in memory.

@@ -126,7 +126,8 @@ test.describe('First session, played', () => {
     await expect(guide(page)).toContainText('east past the Waystone');
     expect(await damage(page), 'the Keeper walks to the Maws unarmed').toBe(armed);
     await showMe(page); // walks east, short of the first Maw
-    await expect.poll(async () => Number(await canvas(page).getAttribute('data-player-x')), { timeout: 40000 }).toBeGreaterThan(2000);
+    // One World: the Maws keep to the Quarry Road (x 4140+), east of the town: let the walk arrive before fighting.
+    await expect.poll(async () => Number(await canvas(page).getAttribute('data-player-x')), { timeout: 40000 }).toBeGreaterThan(4100);
     await focusWorld(page);
     const start = await kills(page);
     let dir: 'd' | 'a' = 'd';

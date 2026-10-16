@@ -140,7 +140,7 @@ async function assertCueClear(page: Page, kind: 'hover' | 'site'): Promise<void>
 async function pointAtFarStation(page: Page, _town: TownDef, touch: boolean): Promise<void> {
   // One World: the Seamworks' street, by the Material Vendor (stations on screen both ways); the camera is read off
   // the canvas (`data-camera`: it rises over the street to show the shops' roofs).
-  await walkTo(page, 1000, 30);
+  await walkTo(page, 1080, 20);
   await page.waitForTimeout(800);
   const view = await canvas(page).evaluate(c => { const r = c.getBoundingClientRect(); return { left: r.left, top: r.top, width: r.width, height: r.height }; });
   const x = await playerX(page);

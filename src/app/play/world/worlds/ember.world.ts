@@ -181,8 +181,8 @@ export const ROAD_MAW_APPROACH_X = 4180;
 
 // ── The Ember Quarry (§2.2 "the hunt region", P2) ──
 
-/** The Quarry's own Maws, under the High Roads (the old area's three, east of the gate). */
-const QUARRY_MAWS: MonsterDef = { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [6560, 6900, 7200], floorY: FLOOR, range: [6420, 7300] };
+/** The Quarry's own Maws, under the High Roads' bridge and mesa (the old area's three); more than a fight's reach (900 px) from the Quarry Head stone, so travel there is never refused as mid-fight. */
+const QUARRY_MAWS: MonsterDef = { creature: 'rivet-maw', name: 'Rivet Maw', hp: 60, spawnXs: [6500, 6640, 6760], floorY: FLOOR, range: [6420, 6780] };
 
 /** The Quarry's nodes at world columns 166…176 (the same ids: the harvest save and the found-in lines). */
 const QUARRY_NODE_COLS: Readonly<Record<string, number>> = {
