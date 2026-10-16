@@ -12,6 +12,7 @@
  * Both .ts files are import-free and are transpiled here with the repo's own
  * TypeScript. See docs/economy/rebalance-spec.md for the design.
  *
+ *   node scripts/economy-sim.mjs --cascade       # the Eclipse Cascade + the Orrery Tumbler: RTP proof, autoplay at the cap (in --check too)
  *   node scripts/economy-sim.mjs --bounties      # the Board Herald's daily bounties (in --check too)
  *   node scripts/economy-sim.mjs --levels        # uncapped levels: time to 100/150/200/300 per skill (in --check too)
  *   node scripts/economy-sim.mjs --heights       # the high roads' caches and summits (in --check too)
@@ -512,6 +513,8 @@ function check(E) {
   }
   // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
+  // The cascade machines (Eclipse Cascade, Orrery Tumbler): a quick stratified proof, autoplay at the cap (`--cascade` runs the full one).
+  fails.push(...cascadeScenario({ base: 150_000, free: 10_000, superRounds: 2_500, plays: 0, quiet: true }));
   // Fishing (Phase 6): Gold share, crate values, rod gates and the 99 band (`--fishing` prints the table).
   fails.push(...fishingScenario({ quiet: true }));
   // The Underhearth (Phase 8): rule I rewards, the furnace is no farm, tool V on the ladder (`--underhearth` prints it).
@@ -680,6 +683,8 @@ function reelsScenario({ rounds, plays, quiet }) {
   const { log } = simulate(PROPOSED);
   const stages = [[60, '1m'], [300, '5m'], [1800, '30m'], [3600, '1h'], [86400, '1d'], [7 * 86400, '7d']];
   if (!quiet) console.log('\n  Bet cap (two minutes of income, floor 50):  ' + stages.map(([t, l]) => `${l}: ${fmtN(C.gamesBetCap(log.at[t]?.gps ?? 0))}`).join(' · '));
+  // Higher bets (owner 2026-10-15): with a deep purse (a day of income banked) the cap is 1% of it, never over an hour of income.
+  if (!quiet) console.log('  Bet cap with a day of income banked:         ' + stages.map(([t, l]) => { const g = log.at[t]?.gps ?? 0; return `${l}: ${fmtN(C.gamesBetCap(g, g * 86400))}`; }).join(' · '));
   const minBet = C.GAMES_BET.min;
   const bankAt = t => log.trace.filter(([tt]) => tt <= t).map(([, total]) => total).pop() ?? 0;
   if (!(bankAt(120) >= minBet)) fails.push(`the first ${minBet}-Gold bet is not affordable by 2 min`);
@@ -687,9 +692,126 @@ function reelsScenario({ rounds, plays, quiet }) {
     const gps = log.at[t]?.gps ?? 0;
     const cap = C.gamesBetCap(gps);
     if (cap > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps)) fails.push(`cap ${cap} above two minutes of income at ${t}s`);
+    // A deep purse never opens more than an hour of income, nor more than 1% of the purse past the two-minute cap.
+    for (const days of [0.1, 1, 30, 3650]) {
+      const purse = gps * 86400 * days;
+      const deep = C.gamesBetCap(gps, purse);
+      if (deep > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps, Math.min(C.GAMES_BET.purseShare * purse, C.GAMES_BET.purseIncomeSeconds * gps))) fails.push(`cap ${deep} with ${days} d banked breaks the purse rule at ${t}s`);
+      if (deep > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.purseIncomeSeconds * gps)) fails.push(`cap ${deep} above an hour of income at ${t}s`);
+    }
   }
+  // Autoplay at the cap (a rich Keeper: a day of income banked) is still a sink, at every stage.
+  fails.push(...autoplayAtCap({
+    name: 'Reels', quiet, log, stages: stages.slice(3),
+    play: (r, bet) => { const o = R.playReels(r, bet); return { value: R.reelsReturn(o), bonus: !!o.bonus }; },
+    rtpAtCap: bet => th.goldRtp + R.prizeRtp(bet, th),
+  }));
 
   console.log(`economy-sim reels: Gold RTP ${pct(th.goldRtp)}, total ${pct(totals[0][1])}–${pct(totals[totals.length - 1][1])} across stakes`);
+  return fails;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Autoplay at the cap (owner 2026-10-15: "auto spin and higher bets"): a rich
+// Keeper (a day of income banked) runs ×100 auto spins at the highest bet open
+// to them, stop-on-bonus OFF, keep-half floor ON, at late stages. Gold only:
+// it must stay a sink — RTP < 100% at the cap, the median run loses, the stake
+// is ≤ 1% of the purse (never over an hour of income), and the Gold floor is
+// never crossed. Percentiles (in hours of income) show how wide the swing is.
+// ───────────────────────────────────────────────────────────────────────────
+
+function autoplayAtCap({ name, quiet, log, stages, play, rtpAtCap, runs = 300, spins = 100 }) {
+  const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
+  const A = loadTsTree('src/app/shared/games/autoplay.ts');
+  const fails = [];
+  const r = rng.seededRng(`economy-sim:autoplay:${name}`);
+  for (const [t, label] of stages) {
+    const gps = log.at[t]?.gps ?? 0;
+    if (!(gps > 0)) continue;
+    const purse0 = gps * 86400;
+    const bet = C.gamesBetCap(gps, purse0);
+    const nets = [];
+    let floorBroken = 0;
+    let wagered = 0, returned = 0;
+    for (let k = 0; k < runs; k++) {
+      let run = A.startAuto(spins, { bonus: false, winX: 0, floorShare: 0.5 }, purse0);
+      let purse = purse0;
+      // autoplay.ts autoCanSpin is asked before every bet, exactly as the machines ask it.
+      while (!A.autoCanSpin(run, purse, bet, true)) {
+        purse -= bet;
+        const o = play(r, bet);
+        purse += o.value;
+        wagered += bet;
+        returned += o.value;
+        run = A.autoAfter(run, { bet, win: o.value, bonus: o.bonus }).run;
+      }
+      if (purse < run.floor) floorBroken++;
+      nets.push((purse - purse0) / (gps * 3600));
+    }
+    nets.sort((a, b) => a - b);
+    const mean = nets.reduce((a, b) => a + b, 0) / runs;
+    const q = p => nets[Math.min(runs - 1, Math.floor(p * runs))];
+    if (!quiet) console.log(`  ${name} autoplay ×${spins} at the cap, ${label}: bet ${fmtN(bet)} (${(bet / gps / 60).toFixed(1)} min of income, ${(100 * bet / purse0).toFixed(2)}% of a day banked); returned ${(100 * returned / Math.max(1, wagered)).toFixed(1)}%; net in hours of income: mean ${mean.toFixed(2)} · p10 ${q(0.1).toFixed(2)} · p50 ${q(0.5).toFixed(2)} · p90 ${q(0.9).toFixed(2)} · p99 ${q(0.99).toFixed(2)} · max ${nets[runs - 1].toFixed(2)}`);
+    if (rtpAtCap(bet) >= 1) fails.push(`${name}: RTP at the cap (${label}) is ${(rtpAtCap(bet) * 100).toFixed(2)}%, not a sink`);
+    if (bet > 0.0100001 * purse0 && bet > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.incomeSeconds * gps)) fails.push(`${name}: the cap stakes ${(100 * bet / purse0).toFixed(2)}% of a day banked at ${label}`);
+    if (bet > Math.max(C.GAMES_BET.floorCap, C.GAMES_BET.purseIncomeSeconds * gps)) fails.push(`${name}: the cap is over an hour of income at ${label}`);
+    if (floorBroken) fails.push(`${name}: autoplay crossed its Gold floor ${floorBroken} times at ${label}`);
+    if (q(0.5) > 0) fails.push(`${name}: the median autoplay run at the cap gains at ${label}`);
+  }
+  return fails;
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// --cascade: the cluster-pays machines (src/app/shared/cascade/cascade.model.ts):
+// the Eclipse Cascade (the Slate, 10×10, multiplier spots, Super Bonus) and the
+// Orrery Tumbler (the Orrery Wells, 7×7, the down turns, an orbit ladder).
+//   Proof (cascadeProof): the round chances and the scatter pays are exact (the
+//   scatter only comes with the first fall: a binomial); the base game's
+//   clusters, the free spins and the Super Bonus are simulated apart. Then whole
+//   plays as a cross-check (hit rate, tiers, max win), and autoplay at the cap.
+// ───────────────────────────────────────────────────────────────────────────
+
+const CASCADE_BAND = [0.93, 0.95];
+
+function cascadeScenario({ base, free, superRounds, plays, quiet }) {
+  const M = loadTsTree('src/app/shared/cascade/cascade.model.ts');
+  const G = loadTsTree('src/app/shared/games/rtp-sim.ts');
+  const rng = loadTsTree('src/app/shared/games/seeded-rng.ts');
+  const fails = [];
+  const pct = x => `${(x * 100).toFixed(2)}%`;
+  const { log } = simulate(PROPOSED);
+  for (const m of [M.ECLIPSE_CASCADE, M.ORRERY_TUMBLER]) {
+    const stated = M.CASCADE_STATS[m.id].rtp;
+    const p = M.cascadeProof(m, rng.seededRng(`economy-sim:cascade:${m.id}`), base, free, superRounds);
+    const roundOneIn = 1 / (p.chances.free + p.chances.super);
+    if (!quiet) {
+      console.log(`${m.id} · ${m.rows}×${m.cols}, ${m.symbols.length} kinds + wild + scatter, ${m.boost === 'spots' ? `multiplier spots to ×${m.spotCap}` : `orbit ladder ${m.ladder.map(x => '×' + x).join(' ')}`}${m.gravity === 'flip' ? ', the down turns each tumble' : ''}`);
+      console.log(`  base clusters   ${pct(p.clusters)} ± ${pct(p.clustersSe)} (${fmtN(base)} spins; ${p.meanTumbles.toFixed(2)} tumbles a spin; pays 1 spin in ${(1 / p.hitRate).toFixed(2)})`);
+      console.log(`  scatter pays    ${pct(p.scatter)} (exact)`);
+      console.log(`  free spins      1 in ${(1 / p.chances.free).toFixed(1)} (exact), pays ${p.freeMean.toFixed(2)}× (sd ${p.freeSd.toFixed(1)}), ${p.freeSpins.toFixed(2)} spins → ${pct(p.chances.free * p.freeMean)}`);
+      console.log(`  Super Bonus     1 in ${(1 / p.chances.super).toFixed(0)} (exact), pays ${p.superMean.toFixed(2)}× (sd ${p.superSd.toFixed(1)}) → ${pct(p.chances.super * p.superMean)}`);
+      console.log(`  retrigger       ${pct(p.chances.retrigger)} a free spin (exact)`);
+      console.log(`  RTP             ${pct(p.rtp)} ± ${pct(p.se)} (1 s.e.)   stated ${pct(stated)}   biggest round seen ×${fmtN(p.maxRoundX)} (cap ×${fmtN(m.maxWinX)})`);
+    }
+    const tol = Math.max(quiet ? 0.01 : 0.005, 4 * p.se);
+    if (Math.abs(p.rtp - stated) > tol) fails.push(`${m.id}: RTP ${pct(p.rtp)} is more than ${pct(tol)} from the stated ${pct(stated)}`);
+    if (stated < CASCADE_BAND[0] || stated > CASCADE_BAND[1]) fails.push(`${m.id}: stated RTP ${pct(stated)} outside ${pct(CASCADE_BAND[0])}–${pct(CASCADE_BAND[1])}`);
+    if (m.maxWinX !== C.GAMES_MAX_WIN_X) fails.push(`${m.id}: max win ×${m.maxWinX} is not the curve's ×${C.GAMES_MAX_WIN_X}`);
+    if (!(roundOneIn >= 80 && roundOneIn <= 400)) fails.push(`${m.id}: a round 1 in ${roundOneIn.toFixed(0)} spins (want 80–400)`);
+    if (plays) {
+      const rep = G.simulateRtp({ play: (r, b) => M.playCascade(m, r, b), value: o => o.win,
+        tags: (o, b) => [o.bonus && o.bonus.kind, G.winTier(o.win, b), o.capped && 'capped'].filter(Boolean) }, plays, 10, `economy-sim:cascade-plays:${m.id}`);
+      const oneIn = k => (rep.tags[k] ? `1 in ${fmtN(Math.round(plays / rep.tags[k]))}` : '-');
+      if (!quiet) console.log(`  ${fmtN(plays)} whole plays: RTP ${pct(rep.rtp)}, hit 1 in ${(1 / rep.hitRate).toFixed(2)}, free ${oneIn('free')}, super ${oneIn('super')}, Big ${oneIn('big')}, Mega ${oneIn('mega')}, Epic ${oneIn('eclipse')}, capped ${oneIn('capped')}, max ×${fmtN(rep.maxX)}`);
+    }
+    fails.push(...autoplayAtCap({
+      name: m.id, quiet, log, stages: [[3600, '1h'], [86400, '1d'], [7 * 86400, '7d']],
+      play: (r, bet) => { const o = M.playCascade(m, r, bet); return { value: o.win, bonus: !!o.bonus }; },
+      rtpAtCap: () => stated, runs: quiet ? 60 : 400,
+    }));
+    console.log(`economy-sim cascade: ${m.id} RTP ${pct(p.rtp)} ± ${pct(p.se)} (stated ${pct(stated)}), a round 1 in ${roundOneIn.toFixed(0)}, Super 1 in ${(1 / p.chances.super).toFixed(0)}`);
+    if (!quiet) console.log();
+  }
   return fails;
 }
 
@@ -1672,6 +1794,8 @@ if (argv.loot && !argv.check) {
   runGame(minesScenario, { rounds: Number(argv.rounds ?? 2_000_000), quiet: false });
 } else if (argv.crash) {
   runGame(crashScenario, { rounds: Number(argv.rounds ?? 2_000_000), quiet: false });
+} else if (argv.cascade) {
+  runGame(cascadeScenario, { base: Number(argv.base ?? 600_000), free: Number(argv.free ?? 80_000), superRounds: Number(argv.super ?? 20_000), plays: Number(argv.plays ?? 200_000), quiet: false });
 } else if (argv.reels) {
   const fails = reelsScenario({ rounds: Number(argv.rounds ?? 2_000_000), plays: Number(argv.plays ?? 1_000_000), quiet: false });
   for (const f of fails) console.error(`  FAIL ${f}`);

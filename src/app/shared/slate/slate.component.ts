@@ -60,7 +60,11 @@ import {
 } from '../world-clock/world-clock.model';
 import { SoundService } from '../sound/sound.service';
 import { sceneMode } from '../sound/sound-palette';
-import { SLATE_TABLES, SLATE_WORLD_POINTERS, slateTabs, type SlateTab, type SlateTableGame, type SlateTier } from './slate.model';
+import { PlayLedgerService } from '../games/play-ledger.service';
+import {
+  SLATE_MACHINES, SLATE_TABLES, SLATE_WORLD_POINTERS, slateMachines, slateTabs,
+  type SlateTab, type SlateTableGame, type SlateTier,
+} from './slate.model';
 
 /** Which face of the glass is up: the home screen, one of the Slate's screens, or the eclipse (every Slate). */
 export type SlateFace = 'home' | SlateTab | 'eclipse' | 'pets' | 'codex' | 'about';
@@ -120,6 +124,7 @@ export class SlateComponent implements OnInit, OnDestroy {
   private readonly clock = inject(WorldClockService);
   private readonly eclipses = inject(EclipseService);
   private readonly sound = inject(SoundService);
+  private readonly ledger = inject(PlayLedgerService);
   private readonly zone = inject(NgZone);
   private clockTimer: ReturnType<typeof setInterval> | null = null;
   private clockSecond = -1;
@@ -139,6 +144,8 @@ export class SlateComponent implements OnInit, OnDestroy {
   private gameSeq = 0;
 
   readonly tables = SLATE_TABLES;
+  /** The machines in the glass: the Eclipse Cascade, and the realm machines this Keeper has found. */
+  machines: { game: SlateTableGame; titleKey: string }[] = [];
   readonly pointers = SLATE_WORLD_POINTERS;
   tier: SlateTier = 0;
   tabs: SlateTab[] = [];
@@ -225,6 +232,8 @@ export class SlateComponent implements OnInit, OnDestroy {
 
   ngOnInit(): void {
     this.slate.init();
+    this.ledger.init();
+    this.machines = slateMachines(id => this.ledger.found(id)).map(m => ({ game: m.game, titleKey: m.titleKey }));
     this.tier = this.slate.tier();
     this.tabs = slateTabs(this.tier);
     this.apps = this.buildApps();
@@ -275,7 +284,7 @@ export class SlateComponent implements OnInit, OnDestroy {
 
   /** One tap from the home face straight onto a table. */
   openGame(id: string): void {
-    const table = this.tables.find(t => t.game === id);
+    const table = this.allTables().find(t => t.game === id);
     if (!table) return;
     this.face = 'tables';
     this.notice = '';
@@ -293,14 +302,19 @@ export class SlateComponent implements OnInit, OnDestroy {
   }
 
   get gameTitleKey(): string {
-    return this.tables.find(t => t.game === this.game)?.titleKey ?? 'slate.tab.tables';
+    return this.allTables().find(t => t.game === this.game)?.titleKey ?? 'slate.tab.tables';
+  }
+
+  /** Lune's four tables, then the machines in the glass. */
+  private allTables(): { game: SlateTableGame; titleKey: string }[] {
+    return [...this.tables, ...this.machines];
   }
 
   // ── The phone face: pages, the clock, the widgets (docs/handoff/world-clock.md) ──
 
   /** The grid: Lune's four tables, the Homestead, the map (tier II), the Scan, the Pets, the Codex, the eclipse. */
   private buildApps(): SlateApp[] {
-    const games: SlateApp[] = this.tables.map(t => ({ id: t.game, key: t.titleKey, icon: t.game, game: t.game }));
+    const games: SlateApp[] = this.allTables().map(t => ({ id: t.game, key: t.titleKey, icon: t.game, game: t.game }));
     const faces: SlateApp[] = [
       { id: 'factory', key: 'slate.tab.factory', icon: 'factory', face: 'factory' },
       ...(this.tabs.includes('map') ? [{ id: 'map', key: 'slate.tab.map', icon: 'map', face: 'map' as const }] : []),
@@ -466,7 +480,8 @@ export class SlateComponent implements OnInit, OnDestroy {
   private showGame(id: SlateTableGame): void {
     if (!this.browser) return;
     const table = this.tables.find(t => t.game === id);
-    if (!table) return;
+    const machine = SLATE_MACHINES.find(m => m.game === id);
+    if (!table && !machine) return;
     const seq = ++this.gameSeq;
     this.gameRef?.destroy();
     this.gameRef = null;
@@ -474,9 +489,14 @@ export class SlateComponent implements OnInit, OnDestroy {
     this.gameLoading = true;
     this.gameError = false;
     this.cdr.markForCheck();
-    PANEL_REGISTRY[table.panel].load().then((type: Type<unknown>) => {
+    // A machine in the glass is the cascade engine's own component, told which machine it is.
+    const load: () => Promise<Type<unknown>> = table
+      ? PANEL_REGISTRY[table.panel].load
+      : () => import('../cascade/cascade.component').then(m => m.CascadeComponent);
+    load().then((type: Type<unknown>) => {
       if (seq !== this.gameSeq) return;
       this.gameRef = this.gameHost.createComponent(type);
+      if (machine) this.gameRef.setInput('machine', machine.game);
       this.gameLoading = false;
       this.cdr.markForCheck();
     }).catch(() => {

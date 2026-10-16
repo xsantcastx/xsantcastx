@@ -170,7 +170,7 @@ export class RuneDropComponent implements OnInit, OnDestroy {
 
   stepBet(dir: 1 | -1): void {
     if (this.busy) return;
-    this.bet = stepBet(this.bet, dir, this.gps);
+    this.bet = stepBet(this.bet, dir, this.gps, this.gold);
     this.refresh();
   }
 
@@ -189,13 +189,13 @@ export class RuneDropComponent implements OnInit, OnDestroy {
   }
 
   private refresh(): void {
-    this.bets = betsOpen(this.gps);
-    this.bet = clampBet(this.bet, this.gps);
+    this.bets = betsOpen(this.gps, this.gold);
+    this.bet = clampBet(this.bet, this.gps, this.gold);
     this.costs = [{ kind: 'gold', label: this.t('stationUi.gold'), need: this.bet, have: this.gold }];
     const shown = this.heldGold ?? this.gold;
     this.walletGold = { kind: 'gold', label: this.t('stationUi.gold'), need: shown, have: shown };
     this.blocked = this.busy ? this.t('runeDrop.dropping') : null;
-    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps)) });
+    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps, this.gold)) });
   }
 
   /** Pins: row i holds i + 3 of them, centred; bins sit under the last row. */

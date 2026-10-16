@@ -112,7 +112,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       const x = await canvas(page).getAttribute('data-player-x');
       await expect(placePanel(page).locator('[data-slate-tier="1"]')).toBeVisible();
       // It opens on a few big choices: Lune's four tables and the Homestead (no map at tier I).
-      await expect(placePanel(page).locator('.sl-tile--game')).toHaveText(['Reels', 'Rune Drop', 'Seam Sweeper', 'Eclipse Ascent']);
+      await expect(placePanel(page).locator('.sl-tile--game')).toHaveText(['Reels', 'Rune Drop', 'Seam Sweeper', 'Eclipse Ascent', 'Cascade']);
       await expect(placePanel(page).locator('.sl-tile[data-face="factory"]')).toBeVisible();
       await expect(placePanel(page).locator('.sl-tile[data-face="map"]')).toHaveCount(0);
       if (phone) {
