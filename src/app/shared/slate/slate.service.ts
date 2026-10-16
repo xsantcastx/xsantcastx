@@ -38,7 +38,7 @@ export const SLATE_AWARD_ID = 'slate:award';
 export const SLATE_UPGRADE_ID = 'slate:tier2';
 
 /** A pet reacted to something the Slate's Pets app did (the play view lights up the pet in the world). */
-export interface SlatePetFelt { id: string; kind: 'happy' | 'trick' | 'hatch' }
+export interface SlatePetFelt { id: string; kind: 'happy' | 'love' | 'trick' | 'hatch' }
 
 export type SlateBuyCode = 'ok' | 'replayed' | 'owned' | 'funds' | 'failed' | 'ssr';
 export type SlateUpgradeCode = 'ok' | 'replayed' | 'no-slate' | 'done' | 'missing' | 'failed' | 'ssr';

@@ -430,7 +430,7 @@ export class SlateComponent implements OnInit, OnDestroy {
     if (dy > 60) { this.dragged = true; this.slate.close(); }
   }
   dragCancel(): void { this.dragY = null; }
-  petFelt(event: { id: string; kind: 'happy' | 'trick' | 'hatch' }): void { this.slate.petFelt(event); }
+  petFelt(event: { id: string; kind: 'happy' | 'love' | 'trick' | 'hatch' }): void { this.slate.petFelt(event); }
 
   // ── The Codex, built into the screen ──
 

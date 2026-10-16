@@ -105,6 +105,7 @@ const MENUS: Menu[] = [
     open: async page => { await page.locator('.satchel .clasp').click(); await page.locator('#satchel-book .pet-well').click(); },
   },
   { id: 'sound', open: placesItem('sound'), root: '.sound-host .ss', close: '.sound-host .ss__done' },
+  { id: 'loot', open: placesItem('loot'), root: '.sound-host .ls', close: '.sound-host .ls__done' },
   { id: 'glass', open: placesItem('glass'), root: '.place', close: '.place-close' },
   { id: 'character', open: placesItem('character'), root: '.place', close: '.place-close' },
   { ...station('crafting'), noScroll: true }, { ...station('runes'), noScroll: true }, { ...station('enchanting'), noScroll: true }, station('vault', ''),
