@@ -165,16 +165,41 @@ export class SkyLight {
     c.fillRect(x, y, w, h);
   }
 
-  /** A lantern or a lit window at (x, y), radius `r` world px. `blend`: 'lighter' (full tier) or plain alpha. */
-  drawLamp(c: CanvasRenderingContext2D, x: number, y: number, r: number, blend: boolean, strength = 1): void {
+  /**
+   * A lantern or a lit window at (x, y), radius `r` world px. `blend`: 'lighter' (full tier) or plain alpha.
+   * `baked` (phones, render-budget `cacheBackdrop`): the glow is laid from a copy pre-scaled to device pixels at
+   * a whole device pixel, so the blit is a copy, not a resample. A lamp is up to 525 device px across on a phone
+   * and a town shows five or so: resampled live, the night's lamps were ~1.2 ms of an unthrottled software-raster
+   * frame, the largest pass in a town at night (docs/handoff/perf-regression.md).
+   */
+  drawLamp(c: CanvasRenderingContext2D, x: number, y: number, r: number, blend: boolean, strength = 1, baked = false): void {
     if (!canPaint || this.lamps <= .02) return;
     const glow = this.glow ??= paintGlow();
     const prevOp = c.globalCompositeOperation;
     if (blend) c.globalCompositeOperation = 'lighter';
     c.globalAlpha = this.lamps * strength * (blend ? .55 : .35);
-    c.drawImage(glow, x - r, y - r, r * 2, r * 2);
+    const m = baked && typeof c.getTransform === 'function' ? c.getTransform() : null;
+    if (m && m.b === 0 && m.c === 0 && m.a > 0 && m.a === m.d) {
+      const size = Math.round(r * 2 * m.a), lamp = this.lampSprite(glow, size);
+      c.save();
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.drawImage(lamp,Math.round(m.a * x + m.e - size / 2), Math.round(m.d * y + m.f - size / 2));
+      c.restore();
+    } else c.drawImage(glow, x - r, y - r, r * 2, r * 2);
     c.globalAlpha = 1;
     c.globalCompositeOperation = prevOp;
+  }
+  /** The glow pre-scaled to `size` device px (a handful of sizes: the stalls', the lanterns', the Keeper's). */
+  private readonly lampSprites = new Map<number, HTMLCanvasElement>();
+  private lampSprite(glow: HTMLCanvasElement, size: number): HTMLCanvasElement {
+    let baked = this.lampSprites.get(size);
+    if (!baked) {
+      if (this.lampSprites.size >= 8) this.lampSprites.clear();
+      const [el, c] = sprite(Math.max(1, size), Math.max(1, size));
+      c.drawImage(glow, 0, 0, size, size);
+      this.lampSprites.set(size, baked = el);
+    }
+    return baked;
   }
 }
 

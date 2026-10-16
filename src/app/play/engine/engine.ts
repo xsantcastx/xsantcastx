@@ -6637,17 +6637,17 @@ export class SeamworksEngine {
     // Night on the surface: the people and the stalls sit in the dark too, and the lamps come on (sky-light.ts).
     if (!t && this.skyLight.shaded) this.skyLight.drawShade(c, this.camera - 60, this.cameraY - 60, viewport + 120, 840);
     if (!t && this.skyLight.lit) {
-      const blend = this.budget.blendModes;
+      const blend = this.budget.blendModes, baked = this.budget.cacheBackdrop;
       for (const station of this.stations) {
         if (station.x < this.camera - 160 || station.x > this.camera + viewport + 160) continue;
-        this.skyLight.drawLamp(c, station.x, FLOOR - 150 * k, 120 * k, blend);
+        this.skyLight.drawLamp(c, station.x, FLOOR - 150 * k, 120 * k, blend, 1, baked);
       }
       // The hanging lanterns light up (atmosphere.ts draws them; the night just turns them on).
       for (let x: number = LANTERNS.from; x < LANTERNS.to; x += LANTERNS.step) {
         if (x < this.camera - 150 || x > this.camera + viewport + 150) continue;
-        this.skyLight.drawLamp(c, x, lanternY(x) + 14, 80, blend);
+        this.skyLight.drawLamp(c, x, lanternY(x) + 14, 80, blend, 1, baked);
       }
-      this.skyLight.drawLamp(c, this.player.x, this.player.y - 90 * k, 150 * k, blend, .8);
+      this.skyLight.drawLamp(c, this.player.x, this.player.y - 90 * k, 150 * k, blend, .8, baked);
     }
     if (t && this.mirror) this.drawReflection(c, t, k);
     if (t && this.cart) this.drawCart(c, motionTime);
