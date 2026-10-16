@@ -27,7 +27,6 @@ import { SOUND_I18N } from './sound.i18n';
       @if (help) {
         <div class="ss__helpcard" role="note">
           <p class="ss__lead">{{ t('play.sound.lead') }}</p>
-          <p class="ss__note" role="status">{{ statusLine }}</p>
           <p class="ss__saved">{{ t('play.sound.saved') }}</p>
         </div>
       }
@@ -43,6 +42,7 @@ import { SOUND_I18N } from './sound.i18n';
         <input type="checkbox" [checked]="s.muted" (change)="mute($event)" data-sound-mute>
         <span>{{ t('play.sound.mute') }}</span>
       </label>
+      <p class="ss__note" role="status">{{ statusLine }}</p>
     </section>
   `,
   styles: [`

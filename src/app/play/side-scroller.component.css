@@ -2952,16 +2952,15 @@ input::placeholder { color: var(--adventure-hud-muted); }
 
 /* Soft backing so text reads over the dimmed world: a fade, never an edge. */
 @media (max-width: 900px) and (orientation: portrait) {
-  .book, .places, .place:not(.place--slate), .anchor-sheet {
+  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
     background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--obsidian-0) 80%, transparent) 40px);
   }
 }
 @media (max-width: 900px) and (orientation: landscape), (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .book, .places, .place:not(.place--slate), .anchor-sheet {
+  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
     background: linear-gradient(90deg, transparent 0, color-mix(in srgb, var(--obsidian-0) 82%, transparent) 36px);
     border: 0;
   }
-  .win-host { background: none; }
 }
 
 /* The grip stays as a tiny pixel bar (pull down to put away). */
@@ -3020,11 +3019,15 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .book .pockets { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .bag-pager { display: flex; align-items: center; justify-content: center; gap: 10px; }
 .bag-pager__n { min-width: 56px; text-align: center; font: 700 12px/1 Orbitron, sans-serif; font-variant-numeric: tabular-nums; }
-.places [data-open="oneworld"] small { display: block; font-size: 11px; }
+.places [data-open="oneworld"] small { display: none; }
+.places [data-open="oneworld"][aria-pressed="true"]::after { content: "ON"; justify-self: start; padding: 0 4px; font: 700 9px/14px Orbitron, sans-serif; background: var(--gold); color: var(--obsidian-0); text-shadow: none; }
 
 @media (max-height: 520px) and (orientation: landscape) {
   .place:not(.place--slate) .place-head { min-height: 44px; padding-bottom: 0; }
   .place:not(.place--slate) .place-head h2 { font-size: 15px; }
+  /* A station carries its own title on its first row: the title bar shrinks to the floating x. */
+  .place:not(.place--slate):has(.ss__head) .place-head { position: absolute; top: 6px; right: 8px; z-index: 3; min-height: 44px; padding: 0; }
+  .place:not(.place--slate):has(.ss__head) .place-head > div:first-child { display: none; }
 }
 
 /* The Menu: three across on a phone held sideways; the three extra buttons are one row. */
@@ -3035,3 +3038,10 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .places ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
   .places li button { min-height: 44px; padding: 2px 6px; font-size: 10px; }
 }
+
+/* The Waystone: pixel road buttons, no sentence. */
+.waystone-road { border: 0; border-radius: 0; background: var(--obsidian-2);
+  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent); }
+.waystone-road.here { box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-bright), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-bright); }
+.waystone-road b { font: 700 14px Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.place-body > .place-note:has(+ .waystone) { display: none; }

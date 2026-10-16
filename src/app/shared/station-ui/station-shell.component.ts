@@ -19,6 +19,7 @@
  * `showTitle=false` inside the /play in-world panel (the panel already names
  * the place) keeps an off-screen heading so the section stays labelled.
  */
+import { NgTemplateOutlet } from '@angular/common';
 import { ChangeDetectionStrategy, Component, inject, input, model } from '@angular/core';
 
 import { TranslationService } from '../../translation.service';
@@ -31,7 +32,7 @@ let nextId = 0;
 @Component({
   selector: 'app-station-shell',
   standalone: true,
-  imports: [DetailsDrawerComponent],
+  imports: [DetailsDrawerComponent, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="ss" [attr.aria-labelledby]="titleId">
@@ -47,7 +48,7 @@ let nextId = 0;
         </div>
         <div class="ss__wallet"><ng-content select="[stationWallet]" /></div>
         @if (!showTitle()) {
-          <button type="button" class="px-help ss__help" [attr.aria-expanded]="detailsOpen()" [attr.aria-label]="t('stationUi.help')" (click)="detailsOpen.set(!detailsOpen())"><i aria-hidden="true">?</i></button>
+          <button type="button" class="px-help ss__help" [attr.aria-expanded]="detailsOpen()" (click)="detailsOpen.set(!detailsOpen())"><i aria-hidden="true">?</i><span class="ss__sr">{{ t('stationUi.details') }}</span></button>
         }
       </header>
 
@@ -58,16 +59,21 @@ let nextId = 0;
 
       <ng-content />
 
-      <!-- On a full page: a Details drawer. In the world: the same words in a help card the "?" opens. -->
-      <div class="ss__more" [class.ss__more--help]="!showTitle()" [hidden]="!showTitle() && !detailsOpen()">
-        @if (!showTitle()) {
-          <div class="ss__helpbar"><button type="button" class="px-x ss__helpx" (click)="detailsOpen.set(false)" [attr.aria-label]="t('stationUi.helpClose')"><i aria-hidden="true">&times;</i></button></div>
-        }
+      <!-- The details words, projected once: in a Details drawer on a full page, in the help card the ? opens in the world. -->
+      <ng-template #detailsBody>
+        @if (purpose() && !showTitle()) { <p class="ss__purpose ss__purpose--details">{{ purpose() }}</p> }
+        <ng-content select="[stationDetails]" />
+      </ng-template>
+      @if (showTitle()) {
         <app-details-drawer class="ss__details" [label]="detailsLabel()" [hint]="detailsHint()" [(open)]="detailsOpen">
-          @if (purpose() && !showTitle()) { <p class="ss__purpose ss__purpose--details">{{ purpose() }}</p> }
-          <ng-content select="[stationDetails]" />
+          <ng-container *ngTemplateOutlet="detailsBody" />
         </app-details-drawer>
-      </div>
+      } @else {
+        <div class="ss__more ss__more--help" [hidden]="!detailsOpen()">
+          <div class="ss__helpbar"><button type="button" class="px-x ss__helpx" (click)="detailsOpen.set(false)" [attr.aria-label]="t('stationUi.helpClose')"><i aria-hidden="true">&times;</i></button></div>
+          <div class="ss__details ss__helpbody"><ng-container *ngTemplateOutlet="detailsBody" /></div>
+        </div>
+      }
     </section>
   `,
   styleUrls: ['./station-tokens.css', './station-shell.component.css'],

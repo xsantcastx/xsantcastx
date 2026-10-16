@@ -32,7 +32,7 @@
           <app-detail-head [art]="card.art" [name]="card.recipe.name" [rarity]="card.recipe.rarity"
                            [line]="craftLine()" [count]="card.recipe.output.count" [working]="striking" />
 
-          @if (!inWorld && toolLines(card.recipe); as lines) {
+          @if (toolLines(card.recipe); as lines) {
             @if (lines.length) {
               <ul class="cb-tool">
                 @for (line of lines; track $index) { <li>{{ line }}</li> }
@@ -87,6 +87,9 @@
       <section class="cb-panel" aria-labelledby="cb-recipe-title">
         <h2 class="cb-panel__title" id="cb-recipe-title">{{ t('crafting.details.recipe') }} · {{ card.recipe.name }}</h2>
         <p class="cb-panel__hint">{{ card.recipe.blurb }}</p>
+        @if (inWorld && toolLines(card.recipe); as toolInfo) {
+          @if (toolInfo.length) { <ul class="cb-tool cb-tool--help">@for (line of toolInfo; track $index) { <li>{{ line }}</li> }</ul> }
+        }
         <p class="cb-pills">
           <span class="cb-pill">{{ rarityLabel(card.recipe.rarity) }}</span>
           <span class="cb-pill">{{ realmLabel(card.recipe.realm) }}</span>
