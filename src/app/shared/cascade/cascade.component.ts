@@ -333,6 +333,7 @@ export class CascadeComponent implements OnInit, OnDestroy {
   private async playSpin(s: CascadeSpin, token: number, pace: number, base: boolean): Promise<void> {
     const bet = this.summary?.bet ?? this.bet;
     this.spots = [...s.spotsStart];
+    if (!this.ladderMachine) for (const v of this.spots) if (v > this.top) this.top = v;
     this.lit.clear();
     this.burst.clear();
     this.cells = [...s.start];
@@ -506,9 +507,16 @@ export class CascadeComponent implements OnInit, OnDestroy {
     if (!canvas) return;
     const rect = host.getBoundingClientRect();
     const landscape = innerWidth > innerHeight && innerHeight < 560;
-    const width = landscape ? rect.width * 0.56 : rect.width;
-    const room = innerHeight - Math.max(0, rect.top) - (landscape ? 56 : 236);
-    const size = Math.max(this.m.cols * 22, Math.min(width, room, this.m.cols * 52));
+    // Sideways the controls column keeps 272 px (four quick bets and Auto in one row); the board takes the rest.
+    const width = landscape ? rect.width - 272 : rect.width;
+    // The room is what is left of the scrolling pane the machine sits in (the Slate, the place panel), else the viewport.
+    let bottom = innerHeight;
+    for (let el = host.parentElement; el; el = el.parentElement) {
+      const oy = getComputedStyle(el).overflowY;
+      if (oy === 'auto' || oy === 'scroll') { bottom = Math.min(bottom, el.getBoundingClientRect().bottom); break; }
+    }
+    const room = bottom - Math.max(0, rect.top) - (landscape ? 12 : 236);
+    const size = Math.max(this.m.cols * 18, Math.min(width, room, this.m.cols * 52));
     this.cellPx = Math.floor(size / this.m.cols);
     this.dpr = Math.min(3, Math.max(1, Math.round(devicePixelRatio || 1)));
     const px = this.cellPx * this.m.cols;
