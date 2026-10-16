@@ -50,9 +50,14 @@
 }
 
 /* In the world: icon + name (rarity colour), nothing else (the button says what it does). */
-:host-context(.place) .dh { padding: 0; border: 0; background: none; gap: var(--space-3); }
+:host-context(.place) .dh { padding: 2px; border: 0; background: none; gap: 12px; align-items: center; }
 :host-context(.place) .dh__icon { width: 64px; height: 64px; border: 0; background: var(--obsidian-1);
   box-shadow: 0 -2px 0 0 var(--dh-c), 0 2px 0 0 var(--dh-c), -2px 0 0 0 var(--dh-c), 2px 0 0 0 var(--dh-c); }
 :host-context(.place) .dh__icon img { width: 56px; height: 56px; image-rendering: pixelated; }
-:host-context(.place) .dh__name { font: var(--weight-bold) var(--text-md)/1.15 var(--font-display); letter-spacing: .04em; color: var(--dh-c); text-shadow: 2px 2px 0 var(--obsidian-0); }
+:host-context(.place) .dh__name { font: 700 15px/1.15 Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--dh-c); text-shadow: 2px 2px 0 var(--obsidian-0); }
 :host-context(.place) .dh__line { display: none; }
+/* A phone held sideways: a smaller icon, so the card, its ingredients and the button share one short screen. */
+@media (max-height: 520px) and (orientation: landscape) {
+  :host-context(.place) .dh__icon { width: 48px; height: 48px; }
+  :host-context(.place) .dh__icon img { width: 40px; height: 40px; }
+}

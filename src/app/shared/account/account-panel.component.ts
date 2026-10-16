@@ -51,14 +51,18 @@ import { ACCOUNT_I18N } from './account.i18n';
   `,
   styles: [`
     :host { display: block; }
-    .acct { display: grid; gap: 14px; padding: 4px 2px 12px; color: var(--adventure-hud-text, inherit); }
-    .acct__block { display: grid; gap: 8px; padding: 12px 14px; border: 1px solid var(--adventure-hud-brass, currentColor); border-radius: 10px; background: var(--adventure-hud-panel-solid, transparent); }
-    h3 { margin: 0; font-size: 1rem; color: var(--adventure-hud-gold, inherit); }
-    p { margin: 0; line-height: 1.4; }
+    /* Three pixel cards on the window's 8px grid (docs/handoff/nice-menus.md); side by side when the window is wide. */
+    :host { container: acct / inline-size; }
+    .acct { display: grid; gap: 12px; padding: 2px 2px 8px; color: var(--adventure-hud-text, inherit); }
+    @container acct (min-width: 460px) { .acct { grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: start; } .acct__block:first-child { grid-row: span 2; } }
+    .acct__block { display: grid; gap: 8px; padding: 10px 12px; border: 0; border-radius: 0; background: var(--px-cell-bg, transparent); box-shadow: var(--px-cell-rim, none); }
+    h3 { margin: 0; font: 700 13px/1.2 Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-hud-gold, inherit); }
+    p { margin: 0; line-height: 1.35; font-size: 15px; }
     .acct__state { opacity: 0.8; font-size: 0.9rem; }
-    .acct__row { display: flex; flex-wrap: wrap; gap: 8px; }
-    .acct__row button { min-height: 44px; min-width: 96px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--adventure-hud-brass, currentColor); background: transparent; color: inherit; font: inherit; cursor: pointer; }
-    .acct__row button[aria-pressed='true'] { background: var(--adventure-hud-brass, currentColor); color: var(--adventure-hud-ink, inherit); }
+    .acct__row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 2px; }
+    .acct__row button { min-height: 44px; padding: 0 12px; border-radius: 0; border: 0; background: var(--obsidian-2, transparent); box-shadow: var(--px-btn-rim, none); color: inherit; font: 600 12px Orbitron, sans-serif; letter-spacing: .06em; cursor: pointer; }
+    .acct__row button:active { translate: 0 2px; }
+    .acct__row button[aria-pressed='true'] { background: color-mix(in srgb, var(--gold) 26%, var(--obsidian-2)); box-shadow: var(--px-on-rim, none); color: var(--adventure-beacon-text, inherit); }
   `],
 })
 export class AccountPanelComponent implements OnDestroy {
