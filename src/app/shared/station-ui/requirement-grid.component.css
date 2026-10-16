@@ -103,3 +103,18 @@ button.rg__cell.is-on {
   /* Nothing needed and nothing to say: no box at all, not a title over nothing. */
   .rg:not(:has(.rg__cell:not(.rg__cell--empty))):not(:has(.rg__empty)) { display: none; }
 }
+
+/* In the world: ingredient icons with have/need (green / red); no title, no box. */
+:host-context(.place) .rg { border: 0; background: none; overflow: visible; }
+:host-context(.place) .rg__title { display: none; }
+:host-context(.place) .rg__grid { display: flex; flex-wrap: wrap; gap: 6px 8px; padding: 0; }
+:host-context(.place) .rg__grid > li { flex: 0 0 auto; }
+:host-context(.place) .rg__cell { width: auto; min-height: 0; flex-direction: column; gap: 2px; padding: 4px 6px; border: 0; background: var(--obsidian-1); text-align: center;
+  box-shadow: 0 -2px 0 0 var(--st-edge), 0 2px 0 0 var(--st-edge), -2px 0 0 0 var(--st-edge), 2px 0 0 0 var(--st-edge); }
+:host-context(.place) .rg__cell.is-met { box-shadow: 0 -2px 0 0 var(--status-good), 0 2px 0 0 var(--status-good), -2px 0 0 0 var(--status-good), 2px 0 0 0 var(--status-good); }
+:host-context(.place) .rg__cell.is-short { box-shadow: 0 -2px 0 0 var(--status-danger), 0 2px 0 0 var(--status-danger), -2px 0 0 0 var(--status-danger), 2px 0 0 0 var(--status-danger); }
+:host-context(.place) .rg__icon { width: 36px; height: 36px; background: none; }
+:host-context(.place) .rg__icon img { width: 32px; height: 32px; image-rendering: pixelated; }
+:host-context(.place) .rg__name { display: none; }
+:host-context(.place) .rg__count { font-size: var(--text-xs); text-shadow: 2px 2px 0 var(--obsidian-0); }
+:host-context(.place) .rg__cell--empty, :host-context(.place) .rg__grid > li:has(> .rg__cell--empty) { display: none; }

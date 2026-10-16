@@ -46,7 +46,7 @@ interface Coin { key: number; dx: number; dy: number; delay: number; spin: numbe
         </div>
         @if (tier(); as t) {
           <div class="wc__banner" role="status">
-            <p class="wc__tier">{{ t === 'big' ? tBig : t === 'mega' ? tMega : tEclipse }}</p>
+            <p class="wc__tier">{{ t === 'big' ? tBig : t === 'mega' ? tMega : top() === 'epic' ? tEpic : tEclipse }}</p>
             <p class="wc__gold">{{ goldLine() }}</p>
             <p class="wc__times">{{ timesLine() }}</p>
             <button type="button" class="wc__done" (click)="close()">{{ tDone }}</button>
@@ -65,6 +65,8 @@ export class WinCelebrationComponent implements OnDestroy {
   readonly bet = input(0);
   /** Bump once per result to play it. 0 = nothing yet. */
   readonly seq = input(0);
+  /** What the top tier (≥200×) is called: the Eclipse win (the Reels) or the Epic win (the cascade machines). */
+  readonly top = input<'eclipse' | 'epic'>('eclipse');
   readonly done = output<void>();
 
   readonly tier = computed<WinTier | null>(() => winTier(this.win(), this.bet()));
@@ -76,6 +78,7 @@ export class WinCelebrationComponent implements OnDestroy {
   readonly tBig: string;
   readonly tMega: string;
   readonly tEclipse: string;
+  readonly tEpic: string;
   readonly tDone: string;
 
   private timers: ReturnType<typeof setTimeout>[] = [];
@@ -86,6 +89,7 @@ export class WinCelebrationComponent implements OnDestroy {
     this.tBig = this.t('games.win.big');
     this.tMega = this.t('games.win.mega');
     this.tEclipse = this.t('games.win.eclipse');
+    this.tEpic = this.t('games.win.epic');
     this.tDone = this.t('games.win.done');
     this.still = this.isBrowser && typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
     effect(() => {
@@ -128,7 +132,7 @@ export class WinCelebrationComponent implements OnDestroy {
     this.coins.set(coins);
     // The counter rolls for a beat that grows with the tier; the final value is
     // set by a timer too, so a hidden tab (no animation frames) still lands it.
-    const ms = tier ? 1400 : 500;
+    const ms = tier === 'eclipse' ? 2600 : tier === 'mega' ? 2000 : tier ? 1400 : 500;
     const start = performance.now();
     const step = (now: number) => {
       const k = Math.min(1, (now - start) / ms);

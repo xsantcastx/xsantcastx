@@ -1,0 +1,194 @@
+/* A cascade machine, frameless: no window chrome, no boxes around boxes. The board is the hero. */
+:host { display: block; color: var(--ink-0); }
+
+.cz {
+  display: grid;
+  gap: var(--space-2);
+  justify-items: center;
+  padding: var(--space-2) var(--space-2) var(--space-3);
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.cz-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  width: 100%;
+}
+.cz-purse, .cz-win {
+  display: grid;
+  color: var(--gold);
+  font-size: var(--text-base);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+.cz-purse small, .cz-win small { color: var(--ink-2); font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .08em; }
+.cz-win { text-align: center; opacity: .35; transition: opacity var(--dur-base); }
+.cz-win.is-on { opacity: 1; color: var(--gold-bright); }
+.cz-help-btn {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border: 0;
+  background: color-mix(in srgb, var(--obsidian-3) 70%, transparent);
+  color: var(--gold-bright);
+  font: inherit;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  cursor: pointer;
+}
+.cz-help-btn:focus-visible, .cz-spin:focus-visible, .cz-help__close:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+.cz-stage { position: relative; display: grid; justify-items: center; width: 100%; }
+.cz-board { display: block; image-rendering: pixelated; touch-action: manipulation; }
+.cz-stage.is-shake .cz-board { animation: cz-shake 90ms steps(2) 5; }
+@keyframes cz-shake {
+  0% { transform: translate(2px, -2px); }
+  50% { transform: translate(-2px, 2px); }
+  100% { transform: translate(0, 0); }
+}
+
+.cz-round {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: center;
+  width: 100%;
+  margin-bottom: var(--space-1);
+  color: var(--violet-bright);
+  font-size: var(--text-sm);
+  text-transform: uppercase;
+  letter-spacing: .08em;
+  font-variant-numeric: tabular-nums;
+}
+.cz-round[data-round='super'] { color: var(--ember); }
+.cz-round__top { color: var(--gold-bright); }
+
+.cz-banner {
+  position: absolute;
+  inset: 38% 0 auto;
+  margin: 0;
+  text-align: center;
+  color: var(--gold-bright);
+  font-size: clamp(var(--text-xl), 8vw, var(--text-3xl, 2.4rem));
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  text-shadow: 3px 3px 0 var(--obsidian-0), -2px -2px 0 var(--violet-deep);
+  pointer-events: none;
+  animation: cz-pop var(--dur-enter, 240ms) var(--ease-spring, ease-out) both;
+}
+@keyframes cz-pop { from { transform: scale(.6); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+.cz-glim {
+  position: absolute;
+  left: var(--space-1);
+  bottom: var(--space-1);
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  max-width: 80%;
+  margin: 0;
+  padding: var(--space-1) var(--space-2);
+  background: color-mix(in srgb, var(--obsidian-0) 88%, transparent);
+  color: var(--ink-0);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+.cz-glim__icon { flex: none; width: 36px; height: 30px; }
+
+.cz-result {
+  min-height: 1.4em;
+  margin: 0;
+  text-align: center;
+  color: var(--gold);
+  font-size: var(--text-sm);
+}
+
+.cz-controls, .cz-quick {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  width: 100%;
+}
+.cz-spin {
+  flex: 1 1 180px;
+  max-width: 320px;
+  min-height: 56px;
+  border: 0;
+  border-bottom: 4px solid var(--gold-deep);
+  background: var(--gold-bright);
+  color: var(--obsidian-0);
+  font: inherit;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  letter-spacing: .04em;
+  cursor: pointer;
+}
+.cz-spin:disabled { opacity: .5; cursor: default; }
+.cz-spin:active:not(:disabled) { transform: translateY(2px); border-bottom-width: 2px; }
+.cz-spin--skip { background: var(--obsidian-3); color: var(--ink-0); border-bottom-color: var(--obsidian-0); }
+.cz-auto { flex: 0 1 132px; }
+
+/* Help: over the board, scrolling inside itself (the machine face never scrolls). */
+.cz-help {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  overflow: auto;
+  padding: var(--space-2) var(--space-3);
+  background: color-mix(in srgb, var(--obsidian-0) 96%, transparent);
+  color: var(--ink-1);
+  font-size: var(--text-sm);
+  text-align: left;
+}
+.cz-help__head { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.cz-help h3 { margin: 0; color: var(--gold); font-size: var(--text-base); }
+.cz-help h4 { margin: var(--space-2) 0 0; color: var(--gold); font-size: var(--text-sm); }
+.cz-help p { margin: var(--space-2) 0 0; }
+.cz-help__close {
+  min-width: var(--tap-min);
+  min-height: var(--tap-min);
+  border: 0;
+  background: var(--obsidian-3);
+  color: var(--ink-0);
+  font: inherit;
+  cursor: pointer;
+}
+.cz-pay { width: 100%; margin-top: var(--space-2); border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.cz-pay th, .cz-pay td { padding: 2px 4px; text-align: right; font-weight: 400; }
+.cz-pay thead th { color: var(--ink-2); font-size: var(--text-2xs); text-transform: uppercase; }
+.cz-pay tbody th { text-align: left; }
+.cz-pay__icon { width: 28px; height: 28px; vertical-align: middle; }
+.cz-help__keys { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1); }
+.cz-history { margin: var(--space-1) 0 0; padding-left: var(--space-4); }
+.cz-history .is-won { color: var(--gold); }
+.cz-lore { color: var(--ink-2); font-style: italic; }
+.cz-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* A phone held sideways: the board on the left, the controls stacked beside it (bet, then Spin, then quick bets + Auto). */
+@media (orientation: landscape) and (max-height: 560px) {
+  .cz {
+    grid-template-columns: auto minmax(0, 1fr);
+    grid-template-areas: 'stage top' 'stage result' 'stage controls' 'stage quick';
+    align-items: center;
+    align-content: start;
+    gap: var(--space-1) var(--space-2);
+    padding: var(--space-1);
+    max-width: none;
+  }
+  .cz-top { grid-area: top; }
+  .cz-stage { grid-area: stage; width: auto; }
+  .cz-result { grid-area: result; min-height: 0; font-size: var(--text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .cz-controls { grid-area: controls; flex-wrap: wrap; gap: var(--space-1); }
+  .cz-spin { flex: 1 1 100%; min-height: 48px; max-width: none; font-size: var(--text-base); }
+  .cz-quick { grid-area: quick; flex-wrap: nowrap; gap: var(--space-1); }
+  .cz-auto { flex: 1 1 64px; }
+  .cz-purse, .cz-win { font-size: var(--text-sm); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cz-stage.is-shake .cz-board, .cz-banner { animation: none; }
+}

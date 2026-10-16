@@ -67,8 +67,9 @@ import { crittersFor, HERMITS, isNight, mysteryAt, utcDay, wildSector, WILD_BUDG
 import { WildLife, type PlacedMystery, type WildFrame } from './wild-life';
 import { groundAt as surfaceGround } from './surface-gen';
 import { FIELD_NOTE_PREFIX } from '../../shared/delve/field-notes.model';
-import type { BucketId, CabinetMark, DelvePersistence, FishingPhase, GatherPersistence } from './engine.model';
+import type { BucketId, CabinetMark, DelvePersistence, FishingPhase, GatherPersistence, MachineMark } from './engine.model';
 import { drawCabinet } from './cabinet-art';
+import { MACHINE_LABELS, drawMachine } from './machine-art';
 import { regrowSecondsLeft } from '../../shared/skills/gather-save.model';
 import { ambientDarkness, DarknessLayer, DEFAULT_LANTERN, LIGHT_CAP, LightPool, NIGHT_DARK, nightShare, selectLights } from './lighting';
 import { ART, RockShade, sparkleOffset, TILE, tileVariant } from './tile-art';
@@ -825,6 +826,10 @@ export class SeamworksEngine {
   private cabinets: readonly CabinetMark[] = [];
   /** The cabinets to draw: those the Scan has shown, and those already open (any area; filtered here). */
   setCabinets(marks: readonly CabinetMark[]): void { this.cabinets = marks; }
+  // ── The realm machines (shared/cascade/realm-machines.model.ts): always there; the host says which are found ──
+  private machines: readonly MachineMark[] = [];
+  /** The machines standing in the world (any area; filtered here). */
+  setMachines(marks: readonly MachineMark[]): void { this.machines = marks; this.report(); }
   /**
    * The world clock's sky (shared/world-clock; the host reads it about once a
    * second). Tints the backdrops, lights the lamps, and when the hour turns:
@@ -874,6 +879,31 @@ export class SeamworksEngine {
       if (Math.abs(m.x - this.player.x) <= rx && Math.abs(m.y - this.player.y) <= ry) return m;
     }
     return null;
+  }
+  /** The realm machine the Keeper's feet are within reach of, in this area, or null. */
+  private machineInReach(): MachineMark | null {
+    for (const m of this.machines) {
+      if (m.area !== this.areaDef.id) continue;
+      if (Math.abs(m.x - this.player.x) <= 56 && Math.abs(m.y - this.player.y) <= 64) return m;
+    }
+    return null;
+  }
+  private drawMachines(c: CanvasRenderingContext2D, viewport: number, time: number): void {
+    const scale = this.terrain ? 2 : 4;
+    for (const m of this.machines) {
+      if (m.area !== this.areaDef.id || m.x < this.camera - 80 || m.x > this.camera + viewport + 80) continue;
+      if (m.y < this.cameraY - 40 || m.y - 120 > this.cameraY + 720) continue;
+      // A soft star-blue pool on the floor and a name plate, so the machine reads at a glance (no gradient per frame).
+      c.save(); c.globalAlpha = .22; c.fillStyle = '#5fb6ff';
+      c.beginPath(); c.ellipse(m.x, m.y + 1, 30, 5, 0, 0, Math.PI * 2); c.fill(); c.restore();
+      drawMachine(c, m.x, m.y, this.reducedMotion ? 0 : Math.floor(time * 1.6) % 2 === 0 ? 0 : 1, scale);
+      c.save(); c.font = '600 10px system-ui'; c.textAlign = 'center';
+      const label = MACHINE_LABELS[m.id] ?? '';
+      const w = Math.min(150, c.measureText(label).width + 10);
+      c.fillStyle = '#1a120fcc'; c.fillRect(m.x - w / 2, m.y + 4, w, 13);
+      c.fillStyle = m.found ? '#fff1c9' : '#c9e4ff'; c.fillText(label, m.x, m.y + 14);
+      c.restore();
+    }
   }
   private drawCabinets(c: CanvasRenderingContext2D, viewport: number, time: number): void {
     const scale = this.terrain ? 2 : 4;
@@ -3906,6 +3936,12 @@ export class SeamworksEngine {
   }
   /** RNG for drop chances. Replaceable in tests; a table of certain drops never calls it. */
   random: () => number = Math.random;
+  /**
+   * E, in priority order (first that applies wins): gear or a rune on the ground; step off the cart; the line in
+   * the water; a shut shown Lost Cabinet; a station in reach (every later kind yields to one); a Cascade machine;
+   * a find; a Waystone; a mystery; a placed thing in a Delve (chest, camp: `interactAt`); a work site; a cast.
+   * Placing a chest is NOT on E: it is the right-click / hold-tap on a cell, so the pointer must reach the canvas.
+   */
   interact(): void {
     if (this.paused || this.hp <= 0) return;
     // E beside a piece of gear or a rune on the ground: take the nearest (the keyboard's tap on its plate).
@@ -3924,6 +3960,8 @@ export class SeamworksEngine {
     const station = shut && !shut.open ? null : this.nearbyStation();
     const cabinet = station ? null : shut;
     if (cabinet) { this.options.onCabinet?.({ areaId: this.areaDef.id, id: cabinet.id, open: cabinet.open }); this.report(); return; }
+    const machine = station ? null : this.machineInReach();
+    if (machine) { this.options.onMachine?.({ areaId: this.areaDef.id, id: machine.id, found: machine.found }); this.report(); return; }
     const find = station ? null : this.findInReach();
     if (find) { this.useFind(find); this.report(); return; }
     // One World: a Waystone. Lit, E opens the Travel map; unlit, holding E lights it (chargeStone).
@@ -5373,8 +5411,9 @@ export class SeamworksEngine {
     const use = at >= 0 ? (t!.inscriptions.has(at) ? (t!.inscriptions.get(at)!.startsWith(MARK_PREFIX) ? 'mark' : 'inscription')
       : RAIL_KINDS[t!.kind[at]] === 1 ? 'rail' : TERRAIN_NODE_LIST[t!.kind[at]].use ?? null) : null;
     const cabinet = !station && !use ? shut : null;
-    const find = !station && !use && !cabinet ? this.findInReach() : null;
-    const site = !station && !use && !find && !cabinet ? this.siteInReach() : null;
+    const machine = !station && !use && !cabinet ? this.machineInReach() : null;
+    const find = !station && !use && !cabinet && !machine ? this.findInReach() : null;
+    const site = !station && !use && !find && !cabinet && !machine ? this.siteInReach() : null;
     const need = site ? this.siteNeed(site.def) : null;
     const depth = t ? Math.max(0, Math.floor((this.player.y - t.top) / CELL)) : undefined;
     // One World: the region under the Keeper names the place ("Basalt Seamworks"); a stone in reach; a keeper away.
@@ -5383,16 +5422,17 @@ export class SeamworksEngine {
     const stone = !station && !use && !cabinet && !find && !site && this.worldSurface ? this.stoneInReach() : null;
     const away = station && this.worldSurface && this.settlement.placed.some(k => k.station.id === station.id) ? stationPrompt(this.worldHour) : 'counter';
     // The Living World: a wisp or a door of the day's within E's reach.
-    const mystery = !station && !use && !cabinet && this.world ? this.wild.mysteryInReach(this.player.x, this.player.y) : null;
+    const mystery = !station && !use && !cabinet && !machine && this.world ? this.wild.mysteryInReach(this.player.x, this.player.y) : null;
     this.options.onState({ hp: this.hp, enemyHp: nearest ? Math.max(1, Math.round(nearest.hp / nearest.maxHp * 100)) : 0, enemyName: nearest?.def.name, enemyId: nearest?.def.creature,
       ...(this.keyed && this.keyed.en === this.message ? { messageKey: this.keyed.key, ...(this.keyed.vars ? { messageVars: this.keyed.vars } : {}) } : {}),
       ...(region ? { world: region.world, region: region.id } : {}),
       ...(stone ? { stone: { id: stone.id, lit: stone.lit, charge: this.stoneCharge?.id === stone.id ? Math.min(1, this.stoneCharge.t / LIGHT_HOLD) : 0, kind: stone.kind } } : {}),
       ...(away !== 'counter' ? { keeperAway: away } : {}),
-      nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : find ? 'height' : site ? 'gather' : stone ? 'stone' : mystery ? 'mystery' : null),
+      nearby: use ?? station?.id ?? (cabinet ? 'cabinet' : machine ? 'machine' : find ? 'height' : site ? 'gather' : stone ? 'stone' : mystery ? 'mystery' : null),
       nearbyLabel: use ? USE_LABEL[use] : station?.label ?? site?.def.label.toUpperCase() ?? (stone ? 'WAYSTONE' : mystery ? (mystery.m.kind === 'door' ? 'OPEN THE DOOR' : 'TOUCH THE LIGHT') : undefined), nearbyKind: station?.kind,
       height: find ? { id: find.id, kind: find.kind, found: this.heightsFound.has(find.id) } : undefined,
       cabinet: cabinet ? { id: cabinet.id, open: cabinet.open } : undefined,
+      machine: machine ? { id: machine.id, found: machine.found } : undefined,
       y: Math.round(this.player.y), climbing: this.terrain ? (this.worldSurface ? (this.climbing ? 'climb' : this.moves.mode) : this.moves.busy ? this.moves.mode : undefined) : this.heights ? this.mover.mode : undefined,
       gather: site ? { id: site.def.id, label: site.def.label, ready: site.ready, seconds: Math.ceil(site.timer), materialId: site.def.yield.materialId, ...(need ? { need } : {}), ...(this.siteShut(site.def) ? { shut: true } : {}) } : undefined,
       timed: this.timedOut,
@@ -6478,6 +6518,7 @@ export class SeamworksEngine {
     }
     // The Lost Cabinets stand in front of the stalls, behind the people.
     if (this.cabinets.length) this.drawCabinets(c, viewport, motionTime);
+    if (this.machines.length) this.drawMachines(c, viewport, motionTime);
     if (this.world) {
       const w = this.wildFrame;
       w.camera = this.camera; w.cameraY = this.cameraY; w.viewport = viewport; w.viewH = WILD_VIEW_H; w.time = motionTime; w.reduced = this.reducedMotion;

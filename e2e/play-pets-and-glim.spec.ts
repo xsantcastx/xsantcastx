@@ -56,7 +56,7 @@ async function closeCard(page: Page) {
   await focusWorld(page);
 }
 
-for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x844', width: 390, height: 844 }]) {
+for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x844', width: 390, height: 844 }, { tag: '844x390', width: 844, height: 390 }]) {
   test.describe(size.tag, () => {
     test.beforeEach(async ({ page }) => { await page.setViewportSize({ width: size.width, height: size.height }); });
 
@@ -116,6 +116,22 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x8
       await expect(tap).toBeVisible({ timeout: 10000 });
       const box = (await tap.boundingBox())!;
       expect(box.width).toBeGreaterThanOrEqual(44);
+      expect(box.height).toBeGreaterThanOrEqual(44);
+      // A fixed HUD slot, not a hit target floating over the world: it overlaps no other HUD widget,
+      // sits outside the world's centre, and what it covers is the button itself (a hit test at its middle).
+      const clash = await page.evaluate(() => {
+        const mine = document.querySelector('[data-glim-tap]')!.getBoundingClientRect();
+        const others = ['.topbar .title-block', '.topbar .top-actions button', '.topbar .objective-line', '.guide', '.vitals', '.satchel', '.hotbar', '.dock', '.touch button', '.hearth']
+          .flatMap(q => [...document.querySelectorAll(q)] as HTMLElement[])
+          .filter(e => { const r = e.getBoundingClientRect(); return r.width > 0 && r.height > 0 && getComputedStyle(e).visibility !== 'hidden'; });
+        return others.filter(e => {
+          const r = e.getBoundingClientRect();
+          return r.left < mine.right && r.right > mine.left && r.top < mine.bottom && r.bottom > mine.top;
+        }).map(e => e.className || e.tagName);
+      });
+      expect(clash).toEqual([]);
+      expect(box.x).toBeGreaterThanOrEqual(0);
+      expect(box.x + box.width).toBeLessThanOrEqual(size.width);
       await tap.click();
       const chat = page.locator('[data-glim-chat]');
       await expect(chat).toBeVisible();

@@ -1,0 +1,85 @@
+<!-- A cascade machine, frameless: purse and "?" · the board · the result · bet + Spin · quick bets + Auto.
+     Pay table, odds, rules, record and lore are behind "?" (help never on the first face). -->
+<div class="cz" [attr.data-machine]="m.id" [attr.data-phase]="phase" [attr.data-window]="windowText"
+     [attr.data-last-win]="lastWin" [attr.data-bonus]="roundKind" [attr.data-top]="top" [attr.data-spots]="spots2">
+  <header class="cz-top">
+    <span class="cz-purse" data-purse><small>{{ t('cascade.purse') }}</small>{{ fmt(purse) }}</span>
+    <span class="cz-win" [class.is-on]="spinGold > 0" aria-hidden="true"><small>{{ t('cascade.hud.win') }}</small>{{ fmt(spinGold) }}</span>
+    <button type="button" class="cz-help-btn" data-help [attr.aria-expanded]="helpOpen" [attr.aria-label]="t('cascade.help')" (click)="toggleHelp()">?</button>
+  </header>
+
+  <div class="cz-stage" [class.is-shake]="shake">
+    @if (roundKind) {
+      <div class="cz-round" [attr.data-round]="roundKind">
+        <span>{{ t(roundKind === 'super' ? 'cascade.banner.super' : 'cascade.banner.free') }}</span>
+        <span class="cz-round__spins" data-spins>{{ t('cascade.hud.spins') }} {{ freeIndex }}/{{ freeTotal }}</span>
+        <span class="cz-round__top">{{ t(ladderMachine ? 'cascade.hud.rung' : 'cascade.hud.top') }} ×{{ top || 1 }}</span>
+      </div>
+    }
+    <canvas #board class="cz-board" role="img" [attr.aria-label]="t('cascade.board', { n: m.rows * m.cols })"></canvas>
+    @if (banner) { <p class="cz-banner" [attr.data-banner]="roundKind">{{ banner }}</p> }
+    @if (glimLine) {
+      <p class="cz-glim" data-glim><app-glim-icon class="cz-glim__icon" /><span>{{ glimLine }}</span></p>
+    }
+    <app-win-celebration [win]="celebrate.win" [bet]="celebrate.bet" [seq]="celebrate.seq" top="epic" />
+
+    @if (helpOpen) {
+      <section class="cz-help" data-help-sheet [attr.aria-label]="t('cascade.help')">
+        <div class="cz-help__head">
+          <h3>{{ t('cascade.help.title', { name: title }) }}</h3>
+          <button type="button" class="cz-help__close" (click)="toggleHelp()">{{ t('cascade.close') }}</button>
+        </div>
+        <table class="cz-pay">
+          <thead><tr><th scope="col">{{ t('cascade.help.size') }}</th>@for (n of paySizes; track n) { <th scope="col">{{ n }}</th> }</tr></thead>
+          <tbody>
+            @for (r of payRows; track r.code) {
+              <tr>
+                <th scope="row"><svg class="cz-pay__icon" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">
+                  @for (l of r.layers; track l.color) { <path [attr.fill]="l.color" [attr.d]="l.d" /> }
+                </svg><span class="cz-sr">{{ r.name }}</span></th>
+                @for (p of r.pays; track $index) { <td>{{ p }}</td> }
+              </tr>
+            }
+          </tbody>
+        </table>
+        <p class="cz-help__keys">
+          <svg class="cz-pay__icon" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">@for (l of wildLayers; track l.color) { <path [attr.fill]="l.color" [attr.d]="l.d" /> }</svg>
+          {{ t('cascade.wild.' + m.id) }}
+          <svg class="cz-pay__icon" viewBox="0 0 14 14" shape-rendering="crispEdges" aria-hidden="true">@for (l of scatterLayers; track l.color) { <path [attr.fill]="l.color" [attr.d]="l.d" /> }</svg>
+          {{ t('cascade.scatter.' + m.id) }}
+        </p>
+        @for (line of helpLines; track $index) { <p>{{ line }}</p> }
+        <p>{{ capLine }} {{ t('games.goldOnly') }}</p>
+        <p>{{ record }}</p>
+        @if (history.length) {
+          <h4>{{ t('cascade.help.history') }}</h4>
+          <ol class="cz-history">
+            @for (h of history; track h.id) {
+              <li [class.is-won]="h.won">{{ h.text }}@if (h.bonus) { <small> · {{ t(h.bonus === 'super' ? 'cascade.help.historySuper' : 'cascade.help.historyBonus') }}</small> }</li>
+            }
+          </ol>
+        }
+        <p class="cz-lore">{{ t('cascade.lore.' + m.id) }}</p>
+      </section>
+    }
+  </div>
+
+  <p class="cz-result" role="status" aria-live="polite">{{ result }}</p>
+
+  <div class="cz-controls">
+    <app-game-stepper class="cz-bet" [label]="t('games.bet.label')" [value]="fmt(bet)"
+                      [lessLabel]="t('games.bet.less')" [moreLabel]="t('games.bet.more')"
+                      [canLess]="!busy && !auto && bet > bets[0]" [canMore]="!busy && !auto && bet < bets[bets.length - 1]"
+                      (less)="stepBet(-1)" (more)="stepBet(1)" />
+    @if (busy) {
+      <button type="button" class="cz-spin cz-spin--skip" data-skip (click)="skip()">{{ t('cascade.skip') }}</button>
+    } @else {
+      <button type="button" class="cz-spin" data-spin [disabled]="!hydrated || !!auto" (click)="tapSpin()">{{ t('cascade.spin', { n: fmt(bet) }) }}</button>
+    }
+  </div>
+  <div class="cz-quick">
+    <app-bet-chips class="cz-chips" [bet]="bet" [gps]="gps" [gold]="gold" [disabled]="busy || !!auto" (pick)="setBet($event)" />
+    <app-auto-spin class="cz-auto" [running]="!!auto" [left]="auto?.left ?? 0" [paused]="auto?.paused ?? false"
+                   [disabled]="busy || !hydrated" (begin)="startAuto($event)" (halt)="stopAuto()" (resume)="resumeAuto()" />
+  </div>
+</div>

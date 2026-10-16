@@ -48,7 +48,7 @@
         </svg>
       </div>
       <button type="button" class="rl-lever" [class.is-pulled]="phase === 'spin'" tabindex="-1" aria-hidden="true"
-              [title]="t('reels.lever')" (click)="spin()"><span class="rl-lever__knob"></span></button>
+              [title]="t('reels.lever')" (click)="tapSpin()"><span class="rl-lever__knob"></span></button>
       <app-win-celebration [win]="celebrate.win" [bet]="celebrate.bet" [seq]="celebrate.seq" />
     </div>
 
@@ -59,13 +59,18 @@
 
     <div class="rl-controls">
       <div class="rl-bet" role="group" [attr.aria-label]="t('games.bet.label')">
-        <button type="button" class="rl-bet__btn" [attr.aria-label]="t('games.bet.less')" [disabled]="busy || bet <= bets[0]" (click)="stepBet(-1)">−</button>
+        <button type="button" class="rl-bet__btn" [attr.aria-label]="t('games.bet.less')" [disabled]="busy || !!auto || bet <= bets[0]" (click)="stepBet(-1)">−</button>
         <span class="rl-bet__val"><small>{{ t('games.bet.label') }}</small>{{ fmt(bet) }}</span>
-        <button type="button" class="rl-bet__btn" [attr.aria-label]="t('games.bet.more')" [disabled]="busy || bet >= bets[bets.length - 1]" (click)="stepBet(1)">+</button>
+        <button type="button" class="rl-bet__btn" [attr.aria-label]="t('games.bet.more')" [disabled]="busy || !!auto || bet >= bets[bets.length - 1]" (click)="stepBet(1)">+</button>
       </div>
       <app-action-button class="rl-spin" [label]="t('reels.spin')" [costs]="costs" chips="currency"
-                         [blocked]="blocked" [pending]="!hydrated" (act)="spin()" (refused)="result = $event" />
+                         [blocked]="blocked" [pending]="!hydrated" (act)="tapSpin()" (refused)="result = $event" />
       @if (busy) { <button type="button" class="rl-skip" (click)="skip()">{{ t('reels.skip') }}</button> }
+    </div>
+    <div class="rl-quick">
+      <app-bet-chips [bet]="bet" [gps]="gps" [gold]="gold" [disabled]="busy || !!auto" (pick)="setBet($event)" />
+      <app-auto-spin class="rl-auto" [running]="!!auto" [left]="auto?.left ?? 0" [paused]="auto?.paused ?? false"
+                     [disabled]="busy || !hydrated" (begin)="startAuto($event)" (halt)="stopAuto()" (resume)="resumeAuto()" />
     </div>
   </div>
 

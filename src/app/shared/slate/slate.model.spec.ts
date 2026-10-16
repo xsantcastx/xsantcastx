@@ -2,7 +2,7 @@ import { MIRROR_SLATE } from '../economy/economy-curve';
 import { PANEL_REGISTRY } from '../../play/world/panel-registry';
 import { MIRROR_SLATE_ID, MIRROR_SLATE_II_ID, SLATE_ITEMS, SLATE_UPGRADE_INPUTS } from './slate-items.model';
 import {
-  CROUPIER_STATIONS, SLATE_TABLES, SLATE_TABLE_GAMES, slateAwardDue, slateBadge, slateOffer, slateRefusal, slateTabs, slateTier,
+  CROUPIER_STATIONS, SLATE_MACHINES, SLATE_TABLES, SLATE_TABLE_GAMES, slateAwardDue, slateMachines, slateBadge, slateOffer, slateRefusal, slateTabs, slateTier,
   slateUpgradeNeeds, slateUpgradeReady, tablesPlayed, type SlateMoment,
 } from './slate.model';
 import { REELS_GAME_ID } from '../reels/reels.service';
@@ -93,5 +93,12 @@ describe('Mirror Slate rules', () => {
       expect(item.sources.length).withContext(item.id).toBeGreaterThan(0);
       expect(item.uses.length).withContext(item.id).toBeGreaterThan(0);
     }
+  });
+
+  it('carries the Eclipse Cascade always, and a realm machine only once it is found; neither counts toward her gift', () => {
+    expect(slateMachines(() => false).map(m => m.game)).toEqual(['eclipse-cascade']);
+    expect(slateMachines(id => id === 'orrery-tumbler').map(m => m.game)).toEqual(['eclipse-cascade', 'orrery-tumbler']);
+    for (const m of SLATE_MACHINES) expect(SLATE_TABLE_GAMES).not.toContain(m.game);
+    expect(tablesPlayed(g => (g === 'eclipse-cascade' ? 50 : 0))).toBe(0);
   });
 });

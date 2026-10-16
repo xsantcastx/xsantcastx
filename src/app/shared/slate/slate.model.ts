@@ -28,7 +28,22 @@ export const SLATE_TABLES = [
   { game: 'seam-sweeper', panel: 'seam-sweeper', titleKey: 'slate.table.seamSweeper' },
   { game: 'eclipse-ascent', panel: 'eclipse-ascent', titleKey: 'slate.table.ascent' },
 ] as const;
-export type SlateTableGame = (typeof SLATE_TABLES)[number]['game'];
+/**
+ * The machines that live in the glass (docs/handoff/eclipse-cascade.md): the
+ * Eclipse Cascade (every Slate, beside the Reels) and the realm machines a
+ * Keeper has found in the world (`found`: only once the games ledger says so).
+ * Not Lune's four tables: they do not count toward her gift.
+ */
+export const SLATE_MACHINES = [
+  { game: 'eclipse-cascade', titleKey: 'slate.table.cascade', found: false },
+  { game: 'orrery-tumbler', titleKey: 'slate.table.tumbler', found: true },
+] as const;
+export type SlateMachineGame = (typeof SLATE_MACHINES)[number]['game'];
+/** The machines on the glass for a Keeper who has found `found(id)`. */
+export function slateMachines(found: (id: string) => boolean): (typeof SLATE_MACHINES)[number][] {
+  return SLATE_MACHINES.filter(m => !m.found || found(m.game));
+}
+export type SlateTableGame = (typeof SLATE_TABLES)[number]['game'] | SlateMachineGame;
 export const SLATE_TABLE_GAMES: readonly string[] = SLATE_TABLES.map(t => t.game);
 
 /** The stations whose panel shows Lune's offer (her own counter and her four tables). */
