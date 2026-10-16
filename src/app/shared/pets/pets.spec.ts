@@ -21,7 +21,7 @@ import { PetsService } from './pets.service';
 import { PET_FRAMES, PET_H, PET_W, paintPetFrame } from './pet-art';
 
 const NONE: PetLedger = { tally: {}, claimDays: 0, flag: () => false };
-const rec = (over: Partial<PetRecord> = {}): PetRecord => ({ got: 100, hatched: 100, name: 'Pip', nameAt: 100, love: 0, feedDay: '', feeds: 0, hat: false, hatAt: 0, ...over });
+const rec = (over: Partial<PetRecord> = {}): PetRecord => ({ got: 100, hatched: 100, name: 'Pip', nameAt: 100, love: 0, feedDay: '', feeds: 0, hat: false, hatAt: 0, xp: 0, findDay: '', scouts: 0, trinkets: 0, ...over });
 
 describe('Pets: the table', () => {
   it('has 8 pets, one per realm at least, three rare ones, each with its own helper', () => {

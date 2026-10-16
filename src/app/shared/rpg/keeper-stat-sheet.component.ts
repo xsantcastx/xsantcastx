@@ -85,7 +85,10 @@ export class KeeperStatSheetComponent implements OnInit, OnDestroy {
   /** prefers-reduced-motion, read once in the browser. */
   reduced = false;
 
-  readonly combatShown = computed(() => keeperCombatStats(this.shown()));
+  /** The Hunting level (the Keeper's character level in a fight, keeper-combat.ts); 1 adds nothing. */
+  private readonly hunting = signal(1);
+  @Input() set huntingLevel(level: number) { this.hunting.set(Number.isFinite(level) ? level : 1); }
+  readonly combatShown = computed(() => keeperCombatStats(this.shown(), this.hunting()));
 
   private target: Totals | null = null;
   private sub?: Subscription;
@@ -129,8 +132,8 @@ export class KeeperStatSheetComponent implements OnInit, OnDestroy {
 
     const chips: Chip[] = rows.map(r => ({ id: ++this.chipSeq, text: formatDeltaChip(r.key, r.delta), direction: r.direction }));
     if (this.combat) {
-      const a = keeperCombatStats(from);
-      const b = keeperCombatStats(to);
+      const a = keeperCombatStats(from, this.hunting());
+      const b = keeperCombatStats(to, this.hunting());
       if (b.damage !== a.damage) chips.push(this.combatChip(b.damage - a.damage, 'Damage'));
       if (b.maxHp !== a.maxHp) chips.push(this.combatChip(b.maxHp - a.maxHp, 'Max HP'));
     }

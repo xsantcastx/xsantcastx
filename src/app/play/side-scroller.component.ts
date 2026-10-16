@@ -20,7 +20,7 @@ import { iconOf } from '../shared/art/item-icons';
 import type { IconKind } from '../shared/art/item-icon-shapes';
 import { SheetDragDirective } from './sheet-drag.directive';
 import { HOME_FORGE, IN_WORLD_FOCUS, IN_WORLD_PANEL } from '../shared/in-world-panel';
-import { areaOf, findStation, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
+import { areaOf, findStation, LootRarity, PanelId, REALM_TOWN_IDS, RealmTownId, StationDef, TOWN_LABELS, TOWNS, TownDef } from './world/world.model';
 import { PANEL_REGISTRY, panelForRoute } from './world/panel-registry';
 import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-catalog';
 import { clusterBy, familyOf, groupItems, slotsForGroup } from '../shared/rpg/item-groups';
@@ -78,6 +78,11 @@ import { GlimService } from '../shared/glim/glim.service';
 import { GlimVoice } from '../shared/glim/glim-voice';
 import { GlimIconComponent } from '../shared/glim/glim-icon.component';
 import { GlimTalkComponent } from '../shared/glim/glim-talk.component';
+import { GlimChatComponent } from '../shared/glim/glim-chat.component';
+import { GLIM_ALIVE_I18N } from '../shared/glim/glim-alive.i18n';
+import { CompanionHost } from './companion-host';
+import { PET_ACT, PET_ROLES, works } from '../shared/pets/pet-roles';
+import type { TipContext } from '../shared/glim/glim-react';
 import { GLIM_BOND_I18N } from '../shared/glim/glim-bond.i18n';
 import {
   BACK_AFTER_MS, GLIM_RARE_KINDS, NOTICE_CELLS, SENSE_CELLS, WAY_FAR_CELLS,
@@ -159,6 +164,12 @@ import { CROUPIER_STATIONS, KAEL_STATION, slateBadge, slateRefusal, type SlateTi
 import type { PanelEntry } from './world/panel-registry';
 import { SoundService } from '../shared/sound/sound.service';
 import { SoundSheetComponent } from '../shared/sound/sound-sheet.component';
+// Loot & combat (docs/design/loot-and-combat.md): drops, auras, difficulty, the corpse run.
+import { LootService } from '../shared/loot/loot.service';
+import { LootSheetComponent } from '../shared/loot/loot-sheet.component';
+import { LOOT_I18N } from '../shared/loot/loot.i18n';
+import { lootEntry } from '../shared/loot/drop-tables';
+import { itemAuras } from '../shared/loot/aura-sources';
 import { PetSheetComponent } from '../shared/pets/pet-sheet.component';
 import { PetsService } from '../shared/pets/pets.service';
 import { PETS_I18N } from '../shared/pets/pets.i18n';
@@ -300,7 +311,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, SoundSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -366,6 +377,8 @@ export class SideScrollerComponent implements OnDestroy {
   private soundSub?: Subscription;
   /** Menu → Sound is open. */
   soundOpen = false;
+  /** Menu → Loot & Combat (shared/loot/loot-sheet.component.ts). */
+  lootOpen = false;
   /** The Satchel's pet well, opened (shared/pets/pet-sheet.component.ts). */
   petsOpen = false;
   /** "Crafted X — in your Satchel" with its Open, after a craft; null when none. */
@@ -391,6 +404,11 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly skillActions = inject(SkillActionService);
   private readonly store = inject(GameStateGateway);
   private readonly economy = inject(EconomyService);
+  /** Loot & combat: drops, the aura, the difficulty, the corpse run (shared/loot). */
+  private readonly loot = inject(LootService);
+  private rulesKey = '';
+  /** Gold the last fall left behind (the fall card says it). */
+  fallGold = 0;
   /** Coins picked up across sessions (PLAY_KEY), shown in the satchel. */
   coinsKept = 0;
   /** Drops already credited this page (the engine reports an accepted drop once; this makes sure). */
@@ -428,7 +446,7 @@ export class SideScrollerComponent implements OnDestroy {
    */
   readonly glimNpc = npcById('glim');
   readonly glimVoice = new GlimVoice(inject(GlimService));
-  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean } | null = null;
+  glimAt: { x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean; mood: string; trail: number | null; lamp: number } | null = null;
   /**
    * The Keeper's story (shared/story): beats are read off the save each HUD
    * tick; a beat reached live speaks through Glim's line, and an act boundary
@@ -717,7 +735,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.delveSub = this.delve.reloaded$.subscribe(() => this.engine?.setDelve(this.delve));
       // Cloud save merged another device's harvests: nodes re-read their regrowth.
       this.gatherSub = this.gatherSave.reloaded$.subscribe(() => this.engine?.setGathering(this.gatherSave));
-      this.joySub = this.levelUps.events$.subscribe(() => this.engine?.keeperFeel('happy', 1.4));
+      this.joySub = this.levelUps.events$.subscribe(() => { this.engine?.keeperFeel('happy', 1.4); this.companions.levelUp(); });
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
@@ -738,10 +756,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(FISHING_I18N);
     this.i18n.register(GLIM_I18N);
     this.i18n.register(GLIM_BOND_I18N);
+    this.i18n.register(GLIM_ALIVE_I18N);
     this.i18n.register(STORY_I18N);
     this.i18n.register(BOUNTIES_I18N);
     this.i18n.register(HEIGHTS_I18N);
     this.i18n.register(SOUND_I18N);
+    this.i18n.register(LOOT_I18N);
     this.i18n.register(ONE_WORLD_I18N);
     this.i18n.register(TRAVEL_MAP_I18N);
     this.keeperKey = ''; this.marksKey = '';
@@ -757,8 +777,16 @@ export class SideScrollerComponent implements OnDestroy {
       satchelTarget: () => this.satchelPoint(),
       onInteract: (target: InteractionTarget) => this.zone.run(() => this.act(target)),
       onStation: station => this.zone.run(() => this.openStation(station)),
-      onLoot: loot => this.zone.run(() => (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
-        && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore))),
+      onLoot: loot => this.zone.run(() => (loot.item || loot.rune ? this.collectGear(loot.id, loot)
+        : (loot.coins > 0 ? this.collectCoins(loot.id, loot.coins) : true)
+        && (loot.ore === 0 || this.collectMaterial(loot.id, loot.material ?? CINDER_ORE_ID, loot.ore)))),
+      // What a kill drops on top of its area's table (shared/loot/drop-tables.ts). Outside the zone: pure rolls.
+      rollLoot: kill => this.loot.rollLoot(kill).map((drop, i) => lootEntry(drop, `loot${i}`)),
+      // The corpse run's purse, walked over: its Gold comes home.
+      onPurse: () => this.zone.run(() => {
+        const gold = this.loot.recover();
+        if (gold > 0) { this.message = this.t('play.loot.recovered', { n: gold }); this.sound.sfx('coin'); this.bump('.coin-count'); }
+      }),
       onWorldAction: event => this.zone.run(() => {
         const result = this.worldAction(event);
         // A generated Delve cell broke (it paid XP, or would have): the Board Herald's dig bounties count it.
@@ -784,12 +812,18 @@ export class SideScrollerComponent implements OnDestroy {
       onSfx: cue => this.engineSfx(cue),
       // The tool in hand changed (held-tool.ts): a soft cue and the canvas key for tests. No change detection.
       onHeldTool: tool => this.heldToolSwapped(tool),
+      // The pet did something (pet-brain.ts): XP, finds, toasts, Glim's word (companion-host.ts).
+      onPet: event => this.zone.run(() => this.companions.onPet(event)),
+      // A moment Glim reacts to (a dodge, a rare beam, a drop left lying).
+      onGlimCue: cue => this.zone.run(() => this.companions.onGlimCue(cue)),
       // Each player digs their own Delve: seed and dug cells from the save.
       delve: this.delve,
       // Gathering regrowth is measured from saved harvest times, so a reload keeps it.
       gathering: this.gatherSave,
       onState: (state: EngineState) => this.zone.run(() => {
         if (state.message !== this.state.message) this.message = '';
+        // The Keeper fell: the corpse run (shared/loot). A share of the purse lies where they fell.
+        if (state.defeated && !this.state.defeated) this.fallen(state);
         if (state.delve && !this.state.delve) this.refundOrphanChests();
         // At the shaft: is there a camp below to descend to? Asked once per arrival, not per frame.
         if (state.nearby === 'delve' && this.state.nearby !== 'delve') { this.campReady = !!this.engine?.hasDelveCamp(); this.anchorsReady = (this.engine?.delveAnchors().length ?? 0) > 0; }
@@ -802,6 +836,15 @@ export class SideScrollerComponent implements OnDestroy {
           el.setAttribute('data-liquid', state.liquid?.in ?? '');
           // The fish under the water in view (fish-shadows.ts): "where are the fish?" — there.
           el.setAttribute('data-fish-shadows', String(state.fishShadows ?? 0));
+          // Loot & combat (shared/loot): drops on the ground by rung, the aura, the marked creatures, the foe's pack.
+          el.setAttribute('data-loot-drops', state.loot?.drops ?? '');
+          el.setAttribute('data-loot-labels', state.loot?.labels ?? '');
+          el.setAttribute('data-aura', state.loot?.aura ?? '');
+          el.setAttribute('data-aura-debuffed', String(state.loot?.debuffed ?? 0));
+          el.setAttribute('data-foe-pack', state.loot?.foe ?? '');
+          el.setAttribute('data-purse', state.loot?.purse ? 'true' : 'false');
+          el.setAttribute('data-tier', state.loot?.tier ?? '');
+          el.setAttribute('data-kills', String(state.kills ?? 0));
           // The Underhearth (Phase 8): depth, the cart, the grapple, the furnace's fight.
           el.setAttribute('data-depth', state.depth === undefined ? '' : String(state.depth));
           el.setAttribute('data-biome', state.biome ?? '');
@@ -930,6 +973,8 @@ export class SideScrollerComponent implements OnDestroy {
           this.engine.moveTo(this.engine.pick(event.clientX, event.clientY).x);
           return;
         }
+        // A drop's name plate (or the drop) under the tap: pick it up, or walk to it (shared/loot).
+        if (this.zone.run(() => this.engine?.pickDrop(event.clientX, event.clientY))) return;
         if (this.engine.strikeAt(event.clientX, event.clientY)) return;
         const hit = this.engine.pick(event.clientX, event.clientY);
         // The Homestead Forge strikes where it is clicked, without walking there.
@@ -1032,6 +1077,39 @@ export class SideScrollerComponent implements OnDestroy {
     this.bump('.coin-count');
     this.sound.sfx('coin');
     return true;
+  }
+  /**
+   * A gear or rune drop reached the Keeper: LootService mints it (the roll is
+   * frozen then) or grants the rune. False leaves it shining on the ground.
+   */
+  private collectGear(dropId: string, loot: { item?: { definitionId: string; rarity: LootRarity; unique: boolean }; rune?: string }): boolean {
+    const got = this.loot.grantDrop(dropId, loot);
+    if (!got) return false;
+    this.sound.sfx('pickup');
+    this.pulseSatchel();
+    return true;
+  }
+  /** The Keeper fell: the tier's share of the purse lies where they fell (the corpse run). */
+  private fallen(state: EngineState): void {
+    if (!this.browser) return;
+    this.fallGold = this.loot.fall(state.areaId ?? this.town.id, state.x ?? 0, state.y ?? 0);
+    this.pushPurse();
+  }
+  /** Hand the engine the purse (it lies only in the area it fell in). */
+  private pushPurse(): void {
+    const p = this.loot.state.purse;
+    this.engine?.setFallenPurse(p ? { area: p.area, x: p.x, y: p.y, gold: p.gold } : null);
+  }
+  /** Loot & combat rules (aura, resists, difficulty, filter) to the engine when they change. */
+  private pushRules(): void {
+    if (!this.engine || !this.browser) return;
+    const rules = this.loot.combatRules();
+    const key = JSON.stringify(rules);
+    if (key === this.rulesKey) return;
+    const first = !this.rulesKey;
+    this.rulesKey = key;
+    this.engine.setCombatRules({ tier: rules.tier, seed: rules.seed, aura: rules.aura, resists: rules.resists, filter: rules.filter });
+    if (first) this.pushPurse();
   }
   private playSave(): { town?: unknown; coins?: unknown } {
     const raw = this.store.read(PLAY_KEY);
@@ -1212,7 +1290,10 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Menu → Sound. */
   openSound(): void { this.placesOpen = false; this.soundOpen = true; }
+  /** Menu → Loot & Combat. */
+  openLoot(): void { this.placesOpen = false; this.lootOpen = true; }
   ngOnDestroy(): void {
+    this.companions.flush();
     this.room?.leave(); this.engine?.destroy(); if (this.timer) clearInterval(this.timer);
     if (this.oneWorld) { this.waystones.cancel(); this.waystones.attach(null); }
     if (this.browser) { this.homestead.stop(); document.body.classList.remove(WORLD_ROUTE_CLASS); this.placePanel?.nativeElement.removeEventListener('click', this.panelLinkClick, true); }
@@ -1537,6 +1618,41 @@ export class SideScrollerComponent implements OnDestroy {
 
   // ── Pets (shared/pets; docs/handoff/pets.md) ──
 
+  /**
+   * The pets' roles and Glim being alive (companion-host.ts; docs/handoff/pets-and-glim-alive.md):
+   * pet XP and finds, Glim's reactions, the chat card, catch-the-light.
+   */
+  readonly companions = new CompanionHost({
+    engine: () => this.engine ?? null,
+    pets: this.pets,
+    glim: this.glim,
+    voice: this.glimVoice,
+    t: (key, vars) => this.t(key, vars),
+    sfx: cue => this.sound.sfx(cue),
+    toast: text => { this.message = text; this.toastLoot(text); },
+    grant: (grantId, item, qty) => this.inventory.grantStack(grantId, item, qty),
+    itemName: id => materialDisplay(id)?.name ?? titleCase(id.replace(/-/g, ' ')),
+    busy: () => !!this.panel || !!this.storyCard || !!this.storyScene || !!this.glimTalk || this.map.open || this.petsOpen,
+    tipContext: () => this.tipContext(),
+    repushPet: () => { this.petKey = ''; this.pushPet(); },
+  });
+  /** Where the Keeper is, for one of Glim's tips. */
+  private tipContext(): TipContext {
+    if (this.state.fishing || this.state.canFish) return 'fishing';
+    if (this.state.delve) return 'delve';
+    if (followingPet(this.pets.state) && Math.random() < .35) return 'pets';
+    return (this.state.enemyHp ?? 0) > 0 || this.town.hunts.some(h => h.id === this.state.areaId) ? 'hunt' : 'town';
+  }
+  /** Tap Glim: the chat card. */
+  openGlimChat(): void {
+    if (this.glimTalk) return;
+    this.glimVoice.dismiss();
+    this.companions.openChat();
+  }
+  closeGlimChat(): void { this.companions.closeChat(); this.focusWorld(); }
+  /** "Quiet Glim" is on (the chat card shows the switch). */
+  get glimQuiet(): boolean { return this.browser && this.glim.quiet; }
+
   private petsAt = 0;
   private petKey = '';
   /** The Star Owlet's ore cells (the maps mark them), re-read once a second in the Delve. */
@@ -1597,25 +1713,34 @@ export class SideScrollerComponent implements OnDestroy {
     const state = this.pets.state;
     const def: PetDef | null = followingPet(state);
     const rec = def ? state.pets[def.id] : undefined;
-    const key = def && rec ? `${def.id}|${rec.name}|${rec.hat}` : '';
+    const command = this.pets.command;
+    const grown = def ? this.companions.petLevel(def.id) : { level: 1, second: false };
+    const key = def && rec ? `${def.id}|${rec.name}|${rec.hat}|${command}|${grown.level}` : '';
     if (key === this.petKey) return;
     this.petKey = key;
-    this.engine.setPet(def && rec ? { id: def.id, name: rec.name, hat: rec.hat, ability: def.ability } : null);
+    const role = def ? PET_ROLES[def.id] : null;
+    this.engine.setPet(def && rec && role ? {
+      id: def.id, name: rec.name, hat: rec.hat, ability: def.ability,
+      role: role.role, move: role.move, second: grown.second ? role.second : null, level: grown.level, command,
+    } : null);
     this.fishKey = '';
     this.pushFishing();
   }
   /** Where the pet is (the canvas's data-pet-* for the e2e). */
-  get petAt(): { id: string; x: number; state: string; fetching: boolean; glow: boolean } | null { return this.engine?.petView ?? null; }
+  get petAt(): { id: string; x: number; state: string; fetching: boolean; glow: boolean; act: string; hits: number; gathers: number; finds: number; heals: number; command: string; level: number } | null { return this.engine?.petView ?? null; }
   /** The helper of the pet following, or null. */
   private get petAbility(): PetDef['ability'] | null { return this.browser ? followingPet(this.pets.state)?.ability ?? null : null; }
   openPets(): void { this.placesOpen = false; this.petsOpen = true; this.sound.sfx('open'); }
   closePets(): void { this.petsOpen = false; this.pushPet(); }
   /** The pet sheet asked the pet in the world to react (a meal, its trick, a hatch). */
-  petFelt(event: { id: string; kind: 'happy' | 'trick' | 'hatch' }): void {
+  petFelt(event: { id: string; kind: 'happy' | 'love' | 'trick' | 'hatch' }): void {
     this.pushPet();
     if (event.kind === 'hatch') { this.sound.sfx('hatch'); this.petsAt = 0; this.tickPets(); }
-    this.engine?.petFeel(event.kind === 'trick' ? 'trick' : 'happy');
+    if (event.kind === 'trick') this.companions.petTrick();
+    this.engine?.petFeel(event.kind === 'trick' ? 'trick' : event.kind === 'love' ? 'love' : 'happy');
   }
+  /** A command from the pet card (Follow / Stay / Fight / Gather / Play). */
+  petCommanded(): void { this.petKey = ''; this.pushPet(); }
 
   // ── The bond with Glim (shared/glim/glim-bond.ts) ──
 
@@ -1857,7 +1982,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setGlim(voice.met, voice.justMet);
     voice.justMet = false;
     const at = this.engine.glimView;
-    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed, bright: at.bright } : null;
+    this.glimAt = at.shown ? { x: at.x, targetX: at.targetX, arrived: at.arrived, dimmed: at.dimmed, bright: at.bright, mood: at.mood, trail: at.trail, lamp: at.lamp } : null;
+    this.companions.tick(this.state, this.pushed.maxHp, this.skyNow ?? null);
   }
   /** The goal row's Glim button: the next step of this goal's hint ladder; step 3 is Show me. */
   askGlim(): void {
@@ -1964,7 +2090,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   get equipped(): boolean { return !!this.edge?.equipped; }
   /** What the worn loadout buys in a fight. Strike drives damage, Ward max HP. */
-  get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals); }
+  /** The worn loadout's fight numbers, with the Hunting level on top (the Keeper's character level; keeper-combat.ts). */
+  get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals, this.huntingLevel); }
+  get huntingLevel(): number { return skillLevel(this.activity.snapshot.progress, 'hunting'); }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   /**
    * Where the Keeper is, as the places the game already knew: One World's
@@ -2079,6 +2207,8 @@ export class SideScrollerComponent implements OnDestroy {
       if (event.key === 'Escape') { event.preventDefault(); this.closeGlimTalk(); }
       return;
     }
+    // Glim's chat card: Escape closes it (the world keeps running underneath).
+    if (this.companions.chatOpen && event.key === 'Escape') { event.preventDefault(); this.closeGlimChat(); return; }
     // An open place owns the keyboard. Escape closes it unless the page inside
     // already used the key (its own dialog, a reveal) — window is the last stop.
     if (this.panel) {
@@ -2939,7 +3069,8 @@ export class SideScrollerComponent implements OnDestroy {
       kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
       tone: rarityColor(item.rarity),
       note: item.lore || def?.lore || this.t(worn ? 'play.hud.slip.wornBy' : 'play.hud.slip.inSatchel'),
-      stats,
+      // A D2-style aura the piece carries (its Socket Word or its name; shared/loot/aura-sources.ts).
+      stats: [...stats, ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level }))],
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
       canStow: worn,
       canSend: !worn,
@@ -3051,6 +3182,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.pushFishing();
     this.pushHeldTools(snapshot.items.filter(item => !isChestHolder(item.explorerId)).map(item => item.definitionId), progress);
     this.pushUnderhearth();
+    this.pushRules();
     const stats = this.combat;
     const key = `${stats.damage}:${stats.maxHp}`;
     if (key === this.statsKey) return;
@@ -3311,7 +3443,10 @@ export class SideScrollerComponent implements OnDestroy {
     const breath = this.infusions.multiplierOn('breath');
     const elixir = Object.values(this.inventory.snapshot.equipped).some(item => item && !item.explorerId && item.definitionId === 'ember-elixir');
     // The Shade-kit watches the water: a bite comes sooner (the engine caps the speed at 4).
-    const watch = this.petAbility === 'fish' ? PET_TUNING.biteBoost : 1;
+    // The Prism Moth-kit guides the cast (its move, when it is working): it hovers over the bob, a little sooner still.
+    const moth = this.browser ? followingPet(this.pets.state) : null;
+    const guide = moth && PET_ROLES[moth.id].move === 'guide' && works(PET_ROLES[moth.id].role, this.pets.command) ? PET_ACT.guideBoost : 1;
+    const watch = (this.petAbility === 'fish' ? PET_TUNING.biteBoost : 1) * guide;
     const key = `${rod?.tier ?? 0}:${rod?.liquids.join('/') ?? ''}:${rod?.bite.toFixed(3) ?? 0}:${breath}:${elixir}:${watch}`;
     if (key === this.fishKey) return;
     this.fishKey = key;
@@ -3745,6 +3880,9 @@ export class SideScrollerComponent implements OnDestroy {
     if ((event.areaId === 'reflection-channels' && event.creature === 'prism-forager') || (event.areaId === 'unrecorded-corridors' && event.creature === 'mirror-substitute')) {
       this.pets.count(`kill:${event.areaId}`);
     }
+    // A gate boss on this tier opens the next one (shared/loot/difficulty.model.ts).
+    const opened = this.loot.killed(event.creature);
+    if (opened) this.message = this.t('play.loot.unlocked', { tier: this.t('loot.tier.' + opened) });
     const base = huntingXpFor(event.hp);
     const xp = base + (this.petAbility === 'xp' && this.town.realm === 'luminous' ? xpBonus(base) : 0);
     const result = this.skillActions.act({ mutationId: `hunt:${event.id}`, skill: 'hunting', xp, locationId: this.worldLocation(event.areaId) });

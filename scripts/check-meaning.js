@@ -404,11 +404,45 @@ for (const r of RUNES) {
   if (!n.lore) flag('rune', 'no-lore', r.id, 'no lore line');
 }
 
+// Loot & combat (shared/loot, docs/design/loot-and-combat.md) ─────────────────
+// Creatures drop gear (the Gambler's pool, uniques at their authored rarity) and runes:
+// a world source. Every aura needs a thing that grants it, its words (EN + ES), and a
+// place the player sees it (the Loot & Combat sheet, the Codex's Loot entry).
+const { DROP_POOL } = L('shared/loot/drop-tables.ts');
+const { AURA_IDS } = L('shared/loot/auras.ts');
+const { CREATURE_PROFILES } = L('shared/loot/creature-families.ts');
+for (const d of DROP_POOL) src(d.id, 'creature drops');
+for (const u of UNIQUE_ITEMS) src(u.id, 'creature drops (unique)');
+for (const r of RUNES) if (r.dropRate > 0) node('rune', r.id, r.name).sources.add('creature drops');
+const LOOT_WORDS = read('shared/loot/loot.i18n.ts');
+const CODEX_LOOT = fs.existsSync(path.join(APP, 'codex/codex-loot.component.ts')) ? read('codex/codex-loot.component.ts') : '';
+for (const a of AURA_IDS) {
+  const n = node('aura', a, a);
+  for (const w of SOCKET_WORDS) if (w.aura === a) n.sources.add(`socket word ${w.id}`);
+  for (const u of UNIQUE_ITEMS) if (u.aura === a) n.sources.add(`unique ${u.id}`);
+  n.uses.add('engine aura (SeamworksEngine.updateAura)');
+  n.lore = LOOT_WORDS.includes(`'loot.auraFx.${a}'`);
+  if (!n.sources.size) flag('aura', 'no-source', a, 'no socket word or unique grants it');
+  if (!LOOT_WORDS.includes(`'loot.aura.${a}'`)) flag('aura', 'not-visible', a, 'no loot.aura name key');
+  if (!n.lore) flag('aura', 'no-lore', a, 'no loot.auraFx line');
+  if (!CODEX_LOOT.includes('AURA_IDS')) flag('aura', 'not-visible', a, 'no Codex Loot entry lists the auras');
+}
+const profiled = new Set(CREATURE_PROFILES.map(p => p.creature));
+
 // Pets (shared/pets/pets.model.ts): a source in play, one helper, lore, a Codex row; real foods.
 {
   const { PETS } = L('shared/pets/pets.model.ts');
+  const { PET_ROLES } = L('shared/pets/pet-roles.ts');
   const PET_WORDS = read('shared/pets/pets.i18n.ts');
+  const ENGINE_BRAIN = read('play/engine/pet-brain.ts') + read('play/engine/engine.ts');
   for (const pet of PETS) {
+    // Its role (pet-roles.ts): a move the brain runs, a second move, both on the pet card (EN + ES).
+    const role = PET_ROLES[pet.id];
+    if (!role) flag('pet', 'no-role', pet.id, 'no role, move or second move (pet-roles.ts)');
+    else {
+      if (!PET_WORDS.includes(`'play.pet.move.${role.move}'`) || !PET_WORDS.includes(`'play.pet.second.${role.second}'`)) flag('pet', 'role-not-visible', pet.id, 'its move or second move has no words on the card');
+      if (!ENGINE_BRAIN.includes(`'${role.move}'`) || !ENGINE_BRAIN.includes(`'${role.second}'`)) flag('pet', 'role-not-wired', pet.id, `the brain never runs ${role.move} / ${role.second}`);
+    }
     const n = node('pet', pet.id, pet.name);
     const s = pet.source || {};
     if (s.tally || s.flag || s.claimDays) n.sources.add(pet.foundIn); else flag('pet', 'no-source', pet.id, 'no tally, flag or bounty day finds it');
@@ -590,6 +624,7 @@ for (const [id, c] of spawned) {
   if (!c.mats.size) flag('creature', 'no-drops', id, 'drops coins only');
   if (!I18N_KEYS.has(`play.creature.${id}`)) flag('creature', 'not-visible', id, 'no play.creature name key');
   if (!BESTIARY_IDS.includes(id)) flag('creature', 'no-lore', id, 'no Codex Bestiary entry');
+  if (!profiled.has(id)) flag('creature', 'no-combat-profile', id, 'no shared/loot/creature-families.ts profile (it fights as a level-1 brute)');
 }
 for (const id of BESTIARY_IDS) if (!spawned.has(id)) {
   node('creature', id);
@@ -690,7 +725,7 @@ if (args.includes('--json')) {
   console.log(JSON.stringify({ violations, info, stats: { KEEPER_READS, ANY_READS } }, null, 2));
   process.exit(0);
 }
-const CATS = ['block', 'material', 'npc', 'stat', 'rune', 'item', 'creature', 'station'];
+const CATS = ['block', 'material', 'npc', 'stat', 'rune', 'item', 'creature', 'station', 'aura'];
 const counts = {};
 for (const v of violations) (counts[v.cat] ??= {})[v.kind] = (counts[v.cat][v.kind] || 0) + 1;
 const totals = Object.fromEntries(CATS.map(c => [c, [...graph.values()].filter(n => n.cat === c).length]));

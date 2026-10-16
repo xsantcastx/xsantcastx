@@ -35,9 +35,10 @@ function rarityWith(slot: 'weapon' | 'chest', wells: number): ItemRarity | null 
 }
 
 describe('the Socket Word catalogue', () => {
-  it('ships between ten and fifteen words', () => {
+  // Fifteen economy words plus the six aura words (loot-and-combat): a wall the Codex can still clue.
+  it('ships between ten and twenty-four words', () => {
     expect(SOCKET_WORDS.length).toBeGreaterThanOrEqual(10);
-    expect(SOCKET_WORDS.length).toBeLessThanOrEqual(15);
+    expect(SOCKET_WORDS.length).toBeLessThanOrEqual(24);
   });
 
   it('names only runes that exist', () => {
