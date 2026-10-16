@@ -442,6 +442,7 @@ export class CraftingBenchComponent implements OnInit, OnDestroy {
     this.slots = this.buildSlots();
     this.buildCta();
     this.cdr.markForCheck();
+    if (fromBook && this.inWorld) this.detailsOpen = false; // picking from the book in the help card returns to the bench
     if (fromBook && this.isBrowser) {
       const reduce = typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
       this.host.nativeElement.querySelector('.cb-hero')?.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'start' });

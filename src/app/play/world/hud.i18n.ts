@@ -99,6 +99,8 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.tally.bag': { en: 'Satchel', es: 'Mochila' },
   'play.hud.tally.damage': { en: 'Damage', es: 'Dano' },
   'play.hud.tally.defeated': { en: 'Defeated', es: 'Derrotados' },
+  'play.hud.book.prevPage': { en: 'Previous page', es: 'Pagina anterior' },
+  'play.hud.book.nextPage': { en: 'Next page', es: 'Pagina siguiente' },
   'play.hud.book.close': { en: 'Close', es: 'Cerrar' },
   'play.hud.book.slots': { en: '{{used}} / {{cap}} slots', es: '{{used}} / {{cap}} huecos' },
   'play.hud.book.inVault': { en: '{{n}} more in your Vault (the Basalt Seamworks).', es: '{{n}} mas en tu Bóveda (los Talleres de Basalto).' },

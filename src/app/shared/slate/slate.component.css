@@ -1,9 +1,7 @@
 /* The Mirror Slate's glass. The brass bezel around it is the place panel's
    `.place--slate` frame (side-scroller stylesheet); this is what shows on the
    glass. Procedural until the art lands (docs/art-commissions/world-sprites/13-mirror-slate.md). */
-:host { display: block; }
-
-.sl { display: grid; gap: 12px; }
+:host { display: contents; }
 
 /* The home face: a few big choices. Every target well over 44px (phones are first-class). */
 .sl-home { display: grid; gap: 10px; }
@@ -243,24 +241,7 @@
    corners, crisp icons (image-rendering: pixelated), light from the upper left.
    Portrait by default (a phone in the hand, centred on desktop); a landscape
    phone gets two columns. Every target at least 44px. Tokens only. */
-.ph {
-  --glass: var(--violet-ink);
-  position: relative;
-  display: grid;
-  gap: 12px;
-  width: 100%;
-  max-width: 440px;
-  margin: 0 auto;
-  padding: 10px 12px 12px;
-  border: 2px solid var(--obsidian-0);
-  border-radius: 4px;
-  background:
-    linear-gradient(135deg, transparent 38%, color-mix(in srgb, var(--gold-bright) 6%, transparent) 38% 50%, transparent 50%),
-    radial-gradient(110% 55% at 50% 0%, var(--ph-sky, color-mix(in srgb, var(--violet) 30%, transparent)), transparent 70%),
-    linear-gradient(180deg, color-mix(in srgb, var(--glass) 92%, var(--obsidian-0)), var(--obsidian-0));
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--gold-deep) 50%, transparent);
-  overflow: hidden;
-}
+.ph { --glass: var(--violet-ink); }
 .ph[data-sky="dawn"] { --ph-sky: color-mix(in srgb, var(--gold) 34%, transparent); }
 .ph[data-sky="day"] { --ph-sky: color-mix(in srgb, var(--realm-celestial) 38%, transparent); }
 .ph[data-sky="dusk"] { --ph-sky: color-mix(in srgb, var(--ember) 40%, transparent); }
@@ -281,7 +262,7 @@
 .ph-status__time { font-variant-numeric: tabular-nums; color: var(--gold-bright); }
 .ph-status__sky { width: 16px; height: 16px; }
 
-.ph-pages { display: grid; gap: 12px; touch-action: pan-y; min-width: 0; }
+.ph-pages { display: grid; align-content: start; gap: 12px; touch-action: pan-y; min-width: 0; min-height: 0; overflow: hidden auto; overscroll-behavior: contain; padding: 0 2px; }
 
 /* The lock screen's clock. */
 .ph-lock { display: grid; justify-items: center; gap: 2px; padding: 6px 0 2px; text-align: center; }
@@ -384,6 +365,7 @@ button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, 
 /* The dock. */
 .ph-dock {
   display: grid;
+  margin: 0 2px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
   padding: 6px;
@@ -422,15 +404,117 @@ button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, 
   .ph-time { font-size: 52px; }
   .ph-app__icon { width: 46px; height: 46px; }
 }
-/* A landscape phone (short and wide): the clock and widgets on the left, the apps and the dock on the right. */
-@media (orientation: landscape) and (max-height: 560px) {
-  .ph { max-width: none; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); column-gap: 16px; }
-  .ph-status { grid-column: 1 / -1; }
-  .ph-pages { grid-column: 1 / -1; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); column-gap: 16px; align-items: start; }
+
+/* ── The phone itself (docs/handoff/slate-phone-only.md) ─────────────────────
+   No window around it: the bezel IS the interface. One fixed size per viewport class, whatever is on it.
+   Portrait (a phone upright, and desktop): 9 : 19.5, height-fitted to the veil it floats in (cqh / cqw come from
+   the veil, `.place--slate`). Landscape (a short wide viewport): the same phone turned on its side, 19.5 : 9.
+   The screen scrolls inside; nothing on it can move the bezel. Pixel style: stepped corners, 2px borders. */
+.phone {
+  --fit-h: calc(100cqh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  --fit-w: calc(100cqw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
+  --ph-w: min(380px, var(--fit-w), calc(var(--fit-h) * 9 / 19.5));
+  --ph-h: calc(var(--ph-w) * 19.5 / 9);
+  position: relative;
+  flex: none;
+  box-sizing: border-box;
+  width: var(--ph-w);
+  height: var(--ph-h);
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) 44px;
+  padding: 12px 8px 2px;
+  border: 3px solid var(--obsidian-0);
+  background: linear-gradient(160deg, var(--obsidian-3), var(--obsidian-1) 60%, var(--obsidian-0));
+  clip-path: polygon(0 12px, 4px 12px, 4px 8px, 8px 8px, 8px 4px, 12px 4px, 12px 0, calc(100% - 12px) 0, calc(100% - 12px) 4px, calc(100% - 8px) 4px, calc(100% - 8px) 8px, calc(100% - 4px) 8px, calc(100% - 4px) 12px, 100% 12px, 100% calc(100% - 12px), calc(100% - 4px) calc(100% - 12px), calc(100% - 4px) calc(100% - 8px), calc(100% - 8px) calc(100% - 8px), calc(100% - 8px) calc(100% - 4px), calc(100% - 12px) calc(100% - 4px), calc(100% - 12px) 100%, 12px 100%, 12px calc(100% - 4px), 8px calc(100% - 4px), 8px calc(100% - 8px), 4px calc(100% - 8px), 4px calc(100% - 12px), 0 calc(100% - 12px));
+  box-shadow: inset 0 0 0 2px var(--gold-deep), inset 3px 3px 0 2px color-mix(in srgb, var(--gold-bright) 18%, transparent);
+  outline: none;
+  color: var(--adventure-parchment);
+}
+/* The speaker slit. */
+.phone::before { content: ""; position: absolute; top: 5px; left: 50%; width: 36px; height: 3px; translate: -50% 0; background: var(--obsidian-0); }
+.phone__screen {
+  position: relative;
+  min-height: 0;
+  min-width: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 8px 8px 6px;
+  border: 2px solid var(--obsidian-0);
+  background:
+    linear-gradient(135deg, transparent 38%, color-mix(in srgb, var(--gold-bright) 6%, transparent) 38% 50%, transparent 50%),
+    radial-gradient(110% 40% at 50% 0%, var(--ph-sky, color-mix(in srgb, var(--violet) 30%, transparent)), transparent 70%),
+    linear-gradient(180deg, color-mix(in srgb, var(--glass) 92%, var(--obsidian-0)), var(--obsidian-0));
+  overflow: hidden;
+}
+.ph-status { padding: 2px 2px 0; min-height: 20px; touch-action: none; cursor: grab; }
+.ph-foot { display: grid; gap: 0; }
+.ph-dots { min-height: 0; }
+.ph-dot { height: 44px; }
+.ph-dock { margin-bottom: 0; }
+
+/* The home bar: a physical key under the glass. Tap: out of an app, or put the phone away. */
+.phone__home { display: grid; place-items: center; width: 100%; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; touch-action: none; }
+.phone__home i { display: block; width: 84px; height: 8px; background: var(--ink-3); box-shadow: inset 0 2px 0 color-mix(in srgb, var(--gold-bright) 40%, transparent), 0 2px 0 var(--obsidian-0); }
+.phone__home:hover i { background: var(--gold); }
+.phone__home:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -4px; }
+
+/* An app, inside the screen: its bar, then its own scroll. */
+.phone__app[hidden] { display: none; }
+.phone__app { display: grid; grid-template-rows: auto minmax(0, 1fr); gap: 8px; min-height: 0; min-width: 0; }
+.phone__scroll { min-height: 0; min-width: 0; overflow: hidden auto; overscroll-behavior: contain; display: grid; align-content: start; gap: 12px; padding-right: 2px; }
+.phone__scroll > * { min-width: 0; }
+.phone__app .sl-bar { padding: 0 2px; }
+.sl-face-title { font-size: 11px; }
+.ph-time { font-size: 54px; }
+.ph-lock { padding: 2px 0 0; }
+.ph-widget { min-height: 56px; padding: 6px 10px; }
+.ph-pages { gap: 8px; }
+.ph-app.sl-tile { min-height: 78px; }
+.sl-about p { margin: 0 0 10px; color: var(--adventure-dialogue); }
+.sl-about .sl-lore { color: var(--adventure-parchment); }
+.sl-embed { display: block; min-width: 0; }
+/* Hosted pages lose their own frame: the phone is the frame. */
+.sl-pets ::ng-deep .ps { border: 0; box-shadow: none; background: none; padding: 0 0 8px; min-height: 0; }
+.sl-pets ::ng-deep .ps__head { display: none; }
+.sl-pets ::ng-deep .ps__card { grid-template-columns: 1fr; }
+.sl-pets ::ng-deep .ps__art { width: 100%; }
+
+@media (orientation: landscape) and (max-height: 520px) {
+  .phone {
+    --ph-w: min(var(--fit-w), calc(var(--fit-h) * 19.5 / 9), 860px);
+    --ph-h: calc(var(--ph-w) * 9 / 19.5);
+    grid-template-rows: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr) 44px;
+    padding: 2px 2px 2px 12px;
+  }
+  .phone::before { top: 50%; left: 5px; width: 3px; height: 36px; translate: 0 -50%; }
+  .phone__home { height: 100%; width: 44px; }
+  .phone__home i { width: 8px; height: 84px; }
+  .phone__screen { margin: 8px 0; gap: 4px; padding: 6px 8px; }
+  .ph-pages { grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); column-gap: 14px; align-items: start; }
   .ph-pages > .ph-lock, .ph-pages > .ph-widgets, .ph-pages > .ph-cal { grid-column: 1; }
   .ph-pages > .ph-apps { grid-column: 2; grid-row: 1 / span 2; }
   .ph-pages > .ph-ledger { grid-column: 2; grid-row: 1; }
-  .ph-time { font-size: 44px; }
-  .ph-dots { grid-column: 1; }
-  .ph-dock { grid-column: 2; }
+  .ph-foot { grid-template-columns: auto minmax(0, 1fr); align-items: center; column-gap: 12px; }
+  .ph-time { font-size: 36px; }
+  .ph-sky { display: none; }
+  .ph-lock { gap: 0; }
+  .ph-widget { min-height: 50px; padding: 4px 8px; }
+  .ph-widget > img { width: 32px; height: 32px; }
+  .ph-app.sl-tile { min-height: 66px; row-gap: 2px; }
+  .ph-app__icon { width: 40px; height: 40px; }
+  .ph-dock { min-height: 0; }
+  .ph-dock__app { min-height: 44px; }
+  .ph-dock__app img { width: 32px; height: 32px; }
 }
+@keyframes phone-in { from { translate: 0 60%; opacity: 0; } to { translate: none; opacity: 1; } }
+@keyframes phone-in-side { from { translate: 40% 0; opacity: 0; } to { translate: none; opacity: 1; } }
+@media (prefers-reduced-motion: no-preference) {
+  .phone { animation: phone-in .3s cubic-bezier(.22, 1, .36, 1) backwards; }
+}
+@media (prefers-reduced-motion: no-preference) and (orientation: landscape) and (max-height: 520px) {
+  .phone { animation-name: phone-in-side; }
+}
+@keyframes phone-out { to { translate: 0 40%; opacity: 0; } }
+:host-context(.place--closing) .phone { animation: phone-out .16s ease forwards; }

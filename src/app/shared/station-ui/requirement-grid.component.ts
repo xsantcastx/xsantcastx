@@ -37,7 +37,7 @@ interface Cell { cost: StationCost; art: StationArt | null; met: boolean; have: 
                 <ng-container *ngTemplateOutlet="body; context: { $implicit: cell }" />
               </button>
             } @else {
-              <div class="rg__cell" [class.is-met]="cell.met" [class.is-short]="!cell.met && !pending()">
+              <div class="rg__cell" [attr.title]="cell.cost.label" [class.is-met]="cell.met" [class.is-short]="!cell.met && !pending()">
                 <ng-container *ngTemplateOutlet="body; context: { $implicit: cell }" />
               </div>
             }
