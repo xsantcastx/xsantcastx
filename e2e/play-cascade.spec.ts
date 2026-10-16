@@ -16,7 +16,7 @@ import { expect, test, type Page } from '@playwright/test';
 import { mkdirSync } from 'fs';
 import { resolve } from 'path';
 import { activity, DelveFixture, DELVE_SEED, SPEC, xpForLevel } from './play-delve-fixtures';
-import { bag, blob, canvas, ERA, focusWorld, ledger, messageLine, openPlay, placePanel, purse, seed, walkTo, type Blobs } from './play-helpers';
+import { bag, blob, canvas, ERA, focusWorld, ledger, messageLine, openPlay, placePanel, purse, seed, walkTo, type Blobs, SHAFT_X } from './play-helpers';
 import { ECLIPSE_CASCADE, ORRERY_TUMBLER, playCascade } from '../src/app/shared/cascade/cascade.model';
 import { BUILT_REALM_MACHINES } from '../src/app/shared/cascade/realm-machines.model';
 import { seededRng } from '../src/app/shared/games/seeded-rng';
@@ -264,10 +264,11 @@ for (const size of [{ width: 1280, height: 800, phone: false }, { width: 390, he
         ...purse(START), ...games(TUMBLE),
         'preferred-language': 'en',
       });
-      await openPlay(page);
+      // One World: `?at=delve` stands the Keeper at the mine head (a reload resumes where they last stood).
+      await openPlay(page, '?at=delve');
       const descend = page.getByRole('button', { name: /Descend to your camp/ });
       await expect(async () => {
-        await walkTo(page, 590, 12);
+        await walkTo(page, SHAFT_X, 12);
         await expect(descend).toBeVisible({ timeout: 4000 });
       }).toPass({ timeout: 40_000 });
       await descend.click();

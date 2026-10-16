@@ -139,6 +139,8 @@ h2 { font-size: 26px; line-height: .95; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* The line's own box stays inside the objective (a long line — "The Quarry Gate lifts…" — ellipsed, never under Glim's icon). */
+.objective-line { display: block; overflow: hidden; text-overflow: ellipsis; }
 
 .top-actions { display: flex; gap: 8px; margin-left: auto; }
 
