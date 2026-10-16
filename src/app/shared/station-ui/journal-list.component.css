@@ -156,3 +156,50 @@
     overflow: hidden;
   }
 }
+
+/* ── In the world: a pixel icon grid, a page at a time ──────────────────────────────────────────── */
+.jg { display: grid; gap: 6px; justify-items: center; }
+.jg__grid { list-style: none; margin: 0; padding: 4px; display: grid; grid-template-columns: repeat(var(--jg-cols, 5), 52px); gap: 6px; justify-content: center; }
+.jg__slot {
+  --row-c: var(--rarity, var(--edge-raised));
+  position: relative; display: grid; place-items: center; width: 52px; height: 52px; padding: 0; border: 0; cursor: pointer;
+  background: var(--obsidian-1);
+  box-shadow: 0 -2px 0 0 var(--row-c), 0 2px 0 0 var(--row-c), -2px 0 0 0 var(--row-c), 2px 0 0 0 var(--row-c), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 12%, transparent);
+}
+.jg__slot img { width: 40px; height: 40px; object-fit: contain; image-rendering: pixelated; }
+.jg__slot:active { translate: 0 2px; }
+.jg__slot:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 3px; }
+.jg__slot.is-on { background: color-mix(in srgb, var(--gold) 26%, var(--obsidian-1)); box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-bright), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-bright), 0 0 0 4px var(--obsidian-0); }
+.jg__slot.is-locked img { filter: grayscale(1) brightness(.6); }
+.jg__glyph { font: var(--weight-bold) var(--text-md)/1 var(--font-display); color: var(--row-c); }
+.jg__dot { position: absolute; top: 2px; right: 2px; width: 8px; height: 8px; background: var(--status-good); box-shadow: 0 0 0 2px var(--obsidian-0); }
+/* A pixel padlock: a body and a shackle. */
+.jg__lock { position: absolute; right: 3px; bottom: 3px; width: 12px; height: 9px; background: var(--gold); box-shadow: 0 0 0 2px var(--obsidian-0); }
+.jg__lock::before { content: ""; position: absolute; left: 2px; top: -6px; width: 4px; height: 5px; border: 2px solid var(--gold); border-bottom: 0; }
+.jg__empty { grid-column: 1 / -1; padding: var(--space-3); font-size: var(--text-sm); color: var(--st-text-muted); }
+.jg__pager { display: flex; align-items: center; gap: 10px; }
+.jg__count { min-width: 56px; text-align: center; font: var(--weight-bold) var(--text-sm)/1 var(--font-display); font-variant-numeric: tabular-nums; color: var(--st-text-soft); }
+.jg__arrow { position: relative; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; }
+.jg__arrow::before {
+  content: ""; position: absolute; left: 50%; top: 50%; width: 0; height: 0; translate: -50% -50%;
+  border-top: 9px solid transparent; border-bottom: 9px solid transparent;
+}
+.jg__arrow--prev::before { border-right: 12px solid var(--gold-bright); }
+.jg__arrow--next::before { border-left: 12px solid var(--gold-bright); }
+.jg__arrow:disabled { opacity: .3; cursor: default; }
+.jg__arrow:not(:disabled):active { translate: 0 2px; }
+.jg__arrow:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -4px; }
+
+/* A phone held sideways: 46px slots, four across, so the card beside them gets the room. */
+@media (max-height: 520px) and (orientation: landscape) {
+  .jg__grid { grid-template-columns: repeat(var(--jg-cols, 4), 46px); gap: 4px; }
+  .jg__slot { width: 46px; height: 46px; }
+  .jg__slot img { width: 36px; height: 36px; }
+}
+
+.jg__slot.jl__row { width: 52px; min-height: 0; height: 52px; padding: 0; gap: 0; display: grid; border: 0; border-radius: 0; flex-direction: unset; transform: none; background: var(--obsidian-1); }
+.jg__slot.jl__row:hover { background: var(--obsidian-3); }
+.jg__slot.jl__row.is-on { background: color-mix(in srgb, var(--gold) 26%, var(--obsidian-1)); }
+.jg__sr { position: absolute; inset: 0; overflow: hidden; opacity: 0; white-space: nowrap; font-size: 10px; }
+@media (max-height: 520px) and (orientation: landscape) { .jg__slot.jl__row { width: 46px; height: 46px; } }
+.jg__qty { position: absolute; left: 3px; bottom: 2px; font: 700 10px/1 var(--font-ui); color: var(--st-text); text-shadow: 1px 1px 0 var(--obsidian-0), -1px -1px 0 var(--obsidian-0), 1px -1px 0 var(--obsidian-0), -1px 1px 0 var(--obsidian-0); }

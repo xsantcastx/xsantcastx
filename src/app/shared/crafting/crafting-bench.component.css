@@ -180,3 +180,6 @@
 .cb-card__meta { font-size: var(--text-xs); color: var(--text-muted); }
 .cb-card__lock { font: var(--type-label); color: var(--text-muted); white-space: nowrap; }
 
+
+/* In the world the tool lines wait in the help card; the hero keeps them in the DOM only. */
+:host-context(.place) .cb-hero .cb-tool { display: none; }

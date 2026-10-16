@@ -8,6 +8,10 @@
  */
 export const STATION_UI_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'stationUi.need':          { en: 'Need {{n}} more {{name}}', es: 'Te faltan {{n}} de {{name}}' },
+  'stationUi.prevPage':      { en: 'Previous page', es: 'Pagina anterior' },
+  'stationUi.nextPage':      { en: 'Next page', es: 'Pagina siguiente' },
+  'stationUi.help':          { en: 'Help', es: 'Ayuda' },
+  'stationUi.helpClose':     { en: 'Close help', es: 'Cerrar ayuda' },
   'stationUi.details':       { en: 'Details', es: 'Detalles' },
   'stationUi.detailsHint':   { en: 'Lore, odds, history and extra options', es: 'Historia, probabilidades y mas opciones' },
   'stationUi.working':       { en: 'Working…', es: 'Trabajando…' },
