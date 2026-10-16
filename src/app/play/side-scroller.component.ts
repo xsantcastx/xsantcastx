@@ -83,6 +83,7 @@ import { GLIM_ALIVE_I18N } from '../shared/glim/glim-alive.i18n';
 import { CompanionHost } from './companion-host';
 import { PET_ACT, PET_ROLES, works } from '../shared/pets/pet-roles';
 import type { TipContext } from '../shared/glim/glim-react';
+import type { GlimMood } from '../shared/glim/glim-art';
 import { GLIM_BOND_I18N } from '../shared/glim/glim-bond.i18n';
 import {
   BACK_AFTER_MS, GLIM_RARE_KINDS, NOTICE_CELLS, SENSE_CELLS, WAY_FAR_CELLS,
@@ -1655,6 +1656,8 @@ export class SideScrollerComponent implements OnDestroy {
     return (this.state.enemyHp ?? 0) > 0 || this.town.hunts.some(h => h.id === this.state.areaId) ? 'hunt' : 'town';
   }
   /** Tap Glim: the chat card. */
+  /** The HUD icon's face: Glim's current mood in the world. */
+  get glimIconMood(): GlimMood { return (this.glimAt?.mood as GlimMood | undefined) ?? 'calm'; }
   openGlimChat(): void {
     if (this.glimTalk) return;
     this.glimVoice.dismiss();
