@@ -45,3 +45,11 @@
   font-weight: var(--weight-bold);
   text-align: center;
 }
+
+/* In the world: pixel tabs that wrap onto a second row rather than scroll. */
+:host-context(.place) .tabs { flex-wrap: wrap; overflow: visible; border-bottom: 0; gap: 6px; justify-content: center; }
+:host-context(.place) .tab { flex: 0 1 auto; padding: 0 12px; border: 0; border-radius: 0; background: var(--obsidian-1); color: var(--st-text-soft);
+  box-shadow: 0 -2px 0 0 var(--st-edge), 0 2px 0 0 var(--st-edge), -2px 0 0 0 var(--st-edge), 2px 0 0 0 var(--st-edge); }
+:host-context(.place) .tab.is-on { background: var(--gold); color: var(--text-on-accent);
+  box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-bright), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-bright); }
+:host-context(.place) .tab { min-width: 44px; }

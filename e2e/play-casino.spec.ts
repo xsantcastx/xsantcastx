@@ -88,7 +88,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect.poll(() => gold(page), { timeout: 10000 }).toBe(START - 10 + expected.win);
       await page.screenshot({ path: resolve(SHOTS, `rune-drop-${size.width}-landed.png`) });
 
-      await panel(page, 'app-rune-drop').locator('app-details-drawer summary').click();
+      await panel(page, 'app-rune-drop').locator('.ss__help, app-details-drawer summary').first().click();
       await expect(panel(page, 'app-rune-drop').locator('.rd-pay li')).toHaveCount(13);
       await expect(panel(page, 'app-rune-drop').locator('.rd-proof')).toContainText('95.1%');
 

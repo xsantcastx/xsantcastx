@@ -28,9 +28,20 @@ interface ResistRow { id: Element; value: number }
     <section class="ls" role="dialog" aria-modal="false" aria-labelledby="ls-title" data-engine-ignore [attr.data-loot-filter]="s.filter" [attr.data-loot-tier]="s.tier">
       <header class="ls__head">
         <h2 id="ls-title">{{ t('loot.title') }}</h2>
-        <button type="button" class="ls__done" (click)="done.emit()" [attr.aria-label]="t('loot.close')"><i aria-hidden="true">&times;</i></button>
+        <button type="button" class="px-help ls__help" [attr.aria-expanded]="help" [attr.aria-label]="t('loot.help')" (click)="help = !help"><i aria-hidden="true">?</i></button>
+        <button type="button" class="px-x ls__done" (click)="done.emit()" [attr.aria-label]="t('loot.close')"><i aria-hidden="true">&times;</i></button>
       </header>
-      <p class="ls__lead">{{ t('loot.lead') }}</p>
+      @if (help) {
+        <div class="ls__helpcard" role="note">
+          <p class="ls__lead">{{ t('loot.lead') }}</p>
+          <p class="ls__note">{{ t('loot.filter.note') }}</p>
+          <p class="ls__note">{{ t('loot.tier.falls', { n: share }) }}</p>
+          <p class="ls__note">{{ t('loot.resist.note') }}</p>
+          <p class="ls__saved">{{ t('loot.saved') }}</p>
+        </div>
+      }
+      <div class="ls__cols">
+      <div class="ls__col">
 
       <h3 class="ls__h">{{ t('loot.filter.title') }}</h3>
       <div class="ls__row" role="radiogroup" [attr.aria-label]="t('loot.filter.title')">
@@ -38,7 +49,6 @@ interface ResistRow { id: Element; value: number }
           <button type="button" role="radio" class="ls__pick" [class.ls__pick--on]="s.filter === f" [attr.aria-checked]="s.filter === f" [attr.data-filter]="f" (click)="setFilter(f)">{{ t('loot.filter.' + f) }}</button>
         }
       </div>
-      <p class="ls__note">{{ t('loot.filter.note') }}</p>
 
       <h3 class="ls__h">{{ t('loot.aura.title') }}</h3>
       @if (!sources.length) {
@@ -56,17 +66,18 @@ interface ResistRow { id: Element; value: number }
         }
       }
 
+      </div>
+      <div class="ls__col">
       <h3 class="ls__h">{{ t('loot.tier.title') }}</h3>
       <div class="ls__tiers" role="radiogroup" [attr.aria-label]="t('loot.tier.title')">
         @for (tier of tiers; track tier) {
           <button type="button" role="radio" class="ls__tier" [class.ls__pick--on]="s.tier === tier" [attr.aria-checked]="s.tier === tier"
                   [attr.data-tier]="tier" [disabled]="!s.unlocked.includes(tier)" (click)="setTier(tier)">
             <strong [style.color]="tierColor(tier)">{{ t('loot.tier.' + tier) }}</strong>
-            <small>{{ s.unlocked.includes(tier) ? t('loot.tierBlurb.' + tier) : t('loot.tier.locked', { tier: t('loot.tier.' + previous(tier)) }) }}</small>
+            @if (!s.unlocked.includes(tier)) { <small>{{ t('loot.tier.locked', { tier: t('loot.tier.' + previous(tier)) }) }}</small> }
           </button>
         }
       </div>
-      <p class="ls__note">{{ t('loot.tier.falls', { n: share }) }}</p>
 
       <h3 class="ls__h">{{ t('loot.resist.title') }}</h3>
       <ul class="ls__res">
@@ -74,41 +85,43 @@ interface ResistRow { id: Element; value: number }
           <li [attr.data-resist]="r.id"><span>{{ t('loot.resist.' + r.id) }}</span><b [class.ls__neg]="r.value < 0">{{ r.value }}</b></li>
         }
       </ul>
-      <p class="ls__note">{{ t('loot.resist.note') }}</p>
-      <p class="ls__saved">{{ t('loot.saved') }}</p>
+      </div>
+      </div>
     </section>
   `,
   styles: [`
     :host { display: block; }
     .ls {
       display: grid; align-content: start; gap: 8px; width: 100%; box-sizing: border-box; min-height: 100%;
-      padding: 14px 16px calc(12px + var(--sheet-pad-b, 0px));
-      border: 1px solid var(--adventure-hud-shadow); border-left: 2px solid var(--adventure-ember); border-radius: 2px;
-      background: var(--adventure-hud-panel-solid); color: var(--adventure-parchment);
-      box-shadow: 0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53%, transparent);
+      padding: 8px 16px calc(12px + var(--sheet-pad-b, 0px));
+      border: 0; background: none; color: var(--adventure-parchment); text-shadow: 2px 2px 0 var(--obsidian-0);
     }
     .ls__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .ls__head h2 { margin: 0; font: 600 16px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-beacon-text); }
+    .ls__head h2 { margin: 0; text-transform: uppercase; font: 600 16px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-beacon-text); }
+    .ls__cols { display: grid; gap: 8px; }
+    .ls__col { display: grid; gap: 8px; align-content: start; min-width: 0; }
+    .ls__head h2 { flex: 1; }
+    .ls__helpcard { display: grid; gap: 6px; padding: 10px 12px; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
+    @media (max-height: 520px) and (orientation: landscape) { .ls__cols { grid-template-columns: 1fr 1fr; gap: 12px; } }
     .ls__h { margin: 6px 0 0; font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-ember); }
     .ls__lead, .ls__note, .ls__saved { margin: 0; font: italic 400 14px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
     .ls__saved { font-size: 13px; opacity: .75; }
     .ls__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .ls__row--wrap { grid-template-columns: 1fr; }
-    .ls__pick, .ls__tier, .ls__done {
-      min-height: 44px; padding: 6px 10px; border: 1px solid var(--adventure-hud-brass); border-radius: 2px;
-      background: color-mix(in srgb, var(--adventure-hud-brass) 10%, transparent); color: var(--adventure-parchment);
+    .ls__pick, .ls__tier {
+      min-height: 44px; padding: 6px 10px; border: 0; border-radius: 0; box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
+      background: var(--obsidian-2); color: var(--adventure-parchment);
       font: 600 12px Orbitron, sans-serif; letter-spacing: .04em; cursor: pointer; text-align: left;
     }
-    .ls__done { min-width: 44px; text-align: center; font-size: 18px; }
-    .ls__done i { font-style: normal; }
-    .ls__pick--on { border-color: var(--adventure-hud-gold); background: color-mix(in srgb, var(--adventure-hud-gold) 22%, transparent); }
+    .ls__pick--on { background: color-mix(in srgb, var(--adventure-hud-gold) 30%, var(--obsidian-2)); box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-bright), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-bright); }
     .ls__tiers { display: grid; gap: 6px; }
     .ls__tier { display: grid; gap: 2px; }
     .ls__tier small { font: 400 12px/1.3 system-ui, sans-serif; letter-spacing: 0; opacity: .85; }
     .ls__tier:disabled { opacity: .5; cursor: not-allowed; }
-    .ls__pick:hover, .ls__pick:focus-visible, .ls__tier:focus-visible, .ls__done:focus-visible { border-color: var(--adventure-hud-gold); outline: none; }
+    .ls__pick:hover, .ls__pick:focus-visible, .ls__tier:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
     .ls__res { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 12px; }
     .ls__res li { display: flex; justify-content: space-between; min-height: 28px; align-items: center; font: 600 12px Orbitron, sans-serif; }
+    @media (max-height: 520px) and (orientation: landscape) { .ls__row { grid-template-columns: 1fr; } }
     .ls__neg { color: var(--adventure-danger, #ff765c); }
   `],
 })
@@ -119,6 +132,8 @@ export class LootSheetComponent implements OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private readonly subs = new Subscription();
   @Output() readonly done = new EventEmitter<void>();
+  /** The question mark: the sentences that used to sit on screen. */
+  help = false;
   readonly filters = LOOT_FILTERS;
   readonly tiers = DIFFICULTY_TIERS;
   s: LootSave = this.loot.state;

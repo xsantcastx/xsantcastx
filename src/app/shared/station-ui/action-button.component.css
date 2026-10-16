@@ -197,3 +197,24 @@
 @media (prefers-reduced-motion: reduce) {
   .ab__btn.is-ready, .ab__btn.is-shake-a, .ab__btn.is-shake-b, .ab__btn.is-loading { animation: none; }
 }
+
+/* In the world: ONE big pixel Craft button; the stepper small; ALL only when it fits. */
+:host-context(.place) .ab__btn { min-height: 56px; padding: var(--space-2) var(--space-3); border: 0; border-radius: 0; background: var(--gold); color: var(--text-on-accent); text-shadow: none;
+  box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-deep), 0 6px 0 0 var(--obsidian-0), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 70%, transparent); }
+:host-context(.place) .ab__btn:active { transform: translateY(4px); box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-deep); }
+:host-context(.place) .ab__btn.is-blocked { background: var(--obsidian-3); color: var(--st-text-soft);
+  box-shadow: 0 -2px 0 0 var(--edge-raised), 0 2px 0 0 var(--edge-raised), -2px 0 0 0 var(--edge-raised), 2px 0 0 0 var(--edge-raised), 0 6px 0 0 var(--obsidian-0); }
+:host-context(.place) .ab__row { flex-wrap: nowrap; gap: 10px; }
+:host-context(.place) .ab__row > .ab__btn { flex: 1 1 0; min-width: 0; }
+:host-context(.place) .ab__step { border: 0; border-radius: 0; background: var(--obsidian-1); box-shadow: 0 -2px 0 0 var(--edge-raised), 0 2px 0 0 var(--edge-raised), -2px 0 0 0 var(--edge-raised), 2px 0 0 0 var(--edge-raised); }
+:host-context(.place) .ab__all { border: 0; border-radius: 0; box-shadow: none; background: var(--violet); }
+:host-context(.place) .ab__meter { height: 6px; border-radius: 0; }
+:host-context(.place) .ab__meter > span { border-radius: 0; }
+@container station (max-width: 420px) { :host-context(.place) .ab__all { display: none; } }
+@media (max-height: 520px) and (orientation: landscape) { :host-context(.place) .ab__all { display: none; } }
+@media (max-height: 520px) and (orientation: landscape) {
+  :host-context(.place) .ab__stepbtn { width: 40px; min-height: 44px; }
+  :host-context(.place) .ab__qty { min-width: 34px; }
+  :host-context(.place) .ab__btn { min-height: 52px; }
+  :host-context(.place) .ab__row { gap: 6px; }
+}

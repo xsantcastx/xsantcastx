@@ -24,7 +24,7 @@ import type { GlimMood } from './glim-art';
       <header class="gc__head">
         <app-glim-icon class="gc__face" [mood]="mood" />
         <h2 id="gc-title">{{ t('glim.chat.title') }}</h2>
-        <button type="button" class="gc__close" (click)="done.emit()" [attr.aria-label]="t('glim.chat.close')"><i aria-hidden="true">&times;</i></button>
+        <button type="button" class="px-x gc__close" (click)="done.emit()" [attr.aria-label]="t('glim.chat.close')"><i aria-hidden="true">&times;</i></button>
       </header>
       @if (reply) { <p class="gc__reply" role="status" aria-live="polite" data-glim-reply>{{ reply }}</p> }
       <div class="gc__choices" role="group" [attr.aria-label]="t('glim.chat.tap')">
@@ -45,31 +45,21 @@ import type { GlimMood } from './glim-art';
     :host { display: block; }
     .gc {
       display: grid; gap: 8px; width: 100%; box-sizing: border-box; padding: 10px 12px;
-      border: 1px solid var(--adventure-hud-shadow); border-left: 2px solid var(--adventure-hud-gold); border-radius: 2px;
-      background: var(--adventure-hud-panel-solid); color: var(--adventure-parchment);
-      box-shadow: 0 10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 53%, transparent);
+      border: 0; background: none; color: var(--adventure-parchment); text-shadow: 2px 2px 0 var(--obsidian-0);
     }
     .gc__head { display: flex; align-items: center; gap: 8px; }
-    .gc__head h2 { flex: 1; margin: 0; font: 600 14px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-beacon-text); }
+    .gc__head h2 { flex: 1; margin: 0; text-transform: uppercase; font: 600 14px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-beacon-text); }
     .gc__face { width: 36px; height: 30px; }
     .gc__reply { margin: 0; font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
     .gc__choices { display: grid; gap: 6px; }
     .gc__choice, .gc__close, .gc__quiet {
-      min-height: 44px; padding: 6px 12px; border-radius: 2px; cursor: pointer; text-align: left;
+      min-height: 44px; padding: 6px 12px; border-radius: 0; cursor: pointer; text-align: left;
       font: 600 12px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-parchment);
-      border: 1px solid var(--adventure-hud-brass); background: color-mix(in srgb, var(--adventure-hud-brass) 12%, transparent);
+      border: 0; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
     }
-    .gc__choice { border-color: color-mix(in srgb, var(--adventure-hud-gold) 60%, transparent); }
-    /* The window's one close (the same 44 px × as every in-world menu, side-scroller .win-x). */
-    .gc__close {
-      display: grid; place-items: center; width: 44px; min-width: 44px; padding: 0; text-align: center;
-      border-color: color-mix(in srgb, var(--adventure-hud-brass) 26%, transparent); background: none;
-      color: var(--adventure-dialogue); font: 400 30px/1 var(--font-lore, Georgia, serif); letter-spacing: 0;
-    }
-    .gc__close i { font-style: normal; translate: 0 -2px; }
     .gc__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .gc__small { margin: 0; font-size: 12px; line-height: 1.4; color: var(--adventure-dialogue); opacity: .85; }
-    .gc__choice:focus-visible, .gc__close:focus-visible, .gc__quiet:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
+    .gc__choice:focus-visible, .gc__quiet:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
   `],
 })
 export class GlimChatComponent {

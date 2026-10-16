@@ -10,6 +10,26 @@ type Shape = readonly string[];
 type Palette = Readonly<Record<string, string>>;
 const OUTLINE = '#140a1f';
 
+/** About: a round "i" on the glass. */
+const ABOUT: Shape = [
+  '................',
+  '....oooooooo....',
+  '...ollllllllo...',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllllllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '..ollllbbllllo..',
+  '...ollllllllo...',
+  '....oooooooo....',
+  '................',
+  '................',
+  '................',
+];
+
 /** Lune's tables: a reel window with three symbols and a lever. */
 const TABLES: Shape = [
   '................',
@@ -343,6 +363,7 @@ const ICONS: Readonly<Record<string, { shape: Shape; palette: Palette }>> = {
   pets: { shape: PETS, palette: { l: '#ffe7a0', b: '#e0b060', d: '#c08a3e' } },
   codex: { shape: CODEX, palette: { l: '#c9a0ff', b: '#5a2f8a', e: '#d8dcf0', f: '#E8D44D', d: '#33263a' } },
   eclipse: { shape: ECLIPSE, palette: { b: '#0e0912', d: '#33263a', f: '#E8D44D', e: '#fff4dc' } },
+  about: { shape: ABOUT, palette: { l: '#d8dcf0', b: '#5a2f8a' } },
   music: { shape: MUSIC, palette: { l: '#d8dcf0', d: '#8a90b0', b: '#a855f7' } },
   'sky-day': { shape: SUN, palette: { l: '#fff4dc', b: '#ffd08a', d: '#E8752A', e: '#E8D44D' } },
   'sky-dawn': { shape: HORIZON, palette: { l: '#fff4dc', b: '#ffd08a', e: '#ffe7a0', d: '#7b4fc0', f: '#4a3260' } },
