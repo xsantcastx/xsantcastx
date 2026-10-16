@@ -45,3 +45,11 @@
 .sc__btn--primary { background: linear-gradient(180deg, var(--gold), var(--gold-core)); color: var(--obsidian-0); }
 .sc__btn[aria-disabled="true"] { opacity: .6; }
 .sc__btn:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
+
+/* In the world's menus (frameless-menus handoff): one pixel row, the button and nothing else; the line is its tooltip. */
+:host-context(.place) .sc { padding: 0; margin: 0 0 6px; border: 0; background: none; gap: 8px; }
+:host-context(.place) .sc__line, :host-context(.place) .sc__what { display: none; }
+:host-context(.place) .sc__pane { border-radius: 0; }
+:host-context(.place) .sc__btn { border: 0; border-radius: 0; background: var(--obsidian-2); flex: 1 1 auto;
+  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
+:host-context(.place) .sc__btn--primary { background: var(--gold); }
