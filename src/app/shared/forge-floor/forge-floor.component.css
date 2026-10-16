@@ -308,3 +308,6 @@
   }
   .ff-station__fx { opacity: 0.6; }
 }
+
+/* In the world's menus the decorative floor gives its room to the one action (frameless-menus handoff). */
+:host-context(.place) { display: none; }

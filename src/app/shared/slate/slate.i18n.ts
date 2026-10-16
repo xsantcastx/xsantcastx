@@ -52,6 +52,9 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.app.scan': { en: 'Scan', es: 'Escaner' },
   'slate.app.pets': { en: 'Pets', es: 'Mascotas' },
   'slate.app.codex': { en: 'Codex', es: 'Codice' },
+  'slate.app.about': { en: 'About', es: 'Acerca de' },
+  'slate.phone.home': { en: 'Home', es: 'Inicio' },
+  'slate.phone.putAway': { en: 'Put the Slate away', es: 'Guardar la Pizarra' },
   'slate.app.eclipse': { en: 'Eclipse', es: 'Eclipse' },
 
   // Factory (the Homestead at a glance)

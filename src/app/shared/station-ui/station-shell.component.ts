@@ -19,7 +19,11 @@
  * `showTitle=false` inside the /play in-world panel (the panel already names
  * the place) keeps an off-screen heading so the section stays labelled.
  */
-import { ChangeDetectionStrategy, Component, input, model } from '@angular/core';
+import { NgTemplateOutlet } from '@angular/common';
+import { ChangeDetectionStrategy, Component, inject, input, model } from '@angular/core';
+
+import { TranslationService } from '../../translation.service';
+import { STATION_UI_I18N } from './station-ui.i18n';
 
 import { DetailsDrawerComponent } from './details-drawer.component';
 
@@ -28,7 +32,7 @@ let nextId = 0;
 @Component({
   selector: 'app-station-shell',
   standalone: true,
-  imports: [DetailsDrawerComponent],
+  imports: [DetailsDrawerComponent, NgTemplateOutlet],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <section class="ss" [attr.aria-labelledby]="titleId">
@@ -43,6 +47,9 @@ let nextId = 0;
           @if (purpose() && showTitle()) { <p class="ss__purpose">{{ purpose() }}</p> }
         </div>
         <div class="ss__wallet"><ng-content select="[stationWallet]" /></div>
+        @if (!showTitle()) {
+          <button type="button" class="px-help ss__help" [attr.aria-expanded]="detailsOpen()" (click)="detailsOpen.set(!detailsOpen())"><i aria-hidden="true">?</i><span class="ss__sr">{{ t('stationUi.details') }}</span></button>
+        }
       </header>
 
       <ng-content select="[stationTabs]" />
@@ -52,10 +59,21 @@ let nextId = 0;
 
       <ng-content />
 
-      <app-details-drawer class="ss__details" [label]="detailsLabel()" [hint]="detailsHint()" [(open)]="detailsOpen">
+      <!-- The details words, projected once: in a Details drawer on a full page, in the help card the ? opens in the world. -->
+      <ng-template #detailsBody>
         @if (purpose() && !showTitle()) { <p class="ss__purpose ss__purpose--details">{{ purpose() }}</p> }
         <ng-content select="[stationDetails]" />
-      </app-details-drawer>
+      </ng-template>
+      @if (showTitle()) {
+        <app-details-drawer class="ss__details" [label]="detailsLabel()" [hint]="detailsHint()" [(open)]="detailsOpen">
+          <ng-container *ngTemplateOutlet="detailsBody" />
+        </app-details-drawer>
+      } @else {
+        <div class="ss__more ss__more--help" [hidden]="!detailsOpen()">
+          <div class="ss__helpbar"><button type="button" class="px-x ss__helpx" (click)="detailsOpen.set(false)" [attr.aria-label]="t('stationUi.helpClose')"><i aria-hidden="true">&times;</i></button></div>
+          <div class="ss__details ss__helpbody"><ng-container *ngTemplateOutlet="detailsBody" /></div>
+        </div>
+      }
     </section>
   `,
   styleUrls: ['./station-tokens.css', './station-shell.component.css'],
@@ -71,4 +89,7 @@ export class StationShellComponent {
   readonly detailsOpen = model(false);
 
   readonly titleId = `st-title-${++nextId}`;
+  private readonly i18n = inject(TranslationService);
+  constructor() { this.i18n.register(STATION_UI_I18N); }
+  t(key: string): string { return this.i18n.translate(key); }
 }

@@ -1,18 +1,15 @@
-<!-- The Mirror Slate: the glass inside Kael's brass bezel. It opens on a few big
-     choices; each one is a calm screen of its own with a Back to the glass.
-     The lore and the rules are under Details, on the home face only. -->
-<div class="sl" [class.sl--ii]="tier >= 2" [attr.data-slate-tier]="tier" [attr.data-face]="face">
+<!-- The Mirror Slate as a phone (docs/handoff/slate-phone-only.md): no window around it. The phone is the UI: a fixed
+     bezel, a status bar, the screen (home, or one app INSIDE it), and a home bar. It never changes size. -->
+<div class="sl phone" [class.sl--ii]="tier >= 2" [attr.data-slate-tier]="tier" [attr.data-face]="face" data-slate-phone
+     role="dialog" aria-modal="true" [attr.aria-label]="t('slate.title')" tabindex="-1" #phone>
+  <div class="phone__screen ph" [attr.data-sky]="sky" [attr.data-page]="page" data-slate-screen>
+    <div class="ph-status" data-slate-status (pointerdown)="dragStart($event)" (pointermove)="dragMove($event)" (pointerup)="dragEnd($event)" (pointercancel)="dragCancel()">
+      <span class="ph-status__realm">{{ t(realmKey) }}</span>
+      <span class="ph-status__time">{{ time }}</span>
+      <img class="ph-status__sky" [src]="icon('sky-' + sky)" alt="" width="16" height="16">
+    </div>
 
-  @if (face === 'home') {
-    <!-- The phone face (docs/handoff/world-clock.md): status bar, the world clock, two widgets,
-         the app grid, page dots, the dock. Page 2 is the calendar and Sera Quill's ledger. -->
-    <div class="ph" [attr.data-sky]="sky" [attr.data-page]="page">
-      <div class="ph-status" aria-hidden="true">
-        <span class="ph-status__realm">{{ t(realmKey) }}</span>
-        <span class="ph-status__time">{{ time }}</span>
-        <img class="ph-status__sky" [src]="icon('sky-' + sky)" alt="" width="16" height="16">
-      </div>
-
+    @if (face === 'home') {
       <div class="ph-pages" (pointerdown)="swipeStart($event)" (pointerup)="swipeEnd($event)" (pointercancel)="swipeCancel()">
         @if (page === 0) {
           <section class="ph-lock" data-slate-clock [attr.aria-label]="t('slate.phone.clock')">
@@ -51,7 +48,7 @@
           <nav class="ph-apps" [attr.aria-label]="t('slate.tabs')">
             @for (app of apps; track app.id) {
               <button type="button" class="sl-tile ph-app" [class.sl-tile--game]="!!app.game"
-                      [attr.data-game]="app.game ?? null" [attr.data-face]="app.face ?? null" [attr.data-app]="app.launch ?? app.id"
+                      [attr.data-game]="app.game ?? null" [attr.data-face]="app.face ?? null" [attr.data-app]="app.id"
                       (click)="openApp(app)"><img class="ph-app__icon" [src]="icon(app.icon)" alt="" width="48" height="48"><span class="sl-tile__name">{{ t(app.key) }}</span>@if (dot(app)) {<i class="sl-dot" aria-hidden="true"></i>}</button>
             }
           </nav>
@@ -75,6 +72,7 @@
         }
       </div>
 
+    <div class="ph-foot">
       <div class="ph-dots" role="tablist" [attr.aria-label]="t('slate.phone.pages')">
         @for (n of pages; track n) {
           <button type="button" class="ph-dot" role="tab" [attr.aria-selected]="page === n" [attr.data-page-dot]="n"
@@ -84,28 +82,21 @@
 
       <nav class="ph-dock" [attr.aria-label]="t('slate.phone.dock')">
         @for (app of dock; track app.id) {
-          <button type="button" class="ph-dock__app" [attr.data-dock]="app.face ?? app.launch" (click)="openApp(app)" [attr.aria-label]="t(app.key)">
+          <button type="button" class="ph-dock__app" [attr.data-dock]="app.face" (click)="openApp(app)" [attr.aria-label]="t(app.key)">
             <img [src]="icon(app.icon)" alt="" width="40" height="40">@if (dot(app)) {<i class="sl-dot" aria-hidden="true"></i>}
           </button>
         }
       </nav>
     </div>
 
-    <details class="sl-details">
-      <summary>{{ t('slate.details') }}</summary>
-      <p class="sl-lore">{{ t('slate.lore') }}</p>
-      <p>{{ t('slate.rules') }}</p>
-      <p>{{ t('slate.tables.note') }}</p>
-      @if (tier < 2) { <p>{{ t('slate.upgradeHint') }}</p> }
-    </details>
-  } @else {
-    <div class="sl-bar">
-      <button type="button" class="sl-back" (click)="back()">{{ t('slate.back') }}</button>
-      <h3 class="sl-face-title">{{ face === 'tables' ? t(gameTitleKey) : face === 'scan' ? t('cabinet.scan.title') : face === 'eclipse' ? t('clock.eclipse.title') : t('slate.tab.' + face) }}</h3>
-      <span class="sl-bar__time" aria-hidden="true">{{ time }}</span>
-    </div>
-  }
-
+    }
+    <!-- Always in the DOM (hidden on the home screen) so the game and Codex hosts resolve before an app is asked for. -->
+      <div class="phone__app" data-slate-app [hidden]="face === 'home'" [attr.data-app-face]="face">
+        <div class="sl-bar">
+          <button type="button" class="sl-back" (click)="back()">{{ t('slate.back') }}</button>
+          <h3 class="sl-face-title">{{ face === 'tables' ? t(gameTitleKey) : face === 'scan' ? t('cabinet.scan.title') : face === 'eclipse' ? t('clock.eclipse.title') : face === 'pets' ? t('slate.app.pets') : face === 'codex' ? t('slate.app.codex') : face === 'about' ? t('slate.details') : t('slate.tab.' + face) }}</h3>
+        </div>
+        <div class="phone__scroll">
   @if (face === 'eclipse') {
     <!-- The eclipse app: the countdown, what it does where you are, and Sera Quill's ledger. -->
     <section class="sl-pane sl-eclipse" [attr.aria-label]="t('clock.eclipse.title')" [attr.data-eclipse-on]="eclipseOn">
@@ -258,4 +249,32 @@
       </details>
     </section>
   }
+
+          @if (face === 'pets') {
+            <section class="sl-pane sl-embed sl-pets" [attr.aria-label]="t('slate.app.pets')" data-slate-pets>
+              <app-pet-sheet (done)="back()" (feel)="petFelt($event)" />
+            </section>
+          }
+
+          <!-- The Codex: the page itself, built into the screen. -->
+          <section class="sl-pane sl-embed sl-codex" [hidden]="face !== 'codex'" [attr.aria-label]="t('slate.app.codex')" data-slate-codex>
+            @if (codexLoading) { <p class="sl-note" role="status">{{ t('slate.loading') }}</p> }
+            @if (codexError) { <p class="sl-note" role="alert">{{ t('slate.loadError') }}</p> }
+            <ng-container #codexHost></ng-container>
+          </section>
+
+          @if (face === 'about') {
+            <section class="sl-pane sl-about" [attr.aria-label]="t('slate.details')" data-slate-about>
+              <p class="sl-lore">{{ t('slate.lore') }}</p>
+              <p>{{ t('slate.rules') }}</p>
+              <p>{{ t('slate.tables.note') }}</p>
+              @if (tier < 2) { <p>{{ t('slate.upgradeHint') }}</p> }
+            </section>
+          }
+        </div>
+      </div>
+  </div>
+  <button type="button" class="phone__home" data-slate-home (click)="homeButton()"
+          [attr.aria-label]="t(face === 'home' ? 'slate.phone.putAway' : 'slate.phone.home')"
+          (pointerdown)="dragStart($event)" (pointermove)="dragMove($event)" (pointerup)="dragEnd($event)" (pointercancel)="dragCancel()"><i aria-hidden="true"></i></button>
 </div>
