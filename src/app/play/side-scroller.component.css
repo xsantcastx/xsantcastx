@@ -2911,3 +2911,28 @@ input::placeholder { color: var(--adventure-hud-muted); }
 /* One World (P2): in the Homestead the Gold list stands where the build hotbar does; while the list is unfolded the
    hotbar steps aside (fold the list to build on the plot). */
 .stage--column .hotbar { display: none; }
+
+/* ── Glim, alive (companion-host.ts): the tap target over Glim, its chat card, catch-the-light ── */
+.glim-tap {
+  position: absolute; z-index: 6; width: 52px; height: 52px; margin: -26px 0 0 -26px; padding: 0;
+  border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+}
+.glim-tap:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
+.glim-chat-host { position: absolute; pointer-events: auto; touch-action: auto; }
+/* A window like Sound and Pets (.win-host); on a desktop it sits under the goal line, beside Glim. */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .glim-chat-host { left: 12px; top: var(--glim-top, 118px); width: min(360px, calc(100% - 32px)); }
+}
+.glim-game { position: absolute; inset: 0; z-index: 25; pointer-events: none; }
+.glim-mote {
+  position: absolute; width: 52px; height: 52px; margin: -26px 0 0 -26px; padding: 0; pointer-events: auto;
+  display: grid; place-items: center; border: 0; background: transparent; cursor: pointer;
+}
+.glim-mote i {
+  display: block; width: 14px; height: 14px; background: var(--adventure-hud-gold);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--adventure-hud-gold) 35%, transparent), 0 0 18px var(--adventure-hud-gold);
+  animation: glim-mote 1.4s ease-in-out infinite;
+}
+.glim-mote:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
+@keyframes glim-mote { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.15); } }
+@media (prefers-reduced-motion: reduce) { .glim-mote i { animation: none; } }

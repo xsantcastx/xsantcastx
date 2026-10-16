@@ -63,6 +63,22 @@ export class GlimService {
     });
   }
 
+  /**
+   * "Quiet Glim" (the chat card's switch): no unasked lines, only its face.
+   * Kept as two stamps in `lastAt` (quiet.on / quiet.off) so the later choice
+   * wins a merge without a new field; `mergeGlim` already keeps the later stamp.
+   */
+  get quiet(): boolean {
+    const at = this.state.lastAt;
+    return (at['quiet.on'] ?? 0) > (at['quiet.off'] ?? 0);
+  }
+  setQuiet(on: boolean, at = Date.now()): void {
+    this.hydrate();
+    const other = this.current.lastAt[on ? 'quiet.off' : 'quiet.on'] ?? 0;
+    // Strictly later than the other switch, even on a clock that went backwards.
+    this.save({ ...this.current, lastAt: { ...this.current.lastAt, [on ? 'quiet.on' : 'quiet.off']: Math.max(at, other + 1) } });
+  }
+
   // ── The bond (glim-bond.ts) ──
 
   /** The bond's stage now (never below the peak reached). */
