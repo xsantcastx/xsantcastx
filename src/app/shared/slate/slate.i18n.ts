@@ -25,6 +25,8 @@ export const SLATE_I18N: Readonly<Record<string, { en: string; es: string }>> = 
   'slate.table.runeDrop': { en: 'Rune Drop', es: 'Caida de Runas' },
   'slate.table.seamSweeper': { en: 'Seam Sweeper', es: 'Barrido de Veta' },
   'slate.table.ascent': { en: 'Eclipse Ascent', es: 'Ascenso del Eclipse' },
+  'slate.table.cascade': { en: 'Cascade', es: 'Cascada' },
+  'slate.table.tumbler': { en: 'Tumbler', es: 'Tambor' },
   'slate.tables.note': { en: 'Same odds, same bet limits, same ledger as her tables. Gold only.', es: 'Mismas probabilidades, mismos limites, mismo registro que sus mesas. Solo Oro.' },
   'slate.back': { en: 'Back', es: 'Volver' },
   'slate.loading': { en: 'The glass clears…', es: 'El cristal se aclara…' },

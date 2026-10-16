@@ -38,7 +38,9 @@ export type SfxCue =
   // A drop lands (shared/loot/loot-tiers.ts): one voice per rung, the legendary chime the biggest.
   | 'drop-magic' | 'drop-rare' | 'drop-epic' | 'drop-legendary' | 'drop-mythic'
   // Glim speaks up (shared/glim/glim-react.ts): a soft glassy two-note hum; a high five's bright clap.
-  | 'glim' | 'five';
+  | 'glim' | 'five'
+  // The cascade machines (shared/cascade): runes landing, a cluster bursting (pitch climbs each tumble), a big win.
+  | 'tumble' | 'cluster' | 'bigwin';
 
 export interface SfxOptions {
   material?: Material;
@@ -52,7 +54,7 @@ const BED_VOLUME: Readonly<Record<Bed, number>> = {
   drips: .55, rumble: .5, water: .3, lava: .22, ink: .35,
 };
 /** The shortest gap between two of a cue (a run of steps never becomes a buzz). */
-const CUE_GAP: Partial<Record<SfxCue, number>> = { glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
+const CUE_GAP: Partial<Record<SfxCue, number>> = { tumble: .06, cluster: .08, bigwin: 1, glim: 1.5, five: .5, 'drop-magic': .15, 'drop-rare': .3, 'drop-epic': .4, 'drop-legendary': .8, 'drop-mythic': 1.2, swap: .2, scan: .25, cabinet: .5, chirp: .3, bark: .4, step: .11, tap: .05, dig: .05, pickup: .045, coin: .05, clang: .12 };
 
 interface ContinuousBed { gain: GainNode; stop: () => void }
 
@@ -224,6 +226,12 @@ export class SoundDirector {
       case 'glim': this.tone(t, 'sine', 1174.7, .035, .22, .01); return this.tone(t + .12, 'sine', 1760, .028, .26, .01);
       // A high five: a tiny clap and a bright bell.
       case 'five': this.whoosh(t, 2400, 1800, .05, .08); return this.arpeggio(t + .04, [84, 91], 'bell', .07, .22, false);
+      // Stone on stone, small: a column of runes settling.
+      case 'tumble': this.tone(t, 'triangle', 220 * up, .05, .07, .002); return this.tone(t + .03, 'sine', 330 * up, .03, .06, .002);
+      // A bright three-note chime; each tumble of a chain climbs a step.
+      case 'cluster': return this.arpeggio(t, [76, 79, 84].map(n => n + (opts.pitch ?? 0)), 'bell', .05, .22, true);
+      // A rising fanfare of bells, then the top note again: a Big, Mega or Epic win.
+      case 'bigwin': this.arpeggio(t, [60, 64, 67, 72, 76, 79, 84, 88], 'bell', .07, .3, true); return this.arpeggio(t + .62, [84, 91], 'bell', .12, .32, true);
     }
   }
 

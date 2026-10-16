@@ -1638,6 +1638,32 @@ brighter than the sky. I don't like it, and I love it.") and at dawn.
 minor over a soft drone, "like a guardian the size of the sky". The Slate names each realm's theme: *Hymn of the Held
 Seam*, *Noon over the Court*, *Margins of the Archive*, *The Orrery Turns*, *Rootwake*.
 
+## The Eclipse Cascade and the machines to discover (2026-10-16) — shipped, owner reviews in play
+
+**The Eclipse Cascade.** Lune Coyne's newest table lives only in the Mirror Slate's glass: a hundred runes on a
+moon-mirror face (Ash, Ember, Thorn, Glint, Pulse, Sigil, Nexus, Fracture — the Rune Forge's own), falling the way the
+Archive's shelves fall when one gives. "Five that touch are a word," she says. "A word that keeps falling is a
+sentence." The wild is a **shard of the moon mirror** (it joins any word); the scatter is **the Eclipse** itself, which
+only ever comes with the first fall. Where a word bursts twice, the glass remembers it and glows: a **spot** that
+doubles every time a word bursts on it again. Three Eclipses and the glass holds its memory for ten spins; four and it
+starts already glowing (**the Super Bonus**). Gold only — Lune's rule, printed on the glass.
+
+**The machines to discover.** Lune learned her trade in the Prism Mines, and she is not the only one who ever built a
+game. Each realm's Delve keeps one, left by the people who dug it:
+
+- **The Orrery Tumbler** (Celestial — *found*): the Meridian Compact's surveyors measured the sky from underneath, and
+  on the long shifts built a game from the orrery's spare brass: seven by seven stars that fall toward whichever down
+  the rings decide. Every tumble turns the down; every tumble climbs the **orbit ladder**. Sera Quill swears it kept
+  their tallies honest. It stands in the Orrery Wells' Gate Hollow, west of the return gate, still turning; find it once
+  and its face settles into your Slate's glass.
+- **The Inkwell** (Umbral — *not yet built*): the Unrecorded kept a well of ink that remembered every blot; what falls
+  into the dark stays written (wilds that stick while their cell is unlit).
+- **The Rootreel** (Verdant — *not yet built*): Kesh Arbo's wardens carved a counting-wheel from living rootwood; it
+  still grows a row when it is pleased.
+- **The Prism Lines** (Luminous — *not yet built*): Aureth's miners bet their shift on where the light would go; a beam
+  bends through mirror symbols and every symbol it crosses joins the line.
+
+Glim, at a big win: "Ooh, they keep falling!" · "Mega! The whole board lit up!" · "EPIC! Even the Eclipse is jealous!"
 
 ## Loot & combat (shipped — owner reviews in play)
 
