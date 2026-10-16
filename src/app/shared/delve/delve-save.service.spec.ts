@@ -7,6 +7,7 @@ import { DELVE_FAR_KEY, IdbRegionStore, LocalRegionStore, openRegionStore, type 
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
 import { TERRAIN_NODE_LIST } from '../../play/engine/terrain';
+import { OneWorldFlag } from '../../play/one-world/one-world-flag';
 
 const KEYS = [DELVE_KEY, DELVE_FAR_KEY, ...REGION_SLOT_KEYS];
 const AREA = 'ember-delve';
@@ -29,6 +30,9 @@ class MemoryStore implements RegionStore {
 }
 
 describe('DelveSaveService (save v2: the endless Delve)', () => {
+  // Save v2 is the legacy game: since the One World flip it runs only behind the dev hatch (?oneworld=0).
+  beforeAll(() => OneWorldFlag.set(false));
+  afterAll(() => { OneWorldFlag.set(true); OneWorldFlag.reset(); });
   let service: DelveSaveService;
   let device: MemoryStore;
   let clock: number;

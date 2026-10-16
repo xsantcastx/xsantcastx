@@ -17,6 +17,7 @@ import { INFERNAL_TOWN } from '../../play/world/towns/infernal';
 import { craftingRecipeById } from '../crafting/crafting.model';
 import { ambienceFor } from '../sound/sound-palette';
 import { TERRAIN_NODES } from '../../play/engine/terrain';
+import { OneWorldFlag } from '../../play/one-world/one-world-flag';
 
 class MemoryStore implements RegionStore {
   readonly kind = 'memory' as const;
@@ -136,6 +137,9 @@ describe('Rift Gates: the model', () => {
 });
 
 describe('Rift Gates: a realm Delve saves as its own world (DelveSaveService)', () => {
+  // Save v2 is the legacy game: since the One World flip it runs only behind the dev hatch (?oneworld=0).
+  beforeAll(() => OneWorldFlag.set(false));
+  afterAll(() => { OneWorldFlag.set(true); OneWorldFlag.reset(); });
   const KEYS = [DELVE_KEY, DELVE_FAR_KEY, ...REGION_SLOT_KEYS, ...RIFT_SLOT_KEYS];
   let device: MemoryStore;
   let clock: number;
