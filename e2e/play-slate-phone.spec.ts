@@ -13,7 +13,7 @@ import { bag, canvas, openPlay, placePanel, seed } from './play-helpers';
 
 const SHOTS = resolve('output/slate-phone');
 const SEEDED = { 'preferred-language': 'en', ...bag({ 'mirror-slate-ii': 1 }) };
-const APPS = ['reels', 'rune-drop', 'seam-sweeper', 'eclipse-ascent', 'factory', 'map', 'scan', 'pets', 'codex', 'eclipse', 'about'];
+const APPS = ['reels', 'eclipse-cascade', 'rune-drop', 'seam-sweeper', 'eclipse-ascent', 'factory', 'map', 'scan', 'pets', 'codex', 'eclipse', 'about'];
 
 interface Box { x: number; y: number; width: number; height: number }
 const SIZES = [
