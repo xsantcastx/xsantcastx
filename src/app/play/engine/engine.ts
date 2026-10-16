@@ -3906,6 +3906,12 @@ export class SeamworksEngine {
   }
   /** RNG for drop chances. Replaceable in tests; a table of certain drops never calls it. */
   random: () => number = Math.random;
+  /**
+   * E, in priority order (first that applies wins): gear or a rune on the ground; step off the cart; the line in
+   * the water; a shut shown Lost Cabinet; a station in reach (every later kind yields to one); a Cascade machine;
+   * a find; a Waystone; a mystery; a placed thing in a Delve (chest, camp: `interactAt`); a work site; a cast.
+   * Placing a chest is NOT on E: it is the right-click / hold-tap on a cell, so the pointer must reach the canvas.
+   */
   interact(): void {
     if (this.paused || this.hp <= 0) return;
     // E beside a piece of gear or a rune on the ground: take the nearest (the keyboard's tap on its plate).

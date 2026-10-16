@@ -2435,36 +2435,37 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 @keyframes slate-scan { 0% { box-shadow: inset 0 0 0 1px var(--warm), 0 0 2px var(--warm); } 30% { box-shadow: inset 0 0 0 1px var(--warm), 0 0 16px 3px var(--warm); } 100% { box-shadow: inset 0 0 0 1px var(--warm), 0 0 2px var(--warm); } }
 
-/* The open Slate: a centred pane in a thick brass bezel on desktop. */
-.place--slate {
-  left: max(16px, calc(50% - 400px));
-  right: max(16px, calc(50% - 400px));
-  border: 6px solid var(--gold-deep);
-  border-radius: 12px;
-  background:
-    radial-gradient(120% 60% at 18% 0%, color-mix(in srgb, var(--adventure-amethyst) 22%, transparent), transparent 60%),
-    linear-gradient(180deg, var(--obsidian-2), var(--obsidian-1));
-  box-shadow:
-    inset 0 0 0 2px var(--gold),
-    inset 0 0 0 4px var(--obsidian-0),
-    0 14px 32px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent);
+/* The open Slate: no window. The place becomes a veil (a light dim, a soft blur on desktop) and the phone floats on it
+   (shared/slate: `.phone`). The head is gone; Escape, the phone's home bar, a pull down or a tap outside put it away. */
+.place.place--slate {
+  inset: 0;
+  width: auto;
+  height: auto;
+  max-height: none;
+  margin: 0;
+  z-index: 8;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: color-mix(in srgb, var(--obsidian-0) 58%, transparent);
+  box-shadow: none;
+  container-type: size;
+  contain: layout style;
+  animation: place-open .18s ease;
 }
-.place--slate .place-head { border-bottom-color: color-mix(in srgb, var(--gold) 30%, transparent); }
-/* Desktop: the home face is a few big choices, so the bezel hugs them instead of filling the screen. */
-@media (min-width: 901px) {
-  .place--slate:has(.sl[data-face="home"]) { left: max(16px, calc(50% - 320px)); right: max(16px, calc(50% - 320px)); bottom: auto; max-height: calc(100% - 80px); }
+.place--slate .place-head { display: none; }
+.place--slate .place-body { display: contents; }
+@media (min-width: 901px) { .place.place--slate { backdrop-filter: blur(3px); } }
+/* A portrait phone: pulled up from the bottom of the screen. */
+@media (max-width: 900px) and (orientation: portrait) {
+  .place.place--slate { justify-content: flex-end; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); }
 }
 
-/* Phones: the Slate is a full-screen sheet (the bands under it are inert while it is
-   open; Close and Escape stay in its own head), clear of the notch and the home bar. */
+/* Phones: the Slate button joins the menu at the top-right. */
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .place--slate {
-    inset: 0;
-    border-width: 4px;
-    border-radius: 0;
-    padding: calc(env(safe-area-inset-top, 0px) + 10px) calc(env(safe-area-inset-right, 0px) + 10px)
-      calc(env(safe-area-inset-bottom, 0px) + 10px) calc(env(safe-area-inset-left, 0px) + 10px);
-  }
   /* The button joins the menu in the top-right corner (left of it); the area and
      health column slims to make room, so the hotbar keeps most of its width. */
   .stage--slate { --vit-w: 72px; --right-w: calc(8px + 44px + 8px + 44px + 8px + var(--vit-w)); }
@@ -2830,8 +2831,6 @@ input::placeholder { color: var(--adventure-hud-muted); }
   /* While a sheet is up, the bottom controls step aside (nothing peeks out under it). */
   .stage--menu .touch, .stage--menu .dock, .stage--menu .prompt, .stage--menu .m-take, .stage--menu .keys { visibility: hidden; }
   .place-head h2 { font-size: 22px; }
-  /* The Slate keeps its brass bezel as a sheet. */
-  .place--slate { border: 4px solid var(--gold-deep); border-bottom-width: 0; }
 }
 
 /* ── Landscape phone: a side panel on the right, the left thumb zone stays clear ── */
@@ -2859,8 +2858,6 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .place-head { padding-bottom: 4px; }
   .place-head h2 { font-size: 18px; }
   .place-head .realm-tag { display: none; }
-  /* The Slate keeps its brass bezel as a side panel. */
-  .place--slate { border: 4px solid var(--gold-deep); border-right-width: 0; }
   /* The Satchel, two columns: the doll on the left (it stays while the bag scrolls), the bag on the right. */
   .book-body { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 10px; }
   .book-doll { position: sticky; top: 0; align-self: start; }
@@ -2906,12 +2903,167 @@ input::placeholder { color: var(--adventure-hud-muted); }
 /* Without JavaScript (and to a crawler) /play is this one intro; see the template header. */
 .noscript-intro { position: relative; z-index: 1; max-width: 40rem; margin: 2rem auto; padding: 0 16px; color: var(--adventure-hud-text); line-height: 1.5; }
 
-/* ── Glim, alive (companion-host.ts): the tap target over Glim, its chat card, catch-the-light ── */
-.glim-tap {
-  position: absolute; z-index: 6; width: 52px; height: 52px; margin: -26px 0 0 -26px; padding: 0;
-  border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+/* ══ Frameless pixel menus (docs/handoff/frameless-menus.md) ═══════════════════
+   No window frame around any menu: no corner brackets, no dashed rules, no outer panel box. The world dims softly
+   (`.menu-scrim`) and the content floats on it. Positions stay exactly as the menus-orientation system put them
+   (portrait: bottom sheet, landscape: right-hand panel, desktop: where each stood); only the frame goes. What stays:
+   a plain title, one pixel x, 44px targets, and readable contrast (a fade behind the content, a 2px pixel shadow
+   on the text). Pixel style is a rendering style on the existing tokens: square corners (the radius tokens go to 0
+   for everything hosted in a menu), 2px stepped edges, crisp art. */
+.menu-scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  background: color-mix(in srgb, var(--obsidian-0) 70%, transparent);
+  animation: scrim-in .2s ease both;
 }
-.glim-tap:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
+@media (min-width: 901px) { .menu-scrim { backdrop-filter: blur(3px); } }
+/* The desktop Satchel is a side window the world keeps running beside: no dim over it. */
+@media (min-width: 901px) and (hover: hover) { .menu-scrim--bag { display: none; } }
+@keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .menu-scrim { animation: none; } }
+
+.book, .places, .place:not(.place--slate), .anchor-sheet, .win-host, .story-veil {
+  --radius-xs: 0; --radius-sm: 0; --radius-md: 0; --radius-lg: 0; --radius-xl: 0; --radius-pill: 0;
+  --shadow-panel: none; --shadow-raised: none; --shadow-overlay: none; --shadow-well: none;
+  text-shadow: 2px 2px 0 color-mix(in srgb, var(--obsidian-0) 85%, transparent);
+}
+.book img, .places img, .place img, .anchor-sheet img, .win-host img { image-rendering: pixelated; }
+
+/* The frames go. */
+.book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: none;
+  contain: none;
+}
+.place:not(.place--slate) { contain: layout; }
+.book::before, .book::after, .places::before, .place:not(.place--slate)::before, .place:not(.place--slate)::after { display: none; }
+.place-head, .places .win-head { border-bottom: 0; }
+.place-head .realm-tag { display: none; }
+.place-head h2, .places .win-head h2, .anchor-sheet .win-head h2, .book-head h2 {
+  font-size: 18px;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--adventure-beacon-text);
+}
+.places-hint { display: none; }
+
+/* Soft backing so text reads over the dimmed world: a fade, never an edge. */
+@media (max-width: 900px) and (orientation: portrait) {
+  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
+    background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--obsidian-0) 80%, transparent) 40px);
+  }
+}
+@media (max-width: 900px) and (orientation: landscape), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
+    background: linear-gradient(90deg, transparent 0, color-mix(in srgb, var(--obsidian-0) 82%, transparent) 36px);
+    border: 0;
+  }
+}
+
+/* The grip stays as a tiny pixel bar (pull down to put away). */
+.win-host::before { border-radius: 0; }
+
+/* The pixel x: a 7x7 drawing on a 3px grid (no font glyph), still a 44px target. */
+.win-x, .book-close, .place-close { border: 0 !important; background: none !important; box-shadow: none !important; color: var(--adventure-parchment); position: relative; }
+.win-x > i, .book-close > i { display: none; }
+.win-x::before, .book-close::before {
+  content: "";
+  position: absolute;
+  left: 50%; top: 50%;
+  width: 3px; height: 3px;
+  translate: -1.5px -1.5px;
+  background: currentColor;
+  box-shadow: -9px -9px 0 0 currentColor, -9px 9px 0 0 currentColor, -6px -6px 0 0 currentColor, -6px 6px 0 0 currentColor, -3px -3px 0 0 currentColor, -3px 3px 0 0 currentColor, 0px 0px 0 0 currentColor, 3px 3px 0 0 currentColor, 3px -3px 0 0 currentColor, 6px 6px 0 0 currentColor, 6px -6px 0 0 currentColor, 9px 9px 0 0 currentColor, 9px -9px 0 0 currentColor, 2px 2px 0 0 color-mix(in srgb, var(--obsidian-0) 80%, transparent);
+}
+.win-x:hover, .win-x:focus-visible { color: var(--adventure-beacon-text); }
+.win-x:focus-visible { outline: 2px solid var(--adventure-hud-gold) !important; outline-offset: -2px; }
+
+/* Pixel "?": a small help button that opens a short card (the words that used to sit on screen). */
+.px-help {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer;
+  color: var(--adventure-parchment); font: 700 18px/1 Orbitron, sans-serif; text-shadow: 2px 2px 0 var(--obsidian-0);
+}
+.px-help i { display: grid; place-items: center; width: 24px; height: 24px; font-style: normal; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
+
+/* The Menu (places): names only, two to a row, so the whole list fits one screen. */
+.places ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.places li button {
+  min-height: 52px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 0;
+  background: var(--obsidian-2);
+  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
+  align-content: center;
+}
+.places li button:active { translate: 0 2px; }
+.places small { display: none; }
+.places .win-body { overflow: auto; }
+
+/* The story card, Glim's talk and scenes: no box, just the words over the dim. */
+.story-veil { background: color-mix(in srgb, var(--obsidian-0) 66%, transparent); }
+.story-card { border: 0; box-shadow: none; background: none; text-shadow: 2px 2px 0 var(--obsidian-0); }
+.story-card::before { display: none; }
+.story-card__title { border-bottom: 0; padding-bottom: 0; }
+
+/* Plain buttons inside the Menu (Return to camp, Restart hunt…): pixel, no corner brackets. */
+.places .win-body button:not(.win-x), .places > button:not(.win-x), .places-foot button {
+  border: 0; border-radius: 0; background: var(--obsidian-2);
+  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
+}
+
+/* The Satchel's bag: five across, a page at a time (◀ ▶), never a scrolling column. */
+.book .pockets { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.bag-pager { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.bag-pager__n { min-width: 56px; text-align: center; font: 700 12px/1 Orbitron, sans-serif; font-variant-numeric: tabular-nums; }
+.places [data-open="oneworld"] small { display: none; }
+.places [data-open="oneworld"][aria-pressed="true"]::after { content: "ON"; justify-self: start; padding: 0 4px; font: 700 9px/14px Orbitron, sans-serif; background: var(--gold); color: var(--obsidian-0); text-shadow: none; }
+
+@media (max-height: 520px) and (orientation: landscape) {
+  .place:not(.place--slate) .place-head { min-height: 44px; padding-bottom: 0; }
+  .place:not(.place--slate) .place-head h2 { font-size: 15px; }
+  /* A station carries its own title on its first row: the title bar shrinks to the floating x. */
+  .place:not(.place--slate):has(.ss__head) .place-head { position: absolute; top: 6px; right: 8px; z-index: 3; min-height: 44px; padding: 0; }
+  .place:not(.place--slate):has(.ss__head) .place-head > div:first-child { display: none; }
+}
+
+/* The Menu: three across on a phone held sideways; the three extra buttons are one row. */
+.places li button { min-height: 48px; padding: 4px 10px; }
+.places .menu-extra { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.places .menu-extra button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px 6px; font-size: 10px; }
+@media (max-height: 520px) and (orientation: landscape) {
+  .places ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+  .places li button { min-height: 44px; padding: 2px 6px; font-size: 10px; }
+}
+
+/* The Waystone: pixel road buttons, no sentence. */
+.waystone-road { border: 0; border-radius: 0; background: var(--obsidian-2);
+  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent); }
+.waystone-road.here { box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-bright), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-bright); }
+.waystone-road b { font: 700 14px Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.place-body > .place-note:has(+ .waystone) { display: none; }
+/* ── Glim, alive (companion-host.ts): the tap target over Glim, its chat card, catch-the-light ── */
+.glim-hud {
+  position: relative; display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; margin-left: auto;
+  border-radius: 6px; background: var(--adventure-hud-stage); border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 40%, transparent);
+}
+.glim-hud + .top-actions { margin-left: 8px; }
+.glim-hud app-glim-icon { width: 30px; height: 25px; }
+.glim-hud:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
+.glim-hud__dot { display: none; position: absolute; top: 4px; right: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--adventure-hud-gold); box-shadow: 0 0 6px var(--adventure-hud-gold); }
+.glim-hud--says .glim-hud__dot { display: block; }
+/* Phones: the free stretch of the top band between the satchel chip (left) and the area name, never over the world. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .glim-hud { position: absolute; top: calc(var(--hud-safe-t) + 6px); left: 60px; margin: 0; pointer-events: auto; }
+  .glim-hud + .top-actions { margin: 0; }
+}
+/* Held sideways the goal strip fills the band beside the satchel chip: Glim sits under the chip instead. */
+@media (max-height: 500px) and (hover: none) and (pointer: coarse), (max-width: 900px) and (max-height: 500px) {
+  .glim-hud { left: 8px; top: calc(var(--hud-safe-t) + 58px); }
+}
 .glim-chat-host { position: absolute; pointer-events: auto; touch-action: auto; }
 /* A window like Sound and Pets (.win-host); on a desktop it sits under the goal line, beside Glim. */
 @media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {

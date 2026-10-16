@@ -39,7 +39,7 @@
               </ul>
             }
           }
-          <app-requirement-grid [title]="t('stationUi.requiredTools')" [costs]="tools" [showCount]="false" />
+          @if (!inWorld) { <app-requirement-grid [title]="t('stationUi.requiredTools')" [costs]="tools" [showCount]="false" /> }
           <app-requirement-grid [title]="t('stationUi.requiredItems')" [costs]="ctaCosts" [minCells]="4" [pending]="!hydrated" />
 
           @if (anvilRecipe) {
@@ -76,7 +76,7 @@
   </div>
 
   <!-- The forge floor: watch the strike happen. Decorative; results are announced. -->
-  <app-forge-floor class="cb-floor" [active]="'anvil'" [working]="striking" [event]="floorEvent" [stock]="floorStock"></app-forge-floor>
+  @if (!inWorld) { <app-forge-floor class="cb-floor" [active]="'anvil'" [working]="striking" [event]="floorEvent" [stock]="floorStock"></app-forge-floor> }
 
   <p class="cb-sr" aria-live="polite">{{ announce }}</p>
 
@@ -87,6 +87,9 @@
       <section class="cb-panel" aria-labelledby="cb-recipe-title">
         <h2 class="cb-panel__title" id="cb-recipe-title">{{ t('crafting.details.recipe') }} · {{ card.recipe.name }}</h2>
         <p class="cb-panel__hint">{{ card.recipe.blurb }}</p>
+        @if (inWorld && toolLines(card.recipe); as toolInfo) {
+          @if (toolInfo.length) { <ul class="cb-tool cb-tool--help">@for (line of toolInfo; track $index) { <li>{{ line }}</li> }</ul> }
+        }
         <p class="cb-pills">
           <span class="cb-pill">{{ rarityLabel(card.recipe.rarity) }}</span>
           <span class="cb-pill">{{ realmLabel(card.recipe.realm) }}</span>

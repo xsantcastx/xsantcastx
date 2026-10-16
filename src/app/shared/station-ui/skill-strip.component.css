@@ -49,3 +49,13 @@
   .sk { padding: var(--space-2) var(--space-3); }
   .sk__hint { display: none; }
 }
+
+/* In the world: one slim pixel row (LEVEL + bar), no frame, no sentence. */
+:host-context(.place) .sk { padding: 0; border: 0; background: none; gap: 0; }
+:host-context(.place) .sk__hint { display: none; }
+:host-context(.place) .sk__art { width: 28px; height: 28px; image-rendering: pixelated; }
+:host-context(.place) .sk__bar { height: 16px; border-radius: 0; background: var(--obsidian-1); box-shadow: 0 -2px 0 0 var(--edge-raised), 0 2px 0 0 var(--edge-raised), -2px 0 0 0 var(--edge-raised), 2px 0 0 0 var(--edge-raised); }
+:host-context(.place) .sk__fill { border-radius: 0; background: var(--gold); }
+:host-context(.place) .sk__pct { font-size: 10px; line-height: 16px; }
+/* A phone held sideways: the height goes to the grid and the card (the level is on the Details card). */
+@media (max-height: 520px) and (orientation: landscape) { :host-context(.place) .sk { display: none; } }
