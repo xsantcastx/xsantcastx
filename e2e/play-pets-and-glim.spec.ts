@@ -13,7 +13,7 @@
  *      a trail of light runs to it (data-glim-trail); Quiet Glim survives a reload.
  */
 import { expect, test, type Page } from '@playwright/test';
-import { blob, canvas, ERA, focusWorld, openPlay, playerX, seed, stackQty, walk, walkTo } from './play-helpers';
+import { blob, canvas, ERA, focusWorld, loginAt, openPlay, playerX, seed, stackQty, walk, walkTo, WORLD_COL } from './play-helpers';
 
 const BEACON_LIT = { 'eclipse-seamworks-world-v1': { restored: true, era: ERA, resetAt: null } };
 const GLIM_MET = {
@@ -28,6 +28,8 @@ const pet = (id: string, name: string) => ({
 const withPet = (id: string, name: string) => ({
   'preferred-language': 'en',
   ...BEACON_LIT,
+  // One World: the Ember Quarry is a region east of the Quarry Gate; the Keeper logs in there (the resume point).
+  ...loginAt(WORLD_COL.quarry),
   'godforge-glim': GLIM_MET,
   'godforge-pets': { version: 1, pets: { [id]: pet(id, name) }, active: id, activeAt: 1, tally: {}, command: 'follow', commandAt: 0 },
 });
@@ -36,9 +38,7 @@ const shot = (page: Page, name: string) => page.screenshot({ path: `output/pets-
 
 async function toQuarry(page: Page): Promise<void> {
   await openPlay(page);
-  await page.getByRole('button', { name: 'Places' }).click();
-  await page.locator('#places-list button', { hasText: 'East Passage' }).click();
-  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 60000 });
+  await expect(canvas(page)).toHaveAttribute('data-area', 'Ember Quarry', { timeout: 20000 });
   await page.waitForTimeout(500);
   await focusWorld(page);
 }
@@ -68,7 +68,7 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x8
       await expect(world).toHaveAttribute('data-pet', 'ink-pup', { timeout: 10000 });
       await expect(world).toHaveAttribute('data-pet-command', 'follow');
       // Out where the Maws are; the Keeper only waits.
-      await walkTo(page, 1100, 60);
+      await walkTo(page, WORLD_COL.quarryMaws * 32, 60);
       await expect.poll(async () => Number(await world.getAttribute('data-pet-hits') ?? 0), { timeout: 30000 }).toBeGreaterThan(0);
       await shot(page, `${size.tag}-1-pup-bites`);
 
@@ -99,9 +99,9 @@ for (const size of [{ tag: '1280x800', width: 1280, height: 800 }, { tag: '390x8
       await toQuarry(page);
       const world = canvas(page);
       await expect(world).toHaveAttribute('data-pet', 'moss-hedgehog', { timeout: 10000 });
-      // A fresh satchel holds no Starlight Herb. Stand by the tuft (x 340); the hedgehog works it
-      // (it may already have, from the arrival at x 240: the tuft is within its reach).
-      await walkTo(page, 420, 40);
+      // A fresh satchel holds no Starlight Herb. Stand by the tuft (col 166); the hedgehog works it
+      // (it may already have, from the arrival beside it: the tuft is within its reach).
+      await walkTo(page, 166 * 32 + 96, 40);
       await expect.poll(async () => Number(await world.getAttribute('data-pet-gathers') ?? 0), { timeout: 30000 }).toBeGreaterThan(0);
       await expect.poll(() => stackQty(page, 'starlight-herb'), { timeout: 10000 }).toBeGreaterThan(0);
       await shot(page, `${size.tag}-3-hedgehog-gathers`);

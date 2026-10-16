@@ -157,6 +157,8 @@ describe('first-session goals in One World (P2: the Homestead and the Quarry are
     expect(dig.key).toBe('play.goal.delve.world');
     expect(dig.target).toEqual({ x: 260 });
     expect(firstGoal({ ...WORLD, bought: true, ...ARMED, hunted: true, areaId: 'ember-delve' })!.key).toBe('play.goal.delve.dig');
+    // Under the street, an earlier goal is the town's line (no "head back to the Seamworks").
+    expect(firstGoal({ ...WORLD, areaId: 'ember-delve' })!.key).toBe('play.goal.buy.town');
     expect(FIRST_GOALS_I18N['play.goal.delve.world'].es).toBeTruthy();
   });
 });

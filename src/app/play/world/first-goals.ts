@@ -114,6 +114,8 @@ export function firstGoal(facts: FirstGoalFacts): FirstGoalView | null {
       ? view('play.goal.buy.home', { station: HOMESTEAD_FORGE_STATION })
       : view(`play.goal.${id}.back`, { station: 'passage' });
   }
+  // One World: under the street the other goals are a climb back up to the same street (no "head back" either).
+  if (facts.world && facts.areaId === DELVE && id !== 'delve') return firstGoal({ ...facts, areaId: HOME_TOWN });
   if (facts.areaId === DELVE) {
     // One World: under the town there is no exit to walk to; the way up is the way you dug (or the Travel map's recall).
     return id === 'delve' ? view('play.goal.delve.dig', null) : view(`play.goal.${id}.back`, facts.world ? null : { station: 'delve-exit' });
