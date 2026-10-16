@@ -64,8 +64,10 @@
     </div>
   }
 
-  <!-- Tap Glim (companion-host.ts): a 52 px target that rides over Glim in the world and opens its chat card. -->
-  @if (glimVoice.met && companions.tapAt && !panel && !storyCard && !storyScene && !glimTalk) {
+  <!-- Tap Glim (companion-host.ts): a 52 px target that rides over Glim in the world and opens its chat card.
+       Not in a Delve: there every click on a cell digs or places, Glim hovers beside the Keeper (right where a
+       chest or torch goes), and the target would swallow those clicks and taps. -->
+  @if (glimVoice.met && companions.tapAt && !state.delve && !panel && !storyCard && !storyScene && !glimTalk) {
     <button type="button" class="glim-tap" data-engine-ignore data-glim-tap [style.left.px]="companions.tapAt.x" [style.top.px]="companions.tapAt.y"
             [attr.aria-label]="t('glim.chat.tap')" [title]="t('glim.chat.tap')" (click)="openGlimChat()"></button>
   }
