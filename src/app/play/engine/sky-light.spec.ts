@@ -21,7 +21,7 @@ describe('SkyLight lamps', () => {
     sky.drawLamp(c, 150.1, 70.2, 40, false, 1, true);
     expect(draw.calls.count()).toBe(2);
     for (const call of draw.calls.all()) {
-      expect(call.args.length).toBe(3);
+      expect((call.args as unknown[]).length).toBe(3);
       expect(Number.isInteger(call.args[1])).toBeTrue();
       expect(Number.isInteger(call.args[2])).toBeTrue();
       expect((call.args[0] as HTMLCanvasElement).width).toBe(Math.round(80 * 1.75));
@@ -37,7 +37,7 @@ describe('SkyLight lamps', () => {
     const c = frame();
     const draw = spyOn(c, 'drawImage').and.callThrough();
     sky.drawLamp(c, 100, 80, 40, true);
-    expect(draw.calls.argsFor(0).length).toBe(5);
+    expect((draw.calls.argsFor(0) as unknown[]).length).toBe(5);
   });
 
   it('baked and live lay the same glow (within a resample rounding)', () => {
