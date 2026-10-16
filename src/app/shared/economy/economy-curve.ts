@@ -341,13 +341,30 @@ export const STORAGE_CURVE = {
  * game can pay in tenths of the bet without rounding.
  *
  * The highest bet open to a player is the highest rung at or under
- * max(`floorCap`, `incomeSeconds` × Gold/s): two minutes of income. A new
- * Keeper (no income yet) can bet 10, 20 or 50 — the first 10 Gold is a few
- * strikes in — and nobody can stake more than two minutes of their forge on one
- * play, so a game can never drain a bank built over hours.
- * `node scripts/economy-sim.mjs --reels` prints the cap at each stage.
+ *
+ *   max(`floorCap`, `incomeSeconds` × Gold/s, min(`purseShare` × purse, `purseIncomeSeconds` × Gold/s))
+ *
+ * Two minutes of income for everyone; and a Keeper with a deep purse may stake
+ * up to 1% of it on one play (owner 2026-10-15: "higher bets"), but never more
+ * than an hour of their income, so a hoard built over days cannot be staked
+ * against a forge that earns little: the cap follows the curve, not the pile.
+ * A new Keeper (no income yet) can bet 10, 20 or 50 — the first 10 Gold is a
+ * few strikes in. A bet above `incomeSeconds` of income is a high stake: the
+ * games ask for one more tap before taking it (the Max chip's confirm).
+ * `node scripts/economy-sim.mjs --reels|--cascade` prints the cap at each stage
+ * and proves autoplay at the cap cannot outrun the curve.
  */
-export const GAMES_BET = { min: 10, floorCap: 50, incomeSeconds: 120, top: 1e15 } as const;
+export const GAMES_BET = {
+  min: 10, floorCap: 50, incomeSeconds: 120, purseShare: 0.01, purseIncomeSeconds: 3600, top: 1e15,
+} as const;
+
+/**
+ * No single play of any machine pays more than this many times its bet (the
+ * Reels, the Eclipse Cascade, the realm machines). At the highest cap (an hour
+ * of income) a top win is a little over half a year of that income, at odds
+ * of one in millions; `economy-sim --cascade` checks autoplay at the cap.
+ */
+export const GAMES_MAX_WIN_X = 5_000;
 
 /** The whole ladder: 10, 20, 50, 100, 200, 500, … up to `top`. */
 export function gamesBetLadder(): number[] {
@@ -358,13 +375,21 @@ export function gamesBetLadder(): number[] {
   return out;
 }
 
-/** The highest bet open at this income. */
-export function gamesBetCap(goldPerSecond: number): number {
+/** The highest bet open at this income and purse (purse 0: the two-minute cap). */
+export function gamesBetCap(goldPerSecond: number, purse = 0): number {
   const gps = Number.isFinite(goldPerSecond) ? Math.max(0, goldPerSecond) : 0;
-  const limit = Math.max(GAMES_BET.floorCap, GAMES_BET.incomeSeconds * gps);
+  const gold = Number.isFinite(purse) ? Math.max(0, purse) : 0;
+  const deep = Math.min(GAMES_BET.purseShare * gold, GAMES_BET.purseIncomeSeconds * gps);
+  const limit = Math.max(GAMES_BET.floorCap, GAMES_BET.incomeSeconds * gps, deep);
   let cap: number = GAMES_BET.min;
   for (const rung of gamesBetLadder()) if (rung <= limit) cap = rung;
   return cap;
+}
+
+/** A high stake: more than `incomeSeconds` of income (and over the floor). The games ask once more before taking it. */
+export function gamesHighStake(bet: number, goldPerSecond: number): boolean {
+  const gps = Number.isFinite(goldPerSecond) ? Math.max(0, goldPerSecond) : 0;
+  return bet > Math.max(GAMES_BET.floorCap, GAMES_BET.incomeSeconds * gps);
 }
 
 /**

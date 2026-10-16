@@ -155,7 +155,7 @@ export class SeamSweeperComponent implements OnInit, OnDestroy {
 
   stepBet(dir: 1 | -1): void {
     if (this.playing) return;
-    this.bet = stepBet(this.bet, dir, this.gps);
+    this.bet = stepBet(this.bet, dir, this.gps, this.gold);
     this.draw();
   }
 
@@ -235,8 +235,8 @@ export class SeamSweeperComponent implements OnInit, OnDestroy {
   // ── View ──────────────────────────────────────────────────────────────────
 
   private draw(): void {
-    this.bets = betsOpen(this.gps);
-    this.bet = clampBet(this.bet, this.gps);
+    this.bets = betsOpen(this.gps, this.gold);
+    this.bet = clampBet(this.bet, this.gps, this.gold);
     const r = this.round;
     const dug = new Set(r?.state?.dug ?? []);
     const hit = r?.state?.hit;
@@ -269,7 +269,7 @@ export class SeamSweeperComponent implements OnInit, OnDestroy {
     this.nextLine = canDigMore(m, k)
       ? this.t('seam.next', { x: fx(seamMultiplier(m, k + 1)), p: pct(seamSafeChance(m, k)) })
       : '';
-    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps)) });
+    this.capLine = this.t('games.bet.cap', { n: this.fmt(gamesBetCap(this.gps, this.gold)) });
     this.buildLadder(m);
   }
 
