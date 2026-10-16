@@ -549,10 +549,14 @@ test.describe('Delve extras: gear in chests, played', () => {
     await walkTo(page, colX(16), 6);
     // Read the column once the Keeper has settled (the x read right after the
     // key-up can be a frame stale). Any column near 16 will do: X reaches as far as E.
-    const chestCol = Math.floor(await settleBetween(page, 15 * CELL + 4, 17 * CELL + CELL - 4) / CELL);
+    // The cell just behind the Keeper (east: they walked west): Glim flies a little ahead of the Keeper now, and
+    // its tap target covers the cells in front.
+    const chestCol = Math.floor(await settleBetween(page, 15 * CELL + 4, 17 * CELL + CELL - 4) / CELL) + 1;
     await chooseSlot(page, 'Digit6', 'Chest');
-    await clickCell(page, chestCol, 8, TUNNEL_FEET, 'right');
-    await expect(messageLine(page)).toContainText('Chest placed');
+    await expect(async () => {
+      await clickCell(page, chestCol, 8, TUNNEL_FEET, 'right');
+      await expect(messageLine(page)).toContainText('Chest placed', { timeout: 1500 });
+    }).toPass({ timeout: 15000 });
     await expect(page.locator('.prompt')).toContainText('Open the chest');
     await page.keyboard.press('e');
     await expect(page.locator('#place-title')).toHaveText('Chest');

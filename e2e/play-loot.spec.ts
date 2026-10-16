@@ -107,7 +107,8 @@ for (const size of ['desktop', 'phone'] as const) {
       const rare = RUNE_TIERS.rare.color;
       await expect.poll(async () => (await canvas(page).getAttribute('data-loot-labels')) ?? '', { timeout: 8000 }).toContain(rare);
       // Step back from it (gear waits to be taken; walking over it does not), then look.
-      await walkTo(page, (await playerX(page)) - 240, 40);
+      // One World draws the world at half scale: a phone's narrow view keeps the drop on screen only a short step away.
+      await walkTo(page, (await playerX(page)) - (size === 'phone' ? 110 : 240), 30);
       await page.waitForTimeout(600);
       expect(await drops(page)).toMatch(/(rare|unique):1/);
       await shot(page, `beam-rare-${size}`);
