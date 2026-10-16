@@ -175,7 +175,9 @@ for (const [label, size, touch] of [['desktop', { width: 1280, height: 800 }, fa
       await c.toTrunk(SNAG_X);
       await c.down('jump');
       await untilY(page, SNAG_TOP);
-      await c.down('right'); await c.repress('jump');
+      // Standing on the snag's crown: a direction + Jump kicks off it east; the hands catch the block's lip.
+      await c.up('jump'); await page.waitForTimeout(150);
+      await c.down('right'); await c.down('jump');
       await settleGrab(page, c, BLOCK);
       // To the block's east end, then up onto the slab (caught and mantled), and the spire the same way.
       await c.walkTo(BLOCK_END - 6, 8);
