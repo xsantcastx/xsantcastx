@@ -65,6 +65,13 @@ import { titleFor, titleText } from '../skills/skill-titles';
     .ht__dl dt { font-size: 0.72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--gf-faint); }
     .ht__dl dd { margin: 0.2rem 0 0; font-weight: 600; color: var(--gf-ink); }
     .ht__worn { color: var(--gf-accent-text); }
+    /* In a game window: MapleStory's stat block, label over value in a pixel card, three across; the heading is the tab. */
+    :host-context(.place) .ht { display: grid; gap: 8px; }
+    :host-context(.place) .ht h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+    :host-context(.place) .ht__dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; margin: 0; padding: 2px; background: var(--obsidian-0); box-shadow: var(--px-cell-rim); }
+    :host-context(.place) .ht__dl > div { padding: 6px 8px; background: var(--px-cell-bg); min-width: 0; }
+    :host-context(.place) .ht__dl dt { font: 600 9px/1.2 Orbitron, sans-serif; letter-spacing: .08em; }
+    :host-context(.place) .ht__dl dd { font: 700 13px/1.25 Orbitron, sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   `],
 })
 export class HubStatsComponent implements OnInit, OnDestroy {
