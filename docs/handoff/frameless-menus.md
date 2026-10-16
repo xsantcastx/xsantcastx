@@ -31,6 +31,7 @@ The rule itself is in `docs/agents/BRIEF.md` ("Menus").
 - **The Satchel** bag is five across and pages (15 a page, ◀ ▶), not a scrolling column. The Menu (☰) is names only (two across upright,
   three sideways), the descriptions are tooltips / `aria-describedby`; Sound and Pets lose their frame, their sentences go behind a pixel ?
   (Sound) and the pixel ×; Lune's / Kael's Slate strip is one button row (the line is its tooltip); the story card is words on the dim.
+- Also frameless pixel (merged from main): the Loot & Combat sheet (a pixel ? holds its sentences; two columns sideways), Glim's chat card and the Pets card (pixel ×, pixel buttons, no box).
 - Not rebuilt (still their own screens, frame gone, pixel ×): Character hub, Glass of Becoming, Codex, Skills, Quests, Waystone,
   Homestead build, Account & settings, Rift anchors, Glim talk and story scenes. Character / Glass still scroll their long pages. See "Next".
 
@@ -45,3 +46,10 @@ the moment the menu opens (so open + press = at most two taps), at every size. S
 
 Character, Glass, Codex, Skills, Quests, Homestead build and Account still scroll their long content: give each the same grid + card + page
 treatment (each is its own template), and a `noScroll` entry in the spec.
+
+## Gate (2026-10-16, on origin/main a39f7407 + 4b06a850)
+
+check:meaning clean, tsc app + spec, node tests 269/0, ds-adherence, i18n keys, nav audit, economy-sim, build (initial 1.24 MB), CSP hashes, Karma 2364/2364,
+full play suite 217 passed / 1 failed: `play-delve-extras` "a weapon goes into a chest" fails the same way (3/3) on a pristine origin/main build
+(it passed once there earlier, so it depends on the real-time world clock; not from the menus), then the 26 slate / casino / cabinets / clock /
+menus specs re-run green on the final merged build.
