@@ -46,10 +46,13 @@ async function climbToLedge(page: Page): Promise<void> {
   if (await playerY(page) === HIGH.y) { await walkTo(page, HIGH.x, 30); return; }
   await walkTo(page, LADDER_X, 10);
   await settleBetween(page, LADDER_X - 12, LADDER_X + 12);
-  await focusWorld(page);
-  await page.keyboard.down('KeyW');
-  try { await expect.poll(() => playerY(page), { timeout: 6000, intervals: [50] }).toBeLessThan(HIGH.y); }
-  finally { await page.keyboard.up('KeyW'); }
+  // Up the ladder; the glass showing the cabinet can take the keyboard for a moment (held keys are let go), so press again.
+  await expect(async () => {
+    await focusWorld(page);
+    await page.keyboard.down('KeyW');
+    try { await expect.poll(() => playerY(page), { timeout: 2500, intervals: [50] }).toBeLessThan(HIGH.y); }
+    finally { await page.keyboard.up('KeyW'); }
+  }).toPass({ timeout: 20000 });
   await walk(page, 'a', HIGH.x + 10);
   await page.waitForTimeout(300);
   await walkTo(page, HIGH.x, 12);
