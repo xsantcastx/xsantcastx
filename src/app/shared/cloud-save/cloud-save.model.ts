@@ -539,7 +539,127 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // and the ledger marks paid. Only grows: a union. See eclipse-save.model.ts.
     merge: mergeEclipse,
   },
+  // Two blobs that shipped after this registry and were never added to it, so
+  // both stayed device-local while the header said "Synced" — the failure the
+  // RPG-layer note above describes, again. Found by the cross-save audit
+  // (docs/handoff/cross-save.md).
+  {
+    key: 'godforge-challenges',
+    collection: 'progress',
+    doc: 'challenges',
+    label: 'Contract Board',
+    // Period-scoped counters: a structural max would carry yesterday's tallies
+    // into today's board. See mergeChallenges.
+    merge: mergeChallenges,
+  },
+  {
+    key: 'godforge-arena',
+    collection: 'progress',
+    doc: 'trials',
+    label: 'The Trials',
+    // Spendable points: a structural max would refund every spend. See
+    // mergeArenaState. (`progress/arena` is the older Arena Scores board.)
+    merge: mergeArenaState,
+  },
 ];
+
+/**
+ * The Contract Board (`ChallengeService`, `godforge-challenges`).
+ *
+ * Everything under `day*` belongs to `dayKey` and everything under `week*` to
+ * `weekKey`; a side whose period is older than the other's contributes nothing
+ * to that period. Within one period, counters take the larger tally, sets
+ * union, and claim receipts union — so a contract claimed on either device is
+ * claimed on both and cannot be paid twice. Lifetime fields keep the larger
+ * value; the streak follows the side that advanced it last; the log unions.
+ */
+export function mergeChallenges(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(remote)) return local ?? remote;
+  if (!isPlainObject(local)) return remote;
+  const str = (o: Record<string, unknown>, k: string) => (typeof o[k] === 'string' ? o[k] as string : '');
+  const num = (o: Record<string, unknown>, k: string) => (typeof o[k] === 'number' && Number.isFinite(o[k]) ? o[k] as number : 0);
+
+  const period = (keyField: string, fields: string[]) => {
+    const r = str(remote, keyField), l = str(local, keyField);
+    const key = r > l ? r : l;
+    const out: Record<string, unknown> = { [keyField]: key };
+    for (const f of fields) {
+      const rv = r === key ? remote[f] : undefined;
+      const lv = l === key ? local[f] : undefined;
+      out[f] = mergeDeep(rv, lv) ?? {};
+    }
+    return out;
+  };
+  const day = period('dayKey', ['day', 'daySets']);
+  const week = period('weekKey', ['week', 'weekSets']);
+
+  const dk = day['dayKey'] as string, wk = week['weekKey'] as string;
+  const current = (r: unknown) => {
+    if (typeof r !== 'string') return false;
+    const p = r.slice(r.lastIndexOf('@') + 1);
+    return p === dk || p === wk;
+  };
+  const claimed = [...new Set([...asArray(local['claimed']), ...asArray(remote['claimed'])])].filter(current);
+
+  const rs = str(remote, 'streakDay'), ls = str(local, 'streakDay');
+  const streakSide = rs > ls ? remote : rs < ls ? local : (num(remote, 'streak') > num(local, 'streak') ? remote : local);
+
+  const logKey = (e: unknown) => (isPlainObject(e) ? `${e['id']}|${e['at']}` : JSON.stringify(e));
+  const seen = new Set<string>();
+  const log = [...asArray(local['log']), ...asArray(remote['log'])]
+    .filter(e => { const k = logKey(e); if (seen.has(k)) return false; seen.add(k); return true; })
+    .sort((a, b) => String(isPlainObject(b) ? b['at'] : '').localeCompare(String(isPlainObject(a) ? a['at'] : '')))
+    // Mirrors LOG_CAP in challenge.service.ts (newest first), copied rather
+    // than imported to keep this eager file free of the board's chunk.
+    .slice(0, 40);
+
+  return {
+    ...local,
+    version: 1,
+    ...day,
+    ...week,
+    claimed,
+    streak: num(streakSide, 'streak'),
+    streakDay: str(streakSide, 'streakDay'),
+    boostUntil: Math.max(num(remote, 'boostUntil'), num(local, 'boostUntil')),
+    chests: Math.max(num(remote, 'chests'), num(local, 'chests')),
+    goldPaid: Math.max(num(remote, 'goldPaid'), num(local, 'goldPaid')),
+    log,
+  };
+}
+
+/**
+ * The Trials (`ArenaService`, `godforge-arena`).
+ *
+ * `points` is spendable and the blob does not record what was spent, so no
+ * merge can add the two balances up honestly. The balance, the live streak and
+ * the last-bout stamp come from whichever device fought most recently — the
+ * same "the device you are using wins" answer `mergePreference` gives. Every
+ * lifetime tally takes the larger value, per-tier wins take the larger count,
+ * and the settled-bout and once-only purchase receipts union, so no bout pays
+ * twice and no `once` stock can be bought again on the other device.
+ */
+export function mergeArenaState(remote: unknown, local: unknown): unknown {
+  if (!isPlainObject(remote)) return local ?? remote;
+  if (!isPlainObject(local)) return remote;
+  const num = (o: Record<string, unknown>, k: string) => (typeof o[k] === 'number' && Number.isFinite(o[k]) ? o[k] as number : 0);
+  const newer = num(remote, 'lastBoutAt') > num(local, 'lastBoutAt') ? remote : local;
+  const max = (k: string) => Math.max(num(remote, k), num(local, k));
+  return {
+    ...local,
+    version: 1,
+    points: num(newer, 'points'),
+    streak: num(newer, 'streak'),
+    lastBoutAt: num(newer, 'lastBoutAt'),
+    lifetimePoints: max('lifetimePoints'),
+    wins: max('wins'),
+    losses: max('losses'),
+    bestStreak: max('bestStreak'),
+    tierWins: mergeDeep(isPlainObject(remote['tierWins']) ? remote['tierWins'] : {}, isPlainObject(local['tierWins']) ? local['tierWins'] : {}),
+    purchases: [...new Set([...asArray(local['purchases']), ...asArray(remote['purchases'])])],
+    settled: [...new Set([...asArray(local['settled']), ...asArray(remote['settled'])])],
+  };
+}
 
 /** Roster ceiling. Mirrors MAX_ROSTER in explorer-roster.service.ts. */
 const MAX_ROSTER = 20;
