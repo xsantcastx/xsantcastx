@@ -17,17 +17,21 @@ import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
-import { defaultLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
+import { defaultLook, randomLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
-import { paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
+import { PAL, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { buildSeamworksSquare, type TdMap, type TdObject, type TdStall } from './seamworks-square';
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
 const REACH = 26;              // art px from a stall's interaction spot
 const FOOT = { w: 8, h: 4 };   // the Keeper's collision box at the feet (art px)
+const FOLK = 16;               // townsfolk strolling the square (the references' busy plaza)
+const FOLK_SPEED = 30;         // art px / s: a stroll, under half the Keeper's pace
 
 interface Person { painter: KeeperPainter | null; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; name?: string; moving: boolean; t: number }
+/** A townsperson: strolls a route to somewhere in town, lingers, picks somewhere new. */
+interface Folk extends Person { path: { x: number; y: number }[]; wait: number }
 interface Puff { x: number; y: number; age: number; life: number; r: number }
 
 export class TopDownEngine {
@@ -36,6 +40,9 @@ export class TopDownEngine {
   private readonly chunks = new Map<string, HTMLCanvasElement[]>();
   private readonly player: Person;
   private readonly keepers: Person[] = [];
+  private readonly folk: Folk[] = [];
+  /** Walkable street tiles (cobble, plank, dirt) where townsfolk start and stroll to. */
+  private readonly streets: number[] = [];
   private readonly keys = new Set<string>();
   private path: { x: number; y: number }[] = [];
   private arrive: (() => void) | null = null;
@@ -60,6 +67,8 @@ export class TopDownEngine {
   private lightSprite: HTMLCanvasElement | null = null;
   private glowSprite: HTMLCanvasElement | null = null;
   private readonly unbind: (() => void)[] = [];
+  /** The minimap's ground, one pixel per tile, painted once. */
+  private miniGround: HTMLCanvasElement | null = null;
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
     this.ctx = canvas.getContext('2d')!;
@@ -71,6 +80,7 @@ export class TopDownEngine {
       const npc = NPC_LOOKS[s.keeper.id];
       this.keepers.push({ painter: npc ? new KeeperPainter(npc.look, npc.gear, npc.garb) : null, x: s.keeper.x, y: s.keeper.y, face: 1, dir: 'down', name: s.keeper.name, moving: false, t: Math.random() * 4 });
     }
+    this.spawnFolk();
     this.bindInput();
     try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
   }
@@ -168,6 +178,7 @@ export class TopDownEngine {
     const gx = this.player.x + this.player.face * -14, gy = this.player.y - 44 + Math.sin(this.time * 2.4) * 3;
     this.glim.x += (gx - this.glim.x) * Math.min(1, dt * 4);
     this.glim.y += (gy - this.glim.y) * Math.min(1, dt * 4);
+    this.updateFolk(dt);
     // Keepers breathe and turn toward the Keeper when near.
     for (const k of this.keepers) { k.t += dt; if (Math.abs(this.player.x - k.x) < 120) k.face = this.player.x < k.x ? -1 : 1; }
     // The nearest stall within reach (the HUD's prompt and E).
@@ -300,6 +311,113 @@ export class TopDownEngine {
     this.walkTo(wx, wy);
   }
 
+  // ── Minimap (the round compass in the HUD's top-right, like the references) ──
+
+  /** Draw the town round the Keeper into a small square canvas (the HUD clips it round). */
+  drawMinimap(target: HTMLCanvasElement): void {
+    const c = target.getContext('2d');
+    if (!c) return;
+    const m = this.map;
+    if (!this.miniGround) {
+      const g = document.createElement('canvas'); g.width = m.cols; g.height = m.rows;
+      const gc = g.getContext('2d')!;
+      const col: Partial<Record<Ground, string>> = { grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0], water: PAL.water[0], ember: PAL.ember[0] };
+      for (let i = 0; i < m.ground.length; i++) { gc.fillStyle = col[m.ground[i]] ?? PAL.grass[0]; gc.fillRect(i % m.cols, Math.floor(i / m.cols), 1, 1); }
+      for (const o of m.objects) {
+        if (!o.block || (o.kind !== 'building' && o.kind !== 'tree')) continue;
+        gc.fillStyle = o.kind === 'building' ? PAL.roofRed[2] : PAL.leaf[2];
+        const fc = Math.floor(o.x / TILE), fr = Math.floor((o.y - 1) / TILE);
+        gc.fillRect(fc - Math.floor((o.block.w - 1) / 2), fr - o.block.h + 1, o.block.w, o.block.h);
+      }
+      this.miniGround = g;
+    }
+    const W = target.width, H = target.height, k = Math.max(2, Math.round(W / 22));   // ~22 tiles across
+    c.imageSmoothingEnabled = false;
+    c.fillStyle = PAL.grass[3]; c.fillRect(0, 0, W, H);
+    const px = this.player.x / TILE, py = this.player.y / TILE;
+    c.drawImage(this.miniGround, Math.round(W / 2 - px * k), Math.round(H / 2 - py * k), m.cols * k, m.rows * k);
+    const dot = (tx: number, ty: number, r: number, fill: string) => {
+      const x = Math.round(W / 2 + (tx / TILE - px) * k), y = Math.round(H / 2 + (ty / TILE - py) * k);
+      c.fillStyle = PAL.outline; c.fillRect(x - r - 1, y - r - 1, r * 2 + 2, r * 2 + 2);
+      c.fillStyle = fill; c.fillRect(x - r, y - r, r * 2, r * 2);
+    };
+    for (const s of m.stalls) dot(s.x, s.y, Math.max(1, k >> 1), PAL.glow);
+    for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(Math.round(W / 2 + (f.x / TILE - px) * k), Math.round(H / 2 + (f.y / TILE - py) * k), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
+    dot(this.player.x, this.player.y, Math.max(2, k - 1), '#ffffff');
+  }
+
+  // ── Fireflies: dusk and night, round the trees and the flower beds (the references' summer evenings) ──
+
+  private drawFireflies(): void {
+    const night = Math.max(this.darkness, this.dusk * .6);
+    if (night < .25) return;
+    const c = this.ctx, s = this.scale, cam = this.cam;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    let n = 0;
+    for (const o of this.map.objects) {
+      if (o.kind !== 'tree') continue;
+      for (let j = 0; j < 3; j++) {
+        const seed = (n++ * 7.31) % 6.283;
+        const t = this.time * (.35 + (j * .13)) + seed * 3;
+        const wx = o.x + Math.sin(t + j) * 18 + Math.sin(t * 2.3) * 4, wy = o.y - 18 - j * 7 + Math.cos(t * .8 + seed) * 10;
+        const sx = (wx - cam.x) * s, sy = (wy - cam.y) * s;
+        if (sx < -10 || sy < -10 || sx > this.canvas.width + 10 || sy > this.canvas.height + 10) continue;
+        const blink = Math.max(0, Math.sin(this.time * (1.7 + j * .4) + seed * 5));
+        if (blink < .15) continue;
+        c.globalAlpha = blink * Math.min(1, (night - .25) * 2);
+        c.fillStyle = '#fff6a8'; c.fillRect(Math.round(sx), Math.round(sy), s, s);
+        c.globalAlpha *= .35; c.fillStyle = '#ffd27a'; c.fillRect(Math.round(sx - s), Math.round(sy - s), s * 3, s * 3);
+      }
+    }
+    c.globalAlpha = 1;
+  }
+
+  // ── Townsfolk ──────────────────────────────────────────────────────────────
+
+  private spawnFolk(): void {
+    const m = this.map;
+    for (let i = 0; i < m.ground.length; i++) {
+      const g = m.ground[i];
+      if (m.walkable[i] && (g === 'cobble' || g === 'plank' || g === 'dirt')) this.streets.push(i);
+    }
+    if (!this.streets.length) return;
+    // Seeded, so the square looks the same on every visit (and in every screenshot).
+    let a = 0x5eed;
+    const rand = () => { a = (a + 0x6D2B79F5) >>> 0; let t = Math.imul(a ^ (a >>> 15), a | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+    for (let n = 0; n < FOLK; n++) {
+      const i = this.streets[Math.floor(rand() * this.streets.length)];
+      const x = (i % m.cols) * TILE + TILE / 2, y = Math.floor(i / m.cols) * TILE + TILE - 2;
+      // Not on top of the Keeper's arrival spot.
+      if (Math.hypot(x - m.spawn.x, y - m.spawn.y) < 40) { n--; continue; }
+      this.folk.push({ painter: new KeeperPainter(randomLook(rand)), x, y, face: rand() < .5 ? -1 : 1, dir: 'down', moving: false, t: rand() * 4, path: [], wait: rand() * 4 });
+    }
+  }
+  private updateFolk(dt: number): void {
+    const m = this.map;
+    for (const f of this.folk) {
+      f.t += dt;
+      if (!f.path.length) {
+        f.moving = false;
+        f.wait -= dt;
+        if (f.wait > 0) continue;
+        // Somewhere new: often a stall (browsing the market), otherwise any street within a few tiles' stroll.
+        let tx: number, ty: number;
+        if (Math.random() < .35 && m.stalls.length) { const s = m.stalls[Math.floor(Math.random() * m.stalls.length)]; tx = s.x + (Math.random() * 24 - 12); ty = s.y + 12; }
+        else { const i = this.streets[Math.floor(Math.random() * this.streets.length)]; tx = (i % m.cols) * TILE + TILE / 2; ty = Math.floor(i / m.cols) * TILE + TILE - 2; }
+        if (Math.hypot(tx - f.x, ty - f.y) > 260) { f.wait = .5; continue; }
+        f.path = this.route(f.x, f.y, tx, ty) ?? [];
+        f.wait = 1.5 + Math.random() * 4;
+        if (!f.path.length) continue;
+      }
+      const p = f.path[0], dx = p.x - f.x, dy = p.y - f.y, d = Math.hypot(dx, dy);
+      if (d < 2) { f.path.shift(); if (!f.path.length) { f.moving = false; f.dir = 'down'; } continue; }
+      const vx = dx / d, vy = dy / d, step = Math.min(d, FOLK_SPEED * dt);
+      f.x += vx * step; f.y += vy * step; f.moving = true;
+      if (Math.abs(vx) > .2) f.face = vx < 0 ? -1 : 1;
+      f.dir = Math.abs(vy) > Math.abs(vx) * 1.2 ? (vy > 0 ? 'down' : 'up') : 'side';
+    }
+  }
+
   // ── Smoke ──────────────────────────────────────────────────────────────────
 
   private updateSmoke(dt: number): void {
@@ -385,6 +503,7 @@ export class TopDownEngine {
       if (sp.roof) roofs.push({ o, sp });
     }
     for (const k of this.keepers) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawPerson(k, 'idle') });
+    for (const f of this.folk) if (inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -411,6 +530,7 @@ export class TopDownEngine {
     c.fillStyle = '#ffd27a'; c.fillRect(Math.round(this.glim.x) - 2, Math.round(this.glim.y), 1, 1); c.fillRect(Math.round(this.glim.x) + 2, Math.round(this.glim.y), 1, 1);
     // Night.
     this.drawLight();
+    this.drawFireflies();
     // The drag joystick: a ring where the thumb landed and a knob under it (screen space).
     if (this.joy?.active) {
       const r = this.canvas.getBoundingClientRect(), k = this.canvas.width / Math.max(1, r.width);
@@ -432,7 +552,7 @@ export class TopDownEngine {
     if (this.nearby) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 58 : 36), '#ffd27a');
   }
 
-  private drawPerson(p: Person, action: 'idle' | 'run'): void {
+  private drawPerson(p: Person, action: 'idle' | 'run' | 'walk'): void {
     const c = this.ctx, s = this.scale, cam = this.cam;
     // Soft shadow under the feet.
     c.fillStyle = 'rgba(30,18,26,.28)';

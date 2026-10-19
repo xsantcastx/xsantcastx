@@ -2698,6 +2698,10 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The minimap and the open full map, from the engine's explored cells (the HUD tick, 5 a second). */
   private drawMaps(): void {
+    if (this.topDown) {
+      const mini = (this.host.nativeElement as HTMLElement).querySelector<HTMLCanvasElement>('.td-mini canvas');
+      if (mini) (this.engine as unknown as { drawMinimap?: (c: HTMLCanvasElement) => void } | undefined)?.drawMinimap?.(mini);
+    }
     if (!this.state.delve) { if (this.map.open) this.closeMap(); return; }
     const host = this.host.nativeElement as HTMLElement;
     this.map.drawMini(host.querySelector<HTMLCanvasElement>('.map-mini canvas') ?? undefined);

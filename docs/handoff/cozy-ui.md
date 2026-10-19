@@ -21,7 +21,15 @@ References: `docs/design/refs/cozy/ref-1..6.jpg` (Tiles Survive: parchment quest
 `COZY_ONLY=satchel,vendor`) writes every menu at 390×844, 844×390, 1280×800 into `docs/handoff/cozy-ui/`.
 Only the latest set is kept in git. `homestead` cannot open over the top-down square (Infernal town only) — expected.
 
+- **Pixel lettering:** Pixelify Sans (OFL, `src/assets/fonts/PIXELIFY-SANS-OFL.txt`, owner approved) as `--font-pixel`;
+  `--font-game`, and `--font-ui` inside windows and the HUD, read it. Lore text keeps Cormorant.
+- **Desktop windows hug their contents** (Top Heroes reference `ref-7-inventory.jpg`): no wall of empty plate.
+- **Townsfolk** (td-engine.ts `spawnFolk`/`updateFolk`): 16 seeded villagers stroll the square by A*, browse stalls, linger.
+
+## From the owner's video (`docs/design/refs/cozy/video-*.jpg`)
+A list-style parchment QUESTS scroll top-left, a round compass minimap top-right, a slim wooden resource bar top-centre,
+a wooden hotbar bottom with a coin counter, a busy plaza of walkers, animated fountain, smoke, fireflies, seasons.
+
 ## Next
-- A pixel typeface (owner to approve adding an OFL font file) → set `--font-game`.
 - Round minimap top-right (ref), parchment for help cards and notes.
 - Desktop station windows are taller than their content (vendor): size to content.
