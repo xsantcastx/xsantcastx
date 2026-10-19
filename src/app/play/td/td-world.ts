@@ -8,7 +8,7 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn.
  */
-import { boulder, bush, flowerbed, hash, oreSeam, tree, TILE, type Ground } from './td-art';
+import { boulder, bush, flowerbed, hash, oreSeam, stump, tree, TILE, type Ground } from './td-art';
 import { buildSeamworksSquare, type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
 import type { MobSpawn } from './td-mobs';
@@ -41,6 +41,8 @@ export class TdWorld implements TdLevel {
   private readonly roadRow: number;
   private readonly roadCol: number;
   private readonly wild = new Map<string, WildChunk>();
+  /** Trees cut down, by tile, until when (epoch ms): a stump stands there till then. */
+  private readonly felled = new Map<number, number>();
 
   constructor() {
     this.town = buildSeamworksSquare();
@@ -92,14 +94,27 @@ export class TdWorld implements TdLevel {
   objectsIn(x0: number, y0: number, x1: number, y1: number): TdObject[] {
     const out: TdObject[] = [];
     for (const o of this.town.objects) if (o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) out.push(o);
-    const span = WORLD_CHUNK * TILE;
+    const span = WORLD_CHUNK * TILE, now = Date.now();
     for (let cy = Math.floor(y0 / span); cy <= Math.floor(y1 / span); cy++) {
       for (let cx = Math.floor(x0 / span); cx <= Math.floor(x1 / span); cx++) {
-        for (const o of this.chunkAt(cx, cy).objects) if (o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1) out.push(o);
+        for (const o of this.chunkAt(cx, cy).objects) {
+          if (o.x < x0 || o.x > x1 || o.y < y0 || o.y > y1) continue;
+          // A felled tree shows its stump until it grows back.
+          if (o.kind === 'tree' && (this.felled.get(this.key(Math.floor(o.x / TILE), Math.floor((o.y - 1) / TILE))) ?? 0) > now) out.push({ ...o, sprite: stump, kind: 'prop' });
+          else out.push(o);
+        }
       }
     }
     return out;
   }
+
+  /** The tree standing on this tile in the wilds (not a stump), if any. */
+  treeAt(c: number, r: number): TdObject | null {
+    if ((this.felled.get(this.key(c, r)) ?? 0) > Date.now()) return null;
+    return this.chunkAt(Math.floor(c / WORLD_CHUNK), Math.floor(r / WORLD_CHUNK)).objects.find(o => o.kind === 'tree' && Math.floor(o.x / TILE) === c && Math.floor((o.y - 1) / TILE) === r) ?? null;
+  }
+  /** Fell a tree: a stump for `ms`, then it grows back. */
+  fell(c: number, r: number, ms: number): void { this.felled.set(this.key(c, r), Date.now() + ms); }
 
   /** Creature spawns in the wild chunks under the rectangle (none near town: the square is safe). */
   spawnsIn(x0: number, y0: number, x1: number, y1: number): MobSpawn[] {
