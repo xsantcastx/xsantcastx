@@ -37,6 +37,8 @@ import { HomesteadService } from './homestead/homestead.service';
 import { HomesteadColumnComponent } from './homestead/homestead-column.component';
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
+import { createTopDownEngine, topDownGate } from './td/td-engine';
+import type { EngineOptions } from './engine/engine.model';
 import { SeamworksEngine, EngineInput, EngineState, HeldItem, InteractionTarget, KeeperLoadout, KillEvent, PlaceableId, PlaceEvent, ToolTiers, UseEvent, WorldActionEvent } from './engine/engine';
 import { ChestGearRow, ChestMove, ChestRow, DelveChestService } from '../shared/delve/delve-chest.service';
 import { isChestHolder } from '../shared/delve/delve-save.model';
@@ -779,7 +781,12 @@ export class SideScrollerComponent implements OnDestroy {
     this.i18n.register(ONE_WORLD_I18N);
     this.i18n.register(TRAVEL_MAP_I18N);
     this.keeperKey = ''; this.marksKey = '';
-    this.engine = new SeamworksEngine(canvas, {
+    // Top-down (docs/design/top-down.md): behind the `?td=1` gate, the Seamworks square is walked in the new
+    // 3/4 view; same options and callbacks, so every panel, quest and service below keeps working.
+    const makeEngine = this.browser && topDownGate() && this.town.id === 'infernal'
+      ? (c: HTMLCanvasElement, o: EngineOptions) => createTopDownEngine(c, o) as unknown as SeamworksEngine
+      : (c: HTMLCanvasElement, o: EngineOptions) => new SeamworksEngine(c, o);
+    this.engine = makeEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
       // Keeper name tags and their one line of chatter (world/life.i18n.ts).
