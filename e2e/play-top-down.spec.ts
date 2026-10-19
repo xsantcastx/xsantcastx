@@ -1,8 +1,8 @@
 /**
  * play-top-down.spec.ts — the top-down Seamworks square (docs/design/top-down.md, Phase 1),
  * behind the `?td=1` gate: the Keeper walks 8 ways, keepers stand at their stalls, E opens
- * the stall in reach through the same panels the side view used, and the side view's arrow
- * and jump buttons give way to the drag joystick.
+ * the stall in reach through the same panels the side view used, the side view's arrow
+ * and jump buttons give way to the drag joystick, and a place not yet rebuilt is a side trip.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { seed } from './play-helpers';
@@ -44,6 +44,20 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
     });
   });
 }
+
+test('a place the square cannot run yet is a side trip to the old view, and the button brings the Keeper back', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openTopDown(page);
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /cinder ore/i }).first().click();
+  // The old view: the Keeper stands on its floor, and the way home shows.
+  await expect.poll(() => py(page), { timeout: 15000 }).toBeGreaterThan(560);
+  await expect(page.locator('.stage')).not.toHaveClass(/stage--td/);
+  await page.locator('.square-back').click();
+  await expect.poll(() => py(page), { timeout: 15000 }).toBeLessThan(560);
+  await expect(page.locator('.stage')).toHaveClass(/stage--td/);
+  await expect(page.locator('.square-back')).toHaveCount(0);
+});
 
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});

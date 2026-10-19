@@ -8,6 +8,12 @@
 export const FIRST_GOALS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.goal.label': { en: 'Goal {{n}} of {{total}}', es: 'Objetivo {{n}} de {{total}}' },
   'play.goal.go': { en: 'Show me', es: 'Llevame' },
+  // The quest scroll's checklist (top-down HUD): the four goals as short names, ticked as the save shows them done.
+  'play.goal.quests': { en: 'Quests', es: 'Misiones' },
+  'play.goal.title.buy': { en: 'Buy a building', es: 'Compra un edificio' },
+  'play.goal.title.craft': { en: 'Forge a blade', es: 'Forja una hoja' },
+  'play.goal.title.hunt': { en: 'Defeat a Rivet Maw', es: 'Derrota una Fauce' },
+  'play.goal.title.delve': { en: 'Dig in the Delve', es: 'Excava en la Sima' },
   'play.goal.goAria': { en: 'Walk there: {{goal}}', es: 'Ir alli: {{goal}}' },
 
   'play.goal.buy.town': { en: 'Buy your first building. Walk to Your Homestead.', es: 'Compra tu primer edificio. Ve a Tu Hacienda.' },

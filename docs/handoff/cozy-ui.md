@@ -33,3 +33,10 @@ a wooden hotbar bottom with a coin counter, a busy plaza of walkers, animated fo
 ## Next
 - Round minimap top-right (ref), parchment for help cards and notes.
 - Desktop station windows are taller than their content (vendor): size to content.
+
+## The flip (2026-10-19, later)
+- Top-down is the default; the side view's chrome (wordmark, the sentence line, Return to camp, Restart hunt, Keys, the HP
+  plate, the attack/dodge buttons, One World preview) is hidden in the square (`.stage--td`).
+- Side trips (top-down.md §5) bridge the places not yet rebuilt; `e2e/play-top-down.spec.ts` covers the round trip.
+- The river is water now (owner asked why it was red: it was lava for the fire realm; the forges carry that now).
+- The goal scroll lists all four first goals with pixel tick boxes (desktop: names; phones: four boxes).

@@ -11,7 +11,7 @@
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import { TOWN_KEEPERS } from '../world/life';
 import type { StationDef } from '../world/world.model';
-import { brazierFountain, forgeHearth, waystone as waystone_, bench, barrel, cart, crate, fence, flowerbed, hash, hearthFire, house, lamp, signpost, stall, tree, type Ground, type Sprite, TILE } from './td-art';
+import { beaconPillar, mineShaft, oreSeam, brazierFountain, forgeHearth, waystone as waystone_, bench, barrel, cart, crate, fence, flowerbed, hash, hearthFire, house, lamp, signpost, stall, tree, type Ground, type Sprite, TILE } from './td-art';
 
 export interface TdObject {
   sprite: () => Sprite;
@@ -68,10 +68,10 @@ export function buildSeamworksSquare(): TdMap {
   for (let r = 0; r < ROWS; r++) { set(cx - 1, r, 'cobble'); set(cx, r, 'cobble'); set(cx + 1, r, 'cobble'); }
   for (let c = 0; c < COLS; c++) { set(c, cy, 'cobble'); set(c, cy + 1, 'cobble'); }
   for (let c = 0; c < 8; c++) for (const r of [cy - 1, cy + 2]) set(c, r, 'dirt');
-  // The ember river across the south, a plank bridge where the street crosses it.
+  // The river across the south (blue water: the cozy town, owner 2026-10-19; the realm's fire lives in its forges), a plank bridge where the street crosses it.
   for (let c = 0; c < COLS; c++) {
     const bend = Math.round(Math.sin(c / 5) * 1.2);
-    for (const r of [27 + bend, 28 + bend, 29 + bend]) set(c, r, 'ember');
+    for (const r of [27 + bend, 28 + bend, 29 + bend]) set(c, r, 'water');
     set(c, 26 + bend, 'sand'); set(c, 30 + bend, 'sand');
   }
   for (let r = 25; r < 32; r++) for (const c of [cx - 1, cx, cx + 1]) set(c, r, 'plank');
@@ -114,6 +114,20 @@ export function buildSeamworksSquare(): TdMap {
   const waystone = station('waystone');
   const waystoneSprite = () => waystone_();
   if (waystone) { add(waystoneSprite, tx(27), ty(8), { w: 1, h: 1 }); stalls.push({ station: waystone, x: tx(27), y: ty(8) + 6 }); }
+
+  // The ways out (docs/handoff/cozy-ui.md): the Cinder Ore seam and the mine head on the west lane, the Eclipse Beacon at
+  // the north road's end, the East Passage sign. Until each is rebuilt top-down, using one hands the Keeper to the old
+  // view of that place and back again (the play component's side trip).
+  const exit = (id: string, sprite: () => Sprite, c: number, r: number, block?: { w: number; h: number }) => {
+    const st = station(id);
+    if (!st) return;
+    add(sprite, tx(c), ty(r), block);
+    stalls.push({ station: st, x: tx(c), y: ty(r) + 6 });
+  };
+  exit('ore', oreSeam, 6, cy - 2, { w: 2, h: 1 });
+  exit('delve', mineShaft, 2, cy, { w: 2, h: 1 });
+  exit('beacon', beaconPillar, 25, 2, { w: 1, h: 1 });
+  exit('passage', signpost, 42, cy - 1);
 
   // The heart of the square: the brazier fountain, the Hearth fire, benches facing them.
   add(brazierFountain, tx(cx) - T / 2, ty(cy - 1), { w: 3, h: 2 });

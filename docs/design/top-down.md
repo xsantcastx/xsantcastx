@@ -135,7 +135,15 @@ ruins, camps, daily mysteries.
 
 ---
 
-## 5. Phases (each ships behind the `topDown` gate; side-view stays default until P5)
+## 5. Phases
+
+**Status 2026-10-19 — the flip came early (owner: "now the main game is top to bottom style").** Top-down is the default
+(`topDownGate()`: on unless `?td=0`). The square hides the side view's chrome (`.stage--td`). A place the square cannot run
+yet (the ore seam, the Delve shaft, the Beacon, the East Passage, the Homestead, a hunt target) is a **side trip**: the play
+component swaps in the old engine at that station, and swaps back to the square when the Keeper returns to town from
+elsewhere or presses "Back to the square". Each later phase shrinks the side trips until P8 removes them. Side-view
+specs keep the side view (`seed()` writes `eclipse-td: '0'`); top-down specs seed `'1'`.
+
 
 | Phase | Scope | Done when |
 |---|---|---|

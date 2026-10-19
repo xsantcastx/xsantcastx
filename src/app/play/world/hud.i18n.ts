@@ -38,6 +38,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.act.walkCloser': { en: 'Walk closer to a landmark', es: 'Acercate a un lugar senalado' },
   'play.hud.interact': { en: 'Interact', es: 'Interactuar' },
   'play.hud.keys': { en: 'Keys', es: 'Teclas' },
+  'play.hud.backToSquare': { en: 'Back to the square', es: 'Volver a la plaza' },
   'play.hud.character': { en: 'Character & stats', es: 'Personaje y estadisticas' },
   'play.hud.characterBlurb': { en: 'Your Keeper\'s stats and tools', es: 'Las estadisticas y herramientas de tu Guardian' },
 
