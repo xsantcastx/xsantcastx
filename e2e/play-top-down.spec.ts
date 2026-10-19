@@ -55,16 +55,19 @@ test('the Cinder Ore seam is mined in the square (no detour into the old view)',
   await expect.poll(() => py(page)).toBeLessThan(560);
 });
 
-test('the mine shaft never drops the Keeper into the old 2D view, and nothing throws', async ({ page }) => {
+test('down the mine shaft to the hand-drawn Ember Mine and up its ladder, all top-down, nothing throws', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
   await openTopDown(page);
   await page.locator('.places-toggle').first().click();
   await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
-  await expect(page.locator('.td-toast')).toBeVisible({ timeout: 20000 });
+  await expect(canvas(page)).toHaveAttribute('data-area', /ember mine/i, { timeout: 20000 });
   await expect(page.locator('.stage')).toHaveClass(/stage--td/);
   await expect(page.locator('.stage')).not.toHaveClass(/stage--delve/);
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /ladder up/i }).first().click();
+  await expect(canvas(page)).toHaveAttribute('data-area', /basalt seamworks/i, { timeout: 20000 });
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
