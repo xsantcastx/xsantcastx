@@ -15,7 +15,7 @@
 import type { EngineOptions, EngineState, EngineInput } from '../engine/engine.model';
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
-import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
+import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
@@ -24,7 +24,8 @@ import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
-import { ABILITIES, MobSystem, mobSheet, type AbilityId, type Mob } from './td-mobs';
+import { MobSystem, mobSheet, type Mob } from './td-mobs';
+import { MAX_MANA, SKILLS, defaultBar, type SkillId } from './td-skills';
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
@@ -176,11 +177,27 @@ export class TopDownEngine {
     const t = this.treeNear();
     if (t) this.startChop(t.c, t.r, t.x, t.y);
   }
-  /** Use an ability (keys 1–4, the ability bar). Returns why not, or null when it went off. */
-  useAbility(id: AbilityId): 'cooldown' | 'nofoe' | null { return this.paused ? 'cooldown' : this.mobs.useAbility(id); }
-  /** Each ability's cooldown left, 0–1, for the ability bar. */
-  get abilities(): readonly { id: AbilityId; key: string; left: number }[] {
-    return ABILITIES.map(a => ({ id: a.id, key: a.key, left: this.mobs.cooldowns[a.id] / a.cd }));
+  /** The skills on keys 1–4 (the Spellbook assigns them). */
+  private bar: SkillId[] = defaultBar('warlock');
+  /** Use a skill on the bar (by id, or by slot '1'–'4'). Returns why not, or null when it went off. */
+  useAbility(idOrSlot: string): 'cooldown' | 'nofoe' | 'mana' | null {
+    const id = /^[1-4]$/.test(idOrSlot) ? this.bar[Number(idOrSlot) - 1] : idOrSlot as SkillId;
+    if (!id) return null;
+    return this.paused ? 'cooldown' : this.mobs.useAbility(id);
+  }
+  /** The bar for the HUD: each slot's skill, cooldown left (0–1), and whether there is mana for it. */
+  get abilities(): readonly { id: string; key: string; left: number; mana: number; ready: boolean }[] {
+    return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? (this.mobs.cooldowns[id] ?? 0) / SKILLS[id].cd : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
+  }
+  get mana(): number { return this.mobs.mana; }
+  get maxMana(): number { return MAX_MANA; }
+  get aura(): SkillId | null { return this.mobs.aura; }
+  get ward(): number { return this.mobs.ward; }
+  /** The Spellbook's choices: the bar (up to four actives) and the running aura. */
+  setSkillLoadout(bar: readonly string[], aura: string | null): void {
+    const ok = bar.filter((id): id is SkillId => id in SKILLS && SKILLS[id as SkillId].kind === 'active').slice(0, 4);
+    if (ok.length) this.bar = ok;
+    this.mobs.aura = aura && aura in SKILLS && SKILLS[aura as SkillId].kind === 'aura' ? aura as SkillId : null;
   }
   get hasted(): boolean { return this.mobs.haste > 0; }
 
@@ -435,8 +452,7 @@ export class TopDownEngine {
       // E opens the stall in reach (the side view handled E inside its own engine).
       if (down && !e.repeat && (k === 'e' || k === 'enter') && this.nearby) { e.preventDefault(); this.interact(); return; }
       if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
-      const ab = ABILITIES.find(a => a.key === k);
-      if (ab) { if (down && !e.repeat) { const why = this.useAbility(ab.id); if (why) this.say(`play.td.ability.${why}`); } return; }
+      if (/^[1-4]$/.test(k)) { if (down && !e.repeat) { const why = this.useAbility(k); if (why) this.say(`play.td.ability.${why}`); } return; }
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
       if (down) { this.keys.add(k); this.path = []; } else this.keys.delete(k);
     };
@@ -616,7 +632,8 @@ export class TopDownEngine {
     this.chaseTimer -= dt;
     if (t && this.chaseTimer <= 0 && !this.keys.size && !this.joy?.active) {
       this.chaseTimer = .4;
-      if (Math.hypot(t.x - this.player.x, t.y - this.player.y) > 20) { const route = this.route(this.player.x, this.player.y, t.x, t.y); if (route) { this.path = route; this.arrive = null; } }
+      // Close in only to the staff's range (a Warlock fights from a distance).
+      if (Math.hypot(t.x - this.player.x, t.y - this.player.y) > this.mobs.range - 12) { const route = this.route(this.player.x, this.player.y, t.x, t.y); if (route) { this.path = route; this.arrive = null; } }
       else this.path = [];
     }
     this.mobs.update(dt);
@@ -812,11 +829,49 @@ export class TopDownEngine {
           c.fillStyle = i % 2 ? '#c99657' : '#4f9440';
           c.fillRect(Math.round(X + e.dir * (i * 3 + t * 14) - 4), Math.round(Y - t * 10 + t * t * 26 + i), 2, 2);
         }
+      } else if (e.kind === 'drain') {
+        // A red thread of life pulled from the foe to the Keeper, beads running along it.
+        const tx = e.tx ?? X, ty = e.ty ?? Y;
+        for (let i = 0; i <= 10; i++) {
+          const k = i / 10, bx = Math.round(X + (tx - X) * k), by = Math.round(Y + (ty - Y) * k + Math.sin(k * 6 + t * 12) * 3);
+          c.fillStyle = (i + Math.floor(t * 20)) % 3 === 0 ? '#7fe08a' : '#e2452a'; c.fillRect(bx, by, 2, 2);
+        }
+      } else if (e.kind === 'curse') {
+        c.fillStyle = '#b06bff';
+        c.fillRect(X - 4, Y - 4, 8, 1); c.fillRect(X - 4, Y + 3, 8, 1); c.fillRect(X - 4, Y - 4, 1, 8); c.fillRect(X + 3, Y - 4, 1, 8);
+        c.fillStyle = '#ff6a2a'; c.fillRect(X - 1, Y - 1, 2, 2);
+      } else if (e.kind === 'ward') {
+        c.strokeStyle = '#c8a8ff'; c.lineWidth = 2; c.beginPath(); c.ellipse(X, Y, 10 + t * 8, 14 + t * 8, 0, 0, Math.PI * 2); c.stroke();
+      } else if (e.kind === 'bolt-hit') {
+        c.fillStyle = '#ffd25a';
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; c.fillRect(Math.round(X + Math.cos(a) * t * 10), Math.round(Y + Math.sin(a) * t * 10), 2, 2); }
       } else {
         c.fillStyle = '#e9dcc0'; c.fillRect(X - 2, Math.round(Y - 2 - t * 4), Math.round(4 - t * 2), 2);
       }
     }
     c.globalAlpha = 1;
+    // Bolts in flight: an ember core in a violet glow, a short trail.
+    for (const b of this.mobs.bolts) {
+      const X = Math.round(b.x), Y = Math.round(b.y);
+      c.globalAlpha = .45; c.fillStyle = '#b06bff'; c.fillRect(X - 3, Y - 3, 6, 6);
+      c.globalAlpha = 1; c.fillStyle = '#ff8a2e'; c.fillRect(X - 2, Y - 2, 4, 4); c.fillStyle = '#fff2a8'; c.fillRect(X - 1, Y - 1, 2, 2);
+    }
+    // The Dark Ward round the Keeper while it holds; curse marks over cursed foes.
+    if (this.mobs.ward > 0) {
+      c.globalAlpha = .35 + Math.sin(this.time * 5) * .1; c.strokeStyle = '#b06bff'; c.lineWidth = 2;
+      c.beginPath(); c.ellipse(Math.round(this.player.x), Math.round(this.player.y - 16), 13, 19, 0, 0, Math.PI * 2); c.stroke(); c.globalAlpha = 1;
+    }
+    for (const m of this.mobs.mobs) if (m.cursed > 0) {
+      c.fillStyle = Math.floor(this.time * 6) % 2 ? '#b06bff' : '#ff6a2a';
+      c.fillRect(Math.round(m.x - 1 + Math.sin(this.time * 3) * 5), Math.round(m.y - m.def.h - 8 - (this.time * 8) % 6), 2, 2);
+    }
+    // The Aura of Embers: a slow ring of sparks on the ground round the Keeper.
+    if (this.mobs.aura === 'aura-embers' || this.mobs.aura === 'aura-siphon') {
+      const col = this.mobs.aura === 'aura-embers' ? '#ff8a2e' : '#5fd35a', r = SKILLS['aura-embers'].vars['radius'] * TILE;
+      c.globalAlpha = .55; c.fillStyle = col;
+      for (let i = 0; i < 10; i++) { const a = i / 10 * Math.PI * 2 + this.time * .6; c.fillRect(Math.round(this.player.x + Math.cos(a) * r * .55), Math.round(this.player.y - 2 + Math.sin(a) * r * .3), 2, 1); }
+      c.globalAlpha = 1;
+    }
   }
 
   /** Names and health over creatures, labels over gear on the ground, the numbers that float up. */
@@ -848,7 +903,14 @@ export class TopDownEngine {
     c.fillRect(Math.round(p.x - 6), Math.round(p.y - 2), 12, 3);
     if (!p.painter) return;
     const acting = p === this.player && this.actT > 0;
-    if (p.dir !== 'side' && !acting) {
+    if (p === this.player && (p.dir !== 'side' || acting)) {
+      // The Warlock: front/back views with the staff in hand; every cast faces the camera, staff raised.
+      const sheet = frontSheet(p.painter, true), row = acting ? 0 : p.dir === 'down' ? 0 : 1;
+      const f = acting ? CAST_FRAME : this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
+      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
+      return;
+    }
+    if (p.dir !== 'side') {
       const sheet = frontSheet(p.painter), row = p.dir === 'down' ? 0 : 1;
       const f = p === this.player && this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);

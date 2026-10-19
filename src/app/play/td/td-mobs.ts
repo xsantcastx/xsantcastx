@@ -13,6 +13,7 @@
 import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
+import { MANA_REGEN, MAX_MANA, SKILLS, type SkillId } from './td-skills';
 
 export interface MobDef {
   id: string;
@@ -90,6 +91,9 @@ export interface Mob {
   x: number; y: number;
   hx: number; hy: number;
   hp: number;
+  /** Ember Curse: seconds left, and the burn's tick timer. */
+  cursed: number;
+  burnT: number;
   face: 1 | -1;
   t: number;
   cd: number;
@@ -114,16 +118,11 @@ export interface Drop {
 export interface Floater { x: number; y: number; text: string; color: string; age: number }
 
 /** A short-lived picture in the world: a slash, a fire ring, a heal, wood chips, haste dust. */
-export interface Effect { kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust'; x: number; y: number; age: number; life: number; dir: number }
+export interface Effect { kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust' | 'drain' | 'curse' | 'ward' | 'bolt-hit'; x: number; y: number; age: number; life: number; dir: number; tx?: number; ty?: number }
 
-/** The Keeper's abilities, Tibia's spells made cozy: one key each (1–4), a cooldown each, no mana to juggle. */
-export type AbilityId = 'mend' | 'strike' | 'wave' | 'haste';
-export const ABILITIES: readonly { id: AbilityId; key: string; cd: number }[] = [
-  { id: 'mend', key: '1', cd: 6 },
-  { id: 'strike', key: '2', cd: 5 },
-  { id: 'wave', key: '3', cd: 10 },
-  { id: 'haste', key: '4', cd: 20 },
-];
+/** A bolt in flight toward a creature. */
+export interface Bolt { x: number; y: number; to: Mob; dmg: number; age: number }
+
 
 export const RARITY_COLOR: Readonly<Record<LootRarity, string>> = {
   common: '#f3e7cf', uncommon: '#7fd56a', rare: '#5fb6ff', epic: '#c48bff', legendary: '#ffb347', mythic: '#ff6dd7', singular: '#4dffe0',
@@ -153,9 +152,20 @@ export class MobSystem {
   readonly drops: Drop[] = [];
   readonly floaters: Floater[] = [];
   readonly effects: Effect[] = [];
-  readonly cooldowns: Record<AbilityId, number> = { mend: 0, strike: 0, wave: 0, haste: 0 };
-  /** Seconds of Haste left. */
+  readonly bolts: Bolt[] = [];
+  /** Seconds each skill still cools. */
+  readonly cooldowns: Partial<Record<SkillId, number>> = {};
+  mana = MAX_MANA;
+  /** The running aura (one at a time, D2), or none. */
+  aura: SkillId | null = 'aura-embers';
+  /** Dark Ward: damage it still absorbs, seconds left. */
+  ward = 0;
+  wardT = 0;
+  /** Seconds of Haste left (kept for kits that have it). */
   haste = 0;
+  /** The basic attack reaches this far (art px): the staff's bolt (7 tiles). */
+  readonly range = SKILLS['ember-bolt'].vars['range'] * TILE;
+  private auraT = 0;
   target: Mob | null = null;
   attacking = false;
   private swing = 0;
@@ -176,7 +186,7 @@ export class MobSystem {
       if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) continue;
       const def = MOBS[s.type];
       if (!def) continue;
-      this.mobs.push({ key: s.key, def, x: s.x, y: s.y, hx: s.x, hy: s.y, hp: def.hp, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3 });
+      this.mobs.push({ key: s.key, def, x: s.x, y: s.y, hx: s.x, hy: s.y, hp: def.hp, cursed: 0, burnT: 0, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3 });
     }
   }
   /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
@@ -203,14 +213,37 @@ export class MobSystem {
     if (this.target && (this.target.hp <= 0 || !this.mobs.includes(this.target))) this.target = null;
     let foe = this.target;
     if (!foe && this.attacking) {
-      let bd = REACH + 6;
+      let bd = this.range;
       for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d < bd) { bd = d; foe = m; } }
     }
-    if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= REACH) {
-      this.swing = .65;
-      this.hitFoe(foe, rnd(9, 15), '#ffffff');
-      this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .22, dir: foe.x < p.x ? -1 : 1 });
+    // The Warlock's staff: an ember bolt flies to the foe in range (Tibia's auto-attack, at a distance).
+    const bolt = SKILLS['ember-bolt'];
+    if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
+      this.swing = bolt.cd;
+      this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bolt.vars['min'], bolt.vars['max']), age: 0 });
       this.host.swung(foe);
+    }
+    for (let i = this.bolts.length - 1; i >= 0; i--) {
+      const b = this.bolts[i], tx = b.to.x, ty = b.to.y - b.to.def.h / 2;
+      b.age += dt;
+      const dx = tx - b.x, dy = ty - b.y, len = Math.hypot(dx, dy), step = 190 * dt;
+      if (!this.mobs.includes(b.to) || b.age > 2) { this.bolts.splice(i, 1); continue; }
+      if (len <= step + 2) {
+        this.bolts.splice(i, 1);
+        this.effects.push({ kind: 'bolt-hit', x: tx, y: ty, age: 0, life: .25, dir: 1 });
+        this.hitFoe(b.to, b.dmg, '#ffd25a');
+      } else { b.x += dx / len * step; b.y += dy / len * step; }
+    }
+    // The aura (D2): it works on everything near, every second, while it is chosen.
+    this.auraT -= dt;
+    const auraTick = this.auraT <= 0;
+    if (auraTick) this.auraT = 1;
+    for (const m of [...this.mobs]) {
+      if (m.cursed > 0) {
+        m.cursed -= dt; m.burnT -= dt;
+        if (m.burnT <= 0) { m.burnT = 1; this.hitFoe(m, SKILLS['ember-curse'].vars['dps'], '#ff9a4a'); if (m.hp <= 0) continue; }
+      }
+      if (auraTick && this.aura === 'aura-embers' && Math.hypot(m.x - p.x, m.y - p.y) <= SKILLS['aura-embers'].vars['radius'] * TILE) this.hitFoe(m, SKILLS['aura-embers'].vars['dps'], '#ff8a2e');
     }
     for (const m of this.mobs) {
       m.t += dt; m.cd -= dt; m.hit = Math.max(0, m.hit - dt);
@@ -237,9 +270,11 @@ export class MobSystem {
       // A bite when the Keeper is in its reach.
       if (d <= MOB_REACH && m.cd <= 0) {
         m.cd = m.def.rate;
-        const n = rnd(m.def.dmg[0], m.def.dmg[1]);
-        this.host.hurtPlayer(n);
-        this.float(p.x, p.y - 34, `${n}`, '#ff5a4a');
+        let n = rnd(m.def.dmg[0], m.def.dmg[1]);
+        // A cursed foe bites weaker; the Dark Ward drinks what it can.
+        if (m.cursed > 0) n = Math.max(1, Math.round(n * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
+        if (this.ward > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
+        if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, '#ff5a4a'); }
       }
     }
     // Walk over loot to pick it up.
@@ -247,11 +282,18 @@ export class MobSystem {
       const g = this.drops[i];
       g.age += dt;
       if (g.age > DESPAWN) { this.drops.splice(i, 1); continue; }
+      // Coins come to the Keeper (a Warlock kills from afar); gear and materials wait to be walked to.
+      if (g.coins > 0 && g.age > .6) {
+        const dx = p.x - g.x, dy = p.y - g.y, d = Math.hypot(dx, dy);
+        if (d < 8 * TILE && d > 1) { const v = Math.min(d, (90 + g.age * 60) * dt); g.x += dx / d * v; g.y += dy / d * v; }
+      }
       if (Math.hypot(g.x - p.x, g.y - p.y) < 22 && g.age > .4) this.pick(g, i);
     }
     for (let i = this.floaters.length - 1; i >= 0; i--) { const f = this.floaters[i]; f.age += dt; f.y -= 14 * dt; if (f.age > 1) this.floaters.splice(i, 1); }
     for (let i = this.effects.length - 1; i >= 0; i--) { const e = this.effects[i]; e.age += dt; if (e.age > e.life) this.effects.splice(i, 1); }
-    for (const a of ABILITIES) this.cooldowns[a.id] = Math.max(0, this.cooldowns[a.id] - dt);
+    for (const k of Object.keys(this.cooldowns) as SkillId[]) this.cooldowns[k] = Math.max(0, (this.cooldowns[k] ?? 0) - dt);
+    this.mana = Math.min(MAX_MANA, this.mana + MANA_REGEN * dt);
+    if (this.wardT > 0) { this.wardT -= dt; if (this.wardT <= 0) this.ward = 0; }
     if (this.haste > 0) {
       this.haste = Math.max(0, this.haste - dt);
       if (Math.random() < dt * 8) this.effects.push({ kind: 'dust', x: p.x + rnd(-4, 4), y: p.y, age: 0, life: .4, dir: 1 });
@@ -260,40 +302,51 @@ export class MobSystem {
 
   private hitFoe(foe: Mob, dmg: number, color: string): void {
     foe.hp -= dmg; foe.hit = .18;
+    if (this.aura === 'aura-siphon') this.host.healPlayer(SKILLS['aura-siphon'].vars['heal']);
     this.float(foe.x, foe.y - foe.def.h, `${dmg}`, color);
     if (foe.hp <= 0) this.kill(foe);
   }
 
-  /** Use an ability. Returns why not (a key for the host to say), or null when it went off. */
-  useAbility(id: AbilityId): 'cooldown' | 'nofoe' | null {
-    if (this.cooldowns[id] > 0) return 'cooldown';
+  /** Use a skill from the bar. Returns why not (for the host to say), or null when it went off. */
+  useAbility(id: SkillId): 'cooldown' | 'nofoe' | 'mana' | null {
+    const sk = SKILLS[id];
+    if (!sk || sk.kind !== 'active') return null;
+    if ((this.cooldowns[id] ?? 0) > 0) return 'cooldown';
+    if (this.mana < sk.mana) return 'mana';
     const p = this.host.player();
-    const nearest = (range: number): Mob | null => {
-      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= range) return this.target;
-      let best: Mob | null = null, bd = range;
+    const foeInRange = (): Mob | null => {
+      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= this.range) return this.target;
+      let best: Mob | null = null, bd = this.range;
       for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d <= bd) { bd = d; best = m; } }
       return best;
     };
-    const cd = ABILITIES.find(a => a.id === id)!.cd;
-    if (id === 'mend') {
-      this.host.healPlayer(30);
-      this.float(p.x, p.y - 36, '+30', '#7fe08a');
-      this.effects.push({ kind: 'heal', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
-    } else if (id === 'strike') {
-      const foe = nearest(REACH + 10);
+    const v = sk.vars;
+    if (id === 'drain-life') {
+      const foe = foeInRange();
       if (!foe) return 'nofoe';
-      this.hitFoe(foe, rnd(25, 35), '#ffd25a');
-      this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .35, dir: foe.x < p.x ? -1 : 1 }, { kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2 - 4, age: -.08, life: .35, dir: foe.x < p.x ? 1 : -1 });
+      const dmg = rnd(v['min'], v['max']);
+      this.effects.push({ kind: 'drain', x: foe.x, y: foe.y - foe.def.h / 2, tx: p.x, ty: p.y - 20, age: 0, life: .5, dir: 1 });
+      this.hitFoe(foe, dmg, '#ff7a6a');
+      const heal = Math.round(dmg * v['heal'] / 100);
+      this.host.healPlayer(heal); this.float(p.x, p.y - 36, `+${heal}`, '#7fe08a');
       this.host.swung(foe);
-    } else if (id === 'wave') {
-      for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= 48) this.hitFoe(m, rnd(18, 26), '#ff9a4a');
+    } else if (id === 'ember-curse') {
+      const foe = foeInRange();
+      if (!foe) return 'nofoe';
+      foe.cursed = v['secs']; foe.burnT = 1;
+      this.effects.push({ kind: 'curse', x: foe.x, y: foe.y - foe.def.h - 4, age: 0, life: .6, dir: 1 });
+      this.host.swung(foe);
+    } else if (id === 'hellfire-nova') {
+      for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= v['radius'] * TILE) this.hitFoe(m, rnd(v['min'], v['max']), '#ff9a4a');
       this.effects.push({ kind: 'wave', x: p.x, y: p.y - 8, age: 0, life: .5, dir: 1 });
       this.host.swung(null);
-    } else {
-      this.haste = 8;
-      this.effects.push({ kind: 'dust', x: p.x, y: p.y, age: 0, life: .5, dir: 1 });
+    } else if (id === 'dark-ward') {
+      this.ward = v['absorb']; this.wardT = v['secs'];
+      this.effects.push({ kind: 'ward', x: p.x, y: p.y - 14, age: 0, life: .6, dir: 1 });
+      this.host.swung(null);
     }
-    this.cooldowns[id] = cd;
+    this.mana -= sk.mana;
+    this.cooldowns[id] = sk.cd;
     return null;
   }
 
@@ -309,6 +362,8 @@ export class MobSystem {
 
   private kill(m: Mob): void {
     this.mobs.splice(this.mobs.indexOf(m), 1);
+    // Soul Harvest (passive): every kill gives back mana.
+    this.mana = Math.min(MAX_MANA, this.mana + SKILLS['soul-harvest'].vars['mana']);
     if (this.target === m) this.target = null;
     this.deadUntil.set(m.key, this.clock + RESPAWN);
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;

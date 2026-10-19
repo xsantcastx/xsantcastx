@@ -1,6 +1,19 @@
 <section class="km" [attr.data-saved]="saved ? '1' : '0'">
   <p class="km__lore">{{ t('look.lore') }}</p>
 
+  <!-- The class (owner 2026-10-20: one class first, the Warlock, done right). -->
+  <div class="km__class" role="radiogroup" [attr.aria-label]="t('look.class')">
+    <span class="km__label">{{ t('look.class') }}</span>
+    <button type="button" class="km__classcard" role="radio" [attr.aria-checked]="draft.vocation === 'warlock'" data-vocation="warlock" (click)="setVocation('warlock')">
+      <svg viewBox="0 0 16 16" width="36" height="36" shape-rendering="crispEdges" aria-hidden="true">
+        <rect x="7" y="4" width="2" height="12" fill="#6e4526"/><rect x="7" y="4" width="1" height="12" fill="#a06a3b"/>
+        <rect x="5" y="1" width="6" height="5" fill="#3b2140"/><rect x="6" y="2" width="4" height="3" fill="#b06bff"/><rect x="7" y="2" width="2" height="2" fill="#ffd25a"/>
+      </svg>
+      <span><b>{{ t('look.class.warlock') }}</b><small>{{ t('look.class.warlock.blurb') }}</small></span>
+    </button>
+    <small class="km__more">{{ t('look.class.more') }}</small>
+  </div>
+
   <div class="km__stage">
     <canvas #preview class="km__preview" width="240" height="240" role="img" [attr.aria-label]="t('look.preview')"></canvas>
   </div>

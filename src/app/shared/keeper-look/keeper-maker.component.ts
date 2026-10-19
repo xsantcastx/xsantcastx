@@ -17,7 +17,7 @@ import { TranslationService } from '../../translation.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { KEEPER_LOOK_I18N } from './keeper-look.i18n';
 import { KeeperLookService } from './keeper-look.service';
-import { KeeperLook, LOOK_FIELDS, LookField, NAME_MAX, cleanName, fieldOptions, fieldSwatch, lookKey, randomLook, stepLook } from './keeper-look.model';
+import { KeeperLook, LOOK_FIELDS, type Vocation, LookField, NAME_MAX, cleanName, fieldOptions, fieldSwatch, lookKey, randomLook, stepLook } from './keeper-look.model';
 import { KeeperPainter, PaintState } from './keeper-paint';
 import { KeeperGear, gearKey, keeperAction } from './keeper-gear';
 import { wornGear } from './worn-gear';
@@ -53,6 +53,8 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
   private start = 0;
   private sub?: Subscription;
   private reduced = false;
+
+  setVocation(v: Vocation): void { this.draft = { ...this.draft, vocation: v }; this.saved = false; }
 
   ngOnInit(): void {
     this.i18n.register(KEEPER_LOOK_I18N);

@@ -9,7 +9,6 @@
  * their stalls (world/life.ts TOWN_KEEPERS) in their NPC looks.
  */
 import { INFERNAL_TOWN } from '../world/towns/infernal';
-import { HOMESTEAD_GATE_ID } from '../world/homestead';
 import { TOWN_KEEPERS } from '../world/life';
 import type { StationDef } from '../world/world.model';
 import { beaconPillar, mineShaft, oreSeam, brazierFountain, forgeHearth, waystone as waystone_, bench, barrel, cart, crate, fence, flowerbed, hash, hearthFire, house, lamp, signpost, stall, tree, type Ground, type Sprite, TILE } from './td-art';
@@ -129,10 +128,7 @@ export function buildSeamworksSquare(): TdMap {
   exit('delve', mineShaft, 2, cy, { w: 2, h: 1 });
   exit('beacon', beaconPillar, 25, 2, { w: 1, h: 1 });
   exit('passage', signpost, 42, cy - 1);
-  // The Homestead: a gate sign over the bridge (the Homestead's own panel opens there; its plot comes later).
-  const gate: StationDef = { id: HOMESTEAD_GATE_ID, x: 0, label: 'YOUR HOMESTEAD', kind: 'panel', panel: 'homestead', blurb: 'Your land: buildings that earn Gold.' };
-  add(signpost, tx(cx + 3), ty(32));
-  stalls.push({ station: gate, x: tx(cx + 3), y: ty(32) + 6 });
+  // (The Homestead gate is gone for now: owner 2026-10-20, "remove that function and house for now".)
 
   // The heart of the square: the brazier fountain, the Hearth fire, benches facing them.
   add(brazierFountain, tx(cx) - T / 2, ty(cy - 1), { w: 3, h: 2 });

@@ -16,15 +16,19 @@ export const FRONT_AX = 10;
 export const FRONT_AY = 35;
 /** The frame where the Keeper looks at the Slate in their hands (facing down only). */
 export const PHONE_FRAME = 4;
-const FRAMES = 5;
+/** The frame where the Keeper casts: staff raised high, its orb flaring (facing down). */
+export const CAST_FRAME = 5;
+const FRAMES = 6;
 
 const sheets = new WeakMap<KeeperPainter, HTMLCanvasElement>();
+const staffSheets = new WeakMap<KeeperPainter, HTMLCanvasElement>();
 
 function px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void { c.fillStyle = col; c.fillRect(x, y, w, h); }
 
 /** frame: 0 idle, 1 breath, 2 step (left foot forward), 3 step (right foot forward), 4 the Slate held up and looked at. */
-function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing, frame: number, ox: number): void {
+function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing, frame: number, ox: number, staff = false): void {
   const phone = frame === PHONE_FRAME;
+  const cast = frame === CAST_FRAME;
   const bob = frame === 1 ? 1 : frame === 2 || frame === 3 ? -1 : 0;
   const x = ox + 3, top = 2 + Math.max(0, bob);
   // Legs and boots (stepping lifts one foot).
@@ -79,6 +83,15 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing
     px(c, hx + 4, hy, 6, 1, p.hairHi); px(c, hx + 3, hy + 3, 2, 6, p.hairHi);
     px(c, hx + 2, hy + 11, 12, 2, p.hairLo);
   }
+  if (staff && !phone) {
+    // The Warlock's staff: ashwood shaft, a violet cage round an ember orb. In the right hand; raised high to cast.
+    const sx = facing === 'down' ? x + 13 : x - 1, lift = cast ? -9 : 0, by = top + 4 + lift;
+    px(c, sx, by + 4, 2, 26 + (cast ? 0 : 0) - (cast ? 4 : 0), '#6e4526'); px(c, sx, by + 4, 1, 22, '#a06a3b');
+    px(c, sx - 2, by, 6, 5, '#3b2140'); px(c, sx - 1, by + 1, 4, 3, cast ? '#ffd25a' : '#b06bff'); px(c, sx, by + 1, 2, 2, cast ? '#fff6c8' : '#ffb347');
+    if (cast) { px(c, sx - 4, by + 2, 2, 1, '#ffd25a'); px(c, sx + 4, by + 2, 2, 1, '#ffd25a'); px(c, sx + 1, by - 3, 1, 2, '#ffd25a'); }
+    // The hand on the shaft.
+    px(c, sx - (facing === 'down' ? 1 : -1), top + 20 + lift, 2, 2, p.skin);
+  }
 }
 
 /** The 1px dark outline round what is painted (the game's outline rule). */
@@ -95,8 +108,9 @@ function outline(src: HTMLCanvasElement): HTMLCanvasElement {
 }
 
 /** One sheet per Keeper: row 0 = facing down, row 1 = facing up; 5 frames each (the 5th: the Slate in hand). */
-export function frontSheet(painter: KeeperPainter): HTMLCanvasElement {
-  let sheet = sheets.get(painter);
+export function frontSheet(painter: KeeperPainter, staff = false): HTMLCanvasElement {
+  const cache = staff ? staffSheets : sheets;
+  let sheet = cache.get(painter);
   if (sheet) return sheet;
   const raw = document.createElement('canvas');
   raw.width = FRONT_W * FRAMES; raw.height = FRONT_H * 2;
@@ -104,12 +118,12 @@ export function frontSheet(painter: KeeperPainter): HTMLCanvasElement {
   (['down', 'up'] as const).forEach((facing, row) => {
     for (let f = 0; f < FRAMES; f++) {
       c.save(); c.translate(0, row * FRONT_H);
-      paint(c, painter.colors, facing, f, f * FRONT_W);
+      paint(c, painter.colors, facing, f, f * FRONT_W, staff);
       c.restore();
     }
   });
   sheet = outline(raw);
-  sheets.set(painter, sheet);
+  cache.set(painter, sheet);
   return sheet;
 }
 

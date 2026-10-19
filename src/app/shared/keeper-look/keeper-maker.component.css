@@ -80,3 +80,12 @@
   :host-context(.place) .km { grid-template-columns: 148px minmax(0, 1fr); grid-template-areas: "stage fields" "name fields" "actions fields"; }
   :host-context(.place) .km__actions { grid-template-columns: 1fr; align-self: start; }
 }
+
+/* The class: one card per calling (the Warlock first), the chosen one lit. */
+.km__class { display: grid; gap: 6px; }
+.km__classcard { display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 10px; min-height: 56px; padding: 8px 10px; text-align: left;
+  border: 0; border-radius: 0; background: var(--px-cell-bg, var(--obsidian-1)); box-shadow: var(--px-cell-rim); color: inherit; cursor: pointer; }
+.km__classcard[aria-checked="true"] { box-shadow: var(--px-on-rim); }
+.km__classcard b { display: block; font: 700 16px/1.1 var(--font-game, inherit); color: var(--gold-bright); }
+.km__classcard small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.3; opacity: .85; }
+.km__more { font-size: 11px; opacity: .6; }
