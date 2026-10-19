@@ -190,6 +190,18 @@
 .jg__arrow:not(:disabled):active { translate: 0 2px; }
 .jg__arrow:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -4px; }
 
+/* A narrow window (a phone held upright, docs/handoff/nice-menus.md): the grid is as wide as the card under it, its cells
+   square and fluid, so the two share one left and one right edge (no centred island over a left-hung card). */
+@media not all and (orientation: landscape) and (max-height: 520px) {
+  @container station (max-width: 559px) {
+    .jg { justify-items: stretch; }
+    .jg__grid { grid-template-columns: repeat(var(--jg-cols, 5), minmax(0, 1fr)); gap: 8px; padding: 2px; }
+    .jg__grid > li { display: grid; min-width: 0; }
+    .jg__grid .jg__slot, .jg__grid .jg__slot.jl__row { width: 100%; height: auto; aspect-ratio: 1; }
+    .jg__grid .jg__slot img { width: 72%; height: 72%; }
+    .jg__pager { justify-self: center; }
+  }
+}
 /* A phone held sideways: 46px slots, four across, so the card beside them gets the room. */
 @media (max-height: 520px) and (orientation: landscape) {
   .jg__grid { grid-template-columns: repeat(var(--jg-cols, 4), 46px); gap: 4px; }

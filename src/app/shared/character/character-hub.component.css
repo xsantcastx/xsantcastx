@@ -83,3 +83,18 @@
   }
   .ch[data-variant='page'] .ch__tab { flex: none; padding: 0 9px; }
 }
+
+/* In a game window (docs/handoff/nice-menus.md): pixel tabs on one grid (three across upright, all six in a row when
+   the window is wide), never a sideways scroller; no reserved height under a short tab. */
+:host { container: hub / inline-size; }
+:host-context(.place) .ch[data-variant='page'] { min-height: 0; }
+:host-context(.place) .ch__panel { min-height: 0; }
+:host-context(.place) .ch[data-variant='page'] .ch__tabs {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0 0 8px; padding: 2px; overflow: visible;
+}
+@container hub (min-width: 520px) { :host-context(.place) .ch[data-variant='page'] .ch__tabs { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+:host-context(.place) .ch__tab, :host-context(.place) .ch[data-variant='page'] .ch__tab {
+  min-width: 0; padding: 0 4px; border: 0; border-radius: 0; background: var(--obsidian-1); color: var(--gf-dim);
+  box-shadow: var(--px-cell-rim); font-size: 11px; letter-spacing: .06em; transition: none;
+}
+:host-context(.place) .ch__tab.is-on { background: var(--gold); color: var(--obsidian-0); box-shadow: var(--px-on-rim); }

@@ -1279,7 +1279,8 @@ app-side-scroller :where(button, a, [role="button"], label, summary) {
 .px-x::before { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; translate: -1.5px -1.5px; background: currentColor;
   box-shadow: -9px -9px 0 0 currentColor, -9px 9px 0 0 currentColor, -6px -6px 0 0 currentColor, -6px 6px 0 0 currentColor, -3px -3px 0 0 currentColor, -3px 3px 0 0 currentColor, 0px 0px 0 0 currentColor, 3px 3px 0 0 currentColor, 3px -3px 0 0 currentColor, 6px 6px 0 0 currentColor, 6px -6px 0 0 currentColor, 9px 9px 0 0 currentColor, 9px -9px 0 0 currentColor, 2px 2px 0 0 var(--obsidian-0); }
 .px-x:hover, .px-x:focus-visible { color: var(--gold-bright); }
-.px-x:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -2px; }
+/* Focus: a filled pixel square behind the x (not a ring that reads as a box around it). */
+.px-x:focus-visible { outline: none; background: color-mix(in srgb, var(--gold-deep) 30%, transparent); }
 .px-help { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--adventure-parchment, currentColor); font: 700 14px/1 Orbitron, sans-serif; }
 .px-help > i { display: grid; place-items: center; width: 24px; height: 24px; font-style: normal; background: var(--obsidian-2);
   box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
@@ -1294,3 +1295,29 @@ app-side-scroller :where(button, a, [role="button"], label, summary) {
 .px-arrow:disabled { opacity: .3; cursor: default; }
 .px-arrow:not(:disabled):active { translate: 0 2px; }
 .px-arrow:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -4px; }
+
+/* ── Pixel windows (docs/handoff/nice-menus.md) ────────────────────────────────────────────────────
+   Every in-game menu is ONE clean pixel window, MapleStory-plain: a solid dark panel, a crisp 2px stepped edge (the
+   corners notch, no soft blur), a 2px inner light/shade, a hard pixel drop. No decorative frame (no corner brackets,
+   dashed rules, boxed title bars or footers). Inside: an 8px grid, pixel cells, pixel tabs, ONE primary button.
+   The tokens are global so a hosted page (its own encapsulated CSS) can build the same cells and buttons. */
+:root {
+  --px-u: 8px;
+  --px-win-bg: var(--adventure-hud-panel-solid, #161210);
+  --px-win-edge: color-mix(in srgb, var(--gold-deep) 72%, var(--obsidian-0));
+  --px-win-rim: 0 -2px 0 0 var(--px-win-edge), 0 2px 0 0 var(--px-win-edge), -2px 0 0 0 var(--px-win-edge), 2px 0 0 0 var(--px-win-edge);
+  --px-win-inner: inset 0 2px 0 0 color-mix(in srgb, var(--gold-bright) 9%, transparent), inset 0 -2px 0 0 color-mix(in srgb, var(--obsidian-0) 60%, transparent);
+  --px-win-drop: 0 6px 0 0 color-mix(in srgb, var(--obsidian-0) 55%, transparent);
+  /* A slot / card inside a window: one step darker, its own 2px edge. */
+  --px-cell-bg: var(--obsidian-1);
+  --px-cell-edge: var(--obsidian-4);
+  --px-cell-rim: 0 -2px 0 0 var(--px-cell-edge), 0 2px 0 0 var(--px-cell-edge), -2px 0 0 0 var(--px-cell-edge), 2px 0 0 0 var(--px-cell-edge), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 7%, transparent);
+  --px-on-edge: var(--gold-bright);
+  --px-on-rim: 0 -2px 0 0 var(--px-on-edge), 0 2px 0 0 var(--px-on-edge), -2px 0 0 0 var(--px-on-edge), 2px 0 0 0 var(--px-on-edge);
+  /* A pixel button: lit top-left, shaded bottom-right, a 4px hard drop. */
+  --px-btn-rim: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent), inset -2px -2px 0 0 color-mix(in srgb, var(--obsidian-0) 45%, transparent);
+  /* The groove under a title row: a dark line and a faint warm one (a seam in the plate, not a rule). */
+  --px-groove: 0 2px 0 0 var(--obsidian-0), 0 4px 0 0 color-mix(in srgb, var(--gold-deep) 20%, transparent);
+}
+.px-win { background: var(--px-win-bg); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop); border: 0; border-radius: 0; }
+.px-card { background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); border: 0; border-radius: 0; }
