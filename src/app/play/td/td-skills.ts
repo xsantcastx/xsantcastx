@@ -6,7 +6,7 @@
  * costs, how long it cools, and the words that say what it does — the skill window (Spellbook) reads exactly this, and
  * the fight (td-mobs.ts) carries out exactly this, so the two can never disagree.
  */
-import type { Vocation } from '../../shared/keeper-look/keeper-look.model';
+import type { KeeperStats, Vocation } from '../../shared/keeper-look/keeper-look.model';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
@@ -83,12 +83,20 @@ export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
 export const MAX_MANA = 60;
 
 /**
- * What a level gives (Tibia's levelling, before D2-style points arrive): more life, more mana, harder spells.
- * Level 1 is the base; each level above adds the same steps.
+ * What a level and the points spent give (Tibia's levels + D2's attributes): each level above 1 adds 8 life, 6 mana
+ * and 5% spell power; each point of Vitality 6 life, of Energy 4 mana and a little regeneration, of Spirit 2% spell
+ * power, of Agility 1% speed of foot and of the staff (to 30%).
  */
-export function levelStats(level: number): { maxHp: number; maxMana: number; power: number } {
+export const ATTR_STEP = { vit: 6, ene: 4, eneRegen: .15, spi: .02, agi: .01, agiCap: .3 } as const;
+export function levelStats(level: number, stats: KeeperStats = { vit: 0, ene: 0, spi: 0, agi: 0 }): { maxHp: number; maxMana: number; power: number; regen: number; haste: number } {
   const n = Math.max(0, Math.floor(level) - 1);
-  return { maxHp: 100 + n * 8, maxMana: MAX_MANA + n * 6, power: 1 + n * .05 };
+  return {
+    maxHp: 100 + n * 8 + stats.vit * ATTR_STEP.vit,
+    maxMana: MAX_MANA + n * 6 + stats.ene * ATTR_STEP.ene,
+    power: 1 + n * .05 + stats.spi * ATTR_STEP.spi,
+    regen: MANA_REGEN + stats.ene * ATTR_STEP.eneRegen,
+    haste: Math.min(ATTR_STEP.agiCap, stats.agi * ATTR_STEP.agi),
+  };
 }
 /** Mana back per second. */
 export const MANA_REGEN = 3;

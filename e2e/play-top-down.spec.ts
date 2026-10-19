@@ -110,6 +110,22 @@ test('the Ember Mine goes down by its stairs to floor 2 and floor 3, where the W
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Warlock reads their sheet (C) and their Spellbook (K): attributes, spells, auras', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openTopDown(page);
+  await canvas(page).focus();
+  await page.keyboard.press('c');
+  await expect(page.locator('.ksheet [data-attr]')).toHaveCount(4);
+  await expect(page.locator('.ksheet')).toContainText(/Warlock/);
+  await page.keyboard.press('k');
+  await expect(page.locator('.ksheet')).toHaveCount(0);
+  await expect(page.locator('.spellbook [data-skill="drain-life"]')).toBeVisible();
+  await expect(page.locator('.spellbook [data-skill="aura-embers"]')).toContainText(/On|Activa/);
+  // Put Drain Life on key 4: the bar follows.
+  await page.locator('.spellbook [data-skill="drain-life"] .sb__keys button', { hasText: '4' }).click();
+  await expect(page.locator('.td-skill').nth(3)).toHaveAttribute('aria-label', /Drain Life/);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');

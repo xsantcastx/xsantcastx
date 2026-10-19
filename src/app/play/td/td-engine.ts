@@ -18,7 +18,7 @@ import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
 import { vocationLook } from '../../shared/keeper-look/vocation-look';
 import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
-import { defaultLook, randomLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
+import { defaultLook, randomLook, type KeeperLook, type KeeperStats } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
@@ -55,8 +55,8 @@ export class TopDownEngine {
   private readonly mobs: MobSystem;
   private hp = 100;
   private maxHp = 100;
-  /** The Keeper's level (the HUD hands it in from Hunting): it sets life, mana and spell power. */
-  private level_ = 1;
+  /** Agility's speed of foot (0–0.3). */
+  private agility = 0;
   private lastHurt = -99;
   private messageAge = 0;
   /** The engine's own line, as an i18n key the HUD translates (engineMessage). */
@@ -204,14 +204,19 @@ export class TopDownEngine {
   get mana(): number { return this.mobs.mana; }
   get maxMana(): number { return this.mobs.maxMana; }
   get maxHealth(): number { return this.maxHp; }
-  setKeeperLevel(level: number): void {
-    if (level === this.level_) return;
-    this.level_ = level;
-    const st = levelStats(level);
+  private buildKey = '';
+  /** The Keeper's level and spent points (the HUD hands them in): life, mana, regeneration, spell power, speed. */
+  setKeeperBuild(level: number, stats: KeeperStats): void {
+    const key = `${level}|${stats.vit},${stats.ene},${stats.spi},${stats.agi}`;
+    if (key === this.buildKey) return;
+    this.buildKey = key;
+    const st = levelStats(level, stats);
     this.maxHp = st.maxHp; this.hp = Math.min(this.hp, this.maxHp);
     this.mobs.maxMana = st.maxMana; this.mobs.mana = Math.min(this.mobs.mana, st.maxMana);
-    this.mobs.power = st.power;
+    this.mobs.power = st.power; this.mobs.regen = st.regen; this.mobs.agility = st.haste;
+    this.agility = st.haste;
   }
+
   get aura(): SkillId | null { return this.mobs.aura; }
   get ward(): number { return this.mobs.ward; }
   /** The Spellbook's choices: the bar (up to four actives) and the running aura. */
@@ -364,7 +369,7 @@ export class TopDownEngine {
       if (Math.abs(vx) > .2) this.player.face = vx < 0 ? -1 : 1;
       // Mostly vertical: show the face (south) or the back (north); otherwise the side view.
       this.player.dir = Math.abs(vy) > Math.abs(vx) * 1.2 ? (vy > 0 ? 'down' : 'up') : 'side';
-      const speed = SPEED * (this.mobs.haste > 0 ? 1.5 : 1);
+      const speed = SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility);
       this.tryMove(vx * speed * dt, 0);
       this.tryMove(0, vy * speed * dt);
     }
