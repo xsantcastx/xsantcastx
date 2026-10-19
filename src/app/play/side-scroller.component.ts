@@ -769,7 +769,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickSideTrip(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickSideTrip(); this.tickAreaCard(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1568,6 +1568,21 @@ export class SideScrollerComponent implements OnDestroy {
   get realmLabel(): string { return TOWN_LABELS[this.town.realm]; }
   /** The header title: the area the Keeper stands in ("Ember Delve"), not only its town. */
   get areaTitle(): string { return this.state.area || this.town.name; }
+  /**
+   * The place-name card (owner, 2026-10-19): no name parked in the corner; on arriving somewhere new its name rises in
+   * the middle of the screen, holds, and fades (the CSS animation does the timing; the card leaves the DOM after it).
+   */
+  areaCard: { title: string; realm: string; n: number } | null = null;
+  private areaCardSeen = '';
+  private areaCardTimer?: ReturnType<typeof setTimeout>;
+  private tickAreaCard(): void {
+    const title = this.areaTitle;
+    if (!title || title === this.areaCardSeen) return;
+    this.areaCardSeen = title;
+    this.areaCard = { title, realm: this.realmLabel, n: (this.areaCard?.n ?? 0) + 1 };
+    clearTimeout(this.areaCardTimer);
+    this.areaCardTimer = setTimeout(() => this.zone.run(() => { this.areaCard = null; }), 3600);
+  }
   /**
    * The creature the enemy bar is measuring, exactly: the engine reports the id
    * and name of the one it measured (no guessing from spawn points, so a mixed
