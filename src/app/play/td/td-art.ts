@@ -642,3 +642,14 @@ export function chest(): Sprite {
     return { img: outline(img), ax: 8, ay: 13 };
   });
 }
+
+/** What a felled tree leaves for a while: a stump with its rings. */
+export function stump(): Sprite {
+  return cached('stump', () => {
+    const W = 16, H = 10, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 3, 3, 10, 6, PAL.trunk[0]); rect(c, 3, 1, 10, 4, PAL.plank[2]); rect(c, 5, 2, 6, 2, PAL.plank[0]); rect(c, 7, 2, 2, 1, PAL.wood[2]);
+    rect(c, 1, 8, 4, 2, PAL.trunk[2]); rect(c, 11, 8, 4, 2, PAL.trunk[2]);
+    return { img: outline(img), ax: 8, ay: 10 };
+  });
+}

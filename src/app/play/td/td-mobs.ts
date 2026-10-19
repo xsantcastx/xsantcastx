@@ -113,6 +113,18 @@ export interface Drop {
 
 export interface Floater { x: number; y: number; text: string; color: string; age: number }
 
+/** A short-lived picture in the world: a slash, a fire ring, a heal, wood chips, haste dust. */
+export interface Effect { kind: 'slash' | 'wave' | 'heal' | 'chips' | 'dust'; x: number; y: number; age: number; life: number; dir: number }
+
+/** The Keeper's abilities, Tibia's spells made cozy: one key each (1–4), a cooldown each, no mana to juggle. */
+export type AbilityId = 'mend' | 'strike' | 'wave' | 'haste';
+export const ABILITIES: readonly { id: AbilityId; key: string; cd: number }[] = [
+  { id: 'mend', key: '1', cd: 6 },
+  { id: 'strike', key: '2', cd: 5 },
+  { id: 'wave', key: '3', cd: 10 },
+  { id: 'haste', key: '4', cd: 20 },
+];
+
 export const RARITY_COLOR: Readonly<Record<LootRarity, string>> = {
   common: '#f3e7cf', uncommon: '#7fd56a', rare: '#5fb6ff', epic: '#c48bff', legendary: '#ffb347', mythic: '#ff6dd7', singular: '#4dffe0',
 };
@@ -129,6 +141,9 @@ export interface MobHost {
   levelId(): string;
   player(): { x: number; y: number };
   hurtPlayer(n: number): void;
+  healPlayer(n: number): void;
+  /** The Keeper swung (an attack or an ability): the host plays the swing toward `at`. */
+  swung(at: { x: number; y: number } | null): void;
 }
 
 const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
@@ -137,6 +152,10 @@ export class MobSystem {
   readonly mobs: Mob[] = [];
   readonly drops: Drop[] = [];
   readonly floaters: Floater[] = [];
+  readonly effects: Effect[] = [];
+  readonly cooldowns: Record<AbilityId, number> = { mend: 0, strike: 0, wave: 0, haste: 0 };
+  /** Seconds of Haste left. */
+  haste = 0;
   target: Mob | null = null;
   attacking = false;
   private swing = 0;
@@ -189,10 +208,9 @@ export class MobSystem {
     }
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= REACH) {
       this.swing = .65;
-      const dmg = rnd(9, 15);
-      foe.hp -= dmg; foe.hit = .18;
-      this.float(foe.x, foe.y - foe.def.h, `${dmg}`, '#ffffff');
-      if (foe.hp <= 0) this.kill(foe);
+      this.hitFoe(foe, rnd(9, 15), '#ffffff');
+      this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .22, dir: foe.x < p.x ? -1 : 1 });
+      this.host.swung(foe);
     }
     for (const m of this.mobs) {
       m.t += dt; m.cd -= dt; m.hit = Math.max(0, m.hit - dt);
@@ -232,7 +250,55 @@ export class MobSystem {
       if (Math.hypot(g.x - p.x, g.y - p.y) < 22 && g.age > .4) this.pick(g, i);
     }
     for (let i = this.floaters.length - 1; i >= 0; i--) { const f = this.floaters[i]; f.age += dt; f.y -= 14 * dt; if (f.age > 1) this.floaters.splice(i, 1); }
+    for (let i = this.effects.length - 1; i >= 0; i--) { const e = this.effects[i]; e.age += dt; if (e.age > e.life) this.effects.splice(i, 1); }
+    for (const a of ABILITIES) this.cooldowns[a.id] = Math.max(0, this.cooldowns[a.id] - dt);
+    if (this.haste > 0) {
+      this.haste = Math.max(0, this.haste - dt);
+      if (Math.random() < dt * 8) this.effects.push({ kind: 'dust', x: p.x + rnd(-4, 4), y: p.y, age: 0, life: .4, dir: 1 });
+    }
   }
+
+  private hitFoe(foe: Mob, dmg: number, color: string): void {
+    foe.hp -= dmg; foe.hit = .18;
+    this.float(foe.x, foe.y - foe.def.h, `${dmg}`, color);
+    if (foe.hp <= 0) this.kill(foe);
+  }
+
+  /** Use an ability. Returns why not (a key for the host to say), or null when it went off. */
+  useAbility(id: AbilityId): 'cooldown' | 'nofoe' | null {
+    if (this.cooldowns[id] > 0) return 'cooldown';
+    const p = this.host.player();
+    const nearest = (range: number): Mob | null => {
+      if (this.target && Math.hypot(this.target.x - p.x, this.target.y - p.y) <= range) return this.target;
+      let best: Mob | null = null, bd = range;
+      for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d <= bd) { bd = d; best = m; } }
+      return best;
+    };
+    const cd = ABILITIES.find(a => a.id === id)!.cd;
+    if (id === 'mend') {
+      this.host.healPlayer(30);
+      this.float(p.x, p.y - 36, '+30', '#7fe08a');
+      this.effects.push({ kind: 'heal', x: p.x, y: p.y, age: 0, life: .9, dir: 1 });
+    } else if (id === 'strike') {
+      const foe = nearest(REACH + 10);
+      if (!foe) return 'nofoe';
+      this.hitFoe(foe, rnd(25, 35), '#ffd25a');
+      this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .35, dir: foe.x < p.x ? -1 : 1 }, { kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2 - 4, age: -.08, life: .35, dir: foe.x < p.x ? 1 : -1 });
+      this.host.swung(foe);
+    } else if (id === 'wave') {
+      for (const m of [...this.mobs]) if (Math.hypot(m.x - p.x, m.y - p.y) <= 48) this.hitFoe(m, rnd(18, 26), '#ff9a4a');
+      this.effects.push({ kind: 'wave', x: p.x, y: p.y - 8, age: 0, life: .5, dir: 1 });
+      this.host.swung(null);
+    } else {
+      this.haste = 8;
+      this.effects.push({ kind: 'dust', x: p.x, y: p.y, age: 0, life: .5, dir: 1 });
+    }
+    this.cooldowns[id] = cd;
+    return null;
+  }
+
+  /** Wood chips flying off a struck tree (the host's chopping). */
+  chips(x: number, y: number): void { this.effects.push({ kind: 'chips', x, y, age: 0, life: .45, dir: Math.random() < .5 ? -1 : 1 }); }
 
   private free(x: number, y: number): boolean {
     for (const [ox, oy] of [[-4, -3], [4, -3], [-4, -1], [4, -1]]) if (!this.host.walkable(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE))) return false;

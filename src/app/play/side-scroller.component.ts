@@ -762,7 +762,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1575,6 +1575,19 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private areaCardPending = '';
   private areaCardSince = 0;
+  /** Top-down: the ability bar (keys 1–4), each slot's cooldown left 0–1 (td-mobs ABILITIES). */
+  tdAbilities: { id: string; key: string; left: number }[] = [];
+  private tickAbilities(): void {
+    if (!this.topDown) { this.tdAbilities = []; return; }
+    const list = (this.engine as unknown as { abilities?: readonly { id: string; key: string; left: number }[] } | undefined)?.abilities;
+    if (list) this.tdAbilities = list.map(a => ({ ...a }));
+  }
+  useAbility(id: string): void {
+    const why = (this.engine as unknown as { useAbility?: (id: string) => string | null } | undefined)?.useAbility?.(id);
+    if (why) this.message = this.t(why === 'nofoe' ? 'play.td.ability.nofoe' : 'play.td.ability.cooldown');
+    this.tickAbilities();
+    this.focusWorld();
+  }
   private tickAreaCard(): void {
     const title = this.areaTitle;
     if (!title) return;
