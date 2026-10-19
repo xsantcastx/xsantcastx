@@ -26,6 +26,8 @@ export async function seed(page: Page, blobs: Blobs = {}): Promise<void> {
     localStorage.setItem('eclipse-onboarding', keepOnboarding ?? JSON.stringify({ done: true, lastStep: 5, at: '2026-01-01T00:00:00.000Z' }));
     localStorage.setItem('xsantcastx_consent', 'denied');
     sessionStorage.setItem('visit-counted', '1');
+    // The side view's specs keep the side view (top-down is the default since 2026-10-19); a top-down spec seeds 'eclipse-td': '1'.
+    localStorage.setItem('eclipse-td', '0');
     for (const [key, value] of Object.entries(entries)) {
       localStorage.setItem(key, typeof value === 'string' ? value : JSON.stringify(value));
     }

@@ -665,11 +665,12 @@ export function createTopDownEngine(canvas: HTMLCanvasElement, options: EngineOp
 
 /** The top-down gate: `?td=1` turns it on for this browser, `?td=0` off. Off by default. */
 export function topDownGate(): boolean {
+  // Top-down is the game now (owner, 2026-10-19): on unless this device chose the old view with `?td=0`.
   if (typeof window === 'undefined') return false;
   try {
     const q = new URLSearchParams(window.location.search).get('td');
-    if (q === '1') localStorage.setItem('eclipse-td', '1');
-    if (q === '0') localStorage.removeItem('eclipse-td');
-    return localStorage.getItem('eclipse-td') === '1';
-  } catch { return false; }
+    if (q === '1') localStorage.removeItem('eclipse-td');
+    if (q === '0') localStorage.setItem('eclipse-td', '0');
+    return localStorage.getItem('eclipse-td') !== '0';
+  } catch { return true; }
 }
