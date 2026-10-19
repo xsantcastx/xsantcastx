@@ -1,0 +1,278 @@
+/**
+ * td-mobs.ts — monsters, fighting and ground loot in the top-down world (owner, 2026-10-19: "dungeons and mysterious
+ * places, items drops monsters like if it was tibia style").
+ *
+ * Tibia's rules, cozy-sized: creatures roam near where they spawned and chase the Keeper on sight; the Keeper fights by
+ * targeting one (a tap on it, or the attack key for the nearest) and swings while in reach; damage floats up in numbers;
+ * a kill leaves its loot ON THE GROUND (coins, materials, rolled gear glowing in its rarity colour) to walk over and
+ * pick up. A spawn comes back a while after its creature falls. Falling in a fight wakes the Keeper in the square.
+ *
+ * The host does the bookkeeping exactly as the side view did: onKill (Hunting XP, quests), rollLoot (gear) and onLoot
+ * (into the satchel). Nothing here touches a save.
+ */
+import type { EngineOptions, LootRow } from '../engine/engine.model';
+import type { LootRarity } from '../world/world.model';
+import { TILE } from './td-art';
+
+export interface MobDef {
+  id: string;
+  name: string;
+  hp: number;
+  /** Art px per second. */
+  speed: number;
+  dmg: [number, number];
+  /** Seconds between its bites. */
+  rate: number;
+  sight: number;
+  level: number;
+  coins: [number, number];
+  drops: readonly { material: string; qty: number; chance: number }[];
+  paint: (c: CanvasRenderingContext2D, frame: number) => void;
+  w: number;
+  h: number;
+}
+
+function px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void { c.fillStyle = col; c.fillRect(x, y, w, h); }
+
+/** The Rivet Maw: a rust-iron jaw on stubby legs, rivets for teeth. */
+function paintMaw(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 3, 13 - b, 3, 3, '#3a2a24'); px(c, 14, 13 + b - 1, 3, 3, '#3a2a24');
+  px(c, 2, 4 + b, 16, 10, '#8a5a3c'); px(c, 2, 4 + b, 16, 3, '#b07a4e'); px(c, 2, 12 + b, 16, 2, '#5e3a28');
+  px(c, 4, 9 + b, 12, 3, '#2a1a1c');
+  for (let i = 0; i < 4; i++) { px(c, 5 + i * 3, 9 + b, 1, 1, '#e9e4d8'); px(c, 6 + i * 3, 11 + b, 1, 1, '#e9e4d8'); }
+  px(c, 5, 6 + b, 2, 2, '#ffd25a'); px(c, 13, 6 + b, 2, 2, '#ffd25a');
+  px(c, 1, 5 + b, 1, 2, '#c99a6a'); px(c, 18, 5 + b, 1, 2, '#c99a6a');
+}
+/** The Cinder Bailiff: a hooded ember-golem with a lantern belly. */
+function paintBailiff(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 5, 20, 4, 4, '#2a2028'); px(c, 13, 20, 4, 4, '#2a2028');
+  px(c, 3, 7 + b, 16, 14, '#4a3a44'); px(c, 3, 7 + b, 16, 2, '#6a5562');
+  px(c, 7, 12 + b, 8, 6, '#2a1a1c'); px(c, 8, 13 + b, 6, 4, '#ff8a2e'); px(c, 9, 14 + b, 4, 2, '#ffd25a');
+  px(c, 5, 1 + b, 12, 7, '#3a2c36'); px(c, 7, 4 + b, 2, 2, '#ff6a2a'); px(c, 13, 4 + b, 2, 2, '#ff6a2a');
+  px(c, 1, 9 + b, 2, 8, '#4a3a44'); px(c, 19, 9 - b + 1, 2, 8, '#4a3a44');
+}
+
+export const MOBS: Readonly<Record<string, MobDef>> = {
+  'rivet-maw': {
+    id: 'rivet-maw', name: 'Rivet Maw', hp: 60, speed: 34, dmg: [3, 6], rate: 1.3, sight: 96, level: 1,
+    coins: [3, 13], drops: [{ material: 'cinder-ore', qty: 1, chance: .7 }], paint: paintMaw, w: 20, h: 17,
+  },
+  'cinder-bailiff': {
+    id: 'cinder-bailiff', name: 'Cinder Bailiff', hp: 110, speed: 28, dmg: [6, 10], rate: 1.5, sight: 110, level: 3,
+    coins: [8, 24], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .35 }], paint: paintBailiff, w: 22, h: 25,
+  },
+};
+
+const sheets = new Map<string, HTMLCanvasElement>();
+/** Two outlined frames side by side. */
+export function mobSheet(def: MobDef): HTMLCanvasElement {
+  let s = sheets.get(def.id);
+  if (s) return s;
+  const raw = document.createElement('canvas'); raw.width = def.w * 2; raw.height = def.h;
+  const c = raw.getContext('2d')!;
+  for (let f = 0; f < 2; f++) { c.save(); c.translate(f * def.w, 0); def.paint(c, f); c.restore(); }
+  s = document.createElement('canvas'); s.width = raw.width; s.height = raw.height;
+  const o = s.getContext('2d')!;
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) o.drawImage(raw, dx, dy);
+  o.globalCompositeOperation = 'source-in'; o.fillStyle = '#2a1a24'; o.fillRect(0, 0, s.width, s.height);
+  o.globalCompositeOperation = 'source-over'; o.drawImage(raw, 0, 0);
+  sheets.set(def.id, s);
+  return s;
+}
+
+export interface MobSpawn { key: string; type: string; x: number; y: number }
+
+export interface Mob {
+  key: string;
+  def: MobDef;
+  x: number; y: number;
+  hx: number; hy: number;
+  hp: number;
+  face: 1 | -1;
+  t: number;
+  cd: number;
+  hit: number;
+  wander: { x: number; y: number } | null;
+  wait: number;
+}
+
+export interface Drop {
+  id: string;
+  x: number; y: number;
+  coins: number;
+  material?: string;
+  qty: number;
+  item?: { definitionId: string; rarity: LootRarity; unique: boolean };
+  rune?: string;
+  label: string;
+  color: string;
+  age: number;
+}
+
+export interface Floater { x: number; y: number; text: string; color: string; age: number }
+
+export const RARITY_COLOR: Readonly<Record<LootRarity, string>> = {
+  common: '#f3e7cf', uncommon: '#7fd56a', rare: '#5fb6ff', epic: '#c48bff', legendary: '#ffb347', mythic: '#ff6dd7', singular: '#4dffe0',
+};
+
+const REACH = 24;          // the Keeper's swing
+const MOB_REACH = 18;      // a creature's bite
+const RESPAWN = 75;        // seconds until a spawn comes back
+const DESPAWN = 300;       // seconds a drop lies on the ground
+
+/** What the mob system needs from the engine. */
+export interface MobHost {
+  readonly options: EngineOptions;
+  walkable(c: number, r: number): boolean;
+  levelId(): string;
+  player(): { x: number; y: number };
+  hurtPlayer(n: number): void;
+}
+
+const rnd = (a: number, b: number) => a + Math.floor(Math.random() * (b - a + 1));
+
+export class MobSystem {
+  readonly mobs: Mob[] = [];
+  readonly drops: Drop[] = [];
+  readonly floaters: Floater[] = [];
+  target: Mob | null = null;
+  attacking = false;
+  private swing = 0;
+  private kills = 0;
+  private readonly deadUntil = new Map<string, number>();
+  private clock = 0;
+
+  constructor(private readonly host: MobHost) {}
+
+  /** Bring the level's spawns to life (those not resting after a death) and drop everything of the last level. */
+  enterLevel(spawns: readonly MobSpawn[]): void {
+    this.mobs.length = 0; this.drops.length = 0; this.target = null;
+    this.addSpawns(spawns);
+  }
+  /** Spawns that came into reach (the endless surface hands them over chunk by chunk). */
+  addSpawns(spawns: readonly MobSpawn[]): void {
+    for (const s of spawns) {
+      if (this.mobs.some(m => m.key === s.key) || (this.deadUntil.get(s.key) ?? 0) > this.clock) continue;
+      const def = MOBS[s.type];
+      if (!def) continue;
+      this.mobs.push({ key: s.key, def, x: s.x, y: s.y, hx: s.x, hy: s.y, hp: def.hp, face: 1, t: Math.random() * 3, cd: 1, hit: 0, wander: null, wait: Math.random() * 3 });
+    }
+  }
+  /** Forget creatures far from the Keeper (the surface never ends; they come back when their chunk does). */
+  prune(maxDist: number): void {
+    const p = this.host.player();
+    for (let i = this.mobs.length - 1; i >= 0; i--) {
+      const m = this.mobs[i];
+      if (Math.hypot(m.x - p.x, m.y - p.y) > maxDist && m !== this.target) this.mobs.splice(i, 1);
+    }
+  }
+
+  /** The creature under a world point (a tap), if any. */
+  mobAt(x: number, y: number): Mob | null {
+    let best: Mob | null = null, bd = 18;
+    for (const m of this.mobs) { const d = Math.hypot(m.x - x, m.y - m.def.h / 2 - y); if (d < bd) { bd = d; best = m; } }
+    return best;
+  }
+
+  update(dt: number): void {
+    this.clock += dt;
+    const p = this.host.player();
+    this.swing = Math.max(0, this.swing - dt);
+    // The Keeper's attack: the target, or with the key held the nearest creature in reach.
+    if (this.target && (this.target.hp <= 0 || !this.mobs.includes(this.target))) this.target = null;
+    let foe = this.target;
+    if (!foe && this.attacking) {
+      let bd = REACH + 6;
+      for (const m of this.mobs) { const d = Math.hypot(m.x - p.x, m.y - p.y); if (d < bd) { bd = d; foe = m; } }
+    }
+    if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= REACH) {
+      this.swing = .65;
+      const dmg = rnd(9, 15);
+      foe.hp -= dmg; foe.hit = .18;
+      this.float(foe.x, foe.y - foe.def.h, `${dmg}`, '#ffffff');
+      if (foe.hp <= 0) this.kill(foe);
+    }
+    for (const m of this.mobs) {
+      m.t += dt; m.cd -= dt; m.hit = Math.max(0, m.hit - dt);
+      const d = Math.hypot(p.x - m.x, p.y - m.y);
+      let tx: number | null = null, ty: number | null = null;
+      if (d < m.def.sight) { tx = p.x; ty = p.y; m.wander = null; }
+      else {
+        // Roam near home: a short stroll, a pause, another.
+        if (!m.wander) {
+          m.wait -= dt;
+          if (m.wait <= 0) { m.wander = { x: m.hx + rnd(-40, 40), y: m.hy + rnd(-30, 30) }; m.wait = 1.5 + Math.random() * 3; }
+        }
+        if (m.wander) { tx = m.wander.x; ty = m.wander.y; if (Math.hypot(tx - m.x, ty - m.y) < 3) m.wander = null; }
+      }
+      if (tx !== null && ty !== null) {
+        const dx = tx - m.x, dy = ty - m.y, len = Math.hypot(dx, dy);
+        if (len > (d < m.def.sight ? MOB_REACH - 4 : 2)) {
+          const step = Math.min(len, m.def.speed * dt), vx = dx / len * step, vy = dy / len * step;
+          if (this.free(m.x + vx, m.y)) m.x += vx; else m.wander = null;
+          if (this.free(m.x, m.y + vy)) m.y += vy; else m.wander = null;
+          if (Math.abs(vx) > .05) m.face = vx < 0 ? -1 : 1;
+        }
+      }
+      // A bite when the Keeper is in its reach.
+      if (d <= MOB_REACH && m.cd <= 0) {
+        m.cd = m.def.rate;
+        const n = rnd(m.def.dmg[0], m.def.dmg[1]);
+        this.host.hurtPlayer(n);
+        this.float(p.x, p.y - 34, `${n}`, '#ff5a4a');
+      }
+    }
+    // Walk over loot to pick it up.
+    for (let i = this.drops.length - 1; i >= 0; i--) {
+      const g = this.drops[i];
+      g.age += dt;
+      if (g.age > DESPAWN) { this.drops.splice(i, 1); continue; }
+      if (Math.hypot(g.x - p.x, g.y - p.y) < 22 && g.age > .4) this.pick(g, i);
+    }
+    for (let i = this.floaters.length - 1; i >= 0; i--) { const f = this.floaters[i]; f.age += dt; f.y -= 14 * dt; if (f.age > 1) this.floaters.splice(i, 1); }
+  }
+
+  private free(x: number, y: number): boolean {
+    for (const [ox, oy] of [[-4, -3], [4, -3], [-4, -1], [4, -1]]) if (!this.host.walkable(Math.floor((x + ox) / TILE), Math.floor((y + oy) / TILE))) return false;
+    return true;
+  }
+
+  private float(x: number, y: number, text: string, color: string): void { this.floaters.push({ x, y, text, color, age: 0 }); }
+
+  private kill(m: Mob): void {
+    this.mobs.splice(this.mobs.indexOf(m), 1);
+    if (this.target === m) this.target = null;
+    this.deadUntil.set(m.key, this.clock + RESPAWN);
+    const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
+    const areaId = this.host.levelId() === 'surface' ? 'ember-quarry' : 'ember-delve';
+    this.host.options.onKill?.({ id, areaId, creature: m.def.id, name: m.def.name, hp: m.def.hp });
+    // The ground loot: a coin pile with the creature's materials, and whatever gear the host rolls for the kill.
+    const spot = (i: number) => ({ x: m.x + (i % 3 - 1) * 6, y: m.y + Math.floor(i / 3) * 5 });
+    let n = 0;
+    const coins = rnd(m.def.coins[0], m.def.coins[1]);
+    for (const d of m.def.drops) {
+      if (Math.random() >= d.chance) continue;
+      this.drops.push({ id: `${id}:m${n}`, ...spot(n++), coins: 0, material: d.material, qty: d.qty, label: d.material.replace(/-/g, ' '), color: RARITY_COLOR.common, age: 0 });
+    }
+    this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
+    let rows: readonly LootRow[] = [];
+    try { rows = this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank: 'normal', killKey: id }) ?? []; } catch { rows = []; }
+    rows.forEach((row, i) => {
+      const color = RARITY_COLOR[row.rarity] ?? RARITY_COLOR.common;
+      if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique }, label: row.label, color, age: 0 });
+      else this.drops.push({ id: `${id}:r${i}`, ...spot(n++), coins: 0, qty: 0, rune: row.rune, label: row.label, color, age: 0 });
+    });
+  }
+
+  private pick(g: Drop, i: number): void {
+    const ok = this.host.options.onLoot?.({
+      id: g.id, coins: g.coins, ore: g.material ? g.qty : 0, ...(g.material ? { material: g.material } : {}),
+      ...(g.item ? { item: g.item } : {}), ...(g.rune ? { rune: g.rune } : {}),
+    });
+    if (ok === false) return;   // the satchel is full: it stays on the ground
+    this.drops.splice(i, 1);
+    this.float(g.x, g.y - 10, g.label, g.color);
+  }
+}
