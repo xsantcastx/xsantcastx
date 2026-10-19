@@ -74,29 +74,33 @@
   .ss__hero { padding: var(--space-2); gap: var(--space-2); }
 }
 
-/* ── In the world (docs/handoff/frameless-menus.md): no box, one slim row, the sentence behind "?" ───── */
-:host-context(.place) .ss { padding: 0; gap: var(--space-2); max-width: none; }
-:host-context(.place) .ss__head { align-items: center; justify-content: flex-end; min-height: 0; }
-:host-context(.place) .ss__copy { display: none; }
-:host-context(.place) .ss__hero { padding: 0; gap: var(--space-2); border: 0; background: none; box-shadow: none; }
+/* ── In the world (docs/handoff/nice-menus.md): the station IS the window's content. Its first row is the window's
+   title row — the station's name, the wallet, the pixel "?" (the window's x floats at the row's end) — with a 2px
+   groove under it; then the tabs, the level, the grid and the card, on an 8px grid. The sentence waits behind "?". ── */
+:host-context(.place) .ss { padding: 0; gap: var(--px-u, 8px); max-width: none; }
+:host-context(.place) .ss__head {
+  position: relative; display: flex; align-items: center; justify-content: space-between; gap: 4px;
+  min-height: 44px; padding: 0 44px 0 0; margin-bottom: 4px; box-shadow: var(--px-groove);
+}
+:host-context(.place) .ss__copy { display: block; flex: 1 1 auto; min-width: 0; }
+:host-context(.place) h2.ss__sr {
+  position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: hidden; white-space: normal;
+  display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
+  font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-beacon-text); text-shadow: 2px 2px 0 var(--obsidian-0);
+}
+:host-context(.place) .ss__wallet { flex-wrap: nowrap; }
+:host-context(.place) .ss__hero { padding: 0; gap: var(--px-u, 8px); border: 0; background: none; box-shadow: none; }
 :host-context(.place) .ss__purpose { display: none; }
-/* The help card: a dim over the menu, the words on a plain card with a pixel edge (contained in .place). */
-:host-context(.place) .ss__more--help { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 12px; background: color-mix(in srgb, var(--obsidian-0) 78%, transparent); }
+/* The help card: a dim over the window, the words in a small pixel window of their own (contained in .place). */
+:host-context(.place) .ss__more--help { position: fixed; inset: 0; z-index: 9; display: grid; place-items: center; padding: 12px; background: color-mix(in srgb, var(--obsidian-0) 60%, transparent); }
 :host-context(.place) .ss__more--help[hidden] { display: none; }
 :host-context(.place) .ss__more--help > * { width: min(460px, 100%); }
 :host-context(.place) .ss__helpbar { display: flex; justify-content: flex-end; }
-:host-context(.place) .ss__more--help .ss__details { max-height: calc(100% - 56px); overflow: auto; background: var(--obsidian-2);
-  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
-
-/* A phone held sideways: the station's title, its wallet and the "?" share ONE row (the panel's own title bar steps aside
-   and its x floats over the row's end), so the height goes to the grid and the card. */
-@media (max-height: 520px) and (orientation: landscape) {
-  :host-context(.place) .ss__head { justify-content: space-between; min-height: 44px; padding-right: 48px; gap: 4px; }
-  :host-context(.place) .ss__copy { display: block; }
-  :host-context(.place) h2.ss__sr {
-    position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: visible; white-space: normal;
-    font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-beacon-text); text-shadow: 2px 2px 0 var(--obsidian-0);
-  }
+:host-context(.place) .ss__more--help .ss__details { max-height: calc(100% - 56px); overflow: auto; background: var(--px-win-bg);
+  box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop); }
+/* A narrow window (a portrait phone): the wallet's word goes ("5,000"; the coin says Gold), so the name keeps its room. */
+@container station (max-width: 440px) {
+  :host-context(.place) .ss__wallet ::ng-deep .chip__label { display: none; }
 }
 /* The ? button's accessible name ("Details") covers the button, invisible, so the button is exactly one 44px target for a thumb, a reader and a test. */
 .ss__help { position: relative; }

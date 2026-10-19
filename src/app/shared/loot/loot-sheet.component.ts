@@ -93,11 +93,11 @@ interface ResistRow { id: Element; value: number }
     :host { display: block; }
     .ls {
       display: grid; align-content: start; gap: 8px; width: 100%; box-sizing: border-box; min-height: 100%;
-      padding: 8px 16px calc(12px + var(--sheet-pad-b, 0px));
+      padding: 8px 12px calc(12px + var(--sheet-pad-b, 0px));
       border: 0; background: none; color: var(--adventure-parchment); text-shadow: 2px 2px 0 var(--obsidian-0);
     }
-    .ls__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-    .ls__head h2 { margin: 0; text-transform: uppercase; font: 600 16px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-beacon-text); }
+    .ls__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 44px; margin-bottom: 4px; box-shadow: var(--px-groove); }
+    .ls__head h2 { margin: 0; text-transform: uppercase; font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-beacon-text); }
     .ls__cols { display: grid; gap: 8px; }
     .ls__col { display: grid; gap: 8px; align-content: start; min-width: 0; }
     .ls__head h2 { flex: 1; }
