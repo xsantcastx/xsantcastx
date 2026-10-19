@@ -110,6 +110,21 @@ test('the Ember Mine goes down by its stairs to floor 2 and floor 3, where the W
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('Slagstone Cave on the island: in by its mouth on the mountain, out the same way', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /slagstone cave/i }).first().click();
+  await expect(canvas(page)).toHaveAttribute('data-area', /slagstone cave/i, { timeout: 30000 });
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /cave mouth/i }).first().click();
+  await expect(canvas(page)).toHaveAttribute('data-area', /slagstone/i, { timeout: 30000 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('the Warlock reads their sheet (C) and their Spellbook (K): attributes, spells, auras', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openTopDown(page);
