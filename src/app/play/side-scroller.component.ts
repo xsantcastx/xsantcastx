@@ -497,13 +497,6 @@ export class SideScrollerComponent implements OnDestroy {
   readonly oneWorld = this.browser && OneWorldFlag.on;
   /** Top-down (docs/design/top-down.md): set when the Seamworks square runs on the top-down engine; its walking is the drag joystick. */
   topDown = false;
-  /**
-   * A side trip out of the top-down square (docs/handoff/cozy-ui.md): the station id the Keeper left for, while that
-   * place still lives only in the old view (the ore seam, the Delve, the Beacon, the passage, the Homestead, a hunt).
-   * The old view runs until the Keeper comes back to town from somewhere else, or presses "Back to the square".
-   */
-  sideTrip: string | null = null;
-  private sideAway = false;
   private readonly waystones = inject(WaystoneService);
   private readonly worldMigration = inject(WorldMigrationService);
   /** Last resume point taken (ms), and whether a saved one was used on this mount. */
@@ -769,7 +762,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickSideTrip(); this.tickAreaCard(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -797,7 +790,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.keeperKey = ''; this.marksKey = '';
     // Top-down (docs/design/top-down.md): behind the `?td=1` gate, the Seamworks square is walked in the new
     // 3/4 view; same options and callbacks, so every panel, quest and service below keeps working.
-    this.topDown = this.browser && topDownGate() && this.town.id === 'infernal' && !this.sideTrip;
+    this.topDown = this.browser && topDownGate() && this.town.id === 'infernal';
     const makeEngine = this.topDown
       ? (c: HTMLCanvasElement, o: EngineOptions) => createTopDownEngine(c, o) as unknown as SeamworksEngine
       : (c: HTMLCanvasElement, o: EngineOptions) => new SeamworksEngine(c, o);
@@ -1373,8 +1366,8 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private openStation(station: StationDef): void {
     if (!this.browser) return;
-    // Top-down: a station the square cannot run yet (a quest, a resource, a passage) is a side trip to the old view.
-    if (this.topDown && station.kind !== 'panel' && station.kind !== 'waystone') { const id = station.id; this.leaveSquare(e => e.goToStation(id, true)); return; }
+    // Top-down: a way out the world does not have yet says so (never a detour into the old 2D view, owner 2026-10-19).
+    if (this.topDown && station.kind !== 'panel' && station.kind !== 'waystone') { this.message = this.t(station.id === 'delve' ? 'play.td.soon.delve' : station.id === 'passage' ? 'play.td.soon.passage' : 'play.td.soon.place'); return; }
     // One World: a town's stone opens the Travel map (lit stones, the trunk line, the recall).
     if (station.kind === 'waystone' && this.oneWorld) { this.openTravelMap(station.id); return; }
     // One World at night: the keeper is upstairs; the bell rings, the window lights, the counter opens as always.
@@ -1631,7 +1624,7 @@ export class SideScrollerComponent implements OnDestroy {
   /** Walk to the place and interact on arrival; with reduced motion, go there and open it at once. */
   choosePlace(place: PlaceRow): void {
     this.placesOpen = false;
-    if (this.topDown && !this.inSquare(place.id)) { this.leaveSquare(e => e.goToStation(place.id, true)); this.focusWorld(); return; }
+    if (this.topDown && !this.inSquare(place.id)) { this.message = this.t(place.id === 'delve' ? 'play.td.soon.delve' : 'play.td.soon.place'); this.focusWorld(); return; }
     if (!this.engine?.goToStation(place.id, this.reducedMotion)) {
       this.message = this.t(this.state.paused ? 'play.hud.msg.closeFirst' : 'play.hud.msg.cannotTravel');
     }
@@ -1640,37 +1633,6 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** Whether the top-down square has this station (a stall the Keeper can walk to). */
   private inSquare(id: string): boolean { return !!this.engine?.places.some(p => p.id === id); }
-  /** Leave the top-down square for a place that still lives in the old view, and put the Keeper there. */
-  private leaveSquare(go: (engine: SeamworksEngine) => boolean): void {
-    this.sideTrip = 'away'; this.sideAway = false; this.sideStart = Date.now();
-    this.boundCanvas = null; this.mountEngine();
-    // A fresh engine takes a tick or two to load its town: try the move on the HUD tick until it lands.
-    this.sideGo = go; this.sideGoTries = 0;
-  }
-  private sideGo: ((engine: SeamworksEngine) => boolean) | null = null;
-  private sideGoTries = 0;
-  private sideStart = 0;
-  /** Back from a side trip: the town is the top-down square again. */
-  backToSquare(): void {
-    if (!this.sideTrip) return;
-    this.sideTrip = null; this.sideAway = false;
-    this.boundCanvas = null; this.mountEngine();
-    this.focusWorld();
-  }
-  /** On the HUD tick: a side trip ends on its own once the Keeper has been elsewhere and comes back to town. */
-  private tickSideTrip(): void {
-    if (this.sideGo && this.engine && !this.topDown) {
-      if (this.sideGo(this.engine)) this.sideGo = null;
-      else if (++this.sideGoTries > 15) { this.sideGo = null; this.message = this.t('play.hud.msg.cannotTravel'); }
-      return;
-    }
-    if (!this.sideTrip || this.topDown || !this.engine || this.panel || Date.now() - this.sideStart < 1500) return;
-    const area = this.state.areaId ?? this.town.id;
-    if (area !== this.town.id) this.sideAway = true;
-    else if (this.sideAway) this.backToSquare();
-  }
-  /** The old view's town, on a side trip: the button home to the square shows. */
-  get sideTripInTown(): boolean { return !!this.sideTrip && !this.topDown && (this.state.areaId ?? this.town.id) === this.town.id; }
   /**
    * The first-session goal: buy a building, defeat a Maw, forge the blade, dig
    * in the Delve. Read from the save on the HUD tick (never stored itself), so
@@ -2131,8 +2093,9 @@ export class SideScrollerComponent implements OnDestroy {
     if (!target || !this.engine) return;
     if (this.guide?.id === 'rune') this.markRuneHintSeen();
     this.placesOpen = false;
+    // Top-down: the square walks to what it has; the hunt and the mines are not in the world yet (no 2D detour, owner).
     if (this.topDown && ('x' in target || !this.inSquare(target.station))) {
-      this.leaveSquare(e => 'station' in target ? e.goToStation(target.station, true) : (e.placeAt(target.x), true));
+      this.message = this.t('x' in target ? 'play.td.soon.hunt' : target.station === 'delve' ? 'play.td.soon.delve' : 'play.td.soon.place');
       this.focusWorld();
       return;
     }
