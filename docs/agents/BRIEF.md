@@ -18,12 +18,15 @@ Lore is pre-approved: write it, ship it, log it in `docs/world/lore-addendum.md`
 New player text goes in LAZY i18n tables, EN + ES. Saved state only through the save gateway, merge-safe.
 Never push, deploy, or touch `firestore.rules`, `functions/`, or market flags.
 
-## Menus (owner rule, 2026-10-15 — every menu, new or old)
-**Frameless, pixel, simple, no scrolling.** No window box around a menu: no corner brackets, dashed rules, framed title bar or
-outer panel; the world dims softly (`.menu-scrim`) and the content floats on it (a fade behind it for contrast, a 2px pixel text
-shadow). Keep: a plain title, one pixel × (`.px-x`, global in styles.css), 44px targets, and the placement from menus-orientation
-(portrait sheet, landscape side panel, desktop window). Controls are pixel-styled on existing tokens: square corners (the radius
-tokens are 0 inside menus), 2px stepped edges (`box-shadow: 0 -2px … 2px 0 …`, no soft blur), crisp art. Fewer words: one obvious
+## Menus (owner rule, 2026-10-15; cozy look 2026-10-19 — every menu, new or old)
+**Cozy wooden windows, simple, no scrolling** (references: `docs/design/refs/cozy/`, handoff `docs/handoff/cozy-ui.md`). Every
+menu is ONE window cut from the town's timber: a dark-plank plate, a square wood frame (seam, lit bevel, timber band, dark
+outline — `--px-win-rim`), brass for the one primary button, cream lettering, titles in `--font-display`, body in `--font-game`.
+The goal is a parchment quest scroll (`.px-parch`). Colours come ONLY from `src/styles/tokens/_cozy.css`; inside a window the
+site's obsidian/violet/gold tokens are remapped to wood/brass (side-scroller.component.css), so kits recolour themselves — never
+hard-code a hex. No decorative clutter (corner ticks, dashed rules, glow washes). Keep: a plain title, one pixel × (`.px-x`), 44px
+targets, and the placement from menus-orientation (portrait sheet, landscape side panel, desktop window). Square corners, 2px
+stepped edges, no soft blur, crisp art. Fewer words: one obvious
 primary action; explanations live behind a pixel **?** (`.px-help`) that opens a short card, never on the main screen. MapleStory
 crafting is the template: a paged icon grid with category tabs, ONE result card (icon + rarity-coloured name, ingredient icons with
 have/need green/red), ONE big button. Locked = greyed icon + pixel padlock. **Never a scrolling column for the main task:** the

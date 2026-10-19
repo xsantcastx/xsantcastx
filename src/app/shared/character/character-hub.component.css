@@ -34,7 +34,7 @@
   border-radius: var(--gf-radius-sm);
   background: var(--gf-panel);
   color: var(--gf-dim);
-  font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+  font: 700 12px/1 var(--font-game);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   cursor: pointer;

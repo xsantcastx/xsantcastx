@@ -58,19 +58,19 @@
 :host-context(.place) .km__lore { display: none; }
 :host-context(.place) .km__stage { grid-area: stage; padding: 0; border: 0; border-radius: 0; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); margin: 2px; }
 :host-context(.place) .km__preview { width: 100%; }
-:host-context(.place) .km__name { grid-area: name; gap: 2px; font: 600 9px/1.2 Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+:host-context(.place) .km__name { grid-area: name; gap: 2px; font: 600 9px/1.2 var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
 :host-context(.place) .km__name input { border: 0; border-radius: 0; background: var(--obsidian-0); box-shadow: var(--px-cell-rim); margin: 2px; }
 :host-context(.place) .km__actions { grid-area: actions; grid-template-columns: 1fr 1fr; padding: 2px; align-self: end; }
 :host-context(.place) .km__fields { grid-area: fields; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 2px; }
 :host-context(.place) .km__row { grid-template-columns: 40px minmax(0, 1fr) 40px; grid-template-areas: "prev value next"; gap: 0; background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
-:host-context(.place) .km__label { grid-area: value; align-self: start; z-index: 1; padding-top: 3px; text-align: center; font: 600 8px/1 Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+:host-context(.place) .km__label { grid-area: value; align-self: start; z-index: 1; padding-top: 3px; text-align: center; font: 600 8px/1 var(--font-game); letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
 :host-context(.place) .km__step--prev { grid-area: prev; }
 :host-context(.place) .km__step--next { grid-area: next; }
 :host-context(.place) .km__value { grid-area: value; padding-top: 10px; gap: 4px; min-width: 0; border-radius: 0; background: none; font-size: 12px; white-space: nowrap; overflow: hidden; }
 :host-context(.place) .km__step { width: 40px; border: 0; border-radius: 0; background: var(--obsidian-2); }
 :host-context(.place) .km__step:hover, :host-context(.place) .km__step:focus-visible { background: color-mix(in srgb, var(--gold-deep) 30%, var(--obsidian-2)); }
 :host-context(.place) .km__swatch { width: 10px; height: 10px; border-radius: 0; }
-:host-context(.place) .km__random, :host-context(.place) .km__keep { border: 0; border-radius: 0; font: 700 11px/1 Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+:host-context(.place) .km__random, :host-context(.place) .km__keep { border: 0; border-radius: 0; font: 700 11px/1 var(--font-game); letter-spacing: .06em; text-transform: uppercase; }
 :host-context(.place) .km__random { background: var(--obsidian-2); box-shadow: var(--px-btn-rim); }
 :host-context(.place) .km__keep { color: var(--obsidian-0); box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-deep), 0 4px 0 0 var(--obsidian-0); }
 :host-context(.place) .km__random:active, :host-context(.place) .km__keep:active { translate: 0 2px; }

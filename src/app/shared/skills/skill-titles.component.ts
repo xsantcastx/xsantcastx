@@ -67,7 +67,7 @@ interface TitleRow { skill: SkillId; skillName: string; level: number; title: st
       flex: none; min-height: 44px; min-width: 44px; padding: 0 14px;
       border: 1px solid var(--gf-accent); border-radius: var(--gf-radius-sm);
       background: transparent; color: var(--gf-accent-text); cursor: pointer;
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase;
+      font: 700 11px/1 var(--font-game); letter-spacing: .1em; text-transform: uppercase;
     }
     .stt__wear:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }
   `],

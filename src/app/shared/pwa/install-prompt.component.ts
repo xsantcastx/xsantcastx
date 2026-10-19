@@ -172,7 +172,7 @@ const RECHECK_MS = 15_000;
 
     .ip__title {
       margin: 0;
-      font-family: Orbitron, system-ui, sans-serif;
+      font-family: var(--font-game);
       font-size: 0.82rem;
       letter-spacing: 0.03em;
       color: var(--ink-0);
@@ -206,7 +206,7 @@ const RECHECK_MS = 15_000;
       padding: 0 0.85rem;
       border-radius: 9px;
       font-size: 0.74rem;
-      font-family: Orbitron, system-ui, sans-serif;
+      font-family: var(--font-game);
       letter-spacing: 0.04em;
       cursor: pointer;
       transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;

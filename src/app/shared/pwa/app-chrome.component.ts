@@ -92,7 +92,7 @@ const GAME_BACKGROUND = 'assets/images/bg-basalt-seamworks-1536.webp';
         user-select: none;
       }
       .gf-titlebar__name {
-        font-family: Orbitron, system-ui, sans-serif;
+        font-family: var(--font-game);
         font-size: 0.72rem;
         letter-spacing: 0.08em;
         color: var(--ink-2);

@@ -138,7 +138,7 @@ interface SkillCard {
     .sk__mark { object-fit: contain; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); }
     .sk__name {
       margin: 0;
-      font: 700 12px/1.1 'Orbitron', system-ui, sans-serif;
+      font: 700 12px/1.1 var(--font-game);
       letter-spacing: 0.12em; text-transform: uppercase;
       color: var(--gf-ink);
     }
@@ -146,7 +146,7 @@ interface SkillCard {
     .sk__epithet { color: var(--gf-accent-text); font-size: 0.74rem; line-height: 1.2; overflow-wrap: anywhere; }
     .sk__tonext { margin: -2px 0 0; color: var(--gf-faint); font-size: 0.72rem; font-variant-numeric: tabular-nums; }
     .sk__lvl {
-      font: 700 30px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 30px/1 var(--font-game);
       color: var(--gf-accent-text);
       font-variant-numeric: tabular-nums;
     }
@@ -168,14 +168,14 @@ interface SkillCard {
       border: 1px solid var(--gf-accent);
       border-radius: var(--gf-radius-sm);
       color: var(--gf-accent-text); text-decoration: none;
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 11px/1 var(--font-game);
       letter-spacing: 0.1em; text-transform: uppercase;
     }
     .sk__go:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }
     .sk__details summary {
       min-height: 44px; display: flex; align-items: center;
       cursor: pointer; color: var(--gf-accent-text);
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 11px/1 var(--font-game);
       letter-spacing: 0.1em; text-transform: uppercase;
     }
     .sk__details summary:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }

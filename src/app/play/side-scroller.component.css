@@ -99,7 +99,7 @@ button,
 }
 
 .wordmark {
-  font: 700 11px Orbitron, sans-serif;
+  font: 700 11px var(--font-game);
   letter-spacing: .28em;
   text-transform: uppercase;
   color: var(--adventure-beacon-text);
@@ -110,7 +110,7 @@ button,
 
 .realm-tag {
   display: block;
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .22em;
   text-transform: uppercase;
   color: var(--adventure-ember);
@@ -145,7 +145,7 @@ h2 { font-size: 26px; line-height: .95; }
 button, .touch button {
   padding: 8px 12px;
   color: var(--adventure-parchment);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;
@@ -195,7 +195,7 @@ button:disabled { opacity: .4; cursor: default; }
   animation: tip-in .14s ease-out;
 }
 .station-tip[hidden] { display: none; }
-.station-tip b { font: 600 10px Orbitron, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-beacon-text); }
+.station-tip b { font: 600 10px var(--font-game); letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-beacon-text); }
 .station-tip small { font: italic 400 14px/1.25 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
 .station-tip small:empty { display: none; }
 
@@ -240,7 +240,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .vitals label, .satchel span, .prompt strong, .dock small, .keys {
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--adventure-smoke);
@@ -415,7 +415,7 @@ button:disabled { opacity: .4; cursor: default; }
 
 .capacity span {
   white-space: nowrap;
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--adventure-smoke);
@@ -438,7 +438,7 @@ button:disabled { opacity: .4; cursor: default; }
 .capacity.full span { color: var(--adventure-ember); }
 
 /* Satchel slots on the clasp ("23/40"), amber at the limit; a dot when Overflow holds things. */
-.clasp-count { margin-left: auto; padding-right: 8px; font: 600 10px Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-smoke); }
+.clasp-count { margin-left: auto; padding-right: 8px; font: 600 10px var(--font-game); letter-spacing: .08em; color: var(--adventure-smoke); }
 .satchel .clasp.is-full .clasp-count { color: var(--adventure-ember); }
 .bag-dot {
   display: block;
@@ -580,7 +580,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .book .well em, .book .pocket em, .slip-art em {
-  font: 600 8px/1.15 Orbitron, sans-serif;
+  font: 600 8px/1.15 var(--font-game);
   font-style: normal;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -713,7 +713,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .slip li {
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--adventure-beacon-text);
@@ -735,7 +735,7 @@ button:disabled { opacity: .4; cursor: default; }
    carry their sign in the text, so colour is never the only channel. */
 .slip-copy .compare-label {
   margin: 8px 0 0;
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   opacity: .7;
@@ -794,7 +794,7 @@ button:disabled { opacity: .4; cursor: default; }
   border-radius: 2px;
   background: var(--adventure-hud-panel-solid);
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .1em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -848,7 +848,7 @@ kbd {
   border-bottom-width: 2px;
   border-radius: 2px;
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
 }
 
 /* The Hearth hangs in the top HUD strip, left of the satchel: above every
@@ -889,7 +889,7 @@ kbd {
   max-width: 220px;
   padding: 0 14px;
   white-space: nowrap;
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--adventure-parchment);
@@ -1274,12 +1274,12 @@ input::placeholder { color: var(--adventure-hud-muted); }
   padding: 4px;
 }
 .hotbar .hot img { width: 30px; height: 30px; object-fit: contain; }
-.hotbar .hot em { font: 600 11px Orbitron, sans-serif; font-style: normal; color: var(--adventure-dialogue); }
+.hotbar .hot em { font: 600 11px var(--font-game); font-style: normal; color: var(--adventure-dialogue); }
 .hotbar .hot b {
   position: absolute;
   right: 3px;
   bottom: 2px;
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   color: var(--adventure-parchment);
 }
 .hotbar .hot .key-hint { position: absolute; top: 2px; left: 3px; margin: 0; font-size: 9px; }
@@ -1298,7 +1298,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   background: var(--adventure-hud-panel-solid);
   border: 1px solid var(--adventure-hud-shadow);
   color: var(--adventure-dialogue);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -1354,7 +1354,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .map-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
 .map-tools { display: flex; flex-wrap: wrap; gap: 6px; }
 .map-tools button { min-width: 44px; min-height: 44px; padding: 0 12px; }
-.map-tools .map-zoom { font: 600 20px/1 Orbitron, sans-serif; }
+.map-tools .map-zoom { font: 600 20px/1 var(--font-game); }
 .map-canvas { min-height: 0; cursor: grab; touch-action: none; }
 .map-canvas:active { cursor: grabbing; }
 .map-hint { margin: 0; color: var(--adventure-parchment); font: italic 400 15px var(--font-lore, Georgia, serif); }
@@ -1367,7 +1367,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   padding: 0;
   list-style: none;
   color: var(--adventure-dialogue);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -1380,16 +1380,16 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .map-pin-chip, .map-pin-icon { display: inline-flex; align-items: center; gap: 6px; }
 .map-pin-chip i, .map-pin-icon i { width: 10px; height: 10px; box-shadow: 0 0 0 1px var(--adventure-hud-ink); }
 .map-pin-chip.is-selected, .map-pin-icon[aria-checked="true"], .map-pin-add[aria-pressed="true"] { border-color: var(--adventure-ember); }
-.map-pin-tracked { font: 600 10px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-dialogue); }
+.map-pin-tracked { font: 600 10px var(--font-game); letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-dialogue); }
 .map-pin-icon { min-width: 44px; }
-.map-pin-name { display: inline-flex; align-items: center; gap: 6px; color: var(--adventure-dialogue); font: 600 11px Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.map-pin-name { display: inline-flex; align-items: center; gap: 6px; color: var(--adventure-dialogue); font: 600 11px var(--font-game); letter-spacing: .06em; text-transform: uppercase; }
 .map-pin-name input { min-height: 44px; width: 14ch; padding: 0 8px; font: 400 15px var(--font-lore, Georgia, serif); text-transform: none; }
 
 /* A chest placed in the Delve: what is in it, what you carry. Two plain lists. */
 .chest { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .chest h3 {
   margin: 0 0 8px;
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--adventure-beacon-text);
@@ -1408,7 +1408,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .chest li img { width: 40px; height: 40px; object-fit: contain; grid-column: 1; }
 .chest li span { display: grid; gap: 2px; grid-column: 2; min-width: 0; }
 .chest li b { font: 500 18px var(--font-lore, Georgia, serif); color: var(--adventure-parchment); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chest li small { font: 600 11px Orbitron, sans-serif; color: var(--adventure-dialogue); }
+.chest li small { font: 600 11px var(--font-game); color: var(--adventure-dialogue); }
 .chest li button { grid-column: 3; min-height: 44px; }
 .chest-empty { margin: 0 0 6px; color: var(--adventure-dialogue); font: italic 400 15px var(--font-lore, Georgia, serif); }
 
@@ -1455,7 +1455,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .guide-text b {
   margin-right: 6px;
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .1em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1551,7 +1551,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .glim-say__text b {
   margin-right: 6px;
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .1em;
   text-transform: uppercase;
 }
@@ -1589,7 +1589,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border: 1px solid var(--adventure-hud-gold);
   background: color-mix(in srgb, var(--adventure-hud-gold) 14.00%, transparent);
   color: var(--adventure-parchment);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   pointer-events: auto;
@@ -1631,7 +1631,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border: 1px solid var(--adventure-ember);
   background: var(--adventure-hud-panel-solid);
   color: var(--adventure-hud-gold);
-  font: 600 8px/14px Orbitron, sans-serif;
+  font: 600 8px/14px var(--font-game);
   letter-spacing: .14em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1648,7 +1648,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border: 2px solid var(--mono);
   background: color-mix(in srgb, var(--mono) 28.00%, var(--adventure-hud-panel-solid));
   color: var(--adventure-parchment);
-  font: 700 10px/1 Orbitron, sans-serif;
+  font: 700 10px/1 var(--font-game);
   font-style: normal;
 }
 .glim-say__mono--face { overflow: hidden; }
@@ -1694,7 +1694,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .story-card__kicker {
   margin: 0 0 4px;
   color: var(--adventure-ember);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .16em;
   text-transform: uppercase;
 }
@@ -1703,7 +1703,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   padding-bottom: 10px;
   border-bottom: 2px dashed color-mix(in srgb, var(--adventure-hud-brass) 55.00%, transparent);
   color: var(--adventure-beacon-text);
-  font: 600 19px/1.25 Orbitron, sans-serif;
+  font: 600 19px/1.25 var(--font-game);
 }
 .story-card__p {
   margin: 0 0 12px;
@@ -1957,7 +1957,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .bag-badge {
     display: block;
     color: var(--adventure-smoke);
-    font: 600 9px/1 Orbitron, sans-serif;
+    font: 600 9px/1 var(--font-game);
     font-style: normal;
     letter-spacing: .02em;
     text-align: center;
@@ -2562,7 +2562,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border-radius: 2px;
   background: var(--adventure-hud-panel-solid);
   color: var(--adventure-beacon-text);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   box-shadow: 0 10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent), 0 0 18px color-mix(in srgb, var(--adventure-ember) 22%, transparent);
   animation: craft-toast-in .38s cubic-bezier(.22, 1, .36, 1) both;
@@ -2748,7 +2748,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font: 600 12px Orbitron, sans-serif;
+  font: 600 12px var(--font-game);
   letter-spacing: .04em;
   color: var(--adventure-hud-gold);
 }
@@ -2932,8 +2932,26 @@ input::placeholder { color: var(--adventure-hud-muted); }
   --space-3: 8px; --space-5: 16px; --space-6: 16px;
   /* The hosted pages' own surface tokens (the site's violet glass) become the window's plate and cells. */
   --gf-radius: 0; --gf-radius-sm: 0;
-  --gf-panel: var(--px-cell-bg); --gf-panel-solid: var(--px-win-bg); --gf-edge: var(--obsidian-4);
+  --gf-panel: var(--px-cell-bg); --gf-panel-solid: var(--px-win-bg); --gf-edge: var(--cozy-wood-1);
   --st-radius: 0; --st-radius-chip: 0;
+  /* Cozy (docs/handoff/cozy-ui.md): inside a window the site's obsidian and violet become the town's timber and brass.
+     Custom properties inherit through every hosted page and kit, so one remap here recolours them all; the derived
+     tokens are restated because :root resolved them against the old ramp. */
+  --obsidian-0: var(--cozy-wood-0); --obsidian-1: var(--cozy-well); --obsidian-2: var(--cozy-plate);
+  --obsidian-3: var(--cozy-wood-1); --obsidian-4: var(--cozy-wood-2); --obsidian-5: var(--cozy-wood-3);
+  --surface-page: var(--cozy-wood-0); --surface-shell: var(--cozy-well); --surface-panel: var(--cozy-plate);
+  --surface-card: var(--cozy-wood-1); --surface-well: var(--cozy-well); --surface-raised: var(--cozy-wood-2); --surface-overlay: var(--cozy-plate);
+  --veil-panel: var(--cozy-plate); --veil-glass: color-mix(in srgb, var(--cozy-wood-1) 70%, transparent);
+  --violet-bright: var(--cozy-brass-hi); --violet: var(--cozy-brass); --violet-deep: var(--cozy-brass-lo); --violet-ink: var(--cozy-wood-1);
+  --violet-glow-soft: color-mix(in srgb, var(--cozy-glow) 30%, transparent); --violet-glow-lit: color-mix(in srgb, var(--cozy-glow) 55%, transparent);
+  --edge-hairline: color-mix(in srgb, var(--cozy-wood-hi) 18%, transparent); --edge-inset: color-mix(in srgb, var(--cozy-wood-hi) 28%, transparent);
+  --edge-raised: var(--cozy-wood-3); --edge-violet: var(--cozy-brass-lo); --edge-gold: var(--cozy-brass-lo);
+  --action-primary-bg: var(--cozy-brass); --action-primary-bg-hover: var(--cozy-brass-hi); --action-primary-fg: var(--cozy-wood-0);
+  --action-disabled-bg: var(--cozy-wood-1); --text-link: var(--cozy-brass-hi); --value-shard: var(--cozy-brass-hi);
+  --ink-0: var(--cozy-cream); --ink-1: color-mix(in srgb, var(--cozy-cream) 80%, var(--cozy-wood-3)); --text-heading: var(--cozy-cream);
+  --text-body: color-mix(in srgb, var(--cozy-cream) 88%, transparent); --text-muted: color-mix(in srgb, var(--cozy-cream) 62%, transparent);
+  --ab-top: var(--cozy-brass-hi); --gold: var(--cozy-brass-hi); --gold-core: var(--cozy-brass); --gold-deep: var(--cozy-brass-lo); --st-accent: var(--cozy-brass-hi);
+  --st-surface: var(--cozy-plate); --st-well: var(--cozy-well); --st-edge: var(--edge-hairline); --st-text: var(--cozy-cream);
 }
 /* A phone: the 16px step is 8 too, so the grid, the card and the one button fit the first screen. */
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
@@ -2949,7 +2967,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border: 0;
   border-radius: 0;
   contain: none;
-  background: var(--px-win-bg);
+  background: var(--px-win-planks), var(--px-win-bg);
+  color: var(--cozy-cream);
   box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
   padding: var(--wp-t) var(--wp-x) var(--wp-b);
 }
@@ -2970,11 +2989,10 @@ input::placeholder { color: var(--adventure-hud-muted); }
 }
 .place-head h2, .places .win-head h2, .anchor-sheet .win-head h2, .book-head h2 {
   margin: 0;
-  font: 700 15px/1.1 Orbitron, sans-serif;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--adventure-beacon-text);
-  text-shadow: 2px 2px 0 var(--obsidian-0);
+  font: 700 17px/1.1 var(--font-display);
+  letter-spacing: .04em;
+  color: var(--cozy-glow);
+  text-shadow: 2px 2px 0 var(--cozy-wood-0);
   /* A long name wraps to a second line inside the 44px row, it never pushes the x out. */
   white-space: normal;
   display: -webkit-box;
@@ -3005,7 +3023,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 /* Pixel "?": a small help button that opens a short card (the words that used to sit on screen). */
 .px-help {
   flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer;
-  color: var(--adventure-parchment); font: 700 14px/1 Orbitron, sans-serif; text-shadow: 2px 2px 0 var(--obsidian-0);
+  color: var(--adventure-parchment); font: 700 14px/1 var(--font-game); text-shadow: 2px 2px 0 var(--obsidian-0);
 }
 .px-help i { display: grid; place-items: center; width: 24px; height: 24px; font-style: normal; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
 
@@ -3049,25 +3067,25 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .places .menu-extra { display: grid; margin-top: var(--px-u); }
 .places .menu-extra button { width: 100%; min-width: 0; min-height: 44px; padding: 4px 6px; font-size: 10px; }
 .places [data-open="oneworld"] small { display: none; }
-.places [data-open="oneworld"][aria-pressed="true"]::after { content: "ON"; justify-self: start; padding: 0 4px; font: 700 9px/14px Orbitron, sans-serif; background: var(--gold); color: var(--obsidian-0); text-shadow: none; }
+.places [data-open="oneworld"][aria-pressed="true"]::after { content: "ON"; justify-self: start; padding: 0 4px; font: 700 9px/14px var(--font-game); background: var(--gold); color: var(--obsidian-0); text-shadow: none; }
 
 /* The Rift Anchors: the same buttons, one per row, the sentence above them in the plate. */
 .anchor-sheet { display: flex; flex-direction: column; overflow: hidden; }
 .anchor-lead { margin: 0 0 var(--px-u); font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
 .anchor-list { list-style: none; margin: 0; padding: 2px; display: grid; gap: var(--px-u); overflow: auto; min-height: 0; }
-.anchor-row { width: 100%; min-height: 48px; padding: 6px 12px; text-align: left; font: 600 12px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-parchment); }
+.anchor-row { width: 100%; min-height: 48px; padding: 6px 12px; text-align: left; font: 600 12px var(--font-game); letter-spacing: .06em; color: var(--adventure-parchment); }
 .anchor-row--home { box-shadow: var(--px-on-rim), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent); }
 
 /* The Waystone: pixel road buttons, no sentence. */
 .waystone { gap: var(--px-u); padding: 2px; }
 .waystone-road.here { box-shadow: var(--px-on-rim), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent); }
-.waystone-road b { font: 700 14px Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.waystone-road b { font: 700 14px var(--font-game); letter-spacing: .06em; text-transform: uppercase; }
 .place-body > .place-note:has(+ .waystone) { display: none; }
 
 /* The Satchel: its pieces are pixel cells on the plate. */
 .book .pockets { grid-template-columns: repeat(5, minmax(0, 1fr)); }
 .bag-pager { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.bag-pager__n { min-width: 56px; text-align: center; font: 700 12px/1 Orbitron, sans-serif; font-variant-numeric: tabular-nums; }
+.bag-pager__n { min-width: 56px; text-align: center; font: 700 12px/1 var(--font-game); font-variant-numeric: tabular-nums; }
 .book-face, .bag-tab {
   border: 0;
   background: var(--obsidian-2);
@@ -3097,7 +3115,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .book .pocket b {
   right: 3px;
   bottom: 2px;
-  font: 700 11px/1 Orbitron, sans-serif;
+  font: 700 11px/1 var(--font-game);
   text-shadow: 1px 1px 0 var(--obsidian-0), -1px -1px 0 var(--obsidian-0), 1px -1px 0 var(--obsidian-0), -1px 1px 0 var(--obsidian-0);
 }
 .book .wells, .book .pockets { padding: 2px; gap: var(--px-u); }
@@ -3111,7 +3129,8 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .story-card {
   border: 0;
   border-radius: 0;
-  background: var(--px-win-bg);
+  background: var(--px-win-planks), var(--px-win-bg);
+  color: var(--cozy-cream);
   box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
   padding: 16px;
 }
@@ -3121,10 +3140,10 @@ input::placeholder { color: var(--adventure-hud-muted); }
   min-height: 44px;
   border: 0;
   border-radius: 0;
-  background: var(--gold);
-  color: var(--obsidian-0);
+  background: var(--cozy-brass);
+  color: var(--cozy-wood-0);
   text-shadow: none;
-  box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-deep), 0 4px 0 0 var(--obsidian-0);
+  box-shadow: 0 -2px 0 0 var(--cozy-brass-hi), 0 2px 0 0 var(--cozy-brass-lo), -2px 0 0 0 var(--cozy-brass-hi), 2px 0 0 0 var(--cozy-brass-lo), 0 4px 0 0 var(--cozy-wood-0);
 }
 .story-card__go:active, .glim-talk-card__close:active { translate: 0 2px; }
 
@@ -3239,3 +3258,65 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .glim-mote:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
 @keyframes glim-mote { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.15); } }
 @media (prefers-reduced-motion: reduce) { .glim-mote i { animation: none; } }
+
+/* ── Cozy HUD (docs/handoff/cozy-ui.md) ────────────────────────────────────────────────────────────────
+   The HUD matches the cozy windows and the town (references: docs/design/refs/cozy/): wooden chips lit from the
+   top-left, brass for the one primary button, cream lettering, and the goal on a parchment quest scroll. The HUD's
+   own tokens are remapped here, so every plate that reads them turns to wood at once. */
+.stage {
+  --adventure-hud-panel: var(--cozy-plate); --adventure-hud-panel-warm: var(--cozy-wood-1); --adventure-hud-panel-solid: var(--cozy-plate);
+  --adventure-hud-panel-deep: var(--cozy-well); --adventure-hud-panel-raised: var(--cozy-wood-1); --adventure-hud-stage: var(--cozy-wood-0);
+  --adventure-hud-brass: var(--cozy-wood-hi); --adventure-hud-text: var(--cozy-cream); --adventure-hud-gold: var(--cozy-glow);
+  --adventure-ember: var(--cozy-brass); --adventure-beacon-text: var(--cozy-glow); --adventure-parchment: var(--cozy-cream);
+  --adventure-dialogue: color-mix(in srgb, var(--cozy-cream) 82%, var(--cozy-wood-3)); --adventure-button-ink: var(--cozy-wood-0);
+  --cozy-chip: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 40%, transparent), inset 0 -2px 0 0 var(--cozy-plate-seam), 0 4px 0 0 color-mix(in srgb, var(--cozy-wood-0) 50%, transparent);
+  --cozy-brass-chip: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo), 0 4px 0 0 color-mix(in srgb, var(--cozy-wood-0) 50%, transparent);
+}
+/* The top band: a soft timber shade instead of the basalt strip. */
+.topbar { background: linear-gradient(180deg, color-mix(in srgb, var(--cozy-wood-0) 82%, transparent) 30%, transparent); border-bottom: 0; }
+.wordmark, .realm-tag { font-family: var(--font-display); letter-spacing: .12em; }
+.realm-tag { color: var(--cozy-brass-hi); }
+h1#game-title { font-family: var(--font-display); color: var(--cozy-cream); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+
+/* Plates and buttons: one wooden chip, no brass corner ticks. */
+.vitals, .satchel, .dock, .prompt.armed, .hearth-pill, .station-tip {
+  border: 0; border-radius: 0;
+  background: var(--px-win-planks), var(--cozy-plate);
+  box-shadow: var(--cozy-chip);
+}
+:is(.topbar, .prompt, .touch, .guide, .hearth-pill, .dock, .satchel, .vitals, .fall-card) button:not(.win-x, .clasp, .glim-hud, .guide-glim, .guide-fold) {
+  border: 0; border-radius: 0;
+  background: var(--cozy-wood-2);
+  color: var(--cozy-cream);
+  box-shadow: var(--cozy-chip);
+  font: 700 12px/1 var(--font-ui);
+  letter-spacing: .03em;
+  text-transform: none;
+}
+:is(.topbar, .prompt, .touch, .guide, .hearth-pill, .dock) button:not(.win-x, .clasp, .glim-hud, .guide-glim, .guide-fold):hover { background: var(--cozy-wood-3); color: var(--cozy-glow); }
+.top-actions button:first-child, .dock button[type="submit"], .prompt.armed > button:first-of-type, .slip-actions .wear, .fall-card button, .guide .guide-go {
+  background: var(--cozy-brass) !important;
+  color: var(--cozy-wood-0) !important;
+  box-shadow: var(--cozy-brass-chip) !important;
+  text-shadow: none;
+}
+.top-actions .quiet { background: color-mix(in srgb, var(--cozy-wood-1) 85%, transparent) !important; }
+:is(.topbar, .prompt, .touch, .guide, .dock) button:active { translate: 0 2px; }
+
+/* The goal: a parchment quest scroll — rolled timber rods top and bottom, ink lettering. */
+.guide {
+  border: 0; border-radius: 0;
+  background: var(--cozy-parch);
+  box-shadow:
+    0 -6px 0 0 var(--cozy-wood-3), 0 6px 0 0 var(--cozy-wood-3),
+    0 -8px 0 0 var(--cozy-wood-0), 0 8px 0 0 var(--cozy-wood-0),
+    -2px 0 0 0 var(--cozy-parch-edge), 2px 0 0 0 var(--cozy-parch-edge),
+    inset 0 -3px 0 0 var(--cozy-parch-shade),
+    0 12px 0 0 color-mix(in srgb, var(--cozy-wood-0) 35%, transparent);
+}
+.guide-text { color: var(--cozy-ink); }
+.guide-text b { color: var(--cozy-ink-soft); font: 700 11px/1.2 var(--font-display); letter-spacing: .06em; text-transform: none; }
+.guide-hide { color: var(--cozy-ink) !important; background: transparent !important; box-shadow: none !important; }
+.guide-glim { border: 0 !important; }
+.guide-fold { color: var(--cozy-ink); }
+.guide[data-chapter]::before { color: var(--cozy-ink-soft); background: var(--cozy-parch-shade); border: 0; box-shadow: 0 0 0 2px var(--cozy-wood-0); font-family: var(--font-display); }

@@ -268,16 +268,16 @@ import {
     :host-context(.place) .sp__stat:hover { box-shadow: none; }
     :host-context(.place) .sp__stat-head { margin: 0; }
     :host-context(.place) .sp__orb { width: 10px; height: 10px; border-radius: 0; box-shadow: none; background: var(--star-color); }
-    :host-context(.place) .sp__name { font: 600 12px/1.2 Orbitron, sans-serif; letter-spacing: .04em; }
+    :host-context(.place) .sp__name { font: 600 12px/1.2 var(--font-game); letter-spacing: .04em; }
     :host-context(.place) .sp__bar { grid-column: 1; height: 4px; margin: 0; border-radius: 0; }
     :host-context(.place) .sp__fill { border-radius: 0; box-shadow: none; }
     :host-context(.place) .sp__effect { grid-column: 1; margin: 0; font-size: 12px; }
     :host-context(.place) .sp__actions { grid-column: 2; grid-row: 1 / span 3; gap: 6px; }
     :host-context(.place) .sp__add { min-width: 44px; padding: 0 8px; border: 0; border-radius: 0; background: var(--obsidian-1);
-      box-shadow: var(--px-btn-rim); font: 700 11px/1 Orbitron, sans-serif; }
+      box-shadow: var(--px-btn-rim); font: 700 11px/1 var(--font-game); }
     :host-context(.place) .sp__add:hover:not(:disabled) { transform: none; box-shadow: var(--px-on-rim); }
     :host-context(.place) .sp__foot { margin-top: 8px; }
-    :host-context(.place) .sp__respec { border: 0; border-radius: 0; background: var(--obsidian-2); box-shadow: var(--px-btn-rim); font: 600 11px/1 Orbitron, sans-serif; }
+    :host-context(.place) .sp__respec { border: 0; border-radius: 0; background: var(--obsidian-2); box-shadow: var(--px-btn-rim); font: 600 11px/1 var(--font-game); }
   `],
 })
 export class StatPanelComponent implements OnInit, OnDestroy {

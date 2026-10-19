@@ -100,23 +100,23 @@ const QUESTIONS: readonly QuestionId[] = ['like', 'deep', 'mark'];
   styles: [`
     :host { display: block; }
     .gb { display: grid; gap: 14px; padding: 12px 14px; border: 1px solid var(--adventure-hud-gold); }
-    .gb__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px Orbitron, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
-    .gb__title { margin: 2px 0 0; color: var(--adventure-beacon-text); font: 600 18px/1.25 Orbitron, sans-serif; }
+    .gb__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px var(--font-game); letter-spacing: .16em; text-transform: uppercase; }
+    .gb__title { margin: 2px 0 0; color: var(--adventure-beacon-text); font: 600 18px/1.25 var(--font-game); }
     .gb__track { display: grid; gap: 6px; }
     .gb__stage { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px; margin: 0; }
-    .gb__stage b { color: var(--adventure-hud-gold); font: 600 14px Orbitron, sans-serif; }
+    .gb__stage b { color: var(--adventure-hud-gold); font: 600 14px var(--font-game); }
     .gb__stage small, .gb__count, .gb__muted { color: var(--adventure-dialogue); font-size: 12px; line-height: 1.45; }
     .gb__bar { height: 8px; border: 1px solid var(--adventure-hud-brass); background: color-mix(in srgb, var(--adventure-hud-brass) 12.00%, transparent); }
     .gb__bar i { display: block; height: 100%; background: var(--adventure-hud-gold); }
     .gb__honest { margin: 0; color: var(--adventure-dialogue); font-style: italic; line-height: 1.45; }
-    .gb__block h4 { margin: 0 0 8px; color: var(--adventure-beacon-text); font: 600 13px Orbitron, sans-serif; }
+    .gb__block h4 { margin: 0 0 8px; color: var(--adventure-beacon-text); font: 600 13px var(--font-game); }
     .gb__talks, .gb__memory, .gb__stages, .gb__quest { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
     .gb__talk {
       display: flex; width: 100%; min-height: 44px; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 12px;
       border: 1px solid var(--adventure-hud-brass); background: transparent; color: var(--adventure-parchment); font: 500 14px system-ui, sans-serif; text-align: left; cursor: pointer;
     }
     .gb__talk.is-open, .gb__talk:hover, .gb__talk:focus-visible { border-color: var(--adventure-hud-gold); outline: none; }
-    .gb__talk small { color: var(--adventure-dialogue); font: 600 10px Orbitron, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+    .gb__talk small { color: var(--adventure-dialogue); font: 600 10px var(--font-game); letter-spacing: .1em; text-transform: uppercase; }
     .gb__talk small.is-new { color: var(--adventure-hud-gold); }
     .gb__talk-body { margin-top: 8px; padding: 10px 12px; border-left: 2px solid var(--adventure-hud-gold); }
     .gb__memory li { color: var(--adventure-parchment); }

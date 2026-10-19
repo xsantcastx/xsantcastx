@@ -97,7 +97,7 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
     .csm__eyebrow {
       display: flex; align-items: center; gap: 7px;
       margin: 0 0 8px;
-      font: 600 11px/1 'Orbitron', system-ui, sans-serif;
+      font: 600 11px/1 var(--font-game);
       letter-spacing: .12em; text-transform: uppercase; color: #4dffe0;
     }
     .csm__pulse {
@@ -108,7 +108,7 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
 
     .csm__title {
       margin: 0 0 8px;
-      font: 700 clamp(18px, 4vw, 22px)/1.25 'Orbitron', system-ui, sans-serif;
+      font: 700 clamp(18px, 4vw, 22px)/1.25 var(--font-game);
       color: #F2ECFF;
     }
 
@@ -134,7 +134,7 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
 
     .csm__col-head {
       margin: 0 0 10px;
-      font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+      font: 600 12px/1 var(--font-game);
       letter-spacing: .06em; color: #A78BFA;
     }
 
@@ -145,7 +145,7 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
     .csm__stats dt { font-size: 12px; color: #7d918c; }
     .csm__stats dd {
       margin: 0;
-      font: 700 14px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 14px/1 var(--font-game);
       color: #cfe9e2;
     }
     /* The larger of the pair, so the difference is visible without arithmetic. */
@@ -160,7 +160,7 @@ import { OverlayStackService } from '../overlay/overlay-stack.service';
       border: 1px solid rgba(255, 255, 255, 0.1);
       background: transparent;
       color: #cfe9e2; cursor: pointer; text-align: left;
-      font: 600 13px/1.2 'Orbitron', system-ui, sans-serif; letter-spacing: .03em;
+      font: 600 13px/1.2 var(--font-game); letter-spacing: .03em;
       transition: border-color .25s ease, color .25s ease, box-shadow .25s ease;
     }
     .csm__btn:hover { color: #F2ECFF; border-color: rgba(255, 255, 255, 0.3); }

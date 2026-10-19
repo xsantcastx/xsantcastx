@@ -7,7 +7,7 @@
 .sl-home { display: grid; gap: 10px; }
 .sl-group {
   margin: 0;
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--adventure-dialogue);
@@ -35,7 +35,7 @@
 .sl-tile:active { transform: translateY(1px); }
 .sl-tile:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
 .sl-tile .sl-ico { grid-row: 1 / span 2; }
-.sl-tile__name { font: 600 13px/1.2 Orbitron, sans-serif; letter-spacing: .06em; }
+.sl-tile__name { font: 600 13px/1.2 var(--font-game); letter-spacing: .06em; }
 .sl-tile__sub { font-size: 13px; color: var(--adventure-dialogue); font-variant-numeric: tabular-nums; }
 .sl-tile__name:only-of-type { grid-row: 1 / span 2; }
 .sl-dot {
@@ -120,14 +120,14 @@
   border-radius: 2px;
   background: var(--obsidian-2);
   color: var(--adventure-dialogue);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .1em;
   text-transform: uppercase;
   cursor: pointer;
 }
 .sl-back::before { content: "\2039"; margin-right: 8px; font-size: 16px; line-height: 0; vertical-align: -1px; color: var(--gold); }
 .sl-back:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
-.sl-face-title { margin: 0; min-width: 0; font: 600 12px Orbitron, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sl-face-title { margin: 0; min-width: 0; font: 600 12px var(--font-game); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .sl-pane[hidden] { display: none; }
 .sl-pane { display: grid; gap: 12px; min-width: 0; }
@@ -139,7 +139,7 @@
 /* The Homestead at a glance. */
 .sl-read { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
 .sl-read > div { padding: 8px 10px; border: 1px solid color-mix(in srgb, var(--gold-deep) 40%, transparent); background: var(--obsidian-1); }
-.sl-read dt { font: 600 10px Orbitron, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--adventure-dialogue); }
+.sl-read dt { font: 600 10px var(--font-game); letter-spacing: .12em; text-transform: uppercase; color: var(--adventure-dialogue); }
 .sl-read dd { margin: 2px 0 0; font-size: 20px; color: var(--gold-bright); }
 
 .sl-card {
@@ -149,7 +149,7 @@
   border: 1px solid color-mix(in srgb, var(--gold-deep) 40%, transparent);
   background: color-mix(in srgb, var(--obsidian-1) 85%, transparent);
 }
-.sl-card h3 { margin: 0; font: 600 11px Orbitron, sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
+.sl-card h3 { margin: 0; font: 600 11px var(--font-game); letter-spacing: .12em; text-transform: uppercase; color: var(--gold); }
 .sl-card p { margin: 0; color: var(--adventure-parchment); }
 .sl-card ul, .sl-walk ul { margin: 0; padding-left: 18px; color: var(--adventure-dialogue); display: grid; gap: 4px; }
 .sl-crew, .sl-walk { display: grid; gap: 6px; margin-top: 6px; }
@@ -164,7 +164,7 @@
   border-radius: 2px;
   background: var(--obsidian-2);
   color: var(--gold-bright);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;
@@ -187,7 +187,7 @@
   gap: 10px;
   cursor: pointer;
   list-style: none;
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--adventure-dialogue);
@@ -254,7 +254,7 @@
   grid-template-columns: 1fr auto auto;
   align-items: center;
   gap: 8px;
-  font: 600 10px/1 Orbitron, sans-serif;
+  font: 600 10px/1 var(--font-game);
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--adventure-dialogue);
@@ -268,13 +268,13 @@
 .ph-lock { display: grid; justify-items: center; gap: 2px; padding: 6px 0 2px; text-align: center; }
 .ph-time {
   margin: 0;
-  font: 700 64px/1 Orbitron, sans-serif;
+  font: 700 64px/1 var(--font-game);
   letter-spacing: .04em;
   font-variant-numeric: tabular-nums;
   color: var(--gold-bright);
   text-shadow: 3px 3px 0 var(--obsidian-0);
 }
-.ph-date { margin: 0; font: 600 12px Orbitron, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--adventure-parchment); }
+.ph-date { margin: 0; font: 600 12px var(--font-game); letter-spacing: .1em; text-transform: uppercase; color: var(--adventure-parchment); }
 .ph-sky { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; color: var(--adventure-dialogue); font-size: 14px; }
 .ph-sky img { width: 32px; height: 32px; }
 .ph-sky small { opacity: .85; }
@@ -300,8 +300,8 @@ button.ph-widget { cursor: pointer; font: inherit; }
 button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, .ph-dock__app:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: 2px; }
 .ph-widget > img { width: 40px; height: 40px; }
 .ph-widget__body { display: grid; gap: 2px; min-width: 0; }
-.ph-widget__kicker { font: 600 9px Orbitron, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-dialogue); }
-.ph-widget__big { font: 700 14px/1.2 Orbitron, sans-serif; color: var(--gold-bright); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ph-widget__kicker { font: 600 9px var(--font-game); letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-dialogue); }
+.ph-widget__big { font: 700 14px/1.2 var(--font-game); color: var(--gold-bright); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ph-widget__small { font-size: 12px; color: var(--adventure-dialogue); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ph-eclipse[data-eclipse-on="true"] { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold-deep), 0 0 14px color-mix(in srgb, var(--gold) 45%, transparent); }
 .ph-music__ctl { display: flex; gap: 6px; }
@@ -353,7 +353,7 @@ button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, 
   box-shadow: inset 2px 2px 0 color-mix(in srgb, var(--gold-bright) 14%, transparent), 2px 2px 0 var(--obsidian-0);
 }
 .ph-app.sl-tile--game .ph-app__icon { background: linear-gradient(160deg, color-mix(in srgb, var(--realm-umbral) 55%, var(--obsidian-2)), var(--obsidian-1)); }
-.ph-app .sl-tile__name { grid-row: auto; font: 600 9px/1.2 Orbitron, sans-serif; letter-spacing: .04em; color: var(--adventure-parchment); max-width: 100%; overflow-wrap: anywhere; }
+.ph-app .sl-tile__name { grid-row: auto; font: 600 9px/1.2 var(--font-game); letter-spacing: .04em; color: var(--adventure-parchment); max-width: 100%; overflow-wrap: anywhere; }
 .ph-app .sl-dot { top: 2px; right: calc(50% - 30px); }
 
 /* Page dots: small marks, 44px targets. */
@@ -379,11 +379,11 @@ button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, 
 
 /* Page 2: the calendar (a month is two weeks) and Sera's ledger. */
 .ph-cal { display: grid; gap: 8px; padding: 10px 12px; border: 2px solid var(--obsidian-0); background: color-mix(in srgb, var(--obsidian-0) 72%, transparent); }
-.ph-cal__month { margin: 0; font: 700 14px Orbitron, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: var(--gold-bright); }
+.ph-cal__month { margin: 0; font: 700 14px var(--font-game); letter-spacing: .1em; text-transform: uppercase; color: var(--gold-bright); }
 .ph-cal__month small { display: block; font: 400 12px var(--font-lore, Georgia, serif); letter-spacing: 0; text-transform: none; color: var(--adventure-dialogue); }
 .ph-cal__grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; text-align: center; }
-.ph-cal__dow { font: 600 9px Orbitron, sans-serif; color: var(--adventure-dialogue); text-transform: uppercase; }
-.ph-cal__day { position: relative; padding: 6px 0; font: 600 13px Orbitron, sans-serif; color: var(--adventure-parchment); background: var(--obsidian-1); font-variant-numeric: tabular-nums; }
+.ph-cal__dow { font: 600 9px var(--font-game); color: var(--adventure-dialogue); text-transform: uppercase; }
+.ph-cal__day { position: relative; padding: 6px 0; font: 600 13px var(--font-game); color: var(--adventure-parchment); background: var(--obsidian-1); font-variant-numeric: tabular-nums; }
 .ph-cal__day.is-past { opacity: .5; }
 .ph-cal__day.is-today { background: var(--gold-deep); color: var(--obsidian-0); }
 .ph-cal__day.is-eclipse::after, .ph-cal__mark { content: ""; position: absolute; right: 2px; top: 2px; width: 6px; height: 6px; background: var(--gold-bright); box-shadow: 0 0 0 1px var(--obsidian-0); }
@@ -392,12 +392,12 @@ button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, 
 .ph-ledger p { margin: 0; }
 
 /* A face's bar carries the time too (the phone's status bar on every screen). */
-.sl-bar__time { margin-left: auto; font: 600 11px Orbitron, sans-serif; color: var(--gold-bright); font-variant-numeric: tabular-nums; }
+.sl-bar__time { margin-left: auto; font: 600 11px var(--font-game); color: var(--gold-bright); font-variant-numeric: tabular-nums; }
 
 /* The eclipse app. */
 .sl-eclipse__head { grid-template-columns: 56px minmax(0, 1fr); align-items: center; gap: 12px; }
 .sl-eclipse__head img { width: 56px; height: 56px; image-rendering: pixelated; }
-.sl-eclipse__big { font: 700 16px Orbitron, sans-serif; color: var(--gold-bright) !important; font-variant-numeric: tabular-nums; }
+.sl-eclipse__big { font: 700 16px var(--font-game); color: var(--gold-bright) !important; font-variant-numeric: tabular-nums; }
 .sl-eclipse[data-eclipse-on="true"] .sl-eclipse__head { border-color: var(--gold); box-shadow: 0 0 16px color-mix(in srgb, var(--gold) 40%, transparent); }
 
 @media (max-width: 380px) {

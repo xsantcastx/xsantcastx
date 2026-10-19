@@ -97,13 +97,13 @@ interface ResistRow { id: Element; value: number }
       border: 0; background: none; color: var(--adventure-parchment); text-shadow: 2px 2px 0 var(--obsidian-0);
     }
     .ls__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 44px; margin-bottom: 4px; box-shadow: var(--px-groove); }
-    .ls__head h2 { margin: 0; text-transform: uppercase; font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-beacon-text); }
+    .ls__head h2 { margin: 0; text-transform: uppercase; font: 700 15px/1.1 var(--font-game); letter-spacing: .08em; color: var(--adventure-beacon-text); }
     .ls__cols { display: grid; gap: 8px; }
     .ls__col { display: grid; gap: 8px; align-content: start; min-width: 0; }
     .ls__head h2 { flex: 1; }
     .ls__helpcard { display: grid; gap: 6px; padding: 10px 12px; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
     @media (max-height: 520px) and (orientation: landscape) { .ls__cols { grid-template-columns: 1fr 1fr; gap: 12px; } }
-    .ls__h { margin: 6px 0 0; font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-ember); }
+    .ls__h { margin: 6px 0 0; font: 600 12px var(--font-game); letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-ember); }
     .ls__lead, .ls__note, .ls__saved { margin: 0; font: italic 400 14px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
     .ls__saved { font-size: 13px; opacity: .75; }
     .ls__row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
@@ -111,7 +111,7 @@ interface ResistRow { id: Element; value: number }
     .ls__pick, .ls__tier {
       min-height: 44px; padding: 6px 10px; border: 0; border-radius: 0; box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
       background: var(--obsidian-2); color: var(--adventure-parchment);
-      font: 600 12px Orbitron, sans-serif; letter-spacing: .04em; cursor: pointer; text-align: left;
+      font: 600 12px var(--font-game); letter-spacing: .04em; cursor: pointer; text-align: left;
     }
     .ls__pick--on { background: color-mix(in srgb, var(--adventure-hud-gold) 30%, var(--obsidian-2)); box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-bright), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-bright); }
     .ls__tiers { display: grid; gap: 6px; }
@@ -120,7 +120,7 @@ interface ResistRow { id: Element; value: number }
     .ls__tier:disabled { opacity: .5; cursor: not-allowed; }
     .ls__pick:hover, .ls__pick:focus-visible, .ls__tier:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
     .ls__res { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 4px 12px; }
-    .ls__res li { display: flex; justify-content: space-between; min-height: 28px; align-items: center; font: 600 12px Orbitron, sans-serif; }
+    .ls__res li { display: flex; justify-content: space-between; min-height: 28px; align-items: center; font: 600 12px var(--font-game); }
     @media (max-height: 520px) and (orientation: landscape) { .ls__row { grid-template-columns: 1fr; } }
     .ls__neg { color: var(--adventure-danger, #ff765c); }
   `],
