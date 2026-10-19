@@ -38,7 +38,10 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.hud.act.walkCloser': { en: 'Walk closer to a landmark', es: 'Acercate a un lugar senalado' },
   'play.hud.interact': { en: 'Interact', es: 'Interactuar' },
   'play.hud.keys': { en: 'Keys', es: 'Teclas' },
-  'play.hud.backToSquare': { en: 'Back to the square', es: 'Volver a la plaza' },
+  'play.td.soon.delve': { en: 'The shaft drops into the dark. The mines below are being dug: soon.', es: 'El pozo baja a la oscuridad. Las minas se estan excavando: pronto.' },
+  'play.td.soon.hunt': { en: 'The wilds beyond town will have monsters to hunt: soon.', es: 'Las tierras salvajes tendran monstruos que cazar: pronto.' },
+  'play.td.soon.passage': { en: 'The road east runs on: walk it and see.', es: 'El camino al este sigue: recorrelo y mira.' },
+  'play.td.soon.place': { en: 'That place is not in the world yet: soon.', es: 'Ese lugar aun no esta en el mundo: pronto.' },
   'play.hud.character': { en: 'Character & stats', es: 'Personaje y estadisticas' },
   'play.hud.characterBlurb': { en: 'Your Keeper\'s stats and tools', es: 'Las estadisticas y herramientas de tu Guardian' },
 

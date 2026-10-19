@@ -27,6 +27,10 @@
       <div class="area-card" aria-hidden="true"><small>{{ card.realm }}</small><strong>{{ card.title }}</strong><i></i></div>
     }
   }
+  <!-- Top-down: what just happened (a deed, a refusal) as a short toast above the prompt; it fades by itself. -->
+  @if (topDown && message) {
+    @for (m of [message]; track m) { <p class="td-toast" role="status" data-engine-ignore>{{ m }}</p> }
+  }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
     <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i></div>
@@ -514,10 +518,6 @@
   @if (state.delve) {
     <!-- Phones: the hotbar's Take, in the band over the touch row (Place is the Use button). -->
     <button type="button" class="m-take" (click)="takeBack()" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }}</button>
-  }
-  <!-- A side trip into the old view's town (top-down is the game; this place is not rebuilt yet): one way home. -->
-  @if (sideTripInTown) {
-    <button type="button" class="square-back" data-engine-ignore (click)="backToSquare()">{{ t('play.hud.backToSquare') }}</button>
   }
   @if (showKeys) {
     <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>M</kbd> {{ t('play.hud.key.map') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
