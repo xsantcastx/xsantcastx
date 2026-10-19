@@ -1583,7 +1583,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** Top-down: the skill bar (keys 1–4), each slot's cooldown left 0–1 and whether there is mana (td-skills.ts). */
   tdAbilities: { id: string; key: string; left: number; mana: number; ready: boolean }[] = [];
   tdMana = MAX_MANA;
-  readonly tdMaxMana = MAX_MANA;
+  tdMaxMana = MAX_MANA;
+  tdMaxHp = 100;
   /** The Spellbook (K): every skill of the class, what it does, the bar and the aura chosen there. */
   spellbookOpen = false;
   private readonly sanitizer = inject(DomSanitizer);
@@ -1598,8 +1599,13 @@ export class SideScrollerComponent implements OnDestroy {
     // The Spellbook's choices (synced with the Keeper's look) reach the engine whenever they change.
     const look = this.looks.look, key = `${look.bar.join(',')}|${look.aura}`;
     if (key !== this.tdLoadoutKey && e?.setSkillLoadout) { this.tdLoadoutKey = key; e.setSkillLoadout(this.loadoutBar, this.loadoutAura); }
+    // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
+    (this.engine as unknown as { setKeeperLevel?: (n: number) => void } | undefined)?.setKeeperLevel?.(this.huntingLevel);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
+    const ext = this.engine as unknown as { maxMana?: number; maxHealth?: number } | undefined;
+    if (typeof ext?.maxMana === 'number') this.tdMaxMana = ext.maxMana;
+    if (typeof ext?.maxHealth === 'number') this.tdMaxHp = ext.maxHealth;
   }
   useAbility(slot: string): void {
     const why = this.tdEngine?.useAbility?.(slot);
