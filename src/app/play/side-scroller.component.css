@@ -3379,14 +3379,6 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 /* ── Top-down is the game (2026-10-19): the side view's chrome leaves the square ── */
 .stage--td :is(.wordmark, .objective, .top-actions .quiet:not(.slate-btn), .menu-extra, .keys-toggle, .vitals, .tb--use, .tb--dodge, .tb--blast, .tb--desk) { display: none !important; }
 .stage--td #places-list li:has(> [data-open="oneworld"]) { display: none; }
-/* The way home from a side trip: one brass button, top-centre under the goal scroll. */
-.square-back {
-  position: absolute; z-index: 5; left: 50%; translate: -50% 0; top: calc(var(--glim-top, 118px) + 8px);
-  min-height: 44px; padding: 0 18px; border: 0; border-radius: 0; pointer-events: auto;
-  background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; box-shadow: var(--cozy-brass-chip) !important;
-  font: 700 15px/1 var(--font-pixel) !important; text-transform: none !important; letter-spacing: .02em !important;
-}
-.square-back:active { translate: -50% 2px; }
 /* Desktop: the checklist heads the scroll; Glim's moth sits beside the line under it, not on a row of its own. */
 .guide--list .guide-list { order: -1; }
 
@@ -3432,3 +3424,14 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
     --ph-max: 330px; --ph-hfrac: .8;
   }
 }
+
+/* Top-down: the message line as a toast — a parchment slip above the prompt, gone after a few seconds. */
+.td-toast {
+  position: absolute; z-index: 5; left: 50%; bottom: 84px; translate: -50% 0; max-width: min(520px, calc(100% - 24px));
+  margin: 0; padding: 8px 14px; pointer-events: none; text-align: center;
+  font: 600 14px/1.3 var(--font-pixel); color: var(--cozy-ink); background: var(--cozy-parch); box-shadow: var(--px-parch-rim), 0 0 0 2px var(--cozy-wood-0);
+  animation: td-toast 4.2s ease both;
+}
+@keyframes td-toast { 0% { opacity: 0; transform: translateY(6px); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) { .td-toast { bottom: calc(var(--hud-bottom, 96px) + 10px); } }
+.stage--menu .td-toast { display: none; }

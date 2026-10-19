@@ -2,7 +2,7 @@
  * play-top-down.spec.ts — the top-down Seamworks square (docs/design/top-down.md, Phase 1),
  * behind the `?td=1` gate: the Keeper walks 8 ways, keepers stand at their stalls, E opens
  * the stall in reach through the same panels the side view used, the side view's arrow
- * and jump buttons give way to the drag joystick, and a place not yet rebuilt is a side trip.
+ * and jump buttons give way to the drag joystick, and nothing ever drops the Keeper into the old 2D view.
  */
 import { expect, test, type Page } from '@playwright/test';
 import { seed } from './play-helpers';
@@ -45,35 +45,26 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
   });
 }
 
-test('a place the square cannot run yet is a side trip to the old view, and the button brings the Keeper back', async ({ page }) => {
+test('the Cinder Ore seam is mined in the square (no detour into the old view)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openTopDown(page);
   await page.locator('.places-toggle').first().click();
   await page.locator('#places-list button', { hasText: /cinder ore/i }).first().click();
-  // The old view: the Keeper stands on its floor, and the way home shows.
-  await expect.poll(() => py(page), { timeout: 15000 }).toBeGreaterThan(560);
-  await expect(page.locator('.stage')).not.toHaveClass(/stage--td/);
-  await page.locator('.square-back').click();
-  await expect.poll(() => py(page), { timeout: 15000 }).toBeLessThan(560);
+  await expect(page.locator('.td-toast')).toBeVisible({ timeout: 20000 });
   await expect(page.locator('.stage')).toHaveClass(/stage--td/);
-  await expect(page.locator('.square-back')).toHaveCount(0);
+  await expect.poll(() => py(page)).toBeLessThan(560);
 });
 
-test('down the mine shaft into the Delve and back up to the square, with no page error', async ({ page }) => {
+test('the mine shaft never drops the Keeper into the old 2D view, and nothing throws', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await page.setViewportSize({ width: 390, height: 844 });
   await openTopDown(page);
   await page.locator('.places-toggle').first().click();
   await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
-  await expect(page.locator('.stage')).toHaveClass(/stage--delve/, { timeout: 20000 });
-  await expect(canvas(page)).toHaveAttribute('data-area', /ember delve/i);
-  // The arrival settles (the shaft's fall, the area's first report) before the Keeper turns round.
-  await page.waitForTimeout(2500);
-  // Back up the shaft: the Delve's own way home lands the Keeper in the square again.
-  await page.locator('.places-toggle').first().click();
-  await page.locator('#places-list button', { hasText: /return to seamworks/i }).first().click();
-  await expect(page.locator('.stage')).toHaveClass(/stage--td/, { timeout: 20000 });
+  await expect(page.locator('.td-toast')).toBeVisible({ timeout: 20000 });
+  await expect(page.locator('.stage')).toHaveClass(/stage--td/);
+  await expect(page.locator('.stage')).not.toHaveClass(/stage--delve/);
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
