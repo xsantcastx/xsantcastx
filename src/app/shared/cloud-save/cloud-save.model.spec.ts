@@ -18,6 +18,8 @@ import {
   SYNCED_BLOBS,
   hasProgress,
   isConflict,
+  mergeArenaState,
+  mergeChallenges,
   mergeDeep,
   mergeEconomy,
   stripUndefined,
@@ -620,7 +622,9 @@ describe('the registry', () => {
       'eclipse-realm-rush-board',
       'godforge-activity',
       'godforge-bounties',
+      'godforge-arena',
       'godforge-cabinets',
+      'godforge-challenges',
       'godforge-chapter',
       'godforge-collection',
       'godforge-crafting',
@@ -674,6 +678,8 @@ describe('the registry', () => {
    *   live-chat-username         a display name for one page
    *   donations/recent           a read cache of public data
    *   site-stats/visits          ditto
+   *   eclipse-td                 this device's top-down / side-view toggle
+   *   eclipse-play-world-v1      where this device's Keeper last stood
    */
   it('leaves device-local keys out of the registry', () => {
     const synced = new Set(SYNCED_BLOBS.map(b => b.key));
@@ -681,6 +687,7 @@ describe('the registry', () => {
       'cloud-save-uid', 'preferred-language', 'godforge-forge-hum',
       'godforge-install-dismissed', 'cm-recent-chars', 'ep-recent-emojis',
       'live-chat-username', 'donations/recent', 'site-stats/visits',
+      'eclipse-td', 'eclipse-play-world-v1',
     ]) {
       expect(synced.has(key)).withContext(`${key} should not sync`).toBe(false);
     }
@@ -1106,5 +1113,66 @@ describe('cloud save — the Grand Exchange', () => {
   it('survives two devices with nothing in common', () => {
     expect(() => blob!.merge!(undefined, null)).not.toThrow();
     expect(() => blob!.merge!('nonsense', 42)).not.toThrow();
+  });
+});
+
+describe('cross-save: the Contract Board and the Trials (docs/handoff/cross-save.md)', () => {
+  const board = (over: Record<string, unknown>) => ({
+    version: 1, dayKey: '2026-10-20', weekKey: 'W2026-10-19',
+    day: {}, week: {}, daySets: {}, weekSets: {}, claimed: [],
+    streak: 0, streakDay: '', boostUntil: 0, chests: 0, goldPaid: 0, log: [], ...over,
+  });
+
+  it('are registered through the gateway merge, not the structural max', () => {
+    expect(SYNCED_BLOBS.find(b => b.key === 'godforge-challenges')?.merge).toBe(mergeChallenges);
+    expect(SYNCED_BLOBS.find(b => b.key === 'godforge-arena')?.merge).toBe(mergeArenaState);
+  });
+
+  it('does not carry a stale day into today', () => {
+    const phone = board({ dayKey: '2026-10-19', day: { strikes: 90 }, claimed: ['c1@2026-10-19'] });
+    const pc = board({ day: { strikes: 3 } });
+    const merged = mergeChallenges(phone, pc) as Record<string, unknown>;
+    expect(merged['dayKey']).toBe('2026-10-20');
+    expect(merged['day']).toEqual({ strikes: 3 });
+    expect(merged['claimed']).toEqual([]);
+  });
+
+  it('unions receipts and keeps the larger tally within one period, so nothing pays twice', () => {
+    const a = board({ day: { strikes: 5 }, claimed: ['c1@2026-10-20'], daySets: { tools: ['x'] } });
+    const b = board({ day: { strikes: 9 }, claimed: ['c2@W2026-10-19'], daySets: { tools: ['y'] } });
+    const merged = mergeChallenges(a, b) as Record<string, unknown>;
+    expect(merged['day']).toEqual({ strikes: 9 });
+    expect((merged['claimed'] as string[]).sort()).toEqual(['c1@2026-10-20', 'c2@W2026-10-19']);
+    expect(((merged['daySets'] as Record<string, string[]>)['tools']).sort()).toEqual(['x', 'y']);
+  });
+
+  it('keeps lifetime totals and the newer streak', () => {
+    const a = board({ streak: 6, streakDay: '2026-10-18', goldPaid: 900, chests: 1 });
+    const b = board({ streak: 2, streakDay: '2026-10-20', goldPaid: 400, chests: 0 });
+    const merged = mergeChallenges(a, b) as Record<string, unknown>;
+    expect(merged['streak']).toBe(2);
+    expect(merged['goldPaid']).toBe(900);
+    expect(merged['chests']).toBe(1);
+  });
+
+  it('takes the Trials balance from the device that fought last, never the max', () => {
+    const phone = { version: 1, points: 50, lifetimePoints: 500, wins: 9, losses: 1, streak: 4, bestStreak: 4,
+      tierWins: { bronze: 5 }, lastBoutAt: 2000, purchases: ['once-a'], settled: ['b1', 'b2'] };
+    const pc = { version: 1, points: 450, lifetimePoints: 450, wins: 8, losses: 1, streak: 8, bestStreak: 8,
+      tierWins: { bronze: 4, silver: 1 }, lastBoutAt: 1000, purchases: [], settled: ['b1'] };
+    const merged = mergeArenaState(phone, pc) as Record<string, unknown>;
+    expect(merged['points']).toBe(50); // spent on the phone; a max would refund it
+    expect(merged['streak']).toBe(4);
+    expect(merged['lifetimePoints']).toBe(500);
+    expect(merged['bestStreak']).toBe(8);
+    expect(merged['tierWins']).toEqual({ bronze: 5, silver: 1 });
+    expect(merged['purchases']).toEqual(['once-a']);
+    expect((merged['settled'] as string[]).sort()).toEqual(['b1', 'b2']);
+  });
+
+  it('adopts the other side whole when this device has none', () => {
+    const cloud = board({ goldPaid: 10 });
+    expect(mergeChallenges(cloud, null)).toEqual(cloud);
+    expect(mergeArenaState(null, { points: 1 })).toEqual({ points: 1 });
   });
 });

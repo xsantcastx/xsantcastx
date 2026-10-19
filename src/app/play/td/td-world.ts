@@ -9,6 +9,7 @@
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
 import { beaconPillar, boulder, bush, caveMouth, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
+import { CAVE_IN } from './maps/slagstone-cave';
 import { BLOCK, EMBER_ISLE, OX, OY, PLACES, REGION_MOBS, REGION_NAMES, ROADS, type Region } from './maps/ember-isle';
 import { buildSeamworksSquare, type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
@@ -51,6 +52,8 @@ export class TdWorld implements TdLevel {
   constructor() {
     this.town = buildSeamworksSquare();
     this.roadRow = 15; this.roadCol = 22;
+    const cave = PLACES.find(p => p.kind === 'cave');
+    this.allStalls = [...this.town.stalls, ...(cave ? [{ station: CAVE_IN, x: cave.c * TILE + TILE / 2, y: cave.r * TILE + TILE + 6 }] : [])];
     for (const way of ROADS) {
       for (let i = 1; i < way.length; i++) {
         const [x0, y0] = way[i - 1], [x1, y1] = way[i], n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
@@ -75,7 +78,9 @@ export class TdWorld implements TdLevel {
   }
 
 
-  get stalls(): readonly TdStall[] { return this.town.stalls; }
+  /** The town's stalls and the island's ways in (a cave mouth). */
+  private readonly allStalls: TdStall[];
+  get stalls(): readonly TdStall[] { return this.allStalls; }
   get spawn(): { x: number; y: number } { return this.town.spawn; }
 
   /** Inside the stamped town (tiles). */

@@ -110,6 +110,21 @@ test('the Ember Mine goes down by its stairs to floor 2 and floor 3, where the W
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('Slagstone Cave on the island: in by its mouth on the mountain, out the same way', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /slagstone cave/i }).first().click();
+  await expect(canvas(page)).toHaveAttribute('data-area', /slagstone cave/i, { timeout: 30000 });
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /cave mouth/i }).first().click();
+  await expect(canvas(page)).toHaveAttribute('data-area', /slagstone/i, { timeout: 30000 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('the Warlock reads their sheet (C) and their Spellbook (K): attributes, spells, auras', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await openTopDown(page);
@@ -124,6 +139,16 @@ test('the Warlock reads their sheet (C) and their Spellbook (K): attributes, spe
   // Put Drain Life on key 4: the bar follows.
   await page.locator('.spellbook [data-skill="drain-life"] .sb__keys button', { hasText: '4' }).click();
   await expect(page.locator('.td-skill').nth(3)).toHaveAttribute('aria-label', /Drain Life/);
+});
+
+test('a first visit starts with making a character: the Glass opens with the Warlock class', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // A truly new browser: no first-visit record (playwright.config seeds one for every other spec).
+  await page.addInitScript(() => localStorage.removeItem('eclipse-onboarding'));
+  await page.goto('/play');
+  await expect(page.locator('app-keeper-maker')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.km__classcard[data-vocation="warlock"]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.stage')).toHaveClass(/stage--td/);
 });
 
 test('without the gate the side view is unchanged', async ({ page }) => {

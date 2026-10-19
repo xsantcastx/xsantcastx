@@ -26,10 +26,11 @@ import { TdWorld } from './td-world';
 import { HandLevel, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
 import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
+import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
 import type { TdMapDef } from './td-level';
 
 /** Every hand-drawn level under (or over) the surface, by id. */
-const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3 };
+const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE };
 import { MobSystem, mobSheet, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, levelStats, type SkillId } from './td-skills';
 
@@ -274,6 +275,7 @@ export class TopDownEngine {
     const id = s.station.id;
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
+    if (id === 'slagstone-cave' && this.level === this.world) { this.enter(this.handLevel('slagstone-cave'), 'cave-out'); return; }
     if (this.level instanceof HandLevel) {
       // A ladder, stairs or a hole: to the level it names, in front of its own way back.
       const exit = this.level.exits.get(id);
