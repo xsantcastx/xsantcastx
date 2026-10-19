@@ -554,6 +554,7 @@
        under the world (the clusters are display: contents on desktop). On
        phones each button is an icon (.ts / .tri); its name is its aria-label. -->
   <div class="touch" role="group" [attr.aria-label]="t('play.hud.touch.label')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+    @if (!topDown) {
     <div class="touch-move">
       <button type="button" class="tb tb--left" [attr.aria-label]="t('play.hud.touch.left')" (pointerdown)="input($event,'left',true)" (pointerup)="input($event,'left',false)" (lostpointercapture)="input($event,'left',false)" (pointercancel)="input($event,'left',false)"><span class="tl">{{ t('play.hud.touch.left') }}</span><i class="tri" aria-hidden="true"></i></button>
       <button type="button" class="tb tb--right" [attr.aria-label]="t('play.hud.touch.right')" (pointerdown)="input($event,'right',true)" (pointerup)="input($event,'right',false)" (lostpointercapture)="input($event,'right',false)" (pointercancel)="input($event,'right',false)"><span class="tl">{{ t('play.hud.touch.right') }}</span><i class="tri" aria-hidden="true"></i></button>
@@ -561,8 +562,11 @@
         <button type="button" class="tb tb--down tb--phone" [attr.aria-label]="t('play.hud.touch.down')" (pointerdown)="input($event,'down',true)" (pointerup)="input($event,'down',false)" (lostpointercapture)="input($event,'down',false)" (pointercancel)="input($event,'down',false)"><span class="tl">{{ t('play.hud.touch.down') }}</span><i class="tri" aria-hidden="true"></i></button>
       }
     </div>
+    }
     <div class="touch-act">
+      @if (!topDown) {
       <button type="button" class="tb tb--jump" [attr.aria-label]="t('play.hud.touch.jump')" (pointerdown)="input($event,'jump',true)" (pointerup)="input($event,'jump',false)" (lostpointercapture)="input($event,'jump',false)" (pointercancel)="input($event,'jump',false)"><span class="tl">{{ t('play.hud.touch.jump') }}</span><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="currentColor" stroke="none" aria-hidden="true" focusable="false"><path d="M12 3 4 12h5v8h6v-8h5z"/></svg></button>
+      }
       @if (state.delve && touchTool === 'place' && placingSlot?.count) {
         <button type="button" class="tb tb--use tb--phone" [attr.aria-label]="t('play.hotbar.place') + ': ' + (placingSlot?.name ?? '')" (click)="placeHere()"><svg class="ts" viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect x="3" y="10" width="11" height="11" rx="1"/><path d="M18.5 3v8M14.5 7h8"/></svg></button>
       }

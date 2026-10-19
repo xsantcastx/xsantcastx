@@ -477,3 +477,31 @@ export function signpost(): Sprite {
     return { img: outline(img), ax: 8, ay: 21 };
   });
 }
+
+/** Kael's open forge on the square: a stone hearth with a bellows, an anvil, a glow. */
+export function forgeHearth(): Sprite {
+  return cached('forge', () => {
+    const W = 40, H = 34, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 2, 8, 22, 24, PAL.stone[2]); rect(c, 2, 8, 22, 3, PAL.stone[3]);
+    for (let y = 11; y < 30; y += 4) for (let x = (y % 8) ? 2 : 6; x < 22; x += 8) rect(c, x, y, 7, 3, PAL.stone[0]);
+    rect(c, 7, 16, 12, 9, '#2a1a1c'); rect(c, 8, 19, 10, 6, PAL.ember[1]); rect(c, 10, 21, 6, 3, PAL.ember[2]);
+    rect(c, 9, 0, 8, 9, PAL.stone[2]); rect(c, 9, 0, 8, 2, PAL.stone[3]);
+    // Anvil.
+    rect(c, 26, 20, 12, 4, '#4a4552'); rect(c, 24, 19, 6, 2, '#4a4552'); rect(c, 30, 24, 4, 6, '#3a3642'); rect(c, 27, 30, 10, 3, '#3a3642');
+    rect(c, 26, 20, 12, 1, '#7a7584');
+    return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights: [{ x: -8, y: -12, r: 34, warm: true }], smoke: [{ x: -7, y: -35 }] };
+  });
+}
+
+/** A Waystone: a standing stone with a glowing rune band. */
+export function waystone(): Sprite {
+  return cached('waystone', () => {
+    const W = 18, H = 36, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 1, 30, 16, 6, PAL.stone[2]); rect(c, 1, 30, 16, 1, PAL.stone[3]);
+    rect(c, 4, 4, 10, 27, '#5b5770'); rect(c, 5, 2, 8, 3, '#6f6a84'); rect(c, 4, 4, 2, 27, '#6f6a84');
+    for (let y = 9; y < 26; y += 4) rect(c, 7, y, 4, 2, '#8fe8ff');
+    return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights: [{ x: 0, y: -18, r: 28 }] };
+  });
+}

@@ -11,7 +11,7 @@
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import { TOWN_KEEPERS } from '../world/life';
 import type { StationDef } from '../world/world.model';
-import { brazierFountain, bench, barrel, cart, crate, fence, flowerbed, hash, hearthFire, house, lamp, signpost, stall, tree, type Ground, type Sprite, TILE } from './td-art';
+import { brazierFountain, forgeHearth, waystone as waystone_, bench, barrel, cart, crate, fence, flowerbed, hash, hearthFire, house, lamp, signpost, stall, tree, type Ground, type Sprite, TILE } from './td-art';
 
 export interface TdObject {
   sprite: () => Sprite;
@@ -110,9 +110,10 @@ export function buildSeamworksSquare(): TdMap {
   stallAt('vendor', 22, 22, 4, 4, 'bread');
   // The forge quest and the waystone stand on their own.
   const forge = station('forge');
-  if (forge) stalls.push({ station: forge, x: tx(18), y: ty(8) + 6 });
+  if (forge) { add(forgeHearth, tx(18), ty(8), { w: 2, h: 1 }); stalls.push({ station: forge, x: tx(18), y: ty(8) + 6 }); }
   const waystone = station('waystone');
-  if (waystone) stalls.push({ station: waystone, x: tx(27), y: ty(8) + 6 });
+  const waystoneSprite = () => waystone_();
+  if (waystone) { add(waystoneSprite, tx(27), ty(8), { w: 1, h: 1 }); stalls.push({ station: waystone, x: tx(27), y: ty(8) + 6 }); }
 
   // The heart of the square: the brazier fountain, the Hearth fire, benches facing them.
   add(brazierFountain, tx(cx) - T / 2, ty(cy - 1), { w: 3, h: 2 });
