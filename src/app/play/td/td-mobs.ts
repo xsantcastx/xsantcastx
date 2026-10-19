@@ -190,6 +190,9 @@ export class MobSystem {
   /** Seconds each skill still cools. */
   readonly cooldowns: Partial<Record<SkillId, number>> = {};
   mana = MAX_MANA;
+  /** The level's mana cap and spell power (td-skills levelStats). */
+  maxMana = MAX_MANA;
+  power = 1;
   /** The running aura (one at a time, D2), or none. */
   aura: SkillId | null = 'aura-embers';
   /** Dark Ward: damage it still absorbs, seconds left. */
@@ -326,7 +329,7 @@ export class MobSystem {
     for (let i = this.floaters.length - 1; i >= 0; i--) { const f = this.floaters[i]; f.age += dt; f.y -= 14 * dt; if (f.age > 1) this.floaters.splice(i, 1); }
     for (let i = this.effects.length - 1; i >= 0; i--) { const e = this.effects[i]; e.age += dt; if (e.age > e.life) this.effects.splice(i, 1); }
     for (const k of Object.keys(this.cooldowns) as SkillId[]) this.cooldowns[k] = Math.max(0, (this.cooldowns[k] ?? 0) - dt);
-    this.mana = Math.min(MAX_MANA, this.mana + MANA_REGEN * dt);
+    this.mana = Math.min(this.maxMana, this.mana + MANA_REGEN * dt);
     if (this.wardT > 0) { this.wardT -= dt; if (this.wardT <= 0) this.ward = 0; }
     if (this.haste > 0) {
       this.haste = Math.max(0, this.haste - dt);
@@ -334,7 +337,8 @@ export class MobSystem {
     }
   }
 
-  private hitFoe(foe: Mob, dmg: number, color: string): void {
+  private hitFoe(foe: Mob, raw: number, color: string): void {
+    const dmg = Math.round(raw * this.power);
     foe.hp -= dmg; foe.hit = .18;
     if (this.aura === 'aura-siphon') this.host.healPlayer(SKILLS['aura-siphon'].vars['heal']);
     this.float(foe.x, foe.y - foe.def.h, `${dmg}`, color);
@@ -397,7 +401,7 @@ export class MobSystem {
   private kill(m: Mob): void {
     this.mobs.splice(this.mobs.indexOf(m), 1);
     // Soul Harvest (passive): every kill gives back mana.
-    this.mana = Math.min(MAX_MANA, this.mana + SKILLS['soul-harvest'].vars['mana']);
+    this.mana = Math.min(this.maxMana, this.mana + SKILLS['soul-harvest'].vars['mana']);
     if (this.target === m) this.target = null;
     this.deadUntil.set(m.key, this.clock + RESPAWN);
     const id = `td:${this.host.levelId()}:${m.key}:${Date.now().toString(36)}:${this.kills++}`;
