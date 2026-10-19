@@ -20,7 +20,8 @@ import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
-import { buildSeamworksSquare, type TdMap, type TdObject, type TdStall } from './seamworks-square';
+import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
+import { TdWorld } from './td-world';
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
@@ -36,6 +37,8 @@ interface Puff { x: number; y: number; age: number; life: number; r: number }
 
 export class TopDownEngine {
   private readonly ctx: CanvasRenderingContext2D;
+  private readonly world: TdWorld;
+  /** The stamped town (its stalls, keepers and streets); the ground and walls everywhere come from `world`. */
   private readonly map: TdMap;
   private readonly chunks = new Map<string, HTMLCanvasElement[]>();
   private readonly player: Person;
@@ -70,12 +73,13 @@ export class TopDownEngine {
   /** The Slate is open: the Keeper faces the camera and looks at it in their hands. */
   private phone = false;
   private frameError = false;
-  /** The minimap's ground, one pixel per tile, painted once. */
-  private miniGround: HTMLCanvasElement | null = null;
+  /** The objects drawn this frame (smoke, lights and fireflies read them). */
+  private visible: TdObject[] = [];
 
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
     this.ctx = canvas.getContext('2d')!;
-    this.map = buildSeamworksSquare();
+    this.world = new TdWorld();
+    this.map = this.world.town;
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
     for (const s of this.map.stalls) {
@@ -132,7 +136,13 @@ export class TopDownEngine {
     if (pressed) { this.keys.add(key); this.path = []; } else this.keys.delete(key);
   }
   interact(): void {
-    if (this.nearby) this.options.onStation?.(this.nearby.station);
+    if (this.nearby) this.use(this.nearby);
+  }
+  /** Use a stall: the seam, the forge and the beacon are the play view's own deeds (onInteract); the rest open. */
+  private use(s: TdStall): void {
+    const id = s.station.id;
+    if (id === 'ore' || id === 'forge' || id === 'beacon') this.options.onInteract?.(id);
+    else this.options.onStation?.(s.station);
   }
   get inTown(): boolean { return true; }
   // The side view's queries the HUD dereferences: real answers, never the Proxy's undefined (a crash in onState froze the loop).
@@ -158,7 +168,7 @@ export class TopDownEngine {
     const s = this.map.stalls.find(st => st.station.id === id);
     if (!s) return false;
     if (instant) { this.player.x = s.x; this.player.y = s.y + 10; return true; }
-    return this.walkTo(s.x, s.y + 10, () => this.options.onStation?.(s.station));
+    return this.walkTo(s.x, s.y + 10, () => this.use(s));
   }
   moveTo(x: number, onArrive?: () => void): boolean { return this.walkTo(x, this.player.y, onArrive); }
 
@@ -215,10 +225,8 @@ export class TopDownEngine {
     if (this.free(nx, ny)) { this.player.x = nx; this.player.y = ny; }
   }
   private free(x: number, y: number): boolean {
-    const m = this.map;
     for (const [px, py] of [[x - FOOT.w / 2, y - FOOT.h], [x + FOOT.w / 2, y - FOOT.h], [x - FOOT.w / 2, y - 1], [x + FOOT.w / 2, y - 1]]) {
-      const c = Math.floor(px / TILE), r = Math.floor(py / TILE);
-      if (c < 0 || r < 0 || c >= m.cols || r >= m.rows || !m.walkable[r * m.cols + c]) return false;
+      if (!this.world.walkable(Math.floor(px / TILE), Math.floor(py / TILE))) return false;
     }
     return true;
   }
@@ -229,7 +237,7 @@ export class TopDownEngine {
       hp: 100, enemyHp: 0, nearby: s ? s.station.id : null,
       nearbyLabel: s?.station.label, nearbyKind: s?.station.kind,
       x: Math.round(this.player.x), y: Math.round(this.player.y),
-      area: 'Basalt Seamworks', areaId: 'infernal', facing: this.player.face,
+      area: this.world.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face,
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
       paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message,
     };
@@ -246,11 +254,14 @@ export class TopDownEngine {
     return true;
   }
   private route(fx: number, fy: number, tx: number, ty: number): { x: number; y: number }[] | null {
-    const m = this.map, C = m.cols;
+    // The world has no edge: tiles are keyed by an offset pair, and the search gives up past a few thousand tiles.
+    const K = 0x10000, O = 0x8000;
+    const key = (c: number, r: number) => (c + O) * K + (r + O);
+    const colOf = (k: number) => Math.floor(k / K) - O, rowOf = (k: number) => (k % K) - O;
     const at = (x: number, y: number) => [Math.floor(x / TILE), Math.floor((y - 1) / TILE)] as const;
     const [sc, sr] = at(fx, fy);
     let [ec, er] = at(tx, ty);
-    const ok = (c: number, r: number) => c >= 0 && r >= 0 && c < C && r < m.rows && !!m.walkable[r * C + c];
+    const ok = (c: number, r: number) => this.world.walkable(c, r);
     if (!ok(ec, er)) {
       // Nearest walkable tile to the target (a tap on a roof or the river).
       let best: [number, number] | null = null, bd = 1e9;
@@ -258,26 +269,26 @@ export class TopDownEngine {
       if (!best) return null;
       [ec, er] = best;
     }
-    const start = sr * C + sc, goal = er * C + ec;
+    const start = key(sc, sr), goal = key(ec, er);
     const g = new Map<number, number>([[start, 0]]), from = new Map<number, number>();
     const open: [number, number][] = [[0, start]];
-    const h = (i: number) => Math.hypot((i % C) - ec, Math.floor(i / C) - er);
+    const h = (k: number) => Math.hypot(colOf(k) - ec, rowOf(k) - er);
     while (open.length) {
       open.sort((a, b) => a[0] - b[0]);
       const [, cur] = open.shift()!;
       if (cur === goal) break;
-      const cc = cur % C, cr = Math.floor(cur / C);
+      const cc = colOf(cur), cr = rowOf(cur);
       for (const [dc, dr] of [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]]) {
         const nc = cc + dc, nr = cr + dr;
         if (!ok(nc, nr) || (dc && dr && (!ok(cc + dc, cr) || !ok(cc, cr + dr)))) continue;
-        const ni = nr * C + nc, ng = g.get(cur)! + (dc && dr ? 1.414 : 1);
+        const ni = key(nc, nr), ng = g.get(cur)! + (dc && dr ? 1.414 : 1);
         if (ng < (g.get(ni) ?? Infinity)) { g.set(ni, ng); from.set(ni, cur); open.push([ng + h(ni), ni]); }
       }
       if (g.size > 4000) break;
     }
     if (!g.has(goal)) return null;
     const pts: { x: number; y: number }[] = [];
-    for (let i = goal; i !== start; i = from.get(i)!) pts.unshift({ x: (i % C) * TILE + TILE / 2, y: Math.floor(i / C) * TILE + TILE - 2 });
+    for (let k = goal; k !== start; k = from.get(k)!) pts.unshift({ x: colOf(k) * TILE + TILE / 2, y: rowOf(k) * TILE + TILE - 2 });
     if (pts.length) pts[pts.length - 1] = { x: tx, y: ty };
     return pts;
   }
@@ -332,7 +343,7 @@ export class TopDownEngine {
   private tap(clientX: number, clientY: number): void {
     const { x: wx, y: wy } = this.toWorld(clientX, clientY);
     const hit = this.stallAt(wx, wy);
-    if (hit) { this.walkTo(hit.x, hit.y + 10, () => this.options.onStation?.(hit.station)); return; }
+    if (hit) { this.walkTo(hit.x, hit.y + 10, () => this.use(hit)); return; }
     this.walkTo(wx, wy);
   }
 
@@ -342,32 +353,32 @@ export class TopDownEngine {
   drawMinimap(target: HTMLCanvasElement): void {
     const c = target.getContext('2d');
     if (!c) return;
-    const m = this.map;
-    if (!this.miniGround) {
-      const g = document.createElement('canvas'); g.width = m.cols; g.height = m.rows;
-      const gc = g.getContext('2d')!;
-      const col: Partial<Record<Ground, string>> = { grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0], water: PAL.water[0], ember: PAL.ember[0] };
-      for (let i = 0; i < m.ground.length; i++) { gc.fillStyle = col[m.ground[i]] ?? PAL.grass[0]; gc.fillRect(i % m.cols, Math.floor(i / m.cols), 1, 1); }
-      for (const o of m.objects) {
-        if (!o.block || (o.kind !== 'building' && o.kind !== 'tree')) continue;
-        gc.fillStyle = o.kind === 'building' ? PAL.roofRed[2] : PAL.leaf[2];
-        const fc = Math.floor(o.x / TILE), fr = Math.floor((o.y - 1) / TILE);
-        gc.fillRect(fc - Math.floor((o.block.w - 1) / 2), fr - o.block.h + 1, o.block.w, o.block.h);
-      }
-      this.miniGround = g;
-    }
-    const W = target.width, H = target.height, k = Math.max(2, Math.round(W / 22));   // ~22 tiles across
+    const W = target.width, H = target.height, k = Math.max(2, Math.round(W / 24));   // ~24 tiles across
+    const span = Math.ceil(W / k / 2) + 1;
+    const pc = Math.floor(this.player.x / TILE), pr = Math.floor(this.player.y / TILE);
+    const ox = W / 2 - (this.player.x / TILE - pc) * k, oy = H / 2 - (this.player.y / TILE - pr) * k;
+    const col: Partial<Record<Ground, string>> = { grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0], water: PAL.water[0], ember: PAL.ember[0] };
     c.imageSmoothingEnabled = false;
-    c.fillStyle = PAL.grass[3]; c.fillRect(0, 0, W, H);
-    const px = this.player.x / TILE, py = this.player.y / TILE;
-    c.drawImage(this.miniGround, Math.round(W / 2 - px * k), Math.round(H / 2 - py * k), m.cols * k, m.rows * k);
-    const dot = (tx: number, ty: number, r: number, fill: string) => {
-      const x = Math.round(W / 2 + (tx / TILE - px) * k), y = Math.round(H / 2 + (ty / TILE - py) * k);
-      c.fillStyle = PAL.outline; c.fillRect(x - r - 1, y - r - 1, r * 2 + 2, r * 2 + 2);
-      c.fillStyle = fill; c.fillRect(x - r, y - r, r * 2, r * 2);
+    // The ground round the Keeper, sampled from the world each time (it has no edge to pre-paint).
+    for (let r = -span; r <= span; r++) for (let q = -span; q <= span; q++) {
+      c.fillStyle = col[this.world.ground(pc + q, pr + r)] ?? PAL.grass[0];
+      c.fillRect(Math.floor(ox + q * k - k / 2), Math.floor(oy + r * k - k / 2), k, k);
+    }
+    const toX = (x: number) => Math.round(W / 2 + (x - this.player.x) / TILE * k), toY = (y: number) => Math.round(H / 2 + (y - this.player.y) / TILE * k);
+    const reach = span * TILE;
+    for (const o of this.world.objectsIn(this.player.x - reach, this.player.y - reach, this.player.x + reach, this.player.y + reach)) {
+      if (o.kind !== 'building' && o.kind !== 'tree') continue;
+      const w = (o.block?.w ?? 1) * k, h = (o.block?.h ?? 1) * k;
+      c.fillStyle = o.kind === 'building' ? PAL.roofRed[2] : PAL.leaf[2];
+      c.fillRect(toX(o.x) - Math.floor(w / 2), toY(o.y) - h, w, h);
+    }
+    const dot = (x: number, y: number, r: number, fill: string) => {
+      const sx = toX(x), sy = toY(y);
+      c.fillStyle = PAL.outline; c.fillRect(sx - r - 1, sy - r - 1, r * 2 + 2, r * 2 + 2);
+      c.fillStyle = fill; c.fillRect(sx - r, sy - r, r * 2, r * 2);
     };
-    for (const s of m.stalls) dot(s.x, s.y, Math.max(1, k >> 1), PAL.glow);
-    for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(Math.round(W / 2 + (f.x / TILE - px) * k), Math.round(H / 2 + (f.y / TILE - py) * k), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
+    for (const st of this.map.stalls) dot(st.x, st.y, Math.max(1, k >> 1), PAL.glow);
+    for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(toX(f.x), toY(f.y), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
     dot(this.player.x, this.player.y, Math.max(2, k - 1), '#ffffff');
   }
 
@@ -379,7 +390,7 @@ export class TopDownEngine {
     const c = this.ctx, s = this.scale, cam = this.cam;
     c.setTransform(1, 0, 0, 1, 0, 0);
     let n = 0;
-    for (const o of this.map.objects) {
+    for (const o of this.visible) {
       if (o.kind !== 'tree') continue;
       for (let j = 0; j < 3; j++) {
         const seed = (n++ * 7.31) % 6.283;
@@ -449,7 +460,7 @@ export class TopDownEngine {
     for (const p of this.puffs) { p.age += dt; p.y -= 9 * dt; p.x += Math.sin(p.age * 1.6 + p.r) * 3 * dt + 2 * dt; }
     this.puffs = this.puffs.filter(p => p.age < p.life);
     if (this.puffs.length > 60) return;
-    for (const o of this.map.objects) {
+    for (const o of this.visible) {
       const s = o.sprite();
       for (const m of s.smoke ?? []) if (Math.random() < dt * 1.4) this.puffs.push({ x: o.x + m.x, y: o.y + m.y, age: 0, life: 2.8 + Math.random(), r: Math.random() * 6 });
     }
@@ -465,11 +476,9 @@ export class TopDownEngine {
     const css = this.canvas.clientWidth >= 1100 ? 3 : this.canvas.clientWidth >= 700 ? 2 : 1.5;
     this.scale = Math.max(1, Math.round(css * dpr));
     this.cam.w = w / this.scale; this.cam.h = h / this.scale;
-    const mw = this.map.cols * TILE, mh = this.map.rows * TILE;
-    this.cam.x = Math.round(Math.max(0, Math.min(mw - this.cam.w, this.player.x - this.cam.w / 2)));
-    this.cam.y = Math.round(Math.max(0, Math.min(mh - this.cam.h, this.player.y - 20 - this.cam.h / 2)));
-    if (this.cam.w > mw) this.cam.x = Math.round((mw - this.cam.w) / 2);
-    if (this.cam.h > mh) this.cam.y = Math.round((mh - this.cam.h) / 2);
+    // No edge to clamp to: the world runs on in every direction.
+    this.cam.x = Math.round(this.player.x - this.cam.w / 2);
+    this.cam.y = Math.round(this.player.y - 20 - this.cam.h / 2);
   }
 
   private chunk(cx: number, cy: number, frame: number): HTMLCanvasElement {
@@ -477,15 +486,14 @@ export class TopDownEngine {
     let frames = this.chunks.get(key);
     if (!frames) {
       frames = [];
-      const m = this.map;
-      const kind = (c: number, r: number): Ground => m.ground[Math.max(0, Math.min(m.rows - 1, r)) * m.cols + Math.max(0, Math.min(m.cols - 1, c))];
+      const kind = (c: number, r: number): Ground => this.world.ground(c, r);
       let liquid = false;
-      for (let r = cy * CHUNK; r < (cy + 1) * CHUNK && r < m.rows; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK && c < m.cols; c++) if (kind(c, r) === 'water' || kind(c, r) === 'ember') liquid = true;
+      for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) if (kind(c, r) === 'water' || kind(c, r) === 'ember') liquid = true;
       for (let f = 0; f < (liquid ? 4 : 1); f++) {
         const el = document.createElement('canvas');
         el.width = CHUNK * TILE; el.height = CHUNK * TILE;
         const g = el.getContext('2d')!;
-        for (let r = cy * CHUNK; r < (cy + 1) * CHUNK && r < m.rows; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK && c < m.cols; c++) {
+        for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) {
           const ox = (c - cx * CHUNK) * TILE, oy = (r - cy * CHUNK) * TILE, k = kind(c, r);
           paintGround(g, k, c, r, ox, oy, f);
           paintEdge(g, k, kind(c, r - 1), 'n', c, r, ox, oy);
@@ -496,6 +504,8 @@ export class TopDownEngine {
         frames.push(el);
       }
       this.chunks.set(key, frames);
+      // Far chunks go (the world never ends; their canvases must not pile up).
+      if (this.chunks.size > 96) this.chunks.delete(this.chunks.keys().next().value!);
     }
     return frames[((frame % frames.length) + frames.length) % frames.length];
   }
@@ -512,7 +522,6 @@ export class TopDownEngine {
     const span = CHUNK * TILE;
     for (let cy = Math.floor(cam.y / span); cy <= Math.floor((cam.y + cam.h) / span); cy++) {
       for (let cx = Math.floor(cam.x / span); cx <= Math.floor((cam.x + cam.w) / span); cx++) {
-        if (cx < 0 || cy < 0 || cx * CHUNK >= this.map.cols || cy * CHUNK >= this.map.rows) continue;
         c.drawImage(this.chunk(cx, cy, frame), cx * span, cy * span);
       }
     }
@@ -521,8 +530,9 @@ export class TopDownEngine {
     const items: Item[] = [];
     const inView = (x: number, y: number, pad = 80) => x > cam.x - pad && x < cam.x + cam.w + pad && y > cam.y - pad && y < cam.y + cam.h + pad * 2;
     const roofs: { o: TdObject; sp: Sprite }[] = [];
-    for (const o of this.map.objects) {
-      if (!inView(o.x, o.y, 120)) continue;
+    const visible = this.world.objectsIn(cam.x - 120, cam.y - 80, cam.x + cam.w + 120, cam.y + cam.h + 240);
+    this.visible = visible;
+    for (const o of visible) {
       const sp = o.sprite();
       items.push({ y: o.y, draw: () => c.drawImage(sp.img, Math.round(o.x - sp.ax), Math.round(o.y - sp.ay)) });
       if (sp.roof) roofs.push({ o, sp });
@@ -632,16 +642,9 @@ export class TopDownEngine {
     d.globalCompositeOperation = 'destination-out';
     const hole = (x: number, y: number, r: number) => d.drawImage(this.lightSprite!, (x - cam.x - r) / 2, (y - cam.y - r) / 2, r, r);
     const glows: { x: number; y: number; r: number }[] = [];
-    for (const o of this.map.objects) {
+    for (const o of this.visible) {
       const sp = o.sprite();
       for (const l of sp.lights ?? []) { hole(o.x + l.x, o.y + l.y, l.r * 2); if (l.warm) glows.push({ x: o.x + l.x, y: o.y + l.y, r: l.r }); }
-    }
-    // The ember river lights its banks.
-    const m = this.map;
-    for (let r = Math.max(0, Math.floor(cam.y / TILE)); r < Math.min(m.rows, Math.ceil((cam.y + cam.h) / TILE)); r++) {
-      for (let cc = Math.max(0, Math.floor(cam.x / TILE)); cc < Math.min(m.cols, Math.ceil((cam.x + cam.w) / TILE)); cc += 2) {
-        if (m.ground[r * m.cols + cc] === 'ember') hole(cc * TILE + 8, r * TILE + 8, 40);
-      }
     }
     hole(this.player.x, this.player.y - 16, 70);
     hole(this.glim.x, this.glim.y, 56);

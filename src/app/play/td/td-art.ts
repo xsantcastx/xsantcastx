@@ -544,3 +544,31 @@ export function beaconPillar(): Sprite {
     return { img: outline(img), ax: 10, ay: 40 };
   });
 }
+
+/** A mossy boulder in the wilds (three seeds of shape). */
+export function boulder(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`boulder-${v}`, () => {
+    const W = 20, H = 15, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    const w = 14 + v * 2, x0 = Math.floor((W - w) / 2);
+    rect(c, x0, 5, w, 9, PAL.stone[2]); rect(c, x0 + 2, 2, w - 4, 4, PAL.stone[1]); rect(c, x0 + 3, 2, w - 8, 2, PAL.stone[3]);
+    rect(c, x0, 12, w, 2, PAL.stone[0]);
+    rect(c, x0 + 1, 5, 4, 2, PAL.leaf[1]); rect(c, x0 + w - 6, 3, 3, 1, PAL.leaf[3]);
+    return { img: outline(img), ax: 10, ay: 15 };
+  });
+}
+
+/** A round bush, sometimes in berry (three seeds). */
+export function bush(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`bush-${v}`, () => {
+    const W = 18, H = 14, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 2, 5, 14, 8, PAL.leaf[0]); rect(c, 4, 2, 10, 4, PAL.leaf[1]); rect(c, 5, 2, 5, 2, PAL.leaf[3]);
+    rect(c, 2, 11, 14, 2, PAL.leaf[2]);
+    if (v === 1) for (const [x, y] of [[5, 6], [10, 4], [12, 8], [7, 9]] as const) rect(c, x, y, 2, 2, PAL.flower[0]);
+    if (v === 2) for (const [x, y] of [[6, 5], [11, 7]] as const) rect(c, x, y, 2, 2, PAL.flower[1]);
+    return { img: outline(img), ax: 9, ay: 14 };
+  });
+}
