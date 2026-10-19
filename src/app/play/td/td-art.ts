@@ -67,7 +67,7 @@ function outline(src: HTMLCanvasElement): HTMLCanvasElement {
 
 // ── Ground ────────────────────────────────────────────────────────────────────
 
-export type Ground = 'grass' | 'dirt' | 'cobble' | 'sand' | 'water' | 'ember' | 'plank' | 'flowers';
+export type Ground = 'grass' | 'dirt' | 'cobble' | 'sand' | 'water' | 'ember' | 'plank' | 'flowers' | 'cave' | 'rock';
 
 /** Paint one ground tile at (tx, ty) into `c` at (ox, oy). Variants come from the tile's own hash. */
 export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, frame = 0): void {
@@ -120,6 +120,19 @@ export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: nu
       }
       break;
     }
+    case 'cave': {
+      // A dungeon floor: packed dark earth, grit and the odd pebble.
+      rect(c, ox, oy, TILE, TILE, '#3b2c2a');
+      for (let i = 0; i < 8; i++) rect(c, ox + Math.floor(r(i) * 15), oy + Math.floor(r(i + 9) * 15), 2, 1, i % 3 ? '#4a3833' : '#2c201f');
+      if (r(77) > .8) { rect(c, ox + 6, oy + 9, 3, 2, PAL.basalt[1]); rect(c, ox + 6, oy + 9, 3, 1, PAL.basalt[3]); }
+      break;
+    }
+    case 'rock': {
+      // Solid rock seen from above: the dark top of the mass (its front face is drawn by paintEdge where floor lies south).
+      rect(c, ox, oy, TILE, TILE, '#231c26');
+      for (let i = 0; i < 4; i++) rect(c, ox + Math.floor(r(i) * 14), oy + Math.floor(r(i + 5) * 14), 2, 1, '#2e2532');
+      break;
+    }
     case 'water':
     case 'ember': {
       const ramp = kind === 'water' ? PAL.water : PAL.ember;
@@ -150,6 +163,18 @@ export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: nu
  */
 export function paintEdge(c: Ctx, kind: Ground, neighbour: Ground, side: 'n' | 's' | 'e' | 'w', tx: number, ty: number, ox: number, oy: number): void {
   if (kind === neighbour) return;
+  if (kind === 'rock') {
+    // A wall: where open floor lies south, the rock shows its lit front face (ember-veined now and then); a dark lip elsewhere.
+    if (side === 's') {
+      rect(c, ox, oy + 4, TILE, 12, PAL.basalt[1]); rect(c, ox, oy + 4, TILE, 2, PAL.basalt[3]); rect(c, ox, oy + 15, TILE, 1, PAL.basalt[0]);
+      for (let i = 0; i < 3; i++) rect(c, ox + Math.floor(hash(tx, ty, i + 120) * 14), oy + 7 + Math.floor(hash(tx, ty, i + 130) * 6), 2, 1, PAL.basalt[2]);
+      if (hash(tx, ty, 140) > .8) rect(c, ox + 3 + Math.floor(hash(tx, ty, 141) * 9), oy + 10, 3, 2, PAL.ember[1]);
+    } else if (side === 'n') rect(c, ox, oy, TILE, 1, PAL.basalt[2]);
+    else if (side === 'w') rect(c, ox, oy, 1, TILE, PAL.basalt[2]);
+    else rect(c, ox + 15, oy, 1, TILE, PAL.basalt[2]);
+    return;
+  }
+  if (neighbour === 'rock') return;
   const water = neighbour === 'water' || neighbour === 'ember';
   if (kind === 'water' || kind === 'ember') {
     // A bank lip on the water side: sand/grass overhang, then a dark shadow line.
@@ -570,5 +595,50 @@ export function bush(seed = 0): Sprite {
     if (v === 1) for (const [x, y] of [[5, 6], [10, 4], [12, 8], [7, 9]] as const) rect(c, x, y, 2, 2, PAL.flower[0]);
     if (v === 2) for (const [x, y] of [[6, 5], [11, 7]] as const) rect(c, x, y, 2, 2, PAL.flower[1]);
     return { img: outline(img), ax: 9, ay: 14 };
+  });
+}
+
+/** A ladder up out of a dungeon floor: rails and rungs against a pale shaft of daylight. */
+export function ladderUp(): Sprite {
+  return cached('ladder-up', () => {
+    const W = 18, H = 30, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 2, 0, 14, 22, '#e9dcae'); rect(c, 4, 0, 10, 22, '#fff3c9');
+    rect(c, 4, 0, 2, 30, PAL.wood[0]); rect(c, 12, 0, 2, 30, PAL.wood[0]);
+    for (let y = 3; y < 30; y += 5) rect(c, 4, y, 10, 2, PAL.wood[3]);
+    return { img: outline(img), ax: 9, ay: 30, lights: [{ x: 0, y: -18, r: 34, warm: false }] };
+  });
+}
+
+/** A torch on a post, lighting the dark of a dungeon floor. */
+export function torchPost(): Sprite {
+  return cached('torch-post', () => {
+    const W = 10, H = 24, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 4, 8, 2, 16, PAL.wood[0]); rect(c, 2, 6, 6, 3, PAL.wood[2]);
+    rect(c, 3, 1, 4, 5, PAL.ember[1]); rect(c, 4, 0, 2, 3, PAL.ember[2]);
+    return { img: outline(img), ax: 5, ay: 24, lights: [{ x: 0, y: -21, r: 30, warm: true }] };
+  });
+}
+
+/** Old bones on a dungeon floor (a warning, a story). */
+export function bones(): Sprite {
+  return cached('bones', () => {
+    const W = 16, H = 8, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 1, 3, 9, 2, '#e8e1cf'); rect(c, 0, 2, 2, 4, '#e8e1cf'); rect(c, 9, 2, 2, 4, '#e8e1cf');
+    rect(c, 11, 2, 4, 4, '#f2ecdc'); rect(c, 12, 3, 1, 1, '#3a2a2a'); rect(c, 14, 3, 1, 1, '#3a2a2a');
+    return { img: outline(img), ax: 8, ay: 8 };
+  });
+}
+
+/** A banded chest, shut (what is in it is the play view's business). */
+export function chest(): Sprite {
+  return cached('chest', () => {
+    const W = 16, H = 13, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 1, 3, 14, 10, PAL.wood[1]); rect(c, 1, 1, 14, 4, PAL.wood[3]); rect(c, 1, 5, 14, 1, PAL.wood[0]);
+    rect(c, 3, 1, 2, 12, '#7a6a5a'); rect(c, 11, 1, 2, 12, '#7a6a5a'); rect(c, 7, 5, 2, 3, PAL.glow);
+    return { img: outline(img), ax: 8, ay: 13 };
   });
 }

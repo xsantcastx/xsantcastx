@@ -22,6 +22,8 @@ import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
+import { HandLevel, type TdLevel } from './td-level';
+import { EMBER_MINE_1 } from './maps/ember-mine-1';
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
@@ -38,6 +40,9 @@ interface Puff { x: number; y: number; age: number; life: number; r: number }
 export class TopDownEngine {
   private readonly ctx: CanvasRenderingContext2D;
   private readonly world: TdWorld;
+  /** The level the Keeper is on: the surface, or a hand-drawn floor under it. */
+  private level: TdLevel;
+  private readonly levels = new Map<string, HandLevel>();
   /** The stamped town (its stalls, keepers and streets); the ground and walls everywhere come from `world`. */
   private readonly map: TdMap;
   private readonly chunks = new Map<string, HTMLCanvasElement[]>();
@@ -80,6 +85,7 @@ export class TopDownEngine {
     this.ctx = canvas.getContext('2d')!;
     this.world = new TdWorld();
     this.map = this.world.town;
+    this.level = this.world;
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
     for (const s of this.map.stalls) {
@@ -145,6 +151,12 @@ export class TopDownEngine {
   /** Use a stall: the seam, the forge and the beacon are the play view's own deeds (onInteract); the rest open. */
   private use(s: TdStall): void {
     const id = s.station.id;
+    // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
+    if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
+    if (this.level instanceof HandLevel) {
+      const exit = this.level.exits.get(id);
+      if (exit?.to === 'surface') { this.enter(this.world, 'delve'); return; }
+    }
     if (id === 'ore' || id === 'forge' || id === 'beacon') this.options.onInteract?.(id);
     else this.options.onStation?.(s.station);
   }
@@ -157,7 +169,7 @@ export class TopDownEngine {
   delveAnchors(): readonly never[] { return []; }
   hasDelveCamp(): boolean { return false; }
   readRiftMap(): boolean { return false; }
-  get places(): readonly StationDef[] { return this.map.stalls.map(s => s.station); }
+  get places(): readonly StationDef[] { return this.level.stalls.map(s => s.station); }
   get settlementKeepers(): readonly { id: string; x: number; y: number; upstairs: boolean; mark: '!' | '?' | null }[] {
     return this.map.stalls.filter(s => s.keeper).map(s => ({ id: s.keeper!.id, x: s.keeper!.x, y: s.keeper!.y, upstairs: false, mark: null }));
   }
@@ -169,12 +181,31 @@ export class TopDownEngine {
   get placeable(): null { return null; }
   /** Walk to a station and open it on arrival (`instant`: stand there now). */
   goToStation(id: string, instant = false): boolean {
-    const s = this.map.stalls.find(st => st.station.id === id);
+    // The nearest of its kind (a floor has many seams of one ore).
+    let s: TdStall | undefined, best = Infinity;
+    for (const st of this.level.stalls) if (st.station.id === id) { const d = Math.hypot(st.x - this.player.x, st.y - this.player.y); if (d < best) { best = d; s = st; } }
     if (!s) return false;
     if (instant) { this.player.x = s.x; this.player.y = s.y + 10; return true; }
     return this.walkTo(s.x, s.y + 10, () => this.use(s));
   }
   moveTo(x: number, onArrive?: () => void): boolean { return this.walkTo(x, this.player.y, onArrive); }
+
+  private handLevel(id: string): HandLevel {
+    let lv = this.levels.get(id);
+    if (!lv) { lv = new HandLevel(EMBER_MINE_1); this.levels.set(id, lv); }
+    return lv;
+  }
+  /** Change level: stand in front of `at` (a station on the new level), drop the old level's baked ground. */
+  private enter(level: TdLevel, at: string): void {
+    this.level = level;
+    this.chunks.clear();
+    this.path = []; this.arrive = null; this.puffs = [];
+    const s = level.stalls.find(st => st.station.id === at);
+    if (s) { this.player.x = s.x; this.player.y = s.y + 14; }
+    this.player.dir = 'down';
+    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
+    this.report();
+  }
 
   // ── Simulation ─────────────────────────────────────────────────────────────
 
@@ -214,7 +245,7 @@ export class TopDownEngine {
     for (const k of this.keepers) { k.t += dt; if (Math.abs(this.player.x - k.x) < 120) k.face = this.player.x < k.x ? -1 : 1; }
     // The nearest stall within reach (the HUD's prompt and E).
     let best: TdStall | null = null, bestD = REACH;
-    for (const s of this.map.stalls) {
+    for (const s of this.level.stalls) {
       const d = Math.hypot(this.player.x - s.x, this.player.y - (s.y + 10));
       if (d < bestD) { best = s; bestD = d; }
     }
@@ -230,7 +261,7 @@ export class TopDownEngine {
   }
   private free(x: number, y: number): boolean {
     for (const [px, py] of [[x - FOOT.w / 2, y - FOOT.h], [x + FOOT.w / 2, y - FOOT.h], [x - FOOT.w / 2, y - 1], [x + FOOT.w / 2, y - 1]]) {
-      if (!this.world.walkable(Math.floor(px / TILE), Math.floor(py / TILE))) return false;
+      if (!this.level.walkable(Math.floor(px / TILE), Math.floor(py / TILE))) return false;
     }
     return true;
   }
@@ -241,7 +272,7 @@ export class TopDownEngine {
       hp: 100, enemyHp: 0, nearby: s ? s.station.id : null,
       nearbyLabel: s?.station.label, nearbyKind: s?.station.kind,
       x: Math.round(this.player.x), y: Math.round(this.player.y),
-      area: this.world.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face,
+      area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face,
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
       paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message,
     };
@@ -265,7 +296,7 @@ export class TopDownEngine {
     const at = (x: number, y: number) => [Math.floor(x / TILE), Math.floor((y - 1) / TILE)] as const;
     const [sc, sr] = at(fx, fy);
     let [ec, er] = at(tx, ty);
-    const ok = (c: number, r: number) => this.world.walkable(c, r);
+    const ok = (c: number, r: number) => this.level.walkable(c, r);
     if (!ok(ec, er)) {
       // Nearest walkable tile to the target (a tap on a roof or the river).
       let best: [number, number] | null = null, bd = 1e9;
@@ -342,7 +373,7 @@ export class TopDownEngine {
     };
   }
   private stallAt(wx: number, wy: number): TdStall | undefined {
-    return this.map.stalls.find(s => Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16);
+    return this.level.stalls.find(s => Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16);
   }
   private tap(clientX: number, clientY: number): void {
     const { x: wx, y: wy } = this.toWorld(clientX, clientY);
@@ -361,16 +392,16 @@ export class TopDownEngine {
     const span = Math.ceil(W / k / 2) + 1;
     const pc = Math.floor(this.player.x / TILE), pr = Math.floor(this.player.y / TILE);
     const ox = W / 2 - (this.player.x / TILE - pc) * k, oy = H / 2 - (this.player.y / TILE - pr) * k;
-    const col: Partial<Record<Ground, string>> = { grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0], water: PAL.water[0], ember: PAL.ember[0] };
+    const col: Partial<Record<Ground, string>> = { grass: PAL.grass[0], flowers: PAL.grass[1], dirt: PAL.dirt[0], cobble: PAL.cobble[0], sand: PAL.sand[0], plank: PAL.plank[0], water: PAL.water[0], ember: PAL.ember[0], cave: '#6a564c', rock: '#1d1720' };
     c.imageSmoothingEnabled = false;
     // The ground round the Keeper, sampled from the world each time (it has no edge to pre-paint).
     for (let r = -span; r <= span; r++) for (let q = -span; q <= span; q++) {
-      c.fillStyle = col[this.world.ground(pc + q, pr + r)] ?? PAL.grass[0];
+      c.fillStyle = col[this.level.ground(pc + q, pr + r)] ?? PAL.grass[0];
       c.fillRect(Math.floor(ox + q * k - k / 2), Math.floor(oy + r * k - k / 2), k, k);
     }
     const toX = (x: number) => Math.round(W / 2 + (x - this.player.x) / TILE * k), toY = (y: number) => Math.round(H / 2 + (y - this.player.y) / TILE * k);
     const reach = span * TILE;
-    for (const o of this.world.objectsIn(this.player.x - reach, this.player.y - reach, this.player.x + reach, this.player.y + reach)) {
+    for (const o of this.level.objectsIn(this.player.x - reach, this.player.y - reach, this.player.x + reach, this.player.y + reach)) {
       if (o.kind !== 'building' && o.kind !== 'tree') continue;
       const w = (o.block?.w ?? 1) * k, h = (o.block?.h ?? 1) * k;
       c.fillStyle = o.kind === 'building' ? PAL.roofRed[2] : PAL.leaf[2];
@@ -381,8 +412,8 @@ export class TopDownEngine {
       c.fillStyle = PAL.outline; c.fillRect(sx - r - 1, sy - r - 1, r * 2 + 2, r * 2 + 2);
       c.fillStyle = fill; c.fillRect(sx - r, sy - r, r * 2, r * 2);
     };
-    for (const st of this.map.stalls) dot(st.x, st.y, Math.max(1, k >> 1), PAL.glow);
-    for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(toX(f.x), toY(f.y), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
+    for (const st of this.level.stalls) dot(st.x, st.y, Math.max(1, k >> 1), PAL.glow);
+    if (this.level === this.world) for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(toX(f.x), toY(f.y), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
     dot(this.player.x, this.player.y, Math.max(2, k - 1), '#ffffff');
   }
 
@@ -490,7 +521,7 @@ export class TopDownEngine {
     let frames = this.chunks.get(key);
     if (!frames) {
       frames = [];
-      const kind = (c: number, r: number): Ground => this.world.ground(c, r);
+      const kind = (c: number, r: number): Ground => this.level.ground(c, r);
       let liquid = false;
       for (let r = cy * CHUNK; r < (cy + 1) * CHUNK; r++) for (let c = cx * CHUNK; c < (cx + 1) * CHUNK; c++) if (kind(c, r) === 'water' || kind(c, r) === 'ember') liquid = true;
       for (let f = 0; f < (liquid ? 4 : 1); f++) {
@@ -534,15 +565,16 @@ export class TopDownEngine {
     const items: Item[] = [];
     const inView = (x: number, y: number, pad = 80) => x > cam.x - pad && x < cam.x + cam.w + pad && y > cam.y - pad && y < cam.y + cam.h + pad * 2;
     const roofs: { o: TdObject; sp: Sprite }[] = [];
-    const visible = this.world.objectsIn(cam.x - 120, cam.y - 80, cam.x + cam.w + 120, cam.y + cam.h + 240);
+    const visible = this.level.objectsIn(cam.x - 120, cam.y - 80, cam.x + cam.w + 120, cam.y + cam.h + 240);
     this.visible = visible;
     for (const o of visible) {
       const sp = o.sprite();
       items.push({ y: o.y, draw: () => c.drawImage(sp.img, Math.round(o.x - sp.ax), Math.round(o.y - sp.ay)) });
       if (sp.roof) roofs.push({ o, sp });
     }
-    for (const k of this.keepers) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawPerson(k, 'idle') });
-    for (const f of this.folk) if (inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
+    const surface = this.level === this.world;
+    for (const k of this.keepers) if (surface && inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawPerson(k, 'idle') });
+    for (const f of this.folk) if (surface && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -587,7 +619,7 @@ export class TopDownEngine {
     // World UI: name plates for keepers, the label of the stall in reach.
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
-    for (const k of this.keepers) if (k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 38, '#f3e7cf');
+    for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 38, '#f3e7cf');
     if (this.nearby) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 58 : 36), '#ffd27a');
   }
 
@@ -621,8 +653,8 @@ export class TopDownEngine {
 
   /** Darkness by the hour (day clear → dusk amber → night blue), holes for every light. */
   private drawLight(): void {
-    const night = this.darkness;
-    if (this.dusk > .05 && night < .5) {
+    const night = this.level.dark ? .9 : this.darkness;
+    if (!this.level.dark && this.dusk > .05 && night < .5) {
       // Dawn and dusk: a warm wash before the dark.
       const c0 = this.ctx; c0.setTransform(1, 0, 0, 1, 0, 0); c0.globalAlpha = .16 * this.dusk; c0.fillStyle = '#ff9a4a';
       c0.fillRect(0, 0, this.canvas.width, this.canvas.height); c0.globalAlpha = 1;
