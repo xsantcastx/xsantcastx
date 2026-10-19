@@ -1573,14 +1573,20 @@ export class SideScrollerComponent implements OnDestroy {
   private tickPhonePose(): void {
     if (this.topDown) (this.engine as unknown as { setPhone?: (on: boolean) => void } | undefined)?.setPhone?.(this.panel?.kind === 'slate');
   }
+  private areaCardPending = '';
+  private areaCardSince = 0;
   private tickAreaCard(): void {
     const title = this.areaTitle;
-    if (!title || title === this.areaCardSeen) return;
+    if (!title) return;
+    // Settled first: the name must hold for a moment before its card shows (no card for a step over a border).
+    if (title !== this.areaCardPending) { this.areaCardPending = title; this.areaCardSince = Date.now(); return; }
+    if (title === this.areaCardSeen || Date.now() - this.areaCardSince < 1200) return;
     this.areaCardSeen = title;
     this.areaCard = { title, realm: this.realmLabel, n: (this.areaCard?.n ?? 0) + 1 };
     clearTimeout(this.areaCardTimer);
     this.areaCardTimer = setTimeout(() => this.zone.run(() => { this.areaCard = null; }), 3600);
   }
+
   /**
    * The creature the enemy bar is measuring, exactly: the engine reports the id
    * and name of the one it measured (no guessing from spawn points, so a mixed
@@ -1608,6 +1614,16 @@ export class SideScrollerComponent implements OnDestroy {
   private placesCache: { area: string; rows: PlaceRow[] } | null = null;
   /** The current area's stations for the accessible Places list. Pure data, so it renders on the server too. */
   get places(): PlaceRow[] {
+    // Top-down: the places of the level the Keeper is on (the square's stalls and ways out, a dungeon floor's own).
+    if (this.topDown && this.engine) {
+      const key = `td:${this.state.area ?? ''}`;
+      if (this.placesCache?.area !== key) {
+        // One row per place (a floor has many seams of one ore: the list names the ore once; the Keeper walks to the nearest).
+        const seen = new Set<string>();
+        this.placesCache = { area: key, rows: this.engine.places.filter(st => !seen.has(st.id) && !!seen.add(st.id)).map(st => ({ id: st.id, name: titleCase(st.label), blurb: st.blurb ?? '' })) };
+      }
+      return this.placesCache.rows;
+    }
     const area = this.state.areaId ?? this.town.id;
     if (this.placesCache?.area !== area) {
       const stations = (areaOf(this.town, area) ?? this.town).stations;
