@@ -3377,7 +3377,7 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 }
 
 /* ── Top-down is the game (2026-10-19): the side view's chrome leaves the square ── */
-.stage--td :is(.wordmark, .objective, .top-actions .quiet, .menu-extra, .keys-toggle, .vitals, .tb--use, .tb--dodge, .tb--blast, .tb--desk) { display: none !important; }
+.stage--td :is(.wordmark, .objective, .top-actions .quiet:not(.slate-btn), .menu-extra, .keys-toggle, .vitals, .tb--use, .tb--dodge, .tb--blast, .tb--desk) { display: none !important; }
 .stage--td #places-list li:has(> [data-open="oneworld"]) { display: none; }
 /* The way home from a side trip: one brass button, top-centre under the goal scroll. */
 .square-back {
@@ -3421,3 +3421,14 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .stage--td.stage--guide { --glim-top: 200px; }
 }
 .area-card { top: 40%; }
+
+/* ── The Slate on a PC: a phone in the hand, GTA-style (owner 2026-10-19) — it rises from the bottom-left corner,
+   smaller, the world in plain sight behind it (no blur, no dim). A click outside still puts it away. ── */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .place.place--slate {
+    background: none; backdrop-filter: none;
+    align-items: flex-start; justify-content: flex-end;
+    padding: 0 0 18px 28px;
+    --ph-max: 330px; --ph-hfrac: .8;
+  }
+}
