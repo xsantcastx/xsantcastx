@@ -15,6 +15,7 @@
 import type { EngineOptions, EngineState, EngineInput } from '../engine/engine.model';
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
@@ -26,7 +27,7 @@ const SPEED = 74;              // art px / s
 const REACH = 26;              // art px from a stall's interaction spot
 const FOOT = { w: 8, h: 4 };   // the Keeper's collision box at the feet (art px)
 
-interface Person { painter: KeeperPainter | null; x: number; y: number; face: 1 | -1; name?: string; moving: boolean; t: number }
+interface Person { painter: KeeperPainter | null; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; name?: string; moving: boolean; t: number }
 interface Puff { x: number; y: number; age: number; life: number; r: number }
 
 export class TopDownEngine {
@@ -63,12 +64,12 @@ export class TopDownEngine {
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
     this.ctx = canvas.getContext('2d')!;
     this.map = buildSeamworksSquare();
-    this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, moving: false, t: 0 };
+    this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
     for (const s of this.map.stalls) {
       if (!s.keeper) continue;
       const npc = NPC_LOOKS[s.keeper.id];
-      this.keepers.push({ painter: npc ? new KeeperPainter(npc.look, npc.gear, npc.garb) : null, x: s.keeper.x, y: s.keeper.y, face: 1, name: s.keeper.name, moving: false, t: Math.random() * 4 });
+      this.keepers.push({ painter: npc ? new KeeperPainter(npc.look, npc.gear, npc.garb) : null, x: s.keeper.x, y: s.keeper.y, face: 1, dir: 'down', name: s.keeper.name, moving: false, t: Math.random() * 4 });
     }
     this.bindInput();
     try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
@@ -158,6 +159,8 @@ export class TopDownEngine {
     this.player.moving = len > .05;
     if (this.player.moving) {
       if (Math.abs(vx) > .2) this.player.face = vx < 0 ? -1 : 1;
+      // Mostly vertical: show the face (south) or the back (north); otherwise the side view.
+      this.player.dir = Math.abs(vy) > Math.abs(vx) * 1.2 ? (vy > 0 ? 'down' : 'up') : 'side';
       this.tryMove(vx * SPEED * dt, 0);
       this.tryMove(0, vy * SPEED * dt);
     }
@@ -435,6 +438,11 @@ export class TopDownEngine {
     c.fillStyle = 'rgba(30,18,26,.28)';
     c.fillRect(Math.round(p.x - 6), Math.round(p.y - 2), 12, 3);
     if (!p.painter) return;
+    if (p.dir !== 'side') {
+      const sheet = frontSheet(p.painter), f = frontFrame(this.time + p.t, p.moving), row = p.dir === 'down' ? 0 : 1;
+      c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
+      return;
+    }
     c.save();
     c.setTransform(s * p.face, 0, 0, s, (Math.round(p.x) - cam.x) * s, (Math.round(p.y) - cam.y) * s);
     p.painter.draw(c, 1, { action, time: this.time + p.t, attackT: 0, weapon: p === this.player });
