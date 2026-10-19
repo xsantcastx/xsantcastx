@@ -118,7 +118,11 @@ export class TopDownEngine {
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
-  setPhone(on: boolean): void { this.phone = on; if (on) { this.player.dir = 'down'; this.player.moving = false; this.path = []; } }
+  setPhone(on: boolean): void {
+    // Called on every HUD tick: turn to the camera only as the Slate comes out, never mid-walk afterwards.
+    if (on && !this.phone && !this.player.moving) this.player.dir = 'down';
+    this.phone = on;
+  }
   setWorldHour(hour: number): void { this.hour = ((hour % 24) + 24) % 24; }
   /** The world clock's sky (world-clock.model.ts Sky): light 1 = day, 0 = dark; glow = dawn/dusk gold. */
   setSky(sky: { light: number; glow: number; eclipse: number }): void {
@@ -595,7 +599,7 @@ export class TopDownEngine {
     if (!p.painter) return;
     if (p.dir !== 'side') {
       const sheet = frontSheet(p.painter), row = p.dir === 'down' ? 0 : 1;
-      const f = p === this.player && this.phone && row === 0 ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
+      const f = p === this.player && this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
       return;
     }

@@ -921,7 +921,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.heights.refresh();
     this.bindPointer(canvas);
     this.engine.start();
-    if (this.panel) this.engine.setPaused(true);
+    if (this.panel && this.panel.kind !== 'slate') this.engine.setPaused(true);
     if (this.oneWorld) {
       // The Waystones read the world through this view; the Keeper logs in where they last stood (a deep link wins).
       this.waystones.attach(this.waystoneHost);
@@ -1467,7 +1467,8 @@ export class SideScrollerComponent implements OnDestroy {
     this.hearthOpen = false;
     this.panel = place;
     this.engine?.setHover(null);
-    this.engine?.setPaused(true);
+    // The Slate is a phone in the hand: the world goes on round it (owner, 2026-10-19). Every other panel pauses it.
+    if (place.kind !== 'slate') this.engine?.setPaused(true);
     // A chest or a camp has no deep link: it is a cell in this player's own Delve.
     if (!place.own) this.setAt(place.stationId);
     // Focus moves into the dialog once it is shown; the close button is always there.
