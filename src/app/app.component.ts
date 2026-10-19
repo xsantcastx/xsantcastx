@@ -20,6 +20,7 @@ import { OnboardingService } from './shared/onboarding/onboarding.service';
 import { OfflineService } from './shared/offline/offline.service';
 import { XpService } from './shared/gamification/xp.service';
 import { AnalyticsService } from './analytics.service';
+import { CloudSaveService } from './shared/cloud-save/cloud-save.service';
 
 @Component({
     selector: 'app-root',
@@ -66,6 +67,18 @@ export class AppComponent implements OnInit, OnDestroy {
   private readonly offline = inject(OfflineService);
   private readonly xp = inject(XpService);
   private readonly analytics = inject(AnalyticsService);
+  /*
+   * Cloud save has to be resumed by the shell, on every load. It used to be
+   * resumed by the header's sign-in chip, which was on every page; the
+   * game-only shell (86cfee98) deleted that chip, and the only remaining host,
+   * <app-cloud-save-button>, lives in the lazy Account panel. So a device that
+   * was already signed in never re-attached to Firestore unless the player
+   * happened to open Account & settings: nothing it played was pushed, nothing
+   * another device pushed was pulled, and a redirect sign-in (the phone
+   * fallback) came back to a page that never read its result. See
+   * docs/handoff/cross-save.md.
+   */
+  private readonly cloudSave = inject(CloudSaveService);
 
   /** Funnel subscriptions, torn down with the shell. */
   private readonly funnelSubs = new Subscription();
@@ -169,6 +182,14 @@ export class AppComponent implements OnInit, OnDestroy {
     // sign; the side-scroller reports each one opened). Loaded here so a find
     // is recorded the moment it happens, not the next time the Codex opens.
     this.codexSecrets.init();
+
+    // Cloud save: resume sync on a browser that is already signed in, and
+    // finish a redirect sign-in that has just come back from Google. After
+    // every hydrating init() above, so the pull reconciles against loaded
+    // state. A no-op (one localStorage read) for a visitor who never signed
+    // in, and its network work waits for an idle callback — except straight
+    // after a redirect, where the visitor is waiting on it.
+    this.cloudSave.init();
 
     // ── Acquisition funnel and the first-run tutorial ────────────────────
     //

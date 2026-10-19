@@ -22,6 +22,7 @@ import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { RouterTestingModule } from '@angular/router/testing';
 import { AppComponent } from './app.component';
+import { CloudSaveService } from './shared/cloud-save/cloud-save.service';
 
 describe('AppComponent', () => {
   beforeEach(() => TestBed.configureTestingModule({
@@ -32,6 +33,17 @@ describe('AppComponent', () => {
     // spec is about.
     schemas: [NO_ERRORS_SCHEMA],
   }));
+
+  // Cross-save (docs/handoff/cross-save.md): the shell is the only thing
+  // mounted on every load now, so it is what has to resume a signed-in
+  // device. When a header chip did this and the chip was deleted, sync
+  // silently stopped for every returning player.
+  it('resumes cloud save on every load', () => {
+    const init = spyOn(CloudSaveService.prototype, 'init');
+    const fixture = TestBed.createComponent(AppComponent);
+    fixture.detectChanges();
+    expect(init).toHaveBeenCalledTimes(1);
+  });
 
   it('creates the shell', () => {
     const fixture = TestBed.createComponent(AppComponent);
