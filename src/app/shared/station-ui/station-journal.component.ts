@@ -36,10 +36,15 @@ import { ChangeDetectionStrategy, Component, input } from '@angular/core';
     /* By the station's own width too: a sideways phone shows it in a half-screen side panel. */
     @container station (max-width: 640px) { .sj { grid-template-columns: minmax(0, 1fr); } }
     /* In the world: the icon grid centred over the result card; a sideways phone puts the grid LEFT and the card RIGHT (one screen, no scrolling). */
-    :host-context(.place) .sj { justify-items: center; gap: var(--space-2); }
-    :host-context(.place) .sj__detail { width: 100%; }
+    /* In the world (docs/handoff/nice-menus.md): one column on a phone held upright (the grid as wide as the card under it,
+       their edges in line); the grid LEFT and the card RIGHT wherever the window is wide enough (a sideways phone, a desktop). */
+    :host-context(.place) .sj { justify-items: stretch; gap: var(--px-u, 8px); }
+    :host-context(.place) .sj__detail { width: 100%; gap: var(--px-u, 8px); }
+    @container station (min-width: 560px) {
+      :host-context(.place) .sj:not(.sj--single) { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 16px; }
+    }
     @media (max-height: 520px) and (orientation: landscape) {
-      :host-context(.place) .sj:not(.sj--single) { grid-template-columns: 208px minmax(0, 1fr); align-items: start; justify-items: stretch; }
+      :host-context(.place) .sj:not(.sj--single) { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; }
     }
   `],
 })

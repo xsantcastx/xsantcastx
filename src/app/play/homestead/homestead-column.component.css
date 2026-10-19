@@ -169,3 +169,37 @@
   .hc-row { transition: none; }
   .hc-row--bought { animation: none; }
 }
+
+/* ── A clean pixel window (docs/handoff/nice-menus.md): the same plate, edge and cells as every menu ── */
+.hc {
+  border: 0;
+  border-radius: 0;
+  background: var(--px-win-bg);
+  box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
+  padding: 8px;
+  gap: 8px;
+}
+.hc-toggle { box-shadow: var(--px-groove); align-items: center; font-family: var(--font-game); }
+.hc-purse { font: 700 15px/1.1 var(--font-game); letter-spacing: .04em; text-shadow: 2px 2px 0 var(--obsidian-0); }
+.hc-toggle small { font: 600 11px/1 var(--font-game); }
+.hc-rows { gap: 8px; padding: 2px; }
+.hc-row {
+  border: 0;
+  border-radius: 0;
+  background: var(--px-cell-bg);
+  box-shadow: var(--px-cell-rim);
+}
+.hc-row--ready { box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
+.hc-icon { border-radius: 0; image-rendering: pixelated; object-fit: contain; }
+.hc-text b { font: 600 12px/1.2 var(--font-game); letter-spacing: .04em; }
+.hc-strike, .hc-buy {
+  border: 0;
+  border-radius: 0;
+  font-family: var(--font-game);
+  letter-spacing: .04em;
+  box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-deep), 0 4px 0 0 var(--obsidian-0);
+}
+.hc-strike { margin: 2px 2px 4px; }
+.hc-strike:active, .hc-buy:not(:disabled):active { transform: none; translate: 0 2px; }
+.hc-buy:disabled { box-shadow: var(--px-cell-rim); }
+.hc-group { font-family: var(--font-game); }

@@ -69,14 +69,14 @@ import type { StorySceneId } from './story-save.model';
   styles: [`
     :host { display: block; }
     .hs { display: grid; gap: 14px; }
-    .hs__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px Orbitron, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
-    .hs__title { margin: 2px 0 0; color: var(--adventure-beacon-text); font: 600 18px/1.25 Orbitron, sans-serif; }
+    .hs__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px var(--font-game); letter-spacing: .16em; text-transform: uppercase; }
+    .hs__title { margin: 2px 0 0; color: var(--adventure-beacon-text); font: 600 18px/1.25 var(--font-game); }
     .hs__lead { padding: 10px 12px; border: 1px solid var(--adventure-ember); background: color-mix(in srgb, var(--adventure-ember) 10.00%, transparent); }
-    .hs__lead b { color: var(--adventure-hud-gold); font: 600 10px Orbitron, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+    .hs__lead b { color: var(--adventure-hud-gold); font: 600 10px var(--font-game); letter-spacing: .12em; text-transform: uppercase; }
     .hs__lead p { margin: 4px 0 0; color: var(--adventure-parchment); line-height: 1.45; }
     .hs__chapter { padding: 12px 14px; border: 1px solid color-mix(in srgb, var(--adventure-hud-brass) 35.00%, transparent); }
     .hs__chapter.is-now { border-color: var(--adventure-hud-brass); }
-    .hs__chapter h4 { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px; margin: 0 0 8px; color: var(--adventure-beacon-text); font: 600 13px Orbitron, sans-serif; }
+    .hs__chapter h4 { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 6px; margin: 0 0 8px; color: var(--adventure-beacon-text); font: 600 13px var(--font-game); }
     .hs__chapter small { color: var(--adventure-dialogue); font: 400 12px system-ui, sans-serif; }
     .hs__intro { margin: 0 0 8px; color: var(--adventure-dialogue); font-style: italic; line-height: 1.5; }
     .hs__beats { display: grid; gap: 8px; margin: 10px 0 0; padding: 0; list-style: none; }
@@ -85,7 +85,7 @@ import type { StorySceneId } from './story-save.model';
     .hs__beats span { color: var(--adventure-dialogue); line-height: 1.45; }
     .hs__play {
       justify-self: start; min-height: 44px; margin-top: 4px; padding: 0 14px; border: 1px solid var(--adventure-hud-brass);
-      background: transparent; color: var(--adventure-parchment); font: 600 11px Orbitron, sans-serif; letter-spacing: .08em; cursor: pointer;
+      background: transparent; color: var(--adventure-parchment); font: 600 11px var(--font-game); letter-spacing: .08em; cursor: pointer;
     }
     .hs__play--new { border-color: var(--adventure-ember); background: color-mix(in srgb, var(--adventure-ember) 14.00%, transparent); }
     .hs__play small { color: var(--adventure-hud-gold); font: inherit; }

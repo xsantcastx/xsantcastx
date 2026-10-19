@@ -103,7 +103,7 @@ import { keeperAvatarArt } from '../art/art';
         radial-gradient(ellipse 80% 100% at 50% 0%, rgba(139, 92, 246, 0.12), transparent 70%),
         rgba(10, 6, 26, 0.6);
       color: #cfe9e2; cursor: pointer;
-      font: 600 12px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em;
+      font: 600 12px/1 var(--font-game); letter-spacing: .04em;
       transition: border-color .25s ease, box-shadow .25s ease, color .25s ease;
     }
     .cs__signin:hover {
@@ -133,7 +133,7 @@ import { keeperAvatarArt } from '../art/art';
     }
     .cs__avatar--initial {
       display: grid; place-items: center;
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif; color: #F2ECFF;
+      font: 700 11px/1 var(--font-game); color: #F2ECFF;
       background: radial-gradient(circle at 50% 50%, #A78BFA 0%, rgba(8, 3, 24, .92) 90%);
     }
 
@@ -141,7 +141,7 @@ import { keeperAvatarArt } from '../art/art';
 
     .cs__state {
       display: flex; align-items: center; gap: 5px;
-      font: 600 11px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .04em;
+      font: 600 11px/1 var(--font-game); letter-spacing: .04em;
       color: #A78BFA;
     }
     .cs__state[data-state="syncing"] { color: #e8c898; }
@@ -172,7 +172,7 @@ import { keeperAvatarArt } from '../art/art';
       border-radius: 999px;
       background: transparent;
       color: #9fb4ae; cursor: pointer;
-      font: 600 10px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .06em;
+      font: 600 10px/1 var(--font-game); letter-spacing: .06em;
       border: 1px solid rgba(255, 255, 255, 0.1);
       transition: border-color .25s ease, color .25s ease;
     }

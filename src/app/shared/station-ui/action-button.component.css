@@ -108,7 +108,7 @@
   border-radius: var(--st-radius);
   cursor: pointer;
   color: var(--text-on-accent);
-  background: linear-gradient(180deg, var(--gold-bright) 0%, var(--gold) 45%, var(--gold-core) 100%);
+  background: linear-gradient(180deg, var(--ab-top, var(--gold-bright)) 0%, var(--gold) 45%, var(--gold-core) 100%);
   box-shadow: 0 var(--st-press-depth) 0 var(--gold-deep);
   transform: translateY(0);
   transition: transform var(--dur-press) var(--ease-standard),

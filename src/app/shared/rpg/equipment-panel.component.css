@@ -30,7 +30,7 @@
   min-height: 44px;
   cursor: pointer;
   list-style: none;
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--gold);
@@ -497,7 +497,7 @@
 }
 .ld__picker-title {
   margin: 0;
-  font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+  font: 700 12px/1 var(--font-game);
   letter-spacing: 0.12em; text-transform: uppercase;
   color: var(--gf-accent-text);
 }

@@ -54,7 +54,7 @@ import { ledgerXp } from './fishing.model';
     .lc__go {
       justify-self: start; min-height: 44px; padding: 0 16px; border: 1px solid var(--gf-accent); border-radius: var(--gf-radius-sm);
       background: none; color: var(--gf-accent-text); cursor: pointer;
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase;
+      font: 700 11px/1 var(--font-game); letter-spacing: 0.1em; text-transform: uppercase;
     }
     .lc__go:disabled { opacity: .55; cursor: default; }
     .lc__go:focus-visible { outline: 2px solid var(--gf-accent-text); outline-offset: 2px; }

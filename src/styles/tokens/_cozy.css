@@ -1,0 +1,36 @@
+/* ── Cozy top-down palette (docs/design/top-down.md; references in docs/design/refs/cozy/) ─────────────────
+   The game's menus match its world: warm wood frames, a dark-plank plate, parchment for the quest scroll and
+   notes, brass for the one primary button, lantern glow for what is lit. The same browns the top-down art paints
+   with (src/app/play/td/td-art.ts PAL), so a window looks cut from the town's own timber. */
+:root {
+  /* Wood, darkest (the pixel outline) to lightest (the lit top-left edge). */
+  --cozy-wood-0: #24150c;
+  --cozy-wood-1: #3b2415;
+  --cozy-wood-2: #6e4526;
+  --cozy-wood-3: #8a5a32;
+  --cozy-wood-4: #a06a3b;
+  --cozy-wood-hi: #c8925a;
+  /* The plate inside a window: dark planks, one seam darker. */
+  --cozy-plate: #2e1d12;
+  --cozy-plate-seam: #26180f;
+  /* A slot / cell sunk into the plate. */
+  --cozy-well: #1f130b;
+  /* Parchment (the quest scroll, notes, help cards) and the ink written on it. */
+  --cozy-parch: #f1e2c0;
+  --cozy-parch-shade: #e2c995;
+  --cozy-parch-edge: #b8925c;
+  --cozy-ink: #3a2414;
+  --cozy-ink-soft: #6e4e30;
+  /* Brass (the primary button) and lantern glow (titles, what is selected). */
+  --cozy-brass: #c99a3e;
+  --cozy-brass-hi: #f0cf7a;
+  --cozy-brass-lo: #7d5a1f;
+  --cozy-glow: #ffd27a;
+  --cozy-cream: #f6e7c8;
+  /* Accents from the town: leaf green, awning red, river blue. */
+  --cozy-leaf: #6f9a3c;
+  --cozy-berry: #b8432e;
+  --cozy-river: #4e7bb0;
+  /* The game's lettering: Pixelify Sans (tokens/fonts.css), like the references' quest scroll. */
+  --font-game: var(--font-pixel);
+}
