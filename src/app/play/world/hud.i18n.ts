@@ -48,6 +48,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.td.ability.cooldown': { en: 'Not ready yet.', es: 'Aun no esta listo.' },
   'play.td.ability.nofoe': { en: 'No foe in reach.', es: 'Ningun enemigo al alcance.' },
   'play.td.ability.mana': { en: 'Not enough mana.', es: 'No tienes suficiente mana.' },
+  'play.td.level': { en: 'Lv {{n}}', es: 'Nv {{n}}' },
   'play.td.mana': { en: 'Mana', es: 'Mana' },
   'play.td.book': { en: 'Spellbook', es: 'Grimorio' },
   'play.td.book.active': { en: 'Spells (keys 1–4)', es: 'Hechizos (teclas 1–4)' },
