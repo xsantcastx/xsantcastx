@@ -24,7 +24,7 @@ import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
-import { MOBS, MobSystem, mobSheet, type Mob } from './td-mobs';
+import { ABILITIES, MobSystem, mobSheet, type AbilityId, type Mob } from './td-mobs';
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
@@ -50,8 +50,15 @@ export class TopDownEngine {
   private readonly maxHp = 100;
   private lastHurt = -99;
   private messageAge = 0;
+  /** The engine's own line, as an i18n key the HUD translates (engineMessage). */
+  private messageKey = '';
   private spawnTimer = 0;
   private chaseTimer = 0;
+  /** The swing being played (seconds left) and which way it faces. */
+  private actT = 0;
+  /** A tree being cut: hits so far, the next swing's timer. */
+  private chop: { c: number; r: number; x: number; y: number; hits: number; t: number } | null = null;
+  private shake = 0;
   /** The stamped town (its stalls, keepers and streets); the ground and walls everywhere come from `world`. */
   private readonly map: TdMap;
   private readonly chunks = new Map<string, HTMLCanvasElement[]>();
@@ -101,6 +108,8 @@ export class TopDownEngine {
       levelId: () => this.level.id,
       player: () => this.player,
       hurtPlayer: n => this.hurt(n),
+      healPlayer: n => { this.hp = Math.min(this.maxHp, this.hp + n); },
+      swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
     });
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
@@ -163,7 +172,59 @@ export class TopDownEngine {
     if (pressed) { this.keys.add(key); this.path = []; } else this.keys.delete(key);
   }
   interact(): void {
-    if (this.nearby) this.use(this.nearby);
+    if (this.nearby) { this.use(this.nearby); return; }
+    const t = this.treeNear();
+    if (t) this.startChop(t.c, t.r, t.x, t.y);
+  }
+  /** Use an ability (keys 1–4, the ability bar). Returns why not, or null when it went off. */
+  useAbility(id: AbilityId): 'cooldown' | 'nofoe' | null { return this.paused ? 'cooldown' : this.mobs.useAbility(id); }
+  /** Each ability's cooldown left, 0–1, for the ability bar. */
+  get abilities(): readonly { id: AbilityId; key: string; left: number }[] {
+    return ABILITIES.map(a => ({ id: a.id, key: a.key, left: this.mobs.cooldowns[a.id] / a.cd }));
+  }
+  get hasted(): boolean { return this.mobs.haste > 0; }
+
+  private say(key: string): void { this.messageKey = key; this.message = key; this.messageAge = 0; }
+
+  // ── Woodcutting ────────────────────────────────────────────────────────────
+
+  /** A standing tree beside the Keeper (surface only). */
+  private treeNear(): { c: number; r: number; x: number; y: number } | null {
+    if (this.level !== this.world) return null;
+    const pc = Math.floor(this.player.x / TILE), pr = Math.floor((this.player.y - 1) / TILE);
+    let best: { c: number; r: number; x: number; y: number } | null = null, bd = 26;
+    for (let r = pr - 2; r <= pr + 2; r++) for (let c = pc - 2; c <= pc + 2; c++) {
+      const o = this.world.treeAt(c, r);
+      if (!o) continue;
+      const d = Math.hypot(o.x - this.player.x, o.y - this.player.y);
+      if (d < bd) { bd = d; best = { c, r, x: o.x, y: o.y }; }
+    }
+    return best;
+  }
+  private startChop(c: number, r: number, x: number, y: number): void {
+    this.chop = { c, r, x, y, hits: 0, t: 0 };
+    this.player.face = x < this.player.x ? -1 : 1;
+  }
+  private updateChop(dt: number): void {
+    const ch = this.chop;
+    if (!ch) return;
+    ch.t -= dt;
+    if (ch.t > 0) return;
+    ch.t = .55;
+    ch.hits++;
+    this.actT = .3; this.player.dir = 'side'; this.player.face = ch.x < this.player.x ? -1 : 1;
+    this.shake = .15;
+    this.mobs.chips(ch.x, ch.y - 12);
+    if (ch.hits < 4) return;
+    // Felled: the host books Woodcutting XP and the bark (a roll) like any trunk in the old hunts.
+    const bark = Math.random() < .6;
+    const ok = this.options.onWorldAction?.({
+      kind: 'chop', areaId: 'ember-quarry', cellKey: `${ch.c},${ch.r}`, discipline: 'woodcutting', xp: 4,
+      mutationId: `td-chop:${ch.c},${ch.r}:${Date.now().toString(36)}`, site: 'td-tree',
+      ...(bark ? { materialId: 'world-root-bark', qty: 1 } : {}),
+    } as Parameters<NonNullable<EngineOptions['onWorldAction']>>[0]);
+    if (ok !== false) this.world.fell(ch.c, ch.r, 90_000);
+    this.chop = null;
   }
   /** Use a stall: the seam, the forge and the beacon are the play view's own deeds (onInteract); the rest open. */
   private use(s: TdStall): void {
@@ -231,7 +292,7 @@ export class TopDownEngine {
     this.lastHurt = this.time;
     if (this.hp > 0) return;
     this.hp = this.maxHp;
-    this.message = 'You fell, and woke in the square.';
+    this.say('play.td.fell');
     this.enter(this.world, '');
     this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y;
     this.mobs.target = null;
@@ -250,7 +311,7 @@ export class TopDownEngine {
       const dx = this.joy.x - this.joy.sx, dy = this.joy.y - this.joy.sy, len = Math.hypot(dx, dy);
       if (len > 6) { const k = Math.min(1, len / 48); vx = dx / len * k; vy = dy / len * k; }
     }
-    if (vx || vy) this.path = [];
+    if (vx || vy) { this.path = []; this.chop = null; }
     else if (this.path.length) {
       const p = this.path[0], dx = p.x - this.player.x, dy = p.y - this.player.y, d = Math.hypot(dx, dy);
       if (d < 3) { this.path.shift(); if (!this.path.length) { const go = this.arrive; this.arrive = null; go?.(); } }
@@ -263,8 +324,9 @@ export class TopDownEngine {
       if (Math.abs(vx) > .2) this.player.face = vx < 0 ? -1 : 1;
       // Mostly vertical: show the face (south) or the back (north); otherwise the side view.
       this.player.dir = Math.abs(vy) > Math.abs(vx) * 1.2 ? (vy > 0 ? 'down' : 'up') : 'side';
-      this.tryMove(vx * SPEED * dt, 0);
-      this.tryMove(0, vy * SPEED * dt);
+      const speed = SPEED * (this.mobs.haste > 0 ? 1.5 : 1);
+      this.tryMove(vx * speed * dt, 0);
+      this.tryMove(0, vy * speed * dt);
     }
     // Glim drifts to the Keeper's shoulder.
     const gx = this.player.x + this.player.face * -14, gy = this.player.y - 44 + Math.sin(this.time * 2.4) * 3;
@@ -282,8 +344,10 @@ export class TopDownEngine {
     this.nearby = best;
     this.updateSmoke(dt);
     this.updateFight(dt);
+    this.updateChop(dt);
+    this.actT = Math.max(0, this.actT - dt); this.shake = Math.max(0, this.shake - dt);
     // A line of the engine's own (a fall) fades from the HUD after a few seconds.
-    if (this.message) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageAge = 0; } }
+    if (this.message || this.messageKey) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageKey = ''; this.messageAge = 0; } }
     this.stateTimer -= dt;
     if (this.stateTimer <= 0) { this.stateTimer = .1; this.report(); }
   }
@@ -302,12 +366,12 @@ export class TopDownEngine {
   private report(): void {
     const s = this.nearby;
     const state: EngineState = {
-      hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : null,
-      nearbyLabel: s?.station.label, nearbyKind: s?.station.kind,
+      hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : this.treeNear() ? 'td-tree' : null,
+      nearbyLabel: s ? s.station.label : this.treeNear() ? 'CHOP TREE' : undefined, nearbyKind: s?.station.kind ?? (this.treeNear() ? 'resource' : undefined),
       x: Math.round(this.player.x), y: Math.round(this.player.y),
       area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face,
       animation: this.player.moving ? 'run' : 'idle', delve: false, coins: 0, kills: 0,
-      paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message,
+      paused: this.paused, defeated: false, enemyDefeated: false, complete: false, message: this.message, ...(this.messageKey ? { messageKey: this.messageKey } : {}),
     };
     this.options.onState(state);
   }
@@ -371,6 +435,8 @@ export class TopDownEngine {
       // E opens the stall in reach (the side view handled E inside its own engine).
       if (down && !e.repeat && (k === 'e' || k === 'enter') && this.nearby) { e.preventDefault(); this.interact(); return; }
       if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
+      const ab = ABILITIES.find(a => a.key === k);
+      if (ab) { if (down && !e.repeat) { const why = this.useAbility(ab.id); if (why) this.say(`play.td.ability.${why}`); } return; }
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
       if (down) { this.keys.add(k); this.path = []; } else this.keys.delete(k);
     };
@@ -415,6 +481,13 @@ export class TopDownEngine {
     const foe = this.mobs.mobAt(wx, wy);
     if (foe) { this.mobs.target = foe; this.chaseTimer = 0; return; }
     this.mobs.target = null;
+    if (this.level === this.world) {
+      const tc = Math.floor(wx / TILE), tr = Math.floor((wy + 6) / TILE);
+      for (const [c, r] of [[tc, tr], [tc, tr + 1], [tc, tr + 2]]) {
+        const o = this.world.treeAt(c, r);
+        if (o) { this.walkTo(o.x, o.y + 12, () => this.startChop(c, r, o.x, o.y)); return; }
+      }
+    }
     const hit = this.stallAt(wx, wy);
     if (hit) { this.walkTo(hit.x, hit.y + 10, () => this.use(hit)); return; }
     this.walkTo(wx, wy);
@@ -631,7 +704,8 @@ export class TopDownEngine {
     this.visible = visible;
     for (const o of visible) {
       const sp = o.sprite();
-      items.push({ y: o.y, draw: () => c.drawImage(sp.img, Math.round(o.x - sp.ax), Math.round(o.y - sp.ay)) });
+      const jig = this.chop && this.shake > 0 && o.kind === 'tree' && o.x === this.chop.x && o.y === this.chop.y ? Math.round(Math.sin(this.time * 70) * 1.5) : 0;
+      items.push({ y: o.y, draw: () => c.drawImage(sp.img, Math.round(o.x - sp.ax) + jig, Math.round(o.y - sp.ay)) });
       if (sp.roof) roofs.push({ o, sp });
     }
     const surface = this.level === this.world;
@@ -684,6 +758,7 @@ export class TopDownEngine {
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
     for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 38, '#f3e7cf');
+    this.drawEffects();
     this.drawFightUi(inView);
     if (this.nearby) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 58 : 36), '#ffd27a');
   }
@@ -712,6 +787,38 @@ export class TopDownEngine {
       c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 8, 8, 8); c.fillStyle = '#a8743f'; c.fillRect(X - 3, Y - 7, 6, 6); c.fillStyle = '#c99657'; c.fillRect(X - 3, Y - 7, 6, 2);
     }
   }
+  /** Slashes, the ember wave, healing motes, wood chips, haste dust: pixel pictures that live a moment. */
+  private drawEffects(): void {
+    const c = this.ctx;
+    for (const e of this.mobs.effects) {
+      if (e.age < 0) continue;
+      const t = e.age / e.life, X = Math.round(e.x), Y = Math.round(e.y);
+      c.globalAlpha = Math.max(0, 1 - t);
+      if (e.kind === 'slash') {
+        // Three bright strokes sweeping down across the foe.
+        c.fillStyle = '#ffffff';
+        for (let i = 0; i < 6; i++) { const k = Math.min(i, Math.floor(t * 9)); c.fillRect(X + e.dir * (-6 + k * 2), Y - 6 + k * 2, 2, 2); }
+        c.fillStyle = '#ffe9a8'; for (let i = 0; i < 5; i++) c.fillRect(X + e.dir * (-4 + i * 2), Y - 8 + i * 2, 1, 1);
+      } else if (e.kind === 'wave') {
+        const r = 8 + t * 42;
+        c.strokeStyle = '#ff8a2e'; c.lineWidth = 3; c.beginPath(); c.ellipse(X, Y, r, r * .55, 0, 0, Math.PI * 2); c.stroke();
+        c.strokeStyle = '#ffd25a'; c.lineWidth = 1; c.beginPath(); c.ellipse(X, Y, r * .8, r * .44, 0, 0, Math.PI * 2); c.stroke();
+      } else if (e.kind === 'heal') {
+        c.fillStyle = '#7fe08a';
+        for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2 + t * 2; c.fillRect(Math.round(X + Math.cos(a) * 9), Math.round(Y - 10 - t * 22 + Math.sin(a) * 3), 2, 2); }
+        c.fillStyle = '#e6ffe9'; c.fillRect(X - 1, Math.round(Y - 22 - t * 14), 3, 1); c.fillRect(X, Math.round(Y - 23 - t * 14), 1, 3);
+      } else if (e.kind === 'chips') {
+        for (let i = 0; i < 5; i++) {
+          c.fillStyle = i % 2 ? '#c99657' : '#4f9440';
+          c.fillRect(Math.round(X + e.dir * (i * 3 + t * 14) - 4), Math.round(Y - t * 10 + t * t * 26 + i), 2, 2);
+        }
+      } else {
+        c.fillStyle = '#e9dcc0'; c.fillRect(X - 2, Math.round(Y - 2 - t * 4), Math.round(4 - t * 2), 2);
+      }
+    }
+    c.globalAlpha = 1;
+  }
+
   /** Names and health over creatures, labels over gear on the ground, the numbers that float up. */
   private drawFightUi(inView: (x: number, y: number, pad?: number) => boolean): void {
     const c = this.ctx;
@@ -740,7 +847,8 @@ export class TopDownEngine {
     c.fillStyle = 'rgba(30,18,26,.28)';
     c.fillRect(Math.round(p.x - 6), Math.round(p.y - 2), 12, 3);
     if (!p.painter) return;
-    if (p.dir !== 'side') {
+    const acting = p === this.player && this.actT > 0;
+    if (p.dir !== 'side' && !acting) {
       const sheet = frontSheet(p.painter), row = p.dir === 'down' ? 0 : 1;
       const f = p === this.player && this.phone && row === 0 && !p.moving ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
@@ -748,7 +856,7 @@ export class TopDownEngine {
     }
     c.save();
     c.setTransform(s * p.face, 0, 0, s, (Math.round(p.x) - cam.x) * s, (Math.round(p.y) - cam.y) * s);
-    p.painter.draw(c, 1, { action, time: this.time + p.t, attackT: 0, weapon: p === this.player });
+    p.painter.draw(c, 1, acting ? { action: 'attack', time: this.time, attackT: 1 - this.actT / .3, weapon: true } : { action, time: this.time + p.t, attackT: 0, weapon: p === this.player });
     c.restore();
   }
 
