@@ -10,6 +10,7 @@
  */
 import { boulder, bush, flowerbed, hash, oreSeam, tree, TILE, type Ground } from './td-art';
 import { buildSeamworksSquare, type TdMap, type TdObject, type TdStall } from './seamworks-square';
+import type { TdLevel } from './td-level';
 
 export const WORLD_CHUNK = 16;
 /** Clear ground round the stamped town before the wilds begin (tiles). */
@@ -31,7 +32,9 @@ function fbm(x: number, y: number, salt: number): number {
   return noise(x, y, salt) * .57 + noise(x * 2.1, y * 2.1, salt + 7) * .29 + noise(x * 4.3, y * 4.3, salt + 13) * .14;
 }
 
-export class TdWorld {
+export class TdWorld implements TdLevel {
+  readonly id = 'surface';
+  readonly dark = false;
   readonly town: TdMap;
   /** The square's centre streets (tiles): they run on as the world's roads. */
   private readonly roadRow: number;
@@ -97,15 +100,17 @@ export class TdWorld {
     return out;
   }
 
-  /** A name for where the Keeper stands: the town, or the wild biome round them. */
+  /**
+   * A name for where the Keeper stands: the town, or the wild REGION round them. Regions are big (64×64 tiles, a long
+   * walk across) and named once from their centre, so a pond or a copse never flips the name (it did, every few steps).
+   */
   placeName(x: number, y: number): string {
     const c = Math.floor(x / TILE), r = Math.floor(y / TILE);
-    if (this.nearTown(c, r)) return 'Basalt Seamworks';
-    if (Math.abs(r - this.riverAt(c) - 1) <= 3) return 'The Cinderflow';
-    const wet = fbm(c / 26, r / 26, 101);
-    if (wet < .3) return 'Ashwater Lakes';
-    if (fbm(c / 20, r / 20, 503) > .58) return 'The Emberwood';
-    if (fbm(c / 18, r / 18, 211) > .66) return 'Slagstone Hills';
+    if (c >= -6 && r >= -6 && c < this.town.cols + 6 && r < this.town.rows + 6) return 'Basalt Seamworks';
+    const R = 64, rc = Math.floor(c / R) * R + R / 2, rr = Math.floor(r / R) * R + R / 2;
+    if (fbm(rc / 26, rr / 26, 101) < .34) return 'Ashwater Lakes';
+    if (fbm(rc / 20, rr / 20, 503) > .55) return 'The Emberwood';
+    if (fbm(rc / 18, rr / 18, 211) > .6) return 'Slagstone Hills';
     return 'Cinder Meadows';
   }
 
