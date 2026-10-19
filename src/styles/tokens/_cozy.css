@@ -31,6 +31,6 @@
   --cozy-leaf: #6f9a3c;
   --cozy-berry: #b8432e;
   --cozy-river: #4e7bb0;
-  /* The game's lettering: plain and legible, one token so a pixel face can replace it later. */
-  --font-game: var(--font-ui);
+  /* The game's lettering: Pixelify Sans (tokens/fonts.css), like the references' quest scroll. */
+  --font-game: var(--font-pixel);
 }

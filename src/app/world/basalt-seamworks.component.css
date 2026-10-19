@@ -10,7 +10,7 @@
 
 .sw__eyebrow {
   margin: 0 0 0.45rem;
-  font: 600 0.72rem/1 'Orbitron', system-ui, sans-serif;
+  font: 600 0.72rem/1 var(--font-game);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--seam);
@@ -18,7 +18,7 @@
 
 .sw h1 {
   margin: 0;
-  font: 700 clamp(2rem, 6vw, 3rem)/1.05 'Orbitron', system-ui, sans-serif;
+  font: 700 clamp(2rem, 6vw, 3rem)/1.05 var(--font-game);
   letter-spacing: 0.06em;
   text-transform: uppercase;
 }
@@ -38,7 +38,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 
 .sw__panel h2 {
   margin: 0 0 0.6rem;
-  font: 600 0.78rem/1.2 'Orbitron', system-ui, sans-serif;
+  font: 600 0.78rem/1.2 var(--font-game);
   letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--seam);
@@ -71,7 +71,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 .sw__tier img { width: 32px; height: 32px; object-fit: contain; border-radius: 6px; flex: none; }
 .sw__tier-name {
   display: block;
-  font: 700 0.72rem/1.2 'Orbitron', system-ui, sans-serif;
+  font: 700 0.72rem/1.2 var(--font-game);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
@@ -129,7 +129,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   left: 50%;
   top: 6px;
   transform: translate(-50%, 0);
-  font: 700 0.95rem/1 'Orbitron', system-ui, sans-serif;
+  font: 700 0.95rem/1 var(--font-game);
   color: var(--gf-accent-text, var(--gold-core));
   text-shadow: 0 2px 6px rgba(0, 0, 0, 0.85);
   pointer-events: none;
@@ -144,7 +144,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
 .sw__loot figcaption { color: rgba(232, 236, 241, 0.78); }
 .sw__held {
   margin: 0.35rem 0 0;
-  font: 700 1.35rem/1 'Orbitron', system-ui, sans-serif;
+  font: 700 1.35rem/1 var(--font-game);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
 }
@@ -251,7 +251,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   display: grid;
   gap: 0.1rem;
   justify-items: center;
-  font: 700 clamp(0.85rem, 3vw, 1.05rem)/1 'Orbitron', system-ui, sans-serif;
+  font: 700 clamp(0.85rem, 3vw, 1.05rem)/1 var(--font-game);
   font-variant-numeric: tabular-nums;
   color: var(--gf-accent-text, var(--gold-core));
 }
@@ -275,7 +275,7 @@ app-current-work-tile { display: block; margin: 1.4rem 0; }
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.28);
   color: inherit;
-  font: 700 0.78rem/1 'Orbitron', system-ui, sans-serif;
+  font: 700 0.78rem/1 var(--font-game);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0.04em;
   cursor: pointer;
