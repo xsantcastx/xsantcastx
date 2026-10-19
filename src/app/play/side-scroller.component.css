@@ -3436,3 +3436,21 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 @keyframes td-toast { 0% { opacity: 0; transform: translateY(6px); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) { .td-toast { bottom: calc(var(--hud-bottom, 96px) + 10px); } }
 .stage--menu .td-toast { display: none; }
+
+/* ── The ability bar (top-down): four wooden slots, the key in a corner, a dark sweep while it cools ── */
+.td-skills { position: absolute; z-index: 5; left: 50%; bottom: 84px; translate: -50% 0; display: flex; gap: 8px; padding: 6px;
+  background: var(--px-win-planks), var(--cozy-plate); box-shadow: var(--cozy-chip); pointer-events: auto; }
+.td-skill { position: relative; display: grid; place-items: center; width: 48px; height: 48px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: var(--cozy-well) !important; box-shadow: inset 0 0 0 2px var(--cozy-wood-1), inset 2px 2px 0 2px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent) !important; cursor: pointer; }
+.td-skill:hover { box-shadow: inset 0 0 0 2px var(--cozy-glow) !important; }
+.td-skill::after { content: ""; position: absolute; inset: 2px; pointer-events: none;
+  background: conic-gradient(color-mix(in srgb, var(--cozy-wood-0) 72%, transparent) calc(var(--cd, 0) * 360deg), transparent 0); }
+.td-skill kbd { position: absolute; right: 2px; bottom: 1px; font: 700 10px/1 var(--font-pixel); color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.td-skill:active { translate: 0 2px; }
+.td-toast { bottom: 148px; }
+/* Phones: the bar stands up the right edge, above the attack button, where the right thumb already is. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-skills { left: auto; right: 8px; translate: none; bottom: auto; top: 46%; flex-direction: column; gap: 6px; padding: 4px; }
+  .td-skill { width: 46px; height: 46px; }
+  .td-toast { bottom: calc(var(--hud-bottom, 96px) + 10px); }
+}
