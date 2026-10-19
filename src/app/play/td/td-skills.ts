@@ -81,6 +81,15 @@ export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
 };
 
 export const MAX_MANA = 60;
+
+/**
+ * What a level gives (Tibia's levelling, before D2-style points arrive): more life, more mana, harder spells.
+ * Level 1 is the base; each level above adds the same steps.
+ */
+export function levelStats(level: number): { maxHp: number; maxMana: number; power: number } {
+  const n = Math.max(0, Math.floor(level) - 1);
+  return { maxHp: 100 + n * 8, maxMana: MAX_MANA + n * 6, power: 1 + n * .05 };
+}
 /** Mana back per second. */
 export const MANA_REGEN = 3;
 

@@ -31,7 +31,7 @@ import type { TdMapDef } from './td-level';
 /** Every hand-drawn level under (or over) the surface, by id. */
 const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3 };
 import { MobSystem, mobSheet, type Mob } from './td-mobs';
-import { MAX_MANA, SKILLS, defaultBar, type SkillId } from './td-skills';
+import { SKILLS, defaultBar, levelStats, type SkillId } from './td-skills';
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
@@ -54,7 +54,9 @@ export class TopDownEngine {
   /** Monsters, the Keeper's fight and the loot on the ground (td-mobs.ts). */
   private readonly mobs: MobSystem;
   private hp = 100;
-  private readonly maxHp = 100;
+  private maxHp = 100;
+  /** The Keeper's level (the HUD hands it in from Hunting): it sets life, mana and spell power. */
+  private level_ = 1;
   private lastHurt = -99;
   private messageAge = 0;
   /** The engine's own line, as an i18n key the HUD translates (engineMessage). */
@@ -200,7 +202,16 @@ export class TopDownEngine {
     return this.bar.map((id, i) => ({ id, key: String(i + 1), left: SKILLS[id].cd ? (this.mobs.cooldowns[id] ?? 0) / SKILLS[id].cd : 0, mana: SKILLS[id].mana, ready: this.mobs.mana >= SKILLS[id].mana }));
   }
   get mana(): number { return this.mobs.mana; }
-  get maxMana(): number { return MAX_MANA; }
+  get maxMana(): number { return this.mobs.maxMana; }
+  get maxHealth(): number { return this.maxHp; }
+  setKeeperLevel(level: number): void {
+    if (level === this.level_) return;
+    this.level_ = level;
+    const st = levelStats(level);
+    this.maxHp = st.maxHp; this.hp = Math.min(this.hp, this.maxHp);
+    this.mobs.maxMana = st.maxMana; this.mobs.mana = Math.min(this.mobs.mana, st.maxMana);
+    this.mobs.power = st.power;
+  }
   get aura(): SkillId | null { return this.mobs.aura; }
   get ward(): number { return this.mobs.ward; }
   /** The Spellbook's choices: the bar (up to four actives) and the running aura. */

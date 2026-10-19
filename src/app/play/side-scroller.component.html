@@ -212,8 +212,8 @@
 
   <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <div class="vital">
-      <label>{{ keeperName || t('play.hud.keeper') }} <b>{{ hpShown }}</b></label>
-      <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
+      <label>{{ keeperName || t('play.hud.keeper') }}@if (topDown) { <span class="vital__lv">{{ t('play.td.level', { n: huntingLevel }) }}</span> } <b>{{ hpShown }}</b></label>
+      <div class="meter"><s [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></s><i [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></i></div>
     </div>
     @if (topDown) {
       <div class="vital vital--mana">
