@@ -71,6 +71,26 @@ test('down the mine shaft to the hand-drawn Ember Mine and up its ladder, all to
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('in the Ember Mine a Rivet Maw fights back, falls, and its coins are picked up off the floor', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await openTopDown(page);
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
+  await expect(canvas(page)).toHaveAttribute('data-area', /ember mine/i, { timeout: 20000 });
+  await page.waitForTimeout(2500);
+  const coins = async () => Number((await page.locator('.satchel .coin-count').first().textContent())?.replace(/\D/g, '') || 0);
+  const before = await coins();
+  // North into the flooded cave, swinging (J): the Maw there comes to meet the Keeper.
+  await canvas(page).focus();
+  await page.keyboard.down('j');
+  await page.keyboard.down('ArrowUp'); await page.waitForTimeout(1600); await page.keyboard.up('ArrowUp');
+  await expect.poll(coins, { timeout: 20000 }).toBeGreaterThan(before);
+  await page.keyboard.up('j');
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');
