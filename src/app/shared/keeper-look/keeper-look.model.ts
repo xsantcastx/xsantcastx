@@ -44,6 +44,13 @@ export const OUTFIT_COLORS: readonly string[] = [
 
 export const NAME_MAX = 18;
 
+/**
+ * The Keeper's calling (owner, 2026-10-20: "we need to create our 1st class, let it be a warlock … get this correct
+ * first with one class"). One today; the list grows class by class. Chosen when the Keeper is made.
+ */
+export const VOCATIONS = ['warlock'] as const;
+export type Vocation = typeof VOCATIONS[number];
+
 export interface KeeperLook {
   version: 1;
   /** The Keeper chose (or kept) this look at the Glass. */
@@ -60,6 +67,11 @@ export interface KeeperLook {
   outfit: number;
   trim: number;
   name: string;
+  /** The class: what the Keeper fights with and which abilities they have. */
+  vocation: Vocation;
+  /** The skills on keys 1–4 and the running aura, as chosen in the Spellbook (ids; empty = the class default). */
+  bar: string[];
+  aura: string;
   /** ms since epoch of the last edit; the later edit wins a merge. */
   updatedAt: number;
 }
@@ -68,7 +80,7 @@ export function defaultLook(): KeeperLook {
   return {
     version: 1, made: false, prompted: false,
     body: 'sturdy', skin: 2, hair: 'swept', hairColor: 2, eyes: 'round', eyeColor: 0, face: 'none',
-    outfit: 0, trim: 4, name: '', updatedAt: 0,
+    outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', updatedAt: 0,
   };
 }
 
@@ -104,6 +116,9 @@ export function coerceLook(raw: unknown): KeeperLook {
     outfit: index(OUTFIT_COLORS, r['outfit'], d.outfit),
     trim: index(OUTFIT_COLORS, r['trim'], d.trim),
     name: cleanName(r['name']),
+    vocation: pick(VOCATIONS, r['vocation'], d.vocation),
+    bar: Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && /^[a-z-]{1,24}$/.test(x)).slice(0, 4) : [],
+    aura: typeof r['aura'] === 'string' && /^[a-z-]{0,24}$/.test(r['aura']) ? r['aura'] : '',
     updatedAt: typeof r['updatedAt'] === 'number' && Number.isFinite(r['updatedAt']) && r['updatedAt'] > 0 ? r['updatedAt'] : 0,
   };
 }

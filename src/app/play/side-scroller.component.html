@@ -27,22 +27,52 @@
       <div class="area-card" aria-hidden="true"><small>{{ card.realm }}</small><strong>{{ card.title }}</strong><i></i></div>
     }
   }
-  <!-- Top-down: the ability bar (Tibia's spells, cozy): one slot per ability, its key, its cooldown sweeping back. -->
+  <!-- Top-down: the skill bar (Tibia's hotkeys): one slot per skill on keys 1–4, its cooldown sweeping back, dim without mana. -->
   @if (topDown && tdAbilities.length && !panel) {
     <div class="td-skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore>
-      @for (a of tdAbilities; track a.id) {
-        <button type="button" class="td-skill" [class.td-skill--cool]="a.left > 0" [style.--cd]="a.left" (click)="useAbility(a.id)"
-                [attr.aria-label]="t('play.td.ability.' + a.id) + ' (' + a.key + ')'" [title]="t('play.td.ability.' + a.id) + ' (' + a.key + ')'">
-          @switch (a.id) {
-              @case ('mend') { <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="2" width="4" height="12" fill="#7fe08a"/><rect x="2" y="6" width="12" height="4" fill="#7fe08a"/><rect x="7" y="3" width="2" height="2" fill="#e6ffe9"/></svg> }
-              @case ('strike') { <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="10" y="1" width="3" height="3" fill="#e9e4f0"/><rect x="8" y="3" width="3" height="3" fill="#e9e4f0"/><rect x="6" y="5" width="3" height="3" fill="#cfc8da"/><rect x="4" y="7" width="3" height="3" fill="#cfc8da"/><rect x="2" y="10" width="5" height="2" fill="#c99a3e"/><rect x="3" y="9" width="2" height="5" fill="#7d5a1f"/></svg> }
-              @case ('wave') { <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="2" width="4" height="3" fill="#ffd25a"/><rect x="4" y="4" width="8" height="4" fill="#ff8a2e"/><rect x="3" y="7" width="10" height="5" fill="#e2552a"/><rect x="6" y="8" width="4" height="3" fill="#ffd25a"/><rect x="2" y="12" width="12" height="2" fill="#9e2e1c"/></svg> }
-              @case ('haste') { <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="6" y="2" width="5" height="7" fill="#c99657"/><rect x="4" y="8" width="9" height="4" fill="#a06a3b"/><rect x="4" y="12" width="10" height="2" fill="#6e4526"/><rect x="1" y="5" width="3" height="1" fill="#e9dcc0"/><rect x="0" y="8" width="3" height="1" fill="#e9dcc0"/></svg> }
-          }
-          <kbd>{{ a.key }}</kbd>
-        </button>
+      @for (a of tdAbilities; track a.key) {
+        <button type="button" class="td-skill" [class.td-skill--cool]="a.left > 0" [class.td-skill--dry]="!a.ready" [style.--cd]="a.left" (click)="useAbility(a.key)"
+                [attr.aria-label]="t('skill.' + a.id) + ' (' + a.key + ')'" [title]="t('skill.' + a.id) + ' (' + a.key + ') · ' + a.mana + ' ' + t('play.td.mana')"
+                [innerHTML]="skillIcon(a.id)"></button>
       }
+      <button type="button" class="td-skill td-skill--book" (click)="spellbookOpen = !spellbookOpen" [attr.aria-expanded]="spellbookOpen" [attr.aria-label]="t('play.td.book') + ' (K)'" [title]="t('play.td.book') + ' (K)'">
+        <svg viewBox="0 0 16 16" width="26" height="26" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#6b3aa0"/><rect x="3" y="3" width="10" height="10" fill="#3b2140"/><rect x="7" y="2" width="2" height="12" fill="#2a1a24"/><rect x="4" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="4" y="8" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="8" width="2" height="1" fill="#e9d8ff"/></svg>
+      </button>
     </div>
+  }
+  <!-- The Spellbook (K), D2's skill page made cozy: every skill, what it does, keys 1–4 to put it on, the aura to run. -->
+  @if (topDown && spellbookOpen && !panel) {
+    <section class="spellbook win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore (keydown.escape)="spellbookOpen = false">
+      <header class="win-head">
+        <h2 id="spellbook-title">{{ t('play.td.book') }} · {{ t('look.class.' + vocation) }}</h2>
+        <button type="button" class="win-x" (click)="spellbookOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
+      </header>
+      <p class="sb__mana">{{ t('play.td.mana') }} <b>{{ tdMana }}</b> / {{ tdMaxMana }}</p>
+      @for (sec of spellbook; track sec.kind) {
+        <h3 class="sb__kind">{{ t('play.td.book.' + sec.kind) }}</h3>
+        <ul class="sb__list">
+          @for (r of sec.rows; track r.id) {
+            <li class="sb__row" [attr.data-skill]="r.id" [class.sb__row--on]="r.on || r.slot > 0">
+              <span class="sb__icon" [innerHTML]="skillIcon(r.id)"></span>
+              <span class="sb__body">
+                <b>{{ r.name }}</b>
+                <small>{{ r.text }}</small>
+                @if (sec.kind === 'active') { <em>{{ r.mana }} {{ t('play.td.mana') }} · {{ r.cd }}s</em> }
+              </span>
+              @if (sec.kind === 'active') {
+                <span class="sb__keys" role="group" [attr.aria-label]="t('play.td.book.assign', { name: r.name })">
+                  @for (k of [1, 2, 3, 4]; track k) {
+                    <button type="button" [class.on]="r.slot === k" [attr.aria-pressed]="r.slot === k" (click)="assignSkill(r.id, k)">{{ k }}</button>
+                  }
+                </span>
+              } @else if (sec.kind === 'aura') {
+                <button type="button" class="sb__aura" [attr.aria-pressed]="r.on" (click)="toggleAura(r.id)">{{ t(r.on ? 'play.td.book.auraOn' : 'play.td.book.auraOff') }}</button>
+              }
+            </li>
+          }
+        </ul>
+      }
+    </section>
   }
   <!-- Top-down: what just happened (a deed, a refusal) as a short toast above the prompt; it fades by itself. -->
   @if (topDown && (message || engineMessage)) {
@@ -185,6 +215,12 @@
       <label>{{ keeperName || t('play.hud.keeper') }} <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / pushed.maxHp"></s><i [style.--fill]="state.hp / pushed.maxHp"></i></div>
     </div>
+    @if (topDown) {
+      <div class="vital vital--mana">
+        <label>{{ t('play.td.mana') }} <b>{{ tdMana }}</b></label>
+        <div class="meter mana"><i [style.--fill]="tdMana / tdMaxMana"></i></div>
+      </div>
+    }
     @if (state.enemyHp > 0) {
       <div class="vital">
         <label>{{ enemyName }} <b>{{ state.enemyHp }}</b></label>
@@ -396,7 +432,7 @@
               <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
               <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
               @for (well of wells; track well.id) {
-                <button type="button" class="well" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
+                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
                   @if (well.filled && well.art) {
                     <img [src]="well.art" alt="">
                   } @else if (well.filled) {
@@ -430,7 +466,7 @@
         } @else {
           <div class="pockets">
             @for (pocket of shownPockets; track pocket.key) {
-              <button type="button" class="pocket" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
+              <button type="button" class="pocket" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
                 @if (pocket.art) {
                   <img [src]="pocket.art" alt="">
                 } @else {
@@ -460,6 +496,18 @@
           </footer>
         </div>
       </div>
+      @if (hoverTip; as tip) {
+        <!-- The hover card, Diablo II-plain: name in its rarity colour, what it is, the stats; nothing to press. -->
+        <div class="d2tip" role="tooltip" [style.left.px]="tip.x + 16" [style.top.px]="tip.y + 12" [style.--tone]="tip.row.tone ?? null">
+          <b>{{ tip.row.name }}</b>
+          <span>{{ tip.row.kicker }}</span>
+          @for (stat of tip.row.stats; track stat) { <i>{{ stat }}</i> }
+          @if (tip.row.compare.length) {
+            <small>{{ tip.row.compareLabel }}</small>
+            @for (d of tip.row.compare; track d.key) { <i [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'">{{ d.text }}</i> }
+          }
+        </div>
+      }
       @if (slip; as row) {
         <!-- The item card: name in its rarity colour, the few stats, one primary action. -->
         <footer class="slip" [style.--tone]="row.tone">

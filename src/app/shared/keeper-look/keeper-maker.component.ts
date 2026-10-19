@@ -17,10 +17,11 @@ import { TranslationService } from '../../translation.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { KEEPER_LOOK_I18N } from './keeper-look.i18n';
 import { KeeperLookService } from './keeper-look.service';
-import { KeeperLook, LOOK_FIELDS, LookField, NAME_MAX, cleanName, fieldOptions, fieldSwatch, lookKey, randomLook, stepLook } from './keeper-look.model';
+import { KeeperLook, LOOK_FIELDS, type Vocation, LookField, NAME_MAX, cleanName, fieldOptions, fieldSwatch, lookKey, randomLook, stepLook } from './keeper-look.model';
 import { KeeperPainter, PaintState } from './keeper-paint';
 import { KeeperGear, gearKey, keeperAction } from './keeper-gear';
 import { wornGear } from './worn-gear';
+import { vocationLook } from './vocation-look';
 
 /** The preview's loop: stand, run, swing. Seconds. */
 const LOOP = [{ action: 'idle', for: 1.8 }, { action: 'run', for: 1.6 }, { action: 'attack', for: .55 }, { action: 'idle', for: .6 }] as const;
@@ -49,10 +50,13 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
   gear: KeeperGear = {};
   saved = false;
   private painter: KeeperPainter | null = null;
+  private painterFor = '';
   private raf = 0;
   private start = 0;
   private sub?: Subscription;
   private reduced = false;
+
+  setVocation(v: Vocation): void { this.draft = { ...this.draft, vocation: v }; this.saved = false; }
 
   ngOnInit(): void {
     this.i18n.register(KEEPER_LOOK_I18N);
@@ -120,7 +124,9 @@ export class KeeperMakerComponent implements OnInit, AfterViewInit, OnDestroy {
     const c = el?.getContext('2d');
     if (!el || !c) return;
     const key = this.previewKey;
-    if (!this.painter || this.painter.key !== key) this.painter = new KeeperPainter(this.draft, this.gear);
+    // The class shows in the preview too (the undead Warlock's garb and hood).
+    const v = vocationLook(this.draft.vocation, this.gear);
+    if (!this.painter || this.painterFor !== key) { this.painter = new KeeperPainter(this.draft, v.gear, v.garb); this.painterFor = key; }
     let at = this.reduced ? 0 : seconds % LOOP_TOTAL;
     let step: typeof LOOP[number] = LOOP[0];
     for (const s of LOOP) { if (at < s.for) { step = s; break; } at -= s.for; }

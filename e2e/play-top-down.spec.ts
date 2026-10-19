@@ -91,6 +91,25 @@ test('in the Ember Mine a Rivet Maw fights back, falls, and its coins are picked
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Ember Mine goes down by its stairs to floor 2 and floor 3, where the Warden waits', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  // Reduced motion: Places goes straight to a place and uses it (no walk past the floor's creatures).
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 45000 });
+  };
+  await go(/ember delve/i, /floor 1/i);
+  await go(/stairs down/i, /floor 2/i);
+  await go(/stairs down/i, /floor 3/i);
+  await go(/stairs up/i, /floor 2/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');

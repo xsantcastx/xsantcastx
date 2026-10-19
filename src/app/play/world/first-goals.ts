@@ -58,7 +58,8 @@ export type FirstGoalTarget = { station: string } | { x: number };
 
 export interface FirstGoalView {
   /** A first goal, or 'rune': the one-time Rune Forge hint after all four. */
-  id: FirstGoalId | 'rune';
+  /** A first goal, 'rune', or one of the top-down game's own (td/td-goals.ts). */
+  id: FirstGoalId | 'rune' | 'mine' | 'chop';
   /** 1-based, for "Goal 2 of 4". 0 for the Rune Forge hint, which has no number. */
   n: number;
   total: number;
