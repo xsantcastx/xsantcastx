@@ -1,6 +1,6 @@
 import {
   BODY_TYPES, FACE_MARKS, HAIR_STYLES, KEEPER_LOOK_KEY, LOOK_FIELDS, NAME_MAX, SKIN_TONES,
-  cleanName, coerceLook, defaultLook, fieldOptions, fieldSwatch, lookFromSeed, lookKey, lookRng, mergeKeeperLook, randomLook, stepLook,
+  cleanName, coerceLook, defaultLook, fieldOptions, fieldSwatch, lookFromSeed, lookKey, lookRng, mergeKeeperLook, pointsLeft, randomLook, stepLook,
 } from './keeper-look.model';
 import { SYNCED_BLOBS } from '../cloud-save/cloud-save.model';
 
@@ -93,5 +93,25 @@ describe('keeper-look.model', () => {
     const look = defaultLook();
     expect(lookKey({ ...look, name: 'Ash', made: true, updatedAt: 9 })).toBe(lookKey(look));
     expect(lookKey({ ...look, hair: 'braid' })).not.toBe(lookKey(look));
+  });
+});
+
+describe('the Keeper record: class, bar and attributes (2026-10-20)', () => {
+  it('defaults to the Warlock with no points spent, and keeps junk out', () => {
+    const d = coerceLook({});
+    expect(d.vocation).toBe('warlock');
+    expect(d.stats).toEqual({ vit: 0, ene: 0, spi: 0, agi: 0 });
+    const junk = coerceLook({ vocation: 'paladin', bar: ['drain-life', 7, 'X!'], aura: '<b>', stats: { vit: -3, ene: 2.5, spi: 4, agi: 'x' } });
+    expect(junk.vocation).toBe('warlock');
+    expect(junk.bar).toEqual(['drain-life']);
+    expect(junk.aura).toBe('');
+    expect(junk.stats).toEqual({ vit: 0, ene: 0, spi: 4, agi: 0 });
+  });
+
+  it('gives five points a level above the first, less what is spent', () => {
+    expect(pointsLeft(1, { vit: 0, ene: 0, spi: 0, agi: 0 })).toBe(0);
+    expect(pointsLeft(3, { vit: 0, ene: 0, spi: 0, agi: 0 })).toBe(10);
+    expect(pointsLeft(3, { vit: 4, ene: 3, spi: 2, agi: 1 })).toBe(0);
+    expect(pointsLeft(2, { vit: 9, ene: 0, spi: 0, agi: 0 })).toBe(0);
   });
 });

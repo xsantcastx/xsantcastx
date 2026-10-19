@@ -6,6 +6,8 @@ import {
 import { isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { tdFirstGoal } from './td/td-goals';
+import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
+import { ATTR_STEP, levelStats } from './td/td-skills';
 import { CLASS_SKILLS, MAX_MANA, SKILLS as TD_SKILLS, defaultAura, defaultBar, type SkillId } from './td/td-skills';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
@@ -53,7 +55,7 @@ import { TOOLS_I18N } from '../shared/skills/tools.i18n';
 import { CharacterHubService } from '../shared/character/character-hub.service';
 import { STARTER_FAMILIES, starterInstanceId, starterToolId } from '../shared/skills/tool-items';
 import { SkillActionService } from '../shared/skills/skill-actions.service';
-import { SKILLS, skillForDiscipline, skillLevel } from '../shared/skills/skill.model';
+import { SKILLS, skillForDiscipline, skillLevel, skillView } from '../shared/skills/skill.model';
 import { keeperDeeds } from './world/keeper-lines';
 import { DELVE_MISSIONS } from '../shared/npc/delve-missions.model';
 import { huntingXpFor } from '../shared/skills/hunting';
@@ -1402,6 +1404,8 @@ export class SideScrollerComponent implements OnDestroy {
    */
   openCharacter(): void {
     if (!this.browser) return;
+    // Top-down: the Keeper's own sheet (level, points, attributes), not the old idle stats page.
+    if (this.topDown) { this.placesOpen = false; this.sheetOpen = true; this.spellbookOpen = false; return; }
     this.hub.setTab('stats');
     const entry = PANEL_REGISTRY.character;
     this.showPanel({ kind: 'page', stationId: 'character', title: entry.title, kicker: entry.kicker, own: true });
@@ -1600,7 +1604,7 @@ export class SideScrollerComponent implements OnDestroy {
     const look = this.looks.look, key = `${look.bar.join(',')}|${look.aura}`;
     if (key !== this.tdLoadoutKey && e?.setSkillLoadout) { this.tdLoadoutKey = key; e.setSkillLoadout(this.loadoutBar, this.loadoutAura); }
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
-    (this.engine as unknown as { setKeeperLevel?: (n: number) => void } | undefined)?.setKeeperLevel?.(this.huntingLevel);
+    (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
     const ext = this.engine as unknown as { maxMana?: number; maxHealth?: number } | undefined;
@@ -1624,6 +1628,31 @@ export class SideScrollerComponent implements OnDestroy {
     return h;
   }
   get vocation(): string { return this.looks.look.vocation; }
+  /** The character sheet (C): D2's attributes page made cozy — level, points to spend, what each gives. */
+  sheetOpen = false;
+  get sheet(): { level: number; into: number; span: number; left: number; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
+    const view = skillView(this.activity.snapshot.progress, 'hunting'), st = this.looks.look.stats, lv = view.level;
+    const derived = levelStats(lv, st);
+    const pct = (n: number) => `${Math.round(n * 100)}%`;
+    const text: Record<Attribute, string> = {
+      vit: this.t('play.td.attr.vit.text', { n: ATTR_STEP.vit }),
+      ene: this.t('play.td.attr.ene.text', { n: ATTR_STEP.ene }),
+      spi: this.t('play.td.attr.spi.text', { n: Math.round(ATTR_STEP.spi * 100) }),
+      agi: this.t('play.td.attr.agi.text', { n: Math.round(ATTR_STEP.agi * 100) }),
+    };
+    return {
+      level: lv, into: view.into, span: view.span, left: pointsLeft(lv, st),
+      rows: ATTRIBUTES.map(id => ({ id, value: st[id], text: text[id] })),
+      totals: [
+        { key: 'play.td.total.life', value: `${derived.maxHp}` },
+        { key: 'play.td.total.mana', value: `${derived.maxMana}` },
+        { key: 'play.td.total.regen', value: `${derived.regen.toFixed(1)}/s` },
+        { key: 'play.td.total.power', value: pct(derived.power) },
+        { key: 'play.td.total.speed', value: `+${pct(derived.haste)}` },
+      ],
+    };
+  }
+  spendPoint(attr: Attribute): void { this.looks.spendPoint(attr, this.huntingLevel); this.tickAbilities(); }
   private get loadoutBar(): string[] { const b = this.looks.look.bar; return b.length ? b : defaultBar(this.looks.look.vocation); }
   private get loadoutAura(): string | null { const a = this.looks.look.aura; return a === 'none' ? null : a || defaultAura(this.looks.look.vocation); }
   get spellbook(): { kind: string; rows: { id: string; name: string; text: string; mana: number; cd: number; slot: number; on: boolean }[] }[] {
@@ -2390,7 +2419,8 @@ export class SideScrollerComponent implements OnDestroy {
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
-    else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; }
+    else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
+    else if (event.code === 'KeyC' && this.topDown) { event.preventDefault(); this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
     // One World: M is the Travel map (the world's map with its stones); it opens the full map from there.
     else if (event.code === 'KeyM' && this.oneWorld && this.state.world) { event.preventDefault(); this.openTravelMap(null); }

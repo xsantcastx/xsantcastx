@@ -12,7 +12,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { BehaviorSubject, Observable } from 'rxjs';
 import { GameStateGateway } from '../save/game-state.gateway';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
-import { KEEPER_LOOK_KEY, KeeperLook, cleanName, coerceLook, defaultLook } from './keeper-look.model';
+import { KEEPER_LOOK_KEY, KeeperLook, cleanName, coerceLook, defaultLook, pointsLeft, type Attribute } from './keeper-look.model';
 
 @Injectable({ providedIn: 'root' })
 export class KeeperLookService {
@@ -41,6 +41,15 @@ export class KeeperLookService {
   setLoadout(bar: readonly string[], aura: string, at = Date.now()): void {
     this.hydrate();
     this.save(coerceLook({ ...this.subject.value, bar: [...bar], aura, updatedAt: Math.max(at, this.subject.value.updatedAt + 1) }));
+  }
+
+  /** Spend one of the level's points on an attribute (refused when none is left). */
+  spendPoint(attr: Attribute, level: number, at = Date.now()): boolean {
+    this.hydrate();
+    const cur = this.subject.value;
+    if (pointsLeft(level, cur.stats) <= 0) return false;
+    this.save(coerceLook({ ...cur, stats: { ...cur.stats, [attr]: cur.stats[attr] + 1 }, updatedAt: Math.max(at, cur.updatedAt + 1) }));
+    return true;
   }
 
   /** The one gentle nudge was shown (existing saves); never again. */

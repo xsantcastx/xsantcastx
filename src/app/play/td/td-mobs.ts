@@ -193,6 +193,9 @@ export class MobSystem {
   /** The level's mana cap and spell power (td-skills levelStats). */
   maxMana = MAX_MANA;
   power = 1;
+  /** Mana back per second, and Agility's quicker staff (td-skills levelStats). */
+  regen = MANA_REGEN;
+  agility = 0;
   /** The running aura (one at a time, D2), or none. */
   aura: SkillId | null = 'aura-embers';
   /** Dark Ward: damage it still absorbs, seconds left. */
@@ -256,7 +259,7 @@ export class MobSystem {
     // The Warlock's staff: an ember bolt flies to the foe in range (Tibia's auto-attack, at a distance).
     const bolt = SKILLS['ember-bolt'];
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
-      this.swing = bolt.cd;
+      this.swing = bolt.cd / (1 + this.agility);
       this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bolt.vars['min'], bolt.vars['max']), age: 0 });
       this.host.swung(foe);
     }
@@ -329,7 +332,7 @@ export class MobSystem {
     for (let i = this.floaters.length - 1; i >= 0; i--) { const f = this.floaters[i]; f.age += dt; f.y -= 14 * dt; if (f.age > 1) this.floaters.splice(i, 1); }
     for (let i = this.effects.length - 1; i >= 0; i--) { const e = this.effects[i]; e.age += dt; if (e.age > e.life) this.effects.splice(i, 1); }
     for (const k of Object.keys(this.cooldowns) as SkillId[]) this.cooldowns[k] = Math.max(0, (this.cooldowns[k] ?? 0) - dt);
-    this.mana = Math.min(this.maxMana, this.mana + MANA_REGEN * dt);
+    this.mana = Math.min(this.maxMana, this.mana + this.regen * dt);
     if (this.wardT > 0) { this.wardT -= dt; if (this.wardT <= 0) this.ward = 0; }
     if (this.haste > 0) {
       this.haste = Math.max(0, this.haste - dt);
