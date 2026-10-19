@@ -3351,3 +3351,7 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .td-mini { top: calc(var(--hud-top, 56px) + var(--guide-h, 0px) + 14px); right: 10px; width: 84px; height: 84px; }
 }
 .stage--menu .td-mini { visibility: hidden; }
+
+/* The Satchel's purse row is sticky at the bottom: a cell scrolled into view (a thumb, a keyboard, a test) stops above
+   it, never under it. */
+.book :is(.pocket, .well) { scroll-margin-block: 8px 72px; }
