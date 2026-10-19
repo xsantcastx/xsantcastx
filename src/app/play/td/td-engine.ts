@@ -461,6 +461,8 @@ export class TopDownEngine {
       const k = e.key.toLowerCase();
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || this.paused) return;
+      // Space, Enter and E on a focused button or link press it (a banner, a menu), never the world's attack or use.
+      if ((k === ' ' || k === 'enter' || k === 'e') && (e.target as HTMLElement | null)?.closest?.('button, a, [role="button"], [contenteditable]')) return;
       // E opens the stall in reach (the side view handled E inside its own engine).
       if (down && !e.repeat && (k === 'e' || k === 'enter') && this.nearby) { e.preventDefault(); this.interact(); return; }
       if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
