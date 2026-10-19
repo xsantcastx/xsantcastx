@@ -653,3 +653,42 @@ export function stump(): Sprite {
     return { img: outline(img), ax: 8, ay: 10 };
   });
 }
+
+/** A broken wall of an old building, moss in its cracks (three shapes). */
+export function ruinWall(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`ruin-${v}`, () => {
+    const W = 32, H = 26, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    const tops = [[0, 6], [8, 2], [16, 10], [24, 4]];
+    for (const [x, t] of tops) { const h = H - (t + (v * 3 + x) % 7); rect(c, x, H - h, 8, h, PAL.stone[2]); rect(c, x, H - h, 8, 2, PAL.stone[3]); }
+    for (let y = 8; y < H; y += 5) rect(c, 0, y, W, 1, PAL.stone[0]);
+    rect(c, 3 + v * 6, H - 9, 4, 2, PAL.leaf[1]); rect(c, 20 - v * 3, H - 14, 3, 2, PAL.leaf[3]);
+    return { img: outline(img), ax: 16, ay: H };
+  });
+}
+
+/** A tall standing stone, runes cut in it faintly glowing. */
+export function standingStone(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`stone-${v}`, () => {
+    const W = 12, H = 30 + v * 3, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 2, 2, 8, H - 2, PAL.stone[1]); rect(c, 3, 0, 6, 3, PAL.stone[3]); rect(c, 2, 2, 2, H - 2, PAL.stone[3]); rect(c, 8, 4, 2, H - 4, PAL.stone[2]);
+    rect(c, 5, 8, 2, 2, PAL.glow); rect(c, 5, 14, 2, 1, PAL.glow); rect(c, 4, 19, 1, 2, PAL.glow);
+    return { img: outline(img), ax: 6, ay: H, lights: [{ x: 0, y: -14, r: 16, warm: true }] };
+  });
+}
+
+/** A cave mouth in a rock face: a dark arch, timber props, a lantern. */
+export function caveMouth(): Sprite {
+  return cached('cave-mouth', () => {
+    const W = 40, H = 34, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 0, 4, W, H - 4, PAL.basalt[1]); rect(c, 0, 4, W, 3, PAL.basalt[3]);
+    rect(c, 10, 12, 20, 22, '#120a0e'); rect(c, 12, 10, 16, 3, '#120a0e');
+    rect(c, 8, 12, 3, 22, PAL.wood[0]); rect(c, 29, 12, 3, 22, PAL.wood[0]); rect(c, 7, 10, 26, 3, PAL.wood[3]);
+    rect(c, 31, 16, 4, 5, PAL.glow);
+    return { img: outline(img), ax: 20, ay: H, lights: [{ x: 13, y: -16, r: 22, warm: true }] };
+  });
+}

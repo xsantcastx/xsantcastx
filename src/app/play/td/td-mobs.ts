@@ -55,7 +55,31 @@ function paintBailiff(c: CanvasRenderingContext2D, f: number): void {
   px(c, 1, 9 + b, 2, 8, '#4a3a44'); px(c, 19, 9 - b + 1, 2, 8, '#4a3a44');
 }
 
+/** The Ash Wolf: a lean grey-ember wolf of the Emberwood. */
+function paintWolf(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 1 : 0;
+  px(c, 3, 13, 2, 4 - b, '#3a3236'); px(c, 15, 13, 2, 3 + b, '#3a3236'); px(c, 6, 14, 2, 3, '#3a3236'); px(c, 12, 14, 2, 3, '#3a3236');
+  px(c, 3, 7, 15, 7, '#6a5f66'); px(c, 3, 7, 15, 2, '#8a7f86'); px(c, 3, 12, 15, 2, '#4a4248');
+  px(c, 15, 3 + b, 6, 6, '#6a5f66'); px(c, 15, 2 + b, 2, 2, '#4a4248'); px(c, 19, 2 + b, 2, 2, '#4a4248'); px(c, 20, 6 + b, 2, 2, '#2a2226');
+  px(c, 17, 5 + b, 1, 1, '#ff8a2e'); px(c, 0, 6 - b, 4, 2, '#8a7f86'); px(c, 1, 5 - b, 2, 1, '#ff8a2e');
+}
+/** The Cinder Imp: a small horned ember-imp with bat wings. */
+function paintImp(c: CanvasRenderingContext2D, f: number): void {
+  const b = f ? 2 : 0;
+  px(c, 0, 4 + b, 5, 6, '#7a2a1c'); px(c, 15, 4 + b, 5, 6, '#7a2a1c'); px(c, 1, 5 + b, 3, 4, '#a83a24');
+  px(c, 5, 5, 10, 11, '#c8432a'); px(c, 5, 5, 10, 2, '#e8633a'); px(c, 6, 15, 3, 3, '#7a2a1c'); px(c, 11, 15, 3, 3, '#7a2a1c');
+  px(c, 6, 2, 2, 3, '#2a1a1c'); px(c, 12, 2, 2, 3, '#2a1a1c'); px(c, 7, 8, 2, 2, '#ffd25a'); px(c, 11, 8, 2, 2, '#ffd25a'); px(c, 8, 12, 4, 1, '#2a1a1c');
+}
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
+  'ash-wolf': {
+    id: 'ash-wolf', name: 'Ash Wolf', hp: 45, speed: 46, dmg: [3, 7], rate: 1.1, sight: 110, level: 1,
+    coins: [2, 9], drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 22, h: 17,
+  },
+  'cinder-imp': {
+    id: 'cinder-imp', name: 'Cinder Imp', hp: 80, speed: 38, dmg: [5, 9], rate: 1.2, sight: 120, level: 2,
+    coins: [6, 18], drops: [{ material: 'ember-residue', qty: 1, chance: .3 }], paint: paintImp, w: 20, h: 18,
+  },
   'rivet-maw': {
     id: 'rivet-maw', name: 'Rivet Maw', hp: 60, speed: 34, dmg: [3, 6], rate: 1.3, sight: 96, level: 1,
     coins: [3, 13], drops: [{ material: 'cinder-ore', qty: 1, chance: .7 }], paint: paintMaw, w: 20, h: 17,
