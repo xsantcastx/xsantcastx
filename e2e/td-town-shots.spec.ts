@@ -16,7 +16,7 @@ for (const [w, h] of [[390, 844], [1280, 800]] as const) {
       await page.setViewportSize({ width: w, height: h });
       await seed(page, { ...STASH, 'eclipse-td': '1' });
       await page.goto(`/play?td=1&hour=${hour}`);
-      await page.waitForTimeout(9000);
+      await page.waitForTimeout(Number(process.env["TD_WAIT"] ?? 9000));
       await page.screenshot({ path: `docs/handoff/cozy-ui/${PREFIX}-town-${w}x${h}-${hour}h.jpg`, type: 'jpeg', quality: 75 });
     });
   }

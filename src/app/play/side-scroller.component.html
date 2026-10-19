@@ -21,6 +21,12 @@
     }
   </div>
 
+  <!-- The place-name card: rises in the middle on arrival, then fades (the corner title is for screen readers only). -->
+  @if (areaCard; as card) {
+    @for (c of [card.n]; track c) {
+      <div class="area-card" aria-hidden="true"><small>{{ card.realm }}</small><strong>{{ card.title }}</strong><i></i></div>
+    }
+  }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
     <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i></div>
