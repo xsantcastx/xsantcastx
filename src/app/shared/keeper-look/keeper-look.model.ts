@@ -49,6 +49,12 @@ export const NAME_MAX = 18;
  * first with one class"). One today; the list grows class by class. Chosen when the Keeper is made.
  */
 export const VOCATIONS = ['warlock'] as const;
+/** The four attributes a level's points go into (owner 2026-10-20: "rework our stats … think of tibia or diablo 2"). */
+export const ATTRIBUTES = ['vit', 'ene', 'spi', 'agi'] as const;
+export type Attribute = typeof ATTRIBUTES[number];
+export type KeeperStats = Record<Attribute, number>;
+/** Points a level gives (D2: five a level). */
+export const POINTS_PER_LEVEL = 5;
 export type Vocation = typeof VOCATIONS[number];
 
 export interface KeeperLook {
@@ -72,6 +78,8 @@ export interface KeeperLook {
   /** The skills on keys 1–4 and the running aura, as chosen in the Spellbook (ids; empty = the class default). */
   bar: string[];
   aura: string;
+  /** Points spent on the attributes (D2's character sheet): Vitality, Energy, Spirit, Agility. */
+  stats: KeeperStats;
   /** ms since epoch of the last edit; the later edit wins a merge. */
   updatedAt: number;
 }
@@ -80,7 +88,7 @@ export function defaultLook(): KeeperLook {
   return {
     version: 1, made: false, prompted: false,
     body: 'sturdy', skin: 2, hair: 'swept', hairColor: 2, eyes: 'round', eyeColor: 0, face: 'none',
-    outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', updatedAt: 0,
+    outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', stats: { vit: 0, ene: 0, spi: 0, agi: 0 }, updatedAt: 0,
   };
 }
 
@@ -95,6 +103,16 @@ function pick<T extends string>(list: readonly T[], value: unknown, fallback: T)
 }
 function index(list: readonly unknown[], value: unknown, fallback: number): number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0 && value < list.length ? value : fallback;
+}
+
+function coerceStats(raw: unknown): KeeperStats {
+  const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const n = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 999 ? v : 0;
+  return { vit: n(r['vit']), ene: n(r['ene']), spi: n(r['spi']), agi: n(r['agi']) };
+}
+/** Points still to spend at a level. */
+export function pointsLeft(level: number, stats: KeeperStats): number {
+  return Math.max(0, (Math.max(1, Math.floor(level)) - 1) * POINTS_PER_LEVEL - (stats.vit + stats.ene + stats.spi + stats.agi));
 }
 
 /** Any stored value → a valid look (junk and unknown ids fall back to the default). */
@@ -118,6 +136,7 @@ export function coerceLook(raw: unknown): KeeperLook {
     name: cleanName(r['name']),
     vocation: pick(VOCATIONS, r['vocation'], d.vocation),
     bar: Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && /^[a-z-]{1,24}$/.test(x)).slice(0, 4) : [],
+    stats: coerceStats(r['stats']),
     aura: typeof r['aura'] === 'string' && /^[a-z-]{0,24}$/.test(r['aura']) ? r['aura'] : '',
     updatedAt: typeof r['updatedAt'] === 'number' && Number.isFinite(r['updatedAt']) && r['updatedAt'] > 0 ? r['updatedAt'] : 0,
   };

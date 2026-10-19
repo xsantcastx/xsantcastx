@@ -40,6 +40,32 @@
       </button>
     </div>
   }
+  <!-- The character sheet (C), D2's attributes page made cozy: level, points to spend, what each point gives. -->
+  @if (topDown && sheetOpen && !panel) {
+    @if (sheet; as sh) {
+      <section class="spellbook ksheet win-host" role="dialog" aria-labelledby="ksheet-title" data-engine-ignore (keydown.escape)="sheetOpen = false">
+        <header class="win-head">
+          <h2 id="ksheet-title">{{ keeperName || t('play.hud.keeper') }} · {{ t('look.class.' + vocation) }}</h2>
+          <button type="button" class="win-x" (click)="sheetOpen = false" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i></button>
+        </header>
+        <p class="ks__level">{{ t('play.td.level', { n: sh.level }) }} <span class="ks__xp"><i [style.width.%]="sh.span ? sh.into / sh.span * 100 : 100"></i></span> <small>{{ sh.into }} / {{ sh.span }} XP</small></p>
+        <p class="ks__left" [class.ks__left--has]="sh.left > 0">{{ t('play.td.points', { n: sh.left }) }}</p>
+        <ul class="sb__list">
+          @for (r of sh.rows; track r.id) {
+            <li class="sb__row ks__row" [attr.data-attr]="r.id">
+              <b class="ks__val">{{ r.value }}</b>
+              <span class="sb__body"><b>{{ t('play.td.attr.' + r.id) }}</b><small>{{ r.text }}</small></span>
+              <button type="button" class="ks__plus" [disabled]="sh.left <= 0" (click)="spendPoint(r.id)" [attr.aria-label]="t('play.td.attr.add', { name: t('play.td.attr.' + r.id) })">+</button>
+            </li>
+          }
+        </ul>
+        <h3 class="sb__kind">{{ t('play.td.totals') }}</h3>
+        <dl class="ks__totals">
+          @for (tot of sh.totals; track tot.key) { <dt>{{ t(tot.key) }}</dt><dd>{{ tot.value }}</dd> }
+        </dl>
+      </section>
+    }
+  }
   <!-- The Spellbook (K), D2's skill page made cozy: every skill, what it does, keys 1–4 to put it on, the aura to run. -->
   @if (topDown && spellbookOpen && !panel) {
     <section class="spellbook win-host" role="dialog" aria-labelledby="spellbook-title" data-engine-ignore (keydown.escape)="spellbookOpen = false">
