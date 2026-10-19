@@ -490,6 +490,8 @@ export class SideScrollerComponent implements OnDestroy {
   // ── One World (docs/design/one-world.md), Phase 1: the preview gate ──
   /** This device previews One World: the Seamworks stands on the Ember Delve's surface (OneWorldFlag). */
   readonly oneWorld = this.browser && OneWorldFlag.on;
+  /** Top-down (docs/design/top-down.md): set when the Seamworks square runs on the top-down engine; its walking is the drag joystick. */
+  topDown = false;
   private readonly waystones = inject(WaystoneService);
   private readonly worldMigration = inject(WorldMigrationService);
   /** Last resume point taken (ms), and whether a saved one was used on this mount. */
@@ -786,6 +788,7 @@ export class SideScrollerComponent implements OnDestroy {
     const makeEngine = this.browser && topDownGate() && this.town.id === 'infernal'
       ? (c: HTMLCanvasElement, o: EngineOptions) => createTopDownEngine(c, o) as unknown as SeamworksEngine
       : (c: HTMLCanvasElement, o: EngineOptions) => new SeamworksEngine(c, o);
+    this.topDown = this.browser && topDownGate() && this.town.id === 'infernal';
     this.engine = makeEngine(canvas, {
       assets: { keeper: this.art('keeper-base'), creature: this.art('rivet-maw'), ore: this.art(CINDER_ORE_ID), blade: this.art('basalt-edge') },
       art: key => this.art(key),
