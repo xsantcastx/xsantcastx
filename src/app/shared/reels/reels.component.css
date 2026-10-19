@@ -248,7 +248,10 @@
 
 .rl-bet__val small { color: var(--ink-2); font-size: var(--text-2xs); text-transform: uppercase; letter-spacing: .08em; }
 
-.rl-spin { flex: 1 1 200px; max-width: 360px; }
+.rl-spinwrap { position: relative; flex: 1 1 200px; max-width: 360px; }
+.rl-spin { display: block; width: 100%; }
+/* While the reels turn, Skip lies over the Spin button: same place, same size, nothing beside it moves. */
+.rl-spinwrap .rl-skip { position: absolute; inset: 0; z-index: 5; width: 100%; background: var(--obsidian-2); }
 
 /* Quick bets and auto spin, one row under the spin. */
 .rl-quick {
