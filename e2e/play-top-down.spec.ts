@@ -141,6 +141,16 @@ test('the Warlock reads their sheet (C) and their Spellbook (K): attributes, spe
   await expect(page.locator('.td-skill').nth(3)).toHaveAttribute('aria-label', /Drain Life/);
 });
 
+test('a first visit starts with making a character: the Glass opens with the Warlock class', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  // A truly new browser: no first-visit record (playwright.config seeds one for every other spec).
+  await page.addInitScript(() => localStorage.removeItem('eclipse-onboarding'));
+  await page.goto('/play');
+  await expect(page.locator('app-keeper-maker')).toBeVisible({ timeout: 30000 });
+  await expect(page.locator('.km__classcard[data-vocation="warlock"]')).toHaveAttribute('aria-checked', 'true');
+  await expect(page.locator('.stage')).toHaveClass(/stage--td/);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');

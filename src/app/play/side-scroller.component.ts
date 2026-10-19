@@ -769,7 +769,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -3503,13 +3503,25 @@ export class SideScrollerComponent implements OnDestroy {
     // A brand-new browser is offered it too: since the game-only shell there is no site tutorial in front
     // of the world, so the first arrival here IS the first visit. Recording it (lastStep 0: welcomed by the
     // Glass, no tutorial) keeps the offer to once, made or not.
-    const fresh = this.onboarding.finishedHere || this.onboarding.shouldOnboard();
-    if (!look.made && !this.makerOffered && fresh && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.storyScene && !this.glimTalk) {
+    this.tickMakerOffer();
+  }
+  /**
+   * Character creation on a first visit (owner, 2026-10-20: "when we first start, create a character"). Checked on the
+   * HUD tick too: the top-down arrival is quiet, and the stats push that used to carry this check never fired there.
+   */
+  private tickMakerOffer(): void {
+    if (!this.browser || this.makerOffered) return;
+    const look = this.looks.look;
+    // A browser with no first-visit record and a Keeper never made is a new character: offer the Glass once (the offer
+    // records the visit). Other save keys can be written before the onboarding snapshot, so shouldOnboard() alone misses it.
+    const fresh = this.onboarding.finishedHere || this.onboarding.shouldOnboard() || (!look.made && !look.prompted && !this.onboarding.hasRecord());
+    if (!look.made && fresh && ++this.makerWait > 8 && !this.panel && !this.storyCard && !this.storyScene && !this.glimTalk) {
       this.makerOffered = true;
       if (!this.onboarding.finishedHere) this.onboarding.finish(0);
       this.openKeeperMaker();
     }
   }
+
   private paintDollFigure(look: KeeperLook, gear: ReturnType<typeof wornGear>): void {
     if (!this.browser) return;
     try {
