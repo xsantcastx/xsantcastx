@@ -167,8 +167,7 @@ Decided: 16 px tiles at 2× on phones; 4-facing chibi Keeper; drag-anywhere joys
 building kit with a commissioned-art path; one world per realm; mines floor-by-floor; seasons weekly; gate then flip at
 P5; side-view retired at P8.
 
-Owner questions (defaults in bold, used unless told otherwise):
-1. Season length — **one real week per season**, or one real day?
-2. Farming on the Homestead plot — **yes, simple crops (plant / water / harvest) feeding cooking and the economy**, or
-   decoration only?
-3. Multiplayer in towns — **show other Keepers walking the town (existing Hearth presence)**, or solo for now?
+Owner answers (2026-10-19):
+1. Season length — **one real week per season** (a four-week year; the manager's call, delegated by the owner).
+2. Farming on the Homestead plot — **yes: simple crops (plant / water / harvest) feeding cooking and the economy.**
+3. Multiplayer in towns — **yes: other Keepers walk the town via the existing Hearth presence.**
