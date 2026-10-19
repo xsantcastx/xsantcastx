@@ -413,7 +413,8 @@ button.ph-widget:focus-visible, .ph-round:focus-visible, .ph-dot:focus-visible, 
 .phone {
   --fit-h: calc(100cqh - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   --fit-w: calc(100cqw - 16px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
-  --ph-w: min(380px, var(--fit-w), calc(var(--fit-h) * 9 / 19.5));
+  /* --ph-max / --ph-hfrac: the host may hold the phone smaller (the desktop's corner phone, side-scroller.component.css). */
+  --ph-w: min(var(--ph-max, 380px), var(--fit-w), calc(var(--fit-h) * var(--ph-hfrac, 1) * 9 / 19.5));
   --ph-h: calc(var(--ph-w) * 19.5 / 9);
   position: relative;
   flex: none;
