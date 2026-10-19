@@ -9,6 +9,13 @@ export const KEEPER_LOOK_I18N: Readonly<Record<string, { en: string; es: string 
     en: 'Every Keeper carries a sliver of the Archive\'s moon-mirror. Breathe on it and it shows the face the realms will know you by, and lets you choose it again.',
     es: 'Cada Guardian lleva una astilla del espejo lunar del Archivo. Echale el aliento y muestra el rostro por el que te conoceran los reinos, y te deja elegirlo de nuevo.',
   },
+  'look.class': { en: 'Class', es: 'Clase' },
+  'look.class.warlock': { en: 'Warlock', es: 'Brujo' },
+  'look.class.warlock.blurb': {
+    en: 'Ember and shadow from a staff, at range. Drains life, curses foes, calls fire, wards the self.',
+    es: 'Brasa y sombra desde un baston, a distancia. Drena vida, maldice, invoca fuego y se protege.',
+  },
+  'look.class.more': { en: 'More classes will come.', es: 'Llegaran mas clases.' },
   'look.preview': { en: 'Your Keeper, wearing what you wear now', es: 'Tu Guardian, con lo que llevas puesto' },
   'look.name': { en: 'Name', es: 'Nombre' },
   'look.namePlaceholder': { en: 'Keeper', es: 'Guardian' },

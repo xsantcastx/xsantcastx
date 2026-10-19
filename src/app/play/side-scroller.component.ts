@@ -4,6 +4,9 @@ import {
   ViewContainerRef, inject,
 } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
+import { tdFirstGoal } from './td/td-goals';
+import { CLASS_SKILLS, MAX_MANA, SKILLS as TD_SKILLS, defaultAura, defaultBar, type SkillId } from './td/td-skills';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
 import { ActivityProgressionGateway } from '../shared/activity/activity-progression.gateway';
@@ -446,7 +449,9 @@ export class SideScrollerComponent implements OnDestroy {
   /** The first-session goal line (world/first-goals.ts); null once all four are done. */
   guide: FirstGoalView | null = null;
   /** The quest scroll's checklist rows (top-down HUD), in goal order. */
-  readonly questRows: readonly { n: number; key: string }[] = [
+  get questRows(): readonly { n: number; key: string }[] { return this.topDown ? this.tdQuestRows : this.sideQuestRows; }
+  private readonly tdQuestRows = [{ n: 1, key: 'play.td.goal.title.hunt' }, { n: 2, key: 'play.td.goal.title.mine' }, { n: 3, key: 'play.td.goal.title.chop' }];
+  private readonly sideQuestRows = [
     { n: 1, key: 'play.goal.title.buy' }, { n: 2, key: 'play.goal.title.craft' },
     { n: 3, key: 'play.goal.title.hunt' }, { n: 4, key: 'play.goal.title.delve' },
   ];
@@ -1575,18 +1580,68 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private areaCardPending = '';
   private areaCardSince = 0;
-  /** Top-down: the ability bar (keys 1–4), each slot's cooldown left 0–1 (td-mobs ABILITIES). */
-  tdAbilities: { id: string; key: string; left: number }[] = [];
+  /** Top-down: the skill bar (keys 1–4), each slot's cooldown left 0–1 and whether there is mana (td-skills.ts). */
+  tdAbilities: { id: string; key: string; left: number; mana: number; ready: boolean }[] = [];
+  tdMana = MAX_MANA;
+  readonly tdMaxMana = MAX_MANA;
+  /** The Spellbook (K): every skill of the class, what it does, the bar and the aura chosen there. */
+  spellbookOpen = false;
+  private readonly sanitizer = inject(DomSanitizer);
+  private readonly iconCache = new Map<string, SafeHtml>();
+  private tdLoadoutKey = '';
+  private get tdEngine(): { abilities?: readonly { id: string; key: string; left: number; mana: number; ready: boolean }[]; mana?: number; aura?: string | null; useAbility?: (id: string) => string | null; setSkillLoadout?: (bar: readonly string[], aura: string | null) => void } | undefined {
+    return this.engine as never;
+  }
   private tickAbilities(): void {
     if (!this.topDown) { this.tdAbilities = []; return; }
-    const list = (this.engine as unknown as { abilities?: readonly { id: string; key: string; left: number }[] } | undefined)?.abilities;
-    if (list) this.tdAbilities = list.map(a => ({ ...a }));
+    const e = this.tdEngine;
+    // The Spellbook's choices (synced with the Keeper's look) reach the engine whenever they change.
+    const look = this.looks.look, key = `${look.bar.join(',')}|${look.aura}`;
+    if (key !== this.tdLoadoutKey && e?.setSkillLoadout) { this.tdLoadoutKey = key; e.setSkillLoadout(this.loadoutBar, this.loadoutAura); }
+    if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
+    if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
   }
-  useAbility(id: string): void {
-    const why = (this.engine as unknown as { useAbility?: (id: string) => string | null } | undefined)?.useAbility?.(id);
-    if (why) this.message = this.t(why === 'nofoe' ? 'play.td.ability.nofoe' : 'play.td.ability.cooldown');
+  useAbility(slot: string): void {
+    const why = this.tdEngine?.useAbility?.(slot);
+    if (why) this.message = this.t(`play.td.ability.${why}`);
     this.tickAbilities();
     this.focusWorld();
+  }
+  /** A skill's pixel icon as markup (our own constant rects, td-skills.ts). */
+  skillIcon(id: string): SafeHtml {
+    let h = this.iconCache.get(id);
+    if (!h) {
+      const sk = TD_SKILLS[id as SkillId];
+      h = this.sanitizer.bypassSecurityTrustHtml(`<svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true">${sk?.icon ?? ''}</svg>`);
+      this.iconCache.set(id, h);
+    }
+    return h;
+  }
+  get vocation(): string { return this.looks.look.vocation; }
+  private get loadoutBar(): string[] { const b = this.looks.look.bar; return b.length ? b : defaultBar(this.looks.look.vocation); }
+  private get loadoutAura(): string | null { const a = this.looks.look.aura; return a === 'none' ? null : a || defaultAura(this.looks.look.vocation); }
+  get spellbook(): { kind: string; rows: { id: string; name: string; text: string; mana: number; cd: number; slot: number; on: boolean }[] }[] {
+    const v = this.looks.look.vocation, bar = this.loadoutBar, aura = this.loadoutAura;
+    const row = (id: SkillId) => {
+      const sk = TD_SKILLS[id], vars: Record<string, number> = { ...sk.vars, mana: sk.vars['mana'] ?? sk.mana, cd: sk.cd };
+      return { id, name: this.t(sk.nameKey), text: this.t(sk.textKey, vars), mana: sk.mana, cd: sk.cd, slot: bar.indexOf(id) + 1, on: aura === id };
+    };
+    const ids = CLASS_SKILLS[v];
+    return (['active', 'aura', 'passive'] as const).map(kind => ({ kind, rows: ids.filter(id => TD_SKILLS[id].kind === kind).map(row) }));
+  }
+  /** Put a skill on a key (1–4); whatever sat there swaps to where this one was. */
+  assignSkill(id: string, slot: number): void {
+    const bar = [...this.loadoutBar];
+    const from = bar.indexOf(id), was = bar[slot - 1];
+    bar[slot - 1] = id;
+    if (from >= 0 && from !== slot - 1) bar[from] = was;
+    this.looks.setLoadout(bar.filter(Boolean), this.looks.look.aura);
+    this.tickAbilities();
+  }
+  /** Choose the running aura (one at a time); choosing the running one turns it off. */
+  toggleAura(id: string): void {
+    this.looks.setLoadout(this.loadoutBar, this.loadoutAura === id ? 'none' : id);
+    this.tickAbilities();
   }
   private tickAreaCard(): void {
     const title = this.areaTitle;
@@ -1675,7 +1730,12 @@ export class SideScrollerComponent implements OnDestroy {
     const areaId = this.state.world
       ? this.state.region === 'basalt-seamworks' ? this.town.id : this.state.region === 'ember-delve' ? 'ember-delve' : this.state.region ?? this.town.id
       : this.state.areaId ?? this.town.id;
-    const goal = firstGoal({
+    // Top-down: the Warlock's own first goals (no Homestead, no gold per second: owner 2026-10-20).
+    const goal = this.topDown ? tdFirstGoal({
+      hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
+      mined: this.activity.snapshot.miningAccepted > 0 || (progress.xpByDiscipline['mining'] ?? 0) > 0,
+      chopped: (progress.xpByDiscipline['woodcutting'] ?? 0) > 0,
+    }) : firstGoal({
       ...(this.state.world ? { world: { mawX: ROAD_MAW_APPROACH_X } } : {}),
       bought: this.boughtBuilding,
       hunted: (progress.xpByDiscipline['hunting'] ?? 0) > 0,
@@ -2324,6 +2384,7 @@ export class SideScrollerComponent implements OnDestroy {
     const target = event.target;
     if (target instanceof HTMLElement && (target.matches('input, textarea, select') || target.isContentEditable)) return;
     if (event.code === 'KeyI') { event.preventDefault(); this.toggleBag(); }
+    else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
     // One World: M is the Travel map (the world's map with its stones); it opens the full map from there.
     else if (event.code === 'KeyM' && this.oneWorld && this.state.world) { event.preventDefault(); this.openTravelMap(null); }
@@ -3098,6 +3159,23 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The purse, on the satchel's bottom row. */
   get purseGold(): string { return Math.floor(this.economy.snapshot.gold).toLocaleString('en-US'); }
+  /**
+   * The hover card (owner 2026-10-20: "look at diablo 2, just stats and that's it"): pointing at a cell with a mouse
+   * shows the item's name in its rarity colour, what it is, its stats and how it compares — no art, no buttons.
+   */
+  hoverTip: { row: BagSlip; x: number; y: number } | null = null;
+  hoverPocket(pocket: BagPocket, ev: PointerEvent): void {
+    if (ev.pointerType !== 'mouse') return;
+    const row = pocket.kind === 'stack' ? this.stackSlip(pocket.ref)
+      : (() => { const item = this.inventory.snapshot.items.find(r => r.id === pocket.ref && !r.explorerId); return item ? this.itemSlip(item, item.equipped) : null; })();
+    this.hoverTip = row ? { row, x: ev.clientX, y: ev.clientY } : null;
+  }
+  hoverWell(slot: string, ev: PointerEvent): void {
+    if (ev.pointerType !== 'mouse') return;
+    const item = this.inventory.snapshot.equipped[slot as SlotId];
+    this.hoverTip = item && !item.explorerId ? { row: this.itemSlip(item, true), x: ev.clientX, y: ev.clientY } : null;
+  }
+  moveTip(ev: PointerEvent): void { if (this.hoverTip) this.hoverTip = { ...this.hoverTip, x: ev.clientX, y: ev.clientY }; }
   get slip(): BagSlip | null {
     const pick = this.pick;
     if (!pick) return null;

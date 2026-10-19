@@ -37,6 +37,12 @@ export class KeeperLookService {
     this.save({ ...coerceLook(look), name: cleanName(look.name), made: true, prompted: true, updatedAt: Math.max(at, this.subject.value.updatedAt + 1) });
   }
 
+  /** The Spellbook's choices: which skills sit on keys 1–4, which aura runs. */
+  setLoadout(bar: readonly string[], aura: string, at = Date.now()): void {
+    this.hydrate();
+    this.save(coerceLook({ ...this.subject.value, bar: [...bar], aura, updatedAt: Math.max(at, this.subject.value.updatedAt + 1) }));
+  }
+
   /** The one gentle nudge was shown (existing saves); never again. */
   markPrompted(at = Date.now()): void {
     this.hydrate();
