@@ -59,6 +59,24 @@ test('a place the square cannot run yet is a side trip to the old view, and the 
   await expect(page.locator('.square-back')).toHaveCount(0);
 });
 
+test('down the mine shaft into the Delve and back up to the square, with no page error', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 390, height: 844 });
+  await openTopDown(page);
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /ember delve/i }).first().click();
+  await expect(page.locator('.stage')).toHaveClass(/stage--delve/, { timeout: 20000 });
+  await expect(canvas(page)).toHaveAttribute('data-area', /ember delve/i);
+  // The arrival settles (the shaft's fall, the area's first report) before the Keeper turns round.
+  await page.waitForTimeout(2500);
+  // Back up the shaft: the Delve's own way home lands the Keeper in the square again.
+  await page.locator('.places-toggle').first().click();
+  await page.locator('#places-list button', { hasText: /return to seamworks/i }).first().click();
+  await expect(page.locator('.stage')).toHaveClass(/stage--td/, { timeout: 20000 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');

@@ -69,6 +69,7 @@ export class TopDownEngine {
   private readonly unbind: (() => void)[] = [];
   /** The Slate is open: the Keeper faces the camera and looks at it in their hands. */
   private phone = false;
+  private frameError = false;
   /** The minimap's ground, one pixel per tile, painted once. */
   private miniGround: HTMLCanvasElement | null = null;
 
@@ -97,9 +98,14 @@ export class TopDownEngine {
       // rAF stamps the frame's start, which can precede the performance.now() taken in start(): never step backwards.
       const dt = Math.max(0, Math.min(.05, (now - this.last) / 1000));
       this.last = now;
-      if (!this.paused) this.update(dt);
-      this.draw();
+      // Schedule first: one bad frame (a host callback throwing) must never stop the world.
       this.raf = requestAnimationFrame(loop);
+      try {
+        if (!this.paused) this.update(dt);
+        this.draw();
+      } catch (err) {
+        if (!this.frameError) { this.frameError = true; console.error('[top-down] frame error', err); }
+      }
     };
     this.raf = requestAnimationFrame(loop);
   }
@@ -129,6 +135,14 @@ export class TopDownEngine {
     if (this.nearby) this.options.onStation?.(this.nearby.station);
   }
   get inTown(): boolean { return true; }
+  // The side view's queries the HUD dereferences: real answers, never the Proxy's undefined (a crash in onState froze the loop).
+  pick(clientX: number, clientY: number): { x: number; y: number; station: StationDef | null } {
+    const w = this.toWorld(clientX, clientY);
+    return { x: w.x, y: w.y, station: this.stallAt(w.x, w.y)?.station ?? null };
+  }
+  delveAnchors(): readonly never[] { return []; }
+  hasDelveCamp(): boolean { return false; }
+  readRiftMap(): boolean { return false; }
   get places(): readonly StationDef[] { return this.map.stalls.map(s => s.station); }
   get settlementKeepers(): readonly { id: string; x: number; y: number; upstairs: boolean; mark: '!' | '?' | null }[] {
     return this.map.stalls.filter(s => s.keeper).map(s => ({ id: s.keeper!.id, x: s.keeper!.x, y: s.keeper!.y, upstairs: false, mark: null }));
@@ -305,11 +319,19 @@ export class TopDownEngine {
     this.unbind.push(() => { c.removeEventListener('pointerdown', down); c.removeEventListener('pointermove', move); c.removeEventListener('pointerup', up); c.removeEventListener('pointercancel', up); });
   }
   /** A tap: on a stall or its keeper walks there and opens it; anywhere else walks there. */
-  private tap(clientX: number, clientY: number): void {
+  private toWorld(clientX: number, clientY: number): { x: number; y: number } {
     const rect = this.canvas.getBoundingClientRect();
-    const wx = this.cam.x + (clientX - rect.left) * (this.canvas.width / rect.width) / this.scale;
-    const wy = this.cam.y + (clientY - rect.top) * (this.canvas.height / rect.height) / this.scale;
-    const hit = this.map.stalls.find(s => Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16);
+    return {
+      x: this.cam.x + (clientX - rect.left) * (this.canvas.width / Math.max(1, rect.width)) / this.scale,
+      y: this.cam.y + (clientY - rect.top) * (this.canvas.height / Math.max(1, rect.height)) / this.scale,
+    };
+  }
+  private stallAt(wx: number, wy: number): TdStall | undefined {
+    return this.map.stalls.find(s => Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16);
+  }
+  private tap(clientX: number, clientY: number): void {
+    const { x: wx, y: wy } = this.toWorld(clientX, clientY);
+    const hit = this.stallAt(wx, wy);
     if (hit) { this.walkTo(hit.x, hit.y + 10, () => this.options.onStation?.(hit.station)); return; }
     this.walkTo(wx, wy);
   }
@@ -667,7 +689,7 @@ export function createTopDownEngine(canvas: HTMLCanvasElement, options: EngineOp
   });
 }
 
-/** The top-down gate: `?td=1` turns it on for this browser, `?td=0` off. Off by default. */
+/** The top-down gate: on by default; `?td=0` keeps the old view on this device, `?td=1` clears that. */
 export function topDownGate(): boolean {
   // Top-down is the game now (owner, 2026-10-19): on unless this device chose the old view with `?td=0`.
   if (typeof window === 'undefined') return false;
