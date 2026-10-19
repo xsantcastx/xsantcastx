@@ -769,7 +769,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickSideTrip(); this.tickAreaCard(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickSideTrip(); this.tickAreaCard(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1575,6 +1575,10 @@ export class SideScrollerComponent implements OnDestroy {
   areaCard: { title: string; realm: string; n: number } | null = null;
   private areaCardSeen = '';
   private areaCardTimer?: ReturnType<typeof setTimeout>;
+  /** Top-down: while the Slate is open the Keeper holds it up and looks at it (owner, 2026-10-19). */
+  private tickPhonePose(): void {
+    if (this.topDown) (this.engine as unknown as { setPhone?: (on: boolean) => void } | undefined)?.setPhone?.(this.panel?.kind === 'slate');
+  }
   private tickAreaCard(): void {
     const title = this.areaTitle;
     if (!title || title === this.areaCardSeen) return;

@@ -15,7 +15,7 @@
 import type { EngineOptions, EngineState, EngineInput } from '../engine/engine.model';
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
-import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
+import { FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
 import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
@@ -67,6 +67,8 @@ export class TopDownEngine {
   private lightSprite: HTMLCanvasElement | null = null;
   private glowSprite: HTMLCanvasElement | null = null;
   private readonly unbind: (() => void)[] = [];
+  /** The Slate is open: the Keeper faces the camera and looks at it in their hands. */
+  private phone = false;
   /** The minimap's ground, one pixel per tile, painted once. */
   private miniGround: HTMLCanvasElement | null = null;
 
@@ -106,6 +108,7 @@ export class TopDownEngine {
     for (const off of this.unbind) off();
   }
   setPaused(paused: boolean): void { this.paused = paused; if (paused) { this.keys.clear(); this.joy = null; } }
+  setPhone(on: boolean): void { this.phone = on; if (on) { this.player.dir = 'down'; this.player.moving = false; this.path = []; } }
   setWorldHour(hour: number): void { this.hour = ((hour % 24) + 24) % 24; }
   /** The world clock's sky (world-clock.model.ts Sky): light 1 = day, 0 = dark; glow = dawn/dusk gold. */
   setSky(sky: { light: number; glow: number; eclipse: number }): void {
@@ -559,7 +562,8 @@ export class TopDownEngine {
     c.fillRect(Math.round(p.x - 6), Math.round(p.y - 2), 12, 3);
     if (!p.painter) return;
     if (p.dir !== 'side') {
-      const sheet = frontSheet(p.painter), f = frontFrame(this.time + p.t, p.moving), row = p.dir === 'down' ? 0 : 1;
+      const sheet = frontSheet(p.painter), row = p.dir === 'down' ? 0 : 1;
+      const f = p === this.player && this.phone && row === 0 ? PHONE_FRAME : frontFrame(this.time + p.t, p.moving);
       c.drawImage(sheet, f * FRONT_W, row * FRONT_H, FRONT_W, FRONT_H, Math.round(p.x) - FRONT_AX, Math.round(p.y) - FRONT_AY, FRONT_W, FRONT_H);
       return;
     }
