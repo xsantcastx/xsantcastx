@@ -57,7 +57,25 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing
   const hx = x - 1, hy = top;
   px(c, hx + 2, hy + 1, 12, 13, p.skin);
   px(c, hx + 1, hy + 3, 14, 9, p.skin);
-  if (facing === 'down') {
+  if (staff) {
+    // The undead Warlock (owner, 2026-10-20): a deep hood over the head, the face pale and hollow, eyes burning violet.
+    const hood = p.tunic, hoodLo = p.tunicLo, hoodHi = p.tunicHi;
+    if (facing === 'down') {
+      px(c, hx + 1, hy - 1, 14, 5, hood); px(c, hx, hy + 2, 3, 11, hood); px(c, hx + 13, hy + 2, 3, 11, hood);
+      px(c, hx + 3, hy - 1, 10, 1, hoodHi); px(c, hx + 3, hy + 3, 10, 1, hoodLo);
+      px(c, hx + 4, hy + 5, 8, 1, p.skinLo);
+      if (frame === 1) { px(c, hx + 4, hy + 8, 3, 1, '#b06bff'); px(c, hx + 9, hy + 8, 3, 1, '#b06bff'); }
+      else { px(c, hx + 4, hy + 7, 3, 2, '#2a1a2e'); px(c, hx + 9, hy + 7, 3, 2, '#2a1a2e'); px(c, hx + 5, hy + 7, 2, 2, '#b06bff'); px(c, hx + 10, hy + 7, 2, 2, '#b06bff'); px(c, hx + 5, hy + 7, 1, 1, '#f0e0ff'); px(c, hx + 10, hy + 7, 1, 1, '#f0e0ff'); }
+      // Hollow cheeks and a thin, stitched mouth.
+      px(c, hx + 4, hy + 10, 1, 1, p.skinLo); px(c, hx + 11, hy + 10, 1, 1, p.skinLo);
+      px(c, hx + 6, hy + 11, 4, 1, p.mouth); px(c, hx + 7, hy + 12, 1, 1, p.skinLo);
+      // Bone clasp at the throat.
+      px(c, x + 5, top + 14, 4, 2, p.trim);
+    } else {
+      px(c, hx + 1, hy - 1, 14, 14, hood); px(c, hx + 3, hy - 1, 10, 1, hoodHi); px(c, hx + 2, hy + 10, 12, 3, hoodLo);
+      px(c, hx + 7, hy + 1, 2, 10, hoodLo);
+    }
+  } else if (facing === 'down') {
     // Hair: a dome with a fringe; sides to the ears.
     px(c, hx + 2, hy, 12, 4, p.hair); px(c, hx + 1, hy + 2, 2, 7, p.hair); px(c, hx + 13, hy + 2, 2, 7, p.hair);
     px(c, hx + 3, hy + 4, 3, 2, p.hair); px(c, hx + 9, hy + 4, 4, 2, p.hair);
@@ -78,7 +96,7 @@ function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing
     px(c, hx + 3, hy + 10, 2, 1, p.blush); px(c, hx + 11, hy + 10, 2, 1, p.blush);
     px(c, hx + 7, hy + 11, 2, 1, p.mouth);
   } else {
-    // From behind: hair over the whole head, a nape line.
+    // From behind: hair over the whole head, a nape line (not the Warlock: their hood is drawn above).
     px(c, hx + 2, hy, 12, 13, p.hair); px(c, hx + 1, hy + 2, 14, 9, p.hair);
     px(c, hx + 4, hy, 6, 1, p.hairHi); px(c, hx + 3, hy + 3, 2, 6, p.hairHi);
     px(c, hx + 2, hy + 11, 12, 2, p.hairLo);

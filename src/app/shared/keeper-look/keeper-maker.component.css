@@ -89,3 +89,15 @@
 .km__classcard b { display: block; font: 700 16px/1.1 var(--font-game, inherit); color: var(--gold-bright); }
 .km__classcard small { display: block; margin-top: 2px; font-size: 12px; line-height: 1.3; opacity: .85; }
 .km__more { font-size: 11px; opacity: .6; }
+/* The class row heads the window, full width: the label, the card, the promise of more. */
+:host-context(.place) .km { grid-template-areas: "class class" "stage name" "stage actions" "fields fields"; }
+:host-context(.place) .km__class { grid-area: class; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; }
+:host-context(.place) .km__class .km__label { grid-area: auto; position: static; padding: 0; font: 600 9px/1 var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
+:host-context(.place) .km__more { white-space: nowrap; }
+@container km (min-width: 460px) {
+  :host-context(.place) .km { grid-template-areas: "class class" "stage fields" "name fields" "actions fields"; }
+}
+@container km (max-width: 380px) {
+  :host-context(.place) .km__class { grid-template-columns: minmax(0, 1fr); }
+  :host-context(.place) .km__more { display: none; }
+}
