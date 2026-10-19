@@ -7,7 +7,7 @@
     <p>Eclipse Realms needs JavaScript to run. Turn it on and reload to play.</p>
   </section>
 </noscript>
-<section class="stage" [class.stage--menu]="bagOpen || placesOpen || soundOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
+<section class="stage" [class.stage--td]="topDown" [class.stage--menu]="bagOpen || placesOpen || soundOpen || petsOpen || !!panel || !!anchorSheet" [class.hearth-shut]="!hearthOpen" [class.stage--guide]="!!guide" [class.stage--guide-folded]="!!guide && guideFolded" [class.stage--delve]="!!state.delve" [class.stage--slate]="slateTier > 0" [class.stage--heights]="!!state.climbing" [class.stage--column]="columnOpen && state.areaId === 'homestead'" [class.stage--glim-says]="!!glimVoice.speech" aria-labelledby="game-title">
   <div class="viewport" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [attr.data-glim-x]="glimAt?.x ?? null" [attr.data-glim-target]="glimAt?.targetX ?? null" [attr.data-glim-arrived]="glimAt ? glimAt.arrived : null" [attr.data-glim-dim]="glimAt ? glimAt.dimmed : null" [attr.data-glim-bright]="glimAt ? glimAt.bright : null" [attr.data-glim-mood]="glimAt?.mood ?? null" [attr.data-glim-trail]="glimAt?.trail ?? null" [attr.data-glim-lamp]="glimAt ? glimAt.lamp : null">
     <canvas #worldCanvas width="1200" height="720" tabindex="-1" [attr.data-player-x]="state.x" [attr.data-player-y]="state.y" [attr.data-climb]="state.climbing" [attr.data-area]="state.area" [attr.data-oneworld]="oneWorld ? 'on' : null" [attr.data-pet]="petAt?.id ?? null" [attr.data-pet-x]="petAt?.x ?? null" [attr.data-pet-state]="petAt?.state ?? null" [attr.data-pet-fetching]="petAt ? petAt.fetching : null" [attr.data-pet-glow]="petAt ? petAt.glow : null" [attr.data-pet-act]="petAt?.act ?? null" [attr.data-pet-hits]="petAt?.hits ?? null" [attr.data-pet-gathers]="petAt?.gathers ?? null" [attr.data-pet-finds]="petAt?.finds ?? null" [attr.data-pet-heals]="petAt?.heals ?? null" [attr.data-pet-command]="petAt?.command ?? null" [attr.data-pet-level]="petAt?.level ?? null" [attr.data-scan]="scanning ? scanWarmth : null" [attr.data-cabinet]="state.cabinet ? state.cabinet.id + (state.cabinet.open ? ':open' : ':shut') : null" [attr.data-machine]="state.machine ? state.machine.id + (state.machine.found ? ':found' : ':new') : null" [attr.aria-label]="t('play.hud.canvas')"></canvas>
     @if (state.defeated) {
@@ -21,6 +21,12 @@
     }
   </div>
 
+  <!-- The place-name card: rises in the middle on arrival, then fades (the corner title is for screen readers only). -->
+  @if (areaCard; as card) {
+    @for (c of [card.n]; track c) {
+      <div class="area-card" aria-hidden="true"><small>{{ card.realm }}</small><strong>{{ card.title }}</strong><i></i></div>
+    }
+  }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
     <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i></div>
@@ -57,12 +63,20 @@
 
   <!-- The first-session goal: one plain line and one button that walks there (world/first-goals.ts). -->
   @if (guide; as goal) {
-    <div class="guide" [class.guide--folded]="guideFolded" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
+    <div class="guide" [class.guide--folded]="guideFolded" [class.guide--list]="topDown && !!goal.n" [attr.data-goal]="goal.id" [attr.data-chapter]="chapterTag || null" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" data-engine-ignore>
       <!-- Phones: the goal folds to its "Goal n of 4" chip and back. -->
       <button type="button" class="guide-fold" (click)="guideFolded = !guideFolded" [attr.aria-expanded]="!guideFolded" [attr.aria-label]="t(guideFolded ? 'play.hud.goalUnfold' : 'play.hud.goalFold')"><i aria-hidden="true"></i></button>
       <!-- Glim voices the goal; a press opens its hint ladder one step at a time (shared/glim/glim.ts). -->
       @if (glimVoice.met) {
         <button type="button" class="guide-glim" (click)="askGlim()" [attr.aria-label]="glimAskLabel" [title]="glimAskLabel"><app-glim-icon /></button>
+      }
+      <!-- Top-down: the scroll lists all four goals, ticked as the save shows them done (the references' QUESTS list). -->
+      @if (topDown && goal.n) {
+        <ol class="guide-list" [attr.aria-label]="t('play.goal.quests')">
+          @for (q of questRows; track q.n) {
+            <li [class.is-done]="q.n < goal.n" [class.is-now]="q.n === goal.n"><i aria-hidden="true"></i><span>{{ t(q.key) }}</span></li>
+          }
+        </ol>
       }
       <p class="guide-text"><b>{{ goal.n ? t('play.goal.label', { n: goal.n, total: goal.total }) : t('play.goal.next') }}</b> <span>{{ t(goal.key) }}</span></p>
       @if (goal.target) {
@@ -500,6 +514,10 @@
   @if (state.delve) {
     <!-- Phones: the hotbar's Take, in the band over the touch row (Place is the Use button). -->
     <button type="button" class="m-take" (click)="takeBack()" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null" [title]="t('play.hotbar.takeHint')">{{ t('play.hotbar.take') }}</button>
+  }
+  <!-- A side trip into the old view's town (top-down is the game; this place is not rebuilt yet): one way home. -->
+  @if (sideTripInTown) {
+    <button type="button" class="square-back" data-engine-ignore (click)="backToSquare()">{{ t('play.hud.backToSquare') }}</button>
   }
   @if (showKeys) {
     <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>M</kbd> {{ t('play.hud.key.map') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>

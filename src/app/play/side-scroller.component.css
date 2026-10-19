@@ -3355,3 +3355,80 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 /* The Satchel's purse row is sticky at the bottom: a cell scrolled into view (a thumb, a keyboard, a test) stops above
    it, never under it. */
 .book :is(.pocket, .well) { scroll-margin-block: 8px 72px; }
+
+/* ── The quest scroll's checklist (top-down): QUESTS, four ink boxes ticked as the goals are done ── */
+.guide--list { flex-wrap: wrap; row-gap: 4px; }
+.guide-list { flex: 1 0 100%; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 14px; margin: 0; padding: 2px 0 6px; list-style: none;
+  box-shadow: 0 2px 0 0 color-mix(in srgb, var(--cozy-parch-edge) 55%, transparent); font: 600 13px/1.25 var(--font-pixel); color: var(--cozy-ink-soft); }
+.guide-list li { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.guide-list li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.guide-list i { flex: none; position: relative; width: 11px; height: 11px; background: var(--cozy-parch); box-shadow: 0 0 0 2px var(--cozy-ink-soft); }
+.guide-list li.is-now { color: var(--cozy-ink); }
+.guide-list li.is-now i { box-shadow: 0 0 0 2px var(--cozy-ink), 0 0 0 4px color-mix(in srgb, var(--cozy-brass) 60%, transparent); }
+.guide-list li.is-done { color: color-mix(in srgb, var(--cozy-ink-soft) 70%, transparent); text-decoration: line-through; }
+/* A done box carries a pixel tick (3 + 5 steps). */
+.guide-list li.is-done i::after { content: ""; position: absolute; left: 1px; top: 5px; width: 2px; height: 2px; background: var(--cozy-leaf);
+  box-shadow: 2px 2px 0 0 var(--cozy-leaf), 4px 0 0 0 var(--cozy-leaf), 6px -2px 0 0 var(--cozy-leaf), 8px -4px 0 0 var(--cozy-leaf); }
+/* Phones: the four boxes in one row of ticks beside nothing else, the names hidden (the line below says what is next). */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .guide-list { display: flex; gap: 6px; padding: 0 0 2px; box-shadow: none; flex: 0 0 auto; order: -1; }
+  .guide-list li span { display: none; }
+  .guide--folded .guide-list { display: none; }
+}
+
+/* ── Top-down is the game (2026-10-19): the side view's chrome leaves the square ── */
+.stage--td :is(.wordmark, .objective, .top-actions .quiet:not(.slate-btn), .menu-extra, .keys-toggle, .vitals, .tb--use, .tb--dodge, .tb--blast, .tb--desk) { display: none !important; }
+.stage--td #places-list li:has(> [data-open="oneworld"]) { display: none; }
+/* The way home from a side trip: one brass button, top-centre under the goal scroll. */
+.square-back {
+  position: absolute; z-index: 5; left: 50%; translate: -50% 0; top: calc(var(--glim-top, 118px) + 8px);
+  min-height: 44px; padding: 0 18px; border: 0; border-radius: 0; pointer-events: auto;
+  background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; box-shadow: var(--cozy-brass-chip) !important;
+  font: 700 15px/1 var(--font-pixel) !important; text-transform: none !important; letter-spacing: .02em !important;
+}
+.square-back:active { translate: -50% 2px; }
+/* Desktop: the checklist heads the scroll; Glim's moth sits beside the line under it, not on a row of its own. */
+.guide--list .guide-list { order: -1; }
+
+/* ── The place-name card (owner 2026-10-19): the corner title goes (kept for screen readers); a new place's name rises
+   in the middle, holds, fades — like a cozy RPG's area banner. ── */
+.stage--td .title-block { position: absolute !important; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.area-card {
+  position: absolute; z-index: 4; left: 50%; top: 30%; translate: -50% -50%;
+  display: grid; justify-items: center; gap: 4px; pointer-events: none; text-align: center;
+  animation: area-card 3.4s ease both;
+}
+.area-card small { font: 600 13px/1 var(--font-pixel); letter-spacing: .3em; text-transform: uppercase; color: var(--cozy-brass-hi);
+  text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+.area-card strong { font: 700 clamp(30px, 7vw, 54px)/1.05 var(--font-pixel); color: var(--cozy-cream);
+  text-shadow: 3px 3px 0 var(--cozy-wood-0), 0 0 18px color-mix(in srgb, var(--cozy-wood-0) 70%, transparent); }
+/* A thin brass rule under the name, notched at both ends. */
+.area-card i { width: min(60vw, 280px); height: 3px; background: linear-gradient(90deg, transparent, var(--cozy-brass) 18% 82%, transparent);
+  box-shadow: 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-0) 60%, transparent); }
+@keyframes area-card {
+  0% { opacity: 0; transform: translateY(10px); }
+  14%, 72% { opacity: 1; transform: none; }
+  100% { opacity: 0; transform: translateY(-6px); }
+}
+@media (prefers-reduced-motion: reduce) { .area-card { animation: area-card-still 3.4s steps(1, end) both; } }
+@keyframes area-card-still { 0%, 90% { opacity: 1; } 100% { opacity: 0; } }
+.stage--menu .area-card { display: none; }
+/* Desktop: the checklist scroll is a fixed comfortable width (the line and Show me share a row), and Glim's line hangs
+   below the taller scroll, not over it. */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .guide--list { width: min(600px, calc(100% - 480px)); flex-wrap: wrap; }
+  .guide--list .guide-text { flex: 1 1 0; min-width: 0; }
+  .stage--td.stage--guide { --glim-top: 200px; }
+}
+.area-card { top: 40%; }
+
+/* ── The Slate on a PC: a phone in the hand, GTA-style (owner 2026-10-19) — it rises from the bottom-left corner,
+   smaller, the world in plain sight behind it (no blur, no dim). A click outside still puts it away. ── */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .place.place--slate {
+    background: none; backdrop-filter: none;
+    align-items: flex-start; justify-content: flex-end;
+    padding: 0 0 18px 28px;
+    --ph-max: 330px; --ph-hfrac: .8;
+  }
+}

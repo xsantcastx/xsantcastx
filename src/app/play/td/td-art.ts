@@ -505,3 +505,42 @@ export function waystone(): Sprite {
     return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights: [{ x: 0, y: -18, r: 28 }] };
   });
 }
+
+/** The Cinder Ore seam on the square's west lane: a dark outcrop veined with ember. */
+export function oreSeam(): Sprite {
+  return cached('ore-seam', () => {
+    const W = 30, H = 22, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 3, 8, 24, 13, PAL.basalt[0]); rect(c, 6, 4, 16, 6, PAL.basalt[1]); rect(c, 10, 1, 8, 4, PAL.basalt[3]);
+    rect(c, 3, 8, 24, 2, PAL.basalt[3]); rect(c, 3, 19, 24, 2, PAL.basalt[2]);
+    for (const [x, y, w] of [[7, 11, 4], [15, 7, 3], [19, 13, 5], [11, 16, 3], [22, 9, 2]] as const) { rect(c, x, y, w, 2, PAL.ember[1]); rect(c, x + 1, y, 1, 1, PAL.ember[2]); }
+    return { img: outline(img), ax: 15, ay: 22 };
+  });
+}
+
+/** The mine head into the Ember Delve: a timber frame over a dark shaft, a lantern on the post. */
+export function mineShaft(): Sprite {
+  return cached('mine-shaft', () => {
+    const W = 36, H = 34, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 6, 18, 24, 14, '#1a1016'); rect(c, 8, 20, 20, 10, '#0e080c');
+    rect(c, 4, 6, 4, 27, PAL.wood[0]); rect(c, 28, 6, 4, 27, PAL.wood[0]);
+    rect(c, 2, 4, 32, 5, PAL.wood[3]); rect(c, 2, 4, 32, 1, PAL.plank[2]);
+    rect(c, 9, 26, 18, 1, PAL.wood[2]); rect(c, 9, 29, 18, 1, PAL.wood[2]);
+    rect(c, 30, 10, 4, 5, PAL.glow); rect(c, 31, 11, 2, 3, PAL.window);
+    return { img: outline(img), ax: 18, ay: 34, lights: [{ x: 14, y: -22, r: 22 }] };
+  });
+}
+
+/** The Eclipse Beacon at the north road's end: a stone pillar crowned with a cold brazier. */
+export function beaconPillar(): Sprite {
+  return cached('beacon', () => {
+    const W = 20, H = 40, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 5, 12, 10, 26, PAL.stone[2]); rect(c, 5, 12, 3, 26, PAL.stone[3]);
+    for (let y = 16; y < 36; y += 5) rect(c, 5, y, 10, 1, PAL.stone[0]);
+    rect(c, 2, 36, 16, 4, PAL.stone[0]);
+    rect(c, 2, 6, 16, 6, PAL.wood[2]); rect(c, 4, 4, 12, 3, PAL.basalt[1]); rect(c, 7, 2, 6, 2, PAL.ember[3]);
+    return { img: outline(img), ax: 10, ay: 40 };
+  });
+}
