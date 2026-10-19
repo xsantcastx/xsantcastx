@@ -3332,3 +3332,22 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .place:not(.place--slate) { bottom: auto; max-height: calc(100% - 96px); }
   .book { bottom: auto; max-height: calc(100% - 198px); }
 }
+
+/* The top-down town's minimap: a round window in a timber ring with brass studs and a north mark, top-right like the
+   references. It only shows; the Places menu is the way to travel. */
+.td-mini {
+  position: absolute; z-index: 3; top: 160px; right: 16px;
+  width: 128px; height: 128px; border-radius: 50%; pointer-events: none;
+  background: var(--cozy-wood-3);
+  box-shadow: 0 0 0 3px var(--cozy-wood-0), inset 0 0 0 6px var(--cozy-wood-3), inset 0 0 0 8px var(--cozy-wood-0), 0 6px 0 0 color-mix(in srgb, var(--cozy-wood-0) 45%, transparent);
+}
+.td-mini canvas { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); border-radius: 50%; image-rendering: pixelated; }
+.td-mini::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background:
+  radial-gradient(circle at 50% 2px, var(--cozy-brass-hi) 2px, transparent 3px), radial-gradient(circle at 50% calc(100% - 2px), var(--cozy-brass-hi) 2px, transparent 3px),
+  radial-gradient(circle at 2px 50%, var(--cozy-brass-hi) 2px, transparent 3px), radial-gradient(circle at calc(100% - 2px) 50%, var(--cozy-brass-hi) 2px, transparent 3px); }
+.td-mini__n { position: absolute; top: -7px; left: 50%; translate: -50% 0; width: 16px; height: 16px; display: grid; place-items: center;
+  font: 700 11px/1 var(--font-pixel); font-style: normal; color: var(--cozy-wood-0); background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-mini { top: calc(var(--hud-top, 56px) + var(--guide-h, 0px) + 14px); right: 10px; width: 84px; height: 84px; }
+}
+.stage--menu .td-mini { visibility: hidden; }
