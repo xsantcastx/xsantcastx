@@ -15,6 +15,7 @@
 import type { EngineOptions, EngineState, EngineInput } from '../engine/engine.model';
 import type { StationDef } from '../world/world.model';
 import { KeeperPainter } from '../../shared/keeper-look/keeper-paint';
+import { vocationLook } from '../../shared/keeper-look/vocation-look';
 import { CAST_FRAME, FRONT_AX, FRONT_AY, FRONT_H, FRONT_W, PHONE_FRAME, frontFrame, frontSheet } from '../../shared/keeper-look/keeper-front';
 import { NPC_LOOKS } from '../../shared/keeper-look/npc-looks';
 import { defaultLook, randomLook, type KeeperLook } from '../../shared/keeper-look/keeper-look.model';
@@ -168,7 +169,11 @@ export class TopDownEngine {
     this.dusk = sky.glow;
   }
   setKeeperLook(look: KeeperLook | null, gear: KeeperGear | null = null): void {
-    this.player.painter = new KeeperPainter(look ?? defaultLook(), gear);
+    const l = look ?? defaultLook();
+    // The Warlock is undead (owner, 2026-10-20): grey-green skin, a dark violet robe with bone trim, a hood, eyes that
+    // burn violet. Worn gear still shows over it; the hood stands in only when no head piece is worn.
+    const v = vocationLook(l.vocation, gear);
+    this.player.painter = new KeeperPainter(l, v.gear, v.garb);
   }
   setInput(action: EngineInput, pressed: boolean): void {
     // The side view's on-screen buttons: left/right walk, down walks south, jump walks north.
