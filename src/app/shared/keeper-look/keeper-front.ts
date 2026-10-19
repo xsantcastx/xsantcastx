@@ -1,0 +1,102 @@
+/**
+ * keeper-front.ts — the chibi Keeper seen from the front and from behind, for
+ * the top-down view (docs/design/top-down.md §2: four facings). The side views
+ * stay KeeperPainter's; these two are painted in the same colours (its
+ * `colors`), same chibi proportions (a big round head over a small body), and
+ * baked once into one small sheet per Keeper: 2 facings × 4 frames (idle,
+ * idle breath, step left, step right). Never a canvas per frame (play-memory).
+ */
+import { OUTLINE, type KeeperPainter, type Palette } from './keeper-paint';
+
+export type Facing = 'down' | 'up';
+export const FRONT_W = 20;
+export const FRONT_H = 36;
+/** Feet: the sprite's anchor (art px from its top-left). */
+export const FRONT_AX = 10;
+export const FRONT_AY = 35;
+
+const sheets = new WeakMap<KeeperPainter, HTMLCanvasElement>();
+
+function px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void { c.fillStyle = col; c.fillRect(x, y, w, h); }
+
+/** frame: 0 idle, 1 breath, 2 step (left foot forward), 3 step (right foot forward). */
+function paint(c: CanvasRenderingContext2D, p: Readonly<Palette>, facing: Facing, frame: number, ox: number): void {
+  const bob = frame === 1 ? 1 : frame >= 2 ? -1 : 0;
+  const x = ox + 3, top = 2 + Math.max(0, bob);
+  // Legs and boots (stepping lifts one foot).
+  const lLift = frame === 2 ? 2 : 0, rLift = frame === 3 ? 2 : 0;
+  px(c, x + 4, top + 25, 3, 6 - lLift, p.trousers); px(c, x + 7, top + 25, 3, 6 - rLift, p.trousers);
+  px(c, x + 3, top + 31 - lLift, 4, 2, '#3a2a24'); px(c, x + 7, top + 31 - rLift, 4, 2, '#3a2a24');
+  // Body (tunic) with a belt and trim.
+  px(c, x + 2, top + 14, 10, 11, p.tunic);
+  px(c, x + 2, top + 14, 10, 2, p.tunicHi);
+  px(c, x + 2, top + 21, 10, 1, p.trim);
+  px(c, x + 2, top + 23, 10, 2, p.tunicLo);
+  if (facing === 'down') px(c, x + 6, top + 15, 2, 6, p.trim);
+  // Arms swing with the step.
+  const la = frame === 3 ? 1 : 0, ra = frame === 2 ? 1 : 0;
+  px(c, x, top + 15 + la, 2, 7, p.tunicLo); px(c, x + 12, top + 15 + ra, 2, 7, p.tunicLo);
+  px(c, x, top + 22 + la, 2, 2, p.skin); px(c, x + 12, top + 22 + ra, 2, 2, p.skin);
+  // Head: a big round chibi head.
+  const hx = x - 1, hy = top;
+  px(c, hx + 2, hy + 1, 12, 13, p.skin);
+  px(c, hx + 1, hy + 3, 14, 9, p.skin);
+  if (facing === 'down') {
+    // Hair: a dome with a fringe; sides to the ears.
+    px(c, hx + 2, hy, 12, 4, p.hair); px(c, hx + 1, hy + 2, 2, 7, p.hair); px(c, hx + 13, hy + 2, 2, 7, p.hair);
+    px(c, hx + 3, hy + 4, 3, 2, p.hair); px(c, hx + 9, hy + 4, 4, 2, p.hair);
+    px(c, hx + 4, hy, 6, 1, p.hairHi);
+    // Eyes (2×3 with a highlight), blush, a small mouth; a blink on the breath frame.
+    if (frame === 1) { px(c, hx + 4, hy + 8, 3, 1, OUTLINE); px(c, hx + 9, hy + 8, 3, 1, OUTLINE); }
+    else {
+      px(c, hx + 4, hy + 6, 3, 4, p.eyeDk); px(c, hx + 9, hy + 6, 3, 4, p.eyeDk);
+      px(c, hx + 5, hy + 7, 2, 3, p.eye); px(c, hx + 10, hy + 7, 2, 3, p.eye);
+      px(c, hx + 5, hy + 6, 1, 1, '#ffffff'); px(c, hx + 10, hy + 6, 1, 1, '#ffffff');
+    }
+    px(c, hx + 3, hy + 10, 2, 1, p.blush); px(c, hx + 11, hy + 10, 2, 1, p.blush);
+    px(c, hx + 7, hy + 11, 2, 1, p.mouth);
+  } else {
+    // From behind: hair over the whole head, a nape line.
+    px(c, hx + 2, hy, 12, 13, p.hair); px(c, hx + 1, hy + 2, 14, 9, p.hair);
+    px(c, hx + 4, hy, 6, 1, p.hairHi); px(c, hx + 3, hy + 3, 2, 6, p.hairHi);
+    px(c, hx + 2, hy + 11, 12, 2, p.hairLo);
+  }
+}
+
+/** The 1px dark outline round what is painted (the game's outline rule). */
+function outline(src: HTMLCanvasElement): HTMLCanvasElement {
+  const out = document.createElement('canvas');
+  out.width = src.width; out.height = src.height;
+  const c = out.getContext('2d')!;
+  for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) c.drawImage(src, dx, dy);
+  c.globalCompositeOperation = 'source-in';
+  c.fillStyle = OUTLINE; c.fillRect(0, 0, out.width, out.height);
+  c.globalCompositeOperation = 'source-over';
+  c.drawImage(src, 0, 0);
+  return out;
+}
+
+/** One sheet per Keeper: row 0 = facing down, row 1 = facing up; 4 frames each. */
+export function frontSheet(painter: KeeperPainter): HTMLCanvasElement {
+  let sheet = sheets.get(painter);
+  if (sheet) return sheet;
+  const raw = document.createElement('canvas');
+  raw.width = FRONT_W * 4; raw.height = FRONT_H * 2;
+  const c = raw.getContext('2d')!;
+  (['down', 'up'] as const).forEach((facing, row) => {
+    for (let f = 0; f < 4; f++) {
+      c.save(); c.translate(0, row * FRONT_H);
+      paint(c, painter.colors, facing, f, f * FRONT_W);
+      c.restore();
+    }
+  });
+  sheet = outline(raw);
+  sheets.set(painter, sheet);
+  return sheet;
+}
+
+/** Which frame a moment shows: walking alternates the steps, standing breathes. */
+export function frontFrame(time: number, moving: boolean): number {
+  if (moving) return Math.floor(time * 8) % 2 ? 3 : 2;
+  return Math.floor(time * 1.4) % 4 === 3 ? 1 : 0;
+}
