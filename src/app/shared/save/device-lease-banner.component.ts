@@ -131,7 +131,7 @@ import { LeaseState } from './device-lease';
       border: 1px solid rgba(0, 255, 204, 0.34);
       background: rgba(0, 255, 204, 0.08);
       color: #4dffe0;
-      font: 600 12px/1 'Orbitron', system-ui, sans-serif;
+      font: 600 12px/1 var(--font-game);
       letter-spacing: .06em;
       cursor: pointer;
       transition: background .2s ease, border-color .2s ease;

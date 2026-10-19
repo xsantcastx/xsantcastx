@@ -63,8 +63,8 @@ interface SceneLine { speaker: StorySpeaker; key: string; portrait: string | nul
   styles: [`
     :host { display: block; }
     .ss { display: grid; gap: 12px; }
-    .ss__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px Orbitron, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
-    .ss__title { margin: 0; padding-bottom: 10px; border-bottom: 2px dashed color-mix(in srgb, var(--adventure-hud-brass) 55.00%, transparent); color: var(--adventure-beacon-text); font: 600 18px/1.25 Orbitron, sans-serif; }
+    .ss__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px var(--font-game); letter-spacing: .16em; text-transform: uppercase; }
+    .ss__title { margin: 0; padding-bottom: 10px; border-bottom: 2px dashed color-mix(in srgb, var(--adventure-hud-brass) 55.00%, transparent); color: var(--adventure-beacon-text); font: 600 18px/1.25 var(--font-game); }
     .ss__line { display: grid; grid-template-columns: 64px 1fr; gap: 12px; align-items: start; min-height: 72px; }
     .ss__face {
       display: grid; place-items: end center; width: 64px; height: 64px; overflow: hidden;
@@ -74,21 +74,21 @@ interface SceneLine { speaker: StorySpeaker; key: string; portrait: string | nul
     .ss__face--glim { place-items: center; border-color: var(--adventure-hud-gold); }
     .ss__face img { width: 60px; height: 60px; image-rendering: pixelated; object-fit: contain; object-position: 50% 100%; }
     .ss__say { margin: 0; display: grid; gap: 4px; }
-    .ss__say b { color: var(--adventure-hud-gold); font: 600 11px Orbitron, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+    .ss__say b { color: var(--adventure-hud-gold); font: 600 11px var(--font-game); letter-spacing: .1em; text-transform: uppercase; }
     .ss__say span { color: var(--adventure-parchment); font-size: 15px; line-height: 1.55; }
     .ss__row { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
     .ss__count { margin-right: auto; color: var(--adventure-dialogue); font-size: 12px; }
     .ss__btn {
       min-height: 44px; min-width: 44px; padding: 0 18px; border: 1px solid var(--adventure-hud-brass);
       background: color-mix(in srgb, var(--adventure-hud-brass) 12.00%, transparent); color: var(--adventure-parchment);
-      font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; cursor: pointer;
+      font: 600 12px var(--font-game); letter-spacing: .08em; cursor: pointer;
     }
     .ss__btn--quiet { border-color: transparent; background: transparent; color: var(--adventure-dialogue); }
     .ss__go { border-color: var(--adventure-ember); }
     .ss__btn:hover, .ss__btn:focus-visible { border-color: var(--adventure-hud-gold); outline: none; background: color-mix(in srgb, var(--adventure-hud-gold) 16.00%, transparent); }
     .ss__reward { padding: 12px 14px; border: 1px solid var(--adventure-hud-gold); background: color-mix(in srgb, var(--adventure-hud-gold) 10.00%, transparent); }
-    .ss__gives { color: var(--adventure-ember); font: 600 10px Orbitron, sans-serif; letter-spacing: .14em; text-transform: uppercase; }
-    .ss__prize { margin: 4px 0 2px; color: var(--adventure-beacon-text); font: 600 16px/1.3 Orbitron, sans-serif; }
+    .ss__gives { color: var(--adventure-ember); font: 600 10px var(--font-game); letter-spacing: .14em; text-transform: uppercase; }
+    .ss__prize { margin: 4px 0 2px; color: var(--adventure-beacon-text); font: 600 16px/1.3 var(--font-game); }
     .ss__use { margin: 0; color: var(--adventure-dialogue); line-height: 1.45; }
     @media (max-width: 520px) {
       .ss__line { grid-template-columns: 48px 1fr; gap: 10px; }

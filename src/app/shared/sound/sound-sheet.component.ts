@@ -55,15 +55,15 @@ import { SOUND_I18N } from './sound.i18n';
     .ss__head h2 { flex: 1; text-transform: uppercase; text-shadow: 2px 2px 0 var(--obsidian-0); }
     .ss__helpcard { display: grid; gap: 6px; padding: 10px 12px; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
     .ss__head { display: flex; align-items: center; justify-content: space-between; gap: 4px; min-height: 44px; margin-bottom: 4px; box-shadow: var(--px-groove); }
-    .ss__head h2 { margin: 0; font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-beacon-text); }
+    .ss__head h2 { margin: 0; font: 700 15px/1.1 var(--font-game); letter-spacing: .08em; color: var(--adventure-beacon-text); }
     .ss__lead, .ss__note, .ss__saved { margin: 0; font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
     .ss__saved { font-size: 13px; opacity: .75; }
     .ss__row { display: grid; grid-template-columns: 88px 1fr 44px; align-items: center; gap: 10px; min-height: 44px; }
     .ss__row--off { opacity: .5; }
-    .ss__name { font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
-    .ss__val { font: 600 12px Orbitron, sans-serif; text-align: right; color: var(--adventure-ember); }
+    .ss__name { font: 600 12px var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
+    .ss__val { font: 600 12px var(--font-game); text-align: right; color: var(--adventure-ember); }
     .ss__row input { width: 100%; min-height: 44px; margin: 0; accent-color: var(--adventure-ember); cursor: pointer; }
-    .ss__mute { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font: 600 12px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
+    .ss__mute { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; font: 600 12px var(--font-game); letter-spacing: .08em; text-transform: uppercase; }
     .ss__mute input { width: 22px; height: 22px; accent-color: var(--adventure-ember); }
   `],
 })

@@ -49,19 +49,19 @@ import { GlimIconComponent } from './glim-icon.component';
     .gt { display: grid; gap: 10px; }
     .gt__head { display: flex; align-items: center; gap: 10px; }
     .gt__icon { flex: none; width: 36px; height: 30px; }
-    .gt__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px Orbitron, sans-serif; letter-spacing: .16em; text-transform: uppercase; }
-    .gt__title { margin: 2px 0 0; color: var(--adventure-beacon-text); font: 600 16px/1.25 Orbitron, sans-serif; }
+    .gt__kicker { margin: 0; color: var(--adventure-ember); font: 600 10px var(--font-game); letter-spacing: .16em; text-transform: uppercase; }
+    .gt__title { margin: 2px 0 0; color: var(--adventure-beacon-text); font: 600 16px/1.25 var(--font-game); }
     .gt__p { margin: 0; color: var(--adventure-parchment); line-height: 1.5; }
     .gt__reply { padding-left: 10px; border-left: 2px solid var(--adventure-hud-gold); }
     .gt__you { margin: 0; color: var(--adventure-dialogue); font-style: italic; line-height: 1.45; }
-    .gt__you b { margin-right: 4px; color: var(--adventure-hud-gold); font: 600 10px Orbitron, sans-serif; font-style: normal; letter-spacing: .12em; text-transform: uppercase; }
+    .gt__you b { margin-right: 4px; color: var(--adventure-hud-gold); font: 600 10px var(--font-game); font-style: normal; letter-spacing: .12em; text-transform: uppercase; }
     .gt__choices { display: grid; gap: 8px; margin-top: 4px; }
     .gt__choice, .gt__done {
       min-height: 44px; padding: 8px 12px; border: 1px solid var(--adventure-hud-brass); background: color-mix(in srgb, var(--adventure-hud-brass) 12.00%, transparent);
       color: var(--adventure-parchment); font: 500 14px/1.35 system-ui, sans-serif; text-align: left; cursor: pointer;
     }
     .gt__choice:hover, .gt__choice:focus-visible, .gt__done:hover, .gt__done:focus-visible { border-color: var(--adventure-hud-gold); outline: none; background: color-mix(in srgb, var(--adventure-hud-gold) 16.00%, transparent); }
-    .gt__done { justify-self: end; text-align: center; font-family: Orbitron, sans-serif; font-size: 12px; letter-spacing: .08em; }
+    .gt__done { justify-self: end; text-align: center; font-family: var(--font-game); font-size: 12px; letter-spacing: .08em; }
   `],
 })
 export class GlimTalkComponent {

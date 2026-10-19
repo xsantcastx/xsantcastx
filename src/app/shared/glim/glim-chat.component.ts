@@ -48,14 +48,14 @@ import type { GlimMood } from './glim-art';
       border: 0; background: none; color: var(--adventure-parchment); text-shadow: 2px 2px 0 var(--obsidian-0);
     }
     .gc__head { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 4px; box-shadow: var(--px-groove); }
-    .gc__head h2 { flex: 1; margin: 0; text-transform: uppercase; font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-beacon-text); }
+    .gc__head h2 { flex: 1; margin: 0; text-transform: uppercase; font: 700 15px/1.1 var(--font-game); letter-spacing: .08em; color: var(--adventure-beacon-text); }
     .gc__face { width: 36px; height: 30px; }
     .gc__reply { margin: 0; padding: 8px 10px; font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
     /* MapleStory's NPC chat: the choices are a grid of pixel buttons, two across, so all of them show at once. */
     .gc__choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 2px; }
     .gc__choice, .gc__quiet {
       min-height: 44px; padding: 6px 12px; border-radius: 0; cursor: pointer; text-align: left;
-      font: 600 12px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-parchment);
+      font: 600 12px var(--font-game); letter-spacing: .06em; color: var(--adventure-parchment);
       border: 0; background: var(--obsidian-2); box-shadow: var(--px-btn-rim);
     }
     .gc__choice:active, .gc__quiet:active { translate: 0 2px; }

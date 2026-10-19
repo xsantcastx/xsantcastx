@@ -94,7 +94,7 @@
 .hb__shelf { margin-bottom: 1rem; }
 .hb__shelf-title {
   margin: 0 0 0.4rem;
-  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  font: 700 11px/1 var(--font-game);
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--gf-dim);
@@ -271,7 +271,7 @@
   align-items: center;
   color: var(--gf-dim);
   cursor: pointer;
-  font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+  font: 700 11px/1 var(--font-game);
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }

@@ -86,7 +86,7 @@
 :host-context(.place) h2.ss__sr {
   position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: hidden; white-space: normal;
   display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
-  font: 700 15px/1.1 Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-beacon-text); text-shadow: 2px 2px 0 var(--obsidian-0);
+  font: 700 17px/1.1 var(--font-display); letter-spacing: .04em; color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0);
 }
 :host-context(.place) .ss__wallet { flex-wrap: nowrap; }
 :host-context(.place) .ss__hero { padding: 0; gap: var(--px-u, 8px); border: 0; background: none; box-shadow: none; }
@@ -96,7 +96,7 @@
 :host-context(.place) .ss__more--help[hidden] { display: none; }
 :host-context(.place) .ss__more--help > * { width: min(460px, 100%); }
 :host-context(.place) .ss__helpbar { display: flex; justify-content: flex-end; }
-:host-context(.place) .ss__more--help .ss__details { max-height: calc(100% - 56px); overflow: auto; background: var(--px-win-bg);
+:host-context(.place) .ss__more--help .ss__details { max-height: calc(100% - 56px); overflow: auto; background: var(--px-win-planks), var(--px-win-bg);
   box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop); }
 /* A narrow window (a portrait phone): the wallet's word goes ("5,000"; the coin says Gold), so the name keeps its room. */
 @container station (max-width: 440px) {

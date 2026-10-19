@@ -54,7 +54,7 @@
 :host-context(.place) .dh__icon { width: 64px; height: 64px; border: 0; background: var(--obsidian-1);
   box-shadow: 0 -2px 0 0 var(--dh-c), 0 2px 0 0 var(--dh-c), -2px 0 0 0 var(--dh-c), 2px 0 0 0 var(--dh-c); }
 :host-context(.place) .dh__icon img { width: 56px; height: 56px; image-rendering: pixelated; }
-:host-context(.place) .dh__name { font: 700 15px/1.15 Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: var(--dh-c); text-shadow: 2px 2px 0 var(--obsidian-0); }
+:host-context(.place) .dh__name { font: 700 15px/1.15 var(--font-game); letter-spacing: .06em; text-transform: uppercase; color: var(--dh-c); text-shadow: 2px 2px 0 var(--obsidian-0); }
 :host-context(.place) .dh__line { display: none; }
 /* A phone held sideways: a smaller icon, so the card, its ingredients and the button share one short screen. */
 @media (max-height: 520px) and (orientation: landscape) {

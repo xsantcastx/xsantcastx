@@ -779,7 +779,7 @@ interface LootDrop {
       border: 1px solid rgba(139, 92, 246, .5);
       background: rgba(10, 6, 26, .92);
       color: #ddd2ff;
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 11px/1 var(--font-game);
       letter-spacing: .06em;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
@@ -805,7 +805,7 @@ interface LootDrop {
        second one. */
     .ff__loot {
       position: absolute; left: 50%; top: 2px;
-      font: 700 12px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 12px/1 var(--font-game);
       letter-spacing: .02em;
       white-space: nowrap;
       color: var(--loot-color, #ddd2ff);
@@ -890,7 +890,7 @@ interface LootDrop {
     /* ── Floaters ───────────────────────────────────────────────────────── */
     .ff__float {
       position: absolute; left: 50%; top: 6px;
-      font: 700 14px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 14px/1 var(--font-game);
       color: #f8e8c8;
       text-shadow: 0 0 10px rgba(232, 117, 42, .8);
       white-space: nowrap;
@@ -918,7 +918,7 @@ interface LootDrop {
       box-shadow: 0 18px 44px -18px rgba(0, 0, 0, .9);
       animation: ffBanner .3s cubic-bezier(.22, 1, .36, 1);
     }
-    .ff__banner strong { font: 700 13px/1.2 'Orbitron', system-ui, sans-serif; color: #f8e8c8; }
+    .ff__banner strong { font: 700 13px/1.2 var(--font-game); color: #f8e8c8; }
     .ff__banner span   { font-size: 11px; color: #b9cdc7; }
     .ff__banner--grand { border-color: rgba(255, 45, 77, .7); }
     .ff__banner--grand strong { color: #ff8fa3; }
@@ -939,7 +939,7 @@ interface LootDrop {
       transition: opacity .2s ease, transform .2s ease, visibility .2s;
     }
     .ff__hud--open { opacity: 1; visibility: visible; transform: none; }
-    .ff__hud-gold { font: 700 15px/1 'Orbitron', system-ui, sans-serif; color: #f8e8c8; }
+    .ff__hud-gold { font: 700 15px/1 var(--font-game); color: #f8e8c8; }
     .ff__hud-coin { width: 13px; height: 13px; vertical-align: -2px; }
     .ff__hud-rate { font-size: 11px; color: #A78BFA; }
     .ff__hud-auto { font-size: 11px; color: #7fd5a3; }
@@ -981,7 +981,7 @@ interface LootDrop {
     .ff__combo {
       position: absolute; right: calc(100% + 10px); top: 50%;
       transform: translateY(-50%);
-      font: 800 15px/1 'Orbitron', system-ui, sans-serif;
+      font: 800 15px/1 var(--font-game);
       letter-spacing: .02em;
       white-space: nowrap;
       color: #A78BFA;
@@ -1016,7 +1016,7 @@ interface LootDrop {
     /* ── Combo: the shout ───────────────────────────────────────────────────── */
     .ff__shout {
       position: absolute; bottom: calc(100% + var(--ff-controls-h) + 12px); right: 0;
-      font: 800 15px/1.15 'Orbitron', system-ui, sans-serif;
+      font: 800 15px/1.15 var(--font-game);
       letter-spacing: .04em; white-space: nowrap;
       color: #A78BFA;
       text-shadow: 0 0 14px rgba(139, 92, 246, .85), 0 2px 4px rgba(0, 0, 0, .9);

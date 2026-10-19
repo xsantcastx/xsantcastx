@@ -70,8 +70,8 @@ import { titleFor, titleText } from '../skills/skill-titles';
     :host-context(.place) .ht h2 { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
     :host-context(.place) .ht__dl { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 2px; margin: 0; padding: 2px; background: var(--obsidian-0); box-shadow: var(--px-cell-rim); }
     :host-context(.place) .ht__dl > div { padding: 6px 8px; background: var(--px-cell-bg); min-width: 0; }
-    :host-context(.place) .ht__dl dt { font: 600 9px/1.2 Orbitron, sans-serif; letter-spacing: .08em; }
-    :host-context(.place) .ht__dl dd { font: 700 13px/1.25 Orbitron, sans-serif; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    :host-context(.place) .ht__dl dt { font: 600 9px/1.2 var(--font-game); letter-spacing: .08em; }
+    :host-context(.place) .ht__dl dd { font: 700 13px/1.25 var(--font-game); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   `],
 })
 export class HubStatsComponent implements OnInit, OnDestroy {
