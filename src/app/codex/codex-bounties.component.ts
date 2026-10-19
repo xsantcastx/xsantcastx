@@ -44,7 +44,7 @@ import { bountyLine } from '../shared/bounties/bounty.model';
   styles: [`
     .bounties { margin-top: 1.5rem; }
     .bounties__counts { margin: 0.3rem 0 0; font-size: 0.82rem; color: var(--cx-text); }
-    .bounties__head { margin: 0.9rem 0 0.4rem; font: 700 0.72rem/1.2 'Orbitron', system-ui, sans-serif; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cx-dim); }
+    .bounties__head { margin: 0.9rem 0 0.4rem; font: 700 0.72rem/1.2 var(--font-game); letter-spacing: 0.1em; text-transform: uppercase; color: var(--cx-dim); }
     .bounties__list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
     .bounties__row { display: flex; justify-content: space-between; gap: 0.8rem; padding: 0.5rem 0.7rem; border: 1px solid var(--cx-line); border-radius: 10px; font-size: 0.82rem; color: var(--cx-dim); }
     .bounties__state { flex: 0 0 auto; color: var(--cx-text); }

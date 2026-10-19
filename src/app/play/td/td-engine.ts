@@ -451,7 +451,7 @@ export class TopDownEngine {
 
   private plate(text: string, x: number, y: number, color: string): void {
     const c = this.ctx;
-    c.font = '6px "Press Start 2P", "Orbitron", monospace';
+    c.font = '7px "Pixelify Sans", monospace';
     const w = Math.ceil(c.measureText(text).width) + 6;
     c.fillStyle = 'rgba(26,16,30,.82)';
     c.fillRect(Math.round(x - w / 2), Math.round(y - 9), w, 9);

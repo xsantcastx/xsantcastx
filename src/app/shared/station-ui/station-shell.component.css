@@ -86,7 +86,7 @@
 :host-context(.place) h2.ss__sr {
   position: static; width: auto; height: auto; clip: auto; clip-path: none; overflow: hidden; white-space: normal;
   display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical;
-  font: 700 17px/1.1 var(--font-display); letter-spacing: .04em; color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0);
+  font: 700 20px/1.1 var(--font-pixel); letter-spacing: .02em; color: var(--cozy-glow); text-shadow: 2px 2px 0 var(--cozy-wood-0);
 }
 :host-context(.place) .ss__wallet { flex-wrap: nowrap; }
 :host-context(.place) .ss__hero { padding: 0; gap: var(--px-u, 8px); border: 0; background: none; box-shadow: none; }

@@ -62,7 +62,7 @@ const REALM_ORDER = ['infernal', 'luminous', 'umbral', 'celestial', 'verdant'] a
     .people__face img { display: block; width: 100%; height: 100%; image-rendering: pixelated; object-fit: contain; object-position: 50% 100%; }
     .people__text { min-width: 0; }
     .people__where { margin: 0; font-size: 0.68rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--cx-dim); }
-    .people__name { margin: 0.25rem 0 0; font: 700 0.92rem/1.2 'Orbitron', system-ui, sans-serif; color: var(--ink-0); }
+    .people__name { margin: 0.25rem 0 0; font: 700 0.92rem/1.2 var(--font-game); color: var(--ink-0); }
     .people__title { margin: 0.1rem 0 0.4rem; font-size: 0.78rem; font-style: italic; color: var(--cx-faint); }
     .people__who, .people__teaches { margin: 0.3rem 0 0; font-size: 0.82rem; line-height: 1.45; color: var(--cx-dim); }
     .people__teaches span { font-weight: 700; color: var(--cx-text); }
