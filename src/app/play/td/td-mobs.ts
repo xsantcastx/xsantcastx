@@ -31,6 +31,8 @@ export interface MobDef {
   paint: (c: CanvasRenderingContext2D, frame: number) => void;
   w: number;
   h: number;
+  /** Loot rank (shared/loot): a boss rolls more and better gear. Default 'normal'. */
+  rank?: 'normal' | 'champion' | 'unique' | 'boss';
 }
 
 function px(c: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, col: string): void { c.fillStyle = col; c.fillRect(x, y, w, h); }
@@ -80,7 +82,7 @@ function paintWarden(c: CanvasRenderingContext2D, f: number): void {
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'ember-warden': {
     id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8,
-    coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 38, h: 44,
+    coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 38, h: 44, rank: 'boss',
   },
   'ash-wolf': {
     id: 'ash-wolf', name: 'Ash Wolf', hp: 45, speed: 46, dmg: [3, 7], rate: 1.1, sight: 110, level: 1,
@@ -420,7 +422,7 @@ export class MobSystem {
     }
     this.drops.push({ id: `${id}:c`, ...spot(n++), coins, qty: 0, label: `${coins} Gold`, color: '#ffd25a', age: 0 });
     let rows: readonly LootRow[] = [];
-    try { rows = this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank: 'normal', killKey: id }) ?? []; } catch { rows = []; }
+    try { rows = this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank: m.def.rank ?? 'normal', killKey: id }) ?? []; } catch { rows = []; }
     rows.forEach((row, i) => {
       const color = RARITY_COLOR[row.rarity] ?? RARITY_COLOR.common;
       if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique }, label: row.label, color, age: 0 });
