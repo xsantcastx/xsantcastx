@@ -256,9 +256,11 @@ export class TopDownEngine {
   private bindInput(): void {
     const onKey = (down: boolean) => (e: KeyboardEvent) => {
       const k = e.key.toLowerCase();
-      if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
       const tag = (e.target as HTMLElement | null)?.tagName;
-      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || this.paused) return;
+      // E opens the stall in reach (the side view handled E inside its own engine).
+      if (down && !e.repeat && (k === 'e' || k === 'enter') && this.nearby) { e.preventDefault(); this.interact(); return; }
+      if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
       if (down) { this.keys.add(k); this.path = []; } else this.keys.delete(k);
     };
     const kd = onKey(true), ku = onKey(false);
@@ -406,6 +408,20 @@ export class TopDownEngine {
     c.fillStyle = '#ffd27a'; c.fillRect(Math.round(this.glim.x) - 2, Math.round(this.glim.y), 1, 1); c.fillRect(Math.round(this.glim.x) + 2, Math.round(this.glim.y), 1, 1);
     // Night.
     this.drawLight();
+    // The drag joystick: a ring where the thumb landed and a knob under it (screen space).
+    if (this.joy?.active) {
+      const r = this.canvas.getBoundingClientRect(), k = this.canvas.width / Math.max(1, r.width);
+      const sx = (this.joy.sx - r.left) * k, sy = (this.joy.sy - r.top) * k;
+      let dx = (this.joy.x - this.joy.sx) * k, dy = (this.joy.y - this.joy.sy) * k;
+      const max = 48 * k, len = Math.hypot(dx, dy);
+      if (len > max) { dx = dx / len * max; dy = dy / len * max; }
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.globalAlpha = .5; c.strokeStyle = '#f3e7cf'; c.lineWidth = 3 * k;
+      c.beginPath(); c.arc(sx, sy, max, 0, Math.PI * 2); c.stroke();
+      c.globalAlpha = .75; c.fillStyle = '#f3e7cf';
+      c.beginPath(); c.arc(sx + dx, sy + dy, 18 * k, 0, Math.PI * 2); c.fill();
+      c.globalAlpha = 1;
+    }
     // World UI: name plates for keepers, the label of the stall in reach.
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
