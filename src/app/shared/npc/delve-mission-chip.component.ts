@@ -76,7 +76,7 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
     .dmc__text { margin: 0; flex: 1 1 auto; min-width: 0; font-size: .82rem; line-height: 1.35; }
     .dmc__label {
       display: block;
-      font: 700 10px/1.2 'Orbitron', system-ui, sans-serif;
+      font: 700 10px/1.2 var(--font-game);
       letter-spacing: .12em; text-transform: uppercase;
       color: var(--gf-dim, #9d95b5);
     }
@@ -88,7 +88,7 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
       border: 1px solid var(--gf-accent, #6affe0);
       border-radius: 999px;
       background: transparent; color: var(--gf-accent-text, #6affe0);
-      font: 700 11px/1 'Orbitron', system-ui, sans-serif;
+      font: 700 11px/1 var(--font-game);
       letter-spacing: .1em; text-transform: uppercase; cursor: pointer;
     }
     .dmc__claim:focus-visible { outline: 2px solid var(--gf-accent-text, #6affe0); outline-offset: 2px; }
@@ -101,7 +101,7 @@ export function trackedMission(all: readonly DelveMissionState[]): DelveMissionS
     }
     .dmc__glim:focus-visible { outline: 2px solid var(--gf-accent-text, #6affe0); outline-offset: 2px; }
     .dmc__glim-line { margin: 6px 12px 0; font-size: .8rem; line-height: 1.4; color: var(--gf-ink, #ddd7ee); }
-    .dmc__glim-line b { font: 700 10px/1 'Orbitron', system-ui, sans-serif; letter-spacing: .1em; text-transform: uppercase; }
+    .dmc__glim-line b { font: 700 10px/1 var(--font-game); letter-spacing: .1em; text-transform: uppercase; }
   `],
 })
 export class DelveMissionChipComponent implements OnInit {

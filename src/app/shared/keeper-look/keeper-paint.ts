@@ -193,7 +193,7 @@ export function blinking(time: number, phase: number): boolean {
 export type KeeperFace = 'open' | 'blink' | 'happy' | 'surprised';
 
 /** Palette of one look + gear, resolved once per painter. */
-interface Palette {
+export interface Palette {
   skin: string; skinLo: string; skinHi: string; blush: string; mouth: string;
   hair: string; hairLo: string; hairHi: string;
   eye: string; eyeDk: string; eyeHi: string;
@@ -422,6 +422,8 @@ export class KeeperPainter {
   /** Offsets this Keeper's blink so a crowd never blinks in unison. */
   private readonly blinkPhase: number;
 
+  /** The colours this Keeper is painted in (read-only): the top-down front/back views (keeper-front.ts) use the same ones. */
+  get colors(): Readonly<Palette> { return this.pal; }
   constructor(readonly look: KeeperLook, readonly gear: KeeperGear | null = null, readonly garb: KeeperGarb | null = null) {
     this.key = `${lookKey(look)}#${gearKey(gear)}#${garbKey(garb)}`;
     this.pal = paletteOf(look, garb);

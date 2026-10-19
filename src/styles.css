@@ -1,4 +1,5 @@
 @import './styles/tokens/_adventure.css';
+@import './styles/tokens/_cozy.css';
 
 /* ===== Self-Hosted Fonts (§3.2) ===== *//* Orbitron — variable font, weight 400–900, latin only */
 @font-face {
@@ -1279,7 +1280,8 @@ app-side-scroller :where(button, a, [role="button"], label, summary) {
 .px-x::before { content: ""; position: absolute; left: 50%; top: 50%; width: 3px; height: 3px; translate: -1.5px -1.5px; background: currentColor;
   box-shadow: -9px -9px 0 0 currentColor, -9px 9px 0 0 currentColor, -6px -6px 0 0 currentColor, -6px 6px 0 0 currentColor, -3px -3px 0 0 currentColor, -3px 3px 0 0 currentColor, 0px 0px 0 0 currentColor, 3px 3px 0 0 currentColor, 3px -3px 0 0 currentColor, 6px 6px 0 0 currentColor, 6px -6px 0 0 currentColor, 9px 9px 0 0 currentColor, 9px -9px 0 0 currentColor, 2px 2px 0 0 var(--obsidian-0); }
 .px-x:hover, .px-x:focus-visible { color: var(--gold-bright); }
-.px-x:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -2px; }
+/* Focus: a filled pixel square behind the x (not a ring that reads as a box around it). */
+.px-x:focus-visible { outline: none; background: color-mix(in srgb, var(--gold-deep) 30%, transparent); }
 .px-help { flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer; color: var(--adventure-parchment, currentColor); font: 700 14px/1 Orbitron, sans-serif; }
 .px-help > i { display: grid; place-items: center; width: 24px; height: 24px; font-style: normal; background: var(--obsidian-2);
   box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
@@ -1294,3 +1296,42 @@ app-side-scroller :where(button, a, [role="button"], label, summary) {
 .px-arrow:disabled { opacity: .3; cursor: default; }
 .px-arrow:not(:disabled):active { translate: 0 2px; }
 .px-arrow:focus-visible { outline: 2px solid var(--gold-bright); outline-offset: -4px; }
+
+/* ── Pixel windows (docs/handoff/cozy-ui.md) ───────────────────────────────────────────────────────
+   Every in-game menu is ONE cozy wooden window, plain like MapleStory and warm like the top-down town: a dark-plank
+   plate, a stepped wood frame (dark seam, timber band lit from the top-left, a dark outline with notched corners), a
+   hard pixel drop. No decorative clutter. Inside: an 8px grid, sunken wood cells, ONE brass primary button.
+   The tokens are global so a hosted page (its own encapsulated CSS) can build the same cells and buttons. */
+:root {
+  --px-u: 8px;
+  --px-win-bg: var(--cozy-plate);
+  --px-win-edge: var(--cozy-wood-3);
+  /* Outward from the plate: a dark seam, a lit timber edge top-left (2px highlight + 2px light wood), the shaded
+     timber bottom-right, a dark outline. 8px of frame, square, lit from the top-left like the town. */
+  /* Outward from the plate: a dark seam, a lit bevel, a warm timber band, a dark outline — a picture frame cut from
+     the town's own wood. 11px, square. */
+  --px-win-rim:
+    0 0 0 2px var(--cozy-wood-0),
+    0 0 0 4px var(--cozy-wood-hi),
+    0 0 0 9px var(--cozy-wood-3),
+    0 0 0 11px var(--cozy-wood-0);
+  --px-win-inner: inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 22%, transparent), inset 0 -2px 0 0 var(--cozy-plate-seam);
+  --px-win-drop: 0 15px 0 0 color-mix(in srgb, var(--cozy-wood-0) 55%, transparent);
+  /* The plate's planks: a seam every 24px (a background-image; the colour stays --px-win-bg). */
+  --px-win-planks: repeating-linear-gradient(180deg, transparent 0 22px, var(--cozy-plate-seam) 22px 24px);
+  /* A slot / card inside a window: sunk into the plate, shaded top-left, lit bottom-right. */
+  --px-cell-bg: var(--cozy-well);
+  --px-cell-edge: var(--cozy-wood-1);
+  --px-cell-rim: 0 -2px 0 0 var(--px-cell-edge), 0 2px 0 0 var(--cozy-wood-2), -2px 0 0 0 var(--px-cell-edge), 2px 0 0 0 var(--cozy-wood-2), inset 2px 2px 0 0 color-mix(in srgb, var(--cozy-wood-0) 70%, transparent);
+  --px-on-edge: var(--cozy-glow);
+  --px-on-rim: 0 -2px 0 0 var(--px-on-edge), 0 2px 0 0 var(--px-on-edge), -2px 0 0 0 var(--px-on-edge), 2px 0 0 0 var(--px-on-edge);
+  /* A pixel button: a timber block lit top-left, shaded bottom-right, a dark outline. */
+  --px-btn-rim: 0 -2px 0 0 var(--cozy-wood-0), 0 2px 0 0 var(--cozy-wood-0), -2px 0 0 0 var(--cozy-wood-0), 2px 0 0 0 var(--cozy-wood-0), inset 2px 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 55%, transparent), inset -2px -2px 0 0 color-mix(in srgb, var(--cozy-wood-0) 50%, transparent);
+  /* The groove under a title row: a dark seam and a lit one, carved into the plate. */
+  --px-groove: 0 2px 0 0 var(--cozy-wood-0), 0 4px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 30%, transparent);
+  /* Parchment cards (the quest scroll, help, notes). */
+  --px-parch-rim: 0 -2px 0 0 var(--cozy-parch-edge), 0 2px 0 0 var(--cozy-parch-edge), -2px 0 0 0 var(--cozy-parch-edge), 2px 0 0 0 var(--cozy-parch-edge), inset 0 -3px 0 0 var(--cozy-parch-shade);
+}
+.px-win { background: var(--px-win-planks), var(--px-win-bg); box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop); border: 0; border-radius: 0; }
+.px-card { background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); border: 0; border-radius: 0; }
+.px-parch { background: var(--cozy-parch); color: var(--cozy-ink); box-shadow: var(--px-parch-rim); border: 0; border-radius: 0; }

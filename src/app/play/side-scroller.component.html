@@ -21,6 +21,10 @@
     }
   </div>
 
+  <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
+  @if (topDown) {
+    <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i></div>
+  }
   <header class="topbar" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <a routerLink="/play" class="wordmark">Eclipse</a>
     <div class="title-block">

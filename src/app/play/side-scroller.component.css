@@ -99,7 +99,7 @@ button,
 }
 
 .wordmark {
-  font: 700 11px Orbitron, sans-serif;
+  font: 700 11px var(--font-game);
   letter-spacing: .28em;
   text-transform: uppercase;
   color: var(--adventure-beacon-text);
@@ -110,7 +110,7 @@ button,
 
 .realm-tag {
   display: block;
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .22em;
   text-transform: uppercase;
   color: var(--adventure-ember);
@@ -145,7 +145,7 @@ h2 { font-size: 26px; line-height: .95; }
 button, .touch button {
   padding: 8px 12px;
   color: var(--adventure-parchment);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;
@@ -195,7 +195,7 @@ button:disabled { opacity: .4; cursor: default; }
   animation: tip-in .14s ease-out;
 }
 .station-tip[hidden] { display: none; }
-.station-tip b { font: 600 10px Orbitron, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-beacon-text); }
+.station-tip b { font: 600 10px var(--font-game); letter-spacing: .14em; text-transform: uppercase; color: var(--adventure-beacon-text); }
 .station-tip small { font: italic 400 14px/1.25 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
 .station-tip small:empty { display: none; }
 
@@ -240,7 +240,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .vitals label, .satchel span, .prompt strong, .dock small, .keys {
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--adventure-smoke);
@@ -415,7 +415,7 @@ button:disabled { opacity: .4; cursor: default; }
 
 .capacity span {
   white-space: nowrap;
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .16em;
   text-transform: uppercase;
   color: var(--adventure-smoke);
@@ -438,7 +438,7 @@ button:disabled { opacity: .4; cursor: default; }
 .capacity.full span { color: var(--adventure-ember); }
 
 /* Satchel slots on the clasp ("23/40"), amber at the limit; a dot when Overflow holds things. */
-.clasp-count { margin-left: auto; padding-right: 8px; font: 600 10px Orbitron, sans-serif; letter-spacing: .08em; color: var(--adventure-smoke); }
+.clasp-count { margin-left: auto; padding-right: 8px; font: 600 10px var(--font-game); letter-spacing: .08em; color: var(--adventure-smoke); }
 .satchel .clasp.is-full .clasp-count { color: var(--adventure-ember); }
 .bag-dot {
   display: block;
@@ -580,7 +580,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .book .well em, .book .pocket em, .slip-art em {
-  font: 600 8px/1.15 Orbitron, sans-serif;
+  font: 600 8px/1.15 var(--font-game);
   font-style: normal;
   letter-spacing: .08em;
   text-transform: uppercase;
@@ -713,7 +713,7 @@ button:disabled { opacity: .4; cursor: default; }
 }
 
 .slip li {
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .06em;
   text-transform: uppercase;
   color: var(--adventure-beacon-text);
@@ -735,7 +735,7 @@ button:disabled { opacity: .4; cursor: default; }
    carry their sign in the text, so colour is never the only channel. */
 .slip-copy .compare-label {
   margin: 8px 0 0;
-  font: 600 9px Orbitron, sans-serif;
+  font: 600 9px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   opacity: .7;
@@ -794,7 +794,7 @@ button:disabled { opacity: .4; cursor: default; }
   border-radius: 2px;
   background: var(--adventure-hud-panel-solid);
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .1em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -848,7 +848,7 @@ kbd {
   border-bottom-width: 2px;
   border-radius: 2px;
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
 }
 
 /* The Hearth hangs in the top HUD strip, left of the satchel: above every
@@ -889,7 +889,7 @@ kbd {
   max-width: 220px;
   padding: 0 14px;
   white-space: nowrap;
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .14em;
   text-transform: uppercase;
   color: var(--adventure-parchment);
@@ -1274,12 +1274,12 @@ input::placeholder { color: var(--adventure-hud-muted); }
   padding: 4px;
 }
 .hotbar .hot img { width: 30px; height: 30px; object-fit: contain; }
-.hotbar .hot em { font: 600 11px Orbitron, sans-serif; font-style: normal; color: var(--adventure-dialogue); }
+.hotbar .hot em { font: 600 11px var(--font-game); font-style: normal; color: var(--adventure-dialogue); }
 .hotbar .hot b {
   position: absolute;
   right: 3px;
   bottom: 2px;
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   color: var(--adventure-parchment);
 }
 .hotbar .hot .key-hint { position: absolute; top: 2px; left: 3px; margin: 0; font-size: 9px; }
@@ -1298,7 +1298,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   background: var(--adventure-hud-panel-solid);
   border: 1px solid var(--adventure-hud-shadow);
   color: var(--adventure-dialogue);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -1354,7 +1354,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .map-head { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; }
 .map-tools { display: flex; flex-wrap: wrap; gap: 6px; }
 .map-tools button { min-width: 44px; min-height: 44px; padding: 0 12px; }
-.map-tools .map-zoom { font: 600 20px/1 Orbitron, sans-serif; }
+.map-tools .map-zoom { font: 600 20px/1 var(--font-game); }
 .map-canvas { min-height: 0; cursor: grab; touch-action: none; }
 .map-canvas:active { cursor: grabbing; }
 .map-hint { margin: 0; color: var(--adventure-parchment); font: italic 400 15px var(--font-lore, Georgia, serif); }
@@ -1367,7 +1367,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   padding: 0;
   list-style: none;
   color: var(--adventure-dialogue);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
 }
@@ -1380,16 +1380,16 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .map-pin-chip, .map-pin-icon { display: inline-flex; align-items: center; gap: 6px; }
 .map-pin-chip i, .map-pin-icon i { width: 10px; height: 10px; box-shadow: 0 0 0 1px var(--adventure-hud-ink); }
 .map-pin-chip.is-selected, .map-pin-icon[aria-checked="true"], .map-pin-add[aria-pressed="true"] { border-color: var(--adventure-ember); }
-.map-pin-tracked { font: 600 10px Orbitron, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-dialogue); }
+.map-pin-tracked { font: 600 10px var(--font-game); letter-spacing: .08em; text-transform: uppercase; color: var(--adventure-dialogue); }
 .map-pin-icon { min-width: 44px; }
-.map-pin-name { display: inline-flex; align-items: center; gap: 6px; color: var(--adventure-dialogue); font: 600 11px Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.map-pin-name { display: inline-flex; align-items: center; gap: 6px; color: var(--adventure-dialogue); font: 600 11px var(--font-game); letter-spacing: .06em; text-transform: uppercase; }
 .map-pin-name input { min-height: 44px; width: 14ch; padding: 0 8px; font: 400 15px var(--font-lore, Georgia, serif); text-transform: none; }
 
 /* A chest placed in the Delve: what is in it, what you carry. Two plain lists. */
 .chest { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
 .chest h3 {
   margin: 0 0 8px;
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .12em;
   text-transform: uppercase;
   color: var(--adventure-beacon-text);
@@ -1408,7 +1408,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .chest li img { width: 40px; height: 40px; object-fit: contain; grid-column: 1; }
 .chest li span { display: grid; gap: 2px; grid-column: 2; min-width: 0; }
 .chest li b { font: 500 18px var(--font-lore, Georgia, serif); color: var(--adventure-parchment); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.chest li small { font: 600 11px Orbitron, sans-serif; color: var(--adventure-dialogue); }
+.chest li small { font: 600 11px var(--font-game); color: var(--adventure-dialogue); }
 .chest li button { grid-column: 3; min-height: 44px; }
 .chest-empty { margin: 0 0 6px; color: var(--adventure-dialogue); font: italic 400 15px var(--font-lore, Georgia, serif); }
 
@@ -1455,7 +1455,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .guide-text b {
   margin-right: 6px;
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .1em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1551,7 +1551,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .glim-say__text b {
   margin-right: 6px;
   color: var(--adventure-beacon-text);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .1em;
   text-transform: uppercase;
 }
@@ -1589,7 +1589,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border: 1px solid var(--adventure-hud-gold);
   background: color-mix(in srgb, var(--adventure-hud-gold) 14.00%, transparent);
   color: var(--adventure-parchment);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   pointer-events: auto;
@@ -1631,7 +1631,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border: 1px solid var(--adventure-ember);
   background: var(--adventure-hud-panel-solid);
   color: var(--adventure-hud-gold);
-  font: 600 8px/14px Orbitron, sans-serif;
+  font: 600 8px/14px var(--font-game);
   letter-spacing: .14em;
   text-transform: uppercase;
   white-space: nowrap;
@@ -1648,7 +1648,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border: 2px solid var(--mono);
   background: color-mix(in srgb, var(--mono) 28.00%, var(--adventure-hud-panel-solid));
   color: var(--adventure-parchment);
-  font: 700 10px/1 Orbitron, sans-serif;
+  font: 700 10px/1 var(--font-game);
   font-style: normal;
 }
 .glim-say__mono--face { overflow: hidden; }
@@ -1694,7 +1694,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .story-card__kicker {
   margin: 0 0 4px;
   color: var(--adventure-ember);
-  font: 600 10px Orbitron, sans-serif;
+  font: 600 10px var(--font-game);
   letter-spacing: .16em;
   text-transform: uppercase;
 }
@@ -1703,7 +1703,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   padding-bottom: 10px;
   border-bottom: 2px dashed color-mix(in srgb, var(--adventure-hud-brass) 55.00%, transparent);
   color: var(--adventure-beacon-text);
-  font: 600 19px/1.25 Orbitron, sans-serif;
+  font: 600 19px/1.25 var(--font-game);
 }
 .story-card__p {
   margin: 0 0 12px;
@@ -1957,7 +1957,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   .bag-badge {
     display: block;
     color: var(--adventure-smoke);
-    font: 600 9px/1 Orbitron, sans-serif;
+    font: 600 9px/1 var(--font-game);
     font-style: normal;
     letter-spacing: .02em;
     text-align: center;
@@ -2562,7 +2562,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   border-radius: 2px;
   background: var(--adventure-hud-panel-solid);
   color: var(--adventure-beacon-text);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   box-shadow: 0 10px 24px color-mix(in srgb, var(--adventure-hud-shadow) 53.33%, transparent), 0 0 18px color-mix(in srgb, var(--adventure-ember) 22%, transparent);
   animation: craft-toast-in .38s cubic-bezier(.22, 1, .36, 1) both;
@@ -2748,7 +2748,7 @@ input::placeholder { color: var(--adventure-hud-muted); }
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  font: 600 12px Orbitron, sans-serif;
+  font: 600 12px var(--font-game);
   letter-spacing: .04em;
   color: var(--adventure-hud-gold);
 }
@@ -2903,70 +2903,109 @@ input::placeholder { color: var(--adventure-hud-muted); }
 /* Without JavaScript (and to a crawler) /play is this one intro; see the template header. */
 .noscript-intro { position: relative; z-index: 1; max-width: 40rem; margin: 2rem auto; padding: 0 16px; color: var(--adventure-hud-text); line-height: 1.5; }
 
-/* ══ Frameless pixel menus (docs/handoff/frameless-menus.md) ═══════════════════
-   No window frame around any menu: no corner brackets, no dashed rules, no outer panel box. The world dims softly
-   (`.menu-scrim`) and the content floats on it. Positions stay exactly as the menus-orientation system put them
-   (portrait: bottom sheet, landscape: right-hand panel, desktop: where each stood); only the frame goes. What stays:
-   a plain title, one pixel x, 44px targets, and readable contrast (a fade behind the content, a 2px pixel shadow
-   on the text). Pixel style is a rendering style on the existing tokens: square corners (the radius tokens go to 0
-   for everything hosted in a menu), 2px stepped edges, crisp art. */
+/* ══ Nice menus: clean pixel windows (docs/handoff/nice-menus.md) ═══════════════
+   Owner, after the frameless pass: "Removing the frames made lots of stuff get out of place, please make them nice
+   menus." The rule now: NO DECORATIVE frame (no corner brackets, dashed rules, ornate boxed title bars, footers), but
+   every menu IS a window: a solid dark panel, a crisp 2px stepped pixel edge, a 2px inner light/shade and a hard
+   pixel drop (tokens in src/styles.css: --px-win-*). Inside: a plain title row (pixel-feel caps, a pixel x on the
+   right, a 2px groove under it), an 8px grid, pixel cells and tabs, ONE primary button. Placement is still
+   menus-orientation's: portrait = a bottom sheet (inset 8px so all its edges read), landscape = a side panel on the
+   right, desktop = a window. The world stays visible around the panel; a light dim behind it puts it away on a tap. */
 .menu-scrim {
   position: absolute;
   inset: 0;
   z-index: 6;
-  background: color-mix(in srgb, var(--obsidian-0) 70%, transparent);
+  background: color-mix(in srgb, var(--obsidian-0) 48%, transparent);
   animation: scrim-in .2s ease both;
 }
-@media (min-width: 901px) { .menu-scrim { backdrop-filter: blur(3px); } }
 /* The desktop Satchel is a side window the world keeps running beside: no dim over it. */
 @media (min-width: 901px) and (hover: hover) { .menu-scrim--bag { display: none; } }
 @keyframes scrim-in { from { opacity: 0; } to { opacity: 1; } }
 @media (prefers-reduced-motion: reduce) { .menu-scrim { animation: none; } }
 
-.book, .places, .place:not(.place--slate), .anchor-sheet, .win-host, .story-veil {
+/* Pixel inside every window: square corners (the radius tokens inherit into every hosted page and kit), no soft shadows. */
+.book, .places, .place:not(.place--slate), .anchor-sheet, .win-host, .story-card {
   --radius-xs: 0; --radius-sm: 0; --radius-md: 0; --radius-lg: 0; --radius-xl: 0; --radius-pill: 0;
   --shadow-panel: none; --shadow-raised: none; --shadow-overlay: none; --shadow-well: none;
-  text-shadow: 2px 2px 0 color-mix(in srgb, var(--obsidian-0) 85%, transparent);
+  /* One spacing unit inside a window: 8px. The in-between steps snap to it (12 → 8, 20/24 → 16), so every hosted page
+     and kit piece lines up on the same grid instead of each keeping its own rhythm. */
+  --space-3: 8px; --space-5: 16px; --space-6: 16px;
+  /* The hosted pages' own surface tokens (the site's violet glass) become the window's plate and cells. */
+  --gf-radius: 0; --gf-radius-sm: 0;
+  --gf-panel: var(--px-cell-bg); --gf-panel-solid: var(--px-win-bg); --gf-edge: var(--cozy-wood-1);
+  --st-radius: 0; --st-radius-chip: 0;
+  /* Cozy (docs/handoff/cozy-ui.md): inside a window the site's obsidian and violet become the town's timber and brass.
+     Custom properties inherit through every hosted page and kit, so one remap here recolours them all; the derived
+     tokens are restated because :root resolved them against the old ramp. */
+  --obsidian-0: var(--cozy-wood-0); --obsidian-1: var(--cozy-well); --obsidian-2: var(--cozy-plate);
+  --obsidian-3: var(--cozy-wood-1); --obsidian-4: var(--cozy-wood-2); --obsidian-5: var(--cozy-wood-3);
+  --surface-page: var(--cozy-wood-0); --surface-shell: var(--cozy-well); --surface-panel: var(--cozy-plate);
+  --surface-card: var(--cozy-wood-1); --surface-well: var(--cozy-well); --surface-raised: var(--cozy-wood-2); --surface-overlay: var(--cozy-plate);
+  --veil-panel: var(--cozy-plate); --veil-glass: color-mix(in srgb, var(--cozy-wood-1) 70%, transparent);
+  --violet-bright: var(--cozy-brass-hi); --violet: var(--cozy-brass); --violet-deep: var(--cozy-brass-lo); --violet-ink: var(--cozy-wood-1);
+  --violet-glow-soft: color-mix(in srgb, var(--cozy-glow) 30%, transparent); --violet-glow-lit: color-mix(in srgb, var(--cozy-glow) 55%, transparent);
+  --edge-hairline: color-mix(in srgb, var(--cozy-wood-hi) 18%, transparent); --edge-inset: color-mix(in srgb, var(--cozy-wood-hi) 28%, transparent);
+  --edge-raised: var(--cozy-wood-3); --edge-violet: var(--cozy-brass-lo); --edge-gold: var(--cozy-brass-lo);
+  --action-primary-bg: var(--cozy-brass); --action-primary-bg-hover: var(--cozy-brass-hi); --action-primary-fg: var(--cozy-wood-0);
+  --action-disabled-bg: var(--cozy-wood-1); --text-link: var(--cozy-brass-hi); --value-shard: var(--cozy-brass-hi);
+  --ink-0: var(--cozy-cream); --ink-1: color-mix(in srgb, var(--cozy-cream) 80%, var(--cozy-wood-3)); --text-heading: var(--cozy-cream);
+  --text-body: color-mix(in srgb, var(--cozy-cream) 88%, transparent); --text-muted: color-mix(in srgb, var(--cozy-cream) 62%, transparent);
+  --font-ui: var(--font-pixel);
+  --ab-top: var(--cozy-brass-hi); --gold: var(--cozy-brass-hi); --gold-core: var(--cozy-brass); --gold-deep: var(--cozy-brass-lo); --st-accent: var(--cozy-brass-hi);
+  --st-surface: var(--cozy-plate); --st-well: var(--cozy-well); --st-edge: var(--edge-hairline); --st-text: var(--cozy-cream);
+}
+/* A phone: the 16px step is 8 too, so the grid, the card and the one button fit the first screen. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host, .story-card { --space-4: 8px; --space-8: 16px; --space-10: 24px; --space-12: 24px; }
 }
 .book img, .places img, .place img, .anchor-sheet img, .win-host img { image-rendering: pixelated; }
 
-/* The frames go. */
+/* ── The window ── */
 .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
+  --wp-t: 8px;
+  --wp-x: 16px;
+  --wp-b: 16px;
   border: 0;
   border-radius: 0;
-  box-shadow: none;
-  background: none;
   contain: none;
+  background: var(--px-win-planks), var(--px-win-bg);
+  color: var(--cozy-cream);
+  box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
+  padding: var(--wp-t) var(--wp-x) var(--wp-b);
 }
 .place:not(.place--slate) { contain: layout; }
+/* The old decorations go: the dashed inner rule, the corner ticks, the ember glow wash. */
 .book::before, .book::after, .places::before, .place:not(.place--slate)::before, .place:not(.place--slate)::after { display: none; }
-.place-head, .places .win-head { border-bottom: 0; }
-.place-head .realm-tag { display: none; }
-.place-head h2, .places .win-head h2, .anchor-sheet .win-head h2, .book-head h2 {
-  font-size: 18px;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  color: var(--adventure-beacon-text);
-}
 .places-hint { display: none; }
 
-/* Soft backing so text reads over the dimmed world: a fade, never an edge. */
-@media (max-width: 900px) and (orientation: portrait) {
-  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
-    background: linear-gradient(180deg, transparent 0, color-mix(in srgb, var(--obsidian-0) 80%, transparent) 40px);
-  }
+/* ── The title row: plain caps, the pixel x on the right, a 2px groove under it (a seam in the plate, not a frame) ── */
+.book-head, .place-head.win-head, .places .win-head, .anchor-sheet .win-head {
+  position: relative;
+  min-height: 44px;
+  margin: 0 0 var(--px-u);
+  padding: 0;
+  border: 0;
+  box-shadow: var(--px-groove);
+  align-items: center;
 }
-@media (max-width: 900px) and (orientation: landscape), (hover: none) and (pointer: coarse) and (max-height: 500px) {
-  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
-    background: linear-gradient(90deg, transparent 0, color-mix(in srgb, var(--obsidian-0) 82%, transparent) 36px);
-    border: 0;
-  }
+.place-head h2, .places .win-head h2, .anchor-sheet .win-head h2, .book-head h2 {
+  margin: 0;
+  font: 700 20px/1.1 var(--font-pixel);
+  letter-spacing: .02em;
+  color: var(--cozy-glow);
+  text-shadow: 2px 2px 0 var(--cozy-wood-0);
+  /* A long name wraps to a second line inside the 44px row, it never pushes the x out. */
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
+.place-head .realm-tag, .anchor-sheet .realm-tag { display: none; }
+/* The grip (portrait sheets) lives INSIDE the plate's top edge now, never floating over the world. */
+.win-head::before { display: none; }
 
-/* The grip stays as a tiny pixel bar (pull down to put away). */
-.win-host::before { border-radius: 0; }
-
-/* The pixel x: a 7x7 drawing on a 3px grid (no font glyph), still a 44px target. */
+/* ── The pixel x: a 7x7 drawing on a 3px grid, a 44px target, the same in every window ── */
 .win-x, .book-close, .place-close { border: 0 !important; background: none !important; box-shadow: none !important; color: var(--adventure-parchment); position: relative; }
 .win-x > i, .book-close > i { display: none; }
 .win-x::before, .book-close::before {
@@ -2979,72 +3018,210 @@ input::placeholder { color: var(--adventure-hud-muted); }
   box-shadow: -9px -9px 0 0 currentColor, -9px 9px 0 0 currentColor, -6px -6px 0 0 currentColor, -6px 6px 0 0 currentColor, -3px -3px 0 0 currentColor, -3px 3px 0 0 currentColor, 0px 0px 0 0 currentColor, 3px 3px 0 0 currentColor, 3px -3px 0 0 currentColor, 6px 6px 0 0 currentColor, 6px -6px 0 0 currentColor, 9px 9px 0 0 currentColor, 9px -9px 0 0 currentColor, 2px 2px 0 0 color-mix(in srgb, var(--obsidian-0) 80%, transparent);
 }
 .win-x:hover, .win-x:focus-visible { color: var(--adventure-beacon-text); }
-.win-x:focus-visible { outline: 2px solid var(--adventure-hud-gold) !important; outline-offset: -2px; }
+/* Focus: a filled pixel square behind the x, not a ring that reads as a box around it. */
+.win-x:focus-visible, .book-close:focus-visible { outline: none !important; background: color-mix(in srgb, var(--gold-deep) 30%, transparent) !important; }
 
 /* Pixel "?": a small help button that opens a short card (the words that used to sit on screen). */
 .px-help {
   flex: none; display: grid; place-items: center; width: 44px; height: 44px; padding: 0; border: 0; background: none; cursor: pointer;
-  color: var(--adventure-parchment); font: 700 18px/1 Orbitron, sans-serif; text-shadow: 2px 2px 0 var(--obsidian-0);
+  color: var(--adventure-parchment); font: 700 14px/1 var(--font-game); text-shadow: 2px 2px 0 var(--obsidian-0);
 }
 .px-help i { display: grid; place-items: center; width: 24px; height: 24px; font-style: normal; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
 
-/* The Menu (places): names only, two to a row, so the whole list fits one screen. */
-.places ul { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.places li button {
-  min-height: 52px;
-  padding: 6px 10px;
+/* ── The body: the 8px grid; a 4px gutter so a cell's 2px pixel edge is never shaved off by the scroller ── */
+.place-body { padding: 0 4px 4px; margin: 0 -4px; }
+
+/* A station carries its own title row (its name, the wallet and the ?: station-shell in the world), so the window's own
+   title row steps aside and only its x stays, floating at the row's end. One row, at every size. */
+.place:not(.place--slate):has(.ss__head) .place-head {
+  position: absolute;
+  top: var(--wp-t);
+  right: calc(var(--wp-x) - 8px);
+  z-index: 3;
+  min-height: 44px;
+  margin: 0;
+  box-shadow: none;
+}
+.place:not(.place--slate):has(.ss__head) .place-head > div:first-child { display: none; }
+
+/* Plain buttons in the menus are pixel buttons: square, lit top-left, a 2px stepped edge. */
+.places li button, .places .win-body button:not(.win-x), .places-foot button, .anchor-row, .waystone-road {
   border: 0;
   border-radius: 0;
   background: var(--obsidian-2);
-  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
-  align-content: center;
+  box-shadow: var(--px-btn-rim);
+  text-shadow: 2px 2px 0 var(--obsidian-0);
 }
-.places li button:active { translate: 0 2px; }
+.places li button:active, .anchor-row:active, .waystone-road:not(:disabled):active { translate: 0 2px; }
+.places li button:hover, .places li button:focus-visible, .anchor-row:hover, .anchor-row:focus-visible, .waystone-road:not(:disabled):hover {
+  background: color-mix(in srgb, var(--gold-deep) 22%, var(--obsidian-2));
+  outline: none;
+}
+
+/* The Menu (places): names only, a grid of pixel buttons so the whole list fits one screen. */
+/* The list and the extra row (Return to camp, Restart hunt, Keys) share one column grid, so every button lines up. */
+.places { --places-cols: 3; }
+.places ul, .places .menu-extra { grid-template-columns: repeat(var(--places-cols), minmax(0, 1fr)); gap: var(--px-u); padding: 2px; }
+.places li button { min-height: 48px; padding: 4px 8px; align-content: center; font-size: 10px; letter-spacing: .06em; }
 .places small { display: none; }
 .places .win-body { overflow: auto; }
-
-/* The story card, Glim's talk and scenes: no box, just the words over the dim. */
-.story-veil { background: color-mix(in srgb, var(--obsidian-0) 66%, transparent); }
-.story-card { border: 0; box-shadow: none; background: none; text-shadow: 2px 2px 0 var(--obsidian-0); }
-.story-card::before { display: none; }
-.story-card__title { border-bottom: 0; padding-bottom: 0; }
-
-/* Plain buttons inside the Menu (Return to camp, Restart hunt…): pixel, no corner brackets. */
-.places .win-body button:not(.win-x), .places > button:not(.win-x), .places-foot button {
-  border: 0; border-radius: 0; background: var(--obsidian-2);
-  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
-}
-
-/* The Satchel's bag: five across, a page at a time (◀ ▶), never a scrolling column. */
-.book .pockets { grid-template-columns: repeat(5, minmax(0, 1fr)); }
-.bag-pager { display: flex; align-items: center; justify-content: center; gap: 10px; }
-.bag-pager__n { min-width: 56px; text-align: center; font: 700 12px/1 Orbitron, sans-serif; font-variant-numeric: tabular-nums; }
+.places .menu-extra { display: grid; margin-top: var(--px-u); }
+.places .menu-extra button { width: 100%; min-width: 0; min-height: 44px; padding: 4px 6px; font-size: 10px; }
 .places [data-open="oneworld"] small { display: none; }
-.places [data-open="oneworld"][aria-pressed="true"]::after { content: "ON"; justify-self: start; padding: 0 4px; font: 700 9px/14px Orbitron, sans-serif; background: var(--gold); color: var(--obsidian-0); text-shadow: none; }
+.places [data-open="oneworld"][aria-pressed="true"]::after { content: "ON"; justify-self: start; padding: 0 4px; font: 700 9px/14px var(--font-game); background: var(--gold); color: var(--obsidian-0); text-shadow: none; }
 
-@media (max-height: 520px) and (orientation: landscape) {
-  .place:not(.place--slate) .place-head { min-height: 44px; padding-bottom: 0; }
-  .place:not(.place--slate) .place-head h2 { font-size: 15px; }
-  /* A station carries its own title on its first row: the title bar shrinks to the floating x. */
-  .place:not(.place--slate):has(.ss__head) .place-head { position: absolute; top: 6px; right: 8px; z-index: 3; min-height: 44px; padding: 0; }
-  .place:not(.place--slate):has(.ss__head) .place-head > div:first-child { display: none; }
-}
-
-/* The Menu: three across on a phone held sideways; the three extra buttons are one row. */
-.places li button { min-height: 48px; padding: 4px 10px; }
-.places .menu-extra { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
-.places .menu-extra button { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 4px 6px; font-size: 10px; }
-@media (max-height: 520px) and (orientation: landscape) {
-  .places ul { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
-  .places li button { min-height: 44px; padding: 2px 6px; font-size: 10px; }
-}
+/* The Rift Anchors: the same buttons, one per row, the sentence above them in the plate. */
+.anchor-sheet { display: flex; flex-direction: column; overflow: hidden; }
+.anchor-lead { margin: 0 0 var(--px-u); font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
+.anchor-list { list-style: none; margin: 0; padding: 2px; display: grid; gap: var(--px-u); overflow: auto; min-height: 0; }
+.anchor-row { width: 100%; min-height: 48px; padding: 6px 12px; text-align: left; font: 600 12px var(--font-game); letter-spacing: .06em; color: var(--adventure-parchment); }
+.anchor-row--home { box-shadow: var(--px-on-rim), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent); }
 
 /* The Waystone: pixel road buttons, no sentence. */
-.waystone-road { border: 0; border-radius: 0; background: var(--obsidian-2);
-  box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent); }
-.waystone-road.here { box-shadow: 0 -2px 0 0 var(--gold-bright), 0 2px 0 0 var(--gold-bright), -2px 0 0 0 var(--gold-bright), 2px 0 0 0 var(--gold-bright); }
-.waystone-road b { font: 700 14px Orbitron, sans-serif; letter-spacing: .06em; text-transform: uppercase; }
+.waystone { gap: var(--px-u); padding: 2px; }
+.waystone-road.here { box-shadow: var(--px-on-rim), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent); }
+.waystone-road b { font: 700 14px var(--font-game); letter-spacing: .06em; text-transform: uppercase; }
 .place-body > .place-note:has(+ .waystone) { display: none; }
+
+/* The Satchel: its pieces are pixel cells on the plate. */
+.book .pockets { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.bag-pager { display: flex; align-items: center; justify-content: center; gap: 10px; }
+.bag-pager__n { min-width: 56px; text-align: center; font: 700 12px/1 var(--font-game); font-variant-numeric: tabular-nums; }
+.book-face, .bag-tab {
+  border: 0;
+  background: var(--obsidian-2);
+  box-shadow: var(--px-cell-rim);
+}
+.book-face.is-on, .bag-tab.is-on {
+  border: 0;
+  background: color-mix(in srgb, var(--gold) 24%, var(--obsidian-2));
+  box-shadow: var(--px-on-rim);
+  color: var(--adventure-beacon-text);
+}
+.book-purse { background: var(--obsidian-1); border-top: 0; box-shadow: var(--px-cell-rim); margin: 2px; }
+.slip-actions { background: var(--px-win-bg); }
+.bag-tabs { padding: 2px; gap: var(--px-u); }
+/* Wells and pockets: plain pixel cells (the brass corner ticks were a frame on every slot). Rarity is the cell's edge. */
+.book .well, .book .pocket {
+  border: 0;
+  background: var(--px-cell-bg);
+  box-shadow: var(--px-cell-rim);
+}
+.book .pocket {
+  box-shadow: 0 -2px 0 0 var(--rim, var(--px-cell-edge)), 0 2px 0 0 var(--rim, var(--px-cell-edge)), -2px 0 0 0 var(--rim, var(--px-cell-edge)), 2px 0 0 0 var(--rim, var(--px-cell-edge)), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 7%, transparent);
+}
+.book .well.prime { box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep); }
+.book .well.picked, .book .pocket.picked { border: 0; background: color-mix(in srgb, var(--gold) 20%, var(--px-cell-bg)); box-shadow: var(--px-on-rim); }
+.book .cell-empty { border: 0; background: color-mix(in srgb, var(--px-cell-bg) 55%, transparent); box-shadow: 0 -2px 0 0 var(--obsidian-3), 0 2px 0 0 var(--obsidian-3), -2px 0 0 0 var(--obsidian-3), 2px 0 0 0 var(--obsidian-3); }
+.book .pocket b {
+  right: 3px;
+  bottom: 2px;
+  font: 700 11px/1 var(--font-game);
+  text-shadow: 1px 1px 0 var(--obsidian-0), -1px -1px 0 var(--obsidian-0), 1px -1px 0 var(--obsidian-0), -1px 1px 0 var(--obsidian-0);
+}
+.book .wells, .book .pockets { padding: 2px; gap: var(--px-u); }
+
+/* Sound, Loot & Combat, Pets, Glim: the host IS the window; the sheet inside is its plain content. */
+.win-host { display: flex; flex-direction: column; overflow: auto; overscroll-behavior: contain; padding: 0; }
+.win-host > * { flex: 1 0 auto; }
+
+/* ── The story card, a scene, Glim's talk: one centred window over a light dim (not words on the world) ── */
+.story-veil { background: color-mix(in srgb, var(--obsidian-0) 55%, transparent); }
+.story-card {
+  border: 0;
+  border-radius: 0;
+  background: var(--px-win-planks), var(--px-win-bg);
+  color: var(--cozy-cream);
+  box-shadow: var(--px-win-rim), var(--px-win-inner), var(--px-win-drop);
+  padding: 16px;
+}
+.story-card::before { display: none; }
+.story-card__title { border-bottom: 0; padding-bottom: var(--px-u); box-shadow: var(--px-groove); margin-bottom: 12px; }
+.story-card__go, .glim-talk-card__close {
+  min-height: 44px;
+  border: 0;
+  border-radius: 0;
+  background: var(--cozy-brass);
+  color: var(--cozy-wood-0);
+  text-shadow: none;
+  box-shadow: 0 -2px 0 0 var(--cozy-brass-hi), 0 2px 0 0 var(--cozy-brass-lo), -2px 0 0 0 var(--cozy-brass-hi), 2px 0 0 0 var(--cozy-brass-lo), 0 4px 0 0 var(--cozy-wood-0);
+}
+.story-card__go:active, .glim-talk-card__close:active { translate: 0 2px; }
+
+/* ── Desktop: a window. A station or a page is a centred window (not the whole screen); the menus where they stood. ── */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .place:not(.place--slate) {
+    top: 72px;
+    bottom: 24px;
+    left: 0;
+    right: 0;
+    width: min(820px, calc(100% - 32px));
+    margin-inline: auto;
+  }
+  /* The Satchel: MapleStory's equip + item windows side by side (the doll left, the bag right), so neither scrolls. */
+  .book { width: min(720px, calc(100% - 348px - 32px)); }
+  .book-body { grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 16px; }
+  .book-doll { position: sticky; top: 0; align-self: start; }
+  .book .slip {
+    position: absolute;
+    left: calc(50% - 40px);
+    right: var(--wp-x);
+    bottom: var(--wp-b);
+    z-index: 2;
+    max-height: 60%;
+  }
+}
+
+/* ── Portrait phone: a bottom sheet, inset 8px so all four pixel edges read; the grip is a pixel bar in its top edge ── */
+@media (max-width: 900px) and (orientation: portrait) {
+  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
+    left: 8px;
+    right: 8px;
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    max-height: calc(85% - 8px);
+    --wp-t: 12px;
+    --wp-x: 12px;
+    --wp-b: 12px;
+    padding: var(--wp-t) calc(var(--wp-x) + env(safe-area-inset-right, 0px)) var(--wp-b) calc(var(--wp-x) + env(safe-area-inset-left, 0px));
+  }
+  .book, .place:not(.place--slate) { height: calc(85% - 8px); }
+  .win-host { padding: 0; --sheet-pad-b: 0px; }
+  .book::after, .places::after, .place:not(.place--slate)::after, .anchor-sheet::after, .win-host::before {
+    content: "";
+    display: block;
+    position: absolute;
+    inset: 4px auto auto 50%;
+    z-index: 4;
+    width: 40px;
+    height: 4px;
+    translate: -50% 0;
+    border: 0;
+    background: color-mix(in srgb, var(--gold-deep) 70%, transparent);
+    pointer-events: none;
+  }
+  .win-host::before { top: 4px; }
+}
+
+/* ── Landscape phone: a side panel on the right, inset 8px; the world and the move stick stay in view on the left ── */
+@media (max-width: 900px) and (orientation: landscape), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .book, .places, .place:not(.place--slate), .anchor-sheet, .win-host {
+    top: calc(8px + env(safe-area-inset-top, 0px));
+    right: calc(8px + env(safe-area-inset-right, 0px));
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+    --wp-t: 6px;
+    --wp-x: 12px;
+    --wp-b: 8px;
+    padding: var(--wp-t) var(--wp-x) var(--wp-b);
+  }
+  .win-host { padding: 0; --sheet-pad-b: 0px; }
+  .places { width: min(56%, 470px); --places-cols: 4; }
+  .places ul, .places .menu-extra { gap: 6px; }
+  .places .menu-extra { margin-top: 6px; }
+  .places li button { min-height: 44px; padding: 2px 6px; font-size: 10px; }
+  .book .wells, .book .pockets { gap: 4px; }
+  .places .win-head { margin-bottom: 6px; }
+  .book-head, .place-head.win-head, .places .win-head, .anchor-sheet .win-head { margin-bottom: 6px; }
+}
 /* ── Glim, alive (companion-host.ts): the tap target over Glim, its chat card, catch-the-light ── */
 .glim-hud {
   position: relative; display: grid; place-items: center; flex: none; width: 44px; height: 44px; padding: 0; margin-left: auto;
@@ -3082,3 +3259,99 @@ input::placeholder { color: var(--adventure-hud-muted); }
 .glim-mote:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
 @keyframes glim-mote { 0%, 100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-8px) scale(1.15); } }
 @media (prefers-reduced-motion: reduce) { .glim-mote i { animation: none; } }
+
+/* ── Cozy HUD (docs/handoff/cozy-ui.md) ────────────────────────────────────────────────────────────────
+   The HUD matches the cozy windows and the town (references: docs/design/refs/cozy/): wooden chips lit from the
+   top-left, brass for the one primary button, cream lettering, and the goal on a parchment quest scroll. The HUD's
+   own tokens are remapped here, so every plate that reads them turns to wood at once. */
+.stage {
+  --font-ui: var(--font-pixel);
+  --adventure-hud-panel: var(--cozy-plate); --adventure-hud-panel-warm: var(--cozy-wood-1); --adventure-hud-panel-solid: var(--cozy-plate);
+  --adventure-hud-panel-deep: var(--cozy-well); --adventure-hud-panel-raised: var(--cozy-wood-1); --adventure-hud-stage: var(--cozy-wood-0);
+  --adventure-hud-brass: var(--cozy-wood-hi); --adventure-hud-text: var(--cozy-cream); --adventure-hud-gold: var(--cozy-glow);
+  --adventure-ember: var(--cozy-brass); --adventure-beacon-text: var(--cozy-glow); --adventure-parchment: var(--cozy-cream);
+  --adventure-dialogue: color-mix(in srgb, var(--cozy-cream) 82%, var(--cozy-wood-3)); --adventure-button-ink: var(--cozy-wood-0);
+  --cozy-chip: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 color-mix(in srgb, var(--cozy-wood-hi) 40%, transparent), inset 0 -2px 0 0 var(--cozy-plate-seam), 0 4px 0 0 color-mix(in srgb, var(--cozy-wood-0) 50%, transparent);
+  --cozy-brass-chip: 0 0 0 2px var(--cozy-wood-0), inset 0 2px 0 0 var(--cozy-brass-hi), inset 0 -3px 0 0 var(--cozy-brass-lo), 0 4px 0 0 color-mix(in srgb, var(--cozy-wood-0) 50%, transparent);
+}
+/* The top band: a soft timber shade instead of the basalt strip. */
+.topbar { background: linear-gradient(180deg, color-mix(in srgb, var(--cozy-wood-0) 82%, transparent) 30%, transparent); border-bottom: 0; }
+.wordmark, .realm-tag { font-family: var(--font-pixel); letter-spacing: .12em; }
+.realm-tag { color: var(--cozy-brass-hi); }
+h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-shadow: 2px 2px 0 var(--cozy-wood-0); }
+
+/* Plates and buttons: one wooden chip, no brass corner ticks. */
+.vitals, .satchel, .dock, .prompt.armed, .hearth-pill, .station-tip {
+  border: 0; border-radius: 0;
+  background: var(--px-win-planks), var(--cozy-plate);
+  box-shadow: var(--cozy-chip);
+}
+:is(.topbar, .prompt, .touch, .guide, .hearth-pill, .dock, .satchel, .vitals, .fall-card) button:not(.win-x, .clasp, .glim-hud, .guide-glim, .guide-fold) {
+  border: 0; border-radius: 0;
+  background: var(--cozy-wood-2);
+  color: var(--cozy-cream);
+  box-shadow: var(--cozy-chip);
+  font: 600 14px/1 var(--font-pixel);
+  letter-spacing: .02em;
+  text-transform: none;
+}
+:is(.topbar, .prompt, .touch, .guide, .hearth-pill, .dock) button:not(.win-x, .clasp, .glim-hud, .guide-glim, .guide-fold):hover { background: var(--cozy-wood-3); color: var(--cozy-glow); }
+.top-actions button:first-child, .dock button[type="submit"], .prompt.armed > button:first-of-type, .slip-actions .wear, .fall-card button, .guide .guide-go {
+  background: var(--cozy-brass) !important;
+  color: var(--cozy-wood-0) !important;
+  box-shadow: var(--cozy-brass-chip) !important;
+  text-shadow: none;
+}
+.top-actions .quiet { background: color-mix(in srgb, var(--cozy-wood-1) 85%, transparent) !important; }
+:is(.topbar, .prompt, .touch, .guide, .dock) button:active { translate: 0 2px; }
+
+/* The goal: a parchment quest scroll — rolled timber rods top and bottom, ink lettering. */
+.guide {
+  border: 0; border-radius: 0;
+  background: var(--cozy-parch);
+  box-shadow:
+    0 -6px 0 0 var(--cozy-wood-3), 0 6px 0 0 var(--cozy-wood-3),
+    0 -8px 0 0 var(--cozy-wood-0), 0 8px 0 0 var(--cozy-wood-0),
+    -2px 0 0 0 var(--cozy-parch-edge), 2px 0 0 0 var(--cozy-parch-edge),
+    inset 0 -3px 0 0 var(--cozy-parch-shade),
+    0 12px 0 0 color-mix(in srgb, var(--cozy-wood-0) 35%, transparent);
+}
+.guide-text { color: var(--cozy-ink); }
+.guide-text b { color: var(--cozy-ink-soft); font: 700 13px/1.2 var(--font-pixel); letter-spacing: .06em; text-transform: none; }
+.guide-hide { color: var(--cozy-ink) !important; background: transparent !important; box-shadow: none !important; }
+.guide-glim { border: 0 !important; }
+.guide-fold { color: var(--cozy-ink); }
+.guide[data-chapter]::before { color: var(--cozy-ink-soft); background: var(--cozy-parch-shade); border: 0; box-shadow: 0 0 0 2px var(--cozy-wood-0); font-family: var(--font-pixel); }
+
+/* The quest scroll's line in the pixel hand, like the references. */
+.guide-text { font-family: var(--font-pixel); font-size: 15px; }
+
+/* Desktop: a window is as tall as what it holds (the Top Heroes reference: small panels round the world, never a
+   wall of empty plate); it still stops short of the bottom and scrolls inside past that. */
+@media (min-width: 901px) and (not ((hover: none) and (pointer: coarse) and (max-height: 500px))) {
+  .place:not(.place--slate) { bottom: auto; max-height: calc(100% - 96px); }
+  .book { bottom: auto; max-height: calc(100% - 198px); }
+}
+
+/* The top-down town's minimap: a round window in a timber ring with brass studs and a north mark, top-right like the
+   references. It only shows; the Places menu is the way to travel. */
+.td-mini {
+  position: absolute; z-index: 3; top: 160px; right: 16px;
+  width: 128px; height: 128px; border-radius: 50%; pointer-events: none;
+  background: var(--cozy-wood-3);
+  box-shadow: 0 0 0 3px var(--cozy-wood-0), inset 0 0 0 6px var(--cozy-wood-3), inset 0 0 0 8px var(--cozy-wood-0), 0 6px 0 0 color-mix(in srgb, var(--cozy-wood-0) 45%, transparent);
+}
+.td-mini canvas { position: absolute; inset: 8px; width: calc(100% - 16px); height: calc(100% - 16px); border-radius: 50%; image-rendering: pixelated; }
+.td-mini::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background:
+  radial-gradient(circle at 50% 2px, var(--cozy-brass-hi) 2px, transparent 3px), radial-gradient(circle at 50% calc(100% - 2px), var(--cozy-brass-hi) 2px, transparent 3px),
+  radial-gradient(circle at 2px 50%, var(--cozy-brass-hi) 2px, transparent 3px), radial-gradient(circle at calc(100% - 2px) 50%, var(--cozy-brass-hi) 2px, transparent 3px); }
+.td-mini__n { position: absolute; top: -7px; left: 50%; translate: -50% 0; width: 16px; height: 16px; display: grid; place-items: center;
+  font: 700 11px/1 var(--font-pixel); font-style: normal; color: var(--cozy-wood-0); background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-mini { top: calc(var(--hud-top, 56px) + var(--guide-h, 0px) + 14px); right: 10px; width: 84px; height: 84px; }
+}
+.stage--menu .td-mini { visibility: hidden; }
+
+/* The Satchel's purse row is sticky at the bottom: a cell scrolled into view (a thumb, a keyboard, a test) stops above
+   it, never under it. */
+.book :is(.pocket, .well) { scroll-margin-block: 8px 72px; }

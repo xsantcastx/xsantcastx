@@ -46,7 +46,7 @@
 
 .rp__eyebrow {
   display: inline-flex; align-items: center; gap: 0.45rem;
-  font: 600 0.64rem/1 'Orbitron', system-ui, sans-serif;
+  font: 600 0.64rem/1 var(--font-game);
   letter-spacing: 0.18em; text-transform: uppercase;
   color: #ff9a5a; margin: 0 0 0.3rem;
 }
@@ -285,7 +285,7 @@
 }
 
 .rp__orb-level {
-  font: 700 0.62rem/1 'Orbitron', system-ui, sans-serif;
+  font: 700 0.62rem/1 var(--font-game);
   color: var(--obsidian-0);
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.8);
 }

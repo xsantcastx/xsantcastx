@@ -1285,7 +1285,7 @@ export class SideScrollerComponent implements OnDestroy {
     // Inline (Angular's encapsulated CSS skips nodes it did not render): a framed pixel icon with a sparkle.
     el.style.cssText = `position:absolute;z-index:8;left:${sx}px;top:${sy}px;width:52px;height:52px;display:grid;place-items:center;pointer-events:none;`
       + 'transform:translate(-50%,-50%);border:2px solid var(--adventure-ember);border-radius:2px;background:var(--adventure-hud-panel-solid);'
-      + 'box-shadow:0 0 0 2px var(--adventure-hud-shadow),0 0 22px var(--adventure-ember);color:var(--adventure-parchment);font:600 14px Orbitron,sans-serif;';
+      + 'box-shadow:0 0 0 2px var(--adventure-hud-shadow),0 0 22px var(--adventure-ember);color:var(--adventure-parchment);font:600 14px var(--font-game);';
     el.querySelector('img')?.setAttribute('style', 'width:40px;height:40px;image-rendering:pixelated;');
     for (const [x, y, delay] of [[-10, -12, 0], [58, 4, 120], [46, 54, 240], [-8, 44, 360]]) {
       const spark = document.createElement('i');
@@ -2698,6 +2698,10 @@ export class SideScrollerComponent implements OnDestroy {
   }
   /** The minimap and the open full map, from the engine's explored cells (the HUD tick, 5 a second). */
   private drawMaps(): void {
+    if (this.topDown) {
+      const mini = (this.host.nativeElement as HTMLElement).querySelector<HTMLCanvasElement>('.td-mini canvas');
+      if (mini) (this.engine as unknown as { drawMinimap?: (c: HTMLCanvasElement) => void } | undefined)?.drawMinimap?.(mini);
+    }
     if (!this.state.delve) { if (this.map.open) this.closeMap(); return; }
     const host = this.host.nativeElement as HTMLElement;
     this.map.drawMini(host.querySelector<HTMLCanvasElement>('.map-mini canvas') ?? undefined);

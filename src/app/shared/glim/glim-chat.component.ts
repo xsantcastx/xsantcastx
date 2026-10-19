@@ -47,17 +47,19 @@ import type { GlimMood } from './glim-art';
       display: grid; gap: 8px; width: 100%; box-sizing: border-box; padding: 10px 12px;
       border: 0; background: none; color: var(--adventure-parchment); text-shadow: 2px 2px 0 var(--obsidian-0);
     }
-    .gc__head { display: flex; align-items: center; gap: 8px; }
-    .gc__head h2 { flex: 1; margin: 0; text-transform: uppercase; font: 600 14px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-beacon-text); }
+    .gc__head { display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 4px; box-shadow: var(--px-groove); }
+    .gc__head h2 { flex: 1; margin: 0; text-transform: uppercase; font: 700 15px/1.1 var(--font-game); letter-spacing: .08em; color: var(--adventure-beacon-text); }
     .gc__face { width: 36px; height: 30px; }
-    .gc__reply { margin: 0; font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); }
-    .gc__choices { display: grid; gap: 6px; }
-    .gc__choice, .gc__close, .gc__quiet {
+    .gc__reply { margin: 0; padding: 8px 10px; font: italic 400 15px/1.35 var(--font-lore, Georgia, serif); color: var(--adventure-dialogue); background: var(--px-cell-bg); box-shadow: var(--px-cell-rim); }
+    /* MapleStory's NPC chat: the choices are a grid of pixel buttons, two across, so all of them show at once. */
+    .gc__choices { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; padding: 2px; }
+    .gc__choice, .gc__quiet {
       min-height: 44px; padding: 6px 12px; border-radius: 0; cursor: pointer; text-align: left;
-      font: 600 12px Orbitron, sans-serif; letter-spacing: .06em; color: var(--adventure-parchment);
-      border: 0; background: var(--obsidian-2); box-shadow: 0 -2px 0 0 var(--gold-deep), 0 2px 0 0 var(--gold-deep), -2px 0 0 0 var(--gold-deep), 2px 0 0 0 var(--gold-deep), inset 2px 2px 0 0 color-mix(in srgb, var(--gold-bright) 14%, transparent);
+      font: 600 12px var(--font-game); letter-spacing: .06em; color: var(--adventure-parchment);
+      border: 0; background: var(--obsidian-2); box-shadow: var(--px-btn-rim);
     }
-    .gc__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .gc__choice:active, .gc__quiet:active { translate: 0 2px; }
+    .gc__foot { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 2px; }
     .gc__small { margin: 0; font-size: 12px; line-height: 1.4; color: var(--adventure-dialogue); opacity: .85; }
     .gc__choice:focus-visible, .gc__quiet:focus-visible { outline: 2px solid var(--adventure-hud-gold); outline-offset: 2px; }
   `],

@@ -37,7 +37,7 @@
   border-radius: 2px;
   background: var(--obsidian-2);
   color: var(--gold-bright);
-  font: 600 11px Orbitron, sans-serif;
+  font: 600 11px var(--font-game);
   letter-spacing: .08em;
   text-transform: uppercase;
   cursor: pointer;

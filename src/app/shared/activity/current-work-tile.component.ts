@@ -130,7 +130,7 @@ const TILE_BY_DISCIPLINE: Record<TileDiscipline, TileCopy> = {
       outline-offset: -2px;
     }
     .cwt__label {
-      font: 600 0.68rem/1 'Orbitron', system-ui, sans-serif;
+      font: 600 0.68rem/1 var(--font-game);
       letter-spacing: 0.12em;
       text-transform: uppercase;
       color: var(--work);
