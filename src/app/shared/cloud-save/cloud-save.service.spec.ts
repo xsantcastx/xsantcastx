@@ -69,3 +69,127 @@ describe('CloudSaveService.bind waits for App Check', () => {
     expect(attach).toHaveBeenCalled();
   });
 });
+
+/**
+ * Resuming on page load — the cross-save path (docs/handoff/cross-save.md).
+ *
+ * A signed-in device must re-attach to Firestore on every load without the
+ * player touching anything: that attach is both the pull (another device's
+ * progress lands here) and what arms the push (this device's play goes up).
+ * When the shell stopped calling `init()` the whole feature went dark while
+ * every spec here stayed green, because none of them started from a reload.
+ */
+describe('CloudSaveService.init resumes a signed-in device', () => {
+  const BOUND = 'cloud-save-uid';
+  const REDIRECT = 'cloud-save-redirect';
+  const user = { uid: 'u-phone', email: 'p@x.y', displayName: 'P', photoURL: null };
+
+  let attach: jasmine.Spy;
+  let authLoads: jasmine.Spy;
+  let fakeAuth: {
+    getAuth: jasmine.Spy;
+    getRedirectResult: jasmine.Spy;
+    onAuthStateChanged: jasmine.Spy;
+  };
+
+  beforeEach(() => {
+    localStorage.removeItem(BOUND);
+    sessionStorage.removeItem(REDIRECT);
+    spyOn(CloudSaveService.prototype as unknown as { awaitAppCheck: () => Promise<unknown> }, 'awaitAppCheck')
+      .and.returnValue(Promise.resolve(null));
+    // Run the idle callback straight away; the timing is not what is under test.
+    spyOn(CloudSaveService.prototype as unknown as { whenIdle: (fn: () => void) => void }, 'whenIdle')
+      .and.callFake((fn: () => void) => fn());
+
+    fakeAuth = {
+      getAuth: jasmine.createSpy('getAuth').and.returnValue({}),
+      getRedirectResult: jasmine.createSpy('getRedirectResult').and.resolveTo(null),
+      onAuthStateChanged: jasmine.createSpy('onAuthStateChanged')
+        .and.callFake((_auth: unknown, next: (u: unknown) => void) => { setTimeout(() => next(user)); return () => undefined; }),
+    };
+    authLoads = spyOn(CloudSaveService.prototype as unknown as { auth: () => Promise<unknown> }, 'auth')
+      .and.callFake(() => Promise.resolve(fakeAuth));
+
+    attach = jasmine.createSpy('attach').and.resolveTo({ adopted: ['godforge-economy'], seeded: false });
+    TestBed.configureTestingModule({
+      providers: [
+        { provide: PLATFORM_ID, useValue: 'browser' },
+        {
+          provide: GameStateGateway,
+          useValue: {
+            attach,
+            detach: async () => undefined,
+            deviceSnapshot: () => null,
+            restoreDeviceSnapshot: async () => true,
+          },
+        },
+        { provide: LazyFirestoreService, useValue: { get: async () => ({ db: {}, api: {} }) } },
+        { provide: EasterEggService, useValue: { trigger: async () => undefined } },
+      ],
+    });
+  });
+
+  afterEach(() => {
+    localStorage.removeItem(BOUND);
+    sessionStorage.removeItem(REDIRECT);
+  });
+
+  async function settled(cloud: CloudSaveService): Promise<void> {
+    for (let i = 0; i < 50 && cloud.status.state === 'syncing'; i++) {
+      await new Promise(r => setTimeout(r, 5));
+    }
+  }
+
+  it('re-attaches the bound account on load, with no click', async () => {
+    localStorage.setItem(BOUND, user.uid);
+    const cloud = TestBed.inject(CloudSaveService);
+
+    cloud.init();
+    expect(cloud.status.uid).toBe(user.uid);
+    await settled(cloud);
+
+    expect(attach).toHaveBeenCalledTimes(1);
+    expect(attach.calls.mostRecent().args[0]).toBe(user.uid);
+    expect(cloud.status.state).toBe('synced');
+  });
+
+  it('finishes a redirect sign-in that has just come back from Google', async () => {
+    sessionStorage.setItem(REDIRECT, '1');
+    const cloud = TestBed.inject(CloudSaveService);
+
+    cloud.init();
+    await settled(cloud);
+
+    expect(fakeAuth.getRedirectResult).toHaveBeenCalled();
+    expect(attach).toHaveBeenCalledTimes(1);
+    expect(localStorage.getItem(BOUND)).toBe(user.uid);
+    expect(sessionStorage.getItem(REDIRECT)).toBeNull();
+  });
+
+  it('costs a signed-out visitor nothing: no auth SDK, no Firestore, no attach', async () => {
+    const cloud = TestBed.inject(CloudSaveService);
+
+    cloud.init();
+    await new Promise(r => setTimeout(r, 20));
+
+    expect(authLoads).not.toHaveBeenCalled();
+    expect(attach).not.toHaveBeenCalled();
+    expect(cloud.status.state).toBe('off');
+  });
+
+  it('drops a lapsed binding instead of syncing forever', async () => {
+    localStorage.setItem(BOUND, user.uid);
+    fakeAuth.onAuthStateChanged.and.callFake((_a: unknown, next: (u: unknown) => void) => {
+      setTimeout(() => next(null));
+      return () => undefined;
+    });
+    const cloud = TestBed.inject(CloudSaveService);
+
+    cloud.init();
+    await settled(cloud);
+
+    expect(attach).not.toHaveBeenCalled();
+    expect(cloud.status.state).toBe('off');
+    expect(localStorage.getItem(BOUND)).toBeNull();
+  });
+});
