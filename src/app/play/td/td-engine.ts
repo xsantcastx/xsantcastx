@@ -24,6 +24,7 @@ import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
+import { MOBS, MobSystem, mobSheet, type Mob } from './td-mobs';
 
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
@@ -43,6 +44,14 @@ export class TopDownEngine {
   /** The level the Keeper is on: the surface, or a hand-drawn floor under it. */
   private level: TdLevel;
   private readonly levels = new Map<string, HandLevel>();
+  /** Monsters, the Keeper's fight and the loot on the ground (td-mobs.ts). */
+  private readonly mobs: MobSystem;
+  private hp = 100;
+  private readonly maxHp = 100;
+  private lastHurt = -99;
+  private messageAge = 0;
+  private spawnTimer = 0;
+  private chaseTimer = 0;
   /** The stamped town (its stalls, keepers and streets); the ground and walls everywhere come from `world`. */
   private readonly map: TdMap;
   private readonly chunks = new Map<string, HTMLCanvasElement[]>();
@@ -86,6 +95,13 @@ export class TopDownEngine {
     this.world = new TdWorld();
     this.map = this.world.town;
     this.level = this.world;
+    this.mobs = new MobSystem({
+      options: this.options,
+      walkable: (c, r) => this.level.walkable(c, r),
+      levelId: () => this.level.id,
+      player: () => this.player,
+      hurtPlayer: n => this.hurt(n),
+    });
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
     for (const s of this.map.stalls) {
@@ -141,6 +157,7 @@ export class TopDownEngine {
   }
   setInput(action: EngineInput, pressed: boolean): void {
     // The side view's on-screen buttons: left/right walk, down walks south, jump walks north.
+    if (action === 'attack') { this.mobs.attacking = pressed; return; }
     const key = action === 'left' ? 'a' : action === 'right' ? 'd' : action === 'down' ? 's' : action === 'jump' ? 'w' : '';
     if (!key) return;
     if (pressed) { this.keys.add(key); this.path = []; } else this.keys.delete(key);
@@ -200,11 +217,24 @@ export class TopDownEngine {
     this.level = level;
     this.chunks.clear();
     this.path = []; this.arrive = null; this.puffs = [];
+    this.mobs.enterLevel(level === this.world ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
     const s = level.stalls.find(st => st.station.id === at);
     if (s) { this.player.x = s.x; this.player.y = s.y + 14; }
     this.player.dir = 'down';
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
     this.report();
+  }
+
+  /** A creature's bite. At zero the Keeper wakes in the square, whole (a cozy fall: nothing is lost). */
+  private hurt(n: number): void {
+    this.hp = Math.max(0, this.hp - n);
+    this.lastHurt = this.time;
+    if (this.hp > 0) return;
+    this.hp = this.maxHp;
+    this.message = 'You fell, and woke in the square.';
+    this.enter(this.world, '');
+    this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y;
+    this.mobs.target = null;
   }
 
   // ── Simulation ─────────────────────────────────────────────────────────────
@@ -251,6 +281,9 @@ export class TopDownEngine {
     }
     this.nearby = best;
     this.updateSmoke(dt);
+    this.updateFight(dt);
+    // A line of the engine's own (a fall) fades from the HUD after a few seconds.
+    if (this.message) { this.messageAge += dt; if (this.messageAge > 4) { this.message = ''; this.messageAge = 0; } }
     this.stateTimer -= dt;
     if (this.stateTimer <= 0) { this.stateTimer = .1; this.report(); }
   }
@@ -269,7 +302,7 @@ export class TopDownEngine {
   private report(): void {
     const s = this.nearby;
     const state: EngineState = {
-      hp: 100, enemyHp: 0, nearby: s ? s.station.id : null,
+      hp: Math.round(this.hp), enemyHp: 0, nearby: s ? s.station.id : null,
       nearbyLabel: s?.station.label, nearbyKind: s?.station.kind,
       x: Math.round(this.player.x), y: Math.round(this.player.y),
       area: this.level.placeName(this.player.x, this.player.y), areaId: 'infernal', facing: this.player.face,
@@ -337,6 +370,7 @@ export class TopDownEngine {
       if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || this.paused) return;
       // E opens the stall in reach (the side view handled E inside its own engine).
       if (down && !e.repeat && (k === 'e' || k === 'enter') && this.nearby) { e.preventDefault(); this.interact(); return; }
+      if (k === 'j' || k === ' ') { e.preventDefault(); this.mobs.attacking = down; return; }
       if (!['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) return;
       if (down) { this.keys.add(k); this.path = []; } else this.keys.delete(k);
     };
@@ -377,6 +411,10 @@ export class TopDownEngine {
   }
   private tap(clientX: number, clientY: number): void {
     const { x: wx, y: wy } = this.toWorld(clientX, clientY);
+    // A creature under the finger is the target (Tibia's click-to-attack): the Keeper closes in and swings.
+    const foe = this.mobs.mobAt(wx, wy);
+    if (foe) { this.mobs.target = foe; this.chaseTimer = 0; return; }
+    this.mobs.target = null;
     const hit = this.stallAt(wx, wy);
     if (hit) { this.walkTo(hit.x, hit.y + 10, () => this.use(hit)); return; }
     this.walkTo(wx, wy);
@@ -489,6 +527,30 @@ export class TopDownEngine {
     }
   }
 
+  // ── The fight ──────────────────────────────────────────────────────────────
+
+  private updateFight(dt: number): void {
+    // The endless surface hands over the spawns round the Keeper as they come into reach, and forgets far ones.
+    this.spawnTimer -= dt;
+    if (this.spawnTimer <= 0 && this.level === this.world) {
+      this.spawnTimer = .5;
+      const r = 420;
+      this.mobs.addSpawns(this.world.spawnsIn(this.player.x - r, this.player.y - r, this.player.x + r, this.player.y + r));
+      this.mobs.prune(900);
+    }
+    // Chasing a target (Tibia): walk into reach of it, re-aimed as it moves.
+    const t = this.mobs.target;
+    this.chaseTimer -= dt;
+    if (t && this.chaseTimer <= 0 && !this.keys.size && !this.joy?.active) {
+      this.chaseTimer = .4;
+      if (Math.hypot(t.x - this.player.x, t.y - this.player.y) > 20) { const route = this.route(this.player.x, this.player.y, t.x, t.y); if (route) { this.path = route; this.arrive = null; } }
+      else this.path = [];
+    }
+    this.mobs.update(dt);
+    // Out of the fight a while: the Keeper mends.
+    if (this.hp < this.maxHp && this.time - this.lastHurt > 4) this.hp = Math.min(this.maxHp, this.hp + 6 * dt);
+  }
+
   // ── Smoke ──────────────────────────────────────────────────────────────────
 
   private updateSmoke(dt: number): void {
@@ -575,6 +637,8 @@ export class TopDownEngine {
     const surface = this.level === this.world;
     for (const k of this.keepers) if (surface && inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawPerson(k, 'idle') });
     for (const f of this.folk) if (surface && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
+    for (const g of this.mobs.drops) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g.x, g.y, g.color, !!g.item || !!g.rune, g.coins > 0) });
+    for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -620,7 +684,54 @@ export class TopDownEngine {
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
     for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 38, '#f3e7cf');
+    this.drawFightUi(inView);
     if (this.nearby) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 58 : 36), '#ffd27a');
+  }
+
+  private drawMob(m: Mob): void {
+    const c = this.ctx, d = m.def, sheet = mobSheet(d), f = Math.floor(m.t * 4) % 2;
+    c.fillStyle = 'rgba(30,18,26,.3)'; c.fillRect(Math.round(m.x - d.w / 2 + 2), Math.round(m.y - 2), d.w - 4, 3);
+    // The target stands in a red pixel square (Tibia).
+    if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
+    c.save();
+    c.translate(Math.round(m.x), Math.round(m.y - d.h));
+    if (m.face < 0) c.scale(-1, 1);
+    c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
+    if (m.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .7; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
+    c.restore();
+  }
+  /** A drop on the ground: a coin pile, a sack, or gear lying in a beam of its rarity colour. */
+  private drawDrop(x: number, y: number, color: string, gear: boolean, coins: boolean): void {
+    const c = this.ctx, X = Math.round(x), Y = Math.round(y);
+    if (gear) {
+      c.globalAlpha = .28 + Math.sin(this.time * 4) * .08; c.fillStyle = color; c.fillRect(X - 1, Y - 26, 3, 24); c.globalAlpha = 1;
+      c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 6, 9, 5); c.fillStyle = color; c.fillRect(X - 3, Y - 5, 7, 3); c.fillStyle = '#ffffff'; c.fillRect(X - 2, Y - 5, 2, 1);
+    } else if (coins) {
+      c.fillStyle = '#2a1a24'; c.fillRect(X - 5, Y - 5, 10, 5); c.fillStyle = '#e8a83a'; c.fillRect(X - 4, Y - 4, 8, 3); c.fillStyle = '#ffd25a'; c.fillRect(X - 3, Y - 5, 3, 2); c.fillRect(X + 1, Y - 4, 2, 1);
+    } else {
+      c.fillStyle = '#2a1a24'; c.fillRect(X - 4, Y - 8, 8, 8); c.fillStyle = '#a8743f'; c.fillRect(X - 3, Y - 7, 6, 6); c.fillStyle = '#c99657'; c.fillRect(X - 3, Y - 7, 6, 2);
+    }
+  }
+  /** Names and health over creatures, labels over gear on the ground, the numbers that float up. */
+  private drawFightUi(inView: (x: number, y: number, pad?: number) => boolean): void {
+    const c = this.ctx;
+    c.textAlign = 'center'; c.textBaseline = 'bottom';
+    for (const m of this.mobs.mobs) {
+      if (!inView(m.x, m.y) || Math.hypot(m.x - this.player.x, m.y - this.player.y) > 150) continue;
+      const top = m.y - m.def.h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
+      c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
+      c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
+      c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(m.def.name, Math.round(m.x) + 1, Math.round(top) - 1);
+      c.fillStyle = m === this.mobs.target ? '#ff8a7a' : '#f3e7cf'; c.fillText(m.def.name, Math.round(m.x), Math.round(top) - 2);
+    }
+    for (const g of this.mobs.drops) if ((g.item || g.rune) && inView(g.x, g.y) && Math.hypot(g.x - this.player.x, g.y - this.player.y) < 110) this.plate(g.label, g.x, g.y - 28, g.color);
+    c.font = 'bold 8px "Pixelify Sans", monospace';
+    for (const f of this.mobs.floaters) {
+      c.globalAlpha = Math.max(0, 1 - f.age);
+      c.fillStyle = '#1a1014'; c.fillText(f.text, Math.round(f.x) + 1, Math.round(f.y) + 1);
+      c.fillStyle = f.color; c.fillText(f.text, Math.round(f.x), Math.round(f.y));
+    }
+    c.globalAlpha = 1;
   }
 
   private drawPerson(p: Person, action: 'idle' | 'run' | 'walk'): void {

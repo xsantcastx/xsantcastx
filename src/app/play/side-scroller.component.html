@@ -28,8 +28,8 @@
     }
   }
   <!-- Top-down: what just happened (a deed, a refusal) as a short toast above the prompt; it fades by itself. -->
-  @if (topDown && message) {
-    @for (m of [message]; track m) { <p class="td-toast" role="status" data-engine-ignore>{{ m }}</p> }
+  @if (topDown && (message || engineMessage)) {
+    @for (m of [message || engineMessage]; track m) { <p class="td-toast" role="status" data-engine-ignore>{{ m }}</p> }
   }
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {

@@ -8,6 +8,7 @@
 import type { StationDef } from '../world/world.model';
 import { bones, boulder, chest, ladderUp, oreSeam, torchPost, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
+import type { MobSpawn } from './td-mobs';
 
 /** What the engine asks of any level. */
 export interface TdLevel {
@@ -19,6 +20,8 @@ export interface TdLevel {
   placeName(x: number, y: number): string;
   /** Always dark (a dungeon): the night pass runs at full dark whatever the hour. */
   readonly dark: boolean;
+  /** Where creatures spawn in (or near) the rectangle (art px). */
+  spawnsIn(x0: number, y0: number, x1: number, y1: number): MobSpawn[];
 }
 
 /** A way between levels: stand on it and use it (E, a tap) to go. */
@@ -34,6 +37,8 @@ export interface LegendEntry {
   /** A station on this tile (the seam is the play view's mining; a ladder is an exit). */
   station?: StationDef;
   exit?: TdExit;
+  /** A creature spawns here (td-mobs MOBS id). */
+  mob?: string;
 }
 
 /** A hand-made map: rows of characters, one per tile, read through the legend. */
@@ -58,6 +63,7 @@ export class HandLevel implements TdLevel {
   private readonly objects: TdObject[] = [];
   private readonly grid: Ground[] = [];
   private readonly blocked = new Set<number>();
+  private readonly spawns: MobSpawn[] = [];
   private readonly cols: number;
   private readonly rows: number;
 
@@ -76,6 +82,7 @@ export class HandLevel implements TdLevel {
         }
         if (e.station) this.stalls.push({ station: e.station, x, y: y + 6 });
         if (e.exit) this.exits.set(e.station?.id ?? `exit-${c},${r}`, e.exit);
+        if (e.mob) this.spawns.push({ key: `${def.id}:${c},${r}`, type: e.mob, x, y });
       }
     });
   }
@@ -93,4 +100,5 @@ export class HandLevel implements TdLevel {
     return this.objects.filter(o => o.x >= x0 && o.x <= x1 && o.y >= y0 && o.y <= y1);
   }
   placeName(): string { return this.def.name; }
+  spawnsIn(): MobSpawn[] { return this.spawns; }
 }

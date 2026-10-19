@@ -11,6 +11,7 @@
 import { boulder, bush, flowerbed, hash, oreSeam, tree, TILE, type Ground } from './td-art';
 import { buildSeamworksSquare, type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import type { TdLevel } from './td-level';
+import type { MobSpawn } from './td-mobs';
 
 export const WORLD_CHUNK = 16;
 /** Clear ground round the stamped town before the wilds begin (tiles). */
@@ -18,7 +19,7 @@ const TOWN_MARGIN = 3;
 /** Chunks of wild objects kept in memory. */
 const KEEP_CHUNKS = 160;
 
-interface WildChunk { objects: TdObject[]; blocked: Set<number> }
+interface WildChunk { objects: TdObject[]; blocked: Set<number>; spawns: MobSpawn[] }
 
 /** Smooth value noise in [0, 1): bilinear over hashed lattice points, smoothstepped. */
 function noise(x: number, y: number, salt: number): number {
@@ -100,6 +101,15 @@ export class TdWorld implements TdLevel {
     return out;
   }
 
+  /** Creature spawns in the wild chunks under the rectangle (none near town: the square is safe). */
+  spawnsIn(x0: number, y0: number, x1: number, y1: number): MobSpawn[] {
+    const out: MobSpawn[] = [], span = WORLD_CHUNK * TILE;
+    for (let cy = Math.floor(y0 / span); cy <= Math.floor(y1 / span); cy++) {
+      for (let cx = Math.floor(x0 / span); cx <= Math.floor(x1 / span); cx++) out.push(...this.chunkAt(cx, cy).spawns);
+    }
+    return out;
+  }
+
   /**
    * A name for where the Keeper stands: the town, or the wild REGION round them. Regions are big (64×64 tiles, a long
    * walk across) and named once from their centre, so a pond or a copse never flips the name (it did, every few steps).
@@ -128,7 +138,7 @@ export class TdWorld implements TdLevel {
 
   /** The wilds of one chunk: trees thick in the woods, boulders on the hills, bushes and flower beds, rare ore. */
   private makeChunk(cx: number, cy: number): WildChunk {
-    const objects: TdObject[] = [], blocked = new Set<number>();
+    const objects: TdObject[] = [], blocked = new Set<number>(), spawns: MobSpawn[] = [];
     for (let r = cy * WORLD_CHUNK; r < (cy + 1) * WORLD_CHUNK; r++) {
       for (let c = cx * WORLD_CHUNK; c < (cx + 1) * WORLD_CHUNK; c++) {
         if (this.nearTown(c, r)) continue;
@@ -159,6 +169,18 @@ export class TdWorld implements TdLevel {
         }
       }
     }
-    return { objects, blocked };
+    // Creatures: about one chunk in three holds a small pack, never within a few chunks of the square.
+    const tc = Math.floor(this.town.cols / 2 / WORLD_CHUNK), tr = Math.floor(this.town.rows / 2 / WORLD_CHUNK);
+    if (Math.max(Math.abs(cx - tc), Math.abs(cy - tr)) >= 3 && hash(cx, cy, 77) < .34) {
+      const pack = 1 + Math.floor(hash(cx, cy, 78) * 3);
+      for (let i = 0, tries = 0; i < pack && tries < 24; tries++) {
+        const c = cx * WORLD_CHUNK + Math.floor(hash(cx * 31 + tries, cy, 79) * WORLD_CHUNK), r = cy * WORLD_CHUNK + Math.floor(hash(cx, cy * 31 + tries, 80) * WORLD_CHUNK);
+        const g = this.ground(c, r);
+        if ((g !== 'grass' && g !== 'flowers' && g !== 'dirt') || blocked.has(this.key(c, r))) continue;
+        spawns.push({ key: `w:${c},${r}`, type: 'rivet-maw', x: c * TILE + TILE / 2, y: r * TILE + TILE });
+        i++;
+      }
+    }
+    return { objects, blocked, spawns };
   }
 }
