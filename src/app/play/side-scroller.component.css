@@ -3421,7 +3421,7 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
     background: none; backdrop-filter: none;
     align-items: flex-start; justify-content: flex-end;
     padding: 0 0 18px 28px;
-    --ph-max: 330px; --ph-hfrac: .8;
+    /* Full height (the tables inside need every pixel for 44px targets); the corner and the clear world make it a phone in the hand. */
   }
 }
 

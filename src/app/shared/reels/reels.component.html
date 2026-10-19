@@ -63,9 +63,12 @@
         <span class="rl-bet__val"><small>{{ t('games.bet.label') }}</small>{{ fmt(bet) }}</span>
         <button type="button" class="rl-bet__btn" [attr.aria-label]="t('games.bet.more')" [disabled]="busy || !!auto || bet >= bets[bets.length - 1]" (click)="stepBet(1)">+</button>
       </div>
-      <app-action-button class="rl-spin" [label]="t('reels.spin')" [costs]="costs" chips="currency"
-                         [blocked]="blocked" [pending]="!hydrated" (act)="tapSpin()" (refused)="result = $event" />
-      @if (busy) { <button type="button" class="rl-skip" (click)="skip()">{{ t('reels.skip') }}</button> }
+      <!-- Skip takes the Spin button's own place while the reels turn (it used to appear beside it and shove Spin aside). -->
+      <div class="rl-spinwrap">
+        <app-action-button class="rl-spin" [label]="t('reels.spin')" [costs]="costs" chips="currency"
+                           [blocked]="blocked" [pending]="!hydrated" (act)="tapSpin()" (refused)="result = $event" />
+        @if (busy) { <button type="button" class="rl-skip" (click)="skip()">{{ t('reels.skip') }}</button> }
+      </div>
     </div>
     <div class="rl-quick">
       <app-bet-chips [bet]="bet" [gps]="gps" [gold]="gold" [disabled]="busy || !!auto" (pick)="setBet($event)" />

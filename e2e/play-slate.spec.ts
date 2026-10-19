@@ -5,7 +5,7 @@
  * spin at Lune Coyne's Reels, has her hand the Slate over (her counter says so
  * and the HUD grows a Slate button). Then travel to the Seamworks, go down into
  * the Ember Delve and open the Slate there (P on desktop, the button on a
- * phone): the world pauses, the Reels are on the glass, and a second pinned spin
+ * phone): the world goes on round it (owner 2026-10-19), the Reels are on the glass, and a second pinned spin
  * lands on the same ledger (one record, paid once). The Homestead tab collects
  * the receipt and builds the next building. A reload keeps the Slate, the plays
  * and the purchase, and pays nothing again. Screenshots go to output/slate/ (not
@@ -138,7 +138,7 @@ for (const size of [{ width: 1280, height: 800 }, { width: 390, height: 844 }]) 
       await expect(reels(page).locator('.rl-result')).toContainText(`You won ${second.win} Gold.`, { timeout: 10000 });
       await expect.poll(async () => (await plays(page)).filter(p => p.seq === 1 && p.paid && p.win === second.win).length, { timeout: 10000 }).toBe(1);
       expect(await totalPlays(page)).toBe(11);
-      // Paused: the Keeper has not moved while the Slate was up.
+      // The world runs on round the Slate, but nothing walked the Keeper: they stand where they were.
       expect(await canvas(page).getAttribute('data-player-x')).toBe(x);
 
       // ── The Homestead tab: collect the receipt, build the next building ──
