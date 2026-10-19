@@ -24,6 +24,11 @@ import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
 import { HandLevel, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
+import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
+import type { TdMapDef } from './td-level';
+
+/** Every hand-drawn level under (or over) the surface, by id. */
+const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3 };
 import { MobSystem, mobSheet, type Mob } from './td-mobs';
 import { MAX_MANA, SKILLS, defaultBar, type SkillId } from './td-skills';
 
@@ -249,8 +254,9 @@ export class TopDownEngine {
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
     if (this.level instanceof HandLevel) {
+      // A ladder, stairs or a hole: to the level it names, in front of its own way back.
       const exit = this.level.exits.get(id);
-      if (exit?.to === 'surface') { this.enter(this.world, 'delve'); return; }
+      if (exit) { this.enter(exit.to === 'surface' ? this.world : this.handLevel(exit.to), exit.arrive); return; }
     }
     if (id === 'ore' || id === 'forge' || id === 'beacon') this.options.onInteract?.(id);
     else this.options.onStation?.(s.station);
@@ -280,14 +286,15 @@ export class TopDownEngine {
     let s: TdStall | undefined, best = Infinity;
     for (const st of this.level.stalls) if (st.station.id === id) { const d = Math.hypot(st.x - this.player.x, st.y - this.player.y); if (d < best) { best = d; s = st; } }
     if (!s) return false;
-    if (instant) { this.player.x = s.x; this.player.y = s.y + 10; return true; }
+    // Instant (reduced motion, a deep link): stand there and use it, as the side view's travel did.
+    if (instant) { this.player.x = s.x; this.player.y = s.y + 10; this.path = []; this.use(s); return true; }
     return this.walkTo(s.x, s.y + 10, () => this.use(s));
   }
   moveTo(x: number, onArrive?: () => void): boolean { return this.walkTo(x, this.player.y, onArrive); }
 
   private handLevel(id: string): HandLevel {
     let lv = this.levels.get(id);
-    if (!lv) { lv = new HandLevel(EMBER_MINE_1); this.levels.set(id, lv); }
+    if (!lv) { lv = new HandLevel(LEVELS[id] ?? EMBER_MINE_1); this.levels.set(id, lv); }
     return lv;
   }
   /** Change level: stand in front of `at` (a station on the new level), drop the old level's baked ground. */

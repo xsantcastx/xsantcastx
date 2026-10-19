@@ -692,3 +692,25 @@ export function caveMouth(): Sprite {
     return { img: outline(img), ax: 20, ay: H, lights: [{ x: 13, y: -16, r: 22, warm: true }] };
   });
 }
+
+/** Stairs cut down into the rock (to the floor below). */
+export function stairsDown(): Sprite {
+  return cached('stairs-down', () => {
+    const W = 20, H = 18, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 0, 0, W, H, PAL.basalt[1]); rect(c, 2, 2, 16, 14, '#120a0e');
+    for (let i = 0; i < 4; i++) rect(c, 3 + i, 3 + i * 3, 14 - i * 2, 2, i % 2 ? PAL.stone[2] : PAL.stone[1]);
+    return { img: outline(img), ax: 10, ay: 18 };
+  });
+}
+/** Stairs going up out of a floor, lit from above. */
+export function stairsUp(): Sprite {
+  return cached('stairs-up', () => {
+    const W = 20, H = 22, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 2, 0, 16, 22, '#e9dcae');
+    for (let i = 0; i < 6; i++) rect(c, 2, 2 + i * 3.4, 16, 2, i % 2 ? PAL.stone[3] : PAL.stone[1]);
+    rect(c, 0, 0, 2, 22, PAL.basalt[0]); rect(c, 18, 0, 2, 22, PAL.basalt[0]);
+    return { img: outline(img), ax: 10, ay: 22, lights: [{ x: 0, y: -14, r: 28 }] };
+  });
+}

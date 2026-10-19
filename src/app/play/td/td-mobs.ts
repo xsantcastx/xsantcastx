@@ -71,7 +71,17 @@ function paintImp(c: CanvasRenderingContext2D, f: number): void {
   px(c, 6, 2, 2, 3, '#2a1a1c'); px(c, 12, 2, 2, 3, '#2a1a1c'); px(c, 7, 8, 2, 2, '#ffd25a'); px(c, 11, 8, 2, 2, '#ffd25a'); px(c, 8, 12, 4, 1, '#2a1a1c');
 }
 
+/** The Ember Warden, the Ember Mine's keeper: a towering Bailiff crowned in slag, its lantern a furnace. */
+function paintWarden(c: CanvasRenderingContext2D, f: number): void {
+  c.save(); c.scale(1.7, 1.7); paintBailiff(c, f); c.restore();
+  px(c, 10, 0, 18, 4, '#2a1a1c'); px(c, 12, 0, 3, 2, '#ff8a2e'); px(c, 18, 0, 3, 2, '#ffd25a'); px(c, 24, 0, 3, 2, '#ff8a2e');
+}
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
+  'ember-warden': {
+    id: 'ember-warden', name: 'The Ember Warden', hp: 420, speed: 24, dmg: [10, 16], rate: 1.6, sight: 140, level: 8,
+    coins: [120, 220], drops: [{ material: 'infernal-heartstone', qty: 1, chance: .5 }, { material: 'ember-residue', qty: 2, chance: 1 }], paint: paintWarden, w: 38, h: 44,
+  },
   'ash-wolf': {
     id: 'ash-wolf', name: 'Ash Wolf', hp: 45, speed: 46, dmg: [3, 7], rate: 1.1, sight: 110, level: 1,
     coins: [2, 9], drops: [{ material: 'world-root-bark', qty: 1, chance: .2 }], paint: paintWolf, w: 22, h: 17,
