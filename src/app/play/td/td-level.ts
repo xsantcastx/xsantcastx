@@ -6,7 +6,7 @@
  * each character is (its ground, an object on it, a way in or out). Easy to read in a diff, easy to redraw.
  */
 import type { StationDef } from '../world/world.model';
-import { bones, boulder, chest, ladderUp, oreSeam, torchPost, TILE, type Ground, type Sprite } from './td-art';
+import { bones, boulder, chest, ladderUp, oreSeam, stairsDown, stairsUp, torchPost, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
 
@@ -25,10 +25,15 @@ export interface TdLevel {
 }
 
 /** A way between levels: stand on it and use it (E, a tap) to go. */
-export interface TdExit { to: string; /** Where to arrive on the other level (art px). */ at: { x: number; y: number } }
+export interface TdExit {
+  /** The level it leads to: 'surface', or a hand-drawn level's id. */
+  to: string;
+  /** The station on that level to arrive in front of (its own way back). */
+  arrive: string;
+}
 
-export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder';
-const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp };
+export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up';
+const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp };
 const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true };
 
 export interface LegendEntry {
