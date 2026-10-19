@@ -3495,3 +3495,18 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .d2tip i.down { color: var(--cozy-berry); }
 
 .vital__lv { margin-left: 4px; padding: 0 4px; font: 700 10px/1.4 var(--font-pixel); color: var(--cozy-wood-0); background: var(--cozy-brass); }
+
+/* ── The character sheet (C) ── */
+.ks__level { display: flex; align-items: center; gap: 8px; margin: 6px 0 0; font: 700 14px var(--font-pixel); color: var(--cozy-cream); }
+.ks__xp { flex: 1; height: 6px; background: var(--cozy-well); box-shadow: 0 0 0 1px var(--cozy-wood-1); }
+.ks__xp i { display: block; height: 100%; background: var(--cozy-brass); }
+.ks__level small { font: 11px var(--font-pixel); opacity: .7; }
+.ks__left { margin: 6px 0 8px; font: 600 13px var(--font-pixel); color: color-mix(in srgb, var(--cozy-cream) 60%, transparent); }
+.ks__left--has { color: var(--cozy-glow); }
+.ks__row { grid-template-columns: 40px minmax(0, 1fr) 44px; }
+.ks__val { display: grid; place-items: center; width: 40px; height: 40px; font: 700 18px var(--font-pixel); color: var(--cozy-glow); background: var(--cozy-well); }
+.ks__plus { width: 44px; height: 44px; border: 0; border-radius: 0; background: var(--cozy-brass); color: var(--cozy-wood-0); box-shadow: var(--cozy-brass-chip); font: 700 20px/1 var(--font-pixel); cursor: pointer; }
+.ks__plus:disabled { background: var(--cozy-wood-1); color: color-mix(in srgb, var(--cozy-cream) 40%, transparent); box-shadow: var(--cozy-chip); cursor: default; }
+.ks__totals { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; margin: 0; font: 13px var(--font-pixel); }
+.ks__totals dt { color: color-mix(in srgb, var(--cozy-cream) 75%, transparent); }
+.ks__totals dd { margin: 0; text-align: right; color: var(--cozy-glow); }
