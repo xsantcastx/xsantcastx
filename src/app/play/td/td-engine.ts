@@ -23,7 +23,7 @@ import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
-import { HandLevel, type TdLevel } from './td-level';
+import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
 import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
 import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
@@ -39,9 +39,9 @@ import type { TdMapDef } from './td-level';
 
 /** Every hand-drawn level under (or over) the surface, by id. */
 /** Every continent, by id (ships sail between them). */
-const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF };
+export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF };
 
-const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
+export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
   'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
   'salted-ember-1': SALTED_EMBER_1, 'salted-ember-0': SALTED_EMBER_0, 'woodward-lodge-1': WOODWARD_LODGE_1, 'woodward-lodge-2': WOODWARD_LODGE_2 };
@@ -60,7 +60,6 @@ const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spe
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
 const REACH = 26;              // art px from a stall's interaction spot
-const FOOT = { w: 6, h: 3 };   // the Keeper's collision box at the feet (art px): small, so doorways and passages never catch
 const FOLK = 16;               // townsfolk strolling the square (the references' busy plaza)
 const FOLK_SPEED = 30;         // art px / s: a stroll, under half the Keeper's pace
 
@@ -106,6 +105,9 @@ export class TopDownEngine {
   private readonly streets: number[] = [];
   private readonly keys = new Set<string>();
   private path: { x: number; y: number }[] = [];
+  /** Walking a path: the closest the Keeper has come to the next step, and how long without getting closer. */
+  private pathBest = Infinity;
+  private pathStall = 0;
   private arrive: (() => void) | null = null;
   private joy: { id: number; sx: number; sy: number; x: number; y: number; active: boolean } | null = null;
   private puffs: Puff[] = [];
@@ -345,8 +347,10 @@ export class TopDownEngine {
     for (const st of this.level.stalls) if (st.station.id === id) { const d = Math.hypot(st.x - this.player.x, st.y - this.player.y); if (d < best) { best = d; s = st; } }
     if (!s) return false;
     // Instant (reduced motion, a deep link): stand there and use it, as the side view's travel did.
-    if (instant) { this.player.x = s.x; this.player.y = s.y + 10; this.path = []; this.use(s); return true; }
-    return this.walkTo(s.x, s.y + 10, () => this.use(s));
+    // In front of it, or the nearest free spot (a stair against the back wall has no "in front").
+    const spot = standNear(this.level, s.x, s.y + 10);
+    if (instant) { this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.use(s); return true; }
+    return this.walkTo(spot.x, spot.y, () => this.use(s));
   }
   moveTo(x: number, onArrive?: () => void): boolean { return this.walkTo(x, this.player.y, onArrive); }
 
@@ -374,8 +378,9 @@ export class TopDownEngine {
     this.chunks.clear();
     this.path = []; this.arrive = null; this.puffs = [];
     this.mobs.enterLevel(level === this.world ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    // In front of the way in, or the nearest free spot to it: never inside a wall (standNear, td-level.ts).
     const s = level.stalls.find(st => st.station.id === at);
-    if (s) { this.player.x = s.x; this.player.y = s.y + 14; }
+    if (s) { const spot = standNear(level, s.x, s.y + 10); this.player.x = spot.x; this.player.y = spot.y; }
     this.player.dir = 'down';
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
     this.report();
@@ -409,7 +414,12 @@ export class TopDownEngine {
     if (vx || vy) { this.path = []; this.chop = null; }
     else if (this.path.length) {
       const p = this.path[0], dx = p.x - this.player.x, dy = p.y - this.player.y, d = Math.hypot(dx, dy);
-      if (d < 3) { this.path.shift(); if (!this.path.length) { const go = this.arrive; this.arrive = null; go?.(); } }
+      // No headway on this step for half a second (an edge the feet catch on): count it reached, never grind a wall.
+      if (d < this.pathBest - .5) { this.pathBest = d; this.pathStall = 0; } else this.pathStall += dt;
+      if (d < 3 || (this.pathStall > .5 && d < TILE * 1.5)) {
+        this.path.shift(); this.pathBest = Infinity; this.pathStall = 0;
+        if (!this.path.length) { const go = this.arrive; this.arrive = null; go?.(); }
+      } else if (this.pathStall > 1.5) { this.path = []; this.arrive = null; this.pathBest = Infinity; this.pathStall = 0; }
       else { vx = dx / d; vy = dy / d; }
     }
     const len = Math.hypot(vx, vy);
@@ -458,12 +468,7 @@ export class TopDownEngine {
       if (dy && !dx && this.free(p.x + side * off, ny)) { const move = side * Math.min(step, off); if (this.free(p.x + move, p.y)) { p.x += move; return; } }
     }
   }
-  private free(x: number, y: number): boolean {
-    for (const [px, py] of [[x - FOOT.w / 2, y - FOOT.h], [x + FOOT.w / 2, y - FOOT.h], [x - FOOT.w / 2, y - 1], [x + FOOT.w / 2, y - 1]]) {
-      if (!this.level.walkable(Math.floor(px / TILE), Math.floor(py / TILE))) return false;
-    }
-    return true;
-  }
+  private free(x: number, y: number): boolean { return footFree(this.level, x, y); }
 
   private report(): void {
     const s = this.nearby;
@@ -483,7 +488,7 @@ export class TopDownEngine {
   private walkTo(x: number, y: number, onArrive?: () => void): boolean {
     const route = this.route(this.player.x, this.player.y, x, y);
     if (!route) return false;
-    this.path = route; this.arrive = onArrive ?? null;
+    this.path = route; this.arrive = onArrive ?? null; this.pathBest = Infinity; this.pathStall = 0;
     if (!route.length) { this.arrive = null; onArrive?.(); }
     return true;
   }
@@ -523,7 +528,8 @@ export class TopDownEngine {
     if (!g.has(goal)) return null;
     const pts: { x: number; y: number }[] = [];
     for (let k = goal; k !== start; k = from.get(k)!) pts.unshift({ x: colOf(k) * TILE + TILE / 2, y: rowOf(k) * TILE + TILE - 2 });
-    if (pts.length) pts[pts.length - 1] = { x: tx, y: ty };
+    // End on the exact spot asked for only when the feet fit there; else the last free tile's centre.
+    if (pts.length && footFree(this.level, tx, ty)) pts[pts.length - 1] = { x: tx, y: ty };
     return pts;
   }
 
