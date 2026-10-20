@@ -30,6 +30,8 @@ import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
 import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
 import { PYRE_SPIRE_1, PYRE_SPIRE_2, PYRE_SPIRE_3 } from './maps/pyre-spire';
 import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3 } from './maps/molten-deep';
+import { SALTED_EMBER_0, SALTED_EMBER_1 } from './maps/cinderport';
+import { WOODWARD_LODGE_1, WOODWARD_LODGE_2 } from './maps/ashgrove';
 import { EMBER_ISLE_DEF } from './maps/ember-isle';
 import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
 import type { ContinentDef } from './continent';
@@ -41,10 +43,12 @@ const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER
 
 const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
-  'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3 };
+  'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
+  'salted-ember-1': SALTED_EMBER_1, 'salted-ember-0': SALTED_EMBER_0, 'woodward-lodge-1': WOODWARD_LODGE_1, 'woodward-lodge-2': WOODWARD_LODGE_2 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
+  'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
 };
 import { MobSystem, mobSheet, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, levelStats, type SkillId } from './td-skills';
