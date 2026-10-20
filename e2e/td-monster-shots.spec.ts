@@ -1,6 +1,7 @@
 /**
- * td-monster-shots.spec.ts — every top-down creature side by side, as the world draws it (td-mobs.ts mobSheet: two
- * frames, the dark outline), with the Warlock's raised skeleton at the end: docs/handoff/cozy-ui/monster-lineup.jpg.
+ * td-monster-shots.spec.ts — every top-down creature side by side, as the world draws it (td-mobs.ts mobSheet: four
+ * frames, the selective outline, a boss's rim), with the Warlock's raised skeleton at the end: docs/handoff/cozy-ui/
+ * monster-lineup.jpg; and the oldest six up close with every frame of their walk: monster-lineup-x2.jpg.
  *
  * The page is blank: td-mobs.ts (and the two modules it needs) are transpiled here and served as ES modules, so the
  * picture is the real paint code, not a copy of it.
@@ -25,26 +26,34 @@ test('the monster lineup: every creature of the top-down world, and the raised s
   });
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`${HOST}/index.html`);
-  const drawn = await page.evaluate(async () => {
+  // k: the zoom; ids: only these (all when empty); frames: how many of each sheet's frames side by side.
+  const draw = (k: number, ids: string[], frames: number) => page.evaluate(async ({ k, ids, frames }) => {
     const mod = await import('./td-mobs.js' as string);
-    const defs = [...Object.values(mod.MOBS as Record<string, { id: string; name: string; w: number; h: number }>), mod.RAISED_SKELETON];
-    const k = 3, gap = 18, cv = document.getElementById('c') as HTMLCanvasElement;
+    const all = [...Object.values(mod.MOBS as Record<string, { id: string; name: string; w: number; h: number }>), mod.RAISED_SKELETON];
+    const defs = ids.length ? all.filter(d => ids.includes(d.id)) : all;
+    const gap = 14, cv = document.getElementById('c') as HTMLCanvasElement;
     cv.width = 1280; cv.height = 720;
     const c = cv.getContext('2d')!;
     c.imageSmoothingEnabled = false;
     c.fillStyle = '#2a1e26'; c.fillRect(0, 0, cv.width, cv.height);
-    let x = 16, y = 24, rowH = 0;
+    let x = 16, y = 16, rowH = 0;
     c.font = 'bold 12px monospace'; c.textAlign = 'center';
     for (const d of defs) {
-      const w = d.w * k, h = d.h * k;
-      if (x + w > cv.width - 16) { x = 16; y += rowH + 40; rowH = 0; }
-      c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(x + 6, y + h - 4, w - 12, 6);
-      c.drawImage(mod.mobSheet(d), 0, 0, d.w, d.h, x, y, w, h);
-      c.fillStyle = '#f3e7cf'; c.fillText(d.name, x + w / 2, y + h + 18);
-      x += Math.max(w, 120) + gap; rowH = Math.max(rowH, h);
+      const sheet = mod.mobSheet(d) as HTMLCanvasElement, n = Math.min(frames, sheet.width / d.w), w = d.w * k, h = d.h * k, span = n * w + (n - 1) * 4;
+      if (x + span > cv.width - 16) { x = 16; y += rowH + 30; rowH = 0; }
+      for (let f = 0; f < n; f++) {
+        const fx = x + f * (w + 4);
+        c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(fx + 6, y + h - 4, w - 12, 6);
+        c.drawImage(sheet, f * d.w, 0, d.w, d.h, fx, y, w, h);
+      }
+      c.fillStyle = '#f3e7cf'; c.fillText(d.name, x + span / 2, y + h + 16);
+      x += Math.max(span, 110) + gap; rowH = Math.max(rowH, h);
     }
     return defs.length;
-  });
-  expect(drawn).toBeGreaterThan(15);
+  }, { k, ids, frames });
+  expect(await draw(2, [], 1)).toBeGreaterThan(15);
   await page.locator('#c').screenshot({ path: 'docs/handoff/cozy-ui/monster-lineup.jpg', type: 'jpeg', quality: 90 });
+  // The ×2 crop: the oldest creatures up close, every frame of their walk.
+  expect(await draw(4, ['ash-wolf', 'cinder-imp', 'rivet-maw', 'cinder-bailiff', 'lava-hound', 'obsidian-golem'], 4)).toBe(6);
+  await page.locator('#c').screenshot({ path: 'docs/handoff/cozy-ui/monster-lineup-x2.jpg', type: 'jpeg', quality: 90 });
 });
