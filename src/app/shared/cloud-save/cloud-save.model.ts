@@ -508,6 +508,18 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     merge: mergeLoot,
   },
   {
+    key: 'eclipse-bestiary-v1',
+    collection: 'progress',
+    doc: 'bestiary',
+    label: 'The Bestiary',
+    // `{ version, kills: { creatureId: count } }`: how many of each top-down
+    // creature the Keeper has defeated (play/td/td-bestiary.ts). Lifetime
+    // counters that only grow, so the structural rule (the larger per creature,
+    // the union of both key sets) is exactly right: two devices never lose a
+    // kill, and a creature met on either is met on both. Not spendable and
+    // not a first-discovery date, so neither trap above applies.
+  },
+  {
     key: 'godforge-pets',
     collection: 'progress',
     doc: 'pets',
