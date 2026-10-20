@@ -26,12 +26,74 @@ const ITEMS = [
   gear('i-res', 'anchor-ring', 'Anchor Ring', 'legendary', { life: 58, fireResist: 17, coldResist: 14, arcaneResist: 15, allResist: 9 }, 4, { itemLevel: 30 }),
 ];
 
-async function open(page: Page): Promise<void> {
-  const base = ledger({ 'cinder-ore': 4 }) as { records: unknown[]; hlc: number };
-  await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'godforge-inventory': { ...base, records: [...base.records, ...ITEMS], hlc: base.hlc + 200 } });
+async function open(page: Page, items: unknown[] = ITEMS, stacks: Record<string, number> = { 'cinder-ore': 4 }): Promise<void> {
+  const base = ledger(stacks) as { records: unknown[]; hlc: number };
+  await seed(page, { 'eclipse-td': '1', 'godforge-realm-era': String(ERA), 'godforge-inventory': { ...base, records: [...base.records, ...items], hlc: base.hlc + 200 } });
   await page.goto('/play?td=1&hour=12');
   await expect(page.locator('canvas').first()).toHaveAttribute('data-player-y', /\d/, { timeout: 20000 });
 }
+
+// A loot pile across the bases, rarities and realms (owner 2026-10-21: "they all are looking the same"): each piece is
+// painted from its base, realm, rarity and its own instance id (src/app/shared/art/gear-icons.ts).
+const PILE = [
+  gear('p-staff', 'nullthorn-staff', 'Nullthorn Staff', 'legendary', { spellDamage: 20 }, 0, { itemLevel: 30 }),
+  gear('p-dagger', 'cindergnaw', 'Cindergnaw', 'epic', { spellDamage: 12 }, 1, { itemLevel: 18 }),
+  gear('p-plate', 'starplate-cuirass', 'Starplate Cuirass', 'rare', { defense: 18 }, 2, { itemLevel: 12 }),
+  gear('p-hood', 'voidweave-cowl', 'Voidweave Cowl', 'common', { defense: 6 }, 3, { itemLevel: 4 }),
+  gear('p-ring', 'anchor-ring', 'Anchor Ring', 'legendary', { life: 50 }, 4, { itemLevel: 30 }),
+  gear('p-great', 'dawnrender', 'Dawnrender', 'mythic', { strikePower: 30 }, 5, { itemLevel: 40 }),
+  gear('p-mace', 'rootbreaker-mace', 'Rootbreaker Mace', 'uncommon', { strikePower: 9 }, 6, { itemLevel: 8 }),
+  gear('p-bow', 'meridian-longbow', 'Meridian Longbow', 'rare', { strikePower: 14 }, 7, { itemLevel: 14 }),
+  gear('p-helm', 'forgeborn-warhelm', 'Forgeborn Warhelm', 'epic', { defense: 15 }, 8, { itemLevel: 20 }),
+  gear('p-crown', 'crown-of-the-first-dawn', 'Crown of the First Dawn', 'legendary', { defense: 12 }, 9, { itemLevel: 26 }),
+  gear('p-boots', 'astral-striders', 'Astral Striders', 'uncommon', { moveSpeed: 4 }, 10, { itemLevel: 9 }),
+  gear('p-shield', 'rootwall-shield', 'Rootwall Shield', 'rare', { defense: 14 }, 11, { itemLevel: 15 }),
+  gear('p-spear', 'radiant-halberd', 'Radiant Halberd', 'epic', { strikePower: 22 }, 12, { itemLevel: 22 }),
+  gear('p-axe', 'unique-worldsplitter', 'Worldsplitter', 'singular', { strikePower: 40 }, 13, { itemLevel: 45 }),
+  gear('p-amulet', 'astral-pendant', 'Astral Pendant', 'epic', { mana: 30 }, 14, { itemLevel: 24 }),
+];
+
+test('a loot pile reads as a loot game: every base its own picture, dressed by its rarity and realm', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, PILE, {});
+  await page.keyboard.press('i');
+  const pockets = page.locator('button.pocket');
+  await expect(pockets).toHaveCount(15, { timeout: 10000 });
+  // Every cell shows a 32-px painted icon, and no two cells share one.
+  const srcs = await page.locator('button.pocket img').evaluateAll(imgs => imgs.map(i => (i as HTMLImageElement).src));
+  expect(srcs.length).toBe(15);
+  expect(new Set(srcs).size).toBe(15);
+  for (const src of srcs) expect(decodeURIComponent(src)).toContain('viewBox="0 0 32 32"');
+  // Let the window finish opening (it fades in over the world) before the picture.
+  await page.mouse.move(5, 5);
+  await page.waitForTimeout(900);
+  const grid = (await page.locator('.pockets').first().boundingBox())!;
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/item-icons-grid.jpg', type: 'jpeg', quality: 85,
+    clip: { x: grid.x - 6, y: grid.y - 6, width: grid.width + 12, height: grid.height + 12 } });
+});
+
+test('a piece above the Keeper says what it needs in red, and Equip is shut with the reason', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page, PILE, {});
+  await page.keyboard.press('i');
+  const cell = page.locator('button.pocket[aria-label^="Nullthorn"]').first();
+  await expect(cell).toBeVisible({ timeout: 10000 });
+  await cell.hover();
+  const tip = page.locator('.d2tip');
+  await expect(tip.locator('.d2tip__reqs p.unmet').first()).toHaveText('Requires Level 27');
+  await expect(tip.locator('.d2tip__reqs p.unmet').nth(1)).toHaveText('Requires 13 Spirit');
+  await cell.click();
+  const card = page.locator('.d2tip--pinned');
+  await expect(card).toBeVisible();
+  const equip = card.locator('.d2tip__actions button.wear').first();
+  await expect(equip).toBeDisabled();
+  await expect(card.locator('.d2tip__why')).toContainText('level 27');
+  // The paper doll is untouched.
+  await expect(page.locator('button.pocket[aria-label^="Nullthorn"]')).toHaveCount(1);
+  const box = (await card.boundingBox())!;
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/item-card-req.jpg', type: 'jpeg', quality: 85,
+    clip: { x: Math.max(0, box.x - 140), y: Math.max(0, box.y - 40), width: Math.min(1280 - Math.max(0, box.x - 140), box.width + 180), height: Math.min(800 - Math.max(0, box.y - 40), box.height + 80) } });
+});
 
 test('the hover card wears its rarity: legendary orange, epic purple, rare blue, common plain, a material in cream', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });

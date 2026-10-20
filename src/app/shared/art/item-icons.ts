@@ -33,7 +33,7 @@ import type { ArtEntry } from './art-manifest.generated';
 import { IconKind, IconShape, RUNE_GLYPH_AT, RUNE_TABLET, SHAPES } from './item-icon-shapes';
 
 /** Ramps, dark → light: [deep, shade, base, lit, highlight]. Hexes from the art bible §5. */
-const RAMPS = {
+export const RAMPS = {
   iron: ['#171116', '#2a2027', '#443540', '#57474f', '#8c8494'],
   steel: ['#3a3339', '#5c5359', '#877c84', '#c0c4cc', '#eef2f6'],
   basalt: ['#241a1c', '#3a2b2c', '#5a4440', '#6b5148', '#8a7468'],

@@ -102,6 +102,32 @@ legendary's four picks come from ten, not six). The card pips wear the element (
 `--cozy-loot-rare`, arcane `--cozy-loot-epic`, lightning `--cozy-loot-mythic`, all `--cozy-brass-hi`); the stat sheet
 (C) lists each element's worn total once a piece carries it.
 
+### 3.4 Requirements (owner, 2026-10-21: "items need requirements")
+
+Every piece of gear asks for a **Keeper level** — the Hunting level the HUD shows — and some bases also for an
+**attribute**. One file owns the rules: `src/app/shared/rpg/item-requirements.ts`.
+
+| Rule | Value |
+|---|---|
+| Required level | `max(1, itemLevel − 5)` + rarity bonus, never above the item level |
+| Rarity bonus | legendary +2, mythic +3, singular +4 (uniques are legendary or better, so they inherit it) |
+| No item level (old saves, starters, forged tools) | level 1, no attribute |
+| Attribute minimum | from required level 6: `floor(requiredLevel / 2)` points in the base's attribute |
+| Vitality | plate, helm, greaves (legs), shield, hammer, mace, greatsword, axe |
+| Spirit | staff, wand, tome |
+| Agility | bow, crossbow, dagger |
+| Energy | robe, hood |
+| Level only | sword, spear, gloves, boots, belt, coat, crown, circlet, ring, amulet, trinket, charm, tools |
+
+A drop from a creature up to five levels above the Keeper is wearable at once; a level-30 legendary staff asks for
+level 27 and 13 Spirit. The base comes from `item-base.ts` (the same table the icon painter reads).
+
+**Where it shows:** the hover and pinned item card list `Requires Level N` / `Requires N Spirit` above the foot, in
+berry red when unmet; Equip is disabled with the reason under the card ("You need level 27 to wear …"). The paper doll
+refuses too: the play screen hands `InventoryService.setWearCheck` the Keeper's standing, so every equip path checks it.
+**Already-worn pieces are never stripped** — the check gates putting a piece *on*, not keeping it. Compare rows are
+unchanged.
+
 ## 4. Monster families and roles
 
 `shared/loot/creature-families.ts`: one profile per creature key — family (shared resists, blow type), role, level.
