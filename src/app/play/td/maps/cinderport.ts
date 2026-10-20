@@ -2,6 +2,7 @@
  * cinderport.ts — Cinderport, Infernal Reach's fishing harbour on the south-east coast (docs/design/world-map.md),
  * east of Pyrehold past the Obsidian Badlands. A street of black-stone houses round a crossroads, a pier out over the
  * Burning Sea, and the Salted Ember, a dockside tavern you walk into (one floor and a cellar of old nets and a chest).
+ * A salt-ketch ties up at the pier's end and sails round the coast to Ember Isle (CINDERPORT_SHIP).
  *
  * Town ground: o street · . dirt · g grass · s sand · = planks · w sea.
  */
@@ -12,6 +13,8 @@ import { buildTown } from '../town-builder';
 export const SALTED_DOOR: StationDef = { id: 'salted-door', x: 0, label: 'THE SALTED EMBER', kind: 'passage', blurb: "Cinderport's dockside tavern." };
 const SALTED_OUT: StationDef = { id: 'salted-out', x: 0, label: 'DOOR', kind: 'passage', blurb: 'Back out to the docks.' };
 const SALTED_DOWN: StationDef = { id: 'salted-down', x: 0, label: 'STAIRS DOWN', kind: 'passage', blurb: 'Down to the cellar.' };
+/** The ship at the pier's end: round the coast and back to Ember Harbour (infernal-reach.ts wires it as a village way). */
+export const CINDERPORT_SHIP: StationDef = { id: 'ship-cinderport', x: 0, label: 'CINDERPORT SHIP', kind: 'passage', blurb: 'A salt-ketch that sails round the coast to Ember Isle.' };
 const CELLAR_UP: StationDef = { id: 'salted-cellar-up', x: 0, label: 'STAIRS UP', kind: 'passage', blurb: 'Up to the tavern.' };
 
 const CINDERPORT_ROWS: readonly string[] = [
@@ -48,6 +51,7 @@ export const buildCinderport = () => buildTown({
     { kind: 'lamp', c: 12, r: 5 }, { kind: 'lamp', c: 18, r: 5 }, { kind: 'lamp', c: 12, r: 9 }, { kind: 'lamp', c: 18, r: 9 },
     { kind: 'barrel', c: 11, r: 11 }, { kind: 'barrel', c: 12, r: 11 }, { kind: 'crate', c: 19, r: 11 }, { kind: 'crate', c: 19, r: 12 },
     { kind: 'signpost', c: 16, r: 2 }, { kind: 'bench', c: 10, r: 9 }, { kind: 'waystone', c: 20, r: 3 }, { kind: 'pine', c: 1, r: 3 }, { kind: 'pine', c: 28, r: 2 },
+    { kind: 'ship', c: 18, r: 15 },
   ],
   spawn: { c: 15, r: 7 },
 });

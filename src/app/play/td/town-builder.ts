@@ -5,10 +5,10 @@
  */
 import type { StationDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
-import { barrel, bench, brazierFountain, crate, fence, flowerbed, forgeHearth, hearthFire, house, lamp, signpost, stall, tower, tree, waystone, TILE, type Ground, type RoofStyle, type Sprite, type WallStyle } from './td-art';
+import { barrel, bench, brazierFountain, crate, fence, flowerbed, forgeHearth, hearthFire, house, lamp, ship, signpost, stall, tower, tree, waystone, TILE, type Ground, type RoofStyle, type Sprite, type WallStyle } from './td-art';
 import type { TdMap, TdObject, TdStall } from './seamworks-square';
 
-export type PropKind = 'lamp' | 'bench' | 'barrel' | 'crate' | 'flowerbed' | 'fountain' | 'hearth' | 'forge' | 'signpost' | 'fence' | 'oak' | 'pine' | 'waystone';
+export type PropKind = 'lamp' | 'bench' | 'barrel' | 'crate' | 'flowerbed' | 'fountain' | 'hearth' | 'forge' | 'signpost' | 'fence' | 'oak' | 'pine' | 'waystone' | 'ship';
 
 export interface TownSpec {
   id: string;
@@ -30,6 +30,8 @@ const PROP: Record<PropKind, { sprite: () => Sprite; block?: { w: number; h: num
   hearth: { sprite: hearthFire }, forge: { sprite: forgeHearth, block: { w: 2, h: 1 } }, signpost: { sprite: signpost }, fence: { sprite: () => fence(3) },
   oak: { sprite: () => tree('oak', 2), block: { w: 1, h: 1 }, kind: 'tree' }, pine: { sprite: () => tree('pine', 3), block: { w: 1, h: 1 }, kind: 'tree' },
   waystone: { sprite: () => waystone(), block: { w: 1, h: 1 } },
+  // A ship moored at a pier: it sits on the sea, so it blocks nothing the water does not.
+  ship: { sprite: ship },
 };
 
 export function buildTown(spec: TownSpec): TdMap {
