@@ -221,6 +221,27 @@
       @if (goal.id === 'rune') {
         <button type="button" class="guide-hide" (click)="hideHint()">{{ t('play.goal.hide') }}</button>
       }
+      <!-- Town tasks under way (shared/town-tasks): one row each, its count, a tick when it is ready to hand in. -->
+      @if (topDown && taskRows.length) {
+        <ol class="td-tasks" [attr.aria-label]="t('play.task.tasks')" data-tasks>
+          @for (r of taskRows; track r.id) {
+            <li [class.is-ready]="r.ready" [attr.data-task]="r.id" [title]="r.need"><i aria-hidden="true"></i><span>{{ r.title }}</span><b>{{ r.ready ? '?' : r.have + '/' + r.n }}</b></li>
+          }
+        </ol>
+      }
+    </div>
+  } @else if (topDown && taskRows.length) {
+    <!-- The first goals done: the scroll keeps only the town tasks under way. -->
+    <div class="guide guide--list guide--tasks" data-engine-ignore [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+      <p class="guide-text"><b>{{ t('play.task.tasks') }}</b></p>
+      <!-- Town tasks under way (shared/town-tasks): one row each, its count, a tick when it is ready to hand in. -->
+      @if (topDown && taskRows.length) {
+        <ol class="td-tasks" [attr.aria-label]="t('play.task.tasks')" data-tasks>
+          @for (r of taskRows; track r.id) {
+            <li [class.is-ready]="r.ready" [attr.data-task]="r.id" [title]="r.need"><i aria-hidden="true"></i><span>{{ r.title }}</span><b>{{ r.ready ? '?' : r.have + '/' + r.n }}</b></li>
+          }
+        </ol>
+      }
     </div>
   }
 
@@ -258,6 +279,54 @@
       }
       <button type="button" class="glim-say__close" (click)="dismissGlim()" [attr.aria-label]="t('play.glim.dismiss')"><i aria-hidden="true"></i></button>
     </div>
+  }
+
+  @if (taskTalk; as tk) {
+    <!-- A town task giver (shared/town-tasks): who they are, the task, the reward, one plain primary button. -->
+    <section class="places win td-map td-talk" role="dialog" aria-modal="true" [attr.aria-label]="t('play.task.talkAria', { name: tk.name })" [attr.data-talk]="tk.giver" data-engine-ignore (keydown.escape)="closeTalk()">
+      <header class="win-head">
+        <h2>{{ tk.name }}</h2>
+        <button type="button" class="win-x places-close" (click)="closeTalk()" [attr.aria-label]="t('play.hud.book.close')"><i aria-hidden="true">&times;</i><span class="win-x__label">{{ t('play.hud.book.close') }}</span></button>
+      </header>
+      <div class="td-talk__body">
+        <p class="td-talk__who">{{ t('task.giver.' + tk.giver + '.who') }}</p>
+        @if (tk.thanks; as th) {
+          <div class="td-talk__scroll" data-talk-state="thanks">
+            <h3>{{ t('task.' + th.task.id + '.title') }}</h3>
+            <p class="td-talk__say">{{ t('task.' + th.task.id + '.thanks') }}</p>
+            <p class="td-talk__row"><b>{{ t('play.task.paid') }}</b><span data-talk-paid>{{ th.reward }}</span></p>
+          </div>
+        } @else if (tk.view; as v) {
+          <div class="td-talk__scroll" [attr.data-talk-state]="v.standing" [attr.data-talk-task]="v.task.id">
+            <h3>{{ t('task.' + v.task.id + '.title') }} <small>{{ t('play.td.level', { n: v.task.level }) }}</small></h3>
+            <p class="td-talk__say">{{ t('task.' + v.task.id + '.ask') }}</p>
+            <p class="td-talk__row"><b>{{ t('play.task.task') }}</b><span>{{ taskNeed(v.task) }}@if (v.standing !== 'offer' && v.task.n > 1) { <em>{{ t('play.task.progress', { have: v.have, n: v.task.n }) }}</em> }</span></p>
+            <p class="td-talk__row"><b>{{ t('play.task.reward') }}</b><span>{{ taskReward(v) }}</span></p>
+          </div>
+        } @else {
+          <p class="td-talk__say td-talk__say--plain">{{ t('play.task.nothing') }}</p>
+        }
+      </div>
+      <footer class="td-talk__acts">
+        @if (tk.thanks) {
+          @if (tk.view?.standing === 'offer' || tk.view?.standing === 'ready') {
+            <button type="button" class="td-talk__go" (click)="nextTask()">{{ t('play.task.next') }}</button>
+          }
+          <button type="button" (click)="closeTalk()">{{ t('play.task.farewell') }}</button>
+        } @else if (tk.view?.standing === 'offer') {
+          <button type="button" class="td-talk__go" data-talk-accept (click)="acceptTask()">{{ t('play.task.accept') }}</button>
+          <button type="button" (click)="closeTalk()">{{ t('play.task.notNow') }}</button>
+        } @else if (tk.view?.standing === 'ready') {
+          <button type="button" class="td-talk__go" data-talk-handin (click)="handInTask()">{{ t('play.task.handIn') }}</button>
+          <button type="button" (click)="closeTalk()">{{ t('play.task.notNow') }}</button>
+        } @else {
+          <button type="button" class="td-talk__go" (click)="closeTalk()">{{ t(tk.view ? 'play.task.onMyWay' : 'play.task.farewell') }}</button>
+        }
+        @if (tk.stall) {
+          <button type="button" class="td-talk__trade" (click)="tradeInstead()">{{ t('play.task.trade') }}</button>
+        }
+      </footer>
+    </section>
   }
 
   @if (bestiaryOpen && bestiary; as bs) {

@@ -14,6 +14,7 @@
  *
  *   node scripts/economy-sim.mjs --cascade       # the Eclipse Cascade + the Orrery Tumbler: RTP proof, autoplay at the cap (in --check too)
  *   node scripts/economy-sim.mjs --bounties      # the Board Herald's daily bounties (in --check too)
+ *   node scripts/economy-sim.mjs --town-tasks    # the town keepers' tasks: rule I Gold, once each, XP (in --check too)
  *   node scripts/economy-sim.mjs --levels        # uncapped levels: time to 100/150/200/300 per skill (in --check too)
  *   node scripts/economy-sim.mjs --heights       # the high roads' caches and summits (in --check too)
  *   node scripts/economy-sim.mjs --pets          # the pets' helpers: the hedgehog's extra harvest, XP, bite (in --check too)
@@ -521,6 +522,8 @@ function check(E) {
   fails.push(...underhearthScenario({ quiet: true }));
   // The Board Herald's daily bounties (Phase 7.5): rule I band, the daily envelope, XP, the draw (`--bounties` prints it).
   fails.push(...bountiesScenario({ quiet: true }));
+  // The town keepers' tasks (shared/town-tasks): once-only Gold on the rule I band, XP under the ceiling (`--town-tasks` prints it).
+  fails.push(...townTasksScenario({ quiet: true }));
   // Uncapped levels: 1-99 untouched, 99 -> 100 continuous, time to 300 per skill (`--levels` prints it).
   fails.push(...levelsScenario({ quiet: true }));
   // The high roads (surface height): once-only caches and summits on the rule I bands (`--heights` prints them).
@@ -1409,6 +1412,49 @@ function bountiesScenario({ quiet = false } = {}) {
   return fails;
 }
 
+// --town-tasks: the town keepers' tasks (src/app/shared/town-tasks/town-tasks.model.ts). Paid once each, ever:
+//   1. every task pays 2-20 min of income (rule I: an NPC step), with a floor no bigger than the bounties' rate;
+//   2. all of them together are at most 4 h of income, once;
+//   3. the floor never beats the income seconds once a save is 30 minutes old;
+//   4. Hunting XP per task stays under the world-action ceiling (500), and a whole town is under a level at 20.
+const TOWN_TASKS_MODEL = loadTsTree('src/app/shared/town-tasks/town-tasks.model.ts');
+function townTasksScenario({ quiet = false } = {}) {
+  const fails = [];
+  const say = (...a) => { if (!quiet) console.log(...a); };
+  const { log } = simulate(PROPOSED);
+  const tasks = TOWN_TASKS_MODEL.TOWN_TASKS;
+  say('Town tasks scenario · v3 curve (PROPOSED)\n');
+  say('  task              income   floor   Hunting XP   extra');
+  for (const t of tasks) {
+    const r = t.reward;
+    say(`  ${t.id.padEnd(16)}${String(r.goldSeconds / 60).padStart(5)} min${String(r.gold).padStart(7)}${String(r.huntingXp).padStart(12)}   ${r.material ? `${r.material.qty} ${r.material.id}` : ''}${r.gear ? ` ${r.gear.rarity} ${r.gear.defId} iL${r.gear.level}` : ''}`);
+    if (r.goldSeconds < 120 || r.goldSeconds > 20 * 60) fails.push(`${t.id} pays ${r.goldSeconds} s of income (band 120-1200 s)`);
+    if (r.gold > C.itemScaled(Math.round(r.goldSeconds * 40 / 3))) fails.push(`${t.id}'s floor ${r.gold} is over the bounties' rate`);
+    if (r.huntingXp > 500) fails.push(`${t.id} pays ${r.huntingXp} Hunting XP (ceiling 500)`);
+  }
+  const all = tasks.reduce((s, t) => s + t.reward.goldSeconds, 0);
+  say(`\n  All ${tasks.length} tasks, once: ${(all / 60).toFixed(0)} min of income.`);
+  if (all > 4 * 3600) fails.push(`all town tasks pay ${(all / 60).toFixed(0)} min of income (must be <= 240)`);
+  for (const [t, label] of [[1800, '30m'], [3600, '1h'], [86400, '1d']]) {
+    const gps = log.at[t]?.gps;
+    if (!gps) continue;
+    const wins = tasks.filter(x => x.reward.gold > x.reward.goldSeconds * gps);
+    say(`  ${label.padEnd(4)} ${fmtN(gps).padStart(8)} Gold/s   floor wins on ${wins.length} task(s)`);
+    if (wins.length) fails.push(`a town task's Gold floor beats its income seconds at ${label} (${wins.map(x => x.id).join(', ')})`);
+  }
+  const level20 = xpFor(21) - xpFor(20);
+  const byGiverTown = new Map();
+  for (const t of tasks) {
+    const town = TOWN_TASKS_MODEL.giverById(t.giver)?.town ?? '?';
+    byGiverTown.set(town, (byGiverTown.get(town) ?? 0) + t.reward.huntingXp);
+  }
+  for (const [town, xp] of byGiverTown) if (xp > level20) fails.push(`${town}'s tasks pay ${xp} Hunting XP, over a level at 20 (${level20})`);
+  say(`  Hunting XP per town: ${[...byGiverTown].map(([k, v]) => `${k} ${v}`).join(', ')} (a level at 20 is ${level20}).`);
+  if (!quiet) for (const f of fails) console.error(`  FAIL ${f}`);
+  if (quiet) console.log(`economy-sim town tasks: ${fails.length ? fails.length + ' fail(s)' : 'rule I band, once-only envelope, XP ok'}`);
+  return fails;
+}
+
 // --plinko / --mines / --crash: the Croupier's other three games (Rune Drop,
 // Seam Sweeper, Eclipse Ascent). Gold only; RTP must sit in 94–96%.
 //   Each is proven EXACTLY (sums over the binomial board; the multiplier ×
@@ -1832,6 +1878,10 @@ if (argv.loot && !argv.check) {
   console.log('  ok');
 } else if (argv.heights && !argv.check) {
   const fails = heightsScenario({ quiet: false });
+  if (fails.length) process.exit(1);
+  console.log('  ok');
+} else if (argv['town-tasks'] && !argv.check) {
+  const fails = townTasksScenario({ quiet: false });
   if (fails.length) process.exit(1);
   console.log('  ok');
 } else if (argv.bounties && !argv.check) {

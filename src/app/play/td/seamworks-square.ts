@@ -11,6 +11,8 @@
 import { INFERNAL_TOWN } from '../world/towns/infernal';
 import { TOWN_KEEPERS } from '../world/life';
 import type { StationDef } from '../world/world.model';
+import { giverStall } from './town-builder';
+import { giverById } from '../../shared/town-tasks/town-tasks.model';
 import { beaconPillar, mineShaft, oreSeam, brazierFountain, forgeHearth, waystone as waystone_, bench, barrel, cart, crate, fence, flowerbed, hash, hearthFire, house, lamp, signpost, stall, tree, type Ground, type Sprite, TILE } from './td-art';
 
 export interface TdObject {
@@ -105,12 +107,16 @@ export function buildSeamworksSquare(): TdMap {
     add(() => stall(w, palette, goods, c * 7 + r), x, y, { w, h: 1 }, 'stall');
     const k = keepers.find(k => k.station === id || (k.serves ?? []).includes(id));
     stalls.push({ station: s, x, y: y + 6, keeper: k ? { id: k.id, name: k.name, x, y: y - 14 } : undefined });
+    // A keeper with town tasks (shared/town-tasks) is spoken to at the counter's west end; its front still opens the stall.
+    if (k && giverById(k.id)) stalls.push({ ...giverStall(k.id, k.name, `${k.name} has work for you.`, x - 2 * T, y - 2), keeper: { id: k.id, name: k.name, x, y: y - 14 } });
   };
   stallAt('crafting', 14, 11, 4, 0, 'tools');
   stallAt('runes', 30, 11, 4, 3, 'gems');
   stallAt('enchanting', 13, 19, 4, 1, 'books');
   stallAt('vault', 31, 19, 4, 2, 'pots');
   stallAt('vendor', 22, 22, 4, 4, 'bread');
+  // The sexton of the Hushed Barrow, come into town on the west lane toward his graves (a town task giver, shared/town-tasks).
+  stalls.push(giverStall('sexton-wren', 'Sexton Aldous Wren', 'He sweeps the Hushed Barrow and counts its graves twice.', tx(9), ty(13)));
   // The forge quest and the waystone stand on their own.
   const forge = station('forge');
   if (forge) { add(forgeHearth, tx(18), ty(8), { w: 2, h: 1 }); stalls.push({ station: forge, x: tx(18), y: ty(8) + 6 }); }

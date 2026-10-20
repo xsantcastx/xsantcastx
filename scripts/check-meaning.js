@@ -124,6 +124,8 @@ const { COLLECTION_REWARDS } = L('shared/collection/collection.model.ts');
 const { NPC_CHAINS } = L('shared/npc/npc-quest.model.ts');
 const { NPCS, DIALOGUE } = L('shared/npc/npc.model.ts');
 const { DELVE_MISSIONS, DELVE_MATERIAL_NAMES } = L('shared/npc/delve-missions.model.ts');
+// The town keepers' tasks (top-down towns): givers, what they ask for, what they pay.
+const { TOWN_TASKS, TASK_GIVERS } = L('shared/town-tasks/town-tasks.model.ts');
 const { MYSTERY_BOXES, boxWindow, boxPool } = L('shared/gambler/mystery-box.ts');
 const { REEL_SYMBOLS } = L('shared/reels/reels.model.ts');
 const { UNIQUE_ITEMS } = L('shared/rpg/unique-items.ts');
@@ -210,6 +212,10 @@ for (const [realm, ids] of Object.entries(EXPLORER.REALM_ARTBIBLE_MATERIALS)) fo
 for (const s of Object.values(NPC_CHAINS).flat()) if (s.reward && s.reward.item) src(s.reward.item.defId, `NPC chain ${s.id}`);
 for (const m of DELVE_MISSIONS) if (m.reward && m.reward.item) src(m.reward.item.defId, `Delve mission ${m.id}`);
 for (const r of COLLECTION_REWARDS) if (r.item) src(r.item, `Collection reward ${r.id}`);
+for (const t of TOWN_TASKS) {
+  if (t.reward.material) src(t.reward.material.id, `town task ${t.id}`);
+  if (t.reward.gear) src(t.reward.gear.defId, `town task ${t.id}`);
+}
 for (const a of ARENA_SHOP) {
   if (a.kind === 'equipment' && a.definitionId) src(a.definitionId, `Arena shop ${a.id}`);
   if (a.kind === 'material' && a.stackKey) src(a.stackKey, `Arena shop ${a.id}`);
@@ -238,6 +244,7 @@ for (const m of DELVE_MISSIONS) {
   for (const i of items) use(i.materialId, `Delve mission ${m.id}`);
 }
 for (const p of PLACEABLES) use(p.id, `placeable → ${p.node}`);
+for (const t of TOWN_TASKS) if (t.kind === 'deliver') use(t.target, `town task ${t.id} delivery`);
 // Fishing (Phase 6, src/app/shared/fishing): what the fishing loop grants and spends.
 for (const c of FISHING.CATCHES) src(c.id, c.rarity === 'quest' ? 'fishing: the Ledger Catch, on its day' : `fishing ${c.waters.join('/')}`);
 for (const b of FISHING.BAITS) use(b.id, 'fishing bait');
@@ -677,6 +684,19 @@ for (const npc of NPCS) {
   if (npc.companion && SOURCES.some(s => s.rel.startsWith(`play${path.sep}`) && s.text.includes(`npcById('${npc.id}')`))) n.uses.add(`companion: ${npc.companion}`);
   if (!n.uses.size) flag('npc', 'no-role', npc.id, npc.companion ? 'companion the play view never shows' : 'canon NPC with no station and no quest in the world');
   if (!dialogueNpcs.has(npc.id)) flag('npc', 'no-lines', npc.id, 'no DIALOGUE');
+}
+// Town task givers: a role (tasks), words (who they are; each task's ask and thanks) and a place in a town map.
+const tdMaps = SOURCES.filter(f => f.rel.startsWith(`play${path.sep}td${path.sep}`)).map(f => f.text).join('\n');
+for (const g of TASK_GIVERS) {
+  const n = node('npc', `giver:${g.town}/${g.id}`, g.name);
+  const tasks = TOWN_TASKS.filter(t => t.giver === g.id);
+  if (tasks.length) n.uses.add(`gives ${tasks.length} town task(s)`);
+  else flag('npc', 'no-role', `giver:${g.town}/${g.id}`, 'a task giver with no task');
+  if (!I18N_KEYS.has(`task.giver.${g.id}.who`)) flag('npc', 'no-lines', `giver:${g.town}/${g.id}`, 'no "who they are" line');
+  for (const t of tasks) for (const f of ['title', 'ask', 'thanks']) if (!I18N_KEYS.has(`task.${t.id}.${f}`)) flag('npc', 'no-lines', `giver:${g.town}/${g.id}`, `task ${t.id} has no ${f}`);
+  // Stands somewhere: a stall keeper of the Seamworks, or a `givers` entry / giverStall in a td map.
+  const placed = TOWN_KEEPERS.infernal.some(k => k.id === g.id) || tdMaps.includes(`'${g.id}'`);
+  if (!placed) flag('npc', 'not-visible', `giver:${g.town}/${g.id}`, 'stands in no town map');
 }
 for (const [realm, count] of Object.entries(TOWNSFOLK_COUNT)) {
   if (!count) continue;

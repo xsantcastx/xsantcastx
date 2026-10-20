@@ -97,6 +97,10 @@ Later: a living, mysterious Delve · Tibia-inspired loops research · Starfall D
   and a tracked way, the Broken Astral Compass and the Rift Map Fragment as map tools, Glim's hint step 3 (a mark on
   the map). Next: Phase 8, the Underhearth.
 
+- **2026-10-20 (town tasks)** — Built: every top-down town (Seamworks, Pyrehold, Cinderport, Ashgrove) has 2–3
+  task givers with "!"/"?" head marks, a talk window, Tasks rows on the quest scroll, hunt / deliver / visit tasks,
+  Gold + material + Hunting XP + one gear piece per town; synced `godforge-town-tasks` (`docs/handoff/town-tasks.md`).
+  Next: repeatable daily tasks.
 - **2026-10-14 (endless Delve)** — Phase 7 built (7.1–7.3, most of 7.4): the Delve goes on east and west of the
   untouched core in streamed sector columns, structures (waycaches, flooded shafts, ruins, dens, halls, lakes,
   lava basins, rift shrines, field notes), save v2 (IndexedDB + 16 cloud region slots, regrowth), the world map.
