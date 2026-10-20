@@ -62,7 +62,9 @@ describe('td-tree: points, gates, prerequisites', () => {
   it('one point a level from level 2', () => {
     expect(skillPointsEarned(1)).toBe(0);
     expect(skillPointsEarned(2)).toBe(1);
-    expect(skillPointsEarned(30)).toBe(29);
+    expect(skillPointsEarned(9)).toBe(8);
+    // Milestone bonus points ride on top (skill-points.ts): +1 at 10, +1 at 30.
+    expect(skillPointsEarned(30)).toBe(31);
     expect(skillPointsEarned(0)).toBe(0);
     expect(treePointsLeft(empty(), 5)).toBe(4);
     expect(treePointsLeft({ spent: { 'bone-spear': 3 }, free: [], at: 0 }, 5)).toBe(1);

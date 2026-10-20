@@ -25,7 +25,9 @@ test('the trees: spend a point, the rank and the card follow, a Bone skill goes 
   const errors: string[] = [];
   page.on('pageerror', e => errors.push(e.message));
   await open(page, { width: 1280, height: 800 });
-  await expect(page.locator('.sbt__pts')).toHaveText(`Skill points: ${LEVEL - 1}`);
+  // The points earned are the Keeper curve's level − 1 plus the milestones' bonus (skill-points.ts): read, not assumed.
+  await expect(page.locator('.sbt__pts')).toHaveText(/^Skill points: \d+$/);
+  const PTS = Number((await page.locator('.sbt__pts').textContent())!.replace(/\D/g, ''));
   await expect(page.locator('.sbt__tab[data-tree="ember"]')).toHaveAttribute('aria-selected', 'true');
   // Ember: the starting kit holds rank 1; Meteor (level 24) is locked and says so.
   await expect(page.locator('.sbt__node[data-skill="hellfire-nova"] .sbt__badge')).toHaveText('1');
@@ -45,7 +47,7 @@ test('the trees: spend a point, the rank and the card follow, a Bone skill goes 
   await expect(card.locator('.sbt__now')).toContainText('26–38 damage');
   await expect(card.locator('.sbt__next')).toContainText('Rank 2 → 3');
   await expect(card.locator('.sbt__next')).toContainText('Damage: 26–38 → 30–44');
-  await expect(page.locator('.sbt__pts')).toHaveText(`Skill points: ${LEVEL - 3}`);
+  await expect(page.locator('.sbt__pts')).toHaveText(`Skill points: ${PTS - 2}`);
   // Its prerequisite held, Corpse Burst opens: one point in it.
   await pickSkill(page, 'corpse-burst');
   await card.locator('.sbt__learn').click();
@@ -71,7 +73,7 @@ test('the trees: spend a point, the rank and the card follow, a Bone skill goes 
   await page.keyboard.press('k');
   await page.locator('.sbt__reset').click();
   await page.locator('.sbt__yes').click();
-  await expect(page.locator('.sbt__pts')).toHaveText(`Skill points: ${LEVEL - 1}`);
+  await expect(page.locator('.sbt__pts')).toHaveText(`Skill points: ${PTS}`);
   await pickSkill(page, 'drain-life');
   await expect(page.locator('.sbt__detail .sbt__rank')).toHaveText('Rank 1/20');
   expect(errors, errors.join('\n')).toEqual([]);
