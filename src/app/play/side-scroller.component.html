@@ -164,6 +164,7 @@
     <div class="td-orbs" aria-hidden="true" data-engine-ignore>
       <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp"><b>{{ hpShown }}</b></i>
       <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana"><b>{{ tdMana }}</b></i>
+      @if (tdAura) { <i class="td-aura-badge" [innerHTML]="skillIcon(tdAura)"></i> }
     </div>
   }
   <header class="topbar" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
@@ -333,6 +334,7 @@
       <div class="hero-face" aria-hidden="true">
         @if (tdPortrait) { <img [src]="tdPortrait" alt=""> }
         <b class="hero-lv">{{ huntingLevel }}</b>
+        @if (tdAura) { <i class="td-aura-badge hero-aura" [innerHTML]="skillIcon(tdAura)"></i> }
       </div>
     }
     <div class="vital">
