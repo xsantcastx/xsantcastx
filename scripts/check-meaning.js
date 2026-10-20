@@ -308,6 +308,18 @@ for (const input of SLATE_UPGRADE_INPUTS) use(input.id, `Kael binds the ${MIRROR
     n.lore = !!(item.lore && item.lore.trim()) && WORDS.includes("'clock.lore." + item.id + "'");
   }
 }
+// The potion belt (shared/potions/potions.model.ts): creature drops and Edrin Kade's counter; drunk from the belt
+// (Q / R in play, PotionService.drink → engine drinkPotion). Lore on the definition; the belt and the counter show it.
+{
+  const { POTIONS } = L('shared/potions/potions.model.ts');
+  const BELT = read('play/side-scroller.component.html');
+  for (const p of POTIONS) {
+    const n = thing(p.id);
+    for (const s of p.sources) src(p.id, s);
+    if (BELT.includes('drinkPotion(')) for (const u of p.uses) use(p.id, u);
+    n.lore = !!(p.lore && p.lore.trim());
+  }
+}
 // The machines (shared/cascade): the Eclipse Cascade on the Slate, and the realm machines found in their Delves
 // (realm-machines.model.ts). A built one stands in a real area, says where it is found, has a use, its lore in
 // the model AND in the machine's words (EN + ES), a name the play view can say, and a Slate app; a spec'd one

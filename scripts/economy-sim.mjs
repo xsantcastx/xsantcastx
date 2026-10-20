@@ -511,6 +511,27 @@ function check(E) {
     console.log(`  Mirror Slate: ${fmtN(C.MIRROR_SLATE.price)} Gold = ${minutes.toFixed(1)} min of income at 30m; earned free after ${C.MIRROR_SLATE.awardPlays} plays`);
     if (!(minutes >= 1 && minutes <= 10)) fails.push(`Mirror Slate price is ${minutes.toFixed(1)} min of income at 30m (must be 1-10)`);
   }
+  // The potion belt (shared/potions): Edrin Kade's shelf is a sink priced in kills of the creatures that tier meets
+  // (td-mobs MOBS coins), 2-12 kills each; he never buys them back, so buying is never a Gold loop.
+  {
+    const P = loadTs('src/app/shared/potions/potions.model.ts');
+    const mobText = readFileSync(resolve(here, '..', 'src/app/play/td/td-mobs.ts'), 'utf8');
+    const mobs = mobText.slice(mobText.indexOf('export const MOBS')).split(/\n  '[a-z-]+': \{/).slice(1).map(b => {
+      const level = /level: (\d+)/.exec(b), coins = /coins: \[(\d+), (\d+)\]/.exec(b), rank = /rank: '(\w+)'/.exec(b);
+      return level && coins ? { level: +level[1], avg: (+coins[1] + +coins[2]) / 2, rank: rank ? rank[1] : 'normal' } : null;
+    }).filter(Boolean);
+    const vendor = readFileSync(resolve(here, '..', 'src/app/shared/vendor/material-vendor.model.ts'), 'utf8');
+    const rows = [];
+    for (const p of P.POTION_SHELF) {
+      const band = mobs.filter(m => m.rank === 'normal' && P.dropTier(m.level) === p.tier);
+      const avg = band.length ? band.reduce((t, m) => t + m.avg, 0) / band.length : 0;
+      const kills = avg > 0 ? p.price / avg : Infinity;
+      rows.push(`${p.name} ${p.price} Gold = ${kills.toFixed(1)} kills`);
+      if (!(kills >= 2 && kills <= 12)) fails.push(`${p.name} costs ${kills.toFixed(1)} kills of its tier's creatures (must be 2-12)`);
+      if (vendor.includes(`'${p.id}'`)) fails.push(`${p.name} is on the buyback board (a buy/sell loop)`);
+    }
+    console.log(`  Potions: ${rows.join('; ')}`);
+  }
   // The Reels: RTP band and bet caps (a quick proof; --reels runs the full one).
   fails.push(...reelsScenario({ rounds: 300_000, plays: 0, quiet: true }));
   // The cascade machines (Eclipse Cascade, Orrery Tumbler): a quick stratified proof, autoplay at the cap (`--cascade` runs the full one).

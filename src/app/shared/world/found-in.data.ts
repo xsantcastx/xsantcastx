@@ -35,6 +35,7 @@ import { MAP_TOOLS } from '../delve/map-tools.model';
 import { SLATE_ITEMS } from '../slate/slate-items.model';
 import { CABINET_ITEMS } from '../cabinets/cabinets.model';
 import { CLOCK_ITEMS } from '../world-clock/eclipse.model';
+import { POTIONS } from '../potions/potions.model';
 import { CATCHES, CRATE_IDS, LEDGER_CATCH_IDS, LODGE_CHARMS, RODS, WATERS, type WaterId } from '../fishing/fishing.model';
 
 const DELVE_AREA = 'Ember Delve';
@@ -79,6 +80,8 @@ function fishingRows(): { place: string; materialIds: string[] }[] {
   for (const item of CABINET_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
   // The world clock's: the Moonwake, the Mirrorfin and the Eclipse Glass, each at its hour (shared/world-clock/eclipse.model.ts).
   for (const item of CLOCK_ITEMS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
+  // The potion belt (shared/potions): Edrin Kade's counter and the creatures that drop them.
+  for (const item of POTIONS) for (const place of item.foundIn) rows.push({ place, materialIds: [item.id] });
   void CRATE_IDS;
   return rows;
 }
