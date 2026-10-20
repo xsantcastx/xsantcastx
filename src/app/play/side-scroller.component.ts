@@ -3680,9 +3680,9 @@ export class SideScrollerComponent implements OnDestroy {
         // The top-down game's doll is the Keeper the world shows (owner 2026-10-20): the front sprite, class garb and
         // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
         const sheet = frontSheet(new KeeperPainter(look, v.gear, v.garb), look.vocation === 'warlock');
-        const c = el.getContext('2d')!, k = 4, w = (FRONT_W + 2) * k, h = (FRONT_H + 2) * k;
+        const c = el.getContext('2d')!, k = 4, w = FRONT_W * k, h = FRONT_H * k;
         c.imageSmoothingEnabled = false;
-        c.drawImage(sheet, 0, 0, FRONT_W + 2, FRONT_H + 2, Math.round((176 - w) / 2), Math.round((176 - h) / 2) + 4, w, h);
+        c.drawImage(sheet, 0, 0, FRONT_W, FRONT_H, Math.round((176 - w) / 2), Math.round((176 - h) / 2), w, h);
       } else new KeeperPainter(look, v.gear, v.garb).still(el);
       this.dollFigure = el.toDataURL('image/png');
     } catch { /* no 2D canvas: the doll frame stays empty */ }
