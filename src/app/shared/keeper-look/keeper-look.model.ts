@@ -57,6 +57,21 @@ export type KeeperStats = Record<Attribute, number>;
 export const POINTS_PER_LEVEL = 5;
 export type Vocation = typeof VOCATIONS[number];
 
+/**
+ * The Spellbook's trees (D2's skill pages, owner 2026-10-21): points spent per skill, the ranks given free (a save
+ * from before the trees keeps what sat on its bar), and when the tree last changed. Rules and clamping live with the
+ * skills (play/td/td-tree); here only the shape. Merged on its own clock: the newer tree wins WHOLE, so two devices
+ * never add up to points nobody earned.
+ */
+export interface KeeperSkillTree {
+  spent: Record<string, number>;
+  free: string[];
+  at: number;
+}
+/** The most ranks a skill takes (td-skills MAX_RANK; no imports here). */
+const TREE_MAX_RANK = 20;
+const SKILL_ID = /^[a-z-]{1,24}$/;
+
 export interface KeeperLook {
   version: 1;
   /** The Keeper chose (or kept) this look at the Glass. */
@@ -80,6 +95,8 @@ export interface KeeperLook {
   aura: string;
   /** Points spent on the attributes (D2's character sheet): Vitality, Energy, Spirit, Agility. */
   stats: KeeperStats;
+  /** The skill trees: ranks bought with the level's skill points. */
+  tree: KeeperSkillTree;
   /** ms since epoch of the last edit; the later edit wins a merge. */
   updatedAt: number;
 }
@@ -88,7 +105,7 @@ export function defaultLook(): KeeperLook {
   return {
     version: 1, made: false, prompted: false,
     body: 'sturdy', skin: 2, hair: 'swept', hairColor: 2, eyes: 'round', eyeColor: 0, face: 'none',
-    outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', stats: { vit: 0, ene: 0, spi: 0, agi: 0 }, updatedAt: 0,
+    outfit: 0, trim: 4, name: '', vocation: 'warlock', bar: [], aura: '', stats: { vit: 0, ene: 0, spi: 0, agi: 0 }, tree: { spent: {}, free: [], at: 0 }, updatedAt: 0,
   };
 }
 
@@ -110,6 +127,26 @@ function coerceStats(raw: unknown): KeeperStats {
   const n = (v: unknown) => typeof v === 'number' && Number.isInteger(v) && v >= 0 && v <= 999 ? v : 0;
   return { vit: n(r['vit']), ene: n(r['ene']), spi: n(r['spi']), agi: n(r['agi']) };
 }
+/**
+ * Any stored tree → a valid one. A save from before the trees (no `tree`) is migrated: whatever sat on its bar and
+ * its aura is given rank 1 free, so an old bar keeps working.
+ */
+export function coerceTree(raw: unknown, bar: readonly string[], aura: string): KeeperSkillTree {
+  if (!raw || typeof raw !== 'object') {
+    const free = [...new Set([...bar, aura].filter(id => !!id && id !== 'none' && SKILL_ID.test(id)))];
+    return { spent: {}, free, at: 0 };
+  }
+  const r = raw as Record<string, unknown>;
+  const spent: Record<string, number> = {};
+  const rs = (r['spent'] && typeof r['spent'] === 'object' ? r['spent'] : {}) as Record<string, unknown>;
+  for (const [id, n] of Object.entries(rs)) {
+    if (SKILL_ID.test(id) && typeof n === 'number' && Number.isInteger(n) && n > 0) spent[id] = Math.min(TREE_MAX_RANK, n);
+  }
+  const free = Array.isArray(r['free']) ? [...new Set((r['free'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x)))].slice(0, 40) : [];
+  const at = typeof r['at'] === 'number' && Number.isFinite(r['at']) && r['at'] > 0 ? r['at'] : 0;
+  return { spent, free, at };
+}
+
 /** Points still to spend at a level. */
 export function pointsLeft(level: number, stats: KeeperStats): number {
   return Math.max(0, (Math.max(1, Math.floor(level)) - 1) * POINTS_PER_LEVEL - (stats.vit + stats.ene + stats.spi + stats.agi));
@@ -120,6 +157,8 @@ export function coerceLook(raw: unknown): KeeperLook {
   const d = defaultLook();
   if (!raw || typeof raw !== 'object') return d;
   const r = raw as Record<string, unknown>;
+  const bar = Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && SKILL_ID.test(x)).slice(0, 4) : [];
+  const aura = typeof r['aura'] === 'string' && /^[a-z-]{0,24}$/.test(r['aura']) ? r['aura'] : '';
   return {
     version: 1,
     made: r['made'] === true,
@@ -135,20 +174,25 @@ export function coerceLook(raw: unknown): KeeperLook {
     trim: index(OUTFIT_COLORS, r['trim'], d.trim),
     name: cleanName(r['name']),
     vocation: pick(VOCATIONS, r['vocation'], d.vocation),
-    bar: Array.isArray(r['bar']) ? (r['bar'] as unknown[]).filter((x): x is string => typeof x === 'string' && /^[a-z-]{1,24}$/.test(x)).slice(0, 4) : [],
+    bar,
     stats: coerceStats(r['stats']),
-    aura: typeof r['aura'] === 'string' && /^[a-z-]{0,24}$/.test(r['aura']) ? r['aura'] : '',
+    aura,
+    tree: coerceTree(r['tree'], bar, aura),
     updatedAt: typeof r['updatedAt'] === 'number' && Number.isFinite(r['updatedAt']) && r['updatedAt'] > 0 ? r['updatedAt'] : 0,
   };
 }
 
-/** Two devices: the later edit wins whole; "made" and "prompted" are kept if either side has them. */
+/**
+ * Two devices: the later edit wins whole; "made" and "prompted" are kept if either side has them. The skill tree runs
+ * on its own clock: the newer tree wins whole (never a sum), and the fight clamps it to the level's points.
+ */
 export function mergeKeeperLook(remote: unknown, local: unknown): unknown {
   if (remote == null) return local;
   if (local == null) return remote;
   const r = coerceLook(remote), l = coerceLook(local);
   const winner = r.updatedAt > l.updatedAt ? r : l;
-  return { ...winner, made: r.made || l.made, prompted: r.prompted || l.prompted } satisfies KeeperLook;
+  const tree = r.tree.at > l.tree.at ? r.tree : l.tree;
+  return { ...winner, tree, made: r.made || l.made, prompted: r.prompted || l.prompted } satisfies KeeperLook;
 }
 
 /** The parts that change the painting (not the name or the flags), as a short stable key. */
