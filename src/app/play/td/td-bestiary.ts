@@ -13,7 +13,7 @@ export const BESTIARY_KEY = 'eclipse-bestiary-v1';
 export interface BestiaryBlob { version: 1; kills: Record<string, number> }
 
 /** Continent display names (the defs carry the town's name, not the land's). */
-const CONTINENT_NAMES: Readonly<Record<string, string>> = { 'ember-isle': 'Ember Isle', 'infernal-reach': 'Infernal Reach', 'verdant-wilds': 'The Verdant Wilds' };
+const CONTINENT_NAMES: Readonly<Record<string, string>> = { 'ember-isle': 'Ember Isle', 'infernal-reach': 'Infernal Reach', 'verdant-wilds': 'The Verdant Wilds', 'umbral-marches': 'The Umbral Marches' };
 const continentName = (id: string): string => CONTINENT_NAMES[id] ?? id.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
 export interface BestiaryDrop { name: string; qty: number; chance: number }

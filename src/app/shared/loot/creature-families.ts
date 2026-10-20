@@ -116,6 +116,13 @@ export const CREATURE_PROFILES: readonly CreatureProfile[] = [
   P('ephemeris-leech', 'orrery', 'melee', 3, { resists: { cold: -40 } }),
   P('anchor-warden', 'orrery', 'shielder', 14),
   P('fallen-ephemeris', 'orrery', 'summoner', 20, { boss: true }),
+  // The Umbral Marches (top-down, td-mobs.ts) — the fens, the meres, the drowned ruins, the Drowned Crypts.
+  P('mire-lurker', 'beast', 'melee', 25, { resists: { cold: 20 } }),
+  P('lantern-wisp', 'shade', 'melee', 28, { hits: 'fire', resists: { fire: 40 } }),
+  P('ink-hound', 'shade', 'melee', 32, { resists: { physical: -20 } }),
+  P('drowned-knight', 'bone', 'melee', 38, { hits: 'cold', resists: { lightning: -20 } }),
+  P('gloam-witch', 'shade', 'ranged', 42, { hits: 'arcane', resists: { physical: -45 } }),
+  P('ink-abbess', 'shade', 'summoner', 50, { boss: true, hits: 'arcane' }),
 ];
 
 const BY_ID = new Map(CREATURE_PROFILES.map(p => [p.creature, p]));

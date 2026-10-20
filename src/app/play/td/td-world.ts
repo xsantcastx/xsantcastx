@@ -8,7 +8,7 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { beaconPillar, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, SOLID_GROUND, TILE, type Ground } from './td-art';
+import { beaconPillar, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, swampTree, reeds, gloomcap, lanternPost, SOLID_GROUND, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import type { ContinentDef, Region } from './continent';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
@@ -48,6 +48,8 @@ export class TdWorld implements TdLevel {
   /** Which continent this is (the engine holds one per continent; 'surface' names whichever the Keeper is on). */
   readonly continent: string;
   readonly dark = false;
+  /** Fog over the continent (ContinentDef.fog: the Umbral Marches' mist). */
+  readonly fog: number;
   readonly town: TdMap;
   /** The square's centre streets (tiles): they run on as the world's roads. */
   private readonly roadRow: number;
@@ -64,6 +66,7 @@ export class TdWorld implements TdLevel {
 
   constructor(readonly def: ContinentDef = EMBER_ISLE_DEF) {
     this.continent = def.id;
+    this.fog = def.fog ?? 0;
     this.town = def.town();
     this.roadRow = def.streets.row; this.roadCol = def.streets.col;
     this.allStalls = [...this.town.stalls];
@@ -164,6 +167,13 @@ export class TdWorld implements TdLevel {
       case 'j': return fbm(c / 8, r / 8, 601) > .66 ? 'grass' : 'moss';
       case 'J': return 'moss';
       case 'u': return fbm(c / 5, r / 5, 607) > .5 ? 'flagstone' : 'moss';
+      // The Umbral Marches: the fen (bog, black pools), the deep fen (more water than land), the meres (black water,
+      // a hummock here and there), the drowned ruins (old slabs half under the bog).
+      // Round a place worth finding the bog holds firm (no black water at a door or a ring of stones).
+      case 'q': return fbm(c / 6, r / 6, 701) > .66 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
+      case 'Q': return fbm(c / 5, r / 5, 709) > .6 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
+      case 'k': return fbm(c / 6, r / 6, 719) > .7 || this.nearPlace(c, r) ? 'mire' : 'blackwater';
+      case 'x': return fbm(c / 5, r / 5, 727) > .52 ? 'wetstone' : fbm(c / 7, r / 7, 733) > .72 && !this.nearPlace(c, r) ? 'blackwater' : 'mire';
       default: return 'grass';
     }
   }
@@ -238,6 +248,12 @@ export class TdWorld implements TdLevel {
     return g !== 'water' && g !== 'ember' && !SOLID_GROUND.has(g);
   }
 
+  /** Within eight tiles of a place worth finding (the Marches keep their bog firm there). */
+  private nearPlace(c: number, r: number): boolean {
+    for (const p of this.def.places) if (Math.abs(c - p.c) <= 8 && Math.abs(r - p.r) <= 8) return true;
+    return false;
+  }
+
   /** A giant tree needs the tiles either side of its foot clear of the roads and the water. */
   private giantRoom(c: number, r: number): boolean {
     for (let dc = -2; dc <= 2; dc++) {
@@ -268,7 +284,7 @@ export class TdWorld implements TdLevel {
       for (let c = cx * WORLD_CHUNK; c < (cx + 1) * WORLD_CHUNK; c++) {
         if (this.nearTown(c, r) || this.inClearing(c, r)) continue;
         const g = this.ground(c, r);
-        if (g !== 'grass' && g !== 'flowers' && g !== 'dirt' && g !== 'cave' && g !== 'moss' && g !== 'flagstone') continue;
+        if (g !== 'grass' && g !== 'flowers' && g !== 'dirt' && g !== 'cave' && g !== 'moss' && g !== 'flagstone' && g !== 'mire' && g !== 'wetstone') continue;
         // A clear lane beside the roads.
         if (this.roads.has(this.key(c, r)) || this.roads.has(this.key(c + 2, r)) || this.roads.has(this.key(c - 2, r)) || this.roads.has(this.key(c, r + 2)) || this.roads.has(this.key(c, r - 2))) continue;
         const reg = this.regionAt(c, r), roll = hash(c, r, 919), x = c * TILE + TILE / 2, y = r * TILE + TILE;
@@ -299,6 +315,16 @@ export class TdWorld implements TdLevel {
           else if (roll < .04) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => templePillar(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
           else if (roll < .1) put({ sprite: () => jungleTree(Math.floor(hash(c, r, 6) * 6)), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
           else if (roll > .965) put({ sprite: () => fern(Math.floor(hash(c, r, 8) * 3)), x, y, kind: 'prop' }, c, r);
+        } else if (reg === 'q' || reg === 'Q' || reg === 'k' || reg === 'x') {
+          // The Marches: moss-hung cypresses, reeds at the water, gloomcaps glowing in the bog; a lost lantern on a post
+          // in the deep fen and the drowned ruins, still lit; broken walls where the old town went under.
+          const seed = Math.floor(hash(c, r, 6) * 6), wet = this.ground(c + 1, r) === 'blackwater' || this.ground(c - 1, r) === 'blackwater' || this.ground(c, r + 1) === 'blackwater';
+          const trees = reg === 'Q' ? .1 : reg === 'q' ? .055 : .03;
+          if (reg === 'x' && g === 'wetstone' && roll < .03) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => ruinWall(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
+          else if ((reg === 'Q' || reg === 'x') && roll > .996) put({ sprite: lanternPost, x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r);
+          else if (g === 'mire' && roll < trees) put({ sprite: () => swampTree(seed), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
+          else if (wet && roll > .8) put({ sprite: () => reeds(seed), x, y, kind: 'prop' }, c, r);
+          else if (roll > .982) put({ sprite: () => gloomcap(seed), x, y, kind: 'prop' }, c, r);
         } else if (reg === 'v') {
           if (roll < .045) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => boulder(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
           else if (roll > .99) put({ sprite: oreSeam, x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r);

@@ -429,6 +429,67 @@ test('the Overgrown Temple in the Sunken Courts: in by its gate, down to the Hea
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Umbral Marches: a ship from Pyrehold to Mirewatch, up the Lantern Tower in Gloamhaven and down, and the Map of the continent', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/ship to the umbral marches/i, /^Mirewatch$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-mirewatch.jpg', type: 'jpeg', quality: 72 });
+  // The continent's Map: Gloamhaven on its stilts, Mirewatch, Lanternfen, the crypt door in the drowned ruins.
+  await canvas(page).focus();
+  await page.keyboard.press('m');
+  await expect(page.locator('#places-list.td-map')).toBeVisible();
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-map.jpg', type: 'jpeg', quality: 78 });
+  await page.keyboard.press('Escape');
+  await go(/the lantern tower/i, /keeper's hall/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-tower-0.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /wick loft/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-tower-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /lantern room/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-tower-2.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /wick loft/i);
+  await go(/stairs down/i, /keeper's hall/i);
+  await go(/^door/i, /^Gloamhaven$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-gloamhaven.jpg', type: 'jpeg', quality: 72 });
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('the Drowned Crypts in the Umbral Marches: in by their door, down to the Abbess\'s Chapel, and back out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/ship to the umbral marches/i, /^Mirewatch$/);
+  await go(/the drowned crypts/i, /flooded nave/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-crypt-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /sunken cloister/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-crypt-2.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /abbess's chapel/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-crypt-3.jpg', type: 'jpeg', quality: 72 });
+  // (No walk onto the island: the Abbess would fight a level-1 Keeper there, and a test never rides on a fight.)
+  await go(/stairs up/i, /sunken cloister/i);
+  await go(/stairs up/i, /flooded nave/i);
+  await go(/crypt door/i, /^(The Drowned Crypts|The Drowned Ruins)$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/umbral-crypt-door.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('through every door and stair the Keeper lands free and can walk away (never set down inside a wall)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });
