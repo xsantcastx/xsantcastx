@@ -3602,4 +3602,31 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .stage--td .tally-coin { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, var(--cozy-glow), var(--cozy-brass) 60%, var(--cozy-brass-lo));
   box-shadow: 0 0 0 1px var(--cozy-wood-0); }
 .stage--td .tally-ico { display: inline-block; width: 18px; height: 18px; image-rendering: pixelated; }
+  /* Step 2: the goal list leaves the top centre for a compact panel under the minimap (the reference's quest list),
+     so the world's middle stays clear; Glim's line rises into the freed band. */
+  .stage--td .guide, .stage--td .guide--list { left: auto; right: 16px; top: 310px; margin: 0; width: 264px; max-width: 264px;
+    flex-wrap: wrap; gap: 6px; padding: 8px 10px 8px 12px; }
+  .stage--td .guide-list { grid-template-columns: 1fr; gap: 3px; padding: 0 0 4px; font-size: 13px; }
+  .stage--td .guide--list .guide-text, .stage--td .guide-text { flex: 1 1 100%; font-size: 12px; line-height: 1.3; }
+  .stage--td .guide-text b { display: block; font-size: 11px; }
+  .stage--td .guide-go { min-height: 30px; padding: 0 10px; font-size: 12px; margin-left: auto; }
+  .stage--td.stage--guide { --glim-top: 72px; }
+  .stage--td .guide-text { flex: 1 1 160px; }
+}
+/* The menu toolbar (step 2): framed square buttons with their names under them, the key in the corner. */
+.td-dock { position: absolute; z-index: 5; left: 16px; bottom: 16px; display: flex; gap: 6px; padding: 6px;
+  background: var(--px-win-planks), var(--cozy-plate); box-shadow: var(--cozy-chip); pointer-events: auto; }
+.td-dock button { position: relative; display: grid; justify-items: center; align-content: center; gap: 3px; width: 68px; height: 64px; padding: 4px 2px 3px !important; text-transform: none !important;
+  border: 0 !important; border-radius: 0 !important; background: var(--cozy-wood-2) !important; color: var(--cozy-cream);
+  box-shadow: inset 0 0 0 2px var(--cozy-wood-1), 0 0 0 2px var(--cozy-wood-0) !important; cursor: pointer; }
+.td-dock button:hover, .td-dock button[aria-expanded='true'] { background: var(--cozy-wood-3) !important; box-shadow: inset 0 0 0 2px var(--cozy-glow), 0 0 0 2px var(--cozy-wood-0) !important; }
+.td-dock svg { image-rendering: pixelated; }
+.td-dock span { font: 600 11px/1 var(--cozy-font-read); letter-spacing: 0; text-transform: none; white-space: nowrap; color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0); }
+.td-dock kbd { position: absolute; top: 2px; right: 3px; font: 700 9px/1 var(--font-pixel); color: var(--cozy-brass-hi); opacity: 0; transition: opacity .15s; }
+.td-dock button:hover kbd, .td-dock button:focus-visible kbd { opacity: 1; }
+/* Phones: the toolbar folds to icons only, above the touch controls' row. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-dock { left: 8px; bottom: 64px; flex-direction: column; padding: 4px; gap: 4px; }
+  .td-dock button { width: 44px; height: 44px; }
+  .td-dock span, .td-dock kbd { display: none; }
 }
