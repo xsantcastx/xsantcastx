@@ -6,7 +6,7 @@
  * each character is (its ground, an object on it, a way in or out). Easy to read in a diff, easy to redraw.
  */
 import type { StationDef } from '../world/world.model';
-import { bones, boulder, chest, ladderUp, oreSeam, stairsDown, stairsUp, torchPost, TILE, type Ground, type Sprite } from './td-art';
+import { bed, bones, boulder, chest, counter, hearthFire, ladderUp, oreSeam, shelf, stairsDown, stairsUp, table, torchPost, TILE, type Ground, type Sprite } from './td-art';
 import type { TdObject, TdStall } from './seamworks-square';
 import type { MobSpawn } from './td-mobs';
 
@@ -32,9 +32,9 @@ export interface TdExit {
   arrive: string;
 }
 
-export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up';
-const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp };
-const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true };
+export type MapObject = 'ore' | 'boulder' | 'torch' | 'bones' | 'chest' | 'ladder' | 'down' | 'up' | 'table' | 'bed' | 'shelf' | 'counter' | 'hearth';
+const SPRITES: Record<MapObject, () => Sprite> = { ore: oreSeam, boulder: () => boulder(1), torch: torchPost, bones, chest, ladder: ladderUp, down: stairsDown, up: stairsUp, table, bed: () => bed(1), shelf, counter, hearth: hearthFire };
+const BLOCKS: Partial<Record<MapObject, boolean>> = { ore: true, boulder: true, chest: true, torch: true, table: true, bed: true, shelf: true, counter: true };
 
 export interface LegendEntry {
   ground: Ground;
@@ -120,7 +120,7 @@ export class HandLevel implements TdLevel {
   }
   walkable(c: number, r: number): boolean {
     const g = this.ground(c, r);
-    if (g === 'rock' || g === 'water' || g === 'ember') return false;
+    if (g === 'rock' || g === 'wall' || g === 'water' || g === 'ember') return false;
     return !(c >= 0 && r >= 0 && c < this.cols && r < this.rows && this.blocked.has(r * this.cols + c));
   }
   objectsIn(x0: number, y0: number, x1: number, y1: number): TdObject[] {

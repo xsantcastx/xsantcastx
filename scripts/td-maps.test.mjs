@@ -9,8 +9,8 @@ import { readdirSync, readFileSync } from 'node:fs';
 
 const DIR = 'src/app/play/td/maps';
 const BLOCKED = new Set('#~eoOTCB'.split(''));
-const WAYS_IN = ['^', '<'];
-const MUST_REACH = ['>', '<', '^', 'm', 'b', 'i', 'W'];
+const WAYS_IN = ['^', '<', 'D'];
+const MUST_REACH = ['>', '<', '^', 'D', 'm', 'b', 'i', 'W', 'C'];
 
 for (const file of readdirSync(DIR).filter(f => f.endsWith('.ts'))) {
   const text = readFileSync(`${DIR}/${file}`, 'utf8');
@@ -20,7 +20,7 @@ for (const file of readdirSync(DIR).filter(f => f.endsWith('.ts'))) {
       const width = Math.max(...rows.map(r => r.length));
       const grid = rows.map(r => r.padEnd(width, '#'));
       const start = grid.flatMap((row, r) => [...row].map((ch, c) => (WAYS_IN.includes(ch) ? [c, r] : null))).find(Boolean);
-      assert.ok(start, `${name} has a way in (^ or <)`);
+      assert.ok(start, `${name} has a way in (^, < or a door D)`);
       const key = (c, r) => `${c},${r}`;
       const seen = new Set([key(...start)]), queue = [start];
       while (queue.length) {

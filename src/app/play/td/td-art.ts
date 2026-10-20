@@ -67,7 +67,7 @@ function outline(src: HTMLCanvasElement): HTMLCanvasElement {
 
 // ── Ground ────────────────────────────────────────────────────────────────────
 
-export type Ground = 'grass' | 'dirt' | 'cobble' | 'sand' | 'water' | 'ember' | 'plank' | 'flowers' | 'cave' | 'rock';
+export type Ground = 'grass' | 'dirt' | 'cobble' | 'sand' | 'water' | 'ember' | 'plank' | 'flowers' | 'cave' | 'rock' | 'wall' | 'rug';
 
 /** Paint one ground tile at (tx, ty) into `c` at (ox, oy). Variants come from the tile's own hash. */
 export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, frame = 0): void {
@@ -133,6 +133,18 @@ export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: nu
       for (let i = 0; i < 4; i++) rect(c, ox + Math.floor(r(i) * 14), oy + Math.floor(r(i + 5) * 14), 2, 1, '#2e2532');
       break;
     }
+    case 'wall': {
+      // An inside wall seen from above: the dark top of the timber wall (its plaster face drawn by paintEdge).
+      rect(c, ox, oy, TILE, TILE, '#3a2618');
+      rect(c, ox, oy + 7, TILE, 2, '#4a3020');
+      break;
+    }
+    case 'rug': {
+      // A woven rug over the boards: a red field, a cream border, a diamond.
+      rect(c, ox, oy, TILE, TILE, '#8f3524'); rect(c, ox, oy, TILE, 1, '#e8d5b0'); rect(c, ox, oy + 15, TILE, 1, '#e8d5b0');
+      rect(c, ox + 6, oy + 6, 4, 4, '#d68a2e'); rect(c, ox + 7, oy + 5, 2, 6, '#d68a2e');
+      break;
+    }
     case 'water':
     case 'ember': {
       const ramp = kind === 'water' ? PAL.water : PAL.ember;
@@ -163,6 +175,15 @@ export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: nu
  */
 export function paintEdge(c: Ctx, kind: Ground, neighbour: Ground, side: 'n' | 's' | 'e' | 'w', tx: number, ty: number, ox: number, oy: number): void {
   if (kind === neighbour) return;
+  if (kind === 'wall') {
+    // An inside wall: where the floor lies south, its plaster face with a timber rail and a skirting board.
+    if (side === 's') {
+      rect(c, ox, oy + 3, TILE, 13, '#e8d5b0'); rect(c, ox, oy + 3, TILE, 1, '#f6e8c8'); rect(c, ox, oy + 8, TILE, 1, '#a06a3b');
+      rect(c, ox, oy + 14, TILE, 2, '#6e4526');
+      if (hash(tx, ty, 150) > .85) { rect(c, ox + 5, oy + 5, 6, 2, '#a06a3b'); rect(c, ox + 6, oy + 4, 4, 1, '#ffd27a'); }
+    } else if (side === 'n') rect(c, ox, oy, TILE, 1, '#2a1a10');
+    return;
+  }
   if (kind === 'rock') {
     // A wall: where open floor lies south, the rock shows its lit front face (ember-veined now and then); a dark lip elsewhere.
     if (side === 's') {
@@ -174,7 +195,7 @@ export function paintEdge(c: Ctx, kind: Ground, neighbour: Ground, side: 'n' | '
     else rect(c, ox + 15, oy, 1, TILE, PAL.basalt[2]);
     return;
   }
-  if (neighbour === 'rock') return;
+  if (neighbour === 'rock' || neighbour === 'wall') return;
   const water = neighbour === 'water' || neighbour === 'ember';
   if (kind === 'water' || kind === 'ember') {
     // A bank lip on the water side: sand/grass overhang, then a dark shadow line.
@@ -726,5 +747,48 @@ export function ship(): Sprite {
     rect(c, 10, 6, 13, 26, '#f3e7cf'); rect(c, 25, 8, 12, 22, '#efdcb5'); rect(c, 10, 16, 13, 3, PAL.ember[1]); rect(c, 25, 17, 12, 3, PAL.ember[1]);
     rect(c, 22, 0, 6, 3, PAL.ember[2]);
     return { img: outline(img), ax: 24, ay: 50 };
+  });
+}
+
+/** A round tavern table with two stools and a candle. */
+export function table(): Sprite {
+  return cached('table', () => {
+    const W = 24, H = 18, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 4, 4, 16, 8, PAL.wood[1]); rect(c, 4, 4, 16, 2, PAL.wood[3]); rect(c, 11, 12, 2, 5, PAL.wood[0]);
+    rect(c, 0, 10, 4, 4, PAL.wood[2]); rect(c, 20, 10, 4, 4, PAL.wood[2]);
+    rect(c, 11, 1, 2, 4, '#f3e7cf'); rect(c, 11, 0, 2, 1, PAL.glow);
+    return { img: outline(img), ax: 12, ay: 18, lights: [{ x: 0, y: -16, r: 14, warm: true }] };
+  });
+}
+/** A bed with a quilt. */
+export function bed(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3, quilt = ['#5a7fb0', '#8f3524', '#5a9a49'][v];
+  return cached(`bed-${v}`, () => {
+    const W = 18, H = 28, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 1, 0, 16, 28, PAL.wood[0]); rect(c, 2, 2, 14, 6, '#f3e7cf'); rect(c, 2, 9, 14, 17, quilt); rect(c, 2, 9, 14, 2, '#ffffff');
+    return { img: outline(img), ax: 9, ay: 28 };
+  });
+}
+/** A bookshelf against the wall. */
+export function shelf(): Sprite {
+  return cached('shelf', () => {
+    const W = 20, H = 22, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 0, 0, 20, 22, PAL.wood[0]); rect(c, 1, 1, 18, 20, PAL.wood[2]);
+    for (const y of [2, 9, 16]) { rect(c, 1, y + 5, 18, 1, PAL.wood[0]); for (let x = 2; x < 18; x += 3) rect(c, x, y, 2, 5, ['#8f3524', '#3f78b5', '#5a9a49', '#d68a2e', '#8a4fb0'][(x + y) % 5]); }
+    return { img: outline(img), ax: 10, ay: 22 };
+  });
+}
+/** The inn's bar: a long counter with mugs and a keg. */
+export function counter(): Sprite {
+  return cached('counter', () => {
+    const W = 64, H = 22, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 0, 8, 64, 14, PAL.wood[1]); rect(c, 0, 6, 64, 4, PAL.wood[3]); rect(c, 0, 20, 64, 2, PAL.wood[0]);
+    for (const x of [8, 20, 34, 48]) { rect(c, x, 1, 5, 6, '#c99a3e'); rect(c, x, 1, 5, 2, '#f3e7cf'); }
+    rect(c, 56, 0, 8, 8, PAL.wood[2]);
+    return { img: outline(img), ax: 32, ay: 22 };
   });
 }
