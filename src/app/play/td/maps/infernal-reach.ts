@@ -21,6 +21,9 @@ export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO
 /** The second ship at Pyrehold's pier, nearer the shore: across the sea to Mossharbor in the Verdant Wilds. */
 export const SHIP_TO_VERDANT: StationDef = { id: 'ship-verdant', x: 0, label: 'SHIP TO THE VERDANT WILDS', kind: 'passage', blurb: 'Sail to Mossharbor, on the jungle continent. Its creatures start at level 15.' };
 
+/** The third ship at Pyrehold's pier, at its far end: across the sea to Mirewatch in the Umbral Marches. */
+export const SHIP_TO_UMBRAL: StationDef = { id: 'ship-umbral', x: 0, label: 'SHIP TO THE UMBRAL MARCHES', kind: 'passage', blurb: 'Sail to Mirewatch, on the swamp continent. Its creatures start at level 25.' };
+
 export const INFERNAL_REACH: readonly string[] = [
   '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
   '~~~~~~,,,,,,,,~~~~~~~~~,,,,,,,,,~~~~~~~~',
@@ -161,6 +164,7 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
   ways: [
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
     { place: 'harbour', station: SHIP_TO_VERDANT, to: 'verdant-wilds', arrive: 'ship-mossharbor', ship: true, along: -3 },
+    { place: 'harbour', station: SHIP_TO_UMBRAL, to: 'umbral-marches', arrive: 'ship-mirewatch', ship: true, along: 2 },
     { place: 'cave', station: DEEP_IN, to: 'molten-deep-1', arrive: 'deep-out' },
     { place: 'crypt', station: CRYPT_IN, to: 'ashen-crypt-1', arrive: 'crypt-out' },
     { place: 'forge', station: FORGE_IN, to: 'forge-of-four-1', arrive: 'forge-out' },

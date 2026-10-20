@@ -14,7 +14,7 @@ and dungeons that go down floor by floor. Ships link the harbours (a ship is a s
 | **Ember Isle** (built) | The starter island (Tibia's Rookgaard): learn to fight, cast, loot, mine, chop | **Basalt Seamworks** | 1–8 | Ember Mine (−1…−3, boss), Slagstone Cave (−1…−2), the Caldera (−1) |
 | **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport + its ship, Ashgrove, regions, the Molten Deep −1…−6, the Ashen Crypt −1…−2, the Forge of the Four −1…−3) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
 | **Verdant Wilds** (built so far: Rootglass + the Rootglass Bole 0…+3, Mossharbor + its ship, Thornwick, regions, the Overgrown Temple −1…−3) | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−4) |
-| **Umbral Marches** | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 25–50 | Drowned Crypts (−1…−6), the Ink Deeps |
+| **Umbral Marches** (built so far: Gloamhaven + the Lantern Tower 0…+2, Mirewatch + its ship, Lanternfen, regions, the Drowned Crypts −1…−3) | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 25–50 | Drowned Crypts (−1…−6), the Ink Deeps |
 | **Celestial Peaks** | Snow and stone: high passes, observatories, ice caves | **Meridian** (capital, terraced: floors +1…+4), Frostgate, Starhollow | 35–60 | Frostfang Caverns (−1…−5), the Orrery Vault |
 | **Luminous Expanse** | Glass desert: dunes, mirror oases, sunken palaces | **Dawnspire** (capital), Prism Oasis, Saltglass | 45–70 | The Sunken Palace (−1…−6), Mirror Labyrinth |
 
@@ -45,7 +45,7 @@ the bottom floor of a dungeon holds its boss.
    `ContinentVillage.ways`). Next: the Forge's fourth floor, and something to do in each town (keepers, quests).
 
 Buildings you walk into so far: the Ember Inn in the Seamworks (tavern + rooms upstairs), the Pyre Spire in
-Pyrehold, the Salted Ember in Cinderport, the Woodward's Lodge in Ashgrove and the Rootglass Bole in Rootglass. A continent holds more towns than its
+Pyrehold, the Salted Ember in Cinderport, the Woodward's Lodge in Ashgrove, the Rootglass Bole in Rootglass and the Lantern Tower in Gloamhaven. A continent holds more towns than its
 capital through `villages` (continent.ts); any town house takes a `door`. Rule for every interior and dungeon: passages at least two tiles wide, and no monster within about eight
 tiles of a stair or door, so arriving is never a death trap.
 3. **Verdant Wilds** — built (maps/verdant-wilds.ts): the jungle continent, a day's sail from Pyrehold (a second ship
@@ -65,4 +65,27 @@ tiles of a stair or door, so arriving is never a death trap.
    level 34, who calls two Vine Lashers at half its life). New ground: moss, flagstone, and three nobody walks on —
    a temple wall (`vinewall`), the leaf-sea (`canopy`), living wood (`bark`). Next: the temple's floors −4…−5, Root
    Hollows (−1…−4), something to do in each town (keepers, quests), a house to walk into in Mossharbor and Thornwick.
-4. The other three continents, one at a time, each with its capital first.
+4. **Umbral Marches** — built (maps/umbral-marches.ts): the swamp continent, a day's sail from Pyrehold (a third ship
+   at Pyrehold's pier, at its far end, `along: 2`). Mist lies over the whole continent (`ContinentDef.fog`, drawn by
+   td-engine `drawFog`: two drifting banks, thinning round the Keeper and every warm lantern; still under reduced
+   motion) and over every crypt floor (`TdMapDef.fog`). Regions: the Gloaming Fen (`q`, bog with black pools, moss-hung
+   cypresses, reeds, glowing gloomcaps), the Deep Fen (`Q`, more water than land, a lost lantern on a post here and
+   there), the Black Meres (`k`, black water, a hummock or two) and the Drowned Ruins (`x`, the abbey town's slabs half
+   under the bog). Every road is a boardwalk; round a place worth finding the bog holds firm. **Gloamhaven**, the
+   capital, on boardwalks over the black water round the old abbey town's drowned square: lantern posts at every turn,
+   houses on their own platforms, gloam-violet roofs, cypresses on the islets, the fishmonger on the west jetty, stalls
+   round the square (rune forge, enchanting, vault, crafting, vendor). **The Lantern Tower** stands on stilts at the
+   square's north-west: the Keeper's Hall (0), the Wick Loft (+1) and the Lantern Room (+2) with the Great Lantern,
+   each upper floor a gallery over the fen (maps/lantern-tower.ts). **Mirewatch** on the south shore (an old watchtower
+   on the beach; its black-hulled ketch sails to Pyrehold) and **Lanternfen**, a hamlet on hummocks in the deep fen
+   round a lantern green, on boardwalk roads from Gloamhaven; the Gloam Shrine, the Sunken Belfry and the Lantern Ring
+   off them. Creatures (td-mobs.ts, levels 25–50): Mire Lurkers (a bog-toad with a lantern lure), Lantern Wisps (a lost
+   flame; they drift over black water), Ink Hounds, Drowned Knights (the abbey's old guard) and Gloam Witches (they
+   throw ink). **The Drowned Crypts** (maps/drowned-crypts.ts) at the east road's end, a crypt door in the drowned
+   ruins: −1 the Flooded Nave (two black pools across a pillared nave, silted chapels), −2 the Sunken Cloister (a
+   cloister walk round a flooded garth), −3 the Abbess's Chapel (a ring of black water round the altar's island, two
+   causeways, and the Ink Abbess, level 50: a wave of ink from her censer, its cone shown in violet on the floor
+   first, and two Ink Hounds at half her life). New ground: `mire`, `wetstone`, and two nobody walks on — the black
+   water (`blackwater`, with stilts showing under every boardwalk) and the crypts' drowned walls (`drownwall`). Next:
+   the crypts' floors −4…−6, the Ink Deeps, a house to walk into in Mirewatch and Lanternfen, keepers and quests.
+5. The other two continents, one at a time, each with its capital first.
