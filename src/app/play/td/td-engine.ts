@@ -69,7 +69,7 @@ const MAP_COL: Partial<Record<Ground, string>> = {
   water: PAL.water[0], ember: PAL.ember[0], cave: '#6a564c', rock: '#1d1720', wall: '#3a2a24', rug: '#8f3524',
 };
 /** One pin on the Map: a place to go, where it lies (0..1 across and down the map), and its kind for its colour. */
-export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall'; u: number; v: number }
+export interface TdMapPin { id: string; label: string; blurb: string; kind: 'way' | 'ship' | 'stall' | 'npc'; u: number; v: number }
 /** HUD portraits by look (heroPortrait). */
 const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
@@ -78,7 +78,7 @@ const REACH = 26;              // art px from a stall's interaction spot
 const FOLK = 16;               // townsfolk strolling the square (the references' busy plaza)
 const FOLK_SPEED = 30;         // art px / s: a stroll, under half the Keeper's pace
 
-interface Person { painter: KeeperPainter | null; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; name?: string; moving: boolean; t: number }
+interface Person { painter: KeeperPainter | null; x: number; y: number; face: 1 | -1; dir: 'side' | 'down' | 'up'; name?: string; moving: boolean; t: number; /** A keeper's id (its task mark). */ kid?: string }
 /** A townsperson: strolls a route to somewhere in town, lingers, picks somewhere new. */
 interface Folk extends Person { path: { x: number; y: number }[]; wait: number }
 interface Puff { x: number; y: number; age: number; life: number; r: number }
@@ -146,6 +146,8 @@ export class TopDownEngine {
   private stateTimer = 0;
   private message = '';
   private nearby: TdStall | null = null;
+  /** Head marks over task givers, by keeper id ('!' a task on offer, '?' one to hand in): setTaskMarks. */
+  private taskMarks: Readonly<Record<string, '!' | '?'>> = {};
   private glim = { x: 0, y: 0, shown: true };
   private dark: HTMLCanvasElement | null = null;
   private lightSprite: HTMLCanvasElement | null = null;
@@ -334,6 +336,8 @@ export class TopDownEngine {
   /** Use a stall: the seam, the forge and the beacon are the play view's own deeds (onInteract); the rest open. */
   private use(s: TdStall): void {
     const id = s.station.id;
+    // A town task giver's spot (one standing on their own, or beside a keeper's counter): the host opens the talk.
+    if (id.startsWith('giver-') && s.keeper && this.options.onTalk?.(s.keeper.id)) return;
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
     // A door into a building: its ground floor.
@@ -416,7 +420,7 @@ export class TopDownEngine {
       if (seen.has(st.station.id)) continue;
       seen.add(st.station.id);
       const id = st.station.id;
-      const kind: TdMapPin['kind'] = id.startsWith('ship') ? 'ship' : st.station.kind === 'passage' ? 'way' : 'stall';
+      const kind: TdMapPin['kind'] = id.startsWith('ship') ? 'ship' : id.startsWith('giver-') ? 'npc' : st.station.kind === 'passage' ? 'way' : 'stall';
       pins.push({ id, label: st.station.label, blurb: st.station.blurb ?? '', kind, u: u(st.x), v: v(st.y) });
     }
     return { url: mm.url, aspect: mm.w / mm.h, pins, me: { u: u(this.player.x), v: v(this.player.y) } };
@@ -449,7 +453,10 @@ export class TopDownEngine {
     return true;
   }
   get settlementKeepers(): readonly { id: string; x: number; y: number; upstairs: boolean; mark: '!' | '?' | null }[] {
-    return this.map.stalls.filter(s => s.keeper).map(s => ({ id: s.keeper!.id, x: s.keeper!.x, y: s.keeper!.y, upstairs: false, mark: null }));
+    return this.world.stalls.filter(s => s.keeper).map(s => ({ id: s.keeper!.id, x: Math.round(s.keeper!.x), y: Math.round(s.keeper!.y), upstairs: false, mark: this.taskMarks[s.keeper!.id] ?? null }));
+  }
+  /** The town task givers' head marks (td-only; the side view's setKeeperMarks is another engine's). */
+  setTaskMarks(marks: Readonly<Record<string, '!' | '?'>>): void { this.taskMarks = { ...marks };
   }
   get glimView(): { shown: boolean; x: number; targetX: number | null; arrived: boolean; dimmed: boolean; bright: boolean; mood: string; trail: number | null; lamp: number } {
     return { shown: this.glim.shown, x: this.glim.x, targetX: null, arrived: true, dimmed: false, bright: false, mood: 'calm', trail: null, lamp: 0 };
@@ -700,6 +707,9 @@ export class TopDownEngine {
     };
   }
   private stallAt(wx: number, wy: number): TdStall | undefined {
+    // A tap on a task giver's body talks to them (a stall keeper's counter still opens the stall).
+    const giver = this.level.stalls.find(s => s.keeper && s.station.id.startsWith('giver-') && Math.abs(wx - s.keeper.x) < 10 && wy > s.keeper.y - 34 && wy < s.keeper.y + 2);
+    if (giver) return giver;
     return this.level.stalls.find(s => Math.abs(wx - s.x) < 34 && wy > s.y - 46 && wy < s.y + 16);
   }
   private tap(clientX: number, clientY: number): void {
@@ -751,6 +761,7 @@ export class TopDownEngine {
       c.fillStyle = fill; c.fillRect(sx - r, sy - r, r * 2, r * 2);
     };
     for (const st of this.level.stalls) dot(st.x, st.y, Math.max(1, k >> 1), PAL.glow);
+    if (this.level === this.world) for (const kp of this.keepers) if (kp.kid && this.taskMarks[kp.kid]) dot(kp.x, kp.y, Math.max(2, k - 1), this.taskMarks[kp.kid] === '?' ? '#ffd27a' : '#f3e7cf');
     if (this.level === this.world) for (const f of this.folk) { c.fillStyle = 'rgba(42,26,36,.55)'; c.fillRect(toX(f.x), toY(f.y), Math.max(1, k >> 1), Math.max(1, k >> 1)); }
     dot(this.player.x, this.player.y, Math.max(2, k - 1), '#ffffff');
   }
@@ -786,10 +797,18 @@ export class TopDownEngine {
   /** The town's people: its keepers behind their stalls, its townsfolk on its streets. */
   private populate(): void {
     this.keepers.length = 0; this.folk.length = 0; this.streets.length = 0;
-    for (const s of this.map.stalls) {
-      if (!s.keeper) continue;
+    // Every keeper on the continent: the capital's stalls and the villages' own (Cinderport, Ashgrove…).
+    const seen = new Set<string>();
+    for (const s of this.world.stalls) {
+      // One person per keeper (a stall keeper who gives tasks has a second spot to talk from, beside the counter).
+      if (!s.keeper || seen.has(s.keeper.id)) continue;
+      seen.add(s.keeper.id);
       const npc = NPC_LOOKS[s.keeper.id];
-      this.keepers.push({ painter: npc ? new KeeperPainter(npc.look, npc.gear, npc.garb) : null, x: s.keeper.x, y: s.keeper.y, face: 1, dir: 'down', name: s.keeper.name, moving: false, t: Math.random() * 4 });
+      // A giver with no portrait of their own gets a look seeded by their id (the same face every visit).
+      let h = 0; for (const ch of s.keeper.id) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;
+      const rand = () => { h = (h + 0x6D2B79F5) >>> 0; let t = Math.imul(h ^ (h >>> 15), h | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+      const painter = npc ? new KeeperPainter(npc.look, npc.gear, npc.garb) : new KeeperPainter(randomLook(rand));
+      this.keepers.push({ painter, x: s.keeper.x, y: s.keeper.y, face: 1, dir: 'down', name: s.keeper.name, moving: false, t: Math.random() * 4, kid: s.keeper.id });
     }
     this.spawnFolk();
   }
@@ -1000,9 +1019,23 @@ export class TopDownEngine {
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
     for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 38, '#f3e7cf');
+    // A task giver's head mark: '!' a task on offer, '?' one to hand in (MapleStory), seen from across the square.
+    for (const k of this.keepers) { const m = k.kid ? this.taskMarks[k.kid] : undefined; if (m && this.level === this.world && inView(k.x, k.y)) this.headMark(m, k.x, k.y - (Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90 ? 50 : 40)); }
     this.drawEffects();
     this.drawFightUi(inView);
-    if (this.nearby) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 58 : 36), '#ffd27a');
+    // A giver standing on their own already wears their name: no second plate.
+    if (this.nearby && !this.nearby.station.id.startsWith('giver-')) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 58 : 36), '#ffd27a');
+  }
+  /** A pixel speech mark over a head: a brass bubble with '!' or '?', bobbing a little (still under reduced motion). */
+  private headMark(mark: '!' | '?', x: number, y: number): void {
+    const c = this.ctx, bob = this.still ? 0 : Math.round(Math.sin(this.time * 3) * 1.5);
+    const bx = Math.round(x) - 5, by = Math.round(y) - 12 + bob;
+    c.fillStyle = PAL.outline; c.fillRect(bx - 1, by - 1, 12, 13); c.fillRect(bx + 4, by + 12, 3, 2);
+    c.fillStyle = mark === '?' ? '#ffd27a' : '#f3e7cf'; c.fillRect(bx, by, 10, 11);
+    c.fillStyle = mark === '?' ? '#c98a2a' : '#d9c7a4'; c.fillRect(bx, by + 9, 10, 2);
+    c.fillStyle = PAL.outline;
+    c.font = 'bold 9px "Pixelify Sans", monospace';
+    c.fillText(mark, bx + 5, by + 10);
   }
 
   private drawMob(m: Mob): void {

@@ -677,6 +677,7 @@ describe('the registry', () => {
       'godforge-stats',
       'godforge-story',
       'godforge-thralls',
+      'godforge-town-tasks',
       // One World (save v3, behind the preview gate): the index, its 24 shared region slots, the Waystones.
       'godforge-waystones',
       'godforge-world',

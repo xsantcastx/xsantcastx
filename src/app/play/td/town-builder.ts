@@ -21,6 +21,8 @@ export interface TownSpec {
   props: readonly { kind: PropKind; c: number; r: number }[];
   /** Towers of three floors; one with a door opens onto its hand-drawn ground floor (td-engine DOORS). */
   towers?: readonly { c: number; r: number; door?: StationDef }[];
+  /** Town task givers standing on their own (shared/town-tasks): an id from TASK_GIVERS, a name, a tile, one line. */
+  givers?: readonly { id: string; name: string; c: number; r: number; blurb: string }[];
   spawn: { c: number; r: number };
 }
 
@@ -55,6 +57,8 @@ export function buildTown(spec: TownSpec): TdMap {
     objects.push({ sprite: tower, x: tx(t.c), y: ty(t.r), block: { w: 3, h: 2 }, kind: 'building' });
     if (t.door) stalls.push({ station: t.door, x: tx(t.c), y: ty(t.r) + 6 });
   }
+  // A giver stands where drawn; the spot to speak from is just in front of them (td-engine `use` → onTalk).
+  for (const g of spec.givers ?? []) stalls.push(giverStall(g.id, g.name, g.blurb, tx(g.c), ty(g.r)));
   for (const p of spec.props) { const d = PROP[p.kind]; objects.push({ sprite: d.sprite, x: tx(p.c), y: ty(p.r), ...(d.block ? { block: d.block } : {}), kind: d.kind ?? 'prop' }); }
   const walkable = new Uint8Array(cols * rows).fill(1);
   for (let i = 0; i < ground.length; i++) if (ground[i] === 'water' || ground[i] === 'ember' || ground[i] === 'rock') walkable[i] = 0;
@@ -64,4 +68,9 @@ export function buildTown(spec: TownSpec): TdMap {
     for (let r = fr - o.block.h + 1; r <= fr; r++) for (let c = c0; c < c0 + o.block.w; c++) if (c >= 0 && r >= 0 && c < cols && r < rows) walkable[r * cols + c] = 0;
   }
   return { id: spec.id, cols, rows, ground, objects, stalls, spawn: { x: tx(spec.spawn.c), y: ty(spec.spawn.r) }, walkable };
+}
+
+/** A town task giver as a stall with nobody's counter: their station (kind 'quest', so it is never a panel) and them. */
+export function giverStall(id: string, name: string, blurb: string, x: number, y: number): TdStall {
+  return { station: { id: `giver-${id}`, x: 0, label: name.toUpperCase(), kind: 'quest', blurb }, x, y: y + 8, keeper: { id, name, x, y } };
 }

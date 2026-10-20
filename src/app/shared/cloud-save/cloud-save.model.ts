@@ -62,6 +62,7 @@ import { mergeWaystones, WAYSTONES_KEY } from '../waystones/waystones.model';
 import { mergeSound } from '../sound/sound-settings.model';
 import { mergeLoot } from '../loot/loot-save.model';
 import { mergePets } from '../pets/pets-save.model';
+import { mergeTownTasks } from '../town-tasks/town-tasks-save.model';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // The registry
@@ -530,6 +531,17 @@ export const SYNCED_BLOBS: SyncedBlob[] = [
     // hatch, the later name / hat / follower, the higher love and tally.
     // See pets-save.model.ts.
     merge: mergePets,
+  },
+  {
+    key: 'godforge-town-tasks',
+    collection: 'progress',
+    doc: 'town-tasks',
+    label: 'Town tasks',
+    // `{ version, accepted: { id: takenAt }, progress: { id: count }, claimed: [id] }`: the town keepers' tasks.
+    // `claimed` is the receipt, written before any pay and unioned, so a merge can never re-open a paid task;
+    // counts take the higher, a task taken on either device is taken (the earlier time). Hand-written so junk ids
+    // are dropped. See town-tasks-save.model.ts.
+    merge: mergeTownTasks,
   },
   {
     key: 'godforge-cabinets',
