@@ -19,7 +19,8 @@ import type { ItemRarity, ItemStats, SlotId } from './item.model';
 
 export type AffixKey =
   | 'life' | 'mana' | 'defense' | 'spellDamage' | 'castSpeed'
-  | 'moveSpeed' | 'critChance' | 'lifeRegen' | 'manaRegen' | 'magicFind' | 'xpBonus';
+  | 'moveSpeed' | 'critChance' | 'lifeRegen' | 'manaRegen' | 'magicFind' | 'xpBonus'
+  | 'fireResist' | 'coldResist' | 'lightningResist' | 'arcaneResist' | 'allResist';
 
 /** The gear slots that roll affixes (charms keep their authored rolls). */
 export type AffixSlot = 'weapon' | 'head' | 'chest' | 'hands' | 'legs' | 'feet' | 'off-hand' | 'trinket';
@@ -38,6 +39,10 @@ export interface AffixDef {
 }
 
 const ARMOUR: readonly AffixSlot[] = ['head', 'chest', 'hands', 'legs', 'feet', 'off-hand'];
+/** Resists roll on armour and the trinket (D2: the wards are worn, not swung). */
+const WARDED: readonly AffixSlot[] = [...ARMOUR, 'trinket'];
+/** The worn-total cap on each resist: the Keeper's 75 (damage.model.ts MAX_KEEPER_RESIST). */
+export const RESIST_CAP = 75;
 
 export const AFFIX_DEFS: Readonly<Record<AffixKey, AffixDef>> = {
   life: { key: 'life', base: [4, 8], growth: 0.9, cap: null, decimals: 0,
@@ -61,12 +66,19 @@ export const AFFIX_DEFS: Readonly<Record<AffixKey, AffixDef>> = {
     slots: ['weapon', 'head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'] },
   xpBonus: { key: 'xpBonus', base: [1, 3], growth: 0.05, cap: null, decimals: 0,
     slots: ['weapon', 'head', 'chest', 'legs', 'feet', 'trinket'] },
+  // Resists (§6): each cuts its own element's blows by its worn total, capped at 75. All Resist adds to all four,
+  // a smaller range, on the trinket only (D2's prismatic amulet).
+  fireResist: { key: 'fireResist', base: [3, 6], growth: 0.15, cap: RESIST_CAP, decimals: 0, slots: WARDED },
+  coldResist: { key: 'coldResist', base: [3, 6], growth: 0.15, cap: RESIST_CAP, decimals: 0, slots: WARDED },
+  lightningResist: { key: 'lightningResist', base: [3, 6], growth: 0.15, cap: RESIST_CAP, decimals: 0, slots: WARDED },
+  arcaneResist: { key: 'arcaneResist', base: [3, 6], growth: 0.15, cap: RESIST_CAP, decimals: 0, slots: WARDED },
+  allResist: { key: 'allResist', base: [2, 4], growth: 0.08, cap: RESIST_CAP, decimals: 0, slots: ['trinket'] },
 };
 
 /** Table order — the order affix lines read on a card. */
 export const AFFIX_KEYS: readonly AffixKey[] = [
   'life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
-  'magicFind', 'xpBonus',
+  'magicFind', 'xpBonus', 'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist',
 ];
 
 /** Weapon → Spell Damage; armour → Defense; trinket → Life. */

@@ -1,5 +1,6 @@
 import {
   AFFIX_DEFS,
+  RESIST_CAP,
   AFFIX_KEYS,
   AFFIX_RARITY_MULT,
   IMPLICIT_BY_SLOT,
@@ -62,8 +63,9 @@ describe('item-affixes (every item is a roll)', () => {
         expect(rollAffixes({ slot }, 'mythic', 30, seeded(seed)).stats.moveSpeed).toBeUndefined();
       }
     }
-    const feet = rollAffixes({ slot: 'feet' }, 'legendary', 10, seeded(7));
-    expect(feet.stats.moveSpeed).toBeGreaterThan(0);
+    // The feet pool shares its draws with the resists (§6), so look across seeds rather than at one.
+    const rolled = Array.from({ length: 30 }, (_, i) => rollAffixes({ slot: 'feet' }, 'legendary', 10, seeded(i + 1)).stats.moveSpeed ?? 0);
+    expect(rolled.filter(v => v > 0).length).toBeGreaterThan(5);
   });
 
   it('grows ranges with item level and with rarity', () => {
@@ -165,6 +167,58 @@ describe('item-affixes (every item is a roll)', () => {
     it('names a top roll Flawless', () => {
       const item = mintEquipment('anchor-ring', 'rare', () => 0.9999999, undefined, undefined, 5)!;
       expect(qualityTagOf(item)).toBe('flawless');
+    });
+  });
+
+  describe('resist affixes (§6)', () => {
+    const ELEMENT_KEYS = ['fireResist', 'coldResist', 'lightningResist', 'arcaneResist'] as const;
+    const WARDED: AffixSlot[] = ['head', 'chest', 'hands', 'legs', 'feet', 'off-hand', 'trinket'];
+
+    it('rolls each element on armour and the trinket, never on the weapon; All Resist on the trinket only', () => {
+      for (const key of ELEMENT_KEYS) {
+        expect([...AFFIX_DEFS[key].slots].sort()).withContext(key).toEqual([...WARDED].sort());
+        expect(affixPoolFor('weapon')).not.toContain(key);
+        expect(affixRange(key, 'weapon', 40, 'mythic')).toEqual([0, 0]);
+      }
+      expect(AFFIX_DEFS.allResist.slots).toEqual(['trinket']);
+      for (const slot of SLOTS.filter(s => s !== 'trinket')) expect(affixPoolFor(slot)).withContext(slot).not.toContain('allResist');
+      for (let seed = 1; seed <= 60; seed++) {
+        const weapon = rollAffixes({ slot: 'weapon' }, 'singular', 60, seeded(seed)).stats;
+        for (const key of [...ELEMENT_KEYS, 'allResist'] as const) expect(weapon[key]).toBeUndefined();
+      }
+    });
+
+    it('ranges 3–6% at item level 1 (All Resist 2–4%), growing 0.15 a level (0.08), times the rarity', () => {
+      for (const key of ELEMENT_KEYS) {
+        expect(affixRange(key, 'chest', 1, 'common')).withContext(key).toEqual([3, 6]);
+        // Item level 21 legendary: (3 + 3) × 1.8 = 10.8 → 11, (6 + 3) × 1.8 = 16.2 → 16.
+        expect(affixRange(key, 'feet', 21, 'legendary')).withContext(key).toEqual([11, 16]);
+      }
+      expect(affixRange('allResist', 'trinket', 1, 'common')).toEqual([2, 4]);
+      // Smaller than any one element's range at the same level and rarity.
+      expect(affixRange('allResist', 'trinket', 50, 'mythic')[1]).toBeLessThan(affixRange('fireResist', 'trinket', 50, 'mythic')[1]);
+    });
+
+    it('caps every resist\'s worn total at 75 (the Keeper\'s ceiling), and rolls whole percents inside the range', () => {
+      expect(RESIST_CAP).toBe(75);
+      for (const key of [...ELEMENT_KEYS, 'allResist'] as const) {
+        expect(AFFIX_DEFS[key].cap).withContext(key).toBe(75);
+        expect(AFFIX_DEFS[key].decimals).toBe(0);
+      }
+      let seen = 0;
+      for (let seed = 1; seed <= 200; seed++) {
+        const roll = rollAffixes({ slot: 'trinket' }, 'mythic', 45, seeded(seed));
+        for (const key of [...ELEMENT_KEYS, 'allResist'] as const) {
+          const v = roll.stats[key];
+          if (v === undefined) continue;
+          seen++;
+          const [lo, hi] = affixRange(key, 'trinket', 45, 'mythic');
+          expect(Number.isInteger(v)).toBeTrue();
+          expect(v).toBeGreaterThanOrEqual(lo);
+          expect(v).toBeLessThanOrEqual(hi);
+        }
+      }
+      expect(seen).toBeGreaterThan(50);
     });
   });
 });

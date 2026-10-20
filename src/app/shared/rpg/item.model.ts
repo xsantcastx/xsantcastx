@@ -138,11 +138,23 @@ export interface ItemStats {
   lifeRegen?: number;
   /** Mana back each second. */
   manaRegen?: number;
+  // ── Resists (§6): % off that element's blows; each worn total capped at 75 ─
+  /** % less fire damage taken. */
+  fireResist?: number;
+  /** % less cold damage taken. */
+  coldResist?: number;
+  /** % less lightning damage taken. */
+  lightningResist?: number;
+  /** % less arcane damage taken. */
+  arcaneResist?: number;
+  /** % added to all four resists (trinkets). */
+  allResist?: number;
 }
 
 export const ITEM_STAT_KEYS: (keyof ItemStats)[] = [
   'goldPerSec', 'magicFind', 'xpBonus', 'strikePower', 'ward',
   'life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen',
+  'fireResist', 'coldResist', 'lightningResist', 'arcaneResist', 'allResist',
 ];
 
 /** The five stats that predate the combat affixes. New mints roll only magicFind / xpBonus of these. */
@@ -167,6 +179,11 @@ export const ITEM_STAT_LABELS: Record<keyof ItemStats, string> = {
   critChance: 'Critical Chance',
   lifeRegen: 'Life Regen',
   manaRegen: 'Mana Regen',
+  fireResist: 'Fire Resist',
+  coldResist: 'Cold Resist',
+  lightningResist: 'Lightning Resist',
+  arcaneResist: 'Arcane Resist',
+  allResist: 'All Resist',
 };
 
 /** True for the stats written as a percentage. */
@@ -185,6 +202,11 @@ export const ITEM_STAT_IS_PERCENT: Record<keyof ItemStats, boolean> = {
   critChance: true,
   lifeRegen: false,
   manaRegen: false,
+  fireResist: true,
+  coldResist: true,
+  lightningResist: true,
+  arcaneResist: true,
+  allResist: true,
 };
 
 /**
@@ -781,6 +803,7 @@ export function sumStats(blocks: readonly ItemStats[]): Required<ItemStats> {
   const total: Required<ItemStats> = {
     goldPerSec: 0, magicFind: 0, xpBonus: 0, strikePower: 0, ward: 0,
     life: 0, mana: 0, defense: 0, spellDamage: 0, castSpeed: 0, moveSpeed: 0, critChance: 0, lifeRegen: 0, manaRegen: 0,
+    fireResist: 0, coldResist: 0, lightningResist: 0, arcaneResist: 0, allResist: 0,
   };
   for (const block of blocks) {
     for (const key of ITEM_STAT_KEYS) {

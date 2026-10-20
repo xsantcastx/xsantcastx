@@ -372,6 +372,8 @@
                 @if (e.rank !== 'normal') { <b class="td-best__rank">{{ t(e.rank === 'boss' ? 'play.best.rank.boss' : 'play.best.rank.champion') }}</b> }
                 <span class="td-best__count">{{ e.kills > 0 ? t('play.best.defeated', { n: e.kills }) : t('play.best.notYet') }}</span>
               </p>
+              <!-- What its blows carry (§6): the resist that answers it. Known before the first kill, like its haunts. -->
+              <p class="td-best__hits" [attr.data-hits]="e.hits">{{ t('play.best.hits', { type: t('loot.resist.' + e.hits) }) }}</p>
               <p class="td-best__where"><small>{{ t('play.best.haunts') }}</small>
                 @for (h of e.shownHaunts; track h) { <span>{{ h }}</span> }
                 @if (e.moreHaunts) { <span class="td-best__more">{{ t('play.best.more', { n: e.moreHaunts }) }}</span> }

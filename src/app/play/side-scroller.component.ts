@@ -46,6 +46,7 @@ import { HomesteadColumnComponent } from './homestead/homestead-column.component
 import { HomeForgeService } from './homestead/home-forge.service';
 import { homeStationOf } from './world/homestead';
 import { createTopDownEngine, topDownGate, type TdMapPin, type TopDownEngine } from './td/td-engine';
+import { ELEMENTS, type Element as DamageElement } from '../shared/loot/damage.model';
 import { BESTIARY_KEY, bestiaryEntries, discoveredCount, readKills, withKill, type BestiaryEntry } from './td/td-bestiary';
 import { MOBS, mobSheet } from './td/td-mobs';
 import type { EngineOptions } from './engine/engine.model';
@@ -360,6 +361,11 @@ function monogram(name: string): string {
 /** The tracked map pin, per device (a view choice, like the minimap's fold). */
 const TRACK_KEY = 'eclipse-delve-track';
 
+
+/** The stat sheet's resist rows (§6), one key each so the words stay translatable. */
+const RESIST_TOTAL_KEY: Readonly<Record<DamageElement, string>> = {
+  fire: 'play.td.total.res.fire', cold: 'play.td.total.res.cold', lightning: 'play.td.total.res.lightning', arcane: 'play.td.total.res.arcane',
+};
 @Component({
   selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
@@ -1797,6 +1803,8 @@ export class SideScrollerComponent implements OnDestroy {
         ...(derived.castSpeed > 0 ? [{ key: 'play.td.total.cast', value: `+${pct(derived.castSpeed)}` }] : []),
         ...(derived.crit > 0 ? [{ key: 'play.td.total.crit', value: pct(derived.crit) }] : []),
         ...(derived.lifeRegen > 0 ? [{ key: 'play.td.total.lifeRegen', value: `${derived.lifeRegen.toFixed(1)}/s` }] : []),
+        // Resists (§6): each element's worn total (its own + All Resist), capped at 75.
+        ...ELEMENTS.filter(el => derived.resists[el] > 0).map(el => ({ key: RESIST_TOTAL_KEY[el], value: `${Math.round(derived.resists[el])}%` })),
       ],
     };
   }
