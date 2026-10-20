@@ -13,7 +13,7 @@ and dungeons that go down floor by floor. Ships link the harbours (a ship is a s
 |---|---|---|---|---|
 | **Ember Isle** (built) | The starter island (Tibia's Rookgaard): learn to fight, cast, loot, mine, chop | **Basalt Seamworks** | 1–8 | Ember Mine (−1…−3, boss), Slagstone Cave (−1…−2), the Caldera (−1) |
 | **Infernal Reach** (built so far: Pyrehold + the Pyre Spire, Cinderport + its ship, Ashgrove, regions, the Molten Deep −1…−6, the Ashen Crypt −1…−2, the Forge of the Four −1…−3) | Volcanic mainland: ash plains, obsidian cliffs, lava rivers | **Pyrehold** (capital), Cinderport (harbour), Ashgrove (village) | 8–30 | The Molten Deep (−1…−6), Forge of the Four (−1…−4) |
-| **Verdant Wilds** | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−4) |
+| **Verdant Wilds** (built so far: Rootglass + the Rootglass Bole 0…+3, Mossharbor + its ship, Thornwick, regions, the Overgrown Temple −1…−3) | Jungle continent: rivers, giant trees, ruined temples | **Rootglass** (capital, in the canopy: floors +1…+3), Mossharbor, Thornwick | 15–40 | The Overgrown Temple (−1…−5), Root Hollows (−1…−4) |
 | **Umbral Marches** | Swamp and shadow: fog, stilt towns, drowned crypts | **Gloamhaven** (capital on stilts), Mirewatch, Lanternfen | 25–50 | Drowned Crypts (−1…−6), the Ink Deeps |
 | **Celestial Peaks** | Snow and stone: high passes, observatories, ice caves | **Meridian** (capital, terraced: floors +1…+4), Frostgate, Starhollow | 35–60 | Frostfang Caverns (−1…−5), the Orrery Vault |
 | **Luminous Expanse** | Glass desert: dunes, mirror oases, sunken palaces | **Dawnspire** (capital), Prism Oasis, Saltglass | 45–70 | The Sunken Palace (−1…−6), Mirror Labyrinth |
@@ -45,7 +45,24 @@ the bottom floor of a dungeon holds its boss.
    `ContinentVillage.ways`). Next: the Forge's fourth floor, and something to do in each town (keepers, quests).
 
 Buildings you walk into so far: the Ember Inn in the Seamworks (tavern + rooms upstairs), the Pyre Spire in
-Pyrehold, the Salted Ember in Cinderport and the Woodward's Lodge in Ashgrove. A continent holds more towns than its
+Pyrehold, the Salted Ember in Cinderport, the Woodward's Lodge in Ashgrove and the Rootglass Bole in Rootglass. A continent holds more towns than its
 capital through `villages` (continent.ts); any town house takes a `door`. Rule for every interior and dungeon: passages at least two tiles wide, and no monster within about eight
 tiles of a stair or door, so arriving is never a death trap.
-3. The other four continents, one at a time, each with its capital first.
+3. **Verdant Wilds** — built (maps/verdant-wilds.ts): the jungle continent, a day's sail from Pyrehold (a second ship
+   at Pyrehold's pier, nearer the shore, `ContinentWay.along`). Regions: the Greenwood (`j`, moss underfoot, jungle
+   trees and palms), the Deep Wilds (`J`, dense jungle, the giant trees in their clearings), the Fernglades (`.`), the
+   Rootwater and a second river (`r`, wide water, plank bridges where the roads cross), the Glassmere (`l`) and the
+   Sunken Courts (`u`, temple flagstones in the moss, broken walls and pillars). **Rootglass**, the capital, on
+   boardwalks over a marsh round the **Rootglass Bole**, a giant tree you walk into: the Root Hall (0) in its roots,
+   then up the trunk to the Lower Boughs (+1), the Sap Galleries (+2) and the Crown (+3) — walkways over a sea of
+   leaves (maps/rootglass-bole.ts). Stalls round the plaza (rune forge, enchanting, vault, crafting, vendor),
+   rootglass lamps along every boardwalk. **Mossharbor** on the south shore (its moss-sailed sloop sails to Pyrehold)
+   and **Thornwick**, a hamlet in the Fernglades, on roads from Rootglass. Creatures (td-mobs.ts, levels 15–34):
+   Canopy Bats, Moss Stalkers, Vine Lashers, Rootglass Harts (the Stags grown old), Thorn Weavers (they spit thorns).
+   **The Overgrown Temple** (maps/overgrown-temple.ts) at the east road's end, a stepped gate (place kind `temple`):
+   −1 the Sunken Narthex (a pillared nave, two flooded springs, chapels gone to moss), −2 the Hall of Roots (great
+   roots through the floor, Thorn Weavers), −3 the Heart Shrine (a moat round an island and the Mossbound Colossus,
+   level 34, who calls two Vine Lashers at half its life). New ground: moss, flagstone, and three nobody walks on —
+   a temple wall (`vinewall`), the leaf-sea (`canopy`), living wood (`bark`). Next: the temple's floors −4…−5, Root
+   Hollows (−1…−4), something to do in each town (keepers, quests), a house to walk into in Mossharbor and Thornwick.
+4. The other three continents, one at a time, each with its capital first.

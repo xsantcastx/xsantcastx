@@ -365,6 +365,70 @@ test('Cinderport and Ashgrove: the Reach\'s other towns, each with a house to wa
   expect(errors, errors.join('\n')).toEqual([]);
 });
 
+test('the Verdant Wilds: a ship from Pyrehold to Mossharbor, up the Rootglass Bole to the Crown and down, and the Map of the continent', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/ship to the verdant wilds/i, /^Mossharbor$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-mossharbor.jpg', type: 'jpeg', quality: 72 });
+  // The continent's Map: Rootglass, Mossharbor, Thornwick, the temple's gate.
+  await canvas(page).focus();
+  await page.keyboard.press('m');
+  await expect(page.locator('#places-list.td-map')).toBeVisible();
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-map.jpg', type: 'jpeg', quality: 78 });
+  await page.keyboard.press('Escape');
+  await go(/the rootglass bole/i, /root hall/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-root-hall.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /lower boughs/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-canopy-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /sap galleries/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-canopy-2.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs up/i, /the crown/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-canopy-3.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /sap galleries/i);
+  await go(/stairs down/i, /lower boughs/i);
+  await go(/stairs down/i, /root hall/i);
+  await go(/^door/i, /^Rootglass$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-rootglass.jpg', type: 'jpeg', quality: 72 });
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
+test('the Overgrown Temple in the Sunken Courts: in by its gate, down to the Heart Shrine, and back out', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/ship to the verdant wilds/i, /^Mossharbor$/);
+  await go(/the overgrown temple/i, /sunken narthex/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-temple-1.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /hall of roots/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-temple-2.jpg', type: 'jpeg', quality: 72 });
+  await go(/stairs down/i, /heart shrine/i);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-temple-3.jpg', type: 'jpeg', quality: 72 });
+  // (No walk onto the island: the Colossus would fight a level-1 Keeper there, and a test never rides on a fight.)
+  await go(/stairs up/i, /hall of roots/i);
+  await go(/stairs up/i, /sunken narthex/i);
+  await go(/temple gate/i, /^(The Overgrown Temple|The Sunken Courts)$/);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/verdant-temple-gate.jpg', type: 'jpeg', quality: 72 });
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('through every door and stair the Keeper lands free and can walk away (never set down inside a wall)', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 });
   await page.emulateMedia({ reducedMotion: 'reduce' });

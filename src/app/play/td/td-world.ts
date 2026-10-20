@@ -8,7 +8,7 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { beaconPillar, boulder, bush, caveMouth, cryptDoor, forgeGate, gravestone, ship, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
+import { beaconPillar, boulder, bush, caveMouth, cryptDoor, fern, forgeGate, giantTree, gravestone, jungleTree, ship, flowerbed, hash, oreSeam, rootLamp, ruinWall, standingStone, stump, templeGate, templePillar, tree, SOLID_GROUND, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import type { ContinentDef, Region } from './continent';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
@@ -76,7 +76,7 @@ export class TdWorld implements TdLevel {
       const p = def.places.find(pl => pl.kind === w.place);
       if (!p) continue;
       // A ship is boarded at the pier's end; anything else in front of the place.
-      const at = w.place === 'harbour' ? { x: p.c * TILE + TILE / 2, y: (p.r + PIER - 4) * TILE + TILE } : { x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE + 6 };
+      const at = w.place === 'harbour' ? { x: p.c * TILE + TILE / 2, y: (p.r + PIER - 4 + (w.along ?? 0)) * TILE + TILE } : { x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE + 6 };
       this.allStalls.push({ station: w.station, ...at });
       this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
     }
@@ -148,7 +148,9 @@ export class TdWorld implements TdLevel {
     const rv = this.riverAt(c);
     const road = this.roads.has(this.key(c, r));
     if (r >= rv && r <= rv + 2 && reg !== 'm') return road ? 'plank' : 'water';
-    if (road) return Math.max(Math.abs(c - this.roadCol), Math.abs(r - this.roadRow)) < 30 ? 'cobble' : 'dirt';
+    // A Verdant river (its own region): wide water with a sandbar here and there; a road crosses it on a plank bridge.
+    if (reg === 'r') return road ? 'plank' : fbm(c / 5, r / 5, 503) > .74 ? 'sand' : 'water';
+    if (road) return Math.max(Math.abs(c - this.roadCol), Math.abs(r - this.roadRow)) < 30 ? this.def.roadGround?.near ?? 'cobble' : this.def.roadGround?.far ?? 'dirt';
     if (r === rv - 1 || r === rv + 3) return 'sand';
     // The coast: sand where the sea is close.
     if (reg === ',' || this.regionAt(c + 2, r) === '~' || this.regionAt(c - 2, r) === '~' || this.regionAt(c, r + 2) === '~' || this.regionAt(c, r - 2) === '~') return 'sand';
@@ -158,6 +160,10 @@ export class TdWorld implements TdLevel {
       case 'h': return fbm(c / 7, r / 7, 211) > .45 ? 'dirt' : 'grass';
       case 'v': return fbm(c / 6, r / 6, 401) > .74 ? 'ember' : 'cave';
       case '.': return fbm(c / 10, r / 10, 307) > .64 && hash(c, r, 41) > .5 ? 'flowers' : 'grass';
+      // The jungle: moss underfoot, a grassy break now and then; deeper in, moss only. The ruins: old flagstones in it.
+      case 'j': return fbm(c / 8, r / 8, 601) > .66 ? 'grass' : 'moss';
+      case 'J': return 'moss';
+      case 'u': return fbm(c / 5, r / 5, 607) > .5 ? 'flagstone' : 'moss';
       default: return 'grass';
     }
   }
@@ -167,7 +173,7 @@ export class TdWorld implements TdLevel {
     const v = this.villageAt(c, r);
     if (v) return !!v.map.walkable[(r - v.r0) * v.map.cols + (c - v.c0)];
     const g = this.ground(c, r);
-    if (g === 'water' || g === 'ember' || g === 'rock') return false;
+    if (g === 'water' || g === 'ember' || SOLID_GROUND.has(g)) return false;
     return !this.chunkAt(Math.floor(c / WORLD_CHUNK), Math.floor(r / WORLD_CHUNK)).blocked.has(this.key(c, r));
   }
 
@@ -214,22 +220,32 @@ export class TdWorld implements TdLevel {
     const v = this.villageAt(c, r, 6);
     if (v) return v.name;
     for (const p of this.def.places) if (Math.hypot(p.c - c, p.r - r) < 10) return p.name;
-    return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)];
+    return this.def.names[this.regionOfBlock(Math.floor(c / BLOCK) + this.def.ox, Math.floor(r / BLOCK) + this.def.oy)] ?? this.def.townName;
   }
 
   /** Round a crypt or a graveyard the wilds stand back (no trees, rocks or bushes): a plot to walk, a door to reach. */
   private inClearing(c: number, r: number): boolean {
-    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
+    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge' || p.kind === 'temple') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
     return false;
   }
   /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
   private nearWayIn(c: number, r: number): boolean {
-    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge') && Math.hypot(c - p.c, r - p.r) < 9) return true;
+    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple') && Math.hypot(c - p.c, r - p.r) < 9) return true;
     return false;
   }
   private walkableGround(c: number, r: number): boolean {
     const g = this.ground(c, r);
-    return g !== 'water' && g !== 'ember' && g !== 'rock';
+    return g !== 'water' && g !== 'ember' && !SOLID_GROUND.has(g);
+  }
+
+  /** A giant tree needs the tiles either side of its foot clear of the roads and the water. */
+  private giantRoom(c: number, r: number): boolean {
+    for (let dc = -2; dc <= 2; dc++) {
+      const g = this.ground(c + dc, r);
+      if (g !== 'moss' && g !== 'grass') return false;
+      if (this.roads.has(this.key(c + dc, r)) || this.roads.has(this.key(c + dc, r + 2))) return false;
+    }
+    return true;
   }
 
   private key(c: number, r: number): number { return (c + 0x8000) * 0x10000 + (r + 0x8000); }
@@ -252,7 +268,7 @@ export class TdWorld implements TdLevel {
       for (let c = cx * WORLD_CHUNK; c < (cx + 1) * WORLD_CHUNK; c++) {
         if (this.nearTown(c, r) || this.inClearing(c, r)) continue;
         const g = this.ground(c, r);
-        if (g !== 'grass' && g !== 'flowers' && g !== 'dirt' && g !== 'cave') continue;
+        if (g !== 'grass' && g !== 'flowers' && g !== 'dirt' && g !== 'cave' && g !== 'moss' && g !== 'flagstone') continue;
         // A clear lane beside the roads.
         if (this.roads.has(this.key(c, r)) || this.roads.has(this.key(c + 2, r)) || this.roads.has(this.key(c - 2, r)) || this.roads.has(this.key(c, r + 2)) || this.roads.has(this.key(c, r - 2))) continue;
         const reg = this.regionAt(c, r), roll = hash(c, r, 919), x = c * TILE + TILE / 2, y = r * TILE + TILE;
@@ -268,6 +284,21 @@ export class TdWorld implements TdLevel {
           if (g === 'dirt' && roll < .07) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => boulder(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
           else if (g === 'dirt' && roll > .994) put({ sprite: oreSeam, x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r);
           else if (g === 'grass' && roll < .04) treeAt('pine');
+        } else if (reg === 'J' || reg === 'j') {
+          // The jungle: close-set jungle trees, ferns between; in the deep jungle the giants, each in its own clearing.
+          const deep = reg === 'J', seed = Math.floor(hash(c, r, 6) * 6);
+          if (deep && roll < .03 && ((c % WORLD_CHUNK) + WORLD_CHUNK) % WORLD_CHUNK % 5 === 2 && this.giantRoom(c, r)) {
+            put({ sprite: () => giantTree(seed), x, y, block: { w: 3, h: 1 }, kind: 'tree' }, c, r);
+            blocked.add(this.key(c - 1, r)); blocked.add(this.key(c + 1, r));
+          } else if (roll < (deep ? .3 : .15)) put({ sprite: () => jungleTree(seed), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
+          else if (roll > (deep ? .93 : .96)) put({ sprite: () => fern(seed), x, y, kind: 'prop' }, c, r);
+          else if (!deep && g === 'grass' && roll > .945) put({ sprite: () => flowerbed(2, (c * 31 + r) & 7), x, y, kind: 'prop' }, c, r);
+        } else if (reg === 'u') {
+          // The temple ruins: broken walls and pillars in the moss, a jungle tree pushing up between.
+          if (roll < .018) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => ruinWall(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
+          else if (roll < .04) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => templePillar(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
+          else if (roll < .1) put({ sprite: () => jungleTree(Math.floor(hash(c, r, 6) * 6)), x, y, block: { w: 1, h: 1 }, kind: 'tree' }, c, r);
+          else if (roll > .965) put({ sprite: () => fern(Math.floor(hash(c, r, 8) * 3)), x, y, kind: 'prop' }, c, r);
         } else if (reg === 'v') {
           if (roll < .045) { const sd = Math.floor(hash(c, r, 7) * 3); put({ sprite: () => boulder(sd), x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r); }
           else if (roll > .99) put({ sprite: oreSeam, x, y, block: { w: 1, h: 1 }, kind: 'prop' }, c, r);
@@ -290,10 +321,11 @@ export class TdWorld implements TdLevel {
       else if (p.kind === 'cave') { stamp(0, 0, caveMouth); }
       else if (p.kind === 'caldera') { stamp(-3, 0, () => standingStone(2)); stamp(3, 0, () => standingStone(0)); }
       else if (p.kind === 'harbour') { stamp(3, PIER - 2, ship, false); stamp(-2, 1, () => standingStone(1)); }
-      else if (p.kind === 'crypt' || p.kind === 'forge') {
-        // The mausoleum front (or the Forge's ruined gate) is wider than its tile: the tiles either side are its walls.
-        stamp(0, 0, p.kind === 'crypt' ? cryptDoor : forgeGate);
-        for (const dc of [-1, 1]) { const c = p.c + dc; if (c >= x0 && c < x0 + WORLD_CHUNK && p.r >= y0 && p.r < y0 + WORLD_CHUNK) blocked.add(this.key(c, p.r)); }
+      else if (p.kind === 'crypt' || p.kind === 'forge' || p.kind === 'temple') {
+        // The mausoleum front (or the Forge's ruined gate, the temple's stepped front) is wider than its tile: the tiles either side are its walls.
+        stamp(0, 0, p.kind === 'crypt' ? cryptDoor : p.kind === 'forge' ? forgeGate : templeGate);
+        if (p.kind === 'temple') { stamp(-5, 2, () => templePillar(2)); stamp(5, 2, () => templePillar(1)); stamp(-3, 4, rootLamp); stamp(3, 4, rootLamp); }
+        for (const dc of p.kind === 'temple' ? [-2, -1, 1, 2] : [-1, 1]) { const c = p.c + dc; if (c >= x0 && c < x0 + WORLD_CHUNK && p.r >= y0 && p.r < y0 + WORLD_CHUNK) blocked.add(this.key(c, p.r)); }
       }
       else if (p.kind === 'graveyard') {
         // Rows of graves round a bare plot; the dead walk between them (GRAVES below).
@@ -319,7 +351,7 @@ export class TdWorld implements TdLevel {
       for (let i = 0, tries = 0; i < pack && tries < 24; tries++) {
         const c = cx * WORLD_CHUNK + Math.floor(hash(cx * 31 + tries, cy, 79) * WORLD_CHUNK), r = cy * WORLD_CHUNK + Math.floor(hash(cx, cy * 31 + tries, 80) * WORLD_CHUNK);
         const g = this.ground(c, r);
-        if (g === 'water' || g === 'ember' || g === 'rock' || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || this.nearWayIn(c, r)) continue;
+        if (g === 'water' || g === 'ember' || SOLID_GROUND.has(g) || blocked.has(this.key(c, r)) || this.roads.has(this.key(c, r)) || this.nearWayIn(c, r)) continue;
         spawns.push({ key: `w:${c},${r}`, type: table.types[Math.floor(hash(c, r, 81) * table.types.length)], x: c * TILE + TILE / 2, y: r * TILE + TILE });
         i++;
       }

@@ -91,6 +91,13 @@ export const CREATURE_PROFILES: readonly CreatureProfile[] = [
   P('glass-sentinel', 'prism', 'ranged', 24, { hits: 'fire' }),
   P('anvil-warden', 'maw', 'summoner', 18, { boss: true, resists: { physical: 20 } }),
   P('cinder-sovereign', 'ember', 'summoner', 30, { boss: true }),
+  // The Verdant Wilds (top-down, td-mobs.ts) — the Greenwood, the Deep Wilds, the Sunken Courts, the Overgrown Temple.
+  P('canopy-bat', 'beast', 'melee', 15),
+  P('moss-stalker', 'beast', 'melee', 17),
+  P('vine-lasher', 'graft', 'melee', 21),
+  P('rootglass-hart', 'beast', 'melee', 24),
+  P('thorn-weaver', 'graft', 'ranged', 28),
+  P('mossbound-colossus', 'graft', 'summoner', 34, { boss: true, resists: { physical: 20 } }),
   // Verdant — the Canopy and the Root Deeps.
   P('rootglass-stag', 'beast', 'melee', 2),
   P('graftling', 'graft', 'healer', 12),
