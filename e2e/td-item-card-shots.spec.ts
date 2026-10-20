@@ -93,3 +93,21 @@ test('a resist ring shows each resist in its element\'s pip, with the range it r
   await page.screenshot({ path: 'docs/handoff/cozy-ui/item-card-resists.jpg', type: 'jpeg', quality: 80,
     clip: { x: Math.max(0, box.x - 120), y: Math.max(0, box.y - 60), width: Math.min(1280 - Math.max(0, box.x - 120), box.width + 200), height: Math.min(800 - Math.max(0, box.y - 60), box.height + 100) } });
 });
+
+test('on a phone, a long item card keeps Equip on screen: a bottom sheet that scrolls, the actions stuck to its foot', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await open(page);
+  await page.keyboard.press('i');
+  const cell = page.locator('button.pocket[aria-label^="Nullthorn"]').first();
+  await expect(cell).toBeVisible({ timeout: 10000 });
+  await cell.click();
+  const card = page.locator('.d2tip--pinned');
+  await expect(card).toBeVisible();
+  const equip = card.locator('.d2tip__actions button').first();
+  await expect(equip).toBeInViewport();
+  const box = (await equip.boundingBox())!;
+  expect(box.y + box.height).toBeLessThanOrEqual(844);
+  const hit = await page.evaluate(([x, y]) => document.elementFromPoint(x, y)?.closest('.d2tip__actions') != null, [box.x + box.width / 2, box.y + box.height / 2]);
+  expect(hit, 'the Equip button takes its own tap').toBe(true);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/item-card-phone.jpg', type: 'jpeg', quality: 80 });
+});
