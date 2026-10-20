@@ -73,7 +73,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.task.paid': { en: 'You received', es: 'Recibiste' },
   'play.task.gold': { en: '{{n}} Gold', es: '{{n}} de oro' },
   'play.task.xp': { en: '{{n}} Hunting XP', es: '{{n}} XP de Caza' },
-  'play.task.gear': { en: 'a {{rarity}} {{name}} (item level {{level}})', es: '{{name}} {{rarity}} (nivel de objeto {{level}})' },
+  'play.task.gear': { en: '{{rarity}} {{name}} (item level {{level}})', es: '{{name}} {{rarity}} (nivel de objeto {{level}})' },
   'play.task.rarity.uncommon': { en: 'Uncommon', es: 'poco comun' },
   'play.task.rarity.rare': { en: 'Rare', es: 'rara' },
   'play.task.rarity.epic': { en: 'Epic', es: 'epica' },
