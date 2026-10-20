@@ -243,12 +243,21 @@
                 <span class="sb__icon" [innerHTML]="skillIcon(pk.id)"></span>
                 <span><b>{{ pk.name }}</b><small>{{ t('play.td.tree.kind.' + pk.kind) }} · <span class="sbt__rank">{{ t('play.td.tree.rank', { n: pk.rank, max: pk.max }) }}</span></small></span>
               </header>
+              @if (pk.words) { <p class="sbt__cant" [attr.aria-label]="t('play.td.tree.words') + ': ' + pk.words"><small>{{ t('play.td.tree.words') }}</small> <q lang="und">{{ pk.words }}</q></p> }
               <p class="sbt__now">@if (pk.rank < 1) { <em>{{ t('play.td.tree.atRank', { n: 1 }) }}</em> }{{ pk.now }}</p>
               @if (pk.kind === 'active') { <p class="sbt__cost">{{ pk.mana }} {{ t('play.td.mana') }} · {{ pk.cd }}s</p> }
               @if (pk.next.length) {
                 <div class="sbt__next">
                   <b>{{ t('play.td.tree.next', { a: pk.rank, b: pk.rank + 1 }) }}</b>
                   @for (line of pk.next; track $index) { <small>{{ line }}</small> }
+                </div>
+              }
+              @if (pk.syn.length) {
+                <div class="sbt__syn">
+                  <b>{{ t('play.td.tree.syn') }}</b>
+                  @for (sy of pk.syn; track sy.from) {
+                    <small [attr.data-syn]="sy.from" [class.on]="sy.live">{{ sy.name }} · {{ t('play.td.tree.syn.rank', { n: sy.ranks }) }} · {{ sy.text }}</small>
+                  }
                 </div>
               }
               <div class="sbt__acts">

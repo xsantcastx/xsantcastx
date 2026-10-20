@@ -45,6 +45,8 @@ export interface MobDef {
    * and shoots as it comes). `spread` shots fan out (a breath).
    */
   ranged?: { range: number; keep: number; rate: number; dmg: [number, number]; speed: number; kind: MobShot['kind']; spread?: number };
+  /** The Seam-Cant a boss speaks as it winds up (design-bible §4.0): a readable tell in words beside the ground cone. */
+  chant?: string;
   /** It drifts over lava and embers as if they were floor (a wraith). */
   floats?: boolean;
   /** Half there: drawn see-through, flickering. */
@@ -1450,7 +1452,7 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'bone-dragon': {
     id: 'bone-dragon', name: 'The Ashbone Dragon', hp: 2200, speed: 22, dmg: [22, 34], rate: 1.8, sight: 190, level: 25,
     lore: 'The oldest thing under the Bastion. It was a dragon once; it is now a promise the ash made, and the ash keeps its promises.',
-    coins: [600, 1000], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 76, h: 64, rank: 'boss',
+    coins: [600, 1000], drops: [{ material: 'infernal-heartstone', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 3, chance: 1 }], paint: paintBoneDragon, w: 76, h: 64, rank: 'boss', chant: 'osk vael sha',
     ranged: { range: 130, keep: 0, rate: 3.4, dmg: [16, 26], speed: 120, kind: 'breath', spread: 3 },
     summon: { type: 'bone-walker', count: 2, at: .5 },
   },
@@ -1475,7 +1477,7 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'cinder-sovereign': {
     id: 'cinder-sovereign', name: 'The Cinder Sovereign', hp: 3200, speed: 22, dmg: [26, 40], rate: 1.7, sight: 170, level: 30,
     lore: 'The heart of the Deep wears a crown of its own sparks. It does not rule the fire — it is what the fire remembers.',
-    coins: [900, 1500], drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 68, h: 72, rank: 'boss',
+    coins: [900, 1500], drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 68, h: 72, rank: 'boss', chant: 'vael ul dra',
     ranged: { range: 130, keep: 0, rate: 3.2, dmg: [20, 32], speed: 120, kind: 'breath', spread: 5 },
     // At half its life it calls the hounds of the deep to its side.
     summon: { type: 'lava-hound', count: 2, at: .5 },
@@ -1545,7 +1547,7 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'ink-abbess': {
     id: 'ink-abbess', name: 'The Ink Abbess', hp: 7200, speed: 20, dmg: [44, 62], rate: 1.8, sight: 190, level: 50,
     lore: 'The abbess would not leave her prayers when the water came. She is praying still, and the ink in her lantern is everything the abbey ever wrote down.',
-    coins: [2000, 3200], drops: [{ material: 'umbral-sigil', qty: 1, chance: 1 }, { material: 'inkstone', qty: 3, chance: 1 }, { material: 'umbral-ink', qty: 5, chance: 1 }, { material: 'nightglass', qty: 2, chance: 1 }], paint: paintInkAbbess, w: 66, h: 72, rank: 'boss',
+    coins: [2000, 3200], drops: [{ material: 'umbral-sigil', qty: 1, chance: 1 }, { material: 'inkstone', qty: 3, chance: 1 }, { material: 'umbral-ink', qty: 5, chance: 1 }, { material: 'nightglass', qty: 2, chance: 1 }], paint: paintInkAbbess, w: 66, h: 72, rank: 'boss', chant: 'nyr orum',
     // Her great attack: a wave of ink from the censer, three wide, after a tell on the floor. At half her life the hounds come.
     ranged: { range: 140, keep: 0, rate: 3.6, dmg: [34, 50], speed: 110, kind: 'ink', spread: 3 },
     summon: { type: 'ink-hound', count: 2, at: .5 },
@@ -1570,7 +1572,7 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   'elder-rootwyrm': {
     id: 'elder-rootwyrm', name: 'The Elder Rootwyrm', hp: 5200, speed: 20, dmg: [32, 48], rate: 1.8, sight: 180, level: 40,
     lore: 'The first thing the Root grew, coiled in the dark before the temple was raised over it. The priests called it the Cradle; it never answered to anything.',
-    coins: [1400, 2300], drops: [{ material: 'world-root-bark', qty: 4, chance: 1 }, { material: 'verdant-sap', qty: 5, chance: 1 }, { material: 'thornroot', qty: 5, chance: 1 }], paint: paintRootwyrm, w: 106, h: 88, rank: 'boss',
+    coins: [1400, 2300], drops: [{ material: 'world-root-bark', qty: 4, chance: 1 }, { material: 'verdant-sap', qty: 5, chance: 1 }, { material: 'thornroot', qty: 5, chance: 1 }], paint: paintRootwyrm, w: 106, h: 88, rank: 'boss', chant: 'thar orum',
     // It winds up (BOSS_TELL) and breathes a fan of rootglass splinters; at half its life the drowned priests come down to it.
     ranged: { range: 140, keep: 0, rate: 3.2, dmg: [24, 36], speed: 120, kind: 'shard', spread: 5 },
     summon: { type: 'drowned-acolyte', count: 2, at: .5 },
@@ -1672,6 +1674,8 @@ export interface Mob {
   /** Doom (Shadow tree): seconds until it bursts, and the burst it carries. */
   doom?: number;
   doomHit?: { min: number; max: number; r: number };
+  /** Seconds its chant still hangs over its head (a boss winding up, CHANT_SECS). */
+  chantT?: number;
 }
 
 /**
@@ -1681,6 +1685,8 @@ export interface Mob {
  */
 export const BOSS_TELL = .6;
 export const CALL_TELL = .6;
+/** How long a spoken line (the Keeper's spell words, a boss's chant) hangs in the air. */
+export const CHANT_SECS = 1.2;
 /** Does this creature wind up before it shoots? Bosses with a ranged attack (the Ashbone Dragon, the Cinder Sovereign). */
 export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!def.ranged; }
 /** A summons on its way: the sigil on the ground where it will stand, `t` seconds before it does. */
@@ -1850,12 +1856,16 @@ export class MobSystem {
    */
   private ranks: Partial<Record<SkillId, number>> | null = null;
   private readonly varsAt = new Map<SkillId, Record<string, number>>();
-  setRanks(ranks: Partial<Record<SkillId, number>> | null): void { this.ranks = ranks ? { ...ranks } : null; this.varsAt.clear(); }
+  /** The points bought in each skill (td-tree boughtRanks): the synergies read these (design-bible §4.1); null = none. */
+  private bought: Partial<Record<SkillId, number>> | null = null;
+  setRanks(ranks: Partial<Record<SkillId, number>> | null, bought: Partial<Record<SkillId, number>> | null = null): void {
+    this.ranks = ranks ? { ...ranks } : null; this.bought = bought ? { ...bought } : null; this.varsAt.clear();
+  }
   rank(id: SkillId): number { return this.ranks ? Math.max(0, this.ranks[id] ?? 0) : 1; }
   /** A skill's numbers at its rank. */
   v(id: SkillId): Record<string, number> {
     let got = this.varsAt.get(id);
-    if (!got) { got = skillVars(id, this.rank(id)); this.varsAt.set(id, got); }
+    if (!got) { got = skillVars(id, this.rank(id), this.bought); this.varsAt.set(id, got); }
     return got;
   }
   /** Ember Mastery: what fire's damage is multiplied by. */
@@ -1994,6 +2004,7 @@ export class MobSystem {
     this.updateZones(dt);
     for (const m of [...this.mobs]) {
       m.t += dt; m.cd -= dt; m.rcd -= dt; m.hit = Math.max(0, m.hit - dt);
+      if (m.chantT) m.chantT = Math.max(0, m.chantT - dt);
       // A boss in its wind-up stands its ground; when the tell runs out the attack leaves for where it aimed.
       if (m.tell > 0) {
         m.tell -= dt;
@@ -2015,7 +2026,7 @@ export class MobSystem {
         // it aims now and looses when the tell runs out, so the ground warning is where the breath goes.
         if (shoot && d <= shoot.range && m.rcd <= 0 && m.tell <= 0) {
           m.rcd = shoot.rate;
-          if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; }
+          if (windsUp(m.def)) { m.tell = BOSS_TELL; m.aim = { x: px0, y: py0 - 12 }; if (m.def.chant) m.chantT = CHANT_SECS; }
           else this.loose(m, px0, py0 - 12);
         }
       } else {

@@ -29,6 +29,13 @@ export function rankOf(tree: KeeperSkillTree, v: Vocation, id: SkillId): number 
 export function effectiveRanks(tree: KeeperSkillTree, v: Vocation): Record<SkillId, number> {
   return Object.fromEntries(CLASS_SKILLS[v].map(id => [id, rankOf(tree, v, id)])) as Record<SkillId, number>;
 }
+/**
+ * The ranks each skill holds above its free one (what synergies read, design-bible §4.1): the kit's free rank 1 never
+ * counts, so a fresh Warlock fights exactly as before. Read off the clamped tree the fight uses.
+ */
+export function boughtRanks(tree: KeeperSkillTree, v: Vocation): Record<SkillId, number> {
+  return Object.fromEntries(CLASS_SKILLS[v].map(id => [id, Math.max(0, rankOf(tree, v, id) - freeRank(tree, v, id))])) as Record<SkillId, number>;
+}
 export function pointsSpent(tree: KeeperSkillTree): number {
   return Object.values(tree.spent).reduce((a, n) => a + n, 0);
 }

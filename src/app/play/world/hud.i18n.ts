@@ -249,6 +249,17 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.td.tree.var.length': { en: 'Length (tiles)', es: 'Largo (casillas)' },
   'play.td.tree.var.delay': { en: 'Falls after (s)', es: 'Cae tras (s)' },
   'play.td.tree.var.life': { en: 'Life spent', es: 'Vida gastada' },
+  // The Seam-Cant (design-bible §4.0): the label round a spell's words; the words themselves are never translated.
+  'play.td.tree.words': { en: 'Spoken', es: 'Se pronuncia' },
+  // Synergies (design-bible §4.1): each source skill, its bought ranks, and what it adds now.
+  'play.td.tree.syn': { en: 'Synergies', es: 'Sinergias' },
+  'play.td.tree.syn.rank': { en: '{{n}} bought', es: '{{n}} comprados' },
+  'play.td.tree.syn.line': { en: '+{{pct}}% {{what}} (+{{per}}% a rank)', es: '+{{pct}}% {{what}} (+{{per}}% por rango)' },
+  'play.td.tree.syn.dmg': { en: 'damage', es: 'dano' },
+  'play.td.tree.syn.radius': { en: 'radius', es: 'radio' },
+  'play.td.tree.syn.dur': { en: 'duration', es: 'duracion' },
+  'play.td.tree.syn.absorb': { en: 'absorb', es: 'absorcion' },
+  'play.td.tree.syn.heal': { en: 'healing', es: 'curacion' },
   'play.td.book.assign': { en: 'Put {{name}} on a key', es: 'Poner {{name}} en una tecla' },
   'play.td.book.auraOn': { en: 'On', es: 'Activa' },
   'play.td.book.auraOff': { en: 'Use', es: 'Usar' },
