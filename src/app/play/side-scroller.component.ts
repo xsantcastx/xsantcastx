@@ -553,6 +553,30 @@ export class SideScrollerComponent implements OnDestroy {
   joining = false;
   sending = false;
   /**
+   * The chat box (owner 2026-10-20: "chat like OSRS, a little box left side, and vanishes if needed"): a Game tab (this
+   * device's own lines — loot, XP, the engine's words; no server) and a Chat tab (the Hearth room).
+   */
+  chatTab: 'game' | 'public' = 'game';
+  chatHidden = false;
+  /** When a line last landed (ms): the box fades when quiet, wakes on a new line or a hover. */
+  chatLastAt = 0;
+  gameLog: { key: number; at: number; text: string }[] = [];
+  private gameKey = 0;
+  private lastLogged = '';
+  private logGame(text: string): void {
+    const t = text.trim();
+    if (!t) return;
+    this.gameLog = [...this.gameLog, { key: ++this.gameKey, at: Date.now(), text: t }].slice(-60);
+    this.chatLastAt = Date.now();
+  }
+  get chatQuiet(): boolean { return Date.now() - this.chatLastAt > 9000; }
+  /** Opening the Chat tab joins the room under the Keeper's own name (a guest name; nothing else leaves the device). */
+  async openPublicChat(): Promise<void> {
+    this.chatTab = 'public';
+    this.chatLastAt = Date.now();
+    if (!this.social.connected && !this.joining) await this.joinRoom(this.keeperName || 'Keeper');
+  }
+  /**
    * The Hearth chat is a small pill in the world until the player opens it
    * (it used to stand over the stalls in every town). Remembered per device;
    * a station opening folds it away again without forgetting the choice.
@@ -1201,6 +1225,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.secrets.visit(path);
   }
   private toastLoot(text: string, art?: string): void {
+    this.logGame(text);
     const key = ++this.toastKey;
     this.lootToasts = [...this.lootToasts, { key, text, ...(art ? { art } : {}) }].slice(-3);
     setTimeout(() => { this.lootToasts = this.lootToasts.filter(toast => toast.key !== key); }, 1800);
@@ -1627,6 +1652,8 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private tickAbilities(): void {
     if (!this.topDown) { this.tdAbilities = []; return; }
+    // The chat box's Game tab hears every line the HUD shows (the toast, the engine's own words).
+    for (const line of [this.message, this.engineMessage]) if (line && line !== this.lastLogged) { this.lastLogged = line; this.logGame(line); }
     const e = this.tdEngine;
     // The Spellbook's choices (synced with the Keeper's look) reach the engine whenever they change.
     const look = this.looks.look, key = `${look.bar.join(',')}|${look.aura}`;

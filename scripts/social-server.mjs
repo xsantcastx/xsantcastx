@@ -93,7 +93,10 @@ export function createSocialServer({ origins = ['http://127.0.0.1:4317', 'http:/
       const data = await readBody(req);
       session.lastSeen = now();
       if (url.pathname === '/update') {
-        if (!Number.isFinite(data.x) || data.x < 30 || data.x > 2670 || !Number.isFinite(data.y) || data.y < -100 || data.y > 610 || ![-1, 1].includes(data.facing) || !animations.has(data.animation) || !['Basalt Seamworks', 'Ember Quarry'].includes(data.zone)) throw fail(400, 'Invalid position.');
+        // The top-down world has no edge (owner 2026-10-20): any finite position within a generous bound, and any short
+        // area name (a town, a region, a floor) — rendered as text by every client, never as HTML.
+        const zoneOk = typeof data.zone === 'string' && data.zone.length >= 1 && data.zone.length <= 60 && !/[<>\u0000-\u001f]/.test(data.zone);
+        if (!Number.isFinite(data.x) || Math.abs(data.x) > 1e6 || !Number.isFinite(data.y) || Math.abs(data.y) > 1e6 || ![-1, 1].includes(data.facing) || !animations.has(data.animation) || !zoneOk) throw fail(400, 'Invalid position.');
         Object.assign(session.player, { x: data.x, y: data.y, facing: data.facing, animation: data.animation, zone: data.zone });
         publishPlayers(); reply(200, { ok: true }); return;
       }

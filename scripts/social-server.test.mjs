@@ -52,7 +52,11 @@ test('rejects unauthorized origins, bad tokens, malformed names/positions and ov
   assert.equal((await post('/join', { name: '<script>' })).status, 400);
   assert.equal((await post('/update', {}, 'wrong')).status, 401);
   const { token } = await join('Arin');
-  assert.equal((await post('/update', { x: 9999, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks' }, token)).status, 400);
+  // The top-down world: far positions and any area name are fine; past the bound, a bad zone or markup is not.
+  assert.equal((await post('/update', { x: -1400, y: 2300, facing: 1, animation: 'run', zone: 'The Cinder Steppe' }, token)).status, 200);
+  assert.equal((await post('/update', { x: 2e6, y: 610, facing: 1, animation: 'idle', zone: 'Basalt Seamworks' }, token)).status, 400);
+  assert.equal((await post('/update', { x: 10, y: 10, facing: 1, animation: 'idle', zone: '<b>x</b>' }, token)).status, 400);
+  assert.equal((await post('/update', { x: 10, y: 10, facing: 1, animation: 'idle', zone: '' }, token)).status, 400);
   assert.equal((await post('/chat', { text: 'x'.repeat(241) }, token)).status, 400);
   assert.equal((await post('/chat', { text: 'x'.repeat(3000) }, token)).status, 413);
 });
