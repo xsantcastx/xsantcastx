@@ -3859,6 +3859,8 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .td-talk__scroll h3 small { margin-left: auto; font: 700 11px/1 var(--font-pixel); color: var(--cozy-ink-soft); }
 .td-talk__say { margin: 0; font: 500 14px/1.45 var(--cozy-font-read); color: var(--cozy-ink); }
 .td-talk__say--plain { color: var(--cozy-cream); }
+.td-talk__daily { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0; font: 600 12px/1.4 var(--cozy-font-read); color: var(--cozy-ink-soft); }
+.td-talk__daily b { font: 700 11px/1.6 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-ink); }
 .td-talk__row { display: grid; grid-template-columns: 88px minmax(0, 1fr); gap: 8px; margin: 0; font: 600 13px/1.35 var(--cozy-font-read); }
 .td-talk__row b { font: 700 11px/1.6 var(--font-pixel); letter-spacing: .06em; text-transform: uppercase; color: var(--cozy-ink-soft); }
 .td-talk__row em { margin-left: 6px; font-style: normal; font-weight: 700; color: var(--cozy-ink-soft); }

@@ -8,6 +8,15 @@
  *   claimed    task ids handed in and paid: THE RECEIPT. Written before a coin moves, unioned on merge, so a
  *              merge can never re-open a paid task and a second device can never pay it twice.
  *
+ * Version 2 adds the DAILIES (a giver's small errand, one a local day). Their entries live beside the one-time ones,
+ * keyed by day: `d<YYYYMMDD>-<task id>`.
+ *
+ *   dAccepted / dProgress   as accepted / progress, for a daily on its day
+ *   dClaimed                the daily receipts. Unioned on merge, so two devices that both hand in the same day's
+ *                           daily pay it once; only the last DAILY_KEEP days are kept so the list stays small.
+ *
+ * Migration: a version 1 blob has no daily fields; it reads as version 2 with them empty (nothing else changes).
+ *
  * A task's standing is derived, never stored: claimed → done; accepted → active (ready once its count is met or,
  * for a delivery, the satchel holds enough); otherwise offered when the giver's earlier tasks are claimed.
  *
@@ -17,19 +26,25 @@
 export const TOWN_TASKS_KEY = 'godforge-town-tasks';
 
 export interface TownTaskState {
-  version: 1;
+  version: 2;
   accepted: Record<string, number>;
   progress: Record<string, number>;
   claimed: string[];
+  dAccepted: Record<string, number>;
+  dProgress: Record<string, number>;
+  dClaimed: string[];
 }
 
 /** Ceilings so a corrupt or hostile blob cannot grow the save without bound. */
 const MAX_IDS = 200;
 const MAX_COUNT = 999;
 const ID = /^[a-z0-9-]{1,48}$/;
+/** How many distinct days of daily entries are kept (older ones can never matter again). */
+const DAILY_KEEP = 7;
+const DAILY_DAY = /^d(\d{8})-/;
 
 export function emptyTownTasks(): TownTaskState {
-  return { version: 1, accepted: {}, progress: {}, claimed: [] };
+  return { version: 2, accepted: {}, progress: {}, claimed: [], dAccepted: {}, dProgress: {}, dClaimed: [] };
 }
 
 const isRecord = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -45,17 +60,37 @@ function numbers(raw: unknown, max: number): Record<string, number> {
   return out;
 }
 
-/** Anything to a valid state: junk ids, negative counts and over-long lists are dropped. */
+const ids = (raw: unknown): string[] =>
+  Array.isArray(raw) ? [...new Set(raw.filter((s): s is string => typeof s === 'string' && ID.test(s)))].slice(0, MAX_IDS) : [];
+
+/** Daily entries from the last DAILY_KEEP distinct days present (commutative: it looks only at the keys given). */
+function recentDays<T>(keys: readonly string[], entries: readonly [string, T][]): [string, T][] {
+  const days = [...new Set(keys.map(k => DAILY_DAY.exec(k)?.[1]).filter((d): d is string => !!d))].sort().slice(-DAILY_KEEP);
+  return entries.filter(([k]) => { const d = DAILY_DAY.exec(k)?.[1]; return !!d && days.includes(d); });
+}
+type DailyPart = Pick<TownTaskState, 'dAccepted' | 'dProgress' | 'dClaimed'>;
+function pruneDaily(s: DailyPart): DailyPart {
+  const keys = [...Object.keys(s.dAccepted), ...Object.keys(s.dProgress), ...s.dClaimed];
+  return {
+    dAccepted: Object.fromEntries(recentDays(keys, Object.entries(s.dAccepted))),
+    dProgress: Object.fromEntries(recentDays(keys, Object.entries(s.dProgress))),
+    dClaimed: recentDays(keys, s.dClaimed.map(k => [k, k] as [string, string])).map(([k]) => k).sort(),
+  };
+}
+
+/** Anything (a version 1 blob too) to a valid version 2 state: junk ids, negative counts and over-long lists are dropped. */
 export function coerceTownTasks(raw: unknown): TownTaskState {
   if (!isRecord(raw)) return emptyTownTasks();
-  const claimed = Array.isArray(raw['claimed'])
-    ? [...new Set(raw['claimed'].filter((s): s is string => typeof s === 'string' && ID.test(s)))].slice(0, MAX_IDS)
-    : [];
   return {
-    version: 1,
+    version: 2,
     accepted: numbers(raw['accepted'], 8_640_000_000_000_000),
     progress: numbers(raw['progress'], MAX_COUNT),
-    claimed,
+    claimed: ids(raw['claimed']),
+    ...pruneDaily({
+      dAccepted: numbers(raw['dAccepted'], 8_640_000_000_000_000),
+      dProgress: numbers(raw['dProgress'], MAX_COUNT),
+      dClaimed: ids(raw['dClaimed']),
+    }),
   };
 }
 
@@ -71,10 +106,15 @@ export function mergeTownTasks(remote: unknown, local: unknown): unknown {
   for (const [id, at] of Object.entries(r.accepted)) accepted[id] = id in accepted ? Math.min(accepted[id], at) : at;
   const progress: Record<string, number> = { ...l.progress };
   for (const [id, n] of Object.entries(r.progress)) progress[id] = Math.max(progress[id] ?? 0, n);
+  const dAccepted: Record<string, number> = { ...l.dAccepted };
+  for (const [id, at] of Object.entries(r.dAccepted)) dAccepted[id] = id in dAccepted ? Math.min(dAccepted[id], at) : at;
+  const dProgress: Record<string, number> = { ...l.dProgress };
+  for (const [id, n] of Object.entries(r.dProgress)) dProgress[id] = Math.max(dProgress[id] ?? 0, n);
   return {
-    version: 1,
+    version: 2,
     accepted,
     progress,
     claimed: [...new Set([...l.claimed, ...r.claimed])].sort().slice(0, MAX_IDS),
+    ...pruneDaily({ dAccepted, dProgress, dClaimed: [...new Set([...l.dClaimed, ...r.dClaimed])] }),
   } satisfies TownTaskState;
 }

@@ -3,7 +3,9 @@
  * (shared/town-tasks/town-tasks.model.ts). Lazy: registered by the side-scroller (play chunk) with the HUD's table.
  * Lore shipped 2026-10-20 (owner reviews in play): docs/world/lore-addendum.md "Town tasks".
  */
-export const TOWN_TASKS_I18N: Readonly<Record<string, { en: string; es: string }>> = {
+import { DAILY_TASKS } from './town-tasks.model';
+
+const ONCE: Record<string, { en: string; es: string }> = {
   // ── Who they are ──
   'task.giver.bench-smith.who': { en: 'The Seamworks bench smith. Her anvil is older than the square.', es: 'La herrera del banco de la Seamworks. Su yunque es mas viejo que la plaza.' },
   'task.giver.buyback-clerk.who': { en: 'He buys back what the island gives up, and writes down who sold it.', es: 'Compra lo que la isla suelta, y apunta quien lo vendio.' },
@@ -91,3 +93,65 @@ export const TOWN_TASKS_I18N: Readonly<Record<string, { en: string; es: string }
   'task.place.salted-ember-0': { en: 'the Salted Ember\'s cellar', es: 'la bodega de la Salted Ember' },
   'task.place.ashen-crypt-1': { en: 'the Ossuary (the Ashen Crypt, floor 1)', es: 'el Osario (Cripta Cenicienta, piso 1)' },
 };
+
+// ── Dailies (DAILY_TASKS): a title each; one ask and one thanks per giver, shared by their pool ──
+const DAILY: Record<string, { en: string; es: string }> = {
+  'task.giver.bench-smith.dailyAsk': { en: "The bench never rests, and neither do I. Today's errand is small, but the anvil will thank you.", es: 'El banco nunca descansa, ni yo. El encargo de hoy es pequeno, pero el yunque te lo agradecera.' },
+  'task.giver.bench-smith.dailyThanks': { en: 'Small work, honest work. See you tomorrow, Keeper.', es: 'Trabajo pequeno, trabajo honrado. Hasta manana, Guardian.' },
+  'task.giver.buyback-clerk.dailyAsk': { en: "Another day, another tally. Do me this one small favour and I'll write you down as reliable.", es: 'Otro dia, otra cuenta. Hazme este pequeno favor y te apunto como de fiar.' },
+  'task.giver.buyback-clerk.dailyThanks': { en: 'Written down. Reliable, as I said.', es: 'Apuntado. De fiar, como dije.' },
+  'task.giver.sexton-wren.dailyAsk': { en: 'The barrow wakes a little every night. A small errand keeps it sleepy.', es: 'El tumulo se despierta un poco cada noche. Un encargo pequeno lo mantiene dormido.' },
+  'task.giver.sexton-wren.dailyThanks': { en: 'Quiet again, for today. The dead are patient; so am I.', es: 'En calma otra vez, por hoy. Los muertos son pacientes; yo tambien.' },
+  'task.giver.captain-vey.dailyAsk': { en: 'The Watch never closes its eyes. Lend us yours for one small job today.', es: 'La Guardia nunca cierra los ojos. Presta los tuyos para un trabajo pequeno hoy.' },
+  'task.giver.captain-vey.dailyThanks': { en: 'Good. The wall holds another day.', es: 'Bien. La muralla aguanta un dia mas.' },
+  'task.giver.forgewife-marr.dailyAsk': { en: "A forge eats a little every day. Bring me today's portion and it stays lit.", es: 'Una forja come un poco cada dia. Traeme la racion de hoy y sigue encendida.' },
+  'task.giver.forgewife-marr.dailyThanks': { en: "Hear it roar? That's today's share. Come tomorrow.", es: 'La oyes rugir? Es la racion de hoy. Ven manana.' },
+  'task.giver.scholar-pryor.dailyAsk': { en: 'My maps need fresh notes every day. One small errand, if you would.', es: 'Mis mapas necesitan notas nuevas cada dia. Un encargo pequeno, si puedes.' },
+  'task.giver.scholar-pryor.dailyThanks': { en: 'Noted, and mapped. The Deep is a little better understood tonight.', es: 'Anotado y cartografiado. La Profundidad se entiende un poco mejor esta noche.' },
+  'task.giver.harbourmaster-coyle.dailyAsk': { en: 'The tide brings a new chore every morning. This one is yours, if you want it.', es: 'La marea trae una faena nueva cada manana. Esta es tuya, si la quieres.' },
+  'task.giver.harbourmaster-coyle.dailyThanks': { en: 'Done before the tide turns. The harbour owes you.', es: 'Hecho antes de que cambie la marea. El puerto te debe una.' },
+  'task.giver.netter-pell.dailyAsk': { en: 'The nets tear a little every day, and a good Keeper helps mend them.', es: 'Las redes se rompen un poco cada dia, y un buen Guardian ayuda a remendarlas.' },
+  'task.giver.netter-pell.dailyThanks': { en: 'Mended. The sea can try again tomorrow.', es: 'Remendado. El mar puede volver a intentarlo manana.' },
+  'task.giver.woodward-ashby.dailyAsk': { en: "The Charwood needs tending every single day. One small task, and I'll sleep easier.", es: 'El Bosque Carbonizado pide cuidado cada dia. Un encargo pequeno y dormire mejor.' },
+  'task.giver.woodward-ashby.dailyThanks': { en: 'The trees stand another day. Thank you.', es: 'Los arboles siguen en pie otro dia. Gracias.' },
+  'task.giver.charburner-kiln.dailyAsk': { en: "Kilns are greedy things. Feed mine a little today and they'll behave.", es: 'Los hornos son glotones. Alimenta un poco los mios hoy y se portaran bien.' },
+  'task.giver.charburner-kiln.dailyThanks': { en: 'Warm kilns, warm hearts. Come back tomorrow.', es: 'Hornos calientes, corazones calientes. Vuelve manana.' },
+  'task.dly-bench-smith-1.title': { en: "Ore for Today's Bench", es: 'Mineral para el banco de hoy' },
+  'task.dly-bench-smith-2.title': { en: 'A Little Bark', es: 'Un poco de corteza' },
+  'task.dly-bench-smith-3.title': { en: 'Rivets in the Gravel', es: 'Remaches en la grava' },
+  'task.dly-buyback-clerk-1.title': { en: 'A Tally of Rivet Maws', es: 'Cuenta de Fauces Remachadas' },
+  'task.dly-buyback-clerk-2.title': { en: 'Wolves on the Road', es: 'Lobos en el camino' },
+  'task.dly-buyback-clerk-3.title': { en: 'Ore for the Ledger', es: 'Mineral para el libro' },
+  'task.dly-sexton-wren-1.title': { en: 'A Restless Grave', es: 'Una tumba inquieta' },
+  'task.dly-sexton-wren-2.title': { en: 'Wolves at the Wall', es: 'Lobos en el muro' },
+  'task.dly-sexton-wren-3.title': { en: 'Bark for the Lamps', es: 'Corteza para las lamparas' },
+  'task.dly-captain-vey-1.title': { en: 'Raiders on the Road', es: 'Saqueadores en el camino' },
+  'task.dly-captain-vey-2.title': { en: 'Quiet the Firecallers', es: 'Callar a los llamafuegos' },
+  'task.dly-captain-vey-3.title': { en: 'Hounds at the Gate', es: 'Sabuesos en la puerta' },
+  'task.dly-forgewife-marr-1.title': { en: 'Residue for the Forge', es: 'Residuo para la forja' },
+  'task.dly-forgewife-marr-2.title': { en: 'A Heap of Ore', es: 'Un monton de mineral' },
+  'task.dly-forgewife-marr-3.title': { en: 'Orcs at the Slag Heap', es: 'Orcos en la escoria' },
+  'task.dly-scholar-pryor-1.title': { en: 'Firecallers Observed', es: 'Llamafuegos observados' },
+  'task.dly-scholar-pryor-2.title': { en: 'Hounds of the Steppe', es: 'Sabuesos de la estepa' },
+  'task.dly-scholar-pryor-3.title': { en: 'Residue for the Ink', es: 'Residuo para la tinta' },
+  'task.dly-harbourmaster-coyle-1.title': { en: 'Drakes over the Fields', es: 'Dragones sobre los campos' },
+  'task.dly-harbourmaster-coyle-2.title': { en: 'Hounds on the Quay', es: 'Sabuesos en el muelle' },
+  'task.dly-harbourmaster-coyle-3.title': { en: 'Bark for the Hulls', es: 'Corteza para los cascos' },
+  'task.dly-netter-pell-1.title': { en: 'Bark for the Tar', es: 'Corteza para la brea' },
+  'task.dly-netter-pell-2.title': { en: 'Hounds and Fish Carts', es: 'Sabuesos y carros de pescado' },
+  'task.dly-netter-pell-3.title': { en: 'Drakes Over the Pier', es: 'Dragones sobre el muelle' },
+  'task.dly-woodward-ashby-1.title': { en: 'Ghouls at the Treeline', es: 'Necrofagos en la linde' },
+  'task.dly-woodward-ashby-2.title': { en: 'Archers in the Dark', es: 'Arqueros en la oscuridad' },
+  'task.dly-woodward-ashby-3.title': { en: 'Bark for the Lanterns', es: 'Corteza para los faroles' },
+  'task.dly-charburner-kiln-1.title': { en: "Cord for Today's Kilns", es: 'Lena para los hornos de hoy' },
+  'task.dly-charburner-kiln-2.title': { en: 'Arrows at the Kiln-Lights', es: 'Flechas en las luces de los hornos' },
+  'task.dly-charburner-kiln-3.title': { en: 'Ghouls by the Ash Heap', es: 'Necrofagos junto a la ceniza' },
+};
+
+/** Every daily's ask and thanks are its giver's own, so the HUD's `task.<id>.ask|thanks` stems resolve for each. */
+for (const t of DAILY_TASKS) {
+  DAILY[`task.${t.id}.ask`] = DAILY[`task.giver.${t.giver}.dailyAsk`];
+  DAILY[`task.${t.id}.thanks`] = DAILY[`task.giver.${t.giver}.dailyThanks`];
+}
+
+export const TOWN_TASKS_I18N: Readonly<Record<string, { en: string; es: string }>> = { ...ONCE, ...DAILY };

@@ -48,7 +48,7 @@ const SHOP = 'Seamworks: Edrin Kade\'s counter (the Material Vendor) sells it fo
 export const POTIONS: readonly PotionDef[] = [
   {
     id: 'minor-health-potion', name: 'Minor Health Potion', kind: 'health', tier: 1, amount: 50, price: 25,
-    foundIn: [SHOP, DROP], sources: ['creature drops (any creature, low chance)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [SHOP, DROP], sources: ['town task dailies (a small chance on a hand-in)', 'creature drops (any creature, low chance)', 'Edrin Kade sells it (Material Vendor)'],
     uses: ['drunk from the belt (Q): mends 50 life over a second'],
     lore: 'Edrin Kade boils these on the forge\'s spare heat: emberwood bark, a pinch of ash, and more sugar than he admits.',
   },
@@ -66,7 +66,7 @@ export const POTIONS: readonly PotionDef[] = [
   },
   {
     id: 'minor-mana-potion', name: 'Minor Mana Potion', kind: 'mana', tier: 1, amount: 30, price: 25,
-    foundIn: [SHOP, DROP], sources: ['creature drops (any creature, low chance)', 'Edrin Kade sells it (Material Vendor)'],
+    foundIn: [SHOP, DROP], sources: ['town task dailies (a small chance on a hand-in)', 'creature drops (any creature, low chance)', 'Edrin Kade sells it (Material Vendor)'],
     uses: ['drunk from the belt (R): pours back 30 mana over a second'],
     lore: 'Cold water from the Seamworks well, left one night under the open sky. It hums if you hold it to your ear.',
   },
