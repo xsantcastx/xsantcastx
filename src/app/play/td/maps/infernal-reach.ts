@@ -10,6 +10,7 @@
 import type { StationDef } from '../../world/world.model';
 import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildTown } from '../town-builder';
+import { SPIRE_DOOR } from './pyre-spire';
 
 export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'Sail back to Ember Isle.' };
 
@@ -101,6 +102,8 @@ export const buildPyrehold = () => buildTown({
     { kind: 'pine', c: 3, r: 3 }, { kind: 'pine', c: 44, r: 3 }, { kind: 'oak', c: 4, r: 21 }, { kind: 'oak', c: 43, r: 21 },
     { kind: 'waystone', c: 27, r: 10 },
   ],
+  // The Pyre Spire, the watchtower over the south quarter: its door opens onto three floors (maps/pyre-spire.ts).
+  towers: [{ c: 37, r: 21, door: SPIRE_DOOR }],
   spawn: { c: 23, r: 25 },
 });
 
