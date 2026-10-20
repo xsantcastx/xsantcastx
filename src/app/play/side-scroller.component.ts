@@ -155,6 +155,8 @@ import { GLIM_MARK_COLOR, MAX_PINS, PIN_COLORS, PIN_ICONS, cleanPinName, newPinI
 import { GLIM_MARKS, activeMark } from '../shared/glim/glim';
 // The Mirror Slate (docs/handoff/mirror-slate.md): the HUD button, P, the busy rule, Lune's and Kael's counters.
 import { SlateService } from '../shared/slate/slate.service';
+import { PotionService, type BeltSlot } from '../shared/potions/potion.service';
+import { potionById, potionEffect } from '../shared/potions/potions.model';
 // The world clock (docs/handoff/world-clock.md): the sky, the hour the world keeps, the eclipse and Sera Quill's ledger.
 import { WorldClockService } from '../shared/world-clock/world-clock.service';
 import { EclipseService } from '../shared/world-clock/eclipse.service';
@@ -669,6 +671,7 @@ export class SideScrollerComponent implements OnDestroy {
   private readonly toldReady = new Set<string>();
   // ── The Mirror Slate (docs/handoff/mirror-slate.md) ──
   private readonly slate = inject(SlateService);
+  private readonly potions = inject(PotionService);
   private launchSub?: Subscription;
   // ── The world clock (docs/handoff/world-clock.md) ──
   private readonly clock = inject(WorldClockService);
@@ -1696,11 +1699,42 @@ export class SideScrollerComponent implements OnDestroy {
     // The worn gear's combat affixes (§3) ride along; the engine re-applies only when a number changed.
     (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
+    this.tdBelt = this.potions.belt(performance.now() / 1000);
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
     this.tdAura = e?.aura ?? null;
     const ext = this.engine as unknown as { maxMana?: number; maxHealth?: number } | undefined;
     if (typeof ext?.maxMana === 'number') this.tdMaxMana = ext.maxMana;
     if (typeof ext?.maxHealth === 'number') this.tdMaxHp = ext.maxHealth;
+  }
+  /** Top-down: the potion belt (Q · R), what each key would drink, how many, and the shared cooldown (0–1). */
+  tdBelt: BeltSlot[] = [];
+  /** Drink the best potion of a kind (shared/potions): the satchel pays one, the engine pours it in. */
+  drinkPotion(kind: 'health' | 'mana'): void {
+    if (!this.topDown) return;
+    const res = this.potions.drink(kind, performance.now() / 1000);
+    if (res.code === 'ok' && res.potion) {
+      const fx = potionEffect(res.potion, this.tdMaxHp, this.tdMaxMana);
+      (this.engine as unknown as { drinkPotion?: (heal: number, mana: number, secs: number) => void } | undefined)?.drinkPotion?.(fx.heal, fx.mana, fx.secs);
+      this.message = this.t('play.potion.drank', { name: res.potion.name });
+      this.sound.sfx('splash');
+    } else if (res.code === 'none') this.message = this.t(kind === 'health' ? 'play.potion.noneHealth' : 'play.potion.noneMana');
+    else if (res.code === 'cooldown') this.message = this.t('play.potion.cooldown');
+    else if (res.code === 'failed') this.message = this.t('play.potion.failed');
+    this.tickAbilities();
+    this.focusWorld();
+  }
+  /** The belt slot's tooltip: the potion, its key, what it does. */
+  beltTitle(slot: BeltSlot): string {
+    const key = ` (${slot.key})`;
+    if (!slot.potion) return this.t(slot.kind === 'health' ? 'play.potion.noneHealth' : 'play.potion.noneMana') + key;
+    return `${slot.potion.name}${key} · ${this.potionLine(slot.potion.id)}`;
+  }
+  /** What a potion does, in one line (the belt, the hover card). */
+  potionLine(id: string): string {
+    const p = potionById(id);
+    if (!p) return '';
+    if (p.kind === 'rejuv') return this.t('play.potion.does.rejuv', { pct: Math.round(p.amount * 100) });
+    return this.t(p.kind === 'health' ? 'play.potion.does.health' : 'play.potion.does.mana', { n: p.amount });
   }
   useAbility(slot: string): void {
     const why = this.tdEngine?.useAbility?.(slot);
@@ -2565,6 +2599,10 @@ export class SideScrollerComponent implements OnDestroy {
     else if (event.code === 'KeyB' && this.topDown) { event.preventDefault(); this.toggleBestiary(); }
     else if (event.code === 'KeyK' && this.topDown) { event.preventDefault(); this.spellbookOpen = !this.spellbookOpen; this.sheetOpen = false; }
     else if (event.code === 'KeyC' && this.topDown) { event.preventDefault(); this.sheetOpen = !this.sheetOpen; this.spellbookOpen = false; }
+    // The potion belt: Q drinks the best Health potion held, R the best Mana potion (shared/potions).
+    else if ((event.code === 'KeyQ' || event.code === 'KeyR') && this.topDown && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault(); this.drinkPotion(event.code === 'KeyQ' ? 'health' : 'mana');
+    }
     else if (event.code === 'KeyC' && this.campReady) { event.preventDefault(); this.descendToCamp(); }
     // One World: M is the Travel map (the world's map with its stones); it opens the full map from there.
     else if (event.code === 'KeyM' && this.topDown) { event.preventDefault(); this.togglePlaces(); }
@@ -3428,6 +3466,23 @@ export class SideScrollerComponent implements OnDestroy {
     const name = display?.name ?? stackKey;
     // A catch says what it is and what it is for (the Catalogue's lines); a Lodge charm, what it does.
     const fish = catchById(stackKey), charm = LODGE_CHARMS.find(c => c.id === stackKey);
+    const potion = potionById(stackKey);
+    if (potion) {
+      const does = this.potionLine(potion.id);
+      const key = potion.kind === 'rejuv' ? 'Q · R' : potion.kind === 'health' ? 'Q' : 'R';
+      const kicker = this.t('play.potion.kicker');
+      return {
+        name, art: display?.art ?? '', mark: monogram(name), kicker,
+        note: `${does} ${potion.lore}`,
+        stats: [this.t('play.hud.slip.held', { n: stack.quantity })],
+        canWear: false, canStow: false, compare: [], compareLabel: '',
+        tip: {
+          rarity: 'material', typeLine: kicker, rarityWord: '', head: null, affixes: [],
+          specials: [does, this.t('play.potion.drinkKey', { key }), potion.lore],
+          sockets: [], value: 0, bound: false, tempered: 0, itemLevel: 0, tag: null,
+        },
+      };
+    }
     return {
       name, art: display?.art ?? '', mark: monogram(name), kicker: this.t('play.hud.slip.material'),
       note: fish ? `${fish.lore} ${fish.use}` : charm ? `${charm.lore} ${charm.effect}` : this.stackNote(stackKey, stack.quantity),

@@ -1704,3 +1704,14 @@ paper"); the first Keeper's lamp, and the map begun where it went out; the After
 all night and found a lamp; the Archive's blank page in every book "for what we got wrong"; the Rivet Maw that
 carried one bolt across the whole Delve and left; the stars as margin notes of a bigger map someone is still
 writing. None names the first lamp's keeper; the egg waits for the finale.
+
+## Potions on the belt (2026-10-20) — shipped, owner reviews in play
+
+**Edrin Kade's tonics.** The Buyback Clerk keeps a crate behind the counter. He boils the Health potions on the
+forge's spare heat (emberwood bark, a pinch of ash, more sugar than he admits); the Lesser are brewed twice so the
+bark gives up its warmth, and the Greater steep on a heartstone overnight, tasting of a warm kitchen. The Mana
+potions are Seamworks well water left under the open sky: one night for the Minor (it hums), a whole turn of the
+stars for the Lesser (the Archive swears it is only water), and the night of an eclipse for the Greater, stoppered
+before dawn, its glass always cold. **The Rejuvenation** nobody in the Seamworks can brew: the deep things carry it,
+as if someone keeps handing it down to them (an open thread). Sources: creature drops (stronger creatures, better
+potions; Rejuvenations from level 10 up) and Edrin's counter for Gold. Lines live in `shared/potions/potions.model.ts`.

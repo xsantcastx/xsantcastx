@@ -2,8 +2,9 @@
  * material-vendor.component.ts — the Seamworks Material Vendor's buyback
  * counter.
  *
- * Economy v3: players run the economy and NPCs are sinks only. The Vendor no
- * longer sells anything; it buys surplus materials at a low floor price (8%
+ * Economy v3: players run the economy and NPCs are sinks only. The Vendor
+ * sells one thing, potions for the road (a Potions tab, shared/potions: a Gold
+ * sink he never buys back); otherwise it buys surplus materials at a low floor price (8%
  * of base worth — the board and its prices are explained in
  * material-vendor.model.ts). Pick a material you hold, read which recipes want
  * it (so you keep what the bench needs), choose how many, sell.
@@ -32,10 +33,12 @@ import { artFor } from '../art/art';
 import { CRAFTING_RECIPES } from '../crafting/crafting.model';
 import { injectInWorldPanel } from '../in-world-panel';
 import { TranslationService } from '../../translation.service';
-import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationArt, type StationCost, type StationReward } from '../station-ui';
+import { STATION_UI, STATION_UI_I18N, type JournalRow, type StationArt, type StationCost, type StationReward, type StationTab } from '../station-ui';
 import { VENDOR_I18N, VENDOR_SOURCE_KEY } from './material-vendor.i18n';
 import { VENDOR_BUYBACK_FRACTION } from '../economy/economy-curve';
 import { MaterialVendorService } from './material-vendor.service';
+import { PotionService, type PotionBuyCode } from '../potions/potion.service';
+import { POTION_SHELF, type PotionDef } from '../potions/potions.model';
 import {
   VENDOR_MAX_QTY,
   VENDOR_SHELF,
@@ -84,6 +87,17 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
   private readonly cdr = inject(ChangeDetectorRef);
   private subs: Subscription[] = [];
   private readonly i18n = inject(TranslationService);
+  private readonly potions = inject(PotionService);
+
+  /** Sell (the buyback board) or Potions (Edrin Kade's shelf, shared/potions). */
+  tab: 'sell' | 'potions' = 'sell';
+  tabs: StationTab[] = [];
+  potionId = POTION_SHELF[0].id;
+  potionQty = 1;
+  potionRows: JournalRow[] = [];
+  potionCosts: StationCost[] = [];
+  potionArt: StationArt | null = null;
+  private buySeq = 0;
 
   readonly maxQty = VENDOR_MAX_QTY;
   readonly buybackPercent = Math.round(VENDOR_BUYBACK_FRACTION * 100);
@@ -258,6 +272,58 @@ export class MaterialVendorComponent implements OnInit, OnDestroy {
     this.selectedArt = sel.art ? { src: sel.art, srcset: sel.srcset } : null;
     this.unitCosts = [{ kind: 'material', id: sel.listing.materialId, label: sel.name, need: 1, have: sel.held, art: sel.art ? { src: sel.art, srcset: sel.srcset } : null }];
     this.walletGold = { kind: 'gold', label: goldLabel, need: this.gold, have: this.gold };
+    this.tabs = [{ id: 'sell', label: this.t('vendor.tab.sell') }, { id: 'potions', label: this.t('vendor.tab.potions') }];
+    const held = (id: string) => (this.isBrowser ? this.inventory.stackOf(id) : 0);
+    this.potionRows = POTION_SHELF.map(p => {
+      const art = artFor(p.id);
+      return { id: p.id, name: p.name, art: art ? { src: art.src, srcset: art.srcset } : null, sub: this.t('vendor.potions.rowSub', { held: held(p.id), price: this.fmt(p.price) }) };
+    });
+    const pa = artFor(this.potion.id);
+    this.potionArt = pa ? { src: pa.src, srcset: pa.srcset } : null;
+    this.potionCosts = [{ kind: 'gold', label: goldLabel, need: this.potion.price, have: this.gold }];
+  }
+
+  // ── Potions (Edrin Kade's shelf) ────────────────────────────────────────────
+
+  get potion(): PotionDef { return POTION_SHELF.find(p => p.id === this.potionId) ?? POTION_SHELF[0]; }
+  get potionHeld(): number { return this.isBrowser ? this.inventory.stackOf(this.potion.id) : 0; }
+  /** What the chosen potion does, in one line (the belt's words). */
+  get potionDoes(): string {
+    const p = this.potion;
+    return this.t(p.kind === 'health' ? 'vendor.potions.health' : 'vendor.potions.mana', { n: p.amount });
+  }
+  setTab(id: string): void {
+    this.tab = id === 'potions' ? 'potions' : 'sell';
+    this.error = '';
+    this.refresh();
+    this.cdr.markForCheck();
+  }
+  pickPotion(id: string): void {
+    if (!POTION_SHELF.some(p => p.id === id)) return;
+    this.potionId = id;
+    this.potionQty = 1;
+    this.refresh();
+    this.cdr.markForCheck();
+  }
+  buyPotion(n: number): void {
+    const p = this.potion;
+    const code: PotionBuyCode = this.potions.buy(p.id, n, `${p.id}:${Date.now().toString(36)}:${++this.buySeq}`);
+    if (code !== 'ok') {
+      this.announce = this.t(code === 'funds' ? 'vendor.potions.funds' : 'vendor.potions.failed', { name: p.name });
+      this.cdr.markForCheck();
+      return;
+    }
+    this.announce = this.t('vendor.potions.bought', { n, name: p.name, gold: this.fmt(p.price * n) });
+    this.reward = {
+      seq: ++this.rewardSeq,
+      name: this.t('vendor.rewardName', { n, name: p.name }),
+      art: artFor(p.id),
+      rarity: 'common',
+      caption: this.announce,
+      kicker: this.t('vendor.potions.kicker'),
+    };
+    this.refresh();
+    this.cdr.markForCheck();
   }
 
   // ── Building ───────────────────────────────────────────────────────────────
