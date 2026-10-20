@@ -518,7 +518,7 @@
               <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
               <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
               @for (well of wells; track well.id) {
-                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
+                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
                   @if (well.filled && well.art) {
                     <img [src]="well.art" alt="">
                   } @else if (well.filled) {
@@ -552,7 +552,7 @@
         } @else {
           <div class="pockets">
             @for (pocket of shownPockets; track pocket.key) {
-              <button type="button" class="pocket" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
+              <button type="button" class="pocket" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket, $event)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
                 @if (pocket.art) {
                   <img [src]="pocket.art" alt="">
                 } @else {
@@ -582,22 +582,21 @@
           </footer>
         </div>
       </div>
-      @if (hoverTip; as tip) {
-        <!-- The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): framed in its rarity, a big
-             icon, the stat it is for, the rest as coloured affixes, its wells and worth; nothing to press. -->
-        <div class="d2tip" role="tooltip" [style.left.px]="tip.x + 16" [style.top.px]="tip.y + 12" [attr.data-rarity]="tip.row.tip?.rarity ?? 'material'">
+      <!-- The item card's body: shared by the hover card and the card pinned by a click (owner: "when you click on the item
+           … this huge UI that is really ugly" — a click now pins this same small card with its actions). -->
+      <ng-template #cardBody let-row>
           <header class="d2tip__head">
             <div class="d2tip__icon" aria-hidden="true">
-              @if (tip.row.art) { <img [src]="tip.row.art" alt=""> } @else { <em>{{ tip.row.mark }}</em> }
+              @if (row.art) { <img [src]="row.art" alt=""> } @else { <em>{{ row.mark }}</em> }
             </div>
             <div class="d2tip__title">
-              <b>{{ tip.row.name }}</b>
-              @if (tip.row.tip?.typeLine) { <span>{{ tip.row.tip?.typeLine }}</span> }
-              @if (tip.row.tip?.rarityWord) { <span class="d2tip__rarity">{{ tip.row.tip?.rarityWord }}</span> }
-              @if (tip.row.tip?.value) { <span class="d2tip__worth"><i class="coin" aria-hidden="true"></i>{{ tip.row.tip!.value.toLocaleString('en-US') }}</span> }
+              <b>{{ row.name }}</b>
+              @if (row.tip?.typeLine) { <span>{{ row.tip?.typeLine }}</span> }
+              @if (row.tip?.rarityWord) { <span class="d2tip__rarity">{{ row.tip?.rarityWord }}</span> }
+              @if (row.tip?.value) { <span class="d2tip__worth"><i class="coin" aria-hidden="true"></i>{{ row.tip!.value.toLocaleString('en-US') }}</span> }
             </div>
           </header>
-          @if (tip.row.tip; as it) {
+          @if (row.tip; as it) {
             @if (it.tag || it.itemLevel) {
               <p class="d2tip__meta">
                 @if (it.tag) { <b class="d2tip__tag" [attr.data-tag]="it.tag">{{ it.tag === 'flawless' ? t('play.tip.flawless') : t('play.tip.perfect') }}</b> }
@@ -621,15 +620,15 @@
               </ul>
             }
           } @else {
-            @for (stat of tip.row.stats; track stat) { <p class="d2tip__line">{{ stat }}</p> }
+            @for (stat of row.stats; track stat) { <p class="d2tip__line">{{ stat }}</p> }
           }
-          @if (tip.row.compare.length) {
+          @if (row.compare.length) {
             <div class="d2tip__compare">
-              <small>{{ tip.row.compareLabel }}</small>
-              @for (d of tip.row.compare; track d.key) { <i [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'">{{ d.text }}</i> }
+              <small>{{ row.compareLabel }}</small>
+              @for (d of row.compare; track d.key) { <i [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'">{{ d.text }}</i> }
             </div>
           }
-          @if (tip.row.tip; as it) {
+          @if (row.tip; as it) {
             @if (it.bound || it.value || it.tempered) {
               <footer class="d2tip__foot">
                 @if (it.tempered) { <span>{{ t('play.tip.tempered', { n: it.tempered }) }}</span> }
@@ -638,10 +637,30 @@
               </footer>
             }
           }
+      </ng-template>
+      @if (hoverTip && !(topDown && slip); as tip) {
+        <!-- The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): framed in its rarity; nothing to press. -->
+        <div class="d2tip" role="tooltip" [style.left.px]="hoverTip.x + 16" [style.top.px]="hoverTip.y + 12" [attr.data-rarity]="hoverTip.row.tip?.rarity ?? 'material'">
+          <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: hoverTip.row }" />
         </div>
       }
-      @if (slip; as row) {
-        <!-- The item card: name in its rarity colour, the few stats, one primary action. -->
+      @if (topDown && slip; as row) {
+        <!-- A click pins the same card beside the item, with its actions under it. -->
+        <div class="d2tip d2tip--pinned" role="dialog" [attr.aria-label]="row.name" [style.left.px]="pickAt.x" [style.top.px]="pickAt.y" [attr.data-rarity]="row.tip?.rarity ?? 'material'" (keydown.escape)="unpick()">
+          <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
+          <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
+          @if (row.canWear || row.canStow || row.canSend || pickIsCrate) {
+            <div class="d2tip__actions">
+              @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
+              @if (row.canWear) { <button type="button" class="wear" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
+              @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
+              @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
+            </div>
+          }
+        </div>
+      }
+      @if (!topDown && slip; as row) {
+        <!-- The item card (side view): name in its rarity colour, the few stats, one primary action. -->
         <footer class="slip" [style.--tone]="row.tone">
           <div class="slip-art" aria-hidden="true">
             @if (row.art) { <img [src]="row.art" alt=""> }

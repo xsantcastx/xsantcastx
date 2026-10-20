@@ -3657,4 +3657,17 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .td-chat__log { min-height: 0; max-height: 70px; }
   .td-chat-tab { left: 62px; bottom: 64px; }
 }
+/* A click pins the item card beside its cell (the hover card's twin) with its actions under it — never the big panel. */
+.d2tip--pinned { z-index: 31; pointer-events: auto; }
+.d2tip__close { position: absolute; top: 4px; right: 4px; width: 26px; height: 26px; padding: 0 !important; border: 0 !important; border-radius: 0 !important;
+  background: transparent !important; box-shadow: none !important; color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); font: 700 18px/1 var(--cozy-font-read); cursor: pointer; }
+.d2tip__close:hover { color: var(--cozy-cream); }
+.d2tip__actions { display: flex; flex-wrap: wrap; gap: 6px; padding-top: 6px; border-top: 1px solid color-mix(in srgb, var(--loot) 45%, transparent); }
+.d2tip__actions button { flex: 1 1 auto; min-height: 34px; padding: 0 10px !important; font: 700 12px var(--cozy-font-read) !important; text-transform: none !important; letter-spacing: 0 !important; cursor: pointer; }
+.stage--td .book .slip { display: none; }
 
+.d2tip__actions button { border: 0 !important; border-radius: 0 !important; background: var(--cozy-wood-2) !important; color: var(--cozy-cream) !important;
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 -2px 0 0 var(--cozy-plate-seam) !important; }
+.d2tip__actions button::before, .d2tip__actions button::after { display: none !important; }
+.d2tip__actions .wear { background: var(--cozy-brass) !important; color: var(--cozy-wood-0) !important; }
+.d2tip__actions button:hover { filter: brightness(1.12); }

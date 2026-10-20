@@ -44,3 +44,7 @@ Each step: screenshot against the reference, gate, push, sha to the owner.
    the tiles — an art pass of its own, Warlock first.
 
 Status: steps 1–2 of the HUD order shipped (d522c7ba portrait + strip; 1a597ee1 goals under the minimap + toolbar).
+4. **Click card** (owner: "when you click on the item … this huge UI that is really ugly"): done — a click pins the hover
+   card beside the item with its actions; the big slip stays only in the side view.
+5. **The Satchel's paper doll** still draws the old side-view Keeper (brown hair), not the Warlock: give it the
+   front sprite (keeper-front) with worn gear.
