@@ -1672,6 +1672,8 @@ export class SideScrollerComponent implements OnDestroy {
   /** Top-down: the skill bar (keys 1–4), each slot's cooldown left 0–1 and whether there is mana (td-skills.ts). */
   tdAbilities: { id: string; key: string; left: number; mana: number; ready: boolean }[] = [];
   tdMana = MAX_MANA;
+  /** The running aura (its icon rides the portrait's corner / sits beside the orbs). */
+  tdAura: string | null = null;
   tdMaxMana = MAX_MANA;
   tdMaxHp = 100;
   /** The Spellbook (K): every skill of the class, what it does, the bar and the aura chosen there. */
@@ -1695,6 +1697,7 @@ export class SideScrollerComponent implements OnDestroy {
     (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
+    this.tdAura = e?.aura ?? null;
     const ext = this.engine as unknown as { maxMana?: number; maxHealth?: number } | undefined;
     if (typeof ext?.maxMana === 'number') this.tdMaxMana = ext.maxMana;
     if (typeof ext?.maxHealth === 'number') this.tdMaxHp = ext.maxHealth;
