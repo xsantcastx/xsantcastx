@@ -55,6 +55,7 @@
 import {
   definitionFor,
   rollItemStatsWithQuality,
+  rollMintStats,
   type ItemStatKey,
 } from './item-definition';
 import { qualityAdjustedSellValue, sellQualityMultiplier, type RollQuality } from './item-quality';
@@ -110,7 +111,10 @@ export interface ReforgePreview {
  */
 export function reforgeKeys(item: GameItem): ItemStatKey[] {
   const def = definitionFor(item);
-  const keys = def?.rollKeys?.length
+  // An affix item (§3) rerolls what it carries; its definition's rollKeys are legacy.
+  const keys = item.itemLevel != null
+    ? (Object.keys(item.stats ?? {}) as ItemStatKey[])
+    : def?.rollKeys?.length
     ? [...def.rollKeys]
     : (Object.keys(item.stats ?? {}) as ItemStatKey[]);
   // ITEM_STAT_KEYS order, so the panel's before/after rows never reshuffle.
@@ -194,7 +198,9 @@ export function rollReforgeDetailed(
     return { stats: { ...item.stats }, quality: { ...(item.rollQuality ?? {}) }, sellValue: item.sellValue };
   }
 
-  const rolled = rollItemStatsWithQuality(def, item.rarity, rng);
+  const rolled = item.itemLevel != null
+    ? rollMintStats(def, item.rarity, item.itemLevel, rng)
+    : rollItemStatsWithQuality(def, item.rarity, rng);
   let next = rolled.stats;
   const quality: RollQuality = { ...rolled.quality };
 

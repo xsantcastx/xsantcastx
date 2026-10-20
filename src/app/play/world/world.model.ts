@@ -131,7 +131,7 @@ export type DropEntry =
    * table; the item is minted at pickup (its roll grade frozen then), the rune
    * goes to the Forge ledger. `rarity` is required: it is the whole point.
    */
-  | { id: string; kind: 'item'; definitionId: string; rarity: LootRarity; label: string; unique?: boolean; chance?: number }
+  | { id: string; kind: 'item'; definitionId: string; rarity: LootRarity; label: string; unique?: boolean; chance?: number; level?: number }
   | { id: string; kind: 'rune'; rune: string; rarity: LootRarity; label: string; chance?: number };
 
 /**

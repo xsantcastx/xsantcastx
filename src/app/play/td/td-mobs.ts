@@ -13,7 +13,7 @@
 import type { EngineOptions, LootRow } from '../engine/engine.model';
 import type { LootRarity } from '../world/world.model';
 import { TILE } from './td-art';
-import { MANA_REGEN, MAX_MANA, SKILLS, type SkillId } from './td-skills';
+import { CRIT_MULT, MANA_REGEN, MAX_MANA, SKILLS, defenseReduction, type SkillId } from './td-skills';
 
 export interface MobDef {
   id: string;
@@ -181,7 +181,7 @@ export interface Drop {
   coins: number;
   material?: string;
   qty: number;
-  item?: { definitionId: string; rarity: LootRarity; unique: boolean };
+  item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number };
   rune?: string;
   label: string;
   color: string;
@@ -235,6 +235,11 @@ export class MobSystem {
   /** Mana back per second, and Agility's quicker staff (td-skills levelStats). */
   regen = MANA_REGEN;
   agility = 0;
+  /** Worn gear (td-skills fightStats): cast speed (fraction), crit chance (0..1), Defense, and the Keeper's level. */
+  castSpeed = 0;
+  crit = 0;
+  defense = 0;
+  keeperLevel = 1;
   /** The running aura (one at a time, D2), or none. */
   aura: SkillId | null = 'aura-embers';
   /** Dark Ward: damage it still absorbs, seconds left. */
@@ -298,7 +303,7 @@ export class MobSystem {
     // The Warlock's staff: an ember bolt flies to the foe in range (Tibia's auto-attack, at a distance).
     const bolt = SKILLS['ember-bolt'];
     if (foe && this.swing <= 0 && Math.hypot(foe.x - p.x, foe.y - p.y) <= this.range) {
-      this.swing = bolt.cd / (1 + this.agility);
+      this.swing = bolt.cd / (1 + this.agility) / (1 + this.castSpeed);
       this.bolts.push({ x: p.x, y: p.y - 22, to: foe, dmg: rnd(bolt.vars['min'], bolt.vars['max']), age: 0 });
       this.host.swung(foe);
     }
@@ -352,6 +357,8 @@ export class MobSystem {
         let n = rnd(m.def.dmg[0], m.def.dmg[1]);
         // A cursed foe bites weaker; the Dark Ward drinks what it can.
         if (m.cursed > 0) n = Math.max(1, Math.round(n * (1 - SKILLS['ember-curse'].vars['weaken'] / 100)));
+        // Worn Defense turns a share of the blow aside (td-skills defenseReduction).
+        if (this.defense > 0) n = Math.max(1, Math.round(n * (1 - defenseReduction(this.defense, this.keeperLevel))));
         if (this.ward > 0) { const soak = Math.min(this.ward, n); this.ward -= soak; n -= soak; this.float(p.x + 8, p.y - 30, `-${soak}`, '#c8a8ff'); }
         if (n > 0) { this.host.hurtPlayer(n); this.float(p.x, p.y - 34, `${n}`, '#ff5a4a'); }
       }
@@ -380,10 +387,11 @@ export class MobSystem {
   }
 
   private hitFoe(foe: Mob, raw: number, color: string): void {
-    const dmg = Math.round(raw * this.power);
+    const crit = this.crit > 0 && Math.random() < this.crit;
+    const dmg = Math.round(raw * this.power * (crit ? CRIT_MULT : 1));
     foe.hp -= dmg; foe.hit = .18;
     if (this.aura === 'aura-siphon') this.host.healPlayer(SKILLS['aura-siphon'].vars['heal']);
-    this.float(foe.x, foe.y - foe.def.h, `${dmg}`, color);
+    this.float(foe.x, foe.y - foe.def.h, crit ? `${dmg}!` : `${dmg}`, color);
     if (foe.hp <= 0) this.kill(foe);
   }
 
@@ -426,7 +434,7 @@ export class MobSystem {
       this.host.swung(null);
     }
     this.mana -= sk.mana;
-    this.cooldowns[id] = sk.cd;
+    this.cooldowns[id] = sk.cd / (1 + this.castSpeed);
     return null;
   }
 
@@ -462,7 +470,7 @@ export class MobSystem {
     try { rows = this.host.options.rollLoot?.({ creature: m.def.id, level: m.def.level, rank: m.def.rank ?? 'normal', killKey: id }) ?? []; } catch { rows = []; }
     rows.forEach((row, i) => {
       const color = RARITY_COLOR[row.rarity] ?? RARITY_COLOR.common;
-      if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique }, label: row.label, color, age: 0 });
+      if (row.kind === 'item') this.drops.push({ id: `${id}:g${i}`, ...spot(n++), coins: 0, qty: 0, item: { definitionId: row.definitionId, rarity: row.rarity, unique: !!row.unique, level: row.level ?? m.def.level }, label: row.label, color, age: 0 });
       else this.drops.push({ id: `${id}:r${i}`, ...spot(n++), coins: 0, qty: 0, rune: row.rune, label: row.label, color, age: 0 });
     });
   }

@@ -7,7 +7,8 @@ import { isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { tdFirstGoal } from './td/td-goals';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
-import { ATTR_STEP, levelStats } from './td/td-skills';
+import { ATTR_STEP, defenseReduction, fightStats, wornCombat } from './td/td-skills';
+import type { ItemStats } from '../shared/rpg/item.model';
 import { CLASS_SKILLS, MAX_MANA, SKILLS as TD_SKILLS, defaultAura, defaultBar, type SkillId } from './td/td-skills';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { Subscription, distinctUntilChanged, map } from 'rxjs';
@@ -31,6 +32,8 @@ import { itemArt, isBasaltEdge, materialDisplay } from '../shared/rpg/material-c
 import { clusterBy, familyOf, groupItems, slotsForGroup } from '../shared/rpg/item-groups';
 import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
+import { IMPLICIT_BY_SLOT, affixRange, isAffixKey, isAffixSlot } from '../shared/rpg/item-affixes';
+import { qualityTagOf } from '../shared/rpg/item-quality';
 import {
   CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, ItemRarity, SLOT_BY_ID, SLOT_IDS, SlotId,
   formatItemMod, formatStatValue, ITEM_STAT_LABELS, rarityLabel,
@@ -291,8 +294,13 @@ interface ItemTip {
   rarity: string;
   typeLine: string;
   rarityWord: string;
-  head: { key: string; text: string } | null;
-  affixes: { key: string; text: string }[];
+  /** The implicit (or the legacy headline stat); `range` is the `[min–max]` it could roll, '' for none. */
+  head: { key: string; text: string; range: string } | null;
+  affixes: { key: string; text: string; range: string }[];
+  /** Item level (where it dropped), or 0 for items minted before affixes. */
+  itemLevel: number;
+  /** Every grade ≥ 95% (perfect) or ≥ 99.9% (flawless) — item-quality qualityTagOf. */
+  tag: 'perfect' | 'flawless' | null;
   /** Blue lines: auras the piece carries, or a material's use. */
   specials: string[];
   sockets: (string | null)[];
@@ -1138,7 +1146,7 @@ export class SideScrollerComponent implements OnDestroy {
    * A gear or rune drop reached the Keeper: LootService mints it (the roll is
    * frozen then) or grants the rune. False leaves it shining on the ground.
    */
-  private collectGear(dropId: string, loot: { item?: { definitionId: string; rarity: LootRarity; unique: boolean }; rune?: string }): boolean {
+  private collectGear(dropId: string, loot: { item?: { definitionId: string; rarity: LootRarity; unique: boolean; level?: number }; rune?: string }): boolean {
     const got = this.loot.grantDrop(dropId, loot);
     if (!got) return false;
     this.sound.sfx('pickup');
@@ -1624,7 +1632,8 @@ export class SideScrollerComponent implements OnDestroy {
     const look = this.looks.look, key = `${look.bar.join(',')}|${look.aura}`;
     if (key !== this.tdLoadoutKey && e?.setSkillLoadout) { this.tdLoadoutKey = key; e.setSkillLoadout(this.loadoutBar, this.loadoutAura); }
     // The Keeper's level (Hunting): life, mana and spell power grow with it (td-skills levelStats).
-    (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats);
+    // The worn gear's combat affixes (§3) ride along; the engine re-applies only when a number changed.
+    (this.engine as unknown as { setKeeperBuild?: (n: number, st: KeeperStats, gear: Partial<ItemStats>) => void } | undefined)?.setKeeperBuild?.(this.huntingLevel, this.looks.look.stats, this.gearCombat);
     if (e?.abilities) this.tdAbilities = e.abilities.map(a => ({ ...a }));
     if (typeof e?.mana === 'number') this.tdMana = Math.floor(e.mana);
     const ext = this.engine as unknown as { maxMana?: number; maxHealth?: number } | undefined;
@@ -1650,9 +1659,12 @@ export class SideScrollerComponent implements OnDestroy {
   get vocation(): string { return this.looks.look.vocation; }
   /** The character sheet (C): D2's attributes page made cozy — level, points to spend, what each gives. */
   sheetOpen = false;
+  /** The worn gear's combat totals (docs/design/loot-and-combat.md §3), read off the inventory by td-skills. */
+  private get gearCombat(): Partial<ItemStats> { return wornCombat(this.inventory); }
   get sheet(): { level: number; into: number; span: number; left: number; rows: { id: Attribute; value: number; text: string }[]; totals: { key: string; value: string }[] } {
     const view = skillView(this.activity.snapshot.progress, 'hunting'), st = this.looks.look.stats, lv = view.level;
-    const derived = levelStats(lv, st);
+    const gear = this.gearCombat;
+    const derived = fightStats(lv, st, gear);
     const pct = (n: number) => `${Math.round(n * 100)}%`;
     const text: Record<Attribute, string> = {
       vit: this.t('play.td.attr.vit.text', { n: ATTR_STEP.vit }),
@@ -1668,7 +1680,12 @@ export class SideScrollerComponent implements OnDestroy {
         { key: 'play.td.total.mana', value: `${derived.maxMana}` },
         { key: 'play.td.total.regen', value: `${derived.regen.toFixed(1)}/s` },
         { key: 'play.td.total.power', value: pct(derived.power) },
-        { key: 'play.td.total.speed', value: `+${pct(derived.haste)}` },
+        { key: 'play.td.total.speed', value: `+${pct(derived.moveHaste)}` },
+        // What the worn gear adds (§3 affixes); a row shows once a piece carries it.
+        ...(derived.defense > 0 ? [{ key: 'play.td.total.defense', value: `${Math.round(derived.defense)} (−${pct(defenseReduction(derived.defense, lv))})` }] : []),
+        ...(derived.castSpeed > 0 ? [{ key: 'play.td.total.cast', value: `+${pct(derived.castSpeed)}` }] : []),
+        ...(derived.crit > 0 ? [{ key: 'play.td.total.crit', value: pct(derived.crit) }] : []),
+        ...(derived.lifeRegen > 0 ? [{ key: 'play.td.total.lifeRegen', value: `${derived.lifeRegen.toFixed(1)}/s` }] : []),
       ],
     };
   }
@@ -3300,7 +3317,7 @@ export class SideScrollerComponent implements OnDestroy {
       tip: {
         rarity: 'material', typeLine: this.t('play.hud.slip.material'), rarityWord: '', head: null, affixes: [],
         specials: [fish ? `${fish.lore} ${fish.use}` : charm ? `${charm.lore} ${charm.effect}` : this.stackNote(stackKey, stack.quantity)],
-        sockets: [], value: 0, bound: false, tempered: 0,
+        sockets: [], value: 0, bound: false, tempered: 0, itemLevel: 0, tag: null,
       },
     };
   }
@@ -3355,8 +3372,15 @@ export class SideScrollerComponent implements OnDestroy {
   /** The hover card's parts for a piece of gear: its frame, the stat it is for, the rest, its wells and worth. */
   private itemTip(item: GameItem, tempered: number): ItemTip {
     const slot = definitionFor(item)?.slot ?? item.slot;
-    const headKey = slot === 'weapon' ? 'strikePower' : 'ward';
-    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, item.stats[key]!)} ${ITEM_STAT_LABELS[key]}` });
+    // An affix item (§3) heads with its slot's implicit; older items with the legacy Strike / Ward.
+    const affixed = item.itemLevel != null && isAffixSlot(slot);
+    const headKey = affixed ? IMPLICIT_BY_SLOT[slot] : slot === 'weapon' ? 'strikePower' : 'ward';
+    const range = (key: keyof GameItem['stats']): string => {
+      if (!affixed || !isAffixKey(key)) return '';
+      const [lo, hi] = affixRange(key, slot, item.itemLevel!, item.rarity);
+      return lo || hi ? `[${lo}–${hi}]` : '';
+    };
+    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, item.stats[key]!)} ${ITEM_STAT_LABELS[key]}`, range: range(key) });
     const held = ITEM_STAT_KEYS.filter(key => (item.stats[key] ?? 0) !== 0);
     const head = held.includes(headKey) ? line(headKey) : null;
     const wells = socketCountFor(item);
@@ -3367,6 +3391,8 @@ export class SideScrollerComponent implements OnDestroy {
       rarityWord: rarityLabel(item.rarity),
       head,
       affixes: held.filter(key => key !== head?.key).map(line),
+      itemLevel: item.itemLevel ?? 0,
+      tag: qualityTagOf(item),
       specials: itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level })),
       sockets, value: item.soulbound ? 0 : Math.floor(item.sellValue), bound: item.soulbound, tempered,
     };

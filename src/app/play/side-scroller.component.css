@@ -3521,6 +3521,20 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .d2tip__affixes li[data-stat='magicFind'] { --pip: var(--cozy-loot-epic); }
 .d2tip__affixes li[data-stat='xpBonus'] { --pip: var(--cozy-loot-uncommon); }
 .d2tip__affixes li[data-stat='goldPerSec'] { --pip: var(--cozy-loot-mythic); }
+.d2tip__affixes li[data-stat='life'] { --pip: var(--cozy-berry); }
+.d2tip__affixes li[data-stat='lifeRegen'] { --pip: var(--cozy-leaf); }
+.d2tip__affixes li[data-stat='mana'] { --pip: var(--cozy-mana-hi); }
+.d2tip__affixes li[data-stat='manaRegen'] { --pip: var(--cozy-river); }
+.d2tip__affixes li[data-stat='defense'] { --pip: var(--cozy-brass); }
+.d2tip__affixes li[data-stat='spellDamage'] { --pip: var(--cozy-glow); }
+.d2tip__affixes li[data-stat='castSpeed'] { --pip: var(--cozy-loot-epic); }
+.d2tip__affixes li[data-stat='moveSpeed'] { --pip: var(--cozy-loot-uncommon); }
+.d2tip__affixes li[data-stat='critChance'] { --pip: var(--cozy-loot-legendary); }
+/* The range the roll could have landed in (§3), dimmer than the roll itself. */
+.d2tip__range { margin-left: 4px; font-size: 11px; font-weight: 400; color: color-mix(in srgb, var(--cozy-cream) 50%, transparent); }
+.d2tip__meta { display: flex; align-items: center; gap: 8px; margin: 0; font-size: 11px; color: color-mix(in srgb, var(--cozy-cream) 70%, transparent); }
+.d2tip__tag { color: var(--cozy-brass-hi); letter-spacing: .04em; text-transform: uppercase; }
+.d2tip__tag[data-tag='flawless'] { color: var(--cozy-loot-mythic); }
 .d2tip__special { display: grid; gap: 3px; padding: 6px 0 0; border-top: 1px solid color-mix(in srgb, var(--loot) 30%, transparent); }
 .d2tip__special p { margin: 0; font-size: 11px; color: var(--cozy-loot-rare); }
 .d2tip[data-rarity='material'] .d2tip__special p { color: color-mix(in srgb, var(--cozy-cream) 80%, transparent); }

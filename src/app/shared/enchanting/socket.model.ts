@@ -33,6 +33,8 @@
  */
 import {
   ITEM_STAT_KEYS,
+  LEGACY_STAT_KEYS,
+  type LegacyStatKey,
   type GameItem,
   type ItemRarity,
   type ItemStats,
@@ -146,7 +148,7 @@ export function isFullySocketed(item: GameItem): boolean {
  * Which stat each rune feeds. One channel per rune, chosen so every stat has
  * runes at several rungs and no rune is a strictly worse copy of another.
  */
-export const SOCKET_CHANNEL: Readonly<Record<string, keyof ItemStats>> = {
+export const SOCKET_CHANNEL: Readonly<Record<string, LegacyStatKey>> = {
   // Common — the floor of the world, one rune per stat.
   ash: 'goldPerSec',
   ember: 'strikePower',
@@ -186,7 +188,8 @@ export const SOCKET_CHANNEL: Readonly<Record<string, keyof ItemStats>> = {
  * both are consumed by systems with hard caps (25% second-rune chance, 30% of
  * the temper fail chance), so a rune worth thirty points would buy nothing.
  */
-export const SOCKET_LADDER: Readonly<Record<keyof ItemStats, Record<RuneTier, number>>> = {
+// Runes channel the five legacy stats only; the combat affixes roll on gear.
+export const SOCKET_LADDER: Readonly<Record<LegacyStatKey, Record<RuneTier, number>>> = {
   goldPerSec: {
     common: 1, uncommon: 4, rare: 14, epic: 45, legendary: 140, mythic: 420, singular: 1200,
   },
@@ -217,7 +220,7 @@ export function socketEffectOf(runeId: string): ItemStats {
   if (!rune) return {};
   if (rune.tier === 'singular') {
     const all: ItemStats = {};
-    for (const key of ITEM_STAT_KEYS) all[key] = SOCKET_LADDER[key][rune.tier];
+    for (const key of LEGACY_STAT_KEYS) all[key] = SOCKET_LADDER[key][rune.tier];
     return all;
   }
   const channel = SOCKET_CHANNEL[runeId];

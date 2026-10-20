@@ -97,6 +97,8 @@ export interface OwnedItemInstance extends OwnedItemBase {
   stats: ItemStats;
   /** Per-stat roll grade, 0..1. Absent on records written before grading. */
   rollQuality?: Partial<Record<keyof ItemStats, number>>;
+  /** Where it dropped (1..99); sets the affix ranges. Absent before affixes. */
+  itemLevel?: number;
   sellValue: number;
   /**
    * Economy version `sellValue` is written in. Absent (or < 3) means v2 Gold,

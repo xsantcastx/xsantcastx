@@ -120,6 +120,7 @@ export function itemToRecord(item: GameItem): OwnedItemInstance {
     lore: item.lore,
     stats: { ...item.stats },
     rollQuality: item.rollQuality ? { ...item.rollQuality } : undefined,
+    itemLevel: item.itemLevel,
     sellValue: typeof item.sellValue === 'number' && Number.isFinite(item.sellValue) ? item.sellValue : 0,
     // Every GameItem in memory is priced in v3 Gold: minted under v3, or
     // scaled by `parseGameItem` on the way in.
@@ -145,6 +146,7 @@ export function recordToItem(record: OwnedItemInstance): GameItem {
     rarity: (record.rarity ?? 'common') as GameItem['rarity'],
     stats: { ...record.stats },
     rollQuality: record.rollQuality ? { ...record.rollQuality } : undefined,
+    itemLevel: record.itemLevel,
     sellValue: record.sellValue,
     econ: ECONOMY_VERSION,
     equipped: record.location.kind === 'equipped',
@@ -234,6 +236,11 @@ function parseRollQuality(raw: unknown): GameItem['rollQuality'] {
   return any ? out : undefined;
 }
 
+/** A persisted item level: a finite integer 1..99, or nothing. */
+function parseItemLevel(raw: unknown): number | undefined {
+  return typeof raw === 'number' && Number.isInteger(raw) && raw >= 1 && raw <= 99 ? raw : undefined;
+}
+
 function parseUpgradeFields(raw: Record<string, unknown>): Pick<
   GameItem,
   'upgradeLevel' | 'lastUpgradeAt' | 'lastUpgradeMutationId' | 'lastUpgradeOk'
@@ -279,6 +286,7 @@ export function parseGameItem(raw: unknown): GameItem | null {
     rarity: raw['rarity'] as GameItem['rarity'],
     stats,
     rollQuality,
+    itemLevel: parseItemLevel(raw['itemLevel']),
     sellValue: v3SellValue(raw),
     econ: ECONOMY_VERSION,
     equipped,
@@ -750,6 +758,7 @@ function parseOwnedRecord(raw: unknown): OwnedItemRecord | null {
     lore: typeof raw['lore'] === 'string' ? raw['lore'] : undefined,
     stats,
     rollQuality: parseRollQuality(raw['rollQuality']),
+    itemLevel: parseItemLevel(raw['itemLevel']),
     sellValue: v3SellValue(raw),
     econ: ECONOMY_VERSION,
     location,

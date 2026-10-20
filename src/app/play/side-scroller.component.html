@@ -538,10 +538,16 @@
             </div>
           </header>
           @if (tip.row.tip; as it) {
-            @if (it.head) { <p class="d2tip__headline">{{ it.head.text }}</p> }
+            @if (it.tag || it.itemLevel) {
+              <p class="d2tip__meta">
+                @if (it.tag) { <b class="d2tip__tag" [attr.data-tag]="it.tag">{{ it.tag === 'flawless' ? t('play.tip.flawless') : t('play.tip.perfect') }}</b> }
+                @if (it.itemLevel) { <span>{{ t('play.tip.itemLevel', { n: it.itemLevel }) }}</span> }
+              </p>
+            }
+            @if (it.head) { <p class="d2tip__headline">{{ it.head.text }}@if (it.head.range) { <span class="d2tip__range">{{ it.head.range }}</span> }</p> }
             @if (it.affixes.length) {
               <ul class="d2tip__affixes">
-                @for (a of it.affixes; track a.key) { <li [attr.data-stat]="a.key">{{ a.text }}</li> }
+                @for (a of it.affixes; track a.key) { <li [attr.data-stat]="a.key">{{ a.text }}@if (a.range) { <span class="d2tip__range">{{ a.range }}</span> }</li> }
               </ul>
             }
             @if (it.specials.length) {
