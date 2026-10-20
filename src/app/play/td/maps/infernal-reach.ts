@@ -1,0 +1,136 @@
+/**
+ * infernal-reach.ts — Infernal Reach, the volcanic mainland, and Pyrehold, its capital (docs/design/world-map.md:
+ * levels 8–30). Drawn by hand like Ember Isle: the region map (one character per 8×8 tiles), roads from Pyrehold's
+ * gates, places worth finding, who lives where. Pyrehold sits on the south coast: a forge district north of a lava
+ * channel, a plaza of stalls, gates east and west, and a harbour whose ship sails back to Ember Isle.
+ *
+ * Region legend as Ember Isle (maps/ember-isle.ts); here '.' is the Cinder Steppe, 'h' the Obsidian Badlands, 'v' the
+ * Molten Fields, 'm' the Pyre Peaks, 'f'/'F' the Charwood.
+ */
+import type { StationDef } from '../../world/world.model';
+import type { ContinentDef, ContinentPlace, Region } from '../continent';
+import { buildTown } from '../town-builder';
+
+export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'Sail back to Ember Isle.' };
+
+export const INFERNAL_REACH: readonly string[] = [
+  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
+  '~~~~~~,,,,,,,,~~~~~~~~~,,,,,,,,,~~~~~~~~',
+  '~~~~,,mmmmmmmm,,,~~~,,,vvvvvvvvv,,~~~~~~',
+  '~~~,,mmmmmmmmmmhh,,,,hhvvvvvvvvvvv,,~~~~',
+  '~~,,mmmmmmmmmhhhh....hhhvvvvvvvvvvv,~~~~',
+  '~~,FFFmmmmmmhhhh......hhhvvvvvvvvvv,,~~~',
+  '~~,FFFFFmmhhh.........hhhhvvvvvvvvvv,~~~',
+  '~~,FFFFFFhh.....l.......hhhvvvvvvvvv,~~~',
+  '~~,FFFFFff....lll.TTTTTT.hhhvvvvvvvv,~~~',
+  '~~,FFFFff.....ll..TTTTTT..hhvvvvvvv,,~~~',
+  '~~,,FFff..........TTTTTT...hhvvvvvv,~~~~',
+  '~~~,,ff...........TTTTTT....hhvvvv,,~~~~',
+  '~~~~,,,..........,~~~~~~,....hhh,,~~~~~~',
+  '~~~~~~,,,,,,,,,,,~~~~~~~~,,,,,,,,~~~~~~~',
+  '~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~',
+];
+
+const PYREHOLD_ROWS: readonly string[] = [
+    'rrrrrrrrrrrrrrrrrrrrrrooorrrrrrrrrrrrrrrrrrrrrrr',
+    'rr....................ooo.....................rr',
+    'rr..gg................ooo...............g.....rr',
+    'rr....g...............ooo................g....rr',
+    'rr....................ooo.....................rr',
+    'rr....................ooo.....................rr',
+    'rr~~~~~~~~~~~~~~~~~~~~===~~~~~~~~~~~~~~~~~~~~~rr',
+    'rr~~~~~~~~~~~~~~~~~~~~===~~~~~~~~~~~~~~~~~~~~~rr',
+    'rr....................ooo.....................rr',
+    'rr....................ooo.....................rr',
+    'rr...............ooooooooooooo................rr',
+    'rr.............ooooooooooooooooo..............rr',
+    'rr............ooooooooooooooooooo.............rr',
+    'rr...........ooooooooooooooooooooo............rr',
+    'oooooooooooooooooooooooooooooooooooooooooooooooo',
+    'oooooooooooooooooooooooooooooooooooooooooooooooo',
+    'oooooooooooooooooooooooooooooooooooooooooooooooo',
+    'rr...........ooooooooooooooooooooo............rr',
+    'rr............ooooooooooooooooooo.............rr',
+    'rr.............ooooooooooooooooo..............rr',
+    'rr...............ooooooooooooo................rr',
+    'rr....................ooo.....................rr',
+    'rr....................ooo.....................rr',
+    'rr....................ooo.....................rr',
+    'rr..gg................ooo.................g...rr',
+    'rr....................ooo..................g..rr',
+    'rr....................===.....................rr',
+    'rr....................===.....................rr',
+    'ssssssssssssssssssssss===sssssssssssssssssssssss',
+    'ssssssssssssssssssssss===sssssssssssssssssssssss',
+    'wwwwwwwwwwwwwwwwwwwwww===wwwwwwwwwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwwwwwwwww===wwwwwwwwwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwwwwwwwww===wwwwwwwwwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwwwwwwwww===wwwwwwwwwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwwwwwwwww===wwwwwwwwwwwwwwwwwwwwwww',
+    'wwwwwwwwwwwwwwwwwwwwww===wwwwwwwwwwwwwwwwwwwwwww',
+
+];
+
+/** Pyrehold: its ground drawn above (o street, . dirt, g grass, ~ lava channel, = planks, s sand, w sea, r cliff). */
+export const buildPyrehold = () => buildTown({
+  id: 'pyrehold',
+  rows: PYREHOLD_ROWS,
+  legend: { o: 'cobble', '.': 'dirt', g: 'grass', '~': 'ember', '=': 'plank', s: 'sand', w: 'water', r: 'rock' },
+  houses: [
+    { c: 6, r: 4, w: 5, d: 3, roof: 'slate', wall: 'basalt' }, { c: 14, r: 4, w: 5, d: 3, roof: 'red', wall: 'stone' },
+    { c: 32, r: 4, w: 5, d: 3, roof: 'red', wall: 'basalt' }, { c: 40, r: 4, w: 4, d: 3, roof: 'slate', wall: 'stone' },
+    { c: 5, r: 12, w: 4, d: 3, roof: 'red', wall: 'timber' }, { c: 42, r: 12, w: 4, d: 3, roof: 'slate', wall: 'timber' },
+    { c: 6, r: 24, w: 5, d: 3, roof: 'thatch', wall: 'timber' }, { c: 14, r: 25, w: 4, d: 3, roof: 'red', wall: 'stone' },
+    { c: 33, r: 25, w: 4, d: 3, roof: 'slate', wall: 'timber' }, { c: 41, r: 24, w: 5, d: 3, roof: 'red', wall: 'timber' },
+  ],
+  stalls: [
+    { station: 'vault', c: 15, r: 11, w: 4, palette: 2, goods: 'pots' },
+    { station: 'crafting', c: 31, r: 11, w: 4, palette: 0, goods: 'tools' },
+    { station: 'runes', c: 15, r: 20, w: 4, palette: 3, goods: 'gems' },
+    { station: 'enchanting', c: 31, r: 20, w: 4, palette: 1, goods: 'books' },
+    { station: 'vendor', c: 23, r: 22, w: 4, palette: 4, goods: 'bread' },
+  ],
+  props: [
+    { kind: 'fountain', c: 22, r: 14 }, { kind: 'hearth', c: 22, r: 18 },
+    { kind: 'forge', c: 10, r: 2 }, { kind: 'forge', c: 36, r: 2 },
+    { kind: 'lamp', c: 19, r: 9 }, { kind: 'lamp', c: 27, r: 9 }, { kind: 'lamp', c: 11, r: 15 }, { kind: 'lamp', c: 35, r: 15 },
+    { kind: 'lamp', c: 19, r: 23 }, { kind: 'lamp', c: 27, r: 23 }, { kind: 'lamp', c: 21, r: 27 }, { kind: 'lamp', c: 25, r: 27 },
+    { kind: 'bench', c: 17, r: 13 }, { kind: 'bench', c: 29, r: 13 }, { kind: 'bench', c: 17, r: 18 }, { kind: 'bench', c: 29, r: 18 },
+    { kind: 'barrel', c: 12, r: 9 }, { kind: 'barrel', c: 34, r: 9 }, { kind: 'crate', c: 13, r: 9 }, { kind: 'crate', c: 18, r: 27 },
+    { kind: 'barrel', c: 28, r: 27 }, { kind: 'signpost', c: 20, r: 1 }, { kind: 'signpost', c: 3, r: 13 }, { kind: 'signpost', c: 44, r: 13 },
+    { kind: 'pine', c: 3, r: 3 }, { kind: 'pine', c: 44, r: 3 }, { kind: 'oak', c: 4, r: 21 }, { kind: 'oak', c: 43, r: 21 },
+    { kind: 'waystone', c: 27, r: 10 },
+  ],
+  spawn: { c: 23, r: 25 },
+});
+
+export const REACH_PLACES: readonly ContinentPlace[] = [
+  { kind: 'ruins', c: -110, r: -6, name: 'The Ashen Bastion' },
+  { kind: 'standing-stones', c: -46, r: 18, name: 'The Ring of Pyres' },
+  { kind: 'shrine', c: -40, r: -24, name: 'The Ember Altar' },
+  { kind: 'caldera', c: 98, r: -22, name: 'The Great Caldera' },
+  { kind: 'harbour', c: 23, r: 26, name: 'Pyrehold Harbour' },
+];
+
+export const REACH_NAMES: Readonly<Record<Region, string>> = {
+  '~': 'The Burning Sea', ',': 'The Ashen Shore', '.': 'The Cinder Steppe', f: 'The Charwood', F: 'The Deep Charwood',
+  h: 'The Obsidian Badlands', m: 'The Pyre Peaks', v: 'The Molten Fields', l: 'Glasswater', T: 'Pyrehold',
+};
+
+export const INFERNAL_REACH_DEF: ContinentDef = {
+  id: 'infernal-reach', map: INFERNAL_REACH, ox: 18, oy: 8,
+  roads: [
+    [[23, 0], [23, -10], [10, -20], [-20, -24], [-38, -22]],
+    [[0, 15], [-20, 16], [-44, 18], [-80, 10], [-106, -4]],
+    [[47, 15], [66, 10], [84, -6], [96, -18]],
+  ],
+  places: REACH_PLACES, names: REACH_NAMES,
+  mobs: {
+    '.': { types: ['rivet-maw', 'lava-hound'], chance: .25 },
+    f: { types: ['ash-wolf', 'ash-wolf'], chance: .4 }, F: { types: ['ash-wolf', 'lava-hound'], chance: .5 },
+    h: { types: ['lava-hound', 'cinder-bailiff'], chance: .5 },
+    v: { types: ['cinder-imp', 'obsidian-golem'], chance: .55 },
+  },
+  town: buildPyrehold, townName: 'Pyrehold', streets: { row: 15, col: 23 }, river: false,
+  ways: [{ place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true }],
+};

@@ -44,6 +44,7 @@ export const HUD_I18N: Readonly<Record<string, { en: string; es: string }>> = {
   'play.td.goal.title.hunt': { en: 'Defeat a Rivet Maw', es: 'Derrota una Fauce' },
   'play.td.goal.title.mine': { en: 'Mine Cinder Ore', es: 'Pica Cinder Ore' },
   'play.td.goal.title.chop': { en: 'Cut a tree', es: 'Tala un arbol' },
+  'play.td.sailed': { en: 'The ship docks. You step ashore.', es: 'El barco atraca. Bajas a tierra.' },
   'play.td.fell': { en: 'You fell, and woke in the square.', es: 'Caiste y despertaste en la plaza.' },
   'play.td.ability.cooldown': { en: 'Not ready yet.', es: 'Aun no esta listo.' },
   'play.td.ability.nofoe': { en: 'No foe in reach.', es: 'Ningun enemigo al alcance.' },

@@ -27,9 +27,15 @@ import { HandLevel, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
 import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
 import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
+import { EMBER_ISLE_DEF } from './maps/ember-isle';
+import { INFERNAL_REACH_DEF } from './maps/infernal-reach';
+import type { ContinentDef } from './continent';
 import type { TdMapDef } from './td-level';
 
 /** Every hand-drawn level under (or over) the surface, by id. */
+/** Every continent, by id (ships sail between them). */
+const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF };
+
 const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE };
 import { MobSystem, mobSheet, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, levelStats, type SkillId } from './td-skills';
@@ -48,7 +54,9 @@ interface Puff { x: number; y: number; age: number; life: number; r: number }
 
 export class TopDownEngine {
   private readonly ctx: CanvasRenderingContext2D;
-  private readonly world: TdWorld;
+  /** The continent the Keeper is on (its surface); one is made per continent and kept (sailing back finds it as left). */
+  private world: TdWorld;
+  private readonly continents = new Map<string, TdWorld>();
   /** The level the Keeper is on: the surface, or a hand-drawn floor under it. */
   private level: TdLevel;
   private readonly levels = new Map<string, HandLevel>();
@@ -70,7 +78,7 @@ export class TopDownEngine {
   private chop: { c: number; r: number; x: number; y: number; hits: number; t: number } | null = null;
   private shake = 0;
   /** The stamped town (its stalls, keepers and streets); the ground and walls everywhere come from `world`. */
-  private readonly map: TdMap;
+  private map: TdMap;
   private readonly chunks = new Map<string, HTMLCanvasElement[]>();
   private readonly player: Person;
   private readonly keepers: Person[] = [];
@@ -110,6 +118,7 @@ export class TopDownEngine {
   constructor(private readonly canvas: HTMLCanvasElement, private readonly options: EngineOptions) {
     this.ctx = canvas.getContext('2d')!;
     this.world = new TdWorld();
+    this.continents.set(this.world.continent, this.world);
     this.map = this.world.town;
     this.level = this.world;
     this.mobs = new MobSystem({
@@ -123,12 +132,7 @@ export class TopDownEngine {
     });
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
-    for (const s of this.map.stalls) {
-      if (!s.keeper) continue;
-      const npc = NPC_LOOKS[s.keeper.id];
-      this.keepers.push({ painter: npc ? new KeeperPainter(npc.look, npc.gear, npc.garb) : null, x: s.keeper.x, y: s.keeper.y, face: 1, dir: 'down', name: s.keeper.name, moving: false, t: Math.random() * 4 });
-    }
-    this.spawnFolk();
+    this.populate();
     this.bindInput();
     try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
   }
@@ -275,7 +279,11 @@ export class TopDownEngine {
     const id = s.station.id;
     // Down the mine shaft: the hand-drawn Ember Mine (never the old 2D Delve).
     if (id === 'delve' && this.level === this.world) { this.enter(this.handLevel('ember-mine-1'), 'mine-up'); return; }
-    if (id === 'slagstone-cave' && this.level === this.world) { this.enter(this.handLevel('slagstone-cave'), 'cave-out'); return; }
+    // A way on from the continent: a cave mouth into its hand-drawn level, a ship to another continent.
+    if (this.level === this.world) {
+      const way = this.world.ways.get(id);
+      if (way) { if (way.ship) this.sail(way.to, way.arrive); else this.enter(this.handLevel(way.to), way.arrive); return; }
+    }
     if (this.level instanceof HandLevel) {
       // A ladder, stairs or a hole: to the level it names, in front of its own way back.
       const exit = this.level.exits.get(id);
@@ -320,6 +328,19 @@ export class TopDownEngine {
     if (!lv) { lv = new HandLevel(LEVELS[id] ?? EMBER_MINE_1); this.levels.set(id, lv); }
     return lv;
   }
+  /** Sail to another continent: its surface becomes the world, its town's people come out, the Keeper steps ashore. */
+  private sail(to: string, arrive: string): void {
+    const def = CONTINENTS[to];
+    if (!def) { this.say('play.td.soon.place'); return; }
+    let next = this.continents.get(to);
+    if (!next) { next = new TdWorld(def); this.continents.set(to, next); }
+    this.world = next;
+    this.map = next.town;
+    this.populate();
+    this.enter(next, arrive);
+    this.say('play.td.sailed');
+  }
+
   /** Change level: stand in front of `at` (a station on the new level), drop the old level's baked ground. */
   private enter(level: TdLevel, at: string): void {
     this.level = level;
@@ -604,6 +625,16 @@ export class TopDownEngine {
 
   // ── Townsfolk ──────────────────────────────────────────────────────────────
 
+  /** The town's people: its keepers behind their stalls, its townsfolk on its streets. */
+  private populate(): void {
+    this.keepers.length = 0; this.folk.length = 0; this.streets.length = 0;
+    for (const s of this.map.stalls) {
+      if (!s.keeper) continue;
+      const npc = NPC_LOOKS[s.keeper.id];
+      this.keepers.push({ painter: npc ? new KeeperPainter(npc.look, npc.gear, npc.garb) : null, x: s.keeper.x, y: s.keeper.y, face: 1, dir: 'down', name: s.keeper.name, moving: false, t: Math.random() * 4 });
+    }
+    this.spawnFolk();
+  }
   private spawnFolk(): void {
     const m = this.map;
     for (let i = 0; i < m.ground.length; i++) {

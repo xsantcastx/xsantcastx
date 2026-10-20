@@ -1,3 +1,8 @@
+import type { ContinentDef, ContinentPlace, Region } from '../continent';
+import { buildSeamworksSquare } from '../seamworks-square';
+import { CAVE_IN } from './slagstone-cave';
+import type { StationDef } from '../../world/world.model';
+
 /**
  * ember-isle.ts — Ember Isle, the Infernal realm's island, drawn by hand (docs/design/vision.md step 1; owner
  * 2026-10-20: "that map is trash … inspiration from tibia").
@@ -52,20 +57,20 @@ export const ROADS: readonly (readonly [number, number])[][] = [
   // East, into the Ashfields to the Caldera.
   [[44, 15], [60, 16], [74, 22], [86, 30]],
   // South over the bridge, past the southern woods to the beach.
-  [[22, 34], [22, 46], [16, 60], [20, 74], [24, 86]],
+  [[22, 34], [22, 46], [16, 60], [20, 74], [24, 92], [28, 104]],
 ];
 
-export type IslePlace = 'ruins' | 'shrine' | 'cave' | 'caldera' | 'standing-stones';
 /** Places worth finding, in tiles. */
-export const PLACES: readonly { kind: IslePlace; c: number; r: number; name: string }[] = [
+export const PLACES: readonly ContinentPlace[] = [
   { kind: 'ruins', c: -48, r: -38, name: 'The Sunken Chapel' },
   { kind: 'cave', c: 68, r: 9, name: 'Slagstone Cave' },
   { kind: 'shrine', c: -50, r: 40, name: 'The Ember Shrine' },
   { kind: 'caldera', c: 88, r: 32, name: 'The Caldera' },
   { kind: 'standing-stones', c: 6, r: 62, name: 'The Ninefold Stones' },
+  // The harbour on the south shore: a pier into the sea, the ship to the mainland.
+  { kind: 'harbour', c: 28, r: 106, name: 'Ember Harbour' },
 ];
 
-export type Region = '~' | ',' | '.' | 'f' | 'F' | 'h' | 'm' | 'v' | 'l' | 'T';
 export const REGION_NAMES: Readonly<Record<Region, string>> = {
   '~': 'The Burning Sea', ',': 'Ember Coast', '.': 'Cinder Meadows', f: 'The Emberwood', F: 'The Deep Emberwood',
   h: 'Slagstone Hills', m: 'Slagstone Hills', v: 'The Ashfields', l: 'Ashwater Lake', T: 'Basalt Seamworks',
@@ -77,4 +82,16 @@ export const REGION_MOBS: Partial<Record<Region, { types: readonly string[]; cha
   h: { types: ['rivet-maw'], chance: .45 },
   v: { types: ['cinder-imp', 'cinder-bailiff'], chance: .55 },
   '.': { types: ['rivet-maw'], chance: .08 },
+};
+
+/** The ship from Ember Harbour to Pyrehold, and back. */
+export const SHIP_TO_REACH: StationDef = { id: 'ship-reach', x: 0, label: 'SHIP TO PYREHOLD', kind: 'passage', blurb: 'Sail to Pyrehold, the capital of Infernal Reach.' };
+
+export const EMBER_ISLE_DEF: ContinentDef = {
+  id: 'ember-isle', map: EMBER_ISLE, ox: OX, oy: OY, roads: ROADS, places: PLACES, names: REGION_NAMES, mobs: REGION_MOBS,
+  town: buildSeamworksSquare, townName: 'Basalt Seamworks', streets: { row: 15, col: 22 }, river: true,
+  ways: [
+    { place: 'cave', station: CAVE_IN, to: 'slagstone-cave', arrive: 'cave-out' },
+    { place: 'harbour', station: SHIP_TO_REACH, to: 'infernal-reach', arrive: 'ship-isle', ship: true },
+  ],
 };
