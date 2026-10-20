@@ -5,8 +5,8 @@
  */
 import { TestBed } from '@angular/core/testing';
 import { TownTaskService } from './town-tasks.service';
-import { TOWN_TASKS_KEY, TownTaskState, coerceTownTasks, mergeTownTasks } from './town-tasks-save.model';
-import { TASK_GIVERS, TOWN_TASKS, giverMark, giverTask, tasksOf } from './town-tasks.model';
+import { TOWN_TASKS_KEY, TownTaskState, coerceTownTasks, emptyTownTasks, mergeTownTasks } from './town-tasks-save.model';
+import { DAILY_TASKS, TASK_GIVERS, TOWN_TASKS, dailyDay, dailyKey, dailyOf, dailyPool, dailyPotion, dailyResetAt, giverMark, giverTask, tasksOf } from './town-tasks.model';
 import { EconomyService } from '../economy/economy.service';
 import { InventoryService } from '../rpg/inventory.service';
 import { LocalSaveRegistry } from '../save/local-save-registry.service';
@@ -173,7 +173,7 @@ describe('TownTaskService (the town keepers\' tasks)', () => {
     expect(ab.progress).toEqual({ 'seam-edrin-1': 4, 'pyre-vey-1': 2 });
     expect(mergeTownTasks(null, a)).toBe(a);
     // Junk is dropped, not kept.
-    expect(coerceTownTasks({ accepted: { 'BAD ID': 1 }, progress: { x: -3 }, claimed: [7, 'ok-id'] })).toEqual({ version: 1, accepted: {}, progress: {}, claimed: ['ok-id'] });
+    expect(coerceTownTasks({ accepted: { 'BAD ID': 1 }, progress: { x: -3 }, claimed: [7, 'ok-id'] })).toEqual({ ...emptyTownTasks(), claimed: ['ok-id'] });
     // A merged receipt: the giver moves on, nothing pays again.
     const s = coerceTownTasks(ab);
     expect(giverTask('buyback-clerk', s, () => 0)?.task.id).toBe('seam-edrin-2');
@@ -194,5 +194,144 @@ describe('TownTaskService (the town keepers\' tasks)', () => {
     const entry = SYNCED_BLOBS.find(b => b.key === TOWN_TASKS_KEY);
     expect(entry?.doc).toBe('town-tasks');
     expect(entry?.merge).toBe(mergeTownTasks);
+  });
+
+  // ── Dailies ──
+  /** A local date at noon (the day is the local calendar date). */
+  const at = (y: number, m: number, d: number, h = 12) => new Date(y, m - 1, d, h).getTime();
+  /** Hand in every one-time task of a giver so their dailies begin. */
+  function finishOnce(giver: string): void {
+    for (const t of tasksOf(giver)) {
+      service.accept(t.id);
+      if (t.kind === 'hunt') for (let i = 0; i < t.n; i++) service.killed(t.target);
+      else if (t.kind === 'visit') service.visited(t.target);
+      else inventory.stacks.set(t.target, t.n);
+      expect(service.handIn(t.id)).withContext(t.id).not.toBeNull();
+    }
+  }
+  /** Take today's daily from a giver and make it ready. */
+  function readyDaily(giver: string, day: number) {
+    const task = dailyOf(giver, dailyDay(day))!;
+    expect(service.accept(task.id, day)).toBeTrue();
+    if (task.kind === 'hunt') for (let i = 0; i < task.n; i++) service.killed(task.target);
+    else inventory.stacks.set(task.target, task.n);
+    return task;
+  }
+
+  it('every giver has three to five dailies, real targets, modest pay, no gear', () => {
+    for (const g of TASK_GIVERS) expect(dailyPool(g.id).length).withContext(g.id).toBeGreaterThanOrEqual(3);
+    expect(new Set(DAILY_TASKS.map(t => t.id)).size).toBe(DAILY_TASKS.length);
+    for (const t of DAILY_TASKS) {
+      expect(t.daily).toBeTrue();
+      expect(t.reward.gear).withContext(t.id).toBeUndefined();
+      if (t.kind === 'hunt') expect(MOBS[t.target]).withContext(t.id).toBeDefined();
+      expect(t.reward.goldSeconds).withContext(t.id).toBeLessThan(Math.min(...tasksOf(t.giver).map(o => o.reward.goldSeconds)) + 1);
+    }
+  });
+
+  it('the day is the local date, the reset is the next local midnight', () => {
+    expect(dailyDay(at(2026, 10, 20, 23))).toBe('20261020');
+    expect(dailyDay(new Date(2026, 9, 21, 0, 0, 1))).toBe('20261021');
+    expect(dailyResetAt(at(2026, 10, 20, 23))).toBe(new Date(2026, 9, 21).getTime());
+    expect(dailyResetAt(new Date(2026, 11, 31, 12))).toBe(new Date(2027, 0, 1).getTime());
+  });
+
+  it('the daily pick is deterministic and rotates through the pool by day', () => {
+    for (const g of TASK_GIVERS) {
+      const days = [at(2026, 10, 20), at(2026, 10, 21), at(2026, 10, 22)].map(d => dailyOf(g.id, dailyDay(d))!.id);
+      expect(new Set(days).size).withContext(g.id).toBe(3);
+      expect(dailyOf(g.id, '20261020')!.id).toBe(dailyOf(g.id, '20261020')!.id);
+      expect(dailyOf(g.id, '20261023')!.id).withContext(g.id).toBe(days[0]);
+    }
+    // Not every town moves in step.
+    expect(new Set(TASK_GIVERS.map(g => dailyPool(g.id).indexOf(dailyOf(g.id, '20261020')!))).size).toBeGreaterThan(1);
+  });
+
+  it('dailies begin only after the one-time tasks, then "!" returns each new day', () => {
+    const day1 = at(2026, 10, 20), day2 = at(2026, 10, 21);
+    service.clock = () => day1;
+    expect(service.talk('buyback-clerk')?.task.daily).toBeUndefined();
+    finishOnce('buyback-clerk');
+    expect(service.talk('buyback-clerk')?.task.daily).toBeTrue();
+    expect(service.talk('buyback-clerk')?.standing).toBe('offer');
+    expect(service.marks()['buyback-clerk']).toBe('!');
+    const task = readyDaily('buyback-clerk', day1);
+    expect(service.marks()['buyback-clerk']).toBe('?');
+    const earnedBefore = economy.earned.length;
+    const claim = service.handIn(task.id)!;
+    expect(claim.gold).toBe(task.reward.gold);
+    expect(economy.earned.length).toBe(earnedBefore + 1);
+    expect(saved().dClaimed).toEqual([dailyKey('20261020', task.id)]);
+    // Done for today: no second pay, no mark, and the giver says so.
+    expect(service.handIn(task.id)).toBeNull();
+    expect(service.accept(task.id, day1)).toBeFalse();
+    expect(service.talk('buyback-clerk')?.standing).toBe('done');
+    expect(service.marks()['buyback-clerk']).toBeUndefined();
+    // Tomorrow: a different errand, on offer again.
+    service.clock = () => day2;
+    expect(service.talk('buyback-clerk')?.standing).toBe('offer');
+    expect(service.talk('buyback-clerk')?.task.id).not.toBe(task.id);
+    expect(service.marks()['buyback-clerk']).toBe('!');
+  });
+
+  it('a daily left over from yesterday cannot be handed in today, and counts nothing', () => {
+    const day1 = at(2026, 10, 20), day2 = at(2026, 10, 21);
+    service.clock = () => day1;
+    finishOnce('captain-vey');
+    const task = dailyOf('captain-vey', dailyDay(day1))!;
+    service.accept(task.id, day1);
+    if (task.kind === 'deliver') inventory.stacks.set(task.target, task.n); else for (let i = 0; i < task.n; i++) service.killed(task.target);
+    service.clock = () => day2;
+    expect(service.handIn(task.id)).toBeNull();
+    expect(service.active().some(v => v.task.id === task.id)).toBeFalse();
+  });
+
+  it('a daily\'s potion roll comes from its day alone', () => {
+    const withPotion = DAILY_TASKS.find(t => t.reward.potion)!;
+    const rolls = Array.from({ length: 40 }, (_, i) => dailyPotion(withPotion, dailyDay(at(2026, 10, 1 + i % 28, 12))));
+    expect(rolls).toEqual(Array.from({ length: 40 }, (_, i) => dailyPotion(withPotion, dailyDay(at(2026, 10, 1 + i % 28, 12)))));
+    expect(rolls.filter(Boolean).length).toBeLessThan(20);
+    expect(dailyPotion(DAILY_TASKS.find(t => !t.reward.potion)!, '20261020')).toBeNull();
+  });
+
+  it('two devices handing in the same day\'s daily pay it once (merge unions the receipts)', () => {
+    const day = at(2026, 10, 20);
+    service.clock = () => day;
+    finishOnce('captain-vey');
+    const task = readyDaily('captain-vey', day);
+    const key = dailyKey('20261020', task.id);
+    const other = { ...emptyTownTasks(), claimed: saved().claimed, dAccepted: { [key]: day - 5 }, dProgress: { [key]: 1 }, dClaimed: [key] };
+    const ab = coerceTownTasks(mergeTownTasks(saved(), other)), ba = coerceTownTasks(mergeTownTasks(other, saved()));
+    expect(ab).toEqual(ba);
+    expect(ab.dClaimed).toEqual([key]);
+    expect(ab.dAccepted[key]).toBe(day - 5);
+    expect(ab.dProgress[key]).toBe(Math.max(1, saved().dProgress[key] ?? 0));
+    // The merged copy lands: this device's pending hand-in is refused.
+    const earned = economy.earned.length;
+    localStorage.setItem(TOWN_TASKS_KEY, JSON.stringify(ab));
+    TestBed.inject(LocalSaveRegistry).rehydrate(TOWN_TASKS_KEY);
+    expect(service.handIn(task.id)).toBeNull();
+    expect(economy.earned.length).toBe(earned);
+  });
+
+  it('merging never loses a daily\'s progress, and only the last seven days are kept', () => {
+    const a = { ...emptyTownTasks(), dAccepted: { 'd20261020-dly-captain-vey-1': 5 }, dProgress: { 'd20261020-dly-captain-vey-1': 3 } };
+    const b = { ...emptyTownTasks(), dAccepted: { 'd20261020-dly-captain-vey-1': 9 }, dProgress: { 'd20261020-dly-captain-vey-1': 2 } };
+    const m = coerceTownTasks(mergeTownTasks(a, b));
+    expect(m.dProgress['d20261020-dly-captain-vey-1']).toBe(3);
+    expect(m.dAccepted['d20261020-dly-captain-vey-1']).toBe(5);
+    const old = { ...emptyTownTasks(), dClaimed: Array.from({ length: 10 }, (_, i) => `d202610${String(10 + i)}-dly-x-1`) };
+    const kept = coerceTownTasks(mergeTownTasks(old, emptyTownTasks())).dClaimed;
+    expect(kept.length).toBe(7);
+    expect(kept).toContain('d20261019-dly-x-1');
+    expect(kept).not.toContain('d20261010-dly-x-1');
+  });
+
+  it('migrates a version 1 blob: everything kept, the daily fields empty', () => {
+    const v1 = { version: 1, accepted: { 'seam-edrin-1': 7 }, progress: { 'seam-edrin-1': 3 }, claimed: ['seam-mara-1'] };
+    expect(coerceTownTasks(v1)).toEqual({ version: 2, accepted: { 'seam-edrin-1': 7 }, progress: { 'seam-edrin-1': 3 }, claimed: ['seam-mara-1'], dAccepted: {}, dProgress: {}, dClaimed: [] });
+    expect(coerceTownTasks(mergeTownTasks(v1, emptyTownTasks())).version).toBe(2);
+    localStorage.setItem(TOWN_TASKS_KEY, JSON.stringify(v1));
+    expect(boot().state.claimed).toEqual(['seam-mara-1']);
   });
 });
