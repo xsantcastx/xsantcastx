@@ -63,6 +63,8 @@ export const ROADS: readonly (readonly [number, number])[][] = [
 /** Places worth finding, in tiles. */
 export const PLACES: readonly ContinentPlace[] = [
   { kind: 'ruins', c: -48, r: -38, name: 'The Sunken Chapel' },
+  // The chapel's old burial plot, off every road: a few Bone Walkers stir between the graves (gentle, for the curious).
+  { kind: 'graveyard', c: -46, r: -27, name: 'The Hushed Barrow' },
   { kind: 'cave', c: 68, r: 9, name: 'Slagstone Cave' },
   { kind: 'shrine', c: -50, r: 40, name: 'The Ember Shrine' },
   { kind: 'caldera', c: 88, r: 32, name: 'The Caldera' },

@@ -12,6 +12,7 @@ import type { ContinentDef, ContinentPlace, Region } from '../continent';
 import { buildTown } from '../town-builder';
 import { SPIRE_DOOR } from './pyre-spire';
 import { DEEP_IN } from './molten-deep';
+import { CRYPT_IN } from './ashen-crypt';
 import { buildCinderport } from './cinderport';
 import { buildAshgrove } from './ashgrove';
 
@@ -112,6 +113,8 @@ export const buildPyrehold = () => buildTown({
 
 export const REACH_PLACES: readonly ContinentPlace[] = [
   { kind: 'ruins', c: -110, r: -6, name: 'The Ashen Bastion' },
+  // Under the Bastion's south wall, the door to its crypt (maps/ashen-crypt.ts).
+  { kind: 'crypt', c: -110, r: -1, name: 'The Ashen Crypt' },
   { kind: 'standing-stones', c: -46, r: 18, name: 'The Ring of Pyres' },
   { kind: 'shrine', c: -40, r: -24, name: 'The Ember Altar' },
   { kind: 'caldera', c: 98, r: -22, name: 'The Great Caldera' },
@@ -136,14 +139,17 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
   places: REACH_PLACES, names: REACH_NAMES,
   mobs: {
     '.': { types: ['rivet-maw', 'lava-hound'], chance: .25 },
-    f: { types: ['ash-wolf', 'ash-wolf'], chance: .4 }, F: { types: ['ash-wolf', 'lava-hound'], chance: .5 },
-    h: { types: ['lava-hound', 'cinder-bailiff'], chance: .5 },
-    v: { types: ['cinder-imp', 'obsidian-golem'], chance: .55 },
+    f: { types: ['ash-wolf', 'ash-wolf'], chance: .4 },
+    // The Cinder clans hold the Deep Charwood and the Badlands; drakes hunt the Molten Fields.
+    F: { types: ['ash-wolf', 'lava-hound', 'cinder-orc', 'cinder-orc', 'orc-firecaller'], chance: .5 },
+    h: { types: ['lava-hound', 'cinder-bailiff', 'cinder-orc', 'orc-firecaller', 'orc-warlord'], chance: .5 },
+    v: { types: ['cinder-imp', 'obsidian-golem', 'ember-drake'], chance: .55 },
   },
   town: buildPyrehold, townName: 'Pyrehold', streets: { row: 15, col: 23 }, river: false,
   ways: [
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
     { place: 'cave', station: DEEP_IN, to: 'molten-deep-1', arrive: 'deep-out' },
+    { place: 'crypt', station: CRYPT_IN, to: 'ashen-crypt-1', arrive: 'crypt-out' },
   ],
   villages: [
     { name: 'Cinderport', c: 92, r: 34, build: buildCinderport },
