@@ -147,7 +147,7 @@ import { HOTBAR_FIXED } from './engine/terrain';
 import { MAP_MARKER_COLORS, POINTER_COLOR, type MapPinView, type MapSource } from './engine/delve-map';
 import { BountyService } from '../shared/bounties/bounty.service';
 import { TownTaskService, type TownTaskView } from '../shared/town-tasks/town-tasks.service';
-import { giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
+import { dailyResetAt, giverById, type TownTask } from '../shared/town-tasks/town-tasks.model';
 import { TOWN_TASKS_I18N } from '../shared/town-tasks/town-tasks.i18n';
 import { itemDefinitionById } from '../shared/rpg/item-definition';
 import { BOUNTIES_I18N } from '../shared/bounties/bounties.i18n';
@@ -1955,6 +1955,7 @@ export class SideScrollerComponent implements OnDestroy {
     const parts = [this.t('play.task.gold', { n: claim.gold }), this.t('play.task.xp', { n: claim.xp })];
     if (claim.material) { parts.splice(1, 0, `${claim.material.qty} ${this.taskThing(claim.material.id)}`); this.gotItem(claim.material.qty, this.taskThing(claim.material.id), claim.material.id); }
     if (claim.gear && task.reward.gear) parts.push(this.taskGearName(task));
+    if (claim.potion) { const name = potionById(claim.potion)?.name ?? claim.potion; parts.push(name); this.gotItem(1, name, claim.potion); }
     const reward = parts.join(' · ');
     this.message = this.t('play.task.done', { title: this.t(`task.${task.id}.title`), reward });
     this.sound.sfx('coin'); this.bump('.coin-count');
@@ -1981,7 +1982,13 @@ export class SideScrollerComponent implements OnDestroy {
     if (r.material) parts.push(`${r.material.qty} ${this.taskThing(r.material.id)}`);
     parts.push(this.t('play.task.xp', { n: r.huntingXp }));
     if (r.gear) parts.push(this.taskGearName(view.task));
+    if (r.potion) parts.push(this.t('play.task.potionChance', { name: potionById(r.potion.id)?.name ?? r.potion.id, pct: Math.round(r.potion.chance * 100) }));
     return parts.join(' · ');
+  }
+  /** A daily's reset: "Resets in 5h 12m" (the next local midnight). */
+  dailyResets(): string {
+    const left = Math.max(0, Math.ceil((dailyResetAt(this.now) - this.now) / 60_000));
+    return this.t('play.task.resets', { h: Math.floor(left / 60), m: left % 60 });
   }
   private taskGearName(task: TownTask): string {
     const g = task.reward.gear!;
@@ -2002,7 +2009,7 @@ export class SideScrollerComponent implements OnDestroy {
     const level = e.whereabouts?.level ?? '';
     if (level !== this.taskLevel) { this.taskLevel = level; if (level && level !== 'surface') this.tasksFinished(this.townTasks.visited(level)); }
     const marks = this.townTasks.marks();
-    const rows = this.townTasks.active().map(v => ({ id: v.task.id, title: this.t(`task.${v.task.id}.title`), need: this.taskNeed(v.task), have: v.have, n: v.task.n, ready: v.standing === 'ready', giver: giverById(v.task.giver)?.name ?? '' }));
+    const rows = this.townTasks.active().map(v => ({ id: v.task.id, title: (v.task.daily ? this.t('play.task.dailyTag') + ' ' : '') + this.t(`task.${v.task.id}.title`), need: this.taskNeed(v.task), have: v.have, n: v.task.n, ready: v.standing === 'ready', giver: giverById(v.task.giver)?.name ?? '' }));
     const key = JSON.stringify([marks, rows]);
     if (!force && key === this.tasksKey) return;
     this.tasksKey = key;

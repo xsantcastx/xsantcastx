@@ -125,7 +125,8 @@ const { NPC_CHAINS } = L('shared/npc/npc-quest.model.ts');
 const { NPCS, DIALOGUE } = L('shared/npc/npc.model.ts');
 const { DELVE_MISSIONS, DELVE_MATERIAL_NAMES } = L('shared/npc/delve-missions.model.ts');
 // The town keepers' tasks (top-down towns): givers, what they ask for, what they pay.
-const { TOWN_TASKS, TASK_GIVERS } = L('shared/town-tasks/town-tasks.model.ts');
+const { TOWN_TASKS: ONCE_TASKS, DAILY_TASKS, TASK_GIVERS } = L('shared/town-tasks/town-tasks.model.ts');
+const TOWN_TASKS = [...ONCE_TASKS, ...DAILY_TASKS];
 const { MYSTERY_BOXES, boxWindow, boxPool } = L('shared/gambler/mystery-box.ts');
 const { REEL_SYMBOLS } = L('shared/reels/reels.model.ts');
 const { UNIQUE_ITEMS } = L('shared/rpg/unique-items.ts');
@@ -705,7 +706,12 @@ for (const g of TASK_GIVERS) {
   if (tasks.length) n.uses.add(`gives ${tasks.length} town task(s)`);
   else flag('npc', 'no-role', `giver:${g.town}/${g.id}`, 'a task giver with no task');
   if (!I18N_KEYS.has(`task.giver.${g.id}.who`)) flag('npc', 'no-lines', `giver:${g.town}/${g.id}`, 'no "who they are" line');
-  for (const t of tasks) for (const f of ['title', 'ask', 'thanks']) if (!I18N_KEYS.has(`task.${t.id}.${f}`)) flag('npc', 'no-lines', `giver:${g.town}/${g.id}`, `task ${t.id} has no ${f}`);
+  for (const t of tasks) {
+    // A daily has its own title; its ask and thanks are the giver's (town-tasks.i18n.ts copies them onto each stem).
+    const keys = t.daily ? [[`task.${t.id}.title`, 'title'], [`task.giver.${g.id}.dailyAsk`, 'daily ask'], [`task.giver.${g.id}.dailyThanks`, 'daily thanks']]
+      : ['title', 'ask', 'thanks'].map(f => [`task.${t.id}.${f}`, f]);
+    for (const [k, f] of keys) if (!I18N_KEYS.has(k)) flag('npc', 'no-lines', `giver:${g.town}/${g.id}`, `task ${t.id} has no ${f}`);
+  }
   // Stands somewhere: a stall keeper of the Seamworks, or a `givers` entry / giverStall in a td map.
   const placed = TOWN_KEEPERS.infernal.some(k => k.id === g.id) || tdMaps.includes(`'${g.id}'`);
   if (!placed) flag('npc', 'not-visible', `giver:${g.town}/${g.id}`, 'stands in no town map');

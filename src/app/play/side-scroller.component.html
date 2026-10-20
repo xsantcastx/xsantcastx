@@ -321,10 +321,13 @@
           </div>
         } @else if (tk.view; as v) {
           <div class="td-talk__scroll" [attr.data-talk-state]="v.standing" [attr.data-talk-task]="v.task.id">
+            @if (v.task.daily) { <p class="td-talk__daily" data-talk-daily><b>{{ t('play.task.daily') }}</b> <span>{{ dailyResets() }}</span></p> }
             <h3>{{ t('task.' + v.task.id + '.title') }} <small>{{ t('play.td.level', { n: v.task.level }) }}</small></h3>
-            <p class="td-talk__say">{{ t('task.' + v.task.id + '.ask') }}</p>
+            <p class="td-talk__say">{{ t(v.standing === 'done' ? 'play.task.dailyDone' : 'task.' + v.task.id + '.ask') }}</p>
+            @if (v.standing !== 'done') {
             <p class="td-talk__row"><b>{{ t('play.task.task') }}</b><span>{{ taskNeed(v.task) }}@if (v.standing !== 'offer' && v.task.n > 1) { <em>{{ t('play.task.progress', { have: v.have, n: v.task.n }) }}</em> }</span></p>
             <p class="td-talk__row"><b>{{ t('play.task.reward') }}</b><span>{{ taskReward(v) }}</span></p>
+            }
           </div>
         } @else {
           <p class="td-talk__say td-talk__say--plain">{{ t('play.task.nothing') }}</p>
@@ -343,7 +346,7 @@
           <button type="button" class="td-talk__go" data-talk-handin (click)="handInTask()">{{ t('play.task.handIn') }}</button>
           <button type="button" (click)="closeTalk()">{{ t('play.task.notNow') }}</button>
         } @else {
-          <button type="button" class="td-talk__go" (click)="closeTalk()">{{ t(tk.view ? 'play.task.onMyWay' : 'play.task.farewell') }}</button>
+          <button type="button" class="td-talk__go" (click)="closeTalk()">{{ t(tk.view && tk.view.standing !== 'done' ? 'play.task.onMyWay' : 'play.task.farewell') }}</button>
         }
         @if (tk.stall) {
           <button type="button" class="td-talk__trade" (click)="tradeInstead()">{{ t('play.task.trade') }}</button>

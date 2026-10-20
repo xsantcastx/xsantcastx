@@ -25,7 +25,8 @@ import { InventoryService } from '../rpg/inventory.service';
 import { mintEquipment } from '../rpg/item-definition';
 import { xpGrantChunks } from '../activity/activity.model';
 import { TOWN_TASKS_KEY, TownTaskState, coerceTownTasks, emptyTownTasks } from './town-tasks-save.model';
-import { TOWN_TASKS, TownTask, TaskStanding, giverById, giverMark, giverTask, taskGold, taskStanding, townTask } from './town-tasks.model';
+import { potionById } from '../potions/potions.model';
+import { DAILY_TASKS, TOWN_TASKS, TownTask, TaskStanding, anyTask, dailyDay, dailyKey, dailyOf, dailyPotion, dailyStanding, dailyUnlocked, giverById, giverMark, giverTask, taskGold, taskStanding } from './town-tasks.model';
 
 /** One task with this Keeper's standing against it. */
 export interface TownTaskView {
@@ -43,6 +44,8 @@ export interface TownTaskClaim {
   material: { id: string; qty: number } | null;
   /** The gear piece's instance id, when one was handed over. */
   gear: string | null;
+  /** A daily's potion, when its day's roll came up. */
+  potion: string | null;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -59,6 +62,10 @@ export class TownTaskService {
   /** Bumps on every change (a kill counted, a merge landed): the HUD re-reads its rows. */
   readonly changed$: Observable<number> = this.changed$$.asObservable();
 
+  /** The clock the day is read from (a test sets it). */
+  clock: () => number = () => Date.now();
+  private day(): string { return dailyDay(this.clock()); }
+
   get state(): Readonly<TownTaskState> { this.hydrate(); return this.current; }
 
   /** Is this keeper id a task giver? */
@@ -68,7 +75,7 @@ export class TownTaskService {
   talk(giver: string): TownTaskView | null {
     if (!this.isBrowser) return null;
     this.hydrate();
-    const row = giverTask(giver, this.current, id => this.inventory.stackOf(id));
+    const row = giverTask(giver, this.current, id => this.inventory.stackOf(id), this.day());
     return row ? { ...row, gold: taskGold(row.task.reward, this.economy.snapshot.perSecond) } : null;
   }
 
@@ -78,7 +85,7 @@ export class TownTaskService {
     if (!this.isBrowser) return out;
     this.hydrate();
     for (const giver of new Set(TOWN_TASKS.map(t => t.giver))) {
-      const mark = giverMark(giverTask(giver, this.current, id => this.inventory.stackOf(id)));
+      const mark = giverMark(giverTask(giver, this.current, id => this.inventory.stackOf(id), this.day()));
       if (mark) out[giver] = mark;
     }
     return out;
@@ -89,18 +96,36 @@ export class TownTaskService {
     if (!this.isBrowser) return [];
     this.hydrate();
     const perSecond = this.economy.snapshot.perSecond;
-    return TOWN_TASKS
-      .filter(t => t.id in this.current.accepted && !this.current.claimed.includes(t.id))
-      .sort((a, b) => this.current.accepted[a.id] - this.current.accepted[b.id])
-      .map(task => ({ task, ...taskStanding(task, this.current, id => this.inventory.stackOf(id)), gold: taskGold(task.reward, perSecond) }));
+    const day = this.day(), held = (id: string) => this.inventory.stackOf(id);
+    const rows = [
+      ...TOWN_TASKS
+        .filter(t => t.id in this.current.accepted && !this.current.claimed.includes(t.id))
+        .map(task => ({ at: this.current.accepted[task.id], view: { task, ...taskStanding(task, this.current, held), gold: taskGold(task.reward, perSecond) } })),
+      // Today's dailies that are taken and not yet handed in.
+      ...[...new Set(DAILY_TASKS.map(t => t.giver))].flatMap(g => {
+        const task = dailyOf(g, day);
+        const key = task && dailyKey(day, task.id);
+        if (!task || !key || !(key in this.current.dAccepted) || this.current.dClaimed.includes(key)) return [];
+        return [{ at: this.current.dAccepted[key], view: { task, ...dailyStanding(task, day, this.current, held), gold: taskGold(task.reward, perSecond) } }];
+      }),
+    ];
+    return rows.sort((a, b) => a.at - b.at).map(r => r.view);
   }
 
   /** Take an offered task. False when it is not on offer (locked, taken, or done). */
   accept(id: string, now = Date.now()): boolean {
     if (!this.isBrowser) return false;
     this.hydrate();
-    const task = townTask(id);
-    if (!task || taskStanding(task, this.current, () => 0).standing !== 'offer') return false;
+    const task = anyTask(id);
+    if (!task) return false;
+    if (task.daily) {
+      const day = dailyDay(now), key = dailyKey(day, id);
+      if (dailyOf(task.giver, day)?.id !== id || !dailyUnlocked(task.giver, this.current.claimed)) return false;
+      if (dailyStanding(task, day, this.current, () => 0).standing !== 'offer') return false;
+      this.save({ ...this.current, dAccepted: { ...this.current.dAccepted, [key]: now } });
+      return true;
+    }
+    if (taskStanding(task, this.current, () => 0).standing !== 'offer') return false;
     this.save({ ...this.current, accepted: { ...this.current.accepted, [id]: now } });
     return true;
   }
@@ -119,21 +144,32 @@ export class TownTaskService {
   handIn(id: string): TownTaskClaim | null {
     if (!this.isBrowser) return null;
     this.hydrate();
-    const task = townTask(id);
-    if (!task || this.current.claimed.includes(id)) return null;
-    if (taskStanding(task, this.current, m => this.inventory.stackOf(m)).standing !== 'ready') return null;
+    const task = anyTask(id);
+    if (!task) return null;
+    // A daily is keyed by its day: only today's can be handed in, and its receipt is the day's key.
+    const day = this.day(), held = (m: string) => this.inventory.stackOf(m);
+    const key = task.daily ? dailyKey(day, id) : id;
+    if (task.daily) {
+      if (dailyOf(task.giver, day)?.id !== id || this.current.dClaimed.includes(key)) return null;
+      if (dailyStanding(task, day, this.current, held).standing !== 'ready') return null;
+    } else {
+      if (this.current.claimed.includes(id)) return null;
+      if (taskStanding(task, this.current, held).standing !== 'ready') return null;
+    }
     // A delivery: the materials change hands first, keyed by the task (a retry consumes nothing twice).
     if (task.kind === 'deliver') {
-      const paid = this.inventory.consumeStacks(`town-task:${id}`, [{ id: task.target, count: task.n }]);
+      const paid = this.inventory.consumeStacks(`town-task:${key}`, [{ id: task.target, count: task.n }]);
       if (!paid.ok) return null;
     }
     // Receipt first, on disk, before a single coin moves.
-    this.save({ ...this.current, claimed: [...this.current.claimed, id] });
+    this.save(task.daily ? { ...this.current, dClaimed: [...this.current.dClaimed, key] } : { ...this.current, claimed: [...this.current.claimed, id] });
     const r = task.reward;
     const gold = taskGold(r, this.economy.snapshot.perSecond);
-    if (gold > 0) this.economy.earnGold(gold, `npc:${task.giver}`);
-    const material = r.material && this.inventory.grantStack(`town-task:${id}:material`, r.material.id, r.material.qty) ? r.material : null;
-    this.grantXp(id, r.huntingXp);
+    if (gold > 0) this.economy.earnGold(gold, task.daily ? `npc:${task.giver}:daily` : `npc:${task.giver}`);
+    const material = r.material && this.inventory.grantStack(`town-task:${key}:material`, r.material.id, r.material.qty) ? r.material : null;
+    const potionId = task.daily ? dailyPotion(task, day) : null;
+    const potion = potionId && this.inventory.grantStack(`town-task:${key}:potion`, potionId, 1) ? potionId : null;
+    this.grantXp(key, r.huntingXp);
     let gear: string | null = null;
     if (r.gear) {
       const itemId = `town-task-${id}`;
@@ -144,13 +180,14 @@ export class TownTaskService {
       }
     }
     this.changed$$.next(this.changed$$.value + 1);
-    return { task, gold, xp: r.huntingXp, material, gear };
+    return { task, gold, xp: r.huntingXp, material, gear, potion };
   }
 
   private count(match: (t: TownTask) => boolean): TownTask[] {
     if (!this.isBrowser) return [];
     this.hydrate();
     const progress = { ...this.current.progress };
+    const dProgress = { ...this.current.dProgress };
     const finished: TownTask[] = [];
     for (const t of TOWN_TASKS) {
       if (!match(t) || !(t.id in this.current.accepted) || this.current.claimed.includes(t.id)) continue;
@@ -159,7 +196,19 @@ export class TownTaskService {
       progress[t.id] = n + 1;
       if (n + 1 >= t.n) finished.push(t);
     }
-    if (Object.keys(progress).some(k => progress[k] !== this.current.progress[k])) this.save({ ...this.current, progress });
+    // Today's dailies, once taken today.
+    const day = this.day();
+    for (const g of new Set(DAILY_TASKS.map(t => t.giver))) {
+      const t = dailyOf(g, day), key = t && dailyKey(day, t.id);
+      if (!t || !key || !match(t) || !(key in this.current.dAccepted) || this.current.dClaimed.includes(key)) continue;
+      const n = dProgress[key] ?? 0;
+      if (n >= t.n) continue;
+      dProgress[key] = n + 1;
+      if (n + 1 >= t.n) finished.push(t);
+    }
+    const moved = Object.keys(progress).some(k => progress[k] !== this.current.progress[k])
+      || Object.keys(dProgress).some(k => dProgress[k] !== this.current.dProgress[k]);
+    if (moved) this.save({ ...this.current, progress, dProgress });
     return finished;
   }
 
