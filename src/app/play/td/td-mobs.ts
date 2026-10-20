@@ -404,20 +404,24 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
   // The Molten Deep's lower floors (−4…−6) and the Forge of the Four.
   'slag-crawler': {
     id: 'slag-crawler', name: 'Slag Crawler', hp: 300, speed: 30, dmg: [14, 22], rate: 1.4, sight: 120, level: 21,
+    lore: 'Half beetle, half cooling slag, it walks the rivers of the Deep and leaves a crust behind that hardens into the next floor.',
     coins: [30, 70], drops: [{ material: 'cinder-ore', qty: 2, chance: 1 }, { material: 'ember-residue', qty: 1, chance: .4 }], paint: paintCrawler, w: 27, h: 16,
   },
   'glass-sentinel': {
     id: 'glass-sentinel', name: 'Glass Sentinel', hp: 340, speed: 20, dmg: [12, 18], rate: 1.8, sight: 150, level: 24,
+    lore: 'Poured by the foundry\'s last shift and never told to stop, it fires molten glass at anything that is not a mould.',
     coins: [40, 90], drops: [{ material: 'cinder-ore', qty: 1, chance: 1 }, { material: 'infernal-heartstone', qty: 1, chance: .12 }], paint: paintSentinel, w: 20, h: 28,
     ranged: { range: 110, keep: 80, rate: 2.2, dmg: [12, 18], speed: 140, kind: 'fire' },
   },
   'anvil-warden': {
     id: 'anvil-warden', name: 'The Anvil-Warden', hp: 1100, speed: 22, dmg: [16, 26], rate: 1.7, sight: 150, level: 18,
+    lore: 'The First Smith\'s anvil grew legs to keep its oath; it still hammers the air for a blade nobody will finish.',
     coins: [300, 550], drops: [{ material: 'infernal-heartstone', qty: 1, chance: 1 }, { material: 'cinder-ore', qty: 4, chance: 1 }], paint: paintAnvilWarden, w: 44, h: 46, rank: 'boss',
     summon: { type: 'cinder-bailiff', count: 2, at: .5 },
   },
   'cinder-sovereign': {
     id: 'cinder-sovereign', name: 'The Cinder Sovereign', hp: 3200, speed: 22, dmg: [26, 40], rate: 1.7, sight: 170, level: 30,
+    lore: 'The heart of the Deep wears a crown of its own sparks. It does not rule the fire — it is what the fire remembers.',
     coins: [900, 1500], drops: [{ material: 'infernal-heartstone', qty: 3, chance: 1 }, { material: 'ember-residue', qty: 4, chance: 1 }], paint: paintSovereign, w: 60, h: 60, rank: 'boss',
     ranged: { range: 130, keep: 0, rate: 3.2, dmg: [20, 32], speed: 120, kind: 'breath', spread: 5 },
     // At half its life it calls the hounds of the deep to its side.
