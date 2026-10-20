@@ -3,34 +3,36 @@
  * frames, the selective outline, a boss's rim), with the Warlock's raised skeleton at the end: docs/handoff/cozy-ui/
  * monster-lineup.jpg; and the oldest six up close with every frame of their walk: monster-lineup-x2.jpg.
  *
- * The page is blank: td-mobs.ts (and the two modules it needs) are transpiled here and served as ES modules, so the
- * picture is the real paint code, not a copy of it.
+ * The page is blank: td-mobs.ts and every module it imports are transpiled here and served as ES modules (relative
+ * imports resolved), so the picture is the real paint code, not a copy of it.
  */
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
+import { posix } from 'node:path';
 import ts from 'typescript';
 
 const HOST = 'http://lineup.test';
-const FILES: Readonly<Record<string, string>> = { 'td-mobs': 'td-mobs.ts', 'td-art': 'td-art.ts', 'td-skills': 'td-skills.ts', 'potions.model': '../../shared/potions/potions.model.ts' };
+/** Any module under src/app, transpiled on request; its relative imports rewritten to absolute served paths. */
+function serveModule(path: string): string {
+  const src = readFileSync(path.replace(/^\//, '').replace(/\.js$/, '.ts'), 'utf8');
+  const dir = posix.dirname(path);
+  return ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
+    .replace(/(from |import\()'(\.{1,2}\/[^']+)'/g, (_m, kw: string, rel: string) => `${kw}'${posix.join(dir, rel)}.js'`);
+}
 
 test('the monster lineup: every creature of the top-down world, and the raised skeleton', async ({ page }) => {
   await page.route(`${HOST}/**`, route => {
-    const name = new URL(route.request().url()).pathname.replace(/^\//, '').replace(/\.js$/, '');
-    if (name === '' || name === 'index.html') return route.fulfill({ contentType: 'text/html', body: '<!doctype html><body style="margin:0;background:#1a1014"><canvas id="c"></canvas></body>' });
-    const file = FILES[name];
-    if (!file) return route.fulfill({ status: 404, body: '' });
-    const src = readFileSync(`src/app/play/td/${file}`, 'utf8');
-    const out = ts.transpileModule(src, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.ES2022 } }).outputText
-      .replace(/from '\.\/(td-[a-z-]+)'/g, "from './$1.js'")
-      // The potion roll the kill code imports (shared/potions): served beside the td modules.
-      .replace(/from '\.\.\/\.\.\/shared\/potions\/potions\.model'/g, "from './potions.model.js'");
-    return route.fulfill({ contentType: 'text/javascript', body: out });
+    const path = new URL(route.request().url()).pathname;
+    if (path === '/' || path === '/index.html') return route.fulfill({ contentType: 'text/html', body: '<!doctype html><body style="margin:0;background:#1a1014"><canvas id="c"></canvas></body>' });
+    if (!path.startsWith('/src/app/') || !path.endsWith('.js')) return route.fulfill({ status: 404, body: '' });
+    try { return route.fulfill({ contentType: 'text/javascript', body: serveModule(path) }); }
+    catch { return route.fulfill({ status: 404, body: '' }); }
   });
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`${HOST}/index.html`);
   // k: the zoom; ids: only these (all when empty); frames: how many of each sheet's frames side by side.
   const draw = (k: number, ids: string[], frames: number) => page.evaluate(async ({ k, ids, frames }) => {
-    const mod = await import('./td-mobs.js' as string);
+    const mod = await import('/src/app/play/td/td-mobs.js' as string);
     const all = [...Object.values(mod.MOBS as Record<string, { id: string; name: string; w: number; h: number }>), mod.RAISED_SKELETON];
     const defs = ids.length ? all.filter(d => ids.includes(d.id)) : all;
     const gap = 14, cv = document.getElementById('c') as HTMLCanvasElement;
