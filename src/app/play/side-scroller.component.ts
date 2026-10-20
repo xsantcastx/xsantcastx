@@ -1922,6 +1922,9 @@ export class SideScrollerComponent implements OnDestroy {
   }
   pinName(pin: TdMapPin): string { return titleCase(pin.label); }
   goPin(pin: TdMapPin): void { this.choosePlace({ id: pin.id, name: titleCase(pin.label), blurb: pin.blurb }); }
+  /** Raised skeletons walking with the Keeper (0 in the side view). */
+  get tdRaised(): number { return this.topDown ? (this.engine as unknown as { raisedCount?: number } | undefined)?.raisedCount ?? 0 : 0; }
+  releaseRaised(): void { (this.engine as unknown as { releaseRaised?: () => number } | undefined)?.releaseRaised?.(); this.focusWorld(); }
   /** Whether the top-down square has this station (a stall the Keeper can walk to). */
   private inSquare(id: string): boolean { return !!this.engine?.places.some(p => p.id === id); }
   /**

@@ -28,6 +28,13 @@
     }
   }
   <!-- Top-down: the skill bar (Tibia's hotkeys): one slot per skill on keys 1–4, its cooldown sweeping back, dim without mana. -->
+  @if (topDown && tdRaised > 0 && !panel) {
+    <!-- The raised walk with the Keeper until they fall; this lets them go (owner 2026-10-20). -->
+    <button type="button" class="td-release" (click)="releaseRaised()" [attr.aria-label]="t('play.td.raised.releaseAria', { n: tdRaised })" data-engine-ignore>
+      <svg viewBox="0 0 16 16" width="18" height="18" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="5" fill="#ddd2ea"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="6" y="7" width="4" height="1" fill="#a99bc0"/><rect x="7" y="8" width="2" height="5" fill="#a99bc0"/><rect x="4" y="9" width="8" height="1" fill="#ddd2ea"/></svg>
+      <span>{{ t('play.td.raised.release', { n: tdRaised }) }}</span>
+    </button>
+  }
   @if (topDown && tdAbilities.length && !panel) {
     <div class="td-skills" role="toolbar" [attr.aria-label]="t('play.td.ability.bar')" data-engine-ignore>
       @for (a of tdAbilities; track a.key) {

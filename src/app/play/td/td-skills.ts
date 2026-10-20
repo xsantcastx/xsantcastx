@@ -66,7 +66,7 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
   },
   'raise-skeleton': {
     id: 'raise-skeleton', kind: 'active', mana: 30, cd: 12, nameKey: 'skill.raise-skeleton', textKey: 'skill.raise-skeleton.text',
-    vars: { count: 2, max: 2, secs: 40, reach: 5, hp: 50, dmg: 7 },
+    vars: { count: 2, max: 2, reach: 5, hp: 50, dmg: 7 },
     icon: I('<rect x="5" y="1" width="6" height="5" fill="#ddd2ea"/><rect x="6" y="3" width="1" height="1" fill="#b06bff"/><rect x="9" y="3" width="1" height="1" fill="#b06bff"/><rect x="6" y="6" width="4" height="1" fill="#a99bc0"/><rect x="4" y="7" width="8" height="1" fill="#ddd2ea"/><rect x="5" y="9" width="6" height="1" fill="#ddd2ea"/><rect x="7" y="7" width="2" height="5" fill="#a99bc0"/><rect x="2" y="12" width="12" height="3" fill="#3b2140"/><rect x="3" y="12" width="10" height="1" fill="#6b3aa0"/>'),
   },
   'aura-embers': {
