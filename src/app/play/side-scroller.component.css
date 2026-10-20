@@ -3592,6 +3592,9 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
 .stage--td .hero-lv { position: absolute; left: -2px; bottom: -2px; min-width: 22px; padding: 2px 4px; text-align: center;
   font: 700 12px/1 var(--font-pixel); color: var(--cozy-wood-0); background: var(--cozy-brass); box-shadow: 0 0 0 2px var(--cozy-wood-0); }
 .stage--td .vital__lv { display: none; }
+/* The running aura's icon on the portrait's corner (docs/design/effects-spec.md §Auras HUD). */
+.stage--td .hero-face { overflow: visible; }
+.stage--td .hero-aura { position: absolute; right: -6px; top: -6px; }
 .stage--td .satchel { width: auto; display: flex; align-items: center; gap: 14px; padding: 6px 14px 6px 8px; }
 .stage--td .satchel .clasp { width: auto; margin: 0; padding: 0 12px 0 0; border-bottom: 0; border-right: 1px solid color-mix(in srgb, var(--cozy-wood-hi) 40%, transparent); gap: 8px; }
 .stage--td .satchel .clasp > span:first-child { display: none; }
@@ -3675,6 +3678,9 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
    mobile"): the world fills the screen; the minimap top-right with life and mana orbs beside it; the goal a chip
    top-left; spells down the left; the chat bottom-left; the menu tabs a 2×2 grid bottom-right with Interact above. ── */
 .td-orbs { display: none; }
+/* The icon is the skill bar's 28px svg (innerHTML, so unscoped): the badge zooms it down whole rather than styling it. */
+.td-aura-badge { display: grid; place-items: center; width: 30px; height: 30px; zoom: .7; font-style: normal; background: var(--cozy-wood-0);
+  box-shadow: 0 0 0 3px var(--cozy-brass), 0 0 0 5px var(--cozy-wood-0); }
 @media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
   .stage--td { --hud-top: var(--hud-safe-t); --dock-h: 0px; --ctx-h: 0px; --guide-h: 0px; --tab: 50px; }
   .stage--td .viewport { inset: 0; }
@@ -3688,6 +3694,7 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
     box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 2px var(--cozy-brass), inset 0 6px 8px color-mix(in srgb, var(--cozy-cream) 25%, transparent); }
   .stage--td .td-orb--hp { --orb: var(--cozy-berry); }
   .stage--td .td-orb--mana { --orb: var(--cozy-mana); }
+  .stage--td .td-orbs .td-aura-badge { justify-self: center; }
   .stage--td .td-orb b { font: 700 13px/1 var(--font-pixel); font-style: normal; color: var(--cozy-cream); text-shadow: 1px 1px 0 var(--cozy-wood-0), -1px -1px 0 var(--cozy-wood-0); }
   .stage--td .guide, .stage--td .guide--list { top: calc(var(--hud-safe-t) + 8px); left: 8px; right: 172px; width: auto; max-width: none; margin: 0; padding: 6px 8px; gap: 4px; }
   .stage--td .guide-list { display: none; }
