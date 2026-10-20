@@ -39,7 +39,9 @@ async function firstVisit(page: Page): Promise<void> {
   await page.goto('/robots.txt');
   await page.evaluate(() => {
     const keepOnboarding = localStorage.getItem('eclipse-onboarding');
+    const keepLobby = localStorage.getItem('eclipse-lobby');
     localStorage.clear();
+    if (keepLobby) localStorage.setItem('eclipse-lobby', keepLobby);
     sessionStorage.clear();
     // The tutorial stays seen, so the first-arrival "Make your Keeper" offer does not open over the bar.
     localStorage.setItem('eclipse-onboarding', keepOnboarding ?? JSON.stringify({ done: true, lastStep: 5, at: '2026-01-01T00:00:00.000Z' }));

@@ -105,6 +105,18 @@ import {
   coerceResetStamp,
   resetVerdict,
 } from './save-reset';
+import {
+  ACTIVE_CHARACTER_KEY,
+  CHARACTER_ROSTER_KEY,
+  LOCAL_CHARACTER_KEYS,
+  PRIMARY_CHARACTER,
+  characterDbName,
+  characterDocPath,
+  characterStorageKey,
+  isCharacterId,
+  isCharacterScoped,
+  readActiveCharacter,
+} from './character-scope';
 
 /**
  * The ledger's key, for the two-number summary the merge dialog shows.
@@ -213,6 +225,8 @@ export const STATE_ENTRIES: readonly StateEntry[] = [
 ];
 
 const BY_KEY = new Map<string, StateEntry>(STATE_ENTRIES.map(e => [e.key, e]));
+/** Every synced key, for the character-scope test (character-scope.ts). */
+const STATE_KEYS: ReadonlySet<string> = new Set(STATE_ENTRIES.map(e => e.key));
 
 /** Keys the gateway owns. Anything else is not saved state and is refused. */
 export function isStateKey(key: string): boolean {
@@ -291,6 +305,113 @@ export class GameStateGateway {
   private readonly owners = inject(LocalSaveRegistry);
   private readonly leases = inject(DeviceLeaseService);
   private readonly zone = inject(NgZone);
+
+  // ── Characters (character-scope.ts) ─────────────────────────────────────────
+  /**
+   * The character this page plays, fixed at boot. Choosing another reloads the page (see character-scope.ts for why
+   * it never changes mid-page). Character #1 maps every key and path to exactly what the single save used.
+   */
+  readonly character: string = this.isBrowser ? readActiveCharacter(safeStorage()) : PRIMARY_CHARACTER;
+  /** Set by {@link retireCharacter}: this page's character is being deleted, so its writes go nowhere. */
+  private retired = false;
+
+  /** The localStorage key holding logical `key` for this page's character. */
+  private sk(key: string): string {
+    return isCharacterScoped(key, STATE_KEYS) ? characterStorageKey(key, this.character) : key;
+  }
+  /** Firestore path segments (after `users/{uid}`) of an entry's document for this page's character. */
+  private docPath(entry: Pick<StateEntry, 'key' | 'collection' | 'doc'>): string[] {
+    return isCharacterScoped(entry.key, STATE_KEYS)
+      ? characterDocPath(this.character, entry.collection, entry.doc)
+      : [entry.collection, entry.doc];
+  }
+  private ref(fs: FirestoreHandle, uid: string, entry: Pick<StateEntry, 'key' | 'collection' | 'doc'>) {
+    return fs.api.doc(fs.db, 'users', uid, ...this.docPath(entry));
+  }
+  /** This character's wipe stamp document (a reset is per character; #1 keeps `progress/reset`). */
+  private resetRef(fs: FirestoreHandle, uid: string) {
+    return fs.api.doc(fs.db, 'users', uid, ...characterDocPath(this.character, RESET_COLLECTION, RESET_DOC));
+  }
+
+  /** An IndexedDB name for this page's character (the world's far regions). */
+  scopedDbName(name: string): string {
+    return characterDbName(name, this.character);
+  }
+
+  /**
+   * Another character's blob on this device, parsed — for the character list (level, look, last place). Read-only:
+   * nothing is ever written into a character the page is not playing.
+   */
+  readFor(character: string, key: string): unknown {
+    if (!this.isBrowser || !isCharacterId(character)) return null;
+    if (character === this.character) return this.read(key);
+    try {
+      const storageKey = isCharacterScoped(key, STATE_KEYS) ? characterStorageKey(key, character) : key;
+      const raw = localStorage.getItem(storageKey);
+      return raw === null ? null : JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  }
+
+  /** Does this device hold any of `character`'s save? */
+  hasLocalSave(character: string): boolean {
+    if (!this.isBrowser || !isCharacterId(character)) return false;
+    try {
+      for (const entry of STATE_ENTRIES) {
+        if (!isCharacterScoped(entry.key, STATE_KEYS)) continue;
+        if (localStorage.getItem(characterStorageKey(entry.key, character)) !== null) return true;
+      }
+    } catch { /* private mode */ }
+    return false;
+  }
+
+  /**
+   * Choose the character the NEXT page load plays. Settle this one first ({@link settleForReload}), then reload: the
+   * reload's pagehide flush still writes this page's memory into this page's character, which is correct.
+   */
+  selectCharacter(character: string): void {
+    if (!this.isBrowser || !isCharacterId(character)) return;
+    try { localStorage.setItem(ACTIVE_CHARACTER_KEY, character); } catch { /* private mode: stays on this one */ }
+  }
+
+  /**
+   * This page's character is being deleted: from now on its writes (including the reload's pagehide flush) go
+   * nowhere, and nothing more is sent to the cloud. Call before {@link deleteCharacterSave} on the active character.
+   */
+  retireCharacter(): void {
+    this.retired = true;
+    this.cancelFlush();
+    this.dirty.clear();
+  }
+
+  /**
+   * Delete one character's save from this device and, when attached, from the cloud. Account-wide keys are untouched.
+   * Deleting the character this page plays requires {@link retireCharacter} first, or its services write it back.
+   */
+  async deleteCharacterSave(character: string): Promise<void> {
+    if (!this.isBrowser || !isCharacterId(character)) return;
+    if (character === this.character && !this.retired) this.retireCharacter();
+    const keys = [...STATE_ENTRIES.map(e => e.key), ...LOCAL_CHARACTER_KEYS].filter(k => isCharacterScoped(k, STATE_KEYS));
+    try {
+      for (const key of keys) localStorage.removeItem(characterStorageKey(key, character));
+    } catch { /* private mode */ }
+    // The world's far regions live in IndexedDB (delve-save.service). A delete on an open database waits for the
+    // page holding it to go, which is the reload that follows deleting the active character.
+    try {
+      for (const db of ['eclipse-world', 'eclipse-delve']) globalThis.indexedDB?.deleteDatabase(characterDbName(db, character));
+    } catch { /* no IndexedDB */ }
+    const uid = this.uid, fs = this.fs;
+    if (!uid || !fs) return;
+    await this.zone.runOutsideAngular(async () => {
+      for (const entry of STATE_ENTRIES) {
+        if (!isCharacterScoped(entry.key, STATE_KEYS)) continue;
+        try {
+          await fs.api.deleteDoc(fs.api.doc(fs.db, 'users', uid, ...characterDocPath(character, entry.collection, entry.doc)));
+        } catch { /* offline: the roster's tombstone already hides it; the documents are orphans */ }
+      }
+    });
+  }
 
   /** Set while attached to an account. Null when signed out. */
   private uid: string | null = null;
@@ -383,8 +504,10 @@ export class GameStateGateway {
   }
 
   private trySet(key: string, raw: string): boolean {
+    // A character being deleted keeps nothing (see retireCharacter): report "on disk" so nothing is held either.
+    if (this.retired && isCharacterScoped(key, STATE_KEYS)) return true;
     try {
-      localStorage.setItem(key, raw);
+      localStorage.setItem(this.sk(key), raw);
       return true;
     } catch {
       return false;
@@ -402,7 +525,7 @@ export class GameStateGateway {
    */
   private reclaim(): void {
     try {
-      localStorage.removeItem(SAVE_BACKUP_KEY);
+      localStorage.removeItem(this.sk(SAVE_BACKUP_KEY));
       const caches: string[] = [];
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i);
@@ -454,7 +577,7 @@ export class GameStateGateway {
     const held = this.spilled.get(key);
     if (held !== undefined) return held;
     try {
-      return localStorage.getItem(key);
+      return localStorage.getItem(this.sk(key));
     } catch {
       // Safari private mode throws on read. The game runs from memory.
       return null;
@@ -504,7 +627,7 @@ export class GameStateGateway {
     if (!this.isBrowser) return;
     this.unspill(key);
     try {
-      localStorage.removeItem(key);
+      localStorage.removeItem(this.sk(key));
     } catch { /* private mode */ }
 
     this.dirty.delete(key);
@@ -534,7 +657,7 @@ export class GameStateGateway {
 
     this.zone.runOutsideAngular(() => {
       void fs.api
-        .deleteDoc(fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc))
+        .deleteDoc(this.ref(fs, uid, entry))
         .then(() => this.clearPendingDelete(key))
         .catch(() => {
           // The record stands and the next attach retries it.
@@ -565,8 +688,8 @@ export class GameStateGateway {
 
   private writePendingDeletes(keys: Set<string>): void {
     try {
-      if (keys.size === 0) localStorage.removeItem(PENDING_DELETE_KEY);
-      else localStorage.setItem(PENDING_DELETE_KEY, JSON.stringify([...keys]));
+      if (keys.size === 0) localStorage.removeItem(this.sk(PENDING_DELETE_KEY));
+      else localStorage.setItem(this.sk(PENDING_DELETE_KEY), JSON.stringify([...keys]));
     } catch { /* private mode */ }
   }
 
@@ -609,7 +732,7 @@ export class GameStateGateway {
       remote.delete(key);
       this.lastRemote.delete(key);
       try {
-        await fs.api.deleteDoc(fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc));
+        await fs.api.deleteDoc(this.ref(fs, uid, entry));
         this.clearPendingDelete(key);
       } catch {
         // Still unreachable. The record stands for the next attach.
@@ -657,13 +780,15 @@ export class GameStateGateway {
     await this.publishReset(at);
 
     for (const entry of STATE_ENTRIES) {
+      // The character list survives a reset: resetting is about this Keeper's progress, not the account's roster.
+      if (entry.key === CHARACTER_ROSTER_KEY) continue;
       this.unspill(entry.key);
       try {
-        localStorage.removeItem(entry.key);
+        localStorage.removeItem(this.sk(entry.key));
       } catch { /* private mode */ }
     }
     try {
-      localStorage.removeItem(SAVE_BACKUP_KEY);
+      localStorage.removeItem(this.sk(SAVE_BACKUP_KEY));
     } catch { /* private mode */ }
 
     // Same tick as the removal, for the reason LocalSaveRegistry exists: the
@@ -693,12 +818,11 @@ export class GameStateGateway {
     try {
       await this.zone.runOutsideAngular(async () => {
         for (const entry of STATE_ENTRIES) {
-          await fs.api.deleteDoc(
-            fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
-          );
+          if (entry.key === CHARACTER_ROSTER_KEY) continue;
+          await fs.api.deleteDoc(this.ref(fs, uid, entry));
         }
         await fs.api.setDoc(
-          fs.api.doc(fs.db, 'users', uid, RESET_COLLECTION, RESET_DOC),
+          this.resetRef(fs, uid),
           { at, deviceId: this.leases.deviceId() },
         );
       });
@@ -719,7 +843,7 @@ export class GameStateGateway {
 
   private writeResetStamp(at: number): void {
     try {
-      localStorage.setItem(RESET_STAMP_KEY, String(at));
+      localStorage.setItem(this.sk(RESET_STAMP_KEY), String(at));
     } catch { /* private mode */ }
   }
 
@@ -759,9 +883,10 @@ export class GameStateGateway {
         this.dirty.clear();
         this.lastRemote.clear();
         for (const entry of STATE_ENTRIES) {
+          if (entry.key === CHARACTER_ROSTER_KEY) continue;
           this.unspill(entry.key);
           try {
-            localStorage.removeItem(entry.key);
+            localStorage.removeItem(this.sk(entry.key));
           } catch { /* private mode */ }
         }
         this.zone.run(() => {
@@ -775,6 +900,7 @@ export class GameStateGateway {
 
   private markDirty(key: string): void {
     if (!this.attached) return;
+    if (this.retired && isCharacterScoped(key, STATE_KEYS)) return;
     if (!BY_KEY.has(key)) return; // Not saved state; nothing to sync.
 
     if (this.dirty.size === 0) this.oldestDirtyAt = Date.now();
@@ -949,7 +1075,7 @@ export class GameStateGateway {
       const blobs: Record<string, string> = {};
       for (const move of moves) if (move.before !== null) blobs[move.key] = move.before;
       if (Object.keys(blobs).length === 0) return;
-      localStorage.setItem(SAVE_BACKUP_KEY, JSON.stringify({
+      localStorage.setItem(this.sk(SAVE_BACKUP_KEY), JSON.stringify({
         at: new Date().toISOString(),
         uid,
         blobs,
@@ -963,7 +1089,7 @@ export class GameStateGateway {
   /** The before picture, if this browser still holds one for this account. */
   deviceSnapshot(): { at: string; uid: string } | null {
     try {
-      const raw = localStorage.getItem(SAVE_BACKUP_KEY);
+      const raw = localStorage.getItem(this.sk(SAVE_BACKUP_KEY));
       if (!raw) return null;
       const held = safeParse(raw);
       if (!isRecord(held) || typeof held['at'] !== 'string' || typeof held['uid'] !== 'string') return null;
@@ -986,7 +1112,7 @@ export class GameStateGateway {
   async restoreDeviceSnapshot(): Promise<boolean> {
     const snap = this.deviceSnapshot();
     if (!snap) return false;
-    const raw = localStorage.getItem(SAVE_BACKUP_KEY);
+    const raw = localStorage.getItem(this.sk(SAVE_BACKUP_KEY));
     const held = raw === null ? null : safeParse(raw);
     if (!isRecord(held) || !isRecord(held['blobs'])) return false;
 
@@ -1133,13 +1259,27 @@ export class GameStateGateway {
     let resetAt = 0;
     const collections = [...new Set(STATE_ENTRIES.map(e => e.collection))];
 
+    // Character #1 reads the root collections whole, exactly as before characters existed (the account-wide
+    // documents sit beside it). Any other character reads its own subcollections whole, plus the few account-wide
+    // documents one by one — never another character's documents.
+    const primary = this.character === PRIMARY_CHARACTER;
+    const own = primary ? STATE_ENTRIES : STATE_ENTRIES.filter(e => isCharacterScoped(e.key, STATE_KEYS));
     const byPath = new Map<string, StateEntry>(
-      STATE_ENTRIES.map(e => [`${e.collection}/${e.doc}`, e]),
+      own.map(e => [`${e.collection}/${e.doc}`, e]),
     );
+    if (!primary) {
+      for (const entry of STATE_ENTRIES) {
+        if (isCharacterScoped(entry.key, STATE_KEYS)) continue;
+        const snap = await fs.api.getDoc(this.ref(fs, uid, entry));
+        if (!snap.exists()) continue;
+        const data = snap.data();
+        out.set(entry.key, entry.enveloped ? unwrapBlob(data) : data);
+      }
+    }
 
     for (const collection of collections) {
       const snap = await fs.api.getDocs(
-        fs.api.collection(fs.db, 'users', uid, collection),
+        fs.api.collection(fs.db, 'users', uid, ...characterDocPath(this.character, collection, '').slice(0, -1)),
       );
       snap.forEach(doc => {
         if (collection === RESET_COLLECTION && doc.id === RESET_DOC) {
@@ -1292,9 +1432,7 @@ export class GameStateGateway {
         if (known) {
           cloud = known.get(key) ?? null;
         } else {
-          const snap = await fs.api.getDoc(
-            fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
-          );
+          const snap = await fs.api.getDoc(this.ref(fs, uid, entry));
           cloud = snap.exists()
             ? (entry.enveloped ? unwrapBlob(snap.data()) : snap.data())
             : null;
@@ -1355,7 +1493,7 @@ export class GameStateGateway {
     localRaw: string,
     strategy: MergeStrategy,
   ): Promise<void> {
-    const ref = fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc);
+    const ref = this.ref(fs, uid, entry);
     let adoptedRaw: string | null = null;
     let remoteRaw: string | null = null;
 
@@ -1402,7 +1540,7 @@ export class GameStateGateway {
     const batch = fs.api.writeBatch(fs.db);
     for (const { entry, payload } of writes) {
       batch.set(
-        fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
+        this.ref(fs, uid, entry),
         envelope(entry, payload),
       );
     }
@@ -1431,7 +1569,7 @@ export class GameStateGateway {
     for (const { entry, payload } of writes) {
       try {
         await fs.api.setDoc(
-          fs.api.doc(fs.db, 'users', uid, entry.collection, entry.doc),
+          this.ref(fs, uid, entry),
           envelope(entry, payload) as Record<string, unknown>,
         );
       } catch (err) {
@@ -1651,6 +1789,14 @@ function safeParse(raw: string): unknown {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function safeStorage(): Storage | null {
+  try {
+    return localStorage;
+  } catch {
+    return null;
+  }
 }
 
 function readDeviceId(): string {

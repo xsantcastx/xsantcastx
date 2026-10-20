@@ -46,7 +46,7 @@ import {
   coercePin, MAX_PINS, pinSector, type PinRecord,
 } from './delve-region.model';
 import type { MapPin } from './map-pins.model';
-import { openRegionStore, type RegionStore } from './delve-region-store';
+import { DELVE_STORE_NAMES, openRegionStore, type RegionStore } from './delve-region-store';
 import type { DelveSectorStore, SectorSave } from '../../play/engine/engine.model';
 import { TERRAIN_NODE_LIST } from '../../play/engine/terrain';
 import { realmOfArea, realmSeed, RIFT_REALMS, riftSlotKeys, type RiftRealm } from './rift-gates.model';
@@ -133,7 +133,7 @@ export class DelveSaveService implements DelveSectorStore {
   /** Wall clock (tests pass a fake). */
   now: () => number = () => Date.now();
   /** Test seam: how the device store is opened. */
-  openDevice: () => Promise<RegionStore> = () => openRegionStore(this.store, globalThis.indexedDB, this.oneWorld ? { db: WORLD_DB, far: WORLD_FAR_KEY } : undefined);
+  openDevice: () => Promise<RegionStore> = () => openRegionStore(this.store, globalThis.indexedDB, this.oneWorld ? { db: this.store.scopedDbName?.(WORLD_DB) ?? WORLD_DB, far: WORLD_FAR_KEY } : { db: this.store.scopedDbName?.(DELVE_STORE_NAMES.db) ?? DELVE_STORE_NAMES.db, far: DELVE_STORE_NAMES.far });
 
   /** Fires after cloud save replaced the blob (or the device's regions arrived): the play view hands the engine the new Delve. */
   readonly reloaded$: Observable<void> = this.reloaded$$.asObservable();
