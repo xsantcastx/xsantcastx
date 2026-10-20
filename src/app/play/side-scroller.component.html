@@ -523,14 +523,60 @@
         </div>
       </div>
       @if (hoverTip; as tip) {
-        <!-- The hover card, Diablo II-plain: name in its rarity colour, what it is, the stats; nothing to press. -->
-        <div class="d2tip" role="tooltip" [style.left.px]="tip.x + 16" [style.top.px]="tip.y + 12" [style.--tone]="tip.row.tone ?? null">
-          <b>{{ tip.row.name }}</b>
-          <span>{{ tip.row.kicker }}</span>
-          @for (stat of tip.row.stats; track stat) { <i>{{ stat }}</i> }
+        <!-- The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): framed in its rarity, a big
+             icon, the stat it is for, the rest as coloured affixes, its wells and worth; nothing to press. -->
+        <div class="d2tip" role="tooltip" [style.left.px]="tip.x + 16" [style.top.px]="tip.y + 12" [attr.data-rarity]="tip.row.tip?.rarity ?? 'material'">
+          <header class="d2tip__head">
+            <div class="d2tip__icon" aria-hidden="true">
+              @if (tip.row.art) { <img [src]="tip.row.art" alt=""> } @else { <em>{{ tip.row.mark }}</em> }
+            </div>
+            <div class="d2tip__title">
+              <b>{{ tip.row.name }}</b>
+              @if (tip.row.tip?.typeLine) { <span>{{ tip.row.tip?.typeLine }}</span> }
+              @if (tip.row.tip?.rarityWord) { <span class="d2tip__rarity">{{ tip.row.tip?.rarityWord }}</span> }
+              @if (tip.row.tip?.value) { <span class="d2tip__worth"><i class="coin" aria-hidden="true"></i>{{ tip.row.tip!.value.toLocaleString('en-US') }}</span> }
+            </div>
+          </header>
+          @if (tip.row.tip; as it) {
+            @if (it.tag || it.itemLevel) {
+              <p class="d2tip__meta">
+                @if (it.tag) { <b class="d2tip__tag" [attr.data-tag]="it.tag">{{ it.tag === 'flawless' ? t('play.tip.flawless') : t('play.tip.perfect') }}</b> }
+                @if (it.itemLevel) { <span>{{ t('play.tip.itemLevel', { n: it.itemLevel }) }}</span> }
+              </p>
+            }
+            @if (it.head) { <p class="d2tip__headline">{{ it.head.text }}@if (it.head.range) { <span class="d2tip__range">{{ it.head.range }}</span> }</p> }
+            @if (it.affixes.length) {
+              <ul class="d2tip__affixes">
+                @for (a of it.affixes; track a.key) { <li [attr.data-stat]="a.key">{{ a.text }}@if (a.range) { <span class="d2tip__range">{{ a.range }}</span> }</li> }
+              </ul>
+            }
+            @if (it.specials.length) {
+              <div class="d2tip__special">
+                @for (sp of it.specials; track sp) { <p>{{ sp }}</p> }
+              </div>
+            }
+            @if (it.sockets.length) {
+              <ul class="d2tip__sockets">
+                @for (sk of it.sockets; track $index) { <li [class.full]="!!sk">{{ sk ?? t('play.tip.emptySocket') }}</li> }
+              </ul>
+            }
+          } @else {
+            @for (stat of tip.row.stats; track stat) { <p class="d2tip__line">{{ stat }}</p> }
+          }
           @if (tip.row.compare.length) {
-            <small>{{ tip.row.compareLabel }}</small>
-            @for (d of tip.row.compare; track d.key) { <i [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'">{{ d.text }}</i> }
+            <div class="d2tip__compare">
+              <small>{{ tip.row.compareLabel }}</small>
+              @for (d of tip.row.compare; track d.key) { <i [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'">{{ d.text }}</i> }
+            </div>
+          }
+          @if (tip.row.tip; as it) {
+            @if (it.bound || it.value || it.tempered) {
+              <footer class="d2tip__foot">
+                @if (it.tempered) { <span>{{ t('play.tip.tempered', { n: it.tempered }) }}</span> }
+                @if (it.bound) { <span>{{ t('play.tip.bound') }}</span> }
+                @if (it.value) { <span>{{ t('play.tip.sellValue') }}: {{ it.value.toLocaleString('en-US') }} <i class="coin" aria-hidden="true"></i></span> }
+              </footer>
+            }
           }
         </div>
       }

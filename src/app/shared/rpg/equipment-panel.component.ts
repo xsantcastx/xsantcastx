@@ -219,7 +219,7 @@ export class EquipmentPanelComponent implements OnInit, OnDestroy {
 
   hasTotals(): boolean {
     const t = this.snap.totals;
-    return !!(t.goldPerSec || t.magicFind || t.xpBonus || t.strikePower || t.ward);
+    return ITEM_STAT_KEYS.some(key => !!t[key]);
   }
 
   /** Worn strikePower as the Forge yield bonus it buys, whole percent, capped. 0 hides it. */

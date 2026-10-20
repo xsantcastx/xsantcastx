@@ -22,6 +22,7 @@ import {
   qualityPercent,
   type RollQuality,
 } from './item-quality';
+import { clampItemLevel, DEFAULT_ITEM_LEVEL, isAffixSlot, rollAffixes } from './item-affixes';
 
 export type ItemFamily =
   | 'equipment'
@@ -209,19 +210,52 @@ export function rollItemStats(
   return rollItemStatsWithQuality(def, rarity, rng).stats;
 }
 
+/**
+ * Definitions that keep their authored legacy roll whole: the Forge's Basalt
+ * Edge, whose Strike is what the Forge's yield and the Seamworks' recovery read.
+ */
+const LEGACY_ROLL_DEFINITIONS: ReadonlySet<string> = new Set(['basalt-edge']);
+
+/** True when a definition mints through the affix roller (§3). */
+export function rollsAffixes(def: ItemDefinition): boolean {
+  return def.family === 'equipment'
+    && isAffixSlot(def.slot)
+    && def.rollKeys.length > 0
+    && !LEGACY_ROLL_DEFINITIONS.has(def.id);
+}
+
+/**
+ * The whole roll a fresh mint (or a reforge of an affix item) gets: the
+ * implicit + affixes for gear, plus the legacy Magic Find / XP rolls its
+ * definition authors; charms, consumables and the Forge's edge keep the old
+ * authored roll.
+ */
+export function rollMintStats(
+  def: ItemDefinition,
+  rarity: ItemRarity,
+  itemLevel: number = DEFAULT_ITEM_LEVEL,
+  rng: () => number = Math.random,
+): RolledStats {
+  if (!def.rollKeys.length) return { stats: {}, quality: {} };
+  if (!rollsAffixes(def)) return rollItemStatsWithQuality(def, rarity, rng);
+  // Magic Find and XP are affixes now (item-affixes.ts), so gear rolls nothing off the definition's old list.
+  const affixes = rollAffixes(def, rarity, itemLevel, rng);
+  return { stats: affixes.stats, quality: affixes.quality };
+}
+
 export function mintEquipment(
   defId: string,
   rarity: ItemRarity,
   rng: () => number = Math.random,
   foundAt = new Date().toISOString(),
   id?: string,
+  itemLevel: number = DEFAULT_ITEM_LEVEL,
 ): GameItem | null {
   const def = itemDefinitionById(defId);
   if (!def) return null;
   if (def.family === 'material' || def.family === 'quest' || def.family === 'rune') return null;
-  const rolled = def.rollKeys.length
-    ? rollItemStatsWithQuality(def, rarity, rng)
-    : { stats: {}, quality: {} };
+  const level = clampItemLevel(itemLevel);
+  const rolled = rollMintStats(def, rarity, level, rng);
   const sticker = stickerPrice(def, rarity);
   return {
     id: id ?? mintInstanceId(def.id),
@@ -238,6 +272,7 @@ export function mintEquipment(
     soulbound: def.soulbound === true,
     upgradeLevel: 0,
     definitionId: def.id,
+    ...(rollsAffixes(def) ? { itemLevel: level } : {}),
   };
 }
 

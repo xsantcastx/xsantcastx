@@ -102,12 +102,13 @@ export class LootService {
    * A gear or rune drop was walked over or tapped: mint it into the satchel
    * (an item) or the Forge ledger (a rune). False leaves it on the ground.
    */
-  grantDrop(dropId: string, drop: { item?: { definitionId: string; rarity: LootTier }; rune?: string }): GameItem | true | false {
+  grantDrop(dropId: string, drop: { item?: { definitionId: string; rarity: LootTier; level?: number }; rune?: string }): GameItem | true | false {
     if (!this.isBrowser) return false;
     if (this.granted.has(dropId)) return true;
     if (drop.item) {
       const rng = seededRandom(hashSeed(`${this.seed()}|mint|${dropId}`));
-      const item = mintEquipment(drop.item.definitionId, drop.item.rarity, rng);
+      // Item level = the monster's level where it fell (§3); it sets the affix ranges.
+      const item = mintEquipment(drop.item.definitionId, drop.item.rarity, rng, undefined, undefined, drop.item.level);
       if (!item) return false;
       const landed = this.inventory.add(item);
       if (!landed) return false;
