@@ -38,4 +38,8 @@ export interface ContinentDef {
   /** The town's river carried across the land (Ember Isle's square has one). */
   river: boolean;
   ways: readonly ContinentWay[];
+  /** Further towns and villages (Cinderport, Ashgrove…), each stamped with its top-left corner at tile (c, r). */
+  villages?: readonly ContinentVillage[];
 }
+
+export interface ContinentVillage { name: string; c: number; r: number; build: () => TdMap }
