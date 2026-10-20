@@ -3,7 +3,7 @@ import {
   afterNextRender, Component, ComponentRef, ElementRef, HostListener, Injector, NgZone, OnDestroy, PLATFORM_ID, ViewChild,
   ViewContainerRef, inject,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { tdFirstGoal } from './td/td-goals';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
@@ -168,6 +168,8 @@ import { lookKey, type KeeperLook } from '../shared/keeper-look/keeper-look.mode
 import { gearKey } from '../shared/keeper-look/keeper-gear';
 import { wornGear } from '../shared/keeper-look/worn-gear';
 import { KeeperPainter } from '../shared/keeper-look/keeper-paint';
+import { FRONT_H, FRONT_W, frontSheet } from '../shared/keeper-look/keeper-front';
+import { vocationLook } from '../shared/keeper-look/vocation-look';
 import { LevelUpService } from '../shared/activity/level-up.service';
 import { npcPortrait } from '../shared/keeper-look/npc-portrait';
 import { OnboardingService } from '../shared/onboarding/onboarding.service';
@@ -351,7 +353,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -552,6 +554,30 @@ export class SideScrollerComponent implements OnDestroy {
   social: RoomSnapshot = { status: 'Solo — join the hearth to meet other Keepers.', connected: false, players: [], messages: [], id: '' };
   joining = false;
   sending = false;
+  /**
+   * The chat box (owner 2026-10-20: "chat like OSRS, a little box left side, and vanishes if needed"): a Game tab (this
+   * device's own lines — loot, XP, the engine's words; no server) and a Chat tab (the Hearth room).
+   */
+  chatTab: 'game' | 'public' = 'game';
+  chatHidden = false;
+  /** When a line last landed (ms): the box fades when quiet, wakes on a new line or a hover. */
+  chatLastAt = 0;
+  gameLog: { key: number; at: number; text: string }[] = [];
+  private gameKey = 0;
+  private lastLogged = '';
+  private logGame(text: string): void {
+    const t = text.trim();
+    if (!t) return;
+    this.gameLog = [...this.gameLog, { key: ++this.gameKey, at: Date.now(), text: t }].slice(-60);
+    this.chatLastAt = Date.now();
+  }
+  get chatQuiet(): boolean { return Date.now() - this.chatLastAt > 9000; }
+  /** Opening the Chat tab joins the room under the Keeper's own name (a guest name; nothing else leaves the device). */
+  async openPublicChat(): Promise<void> {
+    this.chatTab = 'public';
+    this.chatLastAt = Date.now();
+    if (!this.social.connected && !this.joining) await this.joinRoom(this.keeperName || 'Keeper');
+  }
   /**
    * The Hearth chat is a small pill in the world until the player opens it
    * (it used to stand over the stalls in every town). Remembered per device;
@@ -797,7 +823,7 @@ export class SideScrollerComponent implements OnDestroy {
       this.homeSub = this.homestead.hud$.subscribe(hud => { this.boughtBuilding = hud.rows.some(row => row.owned > 0); });
       // After the caller's own line ("Ore gathered"): the grant announces before the caller writes it.
       this.routedSub = this.inventory.routed$.subscribe(routed => queueMicrotask(() => this.zone.run(() => this.onRouted(routed))));
-      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
+      this.timer = setInterval(() => this.zone.run(() => { this.now = Date.now(); this.mountEngine(); this.pushStats(); this.refreshGuide(); this.tickAreaCard(); this.tickAbilities(); this.tickWhereabouts(); this.tickMakerOffer(); this.tickPhonePose(); this.tickDelveV2(); this.drawMaps(); this.tickSlate(); this.tickScan(); this.tickClock(); this.tickWorld(); }), 200);
     });
   }
   /** The play view can be replaced once during hydration. Follow the live canvas. */
@@ -1175,9 +1201,34 @@ export class SideScrollerComponent implements OnDestroy {
     this.engine.setCombatRules({ tier: rules.tier, seed: rules.seed, aura: rules.aura, resists: rules.resists, filter: rules.filter });
     if (first) this.pushPurse();
   }
-  private playSave(): { town?: unknown; coins?: unknown } {
+  private playSave(): { town?: unknown; coins?: unknown; td?: unknown } {
     const raw = this.store.read(PLAY_KEY);
-    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as { town?: unknown; coins?: unknown } : {};
+    return raw && typeof raw === 'object' && !Array.isArray(raw) ? raw as { town?: unknown; coins?: unknown; td?: unknown } : {};
+  }
+  /**
+   * The top-down Keeper's last place (owner 2026-10-20: "not saving in my last location"): kept in PLAY_KEY beside the
+   * town (device-local, like the side view's), written every two seconds when it changed by a tile, restored once.
+   */
+  private tdSavedAt = 0;
+  private tdSavedKey = '';
+  private tdRestored = false;
+  private tickWhereabouts(): void {
+    if (!this.topDown || !this.browser) return;
+    const e = this.engine as unknown as { whereabouts?: { continent: string; level: string; x: number; y: number }; restoreWhereabouts?: (w: unknown) => boolean } | undefined;
+    if (!e?.whereabouts) return;
+    if (!this.tdRestored) {
+      this.tdRestored = true;
+      const saved = this.playSave().td;
+      // A deep link (?at=) means go there, not back.
+      if (saved && typeof saved === 'object' && !this.route.snapshot.queryParamMap.get('at')) e.restoreWhereabouts?.(saved);
+      return;
+    }
+    if (Date.now() - this.tdSavedAt < 2000) return;
+    this.tdSavedAt = Date.now();
+    const w = e.whereabouts, key = `${w.continent}|${w.level}|${Math.round(w.x / 16)}|${Math.round(w.y / 16)}`;
+    if (key === this.tdSavedKey) return;
+    this.tdSavedKey = key;
+    this.store.write(PLAY_KEY, { ...this.playSave(), td: w });
   }
   /** Merge a change into PLAY_KEY; a write that changes nothing is skipped. */
   private writePlay(patch: { town?: RealmTownId; coins?: number }): void {
@@ -1201,6 +1252,7 @@ export class SideScrollerComponent implements OnDestroy {
     this.secrets.visit(path);
   }
   private toastLoot(text: string, art?: string): void {
+    this.logGame(text);
     const key = ++this.toastKey;
     this.lootToasts = [...this.lootToasts, { key, text, ...(art ? { art } : {}) }].slice(-3);
     setTimeout(() => { this.lootToasts = this.lootToasts.filter(toast => toast.key !== key); }, 1800);
@@ -1627,6 +1679,8 @@ export class SideScrollerComponent implements OnDestroy {
   }
   private tickAbilities(): void {
     if (!this.topDown) { this.tdAbilities = []; return; }
+    // The chat box's Game tab hears every line the HUD shows (the toast, the engine's own words).
+    for (const line of [this.message, this.engineMessage]) if (line && line !== this.lastLogged) { this.lastLogged = line; this.logGame(line); }
     const e = this.tdEngine;
     // The Spellbook's choices (synced with the Keeper's look) reach the engine whenever they change.
     const look = this.looks.look, key = `${look.bar.join(',')}|${look.aura}`;
@@ -2325,6 +2379,11 @@ export class SideScrollerComponent implements OnDestroy {
   /** The worn loadout's fight numbers, with the Hunting level on top (the Keeper's character level; keeper-combat.ts). */
   get combat(): KeeperCombatStats { return keeperCombatStats(this.inventory.snapshot.totals, this.huntingLevel); }
   get huntingLevel(): number { return skillLevel(this.activity.snapshot.progress, 'hunting'); }
+  /** The HUD portrait (top-down): the Keeper's own face, from the engine's sprite; '' until the world is up. */
+  get tdPortrait(): string { return this.topDown ? (this.engine as unknown as { heroPortrait?: () => string } | undefined)?.heroPortrait?.() ?? '' : ''; }
+  /** The resource strip's icons: the materials' own art. */
+  get oreArt(): string { return materialDisplay(CINDER_ORE_ID)?.art ?? ''; }
+  get emberArt(): string { return materialDisplay(EMBER_RESIDUE_ID)?.art ?? ''; }
   get remaining(): number { return Math.ceil(this.activity.recoveryRemainingMs(this.now) / 1000); }
   get objective(): string {
     if (this.state.areaId === 'homestead') return this.t('play.hud.obj.homestead');
@@ -3084,12 +3143,23 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.bagOpen) this.hearthOpen = false;
   }
   /** Tap a pocket for its card; tap it again to put the card away. */
-  choosePocket(pocket: BagPocket): void {
+  choosePocket(pocket: BagPocket, ev?: Event): void {
     this.pick = this.pickedPocket(pocket) ? null : { kind: pocket.kind, ref: pocket.ref };
+    this.placePick(ev);
   }
   /** Tap worn gear for its card (Stow). An empty place has nothing to say, so it closes the card. */
-  chooseWell(well: BagWell): void {
+  chooseWell(well: BagWell, ev?: Event): void {
     this.pick = !well.filled || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
+    this.placePick(ev);
+  }
+  /** Where a click pins the item card: beside the cell, kept on screen (it flips to the cell's left at the right edge). */
+  pickAt = { x: 16, y: 80 };
+  private placePick(ev?: Event): void {
+    const el = ev?.currentTarget as HTMLElement | null;
+    if (!el?.getBoundingClientRect || typeof window === 'undefined') return;
+    const r = el.getBoundingClientRect(), W = 264, H = 380;
+    const x = r.right + 10 + W > window.innerWidth ? r.left - 10 - W : r.right + 10;
+    this.pickAt = { x: Math.max(8, Math.min(x, window.innerWidth - W - 8)), y: Math.max(8, Math.min(r.top - 8, window.innerHeight - H)) };
   }
   unpick(): void { this.pick = null; }
   pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }
@@ -3559,7 +3629,7 @@ export class SideScrollerComponent implements OnDestroy {
   private pushKeeper(): void {
     const look = this.looks.look;
     const gear = wornGear(this.inventory.snapshot.equipped);
-    const key = `${lookKey(look)}#${gearKey(gear)}`;
+    const key = `${lookKey(look)}#${gearKey(gear)}#${this.topDown ? 'td' : 'side'}`;
     this.keeperName = look.made ? look.name : '';
     this.lookNudge = !look.made && !look.prompted;
     if (key !== this.lookPushKey) {
@@ -3598,7 +3668,15 @@ export class SideScrollerComponent implements OnDestroy {
     try {
       const el = document.createElement('canvas');
       el.width = el.height = 176;
-      new KeeperPainter(look, gear).still(el);
+      const v = vocationLook(look.vocation, gear);
+      if (this.topDown) {
+        // The top-down game's doll is the Keeper the world shows (owner 2026-10-20): the front sprite, class garb and
+        // hood, the staff, the worn gear — scaled up whole pixels, never smoothed.
+        const sheet = frontSheet(new KeeperPainter(look, v.gear, v.garb), look.vocation === 'warlock');
+        const c = el.getContext('2d')!, k = 4, w = (FRONT_W + 2) * k, h = (FRONT_H + 2) * k;
+        c.imageSmoothingEnabled = false;
+        c.drawImage(sheet, 0, 0, FRONT_W + 2, FRONT_H + 2, Math.round((176 - w) / 2), Math.round((176 - h) / 2) + 4, w, h);
+      } else new KeeperPainter(look, v.gear, v.garb).still(el);
       this.dollFigure = el.toDataURL('image/png');
     } catch { /* no 2D canvas: the doll frame stays empty */ }
   }

@@ -31,3 +31,24 @@ on every surface, a bright accent (hair, cape) and a ground shadow. Ours are sma
 3. World labels.
 4. The Keeper's sprite, then townsfolk, then monsters.
 Each step: screenshot against the reference, gate, push, sha to the owner.
+
+## Owner comments queue (2026-10-20, in order)
+1. **Chat like OSRS:** a small box at the left, fading when quiet, opening to type; it replaces the Hearth pill (removed
+   from the top-down game in 2eaf5a4d — "it does not work": check its transport before wiring the new box to it). Game
+   messages (loot, XP, level-ups, what Glim says) are its first tab, so it is useful even offline.
+2. **Phone like OSRS mobile:** no padded top bar; the minimap top-right with life and mana orbs beside it; the menu tabs
+   (Satchel, Spells, Character, Places, Settings) as a grid bottom-right that opens each as a panel above it; the chat
+   bottom-left; the goal as a small chip.
+3. **Character detail, the bigger step:** the shading pass (2eaf5a4d) is in; the reference's detail needs a larger,
+   more detailed sprite set (head ~40% of height, two-tone everything, 4-frame walk) drawn at one pixel density with
+   the tiles — an art pass of its own, Warlock first.
+
+Status: steps 1–2 of the HUD order shipped (d522c7ba portrait + strip; 1a597ee1 goals under the minimap + toolbar).
+4. **Click card** (owner: "when you click on the item … this huge UI that is really ugly"): done — a click pins the hover
+   card beside the item with its actions; the big slip stays only in the side view.
+5. **The Satchel's paper doll** still draws the old side-view Keeper (brown hair), not the Warlock: give it the
+   front sprite (keeper-front) with worn gear.
+6. **The undead and the Cinder clans** (owner: "scary monsters like skeletons, dragons, orcs, undead … spells like
+   revive undead skeletons"): built on branch `undead` (1bbdf6d5) — nine creatures, the Hushed Barrow graveyard on Ember
+   Isle, the Ashen Crypt (2 floors, the Ashbone Dragon), Raise Skeleton and Bone Spear. Follow-up: Codex Bestiary
+   entries and `play.creature.*` keys for the nine; a Places/minimap mark for the Hushed Barrow.

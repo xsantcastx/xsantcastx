@@ -35,10 +35,63 @@
                 [attr.aria-label]="t('skill.' + a.id) + ' (' + a.key + ')'" [title]="t('skill.' + a.id) + ' (' + a.key + ') · ' + a.mana + ' ' + t('play.td.mana')"
                 [innerHTML]="skillIcon(a.id)"></button>
       }
-      <button type="button" class="td-skill td-skill--book" (click)="spellbookOpen = !spellbookOpen" [attr.aria-expanded]="spellbookOpen" [attr.aria-label]="t('play.td.book') + ' (K)'" [title]="t('play.td.book') + ' (K)'">
-        <svg viewBox="0 0 16 16" width="26" height="26" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#6b3aa0"/><rect x="3" y="3" width="10" height="10" fill="#3b2140"/><rect x="7" y="2" width="2" height="12" fill="#2a1a24"/><rect x="4" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="4" y="8" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="8" width="2" height="1" fill="#e9d8ff"/></svg>
-      </button>
     </div>
+  }
+  <!-- Top-down: the menu toolbar (docs/design/ui-pass-top-heroes.md, the reference's Build · Workers · Storage row): square
+       icon buttons with their names, the key on hover. -->
+  @if (topDown && !panel) {
+    <nav class="td-dock" [attr.aria-label]="t('play.td.dock.label')" data-engine-ignore>
+      <button type="button" (click)="toggleBag()" [attr.aria-expanded]="bagOpen" [title]="t('play.td.dock.bag') + ' (I)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="2" width="6" height="2" fill="#5a3a22"/><rect x="4" y="3" width="2" height="3" fill="#5a3a22"/><rect x="10" y="3" width="2" height="3" fill="#5a3a22"/><rect x="2" y="5" width="12" height="9" fill="#8a5a32"/><rect x="2" y="5" width="12" height="2" fill="#b07a44"/><rect x="7" y="8" width="2" height="3" fill="#e6c35a"/><rect x="2" y="13" width="12" height="1" fill="#5a3a22"/></svg>
+        <span>{{ t('play.td.dock.bag') }}</span><kbd>I</kbd>
+      </button>
+      <button type="button" (click)="spellbookOpen = !spellbookOpen; sheetOpen = false" [attr.aria-expanded]="spellbookOpen" [title]="t('play.td.dock.book') + ' (K)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#6b3aa0"/><rect x="3" y="3" width="10" height="10" fill="#3b2140"/><rect x="7" y="2" width="2" height="12" fill="#2a1a24"/><rect x="4" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="5" width="2" height="1" fill="#e9d8ff"/><rect x="4" y="8" width="2" height="1" fill="#e9d8ff"/><rect x="10" y="8" width="2" height="1" fill="#e9d8ff"/></svg>
+        <span>{{ t('play.td.dock.book') }}</span><kbd>K</kbd>
+      </button>
+      <button type="button" (click)="sheetOpen = !sheetOpen; spellbookOpen = false" [attr.aria-expanded]="sheetOpen" [title]="t('play.td.dock.sheet') + ' (C)'">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="5" y="1" width="6" height="6" fill="#c9d6b8"/><rect x="4" y="1" width="8" height="3" fill="#2e2238"/><rect x="6" y="4" width="1" height="1" fill="#b06bff"/><rect x="9" y="4" width="1" height="1" fill="#b06bff"/><rect x="3" y="8" width="10" height="7" fill="#2e2238"/><rect x="7" y="8" width="2" height="7" fill="#e9e4f0"/><rect x="3" y="8" width="10" height="1" fill="#4a3a5a"/></svg>
+        <span>{{ t('play.td.dock.sheet') }}</span><kbd>C</kbd>
+      </button>
+      <button type="button" (click)="togglePlaces()" [attr.aria-expanded]="placesOpen" [title]="t('play.td.dock.places')">
+        <svg viewBox="0 0 16 16" width="28" height="28" shape-rendering="crispEdges" aria-hidden="true"><rect x="2" y="2" width="12" height="12" fill="#e9dcae"/><rect x="2" y="2" width="12" height="1" fill="#b89a5a"/><rect x="2" y="13" width="12" height="1" fill="#b89a5a"/><rect x="4" y="5" width="3" height="2" fill="#6f9a3c"/><rect x="9" y="8" width="3" height="3" fill="#5aa8ff"/><rect x="6" y="9" width="1" height="1" fill="#b8432e"/><rect x="7" y="8" width="1" height="1" fill="#b8432e"/><rect x="8" y="7" width="1" height="1" fill="#b8432e"/><rect x="10" y="4" width="2" height="2" fill="#b8432e"/></svg>
+        <span>{{ t('play.td.dock.places') }}</span>
+      </button>
+    </nav>
+  }
+  <!-- The chat box (owner 2026-10-20: "chat like OSRS, a little box left side, vanishes if needed"): Game (this device's
+       own lines) and Chat (the Hearth room); it fades when quiet, wakes on a new line or a hover, and hides to a tab. -->
+  @if (topDown && !panel) {
+    @if (chatHidden) {
+      <button type="button" class="td-chat-tab" (click)="chatHidden = false; chatLastAt = 0" [attr.aria-label]="t('play.chat.show')" data-engine-ignore>{{ t('play.chat.label') }}</button>
+    } @else {
+      <section class="td-chat" [class.td-chat--quiet]="chatQuiet && chatTab === 'game'" [attr.aria-label]="t('play.chat.label')" data-engine-ignore>
+        <header class="td-chat__tabs" role="tablist">
+          <button type="button" role="tab" [attr.aria-selected]="chatTab === 'game'" (click)="chatTab = 'game'; chatLastAt = 0">{{ t('play.chat.game') }}</button>
+          <button type="button" role="tab" [attr.aria-selected]="chatTab === 'public'" (click)="openPublicChat()">{{ t('play.chat.public') }}@if (social.connected) { <small>{{ t('play.chat.online', { n: social.players.length }) }}</small> }</button>
+          <button type="button" class="td-chat__x" (click)="chatHidden = true" [attr.aria-label]="t('play.chat.hide')">&minus;</button>
+        </header>
+        <ol class="td-chat__log" aria-live="polite">
+          @if (chatTab === 'game') {
+            @for (line of gameLog.slice(-7); track line.key) { <li class="td-chat__game">{{ line.text }}</li> }
+            @empty { <li class="td-chat__empty">{{ t('play.chat.empty') }}</li> }
+          } @else {
+            @for (m of social.messages.slice(-7); track m.id) { <li><b>{{ m.name }}:</b> {{ m.text }}</li> }
+            @empty { <li class="td-chat__empty">{{ social.connected ? t('play.chat.quiet') : (joining ? t('play.chat.joining') : social.status) }}</li> }
+          }
+        </ol>
+        @if (chatTab === 'public') {
+          @if (social.connected) {
+            <form class="td-chat__say" (submit)="$event.preventDefault(); sendChat(chatInput)">
+              <input #chatInput type="text" maxlength="240" autocomplete="off" [placeholder]="t('play.chat.say')" [attr.aria-label]="t('play.chat.say')" [disabled]="sending">
+              <button type="submit" [disabled]="sending">{{ t('play.chat.send') }}</button>
+            </form>
+          } @else if (!joining) {
+            <button type="button" class="td-chat__join" (click)="openPublicChat()">{{ t('play.chat.join', { name: keeperName || 'Keeper' }) }}</button>
+          }
+        }
+      </section>
+    }
   }
   <!-- The character sheet (C), D2's attributes page made cozy: level, points to spend, what each point gives. -->
   @if (topDown && sheetOpen && !panel) {
@@ -107,6 +160,11 @@
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
     <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i></div>
+    <!-- Phones (OSRS mobile): life and mana as round orbs beside the minimap; the plates are desktop's. -->
+    <div class="td-orbs" aria-hidden="true" data-engine-ignore>
+      <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp"><b>{{ hpShown }}</b></i>
+      <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana"><b>{{ tdMana }}</b></i>
+    </div>
   }
   <header class="topbar" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <a routerLink="/play" class="wordmark">Eclipse</a>
@@ -237,6 +295,13 @@
   }
 
   <div class="vitals" [attr.aria-label]="t('play.hud.health')" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
+    @if (topDown) {
+      <!-- The portrait (docs/design/ui-pass-top-heroes.md): the Keeper's face in a frame, the level on its corner. -->
+      <div class="hero-face" aria-hidden="true">
+        @if (tdPortrait) { <img [src]="tdPortrait" alt=""> }
+        <b class="hero-lv">{{ huntingLevel }}</b>
+      </div>
+    }
     <div class="vital">
       <label>{{ keeperName || t('play.hud.keeper') }}@if (topDown) { <span class="vital__lv">{{ t('play.td.level', { n: huntingLevel }) }}</span> } <b>{{ hpShown }}</b></label>
       <div class="meter"><s [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></s><i [style.--fill]="state.hp / (topDown ? tdMaxHp : pushed.maxHp)"></i></div>
@@ -393,9 +458,9 @@
     <!-- Coins, Ore and Ember are the plate; edge, damage and kills are read out (screen
          readers, the specs) but not painted: the doll and Stats already show them. -->
     <div class="tally">
-      <p><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
-      <p><span>{{ t('play.hud.tally.ore') }}</span><b class="ore-count">{{ ore }}</b></p>
-      <p><span>{{ t('play.hud.tally.ember') }}</span><b class="ember-count">{{ ember }}</b></p>
+      <p><i class="tally-coin" aria-hidden="true"></i><span>{{ t('play.hud.tally.coins') }}</span><b class="coin-count">{{ coinsKept }}</b></p>
+      <p>@if (oreArt) { <img class="tally-ico" [src]="oreArt" alt="" aria-hidden="true"> }<span>{{ t('play.hud.tally.ore') }}</span><b class="ore-count">{{ ore }}</b></p>
+      <p>@if (emberArt) { <img class="tally-ico" [src]="emberArt" alt="" aria-hidden="true"> }<span>{{ t('play.hud.tally.ember') }}</span><b class="ember-count">{{ ember }}</b></p>
       <p class="tally-quiet"><span>{{ t('play.hud.tally.edge') }}</span><b>{{ edge ? t(equipped ? 'play.hud.tally.worn' : 'play.hud.tally.bag') : '—' }}</b></p>
       <p class="tally-quiet"><span>{{ t('play.hud.tally.damage') }}</span><b>{{ pushed.damage }}</b></p>
       <p class="tally-quiet"><span>{{ t('play.hud.tally.defeated') }}</span><b>{{ state.kills || 0 }}</b></p>
@@ -458,7 +523,7 @@
               <!-- The Keeper in the middle (their own look, wearing what is worn); the wells frame it. -->
               <span class="doll-figure" aria-hidden="true">@if (dollFigure) { <img [src]="dollFigure" alt="" width="176" height="176"> }</span>
               @for (well of wells; track well.id) {
-                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
+                <button type="button" class="well" (pointerenter)="hoverWell(well.id, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [attr.data-slot]="well.id" [class.filled]="well.filled" [class.prime]="well.id === 'weapon'" [class.picked]="pickedWell(well.id)" [style.--pip]="well.tone" (click)="chooseWell(well, $event)" [attr.aria-pressed]="pickedWell(well.id)" [attr.aria-label]="well.name + ', ' + well.label" [title]="well.name">
                   @if (well.filled && well.art) {
                     <img [src]="well.art" alt="">
                   } @else if (well.filled) {
@@ -492,7 +557,7 @@
         } @else {
           <div class="pockets">
             @for (pocket of shownPockets; track pocket.key) {
-              <button type="button" class="pocket" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
+              <button type="button" class="pocket" (pointerenter)="hoverPocket(pocket, $event)" (pointermove)="moveTip($event)" (pointerleave)="hoverTip = null" [class.picked]="pickedPocket(pocket)" [style.--pip]="pocket.pip" [style.--rim]="pocket.kind === 'item' ? pocket.pip : null" (click)="choosePocket(pocket, $event)" [attr.aria-pressed]="pickedPocket(pocket)" [attr.aria-label]="pocket.name + (pocket.qty > 1 ? ', ' + pocket.qty : '')">
                 @if (pocket.art) {
                   <img [src]="pocket.art" alt="">
                 } @else {
@@ -522,22 +587,21 @@
           </footer>
         </div>
       </div>
-      @if (hoverTip; as tip) {
-        <!-- The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): framed in its rarity, a big
-             icon, the stat it is for, the rest as coloured affixes, its wells and worth; nothing to press. -->
-        <div class="d2tip" role="tooltip" [style.left.px]="tip.x + 16" [style.top.px]="tip.y + 12" [attr.data-rarity]="tip.row.tip?.rarity ?? 'material'">
+      <!-- The item card's body: shared by the hover card and the card pinned by a click (owner: "when you click on the item
+           … this huge UI that is really ugly" — a click now pins this same small card with its actions). -->
+      <ng-template #cardBody let-row>
           <header class="d2tip__head">
             <div class="d2tip__icon" aria-hidden="true">
-              @if (tip.row.art) { <img [src]="tip.row.art" alt=""> } @else { <em>{{ tip.row.mark }}</em> }
+              @if (row.art) { <img [src]="row.art" alt=""> } @else { <em>{{ row.mark }}</em> }
             </div>
             <div class="d2tip__title">
-              <b>{{ tip.row.name }}</b>
-              @if (tip.row.tip?.typeLine) { <span>{{ tip.row.tip?.typeLine }}</span> }
-              @if (tip.row.tip?.rarityWord) { <span class="d2tip__rarity">{{ tip.row.tip?.rarityWord }}</span> }
-              @if (tip.row.tip?.value) { <span class="d2tip__worth"><i class="coin" aria-hidden="true"></i>{{ tip.row.tip!.value.toLocaleString('en-US') }}</span> }
+              <b>{{ row.name }}</b>
+              @if (row.tip?.typeLine) { <span>{{ row.tip?.typeLine }}</span> }
+              @if (row.tip?.rarityWord) { <span class="d2tip__rarity">{{ row.tip?.rarityWord }}</span> }
+              @if (row.tip?.value) { <span class="d2tip__worth"><i class="coin" aria-hidden="true"></i>{{ row.tip!.value.toLocaleString('en-US') }}</span> }
             </div>
           </header>
-          @if (tip.row.tip; as it) {
+          @if (row.tip; as it) {
             @if (it.tag || it.itemLevel) {
               <p class="d2tip__meta">
                 @if (it.tag) { <b class="d2tip__tag" [attr.data-tag]="it.tag">{{ it.tag === 'flawless' ? t('play.tip.flawless') : t('play.tip.perfect') }}</b> }
@@ -561,15 +625,15 @@
               </ul>
             }
           } @else {
-            @for (stat of tip.row.stats; track stat) { <p class="d2tip__line">{{ stat }}</p> }
+            @for (stat of row.stats; track stat) { <p class="d2tip__line">{{ stat }}</p> }
           }
-          @if (tip.row.compare.length) {
+          @if (row.compare.length) {
             <div class="d2tip__compare">
-              <small>{{ tip.row.compareLabel }}</small>
-              @for (d of tip.row.compare; track d.key) { <i [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'">{{ d.text }}</i> }
+              <small>{{ row.compareLabel }}</small>
+              @for (d of row.compare; track d.key) { <i [class.up]="d.direction === 'up'" [class.down]="d.direction === 'down'">{{ d.text }}</i> }
             </div>
           }
-          @if (tip.row.tip; as it) {
+          @if (row.tip; as it) {
             @if (it.bound || it.value || it.tempered) {
               <footer class="d2tip__foot">
                 @if (it.tempered) { <span>{{ t('play.tip.tempered', { n: it.tempered }) }}</span> }
@@ -578,10 +642,30 @@
               </footer>
             }
           }
+      </ng-template>
+      @if (hoverTip && !(topDown && slip); as tip) {
+        <!-- The hover card (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg): framed in its rarity; nothing to press. -->
+        <div class="d2tip" role="tooltip" [style.left.px]="hoverTip.x + 16" [style.top.px]="hoverTip.y + 12" [attr.data-rarity]="hoverTip.row.tip?.rarity ?? 'material'">
+          <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: hoverTip.row }" />
         </div>
       }
-      @if (slip; as row) {
-        <!-- The item card: name in its rarity colour, the few stats, one primary action. -->
+      @if (topDown && slip; as row) {
+        <!-- A click pins the same card beside the item, with its actions under it. -->
+        <div class="d2tip d2tip--pinned" role="dialog" [attr.aria-label]="row.name" [style.left.px]="pickAt.x" [style.top.px]="pickAt.y" [attr.data-rarity]="row.tip?.rarity ?? 'material'" (keydown.escape)="unpick()">
+          <button type="button" class="d2tip__close" (click)="unpick()" [attr.aria-label]="t('play.hud.book.close')">&times;</button>
+          <ng-container *ngTemplateOutlet="cardBody; context: { $implicit: row }" />
+          @if (row.canWear || row.canStow || row.canSend || pickIsCrate) {
+            <div class="d2tip__actions">
+              @if (pickIsCrate) { <button type="button" class="wear" (click)="openCrate()">{{ t('play.fish.ui.open') }}</button> }
+              @if (row.canWear) { <button type="button" class="wear" (click)="wear()">{{ t('play.hud.book.wear') }}</button> }
+              @if (row.canStow) { <button type="button" class="wear" (click)="stow()">{{ t('play.hud.book.stow') }}</button> }
+              @if (row.canSend) { <button type="button" class="to-vault" (click)="sendToVault()">{{ (row.count ?? 1) > 1 ? t('play.hud.book.toVaultN', { n: row.count ?? 1 }) : t('play.hud.book.toVault') }}</button> }
+            </div>
+          }
+        </div>
+      }
+      @if (!topDown && slip; as row) {
+        <!-- The item card (side view): name in its rarity colour, the few stats, one primary action. -->
         <footer class="slip" [style.--tone]="row.tone">
           <div class="slip-art" aria-hidden="true">
             @if (row.art) { <img [src]="row.art" alt=""> }
@@ -660,6 +744,9 @@
     <p class="keys"><kbd>A</kbd><kbd>D</kbd> {{ t('play.hud.key.move') }} <kbd>Space</kbd> {{ t('play.hud.key.jump') }} <kbd>J</kbd> {{ t('play.hud.key.attack') }} <kbd>K</kbd> {{ t('play.hud.key.dodge') }} <kbd>S</kbd> {{ t('play.hud.key.dig') }} <kbd>L</kbd> {{ t('play.hud.key.blast') }} <kbd>1</kbd>-<kbd>9</kbd> {{ t('play.hud.key.choose') }} <kbd>B</kbd> {{ t('play.hud.key.place') }} <kbd>X</kbd> {{ t('play.hud.key.take') }} <kbd>W</kbd>/<kbd>S</kbd> {{ t('play.hud.key.climb') }} <kbd>{{ t('play.hud.key.holdTap') }}</kbd> {{ t('play.hud.key.holdTapDo') }} <kbd>M</kbd> {{ t('play.hud.key.map') }} <kbd>E</kbd> {{ t('play.hud.key.interact') }} <kbd>I</kbd> {{ t('play.hud.key.satchel') }} <kbd>{{ t('play.hud.key.click') }}</kbd> {{ t('play.hud.key.walk') }}</p>
   }
 
+  <!-- The Hearth chat is out of the top-down game (owner 2026-10-20: "I hate that hearth chat, it does not work");
+       the side view keeps it. -->
+  @if (!topDown) {
   <!-- The Hearth chat. Folded it is one pill clear of the stalls and the action
        bar; open, the panel. The body stays in the DOM (hidden) so the pill's
        aria-controls always resolves and the room keeps whatever was typed. -->
@@ -707,6 +794,7 @@
     </form>
     </div>
   </section>
+  }
 
   <!-- Touch. A coarse pointer from 901px: one grid row, as it always was.
        Phones: movement on the left, actions on the right, one row, in a band

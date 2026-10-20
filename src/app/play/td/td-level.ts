@@ -129,3 +129,35 @@ export class HandLevel implements TdLevel {
   placeName(): string { return this.def.name; }
   spawnsIn(): MobSpawn[] { return this.spawns; }
 }
+
+/** The Keeper's collision box at the feet (art px): small, so doorways and passages never catch. */
+export const FOOT = { w: 6, h: 3 } as const;
+
+/** Can the Keeper's feet stand at (x, y) on this level? Its four foot corners must all be walkable. */
+export function footFree(level: { walkable(c: number, r: number): boolean }, x: number, y: number): boolean {
+  for (const [px, py] of [[x - FOOT.w / 2, y - FOOT.h], [x + FOOT.w / 2, y - FOOT.h], [x - FOOT.w / 2, y - 1], [x + FOOT.w / 2, y - 1]]) {
+    if (!level.walkable(Math.floor(px / TILE), Math.floor(py / TILE))) return false;
+  }
+  return true;
+}
+
+/**
+ * Where to stand when arriving at (x, y) — a door, a stair, a cave mouth (owner 2026-10-20: "I get stuck frequently
+ * inside caves or buildings"). The spot in front of a way in is often wall (a door on a room's bottom row, a stair
+ * against the back wall), and a Keeper set down inside a wall cannot move at all. So: the asked-for spot if it is
+ * free, else the nearest free spot, tile by tile outward, up to six tiles.
+ */
+export function standNear(level: { walkable(c: number, r: number): boolean }, x: number, y: number): { x: number; y: number } {
+  if (footFree(level, x, y)) return { x, y };
+  const tc = Math.floor(x / TILE), tr = Math.floor((y - 1) / TILE);
+  const spots: { x: number; y: number; d: number }[] = [];
+  for (let dr = -6; dr <= 6; dr++) for (let dc = -6; dc <= 6; dc++) {
+    // A tile's centre, feet a little above its bottom edge.
+    const sx = (tc + dc) * TILE + TILE / 2, sy = (tr + dr) * TILE + TILE - 2;
+    spots.push({ x: sx, y: sy, d: Math.hypot(sx - x, sy - y) });
+  }
+  spots.sort((a, b) => a.d - b.d);
+  for (const sp of spots) if (footFree(level, sp.x, sp.y)) return { x: sp.x, y: sp.y };
+  return { x, y };
+}
+

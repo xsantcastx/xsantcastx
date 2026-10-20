@@ -11,7 +11,7 @@ import type { ItemStats } from '../../shared/rpg/item.model';
 
 export type SkillKind = 'active' | 'aura' | 'passive';
 export type SkillId =
-  | 'drain-life' | 'ember-curse' | 'hellfire-nova' | 'dark-ward'
+  | 'drain-life' | 'ember-curse' | 'hellfire-nova' | 'dark-ward' | 'bone-spear' | 'raise-skeleton'
   | 'aura-embers' | 'aura-siphon'
   | 'soul-harvest' | 'ember-bolt';
 
@@ -59,6 +59,16 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
     vars: { absorb: 40, secs: 12 },
     icon: I('<rect x="3" y="2" width="10" height="9" fill="#6b3aa0"/><rect x="4" y="3" width="8" height="7" fill="#b06bff"/><rect x="5" y="11" width="6" height="2" fill="#6b3aa0"/><rect x="7" y="13" width="2" height="2" fill="#6b3aa0"/><rect x="6" y="5" width="4" height="3" fill="#e9d8ff"/>'),
   },
+  'bone-spear': {
+    id: 'bone-spear', kind: 'active', mana: 14, cd: 3, nameKey: 'skill.bone-spear', textKey: 'skill.bone-spear.text',
+    vars: { min: 22, max: 32, range: 8 },
+    icon: I('<rect x="12" y="1" width="3" height="3" fill="#ffffff"/><rect x="10" y="3" width="3" height="3" fill="#e8e1cf"/><rect x="8" y="5" width="3" height="3" fill="#e8e1cf"/><rect x="6" y="7" width="3" height="3" fill="#b8ac92"/><rect x="4" y="9" width="3" height="3" fill="#b8ac92"/><rect x="1" y="11" width="4" height="4" fill="#b06bff"/><rect x="2" y="12" width="2" height="2" fill="#e9d8ff"/>'),
+  },
+  'raise-skeleton': {
+    id: 'raise-skeleton', kind: 'active', mana: 30, cd: 12, nameKey: 'skill.raise-skeleton', textKey: 'skill.raise-skeleton.text',
+    vars: { count: 2, max: 2, secs: 40, reach: 5, hp: 50, dmg: 7 },
+    icon: I('<rect x="5" y="1" width="6" height="5" fill="#ddd2ea"/><rect x="6" y="3" width="1" height="1" fill="#b06bff"/><rect x="9" y="3" width="1" height="1" fill="#b06bff"/><rect x="6" y="6" width="4" height="1" fill="#a99bc0"/><rect x="4" y="7" width="8" height="1" fill="#ddd2ea"/><rect x="5" y="9" width="6" height="1" fill="#ddd2ea"/><rect x="7" y="7" width="2" height="5" fill="#a99bc0"/><rect x="2" y="12" width="12" height="3" fill="#3b2140"/><rect x="3" y="12" width="10" height="1" fill="#6b3aa0"/>'),
+  },
   'aura-embers': {
     id: 'aura-embers', kind: 'aura', mana: 0, cd: 0, nameKey: 'skill.aura-embers', textKey: 'skill.aura-embers.text',
     vars: { dps: 3, radius: 3 },
@@ -78,7 +88,8 @@ export const SKILLS: Readonly<Record<SkillId, SkillDef>> = {
 
 /** Each class's book: its actives (the order is the default bar), its auras, its passives. */
 export const CLASS_SKILLS: Readonly<Record<Vocation, readonly SkillId[]>> = {
-  warlock: ['drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'aura-embers', 'aura-siphon', 'ember-bolt', 'soul-harvest'],
+  // The first four actives are the default bar; Bone Spear and Raise Skeleton wait in the Spellbook to be put on a key.
+  warlock: ['drain-life', 'ember-curse', 'hellfire-nova', 'dark-ward', 'bone-spear', 'raise-skeleton', 'aura-embers', 'aura-siphon', 'ember-bolt', 'soul-harvest'],
 };
 
 export const MAX_MANA = 60;

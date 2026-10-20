@@ -23,13 +23,14 @@ import type { KeeperGear } from '../../shared/keeper-look/keeper-gear';
 import { PAL, paintEdge, paintGround, TILE, type Ground, type Sprite } from './td-art';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
 import { TdWorld } from './td-world';
-import { HandLevel, type TdLevel } from './td-level';
+import { HandLevel, footFree, standNear, type TdLevel } from './td-level';
 import { EMBER_MINE_1 } from './maps/ember-mine-1';
 import { EMBER_MINE_2, EMBER_MINE_3 } from './maps/ember-mine-deep';
 import { SLAGSTONE_CAVE } from './maps/slagstone-cave';
 import { EMBER_INN_1, EMBER_INN_2 } from './maps/ember-inn';
 import { PYRE_SPIRE_1, PYRE_SPIRE_2, PYRE_SPIRE_3 } from './maps/pyre-spire';
 import { MOLTEN_DEEP_1, MOLTEN_DEEP_2, MOLTEN_DEEP_3 } from './maps/molten-deep';
+import { ASHEN_CRYPT_1, ASHEN_CRYPT_2 } from './maps/ashen-crypt';
 import { SALTED_EMBER_0, SALTED_EMBER_1 } from './maps/cinderport';
 import { WOODWARD_LODGE_1, WOODWARD_LODGE_2 } from './maps/ashgrove';
 import { EMBER_ISLE_DEF } from './maps/ember-isle';
@@ -39,28 +40,30 @@ import type { TdMapDef } from './td-level';
 
 /** Every hand-drawn level under (or over) the surface, by id. */
 /** Every continent, by id (ships sail between them). */
-const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF };
+export const CONTINENTS: Readonly<Record<string, ContinentDef>> = { 'ember-isle': EMBER_ISLE_DEF, 'infernal-reach': INFERNAL_REACH_DEF };
 
-const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
+export const LEVELS: Readonly<Record<string, TdMapDef>> = { 'ember-mine-1': EMBER_MINE_1, 'ember-mine-2': EMBER_MINE_2, 'ember-mine-3': EMBER_MINE_3, 'slagstone-cave': SLAGSTONE_CAVE, 'ember-inn-1': EMBER_INN_1, 'ember-inn-2': EMBER_INN_2,
   'pyre-spire-1': PYRE_SPIRE_1, 'pyre-spire-2': PYRE_SPIRE_2, 'pyre-spire-3': PYRE_SPIRE_3,
   'molten-deep-1': MOLTEN_DEEP_1, 'molten-deep-2': MOLTEN_DEEP_2, 'molten-deep-3': MOLTEN_DEEP_3,
+  'ashen-crypt-1': ASHEN_CRYPT_1, 'ashen-crypt-2': ASHEN_CRYPT_2,
   'salted-ember-1': SALTED_EMBER_1, 'salted-ember-0': SALTED_EMBER_0, 'woodward-lodge-1': WOODWARD_LODGE_1, 'woodward-lodge-2': WOODWARD_LODGE_2 };
 /** Doors on the surface into a building's ground floor (a town's stall station id → the level and where to stand). */
 const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'inn-door': { to: 'ember-inn-1', arrive: 'inn-out' }, 'spire-door': { to: 'pyre-spire-1', arrive: 'spire-out' },
   'salted-door': { to: 'salted-ember-1', arrive: 'salted-out' }, 'lodge-door': { to: 'woodward-lodge-1', arrive: 'lodge-out' },
 };
-import { MobSystem, mobSheet, type Mob } from './td-mobs';
+import { MobSystem, RAISED_SKELETON, mobSheet, type Minion, type Mob } from './td-mobs';
 import { SKILLS, defaultBar, fightStats, type SkillId } from './td-skills';
 import type { ItemStats } from '../../shared/rpg/item.model';
 
 /** The worn-gear keys the fight reads (they make up the build's cache key). */
 const GEAR_KEYS: readonly (keyof ItemStats)[] = ['life', 'mana', 'defense', 'spellDamage', 'castSpeed', 'moveSpeed', 'critChance', 'lifeRegen', 'manaRegen'];
 
+/** HUD portraits by look (heroPortrait). */
+const portraits = new WeakMap<KeeperPainter, string>();
 const CHUNK = 16;
 const SPEED = 74;              // art px / s
 const REACH = 26;              // art px from a stall's interaction spot
-const FOOT = { w: 6, h: 3 };   // the Keeper's collision box at the feet (art px): small, so doorways and passages never catch
 const FOLK = 16;               // townsfolk strolling the square (the references' busy plaza)
 const FOLK_SPEED = 30;         // art px / s: a stroll, under half the Keeper's pace
 
@@ -106,6 +109,9 @@ export class TopDownEngine {
   private readonly streets: number[] = [];
   private readonly keys = new Set<string>();
   private path: { x: number; y: number }[] = [];
+  /** Walking a path: the closest the Keeper has come to the next step, and how long without getting closer. */
+  private pathBest = Infinity;
+  private pathStall = 0;
   private arrive: (() => void) | null = null;
   private joy: { id: number; sx: number; sy: number; x: number; y: number; active: boolean } | null = null;
   private puffs: Puff[] = [];
@@ -147,6 +153,8 @@ export class TopDownEngine {
       player: () => this.player,
       hurtPlayer: n => this.hurt(n),
       healPlayer: n => { this.hp = Math.min(this.maxHp, this.hp + n); },
+      hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember',
+      passable: (c, r) => { const g = this.level.ground(c, r); return g !== 'rock' && g !== 'wall'; },
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
     });
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
@@ -325,10 +333,53 @@ export class TopDownEngine {
     const w = this.toWorld(clientX, clientY);
     return { x: w.x, y: w.y, station: this.stallAt(w.x, w.y)?.station ?? null };
   }
+  /**
+   * The Keeper's face for the HUD portrait (owner 2026-10-20: the Top Heroes frame, docs/design/ui-pass-top-heroes.md):
+   * the head and shoulders of the front sprite, as a data URL, made once per look.
+   */
+  heroPortrait(): string {
+    const painter = this.player.painter;
+    if (!painter || typeof document === 'undefined') return '';
+    let url = portraits.get(painter);
+    if (url) return url;
+    const sheet = frontSheet(painter, true), out = document.createElement('canvas');
+    out.width = FRONT_W + 2; out.height = 22;
+    out.getContext('2d')!.drawImage(sheet, 0, 0, FRONT_W + 2, 22, 0, 0, FRONT_W + 2, 22);
+    url = out.toDataURL();
+    portraits.set(painter, url);
+    return url;
+  }
   delveAnchors(): readonly never[] { return []; }
   hasDelveCamp(): boolean { return false; }
   readRiftMap(): boolean { return false; }
   get places(): readonly StationDef[] { return this.level.stalls.map(s => s.station); }
+  /** Where the Keeper stands — continent, level (or 'surface'), position — so the HUD can save it and a reload resumes there. */
+  get whereabouts(): { continent: string; level: string; x: number; y: number } {
+    return { continent: this.world.continent, level: this.level === this.world ? 'surface' : this.level.id, x: Math.round(this.player.x), y: Math.round(this.player.y) };
+  }
+  /**
+   * Put the Keeper back where they last stood (owner 2026-10-20: "not saving in my last location"). Anything unknown —
+   * a continent or level that no longer exists — keeps the arrival square; a spot a map change walled in becomes the
+   * nearest free one (standNear), never a wall.
+   */
+  restoreWhereabouts(w: { continent?: unknown; level?: unknown; x?: unknown; y?: unknown }): boolean {
+    if (typeof w.continent !== 'string' || typeof w.level !== 'string' || typeof w.x !== 'number' || typeof w.y !== 'number' || !Number.isFinite(w.x) || !Number.isFinite(w.y)) return false;
+    const def = CONTINENTS[w.continent];
+    if (!def || (w.level !== 'surface' && !LEVELS[w.level])) return false;
+    if (w.continent !== this.world.continent) {
+      let next = this.continents.get(w.continent);
+      if (!next) { next = new TdWorld(def); this.continents.set(w.continent, next); }
+      this.world = next; this.map = next.town; this.populate();
+    }
+    const level = w.level === 'surface' ? this.world : this.handLevel(w.level);
+    this.enter(level, '');
+    const spot = standNear(level, w.x, w.y);
+    if (!footFree(level, spot.x, spot.y)) { this.enter(this.world, ''); this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y; return false; }
+    this.player.x = spot.x; this.player.y = spot.y;
+    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
+    this.report();
+    return true;
+  }
   get settlementKeepers(): readonly { id: string; x: number; y: number; upstairs: boolean; mark: '!' | '?' | null }[] {
     return this.map.stalls.filter(s => s.keeper).map(s => ({ id: s.keeper!.id, x: s.keeper!.x, y: s.keeper!.y, upstairs: false, mark: null }));
   }
@@ -345,8 +396,10 @@ export class TopDownEngine {
     for (const st of this.level.stalls) if (st.station.id === id) { const d = Math.hypot(st.x - this.player.x, st.y - this.player.y); if (d < best) { best = d; s = st; } }
     if (!s) return false;
     // Instant (reduced motion, a deep link): stand there and use it, as the side view's travel did.
-    if (instant) { this.player.x = s.x; this.player.y = s.y + 10; this.path = []; this.use(s); return true; }
-    return this.walkTo(s.x, s.y + 10, () => this.use(s));
+    // In front of it, or the nearest free spot (a stair against the back wall has no "in front").
+    const spot = standNear(this.level, s.x, s.y + 10);
+    if (instant) { this.player.x = spot.x; this.player.y = spot.y; this.path = []; this.use(s); return true; }
+    return this.walkTo(spot.x, spot.y, () => this.use(s));
   }
   moveTo(x: number, onArrive?: () => void): boolean { return this.walkTo(x, this.player.y, onArrive); }
 
@@ -374,8 +427,9 @@ export class TopDownEngine {
     this.chunks.clear();
     this.path = []; this.arrive = null; this.puffs = [];
     this.mobs.enterLevel(level === this.world ? [] : level.spawnsIn(-1e6, -1e6, 1e6, 1e6));
+    // In front of the way in, or the nearest free spot to it: never inside a wall (standNear, td-level.ts).
     const s = level.stalls.find(st => st.station.id === at);
-    if (s) { this.player.x = s.x; this.player.y = s.y + 14; }
+    if (s) { const spot = standNear(level, s.x, s.y + 10); this.player.x = spot.x; this.player.y = spot.y; }
     this.player.dir = 'down';
     this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
     this.report();
@@ -409,7 +463,12 @@ export class TopDownEngine {
     if (vx || vy) { this.path = []; this.chop = null; }
     else if (this.path.length) {
       const p = this.path[0], dx = p.x - this.player.x, dy = p.y - this.player.y, d = Math.hypot(dx, dy);
-      if (d < 3) { this.path.shift(); if (!this.path.length) { const go = this.arrive; this.arrive = null; go?.(); } }
+      // No headway on this step for half a second (an edge the feet catch on): count it reached, never grind a wall.
+      if (d < this.pathBest - .5) { this.pathBest = d; this.pathStall = 0; } else this.pathStall += dt;
+      if (d < 3 || (this.pathStall > .5 && d < TILE * 1.5)) {
+        this.path.shift(); this.pathBest = Infinity; this.pathStall = 0;
+        if (!this.path.length) { const go = this.arrive; this.arrive = null; go?.(); }
+      } else if (this.pathStall > 1.5) { this.path = []; this.arrive = null; this.pathBest = Infinity; this.pathStall = 0; }
       else { vx = dx / d; vy = dy / d; }
     }
     const len = Math.hypot(vx, vy);
@@ -458,12 +517,7 @@ export class TopDownEngine {
       if (dy && !dx && this.free(p.x + side * off, ny)) { const move = side * Math.min(step, off); if (this.free(p.x + move, p.y)) { p.x += move; return; } }
     }
   }
-  private free(x: number, y: number): boolean {
-    for (const [px, py] of [[x - FOOT.w / 2, y - FOOT.h], [x + FOOT.w / 2, y - FOOT.h], [x - FOOT.w / 2, y - 1], [x + FOOT.w / 2, y - 1]]) {
-      if (!this.level.walkable(Math.floor(px / TILE), Math.floor(py / TILE))) return false;
-    }
-    return true;
-  }
+  private free(x: number, y: number): boolean { return footFree(this.level, x, y); }
 
   private report(): void {
     const s = this.nearby;
@@ -483,7 +537,7 @@ export class TopDownEngine {
   private walkTo(x: number, y: number, onArrive?: () => void): boolean {
     const route = this.route(this.player.x, this.player.y, x, y);
     if (!route) return false;
-    this.path = route; this.arrive = onArrive ?? null;
+    this.path = route; this.arrive = onArrive ?? null; this.pathBest = Infinity; this.pathStall = 0;
     if (!route.length) { this.arrive = null; onArrive?.(); }
     return true;
   }
@@ -523,7 +577,8 @@ export class TopDownEngine {
     if (!g.has(goal)) return null;
     const pts: { x: number; y: number }[] = [];
     for (let k = goal; k !== start; k = from.get(k)!) pts.unshift({ x: colOf(k) * TILE + TILE / 2, y: rowOf(k) * TILE + TILE - 2 });
-    if (pts.length) pts[pts.length - 1] = { x: tx, y: ty };
+    // End on the exact spot asked for only when the feet fit there; else the last free tile's centre.
+    if (pts.length && footFree(this.level, tx, ty)) pts[pts.length - 1] = { x: tx, y: ty };
     return pts;
   }
 
@@ -828,6 +883,7 @@ export class TopDownEngine {
     for (const f of this.folk) if (surface && inView(f.x, f.y)) items.push({ y: f.y, draw: () => this.drawPerson(f, f.moving ? 'walk' : 'idle') });
     for (const g of this.mobs.drops) if (inView(g.x, g.y)) items.push({ y: g.y - 6, draw: () => this.drawDrop(g.x, g.y, g.color, !!g.item || !!g.rune, g.coins > 0) });
     for (const m of this.mobs.mobs) if (inView(m.x, m.y)) items.push({ y: m.y, draw: () => this.drawMob(m) });
+    for (const k of this.mobs.minions) if (inView(k.x, k.y)) items.push({ y: k.y, draw: () => this.drawRaised(k) });
     items.push({ y: this.player.y, draw: () => this.drawPerson(this.player, this.player.moving ? 'run' : 'idle') });
     items.sort((a, b) => a.y - b.y);
     for (const it of items) it.draw();
@@ -884,11 +940,31 @@ export class TopDownEngine {
     // The target stands in a red pixel square (Tibia).
     if (m === this.mobs.target) { c.strokeStyle = '#ff4a3a'; c.lineWidth = 1; c.strokeRect(Math.round(m.x - d.w / 2) - 2.5, Math.round(m.y - d.h) - 2.5, d.w + 5, d.h + 5); }
     c.save();
-    c.translate(Math.round(m.x), Math.round(m.y - d.h));
+    // A floater drifts a little above the floor; a ghost is half there, flickering.
+    const lift = d.floats ? Math.round(2 + Math.sin(m.t * 2.4) * 2) : 0;
+    c.translate(Math.round(m.x), Math.round(m.y - d.h - lift));
     if (m.face < 0) c.scale(-1, 1);
+    if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14 + (Math.random() < .04 ? -.25 : 0);
     c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
     if (m.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .7; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
     c.restore();
+  }
+  /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
+  private drawRaised(k: Minion): void {
+    const c = this.ctx, d = RAISED_SKELETON, sheet = mobSheet(d), f = Math.floor(k.t * 4) % 2;
+    c.globalAlpha = .35; c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - 7), Math.round(k.y - 2), 14, 3); c.globalAlpha = 1;
+    c.save();
+    // Rising out of the ground for its first half second; fading as its time runs out.
+    const rise = Math.max(0, 1 - k.t / .5);
+    c.translate(Math.round(k.x), Math.round(k.y - d.h + rise * d.h * .6));
+    if (k.face < 0) c.scale(-1, 1);
+    if (k.life < 3) c.globalAlpha = .4 + .6 * (k.life / 3);
+    c.drawImage(sheet, f * d.w, 0, d.w, Math.round(d.h * (1 - rise * .6)), -Math.floor(d.w / 2), 0, d.w, Math.round(d.h * (1 - rise * .6)));
+    if (k.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .6; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
+    c.restore();
+    const w = 14, frac = Math.max(0, k.hp / k.maxHp);
+    c.fillStyle = '#1a1014'; c.fillRect(Math.round(k.x - w / 2) - 1, Math.round(k.y - d.h - 5), w + 2, 3);
+    c.fillStyle = '#b06bff'; c.fillRect(Math.round(k.x - w / 2), Math.round(k.y - d.h - 4), Math.round(w * frac), 1);
   }
   /** A drop on the ground: a coin pile, a sack, or gear lying in a beam of its rarity colour. */
   private drawDrop(x: number, y: number, color: string, gear: boolean, coins: boolean): void {
@@ -940,6 +1016,14 @@ export class TopDownEngine {
         c.fillStyle = '#ff6a2a'; c.fillRect(X - 1, Y - 1, 2, 2);
       } else if (e.kind === 'ward') {
         c.strokeStyle = '#c8a8ff'; c.lineWidth = 2; c.beginPath(); c.ellipse(X, Y, 10 + t * 8, 14 + t * 8, 0, 0, Math.PI * 2); c.stroke();
+      } else if (e.kind === 'raise') {
+        // Violet motes climbing out of the ground, a crack of bone-light.
+        c.fillStyle = '#b06bff';
+        for (let i = 0; i < 7; i++) c.fillRect(Math.round(X - 8 + i * 2.6), Math.round(Y - 2 - t * (10 + (i % 3) * 8)), 2, 2);
+        c.fillStyle = '#e9d8ff'; c.fillRect(X - 6, Y - 1, 12, 1);
+      } else if (e.kind === 'spark') {
+        c.fillStyle = '#ff8a2e';
+        for (let i = 0; i < 5; i++) { const a = i / 5 * Math.PI * 2; c.fillRect(Math.round(X + Math.cos(a) * t * 8), Math.round(Y + Math.sin(a) * t * 8), 2, 2); }
       } else if (e.kind === 'bolt-hit') {
         c.fillStyle = '#ffd25a';
         for (let i = 0; i < 6; i++) { const a = i / 6 * Math.PI * 2; c.fillRect(Math.round(X + Math.cos(a) * t * 10), Math.round(Y + Math.sin(a) * t * 10), 2, 2); }
@@ -953,6 +1037,25 @@ export class TopDownEngine {
       const X = Math.round(b.x), Y = Math.round(b.y);
       c.globalAlpha = .45; c.fillStyle = '#b06bff'; c.fillRect(X - 3, Y - 3, 6, 6);
       c.globalAlpha = 1; c.fillStyle = '#ff8a2e'; c.fillRect(X - 2, Y - 2, 4, 4); c.fillStyle = '#fff2a8'; c.fillRect(X - 1, Y - 1, 2, 2);
+    }
+    // Creatures' shots: a bone arrow, a fire bolt, a gout of breath.
+    for (const s of this.mobs.shots) {
+      const X = Math.round(s.x), Y = Math.round(s.y), sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
+      if (s.kind === 'arrow') {
+        c.fillStyle = '#e8e1cf'; for (let i = 0; i < 6; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 1, 1);
+        c.fillStyle = '#c9c2cc'; c.fillRect(X, Y, 2, 2); c.fillStyle = '#ff8a2e'; c.fillRect(Math.round(X - ux * 6), Math.round(Y - uy * 6), 2, 1);
+      } else {
+        const r = s.kind === 'breath' ? 4 : 3;
+        c.globalAlpha = .45; c.fillStyle = '#9e2e1c'; c.fillRect(Math.round(X - ux * 5) - r, Math.round(Y - uy * 5) - r, r * 2, r * 2);
+        c.globalAlpha = 1; c.fillStyle = '#ff6a2a'; c.fillRect(X - r, Y - r, r * 2, r * 2); c.fillStyle = '#ffd25a'; c.fillRect(X - 1, Y - 1, 2, 2);
+      }
+    }
+    // Bone Spears: a white shaft with a violet tail.
+    for (const s of this.mobs.spears) {
+      const X = Math.round(s.x), Y = Math.round(s.y), sp = Math.hypot(s.vx, s.vy) || 1, ux = s.vx / sp, uy = s.vy / sp;
+      c.fillStyle = '#b06bff'; for (let i = 8; i < 13; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 1, 1);
+      c.fillStyle = '#e8e1cf'; for (let i = 0; i < 9; i++) c.fillRect(Math.round(X - ux * i), Math.round(Y - uy * i), 2, 2);
+      c.fillStyle = '#ffffff'; c.fillRect(X, Y, 2, 2);
     }
     // The Dark Ward round the Keeper while it holds; curse marks over cursed foes.
     if (this.mobs.ward > 0) {
