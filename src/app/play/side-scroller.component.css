@@ -3874,3 +3874,14 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .td-talk__acts button { flex: 1 1 0; }
   .td-talk__acts .td-talk__trade { margin-left: 0; }
 }
+
+/* Phones (owner 2026-10-20: "on phone sometimes the text is so much I can't see the buttons to equip"): the pinned
+   item card is a bottom sheet that scrolls inside itself, its actions stuck to its foot so they are always in reach. */
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .d2tip.d2tip--pinned { left: 8px !important; right: 8px; top: auto !important; bottom: calc(var(--hud-safe-b, 0px) + 8px); width: auto;
+    max-height: min(72dvh, calc(100% - 96px)); overflow-y: auto; overscroll-behavior: contain; padding-bottom: 0; }
+  .d2tip--pinned .d2tip__actions { position: sticky; bottom: 0; z-index: 1; margin: 0 -12px; padding: 8px 12px calc(10px + var(--hud-safe-b, 0px));
+    background: var(--cozy-wood-0); box-shadow: 0 -2px 0 0 color-mix(in srgb, var(--loot) 45%, transparent); }
+  .d2tip--pinned .d2tip__actions button { min-height: 44px; }
+  .d2tip--pinned::before, .d2tip--pinned::after { display: none; }
+}
