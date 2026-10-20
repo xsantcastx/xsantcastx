@@ -151,6 +151,24 @@ test('a first visit starts with making a character: the Glass opens with the War
   await expect(page.locator('.stage')).toHaveClass(/stage--td/);
 });
 
+test('a ship from Ember Harbour to Pyrehold on the mainland, and back', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', e => errors.push(e.message));
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await openTopDown(page);
+  const go = async (place: RegExp, area: RegExp) => {
+    await page.locator('.places-toggle').first().click();
+    await page.locator('#places-list button', { hasText: place }).first().click();
+    await expect(canvas(page)).toHaveAttribute('data-area', area, { timeout: 30000 });
+  };
+  await go(/ship to pyrehold/i, /pyrehold/i);
+  await go(/crafting bench/i, /pyrehold/i);
+  await page.keyboard.press('Escape');
+  await go(/ship to ember isle/i, /ember harbour/i);
+  expect(errors, errors.join('\n')).toEqual([]);
+});
+
 test('without the gate the side view is unchanged', async ({ page }) => {
   await seed(page, {});
   await page.goto('/play?td=0');
