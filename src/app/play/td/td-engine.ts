@@ -76,7 +76,9 @@ const DOORS: Readonly<Record<string, { to: string; arrive: string }>> = {
   'lantern-tower-door': { to: 'lantern-tower-0', arrive: 'lantern-tower-out' },
   'netloft-door': { to: 'netloft-1', arrive: 'netloft-out' }, 'herbal-door': { to: 'herbal-cottage-1', arrive: 'herbal-out' },
 };
-import { BOSS_TELL, CALL_TELL, CHANT_SECS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { BOSS_TELL, CALL_TELL, CHANT_SECS, MOBS, MobSystem, RAISED_SKELETON, mobSheet, windsUp, type Drop, type Minion, type Mob } from './td-mobs';
+import { FIRE_BURST, makePack } from './td-elites';
+import { drawAffixTells, drawBurstTell, drawEliteGround, drawElitePlate, eliteTint } from './td-elite-fx';
 import { SKILLS, defaultBar, fightStats, type SkillId, type TreeId } from './td-skills';
 import { FX, HOSTILE_EDGE, LEVEL_UP, LOOT, beamMotes, beamSteps, burst, circlePixels, conePixels, discSprite, drawBurst, drawRing, fxNoise, glowSquare, groundRing, linePixels, lootBeam, polyPoints, ringArc, scorchSprite, type LootRung, type Tones } from './td-fx';
 import type { ItemStats } from '../../shared/rpg/item.model';
@@ -249,6 +251,14 @@ export class TopDownEngine {
   /** For the screenshot spec (`?fxgold=1`, only under an automated browser): three real Gold piles laid east of the Keeper, once. */
   private readonly fxGold = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' && /[?&]fxgold=1\b/.test(location.search);
   private fxGoldLaid = false;
+  /**
+   * For the elite specs (`?fxelite=1`, only under an automated browser): a champion pack east of the Keeper and a named
+   * unique with three affixes west of him, once — real MobSystem packs, standing calm (no sight) so the shot holds still.
+   * `?fxelite=fight` lets them hunt (sight kept), to see the affixes work.
+   */
+  private readonly fxElite = typeof navigator !== 'undefined' && !!navigator.webdriver && typeof location !== 'undefined' ? (/[?&]fxelite=(1|fight)\b/.exec(location.search)?.[1] ?? null) : null;
+  private fxEliteLaid = false;
+  private eliteSeen = '';
   private goldSeen = -1;
   private showcase: Drop[] = [];
   private tellSeen = '';
@@ -279,7 +289,12 @@ export class TopDownEngine {
       hover: (c, r) => this.level.walkable(c, r) || this.level.ground(c, r) === 'ember' || this.level.ground(c, r) === 'blackwater',
       passable: (c, r) => { const g = this.level.ground(c, r); return g !== 'rock' && g !== 'wall' && g !== 'vinewall' && g !== 'bark'; },
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
+      // No elite pack in a town, a village or the clear ground round them (td-elites.ts).
+      safeAt: (x, y) => this.level === this.world && this.world.safeAt(Math.floor(x / TILE), Math.floor(y / TILE)),
     });
+    // Elite packs (roadmap §10 item 3): on in the world, a fresh salt each session so the same spot is not always one.
+    this.mobs.elites = true;
+    this.mobs.eliteSalt = Math.floor(Math.random() * 1e9).toString(36);
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
     this.placeCompanions();
     this.populate();
@@ -365,7 +380,7 @@ export class TopDownEngine {
   get maxMana(): number { return this.mobs.maxMana; }
   get maxHealth(): number { return this.maxHp; }
   /** The Keeper's pace now, art px a second: the base, the level's pace, Agility and worn Move Speed, Haste. */
-  get walkSpeed(): number { return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace); }
+  get walkSpeed(): number { return SPEED * (this.mobs.haste > 0 ? 1.5 : 1) * (1 + this.agility) * (1 + this.levelPace) * (1 - this.mobs.chill); }
   private buildKey = '';
   /**
    * The Keeper's level, spent points and worn gear totals (the HUD hands them in): life, mana, regeneration, spell
@@ -1683,9 +1698,15 @@ export class TopDownEngine {
     c.translate(Math.round(m.x), Math.round(m.y - d.h - lift));
     if (m.face < 0) c.scale(-1, 1);
     if (d.ghost) c.globalAlpha = .62 + Math.sin(m.t * 7 + m.hx) * .14 + (Math.random() < .04 ? -.25 : 0);
+    // Teleport's wind-up: it thins out where it stands before it is gone.
+    if ((m.blinkT ?? 0) > 0) c.globalAlpha *= .35 + .65 * Math.max(0, (m.blinkT ?? 0) / .45);
     c.drawImage(sheet, f * d.w, 0, d.w, d.h, -Math.floor(d.w / 2), 0, d.w, d.h);
+    // An elite's body tone: a champion blue, a unique leader a breath of gold (never over 25 %).
+    const tint = eliteTint(m);
+    if (tint) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = tint.alpha; c.fillStyle = tint.color; c.fillRect(-d.w / 2, 0, d.w, d.h); c.globalAlpha = 1; }
     if (m.hit > 0) { c.globalCompositeOperation = 'source-atop'; c.globalAlpha = .7; c.fillStyle = '#ffffff'; c.fillRect(-d.w / 2, 0, d.w, d.h); }
     c.restore();
+    if (m.elite) drawAffixTells(c, m, this.time, this.still);
   }
   /** A skeleton the Keeper raised: violet-eyed bones, a faint violet glow at its feet, its life in a small violet bar. */
   private drawRaised(k: Minion): void {
@@ -1758,6 +1779,33 @@ export class TopDownEngine {
 
   /** Loot pops: a burst in its colour as gear lands, a smaller one rising as it is taken; the showcase, when on. */
   private updateLoot(dt: number): void {
+    if (this.fxElite && !this.fxEliteLaid && this.time > .5) {
+      // Calm by default (no sight), so the pictures hold; `fight` keeps their sight.
+      this.fxEliteLaid = true;
+      // Open grass just outside the square (no wild spawns this close to town): the Keeper steps there, the packs
+      // stand either side of him with room for their plates, on a desktop and on a phone alike.
+      const p = this.player, calm = this.fxElite !== 'fight', pc = Math.floor(p.x / TILE), pr = Math.floor(p.y / TILE);
+      const open = (c0: number, r0: number) => { for (let dr = -6; dr <= 4; dr++) for (let dc = -11; dc <= 11; dc++) if (!this.level.walkable(c0 + dc, r0 + dr)) return false; return true; };
+      search: for (let rad = 6; rad <= 44; rad += 2) for (let k = 0; k < 24; k++) {
+        const c = pc + Math.round(Math.cos(k / 24 * Math.PI * 2) * rad), r = pr + Math.round(Math.sin(k / 24 * Math.PI * 2) * rad);
+        if (this.level === this.world && this.world.inTown(c, r)) continue;
+        if (open(c, r)) { p.x = c * TILE + TILE / 2; p.y = r * TILE + TILE; break search; }
+      }
+      const lay = (type: string, dx: number, dy: number, pack: ReturnType<typeof makePack>) => {
+        const def = MOBS[type];
+        if (!def) return;
+        for (const m of this.mobs.spawnPack(`fx-elite:${type}`, calm ? { ...def, sight: 0 } : def, p.x + dx, p.y + dy, pack)) if (calm) { m.def = { ...m.def, sight: 0 }; m.wait = 1e9; }
+      };
+      // Side by side on a wide view; on a narrow one (a phone), the unique ahead and the champions behind.
+      const wide = this.cam.w >= 320;
+      lay('cinder-bailiff', wide ? 84 : 0, wide ? -4 : 92, makePack('champion', ['extra-fast'], null, 2));
+      lay('bone-walker', wide ? -84 : 0, wide ? -4 : -80, makePack('unique', ['cold-aura', 'extra-strong', 'mana-burn'], 'Grimfang the Hollow', 3));
+    }
+    // For the elite specs: what packs walk round the Keeper ("champion:3,unique:1,minion:3").
+    let ch = 0, un = 0, mi = 0;
+    for (const m of this.mobs.mobs) if (m.elite) { if (m.elite.role === 'minion') mi++; else if (m.elite.rank === 'champion') ch++; else un++; }
+    const seen = `champion:${ch},unique:${un},minion:${mi}`;
+    if (seen !== this.eliteSeen) { this.eliteSeen = seen; this.canvas.setAttribute('data-elites', seen); }
     if (this.fxGold && !this.fxGoldLaid) {
       // Just past the Keeper's pull (8 tiles), so they lie still until he walks over: a few coins, a pile, a heap.
       this.fxGoldLaid = true;
@@ -1860,6 +1908,10 @@ export class TopDownEngine {
     }
     this.drawLootRings();
     this.drawTells();
+    // Elite packs: the aura ring under each member, a Cold Aura's reach, a Fire Enchanted's burst on its way.
+    const cam = this.cam, near = (x: number, y: number) => x > cam.x - 60 && x < cam.x + cam.w + 60 && y > cam.y - 40 && y < cam.y + cam.h + 80;
+    for (const m of this.mobs.mobs) if (m.elite && near(m.x, m.y)) drawEliteGround(c, m, this.time, this.still);
+    for (const b of this.mobs.bursts) if (near(b.x, b.y)) drawBurstTell(c, b, FIRE_BURST.delay, this.time, this.still);
     for (const e of this.mobs.effects) {
       if (e.age < 0) continue;
       const t = e.age / e.life, ex = Math.round(e.x), ey = Math.round(e.y);
@@ -2225,10 +2277,17 @@ export class TopDownEngine {
     const c = this.ctx;
     c.textAlign = 'center'; c.textBaseline = 'bottom';
     for (const m of this.mobs.mobs) {
+      // An elite's name, affixes and framed bar read from further off (a pack is worth seeing coming).
+      if (m.elite && m.elite.role !== 'minion') {
+        if (inView(m.x, m.y) && Math.hypot(m.x - this.player.x, m.y - this.player.y) <= 240) drawElitePlate(c, m, m === this.mobs.target);
+        continue;
+      }
       if (!inView(m.x, m.y) || Math.hypot(m.x - this.player.x, m.y - this.player.y) > 150) continue;
       const top = m.y - m.def.h - 3, w = 18, frac = Math.max(0, m.hp / m.def.hp);
       c.fillStyle = '#1a1014'; c.fillRect(Math.round(m.x - w / 2) - 1, Math.round(top) - 1, w + 2, 4);
       c.fillStyle = frac > .6 ? '#5fd35a' : frac > .3 ? '#e8c23a' : '#e2452a'; c.fillRect(Math.round(m.x - w / 2), Math.round(top), Math.round(w * frac), 2);
+      // A unique's minions follow its name: a bar each, no name of their own.
+      if (m.elite?.role === 'minion') continue;
       c.font = '6px "Pixelify Sans", monospace'; c.fillStyle = '#1a1014'; c.fillText(m.def.name, Math.round(m.x) + 1, Math.round(top) - 1);
       c.fillStyle = m === this.mobs.target ? '#ff8a7a' : '#f3e7cf'; c.fillText(m.def.name, Math.round(m.x), Math.round(top) - 2);
     }
