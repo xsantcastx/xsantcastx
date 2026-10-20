@@ -33,7 +33,7 @@ import { RUNE_TIER_ORDER, STRIKE_COST } from '../shared/rune-forge/rune.model';
 import { definitionFor, itemFitsSlot, mintEquipment } from '../shared/rpg/item-definition';
 import {
   CHARM_SLOT_IDS, EQUIPMENT_SLOTS, GameItem, ITEM_STAT_KEYS, ItemRarity, SLOT_BY_ID, SLOT_IDS, SlotId,
-  formatItemMod, rarityColor, rarityLabel,
+  formatItemMod, formatStatValue, ITEM_STAT_LABELS, rarityLabel,
 } from '../shared/rpg/item.model';
 import { KeeperCombatStats, keeperCombatStats } from '../shared/rpg/keeper-combat';
 import { KeeperStatSheetComponent } from '../shared/rpg/keeper-stat-sheet.component';
@@ -178,6 +178,7 @@ import { LootSheetComponent } from '../shared/loot/loot-sheet.component';
 import { LOOT_I18N } from '../shared/loot/loot.i18n';
 import { lootEntry } from '../shared/loot/drop-tables';
 import { itemAuras } from '../shared/loot/aura-sources';
+import { socketCountFor } from '../shared/enchanting/socket.model';
 import { PetSheetComponent } from '../shared/pets/pet-sheet.component';
 import { PetsService } from '../shared/pets/pets.service';
 import { PETS_I18N } from '../shared/pets/pets.i18n';
@@ -267,6 +268,9 @@ const WELL_GHOST: Record<string, IconKind> = {
 };
 const ghostOf = (slot: string): string => iconOf(WELL_GHOST[slot] ?? 'orb', 'grey').src;
 interface BagWell { id: SlotId; name: string; art: string; mark: string; label: string; filled: boolean; /** The faint picture an empty well shows. */ ghost: string; /** The worn item's rarity colour (the well's top pip). */ tone: string | null; }
+/** A rarity's loot colour (the D2/D4 ladder, _cozy.css --cozy-loot-*): cells, cards and the hover card agree. */
+const lootColor = (rarity: string): string => `var(--cozy-loot-${rarity}, var(--cozy-loot-common))`;
+
 interface BagSlip {
   name: string; art: string; mark: string; kicker: string; note: string; stats: string[]; canWear: boolean; canStow: boolean;
   /** Rarity colour for the card's name and frame; null for materials. */
@@ -279,6 +283,22 @@ interface BagSlip {
   compare: StatDeltaRow[];
   /** "Against Basalt Edge" / "Against an empty Head". */
   compareLabel: string;
+  /** The hover card's layout (owner 2026-10-20: the Top Heroes item cards, docs/design/refs/cozy/top-heroes-items.jpg). */
+  tip?: ItemTip;
+}
+/** What the hover card shows beyond name and kicker: the frame's rarity, the headline stat, the affixes, wells, worth. */
+interface ItemTip {
+  rarity: string;
+  typeLine: string;
+  rarityWord: string;
+  head: { key: string; text: string } | null;
+  affixes: { key: string; text: string }[];
+  /** Blue lines: auras the piece carries, or a material's use. */
+  specials: string[];
+  sockets: (string | null)[];
+  value: number;
+  bound: boolean;
+  tempered: number;
 }
 
 /** What the in-world panel is showing: a hosted page, the waystone's travel list, or a chest placed in the Delve. */
@@ -3139,7 +3159,7 @@ export class SideScrollerComponent implements OnDestroy {
         label: item?.name ?? 'Empty',
         filled: !!item,
         ghost: ghostOf(id),
-        tone: item ? rarityColor(item.rarity) : null,
+        tone: item ? lootColor(item.rarity) : null,
       };
     });
   }
@@ -3159,7 +3179,7 @@ export class SideScrollerComponent implements OnDestroy {
     });
     const gear: BagPocket[] = clusterBy(groupItems(snap.bag), group => familyOf(group.first)).map(({ first: item, ids }) => ({
       key: `item:${item.id}`, kind: 'item', ref: item.id, name: item.name,
-      art: itemArt(item)?.src ?? '', qty: ids.length, pip: rarityColor(item.rarity), mark: monogram(item.name), ids,
+      art: itemArt(item)?.src ?? '', qty: ids.length, pip: lootColor(item.rarity), mark: monogram(item.name), ids,
       cat: item.type === 'charm' ? 'charm' : 'gear',
     }));
     return [...materials, ...gear];
@@ -3277,6 +3297,11 @@ export class SideScrollerComponent implements OnDestroy {
       note: fish ? `${fish.lore} ${fish.use}` : charm ? `${charm.lore} ${charm.effect}` : this.stackNote(stackKey, stack.quantity),
       stats: [this.t('play.hud.slip.held', { n: stack.quantity })],
       canWear: false, canStow: false, compare: [], compareLabel: '',
+      tip: {
+        rarity: 'material', typeLine: this.t('play.hud.slip.material'), rarityWord: '', head: null, affixes: [],
+        specials: [fish ? `${fish.lore} ${fish.use}` : charm ? `${charm.lore} ${charm.effect}` : this.stackNote(stackKey, stack.quantity)],
+        sockets: [], value: 0, bound: false, tempered: 0,
+      },
     };
   }
   private stackNote(stackKey: string, qty: number): string {
@@ -3305,7 +3330,7 @@ export class SideScrollerComponent implements OnDestroy {
       return {
         name: item.name, art: itemArt(item)?.src ?? '', mark: monogram(item.name),
         kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
-        tone: rarityColor(item.rarity),
+        tone: lootColor(item.rarity),
         note: this.t('toolStat.fromSatchel'),
         stats: toolCardLines(tool, (key, vars) => this.t(key, vars)),
         canWear: false, canStow: worn, canSend: !worn, compare: [], compareLabel: '',
@@ -3316,14 +3341,34 @@ export class SideScrollerComponent implements OnDestroy {
       art: itemArt(item)?.src ?? '',
       mark: monogram(item.name),
       kicker: worn ? this.t('play.hud.book.worn') : rarityLabel(item.rarity),
-      tone: rarityColor(item.rarity),
+      tone: lootColor(item.rarity),
       note: item.lore || def?.lore || this.t(worn ? 'play.hud.slip.wornBy' : 'play.hud.slip.inSatchel'),
       // A D2-style aura the piece carries (its Socket Word or its name; shared/loot/aura-sources.ts).
       stats: [...stats, ...itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level }))],
+      tip: this.itemTip(item, level),
       canWear: !worn && EQUIPMENT_SLOTS.some(slot => itemFitsSlot(slot.id, item)),
       canStow: worn,
       canSend: !worn,
       ...this.slipCompare(item, worn),
+    };
+  }
+  /** The hover card's parts for a piece of gear: its frame, the stat it is for, the rest, its wells and worth. */
+  private itemTip(item: GameItem, tempered: number): ItemTip {
+    const slot = definitionFor(item)?.slot ?? item.slot;
+    const headKey = slot === 'weapon' ? 'strikePower' : 'ward';
+    const line = (key: keyof GameItem['stats']) => ({ key, text: `${formatStatValue(key, item.stats[key]!)} ${ITEM_STAT_LABELS[key]}` });
+    const held = ITEM_STAT_KEYS.filter(key => (item.stats[key] ?? 0) !== 0);
+    const head = held.includes(headKey) ? line(headKey) : null;
+    const wells = socketCountFor(item);
+    const sockets = Array.from({ length: wells }, (_, i) => item.sockets?.[i] ?? null).map(id => (id ? materialDisplay(id)?.name ?? id : null));
+    return {
+      rarity: item.rarity,
+      typeLine: item.type === 'charm' ? this.t('play.tip.charm') : (slot ? SLOT_BY_ID.get(slot)?.name ?? '' : ''),
+      rarityWord: rarityLabel(item.rarity),
+      head,
+      affixes: held.filter(key => key !== head?.key).map(line),
+      specials: itemAuras(item).map(a => this.t('loot.aura.carries', { aura: this.t('loot.aura.' + a.aura), level: a.level })),
+      sockets, value: item.soulbound ? 0 : Math.floor(item.sellValue), bound: item.soulbound, tempered,
     };
   }
   /**

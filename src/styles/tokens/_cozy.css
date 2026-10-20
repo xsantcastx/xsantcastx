@@ -36,6 +36,14 @@
   --cozy-mana: #5f8bff;
   --cozy-mana-hi: #c8dcff;
   --cozy-mana-text: #9fb8ff;
+  /* Loot rarity, the D2/D4 ladder the hover card is framed in (owner 2026-10-20, docs/design/refs/cozy/top-heroes-items.jpg). */
+  --cozy-loot-common: #d8d2c2;
+  --cozy-loot-uncommon: #6fd36a;
+  --cozy-loot-rare: #5aa8ff;
+  --cozy-loot-epic: #b46bff;
+  --cozy-loot-legendary: #ff9a3c;
+  --cozy-loot-mythic: #ffd25a;
+  --cozy-loot-material: #e9cf9a;
   /* The game's lettering: Pixelify Sans (tokens/fonts.css), like the references' quest scroll. */
   --font-game: var(--font-pixel);
 }
