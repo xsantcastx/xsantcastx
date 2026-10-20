@@ -3,7 +3,7 @@ import {
   afterNextRender, Component, ComponentRef, ElementRef, HostListener, Injector, NgZone, OnDestroy, PLATFORM_ID, ViewChild,
   ViewContainerRef, inject,
 } from '@angular/core';
-import { isPlatformBrowser } from '@angular/common';
+import { NgTemplateOutlet, isPlatformBrowser } from '@angular/common';
 import { DomSanitizer, type SafeHtml } from '@angular/platform-browser';
 import { tdFirstGoal } from './td/td-goals';
 import { ATTRIBUTES, pointsLeft, type Attribute, type KeeperStats } from '../shared/keeper-look/keeper-look.model';
@@ -351,7 +351,7 @@ function monogram(name: string): string {
 const TRACK_KEY = 'eclipse-delve-track';
 
 @Component({
-  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
+  selector: 'app-side-scroller', standalone: true, imports: [RouterLink, NgTemplateOutlet, KeeperStatSheetComponent, HomesteadColumnComponent, LineTensionComponent, GlimIconComponent, SlateCounterComponent, GlimTalkComponent, GlimChatComponent, SoundSheetComponent, LootSheetComponent, PetSheetComponent, StorySceneComponent, SheetDragDirective],
   templateUrl: './side-scroller.component.html', styleUrls: ['./side-scroller.component.css'],
 })
 export class SideScrollerComponent implements OnDestroy {
@@ -3116,12 +3116,23 @@ export class SideScrollerComponent implements OnDestroy {
     if (this.bagOpen) this.hearthOpen = false;
   }
   /** Tap a pocket for its card; tap it again to put the card away. */
-  choosePocket(pocket: BagPocket): void {
+  choosePocket(pocket: BagPocket, ev?: Event): void {
     this.pick = this.pickedPocket(pocket) ? null : { kind: pocket.kind, ref: pocket.ref };
+    this.placePick(ev);
   }
   /** Tap worn gear for its card (Stow). An empty place has nothing to say, so it closes the card. */
-  chooseWell(well: BagWell): void {
+  chooseWell(well: BagWell, ev?: Event): void {
     this.pick = !well.filled || this.pickedWell(well.id) ? null : { kind: 'slot', ref: well.id };
+    this.placePick(ev);
+  }
+  /** Where a click pins the item card: beside the cell, kept on screen (it flips to the cell's left at the right edge). */
+  pickAt = { x: 16, y: 80 };
+  private placePick(ev?: Event): void {
+    const el = ev?.currentTarget as HTMLElement | null;
+    if (!el?.getBoundingClientRect || typeof window === 'undefined') return;
+    const r = el.getBoundingClientRect(), W = 264, H = 380;
+    const x = r.right + 10 + W > window.innerWidth ? r.left - 10 - W : r.right + 10;
+    this.pickAt = { x: Math.max(8, Math.min(x, window.innerWidth - W - 8)), y: Math.max(8, Math.min(r.top - 8, window.innerHeight - H)) };
   }
   unpick(): void { this.pick = null; }
   pickedPocket(pocket: BagPocket): boolean { return this.pick?.kind === pocket.kind && this.pick.ref === pocket.ref; }

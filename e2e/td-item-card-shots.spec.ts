@@ -55,3 +55,21 @@ test('the hover card wears its rarity: legendary orange, epic purple, rare blue,
       clip: { x: Math.max(0, box.x - 120), y: Math.max(0, box.y - 60), width: Math.min(1280 - Math.max(0, box.x - 120), box.width + 200), height: Math.min(800 - Math.max(0, box.y - 60), box.height + 100) } });
   }
 });
+
+test('a click pins the same small card beside the item, with its actions — never the big panel', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 800 });
+  await open(page);
+  await page.keyboard.press('i');
+  const cell = page.locator('button.pocket[aria-label^="Cindergnaw"]').first();
+  await expect(cell).toBeVisible({ timeout: 10000 });
+  await cell.click();
+  const card = page.locator('.d2tip--pinned');
+  await expect(card).toBeVisible();
+  await expect(card).toHaveAttribute('data-rarity', 'epic');
+  await expect(card.locator('.d2tip__actions button').first()).toBeVisible();
+  await expect(page.locator('.slip')).toHaveCount(0);
+  await page.screenshot({ path: 'docs/handoff/cozy-ui/item-card-pinned.jpg', type: 'jpeg', quality: 80 });
+  await card.locator('.d2tip__close').click();
+  await expect(card).toHaveCount(0);
+});
+
