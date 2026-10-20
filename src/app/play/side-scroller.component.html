@@ -160,6 +160,11 @@
   <!-- The top-down town's round compass minimap (docs/handoff/cozy-ui.md; drawn by td-engine drawMinimap). -->
   @if (topDown) {
     <div class="td-mini" aria-hidden="true" data-engine-ignore><canvas width="128" height="128"></canvas><i class="td-mini__n">N</i></div>
+    <!-- Phones (OSRS mobile): life and mana as round orbs beside the minimap; the plates are desktop's. -->
+    <div class="td-orbs" aria-hidden="true" data-engine-ignore>
+      <i class="td-orb td-orb--hp" [style.--fill]="state.hp / tdMaxHp"><b>{{ hpShown }}</b></i>
+      <i class="td-orb td-orb--mana" [style.--fill]="tdMana / tdMaxMana"><b>{{ tdMana }}</b></i>
+    </div>
   }
   <header class="topbar" [attr.inert]="panel || storyCard || storyScene || glimTalk ? '' : null">
     <a routerLink="/play" class="wordmark">Eclipse</a>
