@@ -47,6 +47,9 @@ export const GLIM_ALIVE_I18N: Readonly<Record<string, { en: string; es: string }
   'glim.react.missed.1': { en: 'You left something back here.', es: 'Te has dejado algo aqui atras.' },
   'glim.react.missed.2': { en: 'Over here! You dropped this.', es: 'Aqui! Se te cayo esto.' },
   'glim.react.missed.3': { en: 'Not to nag, but... loot.', es: 'No quiero insistir, pero... botin.' },
+  'glim.react.spotted.1': { en: 'Ooh, over there. Something worth a look.', es: 'Uy, por alli. Algo que merece un vistazo.' },
+  'glim.react.spotted.2': { en: 'That way! I saw it glint.', es: 'Por alli! Lo vi brillar.' },
+  'glim.react.spotted.3': { en: 'A way we have not taken yet... just saying.', es: 'Un camino que aun no hemos tomado... solo digo.' },
 
   // ── The chat card (tap Glim) ──
   'glim.chat.title': { en: 'Glim', es: 'Glim' },

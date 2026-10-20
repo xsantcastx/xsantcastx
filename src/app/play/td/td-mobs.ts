@@ -1675,6 +1675,20 @@ export class MobSystem {
     }
   }
 
+  /**
+   * A pet's nip (td-pets.ts): a small blow on a creature, never on the Keeper. Not the Keeper's spell power or crits:
+   * a pet's bite is its own size. `killed` when the creature fell to it.
+   */
+  petBite(foe: Mob, dmg: number, dir: number): { landed: boolean; killed: boolean } {
+    if (foe.hp <= 0 || !this.mobs.includes(foe)) return { landed: false, killed: false };
+    this.effects.push({ kind: 'slash', x: foe.x, y: foe.y - foe.def.h / 2, age: 0, life: .18, dir });
+    this.hurtMob(foe, Math.max(1, Math.round(dmg)), '#ffd98a');
+    return { landed: true, killed: foe.hp <= 0 };
+  }
+  /** E2E only (td-engine's `?petfetch=1` under webdriver): a material lying at (x, y), as if a creature dropped it. */
+  layDrop(id: string, x: number, y: number, material: string, qty: number, label: string): void {
+    this.drops.push({ id, x, y, coins: 0, material, qty, label, color: RARITY_COLOR.common, age: 1 });
+  }
   /** Let the raised go (the HUD's Release): they crumble where they stand. Returns how many went. */
   releaseMinions(): number {
     const n = this.minions.length;
@@ -1836,3 +1850,10 @@ export class MobSystem {
     this.float(g.x, g.y - 10, g.label, g.color);
   }
 }
+
+/**
+ * The bestiary's brushes and outline, for the companions' own sprites (td-pet-art.ts): the pets are painted to the
+ * same standard as the creatures, with the same light and the same selective outline.
+ */
+export const TD_BRUSH = { px, dot, orb, poly, limb, line, glow, outline } as const;
+export type TdRamp = Ramp;
