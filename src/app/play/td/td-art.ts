@@ -41,6 +41,13 @@ export const PAL = {
   flower: ['#e8506a', '#f2c94c', '#9b6ad6', '#f08a3a', '#ffffff', '#5aa2e2'],
   awning: [['#c9483a', '#f3e7cf'], ['#3f78b5', '#f3e7cf'], ['#5a9a49', '#f6edd2'], ['#8a4fb0', '#f3e7cf'], ['#d68a2e', '#fbf0d6']],
   glow: '#ffd27a',
+  // The Verdant Wilds: moss floors, jungle leaves, living bark, mossy temple stone and the rootglass glow.
+  moss: ['#3f6e3a', '#4c8042', '#355f33', '#5d9450'],
+  jungle: ['#2f6a34', '#3f8240', '#225228', '#58a04c'],
+  roofLeaf: ['#4f8a3a', '#62a046', '#3a6c2c', '#7cbc58'],
+  bark: ['#6e4a30', '#8a6040', '#4e3220', '#a37a52'],
+  temple: ['#8d9486', '#7e8678', '#6f7769', '#a6ad9c'],
+  rootglass: ['#eafff6', '#7affd0', '#2fb38a', '#17604e'],
   window: '#ffe39b',
   windowDark: '#3a3654',
 } as const;
@@ -67,7 +74,12 @@ function outline(src: HTMLCanvasElement): HTMLCanvasElement {
 
 // ── Ground ────────────────────────────────────────────────────────────────────
 
-export type Ground = 'grass' | 'dirt' | 'cobble' | 'sand' | 'water' | 'ember' | 'plank' | 'flowers' | 'cave' | 'rock' | 'wall' | 'rug';
+export type Ground = 'grass' | 'dirt' | 'cobble' | 'sand' | 'water' | 'ember' | 'plank' | 'flowers' | 'cave' | 'rock' | 'wall' | 'rug'
+  // The Verdant Wilds (maps/verdant-wilds.ts): jungle moss, mossy temple flagstones, and three grounds nobody walks on —
+  // a temple's wall, the leaf-sea round the Rootglass Bole's walkways, the Bole's own living wood.
+  | 'moss' | 'flagstone' | 'vinewall' | 'canopy' | 'bark';
+/** Ground nothing walks through (a wall, a mass of rock, the canopy's leaves, a tree's living wood). */
+export const SOLID_GROUND: ReadonlySet<Ground> = new Set<Ground>(['rock', 'wall', 'vinewall', 'canopy', 'bark']);
 
 /** Paint one ground tile at (tx, ty) into `c` at (ox, oy). Variants come from the tile's own hash. */
 export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, frame = 0): void {
@@ -145,6 +157,56 @@ export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: nu
       rect(c, ox + 6, oy + 6, 4, 4, '#d68a2e'); rect(c, ox + 7, oy + 5, 2, 6, '#d68a2e');
       break;
     }
+    case 'moss': {
+      // The jungle floor: deep moss, fern sprigs, and now and then a speck of rootglass spore catching the light.
+      rect(c, ox, oy, TILE, TILE, PAL.moss[0]);
+      for (let i = 0; i < 10; i++) rect(c, ox + Math.floor(r(i) * 15), oy + Math.floor(r(i + 20) * 15), 2, 1, pick(PAL.moss, r(i + 40)));
+      if (r(61) > .72) { const x = ox + 2 + Math.floor(r(62) * 10), y = oy + 3 + Math.floor(r(63) * 9); rect(c, x, y, 1, 3, PAL.jungle[3]); rect(c, x - 1, y, 1, 1, PAL.jungle[3]); rect(c, x + 1, y + 1, 1, 1, PAL.jungle[1]); }
+      if (r(64) > .93) rect(c, ox + Math.floor(r(65) * 15), oy + Math.floor(r(66) * 15), 1, 1, PAL.rootglass[1]);
+      break;
+    }
+    case 'flagstone': {
+      // Old temple flagstones, four slabs to a tile, moss in the joints.
+      rect(c, ox, oy, TILE, TILE, '#4b5a4a');
+      for (let q = 0; q < 4; q++) {
+        const x = ox + (q % 2) * 8 + (ty % 2 && q < 2 ? 1 : 0), y = oy + Math.floor(q / 2) * 8;
+        rect(c, x, y, 7, 7, pick(PAL.temple, r(q + 3)));
+        rect(c, x, y, 7, 1, PAL.temple[3]); rect(c, x + 6, y + 1, 1, 6, PAL.temple[2]);
+        if (r(q + 11) > .7) rect(c, x + Math.floor(r(q + 13) * 5), y + 6, 3, 1, PAL.moss[3]);
+      }
+      if (r(29) > .8) { rect(c, ox + 7, oy + 4, 2, 6, PAL.moss[1]); rect(c, ox + 6, oy + 7, 4, 2, PAL.moss[3]); }
+      break;
+    }
+    case 'vinewall': {
+      // A temple wall seen from above: mossy capstones (its carved face is drawn by paintEdge where floor lies south).
+      rect(c, ox, oy, TILE, TILE, '#2c3a2c');
+      rect(c, ox, oy + 7, TILE, 1, '#243024');
+      for (let i = 0; i < 5; i++) rect(c, ox + Math.floor(r(i) * 14), oy + Math.floor(r(i + 5) * 14), 2, 2, i % 2 ? PAL.moss[2] : '#36483a');
+      break;
+    }
+    case 'canopy': {
+      // The leaf-sea round the Bole's walkways, far below the boards: deep shade, and the round tops of the crowns
+      // under it, each lit on its top-left and dark on its far side, the gaps between them going down into the green.
+      rect(c, ox, oy, TILE, TILE, '#12301a');
+      for (let i = 0; i < 3; i++) {
+        const cx = Math.floor(r(i) * 16), cy = Math.floor(r(i + 6) * 16), rad = 4 + Math.floor(r(i + 12) * 3);
+        for (let y = -rad; y <= rad; y++) for (let x = -rad; x <= rad; x++) {
+          const px = cx + x, py = cy + y;
+          if (px < 0 || py < 0 || px > 15 || py > 15 || x * x + y * y > rad * rad) continue;
+          const lit = x + y < -rad * .6 ? PAL.jungle[3] : x + y > rad * .7 ? PAL.jungle[2] : hash(tx * 16 + px, ty * 16 + py, 37) > .82 ? PAL.jungle[1] : PAL.jungle[0];
+          rect(c, ox + px, oy + py, 1, 1, lit);
+        }
+      }
+      if (r(34) > .88) { const x = ox + 2 + Math.floor(r(35) * 12), y = oy + 2 + Math.floor(r(36) * 12); rect(c, x, y, 2, 2, PAL.rootglass[2]); rect(c, x, y, 1, 1, PAL.rootglass[1]); }
+      break;
+    }
+    case 'bark': {
+      // Living wood seen from above: dark, deep-furrowed bark, a lichen spot now and then.
+      rect(c, ox, oy, TILE, TILE, '#2e1e14');
+      for (let i = 0; i < 5; i++) { const x = ox + Math.floor(r(i) * 15), y = oy + Math.floor(r(i + 5) * 10); rect(c, x, y, 1, 4 + Math.floor(r(i + 9) * 4), PAL.bark[2]); }
+      if (r(17) > .7) rect(c, ox + Math.floor(r(18) * 13), oy + Math.floor(r(19) * 13), 3, 2, PAL.moss[2]);
+      break;
+    }
     case 'water':
     case 'ember': {
       const ramp = kind === 'water' ? PAL.water : PAL.ember;
@@ -195,7 +257,49 @@ export function paintEdge(c: Ctx, kind: Ground, neighbour: Ground, side: 'n' | '
     else rect(c, ox + 15, oy, 1, TILE, PAL.basalt[2]);
     return;
   }
-  if (neighbour === 'rock' || neighbour === 'wall') return;
+  if (kind === 'vinewall') {
+    // A temple wall: where floor lies south, its carved face — courses of mossy stone, vines hanging, a rootglass glyph.
+    if (side === 's') {
+      rect(c, ox, oy + 3, TILE, 13, PAL.temple[1]); rect(c, ox, oy + 3, TILE, 2, PAL.temple[3]); rect(c, ox, oy + 15, TILE, 1, PAL.temple[2]);
+      for (let y = 6; y < 15; y += 4) { rect(c, ox, oy + y, TILE, 1, PAL.temple[2]); rect(c, ox + ((y / 4 + tx) % 2 ? 4 : 11), oy + y - 3, 1, 3, PAL.temple[2]); }
+      for (let i = 0; i < 3; i++) {
+        const x = Math.floor(hash(tx, ty, i + 160) * 15), len = 3 + Math.floor(hash(tx, ty, i + 170) * 9);
+        rect(c, ox + x, oy + 3, 1, len, PAL.jungle[1]); rect(c, ox + x, oy + 3 + len, 1, 1, PAL.jungle[3]);
+      }
+      if (hash(tx, ty, 180) > .82) { rect(c, ox + 6, oy + 8, 4, 4, '#3a4a3c'); rect(c, ox + 7, oy + 9, 2, 2, PAL.rootglass[1]); }
+    } else if (side === 'n') rect(c, ox, oy, TILE, 1, '#1c261c');
+    else if (side === 'w') rect(c, ox, oy, 1, TILE, '#1c261c');
+    else rect(c, ox + 15, oy, 1, TILE, '#1c261c');
+    return;
+  }
+  if (kind === 'bark') {
+    // The Bole's living wood: where floor lies south, its bark face — deep grain, moss at the foot.
+    if (side === 's') {
+      rect(c, ox, oy + 2, TILE, 14, PAL.bark[0]);
+      for (let x = 0; x < TILE; x += 3) rect(c, ox + x + (ty % 2), oy + 2, 1, 14, hash(tx * 7 + x, ty, 190) > .5 ? PAL.bark[2] : PAL.bark[3]);
+      rect(c, ox, oy + 2, TILE, 1, PAL.bark[3]); rect(c, ox, oy + 14, TILE, 2, PAL.moss[1]); rect(c, ox + 3, oy + 13, 5, 1, PAL.moss[3]);
+    } else rect(c, ox + (side === 'e' ? 15 : 0), oy, side === 'n' ? TILE : 1, side === 'n' ? 1 : TILE, '#2e1e14');
+    return;
+  }
+  if (kind === 'canopy') {
+    // The leaves' edge over a walkway: a fringe of lit leaves, a shadow under them.
+    if (side === 's') { rect(c, ox, oy + 12, TILE, 4, '#1a3e1e'); for (let x = 0; x < TILE; x += 4) rect(c, ox + x, oy + 10 + Math.floor(hash(tx * 5 + x, ty, 200) * 3), 4, 3, PAL.jungle[1]); }
+    else if (side === 'n') for (let x = 0; x < TILE; x += 4) rect(c, ox + x, oy, 3, 1 + Math.floor(hash(tx * 3 + x, ty, 201) * 2), PAL.jungle[3]);
+    else rect(c, ox + (side === 'e' ? 14 : 0), oy, 2, TILE, PAL.jungle[0]);
+    return;
+  }
+  if (kind === 'plank' && neighbour === 'canopy') {
+    // A walkway's edge over the leaves: a rope rail on short posts.
+    const h = side === 'n' || side === 's';
+    for (let i = 0; i < TILE; i++) {
+      const at = side === 'n' ? [i, 1] : side === 's' ? [i, 14] : side === 'w' ? [1, i] : [14, i];
+      rect(c, ox + at[0], oy + at[1], 1, 1, i % 8 === 2 ? PAL.wood[2] : '#c9a46a');
+      if (i % 8 === 2) rect(c, ox + at[0] - (h ? 0 : 1), oy + at[1] - (h ? 1 : 0), h ? 1 : 3, h ? 3 : 1, PAL.wood[2]);
+    }
+    rect(c, ox + (side === 'e' ? 15 : 0), oy + (side === 's' ? 15 : 0), h ? TILE : 1, h ? 1 : TILE, '#2a1a10');
+    return;
+  }
+  if (SOLID_GROUND.has(neighbour)) return;
   const water = neighbour === 'water' || neighbour === 'ember';
   if (kind === 'water' || kind === 'ember') {
     // A bank lip on the water side: sand/grass overhang, then a dark shadow line.
@@ -207,14 +311,14 @@ export function paintEdge(c: Ctx, kind: Ground, neighbour: Ground, side: 'n' | '
     return;
   }
   if (water) return;
-  if (kind === 'grass' || kind === 'flowers') {
+  if (kind === 'grass' || kind === 'flowers' || kind === 'moss') {
     // Grass tufts spill over the edge into paths: drawn on the path tile instead (below).
     return;
   }
-  if (neighbour === 'grass' || neighbour === 'flowers') {
+  if (neighbour === 'grass' || neighbour === 'flowers' || neighbour === 'moss') {
     for (let i = 0; i < 16; i += 2) {
       const len = 1 + Math.floor(hash(tx * 31 + i, ty, side.charCodeAt(0)) * 3);
-      const col = PAL.grass[(i >> 1) % 3];
+      const col = (neighbour === 'moss' ? PAL.moss : PAL.grass)[(i >> 1) % 3];
       if (side === 'n') rect(c, ox + i, oy, 2, len, col);
       if (side === 's') rect(c, ox + i, oy + 16 - len, 2, len, col);
       if (side === 'w') rect(c, ox, oy + i, len, 2, col);
@@ -250,10 +354,10 @@ function cached(key: string, make: () => Sprite): Sprite {
   return s;
 }
 
-export type RoofStyle = 'red' | 'slate' | 'thatch';
+export type RoofStyle = 'red' | 'slate' | 'thatch' | 'leaf';
 export type WallStyle = 'timber' | 'stone' | 'basalt';
 
-const roofRamp = (s: RoofStyle) => (s === 'red' ? PAL.roofRed : s === 'slate' ? PAL.roofSlate : PAL.roofThatch);
+const roofRamp = (s: RoofStyle) => (s === 'red' ? PAL.roofRed : s === 'slate' ? PAL.roofSlate : s === 'leaf' ? PAL.roofLeaf : PAL.roofThatch);
 
 /**
  * A house, `w` tiles wide and `d` tiles deep: front wall with a door and
@@ -897,5 +1001,208 @@ export function tower(): Sprite {
     rect(c, W / 2 - 1, 0, 2, 6, PAL.wood[2]); rect(c, W / 2 - 2, 0, 4, 3, PAL.ember[2]);
     lights.push({ x: 0, y: -H + 2, r: 10, warm: true });
     return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights };
+  });
+}
+
+// ── The Verdant Wilds (maps/verdant-wilds.ts): jungle trees, the giant trees, the Rootglass Bole, rootglass lamps, the
+// Overgrown Temple's gate and its broken pillars. Same kit as the rest: painted once, outlined, light from the top-left.
+
+/** A leaf blob: a round mass of `ramp` leaves, lit up-left, shadowed down-right. */
+function leafBlob(c: Ctx, x: number, y: number, r: number, ramp: readonly string[], seed: number): void {
+  for (let yy = -r; yy <= r; yy++) for (let xx = -r; xx <= r; xx++) {
+    if (xx * xx + yy * yy > r * r) continue;
+    const shade = yy < -r / 3 && xx < r / 3 ? ramp[3] : yy > r / 2 || xx > r * .7 ? ramp[2] : hash(x + xx, y + yy, seed) > .78 ? ramp[1] : ramp[0];
+    rect(c, x + xx, y + yy, 1, 1, shade);
+  }
+}
+/** Hanging vines from a crown's underside, a leaf every few pixels. */
+function vines(c: Ctx, x0: number, x1: number, y: number, seed: number): void {
+  for (let x = x0; x < x1; x += 3) {
+    if (hash(x, seed, 21) < .45) continue;
+    const len = 3 + Math.floor(hash(x, seed, 22) * 9);
+    rect(c, x, y, 1, len, PAL.jungle[2]);
+    for (let k = 2; k < len; k += 3) rect(c, x + (k % 2 ? 1 : -1), y + k, 1, 1, PAL.jungle[1]);
+  }
+}
+/** A trunk with buttress roots flaring at its foot. */
+function buttressTrunk(c: Ctx, cx: number, top: number, foot: number, w: number, flare: number): void {
+  rect(c, cx - w / 2, top, w, foot - top, PAL.bark[0]);
+  rect(c, cx - w / 2, top, Math.max(2, w / 4), foot - top, PAL.bark[1]);
+  rect(c, cx + w / 2 - Math.max(2, w / 4), top, Math.max(2, w / 4), foot - top, PAL.bark[2]);
+  for (let y = top + 3; y < foot - 2; y += 5) rect(c, cx - w / 2 + 2 + (y % 3), y, 1, 3, PAL.bark[3]);
+  // The roots: wedges to either side, a darker underside.
+  for (const s of [-1, 1]) for (let i = 0; i < flare; i++) {
+    const h = Math.round((flare - i) * (foot - top) * .32 / flare) + 1, x = s < 0 ? cx - w / 2 - 1 - i : cx + w / 2 + i;
+    rect(c, x, foot - h, 1, h, s < 0 ? PAL.bark[1] : PAL.bark[2]);
+  }
+  rect(c, cx - w / 2 - flare, foot - 1, w + flare * 2, 1, PAL.bark[3]);
+  rect(c, cx - w / 2 - 2, foot - 2, 4, 1, PAL.moss[3]); rect(c, cx + 2, foot - 3, 3, 1, PAL.moss[1]);
+}
+
+/** A jungle tree: a tall buttressed trunk under a broad, layered crown, vines hanging (six seeds). */
+export function jungleTree(seed = 0): Sprite {
+  const v = ((seed % 6) + 6) % 6;
+  return cached(`jungle:${v}`, () => {
+    const W = 40, H = 56, trunk = cv(W, H), c = trunk.getContext('2d')!;
+    const crown = cv(W, 40), k = crown.getContext('2d')!;
+    if (v === 3 || v === 4) {
+      // A palm: a ringed trunk with a lean, a crown of long drooping fronds, a bunch of nuts under them.
+      const lean = v === 3 ? 1 : -1;
+      for (let y = 18; y < H; y++) { const x = 18 + Math.round(lean * (H - y) * .08); rect(c, x, y, 4, 1, y % 4 ? PAL.bark[0] : PAL.bark[2]); rect(c, x, y, 1, 1, PAL.bark[1]); }
+      rect(c, 15, H - 2, 10, 2, PAL.bark[2]); rect(c, 14, H - 3, 3, 1, PAL.moss[1]);
+      const tx0 = 20 + Math.round(lean * (H - 18) * .08), ty0 = 15;
+      for (let i = 0; i < 8; i++) {
+        const a = -Math.PI - .35 + i * (Math.PI + .7) / 7, len = 14 + (i % 3) * 2;
+        for (let t = 2; t <= len; t++) {
+          const x = Math.round(tx0 + Math.cos(a) * t), y = Math.round(ty0 + Math.sin(a) * t * .6 + t * t * .04);
+          rect(k, x, y, 2, 1, i % 2 ? PAL.jungle[1] : PAL.jungle[0]);
+          if (t % 2 === 0 && t < len - 1) { rect(k, x, y + 1, 1, 2, PAL.jungle[2]); rect(k, x + 1, y - 1, 1, 1, PAL.jungle[3]); }
+        }
+      }
+      rect(k, tx0 - 3, ty0 + 1, 2, 2, '#7a5a30'); rect(k, tx0, ty0 + 2, 2, 2, '#8a6a38'); rect(k, tx0 - 2, ty0 + 3, 2, 2, '#6a4a28');
+      if (v === 4) rect(k, tx0 + 3, ty0, 2, 3, PAL.rootglass[1]);
+      return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 } };
+    }
+    buttressTrunk(c, 20, 26, H, 6 + (v % 2) * 2, 4);
+    const blobs = v < 3
+      ? [[20, 22, 15], [9, 25, 9], [31, 25, 9], [14, 12, 10], [27, 13, 10], [20, 6, 7]]
+      : [[20, 20, 13], [8, 24, 8], [32, 23, 8], [12, 14, 9], [28, 12, 9]];
+    for (const [x, y, r] of blobs) leafBlob(k, x, y, r, PAL.jungle, v);
+    vines(k, 6, 34, 30, v);
+    if (v === 2 || v === 5) for (let i = 0; i < 4; i++) rect(k, 8 + Math.floor(hash(i, v, 4) * 24), 10 + Math.floor(hash(i, v, 5) * 18), 2, 2, i % 2 ? PAL.flower[2] : PAL.flower[0]);
+    if (v === 1) for (let i = 0; i < 3; i++) rect(k, 10 + i * 9, 18 + (i % 2) * 6, 2, 3, PAL.rootglass[1]);
+    return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 } };
+  });
+}
+
+/** One of the giant trees of the deep jungle: a trunk three tiles wide, roots like walls, a crown that shades a clearing. */
+export function giantTree(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`giant:${v}`, () => {
+    const W = 96, H = 104, trunk = cv(W, H), c = trunk.getContext('2d')!;
+    buttressTrunk(c, 48, 40, H, 22, 14);
+    // Moss climbing the bark, a hollow, a shelf fungus.
+    for (let y = 50; y < H - 6; y += 7) rect(c, 38 + (y % 4), y, 3, 4, PAL.moss[1]);
+    rect(c, 50, 66, 6, 9, '#1c120c'); rect(c, 51, 65, 4, 1, '#1c120c');
+    rect(c, 56, 58, 6, 2, '#d8c49a'); rect(c, 56, 60, 6, 1, '#9a8460');
+    const crown = cv(W, 72), k = crown.getContext('2d')!;
+    const blobs = [[48, 38, 30], [20, 44, 18], [76, 44, 18], [28, 22, 18], [68, 22, 18], [48, 14, 16], [10, 52, 10], [86, 52, 10]];
+    for (const [x, y, r] of blobs) leafBlob(k, x, y, r, PAL.jungle, v + 9);
+    vines(k, 8, 88, 60, v + 3);
+    for (let i = 0; i < 5; i++) rect(k, 16 + Math.floor(hash(i, v, 7) * 62), 18 + Math.floor(hash(i, v, 8) * 34), 2, 2, PAL.rootglass[1]);
+    return {
+      img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 },
+      lights: [{ x: -20, y: -60, r: 14 }, { x: 22, y: -70, r: 12 }],
+    };
+  });
+}
+
+/**
+ * The Rootglass Bole, Rootglass's heart: a giant tree the town is built round, a door between its roots, lit windows
+ * up its trunk where the floors go up into the canopy (maps/rootglass-bole.ts), a crown that roofs the whole plaza.
+ */
+export function rootglassBole(): Sprite {
+  return cached('rootglass-bole', () => {
+    const W = 112, H = 128, trunk = cv(W, H), c = trunk.getContext('2d')!;
+    buttressTrunk(c, 56, 30, H, 40, 18);
+    // A boardwalk ring round the trunk, halfway up, on brackets.
+    rect(c, 22, 66, 68, 4, PAL.plank[0]); rect(c, 22, 69, 68, 1, PAL.wood[2]);
+    for (let x = 24; x < 90; x += 10) rect(c, x, 70, 2, 5, PAL.wood[2]);
+    // Windows up the trunk, warm, one floor each.
+    const lights: { x: number; y: number; r: number; warm?: boolean }[] = [];
+    for (const [x, y] of [[44, 48], [64, 40], [50, 78], [62, 84]] as const) {
+      rect(c, x - 1, y - 1, 8, 10, PAL.bark[3]); rect(c, x, y, 6, 8, PAL.window); rect(c, x + 2, y, 1, 8, PAL.bark[2]);
+      lights.push({ x: x + 3 - W / 2, y: y + 4 - H, r: 12, warm: true });
+    }
+    // The door: an arch of roots, rootglass lanterns either side.
+    rect(c, 46, 98, 20, 30, PAL.bark[3]); rect(c, 48, 96, 16, 3, PAL.bark[3]);
+    rect(c, 48, 100, 16, 28, PAL.wood[0]); rect(c, 50, 98, 12, 2, PAL.wood[0]);
+    rect(c, 55, 100, 1, 28, PAL.wood[2]); rect(c, 59, 113, 1, 3, '#e6c35a');
+    for (const x of [38, 70]) { rect(c, x, 104, 4, 1, PAL.bark[3]); rect(c, x, 105, 4, 6, PAL.rootglass[2]); rect(c, x + 1, 106, 2, 4, PAL.rootglass[1]); lights.push({ x: x + 2 - W / 2, y: 108 - H, r: 20 }); }
+    const crown = cv(W + 24, 84), k = crown.getContext('2d')!;
+    const blobs = [[68, 44, 34], [30, 50, 22], [106, 50, 22], [40, 24, 22], [96, 24, 22], [68, 14, 18], [12, 60, 12], [124, 60, 12]];
+    for (const [x, y, r] of blobs) leafBlob(k, x, y, r, PAL.jungle, 31);
+    vines(k, 12, 124, 70, 31);
+    // Rootglass growing in the crown, lit from inside: the town's name.
+    for (let i = 0; i < 9; i++) { const x = 20 + Math.floor(hash(i, 3, 17) * 96), y = 14 + Math.floor(hash(i, 3, 18) * 46); rect(k, x, y, 2, 3, PAL.rootglass[1]); rect(k, x, y, 1, 1, PAL.rootglass[0]); }
+    lights.push({ x: -30, y: -H + 10, r: 16 }, { x: 30, y: -H + 4, r: 16 }, { x: 0, y: -H - 10, r: 18 });
+    return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 13, y: -H - 1 - 4 }, lights };
+  });
+}
+
+/** A rootglass lamp: a curled root post, a lantern of living glass that glows mint all night. */
+export function rootLamp(): Sprite {
+  return cached('root-lamp', () => {
+    const img = cv(12, 32), c = img.getContext('2d')!;
+    rect(c, 5, 8, 2, 22, PAL.bark[1]); rect(c, 5, 8, 1, 22, PAL.bark[0]); rect(c, 3, 29, 6, 3, PAL.bark[2]);
+    rect(c, 6, 4, 4, 2, PAL.bark[1]); rect(c, 9, 5, 1, 3, PAL.bark[2]);
+    rect(c, 7, 8, 5, 7, PAL.rootglass[3]); rect(c, 8, 9, 3, 5, PAL.rootglass[1]); rect(c, 8, 9, 1, 1, PAL.rootglass[0]);
+    rect(c, 3, 18, 2, 2, PAL.moss[1]);
+    return { img: outline(img), ax: 7, ay: 33, lights: [{ x: 3, y: -22, r: 30 }] };
+  });
+}
+
+/** The Overgrown Temple's gate: a stepped front of mossy stone, a dark door, a carved face with rootglass eyes. */
+export function templeGate(): Sprite {
+  return cached('temple-gate', () => {
+    const W = 64, H = 52, img = cv(W, H), c = img.getContext('2d')!;
+    for (const [x, y, w] of [[0, 34, 64], [4, 22, 56], [10, 10, 44], [18, 2, 28]] as const) {
+      rect(c, x, y, w, H - y, PAL.temple[1]); rect(c, x, y, w, 2, PAL.temple[3]);
+      for (let yy = y + 4; yy < H; yy += 4) for (let xx = x + ((yy / 4) % 2 ? 0 : 4); xx < x + w; xx += 8) rect(c, xx, yy, 1, 3, PAL.temple[2]);
+    }
+    // The carved face over the door.
+    rect(c, 24, 6, 16, 12, PAL.temple[2]); rect(c, 26, 8, 4, 3, '#1a2018'); rect(c, 34, 8, 4, 3, '#1a2018');
+    rect(c, 27, 9, 2, 1, PAL.rootglass[1]); rect(c, 35, 9, 2, 1, PAL.rootglass[1]); rect(c, 28, 14, 8, 2, '#3a4438');
+    // The door: steps going down into the dark.
+    rect(c, 22, 24, 20, 28, '#0e120c'); rect(c, 24, 22, 16, 3, '#0e120c');
+    for (let i = 0; i < 4; i++) rect(c, 23 + i, 30 + i * 5, 18 - i * 2, 2, i % 2 ? PAL.temple[2] : PAL.temple[0]);
+    // Roots and vines over all of it.
+    for (const [x, len] of [[6, 14], [13, 22], [46, 18], [55, 12], [31, 6]] as const) { rect(c, x, 22, 1, len, PAL.jungle[1]); rect(c, x + 1, 22 + len - 2, 1, 2, PAL.jungle[3]); }
+    rect(c, 2, 34, 10, 3, PAL.moss[1]); rect(c, 50, 22, 8, 2, PAL.moss[1]); rect(c, 18, 2, 10, 2, PAL.moss[3]);
+    rect(c, 0, 40, 4, 12, PAL.bark[1]); rect(c, 60, 38, 4, 14, PAL.bark[2]);
+    for (const x of [14, 48]) { rect(c, x, 26, 3, 5, PAL.rootglass[2]); rect(c, x + 1, 27, 1, 3, PAL.rootglass[0]); }
+    return { img: outline(img), ax: W / 2, ay: H, lights: [{ x: -17, y: -24, r: 18 }, { x: 17, y: -24, r: 18 }, { x: 0, y: -42, r: 10 }] };
+  });
+}
+
+/** A temple pillar, broken off at the top, moss in its flutes (three heights). */
+export function templePillar(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`pillar-${v}`, () => {
+    const W = 14, H = 26 + v * 5, img = cv(W, H), c = img.getContext('2d')!;
+    rect(c, 0, H - 4, W, 4, PAL.temple[2]); rect(c, 0, H - 4, W, 1, PAL.temple[3]);
+    rect(c, 2, 4, 10, H - 8, PAL.temple[1]); rect(c, 2, 4, 2, H - 8, PAL.temple[3]); rect(c, 10, 4, 2, H - 8, PAL.temple[2]);
+    for (const x of [5, 8]) rect(c, x, 6, 1, H - 12, PAL.temple[2]);
+    rect(c, 2, 2, 4, 3, PAL.temple[1]); rect(c, 7, 0, 5, 5, PAL.temple[1]); rect(c, 7, 0, 5, 1, PAL.temple[3]);
+    rect(c, 2, 9 + v * 2, 4, 3, PAL.moss[1]); rect(c, 8, H - 9, 3, 4, PAL.moss[3]); rect(c, 11, 6, 1, 8, PAL.jungle[1]);
+    return { img: outline(img), ax: W / 2 + 1, ay: H + 1 };
+  });
+}
+
+/** A fern clump on the jungle floor (three seeds). */
+export function fern(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`fern-${v}`, () => {
+    const W = 20, H = 14, img = cv(W, H), c = img.getContext('2d')!;
+    for (let i = 0; i < 5; i++) {
+      const dx = (i - 2) * 3, len = 6 + ((i + v) % 3) * 2;
+      for (let k = 0; k < len; k++) { rect(c, 10 + Math.round(dx * k / len), H - 1 - k, 1, 1, PAL.jungle[k < 2 ? 2 : 1]); if (k % 2) rect(c, 10 + Math.round(dx * k / len) + (dx < 0 ? -1 : 1), H - 1 - k, 1, 1, PAL.jungle[3]); }
+    }
+    if (v === 1) rect(c, 9, 4, 2, 2, PAL.flower[0]);
+    if (v === 2) rect(c, 12, 5, 1, 2, PAL.rootglass[1]);
+    return { img: outline(img), ax: 10, ay: H };
+  });
+}
+
+/** A Verdant ship at its pier: the hull and mast as ever, a moss-green sail with a rootglass stripe. */
+export function verdantShip(): Sprite {
+  return cached('verdant-ship', () => {
+    const W = 48, H = 52, img = cv(W, H), c = img.getContext('2d')!;
+    rect(c, 4, 38, 40, 10, PAL.wood[0]); rect(c, 6, 46, 36, 4, PAL.wood[2]); rect(c, 4, 38, 40, 2, PAL.wood[3]); rect(c, 0, 36, 6, 6, PAL.wood[0]); rect(c, 42, 34, 6, 8, PAL.wood[0]);
+    for (let x = 8; x < 42; x += 6) rect(c, x, 41, 2, 2, PAL.plank[2]);
+    rect(c, 23, 2, 2, 38, PAL.trunk[2]);
+    rect(c, 10, 6, 13, 26, PAL.roofLeaf[0]); rect(c, 25, 8, 12, 22, PAL.roofLeaf[2]); rect(c, 10, 16, 13, 3, PAL.rootglass[1]); rect(c, 25, 17, 12, 3, PAL.rootglass[2]);
+    rect(c, 22, 0, 6, 3, PAL.rootglass[2]);
+    return { img: outline(img), ax: 24, ay: 50, lights: [{ x: 0, y: -50, r: 10 }] };
   });
 }
