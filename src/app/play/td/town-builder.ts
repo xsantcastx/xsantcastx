@@ -5,12 +5,14 @@
  */
 import type { StationDef } from '../world/world.model';
 import { INFERNAL_TOWN } from '../world/towns/infernal';
-import { barrel, bench, brazierFountain, crate, fence, fern, flowerbed, forgeHearth, giantTree, hearthFire, house, jungleTree, lamp, rootLamp, rootglassBole, ship, signpost, stall, templePillar, tower, tree, verdantShip, waystone, SOLID_GROUND, TILE, type Ground, type RoofStyle, type Sprite, type WallStyle } from './td-art';
+import { barrel, bench, brazierFountain, crate, fence, fern, flowerbed, forgeHearth, giantTree, hearthFire, house, jungleTree, lamp, rootLamp, rootglassBole, ship, lanternPost, lanternTower, swampTree, reeds, gloomcap, umbralShip, signpost, stall, templePillar, tower, tree, verdantShip, waystone, SOLID_GROUND, TILE, type Ground, type RoofStyle, type Sprite, type WallStyle } from './td-art';
 import type { TdMap, TdObject, TdStall } from './seamworks-square';
 
 export type PropKind = 'lamp' | 'bench' | 'barrel' | 'crate' | 'flowerbed' | 'fountain' | 'hearth' | 'forge' | 'signpost' | 'fence' | 'oak' | 'pine' | 'waystone' | 'ship'
   // The Verdant Wilds' own: jungle trees and giants, rootglass lamps, ferns, a broken pillar, the moss-sailed ship.
-  | 'jungle' | 'giant-tree' | 'rootlamp' | 'fern' | 'pillar' | 'verdant-ship';
+  | 'jungle' | 'giant-tree' | 'rootlamp' | 'fern' | 'pillar' | 'verdant-ship'
+  // The Umbral Marches' own: lantern posts, swamp cypresses, reeds, gloomcaps, the gloam-sailed ship.
+  | 'lantern' | 'swamp-tree' | 'reeds' | 'gloomcap' | 'umbral-ship';
 
 export interface TownSpec {
   id: string;
@@ -25,7 +27,7 @@ export interface TownSpec {
    * Towers of three floors; one with a door opens onto its hand-drawn ground floor (td-engine DOORS). `bole`: the
    * Rootglass Bole instead, a giant tree five tiles across at the foot.
    */
-  towers?: readonly { c: number; r: number; door?: StationDef; look?: 'tower' | 'bole' }[];
+  towers?: readonly { c: number; r: number; door?: StationDef; look?: 'tower' | 'bole' | 'lantern' }[];
   /** Town task givers standing on their own (shared/town-tasks): an id from TASK_GIVERS, a name, a tile, one line. */
   givers?: readonly { id: string; name: string; c: number; r: number; blurb: string }[];
   spawn: { c: number; r: number };
@@ -42,6 +44,8 @@ const PROP: Record<PropKind, { sprite: () => Sprite; block?: { w: number; h: num
   jungle: { sprite: () => jungleTree(0), block: { w: 1, h: 1 }, kind: 'tree' }, 'giant-tree': { sprite: () => giantTree(0), block: { w: 3, h: 1 }, kind: 'tree' },
   rootlamp: { sprite: rootLamp, block: { w: 1, h: 1 } }, fern: { sprite: () => fern(0) }, pillar: { sprite: () => templePillar(2), block: { w: 1, h: 1 } },
   'verdant-ship': { sprite: verdantShip },
+  lantern: { sprite: lanternPost, block: { w: 1, h: 1 } }, 'swamp-tree': { sprite: () => swampTree(0), block: { w: 1, h: 1 }, kind: 'tree' },
+  reeds: { sprite: () => reeds(0) }, gloomcap: { sprite: () => gloomcap(0) }, 'umbral-ship': { sprite: umbralShip },
 };
 
 export function buildTown(spec: TownSpec): TdMap {
@@ -63,7 +67,8 @@ export function buildTown(spec: TownSpec): TdMap {
   }
   for (const t of spec.towers ?? []) {
     const bole = t.look === 'bole';
-    objects.push({ sprite: bole ? rootglassBole : tower, x: tx(t.c), y: ty(t.r), block: bole ? { w: 5, h: 3 } : { w: 3, h: 2 }, kind: 'building' });
+    // The Lantern Tower (Gloamhaven) stands on stilts: three tiles of it block, like the basalt tower's.
+    objects.push({ sprite: bole ? rootglassBole : t.look === 'lantern' ? lanternTower : tower, x: tx(t.c), y: ty(t.r), block: bole ? { w: 5, h: 3 } : { w: 3, h: 2 }, kind: 'building' });
     if (t.door) stalls.push({ station: t.door, x: tx(t.c), y: ty(t.r) + 6 });
   }
   // A giver stands where drawn; the spot to speak from is just in front of them (td-engine `use` → onTalk).
@@ -71,7 +76,8 @@ export function buildTown(spec: TownSpec): TdMap {
   for (const p of spec.props) {
     const d = PROP[p.kind];
     // A jungle tree or a fern takes its look from where it stands, so a row of them never repeats.
-    const seed = p.c * 7 + p.r * 3, sprite = p.kind === 'jungle' ? () => jungleTree(seed) : p.kind === 'fern' ? () => fern(seed) : d.sprite;
+    const seed = p.c * 7 + p.r * 3, sprite = p.kind === 'jungle' ? () => jungleTree(seed) : p.kind === 'fern' ? () => fern(seed)
+      : p.kind === 'swamp-tree' ? () => swampTree(seed) : p.kind === 'reeds' ? () => reeds(seed) : p.kind === 'gloomcap' ? () => gloomcap(seed) : d.sprite;
     objects.push({ sprite, x: tx(p.c), y: ty(p.r), ...(d.block ? { block: d.block } : {}), kind: d.kind ?? 'prop' });
   }
   const walkable = new Uint8Array(cols * rows).fill(1);

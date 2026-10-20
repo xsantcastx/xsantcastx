@@ -50,6 +50,15 @@ export const PAL = {
   rootglass: ['#eafff6', '#7affd0', '#2fb38a', '#17604e'],
   window: '#ffe39b',
   windowDark: '#3a3654',
+  // The Umbral Marches: bog and black water, drowned stone, gloam-violet shingles, lantern gold, hanging moss, the ink glow.
+  mire: ['#3b3a2a', '#45432f', '#302f22', '#56543a'],
+  blackwater: ['#121a22', '#1a2530', '#0b1016', '#2c3c4a'],
+  wetstone: ['#5d646b', '#4f565d', '#40464c', '#737b83'],
+  roofGloam: ['#4e4566', '#5f5578', '#3a3350', '#776c92'],
+  lantern: ['#fff3c4', '#ffc65a', '#d98a2a', '#6e4220'],
+  hangmoss: ['#9aa488', '#78836a', '#5a6450', '#b6bea4'],
+  ink: ['#e8e0ff', '#a48bff', '#5a46a8', '#2c2258'],
+  boardwalk: ['#6f5c4a', '#7d6853', '#5c4b3d', '#8c7660'],
 } as const;
 
 function cv(w: number, h: number): HTMLCanvasElement {
@@ -77,9 +86,14 @@ function outline(src: HTMLCanvasElement): HTMLCanvasElement {
 export type Ground = 'grass' | 'dirt' | 'cobble' | 'sand' | 'water' | 'ember' | 'plank' | 'flowers' | 'cave' | 'rock' | 'wall' | 'rug'
   // The Verdant Wilds (maps/verdant-wilds.ts): jungle moss, mossy temple flagstones, and three grounds nobody walks on —
   // a temple's wall, the leaf-sea round the Rootglass Bole's walkways, the Bole's own living wood.
-  | 'moss' | 'flagstone' | 'vinewall' | 'canopy' | 'bark';
+  | 'moss' | 'flagstone' | 'vinewall' | 'canopy' | 'bark'
+  // The Umbral Marches (maps/umbral-marches.ts): bog underfoot, the drowned crypts' wet floor, and two nobody walks on —
+  // the black water of the fens, the crypts' drowned walls.
+  | 'mire' | 'wetstone' | 'blackwater' | 'drownwall'
+  // …and the Marches' boardwalks: weathered planks gone grey in the damp, on stilts over the fen.
+  | 'boardwalk';
 /** Ground nothing walks through (a wall, a mass of rock, the canopy's leaves, a tree's living wood). */
-export const SOLID_GROUND: ReadonlySet<Ground> = new Set<Ground>(['rock', 'wall', 'vinewall', 'canopy', 'bark']);
+export const SOLID_GROUND: ReadonlySet<Ground> = new Set<Ground>(['rock', 'wall', 'vinewall', 'canopy', 'bark', 'blackwater', 'drownwall']);
 
 /** Paint one ground tile at (tx, ty) into `c` at (ox, oy). Variants come from the tile's own hash. */
 export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: number, oy: number, frame = 0): void {
@@ -207,6 +221,59 @@ export function paintGround(c: Ctx, kind: Ground, tx: number, ty: number, ox: nu
       if (r(17) > .7) rect(c, ox + Math.floor(r(18) * 13), oy + Math.floor(r(19) * 13), 3, 2, PAL.moss[2]);
       break;
     }
+    case 'mire': {
+      // The fen underfoot: dark peat, wet sheen, a puddle of black water, a reed sprig, now and then a gloomcap's spore.
+      rect(c, ox, oy, TILE, TILE, PAL.mire[0]);
+      for (let i = 0; i < 9; i++) rect(c, ox + Math.floor(r(i) * 15), oy + Math.floor(r(i + 20) * 15), 2, 1, pick(PAL.mire, r(i + 40)));
+      if (r(61) > .7) { const x = ox + 1 + Math.floor(r(62) * 10), y = oy + 2 + Math.floor(r(63) * 11); rect(c, x, y, 4, 2, PAL.blackwater[1]); rect(c, x + 1, y, 2, 1, PAL.blackwater[3]); }
+      if (r(64) > .78) { const x = ox + 2 + Math.floor(r(65) * 12), y = oy + 4 + Math.floor(r(66) * 9); rect(c, x, y, 1, 3, PAL.hangmoss[2]); rect(c, x + 1, y + 1, 1, 2, PAL.hangmoss[1]); }
+      if (r(67) > .95) rect(c, ox + Math.floor(r(68) * 15), oy + Math.floor(r(69) * 15), 1, 1, PAL.ink[1]);
+      break;
+    }
+    case 'boardwalk': {
+      // Weathered fen planks: grey-brown boards, dark gaps, a nail, a creep of moss along a seam, a lantern's drip of wax.
+      for (let i = 0; i < 4; i++) {
+        rect(c, ox, oy + i * 4, TILE, 4, pick(PAL.boardwalk, r(i)));
+        rect(c, ox, oy + i * 4, TILE, 1, PAL.boardwalk[3]);
+        rect(c, ox, oy + i * 4 + 3, TILE, 1, '#3a2e26');
+        rect(c, ox + Math.floor(r(i + 9) * 14), oy + i * 4 + 1, 1, 1, '#3a2e26');
+        if (r(i + 20) > .8) rect(c, ox + Math.floor(r(i + 24) * 12), oy + i * 4 + 2, 3, 1, PAL.hangmoss[2]);
+      }
+      // A board end now and then (the planks are laid in runs, not one length).
+      if (r(30) > .5) { const x = ox + 3 + Math.floor(r(31) * 10), y = oy + Math.floor(r(32) * 4) * 4; rect(c, x, y, 1, 3, '#3a2e26'); }
+      break;
+    }
+    case 'wetstone': {
+      // The drowned crypts' floor: old slabs slick with silt, a sheen of water in the joints, a pale snail-trail of salt.
+      rect(c, ox, oy, TILE, TILE, '#2e3338');
+      for (let q = 0; q < 4; q++) {
+        const x = ox + (q % 2) * 8 + (ty % 2 && q < 2 ? 1 : 0), y = oy + Math.floor(q / 2) * 8;
+        rect(c, x, y, 7, 7, pick(PAL.wetstone, r(q + 3)));
+        rect(c, x, y, 7, 1, PAL.wetstone[3]); rect(c, x + 6, y + 1, 1, 6, PAL.wetstone[2]);
+        if (r(q + 11) > .66) rect(c, x + 1 + Math.floor(r(q + 13) * 4), y + 3, 3, 1, PAL.blackwater[3]);
+      }
+      if (r(29) > .78) { const x = ox + 3 + Math.floor(r(30) * 8); rect(c, x, oy + 6, 5, 3, PAL.blackwater[1]); rect(c, x + 1, oy + 6, 2, 1, PAL.blackwater[3]); }
+      if (r(31) > .9) rect(c, ox + Math.floor(r(32) * 12), oy + Math.floor(r(33) * 14), 3, 1, '#9aa0a4');
+      break;
+    }
+    case 'blackwater': {
+      // Still black water: a faint ripple drifting with the frame, a lily pad, a lantern's gold caught on the surface.
+      rect(c, ox, oy, TILE, TILE, PAL.blackwater[0]);
+      for (let i = 0; i < 3; i++) {
+        const x = (Math.floor(r(i) * 16) + frame) % 13, y = Math.floor(r(i + 7) * 15);
+        rect(c, ox + x, oy + y, 3, 1, PAL.blackwater[1]);
+      }
+      if (r(40) > .88) { const x = ox + 2 + Math.floor(r(41) * 10), y = oy + 3 + Math.floor(r(42) * 9); rect(c, x, y, 4, 3, '#3e5a3a'); rect(c, x + 1, y, 2, 1, '#557a4c'); rect(c, x + 2, y + 1, 1, 1, PAL.blackwater[0]); }
+      else if (r(43) > .93) rect(c, ox + ((Math.floor(r(44) * 12) + frame) % 13), oy + Math.floor(r(45) * 14), 2, 1, PAL.lantern[2]);
+      break;
+    }
+    case 'drownwall': {
+      // A drowned crypt's wall seen from above: wet slate capstones, a pale crust of salt (its face is drawn by paintEdge).
+      rect(c, ox, oy, TILE, TILE, '#1f252b');
+      rect(c, ox, oy + 7, TILE, 1, '#171c21');
+      for (let i = 0; i < 4; i++) rect(c, ox + Math.floor(r(i) * 14), oy + Math.floor(r(i + 5) * 14), 2, 1, i % 2 ? '#2a3238' : '#3a4248');
+      break;
+    }
     case 'water':
     case 'ember': {
       const ramp = kind === 'water' ? PAL.water : PAL.ember;
@@ -299,6 +366,43 @@ export function paintEdge(c: Ctx, kind: Ground, neighbour: Ground, side: 'n' | '
     rect(c, ox + (side === 'e' ? 15 : 0), oy + (side === 's' ? 15 : 0), h ? TILE : 1, h ? 1 : TILE, '#2a1a10');
     return;
   }
+  if (kind === 'drownwall') {
+    // A drowned crypt's wall: where floor lies south, its face — wet courses of slate, a tide-line of green slime,
+    // pale salt where it dried, water running down it, and now and then an ink-violet ward cut into the stone.
+    if (side === 's') {
+      rect(c, ox, oy + 3, TILE, 13, PAL.wetstone[1]); rect(c, ox, oy + 3, TILE, 2, PAL.wetstone[3]);
+      for (let y = 7; y < 15; y += 4) { rect(c, ox, oy + y, TILE, 1, PAL.wetstone[2]); rect(c, ox + ((y / 4 + tx) % 2 ? 3 : 10), oy + y - 3, 1, 3, PAL.wetstone[2]); }
+      rect(c, ox, oy + 12, TILE, 2, '#3e5a42'); rect(c, ox, oy + 14, TILE, 2, '#2a3a2e');
+      for (let i = 0; i < 2; i++) { const x = Math.floor(hash(tx, ty, i + 210) * 15), len = 3 + Math.floor(hash(tx, ty, i + 215) * 7); rect(c, ox + x, oy + 5, 1, len, PAL.blackwater[3]); }
+      if (hash(tx, ty, 220) > .6) rect(c, ox + Math.floor(hash(tx, ty, 221) * 12), oy + 5, 3, 1, '#c9cdc8');
+      if (hash(tx, ty, 222) > .84) { rect(c, ox + 6, oy + 6, 4, 5, '#2a2f3a'); rect(c, ox + 7, oy + 7, 2, 1, PAL.ink[1]); rect(c, ox + 7, oy + 9, 2, 1, PAL.ink[1]); rect(c, ox + 7, oy + 8, 1, 1, PAL.ink[0]); }
+    } else if (side === 'n') rect(c, ox, oy, TILE, 1, '#0e1216');
+    else if (side === 'w') rect(c, ox, oy, 1, TILE, '#0e1216');
+    else rect(c, ox + 15, oy, 1, TILE, '#0e1216');
+    return;
+  }
+  if (kind === 'blackwater') {
+    // The fen's edge: under a boardwalk its stilts going down into the black, their reflections; under the bank a
+    // muddy lip and a shadow.
+    if (side === 'n' && (neighbour === 'plank' || neighbour === 'boardwalk')) {
+      rect(c, ox, oy, TILE, 3, '#07090c');
+      for (let x = 2 + (tx % 2) * 4; x < TILE; x += 8) { rect(c, ox + x, oy, 2, 6, PAL.wood[2]); rect(c, ox + x, oy, 1, 6, PAL.wood[0]); rect(c, ox + x, oy + 7, 2, 1, PAL.blackwater[3]); rect(c, ox + x, oy + 9, 1, 1, PAL.blackwater[3]); }
+      return;
+    }
+    if (neighbour === 'blackwater' || SOLID_GROUND.has(neighbour)) return;
+    const lip = neighbour === 'plank' || neighbour === 'boardwalk' ? '#3a2e26' : PAL.mire[3], shade = '#06080b';
+    if (side === 'n') { rect(c, ox, oy, TILE, 2, lip); rect(c, ox, oy + 2, TILE, 2, shade); }
+    if (side === 's') rect(c, ox, oy + 15, TILE, 1, lip);
+    if (side === 'w') { rect(c, ox, oy, 1, TILE, lip); rect(c, ox + 1, oy, 1, TILE, shade); }
+    if (side === 'e') { rect(c, ox + 15, oy, 1, TILE, lip); rect(c, ox + 14, oy, 1, TILE, shade); }
+    return;
+  }
+  if ((kind === 'plank' || kind === 'boardwalk') && neighbour === 'blackwater') {
+    // A boardwalk over the fen: its edge beam, dark where it overhangs the water.
+    if (side === 's') { rect(c, ox, oy + 13, TILE, 2, kind === 'boardwalk' ? PAL.boardwalk[2] : PAL.wood[0]); rect(c, ox, oy + 15, TILE, 1, '#1a120c'); }
+    else rect(c, ox + (side === 'e' ? 15 : 0), oy, side === 'n' ? TILE : 1, side === 'n' ? 1 : TILE, '#2a1a10');
+    return;
+  }
   if (SOLID_GROUND.has(neighbour)) return;
   const water = neighbour === 'water' || neighbour === 'ember';
   if (kind === 'water' || kind === 'ember') {
@@ -354,10 +458,10 @@ function cached(key: string, make: () => Sprite): Sprite {
   return s;
 }
 
-export type RoofStyle = 'red' | 'slate' | 'thatch' | 'leaf';
+export type RoofStyle = 'red' | 'slate' | 'thatch' | 'leaf' | 'gloam';
 export type WallStyle = 'timber' | 'stone' | 'basalt';
 
-const roofRamp = (s: RoofStyle) => (s === 'red' ? PAL.roofRed : s === 'slate' ? PAL.roofSlate : s === 'leaf' ? PAL.roofLeaf : PAL.roofThatch);
+const roofRamp = (s: RoofStyle) => (s === 'red' ? PAL.roofRed : s === 'slate' ? PAL.roofSlate : s === 'leaf' ? PAL.roofLeaf : s === 'gloam' ? PAL.roofGloam : PAL.roofThatch);
 
 /**
  * A house, `w` tiles wide and `d` tiles deep: front wall with a door and
@@ -1204,5 +1308,168 @@ export function verdantShip(): Sprite {
     rect(c, 10, 6, 13, 26, PAL.roofLeaf[0]); rect(c, 25, 8, 12, 22, PAL.roofLeaf[2]); rect(c, 10, 16, 13, 3, PAL.rootglass[1]); rect(c, 25, 17, 12, 3, PAL.rootglass[2]);
     rect(c, 22, 0, 6, 3, PAL.rootglass[2]);
     return { img: outline(img), ax: 24, ay: 50, lights: [{ x: 0, y: -50, r: 10 }] };
+  });
+}
+
+// ── The Umbral Marches (maps/umbral-marches.ts): lantern posts, the Lantern Tower, swamp cypresses hung with moss,
+// reeds, gloomcaps, the gloam-sailed ship and the drowned crypts' door. Same kit: painted once, outlined, lit top-left.
+
+/** A Marches lantern post: a crooked black-timber post, an arm, a caged lantern of warm gold that never goes out. */
+export function lanternPost(): Sprite {
+  return cached('lantern-post', () => {
+    const img = cv(14, 34), c = img.getContext('2d')!;
+    rect(c, 3, 8, 3, 23, '#2a2026'); rect(c, 3, 8, 1, 23, '#46363c'); rect(c, 1, 30, 7, 3, '#2a2026'); rect(c, 0, 31, 2, 2, PAL.mire[3]);
+    // The arm, bent like a heron's neck, and a little rope.
+    rect(c, 4, 6, 7, 2, '#2a2026'); rect(c, 10, 6, 1, 3, '#2a2026');
+    // The cage: an iron hood, gold glass, bars, a drip of wax under it.
+    rect(c, 8, 9, 6, 2, '#1c1418'); rect(c, 8, 11, 6, 7, PAL.lantern[3]); rect(c, 9, 11, 4, 6, PAL.lantern[1]); rect(c, 9, 11, 2, 2, PAL.lantern[0]);
+    rect(c, 10, 11, 1, 6, PAL.lantern[2]); rect(c, 8, 18, 6, 1, '#1c1418'); rect(c, 10, 19, 2, 1, PAL.lantern[2]);
+    rect(c, 2, 20, 2, 3, PAL.hangmoss[1]); rect(c, 2, 23, 1, 2, PAL.hangmoss[2]);
+    return { img: outline(img), ax: 5, ay: 35, lights: [{ x: 6, y: -21, r: 34, warm: true }] };
+  });
+}
+
+/**
+ * Gloamhaven's Lantern Tower: a tall timber tower on stilts over the water, a gallery at each floor (it goes up two,
+ * maps/lantern-tower.ts), shingles of gloam-violet, and at its top the Great Lantern that guides boats through the fog.
+ */
+export function lanternTower(): Sprite {
+  return cached('lantern-tower', () => {
+    const W = 52, H = 132, img = cv(W, H), c = img.getContext('2d')!;
+    const lights: { x: number; y: number; r: number; warm?: boolean }[] = [];
+    // Stilts and cross-braces at the foot, going down into the fen.
+    for (const x of [6, 18, 32, 44]) { rect(c, x, 108, 3, 24, '#2a2026'); rect(c, x, 108, 1, 24, '#46363c'); }
+    for (let y = 112; y < 130; y += 9) { for (let i = 0; i < 38; i++) rect(c, 7 + i, y + Math.round(i * .18), 1, 1, '#3a2c30'); }
+    rect(c, 2, 104, 48, 5, PAL.wood[0]); rect(c, 2, 104, 48, 1, PAL.wood[3]); rect(c, 2, 108, 48, 1, '#1a120c');
+    // The body: three storeys of dark weatherboard, narrowing a little, each with a gallery rail and lit windows.
+    for (let f = 0; f < 3; f++) {
+      const top = 38 + f * 22, inset = 8 - f * 2, x0 = 6 + inset - 2, w = W - 12 - (inset - 2) * 2;
+      rect(c, x0, top, w, 22, '#3b2f36');
+      for (let y = top + 2; y < top + 22; y += 3) rect(c, x0, y, w, 1, '#2e242a');
+      rect(c, x0, top, 3, 22, '#4a3c42'); rect(c, x0 + w - 3, top, 3, 22, '#241c22');
+      rect(c, x0 - 3, top + 19, w + 6, 3, PAL.wood[0]); rect(c, x0 - 3, top + 19, w + 6, 1, PAL.wood[3]);
+      for (let x = x0 - 3; x < x0 + w + 3; x += 4) rect(c, x, top + 15, 1, 4, PAL.wood[2]);
+      rect(c, x0 - 3, top + 15, w + 6, 1, PAL.wood[1]);
+      for (const wx of f === 2 ? [x0 + 4, x0 + w - 10] : [W / 2 - 3]) {
+        rect(c, wx - 1, top + 4, 8, 10, '#1c1418'); rect(c, wx, top + 5, 6, 8, PAL.window); rect(c, wx + 2, top + 5, 1, 8, '#6e4220');
+        lights.push({ x: wx + 3 - W / 2, y: top + 9 - H, r: 12, warm: true });
+      }
+    }
+    // The door at the foot, on the boardwalk, a lantern either side.
+    rect(c, 19, 86, 14, 18, '#1c1418'); rect(c, 20, 87, 12, 17, PAL.wood[0]); rect(c, 25, 87, 1, 17, PAL.wood[2]); rect(c, 29, 95, 1, 2, '#e6c35a');
+    for (const x of [13, 36]) { rect(c, x, 89, 4, 6, PAL.lantern[1]); rect(c, x, 88, 4, 1, '#1c1418'); rect(c, x + 1, 90, 2, 2, PAL.lantern[0]); lights.push({ x: x + 2 - W / 2, y: 92 - H, r: 16, warm: true }); }
+    // The roof: a steep cone of gloam shingles, and the lantern room under its peak.
+    for (let y = 0; y < 22; y++) {
+      const half = Math.round(6 + 20 * (y / 22));
+      rect(c, W / 2 - half, 16 + y, half * 2, 1, pick(PAL.roofGloam, hash(y, 5, 93)));
+      if (y % 4 === 3) rect(c, W / 2 - half, 16 + y, half * 2, 1, PAL.roofGloam[2]);
+    }
+    rect(c, W / 2 - 26, 36, 52, 2, PAL.roofGloam[2]);
+    // The Great Lantern: a cage of iron round a big gold glass, its light the brightest thing in the Marches.
+    rect(c, W / 2 - 8, 2, 16, 15, '#1c1418'); rect(c, W / 2 - 6, 4, 12, 12, PAL.lantern[2]); rect(c, W / 2 - 5, 5, 10, 10, PAL.lantern[1]); rect(c, W / 2 - 4, 6, 5, 5, PAL.lantern[0]);
+    for (const x of [-6, -1, 4]) rect(c, W / 2 + x, 4, 1, 12, '#1c1418');
+    rect(c, W / 2 - 2, 0, 4, 2, '#1c1418');
+    lights.push({ x: 0, y: 10 - H, r: 42, warm: true });
+    return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights };
+  });
+}
+
+/** A swamp cypress: knees of root round a flared foot, a ragged crown, grey moss hanging off every bough (six seeds). */
+export function swampTree(seed = 0): Sprite {
+  const v = ((seed % 6) + 6) % 6;
+  return cached(`swamp-tree:${v}`, () => {
+    const W = 40, H = 54, trunk = cv(W, H), c = trunk.getContext('2d')!;
+    const dead = v === 4 || v === 5, lean = v % 2 ? 1 : -1;
+    // The trunk, flared at its foot, leaning a little; cypress knees poking out of the mire round it.
+    for (let y = 18; y < H; y++) {
+      const w = 4 + Math.max(0, Math.round((y - 38) * .5)), x = 20 - w / 2 + Math.round(lean * (H - y) * .06);
+      rect(c, x, y, w, 1, '#4a3a34'); rect(c, x, y, 1, 1, '#66544a'); rect(c, x + w - 1, y, 1, 1, '#2c221e');
+    }
+    for (const [x, h] of [[8, 4], [12, 3], [29, 3], [33, 5]] as const) { rect(c, x, H - h, 2, h, '#4a3a34'); rect(c, x, H - h, 1, 1, '#66544a'); }
+    rect(c, 11, H - 2, 18, 2, '#2c221e');
+    const crown = cv(W, 42), k = crown.getContext('2d')!;
+    // Boughs, bare on a dead one.
+    for (const [x0, y0, x1, y1] of [[20, 30, 6, 20], [20, 26, 34, 16], [20, 22, 14, 8], [21, 22, 28, 6]] as const) {
+      const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
+      for (let i = 0; i <= n; i++) rect(k, Math.round(x0 + (x1 - x0) * i / n), Math.round(y0 + (y1 - y0) * i / n), 2, 1, '#3e302c');
+    }
+    if (!dead) {
+      const ramp = ['#41513e', '#4e5f48', '#33402f', '#62745a'] as const;
+      for (const [x, y, rr] of [[20, 16, 11], [9, 20, 7], [31, 18, 7], [14, 8, 7], [27, 7, 7]] as const) {
+        for (let yy = -rr; yy <= rr; yy++) for (let xx = -rr; xx <= rr; xx++) {
+          if (xx * xx + yy * yy * 1.6 > rr * rr || hash(x + xx, y + yy, v + 70) > .9) continue;
+          const sh = yy < -rr / 3 && xx < rr / 3 ? ramp[3] : yy > rr / 3 || xx > rr * .6 ? ramp[2] : hash(x + xx, y + yy, v) > .75 ? ramp[1] : ramp[0];
+          rect(k, x + xx, y + yy, 1, 1, sh);
+        }
+      }
+    }
+    // The hanging moss: long grey strands from the boughs, swaying nowhere.
+    for (let x = 4; x < 36; x += 2) {
+      if (hash(x, v, 31) < .4) continue;
+      const y0 = 12 + Math.floor(hash(x, v, 32) * 14), len = 5 + Math.floor(hash(x, v, 33) * (dead ? 10 : 14));
+      rect(k, x, y0, 1, len, PAL.hangmoss[1]); rect(k, x, y0, 1, 2, PAL.hangmoss[3]); rect(k, x, y0 + len - 1, 1, 1, PAL.hangmoss[2]);
+    }
+    if (v === 2) { rect(k, 25, 24, 2, 2, PAL.ink[1]); rect(k, 25, 24, 1, 1, PAL.ink[0]); }
+    return { img: outline(trunk), ax: W / 2 + 1, ay: H + 1, roof: { img: outline(crown), x: -(W / 2) - 1, y: -H - 1 + 2 }, ...(v === 2 ? { lights: [{ x: 5, y: -28, r: 12 }] } : {}) };
+  });
+}
+
+/** Reeds and cattails at the water's edge (three seeds). */
+export function reeds(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`reeds-${v}`, () => {
+    const W = 18, H = 20, img = cv(W, H), c = img.getContext('2d')!;
+    for (let i = 0; i < 7; i++) {
+      const x = 2 + i * 2 + (i % 2), h = 9 + ((i * 5 + v * 3) % 8), lean = ((i + v) % 3) - 1;
+      for (let y = 0; y < h; y++) rect(c, x + Math.round(lean * y / h * 2), H - 1 - y, 1, 1, y < 3 ? '#3e4a30' : i % 2 ? '#6e7c4a' : '#58663c');
+      if ((i + v) % 3 === 0) { rect(c, x + lean * 2 - 1 + 1, H - h - 2, 2, 4, '#5a3a24'); rect(c, x + lean * 2 + 1, H - h - 2, 1, 1, '#7a5034'); }
+    }
+    return { img: outline(img), ax: 9, ay: H };
+  });
+}
+
+/** Gloomcaps: a cluster of pale mushrooms that glow ink-violet in the dark (three seeds). */
+export function gloomcap(seed = 0): Sprite {
+  const v = ((seed % 3) + 3) % 3;
+  return cached(`gloomcap-${v}`, () => {
+    const W = 16, H = 12, img = cv(W, H), c = img.getContext('2d')!;
+    for (const [x, h, w] of ([[3, 6, 5], [9, 8, 6], [6, 4, 4], [12, 5, 3]] as const).slice(0, 2 + v)) {
+      rect(c, x + Math.floor(w / 2) - 1, H - h + 2, 2, h - 2, '#d8d0e0');
+      rect(c, x, H - h, w, 3, PAL.ink[2]); rect(c, x + 1, H - h - 1, w - 2, 1, PAL.ink[2]); rect(c, x + 1, H - h, w - 2, 1, PAL.ink[1]);
+      rect(c, x + 1, H - h - 1, 1, 1, PAL.ink[0]);
+    }
+    return { img: outline(img), ax: 8, ay: H, lights: [{ x: 0, y: -6, r: 12 }] };
+  });
+}
+
+/** The Marches' ship at its pier: a black hull, a gloam-violet sail with a lantern-gold stripe, a lantern at its bow. */
+export function umbralShip(): Sprite {
+  return cached('umbral-ship', () => {
+    const W = 48, H = 52, img = cv(W, H), c = img.getContext('2d')!;
+    rect(c, 4, 38, 40, 10, '#3a2c30'); rect(c, 6, 46, 36, 4, '#241a1e'); rect(c, 4, 38, 40, 2, '#5a464c'); rect(c, 0, 36, 6, 6, '#3a2c30'); rect(c, 42, 34, 6, 8, '#3a2c30');
+    for (let x = 8; x < 42; x += 6) rect(c, x, 41, 2, 2, PAL.lantern[2]);
+    rect(c, 23, 2, 2, 38, '#2a2026');
+    rect(c, 10, 6, 13, 26, PAL.roofGloam[1]); rect(c, 25, 8, 12, 22, PAL.roofGloam[2]); rect(c, 10, 16, 13, 3, PAL.lantern[1]); rect(c, 25, 17, 12, 3, PAL.lantern[2]);
+    rect(c, 44, 28, 3, 4, PAL.lantern[1]); rect(c, 44, 27, 3, 1, '#1c1418');
+    rect(c, 22, 0, 6, 3, PAL.ink[1]);
+    return { img: outline(img), ax: 24, ay: 50, lights: [{ x: 21, y: -20, r: 18, warm: true }] };
+  });
+}
+
+/** The Great Lantern at the top of Gloamhaven's tower: an iron cage as tall as a man round a glass of gold, on a plinth. */
+export function greatLantern(): Sprite {
+  return cached('great-lantern', () => {
+    const W = 40, H = 46, img = cv(W, H), c = img.getContext('2d')!;
+    // The plinth: three steps of dark timber bound in iron.
+    rect(c, 2, 38, 36, 8, '#3b2f36'); rect(c, 2, 38, 36, 1, '#5a464c'); rect(c, 6, 34, 28, 4, '#2e242a'); rect(c, 6, 34, 28, 1, '#4a3c42');
+    for (const x of [4, 19, 34]) rect(c, x, 39, 2, 6, '#1c1418');
+    // The glass, lit from inside: a hot core, gold body, amber at its edges.
+    rect(c, 9, 8, 22, 26, PAL.lantern[3]); rect(c, 10, 9, 20, 24, PAL.lantern[2]); rect(c, 12, 11, 16, 20, PAL.lantern[1]); rect(c, 14, 13, 9, 11, PAL.lantern[0]);
+    // The cage: a hood, a ring, bars, a finial.
+    rect(c, 7, 4, 26, 4, '#1c1418'); rect(c, 10, 1, 20, 3, '#2a2026'); rect(c, 18, 0, 4, 1, '#2a2026');
+    for (const x of [8, 14, 20, 26, 31]) rect(c, x, 8, 1, 26, '#1c1418');
+    rect(c, 7, 20, 26, 1, '#1c1418'); rect(c, 7, 33, 26, 1, '#1c1418');
+    rect(c, 9, 5, 22, 1, '#4a3c42');
+    return { img: outline(img), ax: W / 2 + 1, ay: H + 1, lights: [{ x: 0, y: -26, r: 44, warm: true }] };
   });
 }

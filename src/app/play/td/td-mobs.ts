@@ -1003,6 +1003,196 @@ function guardian(c: CanvasRenderingContext2D, f: number): void {
 /** The Mossbound Colossus, the Overgrown Temple's keeper: the guardian grown huge, the Root's own heart set in its chest. */
 function paintColossus(c: CanvasRenderingContext2D, f: number): void { grown(1.6, 2, 3, () => guardian(c, f)); }
 
+// ── The Umbral Marches (maps/umbral-marches.ts, maps/drowned-crypts.ts) ──────────────────────────────────────────────
+
+/** The Marches' own tones: bog mud, reed, ink, drowned iron gone green, kelp, a witch's gloam wool, drowned skin, wisp-light. */
+const U = {
+  mud: ['#8e845a', '#625a3a', '#423c28', '#2a261a'],
+  mudDk: ['#625a3a', '#443e28', '#2e2a1c', '#1c1a12'],
+  reed: ['#b4c070', '#76844a', '#4e5a30', '#30381e'],
+  ink: ['#6e5e94', '#3c305c', '#261e3e', '#140e26'],
+  inkDk: ['#463a66', '#2a2244', '#1a142e', '#0c0818'],
+  verdigris: ['#9ccab0', '#5e927a', '#3e6654', '#264034'],
+  kelp: ['#7a9450', '#506a34', '#344a22', '#1e2e14'],
+  gloam: ['#a092ba', '#6e608a', '#4a3e62', '#2e2640'],
+  gloamDk: ['#6e608a', '#4a3e62', '#322a44', '#201a2c'],
+  skin: ['#d4d4bc', '#a2a48c', '#747662', '#4c4e40'],
+  wisp: ['#fffbe0', '#ffe68a', '#e0b050', '#8a6a2a'],
+} satisfies Record<string, Ramp>;
+/** Lantern-gold, the light the Marches keep; and ink-violet, the dark that answers it (the Marches' element). */
+const LANTERN: Ramp = ['#fff6d0', '#ffc65a', '#d98a2a', '#7a4a1a'];
+const INKGLOW: Ramp = ['#f0e8ff', '#b49cff', '#6e54c8', '#3a2a78'];
+
+/** The Mire Lurker: a squat bog-toad the size of a boat, reeds growing out of its back, a lantern-lure on a stalk. */
+function paintMireLurker(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], sway = [0, 1, 0, -1][f];
+  legs4(c, f, 8, 23, 18 + b, 26, 2, U.mudDk, U.mud, R.bone[2]);
+  // The body: wide, flat, warty, a paler belly.
+  orb(c, 16, 16 + b, 11.5, 6.5, U.mud);
+  px(c, 8, 21 + b, 16, 1, U.mud[2]);
+  orb(c, 16, 19.5 + b, 7, 2, [U.skin[1], U.skin[2], U.skin[3], U.skin[3]]);
+  for (const [x, y] of [[9, 14], [13, 12], [18, 13], [11, 17], [21, 16], [15, 15]] as const) { dot(c, x, y + b, U.mud[0]); dot(c, x + 1, y + b + 1, U.mud[3]); }
+  // Reeds out of its back, a cattail or two, a drip of black water.
+  for (let i = 0; i < 4; i++) {
+    const x = 9 + i * 3.4, top = 4 + (i % 2) * 2 + b, lean = (i - 1.5) * .8 + sway * .5;
+    limb(c, [x, 12 + b], [x + lean, top], 1, U.reed);
+    if (i % 2 === 0) px(c, x + lean - .5, top - 2, 2, 3, R.bark[2]);
+  }
+  dot(c, 6, 19 + b, U.ink[1]);
+  // The head: a wide frog's skull, a long lipless mouth, small yellow eyes on top.
+  orb(c, 27, 15.5 + b, 6.5, 5, U.mud);
+  line(c, [22, 18 + b], [33, 17 + b], U.mudDk[3]); line(c, [23, 19 + b], [32, 18 + b], U.mud[2]);
+  for (const x of [25, 28, 31]) dot(c, x, 18 + b, R.bone[0]);
+  orb(c, 25.5, 11 + b, 2.6, 2.2, U.mud); orb(c, 30, 11.5 + b, 2.2, 1.8, U.mudDk);
+  px(c, 25, 10 + b, 2, 1, LANTERN[1]); dot(c, 26, 10 + b, OUT); dot(c, 30, 11 + b, LANTERN[2]);
+  // The lure: a stalk off its brow, arching forward, and on it a little lantern of its own light.
+  limb(c, [28, 10 + b], [31, 4 + b], 1, U.mudDk); limb(c, [31, 4 + b], [34, 5 + b + sway], 1, U.mudDk);
+  glow(c, 33, 6 + b + sway, 2, LANTERN);
+}
+
+/** The Lantern Wisp: a lost lantern's flame that kept going without it — a tongue of gold, a ring of its old cage, a trail of smoke. */
+function paintLanternWisp(c: CanvasRenderingContext2D, f: number): void {
+  const b = [0, -1, -2, -1][f], sway = [0, 1, 0, -1][f];
+  // The trail: three thin wisps of warm smoke, wavering, thinning out below it.
+  for (const [x, dx, len] of [[8, -1, 9], [11, 0, 12], [14, 1, 8]] as const) {
+    for (let i = 0; i < len; i++) {
+      const wx = x + Math.round(Math.sin((i + f * 2 + x) / 2.4) * 1.2) + Math.round(dx * i / 4);
+      dot(c, wx, 18 + b + i, i < len / 2 ? U.wisp[2] : U.wisp[3]);
+    }
+  }
+  // The flame: a teardrop pointing up, its tip flickering; a hotter heart inside it.
+  poly(c, [[11 + sway, 0 + b + 1], [14, 4 + b], [17, 10 + b], [16, 15 + b], [11, 19 + b], [6, 15 + b], [5, 10 + b], [8, 4 + b]], U.wisp);
+  poly(c, [[11, 5 + b], [14, 10 + b], [13, 15 + b], [9, 15 + b], [8, 10 + b]], [LANTERN[0], LANTERN[0], U.wisp[1], U.wisp[1]]);
+  glow(c, 10, 9 + b, 2, LANTERN);
+  // Tongues licking off its sides.
+  dot(c, 4, 9 + b - sway, U.wisp[1]); dot(c, 18, 8 + b + sway, U.wisp[1]); dot(c, 3, 7 + b - sway, U.wisp[2]);
+  // What is left of its cage: the iron ring it hung from, one bent bar.
+  px(c, 9, 18 + b, 5, 1, '#2a2026'); line(c, [6, 15 + b], [5, 9 + b], '#3a2c30');
+  // Two dark eyes, wide and curious.
+  px(c, 9, 11 + b, 1, 2, OUT); px(c, 13, 11 + b, 1, 2, OUT);
+}
+
+/** The Ink Hound: a hound poured out of the Ink Deeps, dripping as it runs, violet eyes, a tail of smoke. */
+function paintInkHound(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], wag = [0, 1, 0, -1][f];
+  // The tail: smoke, coming apart.
+  for (let i = 0; i < 4; i++) orb(c, 6 - i * 1.6, 11 + b - i * 1.2 + wag * (i / 3), 2 - i * .35, 1.8 - i * .3, U.inkDk);
+  legs4(c, f, 8, 21, 15 + b, 23, 2, U.inkDk, U.ink, INKGLOW[2]);
+  orb(c, 14, 13 + b, 9, 5.2, U.ink);
+  orb(c, 21, 12 + b, 5.5, 5.4, U.ink);
+  // The ink running off it: drips under the belly and a sheen along the spine.
+  for (const [x, l] of [[9, 2], [13, 3], [17, 2]] as const) { px(c, x, 17 + b, 1, l + (f % 2), U.ink[1]); dot(c, x, 18 + b + l + (f % 2), INKGLOW[2]); }
+  line(c, [8, 9 + b], [20, 8 + b], U.ink[0]);
+  for (let i = 0; i < 4; i++) dot(c, 9 + i * 3, 8 + b + (i % 2), INKGLOW[2]);
+  // Head: long, low, ears flat back, a violet mouth.
+  poly(c, [[23, 6 + b], [24, 1 + b], [26, 5 + b]], U.inkDk);
+  orb(c, 26.5, 9 + b, 5, 4.2, U.ink);
+  poly(c, [[27, 8 + b], [32, 10 + b], [32, 12 + b], [27, 12 + b]], U.ink);
+  poly(c, [[26, 13 + b], [31, 13 + b], [30, 15 + b + (f % 2)], [26, 15 + b]], U.inkDk);
+  px(c, 27, 12 + b, 4, 1 + (f % 2), INKGLOW[1]); dot(c, 29, 13 + b, R.bone[0]);
+  glow(c, 28, 8 + b, 1, INKGLOW);
+}
+
+/** The Drowned Knight: one of Gloamhaven's old guard, still in the armour the mire took, kelp for a plume, a rusted greatsword. */
+function paintDrownedKnight(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], s = STEP[f] / 2, iron: Ramp = U.verdigris, far: Ramp = [iron[1], iron[2], iron[3], iron[3]];
+  // Legs in greaves, the far one darker.
+  limb(c, [11, 27 + b], [11 - s, 37 - liftB(f) / 2], 3, far); px(c, 9 - s, 37 - liftB(f) / 2, 5, 2, iron[3]);
+  limb(c, [16, 27 + b], [16 + s, 37 - liftA(f) / 2], 3, iron); px(c, 15 + s, 37 - liftA(f) / 2, 5, 2, iron[2]); px(c, 15 + s, 37 - liftA(f) / 2, 5, 1, iron[1]);
+  // The far arm.
+  limb(c, [8, 16 + b], [6, 25 + b], 3, far); orb(c, 6, 26 + b, 2, 1.8, far);
+  // The breastplate, barnacled; a drowned tabard over it, torn; kelp caught everywhere.
+  poly(c, [[7, 14 + b], [21, 14 + b], [20, 27 + b], [8, 27 + b]], iron);
+  line(c, [14, 15 + b], [14, 26 + b], iron[2]);
+  poly(c, [[10, 19 + b], [18, 19 + b], [18, 31 + b], [16, 29 + b], [14, 32 + b], [12, 29 + b], [10, 31 + b]], U.gloamDk);
+  dot(c, 14, 23 + b, LANTERN[2]); dot(c, 13, 22 + b, LANTERN[1]);
+  for (const [x, y] of [[8, 15], [20, 17], [9, 25], [19, 24], [11, 16]] as const) dot(c, x, y + b, R.bone[1]);
+  for (const [x, y, l] of [[9, 16, 6], [19, 15, 8], [16, 27, 5]] as const) { line(c, [x, y + b], [x + 1, y + l + b], U.kelp[1]); dot(c, x + 1, y + l + 1 + b, U.kelp[0]); }
+  // The pauldrons.
+  orb(c, 7.5, 15 + b, 3.4, 2.6, iron); orb(c, 20.5, 15 + b, 3.4, 2.6, iron);
+  // The great helm: a slit, and in it the ink-light where a face was; a plume of kelp hanging back.
+  poly(c, [[9, 4 + b], [19, 4 + b], [20, 13 + b], [8, 13 + b]], iron);
+  px(c, 9, 4 + b, 11, 1, iron[0]);
+  px(c, 10, 8 + b, 9, 2, OUT); glow(c, 12, 8 + b, 1, INKGLOW); glow(c, 16, 8 + b, 1, INKGLOW);
+  line(c, [14, 10 + b], [14, 12 + b], iron[2]);
+  limb(c, [12, 3 + b], [7, 5 + b], 2, U.kelp); limb(c, [7, 5 + b], [5, 10 + b + (f % 2)], 1, U.kelp);
+  // The greatsword, held up: a rusted blade, a cross-guard, water running off its point.
+  limb(c, [24, 23 + b], [25, 1 + b], 2, R.steel); line(c, [25, 3 + b], [25, 21 + b], R.steel[0]);
+  for (const y of [6, 11, 17]) dot(c, 24, y + b, R.rust[2]);
+  px(c, 21, 22 + b, 8, 2, R.iron[2]); px(c, 21, 22 + b, 8, 1, R.iron[0]);
+  limb(c, [24, 25 + b], [24, 28 + b], 2, R.leather);
+  // The near arm, its gauntlet on the grip.
+  limb(c, [20, 16 + b], [23, 23 + b], 3, iron); orb(c, 24, 24 + b, 2.2, 2, iron);
+}
+
+/** The Gloam Witch: a fen-crone under a hat like a drowned bell, a lantern on her staff burning ink instead of oil. */
+function paintGloamWitch(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], sw = [0, 1, 0, -1][f];
+  // The robe: a bell of gloam wool, its hem in tatters that drag in the mud.
+  poly(c, [[6, 15 + b], [17, 15 + b], [21, 35], [2, 35]], U.gloam);
+  line(c, [8, 17 + b], [5, 33], U.gloam[2]); line(c, [13, 17 + b], [14, 33], U.gloam[2]);
+  for (let i = 0; i < 6; i++) { const x = 3 + i * 3; px(c, x, 35, 2, 1 + ((i + f) % 2), U.gloamDk[2]); }
+  px(c, 2, 36, 19, 1, U.mudDk[2]);
+  // A shawl of hanging moss, charms on it.
+  poly(c, [[5, 14 + b], [18, 14 + b], [16, 21 + b], [7, 21 + b]], [U.kelp[0], U.kelp[1], U.kelp[2], U.kelp[3]]);
+  for (const x of [7, 10, 13, 16]) line(c, [x, 20 + b], [x, 22 + b + ((x + f) % 2)], U.kelp[2]);
+  dot(c, 9, 18 + b, R.bone[0]); dot(c, 14, 19 + b, INKGLOW[1]);
+  // The far hand, crooked, beckoning.
+  limb(c, [6, 17 + b], [3, 22 + b - sw], 2, U.gloamDk); limb(c, [3, 22 + b - sw], [1, 20 + b - sw], 1, U.skin);
+  // The face: pale, long-nosed, two ink-lit eyes under the brim.
+  orb(c, 12, 11 + b, 4.2, 3.8, U.skin);
+  poly(c, [[15, 11 + b], [18, 13 + b], [15, 13 + b]], U.skin);
+  dot(c, 11, 10 + b, INKGLOW[1]); dot(c, 14, 10 + b, INKGLOW[1]); dot(c, 11, 11 + b, INKGLOW[3]);
+  line(c, [10, 14 + b], [14, 14 + b], U.skin[3]);
+  // The hat: a wide drooping brim, a crooked crown, a moth on its band.
+  poly(c, [[3, 8 + b], [21, 8 + b], [21, 10 + b], [3, 10 + b]], U.gloamDk); px(c, 2, 9 + b, 2, 1, U.gloamDk[2]); px(c, 20, 9 + b, 2, 1, U.gloamDk[2]);
+  poly(c, [[6, 8 + b], [16, 8 + b], [13, 3 + b], [10, 0 + b + 1], [9, 4 + b]], U.gloamDk);
+  px(c, 7, 7 + b, 9, 1, LANTERN[2]); dot(c, 12, 6 + b, U.wisp[0]);
+  // The staff, and its lantern burning ink.
+  limb(c, [21, 9 + b], [21, 36], 2, R.wood);
+  limb(c, [21, 9 + b], [23, 7 + b], 1, R.wood);
+  px(c, 22, 8 + b, 4, 1, '#2a2026'); px(c, 22, 9 + b, 4, 5, '#2a2026');
+  glow(c, 23, 10 + b, 2, INKGLOW);
+  // The near hand on the staff.
+  limb(c, [16, 17 + b], [20, 21 + b], 2, U.gloam); orb(c, 21, 21 + b, 1.6, 1.6, U.skin);
+}
+
+/** The Ink Abbess, who keeps the Drowned Crypts: the abbey's last abbess, drowned at her prayers, her robes running ink. */
+function abbess(c: CanvasRenderingContext2D, f: number): void {
+  const b = BOB[f], sw = [0, 2, 0, -2][f];
+  // No feet: ink pooling under her, running off in tongues.
+  orb(c, 17, 37, 14, 1.8, U.inkDk);
+  for (let i = 0; i < 6; i++) { const x = 6 + i * 4.4, len = 1 + ((i + f) % 3); limb(c, [x, 34], [x + ((i + f) % 2 ? 1 : -1), 34 + len], 2, U.inkDk); dot(c, x, 35 + len, INKGLOW[2]); }
+  // The robe: narrow at the shoulders, flaring to the floor, deep ink; violet trim down its front, a drowned bell at her girdle.
+  poly(c, [[12, 13 + b], [22, 13 + b], [25, 20 + b], [30, 35], [4, 35], [9, 20 + b]], U.ink);
+  line(c, [15, 16 + b], [12, 34], INKGLOW[2]); line(c, [19, 16 + b], [22, 34], INKGLOW[2]);
+  line(c, [10, 24 + b], [7, 34], U.ink[2]); line(c, [24, 24 + b], [27, 34], U.ink[2]);
+  px(c, 4, 34, 27, 1, INKGLOW[3]);
+  px(c, 11, 21 + b, 12, 1, LANTERN[2]);
+  orb(c, 17, 24 + b, 1.8, 2, R.gold); dot(c, 17, 26 + b, OUT);
+  // Ink running from her sleeves.
+  dot(c, 6, 18 + b, U.ink[1]); dot(c, 6, 20 + b, INKGLOW[2]);
+  // The far arm raised in prayer, a rosary of drowned pearls hanging from it.
+  limb(c, [12, 15 + b], [6, 10 + b - sw / 2], 3, U.inkDk); orb(c, 5.5, 9 + b - sw / 2, 1.8, 1.8, U.skin);
+  for (let i = 0; i < 5; i++) dot(c, 5 + (i % 2), 11 + b - sw / 2 + i * 2, R.bone[0]);
+  // The veil: a tall grey hood falling to her shoulders; inside it, the dark and two ink-lights.
+  poly(c, [[10, 17 + b], [12, 6 + b], [17, 2 + b], [22, 6 + b], [24, 17 + b]], U.skin);
+  line(c, [17, 3 + b], [17, 5 + b], U.skin[0]);
+  orb(c, 17, 10 + b, 3.6, 3.8, R.void);
+  glow(c, 15, 9 + b, 1, INKGLOW); glow(c, 18, 9 + b, 1, INKGLOW);
+  line(c, [11, 16 + b], [23, 16 + b], U.skin[2]);
+  // A circlet of three candles, the abbey's last lights, burning gold over the veil.
+  px(c, 13, 4 + b, 9, 1, R.gold[2]);
+  for (const x of [13, 17, 21]) { px(c, x, 1 + b, 1, 3, '#e8e1cf'); dot(c, x, b, LANTERN[1]); }
+  // The near arm, swinging the great black censer-lantern on its chain.
+  limb(c, [22, 15 + b], [27, 21 + b], 3, U.ink);
+  line(c, [28, 21 + b], [29 + sw, 25 + b], '#2a2026');
+  px(c, 26 + sw, 25 + b, 7, 2, '#2a2026'); px(c, 26 + sw, 27 + b, 7, 6, '#1c1418'); px(c, 27 + sw, 28 + b, 5, 4, INKGLOW[2]);
+  glow(c, 28 + sw, 29 + b, 2, INKGLOW); dot(c, 29 + sw, 34 + b, INKGLOW[1]);
+}
+/** The Ink Abbess as she is fought: her figure grown huge. */
+function paintInkAbbess(c: CanvasRenderingContext2D, f: number): void { grown(1.7, 2, 3, () => abbess(c, f)); }
+
 export const MOBS: Readonly<Record<string, MobDef>> = {
   'lava-hound': {
     id: 'lava-hound', name: 'Lava Hound', hp: 120, speed: 50, dmg: [7, 12], rate: 1.1, sight: 130, level: 10, hits: 'fire',
@@ -1156,6 +1346,42 @@ export const MOBS: Readonly<Record<string, MobDef>> = {
     // At half its life it calls the temple's lashers up through the stones.
     summon: { type: 'vine-lasher', count: 2, at: .5 },
   },
+  // The Umbral Marches (levels 25–50): the fens, the deep fen, the meres, the drowned ruins, the Drowned Crypts.
+  'mire-lurker': {
+    id: 'mire-lurker', name: 'Mire Lurker', hp: 620, speed: 26, dmg: [20, 30], rate: 1.4, sight: 120, level: 25,
+    lore: 'Fen folk hang their lanterns high for a reason. The low ones, the ones that bob a little, belong to something that is very patient.',
+    coins: [48, 100], drops: [{ material: 'nightbloom', qty: 1, chance: .5 }, { material: 'umbral-ink', qty: 1, chance: .2 }], paint: paintMireLurker, w: 36, h: 28,
+  },
+  'lantern-wisp': {
+    id: 'lantern-wisp', name: 'Lantern Wisp', hp: 480, speed: 46, dmg: [18, 26], rate: 1.1, sight: 150, level: 28,
+    lore: 'A lantern dropped in the mire goes out. Most of them. This one kept the flame and lost the lantern, and it is looking for someone to carry it home.',
+    coins: [52, 108], drops: [{ material: 'umbral-ink', qty: 1, chance: .35 }, { material: 'nightglass', qty: 1, chance: .12 }], paint: paintLanternWisp, w: 22, h: 30,
+    floats: true, ghost: true, hits: 'fire',
+  },
+  'ink-hound': {
+    id: 'ink-hound', name: 'Ink Hound', hp: 760, speed: 56, dmg: [24, 35], rate: 1.1, sight: 160, level: 32,
+    lore: 'Poured, not born, out of the Ink Deeps. It leaves pawprints that never dry, and it can follow its own trail back down in the dark.',
+    coins: [60, 124], drops: [{ material: 'umbral-ink', qty: 2, chance: .7 }, { material: 'inkstone', qty: 1, chance: .2 }], paint: paintInkHound, w: 34, h: 24,
+  },
+  'drowned-knight': {
+    id: 'drowned-knight', name: 'Drowned Knight', hp: 1200, speed: 28, dmg: [32, 46], rate: 1.6, sight: 140, level: 38,
+    lore: 'Gloamhaven\'s old guard marched into the fen the night the abbey went under. They are still on watch. Nobody has told them to stand down.',
+    coins: [76, 150], drops: [{ material: 'inkstone', qty: 1, chance: .5 }, { material: 'nightglass', qty: 1, chance: .25 }], paint: paintDrownedKnight, w: 30, h: 40,
+  },
+  'gloam-witch': {
+    id: 'gloam-witch', name: 'Gloam Witch', hp: 900, speed: 30, dmg: [24, 34], rate: 1.5, sight: 170, level: 42,
+    lore: 'She sells cures in Lanternfen on market days and curses in the fen on the others. Her lantern burns ink, and what it shows you is true.',
+    coins: [84, 164], drops: [{ material: 'nightbloom', qty: 2, chance: .8 }, { material: 'umbral-ink', qty: 2, chance: .6 }, { material: 'nightglass', qty: 1, chance: .2 }], paint: paintGloamWitch, w: 26, h: 38,
+    ranged: { range: 120, keep: 80, rate: 2, dmg: [26, 38], speed: 120, kind: 'ink' },
+  },
+  'ink-abbess': {
+    id: 'ink-abbess', name: 'The Ink Abbess', hp: 7200, speed: 20, dmg: [44, 62], rate: 1.8, sight: 190, level: 50,
+    lore: 'The abbess would not leave her prayers when the water came. She is praying still, and the ink in her lantern is everything the abbey ever wrote down.',
+    coins: [2000, 3200], drops: [{ material: 'umbral-sigil', qty: 1, chance: 1 }, { material: 'inkstone', qty: 3, chance: 1 }, { material: 'umbral-ink', qty: 5, chance: 1 }, { material: 'nightglass', qty: 2, chance: 1 }], paint: paintInkAbbess, w: 66, h: 72, rank: 'boss',
+    // Her great attack: a wave of ink from the censer, three wide, after a tell on the floor. At half her life the hounds come.
+    ranged: { range: 140, keep: 0, rate: 3.6, dmg: [34, 50], speed: 110, kind: 'ink', spread: 3 },
+    summon: { type: 'ink-hound', count: 2, at: .5 },
+  },
 };
 
 /** The Warlock's raised skeleton (Raise Skeleton): drawn like a Bone Walker blanched violet; never a spawn. */
@@ -1170,7 +1396,7 @@ export const MOB_FRAMES = 4;
 /** A boss's rim, in its element's colour (docs/design/effects-spec.md): fire for the forge-born, violet bone-light for the dragon. */
 const RIM: Readonly<Record<string, string>> = {
   'ember-warden': '#ff8a2e', 'magma-tyrant': '#ff8a2e', 'anvil-warden': '#ffb347', 'cinder-sovereign': '#ff8a2e', 'bone-dragon': '#b06bff',
-  'mossbound-colossus': '#7affd0',
+  'mossbound-colossus': '#7affd0', 'ink-abbess': '#a48bff',
 };
 const rgb = (hex: string) => [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
 /**
@@ -1262,7 +1488,7 @@ export function windsUp(def: MobDef): boolean { return def.rank === 'boss' && !!
 export interface Call { x: number; y: number; type: string; key: string; t: number }
 
 /** A shot a creature looses (a bone arrow, a fire bolt, a breath): it flies straight; stepping aside dodges it. */
-export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath'; type?: DamageType }
+export interface MobShot { x: number; y: number; vx: number; vy: number; dmg: number; age: number; life: number; kind: 'arrow' | 'fire' | 'breath' | 'ink'; type?: DamageType }
 
 /** Aim a shot from (x, y) at (tx, ty), turned `angle` radians off true (a breath fans): it flies `range` × 1.4 at most. */
 export function aimShot(x: number, y: number, tx: number, ty: number, speed: number, range: number, dmg: number, kind: MobShot['kind'], angle = 0): MobShot {
