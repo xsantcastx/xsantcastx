@@ -638,8 +638,11 @@ export class MobSystem {
   /** Bring the level's spawns to life (those not resting after a death) and drop everything of the last level. */
   enterLevel(spawns: readonly MobSpawn[]): void {
     this.mobs.length = 0; this.drops.length = 0; this.target = null;
-    // The raised, the shots and the dead belong to the place they were in.
-    this.minions.length = 0; this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0;
+    // Shots and the dead belong to the place they were in; the raised follow the Keeper (owner 2026-10-20: "summons
+    // should last until they die or we despawn them, they shouldn't die just from travelling") — the leash below sets
+    // them down at his side on the new ground.
+    this.shots.length = 0; this.spears.length = 0; this.corpses.length = 0;
+    for (const k of this.minions) { k.target = null; k.x = 1e9; k.y = 1e9; }
     this.addSpawns(spawns);
   }
   /** Spawns that came into reach (the endless surface hands them over chunk by chunk). */
@@ -854,13 +857,20 @@ export class MobSystem {
     }
   }
 
-  /** The raised: crumble when their time is up, keep near the Keeper, fight the nearest foe. */
+  /** Let the raised go (the HUD's Release): they crumble where they stand. Returns how many went. */
+  releaseMinions(): number {
+    const n = this.minions.length;
+    for (const k of this.minions) for (let j = 0; j < 3; j++) this.effects.push({ kind: 'dust', x: k.x + rnd(-5, 5), y: k.y, age: 0, life: .5, dir: 1 });
+    this.minions.length = 0;
+    return n;
+  }
+  /** The raised: keep near the Keeper, fight the nearest foe, crumble only when killed or released (no timer). */
   private updateMinions(dt: number): void {
     const p = this.host.player();
     for (let i = this.minions.length - 1; i >= 0; i--) {
       const k = this.minions[i];
-      k.life -= dt; k.t += dt; k.cd -= dt; k.hit = Math.max(0, k.hit - dt);
-      if (k.life <= 0 || k.hp <= 0) {
+      k.t += dt; k.cd -= dt; k.hit = Math.max(0, k.hit - dt);
+      if (k.hp <= 0) {
         this.minions.splice(i, 1);
         for (let j = 0; j < 3; j++) this.effects.push({ kind: 'dust', x: k.x + rnd(-5, 5), y: k.y, age: 0, life: .5, dir: 1 });
         continue;
@@ -939,7 +949,7 @@ export class MobSystem {
         let at = cp ? { x: cp.x, y: cp.y } : { x: p.x + (i % 2 ? -16 : 16), y: p.y + 2 };
         if (cp) this.corpses.splice(this.corpses.indexOf(cp), 1);
         else if (!this.free(at.x, at.y)) at = { x: p.x, y: p.y };
-        this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: v['secs'], hit: 0, target: null });
+        this.minions.push({ id: this.minionSeq++, x: at.x, y: at.y, hp: st.hp, maxHp: st.hp, dmg: st.dmg, cd: .6, t: 0, face: 1, life: Infinity, hit: 0, target: null });
         this.effects.push({ kind: 'raise', x: at.x, y: at.y, age: 0, life: .8, dir: 1 });
       }
       capMinions(this.minions, v['max']);

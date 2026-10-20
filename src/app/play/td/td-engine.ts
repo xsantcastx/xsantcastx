@@ -282,6 +282,10 @@ export class TopDownEngine {
   }
 
   get aura(): SkillId | null { return this.mobs.aura; }
+  /** How many raised skeletons walk with the Keeper (the HUD's Release button shows while any do). */
+  get raisedCount(): number { return this.mobs.minions.length; }
+  /** Let the raised go (they last until killed or released; owner 2026-10-20). */
+  releaseRaised(): number { return this.mobs.releaseMinions(); }
   get ward(): number { return this.mobs.ward; }
   /** The Spellbook's choices: the bar (up to four actives) and the running aura. */
   setSkillLoadout(bar: readonly string[], aura: string | null): void {

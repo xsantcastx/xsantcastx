@@ -70,12 +70,16 @@ describe('td-mobs: Raise Skeleton', () => {
     expect(high.dmg[0]).toBeGreaterThan(low.dmg[1]);
   });
 
-  it('crumbles when its time is up', () => {
+  it('lasts until it falls or is released — no timer, and travel never ends it (owner 2026-10-20)', () => {
     const { sys } = world();
     sys.useAbility('raise-skeleton');
-    run(sys, v['secs'] - 1, .1);
-    expect(sys.minions.length).toBe(2);
-    run(sys, 2, .1);
+    run(sys, 300, .5);
+    expect(sys.minions.length).withContext('five minutes on').toBe(2);
+    sys.enterLevel([]);
+    run(sys, 1, .1);
+    expect(sys.minions.length).withContext('after a change of level').toBe(2);
+    expect(sys.minions.every(k => Math.abs(k.x) < 100 && Math.abs(k.y) < 100)).withContext('set down at the Keeper\'s side').toBeTrue();
+    expect(sys.releaseMinions()).toBe(2);
     expect(sys.minions.length).toBe(0);
   });
 

@@ -3804,3 +3804,12 @@ h1#game-title { font-family: var(--font-pixel); color: var(--cozy-cream); text-s
   .td-best .td-best__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
   .td-best__art { --art-h: 76px; }
 }
+
+/* Release the raised: a small chip above the skill bar, only while skeletons walk with the Keeper. */
+.td-release { position: absolute; z-index: 5; left: 50%; bottom: 148px; translate: -50% 0; display: inline-flex; align-items: center; gap: 6px; min-height: 30px;
+  padding: 0 10px !important; border: 0 !important; border-radius: 0 !important; background: var(--cozy-wood-1) !important; color: var(--cozy-cream) !important;
+  box-shadow: 0 0 0 2px var(--cozy-wood-0), inset 0 0 0 1px var(--cozy-loot-epic) !important; font: 600 12px var(--cozy-font-read) !important; text-transform: none !important; cursor: pointer; }
+.td-release:hover { background: var(--cozy-wood-2) !important; }
+@media (max-width: 900px), (hover: none) and (pointer: coarse) and (max-height: 500px) {
+  .td-release { left: 8px; translate: none; bottom: auto; top: calc(50% + 130px); min-height: 44px; }
+}
