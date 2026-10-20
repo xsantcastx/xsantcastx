@@ -182,7 +182,7 @@ export class TopDownEngine {
       swung: at => { this.actT = .3; if (at && Math.abs(at.x - this.player.x) > 2) this.player.face = at.x < this.player.x ? -1 : 1; this.player.dir = 'side'; },
     });
     this.player = { painter: new KeeperPainter(defaultLook()), x: this.map.spawn.x, y: this.map.spawn.y, face: 1, dir: 'down', moving: false, t: 0 };
-    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
+    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 44;
     this.populate();
     this.bindInput();
     try { const h = new URLSearchParams(window.location.search).get('hour'); if (h !== null && h !== '') { this.pinned = Math.max(0, Math.min(24, Number(h))); this.darkness = TopDownEngine.darknessAt(this.pinned); } } catch { /* no URL */ }
@@ -367,8 +367,9 @@ export class TopDownEngine {
     let url = portraits.get(painter);
     if (url) return url;
     const sheet = frontSheet(painter, true), out = document.createElement('canvas');
-    out.width = FRONT_W + 2; out.height = 22;
-    out.getContext('2d')!.drawImage(sheet, 0, 0, FRONT_W + 2, 22, 0, 0, FRONT_W + 2, 22);
+    // A 22-px square round the hood and face (the HUD shows it at exactly ×2).
+    out.width = out.height = 22;
+    out.getContext('2d')!.drawImage(sheet, 3, 1, 22, 22, 0, 0, 22, 22);
     url = out.toDataURL();
     portraits.set(painter, url);
     return url;
@@ -444,7 +445,7 @@ export class TopDownEngine {
     const spot = standNear(level, w.x, w.y);
     if (!footFree(level, spot.x, spot.y)) { this.enter(this.world, ''); this.player.x = this.map.spawn.x; this.player.y = this.map.spawn.y; return false; }
     this.player.x = spot.x; this.player.y = spot.y;
-    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
+    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 44;
     this.report();
     return true;
   }
@@ -499,7 +500,7 @@ export class TopDownEngine {
     const s = level.stalls.find(st => st.station.id === at);
     if (s) { const spot = standNear(level, s.x, s.y + 10); this.player.x = spot.x; this.player.y = spot.y; }
     this.player.dir = 'down';
-    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 40;
+    this.glim.x = this.player.x + 12; this.glim.y = this.player.y - 44;
     this.report();
   }
 
@@ -551,7 +552,7 @@ export class TopDownEngine {
       this.tryMove(0, vy * speed * dt);
     }
     // Glim drifts to the Keeper's shoulder.
-    const gx = this.player.x + this.player.face * -14, gy = this.player.y - 44 + Math.sin(this.time * 2.4) * 3;
+    const gx = this.player.x + this.player.face * -16, gy = this.player.y - 48 + Math.sin(this.time * 2.4) * 3;
     this.glim.x += (gx - this.glim.x) * Math.min(1, dt * 4);
     this.glim.y += (gy - this.glim.y) * Math.min(1, dt * 4);
     this.updateFolk(dt);
@@ -999,10 +1000,10 @@ export class TopDownEngine {
     // World UI: name plates for keepers, the label of the stall in reach.
     c.setTransform(s, 0, 0, s, -cam.x * s, -cam.y * s);
     c.textAlign = 'center'; c.textBaseline = 'bottom';
-    for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 38, '#f3e7cf');
+    for (const k of this.keepers) if (this.level === this.world && k.name && inView(k.x, k.y) && Math.hypot(this.player.x - k.x, this.player.y - k.y) < 90) this.plate(k.name, k.x, k.y - 42, '#f3e7cf');
     this.drawEffects();
     this.drawFightUi(inView);
-    if (this.nearby) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 58 : 36), '#ffd27a');
+    if (this.nearby) this.plate(this.nearby.station.label, this.nearby.x, this.nearby.y - (this.nearby.keeper ? 62 : 36), '#ffd27a');
   }
 
   private drawMob(m: Mob): void {
@@ -1057,7 +1058,7 @@ export class TopDownEngine {
     if (ward < this.wardSeen - .5 && !this.still) {
       const shards = this.motes.filter(m => m.kind === 'shard').length;
       for (let i = 0; i < Math.min(SHARDS - shards, 3); i++) {
-        const a = Math.random() * Math.PI * 2, x = p.x + Math.cos(a) * 13, y = p.y - 16 + Math.sin(a) * 18;
+        const a = Math.random() * Math.PI * 2, x = p.x + Math.cos(a) * 13, y = p.y - 18 + Math.sin(a) * 18;
         this.motes.push({ x, y, sx: x, sy: y, age: 0, life: .6, kind: 'shard', seed: Math.random() });
       }
     }
@@ -1190,7 +1191,7 @@ export class TopDownEngine {
       } else if (e.kind === 'ward') {
         // The ward going up: the hex springs out from the Keeper, a bright frame.
         const k = this.still ? 1 : 1 - (1 - t) * (1 - t);
-        this.drawHex(p.x, p.y - 16, .55 + .45 * k, 1, this.still ? 0 : this.time * .8);
+        this.drawHex(p.x, p.y - 18, .55 + .45 * k, 1, this.still ? 0 : this.time * .8);
       } else if (e.kind === 'raise') {
         // Bones knitting up out of the sigil (from 0.25 s), violet motes climbing with them.
         if (t > .25) {
@@ -1252,7 +1253,7 @@ export class TopDownEngine {
     // The Dark Ward while it holds: the hex turns, and it is missing the pixels the blows it drank have cracked off.
     if (this.mobs.ward > 0) {
       c.globalAlpha = .8;
-      this.drawHex(p.x, p.y - 16, 1, Math.max(.15, this.mobs.ward / SKILLS['dark-ward'].vars['absorb']), this.still ? 0 : this.time * .8);
+      this.drawHex(p.x, p.y - 18, 1, Math.max(.15, this.mobs.ward / SKILLS['dark-ward'].vars['absorb']), this.still ? 0 : this.time * .8);
       c.globalAlpha = 1;
     }
     for (const m of this.mobs.mobs) if (m.cursed > 0) {
@@ -1284,7 +1285,7 @@ export class TopDownEngine {
         dot(x, y, tone, k > .8 ? (1 - k) * 5 * .9 : .9, k < .3 ? 2 : 1);
       } else if (m.kind === 'life') {
         // Drawn in to the Keeper's chest, wavering less as it nears.
-        const e = k * k * (3 - 2 * k), tx = p.x, ty = p.y - 16;
+        const e = k * k * (3 - 2 * k), tx = p.x, ty = p.y - 18;
         const x = m.sx + (tx - m.sx) * e + Math.sin(m.age * 7 + m.seed * 9) * 2 * (1 - e), y = m.sy + (ty - m.sy) * e;
         const bx = m.sx + (tx - m.sx) * Math.max(0, e - .08), by = m.sy + (ty - m.sy) * Math.max(0, e - .08);
         dot(bx, by, FX.life.edge, .55);
@@ -1322,9 +1323,10 @@ export class TopDownEngine {
 
   private drawPerson(p: Person, action: 'idle' | 'run' | 'walk'): void {
     const c = this.ctx, s = this.scale, cam = this.cam;
-    // Soft shadow under the feet.
+    // Soft shadow under the feet: a pixel ellipse as wide as the sprite's stance.
     c.fillStyle = 'rgba(30,18,26,.28)';
-    c.fillRect(Math.round(p.x - 6), Math.round(p.y - 2), 12, 3);
+    const sx = Math.round(p.x), sy = Math.round(p.y);
+    c.fillRect(sx - 7, sy - 3, 14, 1); c.fillRect(sx - 9, sy - 2, 18, 2); c.fillRect(sx - 6, sy, 12, 1);
     if (!p.painter) return;
     const acting = p === this.player && this.actT > 0;
     if (p === this.player && (p.dir !== 'side' || acting)) {
@@ -1387,7 +1389,7 @@ export class TopDownEngine {
       const sp = o.sprite();
       for (const l of sp.lights ?? []) { hole(o.x + l.x, o.y + l.y, l.r * 2); if (l.warm) glows.push({ x: o.x + l.x, y: o.y + l.y, r: l.r }); }
     }
-    hole(this.player.x, this.player.y - 16, 70);
+    hole(this.player.x, this.player.y - 18, 70);
     // A running aura claims the ground round the Keeper: its ring glows through the dark (a soft light, not a stroke on screen).
     if (this.mobs.aura) {
       d.globalAlpha = .8; d.strokeStyle = '#000'; d.lineWidth = 6;
