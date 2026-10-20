@@ -714,3 +714,17 @@ export function stairsUp(): Sprite {
     return { img: outline(img), ax: 10, ay: 22, lights: [{ x: 0, y: -14, r: 28 }] };
   });
 }
+
+/** A sailing ship at the pier: a timber hull, a mast and a cream sail with the realm's ember stripe. */
+export function ship(): Sprite {
+  return cached('ship', () => {
+    const W = 48, H = 52, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 4, 38, 40, 10, PAL.wood[0]); rect(c, 6, 46, 36, 4, PAL.wood[2]); rect(c, 4, 38, 40, 2, PAL.wood[3]); rect(c, 0, 36, 6, 6, PAL.wood[0]); rect(c, 42, 34, 6, 8, PAL.wood[0]);
+    for (let x = 8; x < 42; x += 6) rect(c, x, 41, 2, 2, PAL.plank[2]);
+    rect(c, 23, 2, 2, 38, PAL.trunk[2]);
+    rect(c, 10, 6, 13, 26, '#f3e7cf'); rect(c, 25, 8, 12, 22, '#efdcb5'); rect(c, 10, 16, 13, 3, PAL.ember[1]); rect(c, 25, 17, 12, 3, PAL.ember[1]);
+    rect(c, 22, 0, 6, 3, PAL.ember[2]);
+    return { img: outline(img), ax: 24, ay: 50 };
+  });
+}
