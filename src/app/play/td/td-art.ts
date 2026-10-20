@@ -729,6 +729,40 @@ export function cryptDoor(): Sprite {
     return { img: outline(img), ax: 20, ay: H, lights: [{ x: -18, y: -16, r: 16, warm: false }, { x: 18, y: -16, r: 16, warm: false }] };
   });
 }
+/**
+ * The Forge of the Four's gate, at the foot of the Pyre Peaks: a basalt smithy front gone to ruin, four cold anvil
+ * sigils over a doorway of steps going down, a brazier either side that still burns.
+ */
+export function forgeGate(): Sprite {
+  return cached('forge-gate', () => {
+    const W = 48, H = 40, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 4, 12, 40, 28, PAL.basalt[1]); rect(c, 4, 12, 40, 2, PAL.basalt[3]);
+    for (let y = 15; y < 38; y += 5) for (let x = (y % 10) ? 5 : 9; x < 42; x += 8) rect(c, x, y, 6, 2, PAL.basalt[0]);
+    rect(c, 2, 7, 44, 6, PAL.basalt[2]); rect(c, 2, 7, 44, 1, PAL.basalt[3]);
+    // The broken lintel: one corner fallen.
+    rect(c, 38, 4, 8, 4, PAL.basalt[2]); rect(c, 2, 2, 12, 6, PAL.basalt[2]); rect(c, 2, 2, 12, 1, PAL.basalt[3]);
+    // Four anvil sigils, one for each smith.
+    for (let i = 0; i < 4; i++) { const x = 9 + i * 8; rect(c, x, 9, 6, 2, '#7a7584'); rect(c, x + 2, 11, 2, 1, '#4a4552'); }
+    rect(c, 16, 18, 16, 22, '#120a0e'); rect(c, 18, 16, 12, 3, '#120a0e');
+    for (let i = 0; i < 4; i++) rect(c, 17 + i, 23 + i * 4, 14 - i * 2, 2, i % 2 ? PAL.stone[2] : PAL.stone[0]);
+    rect(c, 13, 16, 3, 24, PAL.stone[2]); rect(c, 32, 16, 3, 24, PAL.stone[2]); rect(c, 13, 16, 1, 24, PAL.stone[3]);
+    rect(c, 0, 28, 5, 12, PAL.stone[2]); rect(c, 0, 25, 5, 3, PAL.ember[1]); rect(c, 1, 24, 3, 2, PAL.glow);
+    rect(c, 43, 28, 5, 12, PAL.stone[2]); rect(c, 43, 25, 5, 3, PAL.ember[1]); rect(c, 44, 24, 3, 2, PAL.glow);
+    return { img: outline(img), ax: 24, ay: H, lights: [{ x: -22, y: -15, r: 20, warm: true }, { x: 21, y: -15, r: 20, warm: true }] };
+  });
+}
+/** A smith's anvil on its block, a hammer left across it. */
+export function anvil(): Sprite {
+  return cached('anvil', () => {
+    const W = 18, H = 14, img = cv(W, H);
+    const c = img.getContext('2d')!;
+    rect(c, 3, 9, 12, 5, PAL.wood[0]); rect(c, 3, 9, 12, 1, PAL.wood[2]);
+    rect(c, 2, 2, 13, 4, '#4a4552'); rect(c, 0, 3, 4, 2, '#4a4552'); rect(c, 6, 6, 6, 3, '#3a3642'); rect(c, 2, 2, 13, 1, '#7a7584');
+    rect(c, 8, 0, 8, 2, PAL.trunk[2]); rect(c, 14, 0, 3, 3, '#3a3642');
+    return { img: outline(img), ax: 9, ay: H };
+  });
+}
 /** A worn gravestone, a little askew. */
 export function gravestone(seed = 0): Sprite {
   const v = ((seed % 3) + 3) % 3;

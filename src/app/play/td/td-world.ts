@@ -8,7 +8,7 @@
  *
  * Pure (no DOM): sprites are produced lazily by td-art's cache when drawn. Made on demand in 16×16-tile chunks.
  */
-import { beaconPillar, boulder, bush, caveMouth, cryptDoor, gravestone, ship, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
+import { beaconPillar, boulder, bush, caveMouth, cryptDoor, forgeGate, gravestone, ship, flowerbed, hash, oreSeam, ruinWall, standingStone, stump, tree, TILE, type Ground } from './td-art';
 import { BLOCK, EMBER_ISLE_DEF } from './maps/ember-isle';
 import type { ContinentDef, Region } from './continent';
 import { type TdMap, type TdObject, type TdStall } from './seamworks-square';
@@ -78,6 +78,11 @@ export class TdWorld implements TdLevel {
       // A ship is boarded at the pier's end; anything else in front of the place.
       const at = w.place === 'harbour' ? { x: p.c * TILE + TILE / 2, y: (p.r + PIER - 4) * TILE + TILE } : { x: p.c * TILE + TILE / 2, y: p.r * TILE + TILE + 6 };
       this.allStalls.push({ station: w.station, ...at });
+      this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
+    }
+    // A village's own ways (Cinderport's ship from its pier), at a tile of the village.
+    for (const v of def.villages ?? []) for (const w of v.ways ?? []) {
+      this.allStalls.push({ station: w.station, x: (v.c + w.c) * TILE + TILE / 2, y: (v.r + w.r) * TILE + TILE });
       this.ways.set(w.station.id, { to: w.to, arrive: w.arrive, ship: !!w.ship });
     }
     for (const way of def.roads) {
@@ -214,12 +219,12 @@ export class TdWorld implements TdLevel {
 
   /** Round a crypt or a graveyard the wilds stand back (no trees, rocks or bushes): a plot to walk, a door to reach. */
   private inClearing(c: number, r: number): boolean {
-    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
+    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'graveyard' || p.kind === 'forge') && Math.abs(c - p.c) <= 7 && Math.abs(r - p.r) <= 6) return true;
     return false;
   }
   /** Within eight tiles of a dungeon's door the wild packs never spawn (arriving is never a death trap). */
   private nearWayIn(c: number, r: number): boolean {
-    for (const p of this.def.places) if (p.kind === 'crypt' && Math.hypot(c - p.c, r - p.r) < 9) return true;
+    for (const p of this.def.places) if ((p.kind === 'crypt' || p.kind === 'forge') && Math.hypot(c - p.c, r - p.r) < 9) return true;
     return false;
   }
   private walkableGround(c: number, r: number): boolean {
@@ -285,9 +290,9 @@ export class TdWorld implements TdLevel {
       else if (p.kind === 'cave') { stamp(0, 0, caveMouth); }
       else if (p.kind === 'caldera') { stamp(-3, 0, () => standingStone(2)); stamp(3, 0, () => standingStone(0)); }
       else if (p.kind === 'harbour') { stamp(3, PIER - 2, ship, false); stamp(-2, 1, () => standingStone(1)); }
-      else if (p.kind === 'crypt') {
-        // The mausoleum front is wider than its tile: the tiles either side are its walls.
-        stamp(0, 0, cryptDoor);
+      else if (p.kind === 'crypt' || p.kind === 'forge') {
+        // The mausoleum front (or the Forge's ruined gate) is wider than its tile: the tiles either side are its walls.
+        stamp(0, 0, p.kind === 'crypt' ? cryptDoor : forgeGate);
         for (const dc of [-1, 1]) { const c = p.c + dc; if (c >= x0 && c < x0 + WORLD_CHUNK && p.r >= y0 && p.r < y0 + WORLD_CHUNK) blocked.add(this.key(c, p.r)); }
       }
       else if (p.kind === 'graveyard') {

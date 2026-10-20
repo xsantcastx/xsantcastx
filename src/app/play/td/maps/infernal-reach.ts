@@ -13,7 +13,8 @@ import { buildTown } from '../town-builder';
 import { SPIRE_DOOR } from './pyre-spire';
 import { DEEP_IN } from './molten-deep';
 import { CRYPT_IN } from './ashen-crypt';
-import { buildCinderport } from './cinderport';
+import { CINDERPORT_SHIP, buildCinderport } from './cinderport';
+import { FORGE_IN } from './forge-of-four';
 import { buildAshgrove } from './ashgrove';
 
 export const SHIP_TO_ISLE: StationDef = { id: 'ship-isle', x: 0, label: 'SHIP TO EMBER ISLE', kind: 'passage', blurb: 'Sail back to Ember Isle.' };
@@ -119,6 +120,8 @@ export const REACH_PLACES: readonly ContinentPlace[] = [
   { kind: 'shrine', c: -40, r: -24, name: 'The Ember Altar' },
   { kind: 'caldera', c: 98, r: -22, name: 'The Great Caldera' },
   { kind: 'cave', c: 70, r: -38, name: 'The Molten Deep' },
+  // At the foot of the Pyre Peaks, by the road to the Ember Altar: the ruined gate of the Forge of the Four.
+  { kind: 'forge', c: -28, r: -26, name: 'The Forge of the Four' },
   { kind: 'harbour', c: 23, r: 26, name: 'Pyrehold Harbour' },
 ];
 
@@ -150,9 +153,11 @@ export const INFERNAL_REACH_DEF: ContinentDef = {
     { place: 'harbour', station: SHIP_TO_ISLE, to: 'ember-isle', arrive: 'ship-reach', ship: true },
     { place: 'cave', station: DEEP_IN, to: 'molten-deep-1', arrive: 'deep-out' },
     { place: 'crypt', station: CRYPT_IN, to: 'ashen-crypt-1', arrive: 'crypt-out' },
+    { place: 'forge', station: FORGE_IN, to: 'forge-of-four-1', arrive: 'forge-out' },
   ],
   villages: [
-    { name: 'Cinderport', c: 92, r: 34, build: buildCinderport },
+    // Cinderport's salt-ketch sails from the pier's end (the village's tile 15, 15) back to Ember Harbour.
+    { name: 'Cinderport', c: 92, r: 34, build: buildCinderport, ways: [{ station: CINDERPORT_SHIP, c: 15, r: 15, to: 'ember-isle', arrive: 'ship-reach', ship: true }] },
     { name: 'Ashgrove', c: -92, r: 6, build: buildAshgrove },
   ],
 };

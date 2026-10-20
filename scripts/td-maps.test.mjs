@@ -8,9 +8,9 @@ import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 
 const DIR = 'src/app/play/td/maps';
-const BLOCKED = new Set('#~eoOTCB'.split(''));
+const BLOCKED = new Set('#~eoOTCBFA'.split(''));
 const WAYS_IN = ['^', '<', 'D'];
-const MUST_REACH = ['>', '<', '^', 'D', 'm', 'b', 'i', 'W', 'C', 's', 'a', 'g', 'w', 'X'];
+const MUST_REACH = ['>', '<', '^', 'D', 'm', 'b', 'i', 'W', 'C', 's', 'a', 'g', 'w', 'X', 'k', 'n', 'd', 'S', 'Y'];
 
 for (const file of readdirSync(DIR).filter(f => f.endsWith('.ts'))) {
   const text = readFileSync(`${DIR}/${file}`, 'utf8');
